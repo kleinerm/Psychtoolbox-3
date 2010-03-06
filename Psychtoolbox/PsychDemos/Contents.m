@@ -81,3 +81,5 @@
 %    StoreBit                - Not at all clear why this is here
 %    ValetonVanNorrenDemo    - Exercise our code that implements the V-VN (1983) cone adaptation model.
 %    VideoCaptureDemo        - Simple demo for video capture functions.
+%    VignettingCorrectionDemo - Demonstrate how to do display devignetting aka per-pixel gain correction.
+%

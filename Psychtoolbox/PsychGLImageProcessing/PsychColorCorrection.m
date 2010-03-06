@@ -41,6 +41,11 @@ function varargout = PsychColorCorrection(cmd, varargin)
 % The parameter 'methodname' is a name string with the name of one of the
 % supported methods - See overview below for supported methods.
 %
+% CAUTION: The order of specifications matters! If you use multiple color
+% correction methods or other image processing operations simultaneously,
+% make sure to specify them in the order in which they should be executed.
+% The system tries to order operations in a reasonable way, but it is not
+% fool-proof!
 %
 % 2. Then, after you've specified all other window parameters via the
 % PsychImaging() subcommands, you open the onscreen window via the usual
@@ -117,6 +122,33 @@ function varargout = PsychColorCorrection(cmd, varargin)
 %   granularity (ie., number of slots) and range, which is later on used to
 %   lookup corresponding corrected color values for given framebuffer input
 %   values.
+%
+%
+% * 'GainMatrix' : Apply color gain correction by 2D gain matrix lookup.
+%
+%   This allows to apply a 2D matrix G which stores luminance- or color gain
+%   correction factors for each single output pixel of the display. For
+%   each 2D display pixel location (x,y), the stimulus image I(x,y) will be
+%   multiplied with the corresponding gain factor G(x,y) of the gain matrix
+%   and the result O(x,y) used for further processing and display. G(x,y)
+%   can be a single scalar for luminance correction, or - if G is a 3-layer
+%   matrix - a RGB vector with individual gains for each color channel and
+%   pixel location.
+%
+%   O(x,y) = I(x,y) * G(x,y).
+%
+%   If you want to combine this with one of the other correction methods,
+%   e.g., gamma correction, you should issue this command first, because
+%   the non-linear gamma correction should apply to the output of this
+%   method for correct results.
+%
+%   After you've opened your onscreen 'window', you'll need to define the 2D
+%   gain 'matrix' via a call to ...
+%
+%   PsychColorCorrection('SetGainMatrix', ...);
+%
+%   See below for description of 'SetGainMatrix'.
+%
 %
 %
 % Supported runtime Subfunctions:
@@ -218,6 +250,23 @@ function varargout = PsychColorCorrection(cmd, varargin)
 % default to the range 0.0 - 1.0.
 %
 %
+% PsychColorCorrection('SetGainMatrix', window, matrix [, precision=2]);
+%
+% - Set gain matrix for method 'GainMatrix'.
+% If matrix is a 2D matrix, the gain will be applied to all color
+% channels equally. If matrix is a 3D matrix, matrix(y,x,1) will define
+% the red channel gain, matrix(y,x,2) will define the green channel gain, 
+% and matrix(y,x,3) will define the blue channel gain.
+%
+% The optional 'precision' parameter defines the numerical precision with
+% which the gain factors are stored. The default setting of 2 stores with
+% 32 bit floating point precision - about 6 digits behind the decimal
+% point. A Setting of 1 stores with 16 bit float precision, about 3 digits.
+% A Setting of 0 stores with 256 levels, about 2 digits. A lower precision
+% is less precise but allows for faster processing and higher redraw rates
+% if needed.
+%
+%
 %
 % Internal commands, usually not meant for direct use by pure mortals:
 % ====================================================================
@@ -236,7 +285,7 @@ function varargout = PsychColorCorrection(cmd, varargin)
 %
 % Called after Screen('OpenWindow') during shader and pipeline setup:
 %
-% [shader, idstring, configString] = PsychColorCorrection('GetCompiledShaders', window, debuglevel);
+% [shader, idstring, configString, overrideMain] = PsychColorCorrection('GetCompiledShaders', window, debuglevel);
 % - Compile corresponding shaders for chosen color correction method,
 % return shaderhandles and idstring to calling routine. That routine will
 % link the returned shaders with other shader code to produce the final
@@ -259,6 +308,8 @@ function varargout = PsychColorCorrection(cmd, varargin)
 % 18.05.2008 Revised, improved help text, fine-tuning etc. (MK)
 % 04.07.2009 Add CLUT based color correction. (MK)
 % 10.10.2009 Add 'SetExtendedGammaParameters' for extended gamma correction. (MK)
+% 05.03.2010 Add 'GainMatrix' and 'SetGainMatrix' for display
+%                shading/vignetting correction. (MK)
 
 % GL is needed for shader setup and parameter changes:
 global GL;
@@ -320,6 +371,9 @@ if strcmpi(cmd, 'GetCompiledShaders')
     % No config string by default:
     icmConfig = '';
     
+    % No override main routine by default:
+    icmOverrideMain = '';
+
     switch(icmSpec.type)
         case {'None'}
             % Load pass-through shader:
@@ -358,7 +412,20 @@ if strcmpi(cmd, 'GetCompiledShaders')
             icmSpec.icmlutid = glGenTextures(1);
             
             % Build config string to bind and use our CLUT texture:
-            icmConfig = sprintf('TEXTURERECT2D(2)=%i', icmSpec.icmlutid);            
+            icmConfig = sprintf('TEXTURERECT2D(2)=%i', icmSpec.icmlutid);
+            
+        % Vignetting correction by lookup into a 2D per-pixel gain texture:
+        case {'GainMatrix'}
+            % Load our 2D gain correction shader:
+            icmShaders = LoadShaderFromFile('ICM2DGainCorrectionShader.frag.txt', [], debuglevel);
+            icmIdString = sprintf('ICM:%s', icmSpec.type);
+
+            % Generate texture handle for fillout later on:
+            icmSpec.icmlutid = glGenTextures(1);
+            
+            % Build config string to bind and use our gain texture:
+            icmConfig = sprintf('TEXTURERECT2D(2)=%i', icmSpec.icmlutid);
+                        
         otherwise
             error('Unknown type of color correction requested! Internal bug?!?');
     end
@@ -373,12 +440,15 @@ if strcmpi(cmd, 'GetCompiledShaders')
     % Return shader config string:
     varargout{3} = icmConfig;
     
+    % Return override main function definition string:
+    varargout{4} = icmOverrideMain;
+    
     return;
 end
 
 if strcmpi(cmd, 'ApplyPostGLSLLinkSetup')
     if ~specReady
-        error('"GetCompiledShaders" called, but specification of what to compile is unavailable!');
+        error('"ApplyPostGLSLLinkSetup" called, but specification of what to postlink is unavailable!');
     end
     
     % Need GL from here on...
@@ -429,7 +499,16 @@ if strcmpi(cmd, 'ApplyPostGLSLLinkSetup')
                 % mandatory step after initial setup of the display. We do
                 % store the texture id of the clut texture in a permanent
                 % location though:
-                icmDataForHandle(win) = icmSpec.icmlutid;
+                icmDataForHandle(win, glsl) = icmSpec.icmlutid;
+                
+            case {'GainMatrix'}
+                % Set Gain matrix texture unit to 2:
+                glUniform1i(glGetUniformLocation(glsl, 'ICMGainField'), 2);
+                % Note that we won't setup the Gain texture yet. This is a
+                % mandatory step after initial setup of the display. We do
+                % store the texture id of the texture in a permanent
+                % location though:
+                icmDataForHandle(win, glsl) = icmSpec.icmlutid;
                 
             otherwise
                 error('Unknown type of color correction requested! Internal bug?!?');
@@ -548,7 +627,7 @@ if strcmpi(cmd, 'SetEncodingGamma')
     % Retrieve all params for 'win'dow and given icmSpec, bind shader. The
     % 'icmSpec' string is empty - This will expand into the general 'ICM:'
     % string, so we use the first slot/shader with the ICM: token.
-    icmId = '';
+    icmId = 'SimpleGamma';
     [slot shaderid blittercfg voidptr glsl luttexid] = GetSlotForTypeAndBind(win, icmId, viewId); %#ok<NASGU>
     
     try
@@ -688,7 +767,7 @@ if strcmpi(cmd, 'SetExtendedGammaParameters')
     % Retrieve all params for 'win'dow and given icmSpec, bind shader. The
     % 'icmSpec' string is empty - This will expand into the general 'ICM:'
     % string, so we use the first slot/shader with the ICM: token.
-    icmId = '';
+    icmId = 'SimpleGamma';
     [slot shaderid blittercfg voidptr glsl luttexid] = GetSlotForTypeAndBind(win, icmId, viewId); %#ok<NASGU>
     
     try
@@ -812,7 +891,7 @@ if strcmpi(cmd, 'SetLookupTable')
     % Unbind shader:
     glUseProgram(0);
     
-    if isempty(icmDataForHandle) || length(icmDataForHandle) < win || Screen('WindowKind',win) ~= 1
+    if isempty(icmDataForHandle) || size(icmDataForHandle, 1) < win || size(icmDataForHandle, 2) < glsl || Screen('WindowKind',win) ~= 1
         error('SetLookupTable: Tried to assign clut to a non-onscreen window or one which doesn''t have "LookupTable" based color correction enabled!');
     end
     
@@ -856,7 +935,7 @@ if strcmpi(cmd, 'SetLookupTable')
     end
     
     % Bind relevant texture object:
-    glBindTexture(GL.TEXTURE_RECTANGLE_EXT, icmDataForHandle(win));
+    glBindTexture(GL.TEXTURE_RECTANGLE_EXT, icmDataForHandle(win, glsl));
     
     % Set filters properly: Want nearest neighbour filtering, ie., no filtering
     % at all. We'll do our own linear filtering in the ICM shader. This way
@@ -879,6 +958,155 @@ if strcmpi(cmd, 'SetLookupTable')
     return;
 end
 
+if strcmpi(cmd, 'SetGainMatrix')
+    
+    % Need GL from here on...
+    if isempty(GL)
+        error('SetGainMatrix: No internal GL struct defined in "SetGainMatrix" routine?!? This is a bug - Check code!!');
+    end
+    
+    if nargin < 2
+        error('SetGainMatrix: Must provide window handle to onscreen window as 2nd argument!');
+    end
+
+    if nargin < 3
+        error('SetGainMatrix: Must provide 2D gain matrix for use!');
+    end
+        
+    % Fetch window handle:
+    win = varargin{1};
+    
+    % Fetch clut:
+    clut = varargin{2};
+    
+    if ~isnumeric(clut)
+        error('SetGainMatrix: Gain matrix must contain number(s)!');
+    end
+
+    [w, h] = Screen('WindowSize', win);
+    if size(clut,2)~=w || size(clut,1)~=h
+        error('SetGainMatrix: Gain matrix must have the same size (width x height) in pixels as the target onscreen window!');
+    end
+
+    if nargin < 4
+        viewId = [];
+    else
+        viewId = varargin{3};
+    end
+    
+    if nargin < 5
+        precision = [];
+    else
+        precision = varargin{4};
+    end
+    
+    if isempty(precision)
+        % Default precision for gain matrix is 2 == max. precision 32 bpc.
+        precision = 2;
+    end
+    
+    % Retrieve all params for 'win'dow and our 'LookupTable' icmSpec, bind shader.
+    icmId = 'GainMatrix';
+    [slot shaderid blittercfg voidptr glsl luttexid] = GetSlotForTypeAndBind(win, icmId, viewId); %#ok<NASGU>
+    
+    %     % Not used yet:
+    %     try
+    %         % Setup initial clamping values to valid range 0.0 - maximum in passed CLUT:
+    %         glUniform2f(glGetUniformLocation(glsl, 'ICMClampToColorRange'), 0.0, max(max(clut)));
+    %     catch
+    %         % Empty...
+    %         psychrethrow(psychlasterror);
+    %     end
+    
+    % Unbind shader:
+    glUseProgram(0);
+    
+    if isempty(icmDataForHandle) || size(icmDataForHandle, 1) < win || size(icmDataForHandle, 2) < glsl || Screen('WindowKind',win) ~= 1
+        error('SetGainMatrix: Tried to assign matrix to a non-onscreen window or one which doesn''t have "GainMatrix" based color correction enabled!');
+    end
+
+    % Convert 'clut' to single(), so it is a float format for OpenGL. Also
+    % need to transpose and flip from Matlab col-major to GL row-major:
+    ch = size(clut, 3);
+    for i=1:ch
+        tclut(:,:,i) = transpose(flipud(clut(:,:,i))); %#ok<AGROW>
+    end
+    tclut = single(tclut);
+
+    % Interleave RGB gain info if this is a 3 channel gain matrix:
+    clut = zeros(size(tclut, 3), size(tclut, 1), size(tclut, 2), 'single');
+    for i=1:size(tclut, 3)
+        clut(i,:,:) = tclut(:,:,i);
+    end;
+    
+    % Try to encode in highest precision format that the hardware supports:
+    winfo = Screen('GetWindowInfo', win);
+    if (winfo.GLSupportsTexturesUpToBpc >= 32) && (precision >= 2)
+        % Full 32 bits single precision float:
+        internalFormat = GL.LUMINANCE_FLOAT32_APPLE;
+        if ch == 3
+            internalFormat = GL.RGB_FLOAT32_APPLE;
+        end
+        fprintf('PsychColorCorrection: Using a 32 bit float matrix -> 23 bits (6 decimal digits) effective linear precision for color correction gain matrix.\n');
+    else
+        % No float32 textures:
+        if (winfo.GLSupportsTexturesUpToBpc >= 16) && (precision >= 1)
+            % Choose 16 bpc float textures:
+            internalFormat = GL.LUMINANCE_FLOAT16_APPLE;
+            if ch == 3
+                internalFormat = GL.RGB_FLOAT16_APPLE;
+            end
+            fprintf('PsychColorCorrection: Using a 16 bit float matrix -> 10 bits (3 decimal digits) effective linear precision for color correction gain matrix.\n');
+        else
+            % No support for > 8 bpc textures at all and/or no need for
+            % more than 8 bpc precision or range. Choose 8 bpc texture:
+            internalFormat = GL.LUMINANCE;
+            if ch == 3
+                internalFormat = GL.RGB8;
+            end
+            
+            fprintf('PsychColorCorrection: Using a 8 bit integer matrix -> 8 bits (2 decimal digits) effective linear precision for color correction gain matrix.\n');
+            fprintf('PsychColorCorrection: Gain values will be restricted to range 0.0 - 1.0, with 256 levels, ie. steps of 1/256!\n');
+
+            % Plain old 8 bits fixed point:
+            if (max(max(max(clut))) > 1) || (min(min(min(clut))) < 0)
+                % Ohoh, out of range values for integer texture!
+                fprintf('\nWARNING!PsychColorCorrection: Matrix contains values greater than one or negative values, which your hardware can''t handle!!\n');
+                fprintf('WARNING!PsychColorCorrection: This will likely cause remapping artifacts in gain correction!!\n');
+            end
+            
+            if (winfo.BitsPerColorComponent > 8)
+                fprintf('WARNING!PsychColorCorrection: Your hardware can only handle 8 bit precision gain correction width 256 discrete levels,\n');                
+                fprintf('WARNING!PsychColorCorrection: but your framebuffer is configured for more than 8 bit precision. This may cause\n');                
+                fprintf('WARNING!PsychColorCorrection: loss of effective precision in gain correction and thereby unwanted artifacts!\n');                
+            end
+        end
+    end
+    
+    % Bind relevant texture object:
+    glBindTexture(GL.TEXTURE_RECTANGLE_EXT, icmDataForHandle(win, glsl));
+    
+    % Set filters properly: Want nearest neighbour filtering, ie., no filtering at all:
+    glTexParameteri(GL.TEXTURE_RECTANGLE_EXT, GL.TEXTURE_MIN_FILTER, GL.NEAREST);
+    glTexParameteri(GL.TEXTURE_RECTANGLE_EXT, GL.TEXTURE_MAG_FILTER, GL.NEAREST);
+
+    % Want clamp-to-edge behaviour to saturate at minimum and maximum gain value:
+    glTexParameteri(GL.TEXTURE_RECTANGLE_EXT, GL.TEXTURE_WRAP_S, GL.CLAMP_TO_EDGE);
+    glTexParameteri(GL.TEXTURE_RECTANGLE_EXT, GL.TEXTURE_WRAP_T, GL.CLAMP_TO_EDGE);
+    
+    % Assign 2D matrix data to texture:
+    if ch == 3
+        glTexImage2D(GL.TEXTURE_RECTANGLE_EXT, 0, internalFormat, size(clut, 2), size(clut, 3), 0, GL.RGB, GL.FLOAT, clut);
+    else
+        glTexImage2D(GL.TEXTURE_RECTANGLE_EXT, 0, internalFormat, size(clut, 2), size(clut, 3), 0, GL.LUMINANCE, GL.FLOAT, clut);
+    end
+
+    glBindTexture(GL.TEXTURE_RECTANGLE_EXT, 0);
+
+    % Done.
+    return;
+end
+
 
 error('Unknown subfunction specified. Typo?!? Read the help.');
 
@@ -890,11 +1118,13 @@ function [slot shaderid blittercfg voidptr glsl luttexid] = GetSlotForTypeAndBin
         viewId = 'AllViews';
     end 
     
-    if strcmpi(viewId, 'AllViews') || strcmpi(viewId, 'FinalFormatting')
+    % FIXME: HACK FOR BUG IN IMG PIPE!! if strcmpi(viewId, 'AllViews') || strcmpi(viewId, 'FinalFormatting')
+    if strcmpi(viewId, 'FinalFormatting')
         chain = 'FinalOutputFormattingBlit';
     end
     
-    if strcmpi(viewId, 'LeftView')
+    % FIXME: HACK FOR BUG IN IMG PIPE!! if strcmpi(viewId, 'LeftView')
+    if strcmpi(viewId, 'LeftView') || strcmpi(viewId, 'AllViews')
         chain = 'StereoLeftCompositingBlit';
     end
 
@@ -912,7 +1142,16 @@ function [slot shaderid blittercfg voidptr glsl luttexid] = GetSlotForTypeAndBin
 
     % Shader found?
     if slot == -1
-        fprintf('Searched chain: %s, searched icmIdString: %s\n', chain, icmIdString);
+        % FIXME: HACK FOR BUG IN IMG PIPE!!
+        if strcmpi(viewId, 'AllViews')
+            % Special case 'AllViews': We searched 'LeftView' and failed.
+            % Let's retry with 'FinalFormatting' view before we give up:
+            [slot shaderid blittercfg voidptr glsl luttexid] = GetSlotForTypeAndBind(win, icmId, 'FinalFormatting');
+            % If we make it to this point then our search was successfull:
+            return;
+        end
+        
+        fprintf('PsychColorCorrection: Error: Failed to find plugin while searching chain: %s, searched icmIdString: %s\n', chain, icmIdString);
         error('Could not find shader plugin for color correction inside imaging pipeline for window and view! Is color correction really enabled for this window and view channel?!?');
     end
     

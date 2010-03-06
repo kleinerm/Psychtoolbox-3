@@ -1,0 +1,55 @@
+/* Shader for per-pixel color gain correction of RGB textures by 2D matrix lookup.
+ *
+ * Multiplies per color channel (R,G,B) input values with corresponding
+ * gain factors (Rg,Gg,Bg) in 2D gain matrix at position "pos".
+ *
+ * out(x,y).rgb = in(x,y).rgb * gain(x,y).rgb
+ * The alpha channel is passed through unmodified.
+ *
+ * This is, e.g., useful for display devignetting (aka shading correction).
+ *
+ * This shader is used by PsychColorCorrection() in 'GainMatrix' mode,
+ * as part of PTB's built-in stimulus color correction.
+ *
+ * (w)2010 by Mario Kleiner.
+ */
+
+#extension GL_ARB_texture_rectangle : enable
+
+uniform sampler2DRect   ICMGainField;
+
+/* Allowable range for output values: To be initialized by PsychColorCorrection() typically: */
+uniform vec2            ICMClampToColorRange;
+
+vec4 icmTransformColor(vec4 incolor)
+{
+    vec4 outcolor;
+
+    /* Return alpha component unmodified: */
+    outcolor.a = incolor.a;
+
+    /* Lookup gain matrix RGB values for pixel location and multiply
+     * input pixel with it.
+     */
+    outcolor.rgb  = incolor.rgb * texture2DRect(ICMGainField, gl_TexCoord[0].xy).rgb;
+
+    /* Clamp outcolor to range given by ICMClampToColorRange: */
+    outcolor.rgb = clamp(outcolor.rgb, vec3(ICMClampToColorRange[0]), vec3(ICMClampToColorRange[1]));
+
+    return(outcolor);
+}
+
+float icmTransformColor1(float incolor)
+{
+    float outcolor;
+
+    /* Lookup gain matrix gain value for pixel location and multiply
+     * input pixel with it.
+     */
+    outcolor = incolor * texture2DRect(ICMGainField, gl_TexCoord[0].xy).r;
+
+    /* Clamp outcolor to range given by ICMClampToColorRange: */
+    outcolor = clamp(outcolor, ICMClampToColorRange[0], ICMClampToColorRange[1]);
+
+    return(outcolor);
+}

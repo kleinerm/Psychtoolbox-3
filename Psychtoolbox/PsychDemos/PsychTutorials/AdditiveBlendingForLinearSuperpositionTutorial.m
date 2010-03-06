@@ -1,5 +1,5 @@
-function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, colorclut)
-% AdditiveBlendingForLinearSuperpositionTutorial([outputdevice='None'] [, overlay=1] [ colorclut=0]);
+function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, colorclut, doGainCorrection)
+% AdditiveBlendingForLinearSuperpositionTutorial([outputdevice='None'] [, overlay=1] [, colorclut=0] [, doGainCorrection=0]);
 %
 % Illustrates use of floating point textures in combination with
 % source-weighted additive alpha blending to create linear superpositions
@@ -93,6 +93,14 @@ function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, c
 % correction if you want.
 %
 %
+% The fourth optional parameter 'doGainCorrection' if provided and set to
+% 1, will demonstrate use of display per-pixel gain correction, aka
+% vignetting correction. It will modulate the brightness of each pixel with
+% a gain factor, the gains increasing linearly from the left border to the
+% right border of the display. See "help VignettingCorrectionDemo" for more
+% details of this feature.
+%
+%
 % Please note: Most of these modes only show expected results when the
 % proper devices are attached and calibrated. All modes will work even on
 % standard graphics without special devices, but you'll just see a false
@@ -144,6 +152,10 @@ end
 
 if nargin < 3 || isempty(colorclut)
     colorclut = 0;
+end
+
+if nargin < 4 || isempty(doGainCorrection)
+    doGainCorrection = 0;
 end
 
 
@@ -280,6 +292,11 @@ try
         otherwise
             error('Unknown "outputdevice" provided.');
     end
+
+    if doGainCorrection
+        % Request per pixel 2D gain correction for display:
+        PsychImaging('AddTask', 'AllViews', 'DisplayColorCorrection', 'GainMatrix');
+    end
     
     % Do not use gamma correction in calibrated video switcher mode or no
     % gamma mode -- wouldn't make sense in either of these:
@@ -357,7 +374,7 @@ try
     else
         gamma = 1;
     end
-    
+        
     % From here on, all color values should be specified in the range 0.0
     % to 1.0 for displayable luminance values. Values outside that range
     % are allowed as intermediate results, but the final stimulus image
@@ -365,6 +382,12 @@ try
     
     [width, height]=Screen('WindowSize', w);
 
+    if doGainCorrection
+        % Test support for display gain correction:
+        gainmatrix = meshgrid(1:width, 1:height) / width * 1.5;
+        PsychColorCorrection('SetGainMatrix', w, gainmatrix);
+    end
+    
     % Enable alpha blending. We switch it into additive mode which takes
     % source alpha into account:
     Screen('BlendFunction', w, GL_SRC_ALPHA, GL_ONE);
