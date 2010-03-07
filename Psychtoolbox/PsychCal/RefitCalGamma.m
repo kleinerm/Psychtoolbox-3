@@ -12,6 +12,7 @@
 %                   was not well fit by the traditional gamma model.  The work is done in
 %                   function CalibrateFitGamma.  See comments there.
 % 11/20/09 dhb      More terms in crtSumPow.
+% 3/07/10  dhb      Call CalibrateFitLinMod as well.
 
 % Enter load code
 defaultFileName = 'monitor';
@@ -68,6 +69,7 @@ if (cal.describe.dacsize ~= oldDacsize)
 end
 
 % Now refit
+cal = CalibrateFitLinMod(cal);
 cal = CalibrateFitGamma(cal,2^cal.describe.dacsize);
 
 % And some plots
