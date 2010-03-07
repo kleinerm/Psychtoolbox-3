@@ -46,7 +46,8 @@ function [fit_out,x,fitComment] = ...
 % 7/18/94   dhb		Added cubic spline interpolation.
 % 8/7/00    dhb     Fix bug.  Spline was calling linear interpolation.  Thanks to
 %                   Chien-Chung Chen for notifying us of this bug.
-% 11/14/06 dhb      Modify how default type is set.  Handle passed empty matrix.
+% 11/14/06  dhb     Modify how default type is set.  Handle passed empty matrix.
+% 3/07/10   dhb     Cosmetic to make m-lint happier, including some "|" -> "||"
 
 % Get sizes
 [null,nDevices] = size(measurements);
@@ -62,7 +63,7 @@ if (nargin < 4 || isempty(fitType))
 end
 
 % Fit with simple power function through origin
-if (fitType == 0 | fitType == 1 | fitType == 2)
+if (fitType == 0 || fitType == 1 || fitType == 2)
   disp('Fitting with simple power function');
   fit_out1 = zeros(nOut,nDevices);
   [nParams,null] = size(InitialXPow);
@@ -79,7 +80,7 @@ end
 % fit to drive parameters.  InitialXExtP can take a two
 % vector as input.  This defines the parameters of a good fitting
 % simple power function.
-if (fitType == 0 | fitType == 2)
+if (fitType == 0 || fitType == 2)
   disp('Fitting with extended power function');
   fit_out2 = zeros(nOut,nDevices);
   [nParams,null] = size(InitialXExtP);
@@ -96,10 +97,10 @@ end
 % the dimmer packs controlling lights.  InitialXSig can take
 % a two vector as input.  This defines roughly the input for
 % half maximum and the maximum output value.
-if (fitType == 0 | fitType == 3)
+if (fitType == 0 || fitType == 3)
   disp('Fitting with sigmoidal function');
   fit_out3 = zeros(nOut,nDevices);
-  [nParams,null] = size(InitialXSig);
+  [nParams] = size(InitialXSig);
   x3 = zeros(nParams,nDevices);
   for i = 1:nDevices
     maxVals = max(values_in);
@@ -112,7 +113,7 @@ if (fitType == 0 | fitType == 3)
 end
 
 % Fit with Weibull
-if (fitType == 0 | fitType == 4)
+if (fitType == 0 || fitType == 4)
   disp('Fitting with Weibull function');
   fit_out4 = zeros(nOut,nDevices);
   [nParams,null] = size(InitialXWeib(values_in,measurements(:,1)));
@@ -129,7 +130,7 @@ end
 % with other calling forms, since FitGammaPoly computes an analytic
 % fit to start the search.  But it serves to implicitly defines the
 % order of the polynomial.
-if (fitType == 0 | fitType == 5)
+if (fitType == 0 || fitType == 5)
   disp('Fitting with polynomial');
   fit_out5 = zeros(nOut,nDevices);
   [order5,null] = size(InitialXPoly);

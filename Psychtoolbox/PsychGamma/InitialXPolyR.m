@@ -2,7 +2,7 @@ function x = InitialXPolyR(values_in,measurements)
 % x = InitialXPolyR(values_in,measurements)
 % 
 % 3/15/94		dhb, jms		Created from InitialXPoly to allow
-%												separate order for raw fits.
+%								separate order for raw fits.
 
 
 order = 6;
