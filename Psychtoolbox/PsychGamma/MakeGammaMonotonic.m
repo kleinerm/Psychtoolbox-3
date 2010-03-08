@@ -1,19 +1,18 @@
 function output = MakeGammaMonotonic(input)
 % output = MakeGammaMonotonic(input)
 %
-% Make input monotonically increasing.
+% Make input monotonically increasing from 0.
 %
 % This version also forces the last value to be 1, and then
 % enforces decreasing downwards from there, after the
 % enforcement of increasing from 0.
-%
-% This routine also forces the first entry to be exactly zero.
 %
 % 3/1/99  dhb  Handle multiple columns.
 % 8/03/07 dhb  Old routine just enforced non-decreasing.  Fixed to make strictly increasing.
 % 3/07/10 dhb  Wrote from MakeMonotonic.
 %              Did not want to change behavior of MakeMonotonic in case it is called from
 %              programs unrelated to gamma fitting.
+% 3/08/10 dhb  Actually do the enforcement of 1.
 
 [m,n] = size(input);
 
@@ -26,6 +25,7 @@ for j = 1:n
 	  end
     end
     
+    output(m,j) = 1;
     for i = m:-1:2
 	  if (output(i,j) <= output(i-1,j))
 	    output(i-1,j) = output(i,j)-eps;
