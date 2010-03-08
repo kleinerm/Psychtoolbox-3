@@ -1,7 +1,7 @@
 function output = MakeGammaMonotonic(input)
 % output = MakeGammaMonotonic(input)
 %
-% Make input monotonically increasing from 0.
+% Make input monotonically increasing from lowest value.
 %
 % This version also forces the last value to be 1, and then
 % enforces decreasing downwards from there, after the
@@ -18,7 +18,6 @@ function output = MakeGammaMonotonic(input)
 
 output = input;
 for j = 1:n
-    output(1,j) = 0;
 	for i = 1:m-1
 	  if (output(i,j) >= output(i+1,j))
 	    output(i+1,j) = output(i,j)+eps;
