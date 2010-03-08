@@ -4,6 +4,7 @@ function cal = CalibrateFitGamma(cal,nInputLevels)
 % Fit the gamma function to the calibration measurements.  Options for field
 % cal.describe.gamma.fitType are:
 %    simplePower
+%    crtLinear
 %    crtPolyLinear
 %    crtGamma
 %    crtSumPow
@@ -32,6 +33,7 @@ function cal = CalibrateFitGamma(cal,nInputLevels)
 %          dhb  Call MakeGammaMonotonic rather than MakeMonotonic where appropriate.
 %          dhb  Use linear interpolation for higher order linear model weights, rather than
 %               a polynomial.  I now think that ringing is worse than not smoothing enough.
+% 3/08/10  dhb  Update list of options in comment above.
 
 % Set nInputLevels
 if (nargin < 2 || isempty(nInputLevels))
