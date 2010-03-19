@@ -31,11 +31,15 @@ function [cal, errorRet] = SetSensorColorSpace(cal, T_sensor, S_sensor,quiet)
 % 2/25/99     dhb   Fix case of SplineCmf.
 % 4/5/02      dhb, ly  New calling convention.  Internal naming not updated.
 % 4/23/04     dhb   Make quiet the default.
+% 3/18/10     dhb   Store T_sensor, S_sensor in fields cal.T_sensor, cal.S_sensor.
+%                   These are redundant with old cal.T_linear, cal.S_linear, but
+%                   it's possible that deleting those will break something in
+%                   some calling program.  So I'm leaving both in for the next
+%                   few years.
 
 if nargin < 4 || isempty(quiet)
   quiet = 1;
 end
-
 
 % Set no error condition
 errorRet = 0;
@@ -99,6 +103,8 @@ end
 ambient_linear = M_ambient_linear*P_ambient;
 
 % Put in the computed values
+cal.T_sensor = T_sensor;
+cal.S_sensor = S_sensor;
 cal.T_linear = T_sensor;
 cal.S_linear = S_sensor;
 cal.M_device_linear = M_device_linear;
