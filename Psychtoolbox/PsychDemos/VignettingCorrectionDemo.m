@@ -69,23 +69,30 @@ try
     [width, height] = Screen('WindowSize', win);
 
     % Test support for display gain correction:
-    % gainmatrix is a linear "gain gradient" from 0.0 at the left border to
-    % 1.5 at the right border of the display:
-    gainmatrix = (meshgrid(1:width, 1:height) / width) * 1.5;
+    
+    % Try to read from default configuration file:
+    filename = [PsychtoolboxConfigDir('ShadingCalibration') 'VignetCalibration' sprintf('_%i_%i_%i', screenid, width, height) '.mat'];
+    if exist(filename, 'file')
+        load(filename, 'gainMatrix');
+    else
+        % gainmatrix is a linear "gain gradient" from 0.0 at the left border to
+        % 1.5 at the right border of the display:
+        gainMatrix = (meshgrid(1:width, 1:height) / width) * 1.5;
+    end
     
     % If per-colorchannel correction is requested...
     if docolor
         % Replicate linear gains into all three color gain channels...
-        gainmatrix = repmat(gainmatrix, [1 1 3]);
+        gainMatrix = repmat(gainMatrix, [1 1 3]);
         % ... and invert the gradient in the green channel to make it
         % visually more interesting:
-        gainmatrix(:,:,2) = (1.5 - 1.5 * meshgrid(1:width, 1:height) / width);
+        gainMatrix(:,:,2) = (1.5 - 1.5 * meshgrid(1:width, 1:height) / width);
     end
     
     % Apply gain correction matrix to display: This will take effect at the
     % next Screen('Flip'). We pass in a 'precision' flag as well, to choose
     % the tradeoff between accuracy and speed:
-    PsychColorCorrection('SetGainMatrix', win, gainmatrix, [], precision);
+    PsychColorCorrection('SetGainMatrix', win, gainMatrix, [], precision);
 
     KbReleaseWait;
     fc = 0;

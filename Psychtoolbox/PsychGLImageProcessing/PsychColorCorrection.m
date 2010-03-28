@@ -250,7 +250,7 @@ function varargout = PsychColorCorrection(cmd, varargin)
 % default to the range 0.0 - 1.0.
 %
 %
-% PsychColorCorrection('SetGainMatrix', window, matrix [, precision=2]);
+% PsychColorCorrection('SetGainMatrix', window, matrix [, viewId][, precision=2]);
 %
 % - Set gain matrix for method 'GainMatrix'.
 % If matrix is a 2D matrix, the gain will be applied to all color

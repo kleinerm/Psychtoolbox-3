@@ -35,7 +35,7 @@ function KbQueueCreate(deviceNumber, keyList)
 % It is acceptable to call KbQueueCreate at any time (e.g., to switch to a new
 %  device or to change the list of queued keys) without calling KbQueueRelease.
 %
-%  KbQueueCreate([deviceNumber, keyList])
+%  KbQueueCreate([deviceNumber][, keyList])
 %      Creates the queue for the specified (or default) device number
 %        If the device number is less than zero, the default device is used.
 %      keyList is an optional 256-length vector of doubles (not logicals)

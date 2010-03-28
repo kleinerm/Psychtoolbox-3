@@ -790,7 +790,13 @@ if strcmpi(cmd, 'Close')
         WaitSecs(0.2);
 
         % Send reset signal to StickOS:
-        Command(box.port, 'reset');
+        % MK: Skip 'reset' for now. Causes severe system crashes on OS/X,
+        % apparently due to a FTDI kernel driver bug, where the "unclean
+        % device removal" event caused by this doesn't get handled
+        % correctly at the driver level. Optionally could add a sleep for 2
+        % secs before, so we manage to close the connection before this
+        % command executes on the stick:
+        % Command(box.port, 'reset');
     end
     
     if box.type == 3
