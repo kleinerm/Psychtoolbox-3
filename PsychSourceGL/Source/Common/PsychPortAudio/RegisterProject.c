@@ -46,6 +46,7 @@ PsychError PsychModuleInit(void)
 	// Register synopsis and named subfunctions.
 	PsychErrorExit(PsychRegister("Verbosity", &PSYCHPORTAUDIOVerbosity));
 	PsychErrorExit(PsychRegister("Open", &PSYCHPORTAUDIOOpen));
+	PsychErrorExit(PsychRegister("OpenSlave", &PSYCHPORTAUDIOOpenSlave));
 	PsychErrorExit(PsychRegister("Close", &PSYCHPORTAUDIOClose));
 	PsychErrorExit(PsychRegister("Start", &PSYCHPORTAUDIOStartAudioDevice));
 	PsychErrorExit(PsychRegister("RescheduleStart", &PSYCHPORTAUDIORescheduleStart));

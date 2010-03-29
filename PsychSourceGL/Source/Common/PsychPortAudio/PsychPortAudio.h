@@ -46,6 +46,8 @@ PsychError PSYCHPORTAUDIOVerbosity(void);
 
 // Open audio device:
 PsychError PSYCHPORTAUDIOOpen(void);
+// Open virtual audio slave device:
+PsychError PSYCHPORTAUDIOOpenSlave(void);
 // Close audio device, shutdown PortAudio if last device is closed:
 PsychError PSYCHPORTAUDIOClose(void);
 // Fill audio output buffer with data:
