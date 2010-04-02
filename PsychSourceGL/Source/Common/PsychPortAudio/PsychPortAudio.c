@@ -37,19 +37,6 @@
 #include "pa_asio.h"
 #endif
 
-
-//#ifdef __cplusplus
-//extern "C"
-//{
-//#endif /* __cplusplus */
-//
-//// Forward define of prototype of our own new PortAudio extension function for Zero latency direct input monitoring:
-//PaError Pa_DirectInputMonitoring(PaStream *stream, int enable, int inputChannel, int outputChannel, double gain, double pan);
-//
-//#ifdef __cplusplus
-//}
-//#endif /* __cplusplus */
-
 #define MAX_SYNOPSIS_STRINGS 50  
 
 //declare variables local to this file.  
@@ -61,10 +48,11 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 #define kPortAudioMonitoring 4
 #define kPortAudioIsMaster   8
 #define kPortAudioIsSlave    16
+#define kPortAudioIsAMModulator		32
 
 // Maximum number of audio devices we handle:
-// This consumes around 150-200 Bytes static memory per potential device, so
-// we waste about 15 kb or RAM here, which is acceptable nowadays. However: If a device
+// This consumes around 200 Bytes static memory per potential device, so
+// we waste about 200 kb or RAM here, which is acceptable nowadays. However: If a device
 // is actually opened, it will consume additional memory ressources in PortAudio,
 // the operating systems sound subsystem and kernel, and in the audio hardware device
 // driver. It will also consume (potentially limited) audio hardware ressources,
@@ -73,7 +61,7 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 // --> Too many simultaneously open devices may hurt performance and general timing, even
 // if the devices are mostly idle!!
 // --> Anybody that manages to even come close to this limit does something horribly wrong and certainly non-portable!
-#define MAX_PSYCH_AUDIO_DEVS 100
+#define MAX_PSYCH_AUDIO_DEVS 1024
 
 // Maximum number of audio channels we support per open device:
 #define MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE 256
@@ -166,6 +154,10 @@ typedef struct PsychPADevice {
 	double	firstsampleonset;	// Cached sample onset time from paCallback.
 	double	cst;				// Cached captured sample onset time from paCallback.
 	double	now;				// Cached invocation time from paCallback.
+	
+	// Mixer volume related:
+	float*	outChannelVolumes;	// Array of per-outputchannel volume settings on slave devices, NULL and not used on non-slave devices.
+	float	masterVolume;		// Master volume setting for all non-slave audio devices, i.e., masters and regular devices. Unused on slaves.
 } PsychPADevice;
 
 PsychPADevice audiodevices[MAX_PSYCH_AUDIO_DEVS];
@@ -602,7 +594,8 @@ int PsychPAProcessSchedule(PsychPADevice* dev, unsigned int *playposition, float
 
 					// Manually invalidate this slot and advance schedule to next one:
 					*playposition = 0;
-					dev->schedule[slotid].mode = 1;
+					// Only disable if the flag 4 aka "don't auto-disable" isn't set:
+					if (!(dev->schedule[slotid].mode & 4)) dev->schedule[slotid].mode &= ~2;
 					dev->schedule_pos++;
 
 					// Return with special code 4 to reschedule:
@@ -679,7 +672,8 @@ int PsychPAProcessSchedule(PsychPADevice* dev, unsigned int *playposition, float
 			if ( !((repeatCount == -1) || (*playposition < playpositionlimit)) || (NULL == *ret_playoutbuffer) ) {
 				// Constraints violated. This slot is used up: Reset playposition and advance to next slot:
 				*playposition = 0;
-				dev->schedule[slotid].mode = 1;
+				// Only disable if the flag 4 aka "don't auto-disable" isn't set:
+				if (!(dev->schedule[slotid].mode & 4)) dev->schedule[slotid].mode &= ~2;
 				dev->schedule_pos++;
 			}
 			else {
@@ -729,6 +723,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
     float *in = (float*) inputBuffer;
 	float *playoutbuffer;
 	float *tmpBuffer, *mixBuffer;
+	float masterVolume, neutralValue;
 	unsigned long  j, k;
     unsigned long i, silenceframes, committedFrames, max_i;
 	unsigned long inchannels, outchannels;
@@ -742,7 +737,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	PaHostApiTypeId hA;
 	psych_bool	stopEngine;
 	psych_bool  isMaster, isSlave;
-	int			slaveId, parc;
+	int			slaveId, parc, numSlavesHandled;
 
 	// Device struct attached to stream? If no device struct
 	// is attached, we can't continue and tell the engine to abort
@@ -906,6 +901,14 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	outsbsize = dev->outputbuffersize / sizeof(float);
 	insbsize = dev->inputbuffersize / sizeof(float);
 	
+	// Cache masterVolume locally for higher efficiency in integration loops:
+	masterVolume = dev->masterVolume;
+	
+	// Assign 1 as neutral value for AM modulator slaves, as 1 is the neutral
+	// element for gain-modulation (multiplication), as opposed to zero as neutral
+	// element for mixing and for outputting "silence":
+	neutralValue = (dev->opmode & kPortAudioIsAMModulator) ? 1.0 : 0;
+
 	// Requested logical playback state is "stopped" or "aborting" ? If so, abort.
 	if ((reqstate == 0) || (reqstate == 3)) {		
 		// Set estimated stop time to last committed sample time, unless it is already set from
@@ -1010,7 +1013,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		onsetDelta = dev->reqStartTime - firstsampleonset;
 		
 		// Time left until onset and in playback mode?
-		if ((onsetDelta > 0) && (dev->opmode & kPortAudioPlayBack) && !(dev->opmode & kPortAudioMonitoring)) {
+		if ((onsetDelta > 0) && (dev->opmode & kPortAudioPlayBack)) {
 			// Some time left: A full buffer duration?
 			if (onsetDelta >= ((double) framesPerBuffer / (double) dev->streaminfo->sampleRate)) {
 				// At least one buffer away...
@@ -1030,8 +1033,15 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 				silenceframes = (unsigned long) (onsetDelta * ((double) dev->streaminfo->sampleRate));
 
 				// Fill in some silence:
-				memset(outputBuffer, 0, silenceframes * outchannels * sizeof(float));
-				out+= (silenceframes * outchannels);
+				if (neutralValue == 0) {
+					// Fast-path: Zerofill for silence...
+					memset(outputBuffer, 0, silenceframes * outchannels * sizeof(float));
+					out+= (silenceframes * outchannels);
+				}
+				else {
+					// Slow-path: Usually a 1.0 fill for AM modulator mode:
+					for (i = 0; i < silenceframes * outchannels; i++) *(out++) = neutralValue;
+				}
 
 				// Decrement remaining real audio data count:
 				framesPerBuffer-=silenceframes;
@@ -1098,48 +1108,74 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		// Have scratch buffers ready. Clear output intermix buffer:
 		memset(outputBuffer, 0, dev->batchsize * outchannels * sizeof(float));
 
-		// Iterate over all slave device callbacks:
-		for (i = 0; i < MAX_PSYCH_AUDIO_SLAVES_PER_DEVICE; i++) {
+		// Iterate over all slave device callbacks: Or at least until all registered slaves are handled.
+		numSlavesHandled = 0;
+		for (i = 0; (i < MAX_PSYCH_AUDIO_SLAVES_PER_DEVICE) && (numSlavesHandled < dev->slaveCount); i++) {
 			// Valid slave slot?
 			slaveId = dev->slaves[i];
 			if (slaveId > -1) {
-				// Reset dirty flag for this slave:
-				audiodevices[slaveId].slaveDirty = 0;
-
-				// Capture enabled on slave? If so, we need to distribute our captured audio data to it:
-				if (audiodevices[slaveId].opmode & kPortAudioCapture) {
-					tmpBuffer = dev->slaveInBuffer;
-					// For each sampleFrame in the input buffer:
-					for (j = 0; j < dev->batchsize; j++) {
-						// Iterate over all target channels in the slave devices inputbuffer:
-						for (k = 0; k < audiodevices[slaveId].inchannels; k++) {
-							// And fetch from corrsponding source channel of our device:
-							*(tmpBuffer++) = in[(j * inchannels) + audiodevices[slaveId].inputmappings[k]];
+				// Valid slave: Skip its processing if its state is zero == completely inactive.
+				if (audiodevices[slaveId].state > 0) {
+					// Reset dirty flag for this slave:
+					audiodevices[slaveId].slaveDirty = 0;
+					
+					// Capture enabled on slave? If so, we need to distribute our captured audio data to it:
+					if (audiodevices[slaveId].opmode & kPortAudioCapture) {
+						tmpBuffer = dev->slaveInBuffer;
+						// For each sampleFrame in the input buffer:
+						for (j = 0; j < dev->batchsize; j++) {
+							// Iterate over all target channels in the slave devices inputbuffer:
+							for (k = 0; k < audiodevices[slaveId].inchannels; k++) {
+								// And fetch from corrsponding source channel of our device:
+								*(tmpBuffer++) = in[(j * inchannels) + audiodevices[slaveId].inputmappings[k]];
+							}
+						}
+					}
+					
+					// Temporary input buffer is filled for slave callback: Execute it.
+					paCallback( (const void*) dev->slaveInBuffer, (void*) dev->slaveOutBuffer, dev->batchsize, timeInfo, statusFlags, (void*) &(audiodevices[slaveId]));
+					
+					// Check if the paCallback actually filled anything into the dev->slaveOutBuffer:
+					if ((audiodevices[slaveId].opmode & kPortAudioPlayBack) && audiodevices[slaveId].slaveDirty) {
+						// Slave has written meaningful data to its output buffer. Merge & mix it:
+						
+						// Process from first non-silence sample slot (after silenceframes prefix) until end of buffer:
+						tmpBuffer = &(dev->slaveOutBuffer[committedFrames * audiodevices[slaveId].outchannels]);
+						mixBuffer = (float*) outputBuffer;
+						
+						// Special AM-Modulator slave?
+						if (audiodevices[slaveId].opmode & kPortAudioIsAMModulator) {
+							// Yes: This slave doesn't provide audio data for mixing, but instead
+							// a time-series of gain modulation samples for amplitude modulation.
+							// Multiply the master channels samples with the slaves "gain samples"
+							// to apply AM modulation:
+							for (j = committedFrames; j < dev->batchsize; j++) {
+								// Iterate over all target channels in the slave device outputbuffer:
+								for (k = 0; k < audiodevices[slaveId].outchannels; k++) {
+									// Modulate current sample in intermixbuffer via multiplication:
+									mixBuffer[(j * outchannels) + audiodevices[slaveId].outputmappings[k]] *= *(tmpBuffer++) * audiodevices[slaveId].outChannelVolumes[k];
+								}
+							}
+						}
+						else {
+							// Regular mix: Mix all output channels of the salve into the proper target channels
+							// of the master by simple addition. Apply per-channel volume settings of the slave
+							// during mix:
+							for (j = committedFrames; j < dev->batchsize; j++) {
+								// Iterate over all target channels in the slave device outputbuffer:
+								for (k = 0; k < audiodevices[slaveId].outchannels; k++) {
+									// Mix current sample via addition:
+									mixBuffer[(j * outchannels) + audiodevices[slaveId].outputmappings[k]] += *(tmpBuffer++) * audiodevices[slaveId].outChannelVolumes[k];
+								}
+							}
 						}
 					}
 				}
 				
-				// Temporary input buffer is filled for slave callback: Execute it.
-				paCallback( (const void*) dev->slaveInBuffer, (void*) dev->slaveOutBuffer, dev->batchsize, timeInfo, statusFlags, (void*) &(audiodevices[slaveId]));
-
-				// Check if the paCallback actually filled anything into the dev->slaveOutBuffer:
-				if ((audiodevices[slaveId].opmode & kPortAudioPlayBack) && audiodevices[slaveId].slaveDirty) {
-					// Slave has written meaningful data to its output buffer. Merge & mix it:
-										
-					// Mix from first non-silence sample slot (after silenceframes prefix) until end of buffer:
-					tmpBuffer = dev->slaveOutBuffer;
-					mixBuffer = (float*) outputBuffer;
-					for (j = committedFrames; j < dev->batchsize; j++) {
-						// Iterate over all target channels in the slave device outputbuffer:
-						for (k = 0; k < audiodevices[slaveId].outchannels; k++) {
-							// Mix current sample via addition:
-							mixBuffer[(j * outchannels) + audiodevices[slaveId].outputmappings[k]] += *(tmpBuffer++);
-						}
-					}
-				}
+				// One more slave handled:
+				numSlavesHandled++;
 			}
 		}	// Next slave...
-
 		// Done merging sound data from slaves. Mastercode can now continue just as slave or regular device code would do.
 	}
 
@@ -1148,8 +1184,8 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	// from input to output, without any involvement of Matlab/Octave code:
 	if (!isMaster && (dev->opmode & kPortAudioMonitoring)) {
 		// Copy input buffer to output buffer:
-		memcpy(out, in, framesPerBuffer * outchannels * sizeof(float));
-		
+		memcpy(out, &(in[committedFrames * inchannels]), framesPerBuffer * outchannels * sizeof(float));
+
 		// Store updated positions in device structure:
 		dev->playposition = playposition + (framesPerBuffer * outchannels);
 		dev->recposition = dev->playposition;
@@ -1182,7 +1218,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		
 		// This is the simple case (compared to playback processing).
 		// Just copy all available data to our internal buffer:
-		for (i=0; (i < framesPerBuffer * inchannels); i++) {
+		for (i=0; (i < dev->batchsize * inchannels); i++) {
 			dev->inputbuffer[recposition % insbsize] = (float) *in++;
 			recposition++;
 		}
@@ -1239,15 +1275,15 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 				// Copy requested number of samples for each channel into the output buffer: Take the case of
 				// "loop forever" and "loop repeatCount" times into account, as well as stop times:
 				for (; (i < framesPerBuffer * outchannels) && (i < max_i) && ((repeatCount == -1) || (playposition < playpositionlimit)); i++) {
-					*out++ = playoutbuffer[outsboffset + ( playposition % outsbsize )];
+					*out++ = playoutbuffer[outsboffset + ( playposition % outsbsize )] * masterVolume;
 					playposition++;
 				}
 			}
 			else {
-				// Master device: We don't output our own audio data. Just perform a fake-update of
-				// the playposition like above, without writing to our audio output buffer:
+				// Master device: We don't output our own audio data. Just apply the masterVolume
+				// gain setting common to all output channels of the device:
 				for (; (i < framesPerBuffer * outchannels) && (i < max_i) && ((repeatCount == -1) || (playposition < playpositionlimit)); i++) {
-					out++;
+					*(out++) *= masterVolume;
 					playposition++;
 				}		
 			}
@@ -1283,7 +1319,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 			// We need to zero-fill the remainder of the buffer and tell the engine
 			// to finish playback:
 			while(i < framesPerBuffer * outchannels) {
-				*out++ = 0.0;
+				*out++ = neutralValue;
 				i++;
 			}
 			
@@ -1446,7 +1482,13 @@ void PsychPACloseStream(int id)
 			free(audiodevices[id].outputmappings);
 			audiodevices[id].outputmappings = NULL;
 		}				
-		
+
+		// Free vector of outChannelVolumes:
+		if(audiodevices[id].outChannelVolumes) {
+			free(audiodevices[id].outChannelVolumes);
+			audiodevices[id].outChannelVolumes = NULL;
+		}				
+
 		// If we use locking, we need to destroy the per-device mutex:
 		if (uselocking && PsychDestroyMutex(&(audiodevices[id].mutex))) printf("PsychPortAudio: CRITICAL! Failed to release Mutex object for pahandle %i! Prepare for trouble!\n", id);
 
@@ -1475,11 +1517,12 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "[oldyieldInterval, oldMutexEnable, lockToCore1] = PsychPortAudio('EngineTunables' [, yieldInterval] [, MutexEnable] [, lockToCore1]);";
 	synopsis[i++] = "oldRunMode = PsychPortAudio('RunMode', pahandle [,runMode]);";
 	synopsis[i++] = "\n\nDevice setup and shutdown:\n";
-	synopsis[i++] = "pahandle = PsychPortAudio('Open' [, deviceid][, mode][, reqlatencyclass][, freq][, channels][, buffersize][, suggestedLatency][, selectchannels]);";
+	synopsis[i++] = "pahandle = PsychPortAudio('Open' [, deviceid][, mode][, reqlatencyclass][, freq][, channels][, buffersize][, suggestedLatency][, selectchannels][, specialFlags=0]);";
 	synopsis[i++] = "pahandle = PsychPortAudio('OpenSlave', pamaster [, mode][, channels][, selectchannels]);";
 	synopsis[i++] = "PsychPortAudio('Close' [, pahandle]);";
 	synopsis[i++] = "oldOpMode = PsychPortAudio('SetOpMode', pahandle [, opModeOverride]);";
 	synopsis[i++] = "oldbias = PsychPortAudio('LatencyBias', pahandle [,biasSecs]);";
+	synopsis[i++] =	"[oldMasterVolume, oldChannelVolumes] = PsychPortAudio('Volume', pahandle [, masterVolume][, channelVolumes]);";
 	synopsis[i++] = "enable = PsychPortAudio('DirectInputMonitoring', pahandle, enable [, inputChannel = -1][, outputChannel = 0][, gainLevel = 0.0][, stereoPan = 0.5]);";
 	synopsis[i++] = "[underflow, nextSampleStartIndex, nextSampleETASecs] = PsychPortAudio('FillBuffer', pahandle, bufferdata [, streamingrefill=0][, startIndex=Append]);";
 	synopsis[i++] =	"bufferhandle = PsychPortAudio('CreateBuffer' [, pahandle], bufferdata);";
@@ -1492,7 +1535,7 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "[audiodata absrecposition overflow cstarttime] = PsychPortAudio('GetAudioData', pahandle [, amountToAllocateSecs][, minimumAmountToReturnSecs][, maximumAmountToReturnSecs]);";
 	synopsis[i++] = "[startTime endPositionSecs xruns estStopTime] = PsychPortAudio('Stop', pahandle [,waitForEndOfPlayback=0] [, blockUntilStopped=1] [, repetitions] [, stopTime]);";
 	synopsis[i++] =	"PsychPortAudio('UseSchedule', pahandle, enableSchedule [, maxSize = 128]);";
-	synopsis[i++] =	"[success, freeslots] = PsychPortAudio('AddToSchedule', pahandle [, bufferHandle=0][, repetitions=1][, startSample=0][, endSample=max][, UnitIsSeconds=0]);";	
+	synopsis[i++] =	"[success, freeslots] = PsychPortAudio('AddToSchedule', pahandle [, bufferHandle=0][, repetitions=1][, startSample=0][, endSample=max][, UnitIsSeconds=0][, specialFlags=0]);";
 
 	synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
 	if (i > MAX_SYNOPSIS_STRINGS) {
@@ -1634,8 +1677,8 @@ void PsychPortAudioInitialize(void)
  */
 PsychError PSYCHPORTAUDIOOpen(void) 
 {
- 	static char useString[] = "pahandle = PsychPortAudio('Open' [, deviceid][, mode][, reqlatencyclass][, freq][, channels][, buffersize][, suggestedLatency][, selectchannels]);";
-	//															1			 2		 3					4		5			6			  7					  8
+ 	static char useString[] = "pahandle = PsychPortAudio('Open' [, deviceid][, mode][, reqlatencyclass][, freq][, channels][, buffersize][, suggestedLatency][, selectchannels][, specialFlags=0]);";
+	//															1			 2		 3					4		5			6			  7					  8					  9
 	static char synopsisString[] = 
 		"Open a PortAudio audio device and initialize it. Returns a 'pahandle' device handle for the device. "
 		"All parameters are optional and have reasonable defaults. 'deviceid' Index to select amongst multiple "
@@ -1686,11 +1729,22 @@ PsychError PSYCHPORTAUDIOOpen(void)
 		"recording are requested and 'channels' equals 2, ie, two playback channels and two capture channels. If you'd "
 		"specify 'selectchannels' as [0, 6 ; 12, 14], then playback would happen to device channels zero and six, "
 		"sound would be captured from device channels 12 and 14. Please note that channel selection is currently "
-		"only supported on MS-Windows with ASIO sound cards. The parameter is silently ignored for non-ASIO operation. ";
-	
+		"only supported on MS-Windows with ASIO sound cards. The parameter is silently ignored for non-ASIO operation.\n\n"
+		"'specialFlags' Optional flags: Default to zero, can be or'ed or added together with the following flags/settings:\n"
+		"1 = Never prime output stream. By default the output stream is primed. Don't bother if you don't know what this means.\n"
+		"2 = Always clamp audio data to the valid -1.0 to 1.0 range. By default, clamping is enabled in normal mode, and "
+		"disabled in low-latency mode.\n"
+		"4 = Never clamp audio data, not even in normal mode.\n"
+		"8 = Always dither output audio data. By default, dithering is enabled in normal mode, and disabled in low-latency mode. "
+		"Dithering adds a stochastic noise pattern to the least significant bit of each output sample to reduce the impact of "
+		"audio quantization artifacts. Dithering can improve signal to noise ratio and quality of output sound, but it is more "
+		"compute intense and it could change very low-level properties of the audio signal, because what you hear is not exactly "
+		"what you specified.\n"
+		"16 = Never dither audio data, not even in normal mode.\n\n";
+
 	static char seeAlsoString[] = "Close GetDeviceSettings ";	 
   	
-	int freq, buffersize, latencyclass, mode, deviceid, i, numel;
+	int freq, buffersize, latencyclass, mode, deviceid, i, numel, specialFlags;
 	int* nrchannels;
 	int  mynrchannels[2];
 	int  m, n, p;
@@ -1722,7 +1776,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
 	
-	PsychErrorExit(PsychCapNumInputArgs(8));     // The maximum number of inputs
+	PsychErrorExit(PsychCapNumInputArgs(9));     // The maximum number of inputs
 	PsychErrorExit(PsychRequireNumInputArgs(0)); // The required number of inputs	
 	PsychErrorExit(PsychCapNumOutputArgs(1));	 // The maximum number of outputs
 
@@ -1733,6 +1787,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	latencyclass = 1;
 	mode = kPortAudioPlayBack;
 	deviceid = -1;
+	specialFlags = 0;
 	
 	// Make sure PortAudio is online:
 	PsychPortAudioInitialize();
@@ -1750,10 +1805,9 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
 	// Request optional mode of operation:
 	PsychCopyInIntegerArg(2, kPsychArgOptional, &mode);
-	if (mode < 1 || mode > 15 || ((mode & kPortAudioMonitoring) && ((mode & kPortAudioFullDuplex) != kPortAudioFullDuplex))) {
-		PsychErrorExitMsg(PsychError_user, "Invalid mode provided: Outside valid range or invalid combination of flags.");
+	if (mode < 1 || mode > 15 || mode & kPortAudioIsAMModulator || ((mode & kPortAudioMonitoring) && ((mode & kPortAudioFullDuplex) != kPortAudioFullDuplex))) {
+		PsychErrorExitMsg(PsychError_user, "Invalid mode for regular- or master-audio device provided: Outside valid range or invalid combination of flags.");
 	}
-	// if (mode < 1 || mode > 7 || mode == 4 || mode == 5 || mode == 6) PsychErrorExitMsg(PsychError_user, "Invalid mode provided. Valid values are 1, 2, 3, or 7.");
 
 	// Request optional latency class:
 	PsychCopyInIntegerArg(3, kPsychArgOptional, &latencyclass);
@@ -1907,6 +1961,9 @@ PsychError PSYCHPORTAUDIOOpen(void)
 		#endif
 	}
 	
+	// Copy in optional specialFlags:
+	PsychCopyInIntegerArg(9, kPsychArgOptional, &specialFlags);
+	
 	// Set channel count:
 	outputParameters.channelCount = mynrchannels[0];	// Number of output channels.
 	inputParameters.channelCount = mynrchannels[1];		// Number of input channels.
@@ -2020,6 +2077,21 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	sflags = paPrimeOutputBuffersUsingStreamCallback;
 	sflags = (latencyclass <= 0) ? sflags : (sflags | paClipOff | paDitherOff);
 
+	// specialFlags 1: Don't prime outputbuffer via streamcallback:
+	if (specialFlags & 1) sflags &= ~paPrimeOutputBuffersUsingStreamCallback;
+
+	// specialFlags 2: Always clip audio data:
+	if (specialFlags & 2) sflags &= ~paClipOff;
+
+	// specialFlags 4: Never clip audio data:
+	if (specialFlags & 2) sflags |= paClipOff;
+
+	// specialFlags 8: Always dither audio data:
+	if (specialFlags & 2) sflags &= ~paDitherOff;
+
+	// specialFlags 16: Never dither audio data:
+	if (specialFlags & 2) sflags |= paDitherOff;
+
 	// Try to create & open stream:
 	err = Pa_OpenStream(
             &stream,															/* Return stream pointer here on success. */
@@ -2038,7 +2110,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	
 	// Setup our final device structure:
 	audiodevices[audiodevicecount].opmode = mode;
-	audiodevices[audiodevicecount].runMode = (mode & kPortAudioIsMaster) ? 1 : 0;
+	audiodevices[audiodevicecount].runMode = 0;
 	audiodevices[audiodevicecount].stream = stream;
 	audiodevices[audiodevicecount].streaminfo = Pa_GetStreamInfo(stream);
 	audiodevices[audiodevicecount].hostAPI = Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type;
@@ -2070,7 +2142,9 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	audiodevices[audiodevicecount].pamaster = -1;
 	audiodevices[audiodevicecount].slaveOutBuffer = NULL;
 	audiodevices[audiodevicecount].slaveInBuffer = NULL;
-
+	audiodevices[audiodevicecount].outChannelVolumes = NULL;
+	audiodevices[audiodevicecount].masterVolume = 1.0;
+	
 	// If this is a master, create a slave device list and init it to "empty":
 	if (mode & kPortAudioIsMaster) {
 		audiodevices[audiodevicecount].slaves = (int*) malloc(sizeof(int) * MAX_PSYCH_AUDIO_SLAVES_PER_DEVICE);
@@ -2171,7 +2245,13 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 		"'mode' Mode of operation. See help of 'Open' function for valid settings. However, a mode flag of '8' for "
 		"master operation is not allowed for obvious reasons. Also, the given 'mode' flags must be a subset of the "
 		"'mode' set on the master device! E.g., you can't specify a audio capture mode flag if the master device isn't "
-		"enabled for capture as well. All slave devices share the same settings for latencymode, timing, sampling frequency "
+		"enabled for capture as well. As an exception kPortAudioMonitoring mode is allowed to be present on a slave "
+		"while missing on the associated master device.\n"
+		"The slave-only mode flag 32 (kPortAudioIsAMModulator) defines a slave device not as a source of audio data, "
+		"but as a source of amplitude modulation (AM) envelope data. Its samples don't create sound, but gain-modulate "
+		"the sound of other slaves attached to the master to allow precisely timed AM modulation. See the help for "
+		"PsychPortAudio('Volume') for more details about AM.\n\n"
+		"All slave devices share the same settings for latencymode, timing, sampling frequency "
 		"and other low-level tunable parameters, because they operate on the same underlying audio hardware.\n"
 		"'selectchannels' optional matrix with mappings of logical slave channels to logical master channels: "
 		"selectchannels' is a one row by 'channels' matrix with mappings "
@@ -2191,6 +2271,7 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 	int  mynrchannels[2];
 	int  m, n, p;
 	double* mychannelmap;
+	int modeExceptions;
 	
 	// Setup online help: 
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -2219,8 +2300,15 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 		// Mode provided. Validate, but remove potential master flag first:
 		mode = mode & (~kPortAudioIsMaster);
 
-		// Is mode a subset of the masters mode as required?
-		if ((mode & audiodevices[pamaster].opmode) != mode) PsychErrorExitMsg(PsychError_user, "Invalid mode provided: Mode flags are not a subset of the mode flags of the pamaster device!");
+		// Being an AM modulator implies being a playback device, as we use the
+		// whole audio playback scheduling and buffer facilities:
+		if (mode & kPortAudioIsAMModulator) mode |= kPortAudioPlayBack;
+
+		// Is mode a subset of the masters mode as required? One valid exception is kPortAudioMonitoring,
+		// which is allowed to be present on the slave but missing on the master, as well as the AMModulator
+		// mode:
+		modeExceptions = kPortAudioMonitoring | kPortAudioIsAMModulator;
+		if (((mode & ~modeExceptions) & audiodevices[pamaster].opmode) != (mode & ~modeExceptions)) PsychErrorExitMsg(PsychError_user, "Invalid mode provided: Mode flags are not a subset of the mode flags of the pamaster device!");
 		if ((mode < 1) || ((mode & kPortAudioMonitoring) && ((mode & kPortAudioFullDuplex) != kPortAudioFullDuplex))) {
 			PsychErrorExitMsg(PsychError_user, "Invalid mode provided: Outside valid range or invalid combination of flags.");
 		}
@@ -2283,7 +2371,7 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 			audiodevices[audiodevicecount].outputmappings = malloc(sizeof(int) * mynrchannels[0]);
 			for (i = 0; i < mynrchannels[0]; i++) audiodevices[audiodevicecount].outputmappings[i] = (int) mychannelmap[i * m] - 1;
 
-			if (verbosity > 3) {
+			if (verbosity > 4) {
 				printf("PTB-INFO: Will use the following logical slave-channel -> master-channel mappings for sound output to audio stream %i:\n", audiodevicecount); 
 				for (i=0; i < mynrchannels[0]; i++) printf("%i --> %i : ", i+1, audiodevices[audiodevicecount].outputmappings[i] + 1);
 				printf("\n\n");
@@ -2304,7 +2392,7 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 			// Index into first row of one-row matrix or 2nd row of two-row matrix:
 			for (i = 0; i < mynrchannels[1]; i++) audiodevices[audiodevicecount].inputmappings[i] = (int) mychannelmap[(i * m) + (m-1)] - 1;
 
-			if (verbosity > 3) {
+			if (verbosity > 4) {
 				printf("PTB-INFO: Will use the following logical slave-channel -> master-channel mappings for sound capture from audio stream %i:\n", audiodevicecount); 
 				for (i=0; i < mynrchannels[1]; i++) printf("%i --> %i : ", i+1, audiodevices[audiodevicecount].inputmappings[i] + 1);
 				printf("\n\n");
@@ -2326,7 +2414,7 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 			audiodevices[audiodevicecount].outputmappings = malloc(sizeof(int) * mynrchannels[0]);
 			for (i = 0; i < mynrchannels[0]; i++) audiodevices[audiodevicecount].outputmappings[i] = i;
 
-			if (verbosity > 3) {
+			if (verbosity > 4) {
 				printf("PTB-INFO: Will use the following logical slave-channel -> master-channel mappings for sound output to audio stream %i:\n", audiodevicecount); 
 				for (i=0; i < mynrchannels[0]; i++) printf("%i --> %i : ", i+1, audiodevices[audiodevicecount].outputmappings[i]+1);
 				printf("\n\n");
@@ -2339,7 +2427,7 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 			// Index into first row of one-row matrix or 2nd row of two-row matrix:
 			for (i = 0; i < mynrchannels[1]; i++) audiodevices[audiodevicecount].inputmappings[i] = i;
 
-			if (verbosity > 3) {
+			if (verbosity > 4) {
 				printf("PTB-INFO: Will use the following logical slave-channel -> master-channel mappings for sound capture from audio stream %i:\n", audiodevicecount); 
 				for (i=0; i < mynrchannels[1]; i++) printf("%i --> %i : ", i+1, audiodevices[audiodevicecount].inputmappings[i]+1);
 				printf("\n\n");
@@ -2380,6 +2468,12 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 	audiodevices[audiodevicecount].pamaster = -1;
 	audiodevices[audiodevicecount].slaveOutBuffer = NULL;
 	audiodevices[audiodevicecount].slaveInBuffer = NULL;
+	audiodevices[audiodevicecount].masterVolume = 1.0;
+
+	// Setup per-channel output volumes for slave: Each channel starts with a 1.0 setting, ie., max volume:
+	audiodevices[audiodevicecount].outChannelVolumes = (float*) malloc(sizeof(float) * audiodevices[audiodevicecount].outchannels);
+	if (audiodevices[audiodevicecount].outChannelVolumes == NULL) PsychErrorExitMsg(PsychError_outofMemory, "Memory exhausted during audio volume vector allocation.");
+	for (i = 0; i < audiodevices[audiodevicecount].outchannels; i++) audiodevices[audiodevicecount].outChannelVolumes[i] = 1.0;
 
 	// If we use locking, we need to initialize the per-device mutex:
 	if (uselocking && PsychInitMutex(&(audiodevices[audiodevicecount].mutex))) {
@@ -2389,9 +2483,6 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 	
 	// If we use locking, this will create & init the associated event variable:
 	PsychPACreateSignal(&(audiodevices[audiodevicecount]));
-	
-	// Register the stream finished callback:
-	// TODO FIXME: Pa_SetStreamFinishedCallback(audiodevices[audiodevicecount].stream, PAStreamFinishedCallback);
 	
 	// Attach us to master device: This needs to be done under master mutex protection.
 	PsychPALockDeviceMutex(&audiodevices[pamaster]);
@@ -2405,19 +2496,24 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 
 	// Sufficient space for slaves: Find us the first free slot and attach us:
 	for (i=0; (i < MAX_PSYCH_AUDIO_SLAVES_PER_DEVICE) && (audiodevices[pamaster].slaves[i] > -1); i++);
+
 	// Attach us to master:
 	audiodevices[pamaster].slaves[i] = audiodevicecount;
 	audiodevices[pamaster].slaveCount++;
+
 	// Attach master to us:
 	audiodevices[audiodevicecount].pamaster = pamaster;
 	
 	// Attached :-)
 	PsychPAUnlockDeviceMutex(&audiodevices[pamaster]);
 
-	if (verbosity > 5) {
+	if (verbosity > 4) {
 		printf("PTB-INFO: New virtual audio slave device with handle %i opened and attached to pamaster device handle %i.\n", audiodevicecount, pamaster);
 
-		if (audiodevices[audiodevicecount].opmode & kPortAudioPlayBack) {
+		if (audiodevices[audiodevicecount].opmode & kPortAudioIsAMModulator) {
+			printf("PTB-INFO: For %i channels amplitude modulation.\n", audiodevices[audiodevicecount].outchannels);
+		}
+		else if (audiodevices[audiodevicecount].opmode & kPortAudioPlayBack) {
 			printf("PTB-INFO: For %i channels playback.\n", audiodevices[audiodevicecount].outchannels);
 		}
 
@@ -4170,10 +4266,111 @@ PsychError PSYCHPORTAUDIOLatencyBias(void)
 
 	// Set new bias, if one was provided:
 	if (bias!=DBL_MAX) {
+		if (audiodevices[pahandle].opmode & kPortAudioIsSlave) PsychErrorExitMsg(PsychError_user, "Change of latency bias is not allowed on slave devices! Set it on associated master device.");
 		if (Pa_IsStreamActive(audiodevices[pahandle].stream) && (audiodevices[pahandle].state > 0)) PsychErrorExitMsg(PsychError_user, "Tried to change 'biasSecs' while device is active! Forbidden!");
 		audiodevices[pahandle].latencyBias = bias;
 	}
 	
+	return(PsychError_none);
+}
+
+/* PsychPortAudio('Volume') - Set volume per device.
+ */
+PsychError PSYCHPORTAUDIOVolume(void) 
+{
+ 	static char useString[] = "[oldMasterVolume, oldChannelVolumes] = PsychPortAudio('Volume', pahandle [, masterVolume][, channelVolumes]);";
+	static char synopsisString[] = 
+		"Set audio output volume(s) and/or return old volumes for a device 'pahandle'.\n"
+		"The device must be open for this setting to take effect. It is initially set to 1.0. "
+		"On a regular audio device or master device, you can only set the global 'masterVolume' for the "
+		"whole device. On a slave device, you can optionally define a per-channel volume vector 'channelVolumes'. "
+		"E.g., if your slave device has two output channels, a 'channelVolumes' "
+		"vector of [0.9 ; 0.25] would set the first channel to 90% intensity, the 2nd channel to "
+		"25% intensity. The elements of 'channelVolumes' and the 'masterVolume' can be any value. The value for a device or a "
+		"channel is simply multiplied with each output sample before output to the hardware, so "
+		"that a value of 1.0 (the default setting for each device and channel) will pass samples "
+		"unmodified, a value of 0.5 would reduce intensity to 50%, a value of 1.25 would amplify "
+		"to 125% of the original value, or a value of -1 would invert the signal.\n"
+		"Be careful with amplification (values > 1). If the final sample leaves the valid output "
+		"range of -1.0 to 1.0, you may hear ugly auditory clipping artifacts and possibly damage "
+		"your ears or speakers! In 'normal' mode, PsychPortAudio clamps output samples to the valid "
+		"range of -1 to 1, but in high timing precision/low latency mode, clamping is not performed "
+		"in order to save computation time.\n\n"
+		"Caution: All volume settings are silently ignored on regular audio devices or master devices "
+		"if audio monitoring mode is active. On a slave device, per-channel volumes would be still applied "
+		"in monitoring mode, but not the masterVolume. This is for efficiency reasons.\n\n"
+		"Caution: The volume settings only affect what is sent to your computers sound system. The "
+		"operating system or audio hardware itself may apply additional volume settings, gains, filters "
+		"etc., depending on your specific setup. These are only controllable via external system specific tools, "
+		"PsychPortAudio doesn't know about such additional settings and can't control them in any way!\n\n"
+		"If you need to modulate output volume over time, you can also attach an additional slave "
+		"device to a master device, whose opMode is set to act as a AMmodulator (see help for 'OpenSlave'). "
+		"Such a slave device will not output sound itself, but use the data stored in its playback "
+		"buffers to modulate the amplitude of the summed signal of all previously attached slaves "
+		"over time. Example: You create a master device, then 'OpenSlave' three regular slave "
+		"devices, then 'OpenSlave' a AMmodulator slave device. During playback, the sound signals "
+		"of the three regular slaves would be mixed together. The combined signal would be multiplied "
+		"by the per-sample volume values provided by the AMmodulator slave device, thereby modulating "
+		"the amplitude or ''acoustic envelope'' of the mixed signals. The resulting signal would be "
+		"played by the master device. If you'd attach more regular slave devices after the AMmodulator, "
+		"their signal would not get modulated, but simply added to the modulated signal of the first "
+		"three devices.\n\n";
+
+	static char seeAlsoString[] = "Open ";	 
+	
+	double masterVolume;
+	double *channelVolumes;
+	int m, n, p, i;
+	int pahandle = -1;
+
+	// Setup online help: 
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
+	
+	PsychErrorExit(PsychCapNumInputArgs(3));     // The maximum number of inputs
+	PsychErrorExit(PsychRequireNumInputArgs(1)); // The required number of inputs	
+	PsychErrorExit(PsychCapNumOutputArgs(2));	 // The maximum number of outputs
+
+	// Make sure PortAudio is online:
+	PsychPortAudioInitialize();
+
+	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
+	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
+
+	// Return old masterVolume:
+	PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) audiodevices[pahandle].masterVolume);
+
+	// Copy in optional new masterVolume: We can assign this without locking, as a single scalar
+	// 32-bit float assignment is basically atomic:
+	if (PsychCopyInDoubleArg(2, kPsychArgOptional, &masterVolume)) audiodevices[pahandle].masterVolume = (float) masterVolume;
+
+	// Slaves can have per-channel volumes:
+	if (audiodevices[pahandle].opmode & kPortAudioIsSlave) {
+		// Slave device: Need whole vector:
+		
+		// Copy out old settings:
+		PsychAllocOutDoubleMatArg(2, kPsychArgOptional, 1, audiodevices[pahandle].outchannels, 1, &channelVolumes);
+		for (i = 0; i < audiodevices[pahandle].outchannels; i++) channelVolumes[i] = (double) audiodevices[pahandle].outChannelVolumes[i];
+		
+		// Get optional new settings:
+		if (PsychAllocInDoubleMatArg(3, kPsychArgOptional, &m, &n, &p, &channelVolumes)) {
+			// Valid?
+			if (m * n != audiodevices[pahandle].outchannels || p != 1) PsychErrorExitMsg(PsychError_user, "Invalid channelVolumes vector for audio slave device provided. Number of elements doesn't match number of audio output channels!");
+
+			// Assign, but with device mutex of master device held, so we don't update in
+			// the middle of a mix cycle for our slave device:
+			PsychPALockDeviceMutex(&audiodevices[audiodevices[pahandle].pamaster]);
+			for (i = 0; i < audiodevices[pahandle].outchannels; i++) audiodevices[pahandle].outChannelVolumes[i]  = (float) channelVolumes[i];
+			PsychPAUnlockDeviceMutex(&audiodevices[audiodevices[pahandle].pamaster]);
+		}
+	}
+	else {
+		// Superfluous channelVolumes for a non-slave provided?
+		if (PsychAllocInDoubleMatArg(3, kPsychArgOptional, &m, &n, &p, &channelVolumes)) {
+			PsychErrorExitMsg(PsychError_user, "Invalid channelVolumes vector for a non-slave device provided. Only slave devices accept this vector!");			
+		}
+	}
+
 	return(PsychError_none);
 }
 
@@ -4298,7 +4495,7 @@ PsychError PSYCHPORTAUDIORunMode(void)
 		"Set general run mode to 'runMode' and/or return old runMode for a device 'pahandle'.\n"
 		"The device must be open for this setting to take effect and playback must be stopped if "
 		"one wants to change the setting. If playback isn't stopped, it will be forcefully stopped. "
-		"Change of runMode is only supported on regular audio devices, not on master- or slave devices. "
+		"Change of runMode is not supported on slave devices. "
 		"The current/old runMode is returned in the optional return value 'oldRunMode'. "
 		"'runMode' is the optional new runmode: At device open time, the runMode defaults to zero. "
 		"In mode zero, the audio hardware and all internal processing are completely stopped at end "
@@ -4338,7 +4535,7 @@ PsychError PSYCHPORTAUDIORunMode(void)
 	// Set new runMode, if one was provided:
 	if (runMode != -1) {
 		// Doing this is a no-no on slaves:
-		if (audiodevices[pahandle].opmode & (kPortAudioIsSlave | kPortAudioIsMaster)) PsychErrorExitMsg(PsychError_user, "Change of runmode is not allowed on slave or master devices!");
+		if (audiodevices[pahandle].opmode & kPortAudioIsSlave) PsychErrorExitMsg(PsychError_user, "Change of runmode is not allowed on slave devices!");
 
 		// Stop engine if it is running:
 		if (!Pa_IsStreamStopped(audiodevices[pahandle].stream)) Pa_StopStream(audiodevices[pahandle].stream);
@@ -4580,10 +4777,10 @@ PsychError PSYCHPORTAUDIOUseSchedule(void)
 		audiodevices[pahandle].schedule_pos = 0;
 		
 		for (j = 0; j < audiodevices[pahandle].schedule_size; j++) {
-			// Slot occupied but inactive?
+			// Slot occupied?
 			if (audiodevices[pahandle].schedule[j].mode & 1) {
 				// Reactivate this slot to pending:
-				audiodevices[pahandle].schedule[j].mode = 2;
+				audiodevices[pahandle].schedule[j].mode |= 2;
 			}
 		}
 		
@@ -4644,8 +4841,8 @@ PsychError PSYCHPORTAUDIOUseSchedule(void)
  */
 PsychError PSYCHPORTAUDIOAddToSchedule(void) 
 {
- 	static char useString[] = "[success, freeslots] = PsychPortAudio('AddToSchedule', pahandle [, bufferHandle=0][, repetitions=1][, startSample=0][, endSample=max][, UnitIsSeconds=0]);";
-	//																				  1           2                 3                4                5                6
+ 	static char useString[] = "[success, freeslots] = PsychPortAudio('AddToSchedule', pahandle [, bufferHandle=0][, repetitions=1][, startSample=0][, endSample=max][, UnitIsSeconds=0][, specialFlags=0]);";
+	//																				  1           2                 3                4                5                6				  7
 	static char synopsisString[] = 
 		"Add a new item to an existing schedule for audio playback on audio device 'pahandle'.\n"
 		"The schedule must have been created and enabled already via a previous call to 'UseSchedule'. "
@@ -4668,6 +4865,12 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 		"playback should be restricted, and 'UnitIsSeconds' tells if the given loop boundaries are expressed "
 		"in audio sample frames, or in seconds realtime. See the help for the 'SetLoop' function for more "
 		"explanation.\n\n"
+		"'specialFlags' is an optional parameter to pass in some special mode flags to alter processing "
+		"of a slot: Defaults to zero. If the value '1' is used (or added), then a slot is not automatically "
+		"disabled after it has been used up, but it will be reused on repeated execution of the schedule. "
+		"You'll need to set this flag on all slots in a schedule if you want the schedule to auto-repeat "
+		"without the need for manual reset commands."
+		"\n\n"
 		"This function can also be used to sneak special command slots into the schedule:\n"
 		"If you specify a negative number for the 'bufferHandle' argument, then this actually "
 		"defines a command slot instead of a regular playback slot, and the number is a command code "
@@ -4676,12 +4879,16 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 		"Following command codes are currently defined: (Add numbers to combine options)\n"
 		"1   = Pause audio playback (and capture) immediately, resume it at a given 'tWhen' target time.\n"
 		"2   = (Re-)schedule the end of playback for given 'tWhen' target time.\n"
+		"You must specify the type of 'tWhen' if you specify 1 or 2 as commandCode:"
 		"+4  = 'tWhen' is an absolute GetSecs() style system time.\n"
 		"+8  = 'tWhen' is a time delta to the last requested start time of playback.\n"
 		"+16 = 'tWhen' is a time delta to the last actual start time of playback.\n"
 		"+32 = 'tWhen' is a time delta to the last requested end time of playback. Broken & Defective!!\n"
 		"+64 = 'tWhen' is a time delta to the last actual end time of playback. Broken & Defective!!\n"
-		"\n\n";
+		"\n"
+		"E.g., you want to (re)start playback at a certain time, then you'd set 'bufferHandle' to -5, because "
+		"command code would be 1 + 4 == 5, so negated it is -5. Then you'd specify the requested time in the "
+		"'repetitions' parameter as an absolute time in seconds.\n\n";
 
 	static char seeAlsoString[] = "FillBuffer Start Stop RescheduleStart UseSchedule";
 	
@@ -4693,6 +4900,7 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 	int pahandle = -1;
 	int bufferHandle = 0;
 	unsigned int commandCode = 0;
+	int specialFlags = 0;
 	double repetitions = 1;
 	int success = 0;
 	int freeslots = 0;
@@ -4701,7 +4909,7 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
 	
-	PsychErrorExit(PsychCapNumInputArgs(6));     // The maximum number of inputs
+	PsychErrorExit(PsychCapNumInputArgs(7));     // The maximum number of inputs
 	PsychErrorExit(PsychRequireNumInputArgs(1)); // The required number of inputs	
 	PsychErrorExit(PsychCapNumOutputArgs(2));	 // The maximum number of outputs
 
@@ -4723,6 +4931,9 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 		// audio playout buffer, but a command buffer:
 		commandCode = -bufferHandle;
 		bufferHandle = 0;
+
+		// Child protection: Must give a timespec type specifier if some time related action is requested:
+		if ((commandCode & (1 | 2)) && !(commandCode & (4 | 8 | 16 | 32 | 64))) PsychErrorExitMsg(PsychError_user, "Invalid commandCode provided: You requested scheduled (re)start or end of operation, but didn't provide any of the required timespec-type specifiers!");
 	}
 
 	// If it is a non-zero handle, try to dereference from dynamic buffer:
@@ -4740,7 +4951,7 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 	// Get optional repetitions. We abuse it also for the tWhen parameter if this
 	// is a commandbuffer instead of an audio buffer:
 	PsychCopyInDoubleArg(3, kPsychArgOptional, &repetitions);
-	if ((repetitions <= 0) && (commandCode == 0)) PsychErrorExitMsg(PsychError_user, "Invalid 'repetitions' provided. Must be greater than zero!");
+	if ((repetitions < 0) && (commandCode == 0)) PsychErrorExitMsg(PsychError_user, "Invalid 'repetitions' provided. Must be a positive or zero number!");
 
 	// Get loop parameters, if any:
 	unitIsSecs = 0;
@@ -4768,6 +4979,9 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 
 	if (endSample < startSample) PsychErrorExitMsg(PsychError_user, "Invalid 'endSample' provided. Must be greater or equal than 'startSample'!");
 	
+	// Copy in optional specialFlags:
+	PsychCopyInIntegerArg(7, kPsychArgOptional, &specialFlags);
+	
 	// All settings validated and ready to initialize a slot in the schedule:
 
 	// Lock device:
@@ -4780,9 +4994,9 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 	if ((audiodevices[pahandle].schedule[slotid].mode & 2) == 0) {
 		// Fill slot:
 		slot = (PsychPASchedule*) &(audiodevices[pahandle].schedule[slotid]);
-		slot->mode = 2;
+		slot->mode = 2 | ((specialFlags & 1) ? 4 : 0);
 		slot->bufferhandle   = bufferHandle;
-		slot->repetitions    = (commandCode == 0) ? repetitions : 0.0;;
+		slot->repetitions    = (commandCode == 0) ? ((repetitions == 0) ? -1 : repetitions) : 0.0;;
 		slot->loopStartFrame = startSample;
 		slot->loopEndFrame   = endSample;
 		slot->command		 = commandCode;
