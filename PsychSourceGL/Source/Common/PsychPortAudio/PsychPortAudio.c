@@ -4104,7 +4104,7 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 	double currentTime;
 	unsigned int playposition, totalplaycount;
 
-	const char *FieldNames[]={	"Active", "RequestedStartTime", "StartTime", "CaptureStartTime", "RequestedStopTime", "EstimatedStopTime", "CurrentStreamTime", "ElapsedOutSamples", "PositionSecs", "RecordedSecs", "ReadSecs", "SchedulePosition",
+	const char *FieldNames[]={	"Active", "State", "RequestedStartTime", "StartTime", "CaptureStartTime", "RequestedStopTime", "EstimatedStopTime", "CurrentStreamTime", "ElapsedOutSamples", "PositionSecs", "RecordedSecs", "ReadSecs", "SchedulePosition",
 								"XRuns", "TotalCalls", "TimeFailed", "BufferSize", "CPULoad", "PredictedLatency", "LatencyBias", "SampleRate",
 								"OutDeviceIndex", "InDeviceIndex" };
 	int pahandle = -1;
@@ -4123,7 +4123,7 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
 	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
 
-	PsychAllocOutStructArray(1, kPsychArgOptional, 1, 22, FieldNames, &status);
+	PsychAllocOutStructArray(1, kPsychArgOptional, 1, 23, FieldNames, &status);
 
 	// Ok, in a perfect world we should hold the device mutex while querying all the device state.
 	// However, we don't: This reduces lock contention at the price of a small chance that the
@@ -4139,6 +4139,7 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 	
 	// Atomic snapshot for remaining fields would only be needed for low-level debugging, so who cares?
 	PsychSetStructArrayDoubleElement("Active", 0, (audiodevices[pahandle].state >= 2) ? 1 : 0, status);
+	PsychSetStructArrayDoubleElement("State", 0, audiodevices[pahandle].state, status);
 	PsychSetStructArrayDoubleElement("RequestedStartTime", 0, audiodevices[pahandle].reqStartTime, status);
 	PsychSetStructArrayDoubleElement("StartTime", 0, audiodevices[pahandle].startTime, status);
 	PsychSetStructArrayDoubleElement("CaptureStartTime", 0, audiodevices[pahandle].captureStartTime, status);
@@ -4994,7 +4995,7 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 	if ((audiodevices[pahandle].schedule[slotid].mode & 2) == 0) {
 		// Fill slot:
 		slot = (PsychPASchedule*) &(audiodevices[pahandle].schedule[slotid]);
-		slot->mode = 2 | ((specialFlags & 1) ? 4 : 0);
+		slot->mode = 1 | 2 | ((specialFlags & 1) ? 4 : 0);
 		slot->bufferhandle   = bufferHandle;
 		slot->repetitions    = (commandCode == 0) ? ((repetitions == 0) ? -1 : repetitions) : 0.0;;
 		slot->loopStartFrame = startSample;
