@@ -193,6 +193,15 @@ void InitPsychAuthorList(void)
 		"E.Peters@ai.rug.nl",
 		""
 	);
+	PsychAddAuthor(
+	// DataPixx toolbox: 
+		"Peter",
+		"A.",
+		"April",
+		"paa",
+		"papril@vpixx.com",
+		"http://www.vpixx.com/"
+	);
 }
 
 
