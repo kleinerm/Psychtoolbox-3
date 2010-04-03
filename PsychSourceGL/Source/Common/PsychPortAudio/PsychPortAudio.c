@@ -49,6 +49,7 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 #define kPortAudioIsMaster   8
 #define kPortAudioIsSlave    16
 #define kPortAudioIsAMModulator		32
+#define kPortAudioIsOutputCapture	64
 
 // Maximum number of audio devices we handle:
 // This consumes around 200 Bytes static memory per potential device, so
@@ -1004,8 +1005,11 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		// Ditto for capture starttime:
 		if (dev->opmode & kPortAudioCapture) {
 			// Store estimated capturetime in captureStartTime. This is only important in
-			// full-duplex mode, redundant in pure half-duplex capture mode:
-			dev->captureStartTime = captureStartTime;
+			// full-duplex mode, redundant in pure half-duplex capture mode.
+			// If we're not a regular input capture device, but a output capture device,
+			// then our effective captureStartTime is the *playback* starttime, as we're
+			// capturing what is fed to the outputs/speakers, not what comes from the inputs!
+			dev->captureStartTime = (dev->opmode & kPortAudioIsOutputCapture) ? firstsampleonset : captureStartTime;
 		}
 		
 		// Compute difference between requested onset time and presentation time
@@ -1113,7 +1117,9 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		for (i = 0; (i < MAX_PSYCH_AUDIO_SLAVES_PER_DEVICE) && (numSlavesHandled < dev->slaveCount); i++) {
 			// Valid slave slot?
 			slaveId = dev->slaves[i];
-			if (slaveId > -1) {
+			
+			// We skip invalid slots and output capturer slaves:
+			if ((slaveId > -1) && !(audiodevices[slaveId].opmode & kPortAudioIsOutputCapture)) {
 				// Valid slave: Skip its processing if its state is zero == completely inactive.
 				if (audiodevices[slaveId].state > 0) {
 					// Reset dirty flag for this slave:
@@ -1158,7 +1164,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 							}
 						}
 						else {
-							// Regular mix: Mix all output channels of the salve into the proper target channels
+							// Regular mix: Mix all output channels of the slave into the proper target channels
 							// of the master by simple addition. Apply per-channel volume settings of the slave
 							// during mix:
 							for (j = committedFrames; j < dev->batchsize; j++) {
@@ -1176,7 +1182,53 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 				numSlavesHandled++;
 			}
 		}	// Next slave...
-		// Done merging sound data from slaves. Mastercode can now continue just as slave or regular device code would do.
+
+		// Done merging sound data from slaves. Mastercode can now process special output capture slaves
+		// and other special post-mix slaves:
+		for (i = 0; (i < MAX_PSYCH_AUDIO_SLAVES_PER_DEVICE) && (numSlavesHandled < dev->slaveCount); i++) {
+			// Valid slave slot?
+			slaveId = dev->slaves[i];
+			
+			// We skip invalid slots and anything except output capturer slaves:
+			if ((slaveId > -1) && (audiodevices[slaveId].opmode & kPortAudioIsOutputCapture)) {
+				// Valid slave: Skip its processing if its state is zero == completely inactive.
+				if (audiodevices[slaveId].state > 0) {
+					// Reset dirty flag for this slave: Not strictly needed for output capture slaves...
+					audiodevices[slaveId].slaveDirty = 0;
+					
+					// Output capture enabled on slave? If so, we need to distribute our output audio data to it:
+					if ((audiodevices[slaveId].opmode & kPortAudioCapture) && (audiodevices[slaveId].opmode & kPortAudioIsOutputCapture)) {
+						// Our target buffer is the slaveOutBuffer here, because it is guaranteed to exist and
+						// have sufficient capacity:
+						tmpBuffer = dev->slaveOutBuffer;
+						
+						// Our input is the mixBuffer from previous mixes:
+						mixBuffer = (float*) outputBuffer;
+						
+						// For each sampleFrame in the mixBuffer:
+						for (j = 0; j < dev->batchsize; j++) {
+							// Iterate over all target channels in the slave devices inputbuffer:
+							for (k = 0; k < audiodevices[slaveId].inchannels; k++) {
+								// And fetch from corrsponding mixBuffer channel of our device, applying the same
+								// masterVolume setting that the master output device will apply later:
+								*(tmpBuffer++) = masterVolume * mixBuffer[(j * outchannels) + audiodevices[slaveId].inputmappings[k]];
+							}
+						}
+					}
+					
+					// Temporary input buffer is filled for slave callback: dev->slaveOutBuffer acts as the input
+					// buffer for the callback, as it contains the properly formatted data from our mixBuffer. It
+					// also acts as output buffer from the slave, so that slaves with playback enabled are happy.
+					// However, this is a pure dummy-sink, the data written by the slave isn't used for anything,
+					// but simply discarded, as output capture slaves have no meaningful sink for their output.
+					paCallback( (const void*) dev->slaveOutBuffer, (void*) dev->slaveOutBuffer, dev->batchsize, timeInfo, statusFlags, (void*) &(audiodevices[slaveId]));
+				}
+				
+				// One more slave handled:
+				numSlavesHandled++;
+			}
+		}	// Next outputcapture-slave...
+		// Done processing slaves. Mastercode can now continue just as slave or regular device code would do.
 	}
 
 	// This code only executes on non-masters in live monitoring mode - a mode where all
@@ -1805,7 +1857,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
 	// Request optional mode of operation:
 	PsychCopyInIntegerArg(2, kPsychArgOptional, &mode);
-	if (mode < 1 || mode > 15 || mode & kPortAudioIsAMModulator || ((mode & kPortAudioMonitoring) && ((mode & kPortAudioFullDuplex) != kPortAudioFullDuplex))) {
+	if (mode < 1 || mode > 15 || mode & kPortAudioIsAMModulator || mode & kPortAudioIsOutputCapture || ((mode & kPortAudioMonitoring) && ((mode & kPortAudioFullDuplex) != kPortAudioFullDuplex))) {
 		PsychErrorExitMsg(PsychError_user, "Invalid mode for regular- or master-audio device provided: Outside valid range or invalid combination of flags.");
 	}
 
@@ -2251,6 +2303,9 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 		"but as a source of amplitude modulation (AM) envelope data. Its samples don't create sound, but gain-modulate "
 		"the sound of other slaves attached to the master to allow precisely timed AM modulation. See the help for "
 		"PsychPortAudio('Volume') for more details about AM.\n\n"
+		"The slave-only mode flag 64 (kPortAudioIsOutputCapture) defines a slave capture device that captures audio "
+		"data from the *output channels* of the master device, i.e., it records the audio stream that is sent to the "
+		"speakers. This may be useful for capturing PsychPortAudio's audio output for documentation or debug purposes.\n\n"
 		"All slave devices share the same settings for latencymode, timing, sampling frequency "
 		"and other low-level tunable parameters, because they operate on the same underlying audio hardware.\n"
 		"'selectchannels' optional matrix with mappings of logical slave channels to logical master channels: "
@@ -2271,7 +2326,7 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 	int  mynrchannels[2];
 	int  m, n, p;
 	double* mychannelmap;
-	int modeExceptions;
+	int modeExceptions = 0;
 	
 	// Setup online help: 
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -2304,10 +2359,22 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 		// whole audio playback scheduling and buffer facilities:
 		if (mode & kPortAudioIsAMModulator) mode |= kPortAudioPlayBack;
 
+		// Being an output capturer implies special rules:
+		if (mode & kPortAudioIsOutputCapture) {
+			// The associated master must have output that we can capture, ie., it must be configured for playback:
+			if (!(audiodevices[pamaster].opmode & kPortAudioPlayBack)) PsychErrorExitMsg(PsychError_user, "Invalid mode: This shall be an output capture device, but master isn't configured for output/playback!");
+
+			// We are a capture device:
+			mode |= kPortAudioCapture;
+			
+			// Master doesn't need to be a capture device, as we're capturing its output, not its input:
+			modeExceptions |= kPortAudioCapture;
+		}
+		
 		// Is mode a subset of the masters mode as required? One valid exception is kPortAudioMonitoring,
 		// which is allowed to be present on the slave but missing on the master, as well as the AMModulator
 		// mode:
-		modeExceptions = kPortAudioMonitoring | kPortAudioIsAMModulator;
+		modeExceptions |= kPortAudioMonitoring | kPortAudioIsAMModulator | kPortAudioIsOutputCapture;
 		if (((mode & ~modeExceptions) & audiodevices[pamaster].opmode) != (mode & ~modeExceptions)) PsychErrorExitMsg(PsychError_user, "Invalid mode provided: Mode flags are not a subset of the mode flags of the pamaster device!");
 		if ((mode < 1) || ((mode & kPortAudioMonitoring) && ((mode & kPortAudioFullDuplex) != kPortAudioFullDuplex))) {
 			PsychErrorExitMsg(PsychError_user, "Invalid mode provided: Outside valid range or invalid combination of flags.");
@@ -2328,6 +2395,7 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 		// No optional channelcount argument provided: Default to pamaster settings:
 		mynrchannels[0] = audiodevices[pamaster].outchannels;
 		mynrchannels[1] = audiodevices[pamaster].inchannels;
+		if (mode & kPortAudioIsOutputCapture) mynrchannels[1] = audiodevices[pamaster].outchannels;
 	}
 	else if (numel == 1) {
 		// One argument provided: Set same count for playback and recording:
@@ -2342,8 +2410,16 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 		// Separate counts for playback and recording provided: Set'em up.
 		if (nrchannels[0] < 1 || nrchannels[0] > MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE || nrchannels[0] > audiodevices[pamaster].outchannels) PsychErrorExitMsg(PsychError_user, "Invalid number of playback channels provided. Valid values are 1 to number of output channels on pamaster device.");
 		mynrchannels[0] = nrchannels[0];
-		if (nrchannels[1] < 1 || nrchannels[1] > MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE || nrchannels[1] > audiodevices[pamaster].inchannels) PsychErrorExitMsg(PsychError_user, "Invalid number of capture channels provided. Valid values are 1 to number of capture channels on pamaster device.");
-		mynrchannels[1] = nrchannels[1];
+		if (mode & kPortAudioIsOutputCapture) {
+			// Output capture device:
+			if (nrchannels[1] < 1 || nrchannels[1] > MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE || nrchannels[1] > audiodevices[pamaster].outchannels) PsychErrorExitMsg(PsychError_user, "Invalid number of capture channels provided. Valid values are 1 to number of output channels on pamaster device.");
+			mynrchannels[1] = nrchannels[1];
+		}
+		else {
+			// Regular capture device:
+			if (nrchannels[1] < 1 || nrchannels[1] > MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE || nrchannels[1] > audiodevices[pamaster].inchannels) PsychErrorExitMsg(PsychError_user, "Invalid number of capture channels provided. Valid values are 1 to number of capture channels on pamaster device.");
+			mynrchannels[1] = nrchannels[1];
+		}
 	}
 	else {
 		// More than 2 channel counts provided? Impossible.
@@ -2386,7 +2462,7 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 			}
 		}
 		
-		if (mode & kPortAudioCapture) {
+		if ((mode & kPortAudioCapture) && !(mode & kPortAudioIsOutputCapture)) {
 			// Assign Capture mappings:
 			audiodevices[audiodevicecount].inputmappings = malloc(sizeof(int) * mynrchannels[1]);
 			// Index into first row of one-row matrix or 2nd row of two-row matrix:
@@ -2406,6 +2482,28 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 				PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");				
 			}
 		}
+
+		if (mode & kPortAudioIsOutputCapture) {
+			// Assign Output Capture mappings:
+			audiodevices[audiodevicecount].inputmappings = malloc(sizeof(int) * mynrchannels[1]);
+			// Index into first row of one-row matrix or 2nd row of two-row matrix:
+			for (i = 0; i < mynrchannels[1]; i++) audiodevices[audiodevicecount].inputmappings[i] = (int) mychannelmap[(i * m) + (m-1)] - 1;
+
+			if (verbosity > 4) {
+				printf("PTB-INFO: Will use the following logical slave-channel -> master-channel mappings for sound capture from audio output stream %i:\n", audiodevicecount); 
+				for (i=0; i < mynrchannels[1]; i++) printf("%i --> %i : ", i+1, audiodevices[audiodevicecount].inputmappings[i] + 1);
+				printf("\n\n");
+			}
+
+			// Revalidate:
+			for (i = 0; i < mynrchannels[1]; i++) if (audiodevices[audiodevicecount].inputmappings[i] < 0 || audiodevices[audiodevicecount].inputmappings[i] >= audiodevices[pamaster].outchannels) {
+				printf("PTB-ERROR: Slot %i of capture channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[audiodevicecount].inputmappings[i] + 1, audiodevices[pamaster].outchannels);
+				free(audiodevices[audiodevicecount].inputmappings);
+				audiodevices[audiodevicecount].inputmappings = NULL;
+				PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");				
+			}
+		}
+
 	}
 	else {
 		// No channelmap provided: Assign one that identity-maps all master device channels:
@@ -2471,9 +2569,14 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 	audiodevices[audiodevicecount].masterVolume = 1.0;
 
 	// Setup per-channel output volumes for slave: Each channel starts with a 1.0 setting, ie., max volume:
-	audiodevices[audiodevicecount].outChannelVolumes = (float*) malloc(sizeof(float) * audiodevices[audiodevicecount].outchannels);
-	if (audiodevices[audiodevicecount].outChannelVolumes == NULL) PsychErrorExitMsg(PsychError_outofMemory, "Memory exhausted during audio volume vector allocation.");
-	for (i = 0; i < audiodevices[audiodevicecount].outchannels; i++) audiodevices[audiodevicecount].outChannelVolumes[i] = 1.0;
+	if (audiodevices[audiodevicecount].outchannels > 0) {
+		audiodevices[audiodevicecount].outChannelVolumes = (float*) malloc(sizeof(float) * audiodevices[audiodevicecount].outchannels);
+		if (audiodevices[audiodevicecount].outChannelVolumes == NULL) PsychErrorExitMsg(PsychError_outofMemory, "Memory exhausted during audio volume vector allocation.");
+		for (i = 0; i < audiodevices[audiodevicecount].outchannels; i++) audiodevices[audiodevicecount].outChannelVolumes[i] = 1.0;
+	}
+	else {
+		audiodevices[audiodevicecount].outChannelVolumes = NULL;
+	}
 
 	// If we use locking, we need to initialize the per-device mutex:
 	if (uselocking && PsychInitMutex(&(audiodevices[audiodevicecount].mutex))) {
@@ -2517,7 +2620,9 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 			printf("PTB-INFO: For %i channels playback.\n", audiodevices[audiodevicecount].outchannels);
 		}
 
-		if (audiodevices[audiodevicecount].opmode & kPortAudioCapture) {
+		if (audiodevices[audiodevicecount].opmode & kPortAudioIsOutputCapture) {
+			printf("PTB-INFO: For %i channels capture of master output mix.\n", audiodevices[audiodevicecount].inchannels);		
+		} else if (audiodevices[audiodevicecount].opmode & kPortAudioCapture) {
 			printf("PTB-INFO: For %i channels capture.\n", audiodevices[audiodevicecount].inchannels);
 		}
 		
