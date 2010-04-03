@@ -33,6 +33,9 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 15/04/2009 Add warning about unsupported OS/X systems older than Tiger (MK).
 % 15/06/2009 Add support for postinstall for Octave-3.2.x, remove Octave-2 support (MK).
 % 03/01/2010 Extend Matlab R2007 vs. earlier detection for Windows up to year 2014 (MK).
+% 03/04/2010 Move PsychtoolboxRegistration to the end, after all real
+%            installation has been finished. Add additional error-checking
+%            and troubleshooting for peculiarities of Octave on Windows. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -375,12 +378,6 @@ if IsWin & ~IsOctave
     end
 end
 
-% Try to execute online registration routine: This should be fail-safe in case
-% of no network connection.
-fprintf('\n\n');
-PsychtoolboxRegistration(isUpdate, flavor);
-fprintf('\n\n\n');
-
 % If we're using Matlab then add the PsychJava stuff to the static
 % Java classpath.
 if ~IsOctave
@@ -451,7 +448,9 @@ if ~IsOctave
             fclose(FID);
 
             fprintf('\n\n');
-            disp('*** Matlab''s Static Java classpath definition file modified. Please restart Matlab to enable use of the new Java components. ***');
+            disp('*** Matlab''s Static Java classpath definition file modified. You will have to restart Matlab to enable use of the new Java components. ***');
+            fprintf('\nPress RETURN or ENTER to confirm you read and understood the above message.\n');
+            pause;
         end
     catch
         lerr = psychlasterror;
@@ -468,6 +467,8 @@ if ~IsOctave
         fprintf('If you skip this step, Psychtoolbox will still be mostly functional, \n');
         fprintf('with exception of the Java-based commands ListenChar, CharAvail, GetChar and FlushEvents\n');
         fprintf('on Linux, MacOS-X and M$-Windows in Java mode. For more info see ''help PsychJavaTrouble''.\n\n');
+        fprintf('\nPress RETURN or ENTER to confirm you read and understood the above message.\n');
+        pause;
 
         % Restore the old classpath file if necessary.
         if exist('madeBackup', 'var')
@@ -476,8 +477,48 @@ if ~IsOctave
     end
 end % if ~IsOctave
 
+% Check if Screen is functional:
+try
+    % Check Screen:
+    AssertOpenGL;
+
+    % Try to execute online registration routine: This should be fail-safe in case
+    % of no network connection.
+    fprintf('\n\n');
+    PsychtoolboxRegistration(isUpdate, flavor);
+    fprintf('\n\n\n');
+
+    % Tell user we're successfully done:
+    fprintf('\nDone with post-installation. Psychtoolbox is ready for use.\n\n\n');
+    
+catch
+    fprintf('\n\n');
+    if IsOctave & IsWin
+        % Probably videocapture dll's and other runtime dll's missing:
+        fprintf('Screen() or online registration failed to work under MS-Windows with GNU/Octave-3:\n\n');
+        fprintf('Probably the required libARVideo.dll and DSVL.dll libraries are not yet installed on your system.\n\n');
+        fprintf('Please type ''help ARVideoCapture'' and follow the displayed installation instructions carefully.\n');
+        fprintf('After this one-time setup, the Screen command should work properly.\n\n');
+        fprintf('If this has been ruled out as a reason for failure, check the troubleshooting instructions on\n');
+        fprintf('our Wiki (Download section and FAQ section, maybe also the Bugs section).\n\n');
+    else
+        fprintf('Screen() or online registration failed to work for some reason:\n\n');
+        fprintf('Check the troubleshooting instructions on our Wiki (Download section \n');
+        fprintf('and FAQ section, maybe also the Bugs section).\n\n');
+    end
+    
+    fprintf('Once you manage to fix the problem (simply type ''AssertOpenGL'' to verify\n');
+    fprintf('that stuff works now), you do not need to run the installation routine again,\n');
+    fprintf('but can start working immediately.\n\n');
+    fprintf('However, we kindly ask you to execute the following command after everything works,\n');
+    fprintf('so your copy gets registered by us for statistical purpose:\n\n');
+    fprintf('PsychtoolboxRegistration(%i, ''%s'');\n\n', isUpdate, flavor);
+    fprintf('Thanks! Press RETURN or ENTER to confirm you read and understood the above message.\n');
+    pause;
+    fprintf('\n\n');
+end
+
 % Some goodbye, copyright and getting started blurb...
-fprintf('\nDone with post-installation. Psychtoolbox is ready for use.\n\n\n');
 fprintf('GENERAL LICENSING CONDITIONS:\n');
 fprintf('-----------------------------\n\n');
 fprintf('Almost all of the material contained in the Psychtoolbox-3 distribution\n');
