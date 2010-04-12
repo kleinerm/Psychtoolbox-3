@@ -23,6 +23,18 @@ gluNurbsCallbackData
 gluNurbsCallbackDataEXT
 gluQuadricCallback
 gluTessCallback
+gluNewTess
+gluDeleteTess
+gluTessBeginContour
+gluTessBeginPolygon
+gluTessEndContour
+gluTessEndPolygon
+gluTessNormal
+gluTessProperty
+gluTessVertex
+gluBeginPolygon
+gluEndPolygon
+gluNextContour
 
 - these are not defined yet in the GLEW library - need to manually implement interface
 glSamplePass        - implemented manually

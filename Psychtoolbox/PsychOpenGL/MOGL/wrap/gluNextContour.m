@@ -8,6 +8,10 @@ function gluNextContour( tess, type )
 
 % 05-Mar-2006 -- created (generated automatically from header files)
 
+% ---protected---
+
+error('gluNextContour is no longer supported! Use gluTessEndContour and gluTessBeginContour instead.');
+
 if nargin~=2,
     error('invalid number of arguments');
 end

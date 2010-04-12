@@ -28,10 +28,10 @@ extern int gl_manual_map_count, gl_auto_map_count;
 extern cmdhandler gl_manual_map[], gl_auto_map[];
 
 // Pointer to the start of our list of allocated temporary memory buffers:
-static unsigned int* PsychTempMemHead[2] = { NULL, NULL };
+static unsigned int* PsychTempMemHead[4] = { NULL , NULL , NULL , NULL };
 
 // Total count of allocated memory in Bytes:
-static int totalTempMemAllocated[2] = { 0 , 0 };
+static int totalTempMemAllocated[4] = { 0 , 0 , 0 , 0 };
 
 // Flag that signals first real invocation of moglcore:
 static int firsttime = 1;
@@ -82,6 +82,11 @@ void mexExitFunction(void)
   // Release all memory in bufferlist 1 - The one that usually
   // persists over calls to moglcore.
   PsychFreeAllTempMemory(1);
+  
+  // Release all memory for persistent GLU tesselator memory list:
+  PsychFreeAllTempMemory(2);
+  PsychFreeAllTempMemory(3);
+  
   firsttime = 1;
 }
 

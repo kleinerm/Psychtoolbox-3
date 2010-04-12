@@ -4988,13 +4988,6 @@ void glu_deletequadric( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs
 
 }
 
-void glu_deletetess( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == gluDeleteTess) mogl_glunsupported("gluDeleteTess");
-	gluDeleteTess((GLUtesselator*)(unsigned int)mxGetScalar(prhs[0]));
-
-}
-
 void glu_disk( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
 	if (NULL == gluDisk) mogl_glunsupported("gluDisk");
@@ -5090,14 +5083,6 @@ void glu_newquadric( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] 
 	if (NULL == gluNewQuadric) mogl_glunsupported("gluNewQuadric");
 	plhs[0]=mxCreateNumericMatrix(1,1,mxUINT32_CLASS,mxREAL);
 	*(unsigned int *)mxGetData(plhs[0])=(unsigned int)gluNewQuadric();
-
-}
-
-void glu_newtess( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == gluNewTess) mogl_glunsupported("gluNewTess");
-	plhs[0]=mxCreateNumericMatrix(1,1,mxUINT32_CLASS,mxREAL);
-	*(unsigned int *)mxGetData(plhs[0])=(unsigned int)gluNewTess();
 
 }
 
@@ -5274,63 +5259,6 @@ void glu_sphere( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 		(GLdouble)mxGetScalar(prhs[1]),
 		(GLint)mxGetScalar(prhs[2]),
 		(GLint)mxGetScalar(prhs[3]));
-
-}
-
-void glu_tessbegincontour( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == gluTessBeginContour) mogl_glunsupported("gluTessBeginContour");
-	gluTessBeginContour((GLUtesselator*)(unsigned int)mxGetScalar(prhs[0]));
-
-}
-
-void glu_tessbeginpolygon( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == gluTessBeginPolygon) mogl_glunsupported("gluTessBeginPolygon");
-	gluTessBeginPolygon((GLUtesselator*)(unsigned int)mxGetScalar(prhs[0]),
-		(GLvoid*)mxGetData(prhs[1]));
-
-}
-
-void glu_tessendcontour( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == gluTessEndContour) mogl_glunsupported("gluTessEndContour");
-	gluTessEndContour((GLUtesselator*)(unsigned int)mxGetScalar(prhs[0]));
-
-}
-
-void glu_tessendpolygon( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == gluTessEndPolygon) mogl_glunsupported("gluTessEndPolygon");
-	gluTessEndPolygon((GLUtesselator*)(unsigned int)mxGetScalar(prhs[0]));
-
-}
-
-void glu_tessnormal( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == gluTessNormal) mogl_glunsupported("gluTessNormal");
-	gluTessNormal((GLUtesselator*)(unsigned int)mxGetScalar(prhs[0]),
-		(GLdouble)mxGetScalar(prhs[1]),
-		(GLdouble)mxGetScalar(prhs[2]),
-		(GLdouble)mxGetScalar(prhs[3]));
-
-}
-
-void glu_tessproperty( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == gluTessProperty) mogl_glunsupported("gluTessProperty");
-	gluTessProperty((GLUtesselator*)(unsigned int)mxGetScalar(prhs[0]),
-		(GLenum)mxGetScalar(prhs[1]),
-		(GLdouble)mxGetScalar(prhs[2]));
-
-}
-
-void glu_tessvertex( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == gluTessVertex) mogl_glunsupported("gluTessVertex");
-	gluTessVertex((GLUtesselator*)(unsigned int)mxGetScalar(prhs[0]),
-		(GLdouble*)mxGetData(prhs[1]),
-		(GLvoid*)mxGetData(prhs[2]));
 
 }
 
@@ -6416,7 +6344,7 @@ void gl_samplepatternsgis( int nlhs, mxArray *plhs[], int nrhs, const mxArray *p
 
 }
 
-int gl_auto_map_count=729;
+int gl_auto_map_count=720;
 cmdhandler gl_auto_map[] = {
 { "glAccum",                         gl_accum                            },
 { "glActiveTexture",                 gl_activetexture                    },
@@ -7091,7 +7019,6 @@ cmdhandler gl_auto_map[] = {
 { "gluCylinder",                     glu_cylinder                        },
 { "gluDeleteNurbsRenderer",          glu_deletenurbsrenderer             },
 { "gluDeleteQuadric",                glu_deletequadric                   },
-{ "gluDeleteTess",                   glu_deletetess                      },
 { "gluDisk",                         glu_disk                            },
 { "gluEndCurve",                     glu_endcurve                        },
 { "gluEndPolygon",                   glu_endpolygon                      },
@@ -7103,7 +7030,6 @@ cmdhandler gl_auto_map[] = {
 { "gluLookAt",                       glu_lookat                          },
 { "gluNewNurbsRenderer",             glu_newnurbsrenderer                },
 { "gluNewQuadric",                   glu_newquadric                      },
-{ "gluNewTess",                      glu_newtess                         },
 { "gluNextContour",                  glu_nextcontour                     },
 { "gluNurbsCurve",                   glu_nurbscurve                      },
 { "gluNurbsProperty",                glu_nurbsproperty                   },
@@ -7120,13 +7046,6 @@ cmdhandler gl_auto_map[] = {
 { "gluQuadricTexture",               glu_quadrictexture                  },
 { "gluScaleImage",                   glu_scaleimage                      },
 { "gluSphere",                       glu_sphere                          },
-{ "gluTessBeginContour",             glu_tessbegincontour                },
-{ "gluTessBeginPolygon",             glu_tessbeginpolygon                },
-{ "gluTessEndContour",               glu_tessendcontour                  },
-{ "gluTessEndPolygon",               glu_tessendpolygon                  },
-{ "gluTessNormal",                   glu_tessnormal                      },
-{ "gluTessProperty",                 glu_tessproperty                    },
-{ "gluTessVertex",                   glu_tessvertex                      },
 { "gluUnProject",                    glu_unproject                       },
 { "gluUnProject4",                   glu_unproject4                      },
 { "glutSolidCone",                   glut_solidcone                      },

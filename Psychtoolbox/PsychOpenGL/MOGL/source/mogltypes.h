@@ -129,6 +129,34 @@ typedef struct cmdhandler {
     void (*cmdfn)(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]);
 } cmdhandler;
 
+// Definitions for GLU-Tesselators:
+// TODO: After 64bit conversion: #define MOGLDEFMYTESS mogl_tess_struct* mytess = (mogl_tess_struct*) PsychDoubleToPtr(mxGetScalar(prhs[0]));
+#define MOGLDEFMYTESS mogl_tess_struct* mytess = (mogl_tess_struct*) (unsigned int) mxGetScalar(prhs[0]);
+#define MAX_TESSCBNAME 32
+
+typedef struct mogl_tess_struct {
+    GLUtesselator*  glutesselator;
+    int             userData;
+    GLvoid*         polygondata;
+    double*         destructBuffer;
+    int             destructSize;
+    int             maxdestructSize;
+    int             destructCount;
+    int             nrElements;
+    char            nGLU_TESS_BEGIN[MAX_TESSCBNAME];
+    char            nGLU_TESS_BEGIN_DATA[MAX_TESSCBNAME];
+    char            nGLU_TESS_EDGE_FLAG[MAX_TESSCBNAME];
+    char            nGLU_TESS_EDGE_FLAG_DATA[MAX_TESSCBNAME];
+    char            nGLU_TESS_VERTEX[MAX_TESSCBNAME];
+    char            nGLU_TESS_VERTEX_DATA[MAX_TESSCBNAME];
+    char            nGLU_TESS_END[MAX_TESSCBNAME];
+    char            nGLU_TESS_END_DATA[MAX_TESSCBNAME];
+    char            nGLU_TESS_COMBINE[MAX_TESSCBNAME];
+    char            nGLU_TESS_COMBINE_DATA[MAX_TESSCBNAME];
+    char            nGLU_TESS_ERROR[MAX_TESSCBNAME];
+    char            nGLU_TESS_ERROR_DATA[MAX_TESSCBNAME];    
+} mogl_tess_struct;
+
 // Our own little buffer memory manager: This code is adapted from
 // Psychtoolbox's PsychMemory.h/.c routines:
 
@@ -138,6 +166,11 @@ typedef unsigned long long int psych_uint64;
 #else
 typedef ULONGLONG psych_uint64;
 #endif
+
+// Definition of how a memory pointer is encoded in the runtime env.
+// Currently we encode pointers as double's:
+#define psych_RuntimePtrClass mxDOUBLE_CLASS
+typedef double psych_RuntimePtrType;
 
 // Convert a double value (which encodes a memory address) into a ptr:
 void*  PsychDoubleToPtr(double dptr);
