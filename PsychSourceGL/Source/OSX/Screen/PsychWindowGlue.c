@@ -1083,3 +1083,25 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
     }
 }
 
+/* PsychOSSetupFrameLock - Check if framelock / swaplock support is available on
+ * the given graphics system implementation and try to enable it for the given
+ * pair of onscreen windows.
+ *
+ * If possible, will try to add slaveWindow to the swap group and/or swap barrier
+ * of which masterWindow is already a member, putting slaveWindow into a swap-lock
+ * with the masterWindow. If masterWindow isn't yet part of a swap group, create a
+ * new swap group and attach masterWindow to it, before joining slaveWindow into the
+ * new group. If masterWindow is part of a swap group and slaveWindow is NULL, then
+ * remove masterWindow from the swap group.
+ *
+ * The swap lock mechanism used is operating system and GPU dependent. Many systems
+ * will not support framelock/swaplock at all.
+ *
+ * Returns TRUE on success, FALSE on failure.
+ */
+psych_bool PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindowRecordType *slaveWindow)
+{
+	// On OS/X the situation is simple. This OS doesn't support framelock/swaplock at
+	// all on any GPU:
+	return(FALSE);
+}

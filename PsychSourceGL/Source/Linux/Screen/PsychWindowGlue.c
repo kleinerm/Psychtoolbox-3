@@ -689,7 +689,8 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
 
   // Try to set requested swapInterval if swap-control extension is supported on
   // this Linux machine. Otherwise this will be a no-op...
-  // if (PTBglXSwapIntervalSGI) PTBglXSwapIntervalSGI(swapInterval);
+  // if (glXSetSwapIntervalMESA)
+
   if (glXSwapIntervalSGI) glXSwapIntervalSGI(swapInterval);
 
   return;
@@ -755,4 +756,125 @@ void PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, psych_bool cop
   if (glXGetCurrentContext() != windowRecord->targetSpecific.glusercontextObject) {
     glXMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.glusercontextObject);
   }
+}
+
+/* PsychOSSetupFrameLock - Check if framelock / swaplock support is available on
+ * the given graphics system implementation and try to enable it for the given
+ * pair of onscreen windows.
+ *
+ * If possible, will try to add slaveWindow to the swap group and/or swap barrier
+ * of which masterWindow is already a member, putting slaveWindow into a swap-lock
+ * with the masterWindow. If masterWindow isn't yet part of a swap group, create a
+ * new swap group and attach masterWindow to it, before joining slaveWindow into the
+ * new group. If masterWindow is part of a swap group and slaveWindow is NULL, then
+ * remove masterWindow from the swap group.
+ *
+ * The swap lock mechanism used is operating system and GPU dependent. Many systems
+ * will not support framelock/swaplock at all.
+ *
+ * Returns TRUE on success, FALSE on failure.
+ */
+psych_bool PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindowRecordType *slaveWindow)
+{
+	GLuint maxGroups, maxBarriers, targetGroup;
+	psych_bool rc = FALSE;
+	
+	// GNU/Linux: Try NV_swap_group support first, then SGI swap group support.
+
+	// NVidia swap group extension supported?
+	if(glewIsSupported("GLX_NV_swap_group") && (NULL != glXQueryMaxSwapGroupsNV)) {
+		// Yes. Check if given GPU really supports it:
+		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: NV_swap_group supported. Querying available groups...\n");
+
+		if (glXQueryMaxSwapGroupsNV(masterWindow->targetSpecific.deviceContext, PsychGetXScreenIdForScreen(masterWindow->screenNumber), &maxGroups, &maxBarriers) && (maxGroups > 0)) {
+			// Yes. What to do?
+			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: NV_swap_group supported. Implementation supports up to %i swap groups. Trying to join or unjoin group.\n", maxGroups);
+
+			if (NULL == slaveWindow) {
+				// Asked to remove master from swap group:
+				glXJoinSwapGroupNV(masterWindow->targetSpecific.deviceContext, masterWindow->targetSpecific.windowHandle, 0);
+				masterWindow->swapGroup = 0;
+				return(TRUE);
+			}
+			else {
+				// Non-NULL slaveWindow: Shall attach to swap group.
+				// Master already part of a swap group?
+				if (0 == masterWindow->swapGroup) {
+					// Nope. Try to attach it to first available one:
+					targetGroup = (GLuint) PsychFindFreeSwapGroupId(maxGroups);
+					
+					if ((targetGroup == 0) || !glXJoinSwapGroupNV(masterWindow->targetSpecific.deviceContext, masterWindow->targetSpecific.windowHandle, targetGroup)) {
+						// Failed!
+						if (PsychPrefStateGet_Verbosity() > 1) {
+							printf("PTB-WARNING: Tried to enable framelock support for master-slave window pair, but masterWindow failed to join swapgroup %i! Skipped.\n", targetGroup);
+						}
+						
+						goto try_sgi_swapgroup;
+					}
+					
+					// Sucess for master!
+					masterWindow->swapGroup = targetGroup;
+				}
+				
+				// Now try to join the masters swapgroup with the slave:
+				if (!glXJoinSwapGroupNV(slaveWindow->targetSpecific.deviceContext, slaveWindow->targetSpecific.windowHandle,  masterWindow->swapGroup)) {
+					// Failed!
+					if (PsychPrefStateGet_Verbosity() > 1) {
+						printf("PTB-WARNING: Tried to enable framelock support for master-slave window pair, but slaveWindow failed to join swapgroup %i of master! Skipped.\n", masterWindow->swapGroup);
+					}
+					
+					goto try_sgi_swapgroup;
+				}
+				
+				// Success! Now both windows are in a common swapgroup and framelock should work!
+				slaveWindow->swapGroup = masterWindow->swapGroup;
+				
+				if (PsychPrefStateGet_Verbosity() > 1) {
+					printf("PTB-INFO: Framelock support for master-slave window pair via NV_swap_group extension enabled! Joined swap group %i.\n", masterWindow->swapGroup);
+				}
+				
+				return(TRUE);
+			}
+		}
+	}
+
+// If we reach this point, then NV_swap groups are unsupported, or setup failed.
+try_sgi_swapgroup:
+
+	// Try if we have more luck with SGIX_swap_group extension:
+	if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: NV_swap_group unsupported or join operation failed. Trying GLX_SGIX_swap_group support...\n");
+
+	// SGIX swap group extension supported?
+	if(glewIsSupported("GLX_SGIX_swap_group") && (NULL != glXJoinSwapGroupSGIX)) {
+		// Yes. What to do?
+		if (NULL == slaveWindow) {
+			// Asked to remove master from swap group:
+			glXJoinSwapGroupSGIX(masterWindow->targetSpecific.deviceContext, masterWindow->targetSpecific.windowHandle, None);
+			masterWindow->swapGroup = 0;
+			return(TRUE);
+		}
+		else {
+			// Non-NULL slaveWindow: Shall attach to swap group.
+
+			// Sucess for master by definition. Master is member of its own swapgroup, obviously...
+			masterWindow->swapGroup = 1;
+			
+			// Now try to join the masters swapgroup with the slave. This can't fail in a non-fatal way.
+			// Either it succeeds, or the whole runtime will abort with some GLX command stream error :-I
+			glXJoinSwapGroupSGIX(slaveWindow->targetSpecific.deviceContext, slaveWindow->targetSpecific.windowHandle,  masterWindow->targetSpecific.windowHandle);
+			
+			// Success! Now both windows are in a common swapgroup and framelock should work!
+			slaveWindow->swapGroup = masterWindow->swapGroup;
+			
+			if (PsychPrefStateGet_Verbosity() > 1) {
+				printf("PTB-INFO: Framelock support for master-slave window pair via GLX_SGIX_swap_group extension enabled!\n");
+			}
+			
+			return(TRUE);
+		}
+	}
+	
+	if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: NV_swap_group and GLX_SGIX_swap_group unsupported or join operations failed.\n");
+	
+	return(rc);
 }

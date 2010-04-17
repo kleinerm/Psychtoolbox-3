@@ -354,6 +354,10 @@ typedef struct _PsychWindowRecordType_{
 
 	unsigned int			gpu_preflip_Surfaces[2];				// Framebuffer addresses of the primary-/secondary surfaces on GPU before flip.
 	
+	// Support for framelock / swaplock / output lock / genlock via swap groups / swap barriers extensions:
+	GLuint					swapGroup;								// Swap group handle of swap group for this window, zero if none assigned.
+	GLuint					swapBarrier;							// Swap barrier handle of swap barrier for this window, zero if none assigned.
+	
 	// Used only when this structure holds a window:
 	// CAUTION FIXME TODO: Due to some pretty ugly circular include dependencies in the #include chain of
 	// PTB, this field can not be used in files that #define PSYCH_DONT_INCLUDE_TEXTATTRIBUTES_IN_WINDOWRECORD,

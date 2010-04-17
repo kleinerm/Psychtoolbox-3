@@ -4726,3 +4726,44 @@ void PsychExecuteBufferSwapPrefix(PsychWindowRecordType *windowRecord)
 
 	return;
 }
+
+/* PsychFindFreeSwapGroupId() - Return the id of the first unused
+ * swapgroup between 1 and maxGroupId. Return zero if no such free
+ * group id can be found.
+ * This is a helper function for OS dependent setup routines for swaplock/framelock
+ * extensions.
+ */
+int	PsychFindFreeSwapGroupId(int maxGroupId)
+{
+    PsychWindowRecordType **windowRecordArray = NULL;
+    int	i, j, rc;
+	psych_bool taken;
+    int numWindows = 0;
+
+	if (maxGroupId < 1) return(0);
+
+	PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
+    rc = 0;
+
+	for (j = 1; j <= maxGroupId; j++) {
+		// Search all swapgroups if id 'j' is already taken.
+		taken = FALSE;
+		for(i = 0; i < numWindows; i++) {
+			if (PsychIsOnscreenWindow(windowRecordArray[i]) && ((int) windowRecordArray[i]->swapGroup == j)) {
+				taken = TRUE;
+				break;
+			}
+		}
+		
+		if (!taken) {
+			// Bingo!
+			rc = j;
+			break;
+		}
+	}
+	
+	// rc is either zero if no swapgroup id free, or a free swapgroup handle.
+	PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
+	
+	return(rc);
+}

@@ -60,6 +60,7 @@ void	PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord);
 void	PsychExecuteBufferSwapPrefix(PsychWindowRecordType *windowRecord);
 int		PsychGetCurrentShader(PsychWindowRecordType *windowRecord);
 void	PsychBackupFramebufferToBackingTexture(PsychWindowRecordType *backupRendertarget);
+int		PsychFindFreeSwapGroupId(int maxGroupId);
 
 //end include once
 #endif

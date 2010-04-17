@@ -351,6 +351,11 @@ PsychError SCREENOpenWindow(void)
 			// Assign this window to the master window as a slave:
 			sharedContextWindow->slaveWindow = windowRecord;
 			
+			// Try to optionally enable framelock / swaplock extensions for the window-pair
+			// if this is supported by the given system configuration. If supported, this
+			// should guarantee perfect synchronization of bufferswaps across the window-pair:
+			PsychOSSetupFrameLock(sharedContextWindow, windowRecord);
+
 			// Reset master assignment to prepare possible further dual-window config operations:
 			sharedContextWindow = NULL;
 
@@ -362,7 +367,7 @@ PsychError SCREENOpenWindow(void)
 
 			if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Created master-slave window relationship for dual-window stereo/output display mode...\n");
 
-			// Special config finished. The master-slave combo should work from now on...
+			// Special config finished. The master-slave combo should work from now on...			
 		}
 		else {
 			// This is initial setup & creation of the master onscreen window, ie. the one

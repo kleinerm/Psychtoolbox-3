@@ -56,6 +56,7 @@ void	PsychOSUnsetGLContext(PsychWindowRecordType *windowRecord);
 double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint64* vblCount);
 void	PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, psych_bool copyfromPTBContext);
 #define	PsychOSIsDWMEnabled() 0
+psych_bool PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindowRecordType *slaveWindow);
 
 //end include once
 #endif

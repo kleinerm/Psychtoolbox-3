@@ -329,6 +329,10 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	(*winRec)->gpuRenderTimeQuery = 0;
 	(*winRec)->gpuRenderTime = 0.0;
 
+	// No swap group or barrier assigned:
+	(*winRec)->swapGroup = 0;
+	(*winRec)->swapBarrier = 0;
+
 	return;
 }
 
