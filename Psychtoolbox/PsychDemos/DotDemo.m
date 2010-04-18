@@ -1,6 +1,30 @@
-function DotDemo 
+function DotDemo(showSprites, waitframes)
+%
 % dot motion demo using SCREEN('DrawDots') subfunction
-% author: Keith Schneider, 12/13/04
+%
+% Usage: DotDemo([showSprites = 0][, waitframes = 1]);
+%
+% The optional parameter 'showSprites' when set to a non-zero value, will
+% draw little smiley textures instead of dots, demonstrating
+% sprite-drawing. A zero setting, or omitting the setting, will draw dots.
+%
+% 'waitframes' Number of video refresh intervals to show each image before
+% updating the dot field. Defaults to 1 if omitted.
+%
+% You can exit the demo by any keypress or mouse button press. It will also
+% exit by itself after 1000 redraws.
+%
+% The top of the demo code contains tons of parameters to tweak and
+% manipulate if you want.
+%
+%
+% Note: Some versions of MacOS/X have defective dot drawing due to an
+% operating system bug. If you happen to have such a system (e.g., OS/X
+% 10.6.3 with NVidia Geforce-7xxx hardware) then read "help ScreenDrawDots"
+% for a workaround.
+%
+
+% Original author: Keith Schneider, 12/13/04
 
 %HISTORY
 %
@@ -41,8 +65,25 @@ function DotDemo
 %                   Will now default to max of screens rather than main
 %                   screen.
 % 5/31/05   mk      Some modifications to use new Flip command...
+% 4/18/10   mk      Add support for demo'ing PsychDrawSprites2D() command.
 
 AssertOpenGL;
+
+if nargin < 1
+    showSprites = [];
+end
+
+if isempty(showSprites)
+    showSprites = 0;
+end
+
+if nargin < 2
+    waitframes = [];
+end
+
+if isempty(waitframes)
+    waitframes = 1;
+end
 
 try
 
@@ -62,7 +103,7 @@ try
     f_kill      = 0.05; % fraction of dots to kill each frame (limited lifetime)    
     differentcolors =1; % Use a different color for each point if == 1. Use common color white if == 0.
     differentsizes = 2; % Use different sizes for each point if >= 1. Use one common size if == 0.
-    waitframes = 1;     % Show new dot-images at each waitframes'th monitor refresh.
+    % waitframes = 1;     % Show new dot-images at each waitframes'th monitor refresh.
     
     if differentsizes>0  % drawing large dots is a bit slower
         ndots=round(ndots/5);
@@ -141,14 +182,39 @@ try
     end;
     
     buttons=0;
+
+    % Wanna show textured sprites instead of dots?
+    if showSprites
+        % Create a small texture as offscreen window: Size is 30 x 30
+        % pixels, background color is black and transparent:
+        tex = Screen('OpenOffScreenWindow', w, [0,0,0,0], [0 0 30 30]);
+        % Draw a little white smiley into the window. The white color will
+        % be modulated by 'colvect' during drawing, so white is basically
+        % just a placeholder:
+        Screen('TextSize', tex, 24);
+        Screen('DrawText', tex, ':)', 0, 0, 255);
         
+        % Scale down a bit, otherwise visual clutter ensues:
+        s = s * 0.2;
+
+        % Define randomly distributed rotation angles in a +/- 30 degree
+        % range around a "vertical" smiley face:
+        angles = (rand(1, ndots) - 0.5) * 60 + 90;
+    end
+    
     % --------------
     % animation loop
     % --------------    
     for i = 1:nframes
         if (i>1)
             Screen('FillOval', w, uint8(white), fix_cord);	% draw fixation dot (flip erases it)
-            Screen('DrawDots', w, xymatrix, s, colvect, center,1);  % change 1 to 0 to draw square dots
+            if showSprites
+                % Draw little "sprite textures" instead of dots:
+                PsychDrawSprites2D(w, tex, xymatrix, s, angles, colvect, center, 1);  % change 1 to 0 to draw unfiltered sprites.
+            else
+                % Draw nice dots:
+                Screen('DrawDots', w, xymatrix, s, colvect, center,1);  % change 1 to 0 to draw square dots
+            end
             Screen('DrawingFinished', w); % Tell PTB that no further drawing commands will follow before Screen('Flip')
         end;
         
