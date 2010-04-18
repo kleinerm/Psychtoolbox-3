@@ -74,6 +74,7 @@
 %    PsychRTBoxDemo          - Demonstrates basic use of the RTBox reaction time button response box.
 %    QuicktimeDemos          - Subfolder: Demos on how to use Quicktime movie playback.
 %    RenderDemo              - Render CIE xyY as a color patch.
+%    SadowskiDemo            - Shows the "Sadowski" color afterimage effect.
 %    SimpleVoiceTriggerDemo  - Demo of a simple voice trigger with PsychPortAudio.
 %    SpriteDemo              - Animates an image that follows the mouse.
 %    StereoDemo              - Drive stereo-displays e.g., CrystalEyes.
