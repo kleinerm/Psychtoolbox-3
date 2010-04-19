@@ -203,7 +203,10 @@ void InitializeSynopsis()
 	synopsis[i++] =  "[droppedframes] = Screen('PlayMovie', moviePtr, rate, [loop], [soundvolume]);";
  	synopsis[i++] =  "timeindex = Screen('GetMovieTimeIndex', moviePtr);";
  	synopsis[i++] =  "[oldtimeindex] = Screen('SetMovieTimeIndex', moviePtr, timeindex [, indexIsFrames=0]);";
-
+ 	synopsis[i++] =  "moviePtr = Screen('CreateMovie', windowPtr, movieFile [, width][, height][, frameRate=30][, movieOptions]);";
+	synopsis[i++] =  "Screen('FinalizeMovie', moviePtr);";
+ 	synopsis[i++] =  "Screen('AddFrameToMovie', windowPtr [,rect] [,bufferName] [,moviePtr=0] [,frameduration=1])";
+	
 	// Video capture support:
 	synopsis[i++] = "\n% Video capture functions:";
 	synopsis[i++] = "devices = Screen('VideoCaptureDevices' [, engineId]);";

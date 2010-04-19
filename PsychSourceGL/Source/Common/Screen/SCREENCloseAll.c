@@ -62,6 +62,7 @@ void ScreenCloseAllWindows(void)
 	PsychRessourceCheckAndReminder(TRUE);	
 	
     // Shutdown Quicktime subsystems if active:
+	PsychExitMovieWriting();
     PsychExitMovies();
     PsychExitVideoCapture();
 

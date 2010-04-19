@@ -60,9 +60,7 @@
 #ifndef QUICKTIME_IS_INCLUDED
 #define QUICKTIME_IS_INCLUDED
 	#include <Movies.h>
-//	#include <CoreVideo.h>
     #include <GXMath.h>
-//	#include <ImageCompression.h>
 #endif
 #endif
 
@@ -81,6 +79,7 @@
 #include "PsychAlphaBlending.h"
 #include "PsychVideoCaptureSupport.h"
 #include "PsychImagingPipelineSupport.h"
+#include "PsychMovieWritingSupport.h"
 #include "ScreenArguments.h"
 #include "RegisterProject.h"
 #include "WindowHelpers.h"
@@ -234,6 +233,8 @@ PsychError		SCREENGetMouseHelper(void);
 PsychError		SCREENResolution(void);
 PsychError		SCREENResolutions(void);
 PsychError		SCREENWaitUntilAsyncFlipCertain(void);
+PsychError		SCREENCreateMovie(void);
+PsychError		SCREENFinalizeMovie(void);
 
 //PsychError SCREENSetGLSynchronous(void);		//SCREENSetGLSynchronous.c
 

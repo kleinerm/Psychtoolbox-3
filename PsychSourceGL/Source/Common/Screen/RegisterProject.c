@@ -218,7 +218,10 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("GetOpenGLDrawMode", &SCREENGetOpenGLDrawMode));
 	PsychErrorExit(PsychRegister("Resolutions", &SCREENResolutions));
 	PsychErrorExit(PsychRegister("Resolution", &SCREENResolution));
-	
+	PsychErrorExit(PsychRegister("CreateMovie", &SCREENCreateMovie));
+	PsychErrorExit(PsychRegister("FinalizeMovie", &SCREENFinalizeMovie));
+	PsychErrorExit(PsychRegister("AddFrameToMovie", &SCREENGetImage));
+
 	PsychSetModuleAuthorByInitials("awi");
 	PsychSetModuleAuthorByInitials("dhb");
 	PsychSetModuleAuthorByInitials("dgp");
@@ -232,7 +235,8 @@ PsychError PsychModuleInit(void)
 	InitWindowBank();
 	PsychMovieInit();
 	PsychVideoCaptureInit();
-    
+	PsychMovieWritingInit();
+
 	// Call wait-routine for 0.1 secs: This to initialize the time glue on MS-Windows,
 	// so the first call to a timing function won't delay:
 	PsychWaitIntervalSeconds(0.1);

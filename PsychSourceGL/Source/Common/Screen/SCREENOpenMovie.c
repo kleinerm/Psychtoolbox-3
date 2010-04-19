@@ -2,12 +2,15 @@
   Psychtoolbox3/Source/Common/SCREENOpenMovie.c		
   
   AUTHORS:
+
     mario.kleiner at tuebingen.mpg.de   mk
   
   PLATFORMS:	
+
   This file should build on any platform. 
 
   HISTORY:
+
   10/23/05  mk		Created. 
  
   DESCRIPTION:
@@ -20,12 +23,8 @@
   e.g., Linux, we would use a different multimedia engine.
   
   TO DO:
-  
-  
-  
 
 */
-
 
 #include "Screen.h"
 
@@ -266,5 +265,122 @@ PsychError SCREENOpenMovie(void)
         PsychCopyOutDoubleArg(5, FALSE, (double) height);
 
 	// Ready!
-        return(PsychError_none);
+	return(PsychError_none);
+}
+
+// Functions for movie creation/editing/writing:
+
+PsychError SCREENFinalizeMovie(void)
+{
+	static char useString[] = "Screen('FinalizeMovie', moviePtr);";
+	static char synopsisString[] = "Finish creating a new movie file with handle 'moviePtr' and store it to filesystem.\n";
+	static char seeAlsoString[] = "CreateMovie AddFrameToMovie CloseMovie PlayMovie GetMovieImage GetMovieTimeIndex SetMovieTimeIndex";
+
+	int			moviehandle = -1;
+
+	// All sub functions should have these two lines
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+	
+	PsychErrorExit(PsychCapNumInputArgs(1));            // Max. 3 input args.
+	PsychErrorExit(PsychRequireNumInputArgs(1));        // Min. 2 input args required.
+	PsychErrorExit(PsychCapNumOutputArgs(0));           // Max. 1 output args.
+
+	// Get the moviehandle:
+	PsychCopyInIntegerArg(1, kPsychArgRequired, &moviehandle);
+	
+	// Finalize the movie:
+	if (!PsychFinalizeNewMovieFile(moviehandle)) {
+		PsychErrorExitMsg(PsychError_user, "FinalizeMovie failed for some reason.");
+	}
+
+	return(PsychError_none);
+}
+
+PsychError SCREENCreateMovie(void)
+{
+	static char useString[] = "moviePtr = Screen('CreateMovie', windowPtr, movieFile [, width][, height][, frameRate=30][, movieOptions]);";
+	static char synopsisString[] = 
+		"Create a new movie file with filename 'movieFile' and according to given 'movieOptions'.\n"
+		"The function returns a handle 'moviePtr' to the file.\n"
+		"Currently, movie creation and recording is only supported on OS/X and Windows, as it "
+		"needs Apple's Quicktime to be installed. It can use any Quicktime codec that is installed "
+		"on your system. Currently only single-track video encoding is supported, audio support is tbd.\n\n"
+		"Movie creation is a 3 step procedure:\n"
+		"1. Create a movie, define encoding options via 'CreateMovie'.\n"
+		"2. Add video frames to the movie via calls to 'AddFrameToMovie'.\n"
+		"3. Finalize, and close the movie via a call to 'FinalizeMovie'.\n\n"
+		"All following parameters are optional and have reasonable defaults:\n\n"
+		"'width' Width of movie video frames in pixels. Defaults to width of window 'windowPtr'.\n"
+		"'height' Height of movie video frames in pixels. Defaults to height of window 'windowPtr'.\n"
+		"'frameRate' Playback framerate of movie. Defaults to 30 fps. Technically this is not the "
+		"playback framerate but the granularity in 1/frameRate seconds with which the duration of "
+		"a single movie frame can be specified. When you call 'AddFrameToMovie', there's an optional "
+		"parameter 'frameDuration' which defaults to one. The parameter defines the display duration "
+		"of that frame as the fraction 'frameDuration' / 'frameRate' seconds, so 'frameRate' defines "
+		"the denominator of that term. However, for a default 'frameDuration' of one, this is equivalent "
+		"to the 'frameRate' of the movie, at least if you leave everything at defaults.\n\n"
+		"'movieoptions' a textstring which allows to define additional parameters via keyword=parm pairs. "
+		"Keywords unknown to a certain implementation or codec will be silently ignored:\n"
+		"EncodingQuality=x Set encoding quality to value x, in the range 0.0 for lowest movie quality to "
+		"1.0 for highest quality. Default is 0.5 = normal quality. 1.0 usually provides lossless encoding.\n"
+		"CodecFOURCCId=id FOURCC id. The FOURCC of a desired video codec as a number. Defaults to H.264 codec.\n"
+		"Choice of codec and quality defines a tradeoff between filesize, quality, processing demand and speed, "
+		"as well as on which target devices you'll be able to play your movie.\n"
+		"\n";
+
+	static char seeAlsoString[] = "FinalizeMovie AddFrameToMovie CloseMovie PlayMovie GetMovieImage GetMovieTimeIndex SetMovieTimeIndex";
+	
+	PsychWindowRecordType					*windowRecord;
+	char                                    *moviefile;
+	char									*movieOptions;
+	int                                     moviehandle = -1;
+	double                                  framerate = 30.0;
+	int                                     width;
+	int                                     height;
+	char									defaultOptions[2] = "";
+	
+	// All sub functions should have these two lines
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+	
+	PsychErrorExit(PsychCapNumInputArgs(6));            // Max. 6 input args.
+	PsychErrorExit(PsychRequireNumInputArgs(2));        // Min. 2 input args required.
+	PsychErrorExit(PsychCapNumOutputArgs(1));           // Max. 1 output args.
+	
+	// Get the window record from the window record argument and get info from the window record
+	PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
+	// Only onscreen windows allowed:
+	if(!PsychIsOnscreenWindow(windowRecord)) {
+		PsychErrorExitMsg(PsychError_user, "CreateMovie called on something else than an onscreen window.");
+	}
+	
+	// Get the movie name string:
+	moviefile = NULL;
+	PsychAllocInCharArg(2, kPsychArgRequired, &moviefile);
+	
+	// Get the optional size:
+	// Default Width and Height of movie frames is derived from size of window:
+	width = PsychGetWidthFromRect(windowRecord->rect);
+	height = PsychGetHeightFromRect(windowRecord->rect);
+	PsychCopyInIntegerArg(3, kPsychArgOptional, &width);
+	PsychCopyInIntegerArg(4, kPsychArgOptional, &height);
+	
+	// Get the optional framerate:
+	PsychCopyInDoubleArg(5, kPsychArgOptional, &framerate);
+	
+	// Get the optional options string:
+	movieOptions = defaultOptions;
+	PsychAllocInCharArg(6, kPsychArgOptional, &movieOptions);
+
+	// Create movie of given size and framerate with given options:
+	moviehandle = PsychCreateNewMovieFile(moviefile, width, height, framerate, movieOptions);
+	if (0 > moviehandle) {
+		PsychErrorExitMsg(PsychError_user, "CreateMovie failed for some reason.");
+	}
+	
+	// Return handle to it:
+	PsychCopyOutDoubleArg(1, FALSE, (double) moviehandle);
+	
+	return(PsychError_none);
 }

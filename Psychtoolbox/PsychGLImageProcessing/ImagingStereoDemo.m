@@ -237,6 +237,8 @@ escape = KbName('ESCAPE');
 
     Screen('Flip', windowPtr);
     
+    % movie = Screen('CreateMovie', windowPtr, 'MyTestMovie.mov', 512, 512, 60);
+    
     % Perform a flip to sync us to vbl and take start-timestamp in t:
     t = Screen('Flip', windowPtr);
 
@@ -296,6 +298,8 @@ escape = KbName('ESCAPE');
             end
         end
 
+        % Screen('AddFrameToMovie', windowPtr, CenterRect([0 0 512 512], Screen('Rect', scrnNum)));
+        
         % Flip stim to display and take timestamp of stimulus-onset after
         % displaying the new stimulus and record it in vector t:
         onset = Screen('Flip', windowPtr);
@@ -304,6 +308,8 @@ escape = KbName('ESCAPE');
 
     % Last Flip:
     Screen('Flip', windowPtr);
+    
+    % Screen('FinalizeMovie', movie);
     
     % Done. Close the onscreen window:
     Screen('CloseAll')
