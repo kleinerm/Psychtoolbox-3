@@ -39,6 +39,8 @@ function rc = PsychGPUControl(cmd, varargin)
 
 % History:
 %  3.01.2010  mk  Written.
+% 19.04.2010  mk  Add quotes around path to command to protect against
+%                 blanks in path to executable.
 
 if nargin < 1
 	error('Subfunction command argument missing!');
@@ -71,12 +73,12 @@ if strcmpi(cmd, 'SetGPUPerformance')
 	end
 
 	% Map range 1 to 5 to "minimum performance" on ATI GPU's:
-	if gpuperf > 0 & gpuperf <= 5
+	if gpuperf > 0 & gpuperf <= 5 %#ok<AND2>
 		perfflag = 2;
 	end
 
 	% Map range 6 to 10 to "maximum performance" on ATI GPU's:
-	if gpuperf > 5 & gpuperf <= 10
+	if gpuperf > 5 & gpuperf <= 10 %#ok<AND2>
 		perfflag = 1;
 	end
 
@@ -91,27 +93,34 @@ if strcmpi(cmd, 'SetGPUPerformance')
 end
 
 error('Invalid subfunction provided. Read the help for valid commands!');
-return;
+return; %#ok<UNRCH>
 end
 
 function rc = executeRadeoncmd(cmdpostfix)
-	% Default to a return code of 1 for success:
-	if IsOSX
-		% A no-op on OS/X, as this is not supported at all.
-		rc = 1;
-		return;
-	end
+    % Default to a return code of 1 for success:
+    if IsOSX
+        % A no-op on OS/X, as this is not supported at all.
+        rc = 1;
+        return;
+    end
 
-	if IsLinux
-		cmdprefix = '/PsychContributed/ATIRadeonperf_Linux ';
-	end
+    if IsLinux
+        cmdprefix = '/PsychContributed/ATIRadeonperf_Linux ';
+    end
 
-	if IsWin
-		cmdprefix = '/PsychContributed/ATIRadeonperf_Windows ';
-	end
+    if IsWin
+        cmdprefix = '/PsychContributed/ATIRadeonperf_Windows ';
+    end
 
-	% Call final command, return its return status code:
-	rc = system([PsychtoolboxRoot cmdprefix cmdpostfix]);
+    % Create quoted version of path, so blanks in path are handled properly:
+    doCmd = strcat('"', [PsychtoolboxRoot cmdprefix] ,'"');
 
-	return;
+    % Call final command, return its return status code:
+    rc = system([doCmd cmdpostfix]);
+
+    % Code has it backwards 1 = success, 0 = failure. Remap to our
+    % convention:
+    rc = 1 - rc;
+    
+    return;
 end

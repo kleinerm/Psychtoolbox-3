@@ -2292,7 +2292,7 @@ psych_bool PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindo
 {
 	GLuint maxGroups, maxBarriers, targetGroup;
 	psych_bool rc = FALSE;
-	
+
 	// MS-Windows: Only NV_swap_group support. Try it.
 	
 	// NVidia swap group extension supported?

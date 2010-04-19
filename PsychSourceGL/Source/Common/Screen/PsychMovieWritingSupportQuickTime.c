@@ -64,6 +64,7 @@ typedef struct {
 	Rect						Rect;
 	int							height;
 	int							width;
+	int							padding;
 } PsychMovieWriterRecordType;
 
 static PsychMovieWriterRecordType moviewriterRecordBANK[PSYCH_MAX_MOVIEWRITERDEVICES];
@@ -112,7 +113,7 @@ unsigned char*	PsychGetVideoFrameForMoviePtr(int moviehandle, unsigned int* twid
 	if (NULL == pwriterRec->PixMap) return(NULL);
 
 	*twidth = pwriterRec->width;
-	*theight = pwriterRec->height;
+	*theight = pwriterRec->height - pwriterRec->padding; // Hack hack pwriterRec->padding !
 	return((unsigned char*) GetPixBaseAddr(pwriterRec->PixMap));
 }
 
@@ -143,7 +144,7 @@ int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_boo
 	
 	// Imagebuffer is upside-down: Need to flip it vertically:
 	if (isUpsideDown) {
-		h = pwriterRec->height - 1; // Hack hack -1!!
+		h = pwriterRec->height - pwriterRec->padding; // Hack pwriterRec->padding !
 		w = pwriterRec->width;
 		wordptr1 = wordptr;
 		for (y = 0; y < h/2; y++) {
@@ -203,7 +204,20 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 	while ((pwriterRec = PsychGetMovieWriter(moviehandle, TRUE)) && pwriterRec->Movie) moviehandle++;
 
 	if (firsttime) {
-		EnterMovies();
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+        // Initialize Quicktime for Windows compatibility layer: This will fail if
+        // QT isn't installed on the Windows machine...
+        myErr = InitializeQTML(0);
+        if (myErr!=noErr) {
+            PsychErrorExitMsg(PsychError_internal, "Quicktime Media Layer initialization failed: Quicktime not properly installed?!?");
+        }
+#endif
+
+        // Initialize Quicktime-Subsystem:
+        myErr = EnterMovies();
+        if (myErr!=noErr) {
+            PsychErrorExitMsg(PsychError_internal, "Quicktime EnterMovies() failed!!!");
+        }
 		firsttime = FALSE;
 	}
 
@@ -215,7 +229,8 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 	pwriterRec->ResID = movieInDataForkResID;	
 	pwriterRec->height = height;
 	pwriterRec->width = width;
-
+	pwriterRec->padding = (PSYCH_SYSTEM == PSYCH_OSX) ? 1 : 0;
+	
 	// Assign numeric 32-bit FOURCC equivalent code to select codec:
 	// This is optional. We default to kH264CodecType:
 	if ((poption = strstr(movieoptions, "CodecFOURCCId="))) {
@@ -311,8 +326,8 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 		goto bail;
 
 	// Create a GWorld as target with a pixedepth of 32 bpp:
-	// Hack hack -1 -1!!
-	MacSetRect(&pwriterRec->Rect, 0, 0, width-1, height-1);
+	// Hack hack pwriterRec->padding!!
+	MacSetRect(&pwriterRec->Rect, 0, 0, width - pwriterRec->padding, height - pwriterRec->padding);
 	myErr = NewGWorld(&pwriterRec->GWorld, 32, &pwriterRec->Rect, NULL, NULL, (GWorldFlags)0);
 	if (myErr != noErr)
 		goto bail;

@@ -360,8 +360,7 @@ PsychError SCREENGetImage(void)
 			glPixelStorei(GL_PACK_ALIGNMENT,1);
 			invertedY = windowRect[kPsychBottom] - sampleRect[kPsychBottom];
 			
-			// Hack hack theight -1!!
-			glReadPixels(sampleRect[kPsychLeft], invertedY,	twidth, theight - 1, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8, framepixels);
+			glReadPixels(sampleRect[kPsychLeft], invertedY,	twidth, theight, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8, framepixels);
 			PsychAddVideoFrameToMovie(moviehandle, frameduration, TRUE);
 		}
 		else {
