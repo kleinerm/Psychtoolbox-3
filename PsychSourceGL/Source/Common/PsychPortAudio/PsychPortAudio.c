@@ -50,6 +50,7 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 #define kPortAudioIsSlave    16
 #define kPortAudioIsAMModulator		32
 #define kPortAudioIsOutputCapture	64
+#define kPortAudioIsAMModulatorForSlave	128
 
 // Maximum number of audio devices we handle:
 // This consumes around 200 Bytes static memory per potential device, so
@@ -152,6 +153,8 @@ typedef struct PsychPADevice {
 	int		slaveDirty;			// Flag: 0 means that a slave didn't do anything, so no mixdown/merge by master required. 1 means: Do mixdown/merge.
 	float*	slaveOutBuffer;		// Temporary output buffer for slaves to store their output data. Used as input for output mix/merge. NULL on non-masters.
 	float*	slaveInBuffer;		// Temporary input buffer for slaves to receive their input data. Used as output from distributor. NULL on non-masters.
+	float*	slaveGainBuffer;	// Temporary output buffer for AM modulator slaves to store their gain output data. NULL on non AMModulators for slaves.
+	int		modulatorSlave;		// pahandle of a slave device that acts as a modulator for this device. -1 if none assigned.
 	double	firstsampleonset;	// Cached sample onset time from paCallback.
 	double	cst;				// Cached captured sample onset time from paCallback.
 	double	now;				// Cached invocation time from paCallback.
@@ -738,7 +741,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	PaHostApiTypeId hA;
 	psych_bool	stopEngine;
 	psych_bool  isMaster, isSlave;
-	int			slaveId, parc, numSlavesHandled;
+	int			slaveId, modulatorSlave, parc, numSlavesHandled;
 
 	// Device struct attached to stream? If no device struct
 	// is attached, we can't continue and tell the engine to abort
@@ -1026,7 +1029,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 				PsychPAUnlockDeviceMutex(dev);
 				
 				// At least one buffer away. Fill our buffer with zeros, aka silence:
-				memset(outputBuffer, 0, framesPerBuffer * outchannels * sizeof(float));
+				if (!isSlave) memset(outputBuffer, 0, framesPerBuffer * outchannels * sizeof(float));
 				
 				// Ready. Tell engine to continue stream processing, i.e., call us again...
 				return(paContinue);
@@ -1097,9 +1100,10 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		}
 
 		if ((dev->opmode & kPortAudioPlayBack) && (dev->slaveOutBuffer == NULL)) {
-			// Allocate output receive buffer:
+			// Allocate output receive buffer and output gain receive buffer:
 			dev->slaveOutBuffer = (float*) malloc(sizeof(float) * dev->batchsize * outchannels);
-			if (NULL == dev->slaveOutBuffer) {
+			dev->slaveGainBuffer = (float*) malloc(sizeof(float) * dev->batchsize * outchannels);
+			if ((NULL == dev->slaveOutBuffer) || (NULL == dev->slaveGainBuffer)) {
 				// Out of memory! Perform an emergency abort:
 				dev->reqstate = 255;
 				dev->state = 0;				
@@ -1120,11 +1124,63 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 			
 			// We skip invalid slots and output capturer slaves:
 			if ((slaveId > -1) && !(audiodevices[slaveId].opmode & kPortAudioIsOutputCapture)) {
-				// Valid slave: Skip its processing if its state is zero == completely inactive.
+				// Valid slave:
+				
+				// AM modulator attached to a slave?
+				if (audiodevices[slaveId].opmode & kPortAudioIsAMModulatorForSlave) {
+					// Yes. Mark it as handled, then skip it. It will be called as part
+					// of processing of its parent slave:
+					numSlavesHandled++;
+					continue;
+				}
+				
+				// Skip slaves processing if its state is zero == completely inactive.
 				if (audiodevices[slaveId].state > 0) {
 					// Reset dirty flag for this slave:
 					audiodevices[slaveId].slaveDirty = 0;
 					
+					// Is this a playback slave?
+					if (audiodevices[slaveId].opmode & kPortAudioPlayBack) {
+						// Prefill slaves output buffer with 1.0, a neutral gain value for playback slaves
+						// without a AM modulator attached. The same prefill is needed with AM modulator,
+						// this time to make the modulator itself happy:
+						tmpBuffer = dev->slaveOutBuffer;
+						for (j = 0; j < dev->batchsize * audiodevices[slaveId].outchannels; j++) *(tmpBuffer++) = 1.0;
+
+						// Ok, the outbuffer is filled with a neutral 1.0 gain value. This will work
+						// if no per-slave gain modulation is needed.
+						
+						// Gain modulator slave for this slave attached, valid and active?
+						modulatorSlave = audiodevices[slaveId].modulatorSlave;
+						if ((modulatorSlave > -1) && (audiodevices[modulatorSlave].stream) &&
+							(audiodevices[modulatorSlave].opmode & kPortAudioIsAMModulatorForSlave) && (audiodevices[modulatorSlave].state > 0)) {
+							// Yes. Execute it:
+							audiodevices[modulatorSlave].slaveDirty = 0;
+							
+							// Prefill buffer with neutral 1.0:
+							tmpBuffer = dev->slaveGainBuffer;
+							for (j = 0; j < dev->batchsize * audiodevices[modulatorSlave].outchannels; j++) *(tmpBuffer++) = 1.0;
+
+							// This will potentially fill the slaveGainBuffer with gain modulation values.
+							// The passed slaveInBuffer is meaningless for a modulator slave and only contains random junk...
+							paCallback( (const void*) dev->slaveInBuffer, (void*) dev->slaveGainBuffer, dev->batchsize, timeInfo, statusFlags, (void*) &(audiodevices[modulatorSlave]));
+
+							// Did it write any gain values?
+							if (audiodevices[modulatorSlave].slaveDirty) {
+								// Yes. Need to distribute them to proper channels in slaveOutBuffer:
+								tmpBuffer = dev->slaveGainBuffer;
+								mixBuffer = dev->slaveOutBuffer;
+								for (j = 0; j < dev->batchsize; j++) {
+									// Iterate over all target channels in the slave device outputbuffer:
+									for (k = 0; k < audiodevices[modulatorSlave].outchannels; k++) {
+										// Modulate current sample in intermixbuffer via multiplication:
+										mixBuffer[(j * audiodevices[slaveId].outchannels) + audiodevices[modulatorSlave].outputmappings[k]] = *(tmpBuffer++) * audiodevices[modulatorSlave].outChannelVolumes[k];
+									}
+								}				
+							}
+						}
+					}
+
 					// Capture enabled on slave? If so, we need to distribute our captured audio data to it:
 					if (audiodevices[slaveId].opmode & kPortAudioCapture) {
 						tmpBuffer = dev->slaveInBuffer;
@@ -1322,12 +1378,23 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 			   ((parc = PsychPAProcessSchedule(dev, &playposition, &playoutbuffer, &outsbsize, &outsboffset, &repeatCount, &playpositionlimit)) == 0)) {
 			// Process this slot:
 
-			if (!isMaster) {
-				// Non-master device: Slave or regular audio device:
+			if (!isMaster && !isSlave) {
+				// Non-master, non-slave device: This is a regular sound device.
 				// Copy requested number of samples for each channel into the output buffer: Take the case of
 				// "loop forever" and "loop repeatCount" times into account, as well as stop times:
 				for (; (i < framesPerBuffer * outchannels) && (i < max_i) && ((repeatCount == -1) || (playposition < playpositionlimit)); i++) {
-					*out++ = playoutbuffer[outsboffset + ( playposition % outsbsize )] * masterVolume;
+					*(out++) = playoutbuffer[outsboffset + ( playposition % outsbsize )] * masterVolume;
+					playposition++;
+				}
+			}
+			else if (!isMaster) {
+				// Non-master device: This is a slave.
+				// Copy requested number of samples for each channel into the output buffer: Take the case of
+				// "loop forever" and "loop repeatCount" times into account, as well as stop times:
+				for (; (i < framesPerBuffer * outchannels) && (i < max_i) && ((repeatCount == -1) || (playposition < playpositionlimit)); i++) {
+					// We multiply in order to apply possible per-channel, per-sample gain values as
+					// defined by the master - i.e., by an AM modulator that is attached to us:
+					*(out++) *= playoutbuffer[outsboffset + ( playposition % outsbsize )] * masterVolume;
 					playposition++;
 				}
 			}
@@ -1438,13 +1505,20 @@ void PsychPACloseStream(int id)
 			
 			// Find our slot in the master:
 			for (i=0; (i < MAX_PSYCH_AUDIO_SLAVES_PER_DEVICE) && (audiodevices[pamaster].slaves[i] != id); i++);
+
 			// Detach us from master queue:
 			audiodevices[pamaster].slaves[i] = -1;
 			audiodevices[pamaster].slaveCount--;
 
 			// Detach master from us:
 			audiodevices[id].pamaster = -1;
-			
+
+			// If we're an AM modulator for another slave, we need to detach
+			// from that slave:
+			if (audiodevices[id].opmode & kPortAudioIsAMModulatorForSlave) {
+				for (i = 0; i < MAX_PSYCH_AUDIO_DEVS; i++) if (audiodevices[i].modulatorSlave == id) { audiodevices[i].modulatorSlave = -1; }
+			}
+
 			// Detached :-) -- Master can continue with whatever...
 			PsychPAUnlockDeviceMutex(&audiodevices[pamaster]);
 			
@@ -1460,7 +1534,7 @@ void PsychPACloseStream(int id)
 			// Unregister the stream finished callback:
 			Pa_SetStreamFinishedCallback(stream, NULL);
 			
-			// Our device thread, callbacks and hardware are stopped, all mutexes are released,
+			// Our device thread, callbacks and hardware are stopped, all mutexes are unlocked,
 			// all our potential slaves are inactive as well. We can safely destroy our slaves,
 			// if any, ie., if we are a master:
 			if ((audiodevices[id].slaveCount > 0) && (audiodevices[id].slaves)) {
@@ -1511,6 +1585,11 @@ void PsychPACloseStream(int id)
 		if(audiodevices[id].slaveOutBuffer) {
 			free(audiodevices[id].slaveOutBuffer);
 			audiodevices[id].slaveOutBuffer = NULL;
+		}				
+
+		if(audiodevices[id].slaveGainBuffer) {
+			free(audiodevices[id].slaveGainBuffer);
+			audiodevices[id].slaveGainBuffer = NULL;
 		}				
 
 		if(audiodevices[id].slaveInBuffer) {
@@ -1857,7 +1936,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
 	// Request optional mode of operation:
 	PsychCopyInIntegerArg(2, kPsychArgOptional, &mode);
-	if (mode < 1 || mode > 15 || mode & kPortAudioIsAMModulator || mode & kPortAudioIsOutputCapture || ((mode & kPortAudioMonitoring) && ((mode & kPortAudioFullDuplex) != kPortAudioFullDuplex))) {
+	if (mode < 1 || mode > 15 || mode & kPortAudioIsAMModulator || mode & kPortAudioIsAMModulatorForSlave || mode & kPortAudioIsOutputCapture || ((mode & kPortAudioMonitoring) && ((mode & kPortAudioFullDuplex) != kPortAudioFullDuplex))) {
 		PsychErrorExitMsg(PsychError_user, "Invalid mode for regular- or master-audio device provided: Outside valid range or invalid combination of flags.");
 	}
 
@@ -2192,7 +2271,9 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	audiodevices[audiodevicecount].slaveCount = 0;
 	audiodevices[audiodevicecount].slaves = NULL;
 	audiodevices[audiodevicecount].pamaster = -1;
+	audiodevices[audiodevicecount].modulatorSlave = -1;
 	audiodevices[audiodevicecount].slaveOutBuffer = NULL;
+	audiodevices[audiodevicecount].slaveGainBuffer = NULL;
 	audiodevices[audiodevicecount].slaveInBuffer = NULL;
 	audiodevices[audiodevicecount].outChannelVolumes = NULL;
 	audiodevices[audiodevicecount].masterVolume = 1.0;
@@ -2277,23 +2358,25 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 	//																  1			  2		  3			  4
 	static char synopsisString[] = 
 		"Open a virtual slave audio device and initialize it. Returns a 'pahandle' device handle for the device.\n"
-		"Slave audio devices are always attached to a 'pamaster' audio device that you need to open and initialize "
+		"Slave audio devices are almost always attached to a 'pamaster' audio device that you need to open and initialize "
 		"first via a call to pamaster = PsychPortAudio('Open', ...); The 'pamaster' corresponds to a real soundcard "
 		"present in your system which has been setup for a certain mode of operation, timing mode, frequency etc. "
-		"To each pamaster you can attach multiple slave devices. Each slave represents a subset of the audio channels "
+		"The exception is if you create an AMModulator slave (see below). It can be attached to another playback "
+		"slave device by passing the handle of that device as 'pamaster'. "
+		"To each real pamaster you can attach multiple slave devices. Each slave represents a subset of the audio channels "
 		"of the pamaster device. Each slave can be used as if it is a real independent soundcard for capture or "
 		"playback with or without its own set of playback buffers, its own schedule and mode of operation, its own "
 		"start and stop times, status etc. Under the hood, the slave device will use the defined subset of channels "
-		"of the master device to achieve this illusion of independent soundcards. Typical usage scenarios would be:\n"
+		"of the master device to achieve this illusion of independent soundcards. Typical usage scenarios would be:\n\n"
 		"* Mixing of independent soundtracks: Create multiple slave devices, one for each soundtrack. Attach all of "
 		"them to the same set of channels on a common master device. Now you can feed each slave with its own soundtrack, "
 		"start, stop and schedule playback of each slave/soundtrack independently. Sound from all active channels of "
-		"all active slaves will be mixed together and output through the channels of the master device.\n"
+		"all active slaves will be mixed together and output through the channels of the master device.\n\n"
 		"* Independent control of channels: Same as above, but the slaves don't share the same subset of channels "
 		"on the master, but each slave chooses a distinctive subset of channels, therefore no mixing will occur."
 		"\n\n"
 		"'pamaster' is the mandatory pahandle of a master audio device. The master must have been opened via "
-		"PsychPortAudio('Open', ..., mode, ...); with the mode flag '8' set to define it as a master (see 'Open').\n"
+		"PsychPortAudio('Open', ..., mode, ...); with the mode flag value '8' included to define it as a master (see 'Open').\n\n"
 		"'mode' Mode of operation. See help of 'Open' function for valid settings. However, a mode flag of '8' for "
 		"master operation is not allowed for obvious reasons. Also, the given 'mode' flags must be a subset of the "
 		"'mode' set on the master device! E.g., you can't specify a audio capture mode flag if the master device isn't "
@@ -2307,7 +2390,9 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 		"data from the *output channels* of the master device, i.e., it records the audio stream that is sent to the "
 		"speakers. This may be useful for capturing PsychPortAudio's audio output for documentation or debug purposes.\n\n"
 		"All slave devices share the same settings for latencymode, timing, sampling frequency "
-		"and other low-level tunable parameters, because they operate on the same underlying audio hardware.\n"
+		"and other low-level tunable parameters, because they operate on the same underlying audio hardware.\n\n"
+		"'channels' Define total number of playback and capture channels to use. See help for 'Open?' for explanation. "
+		"By default, all channels of the master are used.\n\n"
 		"'selectchannels' optional matrix with mappings of logical slave channels to logical master channels: "
 		"selectchannels' is a one row by 'channels' matrix with mappings "
 		"for pure playback or pure capture. For full-duplex mode (playback and capture), 'selectchannels' must be a "
@@ -2321,7 +2406,7 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 	
 	static char seeAlsoString[] = "Open Close GetDeviceSettings ";	 
   	
-	int freq, buffersize, latencyclass, mode, pamaster, i, numel;
+	int mode, pamaster, paparent, i, numel;
 	int* nrchannels;
 	int  mynrchannels[2];
 	int  m, n, p;
@@ -2347,9 +2432,6 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 	// Valid device?
 	if (pamaster < 0 || pamaster >= MAX_PSYCH_AUDIO_DEVS || audiodevices[pamaster].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio master device handle 'pamaster' provided. No such master device open!");
 
-	// Is it a master?
-	if (!(audiodevices[pamaster].opmode & kPortAudioIsMaster)) PsychErrorExitMsg(PsychError_user, "Provided device handle 'pamaster' is not configured as a master device!");
-
 	// Request optional mode of operation:
 	if (PsychCopyInIntegerArg(2, kPsychArgOptional, &mode)) {
 		// Mode provided. Validate, but remove potential master flag first:
@@ -2373,8 +2455,8 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 		
 		// Is mode a subset of the masters mode as required? One valid exception is kPortAudioMonitoring,
 		// which is allowed to be present on the slave but missing on the master, as well as the AMModulator
-		// mode:
-		modeExceptions |= kPortAudioMonitoring | kPortAudioIsAMModulator | kPortAudioIsOutputCapture;
+		// mode and output capturer mode:
+		modeExceptions |= kPortAudioMonitoring | kPortAudioIsAMModulator | kPortAudioIsAMModulatorForSlave | kPortAudioIsOutputCapture;
 		if (((mode & ~modeExceptions) & audiodevices[pamaster].opmode) != (mode & ~modeExceptions)) PsychErrorExitMsg(PsychError_user, "Invalid mode provided: Mode flags are not a subset of the mode flags of the pamaster device!");
 		if ((mode < 1) || ((mode & kPortAudioMonitoring) && ((mode & kPortAudioFullDuplex) != kPortAudioFullDuplex))) {
 			PsychErrorExitMsg(PsychError_user, "Invalid mode provided: Outside valid range or invalid combination of flags.");
@@ -2387,6 +2469,19 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 	
 	// Mode set and validated: Add the slave flag to mark us as slave device:
 	mode |= kPortAudioIsSlave;
+
+	// Is our 'pamaster' handle an actual master device?
+	if (!(audiodevices[pamaster].opmode & kPortAudioIsMaster)) {
+		// No, it is a slave device itself.
+		
+		// This is only allowed if we are a modulator device and the target is configured for playback. Error out if this isn't the case:
+		if (!(mode & kPortAudioIsAMModulator) || !(audiodevices[pamaster].opmode & kPortAudioPlayBack)) {
+			PsychErrorExitMsg(PsychError_user, "Provided device handle 'pamaster' is not configured as a master device. Attaching to a slave is only allowed if it is playback capable and this device is configured as an AM modulator!");
+		}
+		
+		// We're a modulator for a slave.
+		mode |= kPortAudioIsAMModulatorForSlave;		
+	}
 
 	// Request optional number of channels:
 	numel = 0; nrchannels = NULL;
@@ -2564,7 +2659,9 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 	audiodevices[audiodevicecount].slaveCount = 0;
 	audiodevices[audiodevicecount].slaves = NULL;
 	audiodevices[audiodevicecount].pamaster = -1;
+	audiodevices[audiodevicecount].modulatorSlave = -1;	
 	audiodevices[audiodevicecount].slaveOutBuffer = NULL;
+	audiodevices[audiodevicecount].slaveGainBuffer = NULL;
 	audiodevices[audiodevicecount].slaveInBuffer = NULL;
 	audiodevices[audiodevicecount].masterVolume = 1.0;
 
@@ -2587,6 +2684,12 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 	// If we use locking, this will create & init the associated event variable:
 	PsychPACreateSignal(&(audiodevices[audiodevicecount]));
 	
+	// Assign parent:
+	paparent = pamaster;
+	
+	// Remap the meaning of master if we are a modulator for another slave. Our pamaster is actually our parents pamaster:
+	if (mode & kPortAudioIsAMModulatorForSlave) pamaster = audiodevices[paparent].pamaster;
+	
 	// Attach us to master device: This needs to be done under master mutex protection.
 	PsychPALockDeviceMutex(&audiodevices[pamaster]);
 
@@ -2606,12 +2709,16 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 
 	// Attach master to us:
 	audiodevices[audiodevicecount].pamaster = pamaster;
-	
+
+	// If we are a modulator for another slave then attach us as modulator to that slave.
+	// No need to mutex-lock the slave, as that protection is already implied by the masters mutex:
+	if (mode & kPortAudioIsAMModulatorForSlave) audiodevices[paparent].modulatorSlave = audiodevicecount;
+
 	// Attached :-)
 	PsychPAUnlockDeviceMutex(&audiodevices[pamaster]);
 
 	if (verbosity > 4) {
-		printf("PTB-INFO: New virtual audio slave device with handle %i opened and attached to pamaster device handle %i.\n", audiodevicecount, pamaster);
+		printf("PTB-INFO: New virtual audio slave device with handle %i opened and attached to parent device handle %i [master %i].\n", audiodevicecount, paparent, pamaster);
 
 		if (audiodevices[audiodevicecount].opmode & kPortAudioIsAMModulator) {
 			printf("PTB-INFO: For %i channels amplitude modulation.\n", audiodevices[audiodevicecount].outchannels);
@@ -4404,23 +4511,28 @@ PsychError PSYCHPORTAUDIOVolume(void)
 		"in order to save computation time.\n\n"
 		"Caution: All volume settings are silently ignored on regular audio devices or master devices "
 		"if audio monitoring mode is active. On a slave device, per-channel volumes would be still applied "
-		"in monitoring mode, but not the masterVolume. This is for efficiency reasons.\n\n"
+		"in monitoring mode, but not the masterVolume. This is for efficiency reasons. If you need volume "
+		"settings in monitoring mode, then open a master device, attach a slave device to it in monitoring "
+		"mode, then set the 'channelVolumes' of that slave device to control volume of monitoring.\n\n"
 		"Caution: The volume settings only affect what is sent to your computers sound system. The "
 		"operating system or audio hardware itself may apply additional volume settings, gains, filters "
 		"etc., depending on your specific setup. These are only controllable via external system specific tools, "
 		"PsychPortAudio doesn't know about such additional settings and can't control them in any way!\n\n"
 		"If you need to modulate output volume over time, you can also attach an additional slave "
-		"device to a master device, whose opMode is set to act as a AMmodulator (see help for 'OpenSlave'). "
+		"device whose opMode is set to act as an AMmodulator to a master or slave device, see help for 'OpenSlave'. "
 		"Such a slave device will not output sound itself, but use the data stored in its playback "
-		"buffers to modulate the amplitude of the summed signal of all previously attached slaves "
-		"over time. Example: You create a master device, then 'OpenSlave' three regular slave "
+		"buffers to modulate the amplitude of its parent slave, or of the summed signal of all previously "
+		"attached slaves for a master over time. Example: You create a master device, then 'OpenSlave' three regular slave "
 		"devices, then 'OpenSlave' a AMmodulator slave device. During playback, the sound signals "
-		"of the three regular slaves would be mixed together. The combined signal would be multiplied "
+		"of the three regular slaves will be mixed together. The combined signal will be multiplied "
 		"by the per-sample volume values provided by the AMmodulator slave device, thereby modulating "
-		"the amplitude or ''acoustic envelope'' of the mixed signals. The resulting signal would be "
+		"the amplitude or ''acoustic envelope'' of the mixed signals. The resulting signal will be "
 		"played by the master device. If you'd attach more regular slave devices after the AMmodulator, "
 		"their signal would not get modulated, but simply added to the modulated signal of the first "
-		"three devices.\n\n";
+		"three devices.\n\n"
+		"You can also modulate only the signals of a specific slave device, by attaching the modulator "
+		"to that slave device in the 'OpenSlave' call. You'd simply pass the handle of the slave that "
+		"should be modulated to 'OpenSlave', instead of the handle of a master device.\n\n";
 
 	static char seeAlsoString[] = "Open ";	 
 	
