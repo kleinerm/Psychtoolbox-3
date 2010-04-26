@@ -384,6 +384,14 @@ psych_bool PsychCheckScreenSettingsLock(int screenNumber)
 /* Because capture and lock will always be used in conjuction, capture calls lock, and SCREENOpenWindow must only call Capture and Release */
 void PsychCaptureScreen(int screenNumber)
 {    
+	// Hack hack hack! This special screenNumber == -1 setting with kPsychUseBeampositionQueryWorkaround
+	// enables the workaround as a shortcut, bypassing the regular route via PsychTestDDrawBeampositionQueries().
+	// This is called solely from within PsychFlipWindowBuffers() as a last resort auto-workaround:
+	if ((screenNumber == -1) && (PsychPrefStateGet_ConserveVRAM() & kPsychUseBeampositionQueryWorkaround)) {
+		enableVBLBeamposWorkaround = TRUE;
+		return;
+	}
+
     if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
     // For now, this is a "No operation" on Windows. Don't know if facilities for
     // capturing the screen exist or are necessary at all. There's a SetCapture() call

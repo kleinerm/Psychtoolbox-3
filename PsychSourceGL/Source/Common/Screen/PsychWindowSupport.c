@@ -2547,23 +2547,47 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 			// insane OS on earth: Check for impossible beamposition values although
 			// we've already verified correct working of the queries during startup.
 			if ((*beamPosAtFlip < 0) || (*beamPosAtFlip > vbl_endline)) {
-				// Ok, this is completely foo-bared.
-				if (verbosity > 0) {
-					printf("PTB-ERROR: Beamposition query after flip returned the *impossible* value %i (Valid would be between zero and %i)!!!\n", *beamPosAtFlip, (int) vbl_endline);
-					printf("PTB-ERROR: This is a severe malfunction, indicating a bug in your graphics driver. Will disable beamposition queries from now on.\n");
-					if ((PSYCH_SYSTEM == PSYCH_OSX) && (vbltimestampmode == 1)) { 
-						printf("PTB-ERROR: As this is MacOS/X, i'll switch to a (potentially slightly less accurate) mechanism based on vertical blank interrupts...\n");
+				// Was the workaround for this bug already enabled?
+				if (!(PsychPrefStateGet_ConserveVRAM() & kPsychUseBeampositionQueryWorkaround) && (PSYCH_SYSTEM == PSYCH_WINDOWS)) {
+					// Workaround not yet enabled. Let's enable the workaround now, give a more
+					// mild warning for this invocation of Flip and see if the workaround prevents
+					// future malfunctions. If not, the if()->then() branch will catch it again in
+					// next invocation and trigger an emergency shutdown of beampos timestamping.
+					
+					// Force workaround on: Hack hack hack - An ugly call to force it on on MS-Windows.
+					// We hijack PsychCaptureScreen() for this purpose with special flag -1:
+					PsychPrefStateSet_ConserveVRAM(PsychPrefStateGet_ConserveVRAM() | kPsychUseBeampositionQueryWorkaround);
+					PsychCaptureScreen(-1);
+
+					if (verbosity > 0) {
+						printf("PTB-WARNING: Beamposition query after flip returned the *impossible* value %i (Valid would be between zero and %i)!!!\n", *beamPosAtFlip, (int) vbl_endline);
+						printf("PTB-WARNING: This is a severe malfunction, indicating a bug in your graphics driver. Our startup test should have\n");
+						printf("PTB-WARNING: caught this and a workaround should have been enabled. Apparently we missed this. Will enable workaround\n");
+						printf("PTB-WARNING: now and see if it helps for future flips.\n");
+						printf("PTB-WARNING: Read 'help Beampositionqueries' for further information on how to enable this workaround manually for\n");
+						printf("PTB-WARNING: future sessions to avoid this warning.\n\n");
 					}
-					else {
-						printf("PTB-ERROR: Timestamps returned by Flip will be correct, but less robust and accurate than they would be with working beamposition queries.\n");
-					}
-					printf("PTB-ERROR: It's strongly recommended to update your graphics driver and optionally file a bug report to your vendor if that doesn't help.\n");
-					printf("PTB-ERROR: Read 'help Beampositionqueries' for further information.\n");
 				}
-				
-				// Mark vbl endline as invalid, so beampos is not used anymore for future flips.
-				windowRecord->VBL_Endline = -1;
-				
+				else {
+					// Workaround enabled and still this massive beampos failure?!? Or a non-Windows system?
+					// Ok, this is completely foo-bared.
+					if (verbosity > 0) {
+						printf("PTB-ERROR: Beamposition query after flip returned the *impossible* value %i (Valid would be between zero and %i)!!!\n", *beamPosAtFlip, (int) vbl_endline);
+						printf("PTB-ERROR: This is a severe malfunction, indicating a bug in your graphics driver. Will disable beamposition queries from now on.\n");
+						if ((PSYCH_SYSTEM == PSYCH_OSX) && (vbltimestampmode == 1)) { 
+							printf("PTB-ERROR: As this is MacOS/X, i'll switch to a (potentially slightly less accurate) mechanism based on vertical blank interrupts...\n");
+						}
+						else {
+							printf("PTB-ERROR: Timestamps returned by Flip will be correct, but less robust and accurate than they would be with working beamposition queries.\n");
+						}
+						printf("PTB-ERROR: It's strongly recommended to update your graphics driver and optionally file a bug report to your vendor if that doesn't help.\n");
+						printf("PTB-ERROR: Read 'help Beampositionqueries' for further information.\n");
+					}
+					
+					// Mark vbl endline as invalid, so beampos is not used anymore for future flips.
+					windowRecord->VBL_Endline = -1;
+				}
+
 				// Create fake beampos value for this invocation of Flip so we return an ok timestamp:
 				*beamPosAtFlip = vbl_startline;
 			}
