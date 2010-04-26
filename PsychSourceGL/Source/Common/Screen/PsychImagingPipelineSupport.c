@@ -761,13 +761,22 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			// We need a new, private bounce-buffer:
 			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0)) {
 				// Failed!
-				PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 3 of imaging pipeline.");
+				PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 3 of imaging pipeline [1st bounce buffer].");
 			}
 			
 			windowRecord->preConversionFBO[2] = fbocount;
 			fbocount++;				
 		}
-	}		
+		
+		// In any case, we need a new private 2nd bounce buffer for the special case of the final processing chain:
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0)) {
+			// Failed!
+			PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 3 of imaging pipeline [2nd bounce buffer].");
+		}
+		
+		windowRecord->preConversionFBO[3] = fbocount;
+		fbocount++;
+	}
 
 	// If dualwindow output is requested and preConversionFBO[1] isn't assigned yet,
 	// we set it to the same FBO as preConversionFBO[0], so the image data of our one
@@ -803,7 +812,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		printf("PTB-DEBUG: Buffer mappings follow...\n");
 		printf("fboCount = %i\n", windowRecord->fboCount);
 		printf("finalizedFBO = %i, %i\n", windowRecord->finalizedFBO[0], windowRecord->finalizedFBO[1]);
-		printf("preConversionFBO = %i, %i, %i\n", windowRecord->preConversionFBO[0], windowRecord->preConversionFBO[1], windowRecord->preConversionFBO[2]);
+		printf("preConversionFBO = %i, %i, %i, %i\n", windowRecord->preConversionFBO[0], windowRecord->preConversionFBO[1], windowRecord->preConversionFBO[2], windowRecord->preConversionFBO[3]);
 		printf("processedDrawBufferFBO = %i %i %i\n", windowRecord->processedDrawBufferFBO[0], windowRecord->processedDrawBufferFBO[1], windowRecord->processedDrawBufferFBO[2]);
 		printf("inputBufferFBO = %i %i \n", windowRecord->inputBufferFBO[0], windowRecord->inputBufferFBO[1]);
 		printf("drawBufferFBO = %i %i \n", windowRecord->drawBufferFBO[0], windowRecord->drawBufferFBO[1]);
@@ -2356,7 +2365,8 @@ psych_bool PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hoo
 	PtrPsychHookFunction hookfunc;
 	int i=0;
 	int pendingFBOpingpongs = 0;
-	PsychFBO *mysrcfbo1, *mysrcfbo2, *mydstfbo, *mynxtfbo; 
+	PsychFBO *mysrcfbo1, *mysrcfbo2, *mydstfbo, *mynxtfbo;
+	PsychFBO **bouncefbo2;
 	psych_bool gfxprocessing;
 	GLint restorefboid = 0;
 	psych_bool scissor_ignore = FALSE;
@@ -2388,12 +2398,28 @@ psych_bool PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hoo
 
 	if (gfxprocessing) {
 		// Prepare gfx-processing:
+		
+		// Slightly ugly, because it is a layering violation, but kind'a unavoidable,
+		// as the final output formatting blit chain is a special case...
+		// Assign bouncefbo2 if it is available and needed, otherwise assign dstfbo:
+		// It is available if preConversionFBO[3]>=0. It is needed if pendingFBOpingpongs > 1
+		// and this is one of the final output formatting blit chains. Other chains don't need
+		// this special treatment with a 2nd bounce buffer:
+		if ((windowRecord->preConversionFBO[3]>=0) && (pendingFBOpingpongs > 1) &&
+			(hookId == kPsychFinalOutputFormattingBlit || hookId == kPsychFinalOutputFormattingBlit0 || hookId == kPsychFinalOutputFormattingBlit1)) {
+				// Assign special 2nd bounce buffer:
+				bouncefbo2 = &(windowRecord->fboTable[windowRecord->preConversionFBO[3]]);
+		}
+		else {
+				// Standard case, dstfbo acts as final target and as 2nd bounce buffer if needed for multi-slot chains:
+				bouncefbo2 = dstfbo;
+		}
 
 		// Backup scissoring state:
 		scissor_enabled = glIsEnabled(GL_SCISSOR_TEST);
 		
 		// If this is a multi-pass chain we'll need a bounce buffer FBO:
-		if ((pendingFBOpingpongs > 0 && bouncefbo == NULL) || (pendingFBOpingpongs > 1 && ((*dstfbo)->fboid == 0))) {
+		if ((pendingFBOpingpongs > 0 && bouncefbo == NULL) || (pendingFBOpingpongs > 1 && ((*bouncefbo2)->fboid == 0))) {
 			printf("PTB-ERROR: Hook processing chain '%s' is a multi-pass processing chain with %i passes,\n", PsychHookPointNames[hookId], pendingFBOpingpongs + 1);
 			printf("PTB-ERROR: but imaging pipeline is not configured for multi-pass processing! You need to supply the additional flag\n");
 			printf("PTB-ERROR: %s as imagingmode to Screen('OpenWindow') to tell PTB about these requirements and then restart.\n\n",
@@ -2407,7 +2433,7 @@ psych_bool PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hoo
 			// destination fbo in first pass.
 			mysrcfbo1 = *srcfbo1;
 			mysrcfbo2 = (srcfbo2) ? *srcfbo2 : NULL;
-			mydstfbo  = *dstfbo;
+			mydstfbo  = *bouncefbo2;
 			mynxtfbo  = (bouncefbo) ? *bouncefbo : NULL;
 		}
 		else {
@@ -2415,9 +2441,13 @@ psych_bool PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hoo
 			mysrcfbo1 = *srcfbo1;
 			mysrcfbo2 = (srcfbo2) ? *srcfbo2 : NULL;
 			mydstfbo  = (bouncefbo) ? *bouncefbo : NULL;
-			mynxtfbo  = *dstfbo;
+			mynxtfbo  = *bouncefbo2;
 		}
-				
+
+		// Special case: If this is the last processing slot, aka pendingFBOpingpongs == 0,
+		// then mydstfbo must be our real destination framebuffer:
+		if (pendingFBOpingpongs == 0) mydstfbo = *dstfbo;
+
 		// Enable associated GL context:
 		PsychSetGLContext(windowRecord);
 		
@@ -2470,8 +2500,12 @@ psych_bool PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hoo
 			}
 			else {
 				// Odd number of ping-pongs remaining.
-				mynxtfbo  = *dstfbo;
+				mynxtfbo  = *bouncefbo2;
 			}
+			
+			// Special case: If this is the last processing slot, aka pendingFBOpingpongs == 0,
+			// then mydstfbo must be our real destination framebuffer:
+			if (pendingFBOpingpongs == 0) mydstfbo = *dstfbo;
 			
 			if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: SWAPPING PING-PONG FBOS, %i swaps pending...\n", pendingFBOpingpongs);
 			

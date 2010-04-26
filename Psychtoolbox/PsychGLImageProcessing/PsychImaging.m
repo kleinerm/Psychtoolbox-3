@@ -684,6 +684,8 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %             Also support a new 'General' task 'UseDataPixx'. (MK)
 % 04.03.2010  Bugfixes and workarounds to 'ColorCorrection' setup code. (MK)
 %
+% 26.04.2010  Disable workarounds from 04.03.2010, as Screen() is fixed now. (MK)
+%
 
 persistent configphase_active;
 persistent reqs;
@@ -2152,10 +2154,10 @@ if ~isempty(floc)
             if ~icmformatting_downstream
                 % Ok, shader is our final color correction shader, properly
                 % setup. Attach it to proper chain:
-                % HACK FIXME BUG: 'AllViews' -> Move back to
+                % MK Resolved 26.4.2010: HACK FIXME BUG: 'AllViews' -> Move back to
                 % 'FinalFormatting' below, once Screens() pipeline is
                 % fixed!!
-                if mystrcmp(reqs{row, 1}, 'LeftView') || mystrcmp(reqs{row, 1}, 'AllViews')
+                if mystrcmp(reqs{row, 1}, 'LeftView') %|| mystrcmp(reqs{row, 1}, 'AllViews')
                     % Need to attach to left view:
                     if leftcount > 0
                         % Need a bufferflip command:
@@ -2177,10 +2179,10 @@ if ~isempty(floc)
                     rightcount = rightcount + 1;
                 end
 
-                % HACK FIXME BUG: 'AllViews' -> Move back to
+                % MK Resolved 26.4.2010: HACK FIXME BUG: 'AllViews' -> Move back to
                 % 'FinalFormatting' below, once Screens() pipeline is
                 % fixed!!
-                if mystrcmp(reqs{row, 1}, 'FinalFormatting') %|| mystrcmp(reqs{row, 1}, 'AllViews')                    
+                if mystrcmp(reqs{row, 1}, 'FinalFormatting') || mystrcmp(reqs{row, 1}, 'AllViews')                    
                     % Need to attach to final formatting:
                     if ~handlebitspluplus && ~handlebrightside
                         % Standard case:

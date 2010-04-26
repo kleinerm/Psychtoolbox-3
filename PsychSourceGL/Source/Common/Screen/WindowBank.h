@@ -66,7 +66,7 @@ TO DO:
 #define MAX_SCREEN_HOOKS 17
 
 // Maximum number of slots in windowRecords fboTable:
-#define MAX_FBOTABLE_SLOTS 2+2+3+3+2
+#define MAX_FBOTABLE_SLOTS 2+2+3+4+2
 
 // Type of hook function attached to a specific hook chain slot:
 #define kPsychShaderFunc	0
@@ -327,8 +327,8 @@ typedef struct _PsychWindowRecordType_{
 																	// 0=Left eye (or mono) channel, 1=Right eye channel, 2=Temporary bounce buffer for iterative
 																	// multi-pass processing. These provide the input for the stereo merger in stereo modes that
 																	// require merging of the two views, e.g., anaglyph stereo.
-	int						preConversionFBO[3];					// preConversion FBO's: FBO zero/one are the targets for any stereo merge operations. FBO two is
-																	// (optionally) a temporary bounce buffer for multipass post processing.
+	int						preConversionFBO[4];					// preConversion FBO's: FBO zero/one are the targets for any stereo merge operations. FBO two and three are
+																	// (optionally) temporary bounce buffers for multipass post processing.
 	int						finalizedFBO[2];						// This is the final framebuffer: Usually the system backbuffer, but could be something special.
 
 	PsychFBO*				fboTable[MAX_FBOTABLE_SLOTS];			// This array contains pointers to the FBO structs which are referenced by the indices above.
