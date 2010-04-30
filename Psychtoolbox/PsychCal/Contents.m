@@ -8,6 +8,7 @@
 %   CalibrateAmbDrvr    - Common code called by monitor calibration programs.  Script.
 %   CalibrateFitGamma   - Fit the gamma function to the calibration measurements.
 %   CalibrateFitLinMod  - Fit the linear model to spectral calibration data.
+%   CalibrateFitYoked   - Fit a very special kind of yoked calibration data.
 %   CalibrateMonDrvr    - Common code called by monitor calibration programs.  Script.
 %   CalibrateMonitorPhotometer - Manual calibration procedure for use with manually controlled photometers.
 %   CalibrateMonSpd     - Run standard monitor spectral calibration.  Script.
@@ -42,7 +43,8 @@
 %   PrimaryToSensor     - Convert from primary to sensor coordinates.
 %   PrimaryToSettings   - Convert from primary coordinates to device settings.
 %   RefitCalGamma       - Refit the gamma data in a monitor calibration file.  Script.
-%   RefitCalLinMod      - Refit primary spectral linear model in calibration file.  Scrip.
+%   RefitCalLinMod      - Refit primary spectral linear model in calibration file.  Script.
+%   RefitCalYoked       - Refit linear model to match yoked [a,a,a] measurements. Script.
 %   SaveCalFile         - Save calibration data.
 %   SearchGammaTable     - Subroutine for GamutToSettings.
 %   SensorToCyl         - Convert from sensor to cylindrical coordinates.
