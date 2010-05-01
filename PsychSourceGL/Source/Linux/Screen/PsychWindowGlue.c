@@ -40,6 +40,10 @@
 // Number of currently open onscreen windows:
 static int x11_windowcount = 0;
 
+// Typedef and fcn-pointer for optional Mesa get swap interval call:
+typedef int (*PFNGLXGETSWAPINTERVALMESAPROC)(void);
+PFNGLXGETSWAPINTERVALMESAPROC glXGetSwapIntervalMESA = NULL;
+
 /** PsychRealtimePriority: Temporarily boost priority to highest available priority on Linux.
     PsychRealtimePriority(true) enables realtime-scheduling (like Priority(>0) would do in Matlab).
     PsychRealtimePriority(false) restores scheduling to the state before last invocation of PsychRealtimePriority(true),
@@ -489,6 +493,24 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   fflush(NULL);
 
   // Check for availability of VSYNC extension:
+  
+  // First we try if the MESA variant of the swap control extensions is available. It has two advantages:
+  // First, it also provides a function to query the current swap interval. Second it allows to set a
+  // zero swap interval to dynamically disable sync to retrace, just as on OS/X and Windows:
+  if (strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_MESA_swap_control")) {
+	// Bingo! Bind Mesa variant of setup call to sgi setup call, just to simplify the code
+	// that actually uses the setup call -- no special cases or extra code needed there :-)
+	// This special glXSwapIntervalSGI() call will simply accept an input value of zero for
+	// disabling vsync'ed bufferswaps as a valid input parameter:
+	glXSwapIntervalSGI = glXGetProcAddressARB("glXSwapIntervalMESA");
+	
+	// Additionally bind the Mesa query call:
+	glXGetSwapIntervalMESA = (PFNGLXGETSWAPINTERVALMESAPROC) glXGetProcAddressARB("glXGetSwapIntervalMESA");
+  }
+  else {
+	// Unsupported. Disable the get call:
+	glXGetSwapIntervalMESA = NULL;
+  }
 
   // Special case: Buggy ATI driver: Supports the VSync extension and glXSwapIntervalSGI, but provides the
   // wrong extension namestring "WGL_EXT_swap_control" (from MS-Windows!), so GLEW doesn't auto-detect and
@@ -500,7 +522,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
   // Extension finally supported?
   if (glXSwapIntervalSGI==NULL || ( strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_SGI_swap_control")==NULL &&
-	  strstr(glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control")==NULL )) {
+	  strstr(glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control")==NULL && strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_MESA_swap_control")==NULL )) {
 	  // No, total failure to bind extension:
 	  glXSwapIntervalSGI = NULL;
 	  printf("PTB-WARNING: Your graphics driver doesn't allow me to control syncing wrt. vertical retrace!\n");
@@ -681,6 +703,8 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 /* Enable/disable syncing of buffer-swaps to vertical retrace. */
 void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterval)
 {
+  int error, myinterval;
+
   // Enable rendering context of window:
   PsychSetGLContext(windowRecord);
 
@@ -689,10 +713,21 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
 
   // Try to set requested swapInterval if swap-control extension is supported on
   // this Linux machine. Otherwise this will be a no-op...
-  // if (glXSetSwapIntervalMESA)
+  if (glXSwapIntervalSGI) {
+	  error = glXSwapIntervalSGI(swapInterval);
+	  if (error) {
+		  if (PsychPrefStateGet_Verbosity()>1) printf("\nPTB-WARNING: FAILED to %s synchronization to vertical retrace!\n\n", (swapInterval > 0) ? "enable" : "disable");
+	  }
+  }
 
-  if (glXSwapIntervalSGI) glXSwapIntervalSGI(swapInterval);
-
+  // If Mesa query is supported, double-check if the system accepted our settings:
+  if (glXGetSwapIntervalMESA) {
+	  myinterval = glXGetSwapIntervalMESA();
+	  if (myinterval != swapInterval) {
+		  if (PsychPrefStateGet_Verbosity()>1) printf("\nPTB-WARNING: FAILED to %s synchronization to vertical retrace (System ignored setting [Req %i != Actual %i])!\n\n", (swapInterval > 0) ? "enable" : "disable", swapInterval, myinterval);
+	  }
+  }
+  
   return;
 }
 
