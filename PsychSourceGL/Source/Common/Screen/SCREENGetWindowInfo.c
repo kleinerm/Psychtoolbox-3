@@ -167,6 +167,8 @@ static char synopsisString[] =
 	"LastVBLTimeOfFlip: VBL timestamp of last finished Screen('Flip') operation.\n"
 	"TimeAtSwapRequest: Timestamp taken prior to submission of the low-level swap command. Useful for micro-benchmarking.\n"
 	"TimePostSwapRequest: Timestamp taken after submission of the low-level swap command. Useful for micro-benchmarking.\n"
+	"VBLTimePostFlip: Optional flip completion timestamp from VBLANK timestamping. Useful for micro-benchmarking.\n"
+	"OSSwapTimestamp: Optional flip completion timestamp from OS-Builtin timestamping. Useful for micro-benchmarking.\n"
 	"GPULastFrameRenderTime: Duration of all rendering operations in the last frame, as measured by GPU, if infoType 5 was used.\n"
 	"RawSwapTimeOfFlip: Raw (uncorrected by high-precision timestamping) timestamp of last finished Screen('Flip') operation.\n"
 	"LastVBLTime: System time when last vertical blank happened, or the same as "
@@ -207,12 +209,12 @@ static char seeAlsoString[] = "OpenWindow, Flip, NominalFrameRate";
 PsychError SCREENGetWindowInfo(void) 
 {
     const char *FieldNames[]={ "Beamposition", "LastVBLTimeOfFlip", "LastVBLTime", "VBLCount", "TimeAtSwapRequest", "TimePostSwapRequest", "RawSwapTimeOfFlip",
-							   "GPULastFrameRenderTime", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "FlipCount", "StereoDrawBuffer",
+							   "VBLTimePostFlip", "OSSwapTimestamp", "GPULastFrameRenderTime", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "FlipCount", "StereoDrawBuffer",
 							   "GuesstimatedMemoryUsageMB", "VBLStartline", "VBLEndline", "VideoRefreshFromBeamposition", "GLVendor", "GLRenderer", "GLVersion", "GPUCoreId", 
 							   "GLSupportsFBOUpToBpc", "GLSupportsBlendingUpToBpc", "GLSupportsTexturesUpToBpc", "GLSupportsFilteringUpToBpc", "GLSupportsPrecisionColors",
 							   "GLSupportsFP32Shading", "BitsPerColorComponent", "IsFullscreen", "SpecialFlags", "SwapGroup", "SwapBarrier" };
 							   
-	const int  fieldCount = 33;
+	const int  fieldCount = 35;
 	PsychGenericScriptType	*s;
 
     PsychWindowRecordType *windowRecord;
@@ -395,6 +397,12 @@ PsychError SCREENGetWindowInfo(void)
 
 		// Timestamp immediately after call to PsychOSFlipWindowBuffers() returns, i.e., time at swap request submission completion:
 		PsychSetStructArrayDoubleElement("TimePostSwapRequest", 0, windowRecord->time_post_swaprequest, s);
+
+		// Timestamp immediately after call to PsychOSFlipWindowBuffers() returns, i.e., time at swap request submission completion:
+		PsychSetStructArrayDoubleElement("VBLTimePostFlip", 0, windowRecord->postflip_vbltimestamp, s);
+
+		// Timestamp immediately after call to PsychOSFlipWindowBuffers() returns, i.e., time at swap request submission completion:
+		PsychSetStructArrayDoubleElement("OSSwapTimestamp", 0, windowRecord->osbuiltin_swaptime, s);
 
 		// Result from last GPU rendertime query as triggered by infoType 5: Zero if undefined.
 		PsychSetStructArrayDoubleElement("GPULastFrameRenderTime", 0, windowRecord->gpuRenderTime, s);

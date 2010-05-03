@@ -281,7 +281,7 @@ typedef struct _PsychWindowRecordType_{
         psych_bool                              auxbuffer_dirty[2];     // MK: State of auxbuffers 0 and 1: Dirty or not? (For stereo algs.)
         int                                     nrIFISamples;           // MK: nrIFISamples and IFIRunningSum are used to calculate an
         double                                  IFIRunningSum;          // MK: accurate estimate of the real interframe interval (IFI) in Flip.
-		double                                  time_at_last_vbl;       // MK: Timestamp (system-time) at last VBL detected by Flip.
+		double                                  time_at_last_vbl;       // MK: Timestamp (system-time) at last VBL detected by Flip. This is the same as a returned vbltimestamp of stimulus onset from 'Flip'
         double                                  VideoRefreshInterval;   // MK: Estimated video refresh interval of display. Can be different to IFI.
 		double									ifi_beamestimate;		// MK: Yet another video refresh estimate, based on beamposition method (or 0 if invalid).
         int                                     VBL_Endline;            // MK: Estimated scanline which marks end of VBL area.
@@ -293,6 +293,8 @@ typedef struct _PsychWindowRecordType_{
 		double									rawtime_at_swapcompletion; // Raw timestamp of swapcompletion (result without high-precision timestamping).
 		double									time_at_swaprequest;	// Timestamp taken immediately before call to PsychOSFlipWindowBuffers(); - Before swaprequest submission.
 		double									time_post_swaprequest;  // Timestamp taken immediately after call PsychOSFlipWindowBuffers();
+		double									postflip_vbltimestamp;	// Optional timestamp taken after flip completion via PsychGetVBLTimeAndCount();
+		double									osbuiltin_swaptime;		// Optional timestamp of swap completion computed via PsychOSGetSwapCompletionTimestamp();
 		double									gpuRenderTime;			// GPU time spent on rendering. Only returned if a query object is successfully generated.
 		GLint									gpuRenderTimeQuery;		// Handle to the GPU time query object. 0 if none assigned.
 		psych_int64								reference_ust;			// UST reference timestamp of vblank with count reference_msc from OpenML. (Optional)

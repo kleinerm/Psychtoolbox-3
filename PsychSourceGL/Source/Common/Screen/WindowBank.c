@@ -337,6 +337,9 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	(*winRec)->reference_ust = 0;
 	(*winRec)->reference_msc = 0;
 	(*winRec)->reference_sbc = 0;
+	(*winRec)->osbuiltin_swaptime = 0.0;
+	// ...and other timing values:
+	(*winRec)->postflip_vbltimestamp = -1.0;
 
 	return;
 }

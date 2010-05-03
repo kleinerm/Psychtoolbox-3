@@ -964,9 +964,12 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
       printf("PTB-INFO: VBL startline = %i , VBL Endline = %i\n", (int) vbl_startline, VBL_Endline);
       if (ifi_beamestimate>0) {
           printf("PTB-INFO: Measured monitor refresh interval from beamposition = %f ms [%f Hz].\n", ifi_beamestimate * 1000, 1/ifi_beamestimate);
-          if (PsychPrefStateGet_VBLTimestampingMode()==3 && (PSYCH_SYSTEM == PSYCH_OSX)) {
-              if (PSYCH_SYSTEM == PSYCH_OSX) printf("PTB-INFO: Will try to use kernel-level interrupts for accurate Flip time stamping.\n");
-			  // if (PsychOSIsDWMEnabled()) printf("PTB-INFO: Windows Vista DWM compositor IS ACTIVE! ALL Flip TIMESTAMPS WILL BE GROSSLY INACCURATE!\n");
+
+		  if (PsychPrefStateGet_VBLTimestampingMode()==4) {
+			  printf("PTB-INFO: Will try to use OS-Builtin %s for accurate Flip timestamping.\n", (PSYCH_SYSTEM == PSYCH_LINUX) ? "OpenML sync control support" : "method");
+		  }
+		  else if ((PsychPrefStateGet_VBLTimestampingMode()==3) && (PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX)) {
+              if (PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX) printf("PTB-INFO: Will try to use kernel-level interrupts for accurate Flip time stamping.\n");
           }
           else {
               if (PsychPrefStateGet_VBLTimestampingMode()>=0) printf("PTB-INFO: Will use beamposition query for accurate Flip time stamping.\n");
@@ -974,9 +977,11 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
           }
       }
       else {
-          if ((PsychPrefStateGet_VBLTimestampingMode()==1 || PsychPrefStateGet_VBLTimestampingMode()==3) && (PSYCH_SYSTEM == PSYCH_OSX)) {
-              if (PSYCH_SYSTEM == PSYCH_OSX) printf("PTB-INFO: Beamposition queries unsupported on this system. Will try to use kernel-level vbl interrupts as fallback.\n");
-			  // if (PsychOSIsDWMEnabled()) printf("PTB-INFO: Beamposition queries unsupported on this system. Will try to use Windows Vista DWM compositor timestamps as fallback.\n");
+		  if (PsychPrefStateGet_VBLTimestampingMode()==4) {
+			  printf("PTB-INFO: Will try to use OS-Builtin %s for accurate Flip timestamping.\n", (PSYCH_SYSTEM == PSYCH_LINUX) ? "OpenML sync control support" : "method");
+		  }
+		  else if ((PsychPrefStateGet_VBLTimestampingMode()==1 || PsychPrefStateGet_VBLTimestampingMode()==3) && (PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX)) {
+              if (PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX) printf("PTB-INFO: Beamposition queries unsupported on this system. Will try to use kernel-level vbl interrupts as fallback.\n");
           }
           else {
               printf("PTB-INFO: Beamposition queries unsupported or defective on this system. Using basic timestamping as fallback: Timestamps returned by Screen('Flip') will be less robust and accurate.\n");
@@ -1986,7 +1991,7 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 /*
     PsychFlipWindowBuffers()
     
-    Flip front and back buffers in sync with vertical retrace (VBL) and sync Matlab to VBL.
+    Flip front and back buffers in sync with vertical retrace (VBL) and sync thread execution to VBL.
     Returns various timestamps related to sync to VBL, so experimenters can check proper
     syncing and presentation timing by themselves. Also contains an automatic "skipped frames"
     /"missed presentation deadline" detector, which is pretty reliable.
@@ -2009,6 +2014,27 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
     time_at_onset = Estimated time when stimulus onset, aka end of VBL, aka beamposition==0 occurs.
     time_at_flipend = Timestamp taken shortly before return of FlipWindowBuffers for benchmarking.
  
+	Notes:
+	
+	The type of timestamping used depends on the 'VBLTimestampingMode' preference setting. Specific numbers
+	select specific strategies. If a strategy is unsupported or found to be defective, a fallback strategy is
+	tried and so on.
+	
+	Mode 4: Use OS-Builtin wait-for-swap-completion and timestamping if supported. On Linux this would be OpenML OML_sync_control.
+	Mode 3: Use VBLANK IRQ timestamping - on Linux with OpenML or OS/X.
+	Mode 2: Use mode 1 and 3 with consistency checking among both.
+	Mode 1: Use beamposition timestamping.
+	Mode 0: Use beamposition timestamping, but no VBLANK timestamping.
+	Mode -1: Use raw timestamps.
+	
+	Fallback sequence, assuming mode 1, 2 or 4 is:
+
+	4:   OS-Builtin (e.g., OpenML) --> Beamposition --> VBLANK --> Raw.
+	3:   VBLANK --> Raw.
+	2,1: Beamposition --> VBLANK --> Raw.
+	0:   Beamposition --> Raw.
+	-1:  Raw.
+
 */
 double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip, int vbl_synclevel, int dont_clear, double flipwhen, int* beamPosAtFlip, double* miss_estimate, double* time_at_flipend, double* time_at_onset)
 {
@@ -2605,8 +2631,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		}
 		
         // Run kernel-level timestamping always in modes 2 and 3 or on demand in mode 1 if beampos.
-        // queries don't work properly:
-        if ((vbltimestampmode != 4) && (vbltimestampmode > 1 || (vbltimestampmode == 1 && windowRecord->VBL_Endline == -1))) {
+        // queries don't work properly or mode 4 if both beampos timestamping and OS-Builtin timestamping
+		// doesn't work correctly:
+        if ((vbltimestampmode == 2) || (vbltimestampmode == 3) || (vbltimestampmode == 1 && windowRecord->VBL_Endline == -1) || (vbltimestampmode == 4 && swap_msc < 0 && windowRecord->VBL_Endline == -1)) {
 			
 			// Preinit to no DWM timestamps:
 			dwmrc = FALSE;
@@ -2763,7 +2790,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // Beamposition queries unavailable!
             
             // Shall we fall-back to kernel-level query?
-            if ((vbltimestampmode==1 || vbltimestampmode==2) && preflip_vbltimestamp > 0) {
+            if ((vbltimestampmode==1 || vbltimestampmode==2 || vbltimestampmode==4) && preflip_vbltimestamp > 0) {
                 // Yes: Use fallback result:
                 time_at_vbl = postflip_vbltimestamp;
             }
@@ -2805,7 +2832,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		// was issued while outside the VBL:
 		if ((time_at_vbl < time_at_swaprequest - 0.00005) && ((line_pre_swaprequest > min_line_allowed) && (line_pre_swaprequest < vbl_startline)) && (windowRecord->VBL_Endline != -1) &&
 			((line_post_swaprequest > min_line_allowed) && (line_post_swaprequest < vbl_startline)) && (line_pre_swaprequest <= line_post_swaprequest) &&
-			(vbltimestampmode >= 0) && (vbltimestampmode < 3)) {
+			(vbltimestampmode >= 0) && ((vbltimestampmode < 3) || (vbltimestampmode == 4 && swap_msc < 0 && !osspecific_asyncflip_scheduled))) {
 
 			// Ohoh! Broken timing. Disable beamposition timestamping for future operations, warn user.			
 			if (verbosity > 0) {
@@ -2859,7 +2886,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 			}
 			else {
 				// VBL timestamping didn't deliver results? Because it is not enabled in parallel with beampos queries?
-				if ((vbltimestampmode == 1) && (PSYCH_SYSTEM == PSYCH_OSX)) {
+				if ((vbltimestampmode == 1) && (PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX)) {
 					// Auto fallback enabled, but not if beampos queries appear to be functional. They are
 					// dysfunctional by now, but weren't at swap time, so we can't get any useful data from
 					// kernel level timestamping. However in the next round we should get something. Therefore,
@@ -2904,8 +2931,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 			}
 		}
 		
-		// VBL IRQ based timestamping in charge?
-		if ((PSYCH_SYSTEM == PSYCH_OSX) && ((vbltimestampmode == 3) || (vbltimestampmode > 0 && windowRecord->VBL_Endline == -1))) {
+		// VBL IRQ based timestamping in charge? Either because selected by usercode, or as a fallback for failed/disabled beampos timestamping or OS-Builtin timestamping?
+		if ((PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX) && ((vbltimestampmode == 3) || (vbltimestampmode == 4 && windowRecord->VBL_Endline == -1 && swap_msc < 0) || ((vbltimestampmode == 1 || vbltimestampmode == 2) && windowRecord->VBL_Endline == -1))) {
 			// Yes. Try some consistency checks for that:
 
 			// Some diagnostics at high debug-levels:
@@ -2979,7 +3006,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 			time_at_vbl = tSwapComplete;
 			*time_at_onset = tSwapComplete;
 		}
-		
+
+		// Timestamping finished, final results available!
+
         // Check for missed / skipped frames: We exclude the very first "Flip" after
         // creation of the onscreen window from the check, as deadline-miss is expected
         // in that case:
@@ -2997,6 +3026,12 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
 		// Store raw-timestamp of swap completion, mostly for benchmark purposes:
 		windowRecord->rawtime_at_swapcompletion = time_at_swapcompletion;
+		
+		// Store optional VBL-IRQ timestamp as well:
+		windowRecord->postflip_vbltimestamp = postflip_vbltimestamp;
+		
+		// Store optional OS-Builtin swap timestamp as well:
+		windowRecord->osbuiltin_swaptime = tSwapComplete;
     }
     else {
         // syncing to vbl is disabled, time_at_vbl becomes meaningless, so we set it to a
@@ -3008,6 +3043,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // Invalidate timestamp of last vbl:
         windowRecord->time_at_last_vbl = 0;
 		windowRecord->rawtime_at_swapcompletion = 0;
+		windowRecord->postflip_vbltimestamp = -1;
+		windowRecord->osbuiltin_swaptime = 0;
     }
 
 	// Increment the "flips successfully completed" counter:
