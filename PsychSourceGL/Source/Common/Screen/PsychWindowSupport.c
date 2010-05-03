@@ -2049,7 +2049,14 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	double dwmCompositionRate = 0;
 	int	   dwmrc;
 	unsigned int gpuTimeElapsed;			// Elapsed GPU render time in Nanoseconds.
-	psych_bool flipcondition_satisfied;	
+	psych_bool flipcondition_satisfied;
+	psych_bool osspecific_asyncflip_scheduled = FALSE;		// Set to TRUE if PsychOSScheduleFlipWindowBuffers() has been successfully called.
+	psych_bool must_wait = FALSE;							// Set to TRUE if an active wait is absolutely needed, regardless of os specific flip scheduling.
+	unsigned int targetSwapFlags;
+	double targetWhen;			// Target time for OS-Builtin swap scheduling.
+	double tSwapComplete;		// Swap completion timestamp for OS-Builtin timestamping.
+	psych_int64 swap_msc;		// Swap completion vblank count for OS-Builtin timestamping.
+
     int vbltimestampmode = PsychPrefStateGet_VBLTimestampingMode();
     PsychWindowRecordType **windowRecordArray=NULL;
     int	i;
@@ -2165,8 +2172,129 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	// GPU rendertime query was requested (See Screen('GetWindowInfo', ..); for infoType 5.
 	if (windowRecord->gpuRenderTimeQuery) glEndQuery(GL_TIME_ELAPSED_EXT);
 
+    // Update of hardware gamma table in sync with flip requested?
+    if ((windowRecord->inRedTable) && (windowRecord->loadGammaTableOnNextFlip > 0)) {
+      // Yes! Call the update routine now. It should schedule the actual update for
+      // the same VSYNC to which our bufferswap will lock. "Should" means, we have no
+      // way of checking programmatically if it really worked, only via our normal deadline
+      // miss detector. If we are running under M$-Windows then loading the hw-gamma table
+      // will block our execution until next retrace. Then it will upload the new gamma table.
+      // Therefore we need to disable sync of bufferswaps to VBL, otherwise we would swap only
+      // one VBL after the table update -> out of sync by one monitor refresh!
+      if (PSYCH_SYSTEM==PSYCH_WINDOWS) PsychOSSetVBLSyncLevel(windowRecord, 0);
+      
+      // We need to wait for render-completion here, otherwise hw-gamma table update and
+      // bufferswap could get out of sync due to unfinished rendering commands which would
+      // defer the bufferswap, but not the clut update.
+      glFinish();
+	  
+	  // Pipeline flush done by glFinish(), avoid redundant pipeline flushes:
+	  windowRecord->PipelineFlushDone = TRUE;
+	  
+	  // Make sure the waiting code below is executed, regardless if any special os specific
+	  // methods for swap scheduling are used. We need to emit the gamma table load command
+	  // in the target refresh interval before the expected bufferswap time:
+	  must_wait = TRUE;	  
+    }
+	else {
+		// Need to sync the pipeline, if this special workaround is active to get good timing:
+		if ((PsychPrefStateGet_ConserveVRAM() & kPsychBusyWaitForVBLBeforeBufferSwapRequest) || (windowRecord->specialflags & kPsychBusyWaitForVBLBeforeBufferSwapRequest)) {
+			glFinish();
+
+			// Pipeline flush done by glFinish(), avoid redundant pipeline flushes:
+			windowRecord->PipelineFlushDone = TRUE;
+		}
+	}
+
+	// Make sure the waiting code below is executed, regardless if any special os specific
+	// methods for swap scheduling are used if the special PreSwapBuffersOperations hookchain
+	// is enabled and contains commands. The semantic of this hookchain is to execute immediately
+	// before the bufferswap, so we need to to wait until immediately before the expected swap:
+	if (PsychIsHookChainOperational(windowRecord, kPsychPreSwapbuffersOperations)) must_wait = TRUE;
+
+	// Setup and execution of OS specific swap scheduling mechanisms, e.g., OpenML OML_sync_control
+	// extensions:
+	
+	// Don't use absolute vbl or (divisor,remainder) constraint by default:
+	targetSwapFlags = 0;
+
+	// Swap at a specific video field (even or odd) requested, e.g., to select the target field
+	// in a frame-sequential stereo presentations setup and thereby the specific eye for stimulus
+	// onset?
+	if (windowRecord->targetFlipFieldType != -1) {
+		// Yes. Map it to swapflags: 0/1 maps to 1/2 aka even/odd frame:
+		targetSwapFlags |= (windowRecord->targetFlipFieldType == 0) ? 1 : 2;
+	}
+	
+	// Get reference time:
+	PsychGetAdjustedPrecisionTimerSeconds(&tremaining);
+	
     // Pausing until a specific deadline requested?
-    if (flipwhen>0) {
+    if (flipwhen > 0) {
+		// Make sure the requested onset time is no more than 1000 seconds in the future,
+		// otherwise we assume it is a coding error in usercode:
+		if (flipwhen - tremaining > 1000) {
+			PsychErrorExitMsg(PsychError_user, "\nYou specified a 'when' value to Flip that's over 1000 seconds in the future?!? Aborting, assuming that's an error.\n\n");
+		}
+		
+		// Assign flipwhen as target swap time:
+		targetWhen = flipwhen;
+	}
+	else {
+		// Assign a time 1 second in the past as target swap time, so
+		// an immediate (asap) swap is triggered:
+		targetWhen = tremaining - 1.0;
+	}
+
+	// Emit swap scheduling commands:
+	// These are allowed to fail, due to some error condition or simply because this
+	// function isn't supported on a given platform or configuration. Set our status
+	// flag to TRUE, optimistically assuming it will work out. We reset to FALSE if
+	// any of the involved commands fail:
+	osspecific_asyncflip_scheduled = TRUE;
+
+	// Schedule swap on main window:
+	if (PsychOSScheduleFlipWindowBuffers(windowRecord, targetWhen, 0, 0, 0, targetSwapFlags) < 0) {
+		// Scheduling failed or unsupported!
+		osspecific_asyncflip_scheduled = FALSE;
+	}
+	
+	// Also schedule the slave window, if any and if scheduling so far worked:
+	if ((windowRecord->slaveWindow) && (osspecific_asyncflip_scheduled) && (PsychOSScheduleFlipWindowBuffers(windowRecord->slaveWindow, targetWhen, 0, 0, 0, targetSwapFlags) < 0)) {
+		// Scheduling failed or unsupported!
+		osspecific_asyncflip_scheduled = FALSE;
+		
+		// Big deal here: Because it worked on the master, but failed on the slave, we now
+		// have an inconsistent situation and can't do anything about it, except warn user
+		// of trouble ahead:
+		if (verbosity > 1) {
+			printf("PTB-WARNING: Scheduling a bufferswap on slave window of dual-window pair FAILED after successfull schedule on masterwindow!\n");
+			printf("PTB-WARNING: Expect complete loss of sync between windows and other severe visual- and timing-artifacts!\n");
+		}
+	}
+
+	// Multiflip with vbl-sync requested and scheduling worked so far?
+	if ((multiflip == 1) && (osspecific_asyncflip_scheduled)) {
+		for(i = 0; (i < numWindows) && (osspecific_asyncflip_scheduled); i++) {
+			if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i] != windowRecord)) {
+				if (PsychOSScheduleFlipWindowBuffers(windowRecordArray[i], targetWhen, 0, 0, 0, targetSwapFlags) < 0) {
+					// Scheduling failed or unsupported!
+					osspecific_asyncflip_scheduled = FALSE;
+
+					// Big deal here: Because it worked on the master, but failed on the slave, we now
+					// have an inconsistent situation and can't do anything about it, except warn user
+					// of trouble ahead:
+					if (verbosity > 1) {
+						printf("PTB-WARNING: Scheduling a bufferswap on some secondary window of a multi-window flip operation FAILED after successfull schedule on masterwindow!\n");
+						printf("PTB-WARNING: Expect complete loss of sync between windows and other severe visual- and timing-artifacts!\n");
+					}
+				}
+			}
+		}
+	}
+
+    // Pausing until a specific deadline requested?
+    if (flipwhen > 0) {
         // We shall not swap at next VSYNC, but at the VSYNC immediately following the
         // system time "flipwhen". This is the premium version of the old WaitBlanking... ;-)
         
@@ -2188,7 +2316,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 			// Windows Vista or later system with the DWM enabled. On Vista+DWM, we use
 			// the DWM present API instead (see below) to schedule proper stimulus onset timing:
 			// MK: Override - We do it the oldschool way, the DWM was utterly useless...
-			if (TRUE || !(PsychIsMSVista() && PsychOSIsDWMEnabled()) ) {
+			// if (TRUE || !(PsychIsMSVista() && PsychOSIsDWMEnabled()) ) {
+			if (!osspecific_asyncflip_scheduled || must_wait) {
 				// We force the rendering pipeline to finish all pending OpenGL operations,
 				// so we can be sure that swapping at VBL will be as fast as possible.
 				// Btw: glFlush() is not recommended by Apple, but in this specific case
@@ -2226,31 +2355,6 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     
     // Calculate final deadline for deadline-miss detection:
     tshouldflip = tshouldflip + slackfactor * currentflipestimate;        
-    
-    // Update of hardware gamma table in sync with flip requested?
-    if ((windowRecord->inRedTable) && (windowRecord->loadGammaTableOnNextFlip > 0)) {
-      // Yes! Call the update routine now. It should schedule the actual update for
-      // the same VSYNC to which our bufferswap will lock. "Should" means, we have no
-      // way of checking programmatically if it really worked, only via our normal deadline
-      // miss detector. If we are running under M$-Windows then loading the hw-gamma table
-      // will block our execution until next retrace. Then it will upload the new gamma table.
-      // Therefore we need to disable sync of bufferswaps to VBL, otherwise we would swap only
-      // one VBL after the table update -> out of sync by one monitor refresh!
-      if (PSYCH_SYSTEM==PSYCH_WINDOWS) PsychOSSetVBLSyncLevel(windowRecord, 0);
-      
-      // We need to wait for render-completion here, otherwise hw-gamma table update and
-      // bufferswap could get out of sync due to unfinished rendering commands which would
-      // defer the bufferswap, but not the clut update.
-      glFinish();
-      
-      // Perform hw-table upload on M$-Windows in sync with retrace, wait until completion. On
-      // OS-X just schedule update in sync with next retrace, but continue immediately:
-      PsychLoadNormalizedGammaTable(windowRecord->screenNumber, windowRecord->inTableSize, windowRecord->inRedTable, windowRecord->inGreenTable, windowRecord->inBlueTable);
-    }
-	else {
-		// Need to sync the pipeline, if this special workaround is active to get good timing:
-		if ((PsychPrefStateGet_ConserveVRAM() & kPsychBusyWaitForVBLBeforeBufferSwapRequest) || (windowRecord->specialflags & kPsychBusyWaitForVBLBeforeBufferSwapRequest)) glFinish();
-	}
 
 	// Low level queries to the driver:
 	// We query the timestamp and count of the last vertical retrace. This is needed for
@@ -2266,8 +2370,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		// Query driver:
 		preflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord, &preflip_vblcount);
 		// Check if ready for flip, ie. if the proper even/odd video refresh cycle is approaching or
-		// if we don't care about this:
-		flipcondition_satisfied = (windowRecord->targetFlipFieldType == -1) || (((preflip_vblcount + 1) % 2) == windowRecord->targetFlipFieldType);
+		// if we don't care about this, or if care has been taken already by osspecific_asyncflip_scheduled:
+		flipcondition_satisfied = (windowRecord->targetFlipFieldType == -1) || (((preflip_vblcount + 1) % 2) == windowRecord->targetFlipFieldType) || (osspecific_asyncflip_scheduled && !must_wait);
 		// If in wrong video cycle, we simply sleep a millisecond, then retry...
 		if (!flipcondition_satisfied) PsychWaitIntervalSeconds(0.001);
 	} while (!flipcondition_satisfied);
@@ -2305,7 +2409,10 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	// We also don't allow swap submission in the top area of the video scanout cycle between scanline 1 and
 	// scanline min_line_allowed: Some broken drivers would still execute a swap within this forbidden top area
 	// of the video display although video scanout has already started - resulting in tearing!
-	if ((windowRecord->time_at_last_vbl > 0) && (vbl_synclevel!=2) &&
+	//
+	// Note that this isn't needed if OS specific swap scheduling is used, as that is supposed to take
+	// care of such nuisances - and if it didn't, this wouldn't help anyway ;) :
+	if ((windowRecord->time_at_last_vbl > 0) && (vbl_synclevel!=2) && (!osspecific_asyncflip_scheduled) &&
 		((time_at_swaprequest - windowRecord->time_at_last_vbl < 0.002) || ((line_pre_swaprequest < min_line_allowed) && (line_pre_swaprequest > 0)))) {
 		// Less than 2 msecs passed since last bufferswap, although swap in sync with retrace requested.
 		// Some drivers seem to have a bug where a bufferswap happens anywhere in the VBL period, even
@@ -2380,24 +2487,37 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		}
 	}
 	#endif
-
-    // Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace" and
-    PsychOSFlipWindowBuffers(windowRecord);
 	
-	// Also swap the slave window, if any:
-	if (windowRecord->slaveWindow) PsychOSFlipWindowBuffers(windowRecord->slaveWindow);
-
-    // Multiflip with vbl-sync requested?
-    if (multiflip==1) {
-        //  Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace"
-        //  for all onscreen windows except our primary one:
-        for(i=0;i<numWindows;i++) {
-            if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i]!=windowRecord)) {
-                PsychOSFlipWindowBuffers(windowRecordArray[i]);
-            }
-        }
+    // Update of hardware gamma table in sync with flip requested?
+    if ((windowRecord->inRedTable) && (windowRecord->loadGammaTableOnNextFlip > 0)) {
+		// Perform hw-table upload on M$-Windows in sync with retrace, wait until completion. On
+		// OS-X just schedule update in sync with next retrace, but continue immediately.
+		// See above for code that made sure we only reach this statement immediately prior
+		// to the expected swap time, so this is as properly synced to target retrace as it gets:
+		PsychLoadNormalizedGammaTable(windowRecord->screenNumber, windowRecord->inTableSize, windowRecord->inRedTable, windowRecord->inGreenTable, windowRecord->inBlueTable);
+	}
+	
+	// Only perform a bog-standard bufferswap request if no OS-specific method has been
+	// executed successfully already:
+	if (!osspecific_asyncflip_scheduled) {
+		// Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace" and
+		PsychOSFlipWindowBuffers(windowRecord);
+		
+		// Also swap the slave window, if any:
+		if (windowRecord->slaveWindow) PsychOSFlipWindowBuffers(windowRecord->slaveWindow);
+		
+		// Multiflip with vbl-sync requested?
+		if (multiflip==1) {
+			//  Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace"
+			//  for all onscreen windows except our primary one:
+			for(i=0;i<numWindows;i++) {
+				if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i]!=windowRecord)) {
+					PsychOSFlipWindowBuffers(windowRecordArray[i]);
+				}
+			}
+		}
     }
-    
+	
 	// Take post-swap request line:
 	line_post_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
 
@@ -2410,10 +2530,22 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	
     // Pause execution of application until start of VBL, if requested:
     if (sync_to_vbl) {
-		// Skip our classic sync-token-pixelwrite + glFinish() method etc. on a
-		// composited desktop like Vista's DWM, as it is useless there:
-		// if (!(PsychIsMSVista() && PsychOSIsDWMEnabled())) {
-		if (TRUE) {
+		// Init tSwapComplete to undefined:
+		tSwapComplete = 0;
+		swap_msc = -1;
+
+		// If OS-Builtin optimal timestamping is requested (aka vbltimestampmode 4), try to use it to
+		// get a perfect timestamp. If this either fails or isn't supported on this system configuration,
+		// fallback to regular PTB homegrown strategy:
+		if ((vbltimestampmode == 4) && ((swap_msc = PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &tSwapComplete)) >= 0)) {
+			// Success! OS builtin optimal method provides swap_msc of swap completion and
+			// tSwapComplete timestamp. Nothing to do here for now, but code at end of timestamping
+			// will use this timestamp as override for anything else that got computed.
+			// At return of the method, we know that the swap has completed.
+		}
+		else {
+			// OS-Builtin timestamping failed, is unsupported, or it is disabled by usercode.
+			// Use one of our own home grown wait-for-swapcompletion and timestamping strategies:
 			if ((vbl_synclevel==3) && (windowRecord->VBL_Endline != -1)) {
 				// Wait for VBL onset via experimental busy-waiting spinloop instead of
 				// blocking: We spin-wait until the rasterbeam of our master-display enters the
@@ -2438,17 +2570,17 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 				// This glFinish() will wait until point drawing is finished, ergo backbuffer was ready
 				// for drawing, ergo buffer swap in sync with start of VBL has happened.
 				glFinish();
-			}
-			
-			// At this point, start of VBL on masterdisplay has happened and we can continue execution...
-			
-			// Multiflip without vbl-sync requested?
-			if (multiflip==2) {
-				// Immediately flip all onscreen windows except our primary one:
-				for(i=0;i<numWindows;i++) {
-					if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i]!=windowRecord)) {
-						PsychOSFlipWindowBuffers(windowRecordArray[i]);
-					}
+			}			
+		}
+		
+		// At this point, start of VBL on masterdisplay has happened, the bufferswap has completed and we can continue execution...
+		
+		// Multiflip without vbl-sync requested?
+		if (multiflip==2) {
+			// Immediately flip all onscreen windows except our primary one:
+			for(i=0;i<numWindows;i++) {
+				if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i]!=windowRecord)) {
+					PsychOSFlipWindowBuffers(windowRecordArray[i]);
 				}
 			}
 		}
@@ -2472,9 +2604,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 			PsychWaitUntilSeconds(flipwhen);
 		}
 		
-        // Run kernel-level timestamping always in mode > 1 or on demand in mode 1 if beampos.
+        // Run kernel-level timestamping always in modes 2 and 3 or on demand in mode 1 if beampos.
         // queries don't work properly:
-        if (vbltimestampmode > 1 || (vbltimestampmode == 1 && windowRecord->VBL_Endline == -1)) {
+        if ((vbltimestampmode != 4) && (vbltimestampmode > 1 || (vbltimestampmode == 1 && windowRecord->VBL_Endline == -1))) {
 			
 			// Preinit to no DWM timestamps:
 			dwmrc = FALSE;
@@ -2572,16 +2704,34 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 					// Workaround enabled and still this massive beampos failure?!? Or a non-Windows system?
 					// Ok, this is completely foo-bared.
 					if (verbosity > 0) {
-						printf("PTB-ERROR: Beamposition query after flip returned the *impossible* value %i (Valid would be between zero and %i)!!!\n", *beamPosAtFlip, (int) vbl_endline);
-						printf("PTB-ERROR: This is a severe malfunction, indicating a bug in your graphics driver. Will disable beamposition queries from now on.\n");
-						if ((PSYCH_SYSTEM == PSYCH_OSX) && (vbltimestampmode == 1)) { 
+						if (swap_msc < 0) {
+							// No support for OS-Builtin alternative timestamping, or that mechanism failed.
+							// This is serious:
+							printf("PTB-ERROR: Beamposition query after flip returned the *impossible* value %i (Valid would be between zero and %i)!!!\n", *beamPosAtFlip, (int) vbl_endline);
+							printf("PTB-ERROR: This is a severe malfunction, indicating a bug in your graphics driver. Will disable beamposition queries from now on.\n");
+						}
+						else {
+							// Will use OS-Builtin timestamping anyway and it provided valid results,
+							// so this is rather interesting than worrysome:
+							printf("PTB-INFO: Beamposition query after flip returned the *impossible* value %i (Valid would be between zero and %i)!!!\n", *beamPosAtFlip, (int) vbl_endline);
+							printf("PTB-INFO: This is a malfunction, indicating a bug in your graphics driver. Will disable beamposition queries from now on.\n");
+							printf("PTB-INFO: Don't worry though, as we use a different mechanism for timestamping on your system anyway. This is just our backup that wouldn't work.\n");							
+						}
+						
+						if ((swap_msc >= 0) && (vbltimestampmode == 4)) {
+							printf("PTB-INFO: Will use OS-Builtin timestamping mechanism solely for further timestamping.\n");
+						}
+						else if ((PSYCH_SYSTEM == PSYCH_OSX) && (vbltimestampmode == 1)) { 
 							printf("PTB-ERROR: As this is MacOS/X, i'll switch to a (potentially slightly less accurate) mechanism based on vertical blank interrupts...\n");
 						}
 						else {
 							printf("PTB-ERROR: Timestamps returned by Flip will be correct, but less robust and accurate than they would be with working beamposition queries.\n");
 						}
-						printf("PTB-ERROR: It's strongly recommended to update your graphics driver and optionally file a bug report to your vendor if that doesn't help.\n");
-						printf("PTB-ERROR: Read 'help Beampositionqueries' for further information.\n");
+
+						if (swap_msc < 0) {
+							printf("PTB-ERROR: It's strongly recommended to update your graphics driver and optionally file a bug report to your vendor if that doesn't help.\n");
+							printf("PTB-ERROR: Read 'help Beampositionqueries' for further information.\n");
+						}
 					}
 					
 					// Mark vbl endline as invalid, so beampos is not used anymore for future flips.
@@ -2708,7 +2858,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 				*time_at_onset=time_at_vbl;
 			}
 			else {
-				// VBL timestamping didn't deliver results? Because its not enabled in parallel with beampos queries?
+				// VBL timestamping didn't deliver results? Because it is not enabled in parallel with beampos queries?
 				if ((vbltimestampmode == 1) && (PSYCH_SYSTEM == PSYCH_OSX)) {
 					// Auto fallback enabled, but not if beampos queries appear to be functional. They are
 					// dysfunctional by now, but weren't at swap time, so we can't get any useful data from
@@ -2820,6 +2970,14 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 				time_at_vbl = time_at_swapcompletion;
 				*time_at_onset=time_at_vbl;
 			}			
+		}
+		
+		// Shall OS-Builtin optimal timestamping override all other results (vbltimestampmode 4)
+		// and is it supported and worked successfully?
+		if ((vbltimestampmode == 4) && (swap_msc >= 0)) {
+			// Yes. Override final timestamps with results from OS-Builtin timestamping:
+			time_at_vbl = tSwapComplete;
+			*time_at_onset = tSwapComplete;
 		}
 		
         // Check for missed / skipped frames: We exclude the very first "Flip" after
@@ -4691,6 +4849,31 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 				windowRecord->gfxcaps |= kPsychGfxCapFPBlend16;				
 			}
 		}		
+	}
+	
+	// Check if OpenML extensions for precisely scheduled stimulus onset and onset timestamping are supported:
+	if (glewIsSupported("GLX_OML_sync_control")) {
+		if (verbose) printf("System supports OpenML OML_sync_control extension for high-precision scheduled swaps and timestamping.\n");
+		
+		// As OpenML is currently only supported on GNU/Linux in a rather experimental stage, use of this is an opt-in.
+		// Usercode must set a conserveVRAM flag to enable use of the extension if it is present:
+		// TODO: Reevaluate quality of our implementation and Linux implementation frequently and
+		// find out when it is safe to have this default to ON instead of OFF, or what kind of
+		// auto-detection could be used to decide.
+		if (PsychPrefStateGet_ConserveVRAM() & kPsychOpenMLScheduling) {
+			// Enabled and supported: Use it.
+			windowRecord->gfxcaps |= kPsychGfxCapSupportsOpenML;
+			if (verbose) printf("OpenML OML_sync_control extension enabled for all scheduled swaps.\n");
+			
+			// Perform correctness check and enable all relevant workarounds. We know that OpenML
+			// currently is only supported on Linux/X11 with some DRI2 drivers, and that the shipping
+			// DRI implementation up to and including Linux 2.6.34 does have a limitation that we need to detect
+			// and workaround. Therefore we restrict this test & setup routine to Linux:
+			#if PSYCH_SYSTEM == PSYCH_LINUX
+			// Perform baseline init and correctness check:
+			PsychOSInitializeOpenML(windowRecord);
+			#endif
+		}
 	}
 	
 	if (verbose) printf("PTB-DEBUG: Interrogation done.\n\n");

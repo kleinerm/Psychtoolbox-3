@@ -90,6 +90,7 @@ TO DO:
 #define kPsychGfxCapFBOMultisample 2048		// Hw supports multisampled rendering into FBO's, aka EXT_framebuffer_multisample.
 #define kPsychGfxCapFBOBlit		4096		// Hw supports blitting between FBO's, aka EXT_framebuffer_blit.
 #define kPsychGfxCapNeedsUnsignedByteRGBATextureUpload 8192		// Hw requires use of GL_UNSIGNED_BYTE instead of GL_UNSIGNED_INT_8_8_8_8_REV for optimal RGBA8 texture upload.
+#define kPsychGfxCapSupportsOpenML 16384	// System supports OML_sync_control extension of OpenML for precisely timed bufferswaps and stimulus onset timestamping.
 
 // Definition of flags for imagingMode of Image processing pipeline.
 // These are used internally, but need to be exposed to Matlab as well.
@@ -122,12 +123,13 @@ TO DO:
 // this behaviour on a per-window basis.
 
 #define kPsychIsFullscreenWindow		  4 // 'specialflags' setting 4 means: This is a fullscreen window.
+#define kPsychNeedOpenMLWorkaround1		  8 // 'specialflags' setting 8 means: This needs the special workarounds for slightly broken OpenML sync control ext.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384. --> Flags of 32768 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,1024,S-2048,S-8192, 32768. --> Flags of 65536 and higher are available, as well as 8,16,32,64,128,256,512,4096, 16384
+// 1,2,4,8,1024,S-2048,S-8192, 32768. --> Flags of 65536 and higher are available, as well as 16,32,64,128,256,512,4096, 16384
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*	PtrPsychHookFunction;
@@ -293,6 +295,9 @@ typedef struct _PsychWindowRecordType_{
 		double									time_post_swaprequest;  // Timestamp taken immediately after call PsychOSFlipWindowBuffers();
 		double									gpuRenderTime;			// GPU time spent on rendering. Only returned if a query object is successfully generated.
 		GLint									gpuRenderTimeQuery;		// Handle to the GPU time query object. 0 if none assigned.
+		psych_int64								reference_ust;			// UST reference timestamp of vblank with count reference_msc from OpenML. (Optional)
+		psych_int64								reference_msc;			// MSC reference vblank count from OpenML. (Optional)
+		psych_int64								reference_sbc;			// SBC reference swapbuffers count from OpenML. (Optional)
 		
 	// Pointers to temporary arrays with gamma tables to upload to the gfx-card at next Screen('Flip'):
 	// They default to NULL and get possibly set in Screen('LoadNormalizedGammaTable'):

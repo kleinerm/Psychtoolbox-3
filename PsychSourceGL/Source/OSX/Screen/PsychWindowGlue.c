@@ -982,6 +982,68 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     return;
 }
 
+/* PsychOSGetSwapCompletionTimestamp()
+ *
+ * Retrieve a very precise timestamp of doublebuffer swap completion by means
+ * of OS specific facilities. This function is optional. If the underlying
+ * OS/drier/GPU combo doesn't support a high-precision, high-reliability method
+ * to query such timestamps, the function should return -1 as a signal that it
+ * is unsupported or (temporarily) unavailable. Higher level timestamping code
+ * should use/prefer timestamps returned by this function over other timestamps
+ * provided by other mechanisms if possible. Calling code must be prepared to
+ * use alternate timestamping methods if this method fails or returns a -1
+ * unsupported error. Calling code must expect this function to block until
+ * swap completion.
+ *
+ * Input argument targetSBC: Swapbuffers count for which to wait for. A value
+ * of zero means to block until all pending bufferswaps for windowRecord have
+ * completed, then return the timestamp of the most recently completed swap.
+ *
+ * A value of zero is recommended.
+ *
+ * Returns: Highly precise and reliable swap completion timestamp in seconds of
+ * system time in variable referenced by tSwap, and msc value of completed swap,
+ * or a negative value on error (-1 == unsupported, -2 == Query failed).
+ *
+ */
+psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecord, psych_int64 targetSBC, double* tSwap)
+{
+	// Unsupported on OS/X:
+	return(-1);
+}
+
+/*
+    PsychOSScheduleFlipWindowBuffers()
+    
+    Schedules a double buffer swap operation for given window at a given
+	specific target time or target refresh count in a specified way.
+	
+	This uses OS specific API's and algorithms to schedule the asynchronous
+	swap. This function is optional, target platforms are free to not implement
+	it but simply return a "not supported" status code.
+	
+	Arguments:
+	
+	windowRecord - The window to be swapped.
+	tWhen        - Requested target system time for swap. Swap shall happen at first
+				   VSync >= tWhen.
+	targetMSC	 - If non-zero, specifies target msc count for swap. Overrides tWhen.
+	divisor, remainder - If set to non-zero, msc at swap must satisfy (msc % divisor) == remainder.
+	specialFlags - Additional options. Unused so far.
+	
+	Return value:
+	 
+	Value greater than or equal to zero on success: The target msc for which swap is scheduled.
+	Negative value: Error. Function failed. -1 == Function unsupported on current system configuration.
+	-2 ... -x == Error condition.
+	
+*/
+psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord, double tWhen, psych_int64 targetMSC, psych_int64 divisor, psych_int64 remainder, unsigned int specialFlags)
+{
+	// On OS/X this function is unsupported:
+	return(-1);
+}
+
 /*
  * PsychOSFlipWindowBuffers() -- OS-X swapbuffers call.
  */

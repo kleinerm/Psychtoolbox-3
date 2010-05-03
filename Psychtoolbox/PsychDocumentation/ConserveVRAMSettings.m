@@ -205,6 +205,16 @@
 % flag you can make a conscious decision between proper stimulus display
 % and use of GetChar.
 %
+% 524288 (= 2^19) == kPsychOpenMLScheduling
+% Override default mode for OpenML scheduling of bufferswaps. This flag is
+% used to toggle an experimental feature in PTB: OpenML support on
+% GNU/Linux. Currently this flag will enable use of OpenML on supported
+% configurations. Once the feature has stabilized, we will instead default
+% to use OpenML if supported and this flag will allow to forcefully disable
+% it. --> DO NOT USE in your scripts unless you really know what you're
+% doing!
+%
+%
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are
 % meant as a last ressort, e.g., if you need to get something going quickly

@@ -333,6 +333,11 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	(*winRec)->swapGroup = 0;
 	(*winRec)->swapBarrier = 0;
 
+	// Zero-init OpenML timing values:
+	(*winRec)->reference_ust = 0;
+	(*winRec)->reference_msc = 0;
+	(*winRec)->reference_sbc = 0;
+
 	return;
 }
 

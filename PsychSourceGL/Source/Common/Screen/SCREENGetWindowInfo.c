@@ -376,6 +376,15 @@ PsychError SCREENGetWindowInfo(void)
 		PsychSetStructArrayDoubleElement("Beamposition", 0, beamposition, s);
 
 		// Time of last vertical blank when a double-buffer swap occured:
+		if ((windowRecord->flipCount > 0) && (windowRecord->time_at_last_vbl == 0) && (PsychPrefStateGet_VBLTimestampingMode() == 4)) {
+			// If time_at_last_vbl for an already finished or at least pending flip isn't available and
+			// we have support for OS-Builtin timestamping enabled, we try to employ OS-Builtin timestamping
+			// to get a timestamp for the most recent pending or finished flip. If this fails or is unsupported,
+			// it will have no effect:
+			PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &(windowRecord->time_at_last_vbl));
+		}
+
+		// Return it - or the value zero if it is (still) undefined/unavailable:
 		PsychSetStructArrayDoubleElement("LastVBLTimeOfFlip", 0, windowRecord->time_at_last_vbl, s);
 
 		// Uncorrected timestamp of flip swap completion:

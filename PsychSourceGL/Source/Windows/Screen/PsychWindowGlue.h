@@ -58,6 +58,8 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
 psych_bool PsychOSSetPresentParameters(PsychWindowRecordType *windowRecord, psych_uint64 targetVBL, unsigned int queueLength, double rateDuration);
 int		PsychOSIsDWMEnabled(void);
 psych_bool PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindowRecordType *slaveWindow);
+psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord, double tWhen, psych_int64 targetMSC, psych_int64 divisor, psych_int64 remainder, unsigned int specialFlags);
+psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecord, psych_int64 targetSBC, double* tSwap);
 
 //end include once
 #endif

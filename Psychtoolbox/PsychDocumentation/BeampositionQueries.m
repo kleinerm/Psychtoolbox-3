@@ -105,13 +105,17 @@
 %      Use noisy stamps if beamposition mode fails. This is for the paranoid
 %      to check proper functioning.
 %  3 = Always use kernel-level timestamping, fall back to noisy stamps if it fails.
+%  4 = Use OpenML OML_sync_control extension for high-precision timestamping on
+%      supported system configuration. This is currently a Linux only feature on
+%      some specific systems. It is considered experimental for now.
 %
 % The default on OS-X, Linux and Windows with single display setups is "1". On Windows in
 % explicit multi-display mode, we default to "-1" ie. noisy timestamps if you
 % are running Psychtoolbox under a Matlab version older than R2007a, as the current
 % beamposition mechanism is not capable of supporting multi-display setups
 % due to some limitations imposed by old Matlab versions. On modern
-% Matlab's or Octave, the accurate mode "1" is used as well.
+% Matlab's or Octave, the accurate mode "1" is used as well. On Linux and OS/X
+% the accurate mode "1" is also used on multi-display setups.
 %
 % If the beampos query test fails, you will see some warning message about
 % "SYNCHRONIZATION TROUBLE" in the Matlab/Octave command window or other
@@ -144,6 +148,18 @@
 % anymore. Exact height is important for spot-on timestamps. Psychtoolbox
 % uses some safe, conservative value for its internal computations, so
 % results will be consistent and useable, but contain a small constant offset.
+%
+% In some rare cases, PTB's automatic test fails to detect the bug and
+% doesn't enable the workaround by itself. You can manually enable the
+% workaround if you want by adding the setting 4096
+% (kPsychUseBeampositionQueryWorkaround) to the value x passed via:
+% Screen('Preference', 'ConserveVRAM', x);
+%
+% Just insert this command at the top of your scripts before any other
+% Screen() commands. 'x' must be at least 4096 or the sum of 4096 and any
+% other values you may want to pass with that command. See "help
+% ConserveVRAMSettings" for other workarounds that you can enable manually
+% if needed.
 % 
 % If you want to get rid of that small offset, e.g., because you need to
 % synchronize with other modalities or stimulation/recording equipment at
