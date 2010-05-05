@@ -859,9 +859,10 @@ double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint
 			OSMemoryBarrier();
 			t1 = ((double) UnsignedWideToUInt64(AbsoluteToNanoseconds(fbsharedmem[screenid].shmem->vblTime))) / 1000000000.0;
 			OSMemoryBarrier();
-			t2 = ((double) UnsignedWideToUInt64(AbsoluteToNanoseconds(fbsharedmem[screenid].shmem->vblTime))) / 1000000000.0;
-			OSMemoryBarrier();
+			PsychWaitIntervalSeconds(0.000250);
 			refvblcount = (psych_uint64) fbsharedmem[screenid].shmem->vblCount;
+			OSMemoryBarrier();
+			t2 = ((double) UnsignedWideToUInt64(AbsoluteToNanoseconds(fbsharedmem[screenid].shmem->vblTime))) / 1000000000.0;
 			OSMemoryBarrier();
 		} while ((*vblCount != refvblcount) || (t1 != t2));
 		
