@@ -735,7 +735,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	unsigned int  outsboffset;
 	int			  loopStartFrame, loopEndFrame;
 	unsigned int reqstate;
-	double now, firstsampleonset, onsetDelta, offsetDelta, captureStartTime;
+	double now, firstsampleonset, onsetDelta, offsetDelta, captureStartTime, tMonotonic;
 	double repeatCount;	
 	psych_uint64 playpositionlimit;
 	PaHostApiTypeId hA;
@@ -782,6 +782,38 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		
 		// FIXME: PortAudio stable sets timeInfo->currentTime == 0 --> Breakage!!!
 		// That's why we currently have our own PortAudio version.
+		
+		#if PSYCH_SYSTEM == PSYCH_LINUX
+		if (hA == paALSA) {
+			// ALSA on Linux can return timestamps in CLOCK_MONOTONIC time
+			// instead of our standard GetSecs() [gettimeofday] timesbase.
+			// It is up to the audio driver and its config, which one is returned.
+			//
+			// This effect was first noticed during testing on Ubuntu 10.04 LTS,
+			// so this will be part of all PTB releases after 8.5.2010.
+			//
+			// Therefore we need to check if CLOCK_MONOTONIC time is returned
+			// and remap such timestamps to our standard GetSecs timebase before
+			// further processing.
+
+			// Get current CLOCK_MONOTONIC time:
+			tMonotonic = PsychOSGetLinuxMonotonicTime();
+			
+			// Returned current time timestamp closer to tMonotonic than to GetSecs time?
+			if (fabs(timeInfo->currentTime - tMonotonic) < fabs(timeInfo->currentTime - now)) {
+				// Timestamps are in monotonic time! Need to remap.
+				// tMonotonic shall be the offset between GetSecs and monotonic time,
+				// i.e., the offset that needs to be added to monotonic timestamps to
+				// remap them to GetSecs time:
+				tMonotonic = now - tMonotonic;
+				
+				// Correct all PortAudio timestamps by adding corrective offset:
+				timeInfo->currentTime += tMonotonic;
+				timeInfo->outputBufferDacTime += tMonotonic;
+				timeInfo->inputBufferAdcTime += tMonotonic;
+			}
+		}
+		#endif
 		
 		if (hA==paCoreAudio || hA==paDirectSound || hA==paMME || hA==paALSA) {
 			// On these systems, DAC-time is already returned in the system timebase,

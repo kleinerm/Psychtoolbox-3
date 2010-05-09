@@ -229,6 +229,28 @@ void PsychGetPrecisionTimerTicksMinimumDelta(psych_uint32 *delta)
   *delta = (psych_uint32) ((((double) res.tv_sec) + ((double) res.tv_nsec / 1e9)) * 1e6);
 }
 
+/* PsychOSGetLinuxMonotonicTime() -- Linux only.
+ *
+ * Return CLOCK_MONOTONIC time (usually system uptime) in seconds.
+ * Return zero on failure.
+ *
+ * Some subsystems return time not in gettimeofday() time aka CLOCK_REALTIME time,
+ * but in CLOCK_MONOTONIC time. In such cases we need to query this time to compute
+ * proper offsets for remapping into the gettimeofday() timebase which is used
+ * everywhere in PTB.
+ *
+ * An example is ALSA audio support in PsychPortAudio: ALSA drivers are free to
+ * return their audio timestamps in CLOCK_REALTIME time or CLOCK_MONOTONIC time,
+ * so we need to dynamically check, adapt and remap if neccessary.
+ *
+ */ 
+double PsychOSGetLinuxMonotonicTime(void)
+{
+	struct timespec ts;
+	if (0!= clock_gettime(CLOCK_MONOTONIC, &ts)) return(0.0);
+	return((double) ts.tv_sec + ((double) ts.tv_nsec / (double) 1e9));
+}
+
 void PsychGetPrecisionTimerSeconds(double *secs)
 
 {

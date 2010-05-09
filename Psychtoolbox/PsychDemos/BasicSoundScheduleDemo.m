@@ -91,7 +91,7 @@ else
 end
 
 % Perform basic initialization of the sound driver:
-InitializePsychSound;
+InitializePsychSound(1);
 
 % Read all sound files and create & fill one dynamic audiobuffer for
 % each read soundfile:
