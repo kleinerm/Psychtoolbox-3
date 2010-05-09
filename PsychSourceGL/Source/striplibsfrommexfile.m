@@ -29,15 +29,17 @@ if exist(filename, 'file')
         error('ERROR! MEX file %s could not be read [%s]! Can''t strip it!\n', filename, msg);
     end
     image = uint8(fread(fd));
-    
+ 
     % Strip all following libraries from image:
     image = stripLibrary(image, 'libreadline');
     image = stripLibrary(image, 'libncurses');
     image = stripLibrary(image, 'libfft');
+    image = stripLibrary(image, 'liblapack');
+    image = stripLibrary(image, 'libblas');
     image = stripLibrary(image, 'libhdf');
     image = stripLibrary(image, 'libgfortran');
     image = stripLibrary(image, 'libz');
-    
+
     % Write stripped image:
     frewind(fd);
     if ~testrun
@@ -60,7 +62,7 @@ function image = stripLibrary(image, library)
     dodebug = 0;
 
     % Find first character of library in image:
-    pStart = strfind(image', library);
+    pStart = strfind(char(image'), library);
     if ~isempty(pStart)
         % Iterate over all occurences, kill each of them:
         for cStart = pStart
