@@ -394,6 +394,8 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % 04/06/08 Improved timing code for mapping of box timers --> GetSecs time. (MK)
 % 04/17/08 Disable Boxtime->Ptbtime mapping for now, use old drivers. (MK)
 % 04/23/08 Add additional setup and query commands for external port. (MK)
+% 05/09/10 Add additional button label definitions for RB830, contributed
+%          by Jochen Laubrock. (MK)
 
 % Hard-Coded drivertype to use: Defaults to our IOPort driver.
 global ptb_cedrus_drivertype;
@@ -941,7 +943,7 @@ if strcmpi(cmd, 'SetOutputLineLevels')
     handle = checkHandle(varargin{1});
 
     opins = varargin{2};
-    if length(opins)~=8 | ~isnumeric(opins)
+    if length(opins)~=8 | ~isnumeric(opins) %#ok<OR2>
         error('You must provide an 8 element vector of output line levels!');
     end
 
@@ -1575,6 +1577,32 @@ switch (ptb_cedrus_devices{handle}.modelNo)
                 label = '6.Left';
             case 8
                 label = '7.Left';
+            otherwise
+                label = 'unknown';
+        end
+    % arrangement of key codes for Cedrus 830
+    %   left    right   hand
+    %   4  5    6  7
+    % 8              1
+    %       2  3
+    case 830
+        switch (numbr)
+            case 1
+                label = 'right.outer';
+            case 2
+                label = 'left.lower';
+            case 3
+                label = 'right.lower';
+            case 4
+                label = 'left.center';
+            case 5
+                label = 'left.inner';
+            case 6
+                label = 'right.inner';
+            case 7
+                label = 'right.center';
+            case 8
+                label = 'left.outer';
             otherwise
                 label = 'unknown';
         end
