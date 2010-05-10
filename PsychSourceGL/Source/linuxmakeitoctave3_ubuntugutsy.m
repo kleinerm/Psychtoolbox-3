@@ -67,8 +67,8 @@ if mode==6
     catch
     end
     unix('mv moglcore.mex /home/kleinerm/projects/OpenGLPsychtoolbox/trunk/Psychtoolbox/PsychBasic/Octave3LinuxFiles/');
-    striplibsfrommexfile([PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles/moglcore.mex']);
     cd(curdir);
+    striplibsfrommexfile([PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles/moglcore.mex']);
 end;
 
 return;

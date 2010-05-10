@@ -808,9 +808,9 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 				tMonotonic = now - tMonotonic;
 				
 				// Correct all PortAudio timestamps by adding corrective offset:
-				timeInfo->currentTime += tMonotonic;
-				timeInfo->outputBufferDacTime += tMonotonic;
-				timeInfo->inputBufferAdcTime += tMonotonic;
+				((PaStreamCallbackTimeInfo*) timeInfo)->currentTime += tMonotonic;
+				((PaStreamCallbackTimeInfo*) timeInfo)->outputBufferDacTime += tMonotonic;
+				((PaStreamCallbackTimeInfo*) timeInfo)->inputBufferAdcTime += tMonotonic;
 			}
 		}
 		#endif
