@@ -2237,6 +2237,9 @@ if ~isempty(floc)
                         % FlipFBO's for ourselves, unless there is already
                         % such a command at the current insertPos:
                         if outputcount > 0
+                            % Need to test slot right before us:
+                            insertPos = insertPos - 1;
+                            
                             % Test what's there at the moment:
                             [dummy testNameString ] = Screen('HookFunction', win, 'Query', 'FinalOutputFormattingBlit', insertPos);
                             if (dummy == - 1) || ~mystrcmp(testNameString, 'Builtin:FlipFBOs')
@@ -2245,7 +2248,7 @@ if ~isempty(floc)
                                 Screen('HookFunction', win, insertSlot, 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
                             end
                         end
-                        
+                       
                         % BrightSide setup?
                         if handlebrightside
                             % Tell BrightSide driver that it is called from us, so it can adapt to
@@ -2254,7 +2257,8 @@ if ~isempty(floc)
                         end
                     end
 
-                    % One more slot occupied by us, so increment outputcount:
+                    % One more slot occupied by us, so increment
+                    % outputcount:
                     outputcount = outputcount + 1;
 
                     % And enable the chain if it ain't enabled already:
@@ -2264,6 +2268,8 @@ if ~isempty(floc)
                 % Perform post-link setup of color correction method after
                 % shader attached to pipe:
                 PsychColorCorrection('ApplyPostGLSLLinkSetup', win, reqs{row, 1});
+
+                % Screen('HookFunction', win, 'Dump', 'FinalOutputFormattingBlit');
             end
         end
     end
