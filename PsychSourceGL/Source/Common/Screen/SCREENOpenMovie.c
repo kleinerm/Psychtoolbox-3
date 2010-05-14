@@ -291,7 +291,8 @@ PsychError SCREENFinalizeMovie(void)
 	
 	// Finalize the movie:
 	if (!PsychFinalizeNewMovieFile(moviehandle)) {
-		PsychErrorExitMsg(PsychError_user, "FinalizeMovie failed for some reason.");
+		printf("See http://developer.apple.com/documentation/QuickTime/APIREF/ErrorCodes.htm#//apple_ref/doc/constant_group/Error_Codes.\n\n");
+		PsychErrorExitMsg(PsychError_user, "FinalizeMovie failed for reason mentioned above.");
 	}
 
 	return(PsychError_none);
@@ -307,9 +308,9 @@ PsychError SCREENCreateMovie(void)
 		"needs Apple's Quicktime to be installed. It can use any Quicktime codec that is installed "
 		"on your system. Currently only single-track video encoding is supported, audio support is tbd.\n\n"
 		"Movie creation is a 3 step procedure:\n"
-		"1. Create a movie, define encoding options via 'CreateMovie'.\n"
+		"1. Create a movie and define encoding options via 'CreateMovie'.\n"
 		"2. Add video frames to the movie via calls to 'AddFrameToMovie'.\n"
-		"3. Finalize, and close the movie via a call to 'FinalizeMovie'.\n\n"
+		"3. Finalize and close the movie via a call to 'FinalizeMovie'.\n\n"
 		"All following parameters are optional and have reasonable defaults:\n\n"
 		"'width' Width of movie video frames in pixels. Defaults to width of window 'windowPtr'.\n"
 		"'height' Height of movie video frames in pixels. Defaults to height of window 'windowPtr'.\n"
@@ -327,6 +328,7 @@ PsychError SCREENCreateMovie(void)
 		"CodecFOURCCId=id FOURCC id. The FOURCC of a desired video codec as a number. Defaults to H.264 codec.\n"
 		"Choice of codec and quality defines a tradeoff between filesize, quality, processing demand and speed, "
 		"as well as on which target devices you'll be able to play your movie.\n"
+		"CodecFOURCC=xxxx FOURCC as a four character text string instead of a number.\n"
 		"\n";
 
 	static char seeAlsoString[] = "FinalizeMovie AddFrameToMovie CloseMovie PlayMovie GetMovieImage GetMovieTimeIndex SetMovieTimeIndex";
@@ -376,7 +378,8 @@ PsychError SCREENCreateMovie(void)
 	// Create movie of given size and framerate with given options:
 	moviehandle = PsychCreateNewMovieFile(moviefile, width, height, framerate, movieOptions);
 	if (0 > moviehandle) {
-		PsychErrorExitMsg(PsychError_user, "CreateMovie failed for some reason.");
+		printf("See http://developer.apple.com/documentation/QuickTime/APIREF/ErrorCodes.htm#//apple_ref/doc/constant_group/Error_Codes.\n\n");
+		PsychErrorExitMsg(PsychError_user, "CreateMovie failed for reason mentioned above.");
 	}
 	
 	// Return handle to it:

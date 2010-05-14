@@ -130,6 +130,8 @@ int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_boo
 
 	if (NULL == pwriterRec->Media) return(0);
 
+	if ((frameDurationUnits < 1) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING:In AddFrameToMovie: Negative or zero 'frameduration' %i units for moviehandle %i provided! Sounds like trouble ahead.\n", frameDurationUnits, moviehandle);
+
 	// Draw testpattern: Disabled at compile-time by default:
 	if (FALSE) {
 		for (y = 0; y < pwriterRec->height; y++) {
@@ -165,8 +167,10 @@ int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_boo
 							pwriterRec->CodecType,
 							pwriterRec->ImageDesc, 
 							pwriterRec->ComprDataPtr);
-	if (myErr != noErr)
+	if (myErr != noErr) {
+		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR:In AddFrameToMovie: Video compression on current frame for moviehandle %i failed [CompessImage() returned QT error code %i]!\n", moviehandle, (int) myErr);
 		goto bail;
+	}
 	
 	// Add encoded buffer to movie:
 	myErr = AddMediaSample(	pwriterRec->Media, 
@@ -178,15 +182,17 @@ int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_boo
 							1,								// one sample
 							0,								// self-contained samples
 							NULL);
-	if (myErr != noErr)
+	if (myErr != noErr) {
+		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR:In AddFrameToMovie: Adding current frame to moviehandle %i failed [AddMediaSample() returned QT error code %i]!\n", moviehandle, (int) myErr);
 		goto bail;
+	}
+
+	if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG:In AddFrameToMovie: Added new videoframe with %i units duration and upsidedown = %i to moviehandle %i.\n", frameDurationUnits, (int) isUpsideDown, moviehandle);
 
 bail:
-		//	SetGWorld(pwriterRec->SavedPort, pwriterRec->SavedDevice);
-		return(myErr);
+	return(myErr);
 }
 
-	
 int PsychCreateNewMovieFile(char* moviefile, int width, int height, double framerate, char* movieoptions)
 {
 	PsychMovieWriterRecordType* pwriterRec = NULL;
@@ -196,7 +202,8 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 	char*					poption;
 	int						dummyInt;
 	float					dummyFloat;
-	
+	char					myfourcc[4];
+
 	// Still capacity left?
 	if (moviewritercount >= PSYCH_MAX_MOVIEWRITERDEVICES) PsychErrorExitMsg(PsychError_user, "Maximum number of movie writers exceeded. Please close some first!");
 
@@ -209,14 +216,16 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
         // QT isn't installed on the Windows machine...
         myErr = InitializeQTML(0);
         if (myErr!=noErr) {
-            PsychErrorExitMsg(PsychError_internal, "Quicktime Media Layer initialization failed: Quicktime not properly installed?!?");
+            printf("PTB-ERROR: Quicktime Media Layer initialization failed with error code %i in call to InitializeQTML(0): Quicktime not properly installed?!?", (int) myErr);
+            PsychErrorExitMsg(PsychError_system, "Quicktime Media Layer initialization failed. Quicktime not properly installed or not installed at all?!?");
         }
 #endif
 
         // Initialize Quicktime-Subsystem:
         myErr = EnterMovies();
         if (myErr!=noErr) {
-            PsychErrorExitMsg(PsychError_internal, "Quicktime EnterMovies() failed!!!");
+            printf("PTB-ERROR: Quicktime initialization failed with error code %i in call to EnterMovies().", (int) myErr);
+            PsychErrorExitMsg(PsychError_system, "Quicktime initialization in EnterMovies() failed!!!");
         }
 		firsttime = FALSE;
 	}
@@ -236,9 +245,18 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 	if ((poption = strstr(movieoptions, "CodecFOURCCId="))) {
 		if (sscanf(poption, "CodecFOURCCId=%i", &dummyInt) == 1) {
 			pwriterRec->CodecType = (CodecType) dummyInt;
-			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Codec with FOURCC numeric id %i selected for encoding of movie %i [%s].\n", dummyInt, moviehandle, moviefile);
+			if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Codec with FOURCC numeric id %i selected for encoding of movie %i [%s].\n", dummyInt, moviehandle, moviefile);
 		}
 		else PsychErrorExitMsg(PsychError_user, "Invalid CodecFOURCCId= parameter provided in movieoptions parameter. Parse error!");
+	}
+
+	// Assign 4 character string FOURCC code to select codec:
+	if ((poption = strstr(movieoptions, "CodecFOURCC="))) {
+		if (sscanf(poption, "CodecFOURCC=%c%c%c%c", &myfourcc[3], &myfourcc[2], &myfourcc[1], &myfourcc[0]) == 4) {
+			pwriterRec->CodecType = (CodecType) (*((unsigned int*) (&myfourcc[0])));
+			if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Codec with FOURCC '%c%c%c%c' = numeric id %i selected for encoding of movie %i [%s].\n", myfourcc[3], myfourcc[2], myfourcc[1], myfourcc[0], (int) pwriterRec->CodecType, moviehandle, moviefile);
+		}
+		else PsychErrorExitMsg(PsychError_user, "Invalid CodecFOURCC= parameter provided in movieoptions parameter. Must be exactly 4 characters! Parse error!");
 	}
 
 	// Assign numeric encoding quality level:
@@ -298,43 +316,63 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 				
 			}
 			
-			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Encoding quality level %i selected for encoding of movie %i [%s].\n", dummyInt, moviehandle, moviefile);
+			if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Encoding quality level %i selected for encoding of movie %i [%s].\n", dummyInt, moviehandle, moviefile);
 		}
 		else PsychErrorExitMsg(PsychError_user, "Invalid EncodingQuality= parameter provided in movieoptions parameter. Parse error!");
 	}
-	
+
+	// Check for valid parameters. Also warn if some parameters are borderline for certain codecs:
+	if ((framerate < 1) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING:In CreateMovie: Negative or zero 'framerate' %f units for moviehandle %i provided! Sounds like trouble ahead.\n", (float) framerate, moviehandle);
+	if (width < 1) PsychErrorExitMsg(PsychError_user, "In CreateMovie: Invalid zero or negative 'width' for video frame size provided!");
+	if ((width < 4) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING:In CreateMovie: 'width' of %i pixels for moviehandle %i provided! Some video codecs may malfunction with such a small width.\n", width, moviehandle);
+	if ((width % 4 != 0) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING:In CreateMovie: 'width' of %i pixels for moviehandle %i provided! Some video codecs may malfunction with a width which is not a multiple of 4 or 16.\n", width, moviehandle);
+	if (height < 1) PsychErrorExitMsg(PsychError_user, "In CreateMovie: Invalid zero or negative 'height' for video frame size provided!");
+	if ((height < 4) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING:In CreateMovie: 'height' of %i pixels for moviehandle %i provided! Some video codecs may malfunction with such a small height.\n", height, moviehandle);
 
 	// Create a movie file for the destination movie:
 	myErr = CreateMovieFile(&pwriterRec->File, FOUR_CHAR_CODE('TVOD'), smCurrentScript, myFlags, &pwriterRec->ResRefNum, &pwriterRec->Movie);
-	if (myErr != noErr)
+	if (myErr != noErr) {
+		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR:In CreateMovie: Creating movie file with handle %i [%s] failed [CreateMovieFile() returned QT error code %i]!\n", moviehandle, moviefile, (int) myErr);
+		if ((myErr == -47) && (PsychPrefStateGet_Verbosity() > 0)) printf("PTB-ERROR:In CreateMovie: Do you have this file open or highlighted in some other application like Quicktime player or Finder?!?\n");
 		goto bail;
+	}
 
 	// Create the movie track and media:
 	pwriterRec->Track = NewMovieTrack(pwriterRec->Movie, FixRatio(width, 1), FixRatio(height, 1), kNoVolume);
 	myErr = GetMoviesError();
-	if (myErr != noErr)
+	if (myErr != noErr) {
+		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR:In CreateMovie: Creating track with videoframes of size %i x %i pixels for movie file %i [%s] failed [NewMovieTrack() returned QT error code %i]!\n", width, height, moviehandle, moviefile, (int) myErr);
 		goto bail;
+	}
 		
 	pwriterRec->Media = NewTrackMedia(pwriterRec->Track, VideoMediaType, (int) framerate, NULL, 0);
 	myErr = GetMoviesError();
-	if (myErr != noErr)
+	if (myErr != noErr) {
+		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR:In CreateMovie: Creating video media stream with framerate %i for file with handle %i [%s] failed [NewTrackMedia() returned QT error code %i]!\n", (int) framerate, moviehandle, moviefile, (int) myErr);
 		goto bail;
+	}
 
 	// Create the media samples:
 	myErr = BeginMediaEdits(pwriterRec->Media);
-	if (myErr != noErr)
+	if (myErr != noErr) {
+		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR:In CreateMovie: Creating movie file with handle %i [%s] failed [BeginMediaEdits() returned QT error code %i]!\n", moviehandle, moviefile, (int) myErr);
 		goto bail;
+	}
 
 	// Create a GWorld as target with a pixedepth of 32 bpp:
 	// Hack hack pwriterRec->padding!!
 	MacSetRect(&pwriterRec->Rect, 0, 0, width - pwriterRec->padding, height - pwriterRec->padding);
 	myErr = NewGWorld(&pwriterRec->GWorld, 32, &pwriterRec->Rect, NULL, NULL, (GWorldFlags)0);
-	if (myErr != noErr)
+	if (myErr != noErr) {
+		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR:In CreateMovie: Creating movie file with handle %i [%s] failed [NewGWorld(rectsize = %i,%i and padding %i) returned QT error code %i]!\n", moviehandle, moviefile, width - pwriterRec->padding, height - pwriterRec->padding, pwriterRec->padding, (int) myErr);
 		goto bail;
+	}
 
 	pwriterRec->PixMap = GetGWorldPixMap(pwriterRec->GWorld);
-	if (pwriterRec->PixMap == NULL)
+	if (pwriterRec->PixMap == NULL) {
+		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR:In CreateMovie: Creating movie file with handle %i [%s] failed [GetGWorldPixMap() returned NULL-Ptr]!\n", moviehandle, moviefile);
 		goto bail;
+	}
 
 	LockPixels(pwriterRec->PixMap);
 	myErr = GetMaxCompressionSize(	pwriterRec->PixMap,
@@ -344,26 +382,36 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 									pwriterRec->CodecType, 
 									(CompressorComponent) anyCodec,
 									&pwriterRec->MaxComprSize);
-	if (myErr != noErr)
+	if (myErr != noErr) {
+		if (PsychPrefStateGet_Verbosity() > 0) {
+			printf("PTB-ERROR:In CreateMovie: Creating movie file with handle %i [%s] failed [GetMaxCompressionSize() returned QT error code %i]!\n", moviehandle, moviefile, (int) myErr);
+			if (myErr == noCodecErr) printf("PTB-ERROR:In CreateMovie: The system doesn't know or support the requested type of video movie codec.\n");
+		}
 		goto bail;
+	}
 
 	pwriterRec->ComprDataHdl = NewHandle(pwriterRec->MaxComprSize);
-	if (pwriterRec->ComprDataHdl == NULL)
+	if (pwriterRec->ComprDataHdl == NULL) {
+		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR:In CreateMovie: Creating movie file with handle %i [%s] failed [NewHandle(for compressor) returned NULL-Ptr]!\n", moviehandle, moviefile);
 		goto bail;
+	}
 
 	HLockHi(pwriterRec->ComprDataHdl);
 	pwriterRec->ComprDataPtr = *(pwriterRec->ComprDataHdl);
 
 	pwriterRec->ImageDesc = (ImageDescriptionHandle)NewHandle(4);
-	if (pwriterRec->ImageDesc == NULL)
+	if (pwriterRec->ImageDesc == NULL) {
+		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR:In CreateMovie: Creating movie file with handle %i [%s] failed [NewHandle(4) returned NULL-Ptr]!\n", moviehandle, moviefile);
 		goto bail;
+	}
 
-//	GetGWorld(&pwriterRec->SavedPort, &pwriterRec->SavedDevice);
 	SetGWorld(pwriterRec->GWorld, NULL);
 	
 	// Increment count of open movie writers:
 	moviewritercount++;
 	
+	if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Moviehandle %i successfully opened for movie writing into file '%s'.\n", moviehandle, moviefile);
+
 	// Return new handle:
 	return(moviehandle);
 
@@ -407,16 +455,24 @@ int PsychFinalizeNewMovieFile(int movieHandle)
 	if (NULL == pwriterRec->Media) return(0);
 
 	myErr = EndMediaEdits(pwriterRec->Media);
-	if (myErr != noErr)
+	if (myErr != noErr) {
+		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR:In FinalizeMovie: Finalizing/Closing movie file with handle %i failed [EndMediaEdits() returned QT error code %i]!\n", movieHandle, (int) myErr);
 		goto bail;
+	}
 	
 	// add the media to the track
 	myErr = InsertMediaIntoTrack(pwriterRec->Track, 0, 0, GetMediaDuration(pwriterRec->Media), fixed1);
-	if (myErr != noErr)
+	if (myErr != noErr) {
+		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR:In FinalizeMovie: Finalizing/Closing movie file with handle %i failed [InsertMediaIntoTrack() returned QT error code %i]!\n", movieHandle, (int) myErr);
 		goto bail;
+	}
 	
 	// add the movie atom to the movie file
 	myErr = AddMovieResource(pwriterRec->Movie, pwriterRec->ResRefNum, &pwriterRec->ResID, NULL);
+	if (myErr != noErr) {
+		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR:In FinalizeMovie: Finalizing/Closing movie file with handle %i failed [AddMovieResource() returned QT error code %i]!\n", movieHandle, (int) myErr);
+		goto bail;
+	}
 
 bail:
 	if (pwriterRec->ImageDesc != NULL)
@@ -434,6 +490,11 @@ bail:
 	if (pwriterRec->Movie != NULL)
 		DisposeMovie(pwriterRec->Movie);
 
+	myErr = GetMoviesError();
+	if (myErr != noErr) {
+		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR:In FinalizeMovie: Finalizing/Closing movie file with handle %i failed [CloseMovieFile() or DisposeMovie() returned QT error code %i]!\n", movieHandle, (int) myErr);
+	}
+
 	pwriterRec->Movie = NULL;
 	pwriterRec->Track = NULL;
 	pwriterRec->Media = NULL;
@@ -450,6 +511,8 @@ bail:
 	// Decrement count of active writers:
 	moviewritercount--;
 
+	// Return success/fail status:
+	if ((myErr == noErr) && (PsychPrefStateGet_Verbosity() > 3)) printf("PTB-INFO: Moviehandle %i successfully closed and movie written to filesystem.\n", movieHandle);
 	return(myErr == 0);
 }
 

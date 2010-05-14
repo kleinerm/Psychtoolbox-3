@@ -69,7 +69,7 @@ static char synopsisString[] =
 "never as floating point precision images. They are always stored with four channels, "
 "that is as RGBA frames. The function will only accept the top-left corner of the "
 "'rect' argument, but ignore the width and height of the 'rect', because the size is "
-"always defined by the size of movie frames.\n"
+"always defined by the size of movie frames as set in the 'CreateMovie' function call.\n"
 "See Screen('CreateMovie?') for help on movie creation.\n\n";
 
 static char seeAlsoString[] = "PutImage CreateMovie";
@@ -361,7 +361,10 @@ PsychError SCREENGetImage(void)
 			invertedY = windowRect[kPsychBottom] - sampleRect[kPsychBottom];
 			
 			glReadPixels(sampleRect[kPsychLeft], invertedY,	twidth, theight, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8, framepixels);
-			PsychAddVideoFrameToMovie(moviehandle, frameduration, TRUE);
+			if (PsychAddVideoFrameToMovie(moviehandle, frameduration, TRUE) != 0) {
+				printf("See http://developer.apple.com/documentation/QuickTime/APIREF/ErrorCodes.htm#//apple_ref/doc/constant_group/Error_Codes.\n\n");
+				PsychErrorExitMsg(PsychError_user, "AddFrameToMovie failed with error above!");
+			}
 		}
 		else {
 			PsychErrorExitMsg(PsychError_user, "Invalid 'moviePtr' provided. Doesn't correspond to a movie open for recording!");
