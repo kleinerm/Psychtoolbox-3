@@ -1,5 +1,5 @@
-function ImagingStereoDemo(stereoMode, usedatapixx)
-% ImagingStereoDemo([stereoMode=8][, usedatapixx = 0])
+function ImagingStereoDemo(stereoMode, usedatapixx, writeMovie)
+% ImagingStereoDemo([stereoMode=8][, usedatapixx = 0][, writeMovie = 0])
 %
 % Demo on how to use OpenGL-Psychtoolbox to present stereoscopic stimuli
 % when the Psychtoolbox imaging pipeline is enabled. Use of the imaging
@@ -52,6 +52,14 @@ function ImagingStereoDemo(stereoMode, usedatapixx)
 % SetStereoAnglyphParameters() command to change color gain settings,
 % thereby implementing other anaglyph color combinations.
 %
+% 'usedatapixx' If provided and set to a non-zero value, will setup a
+% connected VPixx DataPixx device for stereo display.
+%
+% 'writeMovie' If provided and set to a non-zero value will write a
+% Quicktime movie file 'MyTestMovie.mov' into the current working directory
+% which captures the full performance of this demo. This is silently
+% ignored on Linux as movie writing isn't supported there yet.
+%
 % Authors:
 % Finnegan Calabro  - fcalabro@bu.edu
 % Mario Kleiner     - mario.kleiner at tuebingen.mpg.de
@@ -70,7 +78,19 @@ if isempty(stereoMode)
 end;
 
 if nargin < 2
+    usedatapixx = [];
+end
+
+if isempty(usedatapixx)
     usedatapixx = 0;
+end
+
+if nargin < 3
+    writeMovie = [];
+end
+
+if isempty(writeMovie)
+    writeMovie = 0;
 end
 
 % This script calls Psychtoolbox commands available only in OpenGL-based
@@ -237,7 +257,12 @@ escape = KbName('ESCAPE');
 
     Screen('Flip', windowPtr);
     
-    % movie = Screen('CreateMovie', windowPtr, 'MyTestMovie.mov', 512, 512, 60);
+    % Optionally create a Quicktime movie file 'MyTestMovie.mov' in the
+    % current directory. The file will record a movie of this performance
+    % with video frames of size 512 x 512 pixels at a framerate of 60fps.
+    if writeMovie
+        movie = Screen('CreateMovie', windowPtr, 'MyTestMovie.mov', 512, 512, 60);
+    end
     
     % Perform a flip to sync us to vbl and take start-timestamp in t:
     t = Screen('Flip', windowPtr);
@@ -298,7 +323,10 @@ escape = KbName('ESCAPE');
             end
         end
 
-        % Screen('AddFrameToMovie', windowPtr, CenterRect([0 0 512 512], Screen('Rect', scrnNum)));
+        % Add a screenshot of the center 512 x 512 pixels as a new video frame to the movie file, if any:
+        if writeMovie
+            Screen('AddFrameToMovie', windowPtr, CenterRect([0 0 512 512], Screen('Rect', scrnNum)));
+        end
         
         % Flip stim to display and take timestamp of stimulus-onset after
         % displaying the new stimulus and record it in vector t:
@@ -309,7 +337,10 @@ escape = KbName('ESCAPE');
     % Last Flip:
     Screen('Flip', windowPtr);
     
-    % Screen('FinalizeMovie', movie);
+    % Finalize and close movie file, if any:
+    if writeMovie
+        Screen('FinalizeMovie', movie);
+    end
     
     % Done. Close the onscreen window:
     Screen('CloseAll')

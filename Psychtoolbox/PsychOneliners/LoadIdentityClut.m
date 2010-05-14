@@ -219,6 +219,21 @@ if gfxhwtype == 3 & IsOSX %#ok<AND2>
     oldClut = Screen('LoadNormalizedGammaTable', windowPtr, loadlut, loadOnNextFlip);
 end
 
+if gfxhwtype == 3 & IsWin %#ok<AND2>
+    % This is an experimental variant of the OS/X type 3 lut, but with 256
+    % slots. It is supposed for WindowsXP, assuming some NVidia GPU's,
+    % e.g., some QuadroFX 3700 GPU's have similar problems:
+    for i=0:255
+        if ((i / 255.0) < 0.5)
+            loadlut(i+1) = (i / 255.0);
+        else
+            loadlut(i+1) = (i / 255.0) - (1.0/256.0);
+        end
+    end
+    loadlut = loadlut' * ones(1, 3);
+    oldClut = Screen('LoadNormalizedGammaTable', windowPtr, loadlut, loadOnNextFlip);
+end
+
 if ~ismember(gfxhwtype, [-1,0,1,2,3])
     sca;
     error('Could not upload identity CLUT to GPU! Invalid LUT or invalid LUT id or other invalid arguments passed?!?');

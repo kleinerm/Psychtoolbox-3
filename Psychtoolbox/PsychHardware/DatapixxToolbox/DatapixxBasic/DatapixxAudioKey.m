@@ -380,7 +380,7 @@ end
 
 if strcmpi(cmd, 'TriggerLevel')
     varargout{1} = dpixaudioin.triggerLevel;
-    if length(varargin) > 1 && ~isempty(varargin{1})
+    if length(varargin) >= 1 && ~isempty(varargin{1})
         dpixaudioin.triggerLevel = varargin{1};
     end
     return;
