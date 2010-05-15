@@ -352,11 +352,12 @@ void gl_drawrangeelements( int nlhs, mxArray *plhs[], int nrhs, const mxArray *p
 
 void glu_newtess( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
+    mogl_tess_struct* mytess;
 	if (NULL == gluNewTess) mogl_glunsupported("gluNewTess");
 	plhs[0]=mxCreateNumericMatrix(1,1,mxUINT32_CLASS,mxREAL);
 
     // Create our own virtual tesselator struct:
-    mogl_tess_struct* mytess = (mogl_tess_struct*) PsychCallocTemp(1, sizeof(mogl_tess_struct), 2);
+    mytess = (mogl_tess_struct*) PsychCallocTemp(1, sizeof(mogl_tess_struct), 2);
     
     // Alloc a gluTesselator and store its ptr inside our struct:
     mytess->glutesselator = gluNewTess();
@@ -370,13 +371,11 @@ void glu_newtess( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 }
 
 void glu_deletetess( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-	int i;
-	
-	if (NULL == gluDeleteTess) mogl_glunsupported("gluDeleteTess");
-    
     // Define mytess struct pointer for this tesselator:
     MOGLDEFMYTESS;
-    
+	
+	if (NULL == gluDeleteTess) mogl_glunsupported("gluDeleteTess");
+        
     // Destroy GLUtesselator:
 	gluDeleteTess((GLUtesselator*) mytess->glutesselator);
         
@@ -390,9 +389,9 @@ void glu_deletetess( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] 
 
 void glu_tessbegincontour( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
+    MOGLDEFMYTESS;
 	if (NULL == gluTessBeginContour) mogl_glunsupported("gluTessBeginContour");
 
-    MOGLDEFMYTESS;
 	gluTessBeginContour((GLUtesselator*) mytess->glutesselator);
 
 }
@@ -412,7 +411,7 @@ void glu_tessbegincontour( int nlhs, mxArray *plhs[], int nrhs, const mxArray *p
      }                                                                                                                      \
 }
 
-void mogl_GLU_TESS_BEGIN_DATA(GLenum type, void* polygondata)
+void __stdcall mogl_GLU_TESS_BEGIN_DATA(GLenum type, void* polygondata)
 {
     mogl_tess_struct* mytess = (mogl_tess_struct*) polygondata;
     mxArray* prhs[2];
@@ -433,7 +432,7 @@ void mogl_GLU_TESS_BEGIN_DATA(GLenum type, void* polygondata)
     }
 }
 
-void mogl_GLU_TESS_END_DATA(void* polygondata)
+void __stdcall mogl_GLU_TESS_END_DATA(void* polygondata)
 {
     mogl_tess_struct* mytess = (mogl_tess_struct*) polygondata;
     mxArray* prhs[1];
@@ -450,7 +449,7 @@ void mogl_GLU_TESS_END_DATA(void* polygondata)
     }
 }
 
-void mogl_GLU_TESS_EDGE_FLAG_DATA(GLboolean flag, void* polygondata)
+void __stdcall mogl_GLU_TESS_EDGE_FLAG_DATA(GLboolean flag, void* polygondata)
 {
     mogl_tess_struct* mytess = (mogl_tess_struct*) polygondata;
     mxArray* prhs[2];
@@ -471,7 +470,7 @@ void mogl_GLU_TESS_EDGE_FLAG_DATA(GLboolean flag, void* polygondata)
     }
 }
 
-void mogl_GLU_TESS_VERTEX_DATA(void* vertex_data, void* polygondata)
+void __stdcall mogl_GLU_TESS_VERTEX_DATA(void* vertex_data, void* polygondata)
 {
     mogl_tess_struct* mytess = (mogl_tess_struct*) polygondata;
     mxArray* prhs[2];
@@ -495,7 +494,7 @@ void mogl_GLU_TESS_VERTEX_DATA(void* vertex_data, void* polygondata)
     }
 }
 
-void mogl_GLU_TESS_ERROR_DATA(GLenum type, void* polygondata)
+void __stdcall mogl_GLU_TESS_ERROR_DATA(GLenum type, void* polygondata)
 {
     mogl_tess_struct* mytess = (mogl_tess_struct*) polygondata;
     mxArray* prhs[2];
@@ -518,7 +517,6 @@ void mogl_GLU_TESS_ERROR_DATA(GLenum type, void* polygondata)
 
 void* mogl_enqueueVertex(mogl_tess_struct* mytess, mxArray* vdat)
 {
-    int i;
     void* dst;
     double* newdestructBuffer;
 	
@@ -560,7 +558,7 @@ void* mogl_enqueueVertex(mogl_tess_struct* mytess, mxArray* vdat)
     return(dst);
 }
 
-void mogl_GLU_TESS_COMBINE_DATA(GLdouble coords[3], void *vertex_data[4],
+void CALLCONV mogl_GLU_TESS_COMBINE_DATA(GLdouble coords[3], void *vertex_data[4],
                                 GLfloat weight[4], void **outData, void* polygondata)
 {
     mxArray* prhs[4];
@@ -636,9 +634,9 @@ void mogl_GLU_TESS_COMBINE_DATA(GLdouble coords[3], void *vertex_data[4],
 
 void glu_tessbeginpolygon( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
-	if (NULL == gluTessBeginPolygon) mogl_glunsupported("gluTessBeginPolygon");
-
     MOGLDEFMYTESS;
+
+	if (NULL == gluTessBeginPolygon) mogl_glunsupported("gluTessBeginPolygon");
 
     // Setup all tesselator callbacks for this polygon:
     MOGLSETTESSCALLBACK(GLU_TESS_BEGIN);
@@ -658,18 +656,18 @@ void glu_tessbeginpolygon( int nlhs, mxArray *plhs[], int nrhs, const mxArray *p
 
 void glu_tessendcontour( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
+    MOGLDEFMYTESS;    
 	if (NULL == gluTessEndContour) mogl_glunsupported("gluTessEndContour");
 
-    MOGLDEFMYTESS;    
     gluTessEndContour((GLUtesselator*) mytess->glutesselator);
 
 }
 
 void glu_tessendpolygon( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
+    MOGLDEFMYTESS;    
 	if (NULL == gluTessEndPolygon) mogl_glunsupported("gluTessEndPolygon");
 
-    MOGLDEFMYTESS;    
     gluTessEndPolygon((GLUtesselator*) mytess->glutesselator);
     mytess->destructBuffer = NULL;
     mytess->destructSize  = 0;
@@ -679,9 +677,9 @@ void glu_tessendpolygon( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prh
 
 void glu_tessnormal( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
+    MOGLDEFMYTESS;
 	if (NULL == gluTessNormal) mogl_glunsupported("gluTessNormal");
 
-    MOGLDEFMYTESS;
     gluTessNormal((GLUtesselator*) mytess->glutesselator,
 		(GLdouble)mxGetScalar(prhs[1]),
 		(GLdouble)mxGetScalar(prhs[2]),
@@ -691,9 +689,9 @@ void glu_tessnormal( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] 
 
 void glu_tessproperty( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
+    MOGLDEFMYTESS;    
 	if (NULL == gluTessProperty) mogl_glunsupported("gluTessProperty");
 
-    MOGLDEFMYTESS;    
     gluTessProperty((GLUtesselator*) mytess->glutesselator,
 		(GLenum)mxGetScalar(prhs[1]),
 		(GLdouble)mxGetScalar(prhs[2]));
@@ -702,8 +700,9 @@ void glu_tessproperty( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[
 
 void glu_tessvertex( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
+    void* vdat;    
     MOGLDEFMYTESS;    
-    void* vdat = mogl_enqueueVertex(mytess, prhs[2]);
+    vdat = mogl_enqueueVertex(mytess, prhs[2]);
     
 	if (NULL == gluTessVertex) mogl_glunsupported("gluTessVertex");
 
@@ -716,10 +715,11 @@ void glu_tessvertex( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] 
 
 void glu_tesscallback( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
+    GLenum which;
+    MOGLDEFMYTESS;
 	if (NULL == gluTessCallback) mogl_glunsupported("gluTessCallback");
 
-    MOGLDEFMYTESS;
-    GLenum which = (GLenum)mxGetScalar(prhs[1]);
+    which = (GLenum)mxGetScalar(prhs[1]);
     switch(which) {
         case GLU_TESS_BEGIN:
             mxGetString(prhs[2], mytess->nGLU_TESS_BEGIN, MAX_TESSCBNAME);

@@ -36,7 +36,13 @@ InitializePsychSound(1);
 nrchannels = 1;
 freq = 48000;
 
-pamaster = PsychPortAudio('Open', [], 1+8, 1, freq, nrchannels);
+% Add 15 msecs latency on Windows, to protect against shoddy drivers:
+sugLat = [];
+if IsWin
+    sugLat = 0.015;
+end
+
+pamaster = PsychPortAudio('Open', [], 1+8, 1, freq, nrchannels, [], sugLat);
 
 % Start master immediately, wait for it to be started. We won't stop the
 % master until the end of the session.
@@ -195,7 +201,7 @@ while 1
     status = PsychPortAudio('GetStatus', pasound1);
     % Every 6th slot corresponds again to the 1st tone, and it needs to be
     % playing that is status.Active:
-    if (mod(status.SchedulePosition, 6) == 0) && (status.Active)
+    if (mod(status.SchedulePosition, 6) == 0) & (status.Active) %#ok<AND2>
         % Got it! The status.startTime now corresponds to the start of the
         % current 3-tone-sequence:
         break;
@@ -255,7 +261,7 @@ while 1
     status = PsychPortAudio('GetStatus', pasound1);
     % Every 6th slot corresponds again to the 1st tone, and it needs to be
     % playing that is status.Active:
-    if (mod(status.SchedulePosition, 6) == 0) && (status.Active)
+    if (mod(status.SchedulePosition, 6) == 0) & (status.Active) %#ok<AND2>
         % Got it! The status.startTime now corresponds to the start of the
         % current 3-tone-sequence:
         break;
@@ -313,7 +319,7 @@ while 1
     status = PsychPortAudio('GetStatus', pasound1);
     % Every 6th slot corresponds again to the 1st tone, and it needs to be
     % playing that is status.Active:
-    if (mod(status.SchedulePosition, 6) == 0) && (status.Active)
+    if (mod(status.SchedulePosition, 6) == 0) & (status.Active) %#ok<AND2>
         % Got it! The status.startTime now corresponds to the start of the
         % current 3-tone-sequence:
         break;

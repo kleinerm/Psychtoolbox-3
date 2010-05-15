@@ -55,7 +55,7 @@ screenid = max(Screen('Screens'));
 PsychImaging('PrepareConfiguration');
 
 % Request per-pixel 2D gain correction for display:
-PsychImaging('AddTask', 'AllViews', 'DisplayColorCorrection', 'GainMatrix');
+PsychImaging('AddTask', 'FinalFormatting', 'DisplayColorCorrection', 'GainMatrix');
 
 % Open window with gray background (128 aka 50% gray), return handle 'win':
 win = PsychImaging('OpenWindow', screenid, 128);

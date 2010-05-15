@@ -102,6 +102,8 @@ static bool jettisoned = false;
 #include "wglew.h"
 #include <GL/glut.h>
 
+#define CALLCONV __stdcall
+
 /* Hacks to get Windows version running - to be replaced soon. */
 double gluCheckExtension(const GLubyte* a, const GLubyte* b);
 double gluBuild1DMipmapLevels(double a1, double a2, double a3, double a4, double a5, double a6, double a7, double a8, void* a9);
