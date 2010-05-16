@@ -80,6 +80,7 @@ static bool jettisoned = false;
 #ifdef MATLAB_MEX_FILE 
 #include <AGL/agl.h>
 #endif
+#define CALLCONV
 #endif
 
 /* Includes specific to GNU/Linux version of mogl: */
@@ -93,6 +94,7 @@ static bool jettisoned = false;
 #include <GL/glu.h>
 #include <GL/glut.h>
 
+#define CALLCONV
 #endif
 
 /* Includes specific to M$-Windows version of mogl: */

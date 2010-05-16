@@ -411,7 +411,7 @@ void glu_tessbegincontour( int nlhs, mxArray *plhs[], int nrhs, const mxArray *p
      }                                                                                                                      \
 }
 
-void __stdcall mogl_GLU_TESS_BEGIN_DATA(GLenum type, void* polygondata)
+void CALLCONV mogl_GLU_TESS_BEGIN_DATA(GLenum type, void* polygondata)
 {
     mogl_tess_struct* mytess = (mogl_tess_struct*) polygondata;
     mxArray* prhs[2];
@@ -432,7 +432,7 @@ void __stdcall mogl_GLU_TESS_BEGIN_DATA(GLenum type, void* polygondata)
     }
 }
 
-void __stdcall mogl_GLU_TESS_END_DATA(void* polygondata)
+void CALLCONV mogl_GLU_TESS_END_DATA(void* polygondata)
 {
     mogl_tess_struct* mytess = (mogl_tess_struct*) polygondata;
     mxArray* prhs[1];
@@ -449,7 +449,7 @@ void __stdcall mogl_GLU_TESS_END_DATA(void* polygondata)
     }
 }
 
-void __stdcall mogl_GLU_TESS_EDGE_FLAG_DATA(GLboolean flag, void* polygondata)
+void CALLCONV mogl_GLU_TESS_EDGE_FLAG_DATA(GLboolean flag, void* polygondata)
 {
     mogl_tess_struct* mytess = (mogl_tess_struct*) polygondata;
     mxArray* prhs[2];
@@ -470,7 +470,7 @@ void __stdcall mogl_GLU_TESS_EDGE_FLAG_DATA(GLboolean flag, void* polygondata)
     }
 }
 
-void __stdcall mogl_GLU_TESS_VERTEX_DATA(void* vertex_data, void* polygondata)
+void CALLCONV mogl_GLU_TESS_VERTEX_DATA(void* vertex_data, void* polygondata)
 {
     mogl_tess_struct* mytess = (mogl_tess_struct*) polygondata;
     mxArray* prhs[2];
@@ -494,7 +494,7 @@ void __stdcall mogl_GLU_TESS_VERTEX_DATA(void* vertex_data, void* polygondata)
     }
 }
 
-void __stdcall mogl_GLU_TESS_ERROR_DATA(GLenum type, void* polygondata)
+void CALLCONV mogl_GLU_TESS_ERROR_DATA(GLenum type, void* polygondata)
 {
     mogl_tess_struct* mytess = (mogl_tess_struct*) polygondata;
     mxArray* prhs[2];
