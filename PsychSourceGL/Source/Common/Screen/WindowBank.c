@@ -338,6 +338,9 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	(*winRec)->reference_msc = 0;
 	(*winRec)->reference_sbc = 0;
 	(*winRec)->osbuiltin_swaptime = 0.0;
+	(*winRec)->target_sbc = 0;				// Target SBC value sticks to zero on healthy systems, gets updated if kPsychNeedOpenMLWorkaround2 is active.
+	(*winRec)->lastSwaptarget_msc = 0;		// LastSwaptarget MSC value sticks to zero on healthy systems, gets updated if kPsychNeedOpenMLWorkaround2 is active.
+	
 	// ...and other timing values:
 	(*winRec)->postflip_vbltimestamp = -1.0;
 

@@ -262,7 +262,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			return(FALSE);
 		}
 		
-		if(strstr(line,"Radeon") || strstr(line,"ATI Tech")) {  /* if line contains a "radeon" string */
+		if((strstr(line,"VGA")) && (strstr(line,"Fire") || strstr(line,"Radeon") || strstr(line,"ATI Tech"))) {  /* if line contains a "radeon" string */
 			break; // Found it!
 		}
 	};

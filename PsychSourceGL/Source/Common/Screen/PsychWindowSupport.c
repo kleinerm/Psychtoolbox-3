@@ -2280,13 +2280,15 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	osspecific_asyncflip_scheduled = TRUE;
 
 	// Schedule swap on main window:
-	if (PsychOSScheduleFlipWindowBuffers(windowRecord, targetWhen, 0, 0, 0, targetSwapFlags) < 0) {
+	if ((swap_msc = PsychOSScheduleFlipWindowBuffers(windowRecord, targetWhen, 0, 0, 0, targetSwapFlags)) < 0) {
 		// Scheduling failed or unsupported!
+		if ((swap_msc < -1) && (verbosity > 1)) printf("PTB-WARNING: PsychOSScheduleFlipWindowBuffers() FAILED: errorcode = %i, targetWhen = %f, targetSwapFlags = %i.\n", (int) swap_msc, (float) targetWhen, (int) targetSwapFlags);
+		
 		osspecific_asyncflip_scheduled = FALSE;
 	}
 	
 	// Also schedule the slave window, if any and if scheduling so far worked:
-	if ((windowRecord->slaveWindow) && (osspecific_asyncflip_scheduled) && (PsychOSScheduleFlipWindowBuffers(windowRecord->slaveWindow, targetWhen, 0, 0, 0, targetSwapFlags) < 0)) {
+	if ((windowRecord->slaveWindow) && (osspecific_asyncflip_scheduled) && ((swap_msc = PsychOSScheduleFlipWindowBuffers(windowRecord->slaveWindow, targetWhen, 0, 0, 0, targetSwapFlags)) < 0)) {
 		// Scheduling failed or unsupported!
 		osspecific_asyncflip_scheduled = FALSE;
 		
@@ -2294,8 +2296,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		// have an inconsistent situation and can't do anything about it, except warn user
 		// of trouble ahead:
 		if (verbosity > 1) {
-			printf("PTB-WARNING: Scheduling a bufferswap on slave window of dual-window pair FAILED after successfull schedule on masterwindow!\n");
+			printf("PTB-WARNING: Scheduling a bufferswap on slave window of dual-window pair FAILED after successfull scheduling on masterwindow!\n");
 			printf("PTB-WARNING: Expect complete loss of sync between windows and other severe visual- and timing-artifacts!\n");
+			printf("PTB-WARNING: PsychOSScheduleFlipWindowBuffers() FAILED: errorcode = %i, targetWhen = %f, targetSwapFlags = %i.\n", (int) swap_msc, (float) targetWhen, (int) targetSwapFlags);
 		}
 	}
 
@@ -2568,9 +2571,13 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 			// tSwapComplete timestamp. Nothing to do here for now, but code at end of timestamping
 			// will use this timestamp as override for anything else that got computed.
 			// At return of the method, we know that the swap has completed.
+			if (verbosity > 10) printf("PTB-DEBUG: PsychOSGetSwapCompletionTimestamp() success: swap_msc = %i, tSwapComplete = %f.\n", (int) swap_msc, (float) tSwapComplete);
 		}
 		else {
 			// OS-Builtin timestamping failed, is unsupported, or it is disabled by usercode.
+			if ((swap_msc < -1) && (verbosity > 1)) printf("PTB-WARNING: PsychOSGetSwapCompletionTimestamp() FAILED: errorcode = %i, tSwapComplete = %f.\n", (int) swap_msc, (float) tSwapComplete);
+
+
 			// Use one of our own home grown wait-for-swapcompletion and timestamping strategies:
 			if ((vbl_synclevel==3) && (windowRecord->VBL_Endline != -1)) {
 				// Wait for VBL onset via experimental busy-waiting spinloop instead of
@@ -4735,6 +4742,9 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	
 	if (strstr(glGetString(GL_VENDOR), "ATI") || strstr(glGetString(GL_VENDOR), "AMD") || strstr(glGetString(GL_RENDERER), "AMD")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
 	if (strstr(glGetString(GL_VENDOR), "NVIDIA")) { nvidia = TRUE; sprintf(windowRecord->gpuCoreId, "NV10"); }
+
+	// Detection code for Linux DRI driver stack with ATI GPU:
+	if (strstr(glGetString(GL_VENDOR), "Advanced Micro Devices")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
 	
 	while (glGetError());
 	glGetIntegerv(GL_MAX_RECTANGLE_TEXTURE_SIZE_EXT, &maxtexsize);
@@ -4803,7 +4813,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	}
 
 	// ATI_texture_float is supported by R300 ATI cores and later, as well as NV30/40 NVidia cores and later.
-	if (glewIsSupported("GL_ATI_texture_float") || glewIsSupported("GL_ARB_texture_float")) {
+	if (glewIsSupported("GL_ATI_texture_float") || glewIsSupported("GL_ARB_texture_float") || strstr(glGetString(GL_EXTENSIONS), "GL_MESAX_texture_float")) {
 		// Floating point textures are supported, both 16bpc and 32bpc:
 		if (verbose) printf("Hardware supports floating point textures of 16bpc and 32bpc float format.\n");
 		windowRecord->gfxcaps |= kPsychGfxCapFPTex16;
@@ -4834,7 +4844,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 				// R600 from earlier cores. The best we can do for now is name matching, which won't work
 				// for the FireGL series however, so we also check for maxaluinst > 2000, because presumably,
 				// the R600 has a limit of 2048 whereas previous cores only had 512.
-				if (strstr(glGetString(GL_RENDERER), "Radeon") && strstr(glGetString(GL_RENDERER), "HD")) {
+				if ((strstr(glGetString(GL_RENDERER), "R600")) || (strstr(glGetString(GL_RENDERER), "Radeon") && strstr(glGetString(GL_RENDERER), "HD"))) {
 					// Ok, a Radeon HD 2xxx/3xxx or later -> R600 or later:
 					if (verbose) printf("Assuming ATI R600 or later (Matching namestring): Hardware supports floating point blending and filtering on 16bpc and 32bpc float formats.\n");
 					sprintf(windowRecord->gpuCoreId, "R600");
@@ -4889,6 +4899,14 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	}
 	
 	// Check if OpenML extensions for precisely scheduled stimulus onset and onset timestamping are supported:
+	#ifdef GLX_OML_sync_control
+	if (verbose) {
+		printf("OML_sync_control indicators: glXGetSyncValuesOML=%p , glXWaitForMscOML=%p, glXWaitForSbcOML=%p, glXSwapBuffersMscOML=%p\n",
+				glXGetSyncValuesOML, glXWaitForMscOML, glXWaitForSbcOML, glXSwapBuffersMscOML);
+		printf("OML_sync_control indicators: glewIsSupported() says %i.\n", (int) glewIsSupported("GLX_OML_sync_control"));
+	}
+	#endif
+
 	if (glewIsSupported("GLX_OML_sync_control")) {
 		if (verbose) printf("System supports OpenML OML_sync_control extension for high-precision scheduled swaps and timestamping.\n");
 		

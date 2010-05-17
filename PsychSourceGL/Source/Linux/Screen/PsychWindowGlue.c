@@ -506,6 +506,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	
 	// Additionally bind the Mesa query call:
 	glXGetSwapIntervalMESA = (PFNGLXGETSWAPINTERVALMESAPROC) glXGetProcAddressARB("glXGetSwapIntervalMESA");
+	printf("PTB-INFO: Using GLX_MESA_swap_control extension for control of vsync.\n");
   }
   else {
 	// Unsupported. Disable the get call:
@@ -533,8 +534,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   fflush(NULL);
 
   // ATI Radeon X1000 or later AND first opened onscreen window?
-  if ((x11_windowcount == 1) && strstr(glGetString(GL_VENDOR), "ATI") && strstr(glGetString(GL_RENDERER), "Radeon")) {
-	  if (strstr(glGetString(GL_RENDERER), "X") || strstr(glGetString(GL_RENDERER), "HD")) {
+  if ((x11_windowcount == 1) && ( (strstr(glGetString(GL_VENDOR), "ATI") && (strstr(glGetString(GL_RENDERER), "Radeon") || strstr(glGetString(GL_RENDERER), "Fire"))) ||
+								  (strstr(glGetString(GL_VENDOR), "Advanced Micro Devices") && strstr(glGetString(GL_RENDERER), "Mesa DRI R")) )) {
+	  if (strstr(glGetString(GL_RENDERER), "X") || strstr(glGetString(GL_RENDERER), "HD") || strstr(glGetString(GL_RENDERER), "Mesa DRI")) {
 	  	// Probably an X1000 or later or an HD 2000/3000/later series chip.
 		// Try to map its PCI register space to allow for our implementation of
 		// beamposition queries:
@@ -710,8 +712,17 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 
 	#ifdef GLX_OML_sync_control
 
+	if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Checking for glXWaitForSbcOML() support.\n");
+	
 	// Extension unsupported? Return -1 in that case:
 	if (NULL == glXWaitForSbcOML) return(-1);
+
+	// Workaround for broken XServer 1.8: Special value targetSBC == 0 is not honored,
+	// so we need to supply a reasonable targetSBC to avoid malfunction.
+	// windowRecord->target_sbc is set up properly in PsychOSScheduleFlipWindowBuffers()
+	// if the kPsychNeedOpenMLWorkaround2 is enabled. By default it is zero:
+	if (targetSBC < windowRecord->target_sbc) targetSBC = windowRecord->target_sbc;
+	if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Supported. Calling with targetSBC = %i.\n", (int) targetSBC);
 
 	// Extension supported: Perform query and error check.
 	if (!glXWaitForSbcOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, targetSBC, &ust, &msc, &sbc)) return(-2);
@@ -724,6 +735,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 	windowRecord->reference_msc = msc;
 	windowRecord->reference_sbc = sbc;
 
+	if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Success! refust = %i, refmsc = %i, refsbc = %i.\n", (int) ust, (int) msc, (int) sbc);
 	#endif
 	
 	// Return msc of swap completion:
@@ -821,6 +833,14 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 		}
 	}
 
+	// Running on a broken XServer of version < 1.8.2? Need to enable our workarounds if so:
+	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Running on '%s' XServer, Vendor release %i.\n", XServerVendor(windowRecord->targetSpecific.deviceContext), (int) XVendorRelease(windowRecord->targetSpecific.deviceContext));
+	if (XVendorRelease(windowRecord->targetSpecific.deviceContext) < 10802000) windowRecord->specialflags |= kPsychNeedOpenMLWorkaround2;
+
+	if ((windowRecord->specialflags & kPsychNeedOpenMLWorkaround2) && (PsychPrefStateGet_Verbosity() > 1)) {
+		printf("PTB-WARNING: OpenML OML_sync_control implementation with defective XServer-1.8.x detected! Enabling workarounds and hoping for the best...\n");
+	}
+	
 	#else
 		// Disable extension:
 		windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;	
@@ -886,6 +906,8 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 		if ((windowRecord->specialflags & kPsychNeedOpenMLWorkaround1) || (ust <= 0)) {
 			// Useless ust returned. We need to recover a useable reference (msc, ust) pair via
 			// trickery instead. Check if tWhen is at least 4 video refresh cycles in the future.
+			if ((ust <= 0) && (PsychPrefStateGet_Verbosity() > 11)) printf("PTB-DEBUG:PsychOSScheduleFlipWindowBuffers: Invalid ust %i returned by query. Current msc = %i.\n", (int) ust, (int) msc);
+
 			PsychGetAdjustedPrecisionTimerSeconds(&tNow);
 			if (((tWhen - tNow) / windowRecord->VideoRefreshInterval) > 4.0) {
 				// Yes. We have some time until deadline. Use a blocking wait for at
@@ -894,6 +916,7 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 				// to perform a blocking wait. In that case it will return a valid (msc, ust)
 				// pair on return from blocking wait. Wait until msc+2 is reached and retrieve
 				// updated (msc, ust):
+				if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSScheduleFlipWindowBuffers: glXWaitForMscOML until msc = %i, now msc = %i.\n", (int) msc + 2, (int) msc);
 				if (!glXWaitForMscOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, msc + 2, 0, 0, &ust, &msc, &sbc)) return(-3);
 			}
 			else {
@@ -931,12 +954,55 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 		targetMSC += (targetMSC % divisor == remainder) ? 0 : 1; 
 	}
 
+	// Workaround for broken DRI2 swap & sync bits in XServer 1.8 needed?
+	if (windowRecord->specialflags & kPsychNeedOpenMLWorkaround2) {
+		// Yes :(
+		
+		// First workaround: Need to compute the expected targetSBC value for later glXWaitForSbcOML()
+		// queries, as the special targetSBC == 0 value is not honored in 1.8. This is used in
+		// PsychOSGetSwapCompletionTimestamp().
+		// Query current sbc, target post swap request will be sbc + 1:
+		if (!glXGetSyncValuesOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &ust, &msc, &(windowRecord->target_sbc))) return(-5);
+		windowRecord->target_sbc++;
+
+		// Second workaround: glXSwapBuffersMscOML() is broken. It honors divisor, remainder,
+		// but ignores targetMSC. We setup divisor and remainder so that remainder encodes our
+		// desired targetMSC and proper scheduling is achieved via the (divisor, remainder) constraint.
+		// We delay the glXSwapBuffersMscOML() call until the current msc is >= last known swap target msc + 1.
+		// This should make sure that the (divisor,remainder) handling inside the current Intel and Radeon DDX
+		// gets triggered and we're kind'a good. The very first swap will always be spoiled though...
+		if (msc < windowRecord->lastSwaptarget_msc + 1) {
+			// Ok, need to delay for the trickery to work:
+			if (!glXWaitForMscOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->lastSwaptarget_msc + 1, 0, 0, &ust, &msc, &sbc)) return(-6);
+			if (PsychPrefStateGet_Verbosity() > 12) printf("PTB-DEBUG:PsychOSScheduleFlipWindowBuffers: Delayed swap submission until glXWaitForMscOML until msc == %i >= lastSwaptarget + 1.\n", (int) msc);
+		}
+		
+		// Set divisor to max 32-bit int value, so it is non-zero (--> DDX's will use (divisor,remainder) logic)
+		// but has no real effect as (msc % divisor) == msc for any msc < 2^32-1, that is for any real-world msc.
+		divisor = 0xffffffff;
+		
+		// Set remainder to the desired targetMSC. The targetMSC value gets ignored by broken XServer, but
+		// the (divisor, remainder) logic will compute an effective that is:
+		//      targetMSC = msc - (msc % divisor) + remainder
+		// <=>  targetMSC = msc - msc + remainder
+		// <=>  targetMSC = remainder.
+		// Therefore if we set remainder == targetMSC, then stuff should kind'a work.
+		remainder = targetMSC;
+	}
+
+	if (PsychPrefStateGet_Verbosity() > 12) printf("PTB-DEBUG:PsychOSScheduleFlipWindowBuffers: Submitting swap request for targetMSC = %i, divisor = %i, remainder = %i.\n", (int) targetMSC, (int) divisor, (int) remainder);
+
 	// Ok, we have a valid final targetMSC. Schedule a bufferswap for that targetMSC, taking a potential
 	// (divisor, remainder) constraint into account:
 	rc = glXSwapBuffersMscOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, targetMSC, divisor, remainder);
 
 	// Failed? Return -4 error code if so:
 	if (rc == -1) return(-4);
+
+	// Need to keep track of most recent lastSwaptarget_msc for workaround to work.
+	// Luckily another bug in the broken XServer just causes 'rc' to return exactly
+	// the info we need ;-)
+	if (windowRecord->specialflags & kPsychNeedOpenMLWorkaround2) windowRecord->lastSwaptarget_msc = rc;
 	
 	#else
 		// No op branch in case OML_sync_control isn't enabled at compile time:

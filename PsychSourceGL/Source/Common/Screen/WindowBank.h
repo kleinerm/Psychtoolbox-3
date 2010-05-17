@@ -124,12 +124,13 @@ TO DO:
 
 #define kPsychIsFullscreenWindow		  4 // 'specialflags' setting 4 means: This is a fullscreen window.
 #define kPsychNeedOpenMLWorkaround1		  8 // 'specialflags' setting 8 means: This needs the special workarounds for slightly broken OpenML sync control ext.
+#define kPsychNeedOpenMLWorkaround2		 16 // 'specialflags' setting 16 means: This needs the special workarounds for slightly broken OpenML sync control ext in XServer 1.8
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384. --> Flags of 32768 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,1024,S-2048,S-8192, 32768. --> Flags of 65536 and higher are available, as well as 16,32,64,128,256,512,4096, 16384
+// 1,2,4,8,16,1024,S-2048,S-8192, 32768. --> Flags of 65536 and higher are available, as well as 32,64,128,256,512,4096, 16384
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*	PtrPsychHookFunction;
@@ -300,6 +301,8 @@ typedef struct _PsychWindowRecordType_{
 		psych_int64								reference_ust;			// UST reference timestamp of vblank with count reference_msc from OpenML. (Optional)
 		psych_int64								reference_msc;			// MSC reference vblank count from OpenML. (Optional)
 		psych_int64								reference_sbc;			// SBC reference swapbuffers count from OpenML. (Optional)
+		psych_int64								target_sbc;				// Target SBC value for next glXWaitForSbcOML() call from OpenML. (Optional)
+		psych_int64								lastSwaptarget_msc;		// Target MSC value for which most recent swap was scheduled by DRM/DRI2 from OpenML. (Optional)
 		
 	// Pointers to temporary arrays with gamma tables to upload to the gfx-card at next Screen('Flip'):
 	// They default to NULL and get possibly set in Screen('LoadNormalizedGammaTable'):

@@ -60,6 +60,26 @@ PsychError SCREENNull(void)
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
+	#if PSYCH_SYSTEM == PSYCH_LINUX
+		PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
+
+		// Return current OpenML workaround2 enable state:
+		PsychCopyOutDoubleArg(1, FALSE, (int) (windowRecord->specialflags & kPsychNeedOpenMLWorkaround2));
+
+		// Enable/Disable current OpenML workaround2:
+		if (PsychCopyInIntegerArg(2, FALSE, &i)) {
+			if (i > 0) windowRecord->specialflags |= kPsychNeedOpenMLWorkaround2;
+			if (i == 0) windowRecord->specialflags &= ~kPsychNeedOpenMLWorkaround2;
+		}
+
+		if (PsychCopyInIntegerArg(3, FALSE, &i)) {
+			windowRecord->specialflags = i;
+		}
+
+		return(PsychError_none);
+	#endif
+	
+
 	#if PSYCH_SYSTEM == PSYCH_WINDOWS
 		PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
 		PsychOSFlipWindowBuffers(windowRecord);
