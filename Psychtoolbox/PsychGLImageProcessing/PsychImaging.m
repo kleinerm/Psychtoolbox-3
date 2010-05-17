@@ -1414,8 +1414,8 @@ end
 
 % Custom color correction for display wanted?
 if ~isempty(find(mystrcmp(reqs, 'DisplayColorCorrection')))
-    % Yes. Need full pipeline in any case, ie fast backing store:
-    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+    % Yes. Need full pipeline in any case, ie fast backing store and output conversion:
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore, kPsychNeedOutputConversion);
 end
 
 % Replication of left half of window into right half needed?
