@@ -396,7 +396,13 @@ void InitializePsychDisplayGlue(void)
 		
 		// We must initialize XLib for multi-threaded operations / access on first
 		// call:
+		// TODO FIXME: We can only do this on Octave for now, not on Matlab!
+		// Matlab uses XLib long before we get a chance to get here, but XInitThreads()
+		// must be called as very first XLib function after process startup or bad things
+		// will happen! So, we can't call it...
+		#ifdef PTBOCTAVE3MEX
 		XInitThreads();
+		#endif
 	}
 	
     //init the list of Core Graphics display IDs.

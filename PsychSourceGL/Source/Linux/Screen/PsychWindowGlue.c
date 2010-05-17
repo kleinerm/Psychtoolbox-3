@@ -84,7 +84,7 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
 	  if(!PsychPrefStateGet_SuppressAllWarnings()) {
 	    printf("PTB-INFO: Failed to enable realtime-scheduling [%s]!\n", strerror(errno));
 	    if (errno==EPERM) {
-	      printf("PTB-INFO: You need to run Matlab with root-privileges for this to work.\n");
+	      printf("PTB-INFO: You need to run Matlab or Octave with root-privileges for this to work.\n");
 	    }
 	  }
 	  errno=0;
@@ -700,9 +700,9 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
  *
  * A value of zero is recommended.
  *
- * Returns: Highly precise and reliable swap completion timestamp in seconds of
+ * Returns: Precise and reliable swap completion timestamp in seconds of
  * system time in variable referenced by 'tSwap', and msc value of completed swap,
- * or a negative value on error (-1 == unsupported, -2 == Query failed).
+ * or a negative value on error (-1 == unsupported, -2/-3 == Query failed).
  *
  */
 psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecord, psych_int64 targetSBC, double* tSwap)
@@ -723,6 +723,22 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 	// if the kPsychNeedOpenMLWorkaround2 is enabled. By default it is zero:
 	if (targetSBC < windowRecord->target_sbc) targetSBC = windowRecord->target_sbc;
 	if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Supported. Calling with targetSBC = %i.\n", (int) targetSBC);
+
+	// Broken XServer which needs special attention?
+	if (windowRecord->specialflags & kPsychNeedOpenMLWorkaround2) {
+		if (!glXGetSyncValuesOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc)) return(-3);
+
+		// Target swap already completed?
+		if (sbc >= targetSBC) {
+			// We're screwed. Output warning and fallback to query unsupported status.
+			// The "unsupported" return code will trigger use of fallback path in calling
+			// code, so we may be able to recover...
+			if (PsychPrefStateGet_Verbosity() > 11) {
+				printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Too late for glXWaitForSbcOML() query (sbc %i >= targetSBC %i)! Failing with rc = -1.\n", (int) sbc, (int) targetSBC);
+			}
+			return(-1);
+		}
+	}
 
 	// Extension supported: Perform query and error check.
 	if (!glXWaitForSbcOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, targetSBC, &ust, &msc, &sbc)) return(-2);
@@ -1047,6 +1063,7 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
 
   // Try to set requested swapInterval if swap-control extension is supported on
   // this Linux machine. Otherwise this will be a no-op...
+  // Note: On Mesa, glXSwapIntervalSGI() is actually a redirected call to glXSwapIntervalMESA()!
   if (glXSwapIntervalSGI) {
 	  error = glXSwapIntervalSGI(swapInterval);
 	  if (error) {
