@@ -4907,7 +4907,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	}
 	#endif
 
-	if (glewIsSupported("GLX_OML_sync_control")) {
+	if (glewIsSupported("GLX_OML_sync_control") || (glXGetSyncValuesOML && glXWaitForMscOML && glXWaitForSbcOML && glXSwapBuffersMscOML)) {
 		if (verbose) printf("System supports OpenML OML_sync_control extension for high-precision scheduled swaps and timestamping.\n");
 		
 		// As OpenML is currently only supported on GNU/Linux in a rather experimental stage, use of this is an opt-in.
