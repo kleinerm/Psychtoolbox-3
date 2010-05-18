@@ -653,7 +653,7 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
 		if (PsychGetKernelTimebaseFrequencyHz() > 10000) {
 			// Convert ust into regular GetSecs timestamp:
 			// At least we hope this conversion is correct...
-			return( ((double) ust) / PsychGetKernelTimebaseFrequencyHz() );
+			return( PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz()) );
 		}
 		else {
 			// Last VBL timestamp unavailable:
@@ -744,7 +744,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 	if (!glXWaitForSbcOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, targetSBC, &ust, &msc, &sbc)) return(-2);
 
 	// Success. Translate ust into system time in seconds:
-	if (tSwap) *tSwap = ((double) ust) / PsychGetKernelTimebaseFrequencyHz();
+	if (tSwap) *tSwap = PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz());
 
 	// Update cached reference values for future swaps:
 	windowRecord->reference_ust = ust;
@@ -951,7 +951,7 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 		windowRecord->reference_sbc = sbc;
 		
 		// Compute targetMSC for given baseline and target time tWhen:
-		tMsc = ((double) ust) / PsychGetKernelTimebaseFrequencyHz();
+		tMsc = PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz());
 		targetMSC = msc + ((psych_int64)(floor((tWhen - tMsc) / windowRecord->VideoRefreshInterval) + 1));
 	}
 	

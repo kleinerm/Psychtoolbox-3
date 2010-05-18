@@ -66,5 +66,6 @@ int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, doub
 
 // Linux specific: CLOCK_MONOTONIC time in seconds -- Usually the system uptime:
 double PsychOSGetLinuxMonotonicTime(void);
+double PsychOSMonotonicToRefTime(double monotonicTime);
 //end include once
 #endif
