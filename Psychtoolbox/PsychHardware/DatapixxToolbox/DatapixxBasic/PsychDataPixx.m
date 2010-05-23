@@ -365,18 +365,6 @@ if isempty(dpx)
     % ID unknown until 'Open' call:
     dpx.ID = '';
     
-    if IsLinux
-        % A small hack to workaround some linker bug in 1st generation
-        % DataPixx MEX file on Linux. The DataPixx mex file doesn't declare
-        % a dependency on librt.so, but depends on it. We preload GetSecs,
-        % which depends on librt.so, so this will force loading of librt
-        % into the runtime address space. When DataPixx gets called 1st
-        % time, it will work because librt is already preloaded. Otherwise
-        % it would fail with a linker error.
-        % TODO FIXME: Remove this hack asap...
-        GetSecs;
-    end
-    
     % Datapixx already open?
     if doDatapixx('IsReady')
         % Yup: Some external client holds an open connection. Artificially
