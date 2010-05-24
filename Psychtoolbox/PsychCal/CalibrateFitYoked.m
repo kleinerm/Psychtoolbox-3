@@ -1,8 +1,10 @@
 function cal = CalibrateFitYoked(cal)
+% cal = CalibrateFitYoked(cal)
 %
 % Fit the gamma data from the yoked measurements.
 %
 % 4/30/10  dhb, kmo, ar  Wrote it.
+% 5/24/10  dhb           Update comment.
 
 %% Check that this is possible
 if (~isfield(cal.rawdata,'yokedSpd'))
