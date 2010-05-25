@@ -268,7 +268,7 @@ if IsOctave
         % Try if Screen MEX file works...
         WaitSecs(0.1);
     catch
-        % Failed! Either screwed setup of path or missing VC++ 2005 runtime
+        % Failed! Either screwed setup of path or missing runtime
         % libraries.
         fprintf('ERROR: WaitSecs-MEX does not work, most likely other MEX files will not work either.\n');
         fprintf('ERROR: One reason might be that your version %s of Octave is incompatible. We recommend\n', version);        
@@ -345,8 +345,8 @@ if IsWin & ~IsOctave
     end
     
     try
-        % Try if Screen MEX file works...
-        WaitSecs(0.1);
+        % Try if WaitSecs MEX file works...
+        WaitSecs('YieldSecs', 0.1)
     catch
         % Failed! Either screwed setup of path or missing VC++ 2005 runtime
         % libraries.
