@@ -5,6 +5,7 @@
 % which in turn requires the correct settings.
 %
 % 4/29/10  dhb, kmo, ar  Wrote it.
+% 5/25/10  dhb, ar       Yoked field in describe now set elsewhere.
 
 % Enter load code
 defaultFileName = 'HDRFront';
@@ -28,7 +29,6 @@ fprintf('Gamma table available at %g levels\n',...
 	size(cal.gammaInput,1));
 
 % Fit yoked measurements
-cal.describe.yokedGamma = 1;
 cal = CalibrateFitLinMod(cal);
 cal = CalibrateFitGamma(cal,2^cal.describe.dacsize);
 

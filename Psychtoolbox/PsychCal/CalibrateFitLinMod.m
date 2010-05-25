@@ -10,8 +10,9 @@ function cal = CalibrateFitLinMod(cal)
 %          dhb  Normalize basis vectors so that their max power matches that 
 %               of first component.
 % 4/30/10  dhb  Execute yoked fit if yokedGamma flag is set.
+% 5/25/10  dhb, ar Change yoked field names to match
 
-if (isfield(cal.describe,'yokedGamma') && cal.describe.yokedGamma == 1)
+if (isfield(cal.describe,'yoked') && cal.describe.yoked > 0)
     cal = CalibrateFitYoked(cal);
 else
 
