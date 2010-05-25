@@ -401,7 +401,7 @@ PsychError SCREENGetWindowInfo(void)
 		// Timestamp immediately after call to PsychOSFlipWindowBuffers() returns, i.e., time at swap request submission completion:
 		PsychSetStructArrayDoubleElement("VBLTimePostFlip", 0, windowRecord->postflip_vbltimestamp, s);
 
-		// Timestamp immediately after call to PsychOSFlipWindowBuffers() returns, i.e., time at swap request submission completion:
+		// Swap completion timestamp for most recently completed swap, according to OS-builtin PsychOSGetSwapCompletionTimestamp() method:
 		PsychSetStructArrayDoubleElement("OSSwapTimestamp", 0, windowRecord->osbuiltin_swaptime, s);
 
 		// Result from last GPU rendertime query as triggered by infoType 5: Zero if undefined.
