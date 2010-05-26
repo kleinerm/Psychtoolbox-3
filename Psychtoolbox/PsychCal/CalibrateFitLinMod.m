@@ -11,8 +11,9 @@ function cal = CalibrateFitLinMod(cal)
 %               of first component.
 % 4/30/10  dhb  Execute yoked fit if yokedGamma flag is set.
 % 5/25/10  dhb, ar Change yoked field names to match
+% 5/26/10  dhb, ar Still fussing with names.
 
-if (isfield(cal.describe,'yoked') && cal.describe.yoked > 0)
+if (isfield(cal.describe,'fityoked') && cal.describe.yoked > 0)
     cal = CalibrateFitYoked(cal);
 else
 
