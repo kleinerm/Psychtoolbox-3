@@ -2571,7 +2571,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 			// tSwapComplete timestamp. Nothing to do here for now, but code at end of timestamping
 			// will use this timestamp as override for anything else that got computed.
 			// At return of the method, we know that the swap has completed.
-			if (verbosity > 10) printf("PTB-DEBUG: PsychOSGetSwapCompletionTimestamp() success: swap_msc = %i, tSwapComplete = %f.\n", (int) swap_msc, (float) tSwapComplete);
+			if (verbosity > 10) printf("PTB-DEBUG: PsychOSGetSwapCompletionTimestamp() success: swap_msc = %lld, tSwapComplete = %lf.\n", swap_msc, tSwapComplete);
 		}
 		else {
 			// OS-Builtin timestamping failed, is unsupported, or it is disabled by usercode.

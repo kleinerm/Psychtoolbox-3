@@ -724,7 +724,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 	// UPDATE: This bug is fixed, but it masked a new bug in 1.8.1. See code below, which needs
 	// the "true" targetSBC again:
 	if ((windowRecord->specialflags & kPsychNeedOpenMLWorkaround2) && (targetSBC < windowRecord->target_sbc)) targetSBC = windowRecord->target_sbc;
-	if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Supported. Calling with targetSBC = %i.\n", (int) targetSBC);
+	if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Supported. Calling with targetSBC = %lld.\n", targetSBC);
 
 //	// Broken XServer which needs special attention? FIXED as of 24.5.10
 //	if (windowRecord->specialflags & kPsychNeedOpenMLWorkaround2) {
@@ -755,8 +755,8 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 			if (sbc < targetSBC) {
 				// No. Need to delay our final query, otherwise a bug in the current XServer 1.8.1 may trigger
 				// and cause the query to return corrupted values:
-				if (PsychPrefStateGet_Verbosity() > 11) {
-					printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Too early for glXWaitForSbcOML() query (sbc %i < targetSBC %i)! Delaying one frame, then retrying...\n", (int) sbc, (int) targetSBC);
+				if (PsychPrefStateGet_Verbosity() > 12) {
+					printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Too early for glXWaitForSbcOML() query (sbc %lld < targetSBC %lld)! Delaying one frame, then retrying...\n", sbc, targetSBC);
 				}
 
 				// Wait one video refresh cycle, then retry:
@@ -767,7 +767,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 				break;
 			}
 		}
-		if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Calling NOW at msc %i, sbc %i.\n", (int) msc, (int) sbc);		
+		if (PsychPrefStateGet_Verbosity() > 12) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Calling NOW at msc %lld, sbc %lld.\n", msc,    sbc);		
 	}
 
 	// Extension supported: Perform query and error check.
@@ -777,7 +777,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 	if (ust == 0 || msc == 0) {
 		// Ohoh:
 		if (PsychPrefStateGet_Verbosity() > 11) {
-			printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Invalid return values ust = %i, msc = %i from call with success return code (sbc = %i)! Failing with rc = -1.\n", (int) ust, (int) msc, (int) sbc);
+			printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Invalid return values ust = %lld, msc = %lld from call with success return code (sbc = %lld)! Failing with rc = -1.\n", ust, msc, sbc);
 		}
 		
 		// Return with "unsupported" rc, so calling code can try fallback-path:
@@ -792,7 +792,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 	windowRecord->reference_msc = msc;
 	windowRecord->reference_sbc = sbc;
 
-	if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Success! refust = %i, refmsc = %i, refsbc = %i.\n", (int) ust, (int) msc, (int) sbc);
+	if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Success! refust = %lld, refmsc = %lld, refsbc = %lld.\n", ust, msc, sbc);
 	#endif
 	
 	// Return msc of swap completion:
@@ -969,7 +969,7 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 		if ((windowRecord->specialflags & kPsychNeedOpenMLWorkaround1) || (ust <= 0)) {
 			// Useless ust returned. We need to recover a useable reference (msc, ust) pair via
 			// trickery instead. Check if tWhen is at least 4 video refresh cycles in the future.
-			if ((ust <= 0) && (PsychPrefStateGet_Verbosity() > 11)) printf("PTB-DEBUG:PsychOSScheduleFlipWindowBuffers: Invalid ust %i returned by query. Current msc = %i.\n", (int) ust, (int) msc);
+			if ((ust <= 0) && (PsychPrefStateGet_Verbosity() > 11)) printf("PTB-DEBUG:PsychOSScheduleFlipWindowBuffers: Invalid ust %lld returned by query. Current msc = %lld.\n", ust, msc);
 
 			PsychGetAdjustedPrecisionTimerSeconds(&tNow);
 			if (((tWhen - tNow) / windowRecord->VideoRefreshInterval) > 4.0) {
@@ -979,7 +979,7 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 				// to perform a blocking wait. In that case it will return a valid (msc, ust)
 				// pair on return from blocking wait. Wait until msc+2 is reached and retrieve
 				// updated (msc, ust):
-				if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSScheduleFlipWindowBuffers: glXWaitForMscOML until msc = %i, now msc = %i.\n", (int) msc + 2, (int) msc);
+				if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSScheduleFlipWindowBuffers: glXWaitForMscOML until msc = %lld, now msc = %lld.\n", msc + 2, msc);
 				if (!glXWaitForMscOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, msc + 2, 0, 0, &ust, &msc, &sbc)) return(-3);
 			}
 			else {
@@ -1053,7 +1053,7 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 //		remainder = targetMSC;
 //	}
 
-	if (PsychPrefStateGet_Verbosity() > 12) printf("PTB-DEBUG:PsychOSScheduleFlipWindowBuffers: Submitting swap request for targetMSC = %i, divisor = %i, remainder = %i.\n", (int) targetMSC, (int) divisor, (int) remainder);
+	if (PsychPrefStateGet_Verbosity() > 12) printf("PTB-DEBUG:PsychOSScheduleFlipWindowBuffers: Submitting swap request for targetMSC = %lld, divisor = %lld, remainder = %lld.\n", targetMSC, divisor, remainder);
 
 	// Ok, we have a valid final targetMSC. Schedule a bufferswap for that targetMSC, taking a potential
 	// (divisor, remainder) constraint into account:
