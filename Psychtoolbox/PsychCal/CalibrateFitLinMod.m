@@ -13,7 +13,7 @@ function cal = CalibrateFitLinMod(cal)
 % 5/25/10  dhb, ar Change yoked field names to match
 % 5/26/10  dhb, ar Still fussing with names.
 
-if (isfield(cal.describe,'fityoked') && cal.describe.yoked > 0)
+if (isfield(cal.describe,'fityoked') && cal.describe.fityoked > 0)
     cal = CalibrateFitYoked(cal);
 else
 
