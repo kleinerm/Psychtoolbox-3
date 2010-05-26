@@ -68,13 +68,13 @@ cal.P_device = currentLinMod;
 % Store correct gamma input settings based on type of yoking.
 %
 % When R=G=B, we just use the common settings.
-if (cal.describe.yoked == 1)
+if (cal.describe.yokedmethod == 1)
     cal.rawdata.rawGammaTable = cal.yoked.settings(1,:)';
     
 % When measurements are at a specified chromaticity, need to interpolate gamma
 % functions so that we have them for each device on a common scale.
-elseif (cal.describe.yoked == 2)
-    error('Need to implement an interoplation procedure to bring all devices on common input scale.');
+elseif (cal.describe.yokedmethod == 2)
+    error('Need to implement an interpolation procedure to bring all devices on common input scale.');
 end
 
 return
