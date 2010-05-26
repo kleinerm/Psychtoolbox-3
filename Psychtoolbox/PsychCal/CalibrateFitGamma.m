@@ -34,6 +34,8 @@ function cal = CalibrateFitGamma(cal,nInputLevels)
 %          dhb  Use linear interpolation for higher order linear model weights, rather than
 %               a polynomial.  I now think that ringing is worse than not smoothing enough.
 % 3/08/10  dhb  Update list of options in comment above.
+% 5/26/10   dhb Allow values_in to be either a single column or a matrix with same number of columns as values_out.
+
 
 % Set nInputLevels
 if (nargin < 2 || isempty(nInputLevels))
@@ -143,7 +145,11 @@ switch(cal.describe.gamma.fitType)
         fOptions = fitoptions('Method','NonlinearLeastSquares','Robust','on');
         fOptions1 = fitoptions(fOptions,'StartPoint',startPoint,'Lower',lowerBounds,'Upper',upperBounds);
         for i = 1:cal.nDevices
-        	fitstruct = fit(cal.rawdata.rawGammaInput,mGammaMassaged(:,i),fitEqStr,fOptions1);
+            if (size(cal.rawdata.rawGammaInput,2) == 1)
+                fitstruct = fit(cal.rawdata.rawGammaInput,mGammaMassaged(:,i),fitEqStr,fOptions1);
+            else
+                fitstruct = fit(cal.rawdata.rawGammaInput(:,i),mGammaMassaged(:,i),fitEqStr,fOptions1);
+            end
             mGammaFit1a(:,i) = feval(fitstruct,linspace(0,1,nInputLevels));
         end
         mGammaFit1 = mGammaFit1a;

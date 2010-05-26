@@ -48,10 +48,17 @@ function [fit_out,x,fitComment] = ...
 %                   Chien-Chung Chen for notifying us of this bug.
 % 11/14/06  dhb     Modify how default type is set.  Handle passed empty matrix.
 % 3/07/10   dhb     Cosmetic to make m-lint happier, including some "|" -> "||"
+% 5/26/10   dhb     Allow values_in to be either a single column or a matrix with same number of columns as values_out.
 
 % Get sizes
-[null,nDevices] = size(measurements);
-[nOut,null] = size(values_out);
+[nil,nDevices] = size(measurements);
+[nOut,nil] = size(values_out);
+
+% If input comes as a single column, then replicate it to
+% match number of devices
+if (size(values_in,2) == 1)
+    values_in = repmat(values_in,1,nDevices);
+end
 
 % Set up number of fit types
 nFitTypes = 5;
@@ -71,7 +78,7 @@ if (fitType == 0 || fitType == 1 || fitType == 2)
   for i = 1:nDevices
     x0 = InitialXPow;
     [fit_out1(:,i),x1(:,i),error(1,i)] = ...
-      FitGammaPow(values_in,measurements(:,i),values_out,x0);
+      FitGammaPow(values_in(:,i),measurements(:,i),values_out,x0);
   end
   disp(sprintf('Simple power function fit, RMSE: %g',mean(error(1,i))));
 end
@@ -88,7 +95,7 @@ if (fitType == 0 || fitType == 2)
   for i = 1:nDevices
     x0 = InitialXExtP(x1(:,i));
     [fit_out2(:,i),x2(:,i),error(2,i)] = ...
-      FitGammaExtP(values_in,measurements(:,i),values_out,x0);
+      FitGammaExtP(values_in(:,i),measurements(:,i),values_out,x0);
   end
   disp(sprintf('Extended power function fit, RMSE: %g',mean(error(2,i))));
 end
@@ -103,11 +110,11 @@ if (fitType == 0 || fitType == 3)
   [nParams] = size(InitialXSig);
   x3 = zeros(nParams,nDevices);
   for i = 1:nDevices
-    maxVals = max(values_in);
+    maxVals = max(values_in(:,i));
     maxMeas = max(measurements(:,i));
     x0 = InitialXSig([maxVals/2]');
     [fit_out3(:,i),x3(:,i),error(3,i)] = ...
-      FitGammaSig(values_in,measurements(:,i),values_out,x0);
+      FitGammaSig(values_in(:,i),measurements(:,i),values_out,x0);
   end
   disp(sprintf('Sigmoidal fit, RMSE: %g',mean(error(3,i))));
 end
@@ -116,12 +123,12 @@ end
 if (fitType == 0 || fitType == 4)
   disp('Fitting with Weibull function');
   fit_out4 = zeros(nOut,nDevices);
-  [nParams,null] = size(InitialXWeib(values_in,measurements(:,1)));
+  [nParams,null] = size(InitialXWeib(values_in(:,i),measurements(:,1)));
   x4 = zeros(nParams,nDevices);
   for i = 1:nDevices
-    x0 = InitialXWeib(values_in,measurements(:,i));
+    x0 = InitialXWeib(values_in(:,i),measurements(:,i));
     [fit_out4(:,i),x4(:,i),error(4,i)] = ...
-      FitGammaWeib(values_in,measurements(:,i),values_out,x0);
+      FitGammaWeib(values_in(:,i),measurements(:,i),values_out,x0);
   end
   disp(sprintf('Weibull function fit, RMSE: %g',mean(error(4,i))));
 end
@@ -137,7 +144,7 @@ if (fitType == 0 || fitType == 5)
   x5 = zeros(order5,nDevices);
   for i = 1:nDevices
     [fit_out5(:,i),x5(:,i),error(5,i)] = ...
-       FitGammaPoly(values_in,measurements(:,i),values_out);
+       FitGammaPoly(values_in(:,i),measurements(:,i),values_out);
   end
   disp(sprintf('Polynomial fit, order %g, RMSE: %g',order5,mean(error(5,i))));
 end
@@ -149,7 +156,7 @@ if (fitType == 6)
   fit_out6 = zeros(nOut,nDevices);
   for i = 1:nDevices
     [fit_out6(:,i)] = ...
-       FitGammaLin(values_in,measurements(:,i),values_out);
+       FitGammaLin(values_in(:,i),measurements(:,i),values_out);
   end
 	x6 = [];
 	error6 = zeros(1,nDevices);
@@ -162,7 +169,7 @@ if (fitType == 7)
   fit_out7 = zeros(nOut,nDevices);
   for i = 1:nDevices
     [fit_out7(:,i)] = ...
-       FitGammaSpline(values_in,measurements(:,i),values_out);
+       FitGammaSpline(values_in(:,i),measurements(:,i),values_out);
   end
 	x7 = [];
 	error7 = zeros(1,nDevices);
