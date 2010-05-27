@@ -36,6 +36,8 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 03/04/2010 Move PsychtoolboxRegistration to the end, after all real
 %            installation has been finished. Add additional error-checking
 %            and troubleshooting for peculiarities of Octave on Windows. (MK)
+% 05/27/2010 Update instructions for downloading the vcredist_x86.exe
+%            security update for users of MS-Windows. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -350,15 +352,26 @@ if IsWin & ~IsOctave
     catch
         % Failed! Either screwed setup of path or missing VC++ 2005 runtime
         % libraries.
-        fprintf('ERROR: WaitSecs-MEX does not work, most likely other MEX files will not work either.\n');
-        fprintf('ERROR: Most likely cause: The Visual C++ 2005 runtime libraries are missing on your system.\n\n');
-        fprintf('ERROR: Visit http://www.mathworks.com/support/solutions/data/1-2223MW.html for instructions how to\n');
-        fprintf('ERROR: fix this problem. That document tells you how to download and install the required runtime\n');
-        fprintf('ERROR: libraries. It is important that you download the libraries for Visual C++ 2005 SP1\n');
-        fprintf('ERROR: - The Service Pack 1! Follow the link under the text "For VS 2005 SP1 vcredist_x86.exe:"\n');
+        %         fprintf('ERROR: WaitSecs-MEX does not work, most likely other MEX files will not work either.\n');
+        %         fprintf('ERROR: Most likely cause: The Visual C++ 2005 runtime libraries are missing on your system.\n\n');
+        %         fprintf('ERROR: Visit http://www.mathworks.com/support/solutions/data/1-2223MW.html for instructions how to\n');
+        %         fprintf('ERROR: fix this problem. That document tells you how to download and install the required runtime\n');
+        %         fprintf('ERROR: libraries. It is important that you download the libraries for Visual C++ 2005 SP1\n');
+        %         fprintf('ERROR: - The Service Pack 1! Follow the link under the text "For VS 2005 SP1 vcredist_x86.exe:"\n');
+        %         fprintf('ERROR: If you install the wrong runtime, it will still not work.\n\n');
+        %         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
+
+        fprintf('ERROR: Most likely cause: The most recent security updates to the Visual C++ 2005 runtime libraries\n');
+        fprintf('ERROR: are missing on your system. Go to the following URL:\n\n');
+        fprintf('http://www.microsoft.com/downloads/details.aspx?familyid=766A6AF7-EC73-40FF-B072-9112BAB119C2&displaylang=en#filelist\n\n');
+        fprintf('ERROR: Download and install the required runtime libraries.\n\n');
+        fprintf('ERROR: Use the download button right to vcredist_x86.exe - The file with a size of 2.6 MB.\n');
+        fprintf('ERROR: Then double-click and run the downloaded vcredist_x86.exe installer to update your system.\n');
         fprintf('ERROR: If you install the wrong runtime, it will still not work.\n\n');
         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
-
+        fprintf('ERROR: You can also just do a: cd(PsychtoolboxRoot); SetupPsychtoolbox;\n\n');
+        fprintf('ERROR: This will avoid a full download of Psychtoolbox over the internet and just finish the setup.\n');
+        
         if strcmp(computer,'PCWIN64')
             % 64 bit Matlab running on 64 bit Windows?!? That won't work.
             fprintf('ERROR:\n');
