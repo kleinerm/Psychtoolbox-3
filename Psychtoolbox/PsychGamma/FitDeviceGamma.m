@@ -49,13 +49,13 @@ end
 
 %% Normalize measurements.  Check that last input was unity
 if (size(gammaInputRaw,2) == 1)
-    if (gammaInputRaw(1) ~= 1)
+    if (gammaInputRaw(end) ~= 1)
       error('Surprised that last input value was not unity for gamma measurements');
     end
 else
     UNITY = 1;
     for i = 1:nDevices
-        if (gammaInputRaw(1,i) ~= 1)
+        if (gammaInputRaw(end,i) ~= 1)
             UNITY = 0;
         end
     end
