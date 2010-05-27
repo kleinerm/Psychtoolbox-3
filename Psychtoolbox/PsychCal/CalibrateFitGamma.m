@@ -17,6 +17,11 @@ function cal = CalibrateFitGamma(cal,nInputLevels)
 % Newer functions (e.g, crtSumPow) use the curvefit toolbox and that's just
 % done locally in this routine.  Much less cumbersome.
 %
+% NOTE (5/27/10, dhb): crtSumPow does not currently appear to normalize the
+% measurements to unity, while the older methods do (in FitDeviceGamma).
+% This may be a bug, but since we're not currently using crtSumPow I'm not
+% going to look into it in detail right now.
+%
 % See also PsychGamma.
 %
 % 3/26/02  dhb  Pulled out of CalibrateMonDrvr.
@@ -34,7 +39,7 @@ function cal = CalibrateFitGamma(cal,nInputLevels)
 %          dhb  Use linear interpolation for higher order linear model weights, rather than
 %               a polynomial.  I now think that ringing is worse than not smoothing enough.
 % 3/08/10  dhb  Update list of options in comment above.
-% 5/26/10   dhb Allow values_in to be either a single column or a matrix with same number of columns as values_out.
+% 5/26/10  dhb  Allow gamma input values to be either a single column or a matrix with same number of columns as devices.
 
 
 % Set nInputLevels

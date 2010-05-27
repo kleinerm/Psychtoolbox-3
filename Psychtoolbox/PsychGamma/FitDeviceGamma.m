@@ -11,8 +11,11 @@ function [gammaFit,gammaInputFit,fitComment] = ...
 % If present, argument fitType is passed on to FitGamma.
 %
 % 11/14/06  dhb  Convert for [0-1] universe.  Add nInputLevels arg.
+% 5/27/10   dhb  Allow gammaInputRaw to be either a single column or a matrix with same number of columns as devices.
+%                Check that last input values are unity.
 
-% Set up optional args
+
+%% Set up optional args
 if (nargin < 3 || isempty(fitType))
     fitType = [];
 end
@@ -20,19 +23,50 @@ if (nargin < 4 || isempty(nInputLevels))
     nInputLevels = 256;
 end
 
-% Extract device characteristics
-[n,m] = size(gammaRaw);
+%% Extract device characteristics
+[nil,m] = size(gammaRaw); %#ok<ASGLU>
 nDevices = m;
 
-% Fit gamma curve
+%% Pad with [0 0 0] input/output if this wasn't already 0
 gammaInputFit = linspace(0,1,nInputLevels)';
-if (gammaInputRaw(1) ~= 0)
-  gammaInputRaw = [0 ; gammaInputRaw];
-  gammaRaw = [zeros(1,nDevices) ; gammaRaw];
+if (size(gammaInputRaw,2) == 1)
+    if (gammaInputRaw(1) ~= 0)
+      gammaInputRaw = [0 ; gammaInputRaw];
+      gammaRaw = [zeros(1,nDevices) ; gammaRaw];
+    end
+else
+    PAD = 0;
+    for i = 1:nDevices
+        if (gammaInputRaw(1,i) ~= 0)
+            PAD = 1;
+        end
+    end
+    if (PAD)
+        gammaInputRaw = [zeros(1,nDevices) ; gammaInputRaw];
+        gammaRaw = [zeros(1,nDevices) ; gammaRaw];
+    end
+end
+
+%% Normalize measurements.  Check that last input was unity
+if (size(gammaInputRaw,2) == 1)
+    if (gammaInputRaw(1) ~= 1)
+      error('Surprised that last input value was not unity for gamma measurements');
+    end
+else
+    UNITY = 1;
+    for i = 1:nDevices
+        if (gammaInputRaw(1,i) ~= 1)
+            UNITY = 0;
+        end
+    end
+    if (~UNITY)
+        error('Surprised that at least 1 of last input values was not unity for gamma measurements');
+    end
 end
 gammaRawN = NormalizeGamma(gammaRaw);
 
-[gammaFit,xFit,fitComment] = FitGamma(gammaInputRaw,gammaRawN,...
-                             gammaInputFit,fitType);
+%% Do the fit
+[gammaFit,nil,fitComment] = FitGamma(gammaInputRaw,gammaRawN,...
+                             gammaInputFit,fitType); %#ok<ASGLU>
 
 
