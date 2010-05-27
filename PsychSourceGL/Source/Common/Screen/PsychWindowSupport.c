@@ -4905,7 +4905,6 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 				glXGetSyncValuesOML, glXWaitForMscOML, glXWaitForSbcOML, glXSwapBuffersMscOML);
 		printf("OML_sync_control indicators: glewIsSupported() says %i.\n", (int) glewIsSupported("GLX_OML_sync_control"));
 	}
-	#endif
 
 	if (glewIsSupported("GLX_OML_sync_control") || (glXGetSyncValuesOML && glXWaitForMscOML && glXWaitForSbcOML && glXSwapBuffersMscOML)) {
 		if (verbose) printf("System supports OpenML OML_sync_control extension for high-precision scheduled swaps and timestamping.\n");
@@ -4930,6 +4929,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 			#endif
 		}
 	}
+	#endif
 	
 	if (verbose) printf("PTB-DEBUG: Interrogation done.\n\n");
 	
