@@ -73,13 +73,10 @@ switch(cal.describe.gamma.fitType)
         for i = 1:cal.nDevices
             mGammaMassaged(:,i) = MakeGammaMonotonic(HalfRect(mGammaMassaged(:,i)));
 		end
-        for i = 1:size(cal.rawdata.rawGammaInput,2)
-			useInput(:,i) = MakeGammaMonotonic(cal.rawdata.rawGammaInput(:,i));
-		end
 			
         fitType = 6;
         [mGammaFit1,cal.gammaInput,mGammaCommenta] = FitDeviceGamma(...
-            mGammaMassaged,useInput,fitType,nInputLevels);
+            mGammaMassaged,cal.rawdata.rawGammaInput,fitType,nInputLevels);
         
     case 'crtPolyLinear',
         % For fitting, we set to zero the raw data we

@@ -47,6 +47,11 @@ else
     end
 end
 
+%% Make sure input is monotonic
+for i = 1:size(gammaInputRaw,2)
+	gammaInputRaw(:,i) = MakeGammaMonotonic(gammaInputRaw(:,i));
+end
+
 %% Normalize measurements.  Check that last input was unity
 if (size(gammaInputRaw,2) == 1)
     if (gammaInputRaw(end) ~= 1)
