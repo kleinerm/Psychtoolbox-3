@@ -6,16 +6,21 @@ function cal = CalibrateFitYoked(cal)
 % 4/30/10  dhb, kmo, ar  Wrote it.
 % 5/24/10  dhb           Update comment.
 % 5/25/10  dhb, ar       New input format.
+% 5/28/10  dhb, ar       Execute conditionally.
 
 %% Check that this is possible
+OKTODO = 1;
 if (~isfield(cal.describe,'yokedmethod') || cal.describe.yokedmethod == 0)
-    error('Need yoked data to be present for this routine to work');
+    OKTODO = 0;
 end
 if (~isfield(cal,'yoked') || ~isfield(cal.yoked,'spectra'))
-    error('You can''t fit the yoked data if it wasn''t measured.');
+    OKTODO = 0;
 end
 if (cal.nPrimaryBases == 0)
-    error('Need to specify an explicit linear model dimension for this procedure to be well-defined.');
+    OKTODO = 0;
+end
+if (~OKTODO)
+    return;
 end
 
 %% Average yoked measurements for this primary

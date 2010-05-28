@@ -14,6 +14,8 @@
 % 11/20/09 dhb      More terms in crtSumPow.
 % 3/07/10  dhb      Call CalibrateFitLinMod as well.
 % 3/08/10  dhb      Update list of fit type options.
+% 5/28/10  dhb            Add yoked fitting routine to calls.  Should have no effect when yoked isn't set, but 
+%                         do the right thing when it is.
 
 % Enter load code
 defaultFileName = 'monitor';
@@ -72,6 +74,7 @@ end
 
 % Now refit
 cal = CalibrateFitLinMod(cal);
+cal = CalibrateFitYoked(cal);
 cal = CalibrateFitGamma(cal,2^cal.describe.dacsize);
 
 % And some plots

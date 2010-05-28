@@ -6,6 +6,8 @@
 % 9/26/08  dhb, ijk, tyl  Simplify naming possibilities. 
 % 9/27/08  dhb            Clearer defaults for prompts.  Pass number of levels to dacsize routine.
 % 2/15/10  dhb            Plot all components of gamma functions.
+% 5/28/10  dhb            Add yoked fitting routine to calls.  Should have no effect when yoked isn't set, but 
+%                         do the right thing when it is.
 
 % Enter load code
 defaultFileName = 'monitor';
@@ -37,6 +39,7 @@ if (isempty(cal.nPrimaryBases))
 	cal.nPrimaryBases = oldN;
 end
 cal = CalibrateFitLinMod(cal);
+cal = CalibrateFitYoked(cal);
 cal = CalibrateFitGamma(cal,2^cal.describe.dacsize);
 
 % Put up a plot of the essential data

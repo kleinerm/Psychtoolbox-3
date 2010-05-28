@@ -6,6 +6,7 @@
 %
 % 4/29/10  dhb, kmo, ar  Wrote it.
 % 5/25/10  dhb, ar       Yoked field in describe now set elsewhere.
+% 5/28/10  dhb           Update to swing on field yokedmethod.
 
 % Enter load code
 defaultFileName = 'HDRFront';
@@ -28,8 +29,16 @@ fprintf('Gamma measurements were made at %g levels\n',...
 fprintf('Gamma table available at %g levels\n',...
 	size(cal.gammaInput,1));
 
-% Fit yoked measurements
+% Get yoked method
+oldMethod = cal.describe.yokedmethod;
+yokedMethod = input(sprintf('Enter yoked method (0 for not yoked): [%s]: ',cal.describe.yokedmethod));
+if (isempty(fitType))
+	cal.describe.yokedmethod = oldMethod;
+end
+
+% Fit
 cal = CalibrateFitLinMod(cal);
+cal = CalibrateFitYoked(cal);
 cal = CalibrateFitGamma(cal,2^cal.describe.dacsize);
 
 % Put up a plot of the essential data
