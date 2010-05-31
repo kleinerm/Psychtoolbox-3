@@ -13,7 +13,9 @@ function [file,nfile] = FileFromFolder(folder,mode,f_ext)
 % 2008-08-06 DN  All file properties now in output struct
 % 2009-02-14 DN  Now returns all files except '..' and '.', code
 %                optimized
-% 2010-05-26 DN  Got rid of for-loop, added optional filter on extention
+% 2010-05-26 DN  Got rid of for-loop, added optional filter on extension
+% 2010-05-30 DN  Woops, some of the new changes break the function when no
+%                files are found
 
 if nargin >= 2 && strcmp(mode,'silent')
     silent = true;
@@ -25,17 +27,19 @@ end
 file        = dir(folder);
 file        = file(~[file.isdir]);  % this also skips '..' and '.', which are marked as dirs
 
-[name,ext]  = cellfun(@SplitFName,{file.name},'UniformOutput',false);
-[file.fname]= name{:};
-[file.ext]  = ext{:};
+if ~isempty(file)
+    [name,ext]  = cellfun(@SplitFName,{file.name},'UniformOutput',false);
+    [file.fname]= name{:};
+    [file.ext]  = ext{:};
 
-% if filter, use it
-if nargin >= 3 && ~isempty(f_ext)
-    if f_ext(1)~='.'
-        f_ext = ['.' f_ext];
+    % if filter, use it
+    if nargin >= 3 && ~isempty(f_ext)
+        if f_ext(1)~='.'
+            f_ext = ['.' f_ext];
+        end
+        q_ext   = strcmp(ext,f_ext);
+        file    = file(q_ext);
     end
-    q_ext   = strcmp(ext,f_ext);
-    file    = file(q_ext);
 end
 
 nfile       = length(file);
