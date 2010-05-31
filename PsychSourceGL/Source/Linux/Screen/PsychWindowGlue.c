@@ -634,21 +634,14 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 */
 double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint64* vblCount)
 {
-	unsigned int	screenid = windowRecord->screenNumber;
 	unsigned int	vsync_counter = 0;
 	psych_uint64	ust, msc, sbc;
-	CGDirectDisplayID displayID;
-	int scrnum;
 	
-	// Retrieve displayID, aka dpy for this screenid:
-	PsychGetCGDisplayIDFromScreenNumber(&displayID, screenid);
-	scrnum = PsychGetXScreenIdForScreen(screenid);
-
 	#ifdef GLX_OML_sync_control
 	// Ok, this will return VBL count and last VBL time via the OML GetSyncValuesOML call
 	// if that extension is supported on this setup. As of mid 2009 i'm not aware of any
 	// affordable graphics card that would support this extension, but who knows??
-	if ((NULL != glXGetSyncValuesOML) && (glXGetSyncValuesOML((Display*) displayID, (GLXDrawable) RootWindow(displayID, scrnum), (int64_t*) &ust, (int64_t*) &msc, (int64_t*) &sbc))) {
+	if ((NULL != glXGetSyncValuesOML) && (glXGetSyncValuesOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, (int64_t*) &ust, (int64_t*) &msc, (int64_t*) &sbc))) {
 		*vblCount = msc;
 		if (PsychGetKernelTimebaseFrequencyHz() > 10000) {
 			// Convert ust into regular GetSecs timestamp:
@@ -821,8 +814,8 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 
 	// Perform a wait for 3 video refresh cycles to get valid (ust,msc,sbc)
 	// values for initialization of windowRecord's cached values:
-	if (!glXGetSyncValuesOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc) || (ust == 0) || (msc == 0) ||
-		!glXWaitForMscOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, msc + 3, 0, 0, &ust, &msc, &sbc)) {
+	if (!glXGetSyncValuesOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc) || (msc == 0) ||
+		!glXWaitForMscOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, msc + 3, 0, 0, &ust, &msc, &sbc) || (ust == 0)) {
 		
 		// Basic OpenML functions failed?!? Not good! Disable OpenML, warn user:
 		windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
