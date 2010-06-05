@@ -75,6 +75,20 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 // many slots whenever it needs to grow:
 #define PSYCH_AUDIO_BUFFERLIST_INCREMENT 1024
 
+// PA_ANTICLAMPGAIN is premultiplied onto any sample provided by usercode, reducing
+// signal amplitude by a tiny fraction. This is a workaround for a bug in the
+// sampleformat converters in Portaudio for float -> 32 bit int and float -> 24 bit int.
+// They cause integer wraparound and thereby audio artifacts if the signal has an
+// amplitude of almost +1.0f. This attenuates conformant signals in -1 to +1 range just
+// enough to "fix it". Note: The single precision float math inside our driver and inside
+// PortAudio limits the effective precision of sound signals to 23 bits + sign = 24 bits,
+// so we just manage to properly feed a 24 bit audio DAC, but there's zero headroom left
+// for higher precision and our true precision when using gain/volume modulation or mixing
+// may be a bit lower than 24 bits due to accumulated numeric roundoff errors. Theoretically
+// we could switch to double precision math inside our driver to at least retain 24 bits
+// in the mixing/modulation stage.
+#define PA_ANTICLAMPGAIN 0.9999999
+
 // Uncomment this define MUTEX_LOCK_TIME_STATS to enable tracing of
 // mutex lock hold times for low-level debugging and tuning:
 //#define MUTEX_LOCK_TIME_STATS 1
@@ -1704,7 +1718,7 @@ void InitializeSynopsis(void)
 	synopsis[i++] =	"PsychPortAudio('DeleteBuffer'[, bufferhandle] [, waitmode]);";
 	synopsis[i++] =	"PsychPortAudio('RefillBuffer', pahandle [, bufferhandle=0], bufferdata [, startIndex=0]);";
 	synopsis[i++] = "PsychPortAudio('SetLoop', pahandle[, startSample=0][, endSample=max][, UnitIsSeconds=0]);";
-	synopsis[i++] = "startTime = PsychPortAudio('Start', pahandle [, repetitions=1] [, when=0] [, waitForStart=0] [, stopTime=inf]);";
+	synopsis[i++] = "startTime = PsychPortAudio('Start', pahandle [, repetitions=1] [, when=0] [, waitForStart=0] [, stopTime=inf] [, resume=0]);";
 	synopsis[i++] = "startTime = PsychPortAudio('RescheduleStart', pahandle, when [, waitForStart=0] [, repetitions] [, stopTime]);";
 	synopsis[i++] = "status = PsychPortAudio('GetStatus' pahandle);";
 	synopsis[i++] = "[audiodata absrecposition overflow cstarttime] = PsychPortAudio('GetAudioData', pahandle [, amountToAllocateSecs][, minimumAmountToReturnSecs][, maximumAmountToReturnSecs]);";
@@ -1907,9 +1921,8 @@ PsychError PSYCHPORTAUDIOOpen(void)
 		"only supported on MS-Windows with ASIO sound cards. The parameter is silently ignored for non-ASIO operation.\n\n"
 		"'specialFlags' Optional flags: Default to zero, can be or'ed or added together with the following flags/settings:\n"
 		"1 = Never prime output stream. By default the output stream is primed. Don't bother if you don't know what this means.\n"
-		"2 = Always clamp audio data to the valid -1.0 to 1.0 range. By default, clamping is enabled in normal mode, and "
-		"disabled in low-latency mode.\n"
-		"4 = Never clamp audio data, not even in normal mode.\n"
+		"2 = Always clamp audio data to the valid -1.0 to 1.0 range. Clamping is enabled by default.\n"
+		"4 = Never clamp audio data.\n"
 		"8 = Always dither output audio data. By default, dithering is enabled in normal mode, and disabled in low-latency mode. "
 		"Dithering adds a stochastic noise pattern to the least significant bit of each output sample to reduce the impact of "
 		"audio quantization artifacts. Dithering can improve signal to noise ratio and quality of output sound, but it is more "
@@ -2248,9 +2261,9 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	
 	// Our stream shall be primed initially with our callbacks data, not just with zeroes.
 	// In high latency-mode 0, we request sample clipping and dithering, so sound is more
-	// high quality on Windows. In low-latency mode, we safe the computation time for that.
+	// high quality on Windows. In low-latency mode, we don't dither by default to save computation time.
 	sflags = paPrimeOutputBuffersUsingStreamCallback;
-	sflags = (latencyclass <= 0) ? sflags : (sflags | paClipOff | paDitherOff);
+	sflags = (latencyclass <= 0) ? sflags : (sflags | paDitherOff);
 
 	// specialFlags 1: Don't prime outputbuffer via streamcallback:
 	if (specialFlags & 1) sflags &= ~paPrimeOutputBuffersUsingStreamCallback;
@@ -2321,7 +2334,9 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	audiodevices[audiodevicecount].slaveInBuffer = NULL;
 	audiodevices[audiodevicecount].outChannelVolumes = NULL;
 	audiodevices[audiodevicecount].masterVolume = 1.0;
-	
+	audiodevices[audiodevicecount].playposition = 0;
+	audiodevices[audiodevicecount].totalplaycount = 0;
+		
 	// If this is a master, create a slave device list and init it to "empty":
 	if (mode & kPortAudioIsMaster) {
 		audiodevices[audiodevicecount].slaves = (int*) malloc(sizeof(int) * MAX_PSYCH_AUDIO_SLAVES_PER_DEVICE);
@@ -2708,6 +2723,8 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 	audiodevices[audiodevicecount].slaveGainBuffer = NULL;
 	audiodevices[audiodevicecount].slaveInBuffer = NULL;
 	audiodevices[audiodevicecount].masterVolume = 1.0;
+	audiodevices[audiodevicecount].playposition = 0;
+	audiodevices[audiodevicecount].totalplaycount = 0;
 
 	// Setup per-channel output volumes for slave: Each channel starts with a 1.0 setting, ie., max volume:
 	if (audiodevices[audiodevicecount].outchannels > 0) {
@@ -2971,12 +2988,12 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 		if (indata) {
 			// Copy the data, convert it from double to float:
 			while(buffersize) {
-				*(outdata++) = (float) *(indata++);
+				*(outdata++) = (float) (PA_ANTICLAMPGAIN *  *(indata++));
 				buffersize-=sizeof(float);
 			}
 		}
 		else {
-			// Data copy from internal audio buffer (already in float format):
+			// Data copy from internal audio buffer (already in float format and premultiplied with anti-clamp gain):
 			memcpy(outdata, indatafloat, buffersize);
 		}
 		
@@ -3058,7 +3075,7 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 		if (indata) {
 			while(buffersize > 0) {
 				// Fetch next sample and copy it to matrix:
-				audiodevices[pahandle].outputbuffer[(audiodevices[pahandle].writeposition % (audiodevices[pahandle].outputbuffersize / sizeof(float)))] = (float) *(indata++);
+				audiodevices[pahandle].outputbuffer[(audiodevices[pahandle].writeposition % (audiodevices[pahandle].outputbuffersize / sizeof(float)))] = (float) (PA_ANTICLAMPGAIN *  *(indata++));
 				
 				// Update sample write counter:
 				audiodevices[pahandle].writeposition++;
@@ -3068,7 +3085,7 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 			}
 		}
 		else {
-			// Data copy from internal audio buffer (already in float format):
+			// Data copy from internal audio buffer (already in float format and premultiplied with anti-clamp gain):
 			while(buffersize > 0) {
 				// Fetch next sample and copy it to matrix:
 				audiodevices[pahandle].outputbuffer[(audiodevices[pahandle].writeposition % (audiodevices[pahandle].outputbuffersize / sizeof(float)))] = *(indatafloat++);
@@ -3257,12 +3274,12 @@ PsychError PSYCHPORTAUDIORefillBuffer(void)
 	if (indata) {
 		// Copy the data, convert it from double to float:
 		while(buffersize > 0) {
-			*(outdata++) = (float) *(indata++);
+			*(outdata++) = (float) (PA_ANTICLAMPGAIN *  *(indata++));
 			buffersize-=sizeof(float);
 		}
 	}
 	else {
-		// Data copy from internal audio buffer (already in float format):
+		// Data copy from internal audio buffer (already in float format and premultiplied with anti-clamp gain):
 		memcpy(outdata, indatafloat, buffersize);
 	}
 
@@ -3414,7 +3431,7 @@ PsychError PSYCHPORTAUDIOCreateBuffer(void)
 		
 	// Copy the data, convert it from double to float:
 	while(buffersize > 0) {
-		*(outdata++) = (float) *(indata++);
+		*(outdata++) = (float) (PA_ANTICLAMPGAIN *  *(indata++));
 		buffersize-=sizeof(float);
 	}
 	
@@ -3871,7 +3888,7 @@ PsychError PSYCHPORTAUDIORescheduleStart(void)
  */
 PsychError PSYCHPORTAUDIOStartAudioDevice(void) 
 {
- 	static char useString[] = "startTime = PsychPortAudio('Start', pahandle [, repetitions=1] [, when=0] [, waitForStart=0] [, stopTime=inf]);";
+ 	static char useString[] = "startTime = PsychPortAudio('Start', pahandle [, repetitions=1] [, when=0] [, waitForStart=0] [, stopTime=inf] [, resume=0]);";
 	static char synopsisString[] = 
 		"Start a PortAudio audio device. The 'pahandle' is the handle of the device to start. Starting a "
 		"device means: Start playback of output devices, start recording on capture device, do both on "
@@ -3895,13 +3912,17 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
 		"The optional parameter 'stopTime' allows to set a specific system time when sound playback "
 		"should stop by itself at latest, regardless if the requested number of 'repetitions' has "
 		"completed. PTB will do its best to stop sound at exactly that time, see comments about the "
-		"'when' parameter - The same mechanism is used, with the same restrictions.\n";
-		
+		"'when' parameter - The same mechanism is used, with the same restrictions.\n"
+		"The optional parameter 'resume' if set to 1, allows to resume playback at the position it "
+		"was last stopped, instead of starting at the beginning again. By default, playback starts "
+		"at the beginning.\n";
+
 	static char seeAlsoString[] = "Open";	 
   	
 	PaError err;
 	int pahandle= -1;
 	int waitForStart = 0;
+	int resume = 0;
 	double repetitions = 1;
 	double when = 0.0;
 	double stopTime = DBL_MAX;
@@ -3910,7 +3931,7 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
 	
-	PsychErrorExit(PsychCapNumInputArgs(5));     // The maximum number of inputs
+	PsychErrorExit(PsychCapNumInputArgs(6));     // The maximum number of inputs
 	PsychErrorExit(PsychRequireNumInputArgs(1)); // The required number of inputs	
 	PsychErrorExit(PsychCapNumOutputArgs(1));	 // The maximum number of outputs
 
@@ -3935,6 +3956,9 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
 
 	PsychCopyInDoubleArg(5, kPsychArgOptional, &stopTime);
 	if (stopTime <= when && (stopTime < DBL_MAX)) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'stopTime'. Valid values are greater than 'when' starttime.");
+
+	PsychCopyInIntegerArg(6, kPsychArgOptional, &resume);
+	if (resume < 0) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'resume'. Valid values are zero or greater.");
 
 	if ((audiodevices[pahandle].opmode & kPortAudioMonitoring) == 0) {
 		// Not in monitoring mode: We must have in/outbuffers allocated:
@@ -3969,7 +3993,7 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
 	audiodevices[pahandle].reqStopTime = stopTime;
 	audiodevices[pahandle].estStopTime = 0;
 	audiodevices[pahandle].currentTime = 0;		
-	audiodevices[pahandle].schedule_pos = 0;
+	if (!resume) audiodevices[pahandle].schedule_pos = 0;
 	
 	// Reset recorded samples counter:
 	audiodevices[pahandle].recposition = 0;
@@ -3978,10 +4002,10 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
 	audiodevices[pahandle].readposition = 0;
 
 	// Reset play position:
-	audiodevices[pahandle].playposition = 0;
+	if (!resume) audiodevices[pahandle].playposition = 0;
 	
 	// Reset total count of played out samples:
-	audiodevices[pahandle].totalplaycount = 0;
+	if (!resume) audiodevices[pahandle].totalplaycount = 0;
 
 	// Set number of requested repetitions: 0 means loop forever, default is 1 time.
 	audiodevices[pahandle].repeatCount = (repetitions == 0) ? -1 : repetitions;
