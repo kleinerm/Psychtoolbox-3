@@ -43,7 +43,7 @@ fprintf('Old gamma fit type was: %s\n',cal.describe.gamma.fitType);
 oldType = cal.describe.gamma.fitType;
 fprintf('Possible fit types are defined by routine CalibrateFitGamma\n');
 fprintf('See "help CalibrateFitGamma for most up to date options\n');
-fprintf('Current (March 08, 2010) options are:\n');
+fprintf('Current (June, 2010) options are:\n');
 fprintf('\tsimplePower\n');
 fprintf('\tcrtLinear\n');
 fprintf('\tcrtPolyLinear\n');

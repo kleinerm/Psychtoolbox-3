@@ -43,7 +43,7 @@ function cal = CalibrateFitGamma(cal,nInputLevels)
 % 5/26/10  dhb  Allow gamma input values to be either a single column or a matrix with same number of columns as devices.
 % 6/5/10   dhb  Extend fix above to higher order terms in the gamma fit.
 %          dhb  Fix or supress MATLAB lint warnings.
-%          dhb  Add betacdf fit option
+%          dhb  Add betacdf fit option, which seems to provide a flexible sigmoidally shaped fit.
 
 % Set nInputLevels
 if (nargin < 2 || isempty(nInputLevels))
