@@ -14,8 +14,8 @@
 % 11/20/09 dhb      More terms in crtSumPow.
 % 3/07/10  dhb      Call CalibrateFitLinMod as well.
 % 3/08/10  dhb      Update list of fit type options.
-% 5/28/10  dhb            Add yoked fitting routine to calls.  Should have no effect when yoked isn't set, but 
-%                         do the right thing when it is.
+% 5/28/10  dhb      Add yoked fitting routine to calls.  Should have no effect when yoked isn't set, but do the right thing when it is.
+% 6/5/10   dhb      Update type list provided to user.
 
 % Enter load code
 defaultFileName = 'monitor';
@@ -49,6 +49,7 @@ fprintf('\tcrtLinear\n');
 fprintf('\tcrtPolyLinear\n');
 fprintf('\tcrtGamma\n');
 fprintf('\tcrtSumPow\n');
+fprintf('\tbetacdf\n');
 fprintf('\tsigmoid\n');
 fprintf('\tweibull\n');
 

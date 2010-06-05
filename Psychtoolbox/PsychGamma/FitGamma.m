@@ -49,10 +49,13 @@ function [fit_out,x,fitComment] = ...
 % 11/14/06  dhb     Modify how default type is set.  Handle passed empty matrix.
 % 3/07/10   dhb     Cosmetic to make m-lint happier, including some "|" -> "||"
 % 5/26/10   dhb     Allow values_in to be either a single column or a matrix with same number of columns as values_out.
+% 6/5/10    dhb     Fix a lot of MATLAB lint warnings.
+%           dhb     Fix error reporting to actually take mean across devices.
+%           dhb     Rewrite how mean is taken for evaluation of best fit. I think this was done right.
 
 % Get sizes
-[nil,nDevices] = size(measurements);
-[nOut,nil] = size(values_out);
+[nDevices] = size(measurements,2);
+[nOut] = size(values_out,1);
 
 % If input comes as a single column, then replicate it to
 % match number of devices
@@ -73,14 +76,14 @@ end
 if (fitType == 0 || fitType == 1 || fitType == 2)
   disp('Fitting with simple power function');
   fit_out1 = zeros(nOut,nDevices);
-  [nParams,null] = size(InitialXPow);
+  [nParams] = size(InitialXPow,1);
   x1 = zeros(nParams,nDevices);
   for i = 1:nDevices
     x0 = InitialXPow;
     [fit_out1(:,i),x1(:,i),error(1,i)] = ...
       FitGammaPow(values_in(:,i),measurements(:,i),values_out,x0);
   end
-  disp(sprintf('Simple power function fit, RMSE: %g',mean(error(1,i))));
+  fprintf('Simple power function fit, RMSE: %g\n',mean(error(1,i)));
 end
 
 % Fit with extended power function.  Use power function
@@ -90,14 +93,14 @@ end
 if (fitType == 0 || fitType == 2)
   disp('Fitting with extended power function');
   fit_out2 = zeros(nOut,nDevices);
-  [nParams,null] = size(InitialXExtP);
+  [nParams] = size(InitialXExtP,1);
   x2 = zeros(nParams,nDevices);
   for i = 1:nDevices
     x0 = InitialXExtP(x1(:,i));
     [fit_out2(:,i),x2(:,i),error(2,i)] = ...
       FitGammaExtP(values_in(:,i),measurements(:,i),values_out,x0);
   end
-  disp(sprintf('Extended power function fit, RMSE: %g',mean(error(2,i))));
+  fprintf('Extended power function fit, RMSE: %g\n',mean(error(2,i)));
 end
 
 % Fit with a sigmoidal shape.  This works well for
@@ -107,30 +110,29 @@ end
 if (fitType == 0 || fitType == 3)
   disp('Fitting with sigmoidal function');
   fit_out3 = zeros(nOut,nDevices);
-  [nParams] = size(InitialXSig);
+  [nParams] = size(InitialXSig,1);
   x3 = zeros(nParams,nDevices);
   for i = 1:nDevices
     maxVals = max(values_in(:,i));
-    maxMeas = max(measurements(:,i));
-    x0 = InitialXSig([maxVals/2]');
+    x0 = InitialXSig(maxVals'/2);
     [fit_out3(:,i),x3(:,i),error(3,i)] = ...
       FitGammaSig(values_in(:,i),measurements(:,i),values_out,x0);
   end
-  disp(sprintf('Sigmoidal fit, RMSE: %g',mean(error(3,i))));
+  fprintf('Sigmoidal fit, RMSE: %g\n',mean(error(3,i)));
 end
 
 % Fit with Weibull
 if (fitType == 0 || fitType == 4)
   disp('Fitting with Weibull function');
   fit_out4 = zeros(nOut,nDevices);
-  [nParams,null] = size(InitialXWeib(values_in(:,i),measurements(:,1)));
+  [nParams] = size(InitialXWeib(values_in(:,1),measurements(:,1)),1);
   x4 = zeros(nParams,nDevices);
   for i = 1:nDevices
     x0 = InitialXWeib(values_in(:,i),measurements(:,i));
     [fit_out4(:,i),x4(:,i),error(4,i)] = ...
       FitGammaWeib(values_in(:,i),measurements(:,i),values_out,x0);
   end
-  disp(sprintf('Weibull function fit, RMSE: %g',mean(error(4,i))));
+  fprintf('Weibull function fit, RMSE: %g\n',mean(error(4,i)));
 end
 
 % Fit with polynomial.  InitalXPoly is used mostly for consistency
@@ -140,17 +142,17 @@ end
 if (fitType == 0 || fitType == 5)
   disp('Fitting with polynomial');
   fit_out5 = zeros(nOut,nDevices);
-  [order5,null] = size(InitialXPoly);
+  [order5] = size(InitialXPoly,1);
   x5 = zeros(order5,nDevices);
   for i = 1:nDevices
     [fit_out5(:,i),x5(:,i),error(5,i)] = ...
        FitGammaPoly(values_in(:,i),measurements(:,i),values_out);
   end
-  disp(sprintf('Polynomial fit, order %g, RMSE: %g',order5,mean(error(5,i))));
+  fprintf('Polynomial fit, order %g, RMSE: %g\n',order5,mean(error(5,i)));
 end
 
-% Linear interpolation.  Error and x are bogus here, but
-% we fill them in to keep the accountants upstream happy.
+% Linear interpolation.  Variable x is bogus here, but
+% we fill it in to keep the accountants upstream happy.
 if (fitType == 6)
 	disp('Fitting with linear interpolation');
   fit_out6 = zeros(nOut,nDevices);
@@ -159,11 +161,10 @@ if (fitType == 6)
        FitGammaLin(values_in(:,i),measurements(:,i),values_out);
   end
 	x6 = [];
-	error6 = zeros(1,nDevices);
 end
 
-% Cubic spline.  Error and x are bogus here, but
-% we fill them in to keep the accountants upstream happy.
+% Cubic spline.  Variable x is bogus here, but
+% we fill it in to keep the accountants upstream happy.
 if (fitType == 7)
 	disp('Fitting with cubic spline');
   fit_out7 = zeros(nOut,nDevices);
@@ -172,7 +173,6 @@ if (fitType == 7)
        FitGammaSpline(values_in(:,i),measurements(:,i),values_out);
   end
 	x7 = [];
-	error7 = zeros(1,nDevices);
 end
 
 % If we are not forcing a fit type, find best fit.
@@ -181,7 +181,7 @@ end
 % In principle, could use best fit type for each device.  But
 % that would make the interface tricky.
 if (fitType == 0)
-  meanErr = mean(error');
+  meanErr = mean(error,2);
   [minErr,bestFit] = min(meanErr);
   fitType = bestFit;
 end
@@ -190,27 +190,27 @@ if (fitType == 1)
   fit_out = fit_out1;
   x = x1;
   fitComment = (sprintf('Simple power function fit, RMSE: %g',...
-    mean(error(1,i))));
+    mean(error(1,:))));
 elseif (fitType == 2)
   fit_out = fit_out2;
   x = x2;
   fitComment = (sprintf('Extended power function fit, RMSE: %g',...
-    mean(error(2,i))));
+    mean(error(2,:))));
 elseif (fitType == 3)
   fit_out = fit_out3;
   x = x3;
   fitComment = (sprintf('Sigmoidal fit, RMSE: %g',...
-    mean(error(3,i))));
+    mean(error(3,:))));
 elseif (fitType == 4)
   fit_out = fit_out4;
   x = x4;
   fitComment = (sprintf('Weibull fit, RMSE: %g',...
-    mean(error(4,i))));
+    mean(error(4,:))));
 elseif (fitType == 5)
   fit_out = fit_out5;
   x = x5;
   fitComment = (sprintf('Polynomial fit, RMSE: %g',...
-    mean(error(5,i))));
+    mean(error(5,:))));
 elseif (fitType == 6)
   fit_out = fit_out6;
   x = x6;

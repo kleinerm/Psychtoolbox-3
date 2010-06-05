@@ -8,13 +8,14 @@ function cal = CalibrateFitGamma(cal,nInputLevels)
 %    crtPolyLinear
 %    crtGamma
 %    crtSumPow
+%    betacdf
 %    sigmoid
 %    weibull
 %
 % Underlying fit routine is FitGamma for functional forms originally supported,
 % and these rely on the optimization toolbox.
 %
-% Newer functions (e.g, crtSumPow) use the curvefit toolbox and that's just
+% Newer functions (e.g, crtSumPow, betacdf) use the curvefit toolbox and that's just
 % done locally in this routine.  Much less cumbersome.
 %
 % NOTE (5/27/10, dhb): crtSumPow does not currently appear to normalize the
@@ -40,7 +41,9 @@ function cal = CalibrateFitGamma(cal,nInputLevels)
 %               a polynomial.  I now think that ringing is worse than not smoothing enough.
 % 3/08/10  dhb  Update list of options in comment above.
 % 5/26/10  dhb  Allow gamma input values to be either a single column or a matrix with same number of columns as devices.
-
+% 6/5/10   dhb  Extend fix above to higher order terms in the gamma fit.
+%          dhb  Fix or supress MATLAB lint warnings.
+%          dhb  Add betacdf fit option
 
 % Set nInputLevels
 if (nargin < 2 || isempty(nInputLevels))
@@ -50,16 +53,16 @@ end
 % Fit gamma functions.
 switch(cal.describe.gamma.fitType)
     
-     case 'simplePower',
+    case 'simplePower',
         mGammaMassaged = cal.rawdata.rawGammaTable(:,1:cal.nDevices);
         for i = 1:cal.nDevices
             mGammaMassaged(:,i) = MakeGammaMonotonic(HalfRect(mGammaMassaged(:,i)));
         end
         fitType = 1;
-        [mGammaFit1a,cal.gammaInput,mGammaCommenta] = FitDeviceGamma(...
+        [mGammaFit1a,cal.gammaInput] = FitDeviceGamma(...
             mGammaMassaged,cal.rawdata.rawGammaInput,fitType,nInputLevels);
         mGammaFit1 = mGammaFit1a;
-    
+        
     case 'crtLinear'
         % Set to zero the raw data we believe to be below reliable measurement
         % threshold, and then fit the rest by linear interpolation.  Force answer
@@ -72,10 +75,10 @@ switch(cal.describe.gamma.fitType)
         mGammaMassaged(massIndex) = zeros(length(massIndex),1);
         for i = 1:cal.nDevices
             mGammaMassaged(:,i) = MakeGammaMonotonic(HalfRect(mGammaMassaged(:,i)));
-		end
-			
+        end
+        
         fitType = 6;
-        [mGammaFit1,cal.gammaInput,mGammaCommenta] = FitDeviceGamma(...
+        [mGammaFit1,cal.gammaInput] = FitDeviceGamma(...
             mGammaMassaged,cal.rawdata.rawGammaInput,fitType,nInputLevels);
         
     case 'crtPolyLinear',
@@ -98,10 +101,10 @@ switch(cal.describe.gamma.fitType)
             mGammaMassaged(:,i) = MakeGammaMonotonic(HalfRect(mGammaMassaged(:,i)));
         end
         fitType = 7;
-        [mGammaFit1a,cal.gammaInput,mGammaCommenta] = FitDeviceGamma(...
+        [mGammaFit1a,cal.gammaInput] = FitDeviceGamma(...
             mGammaMassaged,cal.rawdata.rawGammaInput,fitType,nInputLevels);
         fitType = 6;
-        [mGammaFit1b,cal.gammaInput,mGammaCommentb] = FitDeviceGamma(...
+        [mGammaFit1b,cal.gammaInput] = FitDeviceGamma(...
             mGammaMassaged,cal.rawdata.rawGammaInput,fitType,nInputLevels);
         mGammaFit1 = mGammaFit1a;
         for i = 1:cal.nDevices
@@ -122,7 +125,7 @@ switch(cal.describe.gamma.fitType)
             mGammaMassaged(:,i) = MakeGammaMonotonic(HalfRect(mGammaMassaged(:,i)));
         end
         fitType = 2;
-        [mGammaFit1a,cal.gammaInput,mGammaCommenta] = FitDeviceGamma(...
+        [mGammaFit1a,cal.gammaInput] = FitDeviceGamma(...
             mGammaMassaged,cal.rawdata.rawGammaInput,fitType,nInputLevels);
         mGammaFit1 = mGammaFit1a;
         
@@ -130,7 +133,7 @@ switch(cal.describe.gamma.fitType)
         if (~exist('fit','file'))
             error('Fitting with the sum of exponentials requires the curve fitting toolbox\n');
         end
-        if (max(cal.rawdata.rawGammaInput) > 1)
+        if (max(cal.rawdata.rawGammaInput(:)) > 1)
             error('crtSumPower option assumes [0-1] specification of input\n');
         end
         mGammaMassaged = cal.rawdata.rawGammaTable(:,1:cal.nDevices);
@@ -145,7 +148,7 @@ switch(cal.describe.gamma.fitType)
         startPoint = [a b c];
         lowerBounds = [0 0.1 0.01];
         upperBounds = [1 10 10];
-      
+        
         % Fit and predictions
         fOptions = fitoptions('Method','NonlinearLeastSquares','Robust','on');
         fOptions1 = fitoptions(fOptions,'StartPoint',startPoint,'Lower',lowerBounds,'Upper',upperBounds);
@@ -155,7 +158,44 @@ switch(cal.describe.gamma.fitType)
             else
                 fitstruct = fit(cal.rawdata.rawGammaInput(:,i),mGammaMassaged(:,i),fitEqStr,fOptions1);
             end
-            mGammaFit1a(:,i) = feval(fitstruct,linspace(0,1,nInputLevels));
+            mGammaFit1a(:,i) = feval(fitstruct,linspace(0,1,nInputLevels)); %#ok<*AGROW>
+        end
+        mGammaFit1 = mGammaFit1a;
+        
+    case 'betacdf',
+        if (~exist('fit','file'))
+            error('Fitting with the betacdf requires the curve fitting toolbox\n');
+        end
+        if (~exist('betacdf','file'))
+            error('Fitting with the betacdf requires the stats toolbox\n');
+        end
+        if (max(cal.rawdata.rawGammaInput(:)) > 1)
+            error('betacdf option assumes [0-1] specification of input\n');
+        end
+        mGammaMassaged = cal.rawdata.rawGammaTable(:,1:cal.nDevices);
+        for i = 1:cal.nDevices
+            mGammaMassaged(:,i) = MakeGammaMonotonic(HalfRect(mGammaMassaged(:,i)));
+        end
+        
+        fitEqStr = 'betacdf(betacdf(x,a,b),c,d)';
+        a = 1;
+        b = 1;
+        c = 1;
+        d = 1;
+        startPoint = [a b c d];
+        lowerBounds = [1e-3 1e-3 1e-3 1e-3];
+        upperBounds = [1e3 1e3 1e3 1e3];
+        
+        % Fit and predictions
+        fOptions = fitoptions('Method','NonlinearLeastSquares','Robust','on');
+        fOptions1 = fitoptions(fOptions,'StartPoint',startPoint,'Lower',lowerBounds,'Upper',upperBounds,'MaxFunEvals',2000);
+        for i = 1:cal.nDevices
+            if (size(cal.rawdata.rawGammaInput,2) == 1)
+                fitstruct = fit(cal.rawdata.rawGammaInput,mGammaMassaged(:,i),fitEqStr,fOptions1);
+            else
+                fitstruct = fit(cal.rawdata.rawGammaInput(:,i),mGammaMassaged(:,i),fitEqStr,fOptions1);
+            end
+            mGammaFit1a(:,i) = feval(fitstruct,linspace(0,1,nInputLevels)); %#ok<*AGROW>
         end
         mGammaFit1 = mGammaFit1a;
         
@@ -165,7 +205,7 @@ switch(cal.describe.gamma.fitType)
             mGammaMassaged(:,i) = MakeGammaMonotonic(HalfRect(mGammaMassaged(:,i)));
         end
         fitType = 3;
-        [mGammaFit1a,cal.gammaInput,mGammaCommenta] = FitDeviceGamma(...
+        [mGammaFit1a,cal.gammaInput] = FitDeviceGamma(...
             mGammaMassaged,cal.rawdata.rawGammaInput,fitType,nInputLevels);
         mGammaFit1 = mGammaFit1a;
         
@@ -175,13 +215,13 @@ switch(cal.describe.gamma.fitType)
             mGammaMassaged(:,i) = MakeGammaMonotonic(HalfRect(mGammaMassaged(:,i)));
         end
         fitType = 4;
-        [mGammaFit1a,cal.gammaInput,mGammaCommenta] = FitDeviceGamma(...
+        [mGammaFit1a,cal.gammaInput] = FitDeviceGamma(...
             mGammaMassaged,cal.rawdata.rawGammaInput,fitType,nInputLevels);
         mGammaFit1 = mGammaFit1a;
-
+        
     otherwise
         error('Unsupported gamma fit string passed');
-
+        
 end
 
 % Fix contingous zeros at start problem
@@ -192,9 +232,11 @@ end
 
 % Handle higher order terms, which are just fit with a polynomial
 if (cal.nPrimaryBases > 1)
-    [m,n] = size(mGammaFit1);
+    m = size(mGammaFit1,1);
     mGammaFit2 = zeros(m,cal.nDevices*(cal.nPrimaryBases-1));
     
+    % OLDFIT path does not contain option of handling data with independent input values
+    % for measurements for each device primary.
     OLDFIT = 0;
     if (OLDFIT)
         for j = 1:cal.nDevices*(cal.nPrimaryBases-1)
@@ -202,17 +244,26 @@ if (cal.nPrimaryBases > 1)
                 FitGammaPolyR(cal.rawdata.rawGammaInput,cal.rawdata.rawGammaTable(:,cal.nDevices+j), ...
                 cal.gammaInput);
         end
+        
+        % This is the code we're currently using.  It works for the case where different input levels are specified for
+        % the measurments for each primary.
     else
         for j = 1:cal.nDevices*(cal.nPrimaryBases-1)
-            mGammaFit2(:,j) = interp1([0 ; cal.rawdata.rawGammaInput],[0 ; cal.rawdata.rawGammaTable(:,cal.nDevices+j)],cal.gammaInput,'linear');
+            if (size(cal.rawdata.rawGammaInput,2) > 1)
+                for k = 1:size(cal.rawdata.rawGammaInput,2)
+                    mGammaFit2(:,j) = interp1([0 ; cal.rawdata.rawGammaInput(:,k)],[0 ; cal.rawdata.rawGammaTable(:,cal.nDevices+j)],cal.gammaInput,'linear');
+                end
+            else
+                mGammaFit2(:,j) = interp1([0 ; cal.rawdata.rawGammaInput],[0 ; cal.rawdata.rawGammaTable(:,cal.nDevices+j)],cal.gammaInput,'linear');
+            end
         end
     end
-        
+    
     mGammaFit = [mGammaFit1 , mGammaFit2];
 else
     mGammaFit = mGammaFit1;
 end
-        
+
 % Save information in form for calibration routines.
 cal.gammaFormat = 0;
 cal.gammaTable = mGammaFit;
@@ -224,7 +275,7 @@ return
 % The OS/X routines need the fit gamma function to be monotonically
 % increasing.  One way that sometimes fails is when a whole bunch of
 % entries at the start are zero.  This routine fixes that up.
-function output = FixZerosAtStart(input,nPrimaryBases)
+function output = FixZerosAtStart(input)
 
 output = input;
 for j = 1:size(input,2)

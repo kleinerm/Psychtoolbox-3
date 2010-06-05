@@ -24,7 +24,7 @@ if (nargin < 4 || isempty(nInputLevels))
 end
 
 %% Extract device characteristics
-[nil,m] = size(gammaRaw); %#ok<ASGLU>
+m = size(gammaRaw,2); %#ok<ASGLU>
 nDevices = m;
 
 %% Pad with [0 0 0] input/output if this wasn't already 0
