@@ -2358,7 +2358,7 @@ psych_bool PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindo
 	// MS-Windows: Only NV_swap_group support. Try it.
 	
 	// NVidia swap group extension supported?
-	if(glewIsSupported("WGL_NV_swap_group") && (NULL != wglQueryMaxSwapGroupsNV)) {
+	if((wglewIsSupported("WGL_NV_swap_group") || glewIsSupported("WGL_NV_swap_group")) && (NULL != wglQueryMaxSwapGroupsNV)) {
 		// Yes. Check if given GPU really supports it:
 		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: NV_swap_group supported. Querying available groups...\n");
 

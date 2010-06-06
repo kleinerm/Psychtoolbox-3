@@ -357,7 +357,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
 		if ((PSYCH_SYSTEM == PSYCH_LINUX) && (strstr(glGetString(GL_VENDOR), "NVIDIA") || (strstr(glGetString(GL_VENDOR), "ATI") && strstr(glGetString(GL_RENDERER), "Fire")))) {
 			// NVidia GPU or ATI Fire-Series GPU: Only native support by driver, if at all...
-			printf("\nPTB-INFO: Your script requested a 30bpp, 10bpc framebuffer, but this is only supported on few special graphics cards and drivers on MS-Windows.");
+			printf("\nPTB-INFO: Your script requested a 30bpp, 10bpc framebuffer, but this is only supported on few special graphics cards and drivers on Linux.");
 			printf("\nPTB-INFO: This may or may not work for you - Double check your results! Theoretically, the 2008 series ATI FireGL/FirePro and NVidia Quadro cards may support this with some drivers,");
 			printf("\nPTB-INFO: but you must enable it manually in the Catalyst Control center (somewhere under ''Workstation settings'')\n");
 		}
@@ -4903,10 +4903,10 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	if (verbose) {
 		printf("OML_sync_control indicators: glXGetSyncValuesOML=%p , glXWaitForMscOML=%p, glXWaitForSbcOML=%p, glXSwapBuffersMscOML=%p\n",
 				glXGetSyncValuesOML, glXWaitForMscOML, glXWaitForSbcOML, glXSwapBuffersMscOML);
-		printf("OML_sync_control indicators: glewIsSupported() says %i.\n", (int) glewIsSupported("GLX_OML_sync_control"));
+		printf("OML_sync_control indicators: glxewIsSupported() says %i.\n", (int) glxewIsSupported("GLX_OML_sync_control"));
 	}
 
-	if (glewIsSupported("GLX_OML_sync_control") || (glXGetSyncValuesOML && glXWaitForMscOML && glXWaitForSbcOML && glXSwapBuffersMscOML)) {
+	if (glxewIsSupported("GLX_OML_sync_control") || (glXGetSyncValuesOML && glXWaitForMscOML && glXWaitForSbcOML && glXSwapBuffersMscOML)) {
 		if (verbose) printf("System supports OpenML OML_sync_control extension for high-precision scheduled swaps and timestamping.\n");
 		
 		// As OpenML is currently only supported on GNU/Linux in a rather experimental stage, use of this is an opt-in.

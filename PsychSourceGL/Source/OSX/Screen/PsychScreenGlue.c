@@ -78,6 +78,7 @@ kern_return_t PsychOSKDDispatchCommand(io_connect_t connect, const PsychKDComman
 io_connect_t PsychOSCheckKDAvailable(int screenId, unsigned int * status);
 int PsychOSKDGetBeamposition(int screenId);
 void PsychLaunchConsoleApp(void);
+void PsychDisplayReconfigurationCallBack (CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo);
 
 //Initialization functions
 void InitializePsychDisplayGlue(void)
@@ -95,10 +96,33 @@ void InitializePsychDisplayGlue(void)
     
     // Init the list of Core Graphics display IDs.
     InitCGDisplayIDList();
+
+	// Register a display reconfiguration callback:
+	CGDisplayRegisterReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);
 	
 	// Attach to kernel-level Psychtoolbox graphics card interface driver if possible
 	// *and* allowed by settings, setup all relevant mappings:
 	InitPsychtoolboxKernelDriverInterface();
+}
+
+void PsychDisplayReconfigurationCallBack(CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo)
+{
+	(void) userInfo;
+
+	// Provide feedback at verbosity level 4 or higher:
+	if (PsychPrefStateGet_Verbosity() > 3) {
+		if (flags & kCGDisplayBeginConfigurationFlag) printf("PTB-INFO: Display reconfiguration for display %p in progress...\n", display);
+		if (flags & ~kCGDisplayBeginConfigurationFlag) printf("PTB-INFO: Reconfiguration for display %p finished: Flags = %i. Reenumerating all displays.\n", display, flags);
+	}
+
+	// Display reconfiguration finished?
+	if (flags & ~kCGDisplayBeginConfigurationFlag) {
+		// Yes: Reenumerate all our displays.
+		InitCGDisplayIDList();
+		if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Display reenumeration done.\n");
+	}
+
+	return;
 }
 
 // MK-TODO: There's still a bug here: We need to call InitCGDisplayIDList() not only at
@@ -225,6 +249,24 @@ void PsychCaptureScreen(int screenNumber)
     if(error)
         PsychErrorExitMsg(PsychError_internal, "Unable to capture display");
     PsychLockScreenSettings(screenNumber);
+
+	// Reenumerate all displays: This is meant to help resolve issues with lots of
+	// warning messages printed by the OS to stderr on the 2010 MacBookPro's with hybrid
+	// graphics and automatic GPU switching between IntelHD IGP and NVidia Geforce GPU.
+	//
+	// Those systems presumably switch to the discrete GPU after a CGDisplayCapture() call
+	// and back to the IGP after a corresponding CGDisplayRelease() call. The change of
+	// GPU supposedly invalidates the currently cached CGDisplayID handles, so we need to
+	// reenumerate to avoid operating with invalid handles. That's the theory: Don't know if
+	// this is really the cause of the warning messages and if this will actually help resolve
+	// them. In any case this system behaviour breaks backwards compatibility to applications
+	// and can be considered yet another pretty embarassing operating system bug, brought to
+	// you by Apple.
+	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychCaptureScreen(): After display capture for screen %i (Old CGDisplayId %p). Reenumerating all displays...\n", screenNumber, displayCGIDs[screenNumber]);
+	InitCGDisplayIDList();
+	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychCaptureScreen(): After display capture for screen %i (New CGDisplayId %p). Reenumeration done.\n", screenNumber, displayCGIDs[screenNumber]);
+
+	return;
 }
 
 /*
@@ -241,6 +283,13 @@ void PsychReleaseScreen(int screenNumber)
     if(error)
         PsychErrorExitMsg(PsychError_internal, "Unable to release display");
     PsychUnlockScreenSettings(screenNumber);
+
+	// Reenumerate all displays: See comments in PsychCaptureScreen() for explanation.
+	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychReleaseScreen(): After display release for screen %i (Old CGDisplayId %p). Reenumerating all displays...\n", screenNumber, displayCGIDs[screenNumber]);
+	InitCGDisplayIDList();
+	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychReleaseScreen(): After display release for screen %i (New CGDisplayId %p). Reenumeration done.\n", screenNumber, displayCGIDs[screenNumber]);
+
+	return;
 }
 
 psych_bool PsychIsScreenCaptured(screenNumber)
@@ -998,6 +1047,11 @@ void PsychOSShutdownPsychtoolboxKernelDriverInterface(void)
 
 	// Ok, whatever happened, we're detached (for good or bad):
 	numKernelDrivers = 0;
+
+	// Unregister our display reconfiguration callback: This doesn't really belong here,
+	// but we know that PsychOSShutdownPsychtoolboxKernelDriverInterface() gets called
+	// from higher level code at shutdown time and we're lazy:
+	CGDisplayRemoveReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);
 
 	return;
 }

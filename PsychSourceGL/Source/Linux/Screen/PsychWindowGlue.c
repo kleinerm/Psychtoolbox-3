@@ -1211,7 +1211,7 @@ psych_bool PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindo
 	// GNU/Linux: Try NV_swap_group support first, then SGI swap group support.
 
 	// NVidia swap group extension supported?
-	if(glewIsSupported("GLX_NV_swap_group") && (NULL != glXQueryMaxSwapGroupsNV)) {
+	if((glxewIsSupported("GLX_NV_swap_group") || glewIsSupported("GLX_NV_swap_group")) && (NULL != glXQueryMaxSwapGroupsNV)) {
 		// Yes. Check if given GPU really supports it:
 		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: NV_swap_group supported. Querying available groups...\n");
 
@@ -1274,7 +1274,7 @@ try_sgi_swapgroup:
 	if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: NV_swap_group unsupported or join operation failed. Trying GLX_SGIX_swap_group support...\n");
 
 	// SGIX swap group extension supported?
-	if(glewIsSupported("GLX_SGIX_swap_group") && (NULL != glXJoinSwapGroupSGIX)) {
+	if((glxewIsSupported("GLX_SGIX_swap_group") || glewIsSupported("GLX_SGIX_swap_group")) && (NULL != glXJoinSwapGroupSGIX)) {
 		// Yes. What to do?
 		if (NULL == slaveWindow) {
 			// Asked to remove master from swap group:
