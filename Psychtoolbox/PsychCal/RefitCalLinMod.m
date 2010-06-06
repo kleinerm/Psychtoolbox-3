@@ -2,12 +2,13 @@
 %
 % Refit the calibration linear model.
 %
-% 3/27/02  dhb  Wrote it.
+% 3/27/02  dhb            Wrote it.
 % 9/26/08  dhb, ijk, tyl  Simplify naming possibilities. 
 % 9/27/08  dhb            Clearer defaults for prompts.  Pass number of levels to dacsize routine.
 % 2/15/10  dhb            Plot all components of gamma functions.
 % 5/28/10  dhb            Add yoked fitting routine to calls.  Should have no effect when yoked isn't set, but 
 %                         do the right thing when it is.
+% 6/5/10   dhb            Make it work when rawGammaInput has multiple columns.  Use plot subroutines.
 
 % Enter load code
 defaultFileName = 'monitor';
@@ -43,23 +44,8 @@ cal = CalibrateFitYoked(cal);
 cal = CalibrateFitGamma(cal,2^cal.describe.dacsize);
 
 % Put up a plot of the essential data
-figure(1); clf;
-plot(SToWls(cal.S_device),cal.P_device);
-xlabel('Wavelength (nm)', 'Fontweight', 'bold');
-ylabel('Power', 'Fontweight', 'bold');
-title('Phosphor spectra', 'Fontsize', 13, 'Fontname', 'helvetica', 'Fontweight', 'bold');
-axis([380,780,-Inf,Inf]);
-
-figure(2); clf;
-plot(cal.rawdata.rawGammaInput,cal.rawdata.rawGammaTable,'+');
-xlabel('Input value', 'Fontweight', 'bold');
-ylabel('Normalized output', 'Fontweight', 'bold');
-title('Gamma functions', 'Fontsize', 13, 'Fontname', 'helvetica', 'Fontweight', 'bold');
-hold on
-plot(cal.gammaInput,cal.gammaTable);
-hold off
-figure(gcf);
-drawnow;
+CalibratePlotSpectra(cal,figure(1));
+CalibratePlotGamma(cal,figure(2));
 
 % Option to save the refit file
 saveIt = input('Save new fit data (0->no, 1 -> yes)? [0]: ');

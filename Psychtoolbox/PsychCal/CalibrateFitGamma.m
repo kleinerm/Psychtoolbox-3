@@ -187,7 +187,7 @@ switch(cal.describe.gamma.fitType)
         upperBounds = [1e3 1e3 1e3 1e3];
         
         % Fit and predictions
-        fOptions = fitoptions('Method','NonlinearLeastSquares','Robust','on');
+        fOptions = fitoptions('Method','NonlinearLeastSquares','Robust','on','Display','off');
         fOptions1 = fitoptions(fOptions,'StartPoint',startPoint,'Lower',lowerBounds,'Upper',upperBounds,'MaxFunEvals',2000);
         for i = 1:cal.nDevices
             if (size(cal.rawdata.rawGammaInput,2) == 1)

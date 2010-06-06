@@ -12,7 +12,9 @@
 %   CalibrateMonDrvr    - Common code called by monitor calibration programs.  Script.
 %   CalibrateMonitorPhotometer - Manual calibration procedure for use with manually controlled photometers.
 %   CalibrateMonSpd     - Run standard monitor spectral calibration.  Script.
-%   CalToggleBitsPlusPlus - Determine whether to calibrate with or without ßBits++.
+%   CalibratePlotGamma  - Plot the gamma functions in a calibration structure.
+%   CalibratePlotSpectra - Plot the device spectra in a calibration structure.
+%   CalToggleBitsPlusPlus - Determine whether to calibrate with or without Bits++.
 %   CompareMonCal       - Compare two calibration structures to see if they match.
 %   CompareMonCalOverTime - Compare two calibrations of same monitor and see differences.  Script.
 %   ContrastMatch       - Match contrast of two gratings.
@@ -60,5 +62,5 @@
 %   UpdateAmbient       - Update the ambient used for conversions, in meas. units.
 %   UpdateAmbientSensor - Update the ambient used for conversions, in sensor units.
 
-% Copyright (c) 1996-2006 by Denis Pelli & David Brainard
+% Copyright (c) 1996-2010 by Denis Pelli & David Brainard
 

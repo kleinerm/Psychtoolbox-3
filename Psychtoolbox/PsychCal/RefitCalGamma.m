@@ -16,6 +16,7 @@
 % 3/08/10  dhb      Update list of fit type options.
 % 5/28/10  dhb      Add yoked fitting routine to calls.  Should have no effect when yoked isn't set, but do the right thing when it is.
 % 6/5/10   dhb      Update type list provided to user.
+%          dhb      Better plots, using plot subroutines.
 
 % Enter load code
 defaultFileName = 'monitor';
@@ -78,16 +79,9 @@ cal = CalibrateFitLinMod(cal);
 cal = CalibrateFitYoked(cal);
 cal = CalibrateFitGamma(cal,2^cal.describe.dacsize);
 
-% And some plots
-figure(1); clf;
-plot(cal.rawdata.rawGammaInput,cal.rawdata.rawGammaTable,'+');
-xlabel('Input value', 'Fontweight', 'bold');
-ylabel('Normalized output', 'Fontweight', 'bold');
-title('Gamma functions', 'Fontsize', 13, 'Fontname', 'helvetica', 'Fontweight', 'bold');
-hold on
-plot(cal.gammaInput,cal.gammaTable);
-hold off
-figure(gcf);
+% Put up a plot of the essential data
+CalibratePlotSpectra(cal,figure(1));
+CalibratePlotGamma(cal,figure(2));
 drawnow;
 
 % Option to save the refit file
