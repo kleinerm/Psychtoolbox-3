@@ -198,7 +198,10 @@ switch(cal.describe.gamma.fitType)
             mGammaFit1a(:,i) = feval(fitstruct,linspace(0,1,nInputLevels)); %#ok<*AGROW>
         end
         mGammaFit1 = mGammaFit1a;
-        
+      % Added by ar; seemed to be required by the program. 
+		[mGammaFit1a,cal.gammaInput] = FitDeviceGamma(...
+            mGammaMassaged,cal.rawdata.rawGammaInput,[],nInputLevels);
+		
     case 'sigmoid',
         mGammaMassaged = cal.rawdata.rawGammaTable(:,1:cal.nDevices);
         for i = 1:cal.nDevices
