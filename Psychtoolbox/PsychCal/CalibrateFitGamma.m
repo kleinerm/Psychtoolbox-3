@@ -44,6 +44,8 @@ function cal = CalibrateFitGamma(cal,nInputLevels)
 % 6/5/10   dhb  Extend fix above to higher order terms in the gamma fit.
 %          dhb  Fix or supress MATLAB lint warnings.
 %          dhb  Add betacdf fit option, which seems to provide a flexible sigmoidally shaped fit.
+% 6/8/10   dhb, ar Make sure to set cal.gammaInput in options that use curvefit toolbox method.
+%               Add a call to MakeGammaMonotonic around input values for higher order linmod fit.
 
 % Set nInputLevels
 if (nargin < 2 || isempty(nInputLevels))
@@ -161,7 +163,8 @@ switch(cal.describe.gamma.fitType)
             mGammaFit1a(:,i) = feval(fitstruct,linspace(0,1,nInputLevels)); %#ok<*AGROW>
         end
         mGammaFit1 = mGammaFit1a;
-        
+        cal.gammaInput = linspace(0,1,nInputLevels)';
+  
     case 'betacdf',
         if (~exist('fit','file'))
             error('Fitting with the betacdf requires the curve fitting toolbox\n');
@@ -198,9 +201,7 @@ switch(cal.describe.gamma.fitType)
             mGammaFit1a(:,i) = feval(fitstruct,linspace(0,1,nInputLevels)); %#ok<*AGROW>
         end
         mGammaFit1 = mGammaFit1a;
-      % Added by ar; seemed to be required by the program. 
-		[mGammaFit1a,cal.gammaInput] = FitDeviceGamma(...
-            mGammaMassaged,cal.rawdata.rawGammaInput,[],nInputLevels);
+        cal.gammaInput = linspace(0,1,nInputLevels)';
 		
     case 'sigmoid',
         mGammaMassaged = cal.rawdata.rawGammaTable(:,1:cal.nDevices);
@@ -248,16 +249,16 @@ if (cal.nPrimaryBases > 1)
                 cal.gammaInput);
         end
         
-        % This is the code we're currently using.  It works for the case where different input levels are specified for
-        % the measurments for each primary.
+    % This is the code we're currently using.  It works for the case where different input levels are specified for
+    % the measurments for each primary.
     else
         for j = 1:cal.nDevices*(cal.nPrimaryBases-1)
             if (size(cal.rawdata.rawGammaInput,2) > 1)
                 for k = 1:size(cal.rawdata.rawGammaInput,2)
-                    mGammaFit2(:,j) = interp1([0 ; cal.rawdata.rawGammaInput(:,k)],[0 ; cal.rawdata.rawGammaTable(:,cal.nDevices+j)],cal.gammaInput,'linear');
+                    mGammaFit2(:,j) = interp1(MakeGammaMonotonic([0 ; cal.rawdata.rawGammaInput(:,k)]),[0 ; cal.rawdata.rawGammaTable(:,cal.nDevices+j)],cal.gammaInput,'linear');
                 end
             else
-                mGammaFit2(:,j) = interp1([0 ; cal.rawdata.rawGammaInput],[0 ; cal.rawdata.rawGammaTable(:,cal.nDevices+j)],cal.gammaInput,'linear');
+                mGammaFit2(:,j) = interp1(MakeGammaMonotonic([0 ; cal.rawdata.rawGammaInput]),[0 ; cal.rawdata.rawGammaTable(:,cal.nDevices+j)],cal.gammaInput,'linear');
             end
         end
     end
