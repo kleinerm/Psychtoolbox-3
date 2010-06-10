@@ -180,23 +180,26 @@ switch(cal.describe.gamma.fitType)
             mGammaMassaged(:,i) = MakeGammaMonotonic(HalfRect(mGammaMassaged(:,i)));
         end
         
-        fitEqStr = 'betacdf(betacdf(x,a,b),c,d)';
+        fitEqStr = 'betacdf(betacdf(betacdf(x,a,b),c,d),e,f)';
         a = 1;
         b = 1;
         c = 1;
         d = 1;
-        startPoint = [a b c d];
-        lowerBounds = [1e-3 1e-3 1e-3 1e-3];
-        upperBounds = [1e3 1e3 1e3 1e3];
+        e = 1;
+        f = 1;
+        startPoint = [a b c d e f];
+        lowerBounds = [1e-3 1e-3 1e-3 1e-3 1e-3 1e-3];
+        upperBounds = [1e3 1e3 1e3 1e3 1e3 1e3];
         
         % Fit and predictions
         fOptions = fitoptions('Method','NonlinearLeastSquares','Robust','on','Display','off');
         fOptions1 = fitoptions(fOptions,'StartPoint',startPoint,'Lower',lowerBounds,'Upper',upperBounds,'MaxFunEvals',2000);
         for i = 1:cal.nDevices
+            fOptionsUse = fitoptions(fOptions1,'Weights',1./(mGammaMassaged(:,i)+0.1));
             if (size(cal.rawdata.rawGammaInput,2) == 1)
-                fitstruct = fit(cal.rawdata.rawGammaInput,mGammaMassaged(:,i),fitEqStr,fOptions1);
+                fitstruct = fit(cal.rawdata.rawGammaInput,mGammaMassaged(:,i),fitEqStr,fOptionsUse);
             else
-                fitstruct = fit(cal.rawdata.rawGammaInput(:,i),mGammaMassaged(:,i),fitEqStr,fOptions1);
+                fitstruct = fit(cal.rawdata.rawGammaInput(:,i),mGammaMassaged(:,i),fitEqStr,fOptionsUse);
             end
             mGammaFit1a(:,i) = feval(fitstruct,linspace(0,1,nInputLevels)); %#ok<*AGROW>
         end
