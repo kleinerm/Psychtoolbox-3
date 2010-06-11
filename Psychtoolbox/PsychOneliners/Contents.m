@@ -33,6 +33,7 @@
 %   GetNumber               - Get a number typed at the keyboard.
 %   GetString               - Get a string typed at the keyboard.
 %   GetSubversionPath       - Return path required to invoke snv.
+%   GetWithDefault          - Get string or number with prompt and default value.
 %   GrayIndex               - Any graylevel from black (0) to white (1).
 %   GroupStructArrayByFields - An aid to sorting data kept in structure arrays.
 %   hexstr                  - Hex string of lowest 32 bits of any number.

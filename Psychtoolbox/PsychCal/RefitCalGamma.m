@@ -54,12 +54,11 @@ fprintf('\tbetacdf\n');
 fprintf('\tsigmoid\n');
 fprintf('\tweibull\n');
 
-fitType = input(sprintf('Enter new fit type: [%s]: ',oldType),'s');
-if (isempty(fitType))
-	fitType = oldType;
-end
-gamma.fitType = fitType;
+gamma.fitType= GetWithDefault('Enter new fit type',oldType);
 cal.describe.gamma = gamma;
+if (strcmp(gamma.fitType,'betacdf'))
+    cal.describe.gamma.useweight = GetWithDefault('Enter weighting constant (-1 -> no weighting)',0.01);
+end
 
 % Get new number of bits
 fprintf('Old DAC bits was: %d\n',cal.describe.dacsize);

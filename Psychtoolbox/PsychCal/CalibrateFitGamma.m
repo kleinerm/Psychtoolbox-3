@@ -47,6 +47,8 @@ function cal = CalibrateFitGamma(cal,nInputLevels)
 % 6/8/10   dhb, ar Make sure to set cal.gammaInput in options that use curvefit toolbox method.
 %               Add a call to MakeGammaMonotonic around input values for higher order linmod fit.
 % 6/1010   dhb  Fix higher order fit in case where there are multiple gamma input columns.  Blew this the other day.
+% 6/11/10  dhb  Allow passing of weighting parameter as part of cal.describe.gamma structure.  Change functional form of betacdf
+%               to include wrapped power functions.
 
 % Set nInputLevels
 if (nargin < 2 || isempty(nInputLevels))
@@ -181,7 +183,7 @@ switch(cal.describe.gamma.fitType)
             mGammaMassaged(:,i) = MakeGammaMonotonic(HalfRect(mGammaMassaged(:,i)));
         end
         
-        fitEqStr = 'betacdf(betacdf(betacdf(x,a,b),c,d),e,f)';
+        fitEqStr = 'betacdf(betacdf(x.^f,a,b),c,d).^e';
         a = 1;
         b = 1;
         c = 1;
@@ -196,7 +198,11 @@ switch(cal.describe.gamma.fitType)
         fOptions = fitoptions('Method','NonlinearLeastSquares','Robust','on','Display','off');
         fOptions1 = fitoptions(fOptions,'StartPoint',startPoint,'Lower',lowerBounds,'Upper',upperBounds,'MaxFunEvals',2000);
         for i = 1:cal.nDevices
-            fOptionsUse = fitoptions(fOptions1,'Weights',1./(mGammaMassaged(:,i)+0.01));
+            if (isfield(cal.describe.gamma,'useweight') && cal.describe.gamma.useweight >= 0)
+                fOptionsUse = fitoptions(fOptions1,'Weights',1./(mGammaMassaged(:,i)+cal.describe.gamma.useweight));
+            else
+                fOptionsUse = fOptions1;
+            end
             if (size(cal.rawdata.rawGammaInput,2) == 1)
                 fitstruct = fit(cal.rawdata.rawGammaInput,mGammaMassaged(:,i),fitEqStr,fOptionsUse);
             else
