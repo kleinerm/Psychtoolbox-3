@@ -46,6 +46,7 @@ function cal = CalibrateFitGamma(cal,nInputLevels)
 %          dhb  Add betacdf fit option, which seems to provide a flexible sigmoidally shaped fit.
 % 6/8/10   dhb, ar Make sure to set cal.gammaInput in options that use curvefit toolbox method.
 %               Add a call to MakeGammaMonotonic around input values for higher order linmod fit.
+% 6/1010   dhb  Fix higher order fit in case where there are multiple gamma input columns.  Blew this the other day.
 
 % Set nInputLevels
 if (nargin < 2 || isempty(nInputLevels))
@@ -195,7 +196,7 @@ switch(cal.describe.gamma.fitType)
         fOptions = fitoptions('Method','NonlinearLeastSquares','Robust','on','Display','off');
         fOptions1 = fitoptions(fOptions,'StartPoint',startPoint,'Lower',lowerBounds,'Upper',upperBounds,'MaxFunEvals',2000);
         for i = 1:cal.nDevices
-            fOptionsUse = fitoptions(fOptions1,'Weights',1./(mGammaMassaged(:,i)+0.1));
+            fOptionsUse = fitoptions(fOptions1,'Weights',1./(mGammaMassaged(:,i)+0.01));
             if (size(cal.rawdata.rawGammaInput,2) == 1)
                 fitstruct = fit(cal.rawdata.rawGammaInput,mGammaMassaged(:,i),fitEqStr,fOptionsUse);
             else
@@ -255,13 +256,16 @@ if (cal.nPrimaryBases > 1)
     % This is the code we're currently using.  It works for the case where different input levels are specified for
     % the measurments for each primary.
     else
+        k = 1;
         for j = 1:cal.nDevices*(cal.nPrimaryBases-1)
             if (size(cal.rawdata.rawGammaInput,2) > 1)
-                for k = 1:size(cal.rawdata.rawGammaInput,2)
-                    mGammaFit2(:,j) = interp1(MakeGammaMonotonic([0 ; cal.rawdata.rawGammaInput(:,k)]),[0 ; cal.rawdata.rawGammaTable(:,cal.nDevices+j)],cal.gammaInput,'linear');
-                end
+                mGammaFit2(:,j) = interp1(MakeGammaMonotonic([0 ; cal.rawdata.rawGammaInput(:,k)]),[0 ; cal.rawdata.rawGammaTable(:,cal.nDevices+j)],cal.gammaInput,'linear');
             else
                 mGammaFit2(:,j) = interp1(MakeGammaMonotonic([0 ; cal.rawdata.rawGammaInput]),[0 ; cal.rawdata.rawGammaTable(:,cal.nDevices+j)],cal.gammaInput,'linear');
+            end
+            k = k+1;
+            if (k == cal.nDevices+1)
+                k = 1;
             end
         end
     end

@@ -15,10 +15,6 @@ if (nargin < 2 || isempty(fig))
 end
 
 clf; hold on
-if (size(cal.rawdata.rawGammaTable,2) > 3)
-    subplot(1,2,1);
-end
-hold on
 plot(SToWls(cal.S_device),cal.P_ambient(:,1),'k');
 xlabel('Wavelength (nm)', 'Fontweight', 'bold');
 ylabel('Power', 'Fontweight', 'bold');
