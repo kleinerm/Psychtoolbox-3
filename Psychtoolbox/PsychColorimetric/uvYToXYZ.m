@@ -1,8 +1,18 @@
 function XYZ = uvYToXYZ(uvY)
 % XYZ = uvYToXYZ(uvY)
 %
-% Compute tristimulus coordinates from
-% chromaticity and luminance.
+% Compute tristimulus coordinates from chromaticity and luminance.
+%
+% These are u',v' chromaticity coordinates in notation
+% used by CIE.  See CIE Colorimetry 2004 publication, or Wyszecki
+% and Stiles, 2cd, page 165.
+%
+% Note that there is an obsolete u,v chromaticity diagram that is similar
+% but uses 6 in the numerator for u rather than the 9 that is used for u'.
+% See CIE Coloimetry 2004, Appendix A, or Judd and Wyszecki, p. 296.
+%
+% See also XYZTouvY, XYZToxyY, xyYToXYZ.
+%
 %
 % 10/31/94	dhb		Wrote it
 
