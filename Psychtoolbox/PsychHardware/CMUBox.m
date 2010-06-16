@@ -12,7 +12,7 @@ function varargout = CMUBox(cmd, handle, varargin)
 % Commands and their syntax:
 % --------------------------
 %
-% handle = CMUBox('Open', boxtype [, portName] [, options] [, debounceSecs=0.030]);
+% handle = CMUBox('Open', boxtype [, portName] [, options] [, debounceSecs=0.030] [, isInverted]);
 % - Open response box connected to serial port 'portName', or the first
 % serial port found, if 'portName' is omitted. Initialize it, return a
 % 'handle' to it. You'll have to pass 'handle' to all following functions
@@ -39,6 +39,17 @@ function varargout = CMUBox(cmd, handle, varargin)
 % at least 'debounceSecs' seconds. Only then will it accept new button
 % presses. The default setting is 30 msecs if this option is omitted.
 %
+%
+% The optional parameter vector 'isInverted' defines whether a TTL input
+% signal level of logic low (0) corresponds to a button press or a button
+% release. By default, a level of logic low is detected as button press.The
+% vector has nine elements, one for each corresponding input line. If an
+% element is 1, then a logic level of low is registered as a button press.
+% A value of 0 means that a logic level of high is registered as a button
+% press. E.g., isInverted = [ 0 0 0 0 1 1 1 1 1 ] would register a logic
+% level of low as a button press on the first four inputs, whereas a level
+% of high is required to detect a button press on the last five inputs. 
+% 
 %
 % The mandatory parameter 'boxtype' is a name string defining the
 % type/model of box to connnect to. Supported settings are:
@@ -255,7 +266,7 @@ if strcmpi(cmd, 'GetEvent')
         if (t - box.oldTime < 0.0005) | (box.deltaScan < 0.0005) | ((box.deltaScan > 0.002) & (box.Streaming > 0)) %#ok<AND2,OR2>
             % Too close to each other! Timestamp is not reliable!
             tTrouble = 1;
-            fprintf('CMUBox: GetEvent: Timestamp trouble!! Delta %f msecs, ScanInterval %f msecs.\n', 1000 * (t - box.oldTime), 1000 * box.deltaScan); %#ok<WNTAG>
+            fprintf('CMUBox: GetEvent: Timestamp trouble!! Delta %f msecs, ScanInterval %f msecs.\n', 1000 * (t - box.oldTime), 1000 * box.deltaScan); 
         end
 
         % Keep track of last events timestamp:
@@ -269,7 +280,7 @@ if strcmpi(cmd, 'GetEvent')
         box.tTrouble = box.tTrouble + tTrouble;
 
         % Box status changed since last query?
-        if (data ~= oldState) %#ok<OR2>
+        if (data ~= oldState) 
             % Yes. We have a new event. Store it and break out of loop:
             
             % USB-Serial converter type?
@@ -489,19 +500,41 @@ if strcmpi(cmd, 'Open')
             deadTimeSecs = max(ceil(deadTimeSecs * 1000), 0);
             fprintf('Bitwhacker: Debounce: Will ignore new button presses for %i msecs after previous button release.\n', deadTimeSecs);
             
+            if length(varargin) < 4
+                isInverted = [];
+            else
+                isInverted = varargin{4};
+            end
+            
+            if isempty(isInverted)
+                isInverted = [1 1 1 1 1 1 1 1 1];
+            else
+                if length(isInverted) ~= 9 || ~isnumeric(isInverted)
+                    error('Parameter "isInverted" must be a 9-element vector of zeros and ones!');
+                end
+            end
+            
+            for i=1:9
+                if isInverted(i)
+                    inv{i} = 'inverted '; %#ok<AGROW>
+                else
+                    inv{i} = ''; %#ok<AGROW>
+                end
+            end
+            
             % Infinite while-loop, runs until program termination:
             Command(box.port, '70  dim led0 as pin re3 for digital output inverted');
             Command(box.port, '80  dim led1 as pin re2 for digital output inverted');
             Command(box.port, '90  dim busyled as pin re1 for digital output inverted');
-            Command(box.port, '100 dim ttl1 as pin ra1 for digital input inverted');
-            Command(box.port, '101 dim ttl2 as pin ra2 for digital input inverted');
-            Command(box.port, '102 dim ttl3 as pin ra3 for digital input inverted');
-            Command(box.port, '103 dim ttl4 as pin ra4 for digital input inverted');
-            Command(box.port, '104 dim ttl5 as pin ra5 for digital input inverted');
-            Command(box.port, '105 dim ttl6 as pin ra6 for digital input inverted');
-            Command(box.port, '106 dim ttl7 as pin ra7 for digital input inverted');
-            Command(box.port, '107 dim but1 as pin re6 for digital input inverted');
-            Command(box.port, '108 dim but2 as pin re7 for digital input inverted');
+            Command(box.port, ['100 dim ttl1 as pin ra1 for digital input ' inv{1}]);
+            Command(box.port, ['101 dim ttl2 as pin ra2 for digital input ' inv{2}]);
+            Command(box.port, ['102 dim ttl3 as pin ra3 for digital input ' inv{3}]);
+            Command(box.port, ['103 dim ttl4 as pin ra4 for digital input ' inv{4}]);
+            Command(box.port, ['104 dim ttl5 as pin ra5 for digital input ' inv{5}]);
+            Command(box.port, ['105 dim ttl6 as pin ra6 for digital input ' inv{6}]);
+            Command(box.port, ['106 dim ttl7 as pin ra7 for digital input ' inv{7}]);
+            Command(box.port, ['107 dim but1 as pin re6 for digital input ' inv{8}]);
+            Command(box.port, ['108 dim but2 as pin re7 for digital input ' inv{9}]);
             Command(box.port, '110 dim deadline');
             Command(box.port, '120 dim deadtime');
             Command(box.port, '130 dim ttlsum');
@@ -538,11 +571,11 @@ if strcmpi(cmd, 'Open')
             % Test code for MK's internal debugging:
             
             % Infinite while-loop, runs until program termination:
-            Command(box.port, '5 dim t');
-            Command(box.port, '10 while 1 do');
+            %Command(box.port, '5 dim t');
+            %Command(box.port, '10 while 1 do');
             % Print a character - Send 1 Byte to host computer:
-            Command(box.port, '15 let t = seconds % 10');
-            Command(box.port, '20 print t');
+            %Command(box.port, '15 let t = seconds % 10');
+            %Command(box.port, '20 print t');
             % Sleep for 500 microseconds...
             %        Command(box.port, '30 sleep 1 ms');
             % Print a character - Send 1 Byte to host computer:
@@ -551,7 +584,7 @@ if strcmpi(cmd, 'Open')
             % Sleep for 500 microseconds...
             %        Command(box.port, '50 sleep 1 ms');
             % Then repeat.
-            Command(box.port, '60 endwhile');
+            %Command(box.port, '60 endwhile');
         end
         
         % Print out whole program as debug output:
@@ -790,12 +823,6 @@ if strcmpi(cmd, 'Close')
         WaitSecs(0.2);
 
         % Send reset signal to StickOS:
-        % MK: Skip 'reset' for now. Causes severe system crashes on OS/X,
-        % apparently due to a FTDI kernel driver bug, where the "unclean
-        % device removal" event caused by this doesn't get handled
-        % correctly at the driver level. Optionally could add a sleep for 2
-        % secs before, so we manage to close the connection before this
-        % command executes on the stick:
         % Command(box.port, 'reset');
     end
     
