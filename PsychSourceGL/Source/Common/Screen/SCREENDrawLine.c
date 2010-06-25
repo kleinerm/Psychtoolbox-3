@@ -27,12 +27,13 @@
 static char useString[] = "Screen('DrawLine', windowPtr [,color], fromH, fromV, toH, toV [,penWidth]);";
 //                                            1           2       3      4      5    6     7          
 static char synopsisString[] = 
-	"Draw the outline of a rectangle. \"color\" is the clut index (scalar or [r g b a] "
-    "vector) that you want to poke into each pixel; default produces black "
-    "Default \"rect\" is entire window. "
-    "Default pen size is 1. ";
+    "Draw a line. \"color\" is the clut index (scalar or [r g b a] vector) that "
+    "you want to poke into each pixel; default produces black. "
+    "\"fromH\" and \"fromV\" are the starting x and y positions, respectively. "
+    "\"toH\" and \"toV\" are the ending x and y positions, respectively. "
+    "Default \"penWidth\" is 1. ";
 	
-static char seeAlsoString[] = "FrameRect";	
+static char seeAlsoString[] = "DrawLines";	
 
 PsychError SCREENDrawLine(void)  
 {
