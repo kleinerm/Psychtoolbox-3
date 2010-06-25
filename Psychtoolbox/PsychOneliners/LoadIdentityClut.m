@@ -143,7 +143,7 @@ else
 
         end
     else
-        if ~isempty(strfind(gfxhwtype, 'ATI')) | ~isempty(strfind(gfxhwtype, 'AMD')) %#ok<OR2>
+        if ~isempty(strfind(gfxhwtype, 'ATI')) | ~isempty(strfind(gfxhwtype, 'AMD')) | ~isempty(strfind(gfxhwtype, 'Advanced Micro Devices')) %#ok<OR2>
             % ATI card:
 
             % A good default at least on OS/X is type 1:
