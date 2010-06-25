@@ -28,6 +28,7 @@
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include <IOKit/IOKitLib.h>
+#include <sys/time.h>
 #endif
 
 static char useString[] = "[[value1], [value2] ..]=SCREEN('Null',[value1],[value2],...);";
@@ -87,9 +88,129 @@ PsychError SCREENNull(void)
 	#endif
 
 	#if PSYCH_SYSTEM == PSYCH_OSX
+
+// ----------- Linux DRI2/Radeon-KMS Scanline-Timestamping prototype for R500 core.
+
+	#define RADEON_D1CRTC_STATUS_POSITION  0x60a0
+	#define RADEON_D2CRTC_OFFSET           0x0800
+	#define RADEON_D2CRTC_STATUS_POSITION  0x68a0
+	#define RADEON_VBEAMPOSITION_BITMASK   0x1fff
+	#define RADEON_HBEAMPOSITION_BITSHIFT  16
+	#define AVIVO_D1CRTC_V_BLANK_START_END 0x6024
+	#define AVIVO_D1CRTC_V_TOTAL           0x6020
+	#define AVIVO_D1CRTC_H_TOTAL           0x6000
+	
+	int crtcid = 0, verbose = 0;
+	PsychCopyInIntegerArg(1, FALSE, &crtcid);
+	PsychCopyInIntegerArg(2, FALSE, &verbose);
+	
+	const int pedantic = 1;
+	int vbl_start, vbl_end, vbl, htotal, vtotal, dotclock;
+	psych_int64 linedur_ns, pixeldur_ns;
+	psych_bool invbl = TRUE;
+	int scanline, scanpixel;
+	
+	psych_uint32 crtco = (crtcid > 0) ? RADEON_D2CRTC_OFFSET : 0;
+	struct timeval raw_time;
+	struct timeval delta_time;	
+	struct timeval vblank_time;
+
+	// Get basis parameters:
+	vbl = PsychOSKDReadRegister(crtcid, AVIVO_D1CRTC_V_BLANK_START_END + crtco, NULL);
+	vbl_start = vbl & RADEON_VBEAMPOSITION_BITMASK;
+	vbl_end = (vbl >> 16) & RADEON_VBEAMPOSITION_BITMASK;
+
+	vtotal = PsychOSKDReadRegister(crtcid, AVIVO_D1CRTC_V_TOTAL + crtco, NULL);
+	htotal = PsychOSKDReadRegister(crtcid, AVIVO_D1CRTC_H_TOTAL + crtco, NULL) + 1;
+
+	// Dotclock shall be 160 Mhz:
+	dotclock = 120 * 1e6;
+	
+	// Convert line length in pixel and video dot clock to line duration
+	// in nanoseconds:
+	linedur_ns = htotal * 1e9 / dotclock;
+	pixeldur_ns = 1e9 / dotclock;
+	
+	if (verbose > 1) printf("CRTC %i : vbl_start %i : vbl_end %i : vtotal %i : htotal %i : linedur_ns = %i\n", crtcid, vbl_start, vbl_end, vtotal, htotal, linedur_ns);
+
+	// Query current beampos:
+	if (pedantic) {
+		scanline  = PsychOSKDReadRegister(crtcid, RADEON_D1CRTC_STATUS_POSITION + crtco, NULL);
+		scanpixel = (scanline >> RADEON_HBEAMPOSITION_BITSHIFT) & RADEON_VBEAMPOSITION_BITMASK;
+		scanline  = scanline & RADEON_VBEAMPOSITION_BITMASK;
+	}
+	else {
+		scanline = PsychOSKDReadRegister(crtcid, RADEON_D1CRTC_STATUS_POSITION + crtco, NULL) & RADEON_VBEAMPOSITION_BITMASK;
+	}
+	
+	// Query current time:
+	gettimeofday(&raw_time, NULL);
+
+	// In vertical blank?
+	if ((scanline < vbl_start) && (scanline >= vbl_end))
+		invbl = FALSE;
+	
+    scanline = scanline - vbl_end;
+
+    if (invbl && (scanline >= vbl_end))
+        scanline = scanline - vtotal - 1;
+
+	// Seconds field will always be zero for any video refresh
+	// with a duration of less than 1 hour per frame:
+	delta_time.tv_sec = 0;
+
+	// Want vblank_time = raw_time - delta_time, but
+	// split it into cases delta_time >= 0 aka scanline >=0
+	// and delta_time < 0 aka scanline < 0.
+	// This because timeradd/sub only operate on positive 2nd
+	// operand:
+	if (scanline >= 0) {
+		// Convert scanline into microseconds elapsed:
+		delta_time.tv_usec = scanline * linedur_ns / 1000;		
+		if (pedantic) delta_time.tv_usec = (scanline * linedur_ns + scanpixel * pixeldur_ns) / 1000;
+		timersub(&raw_time, &delta_time, &vblank_time);
+	}
+	else {
+		// Convert scanline into microseconds to go:
+		delta_time.tv_usec = -scanline * linedur_ns / 1000;
+		if (pedantic) delta_time.tv_usec = (-scanline * linedur_ns + scanpixel * pixeldur_ns) / 1000;
+		timeradd(&raw_time, &delta_time, &vblank_time);
+	}
+
+	// Map vblank_time to double value tUptime -- time in GetSecs() reference.
+	double tUptime;
+	PsychGetAdjustedPrecisionTimerSeconds(&tUptime);
+	tUptime = ((double) raw_time.tv_sec + ((double) raw_time.tv_usec) / 1e6) - tUptime;
+	tUptime = ((double) vblank_time.tv_sec + ((double) vblank_time.tv_usec) / 1e6) - tUptime;
+
+	if (verbose > 0) printf("CRTC %i : At time %i.%i secs : Scanline %i : vblank = %i.%i secs.\n", crtcid, raw_time.tv_sec, raw_time.tv_usec, scanline, vblank_time.tv_sec, vblank_time.tv_usec);
+	
+	PsychCopyOutDoubleArg(1, FALSE, (double) tUptime);
+	
+	// Done.
+	return(PsychError_none);
+
+// ----------------------------------
+
 	char pbuf[1024];
 	int residualLength = 1024;
-	
+
+//	if (infoType == 2) {
+//		// MMIO register Read for screenid "auxArg1", register offset "auxArg2":
+//		PsychCopyInDoubleArg(3, TRUE, &auxArg1);
+//		PsychCopyInDoubleArg(4, TRUE, &auxArg2);
+//		PsychCopyOutDoubleArg(1, FALSE, (double) PsychOSKDReadRegister((int) auxArg1, (unsigned int) auxArg2, NULL));
+//	}
+//	
+//	if (infoType == 3) {
+//		// MMIO register Write for screenid "auxArg1", register offset "auxArg2", to value "auxArg3":
+//		PsychCopyInDoubleArg(3, TRUE, &auxArg1);
+//		PsychCopyInDoubleArg(4, TRUE, &auxArg2);
+//		PsychCopyInDoubleArg(5, TRUE, &auxArg3);
+//		PsychOSKDWriteRegister((int) auxArg1, (unsigned int) auxArg2, (unsigned int) auxArg3, NULL);
+//	}
+
+
 	//WORKS:	io_registry_entry_t myentry = IORegistryEntryFromPath(kIOMasterPortDefault, kIOServicePlane ":/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/PEGP@1/IOPCI2PCIBridge/display@0/ATY,Wormy@0/ATY_Wormy/display0/AppleBacklightDisplay");
 	//WORKS:	io_registry_entry_t myentry = IORegistryEntryFromPath(kIOMasterPortDefault, kIOServicePlane ":/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/PEGP@1/IOPCI2PCIBridge/display@0/ATY,Wormy@0/ATY_Wormy/display0");
 	io_registry_entry_t myentry = IORegistryEntryFromPath(kIOMasterPortDefault, kIOServicePlane ":/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/PEGP@1/IOPCI2PCIBridge/display@0");

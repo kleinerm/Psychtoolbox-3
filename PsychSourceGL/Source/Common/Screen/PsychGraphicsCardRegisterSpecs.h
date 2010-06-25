@@ -69,6 +69,13 @@
 #define RADEON_VBEAMPOSITION_BITMASK  0x1fff
 #define RADEON_HBEAMPOSITION_BITSHIFT 16
 
+// Encodes true start- and endline of VBLANK interval, because vblank doesn't
+// neccessarily start at vactive and doesn't stop at vtotal:
+// Uppermost 16 bits contain end, lowermost 16 bits contain start, mask is
+// RADEON_VBEAMPOSITION_BITMASK
+#define AVIVO_D1CRTC_V_BLANK_START_END 0x6024
+#define AVIVO_D2CRTC_V_BLANK_START_END 0x6824
+
 // This (if we would use it) would give access to on-chip frame counters. These increment
 // once per video refresh cycle - at the beginning of a new cycle (scanline zero) and
 // can be software reset, but normally start at system bootup with zero. Not yet sure

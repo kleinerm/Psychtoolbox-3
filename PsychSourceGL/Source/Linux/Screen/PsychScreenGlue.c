@@ -1206,6 +1206,9 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 	  beampos = radeon_get((displayScreensToPipes[screenNumber] == 0) ? RADEON_D1CRTC_STATUS_POSITION : RADEON_D2CRTC_STATUS_POSITION) & RADEON_VBEAMPOSITION_BITMASK;
   }
 
+  // Query end-offset of VBLANK interval of this GPU and correct for it:
+  beampos = beampos - (int) ((radeon_get((displayScreensToPipes[screenNumber] == 0) ? AVIVO_D1CRTC_V_BLANK_START_END : AVIVO_D2CRTC_V_BLANK_START_END) >> 16) & RADEON_VBEAMPOSITION_BITMASK);
+
   // Return our result or non-result:
   return(beampos);
 }
@@ -1290,16 +1293,26 @@ unsigned int PsychOSKDWriteRegister(int screenId, unsigned int offset, unsigned 
 	return(0);
 }
 
+// Helper function for PsychOSSynchronizeDisplayScreens().
+static unsigned int GetBeamPosition(int headId)
+{
+	  return((unsigned int) radeon_get((headId == 0) ? RADEON_D1CRTC_STATUS_POSITION : RADEON_D2CRTC_STATUS_POSITION) & RADEON_VBEAMPOSITION_BITMASK);
+}
+
 // Synchronize display screens video refresh cycle. See PsychSynchronizeDisplayScreens() for help and details...
 PsychError PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds, int* residuals, unsigned int syncMethod, double syncTimeOut, int allowedResidual)
 {
-	int screenId = 0;
-	double	abortTimeOut, now;
-	int residual;
+	int								screenId = 0;
+	double							abortTimeOut, now;
+	int								residual;
+	int								deltabeampos;
+	unsigned int					beampos0, beampos1, i;
+	unsigned int					old_crtc_master_enable = 0;
+	unsigned int					new_crtc_master_enable = 0;
 	
 	// Check availability of connection:
-	int connect;
-	unsigned int status;
+	int								connect;
+	unsigned int					status;
 	
 	// No support for other methods than fast hard sync:
 	if (syncMethod > 1) {
@@ -1334,23 +1347,109 @@ PsychError PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds, int
 		if (residual != INT_MAX) PsychWaitIntervalSeconds(0.5);
 		
 		residual = INT_MAX;
-
-		// No op for now...		
-
-		// Make it always TRUE == Success as this is a no op for now anyway...
-		if (TRUE) {
-			residual = (int) 0;
-			if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Graphics display heads resynchronized. Residual vertical beamposition error is %ld scanlines.\n", residual);
+		
+		if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: PsychOSSynchronizeDisplayScreens(): About to resynchronize all display heads by use of a 1 second CRTC stop->start cycle:\n");
+		
+		// A little pretest...
+		if (PsychPrefStateGet_Verbosity() > 3) ("Pretest...\n");
+		for (i = 0; i < 10; i++) { 
+			beampos0 = GetBeamPosition(0);
+			beampos1 = GetBeamPosition(1);
+			if (PsychPrefStateGet_Verbosity() > 3) printf("Sample %ld: Beampositions are %ld vs. %ld . Offset %ld\n", i, beampos0, beampos1, (int) beampos1 - (int) beampos0);
+		}
+		
+		// Query the CRTC scan-converter master enable state: Bit 0 (value 0x1) controls Pipeline 1,
+		// whereas Bit 1(value 0x2) controls Pipeline 2:
+		old_crtc_master_enable = radeon_get(RADEON_DC_CRTC_MASTER_ENABLE);
+		if (PsychPrefStateGet_Verbosity() > 3) {
+			printf("Current CRTC Master enable state is %ld . Trying to stop and reset all display heads.\n", old_crtc_master_enable);
+			printf("Will wait individually for each head to get close to scanline 0, then disable it.\n");
+		}
+		
+		// Shut down heads, one after each other, each one at the start of a new refresh cycle:
+		for (i = 0; i <= 1; i++) { 
+			// Wait for head i to start a new display cycle (scanline 0), then shut it down - well if it is active at all:
+			if (PsychPrefStateGet_Verbosity() > 3) printf("Head %ld ...  ", i);
+			if (old_crtc_master_enable & (0x1 << i)) {		
+				if (PsychPrefStateGet_Verbosity() > 3) printf("active -> Shutdown. ");
+				// Wait for beam going above scanline 240: We choose 240, because even at the lowest conceivable
+				// useful display resolution of 640 x 480, 240 will be in the middle of the frame, aka far away
+				// from both, the start and the end of a frame:
+				while (GetBeamPosition(i) <= 240);
+				
+				// Beam is heading for the end of the frame + VBL area. Wait for wrap-around, ie. until
+				// reaching a scanline value smaller than 100 --> Until it wraps back to zero or at least
+				// a value close to zero:
+				while (GetBeamPosition(i) > 240);
+				
+				// Start of new refresh interval! Shut down this heads CRTC!
+				// We do so by clearing enable bit for this head:
+				radeon_set(RADEON_DC_CRTC_MASTER_ENABLE, radeon_get(RADEON_DC_CRTC_MASTER_ENABLE) & ~(0x1 << i));
+				if (PsychPrefStateGet_Verbosity() > 3) printf("New state is %ld.\n", radeon_get(RADEON_DC_CRTC_MASTER_ENABLE));
+				
+				// Head should be down, close to scanline 0.
+				PsychWaitIntervalSeconds(0.050);
+			}
+			else {
+				if (PsychPrefStateGet_Verbosity() > 3) printf("already offline.\n");
+			}
+		}
+		
+		// All display heads should be disabled now.
+		PsychWaitIntervalSeconds(0.020);
+		
+		// Query current beamposition and check state:
+		beampos0 = GetBeamPosition(0);
+		beampos1 = GetBeamPosition(1);
+		
+		new_crtc_master_enable = radeon_get(RADEON_DC_CRTC_MASTER_ENABLE);
+		
+		if (new_crtc_master_enable == 0) {
+			if (PsychPrefStateGet_Verbosity() > 3) printf("CRTC's down (state %ld): Beampositions are [0]=%ld and [1]=%ld. Synchronized restart in 1 second...\n", new_crtc_master_enable, beampos0, beampos1);
 		}
 		else {
-			if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Graphics display head synchronization failed.\n");
-			break;
+			if (PsychPrefStateGet_Verbosity() > 3) printf("CRTC's shutdown failed!! (state %ld): Beamposition are [0]=%ld and [1]=%ld. Will try to restart in 1 second...\n", new_crtc_master_enable, beampos0, beampos1);
 		}
+		
+		// Sleep for 1 second: This is a blocking call, ie. the thread goes to sleep and may wakeup a bit later:
+		PsychWaitIntervalSeconds(1);
+		
+		// Reset all display heads enable state to original setting:
+		radeon_set(RADEON_DC_CRTC_MASTER_ENABLE, old_crtc_master_enable);
+		
+		// Query position and state after restart:
+		beampos0 = GetBeamPosition(0);
+		beampos1 = GetBeamPosition(1);
+		new_crtc_master_enable = radeon_get(RADEON_DC_CRTC_MASTER_ENABLE);
+		if (new_crtc_master_enable == old_crtc_master_enable) {
+			if (PsychPrefStateGet_Verbosity() > 3) printf("CRTC's restarted in sync: Master enable state is %ld. Beampositions after restart: [0]=%ld and [1]=%ld.\n", new_crtc_master_enable, beampos0, beampos1);
+		}
+		else {
+			if (PsychPrefStateGet_Verbosity() > 3) printf("CRTC's restart FAILED!!: Master enable state is %ld. Beampositions: [0]=%ld and [1]=%ld.\n", new_crtc_master_enable, beampos0, beampos1);
+		}
+		
+		deltabeampos = (int) beampos1 - (int) beampos0;
+		if (PsychPrefStateGet_Verbosity() > 3) printf("Residual beam offset after display sync: %ld.\n\n", deltabeampos);
+		
+		// A little posttest...
+		if (PsychPrefStateGet_Verbosity() > 3) printf("Posttest...\n");
+		for (i = 0; i < 10; i++) { 
+			beampos0 = GetBeamPosition(0);
+			beampos1 = GetBeamPosition(1);
+			if (PsychPrefStateGet_Verbosity() > 3) printf("Sample %ld: Beampositions are %ld vs. %ld . Offset %ld\n", i, beampos0, beampos1, (int) beampos1 - (int) beampos0);
+		}
+		
+		if (PsychPrefStateGet_Verbosity() > 3) printf("Display head resync operation finished.\n\n");
+		
+		// Assign residual for this iteration:
+		residual = deltabeampos;
+		
+		if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Graphics display heads resynchronized. Residual vertical beamposition error is %ld scanlines.\n", residual);
 		
 		// Timestamp:
 		PsychGetAdjustedPrecisionTimerSeconds(&now);
 	} while ((now < abortTimeOut) && (abs(residual) > allowedResidual));
-
+	
 	// Return residual value if wanted:
 	if (residuals) { 
 		residuals[0] = residual;
