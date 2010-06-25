@@ -76,6 +76,9 @@
 #define AVIVO_D1CRTC_V_BLANK_START_END 0x6024
 #define AVIVO_D2CRTC_V_BLANK_START_END 0x6824
 
+#define AVIVO_D1CRTC_V_TOTAL           0x6020
+#define AVIVO_D2CRTC_V_TOTAL           0x6820
+
 // This (if we would use it) would give access to on-chip frame counters. These increment
 // once per video refresh cycle - at the beginning of a new cycle (scanline zero) and
 // can be software reset, but normally start at system bootup with zero. Not yet sure

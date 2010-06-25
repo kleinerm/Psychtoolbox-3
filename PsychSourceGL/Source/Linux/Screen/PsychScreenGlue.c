@@ -91,25 +91,7 @@
  * for patches.
  */
 
-
-// The D1CRTC_STATUS_POSITION register (32 bits) encodes vertical beam position in
-// bits 0:12 (the least significant 13 bits), and horizontal beam position in
-// bits 16-28. D2 is the secondary display pipeline (e.g., the external video port
-// on a laptop), whereas D1 is the primary pipeline (e.g., internal panel of a laptop).
-// The addresses and encoding is the same for the X1000 series and the newer HD2000/3000
-// series chips...
-#define RADEON_D1CRTC_STATUS_POSITION 0x60a0
-#define RADEON_D2CRTC_STATUS_POSITION 0x68a0
-#define RADEON_VBEAMPOSITION_BITMASK  0x1fff
-#define RADEON_HBEAMPOSITION_BITSHIFT 16
-
-// This (if we would use it) would give access to on-chip frame counters. These increment
-// once per video refresh cycle - at the beginning of a new cycle (scanline zero) and
-// can be software reset, but normally start at system bootup with zero. Not yet sure
-// if we should/would wanna use 'em but we'll see...
-#define RADEON_D1CRTC_STATUS_FRAME_COUNT 0x60a4
-#define RADEON_D2CRTC_STATUS_FRAME_COUNT 0x68a4
-
+#include "PsychGraphicsCardRegisterSpecs.h"
 
 // gfx_cntl_mem is mapped to the actual device's memory mapped control area.
 // Not the address but what it points to is volatile.
@@ -1204,11 +1186,13 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 	  // Ok, supported chip and setup worked. Read the mmapped register,
 	  // either for CRTC-1 if pipe for this screen is zero, or CRTC-2 otherwise:
 	  beampos = radeon_get((displayScreensToPipes[screenNumber] == 0) ? RADEON_D1CRTC_STATUS_POSITION : RADEON_D2CRTC_STATUS_POSITION) & RADEON_VBEAMPOSITION_BITMASK;
+
+	  // Query end-offset of VBLANK interval of this GPU and correct for it:
+/*	  beampos = beampos - (int) ((radeon_get((displayScreensToPipes[screenNumber] == 0) ? AVIVO_D1CRTC_V_BLANK_START_END : AVIVO_D2CRTC_V_BLANK_START_END) >> 16) & RADEON_VBEAMPOSITION_BITMASK);
+
+	  if (beampos < 0) beampos = ((int) radeon_get((displayScreensToPipes[screenNumber] == 0) ? AVIVO_D1CRTC_V_TOTAL : AVIVO_D2CRTC_V_TOTAL)) - beampos;*/
   }
-
-  // Query end-offset of VBLANK interval of this GPU and correct for it:
-  beampos = beampos - (int) ((radeon_get((displayScreensToPipes[screenNumber] == 0) ? AVIVO_D1CRTC_V_BLANK_START_END : AVIVO_D2CRTC_V_BLANK_START_END) >> 16) & RADEON_VBEAMPOSITION_BITMASK);
-
+// printf("beampos=%i \n", beampos);
   // Return our result or non-result:
   return(beampos);
 }
