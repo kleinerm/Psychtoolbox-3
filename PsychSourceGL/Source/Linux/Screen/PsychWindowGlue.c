@@ -334,8 +334,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
       // that doesn't support AUX-buffers. In that case we retry without requesting AUX buffers
       // and output a proper warning instead of failing. For 99% of all applications one can
       // do without AUX buffers anyway...
-      printf("PTB-WARNING: Couldn't enable AUX buffers on onscreen window due to limitations of your gfx-hardware or driver. Some features may be disabled or limited...\n");
-      fflush(NULL);
+      //printf("PTB-WARNING: Couldn't enable AUX buffers on onscreen window due to limitations of your gfx-hardware or driver. Some features may be disabled or limited...\n");
+      //fflush(NULL);
       
       // Terminate attrib array where the GLX_AUX_BUFFERS entry used to be...
       attrib[attribcount-3] = None;

@@ -1188,11 +1188,11 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 	  beampos = radeon_get((displayScreensToPipes[screenNumber] == 0) ? RADEON_D1CRTC_STATUS_POSITION : RADEON_D2CRTC_STATUS_POSITION) & RADEON_VBEAMPOSITION_BITMASK;
 
 	  // Query end-offset of VBLANK interval of this GPU and correct for it:
-/*	  beampos = beampos - (int) ((radeon_get((displayScreensToPipes[screenNumber] == 0) ? AVIVO_D1CRTC_V_BLANK_START_END : AVIVO_D2CRTC_V_BLANK_START_END) >> 16) & RADEON_VBEAMPOSITION_BITMASK);
+	  beampos = beampos - (int) ((radeon_get((displayScreensToPipes[screenNumber] == 0) ? AVIVO_D1CRTC_V_BLANK_START_END : AVIVO_D2CRTC_V_BLANK_START_END) >> 16) & RADEON_VBEAMPOSITION_BITMASK);
 
-	  if (beampos < 0) beampos = ((int) radeon_get((displayScreensToPipes[screenNumber] == 0) ? AVIVO_D1CRTC_V_TOTAL : AVIVO_D2CRTC_V_TOTAL)) - beampos;*/
+	  if (beampos < 0) beampos = ((int) radeon_get((displayScreensToPipes[screenNumber] == 0) ? AVIVO_D1CRTC_V_TOTAL : AVIVO_D2CRTC_V_TOTAL)) + beampos;
   }
-// printf("beampos=%i \n", beampos);
+
   // Return our result or non-result:
   return(beampos);
 }
