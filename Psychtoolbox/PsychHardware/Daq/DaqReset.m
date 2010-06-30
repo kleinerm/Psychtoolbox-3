@@ -23,25 +23,32 @@ function err=DaqReset(OldDaqIndex)
 % then run "clear PsychHID", then try "daq=DaqFind" or "daqs=DaqDeviceIndex"
 % (the latter if you have more than one A/D converter built by Measurement
 % Computing.  -- mpr 
+%
+% On Snow Leopard. Matlab R2010a, I found I could re-establish communication
+% with an unresponsive 1208FS with the calls above (that is, calling DaqReset
+% followed by "clear PsychHID") -- sdv
 % 
 % See also Daq, DaqFunctions, DaqPins, DaqTest, PsychHIDTest, DaqFind, 
 % DaqDeviceIndex.
 
 % 4/15/05 dgp Wrote it.
 % 1/9/08  mpr tweaked it for use with 1608FS
+% 6/30/2010 sdv fixed error if any USB devices were shorter than 10 characters
 
 fprintf('Resetting USB-1x08FS.\n');
 clear PsychHID; % flush current enumeration  (list of devices)
 devices=PsychHID('devices'); % enumerate again
 daq=[];
 for k=1:length(devices)
-  if all(devices(k).product([4:5 7:10]) == '-108FS')
+  if length(devices(k).product)>=10
+   if all(devices(k).product([4:5 7:10]) == '-108FS')
     if isempty(daq)
       daq=k;
     elseif ~streq(devices(k).serialNumber,devices(daq(end)).serialNumber)
       daq(end+1)=k;
-    end
-  end
+    end %isempty
+   end %all devices
+  end %length
 end
 if isempty(daq)
   error('Sorry, couldn''t find a USB-1x08FS.');
@@ -70,6 +77,7 @@ devices=PsychHID('devices'); % enumerate again
 % mpr
 daq=[];
 for k=1:length(devices)
+ if length(devices(k).product)>=10,
   if all(devices(k).product([4:5 7:10]) == '-108FS')
     if isempty(daq)
       daq=k;
@@ -77,6 +85,7 @@ for k=1:length(devices)
       daq(end+1)=k;
     end
   end
+ end
 end
 % fprintf('Done.)\n');
 return
