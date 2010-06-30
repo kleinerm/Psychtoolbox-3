@@ -18,20 +18,19 @@ function varargout = Screen(varargin) %#ok<STOUT>
 % created. You can create many windows. To use a window, you pass its
 % windowPtr to the Screen function you want to apply to that window.
 % 
-% "rect" argument: "rect" is a 1x4 matrix containing the upper left and
-% lower right coordinates of an imaginary box containing all the pixels.
-% Thus a rect [0 0 1 1] contains just one pixel. All screen and window
-% coordinates follow Apple Macintosh conventions. (In Apple's the pixels
-% occupy the space between the coordinates.) Coordinates can be local to
-% the window (i.e. 0,0 origin is at upper left of window), or local to the
-% screen (origin at upper left of screen), or "global", which follows
-% Apple's convention of treating the entire desktop (all your screens) as
-% one big screen, with origin at the upper left of the main screen, which
-% has the menu bar. Historically we've had two different orderings of the
-% elements of rect, so, for general compatibility, all of the Psychophysics
-% Toolbox refers to the elements symbolically, through RectLeft, RectTop, etc.
-% Since 2/97, we use Apple's standard ordering: RectLeft=1, RectTop=2,
-% RectRight=3, RectBottom=4.
+% "rect" argument: "rect" is a 1x4 matrix containing the coordinates of an
+% imaginary box containing all the pixels. All screen and window
+% coordinates follow Apple Macintosh conventions. (In Apples the pixels
+% occupy the space between the coordinates. Thus a rect [0 0 1 1] contains
+% just one pixel.) Coordinates can be local to the window (i.e. 0,0 origin
+% is at upper left of window), or local to the screen (origin at upper left
+% of screen), or "global", which follows Apple's convention of treating the
+% entire desktop (all your screens) as one big screen, with the origin at 
+% upper left of the main screen, which has the menu bar. Historically we've
+% had two different orderings of the elements of rect, so, for general
+% compatibility, all of the Psychophysics Toolbox refers to the elements
+% symbolically, through RectLeft, RectTop, etc. Since 2/97, we use Apple's
+% standard ordering: RectLeft=1, RectTop=2, RectRight=3, RectBottom=4.
 % 
 % [optional arguments]: Brackets in the function list, e.g. [color],
 % indicate optional arguments, not matrices. Optional arguments must be in
