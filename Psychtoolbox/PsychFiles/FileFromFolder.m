@@ -6,7 +6,8 @@ function [file,nfile] = FileFromFolder(folder,mode,f_ext)
 % found (default). If MODE is 'silent', only a message will will be
 % displayed in the command window. If left emtpy, default is implied.
 % Ext is an optional filter on file extension. If specified, only files
-% with the specified extension will be found
+% with the specified extension will be found. It can be a cell vector of
+% strings for filtering on multiple extensions
 
 % 2007 IH        Wrote it.
 % 2007 IH&DN     Various additions
@@ -16,6 +17,7 @@ function [file,nfile] = FileFromFolder(folder,mode,f_ext)
 % 2010-05-26 DN  Got rid of for-loop, added optional filter on extension
 % 2010-05-30 DN  Woops, some of the new changes break the function when no
 %                files are found
+% 2010-07-02 DN  Now supports filtering on multiple extensions
 
 if nargin >= 2 && strcmp(mode,'silent')
     silent = true;
@@ -25,19 +27,17 @@ end
 
 
 file        = dir(folder);
-file        = file(~[file.isdir]);  % this also skips '..' and '.', which are marked as dirs
+file        = file(~[file.isdir]);  % get rid of folders. This also skips '..' and '.', which are marked as dirs
 
 if ~isempty(file)
+    % get file name and extension
     [name,ext]  = cellfun(@SplitFName,{file.name},'UniformOutput',false);
     [file.fname]= name{:};
     [file.ext]  = ext{:};
 
     % if filter, use it
     if nargin >= 3 && ~isempty(f_ext)
-        if f_ext(1)~='.'
-            f_ext = ['.' f_ext];
-        end
-        q_ext   = strcmp(ext,f_ext);
+        q_ext   = ismember(ext,f_ext);
         file    = file(q_ext);
     end
 end
@@ -54,6 +54,7 @@ if nfile==0
 end
 
 
+
 % helpers
 function [name,ext] = SplitFName(name)
 % Look for EXTENSION part
@@ -62,6 +63,6 @@ ind = find(name == '.', 1, 'last');
 if isempty(ind)
     return;
 else
-    ext = name(ind:end);
-    name(ind:end) = [];
+    ext = name(ind+1:end);
+    name(ind+1:end) = [];
 end
