@@ -6,18 +6,24 @@ function rgb = SRGBGammaCorrect(RGB)
 % Conversion as speciedi at:
 % http://www.srgb.com/basicsofsrgb.htm
 %
-% 2/9/06	dhb				Wrote it.
+% See XYZToSRGBPrimary for comment on evolution of the standard
+% and of this implementation.
+%
+%
+% 2/9/06	dhb	 Wrote it.
+% 7/8/10    dhb  Rewrote to match current standard.
 
 % Apply sRGB gamma correction according to formulae
-RGB = double(RGB);
+cutoff = 0.03928;
+RGB = double(RGB)/255;
 rgb = RGB;
-index = find(rgb < 11);
+index = find(RGB < cutoff);
 if (~isempty(index))
-	rgb(index) = RGB(index)/(255*12.92);
+	rgb(index) = RGB(index)/(12.92);
 end
-index = find(rgb >= 11);
+index = find(rgb >= cutoff);
 if (~isempty(index))
-    rgb(index) = (((RGB(index)/255)+0.055)/1.055).^2.4;
+    rgb(index) = (((RGB(index))+0.055)/1.055).^2.4;
 end
 
 
