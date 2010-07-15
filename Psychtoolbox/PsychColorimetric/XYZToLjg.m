@@ -12,11 +12,20 @@ function Ljg = XYZToLjg(XYZ)
 % reverse the formulae for G and J and leave out the final
 % transformation from scriptL to L.
 %
+% Finally the formualae published in Brainard (2003, Color appearance and
+% color difference specification. In The Science of Color, 2cd edition,
+% S. K. Shevell (ed.), Optical Society of America, Washington D.C., 191-216),
+% which correct for the above errors, introduce a new mistake: The coefficient
+% on B^1/3 for the j coordinate in Eq. 5-2 should be -9.7, rather than the
+% the +9.7 that is published.
+%
 % The output of this routine was verified against the tabulated
 % values in W+S, Table I(6.6.4).  These are republished from
 % MacAdam (1978, JOSA, 68, 121-130).  See TestOSAUCS.
 %
 % 3/27/01  dhb  Wrote it.
+% 7/14/10  dhb  Added comment that the formulae in my chapter have a typo.
+%               The code here is and was correct.
 
 % Define XYZToRGB matrix.
 M_XYZToRGB = [0.799 0.4194 -0.1648 ; 
