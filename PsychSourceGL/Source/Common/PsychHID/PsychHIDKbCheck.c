@@ -136,7 +136,11 @@ PsychError PSYCHHIDKbCheck(void)
 		// Get query timestamp:
 		PsychGetPrecisionTimerSeconds(timeValueOutput);
 	}
-	
+
+	// Make sure our keyboard query mechanism is not blocked for security reasons, e.g.,
+	// secure password entry field active in another process, i.e., EnableSecureEventInput() active.
+	if (PsychHIDWarnInputDisabled("PsychHID('KbCheck')")) return(PsychError_none);
+
     //step through the elements of the device.  Set flags in the return array for down keys.
     for(currentElement=HIDGetFirstDeviceElement(deviceRecord, kHIDElementTypeInput); 
         currentElement != NULL; 

@@ -133,6 +133,7 @@ PsychError	ReceiveReportsStop(int deviceIndex);
 PsychError  PsychHIDReceiveReportsCleanup(void); // PsychHIDReceiveReportsCleanup.c
 PsychError 	PsychHIDCleanup(void);												// PsychHIDHelpers.c 
 void 		PsychHIDVerifyInit(void);											// PsychHIDHelpers.c 
+psych_bool	PsychHIDWarnInputDisabled(const char* callerName);					// PsychHIDHelpers.c
 pRecDevice 	PsychHIDGetDeviceRecordPtrFromIndex(int deviceIndex);								// PsychHIDHelpers.c 
 int 		PsychHIDGetIndexFromRecord(pRecDevice deviceRecord, pRecElement elementRecord, HIDElementTypeMask typeMask);	// PsychHIDHelpers.c 
 psych_bool 	PsychHIDCheckOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);						// PsychHIDHelpers.c 

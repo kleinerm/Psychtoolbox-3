@@ -100,6 +100,28 @@ void PsychHIDCloseAllUSBDevices(void)
 void PsychHIDVerifyInit(void)
 {
     if(!HIDHaveDeviceList()) HIDBuildDeviceList( 0, 0);
+	PsychHIDWarnInputDisabled(NULL);
+}
+
+/*
+	PsychHIDWarnInputDisabled()
+	
+	Check if HID event input is disabled by external processes, e.g., due to
+	secure password entry protection. Return TRUE and output a warning message
+	to user if HID input won't work due to active security measures. Return FALSE
+	and stay silent if PsychHID can work as expected.
+	
+*/
+psych_bool PsychHIDWarnInputDisabled(const char* callerName)
+{
+	if (IsSecureEventInputEnabled()) {
+		printf("PTB-WARNING: During %s: Some other running application is preventing me from accessing the keyboard/keypad/mouse/...!\n", (callerName) ? callerName : "PsychHID invocation");
+		printf("PTB-WARNING: This is likely a security measure, e.g., to protect some active password entry field.\n");
+		printf("PTB-WARNING: Please identify and quit the offending application. E.g., some versions of Firefox are known to cause such problems...\n");
+		return(TRUE);
+	}
+
+	return(FALSE);
 }
 
 /*

@@ -137,6 +137,15 @@ function KbQueueCreate(deviceNumber, keyList)
 persistent macosxrecent;
 if isempty(macosxrecent)
    macosxrecent = IsOSX;
+   
+   % Little hack for Octave + OS/X: For some reason the first KbQueueCreate
+   % fails to work properly within PsychHID - something related to Carbon
+   % event queues. Creating and releasing on first invocation makes it work
+   % for the rest of the session...
+   if macosxrecent && IsOctave
+       KbQueueCreate;
+       KbQueueRelease;
+   end
 end
 
 if macosxrecent
