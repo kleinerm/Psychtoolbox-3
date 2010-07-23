@@ -18,6 +18,7 @@ function [file,nfile] = FileFromFolder(folder,mode,f_ext)
 % 2010-05-30 DN  Woops, some of the new changes break the function when no
 %                files are found
 % 2010-07-02 DN  Now supports filtering on multiple extensions
+% 2010-07-12 DN  Fixed . at end of fname
 
 if nargin >= 2 && strcmp(mode,'silent')
     silent = true;
@@ -64,5 +65,5 @@ if isempty(ind)
     return;
 else
     ext = name(ind+1:end);
-    name(ind+1:end) = [];
+    name(ind:end) = [];
 end
