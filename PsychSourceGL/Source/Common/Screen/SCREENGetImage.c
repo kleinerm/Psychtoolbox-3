@@ -2,11 +2,12 @@
 	SCREENGetImage.c		
   
 	AUTHORS:
-		Allen.Ingling@nyu.edu		awi 
-  
+		Allen.Ingling@nyu.edu			awi 
+		mario.kleiner@tuebingen.mpg.de	mk
+
 	PLATFORMS:	
 	
-		Only OS X for now.
+		All.
     
 	HISTORY:
 	
@@ -29,19 +30,18 @@
 static char useString[] =  "imageArray=Screen('GetImage', windowPtr [,rect] [,bufferName] [,floatprecision=0] [,nrchannels=3])";
 //                                                        1           2       3				4				   5
 
-static char useString2[] = "Screen('AddFrameToMovie', windowPtr [,rect] [,bufferName] [,moviePtr=0] [,frameduration=1])";
-
 static char synopsisString[] =
-"If this function is called as 'GetImage' then it does the following:\n\n"
-"Slowly copy an image from a window or texture to Matlab, by default returning a Matlab uint8 array. "
+"Slowly copy an image from a window or texture to Matlab/Octave, by default returning a uint8 array. "
 "The returned imageArray by default has three layers, i.e. it's an RGB image. "
-"\"rect\" is in window coordinates, and its default is the whole window. "
-"Matlab will complain if you try to do math on a uint8 array, so you may need "
+"\"windowPtr\" is the handle of the onscreen window, offscreen window or texture whose image "
+"should be returned. "
+"\"rect\" is the rectangular subregion to copy, and its default is the whole window. "
+"Matlab/Octave will complain if you try to do math on a uint8 array, so you may need "
 "to use DOUBLE to convert it, e.g. imageArray/255 will produce an error, but "
 "double(imageArray)/255 is ok. Also see Screen 'PutImage' and 'CopyWindow'. "
 "\"bufferName\" is a string specifying the buffer from which to copy the image: "
-"The 'bufferName' argument is meaningless for Offscreen windows and textures and "
-"will be silently ignored. For Onscreen windows, it defaults to 'frontBuffer', i.e., "
+"The 'bufferName' argument is meaningless for offscreen windows and textures and "
+"will be silently ignored. For onscreen windows, it defaults to 'frontBuffer', i.e., "
 "it returns the image that your subject would see at that moment. If frame-sequential "
 "stereo mode is enabled, 'frontLeftBuffer' returns what your subject would see in its "
 "left eye, 'frontRightBuffer' returns the subjects right-eye view. If double-buffering "
@@ -49,7 +49,7 @@ static char synopsisString[] =
 "the next Screen('Flip') command, and for frame-sequential stereo also 'backLeftBuffer' "
 "and 'backRightBuffer' respectively. 'aux0Buffer' - 'aux3Buffer' returns the content of "
 "OpenGL AUX buffers 0 to 3. Only query the AUX buffers if you know what you are doing, "
-"otherwise your script will crash, this is mostly meant for internal debugging of PTB. "
+"otherwise your script will crash. This is mostly meant for internal debugging of PTB. "
 "If the imaging pipeline is enabled you can also return the content of the unprocessed "
 "backbuffer, ie. before processing by the pipeline, by requesting 'drawBuffer'. \n"
 "\"floatprecision\" If you set this optional flag to 1, the image data will be returned "
@@ -58,23 +58,50 @@ static char synopsisString[] =
 "point readback is only beneficial when reading back floating point precision textures, "
 "offscreen windows or the framebuffer when the imaging pipeline is active and HDR mode "
 "is selected (ie. more than 8bpc framebuffer).\n"
-"\"nrchannels\" Number of color channels to return. by default, 3 channels (RGB) are "
+"\"nrchannels\" Number of color channels to return. By default, 3 channels (RGB) are "
 "returned. Specify 1 for Red/Luminance only, 2 for Red+Green or Luminance+Alpha, 3 for "
-"RGB and 4 for RGBA. "
-"\n\n"
-"If this function is called as 'AddFrameToMovie' instead then it does the following:\n\n"
-"It doesn't return the image data to Matlab or Octave, but instead adds it as a new "
-"video frame to the movie with handle 'moviePtr'. The frameduration is set to "
-"'frameduration' movie frame intervals. Movie images are always stored as uint8 images, "
-"never as floating point precision images. They are always stored with four channels, "
-"that is as RGBA frames. The function will only accept the top-left corner of the "
-"'rect' argument, but ignore the width and height of the 'rect', because the size is "
-"always defined by the size of movie frames as set in the 'CreateMovie' function call.\n"
-"See Screen('CreateMovie?') for help on movie creation.\n\n";
+"RGB and 4 for RGBA.\n\n";
 
-static char seeAlsoString[] = "PutImage CreateMovie";
+static char useString2[] = "Screen('AddFrameToMovie', windowPtr [,rect] [,bufferName] [,moviePtr=0] [,frameduration=1])";
+//                                                    1           2       3				4			  5
+
+static char synopsisString2[] =
+"Get an image from a window or texture and add it as a new video frame to a movie.\n\n"
+"\"windowPtr\" is the handle of the onscreen window, offscreen window or texture whose image "
+"should be added.\n\n"
+"\"rect\" is the rectangular subregion to get, and its default is the whole window. "
+"The function will only honor the top-left corner of the 'rect' argument, but ignore "
+"the bottom-right corner and thereby the width and height as defined by the 'rect'. "
+"The size of added video frames is fully defined as the fixed size of movie frames as "
+"specified at movie creation time via the Screen('CreateMovie') call.\n\n"
+"\"bufferName\" is a string specifying the buffer from which to copy the image: "
+"The 'bufferName' argument is meaningless for offscreen windows and textures and "
+"will be silently ignored. For onscreen windows, it defaults to 'frontBuffer', i.e., "
+"it returns the image that your subject would see at that moment. If frame-sequential "
+"stereo mode is enabled, 'frontLeftBuffer' returns what your subject would see in its "
+"left eye, 'frontRightBuffer' returns the subjects right-eye view. If double-buffering "
+"is enabled, you can also return the 'backBuffer', i.e. what your subject will see after "
+"the next Screen('Flip') command, and for frame-sequential stereo also 'backLeftBuffer' "
+"and 'backRightBuffer' respectively. 'aux0Buffer' - 'aux3Buffer' returns the content of "
+"OpenGL AUX buffers 0 to 3. Only query the AUX buffers if you know what you are doing, "
+"otherwise your script will crash. This is mostly meant for internal debugging of PTB. "
+"If the imaging pipeline is enabled you can also return the content of the unprocessed "
+"backbuffer, ie. before processing by the pipeline, by requesting 'drawBuffer'. \n\n"
+"\"moviePtr\" is the optional handle to the movie to which the video frame should be "
+"added. You can get this handle from the Screen('CreateMovie') function when creating "
+"the movie. By default frames are added to the first movie created with Screen('CreateMovie').\n\n"
+"\"frameduration\" optionally defines the display duration of the added video frame in "
+"units of movie frame intervals. See the help for 'CreateMovie' for further explanation of "
+"\"frameduration\".\n\n"
+"Movie images are always stored as uint8 images with 8 bits resolution per pixel color component. "
+"Images are always stored as four channel RGBA frames.\n\n"
+"See Screen('CreateMovie?') for help on movie creation.\n";
+
+static char seeAlsoString[] = "PutImage CopyWindow CreateMovie FinalizeMovie";
 	
-
+// This also works as 'AddFrameToMovie', as almost all code is shared with 'GetImage'.
+// Only difference is where the fetched pixeldata is sent: To the movie encoder or to
+// a matlab/octave matrix.
 PsychError SCREENGetImage(void) 
 {
 	PsychRectType   windowRect,sampleRect;
@@ -98,7 +125,7 @@ PsychError SCREENGetImage(void)
 
 	// All sub functions should have these two lines
 	if (isAddMovieFrame) {
-		PsychPushHelp(useString2, synopsisString, seeAlsoString);
+		PsychPushHelp(useString2, synopsisString2, seeAlsoString);
 	}
 	else {
 		PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -199,7 +226,7 @@ PsychError SCREENGetImage(void)
 						printf("PTB-ERROR: lack of a dedicated resolve buffer.\n");
 						printf("PTB-ERROR: You can get what you wanted by either one of two options:\n");
 						printf("PTB-ERROR: Either enable a processing stage in the imaging pipeline, even if you don't need it, e.g., by setting\n");
-						printf("PTB-ERROR: the imagingmode argument in the 'OpenWindow' call to kPsychNeedImageProcessing, this will create a\n");
+						printf("PTB-ERROR: the imagingmode argument in the 'OpenWindow' call to kPsychNeedImageProcessing. This will create a\n");
 						printf("PTB-ERROR: suitable resolve buffer. Or place the 'GetImage' call before any Screen('DrawingFinished') call, then\n");
 						printf("PTB-ERROR: i can (ab-)use the system backbuffer as a temporary resolve buffer.\n\n");
 						PsychErrorExitMsg(PsychError_user, "Tried to 'GetImage' from a multi-sampled 'drawBuffer'. Unsupported operation under given conditions.");						
@@ -255,7 +282,7 @@ PsychError SCREENGetImage(void)
 	// Compute sampling rectangle:
 	sampleRectWidth=PsychGetWidthFromRect(sampleRect);
 	sampleRectHeight=PsychGetHeightFromRect(sampleRect);
-	
+
 	// Regular image fetch to runtime, or adding to a movie?
 	if (!isAddMovieFrame) {
 		// Regular fetch:
@@ -273,7 +300,7 @@ PsychError SCREENGetImage(void)
 		if (!floatprecision) {
 			// Readback of standard 8bpc uint8 pixels:  
 			PsychAllocOutUnsignedByteMatArg(1, TRUE, sampleRectHeight, sampleRectWidth, nrchannels, &returnArrayBase);
-			redPlane= PsychMallocTemp(nrchannels * sizeof(GL_UNSIGNED_BYTE) * sampleRectWidth * sampleRectHeight);
+			redPlane= PsychMallocTemp(nrchannels * sampleRectWidth * sampleRectHeight);
 			planeSize=sampleRectWidth * sampleRectHeight;
 			greenPlane= redPlane + planeSize;
 			bluePlane= redPlane + 2 * planeSize;
@@ -308,8 +335,8 @@ PsychError SCREENGetImage(void)
 		else {
 			// Readback of standard 32bpc float pixels into a double matrix:  
 			PsychAllocOutDoubleMatArg(1, TRUE, sampleRectHeight, sampleRectWidth, nrchannels, &returnArrayBaseDouble);
-			dredPlane= PsychMallocTemp(nrchannels * sizeof(GL_FLOAT) * sampleRectWidth * sampleRectHeight);
-			planeSize=sampleRectWidth * sampleRectHeight * sizeof(GL_FLOAT);
+			dredPlane= PsychMallocTemp(nrchannels * sizeof(float) * sampleRectWidth * sampleRectHeight);
+			planeSize=sampleRectWidth * sampleRectHeight * sizeof(float);
 			dgreenPlane= redPlane + planeSize;
 			dbluePlane= redPlane + 2 * planeSize;
 			dalphaPlane= redPlane + 3 * planeSize; 
