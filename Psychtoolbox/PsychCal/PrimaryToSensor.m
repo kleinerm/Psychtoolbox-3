@@ -12,8 +12,9 @@ function [sensor] = PrimaryToSensor(cal,primary)
 %                  device settings dimensions.
 % 11/11/93   dhb   Update for new calData routines.
 % 8/4/96     dhb   Update for new stuff bag routines.
-% 8/21/97	   dhb   Convert for structures.
+% 8/21/97	 dhb   Convert for structures.
 % 4/5/02     dhb   New naming interface.  Internal naming not changed.
+% 7/25/10    dhb   Use bsxfun to make it a little faster.
 
 % Get necessary calibration data
 M_device_linear = cal.M_device_linear;
@@ -38,5 +39,5 @@ linear = M_device_linear(:,1:m)*primary;
 if (ma ~= m | na ~= 1)
   error('Incorrect dimensions for ambient');
 end
-sensor = linear + ambient_linear*ones(1,n);
+sensor = bsxfun(@plus,linear,ambient_linear);
 
