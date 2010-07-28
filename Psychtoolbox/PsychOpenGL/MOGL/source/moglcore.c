@@ -427,8 +427,10 @@ DEFUN_DLD(moglcore, inprhs, nlhs,
         
 	#ifdef FREEGLUT
 	// FreeGlut must be initialized, otherwise it will emergency abort the whole application!
-	int noargs = 0; 
-	glutInit( &noargs, NULL);
+	int noargs = 1;
+    char dummyarg[] = "ptbmoglcore";
+    char *dummyargp = &dummyarg;
+	glutInit( &noargs, &dummyargp);
 	#endif
 
 	// Register exit-handler: When flushing the mex-file, we free all allocated buffer memory:
