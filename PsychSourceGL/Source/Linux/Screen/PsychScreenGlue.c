@@ -382,11 +382,14 @@ void InitializePsychDisplayGlue(void)
 		// Matlab uses XLib long before we get a chance to get here, but XInitThreads()
 		// must be called as very first XLib function after process startup or bad things
 		// will happen! So, we can't call it...
+		// Because some system configurations can't handle multi-threaded x at all,
+		// we allow users to opt-out of this if they define an environment variable
+		// PSYCHTOOLBOX_SINGLETHREADEDX.
 		#ifdef PTBOCTAVE3MEX
-		XInitThreads();
+		if (NULL == getenv("PSYCHTOOLBOX_SINGLETHREADEDX")) XInitThreads();
 		#endif
 	}
-	
+
     //init the list of Core Graphics display IDs.
     InitCGDisplayIDList();
 
