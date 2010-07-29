@@ -44,6 +44,26 @@ static int x11_windowcount = 0;
 typedef int (*PFNGLXGETSWAPINTERVALMESAPROC)(void);
 PFNGLXGETSWAPINTERVALMESAPROC glXGetSwapIntervalMESA = NULL;
 
+#ifndef GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK
+#define GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK	0x04000000
+#endif
+
+#ifndef GLX_BufferSwapComplete
+#define GLX_BufferSwapComplete	1
+#endif
+
+typedef struct {
+    int type;
+    unsigned long serial;	/* # of last request processed by server */
+    Bool send_event;		/* true if this came from a SendEvent request */
+    Display *display;		/* Display the event was read from */
+    GLXDrawable drawable;	/* drawable on which event was requested in event mask */
+    int event_type;
+    int64_t ust;
+    int64_t msc;
+    int64_t sbc;
+} GLXBufferSwapComplete;
+
 /** PsychRealtimePriority: Temporarily boost priority to highest available priority on Linux.
     PsychRealtimePriority(true) enables realtime-scheduling (like Priority(>0) would do in Matlab).
     PsychRealtimePriority(false) restores scheduling to the state before last invocation of PsychRealtimePriority(true),
@@ -547,6 +567,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // Ok, we should be ready for OS independent setup...
   fflush(NULL);
 
+  // Check if GLX_INTEL_swap_event extension is supported. Enable swap completion event
+  // delivery for our window, if so:
+  if (glXSelectEvent && strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_INTEL_swap_event")) {
+	glXSelectEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, (unsigned long) GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK);
+	printf("PTB-INFO: Use of GLX_INTEL_swap_event extension enabled.\n");
+  }
+
   // Wait for X-Server to settle...
   XSync(dpy, 1);
 
@@ -786,6 +813,32 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 	windowRecord->reference_sbc = sbc;
 
 	if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Success! refust = %lld, refmsc = %lld, refsbc = %lld.\n", ust, msc, sbc);
+
+	// Experimental support for INTEL_swap_event extension enabled? Process swap events if so:
+	if ((PsychPrefStateGet_Verbosity() > 11) && glXGetSelectedEvent) {
+		unsigned long glxmask;
+		glXGetSelectedEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &glxmask);
+		if (glxmask & GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK) {
+			// INTEL_swap_event delivery enabled and requested. Try to fetch one:
+			int error_base, event_base;
+			glXQueryExtension(windowRecord->targetSpecific.deviceContext, &error_base, &event_base);
+			
+			while(TRUE) {
+				XEvent evt;
+				printf("PTB-DEBUG: Fetching X-Event...\n"); fflush(NULL);
+				XNextEvent(windowRecord->targetSpecific.deviceContext, &evt);
+				
+				// We're only interested in GLX_BufferSwapComplete events:
+				if (evt.type == event_base + GLX_BufferSwapComplete) {
+					// Cast to proper event type:
+					GLXBufferSwapComplete sce = (GLXBufferSwapComplete) evt;
+					printf("SWAPEVENT: OurWin=%i ust = %lld, msc = %lld, sbc = %lld, type %s.\n", (int) (sce.drawable == windowRecord->targetSpecific.windowHandle), sce.sce.ust, sce.msc, sce.sbc, (sce.event_type == GLX_FLIP_COMPLETE_INTEL) ? "PAGEFLIP" : "BLIT/EXCHANGE");
+					break;
+				}
+			}
+		}
+	}
+
 	#endif
 	
 	// Return msc of swap completion:
