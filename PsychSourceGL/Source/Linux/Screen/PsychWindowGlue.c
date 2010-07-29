@@ -52,7 +52,7 @@ PFNGLXGETSWAPINTERVALMESAPROC glXGetSwapIntervalMESA = NULL;
 #define GLX_BufferSwapComplete	1
 #endif
 
-typedef struct {
+typedef struct GLXBufferSwapComplete {
     int type;
     unsigned long serial;	/* # of last request processed by server */
     Bool send_event;		/* true if this came from a SendEvent request */
@@ -831,8 +831,8 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 				// We're only interested in GLX_BufferSwapComplete events:
 				if (evt.type == event_base + GLX_BufferSwapComplete) {
 					// Cast to proper event type:
-					GLXBufferSwapComplete sce = (GLXBufferSwapComplete) evt;
-					printf("SWAPEVENT: OurWin=%i ust = %lld, msc = %lld, sbc = %lld, type %s.\n", (int) (sce.drawable == windowRecord->targetSpecific.windowHandle), sce.sce.ust, sce.msc, sce.sbc, (sce.event_type == GLX_FLIP_COMPLETE_INTEL) ? "PAGEFLIP" : "BLIT/EXCHANGE");
+					GLXBufferSwapComplete *sce = (GLXBufferSwapComplete*) &evt;
+					printf("SWAPEVENT: OurWin=%i ust = %lld, msc = %lld, sbc = %lld, type %s.\n", (int) (sce->drawable == windowRecord->targetSpecific.windowHandle), sce->ust, sce->msc, sce->sbc, (sce->event_type == GLX_FLIP_COMPLETE_INTEL) ? "PAGEFLIP" : "BLIT/EXCHANGE");
 					break;
 				}
 			}
