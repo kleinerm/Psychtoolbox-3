@@ -569,13 +569,17 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
   // Check if GLX_INTEL_swap_event extension is supported. Enable swap completion event
   // delivery for our window, if so:
+  // TODO FIXME This requires GLX 1.3, and therefore use of new glXCreateWindow() API's etc. to
+  // generate compatible GLXDrawable's. --> Needs major rework in our setup code to make it happen.
+  // Disable for now.
+/*
   if (glXSelectEvent && strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_INTEL_swap_event") && getenv("INTEL_swap_event")) {
 	// Wait for X-Server to settle...
         XSync(dpy, 1);
 	glXSelectEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, (unsigned long) GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK);
 	printf("PTB-INFO: Use of GLX_INTEL_swap_event extension enabled.\n");
   }
-
+*/
   // Wait for X-Server to settle...
   XSync(dpy, 1);
 
@@ -817,7 +821,8 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 	if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Success! refust = %lld, refmsc = %lld, refsbc = %lld.\n", ust, msc, sbc);
 
 	// Experimental support for INTEL_swap_event extension enabled? Process swap events if so:
-	if ((PsychPrefStateGet_Verbosity() > 11) && glXGetSelectedEvent) {
+	// TODO FIXME Disabled for now. Needs GLX 1.3 API's and special setup code...
+/*	if ((PsychPrefStateGet_Verbosity() > 11) && glXGetSelectedEvent) {
 		unsigned long glxmask;
 		glXGetSelectedEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &glxmask);
 		if (glxmask & GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK) {
@@ -840,7 +845,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 			}
 		}
 	}
-
+*/
 	#endif
 	
 	// Return msc of swap completion:
