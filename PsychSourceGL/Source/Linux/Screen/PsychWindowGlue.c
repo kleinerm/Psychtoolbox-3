@@ -569,7 +569,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
   // Check if GLX_INTEL_swap_event extension is supported. Enable swap completion event
   // delivery for our window, if so:
-  if (glXSelectEvent && strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_INTEL_swap_event")) {
+  if (glXSelectEvent && strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_INTEL_swap_event") && getenv("INTEL_swap_event")) {
+	// Wait for X-Server to settle...
+        XSync(dpy, 1);
 	glXSelectEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, (unsigned long) GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK);
 	printf("PTB-INFO: Use of GLX_INTEL_swap_event extension enabled.\n");
   }
