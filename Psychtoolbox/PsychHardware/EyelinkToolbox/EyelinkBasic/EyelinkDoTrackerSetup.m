@@ -1,6 +1,6 @@
 function result=EyelinkDoTrackerSetup(el, sendkey)
 
-% USAGE: result=EyelinkDoTrackerSetup(el, sendkey)
+% USAGE: result=EyelinkDoTrackerSetup(el [, sendkey])
 %
 %		el: Eyelink default values
 %		sendkey: set to go directly into a particular mode
@@ -16,12 +16,32 @@ function result=EyelinkDoTrackerSetup(el, sendkey)
 % 15-10-02	fwc	added sendkey variable that allows to go directly into a particular mode
 %
 %   22-06-06    fwc OSX-ed
+% 15-06-10  fwc added code for new callback version
+
 
 result=-1;
 if nargin < 1
 	error( 'USAGE: result=EyelinkDoTrackerSetup(el [,sendkey])' );
 end
-	
+
+% if we have the new callback code, we call it.
+if ~isempty(el.callback)
+    if Eyelink('IsConnected') ~= el.notconnected
+        if ~isempty(el.window)            
+            rect=Screen(el.window,'Rect');
+            % make sure we use the correct screen coordinates
+            Eyelink('Command', 'screen_pixel_coords = %d %d %d %d',rect(1),rect(2),rect(3)-1,rect(4)-1);
+        end
+    else
+        return
+    end
+    result = Eyelink( 'StartSetup', 1 );
+    
+    return;
+end
+% else we continue with the old version
+
+
 Eyelink('Command', 'heuristic_filter = ON');
 Eyelink( 'StartSetup' );		% start setup mode
 Eyelink( 'WaitForModeReady', el.waitformodereadytime );  % time for mode change
@@ -47,7 +67,7 @@ end
 
 tstart=GetSecs;
 stop=0;
-while stop==0 & bitand(Eyelink( 'CurrentMode'), el.IN_SETUP_MODE)
+while stop==0 && bitand(Eyelink( 'CurrentMode'), el.IN_SETUP_MODE)
 
 	i=Eyelink( 'CurrentMode');
 	
@@ -67,7 +87,7 @@ while stop==0 & bitand(Eyelink( 'CurrentMode'), el.IN_SETUP_MODE)
 	end
 
 	[key, el]=EyelinkGetKey(el);		% getkey() HANDLE LOCAL KEY PRESS
-    if 1 & key~=0 & key~=el.JUNK_KEY    % print pressed key codes and chars
+    if 1 && key~=0 && key~=el.JUNK_KEY    % print pressed key codes and chars
         fprintf('%d\t%s\n', key, char(key) );
     end
     

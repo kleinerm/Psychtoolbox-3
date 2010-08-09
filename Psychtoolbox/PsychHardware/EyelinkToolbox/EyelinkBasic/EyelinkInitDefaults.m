@@ -21,6 +21,11 @@ function el=EyelinkInitDefaults(window)
 % 27-03-09  edf added function and modifier keys.
 % 10-04-09  mk  Deuglified. Add setup code for
 %               PsychEyelinkDispatchCallback.
+% 15-06-10  fwc For consistency, changed to EyelinkDispatchCallback
+%               Added additional default values for message font size
+%               and eye image size. Note that many default settings
+%               are no longer used in the "callback" version of calibration
+%               and driftcorrection.
 
 el=[];
 
@@ -48,7 +53,10 @@ end
 if ~isempty(window)
 	el.window=window;
 	el.backgroundcolour = WhiteIndex(el.window);
+	el.backgroundcolour = GrayIndex(el.window);
 	el.foregroundcolour = BlackIndex(el.window);
+    el.msgfontcolour    = BlackIndex(el.window);
+    el.imgtitlecolour   = BlackIndex(el.window);
 
 	rect=Screen(el.window,'Rect');
     if Eyelink('IsConnected') ~= el.notconnected
@@ -59,10 +67,20 @@ else
 end
 
 % set some more global info parameters
+% below are old sound definitions
 el.targetdisplaysound='EyelinkTargetBeep';
 el.calibrationfailedsound='EyelinkErrorBeep';
 el.calibrationsuccesssound='EyelinkSuccessBeep';
 el.targetbeep=1;  % sound a beep when a target is presented
+
+% define beep sounds (frequency, volume, duration);
+el.cal_target_beep=[1250 0.6 0.05];
+el.drift_correction_target_beep=[1250 0.8 0.05];
+el.calibration_failed_beep=[400 0.8 0.25];
+el.calibration_success_beep=[800 0.8 0.25];
+el.drift_correction_failed_beep=[400 0.8 0.25];
+el.drift_correction_success_beep=[800 0.8 0.25];
+
 el.allowlocaltrigger=1; % allow user to trigger him or herself
 el.allowlocalcontrol=1; % allow control from subject-computer
 el.mousetriggersdriftcorr=0; % 1=allow mouse to trigger drift correction (fwc trick)
@@ -73,11 +91,27 @@ el.quitkey=KbName('ESCAPE'); % when pressed in combination with modifier key
 el.modifierkey=KbName('LeftGUI');
 
 el.waitformodereadytime=500;
-el.calibrationtargetsize=2;  % size of calibration target as percentage of screen
-el.calibrationtargetwidth=.75; % width of calibration target's border as percentage of screen
+el.calibrationtargetsize=2.5;  % size of calibration target as percentage of screen
+el.calibrationtargetwidth=1; % width of calibration target's border as percentage of screen
+el.calibrationtargetcolour=[255 255 0];
 
 el.getkeyrepeat=1/5; % "sample time" for eyelinkgetkey
 el.getkeytime=-1; % stores last time eyelinkgetkey was used
+
+% (font info for ) messages/instructions
+el.msgfont='Helvetica';
+el.msgfontsize=20; % absolute, should perhaps be percentage of screen
+el.eyeimgsize=30; % percentage of screen
+el.helptext='Press RETURN (on either display computer or tracker host computer) to toggle camera image';
+el.helptext=[el.helptext '\n' 'Press ESC to Output/Record'];
+el.helptext=[el.helptext '\n' 'Press C to Calibrate'];
+el.helptext=[el.helptext '\n' 'Press V to Validate'];
+% el.helptext=[el.helptext '\n' 'Press D for Drift correction'];
+
+% font info for camera image title
+el.imgtitlefont='Helvetica';
+el.imgtitlefontsize=20; % should be percentage of screen
+
 
 % Warm up KbCheck:
 [keyIsDown, secs, el.lastKeyCodes] = KbCheck;
@@ -134,10 +168,10 @@ try
 	warning off MATLAB:namelengthmaxexceeded
 catch
     % Nothing to do. We just swallow the error we'd get if that warning
-    % statements wouldn't be supported.
+    % statement wouldn't be supported.
 end
 
-% eyelink Tracker state bit: bitand() with flag word to test functionality
+% Eyelink Tracker state bit: bitand() with flag word to test functionality
 
 el.IN_DISCONNECT_MODE=16384;   	% disconnected
 el.IN_UNKNOWN_MODE=0;    		% mode fits no class (i.e setup menu)
@@ -150,7 +184,7 @@ el.IN_IMAGE_MODE=32;   			% image-display mode
 el.IN_USER_MENU=64;				% user menu
 el.IN_PLAYBACK_MODE=256;		% tracker sending playback data
 
-% eyelink key values
+% Eyelink key values
 el.JUNK_KEY=1;		% return code for untranslatable key
 el.TERMINATE_KEY=hex2dec('7FFF'); % return code for program exit/breakout key
 el.CURS_UP=hex2dec('4800');
@@ -188,7 +222,7 @@ el.ELKMOD_NUM=hex2dec('1000');
 el.ELKMOD_CAPS=hex2dec('2000');
 el.ELKMOD_MODE=hex2dec('4000');
 
-% other eyelink values
+% other Eyelink values
 
 
 el.ELKEY_DOWN=1;
@@ -198,7 +232,7 @@ el.KB_PRESS=10; % Eyelink.h
 el.MISSING=-32768; % eyedata.h
 el.MISSING_DATA=-32768;
 
-el.KEYDOWN=1; %eyelink manual and core_expt.h have these backwards
+el.KEYDOWN=1; %Eyelink manual and core_expt.h have these backwards
 el.KEYUP=0;
 
 % LINK RETURN CODES
@@ -239,7 +273,13 @@ el.BUTTONEVENT=25;  %/* button state change */
 el.INPUTEVENT=28;  % /* change of input port */
 
 el.LOSTDATAEVENT=hex2dec('3F'); %/*new addition v2.1, returned by eyelink_get_next_data() to flag a gap in the data stream due to queue filling up (need to get data more frequently)
-%/*described in 'EyeLink Programmers Guide.pdf' section 7.2.2, 13.3.2, 18.5.4
+                                %/*described in 'EyeLink Programmers Guide.pdf' section 7.2.2, 13.3.2, 18.5.4
+
+% if exist('EyelinkDispatchCallback') %#ok<EXIST>
+%     el.callback = 'EyelinkDispatchCallback';
+% else
+%     el.callback = [];
+% end
 
 if exist('PsychEyelinkDispatchCallback') %#ok<EXIST>
     el.callback = 'PsychEyelinkDispatchCallback';
@@ -247,9 +287,11 @@ else
     el.callback = [];
 end
 
+
 % Window assigned?
 if ~isempty(el.window) & ~isempty(el.callback) %#ok<AND2>
     % Yes. Assign it to our dispatch callback:
+%     EyelinkDispatchCallback(el);
     PsychEyelinkDispatchCallback(el);
 end
 

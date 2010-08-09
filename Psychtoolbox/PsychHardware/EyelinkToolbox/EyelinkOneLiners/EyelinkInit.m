@@ -12,9 +12,8 @@ function [result, dummy]=EyelinkInit(dummy, enableCallbacks)
 % enableCallbacks: Omit, or set to 0 for operation without callbacks and
 %                  without display of eye camera images on the Subject PC.
 %                  Set to 1 for callback and video display operations
-%                  during tracker setup, drift correction and in
-%                  Eyelink('ImageModeDisplay') with the default callback
-%                  dispatcher function PsychEyelinkDispatchCallback.m.
+%                  during tracker setup, drift correction with the default callback
+%                  dispatcher function EyelinkDispatchCallback.m.
 %                  Provide namestring of your own dispatcher function if
 %                  you want to enable callbacks and video display with a
 %                  non-standard, customized dispatcher.
@@ -40,7 +39,9 @@ function [result, dummy]=EyelinkInit(dummy, enableCallbacks)
 %
 %               Callbacks are disabled by default to retain backward
 %               compatibility.
-%
+% 15-06-10 fwc  for consistency, changed PsychEyelinkDispatchCallback to EyelinkDispatchCallback
+%               Enabled callbacks by default, because presence of eye image
+%               is much desired and expected behaviour
 
 result=0;
 
@@ -54,8 +55,8 @@ if isempty(dummy)
 end
 
 if ~exist('enableCallbacks', 'var')
-    % Callbacks disabled by default:
-    enableCallbacks = [];
+    % Callbacks enabled by default:
+    enableCallbacks = 1;
 end
 
 % Callback argument provided and non-empty?
@@ -65,6 +66,7 @@ if ~isempty(enableCallbacks)
         % Nope. Enable argument 1?
         if enableCallbacks > 0
             % Assign our default callback function:
+            enableCallbacks = 'EyelinkDispatchCallback';
             enableCallbacks = 'PsychEyelinkDispatchCallback';
         else
             % Callbacks disabled on request:
@@ -82,7 +84,7 @@ if dummy==1
 else
     % Try real init of tracker connection:
     if Eyelink('Initialize', enableCallbacks) ~= 0
-        % Failed. Ask user if she wants to continue with dummy mode:
+        % Failed. Ask user if she wants to continue in dummy mode:
         if 1==EyelinkDummyModeDlg
             % Try dummy init:
             if Eyelink('InitializeDummy', enableCallbacks) ~=0

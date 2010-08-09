@@ -6,15 +6,15 @@ success=1;
 % Setup might also have erased any pre-drawn graphics. */
 
 % if no x and y are supplied, set x,y to center coordinates
-if ~exist('x', 'var') | isempty(x) | ~exist('y', 'var') | isempty(y)
+if ~exist('x', 'var') || isempty(x) || ~exist('y', 'var') || isempty(y)
 	[x,y] = WindowCenter(el.window); % convenience routine part of eyelink toolbox
 end
 
-if ~exist('draw', 'var') | isempty(draw)
+if ~exist('draw', 'var') || isempty(draw)
 	draw=1;
 end
 
-if ~exist('allowsetup', 'var') | isempty(allowsetup)
+if ~exist('allowsetup', 'var') || isempty(allowsetup)
 	allowsetup=1;
 end
 

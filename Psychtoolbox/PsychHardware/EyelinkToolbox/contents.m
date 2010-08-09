@@ -1,128 +1,96 @@
 % 	EyelinkToolbox.
-% 	Version 1.4.4 		      27-11-02
 % 
-% 	The EyelinkToolbox is a collection of m-files and a Mex file that
-%	can be used to control the SR research-Eyelink© gazetracker.
+% 	The EyelinkToolbox can be used to ceate eye-movement experiments and
+%   control the SR-Research Eyelink© gazetrackers
+%   (http://www.eyelinkinfo.com/) from within Matlab.
+%   It is incorporated into the PsychToolbox (http://www.psychtoolbox.org/).
+%   It provides an interface between the Eyelink Gazetracker and Matlab.
+%   It uses a very similar  approach as the PsychToolBox and uses the
+%   functions provided by the PsychToolBox for graphics and sound.
 %
-%   Eyelink is a MEX/DLL file, which can be used as an interface between the eyelink
-%   and matlab. The EyelinkToolbox uses the same approach as the SCREEN mex/dll function
-%	provided in the PsychToolBox (http://www.psychtoolbox.org/) and also uses the
-%	functions provided by this toolbox for doing any graphics involved (so you need to
-%	install the PsychToolbox for the EyelinkToolbox to function properly).
-%
-%	We greatly appreciate the effort David Brainard and Denis Pelli have undertaken
-%	in making the PsychToolBox. We have further benefitted from the experience of
-% 	Jos van der Geest and Maarten Frens.
-%
-%	Note that this toolbox is NOT provided nor endorsed by SR-Research
-%	(http://www.eyelinkinfo.com/), the supplier of the Eyelink gazetracker, so do not contact
-%	them about this. Rather, post questions on the PsychToolbox mailinglist, or directly to us.
-%	If you're interested in the c-source code of this project, we will be
-%	glad to send it to you.
-%	
-%	Disclaimer: we cannot be hold responsible for any damage that may (appear to) be
-%				caused by the use of this toolbox. Use at your own risc.
-%
-%   Most of the Eyelink functions that are avaible in C are now also available
-%	under Matlab. If any particular function you need is still missing, let us know
-%	and we'll try to incorporate it into a next release. In case you decide to add
-%	or modify functions yourself, please send us the modified code.
-% 	If you think you've found a bug, please tell us: f.w.cornelissen@med.rug.nl
-% 	It will help greatly if you can supply a  minimal-length program that exhibits 
-% 	the bug.
-%
-%   For a complete list of available functions type "Eyelink" in the matlab command window
-%   For an explanation of any particular eyelink function just add a
-%   question mark "?" after a command.
-% 	E.g. for 'Initialize', try either of these equivalent forms:
+%   How to start using it:
+%   The EyelinkToolbox is a collection of m-files and a Mex file.
+%   The EyelinkToolbox core is the mex/dll-file called Eyelink. The
+%   EyelinkToolbox uses the same approach as the SCREEN mex/dll function
+%   provided in the PsychToolBox. Most of the Eyelink functions that are
+%   avaible in C are also available under Matlab. In addition, the
+%   EyelinkToolbox provides a number of wrapper functions to simplify
+%   creating an eye-tracking program. The main functionality of the 
+%   EyelinkToolbox is demonstrated in a number of demos. This is probably
+%   where you want to start if you are new to the EyelinkToolbox.
+%   
+%   For a complete list of available functions type "Eyelink" in the Matlab
+%   command window. For an explanation of any particular eyelink function
+%   just add a question mark "?" after a command. E.g. for help on the 
+%   function 'Initialize', try either of these equivalent forms:
 % 		Eyelink('Initialize?')
 % 		Eyelink initialize?
 %
-% 	[optional arguments]:
-% 	Brackets in the function list, e.g. [remport], indicate optional arguments, not
-% 	matrices. Optional arguments must be in order, without omitting earlier ones.
-% 	
-%
 %	Contents of the EyelinkToolbox folder:
 %	-Contents.m: this file.
-%	-Changes.m: documents changes
+%	-Changes.m: file that documents changes to the EyelinkToolbox
 %	-EyelinkBasic
-%		Eyelink.mex file and a collection of m-files
+%		Eyelink.mex/dll file and a collection of m-files that provide the
+%       core functionality of the toolbox.
+%
 %	-EyelinkDemos
-%		-Short demo: file 'eyelinkexample.m'
-%						Shows a simple gaze cursor. Blinking erases the screen.
-%						simple demo program to illustrating the use of this 
-%						toolbox. Note that it uses the 'dotrackersetup' contained
-%						within the mex file, rather then the m-file based version.
-%		-EyelinkDemoExperiment: 'eyelinkdemoexp.m': a simple demo experiment
-%						with the flavour of the c-coded demo experiment of Dave Stampe '97.
-%						there are two (types of) trials:
-%							simpletrialdemo: a simple gaze recording example
-%							realtimedemo: a simple gaze-dependent display example
-%		-Palmer demo: Simple experiment to measure response time using eye movements.
+%       EyelinkShortDemos is the best place to start. Contains relatively 
+%       simple demos.
+%       The SR-Research Demo folder is a slightly more elaborate example.
+%       The folder BRMIC contains the original
+%       example as shown in the EyelinkToolbox article in BRMIC
+%       (Cornelissen, Peters and Palmer 2002). It is obsolete in many ways
+%       but left in the toolbox for historic reasons.
 %
-%	-EyelinkSounds: a few sounds that you can add to your system to recreate
-%						that particular Eyelink Mac-experience.
-%						On a Mac, add the sounds to your system by dragging
-%						the sound files this folder onto your closed system folder.
-%						You can't have any programs open when copying sound
-%						resources to your system.
-%						use 'testeyelinksounds' to test for the presence of all required sounds
+%   -EyelinkOneLiners
+%       Handy routines that provide less essential functionality
 %
-%	-EyelinkTests: 
-%			-testgetkeyforeyelink.m : 
-%						Function that tests the getkeyforeyelink routine and
-%						computes the time taken by the getkeyforeyelink function call
-%			-testcalls.m
-%						Program that tests if most of the eyelink routines are operational, 
-%						also useful as illustration of the eyelink function calls(no calibration).
-%			-testcalib.m :
-%						Tests and illustrates the eyelink calibration routine.
-%						
-%			-testsampletime.m :
-%						Program which performs multiple timing-tests on functions related
-%						to sampling eye position.
-% 			-EXGetEyeLinkTime.m
-% 						tests the new requesttime and readtime functions.					
-% 			-testbutton.m
-% 						test of the new buttonstates and lastbuttonpress functions. 
+%	We welcome any observations, suggestions that may help us improve this
+%	toolbox. If any particular function you need is still missing, let us know
+%	and we'll try to incorporate it into a next release. In case you decide
+%   to add or modify functions yourself, please send us the modified code.
+% 	If you think you've found a bug, please tell us. It will help greatly
+%   if you can supply a  minimal-length program that exhibits the bug.
+%   If you're interested in the c-source code of this project, it is part
+%	of the source code of the PsychToolbox (http://www.psychtoolbox.org/).
 %
-%	Some things to observe before using the toolbox:
-% 	*Software used to produce and test the code. 
-% 	Macintosh version
-%		Mac OS 9.1.
-%		C-compiler: CodeWarrior 6.1.
-%		Matlab 5.2.1
-%		Operator PC: EyeLink 2.04
-%		PsychToolbox 2.5.2 + screen 2.5.3
-%
-% 	PC version
-% 		Windows 98 & XP (XP tested in dummy mode)
-% 		C-compiler: MS Visual C
-% 		Matlab 6.1
-% 		PsychToolbox 2.5.0
+%   ******Citing the use of the Eyelink Toolbox******
 % 
-%  *The EyelinkToolbox folder can be put anywhere on your harddisk as long as you make
-%	sure that Matlab knows about it's existence. So use the 'set path' command under the
-%	file menu. You only need to add the 'EyelinkToolbox' folder
-%	*The sounds the Eyelink toolbox uses as well as many other defaults need
-% 	to be included in your system folder, otherwise (some of) the demo's will stop.
-% 	Use 'testeyelinksounds.m' to see if the necessary sounds are present
-%	*Currently, for the mac, there are both m-file as well as mex-file implementations of dotrackersetup,
-%	and dodriftcorrection. If there are no problems with timing, it is our
-%	idea to enable only the m-file versions in a more final release. The great advantage
-%	of using only m-files is that this makes the code much more portable and flexible to use.
-%	*we have not done any exhaustive testing on the timing of this toolbox, so do not
-%	assume that things are as they used to be with the pure c-code versions of your experiments.
-%	*The current version is Powermac only. While we do have the intention to port the mex-code to
-%	the windows version, this currently has no great priority for us.
-%	We welcome any observations, suggestions that may help us improve this toolbox.
+%   We would very much appreciate it if you would (also) cite the EyelinkToolbox
+%   paper when you have used the toolbox in your work. You could write something
+%   like:
+%   We wrote our experiments in Matlab, using the Psychophysics and Eyelink
+%   Toolbox extensions (Brainard, 1997; Pelli, 1997; Cornelissen, Peters &
+%   Palmer, 2002;see http://psychtoolbox.org/).
+% 
+%   Brainard, D. H. (1997) The Psychophysics Toolbox, Spatial Vision 10:433-436.
+%   Cornelissen, F.W., Peters. E., Palmer, J. (2002). The Eyelink Toolbox:
+%   Eye tracking with MATLAB and the Psychophysics Toolbox.
+%   Behavior Research Methods, Instruments & Computers, 34, 613-617.
+%   Pelli, D. G. (1997) The VideoToolbox software for visual psychophysics:
+%   Transforming numbers into movies, Spatial Vision 10:437-442.
+%	
+%	Note that this toolbox is NOT provided by SR-Research
+%	(http://www.eyelinkinfo.com/), the manufacturer of the Eyelink gazetrackers,
+%   so do not contact them about it. Rather, post questions on the PsychToolbox
+%   mailinglist.
+%
+%   As the PsychToolbox, the EyelinkToolbox and its source code are freely
+%   redistributable under the terms of the GNU General Public License (GPL)
+%   as published by the Free Software Foundation. The exact license text is
+%   included as License.txt in the root folder of any Psychtoolbox-3 installation.
+%
+%	Disclaimer: we cannot be hold responsible for any damage that may (appear to) be
+%				caused by the use of this toolbox. Use at your own risc.
+%
+%
+%   Frans W. Cornelissen
+% 	22nd July 2010
+%	email: f.w.cornelissen@med.umcg.nl
 %
 %	Enno Peters, Frans Cornelissen and John Palmer
 %	Groningen, 27-11-2002
-%	email: f.w.cornelissen@med.rug.nl
 %
-% 	Copyright (c) 2001, 2002 by Laboratory of Experimental Ophthalmology, University of Groningen
 %
 %
 %

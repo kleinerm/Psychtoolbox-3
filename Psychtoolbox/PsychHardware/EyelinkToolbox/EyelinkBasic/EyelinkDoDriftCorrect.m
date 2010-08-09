@@ -1,6 +1,6 @@
 function result=EyelinkDoDriftCorrect(el, x, y, draw, allowsetup)
 
-% USAGE: result=dodriftcorrect(el, x, y, draw, allowsetup)
+% USAGE: result=dodriftcorrect(el [, x, y, draw, allowsetup])
 %
 %		el: eyelink default values
 %		x,y: position of driftcorrection target
@@ -32,25 +32,34 @@ function result=EyelinkDoDriftCorrect(el, x, y, draw, allowsetup)
 % 12-05-01	fwc disabled unconditional erasing of screen
 % 02-06-01	fwc removed use of global el, as suggested by John Palmer.
 % 18-10-02	fwc	made sure missing variables were filled in with defaults
+% 15-06-10  fwc added code for new callback version
 
 
 result=-1; % initialize
-if nargin < 1 | ~exist('el') | isempty(el)
+if nargin < 1 || ~exist('el', 'var') || isempty(el)
 	error( 'USAGE: result=EyelinkDoDriftCorrect(el [, x, y, draw, allowsetup])' );
 end
 
 % fill in missing variables
-if ~exist('x') | ~exist('y') | isempty(x) | isempty(y)
+if ~exist('x', 'var') || ~exist('y', 'var') || isempty(x) || isempty(y)
 	[x,y]=WindowCenter(el.window);
 end
 
-if ~exist('draw') | isempty(draw)
+if ~exist('draw', 'var') || isempty(draw)
 	draw=1;
 end
 
-if ~exist('allowsetup') | isempty(allowsetup)
+if ~exist('allowsetup', 'var') || isempty(allowsetup)
 	allowsetup=1;
 end
+
+% if we have the new callback code, we call it.
+if ~isempty(el.callback)
+    result = Eyelink('DriftCorrStart', x, y, 1, draw, allowsetup);
+    return;
+end
+
+% else we continue with the old version
 
 Eyelink('Command', 'heuristic_filter = ON');
 
@@ -120,7 +129,7 @@ if draw==1
 	EyelinkClearCalDisplay(el);	% exit_cal_display()
 end
 
-if result==el.ESC_KEY | result==-1	% Did we abort drift correction?
+if result==el.ESC_KEY || result==-1	% Did we abort drift correction?
 	% yes: go to setup menu to fix any problems
 	if el.targetbeep==1
 		EyelinkCalDoneBeep(el, 0);

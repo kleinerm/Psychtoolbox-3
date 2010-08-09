@@ -48,5 +48,5 @@ if Eyelink('isconnected') == el.connected   % readtime doesn't work in dummymode
 	end
 	eltime=time;
 elseif Eyelink('isconnected') == el.dummyconnected
-	eltime=getsecs;
+	eltime=GetSecs;
 end

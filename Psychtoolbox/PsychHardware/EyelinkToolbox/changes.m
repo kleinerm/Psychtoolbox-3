@@ -1,6 +1,11 @@
 % 	EyelinkToolbox.
 % 	History and list of changes
 %
+%   July 2010
+%   Enabled use of callbacks by default
+%   Revampled demos, made to work with new callback version
+%   General cleanup
+%   
 %   March 2009
 %   Completed access to raw sample structs
 %   Added support for LOST_DATA_EVENT

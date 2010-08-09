@@ -3,7 +3,6 @@ function result=EyelinkTargetModeDisplay(el)
 % USAGE: result=EyelinkTargetModeDisplay(el)
 %
 %		el: Eyelink default values
-
 % History
 % 15-05-01	fwc created first version
 % 22-05-01	fwc	little debugging
@@ -33,7 +32,7 @@ while key~= 0
 end
 				% LOOP WHILE WE ARE DISPLAYING TARGETS
 stop=0;
-while stop==0 & bitand(Eyelink('CurrentMode'), el.IN_TARGET_MODE)
+while stop==0 && bitand(Eyelink('CurrentMode'), el.IN_TARGET_MODE)
 
 	if Eyelink( 'IsConnected' )==el.notconnected
 		result=-1;
@@ -72,12 +71,12 @@ while stop==0 & bitand(Eyelink('CurrentMode'), el.IN_TARGET_MODE)
 	
 	
 	% erased or moved: erase target
-	if (targetvisible==1 & result==0) | tx~=otx | ty~=oty
+	if (targetvisible==1 && result==0) || tx~=otx || ty~=oty
 		EyelinkEraseCalTarget(el, targetrect);
 		targetvisible = 0;
 	end
 	% redraw if invisible
-	if targetvisible==0 & result==1
+	if targetvisible==0 && result==1
 % 		fprintf( 'Target drawn at: x=%d, y=%d\n', tx, ty );
 		
 		targetrect=EyelinkDrawCalTarget(el, tx, ty);
