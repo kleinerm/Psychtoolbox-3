@@ -1,5 +1,5 @@
-function [gratingid, gratingrect] = CreateProceduralSineGrating(windowPtr, width, height, backgroundColorOffset)
-% [gratingid, gratingrect] = CreateProceduralSineGrating(windowPtr, width, height [, backgroundColorOffset =(0,0,0,0)])
+function [gratingid, gratingrect] = CreateProceduralSineGrating(windowPtr, width, height, backgroundColorOffset, radius)
+% [gratingid, gratingrect] = CreateProceduralSineGrating(windowPtr, width, height [, backgroundColorOffset =(0,0,0,0)] [, radius=inf])
 %
 % Creates a procedural texture that allows to draw sine grating stimulus patches
 % in a very fast and efficient manner on modern graphics hardware.
@@ -14,6 +14,10 @@ function [gratingid, gratingrect] = CreateProceduralSineGrating(windowPtr, width
 % 'backgroundColorOffset' Optional, defaults to [0 0 0 0]. A RGBA offset
 % color to add to the final RGBA colors of the drawn grating, prior to
 % drawing it.
+%
+% 'radius' Optional parameter. If specified, a circular aperture of
+% 'radius' pixels is applied to the grating. By default, no aperture is
+% applied.
 %
 % The function returns a procedural texture handle 'gratingid' that you can
 % pass to the Screen('DrawTexture(s)', windowPtr, gratingid, ...) functions
@@ -45,6 +49,7 @@ function [gratingid, gratingrect] = CreateProceduralSineGrating(windowPtr, width
 
 % History:
 % 11/25/2007 Written. (MK)
+% 08/09/2010 Add support for optional circular aperture. (MK)
 
 % Global GL struct: Will be initialized in the LoadGLSLProgramFromFiles
 % below:
@@ -65,8 +70,18 @@ else
     end
 end
 
-% Load standard grating shader:
-gratingShader = LoadGLSLProgramFromFiles('BasicSineGratingShader', 1);
+if nargin < 5 || isempty(radius)
+    % Don't apply circular aperture if no radius given:
+    radius = inf;
+end
+
+if isinf(radius)
+    % Load standard grating shader:
+    gratingShader = LoadGLSLProgramFromFiles('BasicSineGratingShader', 1);
+else
+    % Load grating shader with circular aperture support:
+    gratingShader = LoadGLSLProgramFromFiles({'BasicSineGratingShader.vert.txt', 'ApertureSineGratingShader.frag.txt'}, 1);
+end
 
 % Setup shader:
 glUseProgram(gratingShader);
@@ -75,6 +90,12 @@ glUseProgram(gratingShader);
 % patch [tw/2, th/2]:
 glUniform2f(glGetUniformLocation(gratingShader, 'Center'), width/2, height/2);
 glUniform4f(glGetUniformLocation(gratingShader, 'Offset'), backgroundColorOffset(1),backgroundColorOffset(2),backgroundColorOffset(3),backgroundColorOffset(4));
+
+if ~isinf(radius)
+    % Set radius of circular aperture:
+    glUniform1f(glGetUniformLocation(gratingShader, 'Radius'), radius);
+end
+
 glUseProgram(0);
 
 % Create a purely virtual procedural texture 'gaborid' of size width x height virtual pixels.
