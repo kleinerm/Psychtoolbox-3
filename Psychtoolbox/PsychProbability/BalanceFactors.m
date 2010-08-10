@@ -1,31 +1,36 @@
 function varargout = BalanceFactors (N, randomize, varargin)
 
-% BalanceFactors balances a set of factors given the factor levels.
-% It outputs one or more vectors, each containing factor values for a
-% set of trials, balanced and, optionally, randomized.
+% BalanceFactors balances a set of factors given the factor levels.  It is
+% identical to BalanceTrials except that the first argument in this
+% function is the number of replicates per cell.  It outputs one or more
+% vectors or cell arrays, each containing factor values for a set of
+% trials, balanced and, optionally, randomized.
 %
-% [Factor1, Factor2, ...] = BalanceFactors(N, RANDOMIZE, FactorLevels1, FactorLevels2, ...)
+% [F1, F2, ...] = BalanceFactors(N, RND, LVL1, LVL2, ...)
 %
-% BalanceFactors must be called with three or more input arguments.
-% The first argument, N, specifies the number of replicates per
-% combination of factor levels.  The second argument, RANDOMIZE,
-% determines whether or not the returned factors should be shuffled
-% (non-zero values lead to shuffling).
+% BalanceFactors must be called with three or more input arguments.  The
+% first argument, N, specifies the number of replicates per combination of
+% factor levels.  The second argument, RND, determines whether or not the
+% returned factors should be shuffled (non-zero values lead to shuffling).
 % 
-% The remaining input arguments specify the levels for each of a set
-% of factors.  Factor levels can be specified as numeric vectors or
-% cell arrays (e.g., for category names).  The returned factor lists
-% will be the same class as the corresponding levels.
+% The remaining input arguments specify the levels for each of a set of
+% factors.  Factor levels can be specified as numeric vectors or cell
+% arrays (e.g., for category names).  The returned factor lists will be the
+% same class as the corresponding levels.
 %
 % EXAMPLES:
 %
 %  [targetPresent, setSize] = BalanceFactors(2, 0, 0:1, [3 6 9 12]);
 %
-%  [target, setSize, dur] = BalanceFactors(1, 1, [0 1], [4 8 12], [0 100, 200]);
+%  [target, setSize, dur] = ...
+%     BalanceFactors(1, 1, [0 1], [4 8 12], [0 100 200]);
 %
-%  [samediff, mask] = BalanceFactors(3, 1, {'same', 'diff'}, {'none', 'pattern', 'meta'});
+%  [samediff, mask] = ...
+%     BalanceFactors(3, 1, {'same', 'diff'}, {'none', 'pattern', 'meta'});
+%
+% See also: BalanceTrials
 
-% Author: David E. Fencsik (fencsik@gmail.com)
+% Author: David E. Fencsik (david.fencsik@csueastbay.edu)
 % $LastChangedDate: 2007-06-06 10:56:41 -0400 (Wed, 06 Jun 2007) $
 
 %%% BEGIN ARGUMENT CHECKING %%%
@@ -49,11 +54,10 @@ end
 % count up number of levels in each factor and the minimum number of
 % trials needed for one observation per cell
 nLevels = zeros(nFactors, 1);
-minTrials = 1;
 for f = 1:nFactors
    nLevels(f) = length(varargin{f});
-   minTrials = minTrials * nLevels(f);
 end
+minTrials = prod(nLevels);
 
 % initialize cell array that will hold balanced variables
 varargout = cell(1, nFactors);
