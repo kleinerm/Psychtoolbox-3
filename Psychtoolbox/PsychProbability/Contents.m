@@ -6,6 +6,7 @@
 %   help Psychtoolbox % For an overview, triple-click me & hit enter.
 %  
 %   BalanceFactors      - Balance a set of factors given the factor levels.
+%   BalanceTrials       - Balance a set of factors given the factor levels. Takes alternative parameters wrt. BalanceFactors.
 %   BuildMarkovK        - Build covariance matrix for Markov process.
 %   ChiSqrCumulative    - Chi-squared distribution probability function.
 %   ChiSquarePDF        - Chi-squared distribution PDF.
