@@ -24,6 +24,7 @@ function err=DaqDConfigPort(daq,port,direction)
 %                 functions
 % 5/22/08   mk  Add (untested!) support for USB-1024LS box. 
 % 5/23/08   mk  Add caching for HID device list. 
+% 8/12/2010 sdv Fixed error when other HID devices have short names
 
 % Perform internal caching of list of HID devices in 'TheDevices'
 % to speedup call:
@@ -35,13 +36,15 @@ end
 % Default reportId for 1x08FS devices is 1:
 reportId = 1;
 
-if strcmp(TheDevices(daq).product(5:6),'16')
-  Is1608=1;
-  if nargin == 2
-    direction = port;
-  end
-else
-  Is1608=0;
+Is1608=0; % assume no 1608, change this if there is
+if length(TheDevices(daq).product)>=6,  % check for sufficient length
+    if strcmp(TheDevices(daq).product(5:6),'16')
+      Is1608=1;
+      if nargin == 2
+        direction = port;
+      end
+    
+    end
 end
 
 % Denis(?) commented this out for some reason...

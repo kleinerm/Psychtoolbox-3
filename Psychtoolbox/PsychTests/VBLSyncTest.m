@@ -260,7 +260,6 @@ try
     % Switch to realtime-priority to reduce timing jitter and interruptions
     % caused by other applications and the operating system itself:
     Priority(MaxPriority(w));
-	Priority(2);
 	
     % Query nominal framerate as returned by Operating system:
     % If OS returns 0, then we assume that we run on a flat-panel with

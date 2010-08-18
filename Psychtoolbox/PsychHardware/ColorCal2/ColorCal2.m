@@ -79,7 +79,12 @@ function varargout = ColorCal2(command, varargin)
 %      Example: Set the first color matrix to some random values.
 %      ColorCal2('SetColorMatrix', 0, rand(3,3));
 
+% History:
+% 03.04.2009  Written (Chris Broussard).
+% 18.08.2010  Make useBigEndian persistent. Reported by Ian A. ("tatooed.tentackle@yahoo.com")
+
 persistent usbHandle;
+persistent useBigEndian;
 
 varargout = {};
 
