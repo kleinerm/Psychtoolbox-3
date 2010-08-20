@@ -5,6 +5,8 @@ function PR650setsyncfreq(syncFreq)
 % 1 means use last sync measurement.
 %
 % See also PR650getsyncfreq
+%
+% 8/20/10  Change error message to match command sent by this routine.
 
 global g_serialPort g_useIOPort;
 
@@ -46,7 +48,7 @@ while isempty(inStr) && (waited < timeout)
 	inStr = PR650serialread;
 end
 if waited == timeout
-	error('No response after measure command');
+	error('No response after s01 command');
 end
 
 % Pick up entire buffer.  This is the loop referred to above.

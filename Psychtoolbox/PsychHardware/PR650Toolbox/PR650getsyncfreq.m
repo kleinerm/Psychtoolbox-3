@@ -4,6 +4,7 @@ function syncFreq = PR650getsyncfreq
 % Measure sync frequency for source.  Returns
 % empty if can't sync.
 %
+% 8/20/10  Change error message to match command sent by this routine.
 
 global g_serialPort g_useIOPort;
 
@@ -39,7 +40,7 @@ while isempty(inStr) && (waited < timeout)
 	inStr = PR650serialread;
 end
 if waited == timeout
-	error('No response after measure command');
+	error('No response after f command');
 end
 
 % Pick up entire buffer.  This is the loop referred to above.
