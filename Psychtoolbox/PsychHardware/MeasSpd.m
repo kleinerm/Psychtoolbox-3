@@ -21,17 +21,18 @@ function [spectrum,qual] = MeasSpd(S,meterType)
 % 2/20/94		dhb		Modified for CMETER.
 % 8/11/94		dhb		Handle sync mode error condition.
 % 9/7/94		dhb		Remove sync mode message.
-% 11/6/96   dhb   Remove extra call to CMETER('Measure').
-% 6/17/98   dhb   Add meterType switch.
-% 7/1/98    dhb,jmk Fix bug in switch.
-% 10/4/99   dhb,mdr Take return of -1 (timeout) to mean no light.
-%           dhb,mdr Remove gHardware and gHardwareMsg globals.
-% 4/4/00    dhb,jdt Pass S to PC version.
-% 09/11/00  dhb   Remove colortron support.  It never worked right.
-% 1/10/02   dhb,ly Make OS9 version use SERIAL.
-% 2/15/02   dhb   Change name of called routine.
-% 5/21/02   dgp   Tidied up code, removing superfluous COMPUTER conditional.
-% 2/26/03   dhb   Change definition of PR-650 meter type to 1.
+% 11/6/96       dhb     Remove extra call to CMETER('Measure').
+% 6/17/98       dhb     Add meterType switch.
+% 7/1/98        dhb,jmk Fix bug in switch.
+% 10/4/99       dhb,mdr Take return of -1 (timeout) to mean no light.
+%               dhb,mdr Remove gHardware and gHardwareMsg globals.
+% 4/4/00        dhb,jdt Pass S to PC version.
+% 09/11/00      dhb   Remove colortron support.  It never worked right.
+% 1/10/02       dhb,ly Make OS9 version use SERIAL.
+% 2/15/02       dhb   Change name of called routine.
+% 5/21/02       dgp   Tidied up code, removing superfluous COMPUTER conditional.
+% 2/26/03       dhb   Change definition of PR-650 meter type to 1.
+% 8/26/10       dhb   The PR-655 line called the PR-650 code.  Change to call PR-655
 
 % Handle defaults
 if nargin < 2 || isempty(meterType)
@@ -47,7 +48,7 @@ switch meterType
         [spectrum, qual] = PR650measspd(S);
         % PR-655
     case 4,
-        [spectrum, qual] = PR650measspd(S);
+        [spectrum, qual] = PR655measspd(S);
     otherwise,
         error('Unknown meter type');
 end
