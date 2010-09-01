@@ -1,0 +1,48 @@
+/* InterleavedColumnStereoShader.frag.txt - Shader for interleaved column stereo:
+ *
+ * Used in the stereo compositing chain of the Psychtoolbox imaging pipeline.
+ *
+ * Composes an interleaved stereo image by putting the left eye images pixel
+ * lines into the even columns of the output buffer and the right eye images pixel
+ * lines into the odd columns of the output buffer, thereby interleaving the
+ * content of both eyes buffers into one unified horizontally interlaced buffer.
+ *
+ * This stereo encoding can be used by some auto-stereoscopic displays, e.g.,
+ * ones with lenticular sheets or parallax barriers.
+ *
+ * Written 2010 by Mario Kleiner, part of the Psychtoolbox-3, licensed under
+ * GPL.
+ *
+ */ 
+
+#extension GL_ARB_texture_rectangle : enable
+
+/* Input image rectangle textures: Image1 = Left, Image2 = Right eye */
+uniform sampler2DRect Image1;
+uniform sampler2DRect Image2;
+uniform vec2 Offset;
+
+void main()
+{
+    /* Get default texel read position (x,y): x is column, y is row of image. */
+    vec2 pos = gl_FragCoord.xy;
+
+    /* oddcol == 1 for odd columns, 0 for even columns: */
+    float oddcol = mod(pos.x, 2.0);
+    
+    /* Update the x component to only read left half of all columns in images: */
+    pos.x = (pos.x - oddcol) / 2.0; 
+    pos   = pos + Offset;
+
+    /* Read the image pixel from the modified readpos, output it to framebuffer. */
+    /* Choose between left- and right- image input buffer, depending if this is  */
+    /* an even or an odd output column: */
+    if (oddcol < 1.0) {
+        /* Even col: Left image */
+        gl_FragColor = texture2DRect(Image1, pos);
+    }
+    else {
+        /* Odd col: Right image */
+        gl_FragColor = texture2DRect(Image2, pos);
+    }
+}

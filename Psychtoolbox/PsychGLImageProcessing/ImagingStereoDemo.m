@@ -47,6 +47,11 @@ function ImagingStereoDemo(stereoMode, usedatapixx, writeMovie)
 % 100 == Interleaved line stereo: Left eye image is displayed in even
 % scanlines, right eye image is displayed in odd scanlines.
 %
+% 101 == Interleaved column stereo: Left eye image is displayed in even
+% columns, right eye image is displayed in odd columns. Typically used for
+% auto-stereoscopic displays, e.g., lenticular sheet or parallax barrier
+% displays.
+%
 % If you have a different set of filter glasses, e.g., red-magenta, you can
 % simply select one of above modes, then use the
 % SetStereoAnglyphParameters() command to change color gain settings,
@@ -158,13 +163,20 @@ escape = KbName('ESCAPE');
     % display the background color in all remaining areas, thereby saving
     % some computation time for pixel processing: We select the center
     % 512x512 pixel area of the screen:
-    PsychImaging('AddTask', 'AllViews', 'RestrictProcessing', CenterRect([0 0 512 512], Screen('Rect', scrnNum)));
+    if stereoMode ~=101
+        PsychImaging('AddTask', 'AllViews', 'RestrictProcessing', CenterRect([0 0 512 512], Screen('Rect', scrnNum)));
+    end
 
-    % stereoMode 100 triggers interleaved display:
+    % stereoMode 100 triggers scanline interleaved display:
     if stereoMode == 100
         PsychImaging('AddTask', 'General', 'InterleavedLineStereo', 0);
     end
-    
+
+    % stereoMode 101 triggers column interleaved display:
+    if stereoMode == 101
+        PsychImaging('AddTask', 'General', 'InterleavedColumnStereo', 0);
+    end
+
     % Consolidate the list of requirements (error checking etc.), open a
     % suitable onscreen window and configure the imaging pipeline for that
     % window according to our specs. The syntax is the same as for
@@ -199,7 +211,7 @@ escape = KbName('ESCAPE');
     ymax = RectHeight(windowRect)/2;
     if stereoMode == 100
         xmax = xmax/4;
-       ymax = ymax/2;
+        ymax = ymax/2;
     else
         xmax = min(xmax, ymax) / 2;
         ymax = xmax;
@@ -283,7 +295,7 @@ escape = KbName('ESCAPE');
         % Draw right stim:
         Screen('DrawDots', windowPtr, dots(1:2, :) - [dots(3, :)/2; zeros(1, numDots)], dotSize, col2, [windowRect(3:4)/2], 1);
         Screen('FrameRect', windowPtr, [0 255 0], [], 5);
-        
+
         % Tell PTB drawing is finished for this frame:
         Screen('DrawingFinished', windowPtr);
         

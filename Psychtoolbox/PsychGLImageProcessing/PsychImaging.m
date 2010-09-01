@@ -40,12 +40,30 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % 'whichTask' contains the name string of one of the supported
 % actions:
 %
+% * 'InterleavedColumnStereo' Ask for stereo display in interleaved mode.
+%   The output image is composed from the lefteye and righteye stereo
+%   buffers by interleaving their content: Even columns are filled with
+%   content from the left buffer, odd columns are filled with content from
+%   the right buffer, i.e., Col 0 = Left col 0, Col 1 = Right Col 0, Col 2
+%   = Left col 1, Col 3 = Right col 1, ....
+%
+%   This mode is useful for driving some auto-stereoscopic displays. These
+%   use either some vertical parallax barriers or vertical lenticular
+%   lense sheets. These direct light from even columns to one eye, light
+%   from odd columns to the other eye.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'InterleavedColumnStereo', startright);
+%
+%   If 'startright' is zero, then even columns are taken from left buffer. If
+%   'startright' is one, then even columns are taken from the right buffer.
+%
+%
 % * 'InterleavedLineStereo' Ask for stereo display in interleaved mode.
 %   The output image is composed from the lefteye and righteye stereo
 %   buffers by interleaving their content: Even lines are filled with
 %   content from the left buffer, odd lines are filled with content from
 %   the right buffer, i.e., Row 0 = Left row 0, Row 1 = Right row 0, Row 2
-%   = Left row 1, Row 3 = Right row1, ....
+%   = Left row 1, Row 3 = Right row 1, ....
 %
 %   This mode is useful for driving some types of stereo devices and
 %   goggles, e.g., the iGlasses 3D Video goggles in interleaved stereo
@@ -686,6 +704,8 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 % 26.04.2010  Disable workarounds from 04.03.2010, as Screen() is fixed now. (MK)
 %
+% 02.09.2010  Add support for 'InterleavedColumnStereo'- for auto-stereoscopic 
+%             displays, e.g., parallax barrier and lenticular sheets. (MK)
 
 persistent configphase_active;
 persistent reqs;
@@ -1404,6 +1424,15 @@ if ~isempty(find(mystrcmp(reqs, 'InterleavedLineStereo')))
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore, kPsychNeedHalfHeightWindow);    
 end
 
+% Stereomode 6 for interleaved column stereo needed?
+if ~isempty(find(mystrcmp(reqs, 'InterleavedColumnStereo')))
+    % Yes: Must use stereomode 6.
+    stereoMode = 6;
+    % We also request an effective window width that is only half the real
+    % width. This affects all drawing and query commands of Screen:
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore, kPsychNeedHalfWidthWindow);
+end
+
 % Display replication needed?
 if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
     % Yes: Must use dual window output mode. This implies
@@ -2003,6 +2032,40 @@ if ~isempty(find(mystrcmp(reqs, 'InterleavedLineStereo')))
     Screen('HookFunction', win, 'Enable', 'StereoCompositingBlit');
 end
 % --- End of interleaved line stereo setup code ---
+
+% --- Interleaved column stereo wanted? ---
+if ~isempty(find(mystrcmp(reqs, 'InterleavedColumnStereo')))
+    % Yes: Load and setup compositing shader.
+    shader = LoadGLSLProgramFromFiles('InterleavedColumnStereoShader', 1);
+
+    floc = find(mystrcmp(reqs, 'InterleavedColumnStereo'));
+    [rows cols]= ind2sub(size(reqs), floc);
+    % Extract first parameter - This should be the mapping of odd- and even
+    % columns: 0 = even cols == left image, 1 = even cols == right image.
+    startright = reqs{rows, 3};
+
+    if startright~=0 && startright~=1
+        Screen('CloseAll');
+        error('PsychImaging: The "startright" parameter must be zero or one!');
+    end
+    
+    % Init the shader: Assign mapping of left- and right image:
+    glUseProgram(shader);
+    glUniform1i(glGetUniformLocation(shader, 'Image1'), 1-startright);
+    glUniform1i(glGetUniformLocation(shader, 'Image2'), startright);
+
+    glUniform2f(glGetUniformLocation(shader, 'Offset'), 0, 0);
+    glUseProgram(0);
+    
+    % Reset compositor chain: It got initialized inside Screen() with an
+    % unsuitable shader for our purpose:
+    Screen('HookFunction', win, 'Reset', 'StereoCompositingBlit');
+
+    % Append our new shader and enable chain:
+    Screen('HookFunction', win, 'AppendShader', 'StereoCompositingBlit', 'StereoCompositingShaderInterleavedColumnStereo', shader, 'Blitter:IdentityBlit:Offset:0:0:Scaling:2.0:1.0');
+    Screen('HookFunction', win, 'Enable', 'StereoCompositingBlit');
+end
+% --- End of interleaved column stereo setup code ---
 
 
 % --- Custom color correction for display wanted? ---
