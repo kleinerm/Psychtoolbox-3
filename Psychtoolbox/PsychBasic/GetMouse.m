@@ -104,6 +104,7 @@ function [x,y,buttons] = GetMouse(windowPtrOrScreenNumber)
 % 06/10/06 mk   Added Microsoft Windows support. Removed the old WinPTB GetMouse.dll
 %               which worked except for button state queries.
 % 09/20/06 mk   Updated help section for Windows: GetMouse now also works without onscreen windows.
+% 09/01/10 mk   Restrict number of mouse buttons on Windows and Linux to 3.
 
 % We Cache the value of numMouseButtons between calls to GetMouse, so we
 % can skip the *very time-consuming* detection code on successive calls.
@@ -129,8 +130,8 @@ if isempty(numMouseButtons)
             numMouseButtons=max(b, numMouseButtons);
         end
     else
-        % Linux or Windows: We don't need numMouseButtons so we assign a dummy value of 32
-        numMouseButtons = 32;
+        % Linux or Windows: Currently only support three mouse buttons.
+        numMouseButtons = 3;
     end;
 end;
 
