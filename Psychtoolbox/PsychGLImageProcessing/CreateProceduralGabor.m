@@ -1,5 +1,5 @@
-function [gaborid, gaborrect] = CreateProceduralGabor(windowPtr, width, height, nonSymmetric, backgroundColorOffset, disableNorm)
-% [gaborid, gaborrect] = CreateProceduralGabor(windowPtr, width, height [, nonSymmetric=0][, backgroundColorOffset =(0,0,0,0)][, disableNorm=0])
+function [gaborid, gaborrect] = CreateProceduralGabor(windowPtr, width, height, nonSymmetric, backgroundColorOffset, disableNorm, contrastPreMultiplicator)
+% [gaborid, gaborrect] = CreateProceduralGabor(windowPtr, width, height [, nonSymmetric=0][, backgroundColorOffset =(0,0,0,0)][, disableNorm=0][, contrastPreMultiplicator=1])
 %
 % Creates a procedural texture that allows to draw Gabor stimulus patches
 % in a very fast and efficient manner on modern graphics hardware.
@@ -38,6 +38,13 @@ function [gaborid, gaborrect] = CreateProceduralGabor(windowPtr, width, height, 
 % will be applied. This term seems to be a reasonable normalization of the
 % total amplitude of the gabor, but it is not part of the standard
 % definition of a gabor. Therefore we allow to disable this normalization.
+%
+% 'contrastPreMultiplicator' Optional, defaults to 1. This value is
+% multiplied as a scaling factor to the requested contrast value. If you
+% set the 'disableNorm' parameter to 1 to disable the builtin normf
+% normalization and then specify contrastPreMultiplicator = 0.5 then the
+% per gabor 'contrast' value will correspond to what practitioners of the
+% field usually understand to be the contrast value of a gabor.
 %
 %
 % The function returns a procedural texture handle 'gaborid' that you can
@@ -100,6 +107,7 @@ function [gaborid, gaborrect] = CreateProceduralGabor(windowPtr, width, height, 
 % 11/25/2007 Written. (MK)
 % 01/03/2008 Enable support for asymmetric gabor shading. (MK)
 % 03/01/2009 Add 'disableNorm' flag to allow disabling of normalization term (MK).
+% 09/03/2010 Add 'contrastPreMultiplicator' as suggested by Xiangrui Li (MK).
 
 debuglevel = 1;
 
@@ -134,6 +142,10 @@ if ~isscalar(disableNorm) || ~ismember(disableNorm, [0, 1])
     error('The "disableNorm" flag must be 0 or 1. Invalid flag passed!');
 end
 
+if nargin < 7 || isempty(contrastPreMultiplicator)
+    contrastPreMultiplicator = 1.0;
+end
+
 if ~nonSymmetric
     % Load standard symmetric support shader - Faster!
     gaborShader = LoadGLSLProgramFromFiles('BasicGaborShader', debuglevel);
@@ -152,6 +164,9 @@ glUniform4f(glGetUniformLocation(gaborShader, 'Offset'), backgroundColorOffset(1
 
 % Assign disable flag for normalization:
 glUniform1f(glGetUniformLocation(gaborShader, 'disableNorm'), disableNorm);
+
+% Apply contrast premultiplier:
+glUniform1f(glGetUniformLocation(gaborShader, 'contrastPreMultiplicator'), contrastPreMultiplicator);
 
 % Setup done:
 glUseProgram(0);

@@ -29,6 +29,9 @@ uniform vec2  Center;
 /* not applied to the gabors final values. Default is 0.0, ie. apply it. */
 uniform float disableNorm;
 
+/* Constant from setup code: Premultiply to contrast value: */
+uniform float contrastPreMultiplicator;
+
 /* Attributes passed from Screen(): See the ProceduralShadingAPI.m file for infos: */
 attribute vec4 sizeAngleFilterMode;
 attribute vec4 modulateColor;
@@ -64,5 +67,5 @@ void main()
     float mc = disableNorm + (1.0 - disableNorm) * (1.0 / (sqrtof2pi * SpaceConstant));
 
     /* Premultiply the wanted Contrast to the color: */
-    baseColor = modulateColor * mc * Contrast;
+    baseColor = modulateColor * mc * Contrast * contrastPreMultiplicator;
 }

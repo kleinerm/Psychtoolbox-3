@@ -20,6 +20,9 @@ const float twopi = 2.0 * 3.141592654;
 /* Conversion factor from degrees to radians: */
 const float deg2rad = 3.141592654 / 180.0;
 
+/* Constant from setup code: Premultiply to contrast value: */
+uniform float contrastPreMultiplicator;
+
 /* Attributes passed from Screen(): See the ProceduralShadingAPI.m file for infos: */
 attribute vec4 modulateColor;
 attribute vec4 auxParameters0;
@@ -47,5 +50,5 @@ void main()
     FreqTwoPi = auxParameters0[1] * twopi;
 
     /* Premultiply the wanted Contrast to the color: */
-    baseColor = modulateColor * Contrast;
+    baseColor = modulateColor * Contrast * contrastPreMultiplicator;
 }

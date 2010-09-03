@@ -68,6 +68,9 @@ function ProceduralGaborDemo(benchmark, nonsymmetric)
 % History:
 % 11/26/2007 Written (MK).
 % 01/03/2008 Fine tuning, help update, support for asymmetric gabors. (MK).
+% 09/03/2010 Change 180+phase to 180-phase in 'DrawTextures', so phase
+%            definition for Matlab reference code and GPU code match. (MK).
+%            -> Reported by Xiangrui Li.
 
 % Default to mode 0 - Just a nice demo.
 if nargin < 1
@@ -173,7 +176,7 @@ while count < 10000
     % Draw the Gabor patch: We simply draw the procedural texture as any other
     % texture via 'DrawTexture', but provide the parameters for the gabor as
     % optional 'auxParameters'.
-    Screen('DrawTexture', win, gabortex, [], [], 90+tilt, [], [], [], [], kPsychDontDoRotation, [phase+180 freq sc contrast, aspectratio, 0, 0, 0]);
+    Screen('DrawTexture', win, gabortex, [], [], 90+tilt, [], [], [], [], kPsychDontDoRotation, [180-phase, freq, sc, contrast, aspectratio, 0, 0, 0]);
     
     if benchmark > 0
         % Go as fast as you can without any sync to retrace and without
