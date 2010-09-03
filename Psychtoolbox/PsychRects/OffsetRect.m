@@ -32,7 +32,7 @@ if PsychNumel(oldRect) == 4
         error('Wrong size rect argument. A single rect must be a 1-row 4 element vector!');
     end
     
-    if isscalar(x) & isscalar(y) %#ok<AND2>
+    if length(x)==1 & length(y)==1 %#ok<AND2>
         % Single rect, offset by a single (x,y) point:
         newRect(RectTop) = oldRect(RectTop) + y;
         newRect(RectBottom) = oldRect(RectBottom) + y;

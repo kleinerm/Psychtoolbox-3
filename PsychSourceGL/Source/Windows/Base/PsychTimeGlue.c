@@ -506,6 +506,9 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 		Sleep(10);
   }
   
+	// Need to acquire our timelock before we continue, for atomic timestamping and as we will soon access shared data structures:
+	EnterCriticalSection(&time_lock);
+
 	// Query system time of low resolution counter:
 	curRawticks = timeGetTime();
 
@@ -522,9 +525,6 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 			printf("PTB-CRITICAL WARNING! It may also help to restart the machine to see if the problem is transient.\n");
 			printf("PTB-CRITICAL WARNING! Also check the FAQ section of the Psychtoolbox Wiki for more information.\n\n");
 	}
-
-	// Need to acquire our timelock before we continue, as we will soon access shared data structures:
-	EnterCriticalSection(&time_lock);
 
 	// Convert to ticks in seconds for further processing:
 	ticks = ((double) (psych_int64) curRawticks) * 0.001;
