@@ -2,8 +2,9 @@
 %
 % The PsychtoolboxKernelDriver (PKD) is a MacOS-X kernel extension (a
 % kext). It currently should work with AMD/ATI Radeon graphics cards of the
-% X1000, HD2000 and HD3000 series. It doesn't work with graphics chips from
-% other manufacturers and probably doesn't work with older ATI chips.
+% X1000, HD2000, HD3000 and HD4000 series. It doesn't work with graphics chips from
+% other manufacturers and probably doesn't work with older ATI chips. It
+% won't work with the most recent HD5000 series chips and later.
 %
 % The driver needs to be manually loaded by a user with administrator
 % privileges and provides a few special services to PTB-3, ie., PTB's

@@ -295,8 +295,8 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 
 	// We should be ready...
 	IOLog("\n");
-	IOLog("%s: Psychtoolbox-3 kernel-level support driver for ATI Radeon and NVidia GeForce GPU's ready for use!\n", getName());
-	IOLog("%s: This driver is copyright 2008, 2009 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
+	IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.1 for ATI Radeon and NVidia GeForce GPU's ready for use!\n", getName());
+	IOLog("%s: This driver is copyright 2008, 2009, 2010 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
 	IOLog("%s: The driver is licensed to you under GNU General Public License (GPL) Version 2 or later,\n", getName());
 	IOLog("%s: see the file License.txt in the Psychtoolbox root installation folder for details.\n", getName());
 	
@@ -747,7 +747,29 @@ void PsychtoolboxKernelDriver::SetDitherMode(UInt32 headId, UInt32 ditherOn)
 // Return current vertical rasterbeam position of display head 'headId' (0=Primary CRTC1, 1=Secondary CRTC2):
 UInt32 PsychtoolboxKernelDriver::GetBeamPosition(UInt32 headId)
 {
-	return(ReadRegister((headId == 0) ? RADEON_D1CRTC_STATUS_POSITION : RADEON_D2CRTC_STATUS_POSITION) & RADEON_VBEAMPOSITION_BITMASK);
+	SInt32					beampos;
+
+	// Read raw beampostion from GPU:
+	beampos = (SInt32) (ReadRegister((headId == 0) ? RADEON_D1CRTC_STATUS_POSITION : RADEON_D2CRTC_STATUS_POSITION) & RADEON_VBEAMPOSITION_BITMASK);
+
+	// Query end-offset of VBLANK interval of this GPU and correct for it:
+	beampos = beampos - (SInt32) ((ReadRegister((headId == 0) ? AVIVO_D1CRTC_V_BLANK_START_END : AVIVO_D2CRTC_V_BLANK_START_END) >> 16) & RADEON_VBEAMPOSITION_BITMASK);
+	
+	// Correction for in-VBLANK range:
+	if (beampos < 0) beampos = ((SInt32) ReadRegister((headId == 0) ? AVIVO_D1CRTC_V_TOTAL : AVIVO_D2CRTC_V_TOTAL)) + beampos;
+
+	// Safety measure: Cap to zero if something went wrong -> This will trigger proper high level error handling in PTB:
+	if (beampos < 0) beampos = 0;
+
+	if (0) {
+		SInt32 vblend, vblstart, vtotal;
+		vblend = (SInt32) ((ReadRegister((headId == 0) ? AVIVO_D1CRTC_V_BLANK_START_END : AVIVO_D2CRTC_V_BLANK_START_END) >> 16) & RADEON_VBEAMPOSITION_BITMASK);
+		vblstart = (SInt32) ((ReadRegister((headId == 0) ? AVIVO_D1CRTC_V_BLANK_START_END : AVIVO_D2CRTC_V_BLANK_START_END) >> 0) & RADEON_VBEAMPOSITION_BITMASK);
+		vtotal = (SInt32) ReadRegister((headId == 0) ? AVIVO_D1CRTC_V_TOTAL : AVIVO_D2CRTC_V_TOTAL);
+		IOLog("%s: VBLANK_END %ld VBLANK_START %ld VTOTAL %ld\n", getName(), vblend, vblstart, vtotal);
+	}
+	
+	return((UInt32) beampos);
 }
 
 // Instantaneously resynchronize display heads of a Radeon dual-head gfx-card:
