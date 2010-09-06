@@ -666,6 +666,8 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	
 	// Texture object ready for future use. Unbind it:
 	glBindTexture(texturetarget, 0);
+	glDisable(texturetarget);
+
 	// Reset pixel storage parameter:
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
