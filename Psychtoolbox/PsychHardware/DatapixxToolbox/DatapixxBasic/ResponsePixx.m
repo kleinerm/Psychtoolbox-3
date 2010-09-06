@@ -7,9 +7,37 @@ function varargout = ResponsePixx(cmd, varargin)
 % synchronized to the operation of the Screen('Flip') command, ie.,
 % synchronized to visual stimulus onset.
 %
-% Currently ResponsePixx response boxes with up to 5 buttons are supported.
-% The code can scan up to all 16 digital input pins of the Datapixx,
-% e.g., to control self-made response boxes, would be trivially possible.
+% By default, ResponsePixx response boxes with 5 buttons are supported.
+% Specify the 'nrButtons' parameter in the 'Open' subfunction if you need a
+% different button count.
+%
+% The code can scan the first 16 digital input pins of the Datapixx, i.e.,
+% nrButtons can be up to 16, e.g., to control self-made response boxes. The
+% last 8 input pins are not useable for timestamped button queries and are
+% instead used to drive the button illumination of the ResponsePixx
+% devices.
+%
+% Caution: Avoid intermixing 'StartNow'/'StopNow' commands with
+% 'StartAtFlip'/'StopAtFlip' commands. While this may work, there is some
+% potential for using it the wrong way and producing very "funny" bugs.
+%
+% For reaction time measurements wrt. visual stimuli, see the timestamp
+% logging functions of the PsychDataPixx driver to get timestamps in
+% Datapixx clock time. You can also calculate RT's in GetSecs time wrt. the
+% host clock by using the usual Screen('Flip') or PsychPortAudio stimulus
+% onset timestamps, which may be even more convenient. However, if you do
+% so, make sure that you read and understand the comments about achieving
+% good precision by correcting for clock drift, both in the help of the
+% ResponsePixx subfunctions and in the help of PsychDataPixx. Specifically
+% look at PsychDataPixx('GetPreciseTime') and
+% PsychDataPixx('BoxsecsToGetsecs').
+%
+%
+% Button mapping on the ResponsePixx handheld device:
+% ---------------------------------------------------
+%
+% Buttonvector element [1,2,3,4,5] == [Red, Yellow, Green, Blue, White].
+%
 %
 % Subfunctions and their meaning:
 % -------------------------------
@@ -62,6 +90,10 @@ function varargout = ResponsePixx(cmd, varargin)
 % Psychtoolbox GetSecs() time with the proper mapping functions of
 % PsychDataPixx (see "help PsychDataPixx").
 %
+% The function can be called multiple times, while logging is already
+% started, if you just want to clear the log of stored responses or change
+% the state of the button lights.
+%
 %
 % ResponsePixx('StartAtFlip' [, flipCount=next][, clearLog=0][, buttonLightState][, buttonLightIntensity]);
 % - Schedule start of response collection synchronized to the visual stimulus
@@ -87,6 +119,10 @@ function varargout = ResponsePixx(cmd, varargin)
 % possible delay on your system). See 'StartNow' for meaning of optional
 % arguments.
 %
+% The function can be called multiple times, while logging is already
+% stopped, if you just want to clear the log of stored responses or change
+% the state of the button lights.
+%
 %
 % ResponsePixx('StopAtFlip' [, flipCount=next][, clearLog=0][, buttonLightState][, buttonLightIntensity]);
 % - Schedule stop of response collection synchronized to the visual stimulus
@@ -94,7 +130,7 @@ function varargout = ResponsePixx(cmd, varargin)
 % See 'StartAtFlip' for meaning of parameters.
 %
 %
-% [buttonStates, transitionTimesSecs, underflows] = ResponsePixx('GetLoggedResponse' [, numberResponses=current][, blocking=1]);
+% [buttonStates, transitionTimesSecs, underflows] = ResponsePixx('GetLoggedResponses' [, numberResponses=current][, blocking=1][, timeout=inf]);
 % - Try to fetch logged button responses from a running logging
 % operation. Only call this function after logging has been
 % started via ResponsePixx('StartNow') or scheduled for start at a
@@ -108,7 +144,9 @@ function varargout = ResponsePixx(cmd, varargin)
 % requested amount is not yet available, the optional 'blocking' flag will
 % define behaviour: If set to 1 (default), the driver will wait until the
 % specified amount becomes available. If set to 0, the driver will return
-% with empty [] return arguments so you can retry later.
+% with empty [] return arguments so you can retry later. If 'blocking' is
+% set, then the driver will wait for at most 'timeout' seconds for a
+% response, then return anyway. By default the timeout is infinite.
 %
 % 'buttonStates' is a n-by-5 matrix: The n'th row encodes the button state
 % after the n'th transition of button state. Each column encodes up/down
@@ -126,7 +164,12 @@ function varargout = ResponsePixx(cmd, varargin)
 % "help PsychDataPixx" on how to map these box timestamps to GetSecs()
 % timestamps if you wish.
 %
-% 'underflows' is the number of times the logging buffer underflowed.
+% 'underflows' is the number of times the logging buffer underflowed. This
+% indicated lost or corrupted button events. It should only happen if your
+% subject pressed more buttons within two calls to 'GetLoggedResponses'
+% than the event buffer can hold. The size of the buffer can be selected at
+% 'Open' time with the 'numSamples' parameter, but it defaults to a
+% generous 1000 button events.
 %
 %
 % [buttonStates, boxTimeSecs, getsecsTimeSecs] = ResponsePixx('GetButtons');
@@ -138,6 +181,7 @@ function varargout = ResponsePixx(cmd, varargin)
 
 % History:
 % 5.9.2010   mk  Written.
+% 7.9.2010   mk  Refined, now really useable.
 
 persistent rpixstatus;
 
@@ -198,6 +242,7 @@ if strcmpi(cmd, 'Open')
 
     % Log button presses to buffer.
     Datapixx('SetDinLog', rpixstatus.bufferAddress, rpixstatus.numSamples);
+    Datapixx('StopDinLog');
     
     % Execute:
     Datapixx('RegWrRd');
@@ -249,14 +294,6 @@ if strcmpi(cmd, 'StartNow') || strcmpi(cmd, 'StopNow')
         startIt = 0;
     end
     
-    if rpixstatus.pendingForFlip > -1
-        if startIt
-            error('%s: Tried to start response collection, but already started!', cmd);
-        else
-            error('%s: Tried to stop response collection, but already stopped!', cmd);
-        end
-    end
-
     if length(varargin) >= 1 && ~isempty(varargin{1})
         clearLog = varargin{1};
     else
@@ -301,9 +338,14 @@ if strcmpi(cmd, 'StartNow') || strcmpi(cmd, 'StopNow')
         varargout{2} = tStartGetSecs;
     end
     
-    % Mark logging as started:
-    rpixstatus.pendingForFlip = 0;
-
+    if startIt
+        % Mark logging as started:
+        rpixstatus.pendingForFlip = 0;
+    else
+        % Mark logging as stopped:
+        rpixstatus.pendingForFlip = -1;
+    end
+    
     return;
 end
 
@@ -312,14 +354,6 @@ if strcmpi(cmd, 'StartAtFlip') || strcmpi(cmd, 'StopAtFlip')
         startIt = 1;
     else
         startIt = 0;
-    end
-    
-    if rpixstatus.pendingForFlip > -1
-        if startIt
-            error('%s: Tried to schedule start of response collection, but already scheduled!', cmd);
-        else
-            error('%s: Tried to schedule stop of response collection, but already scheduled!', cmd);
-        end
     end
     
     if length(varargin) < 1 || isempty(varargin{1}) || varargin{1} == 0
@@ -369,65 +403,23 @@ if strcmpi(cmd, 'StartAtFlip') || strcmpi(cmd, 'StopAtFlip')
     return;
 end
 
-if strcmpi(cmd, 'GetLoggedResponse')
-    if rpixstatus.pendingForFlip < 0
-        error('GetLoggedResponse: Tried to get response from ResponsePixx, but logging not active!');
-    end
-
-    % If logging was scheduled to start in sync with a certain
-    % Screen flip, check if that specific target flip count has been
-    % reached:
-    if (rpixstatus.pendingForFlip > 0) && (PsychDataPixx('FlipCount') < rpixstatus.pendingForFlip)
-        % Audio key shall start recording at a certain flipcount which
-        % likely hasn't been reached yet (according to PsychDataPixx('FlipCount')).
-        %
-        % Multiple options:
-        %
-        % 1 We're more than one flip away from startpoint. In that case no
-        %   point waiting for start, as usercode would first need to
-        %   execute some Screen('Flip/AsyncFlipBegin') command to make it
-        %   even possible to start audio capture.
-        %
-        % 2 We're exactly one flip away and...
-        %   a) No flip command submitted by usercode -> No way this is
-        %   gonna fly.
-        %
-        %   b) Asyncflip command submitted: Flip will eventually happen and
-        %   get us going. This is the case if the device is marked as "busy
-        %   waiting for psync" and async flip is marked as active.
-        %
-        % In case 1 or 2a we can't wait for a response, whereas in case 2b
-        % we can wait for a response as it will eventually happen.
-        
-        % Check for case 1:
-        if PsychDataPixx('FlipCount') < rpixstatus.pendingForFlip - 1
-            % More than 1 flip away. That's a no-no:
-            fprintf('ResponsePixx: Start of logging scheduled for flipcount %i, but flipcount not yet reached.\n', rpixstatus.pendingForFlip);
-            fprintf('ResponsePixx: Current count %i is more than 1 flip away! Impossible to "GetResponse" from device this way!\n', PsychDataPixx('FlipCount'));
-            error('GetResponse: Tried to get response, but logging not yet active and impossible to activate by this command-sequence!');            
-        end
-        
-        % Check for case 2b:
-        if PsychDataPixx('IsBusy') && Screen('GetWindowInfo', PsychDataPixx('WindowHandle'), 4)
-            % Asyncflip with Psync op pending. The flip will eventually
-            % happen at some point in the future, so we can enter a polling
-            % loop to wait for it to happen.
-        else
-            % 1 flip away but no flip scheduled to actually reach that
-            % trigger-flip:
-            fprintf('ResponsePixx: Start of logging scheduled for flipcount %i, but flipcount not yet reached!\n', rpixstatus.pendingForFlip);
-            fprintf('ResponsePixx: Current count %i. Impossible to "GetResponse" from device this way,\n', PsychDataPixx('FlipCount'));
-            fprintf('ResponsePixx: because no flip has been scheduled to reach the trigger flipcount!\n');
-            error('GetResponse: Tried to get response, but logging not yet active and impossible to activate by this command-sequence!');
-        end
-    end
-
+if strcmpi(cmd, 'GetLoggedResponses')
     if length(varargin) < 2 || isempty(varargin{2})
         blocking = 1;
     else
         blocking = varargin{2};
     end
+
+    if length(varargin) < 3 || isempty(varargin{3})
+        timeout = inf;
+    else
+        timeout = varargin{3};
+    end
     
+    if PsychDataPixx('IsBusy')
+        error('%s: Datapixx is busy! Screen flip pending?', cmd);
+    end
+        
     % Ok, should be already running or it is at least certain that it will
     % eventually run due to trigger by psync mechanism.
     %
@@ -436,6 +428,8 @@ if strcmpi(cmd, 'GetLoggedResponse')
     if length(varargin) >= 1 && ~isempty(varargin{1})
         % Wait or poll for requested amount of data:
         numFrames = ceil(varargin{1});
+        timeout = GetSecs + timeout;
+        
         while 1
             Datapixx('RegWrRd');
             status = Datapixx('GetDinStatus');
@@ -445,9 +439,10 @@ if strcmpi(cmd, 'GetLoggedResponse')
             else
                 % Insufficient amount. If this is a polling request, we
                 % simply return no result:
-                if ~blocking
+                if ~blocking || (GetSecs > timeout)
                     varargout{1} = [];
                     varargout{2} = [];
+                    varargout{3} = [];
                     return;
                 end
             end
@@ -477,7 +472,7 @@ if strcmpi(cmd, 'GetLoggedResponse')
     buttons = zeros(length(data), rpixstatus.nrButtons);
     for i=1:length(data)
         for j=0:rpixstatus.nrButtons-1
-            buttons(i, j+1) = ~bitand(data, 2^j);
+            buttons(i, j+1) = ~bitand(data(i), 2^j);
         end
     end
     
@@ -486,11 +481,14 @@ if strcmpi(cmd, 'GetLoggedResponse')
     varargout{2} = timestamps;
     varargout{3} = underflow;
     
+    if underflow > 0
+        fprintf('ResponsePixx: WARNING! Undeflow of event buffer detected during call to %s. Button events may be lost or corrupted!\n', cmd);
+    end
+    
     return;
 end
 
 if strcmpi(cmd, 'GetButtons')
-
     if PsychDataPixx('IsBusy')
         error('%s: Datapixx is busy! Screen flip pending?', cmd);
     end

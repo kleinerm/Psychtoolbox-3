@@ -284,15 +284,13 @@ try
         Screen('DrawText', w, 'Stereo yeah!!!', 10, 40, 255);
     end;
     
-%    Screen('Flip', w, 0, 1);
-    
     % Measure monitor refresh interval again, just for fun...
     % This will trigger a calibration loop of minimum 100 valid samples and return the
-    % estimated ifi in 'ifi': We require an accuracy of 0.05 ms == 0.00005
+    % estimated ifi in 'ifi': We require an accuracy of 0.1 ms == 0.0001
     % secs. If this level of accuracy can't be reached, we time out after
     % 20 seconds...
-%    [ ifi nvalid stddev ]= Screen('GetFlipInterval', w, 100, 0.00005, 5);
-    [ ifi nvalid stddev ]= Screen('GetFlipInterval', w);
+    [ ifi nvalid stddev ]= Screen('GetFlipInterval', w, 100, 0.0001, 5);
+    %[ ifi nvalid stddev ]= Screen('GetFlipInterval', w);
     fprintf('Measured refresh interval, as reported by "GetFlipInterval" is %2.5f ms. (nsamples = %i, stddev = %2.5f ms)\n', ifi*1000, nvalid, stddev*1000);
     
     % Init data-collection arrays for collection of n samples:
