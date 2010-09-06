@@ -763,7 +763,7 @@ end
 
 if strcmpi(cmd, 'ExecuteAtFlipCount')
     if nargin < 2
-        error('PsychDataPixx: ExecuteAtFlip: TargetFlipcount argument missing!');
+        error('PsychDataPixx: ExecuteAtFlipCount: TargetFlipcount argument missing!');
     end
     
     % Assign swapcount of next flip if no target swapcount given, or
@@ -775,7 +775,7 @@ if strcmpi(cmd, 'ExecuteAtFlipCount')
     end
     
     if nargin < 3 || isempty(varargin{2})
-        error('PsychDataPixx: ExecuteAtFlip: CommandString argument missing!');        
+        error('PsychDataPixx: ExecuteAtFlipCount: CommandString argument missing!');        
     end
     
     % Try to find free slot in schedule, otherwise define a new one, ie.,
