@@ -56,7 +56,7 @@ IMPORTANT!!:
 
 """
 
-import sys, os, re
+import sys, os, re, subprocess
 import getopt
 from urllib2 import HTTPError
 
@@ -72,7 +72,7 @@ username = "DocBot"
 password = ""
 _recursive = 0
 _mexmode = 0
-_mexext = '.mexmaci'
+_mexext = '.mexglx'
 _debug = 0
 _fulldiff = 0
 
@@ -315,11 +315,12 @@ def mexhelpextract(mexnames):
         # and execute matlab w/ the temporary script we wrote earlier
         try:
             print 'running MATLAB for %s in %s' % (mexname,_tmpdir)
-            stdin, stderr = os.popen4(cmd)
-            print stderr.read()
-            stdin.close()
-            stderr.close()
-        except: print 'could not dump help for %s into %s' % (mexname,_tmpdir)
+            p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT, close_fds=True)
+            stderr = p.communicate()[1]
+            if stderr: print stderr
+        except:
+            print 'could not dump help for %s into %s.' % (mexname,_tmpdir)
 
         cfgfile = config.read(os.path.join(_tmpdir,mexname))
         if cfgfile == []:
