@@ -264,6 +264,13 @@ function varargout = PsychDataPixx(cmd, varargin)
 % device. Performs all low-level setup for use of DataPixx.
 %
 %
+% rc = PsychDataPixx('CheckGPUSanity', window, xoffset);
+% -- Perform online-test of GPU identity gamma tables and DVI-D display
+% encoders. Try to correct problems with wrong identity gamma tables and at
+% least detect problems with (spatio-)temporal display dithering. Returns
+% rc == 0 on full success, rc > 0 on failure.
+%
+%
 % PsychDataPixx(-1);
 % -- PTB callback: Request immediate emission of a PSYNC'ed RegWrRd command
 % to driver if a PSYNC is pending. Otherwise noop.
@@ -316,8 +323,13 @@ function varargout = PsychDataPixx(cmd, varargin)
 %                 to black.
 %                 --> No remaining limitations for use with PTB and no
 %                 visual artifacts from psync mechanism :-)
-
 %
+% 07.09.2010  mk  Implement online diagnostic and correction for proper
+%                 function of GPU identity gamma tables and encoders.
+%                 Called as 'CheckGPUSanity' from imaging pipeline setup
+%                 code in BitsPlusPlus() for high precision display mode.
+%
+
 % Need GL constant for low-level OpenGL calls. Already initialized by
 % PsychImaging() at first time of invocation of the driver:
 global GL;
@@ -1005,6 +1017,262 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         posstring = sprintf('InsertAt%iShader', slot);
         Screen('Hookfunction', win, posstring, 'StereoCompositingBlit', shaderid, glsl, blittercfg, lutid);
     end
+    
+    return;
+end
+
+if strcmpi(cmd, 'CheckGPUSanity')
+    
+    % Window handle for onscreen window. The imaging pipeline output
+    % formatter isn't active at time of this function call:
+    win = varargin{1};
+    
+    % Corrective xoffset for the framebuffer:
+    xoffset = varargin{2};
+
+    % Set to 1 for fault injection to test the procedure:
+    if 0
+        oldlut = Screen('ReadNormalizedGammaTable', win);
+        Screen('LoadNormalizedGammaTable', win, oldlut * 0.69);
+        %Screen('LoadNormalizedGammaTable', win, rand(size(oldlut)));
+    end
+    
+    % Open our own connection to Datapixx:
+    PsychDataPixx('Open');
+    
+    % Build 256 pixel level RGB test gradient:
+    testdata = uint8(zeros(3, 256));
+    testdata(:,:) = uint8(repmat(0:255, 3, 1));
+
+    % Clear the onscreen window to black and set its clear color to black.
+    Screen('FillRect', win, 0);
+    
+    % Wait at least two video refresh cycles to make sure the LUT's in the
+    % GPU have stabilized:
+    doDatapixx('RegWrRdVideoSync');
+    doDatapixx('RegWrRdVideoSync');
+    
+    % At this point the GPU gamma tables should be already loaded with an
+    % identity LUT via LoadIdentityClut(). The GL struct and moglcore are
+    % initialized so we can use low-level glXXX commands.
+    
+    % Testing loop: Will display the horizontal test gradient in the top
+    % scanline of the display, then read it back from the DataPixx. If
+    % everything works correctly then the readback gradient should match
+    % the drawn gradient. A mismatch means that either the gamma tables are
+    % not loaded with a proper identity LUT, or that some kind of
+    % spatio-temporal display dithering is active and interfering.
+    %
+    % We can try to auto-correct for wrong identity LUT's with our iterative
+    % correction loop. It will tweak the gamma tables until a match is
+    % achieved. We can't do anything about dithering though beyond
+    % reporting it:
+    oldlut = Screen('ReadNormalizedGammaTable', win);
+    curlut = oldlut;
+    
+    psychlasterror('reset');
+
+    % We tweak gamma table elements in steps of 1/1024 units per iteration.
+    % As the granularity of Digital DVI-D is only 8 bits or 1/256 units,
+    % that means we are resolving 4 times more fine-grained than the device
+    % resolution on DVI. This just for safety to avoid "jumping into the
+    % wrong bin" due to roundoff errors in the OS/Driver. Could probably do
+    % more coarse-grained, but better safe than sorry...
+    stepsize = 1/1024;
+    nIter = 100;
+    failcount = 0;
+    successcount = 0;
+    regressioncount = 0;
+    fluctcount = 0;
+    retry = 1;
+    
+    % Draw test pattern:
+    glRasterPos2i(xoffset, 10);
+    glDrawPixels(256, 10, GL.RGB, GL.UNSIGNED_BYTE, repmat(testdata, 1, 10));
+
+    % Show it at next retrace:
+    Screen('Flip', win);
+    fprintf('PsychDataPixx: INFO: GPU gamma table and display encoder test running. Please be patient...\n');
+    
+    % Enter test and auto-correction loop:
+    while retry
+        retry2=1;
+        while retry2 && (fluctcount < nIter)
+            doDatapixx('RegWrRdVideoSync');
+            oldrealpixels = doDatapixx('GetVideoLine', 256);
+            
+            % Repeat measurement until at least 60 consecutive scans give
+            % the same value:
+            for i=1:60
+                doDatapixx('RegWrRdVideoSync');
+                realpixels = doDatapixx('GetVideoLine', 256);
+                if any(any(int16(oldrealpixels) - int16(realpixels)))
+                    % Difference between 1st measurement and i'th
+                    % measurement detected. Abort scan and retry:
+                    fluctcount = fluctcount + 1;
+                    clc;
+                    fprintf('PsychDataPixx: INFO: GPU gamma table and display encoder test running. Please be patient...\n');
+                    fprintf('Instable DVI-D signal, possibly due to dithering! Will try to fix this by iterative tweaking of gamma tables.\n');
+                    fprintf('Iteration Nr. %i in progress. Current pixelvalues received from Datapixx topmost scanline:\n\n', failcount);
+                    disp(realpixels);
+                    break;
+                else
+                    if i==60
+                        retry2=0;
+                    end
+                end
+            end
+        end
+        
+        if fluctcount >= nIter
+            % Totally unstable DVI signal. This could be due to
+            % (spatio-)temporal dithering being enabled on the display head
+            % or due to serious signal integrity issues.
+            fprintf('PsychDataPixx: INFO: No stable signal received during over %i iterations! Interference by dithering?!?\n', nIter);
+            fluctcount = 0;     
+        end
+        
+        % 'realpixels' contains a measurement that has been stable for at
+        % least 60 video cycles. We use this to judge the quality of the
+        % current GPU LUT settings and perform corrections if needed.
+        
+        % Compute delta matrix to reference values: This should contain
+        % all-zeros on properly working GPU's:
+        deltavec = int16(testdata) - int16(realpixels);
+        
+        % Difference?
+        if any(any(deltavec))
+            % Ohoh!
+            if failcount == 0
+                fprintf('PsychDataPixx: WARNING: Your GPU has a wrong identity gamma table loaded, possibly due to driver bugs.\n');
+                fprintf('PsychDataPixx: WARNING: I will try to automatically compensate for this now. Please standby...\n');
+            end
+            
+            failcount = failcount + 1;
+            
+            if successcount > 0
+                regressioncount = regressioncount + 1;
+                fprintf('PsychDataPixx: WARNING: %i. regression detected after tweak %i! Previously successfull setting produces wrong values now\nafter %i successfull iterations!\n', regressioncount, failcount, successcount);
+                successcount = 0;
+            end
+            
+            % Convert to double matrix and transpose to match LUT format.
+            % Then convert to a corrective increment of stepsize units per
+            % 1 pixel unit error:
+            deltavec = transpose(double(deltavec)) * stepsize;
+            
+            % Update gamma lut:
+            curlut = curlut + deltavec;
+            
+            mmcount = sum(sum(deltavec ~= 0));
+            fprintf('PsychDataPixx: INFO: Gamma table tweak iteration %i. Had %i mismatching pixels. Retesting with updated LUT...\n', failcount, mmcount);
+            
+            % Clamp to valid 0-1 range:
+            curlut(curlut > 1) = 1;
+            curlut(curlut < 0) = 0;
+            
+            % Upload modified LUT to GPU: We try-catch protect this to
+            % avoid error-abort on MS-Windows if invalid gamma tables are
+            % encountered:
+            try
+                Screen('LoadNormalizedGammaTable', win, curlut);
+            catch
+                psychlasterror('reset');
+            end
+            
+            % Tried too long, too hard?
+            if failcount > 255
+                % Running with non-zero rasterizer offset?
+                if xoffset ~= 0
+                    % Hmm. Could be a cascade of bugs. Reset xoffset to
+                    % zero and retry whole procedure just to be on the safe
+                    % side:
+                    fprintf('PsychDataPixx: WARNING: No success so far with rasterizeroffset %i. Retrying with zero-offset...\n', xoffset);
+                    failcount = 0;
+                    curlut = oldlut;
+
+                    Screen('LoadNormalizedGammaTable', win, oldlut);
+                    
+                    % Draw test pattern:
+                    Screen('Flip', win);
+                    xoffset = 0;
+                    glRasterPos2i(xoffset, 10);
+                    glDrawPixels(256, 10, GL.RGB, GL.UNSIGNED_BYTE, repmat(testdata, 1, 10));
+
+                    % Show it at next retrace:
+                    Screen('Flip', win);
+
+                    % Encore une fois...
+                    continue;
+                end
+                
+                % Ok, this can't be. Restore gamma table and give up:
+                Screen('LoadNormalizedGammaTable', win, oldlut);
+                                
+                % Fail:
+                fprintf('PsychDataPixx: ERROR: Did not reach a stable result after 256 tweak iterations.\n');
+                fprintf('PsychDataPixx: ERROR: This is hopeless, something is seriously wrong with your GPU. I give up!\n');
+                fprintf('PsychDataPixx: ERROR: One possible reason could be that (spatio-)temporal dithering is enabled for your\n');
+                fprintf('PsychDataPixx: ERROR: Datapixx display due to some graphics driver bug, which prevents me from\n');
+                fprintf('PsychDataPixx: ERROR: converging to a stable result. Datapixx will not be useable for high-precision\n');
+                fprintf('PsychDataPixx: ERROR: color or luminance displays with this broken graphics card/driver. Fix your system!\n');
+                
+                % Close our own connection to Datapixx:
+                PsychDataPixx('Close');
+                
+                varargout{1} = 1;
+                return;
+            end
+        else
+            % No difference. Good. Let's repeat the exercise a few times to
+            % rule out bad interference from temporal dithering:
+            successcount = successcount + 1;
+
+            fprintf('PsychDataPixx: INFO: Posttest iteration %i passed. Good!\n', successcount)
+            
+            if successcount > 10
+                % 10 successfull consecutive repetitions. That's good
+                % enough for us:
+                retry = 0;
+            end            
+        end
+    end
+
+    % Ok, we managed to get through:
+    Screen('Flip', win);
+    
+    % How did we do?
+    if (successcount > 10) && (failcount == 0)
+        % Purrfect! Return full success:
+        fprintf('PsychDataPixx: Info: Online test of GPU hardware identity clut and display encoder passed.\n');
+        varargout{1} = 0;
+    else
+        % Got through, but with a non-zero failcount. That probably means
+        % that display temporal dithering is not an issue, but that the
+        % gamma table needed tweaking.
+        fprintf('PsychDataPixx: INFO: Managed to find a useable gamma table setting after %i tweak iterations. :-)\n', failcount);
+        if regressioncount > 0
+            fprintf('PsychDataPixx: INFO: There were %i regressions throughout the procedure. Could be problems with active display dithering or bad signal quality?\n', regressioncount);
+        end
+        if fluctcount == 0
+            fprintf('\nPsychDataPixx: INFO: There wasn''t any instability during the last testing cycle,\n');
+            fprintf('PsychDataPixx: INFO: so harmful display dithering may be absent now and you will be probably fine.\n');
+        end
+        fprintf('PsychDataPixx: INFO: I will store this LUT on your filesystem for future use.\n');
+        if 0
+            fprintf('PsychDataPixx: INFO: The difference matrix between the original LUT and the corrected LUT looks like this:\n\n');
+            disp(curlut - oldlut);
+        end
+        fprintf('\n\n');
+        
+        % Store the current gamma table LUT in a config file for later use
+        % by LoadIdentityClut in successive runs:
+        SaveIdentityClut(win);
+        varargout{1} = 0;        
+    end
+
+    % Close our own connection to Datapixx:
+    PsychDataPixx('Close');
     
     return;
 end

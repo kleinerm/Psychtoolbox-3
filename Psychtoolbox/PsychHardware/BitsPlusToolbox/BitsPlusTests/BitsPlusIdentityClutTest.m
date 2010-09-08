@@ -101,6 +101,12 @@ try
         % Reduce timeout for recognition of PSYNC code to about 1 second on
         % a 100 Hz display:
         oldpsynctimeout = PsychDataPixx('PsyncTimeoutFrames', 100);
+        
+        answer = input('Run DataPixx based diagnostics as well [Time consuming]? [y/n] ', 's');
+        if answer == 'y'
+            % Enable one-shot diagnostic of GPU encoders via DataPixx:
+            BitsPlusPlus('TestGPUEncoders');
+        end
     else
         % Use Mono++ mode with overlay:
         PsychImaging('AddTask', 'General', 'EnableBits++Mono++OutputWithOverlay');

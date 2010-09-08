@@ -264,6 +264,7 @@ persistent bplusname;
 persistent mononame;
 persistent colorname; %#ok<PUSE>
 persistent devbits;
+persistent checkGPUEncoders;
 
 % Vector that assigns overlay window handles to onscreen window handles:
 persistent OverlayWindows;
@@ -321,6 +322,7 @@ if isempty(validated)
     mononame = 'Mono++';
     colorname = 'Color++';
     devbits = 14;
+    checkGPUEncoders = 0;
 end
 
 if strcmpi(cmd, 'DIOCommand')
@@ -439,6 +441,14 @@ if strcmpi(cmd, 'SetTargetDeviceType')
     return;
 end
 
+if strcmpi(cmd, 'TestGPUEncoders')
+    % Perform check of GPU identity gamma tables and encoders during next
+    % 'OpenWindowXXX' call in Datapixx mode. This is a one-shot, auto-reset
+    % flag:
+    checkGPUEncoders = 1;
+    return;
+end
+
 if strcmpi(cmd, 'ForceUnvalidatedRun')
     % Enforce use of this routine without verification of correct function
     % of the imaging pipeline. This is used by the correctness test itself
@@ -536,6 +546,17 @@ if strcmpi(cmd, 'OpenWindowBits++')
     if rpix~=0
         tlockXOffset = -rpix;
         fprintf('OpenWindow%s: Applying corrective horizontal DIO T-Lock offset of %i pixels for buggy graphics card driver. Will hopefully fix it...\n', bplusname, tlockXOffset);        
+    end
+
+    if targetdevicetype == 1 && checkGPUEncoders
+        % Perform DataPixx builtin diagnostics to detect problems with
+        % wrong GPU gamma tables or GPU dithering:
+        checkGPUEncoders = 0;
+        if PsychDataPixx('CheckGPUSanity', win, tlockXOffset)
+            % Ohoh, trouble ahead! The driver detected problems with the
+            % GPU and wasn't able to auto-correct them.
+            fprintf('%s: CAUTION! DataPixx internal diagnostic detected problems with your graphics card driver which it could not correct by itself!\n', drivername);
+        end
     end
     
     % Now enable finalizer hook chains and load them with the special Bits++
@@ -881,6 +902,17 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
         fprintf('%s: Applying corrective horizontal DIO T-Lock offset of %i pixels for buggy graphics card driver. Will hopefully fix it...\n', drivername, tlockXOffset);        
     end
 
+    if targetdevicetype == 1 && checkGPUEncoders
+        % Perform DataPixx builtin diagnostics to detect problems with
+        % wrong GPU gamma tables or GPU dithering:
+        checkGPUEncoders = 0;
+        if PsychDataPixx('CheckGPUSanity', win, tlockXOffset)
+            % Ohoh, trouble ahead! The driver detected problems with the
+            % GPU and wasn't able to auto-correct them.
+            fprintf('%s: CAUTION! DataPixx internal diagnostic detected problems with your graphics card driver which it could not correct by itself!\n', drivername);
+        end
+    end
+    
     % Enable framebuffer output formatter: From this point on, all visual
     % output will be reformatted to Bits++ framebuffer format at each
     % invokation of Screen('DrawingFinished') or Screen('Flip'), whatever

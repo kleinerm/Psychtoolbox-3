@@ -38,6 +38,21 @@ function BitsPlusImagingPipelineTest(whichScreen, plotdiffs, forcesuccess)
 % inspection and a photometer/colorimeter test can really tell you if the
 % whole system is working correctly!
 
+answer = input('Test with DataPixx? [y/n] ', 's');
+if answer == 'y'
+    % Tell BitsPlusPlus driver that this is operating on a DataPixx:
+    BitsPlusPlus('SetTargetDeviceType', 1);
+    
+    answer = input('Run DataPixx based diagnostics as well [Time consuming]? [y/n] ', 's');
+    if answer == 'y'
+        % Enable one-shot diagnostic of GPU encoders via DataPixx:
+        BitsPlusPlus('TestGPUEncoders');
+    end
+else
+    % Tell BitsPlusPlus driver that this is operating on a Bits+:
+    BitsPlusPlus('SetTargetDeviceType', 0);    
+end
+
 oldverbosity = Screen('Preference', 'Verbosity', 2);
 
 % Define screen:
