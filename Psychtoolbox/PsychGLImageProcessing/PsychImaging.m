@@ -1166,7 +1166,7 @@ if strcmp(cmd, 'RestrictProcessingToROI')
     end
 
     ox = scissorrect(RectLeft);
-    oy = scissorrect(RectTop);
+    oy = scissorrect(RectBottom);
     w  = RectWidth(scissorrect);
     h  = RectHeight(scissorrect);
 
@@ -2722,7 +2722,7 @@ if ~isempty(floc)
             end
 
             ox = scissorrect(RectLeft);
-            oy = scissorrect(RectTop);
+            oy = scissorrect(RectBottom);
             w  = RectWidth(scissorrect);
             h  = RectHeight(scissorrect);
             
