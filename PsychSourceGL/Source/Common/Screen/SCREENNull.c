@@ -64,13 +64,13 @@ PsychError SCREENNull(void)
 	#if PSYCH_SYSTEM == PSYCH_LINUX
 		PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
 
-		// Return current OpenML workaround2 enable state:
-		PsychCopyOutDoubleArg(1, FALSE, (int) (windowRecord->specialflags & kPsychNeedOpenMLWorkaround2));
+		// Return current OpenML kPsychOpenMLDefective state:
+		PsychCopyOutDoubleArg(1, FALSE, (int) (windowRecord->specialflags & kPsychOpenMLDefective));
 
 		// Enable/Disable current OpenML workaround2:
 		if (PsychCopyInIntegerArg(2, FALSE, &i)) {
-			if (i > 0) windowRecord->specialflags |= kPsychNeedOpenMLWorkaround2;
-			if (i == 0) windowRecord->specialflags &= ~kPsychNeedOpenMLWorkaround2;
+			if (i > 0) windowRecord->specialflags |= kPsychOpenMLDefective;
+			if (i == 0) windowRecord->specialflags &= ~kPsychOpenMLDefective;
 		}
 
 		if (PsychCopyInIntegerArg(3, FALSE, &i)) {

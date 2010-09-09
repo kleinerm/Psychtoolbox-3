@@ -223,8 +223,8 @@ typedef struct {
 // Disable SetForegroundWindow() and SetFocus() calls on Windows for onscreen windows:
 #define kPsychPreventForegroundWindow 262144
 
-// Override default setting for OpenML swap scheduling:
-#define kPsychOpenMLScheduling 524288
+// Override default setting for OpenML swap scheduling: Disable OpenML scheduling.
+#define kPsychDisableOpenMLScheduling 524288
 
 //function protoptypes
 

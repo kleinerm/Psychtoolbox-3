@@ -965,11 +965,11 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
       if (ifi_beamestimate>0) {
           printf("PTB-INFO: Measured monitor refresh interval from beamposition = %f ms [%f Hz].\n", ifi_beamestimate * 1000, 1/ifi_beamestimate);
 
-		  if (PsychPrefStateGet_VBLTimestampingMode()==4) {
+		  if ((PsychPrefStateGet_VBLTimestampingMode()==4) && !((*windowRecord)->specialflags & kPsychOpenMLDefective)) {
 			  printf("PTB-INFO: Will try to use OS-Builtin %s for accurate Flip timestamping.\n", (PSYCH_SYSTEM == PSYCH_LINUX) ? "OpenML sync control support" : "method");
 		  }
-		  else if ((PsychPrefStateGet_VBLTimestampingMode()==3) && (PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX)) {
-              if (PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX) printf("PTB-INFO: Will try to use kernel-level interrupts for accurate Flip time stamping.\n");
+		  else if ((PsychPrefStateGet_VBLTimestampingMode()==3) && (PSYCH_SYSTEM == PSYCH_OSX || ((PSYCH_SYSTEM == PSYCH_LINUX) && !((*windowRecord)->specialflags & kPsychOpenMLDefective)))) {
+              printf("PTB-INFO: Will try to use kernel-level interrupts for accurate Flip time stamping.\n");
           }
           else {
               if (PsychPrefStateGet_VBLTimestampingMode()>=0) printf("PTB-INFO: Will use beamposition query for accurate Flip time stamping.\n");
@@ -977,10 +977,10 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
           }
       }
       else {
-		  if (PsychPrefStateGet_VBLTimestampingMode()==4) {
+		  if ((PsychPrefStateGet_VBLTimestampingMode()==4) && !((*windowRecord)->specialflags & kPsychOpenMLDefective)) {
 			  printf("PTB-INFO: Will try to use OS-Builtin %s for accurate Flip timestamping.\n", (PSYCH_SYSTEM == PSYCH_LINUX) ? "OpenML sync control support" : "method");
 		  }
-		  else if ((PsychPrefStateGet_VBLTimestampingMode()==1 || PsychPrefStateGet_VBLTimestampingMode()==3) && (PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX)) {
+		  else if ((PsychPrefStateGet_VBLTimestampingMode()==1 || PsychPrefStateGet_VBLTimestampingMode()==3) && (PSYCH_SYSTEM == PSYCH_OSX || ((PSYCH_SYSTEM == PSYCH_LINUX) && !((*windowRecord)->specialflags & kPsychOpenMLDefective)))) {
               if (PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX) printf("PTB-INFO: Beamposition queries unsupported on this system. Will try to use kernel-level vbl interrupts as fallback.\n");
           }
           else {
@@ -4898,35 +4898,54 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		}		
 	}
 	
-	// Check if OpenML extensions for precisely scheduled stimulus onset and onset timestamping are supported:
 	#ifdef GLX_OML_sync_control
+	
+	// Running on a XServer prior to version 1.8.2 with broken OpenML implementation? Mark it, if so:
+	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Running on '%s' XServer, Vendor release %i.\n", XServerVendor(windowRecord->targetSpecific.deviceContext), (int) XVendorRelease(windowRecord->targetSpecific.deviceContext));
+
 	if (verbose) {
 		printf("OML_sync_control indicators: glXGetSyncValuesOML=%p , glXWaitForMscOML=%p, glXWaitForSbcOML=%p, glXSwapBuffersMscOML=%p\n",
 				glXGetSyncValuesOML, glXWaitForMscOML, glXWaitForSbcOML, glXSwapBuffersMscOML);
 		printf("OML_sync_control indicators: glxewIsSupported() says %i.\n", (int) glxewIsSupported("GLX_OML_sync_control"));
 	}
 
-	if (glxewIsSupported("GLX_OML_sync_control") || (glXGetSyncValuesOML && glXWaitForMscOML && glXWaitForSbcOML && glXSwapBuffersMscOML)) {
+	// Check if OpenML extensions for precisely scheduled stimulus onset and onset timestamping are supported:
+	if (glxewIsSupported("GLX_OML_sync_control") && (glXGetSyncValuesOML && glXWaitForMscOML && glXWaitForSbcOML && glXSwapBuffersMscOML)) {
 		if (verbose) printf("System supports OpenML OML_sync_control extension for high-precision scheduled swaps and timestamping.\n");
-		
-		// As OpenML is currently only supported on GNU/Linux in a rather experimental stage, use of this is an opt-in.
-		// Usercode must set a conserveVRAM flag to enable use of the extension if it is present:
-		// TODO: Reevaluate quality of our implementation and Linux implementation frequently and
-		// find out when it is safe to have this default to ON instead of OFF, or what kind of
-		// auto-detection could be used to decide.
-		if (PsychPrefStateGet_ConserveVRAM() & kPsychOpenMLScheduling) {
-			// Enabled and supported: Use it.
-			windowRecord->gfxcaps |= kPsychGfxCapSupportsOpenML;
-			if (verbose) printf("OpenML OML_sync_control extension enabled for all scheduled swaps.\n");
+
+		// If prior 1.8.2 and therefore defective, disable use of OpenML for anything, even timestamping:
+		if (XVendorRelease(windowRecord->targetSpecific.deviceContext) < 10802000) {
+			// OpenML timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
+			windowRecord->specialflags |= kPsychOpenMLDefective;
 			
-			// Perform correctness check and enable all relevant workarounds. We know that OpenML
-			// currently is only supported on Linux/X11 with some DRI2 drivers, and that the shipping
-			// DRI implementation up to and including Linux 2.6.34 does have a limitation that we need to detect
-			// and workaround. Therefore we restrict this test & setup routine to Linux:
-			#if PSYCH_SYSTEM == PSYCH_LINUX
-			// Perform baseline init and correctness check:
-			PsychOSInitializeOpenML(windowRecord);
-			#endif
+			// OpenML swap scheduling in PsychFlipWindowBuffers() disabled:
+			windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
+			
+			if (PsychPrefStateGet_Verbosity() > 1) {
+				printf("PTB-WARNING: XServer version prior to 1.8.2 with defective OpenML OML_sync_control implementation detected! Disabling all OpenML support.\n");
+			}
+		}
+		else {
+			// OpenML is currently only supported on GNU/Linux, but should be pretty well working/useable
+			// starting with Linux kernel 2.6.35 and XOrg X-Servers 1.8.2, 1.9.x and later, as shipping
+			// in the Ubuntu 10.10 release in October 2010 and other future distributions.
+			// PTB will use OpenML scheduling if supported and found to be correctly working, but the
+			// kPsychDisableOpenMLScheduling conserveVRAM flag allows to force it off and fall back to
+			// conventional PTB scheduling.
+			if (!(PsychPrefStateGet_ConserveVRAM() & kPsychDisableOpenMLScheduling)) {
+				// Enabled and supported: Use it.
+				windowRecord->gfxcaps |= kPsychGfxCapSupportsOpenML;
+				if (verbose) printf("OpenML OML_sync_control extension enabled for all scheduled swaps.\n");
+				
+				// Perform correctness check and enable all relevant workarounds. We know that OpenML
+				// currently is only supported on Linux/X11 with some DRI2 drivers, and that the shipping
+				// DRI implementation up to and including Linux 2.6.36 does have a limitation that we need to detect
+				// and workaround. Therefore we restrict this test & setup routine to Linux:
+				#if PSYCH_SYSTEM == PSYCH_LINUX
+				// Perform baseline init and correctness check:
+				PsychOSInitializeOpenML(windowRecord);
+				#endif
+			}
 		}
 	}
 	#endif

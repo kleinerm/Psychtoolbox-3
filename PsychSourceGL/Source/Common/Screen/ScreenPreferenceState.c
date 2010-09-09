@@ -134,7 +134,7 @@ void PrepareScreenPreferences(void)
 	screenConserveVRAM=0;
 	EmulateOldPTB=FALSE;
 	Enable_3d_gfx=0;
-	screenVBLTimestampingMode=1;
+	screenVBLTimestampingMode = (PSYCH_SYSTEM == PSYCH_LINUX) ? 4 : 1;
 	screenVBLEndlineOverride=-1;
 	videoCaptureEngineId=PTB_DEFAULTVIDCAPENGINE;
 	windowShieldingLevel=2000;

@@ -674,9 +674,9 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
 	// Ok, this will return VBL count and last VBL time via the OML GetSyncValuesOML call
 	// if that extension is supported on this setup. As of mid 2009 i'm not aware of any
 	// affordable graphics card that would support this extension, but who knows??
-	if ((NULL != glXGetSyncValuesOML) && (glXGetSyncValuesOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, (int64_t*) &ust, (int64_t*) &msc, (int64_t*) &sbc))) {
+	if ((NULL != glXGetSyncValuesOML) && !(windowRecord->specialflags & kPsychOpenMLDefective) && (glXGetSyncValuesOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, (int64_t*) &ust, (int64_t*) &msc, (int64_t*) &sbc))) {
 		*vblCount = msc;
-		if (PsychGetKernelTimebaseFrequencyHz() > 10000) {
+		if ((PsychGetKernelTimebaseFrequencyHz() > 10000) && !(windowRecord->specialflags & kPsychNeedOpenMLWorkaround1)) {
 			// Convert ust into regular GetSecs timestamp:
 			// At least we hope this conversion is correct...
 			return( PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz()) );
@@ -737,64 +737,11 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 	msc = -1;
 
 	#ifdef GLX_OML_sync_control
-
-	if (PsychPrefStateGet_Verbosity() > 13) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Checking for glXWaitForSbcOML() support.\n");
 	
-	// Extension unsupported? Return -1 in that case:
-	if (NULL == glXWaitForSbcOML) return(-1);
+	// Extension unsupported or known to be defective? Return -1 "unsupported" in that case:
+	if ((NULL == glXWaitForSbcOML) || (windowRecord->specialflags & kPsychOpenMLDefective)) return(-1);
 
-	// Workaround for broken XServer 1.8: Special value targetSBC == 0 is not honored,
-	// so we need to supply a reasonable targetSBC to avoid malfunction.
-	// windowRecord->target_sbc is set up properly in PsychOSScheduleFlipWindowBuffers()
-	// if the kPsychNeedOpenMLWorkaround2 is enabled. By default it is zero:
-	// UPDATE: This bug is fixed, but it masked a new bug in 1.8.1. See code below, which needs
-	// the "true" targetSBC again:
-	if ((windowRecord->specialflags & kPsychNeedOpenMLWorkaround2) && (targetSBC < windowRecord->target_sbc)) targetSBC = windowRecord->target_sbc;
 	if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Supported. Calling with targetSBC = %lld.\n", targetSBC);
-
-//	// Broken XServer which needs special attention? FIXED as of 24.5.10
-//	if (windowRecord->specialflags & kPsychNeedOpenMLWorkaround2) {
-//		if (!glXGetSyncValuesOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc)) return(-3);
-//
-//		// Target swap already completed?
-//		if (sbc >= targetSBC) {
-//			// We're screwed. Output warning and fallback to query unsupported status.
-//			// The "unsupported" return code will trigger use of fallback path in calling
-//			// code, so we may be able to recover...
-//			if (PsychPrefStateGet_Verbosity() > 11) {
-//				printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Too late for glXWaitForSbcOML() query (sbc %i >= targetSBC %i)! Failing with rc = -1.\n", (int) sbc, (int) targetSBC);
-//			}
-//			return(-1);
-//		}
-//	}
-
-	// Broken XServer which needs special attention?
-	// 1.8.1's glXWaitForSbcOML() doesn't block if target swap hasn't completed. Instead
-	// it only blocks the XDisplay-Connection, but returns immediately with random trash
-	// as return values. This code will actively wait for the targetSBC to be reached before
-	// calling glXWaitForSbcOML(), provided that targetSBC is known at call time.
-	if (windowRecord->specialflags & kPsychNeedOpenMLWorkaround2) {
-		while (TRUE) {
-			if (!glXGetSyncValuesOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc)) return(-3);
-			
-			// Target swap already completed?
-			if (sbc < targetSBC) {
-				// No. Need to delay our final query, otherwise a bug in the current XServer 1.8.1 may trigger
-				// and cause the query to return corrupted values:
-				if (PsychPrefStateGet_Verbosity() > 12) {
-					printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Too early for glXWaitForSbcOML() query (sbc %lld < targetSBC %lld)! Delaying one frame, then retrying...\n", sbc, targetSBC);
-				}
-
-				// Wait one video refresh cycle, then retry:
-				if (!glXWaitForMscOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, msc + 1, 0, 0, &ust, &msc, &sbc)) return(-4);
-			}
-			else {
-				// Swap completed!
-				break;
-			}
-		}
-		if (PsychPrefStateGet_Verbosity() > 12) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Calling NOW at msc %lld, sbc %lld.\n", msc,    sbc);		
-	}
 
 	// Extension supported: Perform query and error check.
 	if (!glXWaitForSbcOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, targetSBC, &ust, &msc, &sbc)) return(-2);
@@ -880,8 +827,8 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 		// Basic OpenML functions failed?!? Not good! Disable OpenML, warn user:
 		windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
 		
-		if (PsychPrefStateGet_Verbosity() > 0) {
-			printf("PTB-ERROR: At least one test call for OpenML OML_sync_control extension failed! Will disable OpenML and revert to fallback implementation.\n");
+		if (PsychPrefStateGet_Verbosity() > 1) {
+			printf("PTB-WARNING: At least one test call for OpenML OML_sync_control extension failed! Will disable OpenML and revert to fallback implementation.\n");
 		}
 
 		return;
@@ -894,8 +841,8 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 
 	// Perform correctness test for glXGetSyncValuesOML() over a time span
 	// of 6 video refresh cycles. This checks for a limitation that is present
-	// in all shipping Linux kernels up to at least version 2.6.34, possibly
-	// also in 2.6.35 depending on MK's progress with this feature:
+	// in all shipping Linux kernels up to at least version 2.6.36, possibly
+	// also in 2.6.37 depending on MK's progress with this feature:
 	finalmsc = msc + 6;
 	oldmsc = msc;
 	oldust = ust;
@@ -935,22 +882,13 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 	
 	// Failed or succeeded?
 	if (failed) {
-		// Failed! Enable workaround and optionally warn user:
+		// Failed! Enable workaround and optionally inform user:
 		windowRecord->specialflags |= kPsychNeedOpenMLWorkaround1;
 		
 		if (PsychPrefStateGet_Verbosity() > 1) {
-			printf("PTB-WARNING: OpenML OML_sync_control implementation with defective glXGetSyncValuesOML() function detected! Enabling workaround for ok performance.\n");
+			printf("PTB-INFO: OpenML OML_sync_control implementation with problematic glXGetSyncValuesOML() function detected. Enabling workaround for ok performance.\n");
 		}
 	}
-
-	// Running on a broken XServer of version < 1.8.2-RC2? Need to enable our workarounds if so:
-	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Running on '%s' XServer, Vendor release %i.\n", XServerVendor(windowRecord->targetSpecific.deviceContext), (int) XVendorRelease(windowRecord->targetSpecific.deviceContext));
-	if (XVendorRelease(windowRecord->targetSpecific.deviceContext) < 10801902) windowRecord->specialflags |= kPsychNeedOpenMLWorkaround2;
-
-	if ((windowRecord->specialflags & kPsychNeedOpenMLWorkaround2) && (PsychPrefStateGet_Verbosity() > 1)) {
-		printf("PTB-WARNING: OpenML OML_sync_control implementation with defective XServer version < 1.8.2-RC2 detected! Enabling workarounds and hoping for the best...\n");
-	}
-	
 	#else
 		// Disable extension:
 		windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;	
@@ -995,7 +933,7 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 	// Is the extension supported by the system and enabled by Psychtoolbox? If not, we return
 	// a "not-supported" status code of -1 and turn into a no-op:
 	if (!(windowRecord->gfxcaps & kPsychGfxCapSupportsOpenML)) return(-1);
-	
+
 	// Extension supported and enabled. Use it.
 	#ifdef GLX_OML_sync_control
 
@@ -1070,42 +1008,6 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 		targetMSC += (targetMSC % divisor == remainder) ? 0 : 1; 
 	}
 
-//	// Workaround for broken DRI2 swap & sync bits in XServer 1.8 needed?  FIXED as of 24.5.10
-//	if (windowRecord->specialflags & kPsychNeedOpenMLWorkaround2) {
-//		// Yes :(
-//		
-//		// First workaround: Need to compute the expected targetSBC value for later glXWaitForSbcOML()
-//		// queries, as the special targetSBC == 0 value is not honored in 1.8. This is used in
-//		// PsychOSGetSwapCompletionTimestamp().
-//		// Query current sbc, target post swap request will be sbc + 1:
-//		if (!glXGetSyncValuesOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &ust, &msc, &(windowRecord->target_sbc))) return(-5);
-//		windowRecord->target_sbc++;
-//
-//		// Second workaround: glXSwapBuffersMscOML() is broken. It honors divisor, remainder,
-//		// but ignores targetMSC. We setup divisor and remainder so that remainder encodes our
-//		// desired targetMSC and proper scheduling is achieved via the (divisor, remainder) constraint.
-//		// We delay the glXSwapBuffersMscOML() call until the current msc is >= last known swap target msc + 1.
-//		// This should make sure that the (divisor,remainder) handling inside the current Intel and Radeon DDX
-//		// gets triggered and we're kind'a good. The very first swap will always be spoiled though...
-//		if (msc < windowRecord->lastSwaptarget_msc + 1) {
-//			// Ok, need to delay for the trickery to work:
-//			if (!glXWaitForMscOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->lastSwaptarget_msc + 1, 0, 0, &ust, &msc, &sbc)) return(-6);
-//			if (PsychPrefStateGet_Verbosity() > 12) printf("PTB-DEBUG:PsychOSScheduleFlipWindowBuffers: Delayed swap submission until glXWaitForMscOML until msc == %i >= lastSwaptarget + 1.\n", (int) msc);
-//		}
-//		
-//		// Set divisor to max 32-bit int value, so it is non-zero (--> DDX's will use (divisor,remainder) logic)
-//		// but has no real effect as (msc % divisor) == msc for any msc < 2^32-1, that is for any real-world msc.
-//		divisor = 0xffffffff;
-//		
-//		// Set remainder to the desired targetMSC. The targetMSC value gets ignored by broken XServer, but
-//		// the (divisor, remainder) logic will compute an effective that is:
-//		//      targetMSC = msc - (msc % divisor) + remainder
-//		// <=>  targetMSC = msc - msc + remainder
-//		// <=>  targetMSC = remainder.
-//		// Therefore if we set remainder == targetMSC, then stuff should kind'a work.
-//		remainder = targetMSC;
-//	}
-
 	if (PsychPrefStateGet_Verbosity() > 12) printf("PTB-DEBUG:PsychOSScheduleFlipWindowBuffers: Submitting swap request for targetMSC = %lld, divisor = %lld, remainder = %lld.\n", targetMSC, divisor, remainder);
 
 	// Ok, we have a valid final targetMSC. Schedule a bufferswap for that targetMSC, taking a potential
@@ -1115,13 +1017,9 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 	// Failed? Return -4 error code if so:
 	if (rc == -1) return(-4);
 
-//	// Need to keep track of most recent lastSwaptarget_msc for workaround to work.
-//	// Luckily another bug in the broken XServer just causes 'rc' to return exactly
-//	// the info we need ;-)  FIXED as of 24.5.10
-//	if (windowRecord->specialflags & kPsychNeedOpenMLWorkaround2) windowRecord->lastSwaptarget_msc = rc;
-
-	// A new bug uncovered in 1.8.1 needs this and the corresponding code in PsychOSGetSwapCompletionTimestamp()
-	if (windowRecord->specialflags & kPsychNeedOpenMLWorkaround2) windowRecord->target_sbc = rc;
+	// Keep track of target_sbc and targetMSC, who knows for what they might be good for?
+	windowRecord->target_sbc = rc;
+	windowRecord->lastSwaptarget_msc = targetMSC;
 
 	#else
 		// No op branch in case OML_sync_control isn't enabled at compile time:
@@ -1139,15 +1037,8 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 */
 void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 {
-	// unsigned int		vsync_counter = 0;
-
 	// Execute OS neutral bufferswap code first:
 	PsychExecuteBufferSwapPrefix(windowRecord);
-	
-	//  glXGetVideoSyncSGI(&vsync_counter);
-	//  printf("PREFLIP-VSYNC: %i\n", vsync_counter);
-	//  glXWaitVideoSyncSGI(2000000000, (int) vsync_counter + 10, &vsync_counter);
-	//  printf("POSTFLIP-VSYNC: %i\n", vsync_counter);
 	
 	// Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
 	glXSwapBuffers(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle);

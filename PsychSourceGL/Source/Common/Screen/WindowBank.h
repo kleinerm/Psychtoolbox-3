@@ -124,7 +124,7 @@ TO DO:
 
 #define kPsychIsFullscreenWindow		  4 // 'specialflags' setting 4 means: This is a fullscreen window.
 #define kPsychNeedOpenMLWorkaround1		  8 // 'specialflags' setting 8 means: This needs the special workarounds for slightly broken OpenML sync control ext.
-#define kPsychNeedOpenMLWorkaround2		 16 // 'specialflags' setting 16 means: This needs the special workarounds for slightly broken OpenML sync control ext in XServer 1.8
+#define kPsychOpenMLDefective		     16 // 'specialflags' setting 16 means: Don't use OpenML sync control extension for timestamping anywhere.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384. --> Flags of 32768 and higher are available...

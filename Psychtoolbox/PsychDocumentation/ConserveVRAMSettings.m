@@ -205,14 +205,15 @@
 % flag you can make a conscious decision between proper stimulus display
 % and use of GetChar.
 %
-% 524288 (= 2^19) == kPsychOpenMLScheduling
-% Override default mode for OpenML scheduling of bufferswaps. This flag is
-% used to toggle an experimental feature in PTB: OpenML support on
-% GNU/Linux. Currently this flag will enable use of OpenML on supported
-% configurations. Once the feature has stabilized, we will instead default
-% to use OpenML if supported and this flag will allow to forcefully disable
-% it. --> DO NOT USE in your scripts unless you really know what you're
-% doing!
+% 524288 (= 2^19) == kPsychDisableOpenMLScheduling
+% Disable use of OpenML scheduling for Screen('Flip') bufferswaps. OpenML
+% is currently supported on some recent versions of GNU/Linux with certain
+% graphics cards and drivers (e.g., Free graphics stack on Ubuntu 10.10 and
+% later with modern Intel and ATI/AMD GPU's and XOrg Servers 1.8.2, 1.9.x and
+% later, Linux kernel 2.6.35 and later). PTB will use OpenML for scheduling
+% and timestamping of visual stimulus onset if it detects a Linux system
+% with support for OpenML. The kPsychDisableOpenMLScheduling flag will
+% forcefully disable use of OpenML, e.g., for debugging/testing purpose.
 %
 %
 % --> It's always better to update your graphics drivers with fixed
