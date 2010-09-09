@@ -4951,6 +4951,26 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 			}
 		}
 	}
+	else {
+		// OpenML unsupported:
+		if (verbose) printf("No support for OpenML OML_sync_control extension. Using standard implementation.\n");
+
+		// OpenML timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
+		windowRecord->specialflags |= kPsychOpenMLDefective;
+		
+		// OpenML swap scheduling in PsychFlipWindowBuffers() disabled:
+		windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
+
+	}
+	#else
+		// OpenML unsupported:
+		if (verbose) printf("No support for OpenML OML_sync_control extension. Using standard implementation.\n");
+
+		// OpenML timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
+		windowRecord->specialflags |= kPsychOpenMLDefective;
+		
+		// OpenML swap scheduling in PsychFlipWindowBuffers() disabled:
+		windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
 	#endif
 	
 	if (verbose) printf("PTB-DEBUG: Interrogation done.\n\n");
