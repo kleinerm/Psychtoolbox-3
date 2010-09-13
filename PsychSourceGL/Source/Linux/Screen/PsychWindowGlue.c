@@ -554,8 +554,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   fflush(NULL);
 
   // ATI Radeon X1000 or later AND first opened onscreen window?
-  if ((x11_windowcount == 1) && ( (strstr(glGetString(GL_VENDOR), "ATI") && (strstr(glGetString(GL_RENDERER), "Radeon") || strstr(glGetString(GL_RENDERER), "Fire"))) ||
-								  (strstr(glGetString(GL_VENDOR), "Advanced Micro Devices") && strstr(glGetString(GL_RENDERER), "Mesa DRI R")) )) {
+  if ((x11_windowcount == 1) && ( (strstr(glGetString(GL_VENDOR), "ATI") && (strstr(glGetString(GL_RENDERER), "Radeon") || strstr(glGetString(GL_RENDERER), "Fire"))) || (strstr(glGetString(GL_VENDOR), "DRI R")) || (strstr(glGetString(GL_VENDOR), "Advanced Micro Devices") && strstr(glGetString(GL_RENDERER), "Mesa DRI R")) )) {
 	  if (strstr(glGetString(GL_RENDERER), "X") || strstr(glGetString(GL_RENDERER), "HD") || strstr(glGetString(GL_RENDERER), "Mesa DRI")) {
 	  	// Probably an X1000 or later or an HD 2000/3000/later series chip.
 		// Try to map its PCI register space to allow for our implementation of

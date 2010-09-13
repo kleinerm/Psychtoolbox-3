@@ -45,7 +45,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <asm/page.h>
 
 // We build with VidModeExtension support unless forcefully disabled at compile time via a -DNO_VIDMODEEXTS
 #ifndef NO_VIDMODEEXTS
