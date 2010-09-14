@@ -1166,7 +1166,10 @@ if strcmp(cmd, 'RestrictProcessingToROI')
     end
 
     ox = scissorrect(RectLeft);
-    oy = scissorrect(RectTop);
+
+    [winwidth, winheight] = Screen('WindowSize', win);
+    oy = winheight - scissorrect(RectBottom);
+
     w  = RectWidth(scissorrect);
     h  = RectHeight(scissorrect);
 
@@ -1195,7 +1198,6 @@ if strcmp(cmd, 'RestrictProcessingToROI')
     if mystrcmp(whichView, 'FinalFormatting')
         % Need to restrict final formatting blit processing:
         DoRemoveScissorRestriction(win, 'FinalOutputFormattingBlit');
-        oy = scissorrect(RectBottom);
         Screen('HookFunction', win, 'PrependBuiltin', 'FinalOutputFormattingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
     end
 
@@ -2723,7 +2725,10 @@ if ~isempty(floc)
             end
 
             ox = scissorrect(RectLeft);
-            oy = scissorrect(RectTop);
+
+            [winwidth, winheight] = Screen('WindowSize', win);
+            oy = winheight - scissorrect(RectBottom);
+
             w  = RectWidth(scissorrect);
             h  = RectHeight(scissorrect);
             
@@ -2748,7 +2753,6 @@ if ~isempty(floc)
 
             if mystrcmp(reqs{row, 1}, 'FinalFormatting')
                 % Need to restrict final formatting blit processing:
-                oy = scissorrect(RectBottom);
                 Screen('HookFunction', win, 'PrependBuiltin', 'FinalOutputFormattingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
             end
             
