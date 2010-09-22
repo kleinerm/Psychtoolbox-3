@@ -385,7 +385,10 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   'FloatingPoint16Bit' explicitely. If you do that, you will not be able
 %   to use the full 16 bit output precision, but only approximately 10 bits.
 %
-%   Usage: PsychImaging('AddTask', 'General', 'EnableDataPixxC48Output');
+%   Usage: PsychImaging('AddTask', 'General', 'EnableDataPixxC48Output', mode);
+%
+%   See the section below about 'EnableBits++Color++Output' for the meaning
+%   of the mandatory "mode" parameter.
 %
 %
 % * 'EnableBits++Bits++Output' Setup Psychtoolbox for Bits++ mode of the
@@ -449,6 +452,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   persists across flips. You need to clear it out manually via a
 %   Screen('FillRect') command.
 %
+%
 % * 'EnableBits++Color++Output' Enable the high-performance driver for the
 %   Color++ mode of Cambridge Research Systems Bits++ box. This is the
 %   fastest and most elegant way of driving the Bits++ box with 14 bit
@@ -459,7 +463,56 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   will not be able to use the full 14 bit output precision of Bits++, but
 %   only approximately 10 bits.
 %
-%   Usage: PsychImaging('AddTask', 'General', 'EnableBits++Color++Output');
+%   Usage: PsychImaging('AddTask', 'General', 'EnableBits++Color++Output', mode);
+%
+%   "mode" is a mandatory numeric parameter which must be 0, 1 or 2. In
+%   Color++ mode, the effective horizontal display resolution is only half
+%   the normal horizontal resolution. To cope with this, multiple different
+%   methods are implemented to squeeze your stimulus image horizontally by
+%   a factor of two. The following options exist:
+%
+%   0 = This is the "classic" mode which was used in all Psychtoolbox
+%   versions prior to 22nd September 2010. If you want to keep old code
+%   working as is, select 0. In this mode, your script will only see a
+%   framebuffer that is half the true horizontal resolution of your
+%   connected display screen. Each drawn pixel will be stretched to cover
+%   two pixels on the output display device horizontally. While this
+%   preserves the content of your stimulus image exactly, it means that the
+%   aspect ratio of all displayed text and stimuli will be 2:1. Text will
+%   be twice as wide as its height. Circles or squares will turn into
+%   horizontal ellipses or rectangles etc. You'll need to do extra work in
+%   your code if you want to preserve aspect ratio properly.
+%
+%   Example: A fine vertical grid with alternating vertical white and black
+%   lines would display as expected, but each white or black stripe would be
+%   two pixels wide on the display instead of one pixel wide.
+%
+%   1 = Subsample: Your framebuffer will appear at the same resolution as
+%   your display device. Aspect ratio of drawn stimuli/text etc. will be
+%   correct and as expected. However, every 2nd column of pixels in your
+%   stimulus (ie., all odd-numbered x-coordinates 1,3,5,7,...) will be
+%   completely ignored, only even columns are used!
+%
+%   Example: A fine vertical grid with alternating vertical white and black
+%   lines would display as a purely white image, as only the white pixels
+%   in the even columns would be used, whereas the black pixels in the odd
+%   columns would be ignored.
+%
+%   2 = Average: Your framebuffer will appear at the same resolution as
+%   your display device. Aspect ratio of drawn stimuli/text etc. will be
+%   correct and as expected. However, each pair of adjacent even/odd pixel
+%   columns will be averaged before output. Stimulus pixels 0 and 1 will
+%   contribute the mean color for display pixel 0. Pixels 2 and 3 will be
+%   averaged into display pixel 1 and so on. Visually this gives the most
+%   pleasing and smooth results, but if adjacent even/odd pixels don't have
+%   the same color value, you'll obviously get an output color that is
+%   neither the color of the even pixel nor the odd pixel, but the average
+%   of both.
+%
+%   Example: A fine vertical grid with alternating vertical white and black
+%   lines would display as a 50% gray image, as the alternating white and
+%   black columns would be averaged into the average of white and black,
+%   which is 50% gray.
 %
 %
 % * 'EnableDualPipeHDROutput' Enable EXPERIMENTAL high-performance driver
@@ -1528,8 +1581,19 @@ if ~isempty(find(mystrcmp(reqs, 'EnableVideoSwitcherSimpleLuminanceOutput'))) ||
 end
 
 if ~isempty(find(mystrcmp(reqs, 'EnableBits++Color++Output')))
+    floc = find(mystrcmp(reqs, 'EnableBits++Color++Output'));
+    [rows cols] = ind2sub(size(reqs), floc(1));
+    row = rows(1);
+    % Extract first parameter - This should be the colorConversionMode:
+    colorConversionMode = reqs{row, 3};
+    BitsPlusPlus('SetColorConversionMode', colorConversionMode);
+    
+    % These settings are mildly redundant, as the dedicated
+    % OpenWindowColor++ code in the BitsPlusPlus.m helper file will do all
+    % neccessary setup, especially deciding of kPsychNeedHalfWidthWindow is
+    % needed or not:
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
-    imagingMode = mor(imagingMode, kPsychNeedOutputConversion, kPsychNeedHalfWidthWindow);
+    imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
 
     % The Color++ formatter is icm aware - Capable of internal color
     % correction, but not setup here -- special case: Set flag to zero:

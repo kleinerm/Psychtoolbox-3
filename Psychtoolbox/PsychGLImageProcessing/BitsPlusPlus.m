@@ -170,6 +170,15 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % hardware requirements and other useful tips for use of Bits++.
 %
 %
+% If you use Color++ mode, you must call
+% BitsPlusPlus('SetColorConversionMode', mode); first to select the mode
+% for sampling the framebuffer and converting into output color values. See
+% the respective section of "help PsychImaging" for 'Color++' or
+% 'EnableDataPixxC48Output' mode for the Bits+ or Datapixx device for an
+% explanation of this mandatory parameter. The setting before 22nd
+% September 2010 for all PTB-3 versions was 0 (==zero).
+%
+%
 % Notes for both Mono++ and Color++ mode:
 %
 % In Mono++ and Color++ mode, PTB expects color values in the range 0.0 to
@@ -276,6 +285,9 @@ persistent blitTLockCode;
 % Corrective x-offset for DIO blitting:
 persistent tlockXOffset;
 
+% Opmode for color conversion/buffer sampling in Color++ / C48 mode:
+persistent colorConversionMode;
+
 if nargin < 1
     error('You must specify a command in argument "cmd"!');
 end
@@ -323,6 +335,7 @@ if isempty(validated)
     colorname = 'Color++';
     devbits = 14;
     checkGPUEncoders = 0;
+    colorConversionMode = [];
 end
 
 if strcmpi(cmd, 'DIOCommand')
@@ -429,15 +442,26 @@ if strcmpi(cmd, 'SetTargetDeviceType')
         case 1,
             drivername = 'PsychDatapixx';
             devname = 'DataPixx';
-            bplusname = 'L48-Mode';
-            mononame = 'M16-Mode';
-            colorname = 'C48-Mode';
+            bplusname = 'L48';
+            mononame = 'M16';
+            colorname = 'C48';
             devbits = 16;
             
         otherwise
             error('Unknown targetdevicetype assigned in call to "SetTargetDeviceType"!');
     end
     
+    return;
+end
+
+
+if strcmpi(cmd, 'SetColorConversionMode')
+    % Set the mode of operation for color conversion in Color++ / C48 mode.
+    % This is a mandatory call in that mode. As the effective output
+    % resolution is only half the framebuffer resolution we need to decide
+    % what tradeoff between aspect-ratio preservation, sampling precision etc.
+    % to take.
+    colorConversionMode = arg;
     return;
 end
 
@@ -710,10 +734,39 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
     imagingmode = mor(imagingmode, kPsychNeedFastBackingStore, kPsychNeedOutputConversion, ourspec);
 
     if strcmpi(cmd, 'OpenWindowColor++')
-        % In Color++ mode we only have half the effective horizontal
-        % resolution. Tell PTB to take this into account for all relevant
-        % calculations:
-        imagingmode = mor(imagingmode, kPsychNeedHalfWidthWindow);
+        if isempty(colorConversionMode)
+            sca;
+            fprintf('The new mandatory parameter "colorConversionMode" is missing!\n');
+            fprintf('If you used BitsPlusPlus(''OpenWindowColor++'', ...); to get here, then\n');
+            fprintf('add the command BitsPlusPlus(''SetColorConversionMode'', mode);\n');
+            fprintf('immediately before the BitsPlusPlus(''OpenWindowColor++'', ...); command.\n\n');
+            fprintf('If you used the more modern and recommended PsychImaging() commands to get here, then\n');
+            fprintf('change your call to PsychImaging(''AddTask'', ''General'', ''EnableBits++Color++Output'');\n');
+            fprintf('or to PsychImaging(''AddTask'', ''General'', ''EnableDataPixxC48Output''); into a call to \n');
+            fprintf('PsychImaging(''AddTask'', ''General'', ''EnableBits++Color++Output'', mode);\n');
+            fprintf('or PsychImaging(''AddTask'', ''General'', ''EnableDataPixxC48Output'', mode);\n\n');
+            fprintf('The new parameter "mode" must be 0 if you want exactly the old behaviour back.\n');
+            fprintf('For new code, you will likely want to use a value of 1 or 2 to preserve correct\n');
+            fprintf('aspect ratio.\n\n');
+            fprintf('Please read the help section for the PsychImaging() command ("help PsychImaging")\n');
+            fprintf('for the ''EnableBits++Color++Output'' subcommand. It explains the meaning of the different\n');
+            fprintf('possible settings of "mode".\n\n');
+            
+            error('Mandatory parameter "colorConversionMode" is missing!');
+        end
+        
+        if ~ismember(colorConversionMode, [0,1,2]);
+            sca;
+            fprintf('The provided "colorConversionMode" parameter %i is not one of the valid values 0, 1 or 2!\n', colorConversionMode);
+            error('Mandatory parameter "colorConversionMode" is invalid!');
+        end
+        
+        if colorConversionMode == 0
+            % In Color++ mode with "classic" conversion, we only have half the
+            % effective horizontal resolution. Tell PTB to take this into
+            % account for all relevant calculations:
+            imagingmode = mor(imagingmode, kPsychNeedHalfWidthWindow);
+        end        
     end
 
     % Open the window, pass all parameters (partially modified or overriden), return Screen's return values:
@@ -778,6 +831,25 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
         else
             fprintf('PTB - Info: Alpha-blending should be fully supported at this precision by your hardware.\n\n');            
         end
+    end
+    
+    if strcmpi(cmd, 'OpenWindowColor++')
+        if colorConversionMode == 0
+            fprintf('PTB - Info: Classic half horizontal resolution color conversion for %s mode selected.\n', colorname);
+            fprintf('PTB - Info: Aspect ratio will be horizontally distorted, ie., 2:1.\n');
+        end
+
+        if colorConversionMode == 1
+            fprintf('PTB - Info: Aspect ratio preserving half horizontal resolution color conversion for %s\n', colorname);
+            fprintf('PTB - Info: mode selected. All odd-numbered pixel columns will be ignored/skipped.\n');
+        end
+
+        if colorConversionMode == 2
+            fprintf('PTB - Info: Aspect ratio preserving bilinear color conversion for %s mode selected.\n', colorname);
+            fprintf('PTB - Info: Will average color between adjacent even/odd pixel columns.\n');
+        end
+        
+        fprintf('\n');
     end
     
     % First load the graphics hardwares gamma table with an identity mapping,
@@ -864,10 +936,47 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
 
         % No support for overlays in Color++ mode:
         useOverlay = 0;
-        
-        % Load Bits++ Color++ formatting shader:
-        shader = LoadGLSLProgramFromFiles('Bits++_Color++_FormattingShader', debuglevel, icmShaders);
 
+        if colorConversionMode == 2
+            % Load "bilinear" Bits++ Color++ formatting shader for bilinear
+            % sampling/averaging between adjacent even/odd pixel columns:
+            shader = LoadGLSLProgramFromFiles('Bits++_Color++_BilinearFormattingShader', debuglevel, icmShaders);
+        else
+            % Load "classic" Bits++ Color++ formatting shader for non-interpolated
+            % sampling:
+            shader = LoadGLSLProgramFromFiles('Bits++_Color++_FormattingShader', debuglevel, icmShaders);
+        end
+                
+        if colorConversionMode == 2
+            % "Bilinear" mode: Aspect ratio correct, full-width source
+            % framebuffer. Adjacent even/odd pixels are combined to a
+            % single output pixel via averaging, ie., the output color is
+            % the mean value of adjacent even/odd pixels:
+            
+            % Empty pString, no scaling needed:
+            pString  = '';
+        else
+            if colorConversionMode == 0
+                % "Classic" mode: Aspect ratio distorted half-width source framebuffer:
+                sampleSpacing = 0.5;
+                pString  = 'Scaling:2.0:1.0';
+            end
+
+            if colorConversionMode == 1
+                % "Subsample" mode: Aspect ratio correct, full-width source
+                % framebuffer, but sampled only at even pixel location, ie.
+                % each second pixel column is skipped:
+                sampleSpacing = 1.0;
+
+                % Empty pString, no scaling needed:
+                pString  = '';
+            end
+
+            glUseProgram(shader);
+            glUniform1f(glGetUniformLocation(shader, 'sampleSpacing'), sampleSpacing);
+            glUseProgram(0);
+        end
+        
         % Now enable output formatter hook chain and load them with the special Bits++
         % Color++ data formatting shader: We append the shader because it
         % absolutely must be the last shader to execute in that chain!
@@ -875,9 +984,8 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
         % blit, to take the fact into account that the internal window
         % buffers only have half display width.
         idString = sprintf('Color++ output formatting shader for CRS Bits++ : %s', icmIdString);
-        pString  = 'Scaling:2.0:1.0';
         pString  = [ pString ' ' icmConfig ];
-        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', idString, shader, pString);
+        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', idString, shader, pString);        
     end
 
     % Setup shaders image source as the first texture unit, this is by
@@ -1016,6 +1124,10 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
     % Reset validation flag after first run:
     validated = 0;
 
+    % Reset colorConversionMode after opening the window. It is a one-shot
+    % parameter:
+    colorConversionMode = [];
+    
     % Ready!
     return;
 end

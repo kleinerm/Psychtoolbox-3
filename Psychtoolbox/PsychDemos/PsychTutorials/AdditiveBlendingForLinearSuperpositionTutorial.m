@@ -200,8 +200,9 @@ try
             end
 
         case {'Color++'}
-            % Use Color++ mode:
-            PsychImaging('AddTask', 'General', 'EnableBits++Color++Output');
+            % Use Color++ mode: We select averaging between even/odd
+            % pixels, aka mode 2:
+            PsychImaging('AddTask', 'General', 'EnableBits++Color++Output', 2);
             overlay = 0;
 
         case {'M16'}
@@ -214,8 +215,9 @@ try
             end
 
         case {'C48'}
-            % Use C48 mode of Datapixx:
-            PsychImaging('AddTask', 'General', 'EnableDataPixxC48Output');
+            % Use C48 mode of Datapixx: We select averaging between even/odd
+            % pixels, aka mode 2:
+            PsychImaging('AddTask', 'General', 'EnableDataPixxC48Output', 2);
             overlay = 0;
 
         case {'Attenuator'}

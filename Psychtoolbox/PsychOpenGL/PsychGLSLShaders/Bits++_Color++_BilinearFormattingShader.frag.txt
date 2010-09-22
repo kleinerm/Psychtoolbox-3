@@ -1,4 +1,4 @@
-/* Bits++_Color++_FormattingShader.frag.txt -- Color++ output formatter
+/* Bits++_Color++_BilinearFormattingShader.frag.txt -- Color++ output formatter
  *
  * This shader converts a HDR texture into a RGBA8 8bpc framebuffer
  * image, suitable for display with the CRS Bits++ system in Color++
@@ -18,12 +18,14 @@
  * blending on such an image would be an undefined operation.
  *
  * This approach reduces the effectively useable horizontal display resolution to
- * half the "real" display resolution.
+ * half the "real" display resolution. It expects a full resolution input image,
+ * but computes the average color between input pixels in adjacent even/odd pixel
+ * columns. This yields nice anti-aliasing properties.
  *
  * This shader is intended for use as a plugin for the 'FinalOutputFormattingBlit'
  * chain of the Psychtoolbox-3 imaging pipeline.
  *
- * (c)2007, 2008 by Mario Kleiner, part of PTB-3, licensed to you under GPL v2.
+ * (c)2007, 2008, 2009, 2010 by Mario Kleiner, part of PTB-3, licensed to you under GPL v2.
  * See file License.txt in the Psychtoolbox root folder for the license.
  *
  */
@@ -31,7 +33,6 @@
 #extension GL_ARB_texture_rectangle : enable
 
 uniform sampler2DRect Image;
-uniform float         sampleSpacing;
 
 /* Declare external function for color conversion: */
 vec4 icmTransformColor(vec4 incolor);
@@ -42,10 +43,10 @@ void main()
     vec2 readpos = gl_FragCoord.xy;
 
     /* Update the s (==column) component to only read even or odd lines, replicating them. */
-    readpos.s = (readpos.s - mod(readpos.s, 2.0)) * sampleSpacing;
+    readpos.s = (readpos.s - mod(readpos.s, 2.0));
 
     /* Retrieve RGBA HDR input color value for a virtual Bits++ pixel. */
-    vec4 incolor = texture2DRect(Image, readpos);
+    vec4 incolor = 0.5 * (texture2DRect(Image, readpos) + texture2DRect(Image, readpos + vec2(1.0,0.0)));
 
     /* Apply some color transformation (clamping, gamma correction etc.): */
     incolor = icmTransformColor(incolor);

@@ -91,6 +91,10 @@ PsychColorCorrection('ChooseColorCorrection', 'ClampOnly');
 % Open a double buffered fullscreen window with black background, configured for the Bits++
 % Color++ Mode, i.e., with proper setup of imaging pipeline and conversion shaders:
 BitsPlusPlus('ForceUnvalidatedRun');
+
+% The correctness test for Color++/C48 mode is written for classic mode,
+% ie., mode 0, so request that:
+BitsPlusPlus('SetColorConversionMode', 0);
 [window, screenRect] = BitsPlusPlus('OpenWindowColor++', whichScreen, 0);
 
 % Find out how big the window is:
@@ -222,6 +226,10 @@ end
 fprintf('\n\n------------------- Color++ test success! -------------------------------------\n\n');
 
 % Now test Mono++ formatter:
+
+% Reset color conversion mode to "undefined" to prevent cascading
+% errors if usercode doesn't set this itself:
+BitsPlusPlus('SetColorConversionMode', []);
 
 % Generate a synthetic grating that covers the whole
 % intensity range from 0 to 16384, mapped to the 0.0 - 1.0 range:
