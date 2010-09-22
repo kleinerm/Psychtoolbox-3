@@ -23,9 +23,7 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % connector state queries), including timestamps, as well as control of
 % built-in timers of the box. We also support basic configuration of TTL
 % ports, but not yet all settings of the box like e.g., button debounce
-% time. Adding such calls is straightforward and simple. If you need such
-% functions, either add them yourself and contribute your extensions to
-% PTB, or ask us for implementing the missing calls.
+% time. Adding such calls is straightforward and simple.
 %
 % We found communication with the Cedrus boxes to be unreliable quite
 % often. It is an open question if this is a flaw in the design of the
@@ -40,6 +38,9 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % fucntions, e.g., for configuration of the TTL RJ-45 connector, work
 % unreliably for no apparent reason. Cedrus has been contacted, but so far
 % no resolution or response from them.
+%
+% In short: If you are looking for a reliable response box that is painfree
+% to use, don't buy Cedrus devices!
 %
 %
 % Subfunctions and their meaning:
@@ -2167,10 +2168,15 @@ return;
 function ptbTime = mapRTTimerToPTBTime(rtt, handle)
     global ptb_cedrus_devices;
 
-    % rtt is the parsed timevalue (already mapped from msecs to seconds),
-    % as received in a event packet from the box. We map it to ptbTime by
-    % adding the offset between GetSecs time and device RTT time, as
-    % estimated by last calibrated RTTReset():
-    ptbTime = ptb_cedrus_devices{handle}.baseToPtbOffset + rtt;
-
+    if ptb_cedrus_devices{handle}.baseToPtbOffset ~= 0
+        % rtt is the parsed timevalue (already mapped from msecs to seconds),
+        % as received in a event packet from the box. We map it to ptbTime by
+        % adding the offset between GetSecs time and device RTT time, as
+        % estimated by last calibrated RTTReset():
+        ptbTime = ptb_cedrus_devices{handle}.baseToPtbOffset + rtt;
+    else
+        % Missing clock sync. Return "invalid" result:
+        ptbTime = nan;
+    end
+    
 return;
