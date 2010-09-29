@@ -10,6 +10,7 @@
 %   AssertMex               - Detect missing mex file and exit with error.
 %   AssertOpenGL            - Require that Psychtoolbox be based on OpenGL.
 %   AssertOSX               - Require that Psychtoolbox be based on OS X.
+%   BackupCluts             - Make internal backup of (given) Cluts, for later restoration via RestoreCluts.
 %   BlackIndex              - Returns number that will produce the color black.
 %   CatStr                  - Concatenate array or cell array of strings.
 %   CenterMatOnPoint        - Returns indices to center a matrix on a point.
