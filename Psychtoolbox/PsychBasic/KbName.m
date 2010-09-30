@@ -166,6 +166,7 @@ function kbNameResult = KbName(arg)
 %   13.06.09    mk      Remove special code for Octave on all platforms except Windows.
 %   21.11.09    mk      Add bugfix for failures with multiple 'Return' keys,
 %                       provided by Jochen Laubrock.
+%   29.09.10    mk      Add missing definition of ',<' key to Windows version.
 
 %   TO DO
 %
@@ -248,7 +249,7 @@ if isempty(kkOSX)
    kkWin{75} = 'k';
    kkWin{186} = ';';
    kkWin{220} = '\\';
-   kkWin{188} = ',';
+   kkWin{188} = ',<';
    kkWin{191} = '/?';
    kkWin{78} = 'n';
    kkWin{77} = 'm';
