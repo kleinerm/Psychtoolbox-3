@@ -163,7 +163,7 @@ escape = KbName('ESCAPE');
     % display the background color in all remaining areas, thereby saving
     % some computation time for pixel processing: We select the center
     % 512x512 pixel area of the screen:
-    if stereoMode ~=101
+    if ~ismember(stereoMode, [100, 101])
         PsychImaging('AddTask', 'AllViews', 'RestrictProcessing', CenterRect([0 0 512 512], Screen('Rect', scrnNum)));
     end
 
