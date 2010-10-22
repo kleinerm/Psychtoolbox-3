@@ -181,6 +181,7 @@ function HighColorPrecisionDrawingTest(testconfig, maxdepth, testblocks)
 
 % History:
 % 04/20/08  Written (MK).
+% 10/22/10  Refined to account for small differences between GPU's (MK).
 
 global win;
 
@@ -357,7 +358,7 @@ if ismember(2, testblocks)
         Screen('FillOval', win, tc, [20 0 30 10]);
 
         % FrameOval test:
-        Screen('FrameOval', win, tc, [20 20 35 41], 2);
+        Screen('FrameOval', win, tc, [20 20 35 41], 4);
         
         % FillArc test: Don't need extra tests for FrameArc or DrawArc as internal codepath
         % in Screen is nearly identical...
@@ -494,12 +495,24 @@ if ismember(3, testblocks)
 
     % DrawDots test: All pixels in a rectangular block in top-left corner,
     % each with a different color:
-    Screen('DrawDots', win, xy, 1, rgbacolors, [], 0);
+    dyOffset = 0;
+    Screen('DrawDots', win, xy, 1, rgbacolors, [0,dyOffset], 0);
     testname = 'DrawDots';
 
     % Evaluate and log:
     [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, refpatch, fbrect);
+    if goodbits == 0
+        fprintf ('DrawDots result is nonsense. Retrying with a slight twist...\n');
+        % resstring = resstring(1:findstr(resstring, 'DrawDots')-1);
+        resstring = '';
+        dyOffset = 1;
+        Screen('DrawDots', win, xy, 1, rgbacolors, [0,dyOffset], 0);
+        testname = 'DrawDots';
 
+        % Evaluate and log:
+        [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, refpatch, fbrect);
+    end
+    
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
     
@@ -525,8 +538,17 @@ if ismember(3, testblocks)
     testname = 'DrawLines';
 
     % Evaluate and log:
-    [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, refpatch, fbrect);
+    [resstring2, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, refpatch, fbrect);
+    if goodbits == 0
+        fprintf ('DrawLines result is nonsense. Retrying with a slight twist...\n');
+        Screen('DrawLines', win, lxy, 1, cxy, [0,1], 0);
+        testname = 'DrawLines';
 
+        % Evaluate and log:
+        [resstring2, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, refpatch, fbrect);
+    end
+    resstring = resstring2;
+    
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
 
@@ -587,10 +609,19 @@ if ismember(3, testblocks)
     % Test of gamma correction shader: This is the
     % 'SimpleGamma' shader used by the imaging
     % pipeline, setup by PsychColorCorrection():
-    gamma = 1/2.374238462047320
+    gamma = 1/2.374238462047320;
     gammaShader = LoadGLSLProgramFromFiles({'GammaCorrectionShader.frag.txt' , 'ICMSimpleGammaCorrectionShader.frag.txt'});
     glUseProgram(gammaShader);
     glUniform3f(glGetUniformLocation(gammaShader, 'ICMEncodingGamma'), gamma, gamma, gamma);
+    % Default min and max luminance is 0.0 to 1.0, therefore reciprocal 1/range is also 1.0:
+    glUniform3f(glGetUniformLocation(gammaShader, 'ICMMinInLuminance'), 0.0, 0.0, 0.0);
+    glUniform3f(glGetUniformLocation(gammaShader, 'ICMMaxInLuminance'), 1.0, 1.0, 1.0);
+    glUniform3f(glGetUniformLocation(gammaShader, 'ICMReciprocalLuminanceRange'), 1.0, 1.0, 1.0);
+    % Default gain to postmultiply is 1.0:
+    glUniform3f(glGetUniformLocation(gammaShader, 'ICMOutputGain'), 1.0, 1.0, 1.0);
+    % Default bias to is 0.0:
+    glUniform3f(glGetUniformLocation(gammaShader, 'ICMOutputBias'), 0.0, 0.0, 0.0);
+
     glUniform2f(glGetUniformLocation(gammaShader, 'ICMClampToColorRange'), 0.0, 1.0);
     glUseProgram(0);
     
@@ -758,7 +789,7 @@ if ismember(5, testblocks)
 
     % Now we test modulation of drawn texture pixels with the
     % 'modulateColor' argument:
-    nroverdraws = 1;
+    nroverdraws = 2;
     alpha=1;
     i=0;
     mingoodbits = inf;
@@ -799,7 +830,7 @@ if ismember(5, testblocks)
         Screen('Flip', win, 0, 0, 2);        
     end
     
-    resstring = [resstring sprintf('%s : Maxdiff.: %1.17f --> Accurate to at least %i bits.\n', testname, max(maxv), mingoodbits)];
+    resstring = [resstring sprintf('%s : Maxdiff.: %1.17f --> Accurate to at least %i bits with %i overdraws.\n', testname, max(maxv), mingoodbits, nroverdraws)];
     
     Screen('Close', tex);
         
@@ -826,7 +857,7 @@ function [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname,
         
     deltacolors = single(refpatch) - single(patch);
     imagesc(deltacolors);
-    
+
     minv = min(min(abs(deltacolors)));
     maxv = max(max(abs(deltacolors)));
     goodbits = floor(-(log2(maxv))) - 1;
