@@ -159,9 +159,9 @@ try
     % is the stimulation display:
     screenid = max(Screen('Screens')); %   usual guess % 1+BPP; % if 2 screens with BPP on 2nd;     
 
-    % Retrieve current graphics card gammatable, so we can restore it at
+    % Backup current graphics card gammatable, so we can restore it at
     % the end of the session:
-    [tmptable, dacbits, reallutsize] = Screen('ReadNormalizedGammaTable', screenid);  
+    BackupCluts(screenid);
 
     % Use Bits++ for stimulation?
     if BPP
@@ -483,8 +483,8 @@ try
     % Switch back to normal priority:
     Priority(0);
 
-    % Load pre-session gammatable into graphics card:
-    Screen('LoadNormalizedGammaTable', screenid, tmptable);
+    % Restore pre-session gammatable into graphics card:
+    RestoreCluts;
 
     % Disable moglClutBlit, if used in non BPP mode:
     if ~BPP
@@ -511,10 +511,8 @@ catch
         BitsPlusPlus('LoadIdentityClut', wptr);
     end
     
-    % Load pre-session gammatable into graphics card:
-    if exist('tmptable', 'variable')
-        Screen('LoadNormalizedGammaTable', screenid, tmptable);
-    end
+    % Restore pre-session gammatable into graphics card:
+    RestoreCluts;
     
     % Disable moglClutBlit, if used in non BPP mode:
     if ~BPP
