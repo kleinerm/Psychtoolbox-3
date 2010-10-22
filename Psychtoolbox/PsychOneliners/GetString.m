@@ -1,12 +1,22 @@
-function string = GetString
-% string = GetString
+function string = GetString(useKbCheck, varargin)
+% string = GetString([useKbCheck=0], [KbCheck args...])
 % 
 % Get a string typed at the keyboard. Entry is terminated by 
 % <return> or <enter>.
 %
+% If the optional flag 'useKbCheck' is set to 1 then KbCheck is used - with
+% potential optional additional 'KbCheck args...' for getting the string
+% from the keyboard. Otherwise GetChar is used. 'useKbCheck' == 1 is
+% restricted to standard alpha-numeric keys (characters, letters and a few
+% special symbols). It can't handle all possible characters and doesn't
+% work with non-US keyboard mappings. Its advantage is that it works
+% reliably on configurations where GetChar may fail, e.g., on MS-Vista and
+% Windows-7.
+%
 % Useful for i/o in a Screen window. Typed keys are not echoed.
 %
 % See also: GetEchoString, GetNumber, GetEchoNumber
+%
 
 % 12/7/95 dhb	Wrote GetNumber in response to query from Tina Beard.
 % 12/8/95 dhb	Add delete functionality.
@@ -18,20 +28,38 @@ function string = GetString
 % 2/28/98 dgp Use GetChar instead of obsolete GetKey. Use SWITCH and LENGTH.
 % 3/27/98 dhb Fix bug from 2/28/98, put abs around char in switch.
 % 12/19/06 mk Adapted for use with PTB-3.
+% 10/22/10  mk        Optionally allow to use KbGetChar for keyboard input.
 
-string='';
-% Flush the keyboard buffer:
-FlushEvents;
+string = '';
+
+if nargin < 1
+    useKbCheck = [];
+end
+
+if isempty(useKbCheck)
+    useKbCheck = 0;
+end
+
+if ~useKbCheck
+    % Flush the keyboard buffer:
+    FlushEvents;
+end
+
 while 1	% Loop until <return> or <enter>
-	char=GetChar;
+    if useKbCheck
+        char = GetKbChar(varargin{:});
+    else
+        char = GetChar;
+    end
+    
 	switch(abs(char))
 		case {13,3,10},	% <return> or <enter>
 			break;
 		case 8,			% <delete>
-			if length(string)>0
+			if ~isempty(string)
 				string=string(1:length(string)-1);
 			end
 		otherwise,
-			string=[string char];
+			string=[string char]; %#ok<AGROW>
 	end
 end

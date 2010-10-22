@@ -1,5 +1,5 @@
-function string = GetEchoString(windowPtr, msg, x, y, textColor, bgColor)
-% string = GetEchoString(window, msg, x, y, [textColor], [bgColor])
+function string = GetEchoString(windowPtr, msg, x, y, textColor, bgColor, useKbCheck, varargin)
+% string = GetEchoString(window, msg, x, y, [textColor], [bgColor], [useKbCheck=0], [KbCheck args...])
 % 
 % Get a string typed at the keyboard. Entry is terminated by
 % <return> or <enter>.
@@ -7,8 +7,18 @@ function string = GetEchoString(windowPtr, msg, x, y, textColor, bgColor)
 % Typed characters are displayed in the window. The delete
 % character is handled correctly. Useful for i/o in a Screen window.
 %
+% If the optional flag 'useKbCheck' is set to 1 then KbCheck is used - with
+% potential optional additional 'KbCheck args...' for getting the string
+% from the keyboard. Otherwise GetChar is used. 'useKbCheck' == 1 is
+% restricted to standard alpha-numeric keys (characters, letters and a few
+% special symbols). It can't handle all possible characters and doesn't
+% work with non-US keyboard mappings. Its advantage is that it works
+% reliably on configurations where GetChar may fail, e.g., on MS-Vista and
+% Windows-7.
+%
 % See also: GetNumber, GetString, GetEchoNumber
 %
+
 % 2/4/97    dhb       Wrote GetEchoNumber.
 % 2/5/97    dhb       Accept <enter> as well as <cr>.
 %           dhb       Allow string return as well.
@@ -22,6 +32,15 @@ function string = GetEchoString(windowPtr, msg, x, y, textColor, bgColor)
 % 12/26/08  yaosiang  Port GetEchoString from PTB-2 to PTB-3.
 % 03/20/08  tsh       Added FlushEvents at the start and made bgColor and
 %                     textcolor optional
+% 10/22/10  mk        Optionally allow to use KbGetChar for keyboard input.
+
+if nargin < 7
+    useKbCheck = [];
+end
+
+if isempty(useKbCheck)
+    useKbCheck = 0;
+end
 
 if nargin < 6
     bgColor = [];
@@ -31,8 +50,10 @@ if nargin < 5
     textColor = [];
 end
 
-% Flush GetChar queue to remove stale characters:
-FlushEvents('keyDown');
+if ~useKbCheck
+    % Flush the keyboard buffer:
+    FlushEvents;
+end
 
 % Write the message
 Screen('DrawText', windowPtr, msg, x, y, textColor, bgColor);
@@ -40,7 +61,12 @@ Screen('Flip', windowPtr, 0, 1);
 
 string = '';
 while true
-    char = GetChar;
+    if useKbCheck
+        char = GetKbChar(varargin{:});
+    else
+        char = GetChar;
+    end
+
     switch (abs(char))
         case {13, 3, 10}
             % ctrl-C, enter, or return
@@ -51,7 +77,7 @@ while true
                 string = string(1:length(string)-1);
             end
         otherwise
-            string = [string, char];
+            string = [string, char]; %#ok<AGROW>
     end
 
     output = [msg, ' ', string];

@@ -1,5 +1,5 @@
-function number = GetNumber
-% number = GetNumber
+function number = GetNumber(varargin)
+% number = GetNumber([optional KbCheck arguments...])
 % 
 % Get a number typed at the keyboard. Entry is terminated by
 % <return> or <enter>. Typed keys are not echoed. Useful for
@@ -15,8 +15,7 @@ function number = GetNumber
 % 3/15/97	dgp	Replaced sscanf by str2num, which copes better with nonnumeric
 %				      input, returning an empty matrix instead of a null string.
 % 3/15/97	dgp	Call GetString instead of doing the work here.
-% 3/17/97 dhb Got rid of obsolete 's' interface.
+% 3/17/97   dhb Got rid of obsolete 's' interface.
+% 10/22/10  mk  Switch to use of KbGetChar for keyboard input.
 
-number = str2num(GetString);
-
-
+number = str2num(GetString(1, varargin{:})); %#ok<ST2NM>

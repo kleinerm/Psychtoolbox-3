@@ -30,6 +30,7 @@
 %   FunctionFolder          - Get full path to folder containing passed function.
 %   GetEchoNumber           - Get a number typed on-screen.
 %   GetEchoString           - Get a string typed on-screen.
+%   GetKbChar               - Simple, limited replacement for GetChar(), using KbCheck for character input.
 %   GetMyCaller             - Returns the name of the calling function.
 %   GetNumber               - Get a number typed at the keyboard.
 %   GetString               - Get a string typed at the keyboard.

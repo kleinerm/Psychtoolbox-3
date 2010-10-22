@@ -1,4 +1,4 @@
-function number = GetEchoNumber(window,msg,x,y,textColor,bgColor)
+function number = GetEchoNumber(window,msg,x,y,textColor,bgColor,varargin)
 % number = GetEchoNumber(window,msg,x,y,textColor,bgColor)
 % 
 % Get a number typed at the keyboard. Entry is terminated by
@@ -17,8 +17,7 @@ function number = GetEchoNumber(window,msg,x,y,textColor,bgColor)
 %	             returning an empty matrix instead of a null string.
 % 3/15/97 dgp  Call GetEchoString instead of doing the work here.
 % 3/18/97 dhb  Got rid of obsolete 's' interface.
+% 10/22/10  mk  Switch to use of KbGetChar for keyboard input.
 
-string=GetEchoString(window,msg,x,y,textColor,bgColor);
-number = str2num(string);
-
-
+string=GetEchoString(window,msg,x,y,textColor,bgColor,1,varargin{:});
+number = str2num(string); %#ok<ST2NM>
