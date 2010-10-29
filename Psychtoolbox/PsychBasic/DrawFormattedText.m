@@ -32,6 +32,25 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % text string in right-to-left reading direction, e.g., for scripts which
 % read right to left
 %
+% The function employs window clipping by default. Text lines that are
+% detected as lying completely outside the 'win'dow will not be drawn, but
+% clipped away. This allows to draw multi-page text (multiple screen
+% heights) without too much loss of drawing speed. If you find the clipping
+% to interfere with text layout of exotic texts/fonts at exotic sizes and
+% formatting, you can define the global variable...
+%
+% global ptb_drawformattedtext_disableClipping;
+% ... and set it like this ...
+% ptb_drawformattedtext_disableClipping = 1;
+% ... to disable the clipping.
+%
+% Clipping also gets disabled if you request the optional 3rd return
+% parameter 'textbounds' to ensure correct computation of a bounding box
+% that covers the complete text. You can enforce clipping by setting
+% ptb_drawformattedtext_disableClipping = -1; however, computed bounding
+% boxes will then only describe the currently visible (non-clipped) text.
+%
+%
 % The function returns the new (nx, ny) position of the text drawing cursor
 % and the bounding rectangle 'textbounds' of the drawn string. (nx,ny) can
 % be used as new start position for connecting further text strings to the
@@ -49,6 +68,17 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % 01/31/09  Add optional vSpacing parameter (Alex Leykin).
 % 09/20/09  Add some char() casts, so Octave can handle Unicode encoded text strings as well.
 % 01/10/10  Add support for 'righttoleft' flag and for uint8 tstring types (MK).
+% 10/28/10  Add crude text clipping/culling, so multi-page text doesn't bog
+%           us down completely. Text clearly outside the 'win'dow gets
+%           preculled. (MK).
+
+% Set ptb_drawformattedtext_disableClipping to 1 if text clipping should be disabled:
+global ptb_drawformattedtext_disableClipping;
+
+if isempty(ptb_drawformattedtext_disableClipping)
+    % Text clipping on by default:
+    ptb_drawformattedtext_disableClipping = 0;
+end
 
 if nargin < 1 || isempty(win)
     error('DrawFormattedText: Windowhandle missing!');
@@ -135,6 +165,9 @@ if nargin < 4 || isempty(sy)
     sy=0;
 end
 
+winRect = Screen('Rect', win);
+winHeight = RectHeight(winRect);
+
 if ischar(sy) && strcmpi(sy, 'center')
     % Compute vertical centering:
     
@@ -142,7 +175,7 @@ if ischar(sy) && strcmpi(sy, 'center')
     numlines = length(strfind(char(tstring), char(10))) + 1;
     bbox = SetRect(0,0,1,numlines * theight);
     % Center box in window:
-    [rect,dh,dv] = CenterRect(bbox, Screen('Rect', win));
+    [rect,dh,dv] = CenterRect(bbox, winRect);
 
     % Initialize vertical start position sy with vertical offset of
     % centered text box:
@@ -172,6 +205,13 @@ if IsOpenGLRendering
     % switch to our window:
     Screen('EndOpenGL', win);
 end
+
+% Disable culling/clipping if bounding box is requested as 3rd return
+% argument, or if forcefully disabled. Unless clipping is forcefully
+% enabled.
+disableClip = (ptb_drawformattedtext_disableClipping ~= -1) && ...
+              ((ptb_drawformattedtext_disableClipping > 0) || (nargout >= 3));
+
 
 % Parse string, break it into substrings at line-feeds:
 while ~isempty(tstring)
@@ -213,8 +253,22 @@ while ~isempty(tstring)
     % tstring contains the remainder of the input string to process in next
     % iteration, curstring is the string we need to draw now.
 
+    % Perform crude clipping against upper and lower window borders for
+    % this text snippet. If it is clearly outside the window and would get
+    % clipped away by the renderer anyway, we can safe ourselves the
+    % trouble of processing it:
+    if disableClip || ((yp + theight >= 0) && (yp - theight <= winHeight))
+        % Inside crude clipping area. Need to draw.
+        noclip = 1;
+    else
+        % Skip this text line draw call, as it would be clipped away
+        % anyway.
+        noclip = 0;
+        dolinefeed = 1;
+    end
+    
     % Any string to draw?
-    if ~isempty(curstring)
+    if ~isempty(curstring) && noclip
         % Need bounding box?
         if xcenter || flipHorizontal || flipVertical
             % Compute text bounding box for this substring:
@@ -224,7 +278,7 @@ while ~isempty(tstring)
         % Horizontally centered output required?
         if xcenter
             % Yes. Compute dh, dv position offsets to center it in the center of window.
-            [rect,dh] = CenterRect(bbox, Screen('Rect', win));
+            [rect,dh] = CenterRect(bbox, winRect);
             % Set drawing cursor to horizontal x offset:
             xp = dh;
         end

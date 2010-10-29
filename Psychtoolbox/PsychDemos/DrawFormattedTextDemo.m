@@ -89,6 +89,39 @@ try
     KbWait;
     while KbCheck; end;
 
+    Screen('TextSize',w, 22);    
+    winHeight = RectHeight(Screen('Rect', w));
+    longtext = ['\n\nTeleprompter test: Press any key to continue.\n\n' mytext];
+    longtext = repmat(longtext, 1, 3);
+    
+    tp=zeros(1, 2*winHeight + 1);
+    sc = 0;
+    
+    % Render once, requesting the 'bbox' bounding box of the whole text.
+    % This will disable clipping and be very sloooow, so we do it only once
+    % to get the bounding box, and later just recycle that box:
+    [nx, ny, bbox] = DrawFormattedText(w, longtext, 10, 0, 0);
+    textHeight = RectHeight(bbox);
+    
+    for yp = winHeight:-1:-textHeight
+        % Draw text again, this time with unlimited line length:
+        [nx, ny] = DrawFormattedText(w, longtext, 10, yp, 0);
+        Screen('FrameRect', w, 0, bbox);
+
+        sc = sc + 1;
+        tp(sc) = Screen('Flip', w);
+
+        if KbCheck
+            break;
+        end
+    end
+    
+    tp = tp(1:sc);
+    fprintf('Average redraw duration for scrolling in msecs: %f\n', 1000 * mean(diff(tp)));
+    close all;
+    plot(1000 * diff(tp));
+    title('Redraw duration per scroll frame [msecs]:');
+    
     % End of demo, close window:
     Screen('CloseAll');
 catch
