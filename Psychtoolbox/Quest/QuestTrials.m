@@ -16,6 +16,8 @@ function trial=QuestTrials(q,binsize)
 % 10/13/04 dgp The orientations of the returned vectors was inconsistent. They are now rows.
 % Copyright (c) 1996-1999 Denis Pelli
 % 10/16/09 mk  Bugfixes & Improvements to input argument checking, as proposed by Todd Horowitz.
+% 10/31/10 mk  Allocate q.intensity and q.response in chunks of 10000
+%              trials to reduce memory fragmentation problems.
 
 if nargin < 1
 	error('Usage: trial=QuestTrials(q,[binsize])')
@@ -41,8 +43,10 @@ if length(q)>1
 end
 
 % sort
-[intensity,i]=sort(q.intensity);
-response(1:length(i))=q.response(i);
+inIntensity = q.intensity(1:q.trialCount);
+inResponse = q.response(1:q.trialCount);
+[intensity,i]=sort(inIntensity);
+response(1:length(i))=inResponse(i);
 
 % quantize
 if binsize>0

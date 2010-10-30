@@ -16,6 +16,9 @@ function q=QuestUpdate(q,intensity,response)
 %             of WARNING level.
 %
 % Copyright (c) 1996-2004 Denis Pelli
+%
+% 10/31/10 mk Allocate q.intensity and q.response in chunks of 10000
+%             trials to reduce memory fragmentation problems.
 
 if nargin~=3
 	error('Usage: q=QuestUpdate(q,intensity,response)')
@@ -51,6 +54,14 @@ if q.updatePdf
 end
 
 % keep a historical record of the trials
-q.intensity=[q.intensity,intensity];
-q.response=[q.response,response];
+q.trialCount = q.trialCount + 1;
+if q.trialCount > length(q.intensity)
+    % Out of space in preallocated arrays. Reallocate for additional
+    % 10000 trials. We reallocate in large chunks to reduce memory
+    % fragmentation.
+    q.intensity = [q.intensity, zeros(1,10000)];
+    q.response  = [q.response,  zeros(1,10000)];
+end
 
+q.intensity(q.trialCount) = intensity;
+q.response(q.trialCount)  = response;

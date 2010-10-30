@@ -42,6 +42,8 @@ function q=QuestRecompute(q)
 % 4/29/99   dgp  Wrote it.
 % 8/15/99   dgp  Explain how to use other kind of psychometric function.
 % 9/11/04   dgp  Explain why supplied "dim" should err on the high side.
+% 10/31/10   mk  Allocate q.intensity and q.response in chunks of 10000
+%                trials to reduce memory fragmentation problems.
 
 % Copyright (c) 1996-2004 Denis Pelli
 if nargin~=1
@@ -91,9 +93,19 @@ if any(~isfinite(q.p2))
 end
 q.s2=fliplr([1-q.p2;q.p2]);
 if ~isfield(q,'intensity') | ~isfield(q,'response')
-	q.intensity=[];
-	q.response=[];
+    % Preallocate for 10000 trials, keep track of real useful content in
+    % q.trialCount. We allocate such large chunks to reduce memory
+    % fragmentation that would be caused by growing the arrays one element
+    % per trial. Fragmentation has been shown to cause severe out-of-memory
+    % problems if one runs many interleaved quests. 10000 trials require/
+    % waste about 157 kB of memory, which is basically nothing for todays
+    % computers and likely sufficient for even the most tortorous experiment
+    % sessions.
+    q.trialCount = 0;
+    q.intensity=zeros(1,10000);
+    q.response=zeros(1,10000);
 end
+
 if any(~isfinite(q.s2(:)))
 	error('psychometric function s2 is not finite')
 end
@@ -111,7 +123,7 @@ if any(~isfinite(q.pdf))
 	error('prior pdf is not finite')
 end
 % recompute the pdf from the historical record of trials
-for k=1:length(q.intensity)
+for k=1:q.trialCount
 	inten=max(-1e10,min(1e10,q.intensity(k))); % make intensity finite
 	ii=size(q.pdf,2)+q.i-round((inten-q.tGuess)/q.grain);
 	if ii(1)<1
