@@ -66,6 +66,7 @@ PsychError SCREENGlobalRect(void)
 
 		//  Onscreen?
 		if (PsychIsOnscreenWindow(windowRecord)) {
+			PsychOSProcessEvents(windowRecord, 0);
 			PsychCopyOutRectArg(1, FALSE, windowRecord->globalrect);
 		}
 		else {

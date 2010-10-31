@@ -420,6 +420,14 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
     return(TRUE);
 }
 
+// Perform OS specific processing of Window events:
+void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
+{
+	// Trigger event queue dispatch processing for GUI windows:
+	if (windowRecord == NULL || windowRecord->specialflags & kPsychGUIWindow)
+		PsychGetMouseButtonState(NULL);
+}
+
 // Callback handler for Window manager: Handles some events
 LONG FAR PASCAL WndProc(HWND hWnd, unsigned uMsg, unsigned wParam, LONG lParam)
 {

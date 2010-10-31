@@ -248,6 +248,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	PsychGetGlobalScreenRect(screenSettings->screenNumber, screenrect);
 	if (PsychMatchRect(screenrect, windowRecord->rect)) useAGL=FALSE;
 
+	// GUI windows always use AGL:
+	if (windowRecord->specialflags & kPsychGUIWindow) useAGL = TRUE;
+
 	// FALSE means: This is a fullscreen window:
 	if (!useAGL) {
 	  // Mark this window as fullscreen window:
@@ -296,17 +299,25 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 			wclass = kSimpleWindowClass;
 		}
 
+		if (windowRecord->specialflags & kPsychGUIWindow) wclass = kDocumentWindowClass;
+
 		// Additional attribs to set:
 		WindowAttributes addAttribs;
-		addAttribs = 0;
-		
+		if (windowRecord->specialflags & kPsychGUIWindow) {
+			if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Onscreen window is configured as regular GUI window.\n");
+			addAttribs = kWindowNoUpdatesAttribute | kWindowNoActivatesAttribute | kWindowStandardHandlerAttribute;
+		}
+		else {
+			addAttribs = kWindowNoUpdatesAttribute | kWindowNoActivatesAttribute;
+		}
+
 		// For levels 1000 to 1499, where the window is a partially transparent
 		// overlay window with global alpha 0.0 - 1.0, we disable reception of mouse
 		// events. --> Can move and click to windows behind the window!
 		// A range 1500 to 1999 would also allow transparency, but block mouse events:
 		if (windowLevel >= 1000 && windowLevel < 1500) addAttribs += kWindowIgnoreClicksAttribute;
 		
-		if (noErr !=CreateNewWindow(wclass, kWindowNoUpdatesAttribute | kWindowNoActivatesAttribute | addAttribs, &winRect, &carbonWindow)) {
+		if (noErr !=CreateNewWindow(wclass, addAttribs, &winRect, &carbonWindow)) {
 			printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to open Carbon onscreen window\n\n");
 			return(FALSE);
 		}
@@ -1167,4 +1178,25 @@ psych_bool PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindo
 	// On OS/X the situation is simple. This OS doesn't support framelock/swaplock at
 	// all on any GPU:
 	return(FALSE);
+}
+
+// Perform OS specific processing of Window events:
+void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
+{
+	Rect globalBounds;
+
+	// Trigger event queue dispatch processing for GUI windows:
+	if (windowRecord == NULL) {
+		// No op, so far...
+		return;
+	}
+	
+	// GUI windows need to behave GUIyee:
+	if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord)) {
+		// Update windows rect and globalrect, based on current size and location:
+		GetWindowBounds(windowRecord->targetSpecific.windowHandle, kWindowContentRgn, &globalBounds);
+		PsychMakeRect(windowRecord->globalrect, globalBounds.left, globalBounds.top, globalBounds.right, globalBounds.bottom);
+		PsychNormalizeRect(windowRecord->globalrect, windowRecord->rect);
+		PsychSetupView(windowRecord);
+	}
 }

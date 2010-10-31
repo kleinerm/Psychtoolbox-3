@@ -56,6 +56,8 @@ PsychError SCREENRect(void)
 		PsychCopyOutRectArg(1, FALSE, rect);
 	}else if(PsychIsWindowIndexArg(1)){
 	   PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
+	   PsychOSProcessEvents(windowRecord, 0);
+
 		PsychMakeRect(&rect, windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychTop],
 					  windowRecord->rect[kPsychLeft] + PsychGetWidthFromRect(windowRecord->rect)/((windowRecord->specialflags & kPsychHalfWidthWindow) ? 2 : 1),
 					  windowRecord->rect[kPsychTop] + PsychGetHeightFromRect(windowRecord->rect)/((windowRecord->specialflags & kPsychHalfHeightWindow) ? 2 : 1));

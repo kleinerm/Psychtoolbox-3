@@ -30,8 +30,8 @@
 static PsychWindowRecordType* sharedContextWindow = NULL;
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] =  "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect][,pixelSize][,numberOfBuffers][,stereomode][,multisample][,imagingmode]);";
-//                                                               1                         2        3      4           5                 6            7             8
+static char useString[] =  "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect][,pixelSize][,numberOfBuffers][,stereomode][,multisample][,imagingmode][,specialFlags]);";
+//                                                               1                         2        3      4           5                 6            7             8             9
 static char synopsisString[] =
 	"Open an onscreen window. Specify a screen by a windowPtr or a screenNumber (0 is "
 	"the main screen, with menu bar). \"color\" is the clut index (scalar or [r g b] "
@@ -79,7 +79,7 @@ static char seeAlsoString[] = "OpenOffscreenWindow, SelectStereoDrawBuffer";
 PsychError SCREENOpenWindow(void) 
 
 {
-    int						screenNumber, numWindowBuffers, stereomode, multiSample, imagingmode;
+    int						screenNumber, numWindowBuffers, stereomode, multiSample, imagingmode, specialflags;
     PsychRectType 			rect, screenrect;
     PsychColorType			color;
     PsychColorModeType  	mode; 
@@ -100,7 +100,7 @@ PsychError SCREENOpenWindow(void)
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
     //cap the number of inputs
-    PsychErrorExit(PsychCapNumInputArgs(8));   //The maximum number of inputs
+    PsychErrorExit(PsychCapNumInputArgs(9));   //The maximum number of inputs
     PsychErrorExit(PsychCapNumOutputArgs(2));  //The maximum number of outputs
 
     //get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
@@ -230,6 +230,10 @@ PsychError SCREENOpenWindow(void)
     if(imagingmode < 0) PsychErrorExitMsg(PsychError_user, "Invalid imaging mode provided (See 'help PsychImagingMode' for usage info).");
 	if (imagingmode!=0 && EmulateOldPTB) PsychErrorExitMsg(PsychError_user, "Sorry, imaging pipeline functions are not supported in OS-9 PTB emulation mode.");
 	
+	specialflags=0;
+    PsychCopyInIntegerArg(9,FALSE,&specialflags);
+    if (specialflags < 0 || (specialflags > 0 && specialflags!=kPsychGUIWindow)) PsychErrorExitMsg(PsychError_user, "Invalid 'specialflags' provided.");
+
 	// We require use of the imaging pipeline if stereomode for dualwindow display is requested.
 	// This makes heavy use of FBO's and blit operations, so imaging pipeline is needed.
 	if ((stereomode==kPsychDualWindowStereo) || (imagingmode & kPsychNeedDualWindowOutput)) {
@@ -298,7 +302,7 @@ PsychError SCREENOpenWindow(void)
 	// active, we force multiSample to zero: This way the system backbuffer / pixelformat
 	// is enabled without multisampling support, as we do all the multisampling stuff ourselves
 	// within the imaging pipeline with multisampled drawbuffer FBO's...
-    didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect, ((imagingmode==0 || imagingmode==kPsychNeedFastOffscreenWindows) ? multiSample : 0), sharedContextWindow);
+    didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect, ((imagingmode==0 || imagingmode==kPsychNeedFastOffscreenWindows) ? multiSample : 0), sharedContextWindow, specialflags);
     if (!didWindowOpen) {
         if (!useAGL) {
 			PsychRestoreScreenSettings(screenNumber);

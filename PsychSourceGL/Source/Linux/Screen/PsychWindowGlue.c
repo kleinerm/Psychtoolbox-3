@@ -1257,3 +1257,24 @@ try_sgi_swapgroup:
 	
 	return(rc);
 }
+
+// Perform OS specific processing of Window events:
+void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
+{
+//	Rect globalBounds;
+
+	// Trigger event queue dispatch processing for GUI windows:
+	if (windowRecord == NULL) {
+		// No op, so far...
+		return;
+	}
+	
+	// GUI windows need to behave GUIyee:
+	if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord)) {
+		// Update windows rect and globalrect, based on current size and location:
+//		GetWindowBounds(windowRecord->targetSpecific.windowHandle, kWindowContentRgn, &globalBounds);
+//		PsychMakeRect(windowRecord->globalrect, globalBounds.left, globalBounds.top, globalBounds.right, globalBounds.bottom);
+		PsychNormalizeRect(windowRecord->globalrect, windowRecord->rect);
+		PsychSetupView(windowRecord);
+	}
+}

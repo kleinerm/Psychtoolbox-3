@@ -126,11 +126,13 @@ TO DO:
 #define kPsychNeedOpenMLWorkaround1		  8 // 'specialflags' setting 8 means: This needs the special workarounds for slightly broken OpenML sync control ext.
 #define kPsychOpenMLDefective		     16 // 'specialflags' setting 16 means: Don't use OpenML sync control extension for timestamping anywhere.
 
+#define kPsychGUIWindow					 32 // 'specialflags' setting 32 means: This window should behave like a regular GUI window, e.g, allow moving it.
+
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384. --> Flags of 32768 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,1024,S-2048,S-8192, 32768. --> Flags of 65536 and higher are available, as well as 32,64,128,256,512,4096, 16384
+// 1,2,4,8,16,32,1024,S-2048,S-8192, 32768. --> Flags of 65536 and higher are available, as well as 64,128,256,512,4096, 16384
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*	PtrPsychHookFunction;

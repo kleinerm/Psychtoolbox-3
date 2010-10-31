@@ -57,6 +57,8 @@ PsychError SCREENWindowSize(void)
 		PsychCopyOutDoubleArg(2, kPsychArgOptional, rectHeight);
 	}else if(PsychIsWindowIndexArg(1)){
 		PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
+		PsychOSProcessEvents(windowRecord, 0);
+
 		rectWidth=PsychGetWidthFromRect(windowRecord->rect);
 		rectHeight=PsychGetHeightFromRect(windowRecord->rect);
 

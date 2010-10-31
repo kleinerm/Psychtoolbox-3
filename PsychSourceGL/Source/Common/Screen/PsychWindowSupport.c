@@ -180,7 +180,7 @@ void PsychRebindARBExtensionsToCore(void)
         Contains experimental support for flipping multiple displays synchronously, e.g., for dual display stereo setups.
  
 */
-psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow)
+psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow, int specialFlags)
 {
     PsychRectType dummyrect;
     double ifi_nominal=0;    
@@ -251,7 +251,10 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		// This is part of the async flip mechanism:
 		masterthread = PsychGetThreadId();
 	}
-	
+
+	// Add all passed-in specialFlags to windows specialflags:
+	(*windowRecord)->specialflags |= specialFlags;
+
     // Assign the passed windowrect 'rect' to the new window:
     PsychCopyRect((*windowRecord)->rect, rect);
     
