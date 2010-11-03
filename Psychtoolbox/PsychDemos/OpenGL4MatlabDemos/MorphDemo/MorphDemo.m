@@ -348,7 +348,14 @@ while ((GetSecs - t) < 60)
 
     % Compute morphed shape for next frame, based on new weight vector:
     moglmorpher('computeMorph', w, morphnormals);
-        
+
+    if 0
+        % Test morphed geometry readback:
+        mverts = moglmorpher('getGeometry');
+        scatter3(mverts(1,:), mverts(2,:), mverts(3,:));
+        drawnow;
+    end
+
     % Check for keyboard press:
     [KeyIsDown, endrt, KeyCode] = KbCheck;
     if KeyIsDown

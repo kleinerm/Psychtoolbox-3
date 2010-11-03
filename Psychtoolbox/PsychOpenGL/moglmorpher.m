@@ -1,4 +1,4 @@
-function rc = moglmorpher(cmd, arg1, arg2, arg3, arg4)
+function [rc, varargout] = moglmorpher(cmd, arg1, arg2, arg3, arg4)
 %
 % Matlab OpenGL Morpher - Performs linear morphs between different 3D shapes and
 % renders the resulting shape via OpenGL. Supports high-performance GPU
@@ -173,6 +173,14 @@ function rc = moglmorpher(cmd, arg1, arg2, arg3, arg4)
 % meshes.
 %
 %
+% [vertices, normals] = moglmorpher('getGeometry');
+% -- Returns current vector of 'vertices' and (optionally) normals as used
+% for rendering meshes. Call this after (at least one call to)
+% 'computeMorph' or 'renderMorph' to retrieve the current morphed mesh.
+% vertices and normals are 3-by-n matrices, each column encoding the three
+% components (x,y,z) of a single 3D vertex position or vertex normal.
+%
+%
 % moglmorpher('reset');
 % -- Resets the moglmorpher - deletes all internal data structures.
 %
@@ -182,6 +190,7 @@ function rc = moglmorpher(cmd, arg1, arg2, arg3, arg4)
 %
 % History:
 % Sometimes 2006 - Written (MK).
+%
 % 10.09.2007  Added code for high-performance GPU based morhping. (MK).
 %             This makes use of FBOs, PBOs and VBOs plus the PTB imaging
 %             pipeline to perform all morphing on the GPU, ie., all data
@@ -189,6 +198,10 @@ function rc = moglmorpher(cmd, arg1, arg2, arg3, arg4)
 %             and host<->GPU bus --> Should provide significant speedups
 %             for large meshes or many meshes. Observed speedup on
 %             MacBookPro with ATI Radeon X1600 over Matlab7.4 is 3x.
+%
+% 03.11.2010  Add function 'getGeometry' to retrieve current (morphed) mesh
+%             geometry. (MK).
+%
 
 % The GL OpenGL constant definition struct is shared with all other modules:
 global GL;
@@ -198,6 +211,7 @@ global GL;
 % Count of stored keyframe meshes:
 persistent objcount;
 persistent updatecount;
+persistent resynccount;
 
 % Renderbuffers for morphed vertices, normals and texcoords:
 persistent vertices;
@@ -221,6 +235,8 @@ persistent usetype;
 % Arrays which contain all keyshapes (vertices and normals):
 persistent keyvertices;
 persistent keynormals;
+persistent realVertexCount;
+persistent realNormalCount;
 
 % glDrawRangeElements() command supported?
 persistent drawrangeelements;
@@ -391,7 +407,10 @@ if isempty(objcount)
     usetextures = 0;
     usenormals = 0;
     updatecount = 0;
+    resynccount = 0;
     useSparseMorph = 0;
+    realVertexCount = 0;
+    realNormalCount = 0;
     
     % Check if addition is supported for floating-point single precision
     % numbers. If so, we cast all data arrays to single precision (float)
@@ -520,7 +539,10 @@ if strcmp(cmd, 'reset')
    keynormals = [];
    win = [];
    useSparseMorph = [];
-
+   realVertexCount = [];
+   realNormalCount = [];
+   resynccount = [];
+   
    rc = 0;
    
    return;
@@ -627,6 +649,14 @@ if strcmp(cmd, 'addMesh')
         usenormals = 1;
     end;
 
+    % Store true size of arrays:
+    realVertexCount = size(vertices, 2);
+    if usenormals
+        realNormalCount = size(normals, 2);
+    else
+        realNormalCount = 0;
+    end
+    
     % Assign vertex array and normals array to new slot in keyshape vector:
     objcount = objcount + 1;
     
@@ -852,6 +882,81 @@ if strcmp(cmd, 'addMesh')
     rc = objcount;
     return;
 end;
+
+if strcmpi(cmd, 'getGeometry')
+    % Return current internal vertex and normals array:
+
+    if updatecount <= 1
+        error('Tried to retrieve morphed geometry/normals, but "computeMorph" not yet called at least once!');
+    end;
+
+    % Compute intense resync of GPU's VBO with our cached copies needed?
+    if resynccount < updatecount
+        % Yes: Do it.
+        % In cpu only mode, we have our results already in internal persistent
+        % matrices "vertices" and "normals", so nothing complex to do.
+        % In gpu mode, we need to fetch data from the GPU aka the vbo we use:
+        if gpubasedmorphing
+            % Query current OpenGL state:
+            [targetwindow, IsOpenGLRendering] = Screen('GetOpenGLDrawMode');
+
+            if IsOpenGLRendering
+                % Disable OpenGL mode:
+                Screen('EndOpenGL', targetwindow);
+            end
+
+            % Get [w,h] width x height of 2D morphbuffer in "data pixels". Each
+            % datapixel is either a 4D-vertex coordinate or a 4D-normal vector,
+            % the 4th component being padding:
+            [w, h] = Screen('WindowSize', morphbuffer(1));
+
+            % Total buffer size is w*h elements, each with 4 components (4D)
+            % and each component being a 4-Byte float value. As half of this
+            % amount is vertex data and the other half is normal data, we
+            % divide by 2 to get amount of vertex / normal data to retrieve:
+            buffersize = w * h * 4 * 4 / 2;
+
+            Screen('BeginOpenGL', morphbuffer(1));
+
+            % Bind vbo with current (morphed) geometry (positions and normals):
+            glBindBuffer(GL.ARRAY_BUFFER, vbo);
+
+            vertices = zeros(4, buffersize / 4 / 4);
+            vertices = moglsingle(vertices);
+            glGetBufferSubData(GL.ARRAY_BUFFER, vbovertexstart, buffersize, vertices);
+            vertices = vertices(1:3, 1:realVertexCount);
+
+            if nargout > 1 && usenormals
+                normals = zeros(4, buffersize / 4 / 4);
+                normals = moglsingle(normals);
+                glGetBufferSubData(GL.ARRAY_BUFFER, vbonormalstart, buffersize, normals);
+                normals = normals(1:3, 1:realNormalCount);
+            end
+
+            % Done. Unbind vbo:
+            glBindBuffer(GL.ARRAY_BUFFER, 0);
+
+            Screen('EndOpenGL', morphbuffer(1));
+
+            if IsOpenGLRendering
+                % Reenable OpenGL mode:
+                Screen('BeginOpenGL', targetwindow);
+            end
+        end
+        
+        % Resynced:
+        resynccount = updatecount;
+    end
+    
+    % Return our internal arrays with current morph/render results:
+    rc = vertices;
+    
+    if nargout > 1 && usenormals
+        varargout{1} = normals;
+    end
+    
+    return;
+end
 
 if strcmp(cmd, 'renderMesh')
     % A single mesh should be rendered.
@@ -1170,16 +1275,22 @@ if strcmp(cmd, 'renderMorph') | strcmp(cmd, 'computeMorph')
 end;
 
 if strcmp(cmd, 'renderNormals')
-
-    if gpubasedmorphing
-        % NOT YET IMPLEMENTED: Skip with warning:
-        warning('moglmorpher: Subcommand "renderNormals" not yet implemented for GPU based morphing!');
-        return;
-    end
     
     if updatecount < 1
         error('Tried to render normals in renderbuffer, but renderbuffer not yet filled!');
     end;
+    
+    if gpubasedmorphing
+        % NOT YET IMPLEMENTED: Skip with warning:
+        % warning('moglmorpher: Subcommand "renderNormals" not yet implemented for GPU based morphing!');
+        % return;
+
+        if resynccount < updatecount
+            % Recursive call to ourselves to update our internal vertices and
+            % normals matrices with readback data from the GPU's VBO:
+            [vertices, normals] = moglmorpher('getGeometry');
+        end
+    end
 
     if (size(vertices,2)~=size(normals,2))
         error('renderNormals: Sorry this function only works if count of normals equals count of vertices. Aborted!');
