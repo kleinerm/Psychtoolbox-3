@@ -233,9 +233,9 @@ PsychError SCREENGetMouseHelper(void)
 	Point		mouseXY;
 	UInt32		buttonState;
 	double		numButtons, *buttonArray;
-	int		i;
-	psych_bool		doButtonArray;
-	
+	int			i;
+	psych_bool	doButtonArray;
+	PsychWindowRecordType *windowRecord;
 	
 	//all subfunctions should have these two lines.  
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -243,7 +243,7 @@ PsychError SCREENGetMouseHelper(void)
 	
 	//cap the numbers of inputs and outputs
 	PsychErrorExit(PsychCapNumInputArgs(2));   //The maximum number of inputs
-	PsychErrorExit(PsychCapNumOutputArgs(3));  //The maximum number of outputs
+	PsychErrorExit(PsychCapNumOutputArgs(4));  //The maximum number of outputs
 	
 	//Buttons.  
 	// The only way I know to detect the  number number of mouse buttons is directly via HID.  The device reports
@@ -262,6 +262,7 @@ PsychError SCREENGetMouseHelper(void)
 
 	if(numButtons < 1) 
 		PsychErrorExitMsg(PsychErorr_argumentValueOutOfRange, "numButtons must exceed 1");
+
 	doButtonArray=PsychAllocOutDoubleMatArg(3, kPsychArgOptional, (int)1, (int)numButtons, (int)1, &buttonArray);
 	if(doButtonArray){
 		buttonState=GetCurrentButtonState();
@@ -273,6 +274,24 @@ PsychError SCREENGetMouseHelper(void)
 	GetGlobalMouse(&mouseXY);
 	PsychCopyOutDoubleArg(1, kPsychArgOptional, (double)mouseXY.h);
 	PsychCopyOutDoubleArg(2, kPsychArgOptional, (double)mouseXY.v);
+
+	// Return optional keyboard input focus status:
+	if (numButtons > 0) {
+		// Window provided?
+		if (PsychIsWindowIndexArg(2)) {
+			// Yes: Check if it has focus.
+			PsychAllocInWindowRecordArg(2, TRUE, &windowRecord);
+			if (!PsychIsOnscreenWindow(windowRecord)) {
+				PsychErrorExitMsg(PsychError_user, "Provided window handle isn't an onscreen window, as required.");
+			}
+
+			PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) (GetUserFocusWindow() == windowRecord->targetSpecific.windowHandle) ? 1 : 0);
+		} else {
+			// No. Just always return "has focus":
+			PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) 1);
+		}
+	}
+
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -287,6 +306,7 @@ PsychError SCREENGetMouseHelper(void)
 	HANDLE	   currentProcess;
 	DWORD   oldPriority = NORMAL_PRIORITY_CLASS;
     const  DWORD   realtime_class = REALTIME_PRIORITY_CLASS;
+	PsychWindowRecordType *windowRecord;
 
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -306,6 +326,20 @@ PsychError SCREENGetMouseHelper(void)
 		GetCursorPos(&point);
 		PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) point.x);
 		PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) point.y);
+		
+		// Window provided?
+		if (PsychIsWindowIndexArg(2)) {
+			// Yes: Check if it has focus.
+			PsychAllocInWindowRecordArg(2, TRUE, &windowRecord);
+			if (!PsychIsOnscreenWindow(windowRecord)) {
+				PsychErrorExitMsg(PsychError_user, "Provided window handle isn't an onscreen window, as required.");
+			}
+
+			PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) (GetForegroundWindow() == windowRecord->targetSpecific.windowHandle) ? 1 : 0);
+		} else {
+			// No. Just always return "has focus":
+			PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) 1);
+		}		
 	}
 	else {
 	  // 'KeyboardHelper' mode: We implement either KbCheck() or KbWait() via X11.

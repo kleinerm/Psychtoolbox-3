@@ -141,6 +141,10 @@ if isempty(numMouseButtons)
     end;
 end;
 
+if nargin < 1
+    windowPtrOrScreenNumber = [];
+end
+
 %read the mouse position and  buttons
 if ~isempty(windowPtrOrScreenNumber)
 	[globalX, globalY, rawButtons, focus] = Screen('GetMouseHelper', numMouseButtons, windowPtrOrScreenNumber);
@@ -151,10 +155,6 @@ end
 buttons=logical(rawButtons);
 
 %renormalize to screen coordinates from display space
-if nargin < 1
-    windowPtrOrScreenNumber = [];
-end
-
 if ~isempty(windowPtrOrScreenNumber)
     screenRect=Screen('GlobalRect',windowPtrOrScreenNumber);
     x=globalX-screenRect(RectLeft);

@@ -423,9 +423,27 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
 // Perform OS specific processing of Window events:
 void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 {
+	POINT	lPoint;
+	RECT	lRect;
+
 	// Trigger event queue dispatch processing for GUI windows:
-	if (windowRecord == NULL || windowRecord->specialflags & kPsychGUIWindow)
-		PsychGetMouseButtonState(NULL);
+	if (windowRecord == NULL || windowRecord->specialflags & kPsychGUIWindow) PsychGetMouseButtonState(NULL);
+
+	if (windowRecord == NULL) {
+		// Done, so far...
+		return;
+	}
+		
+	// GUI windows need to behave GUIyee:
+	if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord)) {
+		// Update windows rect and globalrect, based on current size and location:
+		lPoint.x = lPoint.y = 0;
+		ClientToScreen(windowRecord->targetSpecific.windowHandle, &lPoint);
+		GetClientRect(windowRecord->targetSpecific.windowHandle, &lRect);
+		PsychMakeRect(windowRecord->globalrect, lPoint.x, lPoint.y, lPoint.x + lRect.right - 1, lPoint.y + lRect.bottom - 1);
+		PsychNormalizeRect(windowRecord->globalrect, windowRecord->rect);
+		PsychSetupView(windowRecord);
+	}		
 }
 
 // Callback handler for Window manager: Handles some events
