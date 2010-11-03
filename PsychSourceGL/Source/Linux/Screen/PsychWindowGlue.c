@@ -391,7 +391,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // This will prevent setting the override_redirect attribute, which would lock out the
   // desktop window compositor:
   if (windowLevel < 2000) fullscreen = FALSE;
-  
+
+  // Also disable fullscreen mode for GUI-like windows:
+  if (windowRecord->specialflags & kPsychGUIWindow) fullscreen = FALSE;  
+
   // Setup window attributes:
   attr.background_pixel = 0;  // Background color defaults to black.
   attr.border_pixel = 0;      // Border color as well.
@@ -1261,7 +1264,9 @@ try_sgi_swapgroup:
 // Perform OS specific processing of Window events:
 void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 {
-//	Rect globalBounds;
+	Window rootRet;
+	unsigned int depth_return, border_width_return, w, h;
+	int x, y;
 
 	// Trigger event queue dispatch processing for GUI windows:
 	if (windowRecord == NULL) {
@@ -1272,8 +1277,11 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 	// GUI windows need to behave GUIyee:
 	if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord)) {
 		// Update windows rect and globalrect, based on current size and location:
-//		GetWindowBounds(windowRecord->targetSpecific.windowHandle, kWindowContentRgn, &globalBounds);
-//		PsychMakeRect(windowRecord->globalrect, globalBounds.left, globalBounds.top, globalBounds.right, globalBounds.bottom);
+		XGetGeometry(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &rootRet, &x, &y,
+			     &w, &h, &border_width_return, &depth_return);
+		XTranslateCoordinates(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, rootRet,
+				      0,0, &x, &y, &rootRet);
+		PsychMakeRect(windowRecord->globalrect, x, y, x + (int) w - 1, y + (int) h - 1);
 		PsychNormalizeRect(windowRecord->globalrect, windowRecord->rect);
 		PsychSetupView(windowRecord);
 	}

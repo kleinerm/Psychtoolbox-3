@@ -242,7 +242,7 @@ PsychError SCREENGetMouseHelper(void)
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 	
 	//cap the numbers of inputs and outputs
-	PsychErrorExit(PsychCapNumInputArgs(1));   //The maximum number of inputs
+	PsychErrorExit(PsychCapNumInputArgs(2));   //The maximum number of inputs
 	PsychErrorExit(PsychCapNumOutputArgs(3));  //The maximum number of outputs
 	
 	//Buttons.  
@@ -467,7 +467,7 @@ PsychError SCREENGetMouseHelper(void)
 	char* keystring;
 	PsychGenericScriptType *kbNames;
 	CGDirectDisplayID dpy;
-	Window rootwin, childwin;
+	Window rootwin, childwin, mywin;
 	int i, j, mx, my, dx, dy;
 	unsigned int mask_return;
 	double numButtons, timestamp;
@@ -479,6 +479,7 @@ PsychError SCREENGetMouseHelper(void)
 	int screenNumber;
 	int priorityLevel;
 	struct sched_param schedulingparam;
+	PsychWindowRecordType *windowRecord;
 
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -488,10 +489,29 @@ PsychError SCREENGetMouseHelper(void)
 	// Retrieve optional screenNumber argument:
 	if (numButtons!=-5) {
 		screenNumber = 0;
-		PsychCopyInScreenNumberArg(2, FALSE, &screenNumber);
-	
+		if (PsychIsScreenNumberArg(2)) {
+			PsychCopyInScreenNumberArg(2, FALSE, &screenNumber);
+		}
+
 		// Map screenNumber to X11 display handle and screenid:
 		PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
+
+		if (PsychIsWindowIndexArg(2)) {
+			PsychAllocInWindowRecordArg(2, TRUE, &windowRecord);
+			if (!PsychIsOnscreenWindow(windowRecord)) {
+				PsychErrorExitMsg(PsychError_user, "Provided window handle isn't an onscreen window, as required.");
+			}
+
+			screenNumber = windowRecord->screenNumber;
+			mywin = windowRecord->targetSpecific.windowHandle;
+
+			// Map screenNumber to X11 display handle and screenid:
+			PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
+
+		} else {
+			mywin = RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber));
+		}
+
 	}
 
 	// Are we operating in 'GetMouseHelper' mode? numButtons>=0 indicates this.
@@ -524,6 +544,11 @@ PsychError SCREENGetMouseHelper(void)
 	  for (i=11; i<numButtons; i++) {
 	    buttonArray[i] = (mask_return & (1<<i)) ? 1 : 0; 
 	  }
+
+	  // Return optional 4th argument: Focus state. Returns 1 if our window has
+	  // keyboard input focus, zero otherwise:
+	  XGetInputFocus(dpy, &rootwin, &i);
+	  PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) (rootwin == mywin) ? 1 : 0);
 	}
 	else {
 	  // 'KeyboardHelper' mode: We implement either KbCheck() or KbWait() via X11.
