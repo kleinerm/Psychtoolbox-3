@@ -25,6 +25,8 @@
 %                           moglmorpher(). Psychtoolbox can load simple Alias-Wavefront OBJ
 %                           files that can be created in standard 3D software.
 %
+% MorphTextureDemo       -- Like MorphDemo, but also with GPU accelerated texture morphing.
+%
 % GLSLDemo               -- Demo that shows how to use the OpenGL Shading Language (GLSL). This
 %                           demo may only work on recent graphics hardware, so dont be surprised
 %                           if it fails on older hardware.
@@ -37,3 +39,4 @@
 %
 % DrawDots3DDemo         -- Demonstrates use of the moglDrawDots3D command for 3D dot drawing,
 %                           and of fast GLSL vertex shading for 3D dot animation.
+%
