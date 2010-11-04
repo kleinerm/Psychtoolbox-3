@@ -146,6 +146,10 @@ for i=1:size(objs,2)
     if ( textureon==1 )
         objs{i}.texcoords = texcoords; % Add modified texture coords.
     end
+    
+    %objs{i}.colors = rand(4, size(objs{i}.vertices, 2));
+    %objs{i}.colors(1:3,:) = 0.8;
+
     meshid(i) = moglmorpher('addMesh', objs{i}); %#ok<AGROW,NASGU>
 end
 
@@ -182,6 +186,9 @@ ar=winRect(4)/winRect(3);
 % Turn on OpenGL local lighting model: The lighting model supported by
 % OpenGL is a local Phong model with Gouraud shading.
 glEnable(GL.LIGHTING);
+
+% Material colors shall track vertex colors all time:
+glEnable(GL.COLOR_MATERIAL);
 
 % Enable the first local light source GL.LIGHT_0. Each OpenGL
 % implementation is guaranteed to support at least 8 light sources. 
@@ -236,7 +243,6 @@ glLightfv(GL.LIGHT0,GL.AMBIENT, [ 0.1 0.1 0.1 1 ]);
 
 % Set size of points for drawing of reference dots
 glPointSize(3.0);
-glColor3f(0,0,1);
 
 % Set thickness of reference lines:
 glLineWidth(2.0);
@@ -244,6 +250,10 @@ glLineWidth(2.0);
 % Add z-offset to reference lines, so they do not get occluded by surface:
 glPolygonOffset(0, -5);
 glEnable(GL.POLYGON_OFFSET_LINE);
+
+% Use alpha-blending:
+glEnable(GL.BLEND);
+glBlendFunc(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA);
 
 % Initialize amount and direction of rotation for our slowly spinning,
 % morphing objects:
@@ -431,6 +441,8 @@ glRotated(ang,0,1,0);
 a=0.1;
 glScalef(a,a,a);
 
+glColor3f(0.8,0.8,0.8);
+
 % Render current morphed shape via moglmorpher:
 moglmorpher('render');
 
@@ -441,6 +453,7 @@ if (dotson == 1 | dotson == 3) %#ok<OR2>
     glDisable(GL.LIGHTING);
     % From all polygons, only their defining vertices are drawn:
     glPolygonMode(GL.FRONT_AND_BACK, GL.POINT);
+    glColor3f(0,0,1);
 
     % Ask morpher to rerender the last shape:
     moglmorpher('render');
@@ -455,6 +468,7 @@ if (dotson == 2)
     % We disable lighting for this purpose:
     glDisable(GL.LIGHTING);
     % From all polygons, only their connecting outlines are drawn:
+    glColor3f(0,0,1);
     glPolygonMode(GL.FRONT_AND_BACK, GL.LINE);
 
     % Ask morpher to rerender the last shape:
@@ -485,7 +499,7 @@ if (dotson == 3 | dotson == 4) %#ok<OR2>
    
    % Plot the projected 2D points into a Matlab figure window:
    vpos(:,2)=RectHeight(Screen('Rect', win)) - vpos(:,2);
-	plot(vpos(:,1), vpos(:,2), '.');
+   plot(vpos(:,1), vpos(:,2), '.');
    drawnow;
 end;
 

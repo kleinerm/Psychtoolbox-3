@@ -1,4 +1,4 @@
-function [rc, varargout] = moglmorpher(cmd, arg1, arg2, arg3, arg4)
+function [rc, varargout] = moglmorpher(cmd, arg1, arg2, arg3, arg4, arg5)
 %
 % Matlab OpenGL Morpher - Performs linear morphs between different 3D shapes and
 % renders the resulting shape via OpenGL. Supports high-performance GPU
@@ -71,20 +71,20 @@ function [rc, varargout] = moglmorpher(cmd, arg1, arg2, arg3, arg4)
 % meshid = moglmorpher('addMesh', obj);
 % -- Add a new shape to the collection of shapes to be morphed. 'obj'
 % is a single struct that defines the object: Subfields are obj.faces,
-% obj.vertices, obj.texcoords, obj.normals. Their meaning is the same as
-% the corresponding parameters in the following 'addMesh' subcommand. The
-% 'obj' syntax is provided for convenience, as 'obj' in the same format as
-% provided by LoadOBJFile, i.e. obj = LoadOBJFile('myfile.obj') will load
-% the geometry in 'myfile.obj' into obj, which can then be passed to
-% moglmorpher via moglmorpher('addMesh', obj{1}); to add the first mesh
-% from 'myfile.obj' into the morpher.
+% obj.vertices, obj.texcoords, obj.normals, obj.colors. Their meaning is
+% the same as the corresponding parameters in the following 'addMesh'
+% subcommand. The 'obj' syntax is provided for convenience, as 'obj' in the
+% same format as provided by LoadOBJFile, i.e. obj =
+% LoadOBJFile('myfile.obj') will load the geometry in 'myfile.obj' into
+% obj, which can then be passed to moglmorpher via moglmorpher('addMesh',
+% obj{1}); to add the first mesh from 'myfile.obj' into the morpher.
 %
 %
-% meshid = moglmorpher('addMesh', faces, vertices [, texcoords] [, normals]);
+% meshid = moglmorpher('addMesh', faces, vertices [, texcoords] [, normals] [, colors]);
 % -- Add a new shape to the collection of shapes to be morphed. faces == Index
 % list that defines the topology of the shape: faces is a 3 by n vector. Each of
 % the n columns defines one 3D triangle face, the 3 indices in the column are
-% indices into the vertices, texcoords and normals vectors that define the
+% indices into the vertices, texcoords, colors and normals vectors that define the
 % properties of the vertices.
 %
 % vertices == A 3-by-m vector that defines the shape of the object: Each of the
@@ -96,6 +96,16 @@ function [rc, varargout] = moglmorpher(cmd, arg1, arg2, arg3, arg4)
 %
 % texcoords == A 2-by-m vector of 2D texture coordinates for each corresponding vertex.
 % This vector is optional and only needed if you want to apply textures to the object.
+%
+% colors == A 3-by-m or 4-by-m vector whose single columns define the
+% (red,green,blue [,alpha]) vertex color components of each vertex in
+% 'vertices' of unit normal surface vectors. The colors vector is optional
+% and only needed if you want to do lighting calculations on your object.
+% Most of the time you won't use vertex colors, but instead assign a
+% texture for more flexibility and ease of use.
+% Note: The current implementation doesn't support morphing of vertex
+% colors. Instead it will simply use the vertex 'color' vector of the last
+% added mesh for the morphed output -- a fixed assignment of vertex colors.
 %
 % The size and dimension of all provided vectors must match (==be identical) for all
 % shapes. This is required, because otherwise the linear combination of shapes and
@@ -134,8 +144,9 @@ function [rc, varargout] = moglmorpher(cmd, arg1, arg2, arg3, arg4)
 %
 % finalresult = sum_for_i=1_to_count(shape(i) * weights(i));
 % The shape (vertices) and normal vectors are linearly combined. The texture coordinates are
-% not altered by the morph. If you set the optional argument morphnormals to zero, then
-% normals are not touched by morphing either.
+% not altered by the morph, neither are the vertex colors. If you set the
+% optional argument morphnormals to zero, then normals are not touched by
+% morphing either.
 %
 %
 % moglmorpher('render');
@@ -221,6 +232,8 @@ function [rc, varargout] = moglmorpher(cmd, arg1, arg2, arg3, arg4)
 %
 % 03.11.2010  Add function 'morphTextue' to morph textures as well (MK).
 %
+% 03.11.2010  Add support for static vertex colors (non-morphable for now) (MK).
+%
 
 % The GL OpenGL constant definition struct is shared with all other modules:
 global GL;
@@ -236,6 +249,7 @@ persistent resynccount;
 persistent vertices;
 persistent normals;
 persistent texcoords;
+persistent vertcolors;
 
 % Indexarray for triangles - defines mesh topology:
 persistent faces;
@@ -247,6 +261,7 @@ persistent maxvertex;
 % Flags to enable/disable use of textures and normals:
 persistent usetextures;
 persistent usenormals;
+persistent usecolors;
 
 % Data type for OpenGL data, GL_FLOAT or GL_DOUBLE.
 persistent usetype;
@@ -271,6 +286,7 @@ persistent keyshapes;
 persistent masterkeyshapetex;
 persistent morphbuffer;
 persistent vbo;
+persistent colorvbo;
 persistent ibo;
 
 persistent vbovertexstart;
@@ -411,7 +427,7 @@ if isempty(gpubasedmorphing)
             Screen('BeginOpenGL', targetwindow);
         end
 
-        if (bitand(winfo.ImagingMode, kPsychNeedFastBackingStore)==0) & (winfo.ImagingMode~= kPsychNeedFastOffscreenWindows)
+        if (bitand(winfo.ImagingMode, kPsychNeedFastBackingStore)==0) && (winfo.ImagingMode~= kPsychNeedFastOffscreenWindows)
             fprintf('\n\nmoglmorpher: HINT: Your hardware supports fast GPU based morphing, but i cannot use it.\n');
             fprintf('moglmorpher: HINT: Please set the optional "imagingMode" flag of Screen(''OpenWindow'', ...)\n');
             fprintf('moglmorpher: HINT: at least equal to "kPsychNeedFastOffscreenWindows" in order to enable fast mode.\n\n');
@@ -431,6 +447,7 @@ if isempty(objcount)
     objcount = 0;
     usetextures = 0;
     usenormals = 0;
+    usecolors = 0;
     updatecount = 0;
     resynccount = 0;
     useSparseMorph = 0;
@@ -475,7 +492,7 @@ end;
 if strcmpi(cmd, 'reset')
    % Reset ourselves:
    
-   if (gpubasedmorphing > 0) & (objcount > 0)
+   if (gpubasedmorphing > 0) && (objcount > 0)
        % Query current OpenGL state:
        [targetwindow, IsOpenGLRendering] = Screen('GetOpenGLDrawMode');
 
@@ -538,6 +555,11 @@ if strcmpi(cmd, 'reset')
        glDeleteBuffers(1, ibo);
        ibo = [];
        
+       if ~isempty(colorvbo)
+           glDeleteBuffers(1, colorvbo);
+           colorvbo = [];
+       end
+       
        weighttexgl = [];
        oldWeightLength = -1;
        
@@ -559,6 +581,7 @@ if strcmpi(cmd, 'reset')
    vertices = [];
    normals = [];
    texcoords = [];
+   vertcolors = [];
    faces = [];
    keyvertices = [];
    keynormals = [];
@@ -641,6 +664,11 @@ if strcmpi(cmd, 'addMesh')
             argcount = 5;
             arg4 = obj.normals;
         end;
+
+        if isfield(obj, 'colors') && ~isempty(obj.colors)
+            argcount = 6;
+            arg5 = obj.colors;
+        end;    
     end;
     
     % Sanity checks:
@@ -667,6 +695,10 @@ if strcmpi(cmd, 'addMesh')
         
         if usenormals & (argcount<5 | isempty(arg4) | (size(normals)~=size(arg4)))
             error('Mismatch between size of current normals array and array of new mesh or missing normals array!');
+        end;
+
+        if usecolors & (argcount<6 | isempty(arg5) | (size(vertcolors)~=size(arg5)))
+            error('Mismatch between size of current vertex colors array and array of new mesh or missing colors array!');
         end;
     end;
         
@@ -698,6 +730,13 @@ if strcmpi(cmd, 'addMesh')
         realNormalCount = 0;
     end
     
+    % 5th (optional) argument is vertex colors array:
+    if argcount>5 && ~isempty(arg5)
+        vertcolors = double(arg5);
+        usecolors = 1;
+    end;
+    
+    
     % Assign vertex array and normals array to new slot in keyshape vector:
     objcount = objcount + 1;
     
@@ -713,6 +752,7 @@ if strcmpi(cmd, 'addMesh')
             vertices = moglsingle(vertices);
             texcoords = moglsingle(texcoords);
             normals = moglsingle(normals);
+            vertcolors = moglsingle(vertcolors);
         end;
         
         keyvertices(:,:,objcount)=vertices(:,:);
@@ -908,6 +948,19 @@ if strcmpi(cmd, 'addMesh')
             Screen('EndOpenGL', win);
         end
         
+        if usecolors
+            buffersize = size(vertcolors,1) * size(vertcolors,2) * 4;
+            if objcount == 1
+                colorvbo = glGenBuffers(1);
+                glBindBuffer(GL.ARRAY_BUFFER, colorvbo);
+                glBufferData(GL.ARRAY_BUFFER, buffersize, 0, GL.STATIC_DRAW);
+            else
+                glBindBuffer(GL.ARRAY_BUFFER, colorvbo);                
+                glBufferSubData(GL.ARRAY_BUFFER, 0, buffersize, moglsingle(vertcolors));
+            end
+            glBindBuffer(GL.ARRAY_BUFFER, 0);
+        end
+        
         clear invertices;
         
         if IsOpenGLRendering
@@ -1005,7 +1058,7 @@ if strcmpi(cmd, 'renderMesh')
         error('You need to supply the handle of the mesh to be rendered!');
     end;
     
-    if arg1 <1 | arg1>objcount
+    if arg1 <1 || arg1>objcount
         error('Handle for non-existent keyshape provided!');
     end;
     
@@ -1052,7 +1105,7 @@ if strcmpi(cmd, 'renderMesh')
     cmd = 'render';
 end;
 
-if strcmpi(cmd, 'renderMorph') | strcmpi(cmd, 'computeMorph')
+if strcmpi(cmd, 'renderMorph') || strcmpi(cmd, 'computeMorph')
     % A morph (linear combination) of all meshes should be computed and then rendered.
     if nargin < 2
         error('You need to supply the morph-weight vector!');
@@ -1095,7 +1148,7 @@ if strcmpi(cmd, 'renderMorph') | strcmpi(cmd, 'computeMorph')
         end;
 
         % Perform morphing of normals as well. This is not strictly correct.
-        if usenormals & morphnormals
+        if usenormals && morphnormals
             normals(:,:) = keynormals(:,:,1) * arg1(1);
             for i=2:length(arg1)
                 if abs(arg1(i)) > 0
@@ -1155,7 +1208,7 @@ if strcmpi(cmd, 'renderMorph') | strcmpi(cmd, 'computeMorph')
         end
 
         % Which path to use?
-        if isempty(masterkeyshapetex) | (useSparseMorph > 0)
+        if isempty(masterkeyshapetex) || (useSparseMorph > 0)
             % Iterative path. Used when number and size of keyshapes
             % doesn't fit into hardware constraints for a single shape
             % texture.
@@ -1274,7 +1327,7 @@ if strcmpi(cmd, 'renderMorph') | strcmpi(cmd, 'computeMorph')
         end
         
         % Do we have normals, and if so, do we want to morph them?
-        if ~morphnormals & usenormals
+        if ~morphnormals && usenormals
             % We have normals, but don't wanna morph them: Only read back
             % half of the morphbuffers height, so we omit copying the new
             % morphed normals to the normal-array section of our VBO:
@@ -1356,7 +1409,7 @@ if strcmpi(cmd, 'renderNormals')
     return;
 end;
 
-if strcmpi(cmd, 'render') | strcmpi(cmd, 'renderToDisplaylist')
+if strcmpi(cmd, 'render') || strcmpi(cmd, 'renderToDisplaylist')
     % Render current content of renderbuffers via OpenGL:
     if updatecount < 1
         error('Tried to render content of renderbuffers, but renderbuffers not yet filled!');
@@ -1393,6 +1446,13 @@ if strcmpi(cmd, 'render') | strcmpi(cmd, 'renderToDisplaylist')
             glEnableClientState(GL.TEXTURE_COORD_ARRAY);
             % Set pointer to start of texcoord array:
             glTexCoordPointer(size(texcoords, 1), usetype, 0, texcoords);
+        end;
+
+        if usecolors
+            % Enable client-side texture coordinate arrays:
+            glEnableClientState(GL.COLOR_ARRAY);
+            % Set pointer to start of vertex color array:
+            glColorPointer(size(vertcolors, 1), usetype, 0, vertcolors);
         end;
 
         % Render mesh, using topology given by 'faces':
@@ -1439,6 +1499,19 @@ if strcmpi(cmd, 'render') | strcmpi(cmd, 'renderToDisplaylist')
             glDisableClientState(GL.NORMAL_ARRAY);
         end
 
+        if usecolors
+            % Enable client-side texture coordinate arrays:
+            glEnableClientState(GL.COLOR_ARRAY);
+
+            % We use a separate dedicated VBO for vertex colors:
+            glBindBuffer(GL.ARRAY_BUFFER, colorvbo);
+
+            % Set pointer to start of vertex color buffer:
+            glColorPointer(size(vertcolors, 1), usetype, 0, 0);
+        else
+            glDisableClientState(GL.COLOR_ARRAY);
+        end
+        
         % Bind face index VBO 'ibo':
         glBindBuffer(GL.ELEMENT_ARRAY_BUFFER_ARB, ibo);
 
@@ -1464,6 +1537,7 @@ if strcmpi(cmd, 'render') | strcmpi(cmd, 'renderToDisplaylist')
     glDisableClientState(GL.VERTEX_ARRAY);
     glDisableClientState(GL.NORMAL_ARRAY);
     glDisableClientState(GL.TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL.COLOR_ARRAY);
 
     if rc>-1
         % Finalize our new display list:
@@ -1477,7 +1551,7 @@ if strcmpi(cmd, 'getVertexPositions')
    % Calling routine wants projected screen space vertex positions of all vertices
    % in our current renderbuffer.
    
-   if nargin < 2 | isempty(arg1)
+   if nargin < 2 || isempty(arg1)
       error('win Windowhandle missing in call to getVertexPositions!')
    end;
    
@@ -1516,7 +1590,7 @@ if strcmpi(cmd, 'getVertexPositions')
    reqbuffersize = ntotal * 4 * 4; % numVertices * 4 float/vertex * 4 bytes/float.
    
    % Feedback buffer already allocated in proper size?
-   if feedbackptr~=0 & feedbacksize < reqbuffersize
+   if feedbackptr~=0 && feedbacksize < reqbuffersize
       % Allocated, but too small for our purpose. Delete & Reallocate:
       moglfree(feedbackptr);
       feedbackptr=0;
