@@ -52,6 +52,7 @@ function [fit_out,x,fitComment] = ...
 % 6/5/10    dhb     Fix a lot of MATLAB lint warnings.
 %           dhb     Fix error reporting to actually take mean across devices.
 %           dhb     Rewrite how mean is taken for evaluation of best fit. I think this was done right.
+% 11/07/10  dhb     Print out fit exponents when gamma fit by a simple power function.
 
 % Get sizes
 [nDevices] = size(measurements,2);
@@ -82,6 +83,7 @@ if (fitType == 0 || fitType == 1 || fitType == 2)
     x0 = InitialXPow;
     [fit_out1(:,i),x1(:,i),error(1,i)] = ...
       FitGammaPow(values_in(:,i),measurements(:,i),values_out,x0);
+    fprintf('Exponent for device %d is %g\n',i,x1(:,i));
   end
   fprintf('Simple power function fit, RMSE: %g\n',mean(error(1,i)));
 end
