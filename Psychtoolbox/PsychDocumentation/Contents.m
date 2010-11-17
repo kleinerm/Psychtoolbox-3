@@ -7,6 +7,14 @@
 %                          enable special workarounds in Screen() for
 %                          broken graphics drivers or hardware.
 %
+% ECVP2010Poster_VisualTimingPrecision.pdf - Poster about the visual
+%                          stimulus onset timing and timestamping precision
+%                          of Psychtoolbox tested on different system
+%                          configurations. Presented at ECVP 2010. This
+%                          version adds multiple pages of comments and
+%                          bonus information. It also contains a few more
+%                          datapoints collected after ECVP.
+%
 % ExperimentalStuff      - Read this for a description of features that
 %                          are currently in a beta state, i.e., they
 %                          are not yet fully mature and polished, so
