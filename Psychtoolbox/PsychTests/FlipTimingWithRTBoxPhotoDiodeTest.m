@@ -174,6 +174,10 @@ end
 Screen('Preference', 'ConserveVRAM', conserveVRAM);
 res.conserveVRAM = conserveVRAM;
 
+if IsLinux && (conf.VBLTimestampingMode == 1)
+    conf.VBLTimestampingMode = 4;
+end
+
 %conf.VBLTimestampingMode = 3;
 %res.VBLTimestampingMode = conf.VBLTimestampingMode;
 % VBLTimestampingMode: configVBLTimestampingMode
@@ -182,6 +186,7 @@ res.conserveVRAM = conserveVRAM;
 %  1 = Beamposition with auto-fallback to VBL-IRQ method in case of failure.
 %  2 = Like 1, but with permanent consistency checking between both.
 %  3 = VBL-IRQ only (override), or any similar mechanism on non-OS/X.
+%  4 = OpenML timestamping, with auto-fallback to 1 in case of failure.
 % [] = Auto-Select (Default)
 Screen('Preference', 'VBLTimestampingMode', conf.VBLTimestampingMode);
 fprintf('Enabling VBLTimestampingMode %i.\n', conf.VBLTimestampingMode);
