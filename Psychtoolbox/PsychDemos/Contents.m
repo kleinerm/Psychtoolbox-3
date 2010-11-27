@@ -60,6 +60,7 @@
 %    IsomerizationsInDishDemo - Compute photoreceptor isomerizations for retina in a dish.
 %    IsomerizationsInEyeDemo  - Compute photoreceptor isomerizations for human eye.
 %    KbDemo                  - Demonstrate KbCheck, KbName, KbWait.
+%    KinectDemo              - Capture and display video and depths data from a Kinect box.
 %    LineStippleDemo         - Draw dotted and dashed lines.  
 %    MandelbrotDemo          - Visualize the Mandelbrot fractal set by use
 %                              of a GLSL procedural texture.
