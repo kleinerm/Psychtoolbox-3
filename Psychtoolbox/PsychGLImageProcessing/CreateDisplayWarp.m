@@ -162,9 +162,9 @@ end
 
 % Type of setup depends on type of calibration:
 switch(calib.warptype)
-    case {'HalfCylinderProjection'}
+    case {'HalfCylinderProjection', 'SphereProjection'}
         % Build combo of displaylist and GLSL shader for projection of flat
-        % screen image onto a half-cylinder:
+        % screen image onto a half-cylinder or sphere:
 
         % Query effective onscreen window size:
         [winWidth, winHeight] = Screen('WindowSize', window);
@@ -232,7 +232,13 @@ switch(calib.warptype)
         % Assign display list to output warpstruct:
         warpstruct.gld = gld;
 
-        warpstruct.glsl = LoadGLSLProgramFromFiles('CylinderProjectionShader');
+        if strcmpi(calib.warptype, 'SphereProjection')
+            % Use spherical projection shader:
+            warpstruct.glsl = LoadGLSLProgramFromFiles('SphereProjectionShader');
+        else
+            % Use cylindrical projection shader:
+            warpstruct.glsl = LoadGLSLProgramFromFiles('CylinderProjectionShader');
+        end
         glUseProgram(warpstruct.glsl);
         
         glUniform1i(glGetUniformLocation(warpstruct.glsl, 'doFilter'), needFilterShader);

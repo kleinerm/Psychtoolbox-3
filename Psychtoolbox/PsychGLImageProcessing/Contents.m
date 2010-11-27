@@ -44,7 +44,8 @@
 % CreatePseudoGrayLUT             -- Create a lookup table for pseudogray conversion -- Internal helper function.
 % DisplayUndistortionBezier.m     -- Interactive geometric display calibration for simple needs.
 % DisplayUndistortionBVL.m        -- Interactive geometric display calibration. Recommended!
-% DisplayUndistortionHalfCylinder -- Interactive geometric display calibration for half-cylinder projections.
+% DisplayUndistortionHalfCylinder -- Interactive geometric display calibration for half-cylinder or spherical projections.
+% DisplayUndistortionSphere
 % HookProcessingChains.m          -- Documentation about hook chains and their options.
 % ImagingStereoDemo.m             -- Counterpart to StereoDemo.m, but using imaging pipeline
 %                                    for increased fidelity, flexibility, ease of use.

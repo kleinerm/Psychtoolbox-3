@@ -1,5 +1,8 @@
 function DisplayUndistortionHalfCylinder(calibfilename, screenid)
-% Create geometric display calibration file for projection onto a cylinder.
+% Create geometric display calibration file for projection onto a cylinder or sphere.
+%
+% CAUTION: This function is not fully implemented and tested! It may or
+% may not work for your purpose and may give totally wrong results.
 %
 % Usage:
 %
@@ -40,6 +43,11 @@ global GL;
 
 AssertOpenGL;
 
+correctiontype = input('Cylinder projection (c) or sphere projection (s)? ', 's');
+if ~ismember(correctiontype, {'c','s'})
+    error('Invalid correction type provided! Must be ''s'' or ''c''.'); 
+end
+
 KbName('UnifyKeyNames');
 UpArrow = KbName('UpArrow');
 DownArrow = KbName('DownArrow');
@@ -65,7 +73,14 @@ if isempty(calibfilename)
     % config dir, with a well defined name that also encodes the screenid
     % and resolution for which to calibrate:
     [w, h] = Screen('WindowSize', screenid);
-    calibfilename = [ PsychtoolboxConfigDir('GeometryCalibration') 'HalfCylinderCalibdata' sprintf('_%i_%i_%i', screenid, w, h) '.mat'];
+    
+    if correctiontype == 'c'
+        defname = 'HalfCylinderCalibdata';
+    else
+        defname = 'SphereCalibdata';
+    end
+    
+    calibfilename = [ PsychtoolboxConfigDir('GeometryCalibration') defname sprintf('_%i_%i_%i', screenid, w, h) '.mat'];
     fprintf('\nNo name for calibration file provided. Using default name and location...\n');
 end
 
@@ -80,7 +95,12 @@ if exist(calibfilename, 'file')
 end
 
 % Create initial default cylinder undistortion calibration struct:
-calib.warptype = 'HalfCylinderProjection';
+if correctiontype == 'c'
+    calib.warptype = 'HalfCylinderProjection';
+else
+    calib.warptype = 'SphereProjection';
+end
+
 calib.rotationAngle = [];
 calib.inSize = [];
 calib.inOffset = [];
