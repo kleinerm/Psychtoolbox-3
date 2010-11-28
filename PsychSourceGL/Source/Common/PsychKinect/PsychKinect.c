@@ -228,7 +228,7 @@ PsychKNBuffer* PsychGetKNBuffer(PsychKNDevice* kinect, int index)
 	return(&kinect->buffers[index % kinect->numbuffers]);
 }
 
-void PsychDepthCB(freenect_device *dev, void *depth, uint32_t timestamp)
+void PsychDepthCB(freenect_device *dev, freenect_depth *depth, uint32_t timestamp)
 {
 	int i;
 
@@ -265,7 +265,7 @@ void* PsychKinectThreadMain(volatile void* deviceToCast)
 	int headroom;
 	
 	// Child protection:
-	if ((NULL == kinect) || (NULL == kinect->dev)) return;
+	if ((NULL == kinect) || (NULL == kinect->dev)) return(NULL);
 
 	// Initialize libkinect and attach callbacks, start kinect's iso-streaming:
 	freenect_set_depth_callback(kinect->dev, PsychDepthCB);
@@ -380,7 +380,7 @@ void PsychKNStop(int handle)
 
 		// Wait for it to die peacefully:
 		PsychDeleteThread(&kinect->captureThread);
-		kinect->captureThread = NULL;
+		kinect->captureThread = 0;
 		
 		// Mark as dead:
 		kinect->state = 0;

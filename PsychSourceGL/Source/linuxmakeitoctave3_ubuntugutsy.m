@@ -70,4 +70,11 @@ if mode==6
     striplibsfrommexfile([PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles/moglcore.mex']);
 end;
 
+if mode==7
+    % Build PsychKinect.mex:
+    mex -v -g --output ../Projects/Linux/build/PsychKinect.mex -DPTBMODULE_PsychKinect -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -I/usr/include/libfreenect -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen Common/Base/*.cc Linux/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -lfreenect -lusb-1.0
+    unix('mv /home/kleinerm/projects/OpenGLPsychtoolbox/trunk/PsychSourceGL/Projects/Linux/build/PsychKinect.mex /home/kleinerm/projects/OpenGLPsychtoolbox/trunk/Psychtoolbox/PsychBasic/Octave3LinuxFiles/');
+    striplibsfrommexfile([PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles/PsychKinect.mex']);
+end;
+
 return;
