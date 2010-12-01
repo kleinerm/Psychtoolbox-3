@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <errno.h>
 
 // Just simulate the beast:
 // #define EMULATE_LIBENECT 1
@@ -234,12 +235,13 @@ void PsychDepthCB(freenect_device *dev, freenect_depth *depth, uint32_t timestam
 
 	PsychKNDevice *kinect = (PsychKNDevice*) freenect_get_user(dev);
 	PsychKNBuffer *buffer = PsychGetKNBuffer(kinect, kinect->recposition);
+
 	memcpy(buffer->depth, depth, FREENECT_FRAME_W * FREENECT_FRAME_H * 2);
 	buffer->dwidth = FREENECT_FRAME_W;
 	buffer->dheight = FREENECT_FRAME_H;
 	
 	// Mark depth frame as done:
-	kinectdevices[0].paCalls++;
+	kinect->paCalls++;
 }
 
 void PsychRGBCB(freenect_device *dev, freenect_pixel *rgb, uint32_t timestamp)
@@ -248,6 +250,7 @@ void PsychRGBCB(freenect_device *dev, freenect_pixel *rgb, uint32_t timestamp)
 	
 	PsychKNDevice *kinect = (PsychKNDevice*) freenect_get_user(dev);
 	PsychKNBuffer *buffer = PsychGetKNBuffer(kinect, kinect->recposition);
+
 	memcpy(buffer->color, rgb, ((kinect->bayerFilterMode == 1) ? FREENECT_RGB_SIZE : FREENECT_BAYER_SIZE));
 	buffer->cwidth = FREENECT_FRAME_W;
 	buffer->cheight = FREENECT_FRAME_H;
@@ -255,7 +258,7 @@ void PsychRGBCB(freenect_device *dev, freenect_pixel *rgb, uint32_t timestamp)
 	// Timestamp the buffer:
 	buffer->cts = (double) timestamp;
 
-	kinectdevices[0].paCalls++;
+	kinect->paCalls++;
 }
 
 void* PsychKinectThreadMain(volatile void* deviceToCast)
@@ -823,8 +826,17 @@ PsychError PSYCHKINECTGrabFrame(void)
 		}
 		
 		// Yes. Wait for change notification from thread:
-		PsychWaitCondition(&kinect->changeSignal, &kinect->mutex);
-		
+		PsychTimedWaitCondition(&kinect->changeSignal, &kinect->mutex, 0.5);
+		if (kinect->state <= 0) {
+			// Something wen't wrong, probably a enect driver error condition.
+			// Clear the waitMode flag and continue, so we break out as if we
+			// failed to poll for new data:
+			navail = 0;
+			waitMode = 0;
+			if (verbosity > 1) printf("PTB-WARNING: In 'GrabFrame': Kinect driver timed out or emergency stopped!\nPrepare for trouble!\n");
+			continue;
+		}
+
 		// Recheck:
 		navail = kinect->recposition - kinect->readposition;		
 
@@ -1031,16 +1043,29 @@ PsychError PSYCHKINECTGetImage(void)
     return(PsychError_none);	
 }
 
+// Fetch zinbuf raw disparity value at location (x,y):
+static inline short getz(short *zinbuf, int x, int y)
+{
+	return(zinbuf[y * 640 + x]);
+}
+
+// Convert raw disparity value into z distance (in centimeters):
+static inline double calcz(short rawDisparity)
+{
+	// Magic formula from www.openkinect.org Wiki, "Imaging parameter"
+	// section:
+	return(100.0/(-0.00307 * (double) rawDisparity + 3.33));
+}
+
 PsychError PSYCHKINECTGetDepthImage(void)
 {
-    static char useString[] = "[imageOrPtr, width, height, extType, extFormat] = PsychKinect('GetDepthImage', kinectPtr [, format=0][, returnTexturePtr=0]);";
-    //							1			2	   3	   4		5										  1			   2		   3
+    static char useString[] = "[imageOrPtr, width, height, components, extFormat] = PsychKinect('GetDepthImage', kinectPtr [, format=0][, returnTexturePtr=0]);";
     static char synopsisString[] = 
     "Return the depth image data for the frame fetched via 'GrabFrame'.\n\n"
     "If 'returnTexturePtr' is zero (default), a matrix is returned for processing in Matlab/Octave.\n\n"
 	"If 'returnTexturePtr' is one, a memory pointer to a buffer is returned.\n\n"
 	"'format' defines the type of returned data:\n"
-	"0 = Return raw depths (disparity) image as 2D double matrix with integral values.\n"
+	"0 = Return raw disparity image as 2D double matrix with integral values.\n"
 	"1 = Return depths z-image as 2D double matrix with z-distance in meters.\n"
 	"2 = Return a vertex buffer with (x,y,z) vertices that define a 3D surface mesh.\n"
 	"\n\n";
@@ -1052,7 +1077,13 @@ PsychError PSYCHKINECTGetDepthImage(void)
 	PsychKNBuffer* buffer;
 	double* outzmat;
 	int returnTexturePtr, format;
-	int i, pval, lb;
+	int i, x, y, pval, lb;
+
+	double xp, yp, zp;
+	const double minDistance = -10;
+	const double scaleFactor = .0021;
+	const double w = 640;
+	const double h = 480;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -1078,9 +1109,10 @@ PsychError PSYCHKINECTGetDepthImage(void)
 	switch(format) {
 		case 0:
 			// Return raw depth image:
-			for (i=0; i < 640*480; i++) {
-				pval = t_gamma[buffer->depth[i]];
-				zmap[i] = (double) pval;
+			i=0;
+			for (x=0; x < 640; x++)
+			  for (y=0; y < 480; y++) {
+			    zmap[i++] = (double) getz(buffer->depth, x, y);
 			}
 			
 			// Return image data:
@@ -1095,10 +1127,12 @@ PsychError PSYCHKINECTGetDepthImage(void)
 		
 		case 1:
 			// Return encoded and aligned depth image:
-			// TODO: DO THIS CORRECTLY!
-			for (i=0; i < 640*480; i++) {
-				pval = t_gamma[buffer->depth[i]];
-				zmap[i] = (double) pval;
+			// Return raw depth image:
+			i=0;
+			for (x=0; x < 640; x++)
+			  for (y=0; y < 480; y++) {
+			    // Calc z distance, convert from centimeters to meters:
+			    zmap[i++] = calcz(getz(buffer->depth, x, y)) / 100;
 			}
 			
 			// Return image data:
@@ -1113,12 +1147,17 @@ PsychError PSYCHKINECTGetDepthImage(void)
 		
 		case 2:
 			// Return (x,y,z) vertex buffer mesh:
-			// TODO: DO THIS CORRECTLY!
-			for (i=0; i < 640*480; i++) {
-				pval = t_gamma[buffer->depth[i]];
-				zmap[i*3 + 0] = (double) (i % 640);
-				zmap[i*3 + 1] = (double) i / 640;
-				zmap[i*3 + 2] = (double) pval;
+			i=0;
+			for (x=0; x < 640; x++)
+			  for (y=0; y < 480; y++) {
+				zp = calcz(getz(buffer->depth, x, y));
+				xp = ((double) x - w/2) * (zp + minDistance) * scaleFactor * (w/h);
+				yp = ((double) y - h/2) * (zp + minDistance) * scaleFactor;
+
+				// Write out, convert from centimeters to meters:
+				zmap[i++] = xp / 100;
+				zmap[i++] = yp / 100;
+				zmap[i++] = zp / 100;
 			}
 			
 			// Return image data:
@@ -1126,22 +1165,24 @@ PsychError PSYCHKINECTGetDepthImage(void)
 				// Just return a memory pointer to the colorbuffer:
 				PsychCopyOutDoubleArg(1, FALSE, PsychPtrToDouble((void*) zmap));
 			} else {
-				PsychAllocOutDoubleMatArg(1, FALSE, buffer->dheight, buffer->dwidth, 3, &outzmat);
-				memcpy(outzmat, zmap, buffer->dheight * buffer->dwidth * 3 * sizeof(double));
+				PsychAllocOutDoubleMatArg(1, FALSE, 3, buffer->dheight, buffer->dwidth, &outzmat);
+				memcpy(outzmat, zmap, 3 * buffer->dheight * buffer->dwidth * sizeof(double));
 			}
 		break;
-		
+
+		default:
+			PsychErrorExitMsg(PsychError_user, "Invalid '' parameter provided!");
 	}
 	
 	// Fixed for current Kinect:
 	PsychCopyOutDoubleArg(2, FALSE, buffer->dwidth);
-	PsychCopyOutDoubleArg(3, FALSE, buffer->dheight);		
+	PsychCopyOutDoubleArg(3, FALSE, buffer->dheight);
 	
-	// GL_RGB8:
-	PsychCopyOutDoubleArg(4, FALSE, 32849);
+	// 3 components per vertex:
+	PsychCopyOutDoubleArg(4, FALSE, 3);
 
-	// GL_UNSIGNED_BYTE:
-	PsychCopyOutDoubleArg(5, FALSE, 5121);
+	// GL_DOUBLE = 5130, GL_FLOAT = 5126:
+	PsychCopyOutDoubleArg(5, FALSE, 5130);
 
     return(PsychError_none);	
 }

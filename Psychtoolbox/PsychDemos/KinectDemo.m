@@ -17,7 +17,7 @@ InitializeMatlabOpenGL([],[],1);
 dst1 = [0, 0, 640, 480];
 dst2 = [650, 0, 650+640, 480];
 
-w = Screen('Openwindow', 0, 0);
+w = Screen('Openwindow', 0, 0, [0 0 1300 500]);
 kinect = PsychKinect('Open');
 PsychKinect('Start', kinect);
 
@@ -25,19 +25,41 @@ while 1
     [rc, cts] = PsychKinect('GrabFrame', kinect);
     if rc > 0
         [imbuff, width, height, channels] = PsychKinect('GetImage', kinect, 0, 1);
-        tex = Screen('SetOpenGLTextureFromMemPointer', w, [], imbuff, width, height, channels, 0, GL.TEXTURE_RECTANGLE_EXT);
-        Screen('DrawTexture', w, tex, [], dst1);
-        Screen('Close', tex);
+	if width > 0 && height > 0
+		tex = Screen('SetOpenGLTextureFromMemPointer', w, [], imbuff, width, height, channels, 1, GL.TEXTURE_RECTANGLE_EXT);
+		Screen('DrawTexture', w, tex, [], dst1);
+		Screen('Close', tex);
+	end
 
         [imbuff, width, height, channels] = PsychKinect('GetImage', kinect, 1, 1);
-        tex = Screen('SetOpenGLTextureFromMemPointer', w, [], imbuff, width, height, channels, 0, GL.TEXTURE_RECTANGLE_EXT);
-        Screen('DrawTexture', w, tex, [], dst2);
-        Screen('Close', tex);
+	if width > 0 && height > 0
+		tex = Screen('SetOpenGLTextureFromMemPointer', w, [], imbuff, width, height, channels, 1, GL.TEXTURE_RECTANGLE_EXT);
+		Screen('DrawTexture', w, tex, [], dst2);
+		Screen('Close', tex);
+	end
+
+	if 0
+	        [imbuff, width, height, channels] = PsychKinect('GetDepthImage', kinect, 2, 0);
+		if 0
+			imagesc(imbuff);
+			drawnow;
+			minz = min(min(imbuff))
+			maxz = max(max(imbuff))
+		else
+			scatter3(imbuff(1,:,:), imbuff(2,:,:), imbuff(3,:,:));
+			drawnow;
+		end
+	end
 
         PsychKinect('ReleaseFrame', kinect);
         Screen('Flip', w);
     end
-    
+
+    [x,y,buttons]=GetMouse;
+    if (x == 0 && y == 0)
+	GetClicks;
+    end
+
     if KbCheck
         break;
     end
