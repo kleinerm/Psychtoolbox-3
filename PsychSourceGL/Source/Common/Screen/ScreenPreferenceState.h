@@ -115,5 +115,9 @@ double PsychPrefStateGet_FrameRectCorrection(void);
 void PsychPrefStateSet_SynctestThresholds(double maxStddev, int minSamples, double maxDeviation, double maxDuration);
 void PsychPrefStateGet_SynctestThresholds(double* maxStddev, int* minSamples, double* maxDeviation, double* maxDuration);
 
+// Shall GStreamer be used instead of Quicktime on 32-bit Windows or OS/X?
+void PsychPrefStateSet_UseGStreamer(int value);
+int PsychPrefStateGet_UseGStreamer(void);
+
 //end include once
 #endif

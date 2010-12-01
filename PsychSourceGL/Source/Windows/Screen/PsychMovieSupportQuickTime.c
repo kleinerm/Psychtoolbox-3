@@ -1,5 +1,5 @@
 /*
-	PsychMovieSupport.c
+	PsychMovieSupportQuickTime.c
 	
 	PLATFORMS:	
 	
@@ -73,12 +73,12 @@ static int numMovieRecords = 0;
 static psych_bool firsttime = TRUE;
 
 /*
- *     PsychMovieInit() -- Initialize movie subsystem.
+ *     PsychQTMovieInit() -- Initialize movie subsystem.
  *     This routine is called by Screen's RegisterProject.c PsychModuleInit()
  *     routine at Screen load-time. It clears out the movieRecordBANK to
  *     bring the subsystem into a clean initial state.
  */
-void PsychMovieInit(void)
+void PsychQTMovieInit(void)
 {
     // Initialize movieRecordBANK with NULL-entries:
     int i;
@@ -138,12 +138,12 @@ double PsychDetermineMovieFramecountAndFps(Movie theMovie, int* nrframes)
     return((double) GetMovieTimeScale(theMovie) / (double) myDuration);    
 }
 
-int PsychGetMovieCount(void) {
+int PsychQTGetMovieCount(void) {
 	return(numMovieRecords);
 }
 
 /*
- *      PsychCreateMovie() -- Create a movie object.
+ *      PsychQTCreateMovie() -- Create a movie object.
  *
  *      This function tries to open a Quicktime-Moviefile and create an
  *      associated movie object for it.
@@ -153,7 +153,7 @@ int PsychGetMovieCount(void) {
  *      preloadSecs = How many seconds of the movie should be preloaded/prefetched into RAM at movie open time?
  *      moviehandle = handle to the new movie.
  */
-void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle)
+void PsychQTCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle)
 {
     Movie theMovie = NULL;
     QTVisualContextRef QTMovieContext = NULL;
@@ -161,8 +161,6 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double 
     int i;
 	 int slotid;
     OSErr error;
-//    CFStringRef movieLocation;
-//    CFStringRef coreAudioDeviceUID;
     psych_bool trueValue = TRUE;
     QTNewMoviePropertyElement newMovieProperties[4] = {0};
     int propcount = 0;
@@ -410,7 +408,7 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double 
 }
 
 /*
- *  PsychGetMovieInfo() - Return basic information about a movie.
+ *  PsychQTGetMovieInfo() - Return basic information about a movie.
  *
  *  framecount = Total number of video frames in the movie, determined by counting.
  *  durationsecs = Total playback duration of the movie, in seconds.
@@ -420,7 +418,7 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double 
  *  nrdroppedframes = Total count of videoframes that had to be dropped during last movie playback,
  *                    in order to keep the movie synced with the realtime clock.
  */
-void PsychGetMovieInfos(int moviehandle, int* width, int* height, int* framecount, double* durationsecs, double* framerate, int* nrdroppedframes)
+void PsychQTGetMovieInfos(int moviehandle, int* width, int* height, int* framecount, double* durationsecs, double* framerate, int* nrdroppedframes)
 {
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
@@ -451,9 +449,9 @@ void PsychGetMovieInfos(int moviehandle, int* width, int* height, int* framecoun
 }
 
 /*
- *  PsychDeleteMovie() -- Delete a movie object and release all associated ressources.
+ *  PsychQTDeleteMovie() -- Delete a movie object and release all associated ressources.
  */
-void PsychDeleteMovie(int moviehandle)
+void PsychQTDeleteMovie(int moviehandle)
 {
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
@@ -502,20 +500,20 @@ void PsychDeleteMovie(int moviehandle)
 }
 
 /*
- *  PsychDeleteAllMovies() -- Delete all movie objects and release all associated ressources.
+ *  PsychQTDeleteAllMovies() -- Delete all movie objects and release all associated ressources.
  */
-void PsychDeleteAllMovies(void)
+void PsychQTDeleteAllMovies(void)
 {
     int i;
     for (i=0; i<PSYCH_MAX_MOVIES; i++) {
-        if (movieRecordBANK[i].theMovie) PsychDeleteMovie(i);
+        if (movieRecordBANK[i].theMovie) PsychQTDeleteMovie(i);
     }
     return;
 }
 
 
 /*
- *  PsychGetTextureFromMovie() -- Create an OpenGL texture map from a specific videoframe from given movie object.
+ *  PsychQTGetTextureFromMovie() -- Create an OpenGL texture map from a specific videoframe from given movie object.
  *
  *  win = Window pointer of onscreen window for which a OpenGL texture should be created.
  *  moviehandle = Handle to the movie object.
@@ -527,7 +525,7 @@ void PsychDeleteAllMovies(void)
  *
  *  Returns true (1) on success, false (0) if no new image available, -1 if no new image available and there won't be any in future.
  */
-int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp)
+int PsychQTGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp)
 {
 	static TimeValue myNextTimeCached = -2;
 	static TimeValue nextFramesTimeCached = -2;
@@ -598,7 +596,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
     
     if (verbose > 9) {
         PsychGetAdjustedPrecisionTimerSeconds(&tnow);
-        printf("PTB-DEBUG:PsychGetTextureFromMovie(): After context switch and param check: %lf secs.\n", tnow - tbaseline);
+        printf("PTB-DEBUG:PsychQTGetTextureFromMovie(): After context switch and param check: %lf secs.\n", tnow - tbaseline);
     }
 
     // Is movie actively playing (automatic async playback, possibly with synced sound)?
@@ -696,7 +694,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
 
     if (verbose > 9) {
         PsychGetAdjustedPrecisionTimerSeconds(&tnow);
-        printf("PTB-DEBUG:PsychGetTextureFromMovie(): After presentation_timestamp: %lf secs.\n", tnow - tbaseline);
+        printf("PTB-DEBUG:PsychQTGetTextureFromMovie(): After presentation_timestamp: %lf secs.\n", tnow - tbaseline);
     }
     
     // Allow quicktime visual context task to do its internal bookkeeping and cleanup work:
@@ -707,7 +705,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
 
     if (verbose > 9) {
         PsychGetAdjustedPrecisionTimerSeconds(&tnow);
-        printf("PTB-DEBUG:PsychGetTextureFromMovie(): After MoviesTask(): %lf secs.\n", tnow - tbaseline);
+        printf("PTB-DEBUG:PsychQTGetTextureFromMovie(): After MoviesTask(): %lf secs.\n", tnow - tbaseline);
     }
     
     // Should we just check for new image? If so, just return availability status:
@@ -744,7 +742,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
 
     if (verbose > 9) {
         PsychGetAdjustedPrecisionTimerSeconds(&tnow);
-        printf("PTB-DEBUG:PsychGetTextureFromMovie(): After check for new image: %lf secs.\n", tnow - tbaseline);
+        printf("PTB-DEBUG:PsychQTGetTextureFromMovie(): After check for new image: %lf secs.\n", tnow - tbaseline);
     }
     
     if (!PSYCH_USE_QT_GWORLDS) {
@@ -807,7 +805,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         // Lock GWorld:
         if(!LockPixels(GetGWorldPixMap(movieRecordBANK[moviehandle].QTMovieGWorld))) {
             // Locking surface failed! We abort.
-            PsychErrorExitMsg(PsychError_internal, "PsychGetTextureFromMovie(): Locking GWorld pixmap surface failed!!!");
+            PsychErrorExitMsg(PsychError_internal, "PsychQTGetTextureFromMovie(): Locking GWorld pixmap surface failed!!!");
         }
         
         // Assign texture rectangle:
@@ -824,7 +822,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         out_texture->textureMemory = (GLuint*) GetPixBaseAddr(GetGWorldPixMap(movieRecordBANK[moviehandle].QTMovieGWorld));
             
 	// Assign a reference to our movieHandle - slot for the caching mechanism.
-	// This is used by PsychFreeMovieTexture() to find the texture cache of our
+	// This is used by PsychQTFreeMovieTexture() to find the texture cache of our
 	// movie object:
 	out_texture->texturecache_slot = moviehandle;
 
@@ -835,14 +833,14 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
 
     if (verbose > 9) {
         PsychGetAdjustedPrecisionTimerSeconds(&tnow);
-        printf("PTB-DEBUG:PsychGetTextureFromMovie(): After GWorld() lock: %lf secs.\n", tnow - tbaseline);
+        printf("PTB-DEBUG:PsychQTGetTextureFromMovie(): After GWorld() lock: %lf secs.\n", tnow - tbaseline);
     }
         
     PsychCreateTexture(out_texture);
 
     if (verbose > 9) {
         PsychGetAdjustedPrecisionTimerSeconds(&tnow);
-        printf("PTB-DEBUG:PsychGetTextureFromMovie(): After PsychCreateTexture(): %lf secs.\n", tnow - tbaseline);
+        printf("PTB-DEBUG:PsychQTGetTextureFromMovie(): After PsychCreateTexture(): %lf secs.\n", tnow - tbaseline);
     }
         
 	// After PsychCreateTexture() the cached texture object from our cache is used
@@ -914,20 +912,20 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
 
     if (verbose > 9) {
         PsychGetAdjustedPrecisionTimerSeconds(&tnow);
-        printf("PTB-DEBUG:PsychGetTextureFromMovie(): At end of routine: %lf secs.\n\n", tnow - tbaseline);
+        printf("PTB-DEBUG:PsychQTGetTextureFromMovie(): At end of routine: %lf secs.\n\n", tnow - tbaseline);
     }
     
     return(TRUE);
 }
 
 /*
- *  PsychFreeMovieTexture() - Release texture memory for a Quicktime texture.
+ *  PsychQTFreeMovieTexture() - Release texture memory for a Quicktime texture.
  *
  *  This routine is called by PsychDeleteTexture() in PsychTextureSupport.c
  *  It performs the special cleanup necessary for Quicktime created textures.
  *
  */
-void PsychFreeMovieTexture(PsychWindowRecordType *win)
+void PsychQTFreeMovieTexture(PsychWindowRecordType *win)
 {
 	if (!PSYCH_USE_QT_GWORLDS) { 
 	   // Fetch special Quicktime texture handle...
@@ -967,7 +965,7 @@ void PsychFreeMovieTexture(PsychWindowRecordType *win)
 }
 
 /*
- *  PsychPlaybackRate() - Start- and stop movieplayback, set playback parameters.
+ *  PsychQTPlaybackRate() - Start- and stop movieplayback, set playback parameters.
  *
  *  moviehandle = Movie to start-/stop.
  *  playbackrate = zero == Stop playback, non-zero == Play movie with spec. rate,
@@ -976,7 +974,7 @@ void PsychFreeMovieTexture(PsychWindowRecordType *win)
  *  soundvolume = 0 == Mute sound playback, between 0.0 and 1.0 == Set volume to 0 - 100 %.
  *  Returns Number of dropped frames to keep playback in sync.
  */
-int PsychPlaybackRate(int moviehandle, double playbackrate, int loop, double soundvolume)
+int PsychQTPlaybackRate(int moviehandle, double playbackrate, int loop, double soundvolume)
 {
     int dropped = 0;
     Movie   theMovie;
@@ -1017,14 +1015,14 @@ int PsychPlaybackRate(int moviehandle, double playbackrate, int loop, double sou
 }
 
 /*
- *  void PsychExitMovies() - Shutdown handler.
+ *  void PsychQTExitMovies() - Shutdown handler.
  *
  *  This routine is called by Screen('CloseAll') and on clear Screen time to
  *  do final cleanup. It deletes all Quicktime textures and releases all Quicktime
  *  movie objects. Then it shuts down the Quicktime subsystem.
  *
  */
-void PsychExitMovies(void)
+void PsychQTExitMovies(void)
 {
     PsychWindowRecordType	**windowRecordArray;
     int				i, numWindows; 
@@ -1040,7 +1038,7 @@ void PsychExitMovies(void)
     PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
     
     // Release all movies:
-    PsychDeleteAllMovies();
+    PsychQTDeleteAllMovies();
     
     // Shutdown Quicktime toolbox: We skip this, because according to Apple its not necessary,
     // and for some reason it reliably hangs Matlab, so one has to force-quit it :-(
@@ -1054,15 +1052,15 @@ void PsychExitMovies(void)
     // TerminateQTML();
 #endif
 
-	 // Reset the firsttime flag, so system gets restarted properly in PsychCreateMovie():
+	 // Reset the firsttime flag, so system gets restarted properly in PsychQTCreateMovie():
 	 firsttime = TRUE;    
     return;
 }
 
 /*
- *  PsychGetMovieTimeIndex()  -- Return current playback time of movie.
+ *  PsychQTGetMovieTimeIndex()  -- Return current playback time of movie.
  */
-double PsychGetMovieTimeIndex(int moviehandle)
+double PsychQTGetMovieTimeIndex(int moviehandle)
 {
     Movie   theMovie;
     
@@ -1081,9 +1079,9 @@ double PsychGetMovieTimeIndex(int moviehandle)
 }
 
 /*
- *  PsychSetMovieTimeIndex()  -- Set current playback time of movie.
+ *  PsychQTSetMovieTimeIndex()  -- Set current playback time of movie.
  */
-double PsychSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool indexIsFrames)
+double PsychQTSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool indexIsFrames)
 {
     Movie		theMovie;
     double		oldtime;
@@ -1167,3 +1165,4 @@ double PsychSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool inde
     // Return old time value of previous position:
     return(oldtime);
 }
+

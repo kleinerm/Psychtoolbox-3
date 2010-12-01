@@ -126,6 +126,7 @@ static char synopsisString[] =
 	"\noldMode = Screen('Preference', 'VBLTimestampingMode', [newmode]);"
 	"\noldVTOTAL = Screen('Preference', 'VBLEndlineOverride' [, newVTOTAL]);"
 	"\noldMode = Screen('Preference', 'DefaultVideocaptureEngine', [newmode (0=Quicktime-SequenceGrabbers, 1=LibDC1394-Firewire, 2=LibARVideo)]);"
+	"\noldMode = Screen('Preference', 'OverrideMultimediaEngine', [newmode (0=System default, 1=GStreamer)]);"
 	"\noldLevel = Screen('Preference', 'WindowShieldingLevel', [newLevel (0 = Behind all other windows - 2000 = In front of all other windows, the default)]);"
 	"\nresiduals = Screen('Preference', 'SynchronizeDisplays', syncMethod);"
 	"\noldLevel = Screen('Preference', 'Verbosity' [,level]);";
@@ -266,6 +267,14 @@ PsychError SCREENPreference(void)
 			if(numInputArgs==2){
 				PsychCopyInIntegerArg(2, kPsychArgRequired, &newFontStyleNumber);
 				PsychPrefStateSet_DefaultTextStyle(newFontStyleNumber);
+			}
+			preferenceNameArgumentValid=TRUE;
+		}else
+		if(PsychMatch(preferenceName, "OverrideMultimediaEngine")){
+			PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_UseGStreamer());
+			if(numInputArgs==2){
+				PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
+				PsychPrefStateSet_UseGStreamer(tempInt);
 			}
 			preferenceNameArgumentValid=TRUE;
 		}else

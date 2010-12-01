@@ -113,6 +113,8 @@ static double							sync_maxDeviation;				// Maximum deviation (in percent) betw
 static double							sync_maxDuration;				// Maximum duration of a calibration run in seconds.
 static int								sync_minSamples;				// Minimum number of valid measurement samples needed.
 
+static int                                                      useGStreamer;                         // Use GStreamer for multi-media processing? 1==yes.
+
 //All state checking goes through accessors located in this file.
 
 // Called by Screen init code first: Sets up all default values after a
@@ -155,7 +157,10 @@ void PrepareScreenPreferences(void)
 	// here, but inside the Screen text handling routines, currently in SCREENDrawText.c
 	PsychSetUnicodeTextConversionLocale("");
 	PsychPrefStateSet_DefaultFontName(INITIAL_DEFAULT_FONT_NAME);
-	
+
+	// Don't use GStreamer by default on 32-bit builds for OS/X and Windows:
+	PsychPrefStateSet_UseGStreamer(0);
+
 	return;
 }
 
@@ -483,4 +488,14 @@ int PsychPrefStateGet_Verbosity(void)
 void PsychPrefStateSet_Verbosity(int level)
 {
 	Verbosity = level;
+}
+
+void PsychPrefStateSet_UseGStreamer(int value)
+{
+	useGStreamer = value;
+}
+
+int PsychPrefStateGet_UseGStreamer(void)
+{
+	return(useGStreamer);
 }

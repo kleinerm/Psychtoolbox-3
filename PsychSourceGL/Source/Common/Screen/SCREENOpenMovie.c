@@ -79,7 +79,7 @@ static struct asyncopenmovieinfo {
 
 PsychError SCREENOpenMovie(void) 
 {
-        PsychWindowRecordType					*windowRecord;
+        PsychWindowRecordType			*windowRecord;
         char                                    *moviefile;
         int                                     moviehandle = -1;
         int                                     framecount;
@@ -88,8 +88,8 @@ PsychError SCREENOpenMovie(void)
         int                                     width;
         int                                     height;
         int                                     asyncFlag = 0;
-        static psych_bool                          firstTime = TRUE;
-		double									preloadSecs = 1;
+        static psych_bool                       firstTime = TRUE;
+	double					preloadSecs = 1;
 #if PSYCH_SYSTEM == PSYCH_OSX
         struct sched_param sp;
         int rc;
@@ -105,13 +105,14 @@ PsychError SCREENOpenMovie(void)
 	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
         PsychErrorExit(PsychCapNumInputArgs(4));            // Max. 4 input args.
-        PsychErrorExit(PsychRequireNumInputArgs(2));        // Min. 2 input args required.
+        PsychErrorExit(PsychRequireNumInputArgs(1));        // Min. 1 input args required.
         PsychErrorExit(PsychCapNumOutputArgs(6));           // Max. 6 output args.
         
         // Get the window record from the window record argument and get info from the window record
-        PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
+	windowRecord = NULL;
+        PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, FALSE, &windowRecord);
         // Only onscreen windows allowed:
-        if(!PsychIsOnscreenWindow(windowRecord)) {
+        if(windowRecord && !PsychIsOnscreenWindow(windowRecord)) {
             PsychErrorExitMsg(PsychError_user, "OpenMovie called on something else than an onscreen window.");
         }
         
@@ -142,7 +143,12 @@ PsychError SCREENOpenMovie(void)
                     asyncmovieinfo.asyncstate = 1; // Mark state as "Operation in progress"
                     asyncmovieinfo.moviename = strdup(moviefile);
 					asyncmovieinfo.preloadSecs = preloadSecs;
-                    memcpy(&asyncmovieinfo.windowRecord, windowRecord, sizeof(PsychWindowRecordType));
+                    if (windowRecord) {
+			memcpy(&asyncmovieinfo.windowRecord, windowRecord, sizeof(PsychWindowRecordType));
+		    } else {
+			memcpy(&asyncmovieinfo.windowRecord, 0, sizeof(PsychWindowRecordType));
+		    }
+
                     asyncmovieinfo.moviehandle = -1;
 
                     // pthread_getschedparam(pthread_self(), &asyncFlag, &sp);

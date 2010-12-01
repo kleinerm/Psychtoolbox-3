@@ -1,21 +1,21 @@
 /*
-	PsychToolbox3/Source/OSX/Screen/PsychMovieSupport.h
+	PsychToolbox3/Source/Common/Screen/PsychMovieSupport.h
 	
-	PLATFORMS:	This is the OS X Core Graphics version.  
+	PLATFORMS:	All.  
 				
 	AUTHORS:
 
+	Mario Kleiner	mk	mario.kleiner@tuebingen.mpg.de
+
 	HISTORY:
+
         10/31/05    mk      Wrote it.
+
 	DESCRIPTION:
 	
 	Psychtoolbox functions for dealing with movies.
-        
 
 */
-
-
-
 
 //include once
 #ifndef PSYCH_IS_INCLUDED_PsychMovieSupport
@@ -28,6 +28,7 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double 
 void PsychGetMovieInfos(int moviehandle, int* width, int* height, int* framecount, double* durationsecs, double* framerate, int* nrdroppedframes);
 void PsychDeleteMovie(int moviehandle);
 void PsychDeleteAllMovies(void);
+void PsychFreeMovieTexture(PsychWindowRecordType *win);
 int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp);
 int PsychPlaybackRate(int moviehandle, double playbackrate, int loop, double soundvolume);
 void PsychExitMovies(void);
@@ -36,6 +37,4 @@ double PsychSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool inde
 
 //end include once
 #endif
-
-
 
