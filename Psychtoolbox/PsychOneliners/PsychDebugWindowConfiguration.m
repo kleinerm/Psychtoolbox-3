@@ -63,7 +63,7 @@ if IsOSX
     Screen('Preference', 'ConserveVRAM', bitor(oldconserve, 16384));
 end
 
-if IsLinux
+if IsLinux | IsWin
     % Skip sync tests:
     Screen('Preference', 'SkipSyncTests', 2);
 end
