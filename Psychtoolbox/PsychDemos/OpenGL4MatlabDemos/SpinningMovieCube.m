@@ -41,11 +41,6 @@ moviename
 % Is the script running in OpenGL Psychtoolbox?
 AssertOpenGL;
 
-% Is it the Linux version? This demo doesn't run on Linux due to lack of Quicktime support.
-if IsLinux
-   error('Sorry, SpinningMovieCube demo does not run on GNU/Linux yet.');
-end;
-
 % Find the screen to use for display:
 screenid=max(Screen('Screens'));
 

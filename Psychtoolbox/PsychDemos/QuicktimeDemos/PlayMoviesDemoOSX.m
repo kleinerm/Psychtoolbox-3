@@ -23,7 +23,7 @@ theanswer = [];
 
 if nargin < 1
     moviename = [];
-    if IsOSX
+    if IsOSX | IsLinux
         theanswer = input('Serious or cool? Type s or c [s/c]? ', 's');
     end        
 end;
@@ -51,7 +51,7 @@ try
 
     % Open onscreen window:
     screen=max(Screen('Screens'));
-    [win, scr_rect] = Screen('OpenWindow', screen);
+    [win, scr_rect] = Screen('OpenWindow', screen, 0);
 
     % Retrieve duration of a single video refresh interval:
     ifi = Screen('GetFlipInterval', win);
@@ -70,6 +70,10 @@ try
         
         if isempty(moviefiles)
             moviefiles(1).name = [ PsychtoolboxRoot 'PsychDemos/QuicktimeDemos/DualDiscs.mov' ];
+	else
+	    for i=1:size(moviefiles,1)
+		moviefiles(i).name = [ pwd filesep moviefiles(i).name ];
+	    end
         end
         
         moviecount = size(moviefiles,1);
@@ -88,7 +92,6 @@ try
         moviecount = size(moviefiles,2);
     end
 
-    
     % Playbackrate defaults to 1:
     rate=1;
     
@@ -118,12 +121,14 @@ try
         % Infinite playback loop: Fetch video frames and display them...
         while(1)
             i=i+1;
-            if (abs(rate)>0)
+	    % Only perform video image fetch/drawing if playback is active
+	    % and the movie actually has a video track (imgw and imgh > 0):
+            if ((abs(rate)>0) & (imgw>0) & (imgh>0))
                 % Return next frame in movie, in sync with current playback
                 % time and sound.
                 % tex either the texture handle or zero if no new frame is
                 % ready yet. pts = Presentation timestamp in seconds.
-                [tex pts] = Screen('GetMovieImage', win, movie, 1, [], [], 1);
+                [tex pts] = Screen('GetMovieImage', win, movie, 1, [], [], 0);
 
                 % Valid texture returned?
                 if tex<=0

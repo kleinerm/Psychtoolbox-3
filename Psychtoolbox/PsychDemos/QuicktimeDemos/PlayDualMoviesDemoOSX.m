@@ -57,7 +57,10 @@ try
     
     % Return full list of movie files from directory+pattern:
     moviefiles=dir(moviename);
-    
+    for i=1:size(moviefiles,1)
+	    moviefiles(i).name = [ pwd filesep moviefiles(i).name ];
+    end
+
     % Endless loop, runs until ESC key pressed:
     while (abortit<2)
         iteration=iteration + 1;

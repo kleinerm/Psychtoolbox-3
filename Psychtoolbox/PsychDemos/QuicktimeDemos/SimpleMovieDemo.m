@@ -22,11 +22,6 @@ function SimpleMovieDemo(moviename)
 % Check if Psychtoolbox is properly installed:
 AssertOpenGL;
 
-% Does not work on Linux yet:
-if IsLinux
-    error('Sorry, movie playback not yet supported on Linux.');
-end
-
 if nargin < 1
     % No moviename given: Use our default movie:
     moviename = [ PsychtoolboxRoot 'PsychDemos/QuicktimeDemos/DualDiscs.mov' ];
