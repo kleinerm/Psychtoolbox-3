@@ -114,9 +114,22 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
     else {
       // Transition from RT to whatever-it-was-before scheduling requested: We just reestablish the backed-up old
       // policy: If the old policy wasn't Non-RT, then we don't switch back...
-      sched_setscheduler(0, oldPriority, &oldparam);      
+      if (oldPriority != realtime_class) oldparam.sched_priority = 0;
+
+      if (sched_setscheduler(0, oldPriority, &oldparam)) {
+	// Failed!
+	if(!PsychPrefStateGet_SuppressAllWarnings()) {
+	  printf("PTB-INFO: Failed to disable realtime-scheduling [%s]!\n", strerror(errno));
+	  if (errno==EPERM) {
+	    printf("PTB-INFO: You need to run Matlab or Octave with root-privileges for this to work.\n");
+	  }
+	}
+	errno=0;
+      }
     }
-    
+
+    //printf("PTB-INFO: Realtime scheduling %sabled\n", enable_realtime ? "en" : "dis");
+
     // Success.
     old_enable_realtime = enable_realtime;
     return(TRUE);
