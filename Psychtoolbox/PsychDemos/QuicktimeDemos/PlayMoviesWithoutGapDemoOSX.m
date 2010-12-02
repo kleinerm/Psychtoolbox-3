@@ -23,8 +23,7 @@ function PlayMoviesWithoutGapDemoOSX(moviename)
 % History:
 % 7/5/06  mk  Wrote it.
 
-% Async movie loading is only OS-X for now...
-AssertOSX;
+AssertOpenGL;
 
 if nargin < 1
     moviename = '*.mov'
