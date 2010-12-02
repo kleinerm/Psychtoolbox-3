@@ -340,7 +340,7 @@ while ((GetSecs - t) < 600)
 	    end
     end
 
-    if tex1>0 && tex2>0
+    if ~isempty(tex1) && ~isempty(tex2) && (tex1>0) && (tex2>0)
 	Screen('DrawTexture', win, tex1, [], dst1);
 	Screen('DrawTexture', win, tex2, [], dst2);
     end
