@@ -84,6 +84,50 @@ catch
 		end
    end
    
+   if IsLinux
+	fprintf('\n');
+	fprintf('The Psychtoolbox on GNU/Linux needs the following 3rd party libraries\n');
+	fprintf('in order to function correctly. If you get "Invalid MEX file errors",\n');
+	fprintf('or similar fatal error messages, check if these are installed on your\n');
+	fprintf('system and if they are missing, install them via your system specific\n');
+	fprintf('software management tools:\n');
+	fprintf('\n');
+	fprintf('For Screen() and OpenGL support:\n');
+	fprintf('* The OpenGL utility toolkit GLUT: glut, glut-3 or freeglut are typical providers.\n');
+	fprintf('* GStreamer multimedia framework: At least the core runtime and the gstreamer-base plugins.\n');
+	fprintf('  A simple way to get GStreamer at least on Ubuntu Linux is to install the "rhythmbox" or\n');
+	fprintf('  "totem" multimedia-players. You may need to install additional packages to play back all\n');
+	fprintf('  common audio- and video file formats.\n');
+	fprintf('* libusb-1.0 USB low-level access library.\n');
+	fprintf('\n\n');
+	fprintf('For PsychKinect():\n');
+	fprintf('* libusb-1.0 USB low-level access library.\n');
+	fprintf('* libfreenect: Kinect driver library.\n');
+	fprintf('\n');
+	fprintf('For Eyelink():\n');
+	fprintf('* The Eyelink core libraries from the SR-Research download website.\n');
+	fprintf('\n');
+	fprintf('\n');
+
+	if ~IsOctave
+		s = psychlasterror;
+		if ~isempty(strfind(s.message, 'gzopen64'))
+			fprintf('YOU SEEM TO HAVE A MATLAB INSTALLATION WITH A BROKEN/OUTDATED libz!\n');
+			fprintf('This is the most likely cause for the error. You can either:\n');
+			fprintf('- Upgrade to a more recent version of Matlab in the hope that this fixes the problem.\n');
+			fprintf('- Or start Matlab from the commandline with the following command sequence as a workaround:\n\n');
+			fprintf('  export LD_PRELOAD=/lib/libz.so.1 ; matlab & \n\n');
+			fprintf('  If /lib/libz.so.1 doesn''t exist, try other locations like /usr/lib/libz.so.1 or other names\n');
+			fprintf('  like /lib/libz.so, or /usr/lib/libz.so\n');
+			fprintf('\n');
+			fprintf('Good luck! Our most heartfelt thanks go to the Mathworks, the unmatched champions in high quality software design.\n');
+			fprintf('(Yes, the statement about Mathworks quality of workmanship is meant sarcastic, in case there is any doubt.)\n\n');
+
+			error('Matlab bug -- Outdated/Defective libz installed. Follow above workarounds.');
+		end
+	end
+   end
+
    % Tried to execute old Screen command of old Win-PTB or MacOS9-PTB. This will tell user about non-OpenGL PTB.
    fprintf('This script or function is designated to run only an Psychtoolbox based on OpenGL. Read "help  AssertOpenGL" for more info.\n\n');
    fprintf('A first more diagnostic test would be to simply type Screen in your Matlab/Octave console and check what its output is.\n\n');
