@@ -1,24 +1,24 @@
 /*
 	PsychToolbox3/Source/Common/PsychKinect/PsychKinect.h
-
+ 
 	PROJECTS: PsychKinect only.
-
+ 
 	AUTHORS:
-
+ 
 	mario.kleiner@tuebingen.mpg.de	mk
-
+ 
 	PLATFORMS:	All.
-
+ 
 	HISTORY:
-
+ 
 	24.11.2010  mk		Created.
-
+ 
 	DESCRIPTION:
-
+ 
 	A Psychtoolbox driver for Microsoft's Kinect 3D-camera, based
 	on the free software code of the http://openkinect.org project.
-
-*/
+ 
+ */
 
 #include "PsychKinect.h"
 
@@ -32,104 +32,104 @@
 
 #ifdef EMULATE_LIBENECT
 
-	// Simulation: Fake behaviour of libusb and libfreeenect:
-	#define FREENECT_FRAME_W 640
-	#define FREENECT_FRAME_H 480
-	#define FREENECT_FRAME_PIX (FREENECT_FRAME_H*FREENECT_FRAME_W)
-	#define FREENECT_RGB_SIZE (FREENECT_FRAME_PIX*3)
-	#define FREENECT_BAYER_SIZE (FREENECT_FRAME_PIX)
-	#define FREENECT_DEPTH_SIZE (FREENECT_FRAME_PIX*sizeof(freenect_depth))
-	#define FREENECT_COUNTS_PER_G 819
+// Simulation: Fake behaviour of libusb and libfreeenect:
+#define FREENECT_FRAME_W 640
+#define FREENECT_FRAME_H 480
+#define FREENECT_FRAME_PIX (FREENECT_FRAME_H*FREENECT_FRAME_W)
+#define FREENECT_RGB_SIZE (FREENECT_FRAME_PIX*3)
+#define FREENECT_BAYER_SIZE (FREENECT_FRAME_PIX)
+#define FREENECT_DEPTH_SIZE (FREENECT_FRAME_PIX*sizeof(freenect_depth))
+#define FREENECT_COUNTS_PER_G 819
 
-	typedef enum {
-		FREENECT_FORMAT_RGB = 0,
-		FREENECT_FORMAT_BAYER = 1,
-	} freenect_rgb_format;
+typedef enum {
+	FREENECT_FORMAT_RGB = 0,
+	FREENECT_FORMAT_BAYER = 1,
+} freenect_rgb_format;
 
-	typedef enum {
-		FREENECT_FORMAT_11_BIT = 0,
-		FREENECT_FORMAT_10_BIT = 1,
-		FREENECT_FORMAT_PACKED_11_BIT = 2,
-		FREENECT_FORMAT_PACKED_10_BIT = 3,
-	} freenect_depth_format;
+typedef enum {
+	FREENECT_FORMAT_11_BIT = 0,
+	FREENECT_FORMAT_10_BIT = 1,
+	FREENECT_FORMAT_PACKED_11_BIT = 2,
+	FREENECT_FORMAT_PACKED_10_BIT = 3,
+} freenect_depth_format;
 
-	typedef void* freenect_device;
-	typedef freenect_device* freenect_context;
-	typedef void* freenect_usb_context;
-	typedef unsigned char freenect_pixel;
+typedef void* freenect_device;
+typedef freenect_device* freenect_context;
+typedef void* freenect_usb_context;
+typedef unsigned char freenect_pixel;
 
-	typedef void (*freenect_depth_cb)(freenect_device *dev, void *depth, unsigned int timestamp);
-	typedef void (*freenect_rgb_cb)(freenect_device *dev, freenect_pixel *rgb, unsigned int timestamp);
+typedef void (*freenect_depth_cb)(freenect_device *dev, void *depth, unsigned int timestamp);
+typedef void (*freenect_rgb_cb)(freenect_device *dev, freenect_pixel *rgb, unsigned int timestamp);
 
-	static freenect_depth_cb depth_cb;
-	static freenect_rgb_cb rgb_cb;
+static freenect_depth_cb depth_cb;
+static freenect_rgb_cb rgb_cb;
 
-	static usbevent_counter = 0;
-	freenect_context devil;
+static usbevent_counter = 0;
+freenect_context devil;
+
+unsigned short depth_frame[640*480];
+unsigned char rgb_frame[640*480*3];
+
+int freenect_init(freenect_context **ctx, freenect_usb_context *usb_ctx) { *ctx = &devil; return(1); };
+int freenect_shutdown(freenect_context *ctx) { return(1); }
+
+int freenect_open_device(freenect_context *ctx, freenect_device **dev, int index) { usbevent_counter=0; *dev = (freenect_device*) malloc(sizeof(void*)); *ctx = *dev; return(1); };
+int freenect_close_device(freenect_device *dev) { usbevent_counter = 0 ; return(1); }
+
+void freenect_set_depth_callback(freenect_device *dev, freenect_depth_cb cb) { depth_cb = cb; };
+void freenect_set_rgb_callback(freenect_device *dev, freenect_rgb_cb cb) { rgb_cb = cb; };
+
+int freenect_set_rgb_format(freenect_device *dev, freenect_rgb_format fmt) {return(1);};
+int freenect_set_depth_format(freenect_device *dev, freenect_depth_format fmt) {return(1);};
+
+int freenect_start_depth(freenect_device *dev) {return(1);};
+int freenect_start_rgb(freenect_device *dev) {return(1);};
+int freenect_stop_depth(freenect_device *dev) {return(1);};
+int freenect_stop_rgb(freenect_device *dev) {return(1);};
+
+void freenect_set_user(freenect_device *dev, void *user) { *dev = user; };
+void *freenect_get_user(freenect_device *dev) { return(*dev); };
+
+int freenect_process_events(freenect_context *ctx)
+{
+	int x,y, pos;
 	
-	unsigned short depth_frame[640*480];
-	unsigned char rgb_frame[640*480*3];
-
-	int freenect_init(freenect_context **ctx, freenect_usb_context *usb_ctx) { *ctx = &devil; return(1); };
-	int freenect_shutdown(freenect_context *ctx) { return(1); }
-
-	int freenect_open_device(freenect_context *ctx, freenect_device **dev, int index) { usbevent_counter=0; *dev = (freenect_device*) malloc(sizeof(void*)); *ctx = *dev; return(1); };
-	int freenect_close_device(freenect_device *dev) { usbevent_counter = 0 ; return(1); }
-
-	void freenect_set_depth_callback(freenect_device *dev, freenect_depth_cb cb) { depth_cb = cb; };
-	void freenect_set_rgb_callback(freenect_device *dev, freenect_rgb_cb cb) { rgb_cb = cb; };
-
-	int freenect_set_rgb_format(freenect_device *dev, freenect_rgb_format fmt) {return(1);};
-	int freenect_set_depth_format(freenect_device *dev, freenect_depth_format fmt) {return(1);};
-
-	int freenect_start_depth(freenect_device *dev) {return(1);};
-	int freenect_start_rgb(freenect_device *dev) {return(1);};
-	int freenect_stop_depth(freenect_device *dev) {return(1);};
-	int freenect_stop_rgb(freenect_device *dev) {return(1);};
-
-	void freenect_set_user(freenect_device *dev, void *user) { *dev = user; };
-	void *freenect_get_user(freenect_device *dev) { return(*dev); };
-
-	int freenect_process_events(freenect_context *ctx)
-	{
-		int x,y, pos;
-
-		PsychYieldIntervalSeconds(0.0001);
-		usbevent_counter++;
-
-		if (usbevent_counter % 32 == 0) {
-			pos = 0;
-			for(y=0; y<480; y++)
-				for (x=0; x<640; x++) {
-					// z channel:
-					depth_frame[pos++] = (unsigned short) usbevent_counter % 2048;
-				}
-			depth_cb(*ctx, depth_frame, usbevent_counter);
-		}
-		
-		if (usbevent_counter % 32 == 16) {
-			
-			/* Fill our rawimage image array with content: */
-			pos = 0;
-			for(y=0; y<480; y++)
-				for (x=0; x<640; x++) {
-					// Red channel:
-					rgb_frame[pos++] = (unsigned char) x + usbevent_counter / 4;
-					// Green channel:
-					rgb_frame[pos++] = (unsigned char) y + usbevent_counter / 4;
-					// Blue channel:
-					rgb_frame[pos++] = (unsigned char) usbevent_counter / 4;
-				}
-					
-			rgb_cb(*ctx, rgb_frame, usbevent_counter);
-		}
-		
-		return(0);
+	PsychYieldIntervalSeconds(0.0001);
+	usbevent_counter++;
+	
+	if (usbevent_counter % 32 == 0) {
+		pos = 0;
+		for(y=0; y<480; y++)
+			for (x=0; x<640; x++) {
+				// z channel:
+				depth_frame[pos++] = (unsigned short) usbevent_counter % 2048;
+			}
+		depth_cb(*ctx, depth_frame, usbevent_counter);
 	}
+	
+	if (usbevent_counter % 32 == 16) {
+		
+		/* Fill our rawimage image array with content: */
+		pos = 0;
+		for(y=0; y<480; y++)
+			for (x=0; x<640; x++) {
+				// Red channel:
+				rgb_frame[pos++] = (unsigned char) x + usbevent_counter / 4;
+				// Green channel:
+				rgb_frame[pos++] = (unsigned char) y + usbevent_counter / 4;
+				// Blue channel:
+				rgb_frame[pos++] = (unsigned char) usbevent_counter / 4;
+			}
+				
+		rgb_cb(*ctx, rgb_frame, usbevent_counter);
+	}
+	
+	return(0);
+}
 
 #else
-	// The real thing: Include headers of libusb and libfreeenect to access the real Kinect:
-	#include "libfreenect.h"
+// The real thing: Include headers of libusb and libfreeenect to access the real Kinect:
+#include "libfreenect.h"
 #endif
 
 // Number of maximum simultaneously open kinect devices:
@@ -140,17 +140,17 @@
 static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 
 // Temporary buffer for conversion of depth images into color coded RGB images:
-unsigned char gl_depth_back[640 * 480 * 4];
-unsigned short t_gamma[2048];
-double	 zmap[640*480*3];
+unsigned char	gl_depth_back[640 * 480 * 4];
+unsigned short	t_gamma[2048];
+double			zmap[640*480*3];
 
-freenect_context *f_ctx = NULL;
-freenect_device *f_dev;
+freenect_context	*f_ctx = NULL;
+freenect_device		*f_dev;
 
 typedef struct PsychKNBuffer {
-	unsigned short depth[640 * 480];		// 16-bit disparity pixels.
-	unsigned char* color;					// RGB8 or raw non-bayer-filtered 1 Byte color pixels.
-	double	  cts;							// Cached captured sample onset time from paCallback.
+	unsigned short	depth[640 * 480];		// 16-bit disparity pixels.
+	unsigned char*	color;					// RGB8 or raw non-bayer-filtered 1 Byte color pixels.
+	double			cts;					// Cached captured sample onset time from paCallback.
 	int				cwidth, cheight;		// color buffer width x height.
 	int				dwidth, dheight;		// color buffer width x height.
 } PsychKNBuffer;
@@ -184,7 +184,7 @@ void InitializeSynopsis(void)
 {
 	int i=0;
 	const char **synopsis = synopsisSYNOPSIS;  //abbreviate the long name
-
+	
 	synopsis[i++] = "PsychKinect - A Psychtoolbox driver for the Microsoft Kinect box.\n";
 	synopsis[i++] = "This driver allows to control the box and grab color images and depth";
 	synopsis[i++] = "images from the Kinect depthcamera.\n";
@@ -194,9 +194,9 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "This code is licensed to you under the terms of the GNU GPL, version 2; see: \n";
 	synopsis[i++] = "http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt";
 	synopsis[i++] = "\n";
-
+	
 	synopsis[i++] = "Usage:";
-
+	
 	// synopsis[i++] = "devices = Screen('VideoCaptureDevices' [, engineId]);";
 	synopsis[i++] = "kinectPtr = PsychKinect('Open' [, deviceIndex=0][, numbuffers=2]][, bayerFilterMode=1]);";
 	synopsis[i++] = "PsychKinect('Close', kinectPtr);";
@@ -208,7 +208,7 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "[imageOrPtr, width, height, channels, extType, extFormat] = PsychKinect('GetImage', kinectPtr [, imtype=0][, returnTexturePtr=0]);";
 	synopsis[i++] =	"[imageOrPtr, width, height, extType, extFormat] = PsychKinect('GetDepthImage', kinectPtr [, format=0][, returnTexturePtr=0]);";
 	synopsis[i++] = NULL;  //this tells PsychKinectDisplaySynopsis where to stop
-
+	
 	if (i > MAX_SYNOPSIS_STRINGS) {
 		PrintfExit("%s: increase dimension of synopsis[] from %ld to at least %ld and recompile.", __FILE__, (long)MAX_SYNOPSIS_STRINGS,(long)i);
 	}
@@ -220,7 +220,7 @@ PsychError PsychKinectDisplaySynopsis(void)
 	
 	for (i = 0; synopsisSYNOPSIS[i] != NULL; i++)
 		printf("%s\n",synopsisSYNOPSIS[i]);
-		
+	
 	return(PsychError_none);
 }
 
@@ -232,10 +232,10 @@ PsychKNBuffer* PsychGetKNBuffer(PsychKNDevice* kinect, int index)
 void PsychDepthCB(freenect_device *dev, freenect_depth *depth, uint32_t timestamp)
 {
 	int i;
-
+	
 	PsychKNDevice *kinect = (PsychKNDevice*) freenect_get_user(dev);
 	PsychKNBuffer *buffer = PsychGetKNBuffer(kinect, kinect->recposition);
-
+	
 	memcpy(buffer->depth, depth, FREENECT_FRAME_W * FREENECT_FRAME_H * 2);
 	buffer->dwidth = FREENECT_FRAME_W;
 	buffer->dheight = FREENECT_FRAME_H;
@@ -250,14 +250,14 @@ void PsychRGBCB(freenect_device *dev, freenect_pixel *rgb, uint32_t timestamp)
 	
 	PsychKNDevice *kinect = (PsychKNDevice*) freenect_get_user(dev);
 	PsychKNBuffer *buffer = PsychGetKNBuffer(kinect, kinect->recposition);
-
+	
 	memcpy(buffer->color, rgb, ((kinect->bayerFilterMode == 1) ? FREENECT_RGB_SIZE : FREENECT_BAYER_SIZE));
 	buffer->cwidth = FREENECT_FRAME_W;
 	buffer->cheight = FREENECT_FRAME_H;
-
+	
 	// Timestamp the buffer:
 	buffer->cts = (double) timestamp;
-
+	
 	kinect->paCalls++;
 }
 
@@ -269,21 +269,21 @@ void* PsychKinectThreadMain(volatile void* deviceToCast)
 	
 	// Child protection:
 	if ((NULL == kinect) || (NULL == kinect->dev)) return(NULL);
-
+	
 	// Initialize libkinect and attach callbacks, start kinect's iso-streaming:
 	freenect_set_depth_callback(kinect->dev, PsychDepthCB);
 	freenect_set_rgb_callback(kinect->dev, PsychRGBCB);
 	freenect_set_rgb_format(kinect->dev, ((kinect->bayerFilterMode == 1) ? FREENECT_FORMAT_RGB : FREENECT_FORMAT_BAYER));
 	freenect_set_depth_format(kinect->dev, FREENECT_FORMAT_11_BIT);
-
+	
 	freenect_start_depth(kinect->dev);
 	freenect_start_rgb(kinect->dev);
-
+	
 	// Main processing loop:
 	while(!abort) {
 		// Check for thread cancellation:
 		PsychTestCancelThread(&kinect->captureThread);
-
+		
 		// Check again for cancellation, this time the "soft way":
 		PsychLockMutex(&kinect->mutex);
 		if (kinect->reqstate != 1) {
@@ -291,16 +291,16 @@ void* PsychKinectThreadMain(volatile void* deviceToCast)
 			PsychUnlockMutex(&kinect->mutex);
 			continue;
 		};
-
+		
 		headroom = kinect->numbuffers - 1 - (kinect->recposition - kinect->readposition);
-
+		
 		PsychUnlockMutex(&kinect->mutex);
 		
 		// Do something?
 		if (!abort && ((headroom > 0) || (kinect->dropframes))) {
 			// xrun due to oldest frame gets overwritten?
 			if (headroom <= 0) kinect->xruns++;
-
+			
 			// Kick off USB event handling and our callbacks:
 			if (freenect_process_events(f_ctx) < 0) {
 				// Error condition! We better abort!
@@ -313,7 +313,7 @@ void* PsychKinectThreadMain(volatile void* deviceToCast)
 			if (kinect->paCalls >= 2) {
 				// Yes. Reset counter:
 				kinect->paCalls = 0;
-
+				
 				// Increment our write pointer to finalize this frame and prepare capture of a new one:
 				PsychLockMutex(&kinect->mutex);
 				kinect->recposition++;
@@ -327,11 +327,11 @@ void* PsychKinectThreadMain(volatile void* deviceToCast)
 			// FIFO full and we should retain the oldest frames. Just idle
 			// until capacity becomes available:
 			PsychYieldIntervalSeconds(0.002);
-
+			
 			// xrun due to current frame gets dropped:
 			kinect->xruns++;
 		}
-
+		
 		// Repeat processing loop:
 	}
 	
@@ -345,7 +345,7 @@ void* PsychKinectThreadMain(volatile void* deviceToCast)
 	kinect->state = 0;
 	kinect->paCalls = 0;
 	PsychUnlockMutex(&kinect->mutex);
-
+	
 	return(NULL);
 }
 
@@ -359,7 +359,7 @@ PsychKNDevice* PsychGetKinect(int handle, psych_bool dontfail)
 		
 		return(NULL);
 	}
-
+	
 	return(&(kinectdevices[handle]));
 }
 
@@ -368,19 +368,19 @@ void PsychKNStop(int handle)
 	PsychKNDevice* kinect;
 	kinect = PsychGetKinect(handle, TRUE);
 	if (NULL == kinect) return;
-
+	
 	PsychLockMutex(&kinect->mutex);
-
+	
 	// Stop capture if it is still running:
 	if (kinect->state == 1) {
 		// Send abort request to thread:
 		kinect->reqstate = 0;
-
+		
 		PsychUnlockMutex(&kinect->mutex);
 		PsychYieldIntervalSeconds(0.1);
-
+		
 		PsychAbortThread(&kinect->captureThread);
-
+		
 		// Wait for it to die peacefully:
 		PsychDeleteThread(&kinect->captureThread);
 		kinect->captureThread = 0;
@@ -391,7 +391,7 @@ void PsychKNStop(int handle)
 	else {
 		PsychUnlockMutex(&kinect->mutex);
 	}
-
+	
 	return;
 }
 
@@ -401,20 +401,20 @@ void PsychKNClose(int handle)
 	PsychKNDevice* kinect;
 	kinect = PsychGetKinect(handle, TRUE);
 	if (NULL == kinect) return;
-
+	
 	// Stop device:
 	PsychKNStop(handle);
-
+	
 	// Capture is stopped. Release mutexes and other resources:
 	PsychDestroyCondition(&kinect->changeSignal);
 	PsychDestroyMutex(&kinect->mutex);
-
+	
 	if (kinect->buffers) {
 		for (i = 0; i < kinect->numbuffers; i++) free(kinect->buffers[i].color);
 		free(kinect->buffers);
 		kinect->buffers = NULL;
 	}
-
+	
 	// Close usb connection:
 	freenect_close_device(kinect->dev);
 	kinect->dev = NULL;
@@ -435,7 +435,7 @@ void PsychKNInit(void) {
 	int handle;
 	int i;
 	float v;
-
+	
 	for (handle = 0 ; handle < MAX_PSYCH_KINECT_DEVS; handle++) kinectdevices[handle].dev = NULL;
 	devicecount = 0;
 	initialized = FALSE;
@@ -463,26 +463,26 @@ PsychError PSYCHKINECTOpen(void)
     static char useString[] = "kinectPtr = PsychKinect('Open' [, deviceIndex=0][, numbuffers=2][, bayerFilterMode=1]);";
     //
     static char synopsisString[] = 
-    "Open connection to Kinect box, return a 'kinectPtr' handle to it.\n\n"
-    "The call tries to open the Kinect box with index 'deviceIndex', or the "
-	"first detected box, if 'deviceIndex' is omitted. It configures the box "
-	"for video and depth capture, using a n-buffered pool for internal storage "
-	"of up to 'numbuffers' frames. 'numbuffers' defaults to 2 for double-buffering "
-	"if omitted.\n"
-	"'bayerFilterMode' is optional and selects mode of color reconstruction from "
-	"the visual cameras sensor data: A setting of 1 (default) will use a slow and "
-	"unoptimized bayer filter algorithm built into the libfreenect driver to return "
-	"RGB images via the 'GetImage' function. A setting of 0 will disable filtering and return "
-	"a 2D only image with sensor raw data, which you'll need to post-process and filter yourself. "
-	"A setting of > 1 would select other filtering methods, but these are not yet implemented. "
-	"You would want to use the default value if you need convenient access to RGB images without "
-	"any effort on your side. Unfiltered raw data has the advantage that cpu load of kinect "
-	"operation is much lower, so you may get higher framerates. Also, raw data only requires "
-	"a third of the storage memory if this is of concern, e.g., for high settings of 'numbuffers'.\n"
-	"The returned handle can be passed to the other subfunctions to operate the device.\n";
-
+		"Open connection to Kinect box, return a 'kinectPtr' handle to it.\n\n"
+		"The call tries to open the Kinect box with index 'deviceIndex', or the "
+		"first detected box, if 'deviceIndex' is omitted. It configures the box "
+		"for video and depth capture, using a n-buffered pool for internal storage "
+		"of up to 'numbuffers' frames. 'numbuffers' defaults to 2 for double-buffering "
+		"if omitted.\n"
+		"'bayerFilterMode' is optional and selects mode of color reconstruction from "
+		"the visual cameras sensor data: A setting of 1 (default) will use a slow and "
+		"unoptimized bayer filter algorithm built into the libfreenect driver to return "
+		"RGB images via the 'GetImage' function. A setting of 0 will disable filtering and return "
+		"a 2D only image with sensor raw data, which you'll need to post-process and filter yourself. "
+		"A setting of > 1 would select other filtering methods, but these are not yet implemented. "
+		"You would want to use the default value if you need convenient access to RGB images without "
+		"any effort on your side. Unfiltered raw data has the advantage that cpu load of kinect "
+		"operation is much lower, so you may get higher framerates. Also, raw data only requires "
+		"a third of the storage memory if this is of concern, e.g., for high settings of 'numbuffers'.\n"
+		"The returned handle can be passed to the other subfunctions to operate the device.\n";
+	
     static char seeAlsoString[] = "";	
-
+	
 	int rc, i, j;
 	int deviceIndex = 0;
 	int handle = 0;
@@ -493,62 +493,62 @@ PsychError PSYCHKINECTOpen(void)
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-
+	
     //check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(3));
 	
 	if (devicecount >= MAX_PSYCH_KINECT_DEVS) PsychErrorExitMsg(PsychError_user, "Maximum number of simultaneously open kinect devices reached.");
-
+	
 	// Find a free device slot:
 	for (handle = 0; (handle < MAX_PSYCH_KINECT_DEVS) && kinectdevices[handle].dev; handle++);
 	if (kinectdevices[handle].dev) PsychErrorExitMsg(PsychError_internal, "Maximum number of simultaneously open kinect devices reached. This should not happen!");
-
+	
 	// Get optional kinect device index:
     PsychCopyInIntegerArg(1, FALSE, &deviceIndex);
 	
 	// Don't support anything than a single "default" kinect yet:
 	if (deviceIndex != 0) PsychErrorExitMsg(PsychError_user, "No such kinect device with given 'deviceIndex'.");
-
+	
 	// Get optional numbuffers count:
     PsychCopyInIntegerArg(2, FALSE, &numbuffers);
 	if (numbuffers < 1) PsychErrorExitMsg(PsychError_user, "Invalid value for 'numbuffers' provided. Must be greater than 1!");
-
+	
 	// Get optional bayerFilterMode:
     PsychCopyInIntegerArg(3, FALSE, &bayerFilterMode);
 	if (bayerFilterMode < 0) PsychErrorExitMsg(PsychError_user, "Invalid value for 'bayerFilterMode' provided. Must be >= 0!");
-
+	
 	// Open and initialize the device:
-
+	
 	if (!initialized) {
 		// First time init:
 		initialized = TRUE;
-
+		
 		// Initialize libusb:
 		if (freenect_init(&f_ctx, NULL) < 0) PsychErrorExitMsg(PsychError_system, "Driver initialization of libfreenect failed!");
 	}
-
+	
 	// Zero init device structure:
 	memset(&kinectdevices[handle], 0, sizeof(PsychKNDevice));
-
+	
 	// Connect with it, get usb connection handle:
 	
 	if (freenect_open_device(f_ctx, &dev, deviceIndex) < 0) {
 		PsychErrorExitMsg(PsychError_user, "Could not connect to kinect device with given 'deviceIndex' for some reason! [libusb_open_device failed]");
 	}
-
+	
 	kinectdevices[handle].dev = dev;
 	freenect_set_user(kinectdevices[handle].dev, (void*) &kinectdevices[handle]);
-
+	
 	// Have connection open and ready. Initialize mutexes, condition variables and processing thread:
 	if (PsychInitMutex(&(kinectdevices[handle].mutex))) {
 		printf("PsychKinect: CRITICAL! Failed to initialize Mutex object for handle %i! Prepare for trouble!\n", handle);
 		PsychErrorExitMsg(PsychError_system, "Device mutex creation failed!");
 	}
-
+	
 	// If we use locking, this will create & init the associated event variable:
 	PsychInitCondition(&(kinectdevices[handle].changeSignal), NULL);
-
+	
 	// Allocate buffers:
 	kinectdevices[handle].buffers = (PsychKNBuffer*) calloc(numbuffers, sizeof(PsychKNBuffer));
 	if (NULL == kinectdevices[handle].buffers) {
@@ -564,16 +564,16 @@ PsychError PSYCHKINECTOpen(void)
 			kinectdevices[handle].buffers = NULL;
 		}
 	}
-
+	
 	kinectdevices[handle].numbuffers = numbuffers;
 	kinectdevices[handle].bayerFilterMode = bayerFilterMode;
-
+	
 	// Increment count of open devices:
 	devicecount++;
-
+	
 	// Return device handle:
     PsychCopyOutDoubleArg(1, FALSE, handle);
-
+	
     return(PsychError_none);	
 }
 
@@ -582,16 +582,16 @@ PsychError PSYCHKINECTClose(void)
     static char useString[] = "PsychKinect('Close', kinectPtr);";
     //
     static char synopsisString[] = 
-    "Close connection to Kinect box 'kinectPtr'. Do nothing if no such box is open.\n\n";
-
+		"Close connection to Kinect box 'kinectPtr'. Do nothing if no such box is open.\n\n";
+	
     static char seeAlsoString[] = "";	
-
+	
 	int handle;
-
+	
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-
+	
     //check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(0));
     PsychErrorExit(PsychCapNumInputArgs(1));
@@ -601,7 +601,7 @@ PsychError PSYCHKINECTClose(void)
 	
 	// Close device:
 	PsychKNClose(handle);
-
+	
     return(PsychError_none);	
 }
 
@@ -610,30 +610,30 @@ PsychError PSYCHKINECTStart(void)
     static char useString[] = "[starttime, fps, cwidth, cheight, dwidth, dheight] = PsychKinect('Start', kinectPtr [, dropframes=0]);";
     //							1		   2	3		4		 5		 6								 1			  2
     static char synopsisString[] = 
-    "Start video and depth capture operation of box 'kinectPtr'.\n\n"
-    "Starts the capture operation into the internal bufferqueue. Color- and "
-    "depths frames can be polled/waited for/dequeued from the queue via a "
-	"call to PsychKinect('GrabFrame',...); and then retrieved via the 'GetXXX' "
-	"functions. Data is stored in an internal ringbuffer, whose size is "
-	"set in the 'Open' function. The optional 'dropframes' flag decides if "
-	"the oldest frames should be dropped if the buffer is full (=1) or if "
-	"the most recent frame should be dropped if the buffer is full (=0). "
-	"\n\n"
-	"The function returns the start time of capture and the nominal framerate "
-	"'fps', color image width 'cwidth' and height 'cheight', and depth image "
-	"'dwidth' and 'dheight'.\n\n";
+		"Start video and depth capture operation of box 'kinectPtr'.\n\n"
+		"Starts the capture operation into the internal bufferqueue. Color- and "
+		"depths frames can be polled/waited for/dequeued from the queue via a "
+		"call to PsychKinect('GrabFrame',...); and then retrieved via the 'GetXXX' "
+		"functions. Data is stored in an internal ringbuffer, whose size is "
+		"set in the 'Open' function. The optional 'dropframes' flag decides if "
+		"the oldest frames should be dropped if the buffer is full (=1) or if "
+		"the most recent frame should be dropped if the buffer is full (=0). "
+		"\n\n"
+		"The function returns the start time of capture and the nominal framerate "
+		"'fps', color image width 'cwidth' and height 'cheight', and depth image "
+		"'dwidth' and 'dheight'.\n\n";
 	
     static char seeAlsoString[] = "";	
-
+	
 	int handle, dropframes;
 	int rc;
 	
 	PsychKNDevice *kinect;
-
+	
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-
+	
     //check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(6));
     PsychErrorExit(PsychCapNumInputArgs(2));
@@ -641,7 +641,7 @@ PsychError PSYCHKINECTStart(void)
 	// Get device handle:
 	PsychCopyInIntegerArg(1, TRUE, &handle);
 	kinect = PsychGetKinect(handle, FALSE);
-
+	
 	dropframes = 0;
 	PsychCopyInIntegerArg(2, FALSE, &dropframes);
 	
@@ -650,7 +650,7 @@ PsychError PSYCHKINECTStart(void)
 		PsychUnlockMutex(&kinect->mutex);
 		PsychErrorExitMsg(PsychError_user, "Tried to start an already started capture operation!");
 	}
-
+	
 	// Reset device state:
 	kinect->recposition = 0;
 	kinect->readposition = 0;
@@ -671,14 +671,14 @@ PsychError PSYCHKINECTStart(void)
 	
 	// TODO: Compute sensible starttime:
 	PsychGetAdjustedPrecisionTimerSeconds(&(kinect->captureStartTime));
-
+	
 	PsychCopyOutDoubleArg(1, FALSE, kinect->captureStartTime);
 	PsychCopyOutDoubleArg(2, FALSE, 30);
 	PsychCopyOutDoubleArg(3, FALSE, 640);
 	PsychCopyOutDoubleArg(4, FALSE, 480);
 	PsychCopyOutDoubleArg(5, FALSE, 640);
 	PsychCopyOutDoubleArg(6, FALSE, 480);
-
+	
     return(PsychError_none);	
 }
 
@@ -687,25 +687,25 @@ PsychError PSYCHKINECTStop(void)
     static char useString[] = "PsychKinect('Stop', kinectPtr);";
     //
     static char synopsisString[] = 
-    "Stop capture on Kinect box 'kinectPtr'.\n\n";
-
+		"Stop capture on Kinect box 'kinectPtr'.\n\n";
+	
     static char seeAlsoString[] = "";	
-
+	
 	int handle;
-
+	
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-
+	
     //check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(0));
     PsychErrorExit(PsychCapNumInputArgs(1));
     
 	PsychCopyInIntegerArg(1, TRUE, &handle);
-
+	
 	// Stop device:
 	PsychKNStop(handle);
-
+	
     return(PsychError_none);	
 }
 
@@ -714,20 +714,20 @@ PsychError PSYCHKINECTGetStatus(void)
     static char useString[] = "status = PsychKinect('GetStatus', kinectPtr);";
     //
     static char synopsisString[] = 
-    "Retrieve struct with current status of Kinect box 'kinectPtr'.\n\n"
-    "\n";
-
+		"Retrieve struct with current status of Kinect box 'kinectPtr'.\n\n"
+		"\n";
+	
     static char seeAlsoString[] = "";	
-
+	
 	int handle;
 	PsychKNDevice *kinect;
-
+	
 	int navail;
 	
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-
+	
     //check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(1));
@@ -736,21 +736,21 @@ PsychError PSYCHKINECTGetStatus(void)
 	kinect = PsychGetKinect(handle, FALSE);
 	
 	PsychLockMutex(&kinect->mutex);
-
+	
 	navail = kinect->recposition - kinect->readposition;	
-
+	
 	printf("\n");
 	printf("Running: %i\n", kinect->state);
 	printf("Read: %i\n", kinect->readposition);
 	printf("Write: %i\n", kinect->recposition);
 	printf("navail: %i\n", navail);
 	printf("\n");
-
+	
 	PsychUnlockMutex(&kinect->mutex);
-
+	
 	// TODO: Return sensible status struct:
 	PsychCopyOutDoubleArg(1, FALSE, 123456);
-
+	
     return(PsychError_none);	
 }
 
@@ -759,21 +759,21 @@ PsychError PSYCHKINECTGrabFrame(void)
     static char useString[] = "[result, cts, age] = PsychKinect('GrabFrame', kinectPtr [, waitMode=1][, mostrecent=0]);";
     //							1		2	 3								 1			  2				3
     static char synopsisString[] = 
-    "Poll or wait for arrival of new captured frames, release old ones.\n\n"
-    "This function checks box 'kinectPtr' for the availability of frames. "
-	"If 'waitMode' is 1, the function waits/blocks until data is available "
-	"if no new frames are available at time of call. Otherwise it just "
-	"polls in a non-blocking fashion.\n"
-	"If 'mostrecent' is 1, then the most recent frame is returned and old "
-	"frames are discarded - this for low-latency live capture.\n"
-	"\n\n"
-	"'result' returns the status: 0 = No frame returned, 1 = Frame returned, 2 = Error.\n"
-	"'cts' returns a capture time stamp of when the frame was captured.\n"
-	"'age' returns the age of the frame -- the number of pending frames in the buffer queue.\n"
-	"\n\n";
-
+		"Poll or wait for arrival of new captured frames, release old ones.\n\n"
+		"This function checks box 'kinectPtr' for the availability of frames. "
+		"If 'waitMode' is 1, the function waits/blocks until data is available "
+		"if no new frames are available at time of call. Otherwise it just "
+		"polls in a non-blocking fashion.\n"
+		"If 'mostrecent' is 1, then the most recent frame is returned and old "
+		"frames are discarded - this for low-latency live capture.\n"
+		"\n\n"
+		"'result' returns the status: 0 = No frame returned, 1 = Frame returned, 2 = Error.\n"
+		"'cts' returns a capture time stamp of when the frame was captured.\n"
+		"'age' returns the age of the frame -- the number of pending frames in the buffer queue.\n"
+		"\n\n";
+	
     static char seeAlsoString[] = "";	
-
+	
 	int handle;
 	PsychKNDevice *kinect;
 	PsychKNBuffer *buffer;
@@ -784,27 +784,27 @@ PsychError PSYCHKINECTGrabFrame(void)
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-
+	
     //check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(3));
     PsychErrorExit(PsychCapNumInputArgs(3));
     
 	PsychCopyInIntegerArg(1, TRUE, &handle);	
 	kinect = PsychGetKinect(handle, FALSE);
-
+	
 	waitMode = 1;
 	PsychCopyInIntegerArg(2, FALSE, &waitMode);	
-
+	
 	mostrecent = 0;
 	PsychCopyInIntegerArg(3, FALSE, &mostrecent);	
-
+	
 	if (kinect->frame_valid) PsychErrorExitMsg(PsychError_user, "Must 'ReleaseFrame' old frame first, before grabbing a new one!");
 	if ((kinect->state == 0) && (waitMode!=0)) PsychErrorExitMsg(PsychError_user, "Must 'Start' before first call to 'GrabFrame'!");
 	PsychLockMutex(&kinect->mutex);
-
+	
 	// New data available?
 	navail = kinect->recposition - kinect->readposition;	
-
+	
 	if (verbosity > 3) {
 		printf("\n");
 		printf("Running: %i\n", kinect->state);
@@ -813,7 +813,7 @@ PsychError PSYCHKINECTGrabFrame(void)
 		printf("navail: %i\n", navail);
 		printf("\n");
 	}
-
+	
 	while (navail <= 0) {
 		// No. Shall we wait?
 		if (waitMode == 0) {
@@ -836,10 +836,10 @@ PsychError PSYCHKINECTGrabFrame(void)
 			if (verbosity > 1) printf("PTB-WARNING: In 'GrabFrame': Kinect driver timed out or emergency stopped!\nPrepare for trouble!\n");
 			continue;
 		}
-
+		
 		// Recheck:
 		navail = kinect->recposition - kinect->readposition;		
-
+		
 		if (verbosity > 3) {
 			printf("\n");
 			printf("Running: %i\n", kinect->state);
@@ -849,28 +849,28 @@ PsychError PSYCHKINECTGrabFrame(void)
 			printf("\n");
 		}
 	}
-
+	
 	// Ok, at this point we have at least one frame of data available.
 	if ((navail > 1) && (mostrecent == 1)) {
 		// Want most recent. Increment readpos to last avail frame:
 		kinect->readposition+= navail - 1;
 	}
-
+	
 	// Recompute available amount:
 	navail = kinect->recposition - kinect->readposition;		
-
+	
 	// Retrieve bufferptr:
 	buffer = PsychGetKNBuffer(kinect, kinect->readposition);
 	cts = buffer->cts;
-
+	
 	PsychUnlockMutex(&kinect->mutex);
-
+	
 	PsychCopyOutDoubleArg(1, FALSE, 1);
 	PsychCopyOutDoubleArg(2, FALSE, cts);
 	PsychCopyOutDoubleArg(3, FALSE, navail);
-
+	
 	kinect->frame_valid = TRUE;
-
+	
     return(PsychError_none);	
 }
 
@@ -878,18 +878,18 @@ PsychError PSYCHKINECTReleaseFrame(void)
 {
     static char useString[] = "PsychKinect('ReleaseFrame', kinectPtr);";
     static char synopsisString[] = 
-    "Release current frame back to bufferqueue.\n\n";
+		"Release current frame back to bufferqueue.\n\n";
     static char seeAlsoString[] = "";	
-
+	
 	int handle;
 	PsychKNDevice *kinect;
-
+	
 	int navail;
 	
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-
+	
     //check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(3));
     PsychErrorExit(PsychCapNumInputArgs(3));
@@ -897,12 +897,12 @@ PsychError PSYCHKINECTReleaseFrame(void)
 	PsychCopyInIntegerArg(1, TRUE, &handle);	
 	kinect = PsychGetKinect(handle, FALSE);
 	if (!kinect->frame_valid) PsychErrorExitMsg(PsychError_user, "Must 'GrabFrame' a frame first!");
-
+	
 	PsychLockMutex(&kinect->mutex);
 	kinect->readposition++;
 	navail = kinect->recposition - kinect->readposition;	
 	PsychUnlockMutex(&kinect->mutex);
-
+	
 	kinect->frame_valid = FALSE;
 	
     return(PsychError_none);	
@@ -913,16 +913,16 @@ PsychError PSYCHKINECTGetImage(void)
     static char useString[] = "[imageOrPtr, width, height, channels, extType, extFormat] = PsychKinect('GetImage', kinectPtr [, imtype=0][, returnTexturePtr=0]);";
     //							1			2	   3	   4		 5		  6									   1			2			3
     static char synopsisString[] = 
-    "Return the color image data for the frame fetched via 'GrabFrame'.\n\n"
-    "If 'returnTexturePtr' is zero (default), a uint8 3D image matrix is returned, which could "
-	"be directly fed to image processing toolbox, imwrite() or Screen('MakeTexture').\n"
-	"'imtype' if set to 1 returns a color-coded depth image instead of the RGB camera image.\n"
-	"If 'returnTexturePtr' is one, a memory pointer to a RGBA8 rectangle texture buffer "
-	"is returned, for use with Screen('SetOpenGLTextureFromMemPointer') for injection into "
-	"PTB's texturing system.\n";
-
+		"Return the color image data for the frame fetched via 'GrabFrame'.\n\n"
+		"If 'returnTexturePtr' is zero (default), a uint8 3D image matrix is returned, which could "
+		"be directly fed to image processing toolbox, imwrite() or Screen('MakeTexture').\n"
+		"'imtype' if set to 1 returns a color-coded depth image instead of the RGB camera image.\n"
+		"If 'returnTexturePtr' is one, a memory pointer to a RGBA8 rectangle texture buffer "
+		"is returned, for use with Screen('SetOpenGLTextureFromMemPointer') for injection into "
+		"PTB's texturing system.\n";
+	
     static char seeAlsoString[] = "";	
-
+	
 	int handle;
 	PsychKNDevice *kinect;
 	PsychKNBuffer* buffer;
@@ -930,22 +930,22 @@ PsychError PSYCHKINECTGetImage(void)
 	int returnTexturePtr, imtype;
 	int i, pval, lb;
 	int channels = 3;
-
+	
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-
+	
     //check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(6));
     PsychErrorExit(PsychCapNumInputArgs(3));
-
+	
 	PsychCopyInIntegerArg(1, TRUE, &handle);	
 	kinect = PsychGetKinect(handle, FALSE);
 	if (!kinect->frame_valid) PsychErrorExitMsg(PsychError_user, "Must 'GrabFrame' a frame first!");
-
+	
 	imtype=0;
 	PsychCopyInIntegerArg(2, FALSE, &imtype);	
-
+	
 	returnTexturePtr=0;
 	PsychCopyInIntegerArg(3, FALSE, &returnTexturePtr);	
 	
@@ -997,7 +997,7 @@ PsychError PSYCHKINECTGetImage(void)
 					break;
 			}
 		}
-
+		
 		// Return image data:
 		if (returnTexturePtr) {
 			// Just return a memory pointer to the colorbuffer:
@@ -1006,7 +1006,7 @@ PsychError PSYCHKINECTGetImage(void)
 			PsychAllocOutUnsignedByteMatArg(1, FALSE, 3, buffer->dheight, buffer->dwidth, &outimg);
 			memcpy(outimg, gl_depth_back, buffer->dheight * buffer->dwidth * 3);
 		}
-
+		
 		// Fixed for current Kinect:
 		PsychCopyOutDoubleArg(2, FALSE, buffer->dwidth);
 		PsychCopyOutDoubleArg(3, FALSE, buffer->dheight);		
@@ -1025,7 +1025,7 @@ PsychError PSYCHKINECTGetImage(void)
 			PsychAllocOutUnsignedByteMatArg(1, FALSE, channels, buffer->cheight, buffer->cwidth, &outimg);
 			memcpy(outimg, buffer->color, buffer->cheight * buffer->cwidth * channels);
 		}
-
+		
 		// Fixed for current Kinect:
 		PsychCopyOutDoubleArg(2, FALSE, buffer->cwidth);
 		PsychCopyOutDoubleArg(3, FALSE, buffer->cheight);		
@@ -1033,13 +1033,13 @@ PsychError PSYCHKINECTGetImage(void)
 	
 	// Number of image channels:
 	PsychCopyOutDoubleArg(4, FALSE, channels);
-
+	
 	// GL_RGB8 or GL_LUMINANCE8
 	PsychCopyOutDoubleArg(5, FALSE, (channels == 3) ? 32849 : 0x8040);
-
+	
 	// GL_UNSIGNED_BYTE:
 	PsychCopyOutDoubleArg(6, FALSE, 5121);
-
+	
     return(PsychError_none);	
 }
 
@@ -1061,45 +1061,45 @@ PsychError PSYCHKINECTGetDepthImage(void)
 {
     static char useString[] = "[imageOrPtr, width, height, components, extFormat] = PsychKinect('GetDepthImage', kinectPtr [, format=0][, returnTexturePtr=0]);";
     static char synopsisString[] = 
-    "Return the depth image data for the frame fetched via 'GrabFrame'.\n\n"
-    "If 'returnTexturePtr' is zero (default), a matrix is returned for processing in Matlab/Octave.\n\n"
-	"If 'returnTexturePtr' is one, a memory pointer to a buffer is returned.\n\n"
-	"'format' defines the type of returned data:\n"
-	"0 = Return raw disparity image as 2D double matrix with integral values.\n"
-	"1 = Return depths z-image as 2D double matrix with z-distance in meters.\n"
-	"2 = Return a vertex buffer with (x,y,z) vertices that define a 3D surface mesh.\n"
-	"\n\n";
-
+		"Return the depth image data for the frame fetched via 'GrabFrame'.\n\n"
+		"If 'returnTexturePtr' is zero (default), a matrix is returned for processing in Matlab/Octave.\n\n"
+		"If 'returnTexturePtr' is one, a memory pointer to a buffer is returned.\n\n"
+		"'format' defines the type of returned data:\n"
+		"0 = Return raw disparity image as 2D double matrix with integral values.\n"
+		"1 = Return depths z-image as 2D double matrix with z-distance in meters.\n"
+		"2 = Return a vertex buffer with (x,y,z) vertices that define a 3D surface mesh.\n"
+		"\n\n";
+	
     static char seeAlsoString[] = "";	
-
+	
 	int handle;
 	PsychKNDevice *kinect;
 	PsychKNBuffer* buffer;
 	double* outzmat;
 	int returnTexturePtr, format;
 	int i, x, y, pval, lb;
-
+	
 	double xp, yp, zp;
 	const double minDistance = -10;
 	const double scaleFactor = .0021;
 	const double w = 640;
 	const double h = 480;
-
+	
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-
+	
     //check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(5));
     PsychErrorExit(PsychCapNumInputArgs(3));
-
+	
 	PsychCopyInIntegerArg(1, TRUE, &handle);	
 	kinect = PsychGetKinect(handle, FALSE);
 	if (!kinect->frame_valid) PsychErrorExitMsg(PsychError_user, "Must 'GrabFrame' a frame first!");
-
+	
 	format = 0;
 	PsychCopyInIntegerArg(2, FALSE, &format);	
-
+	
 	returnTexturePtr=0;
 	PsychCopyInIntegerArg(3, FALSE, &returnTexturePtr);	
 	
@@ -1111,10 +1111,10 @@ PsychError PSYCHKINECTGetDepthImage(void)
 			// Return raw depth image:
 			i=0;
 			for (x=0; x < 640; x++)
-			  for (y=0; y < 480; y++) {
-			    zmap[i++] = (double) getz(buffer->depth, x, y);
-			}
-			
+				for (y=0; y < 480; y++) {
+					zmap[i++] = (double) getz(buffer->depth, x, y);
+				}
+					
 			// Return image data:
 			if (returnTexturePtr) {
 				// Just return a memory pointer to the colorbuffer:
@@ -1123,18 +1123,19 @@ PsychError PSYCHKINECTGetDepthImage(void)
 				PsychAllocOutDoubleMatArg(1, FALSE, buffer->dheight, buffer->dwidth, 1, &outzmat);
 				memcpy(outzmat, zmap, buffer->dheight * buffer->dwidth * 1 * sizeof(double));
 			}
+
 		break;
-		
+				
 		case 1:
 			// Return encoded and aligned depth image:
 			// Return raw depth image:
 			i=0;
 			for (x=0; x < 640; x++)
-			  for (y=0; y < 480; y++) {
-			    // Calc z distance, convert from centimeters to meters:
-			    zmap[i++] = calcz(getz(buffer->depth, x, y)) / 100;
-			}
-			
+				for (y=0; y < 480; y++) {
+					// Calc z distance, convert from centimeters to meters:
+					zmap[i++] = calcz(getz(buffer->depth, x, y)) / 100;
+				}
+					
 			// Return image data:
 			if (returnTexturePtr) {
 				// Just return a memory pointer to the colorbuffer:
@@ -1143,23 +1144,24 @@ PsychError PSYCHKINECTGetDepthImage(void)
 				PsychAllocOutDoubleMatArg(1, FALSE, buffer->dheight, buffer->dwidth, 1, &outzmat);
 				memcpy(outzmat, zmap, buffer->dheight * buffer->dwidth * 1 * sizeof(double));
 			}
+
 		break;
-		
+				
 		case 2:
 			// Return (x,y,z) vertex buffer mesh:
 			i=0;
 			for (x=0; x < 640; x++)
-			  for (y=0; y < 480; y++) {
-				zp = calcz(getz(buffer->depth, x, y));
-				xp = ((double) x - w/2) * (zp + minDistance) * scaleFactor * (w/h);
-				yp = ((double) y - h/2) * (zp + minDistance) * scaleFactor;
-
-				// Write out, convert from centimeters to meters:
-				zmap[i++] = xp / 100;
-				zmap[i++] = yp / 100;
-				zmap[i++] = zp / 100;
-			}
-			
+				for (y=0; y < 480; y++) {
+					zp = calcz(getz(buffer->depth, x, y));
+					xp = ((double) x - w/2) * (zp + minDistance) * scaleFactor * (w/h);
+					yp = ((double) y - h/2) * (zp + minDistance) * scaleFactor;
+					
+					// Write out, convert from centimeters to meters:
+					zmap[i++] = xp / 100;
+					zmap[i++] = yp / 100;
+					zmap[i++] = zp / 100;
+				}
+					
 			// Return image data:
 			if (returnTexturePtr) {
 				// Just return a memory pointer to the colorbuffer:
@@ -1168,8 +1170,9 @@ PsychError PSYCHKINECTGetDepthImage(void)
 				PsychAllocOutDoubleMatArg(1, FALSE, 3, buffer->dheight, buffer->dwidth, &outzmat);
 				memcpy(outzmat, zmap, 3 * buffer->dheight * buffer->dwidth * sizeof(double));
 			}
-		break;
 
+		break;
+				
 		default:
 			PsychErrorExitMsg(PsychError_user, "Invalid '' parameter provided!");
 	}
@@ -1180,9 +1183,9 @@ PsychError PSYCHKINECTGetDepthImage(void)
 	
 	// 3 components per vertex:
 	PsychCopyOutDoubleArg(4, FALSE, 3);
-
+	
 	// GL_DOUBLE = 5130, GL_FLOAT = 5126:
 	PsychCopyOutDoubleArg(5, FALSE, 5130);
-
+	
     return(PsychError_none);	
 }
