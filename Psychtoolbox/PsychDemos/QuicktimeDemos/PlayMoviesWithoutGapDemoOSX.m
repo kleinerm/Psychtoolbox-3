@@ -19,7 +19,6 @@ function PlayMoviesWithoutGapDemoOSX(moviename)
 % engine. How well this feature works depends strongly on the computational
 % horsepower of your machine. Slow machines will probably stutter...
 %
-% This demo needs MacOS-X 10.3.9 or 10.4.x with Quicktime-7 installed!
 
 % History:
 % 7/5/06  mk  Wrote it.

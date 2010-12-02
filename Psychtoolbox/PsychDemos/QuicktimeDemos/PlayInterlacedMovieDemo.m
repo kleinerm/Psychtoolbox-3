@@ -41,9 +41,6 @@ try
     screen=max(Screen('Screens'));
     win = Screen('OpenWindow', screen, 0);
 
-    % Retrieve duration of a single video refresh interval:
-    ifi = Screen('GetFlipInterval', win);
-
     % Load deinterlacing-shader: This will abort our script if the graphics
     % hardware doesn't support GLSL or fragment shaders.
     deinterlacer = LoadGLSLProgramFromFiles('EXPDeinterlaceShaderLineDouble',1);
@@ -59,7 +56,7 @@ try
 
 
     % Initial display and sync to retrace:
-    vbl=Screen('Flip',win);
+    Screen('Flip',win);
     iteration=0;
     abortit=0;
     switchfielddisplayorder=0;
@@ -80,8 +77,6 @@ try
         % 1.0 == 100% audio volume.
         Screen('PlayMovie', movie, 1, 0, 1.0);
 
-        t1 = GetSecs;
-
         % Infinite playback loop: Fetch video frames and display them...
         while(1)
             i=i+1;
@@ -91,7 +86,7 @@ try
             % tex is either the texture handle or zero if no new frame is
             % ready yet, or -1 if the movie finished playback.
             % pts = Presentation timestamp in seconds.
-            [tex pts] = Screen('GetMovieImage', win, movie, 1);
+            tex = Screen('GetMovieImage', win, movie, 1);
 
             % Valid texture returned?
             if tex<=0
@@ -103,27 +98,28 @@ try
             % texture: One can switch the order of drawing by toggling
             % switchfielddisplayorder between 0 and 1 via press of the
             % space key.
+            glUseProgram(deinterlacer);
             glUniform1f(useoddfield, switchfielddisplayorder);
 
             % Draw the new texture immediately to screen, appying the
             % deinterlacer. You need to disable bilinear filtering via the
             % 0 - flag, because the deinterlacer doesn't work yet with
             % anything else than nearest neighbour filtering:
-            Screen('DrawTexture', win, tex, [], [], [], 0);
+            Screen('DrawTexture', win, tex, [], [], [], 0, [], [], deinterlacer);
 
             % Update display at next monitor retrace:
-            vbl=Screen('Flip', win);
-
+            Screen('Flip', win);
 
             % Select odd half-field (the odd rows) in the interlaced
             % texture:
+            glUseProgram(deinterlacer);
             glUniform1f(useoddfield, 1-switchfielddisplayorder);
 
             % Draw the new texture immediately to screen:
-            Screen('DrawTexture', win, tex, [], [], [], 0);
+            Screen('DrawTexture', win, tex, [], [], [], 0, [], [], deinterlacer);
 
             % Update display:
-            vbl=Screen('Flip', win);
+            Screen('Flip', win);
 
             % Release texture:
             Screen('Close', tex);
@@ -131,15 +127,15 @@ try
             % Check for abortion:
             abortit=0;
             [keyIsDown,secs,keyCode]=KbCheck;
-            if (keyIsDown==1 & keyCode(esc))
+            if (keyIsDown==1 && keyCode(esc))
                 % Set the abort-demo flag.
                 abortit=1;
                 break;
             end;
 
-            if (keyIsDown==1 & keyCode(space))
+            if (keyIsDown==1 && keyCode(space))
                 % Toggle display order of even and odd fields:
-                switchfielddisplayorder = 1 - switchfielddisplayorder
+                switchfielddisplayorder = 1 - switchfielddisplayorder %#ok<NOPRT>
                 while KbCheck; end;
             end;
 
@@ -155,9 +151,6 @@ try
 
         % ...and repeat...
     end;
-
-    % Disable deinterlacer:
-    glUseProgram(0);
 
     % Close screens.
     Screen('CloseAll');

@@ -14,7 +14,6 @@ function PlayDualMoviesDemoOSX(moviename)
 % The left- right arrow keys jump in 1 seconds steps. SPACE jumps to the
 % next movie in the list. ESC ends the demo.
 %
-% This demo needs MacOS-X 10.3.9 or 10.4.x with Quicktime-7 installed!
 
 % History:
 % 10/30/05  mk  Wrote it.
