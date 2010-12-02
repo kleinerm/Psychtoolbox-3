@@ -19,9 +19,7 @@
 
 */
 
-#include <Quicktime/Movies.h>
-
-#include "Screen.h"
+#include "PsychMovieSupportQuickTime.h"
 
 // MK: Experimental switch: If set to 1, then we use old-style
 // GWorlds for Quicktime rendering and manually convert them
@@ -52,17 +50,6 @@ void CVOpenGLTextureGetCleanTexCoords(void* a, float* b, float* c, float* d, flo
 #endif 
 
 #define PSYCH_MAX_MOVIES 100
-
-typedef struct {
-    unsigned char asyncstate;
-    char* moviename;
-    PsychWindowRecordType windowRecord;
-    int moviehandle;
-	double preloadSecs;	
-#if PSYCH_SYSTEM == PSYCH_OSX
-    pthread_t pid;
-#endif
-} asyncmovieinfo;
 
 typedef struct {
     Movie   theMovie;
@@ -146,55 +133,6 @@ double PsychDetermineMovieFramecountAndFps(Movie theMovie, int* nrframes)
     
     // Compute and return frame rate in fps as (Ticks per second / Duration of single frame in ticks): 
     return((double) GetMovieTimeScale(theMovie) / (double) myDuration);    
-}
-
-/*
- *      PsychQTAsyncCreateMovie() -- Open a movie file in the background.
- *
- *      This function is called by SCREENOpenMovie as main-function of
- *      a new Posix-Thread for background movie loading. It simply calls
- *      PsychQTCreateMovie(), waiting for it to return a new moviehandle.
- *      Then it returns those info and terminates.
- *      -> By calling PsychQTCreateMovie from the run-function of a dedicated
- *      Posix-Thread which runs independent of the main Matlab/PTB Thread with
- *      non-realtime priority, we can do the work of opening a Quicktime movie
- *      in the background, hopefully not affecting the timing of the main PTB
- *      thread too much.
- */
-void* PsychQTAsyncCreateMovie(void* mi)
-{
-    struct sched_param sp;
-    int rc;
-    
-    // Get a pointer to the info-struct:
-    asyncmovieinfo* movieinfo = (asyncmovieinfo*) mi;
-    // The special value -1000 tells PsychQTCreateMovie to not output any error-
-    // messages as this could easily crash Matlab.
-    int mymoviehandle=-1000;
-
-    // Reduce our scheduling priority to the minimum value of zero, so
-    // we do not interfere too much with the PTB main thread:
-    sp.sched_priority = 0;
-    if ((rc=pthread_setschedparam(pthread_self(), SCHED_OTHER, &sp))!=0) {
-        printf("PTB-ERROR: In PsychQTAsyncCreateMovie(): PTHREAD ERROR %i ...", rc);
-    }
-    
-	// Tell QT subsystem that this thread wants to use it as well:
-    // MK: Do we need this? Defaults seem to be ok... EnterMoviesOnThread(<#UInt32 inFlags#>);
-
-    // Execute our normal OpenMovie function: This does the hard work:
-    PsychQTCreateMovie(&(movieinfo->windowRecord), movieinfo->moviename, movieinfo->preloadSecs, &mymoviehandle);
-    
-	// Disable QT subsystem for this thread:
-	// ExitMoviesOnThread();
-	
-    // Ok, either we have a moviehandle to a valid movie, or we failed, which would
-    // be signalled to the calling function via some negative moviehandle:
-    movieinfo->moviehandle = mymoviehandle; // Return moviehandle.
-    movieinfo->asyncstate = 2; // Set state to "Completed"
-    
-    // Exit from the routine. This will automatically terminate our Posix-Thread.
-    return(NULL);
 }
 
 int PsychQTGetMovieCount(void) {

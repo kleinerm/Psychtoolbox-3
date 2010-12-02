@@ -45,17 +45,6 @@ static const psych_bool oldstyle = FALSE;
 #define PSYCH_MAX_MOVIES 100
 
 typedef struct {
-    unsigned char asyncstate;
-    char* moviename;
-    PsychWindowRecordType windowRecord;
-    int moviehandle;
-    double preloadSecs;	
-#if PSYCH_SYSTEM == PSYCH_OSX
-    pthread_t pid;
-#endif
-} asyncmovieinfo;
-
-typedef struct {
     psych_mutex		mutex;
     psych_condition     condition;
     double		pts;
@@ -102,50 +91,6 @@ void PsychGSMovieInit(void)
     g_thread_init(NULL);
 
     return;
-}
-
-/*
- *      PsychGSAsyncCreateMovie() -- Open a movie file in the background.
- *
- *      This function is called by SCREENOpenMovie as main-function of
- *      a new Posix-Thread for background movie loading. It simply calls
- *      PsychGSCreateMovie(), waiting for it to return a new moviehandle.
- *      Then it returns those info and terminates.
- *      -> By calling PsychGSCreateMovie from the run-function of a dedicated
- *      Posix-Thread which runs independent of the main Matlab/PTB Thread with
- *      non-realtime priority, we can do the work of opening a movie
- *      in the background, hopefully not affecting the timing of the main PTB
- *      thread too much.
- */
-void* PsychGSAsyncCreateMovie(void* mi)
-{
-    struct sched_param sp;
-    int rc;
-    
-    // Get a pointer to the info-struct:
-    asyncmovieinfo* movieinfo = (asyncmovieinfo*) mi;
-
-    // The special value -1000 tells PsychGSCreateMovie to not output any error-
-    // messages as this could easily crash Matlab.
-    int mymoviehandle=-1000;
-
-    // Reduce our scheduling priority to the minimum value of zero, so
-    // we do not interfere too much with the PTB main thread:
-    sp.sched_priority = 0;
-    if ((rc=pthread_setschedparam(pthread_self(), SCHED_OTHER, &sp))!=0) {
-        printf("PTB-ERROR: In PsychGSAsyncCreateMovie(): PTHREAD ERROR %i ...", rc);
-    }
-    
-    // Execute our normal OpenMovie function: This does the hard work:
-    PsychGSCreateMovie(&(movieinfo->windowRecord), movieinfo->moviename, movieinfo->preloadSecs, &mymoviehandle);
-	
-    // Ok, either we have a moviehandle to a valid movie, or we failed, which would
-    // be signalled to the calling function via some negative moviehandle:
-    movieinfo->moviehandle = mymoviehandle; // Return moviehandle.
-    movieinfo->asyncstate = 2; // Set state to "Completed"
-    
-    // Exit from the routine. This will automatically terminate our Posix-Thread.
-    return(NULL);
 }
 
 int PsychGSGetMovieCount(void) {

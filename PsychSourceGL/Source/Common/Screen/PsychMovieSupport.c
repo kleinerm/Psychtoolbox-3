@@ -113,6 +113,61 @@ void PsychMovieInit(void)
 	return;
 }
 
+int PsychGetMovieCount(void)
+{
+	if (usegs()) {
+	#ifdef PTB_USE_GSTREAMER
+	return(PsychGSGetMovieCount());
+	#endif
+	} else {
+	#ifdef PSYCHQTAVAIL
+	return(PsychQTGetMovieCount());
+	#endif
+	}
+
+	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
+	return(0);
+}
+
+/*
+ *      PsychAsyncCreateMovie() -- Open a movie file in the background.
+ *
+ *      This function is called by SCREENOpenMovie as main-function of
+ *      a new Posix-Thread for background movie loading. It simply calls
+ *      PsychCreateMovie(), waiting for it to return a new moviehandle.
+ *      Then it returns those info and terminates.
+ *      -> By calling PsychCreateMovie from the run-function of a dedicated
+ *      Posix-Thread which runs independent of the main Matlab/PTB Thread with
+ *      non-realtime priority, we can do the work of opening a Quicktime movie
+ *      in the background, hopefully not affecting the timing of the main PTB
+ *      thread too much.
+ */
+void* PsychAsyncCreateMovie(PsychAsyncMovieInfo* movieinfo)
+{
+    int rc;
+ 
+    // The special value -1000 tells PsychCreateMovie to not output any error-
+    // messages as this could easily crash Matlab/Octave.
+    int mymoviehandle=-1000;
+
+    // Reduce our scheduling priority to the minimum value of zero, so
+    // we do not interfere too much with the PTB main thread:
+    if ((rc=PsychSetThreadPriority(NULL, 0, 0))!=0) {
+        printf("PTB-WARNING: In PsychAsyncCreateMovie(): Failed to lower my priority to non-realtime [System errorcode %i]. Expect timing problems for movie playback!", rc);
+    }
+    
+    // Execute our normal OpenMovie function: This does the hard work:
+    PsychCreateMovie(&(movieinfo->windowRecord), movieinfo->moviename, movieinfo->preloadSecs, &mymoviehandle);
+	
+    // Ok, either we have a moviehandle to a valid movie, or we failed, which would
+    // be signalled to the calling function via some negative moviehandle:
+    movieinfo->moviehandle = mymoviehandle; // Return moviehandle.
+    movieinfo->asyncstate = 2; // Set state to "Completed"
+    
+    // Exit from the routine. This will automatically terminate our Thread.
+    return(NULL);
+}
+
 /*
  *      PsychCreateMovie() -- Create a movie object.
  *
@@ -126,7 +181,7 @@ void PsychMovieInit(void)
 void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle)
 {
 	if (usegs()) {
-        #ifdef PTB_USE_GSTREAMER
+	#ifdef PTB_USE_GSTREAMER
 	PsychGSCreateMovie(win, moviename, preloadSecs, moviehandle);
 	return;
 	#endif
@@ -224,7 +279,7 @@ void PsychDeleteAllMovies(void)
 int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp)
 {
 	if (usegs()) {
-        #ifdef PTB_USE_GSTREAMER
+	#ifdef PTB_USE_GSTREAMER
 	return(PsychGSGetTextureFromMovie(win, moviehandle, checkForImage, timeindex, out_texture, presentation_timestamp));
 	#endif
 	} else {
@@ -247,7 +302,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
 void PsychFreeMovieTexture(PsychWindowRecordType *win)
 {
 	if (usegs()) {
-        #ifdef PTB_USE_GSTREAMER
+	#ifdef PTB_USE_GSTREAMER
 	PsychGSFreeMovieTexture(win);
 	return;
 	#endif

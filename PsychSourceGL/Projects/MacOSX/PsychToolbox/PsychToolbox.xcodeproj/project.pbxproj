@@ -1316,7 +1316,7 @@
 		2FEBA9810989ACC400F4165F /* PsychHelp.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F229038E2B6B017A7028 /* PsychHelp.c */; };
 		2FEBA9820989ACC400F4165F /* PsychInit.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22D038E2B6B017A7028 /* PsychInit.c */; };
 		2FEBA9830989ACC500F4165F /* PsychMemory.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22B038E2B6B017A7028 /* PsychMemory.c */; };
-		2FEBA9840989ACC600F4165F /* PsychMovieSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B02092823C00062DB0A /* PsychMovieSupport.c */; };
+		2FEBA9840989ACC600F4165F /* PsychMovieSupportQuickTime.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B02092823C00062DB0A /* PsychMovieSupportQuickTime.c */; };
 		2FEBA9850989ACC900F4165F /* PsychRects.c in Sources */ = {isa = PBXBuildFile; fileRef = F598839503F9A78801A80168 /* PsychRects.c */; };
 		2FEBA9860989ACCA00F4165F /* PsychRegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F228038E2B6B017A7028 /* PsychRegisterProject.c */; };
 		2FEBA9870989ACCB00F4165F /* PsychScreenGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = F5CD7AA103B12857017A7028 /* PsychScreenGlue.c */; };
@@ -1576,6 +1576,8 @@
 		8310AC490F87C222004AAE79 /* PsychHIDCloseUSBDevice.c in Sources */ = {isa = PBXBuildFile; fileRef = F16C715D0F86999500A8BE72 /* PsychHIDCloseUSBDevice.c */; };
 		8310AC4A0F87C237004AAE79 /* PsychHIDOpenUSBDevice.c in Sources */ = {isa = PBXBuildFile; fileRef = F16C715E0F86999500A8BE72 /* PsychHIDOpenUSBDevice.c */; };
 		8310AC4B0F87C24C004AAE79 /* PsychHIDUSBControlTransfer.c in Sources */ = {isa = PBXBuildFile; fileRef = F1BCA5ED0F8676BD00EABA6F /* PsychHIDUSBControlTransfer.c */; };
+		831A458512A6EEC500FFF235 /* PsychMovieSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 831A458412A6EEC500FFF235 /* PsychMovieSupport.c */; };
+		831A458612A6EEC500FFF235 /* PsychMovieSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 831A458412A6EEC500FFF235 /* PsychMovieSupport.c */; };
 		8320C1B60D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c in Sources */ = {isa = PBXBuildFile; fileRef = 8320C1B50D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c */; };
 		8320C1B70D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c in Sources */ = {isa = PBXBuildFile; fileRef = 8320C1B50D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c */; };
 		8320C1B90D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c in Sources */ = {isa = PBXBuildFile; fileRef = 8320C1B80D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c */; };
@@ -1796,8 +1798,7 @@
 		83C802750B8CB29300097021 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		83C802CD0B8CECE500097021 /* MirrorFaceCore.cc in Sources */ = {isa = PBXBuildFile; fileRef = 83C802C90B8CECE500097021 /* MirrorFaceCore.cc */; };
 		83C802CE0B8CECE500097021 /* RegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C802CB0B8CECE500097021 /* RegisterProject.c */; };
-		83C94B01092823A80062DB0A /* PsychMovieSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = 83C94B00092823A80062DB0A /* PsychMovieSupport.h */; };
-		83C94B03092823C00062DB0A /* PsychMovieSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B02092823C00062DB0A /* PsychMovieSupport.c */; };
+		83C94B03092823C00062DB0A /* PsychMovieSupportQuickTime.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B02092823C00062DB0A /* PsychMovieSupportQuickTime.c */; };
 		83C94B05092824530062DB0A /* SCREENSetMovieTimeIndex.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B04092824530062DB0A /* SCREENSetMovieTimeIndex.c */; };
 		83C94B07092824730062DB0A /* SCREENOpenMovie.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B06092824730062DB0A /* SCREENOpenMovie.c */; };
 		83C94B09092824A90062DB0A /* SCREENGetMovieTimeIndex.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B08092824A90062DB0A /* SCREENGetMovieTimeIndex.c */; };
@@ -1933,7 +1934,7 @@
 		F089BC8C0AD42DF500663D86 /* PsychHelp.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F229038E2B6B017A7028 /* PsychHelp.c */; };
 		F089BC8D0AD42DF500663D86 /* PsychInit.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22D038E2B6B017A7028 /* PsychInit.c */; };
 		F089BC8E0AD42DF500663D86 /* PsychMemory.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22B038E2B6B017A7028 /* PsychMemory.c */; };
-		F089BC8F0AD42DF500663D86 /* PsychMovieSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B02092823C00062DB0A /* PsychMovieSupport.c */; };
+		F089BC8F0AD42DF500663D86 /* PsychMovieSupportQuickTime.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B02092823C00062DB0A /* PsychMovieSupportQuickTime.c */; };
 		F089BC900AD42DF500663D86 /* PsychRects.c in Sources */ = {isa = PBXBuildFile; fileRef = F598839503F9A78801A80168 /* PsychRects.c */; };
 		F089BC910AD42DF500663D86 /* PsychRegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F228038E2B6B017A7028 /* PsychRegisterProject.c */; };
 		F089BC920AD42DF500663D86 /* PsychScreenGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = F5CD7AA103B12857017A7028 /* PsychScreenGlue.c */; };
@@ -3682,6 +3683,9 @@
 		830669BD0D3954B10009C12B /* PsychUserKernelShared.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychUserKernelShared.h; path = ../../../Source/OSX/Screen/PsychUserKernelShared.h; sourceTree = SOURCE_ROOT; };
 		83066A8A0D39AEAF0009C12B /* PsychGraphicsCardRegisterSpecs.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychGraphicsCardRegisterSpecs.h; path = ../../../Source/Common/Screen/PsychGraphicsCardRegisterSpecs.h; sourceTree = SOURCE_ROOT; };
 		83097FD70DB18BAF00E7D371 /* PsychSerialUnixGlue.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychSerialUnixGlue.h; path = ../../../Source/Common/IOPort/PsychSerialUnixGlue.h; sourceTree = SOURCE_ROOT; };
+		831A455F12A6EB5400FFF235 /* PsychMovieSupportQuickTime.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychMovieSupportQuickTime.h; path = ../../../Source/Common/Screen/PsychMovieSupportQuickTime.h; sourceTree = SOURCE_ROOT; };
+		831A456212A6EE1000FFF235 /* PsychMovieSupport.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychMovieSupport.h; path = ../../../Source/Common/Screen/PsychMovieSupport.h; sourceTree = SOURCE_ROOT; };
+		831A458412A6EEC500FFF235 /* PsychMovieSupport.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychMovieSupport.c; path = ../../../Source/Common/Screen/PsychMovieSupport.c; sourceTree = SOURCE_ROOT; };
 		8320C1B50D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychVideoCaptureSupportQuickTime.c; path = ../../../Source/Common/Screen/PsychVideoCaptureSupportQuickTime.c; sourceTree = SOURCE_ROOT; };
 		8320C1B80D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychVideoCaptureSupportLibDC1394.c; path = ../../../Source/Common/Screen/PsychVideoCaptureSupportLibDC1394.c; sourceTree = SOURCE_ROOT; };
 		8325CEC10CAF158800B498CD /* PsychHIDKbQueue.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychHIDKbQueue.h; path = ../../../Source/Common/PsychHID/PsychHIDKbQueue.h; sourceTree = SOURCE_ROOT; };
@@ -3784,8 +3788,7 @@
 		83C802CA0B8CECE500097021 /* MirrorFaceCore.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = MirrorFaceCore.h; path = /Users/kleinerm/projects/MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/MirrorFaceCore.h; sourceTree = "<absolute>"; };
 		83C802CB0B8CECE500097021 /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = RegisterProject.c; path = /Users/kleinerm/projects/MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/RegisterProject.c; sourceTree = "<absolute>"; };
 		83C802CC0B8CECE500097021 /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = RegisterProject.h; path = /Users/kleinerm/projects/MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/RegisterProject.h; sourceTree = "<absolute>"; };
-		83C94B00092823A80062DB0A /* PsychMovieSupport.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychMovieSupport.h; path = ../../../Source/OSX/Screen/PsychMovieSupport.h; sourceTree = SOURCE_ROOT; };
-		83C94B02092823C00062DB0A /* PsychMovieSupport.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychMovieSupport.c; path = ../../../Source/OSX/Screen/PsychMovieSupport.c; sourceTree = SOURCE_ROOT; };
+		83C94B02092823C00062DB0A /* PsychMovieSupportQuickTime.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychMovieSupportQuickTime.c; path = ../../../Source/OSX/Screen/PsychMovieSupportQuickTime.c; sourceTree = SOURCE_ROOT; };
 		83C94B04092824530062DB0A /* SCREENSetMovieTimeIndex.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENSetMovieTimeIndex.c; path = ../../../Source/Common/Screen/SCREENSetMovieTimeIndex.c; sourceTree = SOURCE_ROOT; };
 		83C94B06092824730062DB0A /* SCREENOpenMovie.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENOpenMovie.c; path = ../../../Source/Common/Screen/SCREENOpenMovie.c; sourceTree = SOURCE_ROOT; };
 		83C94B08092824A90062DB0A /* SCREENGetMovieTimeIndex.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENGetMovieTimeIndex.c; path = ../../../Source/Common/Screen/SCREENGetMovieTimeIndex.c; sourceTree = SOURCE_ROOT; };
@@ -5473,6 +5476,7 @@
 				F569F24F038E2C77017A7028 /* PsychGLGlue.c */,
 				8306696B0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c */,
 				0F45C2A30B264AE6004ED5F0 /* PsychImagingPipelineSupport.c */,
+				831A458412A6EEC500FFF235 /* PsychMovieSupport.c */,
 				83530223117BD3A300CCB9AF /* PsychMovieWritingSupportQuickTime.c */,
 				8370C71E096A014E00BD4C8C /* PsychTextureSupport.c */,
 				8365A79C09992499006FF0F4 /* PsychVideoCaptureSupport.c */,
@@ -5888,12 +5892,12 @@
 		F5555A9B0389FA3A017A7028 /* Headers */ = {
 			isa = PBXGroup;
 			children = (
+				831A455F12A6EB5400FFF235 /* PsychMovieSupportQuickTime.h */,
 				F5AF1EE403B3C673017A7028 /* PsychScreenGlue.h */,
 				830669BD0D3954B10009C12B /* PsychUserKernelShared.h */,
 				F5AF1EE603B3C6F5017A7028 /* PsychWindowGlue.h */,
 				F5CC1A0B03948070017A7028 /* PsychVideoGlue.h */,
 				2F588F27056AC650007A711C /* PsychWindowTextGlue.h */,
-				83C94B00092823A80062DB0A /* PsychMovieSupport.h */,
 			);
 			name = Headers;
 			sourceTree = "<group>";
@@ -5904,7 +5908,7 @@
 				F5CD7AA103B12857017A7028 /* PsychScreenGlue.c */,
 				F5CC19FE0394691F017A7028 /* PsychWindowGlue.c */,
 				2F588F29056AC66D007A711C /* PsychWindowTextGlue.c */,
-				83C94B02092823C00062DB0A /* PsychMovieSupport.c */,
+				83C94B02092823C00062DB0A /* PsychMovieSupportQuickTime.c */,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -5998,6 +6002,7 @@
 		F55903320385BC1F017A7028 /* Headers */ = {
 			isa = PBXGroup;
 			children = (
+				831A456212A6EE1000FFF235 /* PsychMovieSupport.h */,
 				0F35BB050B23DF930083A954 /* glew.h */,
 				0F35BB060B23DF9F0083A954 /* glxew.h */,
 				0F35BB070B23DFAD0083A954 /* wglew.h */,
@@ -6583,7 +6588,6 @@
 				2FE94C9F0767B75A00A2EC70 /* GetEthernetAddress.h in Headers */,
 				2FD31F1C079E1F89005D8F2D /* TimeLists.h in Headers */,
 				2F4D83DC07B8282C00CE685A /* PsychAlphaBlending.h in Headers */,
-				83C94B01092823A80062DB0A /* PsychMovieSupport.h in Headers */,
 				8370C6FC0969F28100BD4C8C /* PsychWindowSupport.h in Headers */,
 				8370C71D096A013600BD4C8C /* PsychTextureSupport.h in Headers */,
 			);
@@ -10712,7 +10716,7 @@
 				2F66ABC409063E4E00128812 /* SCREENDrawText.c in Sources */,
 				2F66ABC609063E9B00128812 /* SCREENDrawLines.c in Sources */,
 				2F66ABDE09063FFB00128812 /* SCREENGetFlipInterval.c in Sources */,
-				83C94B03092823C00062DB0A /* PsychMovieSupport.c in Sources */,
+				83C94B03092823C00062DB0A /* PsychMovieSupportQuickTime.c in Sources */,
 				83C94B05092824530062DB0A /* SCREENSetMovieTimeIndex.c in Sources */,
 				83C94B07092824730062DB0A /* SCREENOpenMovie.c in Sources */,
 				83C94B09092824A90062DB0A /* SCREENGetMovieTimeIndex.c in Sources */,
@@ -11249,7 +11253,7 @@
 				2FEBA9810989ACC400F4165F /* PsychHelp.c in Sources */,
 				2FEBA9820989ACC400F4165F /* PsychInit.c in Sources */,
 				2FEBA9830989ACC500F4165F /* PsychMemory.c in Sources */,
-				2FEBA9840989ACC600F4165F /* PsychMovieSupport.c in Sources */,
+				2FEBA9840989ACC600F4165F /* PsychMovieSupportQuickTime.c in Sources */,
 				2FEBA9850989ACC900F4165F /* PsychRects.c in Sources */,
 				2FEBA9860989ACCA00F4165F /* PsychRegisterProject.c in Sources */,
 				2FEBA9870989ACCB00F4165F /* PsychScreenGlue.c in Sources */,
@@ -11363,6 +11367,7 @@
 				8320C1B90D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c in Sources */,
 				8306696C0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c in Sources */,
 				83530225117BD3A300CCB9AF /* PsychMovieWritingSupportQuickTime.c in Sources */,
+				831A458512A6EEC500FFF235 /* PsychMovieSupport.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11745,7 +11750,7 @@
 				F089BC8C0AD42DF500663D86 /* PsychHelp.c in Sources */,
 				F089BC8D0AD42DF500663D86 /* PsychInit.c in Sources */,
 				F089BC8E0AD42DF500663D86 /* PsychMemory.c in Sources */,
-				F089BC8F0AD42DF500663D86 /* PsychMovieSupport.c in Sources */,
+				F089BC8F0AD42DF500663D86 /* PsychMovieSupportQuickTime.c in Sources */,
 				F089BC900AD42DF500663D86 /* PsychRects.c in Sources */,
 				F089BC910AD42DF500663D86 /* PsychRegisterProject.c in Sources */,
 				F089BC920AD42DF500663D86 /* PsychScreenGlue.c in Sources */,
@@ -11860,6 +11865,7 @@
 				8306696D0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c in Sources */,
 				83EFE9020F9A2795002211F0 /* PsychVideoCaptureSupportLibARVideo.c in Sources */,
 				83530224117BD3A300CCB9AF /* PsychMovieWritingSupportQuickTime.c in Sources */,
+				831A458612A6EEC500FFF235 /* PsychMovieSupport.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

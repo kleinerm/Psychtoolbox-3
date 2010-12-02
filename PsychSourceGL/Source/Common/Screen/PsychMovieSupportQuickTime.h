@@ -23,13 +23,13 @@
 #ifndef PSYCH_IS_INCLUDED_PsychMovieSupportQuickTime
 #define PSYCH_IS_INCLUDED_PsychMovieSupportQuickTime
 
+#include "Screen.h"
+
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 #include <Movies.h>
 #else
 #include <Quicktime/Movies.h>
 #endif
-
-#include "Screen.h"
 
 void PsychQTMovieInit(void);
 int  PsychQTGetMovieCount(void);

@@ -18,9 +18,9 @@
   Open a named movie file from the filesystem, create and initialize a corresponding movie object
   and return a handle to it to MATLAB space.
  
-  On OS-X, all movie/multimedia handling functions are implemented via the Apple Quicktime API,
-  version 7 or later. On a later Windows port we'll probably do the same, but for other OS'es,
-  e.g., Linux, we would use a different multimedia engine.
+  On OS-X and Windows, all movie/multimedia handling functions are implemented via the Apple Quicktime API,
+  version 7 or later. On Linux we use GStreamer: We need at least the gstreamer core library and base plugin
+  set installed for it to work, but more plugins never hurt.
   
   TO DO:
 
@@ -28,16 +28,11 @@
 
 #include "Screen.h"
 
-#if PSYCH_SYSTEM == PSYCH_OSX
-#include <pthread.h>
-void* PsychAsyncCreateMovie(void* mi);
-#endif
-
 static char useString[] = "[ moviePtr [duration] [fps] [width] [height] [count]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1]);";
 static char synopsisString[] = 
-	"Try to open the multimediafile 'moviefile' for playback in onscreen window 'windowPtr' and "
+		"Try to open the multimediafile 'moviefile' for playback in onscreen window 'windowPtr' and "
         "return a handle 'moviePtr' on success. On OS-X and Windows, media files are handled by use of "
-        "Apples Quicktime-7 API. On other platforms, the playback engine may be different from Quicktime. "
+        "Apples Quicktime-7 API. On Linux, the GStreamer multimedia framework is used. "
         "The following movie properties are optionally returned: 'duration' Total duration of movie in seconds. "
         "'fps' Video playback framerate, assuming a linear spacing of videoframes in time. There may "
         "exist exotic movie formats which don't have this linear spacing. In that case, 'fps' would "
@@ -50,8 +45,7 @@ static char synopsisString[] =
         "Call this function with the 'async' flag set to 1. This will initiate the background load operation. "
         "After some sufficient time has passed, you can call the 'OpenMovie' function again, this time with "
         "the 'async' flag set to zero. Now the function will return a valid movie handle for playback. Background "
-        "loading of movies is currently only supported on MacOS-X, and it does only work well with movies that "
-        "don't have sound.\n"
+        "loading of movies currently does only work well with movies that don't have sound, unless you use Linux.\n"
 		"'preloadSecs' This optional parameter allows to ask Screen() to load at least the first 'preloadSecs' "
 		"seconds of the movie into system RAM before the function returns. By default, the first second of the "
 		"movie file is loaded into RAM. This potentially allows for more stutter free playback, but your mileage "
@@ -66,20 +60,11 @@ static char synopsisString[] =
 
 static char seeAlsoString[] = "CloseMovie PlayMovie GetMovieImage GetMovieTimeIndex SetMovieTimeIndex";
 
-static struct asyncopenmovieinfo {
-    unsigned char asyncstate;
-    char* moviename;
-    PsychWindowRecordType windowRecord;
-    int moviehandle;
-	double preloadSecs;
-#if PSYCH_SYSTEM == PSYCH_OSX
-    pthread_t pid;
-#endif
-} asyncmovieinfo;
+PsychAsyncMovieInfo asyncmovieinfo;
 
 PsychError SCREENOpenMovie(void) 
 {
-        PsychWindowRecordType			*windowRecord;
+        PsychWindowRecordType					*windowRecord;
         char                                    *moviefile;
         int                                     moviehandle = -1;
         int                                     framecount;
@@ -89,27 +74,25 @@ PsychError SCREENOpenMovie(void)
         int                                     height;
         int                                     asyncFlag = 0;
         static psych_bool                       firstTime = TRUE;
-	double					preloadSecs = 1;
-#if PSYCH_SYSTEM == PSYCH_OSX
-        struct sched_param sp;
-        int rc;
-#endif
+		double									preloadSecs = 1;
+        int										rc;
+
         if (firstTime) {
             // Setup asyncopeninfo on first invocation:
             firstTime = FALSE;
             asyncmovieinfo.asyncstate = 0; // State = No async open in progress.
         }
         
-	// All sub functions should have these two lines
-	PsychPushHelp(useString, synopsisString, seeAlsoString);
-	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+		// All sub functions should have these two lines
+		PsychPushHelp(useString, synopsisString, seeAlsoString);
+		if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
         PsychErrorExit(PsychCapNumInputArgs(4));            // Max. 4 input args.
         PsychErrorExit(PsychRequireNumInputArgs(1));        // Min. 1 input args required.
         PsychErrorExit(PsychCapNumOutputArgs(6));           // Max. 6 output args.
         
         // Get the window record from the window record argument and get info from the window record
-	windowRecord = NULL;
+		windowRecord = NULL;
         PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, FALSE, &windowRecord);
         // Only onscreen windows allowed:
         if(windowRecord && !PsychIsOnscreenWindow(windowRecord)) {
@@ -135,7 +118,6 @@ PsychError SCREENOpenMovie(void)
             PsychCreateMovie(windowRecord, moviefile, preloadSecs, &moviehandle);
         }
         else {
-            # if PSYCH_SYSTEM == PSYCH_OSX
             // Asynchronous open operation requested or running:
             switch(asyncmovieinfo.asyncstate) {
                 case 0: // No async open running, but async open requested
@@ -144,28 +126,21 @@ PsychError SCREENOpenMovie(void)
                     asyncmovieinfo.moviename = strdup(moviefile);
 					asyncmovieinfo.preloadSecs = preloadSecs;
                     if (windowRecord) {
-			memcpy(&asyncmovieinfo.windowRecord, windowRecord, sizeof(PsychWindowRecordType));
-		    } else {
-			memcpy(&asyncmovieinfo.windowRecord, 0, sizeof(PsychWindowRecordType));
-		    }
+						memcpy(&asyncmovieinfo.windowRecord, windowRecord, sizeof(PsychWindowRecordType));
+					} else {
+						memcpy(&asyncmovieinfo.windowRecord, 0, sizeof(PsychWindowRecordType));
+					}
 
                     asyncmovieinfo.moviehandle = -1;
 
-                    // pthread_getschedparam(pthread_self(), &asyncFlag, &sp);
-                    // printf("MATLAB-PTHREAD PREPOL %i at priority %i...", asyncFlag, sp.sched_priority);
-
                     // Increase our scheduling priority to maximum FIFO priority: This way we should get
                     // more cpu time for our PTB main thread than the async. background prefetch-thread:
-                    sp.sched_priority = 127;
-                    if ((rc=pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp))!=0) {
-                        printf("PTB-ERROR: In OpenMovie(): PTHREAD ERROR %i at priority %i...", rc, sp.sched_priority);
+                    if ((rc=PsychSetThreadPriority(NULL, 1, 0))!=0) {
+                        printf("PTB-WARNING: In OpenMovie(): Failed to raise priority of main thread [System error %i]. Expect movie timing problems.\n", rc);
                     }
 
-                    // pthread_getschedparam(pthread_self(), &asyncFlag, &sp);
-                    // printf("MATLAB-PTHREAD POSTPOL %i at priority %i...", asyncFlag, sp.sched_priority);
-                        
                     // Start our own movie loader Posix-Thread:
-                    pthread_create(&asyncmovieinfo.pid, NULL, PsychAsyncCreateMovie, (void*) &asyncmovieinfo);
+                    PsychCreateThread(&asyncmovieinfo.pid, NULL, PsychAsyncCreateMovie, &asyncmovieinfo);
                     
                     // Async movie open initiated. We return control to host environment:
                     return(PsychError_none);
@@ -184,20 +159,13 @@ PsychError SCREENOpenMovie(void)
                     // We need to join our terminated worker thread to release its ressources. If the worker-thread
                     // isn't done yet (fallthrough from case 1 for sync. wait), this join will block us until worker
                     // completes:
-                    pthread_join(asyncmovieinfo.pid, NULL);                        
-
-                    // pthread_getschedparam(pthread_self(), &asyncFlag, &sp);
-                    // printf("MATLAB-PTHREAD PREPOL %i at priority %i...", asyncFlag, sp.sched_priority);
-
+					PsychDeleteThread(&asyncmovieinfo.pid);
+					
                     // Reset our priority to "normal" after async prefetch completion:
-                    sp.sched_priority = 32;
-                    if ((rc=pthread_setschedparam(pthread_self(), SCHED_OTHER, &sp))!=0) {
-                        printf("PTB-ERROR: In OpenMovie(): PTHREAD ERROR %i at priority %i...", rc, sp.sched_priority);
+                    if ((rc=PsychSetThreadPriority(NULL, 0, 0))!=0) {
+                        printf("PTB-WARNING: In OpenMovie(): Failed to lower priority of main thread [System error %i]. Expect movie timing problems.\n", rc);
                     }
-                        
-                    // pthread_getschedparam(pthread_self(), &asyncFlag, &sp);
-                    // printf("MATLAB-PTHREAD POSTPOL %i at priority %i...", asyncFlag, sp.sched_priority);
-                        
+
                     asyncmovieinfo.asyncstate = 0; // Reset state to idle:
                     moviehandle = asyncmovieinfo.moviehandle;
                     
@@ -242,12 +210,8 @@ PsychError SCREENOpenMovie(void)
                 default:
                     PsychErrorExitMsg(PsychError_internal, "Unhandled async movie state condition encountered! BUG!!");
             }
-            #else
-                PsychErrorExitMsg(PsychError_unimplemented, "Sorry, asynchronous loading of movie files not yet implemented on M$-Windows.");
-            #endif
         }
-        
-        
+
         // Upon sucessfull completion, we'll have a valid handle in 'moviehandle'.
         // Return it to Matlab-world:
         PsychCopyOutDoubleArg(1, TRUE, (double) moviehandle);
@@ -270,8 +234,8 @@ PsychError SCREENOpenMovie(void)
         PsychCopyOutDoubleArg(4, FALSE, (double) width);
         PsychCopyOutDoubleArg(5, FALSE, (double) height);
 
-	// Ready!
-	return(PsychError_none);
+		// Ready!
+		return(PsychError_none);
 }
 
 // Functions for movie creation/editing/writing:
