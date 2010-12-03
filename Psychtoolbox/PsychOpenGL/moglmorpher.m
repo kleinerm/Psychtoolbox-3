@@ -445,7 +445,7 @@ end
 % Initialize count of keyshapes:
 if isempty(objcount)
     objcount = 0;
-    usetextures = 0;
+    usetextures = 0
     usenormals = 0;
     usecolors = 0;
     updatecount = 0;
@@ -689,15 +689,15 @@ if strcmpi(cmd, 'addMesh')
             error('Mismatch between size of current vertex coords. array and array of new mesh!');
         end;
 
-        if usetextures && (argcount<4 || isempty(arg3) || (size(texcoords)~=size(arg3)))
+        if usetextures && (argcount<4 || isempty(arg3) || any(size(texcoords)~=size(arg3)))
             error('Mismatch between size of current texture coords. array and array of new mesh or missing texcoords array!');
         end;
         
-        if usenormals && (argcount<5 || isempty(arg4) || (size(normals)~=size(arg4)))
+        if usenormals && (argcount<5 || isempty(arg4) || any(size(normals)~=size(arg4)))
             error('Mismatch between size of current normals array and array of new mesh or missing normals array!');
         end;
 
-        if usecolors && (argcount<6 || isempty(arg5) || (size(vertcolors)~=size(arg5)))
+        if usecolors && (argcount<6 || isempty(arg5) || any(size(vertcolors)~=size(arg5)))
             error('Mismatch between size of current vertex colors array and array of new mesh or missing colors array!');
         end;
     end;
