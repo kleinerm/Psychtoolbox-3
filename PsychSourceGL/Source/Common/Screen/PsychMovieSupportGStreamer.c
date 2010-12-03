@@ -43,7 +43,7 @@
 static const psych_bool oldstyle = FALSE;
 
 #define PSYCH_MAX_MOVIES 100
-
+    
 typedef struct {
     psych_mutex		mutex;
     psych_condition     condition;
@@ -87,6 +87,23 @@ void PsychGSMovieInit(void)
     }    
     numMovieRecords = 0;
 
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+    // On Windows, we need to delay-load the GLib DLL's. This loading
+    // and linking will automatically happen downstream. However, if delay loading
+    // would fail, we would end up with a crash! For that reason, we try here to
+    // load the DLL, just to probe if the real load/link/bind op later on will
+    // likely succeed. If the following LoadLibrary() call fails and returns NULL,
+    // then we know we would end up crashing. Therefore we'll output some helpful
+    // error-message instead:
+    if ((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll"))) {
+        // Failed: GLib and its threading support isn't installed. This means that
+        // GStreamer won't work as the relevant .dll's are missing on the system.
+        // We silently return, skpipping the GLib init, as it is completely valid
+        // for a Windows installation to not have GStreamer installed at all.
+        return;
+    }
+    #endif
+    
     // Initialize GLib's threading system early:
     g_thread_init(NULL);
 
@@ -105,6 +122,7 @@ int PsychGSProcessMovieContext(GMainLoop *loop, psych_bool doWait)
 {
 	double tdeadline, tnow;
 	PsychGetAdjustedPrecisionTimerSeconds(&tdeadline);
+    tnow = tdeadline;
 	tdeadline+=2.0;
 
 	if (NULL == loop) return(0);
@@ -133,16 +151,16 @@ static psych_bool PsychMoviePipelineSetState(GstElement* theMovie, GstState stat
     if (timeoutSecs < 0) return(TRUE);
  
     // Wait for up to timeoutSecs for state change to complete or fail:
-    rcstate = gst_element_get_state(theMovie, &state, &state_pending, timeoutSecs * 1e9);
+    rcstate = gst_element_get_state(theMovie, &state, &state_pending, (GstClockTime) (timeoutSecs * 1e9));
     switch(rcstate) {
 	case GST_STATE_CHANGE_SUCCESS:
-		//printf("PTB-DEBUG: Preroll completed with GST_STATE_CHANGE_SUCCESS.\n");
+		//printf("PTB-DEBUG: Statechange completed with GST_STATE_CHANGE_SUCCESS.\n");
 	break;
 	case GST_STATE_CHANGE_ASYNC:
-		printf("PTB-INFO: Preroll in progress with GST_STATE_CHANGE_ASYNC.\n");
+		printf("PTB-INFO: Statechange in progress with GST_STATE_CHANGE_ASYNC.\n");
 	break;
 	case GST_STATE_CHANGE_FAILURE:
-		printf("PTB-ERROR: Preroll failed with GST_STATE_CHANGE_FAILURE!\n");
+		printf("PTB-ERROR: Statechange failed with GST_STATE_CHANGE_FAILURE!\n");
 		return(FALSE);
 	break;
 
@@ -224,7 +242,7 @@ static gboolean PsychHaveVideoDataCallback(GstPad *pad, GstBuffer *buffer, gpoin
 	if (NULL == movie->imageBuffer) {
 		// Allocate the buffer:
 		alloc_size = buffer->size;
-		if (buffer->size < movie->width * movie->height * 4) {
+		if ((int) buffer->size < movie->width * movie->height * 4) {
 			alloc_size = movie->width * movie->height * 4;
 			printf("PTB-DEBUG: Overriding unsafe buffer size of %d bytes with %d bytes.\n", buffer->size, alloc_size);
 		} 
@@ -343,6 +361,20 @@ static void PsychMessageErrorCB(GstBus *bus, GstMessage *msg)
 	return;
 }
 
+//GstAppSinkCallbacks videosinkCallbacks = {
+//    .eos = PsychEOSCallback,
+//    .new_preroll = PsychNewPrerollCallback,
+//    .new_buffer = PsychNewBufferCallback,
+//    .new_buffer_list = PsychNewBufferListCallback
+//};
+
+GstAppSinkCallbacks videosinkCallbacks = {
+    PsychEOSCallback,
+    PsychNewPrerollCallback,
+    PsychNewBufferCallback,
+    PsychNewBufferListCallback
+};
+
 /*
  *      PsychGSCreateMovie() -- Create a movie object.
  *
@@ -361,6 +393,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     GMainLoop			*MovieContext = NULL;
     GstBus			*bus = NULL;
     GstFormat			fmt;
+    GstElement      *videosink;
     gint64			length_format;
     GstPad			*pad, *peerpad;
     const GstCaps		*caps;
@@ -385,6 +418,25 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 
     // We start GStreamer only on first invocation.
     if (firsttime) {
+        #if PSYCH_SYSTEM == PSYCH_WINDOWS
+        // On Windows, we need to delay-load the GStreamer DLL's. This loading
+        // and linking will automatically happen downstream. However, if delay loading
+        // would fail, we would end up with a crash! For that reason, we try here to
+        // load the DLL, just to probe if the real load/link/bind op later on will
+        // likely succeed. If the following LoadLibrary() call fails and returns NULL,
+        // then we know we would end up crashing. Therefore we'll output some helpful
+        // error-message instead:
+        if ((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll"))) {
+            // Failed:
+            printf("\n\nPTB-ERROR: Tried to startup movie playback engine type 1 (GStreamer). This didn't work,\n");
+            printf("PTB-ERROR: because one of the required GStreamer DLL libraries failed to load. Probably because they\n");
+            printf("PTB-ERROR: could not be found, could not be accessed (e.g., due to permission problems),\n");
+            printf("PTB-ERROR: or they aren't installed on this machine at all.\n\n");
+            printf("PTB-ERROR: Please read the online help by typing 'help GStreamer' for troubleshooting\nand installation instructions.\n\n");
+			PsychErrorExitMsg(PsychError_user, "Unable to start movie playback engine GStreamer due to DLL loading problems. Aborted.");
+        }
+        #endif
+        
         // Initialize GStreamer:
         if(!gst_init_check(NULL, NULL, &error)) {
 		if (printErrors && error) {
@@ -427,7 +479,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     if (strstr(moviename, "://")) {
 	snprintf(movieLocation, sizeof(movieLocation)-1, "%s", moviename);
     } else {
-	snprintf(movieLocation, sizeof(movieLocation)-1, "file:////%s", moviename);
+	snprintf(movieLocation, sizeof(movieLocation)-1, "file:///%s", moviename);
     }
     strncpy(movieRecordBANK[slotid].movieLocation, movieLocation, FILENAME_MAX);
 
@@ -455,7 +507,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // Assign a fakesink named "ptbsink0" as destination video-sink for
     // all video content. This allows us to get hold of the video frame buffers for
     // converting them into PTB OpenGL textures:
-    GstElement *videosink = gst_element_factory_make ("appsink", "ptbsink0");
+    videosink = gst_element_factory_make ("appsink", "ptbsink0");
     if (!videosink) {
 	printf("PTB-ERROR: Failed to create video-sink appsink ptbsink!\n");
 	PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
@@ -556,13 +608,6 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 	gst_pad_add_buffer_probe(pad, G_CALLBACK(PsychHaveVideoDataCallback), &(movieRecordBANK[slotid]));
     } else {
 	// Install callbacks used by the videosink (appsink) to announce various events:
-	GstAppSinkCallbacks videosinkCallbacks = {
-		.eos = PsychEOSCallback,
-		.new_preroll = PsychNewPrerollCallback,
-		.new_buffer = PsychNewBufferCallback,
-		.new_buffer_list = PsychNewBufferListCallback
-	};
-
 	gst_app_sink_set_callbacks(GST_APP_SINK(videosink), &videosinkCallbacks, &(movieRecordBANK[slotid]), PsychDestroyNotifyCallback);
     }
 
@@ -737,13 +782,11 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 {
     GstElement			*theMovie;
     unsigned int		failcount=0;
-    GLuint			texid;
-    float			rate;
+    double			rate;
     double			targetdelta, realdelta, frames;
-    PsychRectType		outRect;
+    // PsychRectType		outRect;
     GstBuffer                   *videoBuffer = NULL;
-    GstFormat		        fmt;
-    gint64		        pos_index, bufferIndex;
+    gint64		        bufferIndex;
     double                      deltaT = 0;
     GstEvent                    *event;
 
@@ -884,7 +927,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 		if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Pulling from videosink, %d buffers avail...\n", movieRecordBANK[moviehandle].frameAvail);
 
 		// Clamp frameAvail to queue lengths:
-		if (gst_app_sink_get_max_buffers(GST_APP_SINK(movieRecordBANK[moviehandle].videosink)) < movieRecordBANK[moviehandle].frameAvail) {
+		if ((int) gst_app_sink_get_max_buffers(GST_APP_SINK(movieRecordBANK[moviehandle].videosink)) < movieRecordBANK[moviehandle].frameAvail) {
 			movieRecordBANK[moviehandle].frameAvail = gst_app_sink_get_max_buffers(GST_APP_SINK(movieRecordBANK[moviehandle].videosink));
 		}
 
@@ -991,7 +1034,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 	gst_element_send_event(theMovie, event);
 
 	// Block until seek completed, failed, or timeout of 30 seconds reached:
-        gst_element_get_state(theMovie, NULL, NULL, 30 * 1e9);
+        gst_element_get_state(theMovie, NULL, NULL, (GstClockTime) (30 * 1e9));
     }
 
     return(TRUE);
@@ -1095,6 +1138,8 @@ void PsychGSExitMovies(void)
     
     // Release all movies:
     PsychGSDeleteAllMovies();
+
+    firsttime = TRUE;
     
     return;
 }
@@ -1173,11 +1218,11 @@ double PsychGSSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool in
 
 	// Simple seek, time-oriented, with pipeline flush and accurate seek,
 	// i.e., not locked to keyframes, but frame-accurate:
-	gst_element_seek_simple(theMovie, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, timeindex * (double) 1e9);
+	gst_element_seek_simple(theMovie, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, (gint64) (timeindex * (double) 1e9));
     }
 
     // Block until seek completed, failed or timeout of 30 seconds reached:
-    gst_element_get_state(theMovie, NULL, NULL, 30 * 1e9);
+    gst_element_get_state(theMovie, NULL, NULL, (GstClockTime) (30 * 1e9));
 
     // Return old time value of previous position:
     return(oldtime);
