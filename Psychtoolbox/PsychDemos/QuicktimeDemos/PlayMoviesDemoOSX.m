@@ -69,10 +69,10 @@ try
         
         if isempty(moviefiles)
             moviefiles(1).name = [ PsychtoolboxRoot 'PsychDemos/QuicktimeDemos/DualDiscs.mov' ];
-	else
-	    for i=1:size(moviefiles,1)
-		moviefiles(i).name = [ pwd filesep moviefiles(i).name ];
-	    end
+        else
+            for i=1:size(moviefiles,1)
+                moviefiles(i).name = [ pwd filesep moviefiles(i).name ];
+            end
         end
         
         moviecount = size(moviefiles,1);

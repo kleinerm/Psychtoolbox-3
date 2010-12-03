@@ -223,7 +223,7 @@ try
         if (benchmark==0)
             % Draw some help text:
             [x, y]=Screen('DrawText', win, 'Press left-/right cursor key to navigate in movie, SPACE to toggle playback, ESC to exit.',10, 40);
-            [x, y]=Screen('DrawText', win, ['Framerate(fps): ' num2str(fps) ', total duration of movie (secs)' num2str(movieduration)],10, y+10+tsize);
+            [x, y]=Screen('DrawText', win, ['Framerate(fps): ' num2str(fps) ', total duration of movie (secs) ' num2str(movieduration)],10, y+10+tsize);
 
             % Draw info on current position in movie:
             [x, y]=Screen('DrawText', win, ['Frame ' num2str(currentindex) ' of ' num2str(count) ' : Timeindex(secs) = ' num2str(texpts(currentindex))], 10, y + 10 + tsize);

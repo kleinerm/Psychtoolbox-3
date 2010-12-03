@@ -54,6 +54,9 @@ try
         
     % Return full list of movie files from directory+pattern:
     moviefiles=dir(moviename);
+    for i=1:size(moviefiles,1)
+        moviefiles(i).name = [ pwd filesep moviefiles(i).name ];
+    end
     
     % Playbackrate defaults to 1:
     rate=1;
