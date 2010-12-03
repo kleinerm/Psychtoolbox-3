@@ -119,6 +119,10 @@ catch
 			fprintf('  export LD_PRELOAD=/lib/libz.so.1 ; matlab & \n\n');
 			fprintf('  If /lib/libz.so.1 doesn''t exist, try other locations like /usr/lib/libz.so.1 or other names\n');
 			fprintf('  like /lib/libz.so, or /usr/lib/libz.so\n');
+			fprintf('- A third option is to delete the libz.so library shipped with Matlab. Move away all\n');
+			fprintf('  files starting with libz.so from the folder /bin/glnx86 inside the Matlab main folder.\n');
+			fprintf('  This way, the linker can''t find Matlabs broken libz anymore and will use the system\n');
+			fprintf('  libz and everything will be fine.\n');
 			fprintf('\n');
 			fprintf('Good luck! Our most heartfelt thanks go to the Mathworks, the unmatched champions in high quality software design.\n');
 			fprintf('(Yes, the statement about Mathworks quality of workmanship is meant sarcastic, in case there is any doubt.)\n\n');
