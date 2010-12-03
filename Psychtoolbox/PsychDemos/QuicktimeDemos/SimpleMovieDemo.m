@@ -33,6 +33,9 @@ KbReleaseWait;
 % Select screen for display of movie:
 screenid = max(Screen('Screens'));
 
+
+try
+
 % Open fullscreen window on screen, with black [0] background color:
 win = Screen('OpenWindow', screenid, 0);
 
@@ -71,5 +74,10 @@ Screen('CloseMovie', movie);
 
 % Close Screen, we're done:
 Screen('CloseAll');
+
+catch
+  psychrethrow(psychlasterror);
+  sca;
+end
 
 return;
