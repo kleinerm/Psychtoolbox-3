@@ -118,6 +118,8 @@ else
    rect = [0 0 1300 500];
 end;
 
+   %rect = [0 0 1300 500];
+
 if usefastoffscreenwindows
     [win , winRect] = Screen('OpenWindow', screenid, 0, rect, [], [], stereomode, [], kPsychNeedFastOffscreenWindows);
 else
@@ -196,24 +198,24 @@ ar=winRect(4)/winRect(3);
 
 % Turn on OpenGL local lighting model: The lighting model supported by
 % OpenGL is a local Phong model with Gouraud shading.
-glEnable(GL.LIGHTING);
+%glEnable(GL.LIGHTING);
 
 % Material colors shall track vertex colors all time:
-glEnable(GL.COLOR_MATERIAL);
+%glEnable(GL.COLOR_MATERIAL);
 
 % Enable the first local light source GL.LIGHT_0. Each OpenGL
 % implementation is guaranteed to support at least 8 light sources. 
-glEnable(GL.LIGHT0);
+%glEnable(GL.LIGHT0);
 
 % Enable proper occlusion handling via depth tests:
 glEnable(GL.DEPTH_TEST);
 
 % Define the light reflection properties by setting up reflection
 % coefficients for ambient, diffuse and specular reflection:
-glMaterialfv(GL.FRONT_AND_BACK,GL.AMBIENT, [ 0.5 0.5 0.5 1 ]);
-glMaterialfv(GL.FRONT_AND_BACK,GL.DIFFUSE, [ .7 .7 .7 1 ]);
-glMaterialfv(GL.FRONT_AND_BACK,GL.SPECULAR, [ 0.2 0.2 0.2 1 ]);
-glMaterialfv(GL.FRONT_AND_BACK,GL.SHININESS,12);
+%glMaterialfv(GL.FRONT_AND_BACK,GL.AMBIENT, [ 0.5 0.5 0.5 1 ]);
+%glMaterialfv(GL.FRONT_AND_BACK,GL.DIFFUSE, [ .7 .7 .7 1 ]);
+%glMaterialfv(GL.FRONT_AND_BACK,GL.SPECULAR, [ 0.2 0.2 0.2 1 ]);
+%glMaterialfv(GL.FRONT_AND_BACK,GL.SHININESS,12);
 
 % Make sure that surface normals are always normalized to unit-length,
 % regardless what happens to them during morphing. This is important for
@@ -275,7 +277,7 @@ rotatev=[ 0 0 1 ];
 w=[ 0 1 ];
 
 % Setup initial z-distance of objects:
-zz = 150.0;
+zz = 50.0;
 
 ang = 0.0;      % Initial rotation angle
 
@@ -328,12 +330,13 @@ while ((GetSecs - t) < 600)
 		end
 	
 		if 1
-		        [xyz, width, height, channels] = PsychKinect('GetDepthImage', kinect, 2, 0);
-			xyz = reshape (xyz, 3, size(xyz,2)*size(xyz,3));
-			minv = min(min(xyz))
-			maxv = max(max(xyz))
-			meanv = mean(mean(xyz))
-			%xyz(3,:)=-xyz(3,:);
+		        [foo, width, height, channels] = PsychKinect('GetDepthImage', kinect, 2, 0);
+			foo = reshape (foo, 6, size(foo,2) * size(foo,3));
+			xyz = foo(1:3, :);
+			rgb = foo(4:6, :);
+			%minv = min(min(xyz))
+			%maxv = max(max(xyz))
+			%meanv = mean(mean(xyz))
 		end
 	
 	        PsychKinect('ReleaseFrame', kinect);
@@ -341,8 +344,8 @@ while ((GetSecs - t) < 600)
     end
 
     if ~isempty(tex1) && ~isempty(tex2) && (tex1>0) && (tex2>0)
-	Screen('DrawTexture', win, tex1, [], dst1);
-	Screen('DrawTexture', win, tex2, [], dst2);
+	%Screen('DrawTexture', win, tex1, [], dst1);
+	%Screen('DrawTexture', win, tex2, [], dst2);
     end
 
     % Switch to OpenGL rendering for drawing of next frame:
@@ -362,7 +365,7 @@ while ((GetSecs - t) < 600)
     glClear(GL.DEPTH_BUFFER_BIT);
 
     % Call our subfunction that does the actual drawing of the shape (see below):
-    drawShape(win, xyz, ang, theta, rotatev, dotson, normalson);
+    drawShape(win, xyz, rgb, ang, theta, rotatev, dotson, normalson);
     
     % Stereo rendering requested?
     if (stereomode > 0)
@@ -382,7 +385,7 @@ while ((GetSecs - t) < 600)
         glClear(GL.DEPTH_BUFFER_BIT);
         
         % Call subfunction that does the actual drawing of the shape (see below):
-        drawShape(win, xyz, ang, theta, rotatev, dotson, normalson)
+        drawShape(win, xyz, rgb, ang, theta, rotatev, dotson, normalson)
     end;
     
     % Finish OpenGL rendering into Psychtoolbox - window and check for OpenGL errors.
@@ -418,12 +421,12 @@ while ((GetSecs - t) < 600)
     [KeyIsDown, endrt, KeyCode] = KbCheck;
     if KeyIsDown
         if ( KeyIsDown==1 & KeyCode(closer)==1 ) %#ok<AND2>
-            zz=zz-0.1;
+            zz=zz-1;
             KeyIsDown=0;
         end
 
         if ( KeyIsDown==1 & KeyCode(farther)==1 ) %#ok<AND2>
-            zz=zz+0.1;
+            zz=zz+1;
             KeyIsDown=0;
         end
 
@@ -487,7 +490,7 @@ Screen('Preference','SkipSyncTests',1);
 return
 
 % drawShape does the actual drawing:
-function drawShape(win, xyz, ang, theta, rotatev, dotson, normalson)
+function drawShape(win, xyz, rgb, ang, theta, rotatev, dotson, normalson)
 % GL needs to be defined as "global" in each subfunction that
 % executes OpenGL commands:
 global GL
@@ -506,10 +509,8 @@ glRotated(180,0,0,1);
 a=10;
 glScalef(a,a,a);
 
-glColor3f(0.8,0.8,0.8);
-
 glDisable(GL.LIGHTING);
-moglDrawDots3D(win, xyz); % [,dotdiameter] [,dotcolor] [,center3D] [,dot_type] [, glslshader]);
+moglDrawDots3D(win, xyz, 2, rgb); % [,center3D] [,dot_type] [, glslshader]);
 glEnable(GL.LIGHTING);
 
 

@@ -142,7 +142,7 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 // Temporary buffer for conversion of depth images into color coded RGB images:
 unsigned char	gl_depth_back[640 * 480 * 4];
 unsigned short	t_gamma[2048];
-double			zmap[640*480*3];
+double		zmap[640*480*6];
 
 freenect_context	*f_ctx = NULL;
 freenect_device		*f_dev;
@@ -1049,55 +1049,81 @@ static inline short getz(short *zinbuf, int x, int y)
 	return(zinbuf[y * 640 + x]);
 }
 
-// Convert raw disparity value into z distance (in centimeters):
-static inline double calcz(short rawDisparity)
+// Convert raw disparity value into z distance meters):
+// Using Magic formula from www.openkinect.org Wiki,
+// "Imaging parameter" section:
+static inline double calcz(int raw_depth)
 {
-	// Magic formula from www.openkinect.org Wiki, "Imaging parameter"
-	// section:
-	return(100.0/(-0.00307 * (double) rawDisparity + 3.33));
+	if (raw_depth < 2047) {
+		// Valid measurement - Convert:
+		return (1.0 / ((double) raw_depth * -0.0030711016 + 3.3309495161));
+	}
+
+	// Invalid datapoint - Mark as such:
+	return 0;
 }
 
 PsychError PSYCHKINECTGetDepthImage(void)
 {
-    static char useString[] = "[imageOrPtr, width, height, components, extFormat] = PsychKinect('GetDepthImage', kinectPtr [, format=0][, returnTexturePtr=0]);";
-    static char synopsisString[] = 
+	static char useString[] = "[imageOrPtr, width, height, components, extFormat] = PsychKinect('GetDepthImage', kinectPtr [, format=0][, returnTexturePtr=0]);";
+	static char synopsisString[] = 
 		"Return the depth image data for the frame fetched via 'GrabFrame'.\n\n"
 		"If 'returnTexturePtr' is zero (default), a matrix is returned for processing in Matlab/Octave.\n\n"
 		"If 'returnTexturePtr' is one, a memory pointer to a buffer is returned.\n\n"
 		"'format' defines the type of returned data:\n"
 		"0 = Return raw disparity image as 2D double matrix with integral values.\n"
 		"1 = Return depths z-image as 2D double matrix with z-distance in meters.\n"
-		"2 = Return a vertex buffer with (x,y,z) vertices that define a 3D surface mesh.\n"
+		"2 = Return a vertex buffer with (x,y,z) vertices that define a 3D surface mesh\n"
+		"    and (R,G,B) color values for each vertex. -> [x,y,z,r,g,b] per element.\n"
+		"3 = Return a vertex buffer with (x,y,z) vertices that define a 3D surface mesh.\n"
+		"    and (tx,ty) texture coordinates for vertices -> [x,y,z,tx,ty] per element.\n"
 		"\n\n";
-	
-    static char seeAlsoString[] = "";	
+
+	static char seeAlsoString[] = "";	
 	
 	int handle;
 	PsychKNDevice *kinect;
 	PsychKNBuffer* buffer;
 	double* outzmat;
-	int returnTexturePtr, format;
-	int i, x, y, pval, lb;
-	
-	double xp, yp, zp;
-	const double minDistance = -10;
-	const double scaleFactor = .0021;
+	int returnTexturePtr, format, texcoords;
+	int i, x, y, m, n;
+	double P[3], Pr[3], Pt[2];
+	double s, zp;
+
+	double R[3][3] = { {  9.9984628826577793e-01, 1.2635359098409581e-03, -1.7487233004436643e-02 },
+			   { -1.4779096108364480e-03, 9.9992385683542895e-01, -1.2251380107679535e-02 },
+			   {  1.7470421412464927e-02, 1.2275341476520762e-02,  9.9977202419716948e-01 }};
+
+	double T[3]    = { 1.9985242312092553e-02, -7.4423738761617583e-04, -1.0916736334336222e-02 };
+
 	const double w = 640;
 	const double h = 480;
 	
-    // All sub functions should have these two lines
-    PsychPushHelp(useString, synopsisString,seeAlsoString);
-    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-	
-    //check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(5));
-    PsychErrorExit(PsychCapNumInputArgs(3));
-	
+	const double fx_d = 5.9421434211923247e+02;
+	const double fy_d = 5.9104053696870778e+02;
+	const double cx_d = 3.3930780975300314e+02;
+	const double cy_d = 2.4273913761751615e+02;
+
+	const double fx_rgb = 5.2921508098293293e+02;
+	const double fy_rgb = 5.2556393630057437e+02;
+	const double cx_rgb = 3.2894272028759258e+02;
+	const double cy_rgb = 2.6748068171871557e+02;
+
+
+	// All sub functions should have these two lines
+	PsychPushHelp(useString, synopsisString,seeAlsoString);
+	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+ 
+	//check to see if the user supplied superfluous arguments
+	PsychErrorExit(PsychCapNumOutputArgs(5));
+	PsychErrorExit(PsychCapNumInputArgs(3));
+
 	PsychCopyInIntegerArg(1, TRUE, &handle);	
 	kinect = PsychGetKinect(handle, FALSE);
 	if (!kinect->frame_valid) PsychErrorExitMsg(PsychError_user, "Must 'GrabFrame' a frame first!");
 	
 	format = 0;
+	texcoords = 0;
 	PsychCopyInIntegerArg(2, FALSE, &format);	
 	
 	returnTexturePtr=0;
@@ -1127,13 +1153,12 @@ PsychError PSYCHKINECTGetDepthImage(void)
 		break;
 				
 		case 1:
-			// Return encoded and aligned depth image:
-			// Return raw depth image:
+			// Return encoded depth image:
 			i=0;
 			for (x=0; x < 640; x++)
 				for (y=0; y < 480; y++) {
-					// Calc z distance, convert from centimeters to meters:
-					zmap[i++] = calcz(getz(buffer->depth, x, y)) / 100;
+					// Calc z distance in meters:
+					zmap[i++] = calcz(getz(buffer->depth, x, y));
 				}
 					
 			// Return image data:
@@ -1146,29 +1171,82 @@ PsychError PSYCHKINECTGetDepthImage(void)
 			}
 
 		break;
-				
+
 		case 2:
+		case 3:
 			// Return (x,y,z) vertex buffer mesh:
+			// Mapping equations from
+			// http://nicolas.burrus.name/index.php/Research/KinectCalibration
+
+			// Format 3 = Generate texture coords instead of vertex colors:
+			if (format == 3) texcoords = 1;
+
 			i=0;
-			for (x=0; x < 640; x++)
+			for (x=0; x < 640; x++) {
 				for (y=0; y < 480; y++) {
+					// Compute cartesian 3D (x,y,z) vertex coordinates,
+					// one vertex per 3D point aka depth camera pixel:
 					zp = calcz(getz(buffer->depth, x, y));
-					xp = ((double) x - w/2) * (zp + minDistance) * scaleFactor * (w/h);
-					yp = ((double) y - h/2) * (zp + minDistance) * scaleFactor;
-					
-					// Write out, convert from centimeters to meters:
-					zmap[i++] = xp / 100;
-					zmap[i++] = yp / 100;
-					zmap[i++] = zp / 100;
+					P[0] = ((double) x - cx_d) * zp / fx_d;
+					P[1] = ((double) y - cy_d) * zp / fy_d;
+					P[2] = zp;
+
+					// Write out vertex 3D (x,y,z):
+					zmap[i++] = P[0];
+					zmap[i++] = P[1];
+					zmap[i++] = P[2];
+	
+					// Compute 2D texture coordinates for each 3D
+					// point, aka (x,y) image coordinates in color image:
+
+					// P3D' = R.P3D + T  --> Project from depth cams
+					// reference frame to color cams reference frame,
+					// aka apply extrinsic rotation/translation parameters
+					// of color cam wrt. depths cam:
+					for (m = 0; m < 3; m++) {
+						s = 0.0;
+						for (n = 0; n < 3; n++) s += R[m][n] * P[n];
+						Pr[m] = s + T[m];
+					}
+
+					// Apply intrinsic parameters of color cam to project
+					// into color cams 2D sensor plane, aka color image
+					// coordinates, aka texture coordinates:
+					Pt[0] = (Pr[0] * fx_rgb / Pr[2]) + cx_rgb;
+					Pt[1] = (Pr[1] * fy_rgb / Pr[2]) + cy_rgb;
+
+					// Return 3-component RGB8 vertex colors, or 2D texture
+					// coordinates?
+					if (!texcoords) {
+						// Perform "manual" texture lookup and return RGB
+						// pixel:
+
+						// Clamp:
+						if (Pt[0] < 0) Pt[0] = 0;
+						if (Pt[1] < 0) Pt[1] = 0;
+						if (Pt[0] >= w) Pt[0] = w-1;
+						if (Pt[1] >= h) Pt[1] = h-1;
+
+						// "Nearest neighbour texture lookup":
+						zmap[i++] = ((double) buffer->color[(int) (3 * ((((int) Pt[1]) * w + ((int) Pt[0]))) + 0)]) / 255.0; // R
+						zmap[i++] = ((double) buffer->color[(int) (3 * ((((int) Pt[1]) * w + ((int) Pt[0]))) + 1)]) / 255.0; // G
+						zmap[i++] = ((double) buffer->color[(int) (3 * ((((int) Pt[1]) * w + ((int) Pt[0]))) + 2)]) / 255.0; // B
+					} else {
+						// Output direct texture coordinates into a
+						// GL_TEXTURE_RECTANGLE texture:
+						zmap[i++] = Pt[0];
+						zmap[i++] = Pt[1];
+					}
 				}
-					
+			}
+
 			// Return image data:
 			if (returnTexturePtr) {
 				// Just return a memory pointer to the colorbuffer:
 				PsychCopyOutDoubleArg(1, FALSE, PsychPtrToDouble((void*) zmap));
 			} else {
-				PsychAllocOutDoubleMatArg(1, FALSE, 3, buffer->dheight, buffer->dwidth, &outzmat);
-				memcpy(outzmat, zmap, 3 * buffer->dheight * buffer->dwidth * sizeof(double));
+				PsychAllocOutDoubleMatArg(1, FALSE, (3 + ((texcoords) ? 2 : 3)) , buffer->dheight, buffer->dwidth, &outzmat);
+				memcpy(outzmat, zmap, (3 + ((texcoords) ? 2 : 3)) * buffer->dheight * buffer->dwidth * sizeof(double));
 			}
 
 		break;
@@ -1181,10 +1259,12 @@ PsychError PSYCHKINECTGetDepthImage(void)
 	PsychCopyOutDoubleArg(2, FALSE, buffer->dwidth);
 	PsychCopyOutDoubleArg(3, FALSE, buffer->dheight);
 	
-	// 3 components per vertex:
-	PsychCopyOutDoubleArg(4, FALSE, 3);
+	// 3 +  (3 + ((texcoords) ? 2 : 3)) components per vertex:
+	// 3 for (vx,vy,vz) + either 2 for (tx,ty) texcoords, or
+	// 3 for color (R,G,B):
+	PsychCopyOutDoubleArg(4, FALSE, (3 + ((texcoords) ? 2 : 3)));
 	
-	// GL_DOUBLE = 5130, GL_FLOAT = 5126:
+	// Data format is GL_DOUBLE = 5130 (float would be GL_FLOAT = 5126):
 	PsychCopyOutDoubleArg(5, FALSE, 5130);
 	
     return(PsychError_none);	

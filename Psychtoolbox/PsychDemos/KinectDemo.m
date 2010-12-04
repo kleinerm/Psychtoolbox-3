@@ -13,6 +13,7 @@ function KinectDemo
 AssertOpenGL
 %PsychDebugWindowConfiguration;
 InitializeMatlabOpenGL([],[],1);
+GetSecs;
 
 dst1 = [0, 0, 640, 480];
 dst2 = [650, 0, 650+640, 480];
@@ -20,10 +21,14 @@ dst2 = [650, 0, 650+640, 480];
 w = Screen('Openwindow', 0, 0, [0 0 1300 500]);
 kinect = PsychKinect('Open');
 PsychKinect('Start', kinect);
+count = 0;
+ts = GetSecs;
 
 while 1
-    [rc, cts] = PsychKinect('GrabFrame', kinect);
+    [rc, cts] = PsychKinect('GrabFrame', kinect, 0);
     if rc > 0
+	count = count + 1;
+	%printf('Kinect frame %i, cts = %f\n', count, cts);
         [imbuff, width, height, channels] = PsychKinect('GetImage', kinect, 0, 1);
 	if width > 0 && height > 0
 		tex = Screen('SetOpenGLTextureFromMemPointer', w, [], imbuff, width, height, channels, 1, GL.TEXTURE_RECTANGLE_EXT);
@@ -53,6 +58,8 @@ while 1
 
         PsychKinect('ReleaseFrame', kinect);
         Screen('Flip', w);
+    else
+	WaitSecs('YieldSecs', 0.005);
     end
 
     [x,y,buttons]=GetMouse;
@@ -64,6 +71,8 @@ while 1
         break;
     end
 end
+
+printf('Average fps = %f [%i]\n', count / (GetSecs - ts), count);
 
 PsychKinect('Stop', kinect);
 PsychKinect('Close', kinect);
