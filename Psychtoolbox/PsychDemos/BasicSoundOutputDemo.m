@@ -78,12 +78,12 @@ end
 
 % Perform basic initialization of the sound driver:
 InitializePsychSound;
-
+freq=48000
 % Open the default audio device [], with default mode [] (==Only playback),
 % and a required latencyclass of zero 0 == no low-latency mode, as well as
 % a frequency of freq and nrchannels sound channels.
 % This returns a handle to the audio device:
-pahandle = PsychPortAudio('Open', [], [], 0, freq, nrchannels);
+pahandle = PsychPortAudio('Open', [], [], 1, freq, nrchannels);
 
 % Fill the audio playback buffer with the audio data 'wavedata':
 PsychPortAudio('FillBuffer', pahandle, wavedata);
