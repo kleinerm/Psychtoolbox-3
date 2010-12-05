@@ -43,9 +43,9 @@ if mode==5
 end
 
 if mode==7
-    % Build PsychKinect.mexglx:
-    mex CFLAGS='$CFLAGS -std=gnu99' -v -outdir ../Projects/Linux/build/ -output PsychKinect -DPTBMODULE_PsychKinect -I/usr/include/libusb-1.0 -I/usr/include/libfreenect -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen Common/Base/*.cc Linux/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -lfreenect -lusb-1.0
-    unix('mv /home/kleinerm/projects/OpenGLPsychtoolbox/trunk/PsychSourceGL/Projects/Linux/build/PsychKinect.mexglx /home/kleinerm/projects/OpenGLPsychtoolbox/trunk/Psychtoolbox/PsychBasic/');
+    % Build PsychKinectCore.mexglx:
+    mex CFLAGS='$CFLAGS -std=gnu99' -v -outdir ../Projects/Linux/build/ -output PsychKinectCore -DPTBMODULE_PsychKinectCore -I/usr/include/libusb-1.0 -I/usr/include/libfreenect -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen Common/Base/*.cc Linux/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -lfreenect -lusb-1.0
+    unix('mv /home/kleinerm/projects/OpenGLPsychtoolbox/trunk/PsychSourceGL/Projects/Linux/build/PsychKinectCore.mexglx /home/kleinerm/projects/OpenGLPsychtoolbox/trunk/Psychtoolbox/PsychBasic/');
 end;
 
 return;

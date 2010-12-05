@@ -3672,7 +3672,7 @@
 		8302E1FF0A1928E900AE269C /* octavemex.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = octavemex.h; path = ../../../Source/Octave/octavemex.h; sourceTree = SOURCE_ROOT; };
 		8302E2000A1928E900AE269C /* Screen.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = Screen.cc; path = ../../../Source/Octave/Screen.cc; sourceTree = SOURCE_ROOT; };
 		8302E2010A1928E900AE269C /* WaitSecs.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = WaitSecs.cc; path = ../../../Source/Octave/WaitSecs.cc; sourceTree = SOURCE_ROOT; };
-		83051F9C129DC66A00AD11E7 /* PsychKinect.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = PsychKinect.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
+		83051F9C129DC66A00AD11E7 /* PsychKinectCore.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = PsychKinectCore.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		83051FA4129DC89E00AD11E7 /* PsychKinect.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychKinect.c; path = ../../../Source/Common/PsychKinect/PsychKinect.c; sourceTree = SOURCE_ROOT; };
 		83051FA5129DC89E00AD11E7 /* PsychKinect.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychKinect.h; path = ../../../Source/Common/PsychKinect/PsychKinect.h; sourceTree = SOURCE_ROOT; };
 		83051FA6129DC89E00AD11E7 /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = RegisterProject.c; path = ../../../Source/Common/PsychKinect/RegisterProject.c; sourceTree = SOURCE_ROOT; };
@@ -5117,7 +5117,7 @@
 				83CBD6540BC01FB0007CB68C /* moglcore.mexmaci */,
 				836DECC80C30A0F900CFE76B /* PsychPortAudio.mexmac */,
 				83E2C4130D2FC58200FFD350 /* PsychCV.mexmaci */,
-				83051F9C129DC66A00AD11E7 /* PsychKinect.mexmaci */,
+				83051F9C129DC66A00AD11E7 /* PsychKinectCore.mexmaci */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -7792,9 +7792,9 @@
 			productReference = 2FEBA7BE0988641C00F4165F /* GenericMex.mexmac */;
 			productType = "com.apple.product-type.objfile";
 		};
-		83051F7C129DC66A00AD11E7 /* PsychKinect Intel */ = {
+		83051F7C129DC66A00AD11E7 /* PsychKinectCore Intel */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 83051F96129DC66A00AD11E7 /* Build configuration list for PBXNativeTarget "PsychKinect Intel" */;
+			buildConfigurationList = 83051F96129DC66A00AD11E7 /* Build configuration list for PBXNativeTarget "PsychKinectCore Intel" */;
 			buildPhases = (
 				83051F7D129DC66A00AD11E7 /* Sources */,
 				83051F90129DC66A00AD11E7 /* Frameworks */,
@@ -7804,9 +7804,9 @@
 			);
 			dependencies = (
 			);
-			name = "PsychKinect Intel";
+			name = "PsychKinectCore Intel";
 			productName = foo;
-			productReference = 83051F9C129DC66A00AD11E7 /* PsychKinect.mexmaci */;
+			productReference = 83051F9C129DC66A00AD11E7 /* PsychKinectCore.mexmaci */;
 			productType = "com.apple.product-type.objfile";
 		};
 		832CE5F5094CE8C300578C09 /* PsychSound_OLD */ = {
@@ -8465,7 +8465,7 @@
 				83CBD6350BC01FB0007CB68C /* moglcore Intel */,
 				836DECA90C30A0F900CFE76B /* PsychPortAudio */,
 				83E2C3F40D2FC58200FFD350 /* PsychCV Intel */,
-				83051F7C129DC66A00AD11E7 /* PsychKinect Intel */,
+				83051F7C129DC66A00AD11E7 /* PsychKinectCore Intel */,
 			);
 		};
 /* End PBXProject section */
@@ -20480,7 +20480,7 @@
 					"-lstdc++",
 				);
 				PREBINDING = NO;
-				PRODUCT_NAME = PsychKinect;
+				PRODUCT_NAME = PsychKinectCore;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
 				SKIP_INSTALL = NO;
 				STRIP_STYLE = all;
@@ -20504,7 +20504,7 @@
 					/usr/local/lib,
 					"$(inherited)",
 				);
-				PRODUCT_NAME = PsychKinect;
+				PRODUCT_NAME = PsychKinectCore;
 				SKIP_INSTALL = NO;
 			};
 			name = "Development-Octave-3build";
@@ -27990,7 +27990,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Default;
 		};
-		83051F96129DC66A00AD11E7 /* Build configuration list for PBXNativeTarget "PsychKinect Intel" */ = {
+		83051F96129DC66A00AD11E7 /* Build configuration list for PBXNativeTarget "PsychKinectCore Intel" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				83051F97129DC66A00AD11E7 /* Development */,
