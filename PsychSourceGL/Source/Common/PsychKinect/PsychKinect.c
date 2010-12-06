@@ -1125,7 +1125,7 @@ PsychError PSYCHKINECTGetImage(void)
 }
 
 // Fetch zinbuf raw disparity value at location (x,y):
-static inline short getz(short *zinbuf, int x, int y)
+static inline unsigned short getz(unsigned short *zinbuf, int x, int y)
 {
 	return(zinbuf[y * 640 + x]);
 }

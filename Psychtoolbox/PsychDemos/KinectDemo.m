@@ -28,7 +28,7 @@ while 1
     [rc, cts] = PsychKinect('GrabFrame', kinect, 0);
     if rc > 0
 	count = count + 1;
-	%printf('Kinect frame %i, cts = %f\n', count, cts);
+	%fprintf('Kinect frame %i, cts = %f\n', count, cts);
         [imbuff, width, height, channels] = PsychKinect('GetImage', kinect, 0, 1);
 	if width > 0 && height > 0
 		tex = Screen('SetOpenGLTextureFromMemPointer', w, [], imbuff, width, height, channels, 1, GL.TEXTURE_RECTANGLE_EXT);
@@ -72,7 +72,7 @@ while 1
     end
 end
 
-printf('Average fps = %f [%i]\n', count / (GetSecs - ts), count);
+fprintf('Average fps = %f [%i]\n', count / (GetSecs - ts), count);
 
 PsychKinect('Stop', kinect);
 PsychKinect('Close', kinect);

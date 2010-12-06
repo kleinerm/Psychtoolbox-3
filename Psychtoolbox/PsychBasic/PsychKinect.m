@@ -64,7 +64,7 @@ if strcmpi(cmd, 'CreateObject')
 		kmesh.gltextarget = gltextarget;
 	else
 		varargout{1} = [];
-		printf('PsychKinect: WARNING: Failed to fetch RGB image data!\n');
+		fprintf('PsychKinect: WARNING: Failed to fetch RGB image data!\n');
 		return;
 	end
 
@@ -101,7 +101,7 @@ if strcmpi(cmd, 'CreateObject')
 			kmesh.glformat = glformat;
 		else
 			varargout{1} = [];
-			printf('PsychKinect: WARNING: Failed to fetch VBO geometry data!\n');
+			fprintf('PsychKinect: WARNING: Failed to fetch VBO geometry data!\n');
 			return;
 		end
 	end
@@ -168,7 +168,7 @@ if strcmpi(cmd, 'CreateObject')
 			kmesh.glformat = glformat;
 		else
 			varargout{1} = [];
-			printf('PsychKinect: WARNING: Failed to fetch VBO geometry data!\n');
+			fprintf('PsychKinect: WARNING: Failed to fetch VBO geometry data!\n');
 			return;
 		end
 	end
