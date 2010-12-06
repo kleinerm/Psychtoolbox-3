@@ -109,32 +109,32 @@ if strcmpi(cmd, 'CreateObject')
 	if kinect_opmode == 2 || kinect_opmode == 3
 		if isempty(glsl)
 			% First time init of shader:
-			fx_d = 5.9421434211923247e+02;
-			fy_d = 5.9104053696870778e+02;
-			cx_d = 3.3930780975300314e+02;
-			cy_d = 2.4273913761751615e+02;
 
-			fx_rgb = 5.2921508098293293e+02;
-			fy_rgb = 5.2556393630057437e+02;
-			cx_rgb = 3.2894272028759258e+02;
-			cy_rgb = 2.6748068171871557e+02;
-
-			R = [[ 9.9984628826577793e-01, 1.2635359098409581e-03, -1.7487233004436643e-02  ]; ...
-			     [ -1.4779096108364480e-03, 9.9992385683542895e-01, -1.2251380107679535e-02 ]; ...
-			     [ 1.7470421412464927e-02, 1.2275341476520762e-02,  9.9977202419716948e-01  ]];
-
-			T = [ 1.9985242312092553e-02, -7.4423738761617583e-04, -1.0916736334336222e-02 ];
+			% Fetch all camera calibration parameters from PsychKinectCore for this kinect:
+			[depthsIntrinsics, rgbIntrinsics, R, T, depthsUndistort, rgbUndistort] = PsychKinectCore('SetBaseCalibration', kinect);
+			[fx_d, fy_d, cx_d, cy_d] = deal(depthsIntrinsics(1), depthsIntrinsics(2), depthsIntrinsics(3), depthsIntrinsics(4));
+			[fx_rgb, fy_rgb, cx_rgb, cy_rgb] = deal(rgbIntrinsics(1), rgbIntrinsics(2), rgbIntrinsics(3), rgbIntrinsics(4));
+			[k1_d, k2_d, p1_d, p2_d, k3_d] = deal(depthsUndistort(1), depthsUndistort(2), depthsUndistort(3), depthsUndistort(4), depthsUndistort(5));
+			[k1_rgb, k2_rgb, p1_rgb, p2_rgb, k3_rgb] = deal(rgbUndistort(1), rgbUndistort(2), rgbUndistort(3), rgbUndistort(4), rgbUndistort(5));
 
 			if kinect_opmode == 2
+				% Standard shader: Doesn't do initial sensor -> depths conversion.
 				glsl = LoadGLSLProgramFromFiles('KinectShaderStandard');
 			else
+				% Compressed shader: Does this first step as well, albeit only with
+				% single precision float precision instead of the double precision of
+				% the C implementation. Drastically faster and no perceptible difference,
+				% but that doesn't mean there isn't any:
 				glsl = LoadGLSLProgramFromFiles('KinectShaderCompressed');
 			end
 
+			% Assign all relevant camera parameters to shader: Optical undistortion data isn't
+			% used yet, but would be easy to do at least for the rgb camera, within a fragment
+			% shader:
 			glUseProgram(glsl);
 			glUniform4f(glGetUniformLocation(glsl, 'depth_intrinsic'), fx_d, fy_d, cx_d, cy_d);
 			glUniform4f(glGetUniformLocation(glsl, 'rgb_intrinsic'), fx_rgb, fy_rgb, cx_rgb, cy_rgb);
-			glUniformMatrix3fv(glGetUniformLocation(glsl, 'R'), 1, GL.FALSE, R);
+			glUniformMatrix3fv(glGetUniformLocation(glsl, 'R'), 1, GL.TRUE, R);
 			glUniform3fv(glGetUniformLocation(glsl, 'T'), 1, T);
 			glUseProgram(0);
 			repeatedscan = 0;
@@ -147,8 +147,12 @@ if strcmpi(cmd, 'CreateObject')
 		if kinect_opmode == 2
 			format = 4 + repeatedscan;
 		else
+			% Opmode 3 outsources computation of raw depths from raw sensor data to the
+			% Vertex shader as well, maybe with slightly reduced precision:
+			% TODO: Make repeatedscan work - don't know why it fails here?
 			format = 6; % + repeatedscan;
 		end
+
 		[vbobuffer, width, height, channels, glformat] = PsychKinect('GetDepthImage', kinect, format, 0);
 		if width > 0 && height > 0
 			Screen('BeginOpenGL', win);

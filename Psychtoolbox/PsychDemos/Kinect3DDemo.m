@@ -156,11 +156,13 @@ Screen('EndOpenGL', win);
 ifi = Screen('GetFlipInterval', win);
 
 kinect = PsychKinect('Open');
-PsychKinect('SetAngle', kinect, -30);
-WaitSecs('YieldSecs', 0.5);
-for angle = -20:20
-	PsychKinect('SetAngle', kinect, angle);
-	WaitSecs('YieldSecs', 0.050);
+if 0
+	PsychKinect('SetAngle', kinect, -30);
+	WaitSecs('YieldSecs', 0.5);
+	for angle = -20:20
+		PsychKinect('SetAngle', kinect, angle);
+		WaitSecs('YieldSecs', 0.050);
+	end
 end
 PsychKinect('SetAngle', kinect, 0);
 

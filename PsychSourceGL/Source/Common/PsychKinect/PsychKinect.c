@@ -175,14 +175,16 @@ typedef struct PsychKNDevice {
 	unsigned int paCalls;				// Number of callback invocations.
 	double   R[3][3];                               // Extrinsic (R)otation, (T)ranslation of video camera wrt. depths camera. 
 	double   T[3];
-	double fx_d;                                    // Depths camera intrinsic parameters.
+	double fx_d;                                    // Depths camera intrinsic parameters. Focal length x/y fx_, fy_.
 	double fy_d;
-	double cx_d;
+	double cx_d;                                    // Optical center cx_, cy_
 	double cy_d;
 	double fx_rgb;                                  // RGB video camera intrinsic parameters.
 	double fy_rgb;
 	double cx_rgb;
 	double cy_rgb;
+	double undistort_d[5];                          // Optical distortion coefficients depth: k1, k2, p1, p2, k3.
+	double undistort_rgb[5];                        // Optical distortion coefficients rgb  : k1, k2, p1, p2, k3.
 } PsychKNDevice;
 
 PsychKNDevice kinectdevices[MAX_PSYCH_KINECT_DEVS];
@@ -202,7 +204,9 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "project (Thanks!): http://openkinect.org\n";
 	synopsis[i++] = "Libfreenect is Copyright (C) 2010  Hector Martin \"marcan\" <hector@marcansoft.com>";
 	synopsis[i++] = "This code is licensed to you under the terms of the GNU GPL, version 2; see: \n";
-	synopsis[i++] = "http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt";
+	synopsis[i++] = "http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt\n";
+	synopsis[i++] = "The driver also uses bits of code and math from Nicolas Burrus Kinect work:";
+	synopsis[i++] = "http://nicolas.burrus.name/index.php/Research/KinectCalibration ";
 	synopsis[i++] = "\n";
 	
 	synopsis[i++] = "Usage:";
@@ -214,7 +218,7 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "[starttime, fps, cwidth, cheight, dwidth, dheight] = PsychKinect('Start', kinectPtr [, dropframes=0]);";
 	synopsis[i++] = "PsychKinect('Stop', kinectPtr);";
 	synopsis[i++] = "status = PsychKinect('GetStatus', kinectPtr);";
-	synopsis[i++] = "PsychKinect('SetBaseCalibration', kinectPtr, depthsIntrinsics, rgbIntrinsics, rgbRotation, rgbTranslation, depthsUndistort, rgbUndistort);";
+	synopsis[i++] = "[...old parameter settings in order of inputs... ] = PsychKinect('SetBaseCalibration', kinectPtr, depthsIntrinsics, rgbIntrinsics, rgbRotation, rgbTranslation, depthsUndistort, rgbUndistort);";
 	synopsis[i++] = "[result, cts, age] = PsychKinect('GrabFrame', kinectPtr [, waitMode=1][, mostrecent=0]);";
 	synopsis[i++] = "PsychKinect('ReleaseFrame', kinectPtr);";
 	synopsis[i++] = "[imageOrPtr, width, height, channels, extType, extFormat] = PsychKinect('GetImage', kinectPtr [, imtype=0][, returnTexturePtr=0]);";
@@ -508,6 +512,8 @@ PsychError PSYCHKINECTOpen(void)
 			  {  1.7470421412464927e-02, 1.2275341476520762e-02,  9.9977202419716948e-01 }};
 
 	double T[3] = { 1.9985242312092553e-02, -7.4423738761617583e-04, -1.0916736334336222e-02 };
+	double depthIntrinsics[5] = { -2.6386489753128833e-01, 9.9966832163729757e-01, -7.6275862143610667e-04, 5.0350940090814270e-03, -1.3053628089976321e+00 };
+	double rgbIntrinsics[5]   = {  2.6451622333009589e-01, -8.3990749424620825e-01, -1.9922302173693159e-03, 1.4371995932897616e-03, 9.1192465078713847e-01 };
 
 	int rc, i, j;
 	int deviceIndex = 0;
@@ -516,36 +522,35 @@ PsychError PSYCHKINECTOpen(void)
 	int numbuffers = 2;
 	int bayerFilterMode = 1;
 	
-    // All sub functions should have these two lines
-    PsychPushHelp(useString, synopsisString,seeAlsoString);
-    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-	
-    //check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(1));
-    PsychErrorExit(PsychCapNumInputArgs(3));
+	// All sub functions should have these two lines
+	PsychPushHelp(useString, synopsisString,seeAlsoString);
+	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+
+	//check to see if the user supplied superfluous arguments
+	PsychErrorExit(PsychCapNumOutputArgs(1));
+	PsychErrorExit(PsychCapNumInputArgs(3));
 	
 	if (devicecount >= MAX_PSYCH_KINECT_DEVS) PsychErrorExitMsg(PsychError_user, "Maximum number of simultaneously open kinect devices reached.");
 	
 	// Find a free device slot:
 	for (handle = 0; (handle < MAX_PSYCH_KINECT_DEVS) && kinectdevices[handle].dev; handle++);
-	if (kinectdevices[handle].dev) PsychErrorExitMsg(PsychError_internal, "Maximum number of simultaneously open kinect devices reached. This should not happen!");
+	if (kinectdevices[handle].dev) PsychErrorExitMsg(PsychError_internal, "Maximum number of simultaneously open kinect devices reached.");
 	
 	// Get optional kinect device index:
-    PsychCopyInIntegerArg(1, FALSE, &deviceIndex);
+	PsychCopyInIntegerArg(1, FALSE, &deviceIndex);
 	
 	// Don't support anything than a single "default" kinect yet:
 	if (deviceIndex != 0) PsychErrorExitMsg(PsychError_user, "No such kinect device with given 'deviceIndex'.");
 	
 	// Get optional numbuffers count:
-    PsychCopyInIntegerArg(2, FALSE, &numbuffers);
+	PsychCopyInIntegerArg(2, FALSE, &numbuffers);
 	if (numbuffers < 1) PsychErrorExitMsg(PsychError_user, "Invalid value for 'numbuffers' provided. Must be greater than 1!");
 	
 	// Get optional bayerFilterMode:
-    PsychCopyInIntegerArg(3, FALSE, &bayerFilterMode);
+	PsychCopyInIntegerArg(3, FALSE, &bayerFilterMode);
 	if (bayerFilterMode < 0) PsychErrorExitMsg(PsychError_user, "Invalid value for 'bayerFilterMode' provided. Must be >= 0!");
 	
 	// Open and initialize the device:
-	
 	if (!initialized) {
 		// First time init:
 		initialized = TRUE;
@@ -613,13 +618,16 @@ PsychError PSYCHKINECTOpen(void)
 	memcpy(&kinectdevices[handle].R, R, sizeof(double) * 3 * 3);
 	memcpy(&kinectdevices[handle].T, T, sizeof(double) * 3 * 1);
 
+	memcpy(&kinectdevices[handle].undistort_d, depthIntrinsics, sizeof(double) * 5 * 1);
+	memcpy(&kinectdevices[handle].undistort_rgb, rgbIntrinsics, sizeof(double) * 5 * 1);
+
 	// Increment count of open devices:
 	devicecount++;
 	
 	// Return device handle:
-    PsychCopyOutDoubleArg(1, FALSE, handle);
-	
-    return(PsychError_none);	
+	PsychCopyOutDoubleArg(1, FALSE, handle);
+
+	return(PsychError_none);	
 }
 
 PsychError PSYCHKINECTClose(void)
@@ -628,15 +636,15 @@ PsychError PSYCHKINECTClose(void)
     //
     static char synopsisString[] = 
 		"Close connection to Kinect box 'kinectPtr'. Do nothing if no such box is open.\n\n";
-	
+
     static char seeAlsoString[] = "";	
-	
+
 	int handle;
-	
+
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-	
+
     //check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(0));
     PsychErrorExit(PsychCapNumInputArgs(1));
@@ -1439,12 +1447,20 @@ PsychError PSYCHKINECTGetDepthImage(void)
 
 PsychError PSYCHKINECTSetBaseCalibration(void)
 {
-    static char useString[] = "PsychKinect('SetBaseCalibration', kinectPtr, depthsIntrinsics, rgbIntrinsics, rgbRotation, rgbTranslation, depthsUndistort, rgbUndistort);";
-    //                                                           1          2                 3              4            5               6                7
+    static char useString[] = "[...old parameter settings in order of inputs... ] = PsychKinect('SetBaseCalibration', kinectPtr, depthsIntrinsics, rgbIntrinsics, rgbRotation, rgbTranslation, depthsUndistort, rgbUndistort);";
+    //                                                                                                                1          2                 3              4            5               6                7
     static char synopsisString[] = 
-		"Set camera calibration matrices of box 'kinectPtr'.\n\n"
-		"This function assigns various parameters needed "
-		"for 3D reconstruction from Kinect raw data.\n"
+		"Set and/or Get camera calibration matrices of box 'kinectPtr'.\n\n"
+		"This function assigns various parameters needed for 3D reconstruction "
+		"of the 3D scene from Kinect raw sensor data.\n"
+		"You will need to use an external 3rd party camera calibration tool "
+		"to determine the specific parameters of your Kinect. The driver uses "
+		"some builtin defaults of a reference Kinect box if you don't provide "
+		"updated parameters via this function. This allows to get at least "
+		"ok results for quick testing and experimenting.\n"
+		"The optical undistortion parameters (arguments 6 and 7) may not get "
+		"used by early versions of the driver, or in fast 3D preview modes. "
+		"They are accepted but silently ignored on such configurations.\n"
 		"'depthsIntrinsics' vector with intrinsic parameters of depth cam:\n "
 		"[fx, fy, cx, cy].\n"
 		"'rgbIntrinsics' vector with intrinsic parameters of the RGB video camera:\n"
@@ -1454,7 +1470,9 @@ PsychError PSYCHKINECTSetBaseCalibration(void)
 		"'rgbTranslation' a 3 component translation vector which encodes "
 		"translation of the color camera with respect to the depths camera.\n"
 		"'depthsUndistort' undistoration parameters for depths camera.\n"
-		"'rgbUndistort' undistoration parameters for RGB video camera.\n";
+		"[k1,k2,p1,p2,k3].\n"
+		"'rgbUndistort' undistoration parameters for RGB video camera.\n"
+		"[k1,k2,p1,p2,k3].\n";
 
     static char seeAlsoString[] = "";	
 	
@@ -1469,12 +1487,42 @@ PsychError PSYCHKINECTSetBaseCalibration(void)
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 	
 	//check to see if the user supplied superfluous arguments
-	PsychErrorExit(PsychCapNumOutputArgs(0));
+	PsychErrorExit(PsychCapNumOutputArgs(6));
 	PsychErrorExit(PsychCapNumInputArgs(7));
 
 	// Get device handle:
 	PsychCopyInIntegerArg(1, TRUE, &handle);
 	kinect = PsychGetKinect(handle, FALSE);
+
+	if (PsychAllocOutDoubleMatArg(1, FALSE, 1, 4, 1, &depthIntrinsics)) {
+		depthIntrinsics[0] = kinect->fx_d;
+		depthIntrinsics[1] = kinect->fy_d;
+		depthIntrinsics[2] = kinect->cx_d;
+		depthIntrinsics[3] = kinect->cy_d;
+	}
+
+	if (PsychAllocOutDoubleMatArg(2, FALSE, 1, 4, 1, &rgbIntrinsics)) {
+		rgbIntrinsics[0] = kinect->fx_rgb;
+		rgbIntrinsics[1] = kinect->fy_rgb;
+		rgbIntrinsics[2] = kinect->cx_rgb;
+		rgbIntrinsics[3] = kinect->cy_rgb;
+	}
+
+	if (PsychAllocOutDoubleMatArg(3, FALSE, 3, 3, 1, &rgbRotation)) {
+		memcpy(rgbRotation, &kinect->R, sizeof(double) * 3 * 3);
+	}
+
+	if (PsychAllocOutDoubleMatArg(4, FALSE, 1, 3, 1, &rgbTranslation)) {
+		memcpy(rgbTranslation, &kinect->T, sizeof(double) * 3 * 1);
+	}
+
+	if (PsychAllocOutDoubleMatArg(5, FALSE, 1, 5, 1, &depthIntrinsics)) {
+		memcpy(depthIntrinsics, &kinect->undistort_d, sizeof(double) * 5 * 1);
+	}
+
+	if (PsychAllocOutDoubleMatArg(6, FALSE, 1, 5, 1, &rgbIntrinsics)) {
+		memcpy(rgbIntrinsics, &kinect->undistort_rgb, sizeof(double) * 5 * 1);
+	}
 
 	if (PsychAllocInDoubleMatArg(2, FALSE, &m, &n, &p, &depthIntrinsics)) {
 		if (m * n * p != 4) PsychErrorExitMsg(PsychError_user, "Number of 'depthIntrinsic' elements not 4 as required!");
@@ -1502,8 +1550,15 @@ PsychError PSYCHKINECTSetBaseCalibration(void)
 		memcpy(&kinect->T, rgbTranslation, sizeof(double) * 3 * 1);
 	}
 
-	// TODO: Argument 6 and 7 --> Lens undistortion parameters for
-	// depths and rgb camera.
+	if (PsychAllocInDoubleMatArg(6, FALSE, &m, &n, &p, &depthIntrinsics)) {
+		if (m * n * p != 5) PsychErrorExitMsg(PsychError_user, "Number of 'depthUndistort' elements not 5 as required!");
+		memcpy(&kinect->undistort_d, depthIntrinsics, sizeof(double) * 5 * 1);
+	}
+
+	if (PsychAllocInDoubleMatArg(7, FALSE, &m, &n, &p, &rgbIntrinsics)) {
+		if (m * n * p != 5) PsychErrorExitMsg(PsychError_user, "Number of 'rgbUndistort' elements not 5 as required!");
+		memcpy(&kinect->undistort_rgb, rgbIntrinsics, sizeof(double) * 5 * 1);
+	}
 
 	return(PsychError_none);
 }
