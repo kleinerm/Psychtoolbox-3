@@ -45,6 +45,8 @@ PsychError PSYCHKINECTGrabFrame(void);
 PsychError PSYCHKINECTReleaseFrame(void);
 PsychError PSYCHKINECTGetImage(void);
 PsychError PSYCHKINECTGetDepthImage(void);
+PsychError PSYCHKINECTSetBaseCalibration(void);
+PsychError PSYCHKINECTSetAngle(void);
 
 //end include once
 #endif

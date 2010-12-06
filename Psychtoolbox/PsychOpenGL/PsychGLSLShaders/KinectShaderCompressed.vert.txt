@@ -1,0 +1,63 @@
+/*
+ * File: KinectShaderCompressed.vert.txt
+ * Shader for conversion of Microsoft Kinect raw sensor data to
+ * 3D vertex and texture coordinate stream for realtime rendering.
+ *
+ * This implements mapping of raw depths sensor values to (x,y,z)
+ * vertex positions, plus standard modelview+projection transforms
+ * of the reconstructed vertex.
+ *
+ * It also implements generation of proper 2D texture coordinates
+ * for mapping the image of the color camera onto the 3D point cloud/
+ * mesh, plus standard texture matrix transforms on the reconstructed
+ * texture coordinates.
+ *
+ * This vertex shader is setup and used by PsychKinect.m.
+ *
+ * (c) 2010 by Mario Kleiner, licensed under GPL.
+ *		 
+ */
+
+uniform vec4 depth_intrinsic;
+uniform vec4 rgb_intrinsic;
+uniform vec3 T;
+uniform mat3 R;
+
+void main()
+{
+    vec4 v, t;
+    vec3 tm, inpos;
+
+    /* Get (x,y) position in depth sensor matrix and z as pixels depth: */
+    inpos.x = (mod(gl_Vertex.x, 640.0));
+    inpos.y = (gl_Vertex.x / 640.0);
+    inpos.z = gl_Vertex.y;
+
+    /* Remap inpos.z via mapping formula kinect -> real world: */
+    if (inpos.z < 2047.0) {
+       inpos.z = 1.0 / (inpos.z * -0.0030711016 + 3.3309495161);
+    } else {
+       inpos.z = 0.0;
+    }
+
+    /* Map back to 3D Vertex in depth cams reference frame: */
+    v.x = (inpos.x - depth_intrinsic.z) * inpos.z / depth_intrinsic.x;
+    v.y = (inpos.y - depth_intrinsic.w) * inpos.z / depth_intrinsic.y;
+    v.z = inpos.z;
+    v.w = 1.0;
+
+    /* Map to color cameras frame of reference: */
+    tm = (R * v.xyz) + T;
+
+    /* Map to (x,y) texture coordinates in color cameras sensor plane: */
+    t.x = ( tm.x * rgb_intrinsic.x / tm.z ) + rgb_intrinsic.z;
+    t.y = ( tm.y * rgb_intrinsic.y / tm.z ) + rgb_intrinsic.w;
+    t.z = 0.0;
+    t.w = 1.0;
+
+    /* Apply standard geometric transformations to 3D vertex: */
+    gl_Position = gl_ModelViewProjectionMatrix * v;
+
+    /* Apply standard texture matrix transformation to texcoords: */
+    gl_TexCoord[0] = gl_TextureMatrix[0] * t;
+}

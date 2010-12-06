@@ -42,6 +42,8 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("ReleaseFrame", &PSYCHKINECTReleaseFrame));
 	PsychErrorExit(PsychRegister("GetImage", &PSYCHKINECTGetImage));
 	PsychErrorExit(PsychRegister("GetDepthImage", &PSYCHKINECTGetDepthImage));
+	PsychErrorExit(PsychRegister("SetBaseCalibration", &PSYCHKINECTSetBaseCalibration));
+	PsychErrorExit(PsychRegister("SetAngle", &PSYCHKINECTSetAngle));
 
 	//report the version
 	#if PSYCH_SYSTEM == PSYCH_OSX

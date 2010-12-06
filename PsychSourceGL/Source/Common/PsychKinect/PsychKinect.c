@@ -134,15 +134,15 @@ int freenect_process_events(freenect_context *ctx)
 
 // Number of maximum simultaneously open kinect devices:
 #define MAX_PSYCH_KINECT_DEVS 10
-#define MAX_SYNOPSIS_STRINGS 20  
+#define MAX_SYNOPSIS_STRINGS 40  
 
 //declare variables local to this file.  
 static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 
 // Temporary buffer for conversion of depth images into color coded RGB images:
+double*		zmap = NULL;
 unsigned char	gl_depth_back[640 * 480 * 4];
 unsigned short	t_gamma[2048];
-double		zmap[640*480*6];
 
 freenect_context	*f_ctx = NULL;
 freenect_device		*f_dev;
@@ -157,22 +157,32 @@ typedef struct PsychKNBuffer {
 
 // Our device record:
 typedef struct PsychKNDevice {
-	psych_mutex	mutex;					// Mutex lock for the PsychKNDevice struct.
-	psych_condition changeSignal;		// Condition variable or event object for change signalling (see above).
+	psych_mutex	mutex;				// Mutex lock for the PsychKNDevice struct.
+	psych_condition changeSignal;		        // Condition variable or event object for change signalling (see above).
 	psych_thread captureThread;			// Processing thread.
 	freenect_device *dev;				// Handle to USB device representing the Kinect.
 	PsychKNBuffer* buffers;				// Bufferchain with capture buffers.
-	int	numbuffers;						// Number of allocated buffers.
-	int dropframes;						// dropframes = 1: Stall capture if FIFO full, 0 = Overwrite oldest frames.
+	int	numbuffers;				// Number of allocated buffers.
+	int dropframes;					// dropframes = 1: Stall capture if FIFO full, 0 = Overwrite oldest frames.
 	int bayerFilterMode;				// 0 = Don't: Fetch unfiltered sensor data. 1 = Let libfreenect do Bayer filtering into RGB. 2 = ...
 	double	captureStartTime;			// Time of start of capture.
-	volatile unsigned int state;		// Current state: 0=Stopped, 1=Running.
-	volatile unsigned int reqstate;		// Requested state of the stream, as opposed to current 'state'. Written by main-thread.
+	volatile unsigned int state;		        // Current state: 0=Stopped, 1=Running.
+	volatile unsigned int reqstate;		        // Requested state of the stream, as opposed to current 'state'. Written by main-thread.
 	unsigned int recposition;			// Current record position in frames since start of capture.
 	unsigned int readposition;			// Last read-out frame since start of capture.
 	unsigned int frame_valid;			// Current readposition valid?
-	unsigned int xruns;					// Number of over-/underflows.
+	unsigned int xruns;				// Number of over-/underflows.
 	unsigned int paCalls;				// Number of callback invocations.
+	double   R[3][3];                               // Extrinsic (R)otation, (T)ranslation of video camera wrt. depths camera. 
+	double   T[3];
+	double fx_d;                                    // Depths camera intrinsic parameters.
+	double fy_d;
+	double cx_d;
+	double cy_d;
+	double fx_rgb;                                  // RGB video camera intrinsic parameters.
+	double fy_rgb;
+	double cx_rgb;
+	double cy_rgb;
 } PsychKNDevice;
 
 PsychKNDevice kinectdevices[MAX_PSYCH_KINECT_DEVS];
@@ -200,11 +210,13 @@ void InitializeSynopsis(void)
 	// synopsis[i++] = "devices = Screen('VideoCaptureDevices' [, engineId]);";
 	synopsis[i++] = "kinectPtr = PsychKinect('Open' [, deviceIndex=0][, numbuffers=2]][, bayerFilterMode=1]);";
 	synopsis[i++] = "PsychKinect('Close', kinectPtr);";
-    synopsis[i++] = "[starttime, fps, cwidth, cheight, dwidth, dheight] = PsychKinect('Start', kinectPtr [, dropframes=0]);";
-    synopsis[i++] = "PsychKinect('Stop', kinectPtr);";
-    synopsis[i++] = "status = PsychKinect('GetStatus', kinectPtr);";
-    synopsis[i++] = "[result, cts, age] = PsychKinect('GrabFrame', kinectPtr [, waitMode=1][, mostrecent=0]);";
-    synopsis[i++] = "PsychKinect('ReleaseFrame', kinectPtr);";
+	synopsis[i++] = "PsychKinect('SetAngle', kinectPtr, angle);";
+	synopsis[i++] = "[starttime, fps, cwidth, cheight, dwidth, dheight] = PsychKinect('Start', kinectPtr [, dropframes=0]);";
+	synopsis[i++] = "PsychKinect('Stop', kinectPtr);";
+	synopsis[i++] = "status = PsychKinect('GetStatus', kinectPtr);";
+	synopsis[i++] = "PsychKinect('SetBaseCalibration', kinectPtr, depthsIntrinsics, rgbIntrinsics, rgbRotation, rgbTranslation, depthsUndistort, rgbUndistort);";
+	synopsis[i++] = "[result, cts, age] = PsychKinect('GrabFrame', kinectPtr [, waitMode=1][, mostrecent=0]);";
+	synopsis[i++] = "PsychKinect('ReleaseFrame', kinectPtr);";
 	synopsis[i++] = "[imageOrPtr, width, height, channels, extType, extFormat] = PsychKinect('GetImage', kinectPtr [, imtype=0][, returnTexturePtr=0]);";
 	synopsis[i++] =	"[imageOrPtr, width, height, extType, extFormat] = PsychKinect('GetDepthImage', kinectPtr [, format=0][, returnTexturePtr=0]);";
 	synopsis[i++] = NULL;  //this tells PsychKinectDisplaySynopsis where to stop
@@ -235,13 +247,15 @@ void PsychDepthCB(freenect_device *dev, freenect_depth *depth, uint32_t timestam
 	
 	PsychKNDevice *kinect = (PsychKNDevice*) freenect_get_user(dev);
 	PsychKNBuffer *buffer = PsychGetKNBuffer(kinect, kinect->recposition);
+	if (kinect->paCalls & 0x1) return;
 	
 	memcpy(buffer->depth, depth, FREENECT_FRAME_W * FREENECT_FRAME_H * 2);
 	buffer->dwidth = FREENECT_FRAME_W;
 	buffer->dheight = FREENECT_FRAME_H;
 	
 	// Mark depth frame as done:
-	kinect->paCalls++;
+//	kinect->paCalls++;
+	kinect->paCalls |= 0x1;
 }
 
 void PsychRGBCB(freenect_device *dev, freenect_pixel *rgb, uint32_t timestamp)
@@ -250,7 +264,7 @@ void PsychRGBCB(freenect_device *dev, freenect_pixel *rgb, uint32_t timestamp)
 	
 	PsychKNDevice *kinect = (PsychKNDevice*) freenect_get_user(dev);
 	PsychKNBuffer *buffer = PsychGetKNBuffer(kinect, kinect->recposition);
-	
+	if (kinect->paCalls & 0x2) return;
 	memcpy(buffer->color, rgb, ((kinect->bayerFilterMode == 1) ? FREENECT_RGB_SIZE : FREENECT_BAYER_SIZE));
 	buffer->cwidth = FREENECT_FRAME_W;
 	buffer->cheight = FREENECT_FRAME_H;
@@ -258,7 +272,9 @@ void PsychRGBCB(freenect_device *dev, freenect_pixel *rgb, uint32_t timestamp)
 	// Timestamp the buffer:
 	buffer->cts = (double) timestamp;
 	
-	kinect->paCalls++;
+//	kinect->paCalls++;
+	kinect->paCalls |= 0x2;
+
 }
 
 void* PsychKinectThreadMain(volatile void* deviceToCast)
@@ -292,7 +308,7 @@ void* PsychKinectThreadMain(volatile void* deviceToCast)
 			continue;
 		};
 		
-		headroom = kinect->numbuffers - 1 - (kinect->recposition - kinect->readposition);
+		headroom = kinect->numbuffers - (kinect->recposition - kinect->readposition);
 		
 		PsychUnlockMutex(&kinect->mutex);
 		
@@ -310,7 +326,7 @@ void* PsychKinectThreadMain(volatile void* deviceToCast)
 			}
 			
 			// Check if we have a completely new video & depth frame:
-			if (kinect->paCalls >= 2) {
+			if (kinect->paCalls >= 2+1) {
 				// Yes. Reset counter:
 				kinect->paCalls = 0;
 				
@@ -453,8 +469,12 @@ PsychError PsychKNShutdown(void) {
 	
 	if (initialized) {
 		for (handle = 0 ; handle < MAX_PSYCH_KINECT_DEVS; handle++) PsychKNClose(handle);
+		free(zmap);
+		zmap = NULL;
 	}
 	
+	initialized = FALSE;
+
 	return(PsychError_none);
 }
 
@@ -483,6 +503,12 @@ PsychError PSYCHKINECTOpen(void)
 	
     static char seeAlsoString[] = "";	
 	
+	double R[3][3] = {{  9.9984628826577793e-01, 1.2635359098409581e-03, -1.7487233004436643e-02 },
+			  { -1.4779096108364480e-03, 9.9992385683542895e-01, -1.2251380107679535e-02 },
+			  {  1.7470421412464927e-02, 1.2275341476520762e-02,  9.9977202419716948e-01 }};
+
+	double T[3] = { 1.9985242312092553e-02, -7.4423738761617583e-04, -1.0916736334336222e-02 };
+
 	int rc, i, j;
 	int deviceIndex = 0;
 	int handle = 0;
@@ -526,6 +552,8 @@ PsychError PSYCHKINECTOpen(void)
 		
 		// Initialize libusb:
 		if (freenect_init(&f_ctx, NULL) < 0) PsychErrorExitMsg(PsychError_system, "Driver initialization of libfreenect failed!");
+
+		zmap = malloc(640 * 480 * 6 * sizeof(double));
 	}
 	
 	// Zero init device structure:
@@ -568,6 +596,23 @@ PsychError PSYCHKINECTOpen(void)
 	kinectdevices[handle].numbuffers = numbuffers;
 	kinectdevices[handle].bayerFilterMode = bayerFilterMode;
 	
+	// Preinit kinect camera parameters with ok values:
+	// These are a bit wrong for any Kinect except the one
+	// they were taken from, but at least they produce an
+	// ok initial calibration for testing:
+	kinectdevices[handle].fx_d = 5.9421434211923247e+02;
+	kinectdevices[handle].fy_d = 5.9104053696870778e+02;
+	kinectdevices[handle].cx_d = 3.3930780975300314e+02;
+	kinectdevices[handle].cy_d = 2.4273913761751615e+02;
+
+	kinectdevices[handle].fx_rgb = 5.2921508098293293e+02;
+	kinectdevices[handle].fy_rgb = 5.2556393630057437e+02;
+	kinectdevices[handle].cx_rgb = 3.2894272028759258e+02;
+	kinectdevices[handle].cy_rgb = 2.6748068171871557e+02;
+
+	memcpy(&kinectdevices[handle].R, R, sizeof(double) * 3 * 3);
+	memcpy(&kinectdevices[handle].T, T, sizeof(double) * 3 * 1);
+
 	// Increment count of open devices:
 	devicecount++;
 	
@@ -707,6 +752,42 @@ PsychError PSYCHKINECTStop(void)
 	PsychKNStop(handle);
 	
     return(PsychError_none);	
+}
+
+
+PsychError PSYCHKINECTSetAngle(void)
+{
+	static char useString[] = "PsychKinect('SetAngle', kinectPtr, angle);";
+	//
+	static char synopsisString[] = 
+					"Set tilt angle of box 'kinectPtr' to 'angle' degrees.\n\n"
+					"Allowable range for angle is -30 to +30 degrees.\n";
+
+	static char seeAlsoString[] = "";	
+
+	int handle, angle;
+	PsychKNDevice *kinect;
+
+	// All sub functions should have these two lines
+	PsychPushHelp(useString, synopsisString,seeAlsoString);
+	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+
+	//check to see if the user supplied superfluous arguments
+	PsychErrorExit(PsychCapNumOutputArgs(0));
+	PsychErrorExit(PsychCapNumInputArgs(2));
+
+	PsychCopyInIntegerArg(1, TRUE, &handle);	
+	kinect = PsychGetKinect(handle, FALSE);
+
+	// Get angle and limit it to valid range:
+	PsychCopyInIntegerArg(2, TRUE, &angle);
+	if (angle < -30) angle = -30;
+	if (angle > +30) angle = +30;
+
+	// Set actual tilt angle on device:
+	freenect_set_tilt_degs(kinect->dev, angle);	
+
+	return(PsychError_none);
 }
 
 PsychError PSYCHKINECTGetStatus(void)
@@ -1085,30 +1166,26 @@ PsychError PSYCHKINECTGetDepthImage(void)
 	PsychKNDevice *kinect;
 	PsychKNBuffer* buffer;
 	double* outzmat;
+	float* fmap;
+	short* inbufs;
+
 	int returnTexturePtr, format, texcoords;
-	int i, x, y, m, n;
+	int i, x, y, m, n, components;
 	double P[3], Pr[3], Pt[2];
 	double s, zp;
-
-	double R[3][3] = { {  9.9984628826577793e-01, 1.2635359098409581e-03, -1.7487233004436643e-02 },
-			   { -1.4779096108364480e-03, 9.9992385683542895e-01, -1.2251380107679535e-02 },
-			   {  1.7470421412464927e-02, 1.2275341476520762e-02,  9.9977202419716948e-01 }};
-
-	double T[3]    = { 1.9985242312092553e-02, -7.4423738761617583e-04, -1.0916736334336222e-02 };
+	double fx_d;
+	double fy_d;
+	double cx_d;
+	double cy_d;
+	double fx_rgb;
+	double fy_rgb;
+	double cx_rgb;
+	double cy_rgb;
+	double R[3][3];
+	double T[3];
 
 	const double w = 640;
 	const double h = 480;
-	
-	const double fx_d = 5.9421434211923247e+02;
-	const double fy_d = 5.9104053696870778e+02;
-	const double cx_d = 3.3930780975300314e+02;
-	const double cy_d = 2.4273913761751615e+02;
-
-	const double fx_rgb = 5.2921508098293293e+02;
-	const double fy_rgb = 5.2556393630057437e+02;
-	const double cx_rgb = 3.2894272028759258e+02;
-	const double cy_rgb = 2.6748068171871557e+02;
-
 
 	// All sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -1121,7 +1198,22 @@ PsychError PSYCHKINECTGetDepthImage(void)
 	PsychCopyInIntegerArg(1, TRUE, &handle);	
 	kinect = PsychGetKinect(handle, FALSE);
 	if (!kinect->frame_valid) PsychErrorExitMsg(PsychError_user, "Must 'GrabFrame' a frame first!");
+
+	// Copy cam parameters to local storage to reduce number
+	// of address indirections in perf-critical path:
+	fx_d = kinect->fx_d;
+	fy_d = kinect->fy_d;
+	cx_d = kinect->cx_d;
+	cy_d = kinect->cy_d;
+
+	fx_rgb = kinect->fx_rgb;
+	fy_rgb = kinect->fy_rgb;
+	cx_rgb = kinect->cx_rgb;
+	cy_rgb = kinect->cy_rgb;
 	
+	memcpy(&R, &kinect->R, sizeof(double) * 3 * 3);
+	memcpy(&T, &kinect->T, sizeof(double) * 3 * 1);
+
 	format = 0;
 	texcoords = 0;
 	PsychCopyInIntegerArg(2, FALSE, &format);	
@@ -1150,6 +1242,7 @@ PsychError PSYCHKINECTGetDepthImage(void)
 				memcpy(outzmat, zmap, buffer->dheight * buffer->dwidth * 1 * sizeof(double));
 			}
 
+			components = 1;
 		break;
 				
 		case 1:
@@ -1170,6 +1263,7 @@ PsychError PSYCHKINECTGetDepthImage(void)
 				memcpy(outzmat, zmap, buffer->dheight * buffer->dwidth * 1 * sizeof(double));
 			}
 
+			components = 1;
 		break;
 
 		case 2:
@@ -1177,7 +1271,6 @@ PsychError PSYCHKINECTGetDepthImage(void)
 			// Return (x,y,z) vertex buffer mesh:
 			// Mapping equations from
 			// http://nicolas.burrus.name/index.php/Research/KinectCalibration
-
 			// Format 3 = Generate texture coords instead of vertex colors:
 			if (format == 3) texcoords = 1;
 
@@ -1241,31 +1334,176 @@ PsychError PSYCHKINECTGetDepthImage(void)
 			}
 
 			// Return image data:
+			components = 3 + ((texcoords) ? 2 : 3);
+
 			if (returnTexturePtr) {
 				// Just return a memory pointer to the colorbuffer:
 				PsychCopyOutDoubleArg(1, FALSE, PsychPtrToDouble((void*) zmap));
 			} else {
-				PsychAllocOutDoubleMatArg(1, FALSE, (3 + ((texcoords) ? 2 : 3)) , buffer->dheight, buffer->dwidth, &outzmat);
-				memcpy(outzmat, zmap, (3 + ((texcoords) ? 2 : 3)) * buffer->dheight * buffer->dwidth * sizeof(double));
+				PsychAllocOutDoubleMatArg(1, FALSE, components , buffer->dheight, buffer->dwidth, &outzmat);
+				memcpy(outzmat, zmap, components * buffer->dheight * buffer->dwidth * sizeof(double));
 			}
 
 		break;
+
+		case 4:
+		case 5:
+			// Return encoded depth image:
+			if (format == 4) {
+				i = 0;
+				for (x=0; x < 640; x++) {
+					for (y=0; y < 480; y++) {
+						// Calc z distance in meters:
+						zmap[i++] = (double) x;
+						zmap[i++] = (double) y;
+						zmap[i++] = calcz(getz(buffer->depth, x, y));
+					}
+				}
+			} else {
+				i = 2;
+				for (x=0; x < 640; x++) {
+					for (y=0; y < 480; y++) {
+						// Calc z distance in meters:
+						zmap[i] = calcz(getz(buffer->depth, x, y));
+						i+=3;
+					}
+				}
+			}
+
+			// Return image data:
+			if (returnTexturePtr) {
+				// Just return a memory pointer to the colorbuffer:
+				PsychCopyOutDoubleArg(1, FALSE, PsychPtrToDouble((void*) zmap));
+			} else {
+				PsychAllocOutDoubleMatArg(1, FALSE, 3, buffer->dheight, buffer->dwidth, &outzmat);
+				memcpy(outzmat, zmap, 3 * buffer->dheight * buffer->dwidth * sizeof(double));
+			}
+
+			components = 3;
+		break;
 				
+		case 6:
+		case 7:
+			// Return encoded depth image:
+			fmap = (float*) &zmap[0];
+			inbufs = (short*) buffer->depth;
+
+			if (format == 6) {
+				i = 0;
+				for (y=0; y < 480; y++) {
+					for (x=0; x < 640; x++) {
+						// Calc z distance in meters:
+						fmap[i++] = (float) (i / 2);
+						//fmap[i++] = (float) calcz(getz(buffer->depth, x, y));
+						fmap[i++] = (float) *(inbufs++);
+					}
+				}
+			} else {
+				i = 0;
+				for (y=0; y < 480; y++) {
+					for (x=0; x < 640; x++) {
+						// Calc z distance in meters:
+						i++;
+						//fmap[i++] = (float) calcz(getz(buffer->depth, x, y));
+						fmap[i++] = (float) *(inbufs++);
+					}
+				}
+			}
+
+			// Return image data:
+			if (returnTexturePtr) {
+				// Just return a memory pointer to the colorbuffer:
+				PsychCopyOutDoubleArg(1, FALSE, PsychPtrToDouble((void*) zmap));
+			} else {
+				PsychAllocOutDoubleMatArg(1, FALSE, 1, buffer->dheight, buffer->dwidth, &outzmat);
+				memcpy(outzmat, zmap, 1 * buffer->dheight * buffer->dwidth * sizeof(double));
+			}
+
+			components = 1;
+		break;
+
 		default:
 			PsychErrorExitMsg(PsychError_user, "Invalid '' parameter provided!");
 	}
 	
 	// Fixed for current Kinect:
 	PsychCopyOutDoubleArg(2, FALSE, buffer->dwidth);
-	PsychCopyOutDoubleArg(3, FALSE, buffer->dheight);
-	
-	// 3 +  (3 + ((texcoords) ? 2 : 3)) components per vertex:
-	// 3 for (vx,vy,vz) + either 2 for (tx,ty) texcoords, or
-	// 3 for color (R,G,B):
-	PsychCopyOutDoubleArg(4, FALSE, (3 + ((texcoords) ? 2 : 3)));
+	PsychCopyOutDoubleArg(3, FALSE, buffer->dheight);	
+	PsychCopyOutDoubleArg(4, FALSE, components);
 	
 	// Data format is GL_DOUBLE = 5130 (float would be GL_FLOAT = 5126):
-	PsychCopyOutDoubleArg(5, FALSE, 5130);
+	PsychCopyOutDoubleArg(5, FALSE, (components == 1 && format == 6) ? 5126 : 5130);
 	
     return(PsychError_none);	
+}
+
+PsychError PSYCHKINECTSetBaseCalibration(void)
+{
+    static char useString[] = "PsychKinect('SetBaseCalibration', kinectPtr, depthsIntrinsics, rgbIntrinsics, rgbRotation, rgbTranslation, depthsUndistort, rgbUndistort);";
+    //                                                           1          2                 3              4            5               6                7
+    static char synopsisString[] = 
+		"Set camera calibration matrices of box 'kinectPtr'.\n\n"
+		"This function assigns various parameters needed "
+		"for 3D reconstruction from Kinect raw data.\n"
+		"'depthsIntrinsics' vector with intrinsic parameters of depth cam:\n "
+		"[fx, fy, cx, cy].\n"
+		"'rgbIntrinsics' vector with intrinsic parameters of the RGB video camera:\n"
+		"[fx, fy, cx, cy].\n"
+		"'rgbRotation' a 3x3 rotation matrix which encodes rotation of the "
+		"color camera with respect to the depths camera.\n"
+		"'rgbTranslation' a 3 component translation vector which encodes "
+		"translation of the color camera with respect to the depths camera.\n"
+		"'depthsUndistort' undistoration parameters for depths camera.\n"
+		"'rgbUndistort' undistoration parameters for RGB video camera.\n";
+
+    static char seeAlsoString[] = "";	
+	
+	int handle;	
+	PsychKNDevice *kinect;
+	double *depthIntrinsics, *rgbIntrinsics;
+	double *rgbRotation, *rgbTranslation;
+	int m, n, p;
+
+	// All sub functions should have these two lines
+	PsychPushHelp(useString, synopsisString,seeAlsoString);
+	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+	
+	//check to see if the user supplied superfluous arguments
+	PsychErrorExit(PsychCapNumOutputArgs(0));
+	PsychErrorExit(PsychCapNumInputArgs(7));
+
+	// Get device handle:
+	PsychCopyInIntegerArg(1, TRUE, &handle);
+	kinect = PsychGetKinect(handle, FALSE);
+
+	if (PsychAllocInDoubleMatArg(2, FALSE, &m, &n, &p, &depthIntrinsics)) {
+		if (m * n * p != 4) PsychErrorExitMsg(PsychError_user, "Number of 'depthIntrinsic' elements not 4 as required!");
+		kinect->fx_d = depthIntrinsics[0];
+		kinect->fy_d = depthIntrinsics[1];
+		kinect->cx_d = depthIntrinsics[2];
+		kinect->cy_d = depthIntrinsics[3];
+	}
+
+	if (PsychAllocInDoubleMatArg(3, FALSE, &m, &n, &p, &rgbIntrinsics)) {
+		if (m * n * p != 4) PsychErrorExitMsg(PsychError_user, "Number of 'rgbIntrinsic' elements not 4 as required!");
+		kinect->fx_rgb = rgbIntrinsics[0];
+		kinect->fy_rgb = rgbIntrinsics[1];
+		kinect->cx_rgb = rgbIntrinsics[2];
+		kinect->cy_rgb = rgbIntrinsics[3];
+	}
+
+	if (PsychAllocInDoubleMatArg(4, FALSE, &m, &n, &p, &rgbRotation)) {
+		if ((m!=3) || (n!=3) || (p!= 1)) PsychErrorExitMsg(PsychError_user, "'rgbRotation' matrix isn't a 3-by-3 matrix as required!");
+		memcpy(&kinect->R, rgbRotation, sizeof(double) * 3 * 3);
+	}
+
+	if (PsychAllocInDoubleMatArg(5, FALSE, &m, &n, &p, &rgbTranslation)) {
+		if (m * n * p != 3) PsychErrorExitMsg(PsychError_user, "'rgbTranslation' vector isn't a 3-by-1 vector as required!");
+		memcpy(&kinect->T, rgbTranslation, sizeof(double) * 3 * 1);
+	}
+
+	// TODO: Argument 6 and 7 --> Lens undistortion parameters for
+	// depths and rgb camera.
+
+	return(PsychError_none);
 }

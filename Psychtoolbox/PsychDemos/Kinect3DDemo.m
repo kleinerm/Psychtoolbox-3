@@ -1,4 +1,4 @@
-function Kinect3DDemo(textureon, dotson, normalson, stereomode, usefastoffscreenwindows)
+function Kinect3DDemo(stereomode)
 % Kinect3DDemo - Capture and display video and depths data from a Kinect box.
 %
 % Usage:
@@ -56,27 +56,7 @@ AssertOpenGL;
 dst1 = [0, 0, 640, 480];
 dst2 = [650, 0, 650+640, 480];
 
-% Should per pixel lighting via OpenGL shading language be used? This doesnt work
-% well yet.
-perpixellighting = 0;
-
-% Some default settings for rendering flags:
-if nargin < 1 || isempty(textureon)
-    textureon = 0;  % turn texture mapping on (1) or off (0) -- only sphere and face has textures
-end
-textureon %#ok<NOPRT>
-
-if nargin < 2 || isempty(dotson)
-    dotson = 0;     % turn reference dots: off(0), on (1) or show reference lines (2)
-end
-dotson %#ok<NOPRT>
-
-if nargin < 3 || isempty(normalson)
-    normalson = 0;     % turn reference dots: off(0), on (1) or show reference lines (2)
-end
-normalson %#ok<NOPRT>
-
-if nargin < 4 || isempty(stereomode)
+if nargin < 1 || isempty(stereomode)
     stereomode = 0;
 end;
 stereomode %#ok<NOPRT>
@@ -87,17 +67,13 @@ end
 usefastoffscreenwindows %#ok<NOPRT>
 
 % Response keys: Mapping of keycodes to keynames.
+KbName('UnifyKeyNames');
 closer = KbName('a');
 farther = KbName('z');
 quitkey = KbName('ESCAPE');
-rotateleft = KbName('l');
-rotateright = KbName('k');
+rotateleft = KbName('LeftArrow');
+rotateright = KbName('RightArrow');
 toggleCapture = KbName('space');
-
-% Load OBJs. This will define topology and use of texcoords and normals:
-% One can call LoadOBJFile() multiple times for loading multiple objects.
-basepath = [fileparts(which(mfilename)) '/'];
-%objs = [ LoadOBJFile([basepath 'texblob01.obj']) LoadOBJFile([basepath 'texblob02.obj']) ];
 
 % Find the screen to use for display:
 screenid=max(Screen('Screens'));
@@ -108,119 +84,36 @@ Screen('Preference','SkipSyncTests',1);
 % Setup Psychtoolbox for OpenGL 3D rendering support and initialize the
 % mogl OpenGL for Matlab wrapper. We need to do this before the first call
 % to any OpenGL function:
-InitializeMatlabOpenGL(0,1);
+%InitializeMatlabOpenGL(0,1);
+InitializeMatlabOpenGL(0,0);
 
 % Open a double-buffered full-screen window: Everything is left at default
 % settings, except stereomode:
-if dotson~=3 & dotson~=4 %#ok<AND2>
-   rect = [];
-else
-   rect = [0 0 1300 500];
-end;
+rect = [];
+%rect = [0 0 1300 500];
 
-   %rect = [0 0 1300 500];
-
-if usefastoffscreenwindows
-    [win , winRect] = Screen('OpenWindow', screenid, 0, rect, [], [], stereomode, [], kPsychNeedFastOffscreenWindows);
+if stereomode > 0
+    PsychImaging('PrepareConfiguration');
+    [win , winRect] = PsychImaging('OpenWindow', screenid, 0, rect, [], [], stereomode);
 else
     [win , winRect] = Screen('OpenWindow', screenid, 0, rect, [], [], stereomode);
 end
 
-% Setup texture mapping if wanted:
-if ( textureon==1 )
-    % Load and create face texture in Psychtoolbox:
-    texname = [basepath 'TeapotTexture.jpg'];
-    texture = imread(texname);
-    texid = Screen('MakeTexture', win, texture);
-
-    % Retrieve a standard OpenGL texture handle and target from Psychtoolbox for use with MOGL:
-    [gltexid gltextarget] = Screen('GetOpenGLTexture', win, texid);
-
-    % Swap (u,v) <-> (v,u) to account for the transposed images read via Matlab imread():
-    texcoords(2,:) = objs{1}.texcoords(1,:);
-    texcoords(1,:) = 1 - objs{1}.texcoords(2,:);
-
-    % Which texture type is provided to us by Psychtoolbox?
-    if gltextarget == GL.TEXTURE_2D
-        % Nothing to do for GL_TEXTURE_2D textures...
-    else
-        % Rectangle texture: We need to rescale our texcoords as they are made for
-        % power-of-two textures, not rectangle textures:
-        texcoords(1,:) = texcoords(1,:) * size(texture,1);
-        texcoords(2,:) = texcoords(2,:) * size(texture,2);
-    end;
+if stereomode > 5 && stereomode < 10
+	SetAnaglyphStereoParameters('OptimizedColorAnaglyphMode', win);
 end
-
-% Reset %moglmorpher:
-%moglmorpher('reset');
-
-% Add the OBJS to %moglmorpher for use as morph-shapes:
-%for i=1:size(objs,2)
-%    if ( textureon==1 )
-%        objs{i}.texcoords = texcoords; % Add modified texture coords.
-%    end
-%    
-%    %objs{i}.colors = rand(4, size(objs{i}.vertices, 2));
-%    %objs{i}.colors(1:3,:) = 0.8;
-%
-%    meshid(i) = %moglmorpher('addMesh', objs{i}); %#ok<AGROW,NASGU>
-%end
-
-% Output count of morph shapes:
-%count = moglmorpher('getMeshCount') %#ok<NOPRT,NASGU>
 
 % Setup the OpenGL rendering context of the onscreen window for use by
 % OpenGL wrapper. After this command, all following OpenGL commands will
 % draw into the onscreen window 'win':
 Screen('BeginOpenGL', win);
 
-if perpixellighting==1
-    % Load a GLSL shader for per-pixel lighting, built a GLSL program out of it...
-    shaderpath = [PsychtoolboxRoot '/PsychDemos/OpenGL4MatlabDemos/GLSLDemoShaders/'];
-    glsl=LoadGLSLProgramFromFiles([shaderpath 'Pointlightshader'],1);
-    % ...and activate the shader program:
-    glUseProgram(glsl);
-end;
-
-if ( textureon==1 )
-    % Setup texture mapping for our face texture:
-    glBindTexture(gltextarget, gltexid);
-    glEnable(gltextarget);
-
-    % Choose texture application function: It shall modulate the light
-    % reflection properties of the the objects surface:
-    glTexEnvfv(GL.TEXTURE_ENV,GL.TEXTURE_ENV_MODE,GL.MODULATE);
-end
-
 % Get the aspect ratio of the screen, we need to correct for non-square
 % pixels if we want undistorted displays of 3D objects:
 ar=winRect(4)/winRect(3);
 
-% Turn on OpenGL local lighting model: The lighting model supported by
-% OpenGL is a local Phong model with Gouraud shading.
-%glEnable(GL.LIGHTING);
-
-% Material colors shall track vertex colors all time:
-%glEnable(GL.COLOR_MATERIAL);
-
-% Enable the first local light source GL.LIGHT_0. Each OpenGL
-% implementation is guaranteed to support at least 8 light sources. 
-%glEnable(GL.LIGHT0);
-
 % Enable proper occlusion handling via depth tests:
 glEnable(GL.DEPTH_TEST);
-
-% Define the light reflection properties by setting up reflection
-% coefficients for ambient, diffuse and specular reflection:
-%glMaterialfv(GL.FRONT_AND_BACK,GL.AMBIENT, [ 0.5 0.5 0.5 1 ]);
-%glMaterialfv(GL.FRONT_AND_BACK,GL.DIFFUSE, [ .7 .7 .7 1 ]);
-%glMaterialfv(GL.FRONT_AND_BACK,GL.SPECULAR, [ 0.2 0.2 0.2 1 ]);
-%glMaterialfv(GL.FRONT_AND_BACK,GL.SHININESS,12);
-
-% Make sure that surface normals are always normalized to unit-length,
-% regardless what happens to them during morphing. This is important for
-% correct lighting calculations:
-glEnable(GL.NORMALIZE);
 
 % Set projection matrix: This defines a perspective projection,
 % corresponding to the model of a pin-hole camera - which is a good
@@ -239,46 +132,11 @@ gluPerspective(25.0,1/ar,0.1,10000.0);
 glMatrixMode(GL.MODELVIEW);
 glLoadIdentity;
 
-% Setup position of lightsource wrt. origin of world:
-% Pointlightsource at (20 , 20, 20)...
-glLightfv(GL.LIGHT0,GL.POSITION,[ 20 20 20 0 ]);
-
-% Setup emission properties of the light source:
-
-% Emits white (1,1,1,1) diffuse light:
-glLightfv(GL.LIGHT0,GL.DIFFUSE, [ 1 1 1 1 ]);
-
-% Emits white (1,1,1,1) specular light:
-glLightfv(GL.LIGHT0,GL.SPECULAR, [ 1 1 1 1 ]);
-
-% There's also some weak ambient light present:
-glLightfv(GL.LIGHT0,GL.AMBIENT, [ 0.1 0.1 0.1 1 ]);
-
 % Set size of points for drawing of reference dots
 glPointSize(3.0);
 
-% Set thickness of reference lines:
-glLineWidth(2.0);
-
-% Add z-offset to reference lines, so they do not get occluded by surface:
-glPolygonOffset(0, -5);
-glEnable(GL.POLYGON_OFFSET_LINE);
-
-% Use alpha-blending:
-glEnable(GL.BLEND);
-glBlendFunc(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA);
-
-% Initialize amount and direction of rotation for our slowly spinning,
-% morphing objects:
-theta=0;
-rotatev=[ 0 0 1 ];
-
-% Initialize morph vector:
-w=[ 0 1 ];
-
 % Setup initial z-distance of objects:
 zz = 50.0;
-
 ang = 0.0;      % Initial rotation angle
 
 % Half eye separation in length units for quick & dirty stereoscopic
@@ -286,18 +144,26 @@ ang = 0.0;      % Initial rotation angle
 % nice demo. Figuring out proper values is not too difficult, but
 % left as an exercise to the reader.
 eye_halfdist=3;
+if stereomode == 0
+	eye_halfdist=0;
+end
 
 % Finish OpenGL setup and check for OpenGL errors:
 Screen('EndOpenGL', win);
-
-% Compute initial morphed shape for next frame, based on initial weights:
-%moglmorpher('computeMorph', w, morphnormals);
 
 % Retrieve duration of a single monitor flip interval: Needed for smooth
 % animation.
 ifi = Screen('GetFlipInterval', win);
 
 kinect = PsychKinect('Open');
+PsychKinect('SetAngle', kinect, -30);
+WaitSecs('YieldSecs', 0.5);
+for angle = -20:20
+	PsychKinect('SetAngle', kinect, angle);
+	WaitSecs('YieldSecs', 0.050);
+end
+PsychKinect('SetAngle', kinect, 0);
+
 PsychKinect('Start', kinect);
 
 % Initially sync us to the VBL:
@@ -312,40 +178,49 @@ doCapture = 1;
 oldKeyIsDown = KbCheck;
 tex1 = [];
 tex2 = [];
+mymesh = [];
 
 % Animation loop: Run until key press or one minute has elapsed...
 t = GetSecs;
 while ((GetSecs - t) < 600)
     if doCapture
-    	[rc, cts] = PsychKinect('GrabFrame', kinect);
+	if 1 && ~isempty(mymesh)
+	    PsychKinect('DeleteObject', win, mymesh);
+	    mymesh = [];
+	end
+
+    	[rc, cts] = PsychKinect('GrabFrame', kinect, 1);
 	    if rc > 0
-	        [imbuff, width, height, channels] = PsychKinect('GetImage', kinect, 0, 1);
-		if 1 && width > 0 && height > 0
-			tex1 = Screen('SetOpenGLTextureFromMemPointer', win, tex1, imbuff, width, height, channels, 1, GL.TEXTURE_RECTANGLE_EXT);
+
+		if 0
+	        	[imbuff, width, height, channels] = PsychKinect('GetImage', kinect, 1, 1);
+			if width > 0 && height > 0
+				tex2 = Screen('SetOpenGLTextureFromMemPointer', win, tex2, imbuff, width, height, channels, 1, GL.TEXTURE_RECTANGLE_EXT);
+			end
+		else
+			if ~isempty(tex2)
+				Screen('Close', tex2);
+			end
+			tex2 = [];
 		end
 
-	        [imbuff, width, height, channels] = PsychKinect('GetImage', kinect, 1, 1);
-		if 1 && width > 0 && height > 0
-			tex2 = Screen('SetOpenGLTextureFromMemPointer', win, tex2, imbuff, width, height, channels, 1, GL.TEXTURE_RECTANGLE_EXT);
-		end
-	
-		if 1
-		        [foo, width, height, channels] = PsychKinect('GetDepthImage', kinect, 2, 0);
-			foo = reshape (foo, 6, size(foo,2) * size(foo,3));
-			xyz = foo(1:3, :);
-			rgb = foo(4:6, :);
-			%minv = min(min(xyz))
-			%maxv = max(max(xyz))
-			%meanv = mean(mean(xyz))
-		end
-	
+		mymesh = PsychKinect('CreateObject', win, kinect);
 	        PsychKinect('ReleaseFrame', kinect);
+
+		if isempty(mymesh)
+			continue;
+		end
+	    else
+		continue;
 	    end
     end
 
-    if ~isempty(tex1) && ~isempty(tex2) && (tex1>0) && (tex2>0)
-	%Screen('DrawTexture', win, tex1, [], dst1);
-	%Screen('DrawTexture', win, tex2, [], dst2);
+    if 0 && ~isempty(mymesh.tex) && (mymesh.tex > 0)
+	Screen('DrawTexture', win, mymesh.tex, [], dst1);
+    end
+
+    if ~isempty(tex2) && (tex2 > 0)
+	Screen('DrawTexture', win, tex2, [], dst2);
     end
 
     % Switch to OpenGL rendering for drawing of next frame:
@@ -365,7 +240,7 @@ while ((GetSecs - t) < 600)
     glClear(GL.DEPTH_BUFFER_BIT);
 
     % Call our subfunction that does the actual drawing of the shape (see below):
-    drawShape(win, xyz, rgb, ang, theta, rotatev, dotson, normalson);
+    drawShape(mymesh, ang);
     
     % Stereo rendering requested?
     if (stereomode > 0)
@@ -385,7 +260,7 @@ while ((GetSecs - t) < 600)
         glClear(GL.DEPTH_BUFFER_BIT);
         
         % Call subfunction that does the actual drawing of the shape (see below):
-        drawShape(win, xyz, rgb, ang, theta, rotatev, dotson, normalson)
+        drawShape(mymesh, ang);
     end;
     
     % Finish OpenGL rendering into Psychtoolbox - window and check for OpenGL errors.
@@ -398,25 +273,6 @@ while ((GetSecs - t) < 600)
     % Now that all drawing commands are submitted, we can do the other stuff before
     % the Flip:
     
-    % Calculate rotation angle of object for next frame:
-%    theta=mod(theta+0.1, 360);
-%    rotatev=rotatev+0.0001*[ sin((pi/180)*theta) sin((pi/180)*2*theta) sin((pi/180)*theta/5) ];
-%    rotatev=rotatev/sqrt(sum(rotatev.^2));
-    
-    % Compute simple morph weight vector for next frame:
-    w(1)=(sin(framecount / 100 * 3.1415 * 2) + 1)/2;
-    w(2)=1-w(1);
-
-    % Compute morphed shape for next frame, based on new weight vector:
-    %moglmorpher('computeMorph', w, morphnormals);
-
-    if 0
-        % Test morphed geometry readback:
-%        mverts = moglmorpher('getGeometry');
-        scatter3(mverts(1,:), mverts(2,:), mverts(3,:));
-        drawnow;
-    end
-
     % Check for keyboard press:
     [KeyIsDown, endrt, KeyCode] = KbCheck;
     if KeyIsDown
@@ -473,8 +329,10 @@ vbl = Screen('Flip', win);
 % Calculate and display average framerate:
 fps = framecount / (vbl - tstart) %#ok<NOPRT,NASGU>
 
-% Reset %moglmorpher:
-%moglmorpher('reset');
+if ~isempty(mymesh)
+    PsychKinect('DeleteObject', win, mymesh);
+    mymesh = [];
+end
 
 PsychKinect('Stop', kinect);
 PsychKinect('Close', kinect);
@@ -490,7 +348,7 @@ Screen('Preference','SkipSyncTests',1);
 return
 
 % drawShape does the actual drawing:
-function drawShape(win, xyz, rgb, ang, theta, rotatev, dotson, normalson)
+function drawShape(mymesh, ang)
 % GL needs to be defined as "global" in each subfunction that
 % executes OpenGL commands:
 global GL
@@ -500,8 +358,9 @@ global win
 glPushMatrix;
 
 % Setup rotation around axis:
-%glRotated(theta,rotatev(1),rotatev(2),rotatev(3));
+glTranslatef(0,0,-10);
 glRotated(ang,0,1,0);
+glTranslatef(0,0,+10);
 glRotated(180,0,1,0);
 glRotated(180,0,0,1);
 
@@ -509,78 +368,12 @@ glRotated(180,0,0,1);
 a=10;
 glScalef(a,a,a);
 
-glDisable(GL.LIGHTING);
-moglDrawDots3D(win, xyz, 2, rgb); % [,center3D] [,dot_type] [, glslshader]);
-glEnable(GL.LIGHTING);
-
+% Render!
+PsychKinect('RenderObject', win, mymesh);
 
 % Restore modelview matrix:
 glPopMatrix;
 
+% Done, return to main:
 return;
 
-% Render current morphed shape via moglmorpher:
-moglmorpher('render');
-
-% Some extra visualizsation code for normals, mesh and vertices:
-if (dotson == 1 | dotson == 3) %#ok<OR2>
-    % Draw some dot-markers at positions of vertices:
-    % We disable lighting for this purpose:
-    glDisable(GL.LIGHTING);
-    % From all polygons, only their defining vertices are drawn:
-    glPolygonMode(GL.FRONT_AND_BACK, GL.POINT);
-    glColor3f(0,0,1);
-
-    % Ask morpher to rerender the last shape:
-    moglmorpher('render');
-
-    % Reset settings for shape rendering:
-    glPolygonMode(GL.FRONT_AND_BACK, GL.FILL);        
-    glEnable(GL.LIGHTING);
-end;
-
-if (dotson == 2)
-    % Draw connecting lines to visualize the underlying geometry:
-    % We disable lighting for this purpose:
-    glDisable(GL.LIGHTING);
-    % From all polygons, only their connecting outlines are drawn:
-    glColor3f(0,0,1);
-    glPolygonMode(GL.FRONT_AND_BACK, GL.LINE);
-
-    % Ask morpher to rerender the last shape:
-    moglmorpher('render');
-
-    % Reset settings for shape rendering:
-    glPolygonMode(GL.FRONT_AND_BACK, GL.FILL);        
-    glEnable(GL.LIGHTING);
-end;
-
-if (normalson > 0)
-    % Draw surface normal vectors on top of object:
-    glDisable(GL.LIGHTING);
-    % Green is a nice color for this:
-    glColor3f(0,1,0);
-
-    % Ask morpher to render the normal vectors of last shape:
-    moglmorpher('renderNormals', normalson);
-
-    % Reset settings for shape rendering:
-    glEnable(GL.LIGHTING);
-    glColor3f(0,0,1);
- end;
- 
-if (dotson == 3 | dotson == 4) %#ok<OR2>
-   % Compute and retrieve projected screen-space vertex positions:
-   vpos = moglmorpher('getVertexPositions', win);
-   
-   % Plot the projected 2D points into a Matlab figure window:
-   vpos(:,2)=RectHeight(Screen('Rect', win)) - vpos(:,2);
-   plot(vpos(:,1), vpos(:,2), '.');
-   drawnow;
-end;
-
-% Restore modelview matrix:
-glPopMatrix;
-
-% Done, return to main-function:
-return;
