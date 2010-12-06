@@ -276,8 +276,8 @@ def postsinglefiles(files):
                     ""
                     <div class="code_header" style="text-align:right;">
                       <span style="float:left;">Path&nbsp;&nbsp;</span> <span class="counter">Retrieve current version of %s from berliOS: <a href=
-                      "http://svn.berlios.de/svnroot/repos/osxptb/beta/%s">beta</a> | view in <a href=
-                      "http://svn.berlios.de/wsvn/osxptb/beta/%s?view=markup">WebSVN with changelog</a></span>
+                      "http://svn.berlios.de/svnroot/repos/osxptb/beta/%s">beta</a> | view WebSVN <a href=
+                      "http://svn.berlios.de/wsvn/osxptb/trunk/%s?op=log">changelog</a> of trunk branch</span>
                     </div>
                     <div class="code">
                       <code>%s</code>
