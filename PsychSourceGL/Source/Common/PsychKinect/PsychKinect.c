@@ -132,6 +132,26 @@ int freenect_process_events(freenect_context *ctx)
 #include "libfreenect.h"
 #endif
 
+#ifndef FREENECT_BAYER_SIZE
+#define FREENECT_BAYER_SIZE FREENECT_VIDEO_BAYER_SIZE
+#endif
+
+#ifndef FREENECT_RGB_SIZE
+#define FREENECT_RGB_SIZE FREENECT_VIDEO_RGB_SIZE
+#endif
+
+#ifndef FREENECT_FORMAT_BAYER
+#define FREENECT_FORMAT_BAYER FREENECT_VIDEO_BAYER
+#endif
+
+#ifndef FREENECT_FORMAT_RGB
+#define FREENECT_FORMAT_RGB FREENECT_VIDEO_RGB
+#endif
+
+#ifndef FREENECT_FORMAT_11_BIT
+#define FREENECT_FORMAT_11_BIT FREENECT_DEPTH_11BIT
+#endif
+
 // Number of maximum simultaneously open kinect devices:
 #define MAX_PSYCH_KINECT_DEVS 10
 #define MAX_SYNOPSIS_STRINGS 40  
