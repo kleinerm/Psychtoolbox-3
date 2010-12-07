@@ -1,15 +1,7 @@
 function varargout = PsychKinect(varargin)
 % PsychKinect -- Control and access the Microsoft XBOX360-Kinect.
 % 
-%
-% [tex, gltexid, gltextarget] = PsychKinect('CreateImageTexture', windowPtr, kinectPtr [, oldtex]);
-% - Convert current RGB video camera image from Kinect 'kinectPtr'
-% into a PTB texture for window 'windowPtr'. Return PTB texture handle
-% 'tex', and OpenGL texture handle 'gltexid' and texture target 'gltextarget'.
-%
-% Optionally takes PTB texture handle 'oldtex' of a previously created
-% texture and reuses that textures storage for the new data for higher
-% efficiency.
+% DOCUMENTATION: TODO.
 %
 
 % History:
@@ -18,6 +10,8 @@ global GL;
 
 persistent kinect_opmode;
 persistent glsl;
+persistent idxvbo;
+persistent idxbuffersize;
 
 kinect_opmode = 3;
 
@@ -142,6 +136,34 @@ if strcmpi(cmd, 'CreateObject')
 			repeatedscan = 1;
 		end
 
+		if isempty(idxvbo)
+			toponame = [PsychtoolboxConfigDir 'kinect_quadmeshtopology.mat'];
+			if exist(toponame,'file')
+				load(toponame);
+			else
+				tic;
+				fprintf('Building mesh topology. This is a one time effort that can take some seconds. Please standby...\n');
+				% Build static fixed mesh topology for a GL_QUADS style mesh:
+				meshindices = uint32(zeros(4, 639, 479));
+				for yi=1:479
+					for xi=1:639
+						meshindices(1, xi, yi) = (yi-1+0) * 640 + (xi-1+0);
+						meshindices(2, xi, yi) = (yi-1+0) * 640 + (xi-1+1);
+						meshindices(3, xi, yi) = (yi-1+1) * 640 + (xi-1+1);
+						meshindices(4, xi, yi) = (yi-1+1) * 640 + (xi-1+0);
+					end
+				end
+				save(toponame, '-V6', 'meshindices');
+				fprintf('...done. Saved to file to save startup time next time you use me. Took at total of %f seconds.\n\n', toc);
+			end
+
+			idxvbo = glGenBuffers(1);
+			glBindBuffer(GL.ELEMENT_ARRAY_BUFFER, idxvbo);
+			idxbuffersize = 479 * 639 * 4 * 4;
+			glBufferData(GL.ELEMENT_ARRAY_BUFFER, idxbuffersize, meshindices, GL.STATIC_DRAW);
+			glBindBuffer(GL.ELEMENT_ARRAY_BUFFER, 0);
+		end
+
 		% Fetch databuffer with preformatted data for a VBO that
 		% contains interleaved (x,y,vz) 3D vertex positions:
 		if kinect_opmode == 2
@@ -149,8 +171,7 @@ if strcmpi(cmd, 'CreateObject')
 		else
 			% Opmode 3 outsources computation of raw depths from raw sensor data to the
 			% Vertex shader as well, maybe with slightly reduced precision:
-			% TODO: Make repeatedscan work - don't know why it fails here?
-			format = 6; % + repeatedscan;
+			format = 6 + repeatedscan;
 		end
 
 		[vbobuffer, width, height, channels, glformat] = PsychKinect('GetDepthImage', kinect, format, 0);
@@ -179,7 +200,8 @@ if strcmpi(cmd, 'CreateObject')
 
 	% Store handle to kinect:
 	kmesh.kinect = kinect;
-
+	kmesh.idxvbo = idxvbo;
+	kmesh.idxbuffersize = idxbuffersize;
 	varargout{1} = kmesh;
 
 	return;
@@ -242,10 +264,20 @@ if strcmpi(cmd, 'RenderObject')
 	if kmesh.type == 1
 		% Yes. No need for GPU post-processing, just bind & draw:
 
+		glPushAttrib(GL.ALL_ATTRIB_BITS);
+
 		% Activate and bind texture on unit 0:
 		glActiveTexture(GL.TEXTURE0);
 		glEnable(kmesh.gltextarget);
 		glBindTexture(kmesh.gltextarget, kmesh.gltexid);
+
+		% Textures color texel values shall modulate the color computed by lighting model:
+		glTexEnvfv(GL.TEXTURE_ENV,GL.TEXTURE_ENV_MODE,GL.MODULATE);
+		glColor3f(1,1,1);
+
+		% Use alpha blending, so fragment alpha has desired effect:
+		glEnable(GL.BLEND);
+		glBlendFunc(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA);
 
 		% Activate and bind VBO:
 		glEnableClientState(GL.VERTEX_ARRAY);
@@ -259,20 +291,36 @@ if strcmpi(cmd, 'RenderObject')
 			glDrawArrays(GL.POINTS, 0, kmesh.nrVertices);
 		end
 		
+		if drawtype == 1
+			glBindBuffer(GL.ELEMENT_ARRAY_BUFFER, kmesh.idxvbo);
+			glDrawRangeElements(GL.QUADS, 0, 479 * 640 + 639, kmesh.idxbuffersize / 4, GL.UNSIGNED_INT, 0);
+			glBindBuffer(GL.ELEMENT_ARRAY_BUFFER, 0);
+		end
+
 	        glBindBuffer(GL.ARRAY_BUFFER, 0);
 		glDisableClientState(GL.VERTEX_ARRAY);
 		glDisableClientState(GL.TEXTURE_COORD_ARRAY);
 		glBindTexture(kmesh.gltextarget, 0);
 		glDisable(kmesh.gltextarget);
+		glPopAttrib;
 	end
 
 	if kmesh.type == 2 || kmesh.type == 3
 		% Yes. Need for GPU post-processing:
 
 		% Activate and bind texture on unit 0:
+		glPushAttrib(GL.ALL_ATTRIB_BITS);
 		glActiveTexture(GL.TEXTURE0);
 		glEnable(kmesh.gltextarget);
 		glBindTexture(kmesh.gltextarget, kmesh.gltexid);
+
+		% Textures color texel values shall modulate the color computed by lighting model:
+		glTexEnvfv(GL.TEXTURE_ENV,GL.TEXTURE_ENV_MODE,GL.MODULATE);
+		glColor3f(1,1,1);
+
+		% Use alpha blending, so fragment alpha has desired effect:
+		glEnable(GL.BLEND);
+		glBlendFunc(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA);
 
 		% Activate and bind VBO:
 		glEnableClientState(GL.VERTEX_ARRAY);
@@ -288,12 +336,19 @@ if strcmpi(cmd, 'RenderObject')
 		if drawtype == 0
 			glDrawArrays(GL.POINTS, 0, kmesh.nrVertices);
 		end
+
+		if drawtype == 1
+			glBindBuffer(GL.ELEMENT_ARRAY_BUFFER, kmesh.idxvbo);
+			glDrawRangeElements(GL.QUADS, 0, 479 * 640 + 639, kmesh.idxbuffersize / 4, GL.UNSIGNED_INT, 0);
+			glBindBuffer(GL.ELEMENT_ARRAY_BUFFER, 0);
+		end
 		
 		glUseProgram(0);
 	        glBindBuffer(GL.ARRAY_BUFFER, 0);
 		glDisableClientState(GL.VERTEX_ARRAY);
 		glBindTexture(kmesh.gltextarget, 0);
 		glDisable(kmesh.gltextarget);
+		glPopAttrib;
 	end
 
 	return;

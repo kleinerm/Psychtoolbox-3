@@ -1166,6 +1166,12 @@ PsychError PSYCHKINECTGetDepthImage(void)
 		"    and (R,G,B) color values for each vertex. -> [x,y,z,r,g,b] per element.\n"
 		"3 = Return a vertex buffer with (x,y,z) vertices that define a 3D surface mesh.\n"
 		"    and (tx,ty) texture coordinates for vertices -> [x,y,z,tx,ty] per element.\n"
+		"4/5 = Return a vertex buffer with (xi,yi,z) vertices that define sensor pixel\n"
+		"      position (xi,yi) of depths sensor and reconstructed z value. This needs\n"
+		"      to be post-processed in a vertex shader for speedups.\n"
+		"6/7 = Return a vertex buffer with vertex id's uniquely identifying each sensor \n"
+		"      position of depths sensor and raw sensor value at that location. The whole\n"
+		"      3D reconstructin is done on the GPU in a vertex shader for maximum spped.\n"
 		"\n\n";
 
 	static char seeAlsoString[] = "";	
@@ -1402,7 +1408,6 @@ PsychError PSYCHKINECTGetDepthImage(void)
 					for (x=0; x < 640; x++) {
 						// Calc z distance in meters:
 						fmap[i++] = (float) (i / 2);
-						//fmap[i++] = (float) calcz(getz(buffer->depth, x, y));
 						fmap[i++] = (float) *(inbufs++);
 					}
 				}
@@ -1412,7 +1417,6 @@ PsychError PSYCHKINECTGetDepthImage(void)
 					for (x=0; x < 640; x++) {
 						// Calc z distance in meters:
 						i++;
-						//fmap[i++] = (float) calcz(getz(buffer->depth, x, y));
 						fmap[i++] = (float) *(inbufs++);
 					}
 				}
@@ -1439,10 +1443,13 @@ PsychError PSYCHKINECTGetDepthImage(void)
 	PsychCopyOutDoubleArg(3, FALSE, buffer->dheight);	
 	PsychCopyOutDoubleArg(4, FALSE, components);
 	
-	// Data format is GL_DOUBLE = 5130 (float would be GL_FLOAT = 5126):
-	PsychCopyOutDoubleArg(5, FALSE, (components == 1 && format == 6) ? 5126 : 5130);
+	// Data format is GL_DOUBLE = 5130 (float would be GL_FLOAT = 5126, GL_INT = 5124):
+	// Note: GL_INT was also tried, as it is theoretically more efficient to handle on cpu,
+	// but was way slower, as apparently many GPU's have trouble handling it efficiently. Likely
+	// we hit some driver fallback or internal data conversion:
+	PsychCopyOutDoubleArg(5, FALSE, (components == 1 && (format == 6 || format == 7)) ? 5126 : 5130);
 	
-    return(PsychError_none);	
+	return(PsychError_none);	
 }
 
 PsychError PSYCHKINECTSetBaseCalibration(void)

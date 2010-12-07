@@ -36,8 +36,10 @@ void main()
     /* Remap inpos.z via mapping formula kinect -> real world: */
     if (inpos.z < 2047.0) {
        inpos.z = 1.0 / (inpos.z * -0.0030711016 + 3.3309495161);
+       gl_FrontColor = gl_Color;
     } else {
-       inpos.z = 0.0;
+       inpos.z = 100.0;
+       gl_FrontColor = vec4(1.0, 1.0, 1.0, 0.0);
     }
 
     /* Map back to 3D Vertex in depth cams reference frame: */
