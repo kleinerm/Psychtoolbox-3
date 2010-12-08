@@ -140,14 +140,14 @@ kinect = PsychKinect('Open');
 if 0
 	PsychKinect('SetAngle', kinect, -30);
 	WaitSecs('YieldSecs', 0.5);
-	for angle = -20:20
+	for angle = -30:30
 		PsychKinect('SetAngle', kinect, angle);
-		WaitSecs('YieldSecs', 0.050);
-	end
-end
+		WaitSecs('YieldSecs', 0.50);
+    end
 
-% Bring kinect into upright level position:
-PsychKinect('SetAngle', kinect, 0);
+    % Bring kinect into upright level position:
+    PsychKinect('SetAngle', kinect, 0);
+end
 
 % Start kinects capture:
 PsychKinect('Start', kinect);

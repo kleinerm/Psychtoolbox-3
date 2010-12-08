@@ -49,6 +49,12 @@ if onoctave == 0
         dos('copy T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychCV.mexw32 T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\MatlabWindowsFilesR2007a\');
     end
     
+    if what == 8
+        % Build PsychKinectCore.mexw32:
+        mex -g -v -outdir T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\ -output PsychKinectCore.mexw32 -DPTBMODULE_PsychKinectCore -DTARGET_OS_WIN32 -DWIN32 -I..\Cohorts\Kinect-v16-withsource -I"C:\Programme\Microsoft Visual Studio 8\VC\Include" -ICommon\Base -IWindows\Base -ICommon\PsychKinect Windows\Base\*.c Common\Base\*.c Common\PsychKinect\*.c ..\Cohorts\Kinect-v16-withsource\*.cpp kernel32.lib user32.lib winmm.lib libusb.lib 
+        dos('copy T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychKinectCore.mexw32 T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\MatlabWindowsFilesR2007a\');
+    end;
+
     if what == 20
         % Default: Build Screen.mexw32 with GStreamer support:
         % mex -g -v -outdir T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\ -output Screen.mexw32 -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_ARVIDEO -DPTBVIDEOCAPTURE_QT -DTARGET_OS_WIN32 -LD:\OSSBuild\GStreamer\v0.10.6\sdk\lib -ID:\OSSBuild\GStreamer\v0.10.6\sdk\include -ID:\OSSBuild\GStreamer\v0.10.6\sdk\include\gstreamer-0.10 -ID:\OSSBuild\GStreamer\v0.10.6\sdk\include\glib-2.0 -ID:\OSSBuild\GStreamer\v0.10.6\sdk\include\glib-2.0\include -ID:\OSSBuild\GStreamer\v0.10.6\sdk\include\libxml2 -ID:\install\QuickTimeSDK\CIncludes -I"C:\Programme\Microsoft Visual Studio 8\VC\Include" -I"D:\MicrosoftDirectXSDK\Include" -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen -I..\Cohorts\ARToolkit\include Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib qtmlClient.lib ddraw.lib winmm.lib delayimp.lib libARvideo.lib -lgobject-2.0 -lgthread-2.0 -lglib-2.0 -lgstreamer-0.10 -lgstapp-0.10 LINKFLAGS="$LINKFLAGS /DELAYLOAD:libgobject-2.0.dll /DELAYLOAD:libgthread-2.0.dll /DELAYLOAD:libglib-2.0.dll /DELAYLOAD:libgstreamer-0.10.dll /DELAYLOAD:libgstapp-0.10.dll /DELAYLOAD:libARvideo.dll"
@@ -105,7 +111,12 @@ else
 		mexoctave -g -v --output T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\Eyelink.mex -DTARGET_BUILD_WIN32R11 -LD:\SRResearch\EyeLink\libs -ID:\SRResearch\EyeLink\Includes\eyelink -I"C:\Programme\Microsoft Visual Studio 8\VC\Include" -ICommon\Base -ICommon\Eyelink -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\Eyelink\*.c user32.lib gdi32.lib advapi32.lib winmm.lib eyelink_core.lib eyelink_w32_comp.lib eyelink_exptkit20.lib 
         dos('copy T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\Eyelink.mex T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\Octave3WindowsFiles\');
     end
-    
+
+    if what == 8
+        % Build PsychKinectCore.mex:
+        mexoctave -g -v --output T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychKinectCore.mex -DPTBMODULE_PsychKinectCore -I..\Cohorts\Kinect-v16-withsource -ICommon\Base -IWindows\Base -ICommon\PsychKinect Windows\Base\*.c Common\Base\*.c Common\PsychKinect\*.c ..\Cohorts\Kinect-v16-withsource\*.cpp kernel32.lib user32.lib winmm.lib libusb.lib 
+        dos('copy T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychKinectCore.mex T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\Octave3WindowsFiles\');
+    end;
 end
 
 delete('T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Source\Common\Base\PsychScriptingGlue.c');

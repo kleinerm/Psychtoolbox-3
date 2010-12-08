@@ -132,26 +132,6 @@ int freenect_process_events(freenect_context *ctx)
 #include "libfreenect.h"
 #endif
 
-#ifndef FREENECT_BAYER_SIZE
-#define FREENECT_BAYER_SIZE FREENECT_VIDEO_BAYER_SIZE
-#endif
-
-#ifndef FREENECT_RGB_SIZE
-#define FREENECT_RGB_SIZE FREENECT_VIDEO_RGB_SIZE
-#endif
-
-#ifndef FREENECT_FORMAT_BAYER
-#define FREENECT_FORMAT_BAYER FREENECT_VIDEO_BAYER
-#endif
-
-#ifndef FREENECT_FORMAT_RGB
-#define FREENECT_FORMAT_RGB FREENECT_VIDEO_RGB
-#endif
-
-#ifndef FREENECT_FORMAT_11_BIT
-#define FREENECT_FORMAT_11_BIT FREENECT_DEPTH_11BIT
-#endif
-
 // Number of maximum simultaneously open kinect devices:
 #define MAX_PSYCH_KINECT_DEVS 10
 #define MAX_SYNOPSIS_STRINGS 40  
@@ -267,8 +247,6 @@ PsychKNBuffer* PsychGetKNBuffer(PsychKNDevice* kinect, int index)
 
 void PsychDepthCB(freenect_device *dev, freenect_depth *depth, uint32_t timestamp)
 {
-	int i;
-	
 	PsychKNDevice *kinect = (PsychKNDevice*) freenect_get_user(dev);
 	PsychKNBuffer *buffer = PsychGetKNBuffer(kinect, kinect->recposition);
 	if (kinect->paCalls & 0x1) return;
@@ -284,8 +262,6 @@ void PsychDepthCB(freenect_device *dev, freenect_depth *depth, uint32_t timestam
 
 void PsychRGBCB(freenect_device *dev, freenect_pixel *rgb, uint32_t timestamp)
 {
-	int i;
-	
 	PsychKNDevice *kinect = (PsychKNDevice*) freenect_get_user(dev);
 	PsychKNBuffer *buffer = PsychGetKNBuffer(kinect, kinect->recposition);
 	if (kinect->paCalls & 0x2) return;
@@ -482,9 +458,9 @@ void PsychKNInit(void) {
 	
 	// Build depths gamma table:
 	for (i=0; i<2048; i++) {
-		v = i/2048.0;
-		v = powf(v, 3.0f)* 6;
-		t_gamma[i] = v*6*256;
+		v = (float) i/2048.0f;
+		v = powf(v, 3.0f)* 6.0f;
+		t_gamma[i] = (unsigned short) (v*6*256);
 	}
 }
 
@@ -535,7 +511,7 @@ PsychError PSYCHKINECTOpen(void)
 	double depthIntrinsics[5] = { -2.6386489753128833e-01, 9.9966832163729757e-01, -7.6275862143610667e-04, 5.0350940090814270e-03, -1.3053628089976321e+00 };
 	double rgbIntrinsics[5]   = {  2.6451622333009589e-01, -8.3990749424620825e-01, -1.9922302173693159e-03, 1.4371995932897616e-03, 9.1192465078713847e-01 };
 
-	int rc, i, j;
+	int i, j;
 	int deviceIndex = 0;
 	int handle = 0;
 	freenect_device *dev = NULL;
@@ -554,7 +530,7 @@ PsychError PSYCHKINECTOpen(void)
 	
 	// Find a free device slot:
 	for (handle = 0; (handle < MAX_PSYCH_KINECT_DEVS) && kinectdevices[handle].dev; handle++);
-	if (kinectdevices[handle].dev) PsychErrorExitMsg(PsychError_internal, "Maximum number of simultaneously open kinect devices reached.");
+	if ((handle >= MAX_PSYCH_KINECT_DEVS) || kinectdevices[handle].dev) PsychErrorExitMsg(PsychError_internal, "Maximum number of simultaneously open kinect devices reached.");
 	
 	// Get optional kinect device index:
 	PsychCopyInIntegerArg(1, FALSE, &deviceIndex);
@@ -1153,7 +1129,7 @@ PsychError PSYCHKINECTGetImage(void)
 }
 
 // Fetch zinbuf raw disparity value at location (x,y):
-static inline unsigned short getz(unsigned short *zinbuf, int x, int y)
+unsigned short getz(unsigned short *zinbuf, int x, int y)
 {
 	return(zinbuf[y * 640 + x]);
 }
@@ -1161,7 +1137,7 @@ static inline unsigned short getz(unsigned short *zinbuf, int x, int y)
 // Convert raw disparity value into z distance meters):
 // Using Magic formula from www.openkinect.org Wiki,
 // "Imaging parameter" section:
-static inline double calcz(int raw_depth)
+double calcz(int raw_depth)
 {
 	if (raw_depth < 2047) {
 		// Valid measurement - Convert:
@@ -1270,7 +1246,8 @@ PsychError PSYCHKINECTGetDepthImage(void)
 			// Return image data:
 			if (returnTexturePtr) {
 				// Just return a memory pointer to the colorbuffer:
-				PsychCopyOutDoubleArg(1, FALSE, PsychPtrToDouble((void*) zmap));
+                // TODO FIXME: NEEDAUDIT64BIT
+                PsychCopyOutDoubleArg(1, FALSE, (double)((unsigned int)((void*) zmap)));
 			} else {
 				PsychAllocOutDoubleMatArg(1, FALSE, buffer->dheight, buffer->dwidth, 1, &outzmat);
 				memcpy(outzmat, zmap, buffer->dheight * buffer->dwidth * 1 * sizeof(double));
@@ -1291,7 +1268,8 @@ PsychError PSYCHKINECTGetDepthImage(void)
 			// Return image data:
 			if (returnTexturePtr) {
 				// Just return a memory pointer to the colorbuffer:
-				PsychCopyOutDoubleArg(1, FALSE, PsychPtrToDouble((void*) zmap));
+                // TODO FIXME: NEEDAUDIT64BIT
+				PsychCopyOutDoubleArg(1, FALSE, (double)((unsigned int)((void*) zmap)));
 			} else {
 				PsychAllocOutDoubleMatArg(1, FALSE, buffer->dheight, buffer->dwidth, 1, &outzmat);
 				memcpy(outzmat, zmap, buffer->dheight * buffer->dwidth * 1 * sizeof(double));
@@ -1372,7 +1350,8 @@ PsychError PSYCHKINECTGetDepthImage(void)
 
 			if (returnTexturePtr) {
 				// Just return a memory pointer to the colorbuffer:
-				PsychCopyOutDoubleArg(1, FALSE, PsychPtrToDouble((void*) zmap));
+                // TODO FIXME: NEEDAUDIT64BIT
+				PsychCopyOutDoubleArg(1, FALSE, (double)((unsigned int)((void*) zmap)));
 			} else {
 				PsychAllocOutDoubleMatArg(1, FALSE, components , buffer->dheight, buffer->dwidth, &outzmat);
 				memcpy(outzmat, zmap, components * buffer->dheight * buffer->dwidth * sizeof(double));
@@ -1385,8 +1364,8 @@ PsychError PSYCHKINECTGetDepthImage(void)
 			// Return encoded depth image:
 			if (format == 4) {
 				i = 0;
-				for (x=0; x < 640; x++) {
-					for (y=0; y < 480; y++) {
+                for (y=0; y < 480; y++) {
+                    for (x=0; x < 640; x++) {
 						// Calc z distance in meters:
 						zmap[i++] = (double) x;
 						zmap[i++] = (double) y;
@@ -1395,8 +1374,8 @@ PsychError PSYCHKINECTGetDepthImage(void)
 				}
 			} else {
 				i = 2;
-				for (x=0; x < 640; x++) {
-					for (y=0; y < 480; y++) {
+                for (y=0; y < 480; y++) {
+                    for (x=0; x < 640; x++) {
 						// Calc z distance in meters:
 						zmap[i] = calcz(getz(buffer->depth, x, y));
 						i+=3;
@@ -1407,7 +1386,8 @@ PsychError PSYCHKINECTGetDepthImage(void)
 			// Return image data:
 			if (returnTexturePtr) {
 				// Just return a memory pointer to the colorbuffer:
-				PsychCopyOutDoubleArg(1, FALSE, PsychPtrToDouble((void*) zmap));
+                // TODO FIXME: NEEDAUDIT64BIT
+				PsychCopyOutDoubleArg(1, FALSE, (double)((unsigned int)((void*) zmap)));
 			} else {
 				PsychAllocOutDoubleMatArg(1, FALSE, 3, buffer->dheight, buffer->dwidth, &outzmat);
 				memcpy(outzmat, zmap, 3 * buffer->dheight * buffer->dwidth * sizeof(double));
@@ -1424,28 +1404,24 @@ PsychError PSYCHKINECTGetDepthImage(void)
 
 			if (format == 6) {
 				i = 0;
-				for (y=0; y < 480; y++) {
-					for (x=0; x < 640; x++) {
-						// Calc z distance in meters:
-						fmap[i++] = (float) (i / 2);
-						fmap[i++] = (float) *(inbufs++);
-					}
-				}
+                while (i < 640 * 480 * 2) {
+                    fmap[i] = (float) (i / 2);
+                    i++;
+                    fmap[i++] = (float) *(inbufs++);
+                }
 			} else {
 				i = 0;
-				for (y=0; y < 480; y++) {
-					for (x=0; x < 640; x++) {
-						// Calc z distance in meters:
+				while (i < 640 * 480 * 2) {
 						i++;
 						fmap[i++] = (float) *(inbufs++);
-					}
 				}
 			}
 
 			// Return image data:
 			if (returnTexturePtr) {
 				// Just return a memory pointer to the colorbuffer:
-				PsychCopyOutDoubleArg(1, FALSE, PsychPtrToDouble((void*) zmap));
+                // TODO FIXME: NEEDAUDIT64BIT
+				PsychCopyOutDoubleArg(1, FALSE, (double)((unsigned int)((void*) zmap)));
 			} else {
 				PsychAllocOutDoubleMatArg(1, FALSE, 1, buffer->dheight, buffer->dwidth, &outzmat);
 				memcpy(outzmat, zmap, 1 * buffer->dheight * buffer->dwidth * sizeof(double));
@@ -1455,6 +1431,7 @@ PsychError PSYCHKINECTGetDepthImage(void)
 		break;
 
 		default:
+            components = 0;
 			PsychErrorExitMsg(PsychError_user, "Invalid '' parameter provided!");
 	}
 	
