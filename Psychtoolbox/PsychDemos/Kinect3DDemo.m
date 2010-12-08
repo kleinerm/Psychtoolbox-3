@@ -11,9 +11,11 @@ function Kinect3DDemo(stereomode)
 % This is an early prototype.
 %
 % Control keys and their meaning:
+%
 % 'a' == Zoom out by moving object away from viewer.
 % 'z' == Zoom in by moving object close to viewer.
-% Left- and Right cursor keys == Rotate object around axis.
+% Left- and Right cursor keys == Rotate object around vertical axis.
+% Up- and Down cursor keys == Rotate object around horizontal axis.
 % SPACE = Toggle live 3D feed.
 % 'm' = Toggle mesh display vs. point-cloud display.
 % ESCAPE == Quit demo.
@@ -24,6 +26,10 @@ function Kinect3DDemo(stereomode)
 % rendered from two slightly different viewpoints and one of Psychtoolbox's
 % built-in stereo display algorithms is used to present the 3D stimulus. This
 % is very preliminary so it doesn't work that well yet.
+%
+% See help PsychKinect, help PsychKinectCore and help InstallKinect for
+% further info.
+%
 
 % History:
 % 5.12.2010  mk  Written.

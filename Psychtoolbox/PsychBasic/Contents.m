@@ -47,6 +47,7 @@
 %     psychrethrow         - Drop in replacement for Matlabs rethrow().
 %     PsychCV              - Miscellaneous C routines for computer vision and related stuff.
 %     PsychDrawSprites2D   - Fast drawing of many 2D sprite textures.
+%     PsychKinect          - Psychtoolbox driver for the Microsoft XBOX-360 Kinect.
 %     PsychtoolboxDate     - Current version date, e.g. '1 August 1998'
 %     PsychtoolboxVersion  - Current version number, e.g. 2.32
 %     PsychWatchDog        - Watchdog mechanism and error handler for Psychtoolbox.

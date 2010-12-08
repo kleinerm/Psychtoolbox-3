@@ -20,6 +20,12 @@
 %                          are not yet fully mature and polished, so
 %                          use of them may require some extra attention.
 %
+% GStreamer              - Installation instructions for the GStreamer
+%                          media framework on Linux.
+%
+% InstallKinect          - Installation instructions for the Kinect
+%                          drivers.
+%
 % UseTheSource           - How to get access to the Psychtoolbox source code.
 %
 % ProgrammingTips.html   - A very incomplete programming manual.

@@ -1,11 +1,96 @@
 function varargout = PsychKinect(varargin)
 % PsychKinect -- Control and access the Microsoft XBOX360-Kinect.
 %
-% DOCUMENTATION: TODO.
+% This is a high level driver to allow convenient access to the Microsoft
+% XBOX-360 Kinect box. The Kinect is a depth-sensing "3D camera". The
+% Kinect consists of a standard color camera (like any standard USB webcam)
+% to capture a scene at 640x480 pixels resolution in RGB8 color with up to
+% 30 frames per second. In addition it has a depth sensor that measures the
+% distance of each "pixel" from the camera. The Kinect delivers a color
+% image with depth information which can be used to infer the 3D structure
+% of the observed visual scene and to perform a 3D reconstruction of the
+% scene.
+%
+% See KinectDemo and Kinect3DDemo for two demos utilizing PsychKinect to
+% demonstrate this basic functions of the Kinect.
+%
+% PsychKinect internally uses the PsychKinectCore MEX file which actually
+% interfaces with the Kinect.
+%
+% The driver is currently supported on Microsoft Windows under GNU/Octave
+% and Matlab version 7.4 (R2007a) and later. It is also supported on
+% GNU/Linux with Matlab or Octave and on Intel based Macintosh computers
+% under OS/X with Matlab or Octave. However, while Linux and Windows
+% support has been extensively tested, MacOS/X support is completely
+% untested due to technical difficulties and may or may not work at all.
+%
+% To use this driver you need:
+% 1. A Microsoft Kinect (price tag about 150$ at December 2010).
+% 2. A interface cable to connect the Kinect to a standard USB port of a
+%    computer - sold separately or included in standalone Kinects. The
+%    Kinect was meant to connect only to the XBOX via a proprietary
+%    connector, therefore the need for a special cable.
+% 3. The free and open-source libfreenect + libusb libraries and drivers
+%    from the OpenKinect project (Homepage: http://www.openkinect.org )
+%
+% You need to install these libraries separately, otherwise our driver will
+% abort with an "Invalid MEX file" error.
+%
+% Type "help InstallKinect" for installation instructions and licensing
+% terms.
+%
+% This driver is early beta quality. It may contain significant bugs or
+% missing functionality. The underlying freenect libraries are also very
+% young and may contain significant bugs and limitations, so prepare for an
+% exciting but potentially bumpy ride if you want to try it.
+%
+%
+% Subfunctions:
+%
+% Most functions are part of the PsychKinectCore() mex file, so you can get
+% help for them by typing PsychKinectCore FUNCTIONNAME ? as usual, with
+% FUNCTIONNAME being the name of the function you want to get help for.
+%
+%
+% kobject = PsychKinect('CreateObject', window, kinect [, oldkobject]);
+% - Create a new kobject for the specified 'window', using the Kinect box
+% specified by the given 'kinect' handle. Recycle 'oldkobject' so save
+% memory and resources if 'oldkobject' is provided. Otherwise create a new
+% object.
+%
+% Do not use within creen('BeginOpenGL', window); and Screen('EndOpenGL',
+% window); calls, as 2D mode is needed.
+%
+%
+% kobject encodes the 3D geometry of the scene as sensed by the Kinect. It
+% corresponds to the currently selected "3d video frame" from the kinect,
+% as selected by PsychKinect('GrabFrame', kinect);
+% kobject can then by accessed directly (it is a struct variable) or passed
+% to other PsychKinect functions for display and processing.
+%
+% PsychKinect('DeleteObject', window, kobject);
+% - Delete given 'kobject' for given 'window' once you no longer need it.
+% During a work-loop you could also pass 'kobject' to the next
+% PsychKinect('CreateObject', ...); call as 'oldkobject' to recycle it for
+% reasons of computational efficiency.
+%
+% Do not use within creen('BeginOpenGL', window); and Screen('EndOpenGL',
+% window); calls, as 2D mode is needed.
+%
+%
+% PsychKinect('DrawObject', window, kobject [, drawtype=0]);
+% Draw the 3D scene stored in 'kobject' into the 'window' selected. Use the
+% current OpenGL settings for this. 'drawtype' is optional and defines kind
+% of rendering: 0 (the default) draws a colored point-cloud of all sensed
+% 3D points. 1 draws a dense textured 3D surface mesh.
+%
+% This function must be enclosed between Screen('BeginOpenGL', window);
+% and Screen('EndOpenGL', window); calls, as 3D mode is needed.
 %
 
 % History:
 %  5.12.2010  mk   Initial version written.
+
 global GL;
 
 persistent kinect_opmode;

@@ -4,7 +4,10 @@ function KinectDemo
 % This connects to a Microsoft Kinect device on the USB bus, then captures
 % and displays video and depths data delivered by the Kinect.
 %
-% This is an early prototype.
+% Press any key to quit the demo.
+%
+% See help PsychKinect, help PsychKinectCore and help InstallKinect for
+% further info.
 %
 
 % History:

@@ -28,6 +28,12 @@
 %                              Kleiner, so contact him if you have further questions about
 %                              the tools.
 %
+% Kinect-v16-WindowsDrivers.zip Zip file containing the Microsoft Windows
+%                               drivers and installer that are needed to
+%                               use the Microsoft XBOX Kinect under
+%                               Windows. Type "help PsychKinect" for more
+%                               infos.
+%
 % simplepsychtoolboxsetup.sh   Configure OS X priority.  Call from Unix shell, not MATLAB.
 %
 % macid.exe                    Microsoft Windows command line utility for retrieving the MAC

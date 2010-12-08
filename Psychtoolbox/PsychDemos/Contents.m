@@ -61,7 +61,8 @@
 %    IsomerizationsInEyeDemo  - Compute photoreceptor isomerizations for human eye.
 %    KbDemo                  - Demonstrate KbCheck, KbName, KbWait.
 %    KinectDemo              - Capture and display video and depths data from a Kinect box.
-%    LineStippleDemo         - Draw dotted and dashed lines.  
+%    Kinect3DDemo            - Capture data from a Kinect box and view it as a textured 3D point-cloud or mesh.
+%    LineStippleDemo         - Draw dotted and dashed lines.
 %    MandelbrotDemo          - Visualize the Mandelbrot fractal set by use
 %                              of a GLSL procedural texture.
 %    MouseTraceDemo          - Track mouse around screen and draw contour.
