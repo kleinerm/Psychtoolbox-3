@@ -17,8 +17,8 @@ MEXCC=-I${MATLABHOME}/extern/include \
 MEXLD=-L${MATLABHOME}/bin/glnx86 -shared -lmx -lmex -lmat -lstdc++ \
 	${MATLABHOME}/extern/src/mexversion.c
 
-#OGLFLAGS=-lc -lGL -lGLU -lglut
-OGLFLAGS=-lc -lGL -lglut
+OGLFLAGS=-lc -lGL -lGLU -lglut
+#OGLFLAGS=-lc -lGL -lglut
 CC=gcc
 
 
@@ -26,8 +26,7 @@ all:  moglcore.mexglx
 
 moglcore.mexglx:  moglcore.o gl_auto.o gl_manual.o glew.o mogl_rebinder.o
 	$(CC) ${MEXCC} ${MEXLD} ${OGLFLAGS} \
-		-o moglcore.mexglx mogl_rebinder.o moglcore.o gl_auto.o gl_manual.o glew.o \
-		/usr/lib/libGLU.a
+		-o moglcore.mexglx mogl_rebinder.o moglcore.o gl_auto.o gl_manual.o glew.o
 	cp moglcore.mexglx ../core
 
 .c.o:
