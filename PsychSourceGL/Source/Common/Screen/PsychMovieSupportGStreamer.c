@@ -66,6 +66,7 @@ typedef struct {
     int                 nrAudioTracks;
     int                 nrVideoTracks;
     char                movieLocation[FILENAME_MAX];
+	GLuint		cached_texture;
 } PsychMovieRecordType;
 
 static PsychMovieRecordType movieRecordBANK[PSYCH_MAX_MOVIES];
@@ -746,6 +747,13 @@ void PsychGSDeleteMovie(int moviehandle)
     movieRecordBANK[moviehandle].imageBuffer = NULL;
     movieRecordBANK[moviehandle].videosink = NULL;
 
+	// Recycled texture in texture cache?
+    if (movieRecordBANK[moviehandle].cached_texture > 0) {
+		// Yes. Release it.
+		glDeleteTextures(1, &(movieRecordBANK[moviehandle].cached_texture));
+		movieRecordBANK[moviehandle].cached_texture = 0;
+	}
+
     // Decrease counter:
     if (numMovieRecords>0) numMovieRecords--;
         
@@ -986,9 +994,18 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     // Textures are aligned on 4 Byte boundaries because texels are RGBA8:
     out_texture->textureByteAligned = 4;
 
+	// Assign texturehandle of our cached texture, if any, so it gets recycled now:
+	out_texture->textureNumber = movieRecordBANK[moviehandle].cached_texture;
+
     // Let PsychCreateTexture() do the rest of the job of creating, setting up and
     // filling an OpenGL texture with content:
     PsychCreateTexture(out_texture);
+
+	// After PsychCreateTexture() the cached texture object from our cache is used
+	// and no longer available for recycling. We mark the cache as empty:
+	// It will be filled with a new textureid for recycling if a texture gets
+	// deleted in PsychMovieDeleteTexture()....
+	movieRecordBANK[moviehandle].cached_texture = 0;
 
     // Detection of dropped frames: This is a heuristic. We'll see how well it works out...
     // TODO: GstBuffer videoBuffer provides special flags that should allow to do a more
@@ -1049,6 +1066,24 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
  */
 void PsychGSFreeMovieTexture(PsychWindowRecordType *win)
 {
+	// Is this a GStreamer movietexture? If not, just skip this routine.
+	if (win->windowType!=kPsychTexture || win->textureOrientation != 3 || win->texturecache_slot < 0) return;
+
+	// Movie texture: Check if we can move it into our recycler cache
+	// for later reuse...
+	if (movieRecordBANK[win->texturecache_slot].cached_texture == 0) {
+		// Cache free. Put this texture object into it for later reuse:
+		movieRecordBANK[win->texturecache_slot].cached_texture = win->textureNumber;
+
+		// 0-out the textureNumber so our standard cleanup routine (glDeleteTextures) gets
+   	 	// skipped - if we wouldn't do this, our caching scheme would screw up.
+		win->textureNumber = 0;
+	}
+	else {
+		// Cache already occupied. We don't do anything but leave the cleanup work for
+		// this texture to the standard PsychDeleteTexture() routine...
+	}
+	
     return;
 }
 
