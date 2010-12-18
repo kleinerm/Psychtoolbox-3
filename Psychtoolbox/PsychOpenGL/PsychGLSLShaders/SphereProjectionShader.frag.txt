@@ -1,11 +1,13 @@
 /* Shader for application of a spherical projection of textures during drawing.
  *
- * (C)2010 by Mario Kleiner. Licensed to you under GPL v2.
-*/
+ * (C)2010 by Ingmar Schneider and Mario Kleiner. Licensed to you under GPL v2.
+ */
 
 #extension GL_ARB_texture_rectangle : enable
 
 const float           onedivpi = 0.318309886183791;
+const float           roff = 0.53;
+
 uniform int           doFilter;
 uniform sampler2DRect Image;
 uniform vec2          inSize;
@@ -28,11 +30,15 @@ void main()
 
     /* Geometric remapping/warping: Recompute and assign modified components */
     /* of texoutpos, based on texinpos and display geometry:                 */
-    float azimuth = (texoutpos.x * 2.0) - 1.0;
-    azimuth = acos(azimuth) * onedivpi;
-
+    float azimuth = (texoutpos.x * 2.0) - 1.0;     
     float elevation = -1.0 * ((texoutpos.y * 2.0) - 1.0);
-    elevation = acos(elevation) * onedivpi;
+
+    float r = sqrt(pow(abs(azimuth), 2.0) + pow(abs(elevation), 2.0)) / sqrt(2.0);
+    float rnorm = (r + roff) / (1.0 + roff);
+    float rcorr = sign(rnorm) * pow(abs(rnorm), 0.825);
+    
+    azimuth = acos(rcorr * azimuth) * onedivpi;
+    elevation = acos(rcorr * elevation) * onedivpi;
 
     /* Apply some rescaling to a total input image size of inSize, in case */
     /* that not the full size of the input image is used:                  */
