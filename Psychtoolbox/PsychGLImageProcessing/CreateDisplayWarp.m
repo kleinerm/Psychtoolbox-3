@@ -246,6 +246,12 @@ switch(calib.warptype)
         glUniform2f(glGetUniformLocation(warpstruct.glsl, 'inSize'), calib.inSize(1), calib.inSize(2));
         glUniform2f(glGetUniformLocation(warpstruct.glsl, 'inOffset'), calib.inOffset(1), calib.inOffset(2));
         glUniform2f(glGetUniformLocation(warpstruct.glsl, 'outSize'), calib.outSize(1), calib.outSize(2));
+
+        if strcmpi(calib.warptype, 'SphereProjection')
+            % Additional parameters for sphere projection:
+            glUniform1f(glGetUniformLocation(warpstruct.glsl, 'roff'), calib.roff);
+            glUniform1f(glGetUniformLocation(warpstruct.glsl, 'rpow'), calib.rpow);
+        end        
         
         glUseProgram(0);
         

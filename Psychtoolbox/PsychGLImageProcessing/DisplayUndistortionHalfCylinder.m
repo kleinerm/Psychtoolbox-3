@@ -31,6 +31,13 @@ function DisplayUndistortionHalfCylinder(calibfilename, screenid)
 % t      = Change translation of output image.
 % o      = Change size of output image.
 % i      = Change size of input image.
+% a      = Input numeric roff coefficient for sphere curvature correction.
+% b      = Input numeric rpow coefficient for sphere curvature correction.
+%
+% -> Type "edit SphereProjectionShader.frag.txt" and look at the warp
+% shader code for a full understanding of the roff and rpow coefficients
+% for spherical remapping. Also see Psychtoolbox forum message 11660.
+%
 %
 % Arrow keys change the parameter that is selected via 'r', 't', 'o' or 'i'
 % key.
@@ -38,6 +45,8 @@ function DisplayUndistortionHalfCylinder(calibfilename, screenid)
 
 % History:
 % 13.4.2009  mk Written.
+% 19.12.2010 mk Updated with roff, rpow parameter setting for spherical
+%               projections as suggested by Ingmar Schneider.
 
 global GL;
 
@@ -59,6 +68,8 @@ tkey = KbName('t');
 okey = KbName('o');
 ikey = KbName('i');
 skey = KbName('s');
+roffkey = KbName('a');
+rpowkey = KbName('b');
 
 if ~exist('screenid', 'var') || isempty(screenid)
     screenid=max(Screen('Screens'));
@@ -106,6 +117,10 @@ calib.inSize = [];
 calib.inOffset = [];
 calib.outOffset = [];
 calib.outSize = [];
+calib.roff = [];
+calib.rpow = [];
+
+firsttime = 1;
 
 try
     ListenChar(2);
@@ -117,6 +132,7 @@ try
     PsychImaging('PrepareConfiguration');
     PsychImaging('AddTask', 'AllViews', 'GeometryCorrection', calib);
     win =PsychImaging('OpenWindow', screenid, 0);
+    Screen('TextSize', win, 16);
 
     % Alpha blending for nice anti-aliased calibration dot grid:
     Screen('Blendfunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -128,7 +144,12 @@ try
     calib.inOffset = [0, 0];
     calib.outOffset = [0, 0];
     calib.outSize = [winWidth, winHeight];
-
+    
+    % These rof, rpow settings are reasonable defaults, used by Ingmar
+    % Schneider for a tested spherical display setup:
+    calib.roff = 0.53;
+    calib.rpow = 0.825;
+    
     % Query generated warpstruct:
     warpstruct = CreateDisplayWarp('Query');
 
@@ -155,13 +176,12 @@ try
         % Draw calibration grid:
         Screen('DrawLines', win, xylines, 1, [0 255 0], [],1);
         Screen('DrawDots', win, xy, 4, [255 255 0], [], 1);
-
         % Show updated calibration:
         Screen('Flip',win);
 
         % Keypress?
         [down, secs, keyCode] = KbCheck;
-        if down
+        if down || firsttime
             if keyCode(skey)
                 % Save current calibration:
                 warptype = calib.warptype; %#ok<NASGU>
@@ -170,11 +190,13 @@ try
                 inOffset = calib.inOffset; %#ok<NASGU>
                 outOffset = calib.outOffset; %#ok<NASGU>
                 outSize = calib.outSize; %#ok<NASGU>
-
+                roff = calib.roff; %#ok<NASGU>
+                rpow = calib.rpow; %#ok<NASGU>
+                
                 % Save all relevant calibration variables to file 'calibfilename'. This
                 % method should work on both, Matlab 6.x, 7.x, ... and GNU/Octave - create
                 % files that are readable by all runtime environments:
-                save(calibfilename, 'warptype', 'rotationAngle', 'inSize', 'inOffset', 'outOffset', 'outSize', '-mat', '-V6');
+                save(calibfilename, 'warptype', 'rotationAngle', 'inSize', 'inOffset', 'outOffset', 'outSize', 'roff', 'rpow', '-mat', '-V6');
 
                 Beeper;
                 continue;
@@ -195,6 +217,12 @@ try
             end
             if keyCode(ikey)
                 mode = 4;
+            end
+            if keyCode(roffkey)
+                mode = 5;
+            end
+            if keyCode(rpowkey)
+                mode = 6;
             end
 
             dx = 0;
@@ -222,6 +250,24 @@ try
                     calib.outSize = calib.outSize  + [dx, dy];
                 case 4,
                     calib.inSize = calib.inSize  + [dx, dy];
+                case 5,
+                    old = calib.roff;
+                    Screen('HookFunction', win, 'Disable', 'StereoLeftCompositingBlit');
+                    calib.roff = GetEchoNumber(win, sprintf('Enter roff coefficient for sphere proj. [%f]: ', calib.roff), 30, 30, 255, []);
+                    Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
+                    if isempty(calib.roff)
+                        calib.roff = old;
+                    end
+                    mode = -1;
+                case 6,
+                    old = calib.rpow;
+                    Screen('HookFunction', win, 'Disable', 'StereoLeftCompositingBlit');
+                    calib.rpow = GetEchoNumber(win, sprintf('Enter rpow coefficient for sphere proj. [%f]: ', calib.rpow), 30, 30, 255, []);
+                    Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
+                    if isempty(calib.rpow)
+                        calib.rpow = old;
+                    end
+                    mode = -1;
                 otherwise
                     continue
             end
@@ -271,6 +317,11 @@ try
             glUniform2f(glGetUniformLocation(warpstruct.glsl, 'inSize'), calib.inSize(1), calib.inSize(2));
             glUniform2f(glGetUniformLocation(warpstruct.glsl, 'inOffset'), calib.inOffset(1), calib.inOffset(2));
             glUniform2f(glGetUniformLocation(warpstruct.glsl, 'outSize'), calib.outSize(1), calib.outSize(2));
+            if strcmpi(calib.warptype, 'SphereProjection')
+                % Additional parameters for sphere projection:
+                glUniform1f(glGetUniformLocation(warpstruct.glsl, 'roff'), calib.roff);
+                glUniform1f(glGetUniformLocation(warpstruct.glsl, 'rpow'), calib.rpow);
+            end
             glUseProgram(0);
 
             % Play tricks to get rid of visual artifacts:
@@ -280,6 +331,7 @@ try
             Screen('Flip', win);
             Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
 
+            firsttime = 0;
         else
             WaitSecs(0.01);
         end

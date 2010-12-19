@@ -6,13 +6,14 @@
 #extension GL_ARB_texture_rectangle : enable
 
 const float           onedivpi = 0.318309886183791;
-const float           roff = 0.53;
 
 uniform int           doFilter;
 uniform sampler2DRect Image;
 uniform vec2          inSize;
 uniform vec2          inOffset;
 uniform vec2          outSize;
+uniform float         roff;
+uniform float         rpow;
 
 void main()
 {
@@ -35,7 +36,7 @@ void main()
 
     float r = sqrt(pow(abs(azimuth), 2.0) + pow(abs(elevation), 2.0)) / sqrt(2.0);
     float rnorm = (r + roff) / (1.0 + roff);
-    float rcorr = sign(rnorm) * pow(abs(rnorm), 0.825);
+    float rcorr = sign(rnorm) * pow(abs(rnorm), rpow);
     
     azimuth = acos(rcorr * azimuth) * onedivpi;
     elevation = acos(rcorr * elevation) * onedivpi;
