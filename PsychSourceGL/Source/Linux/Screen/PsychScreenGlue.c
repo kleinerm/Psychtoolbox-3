@@ -202,6 +202,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 	fp = fdopen(pipefd[0],"r");
 	if(fp == NULL) {
 		printf("PTB-DEBUG:[In ATI Radeon detection code] fdopen error\n");
+		wait(NULL);
 		return(FALSE);
 	}
 #if 0
@@ -240,6 +241,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 		if(fgets(line,sizeof(line),fp) == NULL) {  /* if end of file */
 			printf("PTB-INFO: No ATI Radeon hardware found in lspci output. Beamposition queries unsupported.\n");
 			fclose(fp);
+			wait(NULL);
 			return(FALSE);
 		}
 		
@@ -253,6 +255,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 		if(fgets(line,sizeof(line),fp) == NULL || line[0] != '\t') {  /* if end of file */
 			printf("PTB-INFO: ATI Radeon control memory not found in lspci output. Beamposition queries unsupported.\n");
 			fclose(fp);
+			wait(NULL);
 			return(FALSE);
 		}
 		
@@ -265,7 +268,8 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 	
 	// Close lspci output and comm-pipe:
 	fclose(fp);
-	
+	wait(NULL);
+
 	// Extract base address from config-line:
 	if(sscanf(line,"%*s%*s%x",&base) == 0) { /* third token as hex number */
 		printf("PTB-INFO: ATI Radeon control memory not found in lspci output [parse error of lspci output]. Beamposition queries unsupported.\n");
@@ -301,6 +305,7 @@ static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];
 static int                      displayX11Screens[kPsychMaxPossibleDisplays];
 // Maps screenid's to Graphics hardware pipelines: Used to choose pipeline for beampos-queries...
 static unsigned char		displayScreensToPipes[kPsychMaxPossibleDisplays];
+static psych_bool               displayCursorHidden[kPsychMaxPossibleDisplays];
 
 // X11 has a different - and much more powerful and flexible - concept of displays than OS-X or Windows:
 // One can have multiple X11 connections to different logical displays. A logical display corresponds
@@ -369,6 +374,7 @@ void InitializePsychDisplayGlue(void)
         displayLockSettingsFlags[i]=FALSE;
         displayOriginalCGSettingsValid[i]=FALSE;
         displayOverlayedCGSettingsValid[i]=FALSE;
+	displayCursorHidden[i]=FALSE;
 	displayScreensToPipes[i]=i;
     }
     
@@ -1042,6 +1048,9 @@ void PsychHideCursor(int screenNumber)
   // Check for valid screenNumber:
   if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychHideCursor() is out of range"); //also checked within SCREENPixelSizes
 
+  // Cursor already hidden on screen? If so, nothing to do:
+  if(displayCursorHidden[screenNumber]) return;
+
   // nullCursor already ready?
   if( nullCursor == (Cursor) -1 ) {
     // Create one:
@@ -1065,17 +1074,26 @@ void PsychHideCursor(int screenNumber)
   // Attach nullCursor to our onscreen window:
   XDefineCursor(displayCGIDs[screenNumber], RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), nullCursor );
   XFlush(displayCGIDs[screenNumber]);
+  displayCursorHidden[screenNumber]=TRUE;
 
   return;
 }
 
 void PsychShowCursor(int screenNumber)
 {
+  Cursor arrowCursor;
+
   // Check for valid screenNumber:
   if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychHideCursor() is out of range"); //also checked within SCREENPixelSizes
-  // Reset to default system cursor, which is a visible one.
-  XUndefineCursor(displayCGIDs[screenNumber], RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)));
+
+  // Cursor not hidden on screen? If so, nothing to do:
+  if(!displayCursorHidden[screenNumber]) return;
+
+  // Reset to standard Arrow-Type cursor, which is a visible one.
+  arrowCursor = XCreateFontCursor(displayCGIDs[screenNumber], 2);
+  XDefineCursor(displayCGIDs[screenNumber], RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), arrowCursor);
   XFlush(displayCGIDs[screenNumber]);
+  displayCursorHidden[screenNumber]=FALSE;
 }
 
 void PsychPositionCursor(int screenNumber, int x, int y)
