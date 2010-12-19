@@ -51,6 +51,9 @@ function varargout = PsychKinect(varargin)
 % help for them by typing PsychKinectCore FUNCTIONNAME ? as usual, with
 % FUNCTIONNAME being the name of the function you want to get help for.
 %
+% PsychKinect('Shutdown');
+% - Release all internal resources of PsychKinect.
+%
 %
 % kobject = PsychKinect('CreateObject', window, kinect [, oldkobject]);
 % - Create a new kobject for the specified 'window', using the Kinect box
@@ -107,6 +110,13 @@ if nargin > 0
 else
     help PsychKinect;
     PsychKinectCore;
+    return;
+end
+
+if strcmpi(cmd, 'Shutdown');
+    glsl = [];
+    idxvbo = [];
+    idxbuffersize = [];
     return;
 end
 

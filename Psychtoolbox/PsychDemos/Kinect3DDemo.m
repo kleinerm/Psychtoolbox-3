@@ -358,6 +358,9 @@ PsychKinect('Stop', kinect);
 % Close device, release it into standby mode:
 PsychKinect('Close', kinect);
 
+% Shutdown high-level driver:
+PsychKinect('Shutdown');
+
 % Close onscreen window and release all other ressources:
 Screen('CloseAll');
 

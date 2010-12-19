@@ -58,7 +58,7 @@ typedef freenect_device* freenect_context;
 typedef void* freenect_usb_context;
 typedef unsigned char freenect_pixel;
 
-typedef void (*freenect_depth_cb)(freenect_device *dev, void *depth, unsigned int timestamp);
+typedef void (*freenect_depth_cb)(freenect_device *dev, freenect_depth *depth, unsigned int timestamp);
 typedef void (*freenect_rgb_cb)(freenect_device *dev, freenect_pixel *rgb, unsigned int timestamp);
 
 static freenect_depth_cb depth_cb;
@@ -130,6 +130,23 @@ int freenect_process_events(freenect_context *ctx)
 #else
 // The real thing: Include headers of libusb and libfreeenect to access the real Kinect:
 #include "libfreenect.h"
+#endif
+
+#if PSYCH_SYSTEM == PSYCH_LINUX
+typedef void freenect_depth;
+typedef void freenect_pixel;
+#define freenect_set_rgb_callback freenect_set_video_callback
+#define freenect_set_rgb_format freenect_set_video_format
+#define freenect_start_rgb freenect_start_video
+#define freenect_stop_rgb freenect_stop_video
+#endif
+
+#ifndef FREENECT_RGB_SIZE
+#define FREENECT_RGB_SIZE FREENECT_VIDEO_RGB_SIZE
+#define FREENECT_BAYER_SIZE FREENECT_VIDEO_BAYER_SIZE
+#define FREENECT_FORMAT_RGB FREENECT_VIDEO_RGB
+#define FREENECT_FORMAT_BAYER FREENECT_VIDEO_BAYER
+#define FREENECT_FORMAT_11_BIT FREENECT_DEPTH_11BIT
 #endif
 
 // Number of maximum simultaneously open kinect devices:
@@ -249,6 +266,8 @@ void PsychDepthCB(freenect_device *dev, freenect_depth *depth, uint32_t timestam
 {
 	PsychKNDevice *kinect = (PsychKNDevice*) freenect_get_user(dev);
 	PsychKNBuffer *buffer = PsychGetKNBuffer(kinect, kinect->recposition);
+
+	if (kinect->state == 0) return;
 	if (kinect->paCalls & 0x1) return;
 	
 	memcpy(buffer->depth, depth, FREENECT_FRAME_W * FREENECT_FRAME_H * 2);
@@ -264,6 +283,8 @@ void PsychRGBCB(freenect_device *dev, freenect_pixel *rgb, uint32_t timestamp)
 {
 	PsychKNDevice *kinect = (PsychKNDevice*) freenect_get_user(dev);
 	PsychKNBuffer *buffer = PsychGetKNBuffer(kinect, kinect->recposition);
+
+	if (kinect->state == 0) return;
 	if (kinect->paCalls & 0x2) return;
 	memcpy(buffer->color, rgb, ((kinect->bayerFilterMode == 1) ? FREENECT_RGB_SIZE : FREENECT_BAYER_SIZE));
 	buffer->cwidth = FREENECT_FRAME_W;
@@ -351,10 +372,14 @@ void* PsychKinectThreadMain(volatile void* deviceToCast)
 		// Repeat processing loop:
 	}
 	
-	// Stop capture:
+	// Stop capture: Unless we're on Linux where the libfreenect ppa
+	// has some bug and calling this would cause a hang in the device
+	// close routine later...
+	#if PSYCH_SYSTEM != PSYCH_LINUX
 	freenect_stop_depth(kinect->dev);
 	freenect_stop_rgb(kinect->dev);
-	
+	#endif
+
 	// Stop of capture:
 	PsychLockMutex(&kinect->mutex);
 	kinect->reqstate = 0;
