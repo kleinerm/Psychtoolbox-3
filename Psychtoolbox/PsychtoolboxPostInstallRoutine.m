@@ -38,6 +38,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 %            and troubleshooting for peculiarities of Octave on Windows. (MK)
 % 05/27/2010 Update instructions for downloading the vcredist_x86.exe
 %            security update for users of MS-Windows. (MK)
+% 12/27/2010 Add check for unsupported Matlab versions prior to V6.5. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -185,6 +186,28 @@ if IsOSX
         fprintf('\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n\n');
         fprintf('Press any key on keyboard to continue with setup...\n');
         pause;
+    end
+end
+
+% Matlab specific setup:
+if ~IsOctave
+    % Check if this is Matlab of version prior to V 6.5:
+    v = ver('matlab');
+    if ~isempty(v)
+        v = v(1).Version; v = sscanf(v, '%i.%i.%i');
+        if (v(1) < 6) | ((v(1) == 6) & (v(2) < 5)) %#ok<AND2,OR2>
+            % Matlab version < 6.5 detected. This is no longer
+            % supported.
+            fprintf('\n\nYou are using a Matlab version older than Version 6.5.\n');
+            fprintf('The current "beta" flavor is no longer compatible with your version of Matlab.\n');
+            fprintf('Current "beta" only works on Matlab Version 6.5 or later.\n\n');
+            fprintf('I will try to finish setup, but most functions will not work for you.\n');
+            fprintf('Please run the DownloadPsychtoolbox downloader now to download an outdated,\n');
+            fprintf('but functional older version of Psychtoolbox for your Matlab setup or to\n');
+            fprintf('receive further instructions.\n');
+            fprintf('\n\nPress any key to continue after you have read and understood above message completely.\n\n');
+            pause;
+        end
     end
 end
 
