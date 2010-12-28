@@ -259,6 +259,9 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % 10/05/09 mk  Strip trailing fileseperator from targetDirectory, as
 %              suggested by Erik Flister to avoid trouble with new svn
 %              clients.
+% 12/27/10 mk  Redirect 'beta' downloads on Matlab versions < 6.5 to the
+%              special "Psychtoolbox-3.0.8-PreMatlab6.5" compatibility
+%              version - The last one to support pre 6.5 Matlab's.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -357,7 +360,7 @@ switch (flavor)
     % 'current' is a synonym for 'beta'.
     case 'beta'
     case 'current'
-        flavor = 'beta';
+        flavor = 'beta';        
     case 'stable'
         fprintf('\n\n\nYou request download of the "stable" flavor of Psychtoolbox.\n');
         fprintf('The "stable" flavor is no longer available, it has been renamed to "unsupported".\n');
@@ -389,6 +392,32 @@ switch (flavor)
         fprintf('We will see. If you get an error, this might be the first thing to check.\n');
         fprintf('Press any key to continue...\n');
         pause;
+end
+
+if strcmp(flavor, 'beta')
+    % Check if this is Matlab of version prior to V 6.5:
+    v = ver('matlab');
+    if ~isempty(v)
+        v = v(1).Version; v = sscanf(v, '%i.%i.%i');
+        if (v(1) < 6) | ((v(1) == 6) & (v(2) < 5)) %#ok<AND2,OR2>
+            % Matlab version < 6.5 detected. This is no longer
+            % supported by current PTB beta. Redirect to the last
+            % functional PTB for such ancient Matlab's:
+            flavor = 'Psychtoolbox-3.0.8-PreMatlab6.5';
+            fprintf('\n\n\nYou request download of the "beta" flavor of Psychtoolbox.\n');
+            fprintf('The "beta" flavor is no longer available for your version of Matlab.\n');
+            fprintf('Current "beta" only works on Matlab Version 6.5 or later.\n');
+            fprintf('I will download "%s" instead, which is the last working\n', flavor);
+            fprintf('version of Psychtoolbox for older Matlab releases. Please consider\n');
+            fprintf('upgrading to a recent Matlab version or switching to GNU/Octave 3.2.x. Both\n');
+            fprintf('should provide better support, performance and a richer feature set.\n\n');
+            fprintf('Running on your ancient Matlab should work, but is not supported\n');
+            fprintf('anymore. If you run into any problems or bugs, you are on your own.\n');
+
+            fprintf('\n\nPress any key to continue installation or abort now via CTRL+C...\n\n\n');
+            pause;
+        end
+    end
 end
 
 fprintf('DownloadPsychtoolbox(''%s'',''%s'')\n',targetdirectory, flavor);
