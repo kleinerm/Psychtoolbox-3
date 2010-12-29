@@ -157,9 +157,15 @@ static psych_bool PsychMoviePipelineSetState(GstElement* theMovie, GstState stat
 	case GST_STATE_CHANGE_SUCCESS:
 		//printf("PTB-DEBUG: Statechange completed with GST_STATE_CHANGE_SUCCESS.\n");
 	break;
+
 	case GST_STATE_CHANGE_ASYNC:
 		printf("PTB-INFO: Statechange in progress with GST_STATE_CHANGE_ASYNC.\n");
 	break;
+
+	case GST_STATE_CHANGE_NO_PREROLL:
+		//printf("PTB-INFO: Statechange completed with GST_STATE_CHANGE_NO_PREROLL.\n");
+	break;
+
 	case GST_STATE_CHANGE_FAILURE:
 		printf("PTB-ERROR: Statechange failed with GST_STATE_CHANGE_FAILURE!\n");
 		return(FALSE);
@@ -477,7 +483,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     
     // Create name-string for moviename: If an URI qualifier is at the beginning,
     // we're fine and just pass the URI as-is. Otherwise we add the file:// URI prefix.
-    if (strstr(moviename, "://")) {
+    if (strstr(moviename, "://") || ((strstr(moviename, "v4l") == moviename) && strstr(moviename, "//"))) {
 	snprintf(movieLocation, sizeof(movieLocation)-1, "%s", moviename);
     } else {
 	snprintf(movieLocation, sizeof(movieLocation)-1, "file:///%s", moviename);
@@ -620,6 +626,11 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // Only allow one queued buffer before dropping:
     gst_app_sink_set_max_buffers(GST_APP_SINK(videosink), 1);
 
+    // Assign harmless initial settings for fps and frame size:
+    rate1 = 0;
+    rate2 = 1;
+    width = height = 0;
+
     // Videotrack available?
     if (movieRecordBANK[slotid].nrVideoTracks > 0) {
 	// Yes: Query size and framerate of movie:
@@ -630,17 +641,20 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 		/* Get some data about the frame */
 		gst_structure_get_int(str,"width",&width);
 		gst_structure_get_int(str,"height",&height);
-		rate1 = 0;
-		rate2 = 1;
 		gst_structure_get_fraction(str, "framerate", &rate1, &rate2);
 	 } else {
 		printf("PTB-DEBUG: No frame info available after preroll.\n");	
 	 }
-    } else {
-	// No: Audio only. Assign harmless settings for fps and frame size:
-	rate1 = 0;
-	rate2 = 1;
-	width = height = 0;
+    }
+
+    if (strstr(moviename, "v4l2:")) {
+	// Special case: The "movie" is actually a video4linux2 live source.
+	// Need to make parameters up for now, so it to work as "movie":
+	rate1 = 30; width = 640; height = 480;
+	movieRecordBANK[slotid].nrVideoTracks = 1;
+
+	// Uglyness at its best ;-)
+	if (strstr(moviename, "320")) { width = 320; height = 240; };
     }
 
     // Release the pad:
@@ -825,6 +839,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 
     // If this is a pure audio "movie" with no video tracks, we always return failed,
     // as those certainly don't have movie frames associated.
+
     if (movieRecordBANK[moviehandle].nrVideoTracks == 0) return((checkForImage) ? -1 : FALSE);
 
     // Get current playback rate:
