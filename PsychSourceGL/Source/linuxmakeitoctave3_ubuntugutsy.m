@@ -2,13 +2,20 @@ function linuxmakeitoctave3_ubuntugutsy(mode)
 % This is the GNU/Linux version of makeit to build the Linux
 % version of PTB's binary plugins for GNU/Octave V3.2.0 and later.
 % This version is adapted to build on the "funky" Laptop under Ubuntu Linux
-% 7.1 Gutsy or any Linux system with similar configuration.
+% 10.10 Maverick or any Linux system with similar configuration.
 %
 % CAUTION: You *MUST* make sure that the MEX files are compiled *without*
 % compiler optimization, ie., with a level of -O0 !!! Otherwise the files
 % will be *miscompiled* !!! At first glance they seem to work, but the will
 % malfunction and mysteriously crash in many ways, almost impossible to debug!!
 %
+% UPDATE: This seems to be no longer true for Octave 3.2.4 built on 10.10.
+%         Our compiler settings are -O2 on this system and so far no bugs
+%         or miscompiles were found during daily use and testing.
+%
+%         However, as -O2 never showed a significant speedup vs. -O0, it
+%         pretty much doesn't matter if we do optimized builds or not.
+
 if nargin < 1
     mode = 0;
 end;
@@ -17,7 +24,7 @@ fprintf('Building plugin type %i ...\n\n', mode);
 
 if mode==0
     % Build Screen.mex:
-    mex -v -g --output ../Projects/Linux/build/Screen.mex -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX -I/usr/X11R6/include -I/usr/include/gstreamer-0.10 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib  Common/Base/*.cc Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -lrt -lGL -lGLU -lX11 -lXext -lgstreamer-0.10 -lgstbase-0.10 -lgstapp-0.10 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 /usr/lib/libXxf86vm.a /usr/lib/libdc1394.a /usr/lib/libraw1394.a /usr/lib/libusb-1.0.a 
+    mex -v -g --output ../Projects/Linux/build/Screen.mex -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX -I/usr/X11R6/include -I/usr/include/gstreamer-0.10 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib  Common/Base/*.cc Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -lrt -lGL -lGLU -lX11 -lXext -lgstreamer-0.10 -lgstbase-0.10 -lgstapp-0.10 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm /usr/lib/libdc1394.a /usr/lib/libraw1394.a /usr/lib/libusb-1.0.a 
     unix('mv /home/kleinerm/projects/OpenGLPsychtoolbox/trunk/PsychSourceGL/Projects/Linux/build/Screen.mex /home/kleinerm/projects/OpenGLPsychtoolbox/trunk/Psychtoolbox/PsychBasic/Octave3LinuxFiles/');
     striplibsfrommexfile([PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles/Screen.mex']);
 end;
