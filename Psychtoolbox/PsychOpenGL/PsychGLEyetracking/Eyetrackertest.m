@@ -26,7 +26,7 @@ global GL;
     key4 = Kbname('4$');
     
     % Assign default name for test-image or test-movie:
-    if nargin < 1 | isempty(moviename)
+    if nargin < 1 || isempty(moviename)
         moviename = [];
     end;
     moviename

@@ -36,10 +36,10 @@ function densities = PhotopigmentSpecificDensity(receptorTypes,species,source)
 % 7/11/03  dhb  Wrote it.
 
 % Fill in defaults
-if (nargin < 2 | isempty(species))
+if (nargin < 2 || isempty(species))
 	species = 'Human';
 end
-if (nargin < 3 | isempty(source))
+if (nargin < 3 || isempty(source))
 	source = 'Rodieck';
 end
 

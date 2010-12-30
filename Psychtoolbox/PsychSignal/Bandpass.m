@@ -10,7 +10,7 @@ function w=Bandpass(n,fLow,fHigh)
 % 1994   dgp       Wrote it
 % 7/3/96 jny & dgp Replaced erroneous formula for freqs by FREQSPACE. 
 
-if nargin<2 | nargin>3
+if nargin<2 || nargin>3
 	error('Usage: w=Bandpass(n,fLow,[fHigh])')
 end
 if nargin<3

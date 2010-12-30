@@ -19,7 +19,7 @@ function ptr = moglmalloc(nrbytes)
 
 % ---protected---
 
-if nargin < 1 | isempty(nrbytes) | nrbytes <1
+if nargin < 1 || isempty(nrbytes) || nrbytes <1
    error('moglmalloc: Invalid or missing nrbytes size value for requested buffer.');
 end;
 

@@ -17,15 +17,15 @@ function outmatrix = moglgetbuffer(ptr, mattype, nrbytes)
 
 % ---protected---
 
-  if nargin < 1 | isempty(ptr)
+  if nargin < 1 || isempty(ptr)
      error('Missing required argument ptr.');
      end;
 
-  if nargin < 2 | isempty(mattype)
+  if nargin < 2 || isempty(mattype)
      error('Missing required argument mattype.');
      end;
 
-  if nargin < 3 | isempty(nrbytes) | nrbytes < 0
+  if nargin < 3 || isempty(nrbytes) || nrbytes < 0
      error('Missing or invalid (negative) argument nrbytes.');
      end;
 

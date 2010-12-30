@@ -14,11 +14,11 @@ function peaks = FindSpectralPeaks(spectrum,S,noiseLevel)
 % 1/6/96		dhb		Wrote it.
 % 5/17/99   dhb   Added  noiseLevel parameter.
 
-if (nargin < 2 | isempty(S))
+if (nargin < 2 || isempty(S))
 	S = [380 5 81];
 end
 wls = MakeItWls(S);
-if (nargin < 3 | isempty(noiseLevel))
+if (nargin < 3 || isempty(noiseLevel))
 	noiseLevel = 0;
 end
 

@@ -44,15 +44,15 @@ function glFeedbackBuffer(  bufsize, buftype, bufferptr )
 % ---allocate---
 % ---protected---
 
-if nargin < 1 | isempty(bufsize) | bufsize <1
+if nargin < 1 || isempty(bufsize) || bufsize <1
 error('Missing or invalid bufsize argument.');
 end;
 
-if nargin < 2 | isempty(buftype)
+if nargin < 2 || isempty(buftype)
 error('Missing buftype argument.');
 end;
 
-if nargin < 3 | isempty(bufferptr)
+if nargin < 3 || isempty(bufferptr)
 error('Missing bufferptr argument.');
 end;
 

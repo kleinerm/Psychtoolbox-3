@@ -18,7 +18,7 @@ function betaEstimate=QuestBetaAnalysis(q,fid)
 % 8/23/99 dgp streamlined the printout
 % 8/24/99 dgp add sd's to printout
 % 10/13/04 dgp added comment explaining 1/beta
-if nargin<1 | nargin>2
+if nargin<1 || nargin>2
 	error('Usage: QuestBetaAnalysis(q,[fid])')
 end
 if nargin<2

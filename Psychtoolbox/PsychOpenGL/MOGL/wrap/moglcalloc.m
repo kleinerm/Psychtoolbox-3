@@ -25,11 +25,11 @@ function ptr = moglcalloc(nelements, nrbytes)
 
 % ---protected---
 
-if nargin < 1 | isempty(nelements) | nelements <1
+if nargin < 1 || isempty(nelements) || nelements <1
    error('moglcalloc: Invalid or missing nelements size value for requested buffer.');
 end;
 
-if nargin < 2 | isempty(nrbytes) | nrbytes <1
+if nargin < 2 || isempty(nrbytes) || nrbytes <1
    error('moglcalloc: Invalid or missing nrbytes size value for requested buffer.');
 end;
 

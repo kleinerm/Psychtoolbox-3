@@ -32,7 +32,7 @@ function weight=ContrastMatch(device,dimWeight,foreColor,backColor)
 % 7/19/98 dgp  Removed obsolete TIMER.
 % 6/30/03 dgp Updated Screen OpenScreen to Screen OpenWindow.
 
-if nargin<2 | nargout>1
+if nargin<2 || nargout>1
 	error('Usage: weight=GratingMatch(device,dimWeight,[foreColor],[backColor])');
 end
 if nargin<4

@@ -10,7 +10,7 @@ global rayvisdisplaylist;
 try
     
     % Assign default name for test-image or test-movie:
-    if nargin < 1 | isempty(imfilename)
+    if nargin < 1 || isempty(imfilename)
         if IsWin
             imfilename='U:/test/eyeroi.jpg';
         end;

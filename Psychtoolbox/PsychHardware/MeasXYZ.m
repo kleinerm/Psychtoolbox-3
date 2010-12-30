@@ -23,7 +23,7 @@ function [XYZ,qual] = MeasXYZ(meterType)
 % 2/26/03   dhb   Change definition of meter type for PR-650 to 1.
 
 % Handle defaults
-if (nargin < 1 | isempty(meterType))
+if (nargin < 1 || isempty(meterType))
     meterType = 1;
 end
 

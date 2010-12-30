@@ -42,10 +42,10 @@ function dimensions = PhotoreceptorDimensions(receptorTypes,whichDimension,speci
 % 12/04/07 dhb  Added dog but with placeholder numbers.
 
 % Fill in defaults
-if (nargin < 3 | isempty(species))
+if (nargin < 3 || isempty(species))
 	species = 'Human';
 end
-if (nargin < 4 | isempty(source))
+if (nargin < 4 || isempty(source))
 	source = 'Rodieck';
 end
 

@@ -24,7 +24,7 @@ function UserResponse = TwoStateQuery(TheQuestion,TheChoices)
 %           1/14/07 mpr   undid previoius fix because button color bug is almost
 %                             fixed
 
-if nargin < 2 | isempty(TheChoices)
+if nargin < 2 || isempty(TheChoices)
 	TheChoices{1} = 'Yes';
 	TheChoices{2} = 'No';
 elseif length(TheChoices) ~= 2 | ~iscell(TheChoices)

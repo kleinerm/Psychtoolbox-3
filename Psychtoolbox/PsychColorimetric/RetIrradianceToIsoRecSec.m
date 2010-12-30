@@ -24,7 +24,7 @@ function [isoPerConeSec,absPerConeSec,photoreceptors] = ...
 %
 % 7/25/03  dhb  Wrote it by pulling in code from elsewhere.
 
-if (nargin < 3 | isempty(photoreceptors))
+if (nargin < 3 || isempty(photoreceptors))
 	photoreceptors = DefaultPhotoreceptors('LivingHumanFovea');
 	photoreceptors = FillInPhotoreceptors(photoreceptors);
 end

@@ -21,10 +21,10 @@ function [irradianceWatts, irradianceS] =...
 % 1/26/04   ly, dhb 		Fix JuddVos path through switch. 
 
 % Fill in default values
-if (nargin < 4 | isempty(photopic))
+if (nargin < 4 || isempty(photopic))
 	photopic = 'Photopic';
 end
-if (nargin < 5 | isempty(species))
+if (nargin < 5 || isempty(species))
 	species = 'Human';
 end
 S = relativeSpectrumS;

@@ -16,7 +16,7 @@ function moglfree(ptr)
 
 % ---protected---
 
-if nargin < 1 | isempty(ptr)
+if nargin < 1 || isempty(ptr)
    error('moglfree: Missing pointer to buffer for release.');
 end;
 

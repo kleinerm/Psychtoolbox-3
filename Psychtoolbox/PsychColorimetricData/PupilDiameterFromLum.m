@@ -61,7 +61,7 @@ function [diam,area,trolands] = PupilDiameterFromLum(lum,source)
 % 12/4/07 dhb  Added dog case, with a place holder number of 8 mm.
 
 % Set default methods
-if (nargin < 2 | isempty(source))
+if (nargin < 2 || isempty(source))
 	source = 'PokornySmith';
 end
 

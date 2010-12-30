@@ -19,10 +19,10 @@ function outImage = BitsPlusPackColorImage(inImage,SPACESCALE,COLORSCALE)
 % 26.2.07   mk      Bugfix for LSB conversion: Added modulo operation.
 % 3/01/07   mk      Bugfix for MSB conversion: Added floor operation.
 
-if (nargin < 2 | isempty(SPACESCALE))
+if (nargin < 2 || isempty(SPACESCALE))
 	SPACESCALE = 1;
 end
-if (nargin < 3 | isempty(COLORSCALE))
+if (nargin < 3 || isempty(COLORSCALE))
 	COLORSCALE = 1;
 end
 

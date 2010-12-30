@@ -17,7 +17,7 @@ function isSame = CompareMonCal(cal1,cal2,IGNOREDATE)
 % 3/10/98  dhb	     Change name to CompareMonCal.
 % 7/3/98   dhb, pbe  Change for cal.describe format.
 
-if (nargin < 3 | isempty(IGNOREDATE))
+if (nargin < 3 || isempty(IGNOREDATE))
 	IGNOREDATE = 0;
 end
 

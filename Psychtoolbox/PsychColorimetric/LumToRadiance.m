@@ -14,7 +14,7 @@ function [radiance, radianceS] =...
 % 7/29/03   dhb  Wrote it.
 
 % Default
-if (nargin < 4 | isempty(photopic))
+if (nargin < 4 || isempty(photopic))
 	photopic = 'Photopic';
 end
 S = [380 1 401];

@@ -18,7 +18,7 @@ else
 end
 % if no default values are supplied open
 % a structure here
-if nargin==0 | (nargin==1 & isempty(el) )
+if nargin==0 || (nargin==1 & isempty(el) )
 	el=initeyelinkdefaults;
 end
 

@@ -20,7 +20,7 @@ function x=RandSample(list,dims)
 % 7/24/04 awi Cosmetic.
 % 12/13/04 dgp & kat Enhanced to support cell arrays.
 
-if nargin<1 | nargin>2 | min(size(list))~=1
+if nargin<1 || nargin>2 || min(size(list))~=1
 	error('Usage: x=RandSample(list,[dims])')
 end
 if nargin==1

@@ -33,7 +33,7 @@ function XYZ = MeasMonXYZ(window,settings,syncMode,whichMeterType)
 
 % Check args and make sure window is passed right.
 usageStr = 'XYZ = MeasMonXYZ(window,settings,[syncMode],[whichMeterType])';
-if (nargin < 2 | nargin > 4 | nargout > 1)
+if (nargin < 2 || nargin > 4 || nargout > 1)
 	error(usageStr);
 end
 if (size(window,1) ~= 1 | size(window,2) ~= 1)
@@ -45,10 +45,10 @@ defaultSync = 0;
 defaultWhichMeterType = 1;
 
 % Check args and set defaults
-if (nargin < 4 | isempty(whichMeterType))
+if (nargin < 4 || isempty(whichMeterType))
 	whichMeterType = defaultWhichMeterType;
 end
-if (nargin < 3 | isempty(syncMode))
+if (nargin < 3 || isempty(syncMode))
 	syncMode = defaultSync;
 end
 

@@ -15,7 +15,7 @@ function directory=CalDataFolder(forceDemo)
 %               "forceDemo" used to be "alt"
 
 % Set forceDemo flag
-if (nargin < 1 | isempty(forceDemo))
+if (nargin < 1 || isempty(forceDemo))
 	forceDemo = 0;
 end
 

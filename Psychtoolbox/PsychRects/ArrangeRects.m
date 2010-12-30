@@ -34,7 +34,7 @@ function cellRects=ArrangeRects(n,objectRect,windowRect,rightToLeft);
 % Dividing them gives us nx=sqrt(n/a).
 % We then alternately find the smallest integers nx and ny with a product of at least than n.
 
-if nargin<3 | nargin>4 
+if nargin<3 || nargin>4 
     error('Usage: cellRects=ArrangeRects(n,objectRect,windowRect,[rightToLeft]);'); 
 end
 if size(objectRect,2)~=4 | size(windowRect,2)~=4

@@ -95,7 +95,7 @@ else
     otherwise
       error('I did not recognize your specified device name.');
   end % switch DeviceName
-end % if ~nargin | isempty(DeviceName)
+end % if ~nargin || isempty(DeviceName)
 
 NumInterfaces = [];
 

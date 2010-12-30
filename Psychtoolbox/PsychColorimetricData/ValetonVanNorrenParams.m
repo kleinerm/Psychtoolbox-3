@@ -32,15 +32,15 @@ function [params] = ValetonVanNorrenParams(logIsoRate,photoreceptors,trolandType
 % 7/18/03  dhb  Started writing it.
 
 % Fill in default
-if (nargin < 2 | isempty(photoreceptors))
+if (nargin < 2 || isempty(photoreceptors))
 	photoreceptors = DefaultPhotoreceptors('LivingHumanFovea');
 	photoreceptors.macularPigmentDensity.source = 'None';	
 	photoreceptors = FillInPhotoreceptors(photoreceptors);
 end
-if (nargin < 3 | isempty(trolandType))
+if (nargin < 3 || isempty(trolandType))
 	trolandType = 'Photopic';
 end
-if (nargin < 4 | isempty(LMRatio))
+if (nargin < 4 || isempty(LMRatio))
 	LMRatio = 2;
 end
 

@@ -15,7 +15,7 @@ function i=Randi(n,dims)
 % 7/24/04     awi  Cosmetic
 % 1/29/05     dgp  Changed default dims from 1 to [1 1].
 
-if nargin<1 | nargin>2 | cumprod(size(n))~=1
+if nargin<1 || nargin>2 || cumprod(size(n))~=1
 	error('Usage: i=Randi(n,[dims])')
 end
 if nargin==1

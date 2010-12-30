@@ -33,7 +33,7 @@ function cal = UpdateAmbient(cal,newP_ambient,ADD)
 % 5/2/02    dhb, kr  Add ADD flag.
 
 % Set default on optional argument.
-if (nargin < 3 | isempty(ADD))
+if (nargin < 3 || isempty(ADD))
 	ADD = 0;
 end
 

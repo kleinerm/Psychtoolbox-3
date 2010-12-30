@@ -21,7 +21,7 @@ function wrappedString=WrapString(string,maxLineLength)
 % 10/2/02 dgp Make it clear that maxLineLength is in characters, not pixels.
 % 09/20/09 mk Improve argument handling as per suggestion of Peter April.
 
-if nargin>2 | nargout>1 %#ok<OR2>
+if nargin>2 || nargout>1 %#ok<OR2>
 	error('Usage: wrappedString=WrapString(string,[maxLineLength])\n');
 end
 

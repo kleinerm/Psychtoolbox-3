@@ -26,7 +26,7 @@ if (size(new_ambient_sensor,1) ~= size(cal.ambient_linear,1) | ...
 end
 
 % Set default on optional argument.
-if (nargin < 3 | isempty(ADD))
+if (nargin < 3 || isempty(ADD))
 	ADD = 0;
 end
 

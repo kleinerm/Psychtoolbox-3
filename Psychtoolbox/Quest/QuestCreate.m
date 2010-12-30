@@ -103,7 +103,7 @@ function q=QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,grain,range)
 % 10/13/04 	dgp  Set q.normalizePdf to 1, to avoid underflow errors that otherwise accur after around 1000 trials.
 % 
 % Copyright (c) 1996-2004 Denis Pelli
-if nargin<6 | nargin>8
+if nargin<6 || nargin>8
 	error('Usage: q=QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,[grain],[range])')
 end
 if nargin<7

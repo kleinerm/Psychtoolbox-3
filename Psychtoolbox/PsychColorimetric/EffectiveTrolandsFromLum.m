@@ -26,7 +26,7 @@ function [trolands] = EffectiveTrolandsFromLum(lum,method)
 % 7/11/03 dhb  More general method naming. 
 
 % Set default methods
-if (nargin < 2 | isempty(method))
+if (nargin < 2 || isempty(method))
 	method = 'PokornySmith1';
 end
 

@@ -23,7 +23,7 @@ function err=DaqPrepareDownload(daq,WhichMode)
 % 1/11/08   mpr   swept through attempting to improve consistency across
 %                   daq functions
 
-if ~nargin | isempty(daq)
+if ~nargin || isempty(daq)
   daq = DaqDeviceIndex;
   switch length(daq)
     case 0,
@@ -34,7 +34,7 @@ if ~nargin | isempty(daq)
   end
 end
 
-if nargin < 2 | isempty(WhichMode)
+if nargin < 2 || isempty(WhichMode)
   WhichMode = 1;
 end
 

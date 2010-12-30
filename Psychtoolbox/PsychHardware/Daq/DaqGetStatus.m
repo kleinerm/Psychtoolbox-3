@@ -14,7 +14,7 @@ function status=DaqGetStatus(daq)
 % 1/11/08   mpr swept through trying to improve consistency across daq
 %                 functions
 
-if ~nargin | isempty(daq)
+if ~nargin || isempty(daq)
   daq = DaqFind;
 end
 

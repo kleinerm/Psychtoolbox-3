@@ -25,7 +25,7 @@ function gray=GrayIndex(w,r)
 %
 % 10/3/99	dgp     Wrote it.
 
-if nargin<1 | nargin>2
+if nargin<1 || nargin>2
 	error('Usage: color=GrayIndex(windowPtrOrScreenNumber,[reflectance])');
 end
 if nargin<2

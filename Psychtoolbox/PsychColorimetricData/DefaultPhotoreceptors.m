@@ -14,7 +14,7 @@ function photoreceptors = DefaultPhotoreceptors(kind)
 % 12/04/07 dhb  Added dog parameters
 
 % Default
-if (nargin < 1 | isempty(kind))
+if (nargin < 1 || isempty(kind))
 	kind = 'LivingHumanFovea';
 end
 

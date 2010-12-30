@@ -34,7 +34,7 @@ if nargin < 1
     stddev = 2.5;
 end;
 
-if nargin < 2 | isempty(width)
+if nargin < 2 || isempty(width)
     width = 11;
 end;
 

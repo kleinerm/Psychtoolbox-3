@@ -17,7 +17,7 @@ function [spec_out] = SplineRaw(wls_in, spec_in, wls_out, extend)
 % 7/26/03  dhb  Add extend argument
 
 % Default value for extend
-if (nargin < 4 | isempty(extend))
+if (nargin < 4 || isempty(extend))
 	extend = 0;
 end
 

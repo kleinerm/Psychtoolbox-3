@@ -36,7 +36,7 @@ lineParams = [inputs ones(size(inputs))]\(nCorrect ./ (nCorrect+nError) );
 slope = lineParams(1);
 
 % Initial parameters
-if (nargin <= 3 | isempty(alpha0))
+if (nargin <= 3 || isempty(alpha0))
 	x0(1) = mean(inputs);
 else 
 	x0(1) = alpha0;

@@ -16,10 +16,10 @@ function [trolands] =...
 %	07/18/03  dhb  Wrote it.
 
 % Fill in default values
-if (nargin < 4 | isempty(photopic))
+if (nargin < 4 || isempty(photopic))
 	photopic = 'Photopic';
 end
-if (nargin < 5 | isempty(species))
+if (nargin < 5 || isempty(species))
 	species = 'Human';
 end
 S = irradianceS;

@@ -13,15 +13,15 @@ function moglputbuffer(inputmatrix, ptr, nrbytes)
 
 % ---protected---
 
-  if nargin < 1 | isempty(inputmatrix)
+  if nargin < 1 || isempty(inputmatrix)
      error('Missing required argument inputmatrix.');
      end;
 
-  if nargin < 2 | isempty(ptr)
+  if nargin < 2 || isempty(ptr)
      error('Missing required argument ptr.');
      end;
 
-  if nargin < 3 | isempty(nrbytes) | nrbytes < 1
+  if nargin < 3 || isempty(nrbytes) || nrbytes < 1
      error('Missing or invalid (smaller than 1) argument nrbytes.');
      end;
 

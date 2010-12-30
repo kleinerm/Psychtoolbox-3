@@ -20,10 +20,10 @@ function lensTransmit = LensTransmittance(S,species,source)
 % 7/26/03 dhb  Extend functions, rather than zero truncate.
 
 % Default
-if (nargin < 2 | isempty(species))
+if (nargin < 2 || isempty(species))
 	species = 'Human';
 end
-if (nargin < 3 | isempty(source))
+if (nargin < 3 || isempty(source))
 	source = 'StockmanSharpe';
 end
 

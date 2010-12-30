@@ -63,7 +63,7 @@ function err = LoadClut(windowPtr,clut,startEntry,bits)
 %                 different implementation in the OpenGL Psychtoolbox.
 
 % Check the arguments
-if nargin<2 | nargin>4
+if nargin<2 || nargin>4
 	error('USAGE: LoadClut(windowPtr,clut,[startEntry],[bits])');
 end
 
@@ -71,7 +71,7 @@ if nargin<4
 	bits=8;
 end
 
-if nargin<3 | isempty(startEntry)
+if nargin<3 || isempty(startEntry)
 	startEntry=0;
 end
 

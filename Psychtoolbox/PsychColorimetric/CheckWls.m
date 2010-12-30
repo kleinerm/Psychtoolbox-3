@@ -22,7 +22,7 @@ function [errorRet] = CheckWls(wls1,wls2,quiet)
 % 1/4/00   mpr  Added quiet flag to suppress display.
 % 4/22/04  dhb  Make quiet the default.
 
-if nargin < 3 | isempty(quiet)
+if nargin < 3 || isempty(quiet)
   quiet = 1;
 end
 

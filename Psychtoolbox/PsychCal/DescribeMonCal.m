@@ -24,10 +24,10 @@ function same = DescribeMonCal(cal,file,whichScreen)
 %                    Comparison of computer name skipped, because it seems to vary with login. 
 
 % Default args
-if (nargin < 2 | isempty(file))
+if (nargin < 2 || isempty(file))
 	file = 1;
 end
-if (nargin < 3 | isempty(whichScreen))
+if (nargin < 3 || isempty(whichScreen))
 	file = 1;
 	whichScreen = [];
 end

@@ -12,7 +12,7 @@ function [isomerizationRate] = IsomerizationsFromAbsorbtions(photonAbsorptionRat
 % 07/25/03 dhb    Take default value from data routine. 
 
 % Set default efficiency.
-if (nargin < 2 | isempty(quantalEfficiency))
+if (nargin < 2 || isempty(quantalEfficiency))
 	quantalEfficiency = PhotopigmentQuantalEfficiency('FovealMCone','Human','Generic')* ...
 		ones(size(photonAbsorptionRate));
 end

@@ -15,7 +15,7 @@ function A=Expand(A,horizontalFactor,verticalFactor)
 % Denis Pelli 5/27/96, 6/14/96, 7/6/96
 % 7/24/02 dgp Support an arbitrary number of dimensions.
 
-if nargin<2 | nargin>3
+if nargin<2 || nargin>3
 	error('Usage: A=Expand(A,horizontalFactor,[verticalFactor])');
 end
 if nargin==2

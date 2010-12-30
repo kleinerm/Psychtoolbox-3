@@ -24,7 +24,7 @@ if isempty(TheDevices)
     TheDevices = PsychHID('Devices');
 end
 
-if ~nargin | isempty(daq)
+if ~nargin || isempty(daq)
   daq=DaqFind;
 end
 
