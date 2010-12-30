@@ -26,7 +26,7 @@ try
     screenDimensions=[RectWidth(screenRect), RectHeight(screenRect)];
     maxTextureSize=min(screenDimensions);
     numTextures=floor(log2(maxTextureSize));
-    textureSizes=2.^([1:numTextures]);
+    textureSizes=2.^([1:numTextures])+1;
     numSamples=10;
     %turn on the debugging switch for 'MakeTexture' to record internal
     %timing.  See the C source to MakeTexture to see at where times are recorded. 
@@ -58,7 +58,7 @@ try
 catch 
     Screen('Preference','DebugMakeTexture', 0);
     Screen('CloseAll');
-    rethrow(lasterr);
+    psychrethrow(psychlasterror);
 end
 
 %Verify that turning off DebugMakeTexture causes values not to accumulate in

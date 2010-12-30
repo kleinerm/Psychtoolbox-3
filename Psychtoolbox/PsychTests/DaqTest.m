@@ -779,10 +779,10 @@ else % Is1608 (DaqAOut tests)
   outTick=0.0005; % s
   duration=0.5; % s
   fprintf('\nDaqAOut: producing %.0f kHz squarewave output voltage for %.1f s.\n',0.5/outTick/1000,duration);
-  until=GetSecs;
+  tuntil=GetSecs;
   for i=1:duration/outTick
-    until=until+outTick;
-    WaitSecs(until-GetSecs);
+    tuntil=tuntil+outTick;
+    WaitSecs(tuntil-GetSecs);
     err=DaqAOut(daq(1),0,mod(i,2)); % D/A 0
     err=DaqAOut(daq(1),1,mod(i,2)); % D/A 1
     if err.n

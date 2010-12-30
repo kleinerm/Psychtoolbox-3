@@ -42,7 +42,7 @@ while (1)
 		end
 		wholeField = [wholeField field];
 		theIndex = theIndex+nextIndex-1;
-		if (nextIndex <= length(readString) & abs(readString(nextIndex)) == 9)
+		if (nextIndex <= length(readString) && abs(readString(nextIndex)) == 9)
 			break;
 		else
 			wholeField = [wholeField ' '];
@@ -66,7 +66,7 @@ for i = 1:nFields
 	newField = [];
 	oldField = theFields{i};
 	for j = 1:length(oldField)
-		if (~isspace(oldField(j)) & oldField(j) ~= '.')
+		if (~isspace(oldField(j)) && oldField(j) ~= '.')
 			newField = [newField oldField(j)];
 		end
 	end
