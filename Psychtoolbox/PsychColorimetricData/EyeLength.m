@@ -38,7 +38,7 @@ if (nargin < 2 || isempty(source))
 end
 
 % Handle case where a number is passed.
-if (~isstr(source))
+if (~ischar(source))
 	eyeLengthMM = source;
 	return;
 end

@@ -30,7 +30,7 @@ function foreWeight=GratingNull(device,message,forePart,blendPeriodPix,foreColor
 %              -Replace Chicago font with Arial because it's available on both Mac and Windows
 
 if sscanf(version,'%f',1)<5
-	if nargin<4 || nargin>8 || nargout>1 || ~isstr(message)
+	if nargin<4 || nargin>8 || nargout>1 || ~ischar(message)
 		error('Usage:	foreWeight=GratingNull(device,message,forePart,blendPeriodPix,[foreColor],[backColor],[viewingDistanceM],[dpi])');
 	end
 else

@@ -1,5 +1,5 @@
-function photoreceptors = FIllInPhotoreceptors(photoreceptors)
-% photoreceptors = FIllInPhotoreceptors(photoreceptors)
+function photoreceptors = FillInPhotoreceptors(photoreceptors)
+% photoreceptors = FillInPhotoreceptors(photoreceptors)
 %
 % Convert all source strings in a photoreceptors structures
 % to numerical values, so that the result is ready to compute

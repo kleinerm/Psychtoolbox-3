@@ -777,44 +777,50 @@ elseif ischar(arg)      % argument is a character, so find the code
             % This is work in progress, but the most important keys should
             % be there.
             fprintf('KbName: WARNING! Remapping of Linux/X11 keycodes to unified keynames not yet complete!!\nRemapping a subset...\n');
-            kk{find(strcmp(kkLinux, 'Up'))} = 'UpArrow';
-            kk{find(strcmp(kkLinux, 'Down'))} = 'DownArrow';
-            kk{find(strcmp(kkLinux, 'Left'))} = 'LeftArrow';
-            kk{find(strcmp(kkLinux, 'Right'))} = 'RightArrow';
-            kk{find(strcmp(kkLinux, 'Shift_R'))} = 'RightShift';
-            kk{find(strcmp(kkLinux, 'Shift_L'))} = 'LeftShift';
-            kk{find(strcmp(kkLinux, 'Prior'))} = 'PageUp';
-            kk{find(strcmp(kkLinux, 'Next'))} = 'PageDown';
-            kk{find(strcmp(kkLinux, 'Delete'))} = 'DELETE';
-            kk{find(strcmp(kkLinux, 'Escape'))} = 'ESCAPE';
-            kk{find(strcmp(kkLinux, 'Caps_Lock'))} = 'CapsLock';
-            kk{find(strcmp(kkLinux, 'Control_R'))} = 'RightControl';
-            kk{find(strcmp(kkLinux, 'Control_L'))} = 'LeftControl';
-            kk{find(strcmp(kkLinux, 'Alt_L'))} = 'LeftAlt';
-            kk{find(strcmp(kkLinux, 'Mode_switch'))} = 'RightAlt';
-            kk{find(strcmp(kkLinux, 'Super_L'))} = 'LeftGUI';
-            kk{find(strcmp(kkLinux, 'Menu'))} = 'Application';
-            kk{find(strcmp(kkLinux, 'Num_Lock'))} = 'NumLock';
-            kk{find(strcmp(kkLinux, 'Tab'))} = 'tab';
-            kk{find(strcmp(kkLinux, 'period'))} = '.>';
-            kk{find(strcmp(kkLinux, 'comma'))} = ',<';
-            try
-                % This one is try-catch protected because it seems to fail
-                % on some systems. On failure, just turn into a no-op.
-                kk{find(strcmp(kkLinux, 'slash'))} = '/?';
-            catch
-                psychlasterror('reset');
+            KEYREMAP_TABLE = {
+             'Up', 'UpArrow';
+             'Down', 'DownArrow';
+             'Left', 'LeftArrow';
+             'Right', 'RightArrow';
+             'Shift_R', 'RightShift';
+             'Shift_L', 'LeftShift';
+             'Prior', 'PageUp';
+             'Next', 'PageDown';
+             'Delete', 'DELETE';
+             'Escape', 'ESCAPE';
+             'Caps_Lock', 'CapsLock';
+             'Control_R', 'RightControl';
+             'Control_L', 'LeftControl';
+             'Alt_L', 'LeftAlt';
+             'Mode_switch', 'RightAlt';
+             'Super_L', 'LeftGUI';
+             'Menu', 'Application';
+             'Num_Lock', 'NumLock';
+             'Tab', 'tab';
+             'period', '.>';
+             'comma', ',<';
+             'slash', '/?';
+             '0', '0)';
+             '1', '1!';
+             '2', '2@';
+             '3', '3#';
+             '4', '4$';
+             '5', '5%';
+             '6', '6^';
+             '7', '7&';
+             '8', '8*';
+             '9', '9(' };
+            for i=1:length(KEYREMAP_TABLE)
+                keycodes_indexes = find(strcmp(kkLinux, KEYREMAP_TABLE{i,1}));
+                for index=keycodes_indexes
+                    %index
+                    %KEYREMAP_TABLE(i,1)
+                    kk{index} = KEYREMAP_TABLE{i,2};
+                end
+                % If length(keycodes_indexes) == 0
+                % ??? psychlasterror('reset');
+                % end
             end
-            kk{find(strcmp(kkLinux, '0'))} = '0)';
-            kk{find(strcmp(kkLinux, '1'))} = '1!';
-            kk{find(strcmp(kkLinux, '2'))} = '2@';
-            kk{find(strcmp(kkLinux, '3'))} = '3#';
-            kk{find(strcmp(kkLinux, '4'))} = '4$';
-            kk{find(strcmp(kkLinux, '5'))} = '5%';
-            kk{find(strcmp(kkLinux, '6'))} = '6^';
-            kk{find(strcmp(kkLinux, '7'))} = '7&';
-            kk{find(strcmp(kkLinux, '8'))} = '8*';
-            kk{find(strcmp(kkLinux, '9'))} = '9(';
         end
         
         if IsOSX

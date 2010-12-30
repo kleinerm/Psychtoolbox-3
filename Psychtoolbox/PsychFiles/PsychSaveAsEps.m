@@ -168,7 +168,7 @@ function SaveAsEps(filename,m,pageRect,resolution)
 if nargin<2
 	error('Usage: SaveAsEps(filename,m,[pageRect,resolution])');
 end
-if ~isstr(filename)
+if ~ischar(filename)
 	error('Usage: SaveAsEps(filename,m,[pageRect,resolution])');
 end
 m=round(double(m));
