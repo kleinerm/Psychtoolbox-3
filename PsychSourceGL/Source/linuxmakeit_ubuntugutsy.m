@@ -8,7 +8,7 @@ end;
 
 if mode==0
     % Build Screen.mexglx:
-    mex CFLAGS='$CFLAGS -std=gnu99 -fexceptions' -v -outdir ../Projects/Linux/build/ -output Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -I/usr/X11R6/include -I/usr/include/gstreamer-0.10 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib Common/Base/*.cc Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -lrt -ldl -lGL -lGLU -lX11 -lXext -lgstreamer-0.10 -lgstbase-0.10 -lgstapp-0.10 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm /usr/lib/libdc1394.a /usr/lib/libraw1394.a /usr/lib/libusb-1.0.a 
+    mex CFLAGS='$CFLAGS -std=gnu99 -fexceptions' -v -outdir ../Projects/Linux/build/ -output Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -I/usr/X11R6/include -I/usr/include/gstreamer-0.10 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib Common/Base/*.cc Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -lrt -ldl -lGL -lGLU -lX11 -lXext -lgstreamer-0.10 -lgstbase-0.10 -lgstapp-0.10 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lraw1394 -lusb-1.0
     unix('cp /home/kleinerm/projects/OpenGLPsychtoolbox/trunk/PsychSourceGL/Projects/Linux/build/Screen.mexglx /home/kleinerm/projects/OpenGLPsychtoolbox/trunk/Psychtoolbox/PsychBasic/');
 end;
 
