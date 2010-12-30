@@ -22,7 +22,7 @@ T_SS = PhotopigmentNomogram(S,lambdaMax,'StockmanSharpe');
 
 % Plot all nomograms in absorbance and absorbtance
 for i = 1:nSpectra
-	warning off
+	warning('off');
 	figure(i); clf; set(gcf,'Position',[100 400 700 300]);
 	subplot(1,2,1); hold on
 	set(plot(SToWls(S),T_Baylor(i,:),'g'),'LineWidth',2);
@@ -44,7 +44,7 @@ for i = 1:nSpectra
 	set(xlabel('Wavelength (nm)'),'FontSize',12);
 	set(ylabel('Log Absorbance'),'FontSize',12);
 	axis([300 800 -4 0]);
-	warning on
+	% Donot do this here: warning('on');
 end
 
 % Now see if we can reconstruct StockmanSharpe fundamentals from
@@ -120,7 +120,7 @@ set(title('Linear'),'FontSize',14);
 set(xlabel('Wavelength (nm)'),'FontSize',12);
 set(ylabel('Absorbance'),'FontSize',12);
 figure; clf; hold on
-warning off
+% Nope: warning('off');
 set(plot(SToWls(S),log10(T_quantal(1,:)),'r'),'LineWidth',2);
 set(plot(SToWls(S),log10(T_pieces(1,:)),'k'),'LineWidth',1);
 set(plot(SToWls(S),log10(T_quantal(2,:)),'g'),'LineWidth',2);
@@ -131,7 +131,7 @@ axis([300 800 -4 0]);
 set(title('Log'),'FontSize',14);
 set(xlabel('Wavelength (nm)'),'FontSize',12);
 set(ylabel('Absorbance'),'FontSize',12);
-warning on
+warning('on');
 
 return
 
@@ -158,7 +158,7 @@ set(title('Linear'),'FontSize',14);
 set(xlabel('Wavelength (nm)'),'FontSize',12);
 set(ylabel('Absorbance'),'FontSize',12);
 figure; clf; hold on
-warning off
+warning('off');
 set(plot(SToWls(S),log10(T_quantal(1,:)),'r'),'LineWidth',2);
 set(plot(SToWls(S),log10(T_fit(1,:)),'k'),'LineWidth',1);
 set(plot(SToWls(S),log10(T_quantal(2,:)),'g'),'LineWidth',2);
@@ -169,4 +169,4 @@ axis([300 800 -4 0]);
 set(title('Log'),'FontSize',14);
 set(xlabel('Wavelength (nm)'),'FontSize',12);
 set(ylabel('Absorbance'),'FontSize',12);
-warning on
+warning('on');
