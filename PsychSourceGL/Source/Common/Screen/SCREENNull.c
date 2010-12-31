@@ -108,12 +108,64 @@ PsychError SCREENNull(void)
 	int vbl_start, vbl_end, vbl, htotal, vtotal, dotclock;
 	psych_int64 linedur_ns, pixeldur_ns;
 	psych_bool invbl = TRUE;
-	int scanline, scanpixel;
+	int scanline, scanpixel, vblcount;
+	unsigned int cardId;
 	
 	psych_uint32 crtco = (crtcid > 0) ? RADEON_D2CRTC_OFFSET : 0;
 	struct timeval raw_time;
 	struct timeval delta_time;	
 	struct timeval vblank_time;
+
+	// NVidia GPU? Check OpenGL vendor string and for recognized gpu-id:
+	if ((strstr(glGetString(GL_VENDOR), "NVIDIA")) && (PsychGetNVidiaGPUType(NULL) > 0)) {
+		// Yes. Test beampos queries and vblank counter:
+		if ((cardId = PsychGetNVidiaGPUType(NULL)) >= 0x50) {
+			// NV50 or later, aka GeForce-8000 or later: Same registers for
+			// everything shipping from NV50 up to at least NVC0 "Fermi":
+			
+			// Offset between crtc's is 0x800:
+			crtco = (crtcid > 0) ? 0x800 : 0;
+			
+			// Lower 16 bits are horizontal scanout position:
+			scanpixel  = PsychOSKDReadRegister(crtcid, 0x616344 + crtco, NULL) & 0xFFFF;
+
+			// Lower 16 bits are vertical scanout position (scanline), upper 16 bits are vblank counter:
+			vblcount = PsychOSKDReadRegister(crtcid, 0x616340 + crtco, NULL);
+			scanline = vblcount & 0xFFFF;
+
+			vblcount = (vblcount >> 16) & 0xFFFF;
+		}
+		else {
+			// NV40 or earlier, aka GeForce-7000 or earlier: Same registers down to
+			// earliest NVidia cards NV04 aka RivaTNT-1:
+
+			// Offset between crtc's is 0x2000:
+			crtco = (crtcid > 0) ? 0x2000 : 0;
+
+			// Lower 12 bits are vertical scanout position, bit 16 is known to
+			// indicate "in vblank" status:
+			vblcount = PsychOSKDReadRegister(crtcid, 0x600808 + crtco, NULL);
+			scanline = vblcount & 0xFFF;
+
+			// Bit 4 after right-shift should indicate "in vblank", other bits
+			// are unknown yet:
+			vblcount = vblcount >> 12;
+
+			// No support for readout of horizontal scanout position so far:
+			scanpixel = 0;
+		}
+
+		if (verbose > 1) printf("NV-%x : CRTC %i : scanout x,y = %i , %i   -- vblCount %i\n", cardId, crtcid, scanpixel, scanline, vblcount);
+
+		PsychCopyOutDoubleArg(1, FALSE, (double) scanpixel);
+		PsychCopyOutDoubleArg(2, FALSE, (double) scanline);
+		PsychCopyOutDoubleArg(3, FALSE, (double) vblcount);
+	
+		// Done with NVidia GPU test:
+		return(PsychError_none);
+	}
+
+	// Must be a non-NVidia, hopefully an ATI/AMD piece, otherwise we die:
 
 	// Get basis parameters:
 	vbl = PsychOSKDReadRegister(crtcid, AVIVO_D1CRTC_V_BLANK_START_END + crtco, NULL);

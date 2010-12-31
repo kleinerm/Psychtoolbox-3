@@ -165,4 +165,10 @@
 #define RADEON_LVTMA_BIT_DEPTH_CONTROL	0x7A94
 #define RADEON_TMDSA_BIT_DEPTH_CONTROL	0x7894
 
+// NVIDIA REGISTERS:
+// -----------------
+
+// Card/Core id, e.g., NV20,30,40,... encoded in some bits:
+#define NV03_PMC_BOOT_0		0x00000000
+
 #endif // include once.

@@ -408,3 +408,67 @@ psych_bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* window
 	return(FALSE);
 #endif
 }
+
+/* PsychGetNVidiaGPUType()
+ *
+ * Decodes hw register of NVidia GPU into GPU core id / chip family:
+ * Returns 0 for unknown card, otherwise xx for NV_xx:
+ */
+unsigned int PsychGetNVidiaGPUType(PsychWindowRecordType* windowRecord)
+{
+#if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
+	psych_uint32 chipset, card_type;
+
+	// Get hardware id code from gpu register:
+	psych_uint32 reg0 = PsychOSKDReadRegister(0, NV03_PMC_BOOT_0, NULL);
+	
+	/* We're dealing with >=NV10 */
+	if ((reg0 & 0x0f000000) > 0) {
+		/* Bit 27-20 contain the architecture in hex */
+		chipset = (reg0 & 0xff00000) >> 20;
+		/* NV04 or NV05 */
+	} else if ((reg0 & 0xff00fff0) == 0x20004000) {
+		if (reg0 & 0x00f00000)
+			chipset = 0x05;
+		else
+			chipset = 0x04;
+	} else
+		chipset = 0xff;
+	
+	switch (chipset & 0xf0) {
+		case 0x00:
+			// NV_04/05: RivaTNT , RivaTNT2
+			card_type = 0x04;
+			break;
+		case 0x10:
+		case 0x20:
+		case 0x30:
+			// NV30 or earlier: GeForce-5 / GeForceFX and earlier:
+			card_type = chipset & 0xf0;
+			break;
+		case 0x40:
+		case 0x60:
+			// NV40: GeForce6/7 series:
+			card_type = 0x40;
+			break;
+		case 0x50:
+		case 0x80:
+		case 0x90:
+		case 0xa0:
+			// NV50: GeForce8/9/Gxxx
+			card_type = 0x50;
+			break;
+		case 0xc0:
+			// Curie: GTX-400 and later:
+			card_type = 0xc0;
+			break;
+		default:
+			printf("PTB-DEBUG: Unknown NVidia chipset 0x%08x \n", reg0);
+			card_type = 0x00;
+	}
+	
+	return(card_type);
+#else
+	return(0);
+#endif
+}

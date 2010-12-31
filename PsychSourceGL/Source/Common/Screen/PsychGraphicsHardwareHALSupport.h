@@ -61,6 +61,7 @@ void		PsychStoreGPUSurfaceAddresses(PsychWindowRecordType* windowRecord);
 
 // Wait until a bufferswap is complete or bufferswap at next retrace is certain:
 psych_bool		PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* windowRecord, double* timestamp, int *beamposition);
+unsigned int	PsychGetNVidiaGPUType(PsychWindowRecordType* windowRecord);
 
 // End of routines.
 
