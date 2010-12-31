@@ -126,15 +126,17 @@ PsychError SCREENNull(void)
 			// Offset between crtc's is 0x800:
 			crtco = (crtcid > 0) ? 0x800 : 0;
 			
-			// Lower 16 bits are horizontal scanout position:
-			scanpixel  = PsychOSKDReadRegister(crtcid, 0x616344 + crtco, NULL) & 0xFFFF;
+			// Lower 16 bits are horizontal scanout position, upper 16 bits are always zero:
+			scanpixel = EndianU32_LtoN(PsychOSKDReadRegister(crtcid, 0x616344 + crtco, NULL)) & 0xFFFF;
 
 			// Lower 16 bits are vertical scanout position (scanline), upper 16 bits are vblank counter:
-			vblcount = PsychOSKDReadRegister(crtcid, 0x616340 + crtco, NULL);
+			vblcount = EndianU32_LtoN(PsychOSKDReadRegister(crtcid, 0x616340 + crtco, NULL));
 			scanline = vblcount & 0xFFFF;
 
 			vblcount = (vblcount >> 16) & 0xFFFF;
-		}
+
+			if (verbose > 1 || verbose < 0) printf("%i\n", EndianU32_LtoN(PsychOSKDReadRegister(crtcid, 0x616340 + crtco + 4 * verbose, NULL)));		
+                }
 		else {
 			// NV40 or earlier, aka GeForce-7000 or earlier: Same registers down to
 			// earliest NVidia cards NV04 aka RivaTNT-1:
@@ -143,19 +145,19 @@ PsychError SCREENNull(void)
 			crtco = (crtcid > 0) ? 0x2000 : 0;
 
 			// Lower 12 bits are vertical scanout position, bit 16 is known to
-			// indicate "in vblank" status:
-			vblcount = PsychOSKDReadRegister(crtcid, 0x600808 + crtco, NULL);
+			// indicate "in vblank" status. All other bits are always zero:
+			vblcount = EndianU32_LtoN(PsychOSKDReadRegister(crtcid, 0x600808 + crtco, NULL));
 			scanline = vblcount & 0xFFF;
 
 			// Bit 4 after right-shift should indicate "in vblank", other bits
-			// are unknown yet:
+			// are always zero:
 			vblcount = vblcount >> 12;
 
 			// No support for readout of horizontal scanout position so far:
 			scanpixel = 0;
-		}
+                }
 
-		if (verbose > 1) printf("NV-%x : CRTC %i : scanout x,y = %i , %i   -- vblCount %i\n", cardId, crtcid, scanpixel, scanline, vblcount);
+		if (verbose == 1) printf("NV-%x : CRTC %i : scanout x,y = %i , %i   -- vblCount %i\n", cardId, crtcid, scanpixel, scanline, vblcount);
 
 		PsychCopyOutDoubleArg(1, FALSE, (double) scanpixel);
 		PsychCopyOutDoubleArg(2, FALSE, (double) scanline);

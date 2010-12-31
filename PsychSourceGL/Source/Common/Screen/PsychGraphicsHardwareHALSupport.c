@@ -420,7 +420,7 @@ unsigned int PsychGetNVidiaGPUType(PsychWindowRecordType* windowRecord)
 	psych_uint32 chipset, card_type;
 
 	// Get hardware id code from gpu register:
-	psych_uint32 reg0 = PsychOSKDReadRegister(0, NV03_PMC_BOOT_0, NULL);
+	psych_uint32 reg0 = EndianU32_LtoN(PsychOSKDReadRegister(0, NV03_PMC_BOOT_0, NULL));
 	
 	/* We're dealing with >=NV10 */
 	if ((reg0 & 0x0f000000) > 0) {
