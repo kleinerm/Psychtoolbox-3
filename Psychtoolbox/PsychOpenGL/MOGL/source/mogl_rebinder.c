@@ -74,6 +74,19 @@ void mogl_rebindARBExtensionsToCore(void)
     if (NULL == glValidateProgram) glValidateProgram = glValidateProgramARB;
     if (NULL == glIsProgram) glIsProgram = glIsProgramARB;
     
+    // ARB_vertex_buffer_object:
+    if (NULL == glGenBuffers) glGenBuffers = glGenBuffersARB;
+    if (NULL == glDeleteBuffers) glDeleteBuffers = glDeleteBuffersARB;
+    if (NULL == glBindBuffer) glBindBuffer = glBindBufferARB;
+    if (NULL == glBufferData) glBufferData = glBufferDataARB;
+    if (NULL == glBufferSubData) glBufferSubData = glBufferSubDataARB;
+    if (NULL == glGetBufferSubData) glGetBufferSubData = glGetBufferSubDataARB;
+    if (NULL == glIsBuffer) glIsBuffer = glIsBufferARB;
+    if (NULL == glMapBuffer) glMapBuffer = glMapBufferARB;
+    if (NULL == glUnmapBuffer) glUnmapBuffer = glUnmapBufferARB;
+    if (NULL == glGetBufferPointerv) glGetBufferPointerv = glGetBufferPointervARB;
+    if (NULL == glGetBufferParameteriv) glGetBufferParameteriv = glGetBufferParameterivARB;
+
     // Misc other stuff to remap...
     if (NULL == glDrawRangeElements) glDrawRangeElements = glDrawRangeElementsEXT;
 
