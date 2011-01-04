@@ -5,12 +5,14 @@ function cyl = SensorToCyl(sensor)
 %
 % This is designed for use with the CIE Lxx color
 % spaces, so it's assumed that the first input
-% coordinate is luminance and this is take directly
+% coordinate is luminance and this is taken directly
 % as height.  The next two input coordiantes are
 % assumed to be chromaticity coords.
 %
 % The returned cylindrical system is luminance, radius, angle,
 % with radius and angle computed in the passed chromaticity plane.
+%
+% Note that angle is returned in radians.
 %
 % We use the conventions of the CIE Lxx color spaces
 % for angle.
@@ -21,6 +23,7 @@ function cyl = SensorToCyl(sensor)
 % 2/20/94   jms   Added single argument case to avoid cData.
 % 4/5/02    dhb, ly  New calling interface.
 % 11/06/06  dhb   No longer allow two passed args.
+% 1/3/10    dhb   Elaborated comments a little.
 
 cyl = sensor;
 cyl(1,:) = sensor(1,:);
