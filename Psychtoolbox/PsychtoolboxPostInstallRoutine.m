@@ -530,6 +530,9 @@ try
         fprintf('  A simple way to get GStreamer at least on Ubuntu Linux is to install the "rhythmbox" or\n');
         fprintf('  "totem" multimedia-players. You may need to install additional packages to play back all\n');
         fprintf('  common audio- and video file formats. See "help GStreamer".\n');
+        fprintf('* libusb-1.0 USB low-level access library.\n');
+        fprintf('* libdc1394 Firewire video capture library.\n');
+        fprintf('* libraw1394 Firewire low-level access library.\n');
         fprintf('\n\n');
         fprintf('For PsychKinect() (See "help InstallKinect"):\n\n');
         fprintf('* libusb-1.0 USB low-level access library.\n');

@@ -41,7 +41,7 @@
 % window and type this sequence of commands, providing your administrator
 % password as requested.
 %
-%    a) sudo apt-add-repository ppa:arne-alamut/freenect
+%    a) sudo add-apt-repository ppa:arne-alamut/freenect
 %    b) sudo apt-get update
 %    c) sudo apt-get install libfreenect
 %    d) sudo adduser YOURNAME video (YOURNAME) is your user name!
