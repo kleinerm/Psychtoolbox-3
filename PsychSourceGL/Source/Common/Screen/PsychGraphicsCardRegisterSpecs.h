@@ -169,8 +169,8 @@
 #define EVERGREEN_CRTC_STATUS_POSITION 0x6e90
 #define EVERGREEN_CRTC_V_BLANK_START_END 0x6e34
 
-// EVERGREEN_CRTC_V_TOTAL is a guess - it is not documented in current kms driver:
-#define EVERGREEN_CRTC_V_TOTAL 0x6e30
+// EVERGREEN_CRTC_V_TOTAL:
+#define EVERGREEN_CRTC_V_TOTAL 0x6e1c
 
 // NVIDIA REGISTERS:
 // -----------------

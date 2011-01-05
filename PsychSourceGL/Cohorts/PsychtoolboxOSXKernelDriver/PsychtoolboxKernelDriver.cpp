@@ -385,7 +385,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 				fCardType = 0x00;
 		}
 		
-		if (fCardType > 0x00) IOLog("%s: NV-0x%02x GPU detected.\n", getName(), fCardType);
+		if (fCardType > 0x00) IOLog("%s: NV-%02x GPU detected.\n", getName(), fCardType);
 	}
 
 	// The following code chunk if enabled, will detaching the Radeon driver IRQ handler and
