@@ -6,8 +6,12 @@
 					for visual psychophysics applications. It is orthogonal to the systems driver in that
 					it doesn't change that drivers functionality, nor does it interact with that driver.
 					
-					The driver currently only works on AMD/ATI Radeon graphics cards of the X1000, HD2000
-					and HD3000 series. It may work on older ATI cards, but that is not tested or supported.
+					The driver currently works on AMD/ATI Radeon graphics cards of the X1000, HD2000,
+					HD3000 and HD4000 series. It may work on older ATI cards, but that is not tested or supported.
+					It should theoretically work at least for some functions on HD5000, but that is not tested.
+					
+					The driver also supports rasterposition queries on the majority of NVidia GPU's, but no
+					other functions.
 					
 					The driver is experimental in nature, with some small but non-zero chance of causing
 					malfunctions or crashes of your system, so USE AT YOUR OWN RISK AND WITH CAUTION!
@@ -27,7 +31,42 @@
 					All other features can be accessed by the stand-alone UNIX command line tool
 					"PsychtoolboxKernelDriverUserClientTool", to be found in the PsychAlpha subfolder.
 
-	Copyright:		Copyright © 2008 Mario Kleiner, derived from an Apple example code.
+	Copyright:		Copyright © 2008-2011 Mario Kleiner, derived from an Apple example code.
+
+	This driver contains a few lines of code for radeon DCE-4 which are derived from the free software radeon kms
+	driver for Linux (radeon_display.c, radeon_regs.h). The Radeon kms driver has the following license:
+
+	 * Copyright 2007-8 Advanced Micro Devices, Inc.
+	 * Copyright 2008 Red Hat Inc.
+	 *
+	 * Permission is hereby granted, free of charge, to any person obtaining a
+	 * copy of this software and associated documentation files (the "Software"),
+	 * to deal in the Software without restriction, including without limitation
+	 * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+	 * and/or sell copies of the Software, and to permit persons to whom the
+	 * Software is furnished to do so, subject to the following conditions:
+	 *
+	 * The above copyright notice and this permission notice shall be included in
+	 * all copies or substantial portions of the Software.
+	 *
+	 * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	 * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	 * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+	 * THE COPYRIGHT HOLDER(S) OR AUTHOR(S) BE LIABLE FOR ANY CLAIM, DAMAGES OR
+	 * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+	 * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+	 * OTHER DEALINGS IN THE SOFTWARE.
+	 *
+	 * Authors: Dave Airlie
+	 *          Alex Deucher
+
+	This driver also contains small fragments of code for NVidia GPU model detection which are derived from the
+	free software Nouveau kms driver on Linux, specifically nouveau_state.c
+	
+	The nouveau kms driver has the same license as radeon kms, except that copyright is:
+	
+	Copyright 2005 Stephane Marchesin
+	Copyright 2008 Stuart Bennett 
 
 	Change History of original Apple sample code (most recent first):
 
@@ -49,6 +88,28 @@
 #define super IOService
 OSDefineMetaClassAndStructors(PsychtoolboxKernelDriver, IOService)
 
+/* Is a given ATI/AMD GPU a DCE4 type ASIC, i.e., with the new display engine? */
+bool PsychtoolboxKernelDriver::isDCE4(void)
+{
+	bool isDCE4 = false;
+
+	// Everything after CEDAR is DCE4. The Linux radeon kms driver defines
+	// in radeon_family.h which chips are CEDAR or later, and the mapping to
+	// these chip codes is done by matching against pci device id's in a
+	// mapping table inside linux/include/drm/drm_pciids.h
+	// Maintaining a copy of that table is impractical for PTB, so we simply
+	// check which range of PCI device id's is covered by the DCE-4 chips and
+	// code up matching rules here. This should do for now...
+	
+	// Cedar, Redwood, Juniper, Cypress, Hemlock in 0x6xxx range:
+	if ((fPCIDeviceId & 0xF000) == 6000) isDCE4 = true;
+	
+	// Palm in 0x98xx range:
+	if ((fPCIDeviceId & 0xFF00) == 9800) isDCE4 = true;
+
+	return(isDCE4);
+}
+
 /* The start() method is called at driver load time: It tries to find the MMIO register
  * range of the ATI Radeon X1000/HD2000/HD3000/HDxxx series graphics cards and then
  * memory-maps it into our own virtual address space, so we can read/write registers
@@ -66,7 +127,8 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
     IOPhysicalLength		candidate_size;
     UInt32					candidate_count = 0;
 	const char*				providerName = NULL;
-	
+	UInt32					chipset, reg0;
+
 	// Say Hello ;-)
     IOLog("%s::start() called from IOKit. Starting up and trying to attach to GPU:\n", (getName()) ? getName() : "PTB-3");
 	
@@ -108,6 +170,10 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 	// Ok, store internal reference to our provider:
     fPCIDevice = (IOPCIDevice *) provider;
 
+	// Read PCI device id register with 16 bit device id:
+	fPCIDeviceId = fPCIDevice->configRead16(2);
+	IOLog("%s: PCI device id is %04x\n", getName(), fPCIDeviceId);
+
 	// Read PCI configuration register 0, a 16 bit register with the
 	// Vendor ID. Match it against NVidia's id:
 	if (PCI_VENDOR_ID_NVIDIA == fPCIDevice->configRead16(0)) {
@@ -123,6 +189,8 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 		IOLog("%s: This is a ATI/AMD GPU, hopefully a compatible Radeon...\n", getName());
 		if (PCI_VENDOR_ID_ATI == fPCIDevice->configRead16(0)) IOLog("%s: Confirmed to have ATI's vendor id.\n", getName());
 		if (PCI_VENDOR_ID_AMD == fPCIDevice->configRead16(0)) IOLog("%s: Confirmed to have AMD's vendor id.\n", getName());
+
+		IOLog("%s: This is a GPU with %s display engine.\n", getName(), isDCE4() ? "DCE-4" : "AVIVO");
 	}
 
     /*
@@ -264,6 +332,59 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 	// Execute an I/O memory barrier, so order of execution and CPU <-> GPU sync is guaranteed:
 	OSSynchronizeIO();
 	
+	// NVidia GPU? If so, we can detect specific chipset family:
+	if (fDeviceType == kPsychGeForce) {
+		// Get hardware id code from gpu register:
+		reg0 = ReadRegister(NV03_PMC_BOOT_0);
+		
+		/* We're dealing with >=NV10 */
+		if ((reg0 & 0x0f000000) > 0) {
+			/* Bit 27-20 contain the architecture in hex */
+			chipset = (reg0 & 0xff00000) >> 20;
+			/* NV04 or NV05 */
+		} else if ((reg0 & 0xff00fff0) == 0x20004000) {
+			if (reg0 & 0x00f00000)
+				chipset = 0x05;
+			else
+				chipset = 0x04;
+		} else
+			chipset = 0xff;
+		
+		switch (chipset & 0xf0) {
+			case 0x00:
+				// NV_04/05: RivaTNT , RivaTNT2
+				fCardType = 0x04;
+				break;
+			case 0x10:
+			case 0x20:
+			case 0x30:
+				// NV30 or earlier: GeForce-5 / GeForceFX and earlier:
+				fCardType = chipset & 0xf0;
+				break;
+			case 0x40:
+			case 0x60:
+				// NV40: GeForce6/7 series:
+				fCardType = 0x40;
+				break;
+			case 0x50:
+			case 0x80:
+			case 0x90:
+			case 0xa0:
+				// NV50: GeForce8/9/Gxxx
+				fCardType = 0x50;
+				break;
+			case 0xc0:
+				// Curie: GTX-400 and later:
+				fCardType = 0xc0;
+				break;
+			default:				
+				IOLog("%s: Unknown NVidia chipset 0x%08x.\n", getName(), reg0);
+				fCardType = 0x00;
+		}
+		
+		if (fCardType > 0x00) IOLog("%s: NV-0x%02x GPU detected.\n", getName(), fCardType);
+	}
+
 	// The following code chunk if enabled, will detaching the Radeon driver IRQ handler and
 	// instead attach our own fastPathInterruptHandler() to IRQ 1 of Radeon GPU's.
 	//
@@ -281,7 +402,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 	//
 	//	  Of course, this behaviour may change on each different gfx-card and OS/X release, so it is
 	//    not desirable for production use -- Tradeoffs all over the place...
-	if (false && (fDeviceType == kPsychRadeon)) {
+	if (false && (fDeviceType == kPsychRadeon) && !isDCE4()) {
 		// Setup our own interrupt handler for gfx-card interrupts:
 		if (!InitializeInterruptHandler()) {
 			// Failed!
@@ -295,10 +416,12 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 
 	// We should be ready...
 	IOLog("\n");
-	IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.1 for ATI Radeon and NVidia GeForce GPU's ready for use!\n", getName());
-	IOLog("%s: This driver is copyright 2008, 2009, 2010 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
+	IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.2 for ATI Radeon and NVidia GeForce GPU's ready for use!\n", getName());
+	IOLog("%s: This driver is copyright 2008, 2009, 2010, 2011 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
 	IOLog("%s: The driver is licensed to you under GNU General Public License (GPL) Version 2 or later,\n", getName());
 	IOLog("%s: see the file License.txt in the Psychtoolbox root installation folder for details.\n", getName());
+	IOLog("%s: The driver contains bits of code derived from the free software nouveau and radeon kms drivers on Linux.\n", getName());
+	IOLog("%s: See driver source code for specific copyright notices of the compatible licenses of those bits.\n", getName());
 	
 	// If everything worked, we publish ourselves and our services:
     if (success) {
@@ -374,6 +497,8 @@ bool PsychtoolboxKernelDriver::init(OSDictionary* dictionary)
 	}
 
 	fDeviceType = kPsychUnknown;
+	fCardType = 0x00;
+	fPCIDeviceId = 0x0000;
 	fPCIDevice = NULL;
 	fRadeonMap = NULL;
 	fRadeonRegs = NULL;
@@ -685,89 +810,69 @@ void PsychtoolboxKernelDriver::WriteRegister(UInt32 offset, UInt32 value)
 	return;
 }
 
-// This blob of code will disable the GPU's output dithering for
-// flat-panels reliably. It will also cause interference with the
-// OS/X graphics stack and GPU hangs pretty reliably on many operations
-// thereafter, e.g., cursor movements between dual-display screens, display
-// mode changes and redetections, gamma LUT updates etc... It kills all
-// functionality which accesses the same command FIFO that our blob uses...
-// -> Proof-of-concept, but pretty unuseable in production systems :-(
-void PsychtoolboxKernelDriver::G80DispCommand(UInt32 addr, UInt32 data)
-{
-	UInt32 headId, super, v;
-
-    WriteRegister(0x00610304, data);
-    WriteRegister(0x00610300, addr | 0x80010001);
-
-    while(ReadRegister(0x00610300) & 0x80000000) {
-        v = (ReadRegister(0x00610024) >> 4) & 7;
-		super = 0;
-		if (v > 0) {
-			while(true) {
-				super++;
-				if (v & 0x1) break;
-				v = v >> 1;
-			}
-		}
-
-        if(super) {
-            if(super == 2) {
-				for (headId = 0; headId<2; headId++) {
-					const int headOff = 0x800 * headId;
-                    if ( (ReadRegister(0x00614200 + headOff) & 0xc0) == 0x80 ) {
-						IOLog("%s: IN G80DispCommand: Would need to call G80CrtcSetPClk(%i); but not implemented! Prepare for trouble!!!\n", getName(), headId);
-                        // No way to implement this without pulling in lot's of code from XServer's NVidia driver: G80CrtcSetPClk(headId);
-					}
-                }
-            }
-			
-            WriteRegister(0x00610024, 8 << super);
-            WriteRegister(0x00610030, 0x80000000);
-        }
-    }
-}
-
 // Try to change hardware dither mode on GPU:
 void PsychtoolboxKernelDriver::SetDitherMode(UInt32 headId, UInt32 ditherOn)
 {
-	//	printf("GEFORCE DITHER TEST: Head[%i] = %i \n", headId, ditherOn);
-	UInt32 headOff = 0x400 * headId;
-
-    G80DispCommand(0x000008A0 + headOff, (ditherOn) ? 0x11 : 0); // G80DispCommand
-
-	// Do we need this?!? Sounds like potential troublemaker:
-	// Yes, we do! Change doesn't take effect without.   
-	G80DispCommand(0x00000080, 0);
-
-	//	printf("GEFORCE DITHER TEST DONE - ANY CHANGE?\n");
-
+	// TODO...
 	return;
 }
 
 // Return current vertical rasterbeam position of display head 'headId' (0=Primary CRTC1, 1=Secondary CRTC2):
 UInt32 PsychtoolboxKernelDriver::GetBeamPosition(UInt32 headId)
 {
-	SInt32					beampos;
+	SInt32					beampos = 0;
 
-	// Read raw beampostion from GPU:
-	beampos = (SInt32) (ReadRegister((headId == 0) ? RADEON_D1CRTC_STATUS_POSITION : RADEON_D2CRTC_STATUS_POSITION) & RADEON_VBEAMPOSITION_BITMASK);
+	// Offset of crtc blocks of evergreen gpu's for each of the six possible crtc's:
+	UInt32					crtcoff[6] = { 0x6df0, 0x79f0, 0x105f0, 0x111f0, 0x11df0, 0x129f0 };
 
-	// Query end-offset of VBLANK interval of this GPU and correct for it:
-	beampos = beampos - (SInt32) ((ReadRegister((headId == 0) ? AVIVO_D1CRTC_V_BLANK_START_END : AVIVO_D2CRTC_V_BLANK_START_END) >> 16) & RADEON_VBEAMPOSITION_BITMASK);
+	// Query code for ATI/AMD Radeon/FireGL/FirePro:
+	if (fDeviceType == kPsychRadeon) {
+		if (isDCE4()) {
+			// DCE-4 display engine (CEDAR and later afaik): Up to six crtc's.
+
+			// Read raw beampostion from GPU:
+			beampos = (SInt32) (ReadRegister(EVERGREEN_CRTC_STATUS_POSITION + crtcoff[headId]) & RADEON_VBEAMPOSITION_BITMASK);
+			
+			// Query end-offset of VBLANK interval of this GPU and correct for it:
+			beampos = beampos - (SInt32) ((ReadRegister(EVERGREEN_CRTC_V_BLANK_START_END + crtcoff[headId]) >> 16) & RADEON_VBEAMPOSITION_BITMASK);
+			
+			// Correction for in-VBLANK range:
+			if (beampos < 0) beampos = ((SInt32) ReadRegister(EVERGREEN_CRTC_V_TOTAL + crtcoff[headId])) + beampos;
+
+		} else {
+			// AVIVO display engine (R300 - R600 afaik): At most two display heads for dual-head gpu's.
+
+			// Read raw beampostion from GPU:
+			beampos = (SInt32) (ReadRegister((headId == 0) ? RADEON_D1CRTC_STATUS_POSITION : RADEON_D2CRTC_STATUS_POSITION) & RADEON_VBEAMPOSITION_BITMASK);
+			
+			// Query end-offset of VBLANK interval of this GPU and correct for it:
+			beampos = beampos - (SInt32) ((ReadRegister((headId == 0) ? AVIVO_D1CRTC_V_BLANK_START_END : AVIVO_D2CRTC_V_BLANK_START_END) >> 16) & RADEON_VBEAMPOSITION_BITMASK);
+			
+			// Correction for in-VBLANK range:
+			if (beampos < 0) beampos = ((SInt32) ReadRegister((headId == 0) ? AVIVO_D1CRTC_V_TOTAL : AVIVO_D2CRTC_V_TOTAL)) + beampos;
+		}
+	}
 	
-	// Correction for in-VBLANK range:
-	if (beampos < 0) beampos = ((SInt32) ReadRegister((headId == 0) ? AVIVO_D1CRTC_V_TOTAL : AVIVO_D2CRTC_V_TOTAL)) + beampos;
+	// Query code for NVidia GeForce/Quadro:
+	if (fDeviceType == kPsychGeForce) {
+		// Pre NV-50 GPU? [Anything before GeForce-8 series]
+		if (fCardType < 0x50) {
+			// Pre NV-50, e.g., RivaTNT-1/2 and all GeForce 256/2/3/4/5/FX/6/7:
 
+			// Lower 12 bits are vertical scanout position (scanline), bit 16 is "in vblank" indicator.
+			// Offset between crtc's is 0x2000, we're only interested in scanline, not "in vblank" status:
+			beampos = (SInt32) (ReadRegister((headId == 0) ? 0x600808 : 0x600808 + 0x2000) & 0xFFF);
+		} else {
+			// NV-50 (GeForce-8) and later:
+			
+			// Lower 16 bits are vertical scanout position (scanline), upper 16 bits are vblank counter.
+			// Offset between crtc's is 0x800, we're only interested in scanline, not vblank counter:
+			beampos = (SInt32) (ReadRegister((headId == 0) ? 0x616340 : 0x616340 + 0x800) & 0xFFFF);
+		}
+	}
+	
 	// Safety measure: Cap to zero if something went wrong -> This will trigger proper high level error handling in PTB:
 	if (beampos < 0) beampos = 0;
-
-	if (0) {
-		SInt32 vblend, vblstart, vtotal;
-		vblend = (SInt32) ((ReadRegister((headId == 0) ? AVIVO_D1CRTC_V_BLANK_START_END : AVIVO_D2CRTC_V_BLANK_START_END) >> 16) & RADEON_VBEAMPOSITION_BITMASK);
-		vblstart = (SInt32) ((ReadRegister((headId == 0) ? AVIVO_D1CRTC_V_BLANK_START_END : AVIVO_D2CRTC_V_BLANK_START_END) >> 0) & RADEON_VBEAMPOSITION_BITMASK);
-		vtotal = (SInt32) ReadRegister((headId == 0) ? AVIVO_D1CRTC_V_TOTAL : AVIVO_D2CRTC_V_TOTAL);
-		IOLog("%s: VBLANK_END %ld VBLANK_START %ld VTOTAL %ld\n", getName(), vblend, vblstart, vtotal);
-	}
 	
 	return((UInt32) beampos);
 }
@@ -779,6 +884,16 @@ SInt32	PsychtoolboxKernelDriver::FastSynchronizeAllDisplayHeads(void)
 	UInt32					beampos0, beampos1;
 	UInt32					old_crtc_master_enable = 0;
 	UInt32					new_crtc_master_enable = 0;
+
+	if (fDeviceType != kPsychRadeon) {
+		IOLog("%s: FastSynchronizeAllDisplayHeads(): This function is not supported on non-ATI/AMD GPU's! Aborted.\n", getName());
+		return(0xffff);
+	} else {
+		if (isDCE4()) {
+			IOLog("%s: FastSynchronizeAllDisplayHeads(): This function is not supported on ATI/AMD GPU's more recent than HD-4000! Aborted.\n", getName());
+			return(0xffff);
+		}
+	}
 
 	IOLog("%s: FastSynchronizeAllDisplayHeads(): About to resynchronize all display heads by use of a 1 second CRTC stop->start cycle:\n", getName());
 	

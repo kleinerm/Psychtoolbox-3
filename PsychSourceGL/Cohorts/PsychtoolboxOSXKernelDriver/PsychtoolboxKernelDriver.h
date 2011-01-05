@@ -3,7 +3,7 @@
 	
 	Description:	This file implements the I/O Kit driver kernel extension for Psychtoolbox (KEXT).
 
-	Copyright:		Copyright © 2008 Mario Kleiner, derived from an Apple example code.
+	Copyright:		Copyright © 2008-2011 Mario Kleiner, derived from an Apple example code.
 
 	Change History of original Apple sample code (most recent first):
 
@@ -34,6 +34,8 @@ class PsychtoolboxKernelDriver : public IOService
 	
 private:
 	UInt32							fDeviceType;
+	UInt32							fCardType;
+	UInt16							fPCIDeviceId;
     IOPCIDevice *					fPCIDevice;
 	IOMemoryMap *					fRadeonMap;
 	IOVirtualAddress				fRadeonRegs;
@@ -62,9 +64,6 @@ private:
 	// Write 32 bit control register at 'offset' with 'value':
 	void	WriteRegister(UInt32 offset, UInt32 value);
 
-	// Helper function for SetDitherMode() on G80 GPUs:
-	void    G80DispCommand(UInt32 addr, UInt32 data);
-	
 	// Return current vertical rasterbeam position of display head 'headId' (0=Primary CRTC1, 1=Secondary CRTC2):
 	UInt32 GetBeamPosition(UInt32 headId);
 	
@@ -80,6 +79,9 @@ private:
 	// Dump interesting register state to system log:
 	void	DumpGfxState(void);
 	
+	// Is a given ATI/AMD GPU a DCE4 type ASIC, i.e., with the new display engine?
+	bool PsychtoolboxKernelDriver::isDCE4(void);
+
 public:
 	// IOService methods
 	virtual bool init(OSDictionary* dictionary = 0);
