@@ -177,5 +177,10 @@
 
 // Card/Core id, e.g., NV20,30,40,... encoded in some bits:
 #define NV03_PMC_BOOT_0		0x00000000
+// Encodes or sets byte order (endianity) of card, starting with NV10:
+// As OS/X only supports NV10 or later, we can use it unconditionally.
+// On read: 0 == LE, non-0 == BE. On write, just write 0x00000001 to switch
+// card to host system byte order:
+#define NV03_PMC_BOOT_1		0x00000004
 
 #endif // include once.

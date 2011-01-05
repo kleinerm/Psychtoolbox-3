@@ -358,16 +358,17 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	if ((*windowRecord)->depth == 30) {
 		// Support for kernel driver available?
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
-		if ((PSYCH_SYSTEM == PSYCH_LINUX) && (strstr(glGetString(GL_VENDOR), "NVIDIA") || (strstr(glGetString(GL_VENDOR), "ATI") && strstr(glGetString(GL_RENDERER), "Fire")))) {
+		if ((PSYCH_SYSTEM == PSYCH_LINUX) && (strstr(glGetString(GL_VENDOR), "NVIDIA") || ((strstr(glGetString(GL_VENDOR), "ATI") || strstr(glGetString(GL_VENDOR), "AMD")) && strstr(glGetString(GL_RENDERER), "Fire")))) {
 			// NVidia GPU or ATI Fire-Series GPU: Only native support by driver, if at all...
 			printf("\nPTB-INFO: Your script requested a 30bpp, 10bpc framebuffer, but this is only supported on few special graphics cards and drivers on Linux.");
-			printf("\nPTB-INFO: This may or may not work for you - Double check your results! Theoretically, the 2008 series ATI FireGL/FirePro and NVidia Quadro cards may support this with some drivers,");
+			printf("\nPTB-INFO: This may or may not work for you - Double check your results! Theoretically, the 2008 series ATI/AMD FireGL/FirePro and NVidia Quadro cards may support this with some drivers,");
 			printf("\nPTB-INFO: but you must enable it manually in the Catalyst Control center (somewhere under ''Workstation settings'')\n");
 		}
 		else {
-			if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber)) {
+			// Only support our homegrown method with PTB kernel driver on ATI/AMD hardware:
+			if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) || strstr(glGetString(GL_VENDOR), "NVIDIA")) {
 				printf("\nPTB-ERROR: Your script requested a 30bpp, 10bpc framebuffer, but the Psychtoolbox kernel driver is not loaded and ready.\n");
-				printf("PTB-ERROR: The driver currently only supports selected ATI Radeon GPU's (e.g., X1000/HD2000/HD3000/HD4000 series and later).\n");
+				printf("PTB-ERROR: The driver currently only supports selected ATI Radeon GPU's (X1000/HD2000/HD3000/HD4000 series and corresponding FireGL/FirePro models).\n");
 				printf("PTB-ERROR: On MacOS/X the driver must be loaded and functional for your graphics card for this to work.\n");
 				printf("PTB-ERROR: On Linux you must start Octave or Matlab as root, ie. system administrator or via sudo command for this to work.\n");
 				printf("PTB-ERROR: Read 'help PsychtoolboxKernelDriver' for more information.\n\n");

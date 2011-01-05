@@ -334,6 +334,9 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 	
 	// NVidia GPU? If so, we can detect specific chipset family:
 	if (fDeviceType == kPsychGeForce) {
+		// Debug check: Report if it is a big-endian configured GPU:
+		if(ReadRegister(NV03_PMC_BOOT_1)) IOLog("%s: Big Endian NVidia GPU detected.\n", getName());
+
 		// Get hardware id code from gpu register:
 		reg0 = ReadRegister(NV03_PMC_BOOT_0);
 		
@@ -789,7 +792,15 @@ UInt32	PsychtoolboxKernelDriver::ReadRegister(UInt32 offset)
 	if (fRadeonRegs == NULL || offset < 0 || offset >= fRadeonSize-4) return(0);
 	
 	// Read and return value:
-	return(OSReadLittleInt32((void*) fRadeonRegs, offset));
+
+	// Radeon: Don't know endianity behaviour: Play save, stick to LE assumption for now:
+	if (fDeviceType == kPsychRadeon) return(OSReadLittleInt32((void*) fRadeonRegs, offset));
+
+	// Read the register in native byte order: At least NVidia GPU's adapt their
+	// endianity to match the host systems endianity, so no need for conversion:
+	if (fDeviceType == kPsychGeForce) return(_OSReadInt32((void*) fRadeonRegs, offset));
+
+	return(0);
 }
 
 // Write 32 bit control register at 'offset' with 'value':
@@ -801,8 +812,12 @@ void PsychtoolboxKernelDriver::WriteRegister(UInt32 offset, UInt32 value)
 	// an option!
 	if (fRadeonRegs == NULL || offset < 0 || offset >= fRadeonSize-4) return;
 
-	// Write the register in correct byte order:
-	OSWriteLittleInt32((void*) fRadeonRegs, offset, value);
+	// Write the register in native byte order: At least NVidia GPU's adapt their
+	// endianity to match the host systems endianity, so no need for conversion:
+	if (fDeviceType == kPsychGeForce) _OSWriteInt32((void*) fRadeonRegs, offset, value);
+
+	// Radeon: Don't know endianity behaviour: Play save, stick to LE assumption for now:
+	if (fDeviceType == kPsychRadeon) OSWriteLittleInt32((void*) fRadeonRegs, offset, value);
 
 	// Execute memory I/O barrier to make sure that writes happen in-order and properly synced between CPU and GPU/PCI card:
 	OSSynchronizeIO();

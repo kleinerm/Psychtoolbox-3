@@ -127,15 +127,15 @@ PsychError SCREENNull(void)
 			crtco = (crtcid > 0) ? 0x800 : 0;
 			
 			// Lower 16 bits are horizontal scanout position, upper 16 bits are always zero:
-			scanpixel = EndianU32_LtoN(PsychOSKDReadRegister(crtcid, 0x616344 + crtco, NULL)) & 0xFFFF;
+			scanpixel = (PsychOSKDReadRegister(crtcid, 0x616344 + crtco, NULL)) & 0xFFFF;
 
 			// Lower 16 bits are vertical scanout position (scanline), upper 16 bits are vblank counter:
-			vblcount = EndianU32_LtoN(PsychOSKDReadRegister(crtcid, 0x616340 + crtco, NULL));
+			vblcount = (PsychOSKDReadRegister(crtcid, 0x616340 + crtco, NULL));
 			scanline = vblcount & 0xFFFF;
 
 			vblcount = (vblcount >> 16) & 0xFFFF;
 
-			if (verbose > 1 || verbose < 0) printf("%i\n", EndianU32_LtoN(PsychOSKDReadRegister(crtcid, 0x616340 + crtco + 4 * verbose, NULL)));		
+			if (verbose > 1 || verbose < 0) printf("%i\n", (PsychOSKDReadRegister(crtcid, 0x616340 + crtco + 4 * verbose, NULL)));		
                 }
 		else {
 			// NV40 or earlier, aka GeForce-7000 or earlier: Same registers down to
@@ -146,7 +146,7 @@ PsychError SCREENNull(void)
 
 			// Lower 12 bits are vertical scanout position, bit 16 is known to
 			// indicate "in vblank" status. All other bits are always zero:
-			vblcount = EndianU32_LtoN(PsychOSKDReadRegister(crtcid, 0x600808 + crtco, NULL));
+			vblcount = (PsychOSKDReadRegister(crtcid, 0x600808 + crtco, NULL));
 			scanline = vblcount & 0xFFF;
 
 			// Bit 4 after right-shift should indicate "in vblank", other bits
