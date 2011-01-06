@@ -344,11 +344,9 @@ if ~isempty(eyelinktex) && exist( 'imgtitle', 'var') && ~isempty(imgtitle)
     Screen(eyewin,'TextSize',oldFontSize);
 %     imgtitle=[]; % return empty title, so it doesn't get drawn over and over again.
 end
-catch myerr
-        fprintf('EyelinkDrawCameraImage:error \n');
-            myerr.message
-    myerr.stack.line
-
+catch
+    fprintf('EyelinkDrawCameraImage:error \n');
+    disp(psychlasterror);
 end
 
 function EyelinkMakeSound(el, s)
