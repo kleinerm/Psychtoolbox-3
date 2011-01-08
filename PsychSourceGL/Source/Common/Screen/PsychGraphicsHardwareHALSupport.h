@@ -70,6 +70,10 @@ void		PsychSetScreenToHead(int screenId, int headId);
 // Setup initial mapping for 'numDisplays' displays:
 void		PsychInitScreenToHeadMappings(int numDisplays);
 
+// Get/Set corrective offsets for scanout position queries on certain GPU's:
+void		PsychGetBeamposCorrection(int screenId, int *vblbias, int *vbltotal);
+void		PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal);
+
 // End of routines.
 
 #endif // include once.

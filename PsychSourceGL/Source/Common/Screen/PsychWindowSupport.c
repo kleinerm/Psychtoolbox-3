@@ -732,6 +732,10 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     // Make sure that the gfx-pipeline has settled to a stable state...
     glFinish();
     
+	// Invalidate all corrective offsets for beamposition queries on the screen
+	// associated with this window:
+	PsychSetBeamposCorrection((*windowRecord)->screenNumber, 0, 0);
+	
     // Complete skip of sync tests and all calibrations requested?
     // This should be only done if Psychtoolbox is not used as psychophysics
     // toolbox, but simply as a windowing/drawing toolkit for OpenGL in Matlab/Octave.
@@ -835,27 +839,69 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	
 	// Is the VBL endline >= VBL startline - 1, aka screen height?
 	if ((VBL_Endline < (int) vbl_startline - 1) || (VBL_Endline > vbl_startline * 1.25)) {
-	  // Completely bogus VBL_Endline detected! Warn the user and mark VBL_Endline
-	  // as invalid so it doesn't get used anywhere:
-	  sync_trouble = true;
-	  ifi_beamestimate = 0;
-	  if(PsychPrefStateGet_Verbosity()>1) {
-	    printf("\nWARNING: Couldn't determine end-line of vertical blanking interval for your display! Trouble with beamposition queries?!?\n");
-	    printf("\nWARNING: Detected end-line is %i, which is either lower or more than 25%% higher than vbl startline %i --> Out of sane range!\n", VBL_Endline, vbl_startline);
-	  }
+		// Completely bogus VBL_Endline detected! Warn the user and mark VBL_Endline
+		// as invalid so it doesn't get used anywhere:
+		sync_trouble = true;
+		ifi_beamestimate = 0;
+		if(PsychPrefStateGet_Verbosity()>1) {
+			printf("\nWARNING: Couldn't determine end-line of vertical blanking interval for your display! Trouble with beamposition queries?!?\n");
+			printf("\nWARNING: Detected end-line is %i, which is either lower or more than 25%% higher than vbl startline %i --> Out of sane range!\n", VBL_Endline, vbl_startline);
+		}
 	}
 	else {
-	  // Compute ifi from beampos:
-	  ifi_beamestimate = tsum / tcount;
-	  
-	  if ((vbl_startline >= VBL_Endline) && (PsychPrefStateGet_Verbosity() > 2)) {
-		printf("PTB-INFO: The detected endline of the vertical blank interval is equal or lower than the startline. This indicates\n");
-		printf("PTB-INFO: that i couldn't detect the duration of the vertical blank interval and won't be able to correct timestamps\n");
-		printf("PTB-INFO: for it. This will introduce a very small and constant offset (typically << 1 msec). Read 'help BeampositionQueries'\n");
-		printf("PTB-INFO: for how to correct this, should you really require that last few microseconds of precision.\n");
+		// Compute ifi from beampos:
+		ifi_beamestimate = tsum / tcount;
+		
+		// Sensible result for VBL_Endline?
+		if (vbl_startline >= VBL_Endline) {
+			// No:
+			if (PsychPrefStateGet_Verbosity() > 2) {
+				printf("PTB-INFO: The detected endline of the vertical blank interval is equal or lower than the startline. This indicates\n");
+				printf("PTB-INFO: that i couldn't detect the duration of the vertical blank interval and won't be able to correct timestamps\n");
+				printf("PTB-INFO: for it. This will introduce a very small and constant offset (typically << 1 msec). Read 'help BeampositionQueries'\n");
+				printf("PTB-INFO: for how to correct this, should you really require that last few microseconds of precision.\n");
+			}
+		}
+		else {
+			// Yes. Some GPU + driver combos need corrective offsets for beamposition reporting.
+			// Following cases exist:
+			// a) If the OS native beamposition query mechanism is used, we don't do correction.
+			//    Although quite a few native implementations would need correction due to driver
+			//    bugs, we don't (and can't) know the correct corrective values, so we can't do
+			//    anything. Also we don't know which GPU + OS combos need correction and which not,
+			//    so better play safe and don't correct.
+			//    On OS/X the low-level code doesn't use the corrections, so nothing to do to handle
+			//    case a) on OS/X. On Windows, the low-level code uses corrections if available,
+			//    so we need to explicitely refrain from setting correction if we're on Windows.
+			//    On Linux case a) doesn't exist.
+			//
+			// b) If our own mechanism is used (PsychtoolboxKernelDriver on OS/X and Linux), we
+			//    do need this high-level correction for NVidia GPU's, but not for ATI/AMD GPU's,
+			//    as the low-level driver code for ATI/AMD already applies proper corrections.
+			
+			// Only consider correction on non-Windows systems:
+			if (PSYCH_SYSTEM != PSYCH_WINDOWS) {
+				// Only setup correction for NVidia GPU's. Low level code will pickup these
+				// corrections only if our own homegrown beampos query mechanism is used.
+				// Additionally the PTB kernel driver must be available and online and the
+				// low-level GPU core detection must confirm that this is a NV-50 (GeForce-8 series) or later.
+				// Preliminary testing indicates that < NV-50 GPU's may not need correction - it would be harmful!
+				if ((strstr(glGetString(GL_VENDOR), "NVIDIA") || strstr(glGetString(GL_VENDOR), "nouveau")) &&
+					PsychOSIsKernelDriverAvailable((*windowRecord)->screenNumber) && (PsychGetNVidiaGPUType(*windowRecord) >= 0x50)) {
+					// Yep. Looks like we need to apply correction.
+					//
+					// Apply: vblBias = lengths of vblank interval = vtotal - vdisplay = (VBL_Endline + 1) - vbl_startline;
+					//        vblTotal = vtotal = VBL_Endline + 1;
+					PsychSetBeamposCorrection((*windowRecord)->screenNumber, VBL_Endline + 1 - vbl_startline, VBL_Endline + 1);
+
+					if (PsychPrefStateGet_Verbosity() > 3) {
+						printf("PTB-INFO: Applying beamposition corrective offsets: vblbias = %i, vbltotal = %i.\n", VBL_Endline + 1 - vbl_startline, VBL_Endline + 1);
+					}
+				}
+			}
+		}
+	}
 	  }
-	}
-	}
       else {
 		  // We don't have beamposition queries on this system:
 		  ifi_beamestimate = 0;

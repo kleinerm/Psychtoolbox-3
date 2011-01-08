@@ -1233,6 +1233,8 @@ PsychError PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds, int
 
 int PsychOSKDGetBeamposition(int screenId)
 {
+	int beampos, vblbias, vbltotal;
+	
 	// Have syncCommand locally defined, ie. on threads local stack: Important for thread-safety, e.g., for async-flip etc.:
 	PsychKDCommandStruct syncCommand;
 
@@ -1258,6 +1260,13 @@ int PsychOSKDGetBeamposition(int screenId)
 		return(-1);
 	}
 
+	beampos = (int) syncCommand.inOutArgs[0];
+
+	// Apply corrective offsets if any (i.e., if non-zero):
+	PsychGetBeamposCorrection(screenId, &vblbias, &vbltotal);
+	beampos = beampos - vblbias;
+	if (beampos < 0) beampos = vbltotal + beampos;
+
 	// Return queried position:
-	return((int) syncCommand.inOutArgs[0]);
+	return(beampos);
 }

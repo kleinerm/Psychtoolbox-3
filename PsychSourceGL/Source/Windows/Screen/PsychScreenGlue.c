@@ -923,33 +923,40 @@ void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redT
 int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 {
 	HRESULT rc;
-	psych_uint32 beampos = 0;
+	int vblbias, vbltotal;
+	psych_uint32 ubeampos = 0;
+	int	beampos = -1;
 	
 	// Apply remapping of screenId's to heads, if any: Usually identity mapping.
 	screenNumber = PsychScreenToHead(screenNumber);
 	
-	// EXPERIMENTAL: For now this only queries the primary display device and
-	// probably only works properly on single-display setups and some multi-setups.
 	if(displayDeviceDDrawObject[screenNumber]) {
 		// We have a Direct draw object: Try to use GetScanLine():
 		if (enableVBLBeamposWorkaround) {
 			// Beamposition queries don't work within vertical blank interval. We need to
 			// spin-wait in a busy waiting loop as long as the query status reports
 			// DDERR_VERTICALBLANKINPROGRESS aka "display in retrace state":
-			while((rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[screenNumber], (LPDWORD) &beampos)) == DDERR_VERTICALBLANKINPROGRESS);
+			while((rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[screenNumber], (LPDWORD) &ubeampos)) == DDERR_VERTICALBLANKINPROGRESS);
 		}
 		else {
 			// No known problems with query in VBL. Do a one-time query:
-			rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[screenNumber], (LPDWORD) &beampos);
+			rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[screenNumber], (LPDWORD) &ubeampos);
 		}
 		
-		// Mask returned beampos with 0xffff: This will not allow any
+		// Mask returned ubeampos with 0xffff: This will not allow any
 		// beamposition greater than 65535 scanlines to be returned.
 		// A reasonable limit for the foreseeable future:
-		beampos &= 0xffff;
+		ubeampos &= 0xffff;
+		
+		beampos = (int) ubeampos;
+		
+		// Apply corrective offsets if any (i.e., if non-zero):
+		PsychGetBeamposCorrection(screenNumber, &vblbias, &vbltotal);
+		beampos = beampos - vblbias;
+		if (beampos < 0) beampos = vbltotal + beampos;
 		
 		// Valid result? If so, return it. Otherwise fall-through to error return...
-		if (rc==DD_OK || rc==DDERR_VERTICALBLANKINPROGRESS) return((int) beampos);
+		if (rc==DD_OK || rc==DDERR_VERTICALBLANKINPROGRESS) return(beampos);
 	}
 	
 	// Direct Draw unavailable or function unsupported, or hardware

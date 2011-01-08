@@ -1176,6 +1176,7 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 
   // On systems that we can't handle, we return -1 as an indicator
   // to high-level routines that we don't know the rasterbeam position.
+  int vblbias, vbltotal;
   int beampos = -1;
   int headid  = PsychScreenToHead(screenNumber);
   
@@ -1201,6 +1202,15 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 
 	  if (beampos < 0) beampos = ((int) radeon_get((headid == 0) ? AVIVO_D1CRTC_V_TOTAL : AVIVO_D2CRTC_V_TOTAL)) + beampos;
   }
+
+  // Return failure, if so:
+  if (beampos == -1) return(-1);
+
+  // Apply corrective offsets if any (i.e., if non-zero):
+  // Note: In case of Radeon's, these are zero, because the code above already has applied proper corrections.
+  PsychGetBeamposCorrection(screenNumber, &vblbias, &vbltotal);
+  beampos = beampos - vblbias;
+  if (beampos < 0) beampos = vbltotal + beampos;
 
   // Return our result or non-result:
   return(beampos);

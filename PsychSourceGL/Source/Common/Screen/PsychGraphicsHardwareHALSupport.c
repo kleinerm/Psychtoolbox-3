@@ -38,6 +38,11 @@
 // GPU crtc specific stuff:
 static int	displayScreensToPipes[kPsychMaxPossibleDisplays];
 
+// Corrective values for beamposition queries to correct for any constant and systematic offsets in
+// the scanline positions returned by low-level code:
+static int	screenBeampositionBias[kPsychMaxPossibleDisplays];
+static int	screenBeampositionVTotal[kPsychMaxPossibleDisplays];
+
 /* PsychSynchronizeDisplayScreens() -- (Try to) synchronize display refresh cycles of multiple displays
  *
  * This tries whatever method is available/appropriate/or requested to synchronize the video refresh
@@ -423,7 +428,7 @@ unsigned int PsychGetNVidiaGPUType(PsychWindowRecordType* windowRecord)
 	psych_uint32 chipset, card_type;
 
 	// Get hardware id code from gpu register:
-	psych_uint32 reg0 = PsychOSKDReadRegister(0, NV03_PMC_BOOT_0, NULL);
+	psych_uint32 reg0 = PsychOSKDReadRegister((windowRecord) ? windowRecord->screenNumber : 0, NV03_PMC_BOOT_0, NULL);
 	
 	/* We're dealing with >=NV10 */
 	if ((reg0 & 0x0f000000) > 0) {
@@ -509,6 +514,10 @@ void PsychInitScreenToHeadMappings(int numDisplays)
     // Setup default identity one-to-one mapping:
     for(i = 0; i < kPsychMaxPossibleDisplays; i++){
 		displayScreensToPipes[i] = i;
+
+		// We also setup beamposition bias values to "neutral defaults":
+		screenBeampositionBias[i] = 0;
+		screenBeampositionVTotal[i] = 0;
     }
 	
 	// Did user provide an override for the screenid --> pipeline mapping?
@@ -519,4 +528,32 @@ void PsychInitScreenToHeadMappings(int numDisplays)
 			displayScreensToPipes[i] = (((ptbpipelines[i] - 0x30) >=0) && ((ptbpipelines[i] - 0x30) < kPsychMaxPossibleDisplays)) ? (ptbpipelines[i] - 0x30) : 0;
 		}
 	}
+}
+
+/* PsychGetBeamposCorrection() -- Get corrective beamposition values.
+ * Some GPU's and drivers don't return the true vertical scanout position on
+ * query, but a value that is offset by a constant value (for a give display mode).
+ * This function returns corrective values to apply to the GPU returned values
+ * to get the "true scanoutposition" for timestamping etc.
+ *
+ * Proper values are setup via PsychSetBeamposCorrection() from high-level startup code
+ * if needed. Otherwise they are set to (0,0), so the correction is an effective no-op.
+ *
+ * truebeampos = measuredbeampos - *vblbias;
+ * if (truebeampos < 0) truebeampos = *vbltotal + truebeampos;
+ *
+ */
+void PsychGetBeamposCorrection(int screenId, int *vblbias, int *vbltotal)
+{
+	*vblbias  = screenBeampositionBias[screenId];
+	*vbltotal = screenBeampositionVTotal[screenId];
+}
+
+/* PsychSetBeamposCorrection() -- Set corrective beamposition values.
+ * Called from high-level setup/calibration code at onscreen window open time.
+ */
+void PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal)
+{
+	screenBeampositionBias[screenId] = vblbias;
+	screenBeampositionVTotal[screenId] = vbltotal;
 }
