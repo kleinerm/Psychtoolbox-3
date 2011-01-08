@@ -129,6 +129,8 @@ static char synopsisString[] =
 	"\noldMode = Screen('Preference', 'OverrideMultimediaEngine', [newmode (0=System default, 1=GStreamer)]);"
 	"\noldLevel = Screen('Preference', 'WindowShieldingLevel', [newLevel (0 = Behind all other windows - 2000 = In front of all other windows, the default)]);"
 	"\nresiduals = Screen('Preference', 'SynchronizeDisplays', syncMethod);"
+	"\noldHeadId = Screen('Preference', 'ScreenToHead', screenId [, newHeadId]);"
+
 	"\noldLevel = Screen('Preference', 'Verbosity' [,level]);";
 
 static char seeAlsoString[] = "";	
@@ -456,6 +458,21 @@ PsychError SCREENPreference(void)
 				}
 				preferenceNameArgumentValid=TRUE;
 		}else 
+			if(PsychMatch(preferenceName, "ScreenToHead")){
+				// screenId is required:
+				PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
+				if (tempInt < 0 || tempInt >= PsychGetNumDisplays() || tempInt >= kPsychMaxPossibleDisplays) PsychErrorExitMsg(PsychError_user, "Invalid screenId provided. Out of valid range!");
+
+				// Return old mapping for this screenId:
+				PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_ScreenToHead(tempInt));
+				if(numInputArgs==3) {
+					// Set new headId for screenId:
+					PsychCopyInIntegerArg(3, kPsychArgRequired, &tempInt2);
+					if (tempInt2 < 0 || tempInt2 > 5) PsychErrorExitMsg(PsychError_user, "Invalid headId provided. Out of valid range [0 to 5]!");
+					PsychPrefStateSet_ScreenToHead(tempInt, tempInt2);
+				}
+				preferenceNameArgumentValid=TRUE;
+		}else 
 			PsychErrorExit(PsychError_unrecognizedPreferenceName);
 	}
 	
@@ -464,7 +481,3 @@ PsychError SCREENPreference(void)
 		
 	return(PsychError_none);
 }
-
-
-
-

@@ -303,8 +303,6 @@ static CGDisplayCount 		numDisplays;
 static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];
 // displayX11Screens stores the mapping of PTB screenNumber's to corresponding X11 screen numbers:
 static int                      displayX11Screens[kPsychMaxPossibleDisplays];
-// Maps screenid's to Graphics hardware pipelines: Used to choose pipeline for beampos-queries...
-static unsigned char		displayScreensToPipes[kPsychMaxPossibleDisplays];
 static psych_bool               displayCursorHidden[kPsychMaxPossibleDisplays];
 
 // X11 has a different - and much more powerful and flexible - concept of displays than OS-X or Windows:
@@ -374,8 +372,7 @@ void InitializePsychDisplayGlue(void)
         displayLockSettingsFlags[i]=FALSE;
         displayOriginalCGSettingsValid[i]=FALSE;
         displayOverlayedCGSettingsValid[i]=FALSE;
-	displayCursorHidden[i]=FALSE;
-	displayScreensToPipes[i]=i;
+		displayCursorHidden[i]=FALSE;
     }
     
 	if (firstTime) {
@@ -407,7 +404,6 @@ void InitCGDisplayIDList(void)
 {  
   int i, j, k, count, scrnid;
   char* ptbdisplays = NULL;
-  char* ptbpipelines = NULL;
   char displayname[1000];
   CGDirectDisplayID x11_dpy = NULL;
  
@@ -491,16 +487,8 @@ void InitCGDisplayIDList(void)
   if (numDisplays>1) printf("PTB-Info: A total of %i physical X-Windows display screens is available for use.\n", numDisplays);
   fflush(NULL);
 
-  // Did user provide an override for the screenid --> pipeline mapping?
-  ptbpipelines = getenv("PSYCHTOOLBOX_PIPEMAPPINGS");
-  if (ptbpipelines) {
-	// Yep. Format is: One character (a number between "0" and "9") for each screenid,
-	// e.g., "021" would map screenid 0 to pipe 0, screenid 1 to pipe 2 and screenid 2 to pipe 1.
-	// The default is "012...", ie screen 0 = pipe 0, 1 = pipe 1, 2 =pipe 2, n = pipe n
-	for (j=0; j<strlen(ptbpipelines) && j<numDisplays; j++) {
-	   displayScreensToPipes[j] = ((ptbpipelines[j] - 0x30)>=0 && (ptbpipelines[j] - 0x30)<kPsychMaxPossibleDisplays) ? (ptbpipelines[j] - 0x30) : 0;
-	}
-  }
+  // Initialize screenId -> GPU headId mapping:
+  PsychInitScreenToHeadMappings(numDisplays);
 
   return;
 }
@@ -1189,6 +1177,7 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
   // On systems that we can't handle, we return -1 as an indicator
   // to high-level routines that we don't know the rasterbeam position.
   int beampos = -1;
+  int headid  = PsychScreenToHead(screenNumber);
   
   // Currently we can do do-it-yourself-style beamposition queries for
   // ATI's Radeon X1000, HD2000/3000 series chips due to availability of
@@ -1200,17 +1189,17 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 		  // Yes: Avoid queries that return zero -- If query result is zero, retry
 		  // until it becomes non-zero:
 		  // Some hardware may needs this to resolve...
-		  while (0 == (int) ( radeon_get((displayScreensToPipes[screenNumber] == 0) ? RADEON_D1CRTC_STATUS_POSITION : RADEON_D2CRTC_STATUS_POSITION) & RADEON_VBEAMPOSITION_BITMASK) );
+		  while (0 == (int) ( radeon_get((headid == 0) ? RADEON_D1CRTC_STATUS_POSITION : RADEON_D2CRTC_STATUS_POSITION) & RADEON_VBEAMPOSITION_BITMASK) );
 	  }
 
 	  // Ok, supported chip and setup worked. Read the mmapped register,
 	  // either for CRTC-1 if pipe for this screen is zero, or CRTC-2 otherwise:
-	  beampos = radeon_get((displayScreensToPipes[screenNumber] == 0) ? RADEON_D1CRTC_STATUS_POSITION : RADEON_D2CRTC_STATUS_POSITION) & RADEON_VBEAMPOSITION_BITMASK;
+	  beampos = radeon_get((headid == 0) ? RADEON_D1CRTC_STATUS_POSITION : RADEON_D2CRTC_STATUS_POSITION) & RADEON_VBEAMPOSITION_BITMASK;
 
 	  // Query end-offset of VBLANK interval of this GPU and correct for it:
-	  beampos = beampos - (int) ((radeon_get((displayScreensToPipes[screenNumber] == 0) ? AVIVO_D1CRTC_V_BLANK_START_END : AVIVO_D2CRTC_V_BLANK_START_END) >> 16) & RADEON_VBEAMPOSITION_BITMASK);
+	  beampos = beampos - (int) ((radeon_get((headid == 0) ? AVIVO_D1CRTC_V_BLANK_START_END : AVIVO_D2CRTC_V_BLANK_START_END) >> 16) & RADEON_VBEAMPOSITION_BITMASK);
 
-	  if (beampos < 0) beampos = ((int) radeon_get((displayScreensToPipes[screenNumber] == 0) ? AVIVO_D1CRTC_V_TOTAL : AVIVO_D2CRTC_V_TOTAL)) + beampos;
+	  if (beampos < 0) beampos = ((int) radeon_get((headid == 0) ? AVIVO_D1CRTC_V_TOTAL : AVIVO_D2CRTC_V_TOTAL)) + beampos;
   }
 
   // Return our result or non-result:
@@ -1251,7 +1240,7 @@ int PsychOSCheckKDAvailable(int screenId, unsigned int * status)
 	// but we don't have such a thing yet.  Could be also a pointer to a little struct with all
 	// relevant info...
 	// Currently we do a dummy assignment...
-	int connect = displayScreensToPipes[screenId];
+	int connect = PsychScreenToHead(screenId);
 
 	if ((numKernelDrivers<=0) && (gfx_cntl_mem == NULL)) {
 		if (status) *status = ENODEV;

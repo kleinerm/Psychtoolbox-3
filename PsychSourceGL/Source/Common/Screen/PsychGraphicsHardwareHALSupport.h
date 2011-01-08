@@ -63,6 +63,13 @@ void		PsychStoreGPUSurfaceAddresses(PsychWindowRecordType* windowRecord);
 psych_bool		PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* windowRecord, double* timestamp, int *beamposition);
 unsigned int	PsychGetNVidiaGPUType(PsychWindowRecordType* windowRecord);
 
+// Map PTB screenId to GPU headId (aka pipeId):
+int			PsychScreenToHead(int screenId);
+// Change mapping of a PTB screenId to GPU headId:
+void		PsychSetScreenToHead(int screenId, int headId);
+// Setup initial mapping for 'numDisplays' displays:
+void		PsychInitScreenToHeadMappings(int numDisplays);
+
 // End of routines.
 
 #endif // include once.

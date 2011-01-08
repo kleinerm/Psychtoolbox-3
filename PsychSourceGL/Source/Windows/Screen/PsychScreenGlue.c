@@ -336,6 +336,10 @@ void InitCGDisplayIDList(void)
 		}
 	}
   }
+
+  // Setup screenId -> display head mappings:
+  PsychInitScreenToHeadMappings(numDisplays);
+
   // Ready.
   return;
 }
@@ -921,6 +925,9 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 	HRESULT rc;
 	psych_uint32 beampos = 0;
 	
+	// Apply remapping of screenId's to heads, if any: Usually identity mapping.
+	screenNumber = PsychScreenToHead(screenNumber);
+	
 	// EXPERIMENTAL: For now this only queries the primary display device and
 	// probably only works properly on single-display setups and some multi-setups.
 	if(displayDeviceDDrawObject[screenNumber]) {
@@ -971,7 +978,7 @@ void PsychTestDDrawBeampositionQueries(int screenNumber)
 	int verbosity = PsychPrefStateGet_Verbosity();
 	
 	// Check how beamposition query behaves inside the vertical blanking interval:
-	if((displayDeviceDDrawObject[screenNumber]) && (PsychPrefStateGet_VBLTimestampingMode()>=0)) {
+	if((displayDeviceDDrawObject[PsychScreenToHead(screenNumber)]) && (PsychPrefStateGet_VBLTimestampingMode()>=0)) {
 		// We have a Direct draw object and beampos queries are enabled: Try to test GetScanLine():
 		
 		// First find reference height values for display, aka start of vertical blank.
@@ -1016,7 +1023,7 @@ void PsychTestDDrawBeampositionQueries(int screenNumber)
 			
 			// Query beam position:
 			beampos = 0xdeadbeef;
-			rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[screenNumber], (LPDWORD) &beampos);
+			rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[PsychScreenToHead(screenNumber)], (LPDWORD) &beampos);
 			if (rc==DD_OK || rc==DDERR_VERTICALBLANKINPROGRESS) {
 				// Some sample returned...
 				totalcount++;

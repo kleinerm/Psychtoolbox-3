@@ -465,8 +465,6 @@ void PsychPrefStateSet_DebugMakeTexture(psych_bool setFlag)
 	TimeMakeTextureFlag=setFlag;
 }
 
-
-
 psych_bool PsychPrefStateGet_SuppressAllWarnings(void)
 {
 	return(suppressAllWarnings);
@@ -498,4 +496,18 @@ void PsychPrefStateSet_UseGStreamer(int value)
 int PsychPrefStateGet_UseGStreamer(void)
 {
 	return(useGStreamer);
+}
+
+// Screen -> Head mappings: These are special, because the default
+// mapping gets initialized during display initialization, and
+// the actual mappings are stored in PsychGraphicsHardwareHALSupport.c,
+// so these are just wrappers around the true accessor functions:
+void PsychPrefStateSet_ScreenToHead(int screenId, int headId)
+{
+	PsychSetScreenToHead(screenId, headId);
+}
+
+int PsychPrefStateGet_ScreenToHead(int screenId)
+{
+	return(PsychScreenToHead(screenId));
 }

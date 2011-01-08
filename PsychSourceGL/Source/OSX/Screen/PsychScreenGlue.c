@@ -97,6 +97,9 @@ void InitializePsychDisplayGlue(void)
     // Init the list of Core Graphics display IDs.
     InitCGDisplayIDList();
 
+	// Setup screenId -> display head mappings:
+	PsychInitScreenToHeadMappings(PsychGetNumPhysicalDisplays());
+
 	// Register a display reconfiguration callback:
 	CGDisplayRegisterReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);
 	
@@ -125,13 +128,6 @@ void PsychDisplayReconfigurationCallBack(CGDirectDisplayID display, CGDisplayCha
 	return;
 }
 
-// MK-TODO: There's still a bug here: We need to call InitCGDisplayIDList() not only at
-// Screen-Init time but also as part of *EACH* query to the list...
-// Otherwise, if the user changes display settings (layout of displays, primary<->secondary display,
-// mirror<->non-mirror mode) or connects/disconnects/replugs/powers on or powers off displays,
-// while a Matlab session is running and without "clear Screen"
-// after the change, PTB will not notice the change in display configuration and access
-// invalid or wrong display handles --> all kind of syncing problems and weird bugs...
 void InitCGDisplayIDList(void)
 {
     CGDisplayErr error;
@@ -1251,12 +1247,8 @@ int PsychOSKDGetBeamposition(int screenId)
 	// Set command code for beamposition query:
 	syncCommand.command = kPsychKDGetBeamposition;
 	
-	// Assign headid for this screen: Currently we only support two display heads and
-	// statically assign headid 0 to screenid 0 and headid 1 to screenid 1.
-	// For now, we hope that PTB's high-level consistency checking will detect mismapped
-	// queries and disable beamposition queries in that case.
-	// TODO: Implement a more powerful and flexible mapping!
-	syncCommand.inOutArgs[0] = (screenId > 0) ? 1 : 0;
+	// Assign headid for this screen:
+	syncCommand.inOutArgs[0] = PsychScreenToHead(screenId);
 	
 	// Issue request:
 	kern_return_t kernResult = PsychOSKDDispatchCommand(connect,  &syncCommand, &syncCommand, NULL);    

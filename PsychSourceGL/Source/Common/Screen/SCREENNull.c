@@ -135,8 +135,26 @@ PsychError SCREENNull(void)
 
 			vblcount = (vblcount >> 16) & 0xFFFF;
 
-			if (verbose > 1 || verbose < 0) printf("%i\n", (PsychOSKDReadRegister(crtcid, 0x616340 + crtco + 4 * verbose, NULL)));		
-                }
+			if (verbose > 1 || verbose < 0) {
+//				printf("%i\n", (PsychOSKDReadRegister(crtcid, 0x616340 + crtco + 4 * verbose, NULL)));
+				int i;
+				for (i=0; i<=0xfffffc; i+=4) {
+//					unsigned int base = 0x610000;
+//no					unsigned int base = 0x600000;
+					unsigned int base = 0x00008000;
+					vblcount = PsychOSKDReadRegister(crtcid, base + i, NULL);
+					unsigned int hi = vblcount >> 16;
+					unsigned int lo = vblcount & 0xffff;
+					if ((vblcount > 0 && vblcount < 50) || (hi > 0 && hi < 50) || (hi> 750 && hi < 850) || (lo > 0 && lo < 50) || (lo> 750 && lo < 850)) {
+//					if (abs((int)(hi + lo) - 38) < 5) {
+//if (1) {
+						printf("%p :: hi = %i , lo = %i , val = %i\n", (void*) (base + i), hi, lo, vblcount);
+					}
+				}
+//				printf("%i\n", (PsychOSKDReadRegister(crtcid, 0x616340 + crtco + 4 * verbose, NULL)));
+			}
+			
+		}
 		else {
 			// NV40 or earlier, aka GeForce-7000 or earlier: Same registers down to
 			// earliest NVidia cards NV04 aka RivaTNT-1:

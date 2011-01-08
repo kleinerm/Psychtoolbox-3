@@ -119,5 +119,9 @@ void PsychPrefStateGet_SynctestThresholds(double* maxStddev, int* minSamples, do
 void PsychPrefStateSet_UseGStreamer(int value);
 int PsychPrefStateGet_UseGStreamer(void);
 
+// Modify/Get screenid -> gpu head mapping:
+void PsychPrefStateSet_ScreenToHead(int screenId, int headId);
+int PsychPrefStateGet_ScreenToHead(int screenId);
+
 //end include once
 #endif
