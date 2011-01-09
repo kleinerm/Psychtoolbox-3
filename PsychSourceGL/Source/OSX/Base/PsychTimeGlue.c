@@ -427,6 +427,12 @@ int PsychWaitCondition(psych_condition* condition, psych_mutex* mutex)
 int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, double maxwaittimesecs)
 {
 	struct timespec abstime;
+	double tnow;
+
+	// Convert relative wait time to absolute system time:
+	PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+	maxwaittimesecs+=tnow;
+
 	// Split maxwaittimesecs in...
 	
 	// ... full integral seconds (floor() it)...
