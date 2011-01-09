@@ -569,16 +569,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   }
   fflush(NULL);
 
-  // ATI Radeon X1000 or later AND first opened onscreen window?
-  if ((x11_windowcount == 1) && ( (strstr(glGetString(GL_VENDOR), "ATI") && (strstr(glGetString(GL_RENDERER), "Radeon") || strstr(glGetString(GL_RENDERER), "Fire"))) || (strstr(glGetString(GL_VENDOR), "DRI R")) || (strstr(glGetString(GL_VENDOR), "Advanced Micro Devices") && strstr(glGetString(GL_RENDERER), "Mesa DRI R")) )) {
-	  if (strstr(glGetString(GL_RENDERER), "X") || strstr(glGetString(GL_RENDERER), "HD") || strstr(glGetString(GL_RENDERER), "Mesa DRI")) {
-	  	// Probably an X1000 or later or an HD 2000/3000/later series chip.
-		// Try to map its PCI register space to allow for our implementation of
-		// beamposition queries:
-		if (PsychScreenMapRadeonCntlMemory()) printf("PTB-INFO: ATI-Radeon of model series X1000, HD2000, HD3000 or later detected -- Beamposition queries enabled.\n");
-	  }
-  }
-  
+  // First opened onscreen window? If so, we try to map GPU MMIO registers
+  // to enable beamposition based timestamping and other special goodies:
+  if (x11_windowcount == 1) PsychScreenMapRadeonCntlMemory();
+
   // Ok, we should be ready for OS independent setup...
   fflush(NULL);
 

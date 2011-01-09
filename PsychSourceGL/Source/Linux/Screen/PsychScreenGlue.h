@@ -42,11 +42,11 @@ void						InitializePsychDisplayGlue(void);
 void						PsychGetCGDisplayIDFromScreenNumber(CGDirectDisplayID *displayID, int screenNumber);
 void						PsychCaptureScreen(int screenNumber);
 void						PsychReleaseScreen(int screenNumber);
-psych_bool						PsychIsScreenCaptured(int screenNumber);
+psych_bool					PsychIsScreenCaptured(int screenNumber);
 int						PsychGetNumDisplays(void);
 void						PsychGetScreenDepths(int screenNumber, PsychDepthType *depths);
 int						PsychGetAllSupportedScreenSettings(int screenNumber, long** widths, long** heights, long** hz, long** bpp);
-psych_bool						PsychCheckVideoSettings(PsychScreenSettingsType *setting);
+psych_bool					PsychCheckVideoSettings(PsychScreenSettingsType *setting);
 void						PsychGetScreenDepth(int screenNumber, PsychDepthType *depth);   //dont' use this and get rid  of it.
 int						PsychGetScreenDepthValue(int screenNumber);
 int						PsychGetNumScreenPlanes(int screenNumber);
@@ -59,8 +59,8 @@ void                        			PsychGetDisplaySize(int screenNumber, int *width,
 PsychColorModeType				PsychGetScreenMode(int screenNumber);
 int						PsychGetDacBitsFromDisplay(int screenNumber);		//from display, not from preferences
 void						PsychGetScreenSettings(int screenNumber, PsychScreenSettingsType *settings);
-psych_bool						PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsType *settings);
-psych_bool						PsychRestoreScreenSettings(int screenNumber);
+psych_bool					PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsType *settings);
+psych_bool					PsychRestoreScreenSettings(int screenNumber);
 void						PsychHideCursor(int screenNumber);
 void						PsychShowCursor(int screenNumber);
 void						PsychPositionCursor(int screenNumber, int x, int y);
@@ -71,7 +71,8 @@ PsychError					PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds,
 void						PsychOSShutdownPsychtoolboxKernelDriverInterface(void);
 unsigned int					PsychOSKDReadRegister(int screenId, unsigned int offset, unsigned int* status);
 unsigned int					PsychOSKDWriteRegister(int screenId, unsigned int offset, unsigned int value, unsigned int* status);
-psych_bool						PsychOSIsKernelDriverAvailable(int screenId);
+int						PsychOSKDGetBeamposition(int screenId);
+psych_bool					PsychOSIsKernelDriverAvailable(int screenId);
 
 // Internal helper routines for memory mapped gfx-hardware register low level access: Called
 // from PsychWindowGlue.c PsychOSOpenOnscreenWindow() and PsychOSCloseOnscreenWindow() routines
@@ -81,4 +82,3 @@ void 						PsychScreenUnmapDeviceMemory(void);
 
 //end include once
 #endif
-

@@ -63,35 +63,16 @@
 #define XF86VidModeNumberErrors 0
 #endif
 
-
-// file local variables
-/* Following structures are needed by our ATI beamposition query implementation: */
-/* Location and format of the relevant hardware registers of the R500/R600 chips
+/* Following structures are needed by our ATI/AMD/NVIDIA beamposition query implementation: */
+/* Location and format of the relevant hardware registers of the ATI R500/R600 chips
  * was taken from the official register spec for that chips which was released to
  * the public by AMD/ATI end of 2007 and is available for download at XOrg.
- * TODO: Add download link to ATI spec documents!
  *
- * I'm certain this should work on any R500/600 chip, but as i don't have any
- * specs for earlier Radeons, i don't know what happens on such GPU's. If it
- * works, it'll work by accident/luck, but not because we designed for it ;-).
- */
- 
-/* The method - and small bits of code - for accessing the ATI Radeons registers
- * directly, was taken/borrowed/derived from the useful "Radeontool" utility from
- * Frederick Dean. Below is the copyright notice and credits of Radeontool:
+ * http://www.x.org/docs/AMD/
  *
- * Radeontool   v1.4
- * by Frederick Dean <software@fdd.com>
- * Copyright 2002-2004 Frederick Dean
- * Use hereby granted under the zlib license.
- *
- * Warning: I do not have the Radeon documents, so this was engineered from 
- * the radeon_reg.h header file.  
- *
- * USE RADEONTOOL AT YOUR OWN RISK
- *
- * Thanks to Deepak Chawla, Erno Kuusela, Rolf Offermanns, and Soos Peter
- * for patches.
+ * Register spec's for DCE-4 hardware are from Linux kms driver and Alex Deucher.
+ * This should work on any AVIVO or DCE4/5 display hardware chip, i.e., R300 and
+ * later. It won't work on ancient pre-AVIVO hardware.
  */
 
 #include "PsychGraphicsCardRegisterSpecs.h"
@@ -140,7 +121,7 @@ static psych_bool isDCE4(int screenId)
 // offset 'offset' and return its value:
 static unsigned int ReadRegister(unsigned int offset)
 {
-    unsigned int value;
+	unsigned int value;
 
 	// Safety check: Don't allow reads past devices MMIO range:
 	// We don't return error codes and don't log the problem,
@@ -149,7 +130,7 @@ static unsigned int ReadRegister(unsigned int offset)
 	if (gfx_cntl_mem == NULL || offset > gfx_length-4) return(0);
 	
 	// Read and return value:
-    value = *(unsigned int * volatile)(gfx_cntl_mem + offset);
+	value = *(unsigned int * volatile)(gfx_cntl_mem + offset);
 
 	// Enforce a full memory barrier: This is a gcc intrinsic:
 	__sync_synchronize();  
@@ -182,7 +163,7 @@ static void WriteRegister(unsigned int offset, unsigned int value)
 	// Radeon: Don't know endianity behaviour: Play save, stick to LE assumption for now:
 	if (fDeviceType == kPsychRadeon) value = htole32(value);
 
-    *(unsigned int* volatile)(gfx_cntl_mem + offset) = value;
+	*(unsigned int* volatile)(gfx_cntl_mem + offset) = value;
 	
 	// Enforce a full memory barrier: This is a gcc intrinsic:
 	__sync_synchronize();  
@@ -197,10 +178,10 @@ void PsychScreenUnmapDeviceMemory(void)
 		gfx_cntl_mem = NULL;
 		gfx_length = 0;
 		gpu = NULL;
-
-		// Shutdown PCI access library, release all resources:
-		pci_system_cleanup();
 	}
+
+	// Shutdown PCI access library, release all resources:
+	pci_system_cleanup();
 
 	return;
 }
@@ -210,14 +191,14 @@ void PsychScreenUnmapDeviceMemory(void)
 psych_bool PsychScreenMapRadeonCntlMemory(void)
 {
 	struct pci_device_iterator *iter;
-    struct pci_device *dev;
+	struct pci_device *dev;
 	struct pci_mem_region *region;
-    int ret;
+	int ret;
 	int screenId = 0;
 
 	// Safe-guard:
 	if (gfx_cntl_mem || gpu) {
-		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Redundant call to PsychScreenMapRadeonCntlMemory()! Ignored for now. This should not happen!\n");
+		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Redundant call to PsychScreenMapRadeonCntlMemory()! Ignored for now. This should not happen!\n");
 		return(TRUE);
 	}
 
@@ -234,7 +215,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 	}
 
 	// Enumerate them:
-	iter = pci_id_match_iterator_create(&matchcrit);
+	iter = pci_id_match_iterator_create(NULL);
 	while ((dev = pci_device_next(iter)) != NULL) {
 		if (PsychPrefStateGet_Verbosity() > 4) {
 			printf("PTB-DEBUG: Checking PCI device [%s %s] with class x%08x ...\n", pci_device_get_vendor_name(dev), pci_device_get_device_name(dev), dev->device_class);
@@ -253,7 +234,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 				break;
 			}
 		}
-    }
+	}
 
 	// Enumeration finished - Release iterator:
 	pci_iterator_destroy(iter);
@@ -265,6 +246,18 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			printf("PTB-INFO: %s - %s GPU found. Trying to establish low-level access...\n", pci_device_get_vendor_name(gpu), pci_device_get_device_name(gpu));
 		}
 		
+		// Pull in remaining info about gpu:
+		ret = pci_device_probe(gpu);
+		if (ret) {
+			if (PsychPrefStateGet_Verbosity() > 1) {
+				printf("PTB-WARNING: Could not probe properties of GPU for screenId %i [%s]\n", screenId, strerror(ret));
+				printf("PTB-WARNING: Beamposition timestamping and other special features disabled.\n");
+			}
+
+			gpu = NULL;
+			return(FALSE);
+		}
+
 		// Store PCI device id:
 		fPCIDeviceId = gpu->device_id;
 		
@@ -273,19 +266,24 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 		// this space do, so no need to map'em: gfx_cntl_mem will contain the base of the register block,
 		// all register addresses in the official Radeon specs are offsets to that base address. This will
 		// return NULL if the mapping fails, e.g., due to insufficient permissions etc...
-		if (dev->vendor_id == PCI_VENDOR_ID_NVIDIA) {
+		if (gpu->vendor_id == PCI_VENDOR_ID_NVIDIA) {
 			// BAR 0 is MMIO:
 			region = &gpu->regions[0];
 			fDeviceType = kPsychGeForce;
 		}
 
-		if (dev->vendor_id == PCI_VENDOR_ID_ATI || dev->vendor_id == PCI_VENDOR_ID_AMD) {
+		if (gpu->vendor_id == PCI_VENDOR_ID_ATI || gpu->vendor_id == PCI_VENDOR_ID_AMD) {
 			// BAR 2 is MMIO:
 			region = &gpu->regions[2];
 			fDeviceType = kPsychRadeon;
 		}
 		
 		// Try to MMAP MMIO registers with write access, assign their base address to gfx_cntl_mem on success:
+		if (PsychPrefStateGet_Verbosity() > 4) {
+			printf("PTB-DEBUG: Mapping GPU BAR address %p ...\n", region->base_addr);
+			printf("PTB-DEBUG: Mapping %p bytes...\n", region->size);
+		}
+
 		ret = pci_device_map_range(gpu, region->base_addr, region->size, PCI_DEV_MAP_FLAG_WRITABLE, (void**) &gfx_cntl_mem);
 		if (ret) {
 			// Failed!
@@ -303,9 +301,11 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 				printf("PTB-WARNING: Failed completely to map GPU low-level control registers for screenId %i [%s].\n", screenId, strerror(ret));
 				printf("PTB-WARNING: Beamposition timestamping and other special functions disabled.\n");
 				printf("PTB-WARNING: You must run Matlab/Octave with root privileges for this to work.\n");
+				printf("PTB-WARNING: However, if you are using the free graphics drivers, there isn't any need for this.\n");
 			}
 			
 			// Failed:
+			gpu = NULL;
 			return(FALSE);
 		}
 		
@@ -314,15 +314,15 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 		
 		if (fDeviceType == kPsychGeForce) {
 			fCardType = PsychGetNVidiaGPUType(NULL);
-			if (PsychPrefStateGet_Verbosity() > 3) {
-				printf("PTB-INFO: Connected to NVidia %s GPU of NV-%02x family.\n", pci_device_get_device_name(gpu), fCardType);
+			if (PsychPrefStateGet_Verbosity() > 2) {
+				printf("PTB-INFO: Connected to NVidia %s GPU of NV-%02x family. Beamposition timestamping enabled.\n", pci_device_get_device_name(gpu), fCardType);
 			}
 		}
 		
 		if (fDeviceType == kPsychRadeon) {
-			fCardType = isDCE4();
-			if (PsychPrefStateGet_Verbosity() > 3) {
-				printf("PTB-INFO: Connected to %s %s GPU with %s display engine.\n", pci_device_get_vendor_name, pci_device_get_device_name(gpu), (fCardType) ? "DCE-4" : "AVIVO");
+			fCardType = isDCE4(screenId);
+			if (PsychPrefStateGet_Verbosity() > 2) {
+				printf("PTB-INFO: Connected to %s %s GPU with %s display engine. Beamposition timestamping enabled.\n", pci_device_get_vendor_name(gpu), pci_device_get_device_name(gpu), (fCardType) ? "DCE-4" : "AVIVO");
 			}
 		}
 		
@@ -335,181 +335,6 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 	// Return final success or failure status:
 	return((gfx_cntl_mem) ? TRUE : FALSE);
 }
-
-
-#ifdef GPU_MMAP_OLDSCHOOL
-
-// Helper routine: mmap() the MMIO memory mapped I/O PCI register space of
-// graphics card hardware registers into our address space for easy access
-// by the ReadRegister() routine. 
-static unsigned char * map_device_memory(unsigned int base, unsigned int length) 
-{
-    int mem_fd;
-    unsigned char *device_mem = NULL;
-    
-    // Open device file /dev/mem -- Raw read/write access to system memory space -- Only root can do this:
-    if ((mem_fd = open("/dev/mem", O_RDWR) ) < 0) {
-        printf("PTB-WARNING: Beamposition queries unavailable because can't open /dev/mem\nYou must run Matlab/Octave with root privileges for this to work.\n\n");
-	return(NULL);
-    }
-    
-    // Try to mmap() the MMIO PCI register space to the block of memory and return a handle/its base address.
-    // We only ask for a read-only shared mapping and don't request write-access. This as a child protection
-    // as we only need to read registers -- this protects against accidental writes to sensitive device control
-    // registers:
-    device_mem = (unsigned char *) mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, base);
-    
-    // Close file handle to /dev/mem. Not needed anymore, our mmap() will keep the mapping until unmapped...
-    close(mem_fd);
-    
-    // Worked?
-    if (MAP_FAILED == device_mem) {
-	printf("PTB-WARNING: Beamposition queries unavailable because could not mmap() device memory: mmap error [%s]\n", strerror(errno));
-    	return(NULL);
-    }
-    
-    // Return memory pointer to mmap()'ed registers...
-    gfx_length = length;
-    
-    return(device_mem);
-}
-
-// Helper routine: Unmap gfx card control memory and release associated ressources:
-void PsychScreenUnmapDeviceMemory(void)
-{
-	// Any mapped?
-	if (gfx_cntl_mem) {
-		// Unmap:
-		munmap(gfx_cntl_mem, gfx_length);
-		gfx_cntl_mem = NULL;
-		gfx_length = 0;
-	}
-	return;
-}
-
-// Helper routine: Check if a supported ATI Radeon card (X1000, HD2000 or HD3000 .... series)
-// is installed, detect base address of its register space, mmap() it into our address space.
-// This is done by parsing the output of the lspci command...
-psych_bool PsychScreenMapRadeonCntlMemory(void)
-{
-	int pipefd[2];
-	int forkrc;
-	FILE *fp;
-	char line[1000];
-	int base;
-
-	if(pipe(pipefd)) {
-		printf("PTB-DEBUG:[In ATI Radeon detection code]: pipe() failure\n");
-		return(FALSE);
-	}
-	forkrc = fork();
-	if(forkrc == -1) {
-		printf("PTB-DEBUG:[In ATI Radeon detection code] fork() failure\n");
-		return(FALSE);
-	} else if(forkrc == 0) { /* if child */
-		close(pipefd[0]);
-		dup2(pipefd[1],1);  /* stdout */
-		setenv("PATH","/sbin:/usr/sbin:/bin:/usr/bin",1);
-		execlp("lspci","lspci","-v",NULL);
-		// This point is normally not reached, unless an error occured:
-		printf("PTB-DEBUG:[In ATI Radeon detection code] exec lspci failure\n");
-		return(FALSE);
-	}
-	
-	// Parent code: Listen at our end of the pipeline for some news from the 'lspci' command:
-	close(pipefd[1]);
-	fp = fdopen(pipefd[0],"r");
-	if(fp == NULL) {
-		printf("PTB-DEBUG:[In ATI Radeon detection code] fdopen error\n");
-		wait(NULL);
-		return(FALSE);
-	}
-#if 0
-	This is an example output of "lspci -v" ...
-
-	00:1f.6 Modem: Intel Corp. 82801CA/CAM AC 97 Modem (rev 01) (prog-if 00 [Generic])
-	Subsystem: PCTel Inc: Unknown device 4c21
-	Flags: bus master, medium devsel, latency 0, IRQ 11
-	I/O ports at d400 [size=256]
-	I/O ports at dc00 [size=128]
-
-	01:00.0 VGA compatible controller: ATI Technologies Inc Radeon Mobility M6 LY (prog-if 00 [VGA])
-	Subsystem: Dell Computer Corporation: Unknown device 00e3
-	Flags: bus master, VGA palette snoop, stepping, 66Mhz, medium devsel, latency 32, IRQ 11
-	Memory at e0000000 (32-bit, prefetchable) [size=128M]
-	I/O ports at c000 [size=256]
-	Memory at fcff0000 (32-bit, non-prefetchable) [size=64K]
-	Expansion ROM at <unassigned> [disabled] [size=128K]
-	Capabilities: <available only to root>
-
-	02:00.0 Ethernet controller: 3Com Corporation 3c905C-TX/TX-M [Tornado] (rev 78)
-	Subsystem: Dell Computer Corporation: Unknown device 00e3
-	Flags: bus master, medium devsel, latency 32, IRQ 11
-	I/O ports at ec80 [size=128]
-	Memory at f8fffc00 (32-bit, non-prefetchable) [size=128]
-	Expansion ROM at f9000000 [disabled] [size=128K]
-	Capabilities: <available only to root>
-
-	We need to look through it to find the smaller region base address fcff0000.
-
-#endif
-
-	// Iterate line-by-line over lspci output until the Radeon descriptor block is found:
-	while(1) {
-		/* for every line up to the "Radeon" string */
-		if(fgets(line,sizeof(line),fp) == NULL) {  /* if end of file */
-			printf("PTB-INFO: No ATI Radeon hardware found in lspci output. Beamposition queries unsupported.\n");
-			fclose(fp);
-			wait(NULL);
-			return(FALSE);
-		}
-		
-		if((strstr(line,"VGA")) && (strstr(line,"Fire") || strstr(line,"Radeon") || strstr(line,"ATI Tech"))) {  /* if line contains a "radeon" string */
-			break; // Found it!
-		}
-	};
-	
-	// Iterate over Radeon descriptor block until the line with the control register mapping is found:
-	while(1) { /* for every line up till memory statement */
-		if(fgets(line,sizeof(line),fp) == NULL || line[0] != '\t') {  /* if end of file */
-			printf("PTB-INFO: ATI Radeon control memory not found in lspci output. Beamposition queries unsupported.\n");
-			fclose(fp);
-			wait(NULL);
-			return(FALSE);
-		}
-		
-		if(0) printf("%s",line);
-		
-		if(strstr(line,"emory") && strstr(line,"K")) {  /* if line contains a "Memory" and "K" string */
-				break; // Found it! This line contains the base address...
-		}
-	};
-	
-	// Close lspci output and comm-pipe:
-	fclose(fp);
-	wait(NULL);
-
-	// Extract base address from config-line:
-	if(sscanf(line,"%*s%*s%x",&base) == 0) { /* third token as hex number */
-		printf("PTB-INFO: ATI Radeon control memory not found in lspci output [parse error of lspci output]. Beamposition queries unsupported.\n");
-		return(FALSE);
-	}
-	
-	// Got it!
-	printf("PTB-INFO: ATI-Radeon found. Base control address is %x.\n",base);
-	
-	// mmap() the PCI register space into our memory: Currently we map 0x8000 bytes, although the actual
-	// configuration space would be 0xffff bytes, but we neither need, nor know what the upper regions of
-	// this space do, so no need to map'em: gfx_cntl_mem will contain the base of the register block,
-	// all register addresses in the official Radeon specs are offsets to that base address. This will
-	// return NULL if the mapping fails, e.g., due to insufficient permissions etc...
-	gfx_cntl_mem = map_device_memory(base, 0x8000);
-	
-	// Return final success or failure status:
-	return((gfx_cntl_mem) ? TRUE : FALSE);
-}
-
-#endif
 
 // Maybe use NULLs in the settings arrays to mark entries invalid instead of using psych_bool flags in a different array.   
 static psych_bool			displayLockSettingsFlags[kPsychMaxPossibleDisplays];
