@@ -30,7 +30,7 @@ void PsychDeleteAllCaptureDevices(void);
 
 // Record which defines capture engine independent state for a capture device:
 typedef struct {
-	int engineId;		// Type of capture engine: -1 == Free slot, 0 == Quicktime, 1 == LibDC, 2 == ARVideo.
+	int engineId;		// Type of capture engine: -1 == Free slot, 0 == Quicktime, 1 == LibDC, 2 == ARVideo, 3 == GStreamer
 } PsychMasterVidcapRecordType;
 
 static PsychMasterVidcapRecordType mastervidcapRecordBANK[PSYCH_MAX_CAPTUREDEVICES];
@@ -46,28 +46,31 @@ static psych_bool firsttime = TRUE;
  */
 void PsychVideoCaptureInit(void)
 {
-
-    // Initialize mastervidcapRecordBANK with NULL-entries:
-    int i;
-    for (i=0; i < PSYCH_MAX_CAPTUREDEVICES; i++) {
-        mastervidcapRecordBANK[i].engineId = -1;
-    }    
-    numCaptureRecords = 0;
+	// Initialize mastervidcapRecordBANK with NULL-entries:
+	int i;
+	for (i=0; i < PSYCH_MAX_CAPTUREDEVICES; i++) {
+		mastervidcapRecordBANK[i].engineId = -1;
+	}
+	numCaptureRecords = 0;
 
 	// Initialize the different capture engines:
-    #ifdef PTBVIDEOCAPTURE_QT
+	#ifdef PTBVIDEOCAPTURE_QT
 	PsychQTVideoCaptureInit();
 	#endif
 	
 	#ifdef PTBVIDEOCAPTURE_LIBDC
 	PsychDCVideoCaptureInit();
 	#endif
-	
-    #ifdef PTBVIDEOCAPTURE_ARVIDEO
+
+	#ifdef PTB_USE_GSTREAMER
+	PsychGSVideoCaptureInit();
+	#endif
+
+	#ifdef PTBVIDEOCAPTURE_ARVIDEO
 	PsychARVideoCaptureInit();
 	#endif
 
-    return;
+	return;
 }
 
 void PsychEnumerateVideoSources(int engineId, int outPos)
@@ -84,6 +87,14 @@ void PsychEnumerateVideoSources(int engineId, int outPos)
 
 	#ifdef PTBVIDEOCAPTURE_LIBDC
 		PsychErrorExitMsg(PsychError_user, "The DC1394 IIDC firewire videocapture engine does not support enumeration of video devices yet, sorry.");
+	#endif
+
+	#ifdef PTB_USE_GSTREAMER
+		PsychErrorExitMsg(PsychError_user, "The GStreamer videocapture engine does not support enumeration of video devices yet, sorry.");
+	#endif
+
+	#ifdef PTBVIDEOCAPTURE_ARVIDEO
+		PsychErrorExitMsg(PsychError_user, "The ARVideo videocapture engine does not support enumeration of video devices yet, sorry.");
 	#endif
 
 	// Unsupported engine requested?
@@ -107,9 +118,9 @@ void PsychEnumerateVideoSources(int engineId, int outPos)
  *      reqdepth = Number of layers for captured output textures. (0=Don't care, 1=LUMINANCE8, 2=LUMINANCE8_ALPHA8, 3=RGB8, 4=RGBA8)
  *      num_dmabuffers = Number of buffers in the ringbuffer queue (e.g., DMA buffers) - This is OS specific. Zero = Don't care.
  *      allow_lowperf_fallback = If set to 1 then PTB can use a slower, low-performance fallback path to get nasty devices working.
- *		targetmoviefilename = NULL == Only live capture, non-NULL == Pointer to char-string with name of target QT file for video recording.
- *		recordingflags = Only used for recording: Request audio recording, ram recording vs. disk recording and such...
- *		// Query optional movie recording flags:
+ *	targetmoviefilename = NULL == Only live capture, non-NULL == Pointer to char-string with name of target QT file for video recording.
+ *	recordingflags = Only used for recording: Request audio recording, ram recording vs. disk recording and such...
+ *	   	// Query optional movie recording flags:
  *		// 0 = Record video, stream to disk immediately (slower, but unlimited recording duration).
  *		// 1 = Record video, stream to memory, then at end of recording to disk (limited duration by RAM size, but faster).
  *		// 2 = Record audio as well.
@@ -118,37 +129,38 @@ void PsychEnumerateVideoSources(int engineId, int outPos)
 psych_bool PsychOpenVideoCaptureDevice(int engineId, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
 				 int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags)
 {
-    int i, slotid;
+	int i, slotid;
 	psych_bool dispatched = FALSE;
-    *capturehandle = -1;
+	*capturehandle = -1;
 
 	// Sanity checking:
-    if (!PsychIsOnscreenWindow(win)) {
-        PsychErrorExitMsg(PsychError_user, "Provided windowPtr is not an onscreen window.");
-    }
+	if (!PsychIsOnscreenWindow(win)) {
+		PsychErrorExitMsg(PsychError_user, "Provided windowPtr is not an onscreen window.");
+	}
 
-    if (deviceIndex < 0) {
-        PsychErrorExitMsg(PsychError_user, "Invalid (negative) deviceIndex passed!");
-    }
+	if (deviceIndex < 0) {
+		PsychErrorExitMsg(PsychError_user, "Invalid (negative) deviceIndex passed!");
+	}
 
-    if (numCaptureRecords >= PSYCH_MAX_CAPTUREDEVICES) {
-        PsychErrorExitMsg(PsychError_user, "Allowed maximum number of simultaneously open capture devices exceeded!");
-    }
+	if (numCaptureRecords >= PSYCH_MAX_CAPTUREDEVICES) {
+		PsychErrorExitMsg(PsychError_user, "Allowed maximum number of simultaneously open capture devices exceeded!");
+	}
 
-    // Search first free slot in mastervidcapRecordBANK:
-    for (i=0; (i < PSYCH_MAX_CAPTUREDEVICES) && (mastervidcapRecordBANK[i].engineId != -1); i++);
-    if (i>=PSYCH_MAX_CAPTUREDEVICES) {
-        PsychErrorExitMsg(PsychError_user, "Allowed maximum number of simultaneously open capture devices exceeded!");
-    }
+	// Search first free slot in mastervidcapRecordBANK:
+	for (i=0; (i < PSYCH_MAX_CAPTUREDEVICES) && (mastervidcapRecordBANK[i].engineId != -1); i++);
+        if (i>=PSYCH_MAX_CAPTUREDEVICES) {
+		PsychErrorExitMsg(PsychError_user, "Allowed maximum number of simultaneously open capture devices exceeded!");
+	}
 
-    // Slot slotid will contain the record for our new capture object:
-    slotid=i;
+	// Slot slotid will contain the record for our new capture object:
+	slotid=i;
 	
 	// Decide which engine to use and dispatch into proper open function:
 	#ifdef PTBVIDEOCAPTURE_QT
 	if (engineId == 0) {
 		// Quicktime Sequencegrabber:
-		if (!PsychQTOpenVideoCaptureDevice(slotid, win, deviceIndex, capturehandle, capturerectangle, reqdepth, num_dmabuffers, allow_lowperf_fallback, targetmoviefilename, recordingflags)) {
+		if (!PsychQTOpenVideoCaptureDevice(slotid, win, deviceIndex, capturehandle, capturerectangle, reqdepth,
+						   num_dmabuffers, allow_lowperf_fallback, targetmoviefilename, recordingflags)) {
 			// Probably won't ever reach this point due to error handling triggered in subfunction... anyway...
 			return(FALSE);
 		}
@@ -159,7 +171,8 @@ psych_bool PsychOpenVideoCaptureDevice(int engineId, PsychWindowRecordType *win,
 	#ifdef PTBVIDEOCAPTURE_LIBDC
 	if (engineId == 1) {
 		// LibDC1394 video capture:
-		if (!PsychDCOpenVideoCaptureDevice(slotid, win, deviceIndex, capturehandle, capturerectangle, reqdepth, num_dmabuffers, allow_lowperf_fallback, targetmoviefilename, recordingflags)) {
+		if (!PsychDCOpenVideoCaptureDevice(slotid, win, deviceIndex, capturehandle, capturerectangle, reqdepth,
+						   num_dmabuffers, allow_lowperf_fallback, targetmoviefilename, recordingflags)) {
 			// Probably won't ever reach this point due to error handling triggered in subfunction... anyway...
 			return(FALSE);
 		}
@@ -167,10 +180,23 @@ psych_bool PsychOpenVideoCaptureDevice(int engineId, PsychWindowRecordType *win,
 	}
 	#endif
 	
-    #ifdef PTBVIDEOCAPTURE_ARVIDEO
+	#ifdef PTB_USE_GSTREAMER
+	if (engineId == 3) {
+		// GStreamer video capture:
+		if (!PsychGSOpenVideoCaptureDevice(slotid, win, deviceIndex, capturehandle, capturerectangle, reqdepth,
+						   num_dmabuffers, allow_lowperf_fallback, targetmoviefilename, recordingflags)) {
+			// Probably won't ever reach this point due to error handling triggered in subfunction... anyway...
+			return(FALSE);
+		}
+		dispatched = TRUE;
+	}
+	#endif
+
+	#ifdef PTBVIDEOCAPTURE_ARVIDEO
 	if (engineId == 2) {
 		// ARVideo video capture, based on ARToolkit's video capture engine:
-		if (!PsychAROpenVideoCaptureDevice(slotid, win, deviceIndex, capturehandle, capturerectangle, reqdepth, num_dmabuffers, allow_lowperf_fallback, targetmoviefilename, recordingflags)) {
+		if (!PsychAROpenVideoCaptureDevice(slotid, win, deviceIndex, capturehandle, capturerectangle, reqdepth,
+						   num_dmabuffers, allow_lowperf_fallback, targetmoviefilename, recordingflags)) {
 			// Probably won't ever reach this point due to error handling triggered in subfunction... anyway...
 			return(FALSE);
 		}
@@ -183,17 +209,17 @@ psych_bool PsychOpenVideoCaptureDevice(int engineId, PsychWindowRecordType *win,
 	
 	// Ok, new capture device for requested capture engine created...
 	
-    // Assign new record:
-    mastervidcapRecordBANK[slotid].engineId = engineId;    
+	// Assign new record:
+	mastervidcapRecordBANK[slotid].engineId = engineId;    
 
-    // Assign final handle:
-    *capturehandle = slotid;
+	// Assign final handle:
+	*capturehandle = slotid;
 
-    // Increase counter:
-    numCaptureRecords++;
+	// Increase counter:
+	numCaptureRecords++;
 
 	// Ready.
-    return(TRUE);
+	return(TRUE);
 }
 
 /*
@@ -201,13 +227,13 @@ psych_bool PsychOpenVideoCaptureDevice(int engineId, PsychWindowRecordType *win,
  */
 void PsychCloseVideoCaptureDevice(int capturehandle)
 {
-    if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES) {
-        PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided!");
-    }
-    
-    if (mastervidcapRecordBANK[capturehandle].engineId == -1) {
-        PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided. No capture device associated with this handle !!!");
-    }
+	if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES) {
+		PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided!");
+	}
+	
+	if (mastervidcapRecordBANK[capturehandle].engineId == -1) {
+		PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided. No capture device associated with this handle !!!");
+	}
         
 	// Call engine specific method:
 	#ifdef PTBVIDEOCAPTURE_QT
@@ -218,17 +244,21 @@ void PsychCloseVideoCaptureDevice(int capturehandle)
 	if (mastervidcapRecordBANK[capturehandle].engineId == 1) PsychDCCloseVideoCaptureDevice(capturehandle);
 	#endif
 	
-    #ifdef PTBVIDEOCAPTURE_ARVIDEO
+	#ifdef PTB_USE_GSTREAMER
+	if (mastervidcapRecordBANK[capturehandle].engineId == 3) PsychGSCloseVideoCaptureDevice(capturehandle);	
+	#endif
+
+	#ifdef PTBVIDEOCAPTURE_ARVIDEO
 	if (mastervidcapRecordBANK[capturehandle].engineId == 2) PsychARCloseVideoCaptureDevice(capturehandle);
 	#endif
 	
-    // Release record:
+	// Release record:
 	mastervidcapRecordBANK[capturehandle].engineId = -1;
 	
-    // Decrease counter:
-    if (numCaptureRecords>0) numCaptureRecords--;
+	// Decrease counter:
+	if (numCaptureRecords>0) numCaptureRecords--;
         
-    return;
+	return;
 }
 
 /*
@@ -260,10 +290,10 @@ void PsychDeleteAllCaptureDevices(void)
  */
 int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer)
 {        
-    // Sanity checks:
-    if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES || mastervidcapRecordBANK[capturehandle].engineId == -1) {
-        PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided.");
-    }
+	// Sanity checks:
+	if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES || mastervidcapRecordBANK[capturehandle].engineId == -1) {
+		PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided.");
+	}
     
 	// Call engine specific method:
 	#ifdef PTBVIDEOCAPTURE_QT
@@ -274,8 +304,12 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
 	#ifdef PTBVIDEOCAPTURE_LIBDC
 	if (mastervidcapRecordBANK[capturehandle].engineId == 1) return(PsychDCGetTextureFromCapture(win, capturehandle, checkForImage, timeindex, out_texture, presentation_timestamp, summed_intensity, outrawbuffer));
 	#endif
-		
-    #ifdef PTBVIDEOCAPTURE_ARVIDEO
+	
+	#ifdef PTB_USE_GSTREAMER
+	if (mastervidcapRecordBANK[capturehandle].engineId == 3) return(PsychGSGetTextureFromCapture(win, capturehandle, checkForImage, timeindex, out_texture, presentation_timestamp, summed_intensity, outrawbuffer));	
+	#endif
+	
+	#ifdef PTBVIDEOCAPTURE_ARVIDEO
 	if (mastervidcapRecordBANK[capturehandle].engineId == 2) return(PsychARGetTextureFromCapture(win, capturehandle, checkForImage, timeindex, out_texture, presentation_timestamp, summed_intensity, outrawbuffer));
 	#endif
 
@@ -293,9 +327,9 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
  */
 int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime)
 {
-    if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES) {
-        PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided!");
-    }
+	if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES) {
+		PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided!");
+	}
         
 	// Call engine specific method:
 	#ifdef PTBVIDEOCAPTURE_QT
@@ -306,11 +340,15 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes,
 	if (mastervidcapRecordBANK[capturehandle].engineId == 1) return(PsychDCVideoCaptureRate(capturehandle, capturerate, dropframes, startattime));
 	#endif
 
-    #ifdef PTBVIDEOCAPTURE_ARVIDEO
+	#ifdef PTB_USE_GSTREAMER
+	if (mastervidcapRecordBANK[capturehandle].engineId == 3) return(PsychGSVideoCaptureRate(capturehandle, capturerate, dropframes, startattime));	
+	#endif
+
+	#ifdef PTBVIDEOCAPTURE_ARVIDEO
 	if (mastervidcapRecordBANK[capturehandle].engineId == 2) return(PsychARVideoCaptureRate(capturehandle, capturerate, dropframes, startattime));
 	#endif
 
-    return(0);
+	return(0);
 }
 
 /* Set capture device specific parameters:
@@ -333,11 +371,15 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
 	if (mastervidcapRecordBANK[capturehandle].engineId == 1) return(PsychDCVideoCaptureSetParameter(capturehandle, pname, value)); 
 	#endif
 
-    #ifdef PTBVIDEOCAPTURE_ARVIDEO
+	#ifdef PTB_USE_GSTREAMER
+	if (mastervidcapRecordBANK[capturehandle].engineId == 3) return(PsychGSVideoCaptureSetParameter(capturehandle, pname, value));	
+	#endif
+
+	#ifdef PTBVIDEOCAPTURE_ARVIDEO
 	if (mastervidcapRecordBANK[capturehandle].engineId == 2) return(PsychARVideoCaptureSetParameter(capturehandle, pname, value)); 
 	#endif
 
-    return(0);
+	return(0);
 }
 
 /*
@@ -349,8 +391,8 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
  */
 void PsychExitVideoCapture(void)
 {
-    // Release all capture devices:
-    PsychDeleteAllCaptureDevices();
+	// Release all capture devices:
+	PsychDeleteAllCaptureDevices();
     
 	// Call engine specific method:
 	#ifdef PTBVIDEOCAPTURE_QT
@@ -361,10 +403,14 @@ void PsychExitVideoCapture(void)
 	PsychDCExitVideoCapture();
 	#endif
 
-    #ifdef PTBVIDEOCAPTURE_ARVIDEO
+	#ifdef PTB_USE_GSTREAMER
+	PsychGSExitVideoCapture();	
+	#endif
+
+	#ifdef PTBVIDEOCAPTURE_ARVIDEO
 	PsychARExitVideoCapture();
 	#endif
 
-    firsttime = TRUE;
-    return;
+	firsttime = TRUE;
+	return;
 }

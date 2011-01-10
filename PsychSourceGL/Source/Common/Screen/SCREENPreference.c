@@ -125,7 +125,7 @@ static char synopsisString[] =
 	"\noldEnableFlag = Screen('Preference', 'SuppressAllWarnings', [enableFlag]);"
 	"\noldMode = Screen('Preference', 'VBLTimestampingMode', [newmode]);"
 	"\noldVTOTAL = Screen('Preference', 'VBLEndlineOverride' [, newVTOTAL]);"
-	"\noldMode = Screen('Preference', 'DefaultVideocaptureEngine', [newmode (0=Quicktime-SequenceGrabbers, 1=LibDC1394-Firewire, 2=LibARVideo)]);"
+	"\noldMode = Screen('Preference', 'DefaultVideocaptureEngine', [newmode (0=Quicktime-SequenceGrabbers, 1=LibDC1394-Firewire, 2=LibARVideo, 3=GStreamer)]);"
 	"\noldMode = Screen('Preference', 'OverrideMultimediaEngine', [newmode (0=System default, 1=GStreamer)]);"
 	"\noldLevel = Screen('Preference', 'WindowShieldingLevel', [newLevel (0 = Behind all other windows - 2000 = In front of all other windows, the default)]);"
 	"\nresiduals = Screen('Preference', 'SynchronizeDisplays', syncMethod);"

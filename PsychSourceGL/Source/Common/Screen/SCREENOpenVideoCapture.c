@@ -80,9 +80,11 @@ static char synopsisString[] =
 "video capture from checp non-IIDC cameras on Linux, and on Windows it should have a higher performance "
 "than the Quicktime engine. This engine is supported on all systems. On Linux it uses the GStreamer media "
 "framework, on Windows it uses the DirectShow framework, on OS/X it uses Quicktime.\n\n"
+"A value of 3 selects the GStreamer video capture engine. This engine is supported on all operating systems "
+"and allows video and sound recording of captured video and audio streams.\n\n"
 "If you don't specify 'captureEngineType', the global "
 "setting from Screen('Preference', 'DefaultVideoCaptureEngine') will be used. If you don't specify that either "
-"then engine selection will default to Quicktime for MacOS/X and MS-Windows, and Firewire libdc1394 on Linux.\n\n"
+"then engine selection will default to Quicktime for MacOS/X, ARVideo on MS-Windows, and GStreamer on Linux.\n\n"
 "To summarize: \n"
 "Quicktime engine: Supports all cameras/video sources supported by your operating system, allows for video- and "
 "audio recording as well. On many setups, only one camera can be used at a time and the 'deviceIndex' parameter "
@@ -95,20 +97,20 @@ static char seeAlsoString[] = "CloseVideoCapture StartVideoCapture StopVideoCapt
 
 PsychError SCREENOpenVideoCapture(void) 
 {
-	PsychWindowRecordType					*windowRecord;
+	PsychWindowRecordType			*windowRecord;
 	int                                     deviceIndex;
 	int                                     capturehandle = -1;
 	double                                  framerate;
 	int                                     width;
 	int                                     height;
 	PsychRectType                           roirectangle;
-	psych_bool                                 roiassigned;
+	psych_bool                              roiassigned;
 	int                                     reqdepth = 0;
 	int                                     num_dmabuffers = 0;
 	int                                     allow_lowperf_fallback = 1;
-	char*									moviename;
-	int										recordingflags;
-	int										engineId;
+	char*					moviename;
+	int					recordingflags;
+	int					engineId;
 	
 	// All sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -156,10 +158,10 @@ PsychError SCREENOpenVideoCapture(void)
 	PsychCopyInIntegerArg(8, FALSE, &recordingflags);
 	
 	// Copy in optional id of video capture engine to use. We default to the one set via the Screen('Preference', 'DefaultVideocaptureEngine');
-	// setting, which by itself defaults to LibDC1394 (type 1) on Linux, and Quicktime/SG (type 0) on all other OSs.
+	// setting, which by itself defaults to LibDC1394 (type 1) on Linux, ARVideo (type 2) and Quicktime/SG (type 0) on OS/X for now.
 	engineId = PsychPrefStateGet_VideoCaptureEngine();
 	PsychCopyInIntegerArg(9, FALSE, &engineId);
-	if (engineId<0 || engineId>2)  PsychErrorExitMsg(PsychError_user, "OpenVideoCapture called with invalid 'captureEngineType' argument. Valid are zero, one and two.");
+	if (engineId < 0 || engineId > 3) PsychErrorExitMsg(PsychError_user, "OpenVideoCapture called with invalid 'captureEngineType'. Valid are 0,1,2,3.");
 
 	// Try to open the capture device and create & initialize a corresponding capture object.
 	// A MATLAB handle to the video capture object is returned upon successfull operation.

@@ -368,14 +368,7 @@ static void PsychMessageErrorCB(GstBus *bus, GstMessage *msg)
 	return;
 }
 
-//GstAppSinkCallbacks videosinkCallbacks = {
-//    .eos = PsychEOSCallback,
-//    .new_preroll = PsychNewPrerollCallback,
-//    .new_buffer = PsychNewBufferCallback,
-//    .new_buffer_list = PsychNewBufferListCallback
-//};
-
-GstAppSinkCallbacks videosinkCallbacks = {
+static GstAppSinkCallbacks videosinkCallbacks = {
     PsychEOSCallback,
     PsychNewPrerollCallback,
     PsychNewBufferCallback,

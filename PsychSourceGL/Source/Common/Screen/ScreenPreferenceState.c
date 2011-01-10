@@ -42,8 +42,8 @@
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
-// Linux: Default capture engine is LibDC1394 V2:
-#define PTB_DEFAULTVIDCAPENGINE 1
+// Linux: Default capture engine is GStreamer (3), used to be LibDC1394 V2 (1):
+#define PTB_DEFAULTVIDCAPENGINE 3
 #define INITIAL_DEFAULT_FONT_NAME		"Times"
 #define INITIAL_DEFAULT_FONT_SIZE		24
 #define INITIAL_DEFAULT_FONT_STYLE		3
