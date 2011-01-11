@@ -549,11 +549,13 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    deviceIndex = 0;
     }
 
-    reqdepth = 3;
+    reqdepth = 4;
 #endif		
 
     // ROI rectangle specified?
     if (capturerectangle) {
+		tmpstr[0] = 0;
+
 		// Extract wanted width and height:
 		w = (int) PsychGetWidthFromRect(capturerectangle);
 		h = (int) PsychGetHeightFromRect(capturerectangle);
