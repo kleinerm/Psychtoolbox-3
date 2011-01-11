@@ -1676,6 +1676,8 @@
 		833C1F010BB19D0100FB9B4F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		833C1F250BB1A49D00FB9B4F /* PsychPortAudio.c in Sources */ = {isa = PBXBuildFile; fileRef = 833C1F210BB1A49D00FB9B4F /* PsychPortAudio.c */; };
 		833C1F260BB1A49D00FB9B4F /* RegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = 833C1F230BB1A49D00FB9B4F /* RegisterProject.c */; };
+		833D8C9712DBDCB500C3B444 /* PsychVideoCaptureSupportGStreamer.c in Sources */ = {isa = PBXBuildFile; fileRef = 833D8C9612DBDCB500C3B444 /* PsychVideoCaptureSupportGStreamer.c */; };
+		833D8C9812DBDCB500C3B444 /* PsychVideoCaptureSupportGStreamer.c in Sources */ = {isa = PBXBuildFile; fileRef = 833D8C9612DBDCB500C3B444 /* PsychVideoCaptureSupportGStreamer.c */; };
 		8341EF240D2FD0E300B77B0E /* cvEyeTracker.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8341EF1D0D2FD0E300B77B0E /* cvEyeTracker.cc */; };
 		8341EF250D2FD0E300B77B0E /* ransac_ellipse.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8341EF1E0D2FD0E300B77B0E /* ransac_ellipse.cc */; };
 		8341EF260D2FD0E300B77B0E /* remove_corneal_reflection.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8341EF200D2FD0E300B77B0E /* remove_corneal_reflection.cc */; };
@@ -3731,6 +3733,7 @@
 		833C1F230BB1A49D00FB9B4F /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = RegisterProject.c; sourceTree = "<group>"; };
 		833C1F240BB1A49D00FB9B4F /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = RegisterProject.h; sourceTree = "<group>"; };
 		833C1FD80BB1B17600FB9B4F /* libportaudio.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libportaudio.a; path = ../../../Cohorts/PortAudio/libportaudio.a; sourceTree = SOURCE_ROOT; };
+		833D8C9612DBDCB500C3B444 /* PsychVideoCaptureSupportGStreamer.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychVideoCaptureSupportGStreamer.c; path = ../../../Source/Common/Screen/PsychVideoCaptureSupportGStreamer.c; sourceTree = SOURCE_ROOT; };
 		8341EF1D0D2FD0E300B77B0E /* cvEyeTracker.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = cvEyeTracker.cc; sourceTree = "<group>"; };
 		8341EF1E0D2FD0E300B77B0E /* ransac_ellipse.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = ransac_ellipse.cc; sourceTree = "<group>"; };
 		8341EF1F0D2FD0E300B77B0E /* ransac_ellipse.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = ransac_ellipse.h; path = ../../../Source/Common/PsychCV/OpenEyesCVEyeTracker/ransac_ellipse.h; sourceTree = SOURCE_ROOT; };
@@ -5480,6 +5483,7 @@
 				83530223117BD3A300CCB9AF /* PsychMovieWritingSupportQuickTime.c */,
 				8370C71E096A014E00BD4C8C /* PsychTextureSupport.c */,
 				8365A79C09992499006FF0F4 /* PsychVideoCaptureSupport.c */,
+				833D8C9612DBDCB500C3B444 /* PsychVideoCaptureSupportGStreamer.c */,
 				83EFE9010F9A2795002211F0 /* PsychVideoCaptureSupportLibARVideo.c */,
 				8320C1B80D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c */,
 				8320C1B50D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c */,
@@ -11368,6 +11372,7 @@
 				8306696C0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c in Sources */,
 				83530225117BD3A300CCB9AF /* PsychMovieWritingSupportQuickTime.c in Sources */,
 				831A458512A6EEC500FFF235 /* PsychMovieSupport.c in Sources */,
+				833D8C9712DBDCB500C3B444 /* PsychVideoCaptureSupportGStreamer.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11866,6 +11871,7 @@
 				83EFE9020F9A2795002211F0 /* PsychVideoCaptureSupportLibARVideo.c in Sources */,
 				83530224117BD3A300CCB9AF /* PsychMovieWritingSupportQuickTime.c in Sources */,
 				831A458612A6EEC500FFF235 /* PsychMovieSupport.c in Sources */,
+				833D8C9812DBDCB500C3B444 /* PsychVideoCaptureSupportGStreamer.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -452,7 +452,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	int			i;
 	GError			*error = NULL;
 	psych_bool		trueValue = TRUE;
-	psych_bool		printErrors;
+	psych_bool		printErrors = TRUE;
 
 	PsychVidcapRecordType	*capdev = NULL;
 	int			w, h;
@@ -1048,6 +1048,7 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex,
 								 PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer)
 {
+    PsychVidcapRecordType *capdev;
     GstElement			*camera;
     GstBuffer                   *videoBuffer = NULL;
     gint64		        bufferIndex;
@@ -1076,7 +1077,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     }
 	
     // Retrieve device record for handle:
-    PsychVidcapRecordType* capdev = PsychGetGSVidcapRecord(capturehandle);
+    capdev = PsychGetGSVidcapRecord(capturehandle);
 
     // Allow context task to do its internal bookkeeping and cleanup work:
     PsychGSProcessVideoContext(capdev->VideoContext, FALSE);

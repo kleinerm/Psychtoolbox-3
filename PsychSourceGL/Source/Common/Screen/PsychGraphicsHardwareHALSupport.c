@@ -554,6 +554,45 @@ void PsychGetBeamposCorrection(int screenId, int *vblbias, int *vbltotal)
  */
 void PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal)
 {
+	// Need head id for auto-detection:
+	int crtcid = PsychScreenToHead(screenId);
+	
+	// Auto-Detection of correct values requested? A valid OpenGL context must
+	// be bound for this to work or we will crash horribly:
+	if (((unsigned int) vblbias == 0xffffffff) && ((unsigned int) vbltotal == 0xffffffff)) {
+		// First set'em to neutral safe values in case we fail our auto-detect:
+		vblbias  = 0;
+		vbltotal = 0;
+		
+		// Can do this on NVidia GPU's >= NV-50 if low-level access (PTB kernel driver or equivalent) is enabled:
+		if ((strstr(glGetString(GL_VENDOR), "NVIDIA") || strstr(glGetString(GL_VENDOR), "nouveau") ||
+			strstr(glGetString(GL_RENDERER), "NVIDIA") || strstr(glGetString(GL_RENDERER), "nouveau")) &&
+			PsychOSIsKernelDriverAvailable(screenId) && (PsychGetNVidiaGPUType(NULL) >= 0x50)) {
+
+			// Auto-Detection. Read values directly from NV-50 class and later hardware:
+			//
+			// SYNC_START_TO_BLANK_END 16 bit high-word in CRTC_VAL block of NV50_PDISPLAY on NV-50 encodes
+			// length of interval from vsync start line to vblank end line. This is the corrective offset we
+			// need to subtract from read out scanline position to get true scanline position.
+			// Hardware registers "scanline position" measures positive distance from vsync start line (== "scanline 0").
+			// The low-word likely encodes hsyncstart to hblank end length in pixels, but we're not interested in that,
+			// so we shift and mask it out:
+			#if PSYCH_SYSTEM != PSYCH_WINDOWS
+			vblbias = (int) ((PsychOSKDReadRegister(crtcid, 0x610000 + 0xa00 + 0xe8 + ((crtcid > 0) ? 0x540 : 0), NULL) >> 16) & 0xFFFF);
+
+			// DISPLAY_TOTAL: Encodes VTOTAL in high-word, HTOTAL in low-word. Get the VTOTAL in high word:
+			vbltotal = (int) ((PsychOSKDReadRegister(crtcid, 0x610000 + 0xa00 + 0xf8 + ((crtcid > 0) ? 0x540 : 0), NULL) >> 16) & 0xFFFF);
+			#endif
+		}
+
+	}
+
+	// Feedback is good:
+	if ((vblbias != 0) && (vbltotal != 0) && (PsychPrefStateGet_Verbosity() > 3)) {
+		printf("PTB-INFO: Screen %i [head %i]: Applying beamposition corrective offsets: vblbias = %i, vbltotal = %i.\n", screenId, crtcid, vblbias, vbltotal);
+	}
+
+	// Assign:
 	screenBeampositionBias[screenId] = vblbias;
 	screenBeampositionVTotal[screenId] = vbltotal;
 }
