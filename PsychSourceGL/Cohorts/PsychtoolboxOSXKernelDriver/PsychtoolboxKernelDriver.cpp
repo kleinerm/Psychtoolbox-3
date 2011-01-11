@@ -102,10 +102,10 @@ bool PsychtoolboxKernelDriver::isDCE4(void)
 	// code up matching rules here. This should do for now...
 	
 	// Cedar, Redwood, Juniper, Cypress, Hemlock in 0x6xxx range:
-	if ((fPCIDeviceId & 0xF000) == 6000) isDCE4 = true;
+	if ((fPCIDeviceId & 0xF000) == 0x6000) isDCE4 = true;
 	
 	// Palm in 0x98xx range:
-	if ((fPCIDeviceId & 0xFF00) == 9800) isDCE4 = true;
+	if ((fPCIDeviceId & 0xFF00) == 0x9800) isDCE4 = true;
 
 	return(isDCE4);
 }
@@ -256,12 +256,12 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 			assert( mem );
 			IOLog("%s: PCI Range[%ld] %08lx:%08lx\n", getName(), index, mem->getPhysicalAddress(), mem->getLength());
 			
-			// Find the MMIO range of expected size around 0x10000: We find the one with size > 0x1000 and not bigger
-			// than 0x10000, ie. in the range 4 Kb < size < 64 Kb. This likely represents the register space.
+			// Find the MMIO range of expected size around 0x10000 - 0x20000: We find the one with size > 0x1000 and not bigger
+			// than 0x40000, ie. in the range 4 Kb < size < 256 Kb. This likely represents the register space.
 			
-			// Much bigger than 0x10000 would be either 3D engine command FIFO's or VRAM framebuffer. Much smaller
+			// Much bigger than 0x40000 would be either 3D engine command FIFO's or VRAM framebuffer. Much smaller
 			// would be the PCI config space registerset (or maybe VGA set?!?)
-			if (mem->getLength() >= 0x1000 && mem->getLength() <= 0x10000) {
+			if (mem->getLength() >= 0x1000 && mem->getLength() <= 0x40000) {
 				// A possible candidate:
 				candidate_phys_addr = mem->getPhysicalAddress();
 				candidate_size = mem->getLength();
@@ -272,7 +272,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 		
 		/* More than one candidate found? */
 		if (candidate_count != 1) {
-			IOLog("%s: Found %i candidates for Radeon register block. Not equal one - Ambigous mapping! Not good...\n", getName(), candidate_count);		
+			IOLog("%s: Found %ld candidates for Radeon register block.\n", getName(), candidate_count);		
 		}
 		
 		/* look up a range based on its config space base address register */
@@ -284,9 +284,9 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 			IOLog("%s: Could not find MMIO mapping for config base address register 0x%x!\n", getName(), pciBARReg);
 		}
 		
-		/* Exactly one candidate found and mapping consistent with config register mapping? */
-		if (candidate_count != 1 || mem == NULL || candidate_phys_addr != mem->getPhysicalAddress() || candidate_size != mem->getLength()) {
-			IOLog("%s: Could not resolve relevant MMIO register block unambigously!! Will abort here - this is not a safe ground for proceeding.\n", getName());
+		/* Valid mem'ory address returned for mapping? */
+		if (mem == NULL) {
+			IOLog("%s: Could not resolve relevant MMIO register block!! Will abort here - this is not a safe ground for proceeding.\n", getName());
 			
 			// Detach our device handle, so our cleanup routine won't do anything later on:
 			fPCIDevice = NULL;
