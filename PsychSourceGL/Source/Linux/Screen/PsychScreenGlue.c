@@ -288,16 +288,19 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 		}
 
 		ret = pci_device_map_range(gpu, region->base_addr, region->size, PCI_DEV_MAP_FLAG_WRITABLE, (void**) &gfx_cntl_mem);
-		if (ret) {
+		if (ret && (PsychPrefStateGet_Verbosity() <= 20)) {
 			// Failed!
 			if (PsychPrefStateGet_Verbosity() > 1) {
 				printf("PTB-WARNING: Failed to map GPU low-level control registers with read+write access for screenId %i [%s]. Retrying read-only...\n", screenId, strerror(ret));
 				printf("PTB-WARNING: If this works then beamposition timestamping will work, but other special functions won't.\n");
 				fflush(NULL);
 			}
-			
-			// MMAP read-only, so at least beamposition timestamping would work:
-			ret = pci_device_map_range(gpu, region->base_addr, region->size, 0, (void**) &gfx_cntl_mem);
+
+			// TODO FIXME Hack hack: Verbosity > 20 --> Don't retry mapping...
+			if (PsychPrefStateGet_Verbosity() <= 20) {
+				// MMAP read-only, so at least beamposition timestamping would work:
+				ret = pci_device_map_range(gpu, region->base_addr, region->size, 0, (void**) &gfx_cntl_mem);
+			}
 		}
 		
 		if (ret) {
