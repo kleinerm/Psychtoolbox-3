@@ -441,8 +441,11 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 				glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_GREEN_SIZE, &gl_gbits);                
 				glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_BLUE_SIZE, &gl_bbits);                
 				glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_ALPHA_SIZE, &gl_abits);                
-				glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_LUMINANCE_SIZE, &gl_lbits);                
-				
+				glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_LUMINANCE_SIZE, &gl_lbits);
+
+				// Special override for YCBCR textures which return all component bits as zero:
+				if (glinternalFormat == GL_YCBCR_MESA) gl_rbits = 8;
+
 				// Store override per-component bit-depths:
 				win->bpc = (int) ((gl_rbits > gl_lbits) ? gl_rbits : gl_lbits); 
 			}
