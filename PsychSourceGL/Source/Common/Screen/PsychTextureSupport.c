@@ -444,7 +444,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 				glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_LUMINANCE_SIZE, &gl_lbits);
 
 				// Special override for YCBCR textures which return all component bits as zero:
-				if (glinternalFormat == GL_YCBCR_MESA) gl_rbits = 8;
+				if (glinternalFormat == GL_YCBCR_MESA || glinternalFormat == GL_YCBCR_422_APPLE) gl_rbits = 8;
 
 				// Store override per-component bit-depths:
 				win->bpc = (int) ((gl_rbits > gl_lbits) ? gl_rbits : gl_lbits); 
@@ -460,7 +460,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 			// Sanity check: A sum of zero over all texture channels would indicate that texture
 			// creation failed, most likely due to an out of memory condition in the graphics
 			// hardwares VRAM:
-			if ((!avoidCPUGPUSync || (verbosity > 10)) && ((gl_rbits + gl_gbits + gl_bbits + gl_abits + gl_lbits == 0) || (glerr = glGetError())!=0)) {
+			if ((!avoidCPUGPUSync || (verbosity > 10)) && (((glerr = glGetError())!=0) || (gl_rbits + gl_gbits + gl_bbits + gl_abits + gl_lbits == 0))) {
 				// Texture creation failed or malfunctioned!
 				if (PsychPrefStateGet_Verbosity() > 0) {
 					// Abort with error:
@@ -494,7 +494,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 							printf("PTB-ERROR: Your image or texture exceeds the maximum width and/or height of %i texels supported by your graphics hardware.\n", gl_rbits);
 							printf("PTB-ERROR: You'll have to either reduce the size of your images below that limit, or upgrade your hardware.\n\n");
 						}
-						else {
+						else {							
 							// Either out-of-memory in VRAM for such large textures, or unsupported format/precision:
 							if (glinternalFormat!=GL_LUMINANCE8 && glinternalFormat!=GL_RGBA8 && !glewIsSupported("GL_APPLE_float_pixels") && !glewIsSupported("GL_ATI_texture_float") && !glewIsSupported("GL_ARB_texture_float")) {
 								// Requested format is not one of the 8bpc fixed-point LDR formats, but a HDR format which
@@ -544,6 +544,13 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 						PsychErrorExitMsg(PsychError_user, "Texture creation failed, most likely due to unsupported precision or insufficient free memory.");
 					}
 					else {
+						if ((glerr == GL_INVALID_ENUM) && (glinternalFormat == GL_YCBCR_MESA || glinternalFormat == GL_YCBCR_422_APPLE)) {
+							printf("PTB-ERROR: Tried to use a memory-optimized YCBYCR texture, but your GPU + graphics driver doesn't support this.\n");
+							printf("PTB-ERROR: You'll need to update your graphics driver and/or upgrade your graphics card, or change your script code\n");
+							printf("PTB-ERROR: to avoid this special unsupported texture format.\n");
+							PsychErrorExitMsg(PsychError_user, "Texture creation failed, most likely due to use of an unsupported texture format.");
+						}
+						
 						// Some other error:
 						printf("\n\nPTB-ERROR: Texture creation failed! OpenGL reported the following error condition: %s.\n", gluErrorString(glerr));
 						PsychErrorExitMsg(PsychError_user, "Texture creation failed for unknown reason. You may want to contact the Psychtoolbox forum for help.");
