@@ -279,7 +279,6 @@ static void PsychEOSCallback(GstAppSink *sink, gpointer user_data)
 	PsychLockMutex(&capdev->mutex);
 	//printf("PTB-DEBUG: Videosink reached EOS.\n");
 	PsychUnlockMutex(&capdev->mutex);
-       	PsychSignalCondition(&capdev->condition);
 
 	return;
 }
@@ -320,7 +319,6 @@ static GstFlowReturn PsychNewPrerollCallback(GstAppSink *sink, gpointer user_dat
 
 	PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) user_data;
 
-
 	PsychLockMutex(&capdev->mutex);
 	videoBuffer = gst_app_sink_pull_preroll(GST_APP_SINK(capdev->videosink));
 	if (videoBuffer) {
@@ -335,7 +333,6 @@ static GstFlowReturn PsychNewPrerollCallback(GstAppSink *sink, gpointer user_dat
 	capdev->preRollAvail++;
 
 	PsychUnlockMutex(&capdev->mutex);
-       	PsychSignalCondition(&capdev->condition);
 
 	return(GST_FLOW_OK);
 }
@@ -364,7 +361,6 @@ static GstFlowReturn PsychNewBufferListCallback(GstAppSink *sink, gpointer user_
 	PsychLockMutex(&capdev->mutex);
 	//printf("PTB-DEBUG: New Bufferlist received.\n");
 	PsychUnlockMutex(&capdev->mutex);
-       	PsychSignalCondition(&capdev->condition);
 
 	return(GST_FLOW_OK);
 }
@@ -873,9 +869,6 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     // Increase counter of open capture devices:
     numCaptureRecords++;
     
-    // Set zero framerate:
-    capdev->fps = 0;
-    
     // Set image size:
     capdev->width = width;
     capdev->height = height;
@@ -1008,6 +1001,11 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 		// Wait for real start of capture, i.e., arrival of 1st captured
 		// video buffer:
 		PsychLockMutex(&capdev->mutex);
+
+		// This wait is just here to clear potentially pending conditions on
+		// MS-Windows. Therefore only wait for 1.1 msecs at most:
+		PsychTimedWaitCondition(&capdev->condition, &capdev->mutex, 0.0011);
+
 		while (capdev->frameAvail == 0) {
 			if (PsychPrefStateGet_Verbosity() > 5) {
 				printf("PTB-DEBUG: Waiting for real start: fA = %i pA = %i fps=%f\n", capdev->frameAvail, capdev->preRollAvail, capdev->fps);
@@ -1260,24 +1258,21 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     //printf("PTB-DEBUG: Blocking fetch start %d\n", capdev->frameAvail);
 
     if ((capdev->grabber_active) && !capdev->frameAvail) {
-	// No new frame available. Perform a blocking wait:
-	PsychTimedWaitCondition(&capdev->condition, &capdev->mutex, 10.0);
-
-	// Recheck:
-	if ((capdev->grabber_active) && !capdev->frameAvail) {
-		// Game over! Wait timed out after 10 secs.
-		PsychUnlockMutex(&capdev->mutex);
-		printf("PTB-ERROR: No new video frame received after timeout of 10 seconds! Something's wrong. Aborting fetch.\n");
-		return(-1);
-	}
-
-	// At this point we should have at least one frame available.
+		// No new frame available. Perform a blocking wait:
+		PsychTimedWaitCondition(&capdev->condition, &capdev->mutex, 10.0);
+		
+		// Recheck:
+		if ((capdev->grabber_active) && !capdev->frameAvail) {
+			// Game over! Wait timed out after 10 secs.
+			PsychUnlockMutex(&capdev->mutex);
+			printf("PTB-ERROR: No new video frame received after timeout of 10 seconds! Something's wrong. Aborting fetch.\n");
+			return(-1);
+		}
+		
+		// At this point we should have at least one frame available.
         //printf("PTB-DEBUG: After blocking fetch start %d\n", capdev->frameAvail);
     }
-
-    // Preroll case is simple:
-    capdev->preRollAvail = 0;
-
+	
     // We're here with at least one frame available and the mutex lock held.
 
     // One less frame available after our fetch:
