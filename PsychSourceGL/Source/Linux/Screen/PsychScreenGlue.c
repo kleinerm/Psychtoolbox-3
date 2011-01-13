@@ -257,6 +257,10 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			}
 
 			gpu = NULL;
+
+			// Cleanup:
+			pci_system_cleanup();
+			
 			return(FALSE);
 		}
 
@@ -287,25 +291,10 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			fflush(NULL);
 		}
 
-		ret = pci_device_map_range(gpu, region->base_addr, region->size, PCI_DEV_MAP_FLAG_WRITABLE, (void**) &gfx_cntl_mem);
-		if (ret && (PsychPrefStateGet_Verbosity() <= 20)) {
-			// Failed!
+		ret = pci_device_map_range(gpu, region->base_addr, region->size, PCI_DEV_MAP_FLAG_WRITABLE, (void**) &gfx_cntl_mem);		
+		if (ret || (NULL == gfx_cntl_mem)) {
 			if (PsychPrefStateGet_Verbosity() > 1) {
-				printf("PTB-WARNING: Failed to map GPU low-level control registers with read+write access for screenId %i [%s]. Retrying read-only...\n", screenId, strerror(ret));
-				printf("PTB-WARNING: If this works then beamposition timestamping will work, but other special functions won't.\n");
-				fflush(NULL);
-			}
-
-			// TODO FIXME Hack hack: Verbosity > 20 --> Don't retry mapping...
-			if (PsychPrefStateGet_Verbosity() <= 20) {
-				// MMAP read-only, so at least beamposition timestamping would work:
-				ret = pci_device_map_range(gpu, region->base_addr, region->size, 0, (void**) &gfx_cntl_mem);
-			}
-		}
-		
-		if (ret) {
-			if (PsychPrefStateGet_Verbosity() > 1) {
-				printf("PTB-WARNING: Failed completely to map GPU low-level control registers for screenId %i [%s].\n", screenId, strerror(ret));
+				printf("PTB-WARNING: Failed to map GPU low-level control registers for screenId %i [%s].\n", screenId, strerror(ret));
 				printf("PTB-WARNING: Beamposition timestamping and other special functions disabled.\n");
 				printf("PTB-WARNING: You must run Matlab/Octave with root privileges for this to work.\n");
 				printf("PTB-WARNING: However, if you are using the free graphics drivers, there isn't any need for this.\n");
@@ -314,6 +303,10 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			
 			// Failed:
 			gpu = NULL;
+
+			// Cleanup:
+			pci_system_cleanup();
+
 			return(FALSE);
 		}
 		
@@ -341,6 +334,9 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 		// No candidate.
 		if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: No suitable low-level controllable GPU found for screenId %i. Beamposition timestamping and other special functions disabled.\n", screenId);
 		fflush(NULL);
+		
+		// Cleanup:
+		pci_system_cleanup();
 	}
 	
 	// Return final success or failure status:
