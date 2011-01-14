@@ -62,7 +62,7 @@ PsychError SCREENNull(void)
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
 	#if PSYCH_SYSTEM == PSYCH_LINUX
-		PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
+/*		PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
 
 		// Return current OpenML kPsychOpenMLDefective state:
 		PsychCopyOutDoubleArg(1, FALSE, (int) (windowRecord->specialflags & kPsychOpenMLDefective));
@@ -76,6 +76,20 @@ PsychError SCREENNull(void)
 		if (PsychCopyInIntegerArg(3, FALSE, &i)) {
 			windowRecord->specialflags = i;
 		}
+*/
+
+		unsigned int regOffset, value, hi, low;
+		PsychCopyInIntegerArg(1, TRUE, &regOffset);
+		value = PsychOSKDReadRegister(0, regOffset, NULL);
+
+		hi = value >> 16;
+		lo = value & 0xffff;
+
+		printf("%p :: hi = %i , lo = %i , val = %i\n", (void*) regOffset, hi, lo, value;
+
+		PsychCopyOutDoubleArg(1, FALSE, (double) value);
+		PsychCopyOutDoubleArg(2, FALSE, (double) hi);
+		PsychCopyOutDoubleArg(3, FALSE, (double) lo);
 
 		return(PsychError_none);
 	#endif
