@@ -78,14 +78,14 @@ PsychError SCREENNull(void)
 		}
 */
 
-		unsigned int regOffset, value, hi, low;
+		unsigned int regOffset, value, hi, lo;
 		PsychCopyInIntegerArg(1, TRUE, &regOffset);
 		value = PsychOSKDReadRegister(0, regOffset, NULL);
 
 		hi = value >> 16;
 		lo = value & 0xffff;
 
-		printf("%p :: hi = %i , lo = %i , val = %i\n", (void*) regOffset, hi, lo, value;
+		printf("%p :: hi = %i , lo = %i , val = %i\n", (void*) regOffset, hi, lo, value);
 
 		PsychCopyOutDoubleArg(1, FALSE, (double) value);
 		PsychCopyOutDoubleArg(2, FALSE, (double) hi);
