@@ -753,8 +753,22 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 	if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Supported. Calling with targetSBC = %lld.\n", targetSBC);
 
 	// Extension supported: Perform query and error check.
-	if (!glXWaitForSbcOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, targetSBC, &ust, &msc, &sbc)) return(-2);
-
+	if (!glXWaitForSbcOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, targetSBC, &ust, &msc, &sbc)) {
+		// OpenML supposed to be supported and in good working order according to startup check?
+		if (windowRecord->gfxcaps & kPsychGfxCapSupportsOpenML) {
+			// Yes. Then this is a new failure condition and we report it as such:
+			if (PsychPrefStateGet_Verbosity() > 11) {
+				printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: glXWaitForSbcOML() failed! Failing with rc = -2.\n");
+			}
+			return(-2);
+		}
+		
+		// No. Failing this call is kind'a expected, so we don't make a big fuss on each
+		// failure but return "unsupported" rc, so calling code can try fallback-path without
+		// making much noise:
+		return(-1);
+	}
+	
 	// Check for valid return values:
 	if (ust == 0 || msc == 0) {
 		// Ohoh:
