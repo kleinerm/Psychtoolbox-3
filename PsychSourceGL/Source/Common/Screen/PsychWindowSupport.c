@@ -3340,8 +3340,9 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
     double reqstddev=*stddev;   // stddev contains the requested standard deviation.
     int fallthroughcount=0;
     double* samples = NULL;
-	int maxlogsamples = 0;
-	
+    int maxlogsamples = 0;
+    psych_bool useOpenML = ((PsychPrefStateGet_VBLTimestampingMode() == 4) && (windowRecord->gfxcaps & kPsychGfxCapSupportsOpenML));
+
     // Child protection: We only work on double-buffered onscreen-windows...
     if (windowRecord->windowType != kPsychDoubleBufferOnscreen) {
         PsychErrorExitMsg(PsychError_InvalidWindowRecord, "Tried to query/measure monitor refresh interval on a window that's not double-buffered and on-screen.");
@@ -3389,24 +3390,29 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
         // We measure until either:
         // - A maximum measurment time of maxsecs seconds has elapsed... (This is the emergency switch to prevent infinite loops).
         // - Or at least numSamples valid samples have been taken AND measured standard deviation is below the requested deviation stddev.
-        for (i=0; (fallthroughcount<10) && ((tnew - tstart) < *maxsecs) && (n < *numSamples || ((n >= *numSamples) && (tstddev > reqstddev))); i++) {
-            // Schedule a buffer-swap on next VBL:
-			PsychOSFlipWindowBuffers(windowRecord);
+	for (i=0; (fallthroughcount<10) && ((tnew - tstart) < *maxsecs) && (n < *numSamples || ((n >= *numSamples) && (tstddev > reqstddev))); i++) {
+		// Schedule a buffer-swap on next VBL:
+		PsychOSFlipWindowBuffers(windowRecord);
             
-            // Wait for it, aka VBL start: See PsychFlipWindowBuffers for explanation...
-            glBegin(GL_POINTS);
-            glColor4f(0,0,0,0);
-            glVertex2i(10,10);
-            glEnd();
-            
-            // This glFinish() will wait until point drawing is finished, ergo backbuffer was ready
-            // for drawing, ergo buffer swap in sync with start of VBL has happened.
-            glFinish();
-            
-            // At this point, start of VBL has happened and we can continue execution...
-            // We take our timestamp here:
-            PsychGetAdjustedPrecisionTimerSeconds(&tnew);
-            
+		if (!(useOpenML && (PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &tnew) > 0))) {
+			// OpenML swap completion timestamping unsupported, disabled, or failed.
+			// Use our standard trick instead.
+			
+			// Wait for it, aka VBL start: See PsychFlipWindowBuffers for explanation...
+			glBegin(GL_POINTS);
+			glColor4f(0,0,0,0);
+			glVertex2i(10,10);
+			glEnd();
+			
+			// This glFinish() will wait until point drawing is finished, ergo backbuffer was ready
+			// for drawing, ergo buffer swap in sync with start of VBL has happened.
+			glFinish();
+			
+			// At this point, start of VBL has happened and we can continue execution...
+			// We take our timestamp here:
+			PsychGetAdjustedPrecisionTimerSeconds(&tnew);
+		}
+
             // We skip the first measurement, because we first need to establish an initial base-time 'told'
             if (told > 0) {
                 // Compute duration of this refresh interval in tnew:

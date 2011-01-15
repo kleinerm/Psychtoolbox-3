@@ -592,6 +592,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // Wait for X-Server to settle...
   XSync(dpy, 1);
 
+  // Wait 250 msecs extra to give desktop compositor a chance to settle:
+  PsychYieldIntervalSeconds(0.25);
+
   // Well Done!
   return(TRUE);
 }
