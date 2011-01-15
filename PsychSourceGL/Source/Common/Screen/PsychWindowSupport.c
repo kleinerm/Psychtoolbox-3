@@ -3105,6 +3105,10 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 					printf("PTB-ERROR: This could mean that sync of bufferswaps to vertical retrace is broken or some other driver bug! Falling back to raw timestamping.\n");
 					printf("PTB-ERROR: Check your system setup!\n");
 				}
+
+				// Use override raw timestamp as temporary fallback:
+				time_at_vbl = time_at_swapcompletion;
+				*time_at_onset=time_at_vbl;
 			} else {
 				// Looks good. Assign / Override:
 				time_at_vbl = tSwapComplete;
