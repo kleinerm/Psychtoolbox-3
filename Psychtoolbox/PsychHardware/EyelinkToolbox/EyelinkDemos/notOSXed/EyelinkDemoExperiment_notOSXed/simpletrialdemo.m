@@ -41,7 +41,7 @@ while 1
    % DRIFT CORRECTION */
    % We let 'do_drift_correct' draw target, but it erases the screen too */
    % 3rd argument would be 0 to NOT draw a target */
-	[x,y] = windowcenter(el.window); % convenience routine part of eyelink toolbox
+	[x,y] = WindowCenter(el.window); % convenience routine part of eyelink toolbox
 	% fprintf('drifcorr at % d %d\n', x, y );
    	error = dodriftcorrect(el, x, y, 1, 1);
 
