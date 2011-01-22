@@ -55,6 +55,11 @@ function varargout = PsychKinect(varargin)
 % - Release all internal resources of PsychKinect.
 %
 %
+% PsychKinect('ApplyCalibrationFile', kinect, calibFileName);
+% - Load Kinect calibration from a .yml calibration file 'calibFileName', as
+% created by rgbDemo software and apply it to Kinect with handle 'kinect'.
+%
+%
 % kobject = PsychKinect('CreateObject', window, kinect [, oldkobject]);
 % - Create a new kobject for the specified 'window', using the Kinect box
 % specified by the given 'kinect' handle. Recycle 'oldkobject' so save
@@ -100,6 +105,7 @@ persistent kinect_opmode;
 persistent glsl;
 persistent idxvbo;
 persistent idxbuffersize;
+persistent isCalibrated;
 
 kinect_opmode = 3;
 
@@ -113,10 +119,160 @@ else
     return;
 end
 
+if isempty(isCalibrated)
+    isCalibrated = 0;
+end
+
 if strcmpi(cmd, 'Shutdown');
     glsl = [];
     idxvbo = [];
     idxbuffersize = [];
+    isCalibrated = 0;
+    return;
+end
+
+if strcmpi(cmd, 'ApplyCalibrationFile')
+
+    if nargin < 2 || isempty(varargin{2})
+        error('You must provide a valid "kinect" handle as 1st argument!');
+    end
+    kinect = varargin{2};
+
+    if nargin < 3 || isempty(varargin{3}) || ~ischar(varargin{3})
+        error('You must provide a valid "calibrationFile" filename as 2nd argument!');
+    end
+    calFilename = varargin{3};
+    [fd errmsg] = fopen(calFilename, 'rt');
+    if fd == -1
+	error('Could not open calibration file "%s". Error was: %s.\n', calFilename, errmsg);
+    end
+
+    if isempty(strfind(fgets(fd), 'YAML'))
+	fclose(fd);
+	error('Not a valid Kinect calibration file "%s"!\n', calFilename);
+    end
+
+    while 1
+	cur = fgets(fd);
+	if cur == -1
+		break;
+	end
+
+	if strfind(cur, 'rgb_intrinsics')
+		fgets(fd);
+		fgets(fd);
+		fgets(fd);
+		cur = '';
+		while isempty(strfind(cur, ']'))
+			cur = strcat(cur , fgets(fd));
+		end
+		sm = strfind(cur, '[') + 1;
+		em = strfind(cur, ']') - 1;
+		cur = cur(sm:em);
+		mat = sscanf(cur, '%f %*s %f %*s %f %*s %f %*s %f %*s %f %*s %f %*s %f %*s %f');
+		rgb_intrinsics = transpose(reshape(mat, 3, 3))
+	end
+
+	if strfind(cur, 'depth_intrinsics')
+		fgets(fd);
+		fgets(fd);
+		fgets(fd);
+		cur = '';
+		while isempty(strfind(cur, ']'))
+			cur = strcat(cur , fgets(fd));
+		end
+		sm = strfind(cur, '[') + 1;
+		em = strfind(cur, ']') - 1;
+		cur = cur(sm:em);
+		mat = sscanf(cur, '%f %*s %f %*s %f %*s %f %*s %f %*s %f %*s %f %*s %f %*s %f');
+		depth_intrinsics = transpose(reshape(mat, 3, 3))
+	end
+
+	if strfind(cur, 'R')
+		fgets(fd);
+		fgets(fd);
+		fgets(fd);
+		cur = '';
+		while isempty(strfind(cur, ']'))
+			cur = strcat(cur , fgets(fd));
+		end
+		sm = strfind(cur, '[') + 1;
+		em = strfind(cur, ']') - 1;
+		cur = cur(sm:em);
+		mat = sscanf(cur, '%f %*s %f %*s %f %*s %f %*s %f %*s %f %*s %f %*s %f %*s %f');
+		R = transpose(reshape(mat, 3, 3))
+	end
+
+	if strfind(cur, 'depth_distortion')
+		fgets(fd);
+		fgets(fd);
+		fgets(fd);
+		cur = '';
+		while isempty(strfind(cur, ']'))
+			cur = strcat(cur , fgets(fd));
+		end
+		sm = strfind(cur, '[') + 1;
+		em = strfind(cur, ']') - 1;
+		cur = cur(sm:em);
+		mat = sscanf(cur, '%f %*s %f %*s %f %*s %f %*s %f');
+		depth_distortion = mat
+	end
+
+	if strfind(cur, 'rgb_distortion')
+		fgets(fd);
+		fgets(fd);
+		fgets(fd);
+		cur = '';
+		while isempty(strfind(cur, ']'))
+			cur = strcat(cur , fgets(fd));
+		end
+		sm = strfind(cur, '[') + 1;
+		em = strfind(cur, ']') - 1;
+		cur = cur(sm:em);
+		mat = sscanf(cur, '%f %*s %f %*s %f %*s %f %*s %f');
+		rgb_distortion = mat
+	end
+
+	if strfind(cur, 'T')
+		fgets(fd);
+		fgets(fd);
+		fgets(fd);
+		cur = '';
+		while isempty(strfind(cur, ']'))
+			cur = strcat(cur , fgets(fd));
+		end
+		sm = strfind(cur, '[') + 1;
+		em = strfind(cur, ']') - 1;
+		cur = cur(sm:em);
+		mat = sscanf(cur, '%f %*s %f %*s %f');
+		T = mat
+	end
+
+	if strfind(cur, 'depth_base_and_offset')
+		fgets(fd);
+		fgets(fd);
+		fgets(fd);
+		cur = '';
+		while isempty(strfind(cur, ']'))
+			cur = strcat(cur , fgets(fd));
+		end
+		sm = strfind(cur, '[') + 1;
+		em = strfind(cur, ']') - 1;
+		cur = cur(sm:em);
+		mat = sscanf(cur, '%f %*s %f');
+		depth_base_and_offset = mat
+	end
+    end
+
+    fclose(fd);
+
+    % Done parsing the file. Apply parameters to specified kinect:
+    PsychKinect('SetBaseCalibration', kinect, [depth_intrinsics(1,1), depth_intrinsics(2,2), depth_intrinsics(1,3), depth_intrinsics(2,3)], ...
+					      [rgb_intrinsics(1,1), rgb_intrinsics(2,2), rgb_intrinsics(1,3), rgb_intrinsics(2,3)], ...
+					      R, T, depth_distortion, rgb_distortion);
+    isCalibrated = 1;
+    fprintf('PsychKinect: Info: Calibration from file %s applied to kinect handle %i.\n', calFilename, kinect);
+
     return;
 end
 
@@ -199,12 +355,12 @@ if strcmpi(cmd, 'CreateObject')
         if isempty(glsl)
             % First time init of shader:
 
-            % Fetch all camera calibration parameters from PsychKinectCore for this kinect:
-            [depthsIntrinsics, rgbIntrinsics, R, T, depthsUndistort, rgbUndistort] = PsychKinectCore('SetBaseCalibration', kinect);
-            [fx_d, fy_d, cx_d, cy_d] = deal(depthsIntrinsics(1), depthsIntrinsics(2), depthsIntrinsics(3), depthsIntrinsics(4));
-            [fx_rgb, fy_rgb, cx_rgb, cy_rgb] = deal(rgbIntrinsics(1), rgbIntrinsics(2), rgbIntrinsics(3), rgbIntrinsics(4));
-            [k1_d, k2_d, p1_d, p2_d, k3_d] = deal(depthsUndistort(1), depthsUndistort(2), depthsUndistort(3), depthsUndistort(4), depthsUndistort(5));
-            [k1_rgb, k2_rgb, p1_rgb, p2_rgb, k3_rgb] = deal(rgbUndistort(1), rgbUndistort(2), rgbUndistort(3), rgbUndistort(4), rgbUndistort(5));
+	    % Fetch all camera calibration parameters from PsychKinectCore for this kinect:
+	    [depthsIntrinsics, rgbIntrinsics, R, T, depthsUndistort, rgbUndistort] = PsychKinectCore('SetBaseCalibration', kinect);
+	    [fx_d, fy_d, cx_d, cy_d] = deal(depthsIntrinsics(1), depthsIntrinsics(2), depthsIntrinsics(3), depthsIntrinsics(4));
+	    [fx_rgb, fy_rgb, cx_rgb, cy_rgb] = deal(rgbIntrinsics(1), rgbIntrinsics(2), rgbIntrinsics(3), rgbIntrinsics(4));
+	    [k1_d, k2_d, p1_d, p2_d, k3_d] = deal(depthsUndistort(1), depthsUndistort(2), depthsUndistort(3), depthsUndistort(4), depthsUndistort(5));
+	    [k1_rgb, k2_rgb, p1_rgb, p2_rgb, k3_rgb] = deal(rgbUndistort(1), rgbUndistort(2), rgbUndistort(3), rgbUndistort(4), rgbUndistort(5));
 
             if kinect_opmode == 2
                 % Standard shader: Doesn't do initial sensor -> depths conversion.

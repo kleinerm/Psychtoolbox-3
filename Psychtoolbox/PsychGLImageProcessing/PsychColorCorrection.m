@@ -934,6 +934,10 @@ if strcmpi(cmd, 'SetLookupTable')
         end
     end
     
+    if size(clut,1) > glGetIntegerv(GL.MAX_RECTANGLE_TEXTURE_SIZE_ARB)
+        error('SetLookupTable: Tried to assign a clut with %i slots. This is more than your graphics hardware can handle! [Maximum is %i slots].', size(clut,1), glGetIntegerv(GL.MAX_RECTANGLE_TEXTURE_SIZE_ARB));
+    end
+    
     % Bind relevant texture object:
     glBindTexture(GL.TEXTURE_RECTANGLE_EXT, icmDataForHandle(win, glsl));
     

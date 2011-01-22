@@ -234,4 +234,7 @@ if ~isempty(ptb_kbcheck_disabledKeys)
    keyIsDown = any(keyCode);
 end
 
+% Must be double format for some client routines:
+keyCode = double(keyCode);
+
 return;
