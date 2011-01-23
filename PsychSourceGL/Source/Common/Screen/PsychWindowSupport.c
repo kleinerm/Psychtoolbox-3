@@ -911,7 +911,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		// This way, at least on NVidia GPU's with the PTB kernel driver loaded, we can auto-correct
 		// this proprietary driver bug without need to warn the user or require user intervention:
 		PsychGetBeamposCorrection((*windowRecord)->screenNumber, &vblbias, &vbltotal);
-		if ((vblbias != 0) && (vbltotal - 1 > vbl_startline) && (vbltotal - 1 != VBL_Endline)) {
+		if ((vbltotal != 0) && (vbltotal - 1 > vbl_startline) && (vbltotal - 1 != VBL_Endline)) {
 			// Plausible value for vbltotal:
 			if (PsychPrefStateGet_Verbosity() > 2) {
 				printf("PTB-INFO: Overriding unreliable measured vblank endline %i by low-level value %i read directly from GPU.\n", VBL_Endline, vbltotal - 1);

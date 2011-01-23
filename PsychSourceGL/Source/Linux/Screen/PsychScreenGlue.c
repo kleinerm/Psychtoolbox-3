@@ -35,7 +35,7 @@
 #include "Screen.h"
 
 
-/* These are needed for our ATI specific beamposition query implementation: */
+/* These are needed for our GPU specific beamposition query implementation: */
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1233,7 +1233,13 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 
 	// Get beamposition from low-level driver code:
 	if (PsychOSIsKernelDriverAvailable(screenNumber)) {
-		if (PsychPrefStateGet_ConserveVRAM() & kPsychUseBeampositionQueryWorkaround) {
+		// Is application of the beamposition workaround requested by high-level code?
+		// Or is this a NVidia GPU? In the latter case we always use the workaround,
+		// because many NVidia GPU's (especially pre NV-50 hardware) need this in many
+		// setups. It helps if needed, and doesn't hurt if not needed - burns at most
+		// 25 insignificant microseconds of time.
+		if ((PsychPrefStateGet_ConserveVRAM() & kPsychUseBeampositionQueryWorkaround) ||
+		    (fDeviceType == kPsychGeForce)) {
 			// Yes: Avoid queries that return zero -- If query result is zero, retry
 			// until it becomes non-zero: Some hardware may needs this to resolve...
 			while (0 == PsychOSKDGetBeamposition(screenNumber));

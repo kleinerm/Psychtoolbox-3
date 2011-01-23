@@ -567,28 +567,41 @@ void PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal)
 		// Can do this on NVidia GPU's >= NV-50 if low-level access (PTB kernel driver or equivalent) is enabled:
 		if ((strstr(glGetString(GL_VENDOR), "NVIDIA") || strstr(glGetString(GL_VENDOR), "nouveau") ||
 			strstr(glGetString(GL_RENDERER), "NVIDIA") || strstr(glGetString(GL_RENDERER), "nouveau")) &&
-			PsychOSIsKernelDriverAvailable(screenId) && (PsychGetNVidiaGPUType(NULL) >= 0x50)) {
+			PsychOSIsKernelDriverAvailable(screenId)) {
 
-			// Auto-Detection. Read values directly from NV-50 class and later hardware:
-			//
-			// SYNC_START_TO_BLANK_END 16 bit high-word in CRTC_VAL block of NV50_PDISPLAY on NV-50 encodes
-			// length of interval from vsync start line to vblank end line. This is the corrective offset we
-			// need to subtract from read out scanline position to get true scanline position.
-			// Hardware registers "scanline position" measures positive distance from vsync start line (== "scanline 0").
-			// The low-word likely encodes hsyncstart to hblank end length in pixels, but we're not interested in that,
-			// so we shift and mask it out:
-			#if PSYCH_SYSTEM != PSYCH_WINDOWS
-			vblbias = (int) ((PsychOSKDReadRegister(crtcid, 0x610000 + 0xa00 + 0xe8 + ((crtcid > 0) ? 0x540 : 0), NULL) >> 16) & 0xFFFF);
+			// Need to read different regs for NV-50 and later:
+			if (PsychGetNVidiaGPUType(NULL) >= 0x50) {
+				// Auto-Detection. Read values directly from NV-50 class and later hardware:
+				//
+				// SYNC_START_TO_BLANK_END 16 bit high-word in CRTC_VAL block of NV50_PDISPLAY on NV-50 encodes
+				// length of interval from vsync start line to vblank end line. This is the corrective offset we
+				// need to subtract from read out scanline position to get true scanline position.
+				// Hardware registers "scanline position" measures positive distance from vsync start line (== "scanline 0").
+				// The low-word likely encodes hsyncstart to hblank end length in pixels, but we're not interested in that,
+				// so we shift and mask it out:
+				#if PSYCH_SYSTEM != PSYCH_WINDOWS
+				vblbias = (int) ((PsychOSKDReadRegister(crtcid, 0x610000 + 0xa00 + 0xe8 + ((crtcid > 0) ? 0x540 : 0), NULL) >> 16) & 0xFFFF);
 
-			// DISPLAY_TOTAL: Encodes VTOTAL in high-word, HTOTAL in low-word. Get the VTOTAL in high word:
-			vbltotal = (int) ((PsychOSKDReadRegister(crtcid, 0x610000 + 0xa00 + 0xf8 + ((crtcid > 0) ? 0x540 : 0), NULL) >> 16) & 0xFFFF);
-			#endif
+				// DISPLAY_TOTAL: Encodes VTOTAL in high-word, HTOTAL in low-word. Get the VTOTAL in high word:
+				vbltotal = (int) ((PsychOSKDReadRegister(crtcid, 0x610000 + 0xa00 + 0xf8 + ((crtcid > 0) ? 0x540 : 0), NULL) >> 16) & 0xFFFF);
+				#endif
+			} else {
+				// Auto-Detection. Read values directly from pre-NV-50 class hardware:
+				// We only get VTOTAL and assume a bias value of zero, which seems to be
+				// the case according to measurments on NV-40 and NV-30 gpu's:
+				#if PSYCH_SYSTEM != PSYCH_WINDOWS
+				vblbias = 0;
+
+				// FP_TOTAL 0x804 relative to PRAMDAC base 0x680000 with stride 0x2000: Encodes VTOTAL in low-word:
+				vbltotal = (int) ((PsychOSKDReadRegister(crtcid, 0x680000 + 0x804 + ((crtcid > 0) ? 0x2000 : 0), NULL)) & 0xFFFF);
+				#endif
+			}
 		}
 
 	}
 
 	// Feedback is good:
-	if ((vblbias != 0) && (vbltotal != 0) && (PsychPrefStateGet_Verbosity() > 3)) {
+	if (((vblbias != 0) || (vbltotal != 0)) && (PsychPrefStateGet_Verbosity() > 3)) {
 		printf("PTB-INFO: Screen %i [head %i]: Applying beamposition corrective offsets: vblbias = %i, vbltotal = %i.\n", screenId, crtcid, vblbias, vbltotal);
 	}
 
