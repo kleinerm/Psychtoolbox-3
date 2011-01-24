@@ -4,7 +4,7 @@ function [spd, qual] = PR655measspd(S)
 % Make a measurement of the spectrum.
 % 
 % 01/16/09    tbc   Adapted from PR650Toolbox for use with PR655
-%
+% 10/26/10    dhb   Handle sync failure a little better.
 
 global g_serialPort;
 
@@ -44,9 +44,20 @@ if qual == -1 || qual == 10
   spd = zeros(S(3), 1);
 elseif qual == 18 || qual == 0
 	spd = PR655parsespdstr(readStr, S);
-	
+elseif qual == -8
+	disp('Could not sync to source, turning off sync mode and remeasuring');
+	PR655write('SS0');
+	readStr = PR655rawspd(timeout);
+	qual = sscanf(readStr,'%f',1);
+	if qual == -1 || qual == 10
+		spd = zeros(S(3), 1);
+	elseif qual == 18 || qual == 0
+		spd = PR655parsespdstr(readStr, S);
+	else
+		error('Received unhandled error code %d\n', qual);
+	end
 elseif qual ~= 0
-  error('Bad return code %g from meter', qual);
+	error('Bad return code %g from meter', qual);
 end	
 
 return
