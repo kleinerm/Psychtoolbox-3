@@ -94,7 +94,7 @@ catch
 	fprintf('\n');
 	fprintf('For Screen() and OpenGL support:\n');
 	fprintf('* The OpenGL utility toolkit GLUT: glut, glut-3 or freeglut are typical providers.\n');
-	fprintf('* GStreamer multimedia framework: At least the core runtime and the gstreamer-base plugins.\n');
+	fprintf('* GStreamer multimedia framework: At least version 0.10.24 of the core runtime and the gstreamer-base plugins.\n');
 	fprintf('  A simple way to get GStreamer at least on Ubuntu Linux is to install the "rhythmbox" or\n');
 	fprintf('  "totem" multimedia-players. You may need to install additional packages to play back all\n');
 	fprintf('  common audio- and video file formats.\n');

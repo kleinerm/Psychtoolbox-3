@@ -8,6 +8,8 @@
 % operations are based on GStreamer. These functions won't work without a
 % working GStreamer installation on your system.
 %
+% You will need at least version 0.10.24 of GStreamer.
+%
 % By default, the 32-bit versions of Psychtoolbox for Windows and MacOS/X
 % use Apple's Quicktime for those operations, so GStreamer isn't needed
 % there. You can however use GStreamer (once installed) instead of
