@@ -1242,11 +1242,11 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 		    (fDeviceType == kPsychGeForce)) {
 			// Yes: Avoid queries that return zero -- If query result is zero, retry
 			// until it becomes non-zero: Some hardware may needs this to resolve...
-			while (0 == PsychOSKDGetBeamposition(screenNumber));
+			while (0 == (beampos = PsychOSKDGetBeamposition(screenNumber)));
+		} else {
+			// Read final beampos:
+			beampos = PsychOSKDGetBeamposition(screenNumber);
 		}
-	
-		// Read final beampos:
-		beampos = PsychOSKDGetBeamposition(screenNumber);
 	}
 	
 	// Return failure, if indicated:

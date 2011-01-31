@@ -71,7 +71,7 @@ try
     % Set text size for info text. 24 pixels is also good for Linux.
     Screen('TextSize', win, 24);
     
-    grabber = Screen('OpenVideoCapture', win, 0, roi);
+    grabber = Screen('OpenVideoCapture', win, 1, roi, 5, [], []); % , '/home/kleinerm/Videos/Testmovie.m4v');
 %     brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness',383)
 %     exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure',130)
 %     gain = Screen('SetVideoCaptureParameter', grabber, 'Gain')
@@ -80,6 +80,7 @@ try
 %     Screen('SetVideoCaptureParameter', grabber, 'PrintParameters')
 %     vendor = Screen('SetVideoCaptureParameter', grabber, 'GetVendorname')
 %     model  = Screen('SetVideoCaptureParameter', grabber, 'GetModelname')
+
 
     Screen('StartVideoCapture', grabber, 30, 1);
 

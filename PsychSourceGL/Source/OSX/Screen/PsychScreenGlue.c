@@ -859,10 +859,12 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 			// Yes: Avoid queries that return zero -- If query result is zero, retry
 			// until it becomes non-zero:
 			// There might be a bug in 10.6.2 on NVidia hardware that needs this to resolve...
-			while (0 == (int) CGDisplayBeamPosition(cgDisplayId));
+			while (0 == (beampos = (int) CGDisplayBeamPosition(cgDisplayId)));
+		} else {
+			beampos = (int) CGDisplayBeamPosition(cgDisplayId);
 		}
 		
-		return((int) CGDisplayBeamPosition(cgDisplayId));
+		return(beampos);
 	}
 
 	if (repeatedZeroBeamcount[screenNumber] == -10000) {
