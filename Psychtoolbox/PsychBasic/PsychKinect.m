@@ -107,8 +107,6 @@ persistent idxvbo;
 persistent idxbuffersize;
 persistent isCalibrated;
 
-kinect_opmode = 3;
-
 % Command specified? Otherwise we output the help text of us and
 % the low level driver:
 if nargin > 0
@@ -128,6 +126,7 @@ if strcmpi(cmd, 'Shutdown');
     idxvbo = [];
     idxbuffersize = [];
     isCalibrated = 0;
+    kinect_opmode = [];
     return;
 end
 
@@ -269,7 +268,7 @@ if strcmpi(cmd, 'ApplyCalibrationFile')
     % Done parsing the file. Apply parameters to specified kinect:
     PsychKinect('SetBaseCalibration', kinect, [depth_intrinsics(1,1), depth_intrinsics(2,2), depth_intrinsics(1,3), depth_intrinsics(2,3)], ...
 					      [rgb_intrinsics(1,1), rgb_intrinsics(2,2), rgb_intrinsics(1,3), rgb_intrinsics(2,3)], ...
-					      R, T, depth_distortion, rgb_distortion);
+					      R, T, depth_distortion, rgb_distortion, depth_base_and_offset);
     isCalibrated = 1;
     fprintf('PsychKinect: Info: Calibration from file %s applied to kinect handle %i.\n', calFilename, kinect);
 
@@ -294,6 +293,45 @@ if strcmpi(cmd, 'CreateObject')
         kmesh.buffersize = 0;
     else
         kmesh = varargin{4};
+    end
+
+    if isempty(kinect_opmode)
+	exts = glGetString(GL.EXTENSIONS);
+	has_vbos = ~isempty(findstr(exts, '_vertex_buffer_object'));
+	has_shader = ~isempty(findstr(exts, 'GL_ARB_shading_language')) && ...
+		     ~isempty(findstr(exts, 'GL_ARB_shader_objects')) && ...
+		     ~isempty(findstr(exts, 'GL_ARB_vertex_shader')) && ...
+		     ~isempty(findstr(exts, 'GL_ARB_fragment_shader'));
+	has_gshader = has_shader && ~isempty(findstr(exts, 'GL_ARB_geometry_shader'));
+	has_drawinst = ~isempty(findstr(exts, 'GL_ARB_draw_instanced'));
+
+	% Ok, this is not strictly correct in theory, but pretty much in practice;-) 
+	has_vtfetch = has_gshader && (glGetIntegerv(GL.MAX_VERTEX_TEXTURE_IMAGE_UNITS) > 0);
+
+	if ~has_vbos
+		% Ancient hardware: Use slow cpu path:
+		kinect_opmode = 0;
+		fprintf('PsychKinect: VBO''s not supported by your GPU: Using slow path for mesh rendering.\n');
+	else
+		% At least VBO's supported:
+		kinect_opmode = 1;
+		fprintf('PsychKinect: VBO''s supported by your GPU: Using faster path for mesh rendering.\n');
+
+		% Shader support, so we can do almost all math in the vertex shader?
+		if has_shader
+			% Could use 2 or 3, but 3 does depths conversion in shader and
+			% is drastically faster than 2. Downside: Only float precision
+			% instead of double precision for conversion, however no perceptible
+			% difference.
+			kinect_opmode = 3;
+			fprintf('PsychKinect: Shaders supported by your GPU: Using fast shader-path for mesh rendering.\n');
+		end
+
+		% Support for geometry shaders, vertex texture fetch and instanced draw?
+		if has_shader && has_gshader && has_vtfetch && has_drawinst
+			% TODO: IMPLEMENT SUPPORT kinect_opmode = 4;
+		end
+	end
     end
 
     kmesh.xyz = [];
@@ -356,7 +394,7 @@ if strcmpi(cmd, 'CreateObject')
             % First time init of shader:
 
 	    % Fetch all camera calibration parameters from PsychKinectCore for this kinect:
-	    [depthsIntrinsics, rgbIntrinsics, R, T, depthsUndistort, rgbUndistort] = PsychKinectCore('SetBaseCalibration', kinect);
+	    [depthsIntrinsics, rgbIntrinsics, R, T, depthsUndistort, rgbUndistort, depth_base_and_offset] = PsychKinectCore('SetBaseCalibration', kinect);
 	    [fx_d, fy_d, cx_d, cy_d] = deal(depthsIntrinsics(1), depthsIntrinsics(2), depthsIntrinsics(3), depthsIntrinsics(4));
 	    [fx_rgb, fy_rgb, cx_rgb, cy_rgb] = deal(rgbIntrinsics(1), rgbIntrinsics(2), rgbIntrinsics(3), rgbIntrinsics(4));
 	    [k1_d, k2_d, p1_d, p2_d, k3_d] = deal(depthsUndistort(1), depthsUndistort(2), depthsUndistort(3), depthsUndistort(4), depthsUndistort(5));
@@ -381,6 +419,9 @@ if strcmpi(cmd, 'CreateObject')
             glUniform4f(glGetUniformLocation(glsl, 'rgb_intrinsic'), fx_rgb, fy_rgb, cx_rgb, cy_rgb);
             glUniformMatrix3fv(glGetUniformLocation(glsl, 'R'), 1, GL.TRUE, R);
             glUniform3fv(glGetUniformLocation(glsl, 'T'), 1, T);
+	    if kinect_opmode ~= 2
+		    glUniform2fv(glGetUniformLocation(glsl, 'depth_base_and_offset'), 1, depth_base_and_offset);
+	    end
             glUseProgram(0);
             repeatedscan = 0;
         else

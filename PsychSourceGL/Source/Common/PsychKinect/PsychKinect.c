@@ -149,6 +149,10 @@ typedef void freenect_pixel;
 #define FREENECT_FORMAT_11_BIT FREENECT_DEPTH_11BIT
 #endif
 
+#ifndef FREENECT_VIDEO_IR_8BIT
+#define FREENECT_VIDEO_IR_8BIT 2
+#endif
+
 // Number of maximum simultaneously open kinect devices:
 #define MAX_PSYCH_KINECT_DEVS 10
 #define MAX_SYNOPSIS_STRINGS 40  
@@ -161,15 +165,21 @@ double*		zmap = NULL;
 unsigned char	gl_depth_back[640 * 480 * 4];
 unsigned short	t_gamma[2048];
 
+// Cached values for depth conversion, to speed up per-pixel computation:
+double          depthBaseAndOffset[2];
+
+typedef double (*CALCPROC)(int); 
+CALCPROC calcz = NULL;
+
 freenect_context	*f_ctx = NULL;
 freenect_device		*f_dev;
 
 typedef struct PsychKNBuffer {
 	unsigned short	depth[640 * 480];		// 16-bit disparity pixels.
-	unsigned char*	color;					// RGB8 or raw non-bayer-filtered 1 Byte color pixels.
-	double			cts;					// Cached captured sample onset time from paCallback.
-	int				cwidth, cheight;		// color buffer width x height.
-	int				dwidth, dheight;		// color buffer width x height.
+	unsigned char*	color;				// RGB8 or raw non-bayer-filtered 1 Byte color pixels.
+	double		cts;				// Cached captured sample onset time from paCallback.
+	int		cwidth, cheight;		// color buffer width x height.
+	int		dwidth, dheight;		// color buffer width x height.
 } PsychKNBuffer;
 
 // Our device record:
@@ -202,6 +212,7 @@ typedef struct PsychKNDevice {
 	double cy_rgb;
 	double undistort_d[5];                          // Optical distortion coefficients depth: k1, k2, p1, p2, k3.
 	double undistort_rgb[5];                        // Optical distortion coefficients rgb  : k1, k2, p1, p2, k3.
+	double depthBaseAndOffset[2];                   // Base and Offset parameter for mapping of raw depth sensor data to physical distance units.
 } PsychKNDevice;
 
 PsychKNDevice kinectdevices[MAX_PSYCH_KINECT_DEVS];
@@ -222,7 +233,7 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "Libfreenect is Copyright (C) 2010  Hector Martin \"marcan\" <hector@marcansoft.com>";
 	synopsis[i++] = "This code is licensed to you under the terms of the GNU GPL, version 2; see: \n";
 	synopsis[i++] = "http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt\n";
-	synopsis[i++] = "The driver also uses bits of code and math from Nicolas Burrus Kinect work:";
+	synopsis[i++] = "The driver also uses bits of math from Nicolas Burrus Kinect work:";
 	synopsis[i++] = "http://nicolas.burrus.name/index.php/Research/KinectCalibration ";
 	synopsis[i++] = "\n";
 	
@@ -235,7 +246,7 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "[starttime, fps, cwidth, cheight, dwidth, dheight] = PsychKinect('Start', kinectPtr [, dropframes=0]);";
 	synopsis[i++] = "PsychKinect('Stop', kinectPtr);";
 	synopsis[i++] = "status = PsychKinect('GetStatus', kinectPtr);";
-	synopsis[i++] = "[...old parameter settings in order of inputs... ] = PsychKinect('SetBaseCalibration', kinectPtr, depthsIntrinsics, rgbIntrinsics, rgbRotation, rgbTranslation, depthsUndistort, rgbUndistort);";
+	synopsis[i++] = "[...old parameter settings in order of inputs... ] = PsychKinect('SetBaseCalibration', kinectPtr, depthsIntrinsics, rgbIntrinsics, rgbRotation, rgbTranslation, depthsUndistort, rgbUndistort, depthBaseAndOffset);";
 	synopsis[i++] = "[result, cts, age] = PsychKinect('GrabFrame', kinectPtr [, waitMode=1][, mostrecent=0]);";
 	synopsis[i++] = "PsychKinect('ReleaseFrame', kinectPtr);";
 	synopsis[i++] = "[imageOrPtr, width, height, channels, extType, extFormat] = PsychKinect('GetImage', kinectPtr [, imtype=0][, returnTexturePtr=0]);";
@@ -310,7 +321,14 @@ void* PsychKinectThreadMain(volatile void* deviceToCast)
 	// Initialize libkinect and attach callbacks, start kinect's iso-streaming:
 	freenect_set_depth_callback(kinect->dev, PsychDepthCB);
 	freenect_set_rgb_callback(kinect->dev, PsychRGBCB);
-	freenect_set_rgb_format(kinect->dev, ((kinect->bayerFilterMode == 1) ? FREENECT_FORMAT_RGB : FREENECT_FORMAT_BAYER));
+	if (kinect->bayerFilterMode < 2) {
+		// RGB video feed:
+		freenect_set_rgb_format(kinect->dev, ((kinect->bayerFilterMode == 1) ? FREENECT_FORMAT_RGB : FREENECT_FORMAT_BAYER));
+	} else {
+		// IR depth cam video feed:
+		freenect_set_rgb_format(kinect->dev, FREENECT_VIDEO_IR_8BIT);
+	}
+
 	freenect_set_depth_format(kinect->dev, FREENECT_FORMAT_11_BIT);
 	
 	freenect_start_depth(kinect->dev);
@@ -518,8 +536,9 @@ PsychError PSYCHKINECTOpen(void)
 		"the visual cameras sensor data: A setting of 1 (default) will use a slow and "
 		"unoptimized bayer filter algorithm built into the libfreenect driver to return "
 		"RGB images via the 'GetImage' function. A setting of 0 will disable filtering and return "
-		"a 2D only image with sensor raw data, which you'll need to post-process and filter yourself. "
-		"A setting of > 1 would select other filtering methods, but these are not yet implemented. "
+		"a 2D only image with sensor raw data, which you'll need to post-process and filter yourself.\n"
+		"A setting of 2 will return infrared image data from the depth camera instead of RGB data.\n"
+		"A setting of > 2 would select other filtering methods, but these are not yet implemented. "
 		"You would want to use the default value if you need convenient access to RGB images without "
 		"any effort on your side. Unfiltered raw data has the advantage that cpu load of kinect "
 		"operation is much lower, so you may get higher framerates. Also, raw data only requires "
@@ -535,6 +554,7 @@ PsychError PSYCHKINECTOpen(void)
 	double T[3] = { 1.9985242312092553e-02, -7.4423738761617583e-04, -1.0916736334336222e-02 };
 	double depthIntrinsics[5] = { -2.6386489753128833e-01, 9.9966832163729757e-01, -7.6275862143610667e-04, 5.0350940090814270e-03, -1.3053628089976321e+00 };
 	double rgbIntrinsics[5]   = {  2.6451622333009589e-01, -8.3990749424620825e-01, -1.9922302173693159e-03, 1.4371995932897616e-03, 9.1192465078713847e-01 };
+	double depthBaseAndOffset[2] = { 0.0 , 0.0 };
 
 	int i, j;
 	int deviceIndex = 0;
@@ -641,6 +661,7 @@ PsychError PSYCHKINECTOpen(void)
 
 	memcpy(&kinectdevices[handle].undistort_d, depthIntrinsics, sizeof(double) * 5 * 1);
 	memcpy(&kinectdevices[handle].undistort_rgb, rgbIntrinsics, sizeof(double) * 5 * 1);
+	memcpy(&kinectdevices[handle].depthBaseAndOffset, depthBaseAndOffset, sizeof(double) * 2 *1);
 
 	// Increment count of open devices:
 	devicecount++;
@@ -825,7 +846,7 @@ PsychError PSYCHKINECTGetStatus(void)
     //
     static char synopsisString[] = 
 		"Retrieve struct with current status of Kinect box 'kinectPtr'.\n\n"
-		"\n";
+		"NOT FULLY IMPLEMENTED. JUST RETURNS DEBUG OUTPUT TO CONSOLE!\n";
 	
     static char seeAlsoString[] = "";	
 	
@@ -1162,16 +1183,43 @@ unsigned short getz(unsigned short *zinbuf, int x, int y)
 // Convert raw disparity value into z distance meters):
 // Using Magic formula from www.openkinect.org Wiki,
 // "Imaging parameter" section:
-double calcz(int raw_depth)
+static double calclinearz(int raw_depth)
 {
 	if (raw_depth < 2047) {
 		// Valid measurement - Convert:
-		return (1.0 / ((double) raw_depth * -0.0030711016 + 3.3309495161));
+		return(1.0 / ((double) raw_depth * -0.0030711016 + 3.3309495161));
 	}
 
 	// Invalid datapoint - Mark as such:
 	return 0;
 }
+
+static double calcbaselinez(int raw_depth)
+{
+	if (raw_depth < 2047) {
+		// Valid measurement - Convert:
+		return(540.0 * 8.0 * depthBaseAndOffset[0] / (depthBaseAndOffset[1] - ((double) raw_depth)));
+	}
+
+	// Invalid datapoint - Mark as such:
+	return 0;
+}
+
+static double calctanhz(int raw_depth)
+{
+	const double k1 = 1.1863;
+	const double k2 = 2842.5;
+	const double k3 = 0.1236;
+
+	if (raw_depth < 2047) {
+		// Valid measurement - Convert:
+		return(k3 * tan(((double) raw_depth) / k2 + k1));
+	}
+
+	// Invalid datapoint - Mark as such:
+	return 0;
+}
+
 
 PsychError PSYCHKINECTGetDepthImage(void)
 {
@@ -1192,7 +1240,11 @@ PsychError PSYCHKINECTGetDepthImage(void)
 		"      to be post-processed in a vertex shader for speedups.\n"
 		"6/7 = Return a vertex buffer with vertex id's uniquely identifying each sensor \n"
 		"      position of depths sensor and raw sensor value at that location. The whole\n"
-		"      3D reconstructin is done on the GPU in a vertex shader for maximum spped.\n"
+		"      3D reconstructin is done on the GPU in a vertex shader for maximum speed.\n"
+		"8   = Return memory pointer to the 16 bit unsigned integer raw depth buffer.\n"
+		"      Return of a Matlab/Octave matrix is not supported! CAUTION: The reference\n"
+		"      becomes invalid as soon as the current buffer is released via\n"
+		"      'ReleaseFrame'! This is the fast-path.\n"
 		"\n\n";
 
 	static char seeAlsoString[] = "";	
@@ -1248,6 +1300,22 @@ PsychError PSYCHKINECTGetDepthImage(void)
 	
 	memcpy(&R, &kinect->R, sizeof(double) * 3 * 3);
 	memcpy(&T, &kinect->T, sizeof(double) * 3 * 1);
+	memcpy(&depthBaseAndOffset, &kinect->depthBaseAndOffset, sizeof(double) * 2 * 1);
+
+	// Calibration provided?
+	if ((depthBaseAndOffset[0] != 0) && (depthBaseAndOffset[1] != 0)) {
+		// Yes: Use it with baseline reconstruction method:
+		calcz = &calcbaselinez;
+	} else {
+		// No: Special tanh method requested?
+		if (depthBaseAndOffset[1] == 1) {
+			// Yes: Use tanh method:
+			calcz = &calctanhz;
+		} else {
+			// No: Use hard-coded linear reconstruction method:
+			calcz = &calclinearz;
+		}
+	}
 
 	format = 0;
 	texcoords = 0;
@@ -1270,9 +1338,9 @@ PsychError PSYCHKINECTGetDepthImage(void)
 					
 			// Return image data:
 			if (returnTexturePtr) {
-				// Just return a memory pointer to the colorbuffer:
-                // TODO FIXME: NEEDAUDIT64BIT
-                PsychCopyOutDoubleArg(1, FALSE, (double)((unsigned int)((void*) zmap)));
+				// Just return a memory pointer to the depthbuffer:
+				// TODO FIXME: NEEDAUDIT64BIT
+				PsychCopyOutDoubleArg(1, FALSE, (double)((unsigned int)((void*) zmap)));
 			} else {
 				PsychAllocOutDoubleMatArg(1, FALSE, buffer->dheight, buffer->dwidth, 1, &outzmat);
 				memcpy(outzmat, zmap, buffer->dheight * buffer->dwidth * 1 * sizeof(double));
@@ -1292,8 +1360,8 @@ PsychError PSYCHKINECTGetDepthImage(void)
 					
 			// Return image data:
 			if (returnTexturePtr) {
-				// Just return a memory pointer to the colorbuffer:
-                // TODO FIXME: NEEDAUDIT64BIT
+				// Just return a memory pointer to the depthbuffer:
+				// TODO FIXME: NEEDAUDIT64BIT
 				PsychCopyOutDoubleArg(1, FALSE, (double)((unsigned int)((void*) zmap)));
 			} else {
 				PsychAllocOutDoubleMatArg(1, FALSE, buffer->dheight, buffer->dwidth, 1, &outzmat);
@@ -1374,8 +1442,8 @@ PsychError PSYCHKINECTGetDepthImage(void)
 			components = 3 + ((texcoords) ? 2 : 3);
 
 			if (returnTexturePtr) {
-				// Just return a memory pointer to the colorbuffer:
-                // TODO FIXME: NEEDAUDIT64BIT
+				// Just return a memory pointer to the depthbuffer:
+				// TODO FIXME: NEEDAUDIT64BIT
 				PsychCopyOutDoubleArg(1, FALSE, (double)((unsigned int)((void*) zmap)));
 			} else {
 				PsychAllocOutDoubleMatArg(1, FALSE, components , buffer->dheight, buffer->dwidth, &outzmat);
@@ -1389,8 +1457,8 @@ PsychError PSYCHKINECTGetDepthImage(void)
 			// Return encoded depth image:
 			if (format == 4) {
 				i = 0;
-                for (y=0; y < 480; y++) {
-                    for (x=0; x < 640; x++) {
+				for (y=0; y < 480; y++) {
+					for (x=0; x < 640; x++) {
 						// Calc z distance in meters:
 						zmap[i++] = (double) x;
 						zmap[i++] = (double) y;
@@ -1399,8 +1467,8 @@ PsychError PSYCHKINECTGetDepthImage(void)
 				}
 			} else {
 				i = 2;
-                for (y=0; y < 480; y++) {
-                    for (x=0; x < 640; x++) {
+				for (y=0; y < 480; y++) {
+					for (x=0; x < 640; x++) {
 						// Calc z distance in meters:
 						zmap[i] = calcz(getz(buffer->depth, x, y));
 						i+=3;
@@ -1410,8 +1478,8 @@ PsychError PSYCHKINECTGetDepthImage(void)
 
 			// Return image data:
 			if (returnTexturePtr) {
-				// Just return a memory pointer to the colorbuffer:
-                // TODO FIXME: NEEDAUDIT64BIT
+				// Just return a memory pointer to the depthbuffer:
+				// TODO FIXME: NEEDAUDIT64BIT
 				PsychCopyOutDoubleArg(1, FALSE, (double)((unsigned int)((void*) zmap)));
 			} else {
 				PsychAllocOutDoubleMatArg(1, FALSE, 3, buffer->dheight, buffer->dwidth, &outzmat);
@@ -1429,23 +1497,23 @@ PsychError PSYCHKINECTGetDepthImage(void)
 
 			if (format == 6) {
 				i = 0;
-                while (i < 640 * 480 * 2) {
-                    fmap[i] = (float) (i / 2);
-                    i++;
-                    fmap[i++] = (float) *(inbufs++);
-                }
+				while (i < 640 * 480 * 2) {
+					fmap[i] = (float) (i / 2);
+					i++;
+					fmap[i++] = (float) *(inbufs++);
+				}
 			} else {
 				i = 0;
 				while (i < 640 * 480 * 2) {
-						i++;
-						fmap[i++] = (float) *(inbufs++);
+					i++;
+					fmap[i++] = (float) *(inbufs++);
 				}
 			}
 
 			// Return image data:
 			if (returnTexturePtr) {
-				// Just return a memory pointer to the colorbuffer:
-                // TODO FIXME: NEEDAUDIT64BIT
+				// Just return a memory pointer to the depthbuffer:
+				// TODO FIXME: NEEDAUDIT64BIT
 				PsychCopyOutDoubleArg(1, FALSE, (double)((unsigned int)((void*) zmap)));
 			} else {
 				PsychAllocOutDoubleMatArg(1, FALSE, 1, buffer->dheight, buffer->dwidth, &outzmat);
@@ -1455,9 +1523,23 @@ PsychError PSYCHKINECTGetDepthImage(void)
 			components = 1;
 		break;
 
+		case 8:
+			// Return 16 bit unsigned integer raw depths data:
+			if (returnTexturePtr) {
+				// Just return a memory pointer to the depthbuffer:
+				// TODO FIXME: NEEDAUDIT64BIT
+				PsychCopyOutDoubleArg(1, FALSE, (double)((unsigned int)((void*) buffer->depth)));
+			} else {
+				PsychErrorExitMsg(PsychError_user, "Fetching 16 bit unsigned depth image as matrix in format 8 is not supported!");
+			}
+
+			components = 1;
+		break;
+
+
 		default:
-            components = 0;
-			PsychErrorExitMsg(PsychError_user, "Invalid '' parameter provided!");
+			components = 0;
+			PsychErrorExitMsg(PsychError_user, "Invalid 'format' parameter provided!");
 	}
 	
 	// Fixed for current Kinect:
@@ -1469,15 +1551,21 @@ PsychError PSYCHKINECTGetDepthImage(void)
 	// Note: GL_INT was also tried, as it is theoretically more efficient to handle on cpu,
 	// but was way slower, as apparently many GPU's have trouble handling it efficiently. Likely
 	// we hit some driver fallback or internal data conversion:
-	PsychCopyOutDoubleArg(5, FALSE, (components == 1 && (format == 6 || format == 7)) ? 5126 : 5130);
-	
+	if (format < 8) {
+		PsychCopyOutDoubleArg(5, FALSE, (components == 1 && (format == 6 || format == 7)) ? 5126 : 5130);
+	} else {
+		// GL_UNSIGNED_SHORT format for texture buffer, useable in vertex/geometry shader for
+		// vertex-texture-fetch of raw depths images:
+		PsychCopyOutDoubleArg(5, FALSE, 5123);
+	}
+
 	return(PsychError_none);	
 }
 
 PsychError PSYCHKINECTSetBaseCalibration(void)
 {
-    static char useString[] = "[...old parameter settings in order of inputs... ] = PsychKinect('SetBaseCalibration', kinectPtr, depthsIntrinsics, rgbIntrinsics, rgbRotation, rgbTranslation, depthsUndistort, rgbUndistort);";
-    //                                                                                                                1          2                 3              4            5               6                7
+    static char useString[] = "[...old parameter settings in order of inputs... ] = PsychKinect('SetBaseCalibration', kinectPtr, depthsIntrinsics, rgbIntrinsics, rgbRotation, rgbTranslation, depthsUndistort, rgbUndistort, depthBaseAndOffset);";
+    //                                                                                                                1          2                 3              4            5               6                7             8
     static char synopsisString[] = 
 		"Set and/or Get camera calibration matrices of box 'kinectPtr'.\n\n"
 		"This function assigns various parameters needed for 3D reconstruction "
@@ -1501,7 +1589,8 @@ PsychError PSYCHKINECTSetBaseCalibration(void)
 		"'depthsUndistort' undistoration parameters for depths camera.\n"
 		"[k1,k2,p1,p2,k3].\n"
 		"'rgbUndistort' undistoration parameters for RGB video camera.\n"
-		"[k1,k2,p1,p2,k3].\n";
+		"[k1,k2,p1,p2,k3].\n"
+		"'depthBaseAndOffset' a 2 element vector [kinectDepthBase, kinectDephOffset].\n";
 
     static char seeAlsoString[] = "";	
 	
@@ -1509,6 +1598,7 @@ PsychError PSYCHKINECTSetBaseCalibration(void)
 	PsychKNDevice *kinect;
 	double *depthIntrinsics, *rgbIntrinsics;
 	double *rgbRotation, *rgbTranslation;
+	double *depthBaseAndOffset;
 	int m, n, p;
 
 	// All sub functions should have these two lines
@@ -1516,8 +1606,8 @@ PsychError PSYCHKINECTSetBaseCalibration(void)
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 	
 	//check to see if the user supplied superfluous arguments
-	PsychErrorExit(PsychCapNumOutputArgs(6));
-	PsychErrorExit(PsychCapNumInputArgs(7));
+	PsychErrorExit(PsychCapNumOutputArgs(7));
+	PsychErrorExit(PsychCapNumInputArgs(8));
 
 	// Get device handle:
 	PsychCopyInIntegerArg(1, TRUE, &handle);
@@ -1551,6 +1641,10 @@ PsychError PSYCHKINECTSetBaseCalibration(void)
 
 	if (PsychAllocOutDoubleMatArg(6, FALSE, 1, 5, 1, &rgbIntrinsics)) {
 		memcpy(rgbIntrinsics, &kinect->undistort_rgb, sizeof(double) * 5 * 1);
+	}
+
+	if (PsychAllocOutDoubleMatArg(7, FALSE, 1, 2, 1, &depthBaseAndOffset)) {
+		memcpy(depthBaseAndOffset, &kinect->depthBaseAndOffset, sizeof(double) * 2 * 1);
 	}
 
 	if (PsychAllocInDoubleMatArg(2, FALSE, &m, &n, &p, &depthIntrinsics)) {
@@ -1587,6 +1681,11 @@ PsychError PSYCHKINECTSetBaseCalibration(void)
 	if (PsychAllocInDoubleMatArg(7, FALSE, &m, &n, &p, &rgbIntrinsics)) {
 		if (m * n * p != 5) PsychErrorExitMsg(PsychError_user, "Number of 'rgbUndistort' elements not 5 as required!");
 		memcpy(&kinect->undistort_rgb, rgbIntrinsics, sizeof(double) * 5 * 1);
+	}
+
+	if (PsychAllocInDoubleMatArg(8, FALSE, &m, &n, &p, &depthBaseAndOffset)) {
+		if (m * n * p != 2) PsychErrorExitMsg(PsychError_user, "'depthBaseAndOffset' vector isn't a 2-by-1 vector as required!");
+		memcpy(&kinect->depthBaseAndOffset, depthBaseAndOffset, sizeof(double) * 2 * 1);
 	}
 
 	return(PsychError_none);

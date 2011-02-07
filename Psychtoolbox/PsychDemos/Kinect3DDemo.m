@@ -106,10 +106,10 @@ glEnable(GL.DEPTH_TEST);
 glMatrixMode(GL.PROJECTION);
 glLoadIdentity;
 
-% Field of view is +/- 25 degrees from line of sight. Objects close than
+% Field of view is +/- 20 degrees from line of sight. Objects close than
 % 0.1 distance units or farther away than 200 distance units get clipped
 % away, aspect ratio is adapted to the monitors aspect ratio:
-gluPerspective(25.0,1/ar,0.1,10000.0);
+gluPerspective(20.0,1/ar,0.1,10000.0);
 
 % Setup modelview matrix: This defines the position, orientation and
 % looking direction of the virtual camera:
@@ -141,6 +141,8 @@ Screen('EndOpenGL', win);
 ifi = Screen('GetFlipInterval', win);
 
 kinect = PsychKinect('Open');
+
+%PsychKinect('ApplyCalibrationFile', kinect, '/home/kleinerm/Downloads/kinect_calibration.yml');
 
 % Enable this to test kinects motor:
 if 0
