@@ -99,10 +99,10 @@ if preparse>0
     % preparse-pass: We may allocate slightly too much, but this should not be
     % a problem, as the real parse pass will correct this.
     Vertices=zeros(3,prevnum);
-    %Faces=zeros(3,pref3num);
     Faces=zeros(9,pref3num);
     Texcoords=zeros(3,prevtnum);
     Normals=zeros(3,prevnnum);
+    F4=zeros(12,pref3num);
     QuadFaces=[];
 
     % Rewind to beginning of file in preparation of real data parse pass:
@@ -116,6 +116,7 @@ else
     Texcoords=[];
     Normals=[];
     QuadFaces=[];
+    F4=[];
     prevtnum=1;
 end;
 
@@ -141,13 +142,12 @@ while Lyn>=0
             fstr=findstr(Lyn,'/');
             nslash=length(fstr);
             if nvrts == 3
+                % Triangle face:
                 if nslash ==3 % vertex and textures
                     f1=sscanf(Lyn,'%f/%f');
-                    %f1=f1([1 3 5]);
                     f1=f1([1 3 5 2 4 6 1 3 5]);
                 elseif nslash==6 % vertex, textures and normals,
                     f1=sscanf(Lyn,'%f/%f/%f');
-                    %f1=f1([1 4 7]);
                     f1=f1([1 4 7 2 5 8 3 6 9]);
                 elseif nslash==0
                     f1=sscanf(Lyn,'%f');
@@ -159,14 +159,16 @@ while Lyn>=0
                 Faces(:,f3num)=f1;
                 f3num=f3num+1;
             elseif nvrts == 4
+                % Quad face:
                 if nslash == 4
                     f1=sscanf(Lyn,'%f/%f');
-                    f1=f1([1 3 5 7]);
+                    f1=f1([1 3 5 7 2 4 6 8 1 3 5 7]);
                 elseif nslash == 8
                     f1=sscanf(Lyn,'%f/%f/%f');
-                    f1=f1([1 4 7 10]);
+                    f1=f1([1 4 7 10 2 5 8 11 3 6 9 12]);
                 elseif nslash ==0
                     f1=sscanf(Lyn,'%f');
+                    f1=f1([1 2 3 4 1 2 3 4 1 2 3 4]);
                 else
                     if (debug>1)
                         fprintf('Parse error in line %i: Could not process this:\n', totalcount+1);
@@ -177,7 +179,7 @@ while Lyn>=0
                     end;
                     f1=[];
                 end
-                F4(:,f4num)=f1;
+                F4(:,f4num)=f1; %#ok<AGROW>
                 f4num=f4num+1;
             end
         case 'v'  % vertex
@@ -249,11 +251,87 @@ if debug > 0
     fprintf('Normal vectors: %i\n', vnnum);
 end
 
-if exist('Faces', 'var')==0
+% Any quads defined?
+if f4num > 0
+    % Yes. Quads defined in F4: Check if we need to remap texture and
+    % normal coordinate indices, just as in the case for triangles below:
+    % Do texture coordinates exist?
+    if vtnum > 0
+        % Yes. Check if face indices for vertices and textures are
+        % completely identical:
+        idxdiff = sum(abs(F4(1,:) - F4(5,:))) + sum(abs(F4(2,:) - F4(6,:))) + sum(abs(F4(3,:) - F4(7,:))) + sum(abs(F4(4,:) - F4(8,:)));
+        if idxdiff~=0
+            % Texture indices differ (at least sometimes) from vertex
+            % indices. This can't be easily handled by OpenGL, at least not
+            % at high performance. We perform manual remapping, permutating
+            % the read texture coordinate array, so at the end we can index
+            % into the texture array with the same indices as the ones we
+            % use for the vertex array. This is more memory intense, but
+            % much faster for postprocessing and rendering...
+
+            if debug>0
+                fprintf('Inconsistent vertex vs. texture indexing: Remapping...\n');
+            end
+
+            SrcTexCoords = Texcoords;
+            Texcoords = zeros(size(SrcTexCoords, 1), vnum);
+
+            % Remap/rebuild for each of the f4num faces:
+            for i=1:f4num
+                Texcoords(:, F4(1,i)) = SrcTexCoords(:, F4(5,i));
+                Texcoords(:, F4(2,i)) = SrcTexCoords(:, F4(6,i));
+                Texcoords(:, F4(3,i)) = SrcTexCoords(:, F4(7,i));
+                Texcoords(:, F4(4,i)) = SrcTexCoords(:, F4(8,i));
+            end
+        end
+    end
+
+    % Do normal coordinates exist?
+    if vnnum > 0
+        % Yes. Check if face indices for vertices and normals are
+        % completely identical:
+        idxdiff = sum(abs(F4(1,:) - F4(9,:))) + sum(abs(F4(2,:) - F4(10,:))) + sum(abs(F4(3,:) - F4(11,:))) + sum(abs(F4(4,:) - F4(12,:)));
+        if idxdiff~=0
+            % Normal indices differ (at least sometimes) from vertex
+            % indices. This can't be easily handled by OpenGL, at least not
+            % at high performance. We perform manual remapping, permutating
+            % the read normals coordinate array, so at the end we can index
+            % into the normals array with the same indices as the ones we
+            % use for the vertex array. This is more memory intense, but
+            % much faster for postprocessing and rendering...
+
+            if debug>0
+                fprintf('Inconsistent vertex vs. normals indexing: Remapping...\n');
+            end
+
+            SrcNormals = Normals;
+            Normals = zeros(size(SrcNormals, 1), vnum);
+
+            % Remap/rebuild for each of the f4num faces:
+            for i=1:f4num
+                Normals(:, F4(1,i)) = SrcNormals(:, F4(9,i));
+                Normals(:, F4(2,i)) = SrcNormals(:, F4(10,i));
+                Normals(:, F4(3,i)) = SrcNormals(:, F4(11,i));
+                Normals(:, F4(4,i)) = SrcNormals(:, F4(12,i));
+            end
+        end
+    end
+
+    % Strip (now redundant) face indices for textures and normals. Either
+    % they were identical from the beginning, or they are now identical
+    % after our remap operation:
+    F4 = F4(1:4, :);
+    
+    % Take difference in indexing between OpenGL and OBJ into account.    
+    F4 = F4 - 1;
+end
+
+
+if f3num <= 0
     % No triangles defined. Are there any quads defined?
     if exist('F4','var')
         % Yes. This OBJ defines quads, not triangles. Assign them:
-        Faces = F4 - 1;
+        Faces = F4;
     else
         % No. Neither triangle- nor quad-definitions! We can't handle this.
         disp('Warning: The OBJ file does not contain any triangle- or quad- polygon definitions!');
@@ -333,7 +411,7 @@ else
     % Array with triangle definitions exists. Check for additional quad-definitions:
     if exist('F4','var')
         % Return quad-face definitions in QuadFaces return argument:
-        QuadFaces=F4 - 1;
+        QuadFaces = F4;
     end;
 end;
 
