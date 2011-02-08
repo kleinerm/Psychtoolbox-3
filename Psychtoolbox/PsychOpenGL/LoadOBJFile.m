@@ -41,6 +41,29 @@ function objobject=LoadOBJFile(modelname, debug, preparse)
 % 'quadfaces'. If only one type of primitives is defined, it will always be returned
 % in 'faces'. It is possible but uncommon for a OBJ file to not contain 'faces' at all.
 %
+% subMeshName = String with the name of the sub-mesh stored in cell, as
+% defined by the 'g' (geometry group) parameter. Can be empty if no
+% explicit group names are defined.
+%
+% mtllib = Name of the .mtl material library definition file which contains
+% things like textures and rendering parameters for the object. Can be
+% empty if no such file is defined.
+%
+% usemtl = Cell array of material selectors. Can be empty, or have
+% arbitrarily many cells. Each cell defines which material from the
+% material library file 'mtllib' should be selected for rendering a subset
+% of the quad- or triangle-faces in a submesh. Each cell has these
+% subfields:
+%
+%    materialName   = String with name of material to select from mtllib.
+%
+%    triStartIndex  = Startindex (Starting with 0 for first element) of the
+%                     first triangle face to render with given materialName.
+%
+%    quadStartIndex = Startindex (Starting with 0 for first element) of the
+%                     first quad face to render with given materialName.
+%
+%
 % Example: Assuming the OBJ file contains exactly one triangle mesh, you'll
 % be able to access its data as: objobject{1}.faces --> faces of the mesh,
 % objobject{1}.vertices --> vertex definitions, ...
@@ -61,10 +84,12 @@ function objobject=LoadOBJFile(modelname, debug, preparse)
 % 18/09/06, Speedup for common OBJ files due to memory preallocation. (MK)
 % 02/09/07, We now handle triangle faces with non-equal vertex/tex/normal indices by remapping to a common index. (MK)
 % 10/03/08, Replace deblank() by strtrim() in parser: More robust against leading blanks. (MK)
-% 02/07/10, Fix bugs in reading of quad-meshes, apply same speed
+% 02/07/11, Fix bugs in reading of quad-meshes, apply same speed
 %           optimizations as for triangles. (MK)
-% 02/07/10, Implement correct reading of objfiles with sub-meshes, split up
+% 02/07/11, Implement correct reading of objfiles with sub-meshes, split up
 %           into proper sub-meshes. (MK)
+% 02/08/11  Implement parsing/assignment of 'g' submesh-names, mtllib
+%           definitions and usemat selectors. (MK)
 %
 
 if nargin<1 
@@ -97,6 +122,7 @@ if preparse>0
     frewind(fid);
 end;
 
+mtllib = [];
 meshcount=0;
 totalcount=0;
 Lyn = [];
@@ -131,6 +157,8 @@ while 1
     f4num=1;
     vtnum=1;
     vnnum=1;
+    subMeshName = [];
+    usemtlstack = [];
 
     if isempty(Lyn)
         % Parse 1st line of file:
@@ -233,8 +261,27 @@ while 1
                 if debug>1 , disp(Lyn); end;
             case 'g'  % mesh.
                 if (debug>1), disp(Lyn); end;
-            case 'usemtl' % what is this??
+                if ~isempty(strtrim(sscanf(Lyn(3:end),'%s')));
+                    % Assign name of 'g' submesh name definition:
+                    subMeshName = strtrim(sscanf(Lyn(3:end),'%s'));
+                end
+            case 'mtllib' % Material library definition filename.
                 if (debug>1), disp(Lyn); end;
+                if ~isempty(strtrim(sscanf(Lyn(8:end),'%s')));
+                    % Assign name of 'g' submesh name definition:
+                    mtllib = strtrim(sscanf(Lyn(8:end),'%s'));
+                end                
+            case 'usemtl' % Material definition:
+                if (debug>1), disp(Lyn); end;
+                if ~isempty(strtrim(sscanf(Lyn(8:end),'%s')));
+                    % Assign name of 'g' submesh name definition:
+                    usemtl = strtrim(sscanf(Lyn(8:end),'%s'));
+                    usemtlitem.materialName   = usemtl;
+                    usemtlitem.triStartIndex  = f3num - 1;
+                    usemtlitem.quadStartIndex = f4num - 1;
+                    usemtlstack{end+1} = usemtlitem; %#ok<AGROW>
+                end
+                
             otherwise
                 if ~strcmp(Lyn,char([13 10]))
                     if (debug>1), disp(['OBJ entry unprocessed: ' Lyn]); end;
@@ -263,7 +310,7 @@ while 1
     vnnum=vnnum - 1;
 
     if debug > 0
-        fprintf('\n\nNew Submesh %i of file %s contains:\n', meshcount + 1, modelname);
+        fprintf('\n\nNew Submesh %i [%s] of file %s contains:\n', meshcount + 1, subMeshName, modelname);
         fprintf('Triangles: %i\n', f3num);
         fprintf('Quads: %i\n', f4num);
         fprintf('Vertices: %i\n', vnum);
@@ -450,7 +497,10 @@ while 1
     objobject{meshcount}.vertices = Vertices(:, 1:vnum);  %#ok<AGROW>
     objobject{meshcount}.normals = Normals(:, 1:vnum);  %#ok<AGROW>
     objobject{meshcount}.texcoords = Texcoords(:, 1:vnum);  %#ok<AGROW>
-
+    objobject{meshcount}.subMeshName = subMeshName;  %#ok<AGROW>
+    objobject{meshcount}.mtllib = mtllib;  %#ok<AGROW>
+    objobject{meshcount}.usemtl = usemtlstack;  %#ok<AGROW>
+    
     if debug>0
         fprintf('----------------------------------------------------------\n');
     end
