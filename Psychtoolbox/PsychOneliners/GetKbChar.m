@@ -74,6 +74,9 @@ elseif length(ch) > 2
     if strcmpi(ch, 'Return')
         ch = char(13);
     end
+    if strcmpi(ch, 'ENTER')
+        ch = char(13);
+    end
     if strcmpi(ch, 'space')
         ch = char(32);
     end
