@@ -445,7 +445,7 @@ end
 % Initialize count of keyshapes:
 if isempty(objcount)
     objcount = 0;
-    usetextures = 0
+    usetextures = 0;
     usenormals = 0;
     usecolors = 0;
     updatecount = 0;
