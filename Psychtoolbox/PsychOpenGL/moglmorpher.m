@@ -162,7 +162,24 @@ function [rc, varargout] = moglmorpher(cmd, arg1, arg2, arg3, arg4, arg5)
 % glDeleteLists(glListHandle, 1);
 %
 %
-% moglmorpher('renderNormals' [,normalLength=1]);
+% moglmorpher('renderRange' [, startfaceidx=0] [, endfaceidx]);
+% moglmorpher('renderRangeToDisplayList' [, startfaceidx=0] [, endfaceidx]);
+% -- Like 'render' and 'renderToDisplayList', except that the range of
+% faces (triangles or quads) can be restricted to a subrange of the mesh.
+% By default, the full mesh is rendered. 'startfaceidx' Allows start at
+% given index instead of index zero. 'endfaceidx' Allows end at
+% given index instead of the last face index in the mesh.
+%
+% Caution: Face indices count in units of surface primitives. 1 count = 1
+% triangle or quad, depending on the type of your mesh.
+%
+% Caution: Face indices are zero-based! The first element is at index zero.
+% This is different from the one-based indexing of vertices in the
+% functions 'renderNormals' and 'getVertexPositions', where index 1 denotes
+% the first vertex in the mesh.
+%
+%
+% moglmorpher('renderNormals' [,normalLength=1] [, startidx=1] [, endidx]);
 % -- Renders the surface normal vectors of the last shape in green, either at unit-length,
 % or at 'normalLength' if this argument is provided. This is a helper function for
 % checking the correctness of computed normals. It is very slow!
@@ -297,6 +314,9 @@ function [rc, varargout] = moglmorpher(cmd, arg1, arg2, arg3, arg4, arg5)
 % 03.11.2010  Add support for static vertex colors (non-morphable for now) (MK).
 %
 % 09.02.2011  Add support for use of multiple morph contexts (MK).
+%
+% 09.02.2011  Add support for rendering only a subrange of faces from a mesh (MK).
+%
 
 % The GL OpenGL constant definition struct is shared with all other modules:
 global GL;
@@ -1351,10 +1371,6 @@ if strcmpi(cmd, 'renderNormals')
     end;
     
     if gpubasedmorphing
-        % NOT YET IMPLEMENTED: Skip with warning:
-        % warning('moglmorpher: Subcommand "renderNormals" not yet implemented for GPU based morphing!');
-        % return;
-
         if ctx.resynccount < ctx.updatecount
             % Recursive call to ourselves to update our internal vertices and
             % normals matrices with readback data from the GPU's VBO:
@@ -1370,10 +1386,30 @@ if strcmpi(cmd, 'renderNormals')
         arg1 = 1;
     end;
     
+    if nargin < 3
+        startidx = 1;
+    else
+        if isempty(arg2)
+            startidx = 1;
+        else
+            startidx = arg2;
+        end;
+    end;
+
+    if nargin < 4
+        endidx = size(ctx.vertices,2);
+    else
+        if isempty(arg3)
+            endidx = size(ctx.vertices,2);
+        else
+            endidx = arg3;
+        end;
+    end;
+    
     % Loop over all vertices and draw their corresponding normals:
     % This is OpenGL immediate-mode rendering, so it will be slow...
     glBegin(GL.LINES);
-    for i=1:size(ctx.vertices,2)
+    for i=startidx:endidx
         % Start position of normal is vertex position:
         glVertex3dv(ctx.vertices(:,i));
         % End position is defined by scaled normal vector: Argument 1 defines length of normal:
@@ -1385,13 +1421,54 @@ if strcmpi(cmd, 'renderNormals')
     return;
 end;
 
-if strcmpi(cmd, 'render') || strcmpi(cmd, 'renderToDisplaylist')
+if strcmpi(cmd, 'render') || strcmpi(cmd, 'renderToDisplaylist') || ...
+   strcmpi(cmd, 'renderRange') || strcmpi(cmd, 'renderRangeToDisplaylist')
+
     % Render current content of renderbuffers via OpenGL:
     if ctx.updatecount < 1
         error('Tried to render content of renderbuffers, but renderbuffers not yet filled!');
     end;
 
-    if strcmpi(cmd, 'renderToDisplaylist')
+    % Only rendering of a subrange of faces requested?
+    if strcmpi(cmd, 'renderRange') || strcmpi(cmd, 'renderRangeToDisplaylist')
+        % Yes: Assign start- and endindex of faces defining the subrange:
+        if nargin >= 2 && ~isempty(arg1)
+            startIdx = arg1;
+        else
+            startIdx = 0;
+        end
+
+        if nargin >= 3 && ~isempty(arg2)
+            endIdx = arg2;
+        else
+            endIdx = size(ctx.faces,2) - 1;
+        end
+    else
+        % No: Render full mesh:
+        startIdx = 0;
+        endIdx = size(ctx.faces,2) - 1;
+    end
+    
+    % Validate:
+    if startIdx < 0 || startIdx > size(ctx.faces,2) - 1
+        error('%s: startIdx of range to render is outside defined mesh!', cmd);
+    end
+
+    if endIdx < 0 || endIdx > size(ctx.faces,2) - 1
+        error('%s: endIdx of range to render is outside defined mesh!', cmd);
+    end
+
+    if startIdx > endIdx
+        error('%s: startIdx of range to render greater than endIdx!', cmd);
+    end
+
+    % Compute startIdx offset and count into arrays:
+    fcount = endIdx - startIdx + 1;
+    if fcount < 1 || fcount > size(ctx.faces,2)
+        error('%s: Count of faces to render exceeds total size of mesh!', cmd);
+    end
+    
+    if strcmpi(cmd, 'renderToDisplaylist') || strcmpi(cmd, 'renderRangeToDisplaylist')
         % Create new display list and direct all rendering into it:
         rc = glGenLists(1);
         glNewList(rc, GL.COMPILE);
@@ -1431,22 +1508,25 @@ if strcmpi(cmd, 'render') || strcmpi(cmd, 'renderToDisplaylist')
             glColorPointer(size(ctx.vertcolors, 1), usetype, 0, ctx.vertcolors);
         end;
 
+        % Adapt startIdx of range: Matlab/Octave use 1-based index into matrices:
+        startIdx = startIdx + 1;
+
         % Render mesh, using topology given by 'ctx.faces':
         if drawrangeelements
             % Faster rendering-path, needs OpenGL-1.2 or higher:
             if (size(ctx.faces,1)==3)
-                glDrawRangeElements(GL.TRIANGLES, ctx.minvertex, ctx.maxvertex, size(ctx.faces,2) * 3, GL.UNSIGNED_INT, ctx.faces);
+                glDrawRangeElements(GL.TRIANGLES, ctx.minvertex, ctx.maxvertex, fcount * 3, GL.UNSIGNED_INT, ctx.faces(:, startIdx:end));
             elseif size(ctx.faces,1)==4
-                glDrawRangeElements(GL.QUADS, ctx.minvertex, ctx.maxvertex, size(ctx.faces,2) * 4, GL.UNSIGNED_INT, ctx.faces);
+                glDrawRangeElements(GL.QUADS, ctx.minvertex, ctx.maxvertex, fcount * 4, GL.UNSIGNED_INT, ctx.faces(:, startIdx:end));
             else
                 error('Invalid number of rows in face index array!');
             end;
         else
             % Slower rendering path, needed to support OpenGL-1.1 renderers as well:
             if (size(ctx.faces,1)==3)
-                glDrawElements(GL.TRIANGLES, size(ctx.faces,2) * 3, GL.UNSIGNED_INT, ctx.faces);
+                glDrawElements(GL.TRIANGLES, fcount * 3, GL.UNSIGNED_INT, ctx.faces(:, startIdx:end));
             elseif size(ctx.faces,1)==4
-                glDrawElements(GL.QUADS, size(ctx.faces,2) * 4, GL.UNSIGNED_INT, ctx.faces);
+                glDrawElements(GL.QUADS, fcount * 4, GL.UNSIGNED_INT, ctx.faces(:, startIdx:end));
             else
                 error('Invalid number of rows in face index array!');
             end;
@@ -1493,9 +1573,9 @@ if strcmpi(cmd, 'render') || strcmpi(cmd, 'renderToDisplaylist')
 
         % Render mesh, using topology given by 'ctx.faces':
         if (size(ctx.faces,1)==3)
-            glDrawRangeElements(GL.TRIANGLES, ctx.minvertex, ctx.maxvertex, size(ctx.faces,2) * 3, GL.UNSIGNED_INT, 0);
+            glDrawRangeElements(GL.TRIANGLES, ctx.minvertex, ctx.maxvertex, fcount * 3, GL.UNSIGNED_INT, startIdx * 3 * 4);
         elseif size(ctx.faces,1)==4
-            glDrawRangeElements(GL.QUADS, ctx.minvertex, ctx.maxvertex, size(ctx.faces,2) * 4, GL.UNSIGNED_INT, 0);
+            glDrawRangeElements(GL.QUADS, ctx.minvertex, ctx.maxvertex, fcount * 4, GL.UNSIGNED_INT, startIdx * 4 * 4);
         else
             error('Invalid number of rows in face index array!');
         end;
@@ -1599,7 +1679,7 @@ if strcmpi(cmd, 'getVertexPositions')
    % Put OpenGL into feedback mode:
    glRenderMode(GL.FEEDBACK);
    
-   % Render all vertices: This does not draw, but just transform the vertices
+   % Render vertices: This does not draw, but just transform the vertices
    % into projected screen space and returns their 3D positions in the feedback-buffer:
    glDrawArrays(GL.POINTS, startidx, ntotal);
    
