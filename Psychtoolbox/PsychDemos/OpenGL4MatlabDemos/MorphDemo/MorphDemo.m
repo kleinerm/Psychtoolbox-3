@@ -12,7 +12,7 @@ function MorphDemo(textureon, dotson, normalson, stereomode, usefastoffscreenwin
 % 'a' == Zoom out by moving object away from viewer.
 % 'z' == Zoom in by moving object close to viewer.
 % 'k' and 'l' == Rotate object around axis.
-% 'q' == Quit demo.
+% 'ESC' == Quit demo.
 %
 % Options:
 %
@@ -77,9 +77,10 @@ end
 usefastoffscreenwindows %#ok<NOPRT>
 
 % Response keys: Mapping of keycodes to keynames.
+KbName('UnifyKeyNames');
 closer = KbName('a');
 farther = KbName('z');
-quitkey = KbName('q');
+quitkey = KbName('ESCAPE');
 rotateleft = KbName('l');
 rotateright = KbName('k');
 
@@ -92,12 +93,12 @@ objs = [ LoadOBJFile([basepath 'texblob01.obj']) LoadOBJFile([basepath 'texblob0
 screenid=max(Screen('Screens'));
 
 % Disable Synctests for this simple demo:
-Screen('Preference','SkipSyncTests',1);
+oldskip = Screen('Preference','SkipSyncTests', 1);
 
 % Setup Psychtoolbox for OpenGL 3D rendering support and initialize the
 % mogl OpenGL for Matlab wrapper. We need to do this before the first call
-% to any OpenGL function:
-InitializeMatlabOpenGL(0,1);
+% to any OpenGL function. Set debug level to zero -> Faster, but no error checking:
+InitializeMatlabOpenGL(0,0);
 
 % Open a double-buffered full-screen window: Everything is left at default
 % settings, except stereomode:
@@ -414,11 +415,10 @@ fps = framecount / (vbl - tstart) %#ok<NOPRT,NASGU>
 moglmorpher('reset');
 
 % Close onscreen window and release all other ressources:
-%Screen('Flip', win);
 Screen('CloseAll');
 
 % Reenable Synctests after this simple demo:
-Screen('Preference','SkipSyncTests',1);
+Screen('Preference','SkipSyncTests', oldskip);
 
 % Well done!
 return
