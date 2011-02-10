@@ -79,9 +79,10 @@
 #include <endian.h>
 
 // Settings for member fDeviceType:
-#define kPsychUnknown 0
-#define kPsychGeForce 1
-#define kPsychRadeon  2
+#define kPsychUnknown  0
+#define kPsychGeForce  1
+#define kPsychRadeon   2
+#define kPsychIntelIGP 3
 
 // gfx_cntl_mem is mapped to the actual device's memory mapped control area.
 // Not the address but what it points to is volatile.
@@ -228,8 +229,8 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 		// GPU aka display device class?
 		if ((dev->device_class & 0x00ff0000) == (PCI_CLASS_DISPLAY << 16)) {
 			// dev is our current candidate gpu. Matching vendor?
-			if (dev->vendor_id == PCI_VENDOR_ID_NVIDIA || dev->vendor_id == PCI_VENDOR_ID_ATI || dev->vendor_id == PCI_VENDOR_ID_AMD) {
-				// Yes. This is our baby from NVidia or ATI/AMD:
+			if (dev->vendor_id == PCI_VENDOR_ID_NVIDIA || dev->vendor_id == PCI_VENDOR_ID_ATI || dev->vendor_id == PCI_VENDOR_ID_AMD || dev->vendor_id == PCI_VENDOR_ID_INTEL) {
+				// Yes. This is our baby from NVidia or ATI/AMD or Intel:
 				gpu = dev;
 				break;
 			}
@@ -267,11 +268,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 		// Store PCI device id:
 		fPCIDeviceId = gpu->device_id;
 		
-		// mmap() the PCI register space into our memory: Currently we map 0x8000 bytes, although the actual
-		// configuration space would be 0xffff bytes, but we neither need, nor know what the upper regions of
-		// this space do, so no need to map'em: gfx_cntl_mem will contain the base of the register block,
-		// all register addresses in the official Radeon specs are offsets to that base address. This will
-		// return NULL if the mapping fails, e.g., due to insufficient permissions etc...
+		// Find out which BAR to use for mapping MMIO registers. Depends on GPU vendor:
 		if (gpu->vendor_id == PCI_VENDOR_ID_NVIDIA) {
 			// BAR 0 is MMIO:
 			region = &gpu->regions[0];
@@ -284,6 +281,18 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			fDeviceType = kPsychRadeon;
 		}
 		
+		if (gpu->vendor_id == PCI_VENDOR_ID_INTEL) {
+			// On non GEN-2 hardware, BAR 0 is MMIO:
+			region = &gpu->regions[0];
+
+			// On GEN-2 hardware, BAR 1 is MMIO: Detect known IGP's of GEN-2.
+			if ((fPCIDeviceId == 0x3577) || (fPCIDeviceId == 0x2562) || (fPCIDeviceId == 0x3582) || (fPCIDeviceId == 0x358e) || (fPCIDeviceId == 0x2572)) {
+				region = &gpu->regions[1];
+			}
+
+			fDeviceType = kPsychIntelIGP;
+		}
+
 		// Try to MMAP MMIO registers with write access, assign their base address to gfx_cntl_mem on success:
 		if (PsychPrefStateGet_Verbosity() > 4) {
 			printf("PTB-DEBUG: Mapping GPU BAR address %p ...\n", region->base_addr);
@@ -782,6 +791,16 @@ float PsychGetNominalFramerate(int screenNumber)
 
     // Divide vrefresh by 1000 to get real Hz - value:
     vrefresh = vrefresh / 1000.0f;
+
+    // Definitions from xserver's hw/xfree86/common/xf86str.h
+    // V_INTERLACE	= 0x0010,
+    // V_DBLSCAN	= 0x0020,
+
+    // Doublescan mode? If so, divide vrefresh by 2:
+    if (mode_line.flags & 0x0020) vrefresh /= 2;
+
+    // Interlaced mode? If so, multiply vrefresh by 2:
+    if (mode_line.flags & 0x0010) vrefresh *= 2;
   }
 
   // Done.
@@ -1592,7 +1611,12 @@ int PsychOSKDGetBeamposition(int screenId)
 				beampos = (int) (ReadRegister((headId == 0) ? 0x616340 : 0x616340 + 0x800) & 0xFFFF);
 			}
 		}
-		
+
+		// Query code for Intel IGP's:
+		if (fDeviceType == kPsychIntelIGP) {
+				beampos = (int) (ReadRegister((headId == 0) ? 0x70000 : 0x70000 + 0x1000) & 0x1FFF);
+		}
+
 		// Safety measure: Cap to zero if something went wrong -> This will trigger proper high level error handling in PTB:
 		if (beampos < 0) beampos = -1;
 	}

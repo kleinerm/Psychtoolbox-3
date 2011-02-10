@@ -598,6 +598,25 @@ void PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal)
 			}
 		}
 
+		if ((strstr(glGetString(GL_VENDOR), "INTEL") || strstr(glGetString(GL_VENDOR), "Intel") ||
+			strstr(glGetString(GL_RENDERER), "INTEL") || strstr(glGetString(GL_RENDERER), "Intel")) &&
+			PsychOSIsKernelDriverAvailable(screenId)) {
+			#if PSYCH_SYSTEM != PSYCH_WINDOWS
+			vblbias = 0;
+
+			// VTOTAL at 0x6000C with stride 0x1000: Encodes VTOTAL in upper 16 bit word masked with 0x1fff :
+			vbltotal = (int) 1 + ((PsychOSKDReadRegister(crtcid, 0x6000c + ((crtcid > 0) ? 0x1000 : 0), NULL) >> 16) & 0x1FFF);
+
+			// Decode VBL_START and VBL_END for debug purposes:
+			if (PsychPrefStateGet_Verbosity() > 5) {
+				unsigned int vbl_start, vbl_end, vbl;
+				vbl = PsychOSKDReadRegister(crtcid, 0x60010 + ((crtcid > 0) ? 0x1000 : 0), NULL);
+				vbl_start = vbl & 0x1fff;
+				vbl_end   = (vbl >> 16) & 0x1FFF;
+				printf("PTB-DEBUG: Screen %i [head %i]: vbl_start = %i  vbl_end = %i.\n", screenId, crtcid, (int) vbl_start, (int) vbl_end);
+			}
+			#endif
+		}
 	}
 
 	// Feedback is good:

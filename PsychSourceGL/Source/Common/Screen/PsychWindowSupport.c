@@ -839,7 +839,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	}
 	
 	// Is the VBL endline >= VBL startline - 1, aka screen height?
-	if ((VBL_Endline < (int) vbl_startline - 1) || (VBL_Endline > vbl_startline * 1.25)) {
+	// Or is it outside a reasonable interval around vbl_startline or 2 * vbl_startline?
+	if ((VBL_Endline < (int) vbl_startline - 1) || ((VBL_Endline > vbl_startline * 1.25) && ((VBL_Endline > vbl_startline * 2.25) || (VBL_Endline < vbl_startline * 2.0)))) {
 		// Completely bogus VBL_Endline detected! Warn the user and mark VBL_Endline
 		// as invalid so it doesn't get used anywhere:
 		sync_trouble = true;
@@ -850,6 +851,10 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		}
 	}
 	else {
+		// Check if VBL_Endline is greater than 2 * vbl_startline. This would indicate the backend is running in
+		// a double-scan videomode and we need to adapt our vbl_startline to be twice the framebuffer height:
+		if ((VBL_Endline >= vbl_startline * 2) && (VBL_Endline < vbl_startline * 2.25)) vbl_startline = vbl_startline * 2;
+
 		// Compute ifi from beampos:
 		ifi_beamestimate = tsum / tcount;
 		
@@ -878,10 +883,13 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 			// corrections only if our own homegrown beampos query mechanism is used.
 			// Additionally the PTB kernel driver must be available.
 			// We don't setup for ATI/AMD as our low-level code already performs correct correction.
-			// We don't have any solution for Intel, but probably don't need one.
+			// We also setup for Intel.
 			if ((strstr(glGetString(GL_VENDOR), "NVIDIA") || strstr(glGetString(GL_VENDOR), "nouveau") ||
-				 strstr(glGetString(GL_RENDERER), "NVIDIA") || strstr(glGetString(GL_RENDERER), "nouveau")) &&
+			     strstr(glGetString(GL_RENDERER), "NVIDIA") || strstr(glGetString(GL_RENDERER), "nouveau") ||
+			     strstr(glGetString(GL_VENDOR), "INTEL") || strstr(glGetString(GL_VENDOR), "Intel") ||
+			     strstr(glGetString(GL_RENDERER), "INTEL") || strstr(glGetString(GL_RENDERER), "Intel")) &&
 				PsychOSIsKernelDriverAvailable((*windowRecord)->screenNumber)) {
+
 				// Yep. Looks like we need to apply correction.
 				
 				// We ask the function to auto-detect proper values from GPU hardware and revert to safe (0,0) on failure:
