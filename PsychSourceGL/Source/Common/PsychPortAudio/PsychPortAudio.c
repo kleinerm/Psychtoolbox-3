@@ -2272,13 +2272,13 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	if (specialFlags & 2) sflags &= ~paClipOff;
 
 	// specialFlags 4: Never clip audio data:
-	if (specialFlags & 2) sflags |= paClipOff;
+	if (specialFlags & 4) sflags |= paClipOff;
 
 	// specialFlags 8: Always dither audio data:
-	if (specialFlags & 2) sflags &= ~paDitherOff;
+	if (specialFlags & 8) sflags &= ~paDitherOff;
 
 	// specialFlags 16: Never dither audio data:
-	if (specialFlags & 2) sflags |= paDitherOff;
+	if (specialFlags & 16) sflags |= paDitherOff;
 
 	// Try to create & open stream:
 	err = Pa_OpenStream(
