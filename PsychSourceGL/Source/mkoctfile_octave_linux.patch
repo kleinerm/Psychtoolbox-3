@@ -1,0 +1,8 @@
+75c75
+< : ${CFLAGS="-O2 -g -std=gnu99"}
+---
+> : ${CFLAGS="-O2 -g"}
+81c81
+< : ${XTRA_CXXFLAGS="-mieee-fp -I/usr/include/freetype2"}
+---
+> : ${XTRA_CXXFLAGS="-mieee-fp"}
