@@ -141,9 +141,11 @@ static unsigned int ReadRegister(unsigned int offset)
 
 	// Read the register in native byte order: At least NVidia GPU's adapt their
 	// endianity to match the host systems endianity, so no need for conversion:
-	if (fDeviceType == kPsychGeForce) return(value);
+	if (fDeviceType == kPsychGeForce)  return(value);
+	if (fDeviceType == kPsychIntelIGP) return(value);
 
 	// No-Op return:
+	printf("PTB-ERROR: In GPU ReadRegister(): UNKNOWN fDeviceType of GPU! NO OPERATION!\n");
 	return(0);
 }
 
@@ -159,7 +161,8 @@ static void WriteRegister(unsigned int offset, unsigned int value)
 
 	// Write the register in native byte order: At least NVidia GPU's adapt their
 	// endianity to match the host systems endianity, so no need for conversion:
-	if (fDeviceType == kPsychGeForce) value = value;
+	if (fDeviceType == kPsychGeForce)  value = value;
+	if (fDeviceType == kPsychIntelIGP) value = value;
 
 	// Radeon: Don't know endianity behaviour: Play save, stick to LE assumption for now:
 	if (fDeviceType == kPsychRadeon) value = htole32(value);
@@ -284,10 +287,12 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 		if (gpu->vendor_id == PCI_VENDOR_ID_INTEL) {
 			// On non GEN-2 hardware, BAR 0 is MMIO:
 			region = &gpu->regions[0];
+			fCardType = 0;
 
 			// On GEN-2 hardware, BAR 1 is MMIO: Detect known IGP's of GEN-2.
 			if ((fPCIDeviceId == 0x3577) || (fPCIDeviceId == 0x2562) || (fPCIDeviceId == 0x3582) || (fPCIDeviceId == 0x358e) || (fPCIDeviceId == 0x2572)) {
 				region = &gpu->regions[1];
+				fCardType = 2;
 			}
 
 			fDeviceType = kPsychIntelIGP;
@@ -338,6 +343,13 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			}
 		}
 		
+		if (fDeviceType == kPsychIntelIGP) {
+			if (PsychPrefStateGet_Verbosity() > 2) {
+				printf("PTB-INFO: Connected to Intel %s GPU%s. Beamposition timestamping enabled.\n", pci_device_get_device_name(gpu), (fCardType == 2) ? " of GEN-2 type" : "");
+				fflush(NULL);
+			}
+		}
+
 		// Ready to rock!
 	} else {
 		// No candidate.
