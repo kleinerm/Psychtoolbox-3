@@ -138,10 +138,6 @@ psych_bool PsychOpenVideoCaptureDevice(int engineId, PsychWindowRecordType *win,
 		PsychErrorExitMsg(PsychError_user, "Provided windowPtr is not an onscreen window.");
 	}
 
-	if (deviceIndex < 0) {
-		PsychErrorExitMsg(PsychError_user, "Invalid (negative) deviceIndex passed!");
-	}
-
 	if (numCaptureRecords >= PSYCH_MAX_CAPTUREDEVICES) {
 		PsychErrorExitMsg(PsychError_user, "Allowed maximum number of simultaneously open capture devices exceeded!");
 	}

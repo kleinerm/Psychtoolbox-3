@@ -71,7 +71,7 @@ try
     % Set text size for info text. 24 pixels is also good for Linux.
     Screen('TextSize', win, 24);
     
-    grabber = Screen('OpenVideoCapture', win, 1, roi, 5, [], []); % , '/home/kleinerm/Videos/Testmovie.m4v');
+    grabber = Screen('OpenVideoCapture', win, -5, roi, [], [], [], 'USB Camera-B4.04.27.1');
 %     brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness',383)
 %     exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure',130)
 %     gain = Screen('SetVideoCaptureParameter', grabber, 'Gain')

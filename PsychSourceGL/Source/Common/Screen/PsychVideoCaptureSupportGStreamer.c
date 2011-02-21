@@ -435,7 +435,7 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle)
 psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
 								   int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags)
 {
-	GstCaps                 *colorcaps, *filter_caps;
+	GstCaps         *colorcaps, *filter_caps;
 	GstElement		*camera = NULL;
 	GMainLoop		*VideoContext = NULL;
 	GstBus			*bus = NULL;
@@ -456,40 +456,12 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
 	PsychVidcapRecordType	*capdev = NULL;
 	char			config[1000];
-	char		        tmpstr[1000];
+	char			tmpstr[1000];
 	char			msgerr[10000];
 	char			errdesc[1000];
 
 	config[0] = 0;
 	tmpstr[0] = 0;
-
-#if PSYCH_SYSTEM != PSYCH_LINUX	
-	// Specific deviceIndex requested, instead of auto-select?
-	if (deviceIndex >= 1 && deviceIndex <= 3) {
-		// Fetch optional targetmoviename parameter as name spec string:
-		if (targetmoviefilename == NULL) PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a value of 1, 2 or 3, but didn't provide the required device name string in the 'moviename' argument! Aborted.");
-		switch(deviceIndex) {
-		case 1:
-			sprintf(tmpstr, "friendly_name=\"%s\" ", targetmoviefilename);
-			break;
-			
-		case 2:
-			sprintf(tmpstr, "device_name=\"%s\" ", targetmoviefilename);
-			break;
-			
-		case 3:
-			sprintf(tmpstr, "ieee1394id=\"%s\" ", targetmoviefilename);
-			break;
-		}
-		
-		strcat(config, tmpstr);
-	}
-	else {
-		// Default device index: Just pass through as default device:
-		strcat(config, "friendly_name=\"\" ");
-	}	
-	
-#endif
 	
 	// Init capturehandle to none:
 	*capturehandle = -1;
@@ -529,13 +501,9 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 #if PSYCH_SYSTEM == PSYCH_LINUX
     // Specific deviceIndex requested, instead of auto-select?
     tmpstr[0]=0;
-    if (deviceIndex!=-1) {
+    if (deviceIndex >= 0) {
 	    sprintf(tmpstr, "/dev/video%i", deviceIndex);
     }
-    else {
-	    deviceIndex = 0;
-    }
-
 #endif		
 
     // ROI rectangle specified?
@@ -576,17 +544,6 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		    PsychErrorExitMsg(PsychError_user, "You requested an invalid image depths (not one of 0, 1, 2, 3 or 4). Aborted.");
 	    }	    
     }
-    
-    if (deviceIndex == -1) {
-	    // Fetch optional targetmoviename parameter as override configuration string:
-	    if (targetmoviefilename == NULL) PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a value of 4, but didn't provide the required override configuration s	tring in the 'moviename' argument! Aborted.");
-	    
-	    // Reset config string:
-	    config[0] = 0;
-	    
-	    // And load the moviename argument as override string:
-	    strcat(config, targetmoviefilename);
-    }
 
     // Requested output texture pixel depth in layers:
     capdev->reqpixeldepth = reqdepth;
@@ -611,29 +568,225 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
     // Camerabin disabled or creation failed?
     if (NULL == camera) {
-	// Failed or disabled: Use fallback playbin2 implementation.
-	usecamerabin = FALSE;
-
-	if (!allow_lowperf_fallback)
-		PsychErrorExitMsg(PsychError_user, "Failed to create high-performance video capture pipeline and script doesn't allow fallback! Aborted.");
-
-	camera = gst_element_factory_make ("playbin2", "ptbvideocapturepipeline");
-
-#if PSYCH_SYSTEM == PSYCH_LINUX
-	sprintf(config, "v4l2://%s", tmpstr);
-#endif
-
-	if (PsychPrefStateGet_Verbosity() > 1) {
-		printf("PTB-WARNING: Could not use GStreamer 'camerabin' plugin for videocapture. Will use less powerful fallback path.\n");
-	}
+		// Failed or disabled: Use fallback playbin2 implementation.
+		usecamerabin = FALSE;
+		
+		if (!allow_lowperf_fallback)
+			PsychErrorExitMsg(PsychError_user, "Failed to create high-performance video capture pipeline and script doesn't allow fallback! Aborted.");
+		
+		camera = gst_element_factory_make ("playbin2", "ptbvideocapturepipeline");
+		
+		// Assign a specific input video source name on Linux. On other operating systems,
+		// the user has no choice but to use the auto-assigned default capture device:
+		if (PSYCH_SYSTEM == PSYCH_LINUX) sprintf(config, "v4l2://%s", tmpstr);
+		
+		if (PsychPrefStateGet_Verbosity() > 1) {
+			printf("PTB-WARNING: Could not use GStreamer 'camerabin' plugin for videocapture. Will use less powerful fallback path.\n");
+		}
     }
-
+	
     // Pipeline creation failed?
     if (NULL == camera) PsychErrorExitMsg(PsychError_user, "Failed to create video capture pipeline! Aborted.");
 
-    // Assign name and configuration parameters of video capture device to open:
-    if (!usecamerabin) g_object_set(G_OBJECT(camera), "uri", config, NULL);
-    
+	// Need to select a video source for this capture pipeline:
+    if (!usecamerabin) {
+		// Fallback path with playbin2: All video source parameters are encoded in "URI"
+		// property as a string:
+		
+		// Assign name and configuration parameters of video capture device to open:
+		g_object_set(G_OBJECT(camera), "uri", config, NULL);
+    }
+	else {
+		// High performance path with camerabin. Build an appropriate video source and set up its input:
+		videosource = NULL;
+		
+		// Linux specific setup path:
+		if (PSYCH_SYSTEM == PSYCH_LINUX) {
+
+			// Try Video4Linux-II camera source first:
+			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach v4l2camsrc as video source...\n");
+			videosource = gst_element_factory_make("v4l2camsrc", "ptb_videosource");
+
+			// Fallback to standard Video4Linux-II source if neccessary:
+			if (!videosource) {
+				if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Failed. Trying to attach v4l2src as video source...\n");
+				videosource = gst_element_factory_make("v4l2src", "ptb_videosource");
+			}
+			
+			if (videosource) {
+				// Ok, we have a suitable video source object. Assign video input device to it, if any specified:
+				if (config[0] != 0) {
+					if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device '%s' as video input.\n", config);
+					g_object_set(G_OBJECT(videosource), "device", config, NULL);
+				}
+				else {
+					if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach default Linux video device as video input.\n");
+				}
+			}
+
+			// Fallback to autovideosrc if everything else fails:
+			if (!videosource) {
+				if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Failed. Trying to attach autovideosrc as video source with auto-detected video input device...\n");
+				videosource = gst_element_factory_make("autovideosrc", "ptb_videosource");
+			}
+			
+			if (!videosource) {
+				if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed! We are out of options and will probably fail soon.\n");
+				PsychErrorExitMsg(PsychError_system, "GStreamer failed to find a suitable video source! Game over.");
+			}
+			
+		} // End of Linux Video source creation.
+
+		// MS-Windows specific setup path:
+		if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
+			if (deviceIndex !=-10) {
+				// Non-Firewire video source selected:
+				
+				if ((deviceIndex != -3) && (deviceIndex != -4) && (deviceIndex != -5)) {
+					// First try Kernel-Streaming based video source for low-latency capture:
+					if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach ksvideosrc as video source...\n");
+					videosource = gst_element_factory_make("ksvideosrc", "ptb_videosource");
+				}
+
+				if (videosource) {
+					// Kernel streaming video source:
+					
+					// Specific deviceIndex requested, instead of auto-select?
+					if (deviceIndex < 0) {
+						// Fetch optional targetmoviename parameter as name spec string:
+						if (targetmoviefilename == NULL) PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a negative value, but didn't provide the required device name string in the 'moviename' argument! Aborted.");
+
+						// Assign:
+						strcat(config, targetmoviefilename);
+						
+						switch(deviceIndex) {
+							case -1:
+								// Human friendly device name provided:
+								if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device '%s' as video input.\n", config);
+								g_object_set(G_OBJECT(videosource), "device-name", config, NULL);
+								break;
+								
+							case -2:
+								// DirectShow device path provided:
+								if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device at path '%s' as video input.\n", config);
+								g_object_set(G_OBJECT(videosource), "device-path", config, NULL);
+								break;
+								
+							default:
+								PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' provided! Not a value of -1 or -2. Aborted.");
+						}
+					}
+					else {
+						// Device index >= 0 selected: Select video source with corresponding index:
+						if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device with index %i as video input.\n", deviceIndex);
+						g_object_set(G_OBJECT(videosource), "device-index", deviceIndex, NULL);
+					}
+				}
+
+				// No kernel streaming video source available?
+				if (!videosource) {
+					// No. Try a Directshow video source instead:
+					if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach dshowvideosrc as video source...\n");
+					videosource = gst_element_factory_make("dshowvideosrc", "ptb_videosource");
+
+					if (videosource) {
+						// Specific deviceIndex requested, instead of auto-select?
+						if (deviceIndex < 0) {
+							if (deviceIndex != -5) {
+								// Fetch optional targetmoviename parameter as name spec string:
+								if (targetmoviefilename == NULL) PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a negative value, but didn't provide the required device name string in the 'moviename' argument! Aborted.");
+								
+								// Assign:
+								strcat(config, targetmoviefilename);
+							}
+							
+							switch(deviceIndex) {
+								case -1:
+								case -3:
+									// Human friendly device name provided:
+									if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device '%s' as video input.\n", config);
+									g_object_set(G_OBJECT(videosource), "device-name", config, NULL);
+									break;
+									
+								case -2:
+								case -4:
+									// DirectShow device path provided:
+									if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device at path '%s' as video input.\n", config);
+									g_object_set(G_OBJECT(videosource), "device", config, NULL);
+									break;									
+								case -5:
+									if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach default DirectShow video device as video input.\n");
+									break;
+								default:
+									PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' provided! Aborted.");
+							}
+						}
+					}
+				}
+				// Have a standard windows video source ready.
+			} else {
+				// TODO FIXME: Firewire video source on Windows:
+				if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach firewire as video source...\n");
+				PsychErrorExitMsg(PsychError_unimplemented, "Firewire video capture not yet implemented.");
+				videosource = gst_element_factory_make("dshowvideosrc", "ptb_videosource");
+			}
+			
+			// Still no video source available?
+			if (!videosource) {
+				if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed! We are out of options and will probably fail soon.\n");
+				PsychErrorExitMsg(PsychError_system, "GStreamer failed to find a suitable video source! Game over.");
+			}
+		} // End of MS-Windows Video source creation.
+		
+		// MacOS/X specific setup path:
+		if (PSYCH_SYSTEM == PSYCH_OSX) {
+			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach osxvideosrc as video source...\n");
+			videosource = gst_element_factory_make("osxvideosrc", "ptb_videosource");
+
+			if (!videosource) {
+				if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed! We are out of options and will probably fail soon.\n");
+				PsychErrorExitMsg(PsychError_system, "GStreamer failed to find a suitable video source! Game over.");
+			}
+			
+			if (deviceIndex < 0) {
+				// Fetch optional targetmoviename parameter as name spec string:
+				if (deviceIndex != -5) {
+					// Fetch optional targetmoviename parameter as name spec string:
+					if (targetmoviefilename == NULL) PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a negative value, but didn't provide the required device name string in the 'moviename' argument! Aborted.");
+					
+					// Assign:
+					strcat(config, targetmoviefilename);
+				}
+				
+				switch(deviceIndex) {
+					case -1:
+					case -3:
+						// Human friendly device name provided:
+						if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device '%s' as video input.\n", config);
+						g_object_set(G_OBJECT(videosource), "device-name", config, NULL);
+						break;
+						
+					case -2:
+					case -4:
+						// DirectShow device path provided:
+						if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device '%s' as video input.\n", config);
+						g_object_set(G_OBJECT(videosource), "device", config, NULL);
+						break;
+
+					case -5:
+					if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach default Quicktime OS/X video device as video input.\n");
+						break;
+						
+					default:
+						PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' provided! Not a value of -1 or -2. Aborted.");
+				}
+			}
+		} // End of OS/X Video source creation.
+		
+		// Assign video source to pipeline:
+		g_object_set(camera, "video-source", videosource, NULL);
+	}
+
     // Assign message context, message bus and message callback for
     // the pipeline to report events and state changes, errors etc.:    
     VideoContext = g_main_loop_new (NULL, FALSE);
@@ -797,8 +950,6 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    g_object_get (G_OBJECT(camera),
 			  "video-source", &videosource,
 			  NULL);
-	    // TODO FIXME: Does not work yet :-(
-	    //	    g_object_set(G_OBJECT(videosource), "device-name", config, NULL);	    
     }
 
     // Preload / Preroll the pipeline:
@@ -891,6 +1042,24 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 			  NULL);
     }
 
+	config[0] = 0;
+	g_object_get(G_OBJECT(videosource), "device", &config, NULL);
+	if (config[0] != 0) {
+		printf("PTB-INFO: Camera device name is %s.\n", config);
+	}
+
+	config[0] = 0;
+	g_object_get(G_OBJECT(videosource), "device-path", &config, NULL);
+	if (config[0] != 0) {
+		printf("PTB-INFO: Camera device-path is %s.\n", config);
+	}
+
+	config[0] = 0;
+	g_object_get(G_OBJECT(videosource), "device-name", &config, NULL);
+	if (config[0] != 0) {
+		printf("PTB-INFO: Camera friendly device-name is %s.\n", config);
+	}
+	
     rate1 = 0;
     rate2 = 1;
     width = height = 0;
@@ -918,6 +1087,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	}
     }
 
+	// g_object_get(G_OBJECT(camera), "video-source-caps", &caps, NULL);
+	
     // Release the pad:
     gst_object_unref(pad);
 
