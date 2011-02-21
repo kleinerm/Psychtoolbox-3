@@ -634,7 +634,10 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 				if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed! We are out of options and will probably fail soon.\n");
 				PsychErrorExitMsg(PsychError_system, "GStreamer failed to find a suitable video source! Game over.");
 			}
-			
+
+			// Enable timestamping by videosource:
+			g_object_set(G_OBJECT(videosource), "do-timestamp", 1, NULL);
+
 		} // End of Linux Video source creation.
 
 		// MS-Windows specific setup path:
@@ -1043,19 +1046,19 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     }
 
 	config[0] = 0;
-	g_object_get(G_OBJECT(videosource), "device", &config, NULL);
+	g_object_get(G_OBJECT(videosource), "device", config, NULL);
 	if (config[0] != 0) {
 		printf("PTB-INFO: Camera device name is %s.\n", config);
 	}
 
 	config[0] = 0;
-	g_object_get(G_OBJECT(videosource), "device-path", &config, NULL);
+	g_object_get(G_OBJECT(videosource), "device-path", config, NULL);
 	if (config[0] != 0) {
 		printf("PTB-INFO: Camera device-path is %s.\n", config);
 	}
 
 	config[0] = 0;
-	g_object_get(G_OBJECT(videosource), "device-name", &config, NULL);
+	g_object_get(G_OBJECT(videosource), "device-name", config, NULL);
 	if (config[0] != 0) {
 		printf("PTB-INFO: Camera friendly device-name is %s.\n", config);
 	}
