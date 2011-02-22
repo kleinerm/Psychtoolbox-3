@@ -471,14 +471,13 @@ char* PsychGSEnumerateVideoSources(int outPos, int deviceIndex)
 	PsychGenericScriptType 	*devs;
 	const char *FieldNames[]={"DeviceIndex", "ClassIndex", "InputIndex", "ClassName", "InputName"};
 
-    int					i;
+	int				i, n;
 	char				port_str[64];
 	char				class_str[64];
-    char				msgerr[10000];
-	int					deviceClass, deviceInput;
-	int					n;
+	char				msgerr[10000];
+	int				deviceClass, deviceInput;
 	GstElement			*videosource = NULL;
-	GstPropertyProbe	*probe = NULL;
+	GstPropertyProbe		*probe = NULL;
 	GValueArray			*viddevs = NULL;
 	GValue				*dev = NULL;
 	char				*device_name = NULL;
@@ -590,6 +589,10 @@ char* PsychGSEnumerateVideoSources(int outPos, int deviceIndex)
 		// Retrieve array of available video input device names, aka
 		// "device-name" property:
 		viddevs = gst_property_probe_probe_and_get_values_name(probe, "device-name");
+		if (!viddevs) {
+			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Failed to probe 'device-name' property. Retrying with 'device' ...\n");
+			viddevs = gst_property_probe_probe_and_get_values_name(probe, "device");
+		}
 
 		if (viddevs) {
 			// Assign count of available devices:
@@ -733,14 +736,6 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     capdev->camera = NULL;
     capdev->grabber_active = 0;
     capdev->scratchbuffer = NULL;        
-
-#if PSYCH_SYSTEM == PSYCH_LINUX
-    // Specific deviceIndex requested, instead of auto-select?
-    tmpstr[0]=0;
-    if (deviceIndex >= 0) {
-	    sprintf(tmpstr, "/dev/video%i", deviceIndex);
-    }
-#endif		
 
     // ROI rectangle specified?
     if (capturerectangle) {
