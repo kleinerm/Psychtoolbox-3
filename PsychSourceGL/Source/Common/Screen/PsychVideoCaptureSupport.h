@@ -89,12 +89,14 @@ void PsychARExitVideoCapture(void);
 
 // These are the prototypes for the GStreamer capture library, supported on GNU/Linx, OS/X and MS-Windows:
 #ifdef PTB_USE_GSTREAMER
+void PsychGSCheckInit(const char* engineName);
 void PsychGSVideoCaptureInit(void);
 psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle, int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags);
 void PsychGSCloseVideoCaptureDevice(int capturehandle);
 int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer);
 int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime);
 double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, double value);
+char* PsychGSEnumerateVideoSources(int outPos, int deviceIndex);
 void PsychGSExitVideoCapture(void);
 #endif
 

@@ -75,16 +75,6 @@
 % For best results, you'd currently (beginning December 2010) choose this
 % one: "GStreamer WinBuilds v0.10.6, LGPL (x86)"
 %
-% As our normal Screen() file (due to technical difficulties) doesn't
-% contain GStreamer support on Windows, you'll need to use the
-% ScreenGS.mexw32 file inside
-% Psychtoolbox/PsychBasic/MatlabWindowsFilesR2007a/ instead. Copy it into
-% a folder outside Psychtoolbox, rename it to "Screen.mexw32" and then
-% add that folder with the renamed Screen.mexw32 somewhere at the top of
-% your Matlab path, so it takes precedence over our standard Screen file.
-% You will need to repeat this procedure after each update of Psychtoolbox
-% and confirm you picked the right file by typing "which Screen" in Matlab
-% to see if it points to your special file.
 %
 % OS/X:
 %

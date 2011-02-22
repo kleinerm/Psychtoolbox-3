@@ -35,6 +35,7 @@
 #include <glib.h>
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
+#include <gst/interfaces/propertyprobe.h>
 
 static psych_bool usecamerabin = TRUE;
 
@@ -78,7 +79,7 @@ typedef struct {
 
 static PsychVidcapRecordType vidcapRecordBANK[PSYCH_MAX_CAPTUREDEVICES];
 static int numCaptureRecords = 0;
-static psych_bool firsttime = TRUE;
+static psych_bool gs_firsttime = TRUE;
 
 // Forward declaration of internal helper function:
 void PsychGSDeleteAllCaptureDevices(void);
@@ -103,6 +104,54 @@ PsychVidcapRecordType* PsychGetGSVidcapRecord(int deviceIndex)
 	
 	// Ok, we have a valid device record, return a ptr to it:
 	return(&vidcapRecordBANK[deviceIndex]);
+}
+
+/* Internal: Check if GStreamer is already initialized. Initialize it,
+ * if neccessary.
+ */
+void PsychGSCheckInit(const char* engineName)
+{
+	GError			*error = NULL;
+
+	if (gs_firsttime) {
+		// First time invocation:
+        #if PSYCH_SYSTEM == PSYCH_WINDOWS
+        // On Windows, we need to delay-load the GStreamer DLL's. This loading
+        // and linking will automatically happen downstream. However, if delay loading
+        // would fail, we would end up with a crash! For that reason, we try here to
+        // load the DLL, just to probe if the real load/link/bind op later on will
+        // likely succeed. If the following LoadLibrary() call fails and returns NULL,
+        // then we know we would end up crashing. Therefore we'll output some helpful
+        // error-message instead:
+        if ((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll"))) {
+            // Failed:
+            printf("\n\nPTB-ERROR: Tried to startup GStreamer. This didn't work,\n");
+            printf("PTB-ERROR: because one of the required GStreamer DLL libraries failed to load. Probably because they\n");
+            printf("PTB-ERROR: could not be found, could not be accessed (e.g., due to permission problems),\n");
+            printf("PTB-ERROR: or they aren't installed on this machine at all.\n\n");
+            printf("PTB-ERROR: Please read the online help by typing 'help GStreamer' for troubleshooting\nand installation instructions.\n\n");
+			printf("PTB-ERROR: Due to failed GStreamer initialization, the %s engine is out of order.\n", engineName);
+			PsychErrorExitMsg(PsychError_user, "GStreamer initialization failed due to DLL loading problems. Aborted.");
+        }
+        #endif
+
+		// Initialize GStreamer:
+		if(!gst_init_check(NULL, NULL, &error)) {
+			if (error) {
+				printf("PTB-ERROR: GStreamer initialization failed with error: %s\n", (char*) error->message);
+				g_error_free(error);
+			}
+			else {
+				printf("PTB-ERROR: GStreamer initialization failed for unknown reason\n");
+			}
+
+			printf("PTB-ERROR: Due to failed GStreamer initialization, the %s engine is out of order.\n", engineName);
+			PsychErrorExitMsg(PsychError_system, "GStreamer initialization failed! Aborted.");
+		}
+
+		// Reset firsttime flag:
+		gs_firsttime = FALSE;
+	}	
 }
 
 /*
@@ -135,8 +184,6 @@ void PsychGSExitVideoCapture(void)
 	// Release all capture devices
 	PsychGSDeleteAllCaptureDevices();
 	
-	// Reset firsttime flag to get a cold restart on next invocation of Screen:
-	firsttime = TRUE;
 	return;
 }
 
@@ -385,7 +432,10 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle)
 {
 	// Retrieve device record for handle:
 	PsychVidcapRecordType* capdev = PsychGetGSVidcapRecord(capturehandle);
-	
+
+	// Make sure GStreamer is ready:
+	PsychGSCheckInit("videocapture");
+
 	// Stop capture immediately if it is still running:
 	PsychGSVideoCaptureRate(capturehandle, 0, 0, NULL);
 	
@@ -414,6 +464,186 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle)
 	
 	// Done.
 	return;
+}
+
+char* PsychGSEnumerateVideoSources(int outPos, int deviceIndex)
+{
+	PsychGenericScriptType 	*devs;
+	const char *FieldNames[]={"DeviceIndex", "ClassIndex", "InputIndex", "ClassName", "InputName"};
+
+    int					i;
+	char				port_str[64];
+	char				class_str[64];
+    char				msgerr[10000];
+	int					deviceClass, deviceInput;
+	int					n;
+	GstElement			*videosource = NULL;
+	GstPropertyProbe	*probe = NULL;
+	GValueArray			*viddevs = NULL;
+	GValue				*dev = NULL;
+	char				*device_name = NULL;
+	
+	// Make sure GStreamer is ready:
+	PsychGSCheckInit("videocapture");
+			
+	// Linux specific setup path:
+	if (PSYCH_SYSTEM == PSYCH_LINUX) {
+		deviceClass = 0;
+
+		// Try Video4Linux-II camera source first:
+		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to probe v4l2camsrc as video source...\n");
+		videosource = gst_element_factory_make("v4l2camsrc", "ptb_videosource");
+		sprintf(class_str, "Video4Linux2-CameraSource");
+		
+		// Fallback to standard Video4Linux-II source if neccessary:
+		if (!videosource) {
+			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Failed. Trying to probe v4l2src as video source...\n");
+			videosource = gst_element_factory_make("v4l2src", "ptb_videosource");
+			sprintf(class_str, "Video4Linux2");
+		}
+
+		// Fallback to autovideosrc if everything else fails:
+		if (!videosource) {
+			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Failed. Trying to probe autovideosrc as video source with auto-detected video input device...\n");
+			videosource = gst_element_factory_make("autovideosrc", "ptb_videosource");
+			sprintf(class_str, "AutoVideoSource");
+		}
+		
+		if (!videosource) {
+			if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-INFO: Failed! We are out of probe options. No video devices to enumerate.\n");
+			return(NULL);
+		}
+	}
+
+	if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
+		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to probe ksvideosrc as video source...\n");
+		videosource = gst_element_factory_make("ksvideosrc", "ptb_videosource");
+		sprintf(class_str, "Windows WDM kernel streaming");
+		deviceClass = 1;
+		
+		// Kernel streaming video source available and implements probe interface?
+		if ((videosource) && (GST_PROPERTY_PROBE(videosource))) {
+			// Yes: Need to pre-probe if it has any available sources:
+			
+			// Generate property probe for videosource:
+			probe = GST_PROPERTY_PROBE(videosource);
+
+			// Retrieve array of available video input device names, aka
+			// "device-name" property:
+			viddevs = gst_property_probe_probe_and_get_values_name(probe, "device-name");
+			
+			if (viddevs) {
+				// Assign count of available devices:
+				n = viddevs->n_values;
+				g_value_array_free(viddevs);
+			}
+			else {
+				n = 0;
+				if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: ksvideosrc does not provide any probe results.\n");
+			}
+			
+			if (n <= 0) {
+				// No video sources for kernel streaming: Destroy the source,
+				// so code can retry with DirectShow source below:
+				gst_element_set_state(videosource, GST_STATE_NULL);
+				gst_object_unref(GST_OBJECT(videosource));
+				videosource = NULL;
+				n = 0;
+			}
+
+			// Reset n:
+			n = 0;
+		}
+		else {
+			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: ksvideosrc unavailable or does not support probing.\n");
+		}
+		
+		if (!videosource) {
+			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to probe dshowvideosrc as video source...\n");
+			videosource = gst_element_factory_make("dshowvideosrc", "ptb_videosource");
+			sprintf(class_str, "DirectShow");
+			deviceClass = 0;
+		}
+		
+		if (!videosource) {
+			if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-INFO: Failed! We are out of probe options. No video devices to enumerate.\n");
+			return(NULL);
+		}		
+	}
+	
+	if (PSYCH_SYSTEM == PSYCH_OSX) {
+		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to probe osxvideosrc as video source...\n");
+		videosource = gst_element_factory_make("osxvideosrc", "ptb_videosource");
+		sprintf(class_str, "OSXQuicktimeSequenceGrabber");
+		deviceClass = 0;
+		
+		if (!videosource) {
+			if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-INFO: Failed! We are out of probe options. No video devices to enumerate.\n");
+			return(NULL);
+		}
+	}
+	
+	// Generate property probe for videosource:
+	probe = GST_PROPERTY_PROBE(videosource);
+	
+	if (probe) {
+		// Retrieve array of available video input device names, aka
+		// "device-name" property:
+		viddevs = gst_property_probe_probe_and_get_values_name(probe, "device-name");
+
+		if (viddevs) {
+			// Assign count of available devices:
+			n = viddevs->n_values;
+			
+			// Does calling code just want to query device name for a given
+			// deviceIndex?
+			if (deviceIndex >= 0) {
+				// Yes: Return device name for that index:
+				deviceIndex = deviceIndex % 10000;
+				
+				if (deviceIndex < n) {				
+					// Get deviceIndex'th entry:
+					dev = g_value_array_get_nth(viddevs, deviceIndex);
+					device_name = strdup((const char*) g_value_get_string(dev));
+				}
+			}
+			else {
+				// No: Code wants us to return struct array with all enumerated
+				// devices to userspace:
+				
+				// Create output struct array with n output slots:
+				PsychAllocOutStructArray(outPos, TRUE, n, 5, FieldNames, &devs);
+				
+				// Iterate all available devices:
+				for(i = 0; i < n; i++) {
+					dev = g_value_array_get_nth(viddevs, i);
+					sprintf(port_str, "%s", (const char*) g_value_get_string(dev));
+					
+					deviceInput = i;
+					PsychSetStructArrayDoubleElement("DeviceIndex", i, deviceClass * 10000 + deviceInput, devs);
+					PsychSetStructArrayDoubleElement("ClassIndex", i, deviceClass, devs);
+					PsychSetStructArrayDoubleElement("InputIndex", i, deviceInput, devs);
+					PsychSetStructArrayStringElement("ClassName", i, class_str, devs);
+					PsychSetStructArrayStringElement("InputName", i, port_str, devs);
+				}
+			}
+			
+			g_value_array_free(viddevs);
+		}
+		else {
+			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Video plugin '%s' doesn't provide any video devices to enumerate.\n", class_str);
+		}
+	}
+	else {
+		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Video plugin '%s' doesn't support probing. No video devices to enumerate.\n", class_str);
+	}
+
+	// Release videosource:
+	gst_element_set_state(videosource, GST_STATE_NULL);
+	gst_object_unref(GST_OBJECT(videosource));
+	
+	// Done. Return device name if assigned:
+	return(device_name);
 }
 
 /* CHECKED TODO
@@ -450,7 +680,6 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	gint			rate1, rate2;
 	gint			twidth, theight;
 	int			i;
-	GError			*error = NULL;
 	psych_bool		trueValue = TRUE;
 	psych_bool		printErrors = TRUE;
 
@@ -459,28 +688,35 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	char			tmpstr[1000];
 	char			msgerr[10000];
 	char			errdesc[1000];
-
+	char			*tmpdevname = NULL;
+	char			device_name[1000];
+	
 	config[0] = 0;
 	tmpstr[0] = 0;
+	device_name[0] = 0;
 	
 	// Init capturehandle to none:
 	*capturehandle = -1;
 	
-	if (firsttime) {
-		// First time invocation:
-
-		// Initialize GStreamer:
-		if(!gst_init_check(NULL, NULL, &error)) {
-			if (printErrors && error) {
-				printf("PTB-ERROR: GStreamer initialization failed with error: %s\n", (char*) error->message);
-				g_error_free(error);
-				PsychErrorExitMsg(PsychError_system, "GStreamer initialization failed! Video capture engine out of order.");
-			} else
-				return(FALSE);
+	// Make sure GStreamer is ready:
+	PsychGSCheckInit("videocapture");
+	
+	// Map deviceIndex of requested video source to device name:
+	if (deviceIndex >= 0) {
+		// Get device name for given deviceIndex from video device
+		// enumeration (or NULL if no such device):
+		tmpdevname = PsychGSEnumerateVideoSources(-1, deviceIndex);
+		if (NULL == tmpdevname) {
+			printf("PTB-ERROR: There isn't any video capture device available for provided deviceIndex %i.\n", deviceIndex);
+			PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex provided. No such video source. Aborted.");
 		}
-
-		// Reset firsttime flag:
-		firsttime = FALSE;
+		
+		// Assign name:
+		sprintf(device_name, "%s", tmpdevname);
+		free(tmpdevname);
+		tmpdevname = NULL;
+		
+		if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Trying to open video capture device with deviceIndex %i [%s].\n", deviceIndex, device_name);
 	}
 
     // Slot 'slotid' will contain the record for our new capture object:
@@ -551,9 +787,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
     // Assign number of dma buffers to use:
     capdev->num_dmabuffers = num_dmabuffers;
-	
-    if (PsychPrefStateGet_Verbosity()>4) printf("PTB-INFO: Final configuration string passed to GStreamer library is:\n%s\n", config);
-    
+
     // Prepare error message in case its needed below:
     sprintf(msgerr, "PTB-ERROR: Opening the %i. camera (deviceIndex=%i) failed!\n", deviceIndex + 1, deviceIndex);
 
@@ -564,7 +798,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     // Create video capture pipeline with camerabin plugin:
     usecamerabin = TRUE;
     camera = gst_element_factory_make ("camerabin", "ptbvideocapturepipeline");
-    sprintf(config, "%s", tmpstr);
+    sprintf(config, "%s", device_name);
 
     // Camerabin disabled or creation failed?
     if (NULL == camera) {
@@ -578,7 +812,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		
 		// Assign a specific input video source name on Linux. On other operating systems,
 		// the user has no choice but to use the auto-assigned default capture device:
-		if (PSYCH_SYSTEM == PSYCH_LINUX) sprintf(config, "v4l2://%s", tmpstr);
+		if (PSYCH_SYSTEM == PSYCH_LINUX) sprintf(config, "v4l2://%s", device_name);
 		
 		if (PsychPrefStateGet_Verbosity() > 1) {
 			printf("PTB-WARNING: Could not use GStreamer 'camerabin' plugin for videocapture. Will use less powerful fallback path.\n");
@@ -645,8 +879,9 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 			if (deviceIndex !=-10) {
 				// Non-Firewire video source selected:
 				
-				if ((deviceIndex != -3) && (deviceIndex != -4) && (deviceIndex != -5)) {
+				if ((deviceIndex >= 10000) || (deviceIndex == -1) || (deviceIndex == -2)) {
 					// First try Kernel-Streaming based video source for low-latency capture:
+					if (deviceIndex >= 10000) deviceIndex = deviceIndex - 10000;
 					if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach ksvideosrc as video source...\n");
 					videosource = gst_element_factory_make("ksvideosrc", "ptb_videosource");
 				}
@@ -724,6 +959,11 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 									PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' provided! Aborted.");
 							}
 						}
+						else {
+							// Human friendly device name provided:
+							if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device '%s' as video input.\n", config);
+							g_object_set(G_OBJECT(videosource), "device-name", config, NULL);							
+						}
 					}
 				}
 				// Have a standard windows video source ready.
@@ -783,6 +1023,11 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 					default:
 						PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' provided! Not a value of -1 or -2. Aborted.");
 				}
+			}
+			else {
+				// Human friendly device name provided:
+				if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device '%s' as video input.\n", config);
+				g_object_set(G_OBJECT(videosource), "device-name", config, NULL);				
 			}
 		} // End of OS/X Video source creation.
 		
@@ -1116,10 +1361,13 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 	GValue                  fRate = { 0, };
 	int dropped = 0;
 	float framerate = 0;
-	
+
 	// Retrieve device record for handle:
 	PsychVidcapRecordType* capdev = PsychGetGSVidcapRecord(capturehandle);
 	camera = capdev->camera;
+
+	// Make sure GStreamer is ready:
+	PsychGSCheckInit("videocapture");
 
 	// Start- or stop capture?
 	if (capturerate > 0) {
@@ -1303,6 +1551,10 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     int error;
     int nrdropped = 0;
     unsigned char* input_image = NULL;
+
+
+	// Make sure GStreamer is ready:
+	PsychGSCheckInit("videocapture");
 
     // Take start timestamp for timing stats:
     PsychGetAdjustedPrecisionTimerSeconds(&tstart);
@@ -1626,6 +1878,9 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 	
 	// Retrieve device record for handle:
 	PsychVidcapRecordType* capdev = PsychGetGSVidcapRecord(capturehandle);
+
+	// Make sure GStreamer is ready:
+	PsychGSCheckInit("videocapture");
 	
 	oldintval = 0xFFFFFFFF;
 	

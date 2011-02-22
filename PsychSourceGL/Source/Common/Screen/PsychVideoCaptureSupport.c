@@ -86,15 +86,23 @@ void PsychEnumerateVideoSources(int engineId, int outPos)
 	#endif
 
 	#ifdef PTBVIDEOCAPTURE_LIBDC
+	if (engineId == 1) {
 		PsychErrorExitMsg(PsychError_user, "The DC1394 IIDC firewire videocapture engine does not support enumeration of video devices yet, sorry.");
+	}
 	#endif
 
 	#ifdef PTB_USE_GSTREAMER
-		PsychErrorExitMsg(PsychError_user, "The GStreamer videocapture engine does not support enumeration of video devices yet, sorry.");
+	if (engineId == 3) {
+		// GStreamer device enumeration:
+		PsychGSEnumerateVideoSources(outPos, -1);
+		dispatched = TRUE;
+	}
 	#endif
 
 	#ifdef PTBVIDEOCAPTURE_ARVIDEO
+	if (engineId == 2) {
 		PsychErrorExitMsg(PsychError_user, "The ARVideo videocapture engine does not support enumeration of video devices yet, sorry.");
+	}
 	#endif
 
 	// Unsupported engine requested?

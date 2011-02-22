@@ -417,34 +417,9 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     *moviehandle = -1;
 
     // We start GStreamer only on first invocation.
-    if (firsttime) {
-        #if PSYCH_SYSTEM == PSYCH_WINDOWS
-        // On Windows, we need to delay-load the GStreamer DLL's. This loading
-        // and linking will automatically happen downstream. However, if delay loading
-        // would fail, we would end up with a crash! For that reason, we try here to
-        // load the DLL, just to probe if the real load/link/bind op later on will
-        // likely succeed. If the following LoadLibrary() call fails and returns NULL,
-        // then we know we would end up crashing. Therefore we'll output some helpful
-        // error-message instead:
-        if ((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll"))) {
-            // Failed:
-            printf("\n\nPTB-ERROR: Tried to startup movie playback engine type 1 (GStreamer). This didn't work,\n");
-            printf("PTB-ERROR: because one of the required GStreamer DLL libraries failed to load. Probably because they\n");
-            printf("PTB-ERROR: could not be found, could not be accessed (e.g., due to permission problems),\n");
-            printf("PTB-ERROR: or they aren't installed on this machine at all.\n\n");
-            printf("PTB-ERROR: Please read the online help by typing 'help GStreamer' for troubleshooting\nand installation instructions.\n\n");
-			PsychErrorExitMsg(PsychError_user, "Unable to start movie playback engine GStreamer due to DLL loading problems. Aborted.");
-        }
-        #endif
-        
-        // Initialize GStreamer:
-        if(!gst_init_check(NULL, NULL, &error)) {
-		if (printErrors && error) {
-			printf("PTB-ERROR: GStreamer initialization failed with error: %s\n", (char*) error->message);
-			g_error_free(error);
-			PsychErrorExitMsg(PsychError_system, "GStreamer initialization failed! Movie playback functions out of order.");
-		} else return;
-        }
+    if (firsttime) {        
+        // Initialize GStreamer: The routine is defined in PsychVideoCaptureSupportGStreamer.c
+		PsychGSCheckInit("movie playback");
         firsttime = FALSE;
     }
 
