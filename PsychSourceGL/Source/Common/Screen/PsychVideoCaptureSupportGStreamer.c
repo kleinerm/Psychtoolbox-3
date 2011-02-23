@@ -149,6 +149,11 @@ void PsychGSCheckInit(const char* engineName)
 			PsychErrorExitMsg(PsychError_system, "GStreamer initialization failed! Aborted.");
 		}
 
+		// Select opmode of GStreamers master clock:
+		// We use monotonic clock on Windows and OS/X, as these correspond to the
+		// clocks we use for GetSecs(), but realtime clock on Linux:
+		g_object_set(G_OBJECT(gst_system_clock_obtain()), "clock-type", ((PSYCH_SYSTEM == PSYCH_LINUX) ? GST_CLOCK_TYPE_REALTIME : GST_CLOCK_TYPE_MONOTONIC), NULL);
+
 		// Reset firsttime flag:
 		gs_firsttime = FALSE;
 	}	
@@ -817,7 +822,11 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     // Pipeline creation failed?
     if (NULL == camera) PsychErrorExitMsg(PsychError_user, "Failed to create video capture pipeline! Aborted.");
 
-	// Need to select a video source for this capture pipeline:
+    // Enforce use of the system clock for this pipeline instead of leaving it to the pipeline
+    // to choose a proper clock automatically:
+    // TODO FIXME: To use or not to use? gst_pipeline_use_clock(camera, gst_system_clock_obtain());
+
+    // Need to select a video source for this capture pipeline:
     if (!usecamerabin) {
 		// Fallback path with playbin2: All video source parameters are encoded in "URI"
 		// property as a string:
@@ -863,10 +872,6 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 				if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed! We are out of options and will probably fail soon.\n");
 				PsychErrorExitMsg(PsychError_system, "GStreamer failed to find a suitable video source! Game over.");
 			}
-
-			// Enable timestamping by videosource:
-			g_object_set(G_OBJECT(videosource), "do-timestamp", 1, NULL);
-
 		} // End of Linux Video source creation.
 
 		// MS-Windows specific setup path:
@@ -1026,6 +1031,9 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 			}
 		} // End of OS/X Video source creation.
 		
+		// Enable timestamping by videosource:
+		g_object_set(G_OBJECT(videosource), "do-timestamp", 1, NULL);
+
 		// Assign video source to pipeline:
 		g_object_set(camera, "video-source", videosource, NULL);
 	}
@@ -1207,6 +1215,9 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    PsychErrorExitMsg(PsychError_user, "In OpenVideoCapture: Opening the video capture device failed during preroll -> pause. Reason given above.");
     }
 
+    //gst_element_set_start_time(camera, GST_CLOCK_TIME_NONE);
+    gst_element_set_base_time(camera, GST_CLOCK_TIME_NONE);
+
     // Query number of available video and audio channels on capture device:
     if (!usecamerabin) {
 	    g_object_get(G_OBJECT(camera),
@@ -1353,6 +1364,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime)
 {
 	GstElement		*camera = NULL;
+	GstBuffer               *videoBuffer = NULL;
 	GValue                  fRate = { 0, };
 	int dropped = 0;
 	float framerate = 0;
@@ -1398,8 +1410,6 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 				     NULL);
 		}
 
-		// Ready to go! Now we just need to tell the camera to start its capture cycle:
-		
 		// Wait until start deadline reached:
 		if (*startattime != 0) PsychWaitUntilSeconds(*startattime);
 		
@@ -1407,6 +1417,7 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 		if (PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Starting capture...\n"); fflush(NULL);
 
 		// Start the video capture for this camera.
+		gst_element_set_start_time(camera, GST_CLOCK_TIME_NONE);
 		if (!PsychVideoPipelineSetState(camera, GST_STATE_PLAYING, 10.0)) {
 			// Failed!
 			PsychErrorExitMsg(PsychError_user, "Failure in pipeline transition paused -> playing - Start of video capture failed!");
@@ -1470,7 +1481,15 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 			}
 
 			PsychGSProcessVideoContext(capdev->VideoContext, FALSE);
-			
+
+			// Drain any queued buffers:
+			while (!gst_app_sink_is_eos(GST_APP_SINK(capdev->videosink)) && (capdev->frameAvail > 0)) {
+				capdev->frameAvail--;
+				videoBuffer = gst_app_sink_pull_buffer(GST_APP_SINK(capdev->videosink));
+				gst_buffer_unref(videoBuffer);
+				videoBuffer = NULL;
+			};
+
 			// Ok, capture is now stopped.
 			capdev->frame_ready = 0;
 			capdev->grabber_active = 0;
