@@ -64,7 +64,6 @@ int PsychBroadcastCondition(psych_condition* condition);
 int PsychWaitCondition(psych_condition* condition, psych_mutex* mutex);
 int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, double maxwaittimesecs);
 #define PsychIsMSVista() 0
-double PsychOSMonotonicToRefTime(double tMonotonic) { return(tMonotonic); };
 
 //end include once
 
