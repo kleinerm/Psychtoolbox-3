@@ -88,7 +88,7 @@
 // Not the address but what it points to is volatile.
 struct pci_device *gpu = NULL;
 unsigned char * volatile gfx_cntl_mem = NULL;
-unsigned int  gfx_length = 0;
+unsigned long gfx_length = 0;
 unsigned int  fDeviceType = 0;
 unsigned int  fCardType = 0;
 unsigned int  fPCIDeviceId = 0;
@@ -120,7 +120,7 @@ static psych_bool isDCE4(int screenId)
 
 // Helper routine: Read a single 32 bit unsigned int hardware register at
 // offset 'offset' and return its value:
-static unsigned int ReadRegister(unsigned int offset)
+static unsigned int ReadRegister(unsigned long offset)
 {
 	unsigned int value;
 
@@ -151,7 +151,7 @@ static unsigned int ReadRegister(unsigned int offset)
 
 // Helper routine: Write a single 32 bit unsigned int hardware register at
 // offset 'offset':
-static void WriteRegister(unsigned int offset, unsigned int value)
+static void WriteRegister(unsigned long offset, unsigned int value)
 {
 	// Safety check: Don't allow reads past devices MMIO range:
 	// We don't return error codes and don't log the problem,
