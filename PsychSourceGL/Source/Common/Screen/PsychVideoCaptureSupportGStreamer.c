@@ -80,6 +80,7 @@ typedef struct {
 static PsychVidcapRecordType vidcapRecordBANK[PSYCH_MAX_CAPTUREDEVICES];
 static int numCaptureRecords = 0;
 static psych_bool gs_firsttime = TRUE;
+double gs_startupTime = 0.0;
 
 // Forward declaration of internal helper function:
 void PsychGSDeleteAllCaptureDevices(void);
@@ -149,7 +150,21 @@ void PsychGSCheckInit(const char* engineName)
 			PsychErrorExitMsg(PsychError_system, "GStreamer initialization failed! Aborted.");
 		}
 
-		// Select opmode of GStreamers master clock:
+        // gs_startupTime is added to all timestamps from GStreamer to compensate for 
+        // clock zero offset wrt. to our GetSecs() time:
+        if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
+            // Windows: Zero-Point is time of GStreamer startup aka sometime
+            // during execution of gst_init_check() above. Current system time
+            // is our best approximation so far:
+            PsychGetAdjustedPrecisionTimerSeconds(&gs_startupTime);
+        }
+        else {
+            // Other OS: Zero-Point of GStreamer clock is identical to Zero-Point
+            // of our GetSecs() clock, so apply zero-correction:
+            gs_startupTime = 0.0;
+        }
+
+        // Select opmode of GStreamers master clock:
 		// We use monotonic clock on Windows and OS/X, as these correspond to the
 		// clocks we use for GetSecs(), but realtime clock on Linux:
 		g_object_set(G_OBJECT(gst_system_clock_obtain()), "clock-type", ((PSYCH_SYSTEM == PSYCH_LINUX) ? GST_CLOCK_TYPE_REALTIME : GST_CLOCK_TYPE_MONOTONIC), NULL);
@@ -341,7 +356,8 @@ static void PsychProbeBufferProps(GstBuffer *videoBuffer, int *w, int *h, double
 	GstStructure	       *str;
 	gint		       rate1, rate2;
 	rate1 = rate2 = 0;
-
+    str = NULL;
+    
 	if (videoBuffer) {
 		caps = gst_buffer_get_caps(videoBuffer);
 		if (caps) str = gst_caps_get_structure(caps, 0);
@@ -754,6 +770,9 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		twidth  = -1;
 		theight = -1;
 	}
+    } else {
+		twidth  = -1;
+		theight = -1;
     }
     
     // Selection of pixel depths:
@@ -1113,6 +1132,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    capdev->pixeldepth = 16;
 
 	    break;
+    default:
+	PsychErrorExitMsg(PsychError_internal, "Unknown reqdepth parameter received!");            
     }
 
     // Assign 'colorcaps' as caps to our videosink. This marks the videosink so
@@ -1639,7 +1660,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 		    if ((capdev->grabber_active) && !capdev->frameAvail) {
 			    // Game over! Wait timed out after 10 secs.
 			    PsychUnlockMutex(&capdev->mutex);
-			    printf("PTB-ERROR: In blocking wait: No new video frame received after timeout of 10 seconds! Aborting fetch.\n");
+			    if (PsychPrefStateGet_Verbosity()>4) printf("PTB-ERROR: In blocking wait: No new video frame received after timeout of 10 seconds! Aborting fetch.\n");
 			    return(-1);
 		    }
 
@@ -1705,7 +1726,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 		if ((capdev->grabber_active) && !capdev->frameAvail) {
 			// Game over! Wait timed out after 10 secs.
 			PsychUnlockMutex(&capdev->mutex);
-			printf("PTB-ERROR: No new video frame received after timeout of 10 seconds! Something's wrong. Aborting fetch.\n");
+			if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: No new video frame received after timeout of 10 seconds! Something's wrong. Aborting fetch.\n");
 			return(-1);
 		}
 		
@@ -1741,6 +1762,9 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 	    // Assign pts presentation timestamp in pipeline stream time and convert to seconds:
 	    capdev->current_pts = (double) GST_BUFFER_TIMESTAMP(videoBuffer) / (double) 1e9;
 
+        // Apply corrective offset for GStreamer clock base zero point:
+        capdev->current_pts+= gs_startupTime;
+
 	    deltaT = 0.0;
 	    if (GST_CLOCK_TIME_IS_VALID(GST_BUFFER_DURATION(videoBuffer)))
 		    deltaT = (double) GST_BUFFER_DURATION(videoBuffer) / (double) 1e9;
@@ -1752,7 +1776,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 
 	    bufferIndex = GST_BUFFER_OFFSET(videoBuffer);
     } else {
-	    printf("PTB-ERROR: No new video frame received in gst_app_sink_pull_buffer! Something's wrong. Aborting fetch.\n");
+	    if (PsychPrefStateGet_Verbosity()>0) printf("PTB-ERROR: No new video frame received in gst_app_sink_pull_buffer! Something's wrong. Aborting fetch.\n");
 	    return(-1);
     }
     if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: ...done.\n");
