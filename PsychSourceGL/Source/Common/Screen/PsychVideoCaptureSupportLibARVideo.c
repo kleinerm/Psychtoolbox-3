@@ -12,7 +12,17 @@
 	HISTORY:
 	
 	18.04.2009				Created initial version.
+	27.03.2011				Disabled. It was not ever implemented on Linux and useless
+							on OS/X. Its limited functionality (on Windows) is replaced by
+							the much more capable GStreamer based video capture engine.
+							Removing this component from the build also allows us the
+							planned change of software license.
+
+	TODO:
 	
+	We should probably remove the implementation files as there aren't any plans
+	to ever resurrect this now entirely obsolete component.
+
 	DESCRIPTION:
 	
 	 This is the videocapture engine based on the free, open-source (GPL'ed)

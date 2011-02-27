@@ -1849,7 +1849,6 @@
 		83E2C4260D2FCA2000FFD350 /* RegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = 83E2C4230D2FCA2000FFD350 /* RegisterProject.c */; };
 		83E2C42C0D2FCC1A00FFD350 /* PsychCV.cc in Sources */ = {isa = PBXBuildFile; fileRef = 83E2C42B0D2FCC1A00FFD350 /* PsychCV.cc */; };
 		83EFE9020F9A2795002211F0 /* PsychVideoCaptureSupportLibARVideo.c in Sources */ = {isa = PBXBuildFile; fileRef = 83EFE9010F9A2795002211F0 /* PsychVideoCaptureSupportLibARVideo.c */; };
-		83EFE9F10F9A6433002211F0 /* libARvideo-Intel.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 83EFE9F00F9A6433002211F0 /* libARvideo-Intel.a */; };
 		83FD4C470BA5F0D700ECC9A4 /* VLTracker2D.cc in Sources */ = {isa = PBXBuildFile; fileRef = 83FD4C460BA5F0D700ECC9A4 /* VLTracker2D.cc */; };
 		CF1D7E4D07F1E112004F308C /* SCREENLineStipple.c in Sources */ = {isa = PBXBuildFile; fileRef = CF1D7E4C07F1E112004F308C /* SCREENLineStipple.c */; };
 		CF29B1CD080333DC00723921 /* MiniBox.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F237038E2BE2017A7028 /* MiniBox.h */; };
@@ -4712,7 +4711,6 @@
 				F089BCFD0AD42DF500663D86 /* System.framework in Frameworks */,
 				F089BCFE0AD42DF500663D86 /* SystemConfiguration.framework in Frameworks */,
 				83DBBD000C332374002B3C93 /* AGL.framework in Frameworks */,
-				83EFE9F10F9A6433002211F0 /* libARvideo-Intel.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -24580,16 +24578,12 @@
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
-					PTBVIDEOCAPTURE_ARVIDEO,
 					PTBVIDEOCAPTURE_LIBDC,
 					PTBMODULE_Screen,
 					MATLAB_MEX_FILE,
 					USE_MWSIZE,
 				);
-				HEADER_SEARCH_PATHS = (
-					"$(SRCROOT)/../../../Cohorts/ARToolkit/include/**",
-					/Applications/MATLAB74/extern/include,
-				);
+				HEADER_SEARCH_PATHS = /Applications/MATLAB74/extern/include;
 				KEEP_PRIVATE_EXTERNS = NO;
 				LIBRARY_SEARCH_PATHS = (
 					/Applications/MATLAB74/bin/maci,

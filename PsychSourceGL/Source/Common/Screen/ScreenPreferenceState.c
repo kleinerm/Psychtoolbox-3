@@ -58,8 +58,8 @@
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
-// MS-Windows: Default capture engine is ARVideo, aka DirectShow:
-#define PTB_DEFAULTVIDCAPENGINE 2
+// MS-Windows: Default capture engine is GStreamer (3):
+#define PTB_DEFAULTVIDCAPENGINE 3
 #define INITIAL_DEFAULT_FONT_NAME		"Courier New"
 #define INITIAL_DEFAULT_FONT_SIZE		18
 #define INITIAL_DEFAULT_FONT_STYLE		1

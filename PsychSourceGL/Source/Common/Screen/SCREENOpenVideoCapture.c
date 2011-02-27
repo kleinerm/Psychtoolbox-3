@@ -20,10 +20,10 @@
   and return a handle to it to MATLAB space.
  
   On OS-X and Windows, video capture is implemented via Apples Sequence-Grabber API which is part of Quicktime.
-  On all operating systems, we support Firewire machine vision cameras that comply to the IIDC-1.x specification,
+  On Linux and OS/X we support Firewire machine vision cameras that comply to the IIDC-1.x specification,
   via use of the open-source free software library libdc1394 V2. The library itself is most powerful and well
   tested/tuned for GNU/Linux systems, but also well working on OS/X. It has experimental limited support for
-  MS-Windows as well, but its useability needs to be seen.
+  MS-Windows as well, but we don't implement it for Windows yet.
   
   TO DO:
   
@@ -76,22 +76,19 @@ static char synopsisString[] =
 "cams allows for much higher flexibility and performance than use of video capture via Quicktime, "
 "however, video recording to harddisk or sound recording isn't yet supported with firewire capture, ie., "
 "the 'targetmoviename' is simply ignored. The firewire capture engine is supported on Linux, MacOS/X and "
-"- maybe in the future, with quite a few limitations and bugs - on Windows. \n"
-"A value of 2 selects the ARVideo video capture engine from the ARToolkit. This engine doesn't allow for "
-"video recording or sound recording and has limited performance and flexibility, so it combines the "
-"disadvantages of the Quicktime- and Firewire engine. However it is the only engine that allows for "
-"video capture from checp non-IIDC cameras on Linux, and on Windows it should have a higher performance "
-"than the Quicktime engine. This engine is supported on all systems. On Linux it uses the GStreamer media "
-"framework, on Windows it uses the DirectShow framework, on OS/X it uses Quicktime.\n\n"
-"A value of 3 selects the GStreamer video capture engine. This engine is supported on all operating systems "
-"and allows video and sound recording of captured video and audio streams.\n\n"
+"- maybe in the future, with quite a few limitations and bugs - on Windows.\n\n"
+"A value of 3 selects the GStreamer video capture engine. This engine will be supported on all operating systems "
+"and will allow for video and sound recording of captured video and audio streams. Currently it doesn't\n"
+"support recording yet and it is not yet implemented on Mac OS/X. Type 'help GStreamer' for installation and "
+"setup instructions for the required GStreamer runtime libraries.\n\n"
 "If you don't specify 'captureEngineType', the global "
 "setting from Screen('Preference', 'DefaultVideoCaptureEngine') will be used. If you don't specify that either "
-"then engine selection will default to Quicktime for MacOS/X, ARVideo on MS-Windows, and GStreamer on Linux.\n\n"
+"then engine selection will default to Quicktime for MacOS/X and GStreamer on Linux and MS-Windows.\n\n"
 "To summarize: \n"
 "Quicktime engine: Supports all cameras/video sources supported by your operating system, allows for video- and "
 "audio recording as well. On many setups, only one camera can be used at a time and the 'deviceIndex' parameter "
 "is ignored -- the default source is always chosen. Latency, max framerate and reliability is ok, but not stellar.\n"
+"GStreamer: Is the engine of choice for all operating systems and most applications.\n"
 "Firewire engine: Supports only Firewire machine vision cameras, but allows free selection among all connected "
 "cameras, simultaneous operation of many cameras, low latency, high framerates and reliability, precise timestamping "
 "and low level access to many special features of such cameras, e.g., gain-, shutter-, exposure-, trigger controls etc.\n";
@@ -165,6 +162,16 @@ PsychError SCREENOpenVideoCapture(void)
 	engineId = PsychPrefStateGet_VideoCaptureEngine();
 	PsychCopyInIntegerArg(9, FALSE, &engineId);
 	if (engineId < 0 || engineId > 3) PsychErrorExitMsg(PsychError_user, "OpenVideoCapture called with invalid 'captureEngineType'. Valid are 0,1,2,3.");
+
+	if (engineId == 2) {
+		printf("\n\n");
+		printf("PTB-INFO: Your script explicitely requests use of video capture engine type 2 - the ARVideo video capture engine.\n");
+		printf("PTB-INFO: This engine has been permanently disabled and removed from Psychtoolbox since beginning of the year 2011.\n");
+		printf("PTB-INFO: We recommend use of the GStreamer video capture engine (engine type 3) as a technically superior replacement\n");
+		printf("PTB-INFO: on GNU-Linux and MS-Windows. For Mac OS/X for now we recommend use of the Quicktime engine (engine type 0)\n");
+		printf("PTB-INFO: as an interims solution. The Quicktime engine will be eventually replaced on OS/X by the GStreamer engine as well.\n");
+		printf("PTB-INFO: In most cases, the selected replacement should work without need for any further changes to your code.\n\n");
+	}
 
 	// Try to open the capture device and create & initialize a corresponding capture object.
 	// A MATLAB handle to the video capture object is returned upon successfull operation.

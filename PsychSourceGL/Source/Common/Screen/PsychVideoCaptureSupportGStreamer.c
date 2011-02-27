@@ -661,30 +661,46 @@ char* PsychGSEnumerateVideoSources(int outPos, int deviceIndex)
 					PsychSetStructArrayStringElement("InputHandle", i, port_str, devs);
 
 					// Query and assign device specific parameters:
-					pstring = NULL; 
+					pstring = NULL;
 					if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device")) {
 						g_object_get(G_OBJECT(videosource), "device", &pstring, NULL);
-						if (pstring) {
-							PsychSetStructArrayStringElement("Device", i, pstring, devs);
-							g_free(pstring); pstring = NULL;
-						}
 					}
 
+					if (pstring) {
+						PsychSetStructArrayStringElement("Device", i, pstring, devs);
+						g_free(pstring);
+					}
+					else {
+						PsychSetStructArrayStringElement("Device", i, port_str, devs);
+					}
+					
+					pstring = NULL;
 					if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device-path")) {
 						g_object_get(G_OBJECT(videosource), "device-path", &pstring, NULL);
-						if (pstring) {
-							PsychSetStructArrayStringElement("DevicePath", i, pstring, devs);
-							g_free(pstring); pstring = NULL;
-						}
 					}
 
+					if (pstring) {
+						PsychSetStructArrayStringElement("DevicePath", i, pstring, devs);
+						g_free(pstring);
+					}
+					else {
+						PsychSetStructArrayStringElement("DevicePath", i, port_str, devs);
+					}
+					
+					pstring = NULL;
 					if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device-name")) {
 						g_object_get(G_OBJECT(videosource), "device-name", &pstring, NULL);
-						if (pstring) {
-							PsychSetStructArrayStringElement("DeviceName", i, pstring, devs);
-							g_free(pstring); pstring = NULL;
-						}
 					}
+
+					if (pstring) {
+						PsychSetStructArrayStringElement("DeviceName", i, pstring, devs);
+						g_free(pstring);
+					}
+					else {
+						PsychSetStructArrayStringElement("DeviceName", i, port_str, devs);
+					}
+					
+					pstring = NULL;
 
 					// Probe next device...
 				}
@@ -1250,7 +1266,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     // Pause the pipeline:
     if (!PsychVideoPipelineSetState(camera, GST_STATE_READY, 30.0)) {
 	    PsychGSProcessVideoContext(vidcapRecordBANK[slotid].VideoContext, TRUE);
-	    PsychErrorExitMsg(PsychError_user, "In OpenVideoCapture: Opening the video capture device failed during pipeline ready -> paused. Reason given above.");
+	    PsychErrorExitMsg(PsychError_user, "In OpenVideoCapture: Opening the video capture device failed during pipeline zero -> ready. Reason given above.");
     }
 
     if (!usecamerabin) {
@@ -1266,16 +1282,15 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     // Preload / Preroll the pipeline:
     if (!PsychVideoPipelineSetState(camera, GST_STATE_PLAYING, 30.0)) {
 	    PsychGSProcessVideoContext(vidcapRecordBANK[slotid].VideoContext, TRUE);
-	    PsychErrorExitMsg(PsychError_user, "In OpenVideoCapture: Opening the video capture device failed during pipeline preroll. Reason given above.");
+	    PsychErrorExitMsg(PsychError_user, "In OpenVideoCapture: Opening the video capture device failed during pipeline preroll ready->playing. Reason given above.");
     }
     
     // Pause the pipeline again:
     if (!PsychVideoPipelineSetState(camera, GST_STATE_PAUSED, 30.0)) {
 	    PsychGSProcessVideoContext(vidcapRecordBANK[slotid].VideoContext, TRUE);
-	    PsychErrorExitMsg(PsychError_user, "In OpenVideoCapture: Opening the video capture device failed during preroll -> pause. Reason given above.");
+	    PsychErrorExitMsg(PsychError_user, "In OpenVideoCapture: Opening the video capture device failed during preroll playing -> pause. Reason given above.");
     }
 
-    //gst_element_set_start_time(camera, GST_CLOCK_TIME_NONE);
     gst_element_set_base_time(camera, GST_CLOCK_TIME_NONE);
 
     // Query number of available video and audio channels on capture device:
@@ -1345,7 +1360,13 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     capdev->nrframes = 0;
     capdev->grabber_active = 0;
 
+    rate1 = 0;
+    rate2 = 1;
+    width = height = 0;
+
     // Query true properties of attached video source:
+	videosource = NULL;
+	
     if (!usecamerabin) {
 	    g_object_get (G_OBJECT(camera),
 			  "source", &videosource,
@@ -1356,62 +1377,60 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 			  NULL);
     }
 
-	pstring = NULL; 
-	if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device")) {
-		g_object_get(G_OBJECT(videosource), "device", &pstring, NULL);
-		if (pstring) {
-			printf("PTB-INFO: Camera device name is %s.\n", pstring);
-			g_free(pstring); pstring = NULL;
+	if (videosource) {
+		pstring = NULL; 
+		if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device")) {
+			g_object_get(G_OBJECT(videosource), "device", &pstring, NULL);
+			if (pstring) {
+				printf("PTB-INFO: Camera device name is %s.\n", pstring);
+				g_free(pstring); pstring = NULL;
+			}
 		}
-	}
-
-	if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device-path")) {
-		g_object_get(G_OBJECT(videosource), "device-path", &pstring, NULL);
-		if (pstring) {
-			printf("PTB-INFO: Camera device-path is %s.\n", pstring);
-			g_free(pstring); pstring = NULL;
+		
+		if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device-path")) {
+			g_object_get(G_OBJECT(videosource), "device-path", &pstring, NULL);
+			if (pstring) {
+				printf("PTB-INFO: Camera device-path is %s.\n", pstring);
+				g_free(pstring); pstring = NULL;
+			}
 		}
-	}
-
-	if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device-name")) {
-		g_object_get(G_OBJECT(videosource), "device-name", &pstring, NULL);
-		if (pstring) {
-			printf("PTB-INFO: Camera friendly device-name is %s.\n", pstring);
-			g_free(pstring); pstring = NULL;
+		
+		if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device-name")) {
+			g_object_get(G_OBJECT(videosource), "device-name", &pstring, NULL);
+			if (pstring) {
+				printf("PTB-INFO: Camera friendly device-name is %s.\n", pstring);
+				g_free(pstring); pstring = NULL;
+			}
 		}
+
+		// Get the pad from the src pad of the source for probing width x height
+		// of video frames and nominal framerate of video source:	
+		pad = gst_element_get_pad(videosource, "src");
+		
+		// Videotrack available?
+		if (vidcapRecordBANK[slotid].nrVideoTracks > 0) {
+			// Yes: Query video frame size and framerate of device:
+			peerpad = gst_pad_get_peer(pad);
+			caps = gst_pad_get_negotiated_caps(peerpad);
+			if (caps) {
+				str=gst_caps_get_structure(caps,0);
+				
+				/* Get some data about the frame */
+				gst_structure_get_int(str,"width",&width);
+				gst_structure_get_int(str,"height",&height);
+				gst_structure_get_fraction(str, "framerate", &rate1, &rate2);
+				// printf("vt = %i w = %i h = %i fps = %f\n", vidcapRecordBANK[slotid].nrVideoTracks, width, height, rate1/rate2);
+				gst_caps_unref(caps);
+			} else {
+				printf("PTB-DEBUG: No frame info for video source available after preroll! Expect trouble!!\n");	
+			}
+		}
+		
+		// g_object_get(G_OBJECT(camera), "video-source-caps", &caps, NULL);
+		
+		// Release the pad:
+		gst_object_unref(pad);		
 	}
-
-    rate1 = 0;
-    rate2 = 1;
-    width = height = 0;
-
-    // Get the pad from the src pad of the source for probing width x height
-    // of video frames and nominal framerate of video source:	
-    pad = gst_element_get_pad(videosource, "src");
-
-    // Videotrack available?
-    if (vidcapRecordBANK[slotid].nrVideoTracks > 0) {
-	// Yes: Query video frame size and framerate of device:
-	peerpad = gst_pad_get_peer(pad);
-	caps = gst_pad_get_negotiated_caps(peerpad);
-	if (caps) {
-		str=gst_caps_get_structure(caps,0);
-
-		/* Get some data about the frame */
-		gst_structure_get_int(str,"width",&width);
-		gst_structure_get_int(str,"height",&height);
-		gst_structure_get_fraction(str, "framerate", &rate1, &rate2);
-		// printf("vt = %i w = %i h = %i fps = %f\n", vidcapRecordBANK[slotid].nrVideoTracks, width, height, rate1/rate2);
-		gst_caps_unref(caps);
-	} else {
-		printf("PTB-DEBUG: No frame info for video source available after preroll! Expect trouble!!\n");	
-	}
-    }
-
-	// g_object_get(G_OBJECT(camera), "video-source-caps", &caps, NULL);
-	
-    // Release the pad:
-    gst_object_unref(pad);
 
     printf("PTB-INFO: Camera successfully opened... [Native width x height = %i x %i]\n", width, height);
 
