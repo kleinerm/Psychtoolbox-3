@@ -7,6 +7,10 @@ function ARToolkitDemo(multiMarker)
 % detect and track the rigid position and orientation of markers, then
 % visualize corresponding 3D objects on top of video via OpenGL.
 %
+% Please note that ARToolkit is only supported when running Psychtoolbox
+% under GNU/Octave, not when using it with Matlab. Therefore this demo
+% won't work with Matlab.
+%
 % Parameters:
 %
 % multiMarker = If set to 2 (default), track single markers. If set to 1,
@@ -21,6 +25,10 @@ function ARToolkitDemo(multiMarker)
 
 % Running on PTB-3? Hopefully...
 AssertOpenGL;
+
+if ~IsOctave
+    error('Sorry, ARToolkit support (= the PsychCV mex file) is currently only available on GNU/Octave, not on Matlab.');
+end
 
 % Size of rendered objects in millimeters:
 sizeMM = 80;
