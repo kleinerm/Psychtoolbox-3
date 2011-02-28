@@ -543,7 +543,7 @@ char* PsychGSEnumerateVideoSources(int outPos, int deviceIndex)
 		deviceClass = 1;
 		
 		// Kernel streaming video source available and implements probe interface?
-		if ((videosource) && (GST_PROPERTY_PROBE(videosource))) {
+		if ((videosource) && (gst_element_implements_interface(videosource, GST_TYPE_PROPERTY_PROBE))) {
 			// Yes: Need to pre-probe if it has any available sources:
 			
 			// Generate property probe for videosource:
@@ -576,6 +576,11 @@ char* PsychGSEnumerateVideoSources(int outPos, int deviceIndex)
 			n = 0;
 		}
 		else {
+			if (videosource) {
+				gst_element_set_state(videosource, GST_STATE_NULL);
+				gst_object_unref(GST_OBJECT(videosource));
+				videosource = NULL;
+			}
 			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: ksvideosrc unavailable or does not support probing.\n");
 		}
 		
@@ -605,7 +610,12 @@ char* PsychGSEnumerateVideoSources(int outPos, int deviceIndex)
 	}
 	
 	// Generate property probe for videosource:
-	probe = GST_PROPERTY_PROBE(videosource);
+	if (gst_element_implements_interface(videosource, GST_TYPE_PROPERTY_PROBE)) {
+		probe = GST_PROPERTY_PROBE(videosource);
+	}
+	else {
+		probe = NULL;
+	}
 	
 	if (probe) {
 		// Retrieve array of available video input device names, aka
