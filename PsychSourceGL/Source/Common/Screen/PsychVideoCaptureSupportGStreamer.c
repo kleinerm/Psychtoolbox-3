@@ -610,7 +610,9 @@ char* PsychGSEnumerateVideoSources(int outPos, int deviceIndex)
 	}
 	
 	// Generate property probe for videosource:
-	if (gst_element_implements_interface(videosource, GST_TYPE_PROPERTY_PROBE)) {
+	// Make sure videosource implements property probe interface to avoid useless warning clutter,
+	// unless on Linux, where this query actually causes an assertion on some GStreamer versions...
+	if ((PSYCH_SYSTEM == PSYCH_LINUX) || gst_element_implements_interface(videosource, GST_TYPE_PROPERTY_PROBE)) {
 		probe = GST_PROPERTY_PROBE(videosource);
 	}
 	else {
