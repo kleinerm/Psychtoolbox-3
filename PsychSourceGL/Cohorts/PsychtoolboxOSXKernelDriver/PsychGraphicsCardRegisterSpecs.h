@@ -30,6 +30,7 @@
 #define PCI_VENDOR_ID_NVIDIA	0x10de
 #define PCI_VENDOR_ID_AMD       0x1022
 #define PCI_VENDOR_ID_ATI       0x1002
+#define PCI_VENDOR_ID_INTEL     0x8086
 
 // The following register offsets and specs are taken from the official AMD/ATI
 // specs, downloadable from http://www.x.org/docs/AMD/ the website of the X-ORG
@@ -166,11 +167,10 @@
 #define RADEON_TMDSA_BIT_DEPTH_CONTROL	0x7894
 
 // Evergreen class hardware (DCE-4 display engine):
-#define EVERGREEN_CRTC_STATUS_POSITION 0x6e90
-#define EVERGREEN_CRTC_V_BLANK_START_END 0x6e34
-
-// EVERGREEN_CRTC_V_TOTAL:
-#define EVERGREEN_CRTC_V_TOTAL 0x6e1c
+#define EVERGREEN_CRTC_STATUS_POSITION		0xa0
+#define EVERGREEN_CRTC_V_BLANK_START_END	0x44
+#define EVERGREEN_CRTC_V_TOTAL				0x2c
+#define EVERGREEN_CRTC_CONTROL				0x80
 
 // NVIDIA REGISTERS:
 // -----------------

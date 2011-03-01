@@ -191,6 +191,10 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 		if (PCI_VENDOR_ID_AMD == fPCIDevice->configRead16(0)) IOLog("%s: Confirmed to have AMD's vendor id.\n", getName());
 
 		IOLog("%s: This is a GPU with %s display engine.\n", getName(), isDCE4() ? "DCE-4" : "AVIVO");
+
+		// On DCE-4 and later GPU's (Evergreen) we limit the minimum MMIO
+		// offset to the base address of the 1st CRTC register block for now:
+		if (isDCE4()) fRadeonLowlimit = 0x6df0;		
 	}
 
     /*
@@ -506,6 +510,7 @@ bool PsychtoolboxKernelDriver::init(OSDictionary* dictionary)
 	fRadeonMap = NULL;
 	fRadeonRegs = NULL;
 	fRadeonSize = 0;
+	fRadeonLowlimit = 0;
 	fInterruptSrc = NULL;
 	fInterruptCookie = 0xdeadbeef;
 	fInterruptCounter = 0;
@@ -789,7 +794,7 @@ UInt32	PsychtoolboxKernelDriver::ReadRegister(UInt32 offset)
 	// We don't return error codes and don't log the problem,
 	// because we could be called from primary Interrupt path, so IOLog() is not
 	// an option!
-	if (fRadeonRegs == NULL || offset < 0 || offset >= fRadeonSize-4) return(0);
+	if (fRadeonRegs == NULL || offset < fRadeonLowlimit || offset >= fRadeonSize-4) return(0);
 	
 	// Read and return value:
 
@@ -810,7 +815,7 @@ void PsychtoolboxKernelDriver::WriteRegister(UInt32 offset, UInt32 value)
 	// We don't return error codes and don't log the problem,
 	// because we could be called from primary Interrupt path, so IOLog() is not
 	// an option!
-	if (fRadeonRegs == NULL || offset < 0 || offset >= fRadeonSize-4) return;
+	if (fRadeonRegs == NULL || offset < fRadeonLowlimit || offset >= fRadeonSize-4) return;
 
 	// Write the register in native byte order: At least NVidia GPU's adapt their
 	// endianity to match the host systems endianity, so no need for conversion:

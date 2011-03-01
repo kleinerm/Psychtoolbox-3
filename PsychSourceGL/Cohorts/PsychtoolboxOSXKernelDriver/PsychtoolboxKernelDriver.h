@@ -40,6 +40,7 @@ private:
 	IOMemoryMap *					fRadeonMap;
 	IOVirtualAddress				fRadeonRegs;
 	UInt32							fRadeonSize;
+	UInt32							fRadeonLowlimit;
 	IOFilterInterruptEventSource*	fInterruptSrc;
 	
 	UInt32							fInterruptCookie;
