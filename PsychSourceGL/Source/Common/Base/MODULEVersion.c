@@ -19,11 +19,9 @@
   
 */
 
-#include "Screen.h"
-
+#include "Psych.h"
 
 static char seeAlsoString[] = "";
-	 
 
 PsychError MODULEVersion(void) 
 {
