@@ -39,6 +39,22 @@
 
 static psych_bool usecamerabin = TRUE;
 
+typedef struct {
+	int deviceIndex;
+	int classIndex;
+	int inputIndex;
+	psych_uint64 deviceURI;
+	unsigned int flags;
+	char deviceClassName[100];
+	char deviceHandle[1000];
+	char devicePath[1000];
+	char deviceName[1000];
+	char device[1000];
+} PsychVideosourceRecordType;
+
+PsychVideosourceRecordType	*devices = NULL;
+int							ntotal = 0;
+
 // Record which defines all state for a capture device:
 typedef struct {
 	int valid;                        // Is this a valid device record? zero == Invalid.
@@ -487,129 +503,38 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle)
 	return;
 }
 
-char* PsychGSEnumerateVideoSources(int outPos, int deviceIndex)
+/* Helper routine for PsychGSEnumerateVideoSources()
+ *
+ * Probes video source plugin 'srcname' [with class index 'classIndex' and
+ * name 'className', using the property 'devHandlePropName' and probe strategy
+ * as given by 'flags'. Adds all detected video input devices for that plugin
+ * to the global 'devices' array and increases ntotal count accordingly.
+ */
+static void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const char* className, const char* devHandlePropName, unsigned int flags)
 {
-	PsychGenericScriptType 	*devs;
-	const char *FieldNames[]={"DeviceIndex", "ClassIndex", "InputIndex", "ClassName", "InputHandle", "Device", "DevicePath", "DeviceName" };
-
-	int				i, n;
+	int					i, n;
 	char				port_str[64];
 	char				class_str[64];
-	char				msgerr[10000];
-	int				deviceClass, deviceInput;
+	int					deviceInput;
 	GstElement			*videosource = NULL;
-	GstPropertyProbe		*probe = NULL;
+	GstPropertyProbe	*probe = NULL;
 	GValueArray			*viddevs = NULL;
 	GValue				*dev = NULL;
 	char				*device_name = NULL;
-        gchar                           *pstring = NULL;
-
-	// Make sure GStreamer is ready:
-	PsychGSCheckInit("videocapture");
-			
-	// Linux specific setup path:
-	if (PSYCH_SYSTEM == PSYCH_LINUX) {
-		deviceClass = 0;
-
-		// Try Video4Linux-II camera source first:
-		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to probe v4l2camsrc as video source...\n");
-		videosource = gst_element_factory_make("v4l2camsrc", "ptb_videosource");
-		sprintf(class_str, "Video4Linux2-CameraSource");
-		
-		// Fallback to standard Video4Linux-II source if neccessary:
-		if (!videosource) {
-			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Failed. Trying to probe v4l2src as video source...\n");
-			videosource = gst_element_factory_make("v4l2src", "ptb_videosource");
-			sprintf(class_str, "Video4Linux2");
-		}
-
-		// Fallback to autovideosrc if everything else fails:
-		if (!videosource) {
-			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Failed. Trying to probe autovideosrc as video source with auto-detected video input device...\n");
-			videosource = gst_element_factory_make("autovideosrc", "ptb_videosource");
-			sprintf(class_str, "AutoVideoSource");
-		}
-		
-		if (!videosource) {
-			if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-INFO: Failed! We are out of probe options. No video devices to enumerate.\n");
-			return(NULL);
-		}
-	}
-
-	if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
-		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to probe ksvideosrc as video source...\n");
-		videosource = gst_element_factory_make("ksvideosrc", "ptb_videosource");
-		sprintf(class_str, "Windows WDM kernel streaming");
-		deviceClass = 1;
-		
-		// Kernel streaming video source available and implements probe interface?
-		if ((videosource) && (gst_element_implements_interface(videosource, GST_TYPE_PROPERTY_PROBE))) {
-			// Yes: Need to pre-probe if it has any available sources:
-			
-			// Generate property probe for videosource:
-			probe = GST_PROPERTY_PROBE(videosource);
-
-			// Retrieve array of available video input device names, aka
-			// "device-name" property:
-			viddevs = gst_property_probe_probe_and_get_values_name(probe, "device-name");
-			
-			if (viddevs) {
-				// Assign count of available devices:
-				n = viddevs->n_values;
-				g_value_array_free(viddevs);
-			}
-			else {
-				n = 0;
-				if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: ksvideosrc does not provide any probe results.\n");
-			}
-			
-			if (n <= 0) {
-				// No video sources for kernel streaming: Destroy the source,
-				// so code can retry with DirectShow source below:
-				gst_element_set_state(videosource, GST_STATE_NULL);
-				gst_object_unref(GST_OBJECT(videosource));
-				videosource = NULL;
-				n = 0;
-			}
-
-			// Reset n:
-			n = 0;
-		}
-		else {
-			if (videosource) {
-				gst_element_set_state(videosource, GST_STATE_NULL);
-				gst_object_unref(GST_OBJECT(videosource));
-				videosource = NULL;
-			}
-			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: ksvideosrc unavailable or does not support probing.\n");
-		}
-		
-		if (!videosource) {
-			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to probe dshowvideosrc as video source...\n");
-			videosource = gst_element_factory_make("dshowvideosrc", "ptb_videosource");
-			sprintf(class_str, "DirectShow");
-			deviceClass = 0;
-		}
-		
-		if (!videosource) {
-			if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-INFO: Failed! We are out of probe options. No video devices to enumerate.\n");
-			return(NULL);
-		}		
-	}
+	gchar               *pstring = NULL;
+	psych_uint64		deviceURI = 0;
 	
-	if (PSYCH_SYSTEM == PSYCH_OSX) {
-		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to probe osxvideosrc as video source...\n");
-		videosource = gst_element_factory_make("osxvideosrc", "ptb_videosource");
-		sprintf(class_str, "OSXQuicktimeSequenceGrabber");
-		deviceClass = 0;
-		
-		if (!videosource) {
-			if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-INFO: Failed! We are out of probe options. No video devices to enumerate.\n");
-			return(NULL);
-		}
-	}
+	// Info to the user:
+	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to probe %s as video source...\n", srcname);
 	
-	// Generate property probe for videosource:
+	// Create video source plugin, define class name:
+	videosource = gst_element_factory_make(srcname, "ptb_videosource");
+	sprintf(class_str, className);
+
+	// Nothing to do if no such video plugin available:
+	if (!videosource) return;
+	
+	// Available: Generate property probe for videosource:
 	// Make sure videosource implements property probe interface to avoid useless warning clutter,
 	// unless on Linux, where this query actually causes an assertion on some GStreamer versions...
 	if ((PSYCH_SYSTEM == PSYCH_LINUX) || gst_element_implements_interface(videosource, GST_TYPE_PROPERTY_PROBE)) {
@@ -622,102 +547,94 @@ char* PsychGSEnumerateVideoSources(int outPos, int deviceIndex)
 	if (probe) {
 		// Retrieve array of available video input device names, aka
 		// "device-name" property:
-		if ((PSYCH_SYSTEM != PSYCH_LINUX) && g_object_class_find_property(G_OBJECT_GET_CLASS(probe), "device-name")) {
-			viddevs = gst_property_probe_probe_and_get_values_name(probe, "device-name");
-		}
+		//if ((PSYCH_SYSTEM != PSYCH_LINUX) && g_object_class_find_property(G_OBJECT_GET_CLASS(probe), "device-name")) {
+		//	viddevs = gst_property_probe_probe_and_get_values_name(probe, "device-name");
+		//}
 
-		if (!viddevs) {
-			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Failed to probe 'device-name' property. Retrying with 'device' ...\n");
-			viddevs = gst_property_probe_probe_and_get_values_name(probe, "device");
-		}
+		//if (!viddevs) {
+		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Probing '%s' property...\n", devHandlePropName);
+		viddevs = gst_property_probe_probe_and_get_values_name(probe, devHandlePropName);
+		//}
 
 		if (viddevs) {
 			// Assign count of available devices:
 			n = viddevs->n_values;
 			
-			// Does calling code just want to query device name for a given
-			// deviceIndex?
-			if (deviceIndex >= 0) {
-				// Yes: Return device name for that index:
-				deviceIndex = deviceIndex % 10000;
+			// Iterate all available devices:
+			for(i = 0; i < n; i++) {
+				// Get device handle:
+				dev = g_value_array_get_nth(viddevs, i);
+				sprintf(port_str, "%s", (const char*) g_value_get_string(dev));
+
+				// Select it for further probing:
+				g_object_set(G_OBJECT(videosource), devHandlePropName, port_str, NULL);
+
+				deviceInput = i;
+				devices[i].deviceIndex = classIndex * 10000 + deviceInput;
+				devices[i].deviceClass = classIndex;
+				devices[i].deviceInput = deviceInput;
+				sprintf(devices[i].deviceClassName, "%s", className);
+				sprintf(devices[i].deviceHandle, "%s", port_str);
 				
-				if (deviceIndex < n) {				
-					// Get deviceIndex'th entry:
-					dev = g_value_array_get_nth(viddevs, deviceIndex);
-					device_name = strdup((const char*) g_value_get_string(dev));
+				// Query and assign device specific parameters:
+				pstring = NULL;
+				if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device")) {
+					g_object_get(G_OBJECT(videosource), "device", &pstring, NULL);
+				}
+				
+				if (pstring) {
+					sprintf(devices[i].device, "%s", pstring);
+					g_free(pstring);
+				}
+				else {
+					sprintf(devices[i].device, "%s", port_str);
+				}
+				
+				pstring = NULL;
+				if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device-path")) {
+					g_object_get(G_OBJECT(videosource), "device-path", &pstring, NULL);
+				}
+				
+				if (pstring) {
+					sprintf(devices[i].devicePath, "%s", pstring);
+					g_free(pstring);
+				}
+				else {
+					sprintf(devices[i].devicePath, "%s", port_str);
+				}
+				
+				pstring = NULL;
+				if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device-name")) {
+					g_object_get(G_OBJECT(videosource), "device-name", &pstring, NULL);
+				}
+				
+				if (pstring) {
+					sprintf(devices[i].deviceName, "%s", pstring);
+					g_free(pstring);
+				}
+				else {
+					sprintf(devices[i].deviceName, "%s", port_str);
+				}
+
+				pstring = NULL;
+				if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "guid")) {
+					g_object_get(G_OBJECT(videosource), "guid", &deviceURI, NULL);
+					devices[i].deviceURI = deviceURI;
+				} else {
+					devices[i].deviceURI = 0;
+				}
+
+				pstring = NULL;
+				
+				// Probe next device...
+				ntotal++;
+				
+				if (ntotal >= PSYCH_MAX_VIDSRC) {
+					printf("PTB-WARNING: Maximum number of allowable video sourced during enumeration %i exceeded! Aborting enumeration.\n", PSYCH_MAX_VIDSRC);
+					break;
 				}
 			}
-			else {
-				// No: Code wants us to return struct array with all enumerated
-				// devices to userspace:
-				
-				// Create output struct array with n output slots:
-				PsychAllocOutStructArray(outPos, TRUE, n, 8, FieldNames, &devs);
-				
-				// Iterate all available devices:
-				for(i = 0; i < n; i++) {
-					dev = g_value_array_get_nth(viddevs, i);
-					sprintf(port_str, "%s", (const char*) g_value_get_string(dev));
 
-					if (PSYCH_SYSTEM == PSYCH_LINUX) {
-						g_object_set(G_OBJECT(videosource), "device", port_str, NULL);
-					} else {
-						g_object_set(G_OBJECT(videosource), "device-name", port_str, NULL);
-					}
-					
-					deviceInput = i;
-					PsychSetStructArrayDoubleElement("DeviceIndex", i, deviceClass * 10000 + deviceInput, devs);
-					PsychSetStructArrayDoubleElement("ClassIndex", i, deviceClass, devs);
-					PsychSetStructArrayDoubleElement("InputIndex", i, deviceInput, devs);
-					PsychSetStructArrayStringElement("ClassName", i, class_str, devs);
-					PsychSetStructArrayStringElement("InputHandle", i, port_str, devs);
-
-					// Query and assign device specific parameters:
-					pstring = NULL;
-					if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device")) {
-						g_object_get(G_OBJECT(videosource), "device", &pstring, NULL);
-					}
-
-					if (pstring) {
-						PsychSetStructArrayStringElement("Device", i, pstring, devs);
-						g_free(pstring);
-					}
-					else {
-						PsychSetStructArrayStringElement("Device", i, port_str, devs);
-					}
-					
-					pstring = NULL;
-					if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device-path")) {
-						g_object_get(G_OBJECT(videosource), "device-path", &pstring, NULL);
-					}
-
-					if (pstring) {
-						PsychSetStructArrayStringElement("DevicePath", i, pstring, devs);
-						g_free(pstring);
-					}
-					else {
-						PsychSetStructArrayStringElement("DevicePath", i, port_str, devs);
-					}
-					
-					pstring = NULL;
-					if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device-name")) {
-						g_object_get(G_OBJECT(videosource), "device-name", &pstring, NULL);
-					}
-
-					if (pstring) {
-						PsychSetStructArrayStringElement("DeviceName", i, pstring, devs);
-						g_free(pstring);
-					}
-					else {
-						PsychSetStructArrayStringElement("DeviceName", i, port_str, devs);
-					}
-					
-					pstring = NULL;
-
-					// Probe next device...
-				}
-			}
-			
 			g_value_array_free(viddevs);
 		}
 		else {
@@ -725,15 +642,137 @@ char* PsychGSEnumerateVideoSources(int outPos, int deviceIndex)
 		}
 	}
 	else {
-		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Video plugin '%s' doesn't support probing. No video devices to enumerate.\n", class_str);
+		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Video plugin '%s' doesn't support probing. No video devices to enumerate for this plugin.\n", class_str);
 	}
 
 	// Release videosource:
 	gst_element_set_state(videosource, GST_STATE_NULL);
 	gst_object_unref(GST_OBJECT(videosource));
 	
-	// Done. Return device name if assigned:
-	return(device_name);
+	return;
+}
+
+/* PsychGSEnumerateVideoSources(int outPos, int deviceIndex);  -- Internal.
+ *
+ * Enumerates all connected and supported video sources into an internal
+ * array "devices".
+ *
+ * If deviceIndex >= 0 : Returns pointer to PsychVideosourceRecordType struct
+ *                       with info about the detected device with index 'deviceIndex'
+ *                       or NULL if no such device exists. The pointer is valid until
+ *                       the Screen module returns control to the runtime - then it
+ *                       will get deallocated and must not be accessed anymore!
+ *
+ * If deviceIndex < 0 : Returns NULL to caller, returns a struct array to runtime
+ *                      environment return argument position 'outPos' with all info
+ *                      about the detected sources.
+ */
+PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceIndex)
+{
+	PsychGenericScriptType 	*devs;
+	const char *FieldNames[]={"DeviceIndex", "ClassIndex", "InputIndex", "ClassName", "InputHandle", "Device", "DevicePath", "DeviceName", "GUID" };
+
+	PsychVideosourceRecordType	*devices = NULL;
+	int					i, n;
+	char				port_str[64];
+	char				class_str[64];
+	char				msgerr[10000];
+	int					deviceClass, deviceInput;
+	GstElement			*videosource = NULL;
+	GstPropertyProbe	*probe = NULL;
+	GValueArray			*viddevs = NULL;
+	GValue				*dev = NULL;
+	char				*device_name = NULL;
+	gchar               *pstring = NULL;
+	PsychVideosourceRecordType *mydevice = NULL;
+	
+	// Make sure GStreamer is ready:
+	PsychGSCheckInit("videocapture");
+
+	// Allocate temporary space for enumerated devices:
+	devices = (PsychVideosourceRecordType*) PsychCallocTemp(PSYCH_MAX_VIDSRC, sizeof(PsychVideosourceRecordType));
+	ntotal  = 0;
+
+	// Linux specific setup path:
+	if (PSYCH_SYSTEM == PSYCH_LINUX) {
+		// Use autovideosrc to probe the default source:
+		PsychGSEnumerateVideoSourceType("autovideosrc", 0, "AutoVideoSource", "device", 0);
+
+		// Try Video4Linux-II camera source:
+		PsychGSEnumerateVideoSourceType("v4l2camsrc", 1, "Video4Linux2-CameraSource", "device", 0);
+
+		// Try standard Video4Linux-II source:
+		PsychGSEnumerateVideoSourceType("v4l2src", 2, "Video4Linux2", "device", 0);
+	}
+
+	if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
+		// Use autovideosrc to probe the default source:
+		PsychGSEnumerateVideoSourceType("autovideosrc", 0, "AutoVideoSource", "device", 0);
+
+		// Try Windows kernel streaming source:
+		PsychGSEnumerateVideoSourceType("ksvideosrc", 1, "Windows WDM kernel streaming", "device-name", 0);
+
+		// Use DirectShow to probe:
+		PsychGSEnumerateVideoSourceType("dshowvideosrc", 2, "DirectShow", "device", 0);
+	}
+	
+	if (PSYCH_SYSTEM == PSYCH_OSX) {
+		// Use autovideosrc to probe the default source:
+		PsychGSEnumerateVideoSourceType("autovideosrc", 0, "AutoVideoSource", "device", 0);
+
+		// Try OSX Quicktime sequence grabber video source:
+		PsychGSEnumerateVideoSourceType("osxvideosrc", 1, "OSXQuicktimeSequenceGrabber", "device", 0);
+	}
+	
+	// Try DV-Cameras:
+	PsychGSEnumerateVideoSourceType("dv1394src", 5, "DV1394", "guid", 1);
+	
+	// Try HDV-Cameras:
+	PsychGSEnumerateVideoSourceType("hdv1394src", 6, "HDV1394", "guid", 1);
+	
+	// Try IIDC-1394 Cameras:
+	// PsychGSEnumerateVideoSourceType("1394src", 7, "1394-IIDC", "guid", 1);
+
+	if (ntotal <= 0) {
+		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Could not detect any supported video devices on this system.\n");
+		return(NULL);
+	}
+	
+	// Have enumerated devices:
+	if (deviceIndex >= 0) {
+		// Yes: Return device name for that index:
+		for (i=0; i < ntotal; i++) {
+			if (devices[i].deviceIndex == deviceIndex) {
+				mydevice = &devices[i];
+				device_name = strdup((const char*) devices[i].deviceHandle);
+				break;
+			}
+		}		
+	}
+	else {
+		// No: Code wants us to return struct array with all enumerated
+		// devices to userspace:
+		
+		// Create output struct array with n output slots:
+		PsychAllocOutStructArray(outPos, TRUE, ntotal, 9, FieldNames, &devs);
+		
+		// Iterate all available devices:
+		for(i = 0; i < ntotal; i++) {
+			PsychSetStructArrayDoubleElement("DeviceIndex", i, devices[i].deviceIndex, devs);
+			PsychSetStructArrayDoubleElement("ClassIndex", i, devices[i].deviceClass, devs);
+			PsychSetStructArrayDoubleElement("InputIndex", i, devices[i].deviceInput, devs);
+			PsychSetStructArrayStringElement("ClassName", i, devices[i].deviceClassName , devs);
+			PsychSetStructArrayStringElement("InputHandle", i, devices[i].deviceHandle, devs);
+			PsychSetStructArrayStringElement("Device", i, devices[i].device, devs);
+			PsychSetStructArrayStringElement("DevicePath", i, devices[i].devicePath, devs);
+			PsychSetStructArrayStringElement("DeviceName", i, devices[i].deviceName, devs);
+			sprintf(port_str, "%8x", devices[i].deviceURI);
+			PsychSetStructArrayStringElement("GUID", i,	port_str, devs);
+		}
+	}
+
+	// Done. Return device struct if assigned:
+	return(mydevice);
 }
 
 /* CHECKED TODO
@@ -778,10 +817,10 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	char			tmpstr[1000];
 	char			msgerr[10000];
 	char			errdesc[1000];
-	char			*tmpdevname = NULL;
 	char			device_name[1000];
-	gchar                   *pstring = NULL; 
-
+	gchar           *pstring = NULL; 
+	PsychVideosourceRecordType *theDevice = NULL;
+	
 	config[0] = 0;
 	tmpstr[0] = 0;
 	device_name[0] = 0;
@@ -796,17 +835,14 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	if (deviceIndex >= 0) {
 		// Get device name for given deviceIndex from video device
 		// enumeration (or NULL if no such device):
-		tmpdevname = PsychGSEnumerateVideoSources(-1, deviceIndex);
-		if (NULL == tmpdevname) {
+		theDevice = PsychGSEnumerateVideoSources(-1, deviceIndex);
+		if (NULL == theDevice) {
 			printf("PTB-ERROR: There isn't any video capture device available for provided deviceIndex %i.\n", deviceIndex);
 			PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex provided. No such video source. Aborted.");
 		}
 		
 		// Assign name:
-		sprintf(device_name, "%s", tmpdevname);
-		free(tmpdevname);
-		tmpdevname = NULL;
-		
+		sprintf(device_name, "%s", theDevice->deviceHandle);		
 		if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Trying to open video capture device with deviceIndex %i [%s].\n", deviceIndex, device_name);
 	}
 
