@@ -83,6 +83,16 @@ elseif length(ch) > 2
     if strcmpi(ch, 'DELETE')
         ch = char(8);
     end
+    
+    % Catch otherwise unhandled special keys:
+    if length(ch) > 1
+        % Call ourselves recursively, thereby discarding this unmanageable
+        % result.
+        fprintf('GetKbChar: Warning: Received keypress for key %s. Don''t really know what to do with it.\n', ch);
+        fprintf('Maybe you should check for stuck or invalid keys?\n');
+        [ch, when] = GetKbChar(varargin{:});
+        return;
+    end
 end
 
 % Done.
