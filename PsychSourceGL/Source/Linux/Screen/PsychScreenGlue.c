@@ -89,12 +89,16 @@
 struct pci_device *gpu = NULL;
 unsigned char * volatile gfx_cntl_mem = NULL;
 unsigned long gfx_length = 0;
+unsigned long gfx_lowlimit = 0;
 unsigned int  fDeviceType = 0;
 unsigned int  fCardType = 0;
 unsigned int  fPCIDeviceId = 0;
 
 // Count of kernel drivers:
 static int    numKernelDrivers = 0;
+
+// Offset of crtc blocks of evergreen gpu's for each of the six possible crtc's:
+unsigned int crtcoff[6] = { 0x6df0, 0x79f0, 0x105f0, 0x111f0, 0x11df0, 0x129f0 };
 
 /* Is a given ATI/AMD GPU a DCE4 type ASIC, i.e., with the new display engine? */
 static psych_bool isDCE4(int screenId)
@@ -128,7 +132,7 @@ static unsigned int ReadRegister(unsigned long offset)
 	// We don't return error codes and don't log the problem,
 	// because we could be called from primary Interrupt path, so IOLog() is not
 	// an option!
-	if (gfx_cntl_mem == NULL || offset > gfx_length-4) return(0);
+	if (gfx_cntl_mem == NULL || offset > gfx_length-4 || offset < gfx_lowlimit) return(0);
 	
 	// Read and return value:
 	value = *(unsigned int * volatile)(gfx_cntl_mem + offset);
@@ -157,7 +161,7 @@ static void WriteRegister(unsigned long offset, unsigned int value)
 	// We don't return error codes and don't log the problem,
 	// because we could be called from primary Interrupt path, so IOLog() is not
 	// an option!
-	if (gfx_cntl_mem == NULL || offset > gfx_length-4) return;
+	if (gfx_cntl_mem == NULL || offset > gfx_length-4 || offset < gfx_lowlimit) return;
 
 	// Write the register in native byte order: At least NVidia GPU's adapt their
 	// endianity to match the host systems endianity, so no need for conversion:
@@ -326,6 +330,9 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 		
 		// Success! Identify GPU:
 		gfx_length = region->size;
+
+		// Lowest allowable MMIO register offset for given GPU:
+		gfx_lowlimit = 0;
 		
 		if (fDeviceType == kPsychGeForce) {
 			fCardType = PsychGetNVidiaGPUType(NULL);
@@ -337,6 +344,11 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 		
 		if (fDeviceType == kPsychRadeon) {
 			fCardType = isDCE4(screenId);
+			
+			// On DCE-4 and later GPU's (Evergreen) we limit the minimum MMIO
+			// offset to the base address of the 1st CRTC register block for now:
+			if (fCardType) gfx_lowlimit = 0x6df0;
+			
 			if (PsychPrefStateGet_Verbosity() > 2) {
 				printf("PTB-INFO: Connected to %s %s GPU with %s display engine. Beamposition timestamping enabled.\n", pci_device_get_vendor_name(gpu), pci_device_get_device_name(gpu), (fCardType) ? "DCE-4" : "AVIVO");
 				fflush(NULL);
@@ -1380,6 +1392,131 @@ unsigned int PsychOSKDWriteRegister(int screenId, unsigned int offset, unsigned 
 	return(0);
 }
 
+// Synchronize display screens video refresh cycle of DCE-4 (and later) GPU's, aka Evergreen. See PsychSynchronizeDisplayScreens() for help and details...
+static PsychError PsychOSSynchronizeDisplayScreensDCE4(int *numScreens, int* screenIds, int* residuals, unsigned int syncMethod, double syncTimeOut, int allowedResidual)
+{
+	int								screenId = 0;
+	double							abortTimeOut, now;
+	int								residual;
+	unsigned int					i;
+	unsigned int					old_crtc_master_enable = 0;
+	
+	// Check availability of connection:
+	int								connect;
+	unsigned int					status;
+
+	// No support for other methods than fast hard sync:
+	if (syncMethod > 1) {
+		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Could not execute display resync operation with requested non hard sync method. Not supported for this setup and settings.\n"); 
+		return(PsychError_unimplemented);
+	}
+	
+	// The current implementation only supports syncing all heads of a single card
+	if (*numScreens <= 0) {
+		// Resync all displays requested: Choose screenID zero for connect handle:
+		screenId = 0;
+	}
+	else {
+		// Resync of specific display requested: We only support resync of all heads of a single multi-head card,
+		// therefore just choose the screenId of the passed master-screen for resync handle:
+		screenId = screenIds[0];
+	}
+	
+	if (!(connect = PsychOSCheckKDAvailable(screenId, &status))) {
+		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Could not execute display resync operation for master screenId %i. Not supported for this setup and settings.\n", screenId); 
+		return(PsychError_unimplemented);
+	}
+	
+	if (fDeviceType != kPsychRadeon) {
+		printf("PTB-INFO: PsychOSSynchronizeDisplayScreens(): This function is not supported on non-ATI/AMD GPU's! Aborted.\n");
+		return(PsychError_unimplemented);
+	}
+
+	// Setup deadline for abortion or repeated retries:
+	PsychGetAdjustedPrecisionTimerSeconds(&abortTimeOut);
+	abortTimeOut+=syncTimeOut;
+	residual = INT_MAX;
+	
+	// Repeat until timeout or good enough result:
+	do {
+		// If this isn't the first try, wait 0.5 secs before retry:
+		if (residual != INT_MAX) PsychWaitIntervalSeconds(0.5);
+		
+		residual = INT_MAX;
+		
+		if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: PsychOSSynchronizeDisplayScreens(): About to resynchronize all DCE-4 display heads by use of a 1 second CRTC stop->start cycle:\n");
+
+		if (PsychPrefStateGet_Verbosity() > 3) {
+			printf("Trying to stop and reset all display heads by disabling them one by one.\n");
+			printf("Will wait individually for each head to reach its defined resting position.\n");
+		}
+		
+		// Detect enabled heads:
+		old_crtc_master_enable = 0;
+		for (i = 0; i < 6; i++) {
+			// Bit 16 "CRTC_CURRENT_MASTER_EN_STATE" allows read-only polling
+			// of current activation state of crtc:
+			if (ReadRegister(EVERGREEN_CRTC_CONTROL + crtcoff[i]) & (0x1 << 16)) old_crtc_master_enable |= (0x1 << i);
+		}
+
+		// Shut down heads, one after each other, wait for each one to settle at its defined resting position:
+		for (i = 0; i < 6; i++) {
+			if (PsychPrefStateGet_Verbosity() > 3) printf("Head %ld ...  ", i);
+			if (old_crtc_master_enable & (0x1 << i)) {		
+				if (PsychPrefStateGet_Verbosity() > 3) printf("active -> Shutdown. ");
+
+				// Shut down this CRTC by clearing its master enable bit (bit 0):
+				WriteRegister(EVERGREEN_CRTC_CONTROL + crtcoff[i], ReadRegister(EVERGREEN_CRTC_CONTROL + crtcoff[i]) & ~(0x1 << 0));
+				
+				// Wait 50 msecs, so CRTC has enough time to settle and disable at its
+				// programmed resting position:
+				PsychWaitIntervalSeconds(0.050);
+				
+				// Double check - Poll until crtc is offline:
+				while(ReadRegister(EVERGREEN_CRTC_CONTROL + crtcoff[i]) & (0x1 << 16));
+				if (PsychPrefStateGet_Verbosity() > 3) printf("-> Offline.\n");
+			}
+			else {
+				if (PsychPrefStateGet_Verbosity() > 3) printf("already offline.\n");
+			}
+		}
+		
+		// Sleep for 1 second: This is a blocking call, ie. the thread goes to sleep and may wakeup a bit later:
+		PsychWaitIntervalSeconds(1);
+		
+		// Reenable all now disabled, but previously enabled display heads.
+		// This must be a tight loop, as every microsecond counts for a good sync...
+		for (i = 0; i < 6; i++) {
+			if (old_crtc_master_enable & (0x1 << i)) {		
+				// Restart this CRTC by setting its master enable bit (bit 0):
+				WriteRegister(EVERGREEN_CRTC_CONTROL + crtcoff[i], ReadRegister(EVERGREEN_CRTC_CONTROL + crtcoff[i]) | (0x1 << 0));
+			}
+		}
+		
+		// We don't have meaningful residual info. Just assume we succeeded:
+		residual = 0;
+		if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Graphics display heads hopefully resynchronized.\n");
+		
+		// Timestamp:
+		PsychGetAdjustedPrecisionTimerSeconds(&now);
+	} while ((now < abortTimeOut) && (abs(residual) > allowedResidual));
+	
+	// Return residual value if wanted:
+	if (residuals) { 
+		residuals[0] = residual;
+	}
+	
+	if (abs(residual) > allowedResidual) {
+		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Failed to synchronize heads down to the allowable residual of +/- %i scanlines. Final residual %i lines.\n", allowedResidual, residual);
+	}
+	
+	// TODO: Error handling not really worked out...
+	if (residual == INT_MAX) return(PsychError_system);
+	
+	// Done.
+	return(PsychError_none);
+}
+
 // Helper function for PsychOSSynchronizeDisplayScreens().
 static unsigned int GetBeamPosition(int headId)
 {
@@ -1426,11 +1563,12 @@ PsychError PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds, int
 	if (fDeviceType != kPsychRadeon) {
 		printf("PTB-INFO: PsychOSSynchronizeDisplayScreens(): This function is not supported on non-ATI/AMD GPU's! Aborted.\n");
 		return(PsychError_unimplemented);
-	} else {
-		if (isDCE4(screenId)) {
-			printf("PTB-INFO: PsychOSSynchronizeDisplayScreens(): This function is not supported on ATI/AMD GPU's more recent than HD-4000! Aborted.\n");
-			return(PsychError_unimplemented);
-		}
+	}
+
+	// DCE-4 display engine of Evergreen or later?
+	if (isDCE4(screenId)) {
+		// Yes. Use DCE-4 specific sync routine:
+		return(PsychOSSynchronizeDisplayScreensDCE4(numScreens, screenIds, residuals, syncMethod, syncTimeOut, allowedResidual));
 	}
 	
 	// Setup deadline for abortion or repeated retries:
@@ -1493,7 +1631,7 @@ PsychError PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds, int
 		}
 		
 		// All display heads should be disabled now.
-		PsychWaitIntervalSeconds(0.020);
+		PsychWaitIntervalSeconds(0.100);
 		
 		// Query current beamposition and check state:
 		beampos0 = GetBeamPosition(0);
@@ -1565,9 +1703,6 @@ PsychError PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds, int
 
 int PsychOSKDGetBeamposition(int screenId)
 {
-	// Offset of crtc blocks of evergreen gpu's for each of the six possible crtc's:
-	unsigned int crtcoff[6] = { 0x6df0, 0x79f0, 0x105f0, 0x111f0, 0x11df0, 0x129f0 };
-
 	int beampos = -1;
 	int headId  = PsychScreenToHead(screenId);
 
