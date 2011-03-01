@@ -3940,7 +3940,7 @@
 		F57F5DA8041D89A201A80165 /* SCREENTestStructures.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENTestStructures.c; path = ../../../Source/Common/Screen/SCREENTestStructures.c; sourceTree = SOURCE_ROOT; };
 		F58524C30421889A01A80165 /* PsychVersioning.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychVersioning.c; path = ../../../Source/Common/Base/PsychVersioning.c; sourceTree = SOURCE_ROOT; };
 		F58524C5042188B601A80165 /* PsychVersioning.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychVersioning.h; path = ../../../Source/Common/Base/PsychVersioning.h; sourceTree = SOURCE_ROOT; };
-		F58524CB0421B88601A80165 /* MODULEVersion.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = MODULEVersion.c; path = ../../../Source/Common/Screen/MODULEVersion.c; sourceTree = SOURCE_ROOT; };
+		F58524CB0421B88601A80165 /* MODULEVersion.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = MODULEVersion.c; path = ../../../Source/Common/Base/MODULEVersion.c; sourceTree = SOURCE_ROOT; };
 		F598839303F9A74F01A80168 /* PsychRects.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychRects.h; path = ../../../Source/Common/Screen/PsychRects.h; sourceTree = SOURCE_ROOT; };
 		F598839503F9A78801A80168 /* PsychRects.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychRects.c; path = ../../../Source/Common/Screen/PsychRects.c; sourceTree = SOURCE_ROOT; };
 		F5AF1EE403B3C673017A7028 /* PsychScreenGlue.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychScreenGlue.h; path = ../../../Source/OSX/Screen/PsychScreenGlue.h; sourceTree = SOURCE_ROOT; };
@@ -5561,7 +5561,6 @@
 		2FC12E7E0743F36800991CF0 /* Subcommands */ = {
 			isa = PBXGroup;
 			children = (
-				F58524CB0421B88601A80165 /* MODULEVersion.c */,
 				2FB6EED407B88314000CAF40 /* SCREENBlendFunction.c */,
 				2F47161707A81674009DDBA2 /* SCREENClearTimeList.c */,
 				F569F254038E2C77017A7028 /* SCREENClose.c */,
@@ -5986,6 +5985,7 @@
 				2FA80D3706B056A900112E7A /* PsychAuthors.c */,
 				F569F227038E2B6B017A7028 /* PsychError.c */,
 				2FE20DD606093D4900FDE06D /* PsychInstrument.c */,
+				F58524CB0421B88601A80165 /* MODULEVersion.c */,
 				F569F22A038E2B6B017A7028 /* MiniBox.c */,
 				F569F22D038E2B6B017A7028 /* PsychInit.c */,
 				F569F22C038E2B6B017A7028 /* ProjectTable.c */,

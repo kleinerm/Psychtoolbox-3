@@ -46,9 +46,7 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("SetAngle", &PSYCHKINECTSetAngle));
 
 	//report the version
-	#if PSYCH_SYSTEM == PSYCH_OSX
 	PsychErrorExit(PsychRegister("Version", &MODULEVersion));
-	#endif
 
 	//register the module name & authors:
 	PsychErrorExit(PsychRegister("PsychKinect", NULL));

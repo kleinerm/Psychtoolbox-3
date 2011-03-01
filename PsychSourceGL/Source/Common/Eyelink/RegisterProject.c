@@ -45,12 +45,8 @@ PsychError PsychModuleInit(void)
 	// Register the module name
 	PsychErrorExitMsg(PsychRegister("Eyelink", NULL), "Failed to register Eyelink Module name!");
 
-	// Report the version: For some reason MODULEVersion.c seems to be
-	// missing from the source. Don't know why it works on OS-X, maybe
-	// it doesn't but we don't notice due to weak-linking?
-	#if PSYCH_SYSTEM == PSYCH_OSX
+	// Report the version:
 	PsychErrorExit(PsychRegister("Version",  &MODULEVersion));
-	#endif
 
 	// Register sub-commands
 	PsychErrorExit(PsychRegister("ButtonStates",		&EyelinkButtonStates));

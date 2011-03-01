@@ -41,11 +41,8 @@ PsychError PsychModuleInit(void)
 	//is invoked with no arguments:
 	PsychErrorExit(PsychRegister(NULL,  &GETSECSGetSecs));
         
-        //report the version
-
-        #if PSYCH_SYSTEM == PSYCH_OSX
+	//report the version
 	PsychErrorExit(PsychRegister("Version",  &MODULEVersion));
-        #endif
 
 	//register the module name
 	PsychErrorExit(PsychRegister("GetSecs", NULL));

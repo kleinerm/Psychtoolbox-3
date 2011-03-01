@@ -36,9 +36,7 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("YieldSecs", &WAITSECSYieldSecs));
 	
 	//report the version
-        #if PSYCH_SYSTEM == PSYCH_OSX
 	PsychErrorExit(PsychRegister("Version", &MODULEVersion));
-	#endif
 
 	//register the module name
 	PsychErrorExit(PsychRegister("WaitSecs", NULL));

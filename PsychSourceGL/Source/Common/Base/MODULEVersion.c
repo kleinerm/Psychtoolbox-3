@@ -12,7 +12,7 @@
  
   DESCRIPTION:
   
-  Returns the version of Screen in a struct.  This includes the build number
+  Returns the version of a module in a struct. This includes the build number
   
   TO DO:
 
