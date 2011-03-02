@@ -560,13 +560,13 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
 				}
 
 				inputIndex = i;
-				devices[i].deviceIndex = classIndex * 10000 + inputIndex;
-				devices[i].classIndex = classIndex;
-				devices[i].inputIndex = inputIndex;
-				sprintf(devices[i].deviceClassName, "%s", className);
-				sprintf(devices[i].deviceHandle, "%s", port_str);
-				sprintf(devices[i].deviceSelectorProperty, "%s", devHandlePropName);
-				sprintf(devices[i].deviceVideoPlugin, "%s", srcname);
+				devices[ntotal].deviceIndex = classIndex * 10000 + inputIndex;
+				devices[ntotal].classIndex = classIndex;
+				devices[ntotal].inputIndex = inputIndex;
+				sprintf(devices[ntotal].deviceClassName, "%s", className);
+				sprintf(devices[ntotal].deviceHandle, "%s", port_str);
+				sprintf(devices[ntotal].deviceSelectorProperty, "%s", devHandlePropName);
+				sprintf(devices[ntotal].deviceVideoPlugin, "%s", srcname);
 
 				// Query and assign device specific parameters:
 				pstring = NULL;
@@ -575,11 +575,11 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
 				}
 				
 				if (pstring) {
-					sprintf(devices[i].device, "%s", pstring);
+					sprintf(devices[ntotal].device, "%s", pstring);
 					g_free(pstring);
 				}
 				else {
-					sprintf(devices[i].device, "%s", port_str);
+					sprintf(devices[ntotal].device, "%s", port_str);
 				}
 				
 				pstring = NULL;
@@ -588,11 +588,11 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
 				}
 				
 				if (pstring) {
-					sprintf(devices[i].devicePath, "%s", pstring);
+					sprintf(devices[ntotal].devicePath, "%s", pstring);
 					g_free(pstring);
 				}
 				else {
-					sprintf(devices[i].devicePath, "%s", port_str);
+					sprintf(devices[ntotal].devicePath, "%s", port_str);
 				}
 				
 				pstring = NULL;
@@ -601,19 +601,19 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
 				}
 				
 				if (pstring) {
-					sprintf(devices[i].deviceName, "%s", pstring);
+					sprintf(devices[ntotal].deviceName, "%s", pstring);
 					g_free(pstring);
 				}
 				else {
-					sprintf(devices[i].deviceName, "%s", port_str);
+					sprintf(devices[ntotal].deviceName, "%s", port_str);
 				}
 
 				pstring = NULL;
 				if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "guid")) {
 					g_object_get(G_OBJECT(videosource), "guid", &deviceURI, NULL);
-					devices[i].deviceURI = deviceURI;
+					devices[ntotal].deviceURI = deviceURI;
 				} else {
-					devices[i].deviceURI = 0;
+					devices[ntotal].deviceURI = 0;
 				}
 
 				pstring = NULL;
@@ -743,7 +743,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 				mydevice = &devices[i];
 				break;
 			}
-		}		
+		}
 	}
 	else {
 		// No: Code wants us to return struct array with all enumerated
@@ -941,8 +941,11 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		
 		// Assign a specific input video source URI name if possible:
 		if (theDevice && (theDevice->classIndex  < 5)) sprintf(config, "v4l2://%s", device_name);
-		if (theDevice && (theDevice->classIndex == 5)) sprintf(config, "dv://%s", device_name);
-		if (theDevice && (theDevice->classIndex == 6)) sprintf(config, "hdv://%s", device_name);
+		// DV1394 and HDV1394 only encode the port property in their URI, not the GUID. Therefore
+		// we can not select a camera by GUID if we have to use playbin2 instead of camerabin.
+		// Do the best we can do: Select the generic "default camera" URI for now:
+		if (theDevice && (theDevice->classIndex == 5)) sprintf(config, "dv://");
+		if (theDevice && (theDevice->classIndex == 6)) sprintf(config, "hdv://");
 		
 		if (PsychPrefStateGet_Verbosity() > 1) {
 			printf("PTB-WARNING: Could not use GStreamer 'camerabin' plugin for videocapture. Will use less powerful fallback path.\n");
