@@ -741,7 +741,6 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 		for (i=0; i < ntotal; i++) {
 			if (devices[i].deviceIndex == deviceIndex) {
 				mydevice = &devices[i];
-				device_name = strdup((const char*) devices[i].deviceHandle);
 				break;
 			}
 		}		
@@ -763,7 +762,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 			PsychSetStructArrayStringElement("Device", i, devices[i].device, devs);
 			PsychSetStructArrayStringElement("DevicePath", i, devices[i].devicePath, devs);
 			PsychSetStructArrayStringElement("DeviceName", i, devices[i].deviceName, devs);
-			PsychSetStructArrayDoubleElement("GUID", i,  devices[i].deviceURI, devs);
+			PsychSetStructArrayStringElement("GUID", i,  (devices[i].deviceURI > 0) ? devices[i].deviceHandle : "0", devs);
 			PsychSetStructArrayStringElement("DevicePlugin", i, devices[i].deviceVideoPlugin, devs);
 			PsychSetStructArrayStringElement("DeviceSelectorProperty", i, devices[i].deviceSelectorProperty, devs);
 		}
@@ -940,9 +939,10 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		
 		camera = gst_element_factory_make ("playbin2", "ptbvideocapturepipeline");
 		
-		// Assign a specific input video source name on Linux. On other operating systems,
-		// the user has no choice but to use the auto-assigned default capture device:
-		if (PSYCH_SYSTEM == PSYCH_LINUX) sprintf(config, "v4l2://%s", device_name);
+		// Assign a specific input video source URI name if possible:
+		if (theDevice && (theDevice->classIndex  < 5)) sprintf(config, "v4l2://%s", device_name);
+		if (theDevice && (theDevice->classIndex == 5)) sprintf(config, "dv://%s", device_name);
+		if (theDevice && (theDevice->classIndex == 6)) sprintf(config, "hdv://%s", device_name);
 		
 		if (PsychPrefStateGet_Verbosity() > 1) {
 			printf("PTB-WARNING: Could not use GStreamer 'camerabin' plugin for videocapture. Will use less powerful fallback path.\n");
