@@ -544,10 +544,20 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
 			for(i = 0; i < n; i++) {
 				// Get device handle:
 				dev = g_value_array_get_nth(viddevs, i);
-				sprintf(port_str, "%s", (const char*) g_value_get_string(dev));
+				if (G_VALUE_HOLDS_STRING(dev)) {
+					sprintf(port_str, "%s", (const char*) g_value_get_string(dev));
 
-				// Select it for further probing:
-				g_object_set(G_OBJECT(videosource), devHandlePropName, port_str, NULL);
+					// Select it for further probing:
+					g_object_set(G_OBJECT(videosource), devHandlePropName, port_str, NULL);
+				}
+
+				if (G_VALUE_HOLDS_UINT64(dev)) {
+					deviceURI = g_value_get_uint64(dev);
+
+					// Select it for further probing:
+					g_object_set(G_OBJECT(videosource), devHandlePropName, deviceURI, NULL);
+					sprintf(port_str, "%llu", deviceURI);
+				}
 
 				inputIndex = i;
 				devices[i].deviceIndex = classIndex * 10000 + inputIndex;
@@ -753,8 +763,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 			PsychSetStructArrayStringElement("Device", i, devices[i].device, devs);
 			PsychSetStructArrayStringElement("DevicePath", i, devices[i].devicePath, devs);
 			PsychSetStructArrayStringElement("DeviceName", i, devices[i].deviceName, devs);
-			sprintf(port_str, "%8x", devices[i].deviceURI);
-			PsychSetStructArrayStringElement("GUID", i,	port_str, devs);
+			PsychSetStructArrayDoubleElement("GUID", i,  devices[i].deviceURI, devs);
 			PsychSetStructArrayStringElement("DevicePlugin", i, devices[i].deviceVideoPlugin, devs);
 			PsychSetStructArrayStringElement("DeviceSelectorProperty", i, devices[i].deviceSelectorProperty, devs);
 		}
@@ -838,7 +847,10 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		sprintf(device_name, "%s", theDevice->deviceHandle);
 		sprintf(plugin_name, "%s", theDevice->deviceVideoPlugin);
 		sprintf(prop_name, "%s", theDevice->deviceSelectorProperty);
-		
+		if (theDevice->deviceURI > 0) {
+			sprintf(device_name, "%llu", theDevice->deviceURI);
+		}
+
 		if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Trying to open video capture device with deviceIndex %i [%s].\n", deviceIndex, device_name);
 	}
 
@@ -967,9 +979,14 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 			}
 
 			// Attach correct video input device to it:
-			if ((config[0] != 0) && (prop_name[0] != 0)) {
+			if ((config[0] != 0) && (prop_name[0] != 0) && (theDevice->deviceURI == 0)) {
 				if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device '%s' as video input [Property %s].\n", config, prop_name);
 				g_object_set(G_OBJECT(videosource), prop_name, config, NULL);
+			}
+
+			if ((theDevice->deviceURI > 0) && (prop_name[0] != 0)) {
+				if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device with guid '%llu' as video input [Property %s].\n", theDevice->deviceURI, prop_name);
+				g_object_set(G_OBJECT(videosource), prop_name, theDevice->deviceURI, NULL);
 			}
 		}
 		
