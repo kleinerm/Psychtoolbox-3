@@ -517,7 +517,7 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
 	
 	// Create video source plugin, define class name:
 	videosource = gst_element_factory_make(srcname, "ptb_videosource");
-	sprintf(class_str, className);
+	sprintf(class_str, "%s", className);
 
 	// Nothing to do if no such video plugin available:
 	if (!videosource) return;
@@ -533,16 +533,8 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
 	}
 	
 	if (probe) {
-		// Retrieve array of available video input device names, aka
-		// "device-name" property:
-		//if ((PSYCH_SYSTEM != PSYCH_LINUX) && g_object_class_find_property(G_OBJECT_GET_CLASS(probe), "device-name")) {
-		//	viddevs = gst_property_probe_probe_and_get_values_name(probe, "device-name");
-		//}
-
-		//if (!viddevs) {
 		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Probing '%s' property...\n", devHandlePropName);
 		viddevs = gst_property_probe_probe_and_get_values_name(probe, devHandlePropName);
-		//}
 
 		if (viddevs) {
 			// Assign count of available devices:
@@ -684,9 +676,6 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 
 	// Linux specific setup path:
 	if (PSYCH_SYSTEM == PSYCH_LINUX) {
-		// Use autovideosrc to probe the default source:
-		PsychGSEnumerateVideoSourceType("autovideosrc", 0, "AutoVideoSource", "device", 0);
-
 		// Try Video4Linux-II camera source:
 		PsychGSEnumerateVideoSourceType("v4l2camsrc", 1, "Video4Linux2-CameraSource", "device", 0);
 
@@ -695,9 +684,6 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 	}
 
 	if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
-		// Use autovideosrc to probe the default source:
-		PsychGSEnumerateVideoSourceType("autovideosrc", 0, "AutoVideoSource", "device", 0);
-
 		// Try Windows kernel streaming source:
 		PsychGSEnumerateVideoSourceType("ksvideosrc", 1, "Windows WDM kernel streaming", "device-name", 0);
 
@@ -706,9 +692,6 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 	}
 	
 	if (PSYCH_SYSTEM == PSYCH_OSX) {
-		// Use autovideosrc to probe the default source:
-		PsychGSEnumerateVideoSourceType("autovideosrc", 0, "AutoVideoSource", "device", 0);
-
 		// Try OSX Quicktime sequence grabber video source:
 		PsychGSEnumerateVideoSourceType("osxvideosrc", 1, "OSXQuicktimeSequenceGrabber", "device", 0);
 	}
@@ -720,7 +703,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 	PsychGSEnumerateVideoSourceType("hdv1394src", 6, "HDV1394", "guid", 1);
 	
 	// Try IIDC-1394 Cameras:
-	// PsychGSEnumerateVideoSourceType("1394src", 7, "1394-IIDC", "guid", 1);
+	// Does not work, no property probe interface: PsychGSEnumerateVideoSourceType("dc1394src", 7, "1394-IIDC", "camera-number", 1);
 
 	if (ntotal <= 0) {
 		if (PsychPrefStateGet_Verbosity() > 4) {
