@@ -1481,6 +1481,9 @@ static PsychError PsychOSSynchronizeDisplayScreensDCE4(int *numScreens, int* scr
 			}
 		}
 		
+		// Need realtime priority for following synchronized start to minimize delays:
+		PsychRealtimePriority(true);
+
 		// Sleep for 1 second: This is a blocking call, ie. the thread goes to sleep and may wakeup a bit later:
 		PsychWaitIntervalSeconds(1);
 		
@@ -1493,6 +1496,9 @@ static PsychError PsychOSSynchronizeDisplayScreensDCE4(int *numScreens, int* scr
 			}
 		}
 		
+		// Done with realtime bits:
+		PsychRealtimePriority(false);
+
 		// We don't have meaningful residual info. Just assume we succeeded:
 		residual = 0;
 		if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Graphics display heads hopefully resynchronized.\n");
