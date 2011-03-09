@@ -1,12 +1,18 @@
-function [spd, qual] = PR655measspd(S)
-% [spd,qual] = PR655measspd(S)
+function [spd, qual] = PR655measspd(S,syncMode)
+% [spd,qual] = PR655measspd(S,[syncMode])
 %
 % Make a measurement of the spectrum.
 % 
 % 01/16/09    tbc   Adapted from PR650Toolbox for use with PR655
 % 10/26/10    dhb   Handle sync failure a little better.
+% 3/8/11      dhb  Pass syncMode option to speed things up for displays where it doesn't work.
 
 global g_serialPort;
+
+% Handle defaults
+if nargin < 2 || isempty(syncMode)
+    syncMode = 'on';
+end
 
 % Check for initialization
 if isempty(g_serialPort)
@@ -21,14 +27,17 @@ end
 % Initialize
 timeout = 30;
 
-% See if we can sync to the source
-% and set sync mode appropriately.
-syncFreq = PR655getsyncfreq;
-if ~isempty(syncFreq) && syncFreq ~= 0
-	PR655write('SS1');
+% See if we can sync to the source and set sync mode appropriately.
+if (strcmp(syncMode,'on'))
+    syncFreq = PR655getsyncfreq;
+    if ~isempty(syncFreq) && syncFreq ~= 0
+        PR655write('SS1');
+    else
+        PR655write('SS0');
+        disp('Warning: Could not sync to source.');
+    end
 else
     PR655write('SS0');
-    disp('Warning: Could not sync to source.');
 end
 
 % Do raw read

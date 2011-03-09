@@ -1,14 +1,24 @@
-function [spd, qual] = PR650measspd(S)
-% [spd,qual] = PR650measspd(S)
+function [spd, qual] = PR650measspd(S,syncMode)
+% [spd,qual] = PR650measspd(S,[syncMode])
 %
 % Make a measurement of the spectrum.  Tries to be smart
-% about using sync or not.
+% about using sync or not, unless it is turned off by
+% passed variable.
+%
+% syncMode = 'on':  Try to sync integration time with display.  Retry without if it fails. (default)
+% syncMode = 'off': Don't try to sync.
 % 
 % 8/26/10  dhb  Add DEBUG option to figure out why this dies sometimes.
+% 3/8/11   dhb  Pass syncMode option to speed things up for displays where it doesn't work.
 
 DEBUG = 1;
 
 global g_serialPort;
+
+% Handle defaults
+if nargin < 2 || isempty(syncMode)
+    syncMode = 'on';
+end
 
 % Check for initialization
 if isempty(g_serialPort)
@@ -24,11 +34,15 @@ end
 timeout = 30;
 
 % See if we can sync to the source and set sync mode appropriately.
-syncFreq = PR650getsyncfreq;
-if ~isempty(syncFreq)
-	PR650setsyncfreq(1);
+if (strcmp(syncMode,'on'))
+    syncFreq = PR650getsyncfreq;
+    if ~isempty(syncFreq)
+        PR650setsyncfreq(1);
+    else
+        PR650setsyncfreq(0);
+    end
 else
-	PR650setsyncfreq(0);
+    PR650setsyncfreq(0);
 end
 
 % Do raw read

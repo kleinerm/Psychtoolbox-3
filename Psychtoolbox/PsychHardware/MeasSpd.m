@@ -1,5 +1,5 @@
-function [spectrum,qual] = MeasSpd(S,meterType)
-% [spectrum,qual] = MeasSpd([S],[meterType])
+function [spectrum,qual] = MeasSpd(S,meterType,syncMode)
+% [spectrum,qual] = MeasSpd([S],[meterType],[syncMode])
 %
 % This routine splines the raw return values from the
 % meter to the wavelength sampling S.  The splining
@@ -12,7 +12,10 @@ function [spectrum,qual] = MeasSpd(S,meterType)
 %
 % meterType == 1:  PR650 (default)
 % meterType == 4:  PR655
-
+%
+% syncMode = 'on':  Try to sync integration time with display, if meter supports it (default)
+% syncMode = 'off': Don't try to sync, even if meter supports it.
+%
 % 9/3/93		dhb		Added default handling of S.
 % 9/14/93		jms		Added global no hardware switch
 % 10/1/93		dhb		Removed print on error, passed qual on up
@@ -33,8 +36,12 @@ function [spectrum,qual] = MeasSpd(S,meterType)
 % 5/21/02       dgp   Tidied up code, removing superfluous COMPUTER conditional.
 % 2/26/03       dhb   Change definition of PR-650 meter type to 1.
 % 8/26/10       dhb   The PR-655 line called the PR-650 code.  Change to call PR-655
+% 3/8/11        dhb   Pass syncMode option to speed things up for displays where it doesn't work.
 
 % Handle defaults
+if nargin < 3 || isempty(syncMode)
+    syncMode = 'on';
+end
 if nargin < 2 || isempty(meterType)
     meterType = 1;
 end
@@ -45,10 +52,11 @@ end
 switch meterType
     % PR-650
     case 1,
-        [spectrum, qual] = PR650measspd(S);
-        % PR-655
+        [spectrum, qual] = PR650measspd(S,syncMode);
+        
+    % PR-655
     case 4,
-        [spectrum, qual] = PR655measspd(S);
+        [spectrum, qual] = PR655measspd(S,syncMode);
     otherwise,
         error('Unknown meter type');
 end
