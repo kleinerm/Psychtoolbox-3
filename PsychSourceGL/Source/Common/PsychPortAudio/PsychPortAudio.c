@@ -181,9 +181,11 @@ typedef struct PsychPADevice {
 PsychPADevice audiodevices[MAX_PSYCH_AUDIO_DEVS];
 unsigned int  audiodevicecount = 0;
 unsigned int  verbosity = 4;
-double		  yieldInterval = 0.001;	// How long to wait in calls to PsychYieldIntervalSeconds().
-psych_bool		  uselocking = TRUE;		// Use Mutex locking and signalling code for thread synchronization?
-psych_bool		  lockToCore1 = TRUE;		// Lock all engine threads to run on cpu core 1 on Windows to work around broken TSC sync on multi-cores?
+double        yieldInterval = 0.001;            // How long to wait in calls to PsychYieldIntervalSeconds().
+psych_bool    uselocking = TRUE;		// Use Mutex locking and signalling code for thread synchronization?
+psych_bool    lockToCore1 = TRUE;		// Lock all engine threads to run on cpu core 1 on Windows to work around broken TSC sync on multi-cores?
+psych_bool    pulseaudio_autosuspend = TRUE;    // Should we try to suspend the Pulseaudio sound server on Linux while we're active?
+psych_bool    pulseaudio_isSuspended = FALSE;   // Is PulseAudio suspended by us?
 
 double debugdummy1, debugdummy2;
 
@@ -1703,7 +1705,7 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "count = PsychPortAudio('GetOpenDeviceCount');";
 	synopsis[i++] = "devices = PsychPortAudio('GetDevices' [,devicetype] [, deviceIndex]);";
 	synopsis[i++] = "\nGeneral settings:\n";
-	synopsis[i++] = "[oldyieldInterval, oldMutexEnable, lockToCore1] = PsychPortAudio('EngineTunables' [, yieldInterval] [, MutexEnable] [, lockToCore1]);";
+	synopsis[i++] = "[oldyieldInterval, oldMutexEnable, lockToCore1, audioserver_autosuspend] = PsychPortAudio('EngineTunables' [, yieldInterval] [, MutexEnable] [, lockToCore1] [, audioserver_autosuspend]);";
 	synopsis[i++] = "oldRunMode = PsychPortAudio('RunMode', pahandle [,runMode]);";
 	synopsis[i++] = "\n\nDevice setup and shutdown:\n";
 	synopsis[i++] = "pahandle = PsychPortAudio('Open' [, deviceid][, mode][, reqlatencyclass][, freq][, channels][, buffersize][, suggestedLatency][, selectchannels][, specialFlags=0]);";
@@ -1814,6 +1816,19 @@ PsychError PsychPortAudioExit(void)
 		else {
 			pa_initialized = FALSE;
 		}
+
+		// Restart suspended PulseAudio server if it was suspended by us:
+		if (pulseaudio_isSuspended) {
+			// Call external "pactl" utility via shell to ask
+			// the server to resume all sinks and sources.
+			// These calls should fail silently if either the
+			// pactl utility isn't installed or no sound
+			// server is running:
+			if (verbosity > 4) printf("PTB-INFO: Trying to resume potentially suspended PulseAudio server.\n");
+			PsychRuntimeEvaluateString("system('pactl suspend-sink 0');");
+			PsychRuntimeEvaluateString("system('pactl suspend-source 0');");
+			pulseaudio_isSuspended = FALSE;
+		}
 	}
 
 	// Detach our callback function for low-level debug output:
@@ -1829,6 +1844,25 @@ void PsychPortAudioInitialize(void)
 	
 	// PortAudio already initialized?
 	if (!pa_initialized) {
+		// No - Initialize:
+
+		// Suspend possibly running PulseAudio sound server if requested.
+		// We do this before PortAudio initialization, so the PulseAudio
+		// server can't interfere with device enumeration as done during
+		// PortAudio init. This is a Linux only thing...
+		if (pulseaudio_autosuspend && (PSYCH_SYSTEM == PSYCH_LINUX)) {
+			// Call external "pactl" utility via runtime to ask
+			// the server to suspend all sinks and sources,
+			// hopefully releasing the underlying low-level audio
+			// devices for use by use. These calls should fail silently
+			// if either the pactl utility isn't installed or no sound
+			// server is running:
+			if (verbosity > 4) printf("PTB-INFO: Trying to suspend potentially running PulseAudio server.\n");
+			PsychRuntimeEvaluateString("system('pactl suspend-sink 1');");
+			PsychRuntimeEvaluateString("system('pactl suspend-source 1');");
+			pulseaudio_isSuspended = TRUE;
+		}
+
 		// Setup callback function for low-level debug output:
 		PaUtil_SetDebugPrintFunction(PALogger);
 
@@ -2003,8 +2037,11 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
 	if (deviceid == -1) {
 		// Default devices requested:
-		if (latencyclass == 0) {
-			// High latency mode: Simply pick system default devices:
+		if ((latencyclass == 0) && (PSYCH_SYSTEM != PSYCH_LINUX)) {
+			// High latency mode on non-Linux. Simply pick system default devices.
+			// We don't pick these on Linux, because we'd end up with the ancient
+			// OSS, which is almost always a suboptimal choice for our purpose, even
+			// in high-latency mode.
 			outputParameters.device = Pa_GetDefaultOutputDevice(); /* Default output device. */
 			inputParameters.device  = Pa_GetDefaultInputDevice(); /* Default input device. */
 		}
@@ -4914,7 +4951,7 @@ PsychError PSYCHPORTAUDIOSetLoop(void)
  */
 PsychError PSYCHPORTAUDIOEngineTunables(void) 
 {
- 	static char useString[] = "[oldyieldInterval, oldMutexEnable, lockToCore1] = PsychPortAudio('EngineTunables' [, yieldInterval] [, MutexEnable] [, lockToCore1]);";
+ 	static char useString[] = "[oldyieldInterval, oldMutexEnable, lockToCore1, audioserver_autosuspend] = PsychPortAudio('EngineTunables' [, yieldInterval] [, MutexEnable] [, lockToCore1] [, audioserver_autosuspend]);";
 	static char synopsisString[] = 
 		"Return, and optionally set low-level tuneable driver parameters.\n"
 		"The driver must be idle, ie., no audio device must be open, if you want to change tuneables! "
@@ -4935,26 +4972,43 @@ PsychError PSYCHPORTAUDIOEngineTunables(void)
 		"timestamping due to bugs in some microprocessors clocks and in Microsoft Windows itself. If you're "
 		"confident/certain that your system is bugfree wrt. to its clocks and want to get a bit more "
 		"performance out of multi-core machines, you can disable this. You must perform this setting before "
-		"you open the first audio device the first time, otherwise the setting might be ignored.\n";
+		"you open the first audio device the first time, otherwise the setting might be ignored.\n"
+		"'audioserver_autosuspend' - Enable (1) or Disable (0) automatic suspending of running desktop "
+		"audio servers, e.g., PulseAudio, while PsychPortAudio is active. Default is (1) - suspend while "
+		"PsychPortAudio does its thing. Desktop sound servers like the commonly used PulseAudio server "
+		"can interfere with low level audio device access and low-latency / high-precision audio timing. "
+		"For this reason it is a good idea to switch them to standby (suspend) while a PsychPortAudio "
+		"session is active. Sometimes this isn't needed or not even desireable. Therefore this option "
+		"allows to inhibit this automatic suspending of audio servers.\n";
 
 	static char seeAlsoString[] = "Open ";	 
 	
-	int mutexenable, mylockToCore1;
+	int mutexenable, mylockToCore1, mysuspend;
 	double myyieldInterval;
 
 	// Setup online help: 
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
 	
-	PsychErrorExit(PsychCapNumInputArgs(3));     // The maximum number of inputs
+	PsychErrorExit(PsychCapNumInputArgs(4));     // The maximum number of inputs
 	PsychErrorExit(PsychRequireNumInputArgs(0)); // The required number of inputs	
-	PsychErrorExit(PsychCapNumOutputArgs(3));	 // The maximum number of outputs
-
-	// Make sure PortAudio is online:
-	PsychPortAudioInitialize();
+	PsychErrorExit(PsychCapNumOutputArgs(4));    // The maximum number of outputs
 
 	// Make sure no settings are changed while an audio device is open:
 	if ((PsychGetNumInputArgs() > 0) && (audiodevicecount > 0)) PsychErrorExitMsg(PsychError_user, "Tried to change low-level engine parameter while at least one audio device is open! Forbidden!");
+
+	// Return current/old audioserver_suspend:
+	PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) ((pulseaudio_autosuspend) ? 1 : 0));
+
+	// Get optional new audioserver_suspend:
+	if (PsychCopyInIntegerArg(4, kPsychArgOptional, &mysuspend)) {
+		if (mysuspend < 0 || mysuspend > 1) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'audioserver_autosuspend' provided. Valid are 0 and 1.");
+		pulseaudio_autosuspend = (mysuspend > 0) ? TRUE : FALSE;
+		if (verbosity > 3) printf("PsychPortAudio: INFO: Automatic suspending of desktop audio servers %s.\n", (pulseaudio_autosuspend) ? "enabled" : "disabled");
+	}
+
+	// Make sure PortAudio is online: Must be done after setup of audioserver_suspend!
+	PsychPortAudioInitialize();
 
 	// Return old yieldInterval:
 	PsychCopyOutDoubleArg(1, kPsychArgOptional, yieldInterval);
@@ -4985,7 +5039,6 @@ PsychError PSYCHPORTAUDIOEngineTunables(void)
 		lockToCore1 = (mylockToCore1 > 0) ? TRUE : FALSE;
 		if (verbosity > 3) printf("PsychPortAudio: INFO: Locking of all engine threads to cpu core 1 %s.\n", (lockToCore1) ? "enabled" : "disabled");
 	}
-
 
 	return(PsychError_none);
 }
