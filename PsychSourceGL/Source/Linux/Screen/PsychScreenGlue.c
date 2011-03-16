@@ -113,7 +113,7 @@ static psych_bool isDCE4(int screenId)
 	// check which range of PCI device id's is covered by the DCE-4 chips and
 	// code up matching rules here. This should do for now...
 	
-	// Cedar, Redwood, Juniper, Cypress, Hemlock in 0x6xxx range:
+	// Caiman, Cedar, Redwood, Juniper, Cypress, Hemlock in 0x6xxx range:
 	if ((fPCIDeviceId & 0xF000) == 0x6000) isDCE4 = true;
 	
 	// Palm in 0x98xx range:
