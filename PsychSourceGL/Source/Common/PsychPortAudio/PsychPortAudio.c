@@ -131,14 +131,14 @@ typedef struct PsychPADevice {
 	volatile unsigned int reqstate;		// Requested state of the stream, as opposed to current 'state'. Written by main-thread, read & processed by paCallback.
 	double	 repeatCount;		// Number of repetitions: -1 = Loop forever, 1 = Once, n = n repetitions.
 	float*	 outputbuffer;		// Pointer to float memory buffer with sound output data.
-	int		 outputbuffersize;	// Size of output buffer in bytes.
+	unsigned int outputbuffersize;	// Size of output buffer in bytes.
 	unsigned int loopStartFrame; // Start of current playloop in frames.
 	unsigned int loopEndFrame;  // End of current playloop in frames.
 	unsigned int playposition;	// Current playposition in samples since start of playback for current buffer and playloop (not frames, not bytes!)
 	unsigned int writeposition; // Current writeposition in samples since start of playback (for incremental filling).
 	unsigned int totalplaycount; // Total running count of samples since start of playback, accumulated over all buffers and playloop(not frames, not bytes!)
 	float*	 inputbuffer;		// Pointer to float memory buffer with sound input data (captured sound data).
-	int		 inputbuffersize;	// Size of input buffer in bytes.
+	unsigned int inputbuffersize;	// Size of input buffer in bytes.
 	unsigned int recposition;	// Current record position in samples since start of capture.
 	unsigned int readposition;  // Last read-out sample since start of capture.
 	unsigned int outchannels;	// Number of output channels.
@@ -161,14 +161,14 @@ typedef struct PsychPADevice {
 	// Master-Slave virtual device related:
 	int*	outputmappings;		// Mapping array of output slave channels to associated master channels for mix and merge. NULL on master devices.
 	int*	inputmappings;		// Mapping array of input slave channels to associated master channels for distribution. NULL on master devices.
-	int		slaveCount;			// Number of attached slave devices. Zero on slave devices.
+	int	slaveCount;			// Number of attached slave devices. Zero on slave devices.
 	int*	slaves;				// Array of pahandle's of all attached slave devices, ie., an array with slaveCount valid (non -1) entries. NULL on slaves.
-	int		pamaster;			// pahandle of master device for a slave. -1 on master devices.
-	int		slaveDirty;			// Flag: 0 means that a slave didn't do anything, so no mixdown/merge by master required. 1 means: Do mixdown/merge.
+	int	pamaster;			// pahandle of master device for a slave. -1 on master devices.
+	int	slaveDirty;			// Flag: 0 means that a slave didn't do anything, so no mixdown/merge by master required. 1 means: Do mixdown/merge.
 	float*	slaveOutBuffer;		// Temporary output buffer for slaves to store their output data. Used as input for output mix/merge. NULL on non-masters.
 	float*	slaveInBuffer;		// Temporary input buffer for slaves to receive their input data. Used as output from distributor. NULL on non-masters.
 	float*	slaveGainBuffer;	// Temporary output buffer for AM modulator slaves to store their gain output data. NULL on non AMModulators for slaves.
-	int		modulatorSlave;		// pahandle of a slave device that acts as a modulator for this device. -1 if none assigned.
+	int	modulatorSlave;		// pahandle of a slave device that acts as a modulator for this device. -1 if none assigned.
 	double	firstsampleonset;	// Cached sample onset time from paCallback.
 	double	cst;				// Cached captured sample onset time from paCallback.
 	double	now;				// Cached invocation time from paCallback.
@@ -195,7 +195,7 @@ psych_bool pa_initialized = FALSE;
 struct PsychPABuffer_Struct {
 	unsigned int locked;		// locked: >= 1 = Buffer in use by some active audio device. 0 = Buffer unused.
 	float*	 outputbuffer;		// Pointer to float memory buffer with sound output data.
-	int		 outputbuffersize;	// Size of output buffer in bytes.
+	unsigned int outputbuffersize;	// Size of output buffer in bytes.
 	unsigned int outchannels;	// Number of channels.
 };
 
@@ -296,7 +296,7 @@ int PsychPACreateAudioBuffer(unsigned int outchannels, unsigned int nrFrames)
 	PsychPAInvalidateBufferReferences(handle);
 
 	// Allocate actual data buffer:
-	bufferList[handle].outputbuffersize = (int) ((outchannels * nrFrames) * sizeof(float));
+	bufferList[handle].outputbuffersize = outchannels * nrFrames * sizeof(float);
 	bufferList[handle].outchannels = outchannels;
 	
 	if (NULL == ( bufferList[handle].outputbuffer = (float*) calloc(1, bufferList[handle].outputbuffersize) )) {
@@ -308,7 +308,7 @@ int PsychPACreateAudioBuffer(unsigned int outchannels, unsigned int nrFrames)
 	return(handle);
 }
 
-// Delte all audio buffers and bufferList itself: Called during shutdown.
+// Delete all audio buffers and bufferList itself: Called during shutdown.
 void PsychPADeleteAllAudioBuffers(void)
 {
 	int i;
@@ -352,7 +352,7 @@ PsychPABuffer* PsychPAGetAudioBuffer(int handle)
 // audiobuffers are active and lock them:
 psych_bool PsychPAUpdateBufferReferences(void)
 {
-	int i, j;
+	unsigned int i, j;
 	psych_bool anylocked = FALSE;
 	
 	// First we reset all locked flags of all buffers:
@@ -655,7 +655,7 @@ int PsychPAProcessSchedule(PsychPADevice* dev, unsigned int *playposition, float
 					// Another child protection:
 					if (outchannels != bufferList[dev->schedule[slotid].bufferhandle].outchannels) {
 						*ret_playoutbuffer = NULL;
-						outsbsize = 0;						
+						outsbsize = 0;
 					}
 				}
 				else {
@@ -1169,11 +1169,11 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		for (i = 0; (i < MAX_PSYCH_AUDIO_SLAVES_PER_DEVICE) && (numSlavesHandled < dev->slaveCount); i++) {
 			// Valid slave slot?
 			slaveId = dev->slaves[i];
-			
+
 			// We skip invalid slots and output capturer slaves:
 			if ((slaveId > -1) && !(audiodevices[slaveId].opmode & kPortAudioIsOutputCapture)) {
 				// Valid slave:
-				
+
 				// Is this device an AM modulator attached to a slave?
 				if (audiodevices[slaveId].opmode & kPortAudioIsAMModulatorForSlave) {
 					// Yes. Mark it as handled, then skip it. It will be called as part
@@ -1181,7 +1181,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 					numSlavesHandled++;
 					continue;
 				}
-				
+
 				// This is a "real" audio slave, not a modulator or such:
 
 				// Gain modulator slave for this real slave attached, valid and active?
@@ -1193,14 +1193,14 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 					(audiodevices[modulatorSlave].opmode & kPortAudioIsAMModulatorForSlave) && (audiodevices[modulatorSlave].state > 0)) {
 					// Yes. Execute it:
 					audiodevices[modulatorSlave].slaveDirty = 0;
-					
+
 					// Prefill buffer with neutral 1.0:
 					tmpBuffer = dev->slaveGainBuffer;
 					for (j = 0; j < dev->batchsize * audiodevices[modulatorSlave].outchannels; j++) *(tmpBuffer++) = 1.0;
-					
+
 					// This will potentially fill the slaveGainBuffer with gain modulation values.
 					// The passed slaveInBuffer is meaningless for a modulator slave and only contains random junk...
-					paCallback( (const void*) dev->slaveInBuffer, (void*) dev->slaveGainBuffer, dev->batchsize, timeInfo, statusFlags, (void*) &(audiodevices[modulatorSlave]));					
+					paCallback( (const void*) dev->slaveInBuffer, (void*) dev->slaveGainBuffer, dev->batchsize, timeInfo, statusFlags, (void*) &(audiodevices[modulatorSlave]));
 				}
 				else {
 					// No. Either no modulator slave or slave not currently active. Signal this
@@ -1211,10 +1211,10 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 				// Skip actual slaves processing if its state is zero == completely inactive.
 				if (audiodevices[slaveId].state > 0) {
 					// Slave is active, need to process it:
-					
+
 					// Reset dirty flag for this slave:
 					audiodevices[slaveId].slaveDirty = 0;
-					
+
 					// Is this a playback slave?
 					if (audiodevices[slaveId].opmode & kPortAudioPlayBack) {
 						// Prefill slaves output buffer with 1.0, a neutral gain value for playback slaves
@@ -1225,7 +1225,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 
 						// Ok, the outbuffer is filled with a neutral 1.0 gain value. This will work
 						// even if no per-slave gain modulation is provided by a modulator slave.
-						
+
 						// Is a modulator slave active and did it write any gain AM values?
 						if ((modulatorSlave > -1) && (audiodevices[modulatorSlave].slaveDirty)) {
 							// Yes. Need to distribute them to proper channels in slaveOutBuffer:
