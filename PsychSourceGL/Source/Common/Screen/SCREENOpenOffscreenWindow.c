@@ -28,6 +28,7 @@
 		2/15/05		awi		Commented out glEnable(GL_BLEND) 
 		1/16/06     mk      Rewritten to initialize offscreen windows as if they were textures with a constant colored background instead of content.
 		1/07/07		mk		Setup path for FBO backed Offscreen windows added: Used if imaging pipeline is active.
+		3/20/11		mk		Make 64-bit clean.
 
 	TO DO:
 
@@ -41,20 +42,23 @@ static char useString[] =  "[windowPtr,rect]=Screen('OpenOffscreenWindow',window
 
 static char synopsisString[] =
     "Open an offscreen window. This is simply an OpenGL texture that is treated "
-    "as a window, so you can draw to it. Offscreen windows should be only used "
-    "to keep old code from OS-9 Psychtoolbox working or if you need to draw to them "
-    "fast. For quickly displaying images, please use the 'MakeTexture' and 'DrawTexture' "
-    "commands. They allow for significantly higher drawing speeds. You can specify a screen "
+    "as a window, so you can draw to it. Offscreen windows should be used "
+    "to keep old code from OS-9 Psychtoolbox working, or if you need an offscreen "
+	"drawing canvas for fast drawing, that you can later use as a texture. "
+    "For quickly displaying premade Matlab image matrices, use the 'MakeTexture' command instead. "
+    "It allow for significantly higher drawing speeds.\nYou can specify a screen "
     "(any windowPtr or a screenNumber>=0) or no screen(screenNumber=-1), but any real screen "
-    "must already have an open Screen window when you call OpenOffscreenWindow. "
+    "must already have an open Screen window when you call OpenOffscreenWindow.\n"
     "\"color\" is the clut index (scalar or [r g b] triplet or [r g b a] quadruple) that you want to poke into "
-    "each pixel as initial background color; default is white. \"rect\" specifies the size of the offscreen window "
+    "each pixel as initial background color; default is white.\n"
+	"\"rect\" specifies the size of the offscreen window "
     "If supplied, \"rect\" must contain at least one pixel. If a windowPtr is supplied, "
     "then \"rect\" defaults to the whole window. "
     "If a screenNumber is supplied then \"rect\" defaults to the whole screen. If a screenNumber of "
     "-1 is supplied, then \"rect\" defaults to the size of the main screen. (In all "
     "cases, subsequent references to this new offscreen window will use its "
-    "coordinates: origin at its upper left.) \"pixelSize\" sets the depth (in bits) of "
+    "coordinates: origin at its upper left.)\n"
+	"\"pixelSize\" sets the depth (in bits) of "
     "each pixel. If you specify no screen (screenNumber=-1) then the "
     "default pixelSize is 32, but you can specify any legal depth: 8, 16, 24, 32. "
     "A pixelSize of 0 or [] is replaced by the default of 32 bits per pixel. If you specify "
@@ -93,17 +97,17 @@ PsychError SCREENOpenOffscreenWindow(void)
     PsychRectType			rect;
     PsychColorType			color;
     PsychColorModeType  	mode; 
-    psych_bool					didWindowOpen;
+    psych_bool				didWindowOpen;
     PsychWindowRecordType	*exampleWindowRecord, *windowRecord, *targetWindow;
-    psych_bool					wasColorSupplied;
+    psych_bool				wasColorSupplied;
     char*					texturePointer;
-    int						xSize, ySize, nbytes;
-    psych_bool					bigendian;
+    size_t					xSize, ySize, nbytes;
+    psych_bool				bigendian;
 	GLubyte					*rpb;
     int						ix;
 	GLenum					fboInternalFormat;
-	psych_bool					needzbuffer;
-	psych_bool					overridedepth = FALSE;
+	psych_bool				needzbuffer;
+	psych_bool				overridedepth = FALSE;
 	int						usefloatformat = 0;
 	int						specialFlags = 0;
 	int						multiSample = 0;
@@ -355,9 +359,9 @@ PsychError SCREENOpenOffscreenWindow(void)
 		
 		// Allocate the texture memory:
 		// We only allocate the amount really needed for given format, aka numMatrixPlanes - Bytes per pixel.
-		xSize = PsychGetWidthFromRect(rect);
-		ySize = PsychGetHeightFromRect(rect);
-		windowRecord->textureMemorySizeBytes = (depth/8) * xSize * ySize;
+		xSize = (size_t) PsychGetWidthFromRect(rect);
+		ySize = (size_t) PsychGetHeightFromRect(rect);
+		windowRecord->textureMemorySizeBytes = ((size_t) (depth/8)) * xSize * ySize;
 		windowRecord->textureMemory = malloc(windowRecord->textureMemorySizeBytes);
 		texturePointer=(char*) windowRecord->textureMemory;
 		// printf("depth=%i xsize=%i ysize=%i mem=%i ptr=%p", depth, xSize, ySize, windowRecord->textureMemorySizeBytes, texturePointer);

@@ -234,7 +234,7 @@ typedef struct _PsychWindowRecordType_{
 	int					screenNumber;   // kPsychUnaffiliated is -1 and means the offscreen window is unaffiliated.
 	PsychWindowIndexType                    windowIndex;
 	void					*surface; 
-	int					surfaceSizeBytes;	// Estimate of used system memory in bytes. Only used for accounting and debugging output.
+	size_t					surfaceSizeBytes;	// Estimate of used system memory in bytes. Only used for accounting and debugging output.
 	PsychRectType              rect;		// Effective rectangle of window -- Normalized to always have top-left corner in (0,0)!
 	PsychRectType			globalrect;		// Same as rect, but not normalized -- Contains real window location in global desktop reference frame.
 	psych_bool					isValid;		//between when we allocate the record and when we fill in values.

@@ -2,25 +2,22 @@
   Psychtoolbox2/Source/Common/PsychMemory.c
   
   AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
+  Allen.Ingling@nyu.edu				awi
+  mario.kleiner@tuebingen.mpg.de	mk
   
   PLATFORMS: All 
   
-  PROJECTS:
-  09/04/02	awi		Screen on Mac OSX
-   
+  PROJECTS: All
 
   HISTORY:
+  
   09/04/02  awi		Wrote it.
+  03/19/11  mk		Make 64-bit clean.
   
   DESCRIPTION:
 
-
   TO DO: 
   
-  		See if we even need this for any reason.  It may be vestigial.  
-	  
-
 */
 
 #include "Psych.h"
@@ -30,13 +27,13 @@ void*  PsychDoubleToPtr(volatile double dptr)
 {
   volatile psych_uint64* iptr = (psych_uint64*) &dptr;
   volatile psych_uint64 ival = *iptr;
-  return((void*) ival);
+  return((void*) ((size_t) ival));
 }
 
 // Convert a memory address pointer into a double value:
 double PsychPtrToDouble(void* ptr)
 {
-  volatile psych_uint64 ival = (psych_uint64) ptr;
+  volatile psych_uint64 ival = (psych_uint64) ((size_t) ptr);
   volatile double* dptr = (double*) &ival;
   volatile double outval = *dptr;
   return(outval);
@@ -45,22 +42,22 @@ double PsychPtrToDouble(void* ptr)
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
 
 // If running on Matlab, we use Matlab's memory manager...
-void *PsychCallocTemp(unsigned long n, unsigned long size)
+void *PsychCallocTemp(size_t n, size_t size)
 {
   void *ret;
   
-  if(NULL==(ret=mxCalloc((size_t)n, (size_t)size))){
+  if(NULL==(ret=mxCalloc(n, size))){
     if(size * n != 0)
       PsychErrorExitMsg(PsychError_outofMemory, NULL);
   }
   return(ret);
 }
 
-void *PsychMallocTemp(unsigned long n)
+void *PsychMallocTemp(size_t n)
 {
   void *ret;
   
-  if(NULL==(ret=mxMalloc((size_t)n))){
+  if(NULL==(ret=mxMalloc(n))){
     if(n!=0)
       PsychErrorExitMsg(PsychError_outofMemory,NULL);
   }
@@ -75,17 +72,17 @@ void *PsychMallocTemp(unsigned long n)
 
 // Enqueues a new record into our linked list of temp. memory buffers.
 // Returns the memory pointer to be passed to rest of Psychtoolbox.
-void* PsychEnqueueTempMemory(void* p, unsigned long n)
+void* PsychEnqueueTempMemory(void* p, size_t n)
 {
   // Add current buffer-head ptr as next-pointer to our new buffer:
-  *((unsigned int*) p) = (unsigned int) PsychTempMemHead;
+  *((size_t*) p) = (size_t) PsychTempMemHead;
 
   // Set our buffer as new head of list:
   PsychTempMemHead = p;
 
   // Add allocated buffer size as 2nd element:
   p = p + sizeof(PsychTempMemHead);
-  *((unsigned long*) p) = n;
+  *((size_t*) p) = n;
 
   // Accounting:
   totalTempMemAllocated += n;
@@ -98,7 +95,7 @@ void* PsychEnqueueTempMemory(void* p, unsigned long n)
   return(p);
 }
 
-void *PsychCallocTemp(unsigned long n, unsigned long size)
+void *PsychCallocTemp(size_t n, size_t size)
 {
   void *ret;
   // MK: This could create an overflow if product n * size is
@@ -106,10 +103,10 @@ void *PsychCallocTemp(unsigned long n, unsigned long size)
   // happens if more than 4 GB of RAM are allocated at once.
   // --> Improbable for PTB, unless someones trying a buffer
   // overflow attack -- PTB would lose there badly anyway...
-  unsigned long realsize = n * size + sizeof(void*) + sizeof(realsize);
+  size_t realsize = n * size + sizeof(void*) + sizeof(realsize);
 
   // realsize has extra bytes allocated for our little header...  
-  if(NULL==(ret=calloc((size_t) 1, (size_t) realsize))) {
+  if(NULL==(ret=calloc((size_t) 1, realsize))) {
     PsychErrorExitMsg(PsychError_outofMemory, NULL);
   }
 
@@ -117,13 +114,13 @@ void *PsychCallocTemp(unsigned long n, unsigned long size)
   return(PsychEnqueueTempMemory(ret, realsize));
 }
 
-void *PsychMallocTemp(unsigned long n)
+void *PsychMallocTemp(size_t n)
 {
   void *ret;
 
   // Allocate some extra bytes for our little header...
-  n=n + sizeof(void*) + sizeof(n);
-  if(NULL==(ret=malloc((size_t) n))){
+  n = n + sizeof(void*) + sizeof(n);
+  if(NULL==(ret=malloc(n))){
     PsychErrorExitMsg(PsychError_outofMemory,NULL);
   }
 
@@ -146,23 +143,23 @@ void *PsychMallocTemp(unsigned long n)
 void PsychFreeTemp(void* ptr)
 {
   void* ptrbackup = ptr;
-  unsigned long* psize = NULL;
-  unsigned int* next = PsychTempMemHead;
-  unsigned int* prevptr = NULL;
+  size_t* psize = NULL;
+  size_t* next = PsychTempMemHead;
+  size_t* prevptr = NULL;
 
   if (ptr == NULL) return;
  
   // Convert ptb supplied pointer ptr into real start
   // of our buffer, including our header:
-  ptr = ptr - sizeof(ptr) - sizeof(unsigned long);
+  ptr = ptr - sizeof(ptr) - sizeof(size_t);
   if (ptr == NULL) return;
 
   if (PsychTempMemHead == ptr) {
     // Special case: ptr is first buffer in queue. Dequeue:
-    PsychTempMemHead = (unsigned int*) *PsychTempMemHead;
+    PsychTempMemHead = (size_t*) *PsychTempMemHead;
 
     // Some accounting:
-    PTBTEMPMEMDEC(((unsigned int*)ptr)[1]);
+    PTBTEMPMEMDEC(((size_t*)ptr)[1]);
 
     // Release it:
     free(ptr);
@@ -174,7 +171,7 @@ void PsychFreeTemp(void* ptr)
   // Walk the whole buffer list until we encounter our buffer:
   while (next != NULL && next!=ptr) {
     prevptr = next;
-    next = (unsigned int*) *next;
+    next = (size_t*) *next;
   }
 
   // Done with search loop. Did we find our buffer?
@@ -202,9 +199,9 @@ void PsychFreeTemp(void* ptr)
 // Master cleanup routine: Frees all allocated memory:
 void PsychFreeAllTempMemory(void)
 {
-  unsigned int* p = NULL;
-  unsigned long* psize = NULL;
-  unsigned int* next = PsychTempMemHead;
+  size_t* p = NULL;
+  size_t* psize = NULL;
+  size_t* next = PsychTempMemHead;
 
   // Walk our whole buffer list and release all buffers on it:
   while (next != NULL) {
@@ -213,7 +210,7 @@ void PsychFreeAllTempMemory(void)
     p = next;
 
     // Update next to point to the next buffer to release:
-    next = (unsigned int*) *p;
+    next = (size_t*) *p;
 
     // Some accounting:
     PTBTEMPMEMDEC(p[1]);
@@ -246,5 +243,3 @@ void PsychFreeAllTempMemory(void)
 }
 
 #endif
-
-

@@ -66,7 +66,7 @@ static GLenum  texturetarget = 0;
 
 // A rough guess of how much memory is currently consumed by textures... Can be grossly wrong,
 // only used if texture creation failed and out-of-memory is a likely suspect.
-static unsigned int texmemguesstimate = 0;
+static size_t texmemguesstimate = 0;
 
 void PsychDetectTextureTarget(PsychWindowRecordType *win)
 {
@@ -560,7 +560,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 		}  // End of dual-pass texture creation (check + create).
 		
 		// Accounting... ...this is only a rough guesstimate:
-		win->surfaceSizeBytes = ((glinternalFormat==GL_RGBA8) ? 4 : win->depth / 8) * twidth * theight;
+		win->surfaceSizeBytes = ((size_t) ((glinternalFormat==GL_RGBA8) ? 4 : win->depth / 8)) * (size_t) twidth * (size_t) theight;
 		texmemguesstimate+= win->surfaceSizeBytes;
 				
 	}  // End of new texture creation.

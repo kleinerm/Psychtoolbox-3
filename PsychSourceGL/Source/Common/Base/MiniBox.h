@@ -1,6 +1,5 @@
 /* 
   MiniBox.h
-
   
   AUTHORS:
   Allen Ingling		awi		Allen.W.Ingling@nyu.edu  
@@ -9,19 +8,17 @@
   PLATFORMS: 
   11/25/01	awi		MacOS 9
   11/25/01	awi		Windows
-  
 
-  HISTORY
+  HISTORY:
   11/25/01	awi		Created file.
   07/16/02  awi     Included PsychConstants.h and added include once.  
-  
+  3/19/10		mk		Cosmetic and make 64-bit clean.
 
 */
 
 //begin include once 
 #ifndef PSYCH_IS_INCLUDED_MiniBox
 #define PSYCH_IS_INCLUDED_MiniBox
-
 
 #include "Psych.h"
 
@@ -35,9 +32,9 @@ extern int PrintfExit(const char *format,...);
 char *BreakLines(char *string,long lineLength);
 psych_bool PsychMatch(char *s1,char *s2);
 char *int2str(int num);
-int PsychIndexElementFrom2DArray(int mDim/*|Y|*/, int nDim/*|X|*/, int m/*y*/, int n/*x*/);
-int PsychIndexElementFrom3DArray(int mDim/*|Y|*/, int nDim/*|X|*/, int pDim/*|Z|*/, int m/*y*/, int n/*x*/, int p/*z*/);
-int PsychIndexPlaneFrom3DArray(int mDim, int nDim, int pDim, int planeIndex);
+size_t PsychIndexElementFrom2DArray(size_t mDim/*|Y|*/, size_t nDim/*|X|*/, size_t m/*y*/, size_t n/*x*/);
+size_t PsychIndexElementFrom3DArray(size_t mDim/*|Y|*/, size_t nDim/*|X|*/, size_t pDim/*|Z|*/, size_t m/*y*/, size_t n/*x*/, size_t p/*z*/);
+size_t PsychIndexPlaneFrom3DArray(size_t mDim, size_t nDim, size_t pDim, size_t planeIndex);
 int maxInt(int a, int b);  //might be better to define max as a macro...
 psych_bool PsychIsIntegerInDouble(double *value);
 
@@ -46,4 +43,3 @@ void PsychSetPsychMatchCaseSenstive(psych_bool arg);
 
 //end include once
 #endif
-

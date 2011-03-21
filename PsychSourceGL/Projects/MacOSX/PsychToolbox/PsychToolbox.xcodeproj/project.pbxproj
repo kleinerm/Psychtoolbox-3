@@ -24116,6 +24116,7 @@
 				OTHER_CFLAGS = (
 					"-fexceptions",
 					"-no-cpp-precomp",
+					"-fno-builtin-scalb",
 				);
 				OTHER_LDFLAGS = (
 					"-lfftw3f",

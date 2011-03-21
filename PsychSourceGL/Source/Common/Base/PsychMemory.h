@@ -2,24 +2,21 @@
   Psychtoolbox2/Source/Common/PsychMemory.h		
   
   AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
-  
+  Allen.Ingling@nyu.edu				awi
+  mario.kleiner@tuebingen.mpg.de	mk
+
   PLATFORMS: All 
   
-  PROJECTS:
-  09/04/02	awi		Screen on MacOS9
-   
+  PROJECTS: All
 
   HISTORY:
   09/04/02  awi		Wrote it.
-  05/10/06  mk          Added our own allocator for Octave-Por.  
+  05/10/06  mk      Added our own allocator for Octave-Port.
+  03/19/11  mk      Make 64-bit clean.  
+
   DESCRIPTION:
 
-
   TO DO: 
-  
-  
-	  
 
 */
 
@@ -35,13 +32,12 @@ double PsychPtrToDouble(void* ptr);
 
 //allocate memory which is valid between until control returns to
 //the calling module
-void *PsychCallocTemp(unsigned long n, unsigned long size);
-void *PsychMallocTemp(unsigned long n);
+void *PsychCallocTemp(size_t n, size_t size);
+void *PsychMallocTemp(size_t n);
 
 //free memory
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
 	#define PsychFreeTemp 			mxFree
-	//void mxFree(void *ptr);
 #else
 
 // Our own allocator / memory manager is used.
@@ -55,9 +51,9 @@ void PsychFreeTemp(void* ptr);
 void PsychFreeAllTempMemory(void);
 
 // Pointer to the start of our list of allocated temporary memory buffers:
-static unsigned int* PsychTempMemHead = NULL;
+static size_t* PsychTempMemHead = NULL;
 // Total count of allocated memory in Bytes:
-static int totalTempMemAllocated = 0;
+static size_t totalTempMemAllocated = 0;
 
 #endif
 
@@ -79,4 +75,3 @@ static int totalTempMemAllocated = 0;
 
 //end include once
 #endif
-

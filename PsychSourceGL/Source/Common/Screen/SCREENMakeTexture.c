@@ -8,7 +8,7 @@
 
 	PLATFORMS:
 	
-		Only OS X for now.
+		All.
 
 	HISTORY:
 		
@@ -16,7 +16,8 @@
 		1/4/05      mk      Performance optimizations, some bug-fixes.
 		1/13/05		awi		Merged in Marios's changes from 1/4/05 into the master at Psychtoolbox.org.
 		1/19/05		awi		Removed unused variables to eliminate compiler warnings.
-		1/26/05		awi		Added StoreNowTime() calls.  
+		1/26/05		awi		Added StoreNowTime() calls.
+		3/19/11		mk		Make 64-bit clean.
 
 	DESCRIPTION:
 
@@ -26,14 +27,7 @@
 		
 	TO DO:
 
-		set the offscreen window recored valid flag here.  
-		(And change the allocator so that it inits the textureMemory flag to null.)
-		modify close so that it dealloctes the texture memory
-		modify close documentation to mention that it also works for textures
-
-
 */
-
 
 #include "Screen.h"
 
@@ -41,21 +35,21 @@
 static char useString[] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, specialFlags=0] [, floatprecision=0] [, textureOrientation=0] [, textureShader=0]);";
 //                                                            1            2              3                          4                5                    6						7
 static char synopsisString[] = 
-	"Convert the 2D or 3D matrix 'imageMatrix' into an OpenGL texture and return an index which may be passed to 'DrawTexture' to specify the texture. "
-	"In the the OS X Psychtoolbox textures replace offscreen windows for fast drawing of images during animation."
+	"Convert the 2D or 3D matrix 'imageMatrix' into an OpenGL texture and return an index which may be passed to 'DrawTexture' to specify the texture.\n"
+	"In the the OpenGL Psychtoolbox textures replace offscreen windows for fast drawing of images during animation."
 	"The imageMatrix argument may consist of one monochrome plane (Luminance), LA planes, RGB planes, or RGBA planes where "
-	"A is alpha, the transparency of a pixel. Alpha values range between zero (=fully transparent) and 255 (=fully opaque). "
-	"You need to enable Alpha-Blending via Screen('BlendFunction',...) for the transparency values to have an effect. "
+	"A is alpha, the transparency of a pixel. Alpha values typically range between zero (=fully transparent) and 255 (=fully opaque). "
+	"You need to enable Alpha-Blending via Screen('BlendFunction',...) for the transparency values to have an effect.\n"
 	"The argument 'optimizeForDrawAngle' if provided, asks Psychtoolbox to optimize the texture for especially fast "
 	"drawing at the specified rotation angle. The default is 0 == Optimize for upright drawing. If 'specialFlags' is set "
 	"to 1 and the width and height of the imageMatrix are powers of two (e.g., 64 x 64, 256 x 256, 512 x 512, ...), then "
 	"the texture is created as an OpenGL power-of-two texture of type GL_TEXTURE_2D. Otherwise Psychtoolbox will try to "
 	"pick the most optimal format for fast drawing and low memory consumption. Power-of-two textures are especially useful "
-	"for animation of drifting gratings (see the demos) and for simple use with the OpenGL 3D graphics functions. "
+	"for animation of drifting gratings (see the demos) and for simple use with the OpenGL 3D graphics functions.\n"
 	"If 'specialFlags' is set to 2 then PTB will try to use its own high quality texture filtering algorithm for drawing "
 	"of bilinearly filtered textures instead of the hardwares built-in method. This only works on modern hardware with "
 	"fragment shader support and is slower than using the hardwares built in filtering, but it may provide higher precision "
-	"on some hardware. Please note that PTB automatically enables its own filter algorithm when used with floating point "
+	"on some hardware. PTB automatically enables its own filter algorithm when used with floating point "
 	"textures or when Screen('ColorRange') is used to enable unclamped color processing: PTB will check if your hardware "
 	"is capable of unrestricted high precision color processing in that case. If your hardware can't guarantee high precision, "
 	"PTB will enable its own shader-based workarounds to provide higher precision at the cost of lower speed. \n"
@@ -67,43 +61,44 @@ static char synopsisString[] =
 	"texture gets stored in half_float format, i.e. 16 bit per color component - Suitable for most display purposes and "
 	"fast on recent gfx-hardware. A value of 2 asks for full 32 bit single precision float per color component. Useful for complex "
 	"computations and image processing, but can be extremely slow when texture filtering is used on any piece of graphics hardware "
-	"manufactured before the year 2007. 'textureOrientation' This optional argument labels textures with a special orientation. "
+	"manufactured before the year 2007.\n"
+	"'textureOrientation' This optional argument labels textures with a special orientation. "
 	"Normally (value 0) a Matlab matrix is passed in standard Matlab column-major dataformat. This is efficient for drawing of "
 	"textures but not for processing them via Screen('TransformTexture'). Therefore textures need to be transformed on demand "
 	"if used that way. This flag allows to short-cut the process: A setting of 1 will ask for immediate conversion into the "
 	"optimized format. A setting of 2 will tell PTB that the Matlab matrix has been already converted into optimal format, "
-	"so no further processing is needed. A value of 3 tells PTB that the texture is completely isotropic, with no real orientation,"
+	"so no further processing is needed. A value of 3 tells PTB that the texture is completely isotropic, with no real orientation, "
 	"therefore no conversion is required. This latter setting only makes sense for random noise textures or other textures generated "
 	"from a distribution with uncorrelated noise-like pixels, e.g., some power spectrum distribution.\n"
 	"'textureShader' - optional: If you provide the handle of an OpenGL GLSL shader program, then this shader program will be "
 	"executed (bound) during drawing of this texture via the Screen('DrawTexture',...); command -- The normal texture drawing "
 	"operation is replaced by your customized algorithm. This is useful for two purposes: a) Very basic on-the-fly image processing "
-	"on the texture. b) Procedural shading: Your texture matrix doesn't encode an image, but only per-pixel parameters is input "
+	"on the texture. b) Procedural shading: Your texture matrix doesn't encode an image, but only per-pixel parameters as input "
 	"for some formula to compute the real image during drawing. E.g., instead of defining a gabor patch as image or other standard "
 	"stimulus, one could define it as a mathematical formula to be evaluated at draw-time. The Screen('SetOpenGLTexture') command "
-	"allows you to create purely virtual textures, that only consist of such a shader and some virtual size, but don't have any "
-	"real data matrix associated with it -- all content is generated on the fly.";
+	"allows you to create purely virtual textures which only consist of such a shader and some virtual size, but don't have any "
+	"real data matrix associated with it -- all content is generated on the fly.\n";
 
 static char seeAlsoString[] = "DrawTexture TransformTexture BlendFunction";
 	 
 PsychError SCREENMakeTexture(void) 
 {
-    int					ix;
-    PsychWindowRecordType		*textureRecord;
-    PsychWindowRecordType		*windowRecord;
-    PsychRectType			rect;
-    psych_bool				isImageMatrixBytes, isImageMatrixDoubles;
-    int					numMatrixPlanes, xSize, ySize, iters; 
-    unsigned char			*byteMatrix;
-    double				*doubleMatrix;
-    GLuint                              *texturePointer;
-    GLubyte                             *texturePointer_b;
+    size_t								ix, iters;
+    PsychWindowRecordType				*textureRecord;
+    PsychWindowRecordType				*windowRecord;
+    PsychRectType						rect;
+    psych_bool							isImageMatrixBytes, isImageMatrixDoubles;
+    int									numMatrixPlanes, xSize, ySize;
+    unsigned char						*byteMatrix;
+    double								*doubleMatrix;
+    GLuint								*texturePointer;
+    GLubyte								*texturePointer_b;
 	GLfloat								*texturePointer_f;
-    double *rp, *gp, *bp, *ap;    
-    GLubyte *rpb, *gpb, *bpb, *apb;    
-    int                                 usepoweroftwo, usefloatformat, assume_texorientation, textureShader;
-    double                              optimized_orientation;
-    psych_bool                             bigendian;
+    double								*rp, *gp, *bp, *ap;
+    GLubyte								*rpb, *gpb, *bpb, *apb;
+    int									usepoweroftwo, usefloatformat, assume_texorientation, textureShader;
+    double								optimized_orientation;
+    psych_bool							bigendian;
 
     // Detect endianity (byte-order) of machine:
     ix=255;
@@ -151,9 +146,9 @@ PsychError SCREENMakeTexture(void)
 	// Is this a special image matrix which is already pre-transposed to fit our optimal format?
 	if (assume_texorientation == 2) {
 		// Yes. Swap xSize and ySize to take this into account:
-		ix = xSize;
+		ix = (size_t) xSize;
 		xSize = ySize;
-		ySize = ix;
+		ySize = (int) ix;
 		ix = 0;
 	}
 
@@ -176,17 +171,17 @@ PsychError SCREENMakeTexture(void)
 
     // Check if size constraints are fullfilled for power-of-two mode:
     if (usepoweroftwo & 1) {
-      for(ix = 1; ix < xSize; ix*=2);
-      if (ix!=xSize) {
-	PsychErrorExitMsg(PsychError_inputMatrixIllegalDimensionSize, "Power-of-two texture requested but width of imageMatrix is not a power of two!");
-      }
-
-      for(ix = 1; ix < ySize; ix*=2);
-      if (ix!=ySize) {
-	PsychErrorExitMsg(PsychError_inputMatrixIllegalDimensionSize, "Power-of-two texture requested but height of imageMatrix is not a power of two!");
-      }
+		for(ix = 1; ix < (size_t) xSize; ix*=2);
+		if (ix != (size_t) xSize) {
+			PsychErrorExitMsg(PsychError_inputMatrixIllegalDimensionSize, "Power-of-two texture requested but width of imageMatrix is not a power of two!");
+		}
+		
+		for(ix = 1; ix < (size_t) ySize; ix*=2);
+		if (ix != (size_t) ySize) {
+			PsychErrorExitMsg(PsychError_inputMatrixIllegalDimensionSize, "Power-of-two texture requested but height of imageMatrix is not a power of two!");
+		}
     }
-
+	
 	// Check if creation of a floating point texture is requested? We default to non-floating point,
 	// standard 8 bpc textures if this parameter is not provided.
 	usefloatformat = 0;
@@ -212,11 +207,11 @@ PsychError SCREENMakeTexture(void)
     // MK: We only allocate the amount really needed for given format, aka numMatrixPlanes - Bytes per pixel.
 	if (usefloatformat) {
 		// Allocate a double for each color component and pixel:
-		textureRecord->textureMemorySizeBytes= sizeof(double) * numMatrixPlanes * xSize * ySize;		
+		textureRecord->textureMemorySizeBytes = sizeof(double) * (size_t) numMatrixPlanes * (size_t) xSize * (size_t) ySize;		
 	}
     else {
 		// Allocate one byte per color component and pixel:
-		textureRecord->textureMemorySizeBytes= numMatrixPlanes * xSize * ySize;
+		textureRecord->textureMemorySizeBytes = (size_t) numMatrixPlanes * (size_t) xSize * (size_t) ySize;
     }
 	// MK: Allocate memory page-aligned... -> Helps Apple texture range extensions et al.
     if(PsychPrefStateGet_DebugMakeTexture()) 	//MARK #2
@@ -237,7 +232,7 @@ PsychError SCREENMakeTexture(void)
 	if (usefloatformat) {
 		// Conversion routines for HDR 16 bpc or 32 bpc textures -- Slow path.
 		// Our input is always double matrices...
-		iters = xSize * ySize;
+		iters = (size_t) xSize * (size_t) ySize;
 
 		// Our input buffer is always of GL_FLOAT precision:
 		textureRecord->textureexternaltype = GL_FLOAT;
@@ -254,8 +249,8 @@ PsychError SCREENMakeTexture(void)
 		}
 
 		if(numMatrixPlanes==2) {
-			rp=(double*) ((psych_uint64) doubleMatrix);
-			ap=(double*) ((psych_uint64) doubleMatrix + (psych_uint64) iters*sizeof(double));
+			rp=(double*) ((size_t) doubleMatrix);
+			ap=(double*) ((size_t) rp + (size_t) iters * sizeof(double));
 
 			for(ix=0;ix<iters;ix++){
 				*(texturePointer_f++)= (GLfloat) *(rp++);  
@@ -267,9 +262,9 @@ PsychError SCREENMakeTexture(void)
 		}
 		
 		if(numMatrixPlanes==3) {
-			rp=(double*) ((psych_uint64) doubleMatrix);
-			gp=(double*) ((psych_uint64) doubleMatrix + (psych_uint64) iters*sizeof(double));
-			bp=(double*) ((psych_uint64) gp + (psych_uint64) iters*sizeof(double));
+			rp=(double*) ((size_t) doubleMatrix);
+			gp=(double*) ((size_t) rp + (size_t) iters * sizeof(double));
+			bp=(double*) ((size_t) gp + (size_t) iters * sizeof(double));
 
 			for(ix=0;ix<iters;ix++){
 				*(texturePointer_f++)= (GLfloat) *(rp++);  
@@ -282,10 +277,10 @@ PsychError SCREENMakeTexture(void)
 		}
 		
 		if(numMatrixPlanes==4) {
-			rp=(double*) ((psych_uint64) doubleMatrix);
-			gp=(double*) ((psych_uint64) doubleMatrix + (psych_uint64) iters*sizeof(double));
-			bp=(double*) ((psych_uint64) gp + (psych_uint64) iters*sizeof(double));
-			ap=(double*) ((psych_uint64) bp + (psych_uint64) iters*sizeof(double));
+			rp=(double*) ((size_t) doubleMatrix);
+			gp=(double*) ((size_t) rp + (size_t) iters * sizeof(double));
+			bp=(double*) ((size_t) gp + (size_t) iters * sizeof(double));
+			ap=(double*) ((size_t) bp + (size_t) iters * sizeof(double));
 
 			for(ix=0;ix<iters;ix++){
 				*(texturePointer_f++)= (GLfloat) *(rp++);  
@@ -305,7 +300,7 @@ PsychError SCREENMakeTexture(void)
 		// set all values with magnitude smaller than 1e-9 to zero. Better safe than sorry...
 		if(usefloatformat==1) {
 			texturePointer_f=(GLfloat*) texturePointer;
-			iters = iters * numMatrixPlanes;
+			iters = iters * (size_t) numMatrixPlanes;
 			for(ix=0; ix<iters; ix++, texturePointer_f++) if(fabs((double) *texturePointer_f) < 1e-9) { *texturePointer_f = 0.0; }
 		}
 		
@@ -313,11 +308,11 @@ PsychError SCREENMakeTexture(void)
 	}
     else {
 		// Standard LDR texture 8 bpc conversion routines -- Fast path.
-	
+		iters = (size_t) xSize * (size_t) ySize;
+
 		// Improved implementation: Takes 13 ms on a 800x800 texture...
 		if(isImageMatrixDoubles && numMatrixPlanes==1){
 			texturePointer_b=(GLubyte*) texturePointer;
-			iters=xSize*ySize;
 			for(ix=0;ix<iters;ix++){
 				*(texturePointer_b++)= (GLubyte) *(doubleMatrix++);  
 			}
@@ -329,16 +324,15 @@ PsychError SCREENMakeTexture(void)
 		// -> That's because memcpy on MacOS-X is implemented with hand-coded, highly tuned Assembler code for PowerPC.
 		// -> It's always wise to use system-routines if available, instead of coding it by yourself!
 		if(isImageMatrixBytes && numMatrixPlanes==1){
-			memcpy((void*) texturePointer, (void*) byteMatrix, xSize*ySize);
+			memcpy((void*) texturePointer, (void*) byteMatrix, iters);
 			textureRecord->depth=8;
 		}
 		
 		// New version: Takes 33 ms on a 800x800 texture...
 		if(isImageMatrixDoubles && numMatrixPlanes==2){
 			texturePointer_b=(GLubyte*) texturePointer;
-			iters=xSize*ySize;
-			rp=(double*) ((psych_uint64) doubleMatrix);
-			ap=(double*) ((psych_uint64) doubleMatrix + (psych_uint64) iters*sizeof(double));
+			rp=(double*) ((size_t) doubleMatrix);
+			ap=(double*) ((size_t) rp + (size_t) iters * sizeof(double));
 			for(ix=0;ix<iters;ix++){
 				*(texturePointer_b++)= (GLubyte) *(rp++);  
 				*(texturePointer_b++)= (GLubyte) *(ap++);  
@@ -349,9 +343,8 @@ PsychError SCREENMakeTexture(void)
 		// New version: Takes 20 ms on a 800x800 texture...
 		if(isImageMatrixBytes && numMatrixPlanes==2){
 			texturePointer_b=(GLubyte*) texturePointer;
-			iters=xSize*ySize;
-			rpb=(GLubyte*) ((psych_uint64) byteMatrix);
-			apb=(GLubyte*) ((psych_uint64) byteMatrix + (psych_uint64) iters);
+			rpb=(GLubyte*) ((size_t) byteMatrix);
+			apb=(GLubyte*) ((size_t) rpb + (size_t) iters);
 			for(ix=0;ix<iters;ix++){
 				*(texturePointer_b++)= *(rpb++);  
 				*(texturePointer_b++)= *(apb++);  
@@ -362,10 +355,9 @@ PsychError SCREENMakeTexture(void)
 		// Improved version: Takes 43 ms on a 800x800 texture...
 		if(isImageMatrixDoubles && numMatrixPlanes==3){
 			texturePointer_b=(GLubyte*) texturePointer;
-			iters=xSize*ySize;
-			rp=(double*) ((psych_uint64) doubleMatrix);
-			gp=(double*) ((psych_uint64) doubleMatrix + (psych_uint64) iters*sizeof(double));
-			bp=(double*) ((psych_uint64) gp + (psych_uint64) iters*sizeof(double));
+			rp=(double*) ((size_t) doubleMatrix);
+			gp=(double*) ((size_t) rp + (size_t) iters * sizeof(double));
+			bp=(double*) ((size_t) gp + (size_t) iters * sizeof(double));
 			for(ix=0;ix<iters;ix++){
 				*(texturePointer_b++)= (GLubyte) *(rp++);  
 				*(texturePointer_b++)= (GLubyte) *(gp++);  
@@ -376,12 +368,10 @@ PsychError SCREENMakeTexture(void)
 		
 		// Improved version: Takes 25 ms on a 800x800 texture...
 		if(isImageMatrixBytes && numMatrixPlanes==3){
-			texturePointer_b=(GLubyte*) texturePointer;
-			iters=xSize*ySize;
-			
-			rpb=(GLubyte*) ((psych_uint64) byteMatrix);
-			gpb=(GLubyte*) ((psych_uint64) byteMatrix + (psych_uint64) iters);
-			bpb=(GLubyte*) ((psych_uint64) gpb + (psych_uint64) iters);
+			texturePointer_b=(GLubyte*) texturePointer;			
+			rpb=(GLubyte*) ((size_t) byteMatrix);
+			gpb=(GLubyte*) ((size_t) rpb + (size_t) iters);
+			bpb=(GLubyte*) ((size_t) gpb + (size_t) iters);
 			for(ix=0;ix<iters;ix++){
 				*(texturePointer_b++)= *(rpb++);  
 				*(texturePointer_b++)= *(gpb++);  
@@ -392,13 +382,11 @@ PsychError SCREENMakeTexture(void)
 		
 		// Improved version: Takes 55 ms on a 800x800 texture...
 		if(isImageMatrixDoubles && numMatrixPlanes==4){
-			texturePointer_b=(GLubyte*) texturePointer;
-			iters=xSize*ySize;
-			
-			rp=(double*) ((psych_uint64) doubleMatrix);
-			gp=(double*) ((psych_uint64) doubleMatrix + (psych_uint64) iters*sizeof(double));
-			bp=(double*) ((psych_uint64) gp + (psych_uint64) iters*sizeof(double));
-			ap=(double*) ((psych_uint64) bp + (psych_uint64) iters*sizeof(double));
+			texturePointer_b=(GLubyte*) texturePointer;			
+			rp=(double*) ((size_t) doubleMatrix);
+			gp=(double*) ((size_t) rp + (size_t) iters * sizeof(double));
+			bp=(double*) ((size_t) gp + (size_t) iters * sizeof(double));
+			ap=(double*) ((size_t) bp + (size_t) iters * sizeof(double));
 			if (bigendian) {
 				// Code for big-endian machines like PowerPC:
 				for(ix=0;ix<iters;ix++){
@@ -423,13 +411,11 @@ PsychError SCREENMakeTexture(void)
 		
 		// Improved version: Takes 33 ms on a 800x800 texture...
 		if(isImageMatrixBytes && numMatrixPlanes==4){
-			texturePointer_b=(GLubyte*) texturePointer;
-			iters=xSize*ySize;
-			
-			rpb=(GLubyte*) ((psych_uint64) byteMatrix);
-			gpb=(GLubyte*) ((psych_uint64) byteMatrix + (psych_uint64) iters);
-			bpb=(GLubyte*) ((psych_uint64) gpb + (psych_uint64) iters);
-			apb=(GLubyte*) ((psych_uint64) bpb + (psych_uint64) iters);
+			texturePointer_b=(GLubyte*) texturePointer;			
+			rpb=(GLubyte*) ((size_t) byteMatrix);
+			gpb=(GLubyte*) ((size_t) rpb + (size_t) iters);
+			bpb=(GLubyte*) ((size_t) gpb + (size_t) iters);
+			apb=(GLubyte*) ((size_t) bpb + (size_t) iters);
 			if (bigendian) {
 				// Code for big-endian machines like PowerPC:
 				for(ix=0;ix<iters;ix++){

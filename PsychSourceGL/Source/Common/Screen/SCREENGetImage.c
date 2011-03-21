@@ -13,8 +13,8 @@
 	
 		01/08/03  	awi		Created.
 		10/12/04	awi		In useString: moved commas to inside [].
+		03/20/11	mk		Made 64-bit clean.
 
- 
 	TO DO:
     
 		We could probably speed this up by using a single call to glReadPixels instead of three.  It doesn't matter what we pack the result into,
@@ -104,11 +104,12 @@ static char seeAlsoString[] = "PutImage CopyWindow CreateMovie FinalizeMovie";
 // a matlab/octave matrix.
 PsychError SCREENGetImage(void) 
 {
-	PsychRectType   windowRect,sampleRect;
-	int 			nrchannels, ix, iy, sampleRectWidth, sampleRectHeight, invertedY, redReturnIndex, greenReturnIndex, blueReturnIndex, alphaReturnIndex, planeSize;
+	PsychRectType   windowRect, sampleRect;
+	int 			nrchannels, invertedY;
+	size_t			ix, iy, sampleRectWidth, sampleRectHeight, redReturnIndex, greenReturnIndex, blueReturnIndex, alphaReturnIndex, planeSize;
 	int				viewid;
 	ubyte 			*returnArrayBase, *redPlane, *greenPlane, *bluePlane, *alphaPlane;
-	float 			*dredPlane, *dgreenPlane, *dbluePlane, *dalphaPlane;
+	float 			*dredPlane;
 	double 			*returnArrayBaseDouble;
 	PsychWindowRecordType	*windowRecord;
 	GLboolean		isDoubleBuffer, isStereo;
@@ -150,7 +151,7 @@ PsychError SCREENGetImage(void)
 	// Soft-Reset drawingtarget. This is important to make sure no FBO's are bound,
 	// otherwise the following glGets for GL_DOUBLEBUFFER and GL_STEREO will retrieve
 	// wrong results, leading to totally wrong read buffer assignments down the road!!
-	PsychSetDrawingTarget(0x1);
+	PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
 
 	glGetBooleanv(GL_DOUBLEBUFFER, &isDoubleBuffer);
 	glGetBooleanv(GL_STEREO, &isStereo);
@@ -280,8 +281,12 @@ PsychError SCREENGetImage(void)
 	if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In Screen('GetImage'): GL-Readbuffer whichBuffer = %i\n", whichBuffer);
 
 	// Compute sampling rectangle:
-	sampleRectWidth=PsychGetWidthFromRect(sampleRect);
-	sampleRectHeight=PsychGetHeightFromRect(sampleRect);
+	if ((PsychGetWidthFromRect(sampleRect) >= INT_MAX) || (PsychGetHeightFromRect(sampleRect) >= INT_MAX)) {
+		PsychErrorExitMsg(PsychError_user, "Too big 'rect' argument provided. Both width and height of the rect must not exceed 2^31 pixels!");
+	}
+
+	sampleRectWidth = (size_t) PsychGetWidthFromRect(sampleRect);
+	sampleRectHeight= (size_t) PsychGetHeightFromRect(sampleRect);
 
 	// Regular image fetch to runtime, or adding to a movie?
 	if (!isAddMovieFrame) {
@@ -299,24 +304,26 @@ PsychError SCREENGetImage(void)
 		
 		if (!floatprecision) {
 			// Readback of standard 8bpc uint8 pixels:  
-			PsychAllocOutUnsignedByteMatArg(1, TRUE, sampleRectHeight, sampleRectWidth, nrchannels, &returnArrayBase);
-			redPlane= PsychMallocTemp(nrchannels * sampleRectWidth * sampleRectHeight);
-			planeSize=sampleRectWidth * sampleRectHeight;
+			PsychAllocOutUnsignedByteMatArg(1, TRUE, (int) sampleRectHeight, (int) sampleRectWidth, (int) nrchannels, &returnArrayBase);
+			redPlane  = (ubyte*) PsychMallocTemp((size_t) nrchannels * sampleRectWidth * sampleRectHeight);
+			planeSize = sampleRectWidth * sampleRectHeight;
 			greenPlane= redPlane + planeSize;
-			bluePlane= redPlane + 2 * planeSize;
+			bluePlane = redPlane + 2 * planeSize;
 			alphaPlane= redPlane + 3 * planeSize; 
+
 			glPixelStorei(GL_PACK_ALIGNMENT,1);
-			invertedY=windowRect[kPsychBottom]-sampleRect[kPsychBottom];
-			glReadPixels(sampleRect[kPsychLeft],invertedY, 	sampleRectWidth, sampleRectHeight, GL_RED, GL_UNSIGNED_BYTE, redPlane); 
-			if (nrchannels>1) glReadPixels(sampleRect[kPsychLeft],invertedY,	sampleRectWidth, sampleRectHeight, GL_GREEN, GL_UNSIGNED_BYTE, greenPlane);
-			if (nrchannels>2) glReadPixels(sampleRect[kPsychLeft],invertedY,	sampleRectWidth, sampleRectHeight, GL_BLUE, GL_UNSIGNED_BYTE, bluePlane);
-			if (nrchannels>3) glReadPixels(sampleRect[kPsychLeft],invertedY,	sampleRectWidth, sampleRectHeight, GL_ALPHA, GL_UNSIGNED_BYTE, alphaPlane);
+			invertedY = windowRect[kPsychBottom] - sampleRect[kPsychBottom];
+
+			glReadPixels(sampleRect[kPsychLeft], invertedY, (int) sampleRectWidth, (int) sampleRectHeight, GL_RED, GL_UNSIGNED_BYTE, redPlane); 
+			if (nrchannels>1) glReadPixels(sampleRect[kPsychLeft],invertedY, (int) sampleRectWidth, (int) sampleRectHeight, GL_GREEN, GL_UNSIGNED_BYTE, greenPlane);
+			if (nrchannels>2) glReadPixels(sampleRect[kPsychLeft],invertedY, (int) sampleRectWidth, (int) sampleRectHeight, GL_BLUE, GL_UNSIGNED_BYTE, bluePlane);
+			if (nrchannels>3) glReadPixels(sampleRect[kPsychLeft],invertedY, (int) sampleRectWidth, (int) sampleRectHeight, GL_ALPHA, GL_UNSIGNED_BYTE, alphaPlane);
 			
 			//in one pass transpose and flip what we read with glReadPixels before returning.  
 			//-glReadPixels insists on filling up memory in sequence by reading the screen row-wise whearas Matlab reads up memory into columns.
 			//-the Psychtoolbox screen as setup by gluOrtho puts 0,0 at the top left of the window but glReadPixels always believes that it's at the bottom left.     
-			for(ix=0;ix<sampleRectWidth;ix++){
-				for(iy=0;iy<sampleRectHeight;iy++){
+			for(ix=0; ix < sampleRectWidth; ix++){
+				for(iy=0; iy < sampleRectHeight; iy++){
 					// Compute write-indices for returned data:
 					redReturnIndex=PsychIndexElementFrom3DArray(sampleRectHeight, sampleRectWidth, nrchannels, iy, ix, 0);
 					greenReturnIndex=PsychIndexElementFrom3DArray(sampleRectHeight, sampleRectWidth,  nrchannels, iy, ix, 1);
@@ -324,34 +331,33 @@ PsychError SCREENGetImage(void)
 					alphaReturnIndex=PsychIndexElementFrom3DArray(sampleRectHeight, sampleRectWidth,  nrchannels, iy, ix, 3);
 					
 					// Always return RED/LUMINANCE channel:
-					returnArrayBase[redReturnIndex]=redPlane[ix + ((sampleRectHeight-1) - iy ) * sampleRectWidth];  
+					returnArrayBase[redReturnIndex] = redPlane[ix + ((sampleRectHeight-1) - iy ) * sampleRectWidth];  
 					// Other channels on demand:
-					if (nrchannels>1) returnArrayBase[greenReturnIndex]=greenPlane[ix + ((sampleRectHeight-1) - iy ) * sampleRectWidth];
-					if (nrchannels>2) returnArrayBase[blueReturnIndex]=bluePlane[ix + ((sampleRectHeight-1) - iy ) * sampleRectWidth];
-					if (nrchannels>3) returnArrayBase[alphaReturnIndex]=alphaPlane[ix + ((sampleRectHeight-1) - iy ) * sampleRectWidth];
+					if (nrchannels>1) returnArrayBase[greenReturnIndex] = greenPlane[ix + ((sampleRectHeight-1) - iy ) * sampleRectWidth];
+					if (nrchannels>2) returnArrayBase[blueReturnIndex]  = bluePlane[ix + ((sampleRectHeight-1) - iy ) * sampleRectWidth];
+					if (nrchannels>3) returnArrayBase[alphaReturnIndex] = alphaPlane[ix + ((sampleRectHeight-1) - iy ) * sampleRectWidth];
 				}
 			}		
 		}
 		else {
 			// Readback of standard 32bpc float pixels into a double matrix:  
-			PsychAllocOutDoubleMatArg(1, TRUE, sampleRectHeight, sampleRectWidth, nrchannels, &returnArrayBaseDouble);
-			dredPlane= PsychMallocTemp(nrchannels * sizeof(float) * sampleRectWidth * sampleRectHeight);
-			planeSize=sampleRectWidth * sampleRectHeight * sizeof(float);
-			dgreenPlane= redPlane + planeSize;
-			dbluePlane= redPlane + 2 * planeSize;
-			dalphaPlane= redPlane + 3 * planeSize; 
+			PsychAllocOutDoubleMatArg(1, TRUE, (int) sampleRectHeight, (int) sampleRectWidth, (int) nrchannels, &returnArrayBaseDouble);
+			dredPlane = (float*) PsychMallocTemp((size_t) nrchannels * sizeof(float) * sampleRectWidth * sampleRectHeight);
+			planeSize = sampleRectWidth * sampleRectHeight * sizeof(float);
+
 			glPixelStorei(GL_PACK_ALIGNMENT, 1);
 			invertedY=windowRect[kPsychBottom]-sampleRect[kPsychBottom];
-			if (nrchannels==1) glReadPixels(sampleRect[kPsychLeft],invertedY, 	sampleRectWidth, sampleRectHeight, GL_RED, GL_FLOAT, dredPlane); 
-			if (nrchannels==2) glReadPixels(sampleRect[kPsychLeft],invertedY,	sampleRectWidth, sampleRectHeight, GL_LUMINANCE_ALPHA, GL_FLOAT, dredPlane);
-			if (nrchannels==3) glReadPixels(sampleRect[kPsychLeft],invertedY,	sampleRectWidth, sampleRectHeight, GL_RGB, GL_FLOAT, dredPlane);
-			if (nrchannels==4) glReadPixels(sampleRect[kPsychLeft],invertedY,	sampleRectWidth, sampleRectHeight, GL_RGBA, GL_FLOAT, dredPlane);
+
+			if (nrchannels==1) glReadPixels((int) sampleRect[kPsychLeft], invertedY, (int) sampleRectWidth, (int) sampleRectHeight, GL_RED, GL_FLOAT, dredPlane); 
+			if (nrchannels==2) glReadPixels((int) sampleRect[kPsychLeft], invertedY, (int) sampleRectWidth, (int) sampleRectHeight, GL_LUMINANCE_ALPHA, GL_FLOAT, dredPlane);
+			if (nrchannels==3) glReadPixels((int) sampleRect[kPsychLeft], invertedY, (int) sampleRectWidth, (int) sampleRectHeight, GL_RGB, GL_FLOAT, dredPlane);
+			if (nrchannels==4) glReadPixels((int) sampleRect[kPsychLeft], invertedY, (int) sampleRectWidth, (int) sampleRectHeight, GL_RGBA, GL_FLOAT, dredPlane);
 			
 			//in one pass transpose and flip what we read with glReadPixels before returning.  
 			//-glReadPixels insists on filling up memory in sequence by reading the screen row-wise whearas Matlab reads up memory into columns.
 			//-the Psychtoolbox screen as setup by gluOrtho puts 0,0 at the top left of the window but glReadPixels always believes that it's at the bottom left.     
-			for(ix=0;ix<sampleRectWidth;ix++){
-				for(iy=0;iy<sampleRectHeight;iy++){
+			for(ix=0; ix < sampleRectWidth; ix++){
+				for(iy=0; iy < sampleRectHeight; iy++){
 					// Compute write-indices for returned data:
 					redReturnIndex=PsychIndexElementFrom3DArray(sampleRectHeight, sampleRectWidth, nrchannels, iy, ix, 0);
 					greenReturnIndex=PsychIndexElementFrom3DArray(sampleRectHeight, sampleRectWidth,  nrchannels, iy, ix, 1);
@@ -359,11 +365,11 @@ PsychError SCREENGetImage(void)
 					alphaReturnIndex=PsychIndexElementFrom3DArray(sampleRectHeight, sampleRectWidth,  nrchannels, iy, ix, 3);
 					
 					// Always return RED/LUMINANCE channel:
-					returnArrayBaseDouble[redReturnIndex]=dredPlane[(ix + ((sampleRectHeight-1) - iy ) * sampleRectWidth) * nrchannels + 0];  
+					returnArrayBaseDouble[redReturnIndex] = dredPlane[(ix + ((sampleRectHeight-1) - iy ) * sampleRectWidth) * (size_t) nrchannels + 0];  
 					// Other channels on demand:
-					if (nrchannels>1) returnArrayBaseDouble[greenReturnIndex]=dredPlane[(ix + ((sampleRectHeight-1) - iy ) * sampleRectWidth) * nrchannels + 1];
-					if (nrchannels>2) returnArrayBaseDouble[blueReturnIndex]=dredPlane[(ix + ((sampleRectHeight-1) - iy ) * sampleRectWidth) * nrchannels + 2];
-					if (nrchannels>3) returnArrayBaseDouble[alphaReturnIndex]=dredPlane[(ix + ((sampleRectHeight-1) - iy ) * sampleRectWidth) * nrchannels + 3];
+					if (nrchannels>1) returnArrayBaseDouble[greenReturnIndex] = dredPlane[(ix + ((sampleRectHeight-1) - iy ) * sampleRectWidth) * (size_t) nrchannels + 1];
+					if (nrchannels>2) returnArrayBaseDouble[blueReturnIndex]  = dredPlane[(ix + ((sampleRectHeight-1) - iy ) * sampleRectWidth) * (size_t) nrchannels + 2];
+					if (nrchannels>3) returnArrayBaseDouble[alphaReturnIndex] = dredPlane[(ix + ((sampleRectHeight-1) - iy ) * sampleRectWidth) * (size_t) nrchannels + 3];
 				}
 			}		
 		}
@@ -372,12 +378,12 @@ PsychError SCREENGetImage(void)
 	if (isAddMovieFrame) {
 		// Adding of image to a movie requested:
 		
-		// Get optional floatprecision flag: We return data with float-precision if
-		// this flag is set. By default we return uint8 data:
+		// Get optional moviehandle:
 		moviehandle = 0;
 		PsychCopyInIntegerArg(4, FALSE, &moviehandle);
 		if (moviehandle < 0) PsychErrorExitMsg(PsychError_user, "Provided 'moviehandle' is negative. Must be greater or equal to zero!");
 		
+		// Get optional frameduration:
 		frameduration = 1;
 		PsychCopyInIntegerArg(5, FALSE, &frameduration);
 		if (frameduration < 1) PsychErrorExitMsg(PsychError_user, "Number of requested framedurations 'frameduration' is negative. Must be greater than zero!");
@@ -387,7 +393,7 @@ PsychError SCREENGetImage(void)
 			glPixelStorei(GL_PACK_ALIGNMENT,1);
 			invertedY = windowRect[kPsychBottom] - sampleRect[kPsychBottom];
 			
-			glReadPixels(sampleRect[kPsychLeft], invertedY,	twidth, theight, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8, framepixels);
+			glReadPixels((int) sampleRect[kPsychLeft], invertedY, twidth, theight, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8, framepixels);
 			if (PsychAddVideoFrameToMovie(moviehandle, frameduration, TRUE) != 0) {
 				printf("See http://developer.apple.com/documentation/QuickTime/APIREF/ErrorCodes.htm#//apple_ref/doc/constant_group/Error_Codes.\n\n");
 				PsychErrorExitMsg(PsychError_user, "AddFrameToMovie failed with error above!");

@@ -179,7 +179,7 @@ typedef unsigned char		psych_bool;
         // Matlab 5 doesn't know about mxLOGICAL_CLASS :(
         #define mxLOGICAL_CLASS mxUINT8_CLASS
         #define mxGetLogicals(p) ((PsychNativeBooleanType*)mxGetData((p)))
-        mxArray* mxCreateNativeBooleanMatrix3D(int m, int n, int p);
+        mxArray* mxCreateNativeBooleanMatrix3D(size_t m, size_t n, size_t p);
 
         #if PSYCH_LANGUAGE == PSYCH_MATLAB
         #define mxCreateLogicalMatrix(m,n) mxCreateNativeBooleanMatrix3D((m), (n), 1)
