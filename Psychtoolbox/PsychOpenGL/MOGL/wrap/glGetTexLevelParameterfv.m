@@ -9,6 +9,7 @@ function params = glGetTexLevelParameterfv( target, level, pname )
 % 05-Mar-2006 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
 
 if nargin~=3,
     error('invalid number of arguments');

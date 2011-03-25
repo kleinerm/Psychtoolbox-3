@@ -9,6 +9,7 @@ function params = glGetTexGenfv( coord, pname )
 % 24-Jan-2006 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
 
 if nargin~=2,
     error('invalid number of arguments');
@@ -17,6 +18,6 @@ end
 params = moglsingle(NaN(4,1));
 moglcore( 'glGetTexGenfv', coord, pname, params );
 params = mogldouble(params);
-params = params(find(~isnan(params)));
+params = params(find(~isnan(params))); %#ok<FNDSB>
 
 return

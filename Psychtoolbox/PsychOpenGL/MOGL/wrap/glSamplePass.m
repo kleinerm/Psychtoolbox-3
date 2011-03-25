@@ -8,10 +8,8 @@ function glSamplePass( pass )
 
 % 05-Mar-2006 -- created (generated automatically from header files)
 
-if nargin~=1,
-    error('invalid number of arguments');
-end
+% ---protected---
 
-moglcore( 'glSamplePass', pass );
+error('This function does not exist in any shipping OpenGL implementation. Fix your code!');
 
 return

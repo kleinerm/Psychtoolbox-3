@@ -28,6 +28,8 @@ function retval = moglsingle(arg)
 % meaning for the Psychtoolbox OpenGL functions.
 %
 
+% ---protected---
+
 if exist('single', 'builtin')==5
     % If this is Octave, then we can use dispatch() to optimize calls to
     % moglsingle() away, ie., all calls to moglsingle() will get redirected

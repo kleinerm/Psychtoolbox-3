@@ -9,6 +9,7 @@ function [ objX, objY, objZ, objW, r ] = gluUnProject4( winX, winY, winZ, clipW,
 % 24-Jan-2006 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
 
 if nargin~=9,
     error('invalid number of arguments');

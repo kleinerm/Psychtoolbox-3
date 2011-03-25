@@ -8,6 +8,8 @@ function glDrawElements( mode, count, type, indices )
 
 % 05-Mar-2006 -- created (generated automatically from header files)
 
+% ---protected---
+
 if nargin~=4,
     error('invalid number of arguments');
 end

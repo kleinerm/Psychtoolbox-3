@@ -26,6 +26,8 @@ function retval = mogldouble(arg)
 % precision data type.
 %
 
+% ---protected---
+
 if IsOctave
     % If this is Octave, then we can use dispatch() to optimize calls to
     % mogldouble() away, ie., all calls to mogldouble() will get redirected

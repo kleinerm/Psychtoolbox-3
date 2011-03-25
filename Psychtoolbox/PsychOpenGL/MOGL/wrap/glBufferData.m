@@ -8,6 +8,8 @@ function glBufferData( target, ptr, data, usage )
 
 % 05-Mar-2006 -- created (generated automatically from header files)
 
+% ---protected---
+
 if nargin~=4,
     error('invalid number of arguments');
 end
