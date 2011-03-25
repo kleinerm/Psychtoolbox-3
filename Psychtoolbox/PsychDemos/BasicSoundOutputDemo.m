@@ -78,7 +78,7 @@ end
 
 % Perform basic initialization of the sound driver:
 InitializePsychSound;
-freq=48000
+
 % Open the default audio device [], with default mode [] (==Only playback),
 % and a required latencyclass of zero 0 == no low-latency mode, as well as
 % a frequency of freq and nrchannels sound channels.
