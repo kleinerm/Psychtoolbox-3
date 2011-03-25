@@ -5,6 +5,7 @@
  * mogltype.h -- common definitions for gl/glu and glm modules
  *
  * 09-Dec-2005 -- created (RFM)
+ * 24-Mar-2011 -- Make 64-bit clean (MK).
  *
 */
 
@@ -17,6 +18,7 @@
 #include "mex.h"
 
 #include <stdio.h>
+#include <limits.h>
 
 #define printf mexPrintf
 #ifndef true
@@ -121,6 +123,10 @@ mxArray* mxCreateNumericMatrix(int m, int n, int class, int complex);
 
 #endif
 
+// Mapping of scalar buffer offset value (in units of bytes) to an
+// equivalent memory void*.
+inline void* moglScalarToPtrOffset(const mxArray *m);
+
 // Function prototype for exit with printf(), like mogl_glunsupported...
 void mogl_printfexit(const char* str);
 
@@ -134,19 +140,20 @@ typedef struct cmdhandler {
 } cmdhandler;
 
 // Definitions for GLU-Tesselators:
-// TODO: After 64bit conversion: #define MOGLDEFMYTESS mogl_tess_struct* mytess = (mogl_tess_struct*) PsychDoubleToPtr(mxGetScalar(prhs[0]));
-#define MOGLDEFMYTESS mogl_tess_struct* mytess = (mogl_tess_struct*) (unsigned int) mxGetScalar(prhs[0]);
+#define MOGLDEFMYTESS mogl_tess_struct* mytess = (mogl_tess_struct*) PsychDoubleToPtr(mxGetScalar(prhs[0]));
+// Old style: 32-bit systems only: #define MOGLDEFMYTESS mogl_tess_struct* mytess = (mogl_tess_struct*) (unsigned int) mxGetScalar(prhs[0]);
+
 #define MAX_TESSCBNAME 32
 
 typedef struct mogl_tess_struct {
     GLUtesselator*  glutesselator;
     int             userData;
-    GLvoid*         polygondata;
+    double          polygondata;
     double*         destructBuffer;
-    int             destructSize;
-    int             maxdestructSize;
-    int             destructCount;
-    int             nrElements;
+    size_t          destructSize;
+    size_t          maxdestructSize;
+    size_t          destructCount;
+    size_t          nrElements;
     char            nGLU_TESS_BEGIN[MAX_TESSCBNAME];
     char            nGLU_TESS_BEGIN_DATA[MAX_TESSCBNAME];
     char            nGLU_TESS_EDGE_FLAG[MAX_TESSCBNAME];
@@ -185,13 +192,13 @@ double PsychPtrToDouble(void* ptr);
 // Return the size of the buffer pointed to by ptr in bytes.
 // CAUTION: Only works with buffers allocated via PsychMallocTemp()
 // or PsychCallocTemp(). Will segfault, crash & burn with other pointers!
-unsigned int PsychGetBufferSizeForPtr(void* ptr);
+size_t PsychGetBufferSizeForPtr(void* ptr);
 
 // Allocate and zero-out n elements of memory, each size bytes big.
-void *PsychCallocTemp(unsigned long n, unsigned long size, int mlist);
+void *PsychCallocTemp(size_t n, size_t size, int mlist);
 
 // Allocate n bytes of memory:
-void *PsychMallocTemp(unsigned long n, int mlist);
+void *PsychMallocTemp(size_t n, int mlist);
 
 // PsychFreeTemp frees memory allocated with PsychM(C)allocTemp().
 // This is not strictly needed as our memory manager will free

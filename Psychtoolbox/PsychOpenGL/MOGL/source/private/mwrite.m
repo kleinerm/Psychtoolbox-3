@@ -6,6 +6,7 @@ function mwrite( funcp, M, openal )
 
 % 24-Jan-2005 -- created;  adapted from code in autocode.m (RFM)
 % 06-Feb-2007 -- Modified; can now handle OpenAL as well. (MK)
+% 24-Mar-2011 -- Modified; More debug output when protected funcs are encountered. (MK)
 
 if nargin < 3
 	openal = 0;
@@ -79,7 +80,7 @@ mprotected=filecontains(wrapfile,'---protected---');
 
 % if protected, append automatically generated code as comments
 if mprotected,
-
+    fprintf('File %s is ---protected--- Appending new code as comments.\n', wrapfile);
 	% strip existing autocode
 	if filecontains(wrapfile,'---autocode---'),
 		unix(sprintf('sed -E -n ''1,/---autocode---/p'' %s > %s',wrapfile,tmpwrapfile2));

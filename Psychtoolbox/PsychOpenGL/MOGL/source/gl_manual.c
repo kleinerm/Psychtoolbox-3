@@ -3,6 +3,7 @@
  * gl_manual.c
  *
  * 19-Dec-2005 -- created (RFM)
+ * 24-Mar-2011 -- Make 64-bit clean (MK).
  *
  */
 
@@ -50,10 +51,11 @@ void glu_getstring( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 }
 
 void gl_samplepass( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-    // MK: For some reason, glSamplePass() seems to be only available on MacOS-X.
-    // GLEW doesn't know this function and i couldn't find any definition of it
-    // anywhere on the internet. We handle this manually by only exposing it on
-    // MacOS-X:
+    // MK: This function is a zombie. It was specified in some early draft of the
+	// multisample extension and then removed from the spec. Unfortunately its definition
+	// is still floating around in some sdk files on the internet, although the function
+	// is not implemented in any OpenGL driver. We define the function but error out
+	// if someone tries to use it:
 	mogl_glunsupported("glSamplePass");
 }
 
@@ -61,7 +63,7 @@ void gl_shadersource( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]
     char* sourcestring;
     char** srcstrings;
     GLuint handle;
-    int i, count, savedlength;
+    size_t i, count, savedlength;
     count = 0;
     
     // Ok, glShaderSource needs a list of one-line strings for the single lines
@@ -95,7 +97,7 @@ void gl_shadersource( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]
 
     if (mxGetScalar(prhs[2])>0) {
         printf("\n\n");
-        for(i=0; i<count; i++) printf("Shader Line %i: %s\n", i, srcstrings[i]);
+        for(i=0; i<count; i++) printf("Shader Line %i: %s\n", (int) i, srcstrings[i]);
         printf("\n\n");
         fflush(NULL);
         // Free the sourcestring:
@@ -118,7 +120,7 @@ void gl_shadersource( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]
     // Ok, now srcstrings should be an array of count char*'s to single line, null-terminated
     // strings, suitable for glShaderSource. Call it.
     glGetError();
-    glShaderSource(handle, count, (const char**) srcstrings, NULL);
+    glShaderSource(handle, (GLsizei) count, (const char**) srcstrings, NULL);
     
     // Free the sourcestring:
     mxFree(sourcestring);
@@ -152,7 +154,7 @@ void gl_selectbuffer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]
 
 void moglmalloc(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
   // Allocate a memory buffer of prhs[0] bytes size. ptr points to start of buffer:
-  void* ptr = PsychMallocTemp((unsigned long) mxGetScalar(prhs[0]), 1);
+  void* ptr = PsychMallocTemp((size_t) mxGetScalar(prhs[0]), 1);
 
   // Convert ptr into a double value and assign it as first return argument:
   plhs[0]=mxCreateDoubleMatrix(1,1,mxREAL);
@@ -161,7 +163,7 @@ void moglmalloc(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
 void moglcalloc(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
   // Allocate a memory buffer of prhs[0] bytes size. ptr points to start of buffer:
-  void* ptr = PsychCallocTemp((unsigned long) mxGetScalar(prhs[0]), (unsigned long) mxGetScalar(prhs[1]), 1);
+  void* ptr = PsychCallocTemp((size_t) mxGetScalar(prhs[0]), (size_t) mxGetScalar(prhs[1]), 1);
 
   // Convert ptr into a double value and assign it as first return argument:
   plhs[0]=mxCreateDoubleMatrix(1,1,mxREAL);
@@ -181,7 +183,9 @@ void moglfreeall(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 }
 
 void moglcopybuffertomatrix(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-  int dims, type;
+  int type;
+  size_t dims;
+  mwSize outdims;
   GLenum mattype;
   GLfloat* dst;
 
@@ -189,10 +193,10 @@ void moglcopybuffertomatrix(int nlhs, mxArray *plhs[], int nrhs, const mxArray *
   void* src = PsychDoubleToPtr((GLdouble) mxGetScalar(prhs[0]));
 
   // Retrieve size of buffer pointed to by src:
-  unsigned int n = PsychGetBufferSizeForPtr(src);
+  size_t n = PsychGetBufferSizeForPtr(src);
 
   // Retrieve max number of bytes to copy:
-  unsigned int nmax = (unsigned int) mxGetScalar(prhs[2]);
+  size_t nmax = (size_t) mxGetScalar(prhs[2]);
 
   if (nmax < n) n = nmax;
 
@@ -226,8 +230,13 @@ void moglcopybuffertomatrix(int nlhs, mxArray *plhs[], int nrhs, const mxArray *
       mexErrMsgTxt("MOGL-ERROR: Unknown matrix type requested in moglgetbuffer()! Ignored.");
     }
 
+  if ((sizeof(outdims) < sizeof(dims)) && (dims > INT_MAX)) {
+      mexErrMsgTxt("MOGL-ERROR: In moglgetbuffer(): Returned matrix is too big (more than 2^31 - 1 elements) for your version of Matlab or Octave! Aborted.");
+  }
+  
   // Allocate the beast:
-  plhs[0] = mxCreateNumericArray(1, &dims, type, mxREAL);
+  outdims = (mwSize) dims;
+  plhs[0] = mxCreateNumericArray(1, &outdims, type, mxREAL);
 
   // Retrieve pointer to output matrix:
   dst = (GLfloat*) mxGetData(plhs[0]);
@@ -244,10 +253,10 @@ void moglcopymatrixtobuffer(int nlhs, mxArray *plhs[], int nrhs, const mxArray *
   GLfloat* src = (GLfloat*) mxGetData(prhs[0]);
 
   // Retrieve size of buffer pointed to by dst:
-  unsigned int nmax = PsychGetBufferSizeForPtr(dst);
+  size_t nmax = PsychGetBufferSizeForPtr(dst);
 
   // Set final size of data to copy:
-  unsigned int nin = (unsigned int) mxGetScalar(prhs[2]);
+  size_t nin = (size_t) mxGetScalar(prhs[2]);
   if (nin > nmax) nin = nmax;
 
   // Do the copy:
@@ -258,8 +267,8 @@ void gl_bufferdata( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 
 	if (NULL == glBufferData) mogl_glunsupported("glBufferData");
 	glBufferData((GLenum)mxGetScalar(prhs[0]),
-		(GLsizei)mxGetScalar(prhs[1]),
-		(const GLvoid*) (mxGetM(prhs[2]) * mxGetN(prhs[2]) > 1) ? mxGetData(prhs[2]) : (void*) (unsigned int) mxGetScalar(prhs[2]),
+		(GLsizeiptr)mxGetScalar(prhs[1]),
+		(const GLvoid*) (mxGetM(prhs[2]) * mxGetN(prhs[2]) > 1) ? mxGetData(prhs[2]) : moglScalarToPtrOffset(prhs[2]),
 		(GLenum)mxGetScalar(prhs[3]));
 
 }
@@ -273,7 +282,7 @@ void gl_readpixels( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 		(GLsizei)mxGetScalar(prhs[3]),
 		(GLenum)mxGetScalar(prhs[4]),
 		(GLenum)mxGetScalar(prhs[5]),
-		(GLvoid*) (mxGetM(prhs[6]) * mxGetN(prhs[6]) > 1) ? mxGetData(prhs[6]) :  (void*) (unsigned int) mxGetScalar(prhs[6]));
+		(GLvoid*) (mxGetM(prhs[6]) * mxGetN(prhs[6]) > 1) ? mxGetData(prhs[6]) :  moglScalarToPtrOffset(prhs[6]));
 
 }
 
@@ -283,7 +292,7 @@ void gl_vertexpointer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[
 	glVertexPointer((GLint)mxGetScalar(prhs[0]),
 		(GLenum)mxGetScalar(prhs[1]),
 		(GLsizei)mxGetScalar(prhs[2]),
-		(const GLvoid*) (mxGetM(prhs[3]) * mxGetN(prhs[3]) > 1) ? mxGetData(prhs[3]) :  (void*) (unsigned int) mxGetScalar(prhs[3]));
+		(const GLvoid*) (mxGetM(prhs[3]) * mxGetN(prhs[3]) > 1) ? mxGetData(prhs[3]) :  moglScalarToPtrOffset(prhs[3]));
 
 }
 
@@ -292,7 +301,7 @@ void gl_normalpointer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[
 	if (NULL == glNormalPointer) mogl_glunsupported("glNormalPointer");
 	glNormalPointer((GLenum)mxGetScalar(prhs[0]),
 		(GLsizei)mxGetScalar(prhs[1]),
-		(const GLvoid*) (mxGetM(prhs[2]) * mxGetN(prhs[2]) > 1) ? mxGetData(prhs[2]) :  (void*) (unsigned int) mxGetScalar(prhs[2]));
+		(const GLvoid*) (mxGetM(prhs[2]) * mxGetN(prhs[2]) > 1) ? mxGetData(prhs[2]) :  moglScalarToPtrOffset(prhs[2]));
 
 }
 
@@ -302,7 +311,7 @@ void gl_texcoordpointer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prh
 	glTexCoordPointer((GLint)mxGetScalar(prhs[0]),
 		(GLenum)mxGetScalar(prhs[1]),
 		(GLsizei)mxGetScalar(prhs[2]),
-		(const GLvoid*) (mxGetM(prhs[3]) * mxGetN(prhs[3]) > 1) ? mxGetData(prhs[3]) :  (void*) (unsigned int) mxGetScalar(prhs[3]));
+		(const GLvoid*) (mxGetM(prhs[3]) * mxGetN(prhs[3]) > 1) ? mxGetData(prhs[3]) :  moglScalarToPtrOffset(prhs[3]));
 
 }
 
@@ -312,7 +321,7 @@ void gl_colorpointer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]
 	glColorPointer((GLint)mxGetScalar(prhs[0]),
 		(GLenum)mxGetScalar(prhs[1]),
 		(GLsizei)mxGetScalar(prhs[2]),
-		(const GLvoid*) (mxGetM(prhs[3]) * mxGetN(prhs[3]) > 1) ? mxGetData(prhs[3]) :  (void*) (unsigned int) mxGetScalar(prhs[3]));
+		(const GLvoid*) (mxGetM(prhs[3]) * mxGetN(prhs[3]) > 1) ? mxGetData(prhs[3]) :  moglScalarToPtrOffset(prhs[3]));
 
 }
 
@@ -324,7 +333,7 @@ void gl_vertexattribpointer( int nlhs, mxArray *plhs[], int nrhs, const mxArray 
 		(GLenum)mxGetScalar(prhs[2]),
 		(GLboolean)mxGetScalar(prhs[3]),
 		(GLsizei)mxGetScalar(prhs[4]),
-		(const GLvoid*) (mxGetM(prhs[5]) * mxGetN(prhs[5]) > 1) ? mxGetData(prhs[5]) :  (void*) (unsigned int) mxGetScalar(prhs[5]));
+		(const GLvoid*) (mxGetM(prhs[5]) * mxGetN(prhs[5]) > 1) ? mxGetData(prhs[5]) :  moglScalarToPtrOffset(prhs[5]));
 
 }
 
@@ -334,7 +343,7 @@ void gl_drawelements( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]
 	glDrawElements((GLenum)mxGetScalar(prhs[0]),
 		(GLsizei)mxGetScalar(prhs[1]),
 		(GLenum)mxGetScalar(prhs[2]),
-		(const GLvoid*) (mxGetM(prhs[3]) * mxGetN(prhs[3]) > 1) ? mxGetData(prhs[3]) :  (void*) (unsigned int) mxGetScalar(prhs[3]));
+		(const GLvoid*) (mxGetM(prhs[3]) * mxGetN(prhs[3]) > 1) ? mxGetData(prhs[3]) :  moglScalarToPtrOffset(prhs[3]));
 
 }
 
@@ -346,7 +355,7 @@ void gl_drawrangeelements( int nlhs, mxArray *plhs[], int nrhs, const mxArray *p
 		(GLuint)mxGetScalar(prhs[2]),
 		(GLsizei)mxGetScalar(prhs[3]),
 		(GLenum)mxGetScalar(prhs[4]),
-		(const GLvoid*) (mxGetM(prhs[5]) * mxGetN(prhs[5]) > 1) ? mxGetData(prhs[5]) :  (void*) (unsigned int) mxGetScalar(prhs[5]));
+		(const GLvoid*) (mxGetM(prhs[5]) * mxGetN(prhs[5]) > 1) ? mxGetData(prhs[5]) :  moglScalarToPtrOffset(prhs[5]));
 
 }
 
@@ -354,7 +363,7 @@ void glu_newtess( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
     mogl_tess_struct* mytess;
 	if (NULL == gluNewTess) mogl_glunsupported("gluNewTess");
-	plhs[0]=mxCreateNumericMatrix(1,1,mxUINT32_CLASS,mxREAL);
+	plhs[0]=mxCreateDoubleMatrix(1,1,mxREAL);
 
     // Create our own virtual tesselator struct:
     mytess = (mogl_tess_struct*) PsychCallocTemp(1, sizeof(mogl_tess_struct), 2);
@@ -366,7 +375,7 @@ void glu_newtess( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
     // all-zero, which is our wanted default.
     
     // Assign ptr to our own struct as returned tesselator pointer:
-	*(unsigned int *)mxGetData(plhs[0]) = (unsigned int) mytess;
+	*(double*) mxGetData(plhs[0]) = PsychPtrToDouble((void*) mytess);
 
 }
 
@@ -396,21 +405,6 @@ void glu_tessbegincontour( int nlhs, mxArray *plhs[], int nrhs, const mxArray *p
 
 }
 
-#define MOGLSETTESSCALLBACK(which)                                                                                          \
-{                                                                                                                           \
-    if (mytess->n##which##_DATA[0]) {                                                                                       \
-        gluTessCallback((GLUtesselator*) mytess->glutesselator, which##_DATA, mogl_##which##_DATA);                         \
-        mytess->userData = 1;                                                                                               \
-    }                                                                                                                       \
-     else if (mytess->n##which[0]) {                                                                                        \
-         gluTessCallback((GLUtesselator*) mytess->glutesselator, which##_DATA, mogl_##which##_DATA);                        \
-         mytess->userData = 0;                                                                                              \
-     }                                                                                                                      \
-     else {                                                                                                                 \
-         gluTessCallback((GLUtesselator*) mytess->glutesselator, which##_DATA, NULL );                                      \
-     }                                                                                                                      \
-}
-
 void CALLCONV mogl_GLU_TESS_BEGIN_DATA(GLenum type, void* polygondata)
 {
     mogl_tess_struct* mytess = (mogl_tess_struct*) polygondata;
@@ -422,8 +416,9 @@ void CALLCONV mogl_GLU_TESS_BEGIN_DATA(GLenum type, void* polygondata)
     *(double*) mxGetData(prhs[0]) = (double) type;
     
     if (mytess->userData) {
-        // Assign user-provided polygondata as mxArray*
-        prhs[1] = (mxArray*) mytess->polygondata;
+        // Assign user-provided polygondata as double:
+		prhs[1] = mxCreateNumericMatrix(1, 1, mxDOUBLE_CLASS, mxREAL);
+		*(double*) mxGetData(prhs[1]) = mytess->polygondata;
         mexCallMATLAB(0, NULL, 2, prhs, mytess->nGLU_TESS_BEGIN_DATA);
     }
     else {
@@ -439,8 +434,9 @@ void CALLCONV mogl_GLU_TESS_END_DATA(void* polygondata)
     //mexPrintf("ENDCB\n");
         
     if (mytess->userData) {
-        // Assign user-provided polygondata as mxArray*
-        prhs[0] = (mxArray*) mytess->polygondata;
+        // Assign user-provided polygondata as double:
+		prhs[0] = mxCreateNumericMatrix(1, 1, mxDOUBLE_CLASS, mxREAL);
+		*(double*) mxGetData(prhs[0]) = mytess->polygondata;
         mexCallMATLAB(0, NULL, 1, prhs, mytess->nGLU_TESS_END_DATA);
     }
     else {
@@ -460,8 +456,9 @@ void CALLCONV mogl_GLU_TESS_EDGE_FLAG_DATA(GLboolean flag, void* polygondata)
     *(double*) mxGetData(prhs[0]) = (double) flag;
     
     if (mytess->userData) {
-        // Assign user-provided polygondata as mxArray*
-        prhs[1] = (mxArray*) mytess->polygondata;
+        // Assign user-provided polygondata as double:
+		prhs[1] = mxCreateNumericMatrix(1, 1, mxDOUBLE_CLASS, mxREAL);
+		*(double*) mxGetData(prhs[1]) = mytess->polygondata;
         mexCallMATLAB(0, NULL, 2, prhs, mytess->nGLU_TESS_EDGE_FLAG_DATA);
     }
     else {
@@ -483,8 +480,9 @@ void CALLCONV mogl_GLU_TESS_VERTEX_DATA(void* vertex_data, void* polygondata)
     memcpy(ddat, vertex_data, sizeof(double) * mytess->nrElements);
         
     if (mytess->userData) {
-        // Assign user-provided polygondata as mxArray*
-        prhs[1] = (mxArray*) mytess->polygondata;
+        // Assign user-provided polygondata as double:
+		prhs[1] = mxCreateNumericMatrix(1, 1, mxDOUBLE_CLASS, mxREAL);
+		*(double*) mxGetData(prhs[1]) = mytess->polygondata;
         mexCallMATLAB(0, NULL, 2, prhs, mytess->nGLU_TESS_VERTEX_DATA);
     }
     else {
@@ -505,8 +503,9 @@ void CALLCONV mogl_GLU_TESS_ERROR_DATA(GLenum type, void* polygondata)
     *(double*) mxGetData(prhs[0]) = (double) type;
     
     if (mytess->userData) {
-        // Assign user-provided polygondata as mxArray*
-        prhs[1] = (mxArray*) mytess->polygondata;
+        // Assign user-provided polygondata as double:
+		prhs[1] = mxCreateNumericMatrix(1, 1, mxDOUBLE_CLASS, mxREAL);
+		*(double*) mxGetData(prhs[1]) = mytess->polygondata;
         mexCallMATLAB(0, NULL, 2, prhs, mytess->nGLU_TESS_ERROR_DATA);
     }
     else {
@@ -615,8 +614,9 @@ void CALLCONV mogl_GLU_TESS_COMBINE_DATA(GLdouble coords[3], void *vertex_data[4
     //mexPrintf("COMBINERCB4\n");
     
     if (mytess->userData) {
-        // Assign user-provided polygondata as mxArray*
-        prhs[3] = (mxArray*) mytess->polygondata;
+        // Assign user-provided polygondata as double:
+		prhs[3] = mxCreateNumericMatrix(1, 1, mxDOUBLE_CLASS, mxREAL);
+		*(double*) mxGetData(prhs[3]) = mytess->polygondata;
         mexCallMATLAB(1, retData, 4, prhs, mytess->nGLU_TESS_COMBINE_DATA);
     }
     else {
@@ -631,6 +631,23 @@ void CALLCONV mogl_GLU_TESS_COMBINE_DATA(GLdouble coords[3], void *vertex_data[4
     //mexPrintf("COMBINERCBEND\n");
     
 }
+
+#ifndef MOGLSETTESSCALLBACK
+#define MOGLSETTESSCALLBACK(which)                                                                                          \
+{                                                                                                                           \
+    if (mytess->n##which##_DATA[0]) {                                                                                       \
+        gluTessCallback((GLUtesselator*) mytess->glutesselator, which##_DATA, mogl_##which##_DATA);                         \
+        mytess->userData = 1;                                                                                               \
+    }                                                                                                                       \
+     else if (mytess->n##which[0]) {                                                                                        \
+         gluTessCallback((GLUtesselator*) mytess->glutesselator, which##_DATA, mogl_##which##_DATA);                        \
+         mytess->userData = 0;                                                                                              \
+     }                                                                                                                      \
+     else {                                                                                                                 \
+         gluTessCallback((GLUtesselator*) mytess->glutesselator, which##_DATA, NULL );                                      \
+     }                                                                                                                      \
+}
+#endif
 
 void glu_tessbeginpolygon( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
@@ -647,7 +664,7 @@ void glu_tessbeginpolygon( int nlhs, mxArray *plhs[], int nrhs, const mxArray *p
     MOGLSETTESSCALLBACK(GLU_TESS_ERROR);
         
     // Store user-provided polygon data pointer internally:
-    mytess->polygondata = (GLvoid*)mxGetData(prhs[1]);
+    mytess->polygondata = mxGetScalar(prhs[1]);
     
     // Pass pointer to our own struct as polygondata to the real tesselator:
 	gluTessBeginPolygon((GLUtesselator*) mytess->glutesselator, (GLvoid*) mytess);
@@ -702,7 +719,7 @@ void glu_tessvertex( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] 
 
     void* vdat;    
     MOGLDEFMYTESS;    
-    vdat = mogl_enqueueVertex(mytess, prhs[2]);
+    vdat = mogl_enqueueVertex(mytess, (mxArray*) prhs[2]);
     
 	if (NULL == gluTessVertex) mogl_glunsupported("gluTessVertex");
 
@@ -774,6 +791,7 @@ void glu_tesscallback( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[
     }
     
 }
+
 
 // command map:  moglcore string commands and functions that handle them
 // *** it's important that this list be kept in alphabetical order, 

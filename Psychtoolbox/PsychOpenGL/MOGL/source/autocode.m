@@ -16,13 +16,14 @@ function autocode(overwrite, glheaderpath, openal)
 % 30-May-06 -- added option 'overwrite' to not overwrite M-Files. (MK)
 %              added additional parsing code for headers/glext_edit.h
 % 06-Feb-07 -- added support for OpenAL (MK)
+% 24-Mar-11 -- Silence mlint warnings. (MK)
 
 clc;
 
 if nargin < 1 || isempty(overwrite)
     overwrite = 0;
 end;
-overwrite
+overwrite %#ok<NOPRT>
 
 if nargin < 3
 	openal = 0;
@@ -71,7 +72,7 @@ if openal
 	% initialize and open C file
 	cfile='al_auto.c';
 	if unix(sprintf('cat al_auto_init.c | sed ''s/DATE/%s/'' > %s',datestr(now,1),cfile))~=0,
-		error(sprintf('unable to initialize ''%s''',cfile));
+		error(sprintf('unable to initialize ''%s''',cfile)); %#ok<SPERR>
 	end
 else
 	unix(sprintf('grep gl[A-Z]   %s/gl.h        | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >  %s',glheaderpath, tmplistfile));
@@ -83,7 +84,7 @@ else
 	% initialize and open C file
 	cfile='gl_auto.c';
 	if unix(sprintf('cat gl_auto_init.c | sed ''s/DATE/%s/'' > %s',datestr(now,1),cfile))~=0,
-		error(sprintf('unable to initialize ''%s''',cfile));
+		error(sprintf('unable to initialize ''%s''',cfile)); %#ok<SPERR>
 	end
 end
 
@@ -118,7 +119,7 @@ while(~feof(listfid)),
     % C interface function (input arguments, return arguments, etc.)
     [M,C]=mcinfo(funcp);
 
-    if (overwrite > 0) | (exist([ funcp.fname '.m'], 'file')~= 2)
+    if (overwrite > 0) | (exist([ funcp.fname '.m'], 'file')~= 2) %#ok<OR2>
         % (re)create M-file wrapper
         fprintf(1, 'creating M-File wrapper.\n');
         mwrite(funcp,M,openal);
@@ -130,7 +131,7 @@ while(~feof(listfid)),
 	cwrite(cfid,funcp,C);
 	
 	% add line to command map (to be written to C file later)
-	cmdmap{end+1}=sprintf('{ %-35s%-35s }',[ '"' funcp.fname '",' ],C.interfacename);
+	cmdmap{end+1}=sprintf('{ %-35s%-35s }',[ '"' funcp.fname '",' ],C.interfacename); %#ok<AGROW>
 	
 end
 

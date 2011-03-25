@@ -11,6 +11,7 @@
  * 16-May-2006 -- Implementation of a buffer memory manager for dynamic buffer allocation and such.
  *                This is needed for commands like glFeedbackBuffer() to work properly.
  * 19-Jun-2006 -- Implement support for GNU/Octave (MK).
+ * 24-Mar-2011 -- Make 64-bit clean (MK).
  */
 
 #include "mogltypes.h"
@@ -28,10 +29,10 @@ extern int gl_manual_map_count, gl_auto_map_count;
 extern cmdhandler gl_manual_map[], gl_auto_map[];
 
 // Pointer to the start of our list of allocated temporary memory buffers:
-static unsigned int* PsychTempMemHead[4] = { NULL , NULL , NULL , NULL };
+static size_t* PsychTempMemHead[4] = { NULL , NULL , NULL , NULL };
 
 // Total count of allocated memory in Bytes:
-static int totalTempMemAllocated[4] = { 0 , 0 , 0 , 0 };
+static size_t totalTempMemAllocated[4] = { 0 , 0 , 0 , 0 };
 
 // Flag that signals first real invocation of moglcore:
 static int firsttime = 1;
@@ -677,17 +678,17 @@ void mogl_checkerrors(const char* cmd, const mxArray *prhs[])
 
 // Enqueues a new record into our linked list of temp. memory buffers.
 // Returns the memory pointer to be passed to rest of Psychtoolbox.
-void* PsychEnqueueTempMemory(void* p, unsigned long n, int mlist)
+void* PsychEnqueueTempMemory(void* p, size_t n, int mlist)
 {
   // Add current buffer-head ptr as next-pointer to our new buffer:
-  *((unsigned int*) p) = (unsigned int) PsychTempMemHead[mlist];
+  *((size_t*) p) = (size_t) PsychTempMemHead[mlist];
 
   // Set our buffer as new head of list:
-  PsychTempMemHead[mlist] = (unsigned int*) p;
+  PsychTempMemHead[mlist] = (size_t*) p;
 
   // Add allocated buffer size as 2nd element:
   p = (unsigned char*) p + sizeof(PsychTempMemHead[mlist]);
-  *((unsigned long*) p) = n;
+  *((size_t*) p) = n;
 
   // Accounting:
   totalTempMemAllocated[mlist] += n;
@@ -695,24 +696,26 @@ void* PsychEnqueueTempMemory(void* p, unsigned long n, int mlist)
   // Increment p again to get real start of user-visible buffer:
   p = (unsigned char*) p + sizeof(n);
 
+  // MK TODO FIXME: This can print bogus values if bytecount > INT_MAX ...
   if (debuglevel > 1) mexPrintf("MOGL: Memlist %i : Allocated new buffer %p of %i Bytes,  new total = %i.\n", mlist, p, n, totalTempMemAllocated[mlist]); fflush(NULL);
 
   // Return ptr:
   return(p);
 }
 
-void *PsychCallocTemp(unsigned long n, unsigned long size, int mlist)
+void *PsychCallocTemp(size_t n, size_t size, int mlist)
 {
   void *ret;
   // MK: This could create an overflow if product n * size is
-  // bigger than length of a unsigned long int --> Only
-  // happens if more than 4 GB of RAM are allocated at once.
+  // bigger than length of size_t --> Only
+  // happens if more than 4 GB of RAM are allocated at once on
+  // a 32-bit system.
   // --> Improbable for PTB, unless someones trying a buffer
   // overflow attack -- PTB would lose there badly anyway...
-  unsigned long realsize = n * size + sizeof(void*) + sizeof(realsize);
+  size_t realsize = n * size + sizeof(void*) + sizeof(realsize);
 
   // realsize has extra bytes allocated for our little header...  
-  if(NULL==(ret=calloc((size_t) 1, (size_t) realsize))) {
+  if(NULL==(ret=calloc((size_t) 1, realsize))) {
     mexErrMsgTxt("MOGL-FATAL ERROR: Out of memory in PsychCallocTemp!\n");
   }
 
@@ -720,13 +723,13 @@ void *PsychCallocTemp(unsigned long n, unsigned long size, int mlist)
   return(PsychEnqueueTempMemory(ret, realsize, mlist));
 }
 
-void *PsychMallocTemp(unsigned long n, int mlist)
+void *PsychMallocTemp(size_t n, int mlist)
 {
   void *ret;
 
   // Allocate some extra bytes for our little header...
-  n=n + sizeof(void*) + sizeof(n);
-  if(NULL==(ret=malloc((size_t) n))){
+  n = n + sizeof(void*) + sizeof(n);
+  if(NULL==(ret=malloc(n))){
     mexErrMsgTxt("MOGL-FATAL ERROR: Out of memory in PsychMallocTemp!\n");
   }
 
@@ -749,22 +752,22 @@ void *PsychMallocTemp(unsigned long n, int mlist)
 void PsychFreeTemp(void* ptr, int mlist)
 {
   void* ptrbackup = ptr;
-  unsigned int* next = PsychTempMemHead[mlist];
-  unsigned int* prevptr = NULL;
+  size_t* next = PsychTempMemHead[mlist];
+  size_t* prevptr = NULL;
 
   if (ptr == NULL) return;
  
   // Convert ptb supplied pointer ptr into real start
   // of our buffer, including our header:
-  ptr = (unsigned char*) ptr - sizeof((unsigned char*) ptr) - sizeof(unsigned long);
+  ptr = (unsigned char*) ptr - sizeof((unsigned char*) ptr) - sizeof(size_t);
   if (ptr == NULL) return;
 
   if (PsychTempMemHead[mlist] == ptr) {
     // Special case: ptr is first buffer in queue. Dequeue:
-    PsychTempMemHead[mlist] = (unsigned int*) *(PsychTempMemHead[mlist]);
+    PsychTempMemHead[mlist] = (size_t*) *(PsychTempMemHead[mlist]);
 
     // Some accounting:
-    PTBTEMPMEMDEC(((unsigned int*)ptr)[1], mlist);
+    PTBTEMPMEMDEC(((size_t*)ptr)[1], mlist);
     if (debuglevel > 1) mexPrintf("MOGL: Memlist %i : Freed buffer at %p, new total = %i.\n", mlist, ptrbackup, totalTempMemAllocated[mlist]); fflush(NULL);
 
     // Release it:
@@ -777,7 +780,7 @@ void PsychFreeTemp(void* ptr, int mlist)
   // Walk the whole buffer list until we encounter our buffer:
   while (next != NULL && next!=ptr) {
     prevptr = next;
-    next = (unsigned int*) *next;
+    next = (size_t*) *next;
   }
 
   // Done with search loop. Did we find our buffer?
@@ -806,8 +809,8 @@ void PsychFreeTemp(void* ptr, int mlist)
 // Master cleanup routine: Frees all allocated memory:
 void PsychFreeAllTempMemory(int mlist)
 {
-  unsigned int* p = NULL;
-  unsigned int* next = PsychTempMemHead[mlist];
+  size_t* p = NULL;
+  size_t* next = PsychTempMemHead[mlist];
 
   // Walk our whole buffer list and release all buffers on it:
   while (next != NULL) {
@@ -816,7 +819,7 @@ void PsychFreeAllTempMemory(int mlist)
     p = next;
 
     // Update next to point to the next buffer to release:
-    next = (unsigned int*) *p;
+    next = (size_t*) *p;
 
     // Some accounting:
     PTBTEMPMEMDEC(p[1], mlist);
@@ -852,13 +855,13 @@ void*  PsychDoubleToPtr(volatile double dptr)
 {
   volatile psych_uint64* iptr = (psych_uint64*) &dptr;
   volatile psych_uint64 ival = *iptr;
-  return((void*) ival);
+  return((void*) ((size_t) ival));
 }
 
 // Convert a memory address pointer into a double value:
 double PsychPtrToDouble(void* ptr)
 {
-  volatile psych_uint64 ival = (psych_uint64) ptr;
+  volatile psych_uint64 ival = (psych_uint64) ((size_t) ptr);
   volatile double* dptr = (double*) &ival;
   volatile double outval = *dptr;
   return(outval);
@@ -870,17 +873,22 @@ double PsychPtrToDouble(void* ptr)
 // The routine returns the net-size of the buffer (the size useable by
 // code), not the allocated size (which would be a few additional bytes
 // for the buffer-header).
-unsigned int PsychGetBufferSizeForPtr(void* ptr)
+size_t PsychGetBufferSizeForPtr(void* ptr)
 {
-  unsigned long mysize;
+  size_t mysize;
 
   // Decrement pointer to let it point to our size field in the buffer-header:
-  ptr = (unsigned char*) ptr - sizeof(unsigned long);
+  ptr = (unsigned char*) ptr - sizeof(size_t);
 
   // Retrieve size value in header, subtract size of header itself:
-  mysize = (*((unsigned long*) ptr)) - sizeof(void*) - sizeof(unsigned long);
+  mysize = (*((size_t*) ptr)) - sizeof(void*) - sizeof(size_t);
 
   // Return it:
-  return((unsigned int) mysize);
+  return((size_t) mysize);
 }
 
+// Mapping of scalar buffer offset value (in units of bytes) to an
+// equivalent memory void*.
+inline void* moglScalarToPtrOffset(const mxArray *m) {
+	return((void*) (size_t) mxGetScalar(m));
+}
