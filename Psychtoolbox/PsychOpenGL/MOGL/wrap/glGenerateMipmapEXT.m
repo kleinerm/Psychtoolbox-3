@@ -6,7 +6,7 @@ function glGenerateMipmapEXT( target )
 %
 % C function:  void glGenerateMipmapEXT(GLenum target)
 
-% 30-May-2006 -- created (generated automatically from header files)
+% 26-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=1,
     error('invalid number of arguments');

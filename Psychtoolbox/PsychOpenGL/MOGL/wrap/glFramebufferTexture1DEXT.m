@@ -6,7 +6,7 @@ function glFramebufferTexture1DEXT( target, attachment, textarget, texture, leve
 %
 % C function:  void glFramebufferTexture1DEXT(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level)
 
-% 30-May-2006 -- created (generated automatically from header files)
+% 26-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=5,
     error('invalid number of arguments');

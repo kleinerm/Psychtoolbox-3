@@ -6,12 +6,12 @@ function glEvalCoord1fv( u )
 %
 % C function:  void glEvalCoord1fv(const GLfloat* u)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=1,
     error('invalid number of arguments');
 end
 
-moglcore( 'glEvalCoord1fv', moglsingle(u) );
+moglcore( 'glEvalCoord1fv', single(u) );
 
 return

@@ -6,12 +6,12 @@ function glLoadMatrixf( m )
 %
 % C function:  void glLoadMatrixf(const GLfloat* m)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=1,
     error('invalid number of arguments');
 end
 
-moglcore( 'glLoadMatrixf', moglsingle(m) );
+moglcore( 'glLoadMatrixf', single(m) );
 
 return

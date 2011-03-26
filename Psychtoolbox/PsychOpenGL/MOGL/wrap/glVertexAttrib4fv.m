@@ -6,12 +6,12 @@ function glVertexAttrib4fv( index, v )
 %
 % C function:  void glVertexAttrib4fv(GLuint index, const GLfloat* v)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=2,
     error('invalid number of arguments');
 end
 
-moglcore( 'glVertexAttrib4fv', index, moglsingle(v) );
+moglcore( 'glVertexAttrib4fv', index, single(v) );
 
 return

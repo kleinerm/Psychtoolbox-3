@@ -6,7 +6,7 @@ function glUniform4i( location, v0, v1, v2, v3 )
 %
 % C function:  void glUniform4i(GLint location, GLint v0, GLint v1, GLint v2, GLint v3)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=5,
     error('invalid number of arguments');

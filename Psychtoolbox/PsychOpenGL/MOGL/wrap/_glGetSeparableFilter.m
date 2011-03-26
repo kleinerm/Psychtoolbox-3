@@ -6,7 +6,7 @@ function [ row, column, span ] = glGetSeparableFilter( target, format, type )
 %
 % C function:  void glGetSeparableFilter(GLenum target, GLenum format, GLenum type, GLvoid* row, GLvoid* column, GLvoid* span)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
 

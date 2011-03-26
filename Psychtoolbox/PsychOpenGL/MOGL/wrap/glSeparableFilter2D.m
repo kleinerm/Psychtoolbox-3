@@ -6,7 +6,7 @@ function glSeparableFilter2D( target, internalformat, width, height, format, typ
 %
 % C function:  void glSeparableFilter2D(GLenum target, GLenum internalformat, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid* row, const GLvoid* column)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=8,
     error('invalid number of arguments');

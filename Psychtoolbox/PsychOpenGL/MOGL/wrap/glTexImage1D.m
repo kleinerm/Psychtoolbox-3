@@ -6,7 +6,7 @@ function glTexImage1D( target, level, internalformat, width, border, format, typ
 %
 % C function:  void glTexImage1D(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLint border, GLenum format, GLenum type, const GLvoid* pixels)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=8,
     error('invalid number of arguments');

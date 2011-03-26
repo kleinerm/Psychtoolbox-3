@@ -19,3 +19,4 @@ equation = double(zeros(4,1));
 moglcore( 'glGetClipPlane', plane, equation );
 
 return
+% ---skip---

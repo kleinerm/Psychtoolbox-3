@@ -6,7 +6,7 @@ function [ length, source ] = glGetShaderSource( shader, bufSize )
 %
 % C function:  void glGetShaderSource(GLuint shader, GLsizei bufSize, GLsizei* length, GLchar* source)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
 

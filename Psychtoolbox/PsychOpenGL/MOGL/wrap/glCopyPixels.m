@@ -6,7 +6,7 @@ function glCopyPixels( x, y, width, height, type )
 %
 % C function:  void glCopyPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum type)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=5,
     error('invalid number of arguments');

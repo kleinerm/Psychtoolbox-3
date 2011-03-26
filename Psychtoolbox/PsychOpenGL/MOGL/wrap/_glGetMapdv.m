@@ -6,7 +6,7 @@ function v = glGetMapdv( target, query )
 %
 % C function:  void glGetMapdv(GLenum target, GLenum query, GLdouble* v)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
 

@@ -10,13 +10,14 @@ function data = gluGetTessProperty( tess, which )
 
 % ---allocate---
 % ---protected---
+% ---skip---
 
 if nargin~=2,
     error('invalid number of arguments');
 end
 
-if ~strcmp(class(tess),'uint32'),
-	error([ 'argument ''tess'' must be a pointer coded as type uint32 ' ]);
+if ~strcmp(class(tess),'double'),
+	error([ 'argument ''tess'' must be a pointer coded as type double ' ]);
 end
 
 data = double(0);

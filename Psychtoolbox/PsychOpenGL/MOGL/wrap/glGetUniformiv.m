@@ -22,3 +22,4 @@ moglcore( 'glGetUniformiv', program, location, params );
 params = params(find(params~=intmax));
 
 return
+% ---skip---

@@ -6,7 +6,7 @@ function glTexImage3D( target, level, internalformat, width, height, depth, bord
 %
 % C function:  void glTexImage3D(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLenum format, GLenum type, const GLvoid* pixels)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=10,
     error('invalid number of arguments');

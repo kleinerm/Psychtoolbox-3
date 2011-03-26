@@ -6,7 +6,7 @@ function glPopClientAttrib
 %
 % C function:  void glPopClientAttrib(void)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=0,
     error('invalid number of arguments');

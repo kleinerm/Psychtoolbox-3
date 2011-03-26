@@ -6,7 +6,7 @@ function glCopyTexImage2D( target, level, internalformat, x, y, width, height, b
 %
 % C function:  void glCopyTexImage2D(GLenum target, GLint level, GLenum internalformat, GLint x, GLint y, GLsizei width, GLsizei height, GLint border)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=8,
     error('invalid number of arguments');

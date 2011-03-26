@@ -6,12 +6,12 @@ function glRectfv( v1, v2 )
 %
 % C function:  void glRectfv(const GLfloat* v1, const GLfloat* v2)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=2,
     error('invalid number of arguments');
 end
 
-moglcore( 'glRectfv', moglsingle(v1), moglsingle(v2) );
+moglcore( 'glRectfv', single(v1), single(v2) );
 
 return

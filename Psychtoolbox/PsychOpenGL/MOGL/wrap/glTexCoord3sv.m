@@ -6,7 +6,7 @@ function glTexCoord3sv( v )
 %
 % C function:  void glTexCoord3sv(const GLshort* v)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=1,
     error('invalid number of arguments');

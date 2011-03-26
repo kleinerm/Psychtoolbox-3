@@ -6,7 +6,7 @@ function glDrawPixels( width, height, format, type, pixels )
 %
 % C function:  void glDrawPixels(GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid* pixels)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=5,
     error('invalid number of arguments');

@@ -6,7 +6,7 @@ function [ length, infoLog ] = glGetProgramInfoLog( program, bufSize )
 %
 % C function:  void glGetProgramInfoLog(GLuint program, GLsizei bufSize, GLsizei* length, GLchar* infoLog)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
 

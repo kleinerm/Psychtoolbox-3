@@ -22,3 +22,4 @@ params = int32(zeros(size(f)));
 moglcore( 'glGetTexEnviv', target, pname, params );
 
 return
+% ---skip---

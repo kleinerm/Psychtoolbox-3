@@ -10,16 +10,18 @@ function data = gluGetNurbsProperty( nurb, property )
 
 % ---allocate---
 % ---protected---
+% ---skip---
 
 if nargin~=2,
     error('invalid number of arguments');
 end
 
-if ~strcmp(class(nurb),'uint32'),
-	error([ 'argument ''nurb'' must be a pointer coded as type uint32 ' ]);
+if ~strcmp(class(nurb),'double'),
+	error([ 'argument ''nurb'' must be a pointer coded as type double ' ]);
 end
 
-data = moglsingle(0);
+data = single(0);
+
 moglcore( 'gluGetNurbsProperty', nurb, property, data );
 
 return

@@ -20,3 +20,4 @@ params = int32(1);
 moglcore( 'glGetRenderbufferParameterivEXT', target, pname, params );
 
 return
+% ---skip---

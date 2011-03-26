@@ -6,7 +6,7 @@ function glTexCoord1f( s )
 %
 % C function:  void glTexCoord1f(GLfloat s)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=1,
     error('invalid number of arguments');

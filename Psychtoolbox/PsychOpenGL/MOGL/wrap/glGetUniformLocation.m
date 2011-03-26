@@ -17,3 +17,4 @@ end
 r = moglcore( 'glGetUniformLocation', program, [uint8(name) 0]);
 
 return
+% ---skip---

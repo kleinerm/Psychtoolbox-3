@@ -6,7 +6,7 @@ function r = gluBuild2DMipmapLevels( target, internalFormat, width, height, form
 %
 % C function:  GLint gluBuild2DMipmapLevels(GLenum target, GLint internalFormat, GLsizei width, GLsizei height, GLenum format, GLenum type, GLint level, GLint base, GLint max, const void* data)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=10,
     error('invalid number of arguments');

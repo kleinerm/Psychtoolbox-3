@@ -6,7 +6,7 @@ function [ length, size, type, name ] = glGetActiveAttrib( program, index, bufSi
 %
 % C function:  void glGetActiveAttrib(GLuint program, GLuint index, GLsizei bufSize, GLsizei* length, GLsizei* size, GLenum* type, GLchar* name)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
 

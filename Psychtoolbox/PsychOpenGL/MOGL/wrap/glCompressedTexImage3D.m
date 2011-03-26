@@ -6,7 +6,7 @@ function glCompressedTexImage3D( target, level, internalformat, width, height, d
 %
 % C function:  void glCompressedTexImage3D(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLsizei imageSize, const GLvoid* data)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=9,
     error('invalid number of arguments');

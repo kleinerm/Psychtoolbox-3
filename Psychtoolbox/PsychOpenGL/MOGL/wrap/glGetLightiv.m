@@ -22,3 +22,4 @@ params = int32(zeros(size(f)));
 moglcore( 'glGetLightiv', light, pname, params );
 
 return
+% ---skip---

@@ -6,7 +6,7 @@ function glTexSubImage2D( target, level, xoffset, yoffset, width, height, format
 %
 % C function:  void glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid* pixels)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=9,
     error('invalid number of arguments');

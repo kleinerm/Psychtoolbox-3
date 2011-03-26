@@ -6,7 +6,7 @@ function params = glGetColorTableParameteriv( target, pname )
 %
 % C function:  void glGetColorTableParameteriv(GLenum target, GLenum pname, GLint* params)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
 

@@ -8,6 +8,9 @@ function glBufferSubData( target, vbooffset, datasize, data )
 
 % 05-Mar-2006 -- created (generated automatically from header files)
 
+% ---protected---
+% ---skip---
+
 if nargin~=4,
     error('invalid number of arguments');
 end

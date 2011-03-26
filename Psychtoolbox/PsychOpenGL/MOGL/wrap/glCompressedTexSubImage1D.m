@@ -6,7 +6,7 @@ function glCompressedTexSubImage1D( target, level, xoffset, width, format, image
 %
 % C function:  void glCompressedTexSubImage1D(GLenum target, GLint level, GLint xoffset, GLsizei width, GLenum format, GLsizei imageSize, const GLvoid* data)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=7,
     error('invalid number of arguments');

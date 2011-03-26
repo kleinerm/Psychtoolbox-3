@@ -22,3 +22,4 @@ end
 moglcore('glGetBufferSubData', target, offset, dsize, data);
 
 return
+% ---skip---

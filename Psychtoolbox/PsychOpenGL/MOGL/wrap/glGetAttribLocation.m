@@ -17,3 +17,4 @@ end
 r = moglcore( 'glGetAttribLocation', program, [ uint8(name) 0 ]);
 
 return
+% ---skip---

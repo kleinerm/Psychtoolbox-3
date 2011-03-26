@@ -22,3 +22,4 @@ params = int32(zeros(size(f)));
 moglcore( 'glGetMaterialiv', face, pname, params );
 
 return
+% ---skip---

@@ -6,7 +6,7 @@ function ids = glGenQueries( n )
 %
 % C function:  void glGenQueries(GLsizei n, GLuint* ids)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
 

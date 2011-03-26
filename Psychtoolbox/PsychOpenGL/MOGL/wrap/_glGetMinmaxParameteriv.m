@@ -6,7 +6,7 @@ function params = glGetMinmaxParameteriv( target, pname )
 %
 % C function:  void glGetMinmaxParameteriv(GLenum target, GLenum pname, GLint* params)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
 

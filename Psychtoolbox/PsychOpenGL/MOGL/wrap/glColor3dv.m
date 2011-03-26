@@ -6,7 +6,7 @@ function glColor3dv( v )
 %
 % C function:  void glColor3dv(const GLdouble* v)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=1,
     error('invalid number of arguments');

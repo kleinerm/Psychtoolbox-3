@@ -20,3 +20,4 @@ moglcore( 'glGetTexGendv', coord, pname, params );
 params = params(find(~isnan(params)));
 
 return
+% ---skip---

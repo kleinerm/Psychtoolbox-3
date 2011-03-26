@@ -6,7 +6,7 @@ function glMap2d( target, u1, u2, ustride, uorder, v1, v2, vstride, vorder, poin
 %
 % C function:  void glMap2d(GLenum target, GLdouble u1, GLdouble u2, GLint ustride, GLint uorder, GLdouble v1, GLdouble v2, GLint vstride, GLint vorder, const GLdouble* points)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=10,
     error('invalid number of arguments');

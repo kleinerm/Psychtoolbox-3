@@ -6,14 +6,14 @@ function gluEndTrim( nurb )
 %
 % C function:  void gluEndTrim(GLUnurbs* nurb)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=1,
     error('invalid number of arguments');
 end
 
-if ~strcmp(class(nurb),'uint32'),
-	error([ 'argument ''nurb'' must be a pointer coded as type uint32 ' ]);
+if ~strcmp(class(nurb),'double'),
+	error([ 'argument ''nurb'' must be a pointer coded as type double ' ]);
 end
 
 moglcore( 'gluEndTrim', nurb );

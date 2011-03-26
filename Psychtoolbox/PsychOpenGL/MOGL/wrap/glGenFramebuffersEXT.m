@@ -20,3 +20,4 @@ framebuffers = uint32(zeros(1,n));
 moglcore( 'glGenFramebuffersEXT', n, framebuffers );
 
 return
+% ---skip---

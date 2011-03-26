@@ -6,7 +6,7 @@ function [ r, dataOut ] = gluScaleImage( format, wIn, hIn, typeIn, dataIn, wOut,
 %
 % C function:  GLint gluScaleImage(GLenum format, GLsizei wIn, GLsizei hIn, GLenum typeIn, const void* dataIn, GLsizei wOut, GLsizei hOut, GLenum typeOut, GLvoid* dataOut)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 26-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
 

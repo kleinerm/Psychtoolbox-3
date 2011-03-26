@@ -6,7 +6,7 @@ function glCopyTexSubImage2D( target, level, xoffset, yoffset, x, y, width, heig
 %
 % C function:  void glCopyTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint x, GLint y, GLsizei width, GLsizei height)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=8,
     error('invalid number of arguments');

@@ -10,6 +10,7 @@ function values = glGetPixelMapfv( map )
 
 % ---allocate---
 % ---protected---
+% ---skip---
 
 if nargin~=1,
     error('invalid number of arguments');
@@ -18,9 +19,9 @@ end
 % find map size
 global GL
 maxn=glGetIntegerv(GL.MAX_PIXEL_MAP_TABLE);
-values = moglsingle(NaN(maxn,1));
+values = single(NaN(maxn,1));
 moglcore( 'glGetPixelMapfv', map, values );
-params = mogldouble(values);
+values = double(values);
 values = values(~isnan(values));
 
 return

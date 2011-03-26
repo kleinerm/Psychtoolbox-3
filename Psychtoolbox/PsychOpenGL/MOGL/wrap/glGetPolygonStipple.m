@@ -19,3 +19,4 @@ mask = uint8(zeros(128,1));
 moglcore( 'glGetPolygonStipple', mask );
 
 return
+% ---skip---

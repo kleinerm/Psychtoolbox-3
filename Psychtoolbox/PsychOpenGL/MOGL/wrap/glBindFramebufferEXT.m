@@ -6,7 +6,7 @@ function glBindFramebufferEXT( target, framebuffer )
 %
 % C function:  void glBindFramebufferEXT(GLenum target, GLuint framebuffer)
 
-% 30-May-2006 -- created (generated automatically from header files)
+% 26-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=2,
     error('invalid number of arguments');

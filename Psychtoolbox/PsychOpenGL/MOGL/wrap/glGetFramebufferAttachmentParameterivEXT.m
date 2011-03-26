@@ -20,3 +20,4 @@ params = int32(1);
 moglcore( 'glGetFramebufferAttachmentParameterivEXT', target, attachment, pname, params );
 
 return
+% ---skip---

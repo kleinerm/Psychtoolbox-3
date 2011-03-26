@@ -6,7 +6,7 @@ function glConvolutionFilter2D( target, internalformat, width, height, format, t
 %
 % C function:  void glConvolutionFilter2D(GLenum target, GLenum internalformat, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid* image)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=7,
     error('invalid number of arguments');

@@ -6,7 +6,7 @@ function viewport = gluPickMatrix( x, y, delX, delY )
 %
 % C function:  void gluPickMatrix(GLdouble x, GLdouble y, GLdouble delX, GLdouble delY, GLint* viewport)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 26-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
 

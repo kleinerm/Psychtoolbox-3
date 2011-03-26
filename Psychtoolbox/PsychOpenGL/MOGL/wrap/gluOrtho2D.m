@@ -6,7 +6,7 @@ function gluOrtho2D( left, right, bottom, top )
 %
 % C function:  void gluOrtho2D(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 26-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=4,
     error('invalid number of arguments');

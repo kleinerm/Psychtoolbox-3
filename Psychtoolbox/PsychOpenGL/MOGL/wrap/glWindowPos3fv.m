@@ -6,12 +6,12 @@ function glWindowPos3fv( v )
 %
 % C function:  void glWindowPos3fv(const GLfloat* v)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=1,
     error('invalid number of arguments');
 end
 
-moglcore( 'glWindowPos3fv', moglsingle(v) );
+moglcore( 'glWindowPos3fv', single(v) );
 
 return

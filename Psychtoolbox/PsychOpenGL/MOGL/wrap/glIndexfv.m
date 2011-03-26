@@ -6,12 +6,12 @@ function glIndexfv( c )
 %
 % C function:  void glIndexfv(const GLfloat* c)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=1,
     error('invalid number of arguments');
 end
 
-moglcore( 'glIndexfv', moglsingle(c) );
+moglcore( 'glIndexfv', single(c) );
 
 return

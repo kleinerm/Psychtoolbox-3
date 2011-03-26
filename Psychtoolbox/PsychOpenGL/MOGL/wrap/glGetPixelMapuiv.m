@@ -22,3 +22,4 @@ values = uint32(zeros(size(f)));
 moglcore( 'glGetPixelMapuiv', map, values );
 
 return
+% ---skip---

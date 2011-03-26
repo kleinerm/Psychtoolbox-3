@@ -11,6 +11,7 @@ function pixels = glGetTexImage( target, level, format, type )
 
 % ---allocate---
 % ---protected---
+% ---skip---
 
 if nargin~=4,
     error('invalid number of arguments');
@@ -72,7 +73,7 @@ switch(type)
     case GL.INT
         pixels = int32(pixels);
     case GL.FLOAT
-        pixels = moglsingle(pixels);
+        pixels = single(pixels);
 end;
 
 % Execute actual call to moglcore:

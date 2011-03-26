@@ -6,7 +6,7 @@ function glRasterPos2s( x, y )
 %
 % C function:  void glRasterPos2s(GLshort x, GLshort y)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=2,
     error('invalid number of arguments');

@@ -6,7 +6,7 @@ function glDeleteBuffers( n, buffers )
 %
 % C function:  void glDeleteBuffers(GLsizei n, const GLuint* buffers)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=2,
     error('invalid number of arguments');

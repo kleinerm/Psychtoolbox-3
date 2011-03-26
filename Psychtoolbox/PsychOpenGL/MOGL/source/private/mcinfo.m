@@ -96,7 +96,7 @@ for j=1:numel(funcp.argin.args),
 			case { 'GLdouble' 'GLclampd' 'ALdouble' 'ALclampd' }
 				mcast='double';
 			case { 'GLfloat' 'GLclampf' 'ALfloat' 'ALclampf' }
-				mcast='moglsingle';
+				mcast='single';
 			case { 'GLint' 'GLsizei' 'ALint' 'ALsizei' }
 				mcast='int32';
 			case { 'GLuint' 'GLenum' 'GLbitfield' 'GLUnurbs' 'GLUtesselator' 'GLUquadric' 'ALuint' 'ALenum' 'ALbitfield' }

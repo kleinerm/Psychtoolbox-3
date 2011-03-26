@@ -6,7 +6,7 @@ function glVertex4f( x, y, z, w )
 %
 % C function:  void glVertex4f(GLfloat x, GLfloat y, GLfloat z, GLfloat w)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=4,
     error('invalid number of arguments');

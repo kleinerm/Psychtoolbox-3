@@ -6,7 +6,7 @@ function glVertexAttrib3s( index, x, y, z )
 %
 % C function:  void glVertexAttrib3s(GLuint index, GLshort x, GLshort y, GLshort z)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=4,
     error('invalid number of arguments');

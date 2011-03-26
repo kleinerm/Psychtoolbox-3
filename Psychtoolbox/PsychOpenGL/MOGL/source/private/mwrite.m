@@ -7,6 +7,7 @@ function mwrite( funcp, M, openal )
 % 24-Jan-2005 -- created;  adapted from code in autocode.m (RFM)
 % 06-Feb-2007 -- Modified; can now handle OpenAL as well. (MK)
 % 24-Mar-2011 -- Modified; More debug output when protected funcs are encountered. (MK)
+% 25-Mar-2011 -- Modified; Be more interactive when protected funcs are encountered. (MK)
 
 if nargin < 3
 	openal = 0;
@@ -77,26 +78,56 @@ fclose(fid);
 % see whether existing M-file wrapper is protected
 wrapfile=sprintf('../wrap/%s.m',funcp.fname);
 mprotected=filecontains(wrapfile,'---protected---');
+mskip = filecontains(wrapfile,'---skip---');
+
+if mskip
+    fprintf('File %s has ---skip--- marker. Skipping it.\n', wrapfile);
+    return;
+end
 
 % if protected, append automatically generated code as comments
 if mprotected,
-    fprintf('File %s is ---protected--- Appending new code as comments.\n', wrapfile);
-	% strip existing autocode
-	if filecontains(wrapfile,'---autocode---'),
-		unix(sprintf('sed -E -n ''1,/---autocode---/p'' %s > %s',wrapfile,tmpwrapfile2));
-		unix(sprintf('mv %s %s',tmpwrapfile2,wrapfile));
-		% if no autocode, write autocode header
-	else
-		unix(sprintf('echo >> %s',wrapfile));
-		unix(sprintf('echo >> %s',wrapfile));
-		unix(sprintf('echo ''%% ---autocode---'' >> %s',wrapfile));
-	end
+    if 1
+        fprintf('File %s is ---protected--- This would be the new code:\n\n', wrapfile);
+        system(sprintf('cat %s', tmpwrapfile1));
+        
+        fprintf('\n\n==== This is the old code: ====\n\n');
+        system(sprintf('cat %s', wrapfile));
+        fprintf('\n\n');
+        
+        resp = input('(e)dit modified code in editor? (s)kip permanently? Press enter to skip now: ', 's');
+        if strfind(resp, 'e')
+            fprintf('File %s is ---protected--- Appending new code as comments.\n', wrapfile);
+            % strip existing autocode
+            if filecontains(wrapfile,'---autocode---'),
+                unix(sprintf('sed -E -n ''1,/---autocode---/p'' %s > %s',wrapfile,tmpwrapfile2));
+                unix(sprintf('mv %s %s',tmpwrapfile2,wrapfile));
+                % if no autocode, write autocode header
+            else
+                unix(sprintf('echo >> %s',wrapfile));
+                unix(sprintf('echo >> %s',wrapfile));
+                unix(sprintf('echo ''%% ---autocode---'' >> %s',wrapfile));
+            end
 
-	% append automatically generated code as comments
-	unix(sprintf('echo ''%%'' >> %s',wrapfile));
-	unix(sprintf('cat %s | sed -E ''s/^/%% /'' >> %s',tmpwrapfile1,wrapfile));
-	unix(sprintf('echo ''%%'' >> %s',wrapfile));
+            % append automatically generated code as comments
+            unix(sprintf('echo ''%%'' >> %s',wrapfile));
+            unix(sprintf('cat %s | sed -E ''s/^/%% /'' >> %s',tmpwrapfile1,wrapfile));
+            unix(sprintf('echo ''%%'' >> %s',wrapfile));
 
+            % Open file in editor for further processing:
+            edit(wrapfile);
+        else
+            if strfind(resp, 's')
+                fprintf('...skipped permanently...\n');
+                unix(sprintf('echo ''%% ---skip---'' >> %s',wrapfile));
+            else
+                fprintf('...skipped...\n');
+            end
+        end
+    else
+        fprintf('File %s is ---protected--- This would have been the new code:\n\n', wrapfile);
+        system(sprintf('cat %s', tmpwrapfile1));
+    end
 	% otherwise, just overwrite the existing file
 else
 

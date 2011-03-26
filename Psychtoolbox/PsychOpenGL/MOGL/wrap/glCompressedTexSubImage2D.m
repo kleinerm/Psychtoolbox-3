@@ -6,7 +6,7 @@ function glCompressedTexSubImage2D( target, level, xoffset, yoffset, width, heig
 %
 % C function:  void glCompressedTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLsizei imageSize, const GLvoid* data)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=9,
     error('invalid number of arguments');

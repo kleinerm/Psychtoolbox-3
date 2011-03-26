@@ -6,7 +6,7 @@ function glBlendFunc( sfactor, dfactor )
 %
 % C function:  void glBlendFunc(GLenum sfactor, GLenum dfactor)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=2,
     error('invalid number of arguments');

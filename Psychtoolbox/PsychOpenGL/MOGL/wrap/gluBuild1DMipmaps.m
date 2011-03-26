@@ -6,7 +6,7 @@ function r = gluBuild1DMipmaps( target, internalFormat, width, format, type, dat
 %
 % C function:  GLint gluBuild1DMipmaps(GLenum target, GLint internalFormat, GLsizei width, GLenum format, GLenum type, const void* data)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=6,
     error('invalid number of arguments');

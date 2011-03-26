@@ -6,7 +6,7 @@ function img = glGetCompressedTexImage( target, lod )
 %
 % C function:  void glGetCompressedTexImage(GLenum target, GLint lod, GLvoid* img)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
 

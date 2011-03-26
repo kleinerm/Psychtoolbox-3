@@ -6,7 +6,7 @@ function glDeleteFramebuffersEXT( n, framebuffers )
 %
 % C function:  void glDeleteFramebuffersEXT(GLsizei n, const GLuint* framebuffers)
 
-% 30-May-2006 -- created (generated automatically from header files)
+% 26-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=2,
     error('invalid number of arguments');

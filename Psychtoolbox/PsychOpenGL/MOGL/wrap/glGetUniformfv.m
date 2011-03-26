@@ -10,6 +10,7 @@ function params = glGetUniformfv( program, location )
 
 % ---allocate---
 % ---protected---
+% ---skip---
 
 if nargin~=2,
     error('invalid number of arguments');
@@ -19,10 +20,10 @@ end
 % number of arguments (worst case): I believe the biggest return could be a
 % 4 x 4 matrix, i.e. 16 elements, but i'm not sure about arrays...
 % FIXME: Verify this assumption!
-params = moglsingle(repmat(NaN,[ 16 1 ]));
+params = single(repmat(NaN,[ 16 1 ]));
 
 moglcore( 'glGetUniformfv', program, location, params );
-params = mogldouble(params);
-params = params(find(~isnan(params)));
+params = double(params);
+params = params(find(~isnan(params))); %#ok<FNDSB>
 
 return

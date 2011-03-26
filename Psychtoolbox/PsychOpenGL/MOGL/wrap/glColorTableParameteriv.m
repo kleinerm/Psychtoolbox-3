@@ -6,7 +6,7 @@ function glColorTableParameteriv( target, pname, params )
 %
 % C function:  void glColorTableParameteriv(GLenum target, GLenum pname, const GLint* params)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=3,
     error('invalid number of arguments');

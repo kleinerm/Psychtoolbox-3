@@ -6,7 +6,7 @@ function glRasterPos2f( x, y )
 %
 % C function:  void glRasterPos2f(GLfloat x, GLfloat y)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=2,
     error('invalid number of arguments');

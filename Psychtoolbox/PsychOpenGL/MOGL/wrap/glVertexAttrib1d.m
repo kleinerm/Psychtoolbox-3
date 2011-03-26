@@ -6,7 +6,7 @@ function glVertexAttrib1d( index, x )
 %
 % C function:  void glVertexAttrib1d(GLuint index, GLdouble x)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=2,
     error('invalid number of arguments');

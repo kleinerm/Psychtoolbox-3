@@ -6,7 +6,7 @@ function gluPerspective( fovy, aspect, zNear, zFar )
 %
 % C function:  void gluPerspective(GLdouble fovy, GLdouble aspect, GLdouble zNear, GLdouble zFar)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 26-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=4,
     error('invalid number of arguments');

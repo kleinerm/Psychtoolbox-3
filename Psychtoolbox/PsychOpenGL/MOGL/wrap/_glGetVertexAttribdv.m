@@ -6,7 +6,7 @@ function params = glGetVertexAttribdv( index, pname )
 %
 % C function:  void glGetVertexAttribdv(GLuint index, GLenum pname, GLdouble* params)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 25-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
 

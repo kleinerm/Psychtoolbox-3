@@ -10,12 +10,13 @@ function params = glGetTexLevelParameterfv( target, level, pname )
 
 % ---allocate---
 % ---protected---
+% ---skip---
 
 if nargin~=3,
     error('invalid number of arguments');
 end
 
-params = moglsingle(0);
+params = single(0);
 
 moglcore( 'glGetTexLevelParameterfv', target, level, pname, params );
 

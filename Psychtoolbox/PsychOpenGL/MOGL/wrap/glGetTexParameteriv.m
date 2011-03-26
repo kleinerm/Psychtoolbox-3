@@ -22,3 +22,4 @@ params = int32(zeros(size(f)));
 moglcore( 'glGetTexParameteriv', target, pname, params );
 
 return
+% ---skip---

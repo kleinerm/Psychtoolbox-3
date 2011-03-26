@@ -6,14 +6,14 @@ function gluNurbsProperty( nurb, property, value )
 %
 % C function:  void gluNurbsProperty(GLUnurbs* nurb, GLenum property, GLfloat value)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 26-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=3,
     error('invalid number of arguments');
 end
 
-if ~strcmp(class(nurb),'uint32'),
-	error([ 'argument ''nurb'' must be a pointer coded as type uint32 ' ]);
+if ~strcmp(class(nurb),'double'),
+	error([ 'argument ''nurb'' must be a pointer coded as type double ' ]);
 end
 
 moglcore( 'gluNurbsProperty', nurb, property, value );

@@ -6,7 +6,7 @@ function glRenderbufferStorageEXT( target, internalformat, width, height )
 %
 % C function:  void glRenderbufferStorageEXT(GLenum target, GLenum internalformat, GLsizei width, GLsizei height)
 
-% 30-May-2006 -- created (generated automatically from header files)
+% 26-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=4,
     error('invalid number of arguments');
