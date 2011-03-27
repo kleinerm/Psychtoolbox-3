@@ -5,12 +5,8 @@ MATLABHOME=/Applications/MATLAB72
 # Definition of target operating system:
 TARGETOS=-DMACOSX
 
-# Build and include GLM into moglcore:
-GLM=-DBUILD_GLM
-#GLM=
-
 MEXCC=-I${MATLABHOME}/extern/include \
-	${GLM} ${TARGETOS} \
+	${TARGETOS} \
 	-DMATLAB_MEX_FILE -DNDEBUG -fno-common -fexceptions -O3 \
 	-no-cpp-precomp -bundle -undefined suppress -flat_namespace \
 	-exported_symbols_list ${MATLABHOME}/extern/lib/mac/mexFunction.map

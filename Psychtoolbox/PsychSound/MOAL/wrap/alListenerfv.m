@@ -6,12 +6,12 @@ function alListenerfv( param, values )
 %
 % C function:  void alListenerfv(ALenum param, const ALfloat* values)
 
-% 06-Feb-2007 -- created (generated automatically from header files)
+% 27-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=2,
     error('invalid number of arguments');
 end
 
-moalcore( 'alListenerfv', param, moglsingle(values) );
+moalcore( 'alListenerfv', param, single(values) );
 
 return

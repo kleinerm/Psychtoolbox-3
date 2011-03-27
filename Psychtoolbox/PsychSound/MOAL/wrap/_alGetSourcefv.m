@@ -6,7 +6,7 @@ function values = alGetSourcefv( sid, param )
 %
 % C function:  void alGetSourcefv(ALuint sid, ALenum param, ALfloat* values)
 
-% 06-Feb-2007 -- created (generated automatically from header files)
+% 27-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
 
@@ -14,7 +14,7 @@ if nargin~=2,
     error('invalid number of arguments');
 end
 
-values = moglsingle(0);
+values = single(0);
 
 moalcore( 'alGetSourcefv', sid, param, values );
 

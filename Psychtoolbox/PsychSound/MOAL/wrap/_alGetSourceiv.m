@@ -6,7 +6,7 @@ function values = alGetSourceiv( sid, param )
 %
 % C function:  void alGetSourceiv(ALuint sid, ALenum param, ALint* values)
 
-% 06-Feb-2007 -- created (generated automatically from header files)
+% 28-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
 

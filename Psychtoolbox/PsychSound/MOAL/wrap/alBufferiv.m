@@ -6,7 +6,7 @@ function alBufferiv( bid, param, values )
 %
 % C function:  void alBufferiv(ALuint bid, ALenum param, const ALint* values)
 
-% 06-Feb-2007 -- created (generated automatically from header files)
+% 28-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=3,
     error('invalid number of arguments');

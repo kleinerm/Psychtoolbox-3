@@ -1,4 +1,11 @@
-% Psychtoolbox:PsychSound -- Psychtoolbox sound functions, based on OpenAL.
+% Psychtoolbox:PsychSound -- Psychtoolbox sound functions, based on OpenAL
+% and PsychPortAudio.
+%
+% If you need "traditional" support for audio capture or output as most do,
+% see "help PsychPortAudio" and "help InitializePsychSound" for info about
+% our excellent PsychPortAudio driver.
+%
+% If you need 3D spatialized sound output, read on!
 %
 % Psychtoolbox allows you to directly call low-level OpenAL commands from
 % the Matlab environment in nearly the same way as you could do from native
@@ -54,11 +61,6 @@
 % toolboxes.
 %
 %
-% We also provide a couple of higher-level functions, implemented as M-Files
-% to solve common tasks:
-%
-% TODO fill this...
-%
 % Support for 3rd party OpenAL MEX-Files:
 %
 % You can also code up OpenAL algorithms in the C programming language and
@@ -71,8 +73,8 @@
 %
 % If you want to write OpenAL mex-files that are portable across different
 % operating systems (OS-X, Windows, Linux) then have a look at:
-% 'Psychtoolbox/PsychOpenGL/MOGL/source' for how to do this. This folder
-% contains the source code and Makefiles for our own moglcore mex-file...
+% 'Psychtoolbox/PsychSound/MOAL/source' for how to do this. This folder
+% contains the source code and Makefiles for our own moalcore mex-file...
 %
 % KNOWN LIMITATIONS:
 %
@@ -80,9 +82,6 @@
 % slightly lower than when executing the same code from C or C++. This
 % is the price you'll have to pay for using Matlab, but our abstraction
 % layer is very thin, so most applications won't be really affected.
-%
-% The OpenAL for Matlab support is a pretty new feature so it may contain a
-% couple of bugs or glitches. If you happen to find one, please report it!
 %
 % Some OpenAL functions are not yet implemented in the toolbox, because
 % these functions can't get automatically generated, so their wrappers need

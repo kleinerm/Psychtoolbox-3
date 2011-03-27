@@ -45,9 +45,13 @@ function InitializeMatlabOpenAL(debuglevel, snddevicename, openal_c_style)
 % Kleiner, trivially derived from our MOGL Matlab for OpenGL wrapper, which
 % was developed and contributed to Psychtoolbox under GPL license by
 % Prof. Richard F. Murray, University of York, Canada and Mario Kleiner.
+%
+% MOAL is now licensed under the more permissive MIT license since 2011.
+%
 
 % History:
-% 02/07/07 mk Written - Based on InitializeMatlabOpenGL.
+% 07.02.2007 mk Written - Based on InitializeMatlabOpenGL.
+% 27.03.2011 mk Modified: Relicensed to MIT license.
 
 global AL;
 global ALC;

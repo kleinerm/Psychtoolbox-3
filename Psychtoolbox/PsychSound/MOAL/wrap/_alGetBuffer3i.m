@@ -6,7 +6,7 @@ function [ value1, value2, value3 ] = alGetBuffer3i( bid, param )
 %
 % C function:  void alGetBuffer3i(ALuint bid, ALenum param, ALint* value1, ALint* value2, ALint* value3)
 
-% 06-Feb-2007 -- created (generated automatically from header files)
+% 28-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
 

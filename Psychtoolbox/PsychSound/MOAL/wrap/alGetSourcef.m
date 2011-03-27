@@ -15,7 +15,7 @@ if nargin~=2,
     error('invalid number of arguments');
 end
 
-value = moglsingle(0);
+value = single(0);
 
 moalcore( 'alGetSourcef', sid, param, value );
 

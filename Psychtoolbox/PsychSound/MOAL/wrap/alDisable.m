@@ -6,7 +6,7 @@ function alDisable( capability )
 %
 % C function:  void alDisable(ALenum capability)
 
-% 06-Feb-2007 -- created (generated automatically from header files)
+% 27-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=1,
     error('invalid number of arguments');

@@ -6,7 +6,7 @@ function r = alGetError
 %
 % C function:  ALenum alGetError(void)
 
-% 06-Feb-2007 -- created (generated automatically from header files)
+% 27-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=0,
     error('invalid number of arguments');

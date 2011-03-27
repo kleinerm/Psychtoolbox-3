@@ -6,7 +6,7 @@ function alSourceiv( sid, param, values )
 %
 % C function:  void alSourceiv(ALuint sid, ALenum param, const ALint* values)
 
-% 06-Feb-2007 -- created (generated automatically from header files)
+% 27-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=3,
     error('invalid number of arguments');

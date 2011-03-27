@@ -6,7 +6,7 @@ function value = alGetListeneri( param )
 %
 % C function:  void alGetListeneri(ALenum param, ALint* value)
 
-% 06-Feb-2007 -- created (generated automatically from header files)
+% 27-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
 

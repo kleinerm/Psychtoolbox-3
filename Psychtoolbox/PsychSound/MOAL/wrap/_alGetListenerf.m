@@ -6,7 +6,7 @@ function value = alGetListenerf( param )
 %
 % C function:  void alGetListenerf(ALenum param, ALfloat* value)
 
-% 06-Feb-2007 -- created (generated automatically from header files)
+% 27-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
 
@@ -14,7 +14,7 @@ if nargin~=1,
     error('invalid number of arguments');
 end
 
-value = moglsingle(0);
+value = single(0);
 
 moalcore( 'alGetListenerf', param, value );
 

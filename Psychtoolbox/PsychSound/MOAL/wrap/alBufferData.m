@@ -6,7 +6,7 @@ function alBufferData( bid, format, data, size, freq )
 %
 % C function:  void alBufferData(ALuint bid, ALenum format, const ALvoid* data, ALsizei size, ALsizei freq)
 
-% 06-Feb-2007 -- created (generated automatically from header files)
+% 28-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=5,
     error('invalid number of arguments');

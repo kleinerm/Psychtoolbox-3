@@ -6,7 +6,7 @@ function data = alGetBooleanv( param )
 %
 % C function:  void alGetBooleanv(ALenum param, ALboolean* data)
 
-% 06-Feb-2007 -- created (generated automatically from header files)
+% 27-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
 

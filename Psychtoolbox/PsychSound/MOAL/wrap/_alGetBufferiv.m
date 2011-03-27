@@ -6,7 +6,7 @@ function values = alGetBufferiv( bid, param )
 %
 % C function:  void alGetBufferiv(ALuint bid, ALenum param, ALint* values)
 
-% 06-Feb-2007 -- created (generated automatically from header files)
+% 28-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
 

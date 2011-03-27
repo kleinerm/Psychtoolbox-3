@@ -6,12 +6,12 @@ function alSourcefv( sid, param, values )
 %
 % C function:  void alSourcefv(ALuint sid, ALenum param, const ALfloat* values)
 
-% 06-Feb-2007 -- created (generated automatically from header files)
+% 27-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=3,
     error('invalid number of arguments');
 end
 
-moalcore( 'alSourcefv', sid, param, moglsingle(values) );
+moalcore( 'alSourcefv', sid, param, single(values) );
 
 return

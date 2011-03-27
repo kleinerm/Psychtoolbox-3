@@ -6,7 +6,7 @@ function alSourcePlay( sid )
 %
 % C function:  void alSourcePlay(ALuint sid)
 
-% 06-Feb-2007 -- created (generated automatically from header files)
+% 28-Mar-2011 -- created (generated automatically from header files)
 
 if nargin~=1,
     error('invalid number of arguments');

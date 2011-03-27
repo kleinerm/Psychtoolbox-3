@@ -3,6 +3,7 @@
  * alm.c -- implementation of alm functions
  *
  * 07-Feb-2007 -- created (MK)
+ * 27-Mar-2011 -- Bug fixes and cleanup (MK)
  */
 
 #include "moaltypes.h"
@@ -86,16 +87,19 @@ void glm_open(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     context = alcCreateContext(device, (attribs[0]) ? attribs : NULL);
     alcerr = alcGetError(device);
     if (alcerr) {
-        printf("MOAL-ERROR[alcCreateContext()]: Audio context creation failed, ALC says: %i\n", (alcerr==ALC_INVALID_DEVICE) ? "Invalid output device." : "Out of ressources for further contexts.");
+        printf("MOAL-ERROR[alcCreateContext()]: Audio context creation failed [errorcode %i], ALC says: %s\n", (int) alcerr, (alcerr==ALC_INVALID_DEVICE) ? "Invalid output device." : "Out of ressources for further contexts.");
     }
 
     if (context == NULL) mexErrMsgTxt("MOAL-ERROR: Could not create OpenAL context for requested sound device, unknown error!\n");
 
     // Activate audio rendering context:
     alcMakeContextCurrent(context);
-    if (alcGetError(device))  mexErrMsgTxt("MOAL-ERROR: Could not activate OpenAL context for requested sound device. ALC says: Invalid context!\n");
-    // printf("MOAL: Native device sampling rate is %lf Hz.\n", (double) alcMacOSXGetMixerMaxiumumBusses());
-    
+	alcerr = alcGetError(device);
+    if (alcerr) {
+		printf("MOAL-ERROR: Could not activate OpenAL context for requested sound device [errorcode %i]. ALC says: Invalid context!\n", (int) alcerr);
+		mexErrMsgTxt("MOAL-ERROR: Could not activate OpenAL context for requested sound device.\n");
+    }
+	
     // Clear context error state:
     alGetError();
     
@@ -135,7 +139,6 @@ void glm_process(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
    
     return;
 }
-
 
 // command map:  moalcore string commands and functions that handle them
 // *** it's important that this list be kept in alphabetical order, 
