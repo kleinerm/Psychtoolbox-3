@@ -6,15 +6,14 @@
  *
  * 09-Dec-2005 -- created (RFM)
  * 24-Mar-2011 -- Make 64-bit clean (MK).
+ * 27-Mar-2011 -- Remove obsolete and totally bitrotten Octave-2 support (MK).
  *
-*/
+ */
 
 #define PSYCH_MATLAB 0
-#define PSYCH_OCTAVE 1
-
-#ifndef PTBOCTAVE
-// Include mex.h with MEX - API definition for Matlab:
 #define PSYCH_LANGUAGE PSYCH_MATLAB
+
+// Include mex.h with MEX - API definition for Matlab:
 #include "mex.h"
 
 #include <stdio.h>
@@ -29,39 +28,6 @@
 #define false 0
 #endif
 
-#else
-
-
-// Include oct.h and friends with OCT - API definitions for Octave:
-#define PSYCH_LANGUAGE PSYCH_OCTAVE
-#include <octave/oct.h>
-#include <setjmp.h>
-
-// MK: These three are probably not needed for moglcore:
-#include <octave/parse.h>
-#include <octave/ov-struct.h>
-#include <octave/ov-cell.h>
-
-#define const
-
-// octavemex.h defines pseudo MEX functions emulated by our code:
-#include "octavemex.h"
-
-char* mxArrayToString(mxArray* arrayPtr);
-
-#define printf mexPrintf
-
-// Define this to 1 if you want lots of debug-output for the Octave-Scripting glue.
-#define DEBUG_PTBOCTAVEGLUE 0
-
-#define MAX_OUTPUT_ARGS 100
-#define MAX_INPUT_ARGS 100
-static mxArray* plhs[MAX_OUTPUT_ARGS]; // An array of pointers to the octave return arguments.
-static mxArray* prhs[MAX_INPUT_ARGS];  // An array of pointers to the octave call arguments.
-static bool jettisoned = false;
-
-#endif
-
 /* glew.h is part of GLEW library for automatic detection and binding of
    OpenGL core functionality and extensions.
  */
@@ -72,6 +38,7 @@ static bool jettisoned = false;
 
 /* Includes specific to MacOS-X version of mogl: */
 #ifdef MACOSX
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -83,6 +50,7 @@ static bool jettisoned = false;
 #include <AGL/agl.h>
 #endif
 #define CALLCONV
+
 #endif
 
 /* Includes specific to GNU/Linux version of mogl: */
@@ -95,20 +63,20 @@ static bool jettisoned = false;
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include <GL/glut.h>
-
 #define CALLCONV
+
 #endif
 
 /* Includes specific to M$-Windows version of mogl: */
 #ifdef WINDOWS
+
 #include <stdlib.h>
 #include <string.h>
 #include "wglew.h"
 #include <GL/glut.h>
-
 #define CALLCONV __stdcall
 
-/* Hacks to get Windows version running - to be replaced soon. */
+/* Hacks to get Windows version running: */
 double gluCheckExtension(const GLubyte* a, const GLubyte* b);
 double gluBuild1DMipmapLevels(double a1, double a2, double a3, double a4, double a5, double a6, double a7, double a8, void* a9);
 double gluBuild2DMipmapLevels(double a1, double a2, double a3, double a4, double a5, double a6, double a7, double a8, double a9, void* a10);
@@ -116,7 +84,7 @@ double gluBuild3DMipmapLevels(double a1, double a2, double a3, double a4, double
 double gluBuild3DMipmaps(double a1, double a2, double a3, double a4, double a5, double a6, double a7, void* a8);
 
 #ifndef PTBOCTAVE3MEX
-// These two already defined on Octave, no need to "fake" them:
+// These two already defined on Octave-3, no need to "fake" them:
 double gluUnProject4(double a1, double a2, double a3, double a4, double* a5, double* a6, int* a7, double a8, double a9, double* a10, double* a11, double* a12, double* a13);
 mxArray* mxCreateNumericMatrix(int m, int n, int class, int complex);
 #endif

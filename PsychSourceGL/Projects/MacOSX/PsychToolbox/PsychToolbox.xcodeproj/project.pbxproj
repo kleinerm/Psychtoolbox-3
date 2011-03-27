@@ -1821,7 +1821,6 @@
 		83CBD6810BC02323007CB68C /* gl_manual.c in Sources */ = {isa = PBXBuildFile; fileRef = 83CBD6720BC02323007CB68C /* gl_manual.c */; };
 		83CBD6820BC02323007CB68C /* glew.c in Sources */ = {isa = PBXBuildFile; fileRef = 83CBD6730BC02323007CB68C /* glew.c */; settings = {COMPILER_FLAGS = "-x c"; }; };
 		83CBD6840BC02323007CB68C /* moglcore.c in Sources */ = {isa = PBXBuildFile; fileRef = 83CBD67A0BC02323007CB68C /* moglcore.c */; };
-		83CBD6850BC02323007CB68C /* mogloctaveglue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 83CBD67B0BC02323007CB68C /* mogloctaveglue.cc */; };
 		83CBD6F90BC02F0E007CB68C /* mogl_rebinder.c in Sources */ = {isa = PBXBuildFile; fileRef = 83CBD6F80BC02F0E007CB68C /* mogl_rebinder.c */; settings = {COMPILER_FLAGS = "-x c"; }; };
 		83CC360C0F63046B00EBA5E7 /* PsychHIDGenericUSBSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = F13E934E0F534180007D7EA0 /* PsychHIDGenericUSBSupport.c */; };
 		83D93B2C0A4D03B900B82353 /* SCREENSetOpenGLTextureFromMemPointer.c in Sources */ = {isa = PBXBuildFile; fileRef = 83D93B2B0A4D03B900B82353 /* SCREENSetOpenGLTextureFromMemPointer.c */; };
@@ -3810,9 +3809,7 @@
 		83CBD6740BC02323007CB68C /* glew.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = glew.h; path = ../../../../Psychtoolbox/PsychOpenGL/MOGL/source/glew.h; sourceTree = SOURCE_ROOT; };
 		83CBD6760BC02323007CB68C /* headers */ = {isa = PBXFileReference; lastKnownFileType = folder; name = headers; path = ../../../../Psychtoolbox/PsychOpenGL/MOGL/source/headers; sourceTree = SOURCE_ROOT; };
 		83CBD67A0BC02323007CB68C /* moglcore.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = moglcore.c; path = ../../../../Psychtoolbox/PsychOpenGL/MOGL/source/moglcore.c; sourceTree = SOURCE_ROOT; };
-		83CBD67B0BC02323007CB68C /* mogloctaveglue.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = mogloctaveglue.cc; path = ../../../../Psychtoolbox/PsychOpenGL/MOGL/source/mogloctaveglue.cc; sourceTree = SOURCE_ROOT; };
 		83CBD67C0BC02323007CB68C /* mogltypes.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = mogltypes.h; path = ../../../../Psychtoolbox/PsychOpenGL/MOGL/source/mogltypes.h; sourceTree = SOURCE_ROOT; };
-		83CBD67D0BC02323007CB68C /* octavemex.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = octavemex.h; path = ../../../../Psychtoolbox/PsychOpenGL/MOGL/source/octavemex.h; sourceTree = SOURCE_ROOT; };
 		83CBD6F80BC02F0E007CB68C /* mogl_rebinder.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = mogl_rebinder.c; path = ../../../../Psychtoolbox/PsychOpenGL/MOGL/source/mogl_rebinder.c; sourceTree = SOURCE_ROOT; };
 		83D93B2B0A4D03B900B82353 /* SCREENSetOpenGLTextureFromMemPointer.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENSetOpenGLTextureFromMemPointer.c; path = ../../../Source/Common/Screen/SCREENSetOpenGLTextureFromMemPointer.c; sourceTree = SOURCE_ROOT; };
 		83DBBCFF0C332374002B3C93 /* AGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AGL.framework; path = /Developer/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks/AGL.framework; sourceTree = "<absolute>"; };
@@ -5833,10 +5830,8 @@
 				83CBD6740BC02323007CB68C /* glew.h */,
 				83CBD6760BC02323007CB68C /* headers */,
 				83CBD67A0BC02323007CB68C /* moglcore.c */,
-				83CBD67B0BC02323007CB68C /* mogloctaveglue.cc */,
 				83CBD6F80BC02F0E007CB68C /* mogl_rebinder.c */,
 				83CBD67C0BC02323007CB68C /* mogltypes.h */,
-				83CBD67D0BC02323007CB68C /* octavemex.h */,
 			);
 			name = extern_moglcore;
 			sourceTree = "<group>";
@@ -11667,7 +11662,6 @@
 				83CBD6810BC02323007CB68C /* gl_manual.c in Sources */,
 				83CBD6820BC02323007CB68C /* glew.c in Sources */,
 				83CBD6840BC02323007CB68C /* moglcore.c in Sources */,
-				83CBD6850BC02323007CB68C /* mogloctaveglue.cc in Sources */,
 				83CBD6F90BC02F0E007CB68C /* mogl_rebinder.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
