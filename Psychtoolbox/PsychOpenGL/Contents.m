@@ -7,8 +7,10 @@
 % modern graphics hardware by calling OpenGL functions.
 %
 % Access to OpenGL from Matlab is provided by the "Matlab OpenGL toolbox"
-% (MOGL) which was developed, implemented and contributed to Psychtoolbox
-% under the GPL license by Prof. Richard F. Murray, University of York, Canada.
+% (MOGL), whose original OS/X version was developed, implemented and
+% contributed to Psychtoolbox under the MIT license by Prof. Richard F.
+% Murray, University of York, Canada. (The code was under GPL license until
+% 2010, but has been relicensed to the more permissive MIT license in 2011).
 %
 % MOGL provides one Matlab wrapper M-File for each corresponding OpenGL
 % function. The wrapper file calls into a special MEX file (moglcore) which
@@ -48,6 +50,16 @@
 % toolboxes. Psychtoolbox will then attach a 24-bit depth buffer (z-buffer)
 % and a 8-bit stencil buffer to each onscreen window, so occlusion handling
 % works properly when rendering 3D-Stimuli.
+%
+% Please note that InitializeMatlabOpenGL() allows to optionally set the
+% 'debuglevel', the amount of error checking automatically performed during
+% execution of your scripts. By default, the debug level is set so that
+% MOGL checks for OpenGL errors after execution of each single OpenGL call!
+% This is nice for debugging code, but can significantly impact performance
+% for complex rendering code! Make sure to explicitely set the debuglevel
+% to '0' once your experiment code is performing as expected, so you can
+% get higher rendering performance.
+% 
 %
 % Each time after calling a Psychtoolbox Screen() command for 2D drawing,
 % you need to call Screen('BeginOpenGL', window); to tell PTB that you want
@@ -121,12 +133,13 @@
 % You can also code up OpenGL algorithms in the C programming language and
 % compile them into Matlab-MEX files if you have "need for speed". Your Mex
 % files will just contain the mixture of ANSI C code and OpenGL calls, but
-% no code to setup the window, OpenGL rendering context, or to flip the front- and
-% backbuffers. Psychtoolbox takes care of setting up OpenGL and windows for
-% you. You just need to call the InitializeMatlabOpenGL; function at the
-% beginning of your script and wrap each invocation of your mex-file into
-% Screen('BeginOpenGL', win) and Screen('EndOpenGL',win) calls. Use the
-% Screen('Flip', win) command as usual to take care of stimlulus onset.
+% no code to setup the window, OpenGL rendering context, or to flip the
+% front- and backbuffers. Psychtoolbox takes care of setting up OpenGL and
+% windows for you. You just need to call the InitializeMatlabOpenGL;
+% function at the beginning of your script and wrap each invocation of your
+% mex-file into Screen('BeginOpenGL', win) and Screen('EndOpenGL',win)
+% calls. Use the Screen('Flip', win) command as usual to take care of
+% stimlulus onset.
 %
 % If you want to write OpenGL mex-files that are portable across different
 % operating systems (OS-X, Windows, Linux) then have a look at:
@@ -135,14 +148,13 @@
 %
 % KNOWN LIMITATIONS:
 %
-% Depending on your specific code, rendering speed in Matlab may be
-% significantly lower than when executing the same code from C or C++. This
-% is the price you'll have to pay for using Matlab.
-%
-% The OpenGL for Matlab support is a pretty new feature so it may contain a
-% couple of bugs or glitches, especially when interacting with Psychtoolbox
-% drawing commands. If you mix PTB and OpenGL drawing commands a lot, you
-% may experience some side-effects. If you happen to find one, please report it!
+% If you use many immediate mode OpenGL rendering calls, rendering speed in
+% Matlab may be significantly lower than when executing the same code from
+% C or C++. This is the price you'll have to pay for using Matlab. However,
+% immediate mode rendering is discouraged even in C for anything but the
+% most trivial tasks, it's just that you pay a slightly higher "time
+% penalty" for doing the wrong thing in Matlab than in C. Well written code
+% will not cause any significant performance difference to C.
 %
 % Some OpenGL functions are not yet implemented in the toolbox, because
 % these functions can't get automatically generated, so their wrappers need
@@ -150,6 +162,7 @@
 % OpenGL-API but finalizing all functions may take some time. Mostly some
 % of the query-functions - functions that don't set OpenGL state or execute
 % some operation, but query the current settings of OpenGL, are missing.
+%
 % Also, some of the more exotic OpenGL extensions are not yet supported,
 % especially there is no support for old-style Vertexprograms and
 % Fragmentprograms, but GLSL vertexshaders and fragmentshaders are a
@@ -185,3 +198,4 @@
 
 % History:
 % 17.04.2006 -- created (MK)
+% 27.03.2011 -- Update info about license - New MIT license (MK)

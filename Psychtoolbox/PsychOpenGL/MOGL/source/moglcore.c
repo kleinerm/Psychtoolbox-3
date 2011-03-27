@@ -419,7 +419,9 @@ DEFUN_DLD(moglcore, inprhs, nlhs,
         }
         // Success. Ready to go...
 		if (debuglevel > 1) {
-			printf("MOGL - OpenGL for Matlab & GNU/Octave initialized - MOGL is (c) 2006 Richard F. Murray & Mario Kleiner, licensed to you under GPL.\n");
+			printf("MOGL - OpenGL for Matlab & GNU/Octave initialized. MOGL is (c) 2006-2011 Richard F. Murray & Mario Kleiner, licensed to you under MIT license.\n");
+			printf("Some additional restrictions apply to redistribution of binary MEX files for Matlab due to the terms of the Mathworks Matlab license.\n");
+			printf("See file 'License.txt' in the Psychtoolbox root folder for the exact licensing conditions.\n");
 		}
         fflush(NULL);
         

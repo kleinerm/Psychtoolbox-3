@@ -57,12 +57,22 @@ function varargout = InitializeMatlabOpenGL(opengl_c_style, debuglevel, noswitch
 %
 %    -> This flag is needed to make the glAccum() command work.
 %
-% The 'OpenGL for Matlab' low level wrapper mogl was developed, implemented
-% and contributed to Psychtoolbox under GPL license by
-% Prof. Richard F. Murray, University of York, Canada.
+%
+%
+% The initial OS/X PowerPC version of the 'OpenGL for Matlab' low level
+% interface wrapper mogl was developed, implemented and generously
+% contributed to Psychtoolbox under the GPL license by Prof. Richard F.
+% Murray, University of York, Canada. Porting to other operating systems
+% and architectures, OpenGL 2.x support, and further extensions and
+% maintenance has been done by Mario Kleiner.
+%
+% The code has been relicensed by Richard Murray and Mario Kleiner to the
+% more permissive MIT license since 2011.
+%
 
 % History:
 % 02/16/06 mk Written - Based on glmGetconst from Richard F. Murray.
+% 03/27/11 mk Update info about license - New MIT license.
 
 global GL;
 

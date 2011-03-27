@@ -5,14 +5,17 @@
 % language.
 %
 %
-% The 'OpenGL for Matlab' low level interface wrapper mogl was developed,
-% implemented and generously contributed to Psychtoolbox under the GPL
-% license by Prof. Richard F. Murray, University of York, Canada.
+% The initial OS/X PowerPC version of the 'OpenGL for Matlab' low level
+% interface wrapper mogl was developed, implemented and generously
+% contributed to Psychtoolbox under the GPL license by Prof. Richard F.
+% Murray, University of York, Canada. Porting to other operating systems
+% and architectures, OpenGL 2.x support, and further extensions and
+% maintenance has been done by Mario Kleiner.
+%
+% The code has been relicensed by Richard Murray and Mario Kleiner to the
+% more permissive MIT license since 2011.
 %
 % Directory structure is as follows: 
-% 
-%     mogldemo.m          -- demonstration of how to use the mogl toolbox
-%     mogldemo.mat        -- data used by mogldemo.m
 % 
 %     core/
 % 
@@ -43,14 +46,16 @@
 %         oglconst.m      -- MATLAB script that searches through OpenGL header
 %                            files for #defined constants, and writes them
 %                            to oglconst.mat as variables
-%         headers/*.h     -- OpenGL headers
+%         headers/*.h     -- OpenGL headers to parse in addition to system
+%                            header files.
 %         private/*.m     -- miscellaneous helper files for autocode.m
 % 
 %         (second group:  files that compile to produce moglcore.mexmac)
 % 
 %         gl_auto.c       -- automatically generated interfaces to OpenGL functions
 %         gl_manual.c     -- manually generated interfaces to OpenGL functions
-%         glm.c           -- GLM library of GLUT-like functions
+%         glm.c           -- GLM library of GLUT-like functions - not build
+%                            by default -- deprecated.
 %         moglcore.c      -- main MEX interface function
 %         mogltypes.h     -- useful data types
 %         makefile        -- makefile to compile C files into moglcore.mexmac
@@ -66,3 +71,5 @@
 % >> oglconst     % save constants from header files in a .mat file
 
 % 06-Jan-2006 -- created (RFM)
+% 27-Mar-2011 -- edited (MK)
+% 27-Mar-2011 -- Update info about license - New MIT license (MK)
