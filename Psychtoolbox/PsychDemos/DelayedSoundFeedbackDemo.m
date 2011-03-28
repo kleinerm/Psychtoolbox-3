@@ -92,7 +92,7 @@ function DelayedSoundFeedbackDemo(reqlatency, duplex, freq, minLatency)
 % oldMode2 = PsychPortAudio('SetOpMode', paoutput)
 
 % Level of debug output:
-verbose = 1;
+verbose = 2;
 
 % Close plots from previous invocation, if any:
 close all;
@@ -428,7 +428,7 @@ while ~KbCheck
     % iterations within 'GetAudioData', thereby reducing the load on the
     % operating system and cpu. This is mostly needed on MS-Windows with
     % its highly deficient scheduling and timing systems:
-    maxtimeUntilRefill = (nextSampleETASecs - s1.CurrentStreamTime) / 2;
+    maxtimeUntilRefill = (nextSampleETASecs - s1.CurrentStreamTime) / 10;
     if maxtimeUntilRefill > (3 * updateQuantum)
         captureQuantum = (floor(maxtimeUntilRefill / updateQuantum) - 1) * updateQuantum;
     else

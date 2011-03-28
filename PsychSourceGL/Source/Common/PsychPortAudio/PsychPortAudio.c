@@ -13,8 +13,7 @@
 	
 	Low level Psychtoolbox sound i/o driver. Useful for audio capture, playback and
 	feedback with well controlled timing and low latency. Uses the free software
-	PortAudio library, API Version 19 (http://www.portaudio.com), which is not GPL,
-	but has a more liberal and GPL compatible MIT style license.
+	PortAudio library, API Version 19 (http://www.portaudio.com), which has a MIT style license.
 	
 	This seems to link statically against libportaudio.a on OS/X. However, it doesn't!
 	Due to some restrictions of the OS/X linker we can't link statically against portaudio,
@@ -96,8 +95,8 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 typedef struct PsychPASchedule {
 	unsigned int	mode;				// Mode of schedule slot: 0 = Invalid slot, > 0 valid slot, where different bits in the int mean something...
 	double			repetitions;		// Number of repetitions for the playloop defined in this slot.
-	psych_uint64	loopStartFrame;		// Start of playloop in frames.
-	psych_uint64	loopEndFrame;		// End of playloop in frames.
+	psych_int64	loopStartFrame;		// Start of playloop in frames.
+	psych_int64	loopEndFrame;		// End of playloop in frames.
 	int bufferhandle;					// Handle of the playout buffer to use. Zero is the standard playbuffer as set by 'FillBuffer'. Negative handles
 										// may have special meaning in future implementations.
 	double			tWhen;				// Time in seconds, either absolute or relative spec, depending on command.
@@ -111,7 +110,7 @@ typedef struct PsychPADevice {
 	int		 opmode;			// Mode of operation: Playback, capture or full duplex? Master, Slave or standalone?
 	int		 runMode;			// Runmode: 0 = Stop engine at end of playback, 1 = Keep engine running in hot-standby, ...
 	PaStream *stream;			// Pointer to associated portaudio stream.
-	PaStreamInfo* streaminfo;   // Pointer to stream info structure, provided by PortAudio.
+	const PaStreamInfo* streaminfo;   // Pointer to stream info structure, provided by PortAudio.
 	PaHostApiTypeId hostAPI;	// Type of host API.
 	int		indeviceidx;		// Device index of capture device. -1 if none open.
 	int		outdeviceidx;		// Device index of output device. -1 if none open.
@@ -131,22 +130,22 @@ typedef struct PsychPADevice {
 	volatile unsigned int reqstate;		// Requested state of the stream, as opposed to current 'state'. Written by main-thread, read & processed by paCallback.
 	double	 repeatCount;		// Number of repetitions: -1 = Loop forever, 1 = Once, n = n repetitions.
 	float*	 outputbuffer;		// Pointer to float memory buffer with sound output data.
-	psych_uint64 outputbuffersize;	// Size of output buffer in bytes.
-	psych_uint64 loopStartFrame; // Start of current playloop in frames.
-	psych_uint64 loopEndFrame;  // End of current playloop in frames.
-	psych_uint64 playposition;	// Current playposition in samples since start of playback for current buffer and playloop (not frames, not bytes!)
-	psych_uint64 writeposition; // Current writeposition in samples since start of playback (for incremental filling).
-	psych_uint64 totalplaycount; // Total running count of samples since start of playback, accumulated over all buffers and playloop(not frames, not bytes!)
+	psych_int64 outputbuffersize;	// Size of output buffer in bytes.
+	psych_int64 loopStartFrame; // Start of current playloop in frames.
+	psych_int64 loopEndFrame;  // End of current playloop in frames.
+	psych_int64 playposition;	// Current playposition in samples since start of playback for current buffer and playloop (not frames, not bytes!)
+	psych_int64 writeposition; // Current writeposition in samples since start of playback (for incremental filling).
+	psych_int64 totalplaycount; // Total running count of samples since start of playback, accumulated over all buffers and playloop(not frames, not bytes!)
 	float*	 inputbuffer;		// Pointer to float memory buffer with sound input data (captured sound data).
-	psych_uint64 inputbuffersize;	// Size of input buffer in bytes.
-	psych_uint64 recposition;	// Current record position in samples since start of capture.
-	psych_uint64 readposition;  // Last read-out sample since start of capture.
-	psych_uint64 outchannels;	// Number of output channels.
-	psych_uint64 inchannels;	// Number of input channels.
+	psych_int64 inputbuffersize;	// Size of input buffer in bytes.
+	psych_int64 recposition;	// Current record position in samples since start of capture.
+	psych_int64 readposition;  // Last read-out sample since start of capture.
+	psych_int64 outchannels;	// Number of output channels.
+	psych_int64 inchannels;	// Number of input channels.
 	unsigned int xruns;			// Number of over-/underflows of input-/output channel for this stream.
 	unsigned int paCalls;		// Number of callback invocations.
 	unsigned int noTime;		// Number of timestamp malfunction - Should not happen anymore.
-	unsigned long batchsize;	// Maximum number of frames requested during callback invokation: Estimate of real buffersize.
+	psych_int64 batchsize;	// Maximum number of frames requested during callback invokation: Estimate of real buffersize.
 	double	 predictedLatency;  // Latency that PortAudio predicts for current callbackinvocation. We will compensate for that when starting audio.
 	double   latencyBias;		// A bias value to add to the value that PortAudio reports for total buffer->Speaker latency.
 								// This value defaults to zero, but can be set up automatically on OS/X or manually on other OSes to compensate
@@ -195,8 +194,8 @@ psych_bool pa_initialized = FALSE;
 struct PsychPABuffer_Struct {
 	unsigned int locked;		// locked: >= 1 = Buffer in use by some active audio device. 0 = Buffer unused.
 	float*	 outputbuffer;		// Pointer to float memory buffer with sound output data.
-	psych_uint64 outputbuffersize;	// Size of output buffer in bytes.
-	psych_uint64 outchannels;	// Number of channels.
+	psych_int64 outputbuffersize;	// Size of output buffer in bytes.
+	psych_int64 outchannels;	// Number of channels.
 };
 
 typedef struct PsychPABuffer_Struct PsychPABuffer;
@@ -239,7 +238,7 @@ psych_bool PsychPAInvalidateBufferReferences(int handle)
 // Create a new audiobuffer for 'outchannels' audio channels and 'nrFrames' samples
 // per channel. Init header, allocate zero-filled memory, enqeue in bufferList.
 // Resize/Grow bufferList if neccessary. Return handle to buffer.
-int PsychPACreateAudioBuffer(psych_uint64 outchannels, psych_uint64 nrFrames)
+int PsychPACreateAudioBuffer(psych_int64 outchannels, psych_int64 nrFrames)
 {
 	PsychPABuffer* tmpptr;
 	int i, handle;
@@ -529,15 +528,15 @@ void PALogger(const char* msg)
 // 4 = Abort bufferfill operation for this host audio buffer via zerofill, but don't switch to idle mode / don't stop engine.
 //     Instead switch back to hot-standby so playback can be picked up again at a later point in time.
 //	   This is used to reschedule start of playback for a following slot at a later time.
-int PsychPAProcessSchedule(PsychPADevice* dev, psych_uint64 *playposition, float** ret_playoutbuffer, psych_uint64* ret_outsbsize, psych_uint64* ret_outsboffset, double* ret_repeatCount, psych_uint64* ret_playpositionlimit)
+int PsychPAProcessSchedule(PsychPADevice* dev, psych_int64 *playposition, float** ret_playoutbuffer, psych_int64* ret_outsbsize, psych_int64* ret_outsboffset, double* ret_repeatCount, psych_int64* ret_playpositionlimit)
 {
 	psych_int64   loopStartFrame, loopEndFrame;
-	psych_uint64  outsbsize, outsboffset;
-	psych_uint64  outchannels = dev->outchannels;
+	psych_int64  outsbsize, outsboffset;
+	psych_int64  outchannels = dev->outchannels;
 	unsigned int  slotid, cmd;
 	double		  repeatCount;
 	double		  reqTime;
-	psych_uint64  playpositionlimit;
+	psych_int64  playpositionlimit;
 	
 	// NULL-Schedule?
 	if (dev->schedule == NULL) {
@@ -551,18 +550,18 @@ int PsychPAProcessSchedule(PsychPADevice* dev, psych_uint64 *playposition, float
 		repeatCount = dev->repeatCount;
 
 		// Revalidate boundaries of playback loop:
-		if (loopStartFrame * outchannels >= outsbsize) loopStartFrame = (psych_int64) (outsbsize / outchannels) - 1;
+		if (loopStartFrame * outchannels >= outsbsize) loopStartFrame = (outsbsize / outchannels) - 1;
 		if (loopStartFrame < 0) loopStartFrame = 0;
-		if (loopEndFrame * outchannels >= outsbsize) loopEndFrame = (psych_int64) (outsbsize / outchannels) - 1;
+		if (loopEndFrame * outchannels >= outsbsize) loopEndFrame = (outsbsize / outchannels) - 1;
 		if (loopEndFrame < 0) loopEndFrame = 0;
 		if (loopEndFrame < loopStartFrame) loopEndFrame = loopStartFrame;
 		
 		// Remap defined playback loop to "corrected" outsbsize and offset for later copy-op:
-		outsbsize = (psych_uint64) ((loopEndFrame - loopStartFrame + 1) * outchannels);
-		outsboffset = (psych_uint64) (loopStartFrame * outchannels);
+		outsbsize   = (loopEndFrame - loopStartFrame + 1) * outchannels;
+		outsboffset = loopStartFrame * outchannels;
 		
 		// Compute playpositionlimit, the upper limit of played out samples from loop duration and repeatCount...
-		playpositionlimit = ((psych_uint64) (repeatCount * outsbsize));
+		playpositionlimit = ((psych_int64) (repeatCount * outsbsize));
 		// ...and make sure it ends on integral sample frame boundaries:
 		playpositionlimit -= playpositionlimit % outchannels;
 
@@ -674,18 +673,18 @@ int PsychPAProcessSchedule(PsychPADevice* dev, psych_uint64 *playposition, float
 			repeatCount    = dev->schedule[slotid].repetitions;
 			
 			// Revalidate boundaries of playback loop:
-			if (loopStartFrame * outchannels >= outsbsize) loopStartFrame = (psych_int64) (outsbsize / outchannels) - 1;
+			if (loopStartFrame * outchannels >= outsbsize) loopStartFrame = (outsbsize / outchannels) - 1;
 			if (loopStartFrame < 0) loopStartFrame = 0;
-			if (loopEndFrame * outchannels >= outsbsize) loopEndFrame = (psych_int64) (outsbsize / outchannels) - 1;
+			if (loopEndFrame * outchannels >= outsbsize) loopEndFrame = (outsbsize / outchannels) - 1;
 			if (loopEndFrame < 0) loopEndFrame = 0;
 			if (loopEndFrame < loopStartFrame) loopEndFrame = loopStartFrame;
 			
 			// Remap defined playback loop to "corrected" outsbsize and offset for later copy-op:
-			outsbsize = (psych_uint64) ((loopEndFrame - loopStartFrame + 1) * outchannels);
-			outsboffset = (psych_uint64) (loopStartFrame * outchannels);
+			outsbsize = (psych_int64) ((loopEndFrame - loopStartFrame + 1) * outchannels);
+			outsboffset = (psych_int64) (loopStartFrame * outchannels);
 			
 			// Compute playpositionlimit, the upper limit of played out samples from loop duration and repeatCount...
-			playpositionlimit = ((psych_uint64) (repeatCount * outsbsize));
+			playpositionlimit = ((psych_int64) (repeatCount * outsbsize));
 			// ...and make sure it ends on integral sample frame boundaries:
 			playpositionlimit -= playpositionlimit % outchannels;
 			
@@ -745,16 +744,15 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	float *playoutbuffer;
 	float *tmpBuffer, *mixBuffer;
 	float masterVolume, neutralValue;
-	psych_uint64  j, k;
-    psych_uint64 i, silenceframes, committedFrames, max_i;
-	psych_uint64 inchannels, outchannels;
-	psych_uint64  playposition, outsbsize, insbsize, recposition;
-	psych_uint64  outsboffset;
-//	psych_int64	  loopStartFrame, loopEndFrame;
+	psych_int64  j, k;
+    psych_int64 i, silenceframes, committedFrames, max_i;
+	psych_int64 inchannels, outchannels;
+	psych_int64  playposition, outsbsize, insbsize, recposition;
+	psych_int64  outsboffset;
 	unsigned int reqstate;
 	double now, firstsampleonset, onsetDelta, offsetDelta, captureStartTime, tMonotonic;
 	double repeatCount;	
-	psych_uint64 playpositionlimit;
+	psych_int64 playpositionlimit;
 	PaHostApiTypeId hA;
 	psych_bool	stopEngine;
 	psych_bool  isMaster, isSlave;
@@ -923,7 +921,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	if (timeInfo->currentTime == 0) dev->noTime++;
 	
 	// Keep track of maximum number of frames requested:
-	if (dev->batchsize < framesPerBuffer) dev->batchsize = framesPerBuffer;
+	if (dev->batchsize < (psych_int64) framesPerBuffer) dev->batchsize = (psych_int64) framesPerBuffer;
 	
 	// Keep track of buffer over-/underflows:
 	if (statusFlags & (paInputOverflow | paInputUnderflow | paOutputOverflow | paOutputUnderflow)) dev->xruns++;
@@ -938,10 +936,10 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	playoutbuffer = NULL;
 
 	// Query number of output channels:
-	outchannels = (psych_uint64) dev->outchannels;
+	outchannels = (psych_int64) dev->outchannels;
 
 	// Query number of output channels:
-	inchannels = (psych_uint64) dev->inchannels;
+	inchannels = (psych_int64) dev->inchannels;
 	
 	// Query number of repetitions:
 	repeatCount = dev->repeatCount;
@@ -1086,7 +1084,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 			else {
 				// A bit time left, but less than a full buffer. Need to pad the head of
 				// this buffer with zeros, aka silence, then fill the rest with real data:
-				silenceframes = (psych_uint64) (onsetDelta * ((double) dev->streaminfo->sampleRate));
+				silenceframes = (psych_int64) (onsetDelta * ((double) dev->streaminfo->sampleRate));
 
 				// Fill in some silence:
 				if (neutralValue == 0) {
@@ -1100,7 +1098,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 				}
 
 				// Decrement remaining real audio data count:
-				framesPerBuffer-=silenceframes;
+				framesPerBuffer-= (unsigned long) silenceframes;
 
 				// Advance silenceframes into the buffer:
 				committedFrames+=silenceframes;
@@ -1201,7 +1199,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 
 					// This will potentially fill the slaveGainBuffer with gain modulation values.
 					// The passed slaveInBuffer is meaningless for a modulator slave and only contains random junk...
-					paCallback( (const void*) dev->slaveInBuffer, (void*) dev->slaveGainBuffer, dev->batchsize, timeInfo, statusFlags, (void*) &(audiodevices[modulatorSlave]));
+					paCallback( (const void*) dev->slaveInBuffer, (void*) dev->slaveGainBuffer, (unsigned long) dev->batchsize, timeInfo, statusFlags, (void*) &(audiodevices[modulatorSlave]));
 				}
 				else {
 					// No. Either no modulator slave or slave not currently active. Signal this
@@ -1256,7 +1254,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 					}
 					
 					// Temporary input buffer is filled for slave callback: Execute it.
-					paCallback( (const void*) dev->slaveInBuffer, (void*) dev->slaveOutBuffer, dev->batchsize, timeInfo, statusFlags, (void*) &(audiodevices[slaveId]));
+					paCallback( (const void*) dev->slaveInBuffer, (void*) dev->slaveOutBuffer, (unsigned long) dev->batchsize, timeInfo, statusFlags, (void*) &(audiodevices[slaveId]));
 					
 					// Check if the paCallback actually filled anything into the dev->slaveOutBuffer:
 					if ((audiodevices[slaveId].opmode & kPortAudioPlayBack) && audiodevices[slaveId].slaveDirty) {
@@ -1338,7 +1336,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 					// also acts as output buffer from the slave, so that slaves with playback enabled are happy.
 					// However, this is a pure dummy-sink, the data written by the slave isn't used for anything,
 					// but simply discarded, as output capture slaves have no meaningful sink for their output.
-					paCallback( (const void*) dev->slaveOutBuffer, (void*) dev->slaveOutBuffer, dev->batchsize, timeInfo, statusFlags, (void*) &(audiodevices[slaveId]));
+					paCallback( (const void*) dev->slaveOutBuffer, (void*) dev->slaveOutBuffer, (unsigned long) dev->batchsize, timeInfo, statusFlags, (void*) &(audiodevices[slaveId]));
 				}
 				
 				// One more slave handled:
@@ -1415,7 +1413,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 
 		// Clamp to at most 10 seconds ahead, because that is more than enough even
 		// for the largest conceivable hostbuffersizes, and it prevents numeric overflow
-		// in the math below when converting to psych_uint64 ints:
+		// in the math below when converting to psych_int64 ints:
 		offsetDelta = (offsetDelta > 10.0) ? 10.0 : offsetDelta;
 
 		// Convert remaining time until requested stop time into sample frames until stop:
@@ -1423,7 +1421,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 
 		// Convert into samples: max_i is the maximum allowable value for 'i'
 		// in order to satisfy the dev->reqStopTime:
-		max_i  = (psych_uint64) (offsetDelta * (double) outchannels);
+		max_i  = (psych_int64) (offsetDelta * (double) outchannels);
 		max_i -= max_i % outchannels;
 		
 		// Count of outputted frames in this part of the code:
@@ -1976,7 +1974,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	PaHostApiIndex paHostAPI;
 	PaStreamParameters outputParameters;
 	PaStreamParameters inputParameters;
-	PaDeviceInfo* inputDevInfo, *outputDevInfo, *referenceDevInfo;
+	const PaDeviceInfo* inputDevInfo, *outputDevInfo, *referenceDevInfo;
 	PaStreamFlags sflags;
 	PaError err;
 	PaStream *stream = NULL;
@@ -2937,7 +2935,7 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 
 	int inchannels, insamples, p;
 	size_t buffersize;
-	psych_uint64 totalplaycount;
+	psych_int64 totalplaycount;
 	double*	indata = NULL;
 	float*  outdata = NULL;
 	int pahandle   = -1;
@@ -3036,7 +3034,7 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 		}
 		
 		// Reset write position to end of buffer:
-		audiodevices[pahandle].writeposition = (psych_uint64) inchannels * insamples;
+		audiodevices[pahandle].writeposition = (psych_int64) inchannels * insamples;
 		
 		// Elapsed count of played out samples must be zero as engine is stopped and will restart sometime after this call:
 		totalplaycount = 0;
@@ -3058,7 +3056,7 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 			
 			// Set writePosition to given startIndex: We can do this without lock held, because writeposition is only
 			// touched by us, ie., the main thread, but never by one of the PortAudio threads:
-			audiodevices[pahandle].writeposition = (psych_uint64) inchannels * (psych_uint64) startIndex;
+			audiodevices[pahandle].writeposition = (psych_int64) inchannels * (psych_int64) startIndex;
 		}
 		
 		// Engine stopped? [No need to mutex-lock, as engine can't change from state 0 to other state without our intervention]
@@ -3068,7 +3066,7 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 		if (audiodevices[pahandle].outputbuffer == NULL) PsychErrorExitMsg(PsychError_user, "No audio buffer allocated! You must call this method once before start of playback to initially allocate a buffer of sufficient size.");
 
 		// Buffer of sufficient size for a streaming refill of this amount?
-		buffersize = sizeof(float) * (psych_uint64) inchannels * (psych_uint64) insamples;
+		buffersize = sizeof(float) * (psych_int64) inchannels * (psych_int64) insamples;
 		if (audiodevices[pahandle].outputbuffersize < buffersize) PsychErrorExitMsg(PsychError_user, "Total capacity of audio buffer is too small for a refill of this size! Allocate an initial buffer of at least the size of the biggest refill.");
 
 		// Need to lock b'cause of 'playposition':
@@ -3082,7 +3080,7 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 
 		// Boundary conditions met. Can we refill immediately or do we need to wait for playback
 		// position to progress far enough? We skip this test if the streamingrefill flag is > 1:
-		while ((streamingrefill < 2) && (audiodevices[pahandle].state > 0) && (!underrun) && (((audiodevices[pahandle].outputbuffersize / (psych_int64) sizeof(float)) - ((psych_int64) audiodevices[pahandle].writeposition - (psych_int64) audiodevices[pahandle].playposition) - (psych_int64) inchannels) <= (inchannels * insamples))) {
+		while ((streamingrefill < 2) && (audiodevices[pahandle].state > 0) && (!underrun) && (((audiodevices[pahandle].outputbuffersize / (psych_int64) sizeof(float)) - (audiodevices[pahandle].writeposition - audiodevices[pahandle].playposition) - (psych_int64) inchannels) <= (inchannels * insamples))) {
 			// Sleep a bit, drop the lock throughout sleep:
 			PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
 			// TODO: We could do better here by predicting how long it will take at least until we're ready to refill,
@@ -3594,7 +3592,7 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
 		// We know the engine is idle if we reach this point, so no need to acquire locks or check state...
 		
 		// Calculate needed buffersize in samples: Convert allocsize in seconds to size in bytes:
-		audiodevices[pahandle].inputbuffersize = sizeof(float) * ((psych_uint64) (allocsize * audiodevices[pahandle].streaminfo->sampleRate)) * audiodevices[pahandle].inchannels;
+		audiodevices[pahandle].inputbuffersize = sizeof(float) * ((psych_int64) (allocsize * audiodevices[pahandle].streaminfo->sampleRate)) * audiodevices[pahandle].inchannels;
 		audiodevices[pahandle].inputbuffer = (float*) calloc(1, audiodevices[pahandle].inputbuffersize);
 		if (audiodevices[pahandle].inputbuffer == NULL) PsychErrorExitMsg(PsychError_outofMemory, "Free system memory exhausted when trying to allocate audio recording buffer!");
 
@@ -3630,7 +3628,7 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
 		minSamples = minSecs * ((double) audiodevices[pahandle].streaminfo->sampleRate) * ((double) audiodevices[pahandle].inchannels) + ((double) audiodevices[pahandle].inchannels);
 
 		// Bigger than buffersize? That would be a no no...
-		if (((psych_uint64) minSamples * sizeof(float)) > audiodevices[pahandle].inputbuffersize) {
+		if (((psych_int64) minSamples * sizeof(float)) > audiodevices[pahandle].inputbuffersize) {
 			PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
 			PsychErrorExitMsg(PsychError_user, "Invalid 'minimumAmountToReturnSecs' parameter: The requested minimum is bigger than the whole capture buffer size!'");			
 		}
@@ -4423,7 +4421,7 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 	static char seeAlsoString[] = "Open GetDeviceSettings ";	 
 	PsychGenericScriptType 	*status;
 	double currentTime;
-	psych_uint64 playposition, totalplaycount;
+	psych_int64 playposition, totalplaycount;
 
 	const char *FieldNames[]={	"Active", "State", "RequestedStartTime", "StartTime", "CaptureStartTime", "RequestedStopTime", "EstimatedStopTime", "CurrentStreamTime", "ElapsedOutSamples", "PositionSecs", "RecordedSecs", "ReadSecs", "SchedulePosition",
 								"XRuns", "TotalCalls", "TimeFailed", "BufferSize", "CPULoad", "PredictedLatency", "LatencyBias", "SampleRate",
@@ -4733,8 +4731,8 @@ PsychError PSYCHPORTAUDIOGetDevices(void)
 	int deviceindex = -1;
 	int count = 0;
 	int i, ic, filteredcount;
-	PaDeviceInfo* padev = NULL;
-	PaHostApiInfo* hainfo = NULL;
+	const PaDeviceInfo* padev = NULL;
+	const PaHostApiInfo* hainfo = NULL;
 	
 	// Setup online help: 
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -4795,8 +4793,8 @@ PsychError PSYCHPORTAUDIOGetDevices(void)
 				// Fill slot ic of struct array with info of deviceindex i:
 				PsychSetStructArrayDoubleElement("DeviceIndex", ic, i, devices);
 				PsychSetStructArrayDoubleElement("HostAudioAPIId", ic, hainfo->type, devices);
-				PsychSetStructArrayStringElement("HostAudioAPIName", ic, hainfo->name, devices);
-				PsychSetStructArrayStringElement("DeviceName", ic, padev->name, devices);
+				PsychSetStructArrayStringElement("HostAudioAPIName", ic, (char*) (hainfo->name), devices);
+				PsychSetStructArrayStringElement("DeviceName", ic, (char*) (padev->name), devices);
 				PsychSetStructArrayDoubleElement("NrInputChannels", ic, padev->maxInputChannels, devices);
 				PsychSetStructArrayDoubleElement("NrOutputChannels", ic, padev->maxOutputChannels, devices);
 				PsychSetStructArrayDoubleElement("LowInputLatency", ic, padev->defaultLowInputLatency, devices);
@@ -4944,8 +4942,8 @@ PsychError PSYCHPORTAUDIOSetLoop(void)
 	
 	// Ok, range is valid. Assign it:
 	PsychPALockDeviceMutex(&audiodevices[pahandle]);
-	audiodevices[pahandle].loopStartFrame = (psych_uint64) startSample;
-	audiodevices[pahandle].loopEndFrame = (psych_uint64) endSample;
+	audiodevices[pahandle].loopStartFrame = (psych_int64) startSample;
+	audiodevices[pahandle].loopEndFrame = (psych_int64) endSample;
 	PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
 
 	return(PsychError_none);
@@ -5507,7 +5505,7 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
 	int pahandle = -1;
 	int enable, inputChannel, outputChannel, rc;
 	double gain, stereoPan;
-	PaDeviceInfo* padev = NULL;
+	const PaDeviceInfo* padev = NULL;
 
 	// Setup online help: 
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
