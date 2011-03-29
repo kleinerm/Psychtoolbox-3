@@ -54,7 +54,9 @@ function CMCheckInit(meterType, PortString)
 global g_serialPort g_useIOPort;
 
 % If g_useIOPort == 1 the IOPort driver shall be used instead of SerialComm:
-g_useIOPort = 1;
+if isempty(g_useIOPort)
+    g_useIOPort = 1;
+end
 
 % Number of retries before giving up:
 DefaultNumberOfTries = 5;
