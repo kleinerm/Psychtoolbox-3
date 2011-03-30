@@ -657,7 +657,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		// functional and visible onscreen window at this point.
 		
 		// Query CGL context and pixelformat for the AGL context and pixelformat, so all further code can use them:
-		if (!aglGetCGLPixelFormat(pf, &(windowRecord->targetSpecific.pixelFormatObject))) {
+		if (!aglGetCGLPixelFormat(pf, (void**) &(windowRecord->targetSpecific.pixelFormatObject))) {
 			printf("\nPTB-ERROR[aglGetCGLPixelFormat failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
 			aglSetCurrentContext(NULL);
 			aglDestroyContext(glcontext);
@@ -666,7 +666,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 			return(FALSE);
 		}
 		
-		if (!aglGetCGLContext(glcontext, &(windowRecord->targetSpecific.contextObject))) {
+		if (!aglGetCGLContext(glcontext, (void**) &(windowRecord->targetSpecific.contextObject))) {
 			printf("\nPTB-ERROR[aglGetCGLContext failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
 			aglSetCurrentContext(NULL);
 			aglDestroyContext(glcontext);
@@ -790,7 +790,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 			}
 
 			// Retrieve CGL context for userspace context:
-			if (!aglGetCGLContext(usercontext, &(windowRecord->targetSpecific.glusercontextObject))) {
+			if (!aglGetCGLContext(usercontext, (void**) &(windowRecord->targetSpecific.glusercontextObject))) {
 				printf("\nPTB-ERROR[aglGetCGLContext failed: %s]: Getting CGL userspace context for Matlab OpenGL failed for unknown reasons.\n\n", aglErrorString(aglGetError()));
 				DisposeWindow(carbonWindow);
 				return(FALSE);

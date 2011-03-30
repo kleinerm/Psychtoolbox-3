@@ -250,9 +250,9 @@ int GetPrimaryEthernetAddressString(char *addressStr, psych_bool capsFlag, psych
 		for(i=0;i<addressLengthBytes;i++){
 			tempDigitValue=(int)MACAddress[i];
 			if(capsFlag)
-				numCharsPrinted=sprintf(tempDigitStrBuffer, "%02X", tempDigitValue);
+				numCharsPrinted=sprintf((char*) tempDigitStrBuffer, "%02X", tempDigitValue);
 			else
-				numCharsPrinted=sprintf(tempDigitStrBuffer, "%02x", tempDigitValue);
+				numCharsPrinted=sprintf((char*) tempDigitStrBuffer, "%02x", tempDigitValue);
 			tempRawStrBuffer[i*2]=tempDigitStrBuffer[0];
 			tempRawStrBuffer[i*2+1]=tempDigitStrBuffer[1];
 		}
@@ -260,7 +260,7 @@ int GetPrimaryEthernetAddressString(char *addressStr, psych_bool capsFlag, psych
 		
 		//insert colons in the ethernet address if requested
 		if(!colonSeparatedFlag)
-			strcpy(tempResultBuffer, tempRawStrBuffer);
+			strcpy((char*) tempResultBuffer, (char*) tempRawStrBuffer);
 		else{
 			currentPosition=0;
 			for(i=0;i<addressLengthBytes;i++){
@@ -274,9 +274,9 @@ int GetPrimaryEthernetAddressString(char *addressStr, psych_bool capsFlag, psych
 			tempResultBuffer[currentPosition-1]='\0';
 		}
 	}
-	addressStringLength=strlen(tempResultBuffer);
+	addressStringLength=strlen((char*) tempResultBuffer);
 	if(addressStr!=NULL)
-		strcpy(addressStr, tempResultBuffer);
+		strcpy(addressStr, (char*) tempResultBuffer);
 	return(addressStringLength);
 
 }

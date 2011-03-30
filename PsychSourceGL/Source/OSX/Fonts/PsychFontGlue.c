@@ -194,7 +194,7 @@ void PsychInitFontList(void)
 				continue;
             }
             
-            resultOK=CFStringGetCString(cfFontName, fontRecord->fontFMName, 255, kCFStringEncodingASCII);
+            resultOK=CFStringGetCString(cfFontName, (char*) fontRecord->fontFMName, 255, kCFStringEncodingASCII);
             if(!resultOK){
                 CFRelease(cfFontName);
 				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to convert fontFMName CF string to char string. Defective font?!? Skipped this entry...\n");
@@ -210,7 +210,7 @@ void PsychInitFontList(void)
 				continue;
             }
 
-            resultOK=CFStringGetCString(cfFontName, fontRecord->fontPostScriptName, 255, kCFStringEncodingASCII); //kCFStringEncodingASCII matches MATLAB for 0-127
+            resultOK=CFStringGetCString(cfFontName, (char*) fontRecord->fontPostScriptName, 255, kCFStringEncodingASCII); //kCFStringEncodingASCII matches MATLAB for 0-127
             if(!resultOK){
                 CFRelease(cfFontName);
 				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to convert fontPostScriptName CF string to char string for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
@@ -221,7 +221,7 @@ void PsychInitFontList(void)
 
             //get the QuickDraw name of the font
             ATSFontFamilyGetQuickDrawName(fontRecord->fontFamilyATSRef, fontFamilyQuickDrawNamePString);
-            CopyPascalStringToC(fontFamilyQuickDrawNamePString, fontRecord->fontFamilyQuickDrawName);
+            CopyPascalStringToC(fontFamilyQuickDrawNamePString, (char*) fontRecord->fontFamilyQuickDrawName);
 
             //get the font file used for this font
             osStatus= ATSFontGetFileSpecification(fontRecord->fontATSRef, &fontFileSpec);
@@ -232,7 +232,7 @@ void PsychInitFontList(void)
 			}
 
             FSpMakeFSRef(&fontFileSpec, &fontFileRef);
-            osStatus= FSRefMakePath(&fontFileRef, fontRecord->fontFile, (UInt32)(kPsychMaxFontFileNameChars - 1));
+            osStatus= FSRefMakePath(&fontFileRef, (UInt8*) fontRecord->fontFile, (UInt32)(kPsychMaxFontFileNameChars - 1));
             if(osStatus!=noErr){
 				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to get the font file path for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
 				trouble = TRUE;
@@ -276,7 +276,7 @@ void PsychInitFontList(void)
             fontRecord->verticalMetrics.underlineThickness=		verticalMetrics.underlineThickness;
             //use Font Manager to get the FM  font family name font style
             fmStatus=FMGetFontFamilyName(fontRecord->fontFamilyFMRef, fmFontFamilyNamePString);
-            CopyPascalStringToC(fmFontFamilyNamePString, fontRecord->fontFMFamilyName);
+            CopyPascalStringToC(fmFontFamilyNamePString, (char*) fontRecord->fontFMFamilyName);
             fontRecord->fontFMStyle=fmStyle;
             fontRecord->fontFMNumStyles=PsychFindNumFMFontStylesFromStyle(fmStyle);
             fontRecord->fontFMNumStyles= fontRecord->fontFMNumStyles ? fontRecord->fontFMNumStyles : 1; //because the name is "normal" even if there are no styles.  
@@ -284,11 +284,11 @@ void PsychInitFontList(void)
             textEncoding=ATSFontFamilyGetEncoding(fontRecord->fontFamilyATSRef);
             scriptInfoOK=RevertTextEncodingToScriptInfo(textEncoding, &scriptCode, &languageCode, NULL);
             localOK=LocaleRefFromLangOrRegionCode(languageCode, kTextRegionDontCare, &locale); 
-            localOK=LocaleRefGetPartString(locale, kLocaleLanguageMask, 255, fontRecord->locale.language);			fontRecord->locale.language[255]='\0'; 
-            localOK=LocaleRefGetPartString(locale, kLocaleLanguageVariantMask, 255, fontRecord->locale.languageVariant);	fontRecord->locale.languageVariant[255]='\0';
-            localOK=LocaleRefGetPartString(locale, kLocaleRegionMask, 255, fontRecord->locale.region);			fontRecord->locale.region[255]='\0';
-            localOK=LocaleRefGetPartString(locale, kLocaleRegionVariantMask, 255, fontRecord->locale.regionVariant);	fontRecord->locale.regionVariant[255]='\0';
-            localOK=LocaleRefGetPartString(locale, kLocaleAllPartsMask, 255, fontRecord->locale.fullName);		fontRecord->locale.fullName[255]='\0';
+            localOK=LocaleRefGetPartString(locale, kLocaleLanguageMask, 255, (char*) fontRecord->locale.language);			fontRecord->locale.language[255]='\0'; 
+            localOK=LocaleRefGetPartString(locale, kLocaleLanguageVariantMask, 255, (char*) fontRecord->locale.languageVariant);	fontRecord->locale.languageVariant[255]='\0';
+            localOK=LocaleRefGetPartString(locale, kLocaleRegionMask, 255, (char*) fontRecord->locale.region);			fontRecord->locale.region[255]='\0';
+            localOK=LocaleRefGetPartString(locale, kLocaleRegionVariantMask, 255, (char*) fontRecord->locale.regionVariant);	fontRecord->locale.regionVariant[255]='\0';
+            localOK=LocaleRefGetPartString(locale, kLocaleAllPartsMask, 255, (char*) fontRecord->locale.fullName);		fontRecord->locale.fullName[255]='\0';
 
 			// Init for fontRecord (nearly) finished.
 			
@@ -404,7 +404,7 @@ psych_bool	PsychGetFontRecordFromFontFamilyNameAndFontStyle(char *fontFamilyName
 
     found=0;
     for(current=PsychGetFontListHead();  current; current=current->next){
-        nameMatch= !(strcmp(current->fontFMFamilyName, fontFamilyName));
+        nameMatch= !(strcmp((char*) current->fontFMFamilyName, fontFamilyName));
         styleMatch= current->fontFMStyle==fontStyle;
         found= nameMatch && styleMatch;
         if(found){
@@ -439,7 +439,7 @@ int	PsychMemberFontsFromFontFamilyName(char *fontFamilyName, PsychFontStructPtrT
     
     i=0;
     for(current=PsychGetFontListHead();  current; current=current->next){
-        nameMatch= !(strcmp(current->fontFMFamilyName, fontFamilyName));
+        nameMatch= !(strcmp((char*) current->fontFMFamilyName, fontFamilyName));
         if(nameMatch){
             if(pFontStructArray)
                 pFontStructArray[i]=current;
@@ -486,16 +486,16 @@ void PsychCopyFontRecordsToNativeStructArray(int numFonts, PsychFontStructType *
     for(arrayIndex=0; arrayIndex<numFonts; ++arrayIndex){
         fontElement=fontStructs[arrayIndex];
         PsychSetStructArrayDoubleElement("number", arrayIndex, fontElement->fontNumber, *fontStructArray);
-        PsychSetStructArrayStringElement("name", arrayIndex, fontElement->fontFMName, *fontStructArray);
-        PsychSetStructArrayStringElement("QuickDrawName", arrayIndex, fontElement->fontFamilyQuickDrawName, *fontStructArray);
-        PsychSetStructArrayStringElement("PostScriptName", arrayIndex, fontElement->fontPostScriptName, *fontStructArray);
-        PsychSetStructArrayStringElement("familyName", arrayIndex, fontElement->fontFMFamilyName, *fontStructArray);
+        PsychSetStructArrayStringElement("name", arrayIndex, (char*) fontElement->fontFMName, *fontStructArray);
+        PsychSetStructArrayStringElement("QuickDrawName", arrayIndex, (char*) fontElement->fontFamilyQuickDrawName, *fontStructArray);
+        PsychSetStructArrayStringElement("PostScriptName", arrayIndex, (char*) fontElement->fontPostScriptName, *fontStructArray);
+        PsychSetStructArrayStringElement("familyName", arrayIndex, (char*) fontElement->fontFMFamilyName, *fontStructArray);
         //style
         PsychSetStructArrayDoubleElement("styleCode", arrayIndex, (double)fontElement->fontFMStyle, *fontStructArray);
         PsychAllocOutCellVector(kPsychNoArgReturn, FALSE, fontElement->fontFMNumStyles,  &styleNameList);
         for(i=0;i<fontElement->fontFMNumStyles;i++){
-            PsychGetFMFontStyleNameFromIndex(i, fontElement->fontFMStyle, styleName, 255); 
-            PsychSetCellVectorStringElement(i, styleName, styleNameList);
+            PsychGetFMFontStyleNameFromIndex(i, fontElement->fontFMStyle, (char*) styleName, 255); 
+            PsychSetCellVectorStringElement(i, (const char*) styleName, styleNameList);
         }
         PsychSetStructArrayNativeElement("styleNames", arrayIndex, styleNameList, *fontStructArray);
         PsychSetStructArrayStringElement("file", arrayIndex, fontElement->fontFile, *fontStructArray);
@@ -536,11 +536,11 @@ void PsychCopyFontRecordsToNativeStructArray(int numFonts, PsychFontStructType *
         PsychSetStructArrayNativeElement("metrics", arrayIndex, metaMetrics, *fontStructArray);
         //locale
         PsychAllocOutStructArray(kPsychNoArgReturn, FALSE, 1, numLocaleFieldNames, localeFieldNames,  &locale);
-            PsychSetStructArrayStringElement("language", 0, fontElement->locale.language, locale);
-            PsychSetStructArrayStringElement("languageVariant", 0, fontElement->locale.languageVariant, locale);
-            PsychSetStructArrayStringElement("region", 0, fontElement->locale.region, locale);
-            PsychSetStructArrayStringElement("regionVariant", 0, fontElement->locale.regionVariant, locale);
-            PsychSetStructArrayStringElement("fullName", 0, fontElement->locale.fullName, locale);
+            PsychSetStructArrayStringElement("language", 0, (char*) fontElement->locale.language, locale);
+            PsychSetStructArrayStringElement("languageVariant", 0, (char*) fontElement->locale.languageVariant, locale);
+            PsychSetStructArrayStringElement("region", 0, (char*) fontElement->locale.region, locale);
+            PsychSetStructArrayStringElement("regionVariant", 0, (char*) fontElement->locale.regionVariant, locale);
+            PsychSetStructArrayStringElement("fullName", 0, (char*) fontElement->locale.fullName, locale);
         PsychSetStructArrayNativeElement("locale", arrayIndex, locale, *fontStructArray);
     }
     
