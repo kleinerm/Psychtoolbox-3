@@ -132,7 +132,7 @@ int freenect_process_events(freenect_context *ctx)
 #include "libfreenect.h"
 #endif
 
-#if PSYCH_SYSTEM == PSYCH_LINUX
+#if PSYCH_SYSTEM != PSYCH_WINDOWS
 typedef void freenect_depth;
 typedef void freenect_pixel;
 #define freenect_set_rgb_callback freenect_set_video_callback
@@ -225,15 +225,18 @@ void InitializeSynopsis(void)
 	int i=0;
 	const char **synopsis = synopsisSYNOPSIS;  //abbreviate the long name
 	
-	synopsis[i++] = "PsychKinect - A Psychtoolbox driver for the Microsoft Kinect box.\n";
+	synopsis[i++] = "PsychKinectCore - A Psychtoolbox driver for the Microsoft Kinect box.\n";
 	synopsis[i++] = "This driver allows to control the box and grab color images and depth";
-	synopsis[i++] = "images from the Kinect depthcamera.\n";
-	synopsis[i++] = "It uses the free software drivers and libraries from the OpenKinect";
+	synopsis[i++] = "images from the Kinect depth camera.\n";
+	synopsis[i++] = "It uses and requires the free software drivers and libraries from the OpenKinect";
 	synopsis[i++] = "project (Thanks!): http://openkinect.org\n";
-	synopsis[i++] = "Libfreenect is Copyright (C) 2010  Hector Martin \"marcan\" <hector@marcansoft.com>";
-	synopsis[i++] = "This code is licensed to you under the terms of the GNU GPL, version 2; see: \n";
-	synopsis[i++] = "http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt\n";
-	synopsis[i++] = "The driver also uses bits of math from Nicolas Burrus Kinect work:";
+	synopsis[i++] = "Libfreenect is Copyright (C) 2010, 2011 individual OpenKinect contributors.";
+	synopsis[i++] = "Libfreenect requires libusb-1.0, which is licensed under LGPL v2 or later.";
+	synopsis[i++] = "See 'help InstallKinect' for more detailed license information.\n";
+	synopsis[i++] = "The PsychKinectCore driver is licensed to you under the terms of the MIT license,";
+	synopsis[i++] = "with some restrictions imposed when used with Matlab. See 'help License.txt' in";
+	synopsis[i++] = "the Psychtoolbox root folder for more details.\n";
+	synopsis[i++] = "The driver also uses bits of math inspired by Nicolas Burrus Kinect work:";
 	synopsis[i++] = "http://nicolas.burrus.name/index.php/Research/KinectCalibration ";
 	synopsis[i++] = "\n";
 	
@@ -1048,7 +1051,7 @@ PsychError PSYCHKINECTGetImage(void)
 		"If 'returnTexturePtr' is zero (default), a uint8 3D image matrix is returned, which could "
 		"be directly fed to image processing toolbox, imwrite() or Screen('MakeTexture').\n"
 		"'imtype' if set to 1 returns a color-coded depth image instead of the RGB camera image.\n"
-		"If 'returnTexturePtr' is one, a memory pointer to a RGBA8 rectangle texture buffer "
+		"If 'returnTexturePtr' is one, a double-encoded memory pointer to a RGBA8 rectangle texture buffer "
 		"is returned, for use with Screen('SetOpenGLTextureFromMemPointer') for injection into "
 		"PTB's texturing system.\n";
 	
