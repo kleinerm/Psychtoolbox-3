@@ -62,7 +62,7 @@ PsychError SCREENCopyWindow(void)
 	PsychCopyRect(sourceRect, sourceWin->rect);
 
 	// Special case for stereo: Only half the real window width:
-	PsychMakeRect(&sourceRect, sourceWin->rect[kPsychLeft], sourceWin->rect[kPsychTop],
+	PsychMakeRect(sourceRect, sourceWin->rect[kPsychLeft], sourceWin->rect[kPsychTop],
 				  sourceWin->rect[kPsychLeft] + PsychGetWidthFromRect(sourceWin->rect)/((sourceWin->specialflags & kPsychHalfWidthWindow) ? 2 : 1),
 				  sourceWin->rect[kPsychTop] + PsychGetHeightFromRect(sourceWin->rect)/((sourceWin->specialflags & kPsychHalfHeightWindow) ? 2 : 1));
 	
@@ -77,7 +77,7 @@ PsychError SCREENCopyWindow(void)
 	PsychCopyRect(targetRect, targetWin->rect);
 
 	// Special case for stereo: Only half the real window width:
-	PsychMakeRect(&targetRect, targetWin->rect[kPsychLeft], targetWin->rect[kPsychTop],
+	PsychMakeRect(targetRect, targetWin->rect[kPsychLeft], targetWin->rect[kPsychTop],
 				  targetWin->rect[kPsychLeft] + PsychGetWidthFromRect(targetWin->rect)/((targetWin->specialflags & kPsychHalfWidthWindow) ? 2 : 1),
 				  targetWin->rect[kPsychTop] + PsychGetHeightFromRect(targetWin->rect)/((targetWin->specialflags & kPsychHalfHeightWindow) ? 2 : 1));
 
@@ -117,7 +117,7 @@ PsychError SCREENCopyWindow(void)
 		PsychSetDrawingTarget(targetWin);
 		
 		// Soft-Reset drawing target - Detach anything bound or setup:
-		PsychSetDrawingTarget(0x1);
+		PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
 		
 		// Find source framebuffer:
 		if (sourceWin->fboCount == 0) {

@@ -247,7 +247,7 @@ PsychError SCREENOpenOffscreenWindow(void)
 		// This must be a proxy-window object: Can't transition to it!
 		
 		// But we can safe-reset the current drawingtarget...
-		PsychSetDrawingTarget(0x1);
+		PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
 		
 		// ...and then switch to the OpenGL context of the 'targetWindow' proxy object:
 		PsychSetGLContext(targetWindow);
@@ -264,7 +264,7 @@ PsychError SCREENOpenOffscreenWindow(void)
 		// Imaging mode for this window enabled: Use new way of creating the offscreen window:
 		
 		// We safely unbind any FBO bindings and drawingtargets:
-		PsychSetDrawingTarget(0x1);
+		PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
 		
 		// Overriden for imagingmode: There we always have 4 channels...
 		windowRecord->nrchannels=4;

@@ -723,7 +723,7 @@ psych_bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		// informative than important: The function will always select some device if
 		// it returns, even if it isn't according to given spec, which would be apparent
 		// by  a non-zero error:
-		error = PsychQTSelectVideoSource(seqGrab, sgchanptr, deviceIndex, FALSE, &(vidcapRecordBANK[slotid].capDeviceName));
+		error = PsychQTSelectVideoSource(seqGrab, sgchanptr, deviceIndex, FALSE, (char*) &(vidcapRecordBANK[slotid].capDeviceName));
 
 		// Some low-level debug output, if requested:
         SGGetVideoRect(*sgchanptr, &newrect);
@@ -877,7 +877,7 @@ psych_bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         }
 
 		// Select device and input for this video channel:
-		error = PsychQTSelectVideoSource(seqGrab, sgchanptr, deviceIndex, TRUE, &(vidcapRecordBANK[slotid].capDeviceName));
+		error = PsychQTSelectVideoSource(seqGrab, sgchanptr, deviceIndex, TRUE, (char*) &(vidcapRecordBANK[slotid].capDeviceName));
         if (error!=noErr) {
             // Grabber didn't accept new rectangle :(
             if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to select video capture device according to requested deviceIndex %i\n", deviceIndex);

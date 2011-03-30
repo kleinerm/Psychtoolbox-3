@@ -111,7 +111,7 @@ void		PsychSetGLColor(PsychColorType *color, PsychWindowRecordType *windowRecord
 void		PsychSetupVertexColorArrays(PsychWindowRecordType *windowRecord, psych_bool enable, int mc, double* colors, unsigned char *bytecolors);
 void		PsychSetArrayColor(PsychWindowRecordType *windowRecord, int i, int mc, double* colors, unsigned char *bytecolors);
 void		PsychGLClear(PsychWindowRecordType *windowRecord);
-void		PsychGLRect(double *psychRect);
+void		PsychGLRect(PsychRectType psychRect);
 char		*PsychGetGLErrorNameString(GLenum errorConstant);
 #define		PsychTestForGLErrors()		PsychTestForGLErrorsC(__LINE__, __func__, __FILE__) 
 void		PsychTestForGLErrorsC(int lineNum, const char *funcName, const char *fileName);

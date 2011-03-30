@@ -159,7 +159,7 @@ PsychError SCREENFillRect(void)
 				}
 				
 				// Submit rect for drawing:
-				if (!IsPsychRectEmpty(rect)) PsychGLRect((PsychRectType*) &(xy[i*4]));
+				if (!IsPsychRectEmpty(rect)) PsychGLRect(&(xy[i*4]));
 			}
 		}
 		else {

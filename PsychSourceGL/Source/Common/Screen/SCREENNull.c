@@ -131,7 +131,7 @@ PsychError SCREENNull(void)
 	struct timeval vblank_time;
 
 	// NVidia GPU? Check OpenGL vendor string and for recognized gpu-id:
-	if ((strstr(glGetString(GL_VENDOR), "NVIDIA")) && (PsychGetNVidiaGPUType(NULL) > 0)) {
+	if ((strstr((char*) glGetString(GL_VENDOR), "NVIDIA")) && (PsychGetNVidiaGPUType(NULL) > 0)) {
 		// Yes. Test beampos queries and vblank counter:
 		if ((cardId = PsychGetNVidiaGPUType(NULL)) >= 0x50) {
 			// NV50 or later, aka GeForce-8000 or later: Same registers for
@@ -324,7 +324,7 @@ if (1) {
 		if (myprop == NULL) PsychErrorExitMsg(PsychError_system, "PTB-DEBUG: FAILED TO FIND AAPL00,Dither key!!\n");
 		m = CFDataGetLength(myprop);
 		printf("Amount of data stored in key 'AAPL00,Dither' is %i bytes.\nData: ", m);
-		psych_uint8* mypropdata = CFDataGetMutableBytePtr(myprop);
+		psych_uint8* mypropdata = CFDataGetMutableBytePtr((CFMutableDataRef) myprop);
 		if (mypropdata == NULL) PsychErrorExitMsg(PsychError_system, "PTB-DEBUG: FAILED TO GET MUTABLE DATA PTR OF AAPL00,Dither key!!\n");
 		for (i=0; i < m; i++) printf("%x ", mypropdata[i]);
 		

@@ -452,7 +452,7 @@ PsychError SCREENOpenWindow(void)
     PsychCopyOutDoubleArg(1, FALSE, windowRecord->windowIndex);
 
 	// rect argument needs special treatment in stereo mode:
-	PsychMakeRect(&rect, windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychTop],
+	PsychMakeRect(rect, windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychTop],
 					windowRecord->rect[kPsychLeft] + PsychGetWidthFromRect(windowRecord->rect)/((windowRecord->specialflags & kPsychHalfWidthWindow) ? 2 : 1),
 					windowRecord->rect[kPsychTop] + PsychGetHeightFromRect(windowRecord->rect)/((windowRecord->specialflags & kPsychHalfHeightWindow) ? 2 : 1));
 

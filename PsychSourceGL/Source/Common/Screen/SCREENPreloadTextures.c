@@ -186,7 +186,7 @@ PsychError SCREENPreloadTextures(void)
         glFinish();
         
         // Count them and copy them into output vector:
-        PsychAllocOutBooleanMatArg(2, FALSE, n, 1, 1, &residency);
+        PsychAllocOutBooleanMatArg(2, FALSE, n, 1, 1, (PsychNativeBooleanType **) &residency);
         
         for (i=0; i<n; i++) {
             residency[i] = (psych_bool) ((*success) ? TRUE : texresident[i]);

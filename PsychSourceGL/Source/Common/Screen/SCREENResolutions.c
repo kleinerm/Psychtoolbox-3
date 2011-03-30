@@ -51,15 +51,16 @@ PsychError SCREENResolution(void)
 									"You can query a list of all supported combinations of display settings via the "
 									"Screen('Resolutions') command. \"specialMode\" is a flag you must not touch, "
 									"unless you really know what you're doing, that's why we don't tell you its purpose.";
-									
+
 	static char seeAlsoString[] = "Screen('Resolutions')";
 	
     PsychGenericScriptType	*oldResStructArray;
 	PsychScreenSettingsType screenSettings;
 	PsychDepthType			useDepth;
     int						screenNumber, specialMode;
-	long					newWidth, newHeight, newHz, newBpp;
-	psych_bool					rc;
+	int						newWidth, newHeight, newHz, newBpp;
+	long					pnewWidth, pnewHeight;
+	psych_bool				rc;
 	
 	// Purpose of 'specialMode': If bit zero is set, then its possible to switch display settings while
 	// onscreen windows - possibly fullscreen windows and display capture - are open/active. This is mostly
@@ -89,9 +90,11 @@ PsychError SCREENResolution(void)
     PsychAllocOutStructArray(1, FALSE, 1, 4, FieldNames, &oldResStructArray);
 
 	// Query and return resolution:
-	PsychGetScreenSize(screenNumber, &newWidth, &newHeight);
-    PsychSetStructArrayDoubleElement("width", 0, (int) newWidth, oldResStructArray);
-    PsychSetStructArrayDoubleElement("height", 0, (int) newHeight, oldResStructArray);
+	PsychGetScreenSize(screenNumber, &pnewWidth, &pnewHeight);
+	newWidth = (int) pnewWidth;
+	newHeight = (int) pnewHeight;
+    PsychSetStructArrayDoubleElement("width", 0, newWidth, oldResStructArray);
+    PsychSetStructArrayDoubleElement("height", 0, newHeight, oldResStructArray);
 
 	// Query and return refresh rate:
 	newHz = (int) PsychGetNominalFramerate(screenNumber);

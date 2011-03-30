@@ -82,7 +82,7 @@ PsychError SCREENTransformTexture(void)
 	// Activate rendering context of the proxy object and soft-reset the
 	// drawing engine, so we're in a well defined state. The value 1 means: Reset safely, ie. do any
 	// framebuffer backups that might be needed before NULL-ing the binding:
-    PsychSetDrawingTarget(0x1);
+    PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
 	
 	PsychSetGLContext(proxyRecord);
 

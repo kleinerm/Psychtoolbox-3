@@ -1821,7 +1821,7 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
 		PsychPluginSetTextAntiAliasing(PsychPrefStateGet_TextAntiAliasing());
 
 		// Assign font family name of requested font:
-		PsychPluginSetTextFont(winRec->textAttributes.textFontName);
+		PsychPluginSetTextFont((const char*) winRec->textAttributes.textFontName);
 
 		// Assign style settings, e.g., bold, italic etc.:
 		PsychPluginSetTextStyle(winRec->textAttributes.textStyle);
@@ -1879,7 +1879,7 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
 		// Only bounding box requested?
 		if (boundingbox) {
 			// Yes. Return it:
-			PsychMakeRect(boundingbox, xmin + *xp, myyp - ymax, xmax + *xp, myyp - ymin);
+			PsychMakeRect((double*) boundingbox, xmin + *xp, myyp - ymax, xmax + *xp, myyp - ymin);
 		}
 		else {
 			// Draw text by calling into the plugin:

@@ -327,7 +327,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
 	#if PSYCH_SYSTEM == PSYCH_WINDOWS
     if(PsychPrefStateGet_Verbosity()>1) {
-		if (strstr(glGetString(GL_RENDERER), "GDI")) {
+		if (strstr((char*) glGetString(GL_RENDERER), "GDI")) {
 			printf("\n\n\n\nPTB-WARNING: Seems that Microsofts OpenGL software renderer is active! This will likely cause miserable\n");
 			printf("PTB-WARNING: performance, lack of functionality and severe timing and synchronization problems.\n");
 			printf("PTB-WARNING: Most likely you do not have native OpenGL vendor supplied drivers (ICD's) for your graphics hardware\n");
@@ -359,7 +359,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	if ((*windowRecord)->depth == 30) {
 		// Support for kernel driver available?
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
-		if ((PSYCH_SYSTEM == PSYCH_LINUX) && (strstr(glGetString(GL_VENDOR), "NVIDIA") || ((strstr(glGetString(GL_VENDOR), "ATI") || strstr(glGetString(GL_VENDOR), "AMD")) && strstr(glGetString(GL_RENDERER), "Fire")))) {
+		if ((PSYCH_SYSTEM == PSYCH_LINUX) && (strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || ((strstr((char*) glGetString(GL_VENDOR), "ATI") || strstr((char*) glGetString(GL_VENDOR), "AMD")) && strstr((char*) glGetString(GL_RENDERER), "Fire")))) {
 			// NVidia GPU or ATI Fire-Series GPU: Only native support by driver, if at all...
 			printf("\nPTB-INFO: Your script requested a 30bpp, 10bpc framebuffer, but this is only supported on few special graphics cards and drivers on Linux.");
 			printf("\nPTB-INFO: This may or may not work for you - Double check your results! Theoretically, the 2008 series ATI/AMD FireGL/FirePro and NVidia Quadro cards may support this with some drivers,");
@@ -367,7 +367,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		}
 		else {
 			// Only support our homegrown method with PTB kernel driver on ATI/AMD hardware:
-			if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) || strstr(glGetString(GL_VENDOR), "NVIDIA")) {
+			if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) || strstr((char*) glGetString(GL_VENDOR), "NVIDIA")) {
 				printf("\nPTB-ERROR: Your script requested a 30bpp, 10bpc framebuffer, but the Psychtoolbox kernel driver is not loaded and ready.\n");
 				printf("PTB-ERROR: The driver currently only supports selected ATI Radeon GPU's (X1000/HD2000/HD3000/HD4000 series and corresponding FireGL/FirePro models).\n");
 				printf("PTB-ERROR: On MacOS/X the driver must be loaded and functional for your graphics card for this to work.\n");
@@ -554,14 +554,14 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     (*windowRecord)->textureOrientation=2;
 
     // Perform a full safe reset of the framebuffer-object switching code:
-    PsychSetDrawingTarget(0x1);
+    PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
     
     // Enable this windowRecords OpenGL context and framebuffer as current drawingtarget. This will also setup
     // the projection and modelview matrices, viewports and such to proper values:
     PsychSetDrawingTarget(*windowRecord);
 
 	if(PsychPrefStateGet_Verbosity()>2) {		
-		  printf("\n\nOpenGL-Extensions are: %s\n\n", glGetString(GL_EXTENSIONS));
+		  printf("\n\nOpenGL-Extensions are: %s\n\n", (char*) glGetString(GL_EXTENSIONS));
 	}
 
 	// Perform generic inquiry for interesting renderer capabilities and limitations/quirks
@@ -596,7 +596,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	// More than one display online?
 	if (totaldisplaycount > 1) {
 		// Yes. Is this an ATI GPU?
-		if (strstr(glGetString(GL_VENDOR), "ATI")) {
+		if (strstr((char*) glGetString(GL_VENDOR), "ATI")) {
 			// Is this OS/X 10.5.7 or later?
 			long osMinor, osBugfix, osArch;
 			Gestalt(gestaltSystemVersionMinor, &osMinor);
@@ -884,10 +884,10 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 			// Additionally the PTB kernel driver must be available.
 			// We don't setup for ATI/AMD as our low-level code already performs correct correction.
 			// We also setup for Intel.
-			if ((strstr(glGetString(GL_VENDOR), "NVIDIA") || strstr(glGetString(GL_VENDOR), "nouveau") ||
-			     strstr(glGetString(GL_RENDERER), "NVIDIA") || strstr(glGetString(GL_RENDERER), "nouveau") ||
-			     strstr(glGetString(GL_VENDOR), "INTEL") || strstr(glGetString(GL_VENDOR), "Intel") ||
-			     strstr(glGetString(GL_RENDERER), "INTEL") || strstr(glGetString(GL_RENDERER), "Intel")) &&
+			if ((strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_VENDOR), "nouveau") ||
+			     strstr((char*) glGetString(GL_RENDERER), "NVIDIA") || strstr((char*) glGetString(GL_RENDERER), "nouveau") ||
+			     strstr((char*) glGetString(GL_VENDOR), "INTEL") || strstr((char*) glGetString(GL_VENDOR), "Intel") ||
+			     strstr((char*) glGetString(GL_RENDERER), "INTEL") || strstr((char*) glGetString(GL_RENDERER), "Intel")) &&
 				PsychOSIsKernelDriverAvailable((*windowRecord)->screenNumber)) {
 
 				// Yep. Looks like we need to apply correction.
@@ -1049,7 +1049,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	//	}
 	//	#endif
 
-	if(PsychPrefStateGet_Verbosity()>2) printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION));
+	if(PsychPrefStateGet_Verbosity()>2) printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", (char*) glGetString(GL_VENDOR), (char*) glGetString(GL_RENDERER), (char*) glGetString(GL_VERSION));
     if(PsychPrefStateGet_Verbosity()>2) {
       if (VRAMTotal>0) printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal / 1024 / 1024, TexmemTotal / 1024 / 1024);
       printf("PTB-INFO: VBL startline = %i , VBL Endline = %i\n", (int) vbl_startline, VBL_Endline);
@@ -1093,7 +1093,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
       if ((*windowRecord)->stereomode==kPsychAnaglyphRBStereo) printf("PTB-INFO: Stereo display via Anaglyph Red-Blue stereo enabled.\n");
       if ((*windowRecord)->stereomode==kPsychAnaglyphBRStereo) printf("PTB-INFO: Stereo display via Anaglyph Blue-Red stereo enabled.\n");
       if ((*windowRecord)->stereomode==kPsychDualWindowStereo) printf("PTB-INFO: Stereo display via dual window output with imaging pipeline enabled.\n");
-      if ((PsychPrefStateGet_ConserveVRAM() & kPsychDontCacheTextures) && (strstr(glGetString(GL_EXTENSIONS), "GL_APPLE_client_storage")==NULL)) {
+      if ((PsychPrefStateGet_ConserveVRAM() & kPsychDontCacheTextures) && (strstr((char*) glGetString(GL_EXTENSIONS), "GL_APPLE_client_storage")==NULL)) {
 		// User wants us to use client storage, but client storage is unavailable :(
 		printf("PTB-WARNING: You asked me for reducing VRAM consumption but for this, your graphics hardware would need\n");
 		printf("PTB-WARNING: to support the GL_APPLE_client_storage extension, which it doesn't! Sorry... :(\n");
@@ -1327,7 +1327,7 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
 	// e.g. as onscreen window or offscreen window, then we need to safe-reset
 	// our drawing engine - Unbind its FBO (if any) and reset current target to
 	// 'none'.
-	if (PsychGetDrawingTarget() == windowRecord) PsychSetDrawingTarget(0x1);
+	if (PsychGetDrawingTarget() == windowRecord) PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
 	
     if(PsychIsOnscreenWindow(windowRecord)){
 				// Call cleanup routine for the flipInfo record (and possible associated threads):
@@ -4310,7 +4310,7 @@ PsychWindowRecordType* PsychGetDrawingTarget(void)
  * OpenGL context for that window and setting up viewport, scissor and projection/modelview
  * matrices etc.
  *
- * * PsychSetDrawingTarget(0x1) to safely reset the drawing target to "None". This will
+ * * PsychSetDrawingTarget((PsychWindowRecordType*) 0x1) to safely reset the drawing target to "None". This will
  * perform all relevant tear-down actions (switching off FBOs, performing backbuffer backups etc.)
  * for the previously active drawing target, then setting the current drawing target to NULL.
  * This command is to be used by PTB internal routines if they need to be able to do
@@ -4398,7 +4398,7 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
         return;
     }
     
-	if ((currentRendertarget == NULL) && (windowRecord == 0x1)) {
+	if ((currentRendertarget == NULL) && (windowRecord == (PsychWindowRecordType *) 0x1)) {
 		// Fast exit: No rendertarget set and savfe reset to "none" requested.
 		// Nothing special to do, just revert to NULL case:
 		windowRecord = NULL;
@@ -4418,7 +4418,7 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
         if (currentRendertarget != windowRecord) {
             // Need to do a switch between drawing target windows:
 			
-			if (windowRecord == 0x1) {
+			if (windowRecord == (PsychWindowRecordType *) 0x1) {
 				// Special case: No new rendertarget, just request to backup the old
 				// one and leave it in a tidy, consistent state, then reset to NULL
 				// binding. We achiive this by turning windowRecord into a NULL request and
@@ -4859,11 +4859,11 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	// so use at most 7 letters!
 	memset(&(windowRecord->gpuCoreId[0]), 0, 8);
 	
-	if (strstr(glGetString(GL_VENDOR), "ATI") || strstr(glGetString(GL_VENDOR), "AMD") || strstr(glGetString(GL_RENDERER), "AMD")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
-	if (strstr(glGetString(GL_VENDOR), "NVIDIA")) { nvidia = TRUE; sprintf(windowRecord->gpuCoreId, "NV10"); }
+	if (strstr((char*) glGetString(GL_VENDOR), "ATI") || strstr((char*) glGetString(GL_VENDOR), "AMD") || strstr((char*) glGetString(GL_RENDERER), "AMD")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
+	if (strstr((char*) glGetString(GL_VENDOR), "NVIDIA")) { nvidia = TRUE; sprintf(windowRecord->gpuCoreId, "NV10"); }
 
 	// Detection code for Linux DRI driver stack with ATI GPU:
-	if (strstr(glGetString(GL_VENDOR), "Advanced Micro Devices")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
+	if (strstr((char*) glGetString(GL_VENDOR), "Advanced Micro Devices")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
 	
 	while (glGetError());
 	glGetIntegerv(GL_MAX_RECTANGLE_TEXTURE_SIZE_EXT, &maxtexsize);
@@ -4881,7 +4881,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	if (verbose) {
 		printf("PTB-DEBUG: Interrogating Low-level renderer capabilities for onscreen window with handle %i:\n", windowRecord->windowIndex);
 		printf("Indicator variables: FBO's %i, ATI_texture_float %i, ARB_texture_float %i, Vendor %s, Renderer %s.\n",
-				glewIsSupported("GL_EXT_framebuffer_object"),glewIsSupported("GL_ATI_texture_float"), glewIsSupported("GL_ARB_texture_float"), glGetString(GL_VENDOR), glGetString(GL_RENDERER));
+				glewIsSupported("GL_EXT_framebuffer_object"),glewIsSupported("GL_ATI_texture_float"), glewIsSupported("GL_ARB_texture_float"), (char*) glGetString(GL_VENDOR), (char*) glGetString(GL_RENDERER));
 		printf("Indicator variables: maxcolorattachments = %i, maxrectangletexturesize = %i, maxnativealuinstructions = %i.\n", maxcolattachments, maxtexsize, maxaluinst);
 	}
 	
@@ -4932,7 +4932,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	}
 
 	// ATI_texture_float is supported by R300 ATI cores and later, as well as NV30/40 NVidia cores and later.
-	if (glewIsSupported("GL_ATI_texture_float") || glewIsSupported("GL_ARB_texture_float") || strstr(glGetString(GL_EXTENSIONS), "GL_MESAX_texture_float")) {
+	if (glewIsSupported("GL_ATI_texture_float") || glewIsSupported("GL_ARB_texture_float") || strstr((char*) glGetString(GL_EXTENSIONS), "GL_MESAX_texture_float")) {
 		// Floating point textures are supported, both 16bpc and 32bpc:
 		if (verbose) printf("Hardware supports floating point textures of 16bpc and 32bpc float format.\n");
 		windowRecord->gfxcaps |= kPsychGfxCapFPTex16;
@@ -4963,7 +4963,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 				// R600 from earlier cores. The best we can do for now is name matching, which won't work
 				// for the FireGL series however, so we also check for maxaluinst > 2000, because presumably,
 				// the R600 has a limit of 2048 whereas previous cores only had 512.
-				if ((strstr(glGetString(GL_RENDERER), "R600")) || (strstr(glGetString(GL_RENDERER), "Radeon") && strstr(glGetString(GL_RENDERER), "HD"))) {
+				if ((strstr((char*) glGetString(GL_RENDERER), "R600")) || (strstr((char*) glGetString(GL_RENDERER), "Radeon") && strstr((char*) glGetString(GL_RENDERER), "HD"))) {
 					// Ok, a Radeon HD 2xxx/3xxx or later -> R600 or later:
 					if (verbose) printf("Assuming ATI R600 or later (Matching namestring): Hardware supports floating point blending and filtering on 16bpc and 32bpc float formats.\n");
 					sprintf(windowRecord->gpuCoreId, "R600");

@@ -75,7 +75,7 @@ void PsychSetGLColor(PsychColorType *color, PsychWindowRecordType *windowRecord)
 {
     int numVals;
     
-    numVals=PsychConvertColorToDoubleVector(color, windowRecord, &(windowRecord->currentColor));
+    numVals=PsychConvertColorToDoubleVector(color, windowRecord, (GLdouble*) &(windowRecord->currentColor));
     if(numVals < 3 || numVals > 4) PsychErrorExitMsg(PsychError_internal, "Palette mode not yet implemented or illegal color specifier.");
 
 	// Set the color in GL:
@@ -256,7 +256,7 @@ void PsychGLClear(PsychWindowRecordType *windowRecord)
 /*
     PsychGLRect()
 */
-void PsychGLRect(double *psychRect)
+void PsychGLRect(PsychRectType psychRect)
 {
     glRectd((GLdouble)(psychRect[kPsychLeft]),
             (GLdouble)(psychRect[kPsychTop]),

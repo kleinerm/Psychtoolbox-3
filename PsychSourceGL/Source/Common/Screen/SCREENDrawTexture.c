@@ -115,7 +115,7 @@ static char synopsisString[] =
     PsychCopyInRectArg(3, kPsychArgOptional, sourceRect);
     if (IsPsychRectEmpty(sourceRect)) return(PsychError_none);
 
-	PsychMakeRect(&tempRect, target->rect[kPsychLeft], target->rect[kPsychTop],
+	PsychMakeRect(tempRect, target->rect[kPsychLeft], target->rect[kPsychTop],
 				  target->rect[kPsychLeft] + PsychGetWidthFromRect(target->rect)/((target->specialflags & kPsychHalfWidthWindow) ? 2 : 1),
 				  target->rect[kPsychTop] + PsychGetHeightFromRect(target->rect)/((target->specialflags & kPsychHalfHeightWindow) ? 2 : 1));
     
@@ -147,7 +147,7 @@ static char synopsisString[] =
 		// This call stores unclamped color in target->currentColor, as needed
 		// if color is to be processed by some bound shader (procedural or filtershader)
 		// inside PsychBlitTextureToDisplay():
-		PsychConvertColorToDoubleVector(&color, target, &(target->currentColor));
+		PsychConvertColorToDoubleVector(&color, target, (GLdouble*) &(target->currentColor));
 		// Submit the same color to fixed function pipe attribute as well, in case no
 		// shader is bound, or shader pulls from standard color attribute (we can't know yet):
 		glColor4dv(target->currentColor);
@@ -460,7 +460,7 @@ PsychError SCREENDrawTextures(void)
 		} else {
 			// No destination rect provided: Center the current sourceRect in the current
 			// target window and use that as destination:
-			PsychMakeRect(&tempRect, target->rect[kPsychLeft], target->rect[kPsychTop],
+			PsychMakeRect(tempRect, target->rect[kPsychLeft], target->rect[kPsychTop],
 						  target->rect[kPsychLeft] + PsychGetWidthFromRect(target->rect)/((target->specialflags & kPsychHalfWidthWindow) ? 2 : 1),
 						  target->rect[kPsychTop] + PsychGetHeightFromRect(target->rect)/((target->specialflags & kPsychHalfHeightWindow) ? 2 : 1));
 			

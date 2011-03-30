@@ -299,7 +299,7 @@ typedef struct _PsychWindowRecordType_{
 		double									postflip_vbltimestamp;	// Optional timestamp taken after flip completion via PsychGetVBLTimeAndCount();
 		double									osbuiltin_swaptime;		// Optional timestamp of swap completion computed via PsychOSGetSwapCompletionTimestamp();
 		double									gpuRenderTime;			// GPU time spent on rendering. Only returned if a query object is successfully generated.
-		GLint									gpuRenderTimeQuery;		// Handle to the GPU time query object. 0 if none assigned.
+		GLuint									gpuRenderTimeQuery;		// Handle to the GPU time query object. 0 if none assigned.
 		psych_int64								reference_ust;			// UST reference timestamp of vblank with count reference_msc from OpenML. (Optional)
 		psych_int64								reference_msc;			// MSC reference vblank count from OpenML. (Optional)
 		psych_int64								reference_sbc;			// SBC reference swapbuffers count from OpenML. (Optional)

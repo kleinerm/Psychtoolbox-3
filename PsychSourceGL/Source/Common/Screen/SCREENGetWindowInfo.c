@@ -499,9 +499,9 @@ PsychError SCREENGetWindowInfo(void)
         // are active, because it needs PsychSetDrawingTarget, which in turn needs async
         // flips to be inactive:
         PsychSetDrawingTarget(windowRecord);
-        PsychSetStructArrayStringElement("GLVendor", 0, glGetString(GL_VENDOR), s);
-        PsychSetStructArrayStringElement("GLRenderer", 0, glGetString(GL_RENDERER), s);
-        PsychSetStructArrayStringElement("GLVersion", 0, glGetString(GL_VERSION), s);
+        PsychSetStructArrayStringElement("GLVendor", 0, (char*) glGetString(GL_VENDOR), s);
+        PsychSetStructArrayStringElement("GLRenderer", 0, (char*) glGetString(GL_RENDERER), s);
+        PsychSetStructArrayStringElement("GLVersion", 0, (char*) glGetString(GL_VERSION), s);
     }
     
     // Done.

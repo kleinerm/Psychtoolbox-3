@@ -565,8 +565,8 @@ void PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal)
 		vbltotal = 0;
 		
 		// Can do this on NVidia GPU's >= NV-50 if low-level access (PTB kernel driver or equivalent) is enabled:
-		if ((strstr(glGetString(GL_VENDOR), "NVIDIA") || strstr(glGetString(GL_VENDOR), "nouveau") ||
-			strstr(glGetString(GL_RENDERER), "NVIDIA") || strstr(glGetString(GL_RENDERER), "nouveau")) &&
+		if ((strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_VENDOR), "nouveau") ||
+			strstr((char*) glGetString(GL_RENDERER), "NVIDIA") || strstr((char*) glGetString(GL_RENDERER), "nouveau")) &&
 			PsychOSIsKernelDriverAvailable(screenId)) {
 
 			// Need to read different regs for NV-50 and later:
@@ -598,8 +598,8 @@ void PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal)
 			}
 		}
 
-		if ((strstr(glGetString(GL_VENDOR), "INTEL") || strstr(glGetString(GL_VENDOR), "Intel") ||
-			strstr(glGetString(GL_RENDERER), "INTEL") || strstr(glGetString(GL_RENDERER), "Intel")) &&
+		if ((strstr((char*) glGetString(GL_VENDOR), "INTEL") || strstr((char*) glGetString(GL_VENDOR), "Intel") ||
+			strstr((char*) glGetString(GL_RENDERER), "INTEL") || strstr((char*) glGetString(GL_RENDERER), "Intel")) &&
 			PsychOSIsKernelDriverAvailable(screenId)) {
 			#if PSYCH_SYSTEM != PSYCH_WINDOWS
 			vblbias = 0;

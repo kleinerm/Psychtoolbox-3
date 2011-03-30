@@ -75,7 +75,7 @@ PsychError SCREENTextFont(void)
     //Save the old text font value and return it.
     oldTextFontNumber=windowRecord->textAttributes.textFontNumber;
     PsychCopyOutDoubleArg(2, FALSE, (double)oldTextFontNumber);
-    oldTextFontName=windowRecord->textAttributes.textFontName;
+    oldTextFontName=(char*) windowRecord->textAttributes.textFontName;
     PsychCopyOutCharArg(1, FALSE, oldTextFontName); 
     
 	
@@ -90,14 +90,14 @@ PsychError SCREENTextFont(void)
     if(doSetByName)
         foundFont=PsychGetFontRecordFromFontFamilyNameAndFontStyle(inputTextFontName, windowRecord->textAttributes.textStyle, &fontRecord);
     if(foundFont) {
-        strncpy(windowRecord->textAttributes.textFontName, fontRecord->fontFMFamilyName, 255);
+        strncpy((char*) windowRecord->textAttributes.textFontName, (char*) fontRecord->fontFMFamilyName, 255);
         windowRecord->textAttributes.textFontNumber= fontRecord->fontNumber;
     }
 	else {
 		// Font not found. Is this textrenderer 2 with a font given by name?
 		if (doSetByName && (PsychPrefStateGet_TextRenderer() > 1)) {
 			// Yes: Must be a special font specifier string for the renderer plugin. Just assign it directly:
-			strncpy(windowRecord->textAttributes.textFontName, inputTextFontName, 255);
+			strncpy((char*) windowRecord->textAttributes.textFontName, inputTextFontName, 255);
 
 			// Don't have a valid fontNumber: Just assign a zero...
 			windowRecord->textAttributes.textFontNumber = 0;

@@ -142,10 +142,11 @@ int PsychGetMovieCount(void)
  *      in the background, hopefully not affecting the timing of the main PTB
  *      thread too much.
  */
-void* PsychAsyncCreateMovie(PsychAsyncMovieInfo* movieinfo)
+void* PsychAsyncCreateMovie(void* inmovieinfo)
 {
     int rc;
- 
+	PsychAsyncMovieInfo* movieinfo = (PsychAsyncMovieInfo*) inmovieinfo;
+	
     // The special value -1000 tells PsychCreateMovie to not output any error-
     // messages as this could easily crash Matlab/Octave.
     int mymoviehandle=-1000;
