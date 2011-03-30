@@ -2,16 +2,17 @@
   PsychToolbox2/Source/Common/PsychStructGlue.c		
   
   AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
+
+  Allen.Ingling@nyu.edu				awi
+  mario.kleiner@tuebingen.mpg.de	mk
   
   PLATFORMS: All
   
-  PROJECTS:
-  12/31/02	awi		Screen on OS X
-   
+  PROJECTS: All
 
   HISTORY:
   12/31/02  awi		wrote it.  
+  03/28/11   mk		Make 64-bit clean.
   
   DESCRIPTION:
   
@@ -78,7 +79,7 @@ psych_bool PsychAllocOutStructArray(	int position,
     structArrayDims[1]=numElements;
     
     if(position !=kPsychNoArgReturn){  //Return the result to both the C caller and the scripting environment.
-        PsychSetReceivedArgDescriptor(position, PsychArgOut);
+        PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
         PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_structArray, isRequired, 1,1,numElements,numElements,0,0);
         *pStruct = mxCreateStructArray(structArrayNumDims, structArrayDims, numFields, fieldNames);
 		matchError=PsychMatchDescriptors();
@@ -111,7 +112,7 @@ psych_bool PsychAssignOutStructArray(	int position,
 	PsychError matchError;
 	psych_bool putOut;
         
-    PsychSetReceivedArgDescriptor(position, PsychArgOut);
+    PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
     PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_structArray, isRequired, 1,1,0,kPsychUnboundedArraySize,0,0);
 	matchError=PsychMatchDescriptors();
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
@@ -140,27 +141,30 @@ void PsychSetStructArrayStringElement(	char *fieldName,
                                         char *text,
                                         PsychGenericScriptType *pStruct)
 {
-    int fieldNumber, numElements;
+    int fieldNumber;
+	size_t numElements;
     psych_bool isStruct;
     mxArray *mxFieldValue;
-	 char errmsg[256];
+	char errmsg[256];
     
     //check for bogus arguments
-    numElements=mxGetM(pStruct) *mxGetN(pStruct);
-    if(index>=numElements)
+    numElements = mxGetM(pStruct) * mxGetN(pStruct);
+    if((size_t) index >= numElements)
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a structure field at an out-of-bounds index");
+
     fieldNumber=mxGetFieldNumber(pStruct, fieldName);
     if(fieldNumber==-1) {
-		  sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
-        PsychErrorExitMsg(PsychError_internal, errmsg);
-	 }
+		sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
+		PsychErrorExitMsg(PsychError_internal, errmsg);
+	}
+	
     isStruct= mxIsStruct(pStruct);
     if(!isStruct)
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
         
     //do stuff
     mxFieldValue=mxCreateString(text);
-    mxSetField(pStruct, index, fieldName, mxFieldValue); 
+    mxSetField(pStruct, (mwIndex) index, fieldName, mxFieldValue); 
     if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(mxFieldValue);
 }
 
@@ -175,30 +179,32 @@ void PsychSetStructArrayDoubleElement(	char *fieldName,
                                         double value,
                                         PsychGenericScriptType *pStruct)
 {
-    int fieldNumber, numElements;
+    int fieldNumber;
+	size_t numElements;
     psych_bool isStruct;
     mxArray *mxFieldValue;
-	 char errmsg[256];
-
+	char errmsg[256];
+	
     //check for bogus arguments
-    numElements=mxGetM(pStruct) *mxGetN(pStruct);
-    if(index>=numElements)
+    numElements = mxGetM(pStruct) * mxGetN(pStruct);
+    if((size_t) index >= numElements)
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a structure field at an out-of-bounds index");
+
     fieldNumber=mxGetFieldNumber(pStruct, fieldName);
     if(fieldNumber==-1) {
-		  sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
+		sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
         PsychErrorExitMsg(PsychError_internal, errmsg);
-	 }
+	}
+
     isStruct= mxIsStruct(pStruct);
     if(!isStruct)
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
         
     //do stuff
     mxFieldValue= mxCreateDoubleMatrix(1, 1, mxREAL);
-    mxGetPr(mxFieldValue)[0]= value;
-    mxSetField(pStruct, index, fieldName, mxFieldValue); 
+    mxGetPr(mxFieldValue)[0] = value;
+    mxSetField(pStruct, (mwIndex) index, fieldName, mxFieldValue); 
     if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(mxFieldValue);
-    
 }
 
 
@@ -212,21 +218,23 @@ void PsychSetStructArrayBooleanElement(	char *fieldName,
                                         psych_bool state,
                                         PsychGenericScriptType *pStruct)
 {
-    int fieldNumber, numElements;
+    int fieldNumber;
+	size_t numElements;
     psych_bool isStruct;
     mxArray *mxFieldValue;
-	 char errmsg[256];
-
+	char errmsg[256];
 
     //check for bogus arguments
-    numElements=mxGetM(pStruct) *mxGetN(pStruct);
-    if(index>=numElements)
+    numElements = mxGetM(pStruct) * mxGetN(pStruct);
+    if((size_t) index >= numElements)
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a structure field at an out-of-bounds index");
+
     fieldNumber=mxGetFieldNumber(pStruct, fieldName);
     if(fieldNumber==-1) {
-		  sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
+		sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
         PsychErrorExitMsg(PsychError_internal, errmsg);
-	 }
+	}
+	
     isStruct= mxIsStruct(pStruct);
     if(!isStruct)
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
@@ -234,11 +242,9 @@ void PsychSetStructArrayBooleanElement(	char *fieldName,
     //do stuff
     mxFieldValue=mxCreateLogicalMatrix(1, 1);
     mxGetLogicals(mxFieldValue)[0]= state;
-    mxSetField(pStruct, index, fieldName, mxFieldValue); 
+    mxSetField(pStruct, (mwIndex) index, fieldName, mxFieldValue); 
     if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(mxFieldValue);
-    
 }
-
 
 
 /*
@@ -251,29 +257,32 @@ void PsychSetStructArrayStructElement(	char *fieldName,
                                         PsychGenericScriptType *pStructInner,
                                         PsychGenericScriptType *pStructOuter)
 {
-    int fieldNumber, numElements;
+    int fieldNumber;
+	size_t numElements;
     psych_bool isStruct;
-  	 char errmsg[256];
+	char errmsg[256];
 
-  
     //check for bogus arguments
-    numElements=mxGetM(pStructOuter) *mxGetN(pStructOuter);
-    if(index>=numElements)
+    numElements = mxGetM(pStructOuter) * mxGetN(pStructOuter);
+    if((size_t) index >= numElements)
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a structure field at an out-of-bounds index");
+
     fieldNumber=mxGetFieldNumber(pStructOuter, fieldName);
     if(fieldNumber==-1) {
-		  sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
+		sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
         PsychErrorExitMsg(PsychError_internal, errmsg);
-	 }
+	}
+	
     isStruct= mxIsStruct(pStructInner);
     if(!isStruct)
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a struct field to a non-existent structure.");
+
     isStruct= mxIsStruct(pStructOuter);
     if(!isStruct)
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
         
     //do stuff
-    mxSetField(pStructOuter, index, fieldName, pStructInner); 
+    mxSetField(pStructOuter, (mwIndex) index, fieldName, pStructInner); 
     if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(pStructInner);    
 }
 
@@ -289,26 +298,26 @@ void PsychSetStructArrayNativeElement(	char *fieldName,
                                         PsychGenericScriptType *pNativeElement,
                                         PsychGenericScriptType *pStructArray)
 {
-    int fieldNumber, numElements;
+    int fieldNumber;
+	size_t numElements;
     psych_bool isStruct;
     char errmsg[256];
 
-
     //check for bogus arguments
-    numElements=mxGetM(pStructArray) *mxGetN(pStructArray);
-    if(index>=numElements)
+    numElements = mxGetM(pStructArray) * mxGetN(pStructArray);
+    if((size_t) index >= numElements)
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a structure field at an out-of-bounds index");
+
     fieldNumber=mxGetFieldNumber(pStructArray, fieldName);
     if(fieldNumber==-1) {
-		  sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
+		sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
         PsychErrorExitMsg(PsychError_internal, errmsg);
-	 }
+	}
+	
     isStruct= mxIsStruct(pStructArray);
     if(!isStruct)
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
         
     //do stuff
-    mxSetField(pStructArray, index, fieldName, pNativeElement); 
-    
+    mxSetField(pStructArray, (mwIndex) index, fieldName, pNativeElement);     
 }
-

@@ -1,17 +1,18 @@
 /*
   PsychToolbox2/Source/Common/PsychCellGlue.c		
   
-  AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
+  Allen.Ingling@nyu.edu				awi
+  mario.kleiner@tuebingen.mpg.de	mk
   
   PLATFORMS: All
   
+  PROJECTS: All
+  
   HISTORY:
     11/17/03  awi		wrote it.  
-  
-  
-*/
+    03/28/11   mk		Make 64-bit clean.
 
+*/
 
 #include "Psych.h"
 
@@ -23,10 +24,10 @@
 */
 psych_bool PsychAllocInNativeCellVector(int position, PsychArgRequirementType isRequired, const PsychGenericScriptType **cellVector)
 {
-	PsychError		matchError;
-	psych_bool			acceptArg;
+	PsychError matchError;
+	psych_bool acceptArg;
 
-    PsychSetReceivedArgDescriptor(position, PsychArgIn);
+    PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
     PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_cellArray, isRequired, 1, kPsychUnboundedArraySize,1, kPsychUnboundedArraySize,0, 1);
 	matchError=PsychMatchDescriptors();
 	acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
@@ -43,10 +44,10 @@ psych_bool PsychAllocInNativeCellVector(int position, PsychArgRequirementType is
 */
 psych_bool PsychAllocInNativeString(int position, PsychArgRequirementType isRequired, const PsychGenericScriptType **nativeString)
 {
-	PsychError  matchError;
-	psych_bool		acceptArg;
+	PsychError matchError;
+	psych_bool acceptArg;
     
-    PsychSetReceivedArgDescriptor(position, PsychArgIn);
+    PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
     PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_char, isRequired, 1, kPsychUnboundedArraySize,1, kPsychUnboundedArraySize,0, 1);
  	matchError=PsychMatchDescriptors();
 	acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
@@ -54,7 +55,6 @@ psych_bool PsychAllocInNativeString(int position, PsychArgRequirementType isRequ
             *nativeString= PsychGetInArgMxPtr(position);
     return(acceptArg);
 }
-
 
 
 /*
@@ -89,7 +89,7 @@ psych_bool PsychAllocOutCellVector(	int position,
     cellArrayDims[1]=numElements;
     
     if(position != kPsychNoArgReturn){  //Return the result to both the C caller and the scripting environment.
-        PsychSetReceivedArgDescriptor(position, PsychArgOut);
+        PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
         PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_cellArray, isRequired, 1,1,numElements,numElements,0,0);
         *pCell = mxCreateCellArray(cellArrayNumDims, cellArrayDims);
         mxArrayOut = PsychGetOutArgMxPtr(position);
@@ -106,7 +106,6 @@ psych_bool PsychAllocOutCellVector(	int position,
 }
 
 
-
 /*
     PsychSetCellVectorStringElement()
     
@@ -116,21 +115,22 @@ void PsychSetCellVectorStringElement(  int index,
                                         const char *text,
                                         PsychGenericScriptType *cellVector)
 {
-    int numElements;
+    size_t numElements;
     psych_bool isCell;
     mxArray *mxFieldValue;
     
     //check for bogus arguments
-    numElements=mxGetM(cellVector) *mxGetN(cellVector);
-    if(index>=numElements)
+    numElements = mxGetM(cellVector) * mxGetN(cellVector);
+    if((size_t) index >= numElements)
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a cell array field at an out-of-bounds index");
+
     isCell= mxIsCell(cellVector);
     if(!isCell)
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a cell within a non-existent cell array.");
         
     //do stuff
     mxFieldValue=mxCreateString(text);
-    mxSetCell(cellVector, index, mxFieldValue);    
+    mxSetCell(cellVector, (mwIndex) index, mxFieldValue);    
     if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(mxFieldValue);
 }
 
@@ -144,26 +144,25 @@ void PsychSetCellVectorDoubleElement(	int index,
                                         double value,
                                         PsychGenericScriptType *cellVector)
 {
-    int numElements;
+    size_t numElements;
     psych_bool isCell;
     mxArray *mxFieldValue;
 
     //check for bogus arguments
-    numElements=mxGetM(cellVector) *mxGetN(cellVector);
-    if(index>=numElements)
+    numElements = mxGetM(cellVector) * mxGetN(cellVector);
+    if((size_t) index >= numElements)
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a cell array field at an out-of-bounds index");
+
     isCell= mxIsCell(cellVector);
     if(!isCell)
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent cell array.");
+
     //do stuff
     mxFieldValue= mxCreateDoubleMatrix(1, 1, mxREAL);
     mxGetPr(mxFieldValue)[0]= value;
-    mxSetCell(cellVector, index, mxFieldValue); 
+    mxSetCell(cellVector, (mwIndex) index, mxFieldValue); 
     if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(mxFieldValue);
 }
-
-
-
 
 
 /*
@@ -175,23 +174,21 @@ void PsychSetCellVectorNativeElement(	int index,
                                         PsychGenericScriptType *pNativeElement,
                                         PsychGenericScriptType *cellVector)
 {
-    int numElements;
+    size_t numElements;
     psych_bool isCell;
     
     //check for bogus arguments
-    numElements=mxGetM(cellVector) *mxGetN(cellVector);
-    if(index>=numElements)
+    numElements = mxGetM(cellVector) * mxGetN(cellVector);
+    if((size_t) index >= numElements)
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a cell array field at an out-of-bounds index");
+
     isCell= mxIsCell(cellVector);
     if(!isCell)
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
         
     //do stuff
-    mxSetCell(cellVector, index, pNativeElement); 
-    
+    mxSetCell(cellVector, (mwIndex) index, pNativeElement);     
 }
-
-
 
 
 /*
@@ -206,7 +203,7 @@ void PsychSetCellVectorNativeElement(	int index,
 void PsychConvertNativeCellArrayToNativeString(const PsychGenericScriptType **nativeCellArray, PsychGenericScriptType **nativeString)
 {
                           
-    int								error,	numOutputs, numInputs;
+    int								error, numOutputs, numInputs;
 	PsychGenericScriptType			**inputs;
 	PsychGenericScriptType			*outputs[1]; //, *inputs[1];
     
@@ -217,7 +214,5 @@ void PsychConvertNativeCellArrayToNativeString(const PsychGenericScriptType **na
     error=mexCallMATLAB(numOutputs, outputs, numInputs, inputs, "CatStr"); 	// Psychtoolbox:PsychOneliners:CatStr.m
     if(error)
         PsychErrorExitMsg(PsychError_internal, "Failed to convert a cell array to string");
-    *nativeString=outputs[0];
-    
+    *nativeString=outputs[0];    
 }
-

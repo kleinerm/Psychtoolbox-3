@@ -143,7 +143,7 @@ typedef unsigned char		psych_bool;
         #if PSYCH_LANGUAGE == PSYCH_OCTAVE
         typedef psych_bool                      mxLogical;
         #endif
-        typedef char                            Str255[255];
+        typedef char                            Str255[256];
 
         // We don't have Quicktime for Linux, so we provide a little hack to
         // make the compiler happy:

@@ -1420,8 +1420,7 @@ static PsychArgFormatType PsychGetTypeFromMxPtr(const mxArray *mxPtr)
     descriptor struture.  Ask a retainer function to store the descriptor. 
     
 */
-PsychError PsychSetReceivedArgDescriptor(int 			argNum, 
-                                                PsychArgDirectionType 	direction)
+PsychError PsychSetReceivedArgDescriptor(int argNum, psych_bool allow64BitSizes, PsychArgDirectionType direction)
 {
 	PsychArgDescriptorType d;
 	int numNamedOutputs, numOutputs;
@@ -1435,16 +1434,20 @@ PsychError PsychSetReceivedArgDescriptor(int 			argNum,
 		d.isThere = (mxPtr && !PsychIsDefaultMat(mxPtr)) ? kPsychArgPresent : kPsychArgAbsent; 
 		if(d.isThere == kPsychArgPresent){ //the argument is there so fill in the rest of the description
 			d.numDims = mxGetNumberOfDimensions(mxPtr);
-			// printf("%i %i %i %i\n", mxGetM(mxPtr), mxGetNOnly(mxPtr), mxGetP(mxPtr), INT_MAX);
-			if ((mxGetM(mxPtr) >= INT_MAX) || (mxGetNOnly(mxPtr) >= INT_MAX) || (mxGetP(mxPtr) >= INT_MAX)) {
+
+			// If the calling function doesn't allow 64 bit sized input argument dimensions, then we check if
+			// the input has a size within the positive signed integer range, i.e., at most INT_MAX elements
+			// per dimension. Functions which can handle bigger inputs need to declare this explicitely by
+			// setting allow64BitSizes == TRUE:
+			if ((!allow64BitSizes) && ((mxGetM(mxPtr) >= INT_MAX) || (mxGetNOnly(mxPtr) >= INT_MAX) || (mxGetP(mxPtr) >= INT_MAX))) {
 				printf("PTB-ERROR: %i. input argument exceeds allowable maximum size of 2^31 - 1 elements\n", argNum);
 				printf("PTB-ERROR: in at least one dimension. Psychtoolbox can't handle such huge matrices or vectors.\n");
 				PsychErrorExitMsg(PsychError_user, "Input argument exceeds maximum supported count of 2^31 - 1 elements!");
 			}
 			
-			d.mDimMin = d.mDimMax = mxGetM(mxPtr);
-			d.nDimMin = d.nDimMax = mxGetNOnly(mxPtr);
-			d.pDimMin = d.pDimMax = mxGetP(mxPtr);
+			d.mDimMin = d.mDimMax = (psych_int64) mxGetM(mxPtr);
+			d.nDimMin = d.nDimMax = (psych_int64) mxGetNOnly(mxPtr);
+			d.pDimMin = d.pDimMax = (psych_int64) mxGetP(mxPtr);
 			d.type = PsychGetTypeFromMxPtr(mxPtr);
 		}
 	}
@@ -1467,12 +1470,12 @@ PsychError PsychSetSpecifiedArgDescriptor(	int			position,
                                                         PsychArgDirectionType 	direction,
                                                         PsychArgFormatType 	type,
                                                         PsychArgRequirementType	isRequired,
-                                                        int			mDimMin,		// minimum minimum is 1   |   
-                                                        int			mDimMax, 		// minimum maximum is 1, maximum maximum is -1 meaning infinity
-                                                        int			nDimMin,		// minimum minimum is 1   |   
-                                                        int			nDimMax,		// minimum maximum is 1, maximum maximum is -1 meaning infinity
-                                                        int 		pDimMin,	    // minimum minimum is 0
-                                                        int			pDimMax)		// minimum maximum is 0, maximum maximum is -1 meaning infinity
+                                                        psych_int64	mDimMin,		// minimum minimum is 1   |   
+                                                        psych_int64	mDimMax, 		// minimum maximum is 1, maximum maximum is -1 meaning infinity
+                                                        psych_int64	nDimMin,		// minimum minimum is 1   |   
+                                                        psych_int64	nDimMax,		// minimum maximum is 1, maximum maximum is -1 meaning infinity
+                                                        psych_int64	pDimMin,	    // minimum minimum is 0
+                                                        psych_int64	pDimMax)		// minimum maximum is 0, maximum maximum is -1 meaning infinity
 {
 
 	PsychArgDescriptorType d;
@@ -1492,39 +1495,6 @@ PsychError PsychSetSpecifiedArgDescriptor(	int			position,
 	PsychStoreArgDescriptor(&d,NULL);
 	return(PsychError_none);
 }
-
-
-/*
-PsychError PsychSetSpecifiedArgDescriptor_old(	int			position,
-                                                        PsychArgDirectionType 	direction,
-                                                        PsychArgFormatType 	type,
-                                                        PsychArgPresenceType	isThere,
-                                                        int			mDimMin,		// minimum minimum is 1   |   
-                                                        int			mDimMax, 		// minimum maximum is 1, maximum maximum is -1 meaning infinity
-                                                        int			nDimMin,		// minimum minimum is 1   |   
-                                                        int			nDimMax,		// minimum maximum is 1, maximum maximum is -1 meaning infinity
-                                                        int 			pDimMin,		// minimum minimum is 0
-                                                        int			pDimMax)		// minimum maximum is 0, maximum maximum is -1 meaning infinity
-{
-
-	PsychArgDescriptorType d;
-
-	d.position = position;
-	d.direction = direction;
-	d.type = type;
-	d.isThere = isThere;		
-	d.mDimMin = mDimMin;
-	d.mDimMax = mDimMax;
-	d.nDimMin = nDimMin;
-	d.nDimMax = nDimMax;
-	d.pDimMin = pDimMin;
-	d.pDimMax = pDimMax;
-        //NOTE that we are not setting the d.numDims field because that is inferred from pDimMin and pDimMax and the 3 dim cap.  
-		
-	PsychStoreArgDescriptor(&d,NULL);
-	return(PsychError_none);
-}
-*/
 
 
 /*
@@ -1901,14 +1871,14 @@ PsychArgFormatType PsychGetArgType(int position) //this is for inputs because ou
 	return(PsychGetTypeFromMxPtr(PsychGetInArgMxPtr(position)));	
 }
 
-int PsychGetArgM(int position)
+size_t PsychGetArgM(int position)
 {
 	if(!(PsychIsArgPresent(PsychArgIn, position)))
 		PsychErrorExitMsg(PsychError_invalidArgRef,NULL);
 	return( mxGetM(PsychGetInArgMxPtr(position)));
 }
 
-int PsychGetArgN(int position)
+size_t PsychGetArgN(int position)
 {
 	if(!(PsychIsArgPresent(PsychArgIn, position)))
 		PsychErrorExitMsg(PsychError_invalidArgRef,NULL);
@@ -1916,7 +1886,7 @@ int PsychGetArgN(int position)
 }
 
 
-int PsychGetArgP(int position)
+size_t PsychGetArgP(int position)
 {
 	if(!(PsychIsArgPresent(PsychArgIn, position)))
 		PsychErrorExitMsg(PsychError_invalidArgRef,NULL);
@@ -1937,7 +1907,7 @@ psych_bool PsychCheckInputArgType(int position, PsychArgRequirementType isRequir
 	PsychError		matchError;
 	psych_bool			acceptArg;
 
-    PsychSetReceivedArgDescriptor(position, PsychArgIn);
+    PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
     PsychSetSpecifiedArgDescriptor(position, PsychArgIn, argType, isRequired, 0,kPsychUnboundedArraySize,0,kPsychUnboundedArraySize,0,kPsychUnboundedArraySize);
 	matchError=PsychMatchDescriptors();
 	acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
@@ -1978,7 +1948,7 @@ psych_bool PsychCopyOutDoubleArg(int position, PsychArgRequirementType isRequire
 	PsychError matchError;
 	psych_bool putOut;
 	
-	PsychSetReceivedArgDescriptor(position, PsychArgOut);
+	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_double,  isRequired, 1,1,1,1,0,0);
 	matchError=PsychMatchDescriptors();
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
@@ -2016,7 +1986,7 @@ psych_bool PsychAllocOutDoubleArg_2(int position, PsychArgRequirementType isRequ
         va_list ap;
         
         if(position != kPsychNoArgReturn){
-            PsychSetReceivedArgDescriptor(position, PsychArgOut);
+            PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
             PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_double, isRequired, 1,1,1,1,0,0);
             PsychErrorExit(PsychMatchDescriptors());    
             mxpp = PsychGetOutArgMxPtr(position);
@@ -2047,7 +2017,7 @@ psych_bool PsychAllocOutDoubleArg(int position, PsychArgRequirementType isRequir
 	PsychError		matchError;
 	psych_bool			putOut;
 	
-	PsychSetReceivedArgDescriptor(position, PsychArgOut);
+	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_double, isRequired, 1,1,1,1,0,0);
 	matchError=PsychMatchDescriptors();
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
@@ -2079,7 +2049,7 @@ psych_bool PsychAllocOutDoubleMatArg(int position, PsychArgRequirementType isReq
 	PsychError		matchError;
 	psych_bool			putOut;
 	
-	PsychSetReceivedArgDescriptor(position, PsychArgOut);
+	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_double, isRequired, m,m,n,n,p,p);
 	matchError=PsychMatchDescriptors();
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
@@ -2102,7 +2072,7 @@ psych_bool PsychCopyOutBooleanArg(int position, PsychArgRequirementType isRequir
 	PsychError		matchError;
 	psych_bool			putOut;
 	
-	PsychSetReceivedArgDescriptor(position, PsychArgOut);
+	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_boolean, isRequired, 1,1,1,1,0,0);
 	matchError=PsychMatchDescriptors();
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
@@ -2125,7 +2095,7 @@ psych_bool PsychAllocOutBooleanArg(int position, PsychArgRequirementType isRequi
 	PsychError		matchError;
 	psych_bool			putOut;
 	
-	PsychSetReceivedArgDescriptor(position, PsychArgOut);
+	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_boolean, isRequired, 1,1,1,1,0,0);
 	matchError=PsychMatchDescriptors(); 
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
@@ -2157,7 +2127,7 @@ psych_bool PsychAllocOutBooleanMatArg(int position, PsychArgRequirementType isRe
 	PsychError		matchError;
 	psych_bool			putOut;
 	
-	PsychSetReceivedArgDescriptor(position, PsychArgOut);
+	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_boolean, isRequired, m,m,n,n,p,p);
 	matchError=PsychMatchDescriptors(); 
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
@@ -2185,7 +2155,7 @@ psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType
 	PsychError		matchError;
 	psych_bool			putOut;
 	
-	PsychSetReceivedArgDescriptor(position, PsychArgOut);
+	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_uint8, isRequired, m,m,n,n,p,p);
 	matchError=PsychMatchDescriptors(); 
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
@@ -2208,7 +2178,7 @@ psych_bool PsychCopyOutDoubleMatArg(int position, PsychArgRequirementType isRequ
 	PsychError		matchError;
 	psych_bool			putOut;
 	
-	PsychSetReceivedArgDescriptor(position, PsychArgOut);
+	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_double, isRequired, m,m,n,n,p,p);
 	matchError=PsychMatchDescriptors(); 
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
@@ -2235,7 +2205,7 @@ psych_bool PsychCopyOutCharArg(int position, PsychArgRequirementType isRequired,
 	PsychError		matchError;
 	psych_bool			putOut;	
 
-	PsychSetReceivedArgDescriptor(position, PsychArgOut);
+	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_char, isRequired, 0, strlen(str),0,strlen(str),0,0);
 	matchError=PsychMatchDescriptors(); 
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
@@ -2274,7 +2244,7 @@ psych_bool PsychAllocInDoubleMatArg(int position, PsychArgRequirementType isRequ
 	PsychError		matchError;
 	psych_bool			acceptArg;
     
-    PsychSetReceivedArgDescriptor(position, PsychArgIn);
+    PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
     PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1,-1,1,-1,0,-1);
 	matchError=PsychMatchDescriptors();
 	acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
@@ -2337,7 +2307,7 @@ psych_bool PsychAllocInUnsignedByteMatArg(int position, PsychArgRequirementType 
 	PsychError		matchError;
 	psych_bool			acceptArg;
 
-	PsychSetReceivedArgDescriptor(position, PsychArgIn);
+	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_uint8, isRequired, 1,-1,1,-1,0,-1);
 	matchError=PsychMatchDescriptors();
 	acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
@@ -2375,7 +2345,7 @@ psych_bool PsychCopyInDoubleArg(int position, PsychArgRequirementType isRequired
 	PsychError		matchError;
 	psych_bool			acceptArg;
 	
-	PsychSetReceivedArgDescriptor(position, PsychArgIn);
+	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1,1,1,1,1,1);
 	matchError=PsychMatchDescriptors();
 
@@ -2405,7 +2375,7 @@ psych_bool PsychCopyInIntegerArg(int position,  PsychArgRequirementType isRequir
 	psych_bool			acceptArg;
 
 	
-	PsychSetReceivedArgDescriptor(position, PsychArgIn);
+	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1,1,1,1,1,1);
 	matchError=PsychMatchDescriptors();
 	acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
@@ -2432,7 +2402,7 @@ psych_bool PsychAllocInDoubleArg(int position, PsychArgRequirementType isRequire
 	psych_bool			acceptArg;
 	
 	
-	PsychSetReceivedArgDescriptor(position, PsychArgIn);
+	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1,1,1,1,1,1);
 	matchError=PsychMatchDescriptors();
 	acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
@@ -2468,7 +2438,7 @@ psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired,
 	PsychError		matchError;
 	psych_bool		acceptArg;
 
-	PsychSetReceivedArgDescriptor(position, PsychArgIn);
+	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_char, isRequired, 0, kPsychUnboundedArraySize ,0, kPsychUnboundedArraySize, 0 , 1);
 	matchError=PsychMatchDescriptors();
 	acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
@@ -2511,7 +2481,7 @@ psych_bool PsychAllocInFlagArg(int position,  PsychArgRequirementType isRequired
 	psych_bool			acceptArg;
 
 	
-	PsychSetReceivedArgDescriptor(position, PsychArgIn);
+	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgIn, (PsychArgFormatType)(PsychArgType_double|PsychArgType_char|PsychArgType_uint8|PsychArgType_boolean), 
 									isRequired, 1,1,1,1,kPsychUnusedArrayDimension,kPsychUnusedArrayDimension);
 	matchError=PsychMatchDescriptors();
@@ -2547,7 +2517,7 @@ psych_bool PsychAllocInFlagArgVector(int position,  PsychArgRequirementType isRe
 	int				i;
 
 	
-	PsychSetReceivedArgDescriptor(position, PsychArgIn);
+	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
 	// MK: Disabled. Doesn't work without conversion of mxGetData into many subcases...
 	// PsychSetSpecifiedArgDescriptor(position, PsychArgIn, (PsychArgFormatType)(PsychArgType_double | PsychArgType_char | PsychArgType_uint8 | PsychArgType_boolean), 
 	//		       isRequired, 1, kPsychUnboundedArraySize, 1, kPsychUnboundedArraySize, kPsychUnusedArrayDimension, kPsychUnusedArrayDimension);
@@ -2599,7 +2569,7 @@ psych_bool PsychCopyInFlagArg(int position, PsychArgRequirementType isRequired, 
 	psych_bool			acceptArg;
 	
 	
-	PsychSetReceivedArgDescriptor(position, PsychArgIn);
+	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgIn, (PsychArgFormatType)(PsychArgType_double|PsychArgType_char|PsychArgType_uint8|PsychArgType_boolean), 
 									isRequired, 1,1,1,1,kPsychUnusedArrayDimension,kPsychUnusedArrayDimension);
 	matchError=PsychMatchDescriptors();

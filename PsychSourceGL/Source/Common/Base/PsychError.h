@@ -198,16 +198,16 @@ typedef struct
 	PsychArgRequirementType		isRequired;
 	PsychArgFormatType			type;
 	int							numDims;		// used only to set the received descriptor, to catch > 3 dims.    
-	int							mDimMin;  		// 1 is lowest
-	int							mDimMax; 		// kPsychUnboundedArraySize = -1 is infinity
-	int							nDimMin;		// 1 is lowest
-	int							nDimMax;		// kPsychUnboundedArraySize = -1 is infinity
-	int							pDimMin;		// 0 is lowest.  (this should be changed to make 1 the lowest, so it agrees with n) 
-	int							pDimMax;		// kPsychUnboundedArraySize = -1 is infinity. Set p min and max to zero to forbid 
+	psych_int64					mDimMin;  		// 1 is lowest
+	psych_int64					mDimMax; 		// kPsychUnboundedArraySize = -1 is infinity
+	psych_int64					nDimMin;		// 1 is lowest
+	psych_int64					nDimMax;		// kPsychUnboundedArraySize = -1 is infinity
+	psych_int64					pDimMin;		// 0 is lowest.  (this should be changed to make 1 the lowest, so it agrees with n) 
+	psych_int64					pDimMax;		// kPsychUnboundedArraySize = -1 is infinity. Set p min and max to zero to forbid 
 } PsychArgDescriptorType;
 
-#define 						kPsychUnboundedArraySize	(int)-1
-#define							kPsychUnusedArrayDimension  (int)-2 
+#define 						kPsychUnboundedArraySize	(psych_int64) -1
+#define							kPsychUnusedArrayDimension  (psych_int64) -2 
 
 
 //function prototypes

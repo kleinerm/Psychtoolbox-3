@@ -110,9 +110,9 @@ int PsychGetNumNamedOutputArgs(void);
 psych_bool PsychIsArgPresent(PsychArgDirectionType direction, int position);
 psych_bool PsychIsArgReallyPresent(PsychArgDirectionType direction, int position);
 PsychArgFormatType PsychGetArgType(int position); //this is for inputs because outputs are unspecified
-int PsychGetArgM(int position);
-int PsychGetArgN(int position);
-int PsychGetArgP(int position);
+size_t PsychGetArgM(int position);
+size_t PsychGetArgN(int position);
+size_t PsychGetArgP(int position);
 void PsychErrMsgTxt(char *s);
 void PsychEnableSubfunctions(void);
 psych_bool PsychAreSubfunctionsEnabled(void);
@@ -121,17 +121,17 @@ psych_bool PsychCheckInputArgType(int position, PsychArgRequirementType isRequir
 
 //for the benefit of PsychStructGlue and PsychCellGlue.  Don't use these unless you are writing more glue libraries. 
 //They should probably be moved to a separate header file.
-PsychError PsychSetReceivedArgDescriptor(int argNum, PsychArgDirectionType direction);
+PsychError PsychSetReceivedArgDescriptor(int argNum, psych_bool allow64BitSizes, PsychArgDirectionType direction);
 PsychError PsychSetSpecifiedArgDescriptor(	int			position,
                                                         PsychArgDirectionType 	direction,
                                                         PsychArgFormatType 	type,
                                                         PsychArgRequirementType	isRequired,
-                                                        int			mDimMin,		// minimum minimum is 1   |   
-                                                        int			mDimMax, 		// minimum maximum is 1, maximum maximum is -1 meaning infinity
-                                                        int			nDimMin,		// minimum minimum is 1   |   
-                                                        int			nDimMax,		// minimum maximum is 1, maximum maximum is -1 meaning infinity
-                                                        int 		pDimMin,	    // minimum minimum is 0
-                                                        int			pDimMax);
+                                                        psych_int64	mDimMin,		// minimum minimum is 1   |   
+                                                        psych_int64	mDimMax, 		// minimum maximum is 1, maximum maximum is -1 meaning infinity
+                                                        psych_int64	nDimMin,		// minimum minimum is 1   |   
+                                                        psych_int64	nDimMax,		// minimum maximum is 1, maximum maximum is -1 meaning infinity
+                                                        psych_int64	pDimMin,	    // minimum minimum is 0
+                                                        psych_int64	pDimMax);		// minimum maximum is 0, maximum maximum is -1 meaning infinity
 psych_bool PsychAcceptInputArgumentDecider(PsychArgRequirementType isRequired, PsychError matchError);
 psych_bool PsychAcceptOutputArgumentDecider(PsychArgRequirementType isRequired, PsychError matchError);	
 PsychError PsychMatchDescriptors(void);
