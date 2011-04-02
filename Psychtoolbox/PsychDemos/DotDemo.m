@@ -4,9 +4,13 @@ function DotDemo(showSprites, waitframes)
 %
 % Usage: DotDemo([showSprites = 0][, waitframes = 1]);
 %
-% The optional parameter 'showSprites' when set to a non-zero value, will
-% draw little smiley textures instead of dots, demonstrating
-% sprite-drawing. A zero setting, or omitting the setting, will draw dots.
+% The optional parameter 'showSprites' when set to 1, will draw little
+% smiley textures instead of dots, demonstrating sprite-drawing. A zero
+% setting, or omitting the setting, will draw dots. A value of 2 will draw
+% filled rectangles via textures instead, (ab-)using texture drawing and
+% filtering to allow subpixel positioning of drawn rectangles on the
+% screen. We slow down the animation for non-zero 'showSprites' so you can
+% appreciate the anti-aliased smooth subpixel movement better.
 %
 % 'waitframes' Number of video refresh intervals to show each image before
 % updating the dot field. Defaults to 1 if omitted.
@@ -91,16 +95,21 @@ try
     % set dot field parameters
     % ------------------------
 
-    nframes     = 1000; % number of animation frames in loop
+    nframes     = 3600; % number of animation frames in loop
     mon_width   = 39;   % horizontal dimension of viewable screen (cm)
     v_dist      = 60;   % viewing distance (cm)
-    dot_speed   = 7;    % dot speed (deg/sec)
+    if showSprites > 0
+        dot_speed   = 0.07; % dot speed (deg/sec) - Take it sloooow.
+        f_kill      = 0.00; % Don't kill (m)any dots, so user can see better.
+    else
+        dot_speed   = 7;    % dot speed (deg/sec)
+        f_kill      = 0.05; % fraction of dots to kill each frame (limited lifetime)
+    end
     ndots       = 2000; % number of dots
     max_d       = 15;   % maximum radius of  annulus (degrees)
     min_d       = 1;    % minumum
     dot_w       = 0.1;  % width of dot (deg)
     fix_r       = 0.15; % radius of fixation point (deg)
-    f_kill      = 0.05; % fraction of dots to kill each frame (limited lifetime)    
     differentcolors =1; % Use a different color for each point if == 1. Use common color white if == 0.
     differentsizes = 2; % Use different sizes for each point if >= 1. Use one common size if == 0.
     % waitframes = 1;     % Show new dot-images at each waitframes'th monitor refresh.
@@ -184,7 +193,7 @@ try
     buttons=0;
 
     % Wanna show textured sprites instead of dots?
-    if showSprites
+    if showSprites == 1
         % Create a small texture as offscreen window: Size is 30 x 30
         % pixels, background color is black and transparent:
         tex = Screen('OpenOffScreenWindow', w, [0,0,0,0], [0 0 30 30]);
@@ -201,7 +210,23 @@ try
         % range around a "vertical" smiley face:
         angles = (rand(1, ndots) - 0.5) * 60 + 90;
     end
-    
+
+    if showSprites == 2
+        % Create a small texture as offscreen window: Size is 30 x 30
+        % pixels, background color is black and transparent:
+        tex = Screen('OpenOffScreenWindow', w, [255,255,255,0], [0 0 30 30]);
+        % Draw a little white smiley into the window. The white color will
+        % be modulated by 'colvect' during drawing, so white is basically
+        % just a placeholder:
+        Screen('FillRect', tex, 255, [1 1 29 29]);
+        
+        s = 1;
+
+        % Define randomly distributed rotation angles in a +/- 30 degree
+        % range around a "vertical" smiley face:
+        angles = (rand(1, ndots) - 0.5) * 60 + 90;
+    end
+
     % --------------
     % animation loop
     % --------------    

@@ -84,7 +84,7 @@ else
 end
 
 if stereomode > 5 && stereomode < 10
-	SetAnaglyphStereoParameters('OptimizedColorAnaglyphMode', win);
+    SetAnaglyphStereoParameters('OptimizedColorAnaglyphMode', win);
 end
 
 % Setup the OpenGL rendering context of the onscreen window for use by
@@ -130,7 +130,7 @@ tilt = 0.0;
 % left as an exercise to the reader.
 eye_halfdist=3;
 if stereomode == 0
-	eye_halfdist=0;
+    eye_halfdist=0;
 end
 
 % Finish OpenGL setup and check for OpenGL errors:
@@ -146,11 +146,11 @@ kinect = PsychKinect('Open');
 
 % Enable this to test kinects motor:
 if 0
-	PsychKinect('SetAngle', kinect, -30);
-	WaitSecs('YieldSecs', 0.5);
-	for angle = -30:30
-		PsychKinect('SetAngle', kinect, angle);
-		WaitSecs('YieldSecs', 0.50);
+    PsychKinect('SetAngle', kinect, -30);
+    WaitSecs('YieldSecs', 0.5);
+    for angle = -30:30
+        PsychKinect('SetAngle', kinect, angle);
+        WaitSecs('YieldSecs', 0.50);
     end
 
     % Bring kinect into upright level position:
@@ -179,52 +179,52 @@ mymesh = [];
 t = GetSecs;
 while ((GetSecs - t) < 600)
     if doCapture
-	% Release old mesh, if any:
-	if 1 && ~isempty(mymesh)
-	    PsychKinect('DeleteObject', win, mymesh);
-	    mymesh = [];
-	end
+        % Release old mesh, if any:
+        if 1 && ~isempty(mymesh)
+            PsychKinect('DeleteObject', win, mymesh);
+            mymesh = [];
+        end
 
-	% Try to get hold of a new frame from the device, block if none available:
-    	[rc, cts] = PsychKinect('GrabFrame', kinect, 1);
-	    if rc > 0
-		% Output video image from rgb camera if enabled:
-		if 0
-	        	[imbuff, width, height, channels] = PsychKinect('GetImage', kinect, 1, 1);
-			if width > 0 && height > 0
-				tex2 = Screen('SetOpenGLTextureFromMemPointer', win, tex2, imbuff, width, height, channels, 1, GL.TEXTURE_RECTANGLE_EXT);
-			end
-		else
-			if ~isempty(tex2)
-				Screen('Close', tex2);
-			end
-			tex2 = [];
-		end
+        % Try to get hold of a new frame from the device, block if none available:
+        [rc, cts] = PsychKinect('GrabFrame', kinect, 0);
+        if rc > 0
+            % Output video image from rgb camera if enabled:
+            if 0
+                [imbuff, width, height, channels] = PsychKinect('GetImage', kinect, 1, 1);
+                if width > 0 && height > 0
+                    tex2 = Screen('SetOpenGLTextureFromMemPointer', win, tex2, imbuff, width, height, channels, 1, GL.TEXTURE_RECTANGLE_EXT);
+                end
+            else
+                if ~isempty(tex2)
+                    Screen('Close', tex2);
+                end
+                tex2 = [];
+            end
 
-		% Create 3D mesh object with 3D encoded scene as seen by kinect:
-		mymesh = PsychKinect('CreateObject', win, kinect);
+            % Create 3D mesh object with 3D encoded scene as seen by kinect:
+            mymesh = PsychKinect('CreateObject', win, kinect);
 
-		% Done fetching data for this kinect frame: Release it.
-	        PsychKinect('ReleaseFrame', kinect);
+            % Done fetching data for this kinect frame: Release it.
+            PsychKinect('ReleaseFrame', kinect);
 
-		% No valid mesh? Retry above.
-		if isempty(mymesh)
-			continue;
-		end
-	    else
-		% No valid data from kinect? Retry above.
-		continue;
-	    end
+            % No valid mesh? Retry above.
+            if isempty(mymesh)
+                continue;
+            end
+        else
+            % No valid data from kinect? Retry above.
+            continue;
+        end
     end
 
     % Draw kinect color image if enabled:
     if 0 && ~isempty(mymesh.tex) && (mymesh.tex > 0)
-	Screen('DrawTexture', win, mymesh.tex, [], dst1);
+        Screen('DrawTexture', win, mymesh.tex, [], dst1);
     end
 
     % Draw kinect depths image if enabled:
     if ~isempty(tex2) && (tex2 > 0)
-	Screen('DrawTexture', win, tex2, [], dst2);
+        Screen('DrawTexture', win, tex2, [], dst2);
     end
 
     % Switch to OpenGL rendering for drawing of next frame:
@@ -245,12 +245,12 @@ while ((GetSecs - t) < 600)
 
     % Call our subfunction that does the actual drawing of the shape (see below):
     drawShape(mymesh, doMesh, ang, tilt);
-    
+
     % Stereo rendering requested?
     if (stereomode > 0)
         % Yes! We need to render the same object again, just with a different
         % camera position, this time for the right eye:
-                
+
         % Right-eye cam is located at 3D position (+eye_halfdist,0,zz), points upright (0,1,0) and fixates
         % at the origin (0,0,0) of the worlds coordinate system:
         glLoadIdentity;
@@ -259,14 +259,14 @@ while ((GetSecs - t) < 600)
         Screen('EndOpenGL', win);
         Screen('SelectStereoDrawBuffer', win, 1);
         Screen('BeginOpenGL', win);
-    
+
         % Clear out the depth-buffer for proper occlusion handling:
         glClear(GL.DEPTH_BUFFER_BIT);
-        
+
         % Call subfunction that does the actual drawing of the shape (see below):
         drawShape(mymesh, doMesh, ang, tilt);
     end;
-    
+
     % Finish OpenGL rendering into Psychtoolbox - window and check for OpenGL errors.
     Screen('EndOpenGL', win);
 
@@ -276,9 +276,9 @@ while ((GetSecs - t) < 600)
 
     % Now that all drawing commands are submitted, we can do the other stuff before
     % the Flip:
-    
+
     % Check for keyboard press:
-    [KeyIsDown, endrt, KeyCode] = KbCheck;
+    [KeyIsDown, endrt, KeyCode] = KbCheck(-1);
     if KeyIsDown
         if ( KeyIsDown==1 & KeyCode(closer)==1 ) %#ok<AND2>
             zz=zz-0.25;
@@ -312,7 +312,7 @@ while ((GetSecs - t) < 600)
     end
 
     if KeyIsDown && ~oldKeyIsDown
-	oldKeyIsDown = KeyIsDown;
+        oldKeyIsDown = KeyIsDown;
 
         if ( KeyIsDown==1 & KeyCode(toggleCapture)==1 ) %#ok<AND2>
             doCapture = ~doCapture;
@@ -328,7 +328,7 @@ while ((GetSecs - t) < 600)
             break;
         end
     else
-	oldKeyIsDown = KeyIsDown;
+        oldKeyIsDown = KeyIsDown;
     end
 
     % Update frame animation counter:

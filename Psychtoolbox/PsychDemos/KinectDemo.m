@@ -70,7 +70,7 @@ while 1
 	GetClicks;
     end
 
-    if KbCheck
+    if KbCheck(-1)
         break;
     end
 end
