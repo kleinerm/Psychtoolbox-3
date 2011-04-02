@@ -161,7 +161,9 @@ typedef enum
 	PsychArgType_boolean			= 1024,
 	PsychArgType_structArray		= 2048,
 	PsychArgType_cellArray			= 4096,
-	PsychArgType_default			= 8192, 
+	PsychArgType_single				= 8192,
+	PsychArgType_uint64				= 2^14,
+	PsychArgType_default			= 2^15, 
 	#define PsychArgType_MAX		PsychArgType_default
 	#define PsychArgType_NUMTYPES	15	//this does not include the PsychArgType_none		
 } PsychArgFormatType;  //change this to PsychArgType for brevity

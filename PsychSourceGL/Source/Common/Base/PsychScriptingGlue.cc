@@ -1294,6 +1294,29 @@ mxArray *mxCreateDoubleMatrix3D(size_t m, size_t n, size_t p)
 }
 
 /*
+    mxCreateFloatMatrix3D()
+    
+    Create a 2D or 3D matrix of floats. 
+	
+    Requirements are that m>0, n>0, p>=0.  
+*/
+mxArray *mxCreateFloatMatrix3D(size_t m, size_t n, size_t p)
+{
+	int numDims;
+	mwSize dimArray[3];
+	
+	if(m==0 || n==0 ){
+		dimArray[0]=0;dimArray[1]=0;dimArray[2]=0;	//this prevents a 0x1 or 1x0 empty matrix, we want 0x0 for empty matrices. 
+	}else{
+		PsychCheckmWSizeLimits(m,n,p);
+		dimArray[0] = (mwSize) m; dimArray[1] = (mwSize) n; dimArray[2] = (mwSize) p;
+	}
+	numDims= (p==0 || p==1) ? 2 : 3;
+	
+	return mxCreateNumericArray(numDims, (mwSize*) dimArray, mxSINGLE_CLASS, mxREAL);		
+}
+
+/*
     mxCreateNativeBooleanMatrix3D()
     
     Create a 2D or 3D matrix of native psych_bool types. 
@@ -1399,6 +1422,8 @@ static PsychArgFormatType PsychGetTypeFromMxPtr(const mxArray *mxPtr)
 		format = PsychArgType_int32;
 	else if(mxIsDouble(mxPtr))
 		format = PsychArgType_double;
+	else if(mxIsSingle(mxPtr))
+		format = PsychArgType_single;
 	else if(mxIsChar(mxPtr))
 		format = PsychArgType_char;
 	else if(mxIsCell(mxPtr))
@@ -1477,14 +1502,38 @@ PsychError PsychSetSpecifiedArgDescriptor(	int			position,
                                                         psych_int64	pDimMin,	    // minimum minimum is 0
                                                         psych_int64	pDimMax)		// minimum maximum is 0, maximum maximum is -1 meaning infinity
 {
-
 	PsychArgDescriptorType d;
+
+	// Check size of output dimensions if this is an output operation:
+	if (direction == PsychArgOut) {
+		// Do not exceed index size limits of hw/os/build architecture,
+		// be it 32 bit or 64 bit:
+		if ((mDimMin > SIZE_T_MAX) || (mDimMax > SIZE_T_MAX) ||
+			(nDimMin > SIZE_T_MAX) || (nDimMax > SIZE_T_MAX) ||
+			(pDimMin > SIZE_T_MAX) || (pDimMax > SIZE_T_MAX)) {
+
+			printf("PTB-ERROR: Tried to return a vector or matrix whose size along at least one dimension\n");
+			printf("PTB-ERROR: exceeds the maximum supported number of elements.\n");
+			if (sizeof(size_t) == 4) {
+				printf("PTB-ERROR: This is a limitation of all 32 bit versions of Psychtoolbox.\n");
+				printf("PTB-ERROR: You'd need to use a Psychtoolbox for 64-bit Matlab or 64-bit Octave\n");
+				printf("PTB-ERROR: on a 64-bit operating system to get rid of this limit.\n");
+			}
+
+			PsychErrorExitMsg(PsychError_user, "One of the dimensions of a returned matrix or vector exceeds maximum number of elements. This is not supported on your setup!");
+		}
+		
+		// Limits ok for given hw/os/build architecture. Check if they're ok for the
+		// scripting environment as well:
+		PsychCheckmWSizeLimits((size_t) mDimMin, (size_t) nDimMin, (size_t) pDimMin);
+		PsychCheckmWSizeLimits((size_t) mDimMax, (size_t) nDimMax, (size_t) pDimMax);
+	}
 
 	d.position = position;
 	d.direction = direction;
 	d.type = type;
 	//d.isThere 			//field set only in the received are descriptor, not in the specified argument descriptor
-        d.isRequired = isRequired;	//field set only in the specified arg descritor, not in the received argument descriptot.
+	d.isRequired = isRequired;	//field set only in the specified arg descritor, not in the received argument descriptot.
 	d.mDimMin = mDimMin;
 	d.mDimMax = mDimMax;
 	d.nDimMin = nDimMin;
@@ -2043,13 +2092,13 @@ B)return argument optional:
 	1)return argument not present:  	return FALSE to indicate absent return argument.  Create an array.   Set *array to the new array. 
 	2)return argument present:	 	allocate an output matrix and set return arg. pointer. Set *array to the array within the new matrix.  Return TRUE.   
 */
-psych_bool PsychAllocOutDoubleMatArg(int position, PsychArgRequirementType isRequired, int m, int n, int p, double **array)
+psych_bool PsychAllocOutDoubleMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, double **array)
 {
 	mxArray			**mxpp;
 	PsychError		matchError;
-	psych_bool			putOut;
+	psych_bool		putOut;
 	
-	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
+	PsychSetReceivedArgDescriptor(position, TRUE, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_double, isRequired, m,m,n,n,p,p);
 	matchError=PsychMatchDescriptors();
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
@@ -2061,6 +2110,41 @@ psych_bool PsychAllocOutDoubleMatArg(int position, PsychArgRequirementType isReq
 		*array= (double *) mxMalloc(sizeof(double) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));
 	return(putOut);
 }
+
+
+
+/* 
+PsychAllocOutFloatMatArg()
+
+This function allocates out a matrix of single precision floating point type,
+that is C data type 32-bit float or Matlab/Octave data type single().
+
+A)return argument mandatory:
+	1)return argument not present: 		exit with an error.
+	2)return argument present: 		allocate an output matrix and set return arg pointer. Set *array to the array within the new matrix. Return TRUE.  
+B)return argument optional:
+	1)return argument not present:  	return FALSE to indicate absent return argument.  Create an array.   Set *array to the new array. 
+	2)return argument present:	 	allocate an output matrix and set return arg. pointer. Set *array to the array within the new matrix.  Return TRUE.   
+*/
+psych_bool PsychAllocOutFloatMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, float **array)
+{
+	mxArray			**mxpp;
+	PsychError		matchError;
+	psych_bool		putOut;
+	
+	PsychSetReceivedArgDescriptor(position, TRUE, PsychArgOut);
+	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_single, isRequired, m,m,n,n,p,p);
+	matchError=PsychMatchDescriptors();
+	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
+	if(putOut){
+		mxpp = PsychGetOutArgMxPtr(position);
+		*mxpp = mxCreateFloatMatrix3D(m,n,p);
+		*array = (float*) mxGetData(*mxpp);
+	}else
+		*array = (float*) mxMalloc(sizeof(float) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));
+	return(putOut);
+}
+
 
 
 /*
@@ -2121,13 +2205,13 @@ psych_bool PsychAllocOutBooleanArg(int position, PsychArgRequirementType isRequi
 	1)return argument not present:  	return FALSE to indicate absent return argument.  Create an array.   Set *array to the new array. 
 	2)return argument present:	 	allocate an output matrix and set return arg. pointer. Set *array to the array within the new matrix.  Return TRUE.   
 */
-psych_bool PsychAllocOutBooleanMatArg(int position, PsychArgRequirementType isRequired, int m, int n, int p, PsychNativeBooleanType **array)
+psych_bool PsychAllocOutBooleanMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, PsychNativeBooleanType **array)
 {
 	mxArray			**mxpp;
 	PsychError		matchError;
-	psych_bool			putOut;
+	psych_bool		putOut;
 	
-	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
+	PsychSetReceivedArgDescriptor(position, TRUE, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_boolean, isRequired, m,m,n,n,p,p);
 	matchError=PsychMatchDescriptors(); 
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
@@ -2149,13 +2233,13 @@ psych_bool PsychAllocOutBooleanMatArg(int position, PsychArgRequirementType isRe
     
     Like PsychAllocOutDoubleMatArg() execept for unsigned bytes instead of doubles.  
 */
-psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType isRequired, int m, int n, int p, ubyte **array)
+psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, ubyte **array)
 {
-	mxArray **mxpp;
+	mxArray			**mxpp;
 	PsychError		matchError;
-	psych_bool			putOut;
+	psych_bool		putOut;
 	
-	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
+	PsychSetReceivedArgDescriptor(position, TRUE, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_uint8, isRequired, m,m,n,n,p,p);
 	matchError=PsychMatchDescriptors(); 
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
@@ -2171,14 +2255,14 @@ psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType
 
 
 
-psych_bool PsychCopyOutDoubleMatArg(int position, PsychArgRequirementType isRequired, int m, int n, int p, double *fromArray)
+psych_bool PsychCopyOutDoubleMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, double *fromArray)
 {
 	mxArray **mxpp;
 	double *toArray;
 	PsychError		matchError;
-	psych_bool			putOut;
+	psych_bool		putOut;
 	
-	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
+	PsychSetReceivedArgDescriptor(position, TRUE, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_double, isRequired, m,m,n,n,p,p);
 	matchError=PsychMatchDescriptors(); 
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
@@ -2254,6 +2338,67 @@ psych_bool PsychAllocInDoubleMatArg(int position, PsychArgRequirementType isRequ
 		*n = (int) mxGetNOnly(mxPtr);
 		*p = (int) mxGetP(mxPtr);
 		*array=mxGetPr(mxPtr);
+	}
+	return(acceptArg);
+}
+
+/* Alloc-in double matrix, but allow for 64-bit dimension specs. */
+psych_bool PsychAllocInDoubleMatArg64(int position, PsychArgRequirementType isRequired, psych_int64 *m, psych_int64 *n, psych_int64 *p, double **array)
+{
+    const mxArray 	*mxPtr;
+	PsychError		matchError;
+	psych_bool		acceptArg;
+    
+    PsychSetReceivedArgDescriptor(position, TRUE, PsychArgIn);
+    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1,-1,1,-1,0,-1);
+	matchError=PsychMatchDescriptors();
+	acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
+	if(acceptArg){
+		mxPtr = PsychGetInArgMxPtr(position);
+		*m = (psych_int64) mxGetM(mxPtr);
+		*n = (psych_int64) mxGetNOnly(mxPtr);
+		*p = (psych_int64) mxGetP(mxPtr);
+		*array=mxGetPr(mxPtr);
+	}
+	return(acceptArg);
+}
+
+
+/*
+
+Allocin a single precision floating point matrix, i.e. a matrix of
+C data type 32 bit float, aka Matlab/Octave data type single().
+This function allows to alloc in matrices with more than 2^32 elements
+per matrix dimension on 64 bit systems. Therefore the returned size
+descriptors must be psych_int64 variables, not int variables or bad things
+will happen.
+
+A)input argument mandatory:
+ 
+	1)input argument not present: 		exit with error.
+	2)input argument present: 			set *array to the input matrix, *m, *n, and *p to its dimensions, return TRUE.    
+B)input argument optional:
+
+	1)input argument not present: 		return FALSE
+	2)input argument present: 			set *array to the input matrix, *m, *n, and *p to its dimensions, return TRUE.    
+
+*/
+psych_bool PsychAllocInFloatMatArg64(int position, PsychArgRequirementType isRequired, psych_int64 *m, psych_int64 *n, psych_int64 *p, float **array)
+{
+    const mxArray 	*mxPtr;
+	PsychError		matchError;
+	psych_bool		acceptArg;
+    
+    PsychSetReceivedArgDescriptor(position, TRUE, PsychArgIn);
+    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_single, isRequired, 1,-1,1,-1,0,-1);
+	matchError=PsychMatchDescriptors();
+	acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
+	if(acceptArg){
+		mxPtr = PsychGetInArgMxPtr(position);
+		*m = (psych_int64) mxGetM(mxPtr);
+		*n = (psych_int64) mxGetNOnly(mxPtr);
+		*p = (psych_int64) mxGetP(mxPtr);
+		*array = (float*) mxGetData(mxPtr);
 	}
 	return(acceptArg);
 }
@@ -2652,10 +2797,11 @@ void PsychClearFlagListElement(int index, PsychFlagListType flagList)
 	In any case, *cArray will point to the C array of doubles enclosed by the native type in the end.
 
 */
-void 	PsychAllocateNativeDoubleMat(int m, int n, int p, double **cArray, PsychGenericScriptType **nativeElement)
+void 	PsychAllocateNativeDoubleMat(psych_int64 m, psych_int64 n, psych_int64 p, double **cArray, PsychGenericScriptType **nativeElement)
 {
     double *cArrayTemp;
-	
+
+	PsychCheckmWSizeLimits(m, n, p);
     *nativeElement = mxCreateDoubleMatrix3D(m,n,p);
     cArrayTemp = mxGetPr(*nativeElement);
     if(*cArray != NULL) memcpy(cArrayTemp, *cArray, sizeof(double) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));

@@ -61,21 +61,26 @@ const char* PsychRuntimeGetPsychtoolboxRoot(void);
 psych_bool PsychCopyInIntegerArg(int position, PsychArgRequirementType isRequired, int *value);
 psych_bool PsychAllocInIntegerListArg(int position, PsychArgRequirementType isRequired, int *numElements, int **array);
 
+//for float's aka singles:
+psych_bool PsychAllocInFloatMatArg64(int position, PsychArgRequirementType isRequired, psych_int64 *m, psych_int64 *n, psych_int64 *p, float **array);
+psych_bool PsychAllocOutFloatMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, float **array);
+
 //for doubles
 psych_bool PsychCopyInDoubleArg(int position, PsychArgRequirementType isRequired, double *value);
 psych_bool PsychAllocInDoubleArg(int position, PsychArgRequirementType isRequired, double **value);
 psych_bool PsychAllocInDoubleMatArg(int position, PsychArgRequirementType isRequired, int *m, int *n, int *p, double **array);
+psych_bool PsychAllocInDoubleMatArg64(int position, PsychArgRequirementType isRequired, psych_int64 *m, psych_int64 *n, psych_int64 *p, double **array);
 psych_bool PsychCopyOutDoubleArg(int position, PsychArgRequirementType isRequired, double value);
 //psych_bool PsychAllocOutDoubleArg_2(int position, PsychArgRequirementType isRequired, double **value, ...);  //NEW 
 psych_bool PsychAllocOutDoubleArg(int position, PsychArgRequirementType isRequired, double **value);
-psych_bool PsychAllocOutDoubleMatArg(int position, PsychArgRequirementType isRequired, int m, int n, int p, double **array);
-psych_bool PsychCopyOutDoubleMatArg(int position, PsychArgRequirementType isRequired, int m, int n, int p, double *fromArray);
+psych_bool PsychAllocOutDoubleMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, double **array);
+psych_bool PsychCopyOutDoubleMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, double *fromArray);
     //PsychAllocateNativeDoubleMat is for use with cell arrays and structs.  The right way to do this is to use the normal function for returning 
     //doubles, detect if the position is -1, and if so accept the optional "nativeElement" value.   
-void 	PsychAllocateNativeDoubleMat(int m, int n, int p, double **cArray, PsychGenericScriptType **nativeElement);	
+void 	PsychAllocateNativeDoubleMat(psych_int64 m, psych_int64 n, psych_int64 p, double **cArray, PsychGenericScriptType **nativeElement);	
 
 //for psych_bool.  These should be consolidated with the flags below. 
-psych_bool PsychAllocOutBooleanMatArg(int position, PsychArgRequirementType isRequired, int m, int n, int p, PsychNativeBooleanType **array);
+psych_bool PsychAllocOutBooleanMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, PsychNativeBooleanType **array);
 psych_bool PsychCopyOutBooleanArg(int position, PsychArgRequirementType isRequired, PsychNativeBooleanType value);
 psych_bool PsychAllocOutBooleanArg(int position, PsychArgRequirementType isRequired, PsychNativeBooleanType **value);
 
@@ -92,7 +97,7 @@ void PsychClearFlagListElement(int index, PsychFlagListType flagList);
 
 //for bytes
 psych_bool PsychAllocInUnsignedByteMatArg(int position, PsychArgRequirementType isRequired, int *m, int *n, int *p, unsigned char **array);
-psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType isRequired, int m, int n, int p, ubyte **array);
+psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, ubyte **array);
 
 //for strings
 psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired, char **str);
@@ -140,5 +145,3 @@ const mxArray *PsychGetInArgMxPtr(int position);
 
 //end include once
 #endif
-
-
