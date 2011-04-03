@@ -57,6 +57,10 @@ psych_bool PsychRuntimeGetVariable(const char* workspace, const char* variable, 
 // Try to retrieve filesystem path to Psychtoolbox root folder (the result from PsychtoolboxRoot() in Matlab/Octave) from runtime:
 const char* PsychRuntimeGetPsychtoolboxRoot(void);
 
+//for memory pointers (void*):
+psych_bool PsychCopyInPointerArg(int position, PsychArgRequirementType isRequired, void **ptr);
+psych_bool PsychCopyOutPointerArg(int position, PsychArgRequirementType isRequired, void* ptr);
+
 //for integers
 psych_bool PsychCopyInIntegerArg(int position, PsychArgRequirementType isRequired, int *value);
 psych_bool PsychCopyInIntegerArg64(int position,  PsychArgRequirementType isRequired, psych_int64 *value);

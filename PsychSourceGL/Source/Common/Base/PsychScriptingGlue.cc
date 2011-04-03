@@ -2504,7 +2504,6 @@ psych_bool PsychCopyInDoubleArg(int position, PsychArgRequirementType isRequired
 }
 
 
-
 /*  
     Like PsychCopyInDoubleArg() with the additional restriction that the passed value not have a fractoinal componenet
     and that the it fit within thebounds of a C integer
@@ -2902,6 +2901,77 @@ const char* PsychRuntimeGetPsychtoolboxRoot(void)
 	// Return whatever we've got:
 	return(&psychtoolboxRootPath[0]);
 }
+
+/* PsychCopyInPointerArg() - Copy in a void* memory pointer which is
+ * encoded as a 32 bit or 64 bit unsigned integer, depending if this
+ * is a 32 bit or 64 bit build of Psychtoolbox.
+ */
+psych_bool PsychCopyInPointerArg(int position, PsychArgRequirementType isRequired, void **ptr)
+{
+	const mxArray 	*mxPtr;
+	PsychError		matchError;
+	psych_bool		acceptArg;
+	psych_bool		is64Bit;
+	
+	// 64 bit build?
+	is64Bit = sizeof(size_t) > 4;
+	
+	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
+	PsychSetSpecifiedArgDescriptor(position, PsychArgIn, ((is64Bit) ? PsychArgType_uint64 : PsychArgType_uint32), isRequired, 1,1,1,1,1,1);
+	matchError=PsychMatchDescriptors();
+
+	acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
+	if(acceptArg){
+		mxPtr = PsychGetInArgMxPtr(position);
+		
+		if (is64Bit) {
+			*ptr = (void*) (size_t) (((psych_uint64*) mxGetData(mxPtr))[0]);
+		} else {
+			*ptr = (void*) (size_t) (((psych_uint32*) mxGetData(mxPtr))[0]);
+		}
+	}
+
+	return(acceptArg); 
+}
+
+
+/* PsychCopyOutPointerArg() - Copy out a void* memory pointer which gets
+ * encoded as a 32 bit or 64 bit unsigned integer, depending if this
+ * is a 32 bit or 64 bit build of Psychtoolbox.
+ */
+psych_bool PsychCopyOutPointerArg(int position, PsychArgRequirementType isRequired, void* ptr)
+{
+	mxArray **mxpp;
+	PsychError matchError;
+	psych_bool putOut;
+	psych_bool is64Bit;
+	mwSize dimArray[2];
+	int numDims = 2;
+	dimArray[0] = dimArray[1] = 1;
+
+	// 64 bit build?
+	is64Bit = sizeof(size_t) > 4;
+	
+	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
+	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, ((is64Bit) ? PsychArgType_uint64 : PsychArgType_uint32), isRequired, 1,1,1,1,0,0);
+	matchError=PsychMatchDescriptors();
+
+	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
+	if(putOut){
+		mxpp = PsychGetOutArgMxPtr(position);
+		
+		if (is64Bit) {
+			*mxpp = mxCreateNumericArray(numDims, (mwSize*) dimArray, mxUINT64_CLASS, mxREAL);
+			((psych_uint64*) mxGetData(*mxpp))[0] = (psych_uint64) ((size_t) ptr);
+		} else {
+			*mxpp = mxCreateNumericArray(numDims, (mwSize*) dimArray, mxUINT32_CLASS, mxREAL);
+			((psych_uint32*) mxGetData(*mxpp))[0] = (psych_uint32) ((size_t) ptr);
+		}
+	}
+
+	return(putOut);
+}
+
 
 /* PsychRuntimePutVariable()
  *
