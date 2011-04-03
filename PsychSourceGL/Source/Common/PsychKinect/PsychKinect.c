@@ -12,7 +12,8 @@
 	HISTORY:
  
 	24.11.2010  mk		Created.
- 
+	03.04.2011  mk		Make 64-bit clean.
+
 	DESCRIPTION:
  
 	A Psychtoolbox driver for Microsoft's Kinect 3D-camera, based
@@ -1342,8 +1343,7 @@ PsychError PSYCHKINECTGetDepthImage(void)
 			// Return image data:
 			if (returnTexturePtr) {
 				// Just return a memory pointer to the depthbuffer:
-				// TODO FIXME: NEEDAUDIT64BIT
-				PsychCopyOutDoubleArg(1, FALSE, (double)((unsigned int)((void*) zmap)));
+				PsychCopyOutPointerArg(1, FALSE, (void*) zmap);
 			} else {
 				PsychAllocOutDoubleMatArg(1, FALSE, buffer->dheight, buffer->dwidth, 1, &outzmat);
 				memcpy(outzmat, zmap, buffer->dheight * buffer->dwidth * 1 * sizeof(double));
@@ -1364,8 +1364,7 @@ PsychError PSYCHKINECTGetDepthImage(void)
 			// Return image data:
 			if (returnTexturePtr) {
 				// Just return a memory pointer to the depthbuffer:
-				// TODO FIXME: NEEDAUDIT64BIT
-				PsychCopyOutDoubleArg(1, FALSE, (double)((unsigned int)((void*) zmap)));
+				PsychCopyOutPointerArg(1, FALSE, (void*) zmap);
 			} else {
 				PsychAllocOutDoubleMatArg(1, FALSE, buffer->dheight, buffer->dwidth, 1, &outzmat);
 				memcpy(outzmat, zmap, buffer->dheight * buffer->dwidth * 1 * sizeof(double));
@@ -1446,8 +1445,7 @@ PsychError PSYCHKINECTGetDepthImage(void)
 
 			if (returnTexturePtr) {
 				// Just return a memory pointer to the depthbuffer:
-				// TODO FIXME: NEEDAUDIT64BIT
-				PsychCopyOutDoubleArg(1, FALSE, (double)((unsigned int)((void*) zmap)));
+				PsychCopyOutPointerArg(1, FALSE, (void*) zmap);
 			} else {
 				PsychAllocOutDoubleMatArg(1, FALSE, components , buffer->dheight, buffer->dwidth, &outzmat);
 				memcpy(outzmat, zmap, components * buffer->dheight * buffer->dwidth * sizeof(double));
@@ -1482,8 +1480,7 @@ PsychError PSYCHKINECTGetDepthImage(void)
 			// Return image data:
 			if (returnTexturePtr) {
 				// Just return a memory pointer to the depthbuffer:
-				// TODO FIXME: NEEDAUDIT64BIT
-				PsychCopyOutDoubleArg(1, FALSE, (double)((unsigned int)((void*) zmap)));
+				PsychCopyOutPointerArg(1, FALSE, (void*) zmap);
 			} else {
 				PsychAllocOutDoubleMatArg(1, FALSE, 3, buffer->dheight, buffer->dwidth, &outzmat);
 				memcpy(outzmat, zmap, 3 * buffer->dheight * buffer->dwidth * sizeof(double));
@@ -1516,8 +1513,7 @@ PsychError PSYCHKINECTGetDepthImage(void)
 			// Return image data:
 			if (returnTexturePtr) {
 				// Just return a memory pointer to the depthbuffer:
-				// TODO FIXME: NEEDAUDIT64BIT
-				PsychCopyOutDoubleArg(1, FALSE, (double)((unsigned int)((void*) zmap)));
+				PsychCopyOutPointerArg(1, FALSE, (void*) zmap);
 			} else {
 				PsychAllocOutDoubleMatArg(1, FALSE, 1, buffer->dheight, buffer->dwidth, &outzmat);
 				memcpy(outzmat, zmap, 1 * buffer->dheight * buffer->dwidth * sizeof(double));
@@ -1530,8 +1526,7 @@ PsychError PSYCHKINECTGetDepthImage(void)
 			// Return 16 bit unsigned integer raw depths data:
 			if (returnTexturePtr) {
 				// Just return a memory pointer to the depthbuffer:
-				// TODO FIXME: NEEDAUDIT64BIT
-				PsychCopyOutDoubleArg(1, FALSE, (double)((unsigned int)((void*) buffer->depth)));
+				PsychCopyOutPointerArg(1, FALSE, (void*) (buffer->depth));
 			} else {
 				PsychErrorExitMsg(PsychError_user, "Fetching 16 bit unsigned depth image as matrix in format 8 is not supported!");
 			}

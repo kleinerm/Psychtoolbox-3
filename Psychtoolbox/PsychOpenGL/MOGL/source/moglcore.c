@@ -13,6 +13,8 @@
  * 19-Jun-2006 -- Implement support for GNU/Octave (MK).
  * 24-Mar-2011 -- Make 64-bit clean (MK).
  * 27-Mar-2011 -- Remove obsolete and totally bitrotten Octave-2 support (MK).
+ * 03-Apr-2011 -- Allow to receive pointers encoded in double's, uint32 or uint64. Adapt dynamically (MK).
+ *
  */
 
 #include "mogltypes.h"
@@ -584,7 +586,15 @@ size_t PsychGetBufferSizeForPtr(void* ptr)
 }
 
 // Mapping of scalar buffer offset value (in units of bytes) to an
-// equivalent memory void*.
+// equivalent memory void*. Handles doubles, uint32 and uint64:
 inline void* moglScalarToPtrOffset(const mxArray *m) {
-	return((void*) (size_t) mxGetScalar(m));
+	if (mxIsDouble(m)) return((void*) (size_t) mxGetScalar(m));
+	if (mxIsUint32(m)) return((void*) (size_t) (((unsigned int*) mxGetData(m))[0]));
+	if (mxIsUint64(m)) return((void*) (size_t) (((psych_uint64*) mxGetData(m))[0]));
+	
+	// Invalid input type - Error abort:
+    glBeginLevel = 0;
+    printf("MOGL-Command: %s\n", cmd);
+	mexErrMsgTxt("Provided pointer or buffer offset argument is of invalid type - Not double, uint32 or uint64!");
+	return(NULL);
 }
