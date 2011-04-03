@@ -37,6 +37,7 @@ size_t PsychIndexElementFrom3DArray(size_t mDim/*|Y|*/, size_t nDim/*|X|*/, size
 size_t PsychIndexPlaneFrom3DArray(size_t mDim, size_t nDim, size_t pDim, size_t planeIndex);
 int maxInt(int a, int b);  //might be better to define max as a macro...
 psych_bool PsychIsIntegerInDouble(double *value);
+psych_bool PsychIsInteger64InDouble(double *value);
 
 psych_bool PsychIsPsychMatchCaseSensitive(void);
 void PsychSetPsychMatchCaseSenstive(psych_bool arg);

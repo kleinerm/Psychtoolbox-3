@@ -155,3 +155,12 @@ psych_bool PsychIsIntegerInDouble(double *value)
 {
     return(*value >= INT_MIN && *value <= INT_MAX && floor(*value) == *value); 
 }
+
+/* Check if it is a 64 bit integer (psych_int64) packed into a double:
+ * This check will already fail for any integer greater than about 2^52
+ * as double can't represent them accurately anymore.
+ */
+psych_bool PsychIsInteger64InDouble(double *value)
+{
+    return((*value >= -9.22337203685478e+18) && (*value <= 9.22337203685478e+18) && (floor(*value) == *value)); 
+}

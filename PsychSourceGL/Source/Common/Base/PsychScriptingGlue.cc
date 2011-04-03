@@ -2534,6 +2534,26 @@ psych_bool PsychCopyInIntegerArg(int position,  PsychArgRequirementType isRequir
 	return(acceptArg);
 }
 
+psych_bool PsychCopyInIntegerArg64(int position,  PsychArgRequirementType isRequired, psych_int64 *value)
+{
+	const mxArray 	*mxPtr;
+	double			tempDouble;
+	PsychError		matchError;
+	psych_bool		acceptArg;
+
+	PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
+	PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1,1,1,1,1,1);
+	matchError=PsychMatchDescriptors();
+	acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
+	if(acceptArg){
+		mxPtr = PsychGetInArgMxPtr(position);
+		tempDouble=mxGetPr(mxPtr)[0];
+		if(!PsychIsInteger64InDouble(&tempDouble))
+			PsychErrorExit(PsychError_invalidIntegerArg);
+		*value= (psych_int64) tempDouble;
+	}
+	return(acceptArg);
+}
 
 
 /*

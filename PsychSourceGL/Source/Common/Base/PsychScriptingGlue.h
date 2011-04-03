@@ -59,6 +59,7 @@ const char* PsychRuntimeGetPsychtoolboxRoot(void);
 
 //for integers
 psych_bool PsychCopyInIntegerArg(int position, PsychArgRequirementType isRequired, int *value);
+psych_bool PsychCopyInIntegerArg64(int position,  PsychArgRequirementType isRequired, psych_int64 *value);
 psych_bool PsychAllocInIntegerListArg(int position, PsychArgRequirementType isRequired, int *numElements, int **array);
 
 //for float's aka singles:
