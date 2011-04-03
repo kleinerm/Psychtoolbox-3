@@ -87,12 +87,11 @@ function DelayedSoundFeedbackDemo(reqlatency, duplex, freq, minLatency)
 % 07/20/2007 Written (MK)
 % 07/19/2009 Derived and largely rewritten from BasicSoundFeedbackDemo (MK)
 % 08/02/2009 Add support for 'DirectInputMonitoring' for reqLatency=0 (MK)
-
-% oldMode = PsychPortAudio('SetOpMode', paoutput, 4)
-% oldMode2 = PsychPortAudio('SetOpMode', paoutput)
+% 04/03/2011 Disable dynamic adaptation of captureQuantum. It causes
+%            artifacts at some feedback delay settings. (MK)
 
 % Level of debug output:
-verbose = 2;
+verbose = 1;
 
 % Close plots from previous invocation, if any:
 close all;
@@ -428,12 +427,20 @@ while ~KbCheck
     % iterations within 'GetAudioData', thereby reducing the load on the
     % operating system and cpu. This is mostly needed on MS-Windows with
     % its highly deficient scheduling and timing systems:
-    maxtimeUntilRefill = (nextSampleETASecs - s1.CurrentStreamTime) / 10;
-    if maxtimeUntilRefill > (3 * updateQuantum)
-        captureQuantum = (floor(maxtimeUntilRefill / updateQuantum) - 1) * updateQuantum;
-    else
-        captureQuantum = updateQuantum;
-    end
+
+    % OK, this doesn't work glitch free for some reason. Leave it disabled.
+    % Produces higher load, but at least works without artifacts.
+    %
+    % TODO: FIXME properly!
+    %
+    %    maxtimeUntilRefill = (nextSampleETASecs - s1.CurrentStreamTime) / 10;
+    %     if maxtimeUntilRefill > (3 * updateQuantum)
+    %         captureQuantum = (floor(maxtimeUntilRefill / updateQuantum) - 1) * updateQuantum;
+    %     else
+    %        captureQuantum = updateQuantum;
+    %     end
+
+    captureQuantum = updateQuantum;
     
     if captureQuantum ~= oldcaptureQuantum
         oldcaptureQuantum = captureQuantum;
