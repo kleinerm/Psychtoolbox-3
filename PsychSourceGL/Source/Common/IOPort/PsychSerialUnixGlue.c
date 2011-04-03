@@ -16,7 +16,9 @@
 	HISTORY:
 
 		04/10/2008	mk		Initial implementation.
- 
+		04/03/2011  mk		Audited (but not tested) to be 64-bit safe. Doesn't take advantage of > 2 GB
+							buffers yet. This will require some minor changes.
+		
 	DESCRIPTION:
 	
 		This is the operating system dependent "glue code" layer for access to serial ports for the
@@ -1220,7 +1222,7 @@ PsychError PsychIOOSConfigureSerialPort(volatile PsychSerialDeviceRecord* device
 int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, unsigned int amount, int blocking, char* errmsg, double* timestamp)
 {
 	int nwritten;
-	unsigned long lsr = 0;  // Serial transmitter line status register.
+	unsigned int lsr = 0;   // Serial transmitter line status register.
 	int outqueue_pending;	// Pending bytes in output queue.
 	
 	// Nonblocking mode?
