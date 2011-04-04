@@ -100,6 +100,35 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', 'General', 'UseFastOffscreenWindows');
 %
 %
+% * 'EnableCLUTMapping' Enable support for old-fashioned clut animation /
+%   clut mapping. The drawn framebuffer image is transformed by applying a
+%   color lookup table (clut). This is not done via the hardware gamma
+%   tables as in the good ol' days, but by application of the clut via
+%   image processing. Hardware gamma tables don't provide well defined
+%   timing on modern hardware, therefore they aren't suitable anymore.
+%
+%   You can update the clut to be applied at the next Screen('Flip');
+%   via the command Screen('LoadNormalizedGammatable', windowPtr, clut, 2);
+%
+%   'clut' needs to be a clutSize-by-3 matrix, with 'clutSize' slots and
+%   one column for each of the red, green and blue color channels.
+%
+%   Setup command:
+%
+%   By default, a clut of 256 slots with (R,G,B) values is used, but you
+%   can provide the optional 'clutSize' parameter to use clut's with more
+%   slots. The maximum number depends on your GPU, but 2048 are typically
+%   supported even on very low-end cards.
+%
+%   If you set 'highprecision' to 1, the clut will resolve values at more
+%   than 8 bit per color channel on modern hardware. This usually only
+%   makes sense if you also use a more than 8 bpc framebuffer with more
+%   than 256 slots as clutSize.
+%
+%   Usage: PsychImaging('AddTask', whichView, 'EnableCLUTMapping' [, clutSize=256][, highprecision=0]);
+%   Example: PsychImaging('AddTask', 'AllViews', 'EnableCLUTMapping');
+%
+%
 % * 'FloatingPoint16Bit' Ask for a 16 bit floating point precision
 %   framebuffer. This allows more than 8 bit precision for complex drawing,
 %   compositing and image processing operations. It also allows
@@ -759,6 +788,9 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 % 02.09.2010  Add support for 'InterleavedColumnStereo'- for auto-stereoscopic 
 %             displays, e.g., parallax barrier and lenticular sheets. (MK)
+%
+% 03.04.2011  Add support for 'EnableCLUTMapping' for old fashioned clut animation. (MK)
+%
 
 persistent configphase_active;
 persistent reqs;
@@ -1835,6 +1867,113 @@ if winfo.StereoMode > 0
 end
 
 % --- End of the flipping stuff ---
+
+
+% --- Implementation of CLUT animation via clut remapping of colors ---
+floc = find(mystrcmp(reqs, 'EnableCLUTMapping'));
+if ~isempty(floc)
+    % Which channel?
+    for x=floc
+        [rows cols]= ind2sub(size(reqs), x);
+        for row=rows'
+            % Extract first parameter - This should be the number of clut slots:
+            nClutSlots = reqs{row, 3};
+
+            % Default to 256 slot clut, as most commonly used:
+            if isempty(nClutSlots)
+                nClutSlots = 256;
+            end
+            
+            if ~isnumeric(nClutSlots)
+                Screen('CloseAll');
+                error('PsychImaging: Number of clut slots parameter for ''EnableCLUTMapping'' missing or not of numeric type!');
+            end
+
+            % Extract high precision flag:
+            highprec = reqs{row, 4};
+            if isempty(highprec)
+                highprec = 0;
+            end
+            
+            % Use our reformatter shader for mapping RGB indices to RGB
+            % triplets.
+
+            % Load shader:
+            pgshader = LoadGLSLProgramFromFiles('RGBMultiLUTLookupCombine_FormattingShader', 1);
+
+            % Init the shader:
+            glUseProgram(pgshader);
+
+            % Assign mapping of input image and clut to texture units:
+            glUniform1i(glGetUniformLocation(pgshader, 'Image'), 0);
+            glUniform1i(glGetUniformLocation(pgshader, 'CLUT'),  1);
+
+            % Assign number of clut slots to use:
+            glUniform1f(glGetUniformLocation(pgshader, 'Prescale'), nClutSlots);
+            glUseProgram(0);
+
+            % Use helper routine to build a proper RGBA lookup texture:
+            pglutid = PsychHelperCreateRemapCLUT(0, nClutSlots, highprec);
+            pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
+
+            % Setup the callback function which is only called if the clut
+            % texture needs to be updated because
+            % Screen('LoadNormalizedGammatable', ..., 2); was called to
+            % provide a new clut. We attach this to the left image
+            % processing chain, as this chain is almost always used anyway.
+            % It needs to execute only once per flip, as it updates state
+            % global to all views (in a stereo setup):
+
+            % If we're on Windows with a R11 based Matlab configuration,
+            % need to use the slow ugly method due to limitations in
+            % MEX files built against pre R2007a Matlabs:
+            if IsWinMatlabR11Style
+                rclutcmd = sprintf('PsychHelperCreateRemapCLUT(1, %i, ', pglutid);
+                Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:RenderClutViaRuntime', rclutcmd);
+            else
+                % We need this weird evalin('base', ...); wrapper so the
+                % function gets called from the base-workspace, where the
+                % IMAGINGPIPE_GAMMATABLE variable is defined. We can only
+                % define it there reliably due to incompatibilities between
+                % Matlab and Octave in variable assignment inside Screen() :-(
+                rclutcmd = sprintf('evalin(''base'', ''PsychHelperCreateRemapCLUT(1, %i, IMAGINGPIPE_GAMMATABLE);'');', pglutid);
+                Screen('HookFunction', win, 'AppendMFunction', 'StereoLeftCompositingBlit', 'Upload new clut into shader callback', rclutcmd);
+            end
+
+            % Enable left chain unconditionally, so the above clut setup
+            % code gets executed:
+            Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
+            
+            % Attach shaders and slots to proper processing chain.
+            % These perform the clut color conversion blit of each input
+            % image into a transformed output image. They're executed at
+            % each flip, irrespective if the clut changed or not:
+            if mystrcmp(reqs{row, 1}, 'LeftView') || mystrcmp(reqs{row, 1}, 'AllViews')
+                % Need to attach to left view:
+                if leftcount > 0
+                    % Need a bufferflip command:
+                    Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:FlipFBOs', '');
+                end
+                Screen('HookFunction', win, 'AppendShader', 'StereoLeftCompositingBlit', 'CLUT image transformation shader', pgshader, pgconfig);
+                Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
+                leftcount = leftcount + 1;
+            end
+
+            if mystrcmp(reqs{row, 1}, 'RightView') || (mystrcmp(reqs{row, 1}, 'AllViews') && winfo.StereoMode > 0)
+                % Need to attach to right view:
+                if rightcount > 0
+                    % Need a bufferflip command:
+                    Screen('HookFunction', win, 'AppendBuiltin', 'StereoRightCompositingBlit', 'Builtin:FlipFBOs', '');
+                end
+                Screen('HookFunction', win, 'AppendShader', 'StereoRightCompositingBlit', 'CLUT image transformation shader', pgshader, pgconfig);
+                Screen('HookFunction', win, 'Enable', 'StereoRightCompositingBlit');
+                rightcount = rightcount + 1;
+            end
+        end
+    end
+end
+% --- End of CLUT animation via clut remapping of colors ---
+
 
 % --- Addition of offsets / scales etc. to input image ---
 floc = find(mystrcmp(reqs, 'AddOffsetToImage'));

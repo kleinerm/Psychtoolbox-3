@@ -1,13 +1,12 @@
 function GLSLCLUTAnimDemo
 %
-% OS X: ___________________________________________________________________
+% Demonstrates GLSL shader based CLUT animation via moglClutblit()
 %
-% Display an animated grating using CLUT animation via the
-% Screen('LoadNormalizedGammaTable') command.
+% THIS DEMO IS DEPRECATED! For a better and simpler method, look at
+% ClutAnimDemo(2); and the help text of PsychImaging() for the
+% 'EnableCLUTMapping' function.
 %
-% _________________________________________________________________________
-% 
-% see also: PsychDemosOSX, MovieDemoOSX
+% see also: ClutAnimDemo, PsychImaging
 
 % HISTORY
 %  7/05/05    mk     Wrote it. 
@@ -17,6 +16,9 @@ function GLSLCLUTAnimDemo
 %                   applying it.
 
 try
+    
+    help GLSLCLUTAnimDemo;
+    
     % This script calls Psychtoolbox commands available only in OpenGL-based 
 	% versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
 	% only OpenGL-base Psychtoolbox.)  The Psychtoolbox command AssertPsychOpenGL will issue
