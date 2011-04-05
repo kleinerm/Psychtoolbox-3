@@ -587,7 +587,7 @@ size_t PsychGetBufferSizeForPtr(void* ptr)
 
 // Mapping of scalar buffer offset value (in units of bytes) to an
 // equivalent memory void*. Handles doubles, uint32 and uint64:
-inline void* moglScalarToPtrOffset(const mxArray *m) {
+void* moglScalarToPtrOffset(const mxArray *m) {
 	if (mxIsDouble(m)) return((void*) (size_t) mxGetScalar(m));
 	if (mxIsUint32(m)) return((void*) (size_t) (((unsigned int*) mxGetData(m))[0]));
 	if (mxIsUint64(m)) return((void*) (size_t) (((psych_uint64*) mxGetData(m))[0]));

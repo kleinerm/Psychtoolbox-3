@@ -38,6 +38,7 @@ double gluUnProject4(double a1, double a2, double a3, double a4, double* a5, dou
    return(0);
 }
 
+#ifndef TARGET_OS_WIN32
 mxArray* mxCreateNumericMatrix(int m, int n, int class, int complex)
 {
 /* On Matlab R11 builds, we use int for the dims array.
@@ -59,6 +60,7 @@ mxArray* mxCreateNumericMatrix(int m, int n, int class, int complex)
 
  return(mxCreateNumericArray(2, dims, class, complex));
 }
+#endif
 
 #else
 

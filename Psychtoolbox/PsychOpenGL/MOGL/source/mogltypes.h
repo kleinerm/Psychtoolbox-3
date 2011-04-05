@@ -84,16 +84,20 @@ double gluBuild3DMipmapLevels(double a1, double a2, double a3, double a4, double
 double gluBuild3DMipmaps(double a1, double a2, double a3, double a4, double a5, double a6, double a7, void* a8);
 
 #ifndef PTBOCTAVE3MEX
+
 // These two already defined on Octave-3, no need to "fake" them:
 double gluUnProject4(double a1, double a2, double a3, double a4, double* a5, double* a6, int* a7, double a8, double a9, double* a10, double* a11, double* a12, double* a13);
+#ifndef TARGET_OS_WIN32
 mxArray* mxCreateNumericMatrix(int m, int n, int class, int complex);
+#endif
+
 #endif
 
 #endif
 
 // Mapping of scalar buffer offset value (in units of bytes) to an
 // equivalent memory void*.
-inline void* moglScalarToPtrOffset(const mxArray *m);
+void* moglScalarToPtrOffset(const mxArray *m);
 
 // Function prototype for exit with printf(), like mogl_glunsupported...
 void mogl_printfexit(const char* str);
@@ -152,7 +156,7 @@ typedef ULONGLONG psych_uint64;
 typedef double psych_RuntimePtrType;
 
 // Convert a double value (which encodes a memory address) into a ptr:
-void*  PsychDoubleToPtr(double dptr);
+void*  PsychDoubleToPtr(volatile double dptr);
 
 // Convert a memory address pointer into a double value:
 double PsychPtrToDouble(void* ptr);

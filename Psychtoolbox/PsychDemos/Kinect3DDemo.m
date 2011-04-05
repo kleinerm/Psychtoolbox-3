@@ -186,7 +186,7 @@ while ((GetSecs - t) < 600)
         end
 
         % Try to get hold of a new frame from the device, block if none available:
-        [rc, cts] = PsychKinect('GrabFrame', kinect, 0);
+        [rc, cts] = PsychKinect('GrabFrame', kinect, 1);
         if rc > 0
             % Output video image from rgb camera if enabled:
             if 0
