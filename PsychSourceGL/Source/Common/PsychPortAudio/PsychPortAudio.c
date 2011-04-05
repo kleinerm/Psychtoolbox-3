@@ -5390,7 +5390,7 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 
 	// Set maxSample to maximum integer: The scheduler (aka PsychPAProcessSchedule()) will test at runtime if the playloop extends
 	// beyond valid playbuffer boundaries and clamp to end-of-buffer if needed, so this is safe:
-	maxSample = SIZE_T_MAX;
+	maxSample = SIZE_MAX;
 
 	// Copy in optional startSample:
 	startSample = 0;

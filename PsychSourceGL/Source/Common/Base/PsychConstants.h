@@ -36,6 +36,8 @@ typedef unsigned char bool;
 #endif
 #endif
 
+#define __STDC_LIMIT_MACROS 1
+
 //bring in the standard c and system headers 
 #include "PsychIncludes.h"
 
@@ -182,7 +184,9 @@ typedef unsigned char		psych_bool;
         mxArray* mxCreateNativeBooleanMatrix3D(size_t m, size_t n, size_t p);
 
         #if PSYCH_LANGUAGE == PSYCH_MATLAB
+		#ifndef TARGET_OS_WIN32 
         #define mxCreateLogicalMatrix(m,n) mxCreateNativeBooleanMatrix3D((m), (n), 1)
+		#endif
         #endif
 
         // Hack to make compiler happy until QT7 Windows supports this:

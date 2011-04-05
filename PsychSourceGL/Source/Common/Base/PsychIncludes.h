@@ -49,6 +49,7 @@
 	//#include <GL/glu.h>
 	//#include <GL/glx.h>
 	//#include <GL/glext.h>
+    #include <stdint.h>
 	
 	// This is the new glew include for GLX extension support:
 	#include "../Screen/glxew.h"
@@ -82,7 +83,8 @@
 	#include "glu.h"
 #elif PSYCH_SYSTEM == PSYCH_OSX
 	//includes for Apple OpenGL
-	#include <sys/time.h>
+    #include <stdint.h>
+    #include <sys/time.h>
 	#include <pthread.h>
 
         // If we are included from PsychScriptingGlue.cc, which

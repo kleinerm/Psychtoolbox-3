@@ -437,7 +437,7 @@ int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, doub
 
 	// Convert gtod_time and maxwaittimesecs into timespec format, add it...
 	abstime.tv_sec  = (time_t) maxwaittimesecs + gtod_time.tv_sec;
-	abstime.tv_nsec = (long) (((double) maxwaittimesecs - (double) abstime.tv_sec) * (double) (1e9));
+	abstime.tv_nsec = (long) (((double) maxwaittimesecs - (double) ((time_t) maxwaittimesecs)) * (double) (1e9));
 	abstime.tv_nsec+= (long) (gtod_time.tv_usec * 1000);
 
 	// ... (Re-)split into seconds and nanoseconds:
