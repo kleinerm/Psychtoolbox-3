@@ -1864,6 +1864,18 @@ void PsychPortAudioInitialize(void)
 			pulseaudio_isSuspended = TRUE;
 		}
 
+        #if PSYCH_SYSTEM == PSYCH_WINDOWS
+        // Sanity check dynamic portaudio_x86.dll loading on Windows:
+        if (NULL == LoadLibrary("portaudio_x86.dll")) {
+            // Failed:
+            printf("\n\nPTB-ERROR: Tried to initialize PsychPortAudio's PortAudio engine. This didn't work,\n");
+            printf("PTB-ERROR: because i couldn't find or load the required portaudio_x86.dll library.\n");
+            printf("PTB-ERROR: Please make sure to call the InitializePsychSound function before first use of\n");
+            printf("PTB-ERROR: PsychPortAudio, otherwise this error will happen.\n\n");
+			PsychErrorExitMsg(PsychError_user, "Failed to initialize due to portaudio_x86.dll loading problem. Call InitializePsychSound first! Aborted.");
+        }
+        #endif
+        
 		// Setup callback function for low-level debug output:
 		PaUtil_SetDebugPrintFunction(PALogger);
 

@@ -7,6 +7,7 @@
 #include "moaltypes.h"
 
 #ifndef PTBOCTAVE3MEX
+#ifndef TARGET_OS_WIN32
 
 mxArray* mxCreateNumericMatrix(int m, int n, int class, int complex)
 {
@@ -29,5 +30,5 @@ mxArray* mxCreateNumericMatrix(int m, int n, int class, int complex)
 
  return(mxCreateNumericArray(2, dims, class, complex));
 }
-
+#endif
 #endif

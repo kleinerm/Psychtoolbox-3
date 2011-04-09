@@ -125,7 +125,7 @@ else
     
     if what == 7
         % Build Eyelink.mex
-		mexoctave -g -v --output T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\Eyelink.mex -D-DTARGET_OS_WIN32 -LD:\SRResearch\EyeLink\libs -ID:\SRResearch\EyeLink\Includes\eyelink -I"C:\Programme\Microsoft Visual Studio 8\VC\Include" -ICommon\Base -ICommon\Eyelink -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\Eyelink\*.c user32.lib gdi32.lib advapi32.lib winmm.lib eyelink_core.lib eyelink_w32_comp.lib eyelink_exptkit20.lib 
+		mexoctave -g -v --output T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\Eyelink.mex -DTARGET_OS_WIN32 -LD:\SRResearch\EyeLink\libs -ID:\SRResearch\EyeLink\Includes\eyelink -I"C:\Programme\Microsoft Visual Studio 8\VC\Include" -ICommon\Base -ICommon\Eyelink -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\Eyelink\*.c user32.lib gdi32.lib advapi32.lib winmm.lib eyelink_core.lib eyelink_w32_comp.lib eyelink_exptkit20.lib 
         dos('copy T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\Eyelink.mex T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\Octave3WindowsFiles\');
     end
 

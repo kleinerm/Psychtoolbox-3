@@ -119,6 +119,7 @@ PsychError PsychSynchronizeDisplayScreens(int *numScreens, int* screenIds, int* 
  */
 psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord, psych_bool enable)
 {
+#if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
 	int i,si,ei, headid, screenId;
 	unsigned int lutreg, ctlreg, value, status;
 	
@@ -132,7 +133,6 @@ psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord
 	si = (screenId!=-1) ? screenId   : 0;
 	ei = (screenId!=-1) ? screenId+1 : PsychGetNumDisplays();
 
-#if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
 	// Loop over all target screens:
 	for (i=si; i<ei; i++) {
 		// Map screenid to headid: For now we only support 2 heads.
@@ -236,13 +236,14 @@ psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord
 
 		// Next display head...
 	}
+
+	// Done.
+	return(TRUE);
+	
 #else
 	// This cool stuff not supported on the uncool Windows OS:
 	return(FALSE);
 #endif
-
-	// Done.
-	return(TRUE);
 }
 
 /* PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker()

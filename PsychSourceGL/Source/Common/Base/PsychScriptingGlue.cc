@@ -597,7 +597,7 @@ static psych_bool PsychIsEmptyMat(CONSTmxArray *mat);
 static psych_bool PsychIsDefaultMat(CONSTmxArray *mat);
 static mwSize mxGetP(const mxArray *array_ptr);
 static mwSize mxGetNOnly(const mxArray *arrayPtr);
-static mxArray *mxCreateDoubleMatrix3D(size_t m, size_t n, size_t p);
+static mxArray *mxCreateDoubleMatrix3D(psych_int64 m, psych_int64 n, psych_int64 p);
 
 //declarations for functions exported from code module
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
@@ -1207,7 +1207,7 @@ psych_bool PsychAreSubfunctionsEnabled(void)
  * truly support 48 bit of memory, not the true 64 bit.
  *
  */
-void PsychCheckmWSizeLimits(size_t m, size_t n, size_t p)
+void PsychCheckmWSizeLimits(psych_int64 m, psych_int64 n, psych_int64 p)
 {
 	// No problem if mwSize has capacity to contain size_t:
 	if (sizeof(mwSize) >= sizeof(size_t)) return;
@@ -1277,7 +1277,7 @@ static mwSize mxGetNOnly(const mxArray *arrayPtr)
 	
     Requirements are that m>0, n>0, p>=0.  
 */
-mxArray *mxCreateDoubleMatrix3D(size_t m, size_t n, size_t p)
+mxArray *mxCreateDoubleMatrix3D(psych_int64 m, psych_int64 n, psych_int64 p)
 {
 	int numDims;
 	mwSize dimArray[3];

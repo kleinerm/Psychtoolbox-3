@@ -246,7 +246,7 @@ void PsychGLClear(PsychWindowRecordType *windowRecord)
 	}
 	else {
 		// Standard clear path: Can use OpenGL's fast color buffer clear:
-		glClearColor(windowRecord->clearColor[0], windowRecord->clearColor[1], windowRecord->clearColor[2], windowRecord->clearColor[3]);
+		glClearColor((GLclampf) windowRecord->clearColor[0], (GLclampf) windowRecord->clearColor[1], (GLclampf) windowRecord->clearColor[2], (GLclampf) windowRecord->clearColor[3]);
 		glClear(GL_COLOR_BUFFER_BIT);
 	}
 
@@ -384,11 +384,11 @@ GLdouble *PsychExtractQuadVertexFromRect(double *rect, int vertexNumber, GLdoubl
 void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos, int* coords_count, double** xy, int colors_pos, int* colors_count, int* colorcomponent_count, double** colors, unsigned char** bytecolors, int sizes_pos, int* sizes_count, double** size)
 {
 	PsychColorType							color;
-	int                                     whiteValue, m,n,p,mc,nc,pc,idot_type;
+	int                                     m,n,p,mc,nc,pc;
 	int                                     i, nrpoints, nrsize;
-	psych_bool                                 isArgThere, isdoublecolors, isuint8colors, usecolorvector, needxy;
+	psych_bool                              isArgThere, isdoublecolors, isuint8colors, usecolorvector, needxy;
 	double									*tmpcolors, *pcolors, *tcolors;
-	double									convfactor;
+	double									convfactor, whiteValue;
 
 	needxy = (coords_pos > 0) ? TRUE: FALSE;
 	coords_pos = abs(coords_pos);

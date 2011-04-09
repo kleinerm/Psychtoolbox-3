@@ -57,7 +57,7 @@ try
     % convolution kernel inside:
     kernel = fspecial('gaussian', 5, 1.5);
     shader = EXPCreateStatic2DConvolutionShader(kernel, 4, 4, 0, 2);
-    
+
     Screen('TextFont',w, 'Courier New');
     Screen('TextSize',w, ts);
     Screen('TextStyle', w, 1+2);
@@ -77,7 +77,7 @@ try
     % Draw text to offscreenw window:
     Screen('DrawText', woff, 'Hello World!', 0, 0, 255); %[0, 0, 255, 255]);
     
-    % Draw offscreen windwo with text, reduced to 50% in size, with
+    % Draw offscreen window with text, reduced to 50% in size, with
     % bilinear texture filtering and alpha-blending enabled. Use the
     % gaussian blur shader to remove high frequencies during drawing to
     % reduce aliasing artifacts:

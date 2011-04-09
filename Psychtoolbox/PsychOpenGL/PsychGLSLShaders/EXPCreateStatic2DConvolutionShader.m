@@ -129,7 +129,7 @@ if isempty(initialized)
     % Clear any OpenGL error state.
     while (glGetError~=GL.NO_ERROR); end;
 
-    maxuniforms = glGetIntegerv(GL.MAX_FRAGMENT_UNIFORM_COMPONENTS)
+    maxuniforms = glGetIntegerv(GL.MAX_FRAGMENT_UNIFORM_COMPONENTS);
     
     % We are initialized:
     initialized = 1;

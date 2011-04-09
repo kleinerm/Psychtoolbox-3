@@ -157,8 +157,11 @@ else
     % Setting the 3rd bit of 'withsound' (= adding 4) disables some
     % internal processing which is not needed for pure disk recording. This
     % can safe significant amounts of processor load --> More reliable
-    % recording on low-end hardware.
-    withsound = withsound + 4;
+    % recording on low-end hardware. Setting the 5th bit (bit 4) aka adding
+    % +16 will offload the recording to a separate processing thread. Pure
+    % recording is then fully automatic and makes better use of multi-core
+    % processor machines.
+    withsound = withsound + 4 + 16;
 end
 
 if nargin < 5
@@ -225,8 +228,8 @@ try
         else
             % Recording only: Just grant some processing time to the
             % engine, don't wait for new image, don't fetch any
-            % information.
-            Screen('GetCapturedImage', win, grabber, waitforimage);
+            % information. We have nothing to do here, as thread offloading
+            % is enabled above.
         end
         
         % Some output to the console:

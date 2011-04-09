@@ -165,7 +165,7 @@ typedef enum
 	PsychArgType_uint64				= 2^14,
 	PsychArgType_default			= 2^15, 
 	#define PsychArgType_MAX		PsychArgType_default
-	#define PsychArgType_NUMTYPES	15	//this does not include the PsychArgType_none		
+	#define PsychArgType_NUMTYPES	16	//this does not include the PsychArgType_none		
 } PsychArgFormatType;  //change this to PsychArgType for brevity
 
 

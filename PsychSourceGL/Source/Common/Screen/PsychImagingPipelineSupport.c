@@ -420,8 +420,8 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	// which describe the system framebuffer (backbuffer). This is done to simplify pipeline design:
 
 	// Allocate empty FBO info struct and assign it:
-	winwidth=PsychGetWidthFromRect(windowRecord->rect);
-	winheight=PsychGetHeightFromRect(windowRecord->rect);
+	winwidth=(int)PsychGetWidthFromRect(windowRecord->rect);
+	winheight=(int)PsychGetHeightFromRect(windowRecord->rect);
 
 	if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), 0, FALSE, winwidth, winheight, 0)) {
 		// Failed!
@@ -475,8 +475,8 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		// C-MEX OpenGL rendering plugins...
 		
 		// Define dimensions of 1st stage FBO:
-		winwidth=PsychGetWidthFromRect(windowRecord->rect);
-		winheight=PsychGetHeightFromRect(windowRecord->rect);
+		winwidth=(int)PsychGetWidthFromRect(windowRecord->rect);
+		winheight=(int)PsychGetHeightFromRect(windowRecord->rect);
 
 		// Adapt it for some stereo modes:
 		if (windowRecord->specialflags & kPsychHalfWidthWindow) {
@@ -604,8 +604,8 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		// Need real FBO's as targets for image processing:
 
 		// Define dimensions of 2nd stage FBO:
-		winwidth=PsychGetWidthFromRect(windowRecord->rect);
-		winheight=PsychGetHeightFromRect(windowRecord->rect);
+		winwidth=(int)PsychGetWidthFromRect(windowRecord->rect);
+		winheight=(int)PsychGetHeightFromRect(windowRecord->rect);
 
 		// Adapt it for some stereo modes:
 		if (windowRecord->specialflags & kPsychHalfWidthWindow) {
@@ -694,8 +694,8 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		// Need real FBO's as targets for merger output.
 
 		// Define dimensions of 3rd stage FBO:
-		winwidth=PsychGetWidthFromRect(windowRecord->rect);
-		winheight=PsychGetHeightFromRect(windowRecord->rect);
+		winwidth=(int)PsychGetWidthFromRect(windowRecord->rect);
+		winheight=(int)PsychGetHeightFromRect(windowRecord->rect);
 
 		// These FBO's don't need z- or stencil buffers anymore:
 		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0)) {
@@ -1645,7 +1645,7 @@ void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, psych_
 		
 		if (textureRecord->textureNumber > 0) {
 			// Allocate and assign FBO object info structure PsychFBO:
-			PsychCreateFBO(&(textureRecord->fboTable[0]), (GLenum) 0, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, PsychGetWidthFromRect(textureRecord->rect), PsychGetHeightFromRect(textureRecord->rect), 0);
+			PsychCreateFBO(&(textureRecord->fboTable[0]), (GLenum) 0, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, (int) PsychGetWidthFromRect(textureRecord->rect), (int) PsychGetHeightFromRect(textureRecord->rect), 0);
 			
 			// Manually set up the color attachment texture id to our texture id:
 			textureRecord->fboTable[0]->coltexid = textureRecord->textureNumber;
@@ -1665,7 +1665,7 @@ void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, psych_
 			// Need 32 bpc floating point precision?
 			if (forImagingmode & kPsychNeed32BPCFloat) { fboInternalFormat = GL_RGBA_FLOAT32_APPLE; textureRecord->bpc = 32; }
 			
-			PsychCreateFBO(&(textureRecord->fboTable[0]), fboInternalFormat, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, PsychGetWidthFromRect(textureRecord->rect), PsychGetHeightFromRect(textureRecord->rect), 0);
+			PsychCreateFBO(&(textureRecord->fboTable[0]), fboInternalFormat, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, (int) PsychGetWidthFromRect(textureRecord->rect), (int) PsychGetHeightFromRect(textureRecord->rect), 0);
 			
 			// Manually set up the texture id from our color attachment texture id:
 			textureRecord->textureNumber = textureRecord->fboTable[0]->coltexid;
@@ -1680,7 +1680,7 @@ void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, psych_
 	if (asRendertarget && textureRecord->fboTable[0]->fboid==0) {
 		// Initialize and setup real FBO object (optionally with z- and stencilbuffer) and attach the texture
 		// as color attachment 0, aka main colorbuffer:				
-		if (!PsychCreateFBO(&(textureRecord->fboTable[0]), (GLenum) 1, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, PsychGetWidthFromRect(textureRecord->rect), PsychGetHeightFromRect(textureRecord->rect), 0)) {
+		if (!PsychCreateFBO(&(textureRecord->fboTable[0]), (GLenum) 1, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, (int) PsychGetWidthFromRect(textureRecord->rect), (int) PsychGetHeightFromRect(textureRecord->rect), 0)) {
 			// Failed!
 			PsychErrorExitMsg(PsychError_internal, "Preparation of drawing into an offscreen window or texture failed when trying to create associated framebuffer object!");
 			
@@ -3466,8 +3466,8 @@ psych_bool PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windo
 	char* strp;
 	float blackpoint, r, g, b;
 	float fraction = 0.25;
-	float w = PsychGetWidthFromRect(windowRecord->rect);
-	float h = PsychGetHeightFromRect(windowRecord->rect);
+	float w = (float) PsychGetWidthFromRect(windowRecord->rect);
+	float h = (float) PsychGetHeightFromRect(windowRecord->rect);
 	r=g=b=1.0;
 	
 	// We default to display height minus 1 for position of sync-line, instead of the lower most row

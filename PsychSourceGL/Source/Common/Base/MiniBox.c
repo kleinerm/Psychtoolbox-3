@@ -115,11 +115,15 @@ psych_bool PsychMatch(char *s1,char *s2)
 		return strcmp(s1,s2)==0;
 }
 
-char *int2str(int num)
+char *int2str(psych_int64 num)
 {
 	static char numStr[256];
-	
-	sprintf(numStr, "%d", num);
+	#if PSYCH_SYSTEM != PSYCH_WINDOWS
+	sprintf(numStr, "%lld", num);
+	#else
+	// TODO FIXME AUDIT 64BIT : Figure out a way to handle psych_int64 printing on Windows:
+	sprintf(numStr, "%d", (int) num);
+	#endif
 	return(numStr);
 }
 
@@ -138,7 +142,7 @@ size_t PsychIndexPlaneFrom3DArray(size_t mDim, size_t nDim, size_t pDim, size_t 
         return(planeIndex*mDim*nDim);
 }
 
-int maxInt(int a, int b)
+psych_int64 maxInt(psych_int64 a, psych_int64 b)
 {
 	if(a>b)
 		return(a);

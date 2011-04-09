@@ -66,10 +66,12 @@ alBufferData( buffers, AL.FORMAT_MONO16, mynoise, length(mynoise)*2, freq);
 % Create a sound source:
 source = alGenSources(1);
 
-alcASASetListener(ALC.ASA_REVERB_ON, 1)
-alcASASetListener(ALC.ASA_REVERB_QUALITY, ALC.ASA_REVERB_QUALITY_Max)
-alcASASetListener(ALC.ASA_REVERB_ROOM_TYPE, ALC.ASA_REVERB_ROOM_TYPE_Cathedral)
-alcASASetSource(ALC.ASA_REVERB_SEND_LEVEL, source, 0.8)
+if IsOSX
+    alcASASetListener(ALC.ASA_REVERB_ON, 1)
+    alcASASetListener(ALC.ASA_REVERB_QUALITY, ALC.ASA_REVERB_QUALITY_Max)
+    alcASASetListener(ALC.ASA_REVERB_ROOM_TYPE, ALC.ASA_REVERB_ROOM_TYPE_Cathedral)
+    alcASASetSource(ALC.ASA_REVERB_SEND_LEVEL, source, 0.8)
+end
 
 % Attach our buffer to it: The source will play the buffers sound data.
 alSourceQueueBuffers(source, 1, buffers);

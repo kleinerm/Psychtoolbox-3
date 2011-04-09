@@ -70,7 +70,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
     // Start of dispatcher:
     int i;
-    ALenum err;
     bool errorcondition = false;
 
     // see whether there's a string command
@@ -221,8 +220,8 @@ void mogl_rebindARBExtensionsToCore(void)
 void mogl_checkerrors(const char* cmd, const mxArray *prhs[]) 
 {
     char errtxt[10000];
-    int err, status, handle;
-    
+    ALenum err;
+
     // Reject no-op calls:
     if (debuglevel<=0) return;
     

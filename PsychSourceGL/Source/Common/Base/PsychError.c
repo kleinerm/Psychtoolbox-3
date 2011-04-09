@@ -30,7 +30,7 @@
 //file static variables  
 static char *errorStringsERROR[MAX_PSYCH_ERRORS];       
 static char *errorNameStringsERROR[MAX_PSYCH_ERRORS];
-static char *ArgTypeStringsERROR[PsychArgType_MAX+1]; //+1 so we can 1 index
+static char *ArgTypeStringsERROR[PsychArgType_NUMTYPES];
 psych_bool usageErrorFlagsERROR[MAX_PSYCH_ERRORS];
 PsychArgDescriptorType specifiedArgERROR, receivedArgERROR;
  
@@ -219,17 +219,22 @@ static void InitUsageErrorFlags(void)
 */
 static void InitArgFormatTypeStrings(void)
 {
-	ArgTypeStringsERROR[PsychArgType_unspecified] =		"unspecified";
-	ArgTypeStringsERROR[PsychArgType_unclassified] =	"unclassified";
-	ArgTypeStringsERROR[PsychArgType_default] =			"default";
-	ArgTypeStringsERROR[PsychArgType_char] = 			"char";
-	ArgTypeStringsERROR[PsychArgType_uint8] = 			"uint8";
-	ArgTypeStringsERROR[PsychArgType_uint16] = 			"uint16";
-	ArgTypeStringsERROR[PsychArgType_uint32] = 			"uint32";
-	ArgTypeStringsERROR[PsychArgType_int8] = 			"int8";
-	ArgTypeStringsERROR[PsychArgType_int16] = 			"int16";
-	ArgTypeStringsERROR[PsychArgType_uint32] = 			"int32";
-	ArgTypeStringsERROR[PsychArgType_double] = 			"double";
+	ArgTypeStringsERROR[0] =            "unspecified";
+	ArgTypeStringsERROR[1] =            "unclassified";
+	ArgTypeStringsERROR[2] = 			"char";
+	ArgTypeStringsERROR[3] = 			"uint8";
+	ArgTypeStringsERROR[4] = 			"uint16";
+	ArgTypeStringsERROR[5] = 			"uint32";
+	ArgTypeStringsERROR[6] = 			"int8";
+	ArgTypeStringsERROR[7] = 			"int16";
+	ArgTypeStringsERROR[8] = 			"int32";
+	ArgTypeStringsERROR[9] = 			"double";
+	ArgTypeStringsERROR[10] = 			"boolean";
+	ArgTypeStringsERROR[11] = 			"struct";
+	ArgTypeStringsERROR[12] = 			"cell";
+	ArgTypeStringsERROR[13] = 			"single";
+	ArgTypeStringsERROR[14] = 			"uint64";
+	ArgTypeStringsERROR[15] = 			"default";
 }
 
 
@@ -250,7 +255,7 @@ int PsychDecomposeArgFormat(PsychArgFormatType argType,  const char **names)
 		isElement = (psych_bool)(((int)argType & (int)strIndex) > 0);
 		if(isElement){
 			if(names!=NULL) //in case we only want a count and pass NULL for names
-				names[numTypes]=ArgTypeStringsERROR[strIndex];
+				names[numTypes]=ArgTypeStringsERROR[i];
 			++numTypes;
 		}
 	}

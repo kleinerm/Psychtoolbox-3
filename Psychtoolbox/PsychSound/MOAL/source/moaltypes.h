@@ -52,8 +52,14 @@ ALenum  alcASASetListener(const ALuint property, ALvoid *data, ALuint dataSize);
 #include <AL/al.h>
 #include <AL/alc.h>
 
+#ifndef PTBOCTAVE3MEX
+#ifndef TARGET_OS_WIN32
+
 /* Hacks to get Windows versions of Matlab R11 builds running. */
 mxArray* mxCreateNumericMatrix(int m, int n, int class, int complex);
+
+#endif
+#endif
 
 #endif
 
