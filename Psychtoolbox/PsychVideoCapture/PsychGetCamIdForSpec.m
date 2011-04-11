@@ -1,7 +1,7 @@
 function [devid, dev] = PsychGetCamIdForSpec(className, inputNameOrPort, instance, engineId)
 % Return deviceIndex of a specified camera, one that matches given criteria.
 % 
-% deviceIndex = PsychGetCamIdForSpec([className][, inputNameOrPort][, instance][, engineId]);
+% [deviceIndex, dev] = PsychGetCamIdForSpec([className][, inputNameOrPort][, instance][, engineId]);
 %
 % Searches for video sources which match given criteria. A handle to the
 % first source that satisfies the criteria is returned in argument
