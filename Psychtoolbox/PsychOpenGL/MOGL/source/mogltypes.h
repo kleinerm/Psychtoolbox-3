@@ -89,6 +89,7 @@ double gluBuild3DMipmaps(double a1, double a2, double a3, double a4, double a5, 
 double gluUnProject4(double a1, double a2, double a3, double a4, double* a5, double* a6, int* a7, double a8, double a9, double* a10, double* a11, double* a12, double* a13);
 #ifndef TARGET_OS_WIN32
 mxArray* mxCreateNumericMatrix(int m, int n, int class, int complex);
+typedef int mwSize;
 #endif
 
 #endif

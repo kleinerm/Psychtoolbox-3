@@ -41,6 +41,11 @@ typedef unsigned char bool;
 //bring in the standard c and system headers 
 #include "PsychIncludes.h"
 
+// Define SIZE_MAX if not defined. Mostly for ancient Windows + R11 builds.
+#ifndef SIZE_MAX
+#define SIZE_MAX (4294967295U)
+#endif
+
 #if PSYCH_LANGUAGE == PSYCH_OCTAVE
 
 // Definitions for constants:
@@ -128,6 +133,7 @@ typedef unsigned char bool;
 // Do we need to define mwSize ourselves?
 #ifdef SELFMADE_MWSIZE
 	typedef int mwSize;
+	typedef int mwIndex;
 #endif
 
 // Define our own base psych_bool type psych_bool to be an unsigned char,

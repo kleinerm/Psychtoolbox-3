@@ -610,7 +610,11 @@ static psych_bool jettisoned = FALSE;
 #endif
 
 // Forward declaration for GNU/Linux compile:
+#ifdef __cplusplus
 extern "C" void ScreenCloseAllWindows(void);
+#else
+void ScreenCloseAllWindows(void);
+#endif
 
 /*
 
