@@ -73,11 +73,6 @@ function VideoRecordingDemo(moviename, codec, withsound, showit, windowed)
 % Test if we're running on PTB-3, abort otherwise:
 AssertOpenGL;
 
-% OS/X and Windows only...
-if ~IsOSX & ~IsWin
-    error('Sorry, this demo currently only works on OS/X and Windows.');
-end
-
 % Open window on secondary display, if any:
 screen=max(Screen('Screens'));
 
