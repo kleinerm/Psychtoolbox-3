@@ -81,7 +81,7 @@ static PsychWindowRecordType* currentRendertarget = NULL;
 // The handle of the masterthread - The Matlab/Octave/PTB main interpreter thread: This
 // is initialized when opening the first onscreen window. Its used in PsychSetDrawingTarget()
 // to discriminate between the masterthread and the worker threads for async flip operations:
-static psych_threadid	masterthread = NULL;
+static psych_threadid	masterthread = (psych_threadid) NULL;
 
 // Count of currently async-flipping onscreen windows:
 static unsigned int	asyncFlipOpsActive = 0;
@@ -1581,7 +1581,7 @@ void PsychReleaseFlipInfoStruct(PsychWindowRecordType *windowRecord)
 		PsychDeleteThread(&(flipRequest->flipperThread));
 		
 		// Ok, thread is dead. Mark it as such:
-		flipRequest->flipperThread = NULL;
+		flipRequest->flipperThread = (psych_thread) NULL;
 
 		// Destroy the mutex:
 		if ((rc=PsychDestroyMutex(&(flipRequest->performFlipLock)))) {
@@ -1651,7 +1651,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 
 		// Commit suicide with state "error, lock not held":
 		flipRequest->flipperState = 5;
-		return;
+		return(NULL);
 	}
 	
 	// Got the lock: Set our state as "initialized, ready & waiting":
@@ -1670,7 +1670,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 			
 			// Commit suicide with state "error, lock not held":
 			flipRequest->flipperState = 5;
-			return;
+			return(NULL);
 		}
 		
 		// Got woken up, work to do! We have the lock from auto-reaquire in cond_wait:
@@ -1728,13 +1728,13 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 
 			// Commit suicide with state "error, lock not held":
 			flipRequest->flipperState = 5;
-			return;
+			return(NULL);
 		}
 	}
 
 	// Ok, we're not blocked on condition variable and we've unlocked the lock (or at least, did our best to do so),
 	// and set the termination state: Go and die peacefully...
-	return;
+	return(NULL);
 }
 
 /*	PsychFlipWindowBuffersIndirect()
@@ -1846,7 +1846,7 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 		glFlush();
 
 		// First time async request? Threads already set up?
-		if (flipRequest->flipperThread == NULL) {
+		if (flipRequest->flipperThread == (psych_thread) NULL) {
 			// First time init: Need to startup flipper thread:
 
 			// printf("IN THREADCREATE\n"); fflush(NULL);

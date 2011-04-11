@@ -40,7 +40,7 @@ const PsychTextDrawingModeType PsychTextDrawingModes[]= {kPsychTextFill, kPsychT
 
 void PsychInitTextRecordSettings(PsychTextAttributes *settings)
 {
-	char*		tryFontName;
+	const char*	tryFontName;
 	psych_bool	foundFont;
 	// FIXME	PsychFontStructType	*initFontRecord;
 	PsychPrefStateGet_DefaultFontName(&tryFontName);

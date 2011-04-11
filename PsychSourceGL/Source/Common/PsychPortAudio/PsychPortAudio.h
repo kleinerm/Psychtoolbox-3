@@ -36,6 +36,7 @@ void PsychPortAudioInitialize(void);
 
 // Show command overview:
 PsychError PSYCHPORTAUDIODisplaySynopsis(void);
+void InitializeSynopsis(void);
 
 //function prototypes:
 

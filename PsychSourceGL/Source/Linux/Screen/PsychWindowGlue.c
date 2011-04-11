@@ -538,7 +538,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	// that actually uses the setup call -- no special cases or extra code needed there :-)
 	// This special glXSwapIntervalSGI() call will simply accept an input value of zero for
 	// disabling vsync'ed bufferswaps as a valid input parameter:
-	glXSwapIntervalSGI = glXGetProcAddressARB("glXSwapIntervalMESA");
+	glXSwapIntervalSGI = (PFNGLXSWAPINTERVALSGIPROC) glXGetProcAddressARB("glXSwapIntervalMESA");
 	
 	// Additionally bind the Mesa query call:
 	glXGetSwapIntervalMESA = (PFNGLXGETSWAPINTERVALMESAPROC) glXGetProcAddressARB("glXGetSwapIntervalMESA");
@@ -554,7 +554,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // bind the extension. If this special case is present, we do it here manually ourselves:
   if ( (glXSwapIntervalSGI == NULL) && (strstr(glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control") != NULL) ) {
 	// Looks so: Bind manually...
-	glXSwapIntervalSGI = glXGetProcAddressARB("glXSwapIntervalSGI");
+	glXSwapIntervalSGI = (PFNGLXSWAPINTERVALSGIPROC) glXGetProcAddressARB("glXSwapIntervalSGI");
   }
 
   // Extension finally supported?

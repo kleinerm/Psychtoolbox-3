@@ -610,7 +610,7 @@ static psych_bool jettisoned = FALSE;
 #endif
 
 // Forward declaration for GNU/Linux compile:
-void ScreenCloseAllWindows();
+extern "C" void ScreenCloseAllWindows(void);
 
 /*
 
@@ -722,7 +722,7 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 		// Register hidden helper function: This one dumps all registered subfunctions of
 		// a module into a struct array of text strings. Needed by our automatic documentation
 		// generator script to find out about subfunctions of a module:
-		PsychRegister("DescribeModuleFunctionsHelper",  &PsychDescribeModuleFunctions);
+		PsychRegister((char*) "DescribeModuleFunctionsHelper",  &PsychDescribeModuleFunctions);
 
 		firstTime = FALSE;
 	}
@@ -1394,7 +1394,7 @@ void PsychErrMsgTxt(char *s)
 	#endif
 	
 	// Call the Matlab- or Octave error printing and error handling facilities:
-	mexErrMsgTxt(s);
+	mexErrMsgTxt((s) ? s : "See error message printed above.");
 }
 
 

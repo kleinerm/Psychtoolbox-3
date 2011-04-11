@@ -374,7 +374,7 @@ psych_bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* window
 #define RADEON_SURFACE_UPDATE_TAKEN   8
 
 	// Just need to check if GPU low-level access is supported:
-	if (!PsychOSIsKernelDriverAvailable(screenId)) return;
+	if (!PsychOSIsKernelDriverAvailable(screenId)) return(FALSE);
 	
 	// Driver is online. Enter polling loop:
 	while (TRUE) {

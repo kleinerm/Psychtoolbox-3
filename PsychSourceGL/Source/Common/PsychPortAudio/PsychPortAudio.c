@@ -38,6 +38,11 @@
 #include "pa_asio.h"
 #endif
 
+// Need to define these as they aren't defined in portaudio.h
+// for some mysterious reason:
+typedef void (*PaUtilLogCallback ) (const char *log);
+void PaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb);
+
 #define MAX_SYNOPSIS_STRINGS 50  
 
 //declare variables local to this file.  

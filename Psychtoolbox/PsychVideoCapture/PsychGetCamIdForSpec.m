@@ -87,7 +87,12 @@ for i=1:length(cams)
                 continue;
             end
         else
-            if isempty(strfind(cams(i).InputName, inputNameOrPort))
+            if isfield(cams(i), 'InputName') && isempty(strfind(cams(i).InputName, inputNameOrPort))
+                % InputName doesn't match: Reject.
+                continue;
+            end
+
+            if isfield(cams(i), 'DeviceName') && isempty(strfind(cams(i).DeviceName, inputNameOrPort))
                 % InputName doesn't match: Reject.
                 continue;
             end

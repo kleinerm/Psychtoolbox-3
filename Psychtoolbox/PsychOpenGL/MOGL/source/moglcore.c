@@ -204,7 +204,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 		// FreeGlut must be initialized, otherwise it will emergency abort the whole application!
 		int noargs = 1;
 		char dummyarg[] = "ptbmoglcore";
-		char *dummyargp = &dummyarg;
+		char *dummyargp = &dummyarg[0];
 		glutInit( &noargs, &dummyargp);
 		#endif
 		

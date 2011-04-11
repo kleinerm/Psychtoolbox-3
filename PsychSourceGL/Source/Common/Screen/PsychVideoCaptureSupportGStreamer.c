@@ -356,11 +356,11 @@ static void PsychEOSCallback(GstAppSink *sink, gpointer user_data)
 
 static void PsychProbeBufferProps(GstBuffer *videoBuffer, int *w, int *h, double *fps)
 {
-	const GstCaps          *caps;
+	GstCaps                *caps;
 	GstStructure	       *str;
 	gint		       rate1, rate2;
 	rate1 = rate2 = 0;
-    str = NULL;
+	str = NULL;
     
 	if (videoBuffer) {
 		caps = gst_buffer_get_caps(videoBuffer);
@@ -800,7 +800,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	GstElement              *videosource;
 	gint64			length_format;
 	GstPad			*pad, *peerpad;
-	const GstCaps		*caps;
+	GstCaps                 *caps;
 	GstStructure		*str;
 	gint			width, height;
 	gint			rate1, rate2;

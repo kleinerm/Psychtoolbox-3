@@ -67,6 +67,7 @@ int PsychBroadcastCondition(psych_condition* condition);
 int PsychWaitCondition(psych_condition* condition, psych_mutex* mutex);
 int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, double maxwaittimesecs);
 int PsychIsMSVista(void);
+int PsychIsCurrentThreadEqualToPsychThread(psych_thread threadhandle);
 
 //end include once
 #endif

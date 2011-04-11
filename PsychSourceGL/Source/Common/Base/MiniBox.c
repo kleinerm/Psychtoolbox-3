@@ -36,6 +36,7 @@ TO DO:
 */
 
 #include "Psych.h"
+#include <ctype.h>
 
 #define MAX_PRINTFEXIT_LEN  2000 
 
