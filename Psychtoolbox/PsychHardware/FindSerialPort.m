@@ -116,7 +116,7 @@ if IsWin
     % MS - Windows:
     
     % List of all candidates COM1 to COM256
-    ports = cellstr(num2str((1:256)', 'COM%i'));
+    ports = strtrim(cellstr(num2str((1:256)', 'COM%i')));
     
     % For OS/X and Linux, it is easy to get all existing ports, while for
     % Windows, there seems no way to get the list. So we try all possible ports
