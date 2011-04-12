@@ -75,6 +75,7 @@ typedef struct {
 	int frame_ready;                  // Signals availability of new frames for conversion into GL-Texture.
 	int grabber_active;               // Grabber running?
 	int recording_active;             // Movie file recording requested?
+	unsigned int recordingflags;      // recordingflags, as passed to 'OpenCaptureDevice'.
 	PsychRectType roirect;            // Region of interest rectangle - denotes subarea of full video capture area.
 	double avg_decompresstime;        // Average time spent in Quicktime/Sequence Grabber decompressor.
 	double avg_gfxtime;               // Average time spent in GWorld --> OpenGL texture conversion and statistics.
@@ -1282,7 +1283,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     if (!usecamerabin) {
 	g_object_set(G_OBJECT(camera), "video-sink", videosink, NULL);
     } else {
-	    g_object_set(G_OBJECT(camera), "viewfinder-sink", videosink, NULL);
+	    if (!(recordingflags & 4)) g_object_set(G_OBJECT(camera), "viewfinder-sink", videosink, NULL);
 
 	    // Start video recording if requested:
 	    if (!capdev->recording_active) {
@@ -1293,7 +1294,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    } else {
 		    filter_caps = gst_caps_new_simple("video/x-raw-yuv",
 						      "format", GST_TYPE_FOURCC,
-						      GST_MAKE_FOURCC('Y', '4', '2', 'B'), NULL);
+						      GST_MAKE_FOURCC('I', '4', '2', '0'), NULL);
 		    
 		    g_object_set(G_OBJECT(camera),
 				 "flags", 1+2+4,
@@ -1397,8 +1398,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     rate2 = 1;
     width = height = 0;
 
-    // Videotrack available?
-    if (vidcapRecordBANK[slotid].nrVideoTracks > 0) {
+    // Videotrack available and return of video data enabled?
+    if (!(recordingflags & 4) && (vidcapRecordBANK[slotid].nrVideoTracks > 0)) {
 	// Yes: Query video frame size and framerate of device:
 	peerpad = gst_pad_get_peer(pad);
 	caps = gst_pad_get_negotiated_caps(peerpad);
@@ -1422,6 +1423,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     // Assign new record in videobank:
     vidcapRecordBANK[slotid].camera = camera;
     vidcapRecordBANK[slotid].frameAvail = 0;
+    vidcapRecordBANK[slotid].recordingflags = recordingflags;
 
     // Our camera should be ready: Assign final handle.
     *capturehandle = slotid;
@@ -1445,7 +1447,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     width = height = 0;
 
     // Query true properties of attached video source:
-	videosource = NULL;
+    videosource = NULL;
 	
     if (!usecamerabin) {
 	    g_object_get (G_OBJECT(camera),
@@ -1600,12 +1602,16 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 		// MS-Windows. Therefore only wait for 1.1 msecs at most:
 		PsychTimedWaitCondition(&capdev->condition, &capdev->mutex, 0.0011);
 
-		while (capdev->frameAvail == 0) {
-			if (PsychPrefStateGet_Verbosity() > 5) {
-				printf("PTB-DEBUG: Waiting for real start: fA = %i pA = %i fps=%f\n", capdev->frameAvail, capdev->preRollAvail, capdev->fps);
-				fflush(NULL);
+		// Wait for first frame to become available, but only if return of videodata is
+		// actually enabled:
+		if (!(capdev->recordingflags & 4)) {
+			while (capdev->frameAvail == 0) {
+				if (PsychPrefStateGet_Verbosity() > 5) {
+					printf("PTB-DEBUG: Waiting for real start: fA = %i pA = %i fps=%f\n", capdev->frameAvail, capdev->preRollAvail, capdev->fps);
+					fflush(NULL);
+				}
+				PsychTimedWaitCondition(&capdev->condition, &capdev->mutex, 10.0);
 			}
-			PsychTimedWaitCondition(&capdev->condition, &capdev->mutex, 10.0);
 		}
 
 		// Ok, capture is now started:
@@ -1643,18 +1649,20 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 
 			// Stop isochronous data transfer from camera:
 			if (!PsychVideoPipelineSetState(camera, GST_STATE_PAUSED, 10.0)) {
-				PsychErrorExitMsg(PsychError_user, "Unable to stop video transfer on camera!");
+				if(PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: StopVideoCapture: Unable to stop video transfer on camera! Prepare for trouble!\n");
 			}
+			else {
+				// Capture stopped. More cleanup work:
+				PsychGSProcessVideoContext(capdev->VideoContext, FALSE);
 
-			PsychGSProcessVideoContext(capdev->VideoContext, FALSE);
-
-			// Drain any queued buffers:
-			while (!gst_app_sink_is_eos(GST_APP_SINK(capdev->videosink)) && (capdev->frameAvail > 0)) {
-				capdev->frameAvail--;
-				videoBuffer = gst_app_sink_pull_buffer(GST_APP_SINK(capdev->videosink));
-				gst_buffer_unref(videoBuffer);
-				videoBuffer = NULL;
-			};
+				// Drain any queued buffers:
+				while (!gst_app_sink_is_eos(GST_APP_SINK(capdev->videosink)) && (capdev->frameAvail > 0)) {
+					capdev->frameAvail--;
+					videoBuffer = gst_app_sink_pull_buffer(GST_APP_SINK(capdev->videosink));
+					gst_buffer_unref(videoBuffer);
+					videoBuffer = NULL;
+				}
+			}
 
 			// Ok, capture is now stopped.
 			capdev->frame_ready = 0;
@@ -1751,7 +1759,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 
     // If this is a pure audio capture with no video channels, we always return failed,
     // as those certainly don't have movie frames associated.
-    if (capdev->nrVideoTracks == 0) return((checkForImage) ? -1 : FALSE);
+    if ((capdev->recordingflags & 4) || (capdev->nrVideoTracks == 0)) return((checkForImage) ? -1 : FALSE);
 
     // Compute width and height for later creation of textures etc. Need to do this here,
     // so we can return the values for raw data retrieval:
