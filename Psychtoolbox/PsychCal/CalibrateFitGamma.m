@@ -49,6 +49,7 @@ function cal = CalibrateFitGamma(cal,nInputLevels)
 % 6/1010   dhb  Fix higher order fit in case where there are multiple gamma input columns.  Blew this the other day.
 % 6/11/10  dhb  Allow passing of weighting parameter as part of cal.describe.gamma structure.  Change functional form of betacdf
 %               to include wrapped power functions.
+% 4/12/11  dhb  For simplePower option, return vector of exponents in cal.describe.exponents.
 
 % Set nInputLevels
 if (nargin < 2 || isempty(nInputLevels))
@@ -64,9 +65,10 @@ switch(cal.describe.gamma.fitType)
             mGammaMassaged(:,i) = MakeGammaMonotonic(HalfRect(mGammaMassaged(:,i)));
         end
         fitType = 1;
-        [mGammaFit1a,cal.gammaInput] = FitDeviceGamma(...
+        [mGammaFit1a,cal.gammaInput,nil,theExponents] = FitDeviceGamma(...
             mGammaMassaged,cal.rawdata.rawGammaInput,fitType,nInputLevels);
         mGammaFit1 = mGammaFit1a;
+        cal.describe.gamma.exponents = theExponents;
         
     case 'crtLinear'
         % Set to zero the raw data we believe to be below reliable measurement
