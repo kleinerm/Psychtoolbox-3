@@ -77,7 +77,7 @@ try
     % Set text size for info text. 24 pixels is also good for Linux.
     Screen('TextSize', win, 24);
     
-    grabber = Screen('OpenVideoCapture', win, deviceId, roi, [], [], []); %, 'PS3Eye Camera');
+    grabber = Screen('OpenVideoCapture', win, deviceId, roi, [], [], [], []);
 %     brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness',383)
 %     exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure',130)
 %     gain = Screen('SetVideoCaptureParameter', grabber, 'Gain')
@@ -86,8 +86,10 @@ try
 %     Screen('SetVideoCaptureParameter', grabber, 'PrintParameters')
 %     vendor = Screen('SetVideoCaptureParameter', grabber, 'GetVendorname')
 %     model  = Screen('SetVideoCaptureParameter', grabber, 'GetModelname')
+%     fps  = Screen('SetVideoCaptureParameter', grabber, 'GetFramerate')
+%     roi  = Screen('SetVideoCaptureParameter', grabber, 'GetROI')
 
-
+for repcount=1:1
     Screen('StartVideoCapture', grabber, 30, 1);
 
     dstRect = [];
@@ -151,6 +153,8 @@ try
     end;
     telapsed = GetSecs - t %#ok<NOPRT>
     Screen('StopVideoCapture', grabber);
+end
+
     Screen('CloseVideoCapture', grabber);
     Screen('CloseAll');
     avgfps = count / telapsed %#ok<NOPRT,NASGU>
