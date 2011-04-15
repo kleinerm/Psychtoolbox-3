@@ -64,7 +64,9 @@ static char synopsisString[] =
 "cause some problems with some video codecs when recording to disk. A setting of 16 will perform most "
 "of the heavy work on a separate parallel background thread, utilizing multi-core machines better.\n"
 "A setting of 32 will try to select the highest quality codec for texture creation from captured video, "
-"instead of the normal quality codec.\n"
+"instead of the normal quality codec. A setting of 64 will return capture timestamps in the time base of "
+"the video engine (e.g., elapsed time since start of capture, or recording time in movie), instead of "
+"the default time base, which is regular GetSecs() time.\n"
 "\n"
 "'captureEngineType' This optional parameter allows selection of the video capture engine to use for this "
 "video source. Allowable values are currently 0, 1 and 2. Zero selects Apples Quicktime Sequence-Grabber API "
@@ -154,6 +156,11 @@ PsychError SCREENOpenVideoCapture(void)
 	// 0 = Record video, stream to disk immediately (slower, but unlimited recording duration).
 	// 1 = Record video, stream to memory, then at end of recording to disk (limited duration by RAM size, but faster).
 	// 2 = Record audio as well.
+	// 4 = Do not return capture data via Screen('GetCapturedImage') during video recording to disc.
+	// 8 = Avoid some performance optimizations which may cause trouble with some codecs.
+	// 16= Use multi-threading for automatic background processing and cpu offloading.
+	// 32= Return high quality textures via 'GetCapturedImage' if recording in parallel --> Quality tradeoff live feed vs. recording.
+	// 64= Return timestamps in engine time instead of GetSecs() time.
 	recordingflags = 0;
 	PsychCopyInIntegerArg(8, FALSE, &recordingflags);
 	
