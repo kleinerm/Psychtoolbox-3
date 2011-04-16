@@ -30,11 +30,11 @@
 
         * Videocapture -> Live texture display. All formats L, LA, RGB, RGBA, YUYV.
 
-        * Video-only recording, also combined with live texture display.
+        * Video-only recording, also optionally combined with live texture display.
 
-	* Video + audio recording (also with live display) on first start->stop iteration.
+	* Video + audio recording (also with optional live display).
 
-        * Pipeline timestamping always, GetSecs timestamping on first start->stop iteration.
+        * Timestamping, GetSecs or pipeline running time timebase.
 
         * Low latency (dropframes) capture, and non-dropframes capture.
 
@@ -48,18 +48,6 @@
 	TODO:
 
 	The following problems/limitations exist, which need to be fixed asap:
-
-	* Video capture timestamps in GetSecs() time (aka !recordingflags & 64) only
-	  work correctly on first Startcapture->Stopcapture iteration after OpenVideocapture.
-          on successive Start->Stop iterations, timestamps freeze. Only close->reopen of
-          device recovers. Timestamps & 64 in pipeline time do always work correctly.
-
-        * Selection of arbitrary ROI's doesn't work --> format negotiation failure.
-
-	* Video capture / recording / recording + capture works pretty well, but
-          as soon as audio is also recorded, sometimes there are sync or video truncation
-          problems on all but the 1st start->stop cycle. Need to close and reopen device
-          to recover.
 
         * Some codecs (e.g., huffyuv) don't work yet. Some others show low quality or
           performance. Need to optimize parameters. Need to provide way to change codec
@@ -97,10 +85,11 @@ typedef struct {
 	int preRollAvail;
 
 	GstElement *camera;               // Ptr to a GStreamer camera object that holds the internal state for such cams.
-	GMainLoop *VideoContext;
-	GstElement *videosink;
-	GstElement *videosource;
-	GstElement *videoenc;
+	GMainLoop *VideoContext;          // Message bus context for delivery of status/error/warning messages by GStreamer.
+	GstElement *videosink;            // Our appsink for retrieval of live video feeds --> PTB texture conversion.
+	GstElement *videosource;          // The videosource, encapsulating the actual video capture device.
+	GstElement *videoenc;             // Video encoder for video recording.
+	GstElement *videorate_filter;     // Video framerate converter to guarantee constant framerate and a/v sync for recording.
 	int nrAudioTracks;
 	int nrVideoTracks;
 	psych_uint8	*frame;		  // Ptr to a psych_uint8 matrix which contains the most recently captured/dequeued frame.
@@ -936,7 +925,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		twidth  = -1;
 		theight = -1;
 
-		videosource_filter = gst_element_factory_make ("videocrop", "ptbvideosourcefilter");
+		/* TODO FIXME: Does not work for some reason: */
+		// videosource_filter = gst_element_factory_make ("videocrop", "ptbvideosourcefilter");
 		if (videosource_filter) {
 			g_object_set(G_OBJECT(videosource_filter),
 				     "left",   (int) capturerectangle[kPsychLeft],
@@ -945,6 +935,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 				     "bottom", (int) capturerectangle[kPsychBottom],
 				     NULL);
 		} else {
+			// Disable capturerectangle, so we revert to full device default resolution:
+			capturerectangle = NULL;
 			if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Selection of specified video ROI not supported by setup. Using full resolution.\n");
 		}
 	}
@@ -1033,7 +1025,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		// Assign name and configuration parameters of video capture device to open:
 		g_object_set(G_OBJECT(camera), "uri", config, NULL);
     }
-	else {
+    else {
 		// High performance path with camerabin. Build an appropriate video source and set up its input:
 		videosource = NULL;
 		
@@ -1359,8 +1351,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    capdev->recording_active = FALSE;
     }
 
-    // Assign a fakesink named "ptbsink0" as destination video-sink for
-    // all video content. This allows us to get hold of the video frame buffers for
+    // Create a appsink named "ptbsink0" for attachment as the destination video-sink for
+    // all video content. This allows us to get hold of the videoframe buffers for
     // converting them into PTB OpenGL textures:
     videosink = gst_element_factory_make ("appsink", "ptbsink0");
     if (!videosink) {
@@ -1430,18 +1422,6 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     } else {
 	    // Attach our appsink as videosink:
 	    g_object_set(G_OBJECT(camera), "viewfinder-sink", videosink, NULL);
-/*
-	    if (!(recordingflags & 4)) {
-		// Return of live captured data requested. Attach our appsink videosink:
-		g_object_set(G_OBJECT(camera), "viewfinder-sink", videosink, NULL);
-	    }
-	    else {
-		// Only disc recording, no data return: Attach a fakesink to effectively
-		// disable this:
-		videosink = gst_element_factory_make ("fakesink", "ptbsink0");
-		g_object_set(G_OBJECT(camera), "viewfinder-sink", videosink, NULL);
-	    }
-*/
 
 	    // Setup pipeline for video recording or pure capture:
 	    if (!capdev->recording_active) {
@@ -1465,6 +1445,42 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		    gst_caps_unref(filter_caps);
 	    }
 
+	    // Create and use a videorate converter always when video recording is active (because without it
+	    // we can get choppy or truncated video recordings and/or audio-video sync problems), and
+	    // optionally in pure video feedback mode if explicitely requested by usercode via
+	    // recordingflags & 128, as this is usually not what one wants for live video processing or
+	    // feedback.
+	    if (capdev->recording_active || (recordingflags & 128)) {
+		    // Attach a videorate converter as source filter. It should take care of adjusting
+		    // for fluctuating framerates from the videosource device by dropping or duplicating
+		    // videoframes and adjusting timestamps as needed to generate a video stream with the
+		    // selected target output framerate:
+		    capdev->videorate_filter = gst_element_factory_make ("videorate", "ptbvideoratefilter");
+		    if (capdev->videorate_filter == NULL) {
+			    if (PsychPrefStateGet_Verbosity() > 1) {
+				    printf("PTB-WARNING: Could not create video rate conversion filter. Therefore can't compensate\n");
+				    printf("PTB-WARNING: for possible fluctuations in videocapture framerate. This can cause\n");
+				    printf("PTB-WARNING: audio-video sync problems or wrong timing/speed in videostream!\n");
+			    }
+		    }
+		    else {
+			    // By default we apply the videorate converter upstream at the videosource,
+			    // so it affects both video recording and live video feedback. Usercode can
+			    // restrict conversion to the recorded video stream only by setting
+			    // recordingflags & 256:
+			    if (recordingflags & 256) {
+				    // Attach to video-post-processing -- immediately before video encoder:
+				    g_object_set(G_OBJECT(camera), "video-post-processing", capdev->videorate_filter, NULL);
+				    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Restricting video framerate conversion to recorded video.\n"); 
+			    }
+			    else {
+				    // Attach as video-source-filter -- upstream right at the source:
+				    videosource_filter = capdev->videorate_filter;
+				    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Video framerate conversion applies to recorded video and live video.\n"); 
+			    }
+		    }
+	    }
+
 	    // Specific capture resolution requested?
 	    if ((twidth > 0) && (theight > 0)) {
 		// Yes: Request it:
@@ -1478,8 +1494,10 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		// Yes: Operate at default video source resolution,
 		// i.e., leave it at its defaults. Use cropping to
 		// get our ROI.
-		if (videosource_filter) g_object_set(G_OBJECT(camera), "video-source-filter", videosource_filter, NULL);
 	    }
+
+	    // Attach videosource filter, if any:
+	    if (videosource_filter) g_object_set(G_OBJECT(camera), "video-source-filter", videosource_filter, NULL);
     }
 
     gst_caps_unref(colorcaps);
@@ -1509,6 +1527,22 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
     PsychGSProcessVideoContext(vidcapRecordBANK[slotid].VideoContext, FALSE);
 
+    if ((capdev->recording_active) && (recordingflags & 4)) {
+	    // No live feedback (flags 4) implies no preroll (flags 8):
+	    // This because a preroll would bring the pipeline from null state to
+	    // at least ready state and thereby prevent us from detaching our
+	    // appsink and replacing it with a fakesink. This would cause our
+	    // appsink to collect video buffers which wouldn't get pulled/drained,
+	    // effectively filling up all memory with "leaked" buffers until
+	    // out of memory abort happens after a minute or so.
+	    //
+	    // Not prerolling -> pipeline in null state at fakesink attach time
+	    // -> problem solved.
+	    recordingflags |= 8;
+
+	    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Pipeline preroll skipped because only harddisc recording (recordingflags & 4).\n");
+    }
+
     // Only preroll if prerolling not disabled by recordingflag 8
     if (!(recordingflags & 8)) {
 	    // Ready the pipeline:
@@ -1519,8 +1553,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
 	    // Preload / Preroll the pipeline:
 	    if (!PsychVideoPipelineSetState(camera, GST_STATE_PLAYING, 30.0)) {
-	    PsychGSProcessVideoContext(vidcapRecordBANK[slotid].VideoContext, TRUE);
-	    PsychErrorExitMsg(PsychError_user, "In OpenVideoCapture: Opening the video capture device failed during pipeline preroll ready->playing. Reason given above.");
+		    PsychGSProcessVideoContext(vidcapRecordBANK[slotid].VideoContext, TRUE);
+		    PsychErrorExitMsg(PsychError_user, "In OpenVideoCapture: Opening the video capture device failed during pipeline preroll ready->playing. Reason given above.");
 	    }
     }
 
@@ -1589,8 +1623,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     // Increase counter of open capture devices:
     numCaptureRecords++;
 
-    // Set image size:
-    if (videosource_filter) {
+    // Set image size: Based on capturerectangle if real ROI is spec'd.
+    if (capturerectangle && ((capturerectangle[kPsychLeft] !=0) || (capturerectangle[kPsychTop] !=0))) {
 	    capdev->width = capturerectangle[kPsychRight] - capturerectangle[kPsychLeft];
 	    capdev->height = capturerectangle[kPsychBottom] - capturerectangle[kPsychTop];
     } else {
@@ -1721,7 +1755,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     }
 
     // Create capture ROI:
-    if (videosource_filter) {
+    if (capturerectangle && ((capturerectangle[kPsychLeft] !=0) || (capturerectangle[kPsychTop] !=0))) {
 	    PsychCopyRect(capdev->roirect, capturerectangle);
     } else {
 	    PsychMakeRect(capdev->roirect, 0, 0, capdev->width, capdev->height);
@@ -1743,6 +1777,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    g_object_set(G_OBJECT(camera), "viewfinder-sink", videosink, NULL);
     }
 
+    /* Obsolete on Linux, hopefully also on Windows:
     // Make sure our capture timestamps are in system time (GetSecs() reference time)
     // unless recordingflags 64 are set, in which case timestamps are in pipeline
     // running time, or whatever GStreamer finds convenient.
@@ -1751,6 +1786,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    gst_element_set_base_time(camera, GST_CLOCK_TIME_NONE);
 	    gst_element_set_start_time(camera, GST_CLOCK_TIME_NONE);
     }
+    */
 
     if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Camera successfully opened... [Used width x height = %i x %i]\n", capdev->width, capdev->height);
 
@@ -1772,6 +1808,7 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 	GstElement		*camera = NULL;
 	GstBuffer               *videoBuffer = NULL;
 	GValue                  fRate = { 0, };
+	guint64                 nrInFrames, nrOutFrames, nrDroppedFrames, nrDuplicatedFrames;
 	int dropped = 0;
 	float framerate = 0;
 
@@ -1809,15 +1846,6 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 			g_object_set(G_OBJECT(capdev->videoenc), "keyframe-auto", FALSE, NULL);
 			g_object_set(G_OBJECT(capdev->videoenc), "keyframe-force", (int)(capturerate + 0.5), NULL);
 		}
-
-		/*
-		// Not effective, therefore disabled for now...
-		if (!(recordingflags & 64)) {
-			// Set defined start time for pipeline - Used for cts timestamps:
-			gst_element_set_base_time(camera, GST_CLOCK_TIME_NONE);
-			gst_element_set_start_time(camera, GST_CLOCK_TIME_NONE);
-		}
-		*/
 
 		// Start the video capture for this camera.
 		if (!PsychVideoPipelineSetState(camera, GST_STATE_READY, 10.0)) {
@@ -1923,6 +1951,18 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 	else {
 		// Stop capture:
 		if (capdev->grabber_active) {
+
+			// Video framerate converter attached?
+			if (capdev->videorate_filter) {
+				// Query its stats in dropped and duplicated frames:
+				g_object_get(G_OBJECT(capdev->videorate_filter),
+					     "in", &nrInFrames,
+					     "out", &nrOutFrames,
+					     "drop", &nrDroppedFrames,
+					     "duplicate", &nrDuplicatedFrames,
+					     NULL);
+			}
+
 			// Stop video recording if requested:
 			if (usecamerabin && capdev->recording_active) {
 				PsychGSProcessVideoContext(capdev->VideoContext, FALSE);
@@ -1949,6 +1989,7 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 
 				if(PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: StopVideoCapture: Videorecording stopped.\n");
 			}
+
 
 			// Stop pipeline, bring it back into READY state:
 			if(PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: StopVideoCapture: Fully stopping and shutting down capture pipeline.\n");
@@ -1986,9 +2027,15 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 			if(PsychPrefStateGet_Verbosity() > 2){
 				// Output count of dropped frames:
 				if ((dropped=capdev->nr_droppedframes) > 0) {
-					printf("PTB-INFO: Video capture dropped %i frames on device %i to keep capture running in sync with realtime.\n", dropped, capturehandle); 
+					printf("PTB-INFO: Video live capture dropped at least %i frames on device %i to keep capture running in sync with realtime.\n", dropped, capturehandle); 
 				}
-				
+
+				if (capdev->videorate_filter) {
+					printf("PTB-INFO: Framerate compensation received %i frames, delivered %i frames, had to drop %i frames and duplicate %i frames\n",
+					       (int) nrInFrames, (int) nrOutFrames, (int) nrDroppedFrames, (int) nrDuplicatedFrames);
+					printf("PTB-INFO: to compensate for framerate fluctuations or mismatch between expected vs. real framerate on device %i.\n", capturehandle);
+				}
+
 				if (capdev->nrframes>0) capdev->avg_decompresstime/= (double) capdev->nrframes;
 				printf("PTB-INFO: Average time spent in video decompressor (waiting/polling for new frames) was %f milliseconds.\n", (float) capdev->avg_decompresstime * 1000.0f);
 				if (capdev->nrgfxframes>0) capdev->avg_gfxtime/= (double) capdev->nrgfxframes;
@@ -2222,10 +2269,16 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 	    input_image = (unsigned char*) (GLuint*) GST_BUFFER_DATA(videoBuffer);
 	    
 	    // Assign pts presentation timestamp in pipeline stream time and convert to seconds:
-	    capdev->current_pts = (double) GST_BUFFER_TIMESTAMP(videoBuffer) / (double) 1e9;
+	    if (capdev->recordingflags & 64) {
+		    // Retrieve raw buffer timestamp - pipeline running time.
+		    capdev->current_pts = (double) GST_BUFFER_TIMESTAMP(videoBuffer) / (double) 1e9;
+	    } else {
+		    // Add base time to convert running time buffer timestamp into absolute time:
+		    capdev->current_pts = (double) (GST_BUFFER_TIMESTAMP(videoBuffer) + gst_element_get_base_time(capdev->camera)) / (double) 1e9;
+	    }
 
-        // Apply corrective offset for GStreamer clock base zero point:
-        capdev->current_pts+= gs_startupTime;
+	    // Apply corrective offset for GStreamer clock base zero point:
+	    capdev->current_pts+= gs_startupTime;
 
 	    deltaT = 0.0;
 	    if (GST_CLOCK_TIME_IS_VALID(GST_BUFFER_DURATION(videoBuffer)))
