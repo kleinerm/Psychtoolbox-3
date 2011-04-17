@@ -225,7 +225,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	GLenum                          texturetarget, oldtexturetarget;
 	GLenum							textureHint;
 	double							sourceWidth, sourceHeight;
-	GLint                           glinternalFormat, gl_realinternalformat = 0;
+	GLint                           glinternalFormat = 0, gl_realinternalformat = 0;
 	static GLint                    gl_lastrequestedinternalFormat = 0;
 	GLint							gl_rbits=0, gl_gbits=0, gl_bbits=0, gl_abits=0, gl_lbits=0;
 	long							screenWidth, screenHeight;
@@ -599,7 +599,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	}
 
 	// New internal format requested?
-	if ((!avoidCPUGPUSync || (verbosity > 10)) && (gl_lastrequestedinternalFormat != glinternalFormat && !recycle)) {
+	if ((!avoidCPUGPUSync || (verbosity > 10)) && (!recycle && (gl_lastrequestedinternalFormat != glinternalFormat))) {
 		// Seems so...
 		gl_lastrequestedinternalFormat = glinternalFormat;
 		

@@ -325,7 +325,8 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
  *
  *  capturehandle = Grabber to start-/stop.
  *  playbackrate = zero == Stop capture, non-zero == Capture
- *  dropframes = Currently ignored.
+ *  dropframes = At 'start': Decide if low latency capture shall be used. At 'stop' If zero, don't
+ *               discard pending buffers in internal capture queue.
  *  startattime = Deadline (in system time) to wait for before real start of capture.
  *  Returns Number of dropped frames during capture.
  */

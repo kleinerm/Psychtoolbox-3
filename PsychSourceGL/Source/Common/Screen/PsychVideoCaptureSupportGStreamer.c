@@ -74,8 +74,8 @@
 static psych_bool usecamerabin = TRUE;
 
 #define PSYCH_MAX_VIDSRC    256
-PsychVideosourceRecordType	*devices = NULL;
-int							ntotal = 0;
+PsychVideosourceRecordType *devices = NULL;
+int ntotal = 0;
 
 // Record which defines all state for a capture device:
 typedef struct {
@@ -92,6 +92,7 @@ typedef struct {
 	GstElement *videosource;          // The videosource, encapsulating the actual video capture device.
 	GstElement *videoenc;             // Video encoder for video recording.
 	GstElement *videorate_filter;     // Video framerate converter to guarantee constant framerate and a/v sync for recording.
+	GstClockTime lastSavedBaseTime;   // Last time the pipeline was put into PLAYING state. Saved at StopCapture time before stop.
 	int nrAudioTracks;
 	int nrVideoTracks;
 	psych_uint8 *frame;		  // Ptr to a psych_uint8 matrix which contains the most recently captured/dequeued frame.
@@ -130,6 +131,8 @@ double gs_startupTime = 0.0;
 
 // Forward declaration of internal helper function:
 void PsychGSDeleteAllCaptureDevices(void);
+int PsychGSDrainBufferQueue(PsychVidcapRecordType* capdev, int numFramesToDrain, unsigned int flags);
+
 
 /*    PsychGetGSVidcapRecord() -- Given a handle, return ptr to video capture record.
  *    --> Internal helper function of PsychVideoCaptureSupport.
@@ -508,25 +511,27 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle)
 	// Make sure GStreamer is ready:
 	PsychGSCheckInit("videocapture");
 
-	// Stop capture immediately if it is still running:
-	PsychGSVideoCaptureRate(capturehandle, 0, 0, NULL);
+	if (capdev->camera) {
+		// Stop capture immediately if it is still running:
+		PsychGSVideoCaptureRate(capturehandle, 0, 0, NULL);
 	
-	// Close & Shutdown camera, release ressources:
-	// Stop video capture immediately:
-	PsychVideoPipelineSetState(capdev->camera, GST_STATE_NULL, 20.0);
-	
-	// Delete camera for this handle:
-	gst_object_unref(GST_OBJECT(capdev->camera));
-	capdev->camera=NULL;
-	
+		// Close & Shutdown camera, release ressources:
+		// Stop video capture immediately:
+		PsychVideoPipelineSetState(capdev->camera, GST_STATE_NULL, 20.0);
+
+		// Delete camera for this handle:
+		gst_object_unref(GST_OBJECT(capdev->camera));
+		capdev->camera=NULL;
+	}
+
 	// Delete video context:
+	if (capdev->VideoContext) g_main_loop_unref(capdev->VideoContext);
 	capdev->VideoContext = NULL;
 	
 	PsychDestroyMutex(&capdev->mutex);
 	PsychDestroyCondition(&capdev->condition);
 	
 	capdev->videosink = NULL;
-	capdev->camera = NULL;
 	
 	if (capdev->targetmoviefilename) free(capdev->targetmoviefilename);
 	capdev->targetmoviefilename = NULL;
@@ -2098,6 +2103,29 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     return(TRUE);
 }
 
+/* Internal helper:
+ * Drain up to 'numFramesToDrain' videobuffers from the videosink of 'capdev'.
+ * 'flags' modify drain behaviour. Unused so far.
+ * Return number of drained buffers.
+ */
+int PsychGSDrainBufferQueue(PsychVidcapRecordType* capdev, int numFramesToDrain, unsigned int flags)
+{
+	GstBuffer *videoBuffer = NULL;
+	int drainedCount = 0;
+
+	// Drain while anything available, but at most numFramesToDrain frames.
+	while (GST_IS_APP_SINK(capdev->videosink) && // !gst_app_sink_is_eos(GST_APP_SINK(capdev->videosink))
+		&& (capdev->frameAvail > 0) && (numFramesToDrain > drainedCount)) {
+		capdev->frameAvail--;
+		videoBuffer = gst_app_sink_pull_buffer(GST_APP_SINK(capdev->videosink));
+		gst_buffer_unref(videoBuffer);
+		videoBuffer = NULL;
+		drainedCount++;
+	}
+
+	return(drainedCount);
+}
+
 /* CHECKED
 *  PsychGSVideoCaptureRate() - Start- and stop video capture.
 *
@@ -2105,6 +2133,10 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 *  playbackrate = zero == Stop capture, non-zero == Capture
 *  dropframes = 0 - Always deliver oldest frame in DMA ringbuffer. 1 - Always deliver newest frame.
 *               --> 1 == drop frames in ringbuffer if behind -- low-latency capture.
+*
+*               If dropframes is 1 at 'stop' time, then discard all pending buffers in queue,
+*               otherwise retain them so they can be fetched after stop.
+*
 *  startattime = Deadline (in system time) for which to wait before real start of capture.
 *  Returns Number of dropped frames during capture.
 */
@@ -2115,6 +2147,7 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 	GValue                  fRate = { 0, };
 	guint64                 nrInFrames, nrOutFrames, nrDroppedFrames, nrDuplicatedFrames;
 	int dropped = 0;
+	int drainedCount;
 	float framerate = 0;
 
 	// Retrieve device record for handle:
@@ -2135,23 +2168,16 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 		capdev->last_pts = -1.0;
 		capdev->nr_droppedframes = 0;
 		capdev->frame_ready = 0;
-		
+		capdev->lastSavedBaseTime = 0;
+
 		// Framedropping in the sense we define it is not supported by libGStreamer, so we implement it ourselves.
 		// Store the 'dropframes' flag in our capdev struct, so the PsychGSGetTextureFromCapture()
 		// knows how to handle this:
 		capdev->dropframes = (dropframes > 0) ? 1 : 0;
 
-		// TODO FIXME: Should this go somewhere else and be optional / configurable?
-		// Enforce a keyframe at least once every second of capture time, aka all fps frames,
-		// disable automatic placement of key frames:
-/*		if (usecamerabin && capdev->recording_active) {
-			g_object_set(G_OBJECT(capdev->videoenc), "drop-frames", FALSE, NULL);
-			g_object_set(G_OBJECT(capdev->videoenc), "speed-level", 0, NULL);
-			g_object_set(G_OBJECT(capdev->videoenc), "quality", 30, NULL);
-			g_object_set(G_OBJECT(capdev->videoenc), "keyframe-auto", FALSE, NULL);
-			g_object_set(G_OBJECT(capdev->videoenc), "keyframe-force", (int)(capturerate + 0.5), NULL);
-		}
-*/
+		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: StartVideoCapture: Draining any queued stale video buffers before start of capture.\n");
+		drainedCount = PsychGSDrainBufferQueue(capdev, INT_MAX, 0);
+		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: StartVideoCapture: Drain of %i buffers completed.\n", drainedCount);
 
 		// Only do state transitions for camerabin:
 		if (usecamerabin) {
@@ -2264,16 +2290,17 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 		}
 		*/
 
-		if(PsychPrefStateGet_Verbosity()>1) {
-			printf("PTB-INFO: Capture started on device %i - Input video resolution width x height = %i x %i - Framerate: %f fps.\n",
+		if(PsychPrefStateGet_Verbosity() > 3) {
+			printf("PTB-INFO: Capture started on device %i - Input video resolution %i x %i - Framerate: %f fps.\n",
 			       capturehandle, capdev->width, capdev->height, capdev->fps);
-			printf("PTB-INFO: Returned video image textures width x height = %i x %i.\n",
-			       capdev->frame_width, capdev->frame_height);
 		}
 	}
 	else {
 		// Stop capture:
 		if (capdev->grabber_active) {
+
+			// Store a backup copy of pipeline basetime for use in offline frame fetch:
+			capdev->lastSavedBaseTime = gst_element_get_base_time(camera);
 
 			// Video framerate converter attached?
 			if (capdev->videorate_filter) {
@@ -2325,16 +2352,13 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 			else {
 				// Capture stopped. More cleanup work:
 				PsychGSProcessVideoContext(capdev->VideoContext, FALSE);
+				if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: StopVideoCapture: Stopped.\n");
 
-				// Drain any queued buffers:
-				if(PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: StopVideoCapture: Stopped. Draining any queued stale video buffers.\n");
-				while (GST_IS_APP_SINK(capdev->videosink) && !gst_app_sink_is_eos(GST_APP_SINK(capdev->videosink)) && (capdev->frameAvail > 0)) {
-					capdev->frameAvail--;
-					videoBuffer = gst_app_sink_pull_buffer(GST_APP_SINK(capdev->videosink));
-					gst_buffer_unref(videoBuffer);
-					videoBuffer = NULL;
+				// Drain any queued buffers, if requested:
+				if (dropframes) {
+					drainedCount = PsychGSDrainBufferQueue(capdev, INT_MAX, 0);
+					if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: StopVideoCapture: Drain of %i buffers completed. GStreamer idle, cleaning up...\n", drainedCount);
 				}
-				if(PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: StopVideoCapture: Drain completed. GStreamer idle, cleaning up...\n");
 			}
 
 			// Ok, capture is now stopped.
@@ -2347,7 +2371,7 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 				capdev->scratchbuffer = NULL;
 			}
 
-			if(PsychPrefStateGet_Verbosity() > 2){
+			if (PsychPrefStateGet_Verbosity() > 3) {
 				// Output count of dropped frames:
 				if ((dropped=capdev->nr_droppedframes) > 0) {
 					printf("PTB-INFO: Video live capture dropped at least %i frames on device %i to keep capture running in sync with realtime.\n", dropped, capturehandle); 
@@ -2399,11 +2423,12 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 								 PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer)
 {
     PsychVidcapRecordType *capdev;
-    GstElement			*camera;
-    GstBuffer                   *videoBuffer = NULL;
-    gint64		        bufferIndex;
-    double                      deltaT = 0;
-    GstEvent                    *event;
+    GstElement *camera;
+    GstBuffer *videoBuffer = NULL;
+    gint64 bufferIndex;
+    double deltaT = 0;
+    GstEvent *event;
+    GstClockTime baseTime;
 
     int waitforframe;
     GLuint texid;
@@ -2567,14 +2592,16 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     }
 	
     // We're here with at least one frame available and the mutex lock held.
+    if (PsychPrefStateGet_Verbosity()>6) printf("PTB-DEBUG: Pulling from videosink, %d buffers avail...\n", capdev->frameAvail);
 
     // One less frame available after our fetch:
     capdev->frameAvail--;
-    if (PsychPrefStateGet_Verbosity()>6) printf("PTB-DEBUG: Pulling from videosink, %d buffers avail...\n", capdev->frameAvail);
     
-    // Clamp frameAvail to queue lengths:
+    // Clamp frameAvail to queue lengths, unless queue length is set to zero, which means "unlimited":
     if ((int) gst_app_sink_get_max_buffers(GST_APP_SINK(capdev->videosink)) < capdev->frameAvail) {
-	    capdev->frameAvail = gst_app_sink_get_max_buffers(GST_APP_SINK(capdev->videosink));
+	    if (gst_app_sink_get_max_buffers(GST_APP_SINK(capdev->videosink)) > 0) {
+		    capdev->frameAvail = gst_app_sink_get_max_buffers(GST_APP_SINK(capdev->videosink));
+	    }
     }
     if (PsychPrefStateGet_Verbosity()>6) printf("PTB-DEBUG: Post-Pulling from videosink, %d buffers avail...\n", capdev->frameAvail);
     
@@ -2597,7 +2624,10 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 		    capdev->current_pts = (double) GST_BUFFER_TIMESTAMP(videoBuffer) / (double) 1e9;
 	    } else {
 		    // Add base time to convert running time buffer timestamp into absolute time:
-		    capdev->current_pts = (double) (GST_BUFFER_TIMESTAMP(videoBuffer) + gst_element_get_base_time(capdev->camera)) / (double) 1e9;
+		    baseTime = gst_element_get_base_time(capdev->camera);
+		    if (baseTime == 0) baseTime = capdev->lastSavedBaseTime;
+
+		    capdev->current_pts = (double) (GST_BUFFER_TIMESTAMP(videoBuffer) + baseTime) / (double) 1e9;
 	    }
 
 	    // Apply corrective offset for GStreamer clock base zero point:
@@ -2840,6 +2870,15 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 		PsychCopyOutCharArg(1, FALSE, capdev->cameraFriendlyName);
 		return(0);
 	}
+
+/*		if (usecamerabin && capdev->recording_active) {
+			g_object_set(G_OBJECT(capdev->videoenc), "drop-frames", FALSE, NULL);
+			g_object_set(G_OBJECT(capdev->videoenc), "speed-level", 0, NULL);
+			g_object_set(G_OBJECT(capdev->videoenc), "quality", 30, NULL);
+			g_object_set(G_OBJECT(capdev->videoenc), "keyframe-auto", FALSE, NULL);
+			g_object_set(G_OBJECT(capdev->videoenc), "keyframe-force", (int)(capturerate + 0.5), NULL);
+		}
+*/
 	
 //	if (strstr(pname, "Brightness")!=0) {
 //		assigned = true;

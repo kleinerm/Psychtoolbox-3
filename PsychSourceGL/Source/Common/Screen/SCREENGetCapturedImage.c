@@ -46,9 +46,15 @@ static char synopsisString[] =
 "expected to be of sufficient size, otherwise a crash will occur (Experts only!).\n"
 "A 'specialmode' == 8 will require high-precision drawing, see the specialFlag == 2 setting in Screen('MakeTexture') for a "
 "description of its meaning. \n"
-"'capturetimestamp' contains the exact system time when the returned image was captured. The (optional) return value 'droppedcount' contains the "
-"number of captured frames that had to be dropped to keep in sync with realtime or due to internal shortage of buffer memory. The (optional) return "
-"value 'summed_intensityOrRawImageMatrix' contains the sum of all pixel intensity values of all channels of the image - some measure of overall brightness. "
+"'capturetimestamp' contains the system time when the returned image was captured. This timestamp has been verified to "
+"be very precise on Linux with suitable professional IIDC 1394 firewire cameras when the dc1394 capture engine is used. "
+"The same may be true for OS/X, although this hasn't been extensively tested. If other operating systems, capture engines "
+"or cameras are used, the timestamp may become just a rough approximation of unknown precision.\n"
+"The (optional) return value 'droppedcount' contains the "
+"number of captured frames that had to be dropped to keep in sync with realtime or due to internal shortage of buffer memory. "
+"If you didn't specify the 'dropFrames' flag in Screen('StartVideoCapture') then it will report the number of pending "
+"buffers which can be fetched, i.e., how many more buffers are queued up for delivery.\n"
+"The (optional) return value 'summed_intensityOrRawImageMatrix' contains the sum of all pixel intensity values of all channels of the image - some measure of overall brightness. "
 "Only query this value if you really need it, its computation is time consuming.";
 
 static char seeAlsoString[] = "CloseVideoCapture StartVideoCapture StopVideoCapture GetCapturedImage";

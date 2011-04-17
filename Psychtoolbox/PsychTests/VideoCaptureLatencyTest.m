@@ -78,7 +78,7 @@ end
     % Open default video capture device:
     grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480], depth);
     
-    % Start video capture: We request at least a 100 Hz capture rate and lowlatency (=1) mode:
+    % Start video capture: We request at least a 30 Hz capture rate and lowlatency (=1) mode:
     % Requested start time is 4 seconds from now:
     [fps capturestarttime]=Screen('StartVideoCapture', grabber, rate, 1, GetSecs + 4);
     fps
@@ -86,7 +86,7 @@ end
     oldpts = 0;
     count = 0;
     t=GetSecs;
-    while (GetSecs - t) < 600 
+    while (GetSecs - t) < 600
         if KbCheck
             break;
         end;
@@ -134,7 +134,7 @@ end
     for reps=1:5
     % Ok, preview finished. Cam should now point to the screen and
     % we can start the latency measurement procedure:
-    ntrials = 100;
+    ntrials = 10;
     tavgdelay = 0;
     threshold = 0;
     
