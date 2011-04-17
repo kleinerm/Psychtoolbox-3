@@ -29,7 +29,12 @@ static char synopsisString[] = "Start video capture device specified by 'capture
                                "is requested to operate at 25 Hz. The real capture rate may differ from the "
                                "requested one, depending on the capabilities of your capture device. PTB tries "
                                "to select the closest supported framerate that is at least as high as the requested "
-                               "one. The real capture rate is returned as return argument 'fps'. "
+                               "one. The real capture rate is returned as return argument 'fps'.\n"
+			       "If you pass the special value realmax, then PTB will try to select the highest "
+			       "framerate that your capture device supports at the given video resolution and other settings.\n"
+			       "Some capture devices may only support a small set of framerates and may fail to start "
+			       "completely if you or PTB on your behalf request a unsupported 'captureRateFPS'. You may "
+			       "need to tinker a bit here, the auto-selection of framerates is not foolproof.\n"
                                "If 'dropframes' is provided and set to 1, "
                                "the device is requested to always deliver the most recently acquired frame, "
                                "dropping previously captured but not delivered frames if necessary. The default "
@@ -43,7 +48,12 @@ static char synopsisString[] = "Start video capture device specified by 'capture
                                "of capture. This provides a means of soft-synchronizing start of capture with external events. "
                                "The optional return value 'starttime' contains the best estimate (in system time) of when "
                                "video capture was really started. Accuracy of 'startAt' and 'starttime' is highly dependent "
-                               "on operating system and capture device. It is assumed to be very accurate on Linux. ";
+                               "on operating system and capture device. It is assumed to be very accurate on Linux with the "
+			       "dc1394 capture engine and professional class IIDC 1394 firewire cameras. No such guarantees "
+			       "are possible on other operating systems or with other hardware. Specifically standard consumer "
+			       "DV cameras or USB based webcams or built in cameras in Laptops (iSight et al.) may have rather "
+			       "unpredictable and variable latency and start timing. Choose a pro operating system and pro "
+			       "equipment if you really need timing precision!\n";
 
 static char seeAlsoString[] = "CloseVideoCapture StartVideoCapture StopVideoCapture GetCapturedImage";
 	 
@@ -91,4 +101,3 @@ PsychError SCREENStartVideoCapture(void)
     // Ready!    
     return(PsychError_none);
 }
-

@@ -1630,7 +1630,7 @@ int PsychQTVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 		}
 	}
 
-	framerate = FloatToFixed((float) capturerate);
+	framerate = FloatToFixed((float) ((capturerate == DBL_MAX) ? 0 : capturerate));
 	error = SGSetFrameRate(vidcapRecordBANK[capturehandle].sgchanVideo, framerate);
 	if ((noErr != error) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: SGSetFrameRate() reports error %i in start function.\n", (int) error);
 

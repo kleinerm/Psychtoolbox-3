@@ -2172,13 +2172,23 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 		// Setup of capture framerate & resolution:
 		if (usecamerabin) {
 			// Set requested capture/recording video resolution and framerate:
+			// Map special capturerate value DBL_MAX to a fps nominator of zero. This
+			// asks the engine to capture at the maximum supported framerate for given
+			// format and resolution:
 			g_signal_emit_by_name (G_OBJECT(camera),
 					       "set-video-resolution-fps", capdev->width, capdev->height,
-					       (int)(capturerate + 0.5), 1);
+					       ((capturerate < DBL_MAX) ? (int)(capturerate + 0.5) : 0), 1);
 		}
 		else {
 			// Set playback rate in non camerabin configuration:
-			gst_element_seek(camera, capturerate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, GST_SEEK_TYPE_NONE, 0, GST_SEEK_TYPE_NONE, 0);
+			// We only set it if the special value DBL_MAX isn't provided. DBL_MAX means
+			// to run at maximum supported fps. As we can't pass this request to playbin2,
+			// we do the 2nd best and don't ask for a specific fps at all, hoping that playbin2
+			// will then configure to a save high speed default value -- or at least to something
+			// supported and safe:
+			if (capturerate < DBL_MAX) {
+				gst_element_seek(camera, capturerate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, GST_SEEK_TYPE_NONE, 0, GST_SEEK_TYPE_NONE, 0);
+			}
 		}
 
 		// Init parameters:
@@ -2410,15 +2420,11 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     unsigned char* input_image = NULL;
 
 
-	// Make sure GStreamer is ready:
-	PsychGSCheckInit("videocapture");
+    // Make sure GStreamer is ready:
+    PsychGSCheckInit("videocapture");
 
     // Take start timestamp for timing stats:
     PsychGetAdjustedPrecisionTimerSeconds(&tstart);
-
-    if (!PsychIsOnscreenWindow(win)) {
-        PsychErrorExitMsg(PsychError_user, "Need onscreen window ptr!!!");
-    }
 	
     // Retrieve device record for handle:
     capdev = PsychGetGSVidcapRecord(capturehandle);
@@ -2429,6 +2435,10 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     // If this is a pure audio capture with no video channels, we always return failed,
     // as those certainly don't have movie frames associated.
     if ((capdev->recordingflags & 4) || (capdev->nrVideoTracks == 0)) return((checkForImage) ? -1 : FALSE);
+
+    if (!PsychIsOnscreenWindow(win)) {
+        PsychErrorExitMsg(PsychError_user, "You need to pass a handle to an onscreen window, not to something else!");
+    }
 
     // Compute width and height for later creation of textures etc. Need to do this here,
     // so we can return the values for raw data retrieval:
@@ -2449,8 +2459,9 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     waitforframe = (checkForImage > 1) ? 1:0; // Blocking wait for new image requested?
 	
     // A checkForImage 4 means "no op" with the GStreamer capture engine: This is meant to drive
-    // a movie recording engine, ie., grant processing time to it. Our GStreamer engine doesn't
-    // support movie recording, so this is a no-op:
+    // a single threaded movie recording engine, ie., grant processing time to it.
+    // Our GStreamer engine doesn't need this as it is highly multi-threaded and does all
+    // relevant work in the background.
     if (checkForImage == 4) return(0);
 	
     // Should we just check for new image?
@@ -2458,14 +2469,15 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 	    // Reset current dropped count to zero:
 	    capdev->current_dropped = 0;
 	    
-	    if (capdev->grabber_active == 0) {
-		    // Grabber stopped. We'll never get a new image:
-		    return(-2);
-	    }
-
 	    PsychLockMutex(&capdev->mutex);
 	    if (!capdev->frameAvail) {
 		    // No new frame available yet:
+
+		    if (capdev->grabber_active == 0) {
+			    // Grabber stopped. We'll never get a new image:
+			    PsychUnlockMutex(&capdev->mutex);
+			    return(-2);
+		    }
 
 		    // Blocking wait requested?
 		    if (!waitforframe) {
@@ -2479,7 +2491,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 		    PsychTimedWaitCondition(&capdev->condition, &capdev->mutex, 10.0);
 
 		    // Recheck:
-		    if ((capdev->grabber_active) && !capdev->frameAvail) {
+		    if (!capdev->frameAvail) {
 			    // Game over! Wait timed out after 10 secs.
 			    PsychUnlockMutex(&capdev->mutex);
 			    if (PsychPrefStateGet_Verbosity()>4) printf("PTB-ERROR: In blocking wait: No new video frame received after timeout of 10 seconds! Aborting fetch.\n");
@@ -2539,13 +2551,12 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     PsychLockMutex(&capdev->mutex);
 
     //printf("PTB-DEBUG: Blocking fetch start %d\n", capdev->frameAvail);
-
-    if ((capdev->grabber_active) && !capdev->frameAvail) {
-		// No new frame available. Perform a blocking wait:
-		PsychTimedWaitCondition(&capdev->condition, &capdev->mutex, 10.0);
+    if (!capdev->frameAvail) {
+		// No new frame available but grabber active. Perform a blocking wait:
+		if (capdev->grabber_active) PsychTimedWaitCondition(&capdev->condition, &capdev->mutex, 10.0);
 		
 		// Recheck:
-		if ((capdev->grabber_active) && !capdev->frameAvail) {
+		if (!capdev->frameAvail) {
 			// Game over! Wait timed out after 10 secs.
 			PsychUnlockMutex(&capdev->mutex);
 			if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: No new video frame received after timeout of 10 seconds! Something's wrong. Aborting fetch.\n");
@@ -2553,7 +2564,6 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 		}
 		
 		// At this point we should have at least one frame available.
-        //printf("PTB-DEBUG: After blocking fetch start %d\n", capdev->frameAvail);
     }
 	
     // We're here with at least one frame available and the mutex lock held.
@@ -2633,7 +2643,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 	
     // Only setup if really a texture is requested (non-benchmarking mode):
     if (out_texture) {
-	    // Activate OpenGL co	ntext of target window:
+	    // Activate OpenGL context of target window:
 	    PsychSetGLContext(win);
 	    
 #if PSYCH_SYSTEM == PSYCH_OSX

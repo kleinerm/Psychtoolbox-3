@@ -525,7 +525,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
   dc1394_framerate_as_float(dc1394_framerate, &framerate);
   
   // Ok, we've got the closest match we could get. Good enough?
-  if (fabs(framerate - capturerate) < 0.5) {
+  if ((fabs(framerate - capturerate) < 0.5) || (capturerate == DBL_MAX)) {
     // Perfect match of delivered and requested framerate. Nothing to do so far...
     framerate_matched=true;
   }
@@ -813,7 +813,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
   capdev->roirect[kPsychBottom] = capdev->roirect[kPsychTop]  + mh;
   
   // Ok, we've got the closest match we could get. Good enough?
-  if (mindiff < 0.5) {
+  if ((mindiff < 0.5) || (capturerate == DBL_MAX)) {
     // Perfect match of delivered and requested framerate. Nothing to do so far...
     framerate_matched=true;
   }
@@ -839,7 +839,9 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
  *  PsychVideoCaptureRate() - Start- and stop video capture.
  *
  *  capturehandle = Grabber to start-/stop.
- *  playbackrate = zero == Stop capture, non-zero == Capture
+ *  capturerate = zero == Stop capture, non-zero == Capture. Tries to choose smallest framerate
+ *  that is equal or higher than requested rate. Special value capturerate == DBL_MAX will choose
+ *  the fasted supported framerate for the other given capture settings.
  *  dropframes = 0 - Always deliver oldest frame in DMA ringbuffer. 1 - Always deliver newest frame.
  *               --> 1 == drop frames in ringbuffer if behind -- low-latency capture.
  *  startattime = Deadline (in system time) for which to wait before real start of capture.
