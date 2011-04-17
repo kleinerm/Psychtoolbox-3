@@ -40,6 +40,8 @@
 
         * Selection of resolution and framerate.
 
+        * Definition of ROI's and application to video feed and/or video recording.
+
         * Video codec selection.
 
 	=> Most functionality for typical everyday tasks works perfect or reasonably well.
@@ -92,7 +94,7 @@ typedef struct {
 	GstElement *videorate_filter;     // Video framerate converter to guarantee constant framerate and a/v sync for recording.
 	int nrAudioTracks;
 	int nrVideoTracks;
-	psych_uint8	*frame;		  // Ptr to a psych_uint8 matrix which contains the most recently captured/dequeued frame.
+	psych_uint8 *frame;		  // Ptr to a psych_uint8 matrix which contains the most recently captured/dequeued frame.
 	int dropframes;			  // 1 == Always deliver most recent frame in FIFO, even if dropping of frames is neccessary.
 	unsigned char* scratchbuffer;     // Scratch buffer for YUV->RGB conversion.
 	int reqpixeldepth;                // Requested depth of single pixel in output texture.
@@ -100,13 +102,15 @@ typedef struct {
 	int num_dmabuffers;               // Number of DMA ringbuffers to use in DMA capture.
 	int nrframes;                     // Total count of decompressed images.
 	double fps;                       // Acquisition framerate of capture device.
-	int width;                        // Width x height of captured images.
-	int height;
+	int width;                        // Width x height of captured images from video source (prior to cropping etc.)
+	int height;                       // This is effectively the configured resolution (width x height pixels) of the video source.
+	int frame_width;                  // Width x height of frames returned from videosink for OpenGL texture conversion or
+	int frame_height;                 // image return in raw image buffer.
 	double last_pts;                  // Capture timestamp of previous frame.
 	double current_pts;               // Capture timestamp of current frame.
 	int current_dropped;              // Dropped count for this fetch cycle...
 	int nr_droppedframes;             // Counter for dropped frames.
-	int frame_ready;                  // Signals availability of new frames for conversion into GL-Texture.
+	int frame_ready;                  // Signals number of frames available for conversion into GL-Texture.
 	int grabber_active;               // Grabber running?
 	int pipeline_eos;                 // EOS Message received for idle pipeline?
 	int recording_active;             // Movie file recording requested?
@@ -820,6 +824,102 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 	return(mydevice);
 }
 
+psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int* width, int* height, double* fps, int reqdepth)
+{
+	GstCaps                 *caps = NULL;
+	GstStructure		*str;
+	gint			qwidth, qheight;
+	gint                    qbpp;
+	gint			rate1 = 0, rate2 = 1;
+	gint			twidth = -1, theight = -1;
+	gint                    maxpixelarea = -1;
+	double                  tfps = 0.0;
+	int			i;
+
+	if (!usecamerabin) {
+		// No camerabin, no way to query this stuff. Just fail
+		printf("PTB-BUG: PsychGSGetResolutionAndFPSForSpec() called while !usecamerabin !?! Returning failure.\n");
+		return(FALSE);
+	}
+
+	// Camerabin, we can actually enumerate and match.
+
+	// Query caps of videosource and extract supported video capture modes:
+	g_object_get(G_OBJECT(capdev->camera), "video-source-caps", &caps, NULL);
+
+	if (caps) {
+		if (PsychPrefStateGet_Verbosity() > 4)
+			printf("PTB-DEBUG: Videosource caps are: %" GST_PTR_FORMAT "\n\n", caps);
+
+		// Iterate through all supported video capture modes:
+		for (i = 0; i < gst_caps_get_size(caps); i++) {
+			str = gst_caps_get_structure(caps, i);
+
+			gst_structure_get_int(str, "width", &qwidth);
+			gst_structure_get_int(str, "height", &qheight);
+			gst_structure_get_int(str, "bpp", &qbpp);
+			gst_structure_get_fraction(str, "framerate", &rate1, &rate2);
+			// if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Videosource cap %i: w = %i h = %i fps = %f\n", i, qwidth, qheight, (float) rate1 / (float) rate2);
+			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Videosource cap %i: w = %i h = %i.\n", i, qwidth, qheight);
+
+			// Check for matching pixel color resolution, reject too low modes:
+			// TODO: Not yet implemented, don't know if it makes sense at all, as the
+			// colorspace converters can always take care of this.
+
+			// Is this detection of default resolution, or validation of a
+			// given resolution?
+			if ((*width == -1) && (*height == -1)) {
+				// Auto-Detection of optimal default resolution.
+				// Need to find the one with highest resolution (== pixel area):
+				if (qwidth * qheight > maxpixelarea) {
+					// A new favorite with max pixel area:
+					maxpixelarea = qwidth * qheight;
+					twidth = qwidth;
+					theight = qheight;
+					tfps = (double) rate1 / (double) rate2;
+				}
+			}
+			else {
+				// Validation: Reject/Skip modes which don't support requested resolution.
+				if ((*width != (int) qwidth) || (*height != (int) qheight)) continue;
+
+				// Videomode which supports this resolution. Framerate validation?
+				if (*fps != -1) {
+					// TODO FIXME.
+				}
+
+				// Acceptable mode for requested resolution and framerate. Set it:
+				maxpixelarea = qwidth * qheight;
+			        twidth = qwidth;
+				theight = qheight;
+				tfps = (double) rate1 / (double) rate2;
+			}
+		}
+
+		gst_caps_unref(caps);
+
+		// Any matching mode found?
+		if (twidth == -1) {
+			// No! The requested resolution + fps + pixelformat combo
+			// is not supported:
+			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Could not validate video source resolution %i x %i. Returning failure.\n", *width, *height);
+			return(FALSE);
+		}
+
+		// Yes. Return settings:
+		*fps = tfps;
+		*width = twidth;
+		*height = theight;
+
+		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Will use auto-detected or validated video source resolution %i x %i.\n", *width, *height);
+
+		return(TRUE);
+	} else {
+		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychGSGetResolutionAndFPSForSpec(): Capability query to video source failed! Returning failure.\n");
+		return(FALSE);
+	}
+}
+
 /* CHECKED TODO
 *      PsychGSOpenVideoCaptureDevice() -- Create a video capture object.
 *
@@ -848,6 +948,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	GstElement              *videosink = NULL;
 	GstElement              *videosource = NULL;
 	GstElement              *videosource_filter = NULL;
+	GstElement              *videocrop_filter = NULL;
 	GstPad			*pad, *peerpad;
 	GstCaps                 *caps;
 	GstStructure		*str;
@@ -864,6 +965,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	char			prop_name[1000];
 	gchar                   *pstring = NULL; 
 	PsychVideosourceRecordType *theDevice = NULL;
+	psych_bool              overrideFrameSize = FALSE;
 	
 	config[0] = 0;
 	tmpstr[0] = 0;
@@ -912,38 +1014,6 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     capdev->camera = NULL;
     capdev->grabber_active = 0;
     capdev->scratchbuffer = NULL;        
-
-    // ROI rectangle specified?
-    if (capturerectangle) {
-	if ((capturerectangle[kPsychLeft] == 0) && (capturerectangle[kPsychTop] == 0)) {
-		// roi = [0 0 w h] --> Specs a target capture resolution.
-		// Extract wanted width and height and use it as target capture resolution:
-		twidth  = (int) PsychGetWidthFromRect(capturerectangle);
-		theight = (int) PsychGetHeightFromRect(capturerectangle);
-	} else {
-		// roi = [l t r b] --> Specs a ROI to crop out of full res capture.
-		twidth  = -1;
-		theight = -1;
-
-		/* TODO FIXME: Does not work for some reason: */
-		// videosource_filter = gst_element_factory_make ("videocrop", "ptbvideosourcefilter");
-		if (videosource_filter) {
-			g_object_set(G_OBJECT(videosource_filter),
-				     "left",   (int) capturerectangle[kPsychLeft],
-				     "top",    (int) capturerectangle[kPsychTop],
-				     "right",  (int) capturerectangle[kPsychRight],
-				     "bottom", (int) capturerectangle[kPsychBottom],
-				     NULL);
-		} else {
-			// Disable capturerectangle, so we revert to full device default resolution:
-			capturerectangle = NULL;
-			if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Selection of specified video ROI not supported by setup. Using full resolution.\n");
-		}
-	}
-    } else {
-		twidth  = -1;
-		theight = -1;
-    }
     
     // Selection of pixel depths:
     if (reqdepth == 4 || reqdepth == 0) {
@@ -1005,12 +1075,17 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		if (theDevice && (theDevice->classIndex == 6)) sprintf(config, "hdv://");
 		
 		if (PsychPrefStateGet_Verbosity() > 1) {
-			printf("PTB-WARNING: Could not use GStreamer 'camerabin' plugin for videocapture. Will use less powerful fallback path.\n");
+			printf("PTB-WARNING: Could not use GStreamer 'camerabin' plugin for videocapture. Will use 'playbin2' as fallback. Most\n");
+			printf("PTB-WARNING: features, e.g., video recording, ROI and video resolution selection, are not supported in fallback mode.\n");
 		}
     }
 	
     // Pipeline creation failed?
-    if (NULL == camera) PsychErrorExitMsg(PsychError_user, "Failed to create video capture pipeline! Aborted.");
+    if (NULL == camera) PsychErrorExitMsg(PsychError_user, "Failed to create video capture pipeline! Fallback capture engine is also unsupported. Aborted.");
+
+    // Assign new record in videobank:
+    vidcapRecordBANK[slotid].camera = camera;
+    vidcapRecordBANK[slotid].frameAvail = 0;
 
     // Enforce use of the system clock for this pipeline instead of leaving it to the pipeline
     // to choose a proper clock automatically:
@@ -1459,10 +1534,50 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     // color & format conversion plugins to satisfy videosink's needs.
     gst_app_sink_set_caps(GST_APP_SINK(videosink), colorcaps);
 
+    // ROI rectangle specified and use of it supported by camerabin?
+    if (usecamerabin && capturerectangle) {
+	if ((capturerectangle[kPsychLeft] == 0) && (capturerectangle[kPsychTop] == 0)) {
+		// roi = [0 0 w h] --> Specs a target capture resolution.
+		// Extract wanted width and height and use it as target capture resolution:
+		twidth  = (int) PsychGetWidthFromRect(capturerectangle);
+		theight = (int) PsychGetHeightFromRect(capturerectangle);
+	} else {
+		// roi = [l t r b] --> Specs a ROI to crop out of full res capture.
+
+		// Don't change videocapture resolution -- Leave it at auto-detected settings:
+		twidth  = -1;
+		theight = -1;
+
+		// Create videocrop filter to crop away everything outside the defined ROI:
+		videocrop_filter = gst_element_factory_make ("videocrop", "ptbvideocropfilter");
+		if (!videocrop_filter) {
+			// Disable capturerectangle, so we revert to full device default resolution:
+			capturerectangle = NULL;
+			if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Selection of specified video ROI not supported by setup. Using full resolution.\n");
+		}
+	}
+    }
+    else {
+	if (capturerectangle) {
+		// ROI spec'd but camerabin not supported. This is a no-go.
+		capturerectangle = NULL;
+		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Selection of video ROI's or capture resolution not supported by your setup. Using full resolution.\n");
+	}
+
+	// No user specified resolution. Rely on auto-detection:
+	twidth  = -1;
+	theight = -1;
+    }
+
     // Assign our special appsink 'videosink' as video-sink of the pipeline:
     if (!usecamerabin) {
 	if (capdev->recording_active) PsychErrorExitMsg(PsychError_user, "Video recording requested, but this isn't supported on this setup, sorry.");
 	g_object_set(G_OBJECT(camera), "video-sink", videosink, NULL);
+
+	// Invalidate capdev->width,height/fps etc. so it gets auto-detected
+	// by preroll op:
+	capdev->width = capdev->height = 0;
+	capdev->fps = 0;
     } else {
 	    // Attach our appsink as videosink:
 	    g_object_set(G_OBJECT(camera), "viewfinder-sink", videosink, NULL);
@@ -1526,22 +1641,175 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    }
 
 	    // Specific capture resolution requested?
-	    if ((twidth > 0) && (theight > 0)) {
-		// Yes: Request it:
+	    if ((twidth != -1) && (theight != -1)) {
+		// Yes. Validate and request it.
+
+		// Query camera if it supports the requested resolution:
+		capdev->fps = -1;
+		if (!PsychGSGetResolutionAndFPSForSpec(capdev, &twidth, &theight, &capdev->fps, reqdepth)) {
+			// Unsupported resolution. Game over!
+			printf("PTB-ERROR: Video capture device %i doesn't support requested video capture resolution of %i x %i pixels! Aborted.\n", slotid, twidth, theight);
+			PsychErrorExitMsg(PsychError_user, "Failed to open video device at requested video resolution.");
+		}
+
+		// Resolution supported. Request it:
 		g_object_set(G_OBJECT(camera),
 			     "video-capture-width", twidth,
 			     "video-capture-height", theight,
 			     NULL);
+
+		// Assign requested and validated resolution as capture resolution of video source:
+		capdev->width = twidth;
+		capdev->height = theight;
+		capdev->fps = 0;
 	    }
-	    // No: Non-Default ROI specified?
-	    else if (capturerectangle && (twidth == -1) && (theight == - 1)) {
-		// Yes: Operate at default video source resolution,
-		// i.e., leave it at its defaults. Use cropping to
-		// get our ROI.
+	    else {
+		// No, usercode wants auto-detected default resolution. Query
+		// highest possible resolution (maximum pixel area) and choose that:
+		capdev->width = -1;
+		capdev->height = -1;
+		capdev->fps = -1;
+
+		// Ask camera to provide auto-detected parameters:
+		if (!PsychGSGetResolutionAndFPSForSpec(capdev, &capdev->width, &capdev->height, &capdev->fps, reqdepth)) {
+			// Unsupported resolution. Game over!
+			printf("PTB-ERROR: Auto-Detection of optimal video resolution on video capture device %i failed! Aborted.\n", slotid);
+			PsychErrorExitMsg(PsychError_user, "Failed to open video device with auto-detected video resolution.");
+		}
+
+		// Resolution supported. Request it:
+		g_object_set(G_OBJECT(camera),
+			     "video-capture-width", capdev->width,
+			     "video-capture-height", capdev->height,
+			     NULL);
+
+		// Reset capdev->fps to neutral zero: capdev->width and capdev->height are already auto-assigned.
+		capdev->fps = 0;
 	    }
 
+	    // videocrop_filter for ROI processing available?
+	    if (videocrop_filter) {
+		    // Setup final cropping region:
+		    g_object_set(G_OBJECT(videocrop_filter),
+				 "left",   (int) capturerectangle[kPsychLeft],
+				 "top",    (int) capturerectangle[kPsychTop],
+				 "right",  capdev->width - (int) capturerectangle[kPsychRight],
+				 "bottom", capdev->height - (int) capturerectangle[kPsychBottom],
+				 NULL);
+
+		    // HACK HACK HACK: This video ROI cropping implementation is not what we want,
+		    // but it is the best we can do to workaround what i think are GStreamer bugs.
+		    // Will work correctly for live capture cropping only. As soon as videorecording
+		    // gets cropped as well, it affects the live feed in ugly ways...
+
+		    // Is video recording active and ROI cropping for recording explicitely enabled
+		    // via recordingflags setting 512?
+		    if (capdev->recording_active && (recordingflags & 512)) {
+			    // Yes. Attach filter to video-post-processing. This way it affects
+			    // recorded video, but unfortunately also *always* the viewfinder video feed
+			    // - which i think is a bug - and it affects the viewfinder feed in a weird way -
+			    // which i think is a 2nd bug: The viewfinder/appsink gets the cropped
+			    // ROI, but upscaled to full video resolution! We need to hack the
+			    // capdev->frame_width and capdev->frame_height fields to take this
+			    // into account, so we at least get a distorted image in the video
+			    // textures. Usercode can Screen('DrawTexture') such distorted textures
+                            // with a properly scaled 'dstrect' to undistort, although this is a
+			    // messy endeveaour -- but not impossible.
+
+			    // So we attach to video-post-processing and set a special flag to
+			    // signal the capdev->frame_width and capdev->frame_height needs to
+			    // get hacked into shape :-(
+			    g_object_set(G_OBJECT(camera), "video-post-processing", videocrop_filter, NULL);
+			    overrideFrameSize = TRUE;
+
+			    if (PsychPrefStateGet_Verbosity() > 1) {
+				    printf("PTB-WARNING: Application of ROI's to recorded video is buggy, due to\n");
+				    printf("PTB-WARNING: GStreamer bugs. The ROI gets correctly applied to the \n");
+				    printf("PTB-WARNING: recorded video. It also gets applied to the live video feed,\n");
+				    printf("PTB-WARNING: regardless if you want it or not. The live ROI texture images are\n");
+				    printf("PTB-WARNING: distorted. They have the full video resolution size, but only\n");
+				    printf("PTB-WARNING: show the ROI, zoomed and scaled to fit the full video resolution!\n");
+				    printf("PTB-WARNING: You can either manually undistort the images during texture drawing,\n");
+				    printf("PTB-WARNING: by proper choice of the 'dstRect' parameter in Screen('DrawTexture',...),\n");
+				    printf("PTB-WARNING: or you can avoid application of ROI's to recorded video. In that case\n");
+				    printf("PTB-WARNING: the video will be recorded at full video resolution, but application of\n");
+				    printf("PTB-WARNING: ROI's to the live video textures will work correctly.\n\n");
+			    }
+		    }
+		    else {
+			    // No. Either no videorecording active -- pure live feedback, or it is
+			    // active, but cropping of recorded video is not enabled.
+			    // This means only the viewfinder, aka appsink aka our live video textures
+			    // shall be cropped to ROI, if at all. This works as expected and is
+			    // thankfully the common case for most applications of ROI's.
+
+			    // Check if live feed is enabled and ROI cropping for it is not disabled:
+			    if (!(recordingflags & 4) && !(recordingflags & 1024)) {
+				    // Yes. Viewfinder feed shall be cropped: Attach to viewfinder-filter:
+				    g_object_set(G_OBJECT(camera), "viewfinder-filter", videocrop_filter, NULL);
+
+				    // No stupid hack needed in this case:
+				    overrideFrameSize = FALSE;
+			    }
+			    else {
+				    // Disable application of ROI to video buffers:
+				    overrideFrameSize = TRUE;
+			    }
+		    }
+
+#if 0
+/* This should be the correct implementation, but it doesn't work due to what i think are bugs
+   in the GStreamer videocrop or camerabin plugin. Therefore this codepath is disabled:
+*/
+		    // Attach video cropping to viewfinder-filter --> Apply to our live video feed,
+		    // unless the "only apply to videorecording" recordingflag 512 is set or the
+		    // live feed is disabled via flag 4
+		    if (!(recordingflags & 1024) && !(recordingflags & 4)) {
+			    g_object_set(G_OBJECT(camera), "viewfinder-filter", videocrop_filter, NULL);
+		    }
+		    else {
+			    // Disable application of ROI to video buffers:
+			    overrideFrameSize = TRUE;
+		    }
+
+		    // Is videorecording active and cropping for it requested?
+		    if ((recordingflags & 512) && capdev->recording_active) {
+			    // Need to attach to video-post-processing as well. We need to setup a 2nd
+			    // cropping filter with identical settings for this, unless the 1st one isn't
+			    // used as the viewfinder-filter.
+			    if ((recordingflags & 1024) || (recordingflags & 4)) {
+				    // Live feed disabled or no cropping for live feed wanted. The videocrop_filter
+				    // is unused and we can use it here for cropping the videorecording by
+				    // attaching to video-post-processing:
+				    g_object_set(G_OBJECT(camera), "video-post-processing", videocrop_filter, NULL);
+			    }
+			    else {
+				    // videocrop_filter already used for cropping the live feed aka viewfinder.
+				    // Generate a new videocrop element, set it up identically, attach it to
+				    // video-post-processing:
+				    videocrop_filter = gst_element_factory_make ("videocrop", "ptbvideoreccropfilter");
+				    if (!videocrop_filter) {
+					    if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Failed to apply video ROI to videorecording! Using full resolution.\n");
+				    }
+				    else {
+					    g_object_set(G_OBJECT(videocrop_filter),
+							 "left",   (int) capturerectangle[kPsychLeft],
+							 "top",    (int) capturerectangle[kPsychTop],
+							 "right",  capdev->width - (int) capturerectangle[kPsychRight],
+							 "bottom", capdev->height - (int) capturerectangle[kPsychBottom],
+							 NULL);
+					    g_object_set(G_OBJECT(camera), "video-post-processing", videocrop_filter, NULL);
+				    }
+			    }
+		    }
+#endif
+	    }
+
+
 	    // Attach videosource filter, if any:
-	    if (videosource_filter) g_object_set(G_OBJECT(camera), "video-source-filter", videosource_filter, NULL);
+	    if (videosource_filter) {
+		    g_object_set(G_OBJECT(camera), "video-source-filter", videosource_filter, NULL);
+	    }
     }
 
     gst_caps_unref(colorcaps);
@@ -1587,15 +1855,16 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Pipeline preroll skipped because only harddisc recording (recordingflags & 4).\n");
     }
 
-    // Only preroll if prerolling not disabled by recordingflag 8
-    if (!(recordingflags & 8)) {
+    // Only preroll if prerolling not disabled by recordingflag 8,
+    // or if we use the fallback path, which utterly needs this:
+    if (!(recordingflags & 8) || !usecamerabin) {
 	    // Ready the pipeline:
 	    if (!PsychVideoPipelineSetState(camera, GST_STATE_READY, 30.0)) {
 		    PsychGSProcessVideoContext(vidcapRecordBANK[slotid].VideoContext, TRUE);
 		    PsychErrorExitMsg(PsychError_user, "In OpenVideoCapture: Opening the video capture device failed during pipeline zero -> ready. Reason given above.");
 	    }
 
-	    // Preload / Preroll the pipeline:
+	    // Preroll the pipeline:
 	    if (!PsychVideoPipelineSetState(camera, GST_STATE_PLAYING, 30.0)) {
 		    PsychGSProcessVideoContext(vidcapRecordBANK[slotid].VideoContext, TRUE);
 		    PsychErrorExitMsg(PsychError_user, "In OpenVideoCapture: Opening the video capture device failed during pipeline preroll ready->playing. Reason given above.");
@@ -1619,6 +1888,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		         "n-audio", &vidcapRecordBANK[slotid].nrAudioTracks,
 			 NULL);
     } else {
+	// There's always at least a video channel:
 	vidcapRecordBANK[slotid].nrVideoTracks = 1;
     }
 
@@ -1648,6 +1918,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		gst_structure_get_int(str,"height",&height);
 		gst_structure_get_fraction(str, "framerate", &rate1, &rate2);
 		gst_caps_unref(caps);
+		if (PsychPrefStateGet_Verbosity() > 4) printf("Negotiated videosink res: %i x %i\n", width, height);
 	} else {
 		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: No frame info available after preroll.\n");
 	}
@@ -1656,24 +1927,17 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     // Release the pad:
     gst_object_unref(pad);
 
-    // Assign new record in videobank:
-    vidcapRecordBANK[slotid].camera = camera;
-    vidcapRecordBANK[slotid].frameAvail = 0;
-    vidcapRecordBANK[slotid].recordingflags = recordingflags;
-
     // Our camera should be ready: Assign final handle.
     *capturehandle = slotid;
 
     // Increase counter of open capture devices:
     numCaptureRecords++;
 
-    // Set image size: Based on capturerectangle if real ROI is spec'd.
-    if (capturerectangle && ((capturerectangle[kPsychLeft] !=0) || (capturerectangle[kPsychTop] !=0))) {
-	    capdev->width = capturerectangle[kPsychRight] - capturerectangle[kPsychLeft];
-	    capdev->height = capturerectangle[kPsychBottom] - capturerectangle[kPsychTop];
-    } else {
-	    capdev->width = width;
-	    capdev->height = height;
+    // Assign our first guess on video device resolution, only already
+    // setup by detection code above:
+    if ((capdev->width == 0) && (capdev->height)) {
+	capdev->width = width;
+	capdev->height = height;
     }
 
     // Reset framecounter:
@@ -1748,7 +2012,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 			gst_structure_get_int(str,"width",&width);
 			gst_structure_get_int(str,"height",&height);
 			gst_structure_get_fraction(str, "framerate", &rate1, &rate2);
-			// printf("vt = %i w = %i h = %i fps = %f\n", vidcapRecordBANK[slotid].nrVideoTracks, width, height, rate1/rate2);
+			if (PsychPrefStateGet_Verbosity() > 4) printf("Negotiated videosource w = %i h = %i fps = %f\n", width, height, rate1/rate2);
 			gst_caps_unref(caps);
 		} else {
 			 if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: No frame info for video source available after preroll.\n");	
@@ -1769,46 +2033,37 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     if (capdev->width == 0) capdev->width = (twidth > 0) ? twidth : 0;
     if (capdev->height == 0) capdev->height = (theight > 0) ? theight : 0;
 
-    // Still nothing? If so we query the video source for its current default resolution
-    // and set that in the hope that it is the right thing to do:
-    if ((capdev->width == 0) || (capdev->height == 0)) {
-	    // Query caps of videosource and extract parameters from its default (1st) cap:
-	    g_object_get(G_OBJECT(camera), "video-source-caps", &caps, NULL);
-
-	    if (caps) {
-		    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Videosource caps are: %" GST_PTR_FORMAT "\n\n", caps);
-
-		    //for (i = 0; i < gst_caps_get_size(caps); i++) {
-		    for (i = 0; i < 1; i++) {
-			    str=gst_caps_get_structure(caps,0);
-
-			    /* Get some data about the frame */
-			    gst_structure_get_int(str,"width",&width);
-			    gst_structure_get_int(str,"height",&height);
-			    gst_structure_get_fraction(str, "framerate", &rate1, &rate2);
-			    //printf("Videosource cap %i: w = %i h = %i fps = %f\n", i, width, height, rate1/rate2);
-		    }
-		    gst_caps_unref(caps);
-
-		    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Using default caps of video source %i x %i for size spec.\n", width, height);
-		    capdev->width = width;
-		    capdev->height = height;
-	    } else {
-		    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: No frame info available from direct query to video source!\n");	
-	    }
-    }
-
-    // Create capture ROI:
-    if (capturerectangle && ((capturerectangle[kPsychLeft] !=0) || (capturerectangle[kPsychTop] !=0))) {
+    // Create final user-visible effective ROI:
+    if (capturerectangle && ((twidth == -1) && (theight == -1))) {
+	    // Usercode specified a ROI, videosource is left at its full default
+	    // resolution, ROI is applied via videocrop_filter. Specified ROI is
+	    // effective ROI, so just copy it:
 	    PsychCopyRect(capdev->roirect, capturerectangle);
     } else {
+	    // Usercode specified no ROI, but a target device resolution or no
+	    // resolution at all. Videosource is configured for a certain resolution,
+	    // as stored in capdev->width x height. Our effective ROI is simply
+	    // the full videosource resolution:
 	    PsychMakeRect(capdev->roirect, 0, 0, capdev->width, capdev->height);
     }
 
+    // The size of returned video frames for texture creation or image buffer return
+    // etc., is equal to the width x height of the ROI:
+    capdev->frame_width  = (int) PsychGetWidthFromRect(capdev->roirect);
+    capdev->frame_height = (int) PsychGetHeightFromRect(capdev->roirect);
+
+    // Do we need to force the frame_width x frame_height to full capture
+    // resolution?
+    if (overrideFrameSize) {
+	    // Yes.
+	    capdev->frame_width  = capdev->width;
+	    capdev->frame_height = capdev->height;
+    }
+
     // If we prerolled before, we need to undo its effects:
-    if (!(recordingflags & 8)) {
+    if (!(recordingflags & 8) || !usecamerabin) {
 	    // Pause the pipeline again:
-	    if (!PsychVideoPipelineSetState(camera, GST_STATE_READY, 30.0)) {
+	    if (!PsychVideoPipelineSetState(camera, (usecamerabin) ? GST_STATE_READY : GST_STATE_PAUSED, 30.0)) {
 		    PsychGSProcessVideoContext(vidcapRecordBANK[slotid].VideoContext, TRUE);
 		    PsychErrorExitMsg(PsychError_user, "In OpenVideoCapture: Opening the video capture device failed during preroll playing -> pause. Reason given above.");
 	    }
@@ -1832,7 +2087,13 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     }
     */
 
-    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Camera successfully opened... [Used width x height = %i x %i]\n", capdev->width, capdev->height);
+    // Assign final recordingflags:
+    vidcapRecordBANK[slotid].recordingflags = recordingflags;
+
+    if (PsychPrefStateGet_Verbosity() > 2) {
+	    printf("PTB-INFO: Camera opened [Source resolution width x height = %i x %i, ROI size %i x %i]\n",
+		   capdev->width, capdev->height, capdev->frame_width, capdev->frame_height);
+    }
 
     return(TRUE);
 }
@@ -1883,36 +2144,42 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 		// TODO FIXME: Should this go somewhere else and be optional / configurable?
 		// Enforce a keyframe at least once every second of capture time, aka all fps frames,
 		// disable automatic placement of key frames:
-		if (usecamerabin && capdev->recording_active) {
+/*		if (usecamerabin && capdev->recording_active) {
 			g_object_set(G_OBJECT(capdev->videoenc), "drop-frames", FALSE, NULL);
 			g_object_set(G_OBJECT(capdev->videoenc), "speed-level", 0, NULL);
 			g_object_set(G_OBJECT(capdev->videoenc), "quality", 30, NULL);
 			g_object_set(G_OBJECT(capdev->videoenc), "keyframe-auto", FALSE, NULL);
 			g_object_set(G_OBJECT(capdev->videoenc), "keyframe-force", (int)(capturerate + 0.5), NULL);
 		}
+*/
 
-		// Start the video capture for this camera.
-		if (!PsychVideoPipelineSetState(camera, GST_STATE_READY, 10.0)) {
-			// Failed!
-			PsychGSProcessVideoContext(capdev->VideoContext, FALSE);
-			PsychErrorExitMsg(PsychError_user, "Failure in pipeline transition null -> ready - Start of video capture failed!");
+		// Only do state transitions for camerabin:
+		if (usecamerabin) {
+			// Start the video capture for this camera.
+			if (!PsychVideoPipelineSetState(camera, GST_STATE_READY, 10.0)) {
+				// Failed!
+				PsychGSProcessVideoContext(capdev->VideoContext, FALSE);
+				PsychErrorExitMsg(PsychError_user, "Failure in pipeline transition null -> ready - Start of video capture failed!");
+			}
+
+			if (!PsychVideoPipelineSetState(camera, GST_STATE_PAUSED, 10.0)) {
+				// Failed!
+				PsychGSProcessVideoContext(capdev->VideoContext, FALSE);
+				PsychErrorExitMsg(PsychError_user, "Failure in pipeline transition ready -> paused - Start of video capture failed!");
+			}
 		}
 
-		if (!PsychVideoPipelineSetState(camera, GST_STATE_PAUSED, 10.0)) {
-			// Failed!
-			PsychGSProcessVideoContext(capdev->VideoContext, FALSE);
-			PsychErrorExitMsg(PsychError_user, "Failure in pipeline transition ready -> paused - Start of video capture failed!");
-		}
-
+		// Setup of capture framerate & resolution:
 		if (usecamerabin) {
 			// Set requested capture/recording video resolution and framerate:
 			g_signal_emit_by_name (G_OBJECT(camera),
 					       "set-video-resolution-fps", capdev->width, capdev->height,
 					       (int)(capturerate + 0.5), 1);
 		}
-		
-		// Set playback rate in non camerabin configuration:
-		if (!usecamerabin) gst_element_seek(camera, capturerate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, GST_SEEK_TYPE_NONE, 0, GST_SEEK_TYPE_NONE, 0);
+		else {
+			// Set playback rate in non camerabin configuration:
+			gst_element_seek(camera, capturerate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, GST_SEEK_TYPE_NONE, 0, GST_SEEK_TYPE_NONE, 0);
+		}
 
 		// Init parameters:
 		capdev->last_pts = -1.0;
@@ -1983,13 +2250,15 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 		if (capdev->pixeldepth == -1) {
 			// Not used at the moment!!
 			// Software conversion of YUV -> RGB needed. Allocate a proper scratch-buffer:
-			capdev->scratchbuffer = malloc(capdev->width * capdev->height * 3);
+			capdev->scratchbuffer = malloc(capdev->frame_width * capdev->frame_height * 3);
 		}
 		*/
 
 		if(PsychPrefStateGet_Verbosity()>1) {
-			printf("PTB-INFO: Capture started on device %i - Width x Height = %i x %i - Framerate: %f fps.\n",
+			printf("PTB-INFO: Capture started on device %i - Input video resolution width x height = %i x %i - Framerate: %f fps.\n",
 			       capturehandle, capdev->width, capdev->height, capdev->fps);
+			printf("PTB-INFO: Returned video image textures width x height = %i x %i.\n",
+			       capdev->frame_width, capdev->frame_height);
 		}
 	}
 	else {
@@ -2037,7 +2306,7 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 
 			// Stop pipeline, bring it back into READY state:
 			if(PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: StopVideoCapture: Fully stopping and shutting down capture pipeline.\n");
-			if (!PsychVideoPipelineSetState(camera, GST_STATE_READY, 10.0)) {
+			if (!PsychVideoPipelineSetState(camera, (usecamerabin) ? GST_STATE_READY : GST_STATE_PAUSED, 10.0)) {
 				if(PsychPrefStateGet_Verbosity() > 0) {
 					PsychGSProcessVideoContext(capdev->VideoContext, FALSE);
 					printf("PTB-ERROR: StopVideoCapture: Unable to stop capture pipeline [Transition 1 to ready state failed]! Prepare for trouble!\n");
@@ -2163,8 +2432,8 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 
     // Compute width and height for later creation of textures etc. Need to do this here,
     // so we can return the values for raw data retrieval:
-    w=capdev->width;
-    h=capdev->height;
+    w = capdev->frame_width;
+    h = capdev->frame_height;
 
     // Size of a single pixel in bytes:
     bpp = capdev->reqpixeldepth;
@@ -2355,8 +2624,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 		// Yes. Perform color-conversion YUV->RGB from cameras DMA buffer
 		// into the scratch buffer and set scratch buffer as source for
 		// all further operations:
-
-		memcpy(capdev->scratchbuffer, input_image, capdev->width * capdev->height * bpp);
+		memcpy(capdev->scratchbuffer, input_image, w * h * bpp);
 		
 		// Ok, at this point we should have a RGB8 texture image ready in scratch_buffer.
 		// Set scratch buffer as our new image source for all further processing:
