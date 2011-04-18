@@ -438,21 +438,32 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		isFloatBuffer = FALSE;
         glGetBooleanv(GL_COLOR_FLOAT_APPLE, &isFloatBuffer);
         if (isFloatBuffer) {
-            printf("PTB-INFO: Floating point precision framebuffer enabled.\n");
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Floating point precision framebuffer enabled.\n");
         }
         else {
-            printf("PTB-INFO: Fixed point precision integer framebuffer enabled.\n");
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Fixed point precision integer framebuffer enabled.\n");
         }
         
         // Query and show bpc for all channels:
         glGetIntegerv(GL_RED_BITS, &bpc);
-        printf("PTB-INFO: Frame buffer provides %i bits for red channel.\n", bpc);
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: System Frame buffer provides %i bits for red channel.\n", bpc);
         glGetIntegerv(GL_GREEN_BITS, &bpc);
-        printf("PTB-INFO: Frame buffer provides %i bits for green channel.\n", bpc);
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: System Frame buffer provides %i bits for green channel.\n", bpc);
         glGetIntegerv(GL_BLUE_BITS, &bpc);
-        printf("PTB-INFO: Frame buffer provides %i bits for blue channel.\n", bpc);
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: System Frame buffer provides %i bits for blue channel.\n", bpc);
         glGetIntegerv(GL_ALPHA_BITS, &bpc);
-        printf("PTB-INFO: Frame buffer provides %i bits for alpha channel.\n", bpc);
+        if ((*windowRecord)->depth == 30) {
+		if (PsychPrefStateGet_Verbosity() > 3) {
+			printf("PTB-INFO: Hardware frame buffer provides %i bits for alpha channel.\n", bpc);
+			printf("PTB-INFO: Effective alpha bit depth depends on imaging pipeline setup and is likely >= 8 bits.\n");
+		}
+	}
+	else {
+		if (PsychPrefStateGet_Verbosity() > 2) {
+			printf("PTB-INFO: Frame buffer provides %i bits for alpha channel.\n", bpc);
+			printf("PTB-INFO: Effective alpha bit depth depends on imaging pipeline setup and is likely >= 8 bits.\n");
+		}
+	}
     }
 
 	// Query if this onscreen window has a backbuffer with alpha channel, i.e.
