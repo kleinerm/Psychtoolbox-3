@@ -82,10 +82,8 @@ typedef struct {
 	int valid;                        // Is this a valid device record? zero == Invalid.
 	psych_mutex mutex;
 	psych_condition condition;
-
-	int frameAvail;
+	int frameAvail;                   // Number of frames in videosink.
 	int preRollAvail;
-
 	GstElement *camera;               // Ptr to a GStreamer camera object that holds the internal state for such cams.
 	GMainLoop *VideoContext;          // Message bus context for delivery of status/error/warning messages by GStreamer.
 	GstElement *videosink;            // Our appsink for retrieval of live video feeds --> PTB texture conversion.
@@ -95,7 +93,6 @@ typedef struct {
 	GstClockTime lastSavedBaseTime;   // Last time the pipeline was put into PLAYING state. Saved at StopCapture time before stop.
 	int nrAudioTracks;
 	int nrVideoTracks;
-	psych_uint8 *frame;		  // Ptr to a psych_uint8 matrix which contains the most recently captured/dequeued frame.
 	int dropframes;			  // 1 == Always deliver most recent frame in FIFO, even if dropping of frames is neccessary.
 	unsigned char* scratchbuffer;     // Scratch buffer for YUV->RGB conversion.
 	int reqpixeldepth;                // Requested depth of single pixel in output texture.
@@ -111,9 +108,7 @@ typedef struct {
 	double current_pts;               // Capture timestamp of current frame.
 	int current_dropped;              // Dropped count for this fetch cycle...
 	int nr_droppedframes;             // Counter for dropped frames.
-	int frame_ready;                  // Signals number of frames available for conversion into GL-Texture.
 	int grabber_active;               // Grabber running?
-	int pipeline_eos;                 // EOS Message received for idle pipeline?
 	int recording_active;             // Movie file recording requested?
 	unsigned int recordingflags;      // recordingflags, as passed to 'OpenCaptureDevice'.
 	PsychRectType roirect;            // Region of interest rectangle - denotes subarea of full video capture area.
@@ -252,7 +247,15 @@ void PsychGSExitVideoCapture(void)
 {
 	// Release all capture devices
 	PsychGSDeleteAllCaptureDevices();
-	
+
+	// Shutdown GStreamer framework, release all resources.
+	// This is usually not needed/used. For memory leak
+	// checking only!
+	if (FALSE) {
+		gs_firsttime = TRUE;
+		gst_deinit();
+	}
+
 	return;
 }
 
@@ -341,7 +344,6 @@ static gboolean PsychVideoBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
   switch (GST_MESSAGE_TYPE (msg)) {
     case GST_MESSAGE_EOS:
 	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Videobus: Message EOS received.\n"); fflush(NULL);
-	capdev->pipeline_eos = TRUE;
     break;
 
     case GST_MESSAGE_WARNING: {
@@ -531,8 +533,16 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle)
 	PsychDestroyMutex(&capdev->mutex);
 	PsychDestroyCondition(&capdev->condition);
 	
+	// Was our videosink (aka appsink) detached during device operation,
+	// because videorecording was active but live feedback disabled, i.e.,
+	// a fakesink was attached to camerabin? If so then camerabin didn't
+	// own our videosink at destruction time and didn't auto-delete it.
+	// We need to manually delete our orphaned videosink:
+	if ((capdev->recording_active) && (capdev->recordingflags & 4) && (capdev->videosink)) {
+		gst_object_unref(GST_OBJECT(capdev->videosink));
+	}
 	capdev->videosink = NULL;
-	
+
 	if (capdev->targetmoviefilename) free(capdev->targetmoviefilename);
 	capdev->targetmoviefilename = NULL;
 
@@ -1823,6 +1833,9 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     // video recording is active: TODO FIXME: This seems to have no effect whatsoever....
     if (capdev->recording_active) g_object_set(G_OBJECT(videosink), "async", FALSE, NULL);
 
+    // Disable internal queuing of the last buffer, as we don't ever use the "last-buffer" property:
+    g_object_set(G_OBJECT(videosink), "enable-last-buffer", FALSE, NULL);
+
     // Get the pad from the final sink for probing width x height of video frames and nominal framerate of video source:	
     pad = gst_element_get_pad(videosink, "sink");
 
@@ -2114,7 +2127,7 @@ int PsychGSDrainBufferQueue(PsychVidcapRecordType* capdev, int numFramesToDrain,
 	int drainedCount = 0;
 
 	// Drain while anything available, but at most numFramesToDrain frames.
-	while (GST_IS_APP_SINK(capdev->videosink) && // !gst_app_sink_is_eos(GST_APP_SINK(capdev->videosink))
+	while (GST_IS_APP_SINK(capdev->videosink) && !gst_app_sink_is_eos(GST_APP_SINK(capdev->videosink))
 		&& (capdev->frameAvail > 0) && (numFramesToDrain > drainedCount)) {
 		capdev->frameAvail--;
 		videoBuffer = gst_app_sink_pull_buffer(GST_APP_SINK(capdev->videosink));
@@ -2167,7 +2180,6 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 		// Reset statistics:
 		capdev->last_pts = -1.0;
 		capdev->nr_droppedframes = 0;
-		capdev->frame_ready = 0;
 		capdev->lastSavedBaseTime = 0;
 
 		// Framedropping in the sense we define it is not supported by libGStreamer, so we implement it ourselves.
@@ -2298,7 +2310,6 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 	else {
 		// Stop capture:
 		if (capdev->grabber_active) {
-
 			// Store a backup copy of pipeline basetime for use in offline frame fetch:
 			capdev->lastSavedBaseTime = gst_element_get_base_time(camera);
 
@@ -2316,7 +2327,6 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 			// Stop video recording if requested:
 			if (usecamerabin && capdev->recording_active) {
 				PsychGSProcessVideoContext(capdev->VideoContext, FALSE);
-				capdev->pipeline_eos = FALSE;
 
 				if(PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: StopVideoCapture: Stopping video recording...\n");
 				g_signal_emit_by_name (camera, "capture-stop", 0);
@@ -2329,17 +2339,8 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 					}
 				}
 
-				if(PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: StopVideoCapture: Stopping pipeline [paused -> ready]\n");
-				if (!PsychVideoPipelineSetState(camera, GST_STATE_READY, 10.0)) {
-					if(PsychPrefStateGet_Verbosity() > 0) {
-						PsychGSProcessVideoContext(capdev->VideoContext, FALSE);
-						printf("PTB-ERROR: StopVideoCapture: Unable to switch pipeline from paused -> ready! Prepare for trouble!\n");
-					}
-				}
-
 				if(PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: StopVideoCapture: Videorecording stopped.\n");
 			}
-
 
 			// Stop pipeline, bring it back into READY state:
 			if(PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: StopVideoCapture: Fully stopping and shutting down capture pipeline.\n");
@@ -2362,7 +2363,6 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 			}
 
 			// Ok, capture is now stopped.
-			capdev->frame_ready = 0;
 			capdev->grabber_active = 0;
 			
 			if (capdev->scratchbuffer) {
