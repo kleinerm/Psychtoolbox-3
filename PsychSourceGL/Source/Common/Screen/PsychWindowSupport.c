@@ -4871,10 +4871,10 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	memset(&(windowRecord->gpuCoreId[0]), 0, 8);
 	
 	if (strstr((char*) glGetString(GL_VENDOR), "ATI") || strstr((char*) glGetString(GL_VENDOR), "AMD") || strstr((char*) glGetString(GL_RENDERER), "AMD")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
-	if (strstr((char*) glGetString(GL_VENDOR), "NVIDIA")) { nvidia = TRUE; sprintf(windowRecord->gpuCoreId, "NV10"); }
+	if (strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_RENDERER), "nouveau")) { nvidia = TRUE; sprintf(windowRecord->gpuCoreId, "NV10"); }
 
 	// Detection code for Linux DRI driver stack with ATI GPU:
-	if (strstr((char*) glGetString(GL_VENDOR), "Advanced Micro Devices")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
+	if (strstr((char*) glGetString(GL_VENDOR), "Advanced Micro Devices") || strstr((char*) glGetString(GL_RENDERER), "ATI")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
 	
 	while (glGetError());
 	glGetIntegerv(GL_MAX_RECTANGLE_TEXTURE_SIZE_EXT, &maxtexsize);
