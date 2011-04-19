@@ -355,7 +355,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	}
 	#endif
 
-	// Set a flag that we should switch to native 10 bpc framebuffer later on if possible:
+	// Decide if 10 bpc framebuffer should be enabled by our own kernel driver trick:
 	if ((*windowRecord)->depth == 30) {
 		// Support for kernel driver available?
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
@@ -363,11 +363,11 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 			// NVidia GPU or ATI Fire-Series GPU: Only native support by driver, if at all...
 			printf("\nPTB-INFO: Your script requested a 30bpp, 10bpc framebuffer, but this is only supported on few special graphics cards and drivers on Linux.");
 			printf("\nPTB-INFO: This may or may not work for you - Double check your results! Theoretically, the 2008 series ATI/AMD FireGL/FirePro and NVidia Quadro cards may support this with some drivers,");
-			printf("\nPTB-INFO: but you must enable it manually in the Catalyst Control center (somewhere under ''Workstation settings'')\n");
+			printf("\nPTB-INFO: but you must enable it manually in the Catalyst control center or Quadro control center(somewhere under ''Workstation settings'')\n");
 		}
 		else {
 			// Only support our homegrown method with PTB kernel driver on ATI/AMD hardware:
-			if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) || strstr((char*) glGetString(GL_VENDOR), "NVIDIA")) {
+			if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) || strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_VENDOR), "Intel")) {
 				printf("\nPTB-ERROR: Your script requested a 30bpp, 10bpc framebuffer, but the Psychtoolbox kernel driver is not loaded and ready.\n");
 				printf("PTB-ERROR: The driver currently only supports selected ATI Radeon GPU's (X1000/HD2000/HD3000/HD4000 series and corresponding FireGL/FirePro models).\n");
 				printf("PTB-ERROR: On MacOS/X the driver must be loaded and functional for your graphics card for this to work.\n");
@@ -386,7 +386,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		// series FireGL cards at least provide the option to enable this natively - although it didn't work properly in our tests.
 		printf("\nPTB-INFO: Your script requested a 30bpp, 10bpc framebuffer, but this is only supported on few special graphics cards and drivers on MS-Windows.");
 		printf("\nPTB-INFO: This may or may not work for you - Double check your results! Theoretically, the 2008 series ATI FireGL/FirePro and NVidia Quadro cards may support this with some drivers,");
-		printf("\nPTB-INFO: but you must enable it manually in the Catalyst Control center (somewhere under ''Workstation settings'')\n");
+		printf("\nPTB-INFO: but you must enable it manually in the Catalyst or Quadro Control center (somewhere under ''Workstation settings'')\n");
 #endif
 	}
 
@@ -446,26 +446,25 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         
         // Query and show bpc for all channels:
         glGetIntegerv(GL_RED_BITS, &bpc);
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: System Frame buffer provides %i bits for red channel.\n", bpc);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: System Frame buffer provides %i bits for red channel.\n", bpc);
         glGetIntegerv(GL_GREEN_BITS, &bpc);
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: System Frame buffer provides %i bits for green channel.\n", bpc);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: System Frame buffer provides %i bits for green channel.\n", bpc);
         glGetIntegerv(GL_BLUE_BITS, &bpc);
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: System Frame buffer provides %i bits for blue channel.\n", bpc);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: System Frame buffer provides %i bits for blue channel.\n", bpc);
         glGetIntegerv(GL_ALPHA_BITS, &bpc);
         if ((*windowRecord)->depth == 30) {
-		if (PsychPrefStateGet_Verbosity() > 3) {
-			printf("PTB-INFO: Hardware frame buffer provides %i bits for alpha channel.\n", bpc);
-			printf("PTB-INFO: Effective alpha bit depth depends on imaging pipeline setup and is likely >= 8 bits.\n");
+			if (PsychPrefStateGet_Verbosity() > 4) {
+				printf("PTB-INFO: Hardware frame buffer provides %i bits for alpha channel. This is the effective alpha bit depths if the imaging pipeline is off.\n", bpc);
+				printf("PTB-INFO: If the imaging pipeline is enabled, then the effective alpha bit depth depends on imaging pipeline configuration and is likely >= 8 bits.\n");
+			}
 		}
-	}
-	else {
-		if (PsychPrefStateGet_Verbosity() > 2) {
-			printf("PTB-INFO: Frame buffer provides %i bits for alpha channel.\n", bpc);
-			printf("PTB-INFO: Effective alpha bit depth depends on imaging pipeline setup and is likely >= 8 bits.\n");
+		else {
+			if (PsychPrefStateGet_Verbosity() > 3) {
+				printf("PTB-INFO: System frame buffer provides %i bits for alpha channel, but effective alpha bits depends on imaging pipeline setup, if any.\n", bpc);
+			}
 		}
-	}
     }
-
+	
 	// Query if this onscreen window has a backbuffer with alpha channel, i.e.
 	// it has more than zero alpha bits: 
 	glGetIntegerv(GL_ALPHA_BITS, &bpc);
@@ -1061,6 +1060,17 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	//	#endif
 
 	if(PsychPrefStateGet_Verbosity()>2) printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", (char*) glGetString(GL_VENDOR), (char*) glGetString(GL_RENDERER), (char*) glGetString(GL_VERSION));
+
+	// Running on nouveau? Then issue some words of caution about lack of timing precision:
+	if ((PsychPrefStateGet_Verbosity() > 1) && (strstr((char*) glGetString(GL_VENDOR), "nouveau") || strstr((char*) glGetString(GL_RENDERER), "nouveau"))) {
+		printf("PTB-WARNING: \n\nYou are using the free nouveau graphics driver on your NVidia graphics card. As of %s,\n", PsychGetBuildDate());
+		printf("PTB-WARNING: this driver does *not allow* robust and precise visual stimulus onset timestamping by any method at all!\n");
+		printf("PTB-WARNING: If you need precise visual stimulus timing, either install the binary NVidia driver, or double-check\n");
+		printf("PTB-WARNING: that a more recent version of nouveau is installed and in fact does provide proper timing.\n");
+		printf("PTB-WARNING: You may find relevant info on the Psychtoolbox forum, Psychtoolbox Wiki, or by updating your Psychtoolbox.\n");
+		printf("PTB-WARNING: If this warning goes away by a Psychtoolbox update then your nouveau driver is probably safe to use.\n\n");
+	}
+
     if(PsychPrefStateGet_Verbosity()>2) {
       if (VRAMTotal>0) printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal / 1024 / 1024, TexmemTotal / 1024 / 1024);
       printf("PTB-INFO: VBL startline = %i , VBL Endline = %i\n", (int) vbl_startline, VBL_Endline);
@@ -1088,7 +1098,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
           else {
               printf("PTB-INFO: Beamposition queries unsupported or defective on this system. Using basic timestamping as fallback: Timestamps returned by Screen('Flip') will be less robust and accurate.\n");
           }
-      }
+      }	  
       printf("PTB-INFO: Measured monitor refresh interval from VBLsync = %f ms [%f Hz]. (%i valid samples taken, stddev=%f ms.)\n",
 	     ifi_estimate * 1000, 1/ifi_estimate, numSamples, stddev*1000);
       if (ifi_nominal > 0) printf("PTB-INFO: Reported monitor refresh interval from operating system = %f ms [%f Hz].\n", ifi_nominal * 1000, 1/ifi_nominal);
@@ -1338,7 +1348,17 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
 	// e.g. as onscreen window or offscreen window, then we need to safe-reset
 	// our drawing engine - Unbind its FBO (if any) and reset current target to
 	// 'none'.
-	if (PsychGetDrawingTarget() == windowRecord) PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
+	if (PsychGetDrawingTarget() == windowRecord) {
+		if (PsychIsOnscreenWindow(windowRecord)) {
+			// Onscreen window? Do a simple soft-reset:
+			PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
+		}
+		else {
+			// Offscreen window/texture: Protect against some corner case. Reset
+			// the drawing target to the associated top-level parent onscreen window:
+			PsychSetDrawingTarget(PsychGetParentWindow(windowRecord));
+		}
+	}
 	
     if(PsychIsOnscreenWindow(windowRecord)){
 				// Call cleanup routine for the flipInfo record (and possible associated threads):
@@ -4432,7 +4452,7 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 			if (windowRecord == (PsychWindowRecordType *) 0x1) {
 				// Special case: No new rendertarget, just request to backup the old
 				// one and leave it in a tidy, consistent state, then reset to NULL
-				// binding. We achiive this by turning windowRecord into a NULL request and
+				// binding. We achieve this by turning windowRecord into a NULL request and
 				// unbinding any possibly bound FBO's:
 				windowRecord = NULL;
 
