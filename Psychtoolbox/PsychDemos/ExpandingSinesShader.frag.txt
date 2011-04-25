@@ -1,0 +1,40 @@
+/* ExpandingSines shader
+ * Draws a sequence of rings of slowly alternating color. The center
+ * of all rings is assigned in 'RingCenter' by the Matlab script,
+ * width of a ring is assigned in 'RingWidth', the radius of the
+ * outermost ring is assigned in 'Radius', a shift (scrolling offset)
+ * is assigned in 'Shift'. See ExpandingRingsDemo.m for explanation.
+ *
+ *
+ * Written 2011 by Mario Kleiner, licensed to you under MIT license.
+ */
+
+#version 110
+
+const float twopi = 2.0 * 3.141592654;
+
+uniform vec2  RingCenter;
+uniform float RingWidth;
+uniform float Radius;
+uniform float Shift;
+uniform vec4  secondColor;
+
+void main()
+{
+    /* Query current output texel position: */
+    vec2 pos = gl_TexCoord[0].xy;
+
+    /* Compute euclidean distance to center of our ring stim: */
+    float d = distance(pos, RingCenter);
+
+    /* If distance greater than maximum radius, discard this pixel: */
+    if (d > Radius) discard;
+
+    /* Convert distance from units of pixels into units of ringwidths, apply shift offset: */
+    d = 0.5 * (1.0 + sin((d - Shift) / RingWidth * twopi));
+
+    /* Mix the two colors stored in gl_Color and secondColor, using the slow
+     * sine-wave weight term in d as a mix weight between 0.0 and 1.0:
+     */
+    gl_FragColor = mix(gl_Color, secondColor, d);
+}

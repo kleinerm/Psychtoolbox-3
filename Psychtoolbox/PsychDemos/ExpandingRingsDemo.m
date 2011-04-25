@@ -1,4 +1,4 @@
-function ExpandingRingsDemo
+function ExpandingRingsDemo(ringtype)
 % ExpandingRingsDemo -- Generate an "expanding rings" stimulus by use of GLSL
 % shaders and Psychtoolbox procedural textures.
 %
@@ -27,9 +27,18 @@ function ExpandingRingsDemo
 % generates the image content of the stimulus on the fly during
 % drawing of the texture via execution of the shader at each output pixel
 % location.
+%
+% The optional 'ringtype' parameter allows to select between different ring
+% shapes. Default type is zero:
+%
+% 0 = Hard transitions between red and yellow rings.
+% 1 = Transitions are modeled as a smooth sine wave, softly fading from
+%     yellow to red and back.
+%
 
 % History:
 % 19.05.2007 Written (MK)
+% 24.04.2011 Updated to support 'ringtype' parameter and sine-wave rings (MK)
 
 % Acquire a handle to OpenGL, so we can use OpenGL commands in our code:
 global GL;
@@ -37,12 +46,16 @@ global GL;
 % Make sure this is running on OpenGL Psychtoolbox:
 AssertOpenGL;
 
+if nargin < 1 || isempty(ringtype)
+    ringtype = 0;
+end
+
 % Choose screen with maximum id - the secondary display:
 screenid = max(Screen('Screens'));
 
 % Open a fullscreen onscreen window on that display, choose a background
 % color of 128 = gray with 50% max intensity:
-[win winRect]= Screen('OpenWindow', screenid, 128);
+win = Screen('OpenWindow', screenid, 128);
 
 % Query window size: Need this to define center and radius of expanding
 % disk stimulus:
@@ -50,7 +63,13 @@ screenid = max(Screen('Screens'));
 
 % Load the 'ExpandingRingsShader' fragment program from file, compile it,
 % return a handle to it:
-expandingRingShader = LoadGLSLProgramFromFiles([PsychtoolboxRoot 'PsychDemos/ExpandingRingsShader'], 1);
+if ringtype == 0
+    expandingRingShader = LoadGLSLProgramFromFiles([PsychtoolboxRoot 'PsychDemos/ExpandingRingsShader'], 1);
+    rw = 20;
+else
+    expandingRingShader = LoadGLSLProgramFromFiles([PsychtoolboxRoot 'PsychDemos/ExpandingSinesShader'], 1);
+    rw = 200;
+end
 
 % Create a purely virtual texture 'ringtex' of size tw x th virtual pixels, i.e., the
 % full size of the window. Attach the expandingRingShader to it, to define
@@ -66,7 +85,7 @@ glUseProgram(expandingRingShader);
 glUniform2f(glGetUniformLocation(expandingRingShader, 'RingCenter'), tw/2, th/2);
 
 % Set the width of a single ring in pixels to 20 pixels:
-glUniform1f(glGetUniformLocation(expandingRingShader, 'RingWidth'), 20);
+glUniform1f(glGetUniformLocation(expandingRingShader, 'RingWidth'), rw);
 
 % Set color of the odd rings to [1.0, 1.0, 0.0, 1.0] == yellow with full alpha: Note that
 % color are spec'd in range 0.0 - 1.0, not in the "normal" Psychtoolbox
