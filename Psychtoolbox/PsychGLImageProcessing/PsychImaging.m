@@ -2789,7 +2789,7 @@ end
 if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
     % Our special shader-based output formatter is only needed and effective on OS/X or
     % Linux with ATI Radeon hardware:
-    if (~isempty(strfind(winfo.GLRenderer, 'Radeon'))) & (IsOSX | IsLinux) 
+    if (~isempty(strfind(winfo.GLRenderer, 'Radeon')) || (~isempty(strfind(winfo.GLRenderer, 'Gallium')) && ~isempty(strfind(winfo.GLRenderer, 'ATI')))) && (IsOSX || IsLinux) 
         % ATI Radeon on OS/X or Linux: Use our reformatter
         % Load output formatting shader:
         pgshader = LoadGLSLProgramFromFiles('RGBMultiLUTLookupCombine_FormattingShader', 1);
