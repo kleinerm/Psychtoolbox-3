@@ -1333,6 +1333,9 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 				}
 			}
 		} // End of OS/X Video source creation.
+
+		// The usual crap for MS-Windows:
+		if (strstr(plugin_name, "dshowvideosrc")) g_object_set(G_OBJECT(videosource), "typefind", 1, NULL);
 		
 		// Enable timestamping by videosource:
 		g_object_set(G_OBJECT(videosource), "do-timestamp", 1, NULL);
@@ -1704,7 +1707,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		    g_object_set(G_OBJECT(camera),
 				 // Only enable sound encoding if "audio recording" flag 2 is set in
 				 // recordingflags. Otherwise add flags 0x20 to disable audio encoding:
-				 "flags", 0x08 + 0x04 + 0x01 + ((recordingflags & 2) ? 0x10 : 0x20),
+				 "flags", 0x08 + 0x04 + 0x02 + 0x01 + ((recordingflags & 2) ? 0x10 : 0x20),
 				 // filter caps not needed for V4L2 webcam sources. TODO FIXME: Needed for non-Video4Linux2 sources?
 				 // "filter-caps", filter_caps,
 				 NULL);
@@ -1750,51 +1753,82 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
 	    // Specific capture resolution requested?
 	    if ((twidth != -1) && (theight != -1)) {
-		// Yes. Validate and request it.
-
-		// Query camera if it supports the requested resolution:
-		capdev->fps = -1;
-		if (!PsychGSGetResolutionAndFPSForSpec(capdev, &twidth, &theight, &capdev->fps, reqdepth)) {
-			// Unsupported resolution. Game over!
-			printf("PTB-ERROR: Video capture device %i doesn't support requested video capture resolution of %i x %i pixels! Aborted.\n", slotid, twidth, theight);
-			PsychErrorExitMsg(PsychError_user, "Failed to open video device at requested video resolution.");
-		}
-
-		// Resolution supported. Request it:
-		g_object_set(G_OBJECT(camera),
-			     "video-capture-width", twidth,
-			     "video-capture-height", theight,
-			     NULL);
-
-		// Assign requested and validated resolution as capture resolution of video source:
-		capdev->width = twidth;
-		capdev->height = theight;
-		capdev->fps = 0;
+            // Yes. Validate and request it.
+            
+            // The usual Windows crap. Enumeration of supported resolutions doesn't work, so
+            // we skip validation and trust blindly that the usercode is right if this is the
+            // DirectShow video source:
+            if (!strstr(plugin_name, "dshowvideosrc")) {
+                // Query camera if it supports the requested resolution:
+                capdev->fps = -1;
+                if (!PsychGSGetResolutionAndFPSForSpec(capdev, &twidth, &theight, &capdev->fps, reqdepth)) {
+                    // Unsupported resolution. Game over!
+                    printf("PTB-ERROR: Video capture device %i doesn't support requested video capture resolution of %i x %i pixels! Aborted.\n", slotid, twidth, theight);
+                    PsychErrorExitMsg(PsychError_user, "Failed to open video device at requested video resolution.");
+                }
+            }
+            
+            // Resolution supported. Request it:
+            g_object_set(G_OBJECT(camera),
+                         "video-capture-width", twidth,
+                         "video-capture-height", theight,
+                         NULL);
+            
+            // Assign requested and validated resolution as capture resolution of video source:
+            capdev->width = twidth;
+            capdev->height = theight;
+            capdev->fps = 0;
 	    }
 	    else {
-		// No, usercode wants auto-detected default resolution. Query
-		// highest possible resolution (maximum pixel area) and choose that:
-		capdev->width = -1;
-		capdev->height = -1;
-		capdev->fps = -1;
+            // No, usercode wants auto-detected default resolution. Query
+            // highest possible resolution (maximum pixel area) and choose that:
+            capdev->width = -1;
+            capdev->height = -1;
+            capdev->fps = -1;
 
-		// Ask camera to provide auto-detected parameters:
-		if (!PsychGSGetResolutionAndFPSForSpec(capdev, &capdev->width, &capdev->height, &capdev->fps, reqdepth)) {
-			// Unsupported resolution. Game over!
-			printf("PTB-ERROR: Auto-Detection of optimal video resolution on video capture device %i failed! Aborted.\n", slotid);
-			PsychErrorExitMsg(PsychError_user, "Failed to open video device with auto-detected video resolution.");
-		}
+            // Auto-Detection doesn't work with Windows DirectShow video plugin :-( Skip it.
+            if (!strstr(plugin_name, "dshowvideosrc")) {
+                // Ask camera to provide auto-detected parameters:
+                if (!PsychGSGetResolutionAndFPSForSpec(capdev, &capdev->width, &capdev->height, &capdev->fps, reqdepth)) {
+                    // Unsupported resolution. Game over!
+                    printf("PTB-ERROR: Auto-Detection of optimal video resolution on video capture device %i failed! Aborted.\n", slotid);
+                    PsychErrorExitMsg(PsychError_user, "Failed to open video device with auto-detected video resolution.");
+                }
+                
+                // Resolution supported. Request it:
+                g_object_set(G_OBJECT(camera),
+                             "video-capture-width", capdev->width,
+                             "video-capture-height", capdev->height,
+                             NULL);
+            }
+            else {
+                // Directshow source. Set "don't know" values and hope the fallback code below
+                // does a better job at guessing the true source resolution:
+                capdev->width  = 0;
+                capdev->height = 0;
 
-		// Resolution supported. Request it:
-		g_object_set(G_OBJECT(camera),
-			     "video-capture-width", capdev->width,
-			     "video-capture-height", capdev->height,
-			     NULL);
+                // ROI defined? We can't handle this, because we don't know the true video capture resolution
+                // which would be needed at this point in the setup path due to the broken enumeration of dshowvideosrc.
+                if (capturerectangle) {
+                    capturerectangle = NULL;
+                    overrideFrameSize = TRUE;
 
-		// Reset capdev->fps to neutral zero: capdev->width and capdev->height are already auto-assigned.
-		capdev->fps = 0;
+                    // Delete useless videocrop element if any:
+                    if (videocrop_filter) g_object_unref(G_OBJECT(videocrop_filter));
+                    videocrop_filter = NULL;
+
+                    if (PsychPrefStateGet_Verbosity() > 1) {
+                        printf("PTB-WARNING: Usercode specified a 'roirectangle' with a ROI for video cropping, but this system setup\n");
+                        printf("PTB-WARNING: doesn't support this. Ignoring 'roirectangle' and reverting to full video capture resolution.\n");
+                    }
+
+                }
+            }
+            
+            // Reset capdev->fps to neutral zero: capdev->width and capdev->height are already auto-assigned.
+            capdev->fps = 0;
 	    }
-
+        
 	    // videocrop_filter for ROI processing available?
 	    if (videocrop_filter) {
 		    // Setup final cropping region:
@@ -1821,7 +1855,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 			    // capdev->frame_width and capdev->frame_height fields to take this
 			    // into account, so we at least get a distorted image in the video
 			    // textures. Usercode can Screen('DrawTexture') such distorted textures
-                            // with a properly scaled 'dstrect' to undistort, although this is a
+                // with a properly scaled 'dstrect' to undistort, although this is a
 			    // messy endeveaour -- but not impossible.
 
 			    // So we attach to video-post-processing and set a special flag to
@@ -2047,10 +2081,10 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     // Assign our first guess on video device resolution, only already
     // setup by detection code above:
     if ((capdev->width == 0) && (capdev->height)) {
-	capdev->width = width;
-	capdev->height = height;
+        capdev->width = width;
+        capdev->height = height;
     }
-
+    
     // Reset framecounter:
     capdev->nrframes = 0;
     capdev->grabber_active = 0;
@@ -2202,8 +2236,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     vidcapRecordBANK[slotid].recordingflags = recordingflags;
 
     if (PsychPrefStateGet_Verbosity() > 2) {
-	    printf("PTB-INFO: Camera opened [Source resolution width x height = %i x %i, ROI size %i x %i]\n",
-		   capdev->width, capdev->height, capdev->frame_width, capdev->frame_height);
+	    printf("PTB-INFO: Camera %i opened [Source resolution width x height = %i x %i, video image size %i x %i]\n",
+		   slotid, capdev->width, capdev->height, capdev->frame_width, capdev->frame_height);
     }
 
     return(TRUE);
@@ -2721,11 +2755,11 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 		    if (baseTime == 0) baseTime = capdev->lastSavedBaseTime;
 
 		    capdev->current_pts = (double) (GST_BUFFER_TIMESTAMP(videoBuffer) + baseTime) / (double) 1e9;
-	    }
 
-	    // Apply corrective offset for GStreamer clock base zero point:
-	    capdev->current_pts+= gs_startupTime;
-
+            // Apply corrective offset for GStreamer clock base zero point:
+            capdev->current_pts+= gs_startupTime;     
+        }
+        
 	    deltaT = 0.0;
 	    if (GST_CLOCK_TIME_IS_VALID(GST_BUFFER_DURATION(videoBuffer)))
 		    deltaT = (double) GST_BUFFER_DURATION(videoBuffer) / (double) 1e9;
