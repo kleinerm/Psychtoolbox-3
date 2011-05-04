@@ -57,6 +57,10 @@ screenid = max(Screen('Screens'));
 % color of 128 = gray with 50% max intensity:
 win = Screen('OpenWindow', screenid, 128);
 
+% Switch color specification to use the 0.0 - 1.0 range instead of the 0 -
+% 255 range. This comes more natural for these kind of stimuli:
+Screen('ColorRange', win, 1);
+
 % Query window size: Need this to define center and radius of expanding
 % disk stimulus:
 [tw, th] = Screen('WindowSize', win);
@@ -87,13 +91,11 @@ glUniform2f(glGetUniformLocation(expandingRingShader, 'RingCenter'), tw/2, th/2)
 % Set the width of a single ring in pixels to 20 pixels:
 glUniform1f(glGetUniformLocation(expandingRingShader, 'RingWidth'), rw);
 
-% Set color of the odd rings to [1.0, 1.0, 0.0, 1.0] == yellow with full alpha: Note that
-% color are spec'd in range 0.0 - 1.0, not in the "normal" Psychtoolbox
-% color range of 0 - 255. This is because we use a standard OpenGL command
-% for color setup -- OpenGL expects values in this range. Normally
-% Psychtoolbox-3 hides this from us by internally remapping color values for
-% backwards compatibility with the old PTB-2:
-glUniform4f(glGetUniformLocation(expandingRingShader, 'secondColor'), 1.0, 1.0, 0.0, 1.0);
+firstColor  = [1 0 0 1]; 
+secondColor = [1 1 0 1]; 
+
+% Set color of the odd rings to secondColor:
+glUniform4fv(glGetUniformLocation(expandingRingShader, 'secondColor'), 1, secondColor);
 
 % Retrieve handles to the 'Shift' and 'Radius' parameters inside the
 % shader: The shiftparam allows to shift the ring stimulus -- scrolling it.
@@ -133,11 +135,10 @@ while ~KbCheck
     % Draw the stimulus with its current parameter settings. We simply draw
     % the procedural texture as any other texture via 'DrawTexture'. We
     % leave all draw settings to their defaults, except the base drawing
-    % color, which in our case defines the color of the even rings. A
-    % setting of [red green blue] == [255 0 0] will set them to red color.
-    % These colors are spec'd in the 0-255 range because they are input to
-    % a standard PTB command.
-    Screen('DrawTexture', win, ringtex, [], [], [], [], [], [255 0 0]);
+    % color, which in our case defines the color of the even rings.
+    %
+    % We use 'firstColor' for the even rings:
+    Screen('DrawTexture', win, ringtex, [], [], [], [], [], firstColor);
     
     % Request stimulus onset at next video refresh:
     vbl = Screen('Flip', win);
