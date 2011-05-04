@@ -602,8 +602,9 @@ int PsychPAProcessSchedule(PsychPADevice* dev, psych_int64 *playposition, float*
 				outsbsize = 0;
 
 				// Compute absolute deadline from given tWhen timespec and type of timespec:
-				if (cmd & 4)  reqTime = dev->schedule[slotid].tWhen;						// Absolute.
-				if (cmd & 8)  reqTime = dev->reqStartTime + dev->schedule[slotid].tWhen;	// Relative to last requested start time.
+				if (cmd & 4)  reqTime = dev->schedule[slotid].tWhen;						// Absolute system time specified.
+                // Relative to last requested start time. We use last true start time as fallback if the requested start time is undefined:
+				if (cmd & 8)  reqTime = ((dev->reqStartTime > 0.0) ? dev->reqStartTime : dev->startTime) + dev->schedule[slotid].tWhen;
 				if (cmd & 16) reqTime = dev->startTime + dev->schedule[slotid].tWhen;		// Relative to last true start time.
 				// TODO: The following two "end time" related ones are pretty broken - Can't
 				// work the way i want it to work, as relevant information is not available at
