@@ -89,7 +89,8 @@ extern AbsoluteTime *psychHIDKbQueueLastPress;
 extern AbsoluteTime *psychHIDKbQueueLastRelease;
 extern HIDDataRef hidDataRef;
 extern CFRunLoopRef psychHIDKbQueueCFRunLoopRef;
- 
+extern pthread_t psychHIDKbQueueThread;
+
 PsychError PSYCHHIDKbQueueRelease(void) 
 {
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -130,6 +131,10 @@ PsychError PSYCHHIDKbQueueRelease(void)
 	// so it isn't even declared in this routine
 	if(psychHIDKbQueueCFRunLoopRef){
 		CFRunLoopStop(psychHIDKbQueueCFRunLoopRef);
+
+        pthread_join(psychHIDKbQueueThread, NULL);
+        psychHIDKbQueueThread = NULL;
+
 		CFRelease(psychHIDKbQueueCFRunLoopRef);
 		psychHIDKbQueueCFRunLoopRef=NULL;
 	}

@@ -98,6 +98,7 @@ AbsoluteTime *psychHIDKbQueueLastRelease=NULL;
 HIDDataRef hidDataRef=NULL;
 pthread_mutex_t psychHIDKbQueueMutex=PTHREAD_MUTEX_INITIALIZER;
 CFRunLoopRef psychHIDKbQueueCFRunLoopRef=NULL;
+pthread_t psychHIDKbQueueThread = NULL;
 
 static void *PsychHIDKbQueueNewThread(void *value){
 	// The new thread is started after the global variables are initialized
@@ -507,7 +508,6 @@ PsychError PSYCHHIDKbQueueCreate(void)
 		}
 	}
 	{
-		pthread_t psychHIDKbQueueThread;
 		int returnCode=pthread_create(&psychHIDKbQueueThread, NULL, PsychHIDKbQueueNewThread, NULL);
 		if(returnCode!=0){
 			free(psychHIDKbQueueFirstPress);
