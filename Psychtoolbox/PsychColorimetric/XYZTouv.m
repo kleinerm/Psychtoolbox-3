@@ -3,7 +3,7 @@ function uv = XYZTouv(XYZ,compute1960)
 %
 % Compute uv from XYZ.
 %
-% % These are u',v' chromaticity coordinates in notation
+% These are u',v' chromaticity coordinates in notation
 % used by CIE.  See CIE Colorimetry 2004 publication, or Wyszecki
 % and Stiles, 2cd, page 165.
 %
@@ -29,7 +29,7 @@ uv = zeros(2,n);
 denom = [1.0,15.0,3.0]*XYZ;
 uv(1,:) = (4*XYZ(1,:)) ./ denom(1,:);
 if (compute1960)
-    uv(2,:) = (9*XYZ(2,:)) ./ denom(1,:);
-else
     uv(2,:) = (6*XYZ(2,:)) ./ denom(1,:);
+else
+    uv(2,:) = (9*XYZ(2,:)) ./ denom(1,:);
 end
