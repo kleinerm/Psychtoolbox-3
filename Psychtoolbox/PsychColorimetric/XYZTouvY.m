@@ -22,7 +22,7 @@ function uvY = XYZTouvY(XYZ,compute1960)
 %           dhb Add "compute1960" option.
 
 %% Handle optional arg
-if (nargin < 2 || isempty(comptue1960))
+if (nargin < 2 || isempty(compute1960))
     compute1960 = 0;
 end
 

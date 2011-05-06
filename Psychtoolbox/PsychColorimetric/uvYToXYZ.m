@@ -9,9 +9,9 @@ function XYZ = uvYToXYZ(uvY,compute1960)
 %
 % Note that there is an obsolete u,v chromaticity diagram that is similar
 % but uses 6 in the numerator for u rather than the 9 that is used for u'.
-% See CIE Coloimetry 2004, Appendix A, or Judd and Wyszecki, p. 296.
-%
-% If one ever has the need, this could be
+% See CIE Coloimetry 2004, Appendix A, or Judd and Wyszecki, p. 296. If
+% you want this (maybe to compute correlated color temperatures), you can
+% pass this as 1.  It is 0 by default.
 %
 % See also XYZTouvY, xyTouv, XYZToxyY, xyYToXYZ
 %
@@ -19,7 +19,7 @@ function XYZ = uvYToXYZ(uvY,compute1960)
 % 5/06/11   dhb  Improve comment.
 
 %% Handle optional arg
-if (nargin < 2 || isempty(comptue1960))
+if (nargin < 2 || isempty(compute1960))
     compute1960 = 0;
 end
 
