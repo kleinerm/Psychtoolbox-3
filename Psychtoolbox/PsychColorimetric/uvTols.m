@@ -1,5 +1,5 @@
-function ls = uvToxy(uv)
-% ls = uvToxy(uv)
+function ls = uvTols(uv)
+% ls = uvTolsy(uv)
 %
 % Convert CIE u'v' chromaticity to cone chromaticity ls, L/(L+M+S), S/(L+M+S).
 %
@@ -10,6 +10,7 @@ function ls = uvToxy(uv)
 % uv for spectral lights.
 % 
 % 3/17/04  dhb		Wrote it.
+% 05/06/11 dhb      Make function name in file match actual function name.
 
 % Compute the conversion matrix
 % load T_xyzJuddVos;
@@ -33,3 +34,4 @@ for j = 1:nCols
 end
 
 
+uvTo
