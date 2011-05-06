@@ -19,7 +19,7 @@ function XYZ = uvYToXYZ(uvY,compute1960)
 % 5/06/11   dhb  Improve comment.
 
 %% Handle optional arg
-if (nargin < 2 || isempty(comptue1960)
+if (nargin < 2 || isempty(comptue1960))
     compute1960 = 0;
 end
 

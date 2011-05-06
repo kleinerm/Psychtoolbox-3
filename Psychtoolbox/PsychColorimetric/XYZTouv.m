@@ -17,7 +17,7 @@ function uv = XYZTouv(XYZ,compute1960)
 % 5/06/11   dhb   More extensive comment.  Optional 1960 version. 
 
 %% Handle optional arg
-if (nargin < 2 || isempty(comptue1960)
+if (nargin < 2 || isempty(comptue1960))
     compute1960 = 0;
 end
 
