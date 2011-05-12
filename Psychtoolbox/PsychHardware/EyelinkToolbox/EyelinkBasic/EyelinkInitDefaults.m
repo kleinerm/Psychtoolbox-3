@@ -46,6 +46,9 @@ el.connected=1;
 el.dummyconnected=-1;
 el.broadcastconnected=2;
 
+
+el.displayCalResults = 0;
+
 if ~exist('window', 'var')
     window = [];
 end
@@ -93,7 +96,7 @@ el.modifierkey=KbName('LeftGUI');
 el.waitformodereadytime=500;
 el.calibrationtargetsize=2.5;  % size of calibration target as percentage of screen
 el.calibrationtargetwidth=1; % width of calibration target's border as percentage of screen
-el.calibrationtargetcolour=[255 255 0];
+el.calibrationtargetcolour=[0 0 0];
 
 el.getkeyrepeat=1/5; % "sample time" for eyelinkgetkey
 el.getkeytime=-1; % stores last time eyelinkgetkey was used
@@ -288,11 +291,14 @@ else
 end
 
 
-% Window assigned?
-if ~isempty(el.window) & ~isempty(el.callback) %#ok<AND2>
-    % Yes. Assign it to our dispatch callback:
-%     EyelinkDispatchCallback(el);
-    PsychEyelinkDispatchCallback(el);
-end
+EyelinkUpdateDefaults(el);
+
+
+% % Window assigned?
+% if ~isempty(el.window) & ~isempty(el.callback) %#ok<AND2>
+%     % Yes. Assign it to our dispatch callback:
+% %     EyelinkDispatchCallback(el);
+%     PsychEyelinkDispatchCallback(el);
+% end
 
 % el % uncomment to show contents of this default eyelink structure
