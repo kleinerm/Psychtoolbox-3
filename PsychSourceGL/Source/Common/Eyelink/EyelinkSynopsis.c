@@ -66,6 +66,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "[result = ] Eyelink('ApplyDriftCorr')";
 	synopsis[i++] = "[result, tx, ty] = Eyelink('TargetCheck')";
 	synopsis[i++] = "[result = ] Eyelink('AcceptTrigger')";
+	synopsis[i++] = "[result, messageString =] Eyelink('CalMessage')";
 	
 	// Start or stop recording, Data acquisition
 	synopsis[i++] = "\n% Start or stop recording and acquiring data:";
@@ -91,6 +92,8 @@ void InitializeSynopsis()
 	synopsis[i++] = "[offset =] Eyelink('TimeOffset')";
 	synopsis[i++] = "[status =] Eyelink('RequestTime')";
 	synopsis[i++] = "[time =] Eyelink('ReadTime')";
+	synopsis[i++] = "[mode =] Eyelink('TrackerMode')";
+	synopsis[i++] = "[result, reply =] Eyelink('ReadFromTracker', 'VariableName')";
 
 	synopsis[i++] = "\n% Miscellaneous Eyelink functions:";
 	synopsis[i++] = "[result =] Eyelink('WaitForModeReady', maxwait)";
@@ -101,6 +104,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "[version, versionString]  = Eyelink('GetTrackerVersion')";
 	synopsis[i++] = "[time =] Eyelink('TrackerTime')";
 	synopsis[i++] = "[offset =] Eyelink('TimeOffset')";
+	synopsis[i++] = "[result =] Eyelink('ImageTransfer','imagePath', 'X', 'Y','Width','Height', tracker X', 'tracker Y', 'xferoptions')";
 
 	// Place Holder
 	synopsis[i++] = "\n\n\n\n% EyelinkToolbox version for the OpenGL PsychToolbox";
@@ -111,6 +115,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "\tChris Burns";
 	synopsis[i++] = "\tMario Kleiner";
 	synopsis[i++] = "\tErik Flister";
+	synopsis[i++] = "\tNuha Jabakhanji";
 	
 	synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
 	if (i > MAX_SYNOPSIS_STRINGS) {
