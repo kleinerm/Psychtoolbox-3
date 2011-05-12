@@ -43,11 +43,9 @@
 // These not defined on Windows systems:
 // Except for Uint8 and Int8 on MK's R11 build machine??? WTF???
 // Anyway, the definition of TARGET_BUILD_WIN32R11 takes care of it.
-#ifndef PTBOCTAVE3MEX
 #ifndef TARGET_BUILD_WIN32R11
 typedef UINT8 UInt8;
 typedef INT8 Int8;
-#endif
 #endif
 typedef UINT16 UInt16;
 typedef UINT32 UInt32;
@@ -161,6 +159,12 @@ PsychError EyelinkTrackerTime(void);
 PsychError EyelinkTimeOffset(void);
 PsychError EyelinkVerbosity(void);
 PsychError EyelinkTestSuite(void);
+
+//NJ
+PsychError EyelinkImageTransfer(void);
+PsychError EyelinkTrackerMode(void);
+PsychError EyelinkCalMessage(void);
+PsychError EyelinkReadFromTracker(void);
 
 // PSYCH_IS_INCLUDED_Eyelink
 #endif
