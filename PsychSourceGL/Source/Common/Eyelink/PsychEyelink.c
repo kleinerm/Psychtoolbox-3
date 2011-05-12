@@ -26,6 +26,9 @@
 */
 
 #include "PsychEyelink.h"
+// added by NJ 13/9/2010
+#include "core_expt.h"
+#include <math.h>
 
 /////////////////////////////////////////////////////////////////////////
 // Global variables used throughout eyelink C files
@@ -46,7 +49,7 @@ static int eyeheight = 0;
 
 // Color remapping palette table:
 static unsigned int palmap32[256];
-
+#define ERR_BUFF_LEN 1000
 /////////////////////////////////////////////////////////////////////////
 // Check if system is initialized
 //
@@ -350,8 +353,9 @@ void ELCALLBACK PsychEyelink_noop(void)
 // image in pixels.
 INT16 ELCALLBACK PsychEyelink_setup_image_display(INT16 width, INT16 height)
 {
-	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_setup_image_display()\n");
 	
+	
+	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_setup_image_display()\n");
 	// Release any stale image buffer:
 	if (eyeimage != NULL) free(eyeimage);
 	
@@ -392,6 +396,7 @@ INT16 ELCALLBACK PsychEyelink_setup_image_display(INT16 width, INT16 height)
 // PsychEyelink_exit_image_display() shuts down any camera image display:
 void ELCALLBACK PsychEyelink_exit_image_display(void)
 {
+	
 	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_exit_image_display()\n");
 
 	// Release any allocated image buffer:
@@ -408,6 +413,616 @@ void ELCALLBACK PsychEyelink_exit_image_display(void)
 	// Done.
 	return;
 }
+// added by NJ @ SR Research Sept 2010
+#define UPSIDE 0
+#define LEFTSIDE 1
+#define RIGHTSIDE 2
+#define DOWNSIDE 3
+void drawSemiCircle(CrossHairInfo *chi, int left, int top, int dia, int side, int cindex)
+{
+	
+	
+
+	unsigned char r =0;
+	unsigned char g =0;
+	unsigned char b =0;
+	unsigned char a =255;
+	int radius = dia/2;
+	int x = left - 1;
+	int y = top -1;
+	int w = dia+1;
+	int h = dia+1;
+	unsigned int *v0;
+	int x0,y0, ddF_x =1, ddF_y,f;
+	
+
+	if (eyeimage == NULL){
+		return;
+	}
+
+	switch(cindex)
+	{
+		case CR_HAIR_COLOR:          r=g=b =255; break;//255,255,255
+		case PUPIL_HAIR_COLOR:       r=g=b =255; break;//255,255,255
+		case PUPIL_BOX_COLOR:			 g =255; break;//0,255,0
+		case SEARCH_LIMIT_BOX_COLOR: 
+		case MOUSE_CURSOR_COLOR:		r = 255; break;//255,0,0
+	}
+	
+	v0 = (unsigned int*) (eyeimage);
+	
+	// implement manual clipping to mimic behavior on host pc
+	
+	if(side == UPSIDE)
+	{
+		
+		x0 = left;
+		y0 = top;
+		radius = dia / 2;	
+		y= radius;
+		f = 1 - radius;
+		ddF_y = -2 * radius;
+		x =  0;
+		y = radius;
+		x0 = x0 + dia/2;
+		y0 = y0 + dia/2;
+
+		
+		if (y0 < eyeheight && y0 > 0 && y0-radius < eyeheight && y0-radius > 0 && y0-radius < eyeheight &&  x0+radius < eyewidth && x0-radius >0 && x0+radius > 0 && x0-radius < eyewidth){
+			v0[(eyewidth*eyeheight) - (y0-radius)*eyewidth+x0] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			v0[(eyewidth*eyeheight) - y0*eyewidth+(x0+radius)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			v0[(eyewidth*eyeheight) - y0*eyewidth+(x0-radius)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+		}
+		
+		while( x < y ){	 
+			
+			if(f >= 0){
+				y--;
+				ddF_y += 2;
+				f += ddF_y;
+				
+			}
+			x++;
+			ddF_x += 2;
+			f += ddF_x;
+			
+
+			if (y0+y >0 && y0+y < y0 && y0+y < eyeheight) {
+				
+				if(x0+x < eyewidth)
+				v0[(eyewidth*eyeheight) - (y0+y)*eyewidth+(x0+x)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+				if (x0-x > 0 )
+				v0[(eyewidth*eyeheight) - (y0+y)*eyewidth+(x0-x)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			}
+			if (y0-y >0 && y0-y < y0 && y0-y < eyeheight){//if (y0-y < y0 && y0-y < eyeheight){
+				
+				if (x0+x < eyewidth)
+				v0[(eyewidth*eyeheight) - (y0-y)*eyewidth+(x0+x)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+				if (x0-x > 0 )
+				v0[(eyewidth*eyeheight) - (y0-y)*eyewidth+(x0-x)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			}
+			if (y0+x >0 && y0+x < y0 && y0+x < eyeheight){//if (y0+x < y0 && y0+x < eyeheight){
+				
+				if (x0+y < eyewidth)
+				v0[(eyewidth*eyeheight) - (y0+x)*eyewidth+(x0+y)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+				if((x0-y) >0)
+				v0[(eyewidth*eyeheight) - (y0+x)*eyewidth+(x0-y)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			}
+			if (y0-x > 0 && y0-x < y0 && y0-x < eyeheight){//if (y0-x < y0 && y0-x < eyeheight){
+			
+				if(x0+y < eyewidth)
+				v0[(eyewidth*eyeheight) - (y0-x)*eyewidth+(x0+y)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+				if(x0-y > 0)
+				v0[(eyewidth*eyeheight) - (y0-x)*eyewidth+(x0-y)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			}
+		}
+	}else if (side == DOWNSIDE){
+		
+		radius = dia / 2;
+		y= radius;
+		f = 1 - radius;
+		ddF_y = -2 * radius;
+		ddF_x =1;
+		x =  0;
+		y = radius;
+		
+		x0 = left;
+		y0 = top;
+		x0 = x0 + dia/2;
+		
+		if (y0+radius < eyeheight && y0+radius > 0 && x0 > 0 && x0 < eyewidth)
+			v0[(eyewidth*eyeheight) - (y0+radius)*eyewidth+x0] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+		if (y0 < eyeheight && y0 > 0 && x0+radius > 0 && x0+radius < eyewidth)
+			v0[(eyewidth*eyeheight) - y0*eyewidth+(x0+radius)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+		if (y0 < eyeheight && y0 > 0 && x0-radius > 0 && x0-radius < eyewidth)
+			v0[(eyewidth*eyeheight) - y0*eyewidth+(x0-radius)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+		
+		
+		while( x < y ){	 
+			
+			if(f >= 0){
+				y--;
+				ddF_y += 2;
+				f += ddF_y;
+				
+			}
+			x++;
+			ddF_x += 2;
+			f += ddF_x;
+			
+			if (y0+y >0 && y0+y > y0 && y0+y < eyeheight) {
+				if ( x0+x < eyewidth)
+					v0[(eyewidth*eyeheight) - (y0+y)*eyewidth+(x0+x)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+				if ( x0-x > 0 )
+					v0[(eyewidth*eyeheight) - (y0+y)*eyewidth+(x0-x)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			}
+			if (y0-y > 0 && y0-y > y0 && y0-y < eyeheight){
+				if ( x0+x < eyewidth)
+					v0[(eyewidth*eyeheight) - (y0-y)*eyewidth+(x0+x)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+				if ( x0-x > 0 )	
+					v0[(eyewidth*eyeheight) - (y0-y)*eyewidth+(x0-x)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			}
+			if (y0+x >0 && y0+x > y0 && y0+x < eyeheight){
+				if ( x0+y < eyewidth )
+					v0[(eyewidth*eyeheight) - (y0+x)*eyewidth+(x0+y)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+				if ( x0-y > 0)
+					v0[(eyewidth*eyeheight) - (y0+x)*eyewidth+(x0-y)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			}
+			if (y0-x  >0 && y0-x > y0 && y0-x < eyeheight){
+				if ( x0+y < eyewidth)
+					v0[(eyewidth*eyeheight) - (y0-x)*eyewidth+(x0+y)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+				if (x0-y > 0)
+					v0[(eyewidth*eyeheight) - (y0-x)*eyewidth+(x0-y)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			}
+		}
+		
+		
+	}else if (side == RIGHTSIDE){
+		
+		radius = dia / 2;
+		y= radius;
+		f = 1 - radius;
+		ddF_y = -2 * radius;
+		ddF_x =1;
+		x =  0;
+		y = radius;
+		
+		x0 = left;
+		y0 = top;
+		y0 = y0 + dia/2;
+				
+		
+		if (x0 + radius < eyewidth && x0+radius > 0){
+			v0[(eyewidth*eyeheight) - (y0+radius)*eyewidth+x0] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			v0[(eyewidth*eyeheight) - (y0+radius)*eyewidth+x0] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			v0[(eyewidth*eyeheight) - y0*eyewidth+(x0+radius)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+		}
+		
+		while( x < y ){	 
+			
+			if(f >= 0){
+				y--;
+				ddF_y += 2;
+				f += ddF_y;
+				
+			}
+			x++;
+			ddF_x += 2;
+			f += ddF_x;
+			
+			if (x0+x  >0 && x0+x > x0 && x0+x < eyewidth) {
+				if(y0+x < eyeheight)
+					v0[(eyewidth*eyeheight) - (y0+y)*eyewidth+(x0+x)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+				if(y0-x > 0)
+					v0[(eyewidth*eyeheight) - (y0-y)*eyewidth+(x0+x)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+				
+			}
+			if (x0-x > 0 && x0-x > x0 && x0-x < eyewidth){
+				if(y0+y < eyeheight)
+					v0[(eyewidth*eyeheight) - (y0+y)*eyewidth+(x0-x)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+				if(y0-y > 0)
+					v0[(eyewidth*eyeheight) - (y0-y)*eyewidth+(x0-x)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			}
+			if (x0+y > 0 && x0+y > x0 && x0+y < eyewidth){
+				if(y0+x < eyeheight)
+					v0[(eyewidth*eyeheight) - (y0+x)*eyewidth+(x0+y)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+				if(y0-x > 0)
+					v0[(eyewidth*eyeheight) - (y0-x)*eyewidth+(x0+y)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);			
+			}
+			if (x0-y > 0 && x0-y > x0 && x0-y < eyewidth){
+				if(y0+x < eyeheight)
+					v0[(eyewidth*eyeheight) - (y0+x)*eyewidth+(x0-y)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+				if(y0-x > 0)
+					v0[(eyewidth*eyeheight) - (y0-x)*eyewidth+(x0-y)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			}
+		}
+		
+	}else if (side == LEFTSIDE){
+		
+		radius = dia / 2;
+		y= radius;
+		f = 1 - radius;
+		ddF_y = -2 * radius;
+		ddF_x =1;
+		x =  0;
+		y = radius;
+		
+		x0 = left;
+		y0 = top;
+		y0 = y0 + dia/2;
+		x0 = x0 + dia/2; 
+
+		if (x0 - radius > 0 && x0-radius < eyewidth){
+		v0[(eyewidth*eyeheight) - (y0+radius)*eyewidth+x0] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+		v0[(eyewidth*eyeheight) - (y0+radius)*eyewidth+x0] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+		v0[(eyewidth*eyeheight) - y0*eyewidth+(x0-radius)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+		}
+		
+		while( x < y ){	 
+			
+			if(f >= 0){
+				y--;
+				ddF_y += 2;
+				f += ddF_y;
+				
+			}
+			x++;
+			ddF_x += 2;
+			f += ddF_x;
+			
+			if (x0+x > 0 && x0+x < x0 && x0+x > 0) {
+				v0[(eyewidth*eyeheight) - (y0+y)*eyewidth+(x0+x)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+				v0[(eyewidth*eyeheight) - (y0-y)*eyewidth+(x0+x)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);				
+			}
+			if (x0-x > 0 && x0-x < x0 && x0-x > 0){
+				if(y0+x < eyeheight)
+					v0[(eyewidth*eyeheight) - (y0+y)*eyewidth+(x0-x)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+				if(y0-x > 0)	
+					v0[(eyewidth*eyeheight) - (y0-y)*eyewidth+(x0-x)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			}
+			if (x0+y > 0 && x0+y < x0 && x0+y > 0){
+				if(y0+x < eyeheight)
+					v0[(eyewidth*eyeheight) - (y0+x)*eyewidth+(x0+y)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+				if(y0-x > 0)
+					v0[(eyewidth*eyeheight) - (y0-x)*eyewidth+(x0+y)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);			
+			}
+			if (x0-y > 0 && x0-y < x0 && x0-y > 0){
+				if(y0+x < eyeheight)
+					v0[(eyewidth*eyeheight) - (y0+x)*eyewidth+(x0-y)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+				if(y0-x > 0)
+					v0[(eyewidth*eyeheight) - (y0-x)*eyewidth+(x0-y)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			}
+		}
+		
+	}
+	return;
+}
+
+// lack of graphics functions use primitive algorithm to draw circle by coloring in rgb in image memory 
+void drawCircle(CrossHairInfo *chi, int x0, int y0, int width, int height, int cindex)
+{
+	
+	
+
+	unsigned char r =0;
+	unsigned char g =0;
+	unsigned char b =0;
+	unsigned char a =255;
+	int x = 0, y, f;
+	int i =0;
+	unsigned int *v0;
+	int radius, ddF_x =1, ddF_y;
+	
+	if (eyeimage == NULL) return;
+
+	switch(cindex){
+		case CR_HAIR_COLOR:          r=g=b = 255; break;//255,255,255
+		case PUPIL_HAIR_COLOR:       r=g=b = 255; break;//255,255,255
+		case PUPIL_BOX_COLOR:			 g = 255; break;//0,255,0
+		case SEARCH_LIMIT_BOX_COLOR: 
+		case MOUSE_CURSOR_COLOR:		 r = 255; break;//255,0,0
+	}
+
+	
+	v0 = (unsigned int*) (eyeimage);
+	
+	radius = width / 2;	
+	y= radius;
+	f = 1 - radius;
+	
+	ddF_y = -2 * radius;
+	x =  0;
+	y = radius;
+	x0 = x0 + width/2;
+	y0 = y0 + width/2;
+
+	if (x0 - radius > 0 && x0+radius < eyewidth && y0+radius < eyeheight && y0-radius > 0){
+		v0[(eyewidth*eyeheight) - (y0+radius)*eyewidth+x0] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+		v0[(eyewidth*eyeheight) - (y0-radius)*eyewidth+x0] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+		v0[(eyewidth*eyeheight) - y0*eyewidth+(x0+radius)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+		v0[(eyewidth*eyeheight) - y0*eyewidth+(x0-radius)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+	}
+	
+	while( x < y ){	 
+		
+		if(f >= 0){
+			y--;
+			ddF_y += 2;
+			f += ddF_y;			
+		}
+		x++;
+		ddF_x += 2;
+		f += ddF_x;		
+		if (y0+y < eyeheight && y0+y > 0){
+			if(x0+x < eyewidth)
+				v0[(eyewidth*eyeheight) - (y0+y)*eyewidth+(x0+x)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			if(x0-x  > 0)
+				v0[(eyewidth*eyeheight) - (y0+y)*eyewidth+(x0-x)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+		}
+		if (y0-y < eyeheight && y0-y > 0){
+			if(x0+x < eyewidth)	
+				v0[(eyewidth*eyeheight) - (y0-y)*eyewidth+(x0+x)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			if(x0-x  > 0)
+				v0[(eyewidth*eyeheight) - (y0-y)*eyewidth+(x0-x)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+		}
+		if(y0+x < eyeheight && y0+x > 0){
+			if(x0+y < eyewidth)
+				v0[(eyewidth*eyeheight) - (y0+x)*eyewidth+(x0+y)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			if(x0-y >0)
+				v0[(eyewidth*eyeheight) - (y0+x)*eyewidth+(x0-y)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+		}
+		if(y0-x < eyeheight && y0-x > 0){
+			if(x0+y < eyewidth)
+				v0[(eyewidth*eyeheight) - (y0-x)*eyewidth+(x0+y)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			if(x0-y >0)
+				v0[(eyewidth*eyeheight) - (y0-x)*eyewidth+(x0-y)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);		
+		}
+	}
+	return;
+}
+// added by NJ @ SR Research Sept 2010
+void drawLozenge(CrossHairInfo *chi, int x0, int y0, int width, int height, int cindex)
+{
+	
+	unsigned char r =0;
+	unsigned char g =0;
+	unsigned char b =0;
+	unsigned char a =255;
+	int x = 0, y;
+	int y2, y1;
+	unsigned int *v0;
+	
+	if (eyeimage == NULL) return;
+	// clip to prevent memory issues and wrap around
+		
+	switch(cindex)	{
+	
+		case CR_HAIR_COLOR:          r=g=b = 255; break;//255,255,255
+		case PUPIL_HAIR_COLOR:       r=g=b = 255; break;//255,255,255
+		case PUPIL_BOX_COLOR:			 g = 255; break;//0,255,0
+		case SEARCH_LIMIT_BOX_COLOR: 
+		case MOUSE_CURSOR_COLOR:		 r = 255; break;//255,0,0
+	}
+	
+if(eyeimage != NULL) {
+	
+	// Retrieve v0 as pointer to pixel row in output buffer:
+	v0 = (unsigned int*) (eyeimage);
+	
+	// is it a circle?
+	if(abs(width - height) < 4) 
+	{
+		drawCircle(chi, x0, y0, width, height, cindex);
+			
+	}else { // non. ligne
+		
+		int minwidth = width * (width < height) + height * (width >= height); //min(width,height);
+		if (width == minwidth) // width was smaller
+		{			
+			y1 = y0+width/2;
+			x = x0;
+			y2 = y1+(height-width) + 1;
+			// only draw vertical lines
+			for (y=y1 ;y< y2;y++) {
+				// be careful to clip or memory error occurs
+				if (y < eyeheight && y > 0 && x > 0 && x < eyewidth)
+					v0[(eyewidth*eyeheight) - y*eyewidth+x] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+				if (y < eyeheight && y > 0 && (x+ width) > 0 && (x+width) < eyewidth)
+					v0[(eyewidth*eyeheight) - y*eyewidth+(x+width)] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+				
+			}	// Now draw the semi circles
+			drawSemiCircle(chi,x0,y0,width,UPSIDE,cindex);
+			drawSemiCircle(chi,x0,(y0+width/2+(height-width)),width,DOWNSIDE,cindex);
+			
+			
+		}else{ // height smaller
+			
+			int x1 = x0+height/2;
+			int x2 = x1+(width-height);
+			y=y0;			 
+			//horizontal			
+			for (x=x1 ;x<= x2;x++) {
+				if ( x < eyewidth && x > 0 && y > 0 && y < eyeheight)
+					v0[(eyewidth*eyeheight) - y*eyewidth+x] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			}
+			
+			y = y0+height;
+			for (x=x1 ;x<= x2;x++) {
+				if ( x < eyewidth && x > 0 && y < eyeheight && y > 0)
+					v0[(eyewidth*eyeheight) - y*eyewidth+x] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			}
+						
+			drawSemiCircle(chi,(x0+height/2+(width-height)),y0,height,RIGHTSIDE,cindex);
+			drawSemiCircle(chi,x0,y0,height,LEFTSIDE,cindex);
+			
+		}	
+	}
+}
+	return;
+}
+
+// added by NJ @ SR Research LTD
+void drawLine(CrossHairInfo *chi, int x1, int y1, int x2, int y2, int cindex)
+{
+	
+	unsigned char r =0;
+	unsigned char g =0;
+	unsigned char b =0;
+	unsigned char a =255;
+	int dx, dy;
+	int x, y, ch;
+	INT16 xc[4],yc[4], enabled;
+	unsigned int *v0;
+    int temp;
+	int xx1, xx2, yy1, yy2;
+	
+	if (eyeimage == NULL) return;
+	// get camera channel. 2 = head.
+	ch = get_image_xhair_data(xc, yc, &enabled);
+	
+	// clip if fail 
+	if (ch == 2){
+				
+		if (x1<0) x1=0;
+		if (x2<0) x2=0;
+		if (y1<0) y1=0;
+		if (y2<0) y2=0;
+		
+		if (x1>eyewidth-1) x1=eyewidth-1;
+		if (x2>eyewidth-1) x2=eyewidth-1;
+		if (y1>eyeheight-1) y1=eyeheight-1;
+		if (y2>eyeheight-1) y2=eyeheight-1;
+	}
+	
+	
+	switch(cindex)
+	{
+		case CR_HAIR_COLOR:          r=g=b = 255; break;//255,255,255
+		case PUPIL_HAIR_COLOR:       r=g=b = 255; break;//255,255,255
+		case PUPIL_BOX_COLOR:			 g = 255; break;//0,255,0
+		case SEARCH_LIMIT_BOX_COLOR: 
+		case MOUSE_CURSOR_COLOR:		 r = 255; break;//255,0,0
+	}
+	// Memory pointer to malloc()'ed image pixel buffer that holds the
+	// image data for a RGBA8 texture with the most recent eye camera image:
+	// eyeimage is a global variable
+	if(eyeimage != NULL) {
+		
+		// Retrieve v0 as pointer to pixel row in output buffer: image is upside down
+		v0 = (unsigned int*) ( eyeimage);				
+		
+		dx = x2 - x1;
+		dy = y2 - y1;			
+		
+		
+		if(ch != 2){
+			// never diagonal here y1 is always < y2
+			for (y=y1 ;y< y2;y++) {
+				x = x1 + (dx) * (y - y1)/(dy);	
+				if (y < eyeheight && x < eyewidth && y >0 && x >0 && (eyewidth*eyeheight) - y*eyewidth+x > 0) 
+					v0[(eyewidth*eyeheight) - y*eyewidth+x] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			}		
+		}
+		
+		//account for diagonal lines in binocular mode ( x1 and y1 may be > x2 and y2)
+		
+		// vertical 
+		if (dx == 0 ){			
+			if(y1>y2){
+				yy1 = y2;
+				yy2 = y1;
+			}else {
+				yy1 = y1;
+				yy2 = y2;
+			}
+				
+			for (y=yy1 ;y< yy2;y++) {
+				x = x1 + (dx) * (y - y1)/(dy);			
+				if (y < eyeheight && x < eyewidth && y >0 && x >0 && (eyewidth*eyeheight) - y*eyewidth+x > 0)
+					v0[(eyewidth*eyeheight) - y*eyewidth+x] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			}		
+		}
+		else  {	
+			if(x1>x2){		
+				xx1 = x2;
+				xx2 = x1;
+			}else {
+				xx1 = x1;
+				xx2 = x2;
+			}
+	
+			for (x=xx1 ;x< xx2;x++) {
+				y = y1 + (dy) * (x - x1)/(dx);
+				if (y < eyeheight && x < eyewidth && y >0 && x >0 && (eyewidth*eyeheight) - y*eyewidth+x > 0)
+					v0[(eyewidth*eyeheight) - y*eyewidth+x] = 0xFF000000 | ((unsigned int) b << 16) | ((unsigned int) g << 8) | ((unsigned int) r);
+			}
+		}
+	}	
+	return;
+}
+
+
+typedef void  (*GET_MOUSE_LOC)(CrossHairInfo *dt, int *x, int *y, int *state);
+GET_MOUSE_LOC mouseLoc = NULL;
+
+void  ELCALLTYPE  set_mouse_loc_callback(GET_MOUSE_LOC get_mouse_loc)
+{
+	mouseLoc = get_mouse_loc;
+}
+
+
+void getMouseState(CrossHairInfo *chi, int *rx, int *ry, int *rstate)
+{
+	float x =0;
+	float y =0;
+	PsychGenericScriptType			*inputs[1];
+	PsychGenericScriptType			*outputs[1];
+	double* callargs;
+	double* outputargs;
+	float ar[7];
+	float w,h;
+	int i;
+	
+	inputs[0]   = mxCreateDoubleMatrix(1, 4, mxREAL);
+	callargs    = mxGetPr(inputs[0]);
+	
+	callargs[0] = 16; // 16 == Command code for mouse button event	
+
+	#if PSYCH_LANGUAGE == PSYCH_MATLAB
+		mexSetTrapFlag(1);
+	#endif
+	
+	mexCallMATLAB(1, outputs, 1, inputs, eyelinkDisplayCallbackFunc);
+
+	
+	// Reset error handling to default on Matlab:
+	#if PSYCH_LANGUAGE == PSYCH_MATLAB
+		mexSetTrapFlag(0);
+	#endif
+	
+	outputargs = mxGetData(outputs[0]);
+	for (i=0;i<7;i++){
+		ar[i] = (int) outputargs[i];
+	}
+	
+	// Release our matrix again:
+	mxDestroyArray(inputs[0]);
+	mxDestroyArray(outputs[0]);
+	
+	w = ar[0];
+	h = ar[1];
+	x = floor((ar[2] - ((w/2) - ar[4]/2)) * ((float)eyewidth/ar[4]));
+	y = floor((ar[3] - ((h/2) - ar[5]/2)) * ((float)eyeheight/ar[5]));
+
+	if(x>=0 && y >=0 && x <= eyewidth && y <= eyeheight)
+	{
+        *rx = (int)x;
+		*ry = (int)y;
+		*rstate =  (int)ar[6]; 
+	}
+	return;
+}
+
 
 // PsychEyelink_draw_image_line() retrieves exactly one scanline worth of eye camera
 // image data. Once a full image has been received, it has to trigger the actual image
@@ -420,12 +1035,13 @@ void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totl
 	double teximage;
 	static INT16 lastline = -1;
 	static int wrapcount = 0;
-	static tlastwrap = 0.0;
+	static double tlastwrap = 0.0;
 	double tnow;
 	int rc;
 	byte* p;
 	unsigned int *v0;
 	short i;
+	CrossHairInfo crossHairInfo;
 	
 	if (Verbosity() > 8) printf("Eyelink: Entering PsychEyelink_draw_image_line()\n");
 
@@ -443,6 +1059,9 @@ void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totl
 		totlines = (totlines < 1) ? 1 : totlines;
 		totlines = (totlines > eyeheight) ? totlines : eyeheight;
 	}
+
+	
+	
 
 	// Data structures properly initialized?
 	if(eyeimage != NULL) {
@@ -494,10 +1113,23 @@ void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totl
 			
 			// Reset skip detector:
 			lastline  = -1;
-
+		
+			crossHairInfo.w = eyewidth;
+			crossHairInfo.h = eyeheight;
+			crossHairInfo.drawLozenge = drawLozenge;
+			crossHairInfo.drawLine = drawLine;
+			crossHairInfo.getMouseState = mouseLoc?mouseLoc:getMouseState;
+			crossHairInfo.userdata = eyeimage;
+			
+			eyelink_draw_cross_hair(&crossHairInfo);
+			
+			
 			// Compute double-encoded Matlab/Octave compatible memory pointer to image buffer:
 			teximage = PsychPtrToDouble((void*) eyeimage);
 
+			
+			
+			
 			// Ok, teximage is a memory pointer to our image buffer, encoded as a double.
 			// Now we need to call our Matlab callback function which actually converts
 			// the data in our internal image buffer into a PTB texture, then draws that
@@ -505,7 +1137,7 @@ void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totl
 			if (Verbosity() > 6) printf("Eyelink: PsychEyelink_draw_image_line(): All %i Scanlines received. Calling Runtime!\n", (int) line);
 			
 			// Create a Matlab double matrix with 4 elements: 1st is command code '1'
-			// 2nd is the double pointer, 3rd is image width, 4th is image height:
+			// 2nd is the double pointer, 3r//d is image width, 4th is image height:
 			outputs[0]  = NULL;
 			inputs[0]   = mxCreateDoubleMatrix(1, 4, mxREAL);
 			callargs    = mxGetPr(inputs[0]);
@@ -541,6 +1173,9 @@ void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totl
 		}
 	}
 	
+	
+	
+	
 	// Done.
 	return;
 }
@@ -569,8 +1204,20 @@ void ELCALLBACK PsychEyelink_set_image_palette(INT16 ncolors, byte r[], byte g[]
 
 INT16  ELCALLBACK PsychEyelink_setup_cal_display(void)
 {
+	//nj added "hack" to disable flashing instructions in drift correction and to enable sending cal and val results
+	int mode = -1;
+	int result =-1;
+	
 	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_setup_cal_display()\n");
 
+	mode = eyelink_tracker_mode();
+	
+	if (mode == 1 || mode ==9 ) //EL_DRIFT_CORR_MODE)
+		if (0xdeadbeef == PsychEyelinkCallRuntime(17, 0, 0, NULL)) {
+			// Error condition. Return error to eyelink runtime:
+			return(-1);
+		}
+	
 	// Tell runtime to setup calibration display: Command code 7.
 	if (0xdeadbeef == PsychEyelinkCallRuntime(7, 0, 0, NULL)) {
 		// Error condition. Return error to eyelink runtime:
@@ -592,11 +1239,22 @@ static void ELCALLBACK   PsychEyelink_exit_cal_display(void)
 
 void ELCALLBACK   PsychEyelink_clear_display(void)
 {
+	//NJ modified to add msg to call back 6 with cal and val result
+	char strMessage[256];
+	int result =-1;
+	// Clear strings
+	memset(strMessage, 0, sizeof(strMessage));
+	
+	
+	result = eyelink_cal_message(strMessage);
+	
+	
 	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_clear_display()\n");
 
 	// Tell runtime to clear display: Command code 6.
-	PsychEyelinkCallRuntime(6, 0, 0, NULL);
+	PsychEyelinkCallRuntime(6, 0, 0, strMessage);//NULL);
 
+		
 	return;
 }
 
@@ -624,9 +1282,12 @@ void ELCALLBACK   PsychEyelink_image_title(INT16 threshold, char *title)
 {
 	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_image_title(): threshold = %i : Title = %s\n", (int) threshold, title);
 
+	//mexPrintf("C code: %s ... %d\n", title, threshold);
+	//fflush(stdout);
+	
 	// Tell runtime about image title: Command code 4.
 	PsychEyelinkCallRuntime(4, (int) threshold, 0, title);
-
+	
 	return;
 }
 
