@@ -916,7 +916,7 @@ if strcmp(cmd, 'OpenWindow')
     end
     
     % Final config phase:
-    configphase_active = 2;
+    configphase_active = 2; %#ok<NASGU>
     
     screenid = varargin{1};
     
@@ -1353,7 +1353,7 @@ end
 
 % Catch all for unknown commands:
 error('Unknown subcommand specified! Read "help PsychImaging" for usage info.');
-return;
+return; %#ok<UNRCH>
 
 % Internal helper routines:
 
@@ -1480,7 +1480,7 @@ if userstereomode > 0
         % Datapixx device active:
         
         % Frame sequential style mode via top-down "sync-doubling" mode?
-        if ismember(userstereomode, [2])
+        if ismember(userstereomode, 2)
             % Switch Datapixx to sync-doubling stereo mode:
             PsychDataPixx('SetVideoVerticalStereo', 1);
             % Reduce height of virtual framebuffer to effective half height:
@@ -1696,7 +1696,7 @@ else
 end
 
 % Image processing stage needed?
-if imagingMode & kPsychNeedImageProcessing
+if bitand(imagingMode, kPsychNeedImageProcessing)
     % Yes. How many commands per chain?
     nrslots = max(length(find(mystrcmp(reqs, 'LeftView'))), length(find(mystrcmp(reqs, 'RightView'))));
     nrslots = nrslots + length(find(mystrcmp(reqs, 'AllViews')));
@@ -1985,7 +1985,7 @@ if ~isempty(floc)
             % Extract first parameter - This should be the offset:
             PixelOffset = reqs{row, 3};
             
-            if isempty(PixelOffset) | ~isnumeric(PixelOffset)
+            if isempty(PixelOffset) || ~isnumeric(PixelOffset)
                 Screen('CloseAll');
                 error('PsychImaging: Parameter for ''AddOffsetToImage'' missing or not of numeric type!');
             end
@@ -2609,7 +2609,7 @@ if ~isempty(floc)
         lut = reqs{row, 3};
     end
     
-    if isempty(lut) | ~isnumeric(lut)
+    if isempty(lut) || ~isnumeric(lut)
         Screen('CloseAll');
         error('PsychImaging: Mandatory lookup table parameter lut for ''EnableGenericHighPrecisionLuminanceOutput'' missing or not of numeric type!');
     end
@@ -2668,7 +2668,7 @@ if ~isempty(floc)
         % btrr empty: Get it from config file:
         btrr = PsychVideoSwitcher('GetDefaultConfig', win);
     else
-        if ~isnumeric(btrr) | ~isscalar(btrr)
+        if ~isnumeric(btrr) || ~isscalar(btrr)
             Screen('CloseAll');
             error('PsychImaging: Optional "btrr" parameter for VideoSwitcher output not of numeric scalar type!');
         end
@@ -2691,7 +2691,7 @@ if ~isempty(floc)
         % triggerflag empty: Default to off:
         VideoSwitcherTriggerflag = 0;
     else
-        if ~isnumeric(VideoSwitcherTriggerflag) | ~isscalar(VideoSwitcherTriggerflag)
+        if ~isnumeric(VideoSwitcherTriggerflag) || ~isscalar(VideoSwitcherTriggerflag)
             Screen('CloseAll');
             error('PsychImaging: Optional "trigger" parameter for VideoSwitcher output not of numeric scalar type!');
         end
@@ -2729,7 +2729,7 @@ if ~isempty(floc)
             % lut empty: Get it from config file:
             [dummy, lut] = PsychVideoSwitcher('GetDefaultConfig', win);
         else
-            if ~isa(lut, 'double') | ~isvector(lut) | length(lut)~=257
+            if ~isa(lut, 'double') || ~isvector(lut) || length(lut)~=257
                 Screen('CloseAll');
                 error('PsychImaging: Lookup table parameter lut for VideoSwitcher output invalid: Must be a vector of double values with 257 elements!');
             end
@@ -2886,7 +2886,7 @@ end
 % --- This must be after setup of all output formatter shaders! ---
 % Downstream icm color correction shader linked into an icmAware output
 % formatter. We must perform post-link setup for it:
-if ptb_outputformatter_icmAware & icmformatting_downstream
+if ptb_outputformatter_icmAware && icmformatting_downstream
     % Perform post-link setup of color correction method after
     % shader attached to pipe. We know it is the
     % 'FinalOutputFormattingBlit' chain, as only in that case, downstream
@@ -3042,7 +3042,7 @@ return;
 function rcmatch = mystrcmp(myhaystack, myneedle)
 
 if isempty(myhaystack) || isempty(myneedle)
-    rcmatch = logical(0);
+    rcmatch = logical(0); %#ok<LOGL>
     return;
 end
 
@@ -3052,7 +3052,7 @@ end
 
 if iscell(myhaystack)
     % Cell array of strings: Check each element, return result matrix:
-    rcmatch=logical(zeros(size(myhaystack)));
+    rcmatch=logical(zeros(size(myhaystack))); %#ok<LOGL>
     rows = size(myhaystack, 1);
     cols = size(myhaystack, 2);
     for r=1:rows
@@ -3060,7 +3060,7 @@ if iscell(myhaystack)
             if iscellstr(myhaystack(r,c))
                 rcmatch(r,c) = logical(strcmpi(char(myhaystack(r,c)), myneedle));
             else
-                rcmatch(r,c) = logical(0);
+                rcmatch(r,c) = logical(0); %#ok<LOGL>
             end
         end
     end
