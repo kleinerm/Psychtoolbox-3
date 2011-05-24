@@ -178,8 +178,9 @@ function varargout = PsychVideoSwitcher(cmd, varargin)
 
 % History:
 % 05/25/08 mk  Initial incomplete implementation. Incorporates code from
-%              Xiangru Li in helper subroutines.
-%
+%              Xiangrui Li in helper subroutines.
+% 05/24/11 xl  3rd input for SwitchMode is not manditory since it is not
+%              used by box version.
 
 % GL access is needed for setup of green trigger channel in callback:
 global GL;
@@ -198,7 +199,7 @@ if nargin < 1
     error('You must provide a command string!');
 end
 
-if isscalar(cmd) & isnumeric(cmd)
+if isscalar(cmd) && isnumeric(cmd)
     % Special callback from within PTB imaging pipeline:
     if isempty(triggerForWindow) || isempty(triggerForWindow{cmd})
         % Invalid window handle or trigger disabled: Just skip.
@@ -279,8 +280,8 @@ end
 if strcmpi(cmd, 'SwitchMode')
     % Switch VideoSwitcher between monochrome and color mode by sending a
     % sequence of frames with special green-channel control codes:
-    if nargin < 3
-        error('At least one of the two required input arguments is missing!');
+    if nargin < 2
+        error('screenId is missing!');
     end
     
     screenid = varargin{1};
@@ -288,7 +289,12 @@ if strcmpi(cmd, 'SwitchMode')
         error('Invalid screenId provided - No such display screen!');
     end
 
-    enableLuminanceMode = varargin{2};
+    if nargin < 3 || isempty(varargin{2})
+        enableLuminanceMode = 0; % XL: for box, this is not used
+    else
+        enableLuminanceMode = varargin{2};
+    end
+    
     if isempty(enableLuminanceMode) || ~isscalar(enableLuminanceMode) || ~isnumeric(enableLuminanceMode) || ~ismember(enableLuminanceMode, [0,1])
         error('Invalid enableLuminanceMode flag provided. Must be 0 or 1!');
     end
