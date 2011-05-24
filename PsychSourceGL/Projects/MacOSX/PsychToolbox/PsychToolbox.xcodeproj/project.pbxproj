@@ -1546,6 +1546,16 @@
 		8302E2030A1928E900AE269C /* Screen.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8302E2000A1928E900AE269C /* Screen.cc */; settings = {COMPILER_FLAGS = "-x c++"; }; };
 		8302E2170A1928E900AE269C /* GetSecs.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8302E1FE0A1928E900AE269C /* GetSecs.cc */; };
 		8302E23A0A1928E900AE269C /* WaitSecs.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8302E2010A1928E900AE269C /* WaitSecs.cc */; };
+		8303A09E138C1A81000DED20 /* EyelinkTrackerMode.c in Sources */ = {isa = PBXBuildFile; fileRef = 8303A09D138C1A81000DED20 /* EyelinkTrackerMode.c */; };
+		8303A09F138C1A81000DED20 /* EyelinkTrackerMode.c in Sources */ = {isa = PBXBuildFile; fileRef = 8303A09D138C1A81000DED20 /* EyelinkTrackerMode.c */; };
+		8303A0A5138C1B9D000DED20 /* EyelinkReadFromTracker.c in Sources */ = {isa = PBXBuildFile; fileRef = 8303A0A4138C1B9D000DED20 /* EyelinkReadFromTracker.c */; };
+		8303A0A6138C1B9D000DED20 /* EyelinkReadFromTracker.c in Sources */ = {isa = PBXBuildFile; fileRef = 8303A0A4138C1B9D000DED20 /* EyelinkReadFromTracker.c */; };
+		8303A0AA138C1DB1000DED20 /* EyelinkImageTransfer.c in Sources */ = {isa = PBXBuildFile; fileRef = 8303A0A9138C1DB1000DED20 /* EyelinkImageTransfer.c */; };
+		8303A0AB138C1DB1000DED20 /* EyelinkImageTransfer.c in Sources */ = {isa = PBXBuildFile; fileRef = 8303A0A9138C1DB1000DED20 /* EyelinkImageTransfer.c */; };
+		8303A0C5138C2474000DED20 /* EyelinkCalMessage.c in Sources */ = {isa = PBXBuildFile; fileRef = 8303A0C4138C2474000DED20 /* EyelinkCalMessage.c */; };
+		8303A0C6138C2474000DED20 /* EyelinkCalMessage.c in Sources */ = {isa = PBXBuildFile; fileRef = 8303A0C4138C2474000DED20 /* EyelinkCalMessage.c */; };
+		8303A0D3138C2565000DED20 /* bitmap.c in Sources */ = {isa = PBXBuildFile; fileRef = 8303A0D2138C2565000DED20 /* bitmap.c */; };
+		8303A0D4138C2565000DED20 /* bitmap.c in Sources */ = {isa = PBXBuildFile; fileRef = 8303A0D2138C2565000DED20 /* bitmap.c */; };
 		83051F7E129DC66A00AD11E7 /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		83051F7F129DC66A00AD11E7 /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		83051F80129DC66A00AD11E7 /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -3672,6 +3682,12 @@
 		8302E1FF0A1928E900AE269C /* octavemex.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = octavemex.h; path = ../../../Source/Octave/octavemex.h; sourceTree = SOURCE_ROOT; };
 		8302E2000A1928E900AE269C /* Screen.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = Screen.cc; path = ../../../Source/Octave/Screen.cc; sourceTree = SOURCE_ROOT; };
 		8302E2010A1928E900AE269C /* WaitSecs.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = WaitSecs.cc; path = ../../../Source/Octave/WaitSecs.cc; sourceTree = SOURCE_ROOT; };
+		8303A09D138C1A81000DED20 /* EyelinkTrackerMode.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkTrackerMode.c; path = ../../../Source/Common/Eyelink/EyelinkTrackerMode.c; sourceTree = SOURCE_ROOT; };
+		8303A0A4138C1B9D000DED20 /* EyelinkReadFromTracker.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkReadFromTracker.c; path = ../../../Source/Common/Eyelink/EyelinkReadFromTracker.c; sourceTree = SOURCE_ROOT; };
+		8303A0A9138C1DB1000DED20 /* EyelinkImageTransfer.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkImageTransfer.c; path = ../../../Source/Common/Eyelink/EyelinkImageTransfer.c; sourceTree = SOURCE_ROOT; };
+		8303A0C4138C2474000DED20 /* EyelinkCalMessage.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkCalMessage.c; path = ../../../Source/Common/Eyelink/EyelinkCalMessage.c; sourceTree = SOURCE_ROOT; };
+		8303A0D1138C2558000DED20 /* bitmap.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = bitmap.h; path = ../../../Source/Common/Eyelink/bitmap.h; sourceTree = SOURCE_ROOT; };
+		8303A0D2138C2565000DED20 /* bitmap.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = bitmap.c; path = ../../../Source/Common/Eyelink/bitmap.c; sourceTree = SOURCE_ROOT; };
 		83051F9C129DC66A00AD11E7 /* PsychKinectCore.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = PsychKinectCore.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		83051FA4129DC89E00AD11E7 /* PsychKinect.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychKinect.c; path = ../../../Source/Common/PsychKinect/PsychKinect.c; sourceTree = SOURCE_ROOT; };
 		83051FA5129DC89E00AD11E7 /* PsychKinect.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychKinect.h; path = ../../../Source/Common/PsychKinect/PsychKinect.h; sourceTree = SOURCE_ROOT; };
@@ -4983,10 +4999,14 @@
 		0E92E8AC095727BC002687D9 /* Eyelink */ = {
 			isa = PBXGroup;
 			children = (
+				8303A0D1138C2558000DED20 /* bitmap.h */,
 				806F15D40AF62BBD005949BE /* core_expt.h */,
 				805723350A51DDB900DF6EF6 /* eyelink.h */,
+				8303A0D2138C2565000DED20 /* bitmap.c */,
+				8303A0C4138C2474000DED20 /* EyelinkCalMessage.c */,
 				838000250F826D1000234D3F /* EyelinkGetQueuedData.c */,
 				80AB76D80A52FE1F00E7FB48 /* EyelinkGetTrackerVersion.c */,
+				8303A0A9138C1DB1000DED20 /* EyelinkImageTransfer.c */,
 				80AB76B50A52F83100E7FB48 /* EyelinkReceiveFile.c */,
 				80AB76B10A52F7EE00E7FB48 /* EyelinkReadTime.c */,
 				80AB76B30A52F81300E7FB48 /* EyelinkRequestTime.c */,
@@ -5002,8 +5022,10 @@
 				8057234F0A51DE4B00DF6EF6 /* EyelinkMessage.c */,
 				805723500A51DE4B00DF6EF6 /* EyelinkNewFloatSampleAvailable.c */,
 				805723510A51DE4B00DF6EF6 /* EyelinkOpenFile.c */,
+				8303A0A4138C1B9D000DED20 /* EyelinkReadFromTracker.c */,
 				805723520A51DE4B00DF6EF6 /* EyelinkSetOfflineMode.c */,
 				805723530A51DE4B00DF6EF6 /* EyeLinkTargetCheck.c */,
+				8303A09D138C1A81000DED20 /* EyelinkTrackerMode.c */,
 				805723540A51DE4B00DF6EF6 /* EyelinkWaitForModeReady.c */,
 				0E92E8AE09572831002687D9 /* RegisterProject.h */,
 				0E92E8AF09572831002687D9 /* RegisterProject.c */,
@@ -11516,6 +11538,11 @@
 				806E8B250B63F9350096FC7B /* EyeLinkTargetCheck.c in Sources */,
 				806E8B2C0B63FC500096FC7B /* EyelinkTimeOffset.c in Sources */,
 				838000270F826D1000234D3F /* EyelinkGetQueuedData.c in Sources */,
+				8303A09F138C1A81000DED20 /* EyelinkTrackerMode.c in Sources */,
+				8303A0A6138C1B9D000DED20 /* EyelinkReadFromTracker.c in Sources */,
+				8303A0AB138C1DB1000DED20 /* EyelinkImageTransfer.c in Sources */,
+				8303A0C6138C2474000DED20 /* EyelinkCalMessage.c in Sources */,
+				8303A0D4138C2565000DED20 /* bitmap.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11987,6 +12014,11 @@
 				806E8B560B6413E80096FC7B /* EyelinkGetNextDataType.c in Sources */,
 				806E8B570B6413FC0096FC7B /* EyelinkGetFloatData.c in Sources */,
 				838000260F826D1000234D3F /* EyelinkGetQueuedData.c in Sources */,
+				8303A09E138C1A81000DED20 /* EyelinkTrackerMode.c in Sources */,
+				8303A0A5138C1B9D000DED20 /* EyelinkReadFromTracker.c in Sources */,
+				8303A0AA138C1DB1000DED20 /* EyelinkImageTransfer.c in Sources */,
+				8303A0C5138C2474000DED20 /* EyelinkCalMessage.c in Sources */,
+				8303A0D3138C2565000DED20 /* bitmap.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -23372,6 +23404,7 @@
 		83726C830FD05B3500ED39A4 /* Development-Octave-3build */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				COPY_PHASE_STRIP = YES;
 				PRODUCT_NAME = Eyelink;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
 				SKIP_INSTALL = NO;
@@ -24942,12 +24975,11 @@
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
 				);
-				INSTALL_PATH = /usr/local/lib;
+				INSTALL_PATH = "$(PSYCHTOOLBOX_SUBFOLDER)";
 				KEEP_PRIVATE_EXTERNS = NO;
 				LIBRARY_SEARCH_PATHS = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/maci";
 				LINK_WITH_STANDARD_LIBRARIES = YES;
 				MACH_O_TYPE = mh_bundle;
-				MACOSX_DEPLOYMENT_TARGET = "";
 				MATLAB_DIR_NAME = MATLAB73;
 				OTHER_CFLAGS = (
 					"-fexceptions",
@@ -24965,8 +24997,8 @@
 				);
 				PREBINDING = NO;
 				PRODUCT_NAME = Eyelink;
-				PSYCHTOOLBOX_SUBFOLDER = PsychHardware/EyelinkToolbox/EyelinkBasic;
-				STRIP_STYLE = all;
+				PSYCHTOOLBOX_SUBFOLDER = /PsychHardware/EyelinkToolbox/EyelinkBasic;
+				SKIP_INSTALL = NO;
 				WARNING_CFLAGS = "-Wno-long-double";
 			};
 			name = Development;

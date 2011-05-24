@@ -42,15 +42,11 @@ PsychError PsychModuleInit(void)
 	// is invoked with no arguments:
 	PsychErrorExitMsg(PsychRegister(NULL,  &PsychDisplayEyelinkSynopsis), "Failed to register the Eyelink synopsis function.");        
 	
-	// Register the module name
+	// Register the module name:
 	PsychErrorExitMsg(PsychRegister("Eyelink", NULL), "Failed to register Eyelink Module name!");
 
-	// Report the version: For some reason MODULEVersion.c seems to be
-	// missing from the source. Don't know why it works on OS-X, maybe
-	// it doesn't but we don't notice due to weak-linking?
-	#if PSYCH_SYSTEM == PSYCH_OSX
+    // Report module version:
 	PsychErrorExit(PsychRegister("Version",  &MODULEVersion));
-	#endif
 
 	// Register sub-commands
 	PsychErrorExit(PsychRegister("ButtonStates",		&EyelinkButtonStates));
@@ -106,12 +102,12 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("Verbosity", &EyelinkVerbosity));
 	PsychErrorExit(PsychRegister("TestSuite", &EyelinkTestSuite));
 	
-	//NJ
-	PsychErrorExit(PsychRegister("ImageTransfer",	&EyelinkImageTransfer));
+	// NJ: Added as of 24/05/11
+	PsychErrorExit(PsychRegister("ImageTransfer", &EyelinkImageTransfer));
 	PsychErrorExit(PsychRegister("TrackerMode",	&EyelinkTrackerMode));
 	PsychErrorExit(PsychRegister("CalMessage", &EyelinkCalMessage));
 	PsychErrorExit(PsychRegister("ReadFromTracker", &EyelinkReadFromTracker));
-	
+
 	//register synopsis and named subfunctions.
 	InitializeSynopsis();   //Scripting glue won't require this if the function takes no arguments.
 	PsychSetModuleAuthorByInitials("emp");
@@ -119,6 +115,7 @@ PsychError PsychModuleInit(void)
 	PsychSetModuleAuthorByInitials("cdb");
 	PsychSetModuleAuthorByInitials("mk");
 	PsychSetModuleAuthorByInitials("edf");
+	PsychSetModuleAuthorByInitials("nj");
 
 	return(PsychError_none);
 }

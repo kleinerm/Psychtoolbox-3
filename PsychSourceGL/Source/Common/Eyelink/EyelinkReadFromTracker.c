@@ -1,30 +1,27 @@
 /*
- /osxptb/trunk/PsychSourceGL/Source/OSX/Eyelink/EyelinkReadFromTracker.c
+ PsychSourceGL/Source/Common/Eyelink/EyelinkReadFromTracker.c
+
+ PLATFORMS: All
  
  PROJECTS: Eyelink 
  
  AUTHORS:
+
  nuha@sr-research.com nj
- 
- 
+  
  HISTORY:
  
  11-03-09  nj		created
  
- TARGET LOCATION:EE
- 
- Eyelink.mexmac resides in:
- EyelinkToolbox
- */
+*/
 
 #include "PsychEyelink.h"
 
-
-static char useString[] = "[result, reply] = Eyelink('ReadFromTracker', 'VariableName')";
+static char useString[] = "[result, reply] = Eyelink('ReadFromTracker', VariableName);";
 
 static char synopsisString[] =
-	"Sends a text variable name whose value is to be read and returned by the tracker as a text string\n"
-	"Returns text with reply to last read request\n";
+	"Sends a text variable 'VariableName' name whose value is to be read and returned by the tracker as a text string.\n"
+	"Returns text with reply to last read request.\n";
 
 static char seeAlsoString[] = "";
 
@@ -60,6 +57,7 @@ PsychError EyelinkReadFromTracker(void)
 	
 	if (!result){
 		t = current_msec();
+
 		// Waits for a maximum of 500 msec
 		while(current_msec()-t < 500)
 		{
@@ -67,12 +65,14 @@ PsychError EyelinkReadFromTracker(void)
 			{
 				break;
 			}
-			//message_pump(NULL); // Keeps Windows happy		
+            
+            // OS friendly wait for at least 1 msec before retry:
+            PsychYieldIntervalSeconds(0.001);
 		}
 	}
-	
+
 	PsychCopyOutDoubleArg(1, TRUE, result);
-	PsychCopyOutCharArg(2,TRUE, replybuf);	
-	
+	PsychCopyOutCharArg(2, TRUE, replybuf);	
+
 	return(PsychError_none);
 }

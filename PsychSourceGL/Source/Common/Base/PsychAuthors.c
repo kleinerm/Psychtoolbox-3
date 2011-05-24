@@ -202,6 +202,15 @@ void InitPsychAuthorList(void)
 		"papril@vpixx.com",
 		"http://www.vpixx.com/"
 	);
+	PsychAddAuthor(
+	// Eyelink toolbox: 
+		"Nuha",
+		"M.",
+		"Jabakhanji",
+		"nj",
+		"nuha@sr-research.com",
+		"http://sr-research.com"
+	);
 }
 
 

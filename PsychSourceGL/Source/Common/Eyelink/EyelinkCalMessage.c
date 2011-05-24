@@ -1,30 +1,24 @@
 /* 
- /osxptb/trunk/PsychSourceGL/Source/OSX/Eyelink/EyelinkCalMessage.c
+ /osxptb/trunk/PsychSourceGL/Source/Common/Eyelink/EyelinkCalMessage.c
  
  PROJECTS: Eyelink 
  
  AUTHORS:
-nuha@sr-research.com nj
- 
- 
+ nuha@sr-research.com nj
+
  HISTORY:
  
-11-03-04  nj		created
- 
- TARGET LOCATION:
- 
- Eyelink.mexmac resides in:
- EyelinkToolbox
- */
+ 11-03-04  nj		created
+
+*/
 
 #include "PsychEyelink.h"
 
-
-static char useString[] = "[result, messageString] = Eyelink('CalMessage')";
+static char useString[] = "[result, messageString] = Eyelink('CalMessage');";
 
 static char synopsisString[] =
-"Returns text associated with result of last calibration,"
-"validation, or drift correction. This usually specifies"
+"Returns 'messageString' text associated with result of last calibration, "
+"validation, or drift correction. This usually specifies "
 "errors or other statistics.";
 
 static char seeAlsoString[] = "";
@@ -33,17 +27,17 @@ static char seeAlsoString[] = "";
  ROUTINE: EYELINKcalmessage 
  PURPOSE:
  Returns text associated with result of last calibration, validation, or drift correction. This usually specifies
- errors or other statistics.*/
+ errors or other statistics.
+*/
 
 PsychError EyelinkCalMessage(void)
 {
 	int		result;
 	char	strMessage[256];
-	
+
 	// Clear strings
 	memset(strMessage, 0, sizeof(strMessage));
-	
-	
+		
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -57,13 +51,10 @@ PsychError EyelinkCalMessage(void)
 	EyelinkSystemIsConnected();
 	EyelinkSystemIsInitialized();
 	
-//	PsychAllocInCharArg(1, TRUE, &strMessage);
-	
 	result = eyelink_cal_message(strMessage);
-	
-	
+
 	PsychCopyOutDoubleArg(1, TRUE, result);
-	PsychCopyOutCharArg(2,TRUE, strMessage);	
+	PsychCopyOutCharArg(2, TRUE, strMessage);	
 
 	return(PsychError_none);
 }
