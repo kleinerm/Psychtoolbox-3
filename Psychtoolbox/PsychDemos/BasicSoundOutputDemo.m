@@ -71,7 +71,7 @@ if isempty(wavfilename)
     wavedata = y';  % Need sound vector as row vector, one row per channel.
 else
     % Read WAV file from filesystem:
-    [y, freq, nbits] = wavread(wavfilename);
+    [y, freq] = wavread(wavfilename);
     wavedata = y';
     nrchannels = size(wavedata,1); % Number of rows == number of channels.
 end

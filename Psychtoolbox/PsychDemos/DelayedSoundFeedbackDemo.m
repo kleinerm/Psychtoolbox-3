@@ -1,5 +1,5 @@
 function DelayedSoundFeedbackDemo(reqlatency, duplex, freq, minLatency)
-% DelayedSoundFeedbackDemo([reqlatency=15 ms][, duplex=0][, freq = 48000][, minLatency= 10 ms])
+% DelayedSoundFeedbackDemo([reqlatency=150 ms][, duplex=0][, freq = 48000][, minLatency= 10 ms])
 %
 % THIS IS EARLY ALPHA CODE! IT MAY OR MAY NOT WORK RELIABLY ON YOUR SETUP!
 % TEST IT WITH MEASUREMENT EQUIPMENT IF YOU DEPEND ON ACCURATE FEEDBACK
@@ -15,7 +15,7 @@ function DelayedSoundFeedbackDemo(reqlatency, duplex, freq, minLatency)
 %
 % 'reqlatency' Wanted feedback latency between sound input and output in
 % milliseconds. A value of zero will ask for the lowest possible latency on
-% the given setup. Defaults to 15 msecs. Please notice that the minimum
+% the given setup. Defaults to 150 msecs. Please notice that the minimum
 % achievable latency will be constrained by the capabilities of your
 % operating system, sound card driver, computer hardware and sound
 % hardware. Only very high quality systems will be able to go below 5 msecs
@@ -118,7 +118,7 @@ if nargin < 1
 end
 
 if isempty(reqlatency)
-    reqlatency = 15;
+    reqlatency = 150;
 end
 
 if nargin < 2

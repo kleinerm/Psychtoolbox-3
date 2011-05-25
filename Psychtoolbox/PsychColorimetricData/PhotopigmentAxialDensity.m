@@ -84,7 +84,7 @@ for i = 1:length(densities)
 							densities(i) = 0.50;
 						case 'FovealSCone'
 							densities(i) = 0.40;
-						case {'LCone' 'MCone'}
+						case {'LCone', 'MCone'}
 							densities(i) = 0.38;
 						case {'SCone'}
 							densities(i) = 0.3;

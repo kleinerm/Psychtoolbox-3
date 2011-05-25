@@ -1,7 +1,7 @@
 function [isoPerConeSec,absPerConeSec,photoreceptors] = ...
-	RetIrradianceToIsoPerRecSec(irradianceWatts,irradianceS,photoreceptors)
+	RetIrradianceToIsoRecSec(irradianceWatts,irradianceS,photoreceptors)
 % [isoPerConeSec,absPerConeSec,photoreceptors] = ...
-%		RetIrradianceToIsoPerRecSec(irradianceWatts,irradianceS,[photoreceptors])
+%		RetIrradianceToIsoRecSec(irradianceWatts,irradianceS,[photoreceptors])
 %
 % Convert retinal irradiance, measured in watts/um^2-wlinterval to
 % isomerizations per cone per second.
