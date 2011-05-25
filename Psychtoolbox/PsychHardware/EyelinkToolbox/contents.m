@@ -71,26 +71,30 @@
 %   Brainard, D. H. (1997) The Psychophysics Toolbox, Spatial Vision 10:433-436.
 %   Cornelissen, F.W., Peters. E., Palmer, J. (2002).
 %
-%   The Eyelink Toolbox: Eye tracking with MATLAB and the Psychophysics Toolbox.
-%   Behavior Research Methods, Instruments & Computers, 34, 613-617.
+%   The Eyelink Toolbox: Eye tracking with MATLAB and the Psychophysics
+%   Toolbox. Behavior Research Methods, Instruments & Computers, 34,
+%   613-617.
 %
 %   Pelli, D. G. (1997) The VideoToolbox software for visual psychophysics:
 %   Transforming numbers into movies, Spatial Vision 10:437-442.
-%	
-%	This toolbox is also actively supported and co-developed by SR-Research
-%	(http://www.eyelinkinfo.com), the manufacturer of the Eyelink
-%	gazetrackers. You can contact them about it. However, if your problem
+%   This toolbox is also actively supported and co-developed by SR-Research
+%   (http://www.eyelinkinfo.com), the manufacturer of the Eyelink
+%   gazetrackers. You can contact them about it. However, if your problem
 %   is likely of interest to other users as well, then please post
 %   questions on the PsychToolbox mailinglist, which is also monitored by
 %   SR-Research.
 %
-%   The EyelinkToolbox and its source code are copyright their respective
-%   developers (Type "Eyelink" or Eyelink('Version') for authors). The
+%   The EyelinkToolbox and its source code are copyright 
+%   Enno Peters, Frans Cornelissen and John Palmer. Additional copyrights
+%   for some contributed functions are SR-Research and the respective
+%   individual developers of those functions.
+%
+%   (Type "Eyelink" or Eyelink('Version') for authors). The
 %   toolbox is freely useable and redistributable under the terms of the
 %   MIT license. The exact license text is included inside License.txt in
 %   the root folder of any Psychtoolbox-3 installation.
 %
-%	Disclaimer: we cannot be hold responsible for any damage that may
+%   Disclaimer: we cannot be hold responsible for any damage that may
 %	            (appear to) be caused by the use of this toolbox. Use at
 %	            your own risk!
 %
