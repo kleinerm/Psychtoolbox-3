@@ -4301,15 +4301,6 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 	
 	// Fixup possible low-level framebuffer layout changes caused by commands above this point. Needed from native 10bpc FB support to work reliably.
 	PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(windowRecord);
-
-	// EXPERIMENTAL: Execute hook chain for preparation of user space drawing ops: Not thread safe!!!
-	if (((windowRecord->flipInfo) && (windowRecord->flipInfo->asyncstate !=0)) && PsychIsHookChainOperational(windowRecord, kPsychUserspaceBufferDrawingPrepare)) {
-		// Hooohooo: Someone tries to use this hookchain from within an async flip! We don't support this:
-		return;
-	}
-	else {
-		PsychPipelineExecuteHook(windowRecord, kPsychUserspaceBufferDrawingPrepare, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);
-	}
 	
     // Done.
     return;

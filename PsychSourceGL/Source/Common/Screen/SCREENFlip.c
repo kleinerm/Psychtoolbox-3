@@ -229,10 +229,6 @@ PsychError SCREENFlip(void)
 		
 		// Current multiflip > 0 implementation is not thread-safe, so we don't support this in async flip mode:
 		if ((multiflip != 0) && (opmode != 0))  PsychErrorExitMsg(PsychError_user, "Using a non-zero 'multiflip' flag while starting an asynchronous flip! Sorry, this is currently not possible.\n");
-		// Imaging pipeline hooks are not thread-safe: This one is the only one in PsychPostFlipOperations(); so we
-		// disallow it. The many hooks in PsychPreflipOperations() are safe because we perform the preflip-ops in the
-		// setup of async flip - before we enter the async helper thread:
-		if (PsychIsHookChainOperational(windowRecord, kPsychUserspaceBufferDrawingPrepare) && (opmode != 0)) PsychErrorExitMsg(PsychError_user, "Trying to use the 'UserspaceBufferDrawingPrepare' imaging hook-chain while starting an asynchronous flip! Sorry, this is currently not possible.\n");
 
 		// Query optional flipwhen argument: -1 == Don't sync to vertical retrace --> Only useful for debugging!
 		// Use this only if you "really know what you're doing(TM)!"
@@ -314,7 +310,7 @@ PsychError SCREENFlip(void)
 	
 	// Only have return args in synchronous mode or in return path from end/successfull poll of async flip:
 	if (opmode != 1) {
-		// Async flip is either zero in synchronous mode, or its 2 if an async flip
+		// Async flip is either zero in synchronous mode, or it's 2 if an async flip
 		// successfully finished:
 		if ((flipRequest->asyncstate!=0) && (flipRequest->asyncstate!=2) && (flipstate)) {
 			printf("PTB-ERROR: flipRequest->asyncState has impossible value %i at end of flipop! This is a PTB DESIGN BUG!", flipRequest->asyncstate);
@@ -342,6 +338,9 @@ PsychError SCREENFlip(void)
 		PsychCopyOutDoubleArg(4, FALSE, miss_estimate);
 		// Return beam position at VBL time:
 		PsychCopyOutDoubleArg(5, FALSE, (double) beamposatflip);
+        
+        // EXPERIMENTAL: Execute hook chain for preparation of user space drawing ops:
+        PsychPipelineExecuteHook(windowRecord, kPsychUserspaceBufferDrawingPrepare, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);        
 	}
 	
 	return(PsychError_none);	
