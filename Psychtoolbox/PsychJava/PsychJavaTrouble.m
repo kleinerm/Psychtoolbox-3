@@ -73,7 +73,7 @@ if IsOctave
     error('Running on GNU/Octave: Java is not supported on that system. Sorry!');
 end
 
-if ~exist('javaaddpath')
+if ~exist('javaaddpath') %#ok<EXIST>
     error('Your version of Matlab does not support dynamic Java class path. Sorry!');
 end
 
@@ -84,6 +84,6 @@ try
     fprintf('PsychJavaTrouble: Added PsychJava folder to dynamic class path. Psychtoolbox Java commands should work now!\n');
     return;
 catch
-    error('Failed to add PsychJava to classpath for unknown reason!');
     psychrethrow(psychlasterror);
+    error('Failed to add PsychJava to classpath for unknown reason!');
 end

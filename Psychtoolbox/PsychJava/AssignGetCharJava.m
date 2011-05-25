@@ -18,6 +18,9 @@ function gcobject = AssignGetCharJava
 
 % History:
 % 4.10.2006 Written (MK).
+% 26.05.2011 Add automatic invocation of PsychJavaTrouble() as the most
+%            likely temporary fix for problems (MK).
+%
 
 % Try to instantiate different versions of GetCharJava.class, starting with
 % the one built against the most recent Java version, descending on failure:
@@ -47,6 +50,30 @@ try
     % GetCharJava built from source on this machine via javac compiler.
     gcobject = GetCharJava;
     psychlasterror('reset');
+    return;
+catch
+    % No op. Just fall through to next case.
+end
+
+% Check if this is actually a problem of missing PsychJava/ folder on the
+% Matlab static classpath. Try to fix it by invocation of
+% PsychJavaTrouble():
+fprintf('\nWARNING: Failed to load GetCharJava Java class. Most likely your Matlab\n');
+fprintf('WARNING: classpath.txt file is not up to date. I will try to auto-fix this for\n');
+fprintf('WARNING: the current session by executing the PsychJavaTrouble() command.\n');
+fprintf('WARNING: This may have bad side-effects, like clearing all your scripts variables\n');
+fprintf('WARNING: and functions! If it works, please read ''help PsychJavaTrouble''\n');
+fprintf('WARNING: for a proper and permanent fix to the problem.\n\n');
+
+psychlasterror('reset');
+try
+    PsychJavaTrouble;
+
+    fprintf('INFO: Problem may be fixed for this session. Let''s see...\n');
+    
+    gcobject = GetCharJava;
+    psychlasterror('reset');
+    fprintf('INFO: Yep! Still, please fix the problem properly asap.\n');
     return;
 catch
     % No op. Just fall through to next case.
