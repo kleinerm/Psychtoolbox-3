@@ -290,7 +290,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 
 	// Another child protection:
 	if ((windowRecord->windowType != kPsychDoubleBufferOnscreen) || PsychPrefStateGet_EmulateOldPTB()>0) {
-		PsychErrorExitMsg(PsychError_user, "Imaging Pipeline setup: Sorry, imaging pipeline only supported on double buffered onscreen windows in non-emulation mode for old PTB.\n");
+		PsychErrorExitMsg(PsychError_user, "Imaging Pipeline setup: Sorry, imaging pipeline only supported on double buffered onscreen windows and if not in emulation mode for old PTB-2.\n");
 	}
 
 	// Specific setup of pipeline if real imaging ops are requested:
@@ -356,6 +356,14 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		// Blending on 32 bpc float FBO's supported? Upgrade to 32 bpc float for stage 0 if possible:
 		if (windowRecord->gfxcaps & kPsychGfxCapFPBlend32) { fboInternalFormat = GL_RGBA_FLOAT32_APPLE; windowRecord->bpc = 32; }
 	}
+
+    // Sanity check: Is a floating point framebuffer requested which requires floating point texture support and
+    // the hardware doesn't support float textures? Bail early, if so.
+    if (((windowRecord->bpc == 16) && !(windowRecord->gfxcaps & kPsychGfxCapFPTex16)) || ((windowRecord->bpc == 32) && !(windowRecord->gfxcaps & kPsychGfxCapFPTex32))) {
+        printf("PTB-ERROR: Your script requested a floating point resolution framebuffer with a resolution of more than 8 bits per color channel.\n");
+        printf("PTB-ERROR: Your graphics hardware doesn't support floating point textures or framebuffers, so this is a no-go. Aborting...\n");
+		PsychErrorExitMsg(PsychError_user, "Sorry, the requested framebuffer color resolution is not supported by your graphics card. Game over.");
+    }
 
 	if (PsychPrefStateGet_Verbosity()>2) {
 		switch(fboInternalFormat) {
@@ -460,7 +468,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		// If bit depths of native backbuffer is more than 8 bits, we allocate a float32 FBO though...
 		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), ((redbits <= 8) ? GL_RGBA8 : GL_RGBA_FLOAT32_APPLE), FALSE, winwidth, winheight, 0)) {
 			// Failed!
-			PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 0 of imaging pipeline for dual-window stereo.");
+			PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 0 of imaging pipeline for dual-window stereo.");
 		}
 		
 		windowRecord->finalizedFBO[1]=fbocount;
@@ -493,7 +501,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		// enabled:
 		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, winwidth, winheight, multiSample)) {
 			// Failed!
-			PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 1 of imaging pipeline.");
+			PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 1 of imaging pipeline.");
 		}
 		
 		if ((PsychPrefStateGet_Verbosity() > 2) && (windowRecord->fboTable[fbocount]->multisample > 0)) {
@@ -508,7 +516,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		if (windowRecord->stereomode > 0) {
 			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, winwidth, winheight, multiSample)) {
 				// Failed!
-				PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 1 of imaging pipeline.");
+				PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 1 of imaging pipeline.");
 			}
 			
 			// Assign this FBO as drawBuffer for right-eye channel:
@@ -562,7 +570,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			// Yes. Setup real inputBuffers as multisample-resolve targets:
 			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0)) {
 				// Failed!
-				PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 1 inputBufferFBO of imaging pipeline.");
+				PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 1 inputBufferFBO of imaging pipeline.");
 			}
 			
 			// Assign this FBO as inputBufferFBO for left-eye or mono channel:
@@ -579,7 +587,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			if (!targetisfinalFB) {
 				if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0)) {
 					// Failed!
-					PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 1 inputBufferFBO of imaging pipeline.");
+					PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 1 inputBufferFBO of imaging pipeline.");
 				}
 				
 				// Assign this FBO as drawBuffer for right-eye channel:
@@ -629,7 +637,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			// These FBO's don't need z- or stencil buffers anymore:
 			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0)) {
 				// Failed!
-				PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 2 of imaging pipeline.");
+				PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 2 of imaging pipeline.");
 			}			
 
 			// Assign this FBO as processedDrawBuffer for left-eye or mono channel:
@@ -647,7 +655,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 				// These FBO's don't need z- or stencil buffers anymore:
 				if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0)) {
 					// Failed!
-					PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 2 of imaging pipeline.");
+					PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 2 of imaging pipeline.");
 				}			
 				
 				// Assign this FBO as processedDrawBuffer for right-eye channel:
@@ -668,7 +676,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		if (imagingmode & kPsychNeedDualPass || imagingmode & kPsychNeedMultiPass) {
 			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0)) {
 				// Failed!
-				PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 2 of imaging pipeline.");
+				PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 2 of imaging pipeline.");
 			}
 			
 			// Assign this FBO as processedDrawBuffer for bounce buffer ops in multi-pass rendering:
@@ -700,7 +708,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		// These FBO's don't need z- or stencil buffers anymore:
 		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0)) {
 			// Failed!
-			PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 3 of imaging pipeline.");
+			PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 3 of imaging pipeline.");
 		}
 		
 		// Assign this FBO for left-eye and right-eye channel: The FBO is shared accross channels...
@@ -761,7 +769,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			// We need a new, private bounce-buffer:
 			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0)) {
 				// Failed!
-				PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 3 of imaging pipeline [1st bounce buffer].");
+				PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 3 of imaging pipeline [1st bounce buffer].");
 			}
 			
 			windowRecord->preConversionFBO[2] = fbocount;
@@ -771,7 +779,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		// In any case, we need a new private 2nd bounce buffer for the special case of the final processing chain:
 		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0)) {
 			// Failed!
-			PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 3 of imaging pipeline [2nd bounce buffer].");
+			PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 3 of imaging pipeline [2nd bounce buffer].");
 		}
 		
 		windowRecord->preConversionFBO[3] = fbocount;
@@ -1186,7 +1194,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 		
 		if (glGetError()!=GL_NO_ERROR) {
 			printf("PTB-ERROR: Failed to setup internal framebuffer objects color buffer attachment for imaging pipeline!\n");
-			printf("PTB-ERROR: Most likely the requested size & depth of the window or texture is not supported by your graphics hardware.\n");
+			printf("PTB-ERROR: Most likely the requested size or colordepth of the window or texture is not supported by your graphics hardware.\n");
 			return(FALSE);
 		}
 		
