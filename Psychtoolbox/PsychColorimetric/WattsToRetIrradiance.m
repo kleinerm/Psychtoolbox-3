@@ -36,7 +36,7 @@ function [irradiance, irradianceS] =...
 % 7/08/03   dhb  Monochromatic ref spectrum default, as per manual.
 
 % Fill in default radiometer properties.
-if (exist('radiometer') ~= 1 | isempty(radiometer))
+if (exist('radiometer', 'var') ~= 1 || isempty(radiometer))
 	% Structure containing radiometer calibration information.
 	% The radiometer is calibrated to give the correct
 	% reading in watts when a source with the relative spectrum
