@@ -29,8 +29,7 @@ function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes, use
 %
 % 'latbias'    = Hardware inherent latency bias. To be determined by
 %                measurement - allows to PA to correct for it if provided.
-%                Unit is seconds. Defaults to zero on MS-Windows, defaults
-%                to the expected bias of a Intel MacBookPro on OS/X.
+%                Unit is seconds. Defaults to zero.
 %
 % 'waitframes' = Time to wait (in video refresh intervals) before emitting beep + flash.
 %                Defaults to a value of 1, may need to be set higher for
@@ -124,20 +123,10 @@ if nargin < 3
 end
 
 if isempty(latbias)
-    if IsOSX
-        % Take hardware delay of MacBookPro into account: Assign it as bias.
-        % The DAC delay of Intel HDA onboard audio on MacBookPro is 30 frames,
-        % according to spec, so the delay should be 30/frequency seconds. This
-        % was empirically found to be true on our test setup.
-        latbias = (30 / freq);
-        fprintf('No "latbias" provided. Auto-selected bias to be %f seconds, assuming Intel MacBookPro hardware with\n', latbias);
-        fprintf('built-in Intel HDA audio output.\n');
-    else
-        % Unknown system: Assume zero bias. User can override with measured
-        % values:
-        fprintf('No "latbias" provided. Assuming zero bias. You''ll need to determine this via measurement for best results...\n');
-        latbias = 0;
-    end
+    % Unknown system: Assume zero bias. User can override with measured
+    % values:
+    fprintf('No "latbias" provided. Assuming zero bias. You''ll need to determine this via measurement for best results...\n');
+    latbias = 0;
 end
 
 if nargin < 4
