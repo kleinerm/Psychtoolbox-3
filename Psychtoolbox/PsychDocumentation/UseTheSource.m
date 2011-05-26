@@ -62,21 +62,16 @@
 %    web interface: http://svn.berlios.de/wsvn/osxptb
 %
 %    For almost all source code, i.e., unless otherwise stated in the
-%    source files themselves, the GNU GPL license applies:
+%    source files or accompanying documentation themselves, the
+%    MIT license applies. See the file License.txt in the Psychtoolbox
+%    root folder for more details.
 %
-%    Psychtoolbox is free software; you can redistribute it and/or modify
-%    it under the terms of the GNU General Public License as published by
-%    the Free Software Foundation; either version 2 of the License, or
-%    (at your option) any later version. The file License.txt in the
-%    Psychtoolbox root folder contains the exact conditions for use,
-%    modification and redistribution.
-%
-%    Components & Libraries which are not covered by the GPL, but other GPL
-%    compatible free software licenses will carry individual descriptions
-%    of their licenses inside the source files or in accompanying license
-%    files within the corresponding subfolders. Such libraries are usually
-%    contained in the PsychSourceGL/Cohorts/ subdirectory of the
-%    distribution.
+%    Components & Libraries which are not covered by the MIT license, but
+%    other MIT compatible free software licenses will carry individual
+%    descriptions of their licenses inside the source files or in
+%    accompanying license files within the corresponding subfolders. Such
+%    libraries are usually contained in the PsychSourceGL/Cohorts/
+%    subdirectory of the distribution.
 %
 %    Good luck and "Use the source" (Master Yoda).
 %
