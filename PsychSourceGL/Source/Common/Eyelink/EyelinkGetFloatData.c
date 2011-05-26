@@ -22,7 +22,8 @@
 		Eyelink.mexmac resides in:
 			PsychHardware/EyelinkToolbox
  
-/* WARNING returns only samples at the moment ??? doesn't look like that */
+    WARNING returns only samples at the moment ??? doesn't look like that 
+*/
 
 
 #include "PsychEyelink.h"
@@ -52,8 +53,6 @@ PsychError EyelinkGetFloatData(void)
 	FEVENT    fe;
 	int type = 0;
 	mxArray **mxpp;
-	int err;
-	char errmsg[ERR_BUFF_LEN]="";
 	
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -177,13 +176,13 @@ PsychError EyelinkGetFloatDataRaw(void)
 				}
 				TrackerOKForRawValues();
 				memset(&fr, 0, sizeof(fr));
-				if(err = eyelink_get_extra_raw_values_v2(&fs, eye, &fr)){
+				if((err = eyelink_get_extra_raw_values_v2(&fs, eye, &fr))){
 					sprintf(errmsg, "Eyelink: GetFloatDataRaw: eyelink_get_extra_raw_values_v2 returned error code %d: %s", err, eyelink_get_error(err,"eyelink_get_extra_raw_values_v2")); //no snprintf in msvs?  bug: buff overflow
 					PsychErrorExitMsg(PsychError_internal, errmsg);
 				}
 			} else {
 				mexPrintf("EYELINK: WARNING! Omission of the eye argument to GetFloatDataRaw is deprecated.\n");
-				if(err = eyelink_get_extra_raw_values(&fs, &fr)){ //deprecated as of Dec 1, 2006 (see eyelink sdk core_expt.h)
+				if((err = eyelink_get_extra_raw_values(&fs, &fr))){ //deprecated as of Dec 1, 2006 (see eyelink sdk core_expt.h)
 					sprintf(errmsg, "Eyelink: GetFloatDataRaw: eyelink_get_extra_raw_values returned error code %d: %s", err, eyelink_get_error(err,"eyelink_get_extra_raw_values")); //no snprintf in msvs?  bug: buff overflow
 					PsychErrorExitMsg(PsychError_internal, errmsg);
 				}

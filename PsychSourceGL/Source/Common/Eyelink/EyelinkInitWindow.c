@@ -40,8 +40,6 @@ PURPOSE:
 
 PsychError EyelinkInitWindow(void)
 {
-	int		iResult		= 0;
-	
 	// Add help strings
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	

@@ -62,9 +62,6 @@ PURPOSE:
 PsychError EyelinkImageModeDisplay(void)
 {
 	int		iResult		= 0;
-	int iMode = 0;
-	int loopNum=0;
-	char buff[ERR_BUFF_LEN]="";
 	
 	// Add help strings
 	PsychPushHelp(useString, synopsisString, seeAlsoString);

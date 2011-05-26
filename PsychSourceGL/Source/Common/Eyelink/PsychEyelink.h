@@ -45,8 +45,10 @@
 // Except for Uint8 and Int8 on MK's R11 build machine??? WTF???
 // Anyway, the definition of TARGET_BUILD_WIN32R11 takes care of it.
 #ifndef TARGET_BUILD_WIN32R11
+#ifndef PTBOCTAVE3MEX
 typedef UINT8 UInt8;
 typedef INT8 Int8;
+#endif
 #endif
 typedef UINT16 UInt16;
 typedef UINT32 UInt32;
@@ -83,27 +85,6 @@ void PsychEyelink_init_core_graphics(const char* callback);
 void PsychEyelink_uninit_core_graphics(void);
 void PsychEyelink_TestEyeImage(void);
 void PsychEyelink_dumpHookfunctions(void);
-
-//callback functions and supporting functions, also defined in PsychEyelink.c
-static INT16 ELCALLBACK  PsychEyelink_setup_image_display(INT16 width, INT16 height);
-static void ELCALLBACK   PsychEyelink_exit_image_display(void);
-static void ELCALLBACK   PsychEyelink_set_image_palette(INT16 ncolors, byte r[130], byte g[130], byte b[130]);
-static void ELCALLBACK   PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totlines, byte *pixels);
-
-static INT16  ELCALLBACK PsychEyelink_setup_cal_display(void);
-static void ELCALLBACK   PsychEyelink_exit_cal_display(void);
-static void ELCALLBACK   PsychEyelink_clear_display(void);
-static void ELCALLBACK   PsychEyelink_draw_cal_target(INT16 x, INT16 y);
-static void ELCALLBACK   PsychEyelink_erase_cal_target(void);
-static void ELCALLBACK   PsychEyelink_image_title(INT16 threshold, char *title);
-static INT16 ELCALLBACK  PsychEyelink_get_input_key(InputEvent *keyinput);
-static void ELCALLBACK   PsychEyelink_alert_printf_hook(const char *msg);
-static void ELCALLBACK	 PsychEyelink_noop(void);
-
-static void ELCALLBACK   PsychEyelink_cal_target_beep_hook(void);
-static void ELCALLBACK	 PsychEyelink_cal_done_beep_hook(INT16 error);
-static void ELCALLBACK	 PsychEyelink_dc_done_beep_hook(INT16 error);
-static void ELCALLBACK   PsychEyelink_dc_target_beep_hook(void);
 
 // Defined in EyelinkSynopsis.c
 void		InitializeSynopsis();

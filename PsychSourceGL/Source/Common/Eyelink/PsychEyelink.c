@@ -50,6 +50,28 @@ static int eyeheight = 0;
 // Color remapping palette table:
 static unsigned int palmap32[256];
 #define ERR_BUFF_LEN 1000
+
+/* Declaration of callback functions defined later in this file: */
+static INT16 ELCALLBACK  PsychEyelink_setup_image_display(INT16 width, INT16 height);
+static void ELCALLBACK   PsychEyelink_exit_image_display(void);
+static void ELCALLBACK   PsychEyelink_set_image_palette(INT16 ncolors, byte r[130], byte g[130], byte b[130]);
+static void ELCALLBACK   PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totlines, byte *pixels);
+
+static INT16  ELCALLBACK PsychEyelink_setup_cal_display(void);
+static void ELCALLBACK   PsychEyelink_exit_cal_display(void);
+static void ELCALLBACK   PsychEyelink_clear_display(void);
+static void ELCALLBACK   PsychEyelink_draw_cal_target(INT16 x, INT16 y);
+static void ELCALLBACK   PsychEyelink_erase_cal_target(void);
+static void ELCALLBACK   PsychEyelink_image_title(INT16 threshold, char *title);
+static INT16 ELCALLBACK  PsychEyelink_get_input_key(InputEvent *keyinput);
+static void ELCALLBACK   PsychEyelink_alert_printf_hook(const char *msg);
+static void ELCALLBACK	 PsychEyelink_noop(void);
+
+static void ELCALLBACK   PsychEyelink_cal_target_beep_hook(void);
+static void ELCALLBACK	 PsychEyelink_cal_done_beep_hook(INT16 error);
+static void ELCALLBACK	 PsychEyelink_dc_done_beep_hook(INT16 error);
+static void ELCALLBACK   PsychEyelink_dc_target_beep_hook(void);
+
 /////////////////////////////////////////////////////////////////////////
 // Check if system is initialized
 //
@@ -341,7 +363,7 @@ int PsychEyelinkCallRuntime(int cmd, int x, int y, char* msg)
 // during tracker setup, drift correction/calibration etc.:
 // =========================================================================
 
-void ELCALLBACK PsychEyelink_noop(void)
+static void ELCALLBACK PsychEyelink_noop(void)
 {
 	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_noop()\n");
 	
@@ -351,7 +373,7 @@ void ELCALLBACK PsychEyelink_noop(void)
 
 // PsychEyelink_setup_image_display() tells the width and height of the camera
 // image in pixels.
-INT16 ELCALLBACK PsychEyelink_setup_image_display(INT16 width, INT16 height)
+static INT16 ELCALLBACK PsychEyelink_setup_image_display(INT16 width, INT16 height)
 {
 	
 	
@@ -394,7 +416,7 @@ INT16 ELCALLBACK PsychEyelink_setup_image_display(INT16 width, INT16 height)
 }
 
 // PsychEyelink_exit_image_display() shuts down any camera image display:
-void ELCALLBACK PsychEyelink_exit_image_display(void)
+static void ELCALLBACK PsychEyelink_exit_image_display(void)
 {
 	
 	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_exit_image_display()\n");
@@ -426,12 +448,9 @@ void drawSemiCircle(CrossHairInfo *chi, int left, int top, int dia, int side, in
 	unsigned char r =0;
 	unsigned char g =0;
 	unsigned char b =0;
-	unsigned char a =255;
 	int radius = dia/2;
 	int x = left - 1;
 	int y = top -1;
-	int w = dia+1;
-	int h = dia+1;
 	unsigned int *v0;
 	int x0,y0, ddF_x =1, ddF_y,f;
 	
@@ -707,9 +726,7 @@ void drawCircle(CrossHairInfo *chi, int x0, int y0, int width, int height, int c
 	unsigned char r =0;
 	unsigned char g =0;
 	unsigned char b =0;
-	unsigned char a =255;
 	int x = 0, y, f;
-	int i =0;
 	unsigned int *v0;
 	int radius, ddF_x =1, ddF_y;
 	
@@ -787,7 +804,6 @@ void drawLozenge(CrossHairInfo *chi, int x0, int y0, int width, int height, int 
 	unsigned char r =0;
 	unsigned char g =0;
 	unsigned char b =0;
-	unsigned char a =255;
 	int x = 0, y;
 	int y2, y1;
 	unsigned int *v0;
@@ -868,12 +884,10 @@ void drawLine(CrossHairInfo *chi, int x1, int y1, int x2, int y2, int cindex)
 	unsigned char r =0;
 	unsigned char g =0;
 	unsigned char b =0;
-	unsigned char a =255;
 	int dx, dy;
 	int x, y, ch;
 	INT16 xc[4],yc[4], enabled;
 	unsigned int *v0;
-    int temp;
 	int xx1, xx2, yy1, yy2;
 	
 	if (eyeimage == NULL) return;
@@ -1027,7 +1041,7 @@ void getMouseState(CrossHairInfo *chi, int *rx, int *ry, int *rstate)
 // PsychEyelink_draw_image_line() retrieves exactly one scanline worth of eye camera
 // image data. Once a full image has been received, it has to trigger the actual image
 // display:
-void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totlines, byte *pixels)
+static void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totlines, byte *pixels)
 {
 	PsychGenericScriptType			*inputs[1];
 	PsychGenericScriptType			*outputs[1];
@@ -1182,7 +1196,7 @@ void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totl
 
 // PsychEyelink_set_image_palette() sets the color palette for decoding 1-byte color index
 // values in an eyelink camera image into RGB8 1-byte-per-color-component color values:
-void ELCALLBACK PsychEyelink_set_image_palette(INT16 ncolors, byte r[], byte g[], byte b[])
+static void ELCALLBACK PsychEyelink_set_image_palette(INT16 ncolors, byte r[], byte g[], byte b[])
 {
 	short i;
 	
@@ -1202,11 +1216,10 @@ void ELCALLBACK PsychEyelink_set_image_palette(INT16 ncolors, byte r[], byte g[]
 	return;
 }
 
-INT16  ELCALLBACK PsychEyelink_setup_cal_display(void)
+static INT16  ELCALLBACK PsychEyelink_setup_cal_display(void)
 {
 	//nj added "hack" to disable flashing instructions in drift correction and to enable sending cal and val results
 	int mode = -1;
-	int result =-1;
 	
 	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_setup_cal_display()\n");
 
@@ -1237,7 +1250,7 @@ static void ELCALLBACK   PsychEyelink_exit_cal_display(void)
 	return;
 }
 
-void ELCALLBACK   PsychEyelink_clear_display(void)
+static void ELCALLBACK   PsychEyelink_clear_display(void)
 {
 	//NJ modified to add msg to call back 6 with cal and val result
 	char strMessage[256];
@@ -1258,7 +1271,7 @@ void ELCALLBACK   PsychEyelink_clear_display(void)
 	return;
 }
 
-void ELCALLBACK   PsychEyelink_draw_cal_target(INT16 x, INT16 y)
+static void ELCALLBACK   PsychEyelink_draw_cal_target(INT16 x, INT16 y)
 {
 	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_draw_cal_target(): x=%i y=%i.\n", (int) x, (int) y);
 
@@ -1278,7 +1291,7 @@ static void ELCALLBACK   PsychEyelink_erase_cal_target(void)
 	return;
 }
 
-void ELCALLBACK   PsychEyelink_image_title(INT16 threshold, char *title)
+static void ELCALLBACK   PsychEyelink_image_title(INT16 threshold, char *title)
 {
 	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_image_title(): threshold = %i : Title = %s\n", (int) threshold, title);
 
@@ -1295,7 +1308,7 @@ void ELCALLBACK   PsychEyelink_image_title(INT16 threshold, char *title)
 #define ELKEY_DOWN 1 //temporary while we wait for sr-research's lib to get updated with this
 #endif
 
-INT16 ELCALLBACK  PsychEyelink_get_input_key(InputEvent *keyinput)
+static INT16 ELCALLBACK  PsychEyelink_get_input_key(InputEvent *keyinput)
 {
 	int ky = 0;
 	double tnow;
@@ -1349,7 +1362,7 @@ INT16 ELCALLBACK  PsychEyelink_get_input_key(InputEvent *keyinput)
 	}
 }
 
-void ELCALLBACK   PsychEyelink_alert_printf_hook(const char *msg)
+static void ELCALLBACK   PsychEyelink_alert_printf_hook(const char *msg)
 {
 	// Print error message to runtime console if error output is allowed:
 	if (Verbosity() > 3) printf("Eyelink: Alert! Eyelink says: %s.\n\n", msg);
@@ -1360,7 +1373,7 @@ void ELCALLBACK   PsychEyelink_alert_printf_hook(const char *msg)
 	return;
 }
 
-void ELCALLBACK   PsychEyelink_cal_target_beep_hook(void)
+static void ELCALLBACK   PsychEyelink_cal_target_beep_hook(void)
 {
 	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_cal_target_beep_hook():\n");
 
@@ -1368,7 +1381,7 @@ void ELCALLBACK   PsychEyelink_cal_target_beep_hook(void)
 	return;
 }
 
-void ELCALLBACK   PsychEyelink_dc_target_beep_hook(void)
+static void ELCALLBACK   PsychEyelink_dc_target_beep_hook(void)
 {
 	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_dc_target_beep_hook():\n");
 
@@ -1376,7 +1389,7 @@ void ELCALLBACK   PsychEyelink_dc_target_beep_hook(void)
 	return;
 }
 
-void ELCALLBACK	  PsychEyelink_cal_done_beep_hook(INT16 error)
+static void ELCALLBACK	  PsychEyelink_cal_done_beep_hook(INT16 error)
 {
 	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_cal_done_beep_hook():\n");
 
@@ -1384,7 +1397,7 @@ void ELCALLBACK	  PsychEyelink_cal_done_beep_hook(INT16 error)
 	return;
 }
 
-void ELCALLBACK	  PsychEyelink_dc_done_beep_hook(INT16 error)
+static void ELCALLBACK	  PsychEyelink_dc_done_beep_hook(INT16 error)
 {
 	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_dc_done_beep_hook():\n");
 

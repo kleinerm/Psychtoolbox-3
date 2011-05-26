@@ -26,12 +26,10 @@
  * Returns a pointer to the bitmap if successful, NULL otherwise...
  */
 
-GLubyte * LoadDIBitmap(const char *filename, BITMAPINFO **info)    /* O - Bitmap information */
+psych_uint8* LoadDIBitmap(const char *filename, BITMAPINFO **info)    /* O - Bitmap information */
 {
     FILE				*fp;          // Open file pointer
-    GLubyte				*bits;        // Bitmap pixel bits 
-	GLubyte				*bitsOut;
-	int				    outputSize;
+    psych_uint8			*bits;        // Bitmap pixel bits 
     int					bitsize;      // Size of bitmap 
     int					infosize;     // Size of header information     
 	BITMAPFILEHEADER	header;       // File header 
@@ -133,20 +131,18 @@ static unsigned short read_word(FILE *fp);
 static unsigned int   read_dword(FILE *fp);
 static int            read_long(FILE *fp);
 
-GLubyte *  LoadDIBitmap(const char *filename, BITMAPINFO **info)
+psych_uint8* LoadDIBitmap(const char *filename, BITMAPINFO **info)
 {	
 	int              bitsize;      // Size of bitmap 
     int              infosize;     // Size of header information
-	int				 outputSize;
     int				 index;
 	int				 newIndex = 0;		
 	int				 r; 
 	int				 c;
 	int				 pitch;	
 	FILE             *fp;          // Open file pointer 
-    GLubyte          *bits;        // Bitmap pixel bits 
+    psych_uint8      *bits;        // Bitmap pixel bits 
     BITMAPFILEHEADER header;       // File header 	
-	GLubyte          *bitsOut;
 
     if ((fp = fopen(filename, "rb")) == NULL) {        
 		printf("Bitmap Loader: can't open file\n");

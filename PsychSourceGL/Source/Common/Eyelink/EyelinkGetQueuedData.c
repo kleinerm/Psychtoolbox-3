@@ -220,7 +220,7 @@ PsychError EyelinkGetQueuedData(void)
 				if (useEye) {
 					if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: calling get_raw\n");
 					memset(&fr, 0, sizeof(fr));
-					if(err = eyelink_get_extra_raw_values_v2(&fs, eye, &fr)){
+					if((err = eyelink_get_extra_raw_values_v2(&fs, eye, &fr))){
 						//snprintf(errmsg, ERR_BUFF_LEN, "Eyelink: GetQueuedData: eyelink_get_extra_raw_values_v2 returned error code %d: %s", err, eyelink_get_error(err,"eyelink_get_extra_raw_values_v2"));
 						if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: raw value error\n");
 						sprintf(errmsg, "Eyelink: GetQueuedData: eyelink_get_extra_raw_values_v2 returned error code %d: %s", err, eyelink_get_error(err,"eyelink_get_extra_raw_values_v2")); //no snprintf in msvs?  bug: buff overflow
@@ -371,7 +371,7 @@ psych_bool TrackerOKForRawValues(void) {
 	}
 	
 	while(tryAgain){
-		if (err=eyelink_read_request("link_sample_data")){
+		if ((err=eyelink_read_request("link_sample_data"))){
 			sprintf(errmsg, "Eyelink: eyelink_read_request returned error code '%d': '%s'", err, eyelink_get_error(err,"eyelink_read_request")); //no snprintf in msvs?  bug: buff overflow
 			PsychErrorExitMsg(PsychError_internal, errmsg);
 		}

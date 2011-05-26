@@ -1,11 +1,11 @@
 /* 
-/osxptb/trunk/PsychSourceGL/Source/OSX/Eyelink/EyelinkReceiveFile.c
+    /osxptb/trunk/PsychSourceGL/Source/OSX/Eyelink/EyelinkReceiveFile.c
  
 	PROJECTS: Eyelink 
  
 	AUTHORS:
- E.Peters@ai.rug.nl				emp
- f.w.cornelissen@med.rug.nl		fwc
+    E.Peters@ai.rug.nl				emp
+    f.w.cornelissen@med.rug.nl		fwc
  
 	PLATFORMS:	Currently only OS X  
  
@@ -19,7 +19,7 @@
  Eyelink.mexmac resides in:
  PsychHardware/EyelinkToolbox/EyelinkBasic
  
- ???? Not sure if true /* WARNING, The implementation of this routine works only on the Macintosh
+ WARNING, Maybe the implementation of this routine works only on the Macintosh
  
  */
  

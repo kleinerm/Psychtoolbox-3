@@ -52,8 +52,7 @@ PsychError EyelinkImageTransfer(void)
 	int				pitch24, pitch32;
 	EYEBITMAP		bmp;		
 	BITMAPINFO		*BitmapInfo; /* Bitmap information */
-	GLubyte			*BitmapBits; /* Bitmap data */
-	EYEPIXELFORMAT  *pfp;
+	psych_uint8		*BitmapBits; /* Bitmap data */
 	
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
     
@@ -136,8 +135,8 @@ PsychError EyelinkImageTransfer(void)
                     pitch = bmp.w*4; // for 32bits img
                     
                     for(i=0; i<bmp.h; ++i) {
-                        byte *dest = pReturn +((bmp.h-1-i)*(pitch));
-                        byte *src = pDest +(i*pitch);
+                        dest = pReturn +((bmp.h-1-i)*(pitch));
+                        src = pDest +(i*pitch);
                         for(j=0; j<pitch; ++j)
                             dest[j]= src[j];
                     }
@@ -151,8 +150,8 @@ PsychError EyelinkImageTransfer(void)
 			pitch = bmp.w*4;	
 			for(i=0; i<bmp.h; ++i)
 			{
-				byte *dest = pReturn +((bmp.h-1-i)*(pitch));
-				byte *src = pPixels +(i*pitch);
+				dest = pReturn +((bmp.h-1-i)*(pitch));
+				src = pPixels +(i*pitch);
 				for(j=0; j<pitch; ++j)
 					dest[j]= src[j];
 			}
