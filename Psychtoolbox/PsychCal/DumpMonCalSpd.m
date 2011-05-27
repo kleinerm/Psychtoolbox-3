@@ -18,6 +18,7 @@
 % 5/1/02   dhb  Add DUMPALL flag.
 % 9/26/08  dhb, ijk, tyl  Made output easier to read.  Only access named files.
 %               Assume three primaries.
+% 5/27/11  dhb  Update name of default monitor calibration.
 
 % Initialize
 clear; close all;
@@ -26,7 +27,7 @@ clear; close all;
 DUMPALL = 1;
 
 % Enter load code
-defaultFileName = 'monitor';
+defaultFileName = 'PTB3TestCal';
 thePrompt = sprintf('Enter calibration filename [%s]: ',defaultFileName);
 newFileName = input(thePrompt,'s');
 if (isempty(newFileName))
