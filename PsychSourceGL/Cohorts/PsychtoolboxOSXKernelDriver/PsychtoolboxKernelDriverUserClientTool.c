@@ -3,8 +3,28 @@
 	
 	Description:	This file shows how to communicate with the I/O Kit user client of the PsychtoolboxKernelDriver.
 
-	Copyright:		Copyright © 2008 Mario Kleiner, derived from an Apple example code.
+	Copyright:		Copyright © 2008-2011 Mario Kleiner, derived from an Apple example code.
 	
+    This kernel driver and associated tools as a whole are licensed to you as follows: (MIT style license):
+
+    * Permission is hereby granted, free of charge, to any person obtaining a
+    * copy of this software and associated documentation files (the "Software"),
+    * to deal in the Software without restriction, including without limitation
+    * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    * and/or sell copies of the Software, and to permit persons to whom the
+    * Software is furnished to do so, subject to the following conditions:
+    *
+    * The above copyright notice and this permission notice shall be included in
+    * all copies or substantial portions of the Software.
+    *
+    * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+    * THE COPYRIGHT HOLDER(S) OR AUTHOR(S) BE LIABLE FOR ANY CLAIM, DAMAGES OR
+    * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+    * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+    * OTHER DEALINGS IN THE SOFTWARE.
+
 				
 	Change History of original Apple sample code (most recent first):
 
@@ -48,7 +68,7 @@ kern_return_t MyUserClientOpenExample(io_service_t service, io_connect_t *connec
 		kernResult = MyOpenUserClient(*connect);
 			
 		if (kernResult == KERN_SUCCESS) {
-			printf("MyOpenUserClient was successful.\n\n");
+			//printf("MyOpenUserClient was successful.\n\n");
 		}
 		else {
 			fprintf(stderr, "MyOpenUserClient returned 0x%08x.\n\n", kernResult);
@@ -64,7 +84,7 @@ void MyUserClientCloseExample(io_connect_t connect)
 	kern_return_t kernResult = MyCloseUserClient(connect);
         
     if (kernResult == KERN_SUCCESS) {
-        printf("MyCloseUserClient was successful.\n\n");
+        //printf("MyCloseUserClient was successful.\n\n");
     }
 	else {
 		fprintf(stderr, "MyCloseUserClient returned 0x%08x.\n\n", kernResult);
@@ -73,7 +93,7 @@ void MyUserClientCloseExample(io_connect_t connect)
     kernResult = IOServiceClose(connect);
     
     if (kernResult == KERN_SUCCESS) {
-        printf("IOServiceClose was successful.\n\n");
+        //printf("IOServiceClose was successful.\n\n");
     }
     else {
 	    fprintf(stderr, "IOServiceClose returned 0x%08x\n\n", kernResult);
@@ -288,8 +308,20 @@ int main(int argc, char* argv[])
     int				i,j;
 	unsigned int	ov;
 	
+    if (argc < 2) {
+        printf("\n");
+        printf("%s: Command line tool for controlling the MacOS/X PsychtoolboxKernelDriver:\n", (argc > 0) ? argv[0] : "unknown");
+        printf("%s: Command line arguments missing. Usage:\n", (argc > 0) ? argv[0] : "unknown");
+        printf("%s -setdither headId ditherEnable\n", (argc > 0) ? argv[0] : "unknown");
+        printf("%s -resyncdisplays\n", (argc > 0) ? argv[0] : "unknown");
+        printf("%s -nvidiasetcursor x y\n", (argc > 0) ? argv[0] : "unknown");
+        printf("%s -radeonswaptests\n", (argc > 0) ? argv[0] : "unknown");
+        printf("\n\n");
+        return(-2);
+    }
+    
     // This will launch the Console.app so you can see the IOLogs from the KEXT.
-    MyLaunchConsoleApp();
+    // MyLaunchConsoleApp();
 
 	classToMatch = IOServiceMatching(kMyDriversIOKitClassName);
     
@@ -333,18 +365,28 @@ int main(int argc, char* argv[])
 		
 		if (connect != IO_OBJECT_NULL) {	
 
-			if (argc > 3 && atoi(argv[1]) == 1) {
+            if (argc > 1 && (strcmp(argv[1], "-setdither") == 0)) {
+                if (argc < 4) {
+                    printf("Error: You must provide the headId and ditherEnable flag!\n");
+                    return(-1);
+                }
+                
+                printf("Trying to %s dithering on display head %i.\n", (atoi(argv[3]) > 0) ? "enable" : "disable", atoi(argv[2]));
+                PsychOSKDSetDitherMode(connect, atoi(argv[2]), atoi(argv[3]));
+            }
+            
+            if (argc > 1 && (strcmp(argv[1], "-resyncdisplays") == 0)) {
+                printf("Trying to resync all display heads.\n");
+				printf("Residual offset between displays is %i scanlines.\n\n", PsychOSSynchronizeAllDisplayHeads(connect));
+            }
+            
+			if (argc > 3 && (strcmp(argv[1], "-nvidiasetcursor") == 0)) {
 				// NVidia test:
-				PsychOSKDSetDitherMode(connect, atoi(argv[2]), atoi(argv[3]));
+                printf("Trying to move NVidia G80 cursor to position %i x %i.\n", atoi(argv[2]), atoi(argv[3]));
 				G80SetCursorPosition(atoi(argv[2]), atoi(argv[3]));
 			}
-			else {
-				// Trigger display resync and print result:
-				// printf("Our Resync result is %i\n\n", PsychOSSynchronizeAllDisplayHeads(connect));
-				
-				// Test beamposition queries with 100 samples:
-				// for (i=0; i<100; i++) printf("Sample %i: Beampos: %i\n", i, PsychOSKDGetBeamposition(connect, 0));
-				
+
+            if (argc > 1 && (strcmp(argv[1], "-radeonswaptests") == 0)) {				
 				printf("D1: Primary surface is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS));
 				printf("D1: Secondary surface is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D1GRPH_SECONDARY_SURFACE_ADDRESS));
 				printf("D1: Pitch is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D1GRPH_PITCH));

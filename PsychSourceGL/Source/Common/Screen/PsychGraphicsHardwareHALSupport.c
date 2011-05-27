@@ -101,6 +101,43 @@ PsychError PsychSynchronizeDisplayScreens(int *numScreens, int* screenIds, int* 
 	return(PsychError_none);
 }
 
+/* PsychSetOutputDithering() - Control bit depth control and dithering on digital display output encoder:
+ * 
+ * This function enables or disables bit depths truncation or dithering of digital display output ports of supported
+ * graphics hardware. Currently the ATI Radeon X1000/HD2000/HD3000/HD4000/HD5000 and later cards should allow this.
+ *
+ * This needs support from the Psychtoolbox kernel level support driver for low-level register reads
+ * and writes to the GPU registers.
+ *
+ *
+ * 'windowRecord'	Is used to find the Id of the screen for which mode should be changed. If set to NULL then...
+ * 'screenId'       ... is used to determine the screenId for the screen. Otherwise 'screenId' is ignored.
+ * 'ditherEnable'   Zero = Disable any dithering. Non-Zero Reenable dithering after it has been disabled by us,
+ *                  or if it wasn't disabled beforehand, enable it with a control mode as specified by the numeric
+ *                  value of 'ditherEnable'. The value is GPU specific.
+ *
+ */
+psych_bool  PsychSetOutputDithering(PsychWindowRecordType* windowRecord, int screenId, unsigned int ditherEnable)
+{
+#if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
+
+	// Child protection:
+	if (windowRecord && !PsychIsOnscreenWindow(windowRecord)) PsychErrorExitMsg(PsychError_internal, "Invalid non-onscreen windowRecord provided!!!");
+	
+	// Either screenid from windowRecord or as passed in:
+	if (windowRecord) screenId = windowRecord->screenNumber;
+    
+    // Do the call:
+    PsychOSKDSetDitherMode(screenId, ditherEnable);
+
+    return(TRUE);
+#else
+	// This cool stuff not supported on the uncool Windows OS:
+    if(PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: GPU dithering control requested, but this is not supported on MS-Windows.\n");
+	return(FALSE);
+#endif
+}
+
 /* PsychEnableNative10BitFramebuffer()  - Enable/Disable native 10 bpc RGB framebuffer modes.
  *
  * This function enables or disables the native ARGB2101010 framebuffer readout mode of supported

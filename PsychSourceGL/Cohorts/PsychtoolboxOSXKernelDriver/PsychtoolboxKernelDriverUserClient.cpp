@@ -3,7 +3,7 @@
 	
 	Description:	This file implements a simple I/O Kit user client that is Rosetta-aware.
 
-	Copyright:		Copyright © 2008 Mario Kleiner, derived from an Apple example code.
+	Copyright:		Copyright © 2008-2011 Mario Kleiner, derived from an Apple example code.
 
 	Change History of original Apple sample code (most recent first):
 
@@ -302,7 +302,7 @@ IOReturn PsychtoolboxKernelDriverUserClient::openUserClient(void)
 {
     IOReturn	result = kIOReturnSuccess;
 	
-	IOLog("PsychtoolboxKernelDriverUserClient::openUserClient(): Psychtoolbox connects to us :-)\n");
+	IOLog("PsychtoolboxKernelDriverUserClient::openUserClient(): Client connects to us :-)\n");
     
     if (fProvider == NULL || isInactive()) {
 		// Return an error if we don't have a provider. This could happen if the user process
@@ -324,7 +324,7 @@ IOReturn PsychtoolboxKernelDriverUserClient::closeUserClient(void)
 {
     IOReturn	result = kIOReturnSuccess;
 	
-    IOLog("PsychtoolboxKernelDriverUserClient::closeUserClient(): Psychtoolbox disconnects from us :-(\n");
+    IOLog("PsychtoolboxKernelDriverUserClient::closeUserClient(): Client disconnects from us :-(\n");
             
     if (fProvider == NULL) {
 		// Return an error if we don't have a provider. This could happen if the user process

@@ -1272,3 +1272,36 @@ int PsychOSKDGetBeamposition(int screenId)
 	// Return queried position:
 	return(beampos);
 }
+
+// Try to change hardware dither mode on GPU:
+void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
+{
+	// Have syncCommand locally defined, ie. on threads local stack: Important for thread-safety, e.g., for async-flip etc.:
+	PsychKDCommandStruct syncCommand;
+
+	// Check availability of connection:
+	io_connect_t connect;
+	if (!(connect = PsychOSCheckKDAvailable(((screenId >= 0) ? screenId : 0), NULL))) {
+		// Dither control unavailable:
+		if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Kernel driver based dither control unavailable for screenId %i.\n", screenId);
+		return;
+	}
+
+	// Set command code for dither control:
+	syncCommand.command = kPsychKDSetDitherMode;
+
+	// Assign headid for this screen:
+	syncCommand.inOutArgs[0] = (unsigned int) ((screenId >= 0) ? PsychScreenToHead(screenId) : -1 * screenId);
+
+    // Assign dither setting:
+	syncCommand.inOutArgs[1] = ditherOn;
+
+	// Issue request:
+	kern_return_t kernResult = PsychOSKDDispatchCommand(connect,  &syncCommand, &syncCommand, NULL);    
+	if (kernResult != KERN_SUCCESS) {
+		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Kernel driver dither control call failed (Kernel error code: %lx).\n", kernResult);
+		return;
+	}
+
+    return;
+}

@@ -1776,3 +1776,94 @@ int PsychOSKDGetBeamposition(int screenId)
 
 	return(beampos);
 }
+
+// Try to change hardware dither mode on GPU:
+void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
+{
+    static unsigned int oldDither[6] = { 0, 0, 0, 0, 0, 0 };
+    unsigned int reg;
+	int headId  = (screenId >= 0) ? PsychScreenToHead(screenId) : -screenId;
+    
+    // MMIO registers mapped?
+	if (!gfx_cntl_mem) return;
+
+    // AMD/ATI Radeon, FireGL or FirePro GPU?
+	if (fDeviceType == kPsychRadeon) {
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Trying to %s digital display dithering on display head %d.\n", (ditherOn) ? "enable" : "disable", headId);
+
+        // Map headId to proper hardware control register offset:
+		if (isDCE4()) {
+			// DCE-4 display engine (CEDAR and later afaik): Up to six crtc's. Map to proper
+            // register offset for this headId:
+            if (headId > 5) {
+                // Invalid head - bail:
+                if (PsychPrefStateGet_Verbosity() > 0) printf("SetDitherMode: ERROR! Invalid headId %d provided. Must be between 0 and 5. Aborted.\n", headId);
+                return;
+            }
+
+            // Map to dither format control register for head 'headId':
+            reg = EVERGREEN_FMT_BIT_DEPTH_CONTROL + crtcoff[headId];
+		} else {
+			// AVIVO display engine (R300 - R600 afaik): At most two display heads for dual-head gpu's.
+            if (headId > 1) {
+                if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: INFO! Special headId %d outside valid dualhead range 0-1 provided. Will control LVDS dithering.\n", headId);
+                headId = 0;
+            }
+            else {
+                if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: INFO! headId %d in valid dualhead range 0-1 provided. Will control TMDS (DVI et al.) dithering.\n", headId);
+                headId = 1;
+            }
+            
+            // On AVIVO we can't control dithering per display head. Instead there's one global switch
+            // for LVDS connected displays (LVTMA) aka internal flat panels, e.g., of Laptops, and
+            // on global switch for "all things DVI-D", aka TMDSA:
+            reg = (headId == 0) ? RADEON_LVTMA_BIT_DEPTH_CONTROL : RADEON_TMDSA_BIT_DEPTH_CONTROL;
+		}
+
+        // Perform actual enable/disable/reconfigure sequence for target encoder/head:
+
+        // Enable dithering?
+        if (ditherOn) {
+            // Reenable dithering with old, previously stored settings, if it is disabled:
+            
+            // Dithering currently off (all zeros)?
+            if (ReadRegister(reg) == 0) {
+                // Dithering is currently off. Do we know the old setting from a previous
+                // disable?
+                if (oldDither[headId] > 0) {
+                    // Yes: Restore old "factory settings":
+                    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering previously disabled by us. Reenabling with old control setting %x.\n", oldDither[headId]);
+                    WriteRegister(reg, oldDither[headId]);
+                }
+                else {
+                    // No: Dithering was disabled all the time, so we don't know the
+                    // OS defaults. Use the numeric value of 'ditherOn' itself:
+                    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering off. Enabling with userspace provided setting %x. Cross your fingers!\n", ditherOn);
+                    WriteRegister(reg, ditherOn);
+                }
+            }
+            else {
+                if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering already enabled with current control value %x. Skipped.\n", ReadRegister(reg));
+            }
+        }
+        else {
+            // Disable all dithering if it is enabled: Clearing the register to all zero bits does this.
+            if (ReadRegister(reg) > 0) {
+                oldDither[headId] = ReadRegister(reg);
+                if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Current dither setting before our dither disable on head %d is %x. Disabling.\n", headId, oldDither[headId]);
+                WriteRegister(reg, 0x0);
+            }
+            else {
+                if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering already disabled. Skipped.\n");
+            }
+        }
+        
+        // End of Radeon et al. support code.
+	}
+    else {
+        // Other unsupported GPU:
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Tried to call me on a non ATI/AMD GPU. Unsupported.\n");
+    }
+    
+	return;
+}

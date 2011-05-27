@@ -36,8 +36,8 @@ private:
 	UInt32							fDeviceType;
 	UInt32							fCardType;
 	UInt16							fPCIDeviceId;
-    IOPCIDevice *					fPCIDevice;
-	IOMemoryMap *					fRadeonMap;
+    IOPCIDevice*					fPCIDevice;
+	IOMemoryMap*					fRadeonMap;
 	IOVirtualAddress				fRadeonRegs;
 	UInt32							fRadeonSize;
 	UInt32							fRadeonLowlimit;
@@ -46,6 +46,7 @@ private:
 	UInt32							fInterruptCookie;
 	UInt32							fInterruptCounter;
 	UInt32							fVBLCounter[2];
+    UInt32                          oldDither[6];
 
 	// Initialize our own interrupt handler for snooping on gfx-card state changes:
 	bool InitializeInterruptHandler(void);	

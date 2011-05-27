@@ -3,7 +3,7 @@
 
 	Description:	Definitions shared between PsychtoolboxKernelDriverUserClient (kernel) and PsychtoolboxKernelDriverUserClientTool (userland).
 
-	Copyright:		Copyright © 2008 Mario Kleiner, derived from an Apple example code.
+	Copyright:		Copyright Â© 2008-2011 Mario Kleiner, derived from an Apple example code.
 
 	Change History of original Apple sample code (most recent first):
 
@@ -14,6 +14,9 @@
 			1.0d3	 	01/14/2003			New sample.
 
 */
+
+// Definitions of GPU registers etc.:
+#include "PsychGraphicsCardRegisterSpecs.h"
 
 // Name of the driver to make the connection:
 #define kMyDriversIOKitClassName 	"PsychtoolboxKernelDriver"
@@ -29,6 +32,7 @@ enum {
 	kPsychKDReadRegister,
 	KPsychKDWriteRegister,
 	kPsychKDDumpMiscInfo,
+	kPsychKDSetDitherMode,
 	kPsychKDMaxCommands
 };
 

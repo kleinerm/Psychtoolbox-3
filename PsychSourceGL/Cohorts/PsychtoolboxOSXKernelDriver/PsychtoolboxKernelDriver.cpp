@@ -3,12 +3,12 @@
 	
 	Description:	This file implements a I/O Kit driver kernel extension (KEXT) for Psychtoolbox-3.
 					The driver allows to augment the standard graphics driver with some useful features
-					for visual psychophysics applications. It is orthogonal to the systems driver in that
+					for visual psychophysics applications. It is orthogonal to the system graphics driver in that
 					it doesn't change that drivers functionality, nor does it interact with that driver.
 					
 					The driver currently works on AMD/ATI Radeon graphics cards of the X1000, HD2000,
 					HD3000 and HD4000 series. It may work on older ATI cards, but that is not tested or supported.
-					It should theoretically work at least for some functions on HD5000, but that is not tested.
+					It should theoretically work at least for some functions on HD5000.
 					
 					The driver also supports rasterposition queries on the majority of NVidia GPU's, but no
 					other functions.
@@ -21,6 +21,8 @@
 					* Time-Stamped Rasterbeamposition queries on Intel-based Macintosh computers.
 					* A function to quickly synchronize the video refresh cycles of the two output heads of
 					  a dual-head graphics card, e.g., for binocular or stereo stimulation on dual-display setups.
+                      or all six display heads of an AMD evergreen GPU (HD-5000 and later).
+                    * Control of digital display bit depths truncation and dithering on AMD hardware.
 					* Guided queries and logging of a few intersting gfx-state registers for vision science applications.
 					* A low level interface for reading- and writing from/to arbitrary gfx-hardware control registers.
 					* A dump function that dumps interesting settings to the system log.
@@ -31,50 +33,46 @@
 					All other features can be accessed by the stand-alone UNIX command line tool
 					"PsychtoolboxKernelDriverUserClientTool", to be found in the PsychAlpha subfolder.
 
-	Copyright:		Copyright © 2008-2011 Mario Kleiner, derived from an Apple example code.
+    Copyrights:
 
-	This driver contains a few lines of code for radeon DCE-4 which are derived from the free software radeon kms
-	driver for Linux (radeon_display.c, radeon_regs.h). The Radeon kms driver has the following license:
+            Copyright © 2008-2011 Mario Kleiner.
 
-	 * Copyright 2007-8 Advanced Micro Devices, Inc.
-	 * Copyright 2008 Red Hat Inc.
-	 *
-	 * Permission is hereby granted, free of charge, to any person obtaining a
-	 * copy of this software and associated documentation files (the "Software"),
-	 * to deal in the Software without restriction, including without limitation
-	 * the rights to use, copy, modify, merge, publish, distribute, sublicense,
-	 * and/or sell copies of the Software, and to permit persons to whom the
-	 * Software is furnished to do so, subject to the following conditions:
-	 *
-	 * The above copyright notice and this permission notice shall be included in
-	 * all copies or substantial portions of the Software.
-	 *
-	 * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-	 * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	 * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
-	 * THE COPYRIGHT HOLDER(S) OR AUTHOR(S) BE LIABLE FOR ANY CLAIM, DAMAGES OR
-	 * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-	 * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-	 * OTHER DEALINGS IN THE SOFTWARE.
-	 *
-	 * Authors: Dave Airlie
-	 *          Alex Deucher
+            This driver contains a few lines of code for radeon DCE-4 which are derived from the free software radeon kms
+            driver for Linux (radeon_display.c, radeon_regs.h). The Radeon kms driver has the following copyright:
 
-	This driver also contains small fragments of code for NVidia GPU model detection which are derived from the
-	free software Nouveau kms driver on Linux, specifically nouveau_state.c
-	
-	The nouveau kms driver has the same license as radeon kms, except that copyright is:
-	
-	Copyright 2005 Stephane Marchesin
-	Copyright 2008 Stuart Bennett 
+            * Copyright 2007-8 Advanced Micro Devices, Inc.
+            * Copyright 2008 Red Hat Inc.
+            *
+            * Authors: Dave Airlie
+            *          Alex Deucher
 
-	Change History of original Apple sample code (most recent first):
+            This driver also contains small fragments of code for NVidia GPU model detection which are derived from the
+            free software Nouveau kms driver on Linux, specifically nouveau_state.c
 
-            1.1			05/22/2007			User client performs endian swapping when called from a user process 
-											running using Rosetta. Updated to produce a universal binary.
-											Now requires Xcode 2.2.1 or later to build.
-			
-			1.0d3	 	01/14/2003			New sample.
+            The nouveau kms driver has the same license as radeon kms, except that copyright is:
+
+            Copyright 2005 Stephane Marchesin
+            Copyright 2008 Stuart Bennett 
+
+            This driver as a whole is licensed to you as follows: (MIT style license):
+             
+            * Permission is hereby granted, free of charge, to any person obtaining a
+            * copy of this software and associated documentation files (the "Software"),
+            * to deal in the Software without restriction, including without limitation
+            * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+            * and/or sell copies of the Software, and to permit persons to whom the
+            * Software is furnished to do so, subject to the following conditions:
+            *
+            * The above copyright notice and this permission notice shall be included in
+            * all copies or substantial portions of the Software.
+            *
+            * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+            * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+            * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+            * THE COPYRIGHT HOLDER(S) OR AUTHOR(S) BE LIABLE FOR ANY CLAIM, DAMAGES OR
+            * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+            * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+            * OTHER DEALINGS IN THE SOFTWARE.
 
 */
 
@@ -84,6 +82,8 @@
 #include "PsychUserKernelShared.h"
 #include "PsychtoolboxKernelDriver.h"
 
+// Offset of crtc blocks of AMD Evergreen gpu's for each of the six possible crtc's:
+static UInt32 crtcoff[6] = { 0x6df0, 0x79f0, 0x105f0, 0x111f0, 0x11df0, 0x129f0 };
 
 #define super IOService
 OSDefineMetaClassAndStructors(PsychtoolboxKernelDriver, IOService)
@@ -157,14 +157,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 	// Apple gives to the provider is too much of a hazzle for small benefit :(
 	providerName = provider->getName();
 	IOLog("%s: Our provider service is: %s\n", getName(), providerName);
-	/*
-	if (!provider->compareName(OSString::withCStringNoCopy("display")) && !(providerName && providerName[0]=='G' && providerName[1]=='F' && providerName[2]=='X')) {
-		// Not connected to "display" provider :-( Better abort...
-		IOLog("%s: Not connected to expected provider with name 'display' or 'GFX0'. Unsafe to continue, i'll better abort...\n", getName());
-		return(false);
-	}
-	*/
-	
+
 	// ioreg -b -x -p IODeviceTree -n display 
 
 	// Ok, store internal reference to our provider:
@@ -319,7 +312,14 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
         /* Assign the map object, and the mapping itself to our private members: */
 		fRadeonMap = map;
 		fRadeonRegs = map->getVirtualAddress();
-		fRadeonSize = (UInt32) map->getLength();
+        
+        if (map->getLength() > 0xffffffff) {
+            IOLog("%s: WARNING: MMIO register block size greater than 4 GB! Will clamp to 4GB aka 0xffffffff. Fix and recompile me for larger MMIO space!\n", getName());
+            fRadeonSize = (UInt32) 0xffffffff;
+        }
+        else {
+            fRadeonSize = (UInt32) map->getLength();
+        }
     }
 	else {
 		// Failed! Cleanup and exit:
@@ -423,10 +423,10 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 
 	// We should be ready...
 	IOLog("\n");
-	IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.2 for ATI Radeon and NVidia GeForce GPU's ready for use!\n", getName());
+	IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.4 for ATI Radeon and NVidia GeForce GPU's ready for use!\n", getName());
 	IOLog("%s: This driver is copyright 2008, 2009, 2010, 2011 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
-	IOLog("%s: The driver is licensed to you under GNU General Public License (GPL) Version 2 or later,\n", getName());
-	IOLog("%s: see the file License.txt in the Psychtoolbox root installation folder for details.\n", getName());
+	IOLog("%s: The driver is licensed to you under the MIT free software license.\n", getName());
+	IOLog("%s: See the file License.txt in the Psychtoolbox root installation folder for details.\n", getName());
 	IOLog("%s: The driver contains bits of code derived from the free software nouveau and radeon kms drivers on Linux.\n", getName());
 	IOLog("%s: See driver source code for specific copyright notices of the compatible licenses of those bits.\n", getName());
 	
@@ -516,6 +516,12 @@ bool PsychtoolboxKernelDriver::init(OSDictionary* dictionary)
 	fInterruptCounter = 0;
 	fVBLCounter[0] = 0;
 	fVBLCounter[1] = 0;
+    oldDither[0] = 0;
+    oldDither[1] = 0;
+    oldDither[2] = 0;
+    oldDither[3] = 0;
+    oldDither[4] = 0;
+    oldDither[5] = 0;
 
 	return true;
 }
@@ -833,7 +839,86 @@ void PsychtoolboxKernelDriver::WriteRegister(UInt32 offset, UInt32 value)
 // Try to change hardware dither mode on GPU:
 void PsychtoolboxKernelDriver::SetDitherMode(UInt32 headId, UInt32 ditherOn)
 {
-	// TODO...
+    UInt32 reg;
+    
+    // AMD/ATI Radeon, FireGL or FirePro GPU?
+	if (fDeviceType == kPsychRadeon) {
+        IOLog("%s: SetDitherMode: Trying to %s digital display dithering on display head %d.\n", getName(), (ditherOn) ? "enable" : "disable", headId);
+
+        // Map headId to proper hardware control register offset:
+		if (isDCE4()) {
+			// DCE-4 display engine (CEDAR and later afaik): Up to six crtc's. Map to proper
+            // register offset for this headId:
+            if (headId > 5) {
+                // Invalid head - bail:
+                IOLog("%s: SetDitherMode: ERROR! Invalid headId %d provided. Must be between 0 and 5. Aborted.\n", getName(), headId);
+                return;
+            }
+
+            // Map to dither format control register for head 'headId':
+            reg = EVERGREEN_FMT_BIT_DEPTH_CONTROL + crtcoff[headId];
+		} else {
+			// AVIVO display engine (R300 - R600 afaik): At most two display heads for dual-head gpu's.
+            if (headId > 1) {
+                IOLog("%s: SetDitherMode: INFO! Special headId %d outside valid dualhead range 0-1 provided. Will control LVDS dithering.\n", getName(), headId);
+                headId = 0;
+            }
+            else {
+                IOLog("%s: SetDitherMode: INFO! headId %d in valid dualhead range 0-1 provided. Will control TMDS (DVI et al.) dithering.\n", getName(), headId);
+                headId = 1;
+            }
+            
+            // On AVIVO we can't control dithering per display head. Instead there's one global switch
+            // for LVDS connected displays (LVTMA) aka internal flat panels, e.g., of Laptops, and
+            // on global switch for "all things DVI-D", aka TMDSA:
+            reg = (headId == 0) ? RADEON_LVTMA_BIT_DEPTH_CONTROL : RADEON_TMDSA_BIT_DEPTH_CONTROL;
+		}
+
+        // Perform actual enable/disable/reconfigure sequence for target encoder/head:
+
+        // Enable dithering?
+        if (ditherOn) {
+            // Reenable dithering with old, previously stored settings, if it is disabled:
+            
+            // Dithering currently off (all zeros)?
+            if (ReadRegister(reg) == 0) {
+                // Dithering is currently off. Do we know the old setting from a previous
+                // disable?
+                if (oldDither[headId] > 0) {
+                    // Yes: Restore old "factory settings":
+                    IOLog("%s: SetDitherMode: Dithering previously disabled by us. Reenabling with old control setting 0x%x.\n", getName(), oldDither[headId]);
+                    WriteRegister(reg, oldDither[headId]);
+                }
+                else {
+                    // No: Dithering was disabled all the time, so we don't know the
+                    // OS defaults. Use the numeric value of 'ditherOn' itself:
+                    IOLog("%s: SetDitherMode: Dithering off. Enabling with userspace provided setting 0x%x. Cross your fingers!\n", getName(), ditherOn);
+                    WriteRegister(reg, ditherOn);
+                }
+            }
+            else {
+                IOLog("%s: SetDitherMode: Dithering already enabled with current control value 0x%x. Skipped.\n", getName(), ReadRegister(reg));
+            }
+        }
+        else {
+            // Disable all dithering if it is enabled: Clearing the register to all zero bits does this.
+            if (ReadRegister(reg) > 0) {
+                oldDither[headId] = ReadRegister(reg);
+                IOLog("%s: SetDitherMode: Current dither setting before our dither disable on head %d is 0x%x. Disabling.\n", getName(), headId, oldDither[headId]);
+                WriteRegister(reg, 0x0);
+            }
+            else {
+                IOLog("%s: SetDitherMode: Dithering already disabled. Skipped.\n", getName());
+            }
+        }
+        
+        // End of Radeon et al. support code.
+	}
+    else {
+        // Other unsupported GPU:
+        IOLog("%s: SetDitherMode: Tried to call me on a non ATI/AMD GPU. Unsupported.\n", getName());
+    }
+    
 	return;
 }
 
@@ -841,9 +926,6 @@ void PsychtoolboxKernelDriver::SetDitherMode(UInt32 headId, UInt32 ditherOn)
 UInt32 PsychtoolboxKernelDriver::GetBeamPosition(UInt32 headId)
 {
 	SInt32					beampos = 0;
-
-	// Offset of crtc blocks of evergreen gpu's for each of the six possible crtc's:
-	UInt32					crtcoff[6] = { 0x6df0, 0x79f0, 0x105f0, 0x111f0, 0x11df0, 0x129f0 };
 
 	// Query code for ATI/AMD Radeon/FireGL/FirePro:
 	if (fDeviceType == kPsychRadeon) {
@@ -903,6 +985,7 @@ UInt32 PsychtoolboxKernelDriver::GetBeamPosition(UInt32 headId)
 	return((UInt32) beampos);
 }
 
+
 // Instantaneously resynchronize display heads of a Radeon dual-head gfx-card:
 SInt32	PsychtoolboxKernelDriver::FastSynchronizeAllDisplayHeads(void)
 {
@@ -910,19 +993,73 @@ SInt32	PsychtoolboxKernelDriver::FastSynchronizeAllDisplayHeads(void)
 	UInt32					beampos0, beampos1;
 	UInt32					old_crtc_master_enable = 0;
 	UInt32					new_crtc_master_enable = 0;
+    UInt32                  i;
 
+    // AMD GPU's only:
 	if (fDeviceType != kPsychRadeon) {
 		IOLog("%s: FastSynchronizeAllDisplayHeads(): This function is not supported on non-ATI/AMD GPU's! Aborted.\n", getName());
 		return(0xffff);
-	} else {
-		if (isDCE4()) {
-			IOLog("%s: FastSynchronizeAllDisplayHeads(): This function is not supported on ATI/AMD GPU's more recent than HD-4000! Aborted.\n", getName());
-			return(0xffff);
-		}
 	}
-
+    
 	IOLog("%s: FastSynchronizeAllDisplayHeads(): About to resynchronize all display heads by use of a 1 second CRTC stop->start cycle:\n", getName());
-	
+
+    // DCE-4 needs a different strategy for now:
+    if (isDCE4()) {            
+        // Shut down heads one by one:
+        
+        // Detect enabled heads:
+        old_crtc_master_enable = 0;
+        for (i = 0; i < 6; i++) {
+            // Bit 16 "CRTC_CURRENT_MASTER_EN_STATE" allows read-only polling
+            // of current activation state of crtc:
+            if (ReadRegister(EVERGREEN_CRTC_CONTROL + crtcoff[i]) & (0x1 << 16)) old_crtc_master_enable |= (0x1 << i);
+        }
+        
+        // Shut down heads, one after each other, wait for each one to settle at its defined resting position:
+        for (i = 0; i < 6; i++) {
+            IOLog("%s: Head %d ...  ", getName(), i);
+            if (old_crtc_master_enable & (0x1 << i)) {		
+                IOLog("active -> Shutdown. ");
+                
+                // Shut down this CRTC by clearing its master enable bit (bit 0):
+                WriteRegister(EVERGREEN_CRTC_CONTROL + crtcoff[i], ReadRegister(EVERGREEN_CRTC_CONTROL + crtcoff[i]) & ~(0x1 << 0));
+                
+                // Wait 50 msecs, so CRTC has enough time to settle and disable at its
+                // programmed resting position:
+                IOSleep(50);
+                
+                // Double check - Poll until crtc is offline:
+                while(ReadRegister(EVERGREEN_CRTC_CONTROL + crtcoff[i]) & (0x1 << 16));
+                IOLog("-> Offline.\n");
+            }
+            else {
+                IOLog("already offline.\n");
+            }
+        }
+        
+        // Sleep for 1 second: This is a blocking call, ie. the driver goes to sleep and may wakeup a bit later:
+        IOSleep(1000);
+        
+        // Reenable all now disabled, but previously enabled display heads.
+        // This must be a tight loop, as every microsecond counts for a good sync...
+        for (i = 0; i < 6; i++) {
+            if (old_crtc_master_enable & (0x1 << i)) {		
+                // Restart this CRTC by setting its master enable bit (bit 0):
+                WriteRegister(EVERGREEN_CRTC_CONTROL + crtcoff[i], ReadRegister(EVERGREEN_CRTC_CONTROL + crtcoff[i]) | (0x1 << 0));
+            }
+        }
+        
+        // We don't have meaningful residual info in the multihead case. Just assume we succeeded:
+        deltabeampos = 0;
+        
+        IOLog("\n%s: Display head resync operation finished.\n\n", getName());
+        
+        // Done.
+        return(deltabeampos);
+    }
+    
+    // AVIVO case:
+
 	// A little pretest...
 	IOLog("%s: Pretest...\n", getName());
 	for (UInt32 i = 0; i<10; i++) { 

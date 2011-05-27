@@ -61,6 +61,17 @@ PsychError SCREENNull(void)
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
+    #if PSYCH_SYSTEM != PSYCH_WINDOWS
+        // Test GPU low-level dithering control:
+        int screenId, ditherEnable;
+		PsychCopyInIntegerArg(1, TRUE, &screenId);
+		PsychCopyInIntegerArg(2, TRUE, &ditherEnable);
+
+		if (PsychPrefStateGet_Verbosity() > 2) printf("SetDithering: ScreenId %i : DitherSetting %i.\n", screenId, ditherEnable);
+        PsychSetOutputDithering(NULL, screenId, (unsigned int) ditherEnable);
+        return(PsychError_none);
+    #endif
+
 	#if PSYCH_SYSTEM == PSYCH_LINUX
 /*		PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
 

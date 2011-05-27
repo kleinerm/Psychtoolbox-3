@@ -18,7 +18,7 @@
 	This file contains specifications of the low-level registers of different graphics
 	cards.
 	
-	Currently it contains register offsets for recent ATI GPUs.
+	Currently it contains register offsets for recent ATI GPU's and some NVIDIA GPU's.
 
 */
 
@@ -153,8 +153,8 @@
 // a) Truncation: Cutting off least significant bits (Enable by setting bit 0),
 // b) Spatial dithering: Set bit 8.
 // c) Temporal dithering/modulation: Set bit 16.
-// Bits 4 for a), 12 for b) and 20 for c) Control bpp: either 24 (bits cleared) or
-// 18 (bits sets)
+// Bit 4 for a), 12 for b) and 20 for c) Control target bpp:
+// either 18 bpp (bits cleared) or 24 bpp (bits sets).
 // There are more higher order bits for controlling exact operation of temporal
 // dithering...
 // TODO CHECK: If there is only one control for TDMS, does this mean that the
@@ -167,10 +167,18 @@
 #define RADEON_TMDSA_BIT_DEPTH_CONTROL	0x7894
 
 // Evergreen class hardware (DCE-4 display engine):
-#define EVERGREEN_CRTC_STATUS_POSITION		0xa0
-#define EVERGREEN_CRTC_V_BLANK_START_END	0x44
-#define EVERGREEN_CRTC_V_TOTAL				0x2c
-#define EVERGREEN_CRTC_CONTROL				0x80
+#define EVERGREEN_CRTC_STATUS_POSITION		0x0a0
+#define EVERGREEN_CRTC_V_BLANK_START_END	0x044
+#define EVERGREEN_CRTC_V_TOTAL				0x02c
+#define EVERGREEN_CRTC_CONTROL				0x080
+
+// Evergreen DCE-4 dithering control registers:
+// Basics like on AVIVO: All zero disables dithering/bit depths truncation,
+// Bits for enable are like cases a), b), c) above, but the meaning
+// of other bits is different and there's more control bits to change
+// dithering strategy.
+#define EVERGREEN_FMT_BIT_DEPTH_CONTROL     0x1d8
+
 
 // NVIDIA REGISTERS:
 // -----------------

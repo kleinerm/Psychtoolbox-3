@@ -74,6 +74,9 @@ void		PsychInitScreenToHeadMappings(int numDisplays);
 void		PsychGetBeamposCorrection(int screenId, int *vblbias, int *vbltotal);
 void		PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal);
 
+// Control bit depth control and dithering on digital display output encoder:
+psych_bool  PsychSetOutputDithering(PsychWindowRecordType* windowRecord, int screenId, unsigned int ditherEnable);
+
 // End of routines.
 
 #endif // include once.
