@@ -1,19 +1,20 @@
 % DKLDemo
 %
 % Demonstrates the DKL color space routines.
-% Produces a picture of the DKL isoluminant
-% plane.  Click mouse to finish.
+% Produces a picture of the DKL isoluminant plane
+% in a figure window.  This picture is not calibrated.
 %
 % You can chooose the image size and what cone/luminance
 % data you want to use to define the space.
 %
 % 4/9/05	dhb		Wrote it.
+% 5/26/11   dhb     Updated to use PTB3TestCal, SetSensorColorSpace
+%           dhb     Remove OS9 option.
 
 % Clear
 clear; close all
 
 % Define parameters.  Image size should be an odd number.
-whichScreen = 0;
 imageSize = 513;
 whichCones = 'SmithPokorny';
 
@@ -36,10 +37,10 @@ switch (whichCones)
 		S_Y = S_ss2000_Y2;
 		T_Y = SplineCmf(S_Y,T_Y,S_cones);
 end
-cal = LoadCalFile(whichScreen);
-calLMS = SetColorSpace(cal,T_cones,S_cones);
+cal = LoadCalFile('PTB3TestCal');
+calLMS = SetSensorColorSpace(cal,T_cones,S_cones);
 calLMS = SetGammaMethod(calLMS,1);
-calLum = SetColorSpace(cal,T_Y,S_Y);
+calLum = SetSensorColorSpace(cal,T_Y,S_Y);
 
 % Define background.  Here we just take the
 % monitor mid-point.
@@ -89,11 +90,11 @@ if (any([rgPlusPrimary(:) ; rgMinusPrimary(:) ; ...
 		sPlusPrimary(:) ; sMinusPrimary(:)] > 1))
 	fprintf('Something out of gamut high that shouldn''t be.\n');
 end
-bgLum = PrimaryToSensor(calLum,bgPrimary)
-rgPlusLum = PrimaryToSensor(calLum,rgPlusPrimary)
-rgMinusLum = PrimaryToSensor(calLum,rgMinusPrimary)
-sPlusLum = PrimaryToSensor(calLum,sPlusPrimary)
-sMinusLum = PrimaryToSensor(calLum,sMinusPrimary)
+bgLum = PrimaryToSensor(calLum,bgPrimary);
+rgPlusLum = PrimaryToSensor(calLum,rgPlusPrimary);
+rgMinusLum = PrimaryToSensor(calLum,rgMinusPrimary);
+sPlusLum = PrimaryToSensor(calLum,sPlusPrimary);
+sMinusLum = PrimaryToSensor(calLum,sMinusPrimary);
 lums = sort([bgLum rgPlusLum rgMinusLum sPlusLum sMinusLum]);
 fprintf('Luminance range in isoluminant plane is %0.2f to %0.2f\n',...
 	lums(1), lums(end));
@@ -116,11 +117,5 @@ theImage(:,:,1) = rPlane;
 theImage(:,:,2) = gPlane;
 theImage(:,:,3) = bPlane;
 
-% Show the image.  Click mouse to finish.
-if (IsOS9)
-    [w,r] = Screen(whichScreen,'OpenWindow',bgRGB',[],32);
-    Screen(w,'SetClut',[0:255]'*ones(1,3));
-    Screen(w,'PutImage',theImage);
-    Ask(w,'DKL isolumiant plane.  Click mouse to finish.');
-    Screen(w,'Close');
-end
+% Show the image for illustrative purposes
+figure; clf; image(theImage);
