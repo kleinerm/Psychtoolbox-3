@@ -74,8 +74,8 @@ unsigned int				PsychOSKDWriteRegister(int screenId, unsigned int offset, unsign
 int                         PsychOSKDGetBeamposition(int screenId);
 psych_bool					PsychOSIsKernelDriverAvailable(int screenId);
 void                        PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn);
-unsigned int                PsychOSKDLoadIdentityLUT(int screenId, unsigned int head);
-unsigned int                PsychOSKDGetLUTState(int screenId, unsigned int head, unsigned int debug);
+unsigned int                PsychOSKDLoadIdentityLUT(int screenId, unsigned int headId);
+unsigned int                PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned int debug);
 
 // Internal helper routines for memory mapped gfx-hardware register low level access: Called
 // from PsychWindowGlue.c PsychOSOpenOnscreenWindow() and PsychOSCloseOnscreenWindow() routines
