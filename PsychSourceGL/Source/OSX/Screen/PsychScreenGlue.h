@@ -75,7 +75,7 @@ void						PsychHideCursor(int screenNumber);
 void						PsychShowCursor(int screenNumber);
 void						PsychPositionCursor(int screenNumber, int x, int y);
 void						PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float **redTable, float **greenTable, float **blueTable);
-void						PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redTable, float *greenTable, float *blueTable);
+unsigned int 				PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redTable, float *greenTable, float *blueTable);
 int                         PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber);
 PsychError					PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds, int* residuals, unsigned int syncMethod, double syncTimeOut, int allowedResidual);
 void						PsychOSShutdownPsychtoolboxKernelDriverInterface(void);
@@ -83,6 +83,8 @@ unsigned int				PsychOSKDReadRegister(int screenId, unsigned int offset, unsigne
 unsigned int				PsychOSKDWriteRegister(int screenId, unsigned int offset, unsigned int value, unsigned int* status);
 psych_bool					PsychOSIsKernelDriverAvailable(int screenId);
 void                        PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn);
+unsigned int                PsychOSKDLoadIdentityLUT(int screenId, unsigned int head);
+unsigned int                PsychOSKDGetLUTState(int screenId, unsigned int head, unsigned int debug);
 
 //end include once
 #endif

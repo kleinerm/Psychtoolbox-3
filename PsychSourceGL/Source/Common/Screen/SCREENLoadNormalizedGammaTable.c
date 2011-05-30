@@ -64,10 +64,10 @@ static char seeAlsoString[] = "ReadNormalizedGammaTable";
 
 PsychError SCREENLoadNormalizedGammaTable(void) 
 {
-    int		i, screenNumber, numEntries, inM, inN, inP, loadOnNextFlip, physicalDisplay;
-    float 	*outRedTable, *outGreenTable, *outBlueTable, *inRedTable, *inGreenTable, *inBlueTable;
-    double	 *inTable, *outTable;	
-	 PsychWindowRecordType		*windowRecord;
+    int i, screenNumber, numEntries, inM, inN, inP, loadOnNextFlip, physicalDisplay;
+    float *outRedTable, *outGreenTable, *outBlueTable, *inRedTable, *inGreenTable, *inBlueTable;
+    double *inTable, *outTable;	
+    PsychWindowRecordType *windowRecord;
 
     //all subfunctions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -98,19 +98,25 @@ PsychError SCREENLoadNormalizedGammaTable(void)
     // Load and sanity check the input matrix:
 	inM = -1; inN = -1; inP = -1;
     if (!PsychAllocInDoubleMatArg(2, FALSE, &inM,  &inN, &inP, &inTable)) {
-		if (PSYCH_SYSTEM == PSYCH_OSX) {
-			// Special case: Allow passing in an empty gamma table argument. This
-			// triggers auto-load of identity LUT via Bytetable transfer.
-			inM = 0; inN = 3; inP = 1;
-		}
-		else {
-			PsychErrorExitMsg(PsychError_user, "You must provide a non-empty m-by-3 gamma table as 2nd argument on Linux and Windows!");
-		}
+        // Special case: Allow passing in an empty gamma table argument. This
+        // triggers auto-load of identity LUT and setup of GPU for identity passthrough:
+        inM = 0; inN = 3; inP = 1;
 	}
 
 	// Sanity check dimensions:
     if((inN != 3) || (inP != 1)) PsychErrorExitMsg(PsychError_user, "The gamma table must have 3 columns (Red, Green, Blue).");
 	
+    // Identity passthrouh setup requested?
+    if (inM == 0) {
+        // Yes. Try to enable it, return its status code:
+        PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
+        i = PsychSetGPUIdentityPassthrough(windowRecord, 0, TRUE);
+        PsychCopyOutDoubleArg(1, FALSE, (double) i);
+        
+        // Done.
+        return(PsychError_none);
+    }
+
 	#if PSYCH_SYSTEM == PSYCH_OSX
 		// OS-X allows tables with other than 256 slots. It either passes them to hw if in native size, or performs
 		// software interpolation to convert it into native size. We allow any table size with 1 - x slots.
@@ -119,7 +125,7 @@ PsychError SCREENLoadNormalizedGammaTable(void)
 		// A table size of zero rows will trigger an internal upload of an identity table via byte transfer.
 	#else
 		// Windows requires 256 slots, i didn't check for Linux yet, but this is always safe, so...
-		if(inM != 256) {
+		if((inM != 256) && (inM != 0)) {
 			PsychErrorExitMsg(PsychError_user, "The gamma table must have 256 rows.");
 		}
 	#endif
@@ -198,4 +204,3 @@ PsychError SCREENLoadNormalizedGammaTable(void)
 
     return(PsychError_none);
 }
-

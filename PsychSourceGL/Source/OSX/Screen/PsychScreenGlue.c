@@ -8,6 +8,7 @@
 	AUTHORS:
 	
 		Allen Ingling		awi		Allen.Ingling@nyu.edu
+        Mario Kleiner       mk      mario.kleiner@tuebingen.mpg.de
 
 	HISTORY:
 	
@@ -51,6 +52,10 @@
 #define kMyPathToSystemLog			"/var/log/system.log"
 
 // file local variables
+unsigned int  fDeviceType = 0;
+unsigned int  fCardType = 0;
+unsigned int  fPCIDeviceId = 0;
+unsigned int  fNumDisplayHeads = 0;
 
 // Maybe use NULLs in the settings arrays to mark entries invalid instead of using psych_bool flags in a different array.   
 static psych_bool				displayLockSettingsFlags[kPsychMaxPossibleDisplays];
@@ -79,6 +84,8 @@ io_connect_t PsychOSCheckKDAvailable(int screenId, unsigned int * status);
 int PsychOSKDGetBeamposition(int screenId);
 void PsychLaunchConsoleApp(void);
 void PsychDisplayReconfigurationCallBack (CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo);
+void PsychOSKDGetGPUInfo(io_connect_t connect);
+unsigned int PsychOSKDGetRevision(io_connect_t connect);
 
 //Initialization functions
 void InitializePsychDisplayGlue(void)
@@ -98,7 +105,7 @@ void InitializePsychDisplayGlue(void)
     InitCGDisplayIDList();
 
 	// Setup screenId -> display head mappings:
-	PsychInitScreenToHeadMappings(PsychGetNumPhysicalDisplays());
+	PsychInitScreenToHeadMappings(PsychGetNumDisplays());
 
 	// Register a display reconfiguration callback:
 	CGDisplayRegisterReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);
@@ -794,7 +801,7 @@ void PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float **re
     *numEntries=(int)sampleCount;
 }
 
-void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redTable, float *greenTable, float *blueTable)
+unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redTable, float *greenTable, float *blueTable)
 {
     CGDisplayErr 	error; 
     CGDirectDisplayID	cgDisplayID;
@@ -825,7 +832,8 @@ void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redT
 		}
 	}
 
-	return;
+    // Return "success":
+	return(1);
 }
 
 // PsychGetDisplayBeamPosition() contains the implementation of display beamposition queries.
@@ -928,7 +936,7 @@ void InitPsychtoolboxKernelDriverInterface(void)
     io_connect_t	connect;
     io_iterator_t 	iterator;
     CFDictionaryRef	classToMatch;
-    int				i;
+    int				i, revision;
 	
 	// Reset to zero open drivers to start with:
 	numKernelDrivers = 0;
@@ -993,7 +1001,39 @@ void InitPsychtoolboxKernelDriverInterface(void)
 
 		if (connect != IO_OBJECT_NULL) {
 			// Final success!
-			printf("PTB-INFO: Connection to Psychtoolbox kernel support driver established. Will use the driver...\n\n");
+
+            // Query driver revision: We disconnect and don't use the driver if it
+            // doesn't provide the required minimum revision number for its API:
+            revision = (int) PsychOSKDGetRevision(connect);
+            if (revision < 0) {
+                printf("PTB-ERROR: The currently loaded PsychtoolboxKernelDriver.kext is outdated!\n");
+                printf("PTB-ERROR: Its revision number is %i, but we require a minimum revision of 0.\n", revision);
+                printf("PTB-ERROR: Please uninstall the current driver and reinstall the latest one delivered\n");
+                printf("PTB-ERROR: with your Psychtoolbox (see 'help PsychtoolboxKernelDriver').\n");
+                printf("PTB-ERROR: Driver support disabled for now, special functions not available.\n");
+
+                // Call shutdown method:
+                kern_return_t kernResult = IOConnectMethodScalarIScalarO(connect, kMyUserClientClose, 0, 0);
+                if (kernResult == KERN_SUCCESS) {
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOConnectMethodScalarIScalarO Closing was successfull.\n");
+                }
+                else {
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOConnectMethodScalarIScalarO Closing failed with kernel return code 0x%08x.\n\n", kernResult);
+                }
+                
+                // Close IOService:
+                kernResult = IOServiceClose(connect);
+                if (kernResult == KERN_SUCCESS) {
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOServiceClose() was successfull.\n");
+                }
+                else {
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOServiceClose returned 0x%08x\n\n", kernResult);
+                }		
+
+                return;
+            }
+
+			printf("PTB-INFO: Connection to Psychtoolbox kernel support driver (Revision %i) established. Will use the driver...\n\n", revision);
 
 			// For now, as we only support one gfx-card, just init all screens handles to the
 			// single connect handle we got:
@@ -1003,6 +1043,12 @@ void InitPsychtoolboxKernelDriverInterface(void)
 			
 			// Increment instance count by one:
 			numKernelDrivers++;
+            
+            // Query and assign GPU info:
+            PsychOSKDGetGPUInfo(connect);
+            
+            // Perform auto-detection of screen to head mappings:
+            PsychAutoDetectScreenToHeadMappings(fNumDisplayHeads);
 		}
 		else {
 			// Final failure:
@@ -1018,21 +1064,13 @@ void InitPsychtoolboxKernelDriverInterface(void)
 void PsychOSShutdownPsychtoolboxKernelDriverInterface(void)
 {
 	io_connect_t connect;
+    kern_return_t kernResult;
 	
 	if (numKernelDrivers > 0) {
 		// Currently we only support one graphics card, so just take
 		// the connect handle of first screen:
 		connect = displayConnectHandles[0];
 
-		// Call shutdown method:
-		kern_return_t kernResult = IOConnectMethodScalarIScalarO(connect, kMyUserClientClose, 0, 0);
-		if (kernResult == KERN_SUCCESS) {
-			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOConnectMethodScalarIScalarO Closing was successfull.\n");
-		}
-		else {
-			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOConnectMethodScalarIScalarO Closing failed with kernel return code 0x%08x.\n\n", kernResult);
-		}
-		
 		// Close IOService:
 		kernResult = IOServiceClose(connect);
 		if (kernResult == KERN_SUCCESS) {
@@ -1304,4 +1342,101 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
 	}
 
     return;
+}
+
+unsigned int PsychOSKDGetRevision(io_connect_t connect)
+{
+	PsychKDCommandStruct syncCommand;
+    IOByteCount			 structSize1 = sizeof(PsychKDCommandStruct);
+	
+	// Set command code for revision query:
+	syncCommand.command = kPsychKDGetRevision;
+	
+	// Issue request:
+	kern_return_t kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, NULL);    
+	if (kernResult != KERN_SUCCESS) {
+		printf("PTB-ERROR: Kernel driver revision read failed (Kernel error code: %lx).\n", kernResult);
+		// A value of 0xffffffff signals failure:
+		return(0xffffffff);
+	}
+	
+	// Return revision:
+	return((unsigned int) syncCommand.inOutArgs[0]);
+}
+
+void PsychOSKDGetGPUInfo(io_connect_t connect)
+{
+	PsychKDCommandStruct syncCommand;
+    IOByteCount			 structSize1 = sizeof(PsychKDCommandStruct);
+	
+	// Set command code for gpu info query:
+	syncCommand.command = kPsychKDGetGPUInfo;
+	
+	// Issue request:
+	kern_return_t kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, NULL);    
+	if (kernResult != KERN_SUCCESS) {
+		printf("PTB-ERROR: Kernel driver gpu info read failed (Kernel error code: %lx).\n", kernResult);
+		// A value of 0xffffffff signals failure:
+		return;
+	}
+	
+    // Assign:
+    fDeviceType = syncCommand.inOutArgs[0];
+    fPCIDeviceId = syncCommand.inOutArgs[1];
+    fCardType = syncCommand.inOutArgs[2];
+    fNumDisplayHeads = syncCommand.inOutArgs[3];
+
+	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: GPU-Vendor %i, PCIId %x, GPU-Type %i [x%x], numDisplayHeads %i.\n", fDeviceType, fPCIDeviceId, fCardType, fCardType, fNumDisplayHeads);
+	return;
+}
+
+unsigned int PsychOSKDGetLUTState(int screenId, unsigned int head, unsigned int debug)
+{
+	PsychKDCommandStruct syncCommand;
+    IOByteCount			 structSize1 = sizeof(PsychKDCommandStruct);
+	
+	// Check availability of connection:
+	io_connect_t connect;
+	if (!(connect = PsychOSCheckKDAvailable(screenId, NULL))) return(0xffffffff);
+	
+	// Set command code for LUT check:
+	syncCommand.command = kPsychKDGetLUTState;
+	syncCommand.inOutArgs[0] = head;
+	syncCommand.inOutArgs[1] = debug;
+	
+	// Issue request:
+	kern_return_t kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, NULL);    
+	if (kernResult != KERN_SUCCESS) {
+		printf("PTB-ERROR: Kernel driver lut state read failed (Kernel error code: %lx).\n", kernResult);
+		// A value of 0xffffffff signals failure:
+		return(0xffffffff);
+	}
+	
+	// Return lut state:
+	return((unsigned int) syncCommand.inOutArgs[0]);
+}
+
+unsigned int PsychOSKDLoadIdentityLUT(int screenId, unsigned int head)
+{
+	PsychKDCommandStruct syncCommand;
+    IOByteCount			 structSize1 = sizeof(PsychKDCommandStruct);
+
+	// Check availability of connection:
+	io_connect_t connect;
+	if (!(connect = PsychOSCheckKDAvailable(screenId, NULL))) return(0);
+	
+	// Set command code for identity LUT load:
+	syncCommand.command = kPsychKDSetIdentityLUT;
+	syncCommand.inOutArgs[0] = head;
+	
+	// Issue request:
+	kern_return_t kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, NULL);    
+	if (kernResult != KERN_SUCCESS) {
+		printf("PTB-ERROR: Kernel driver identity lut setup failed (Kernel error code: %lx).\n", kernResult);
+		// A value of 0 signals failure:
+		return(0);
+	}
+	
+	// Return lut setup rc:
+	return((unsigned int) syncCommand.inOutArgs[0]);
 }

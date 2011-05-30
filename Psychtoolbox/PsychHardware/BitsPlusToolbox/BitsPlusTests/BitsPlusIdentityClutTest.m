@@ -206,12 +206,15 @@ try
     
     angle = 0;
     lutidx = -1;
-
+    bluelutenable = 1;
+    
     KbName('UnifyKeyNames');
     escape = KbName('ESCAPE');
     space = KbName('space');
     key_s = KbName('s');
-
+    key_o = KbName('o');
+    key_p = KbName('p');
+    
     KbReleaseWait;
 
     while 1
@@ -244,6 +247,11 @@ try
                 break;
             end
 
+            if keyCode(key_p)
+                % Pause until another key press:
+                KbStrokeWait;
+            end
+
             if keyCode(space)
                 % Match 'lutidx' with available indices in LoadIdentityClut!!
                 % Currently indices 0 to 3 are available, ie., 4 indices total:
@@ -262,6 +270,26 @@ try
                     Beeper;
                 end
             end
+
+            if keyCode(key_o)
+                bluelutenable = 1 - bluelutenable;
+                if bluelutenable
+                    % Reupload identity gamma table to reenable overlay:
+                    if lutidx ~= -1
+                        LoadIdentityClut(win, 0, lutidx);
+                    else
+                        LoadIdentityClut(win);
+                    end
+                else
+                    % Clear blue part of the gamma lut to zero:
+                    % This disables the overlay channel, assuming no
+                    % dithering or other funky stuff interferes:
+                    modlut = Screen('ReadNormalizedGammaTable', win);
+                    modlut(:,3) = 0;
+                    Screen('LoadNormalizedGammaTable', win, modlut);
+                end
+            end
+            
             KbReleaseWait;
         end
     end

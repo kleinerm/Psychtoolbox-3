@@ -871,15 +871,20 @@ void PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float **re
     *numEntries= 256;
 }
 
-void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redTable, float *greenTable, float *blueTable)
+unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redTable, float *greenTable, float *blueTable)
 {
     psych_bool 	ok; 
     CGDirectDisplayID	cgDisplayID;
 	 int     i;        
 	 // Windows hardware LUT has 3 tables for R,G,B, 256 slots each, concatenated to one table.
-    // Each entry is a 16-bit word with the n most significant bits used for an n-bit DAC.
+     // Each entry is a 16-bit word with the n most significant bits used for an n-bit DAC.
 	 psych_uint16	gammaTable[256 * 3]; 
 
+     // Special case empty 0-slot table provided? That means to load an identity
+     // gamma table and setup the GPU for identity pass-through from framebuffer to
+     // encoders. This is unsupported on Windows, so return the 0xffffffff "unsupported" code.
+     if (numEntries == 0) return(0xffffffff);
+     
 	 // Table must have 256 slots!
 	 if (numEntries!=256) PsychErrorExitMsg(PsychError_user, "Loadable hardware gamma tables must have 256 slots!");    
 
@@ -895,6 +900,9 @@ void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redT
 	 ok=FALSE;
     for (i=0; i<10 && !ok; i++) ok=SetDeviceGammaRamp(cgDisplayID, &gammaTable);
 	 if (!ok) PsychErrorExitMsg(PsychError_user, "Failed to upload the hardware gamma table into graphics adapter! Read the help for explanation...");
+
+    // Return "success":
+     return(1);
 }
 
 // Beamposition queries on Windows are implemented via the DirectDraw-7 interface. It provides

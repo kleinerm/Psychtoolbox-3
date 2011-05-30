@@ -77,6 +77,12 @@ void		PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal);
 // Control bit depth control and dithering on digital display output encoder:
 psych_bool  PsychSetOutputDithering(PsychWindowRecordType* windowRecord, int screenId, unsigned int ditherEnable);
 
+// Control identity passthrough of framebuffer 8 bpc pixel values to encoders/connectors:
+unsigned int PsychSetGPUIdentityPassthrough(PsychWindowRecordType* windowRecord, int screenId, psych_bool passthroughEnable);
+
+// Try to auto-detect screen to head mappings if possible and not yet overriden by usercode:
+void PsychAutoDetectScreenToHeadMappings(int maxHeads);
+
 // End of routines.
 
 #endif // include once.

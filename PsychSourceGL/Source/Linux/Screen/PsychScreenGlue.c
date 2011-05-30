@@ -78,12 +78,6 @@
 #include "PsychGraphicsCardRegisterSpecs.h"
 #include <endian.h>
 
-// Settings for member fDeviceType:
-#define kPsychUnknown  0
-#define kPsychGeForce  1
-#define kPsychRadeon   2
-#define kPsychIntelIGP 3
-
 // gfx_cntl_mem is mapped to the actual device's memory mapped control area.
 // Not the address but what it points to is volatile.
 struct pci_device *gpu = NULL;
@@ -93,12 +87,26 @@ unsigned long gfx_lowlimit = 0;
 unsigned int  fDeviceType = 0;
 unsigned int  fCardType = 0;
 unsigned int  fPCIDeviceId = 0;
+unsigned int  fNumDisplayHeads = 0;
 
 // Count of kernel drivers:
 static int    numKernelDrivers = 0;
 
 // Offset of crtc blocks of evergreen gpu's for each of the six possible crtc's:
-unsigned int crtcoff[6] = { 0x6df0, 0x79f0, 0x105f0, 0x111f0, 0x11df0, 0x129f0 };
+unsigned int crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET, EVERGREEN_CRTC1_REGISTER_OFFSET, EVERGREEN_CRTC2_REGISTER_OFFSET, EVERGREEN_CRTC3_REGISTER_OFFSET, EVERGREEN_CRTC4_REGISTER_OFFSET, EVERGREEN_CRTC5_REGISTER_OFFSET };
+// unsigned int crtcoff[(DCE4_MAXHEADID + 1)] = { 0x6df0, 0x79f0, 0x105f0, 0x111f0, 0x11df0, 0x129f0 };
+
+/* Is a given ATI/AMD GPU a DCE5 type ASIC, i.e., with the new display engine? */
+static psych_bool isDCE5(void)
+{
+	psych_bool isDCE5 = false;
+
+	// Everything after BARTS is DCE5 -- This is the "Northern Islands" GPU family.
+	// Barts, Turks, Caicos, Cayman, Antilles in 0x67xx range:
+	if ((fPCIDeviceId & 0xFF00) == 0x6700) isDCE5 = true;
+
+	return(isDCE5);
+}
 
 /* Is a given ATI/AMD GPU a DCE4 type ASIC, i.e., with the new display engine? */
 static psych_bool isDCE4(int screenId)
@@ -280,12 +288,14 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			// BAR 0 is MMIO:
 			region = &gpu->regions[0];
 			fDeviceType = kPsychGeForce;
+            fNumDisplayHeads = 2;
 		}
 
 		if (gpu->vendor_id == PCI_VENDOR_ID_ATI || gpu->vendor_id == PCI_VENDOR_ID_AMD) {
 			// BAR 2 is MMIO:
 			region = &gpu->regions[2];
 			fDeviceType = kPsychRadeon;
+            fNumDisplayHeads = 2;
 		}
 		
 		if (gpu->vendor_id == PCI_VENDOR_ID_INTEL) {
@@ -300,6 +310,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			}
 
 			fDeviceType = kPsychIntelIGP;
+            fNumDisplayHeads = 2;
 		}
 
 		// Try to MMAP MMIO registers with write access, assign their base address to gfx_cntl_mem on success:
@@ -347,7 +358,12 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			
 			// On DCE-4 and later GPU's (Evergreen) we limit the minimum MMIO
 			// offset to the base address of the 1st CRTC register block for now:
-			if (fCardType) gfx_lowlimit = 0x6df0;
+			if (fCardType) {
+                gfx_lowlimit = 0x6df0;
+                
+                // Also, DCE-4 supports up to six display heads:
+                fNumDisplayHeads = 6;
+            }
 			
 			if (PsychPrefStateGet_Verbosity() > 2) {
 				printf("PTB-INFO: Connected to %s %s GPU with %s display engine. Beamposition timestamping enabled.\n", pci_device_get_vendor_name(gpu), pci_device_get_device_name(gpu), (fCardType) ? "DCE-4" : "AVIVO");
@@ -361,6 +377,9 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 				fflush(NULL);
 			}
 		}
+
+        // Perform auto-detection of screen to head mappings:
+        PsychAutoDetectScreenToHeadMappings(fNumDisplayHeads);
 
 		// Ready to rock!
 	} else {
@@ -1226,7 +1245,7 @@ void PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float **re
   return;
 }
 
-void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redTable, float *greenTable, float *blueTable)
+unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redTable, float *greenTable, float *blueTable)
 {
 #ifdef USE_VIDMODEEXTS
 
@@ -1252,7 +1271,8 @@ void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redT
   XF86VidModeSetGammaRamp(cgDisplayID, PsychGetXScreenIdForScreen(screenNumber), 256, (unsigned short*) RTable, (unsigned short*) GTable, (unsigned short*) BTable);
 #endif
 
-  return;
+  // Return "success":
+  return(1);
 }
 
 // PsychGetDisplayBeamPosition() contains the implementation of display beamposition queries.
@@ -1780,7 +1800,7 @@ int PsychOSKDGetBeamposition(int screenId)
 // Try to change hardware dither mode on GPU:
 void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
 {
-    static unsigned int oldDither[6] = { 0, 0, 0, 0, 0, 0 };
+    static unsigned int oldDither[(DCE4_MAXHEADID + 1)] = { 0, 0, 0, 0, 0, 0 };
     unsigned int reg;
 	int headId  = (screenId >= 0) ? PsychScreenToHead(screenId) : -screenId;
     
