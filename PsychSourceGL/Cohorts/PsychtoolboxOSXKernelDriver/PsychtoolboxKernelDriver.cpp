@@ -8,7 +8,7 @@
 					
 					The driver currently works on AMD/ATI Radeon graphics cards of the X1000, HD2000,
 					HD3000 and HD4000 series. It may work on older ATI cards, but that is not tested or supported.
-					It should theoretically work at least for some functions on HD5000.
+					It should theoretically work at least for some functions on HD-5000 and HD-6000.
 					
 					The driver also supports rasterposition queries on the majority of NVidia GPU's, but no
 					other functions.
@@ -18,13 +18,20 @@
 					
 					The following features are currently supported:
 					
-					* Time-Stamped Rasterbeamposition queries on Intel-based Macintosh computers.
+					* Rasterbeamposition queries on Intel-based Macintosh computers.
+
 					* A function to quickly synchronize the video refresh cycles of the two output heads of
 					  a dual-head graphics card, e.g., for binocular or stereo stimulation on dual-display setups.
                       or all six display heads of an AMD evergreen GPU (HD-5000 and later).
+
                     * Control of digital display bit depths truncation and dithering on AMD hardware.
-					* Guided queries and logging of a few intersting gfx-state registers for vision science applications.
+                    
+                    * Control and testing of gamma tables and other transformations.
+
+					* Guided queries and logging of a few interesting gfx-state registers for vision science applications.
+
 					* A low level interface for reading- and writing from/to arbitrary gfx-hardware control registers.
+
 					* A dump function that dumps interesting settings to the system log.
 					
 					The rasterbeamposition queries and fast dual-head syncing are used by Psychtoolbox if
@@ -33,11 +40,12 @@
 					All other features can be accessed by the stand-alone UNIX command line tool
 					"PsychtoolboxKernelDriverUserClientTool", to be found in the PsychAlpha subfolder.
 
-    Copyrights:
+    Copyrights and license:
 
+            This drivers copyright:
             Copyright © 2008-2011 Mario Kleiner.
 
-            This driver contains a few lines of code for radeon DCE-4 which are derived from the free software radeon kms
+            This driver contains code for radeon DCE-4 and AVIVO which are derived from the free software radeon kms
             driver for Linux (radeon_display.c, radeon_regs.h). The Radeon kms driver has the following copyright:
 
             * Copyright 2007-8 Advanced Micro Devices, Inc.
@@ -83,10 +91,23 @@
 #include "PsychtoolboxKernelDriver.h"
 
 // Offset of crtc blocks of AMD Evergreen gpu's for each of the six possible crtc's:
-static UInt32 crtcoff[6] = { 0x6df0, 0x79f0, 0x105f0, 0x111f0, 0x11df0, 0x129f0 };
+static UInt32 crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET, EVERGREEN_CRTC1_REGISTER_OFFSET, EVERGREEN_CRTC2_REGISTER_OFFSET, EVERGREEN_CRTC3_REGISTER_OFFSET, EVERGREEN_CRTC4_REGISTER_OFFSET, EVERGREEN_CRTC5_REGISTER_OFFSET };
+// static UInt32 crtcoff[(DCE4_MAXHEADID + 1)] = { 0x6df0, 0x79f0, 0x105f0, 0x111f0, 0x11df0, 0x129f0 };
 
 #define super IOService
 OSDefineMetaClassAndStructors(PsychtoolboxKernelDriver, IOService)
+
+/* Is a given ATI/AMD GPU a DCE5 type ASIC, i.e., with the new display engine? */
+bool PsychtoolboxKernelDriver::isDCE5(void)
+{
+	bool isDCE5 = false;
+
+	// Everything after BARTS is DCE5 -- This is the "Northern Islands" GPU family.
+	// Barts, Turks, Caicos, Cayman, Antilles in 0x67xx range:
+	if ((fPCIDeviceId & 0xFF00) == 0x6700) isDCE5 = true;
+
+	return(isDCE5);
+}
 
 /* Is a given ATI/AMD GPU a DCE4 type ASIC, i.e., with the new display engine? */
 bool PsychtoolboxKernelDriver::isDCE4(void)
@@ -167,6 +188,9 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 	fPCIDeviceId = fPCIDevice->configRead16(2);
 	IOLog("%s: PCI device id is %04x\n", getName(), fPCIDeviceId);
 
+    // Assume two display heads by default:
+    fNumDisplayHeads = 2;
+
 	// Read PCI configuration register 0, a 16 bit register with the
 	// Vendor ID. Match it against NVidia's id:
 	if (PCI_VENDOR_ID_NVIDIA == fPCIDevice->configRead16(0)) {
@@ -183,11 +207,16 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 		if (PCI_VENDOR_ID_ATI == fPCIDevice->configRead16(0)) IOLog("%s: Confirmed to have ATI's vendor id.\n", getName());
 		if (PCI_VENDOR_ID_AMD == fPCIDevice->configRead16(0)) IOLog("%s: Confirmed to have AMD's vendor id.\n", getName());
 
-		IOLog("%s: This is a GPU with %s display engine.\n", getName(), isDCE4() ? "DCE-4" : "AVIVO");
+		IOLog("%s: This is a GPU with %s display engine.\n", getName(), isDCE5() ? "DCE-5" : (isDCE4() ? "DCE-4" : "AVIVO"));
 
 		// On DCE-4 and later GPU's (Evergreen) we limit the minimum MMIO
 		// offset to the base address of the 1st CRTC register block for now:
-		if (isDCE4()) fRadeonLowlimit = 0x6df0;		
+		if (isDCE4() || isDCE5()) {
+            fRadeonLowlimit = 0x6df0;
+
+            // GPU has up to six display heads:
+            fNumDisplayHeads = 6;
+        }
 	}
 
     /*
@@ -423,7 +452,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 
 	// We should be ready...
 	IOLog("\n");
-	IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.4 for ATI Radeon and NVidia GeForce GPU's ready for use!\n", getName());
+	IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.4 (Revision %d) for ATI Radeon and NVidia GeForce GPU's ready for use!\n", getName(), PTBKDRevision);
 	IOLog("%s: This driver is copyright 2008, 2009, 2010, 2011 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
 	IOLog("%s: The driver is licensed to you under the MIT free software license.\n", getName());
 	IOLog("%s: See the file License.txt in the Psychtoolbox root installation folder for details.\n", getName());
@@ -497,6 +526,8 @@ void PsychtoolboxKernelDriver::stop(IOService* provider)
  */
 bool PsychtoolboxKernelDriver::init(OSDictionary* dictionary)
 {
+    UInt32 i;
+    
     IOLog("PTB::init() called at driver load time...\n");
     
     if (!super::init(dictionary)) {
@@ -516,12 +547,7 @@ bool PsychtoolboxKernelDriver::init(OSDictionary* dictionary)
 	fInterruptCounter = 0;
 	fVBLCounter[0] = 0;
 	fVBLCounter[1] = 0;
-    oldDither[0] = 0;
-    oldDither[1] = 0;
-    oldDither[2] = 0;
-    oldDither[3] = 0;
-    oldDither[4] = 0;
-    oldDither[5] = 0;
+    for (i = 0; i <= DCE4_MAXHEADID; i++) oldDither[i] = 0;
 
 	return true;
 }
@@ -846,10 +872,10 @@ void PsychtoolboxKernelDriver::SetDitherMode(UInt32 headId, UInt32 ditherOn)
         IOLog("%s: SetDitherMode: Trying to %s digital display dithering on display head %d.\n", getName(), (ditherOn) ? "enable" : "disable", headId);
 
         // Map headId to proper hardware control register offset:
-		if (isDCE4()) {
+		if (isDCE4() || isDCE5()) {
 			// DCE-4 display engine (CEDAR and later afaik): Up to six crtc's. Map to proper
             // register offset for this headId:
-            if (headId > 5) {
+            if (headId > DCE4_MAXHEADID) {
                 // Invalid head - bail:
                 IOLog("%s: SetDitherMode: ERROR! Invalid headId %d provided. Must be between 0 and 5. Aborted.\n", getName(), headId);
                 return;
@@ -929,8 +955,13 @@ UInt32 PsychtoolboxKernelDriver::GetBeamPosition(UInt32 headId)
 
 	// Query code for ATI/AMD Radeon/FireGL/FirePro:
 	if (fDeviceType == kPsychRadeon) {
-		if (isDCE4()) {
+		if (isDCE4() || isDCE5()) {
 			// DCE-4 display engine (CEDAR and later afaik): Up to six crtc's.
+            if (headId > DCE4_MAXHEADID) {
+                // Invalid head - bail:
+                IOLog("%s: GetBeamPosition: ERROR! Invalid headId %d provided. Must be between 0 and 5. Aborted.\n", getName(), headId);
+                return(0);
+            }
 
 			// Read raw beampostion from GPU:
 			beampos = (SInt32) (ReadRegister(EVERGREEN_CRTC_STATUS_POSITION + crtcoff[headId]) & RADEON_VBEAMPOSITION_BITMASK);
@@ -1004,7 +1035,7 @@ SInt32	PsychtoolboxKernelDriver::FastSynchronizeAllDisplayHeads(void)
 	IOLog("%s: FastSynchronizeAllDisplayHeads(): About to resynchronize all display heads by use of a 1 second CRTC stop->start cycle:\n", getName());
 
     // DCE-4 needs a different strategy for now:
-    if (isDCE4()) {            
+    if (isDCE4() || isDCE5()) {            
         // Shut down heads one by one:
         
         // Detect enabled heads:
@@ -1154,6 +1185,255 @@ SInt32	PsychtoolboxKernelDriver::FastSynchronizeAllDisplayHeads(void)
 	return(deltabeampos);
 }
 
+// Returns multiple flags with info like PCI Vendor/device id, display engine type etc.
+void PsychtoolboxKernelDriver::GetGPUInfo(UInt32 *inOutArgs)
+{
+    IOLog("%s: GetGPUInfo(): Returning GPU info.\n", getName());
+
+    // First return arg is detected GPU vendor type:
+    inOutArgs[0] = fDeviceType;
+
+    // 2nd = PCI device id:
+    inOutArgs[1] = (UInt32) fPCIDeviceId;
+
+    // 3rd = Type of display engine:
+
+    // Default to "don't know".
+    inOutArgs[2] = 0;
+
+    // On Radeons we distinguish between Avivo (10) or DCE-4 style (40) or DCE-5 (50) for now.
+    if (fDeviceType == kPsychRadeon) inOutArgs[2] = isDCE5() ? 50 : (isDCE4() ? 40 : 10);
+
+    // On NVidia's we distinguish between chip family, e.g., 0x40 for the NV-40 family.
+    if (fDeviceType == kPsychGeForce) inOutArgs[2] = fCardType;
+
+    // 4th = Maximum number of crtc's:
+    inOutArgs[3] = fNumDisplayHeads;
+    
+    return;
+}
+
+// Query if LUT for given headId is all-zero: 0 = Something else, 1 = Zero-LUT, 2 = It's an identity LUT,
+// 3 = Not-quite-identity mapping, 0xffffffff = don't know.
+UInt32 PsychtoolboxKernelDriver::GetLUTState(UInt32 headId, UInt32 debug)
+{
+    UInt32 i, v, r, m, bo, wo, offset, reg;
+    UInt32 isZero = 1;
+    UInt32 isIdentity = 1;
+    
+    // AMD GPU's:
+	if (fDeviceType == kPsychRadeon) {
+        IOLog("%s: GetLUTState(): Checking LUT and bias values on GPU for headId %d.\n", getName(), headId);
+
+        if (isDCE4() || isDCE5()) {
+            // DCE-4.0 and later: Up to (so far) six display heads:
+            if (headId > DCE4_MAXHEADID) {
+                // Invalid head - bail:
+                IOLog("%s: GetLUTState: ERROR! Invalid headId %d provided. Must be between 0 and 5. Aborted.\n", getName(), headId);
+                return(0xffffffff);
+            }
+
+            offset = crtcoff[headId];
+            WriteRegister(EVERGREEN_DC_LUT_RW_MODE + offset, 0);
+            WriteRegister(EVERGREEN_DC_LUT_RW_INDEX + offset, 0);
+            reg = EVERGREEN_DC_LUT_30_COLOR + offset;
+            
+            // Find out if there are non-zero black offsets:
+            bo = 0x0;
+            bo|= ReadRegister(EVERGREEN_DC_LUT_BLACK_OFFSET_BLUE + offset);
+            bo|= ReadRegister(EVERGREEN_DC_LUT_BLACK_OFFSET_GREEN + offset);
+            bo|= ReadRegister(EVERGREEN_DC_LUT_BLACK_OFFSET_RED + offset);
+            
+            // Find out if there are non-0xffff white offsets:
+            wo = 0x0;
+            wo|= 0xffff - ReadRegister(EVERGREEN_DC_LUT_WHITE_OFFSET_BLUE + offset);
+            wo|= 0xffff - ReadRegister(EVERGREEN_DC_LUT_WHITE_OFFSET_GREEN + offset);
+            wo|= 0xffff - ReadRegister(EVERGREEN_DC_LUT_WHITE_OFFSET_RED + offset);
+        }
+        else {
+            // AVIVO: Dualhead.
+            offset = (headId > 0) ? 0x800 : 0x0;
+            WriteRegister(AVIVO_DC_LUT_RW_SELECT, headId & 0x1);
+            WriteRegister(AVIVO_DC_LUT_RW_MODE, 0);
+            WriteRegister(AVIVO_DC_LUT_RW_INDEX, 0);
+            reg = AVIVO_DC_LUT_30_COLOR;
+
+            // Find out if there are non-zero black offsets:
+            bo = 0x0;
+            bo|= ReadRegister(AVIVO_DC_LUTA_BLACK_OFFSET_BLUE + offset);
+            bo|= ReadRegister(AVIVO_DC_LUTA_BLACK_OFFSET_GREEN + offset);
+            bo|= ReadRegister(AVIVO_DC_LUTA_BLACK_OFFSET_RED + offset);
+            
+            // Find out if there are non-0xffff white offsets:
+            wo = 0x0;
+            wo|= 0xffff - ReadRegister(AVIVO_DC_LUTA_WHITE_OFFSET_BLUE + offset);
+            wo|= 0xffff - ReadRegister(AVIVO_DC_LUTA_WHITE_OFFSET_GREEN + offset);
+            wo|= 0xffff - ReadRegister(AVIVO_DC_LUTA_WHITE_OFFSET_RED + offset);
+        }
+
+        if (debug) IOLog("%s: Offsets: Black %d : White %d.\n", getName(), bo, wo);
+        
+        for (i = 0; i < 256; i++) {            
+            // Read 32 bit value of this slot, mask out upper 2 bits,
+            // so the least significant 30 bits are left, as these
+            // contain the 3 * 10 bits for the 10 bit R,G,B channels:
+            v = ReadRegister(reg) & (0xffffffff >> 2);
+            
+            // All zero as they should be for a all-zero LUT?
+            if (v > 0) isZero = 0;
+            
+            // Compare with expected value in slot i for a perfect 10 bit identity LUT
+            // intended for a 8 bit output encoder, i.e., 2 least significant bits
+            // zero to avoid dithering and similar stuff:
+            r = i << 2;
+            m = (r << 20) | (r << 10) | (r << 0); 
+            
+            // Mismatch? Not a perfect identity LUT:
+            if (v != m) isIdentity = 0;
+
+            if (debug) {
+                IOLog("%d:%d,%d,%d\n", i, (v >> 20) & 0x3ff, (v >> 10) & 0x3ff, (v >> 0) & 0x3ff);
+                IOSleep(1);
+            }
+        }
+
+        if (isZero) return(1);  // All zero LUT.
+
+        if (isIdentity) {
+            // If wo or bo is non-zero then it is not quite an identity
+            // mapping, as the black and white offset are not neutral.
+            // Return 3 in this case:
+            if ((wo | bo) > 0) return(3);
+            
+            // Perfect identity LUT:
+            return(2);
+        }
+
+        // Regular LUT:
+        return(0);
+	}
+
+    // Unhandled:
+    IOLog("%s: GetLUTState(): This function is not supported on this GPU. Returning 0xffffffff.\n", getName());
+    return(0xffffffff);
+}
+
+// Load an identity LUT into display head 'headid': Return 1 on success, 0 on failure or if unsupported for this GPU:
+UInt32 PsychtoolboxKernelDriver::LoadIdentityLUT(UInt32 headId)
+{
+    UInt32 i, r, m, offset, reg;
+    
+    // AMD GPU's:
+	if (fDeviceType == kPsychRadeon) {
+        IOLog("%s: LoadIdentityLUT(): Uploading identity LUT and bias values into GPU for headId %d.\n", getName(), headId);
+
+        if (isDCE4() || isDCE5()) {
+            // DCE-4.0 and later: Up to (so far) six display heads:
+            if (headId > DCE4_MAXHEADID) {
+                // Invalid head - bail:
+                IOLog("%s: LoadIdentityLUT: ERROR! Invalid headId %d provided. Must be between 0 and 5. Aborted.\n", getName(), headId);
+                return(0);
+            }
+
+            offset = crtcoff[headId];
+            reg = EVERGREEN_DC_LUT_30_COLOR + offset;
+            
+            WriteRegister(EVERGREEN_DC_LUT_CONTROL + offset, 0);
+
+            if (isDCE5()) {
+                WriteRegister(NI_INPUT_CSC_CONTROL + offset,
+                              (NI_INPUT_CSC_GRPH_MODE(NI_INPUT_CSC_BYPASS) |
+                               NI_INPUT_CSC_OVL_MODE(NI_INPUT_CSC_BYPASS)));
+                WriteRegister(NI_PRESCALE_GRPH_CONTROL + offset,
+                              NI_GRPH_PRESCALE_BYPASS);
+                WriteRegister(NI_PRESCALE_OVL_CONTROL + offset,
+                              NI_OVL_PRESCALE_BYPASS);
+                WriteRegister(NI_INPUT_GAMMA_CONTROL + offset,
+                              (NI_GRPH_INPUT_GAMMA_MODE(NI_INPUT_GAMMA_USE_LUT) |
+                               NI_OVL_INPUT_GAMMA_MODE(NI_INPUT_GAMMA_USE_LUT)));
+            }
+
+            // Set zero black offsets:
+            WriteRegister(EVERGREEN_DC_LUT_BLACK_OFFSET_BLUE  + offset, 0x0);
+            WriteRegister(EVERGREEN_DC_LUT_BLACK_OFFSET_GREEN + offset, 0x0);
+            WriteRegister(EVERGREEN_DC_LUT_BLACK_OFFSET_RED   + offset, 0x0);
+            
+            // Set 0xffff white offsets:
+            WriteRegister(EVERGREEN_DC_LUT_WHITE_OFFSET_BLUE  + offset, 0xffff);
+            WriteRegister(EVERGREEN_DC_LUT_WHITE_OFFSET_GREEN + offset, 0xffff);
+            WriteRegister(EVERGREEN_DC_LUT_WHITE_OFFSET_RED   + offset, 0xffff);
+
+            WriteRegister(EVERGREEN_DC_LUT_RW_MODE + offset, 0);
+            WriteRegister(EVERGREEN_DC_LUT_WRITE_EN_MASK + offset, 0x00000007);
+
+            WriteRegister(EVERGREEN_DC_LUT_RW_INDEX + offset, 0);
+
+        }
+        else {
+            // AVIVO: Dualhead.
+            offset = (headId > 0) ? 0x800 : 0x0;
+            reg = AVIVO_DC_LUT_30_COLOR;
+
+            WriteRegister(AVIVO_DC_LUTA_CONTROL + offset, 0);
+
+            // Set zero black offsets:
+            WriteRegister(AVIVO_DC_LUTA_BLACK_OFFSET_BLUE  + offset, 0x0);
+            WriteRegister(AVIVO_DC_LUTA_BLACK_OFFSET_GREEN + offset, 0x0);
+            WriteRegister(AVIVO_DC_LUTA_BLACK_OFFSET_RED   + offset, 0x0);
+            
+            // Set 0xffff white offsets:
+            WriteRegister(AVIVO_DC_LUTA_WHITE_OFFSET_BLUE  + offset, 0xffff);
+            WriteRegister(AVIVO_DC_LUTA_WHITE_OFFSET_GREEN + offset, 0xffff);
+            WriteRegister(AVIVO_DC_LUTA_WHITE_OFFSET_RED   + offset, 0xffff);
+
+            WriteRegister(AVIVO_DC_LUT_RW_SELECT, headId & 0x1);
+            WriteRegister(AVIVO_DC_LUT_RW_MODE, 0);
+            WriteRegister(AVIVO_DC_LUT_WRITE_EN_MASK, 0x0000003f);
+
+            WriteRegister(AVIVO_DC_LUT_RW_INDEX, 0);
+        }
+        
+        for (i = 0; i < 256; i++) {
+            // Compute perfect value for slot i for a perfect 10 bit identity LUT
+            // intended for a 8 bit output encoder, i.e., 2 least significant bits
+            // zero to avoid dithering and similar stuff, the 8 most significant
+            // bits for each 10 bit color channel linearly increasing one unit
+            // per slot:
+            r = i << 2;
+            m = (r << 20) | (r << 10) | (r << 0); 
+
+            // Write 32 bit value of this slot:
+            WriteRegister(reg, m);
+        }
+
+        if (isDCE5()) {
+            WriteRegister(NI_DEGAMMA_CONTROL + offset,
+                          (NI_GRPH_DEGAMMA_MODE(NI_DEGAMMA_BYPASS) |
+                           NI_OVL_DEGAMMA_MODE(NI_DEGAMMA_BYPASS) |
+                           NI_ICON_DEGAMMA_MODE(NI_DEGAMMA_BYPASS) |
+                           NI_CURSOR_DEGAMMA_MODE(NI_DEGAMMA_BYPASS)));
+            WriteRegister(NI_GAMUT_REMAP_CONTROL + offset,
+                          (NI_GRPH_GAMUT_REMAP_MODE(NI_GAMUT_REMAP_BYPASS) |
+                           NI_OVL_GAMUT_REMAP_MODE(NI_GAMUT_REMAP_BYPASS)));
+            WriteRegister(NI_REGAMMA_CONTROL + offset,
+                          (NI_GRPH_REGAMMA_MODE(NI_REGAMMA_BYPASS) |
+                           NI_OVL_REGAMMA_MODE(NI_REGAMMA_BYPASS)));
+            WriteRegister(NI_OUTPUT_CSC_CONTROL + offset,
+                          (NI_OUTPUT_CSC_GRPH_MODE(NI_OUTPUT_CSC_BYPASS) |
+                           NI_OUTPUT_CSC_OVL_MODE(NI_OUTPUT_CSC_BYPASS)));
+            /* XXX match this to the depth of the crtc fmt block, move to modeset? */
+            WriteRegister(0x6940 + offset, 0);
+        }
+        
+        // Done.
+        return(1);
+	}
+
+    // Unhandled:
+    IOLog("%s: LoadIdentityLUT(): This function is not supported on this GPU. Returning 0.\n", getName());
+    return(0);
+}
+
 // Perform instant state snapshot of interesting registers and return'em:
 void PsychtoolboxKernelDriver::GetStateSnapshot(PsychKDCommandStruct* outStruct)
 {
@@ -1258,6 +1538,26 @@ IOReturn PsychtoolboxKernelDriver::PsychKDDispatchCommand(PsychKDCommandStruct* 
 
 		case kPsychKDSetDitherMode:		// Write value to specific register:
 			SetDitherMode(inStruct->inOutArgs[0], inStruct->inOutArgs[1]);
+		break;
+
+		case kPsychKDGetRevision:	// Query current driver revision:
+			// One output, the revision:
+			outStruct->inOutArgs[0] = PTBKDRevision;
+		break;
+
+		case kPsychKDGetGPUInfo:	// Query info about installed GPU:
+            // Returns multiple flags with info like PCI Vendor/device id, display engine type etc.
+			GetGPUInfo(outStruct->inOutArgs);
+		break;
+
+		case kPsychKDGetLUTState:	// Query if LUT for given headId is all-zero:
+			// One output, the binary flag (1 = All-zero LUT, 0 = Non-Zero LUT)
+			outStruct->inOutArgs[0] = GetLUTState(inStruct->inOutArgs[0], inStruct->inOutArgs[1]);
+		break;
+
+		case kPsychKDSetIdentityLUT:	// Load an identity LUT into display head 'headid':
+			// One return argument, the binary flag (1 = Success, 0 = Not supported)
+			outStruct->inOutArgs[0] = LoadIdentityLUT(inStruct->inOutArgs[0]);
 		break;
 
 		default:

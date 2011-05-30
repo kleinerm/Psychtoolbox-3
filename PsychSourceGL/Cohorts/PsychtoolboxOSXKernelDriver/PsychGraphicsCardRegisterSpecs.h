@@ -4,6 +4,7 @@
 	AUTHORS:
 	
 		mario.kleiner@tuebingen.mpg.de		mk
+        Alex Deucher.
 
 	PLATFORMS:	
 	
@@ -20,6 +21,35 @@
 	
 	Currently it contains register offsets for recent ATI GPU's and some NVIDIA GPU's.
 
+    Copyright:
+    
+    Parts of this file are direct copies of register defines from the Linux Radeon KMS
+    driver. The file is copyright 2008-2011 Mario Kleiner and also
+    Copyright 2010 Advanced Micro Devices, Inc.
+    Authors: Alex Deucher
+    
+    License:
+    
+    *
+    * Permission is hereby granted, free of charge, to any person obtaining a
+    * copy of this software and associated documentation files (the "Software"),
+    * to deal in the Software without restriction, including without limitation
+    * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    * and/or sell copies of the Software, and to permit persons to whom the
+    * Software is furnished to do so, subject to the following conditions:
+    *
+    * The above copyright notice and this permission notice shall be included in
+    * all copies or substantial portions of the Software.
+    *
+    * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+    * THE COPYRIGHT HOLDER(S) OR AUTHOR(S) BE LIABLE FOR ANY CLAIM, DAMAGES OR
+    * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+    * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+    * OTHER DEALINGS IN THE SOFTWARE.
+    *
+
 */
 
 //include once
@@ -31,6 +61,15 @@
 #define PCI_VENDOR_ID_AMD       0x1022
 #define PCI_VENDOR_ID_ATI       0x1002
 #define PCI_VENDOR_ID_INTEL     0x8086
+
+// Settings for member fDeviceType: Decoded Vendor id's.
+#define kPsychUnknown  0
+#define kPsychGeForce  1
+#define kPsychRadeon   2
+#define kPsychIntelIGP 3
+
+// Maximum number of crtc's on DCE-4 style Radeon hardware:
+#define DCE4_MAXHEADID 5
 
 // The following register offsets and specs are taken from the official AMD/ATI
 // specs, downloadable from http://www.x.org/docs/AMD/ the website of the X-ORG
@@ -166,18 +205,124 @@
 #define RADEON_LVTMA_BIT_DEPTH_CONTROL	0x7A94
 #define RADEON_TMDSA_BIT_DEPTH_CONTROL	0x7894
 
+#define AVIVO_DC_LUTA_CONTROL                   0x64C0
+#define AVIVO_DC_LUTA_BLACK_OFFSET_BLUE         0x64c4
+#define AVIVO_DC_LUTA_BLACK_OFFSET_GREEN        0x64c8
+#define AVIVO_DC_LUTA_BLACK_OFFSET_RED          0x64cc
+#define AVIVO_DC_LUTA_WHITE_OFFSET_BLUE         0x64d0
+#define AVIVO_DC_LUTA_WHITE_OFFSET_GREEN        0x64d4
+#define AVIVO_DC_LUTA_WHITE_OFFSET_RED          0x64d8
+
+#define AVIVO_DC_LUT_RW_SELECT                  0x6480
+#define AVIVO_DC_LUT_RW_MODE                    0x6484
+#define AVIVO_DC_LUT_RW_INDEX                   0x6488
+#define AVIVO_DC_LUT_SEQ_COLOR                  0x648c
+#define AVIVO_DC_LUT_PWL_DATA                   0x6490
+#define AVIVO_DC_LUT_30_COLOR                   0x6494
+#define AVIVO_DC_LUT_READ_PIPE_SELECT           0x6498
+#define AVIVO_DC_LUT_WRITE_EN_MASK              0x649c
+#define AVIVO_DC_LUT_AUTOFILL                   0x64a0
+
 // Evergreen class hardware (DCE-4 display engine):
-#define EVERGREEN_CRTC_STATUS_POSITION		0x0a0
-#define EVERGREEN_CRTC_V_BLANK_START_END	0x044
-#define EVERGREEN_CRTC_V_TOTAL				0x02c
-#define EVERGREEN_CRTC_CONTROL				0x080
+#define EVERGREEN_DC_LUT_RW_MODE                        0x69e0
+#define EVERGREEN_DC_LUT_RW_INDEX                       0x69e4
+#define EVERGREEN_DC_LUT_SEQ_COLOR                      0x69e8
+#define EVERGREEN_DC_LUT_PWL_DATA                       0x69ec
+#define EVERGREEN_DC_LUT_30_COLOR                       0x69f0
+#define EVERGREEN_DC_LUT_VGA_ACCESS_ENABLE              0x69f4
+#define EVERGREEN_DC_LUT_WRITE_EN_MASK                  0x69f8
+#define EVERGREEN_DC_LUT_AUTOFILL                       0x69fc
+#define EVERGREEN_DC_LUT_CONTROL                        0x6a00
+#define EVERGREEN_DC_LUT_BLACK_OFFSET_BLUE              0x6a04
+#define EVERGREEN_DC_LUT_BLACK_OFFSET_GREEN             0x6a08
+#define EVERGREEN_DC_LUT_BLACK_OFFSET_RED               0x6a0c
+#define EVERGREEN_DC_LUT_WHITE_OFFSET_BLUE              0x6a10
+#define EVERGREEN_DC_LUT_WHITE_OFFSET_GREEN             0x6a14
+#define EVERGREEN_DC_LUT_WHITE_OFFSET_RED               0x6a18
+
+/* display controller offsets used for crtc/cur/lut/grph/viewport/etc. */
+#define EVERGREEN_CRTC0_REGISTER_OFFSET                 (0x6df0 - 0x6df0)
+#define EVERGREEN_CRTC1_REGISTER_OFFSET                 (0x79f0 - 0x6df0)
+#define EVERGREEN_CRTC2_REGISTER_OFFSET                 (0x105f0 - 0x6df0)
+#define EVERGREEN_CRTC3_REGISTER_OFFSET                 (0x111f0 - 0x6df0)
+#define EVERGREEN_CRTC4_REGISTER_OFFSET                 (0x11df0 - 0x6df0)
+#define EVERGREEN_CRTC5_REGISTER_OFFSET                 (0x129f0 - 0x6df0)
+
+/* CRTC blocks at 0x6df0, 0x79f0, 0x105f0, 0x111f0, 0x11df0, 0x129f0 */
+#define EVERGREEN_CRTC_V_TOTAL                          0x6e1c
+#define EVERGREEN_CRTC_V_BLANK_START_END                0x6e34
+#define EVERGREEN_CRTC_CONTROL                          0x6e70
+#       define EVERGREEN_CRTC_MASTER_EN                 (1 << 0)
+#       define EVERGREEN_CRTC_DISP_READ_REQUEST_DISABLE (1 << 24)
+#define EVERGREEN_CRTC_STATUS                           0x6e8c
+#define EVERGREEN_CRTC_STATUS_POSITION                  0x6e90
+#define EVERGREEN_CRTC_UPDATE_LOCK                      0x6ed4
 
 // Evergreen DCE-4 dithering control registers:
 // Basics like on AVIVO: All zero disables dithering/bit depths truncation,
 // Bits for enable are like cases a), b), c) above, but the meaning
 // of other bits is different and there's more control bits to change
 // dithering strategy.
-#define EVERGREEN_FMT_BIT_DEPTH_CONTROL     0x1d8
+#define EVERGREEN_FMT_BIT_DEPTH_CONTROL                 0x6fc8
+
+/* northern islands - Following DCE5 specs direct excerpts from Linux Radeon KMS ni_reg.h */
+
+#define NI_INPUT_GAMMA_CONTROL                         0x6840
+#       define NI_GRPH_INPUT_GAMMA_MODE(x)             (((x) & 0x3) << 0)
+#       define NI_INPUT_GAMMA_USE_LUT                  0
+#       define NI_INPUT_GAMMA_BYPASS                   1
+#       define NI_INPUT_GAMMA_SRGB_24                  2
+#       define NI_INPUT_GAMMA_XVYCC_222                3
+#       define NI_OVL_INPUT_GAMMA_MODE(x)              (((x) & 0x3) << 4)
+
+#define NI_PRESCALE_GRPH_CONTROL                       0x68b4
+#       define NI_GRPH_PRESCALE_BYPASS                 (1 << 4)
+
+#define NI_PRESCALE_OVL_CONTROL                        0x68c4
+#       define NI_OVL_PRESCALE_BYPASS                  (1 << 4)
+
+#define NI_INPUT_CSC_CONTROL                           0x68d4
+#       define NI_INPUT_CSC_GRPH_MODE(x)               (((x) & 0x3) << 0)
+#       define NI_INPUT_CSC_BYPASS                     0
+#       define NI_INPUT_CSC_PROG_COEFF                 1
+#       define NI_INPUT_CSC_PROG_SHARED_MATRIXA        2
+#       define NI_INPUT_CSC_OVL_MODE(x)                (((x) & 0x3) << 4)
+
+#define NI_OUTPUT_CSC_CONTROL                          0x68f0
+#       define NI_OUTPUT_CSC_GRPH_MODE(x)              (((x) & 0x7) << 0)
+#       define NI_OUTPUT_CSC_BYPASS                    0
+#       define NI_OUTPUT_CSC_TV_RGB                    1
+#       define NI_OUTPUT_CSC_YCBCR_601                 2
+#       define NI_OUTPUT_CSC_YCBCR_709                 3
+#       define NI_OUTPUT_CSC_PROG_COEFF                4
+#       define NI_OUTPUT_CSC_PROG_SHARED_MATRIXB       5
+#       define NI_OUTPUT_CSC_OVL_MODE(x)               (((x) & 0x7) << 4)
+
+#define NI_DEGAMMA_CONTROL                             0x6960
+#       define NI_GRPH_DEGAMMA_MODE(x)                 (((x) & 0x3) << 0)
+#       define NI_DEGAMMA_BYPASS                       0
+#       define NI_DEGAMMA_SRGB_24                      1
+#       define NI_DEGAMMA_XVYCC_222                    2
+#       define NI_OVL_DEGAMMA_MODE(x)                  (((x) & 0x3) << 4)
+#       define NI_ICON_DEGAMMA_MODE(x)                 (((x) & 0x3) << 8)
+#       define NI_CURSOR_DEGAMMA_MODE(x)               (((x) & 0x3) << 12)
+
+#define NI_GAMUT_REMAP_CONTROL                         0x6964
+#       define NI_GRPH_GAMUT_REMAP_MODE(x)             (((x) & 0x3) << 0)
+#       define NI_GAMUT_REMAP_BYPASS                   0
+#       define NI_GAMUT_REMAP_PROG_COEFF               1
+#       define NI_GAMUT_REMAP_PROG_SHARED_MATRIXA      2
+#       define NI_GAMUT_REMAP_PROG_SHARED_MATRIXB      3
+#       define NI_OVL_GAMUT_REMAP_MODE(x)              (((x) & 0x3) << 4)
+
+#define NI_REGAMMA_CONTROL                             0x6a80
+#       define NI_GRPH_REGAMMA_MODE(x)                 (((x) & 0x7) << 0)
+#       define NI_REGAMMA_BYPASS                       0
+#       define NI_REGAMMA_SRGB_24                      1
+#       define NI_REGAMMA_XVYCC_222                    2
+#       define NI_REGAMMA_PROG_A                       3
+#       define NI_REGAMMA_PROG_B                       4
+#       define NI_OVL_REGAMMA_MODE(x)                  (((x) & 0x7) << 4)
 
 
 // NVIDIA REGISTERS:

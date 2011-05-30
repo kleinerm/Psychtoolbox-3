@@ -33,6 +33,10 @@ enum {
 	KPsychKDWriteRegister,
 	kPsychKDDumpMiscInfo,
 	kPsychKDSetDitherMode,
+    kPsychKDGetRevision,
+    kPsychKDGetGPUInfo,
+    kPsychKDGetLUTState,
+    kPsychKDSetIdentityLUT,
 	kPsychKDMaxCommands
 };
 

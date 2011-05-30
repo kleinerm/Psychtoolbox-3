@@ -43,6 +43,9 @@
 #include <limits.h>
 #include <unistd.h>
 
+// Definitions of GPU registers etc.:
+#include "PsychGraphicsCardRegisterSpecs.h"
+
 #define kMyPathToSystemLog			"/var/log/system.log"
 
 // IO_OBJECT_NULL was added in Mac OS X 10.4. If it's not defined in the headers, define it ourselves.
@@ -296,6 +299,89 @@ unsigned int PsychOSKDSetDitherMode(io_connect_t connect, unsigned int head, uns
 	return(0);
 }
 
+unsigned int PsychOSKDGetRevision(io_connect_t connect)
+{
+	PsychKDCommandStruct syncCommand;
+    IOByteCount			 structSize1 = sizeof(PsychKDCommandStruct);
+	
+	// Set command code for display sync:
+	syncCommand.command = kPsychKDGetRevision;
+	
+	// Issue request:
+	kern_return_t kernResult = PsychKDDispatchCommand(connect, structSize1, &syncCommand, &structSize1, &syncCommand);    
+	if (kernResult != KERN_SUCCESS) {
+		printf("PTB-ERROR: Kernel driver revision read failed (Kernel error code: %lx).\n", kernResult);
+		// A value of 0xffffffff signals failure:
+		return(0xffffffff);
+	}
+	
+	// Return revision:
+	return((unsigned int) syncCommand.inOutArgs[0]);
+}
+
+void PsychOSKDGetGPUInfo(io_connect_t connect)
+{
+	PsychKDCommandStruct syncCommand;
+    IOByteCount			 structSize1 = sizeof(PsychKDCommandStruct);
+	
+	// Set command code for display sync:
+	syncCommand.command = kPsychKDGetGPUInfo;
+	
+	// Issue request:
+	kern_return_t kernResult = PsychKDDispatchCommand(connect, structSize1, &syncCommand, &structSize1, &syncCommand);    
+	if (kernResult != KERN_SUCCESS) {
+		printf("PTB-ERROR: Kernel driver gpu info read failed (Kernel error code: %lx).\n", kernResult);
+		// A value of 0xffffffff signals failure:
+		return;
+	}
+	
+	printf("PTB-INFO: GPU-Vendor %i, PCIId %x, GPU-Type %x.\n", syncCommand.inOutArgs[0], syncCommand.inOutArgs[1], syncCommand.inOutArgs[2]);
+	return;
+}
+
+unsigned int PsychOSKDGetLUTState(io_connect_t connect, unsigned int head)
+{
+	PsychKDCommandStruct syncCommand;
+    IOByteCount			 structSize1 = sizeof(PsychKDCommandStruct);
+	
+	// Set command code for display sync:
+	syncCommand.command = kPsychKDGetLUTState;
+	syncCommand.inOutArgs[0] = head;
+	syncCommand.inOutArgs[1] = 1;
+	
+	// Issue request:
+	kern_return_t kernResult = PsychKDDispatchCommand(connect, structSize1, &syncCommand, &structSize1, &syncCommand);    
+	if (kernResult != KERN_SUCCESS) {
+		printf("PTB-ERROR: Kernel driver lut state read failed (Kernel error code: %lx).\n", kernResult);
+		// A value of 0xffffffff signals failure:
+		return(0xffffffff);
+	}
+	
+	// Return lut state:
+	return((unsigned int) syncCommand.inOutArgs[0]);
+}
+
+unsigned int PsychOSKDLoadIdentityLUT(io_connect_t connect, unsigned int head)
+{
+	PsychKDCommandStruct syncCommand;
+    IOByteCount			 structSize1 = sizeof(PsychKDCommandStruct);
+	
+	// Set command code for display sync:
+	syncCommand.command = kPsychKDSetIdentityLUT;
+	syncCommand.inOutArgs[0] = head;
+	
+	// Issue request:
+	kern_return_t kernResult = PsychKDDispatchCommand(connect, structSize1, &syncCommand, &structSize1, &syncCommand);    
+	if (kernResult != KERN_SUCCESS) {
+		printf("PTB-ERROR: Kernel driver identity lut setup failed (Kernel error code: %lx).\n", kernResult);
+		// A value of 0xffffffff signals failure:
+		return(0xffffffff);
+	}
+	
+	// Return lut setup rc:
+	return((unsigned int) syncCommand.inOutArgs[0]);
+}
+
 // Define globally for subroutines:
 io_connect_t	connect;
 
@@ -314,6 +400,11 @@ int main(int argc, char* argv[])
         printf("%s: Command line arguments missing. Usage:\n", (argc > 0) ? argv[0] : "unknown");
         printf("%s -setdither headId ditherEnable\n", (argc > 0) ? argv[0] : "unknown");
         printf("%s -resyncdisplays\n", (argc > 0) ? argv[0] : "unknown");
+        printf("%s -revision\n", (argc > 0) ? argv[0] : "unknown");
+        printf("%s -gpuinfo\n", (argc > 0) ? argv[0] : "unknown");
+        printf("%s -lutstatus headId\n", (argc > 0) ? argv[0] : "unknown");
+        printf("%s -identitylut headId\n", (argc > 0) ? argv[0] : "unknown");
+        
         printf("%s -nvidiasetcursor x y\n", (argc > 0) ? argv[0] : "unknown");
         printf("%s -radeonswaptests\n", (argc > 0) ? argv[0] : "unknown");
         printf("\n\n");
@@ -380,6 +471,33 @@ int main(int argc, char* argv[])
 				printf("Residual offset between displays is %i scanlines.\n\n", PsychOSSynchronizeAllDisplayHeads(connect));
             }
             
+            if (argc > 1 && (strcmp(argv[1], "-revision") == 0)) {
+				printf("Revision number of kernel driver is %i.\n\n", PsychOSKDGetRevision(connect));
+            }
+
+            if (argc > 1 && (strcmp(argv[1], "-gpuinfo") == 0)) {
+				printf("GPU info:\n\n");
+                PsychOSKDGetGPUInfo(connect);
+            }
+            
+            if (argc > 1 && (strcmp(argv[1], "-lutstatus") == 0)) {
+                if (argc < 3) {
+                    printf("Error: You must provide the headId!\n");
+                    return(-1);
+                }
+                
+                printf("LUT status of display head %i is %x\n", atoi(argv[2]), PsychOSKDGetLUTState(connect, atoi(argv[2])));
+            }
+
+            if (argc > 1 && (strcmp(argv[1], "-identitylut") == 0)) {
+                if (argc < 3) {
+                    printf("Error: You must provide the headId!\n");
+                    return(-1);
+                }
+                
+                printf("Setting identity LUT on display head %i. RC = %i\n", atoi(argv[2]), PsychOSKDLoadIdentityLUT(connect, atoi(argv[2])));
+            }
+
 			if (argc > 3 && (strcmp(argv[1], "-nvidiasetcursor") == 0)) {
 				// NVidia test:
                 printf("Trying to move NVidia G80 cursor to position %i x %i.\n", atoi(argv[2]), atoi(argv[3]));
