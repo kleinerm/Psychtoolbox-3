@@ -193,7 +193,7 @@ unsigned int PsychSetGPUIdentityPassthrough(PsychWindowRecordType* windowRecord,
     if (!passthroughEnable) return(0);
     
     // Check if remaining GPU is already configured for untampered identity passthrough:
-    rc = PsychOSKDGetLUTState(screenId, head, 0);
+    rc = PsychOSKDGetLUTState(screenId, head, (PsychPrefStateGet_Verbosity() > 4) ? 1 : 0);
     if (rc == 0xffffffff) {
         // Unsupported for this GPU. We're done:
         if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: GPU framebuffer passthrough setup requested, but this is not supported on this GPU.\n");
@@ -214,8 +214,11 @@ unsigned int PsychSetGPUIdentityPassthrough(PsychWindowRecordType* windowRecord,
         return(0xffffffff);
     }
     
+    // Make sure, GPU's gamma table can settle by waiting 50 msecs:
+    PsychYieldIntervalSeconds(0.050);
+    
     // Setup supposedly successfully finished. Re-Query state:
-    rc = PsychOSKDGetLUTState(screenId, head, 0);
+    rc = PsychOSKDGetLUTState(screenId, head, (PsychPrefStateGet_Verbosity() > 4) ? 1 : 0);
 
     // Perfect identity passthrough now configured?
     if (rc == 2) {

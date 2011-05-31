@@ -13,6 +13,11 @@
 	HISTORY:
 
 		01/23/06	mk		Created.
+        05/31/11    mk      Add 3rd method of waiting for vblank, based on vblank counter
+                            queries on supported systems (OS/X and Linux) to work around
+                            bugs in bufferswap wait method on OS/X "Snow Leopard".
+                            Code will try beampos waits, fallback to vblank counter waits,
+                            then fallback to swapbuffers waits.
 
 	DESCRIPTION:
   
@@ -58,7 +63,7 @@ PsychError SCREENWaitBlanking(void)
     long screenwidth, screenheight;
     int vbl_startline, beampos;
 	int scanline, lastline;
-
+    psych_uint64 vblCount, vblRefCount;
     CGDirectDisplayID	cgDisplayID;
     GLint read_buffer, draw_buffer;
     
@@ -107,6 +112,9 @@ PsychError SCREENWaitBlanking(void)
         }
     }
     
+    // Query vblcount to test if this method works correctly:
+    PsychOSGetVBLTimeAndCount(windowRecord, &vblRefCount);
+    
     // Check if beamposition queries are supported by this OS and working properly:
     if (-1 != PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber) && windowRecord->VBL_Endline >= 0) {
         // Beamposition queries supported and fine. We can wait for VBL without bufferswap-tricks:
@@ -154,12 +162,32 @@ PsychError SCREENWaitBlanking(void)
             // Done with this refresh interval...
             // Decrement remaining number of frames to wait:
             waitFrames--;
-            }
         }
+    }
+    else if (vblRefCount > 0) {
+        // Display beamposition queries unsupported, but vblank count queries seem to work. Try those.
+        // Should work on Linux and OS/X:
+        while(waitFrames > 0) {
+            vblCount = vblRefCount;
+
+            // Wait for next vblank counter increment - aka start of next frame (its vblank):
+            while (vblCount == vblRefCount) {
+                // Requery:
+                PsychOSGetVBLTimeAndCount(windowRecord, &vblCount);
+                // Yield at least 100 usecs. This is accurate as this code-path
+                // only executes on OS/X and Linux, never on Windows (as of 01/06/2011):
+                PsychYieldIntervalSeconds(0.000100);
+            }
+
+            vblRefCount = vblCount;
+            
+            // Done with this refresh interval...
+            // Decrement remaining number of frames to wait:
+            waitFrames--;
+        }
+    }
     else {            
-        // Display beamposition queries unsupported. We use the doublebuffer swap method of waiting for retrace.
-        // This method is used on Microsoft-Windows where we don't have a function for beamposition queries.
-        // It shouldn't be used on OS-X, unless we encounter buggy gfx-hardware/drivers which will need this fallback-path.
+        // Other methods unsupported. We use the doublebuffer swap method of waiting for retrace.
         //
         // Working principle: On each frame, we first copy the content of the (user visible) frontbuffer into the backbuffer.
         // Then we ask the OS to perform a front-backbuffer swap on next vertical retrace and go to sleep via glFinish() et al.
