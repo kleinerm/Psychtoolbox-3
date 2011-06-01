@@ -125,9 +125,10 @@ bool PsychtoolboxKernelDriver::isDCE4(void)
 	// Caiman, Cedar, Redwood, Juniper, Cypress, Hemlock in 0x6xxx range:
 	if ((fPCIDeviceId & 0xF000) == 0x6000) isDCE4 = true;
 	
-	// Palm in 0x98xx range:
+	// Palm in 0x98xx range: DCE4.1 --> Only two crtc's instead of six.
 	if ((fPCIDeviceId & 0xFF00) == 0x9800) isDCE4 = true;
 
+    // Sumo and Sumo2 is 0x964x range DCE4.1 --> Only two crtc's instead of six.
 	return(isDCE4);
 }
 

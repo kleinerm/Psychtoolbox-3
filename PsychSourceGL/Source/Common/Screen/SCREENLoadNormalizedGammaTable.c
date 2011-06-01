@@ -110,7 +110,7 @@ PsychError SCREENLoadNormalizedGammaTable(void)
     if (inM == 0) {
         // Yes. Try to enable it, return its status code:
         PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
-        i = PsychSetGPUIdentityPassthrough(windowRecord, 0, TRUE);
+        i = PsychSetGPUIdentityPassthrough(windowRecord, screenNumber, TRUE);
         PsychCopyOutDoubleArg(1, FALSE, (double) i);
         
         // Done.

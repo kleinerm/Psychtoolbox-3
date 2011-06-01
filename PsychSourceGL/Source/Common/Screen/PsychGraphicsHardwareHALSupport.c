@@ -194,6 +194,7 @@ unsigned int PsychSetGPUIdentityPassthrough(PsychWindowRecordType* windowRecord,
     
     // Check if remaining GPU is already configured for untampered identity passthrough:
     rc = PsychOSKDGetLUTState(screenId, head, (PsychPrefStateGet_Verbosity() > 4) ? 1 : 0);
+    if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: 1st LUT query rc = %i.\n", rc);
     if (rc == 0xffffffff) {
         // Unsupported for this GPU. We're done:
         if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: GPU framebuffer passthrough setup requested, but this is not supported on this GPU.\n");
@@ -219,6 +220,7 @@ unsigned int PsychSetGPUIdentityPassthrough(PsychWindowRecordType* windowRecord,
     
     // Setup supposedly successfully finished. Re-Query state:
     rc = PsychOSKDGetLUTState(screenId, head, (PsychPrefStateGet_Verbosity() > 4) ? 1 : 0);
+    if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: 2nd LUT query rc = %i.\n", rc);
 
     // Perfect identity passthrough now configured?
     if (rc == 2) {
@@ -697,6 +699,9 @@ void PsychAutoDetectScreenToHeadMappings(int maxHeads)
     int screenId, headId, numEntries;
     float *redTable, *greenTable, *blueTable;
 
+    // MK FIXME TODO: DISABLED FOR NOW!
+    return;
+    
     // If user / usercode has provided manual mapping, i.e., overriden the
     // default identity mapping, then we don't do anything, but accept the
     // users choice instead. Also skip this if it has been successfully executed

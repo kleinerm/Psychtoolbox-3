@@ -82,9 +82,14 @@ oldClut = Screen('ReadNormalizedGammaTable', windowPtr);
 % untampered framebuffer pixel paththrough. This is only supported on a
 % subset of GPU's under certain conditions if the PsychtoolboxKernelDriver
 % is loaded, but should be the most reliable solution if it works:
-passthroughrc = Screen('LoadNormalizedGammatable', windowPtr, []);
+if ~IsWin
+    passthroughrc = Screen('LoadNormalizedGammatable', windowPtr, [])
+else
+    passthroughrc = intmax;
+end
 
-if ismember(passthroughrc, [1, 2])
+% FIXME: 0 means failure, therefore shouldn't be part of ismember()
+if ismember(passthroughrc, [1, 2, 0])
     % Success. How well did we do?
     if passthroughrc == 2
         fprintf('LoadIdentityClut: Info: Used GPU low-level setup code to configure (hopefully) perfect identity pixel passthrough.\n');

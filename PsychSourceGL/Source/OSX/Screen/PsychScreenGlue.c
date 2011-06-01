@@ -797,8 +797,11 @@ void PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float **re
         
     *redTable=localRed; *greenTable=localGreen; *blueTable=localBlue; 
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
+    if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: ReadNormalizedGammatable: screenid %i mapped to CGDisplayId %p.\n", screenNumber, cgDisplayID);
+
     error=CGGetDisplayTransferByTable(cgDisplayID, (CGTableCount)1024, *redTable, *greenTable, *blueTable, &sampleCount);
     *numEntries=(int)sampleCount;
+    if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: ReadNormalizedGammatable: numEntries = %i.\n", *numEntries);
 }
 
 unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redTable, float *greenTable, float *blueTable)
@@ -809,7 +812,8 @@ unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, flo
 	int i;
 	
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
-	
+    if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: LoadNormalizedGammatable: screenid %i mapped to CGDisplayId %p.\n", screenNumber, cgDisplayID);
+
 	// More than one row in table?
 	if (numEntries > 1) {
 		// Yes: This is the regular case. We upload a 0.0 - 1.0 encoded table with numEntries slots. The OS will
