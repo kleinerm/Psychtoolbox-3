@@ -214,8 +214,8 @@ unsigned int PsychSetGPUIdentityPassthrough(PsychWindowRecordType* windowRecord,
         return(0xffffffff);
     }
     
-    // Make sure, GPU's gamma table can settle by waiting 50 msecs:
-    PsychYieldIntervalSeconds(0.050);
+    // Make sure, GPU's gamma table can settle by waiting 250 msecs:
+    PsychYieldIntervalSeconds(0.250);
     
     // Setup supposedly successfully finished. Re-Query state:
     rc = PsychOSKDGetLUTState(screenId, head, (PsychPrefStateGet_Verbosity() > 4) ? 1 : 0);
@@ -721,9 +721,9 @@ void PsychAutoDetectScreenToHeadMappings(int maxHeads)
         // Now load an all-zero gamma table for that screen:
         PsychLoadNormalizedGammaTable(screenId, 256, nullTable, nullTable, nullTable);
         
-        // Wait for 50 msecs, so the gamma table has actually settled (e.g., if its update was
+        // Wait for 100 msecs, so the gamma table has actually settled (e.g., if its update was
         // delayed until next vblank on a >= 20 Hz display):
-        PsychYieldIntervalSeconds(0.050);
+        PsychYieldIntervalSeconds(0.100);
         
         // Check all display heads to find the null table:
         for (headId = 0; headId < maxHeads; headId++) {
@@ -740,9 +740,9 @@ void PsychAutoDetectScreenToHeadMappings(int maxHeads)
         // Now restore original gamma table for that screen:
         PsychLoadNormalizedGammaTable(screenId, numEntries, redTable, greenTable, blueTable);
         
-        // Wait for 50 msecs, so the gamma table has actually settled (e.g., if its update was
+        // Wait for 100 msecs, so the gamma table has actually settled (e.g., if its update was
         // delayed until next vblank on a >= 20 Hz display):
-        PsychYieldIntervalSeconds(0.050);        
+        PsychYieldIntervalSeconds(0.100);        
         if (PsychPrefStateGet_Verbosity() > 2) printf(" Done.\n");
     }
     
