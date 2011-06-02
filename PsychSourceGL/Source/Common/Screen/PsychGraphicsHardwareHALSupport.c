@@ -700,7 +700,7 @@ void PsychAutoDetectScreenToHeadMappings(int maxHeads)
     float *redTable, *greenTable, *blueTable;
 
     // MK FIXME TODO: DISABLED FOR NOW!
-    return;
+    // return;
     
     // If user / usercode has provided manual mapping, i.e., overriden the
     // default identity mapping, then we don't do anything, but accept the
@@ -748,6 +748,13 @@ void PsychAutoDetectScreenToHeadMappings(int maxHeads)
         // Wait for 100 msecs, so the gamma table has actually settled (e.g., if its update was
         // delayed until next vblank on a >= 20 Hz display):
         PsychYieldIntervalSeconds(0.100);        
+
+        // Encore une fois...
+        PsychLoadNormalizedGammaTable(screenId, 256, nullTable, nullTable, nullTable);
+        PsychYieldIntervalSeconds(0.100);        
+        PsychLoadNormalizedGammaTable(screenId, numEntries, redTable, greenTable, blueTable);
+        PsychYieldIntervalSeconds(0.100);        
+
         if (PsychPrefStateGet_Verbosity() > 2) printf(" Done.\n");
     }
     

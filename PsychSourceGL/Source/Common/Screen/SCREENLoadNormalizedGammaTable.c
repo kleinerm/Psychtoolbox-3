@@ -189,16 +189,18 @@ PsychError SCREENLoadNormalizedGammaTable(void)
             PsychErrorExitMsg(PsychError_user, "Gamma Table Values must be in interval 0 =< x =< 1");
     }
 
-    //first read the existing gamma table so we can return it.  
-    PsychReadNormalizedGammaTable(screenNumber, &numEntries, &outRedTable, &outGreenTable, &outBlueTable);
-    PsychAllocOutDoubleMatArg(1, FALSE, numEntries, 3, 0, &outTable);
-
-    for(i=0;i<numEntries;i++){
-        outTable[PsychIndexElementFrom3DArray(numEntries, 3, 0, i, 0, 0)]=(double)outRedTable[i];
-        outTable[PsychIndexElementFrom3DArray(numEntries, 3, 0, i, 1, 0)]=(double)outGreenTable[i];
-        outTable[PsychIndexElementFrom3DArray(numEntries, 3, 0, i, 2, 0)]=(double)outBlueTable[i];
+    if (loadOnNextFlip < 2) {
+        //first read the existing gamma table so we can return it.  
+        PsychReadNormalizedGammaTable(screenNumber, &numEntries, &outRedTable, &outGreenTable, &outBlueTable);
+        PsychAllocOutDoubleMatArg(1, FALSE, numEntries, 3, 0, &outTable);
+        
+        for(i=0;i<numEntries;i++){
+            outTable[PsychIndexElementFrom3DArray(numEntries, 3, 0, i, 0, 0)]=(double)outRedTable[i];
+            outTable[PsychIndexElementFrom3DArray(numEntries, 3, 0, i, 1, 0)]=(double)outGreenTable[i];
+            outTable[PsychIndexElementFrom3DArray(numEntries, 3, 0, i, 2, 0)]=(double)outBlueTable[i];
+        }
     }
-
+     
     //Now set the new gamma table
     if (loadOnNextFlip == 0) PsychLoadNormalizedGammaTable(screenNumber, inM, inRedTable, inGreenTable, inBlueTable);
 
