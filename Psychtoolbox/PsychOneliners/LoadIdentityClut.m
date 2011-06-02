@@ -83,13 +83,12 @@ oldClut = Screen('ReadNormalizedGammaTable', windowPtr);
 % subset of GPU's under certain conditions if the PsychtoolboxKernelDriver
 % is loaded, but should be the most reliable solution if it works:
 if ~IsWin
-    passthroughrc = Screen('LoadNormalizedGammatable', windowPtr, [])
+    passthroughrc = Screen('LoadNormalizedGammatable', windowPtr, []);
 else
     passthroughrc = intmax;
 end
 
-% FIXME: 0 means failure, therefore shouldn't be part of ismember()
-if ismember(passthroughrc, [1, 2, 0])
+if ismember(passthroughrc, [1, 2])
     % Success. How well did we do?
     if passthroughrc == 2
         fprintf('LoadIdentityClut: Info: Used GPU low-level setup code to configure (hopefully) perfect identity pixel passthrough.\n');
