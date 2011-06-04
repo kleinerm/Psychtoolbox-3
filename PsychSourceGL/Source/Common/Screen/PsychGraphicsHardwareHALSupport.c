@@ -315,54 +315,62 @@ psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord
 				return(false);
 			}
 			
-			// Switch CRTC to ABGR2101010 readout mode:
-			// We set bit 8 to enable that mode:
-			value = PsychOSKDReadRegister(screenId, ctlreg, &status);
-			if (status) {
-				printf("PTB-ERROR: Failed to set 10 bit framebuffer mode (CTLReg read failed).\n");
-				return(false);
+            // Only reconfigure framebuffer scanout if this is really our true Native10bpc hack:
+            // This is usually skipped on FireGL/FirePro GPU's as their drivers do it already...
+            if (windowRecord->specialflags & kPsychNative10bpcFBActive) {
+                // Switch CRTC to ABGR2101010 readout mode:
+                // We set bit 8 to enable that mode:
+                value = PsychOSKDReadRegister(screenId, ctlreg, &status);
+                if (status) {
+                    printf("PTB-ERROR: Failed to set 10 bit framebuffer mode (CTLReg read failed).\n");
+                    return(false);
+                }
+                
+                // Set 2101010 mode bit:
+                value = value | 0x1 << 8;
+                
+                PsychOSKDWriteRegister(screenId, ctlreg, value, &status);
+                if (status) {
+                    printf("PTB-ERROR: Failed to set 10 bit framebuffer mode (CTLReg write failed).\n");
+                    return(false);
+                }
 			}
-
-			// Set 2101010 moe bit:
-			value = value | 0x1 << 8;
-
-			PsychOSKDWriteRegister(screenId, ctlreg, value, &status);
-			if (status) {
-				printf("PTB-ERROR: Failed to set 10 bit framebuffer mode (CTLReg write failed).\n");
-				return(false);
-			}
-			
+            
 			// Pipe should be in 10 bpc mode now...
 			if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: System framebuffer switched to ARGB2101010 mode for screen %i [head %i].\n", i, headid);
 		}
 		else {
 			// Disable:
 
-			// Switch CRTC to ABGR8888 readout mode:
-			// We clear bit 8 to enable that mode:
-			value = PsychOSKDReadRegister(screenId, ctlreg, &status);
-			if (status) {
-				// This codepath gets always called in PsychCloseWindow(), so we should skip it
-				// silently if register read fails, as this is expected on MS-Windows and on all
-				// non-Radeon hardware and if kernel driver isn't loaded:
-				if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-ERROR: Failed to set 8 bit framebuffer mode (CTLReg read failed).\n");
-				return(false);
-			}
-			else if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In disable 10bpc: Readreg. ctlreg yields %lx\n", value);
-
-			// Clear 2101010 mode bit:
-			value = value & ~(0x1 << 8);
-
-			PsychOSKDWriteRegister(screenId, ctlreg, value, &status);
-			if (status) {
-				printf("PTB-ERROR: Failed to set 8 bit framebuffer mode (CTLReg write failed).\n");
-				return(false);
-			}
-			else if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In disable 10bpc: ctlreg reset\n");
-
-			// Wait 500 msecs for GPU to settle:
-			PsychWaitIntervalSeconds(0.5);
-
+            // Only reconfigure framebuffer scanout if this is really our true Native10bpc hack:
+            // This is usually skipped on FireGL/FirePro GPU's as their drivers do it already...
+            if (windowRecord->specialflags & kPsychNative10bpcFBActive) {
+                // Switch CRTC to ABGR8888 readout mode:
+                // We clear bit 8 to enable that mode:
+                value = PsychOSKDReadRegister(screenId, ctlreg, &status);
+                if (status) {
+                    // This codepath gets always called in PsychCloseWindow(), so we should skip it
+                    // silently if register read fails, as this is expected on MS-Windows and on all
+                    // non-Radeon hardware and if kernel driver isn't loaded:
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-ERROR: Failed to set 8 bit framebuffer mode (CTLReg read failed).\n");
+                    return(false);
+                }
+                else if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In disable 10bpc: Readreg. ctlreg yields %lx\n", value);
+                
+                // Clear 2101010 mode bit:
+                value = value & ~(0x1 << 8);
+                
+                PsychOSKDWriteRegister(screenId, ctlreg, value, &status);
+                if (status) {
+                    printf("PTB-ERROR: Failed to set 8 bit framebuffer mode (CTLReg write failed).\n");
+                    return(false);
+                }
+                else if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In disable 10bpc: ctlreg reset\n");
+                
+                // Wait 500 msecs for GPU to settle:
+                PsychWaitIntervalSeconds(0.5);
+            }
+            
 			// Switch hardware LUT's to standard mapping mode:
 			// We clear bit 8 to disable "bypass LUT in 2101010 mode":
 			value = PsychOSKDReadRegister(screenId, lutreg, &status);
@@ -432,8 +440,8 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
 {
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
 
-	int i,si,ei, headid, screenId;
-	unsigned int lutreg, ctlreg, value, status;
+	int headid, screenId;
+	unsigned int ctlreg;
 
 	// Fixup needed? Only if 10bpc mode is supposed to be active! Early exit if not:
 	if (!(windowRecord->specialflags & kPsychNative10bpcFBActive)) return;

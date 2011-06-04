@@ -226,6 +226,9 @@ typedef struct {
 // Override default setting for OpenML swap scheduling: Disable OpenML scheduling.
 #define kPsychDisableOpenMLScheduling 524288
 
+// Apply our "bypass gamma LUT's in 10 bit framebuffer mode" hack also on FireGL/FirePro: 2^20
+#define kPsychBypassLUTFor10BitFramebuffer 1048576
+
 //function protoptypes
 
 //Accessors for PsychDepthType 

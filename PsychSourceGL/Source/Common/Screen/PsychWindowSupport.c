@@ -1302,8 +1302,12 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         glDrawBuffer(GL_FRONT);
     }
 
-	// Check if 10 bpc native framebuffer support is requested:
-	if (((*windowRecord)->specialflags & kPsychNative10bpcFBActive) && PsychOSIsKernelDriverAvailable((*windowRecord)->screenNumber)) {
+	// Check if 10 bpc native framebuffer support is requested, or if 10 bit LUT bypass
+    // is requested. In both cases we execute PsychEnableNative10BitFramebuffer(), which
+    // will internally sort out if it needs to go through all the moves or only enable the
+    // 10 bit LUT bypass (possibly on FireGL and FirePro with broken drivers):
+	if ((((*windowRecord)->specialflags & kPsychNative10bpcFBActive) || (PsychPrefStateGet_ConserveVRAM() & kPsychBypassLUTFor10BitFramebuffer))
+        && PsychOSIsKernelDriverAvailable((*windowRecord)->screenNumber)) {
 		// Try to switch framebuffer to native 10 bpc mode:
 		PsychEnableNative10BitFramebuffer((*windowRecord), TRUE);
 	}

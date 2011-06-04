@@ -215,6 +215,15 @@
 % with support for OpenML. The kPsychDisableOpenMLScheduling flag will
 % forcefully disable use of OpenML, e.g., for debugging/testing purpose.
 %
+% 1048576 (= 2^20) == kPsychBypassLUTFor10BitFramebuffer
+% If a 30 bpp, 10 bpc native 10 bit framebuffer is requested and
+% Psychtoolbox is executing on Linux (as superuser) or OS/X (with the
+% PsychtoolboxKernelDriver loaded), then apply the 10 bit LUT bypass enable
+% hack even on graphics cards where this should not be required, e.g., on
+% the FireGL or FirePro cards from ATI/AMD. This as a workaround for broken
+% ATI/AMD graphics drivers which are able to configure a 10 bit framebuffer
+% and scanout, but fail to setup the LUT's properly.
+%
 %
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are
