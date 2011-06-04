@@ -983,6 +983,218 @@ GstElement* CreateGStreamerElementFromString(const char* codecSpec, const char* 
 	return(element);
 }
 
+psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char* codecSpec, char* outCodecName)
+{
+	GstElement *camera = NULL;
+	GstElement *some_element = NULL;
+	char *codecName = NULL;
+
+	camera = capdev->camera;
+
+	// Create matching video encoder for codecSpec:
+	// Codecs are sorted by suitability for high quality realtime video recording, so if usercode
+	// doesn't specify a codec, and thereby requests use of the recommended default codec 'DEFAULTenc',
+	// we will try to choose the best codec, then on failure fallback to the 2nd best, 3rd best, etc.
+
+	// Video encoder from parameter string?
+	if ((some_element = CreateGStreamerElementFromString(codecSpec, "VideoCodec=")) != NULL) {
+		// Yes. Assign it as our encoder:
+		capdev->videoenc = some_element;
+
+		// Need to erase the actual name of the codec from the codecSpec string,
+		// otherwise our code below would get confused.
+		codecName = strstr(codecSpec, "VideoCodec=");
+		codecName+= strlen("VideoCodec=");
+		while ((*codecName > 0) && (*codecName != ' ')) *(codecName++) = 'X';
+
+		codecName = strdup("Config Defined");
+	}
+
+	// Start with H264 encoder as default:
+	if (strstr(codecSpec, "x264enc") || strstr(codecSpec, "1635148593") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
+		capdev->videoenc = gst_element_factory_make ("x264enc", "ptbvideocodec0");
+		if (!capdev->videoenc) {
+			printf("PTB-WARNING: Failed to create 'x264enc' H.264 video encoder! Does not seem to be installed on your system?\n");
+		}
+		else {
+			codecName = strdup("x264enc");
+
+			// Need to use avi-multiplexer:
+			g_object_set(camera, "video-muxer", gst_element_factory_make ("avimux", "ptbvideomuxer0"), NULL);
+
+			// Need to use faac MPEG-4 audio encoder:
+			g_object_set(camera, "audio-encoder", gst_element_factory_make ("faac", "ptbaudioenc0"), NULL);
+
+			// Set some reasonable default parameters for the codec, which provide a better
+			// speed-quality tradeoff for live video recording: (Thanks to Tobias Wolf!)
+
+			// Speed-Quality profile set to 1 "Ultra fast".
+			// (1 = "Ultra fast", 2 = "Super fast", 3 = "Very fast",  4 = "Faster", 5 = "Fast",
+			//  6 = "Medium" - the default,7 = "Slow", 8 = "Slower", 9 = "Very slow")
+			g_object_set(capdev->videoenc, "speed-preset", 1, NULL);
+			// g_object_set(capdev->videoenc, "", , NULL);
+			// g_object_set(capdev->videoenc, "", , NULL);
+		}
+	}
+
+	// Then xvidenc - MPEG4 in a AVI container: High quality, handles 640 x 480 @ 30 fps on
+	// a 4 year old MacBookPro Core2Duo 2.2 Ghz with about 70% - 100% cpu load, depending on settings.
+	if (strstr(codecSpec, "xvidenc") || strstr(codecSpec, "1836070006") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
+		capdev->videoenc = gst_element_factory_make ("xvidenc", "ptbvideocodec0");
+		if (!capdev->videoenc) {
+			printf("PTB-WARNING: Failed to create 'xvidenc' xvid/mpeg-4 video encoder! Does not seem to be installed on your system?\n");
+		}
+		else {
+			codecName = strdup("xvidenc");
+
+			// Need to use avi-multiplexer:
+			g_object_set(camera, "video-muxer", gst_element_factory_make ("avimux", "ptbvideomuxer0"), NULL);
+
+			// Need to use faac MPEG-4 audio encoder:
+			g_object_set(camera, "audio-encoder", gst_element_factory_make ("faac", "ptbaudioenc0"), NULL);
+		}
+	}
+
+	// ffenc_mpeg4 also creates MPEG4, but at lower quality - much more blocky etc.
+	if (strstr(codecSpec, "ffenc_mpeg4") || ((strstr(codecSpec, "DEFAULTenc") || strstr(codecSpec, "1836070006")) && !capdev->videoenc)) {
+		capdev->videoenc = gst_element_factory_make ("ffenc_mpeg4", "ptbvideocodec0");
+		if (!capdev->videoenc) {
+			printf("PTB-WARNING: Failed to create 'ffenc_mpeg4' mpeg-4 video encoder! Does not seem to be installed on your system?\n");
+		}
+		else {
+			codecName = strdup("ffenc_mpeg4");
+
+			// Need to use avi-multiplexer:
+			g_object_set(camera, "video-muxer", gst_element_factory_make ("avimux", "ptbvideomuxer0"), NULL);
+
+			// Need to use faac MPEG-4 audio encoder:
+			g_object_set(camera, "audio-encoder", gst_element_factory_make ("faac", "ptbaudioenc0"), NULL);
+		}
+	}
+
+	// Theora + Ogg vorbis audio in .ogv container:
+	if (strstr(codecSpec, "theoraenc") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
+		capdev->videoenc = gst_element_factory_make ("theoraenc", "ptbvideocodec0");
+		if (!capdev->videoenc) {
+			printf("PTB-WARNING: Failed to create 'theora' video encoder! Does not seem to be installed on your system?\n");
+		}
+		else {
+			codecName = strdup("theoraenc");
+
+			// Need to use ogg-multiplexer:
+			g_object_set(camera, "video-muxer", gst_element_factory_make ("oggmux", "ptbvideomuxer0"), NULL);
+
+			// Need to use vorbis audio encoder:
+			g_object_set(camera, "audio-encoder", gst_element_factory_make ("vorbisenc", "ptbaudioenc0"), NULL);
+
+			// Some defaults for the theora encoder:
+			g_object_set(G_OBJECT(capdev->videoenc), "drop-frames", FALSE, NULL);
+			g_object_set(G_OBJECT(capdev->videoenc), "speed-level", 2, NULL);
+			g_object_set(G_OBJECT(capdev->videoenc), "quality", 30, NULL);
+			g_object_set(G_OBJECT(capdev->videoenc), "keyframe-auto", FALSE, NULL);
+			g_object_set(G_OBJECT(capdev->videoenc), "keyframe-force", 15, NULL);
+		}
+	}
+
+	// VP-8 in WebM container:
+	if (strstr(codecSpec, "vp8enc") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
+		capdev->videoenc = gst_element_factory_make ("vp8enc", "ptbvideocodec0");
+		if (!capdev->videoenc) {
+			printf("PTB-WARNING: Failed to create 'vp8enc' VP-8 video encoder! Does not seem to be installed on your system?\n");
+		}
+		else {
+			if (strstr(codecSpec, "DEFAULTenc")) codecName = strdup("vp8enc_webm");
+
+			// Need to use matroska/webm-multiplexer:
+			if (strstr(codecName, "_matroska")) g_object_set(camera, "video-muxer", gst_element_factory_make ("matroska", "ptbvideomuxer0"), NULL);
+			if (strstr(codecName, "_webm")) g_object_set(camera, "video-muxer", gst_element_factory_make ("webmmuxer", "ptbvideomuxer0"), NULL);
+
+			// Need to use vorbis audio encoder:
+			g_object_set(camera, "audio-encoder", gst_element_factory_make ("vorbisenc", "ptbaudioenc0"), NULL);
+		}
+	}
+
+	// H263 -- Does not work well yet.
+	if (strstr(codecSpec, "ffenc_h263p") || strstr(codecSpec, "1748121139") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
+		capdev->videoenc = gst_element_factory_make ("ffenc_h263p", "ptbvideocodec0");
+		if (!capdev->videoenc) {
+			printf("PTB-WARNING: Failed to create 'ffenc_h263p' H.263 video encoder! Does not seem to be installed on your system?\n");
+		}
+		else {
+			codecName = strdup("ffenc_h263p");
+
+			// Need to use Quicktime-Multiplexer:
+			g_object_set(camera, "video-muxer", gst_element_factory_make ("qtmux", "ptbvideomuxer0"), NULL);
+
+			// Need to use faac MPEG-4 audio encoder:
+			g_object_set(camera, "audio-encoder", gst_element_factory_make ("faac", "ptbaudioenc0"), NULL);
+		}
+	}
+
+	// Raw Huffman encoded YUV -- Does not work yet.
+	if (strstr(codecSpec, "huffyuv") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
+		capdev->videoenc = gst_element_factory_make ("ffenc_huffyuv", "ptbvideocodec0");
+		if (!capdev->videoenc) {
+		printf("PTB-WARNING: Failed to create 'ffenc_huffyuv' YUV video encoder! Does not seem to be installed on your system?\n");
+		}
+		else {
+			codecName = strdup("huffyuv");
+
+			// Need to use matroska-multiplexer:
+			g_object_set(camera, "video-muxer", gst_element_factory_make ("matroskamux", "ptbvideomuxer0"), NULL);
+
+			// Need to use faac MPEG-4 audio encoder:
+			g_object_set(camera, "audio-encoder", gst_element_factory_make ("faac", "ptbaudioenc0"), NULL);
+		}
+	}
+
+	// Raw YUV: -- Does not work yet.
+	if (strstr(codecSpec, "yuvraw") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
+		capdev->videoenc = gst_element_factory_make ("identity", "ptbvideocodec0");
+		if (!capdev->videoenc) {
+			printf("PTB-WARNING: Failed to create 'identity' YUV pass-through video encoder! Does not seem to be installed on your system?\n");
+		}
+		else {
+			codecName = strdup("yuvraw");
+
+			// Need to use avi-multiplexer:
+			g_object_set(camera, "video-muxer", gst_element_factory_make ("avimux", "ptbvideomuxer0"), NULL);
+
+			// Need to use faac MPEG-4 audio encoder:
+			g_object_set(camera, "audio-encoder", gst_element_factory_make ("faac", "ptbaudioenc0"), NULL);
+		}
+	}
+
+	// Audio encoder from parameter string?
+	if ((some_element = CreateGStreamerElementFromString(codecSpec, "AudioCodec=")) != NULL) {
+		g_object_set(camera, "audio-encoder", some_element, NULL);
+	}
+
+	// Audio source from parameter string?
+	if ((some_element = CreateGStreamerElementFromString(codecSpec, "AudioSource=")) != NULL) {
+		g_object_set(camera, "audio-source", some_element, NULL);
+	}
+
+	// Multiplexer from parameter string?
+	if (strstr(codecSpec, "Muxer=")) {
+		// Must create it without help of CreateGStreamerElementFromString() as the muxer has
+		// 2 sink pads, but our method can only handle 1 sink pad. Therefore just create a
+		// muxer by name, setting it to its default settings:
+		codecSpec = strstr(codecSpec, "Muxer=");
+		codecSpec+= strlen("Muxer=");
+		g_object_set(camera, "video-muxer", gst_element_factory_make(codecSpec, "ptbvideomuxer0"), NULL);
+	}
+
+	// Still no video codec? Then this is game over:
+	if (capdev->videoenc == NULL) PsychErrorExitMsg(PsychError_user, "Could not find or setup requested video codec or any fallback codec for video recording. Aborted.");
+
+	// Attach our video encoder:
+	g_object_set(camera, "video-encoder", capdev->videoenc, NULL);
+	    
+	sprintf(outCodecName, "%s", codecName);
+	return(TRUE);
+}
+
 /* CHECKED TODO
 *      PsychGSOpenVideoCaptureDevice() -- Create a video capture object.
 *
@@ -1012,7 +1224,6 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	GstElement              *videosource = NULL;
 	GstElement              *videosource_filter = NULL;
 	GstElement              *videocrop_filter = NULL;
-	GstElement              *some_element = NULL;
 	GstPad			*pad, *peerpad;
 	GstCaps                 *caps;
 	GstStructure		*str;
@@ -1020,7 +1231,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	gint			rate1, rate2;
 	gint			twidth, theight;
 	int			i;
-	char                    *codecSpec, *codecName;
+	char                    *codecSpec;
+	char                    codecName[1000];
 
 	PsychVidcapRecordType	*capdev = NULL;
 	char			config[1000];
@@ -1374,207 +1586,13 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    }
 
 	    // Create matching video encoder for codecSpec:
-	    // Codecs are sorted by suitability for high quality realtime video recording, so if usercode
-	    // doesn't specify a codec, and thereby requests use of the recommended default codec 'DEFAULTenc',
-	    // we will try to choose the best codec, then on failure fallback to the 2nd best, 3rd best, etc.
-
-	    // Video encoder from parameter string?
-	    if ((some_element = CreateGStreamerElementFromString(codecSpec, "VideoCodec=")) != NULL) {
-		    // Yes. Assign it as our encoder:
-		    capdev->videoenc = some_element;
-
-		    // Need to erase the actual name of the codec from the codecSpec string,
-		    // otherwise our code below would get confused.
-		    codecName = strstr(codecSpec, "VideoCodec=");
-		    codecName+= strlen("VideoCodec=");
-		    while ((*codecName > 0) && (*codecName != ' ')) *(codecName++) = 'X';
-
-		    codecName = strdup("Config Defined");
+	    if (PsychSetupRecordingPipeFromString(capdev, codecSpec, codecName)) {
+		    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Video%s recording into file [%s] enabled for device %i. Codec is [%s].\n",
+								  ((recordingflags & 2) ? " and audio" : ""), targetmoviefilename, deviceIndex, codecName);
+	    } else {
+		    PsychErrorExitMsg(PsychError_system, "Setup of video recording failed. Reason hopefully given above.");
 	    }
 
-	    // Start with H264 encoder as default:
-	    if (strstr(codecSpec, "x264enc") || strstr(codecSpec, "1635148593") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
-		    capdev->videoenc = gst_element_factory_make ("x264enc", "ptbvideocodec0");
-		    if (!capdev->videoenc) {
-			    printf("PTB-WARNING: Failed to create 'x264enc' H.264 video encoder! Does not seem to be installed on your system?\n");
-		    }
-		    else {
-			    codecName = strdup("x264enc");
-
-			    // Need to use avi-multiplexer:
-			    g_object_set(camera, "video-muxer", gst_element_factory_make ("avimux", "ptbvideomuxer0"), NULL);
-
-			    // Need to use faac MPEG-4 audio encoder:
-			    g_object_set(camera, "audio-encoder", gst_element_factory_make ("faac", "ptbaudioenc0"), NULL);
-
-			    // Set some reasonable default parameters for the codec, which provide a better
-			    // speed-quality tradeoff for live video recording: (Thanks to Tobias Wolf!)
-
-			    // Speed-Quality profile set to 1 "Ultra fast".
-			    // (1 = "Ultra fast", 2 = "Super fast", 3 = "Very fast",  4 = "Faster", 5 = "Fast",
-			    //  6 = "Medium" - the default,7 = "Slow", 8 = "Slower", 9 = "Very slow")
-			    g_object_set(capdev->videoenc, "speed-preset", 1, NULL);
-			    // g_object_set(capdev->videoenc, "", , NULL);
-			    // g_object_set(capdev->videoenc, "", , NULL);
-		    }
-	    }
-
-	    // Then xvidenc - MPEG4 in a AVI container: High quality, handles 640 x 480 @ 30 fps on
-	    // a 4 year old MacBookPro Core2Duo 2.2 Ghz with about 70% - 100% cpu load, depending on settings.
-	    if (strstr(codecSpec, "xvidenc") || strstr(codecSpec, "1836070006") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
-		    capdev->videoenc = gst_element_factory_make ("xvidenc", "ptbvideocodec0");
-		    if (!capdev->videoenc) {
-			    printf("PTB-WARNING: Failed to create 'xvidenc' xvid/mpeg-4 video encoder! Does not seem to be installed on your system?\n");
-		    }
-		    else {
-			    codecName = strdup("xvidenc");
-
-			    // Need to use avi-multiplexer:
-			    g_object_set(camera, "video-muxer", gst_element_factory_make ("avimux", "ptbvideomuxer0"), NULL);
-
-			    // Need to use faac MPEG-4 audio encoder:
-			    g_object_set(camera, "audio-encoder", gst_element_factory_make ("faac", "ptbaudioenc0"), NULL);
-		    }
-	    }
-
-	    // ffenc_mpeg4 also creates MPEG4, but at lower quality - much more blocky etc.
-	    if (strstr(codecSpec, "ffenc_mpeg4") || ((strstr(codecSpec, "DEFAULTenc") || strstr(codecSpec, "1836070006")) && !capdev->videoenc)) {
-		    capdev->videoenc = gst_element_factory_make ("ffenc_mpeg4", "ptbvideocodec0");
-		    if (!capdev->videoenc) {
-			    printf("PTB-WARNING: Failed to create 'ffenc_mpeg4' mpeg-4 video encoder! Does not seem to be installed on your system?\n");
-		    }
-		    else {
-			    codecName = strdup("ffenc_mpeg4");
-
-			    // Need to use avi-multiplexer:
-			    g_object_set(camera, "video-muxer", gst_element_factory_make ("avimux", "ptbvideomuxer0"), NULL);
-
-			    // Need to use faac MPEG-4 audio encoder:
-			    g_object_set(camera, "audio-encoder", gst_element_factory_make ("faac", "ptbaudioenc0"), NULL);
-		    }
-	    }
-
-	    // Theora + Ogg vorbis audio in .ogv container:
-	    if (strstr(codecSpec, "theoraenc") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
-		    capdev->videoenc = gst_element_factory_make ("theoraenc", "ptbvideocodec0");
-		    if (!capdev->videoenc) {
-			    printf("PTB-WARNING: Failed to create 'theora' video encoder! Does not seem to be installed on your system?\n");
-		    }
-		    else {
-			    codecName = strdup("theoraenc");
-
-			    // Need to use ogg-multiplexer:
-			    g_object_set(camera, "video-muxer", gst_element_factory_make ("oggmux", "ptbvideomuxer0"), NULL);
-
-			    // Need to use vorbis audio encoder:
-			    g_object_set(camera, "audio-encoder", gst_element_factory_make ("vorbisenc", "ptbaudioenc0"), NULL);
-
-			    // Some defaults for the theora encoder:
-			    g_object_set(G_OBJECT(capdev->videoenc), "drop-frames", FALSE, NULL);
-			    g_object_set(G_OBJECT(capdev->videoenc), "speed-level", 2, NULL);
-			    g_object_set(G_OBJECT(capdev->videoenc), "quality", 30, NULL);
-			    g_object_set(G_OBJECT(capdev->videoenc), "keyframe-auto", FALSE, NULL);
-			    g_object_set(G_OBJECT(capdev->videoenc), "keyframe-force", 15, NULL);
-		    }
-	    }
-
-	    // VP-8 in WebM container:
-	    if (strstr(codecSpec, "vp8enc") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
-		    capdev->videoenc = gst_element_factory_make ("vp8enc", "ptbvideocodec0");
-		    if (!capdev->videoenc) {
-			    printf("PTB-WARNING: Failed to create 'vp8enc' VP-8 video encoder! Does not seem to be installed on your system?\n");
-		    }
-		    else {
-			    if (strstr(codecSpec, "DEFAULTenc")) codecName = strdup("vp8enc_webm");
-
-			    // Need to use matroska/webm-multiplexer:
-			    if (strstr(codecName, "_matroska")) g_object_set(camera, "video-muxer", gst_element_factory_make ("matroska", "ptbvideomuxer0"), NULL);
-			    if (strstr(codecName, "_webm")) g_object_set(camera, "video-muxer", gst_element_factory_make ("webmmuxer", "ptbvideomuxer0"), NULL);
-
-			    // Need to use vorbis audio encoder:
-			    g_object_set(camera, "audio-encoder", gst_element_factory_make ("vorbisenc", "ptbaudioenc0"), NULL);
-		    }
-	    }
-
-	    // H263 -- Does not work well yet.
-	    if (strstr(codecSpec, "ffenc_h263p") || strstr(codecSpec, "1748121139") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
-		    capdev->videoenc = gst_element_factory_make ("ffenc_h263p", "ptbvideocodec0");
-		    if (!capdev->videoenc) {
-			    printf("PTB-WARNING: Failed to create 'ffenc_h263p' H.263 video encoder! Does not seem to be installed on your system?\n");
-		    }
-		    else {
-			    codecName = strdup("ffenc_h263p");
-
-			    // Need to use Quicktime-Multiplexer:
-			    g_object_set(camera, "video-muxer", gst_element_factory_make ("qtmux", "ptbvideomuxer0"), NULL);
-
-			    // Need to use faac MPEG-4 audio encoder:
-			    g_object_set(camera, "audio-encoder", gst_element_factory_make ("faac", "ptbaudioenc0"), NULL);
-		    }
-	    }
-
-	    // Raw Huffman encoded YUV -- Does not work yet.
-	    if (strstr(codecSpec, "huffyuv") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
-		    capdev->videoenc = gst_element_factory_make ("ffenc_huffyuv", "ptbvideocodec0");
-		    if (!capdev->videoenc) {
-			    printf("PTB-WARNING: Failed to create 'ffenc_huffyuv' YUV video encoder! Does not seem to be installed on your system?\n");
-		    }
-		    else {
-			    codecName = strdup("huffyuv");
-
-			    // Need to use matroska-multiplexer:
-			    g_object_set(camera, "video-muxer", gst_element_factory_make ("matroskamux", "ptbvideomuxer0"), NULL);
-
-			    // Need to use faac MPEG-4 audio encoder:
-			    g_object_set(camera, "audio-encoder", gst_element_factory_make ("faac", "ptbaudioenc0"), NULL);
-		    }
-	    }
-
-	    // Raw YUV: -- Does not work yet.
-	    if (strstr(codecSpec, "yuvraw") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
-		    capdev->videoenc = gst_element_factory_make ("identity", "ptbvideocodec0");
-		    if (!capdev->videoenc) {
-			    printf("PTB-WARNING: Failed to create 'identity' YUV pass-through video encoder! Does not seem to be installed on your system?\n");
-		    }
-		    else {
-			    codecName = strdup("yuvraw");
-
-			    // Need to use avi-multiplexer:
-			    g_object_set(camera, "video-muxer", gst_element_factory_make ("avimux", "ptbvideomuxer0"), NULL);
-
-			    // Need to use faac MPEG-4 audio encoder:
-			    g_object_set(camera, "audio-encoder", gst_element_factory_make ("faac", "ptbaudioenc0"), NULL);
-		    }
-	    }
-
-	    // Audio encoder from parameter string?
-	    if ((some_element = CreateGStreamerElementFromString(codecSpec, "AudioCodec=")) != NULL) {
-		    g_object_set(camera, "audio-encoder", some_element, NULL);
-	    }
-
-	    // Audio source from parameter string?
-	    if ((some_element = CreateGStreamerElementFromString(codecSpec, "AudioSource=")) != NULL) {
-		    g_object_set(camera, "audio-source", some_element, NULL);
-	    }
-
-	    // Multiplexer from parameter string?
-	    if (strstr(codecSpec, "Muxer=")) {
-		    // Must create it without help of CreateGStreamerElementFromString() as the muxer has
-		    // 2 sink pads, but our method can only handle 1 sink pad. Therefore just create a
-		    // muxer by name, setting it to its default settings:
-		    codecSpec = strstr(codecSpec, "Muxer=");
-		    codecSpec+= strlen("Muxer=");
-		    g_object_set(camera, "video-muxer", gst_element_factory_make(codecSpec, "ptbvideomuxer0"), NULL);
-	    }
-
-	    // Still no video codec? Then this is game over:
-	    if (capdev->videoenc == NULL) PsychErrorExitMsg(PsychError_user, "Could not find or setup requested video codec or any fallback codec for video recording. Aborted.");
-
-	    // Attach our video encoder:
-	    g_object_set(camera, "video-encoder", capdev->videoenc, NULL);
-	    
-	    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Video%s recording into file [%s] enabled for device %i. Codec is [%s].\n",
-							 ((recordingflags & 2) ? " and audio" : ""), targetmoviefilename, deviceIndex, codecName);
 	    capdev->targetmoviefilename = strdup(targetmoviefilename); 
 	    capdev->recording_active = TRUE;
     } else {
