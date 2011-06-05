@@ -60,6 +60,8 @@ static char synopsisString[] =
 "video stream. If you want to use a specific codec, you can extend the targetmoviename by a string of "
 "format :CodecType=xxx , where xxx is the numeric type id or name of the codec. You can get a list of codecs "
 "supported by your system by running PTB's recording engine at a verbosity level of 4 or higher.\n"
+"However, please read 'help VideoRecording' for many more options for tweaking the video recording "
+"process via the 'targetmoviename' parameter.\n"
 "'recordingflags' specify the behaviour of harddisc- "
 "recording: 0 (default) = Only record video. 2 = Record audio track as well. The value 1 (or 1+2) asks "
 "PTB to first record into system memory, and only write the movie file after capture has been stopped. "

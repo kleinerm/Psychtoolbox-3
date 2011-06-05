@@ -351,7 +351,7 @@ static gboolean PsychVideoBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
       GError *error;
 
       gst_message_parse_warning(msg, &error, &debug);
-      if (PsychPrefStateGet_Verbosity() > 1) { 
+      if (PsychPrefStateGet_Verbosity() > 3) { 
 	      printf("PTB-WARNING: GStreamer videocapture engine reports this warning:\n"
 		     "             Warning from element %s: %s\n", GST_OBJECT_NAME(msg->src), error->message);
 	      printf("             Additional debug info: %s.\n", (debug) ? debug : "None");
@@ -937,7 +937,7 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
 
 // Parse codecSpec string, check for certain element specs. If found, parse them
 // and create corresponding GstElement*, otherwise return NULL.
-GstElement* CreateGStreamerElementFromString(const char* codecSpec, const char* typeSpec)
+GstElement* CreateGStreamerElementFromString(const char* codecSpec, const char* typeSpec, char* codecParams)
 {
 	char *codecPipelineSpec, *codecPipelineEnd;
 	GstElement* element = NULL;
@@ -967,29 +967,106 @@ GstElement* CreateGStreamerElementFromString(const char* codecSpec, const char* 
 		element = gst_parse_bin_from_description((const gchar *) codecPipelineSpec, TRUE, NULL);
 		if (element == NULL) {
 			// Oopsie:
-			printf("PTB-WARNING: Failed to create a encoder element of type '%s' from the following passed parameter string:\n", typeSpec);
-			printf("PTB-WARNING: %s\n", codecPipelineSpec);
-			printf("PTB-WARNING: Will revert to default settings for this element. This will likely fail soon...\n");
-			printf("PTB-WARNING: Full parameter string was:\n");
-			printf("PTB-WARNING: %s\n", codecSpec);
+			if (PsychPrefStateGet_Verbosity() > 1) {
+				printf("PTB-WARNING: Failed to create an encoder element of type '%s' from the following passed parameter string:\n", typeSpec);
+				printf("PTB-WARNING: %s\n", codecPipelineSpec);
+				printf("PTB-WARNING: Will revert to default settings for this element. This will likely fail soon...\n");
+				printf("PTB-WARNING: Full parameter string was:\n");
+				printf("PTB-WARNING: %s\n", codecSpec);
+			}
 		}
 		else {
 			// Success!
 			if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Element '%s' created from spec '%s'.\n", typeSpec, codecPipelineSpec);
 		}
+		sprintf(codecParams, "%s", codecPipelineSpec);
 		free(codecPipelineSpec);
 	}
 
 	return(element);
 }
 
-psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char* codecSpec, char* outCodecName)
+psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char* codecSpec, char* outCodecName, psych_bool launchline)
 {
 	GstElement *camera = NULL;
 	GstElement *some_element = NULL;
-	char *codecName = NULL;
+	GstElement *audio_enc = NULL;
+	GstElement *audio_src = NULL;
+	GstElement *muxer_elt = NULL;
 
+	char *codecName = NULL;
+	char *codecSep  = NULL;
+	char muxer[1000];
+	char audiocodec[1000];
+	char videocodec[1000];
+	char codecoption[1000];
+	char audiosrc[1000];
+
+	int interlaced = -1;
+	int keyFrameInterval = -1;
+	float videoQuality = -1;
+	float audioQuality = -1;
+	int audioBitrate = -1;
+	int videoBitrate = -1;
+	int bigFiles = -1;
+	int fastStart = -1;
+	int indexItemsSec = -1;
+
+	memset(muxer, 0, sizeof(muxer));
+	memset(audiosrc, 0, sizeof(audiosrc));
+	memset(audiocodec, 0, sizeof(audiocodec));
+	memset(videocodec, 0, sizeof(videocodec));
+
+	// Get camera object - the camerabin2:
 	camera = capdev->camera;
+
+	// Parse and assign high-level properties if any:
+	codecSep = strstr(codecSpec, "Interlaced=");
+	if (codecSep) {
+		sscanf(codecSep, "Interlaced=%i", &interlaced);
+	}
+
+	codecSep = strstr(codecSpec, "Keyframe=");
+	if (codecSep) {
+		sscanf(codecSep, "Keyframe=%i", &keyFrameInterval);
+	}
+
+	// Audio bit rate in kBit/Sec
+	codecSep = strstr(codecSpec, "Audiobitrate=");
+	if (codecSep) {
+		sscanf(codecSep, "Audiobitrate=%i", &audioBitrate);
+	}
+
+	// Video bit rate in kBit/Sec
+	codecSep = strstr(codecSpec, "Videobitrate=");
+	if (codecSep) {
+		sscanf(codecSep, "Videobitrate=%i", &videoBitrate);
+	}
+
+	codecSep = strstr(codecSpec, "Bigfiles=");
+	if (codecSep) {
+		sscanf(codecSep, "Bigfiles=%i", &bigFiles);
+	}
+
+	codecSep = strstr(codecSpec, "Faststart=");
+	if (codecSep) {
+		sscanf(codecSep, "Faststart=%i", &fastStart);
+	}
+
+	codecSep = strstr(codecSpec, "Timeresolution=");
+	if (codecSep) {
+		sscanf(codecSep, "Timeresolution=%i", &indexItemsSec);
+	}
+
+	codecSep = strstr(codecSpec, "Videoquality=");
+	if (codecSep) {
+		sscanf(codecSep, "Videoquality=%f", &videoQuality);
+	}
+
+	codecSep = strstr(codecSpec, "Audioquality=");
+	if (codecSep) {
+		sscanf(codecSep, "Audioquality=%f", &audioQuality);
+	}
 
 	// Create matching video encoder for codecSpec:
 	// Codecs are sorted by suitability for high quality realtime video recording, so if usercode
@@ -997,182 +1074,431 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 	// we will try to choose the best codec, then on failure fallback to the 2nd best, 3rd best, etc.
 
 	// Video encoder from parameter string?
-	if ((some_element = CreateGStreamerElementFromString(codecSpec, "VideoCodec=")) != NULL) {
+	if ((some_element = CreateGStreamerElementFromString(codecSpec, "VideoCodec=", videocodec)) != NULL) {
 		// Yes. Assign it as our encoder:
 		capdev->videoenc = some_element;
 
-		// Need to erase the actual name of the codec from the codecSpec string,
-		// otherwise our code below would get confused.
+		// Need to extract the actual name of the codec from the codecSpec string:
 		codecName = strstr(codecSpec, "VideoCodec=");
 		codecName+= strlen("VideoCodec=");
-		while ((*codecName > 0) && (*codecName != ' ')) *(codecName++) = 'X';
+		codecName = strdup(codecName);
+		codecSep = codecName;
+		while ((*codecSep > 0) && (*codecSep != ' ')) codecSep++;
+		*codecSep = 0;
 
-		codecName = strdup("Config Defined");
+		sprintf(outCodecName, "%s", codecName);
+		free(codecName);
+		codecName = NULL;
 	}
 
 	// Start with H264 encoder as default:
 	if (strstr(codecSpec, "x264enc") || strstr(codecSpec, "1635148593") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
-		capdev->videoenc = gst_element_factory_make ("x264enc", "ptbvideocodec0");
+		// Define recommended (compatible) audioencoder/muxer and their default options:
+		sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+		sprintf(muxer, "avimux");                // Need to use avi-multiplexer.
+
+		// Videoencoder not yet created? If so, we have to do it now:
+		if (!capdev->videoenc) {
+			// Not yet created. Create full codec & option string from high level properties,
+			// if any, then create based on string:
+			sprintf(videocodec, "VideoCodec=x264enc ");
+
+			// Interlace flag specified?
+			if (interlaced >= 0) {
+				// Enable or disable handling of interlaced input video stream:
+				sprintf(codecoption, "interlaced=%i ", (interlaced) ? 1 : 0);
+				strcat(videocodec, codecoption);
+			}
+
+			// Keyframe interval specified?
+			if (keyFrameInterval >= 0) {
+				// Assign maximum distance between key frames:
+				sprintf(codecoption, "key-int-max=%i ", keyFrameInterval);
+				strcat(videocodec, codecoption);
+			}
+
+			// Quality vs. Speed tradeoff specified?
+			if (videoQuality >= 0) {
+				// Yes: Map quality vs. speed scalar to 0-10 number for speed preset:
+				if (videoQuality > 1) videoQuality = 1;
+
+				// Speed-Quality profile set to 1 "Ultra fast".
+				// (1 = "Ultra fast", 2 = "Super fast", 3 = "Very fast",  4 = "Faster", 5 = "Fast",
+				//  6 = "Medium" - the default,7 = "Slow", 8 = "Slower", 9 = "Very slow")
+				sprintf(codecoption, "speed-preset=%i ", (int) (videoQuality * 10.0 + 0.5));
+				strcat(videocodec, codecoption);
+			}
+			else {
+				// No: Use the fastest speed at lowest quality:
+				strcat(videocodec, "speed-preset=1 ");
+			}
+
+			// Bitrate specified?
+			if (videoBitrate >= 0) {
+				sprintf(codecoption, "bitrate=%i ", (int) videoBitrate);
+				strcat(videocodec, codecoption);
+			}
+
+			// Create videocodec from options string:
+			capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+		}
+
 		if (!capdev->videoenc) {
 			printf("PTB-WARNING: Failed to create 'x264enc' H.264 video encoder! Does not seem to be installed on your system?\n");
 		}
 		else {
-			codecName = strdup("x264enc");
-
-			// Need to use avi-multiplexer:
-			g_object_set(camera, "video-muxer", gst_element_factory_make ("avimux", "ptbvideomuxer0"), NULL);
-
-			// Need to use faac MPEG-4 audio encoder:
-			g_object_set(camera, "audio-encoder", gst_element_factory_make ("faac", "ptbaudioenc0"), NULL);
-
-			// Set some reasonable default parameters for the codec, which provide a better
-			// speed-quality tradeoff for live video recording: (Thanks to Tobias Wolf!)
-
-			// Speed-Quality profile set to 1 "Ultra fast".
-			// (1 = "Ultra fast", 2 = "Super fast", 3 = "Very fast",  4 = "Faster", 5 = "Fast",
-			//  6 = "Medium" - the default,7 = "Slow", 8 = "Slower", 9 = "Very slow")
-			g_object_set(capdev->videoenc, "speed-preset", 1, NULL);
-			// g_object_set(capdev->videoenc, "", , NULL);
-			// g_object_set(capdev->videoenc, "", , NULL);
+			sprintf(outCodecName, "x264enc");
 		}
 	}
 
 	// Then xvidenc - MPEG4 in a AVI container: High quality, handles 640 x 480 @ 30 fps on
 	// a 4 year old MacBookPro Core2Duo 2.2 Ghz with about 70% - 100% cpu load, depending on settings.
 	if (strstr(codecSpec, "xvidenc") || strstr(codecSpec, "1836070006") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
-		capdev->videoenc = gst_element_factory_make ("xvidenc", "ptbvideocodec0");
+		// Define recommended (compatible) audioencoder/muxer and their default options:
+		sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+		sprintf(muxer, "avimux");                // Need to use avi-multiplexer.
+
+		// Videoencoder not yet created? If so, we have to do it now:
+		if (!capdev->videoenc) {
+			// Not yet created. Create full codec & option string from high level properties,
+			// if any, then create based on string:
+			sprintf(videocodec, "VideoCodec=xvidenc ");
+
+			// Interlace flag specified?
+			if (interlaced >= 0) {
+				// Enable or disable handling of interlaced input video stream:
+				sprintf(codecoption, "interlaced=%i ", (interlaced) ? 1 : 0);
+				strcat(videocodec, codecoption);
+			}
+
+			// Keyframe interval specified?
+			if (keyFrameInterval >= 0) {
+				// Assign maximum distance between key frames:
+				sprintf(codecoption, "max-key-interval=%i ", keyFrameInterval);
+				strcat(videocodec, codecoption);
+			}
+
+			// Quality vs. Speed tradeoff specified?
+			if (videoBitrate >= 0) {
+				sprintf(codecoption, "bitrate=%i ", (int) videoBitrate * 1024);
+				strcat(videocodec, codecoption);
+			}
+
+			// Create videocodec from options string:
+			capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+		}
+
 		if (!capdev->videoenc) {
 			printf("PTB-WARNING: Failed to create 'xvidenc' xvid/mpeg-4 video encoder! Does not seem to be installed on your system?\n");
 		}
 		else {
-			codecName = strdup("xvidenc");
-
-			// Need to use avi-multiplexer:
-			g_object_set(camera, "video-muxer", gst_element_factory_make ("avimux", "ptbvideomuxer0"), NULL);
-
-			// Need to use faac MPEG-4 audio encoder:
-			g_object_set(camera, "audio-encoder", gst_element_factory_make ("faac", "ptbaudioenc0"), NULL);
+			sprintf(outCodecName, "xvidenc");
 		}
 	}
 
 	// ffenc_mpeg4 also creates MPEG4, but at lower quality - much more blocky etc.
 	if (strstr(codecSpec, "ffenc_mpeg4") || ((strstr(codecSpec, "DEFAULTenc") || strstr(codecSpec, "1836070006")) && !capdev->videoenc)) {
-		capdev->videoenc = gst_element_factory_make ("ffenc_mpeg4", "ptbvideocodec0");
+		// Define recommended (compatible) audioencoder/muxer and their default options:
+		sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+		sprintf(muxer, "avimux");                // Need to use avi-multiplexer.
+
+		// Videoencoder not yet created? If so, we have to do it now:
+		if (!capdev->videoenc) {
+			// Not yet created. Create full codec & option string from high level properties,
+			// if any, then create based on string:
+			sprintf(videocodec, "VideoCodec=ffenc_mpeg4 ");
+
+			// Interlace flag specified?
+			if (interlaced >= 0) {
+				// Enable or disable handling of interlaced input video stream:
+				sprintf(codecoption, "interlaced=%i ", (interlaced) ? 1 : 0);
+				strcat(videocodec, codecoption);
+			}
+
+			// Keyframe interval specified?
+			if (keyFrameInterval >= 0) {
+				// Assign maximum distance between key frames:
+				sprintf(codecoption, "max-key-interval=%i ", keyFrameInterval);
+				strcat(videocodec, codecoption);
+			}
+
+			// Quality vs. Speed tradeoff specified?
+			if (videoBitrate >= 0) {
+				sprintf(codecoption, "bitrate=%i ", (int) videoBitrate * 1024);
+				strcat(videocodec, codecoption);
+			}
+
+			// Create videocodec from options string:
+			capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+		}
+
 		if (!capdev->videoenc) {
 			printf("PTB-WARNING: Failed to create 'ffenc_mpeg4' mpeg-4 video encoder! Does not seem to be installed on your system?\n");
 		}
 		else {
-			codecName = strdup("ffenc_mpeg4");
-
-			// Need to use avi-multiplexer:
-			g_object_set(camera, "video-muxer", gst_element_factory_make ("avimux", "ptbvideomuxer0"), NULL);
-
-			// Need to use faac MPEG-4 audio encoder:
-			g_object_set(camera, "audio-encoder", gst_element_factory_make ("faac", "ptbaudioenc0"), NULL);
+			sprintf(outCodecName, "ffenc_mpeg4");
 		}
 	}
 
 	// Theora + Ogg vorbis audio in .ogv container:
 	if (strstr(codecSpec, "theoraenc") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
-		capdev->videoenc = gst_element_factory_make ("theoraenc", "ptbvideocodec0");
+		// Define recommended (compatible) audioencoder/muxer and their default options:
+		sprintf(audiocodec, "AudioCodec=vorbisenc "); // Need to use Ogg Vorbis audio encoder.
+		sprintf(muxer, "oggmux");                // Need to use Ogg-multiplexer.
+
+		// Videoencoder not yet created? If so, we have to do it now:
 		if (!capdev->videoenc) {
-			printf("PTB-WARNING: Failed to create 'theora' video encoder! Does not seem to be installed on your system?\n");
+			// Not yet created. Create full codec & option string from high level properties,
+			// if any, then create based on string:
+			sprintf(videocodec, "VideoCodec=theoraenc drop-frames=0 speed-level=2 ");
+
+			// Keyframe interval specified?
+			if (keyFrameInterval >= 0) {
+				// Assign maximum distance between key frames:
+				sprintf(codecoption, "keyframe-auto=0 keyframe-force=%i ", keyFrameInterval);
+				strcat(videocodec, codecoption);
+			}
+
+			// Quality vs. Speed tradeoff specified?
+			if (videoQuality >= 0) {
+				// Yes: Map quality vs. speed scalar to 0-63 number:
+				if (videoQuality > 1) videoQuality = 1;
+
+				sprintf(codecoption, "quality=%i ", (int) (videoQuality * 63.0 + 0.5));
+				strcat(videocodec, codecoption);
+			}
+
+			// Quality vs. Speed tradeoff specified?
+			if (videoBitrate >= 0) {
+				sprintf(codecoption, "bitrate=%i ", (int) videoBitrate);
+				strcat(videocodec, codecoption);
+			}
+
+			// Create videocodec from options string:
+			capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+		}
+
+		if (!capdev->videoenc) {
+			printf("PTB-WARNING: Failed to create 'theoraenc' video encoder! Does not seem to be installed on your system?\n");
 		}
 		else {
-			codecName = strdup("theoraenc");
-
-			// Need to use ogg-multiplexer:
-			g_object_set(camera, "video-muxer", gst_element_factory_make ("oggmux", "ptbvideomuxer0"), NULL);
-
-			// Need to use vorbis audio encoder:
-			g_object_set(camera, "audio-encoder", gst_element_factory_make ("vorbisenc", "ptbaudioenc0"), NULL);
-
-			// Some defaults for the theora encoder:
-			g_object_set(G_OBJECT(capdev->videoenc), "drop-frames", FALSE, NULL);
-			g_object_set(G_OBJECT(capdev->videoenc), "speed-level", 2, NULL);
-			g_object_set(G_OBJECT(capdev->videoenc), "quality", 30, NULL);
-			g_object_set(G_OBJECT(capdev->videoenc), "keyframe-auto", FALSE, NULL);
-			g_object_set(G_OBJECT(capdev->videoenc), "keyframe-force", 15, NULL);
+			sprintf(outCodecName, "theoraenc");
 		}
 	}
 
 	// VP-8 in WebM container:
 	if (strstr(codecSpec, "vp8enc") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
-		capdev->videoenc = gst_element_factory_make ("vp8enc", "ptbvideocodec0");
+		// Define recommended (compatible) audioencoder/muxer and their default options:
+		sprintf(audiocodec, "AudioCodec=vorbisenc "); // Need to use Ogg Vorbis audio encoder.
+		sprintf(muxer, "webmmux");                    // Default to WebM multiplexer.
+
+		// Need to use matroska/webm-multiplexer:
+		if (strstr(codecSpec, "_matroska")) sprintf(muxer, "matroskamux");
+		if (strstr(codecSpec, "_webm")) sprintf(muxer, "webmmux");
+
+		// Videoencoder not yet created? If so, we have to do it now:
+		if (!capdev->videoenc) {
+			// Not yet created. Create full codec & option string from high level properties,
+			// if any, then create based on string:
+			sprintf(videocodec, "VideoCodec=vp8enc ");
+
+			// Keyframe interval specified?
+			if (keyFrameInterval >= 0) {
+				// Assign maximum distance between key frames:
+				sprintf(codecoption, "max-keyframe-distance=%i ", keyFrameInterval);
+				strcat(videocodec, codecoption);
+			}
+
+			// Quality vs. Speed tradeoff specified?
+			if (videoQuality >= 0) {
+				// Yes: Map quality vs. speed scalar to 0-10 number:
+				if (videoQuality > 1) videoQuality = 1;
+
+				sprintf(codecoption, "quality=%i ", (int) (videoQuality * 10.0 + 0.5));
+				strcat(videocodec, codecoption);
+			}
+
+			// Quality vs. Speed tradeoff specified?
+			if (videoBitrate >= 0) {
+				sprintf(codecoption, "bitrate=%i ", (int) videoBitrate * 1024);
+				strcat(videocodec, codecoption);
+			}
+
+			// Create videocodec from options string:
+			capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+		}
+
 		if (!capdev->videoenc) {
 			printf("PTB-WARNING: Failed to create 'vp8enc' VP-8 video encoder! Does not seem to be installed on your system?\n");
 		}
 		else {
-			if (strstr(codecSpec, "DEFAULTenc")) codecName = strdup("vp8enc_webm");
-
-			// Need to use matroska/webm-multiplexer:
-			if (strstr(codecName, "_matroska")) g_object_set(camera, "video-muxer", gst_element_factory_make ("matroska", "ptbvideomuxer0"), NULL);
-			if (strstr(codecName, "_webm")) g_object_set(camera, "video-muxer", gst_element_factory_make ("webmmuxer", "ptbvideomuxer0"), NULL);
-
-			// Need to use vorbis audio encoder:
-			g_object_set(camera, "audio-encoder", gst_element_factory_make ("vorbisenc", "ptbaudioenc0"), NULL);
+			sprintf(outCodecName, "vp8enc");
 		}
 	}
 
 	// H263 -- Does not work well yet.
 	if (strstr(codecSpec, "ffenc_h263p") || strstr(codecSpec, "1748121139") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
-		capdev->videoenc = gst_element_factory_make ("ffenc_h263p", "ptbvideocodec0");
+		// Define recommended (compatible) audioencoder/muxer and their default options:
+		sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+		sprintf(muxer, "qtmux");                 // Need to use Quicktime-Multiplexer.
+
+		// Videoencoder not yet created? If so, we have to do it now:
+		if (!capdev->videoenc) {
+			// Not yet created. Create full codec & option string from high level properties,
+			// if any, then create based on string:
+			sprintf(videocodec, "VideoCodec=ffenc_h263p ");
+
+			// Interlace flag specified?
+			if (interlaced >= 0) {
+				// Enable or disable handling of interlaced input video stream:
+				sprintf(codecoption, "interlaced=%i ", (interlaced) ? 1 : 0);
+				strcat(videocodec, codecoption);
+			}
+
+			// Keyframe interval specified?
+			if (keyFrameInterval >= 0) {
+				// Assign maximum distance between key frames:
+				sprintf(codecoption, "max-key-interval=%i ", keyFrameInterval);
+				strcat(videocodec, codecoption);
+			}
+
+			// Quality vs. Speed tradeoff specified?
+			if (videoBitrate >= 0) {
+				sprintf(codecoption, "bitrate=%i ", (int) videoBitrate * 1024);
+				strcat(videocodec, codecoption);
+			}
+
+			// Create videocodec from options string:
+			capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+		}
+
 		if (!capdev->videoenc) {
 			printf("PTB-WARNING: Failed to create 'ffenc_h263p' H.263 video encoder! Does not seem to be installed on your system?\n");
 		}
 		else {
-			codecName = strdup("ffenc_h263p");
-
-			// Need to use Quicktime-Multiplexer:
-			g_object_set(camera, "video-muxer", gst_element_factory_make ("qtmux", "ptbvideomuxer0"), NULL);
-
-			// Need to use faac MPEG-4 audio encoder:
-			g_object_set(camera, "audio-encoder", gst_element_factory_make ("faac", "ptbaudioenc0"), NULL);
+			sprintf(outCodecName, "ffenc_h263p");
 		}
 	}
 
 	// Raw Huffman encoded YUV -- Does not work yet.
 	if (strstr(codecSpec, "huffyuv") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
-		capdev->videoenc = gst_element_factory_make ("ffenc_huffyuv", "ptbvideocodec0");
+		// Define recommended (compatible) audioencoder/muxer and their default options:
+		sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+		sprintf(muxer, "matroskamux");           // Need to use Matroska-Multiplexer.
+
+		// Videoencoder not yet created? If so, we have to do it now:
 		if (!capdev->videoenc) {
-		printf("PTB-WARNING: Failed to create 'ffenc_huffyuv' YUV video encoder! Does not seem to be installed on your system?\n");
+			// Not yet created. Create full codec & option string from high level properties,
+			// if any, then create based on string:
+			sprintf(videocodec, "VideoCodec=ffenc_huffyuv ");
+
+			// Keyframe interval specified?
+			if (keyFrameInterval >= 0) {
+				// Assign maximum distance between key frames:
+				sprintf(codecoption, "gop-size=%i ", keyFrameInterval);
+				strcat(videocodec, codecoption);
+			}
+
+			// Quality vs. Speed tradeoff specified?
+			if (videoBitrate >= 0) {
+				sprintf(codecoption, "bitrate=%i ", (int) videoBitrate * 1024);
+				strcat(videocodec, codecoption);
+			}
+
+			// Create videocodec from options string:
+			capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+		}
+
+		if (!capdev->videoenc) {
+			printf("PTB-WARNING: Failed to create 'ffenc_huffyuv' YUV video encoder! Does not seem to be installed on your system?\n");
 		}
 		else {
-			codecName = strdup("huffyuv");
-
-			// Need to use matroska-multiplexer:
-			g_object_set(camera, "video-muxer", gst_element_factory_make ("matroskamux", "ptbvideomuxer0"), NULL);
-
-			// Need to use faac MPEG-4 audio encoder:
-			g_object_set(camera, "audio-encoder", gst_element_factory_make ("faac", "ptbaudioenc0"), NULL);
+			sprintf(outCodecName, "ffenc_huffyuv");
 		}
 	}
 
 	// Raw YUV: -- Does not work yet.
 	if (strstr(codecSpec, "yuvraw") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
-		capdev->videoenc = gst_element_factory_make ("identity", "ptbvideocodec0");
+		// Define recommended (compatible) audioencoder/muxer and their default options:
+		sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+		sprintf(muxer, "avimux");                // Need to use AVI-Multiplexer.
+
+		// Videoencoder not yet created? If so, we have to do it now:
+		if (!capdev->videoenc) {
+			// Not yet created. Create full codec & option string from high level properties,
+			// if any, then create based on string:
+			sprintf(videocodec, "VideoCodec=identity ");
+
+			// Create videocodec from options string:
+			capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+		}
+
 		if (!capdev->videoenc) {
 			printf("PTB-WARNING: Failed to create 'identity' YUV pass-through video encoder! Does not seem to be installed on your system?\n");
 		}
 		else {
-			codecName = strdup("yuvraw");
-
-			// Need to use avi-multiplexer:
-			g_object_set(camera, "video-muxer", gst_element_factory_make ("avimux", "ptbvideomuxer0"), NULL);
-
-			// Need to use faac MPEG-4 audio encoder:
-			g_object_set(camera, "audio-encoder", gst_element_factory_make ("faac", "ptbaudioenc0"), NULL);
+			sprintf(outCodecName, "yuvraw");
 		}
 	}
 
 	// Audio encoder from parameter string?
-	if ((some_element = CreateGStreamerElementFromString(codecSpec, "AudioCodec=")) != NULL) {
-		g_object_set(camera, "audio-encoder", some_element, NULL);
+	if ((audio_enc = CreateGStreamerElementFromString(codecSpec, "AudioCodec=", audiocodec)) != NULL) {
+		// Yes: Assign it.
+	} else {
+		// No: Build from preset as defined by video codec and some high level settings:
+
+		// Audio quality flag specified?
+		if (audioQuality >= 0) {
+			if (audioQuality > 1) audioQuality = 1;
+
+			if (strstr(audiocodec, "faac")) {
+				// Map quality range 0.0 - 1.0 to bitrate range 0 - 320000 bits/sec:
+				sprintf(codecoption, "bitrate=%i ", (int) (audioQuality * 320000));
+				strcat(audiocodec, codecoption);
+			}
+
+			if (strstr(audiocodec, "vorbisenc")) {
+				// Assign quality range 0.0 - 1.0 directly:
+				sprintf(codecoption, "quality=%f ", audioQuality);
+				strcat(audiocodec, codecoption);
+			}
+		}
+
+		// Audio bitrate specified?
+		if (audioBitrate >= 0) {
+			if (strstr(audiocodec, "faac")) {
+				sprintf(codecoption, "bitrate=%i ", audioBitrate * 1024);
+				strcat(audiocodec, codecoption);
+			}
+
+			if (strstr(audiocodec, "vorbisenc")) {
+				sprintf(codecoption, "managed=1 bitrate=%i ", audioBitrate * 1024);
+				strcat(audiocodec, codecoption);
+			}
+		}
+
+		// Create audio encoder:
+		if ((audio_enc = CreateGStreamerElementFromString(audiocodec, "AudioCodec=", audiocodec)) != NULL) {
+			// Yes: Assign it.
+			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Created audio encoder according to: %s\n", audiocodec);
+		} else {
+			if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Failed to create requested audio encoder [%s]! Falling back to default encoder.\n", audiocodec);
+		}
 	}
 
-	// Audio source from parameter string?
-	if ((some_element = CreateGStreamerElementFromString(codecSpec, "AudioSource=")) != NULL) {
-		g_object_set(camera, "audio-source", some_element, NULL);
+	// Audio source from parameter string? Most of the time usercode would not want
+	// to change type/assignment/source parameters of a source. Also, the available
+	// settings are common enough across sources that it doesn't make sense for us to
+	// introduce our own high-level parameters. Therefore we only provide the low-level
+	// interface here.
+	// Interesting sources would be: alsasrc, osssrc, oss4src, pulsesrc, jackaudiosrc,
+	// autoaudiosrc, gconfaudiosrc.
+	//
+	// Interesting settings would be:
+	// device = The audio device name.
+	// server = Audio server name for Jack and PulseAudio.
+	// slave-method = Type of syncing to master clock.
+	if ((audio_src = CreateGStreamerElementFromString(codecSpec, "AudioSource=", audiosrc)) != NULL) {
 	}
 
 	// Multiplexer from parameter string?
@@ -1182,16 +1508,94 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 		// muxer by name, setting it to its default settings:
 		codecSpec = strstr(codecSpec, "Muxer=");
 		codecSpec+= strlen("Muxer=");
-		g_object_set(camera, "video-muxer", gst_element_factory_make(codecSpec, "ptbvideomuxer0"), NULL);
+		muxer_elt = gst_element_factory_make(codecSpec, "ptbvideomuxer0");
+		sprintf(muxer, "%s", codecSpec);
+	} else {
+		// As assigned by video codec init path:
+		muxer_elt = gst_element_factory_make(muxer, "ptbvideomuxer0");
+	}
+
+	// Special muxer-specific setup of mux parameters:
+	if (strstr(muxer, "avimux")) {
+		// Big file writing support (> 2GB) is on by default. This allows to change it:
+		if (bigFiles >= 0) {
+			g_object_set(muxer_elt, "bigfile", (bigFiles > 0) ? 1 : 0, NULL);
+			sprintf(codecoption, " bigfile=%i", (bigFiles > 0) ? 1 : 0);
+			strcat(muxer, codecoption);
+		}
+	}
+	
+	if (strstr(muxer, "qtmux")) {
+		// Big file writing support (> 2GB) is off by default. This allows to change it:
+		if (bigFiles >= 0) g_object_set(muxer_elt, "large-file", (bigFiles > 0) ? 1 : 0, NULL);
+
+		if (fastStart >= 0) {
+			// Enable/Disable fast start support for low-latency start of movie playback:
+			g_object_set(muxer_elt, "faststart", (fastStart > 0) ? 1 : 0, NULL);
+			sprintf(codecoption, " faststart=%i", (fastStart > 0) ? 1 : 0);
+			strcat(muxer, codecoption);
+		}
+		else {
+			// Enable fast start support for low-latency start of movie playback:
+			g_object_set(muxer_elt, "faststart", 1, NULL);
+			sprintf(codecoption, " faststart=%i", 1);
+			strcat(muxer, codecoption);
+		}
+
+		if (indexItemsSec >= 0) {
+			// Write seek index entry for each 1/indexItemsSec of movie time:
+			g_object_set(muxer_elt, "movie-timescale", indexItemsSec, NULL);
+			sprintf(codecoption, " movie-timescale=%i", indexItemsSec);
+			strcat(muxer, codecoption);
+		} else {
+			// Write seek index entry for each millisecond of movie time:
+			g_object_set(muxer_elt, "movie-timescale", 1000, NULL);
+			sprintf(codecoption, " movie-timescale=%i", 1000);
+			strcat(muxer, codecoption);
+		}
+	}
+
+	if (strstr(muxer, "matroskamux") || strstr(muxer, "webmmux")) {
+		if (indexItemsSec >= 0) {
+			// Write seek index entry for each 1/indexItemsSec of movie time:
+			g_object_set(muxer_elt, "min-index-interval", (int)  (1e9 / indexItemsSec), NULL);
+			sprintf(codecoption, " min-index-interval=%i", (int) (1e9 / indexItemsSec));
+			strcat(muxer, codecoption);
+		} else {
+			// Write seek index entry for each millisecond (1e6 nanoseconds) of movie time:
+			g_object_set(muxer_elt, "min-index-interval", (int)  1e6, NULL);
+			sprintf(codecoption, " min-index-interval=%i", (int) 1e6);
+			strcat(muxer, codecoption);
+		}
 	}
 
 	// Still no video codec? Then this is game over:
 	if (capdev->videoenc == NULL) PsychErrorExitMsg(PsychError_user, "Could not find or setup requested video codec or any fallback codec for video recording. Aborted.");
+	if (!audio_enc) PsychErrorExitMsg(PsychError_user, "Could not find or setup requested audio codec for recording. Aborted.");
+	if (!muxer_elt) PsychErrorExitMsg(PsychError_user, "Could not find or setup requested audio-video multiplexer for recording. Aborted.");
 
-	// Attach our video encoder:
-	g_object_set(camera, "video-encoder", capdev->videoenc, NULL);
-	    
-	sprintf(outCodecName, "%s", codecName);
+	// Build gst-launch style GStreamer pipeline spec string:
+	// TODO...
+	printf("Audiocodec : %s\n", audiocodec);
+	printf("Videocodec : %s\n", videocodec);
+	printf("Audiosource: %s\n", audiosrc);
+	printf("Multiplexer: %s\n", muxer);
+
+	if (!launchline) {
+		// Attach our created objects to camerabin:
+		g_object_set(camera, "video-encoder", capdev->videoenc, NULL);
+		g_object_set(camera, "audio-encoder", audio_enc, NULL);
+		g_object_set(camera, "video-muxer", muxer_elt, NULL);
+		if (audio_src) g_object_set(camera, "audio-source", audio_src, NULL);
+	} else {
+		// Release our objects, we have our launch line:
+		g_object_unref(G_OBJECT(capdev->videoenc)); capdev->videoenc = NULL;
+		g_object_unref(G_OBJECT(audio_enc));
+		g_object_unref(G_OBJECT(audio_src));
+		g_object_unref(G_OBJECT(muxer_elt));
+		sprintf(outCodecName, "My gst-launch line!");
+	}
+
 	return(TRUE);
 }
 
@@ -1586,7 +1990,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    }
 
 	    // Create matching video encoder for codecSpec:
-	    if (PsychSetupRecordingPipeFromString(capdev, codecSpec, codecName)) {
+	    if (PsychSetupRecordingPipeFromString(capdev, codecSpec, codecName, FALSE)) {
 		    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Video%s recording into file [%s] enabled for device %i. Codec is [%s].\n",
 								  ((recordingflags & 2) ? " and audio" : ""), targetmoviefilename, deviceIndex, codecName);
 	    } else {
