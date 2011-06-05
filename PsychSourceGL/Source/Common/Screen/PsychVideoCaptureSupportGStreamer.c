@@ -11,8 +11,10 @@
  
 	HISTORY:
 	
-	9.01.2010				Created initial version.
-	8.04.2010                               Make video/audio recording work ok.
+	9.01.2011				Created initial version.
+	8.04.2011                               Make video/audio recording work ok.
+	5.06.2011                               Make video/audio recording godo enough
+						for initial release on Linux.
 
 	DESCRIPTION:
 	
@@ -51,9 +53,8 @@
 
 	The following problems/limitations exist, which need to be fixed asap:
 
-        * Some codecs (e.g., huffyuv) don't work yet. Some others show low quality or
-          performance. Need to optimize parameters. Need to provide way to change codec
-          settings. Only the MPEG-4 video codecs show decent performance at 640x480@60fps.
+        * Some codecs (e.g., huffyuv and h263) don't work yet. Some others show low quality or
+          performance. Need to optimize parameters.
 
         * Provide interface to change camera settings like exposure time etc.
 
@@ -1336,6 +1337,30 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 		}
 	}
 
+	// Raw YUV: Works, but only for fixed hard-coded size 640 x 480 by now.
+	if (strstr(codecSpec, "yuvraw") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
+		// Define recommended (compatible) audioencoder/muxer and their default options:
+		sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+		sprintf(muxer, "avimux");                // Need to use AVI-Multiplexer.
+
+		// Videoencoder not yet created? If so, we have to do it now:
+		if (!capdev->videoenc) {
+			// Not yet created. Create full codec & option string from high level properties,
+			// if any, then create based on string:
+			sprintf(videocodec, "VideoCodec=capsfilter caps=\"video/x-raw-yuv, format=(fourcc)I420, width=(int)640, height=(int)480\" ");
+
+			// Create videocodec from options string:
+			capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+		}
+
+		if (!capdev->videoenc) {
+			printf("PTB-WARNING: Failed to create 'capsfilter' YUV pass-through video encoder! Does not seem to be installed on your system?\n");
+		}
+		else {
+			sprintf(outCodecName, "yuvraw");
+		}
+	}
+
 	// H263 -- Does not work well yet.
 	if (strstr(codecSpec, "ffenc_h263p") || strstr(codecSpec, "1748121139") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
 		// Define recommended (compatible) audioencoder/muxer and their default options:
@@ -1384,7 +1409,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 	if (strstr(codecSpec, "huffyuv") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
 		// Define recommended (compatible) audioencoder/muxer and their default options:
 		sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
-		sprintf(muxer, "matroskamux");           // Need to use Matroska-Multiplexer.
+		sprintf(muxer, "avimux");           // Need to use AVI-Multiplexer.
 
 		// Videoencoder not yet created? If so, we have to do it now:
 		if (!capdev->videoenc) {
@@ -1410,34 +1435,10 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 		}
 
 		if (!capdev->videoenc) {
-			printf("PTB-WARNING: Failed to create 'ffenc_huffyuv' YUV video encoder! Does not seem to be installed on your system?\n");
+			printf("PTB-WARNING: Failed to create 'ffenc_huffyuv' compressed YUV lossless video encoder! Does not seem to be installed on your system?\n");
 		}
 		else {
 			sprintf(outCodecName, "ffenc_huffyuv");
-		}
-	}
-
-	// Raw YUV: -- Does not work yet.
-	if (strstr(codecSpec, "yuvraw") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
-		// Define recommended (compatible) audioencoder/muxer and their default options:
-		sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
-		sprintf(muxer, "avimux");                // Need to use AVI-Multiplexer.
-
-		// Videoencoder not yet created? If so, we have to do it now:
-		if (!capdev->videoenc) {
-			// Not yet created. Create full codec & option string from high level properties,
-			// if any, then create based on string:
-			sprintf(videocodec, "VideoCodec=identity ");
-
-			// Create videocodec from options string:
-			capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
-		}
-
-		if (!capdev->videoenc) {
-			printf("PTB-WARNING: Failed to create 'identity' YUV pass-through video encoder! Does not seem to be installed on your system?\n");
-		}
-		else {
-			sprintf(outCodecName, "yuvraw");
 		}
 	}
 
@@ -1579,12 +1580,12 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 	if (!audio_enc) PsychErrorExitMsg(PsychError_user, "Could not find or setup requested audio codec for recording. Aborted.");
 	if (!muxer_elt) PsychErrorExitMsg(PsychError_user, "Could not find or setup requested audio-video multiplexer for recording. Aborted.");
 
-	// Build gst-launch style GStreamer pipeline spec string:
-	// TODO...
-	printf("Audiocodec : %s\n", audiocodec);
-	printf("Videocodec : %s\n", videocodec);
-	printf("Audiosource: %s\n", audiosrc);
-	printf("Multiplexer: %s\n", muxer);
+	if (PsychPrefStateGet_Verbosity() > 3) {
+		printf("PTB-INFO: Audiosource: %s\n", audiosrc);
+		printf("PTB-INFO: Audiocodec : %s\n", audiocodec);
+		printf("PTB-INFO: Videocodec : %s\n", videocodec);
+		printf("PTB-INFO: Multiplexer: %s\n", muxer);
+	}
 
 	if (!launchline) {
 		// Attach our created objects to camerabin:
@@ -1598,7 +1599,20 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 		g_object_unref(G_OBJECT(audio_enc));
 		g_object_unref(G_OBJECT(audio_src));
 		g_object_unref(G_OBJECT(muxer_elt));
-		sprintf(outCodecName, "My gst-launch line!");
+
+		// Build gst-launch style GStreamer pipeline spec string:
+		// TODO...
+		sprintf(outCodecName, " %s ! %s ", videocodec, muxer);
+
+		// Example launch line for audio+video recording:
+		// gst-launch-0.10 -e v4l2src device=/dev/video0 ! videorate ! ffmpegcolorspace ! "video/x-raw-yuv, format=(fourcc)I420, width=(int)640, height=(int)480", framerate=15/1 ! queue ! x264enc speed-preset=1 ! muxout. autoaudiosrc ! faac ! muxout. avimux name=muxout ! filesink location=~/Desktop/record.avi
+		// Example without audio, pure video:
+		// gst-launch-0.10 -e v4l2src device=/dev/video0 ! videorate ! ffmpegcolorspace ! "video/x-raw-yuv, format=(fourcc)I420, width=(int)640, height=(int)480", framerate=15/1 ! queue ! x264enc speed-preset=1 ! muxout. avimux name=muxout ! filesink location=~/Desktop/record.avi
+		// Better:
+		// gst-launch-0.10 -e v4l2src device=/dev/video0 ! videorate ! ffmpegcolorspace ! "video/x-raw-yuv, format=(fourcc)I420, width=(int)640, height=(int)480", framerate=15/1 ! queue ! x264enc speed-preset=1 ! avimux ! filesink location=~/Desktop/record.avi
+		//
+		// Raw data:
+		// st-launch-0.10 -e v4l2src device=/dev/video0 ! videorate ! ffmpegcolorspace ! "video/x-raw-yuv, format=(fourcc)I420, width=(int)640, height=(int)480", framerate=15/1 ! queue ! identity ! avimux ! filesink location=~/Desktop/record.avi
 	}
 
 	return(TRUE);
