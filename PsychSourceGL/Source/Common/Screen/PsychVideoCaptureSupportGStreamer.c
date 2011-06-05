@@ -1526,8 +1526,13 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 	}
 	
 	if (strstr(muxer, "qtmux")) {
-		// Big file writing support (> 2GB) is off by default. This allows to change it:
-		if (bigFiles >= 0) g_object_set(muxer_elt, "large-file", (bigFiles > 0) ? 1 : 0, NULL);
+		// Big file writing support (> 2GB) is on by default. This allows to change it:
+		if (bigFiles >= 0) {
+			g_object_set(muxer_elt, "large-file", (bigFiles > 0) ? 1 : 0, NULL);
+		} else {
+			// Enforce default of "on":
+			g_object_set(muxer_elt, "large-file", 1, NULL);
+		}
 
 		if (fastStart >= 0) {
 			// Enable/Disable fast start support for low-latency start of movie playback:
@@ -1974,8 +1979,22 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    if (!usecamerabin)
 		    PsychErrorExitMsg(PsychError_user, "You requested video recording, but current fallback video engine doesn't support this. Aborted.");
 
-	    // Codec specified?
-	    if (codecSpec = strstr(targetmoviefilename, ":CodecType=")) {
+	    // Codec settings or type specified?
+	    if ((codecSpec = strstr(targetmoviefilename, ":CodecSettings="))) {
+		    // Replace ':' with a zero in targetmoviefilename, so it gets null-terminated
+		    // and only points to the actual movie filename:
+		    *codecSpec = 0;
+
+		    // Move after null-terminator:
+		    codecSpec++;
+
+		    // Replace the ':CodecSettings=' with the special keyword 'DEFAULTenc', so
+		    // so the default video codec is chosen, but the given settings override its
+		    // default parameters.
+		    strncpy(codecSpec, "DEFAULTenc    ", strlen("DEFAULTenc    "));
+
+		    if (strlen(codecSpec) == 0) PsychErrorExitMsg(PsychError_user, "Invalid (empty) :CodecSettings= parameter specified. Aborted.");
+	    } else if ((codecSpec = strstr(targetmoviefilename, ":CodecType="))) {
 		    // Replace ':' with a zero in targetmoviefilename, so it gets null-terminated
 		    // and only points to the actual movie filename:
 		    *codecSpec = 0;
