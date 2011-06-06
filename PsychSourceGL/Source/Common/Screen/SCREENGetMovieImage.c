@@ -14,9 +14,6 @@ Psychtoolbox3/Source/Common/SCREENGetMovieImage.c
  
  Fetch an image from the specified movie object and create an OpenGL texture out of it.
  Return a handle to the texture.
- 
- On OS-X and Windows, all movie/multimedia handling functions are implemented via the Apple Quicktime API,
- version 6 or later. 
 
  TO DO:
  
@@ -46,17 +43,17 @@ static char seeAlsoString[] = "CloseMovie PlayMovie GetMovieImage GetMovieTimeIn
 
 PsychError SCREENGetMovieImage(void) 
 {
-    PsychWindowRecordType		*windowRecord;
-    PsychWindowRecordType		*textureRecord;
-    PsychRectType				rect;
-	double						deadline, tnow;
+    PsychWindowRecordType	*windowRecord;
+    PsychWindowRecordType	*textureRecord;
+    PsychRectType		rect;
+    double			deadline, tnow;
     int                         moviehandle = -1;
     int                         waitForImage = TRUE;
     double                      requestedTimeIndex = -1;
     double                      presentation_timestamp = 0;
-    int							rc=0;
-    int							specialFlags = 0;
-	int							specialFlags2 = 0;
+    int				rc=0;
+    int				specialFlags = 0;
+    int				specialFlags2 = 0;
 	
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -94,8 +91,8 @@ PsychError SCREENGetMovieImage(void)
     // Get the optional specialFlags2 flag:
     PsychCopyInIntegerArg(6, FALSE, &specialFlags2);
 
-	PsychGetAdjustedPrecisionTimerSeconds(&deadline);
-	deadline += 5;
+    PsychGetAdjustedPrecisionTimerSeconds(&deadline);
+    deadline += 5;
 
     while (rc==0) {
         rc = PsychGetTextureFromMovie(windowRecord, moviehandle, TRUE, requestedTimeIndex, NULL, NULL);
@@ -103,7 +100,7 @@ PsychError SCREENGetMovieImage(void)
         if (rc<0 || (tnow > deadline)) {
             // No image available and there won't be any in the future, because the movie has reached
             // its end and we are not in looped playback mode:
-			if (tnow > deadline) printf("PTB-ERROR: In Screen('GetMovieImage') for movie %i: Timed out while waiting for new frame after 5 seconds!", moviehandle);
+	    if (tnow > deadline) printf("PTB-ERROR: In Screen('GetMovieImage') for movie %i: Timed out while waiting for new frame after 5 seconds!\n", moviehandle);
 
             // No new texture available: Return a negative handle:
             PsychCopyOutDoubleArg(1, TRUE, -1);
@@ -136,7 +133,7 @@ PsychError SCREENGetMovieImage(void)
     textureRecord->screenNumber=windowRecord->screenNumber;
     // It is always a 32 bit texture for movie textures:
     textureRecord->depth=32;
-	textureRecord->nrchannels = 4;
+    textureRecord->nrchannels = 4;
 
     // Create default rectangle which describes the dimensions of the image. Will be overwritten
     // later on.
@@ -147,16 +144,16 @@ PsychError SCREENGetMovieImage(void)
     textureRecord->textureMemorySizeBytes= 0;
     textureRecord->textureMemory=NULL;
 
-	// Assign parent window and copy its inheritable properties:
-	PsychAssignParentWindow(textureRecord, windowRecord);
+    // Assign parent window and copy its inheritable properties:
+    PsychAssignParentWindow(textureRecord, windowRecord);
 
     // Try to fetch an image from the movie object and return it as texture:
     PsychGetTextureFromMovie(windowRecord, moviehandle, FALSE, requestedTimeIndex, textureRecord, ((specialFlags2 & 1) ? NULL : &presentation_timestamp));
 
-	// Assign GLSL filter-/lookup-shaders if needed: usefloatformat is always == 0 as
-	// our current movie engine implementations only return 8 bpc fixed textures.
-	// The 'userRequest' flag is set if specialmode flag is set to 8.
-	PsychAssignHighPrecisionTextureShaders(textureRecord, windowRecord, 0, (specialFlags & 2) ? 1 : 0);
+    // Assign GLSL filter-/lookup-shaders if needed: usefloatformat is always == 0 as
+    // our current movie engine implementations only return 8 bpc fixed textures.
+    // The 'userRequest' flag is set if specialmode flag is set to 8.
+    PsychAssignHighPrecisionTextureShaders(textureRecord, windowRecord, 0, (specialFlags & 2) ? 1 : 0);
 
     // Texture ready for consumption. Mark it valid and return handle to userspace:
     PsychSetWindowRecordValid(textureRecord);

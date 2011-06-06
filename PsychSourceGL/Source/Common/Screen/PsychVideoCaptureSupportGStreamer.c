@@ -1576,7 +1576,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 		}
 	}
 
-	// Still no video codec? Then this is game over:
+	// Still no video codec? Then this is game over: FIXME Small memory leak here on error exit.
 	if (capdev->videoenc == NULL) PsychErrorExitMsg(PsychError_user, "Could not find or setup requested video codec or any fallback codec for video recording. Aborted.");
 	if (!audio_enc) PsychErrorExitMsg(PsychError_user, "Could not find or setup requested audio codec for recording. Aborted.");
 	if (!muxer_elt) PsychErrorExitMsg(PsychError_user, "Could not find or setup requested audio-video multiplexer for recording. Aborted.");
@@ -1596,13 +1596,12 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 		if (audio_src) g_object_set(camera, "audio-source", audio_src, NULL);
 	} else {
 		// Release our objects, we have our launch line:
-		g_object_unref(G_OBJECT(capdev->videoenc)); capdev->videoenc = NULL;
-		g_object_unref(G_OBJECT(audio_enc));
-		g_object_unref(G_OBJECT(audio_src));
-		g_object_unref(G_OBJECT(muxer_elt));
+		gst_object_unref(G_OBJECT(capdev->videoenc)); capdev->videoenc = NULL;
+		if (audio_enc) gst_object_unref(G_OBJECT(audio_enc));
+		if (audio_src) gst_object_unref(G_OBJECT(audio_src));
+		if (muxer_elt) gst_object_unref(G_OBJECT(muxer_elt));
 
 		// Build gst-launch style GStreamer pipeline spec string:
-		// TODO...
 		sprintf(outCodecName, " %s ! %s ", videocodec, muxer);
 
 		// Example launch line for audio+video recording:
@@ -1617,6 +1616,24 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 	}
 
 	return(TRUE);
+}
+
+/* PsychGetCodecLaunchLineFromString() - Helper function for GStreamer based movie writing.
+ *
+ * Take a 'codecSpec' string with user provided codec settings string, get
+ * a proper gst-launch style segment for the codecs and muxers back.
+ * launchString must be preallocated and of sufficient size (approx. 1Kb).
+ * Returns TRUE on success, FALSE on failure.
+ */
+psych_bool PsychGetCodecLaunchLineFromString(char* codecSpec, char* launchString)
+{
+	// Need a fake capdev to pass to PsychSetupRecordingPipeFromString():
+	PsychVidcapRecordType dummydev;
+	memset(&dummydev, 0, sizeof(dummydev));
+
+	// Pass off the job and just return its results. This is shared with encoder/muxer
+	// creation, setup, configuration and testing for the video recording engine:
+	return(PsychSetupRecordingPipeFromString(&dummydev, codecSpec, launchString, TRUE));
 }
 
 /* CHECKED TODO
@@ -1656,7 +1673,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	gint			twidth, theight;
 	int			i;
 	char                    *codecSpec;
-	char                    codecName[1000];
+	char                    codecName[10000];
 
 	PsychVidcapRecordType	*capdev = NULL;
 	char			config[1000];
@@ -2027,7 +2044,10 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    if (PsychSetupRecordingPipeFromString(capdev, codecSpec, codecName, FALSE)) {
 		    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Video%s recording into file [%s] enabled for device %i. Codec is [%s].\n",
 								  ((recordingflags & 2) ? " and audio" : ""), targetmoviefilename, deviceIndex, codecName);
+		    if (strcmp(codecSpec, "DEFAULTenc") == 0) free(codecSpec);
+		    codecSpec = NULL;
 	    } else {
+		    if (strcmp(codecSpec, "DEFAULTenc") == 0) free(codecSpec);
 		    PsychErrorExitMsg(PsychError_system, "Setup of video recording failed. Reason hopefully given above.");
 	    }
 
@@ -2270,7 +2290,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                     overrideFrameSize = TRUE;
 
                     // Delete useless videocrop element if any:
-                    if (videocrop_filter) g_object_unref(G_OBJECT(videocrop_filter));
+                    if (videocrop_filter) gst_object_unref(G_OBJECT(videocrop_filter));
                     videocrop_filter = NULL;
 
                     if (PsychPrefStateGet_Verbosity() > 1) {

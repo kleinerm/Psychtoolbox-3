@@ -113,6 +113,10 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, double value);
 PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceIndex);
 void PsychGSExitVideoCapture(void);
+
+// PsychGetCodecLaunchLineFromString() - Helper function for GStreamer based movie writing.
+psych_bool PsychGetCodecLaunchLineFromString(char* codecSpec, char* launchString);
+
 #endif
 
 //end include once

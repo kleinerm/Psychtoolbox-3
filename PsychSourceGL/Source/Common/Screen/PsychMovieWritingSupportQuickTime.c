@@ -517,23 +517,4 @@ bail:
 }
 
 // End of routines.
-	
-#else
-
-// This is Linux: Implement dummy functions:
-void PsychMovieWritingInit(void) { return; }
-void PsychExitMovieWriting(void) { return; }
-void PsychDeleteAllMovieWriters(void) { return; }
-unsigned char*	PsychGetVideoFrameForMoviePtr(int moviehandle, unsigned int* twidth, unsigned int* theight) { return(NULL); }
-int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_bool isUpsideDown) { return(0); }
-int PsychCreateNewMovieFile(char* moviefile, int width, int height, double framerate, char* movieoptions)
-{
-	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, movie writing and editing support not yet implemented on this operating system.");
-}
-
-int PsychFinalizeNewMovieFile(int movieHandle)
-{
-	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, movie writing and editing support not yet implemented on this operating system.");
-}
-
 #endif
