@@ -46,6 +46,8 @@
 
         * Video codec selection.
 
+        * Provides interface to change camera settings like exposure time, gain, contrast, etc.
+
 	=> Most functionality for typical everyday tasks works perfect or reasonably well.
         => Some issues for special case apps persist, as written below.
 
@@ -55,8 +57,6 @@
 
         * Some codecs (e.g., huffyuv and h263) don't work yet. Some others show low quality or
           performance. Need to optimize parameters.
-
-        * Provide interface to change camera settings like exposure time etc.
 
  */
 
@@ -71,6 +71,7 @@
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
 #include <gst/interfaces/propertyprobe.h>
+#include <gst/interfaces/colorbalance.h>
 
 static psych_bool usecamerabin = TRUE;
 
@@ -3359,15 +3360,26 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 	unsigned int minval, maxval, intval, oldintval;
 	int triggercount;
 
+	float oldfvalue = FLT_MAX;
 	double oldvalue = DBL_MAX; // Initialize return value to the "unknown/unsupported" default.
 	psych_bool assigned = false;
 	psych_bool present  = false;
-	
+	GstColorBalance* cb = NULL;
+	GList* cl = NULL;
+	GList* iter = NULL;
+	GstColorBalanceChannel* cc = NULL;
+
 	// Retrieve device record for handle:
 	PsychVidcapRecordType* capdev = PsychGetGSVidcapRecord(capturehandle);
 
 	// Make sure GStreamer is ready:
 	PsychGSCheckInit("videocapture");
+
+	if (usecamerabin && gst_element_implements_interface(capdev->camera, GST_TYPE_COLOR_BALANCE)) {
+		cb = GST_COLOR_BALANCE(capdev->camera);
+	} else {
+		if (usecamerabin && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Camerabin does not suppport GstColorBalance interface as expected.\n");
+	}
 	
 	oldintval = 0xFFFFFFFF;
 	
@@ -3422,8 +3434,24 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 	
 	if (strcmp(pname, "PrintParameters")==0) {
 		// Special command: List and print all features...
-		printf("PTB-INFO: The camera provides the following information and featureset:\n");
-		printf("PTB-INFO: Sorry, 'PrintParameters' not yet implemented.\n");
+		printf("PTB-INFO: The video source provides the following controllable parameters:\n");
+		printf("PTB-INFO: ----------------------------------------------------------------\n\n");
+		printf("PTB-INFO: Optional parameters - may or may not be supported:\n");
+		printf("PTB-INFO: Shutter, Aperture, EVCompensation, Flickermode, Whitebalancemode,\n");
+		printf("PTB-INFO: Flashmode, Scenemode, Focusmode\n\n");
+		printf("PTB-INFO: These are definitely supported by the connected camera:\n");
+
+
+		if (cb) {
+			// Enumerate all color balance channels:
+			cl = (GList*) gst_color_balance_list_channels(cb);
+			for (iter = g_list_first(cl); iter != NULL ; iter = g_list_next(iter)) {
+				cc = (GstColorBalanceChannel*) iter->data;
+				printf("PTB-INFO: '%s'\t\t min=%i\t : max=%i\t : current=%i\n", (char*) cc->label,
+				(int) cc->min_value, (int) cc->max_value, (int) gst_color_balance_get_value(cb, cc));
+			}
+		}
+		printf("PTB-INFO: ----------------------------------------------------------------\n\n");
 		return(0);
 	}
 
@@ -3453,131 +3481,165 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 		return(0);
 	}
 
-/*		if (usecamerabin && capdev->recording_active) {
-		}
-*/
-	
-//	if (strstr(pname, "Brightness")!=0) {
-//		assigned = true;
-//		feature = DC1394_FEATURE_BRIGHTNESS;    
-//	}
-//	
-//	if (strstr(pname, "Gain")!=0) {
-//		assigned = true;
-//		feature = DC1394_FEATURE_GAIN;    
-//	}
-//	
-//	if (strstr(pname, "Exposure")!=0) {
-//		assigned = true;
-//		feature = DC1394_FEATURE_EXPOSURE;    
-//	}
-//	
-//	if (strstr(pname, "Shutter")!=0) {
-//		assigned = true;
-//		feature = DC1394_FEATURE_SHUTTER;    
-//	}
-//	
-//	if (strstr(pname, "Sharpness")!=0) {
-//		assigned = true;
-//		feature = DC1394_FEATURE_SHARPNESS;    
-//	}
-//	
-//	if (strstr(pname, "Saturation")!=0) {
-//		assigned = true;
-//		feature = DC1394_FEATURE_SATURATION;    
-//	}
-//	
-//	if (strstr(pname, "Gamma")!=0) {
-//		assigned = true;
-//		feature = DC1394_FEATURE_GAMMA;    
-//	}
-	
-	// Check if feature is present on this camera:
-	// Not supported yet:
-	present = FALSE;
-	
-//	if (dc1394_feature_is_present(capdev->camera, feature, &present)!=DC1394_SUCCESS) {
-//		if(PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to query presence of feature %s on camera %i! Ignored.\n", pname, capturehandle);
-//		fflush(NULL);
-//	}
-//	else
-	
-	if (present) {
-		// Feature is available:
-/*		
-		// Retrieve current value:
-		if (dc1394_feature_get_value(capdev->camera, feature, &oldintval)!=DC1394_SUCCESS) {
-			if(PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to query value of feature %s on camera %i! Ignored.\n", pname, capturehandle);
-			fflush(NULL);
-		}
-		else {      
-			// Do we want to set the value?
-			if (value != DBL_MAX) {
-				// Query allowed bounds for its value:
-				if (dc1394_feature_get_boundaries(capdev->camera, feature, &minval, &maxval)!=DC1394_SUCCESS) {
-					if(PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to query valid value range for feature %s on camera %i! Ignored.\n", pname, capturehandle);
-					fflush(NULL);
-				}
-				else {
-					// Sanity check against range:
-					if (intval < minval || intval > maxval) {
-						if(PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Requested setting %i for parameter %s not in allowed range (%i - %i) for camera %i. Ignored.\n",
-																   intval, pname, minval, maxval, capturehandle);
-						fflush(NULL);      
-					}
-					else {
-						// Ok intval is valid for this feature: Can we manually set this feature?
-						// Switch feature to manual control mode:
-						if (dc1394_feature_set_mode(capdev->camera, feature, DC1394_FEATURE_MODE_MANUAL)!=DC1394_SUCCESS) {
-							if(PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to set feature %s on camera %i to manual control! Ignored.\n", pname, capturehandle);
-							fflush(NULL);
-						}
-						else {
-							// Ok, try to set the features new value:
-							if (dc1394_feature_set_value(capdev->camera, feature, intval)!=DC1394_SUCCESS) {
-								if(PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to set value of feature %s on camera %i to %i! Ignored.\n", pname, capturehandle,
-																		   intval);
-								fflush(NULL);
-							}
-						}
-					}
-				}
+	// All code below this check is for camerabin only:
+	if (!usecamerabin) {
+		// No camerabin, no way to query this stuff. Just fail
+		return(DBL_MAX);
+	}
+
+	if (strstr(pname, "Shutter")!=0) {
+		// Query old "exposure" setting, which is duration of shutter open:
+		g_object_get(capdev->camera, "exposure", &oldintval, NULL);
+		oldvalue = (double) oldintval / 1e9;
+
+		// Reset to auto-mode, if requested:
+		if (strstr(pname, "Auto")) value = 0;
+
+		// Optionally set new setting:
+		if (value != DBL_MAX) g_object_set(capdev->camera, "exposure", (int) (value * 1e9), NULL);
+		return(oldvalue);
+	}
+
+	if (strstr(pname, "Aperture")) {
+		// Query old "aperture" setting, which is the amount of lens opening:
+		g_object_get(capdev->camera, "aperture", &oldintval, NULL);
+		oldvalue = (double) oldintval;
+
+		// Optionally set new setting:
+		if (intval < 0) intval = 0;
+		if (intval > 255) intval = 255;
+
+		// Reset to auto-mode, if requested:
+		if (strstr(pname, "Auto")) { intval = 0; value = 0; }
+
+		if (value != DBL_MAX) g_object_set(capdev->camera, "aperture", intval, NULL);
+		return(oldvalue);
+	}
+
+	if (strstr(pname, "EVCompensation")!=0) {
+		// Query old "ev-compensation" setting, which is duration of shutter open:
+		g_object_get(capdev->camera, "ev-compensation", &oldfvalue, NULL);
+		oldvalue = (double) oldfvalue;
+
+		// Reset to auto-mode, if requested:
+		if (strstr(pname, "Auto")) value = 0;
+
+		// Optionally set new setting:
+		if (value != DBL_MAX) g_object_set(capdev->camera, "ev-compensation", (float) value, NULL);
+		return(oldvalue);
+	}
+
+	if (strstr(pname, "Flickermode")) {
+		// Query old "flicker-mode" setting:
+		g_object_get(capdev->camera, "flicker-mode", &oldintval, NULL);
+		oldvalue = (double) oldintval;
+
+		// Optionally set new setting:
+		if (intval < 0) intval = 0;
+		if (intval > 3) intval = 3;
+
+		// Reset to auto-mode, if requested:
+		if (strstr(pname, "Auto")) { intval = 3; value = 0; }
+
+		if (value != DBL_MAX) g_object_set(capdev->camera, "flicker-mode", intval, NULL);
+		return(oldvalue);
+	}
+
+	if (strstr(pname, "Whitebalancemode")) {
+		// Query old "white-balance-mode" setting:
+		g_object_get(capdev->camera, "white-balance-mode", &oldintval, NULL);
+		oldvalue = (double) oldintval;
+
+		// Optionally set new setting:
+		if (intval < 0) intval = 0;
+		if (intval > 5) intval = 5;
+
+		// Reset to auto-mode, if requested:
+		if (strstr(pname, "Auto")) { intval = 0; value = 0; }
+
+		if (value != DBL_MAX) g_object_set(capdev->camera, "white-balance-mode", intval, NULL);
+		return(oldvalue);
+	}
+
+	if (strstr(pname, "Focusmode")) {
+		// Query old "focus-mode" setting:
+		g_object_get(capdev->camera, "focus-mode", &oldintval, NULL);
+		oldvalue = (double) oldintval;
+
+		// Optionally set new setting:
+		if (intval < 0) intval = 0;
+		if (intval > 7) intval = 7;
+
+		// Reset to auto-mode, if requested:
+		if (strstr(pname, "Auto")) { intval = 0; value = 0; }
+
+		if (value != DBL_MAX) g_object_set(capdev->camera, "focus-mode", intval, NULL);
+		return(oldvalue);
+	}
+
+	if (strstr(pname, "Flashmode")) {
+		// Query old "flash-mode" setting:
+		g_object_get(capdev->camera, "flash-mode", &oldintval, NULL);
+		oldvalue = (double) oldintval;
+
+
+		// Optionally set new setting:
+		if (intval < 0) intval = 0;
+		if (intval > 4) intval = 4;
+
+		// Reset to auto-mode, if requested:
+		if (strstr(pname, "Auto")) { intval = 0; value = 0; }
+
+		if (value != DBL_MAX) g_object_set(capdev->camera, "flash-mode", intval, NULL);
+		return(oldvalue);
+	}
+
+	if (strstr(pname, "Scenemode")) {
+		// Query old "scene-mode" setting:
+		g_object_get(capdev->camera, "scene-mode", &oldintval, NULL);
+		oldvalue = (double) oldintval;
+
+		// Optionally set new setting:
+		if (intval < 0) intval = 0;
+		if (intval > 6) intval = 6;
+
+		// Reset to auto-mode, if requested:
+		if (strstr(pname, "Auto")) { intval = 6; value = 0; }
+
+		if (value != DBL_MAX) g_object_set(capdev->camera, "scene-mode", intval, NULL);
+		return(oldvalue);
+	}
+
+	// Not yet matched? Try if it matches one of the color channel properties
+	// from the color balance interface.
+	if (cb) {
+		// Search all color balance channels:
+		cl = (GList*) gst_color_balance_list_channels(cb);
+		for (iter = g_list_first(cl); iter != NULL ; iter = g_list_next(iter)) {
+			cc = (GstColorBalanceChannel*) iter->data;
+
+			// Match?
+			if (strcmp((const char*) cc->label, (const char*) pname) == 0) {
+				assigned = TRUE;
+
+				// Query and return old setting:
+				oldvalue = (double) gst_color_balance_get_value(cb, cc);
+
+				// Optionally assign new setting:
+				if (intval < (int) cc->min_value) intval = (int) cc->min_value;
+				if (intval > (int) cc->max_value) intval = (int) cc->max_value;
+				if (value != DBL_MAX) gst_color_balance_set_value(cb, cc, intval);
 			}
-			else {
-				// Don't want to set new value. Do we want to reset feature into auto-mode?
-				// Prefixing a parameter name with "Auto"
-				// does not switch the parameter into manual
-				// control mode + set its value, as normal,
-				// but it switches the parameter into automatic
-				// mode, if automatic mode is supported by the
-				// device.
-				if (strstr(pname, "Auto")!=0) {
-					// Switch to automatic control requested - Try it:
-					if (dc1394_feature_set_mode(capdev->camera, feature, DC1394_FEATURE_MODE_AUTO)!=DC1394_SUCCESS) {
-						if(PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to set feature %s on camera %i to automatic control! Ignored.\n", pname, capturehandle);
-						fflush(NULL);
-					}
-				}
-			}
 		}
-*/
+
+		if (!assigned) {
+			if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Screen('SetVideoCaptureParameter', ...) called with unknown parameter %s. Ignored...\n", pname);
+		}
+
+		return(oldvalue);
 	}
-	else {
-		if(PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Requested capture device setting %s not available on cam %i. Ignored.\n", pname, capturehandle);
-		fflush(NULL);
-	}
-	
-	// Output a warning on unknown parameters:
-	if (!assigned) {
-		if(PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Screen('SetVideoCaptureParameter', ...) called with unknown parameter %s. Ignored...\n",
-												   pname);
-		fflush(NULL);
-	}
-	
-	if (assigned && oldintval!=0xFFFFFFFF) oldvalue = (double) oldintval;
-	
-	// Return the old value. Could be DBL_MAX if parameter was unknown or not accepted for some reason.
-	return(oldvalue);
+
+	return(DBL_MAX);
 }
 
 #endif
