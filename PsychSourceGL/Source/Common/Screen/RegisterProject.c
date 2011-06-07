@@ -221,7 +221,8 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("CreateMovie", &SCREENCreateMovie));
 	PsychErrorExit(PsychRegister("FinalizeMovie", &SCREENFinalizeMovie));
 	PsychErrorExit(PsychRegister("AddFrameToMovie", &SCREENGetImage));
-
+	PsychErrorExit(PsychRegister("AddAudioBufferToMovie", &SCREENAddAudioBufferToMovie));
+    
 	PsychSetModuleAuthorByInitials("awi");
 	PsychSetModuleAuthorByInitials("dhb");
 	PsychSetModuleAuthorByInitials("dgp");

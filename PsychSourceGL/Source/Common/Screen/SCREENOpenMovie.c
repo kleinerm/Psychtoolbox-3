@@ -274,12 +274,15 @@ PsychError SCREENCreateMovie(void)
 	static char synopsisString[] = 
 		"Create a new movie file with filename 'movieFile' and according to given 'movieOptions'.\n"
 		"The function returns a handle 'moviePtr' to the file.\n"
-		"Currently, movie creation and recording is only supported on OS/X and Windows, as it "
-		"needs Apple's Quicktime to be installed. It can use any Quicktime codec that is installed "
-		"on your system. Currently only single-track video encoding is supported, audio support is tbd.\n\n"
+        "On OS/X and on MS-Windows with Matlab versions prior to R2007a, Apple Quicktime is used for movie writing. "
+        "On GNU/Linux and on MS-Windows with recent versions of Matlab or GNU/Octave, the GStreamer multimedia "
+        "framework is used for movie writing. GStreamer is generally more advanced and offers more functionality. "
+		"Currently only single-track video encoding is supported. Audio encoding is not supported on OS/X.\n"
+        "See 'Screen AddAudioBufferToMovie?' on how to add audio tracks to movies via GStreamer.\n"
+        "\n"
 		"Movie creation is a 3 step procedure:\n"
 		"1. Create a movie and define encoding options via 'CreateMovie'.\n"
-		"2. Add video frames to the movie via calls to 'AddFrameToMovie'.\n"
+		"2. Add video and audio data to the movie via calls to 'AddFrameToMovie' et al.\n"
 		"3. Finalize and close the movie via a call to 'FinalizeMovie'.\n\n"
 		"All following parameters are optional and have reasonable defaults:\n\n"
 		"'width' Width of movie video frames in pixels. Defaults to width of window 'windowPtr'.\n"
@@ -292,9 +295,13 @@ PsychError SCREENCreateMovie(void)
 		"the denominator of that term. However, for a default 'frameDuration' of one, this is equivalent "
 		"to the 'frameRate' of the movie, at least if you leave everything at defaults.\n\n"
 		"'movieoptions' a textstring which allows to define additional parameters via keyword=parm pairs. "
+        "For GStreamer movie writing, you can provide the same options as for GStreamer video recording. "
+        "See 'help VideoRecording' for supported options and tips.\n"
 		"Keywords unknown to a certain implementation or codec will be silently ignored:\n"
 		"EncodingQuality=x Set encoding quality to value x, in the range 0.0 for lowest movie quality to "
 		"1.0 for highest quality. Default is 0.5 = normal quality. 1.0 usually provides lossless encoding.\n"
+        "On systems with Quicktime movie writing, codecs can be selected by FOURCC codes. This is not supported "
+        "on GStreamer setups for now:\n"
 		"CodecFOURCCId=id FOURCC id. The FOURCC of a desired video codec as a number. Defaults to H.264 codec.\n"
 		"Choice of codec and quality defines a tradeoff between filesize, quality, processing demand and speed, "
 		"as well as on which target devices you'll be able to play your movie.\n"
@@ -355,5 +362,53 @@ PsychError SCREENCreateMovie(void)
 	// Return handle to it:
 	PsychCopyOutDoubleArg(1, FALSE, (double) moviehandle);
 	
+	return(PsychError_none);
+}
+
+PsychError SCREENAddAudioBufferToMovie(void)
+{
+	static char useString[] = "Screen('AddAudioBufferToMovie', moviePtr, audioBuffer);";
+	static char synopsisString[] = 
+		"Add a buffer filled with audio data samples to movie 'moviePtr'.\n"
+        "This function is only supported with the GStreamer based movie writing functions. "
+        "It doesn't work on MS-Windows with Matlab versions before R2007a and it doesn't work "
+        "on Apple OS/X yet.\n"
+        "The movie must have been created in 'CreateMovie' with an options string that "
+        "enables writing of an audio track into the movie, otherwise this function will fail.\n"
+        "You enable writing of audio tracks by adding the keyword 'AddAudioTrack' to the options string.\n"
+        "Alternatively, if your options string is a gst-launch style pipeline description, it must contain "
+        "one pipeline element with a name option of 'name=ptbaudioappsrc'.\n"
+        "'audioBuffer' must be 'numChannels' rows by 'numSamples' columns double matrix of audio data. "
+        "Each row encodes one audio channel, each column element in a row encodes a sample. "
+        "E.g., a 2-by-48000 matrix would encode 48000 samples for a two channel stereo sound track.\n"
+        "Sample values must lie in the range between -1.0 and +1.0.\n"
+        "The audio buffer is converted into a movie specific sound format and then appended to "
+        "the audio samples already stored in the audio track.\n"
+		"\n";
+
+	static char seeAlsoString[] = "FinalizeMovie AddFrameToMovie CloseMovie PlayMovie GetMovieImage GetMovieTimeIndex SetMovieTimeIndex";
+	
+	int     moviehandle = -1;
+    int     m, n, p;
+    double* buffer;
+	
+	// All sub functions should have these two lines
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+	
+	PsychErrorExit(PsychCapNumInputArgs(2));            // Max. 2 input args.
+	PsychErrorExit(PsychRequireNumInputArgs(2));        // Min. 2 input args required.
+	PsychErrorExit(PsychCapNumOutputArgs(0));           // Max. 0 output args.
+	
+    // Get movie handle:
+	PsychCopyInIntegerArg(1, kPsychArgRequired, &moviehandle);
+    
+    // And audio date buffer:
+	PsychAllocInDoubleMatArg(2, kPsychArgRequired, &m, &n, &p, &buffer);
+    if (p!=1 || m < 1 || n < 1) PsychErrorExitMsg(PsychError_user, "Invalid audioBuffer provided. Must be a 2D matrix with at least one row and at least one column!");
+
+    // Pass audio data to movie writing engine:
+    PsychAddAudioBufferToMovie(moviehandle, m, n, buffer);
+    
 	return(PsychError_none);
 }

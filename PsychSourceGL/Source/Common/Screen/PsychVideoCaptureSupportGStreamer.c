@@ -1601,9 +1601,26 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 		if (audio_src) gst_object_unref(G_OBJECT(audio_src));
 		if (muxer_elt) gst_object_unref(G_OBJECT(muxer_elt));
 
-		// Build gst-launch style GStreamer pipeline spec string:
-		sprintf(outCodecName, " %s ! %s ", videocodec, muxer);
+        // Build gst-launch style GStreamer pipeline spec string:
 
+        // Special keyword for audio tracks in written movies?
+        if (strstr(codecSpec, "AddAudioTrack")) {
+            // Audio and Video:
+
+            // If no "AudioSource=" was provided then configure for appsrc feeding
+            // from Screen('AddAudioBufferToMovie') into movie:
+            if (strlen(audiosrc) == 0) sprintf(audiosrc, "appsrc name=ptbaudioappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0");
+
+            // We add bits to feed from 'audiosrc' into 'audiocodec' into the common muxer of video and audio stream:
+            sprintf(outCodecName, " %s ! ptbvideomuxer0. %s ! %s ! ptbvideomuxer0. %s name=ptbvideomuxer0 ", videocodec, audiosrc, audiocodec, muxer);            
+        }
+        else {
+            // Video only:
+            
+            // We feed the output of 'videocodec' directly into the muxer:
+            sprintf(outCodecName, " %s ! %s ", videocodec, muxer);
+        }
+        
 		// Example launch line for audio+video recording:
 		// gst-launch-0.10 -e v4l2src device=/dev/video0 ! videorate ! ffmpegcolorspace ! "video/x-raw-yuv, format=(fourcc)I420, width=(int)640, height=(int)480", framerate=15/1 ! queue ! x264enc speed-preset=1 ! muxout. autoaudiosrc ! faac ! muxout. avimux name=muxout ! filesink location=~/Desktop/record.avi
 		// Example without audio, pure video:

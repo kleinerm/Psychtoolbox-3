@@ -1698,6 +1698,10 @@
 		83495CDE09F701E9003973EA /* SCREENSetVideoCaptureParameter.c in Sources */ = {isa = PBXBuildFile; fileRef = 83495CDD09F701E9003973EA /* SCREENSetVideoCaptureParameter.c */; };
 		83530224117BD3A300CCB9AF /* PsychMovieWritingSupportQuickTime.c in Sources */ = {isa = PBXBuildFile; fileRef = 83530223117BD3A300CCB9AF /* PsychMovieWritingSupportQuickTime.c */; };
 		83530225117BD3A300CCB9AF /* PsychMovieWritingSupportQuickTime.c in Sources */ = {isa = PBXBuildFile; fileRef = 83530223117BD3A300CCB9AF /* PsychMovieWritingSupportQuickTime.c */; };
+		8353D224139DA14400528754 /* PsychMovieWritingSupportGStreamer.c in Sources */ = {isa = PBXBuildFile; fileRef = 8353D223139DA14400528754 /* PsychMovieWritingSupportGStreamer.c */; };
+		8353D225139DA14400528754 /* PsychMovieWritingSupportGStreamer.c in Sources */ = {isa = PBXBuildFile; fileRef = 8353D223139DA14400528754 /* PsychMovieWritingSupportGStreamer.c */; };
+		8353D234139DA34C00528754 /* PsychMovieSupportGStreamer.c in Sources */ = {isa = PBXBuildFile; fileRef = 8353D233139DA34C00528754 /* PsychMovieSupportGStreamer.c */; };
+		8353D235139DA34C00528754 /* PsychMovieSupportGStreamer.c in Sources */ = {isa = PBXBuildFile; fileRef = 8353D233139DA34C00528754 /* PsychMovieSupportGStreamer.c */; };
 		83587B320E982EBF004BB7BD /* QuadProg++.cc in Sources */ = {isa = PBXBuildFile; fileRef = 83587B300E982EBF004BB7BD /* QuadProg++.cc */; };
 		835CD25A0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
 		835CD25B0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
@@ -3761,6 +3765,9 @@
 		83495CDD09F701E9003973EA /* SCREENSetVideoCaptureParameter.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENSetVideoCaptureParameter.c; path = ../../../Source/Common/Screen/SCREENSetVideoCaptureParameter.c; sourceTree = SOURCE_ROOT; };
 		83530222117BD37400CCB9AF /* PsychMovieWritingSupport.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychMovieWritingSupport.h; path = ../../../Source/Common/Screen/PsychMovieWritingSupport.h; sourceTree = SOURCE_ROOT; };
 		83530223117BD3A300CCB9AF /* PsychMovieWritingSupportQuickTime.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychMovieWritingSupportQuickTime.c; path = ../../../Source/Common/Screen/PsychMovieWritingSupportQuickTime.c; sourceTree = SOURCE_ROOT; };
+		8353D223139DA14400528754 /* PsychMovieWritingSupportGStreamer.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychMovieWritingSupportGStreamer.c; path = ../../../Source/Common/Screen/PsychMovieWritingSupportGStreamer.c; sourceTree = SOURCE_ROOT; };
+		8353D226139DA31100528754 /* PsychMovieSupportGStreamer.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychMovieSupportGStreamer.h; path = ../../../Source/Common/Screen/PsychMovieSupportGStreamer.h; sourceTree = SOURCE_ROOT; };
+		8353D233139DA34C00528754 /* PsychMovieSupportGStreamer.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychMovieSupportGStreamer.c; path = ../../../Source/Common/Screen/PsychMovieSupportGStreamer.c; sourceTree = SOURCE_ROOT; };
 		83587B300E982EBF004BB7BD /* QuadProg++.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = "QuadProg++.cc"; path = "../../../../../../MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/QuadProg++.cc"; sourceTree = SOURCE_ROOT; };
 		83587B310E982EBF004BB7BD /* QuadProg++.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = "QuadProg++.h"; path = "../../../../../../MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/QuadProg++.h"; sourceTree = SOURCE_ROOT; };
 		835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = PsychScriptingGlue.cc; path = ../../../Source/Common/Base/PsychScriptingGlue.cc; sourceTree = SOURCE_ROOT; };
@@ -5497,6 +5504,8 @@
 				8306696B0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c */,
 				0F45C2A30B264AE6004ED5F0 /* PsychImagingPipelineSupport.c */,
 				831A458412A6EEC500FFF235 /* PsychMovieSupport.c */,
+				8353D233139DA34C00528754 /* PsychMovieSupportGStreamer.c */,
+				8353D223139DA14400528754 /* PsychMovieWritingSupportGStreamer.c */,
 				83530223117BD3A300CCB9AF /* PsychMovieWritingSupportQuickTime.c */,
 				8370C71E096A014E00BD4C8C /* PsychTextureSupport.c */,
 				8365A79C09992499006FF0F4 /* PsychVideoCaptureSupport.c */,
@@ -6030,6 +6039,7 @@
 				83066A8A0D39AEAF0009C12B /* PsychGraphicsCardRegisterSpecs.h */,
 				8306696E0D3923440009C12B /* PsychGraphicsHardwareHALSupport.h */,
 				0F45C2A20B264AC3004ED5F0 /* PsychImagingPipelineSupport.h */,
+				8353D226139DA31100528754 /* PsychMovieSupportGStreamer.h */,
 				83530222117BD37400CCB9AF /* PsychMovieWritingSupport.h */,
 				F598839303F9A74F01A80168 /* PsychRects.h */,
 				8370C71C096A013600BD4C8C /* PsychTextureSupport.h */,
@@ -11388,6 +11398,8 @@
 				83530225117BD3A300CCB9AF /* PsychMovieWritingSupportQuickTime.c in Sources */,
 				831A458512A6EEC500FFF235 /* PsychMovieSupport.c in Sources */,
 				833D8C9712DBDCB500C3B444 /* PsychVideoCaptureSupportGStreamer.c in Sources */,
+				8353D224139DA14400528754 /* PsychMovieWritingSupportGStreamer.c in Sources */,
+				8353D234139DA34C00528754 /* PsychMovieSupportGStreamer.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11891,6 +11903,8 @@
 				83530224117BD3A300CCB9AF /* PsychMovieWritingSupportQuickTime.c in Sources */,
 				831A458612A6EEC500FFF235 /* PsychMovieSupport.c in Sources */,
 				833D8C9812DBDCB500C3B444 /* PsychVideoCaptureSupportGStreamer.c in Sources */,
+				8353D225139DA14400528754 /* PsychMovieWritingSupportGStreamer.c in Sources */,
+				8353D235139DA34C00528754 /* PsychMovieSupportGStreamer.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

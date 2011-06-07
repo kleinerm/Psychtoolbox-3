@@ -3,7 +3,7 @@
 	
 	PLATFORMS:	
 	
-		MacOS/X and MS-Windows
+		MacOS/X and MS-Windows, but only if GStreamer support is disabled.
 		
 		This is the movie editing and writing/creation engine based on the
 		Apple QuickTime API. It works on Apple MacOS/X and MS-Windows.
@@ -30,6 +30,8 @@
 
 // No Quicktime support for GNU/Linux:
 #if PSYCH_SYSTEM != PSYCH_LINUX
+
+#ifndef PTB_USE_GSTREAMER
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include <Quicktime/QuickTimeComponents.h>
@@ -516,5 +518,12 @@ bail:
 	return(myErr == 0);
 }
 
+psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, unsigned int nrSamples, double* buffer)
+{
+    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, storing audio tracks in movies is not supported by the Quicktime based movie writing functions.");
+    return(0);
+}
+
 // End of routines.
+#endif
 #endif

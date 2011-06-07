@@ -50,6 +50,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 int PsychFinalizeNewMovieFile(int movieHandle);
 int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_bool isUpsideDown);
 unsigned char*	PsychGetVideoFrameForMoviePtr(int moviehandle, unsigned int* twidth, unsigned int* theight);
+psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, unsigned int nrSamples, double* buffer);
 
 //end include once
 #endif
