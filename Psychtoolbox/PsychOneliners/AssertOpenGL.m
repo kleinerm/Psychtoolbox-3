@@ -73,9 +73,9 @@ catch
    fprintf('that either Screen is totally dysfunctional, or you are trying to run your script on\n');
    fprintf('a system without Psychtoolbox-3 properly installed - or not installed at all.\n\n');
 
-   if IsWin	&& IsOctave
+   if IsWin	& IsOctave
 		le = psychlasterror;
-		if ~isempty(strfind(le.message, 'library or dependents')) && ~isempty(strfind(le.message, 'Screen.mex'))
+		if ~isempty(strfind(le.message, 'library or dependents')) & ~isempty(strfind(le.message, 'Screen.mex'))
 			% Likely the required GStreamer runtimes aren't installed yet!
 			fprintf('The most likely cause, based on the fact you are running on Octave under Windows\n');
 			fprintf('and given this error message: %s\n', le.message);

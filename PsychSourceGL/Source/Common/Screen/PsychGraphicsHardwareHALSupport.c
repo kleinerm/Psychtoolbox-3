@@ -703,6 +703,8 @@ void PsychInitScreenToHeadMappings(int numDisplays)
 // Try to auto-detect screen to head mappings if possible and not yet overriden by usercode:
 void PsychAutoDetectScreenToHeadMappings(int maxHeads)
 {
+#if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
+
     float nullTable[256];
     int screenId, headId, numEntries;
     float *redTable, *greenTable, *blueTable;
@@ -769,6 +771,8 @@ void PsychAutoDetectScreenToHeadMappings(int maxHeads)
     
     // Done.
     displayScreensToPipesAutoDetected = TRUE;
+
+#endif
 
     return;
 }
