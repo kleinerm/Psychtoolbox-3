@@ -19,6 +19,7 @@ function [file,nfile] = FileFromFolder(folder,mode,f_ext)
 %                files are found
 % 2010-07-02 DN  Now supports filtering on multiple extensions
 % 2010-07-12 DN  Fixed . at end of fname
+% 2011-06-07 DN  Can now also filter for files with no extension
 
 if nargin >= 2 && strcmp(mode,'silent')
     silent = true;
@@ -37,7 +38,7 @@ if ~isempty(file)
     [file.ext]  = ext{:};
 
     % if filter, use it
-    if nargin >= 3 && ~isempty(f_ext)
+    if nargin >= 3
         q_ext   = ismember(ext,f_ext);
         file    = file(q_ext);
     end
@@ -62,7 +63,7 @@ function [name,ext] = SplitFName(name)
 ind = find(name == '.', 1, 'last');
 
 if isempty(ind)
-    return;
+    ext = '';
 else
     ext = name(ind+1:end);
     name(ind:end) = [];
