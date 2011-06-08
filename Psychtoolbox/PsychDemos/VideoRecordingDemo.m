@@ -236,7 +236,7 @@ try
     % Capture and record video + audio to disk:
     % Specify the special flags in 'withsound', the codec settings for
     % recording in 'codec'. Leave everything else at auto-detected defaults:
-    grabber = Screen('OpenVideoCapture', win, [], [],[] ,[], [] , codec, withsound)
+    grabber = Screen('OpenVideoCapture', win, [], [0 0 640 480],[] ,[], [] , codec, withsound)
 
     % Start capture, request 30 fps. Capture hardware will fall back to
     % fastest supported framerate if it is not supported (i think).

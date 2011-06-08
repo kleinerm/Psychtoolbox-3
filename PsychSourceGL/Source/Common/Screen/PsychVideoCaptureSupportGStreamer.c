@@ -1120,6 +1120,8 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 			}
 
 			// Quality vs. Speed tradeoff specified?
+            // This not supported by current GStreamer for Windows version.
+            #if PSYCH_SYSTEM != PSYCH_WINDOWS
 			if (videoQuality >= 0) {
 				// Yes: Map quality vs. speed scalar to 0-10 number for speed preset:
 				if (videoQuality > 1) videoQuality = 1;
@@ -1134,7 +1136,8 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 				// No: Use the fastest speed at lowest quality:
 				strcat(videocodec, "speed-preset=1 ");
 			}
-
+            #endif
+            
 			// Bitrate specified?
 			if (videoBitrate >= 0) {
 				sprintf(codecoption, "bitrate=%i ", (int) videoBitrate);

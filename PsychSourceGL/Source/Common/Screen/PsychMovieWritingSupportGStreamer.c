@@ -456,7 +456,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 	// Assign 4 character string FOURCC code to select codec:
 	if ((poption = strstr(movieoptions, "CodecFOURCC="))) {
 		if (sscanf(poption, "CodecFOURCC=%s", &myfourcc) == 1) {
-            dummyInt (int) GST_STR_FOURCC (myfourcc);
+            dummyInt = (int) GST_STR_FOURCC (myfourcc);
 			gst_value_set_fourcc(&pwriterRec->CodecType, (guint32) dummyInt);
 			if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Codec with FOURCC numeric id %i [%" GST_FOURCC_FORMAT "] requested for encoding of movie %i [%s].\n", dummyInt, GST_FOURCC_ARGS(dummyInt), moviehandle, moviefile);
 			if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Codec selection by FOURCC not yet supported. FOURCC code ignored!\n");            

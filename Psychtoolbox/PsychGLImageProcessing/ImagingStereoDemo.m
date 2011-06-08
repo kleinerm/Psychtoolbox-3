@@ -273,7 +273,10 @@ escape = KbName('ESCAPE');
     % current directory. The file will record a movie of this performance
     % with video frames of size 512 x 512 pixels at a framerate of 60fps.
     if writeMovie
-        movie = Screen('CreateMovie', windowPtr, 'MyTestMovie.mov', 512, 512, 60);
+        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=theoraenc'); % funktioniert in ptb, aber nirgendwo sonst.
+%        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=theoraenc AddAudioTrack'); % vielleicht?
+%        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 320, 240, 30, ':CodecType=VideoCodec=xvidenc profile=244 max-key-interval=10 bitrate=9708400 quant-type=1');
+        
     end
     
     % Perform a flip to sync us to vbl and take start-timestamp in t:
