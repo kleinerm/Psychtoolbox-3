@@ -1,4 +1,4 @@
-function str = Var2Str(in,name)
+function str = Var2Str(varargin)
 % str = Var2Str(in,name)
 %
 % Takes variable IN and creates a string representation of it that would
@@ -6,8 +6,12 @@ function str = Var2Str(in,name)
 % that will be printed in this string.
 % Can process any (combination of) MATLAB built-in datatype
 %
-% example:
-%   var.field1.field2 = {logical(1),'yar',int32(43),[3 6 1 2],@isempty}
+% examples:
+%   Var2Str({4,7,'test',@exp})
+%   ans =
+%       {4,7,'test',@exp}
+%
+%   var.field1.field2 = {logical(1),'yar',int32(43),[3 6 1 2],@isempty};
 %   Var2Str(var,'var2')
 %   ans =
 %       var2.field1.field2 = {true,'yar',int32(43),[3,6,1,2],@isempty};
@@ -19,179 +23,111 @@ function str = Var2Str(in,name)
 %               variable in some cases
 % DN 2008-08-12 Added wronginputhandler() for easy creation of specific
 %               error messages on wrong input + added sparse support
+% DN 2011-06-07 Simple variables while having only one input argument
+%               didn't actually work....
+% DN 2011-06-08 reworked 2D+ engine and added a dispatcher to remove code
+%               duplication. Also put dealing with sparse and adding LHS to
+%               expression in one common place
 
 % TODO: make extensible by userdefined object parser for user specified
 % datatypes - this will make this function complete
 
 % make string of values in input, output is a cell per entry
-if isnumeric(in)
-    strc = numeric2str(in,name);
-elseif islogical(in)
-    strc = bool2str(in,name);
-elseif ischar(in)
-    strc = str2str(in,name);
-elseif iscell(in)
-    strc = cell2str(in,name);
-elseif isstruct(in)
-    strc = struct2str(in,name);
-elseif isa(in,'function_handle')
-    strc = funchand2str(in,name);
+strc = dispatcher(varargin{:});
+
+if iscell(strc)
+    % align equals-signs (autistic)
+    indices     = strfind(strc,'=');
+    indices     = cellfun(@(x)x(1),indices);
+    MaxIndex    = max(indices);
+    
+    for p = 1:length(strc)
+        i       = indices(p);
+        dif     = MaxIndex - i;
+        strc{p} = [strc{p}(1:i-1) repmat(' ',1,dif) strc{p}(i:end)];
+    end
+    
+    % make string out of the stringcells
+    str = [strc{:}];
 else
-    wronginputhandler(in);
+    str = strc;
 end
 
-% sort
-strc = sort(strc);
 
-% align equals-signs (autistic)
-indices     = strfind(strc,'=');
-indices     = cellfun(@(x)x(1),indices);
-MaxIndex    = max(indices);
-
-for p = 1:length(strc)
-    i       = indices(p);
-    dif     = MaxIndex - i;
-    strc{p} = [strc{p}(1:i-1) repmat(' ',1,dif) strc{p}(i:end)];
+% dispatch string representation creation of datatype to handler for that
+% datatype
+function str = dispatcher(varargin)
+if isnumeric(varargin{1}) || islogical(varargin{1})
+    str = numeric2str(varargin{:});
+elseif ischar(varargin{1})
+    str = str2str(varargin{:});
+elseif iscell(varargin{1})
+    str = cell2str(varargin{:});
+elseif isstruct(varargin{1})
+    str = struct2str(varargin{:});
+elseif isa(varargin{1},'function_handle')
+    str = funchand2str(varargin{1});
+else
+    wronginputhandler(varargin{:});
 end
 
-% make string out of the stringcells
-str = [strc{:}];
-
+if ischar(str)
+    if issparse(varargin{1}) && isempty(strfind(str,'sparse'))  % some sparse are already dealt with by mat2str
+        str = ['sparse(' str ')'];
+    end
+    if nargin==2
+        str = {[varargin{2} ' = ' str ';' char(10)]};
+    end
+end
 
 
 % functions to deal with the different datatypes
 function wronginputhandler(input,name)
-inpclass = class(input);
 if nargin == 1
     at = '';
 else
     at = [char(10) 'Error at ' name];
 end
-switch inpclass
+switch class(input)
     case 'inline'
         error('Inline functions not supported, they are deprecated.\nPlease see ''help function_handle'' for information on an alternative.%s',at)
     otherwise
-        error('input of type %s is not supported.%s',class(in),at)
+        error('input of type %s is not supported.%s',class(input),at)
 end
 
 
 function str = numeric2str(input,name)
 
-psychassert(isnumeric(input),'numeric2str: Input must be numerical, not %s',class(input))
+psychassert(isnumeric(input)||islogical(input),'numeric2str: Input must be numerical or logical, not %s',class(input))
 
-if isempty(input) || ndims(input)<=2
-    if isempty(input)
-        if ndims(input)==2 && all(size(input)==0) && isa(input,'double')
-            str = '[]';
-        else
-            s   = size(input);
-            str = ['zeros(' regexprep(mat2str(s),'\s+',',')];
-            if ~strcmp(class(input),'double')
-                str = [str ',''' class(input) ''''];
-            end
-            str = [str ')'];
-        end
-    elseif ndims(input)<=2
-        if strcmp(class(input),'double')
-            str = mat2str(input);
-        else
-            % for any non-double datatype, preserve type - double is default
-            str = mat2str(input,'class');
-        end
-        str = regexprep(str,'\s+',',');
+if numel(input)>4 && isscalar(unique(input))
+    % special case, all same value
+    str = constant2str(input);
+elseif isempty(input) || ndims(input)<=2
+    if ismember(class(input),{'double','logical'})
+        str = mat2str(input);
+    else
+        % for any non-double datatype, preserve type - double is default
+        str = mat2str(input,'class');
     end
-    if issparse(input)
-        str = ['sparse(' str ')'];
-    end
-    if nargin==2
-        str = {[name ' = ' str ';' char(10)]};
-    end
+    str = regexprep(str,'\s+','');
 else
     psychassert(nargin==2,'input argument name must be defined if processing 2D+ matrix');
-    str = mat2strhd(input,name,@numeric2str,[],[]);
-end
-
-
-function str = bool2str(input,name)
-
-psychassert(islogical(input),'bool2str: Input must be logical, not %s',class(input));
-
-if isempty(input) || ndims(input)<=2
-    if isempty(input)
-        s   = size(input);
-        str = ['logical(zeros(' regexprep(mat2str(s),'\s+',',') '))'];
-    elseif ndims(input)<=2
-        str = mat2str(input);
-        str = regexprep(str,'\s+',',');
-    end
-    if issparse(input)
-        str = ['sparse(' str ')'];
-    end
-    if nargin==2
-        str = {[name ' = ' str ';' char(10)]};
-    end
-else
-    psychassert(nargin==2,'input argument name must be defined if processing 2D+ boolean');
-    str = mat2strhd(input,name,@bool2str,[],[]);
+    str = mat2strhd(input,name);
 end
 
 function str = str2str(input,name)
 
-psychassert(ischar(input),'str2str: Input must be char, not %s',class(input));
+psychassert(ischar(input),'str2str: Input must be char, not %s',class(input))
 
-if isempty(input)
-    s   = size(input);
-    str = ['char(zeros(' regexprep(mat2str(s),'\s+',',') '))'];
-
-    if nargin==2
-        str = {[name ' = ' str ';' char(10)]};
-    end
-elseif ndims(input)<=2
-    nrow    = size(input,1);
-
-    % taken from mat2str, dangerousPattern slightly changed
-    strings = cell(nrow,1);
-    for row=1:nrow
-        strings{row}    = input(row,:);
-    end
-    dangerousPattern    =  '[\0\r\n\f\v]';
-    hasDangerousChars   = regexp(strings, dangerousPattern, 'once');
-    
-    % for older version of MATLAB, check if the string contains dangerous
-    % character, because a dynamic Replacement expression will be needed
-    % and this is not supported by R14SP3 or lower
-    mver = ver('matlab');
-    if ~(str2num(mver.Version)>7.1)
-        psychassert(~any(cellfun(@(x)~isempty(x),hasDangerousChars)),'Need at least MATLAB R2006a when string contains dangerous characters (\0\r\n\f\v)');
-    end
-
-    needsConcatenation  = nrow > 1 | ~isempty([hasDangerousChars{:}]);
-
-    strings     = strrep(strings, '''', '''''');
-    strings     = regexprep(strings, dangerousPattern, ''' char(${sprintf(''%d'',$0)}) ''');
-
-    if needsConcatenation
-        str = '[';
-    else
-        str = '';
-    end
-
-    str = [str '''' strings{1} ''''];
-
-    for row = 2:nrow
-        str = [str ';''' strings{row} ''''];
-    end
-
-    if needsConcatenation
-        str = [str ']'];
-    end
-
-    if nargin==2
-        str = {[name ' = ' str ';' char(10)]};
-    end
+if numel(input)>4 && isscalar(unique(input))
+    % special case, all same value
+    str = constant2str(input);
+elseif isempty(input) || ndims(input)<=2
+    str = mat2str(input);
 else
-    psychassert(nargin==2,'input argument name must be defined if processing 2D+ str');
-    str = mat2strhd(input,name,@str2str,[],[]);
+    psychassert(nargin==2,'input argument name must be defined if processing 2D+ string matrix');
+    str = mat2strhd(input,name);
 end
 
 function str = cell2str(input,name)
@@ -209,32 +145,18 @@ if isempty(input)
         s   = size(input);
         str = ['cell(zeros(' regexprep(mat2str(s),'\s+',',') '))'];
     end
-
-    if nargin==2
-        str = {[name ' = ' str ';' char(10)]};
-    end
 elseif ~qstruct && ~q2dplus
     [nrow ncol] = size(input);
     str         = '{';
     % process cell per element
     for p = 1:nrow
         for q=1:ncol
-            if isnumeric(input{p,q})
-                str = [str numeric2str(input{p,q})];
-            elseif islogical(input{p,q})
-                str = [str bool2str(input{p,q})];
-            elseif ischar(input{p,q})
-                str = [str str2str(input{p,q})];
-            elseif iscell(input{p,q})
-                str = [str cell2str(input{p,q})];
-            elseif isstruct(input{p,q})
-                % if there is a struct, cell2strhd() should have been handling this
+            if isstruct(input{p,q})
                 error('structs should not be processed here in any circumstance');
-            elseif isa(input{p,q},'function_handle')
-                str = [str funchand2str(input{p,q})];
             else
-                wronginputhandler(input{p,q});
+                str = [str dispatcher(input{p,q})];
             end
+            
             if q~=ncol
                 str = [str ','];
             end
@@ -244,13 +166,9 @@ elseif ~qstruct && ~q2dplus
         end
     end
     str = [str '}'];
-
-    if nargin==2
-        str = {[name ' = ' str ';' char(10)]};
-    end
 else
     psychassert(nargin==2,'input argument name must be defined if processing 2D+ cell');
-    str = cell2strhd(input,name,[],[]);
+    str = cell2strhd(input,name);
 end
 
 function strc = struct2str(input,name)
@@ -258,41 +176,27 @@ function strc = struct2str(input,name)
 if ~isstruct(input)
     error('Input is not struct')
 end
+psychassert(nargin==2,'input argument name must be defined if processing a struct');
 
 %%%%%
 qnotscalar  = any(size(input)>1);
 strc        = [];
 
 if ~qnotscalar
-    velden = fieldnames(input);
-    for r=1:length(velden)
-        wvar = input.(velden{r});
-        namesuff = ['.' velden{r}];
+    fields = fieldnames(input);
+    for r=1:length(fields)
+        wvar = input.(fields{r});
+        namesuff = ['.' fields{r}];
 
-        if isnumeric(wvar)
-            strc = [strc; numeric2str(wvar,[name namesuff])];
-        elseif islogical(wvar)
-            strc = [strc; bool2str(wvar,[name namesuff])];
-        elseif ischar(wvar)
-            strc = [strc; str2str(wvar,[name namesuff])];
-        elseif iscell(wvar)
-            strc = [strc; cell2str(wvar,[name namesuff])];
-        elseif isstruct(wvar)
-            strc = [strc; struct2str(wvar,[name namesuff])];
-        elseif isa(wvar,'function_handle')
-            strc = [strc; funchand2str(wvar,[name namesuff])];
-        else
-            wronginputhandler(wvar,[name namesuff]);
-        end
+        strc = [strc; dispatcher(wvar,[name namesuff])];
     end
 else
-    psychassert(nargin==2,'input argument name must be defined if processing 2D+ struct');
-    strc = struct2strhd(input,name,[],[]);
+    strc = struct2strhd(input,name);
 end
 
 
 
-function str = funchand2str(input,name)
+function str = funchand2str(input)
 
 psychassert(isa(input,'function_handle'),'funchand2str: Input must be a function handle, not %s',class(input));
 
@@ -300,144 +204,108 @@ str = func2str(input);
 if str(1)~='@'
     str = ['@' str];
 end
-if nargin==2
-    str = {[name ' = ' str ';' char(10)]};
-end
 
 
+%%%% function for special case of constant array
+function str = constant2str(in)
+item = unique(in);
+s    = size(in);
 
-%%%% HD functies for variables of more than 2 non-singleton dimensions
+sizestr = regexprep(mat2str(s),'\s+',',');
+itemstr = dispatcher(item);
 
-function strc = mat2strhd(in,name,fhndl,ndim,adrmat)
-
-if isempty(ndim)
-    ndim = ndims(in);                       % ndim is equal to number highest dim
-end
-if isscalar(unique(in))
-    % special case
-    item = unique(in);
-    s    = size(in);
-    if ~isempty(adrmat)
-        if length(adrmat)>1
-            mid = Interleave(repmat(',',1,length(adrmat)),adrmat(end:-1:1));
-        else
-            mid = [',' num2str(adrmat)];
-        end
-    else
-        mid = '';
-    end
-    vname = [name '(' Interleave(repmat(':',1,ndim),repmat(',',1,ndim-1)) mid ') = '];
-    sizestr = regexprep(mat2str(s),'\s+',',');
-    if item == 0
-        mid = ['zeros(' sizestr ')'];
-        if ~isa(item,'double')
-            mid = [class(in) '(' mid ');'];
-        end
-    else
-        mid = ['ones(' sizestr ')'];
-        if item ~= 1
-            mid = [fhndl(item) '*' mid];
-        end
-        if ~isa(item,'double')
-            mid = [class(in) '(' mid ');'];
-        end
-    end
-    strc = {[vname mid ';' char(10)]};
-    return;
-end
-
-if ndim==2
-    if length(adrmat)>1
-        mid = Interleave(adrmat(end:-1:1),repmat(',',1,length(adrmat)-1));
-    else
-        mid = num2str(adrmat);
-    end
-    namesuff = ['(:,:,' mid ')'];
-    strc = fhndl(in,[name namesuff]);       % dispatch 2D to correct interpreter
+if islogical(item)
+    str = [itemstr '(' sizestr(2:end-1) ')'];
 else
-    strc    = [];
-    s       = AltSize(in,[1:ndim-1]);
-    ind     = prod(s);
-
-    for p=1:size(in,ndim)
-        mat = in((p-1)*ind+1:p*ind);        % calculate linear indices and get data to be processed
-        input = reshape(mat,s);             % reshape back into original shape
-        strc = [strc; mat2strhd(input,name,fhndl,ndim-1,[adrmat p])];
-    end
+    str = ['repmat(' itemstr ',' sizestr ')'];
 end
+return;
 
-function strc = cell2strhd(in,name,ndim,adrmat)
 
-if isempty(ndim)
-    ndim = ndims(in);        % ndim is equal to number highest dim
-end
+
+%%%% HD functions for variables of more than 2 non-singleton dimensions
+
+function strc = mat2strhd(in,name)
+
+s = size(in);
+% unwrap all higher dimensions into a 2D mat, e.g., make a 4x2x3 into a
+% 12x2 where every four rows contain one element from the third dimension
+in=permute(in,[1,3:numel(s),2]);
+in=reshape(in,[],s(2));
+% wrap in cell per higher-dimension element
+in=num2cellStrided(in,[s(1:2)]);
+
+% prepare output indices
+idxs    = size2idxs(s,2);
+fmt     = [name '(:,:' repmat(',%d',[1,length(s)-2]) ')'];
+
+% dispatch each 2D to correct interpreter
+strc = cellfun(@(x,y)  dispatcher(x,[name sprintf(fmt,y)]),in,num2cell(idxs,2));
+
+function strc = cell2strhd(in,name)
 
 strc = [];
-if ndim==1
-    for p=1:length(in)
-        adrmatt  = [adrmat p];
-        namesuff = ['{' Interleave(adrmatt(end:-1:1),repmat(',',1,length(adrmatt)-1)) '}'];
-        if ndims(in{p})==2 && all(size(in{p})==0) && isa(in{p},'double')
-            continue;
-        elseif isnumeric(in{p})
-            strc = [strc; numeric2str(in{p},[name namesuff])];
-        elseif islogical(in{p})
-            strc = [strc; bool2str(in{p},[name namesuff])];
-        elseif ischar(in{p})
-            strc = [strc; str2str(in{p},[name namesuff])];
-        elseif iscell(in{p})
-            strc = [strc; cell2str(in{p},[name namesuff])];
-        elseif isstruct(in{p})
-            strc = [strc; struct2str(in{p},[name namesuff])];
-        elseif isa(in{p},'function_handle')
-            strc = [strc; funchand2str(in{p},[name namesuff])];
-        else
-            wronginputhandler(in{p},[name namesuff]);
-        end
-    end
-else
-    s   = AltSize(in,[1:ndim-1]);
-    ind = prod(s);
+siz = size(in);
 
-    for p=1:size(in,ndim)
-        mat = in((p-1)*ind+1:p*ind); % calculate linear indices and get data to be processed
-        if isscalar(s)
-            input = mat;
-        else
-            input = reshape(mat,s);  % reshape back into original shape
-        end
-        strc = [strc; cell2strhd(input,name,ndim-1,[adrmat p])];
+qDontProcess = cellfun(@(x) ndims(x)==2 && all(size(x)==0) && isa(x,'double'),in);
+for p=1:numel(in)
+    if qDontProcess(p)
+        continue;
     end
+
+    [idx{1:numel(siz)}] = ind2sub(siz,p);
+    namesuff = ['{' Interleave([idx{:}],repmat(',',1,length(idx)-1)) '}'];
+    
+    strc = [strc; dispatcher(in{p},[name namesuff])];
 end
 
-function strc = struct2strhd(in,name,ndim,adrmat)
-
-if isempty(ndim)
-    ndim = ndims(in);        % ndim is equal to number highest dim
-end
+function strc = struct2strhd(in,name)
 
 strc = [];
-if ndim==1
-    for p=1:length(in)
-        if all(structfun(@(x)ndims(x)==2 && all(size(x)==0) && isa(x,'double'),in(p)))
-            continue;
-        else
-            adrmatt = [adrmat p];
-            namesuff = ['(' Interleave(adrmatt(end:-1:1),repmat(',',1,length(adrmatt)-1)) ')'];
-            strc = [strc; struct2str(in(p),[name namesuff])];
-        end
+siz = size(in);
+
+qDontProcess = arrayfun(@(x) all(structfun(@(y) ndims(y)==2 && all(size(y)==0) && isa(y,'double'),x)),in);
+for p=1:numel(in)
+    if qDontProcess(p)
+        continue;
+    end
+    
+    [idx{1:numel(siz)}] = ind2sub(siz,p);
+    namesuff = ['(' Interleave([idx{:}],repmat(',',1,length(idx)-1)) ')'];
+    
+    strc = [strc; struct2str(in(p),[name namesuff])];
+end
+
+
+%%% other helpers
+function res = size2idxs(siz,noff)
+narg=numel(siz);
+n=narg-noff;
+if n
+    arg=cell(n,1);
+    x=cell(n,1);
+    for	i=1:n
+        arg{i}=1:siz(i+noff);
     end
 else
-    s = AltSize(in,[1:ndim-1]);
-    ind = prod(s);
-
-    for p=1:size(in,ndim)
-        mat = in((p-1)*ind+1:p*ind); % calculate linear indices and get data to be processed
-        if isscalar(s)
-            input = mat;
-        else
-            input = reshape(mat,s);  % reshape back into original shape
-        end
-        strc = [strc; struct2strhd(input,name,ndim-1,[adrmat p])];
-    end
+    arg{1}=1;
 end
+
+if n > 1
+    [x{1:n,1}]=ndgrid(arg{1:end});
+    res=reshape(cat(n+1,x{:}),[],n);
+else
+    res=arg{:}.';
+end
+
+function res = num2cellStrided(in,stride)
+% the function is only tested 2D for now, don't want to think about higher dims
+siz     = size(in);
+ndim    = numel(siz);
+ncell   = siz./stride;
+assert(~any(mod(ncell,1)),'size needs to be a multiple of stride for each dimension');
+
+res = reshape( in , Interleave(stride,ncell) );
+res = permute( res, InterLeave(1:ndim,ndim+1:ndim*2) );
+
+res = squeeze(num2cell(res,[1:ndim]));

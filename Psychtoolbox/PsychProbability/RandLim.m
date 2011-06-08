@@ -14,6 +14,8 @@ function out = RandLim(n,lower,upper)
 % DN 2008-07-21 Wrote it
 % DN 2008-09-19 Support for vector lower and upper limits
 
+assert(lower<upper)
+
 error(nargchk(3, 3, nargin, 'struct'))
 
 r = rand(n);

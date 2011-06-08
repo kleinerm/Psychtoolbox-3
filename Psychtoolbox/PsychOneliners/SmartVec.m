@@ -68,6 +68,7 @@ if nargin >= 3
     end
 end
 maxlen      = max(slength);
+slength     = slength(:);
 
 % do the work
 start       = start(:)';
@@ -88,7 +89,7 @@ vect        = totmat(:)';
 
 % if slength is a vector, we have to trim parts of the output
 if ~isscalar(slength) && length(unique(slength))>1
-    MinInd  = cumsum([0 maxlen*ones(1,length(slength)-1)])+1;
+    MinInd  = cumsum([0 maxlen*ones(1,length(slength)-1)]).'+1;
     MaxInd  = num2cell(MinInd+slength-1);
     indcell = cellfun(@(a,b)a:b,num2cell(MinInd),MaxInd,'UniformOutput',false);
     vect    = vect([indcell{:}]);

@@ -81,9 +81,10 @@ function strc = Explode(vect,splitvect,mode)
 
 % DN 2008
 % DN 2008-07-31 Added checking of MATLAB version
+% DN 2010-12-29 Fixed version check now that subversion is over .9...
 
 mver = ver('matlab');
-psychassert(str2double(mver.Version)>7.2,'Need at least MATLAB R2006b');
+psychassert(str2double(mver.Version(1))>=7 && str2double(mver.Version(3:end))>2,'Need at least MATLAB R2006b');
 
 if nargin==3
     switch mode
