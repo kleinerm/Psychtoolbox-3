@@ -305,8 +305,12 @@ end
 
 %%% other helpers
 function res = size2idxs(siz,noff)
+if nargin==1
+    noff = 0;
+end
 narg=numel(siz);
 n=narg-noff;
+
 if n
     arg=cell(n,1);
     x=cell(n,1);
@@ -314,7 +318,8 @@ if n
         arg{i}=1:siz(i+noff);
     end
 else
-    arg{1}=1;
+    res = [];
+    return;
 end
 
 if n > 1
