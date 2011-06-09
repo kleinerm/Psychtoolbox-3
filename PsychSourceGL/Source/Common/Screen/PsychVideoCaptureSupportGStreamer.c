@@ -1013,6 +1013,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 	int bigFiles = -1;
 	int fastStart = -1;
 	int indexItemsSec = -1;
+    int profile = -1;
 
 	memset(muxer, 0, sizeof(muxer));
 	memset(audiosrc, 0, sizeof(audiosrc));
@@ -1023,6 +1024,11 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 	camera = capdev->camera;
 
 	// Parse and assign high-level properties if any:
+	codecSep = strstr(codecSpec, "Profile=");
+	if (codecSep) {
+		sscanf(codecSep, "Profile=%i", &profile);
+	}
+
 	codecSep = strstr(codecSpec, "Interlaced=");
 	if (codecSep) {
 		sscanf(codecSep, "Interlaced=%i", &interlaced);
@@ -1119,9 +1125,17 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 				strcat(videocodec, codecoption);
 			}
 
+			// Encoding profile specified?
+			if (profile >= 0) {
+				// Assign profile:
+				sprintf(codecoption, "profile=%i ", profile);
+				strcat(videocodec, codecoption);
+			} else {
+                // Default to "High" profile: 640 x 480 @ 30 fps possible:
+				strcat(videocodec, "profile=3 ");            
+            }
+
 			// Quality vs. Speed tradeoff specified?
-            // This not supported by current GStreamer for Windows version.
-            #if PSYCH_SYSTEM != PSYCH_WINDOWS
 			if (videoQuality >= 0) {
 				// Yes: Map quality vs. speed scalar to 0-10 number for speed preset:
 				if (videoQuality > 1) videoQuality = 1;
@@ -1136,7 +1150,6 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 				// No: Use the fastest speed at lowest quality:
 				strcat(videocodec, "speed-preset=1 ");
 			}
-            #endif
             
 			// Bitrate specified?
 			if (videoBitrate >= 0) {

@@ -30,8 +30,8 @@
 
 // No Quicktime support for GNU/Linux:
 #if PSYCH_SYSTEM != PSYCH_LINUX
-
-#ifndef PTB_USE_GSTREAMER
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+//#ifndef PTB_USE_GSTREAMER
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include <Quicktime/QuickTimeComponents.h>

@@ -28,8 +28,8 @@
 #include "Screen.h"
 
 // GStreamer support enabled? If so, we use GStreamer based movie writing.
-#ifdef PTB_USE_GSTREAMER
-
+//#ifdef PTB_USE_GSTREAMER
+#ifdef FOOOBAR
 // GStreamer includes:
 #include <gst/gst.h>
 

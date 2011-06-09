@@ -105,32 +105,32 @@ else
     % This list of codec's - as specified by numeric FOURCC codes -
     % is specific to OS/X with the Quicktime video recording engine:
     if IsOSX
-	switch(codec)
-	    case 0,
-            codec = '';
-	    case 1,
-            codec = ':CodecType=1635148593'; % H.264 codec.
-	    case 2,
-            codec = ':CodecType=1886940276'; % Apple Pixlet Video codec.
-	    case 3,
-            codec = ':CodecType=1836070006'; % MPEG-4 Video codec.
-	    case 4,
-            codec = ':CodecType=2037741106'; % Component Video codec.  
-	    case 5,
-            codec = ':CodecType=1685480304'; % DV - PAL codec.
-	    case 6,
-            codec = ':CodecType=1685480224'; % DVCPRO - NTSC codec.
-	    case 7,
-            codec = ':CodecType=1685483632'; % DVCPRO - PAL codec.
-	    case 8,
-            codec = ':CodecType=1685468526'; % DVCPRO50 - NTSC codec.
-	    case 9,
-            codec = ':CodecType=1685468528'; % DVCPRO50 - PAL codec.
-	    case 10,
-            codec = ':CodecType=1748121139'; % H.263 codec.
-	    otherwise
-            error('Unknown codec specified, only know types 0 to 9.');
-	end
+        switch(codec)
+            case 0,
+                codec = '';
+            case 1,
+                codec = ':CodecType=1635148593'; % H.264 codec.
+            case 2,
+                codec = ':CodecType=1886940276'; % Apple Pixlet Video codec.
+            case 3,
+                codec = ':CodecType=1836070006'; % MPEG-4 Video codec.
+            case 4,
+                codec = ':CodecType=2037741106'; % Component Video codec.
+            case 5,
+                codec = ':CodecType=1685480304'; % DV - PAL codec.
+            case 6,
+                codec = ':CodecType=1685480224'; % DVCPRO - NTSC codec.
+            case 7,
+                codec = ':CodecType=1685483632'; % DVCPRO - PAL codec.
+            case 8,
+                codec = ':CodecType=1685468526'; % DVCPRO50 - NTSC codec.
+            case 9,
+                codec = ':CodecType=1685468528'; % DVCPRO50 - PAL codec.
+            case 10,
+                codec = ':CodecType=1748121139'; % H.263 codec.
+            otherwise
+                error('Unknown codec specified, only know types 0 to 9.');
+        end
     end
 end
 
@@ -236,7 +236,15 @@ try
     % Capture and record video + audio to disk:
     % Specify the special flags in 'withsound', the codec settings for
     % recording in 'codec'. Leave everything else at auto-detected defaults:
-    grabber = Screen('OpenVideoCapture', win, [], [0 0 640 480],[] ,[], [] , codec, withsound)
+    if IsWin
+        % Windows often has unreliable camera video resolution detection.
+        % Therefore we hard-code the resolution to 640x480, the most common
+        % case, to make it work "most of the time(tm)":
+        grabber = Screen('OpenVideoCapture', win, [], [0 0 640 480],[] ,[], [] , codec, withsound);
+    else
+        % No need for Windows-style workarounds:
+        grabber = Screen('OpenVideoCapture', win, [], [],[] ,[], [] , codec, withsound);
+    end
 
     % Start capture, request 30 fps. Capture hardware will fall back to
     % fastest supported framerate if it is not supported (i think).

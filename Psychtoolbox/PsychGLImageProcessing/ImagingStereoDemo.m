@@ -273,7 +273,10 @@ escape = KbName('ESCAPE');
     % current directory. The file will record a movie of this performance
     % with video frames of size 512 x 512 pixels at a framerate of 60fps.
     if writeMovie
-        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=theoraenc'); % funktioniert in ptb, aber nirgendwo sonst.
+        movie = Screen('CreateMovie', windowPtr, [pwd filesep 'WinXPTest.avi'], 640, 480, 30);
+%        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=VideoCodec=x264enc speed-preset=5 key-int-max=30 bitrate=20000 profile=3');
+% TUT:       movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=VideoCodec=x264enc speed-preset=5 bitrate=20000 profile=3'); 
+%        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=theoraenc'); % funktioniert in ptb, aber nirgendwo sonst.
 %        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=theoraenc AddAudioTrack'); % vielleicht?
 %        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 320, 240, 30, ':CodecType=VideoCodec=xvidenc profile=244 max-key-interval=10 bitrate=9708400 quant-type=1');
         
