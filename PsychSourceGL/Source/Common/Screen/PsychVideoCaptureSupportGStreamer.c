@@ -374,6 +374,17 @@ static gboolean PsychVideoBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
 		     "           Error from element %s: %s\n", GST_OBJECT_NAME(msg->src), error->message);
 	      printf("           Additional debug info: %s.\n\n", (debug) ? debug : "None");
 
+	      if (strstr(error->message, "speed-preset") || (debug && strstr(debug, "speed-preset"))) {
+		      // Bailed due to unsupported x264enc parameter "speed-preset". Can be solved by upgrading
+		      // GStreamer or the OS or the VideoCodec= override:
+		      printf("PTB-TIP: The reason this failed is because your GStreamer codec installation is too outdated.\n");
+		      printf("PTB-TIP: Either upgrade your GStreamer (plugin) installation to a more recent version,\n");
+		      printf("PTB-TIP: or upgrade your operating system (e.g., Ubuntu 10.10 'Maverick Meercat' and later are fine).\n");
+		      printf("PTB-TIP: A recent GStreamer installation is required to use all features and get optimal performance.\n");
+		      printf("PTB-TIP: As a workaround, you can manually specify all codec settings, leaving out the unsupported\n");
+		      printf("PTB-TIP: parameter 'speed-preset'. See 'help VideoRecording' on how to do that.\n\n");
+	      }
+
 	      if ((error->domain == GST_RESOURCE_ERROR) && (error->code != GST_RESOURCE_ERROR_NOT_FOUND)) {
 		      printf("           This means that there was some problem with opening the video device (permissions etc.).\n\n");
 	      }
@@ -968,7 +979,7 @@ GstElement* CreateGStreamerElementFromString(const char* codecSpec, const char* 
 		// Set GError* to NULL: Real men don't do error handling.
 		element = gst_parse_bin_from_description((const gchar *) codecPipelineSpec, TRUE, NULL);
 		if (element == NULL) {
-			// Oopsie:
+			// Oopsie: Failed!
 			if (PsychPrefStateGet_Verbosity() > 1) {
 				printf("PTB-WARNING: Failed to create an encoder element of type '%s' from the following passed parameter string:\n", typeSpec);
 				printf("PTB-WARNING: %s\n", codecPipelineSpec);
@@ -1013,7 +1024,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 	int bigFiles = -1;
 	int fastStart = -1;
 	int indexItemsSec = -1;
-    int profile = -1;
+	int profile = -1;
 
 	memset(muxer, 0, sizeof(muxer));
 	memset(audiosrc, 0, sizeof(audiosrc));
@@ -1131,9 +1142,9 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 				sprintf(codecoption, "profile=%i ", profile);
 				strcat(videocodec, codecoption);
 			} else {
-                // Default to "High" profile: 640 x 480 @ 30 fps possible:
+				// Default to "High" profile: 640 x 480 @ 30 fps possible:
 				strcat(videocodec, "profile=3 ");            
-            }
+			}
 
 			// Quality vs. Speed tradeoff specified?
 			if (videoQuality >= 0) {

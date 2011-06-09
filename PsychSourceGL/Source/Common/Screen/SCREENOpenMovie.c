@@ -355,7 +355,9 @@ PsychError SCREENCreateMovie(void)
 	// Create movie of given size and framerate with given options:
 	moviehandle = PsychCreateNewMovieFile(moviefile, width, height, framerate, movieOptions);
 	if (0 > moviehandle) {
-		printf("See http://developer.apple.com/documentation/QuickTime/APIREF/ErrorCodes.htm#//apple_ref/doc/constant_group/Error_Codes.\n\n");
+		#ifndef PTB_USE_GSTREAMER
+			printf("See http://developer.apple.com/documentation/QuickTime/APIREF/ErrorCodes.htm#//apple_ref/doc/constant_group/Error_Codes.\n\n");
+		#endif
 		PsychErrorExitMsg(PsychError_user, "CreateMovie failed for reason mentioned above.");
 	}
 	

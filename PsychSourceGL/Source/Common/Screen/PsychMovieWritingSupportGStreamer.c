@@ -43,11 +43,11 @@ typedef struct {
 	volatile psych_bool                             eos;
 	GMainLoop*                                      Context;
 	GstElement*                                     Movie;
-    GstElement*                                     ptbvideoappsrc;
-    GstElement*                                     ptbaudioappsrc;
+	GstElement*                                     ptbvideoappsrc;
+	GstElement*                                     ptbaudioappsrc;
 	GstBus*                                         bus;
 	GstBuffer*                                      PixMap;
-    GValue                                          CodecType;
+	guint32                                         CodecType;
 	char                                            File[FILENAME_MAX];
 	int                                             height;
 	int                                             width;
@@ -391,6 +391,18 @@ static gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
 	      printf("PTB-ERROR: GStreamer movie writing engine reports this error:\n"
 		     "           Error from element %s: %s\n", GST_OBJECT_NAME(msg->src), error->message);
 	      printf("           Additional debug info: %s.\n\n", (debug) ? debug : "None");
+
+	      // Special tips for the challenged:
+	      if (strstr(error->message, "speed-preset") || (debug && strstr(debug, "speed-preset"))) {
+		      // Bailed due to unsupported x264enc parameter "speed-preset". Can be solved by upgrading
+		      // GStreamer or the OS or the VideoCodec= override:
+		      printf("PTB-TIP: The reason this failed is because your GStreamer codec installation is too outdated.\n");
+		      printf("PTB-TIP: Either upgrade your GStreamer (plugin) installation to a more recent version,\n");
+		      printf("PTB-TIP: or upgrade your operating system (e.g., Ubuntu 10.10 'Maverick Meercat' and later are fine).\n");
+		      printf("PTB-TIP: A recent GStreamer installation is required to use all features and get optimal performance.\n");
+		      printf("PTB-TIP: As a workaround, you can manually specify all codec settings, leaving out the unsupported\n");
+		      printf("PTB-TIP: parameter 'speed-preset'. See 'help VideoRecording' on how to do that.\n\n");
+	      }
       }
 
       g_free(debug);
@@ -415,8 +427,8 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 	char                                    launchString[10000];
 	int                                     dummyInt;
 	float                                   dummyFloat;
-	char                                    myfourcc[4];
-    psych_bool                              doAudio = FALSE;
+	char                                    myfourcc[5];
+	psych_bool                              doAudio = FALSE;
 
 	// Still capacity left?
 	if (moviewritercount >= PSYCH_MAX_MOVIEWRITERDEVICES) PsychErrorExitMsg(PsychError_user, "Maximum number of movie writers exceeded. Please close some first!");
@@ -440,13 +452,40 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 
 	// If no movieoptions specified, create default string for default
 	// codec selection and configuration:
-	if (strlen(movieoptions) == 0) movieoptions = strdup("DEFAULTenc");
+	if (strlen(movieoptions) == 0) {
+		// No options provided. Select default encoder with default settings:
+		movieoptions = strdup("DEFAULTenc");
+	} else if ((poption = strstr(movieoptions, ":CodecSettings="))) {
+		// Replace ':' with a zero in movieoptions, so it gets null-terminated:
+		movieoptions = poption;
+		*movieoptions = 0;
+
+		// Move after null-terminator:
+		movieoptions++;
+
+		// Replace the ':CodecSettings=' with the special keyword 'DEFAULTenc', so
+		// so the default video codec is chosen, but the given settings override its
+		// default parameters.
+		strncpy(movieoptions, "DEFAULTenc    ", strlen("DEFAULTenc    "));
+
+		if (strlen(movieoptions) == 0) PsychErrorExitMsg(PsychError_user, "Invalid (empty) :CodecSettings= parameter specified. Aborted.");
+	} else if ((poption = strstr(movieoptions, ":CodecType="))) {
+		// Replace ':' with a zero in movieoptions, so it gets null-terminated
+		// and only points to the actual movie filename:
+		movieoptions = poption;
+		*movieoptions = 0;
+
+		// Advance movieoptions to point to the actual codec spec string:
+		movieoptions+= 11;
+
+		if (strlen(movieoptions) == 0) PsychErrorExitMsg(PsychError_user, "Invalid (empty) :CodecType= parameter specified. Aborted.");
+	}
 
 	// Assign numeric 32-bit FOURCC equivalent code to select codec:
 	// This is optional. We default to kH264CodecType:
 	if ((poption = strstr(movieoptions, "CodecFOURCCId="))) {
 		if (sscanf(poption, "CodecFOURCCId=%i", &dummyInt) == 1) {
-			gst_value_set_fourcc(&pwriterRec->CodecType, (guint32) dummyInt);
+			pwriterRec->CodecType = dummyInt;
 			if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Codec with FOURCC numeric id %i [%" GST_FOURCC_FORMAT "] requested for encoding of movie %i [%s].\n", dummyInt, GST_FOURCC_ARGS(dummyInt), moviehandle, moviefile);
 			if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Codec selection by FOURCC not yet supported. FOURCC code ignored!\n");            
 		}
@@ -455,9 +494,10 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 
 	// Assign 4 character string FOURCC code to select codec:
 	if ((poption = strstr(movieoptions, "CodecFOURCC="))) {
-		if (sscanf(poption, "CodecFOURCC=%s", &myfourcc) == 1) {
-            dummyInt = (int) GST_STR_FOURCC (myfourcc);
-			gst_value_set_fourcc(&pwriterRec->CodecType, (guint32) dummyInt);
+		if (sscanf(poption, "CodecFOURCC=%c%c%c%c", &myfourcc[0], &myfourcc[1], &myfourcc[2], &myfourcc[3]) == 4) {
+			myfourcc[4] = 0;
+			dummyInt = (int) GST_STR_FOURCC (myfourcc);
+			pwriterRec->CodecType = dummyInt;
 			if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Codec with FOURCC numeric id %i [%" GST_FOURCC_FORMAT "] requested for encoding of movie %i [%s].\n", dummyInt, GST_FOURCC_ARGS(dummyInt), moviehandle, moviefile);
 			if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Codec selection by FOURCC not yet supported. FOURCC code ignored!\n");            
 		}
@@ -471,11 +511,11 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 			// Map floating point quality level between 0.0 and 1.0 to 10 discrete levels:
 			if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Encoding quality level %f selected for encoding of movie %i [%s].\n", dummyFloat, moviehandle, moviefile);
 
-            // Rewrite "EncodingQuality=" string into "VideoQuality=" string, with proper
-            // padding:      "EncodingQuality="
-            // This way EncodingQuality in Quicktime lingo corresponds to
-            // VideoQuality in GStreamer lingo:
-            strncpy(poption, "   VideoQuality=", strlen("   VideoQuality="));
+			// Rewrite "EncodingQuality=" string into "VideoQuality=" string, with proper
+			// padding:      "EncodingQuality="
+			// This way EncodingQuality in Quicktime lingo corresponds to
+			// VideoQuality in GStreamer lingo:
+			strncpy(poption, "   Videoquality=", strlen("   Videoquality="));
 		}
 		else PsychErrorExitMsg(PsychError_user, "Invalid EncodingQuality= parameter provided in movieoptions parameter. Parse error or out of valid 0 - 1 range!");
 	}
@@ -488,47 +528,47 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 	if (height < 1) PsychErrorExitMsg(PsychError_user, "In CreateMovie: Invalid zero or negative 'height' for video frame size provided!");
 	if ((height < 4) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING:In CreateMovie: 'height' of %i pixels for moviehandle %i provided! Some video codecs may malfunction with such a small height.\n", height, moviehandle);
 
-    // Full GStreamer launch line a la gst-launch command provided?
-    if (strstr(movieoptions, "gst-launch")) {
-        // Yes: We use movieoptions directly as launch line:
-        movieoptions = strstr(movieoptions, "gst-launch");
+	// Full GStreamer launch line a la gst-launch command provided?
+	if (strstr(movieoptions, "gst-launch")) {
+		// Yes: We use movieoptions directly as launch line:
+		movieoptions = strstr(movieoptions, "gst-launch");
         
-        // Move string pointer behind the "gst-launch" word (plus a blank):
-        movieoptions+= strlen("gst-launch ");
+		// Move string pointer behind the "gst-launch" word (plus a blank):
+		movieoptions+= strlen("gst-launch ");
         
-        // Can directly use this:
-        sprintf(launchString, "%s", movieoptions);
+		// Can directly use this:
+		sprintf(launchString, "%s", movieoptions);
 
-        // With audio track?
-        if (strstr(movieoptions, "name=ptbaudioappsrc")) doAudio = TRUE;
-    }
-    else {
-        // No: Do our own parsing and setup:
+		// With audio track?
+		if (strstr(movieoptions, "name=ptbaudioappsrc")) doAudio = TRUE;
+	}
+	else {
+		// No: Do our own parsing and setup:
 
-        // Find the gst-launch style string for codecs and muxers:
-        if (!PsychGetCodecLaunchLineFromString(movieoptions, &(codecString[0]))) {
-            // No config for this format possible:
-            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR:In CreateMovie: Creating movie file with handle %i [%s] failed: Could not find matching codec setup.\n", moviehandle, moviefile);
-            goto bail;
-        }
+		// Find the gst-launch style string for codecs and muxers:
+		if (!PsychGetCodecLaunchLineFromString(movieoptions, &(codecString[0]))) {
+			// No config for this format possible:
+			if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR:In CreateMovie: Creating movie file with handle %i [%s] failed: Could not find matching codec setup.\n", moviehandle, moviefile);
+			goto bail;
+		}
         
-        // With audio track?
-        if (strstr(movieoptions, "AddAudioTrack")) doAudio = TRUE;
+		// With audio track?
+		if (strstr(movieoptions, "AddAudioTrack")) doAudio = TRUE;
         
-        // Build final launch string:
-        if (doAudio) {
-            // Video and audio:
-            sprintf(launchString, "appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps=\"video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, width=(int)%i, height=(int)%i, framerate=%i/1 \" ! videorate ! ffmpegcolorspace ! %s ! filesink name=ptbfilesink async=0 location=%s ", width, height, ((int) (framerate + 0.5)), codecString, moviefile);
-        } else {
-            // Video only:
-            sprintf(launchString, "appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps=\"video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, width=(int)%i, height=(int)%i, framerate=%i/1 \" ! videorate ! ffmpegcolorspace ! %s ! filesink name=ptbfilesink async=0 location=%s ", width, height, ((int) (framerate + 0.5)), codecString, moviefile);
-        }
-    }
+		// Build final launch string:
+		if (doAudio) {
+			// Video and audio:
+			sprintf(launchString, "appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps=\"video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, width=(int)%i, height=(int)%i, framerate=%i/1 \" ! videorate ! ffmpegcolorspace ! %s ! filesink name=ptbfilesink async=0 location=%s ", width, height, ((int) (framerate + 0.5)), codecString, moviefile);
+		} else {
+			// Video only:
+			sprintf(launchString, "appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps=\"video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, width=(int)%i, height=(int)%i, framerate=%i/1 \" ! videorate ! ffmpegcolorspace ! %s ! filesink name=ptbfilesink async=0 location=%s ", width, height, ((int) (framerate + 0.5)), codecString, moviefile);
+		}
+	}
         
 	// Create a movie file for the destination movie:
 	if (PsychPrefStateGet_Verbosity() > 3) {
-		printf("PTB-INFO: Movie writing pipeline gst-launch line is:\n");
-		printf("gst-launch -e %s\n", launchString);
+		printf("PTB-INFO: Movie writing pipeline gst-launch line (without the -e option required on the command line!) is:\n");
+		printf("gst-launch %s\n", launchString);
 	}
 
 	// Build pipeline from launch string:

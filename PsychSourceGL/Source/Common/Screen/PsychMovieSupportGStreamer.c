@@ -66,7 +66,8 @@ typedef struct {
     int                 nrAudioTracks;
     int                 nrVideoTracks;
     char                movieLocation[FILENAME_MAX];
-	GLuint		cached_texture;
+    char                movieName[FILENAME_MAX];
+    GLuint		cached_texture;
 } PsychMovieRecordType;
 
 static PsychMovieRecordType movieRecordBANK[PSYCH_MAX_MOVIES];
@@ -194,9 +195,12 @@ static gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
       GError *error;
 
       gst_message_parse_warning(msg, &error, &debug);
-      printf("PTB-WARNING: GStreamer movie playback engine reports this warning:\n"
-	     "             Warning from element %s: %s\n", GST_OBJECT_NAME(msg->src), error->message);
-      printf("             Additional debug info: %s.\n", (debug) ? debug : "None");
+
+      if (PsychPrefStateGet_Verbosity() > 3) {
+	      printf("PTB-WARNING: GStreamer movie playback engine reports this warning:\n"
+		     "             Warning from element %s: %s\n", GST_OBJECT_NAME(msg->src), error->message);
+	      printf("             Additional debug info: %s.\n", (debug) ? debug : "None");
+      }
 
       g_free(debug);
       g_error_free(error);
@@ -208,16 +212,24 @@ static gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
       GError *error;
 
       gst_message_parse_error(msg, &error, &debug);
-      printf("PTB-ERROR: GStreamer movie playback engine reports this error:\n"
-	     "           Error from element %s: %s\n", GST_OBJECT_NAME(msg->src), error->message);
-      printf("           Additional debug info: %s.\n\n", (debug) ? debug : "None");
+      if (PsychPrefStateGet_Verbosity() > 0) {
+	      // Most common case, "File not found" error? If so, we provide a pretty-printed error message:
+	      if ((error->domain == GST_RESOURCE_ERROR) && (error->code == GST_RESOURCE_ERROR_NOT_FOUND)) {
+		      printf("PTB-ERROR: Could not open movie file [%s] for playback! No such moviefile with the given path and filename.\n",
+			     movie->movieName);
+		      printf("PTB-ERROR: The specific file URI of the missing movie was: %s.\n", movie->movieLocation);
+	      }
+	      else {
+		      // Nope, something more special. Provide detailed GStreamer error output:
+		      printf("PTB-ERROR: GStreamer movie playback engine reports this error:\n"
+			     "           Error from element %s: %s\n", GST_OBJECT_NAME(msg->src), error->message);
+		      printf("           Additional debug info: %s.\n\n", (debug) ? debug : "None");
 
-      if ((error->domain == GST_RESOURCE_ERROR) && (error->code != GST_RESOURCE_ERROR_NOT_FOUND)) {
-	      printf("           This means that there was some problem with reading the movie file (permissions etc.).\n\n");
-      }
-
-      if ((error->domain == GST_RESOURCE_ERROR) && (error->code == GST_RESOURCE_ERROR_NOT_FOUND)) {
-	      printf("           This means that no such moviefile with the given name could be found.\n\n");
+		      // And some interpretation for our technically challenged users ;-):
+		      if ((error->domain == GST_RESOURCE_ERROR) && (error->code != GST_RESOURCE_ERROR_NOT_FOUND)) {
+			      printf("           This means that there was some problem with reading the movie file (permissions etc.).\n\n");
+		      }
+	      }
       }
 
       g_free(debug);
@@ -457,6 +469,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 	snprintf(movieLocation, sizeof(movieLocation)-1, "file:///%s", moviename);
     }
     strncpy(movieRecordBANK[slotid].movieLocation, movieLocation, FILENAME_MAX);
+    strncpy(movieRecordBANK[slotid].movieName, moviename, FILENAME_MAX);
 
     // Create movie playback pipeline:
     theMovie = gst_element_factory_make ("playbin2", "ptbmovieplaybackpipeline");

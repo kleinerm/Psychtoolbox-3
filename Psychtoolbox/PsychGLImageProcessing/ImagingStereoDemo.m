@@ -273,7 +273,8 @@ escape = KbName('ESCAPE');
     % current directory. The file will record a movie of this performance
     % with video frames of size 512 x 512 pixels at a framerate of 60fps.
     if writeMovie
-        movie = Screen('CreateMovie', windowPtr, [pwd filesep 'WinXPTest.avi'], 640, 480, 30);
+        movie = Screen('CreateMovie', windowPtr, ['/home/kleinerm/Desktop/LinuxTest.avi'], 640, 480, 30, 'gst-launch appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps="video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, width=(int)640, height=(int)480, framerate=30/1 " ! videorate ! ffmpegcolorspace !  x264enc profile=3 speed-preset=1  ! ptbvideomuxer0. appsrc name=ptbaudioappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! faac  ! ptbvideomuxer0. avimux name=ptbvideomuxer0  ! filesink name=ptbfilesink async=0 location=/home/kleinerm/Desktop/LinuxTest.avi');
+
 %        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=VideoCodec=x264enc speed-preset=5 key-int-max=30 bitrate=20000 profile=3');
 % TUT:       movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=VideoCodec=x264enc speed-preset=5 bitrate=20000 profile=3'); 
 %        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=theoraenc'); % funktioniert in ptb, aber nirgendwo sonst.

@@ -267,8 +267,8 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 		ret = pci_device_probe(gpu);
 		if (ret) {
 			if (PsychPrefStateGet_Verbosity() > 1) {
-				printf("PTB-WARNING: Could not probe properties of GPU for screenId %i [%s]\n", screenId, strerror(ret));
-				printf("PTB-WARNING: Beamposition timestamping and other special features disabled.\n");
+				printf("PTB-INFO: Could not probe properties of GPU for screenId %i [%s]\n", screenId, strerror(ret));
+				printf("PTB-INFO: Beamposition timestamping and other special features disabled.\n");
 				fflush(NULL);
 			}
 
@@ -323,10 +323,10 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 		ret = pci_device_map_range(gpu, region->base_addr, region->size, PCI_DEV_MAP_FLAG_WRITABLE, (void**) &gfx_cntl_mem);		
 		if (ret || (NULL == gfx_cntl_mem)) {
 			if (PsychPrefStateGet_Verbosity() > 1) {
-				printf("PTB-WARNING: Failed to map GPU low-level control registers for screenId %i [%s].\n", screenId, strerror(ret));
-				printf("PTB-WARNING: Beamposition timestamping and other special functions disabled.\n");
-				printf("PTB-WARNING: You must run Matlab/Octave with root privileges for this to work.\n");
-				printf("PTB-WARNING: However, if you are using the free graphics drivers, there isn't any need for this.\n");
+				printf("PTB-INFO: Failed to map GPU low-level control registers for screenId %i [%s].\n", screenId, strerror(ret));
+				printf("PTB-INFO: Beamposition timestamping and other special functions disabled.\n");
+				printf("PTB-INFO: You must run Matlab/Octave with root privileges for this to work.\n");
+				printf("PTB-INFO: However, if you are using the free graphics drivers, there isn't any need for this.\n");
 				fflush(NULL);
 			}
 			
