@@ -330,7 +330,8 @@ else
 end
 
 function res = num2cellStrided(in,stride)
-% the function is only tested 2D for now, don't want to think about higher dims
+% the function is only tested 2D for now, don't want to think about higher
+% dims, but it might just work equally fine
 siz     = size(in);
 ndim    = numel(siz);
 ncell   = siz./stride;
