@@ -1,5 +1,11 @@
 function success = FileVar2Str
 
+if IsOctave
+    fprintf('Var2Str is not supported on Octave as its mat2str doesn''t handle logical or sparse input and we depend on that (I don''t want to replicate functionality from matlabs mat2str)\n Var2Str will work ok on Octave if you input numeric non-empty data, possibly contained in cells or structs.\n')
+    success = false;
+    return;
+end
+
 success = true;
 
 try
@@ -26,7 +32,7 @@ try
     h{18} = zeros(30,30,5,'uint16');
     h{19} = sprintf('\n\r');
     h{21} = speye(7);
-    h{23} = [nan+1j*inf 0 0 0 0 inf-1j*inf 0 0 0 2.3-1j*12.4];
+    h{23} = [nan+1j*inf 0 0 0 0 inf-1j*inf 0 0 0 2.3-1j*pi];
     h{25} = sparse(h{23});
     h{27} = cell(0,3);
     h{29} = repmat(struct('f1',[],'f2',[]),[0 3]);
@@ -64,8 +70,11 @@ try
     
 catch
     success = false;
-    fprintf('error ocurred: "%s"\n',lasterr);
-    
+    err = lasterror;
+    fprintf('error ocurred: "%s"\nstack:\n',err.message);
+    for p=1:length(err.stack)
+        fprintf('Error in ==> %s at %d\n',err.stack(p).name,err.stack(p).line);
+    end
 end
 
 

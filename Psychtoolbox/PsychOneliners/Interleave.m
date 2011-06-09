@@ -16,10 +16,13 @@ function [vec] = Interleave(varargin)
 % DN 23-01-2008 updated to support scalars and conversion to char
 % DN 28-04-2008 simplified input checking
 % DN 28-05-2008 bugfix mixing numeric and char
-% DN 09-06-2011 Now works fine with empty inputs
+% DN 09-06-2011 Now works fine with empty inputs. Few changes for compatibility
+% 		with Octave, might have more up ahead.
 
-cellfun(@(x)psychassert(isvector(x) || isscalar(x),'not all inputs are vectors or scalars'),varargin);
-cellfun(@(x)psychassert(isnumeric(x) || iscell(x) || ischar(x),'not all inputs are numeric, cell or char'),varargin);
+for p=1:nargin
+    psychassert(isvector(varargin{p}) || isscalar(varargin{p}),'not all inputs are vectors or scalars');
+    psychassert(isnumeric(varargin{p}) || iscell(varargin{p}) || ischar(varargin{p}),'not all inputs are numeric, cell or char')
+end
 
 % remove empty inputs
 qEmpty = cellfun(@isempty,varargin);
@@ -37,12 +40,17 @@ if any(qnum) && qchar && ~qcell
         temp = num2cell(varargin{inds(p)});
         varargin{inds(p)} = cellfun(@num2str,temp,'UniformOutput',false);
     end
+    % pack all other inputs in cell as well for Octave
+    inds = find(~qnum);
+    for p=1:length(inds)
+        varargin{inds(p)} = num2cell(varargin{inds(p)});
+    end
 end
 
 for p=1:numel(varargin)
     r(p,1:numel(varargin{p})) = num2cell(varargin{p});
 end
-vec=[r{:}];
+vec=cat(2,r{:});
 
 if any(qnum) && qchar && ~qcell
     % last step

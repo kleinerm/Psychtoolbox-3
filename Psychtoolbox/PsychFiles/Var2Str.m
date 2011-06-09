@@ -106,10 +106,10 @@ if numel(input)>4 && isscalar(unique(input))
     str = constant2str(input);
 elseif isempty(input) || ndims(input)<=2
     if ismember(class(input),{'double','logical'})
-        str = mat2str(input);
+        str = mat2str(input,17);
     else
         % for any non-double datatype, preserve type - double is default
-        str = mat2str(input,'class');
+        str = mat2str(input,17,'class');
     end
     str = regexprep(str,'\s+',' ');
 else
@@ -126,7 +126,7 @@ if numel(input)>4 && isscalar(unique(input))
     % special case, all same value
     str = constant2str(input);
 elseif isempty(input) || ndims(input)<=2
-    str = mat2str(input);
+    str = mat2str(input,17);
 else
     psychassert(nargin==2,'input argument name must be defined if processing 2D+ string matrix');
     str = mat2strhd(input,name);
@@ -146,7 +146,7 @@ if isempty(input)
         str = '{}';
     else
         s   = size(input);
-        str = ['cell(' regexprep(mat2str(s),'\s+',',') ')'];
+        str = ['cell(' regexprep(mat2str(s,17),'\s+',',') ')'];
     end
 elseif ~qstruct && ~q2dplus
     [nrow ncol] = size(input);
@@ -190,7 +190,7 @@ if isempty(fields)
     strc = 'struct()';
     
     if ~isscalar(input)
-        sizestr = regexprep(mat2str(size(input)),'\s+',' ');
+        sizestr = regexprep(mat2str(size(input),17),'\s+',' ');
         strc    = ['repmat(' strc ',' sizestr ')'];
     end
 elseif all(arrayfun(@(x) all(structfun(@(y) ndims(y)==2 && all(size(y)==0) && isa(y,'double'),x)),input))
@@ -200,7 +200,7 @@ elseif all(arrayfun(@(x) all(structfun(@(y) ndims(y)==2 && all(size(y)==0) && is
     strc = cell2mat(['struct(' Interleave(fields,repmat(',',1,nf-1)) ')']);
     
     if ~isscalar(input)
-        sizestr = regexprep(mat2str(size(input)),'\s+',' ');
+        sizestr = regexprep(mat2str(size(input),17),'\s+',' ');
         strc    = ['repmat(' strc ',' sizestr ')'];
     end
 else
@@ -237,7 +237,7 @@ function str = constant2str(in)
 item = unique(in);
 s    = size(in);
 
-sizestr = regexprep(mat2str(s),'\s+',' ');
+sizestr = regexprep(mat2str(s,17),'\s+',' ');
 itemstr = dispatcher(item);
 
 if islogical(item)
