@@ -26,8 +26,9 @@ function str = Var2Str(varargin)
 % DN 2011-06-07 Simple variables while having only one input argument
 %               didn't actually work....
 % DN 2011-06-08 reworked 2D+ engine and added a dispatcher to remove code
-%               duplication. Also put dealing with sparse and adding LHS to
-%               expression in one common place
+%               duplication. Also put addition of LHS to expression in one
+%               common place.
+% DN 2011-06-09 Added handling of empty and/or fieldless structs
 
 % TODO: make extensible by userdefined object parser for user specified
 % datatypes - this will make this function complete
@@ -71,17 +72,17 @@ else
     wronginputhandler(varargin{:});
 end
 
+% add LHS if needed
 if ischar(str)
-    if issparse(varargin{1}) && isempty(strfind(str,'sparse'))  % some sparse are already dealt with by mat2str
-        str = ['sparse(' str ')'];
-    end
     if nargin==2
         str = {[varargin{2} ' = ' str ';' char(10)]};
     end
 end
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % functions to deal with the different datatypes
+
+% this function handles the unsupported data types
 function wronginputhandler(input,name)
 if nargin == 1
     at = '';
@@ -95,7 +96,7 @@ switch class(input)
         error('input of type %s is not supported.%s',class(input),at)
 end
 
-
+% this function handles numerical and logical data types
 function str = numeric2str(input,name)
 
 psychassert(isnumeric(input)||islogical(input),'numeric2str: Input must be numerical or logical, not %s',class(input))
@@ -110,12 +111,13 @@ elseif isempty(input) || ndims(input)<=2
         % for any non-double datatype, preserve type - double is default
         str = mat2str(input,'class');
     end
-    str = regexprep(str,'\s+','');
+    str = regexprep(str,'\s+',' ');
 else
     psychassert(nargin==2,'input argument name must be defined if processing 2D+ matrix');
     str = mat2strhd(input,name);
 end
 
+% this function handles the char data type -> strings
 function str = str2str(input,name)
 
 psychassert(ischar(input),'str2str: Input must be char, not %s',class(input))
@@ -130,6 +132,7 @@ else
     str = mat2strhd(input,name);
 end
 
+% this one for cells
 function str = cell2str(input,name)
 
 psychassert(iscell(input),'cell2str: Input must be cell, not %s',class(input));
@@ -143,7 +146,7 @@ if isempty(input)
         str = '{}';
     else
         s   = size(input);
-        str = ['cell(zeros(' regexprep(mat2str(s),'\s+',',') '))'];
+        str = ['cell(' regexprep(mat2str(s),'\s+',',') ')'];
     end
 elseif ~qstruct && ~q2dplus
     [nrow ncol] = size(input);
@@ -167,31 +170,54 @@ elseif ~qstruct && ~q2dplus
     end
     str = [str '}'];
 else
-    psychassert(nargin==2,'input argument name must be defined if processing 2D+ cell');
+    psychassert(nargin==2,'input argument name must be defined if processing 2D+ cell or cell containing structs');
     str = cell2strhd(input,name);
 end
 
+% and this one for structs
 function strc = struct2str(input,name)
 
 if ~isstruct(input)
     error('Input is not struct')
 end
-psychassert(nargin==2,'input argument name must be defined if processing a struct');
 
 %%%%%
-qnotscalar  = any(size(input)>1);
-strc        = [];
+fields  = fieldnames(input);
+strc    = [];
 
-if ~qnotscalar
-    fields = fieldnames(input);
-    for r=1:length(fields)
-        wvar = input.(fields{r});
-        namesuff = ['.' fields{r}];
-
-        strc = [strc; dispatcher(wvar,[name namesuff])];
+if isempty(fields)
+    % handle case of no fields
+    strc = 'struct()';
+    
+    if ~isscalar(input)
+        sizestr = regexprep(mat2str(size(input)),'\s+',' ');
+        strc    = ['repmat(' strc ',' sizestr ')'];
+    end
+elseif all(arrayfun(@(x) all(structfun(@(y) ndims(y)==2 && all(size(y)==0) && isa(y,'double'),x)),input))
+    % handle case of all fields default-empty (0x0 double)
+    nf = length(fields);
+    fields = MergeCell('''',fields,''',[]');
+    strc = cell2mat(['struct(' Interleave(fields,repmat(',',1,nf-1)) ')']);
+    
+    if ~isscalar(input)
+        sizestr = regexprep(mat2str(size(input)),'\s+',' ');
+        strc    = ['repmat(' strc ',' sizestr ')'];
     end
 else
-    strc = struct2strhd(input,name);
+    % struct has actual data, process
+    psychassert(nargin==2,'input argument name must be defined if processing a struct');
+    
+    if isscalar(input)
+        fields = fieldnames(input);
+        for r=1:length(fields)
+            wvar = input.(fields{r});
+            namesuff = ['.' fields{r}];
+            
+            strc = [strc; dispatcher(wvar,[name namesuff])];
+        end
+    else
+        strc = struct2strnonscalar(input,name);
+    end
 end
 
 
@@ -211,11 +237,11 @@ function str = constant2str(in)
 item = unique(in);
 s    = size(in);
 
-sizestr = regexprep(mat2str(s),'\s+',',');
+sizestr = regexprep(mat2str(s),'\s+',' ');
 itemstr = dispatcher(item);
 
 if islogical(item)
-    str = [itemstr '(' sizestr(2:end-1) ')'];
+    str = [itemstr '(' strrep(sizestr(2:end-1),' ',',') ')'];
 else
     str = ['repmat(' itemstr ',' sizestr ')'];
 end
@@ -259,7 +285,7 @@ for p=1:numel(in)
     strc = [strc; dispatcher(in{p},[name namesuff])];
 end
 
-function strc = struct2strhd(in,name)
+function strc = struct2strnonscalar(in,name)
 
 strc = [];
 siz = size(in);

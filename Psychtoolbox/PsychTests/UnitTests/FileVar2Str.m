@@ -11,10 +11,10 @@ try
     d = @sin;
     e = @(x) sin(x);    % anonymous function handle
     f = {1,2, [3 4 5], true, uint32([335321 32]), zeros([0, 3],'int16')};
-    f{50,1,30,45} = {6,7,8};
+    f{50,1,3,45} = {6,7,8,'a'};
     g.f1 = true;
     g(5).get = 'get';
-    g(30).cell{1,4,62,2,5}.test(45).cell2{3,3,54,2,1} = {4,7,'test',@exp};
+    g(30).cell{1,4,62,2,5}.test(45,2,10).cell2{3,3,54,2,1} = {4,7,'test',@exp};
     % compression test (above we already that default-empty values are not
     % output, now test if fields of the same number (constant arrays) are
     % compressed
@@ -26,16 +26,24 @@ try
     h{18} = zeros(30,30,5,'uint16');
     h{19} = sprintf('\n\r');
     h{21} = speye(7);
+    h{23} = [nan+1j*inf 0 0 0 0 inf-1j*inf 0 0 0 2.3-1j*12.4];
+    h{25} = sparse(h{23});
+    h{27} = cell(0,3);
+    h{29} = repmat(struct('f1',[],'f2',[]),[0 3]);
+    h{30} = repmat(struct('f1',[],'f2',[]),[1 3 5 20 1]);
+    h{31} = struct();
+    h{32} = repmat(struct(),[3 4]);
+    h{33} = repmat(struct(),[0 4]);
     
     % when evaling the output of Var2Str, we should get exactly the same
     % data back, lets do it
-    success = success && Var2StrTester(a,'a');
-    success = success && Var2StrTester(b,'b');
-    success = success && Var2StrTester(c,'c');
-    success = success && Var2StrTester(d,'d');
-    success = success && Var2StrTester(f,'f');
-    success = success && Var2StrTester(g,'g');
-    success = success && Var2StrTester(h,'h');
+    success = Var2StrTester(a,'a') && success;
+    success = Var2StrTester(b,'b') && success;
+    success = Var2StrTester(c,'c') && success;
+    success = Var2StrTester(d,'d') && success;
+    success = Var2StrTester(f,'f') && success;
+    success = Var2StrTester(g,'g') && success;
+    success = Var2StrTester(h,'h') && success;
     
     % anonymous function handles won't compare equal, so need to deal with
     % this by hand
@@ -64,14 +72,10 @@ end
 
 
 
-
-
-
-
-function [success,var2,str] = Var2StrTester(var,name)
+function [success,var2,str] = Var2StrTester(var,name) %#ok<STOUT>
 str = Var2Str(var,'var2');
 eval(str);
-if ~isequal(var,var2)
+if ~isequalwithequalnans(var,var2)
     success = false;
     fprintf('Var2Str failed on variable %s\n',name);
 else

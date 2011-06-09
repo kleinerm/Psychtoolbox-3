@@ -60,6 +60,7 @@
 %   MakeSincImage           - Make a sinc image.
 %   MakeSineImage           - Make a sinusoidal image.
 %   MapIndexColorThroughClut - Convert an index color image and clut to a true color image.
+%   MergeCell               - Concatenates contents of input cells element-wise.
 %   NameBytes               - Nicely format memory size for human readers.
 %   NameFrequency           - Nicely format clock rate for human readers.
 %   NearestResolution       - Find a screen resolution that most closely matches a requested resolution.

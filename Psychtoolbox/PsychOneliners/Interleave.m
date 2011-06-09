@@ -16,9 +16,14 @@ function [vec] = Interleave(varargin)
 % DN 23-01-2008 updated to support scalars and conversion to char
 % DN 28-04-2008 simplified input checking
 % DN 28-05-2008 bugfix mixing numeric and char
+% DN 09-06-2011 Now works fine with empty inputs
 
 cellfun(@(x)psychassert(isvector(x) || isscalar(x),'not all inputs are vectors or scalars'),varargin);
 cellfun(@(x)psychassert(isnumeric(x) || iscell(x) || ischar(x),'not all inputs are numeric, cell or char'),varargin);
+
+% remove empty inputs
+qEmpty = cellfun(@isempty,varargin);
+varargin(qEmpty) = [];
 
 % check what input we have
 qchar = any(cellfun(@ischar,varargin));
