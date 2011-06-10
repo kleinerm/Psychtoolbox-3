@@ -580,7 +580,20 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 			printf("PTB-ERROR: Parameters were: %s\n", movieoptions);
 			printf("PTB-ERROR: Launch string was: %s\n", launchString);
 			printf("PTB-ERROR: GStreamer error message was: %s\n", (char*) myErr->message);
+
+		      // Special tips for the challenged:
+		      if (strstr(myErr->message, "property")) {
+			      // Bailed due to unsupported x264enc parameter "speed-preset" or "profile". Can be solved by upgrading
+			      // GStreamer or the OS or the VideoCodec= override:
+			      printf("PTB-TIP: The reason this failed is because your GStreamer codec installation is too outdated.\n");
+			      printf("PTB-TIP: Either upgrade your GStreamer (plugin) installation to a more recent version,\n");
+			      printf("PTB-TIP: or upgrade your operating system (e.g., Ubuntu 10.10 'Maverick Meercat' and later are fine).\n");
+			      printf("PTB-TIP: A recent GStreamer installation is required to use all features and get optimal performance.\n");
+			      printf("PTB-TIP: As a workaround, you can manually specify all codec settings, leaving out the unsupported\n");
+			      printf("PTB-TIP: option. See 'help VideoRecording' on how to do that.\n\n");
+		      }
 		}
+
 		goto bail;
 	}
 
