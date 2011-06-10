@@ -375,7 +375,7 @@ static gboolean PsychVideoBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
 	      printf("           Additional debug info: %s.\n\n", (debug) ? debug : "None");
 
 	      // Special tips for the challenged:
-	      if (strstr(error->message, "speed-preset") || (debug && strstr(debug, "speed-preset"))) {
+	      if (strstr(error->message, "property") || (debug && strstr(debug, "property"))) {
 		      // Bailed due to unsupported x264enc parameter "speed-preset". Can be solved by upgrading
 		      // GStreamer or the OS or the VideoCodec= override:
 		      printf("PTB-TIP: The reason this failed is because your GStreamer codec installation is too outdated.\n");
@@ -383,7 +383,7 @@ static gboolean PsychVideoBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
 		      printf("PTB-TIP: or upgrade your operating system (e.g., Ubuntu 10.10 'Maverick Meercat' and later are fine).\n");
 		      printf("PTB-TIP: A recent GStreamer installation is required to use all features and get optimal performance.\n");
 		      printf("PTB-TIP: As a workaround, you can manually specify all codec settings, leaving out the unsupported\n");
-		      printf("PTB-TIP: parameter 'speed-preset'. See 'help VideoRecording' on how to do that.\n\n");
+		      printf("PTB-TIP: option. See 'help VideoRecording' on how to do that.\n\n");
 	      }
 
 	      if ((error->domain == GST_RESOURCE_ERROR) && (error->code != GST_RESOURCE_ERROR_NOT_FOUND)) {
