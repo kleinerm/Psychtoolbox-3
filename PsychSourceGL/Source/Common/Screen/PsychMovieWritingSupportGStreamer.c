@@ -251,48 +251,48 @@ psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, 
 	PsychMovieWriterRecordType* pwriterRec = PsychGetMovieWriter(moviehandle, FALSE);
 
 	GstFlowReturn       ret;
-	int*                wordptr;
-    int                 v;
-    unsigned int        n, i;
-    GstBuffer*          pushBuffer;
+	float*              fwordptr;
+	float               v;
+	unsigned int        n, i;
+	GstBuffer*          pushBuffer;
     
-    // Child protection: Audio writing enabled for this movie?
+	// Child protection: Audio writing enabled for this movie?
 	if (NULL == pwriterRec->ptbaudioappsrc) {
-        PsychErrorExitMsg(PsychError_user, "Tried to add audio data to a movie which was created without an audio track.");
-    }
+		PsychErrorExitMsg(PsychError_user, "Tried to add audio data to a movie which was created without an audio track.");
+	}
     
-    // nrChannels and nrSamples are already validated by high level code.
-    // Just calculate total sample count and required buffer size:
-    n = nrChannels * nrSamples;
+	// nrChannels and nrSamples are already validated by high level code.
+	// Just calculate total sample count and required buffer size:
+	n = nrChannels * nrSamples;
     
-    // Create GstBuffer for audio data:
-    pushBuffer = gst_buffer_try_new_and_alloc(n * sizeof(int));
+	// Create GstBuffer for audio data:
+	pushBuffer = gst_buffer_try_new_and_alloc(n * sizeof(float));
 
-    // Out of memory condition!
-    if (NULL == pushBuffer) {
-        PsychErrorExitMsg(PsychError_outofMemory, "Out of memory when trying to add audio data to movie! (Part I)");
-        return(FALSE);
-    }
+	// Out of memory condition!
+	if (NULL == pushBuffer) {
+		PsychErrorExitMsg(PsychError_outofMemory, "Out of memory when trying to add audio data to movie! (Part I)");
+		return(FALSE);
+	}
 
 	// Double-check:
 	if (NULL == GST_BUFFER_DATA(pushBuffer)) {
-        PsychErrorExitMsg(PsychError_outofMemory, "Out of memory when trying to add audio data to movie! (Part II)");
-        return(FALSE);
-    }
+		PsychErrorExitMsg(PsychError_outofMemory, "Out of memory when trying to add audio data to movie! (Part II)");
+		return(FALSE);
+	}
     
-    // Convert and copy sample data:
-    wordptr = (int*) GST_BUFFER_DATA(pushBuffer);
-    for (i = 0; i < n; i++) {
-        // Map to -32767 to +32767 16 bit signed audio sample range:
-        v = (int) (*(buffer++) * 32767.0);
-        
-        // Clip:
-        if (v < -32767) v = -32767;
-        if (v > +32767) v = +32767;
-        
-        // Store:
-        *(wordptr++) = v;
-    }
+	// Convert and copy sample data:
+	fwordptr = (float*) GST_BUFFER_DATA(pushBuffer);
+	for (i = 0; i < n; i++) {
+		// Fetch and convert from double to float:
+		v = (float) *(buffer++);;
+
+		// Clip:
+		if (v < -1.0) v = -1.0;
+		if (v > +1.0) v = +1.0;
+
+		// Push to float buffer:
+		*(fwordptr++) = v; 
+	}
     
 	// Add encoded buffer to movie:
 	g_signal_emit_by_name(pwriterRec->ptbaudioappsrc, "push-buffer", pushBuffer, &ret);
@@ -307,6 +307,7 @@ psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, 
 		return(FALSE);
 	}
 
+	// Do a bit of event processing for handling of potential GStreamer messages:
 	PsychGSProcessMovieContext(pwriterRec->Context, FALSE);
 
 	if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG:In AddAudioBufferToMovie: Added new audio buffer to moviehandle %i.\n", moviehandle);
@@ -652,6 +653,7 @@ int PsychFinalizeNewMovieFile(int movieHandle)
 
 	// Send EOS signal downstream:
 	g_signal_emit_by_name(pwriterRec->ptbvideoappsrc, "end-of-stream", &ret);
+	if (pwriterRec->ptbaudioappsrc) g_signal_emit_by_name(pwriterRec->ptbaudioappsrc, "end-of-stream", &ret);
 
 	// Wait for eos flag to turn TRUE due to bus callback receiving the
 	// downstream EOS event that we just sent out:

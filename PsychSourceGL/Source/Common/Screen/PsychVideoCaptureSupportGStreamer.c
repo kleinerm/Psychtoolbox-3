@@ -374,6 +374,7 @@ static gboolean PsychVideoBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
 		     "           Error from element %s: %s\n", GST_OBJECT_NAME(msg->src), error->message);
 	      printf("           Additional debug info: %s.\n\n", (debug) ? debug : "None");
 
+	      // Special tips for the challenged:
 	      if (strstr(error->message, "speed-preset") || (debug && strstr(debug, "speed-preset"))) {
 		      // Bailed due to unsupported x264enc parameter "speed-preset". Can be solved by upgrading
 		      // GStreamer or the OS or the VideoCodec= override:
@@ -1007,6 +1008,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 	GstElement *audio_src = NULL;
 	GstElement *muxer_elt = NULL;
 
+	char *poption = NULL;
 	char *codecName = NULL;
 	char *codecSep  = NULL;
 	char muxer[1000];
@@ -1014,6 +1016,9 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 	char videocodec[1000];
 	char codecoption[1000];
 	char audiosrc[1000];
+
+	int nrAudioChannels;
+	int audioFreq;
 
 	int interlaced = -1;
 	int keyFrameInterval = -1;
@@ -1628,25 +1633,36 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 		if (audio_src) gst_object_unref(G_OBJECT(audio_src));
 		if (muxer_elt) gst_object_unref(G_OBJECT(muxer_elt));
 
-        // Build gst-launch style GStreamer pipeline spec string:
+		// Build gst-launch style GStreamer pipeline spec string:
 
-        // Special keyword for audio tracks in written movies?
-        if (strstr(codecSpec, "AddAudioTrack")) {
-            // Audio and Video:
+		// Special keyword for audio tracks in written movies?
+		if ((poption=strstr(codecSpec, "AddAudioTrack"))) {
+			// Audio and Video:
+			poption+=strlen("AddAudioTrack");
+			if (sscanf(poption, "=%i@%i", &nrAudioChannels, &audioFreq) != 2) {
+				// Assign default 1 mono-channel count and 48 kHz frequency:
+				nrAudioChannels = 1;
+				audioFreq = 48000;
+			}
 
-            // If no "AudioSource=" was provided then configure for appsrc feeding
-            // from Screen('AddAudioBufferToMovie') into movie:
-            if (strlen(audiosrc) == 0) sprintf(audiosrc, "appsrc name=ptbaudioappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0");
+			if (nrAudioChannels < 1 || nrAudioChannels > 256 || audioFreq < 1 || audioFreq > 200000) {
+				printf("PTB-ERROR: Invalid parameters in 'AddAudioTrack='! Either %i audio channels outside valid range 1-256, or %i audioFreq outside allowable range 1 - 200000 Hz.\n",
+				       nrAudioChannels, audioFreq);
+				PsychErrorExitMsg(PsychError_user, "Invalid audio recording parameters provided");
+			}
 
-            // We add bits to feed from 'audiosrc' into 'audiocodec' into the common muxer of video and audio stream:
-            sprintf(outCodecName, " %s ! ptbvideomuxer0. %s ! %s ! ptbvideomuxer0. %s name=ptbvideomuxer0 ", videocodec, audiosrc, audiocodec, muxer);            
-        }
-        else {
-            // Video only:
+			// If no "AudioSource=" was provided then configure for appsrc feeding
+			// from Screen('AddAudioBufferToMovie') into movie:
+			if (strlen(audiosrc) == 0) sprintf(audiosrc, "appsrc name=ptbaudioappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 caps=\"audio/x-raw-float, endianness=(int)1234, width=(int)32, channels=(int)%i, rate=(int)%i\" ! audioconvert ! queue", nrAudioChannels, audioFreq);
+
+			// We add bits to feed from 'audiosrc' into 'audiocodec' into the common muxer of video and audio stream:
+			sprintf(outCodecName, " %s ! ptbvideomuxer0. %s ! %s ! ptbvideomuxer0. %s name=ptbvideomuxer0 ", videocodec, audiosrc, audiocodec, muxer);            
+		} else {
+			// Video only:
             
-            // We feed the output of 'videocodec' directly into the muxer:
-            sprintf(outCodecName, " %s ! %s ", videocodec, muxer);
-        }
+			// We feed the output of 'videocodec' directly into the muxer:
+			sprintf(outCodecName, " %s ! %s ", videocodec, muxer);
+		}
         
 		// Example launch line for audio+video recording:
 		// gst-launch-0.10 -e v4l2src device=/dev/video0 ! videorate ! ffmpegcolorspace ! "video/x-raw-yuv, format=(fourcc)I420, width=(int)640, height=(int)480", framerate=15/1 ! queue ! x264enc speed-preset=1 ! muxout. autoaudiosrc ! faac ! muxout. avimux name=muxout ! filesink location=~/Desktop/record.avi
