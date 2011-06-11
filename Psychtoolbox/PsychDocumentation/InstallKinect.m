@@ -9,8 +9,8 @@
 %
 % 3. The Windows hardware setup assistant will start, tell you about new
 %    detected hardware and ask you for drivers. Say "No" to the
-%    "automatically search for drivers" option, but select to provide your
-%    own drivers. In the next tab, select browse for drivers, and the
+%    "automatically search for drivers" option, but select to "provide your
+%    own drivers". In the next tab, select "browse for drivers", and then
 %    select the temporary folder with the unzipped file (from step 1) as
 %    driver folder. Press ok.
 %
@@ -37,6 +37,10 @@
 %
 % GNU/Linux:
 %
+% If you use the Psychtoolbox distribution provided by the NeuroDebian
+% project (http://neuro.debian.net) there's nothing to do. It should "just
+% work(tm)". Otherwise the following steps are required:
+%
 % 1. If you have Ubuntu Linux 10.04 LTS or 10.10 installed, open a terminal
 % window and type this sequence of commands, providing your administrator
 % password as requested.
@@ -44,7 +48,8 @@
 %    a) sudo add-apt-repository ppa:arne-alamut/freenect
 %    b) sudo apt-get update
 %    c) sudo apt-get install libfreenect
-%    d) sudo adduser YOURNAME video (YOURNAME) is your user name!
+%    d) sudo adduser YOURNAME video
+%       --> (YOURNAME) is your user login name!
 %    e) Log out and Log in again.
 %
 % 2. Kinect is now useable from within Matlab or Octave.
@@ -65,8 +70,8 @@
 % for copyright, authors, credits etc.:
 %
 % libusb - The underlying USB communication library is licensed under LGPL.
-% libfreenect - The Kinect driver is licensed under GPLv2 or Apache
-% license.
+% libfreenect - The Kinect driver is dual-licensed (at your option) under
+% GPLv2 or Apache license.
 %
 % The source code of the Windows version of the Kinect driver and libusb
 % can be found after checking out Psychtoolbox's C source code from the SVN

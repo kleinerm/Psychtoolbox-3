@@ -11,26 +11,11 @@
 % code to the changing interface when upgrading to a future release
 % of Psychtoolbox.
 %
-% Usually we only transfer components from the "beta" branch of
-% Psychtoolbox to the "stable" branch or to an official release
-% if they are proven to be pretty mature and if their programming
-% interface has stabilized, requiring no future changes to user code
-% after software updates.
-%
-% A deviation of this rule is made if the features are mature enough
-% to be of substantial benefit for many users, but we don't expect
-% the features to be stable and polished in the near future, mostly
-% due to lack of sufficient time, ressources or interest on the side
-% of the authors of these features. The names of the responsible
-% developers are listed in case you want to persuade them to work
-% harder on that features or even better, volunteer to provide
-% some help in improving them.
-% 
 %
 % GETCHAR: (Allen Ingling, Christopher Broussard, Mario Kleiner)
 %
 % The GetChar implementation in this release is implemented in the
-% Java programming language. It is therefore dependent on Matlabs
+% Java programming language. It is therefore dependent on Matlab's
 % built-in Java support. GetChar is supposed to work with all
 % Java virtual machines of version 1.4.2 or later. As such it should
 % work on all Matlab versions on MacOS-X 10.3.9 and later. On Microsoft
@@ -42,6 +27,8 @@
 % matlab -nojvm mode. On Microsoft Windows, GetChar will also work in
 % matlab -nojvm mode by use of a C implementation of GetChar, but it
 % will not return any additional information (e.g., timestamps) then.
+% GetChar doesn't work well (or at all) on MS-Windows Vista or Windows-7.
+% It also has various limitations when used with GNU/Octave.
 %
 % The time stamps for key presses returned by GetChar are known to be
 % not very accurate and not perfectly consistent with timestamps returned
@@ -54,7 +41,8 @@
 % We generally recommend using KbCheck and KbWait instead of GetChar if
 % possible, as these functions are well tested and known to be robust,
 % whereas GetChar is known to be one of the most fragile and troublesome
-% functions in Psychtoolbox.
+% functions in Psychtoolbox. GetEchoNumber, GetEchoString and GetKbChar are
+% good alternatives to use of GetChar for many common purposes.
 %
 % iViewXToolbox: (Frans Cornelissen)
 %
@@ -65,7 +53,7 @@
 % PSYCHSOUND: (Mario Kleiner)
 %
 % PsychSound is obsolete! It only worked on OS/X PowerPC and has been
-% superseded by PsychPortAudio(). Its left in the distribution for
+% superseded by PsychPortAudio(). It is left in the distribution for
 % backwards compatibility.
 %
 % PsychSound was supposed to be a well working replacement for the Snd
@@ -75,15 +63,6 @@
 % is subject to change in the future, so code that makes use of PsychSound
 % may need to be slightly rewritten in the future.
 %
-% EYELINKTOOLBOX: (Frans Cornellisen, Christopher Burns and others)
-%
-% The version of the Eyelink toolbox bundled with this release is a
-% working beta version for OS-X and for Microsoft Windows.
-%
-% It should work well for basic control and use of the Eyelink eyetracker, but some
-% of the more advanced features are missing, the help texts are not
-% yet fully updated and the demos are in need for cleanup. The toolbox
-% is not yet available for GNU/Linux.
 %
 % MOGL OpenGL for Matlab support: (Richard F. Murray, Mario Kleiner)
 %
@@ -119,24 +98,16 @@
 % 
 % The very sophisticated FONT functions for query, manipulation and handling
 % of fonts are only present in the OS-X version. They are non-existent in
-% the Windows version, without any plans to implement them. The Screen('DrawText')
-% command provides less options to customize the appearance of fonts, the
-% quality of font rendering is slightly lower, but text drawing speed is
-% much faster. The windows version only supports 8-Bit ASCII characters,
-% whereas OS-X provides the full Unicode character set.
+% the Windows version, without any plans to implement them.
 %
-% PsychHID is missing, so the DAQ toolbox and other toolboxes based on PsychHID
-% are not available on Windows. It wouldn't be difficult for an experienced
-% C programmer to implement PsychHID though. Any volunteers?
+% PsychHID is missing, therefore the DAQ toolbox and other toolboxes based
+% on PsychHID are not available on Windows. It wouldn't be difficult for an
+% experienced C programmer to implement PsychHID though. Any volunteers?
 % 
 % PsychSound is missing.
 %
-% CLUT animation does not work on Windows due to some brain-damage in the
-% design of the M$ operating system. There's nothing we could do about that.
-% Setup of static color lookup tables (gamma tables) for the purpose of display
-% calibration is supported though.
 %
-% Multidisplay support is implemented in a slightly different behaviour due to
+% Multidisplay support is implemented with a slightly different behaviour due to
 % differences in the way OS-X and Windows handle multiple displays. They are
 % equivalent in functionality, but the assignment of screen numbers to displays
 % is different, so you will need to take this into account if you want to
@@ -148,34 +119,22 @@
 %
 % GNU/LINUX version of Psychtoolbox: (Mario Kleiner)
 %
-% The GNU/Linux port of PTB is more incomplete than the Windows version.
-% Everything mentioned in the M$-Windows section applies, except for CLUT
-% animation capabilities which are excellent and Screen('DrawText') support
-% which is very basic, only allowing for a pretty limited number of font types
-% and font attributes to choose from. Quicktime movie playback support is
-% completely missing due to lack of support for Apples Quicktime SDK. Sound
-% output is available but implemented in a very basic way.
-% The most excellent areas are reliability of timing and video capture with
-% Firewire cameras. Timing is excellent due to Linux superior support for
-% accurate scheduling. Same goes for video capture functionality via Firewire.
-% The Linux version currently only runs on Matlab version 6.x, support for
-% later Matlab releases and for a more complete feature set will depend on
-% public interest. The Linux version is mostly used for my own projects, so
-% the strong areas are the ones for which i have an immediate need.
+% See MS-Windows version for missing features. In some areas of
+% functionality the Linux version is at parity or even ahead of the OS/X
+% Psychtoolbox.
+%
 %
 % GNU/Octave support: (Mario Kleiner)
 %
-% Psychtoolbox can be used with GNU/Octave on Linux instead of Matlab, allowing
-% for complete independence from proprietary/commercial software. Ports for
-% OS-X and Windows would be feasible with little amount of work, but there is
-% no intention to do this in the close future due to lack of time und uncertainty
-% about the amount of general interest.
-%
+% Psychtoolbox can be used with GNU/Octave version 3.2 instead of Matlab,
+% allowing for complete independence from proprietary/commercial software.
 %
 %
 % There are probably a few more incomplete areas, but these are the ones i am
-% aware of. If in doubt, ask on the Psychtoolbox forum:
+% aware of. If in doubt, ask on the Psychtoolbox forum and check the Wiki
+% section about "Platform Differences and Writing Portable Code".
 % http://www.psychtoolbox.org/forum.html
 %
 % Good luck
-% Mario Kleiner, 6.10.2006.
+% Mario Kleiner, 11.06.2011.
+%

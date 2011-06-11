@@ -33,7 +33,7 @@ function SetupPsychtoolbox
 % web http://groups.yahoo.com/group/psychtoolbox/messages/
 % web http://groups.yahoo.com/group/psychtoolbox/post/
 % Please specify your full name and the version of your operating system,
-% MATLAB, and psychtoolbox.
+% MATLAB or Octave and Psychtoolbox.
 %
 
 % History:
@@ -52,6 +52,13 @@ clear mex
 if strcmp(computer,'PCWIN64') | strcmp(computer,'MACI64') | strcmp(computer,'GLNXA64') | ~isempty(findstr(computer, '_64')) %#ok<OR2>
     fprintf('Psychtoolbox does not work on a 64 bit version of Matlab or Octave.\n');
     fprintf('You need to install a 32 bit Matlab or Octave to install & use Psychtoolbox.\n');
+    
+    if strcmp(computer,'GLNXA64') | ~isempty(findstr(computer, '_64')) %#ok<OR2>
+        fprintf('\nHowever, if you are a user of a Debian based GNU/Linux system, e.g.,\n');
+        fprintf('Debian GNU/Linux or Ubuntu Linux, you can get a fully functional 64-bit\n');
+        fprintf('version of Psychtoolbox very conveniently from the NeuroDebian project:\n');
+        fprintf('http://neuro.debian.net\n\n');
+    end
     error('Tried to setup on a 64 bit version of Matlab or Octave, which is not supported.');
 end
 

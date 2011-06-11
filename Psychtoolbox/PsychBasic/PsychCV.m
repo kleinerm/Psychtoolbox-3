@@ -9,8 +9,9 @@ function varargout = PsychCV(varargin)
 % machines.
 %
 
-fprintf('Please note that PsychCV is only supported on some recent platforms.\n');
-fprintf('If you get some MEX file not found error, then your hardware/operating system/Matlab\n');
-fprintf('version is not supported by PsychCV, because it is too old and outdated.\n\n');
+fprintf('Please note that PsychCV is only supported on few platforms,\n');
+fprintf('and only for use with GNU/Octave, not with Matlab.\n');
+fprintf('If you get some MEX file not found error, then your hardware/operating system combo\n');
+fprintf('version is not supported by PsychCV yet.\n\n');
 
 AssertMex('PsychCV.m');

@@ -9,7 +9,11 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % privileges before it starts.
 %
 % CAUTION: Psychtoolbox *will not work* with 64 bit versions of Matlab or
-% Octave.
+% Octave. An exception is if you use a Debian based GNU/Linux system, e.g.,
+% Debian GNU/Linux or Ubuntu Linux 10.04 or later. The NeuroDebian project
+% (see http://neuro.debian.net) provides a very convinient installation of
+% Psychtoolbox for both 32 bit and 64 bit versions of Octave and Matlab via
+% the regular package management system of your Linux distribution.
 %
 % On Mac OSX, all parameters are optional. On MS-Windows and GNU/Linux, the
 % first parameter "targetdirectory" with the path to the installation
@@ -83,7 +87,7 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % web http://subversion.tigris.org/files/documents/15/34093/svn-1.4.0-setup.exe
 % Install the Subversion client on your machine by double-clicking the
 % installer and following the instructions. After installation of the
-% Subversion client, you will need to exit and restart Matlab, so it
+% Subversion client, you will need to exit and restart Matlab or Octave, so it
 % can find the new subversion executable. In many cases it may be
 % neccessary to even reboot your computer after installation of subversion.
 % Btw. you should avoid to install the client into a path that contains
@@ -94,8 +98,8 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % Alternatively, if you don't have the neccessary permissions to install
 % Subversion into a system folder, you can install Subversion into an
 % arbitrary folder on your system (excluding ones with blanks in their
-% path) and then add that folder to your Matlab path. E.g. you installed
-% into D:\MyOwnFolder\Subversion\ . Then you can do this in Matlab:
+% path) and then add that folder to your Matlab or Octave path. E.g. you installed
+% into D:\MyOwnFolder\Subversion\ . Then you can do this:
 % addpath('D:\MyOwnFolder\Subversion\'). Our installer should find the
 % client then.
 %
@@ -107,7 +111,7 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % Our standard option is in the Applications folder, but note that, as with
 % installation of any software, you'll need administrator privileges. Also
 % note that if you put the toolbox in the Applications folder, you'll need
-% to reinstall it when MATLAB is updated on your machine. If you must
+% to reinstall it when MATLAB / OCTAVE is updated on your machine. If you must
 % install without access to an administrator, we offer the option of
 % installing into the /Users/Shared/ folder instead. If you must install
 % the Psychtoolbox in some other folder, then specify it in the optional
@@ -118,7 +122,7 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 %
 % That's it. Any pre-existing installation of the Psychtoolbox will be
 % removed (if you approve). The program will then download the latest
-% Psychtoolbox and update your MATLAB path and other relevant system settings.
+% Psychtoolbox and update your MATLAB / OCTAVE path and other relevant system settings.
 %
 % Enjoy! If you're new to this, you might start by typing "help
 % Psychtoolbox".
@@ -132,7 +136,7 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % web http://groups.yahoo.com/group/psychtoolbox/post/
 %
 % Please specify your full name and the version of your operating system,
-% MATLAB, and psychtoolbox.
+% MATLAB / OCTAVE, and psychtoolbox.
 %
 % UPGRADE INSTRUCTIONS:
 %
@@ -170,7 +174,7 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 %
 % SAVEPATH
 %
-% Normally all users of MATLAB use the same path. This path is normally
+% Normally all users of MATLAB / OCTAVE use the same path. This path is normally
 % saved in MATLABROOT/toolbox/local/pathdef.m, where "MATLABROOT" stands
 % for the result returned by running that function in MATLAB, e.g.
 % '/Applications/MATLAB.app/Contents/Matlab14.1'. Since pathdef.m is inside
@@ -271,6 +275,14 @@ clear mex
 if strcmp(computer,'PCWIN64') | strcmp(computer,'MACI64') | strcmp(computer,'GLNXA64') | ~isempty(findstr(computer, '_64')) %#ok<OR2>
     fprintf('Psychtoolbox does not work on a 64 bit version of Matlab or Octave.\n');
     fprintf('You need to install a 32 bit Matlab or Octave to install & use Psychtoolbox.\n');
+
+    if strcmp(computer,'GLNXA64') | ~isempty(findstr(computer, '_64')) %#ok<OR2>
+        fprintf('\nHowever, if you are a user of a Debian based GNU/Linux system, e.g.,\n');
+        fprintf('Debian GNU/Linux or Ubuntu Linux, you can get a fully functional 64-bit\n');
+        fprintf('version of Psychtoolbox very conveniently from the NeuroDebian project:\n');
+        fprintf('http://neuro.debian.net\n\n');
+    end
+    
     error('Tried to install on a 64 bit version of Matlab or Octave, which is not supported.');
 end
 
@@ -427,10 +439,10 @@ fprintf('\n');
 
 % Check for alternative install location of Subversion:
 if isWin
-    % Search for Windows executable in Matlabs path:
+    % Search for Windows executable in path:
     svnpath = which('svn.exe');
 else
-    % Search for Unix executable in Matlabs path:
+    % Search for Unix executable in path:
     svnpath = which('svn.');
 end
 
@@ -439,7 +451,7 @@ if ~isempty(svnpath)
     % Extract basepath and use it:
     svnpath=[fileparts(svnpath) filesep];
 else
-    % Could not find svn executable in Matlabs path. Check the default
+    % Could not find svn executable in path. Check the default
     % install location on OS-X and abort if it isn't there. On M$-Win we
     % simply have to hope that it is in some system dependent search path.
 
@@ -567,7 +579,7 @@ while (exist('Psychtoolbox','dir') | exist(fullfile(targetdirectory,'Psychtoolbo
         dir(p)
     end
 
-    fprintf('First we remove all references to "Psychtoolbox" from the MATLAB path.\n');
+    fprintf('First we remove all references to "Psychtoolbox" from the MATLAB / OCTAVE path.\n');
     pp=genpath(p);
     warning('off','MATLAB:rmpath:DirNotFound');
     rmpath(pp);
@@ -610,9 +622,9 @@ end
 
 % Remove "Psychtoolbox" from path
 while any(regexp(path,searchpattern))
-    fprintf('Your old Psychtoolbox appears in the MATLAB path:\n');
+    fprintf('Your old Psychtoolbox appears in the MATLAB / OCTAVE path:\n');
     paths=regexp(path,['[^' pathsep ']*' pathsep],'match');
-    fprintf('Your old Psychtoolbox appears %d times in the MATLAB path.\n',length(paths));
+    fprintf('Your old Psychtoolbox appears %d times in the MATLAB / OCTAVE path.\n',length(paths));
     answer=input('Before you decide to delete the paths, do you want to see them (yes or no)? ','s');
     if ~strcmp(answer,'yes')
         fprintf('You didn''t say "yes", so I''m taking it as no.\n');
@@ -624,11 +636,11 @@ while any(regexp(path,searchpattern))
             end
         end
     end
-    answer=input('Shall I delete all those instances from the MATLAB path (yes or no)? ','s');
+    answer=input('Shall I delete all those instances from the MATLAB / OCTAVE path (yes or no)? ','s');
     if ~strcmp(answer,'yes')
         fprintf('You didn''t say yes, so I cannot proceed.\n');
         fprintf('Please use the MATLAB "File:Set Path" command to remove all instances of "Psychtoolbox" from the path.\n');
-        error('Please remove Psychtoolbox from MATLAB path.');
+        error('Please remove Psychtoolbox from MATLAB / OCTAVE path.');
     end
     for p=paths
         s=char(p);
@@ -728,14 +740,14 @@ if err
     fprintf('%s\n',result);
     fprintf('The download failure might be due to temporary network or server problems. You may want to try again in a\n');
     fprintf('few minutes. It could also be that the subversion client was not (properly) installed. On Microsoft\n');
-    fprintf('Windows you will need to exit and restart Matlab after installation of the Subversion client. If that\n');
+    fprintf('Windows you will need to exit and restart Matlab or Octave after installation of the Subversion client. If that\n');
     fprintf('does not help, you will need to reboot your machine before proceeding.\n');
     error('Download failed.');
 end
 fprintf('Download succeeded!\n\n');
 
-% Add Psychtoolbox to MATLAB path
-fprintf('Now adding the new Psychtoolbox folder (and all its subfolders) to your MATLAB path.\n');
+% Add Psychtoolbox to MATLAB / OCTAVE path
+fprintf('Now adding the new Psychtoolbox folder (and all its subfolders) to your MATLAB / OCTAVE path.\n');
 p=fullfile(targetdirectory,'Psychtoolbox');
 pp=genpath(p);
 addpath(pp);
@@ -748,10 +760,10 @@ end
 
 if err
     fprintf('SAVEPATH failed. Psychtoolbox is now already installed and configured for use on your Computer,\n');
-    fprintf('but i could not save the updated Matlab path, probably due to insufficient permissions.\n');
+    fprintf('but i could not save the updated MATLAB / OCTAVE path, probably due to insufficient permissions.\n');
     fprintf('You will either need to fix this manually via use of the path-browser (Menu: File -> Set Path),\n');
     fprintf('or by manual invocation of the savepath command (See help savepath). The third option is, of course,\n');
-    fprintf('to add the path to the Psychtoolbox folder and all of its subfolders whenever you restart Matlab.\n\n\n');
+    fprintf('to add the path to the Psychtoolbox folder and all of its subfolders whenever you restart MATLAB / OCTAVE.\n\n\n');
 else 
     fprintf('Success.\n\n');
 end

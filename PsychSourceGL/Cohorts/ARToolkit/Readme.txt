@@ -1,25 +1,23 @@
 ARToolkit libraries:
 
-ARToolkit is free software, licensed under GPLv2, therefore
-compatible with PTB's license and included here.
+ARToolkit is free software, licensed under GPL v2.
 
-=> Screen makes use of ARToolkits's video capture engine.
-=> PsychCV makes use of ARToolkits image processing and
-   tracking facilities.
+The PsychCV mex files makes use of ARToolkits image processing and
+tracking facilities. The PsychCV mex file is only provided for
+use with GNU/Octave, not with Mathworks proprietary Matlab environment.
+
+This folder provides the source code of ARToolkit, as required by the GPL:
 
 In PsychSourceGL/Cohorts/ARToolkit:
 
 * The include subfolder contains the header files which are
-included in the build process for Screen and PsychCV.
+included in the build process for PsychCV.mex
 
 * The zip file contains the complete source code, including
 precompiled libraries (.lib's and .dll's) and executables
 for Windows. You need to copy those lib's and dll's
 to the /lib and system32/ folders of your machine to build
-Windows Screen and PsychCV with linkage.
-
--> Screen links dynamically against libARvideo.dll and DSVL.dll,
-so they need to be installed in a system library search path.
+Windows PsychCV with linkage.
 
 -> PsychCV links statically against the other AR libs, so only
 need to copy those .lib's into your build environments libs

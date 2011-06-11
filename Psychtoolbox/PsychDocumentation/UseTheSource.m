@@ -1,7 +1,7 @@
 % UseTheSource - How to access the Psychtoolbox source code.
 %
 % If you are interested in the source code for the C language
-% implementation of Psychtoolbox (i.e., the MEX file extensions
+% modules of Psychtoolbox (i.e., the MEX file extensions
 % like Screen, WaitSecs, GetSecs, PsychHID, ...) then use the
 % following procedure.
 %
@@ -11,7 +11,7 @@
 % 1. Open a Unix terminal window on OS-X or Linux or a NT command
 %    shell on M$-Windows.
 %
-% 2. Use the "svn" command line tool to download source code. On
+% 2. Use the "svn" commandline tool to download source code. On
 %    OS-X or Linux, the svn tool is usually stored in the
 %    /usr/local/bin directory, you may want to add this to your
 %    PATH. On Windows, the svn client should be already in your
@@ -22,22 +22,23 @@
 %
 %    svn checkout https://svn.berlios.de/svnroot/repos/osxptb/trunk /Users/kleinerm/MyPTB/
 %
-%    This command would download the full 'beta' distribution,
-%    corresponding to official, tested, production releases:
+%    This command would download the full 'beta' distribution instead,
+%    which corresponds to the most recent official, tested, production release:
 %
 %    svn checkout https://svn.berlios.de/svnroot/repos/osxptb/beta /Users/kleinerm/MyPTB/
 %
-%    Inside the /Users/kleinerm/MyPTB you would see the following
+%    Inside the /Users/kleinerm/MyPTB folder you would see the following
 %    subfolders:
+%
 %    Psychtoolbox/   -- The regular Psychtoolbox folder.
-%    managementools/ -- Miscellaneous scripts for managing PTB releases
+%    managementools/ -- Miscellaneous scripts for managing PTB releases.
 %    PsychSourceGL/  -- The C source code for Psychtoolbox.
 %
-%    Inside PsychSourceGL you will find everything you need to
-%    understand or modify PTBs working if you are brave and patient
+%    Inside PsychSourceGL you will find everything you need to understand
+%    or to modify Psychtoolbox inner working if you are brave and patient
 %    enough ;-)
 %
-%    The toolbox itself is split into multiple branches:
+%    As already mentioned, the toolbox itself is split into multiple branches:
 %
 %    trunk  - The code that is currently under development. May or may not
 %             compile and work at any given point in time, may or may not
@@ -53,7 +54,7 @@
 %    the corresponding code in the SVN repository.
 %
 %    Be aware that you can only download code from the repository. If
-%    you want to participate in PTBs development you'll need write access
+%    you want to participate in PTB's development you'll need write access
 %    to the repository. Contact David Brainard if you want to apply for
 %    write access. Make yourself familiar with the Subversion toolchain
 %    if you want to do serious work (http://subversion.tigris.org).
@@ -62,7 +63,7 @@
 %    web interface: http://svn.berlios.de/wsvn/osxptb
 %
 %    For almost all source code, i.e., unless otherwise stated in the
-%    source files or accompanying documentation themselves, the
+%    source files themselves or accompanying documentation, the
 %    MIT license applies. See the file License.txt in the Psychtoolbox
 %    root folder for more details.
 %

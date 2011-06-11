@@ -8,15 +8,27 @@
 % operations are based on GStreamer. These functions won't work without a
 % working GStreamer installation on your system.
 %
-% You will need at least version 0.10.24 of GStreamer.
+% You will need at least version 0.10.24 of GStreamer, but we recommend to
+% use the latest available versions, as not all Psychtoolbox features are
+% fully supported by version 0.10.24. Especially video capture, video
+% recording and movie creation may be limited in functionality or
+% performance if you don't use a recent version of GStreamer.
 %
 % By default, the 32-bit versions of Psychtoolbox for Windows and MacOS/X
-% use Apple's Quicktime for those operations, so GStreamer isn't needed
-% there. You can however use GStreamer (once installed) instead of
+% use Apple's Quicktime for those operations, so GStreamer isn't strictly
+% needed there. You can however use GStreamer (once installed) instead of
 % Quicktime if you add the following command to the top of your experiment
 % script, before any other Screen() command:
 %
+% This uses GStreamer instead of Quicktime for movie playback:
 % Screen('Preference', 'OverrideMultimediaEngine', 1);
+%
+% This uses GStreamer instead of Quicktime for video capture or video
+% recording:
+%
+% Screen('Preference', 'DefaultVideocaptureEngine', 3);
+%
+% So what's the deal with GStreamer?
 %
 % GStreamer (Webpage web: http://www.gstreamer.net ) is a free software /
 % open-source multimedia framework. The summary on its webpage summarizes
@@ -32,18 +44,18 @@
 % writing a simple plugin with a clean, generic interface.
 %
 % License: GStreamer is released under the LGPL. The 0.10 series is API and
-% ABI stable.
+% ABI stable."
 %
 % In summary, GStreamer is for the free software world what Quicktime is
 % for Apple's "walled garden". It is used a the standard media framework
-% for many (most?) Linux desktop systems, netbooks, tablets and MeeGo,
-% WebOS (and also Android) based tablets and Smartphones. It is also used
-% on embedded devices.
+% for many (most?) Linux desktop systems, netbooks, and MeeGo, Web-OS (and
+% also Android) based tablets and Smartphones. It is also used on many 
+% Linux based embedded devices.
 %
-% While GStreamer itself is very high performance, mature and stable,
-% Psychtoolbox's support is in its early stage, so don't be surprised if you
-% find bugs or limitations. Report them on the forum instead, so we can fix
-% them.
+% GStreamer itself is very high performance, mature and stable.
+% Psychtoolbox's support however is in its early stage, so don't be
+% surprised if you find bugs or limitations. Report them on the forum
+% instead, so we can fix them.
 %
 % Installation instructions:
 %
@@ -55,29 +67,60 @@
 % set of plugins. A simple way to get GStreamer at least on Ubuntu Linux is
 % to install the "rhythmbox" or "totem" multimedia-players. You may need to
 % install additional plugin packages to play back all common audio- and
-% video file formats.
+% video file formats. Especially video recording or movie creation with
+% high quality will require recent versions of the additional plugin
+% packages gstreamer-bad, gstreamer-good, gstreamer-ugly. These are not
+% always installed by default and may need you to specifically request them
+% for installation.
 %
 % E.g., a "sudo apt-get install totem" typed into a terminal window,
 % followed by your administrator password, should do the trick. Most likely
 % this isn't needed though, as you likely already have GStreamer installed
-% if you ever used to playback any multimedia content.
+% if you ever used to playback any multimedia content on your Linux system.
 %
 % MS-Windows:
 %
 % We currently provide GStreamer support on Windows with 32-bit Matlab V7.4
-% (R2007a) and later only. This is a sneak-preview for people interested in
+% (R2007a) and later, as well as on Octave. In fact, a fully working GStreamer
+% installation is mandatory for Psychtoolbox to work on Octave for Windows,
+% otherwise the Screen() function will fail to work at all, regardless if
+% you use multi-media functions or not. For Matlab, GStreamer is still
+% optional. We don't intend to ever provide GStreamer support for Matlab
+% versions older than Version 7.4.
+%
+% The current Windows implementation is a sneak-preview for people interested in
 % testing and giving feedback, not neccessarily for the average user.
 %
 % You can download and run a standard MS-Windows setup.exe installer from:
 %
 % web: http://code.google.com/p/ossbuild/
 %
-% For best results, you'd currently (beginning December 2010) choose this
-% one: "GStreamer WinBuilds v0.10.6, LGPL (x86)"
+% For best results, you'd currently (beginning June 2011) choose this
+% one or any later version: "GStreamer-WinBuilds-GPL-x86-Beta04-0.10.7.msi"
+% The current download link is:
+%
+% <http://ossbuild.googlecode.com/files/GStreamer-WinBuilds-GPL-x86-Beta04-0.10.7.msi>
+%
+% If you are a fan of stable versions, we recommend this one:
+% "GStreamer WinBuilds v0.10.6, LGPL (x86)"
+%
+% However, some features may be disabled or limited with such an older
+% version.
+%
+% IMPORTANT: Users of Octave under Windows must not only install GStreamer
+% on their system. They must also delete (or rename) the file iconv.dll
+% that comes with Octave. This file is incompatible with a iconv.dll of the
+% same name provided by GStreamer. On Octave 3.2.4 you'd delete, rename or
+% move away the following file:
+%
+% C:\Octave\3.2.4_gcc-4.4.0\bin\iconv.dll
+%
+% For example, you could rename it into
+%
+% C:\Octave\3.2.4_gcc-4.4.0\bin\iconv_DISABLED.dll
 %
 %
-% OS/X:
+% Mac OS/X:
 %
 % No support for GStreamer yet. Stay tuned!
-%
 %

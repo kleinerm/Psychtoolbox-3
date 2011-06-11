@@ -195,7 +195,9 @@ if isempty(inputNames) | ismember(computer, inputNames) %#ok<OR2>
             fprintf('And another possible reason for failure:\n\n');
             fprintf('It seems that you are running a 64-bit version of Matlab on your system.\n');
             fprintf('That won''t work at all! Psychtoolbox currently only supports 32-bit versions\n');
-            fprintf('of Matlab.\n');
+            fprintf('of Matlab. One exception is if you got this Psychtoolbox from the NeuroDebian\n');
+            fprintf('project repository: http://neuro.debian.net, in which case 64 bit Matlab and Octave\n');
+            fprintf('should be fully supported, so the reason for failure is not 64 bit problems.\n');
             fprintf('You can try to exit Matlab and then restart it in 32-bit emulation mode to\n');
             fprintf('make Psychtoolbox work on your 64 bit Linux.\n'); % You do this by adding the\n');
             %             fprintf('startup option -maci to the matlab start command, ie.\n');

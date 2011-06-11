@@ -14,7 +14,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 %
 % Currently the routine performs the following tasks:
 %
-% 1. Clean up the Matlab path to Psychtoolbox: Remove unneeded .svn subfolders.
+% 1. Clean up the Matlab/Octave path to Psychtoolbox: Remove unneeded .svn subfolders.
 % 2. Contact the Psychtoolbox server to perform online registration of this
 %    working copy of Psychtoolbox.
 % 3. Add the PsychJava subfolder to the static Matlab class-path if neccessary.
@@ -116,7 +116,7 @@ end
 % Get rid of any remaining .svn folders in the path.
 try
     path(RemoveSVNPaths);
-    if exist('savepath')
+    if exist('savepath') %#ok<EXIST>
         savepath;
     else
         path2rc;
@@ -215,14 +215,22 @@ end
 if IsOctave
     % OS/X or Linux under Octave. Need to prepend the proper folder with
     % the pseudo-MEX files to path:
-    rc = 0;
+    rc = 0; %#ok<NASGU>
     rdir = '';
     
     try
         % Remove binary MEX folders from path:
-        rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFiles']);
-        rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles']);
-        rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3WindowsFiles']);
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFiles'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFiles']);
+        end
+        
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles']);
+        end
+        
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3WindowsFiles'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3WindowsFiles']);
+        end
         
         % Encode prefix and Octave major version of proper folder:
         octavev = sscanf(version, '%i.%i');
@@ -248,7 +256,7 @@ if IsOctave
         fprintf(' %s ...\n', rdir);
         addpath(rdir);
         
-        if exist('savepath')
+        if exist('savepath') %#ok<EXIST>
             rc = savepath;
         else
             rc = path2rc;
@@ -268,12 +276,22 @@ if IsOctave
         fprintf('=====================================================================\n\n');
     end
     
-    if octavemajorv < 3 | octaveminorv < 2
+    if octavemajorv < 3 | octaveminorv < 2 %#ok<OR2>
         fprintf('\n\n=================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is obsolete. We strongly recommend\n', version);
-        fprintf('WARNING: using the latest stable version of at least Octave 3.2.0 for use with Psychtoolbox.\n');
+        fprintf('WARNING: using the latest stable version of the Octave 3.2.x series for use with Psychtoolbox.\n');
         fprintf('WARNING: Stuff may not work at all or only suboptimal with earlier versions and we\n');
         fprintf('WARNING: don''t provide any support for such old versions.\n');
+        fprintf('\nPress any key to continue with setup.\n');
+        fprintf('=================================================================================\n\n');
+        pause;
+    end
+    
+    if octavemajorv > 3 | (octavemajorv == 3 & octaveminorv > 2) %#ok<AND2,OR2>
+        fprintf('\n\n=================================================================================\n');
+        fprintf('WARNING: Your version %s of Octave is version 3.3 or later.\n', version);
+        fprintf('WARNING: Psychtoolbox is likely not yet compatible with this version and may fail to work.\n');
+        fprintf('WARNING: We currently recommend the latest stable version of the Octave 3.2.x series for use with Psychtoolbox.\n');
         fprintf('\nPress any key to continue with setup.\n');
         fprintf('=================================================================================\n\n');
         pause;
@@ -285,8 +303,8 @@ if IsOctave
         rehash;
         clear WaitSecs;
     catch
-        fprintf('WARNING: rehashing the Octave toolbox cache failed. I may fail and recommend\n');
-        fprintf('WARNING: Quitting and restarting Octave, then retry.\n');
+        fprintf('WARNING: Rehashing the Octave toolbox cache failed. I may fail and recommend\n');
+        fprintf('WARNING: quitting and restarting Octave, then retry.\n');
     end
     
     try
@@ -308,8 +326,8 @@ if IsOctave
 end
 
 % Special case handling for different Matlab releases on MS-Windoze:
-if IsWin & ~IsOctave
-    rc = 0;
+if IsWin & ~IsOctave %#ok<AND2>
+    rc = 0; %#ok<NASGU>
     try
         % Remove DLL folders from path:
         rmpath([PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR11\']);
@@ -319,7 +337,7 @@ if IsWin & ~IsOctave
         if ~isempty(strfind(version, '2007')) | ~isempty(strfind(version, '2008')) | ...
            ~isempty(strfind(version, '2009')) | ~isempty(strfind(version, '2010')) | ...
            ~isempty(strfind(version, '2011')) | ~isempty(strfind(version, '2012')) | ...
-           ~isempty(strfind(version, '2013')) | ~isempty(strfind(version, '2014'))
+           ~isempty(strfind(version, '2013')) | ~isempty(strfind(version, '2014')) %#ok<OR2>
            
             % This is a R2007a or post R2007a Matlab:
             % Add PsychBasic/MatlabWindowsFilesR2007a/ subfolder to Matlab
@@ -338,7 +356,7 @@ if IsWin & ~IsOctave
             addpath(rdir);
         end
 
-        if exist('savepath')
+        if exist('savepath') %#ok<EXIST>
             rc = savepath;
         else
             rc = path2rc;
@@ -365,8 +383,8 @@ if IsWin & ~IsOctave
         rehash('toolboxreset');
         clear WaitSecs;
     catch
-        fprintf('WARNING: rehashing the Matlab toolbox cache failed. I may fail and recommend\n');
-        fprintf('WARNING: Quitting and restarting Matlab, then retry.\n');
+        fprintf('WARNING: Rehashing the Matlab toolbox cache failed. I may fail and recommend\n');
+        fprintf('WARNING: quitting and restarting Matlab, then retry.\n');
     end
     
     try
@@ -437,10 +455,10 @@ if ~IsOctave
             % replace it with the new one.  All other instances will be
             % ignored.
             if isempty(findstr('PsychJava', fileContents{i}))
-                newFileContents{j, 1} = fileContents{i};
+                newFileContents{j, 1} = fileContents{i}; %#ok<AGROW>
                 j = j + 1;
-            elseif ~isempty(findstr('PsychJava', fileContents{i})) & ~pathInserted
-                newFileContents{j, 1} = path_PsychJava;
+            elseif ~isempty(findstr('PsychJava', fileContents{i})) & ~pathInserted %#ok<AND2>
+                newFileContents{j, 1} = path_PsychJava; %#ok<AGROW>
                 pathInserted = 1;
                 j = j + 1;
             end
@@ -471,7 +489,7 @@ if ~IsOctave
                 error(['Could not make a backup copy of Matlab''s JAVA path definition file ''classpath.txt''.\n' ...
                     'The system reports: ', w]);
             end
-            madeBackup = 1;
+            madeBackup = 1; %#ok<NASGU>
 
             % Write out the new contents.
             FID = fopen(classpathFile, 'w');
@@ -501,14 +519,15 @@ if ~IsOctave
         fprintf('%s\n', path_PsychJava);
         fprintf('to the file: %s\n\n', classpathFile);        
         fprintf('If you skip this step, Psychtoolbox will still be mostly functional, \n');
-        fprintf('with exception of the Java-based commands ListenChar, CharAvail, GetChar and FlushEvents\n');
-        fprintf('on Linux, MacOS-X and M$-Windows in Java mode. For more info see ''help PsychJavaTrouble''.\n\n');
+        fprintf('but the Java-based commands ListenChar, CharAvail, GetChar and FlushEvents\n');
+        fprintf('on Linux, MacOS-X and M$-Windows in Java mode will work less efficiently.\n');
+        fprintf('For more info see ''help PsychJavaTrouble''.\n\n');
         fprintf('\nPress RETURN or ENTER to confirm you read and understood the above message.\n');
         pause;
 
         % Restore the old classpath file if necessary.
         if exist('madeBackup', 'var')
-            [s, w] = copyfile(bakclasspathFile, classpathFile, 'f');
+            [s, w] = copyfile(bakclasspathFile, classpathFile, 'f'); %#ok<NASGU>
         end
     end
 end % if ~IsOctave
@@ -525,8 +544,9 @@ try
         fprintf('software management tools:\n');
         fprintf('\n');
         fprintf('For Screen() and OpenGL support:\n\n');
-        fprintf('* The OpenGL utility toolkit GLUT: glut, glut-3 or freeglut are typical providers.\n');
+        fprintf('* The OpenGL utility toolkit GLUT: glut, glut-3 or freeglut are typical provider packages in most Linux distributions.\n');
         fprintf('* GStreamer multimedia framework: At least version 0.10.24 of the core runtime and the gstreamer-base plugins.\n');
+        fprintf('  For optimal performance use the latest available versions.\n');
         fprintf('  A simple way to get GStreamer at least on Ubuntu Linux is to install the "rhythmbox" or\n');
         fprintf('  "totem" multimedia-players. You may need to install additional packages to play back all\n');
         fprintf('  common audio- and video file formats. See "help GStreamer".\n');
@@ -561,11 +581,11 @@ try
     
 catch
     fprintf('\n\n');
-    if IsOctave & IsWin
-        % Probably videocapture dll's and other runtime dll's missing:
+    if IsOctave & IsWin %#ok<AND2>
+        % Probably GStreamer runtime dll's missing:
         fprintf('Screen() or online registration failed to work under MS-Windows with GNU/Octave-3:\n\n');
-        fprintf('Probably the required libARVideo.dll and DSVL.dll libraries are not yet installed on your system.\n\n');
-        fprintf('Please type ''help ARVideoCapture'' and follow the displayed installation instructions carefully.\n');
+        fprintf('Probably the required GStreamer multimedia framework is not yet installed on your system.\n\n');
+        fprintf('Please type ''help GStreamer'' and follow the displayed installation instructions carefully.\n');
         fprintf('After this one-time setup, the Screen command should work properly.\n\n');
         fprintf('If this has been ruled out as a reason for failure, check the troubleshooting instructions on\n');
         fprintf('our Wiki (Download section and FAQ section, maybe also the Bugs section).\n\n');
@@ -587,25 +607,37 @@ catch
 end
 
 % Some goodbye, copyright and getting started blurb...
-fprintf('GENERAL LICENSING CONDITIONS:\n');
-fprintf('-----------------------------\n\n');
+fprintf('GENERAL LICENSING CONDITIONS AND TERMS OF USE:\n');
+fprintf('----------------------------------------------\n\n');
 fprintf('Almost all of the material contained in the Psychtoolbox-3 distribution\n');
-fprintf('is free software. Most material is covered by the GNU General Public license (GPL).\n');
+fprintf('is free-software and/or open-source software under a OSI (http://www.opensource.org/)\n');
+fprintf('approved license. Most material is covered by the MIT license or a MIT compatible license.\n\n');
+
 fprintf('A few internal libraries and components are covered by other free software\n');
-fprintf('licenses which we understand to be compatible with the GPL v2, e.g., the GNU LGPL\n');
-fprintf('license, or the MIT license used by PortAudio, or they are in the public domain.\n\n');
-fprintf('3rd-party components which are freely redistributable due to the authors permissions,\n')
-fprintf('but are not neccessarily licensed as free software, can be found in the "PsychContributed"\n');
-fprintf('subfolder of the Psychtoolbox distribution, accompanied by their respective licenses.\n\n');
-fprintf('Unless otherwise noted for specific components, the GPL license applies:\n');
-fprintf('Psychtoolbox is free software; you can redistribute it and/or modify\n');
-fprintf('it under the terms of the GNU General Public License as published by\n');
-fprintf('the Free Software Foundation; either version 2 of the License, or\n');
-fprintf('(at your option) any later version. See the file ''License.txt'' in\n');
-fprintf('the Psychtoolbox root folder for exact licensing conditions.\n\n');
+fprintf('licenses which we understand to be compatible with the MIT license, e.g., the GNU LGPL\n');
+fprintf('license, or BSD and Apache-2.0 licenses, or they are in the public domain.\n\n');
+fprintf('3rd-party components which are freely useable and redistributable for non-commercial\n');
+fprintf('research use, due to the authors permissions, but are not neccessarily free / open-source\n')
+fprintf('software, can be found in the "PsychContributed" subfolder of the Psychtoolbox distribution,\n');
+fprintf('accompanied by their respective licenses.\n\n');
+
+fprintf('A few components are licensed under the GNU GPL v2 license with a special linking\n');
+fprintf('exception for use with Mathworks proprietary Matlab application. A very few components,\n');
+fprintf('e.g., the PsychCV() function are currently covered by the standard GPL v2 license and\n');
+fprintf('cannot be used with Matlab. These are only available for use with GNU/Octave.\n\n');
+
+fprintf('Please read the license text and copyright info in the Psychtoolbox file\n');
+fprintf('License.txt carefully before you use or redistribute Psychtoolbox-3.\n');
+fprintf('Use of Psychtoolbox-3 components implies that you have read, understood and accepted\n');
+fprintf('the licensing conditions.\n\n');
+fprintf('However, in a nutshell, if you just use Psychtoolbox for your research, our licenses\n');
+fprintf('don''t restrict you in any practically relevant way. Commercial users, developers or\n');
+fprintf('redistributors should make sure they understood the licenses for the components they use.\n');
+fprintf('If in doubt, contact one of the Psychtoolbox developers, or the original authors of the\n');
+fprintf('components you want to use, modify, merge or redistribute with other software.\n\n');
 fprintf('Your standard Psychtoolbox distribution comes without the source code for\n');
 fprintf('the binary plugins (the MEX files). If you want to access the corresponding\n');
-fprintf('source code, please type "help UseTheSource" for download instructions.\n\n');
+fprintf('source code, please type "help UseTheSource" for specific download instructions.\n\n');
 fprintf('BEGINNERS READ THIS:\n');
 fprintf('--------------------\n\n');
 fprintf('If you are new to the Psychtoolbox, you might try this: \nhelp Psychtoolbox\n\n');
@@ -614,12 +646,17 @@ fprintf('web http://www.psychtoolbox.org -browser\n');
 fprintf('\n');
 fprintf('Please make sure that you have a look at the PDF file Psychtoolbox3-Slides.pdf\n');
 fprintf('in the Psychtoolbox/PsychDocumentation subfolder for an overview of differences\n');
-fprintf('between Psychtoolbox-2 and Psychtoolbox-3.\n\n');
+fprintf('between Psychtoolbox-2 and Psychtoolbox-3 and proper use of basic features. That\n');
+fprintf('folder contains various additional helpful information for use of Psychtoolbox.\n\n');
+fprintf('\n');
+fprintf('Please also familiarize yourself with the demos contained in the PsychDemos subfolder\n');
+fprintf('and its subfolders. They show best practices for many common tasks and are generally\n');
+fprintf('well documented.\n');
 
 fprintf('\nEnjoy!\n\n');
 
 % Clear out everything:
-if ~IsOctave & IsWin
+if ~IsOctave & IsWin %#ok<AND2>
     clear all;
 end
 

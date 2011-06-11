@@ -4,7 +4,7 @@
 % kext). It currently should work with AMD/ATI Radeon graphics cards of the
 % X1000, HD2000, HD3000 and HD4000 series. It doesn't work with graphics chips from
 % other manufacturers and probably doesn't work with older ATI chips. It
-% won't work with the most recent HD5000 series chips and later.
+% works to some degree with the most recent HD-5000 series chips and later.
 %
 % The driver needs to be manually loaded by a user with administrator
 % privileges and provides a few special services to PTB-3, ie., PTB's
@@ -18,8 +18,8 @@
 % driver restores this functionality on single display and dual display
 % setups.
 %
-% * Dualhead display sync: The driver allows to synchronize the display
-% refresh cycles of the two displays connected to a dualhead graphics card
+% * Multihead display sync: The driver allows to synchronize the display
+% refresh cycles of the displays connected to a multihead graphics card
 % to allow for high quality tear-free binocular and stereo stimulation of
 % subjects.
 %
@@ -28,16 +28,19 @@
 % allowing for 1 billion shades of different colors instead of the 16.8
 % million colors available without the driver.
 %
-% * More features to come in the future...
+% * The driver implements workarounds to fix some problems caused by
+% graphics driver and operating system bugs when the graphics card is used
+% with high color/luminance precision display devices like the CRS Bits+ or
+% Bits# boxes, or the VPixx Inc. DataPixx and ViewPixx devices, and similar
+% equipment.
 %
 %
 % The driver only works if a *single* graphics card (single-head or
-% dual-head) is installed in your machine. It won't work reliably if more
-% than one card is installed or more than 2 displays are driven by that one
-% card.
+% dual/multi-head) is installed in your machine. It won't work reliably if
+% more than one card is installed.
 %
 % As this driver accesses the hardware at a very low level, bypassing the
-% whole operating system, graphics subsystem and the drivers from ATI,
+% whole operating system, its graphics subsystem and the drivers from ATI,
 % there is some potential for things to go wrong. Although our testing so
 % far didn't show any such problems, it may happen on your system. That is
 % why this driver is an *experimental* feature and why you need to have
