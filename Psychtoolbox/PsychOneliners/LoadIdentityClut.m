@@ -167,6 +167,12 @@ else
             % We start with assumption that it is a "normal" one:
             gfxhwtype = 0;
 
+            % GeForce 250 (e.g., GeForce GTS 250) under MS-Windows?
+            if IsWin && ~isempty(strfind(winfo.GPUCoreId, 'G80')) && ~isempty(strfind(winfo.GLRenderer, '250'))
+                % GeForce 250 on MS-Windows. Needs LUT type 1, according to Jon Peirce:
+                gfxhwtype = 1;
+            end
+            
             % Is it a Geforce-8000 or later (G80 core or later) and is this OS/X?
             if ~isempty(strfind(winfo.GPUCoreId, 'G80')) & IsOSX %#ok<AND2>
                 % 10.5.x Leopard?
