@@ -1,5 +1,5 @@
-% LICENSING CONDITIONS FOR THE PSYCHTOOLBOX-3 C source code DISTRIBUTION:
-% -----------------------------------------------------------------------
+% LICENSING CONDITIONS FOR THE PSYCHTOOLBOX-3 DISTRIBUTION:
+% ---------------------------------------------------------
 % 
 % Psychtoolbox-3 is a distribution of a combination of many different
 % materials.
