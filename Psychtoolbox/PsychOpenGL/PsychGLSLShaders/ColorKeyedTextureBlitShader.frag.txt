@@ -8,7 +8,7 @@
 //
 // Texture filtering mode needs to be GL_NEAREST for defined results!
 //
-// (w)2007 by Mario Kleiner.
+// (w)2007 by Mario Kleiner. Licensed under MIT license.
 */
 
 #extension GL_ARB_texture_rectangle : enable

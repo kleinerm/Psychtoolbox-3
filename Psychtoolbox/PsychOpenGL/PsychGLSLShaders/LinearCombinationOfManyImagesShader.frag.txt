@@ -6,7 +6,7 @@
  * This one is e.g., used by the new moglmorpher.m for fast shape morphing
  * on the GPU.
  *
- * (c) 2007 by Mario Kleiner, licensed to you under GPLv2 or any later version.
+ * (c) 2007 by Mario Kleiner, licensed to you under MIT license.
  */
 
 #extension GL_ARB_texture_rectangle : enable

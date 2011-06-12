@@ -5,7 +5,7 @@
  * the output fragment color.
  *
  * This shader computes the minimum distance to an intensity edge.
- * (w)2006 by Mario Kleiner.
+ * (w)2006 by Mario Kleiner. Licensed under MIT license.
 */
 
 #extension GL_ARB_texture_rectangle : enable

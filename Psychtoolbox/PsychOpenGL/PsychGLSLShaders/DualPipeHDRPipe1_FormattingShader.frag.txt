@@ -3,7 +3,7 @@
  * This shader is intended for use as a plugin for the 'FinalOutputFormattingBlit1'
  * chain of the Psychtoolbox-3 imaging pipeline.
  *
- * (c)2009 by Mario Kleiner, part of PTB-3, licensed to you under GPL v2.
+ * (c)2009 by Mario Kleiner, part of PTB-3, licensed to you under MIT license.
  * See file License.txt in the Psychtoolbox root folder for the license.
  *
  */

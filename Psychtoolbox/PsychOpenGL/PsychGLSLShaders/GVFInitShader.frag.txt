@@ -8,7 +8,7 @@
  *         GREEN = c1 = dx * mag field.
  *         BLUE  = c2 = dy * mag field.
  *
- * (w)2006 by Mario Kleiner.
+ * (w)2006 by Mario Kleiner. Licensed under MIT license.
 */
 
 #extension GL_ARB_texture_rectangle : enable

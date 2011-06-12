@@ -6,7 +6,7 @@
  * channels value unmodified.
  * This shader is used by moglClutBlit.m to implement CLUT animation caps.
  *
- * (w)2006 by Mario Kleiner.
+ * (w)2006 by Mario Kleiner. Licensed under MIT license.
 */
 
 #extension GL_ARB_texture_rectangle : enable

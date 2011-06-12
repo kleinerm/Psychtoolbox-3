@@ -7,7 +7,7 @@
  * interpolators, then performs per fragment calculations to
  * compute and write the final pixel color.
  *
- * (c) 2007 by Mario Kleiner, licensed under GPL.
+ * (c) 2007 by Mario Kleiner, licensed under MIT license.
  *		 
  */
 

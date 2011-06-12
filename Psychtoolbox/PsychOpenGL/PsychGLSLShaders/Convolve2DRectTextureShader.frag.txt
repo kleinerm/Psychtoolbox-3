@@ -12,7 +12,7 @@
 // rather limited kernel size of say 15 by 15 on Geforce 7000 class hardware,
 // but it is significantly faster if it can be used.
 //
-// (w)2006 by Mario Kleiner.
+// (w)2006 by Mario Kleiner. Licensed under MIT license.
 */
 
 #extension GL_ARB_texture_rectangle : enable

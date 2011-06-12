@@ -11,7 +11,7 @@
  * ones with lenticular sheets or parallax barriers.
  *
  * Written 2010 by Mario Kleiner, part of the Psychtoolbox-3, licensed under
- * GPL.
+ * MIT license.
  *
  */ 
 

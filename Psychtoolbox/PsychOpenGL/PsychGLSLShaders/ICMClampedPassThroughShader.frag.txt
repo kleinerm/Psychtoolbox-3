@@ -3,7 +3,7 @@
  * Clamps all color or intensity values to lie in the range given
  * by [ ICMClampToColorRange[0]; ICMClampToColorRange[1] ].
  *
- * (w)2008 by Mario Kleiner.
+ * (w)2008 by Mario Kleiner. Licensed under MIT license.
 */
 
 /* Allowable range: To be initialized by PsychColorCorrection() typically: */

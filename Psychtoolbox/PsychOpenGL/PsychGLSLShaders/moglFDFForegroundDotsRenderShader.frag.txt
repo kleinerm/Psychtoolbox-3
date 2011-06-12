@@ -2,7 +2,7 @@
  * positions from sample distribution in order to update foreground dot
  * position distribution.
  *
- * (c) 2008 by Mario Kleiner, licensed under GPL.
+ * (c) 2008 by Mario Kleiner, licensed under MIT license.
  */
 
 #extension GL_ARB_texture_rectangle : enable

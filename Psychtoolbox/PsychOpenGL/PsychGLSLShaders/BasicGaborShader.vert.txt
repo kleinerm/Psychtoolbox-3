@@ -10,7 +10,7 @@
  * results of computations and other attributes as 'varying' parameters
  * to the fragment shader.
  *
- * (c) 2007 by Mario Kleiner, licensed under GPL.
+ * (c) 2007 by Mario Kleiner, licensed under MIT license.
  *		 
  */
 

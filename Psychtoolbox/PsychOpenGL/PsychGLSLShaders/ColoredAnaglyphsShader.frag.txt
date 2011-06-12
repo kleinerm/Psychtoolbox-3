@@ -13,7 +13,7 @@
  * Loaded/initialized and used by SetAnaglyphParameters.m as part of
  * the PTB imaging pipelines color anaglyph shading support.
  *
- * (C) 2007 Mario Kleiner - Released to you under GPLv2.
+ * (C) 2007 Mario Kleiner - Released to you under MIT license.
  */
 
 #extension GL_ARB_texture_rectangle : enable

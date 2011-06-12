@@ -1,7 +1,7 @@
 /* Shader for extraction of 3D object textures from video input images.
  * Used by PTB function moglExtractTexture.m
  *
- * (c) 2009 by Mario Kleiner, licensed under GPL.
+ * (c) 2009 by Mario Kleiner, licensed under MIT license.
  */
 
 #extension GL_ARB_texture_rectangle : enable

@@ -8,7 +8,7 @@
  *         GREEN channel = gradient dy.
  *         BLUE  channel = Remapped intensity image whose gradient was computed.
  *
- * (w)2006 by Mario Kleiner.
+ * (w)2006 by Mario Kleiner. Licensed under MIT license.
 */
 
 #extension GL_ARB_texture_rectangle : enable

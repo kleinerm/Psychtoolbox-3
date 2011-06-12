@@ -1,9 +1,8 @@
-% LICENSING CONDITIONS FOR THE PSYCHTOOLBOX-3 DISTRIBUTION:
-% ---------------------------------------------------------
+% LICENSING CONDITIONS FOR THE PSYCHTOOLBOX-3 C source code DISTRIBUTION:
+% -----------------------------------------------------------------------
 % 
 % Psychtoolbox-3 is a distribution of a combination of many different
-% materials, useful for performing cognitive science experiments with
-% Matlab and GNU/Octave.
+% materials.
 % 
 % Different components in the distribution are contributed by different
 % individuals or companies and provided to you under different licenses and
@@ -16,49 +15,50 @@
 % charge, for non-commercial, personal or research use in accordance with
 % its license.
 % 
-% *Almost all* of the material, with a few exceptions, is free software
-% and/or open-source software, according to the OSI definition of Open
-% Source (www.opensource.org), licensed to you under a OSI approved
-% open-source or free-software license. Therefore you are also allowed to
-% use, modify, merge, sub-license, create derivative works of, and
-% distribute the material, for commercial or non-commercial purposes, as
-% long as you abide to the licensing conditions and terms of use of the
-% licenses associated with the material.
+% *Almost all* of the material, with a few exceptions, is so called
+% free and open-source software (FOSS), according to the OSI definition of
+% Open Source (www.opensource.org), licensed to you under a OSI approved
+% open-source and/or free-software license. Therefore, for most material
+% you are also allowed to use, modify, merge with other software,
+% sub-license, create derivative works of, and distribute the material, for
+% commercial or non-commercial purposes, as long as you abide to the
+% licensing conditions and terms of use of the licenses associated with the
+% different materials.
 % 
 % The subset of material which may only be used freely for non-commercial
 % purposes, but is not neccessarily covered by a free software or open
-% source license and not neccessarily free for commercial use, can be found
-% in the Psychtoolbox/PsychContributed subfolder. Each component is
-% associated with some sort of a license or terms of use.
+% source license, can be found in the Psychtoolbox/PsychContributed
+% subfolder. Each component is associated with some sort of a license or
+% terms of use.
 % 
 % All material outside that folder is licensed under some free-software or
-% open-source software license which also permits commercial use, subject
-% to the terms of the respective license.
+% open-source software license.
 % 
 % You can find the full, legally binding text of most of the used licenses
 % in the appendix of this text file. If a license text is missing, please
 % report this omission to us and meanwhile look up the definition of the
 % license at http://www.opensource.org.
 % 
-% The following non-exhaustive list describes which submodules and materials
-% in the distribution are covered by which licenses. If some material isn't
-% listed here, then a license or copyright may be attached to, or mentioned
-% in the material or its accompanying documentation itself, e.g., in the
-% source code of a M-File, script, GLSL shader file or C programming
-% language file. If material doesn't come with any individual license or
-% copyright attached and it isn't listed here, you can assume it is
-% licensed to you under terms of the following very permissive MIT
+% The following non-exhaustive list (see below) describes which submodules
+% and materials in the distribution are covered by which licenses. If some
+% material isn't listed here, then a license or copyright may be attached
+% to, or mentioned in the material or its accompanying documentation
+% itself, e.g., in the source code of a M-File, script, GLSL shader file or
+% C programming language file. If material doesn't come with any individual
+% license or copyright attached and it isn't listed here, you can assume it
+% is licensed to you under terms of the following very permissive MIT
 % open-source license, with the following copyright:
 % 
 % Copyright (c) The individual Psychtoolbox core developers:
 %           (c) 1996-2011, David Brainard <brainard@psych.upenn.edu>
 %           (c) 1996-2007, Denis Pelli    <denis.pelli@nyu.edu>
+%                          Allen Ingling  <allen.ingling@nyu.edu>
 %           (c) 2005-2011, Mario Kleiner  <mario.kleiner@tuebingen.mpg.de>
 %
 %           (c) Individual major contributors:
 %           (c) 2006       Richard F. Murray <rfm@yorku.ca>
 %           (c) 2008-2011  Diederick C. Niehorster <dcnieho@gmail.com>
-%
+%           (c) 2008-2011  Tobias Wolf <towolf@tuebingen.mpg.de>
 %
 % MIT license:
 % 
@@ -83,43 +83,55 @@
 % 
 %
 % List of submodules with their associated licenses, as far as they deviate
-% from the MIT license printed above:
+% from the MIT license printed above, and their main authors:
 %
 % Psychtoolbox/PsychContributed: See individual licenses and output of
 %                                "help PsychContributed" in that folder.
 %
 %
-% The tcp_udp_ip toolbox under Psychtoolbox/PsychHardware/iViewXToolbox/tcp_udp_up/
+% The tcp_udp_ip toolbox under Psychtoolbox/PsychHardware/iViewXToolbox/tcp_udp_ip/
 % is Copyright Peter Rydesäter et al., 1998-2003. Licensed under GPL v2 and
 % later, with special linking exception for linking against non-free
 % software. See its included license.txt file for details. Contains also
 % special low-latency enhancements to the pnet mex file by Mario Kleiner.
 %
-% The Bitsplustoolbox     - MIT license
-% The iViewXToolbox       - MIT license
-% The Eyelink toolbox     - MIT license
-% The Datapixx toolbox    - LGPL license
-% SerialComm mex files    - Binary only. No standardized license, but permission
-%                           by the author to use royalty free within Psychtoolbox.
-%                           See "help SerialComm" for author and source of
-%                           the file.
+% The Bitsplustoolbox     - MIT license : David Brainard et al., Mario Kleiner.
 %
-% Matlab/Octave to OpenGL wrapper MOGL - MIT license.
+% The iViewXToolbox       - MIT license : Frans W. Cornelissen.
+%
+% The Eyelink toolbox     - MIT license : Frans Cornelissen, Enno Peters,
+%                           John Palmer, Chris Burns, Mario Kleiner, Erik
+%                           Flister, Nuha Jabakhanji on behalf of
+%                           SR-Research.
+%
+% The Datapixx toolbox    - LGPL license : Peter April VPixx Inc., Mario Kleiner.
+%
+% The Daq toolbox         - MIT : Denis Pelli, Mickey P. Rowe, Mario Kleiner.
+% SerialComm mex files    - Binary only. No standardized license, but permission
+%                           by the author Tom Davis to use royalty free
+%                           within Psychtoolbox. See "help SerialComm" for
+%                           author and source of the file.
+%
+% Matlab/Octave to OpenGL wrapper MOGL - MIT license : Richard F. Murray, Mario Kleiner.
+% Matlab/Octave to OpenAL wrapper MOAL - MIT license : Richard F. Murray, Mario Kleiner.
+%
 % GLSL shaders for the OpenGL GLSL.m demo from the "Orange book" are
 % Copyright (C) 2002-2006  3Dlabs Inc. Ltd., licensed under a BSD-3 style
 % license. See file: PsychDemos/OpenGL4MatlabDemos/GLSLDemoShaders/3Dlabs-License.txt
 %
-% All other OpenGL GLSL shaders - Dual-Licensed under GPL v2+ and MIT, at
-%                                 your option.
-% All OpenCL compute shaders    - MIT license
+% All other OpenGL GLSL shaders - MIT license : Mario Kleiner.
+%
+% All OpenCL compute shaders    - MIT license : tbd.
 % All scripts and text files    - MIT license, unless otherwise stated in
 % or other documentation          the material itself.
 %
-% The PsychtoolboxKernelDriver.kext - MIT license.
+% The PsychtoolboxKernelDriver.kext - MIT license : Mario Kleiner.
 %
 % PsychCV MEX file        - Individual source files BSD-3 or GPL v2+
 %                           license, see their source code for details.
-%                           Compiled MEX file GPL v2+ license.
+%                           Compiled MEX file GPL v2+ license. Various
+%                           authors - See individual licenses in source
+%                           code.
 %
 % All other MEX files     - All compiled binaries and most source code under
 %                           MIT license. Some bits of source code include X11
@@ -155,6 +167,11 @@
 % APPENDIX: The different licenses in detail:
 % ===========================================
 % 
+% These are the legally binding license texts, which describe your rights
+% and obligations if you choose to use or redistribute a component under a
+% given license.
+%
+%
 %
 % The MIT License:
 %
@@ -1083,6 +1100,182 @@
 % consider it more useful to permit linking proprietary applications with the
 % library.  If this is what you want to do, use the GNU Library General
 % Public License instead of this License.
+%
+% =========================================================================
+%
+% Full text of the Apache License:
+% --------------------------------
+% 
+% Version 2.0, January 2004
+% 
+% http://www.apache.org/licenses/
+% 
+% TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+% 
+% 1. Definitions.
+% 
+% "License" shall mean the terms and conditions for use, reproduction, and
+% distribution as defined by Sections 1 through 9 of this document.
+% 
+% "Licensor" shall mean the copyright owner or entity authorized by the
+% copyright owner that is granting the License.
+% 
+% "Legal Entity" shall mean the union of the acting entity and all other
+% entities that control, are controlled by, or are under common control
+% with that entity. For the purposes of this definition, "control" means
+% (i) the power, direct or indirect, to cause the direction or management
+% of such entity, whether by contract or otherwise, or (ii) ownership of
+% fifty percent (50%) or more of the outstanding shares, or (iii)
+% beneficial ownership of such entity.
+% 
+% "You" (or "Your") shall mean an individual or Legal Entity exercising
+% permissions granted by this License.
+% 
+% "Source" form shall mean the preferred form for making modifications,
+% including but not limited to software source code, documentation source,
+% and configuration files.
+% 
+% "Object" form shall mean any form resulting from mechanical
+% transformation or translation of a Source form, including but not limited
+% to compiled object code, generated documentation, and conversions to
+% other media types.
+% 
+% "Work" shall mean the work of authorship, whether in Source or Object
+% form, made available under the License, as indicated by a copyright
+% notice that is included in or attached to the work (an example is
+% provided in the Appendix below).
+% 
+% "Derivative Works" shall mean any work, whether in Source or Object form,
+% that is based on (or derived from) the Work and for which the editorial
+% revisions, annotations, elaborations, or other modifications represent,
+% as a whole, an original work of authorship. For the purposes of this
+% License, Derivative Works shall not include works that remain separable
+% from, or merely link (or bind by name) to the interfaces of, the Work and
+% Derivative Works thereof.
+% 
+% "Contribution" shall mean any work of authorship, including the original
+% version of the Work and any modifications or additions to that Work or
+% Derivative Works thereof, that is intentionally submitted to Licensor for
+% inclusion in the Work by the copyright owner or by an individual or Legal
+% Entity authorized to submit on behalf of the copyright owner. For the
+% purposes of this definition, "submitted" means any form of electronic,
+% verbal, or written communication sent to the Licensor or its
+% representatives, including but not limited to communication on electronic
+% mailing lists, source code control systems, and issue tracking systems
+% that are managed by, or on behalf of, the Licensor for the purpose of
+% discussing and improving the Work, but excluding communication that is
+% conspicuously marked or otherwise designated in writing by the copyright
+% owner as "Not a Contribution."
+% 
+% "Contributor" shall mean Licensor and any individual or Legal Entity on
+% behalf of whom a Contribution has been received by Licensor and
+% subsequently incorporated within the Work.
+% 
+% 2. Grant of Copyright License. Subject to the terms and conditions of
+% this License, each Contributor hereby grants to You a perpetual,
+% worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright
+% license to reproduce, prepare Derivative Works of, publicly display,
+% publicly perform, sublicense, and distribute the Work and such Derivative
+% Works in Source or Object form.
+% 
+% 3. Grant of Patent License. Subject to the terms and conditions of this
+% License, each Contributor hereby grants to You a perpetual, worldwide,
+% non-exclusive, no-charge, royalty-free, irrevocable (except as stated in
+% this section) patent license to make, have made, use, offer to sell,
+% sell, import, and otherwise transfer the Work, where such license applies
+% only to those patent claims licensable by such Contributor that are
+% necessarily infringed by their Contribution(s) alone or by combination of
+% their Contribution(s) with the Work to which such Contribution(s) was
+% submitted. If You institute patent litigation against any entity
+% (including a cross-claim or counterclaim in a lawsuit) alleging that the
+% Work or a Contribution incorporated within the Work constitutes direct or
+% contributory patent infringement, then any patent licenses granted to You
+% under this License for that Work shall terminate as of the date such
+% litigation is filed.
+% 
+% 4. Redistribution. You may reproduce and distribute copies of the Work or
+% Derivative Works thereof in any medium, with or without modifications,
+% and in Source or Object form, provided that You meet the following
+% conditions:
+% 
+% You must give any other recipients of the Work or Derivative Works a copy
+% of this License; and
+% 
+% You must cause any modified files to carry prominent notices stating that
+% You changed the files; and
+% 
+% You must retain, in the Source form of any Derivative Works that You
+% distribute, all copyright, patent, trademark, and attribution notices
+% from the Source form of the Work, excluding those notices that do not
+% pertain to any part of the Derivative Works; and
+% 
+% If the Work includes a "NOTICE" text file as part of its distribution,
+% then any Derivative Works that You distribute must include a readable
+% copy of the attribution notices contained within such NOTICE file,
+% excluding those notices that do not pertain to any part of the Derivative
+% Works, in at least one of the following places: within a NOTICE text file
+% distributed as part of the Derivative Works; within the Source form or
+% documentation, if provided along with the Derivative Works; or, within a
+% display generated by the Derivative Works, if and wherever such
+% third-party notices normally appear. The contents of the NOTICE file are
+% for informational purposes only and do not modify the License. You may
+% add Your own attribution notices within Derivative Works that You
+% distribute, alongside or as an addendum to the NOTICE text from the Work,
+% provided that such additional attribution notices cannot be construed as
+% modifying the License. You may add Your own copyright statement to Your
+% modifications and may provide additional or different license terms and
+% conditions for use, reproduction, or distribution of Your modifications,
+% or for any such Derivative Works as a whole, provided Your use,
+% reproduction, and distribution of the Work otherwise complies with the
+% conditions stated in this License.
+% 
+% 5. Submission of Contributions. Unless You explicitly state otherwise,
+% any Contribution intentionally submitted for inclusion in the Work by You
+% to the Licensor shall be under the terms and conditions of this License,
+% without any additional terms or conditions. Notwithstanding the above,
+% nothing herein shall supersede or modify the terms of any separate
+% license agreement you may have executed with Licensor regarding such
+% Contributions.
+% 
+% 6. Trademarks. This License does not grant permission to use the trade
+% names, trademarks, service marks, or product names of the Licensor,
+% except as required for reasonable and customary use in describing the
+% origin of the Work and reproducing the content of the NOTICE file.
+% 
+% 7. Disclaimer of Warranty. Unless required by applicable law or agreed to
+% in writing, Licensor provides the Work (and each Contributor provides its
+% Contributions) on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+% ANY KIND, either express or implied, including, without limitation, any
+% warranties or conditions of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or
+% FITNESS FOR A PARTICULAR PURPOSE. You are solely responsible for
+% determining the appropriateness of using or redistributing the Work and
+% assume any risks associated with Your exercise of permissions under this
+% License.
+% 
+% 8. Limitation of Liability. In no event and under no legal theory,
+% whether in tort (including negligence), contract, or otherwise, unless
+% required by applicable law (such as deliberate and grossly negligent
+% acts) or agreed to in writing, shall any Contributor be liable to You for
+% damages, including any direct, indirect, special, incidental, or
+% consequential damages of any character arising as a result of this
+% License or out of the use or inability to use the Work (including but not
+% limited to damages for loss of goodwill, work stoppage, computer failure
+% or malfunction, or any and all other commercial damages or losses), even
+% if such Contributor has been advised of the possibility of such damages.
+% 
+% 9. Accepting Warranty or Additional Liability. While redistributing the
+% Work or Derivative Works thereof, You may choose to offer, and charge a
+% fee for, acceptance of support, warranty, indemnity, or other liability
+% obligations and/or rights consistent with this License. However, in
+% accepting such obligations, You may act only on Your own behalf and on
+% Your sole responsibility, not on behalf of any other Contributor, and
+% only if You agree to indemnify, defend, and hold each Contributor
+% harmless for any liability incurred by, or claims asserted against, such
+% Contributor by reason of your accepting any such warranty or additional
+% liability.
+% 
+% END OF TERMS AND CONDITIONS
+% 
 %
 % =========================================================================
 %

@@ -6,7 +6,7 @@
  * drawing, and could be more optimized.
  *
  * Written 2007 by Mario Kleiner, part of the Psychtoolbox-3, licensed under
- * GPL.
+ * MIT license.
  *
  */ 
 

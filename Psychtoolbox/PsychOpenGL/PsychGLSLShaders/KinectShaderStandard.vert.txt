@@ -14,7 +14,7 @@
  *
  * This vertex shader is setup and used by PsychKinect.m.
  *
- * (c) 2010 by Mario Kleiner, licensed under GPL.
+ * (c) 2010 by Mario Kleiner, licensed under MIT license.
  *		 
  */
 

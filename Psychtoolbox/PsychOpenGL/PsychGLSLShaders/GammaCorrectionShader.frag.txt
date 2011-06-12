@@ -5,7 +5,7 @@
  *
  * This is just a wrapper around icmTransformColor(), so it can be used
  * outside the imaging pipe, e.g., in Screen('TransformTexture') etc...
- * (w)2008 by Mario Kleiner.
+ * (w)2008 by Mario Kleiner. Licensed under MIT license.
 */
 
 #extension GL_ARB_texture_rectangle : enable

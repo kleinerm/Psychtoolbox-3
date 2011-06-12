@@ -7,7 +7,7 @@
  * The shader premultiplies the alpha value to the RGB channels, instead of
  * outputting it to the alpha channel.
  *
- * (c) 2009 by Mario Kleiner, licensed under GPL.
+ * (c) 2009 by Mario Kleiner, licensed under MIT license.
  *		 
  */
 

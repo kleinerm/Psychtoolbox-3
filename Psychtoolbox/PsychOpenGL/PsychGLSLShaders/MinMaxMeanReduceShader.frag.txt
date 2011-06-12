@@ -10,7 +10,7 @@
 // log2(imagesize) runs to get a final single pixel with the global
 // result. This is known as reduction operation.
 //
-// (w)2006 by Mario Kleiner.
+// (w)2006 by Mario Kleiner. Licensed under MIT license.
 */
 
 #extension GL_ARB_texture_rectangle : enable

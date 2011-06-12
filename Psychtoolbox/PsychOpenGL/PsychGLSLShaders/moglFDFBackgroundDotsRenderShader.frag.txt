@@ -1,7 +1,7 @@
 /* FDF shader for sampling of rendered silhouette at provided random
  * sampling positions in order to update background dot distribution.
  *
- * (c) 2008 by Mario Kleiner, licensed under GPL.
+ * (c) 2008 by Mario Kleiner, licensed under MIT license.
  */
 
 #extension GL_ARB_texture_rectangle : enable

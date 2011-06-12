@@ -4,7 +4,7 @@
  * by [ ICMClampToColorRange[0]; ICMClampToColorRange[1] ]. If values were
  * outside that range, they will be inverted and mapped to values 0.0 or 1.0.
  *
- * (w)2008 by Mario Kleiner.
+ * (w)2008 by Mario Kleiner. Licensed under MIT license.
 */
 
 /* Allowable range: To be initialized by PsychColorCorrection() typically: */

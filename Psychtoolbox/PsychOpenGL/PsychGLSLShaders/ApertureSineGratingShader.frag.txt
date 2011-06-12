@@ -3,7 +3,7 @@
  * Shader for drawing of basic parameterized sine grating patches.
  * Applies a circular aperture of radius 'Radius'.
  *
- * (c) 2010 by Mario Kleiner, licensed under GPL.
+ * (c) 2010 by Mario Kleiner, licensed under MIT license.
  *		 
  */
 

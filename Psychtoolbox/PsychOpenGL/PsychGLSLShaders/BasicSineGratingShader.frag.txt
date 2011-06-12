@@ -2,7 +2,7 @@
  * File: BasicSineGratingShader.frag.txt
  * Shader for drawing of basic parameterized sine grating patches.
  *
- * (c) 2007 by Mario Kleiner, licensed under GPL.
+ * (c) 2007 by Mario Kleiner, licensed under MIT license.
  *		 
  */
 

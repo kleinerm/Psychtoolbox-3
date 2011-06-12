@@ -7,7 +7,7 @@
  *
  * This code is just here as a reference. PTB has the same code built into Screen().
  *
- * (w)2007 by Mario Kleiner.
+ * (w)2007 by Mario Kleiner. Licensed under MIT license.
 */
 
 #extension GL_ARB_texture_rectangle : enable

@@ -11,7 +11,7 @@
  * This shader is used by PsychColorCorrection() in 'GainMatrix' mode,
  * as part of PTB's built-in stimulus color correction.
  *
- * (w)2010 by Mario Kleiner.
+ * (w)2010 by Mario Kleiner. Licensed under MIT license.
  */
 
 #extension GL_ARB_texture_rectangle : enable

@@ -1,7 +1,7 @@
 /* FDF shader for 1st object render pass: Encodes figure-background
  * flag into B channel and surface coordinate into RG channels.
  *
- * (c) 2008 by Mario Kleiner, licensed under GPL.
+ * (c) 2008 by Mario Kleiner, licensed under MIT license.
  */
 
 void main(void)

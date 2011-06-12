@@ -2,7 +2,7 @@
  *
  * Passes through all values -- Only useful for benchmarking - as baseline.
  *
- * (w)2008 by Mario Kleiner.
+ * (w)2008 by Mario Kleiner. Licensed under MIT license.
 */
 
 /* Allowable range: To be initialized by PsychColorCorrection() typically: */

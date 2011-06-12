@@ -20,7 +20,7 @@
  * - Native 10 bpc framebuffer of ATI Radeon X1000/HD2xxx/.... hardware.
  *   See "PsychHelperCreateARGB2101010RemapCLUT.m" for setup code etc.
  *
- * (w)2008 by Mario Kleiner.
+ * (w)2008 by Mario Kleiner. Licensed under MIT license.
 */
 
 #extension GL_ARB_texture_rectangle : enable

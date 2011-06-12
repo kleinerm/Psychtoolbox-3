@@ -1,5 +1,6 @@
 /* Shader for computing pixel-wise difference between two input textures and
  * rendering of the difference image in a color coded fashion.
+ * (c) 2008-2011 Mario Kleiner. Licensed under MIT license.
  */
 
 #extension GL_ARB_texture_rectangle : enable

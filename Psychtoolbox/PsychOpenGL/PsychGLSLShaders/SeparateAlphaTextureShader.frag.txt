@@ -4,7 +4,7 @@
  * separately from the RGB channels, i.e. RGB texel lookup uses texture
  * coordinates offset by given optional shift parameters.
  *
- * (c) 2009 by Mario Kleiner, licensed under GPL.
+ * (c) 2009 by Mario Kleiner, licensed under MIT license.
  *		 
  */
 

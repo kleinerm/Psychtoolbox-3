@@ -1,6 +1,6 @@
 /* Shader for application of a spherical projection of textures during drawing.
  *
- * (C)2010 by Ingmar Schneider and Mario Kleiner. Licensed to you under GPL v2.
+ * (C)2010 by Ingmar Schneider and Mario Kleiner. Licensed to you under MIT license.
  */
 
 #extension GL_ARB_texture_rectangle : enable

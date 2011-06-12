@@ -6,7 +6,7 @@
  * This to control the amount of object color information present in
  * the 2D dot stimuli, kind of a SNR between dynamic and static form.
  *
- * (c) 2009 by Mario Kleiner, licensed under GPL.
+ * (c) 2009 by Mario Kleiner, licensed under MIT license.
  */
 
 uniform sampler2D Image;

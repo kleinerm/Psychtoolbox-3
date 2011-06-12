@@ -10,7 +10,7 @@
  * This shader is used by PsychColorCorrection() in 'SimpleGammaXXX' mode,
  * as part of PTB's built-in stimulus gamma correction.
  *
- * (w)2008, 2009 by Mario Kleiner.
+ * (w)2008, 2009 by Mario Kleiner. Licensed under MIT license.
 */
 
 /* (RedGamma, GreenGamma, BlueGamma) vector of encoding gammas: */

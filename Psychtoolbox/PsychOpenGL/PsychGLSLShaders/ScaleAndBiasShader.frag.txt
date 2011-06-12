@@ -1,6 +1,6 @@
 /* Shader for applying a bias and scale factor to a rectangle texture during drawing.
  * Can be used to apply f(g)=(g + prescaleoffset)*scalefactor + postscaleoffset;
- * (w)2006 by Mario Kleiner.
+ * (w)2006 by Mario Kleiner. Licensed under MIT license.
 */
 
 #extension GL_ARB_texture_rectangle : enable
