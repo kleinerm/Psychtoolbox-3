@@ -75,12 +75,9 @@ mandelbrottex = Screen('SetOpenGLTexture', win, [], 0, GL.TEXTURE_RECTANGLE_EXT,
 % Activate the shader and setup some fractal parameters:
 glUseProgram(MandelbrotShader);
 glUniform2f(glGetUniformLocation(MandelbrotShader, 'center'), -0.57, -0.01);
-zoomparam = glGetUniformLocation(MandelbrotShader, 'zoom');
-glUniform1f(zoomparam, 1);
+glUniform1f(glGetUniformLocation(MandelbrotShader, 'zoom'), 1);
 % Shader set up, deactivate it:
 glUseProgram(0);
-
-count = 0;
 
 % Set good start values for zoom factor and position:
 zoom = 1;
@@ -104,6 +101,7 @@ GetClicks(win);
 % Sync us to retrace and flip:
 vbl = Screen('Flip', win);
 ts = vbl;
+count = 0;
 
 % Animation loop. Runs until any key is pressed:
 while ~KbCheck
@@ -114,7 +112,7 @@ while ~KbCheck
     [x y buttons] = GetMouse(win);
 
     % Left mouse button pressed?
-    if buttons(1)
+    if buttons(1) || 1
         % Increase zoom factor:
         zoom = zoom + 0.01 * zoom;
     end
@@ -126,7 +124,7 @@ while ~KbCheck
     end
         
     % Map the current mouse pointer position to the area of the texture
-    % that should be drawn - the areo of interest in the complex number
+    % that should be drawn - the area of interest in the complex number
     % plane:
     xt = (x/tw) * RectWidth(srcRect) + srcRect(RectLeft);
     yt = (y/th) * RectHeight(srcRect) + srcRect(RectTop);

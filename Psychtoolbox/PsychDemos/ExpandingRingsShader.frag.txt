@@ -6,16 +6,19 @@
  * is assigned in 'Shift'. See ExpandingRingsDemo.m for explanation.
  *
  *
- * Written 2007 by Mario Kleiner, licensed to you under GPL.
+ * Written 2007 by Mario Kleiner, licensed to you under MIT license.
  */
 
 #version 110
 
 uniform vec2  RingCenter;
-uniform float RingWidth;
-uniform float Radius;
-uniform float Shift;
-uniform vec4  secondColor;
+
+/* Values passed from vertex shader: */
+varying float RingWidth;
+varying float Radius;
+varying float Shift;
+varying vec4  firstColor;
+varying vec4  secondColor;
 
 void main()
 {
@@ -34,5 +37,5 @@ void main()
     /* A pixel in an even-numbered ring is drawn in gl_Color, the color assigned in the */
     /* Screen('DrawTexture') command as modulateColor, whereas a pixel in an odd-numbered */
     /* ring is assigned 'secondColor': */
-    gl_FragColor = mix(gl_Color, secondColor, mod(d,2.0));
+    gl_FragColor = mix(firstColor, secondColor, mod(d,2.0));
 }

@@ -1,0 +1,39 @@
+/* ExpandingRings shader
+ * Draws a sequence of rings of alternating color. The center
+ * of all rings is assigned in 'RingCenter' by the Matlab script,
+ * width of a ring is assigned in 'RingWidth', the radius of the
+ * outermost ring is assigned in 'Radius', a shift (scrolling offset)
+ * is assigned in 'Shift'. See ExpandingRingsDemo.m for explanation.
+ *
+ *
+ * Written 2007 by Mario Kleiner, licensed to you under MIT license.
+ */
+
+#version 110
+
+/* Attributes passed from Screen(): See the ProceduralShadingAPI.m file for infos: */
+attribute vec4 modulateColor;
+attribute vec4 auxParameters0;
+attribute vec4 auxParameters1;
+
+varying float RingWidth;
+varying float Radius;
+varying float Shift;
+varying vec4  firstColor;
+varying vec4  secondColor;
+
+void main()
+{
+    /* Apply standard geometric transformations to patch: */
+    gl_Position = ftransform();
+    gl_TexCoord[0] = gl_MultiTexCoord0;
+
+    /* Pass first and second ring color to fragment shader: */
+    firstColor  = modulateColor;
+    secondColor = auxParameters0;
+
+    /* Pass shift, ring width and radius to fragment shader: */
+    Shift     = auxParameters1[0];
+    RingWidth = auxParameters1[1];
+    Radius    = auxParameters1[2];
+}
