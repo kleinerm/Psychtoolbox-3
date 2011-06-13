@@ -5105,6 +5105,8 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 
 	}
 	#else
+		#error Build aborted. You *must* compile with the -std=gnu99  gcc compiler switch to enable the required OML_sync_control extension!
+
 		// OpenML unsupported:
 		if (verbose) printf("No support for OpenML OML_sync_control extension. Using standard implementation.\n");
 
