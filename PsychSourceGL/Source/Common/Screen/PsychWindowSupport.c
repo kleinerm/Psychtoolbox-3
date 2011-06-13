@@ -5105,10 +5105,13 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 
 	}
 	#else
+        // Make sure we don't compile without OML_sync_control support on Linux, as that would be a shame:
+        #if PSYCH_SYSTEM == PSYCH_LINUX
 		#error Build aborted. You *must* compile with the -std=gnu99  gcc compiler switch to enable the required OML_sync_control extension!
-
+        #endif
+        
 		// OpenML unsupported:
-		if (verbose) printf("No support for OpenML OML_sync_control extension. Using standard implementation.\n");
+		if (verbose) printf("No compiled in support for OpenML OML_sync_control extension. Using standard implementation.\n");
 
 		// OpenML timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
 		windowRecord->specialflags |= kPsychOpenMLDefective;

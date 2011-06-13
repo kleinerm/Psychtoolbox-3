@@ -1591,8 +1591,12 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 		}
 		else {
 			// Enable fast start support for low-latency start of movie playback:
-			g_object_set(muxer_elt, "faststart", 1, NULL);
-			sprintf(codecoption, " faststart=%i", 1);
+            // FIXME: Unless we're on Windows where this would cause a crash in qtmux!
+            // TODO: Investigate & Fix root cause. For now we just disable faststart
+            // on Windows.
+            fastStart = (PSYCH_SYSTEM == PSYCH_WINDOWS) ? 0 : 1;
+			g_object_set(muxer_elt, "faststart", fastStart, NULL);
+			sprintf(codecoption, " faststart=%i", fastStart);
 			strcat(muxer, codecoption);
 		}
 

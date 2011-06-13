@@ -715,7 +715,9 @@ int PsychQTGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         // Fetch new OpenGL texture with the new movie image frame:
         error = QTVisualContextCopyImageForTime(theMoviecontext, kCFAllocatorDefault, NULL, &newImage);
         if ((error!=noErr) || newImage == NULL) {
-            PsychErrorExitMsg(PsychError_internal, "OpenGL<->Quicktime texture fetch failed!!!");
+            // We fail gracefully, but not totally silently:
+            if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In GetMovieImage: OpenGL<->Quicktime texture fetch failed! Premature end of movie or file corrupt?!?\n");
+            return(-1);
         }
     
         // Disable client storage, if it was enabled:
