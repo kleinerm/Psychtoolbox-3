@@ -570,6 +570,14 @@ try
     % Check Screen:
     AssertOpenGL;
 
+    if IsLinux
+	% Setup Desktop compositor ("Compiz") to un-redirect fullscreen windows.
+	% This allows to bypass desktop composition for PTB fullscreen onscreen windows,
+	% so we get the deterministic timing and high performance we want for visual
+	% stimulus presentation. The command is a no-op 
+	PsychGPUControl('FullScreenWindowDisablesCompositor', 1);
+    end
+
     % Try to execute online registration routine: This should be fail-safe in case
     % of no network connection.
     fprintf('\n\n');
