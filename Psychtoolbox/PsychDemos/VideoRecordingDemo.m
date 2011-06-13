@@ -257,7 +257,7 @@ try
 for nreps = 1:1
 
     % Select a moviename for the recorded movie file:
-    mname = sprintf('SetNewMoviename=%s_%i.avi', moviename, nreps);
+    mname = sprintf('SetNewMoviename=%s_%i.mov', moviename, nreps);
     Screen('SetVideoCaptureParameter', grabber, mname);
 
     Screen('StartVideoCapture', grabber, 30, 1)

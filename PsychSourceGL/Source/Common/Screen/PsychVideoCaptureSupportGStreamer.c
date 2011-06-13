@@ -1119,7 +1119,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 	if (strstr(codecSpec, "x264enc") || strstr(codecSpec, "1635148593") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
 		// Define recommended (compatible) audioencoder/muxer and their default options:
 		sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
-		sprintf(muxer, "avimux");                // Need to use avi-multiplexer.
+		sprintf(muxer, "qtmux");                 // Need to use Quicktime-Multiplexer.
 
 		// Videoencoder not yet created? If so, we have to do it now:
 		if (!capdev->videoenc) {
@@ -1139,6 +1139,9 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 				// Assign maximum distance between key frames:
 				sprintf(codecoption, "key-int-max=%i ", keyFrameInterval);
 				strcat(videocodec, codecoption);
+			} else {
+				// Default to a keyframe at least every 30 frames:
+				strcat(videocodec, "key-int-max=30 ");
 			}
 
 			// Encoding profile specified?
@@ -1148,7 +1151,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 				strcat(videocodec, codecoption);
 			} else {
 				// Default to "High" profile: 640 x 480 @ 30 fps possible:
-				strcat(videocodec, "profile=3 ");            
+				strcat(videocodec, "profile=3 ");
 			}
 
 			// Quality vs. Speed tradeoff specified?
@@ -1540,10 +1543,18 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 		// Must create it without help of CreateGStreamerElementFromString() as the muxer has
 		// 2 sink pads, but our method can only handle 1 sink pad. Therefore just create a
 		// muxer by name, setting it to its default settings:
-		codecSpec = strstr(codecSpec, "Muxer=");
-		codecSpec+= strlen("Muxer=");
-		muxer_elt = gst_element_factory_make(codecSpec, "ptbvideomuxer0");
-		sprintf(muxer, "%s", codecSpec);
+		poption = strstr(codecSpec, "Muxer=");
+		poption+= strlen("Muxer=");
+
+		// Store muxer name in 'muxer':
+		sprintf(muxer, "%s", poption);
+
+		// Terminate muxer string if a ::: marker is encountered:
+		poption = strstr(muxer, ":::");
+		if (poption) *poption = 0;
+
+		// Build element from muxer spec:
+		muxer_elt = gst_element_factory_make(muxer, "ptbvideomuxer0");
 	} else {
 		// As assigned by video codec init path:
 		muxer_elt = gst_element_factory_make(muxer, "ptbvideomuxer0");
@@ -1563,9 +1574,13 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 		// Big file writing support (> 2GB) is on by default. This allows to change it:
 		if (bigFiles >= 0) {
 			g_object_set(muxer_elt, "large-file", (bigFiles > 0) ? 1 : 0, NULL);
+			sprintf(codecoption, " large-file=%i", (bigFiles > 0) ? 1 : 0);
+			strcat(muxer, codecoption);
 		} else {
 			// Enforce default of "on":
 			g_object_set(muxer_elt, "large-file", 1, NULL);
+			sprintf(codecoption, " large-file=%i", 1);
+			strcat(muxer, codecoption);
 		}
 
 		if (fastStart >= 0) {

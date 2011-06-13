@@ -62,8 +62,9 @@ function ImagingStereoDemo(stereoMode, usedatapixx, writeMovie)
 %
 % 'writeMovie' If provided and set to a non-zero value will write a
 % Quicktime movie file 'MyTestMovie.mov' into the current working directory
-% which captures the full performance of this demo. This is silently
-% ignored on Linux as movie writing isn't supported there yet.
+% which captures the full performance of this demo. A setting of 1 will
+% only write video, a setting of 2 will also write an audio track with
+% a sequence of ten successive beep tones of 1 sec duration.
 %
 % Authors:
 % Finnegan Calabro  - fcalabro@bu.edu
@@ -269,28 +270,42 @@ escape = KbName('ESCAPE');
 
     Screen('Flip', windowPtr);
     
+    % Maximum number of animation frames to show:
+    nmax = 100000;
+
     % Optionally create a Quicktime movie file 'MyTestMovie.mov' in the
     % current directory. The file will record a movie of this performance
     % with video frames of size 512 x 512 pixels at a framerate of 60fps.
     if writeMovie
-        movie = Screen('CreateMovie', windowPtr, ['/home/kleinerm/Desktop/LinuxTest.avi'], 512, 512, 30, ':CodecSettings=AddAudioTrack=2@48000');
+	if writeMovie > 1
+	    % Add a sound track to the movie: 2 channel stereo, 48 kHz:
+	    movie = Screen('CreateMovie', windowPtr, ['MyTestMovie.mov'], 512, 512, 30, ':CodecSettings=AddAudioTrack=2@48000');
 
-%        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=VideoCodec=x264enc speed-preset=5 key-int-max=30 bitrate=20000 profile=3');
-% TUT:       movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=VideoCodec=x264enc speed-preset=5 bitrate=20000 profile=3'); 
-%        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=theoraenc'); % funktioniert in ptb, aber nirgendwo sonst.
-%        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=theoraenc AddAudioTrack'); % vielleicht?
-%        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 320, 240, 30, ':CodecType=VideoCodec=xvidenc profile=244 max-key-interval=10 bitrate=9708400 quant-type=1');
-        
-	for freq=100:100:1000
-	   Screen('AddAudioBufferToMovie', movie, [0.8 * MakeBeep(freq, 1, 48000); 0.8 * MakeBeep(freq*1.2, 1, 48000)]);
-	end
+	    % Create a sequence of 10 tones, each of 1 second duration, each 100 Hz higher
+	    % than its predecessor. Each of the two stereo channels gets a slightly different sound:
+	    for freq=100:100:1000
+	        Screen('AddAudioBufferToMovie', movie, [0.8 * MakeBeep(freq, 1, 48000); 0.8 * MakeBeep(freq*1.2, 1, 48000)]);
+	    end
+	    nmax = 300;
+	else
+            % Only video, no sound:
+	    movie = Screen('CreateMovie', windowPtr, ['MyTestMovie.mov'], 512, 512, 30);
+        end
+
+	% Other examples of codec settings:
+        %
+	%        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=VideoCodec=x264enc speed-preset=5 key-int-max=30 bitrate=20000 profile=3');
+	%        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=VideoCodec=x264enc speed-preset=5 bitrate=20000 profile=3'); 
+	%        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=theoraenc');
+	%        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=theoraenc AddAudioTrack');
+	%        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 320, 240, 30, ':CodecType=VideoCodec=xvidenc profile=244 max-key-interval=10 bitrate=9708400 quant-type=1');
     end
     
     % Perform a flip to sync us to vbl and take start-timestamp in t:
     t = Screen('Flip', windowPtr);
 
     % Run until a key is pressed:
-    while length(t) < 300
+    while length(t) < nmax
         
         % Select left-eye image buffer for drawing:
         Screen('SelectStereoDrawBuffer', windowPtr, 0);
@@ -347,7 +362,7 @@ escape = KbName('ESCAPE');
 
         % Add a screenshot of the center 512 x 512 pixels as a new video frame to the movie file, if any:
         if writeMovie
-            Screen('AddFrameToMovie', windowPtr, CenterRect([0 0 512 512], Screen('Rect', scrnNum)));
+            Screen('AddFrameToMovie', windowPtr, CenterRect([0 0 512 512], Screen('Rect', scrnNum)), 'backBuffer');
         end
         
         % Flip stim to display and take timestamp of stimulus-onset after
