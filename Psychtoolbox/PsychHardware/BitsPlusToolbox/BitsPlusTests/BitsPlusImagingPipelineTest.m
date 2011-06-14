@@ -54,6 +54,7 @@ else
 end
 
 oldverbosity = Screen('Preference', 'Verbosity', 2);
+oldsynclevel = Screen('Preference', 'SkipSyncTests', 2);
 
 % Define screen:
 if nargin < 1 || isempty(whichScreen)
@@ -116,8 +117,90 @@ Screen('DrawTexture',window,hdrtexIndex, [], dstRect, [], 0);
 % Finalize image before we take a screenshot:
 Screen('DrawingFinished', window, 0, 1);
 
-% Take screenshot of GPU converted image:
-convImage=Screen('GetImage', window, ScaleRect(dstRect, 2, 1),'backBuffer');
+% Scanning pattern for testing for possible offsets between rasterization
+% path and readback path due to graphics driver bugs. We start with the
+% most likely hypothesis [0 ; 0] aka no offsets:
+spo = [ 0, -1, -1, -1,  0,  0, +1, +1, +1 ; ...  
+        0, -1,  0, +1, -1, +1, -1,  0, +1];
+
+for idx = 1:size(spo, 2)
+    dx = spo(1, idx);
+    dy = spo(2, idx);
+    
+    % Take screenshot of GPU converted image:
+    convImage=Screen('GetImage', window, OffsetRect(ScaleRect(dstRect, 2, 1), dx, dy),'backBuffer');
+
+    % Compute difference images between Matlab converted packedImage and GPU converted
+    % HDR image:
+    diffred   = abs(double(packedImage(:,:,1)) - double(convImage(:,:,1)));
+    diffgreen = abs(double(packedImage(:,:,2)) - double(convImage(:,:,2)));
+    diffblue  = abs(double(packedImage(:,:,3)) - double(convImage(:,:,3)));
+
+    % Compute maximum deviation of framebuffer raw data:
+    mdr = max(max(diffred));
+    mdg = max(max(diffgreen));
+    mdb = max(max(diffblue));
+
+    fprintf('ReadbackOffset (%i, %i): Maximum raw data difference: red= %f green = %f blue = %f\n', dx, dy, mdr, mdg, mdb);
+
+    % Perfect results?
+    if ((mdr == 0) && (mdg == 0) && (mdb == 0))
+        % Yep. Done!
+        break;
+    end
+
+    % If there is a difference, show plotted difference if requested:
+    if (mdr>0 || mdg>0 || mdb>0) && plotdiffs
+        % Differences detected!
+        close all;
+        imagesc(diffred);
+        figure;
+        imagesc(diffgreen);
+        figure;
+        imagesc(diffblue);
+    end
+
+    if (mdr>0 || mdg>0 || mdb>0)
+        % Now compute a more meaningful difference: The difference between the
+        % stimulus as the Bits++ box would see it (i.e. how much do the 16 bit
+        % intensity values of each color channel differ?):
+        convImage = double(convImage);
+        packedImage = double(packedImage);
+
+        % For each color channel do...
+        for c=1:3
+            % Invert conversion: Compute 16 bpc color values from high/low byte
+            % pixel data:
+            deconvImage = (zeros(size(convImage,1), size(convImage,2)/2));
+            deconvImage(:,:) = 256 * convImage(:, 1:2:end-1, c) + convImage(:, 2:2:end, c);
+
+            depackImage = (zeros(size(packedImage,1), size(packedImage,2)/2));
+            depackImage(:,:) = 256 * packedImage(:, 1:2:end-1, c) + packedImage(:, 2:2:end, c);
+
+            % Difference image:
+            diffImage = (deconvImage - depackImage);
+
+            % Find locations where pixels differ:
+            idxdiff = find(abs(diffImage) > 0);
+            numdiff(c) = length(idxdiff); %#ok<AGROW>
+            numtot(c) = size(diffImage,1)*size(diffImage,2); %#ok<AGROW>
+            maxdiff(c) = max(max(abs(diffImage))); %#ok<AGROW>
+            [row col] = ind2sub(size(diffImage), idxdiff);
+
+            % Print out all pixels values which differ, and their difference:
+            if plotdiffs
+                for j=1:length(row)
+                    fprintf('Diff: %.2f Input Value: %.20f\n', diffImage(row(j), col(j)), theImage(row(j), col(j), c) * 65535);
+                end
+            end
+        end
+
+        for c=1:3
+            % Summarize for this color channel:
+            fprintf('Channel %i: %i out of %i pixels differ. The maximum absolute difference is %i.\n', c, numdiff(c), numtot(c), maxdiff(c));
+        end
+    end
+end
 
 % Show GPU converted image. Should obviously not make any visual difference if
 % it is the same as the Matlab converted image.
@@ -141,73 +224,10 @@ Screen('Flip', window, vbl + 2);
 Screen('CloseAll');
 RestoreCluts;
 
-% Compute difference images between Matlab converted packedImage and GPU converted
-% HDR image:
-diffred   = abs(double(packedImage(:,:,1)) - double(convImage(:,:,1)));
-diffgreen = abs(double(packedImage(:,:,2)) - double(convImage(:,:,2)));
-diffblue  = abs(double(packedImage(:,:,3)) - double(convImage(:,:,3)));
 
-% Compute maximum deviation of framebuffer raw data:
-mdr = max(max(diffred));
-mdg = max(max(diffgreen));
-mdb = max(max(diffblue));
-
-fprintf('Maximum raw data difference: red= %f green = %f blue = %f\n', mdr, mdg, mdb);
-
-% If there is a difference, show plotted difference if requested:
-if (mdr>0 || mdg>0 || mdb>0) && plotdiffs
-    % Differences detected!
-    close all;
-    imagesc(diffred);
-    figure;
-    imagesc(diffgreen);
-    figure;
-    imagesc(diffblue);
-end
-
-if (mdr>0 || mdg>0 || mdb>0)    
-    % Now compute a more meaningful difference: The difference between the
-    % stimulus as the Bits++ box would see it (i.e. how much do the 16 bit
-    % intensity values of each color channel differ?):
-    convImage = double(convImage);
-    packedImage = double(packedImage);
-
-    % For each color channel do...
-    for c=1:3
-        % Invert conversion: Compute 16 bpc color values from high/low byte
-        % pixel data:
-        deconvImage = (zeros(size(convImage,1), size(convImage,2)/2));
-        deconvImage(:,:) = 256 * convImage(:, 1:2:end-1, c) + convImage(:, 2:2:end, c);
-
-        depackImage = (zeros(size(packedImage,1), size(packedImage,2)/2));
-        depackImage(:,:) = 256 * packedImage(:, 1:2:end-1, c) + packedImage(:, 2:2:end, c);
-
-        % Difference image:
-        diffImage = (deconvImage - depackImage);
-
-        % Find locations where pixels differ:
-        idxdiff = find(abs(diffImage) > 0);
-        numdiff(c) = length(idxdiff);
-        numtot(c) = size(diffImage,1)*size(diffImage,2);
-        maxdiff(c) = max(max(abs(diffImage)));
-        [row col] = ind2sub(size(diffImage), idxdiff);
-
-        % Print out all pixels values which differ, and their difference:
-        if plotdiffs
-            for j=1:length(row)
-                fprintf('Diff: %.2f Input Value: %.20f\n', diffImage(row(j), col(j)), theImage(row(j), col(j), c) * 65535);
-            end
-        end
-    end
-
-    for c=1:3
-        % Summarize for this color channel:
-        fprintf('Channel %i: %i out of %i pixels differ. The maximum absolute difference is %i.\n', c, numdiff(c), numtot(c), maxdiff(c));
-    end
-end
-
+% Best fit differs from expected result? That would be "game over":
 if (mdr>0 || mdg>0 || mdb>0) && ~forcesuccess
-    fprintf('------------------ DIFFERENCE IN COLOR++ CONVERSION DETECTED ------------------\n');
+    fprintf('\n\n------------------ DIFFERENCE IN COLOR++ CONVERSION DETECTED ------------------\n');
     fprintf('This should not happen on properly and accurately working graphics hardware.\n');
     fprintf('Either there is a bug in the graphics driver, or something is misconfigured or\n');
     fprintf('your hardware is too old and not capable of performing the calculations in sufficient\n');
@@ -220,7 +240,75 @@ if (mdr>0 || mdg>0 || mdb>0) && ~forcesuccess
     fprintf('script to one and rerun it.\n\n');
 
     Screen('Preference', 'Verbosity', oldverbosity);
+    Screen('Preference', 'SkipSyncTests', oldsynclevel);
+
     error('Bits++ Color++ test failed. Results of Matlab code and GPU conversion differ!');
+end
+
+% Non zero readback offsets needed?
+if ((dx ~= 0) || (dy ~= 0))
+    % Not good.
+    fprintf('\n\n----------------------------------- CAUTION -----------------------------------------\n');
+    fprintf('There is an offset of dx = %i and dy = %i pixels between the detected\n', dx, dy);
+    fprintf('and expected location of the pixel data in the framebuffer! This means that\n');
+    fprintf('your graphics driver has a bug either in the pixel rendering path or the pixel\n');
+    fprintf('readback path. A bug in the readback path would be problematic for other applications\n');
+    fprintf('but not for high precision color or luminance output.\n');
+    fprintf('A bug in the rendering path would be bad for high precision visual stimulus display.\n');
+    fprintf('This test cannot find out by itself which of both bugs is present, the "good" one or\n');
+    fprintf('the "bad" one. I will display a test pattern now after a key press. With your Bits+ box\n');
+    fprintf('or Datapixx in Color++ mode, you should see a 50%% intensity gray rectangle with a 100%% white\n');
+    fprintf('frame around it, in front of a black background.\n');
+    fprintf('Press a key for presentation, then the key again after you verified\n');
+    fprintf('if you saw what you were expected to see.\n');
+    fprintf('\n');
+    fprintf('Press any key to start presentation.\n');
+    KbStrokeWait;
+    
+    PsychColorCorrection('ChooseColorCorrection', 'ClampOnly');
+
+    % Open a double buffered fullscreen window with black background, configured for the Bits++
+    % Color++ Mode, i.e., with proper setup of imaging pipeline and conversion shaders:
+    BitsPlusPlus('ForceUnvalidatedRun');
+
+    % The correctness test for Color++/C48 mode is written for classic mode,
+    % ie., mode 0, so request that:
+    BitsPlusPlus('SetColorConversionMode', 0);
+    window = BitsPlusPlus('OpenWindowColor++', whichScreen, 0);
+    Screen('FillRect', window, 0.5, CenterRect([0 0 200 200], screenRect));
+    Screen('FrameRect', window, 1.0, CenterRect([0 0 200 200], screenRect), 20);
+    DrawFormattedText(window, 'Press any key when done.', 'center', 100, [1 1 0]);
+    Screen('Flip', window);
+    KbStrokeWait;
+    Screen('CloseAll');
+    RestoreCluts;
+    fprintf('\n\n\n');
+    
+    answer = input('Did you see a gray filled rectangle, with a white frame on a black background? [y/n] ', 's');
+    if answer ~= 'y'
+        fprintf('\n\nOk, the graphics driver bug is in the rendering path. Sad, very sad :-(\n');
+        fprintf('This will not work for precision stimulus presentation. Test failed.\n\n');
+        fprintf('You may want to check your configuration and upgrade your driver. If that\n');
+        fprintf('does not help, upgrade your graphics hardware. Alternatively you may want to use the old\n');
+        fprintf('Matlab-based BitsPlusPackColorImage() function for slow conversion of color images.\n\n');
+        fprintf('Please report this failure with a description of your hardware setup to the Psychtoolbox\n');
+        fprintf('forum (http://psychtoolbox.org --> Link to the forum.)\n\n');
+        fprintf('You can force this test to succeed if you set the optional "forcesuccess" flag for this\n');
+        fprintf('script to one and rerun it.\n\n');
+
+        Screen('Preference', 'Verbosity', oldverbosity);
+        Screen('Preference', 'SkipSyncTests', oldsynclevel);
+
+        error('Bits++ Color++ test failed. Hardware rasterizer malfunction / graphics driver bug!');
+    else
+        fprintf('\n\nOk, the graphics driver bug is in the pixel readback path. That is tolerable for\n');
+        fprintf('high precision stimulus display, but look out for other problems on your system\n');
+        fprintf('with visual stimulus presentation etc.\n');
+        fprintf('Might be a good idea to update your graphics drivers. I will classify the test so far as succeess...\n\n');
+        fprintf('\n');
+        fprintf('Press any key to continue to part II of the test.\n');
+        KbStrokeWait;
+    end
 end
 
 fprintf('\n\n------------------- Color++ test success! -------------------------------------\n\n');
@@ -268,7 +356,7 @@ Screen('DrawTexture',window,hdrtexIndex, [], dstRect, [], 0);
 Screen('DrawingFinished', window, 0, 1);
 
 % Take screenshot of GPU converted image:
-convImage=Screen('GetImage', window, dstRect,'backBuffer');
+convImage=Screen('GetImage', window, OffsetRect(dstRect, dx, dy), 'backBuffer');
 
 % Show GPU converted image. Should obviously not make any visual difference if
 % it is the same as the Matlab converted image.
@@ -289,6 +377,7 @@ vbl = Screen('Flip', window, vbl + 2);
 Screen('Flip', window, vbl + 2);
 
 Screen('Preference', 'Verbosity', oldverbosity);
+Screen('Preference', 'SkipSyncTests', oldsynclevel);
 
 % Compute difference images between Matlab converted packedImage and GPU converted
 % HDR image:
@@ -351,7 +440,7 @@ if (mdr>0 || mdg>0 || mdb>0)
 end
 
 if (mdr>0 || mdg>0 || mdb>0) && ~forcesuccess
-    fprintf('------------------ DIFFERENCE IN MONO++ CONVERSION DETECTED ------------------\n');
+    fprintf('\n\n------------------ DIFFERENCE IN MONO++ CONVERSION DETECTED ------------------\n');
     fprintf('This should not happen on properly and accurately working graphics hardware.\n');
     fprintf('Either there is a bug in the graphics driver, or something is misconfigured or\n');
     fprintf('your hardware is too old and not capable of performing the calculations in sufficient\n');
@@ -363,6 +452,7 @@ if (mdr>0 || mdg>0 || mdb>0) && ~forcesuccess
     fprintf('You can force this test to succeed if you set the optional "forcesuccess" flag for this\n');
     fprintf('script to one and rerun it.\n\n');
     sca;
+
     error('Bits++ Mono++ test failed. Results of Matlab code and GPU conversion differ!');
 end
 
