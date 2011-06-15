@@ -43,6 +43,7 @@
 %   MakeMonoPrimary     - Make the spd of a monochromatic primary.
 %   MakeOrtho           - Make a set of basis functions orthonormal.
 %   MakeUnitLength      - Make the columns of a matrix have unit length.
+%   MonoImageToSRGB     - Convert a monochrome image to an sRGB color image at passed chromaticity.
 %   M_PToP              - Conversion matrix from source/dest. primaries.
 %   M_PToT              - Conversion matrix from source primaries and dest. cmfs.
 %   M_TToP              - Conversion matrix from source cmfs and dest. primaries.
