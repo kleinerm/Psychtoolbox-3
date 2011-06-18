@@ -1,7 +1,7 @@
 function Eyelink
 %
 % 	The EyelinkToolbox can be used to ceate eye-movement experiments and
-%   control the SR-Research Eyelink© gazetrackers
+%   control the SR-Research Eyelinkï¿½ gazetrackers
 %   (http://www.eyelinkinfo.com/) from within Matlab.
 %   It is incorporated into the PsychToolbox (http://www.psychtoolbox.org/).
 %   and uses the functions provided by the PsychToolBox for graphics and sound.
@@ -25,3 +25,4 @@ function Eyelink
 %   EyelinkToolbox/contents.m
 %
 
+AssertMex('Eyelink.m');

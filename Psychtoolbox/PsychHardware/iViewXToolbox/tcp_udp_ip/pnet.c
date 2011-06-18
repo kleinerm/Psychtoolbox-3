@@ -1270,11 +1270,11 @@ void mexFunction(
 	mexPrintf("     FID:%d\n",con[con_index].fid);
 	mexPrintf("  STATUS:%d\n",con[con_index].status);
 	mexPrintf("WRITE  TO:%g\n",con[con_index].writetimeout);
-	mexPrintf("WRITE PTR:%x\n",(int)con[con_index].write.ptr);
+	mexPrintf("WRITE PTR:%p\n",con[con_index].write.ptr);
 	mexPrintf("WRITE POS:%d\n",con[con_index].write.pos);
 	mexPrintf("WRITE LEN:%d\n",con[con_index].write.len);
 	mexPrintf("READ  TO:%g\n",con[con_index].readtimeout);
-	mexPrintf("READ PTR:%x\n",(int)con[con_index].read.ptr);
+	mexPrintf("READ PTR:%p\n",con[con_index].read.ptr);
 	mexPrintf("READ POS:%d\n",con[con_index].read.pos);
 	mexPrintf("READ LEN:%d\n",con[con_index].read.len);
 	return;
