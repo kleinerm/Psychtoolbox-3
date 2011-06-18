@@ -123,7 +123,7 @@ PsychError SCREENNull(void)
 		hi = value >> 16;
 		lo = value & 0xffff;
 
-		if (PsychPrefStateGet_Verbosity() > 2) printf("%p :: hi = %i , lo = %i , val = %i\n", (void*) regOffset, hi, lo, value);
+		if (PsychPrefStateGet_Verbosity() > 2) printf("%p :: hi = %i , lo = %i , val = %i\n", (void*) (size_t) regOffset, hi, lo, value);
 
 		PsychCopyOutDoubleArg(1, FALSE, (double) value);
 		PsychCopyOutDoubleArg(2, FALSE, (double) hi);

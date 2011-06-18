@@ -272,7 +272,8 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 clear mex
 
 % Check if this is a 64-bit Matlab or Octave, which we don't support at all:
-if strcmp(computer,'PCWIN64') | strcmp(computer,'MACI64') | strcmp(computer,'GLNXA64') | ~isempty(findstr(computer, '_64')) %#ok<OR2>
+if strcmp(computer,'PCWIN64') | strcmp(computer,'MACI64') | strcmp(computer,'GLNXA64') | ...
+  (~isempty(findstr(computer, '_64')) & isempty(findstr(computer, 'linux'))) %#ok<OR2>
     fprintf('Psychtoolbox does not work on a 64 bit version of Matlab or Octave.\n');
     fprintf('You need to install a 32 bit Matlab or Octave to install & use Psychtoolbox.\n');
 
@@ -289,7 +290,7 @@ end
 % Check OS
 isWin=strcmp(computer,'PCWIN') | strcmp(computer,'PCWIN64')| strcmp(computer, 'i686-pc-mingw32');
 isOSX=strcmp(computer,'MAC') | strcmp(computer,'MACI') | ~isempty(findstr(computer, 'apple-darwin'));
-isLinux=strcmp(computer,'GLNX86') | ~isempty(findstr(computer, 'linux-gnu'));
+isLinux=strcmp(computer,'GLNX86') | strcmp(computer,'GLNXA64') | ~isempty(findstr(computer, 'linux-gnu'));
 
 if ~isWin & ~isOSX & ~isLinux
     os=computer;

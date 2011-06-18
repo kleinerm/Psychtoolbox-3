@@ -142,7 +142,7 @@ typedef unsigned char		psych_bool;
 
 //abstract up simple data types. 
 #if PSYCH_SYSTEM == PSYCH_LINUX
-        typedef long long						psych_int64;
+        typedef int64_t                         psych_int64;
         typedef unsigned long long              psych_uint64;
         typedef unsigned int                    psych_uint32;
         typedef unsigned char                   psych_uint8;

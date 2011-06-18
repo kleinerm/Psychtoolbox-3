@@ -268,7 +268,7 @@ void gl_bufferdata( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 	if (NULL == glBufferData) mogl_glunsupported("glBufferData");
 	glBufferData((GLenum)mxGetScalar(prhs[0]),
 		(GLsizeiptr)mxGetScalar(prhs[1]),
-		(const GLvoid*) (mxGetM(prhs[2]) * mxGetN(prhs[2]) > 1) ? mxGetData(prhs[2]) : moglScalarToPtrOffset(prhs[2]),
+		(const GLvoid*) ((mxGetM(prhs[2]) * mxGetN(prhs[2]) > 1) ? mxGetData(prhs[2]) : moglScalarToPtrOffset(prhs[2])),
 		(GLenum)mxGetScalar(prhs[3]));
 
 }
@@ -282,7 +282,7 @@ void gl_readpixels( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 		(GLsizei)mxGetScalar(prhs[3]),
 		(GLenum)mxGetScalar(prhs[4]),
 		(GLenum)mxGetScalar(prhs[5]),
-		(GLvoid*) (mxGetM(prhs[6]) * mxGetN(prhs[6]) > 1) ? mxGetData(prhs[6]) :  moglScalarToPtrOffset(prhs[6]));
+		(GLvoid*) ((mxGetM(prhs[6]) * mxGetN(prhs[6]) > 1) ? mxGetData(prhs[6]) :  moglScalarToPtrOffset(prhs[6])));
 
 }
 
@@ -292,7 +292,7 @@ void gl_vertexpointer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[
 	glVertexPointer((GLint)mxGetScalar(prhs[0]),
 		(GLenum)mxGetScalar(prhs[1]),
 		(GLsizei)mxGetScalar(prhs[2]),
-		(const GLvoid*) (mxGetM(prhs[3]) * mxGetN(prhs[3]) > 1) ? mxGetData(prhs[3]) :  moglScalarToPtrOffset(prhs[3]));
+	        (const GLvoid*) ((mxGetM(prhs[3]) * mxGetN(prhs[3]) > 1) ? mxGetData(prhs[3]) :  moglScalarToPtrOffset(prhs[3])));
 
 }
 
@@ -301,7 +301,7 @@ void gl_normalpointer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[
 	if (NULL == glNormalPointer) mogl_glunsupported("glNormalPointer");
 	glNormalPointer((GLenum)mxGetScalar(prhs[0]),
 		(GLsizei)mxGetScalar(prhs[1]),
-		(const GLvoid*) (mxGetM(prhs[2]) * mxGetN(prhs[2]) > 1) ? mxGetData(prhs[2]) :  moglScalarToPtrOffset(prhs[2]));
+		(const GLvoid*) ((mxGetM(prhs[2]) * mxGetN(prhs[2]) > 1) ? mxGetData(prhs[2]) :  moglScalarToPtrOffset(prhs[2])));
 
 }
 
@@ -311,7 +311,7 @@ void gl_texcoordpointer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prh
 	glTexCoordPointer((GLint)mxGetScalar(prhs[0]),
 		(GLenum)mxGetScalar(prhs[1]),
 		(GLsizei)mxGetScalar(prhs[2]),
-		(const GLvoid*) (mxGetM(prhs[3]) * mxGetN(prhs[3]) > 1) ? mxGetData(prhs[3]) :  moglScalarToPtrOffset(prhs[3]));
+		(const GLvoid*) ((mxGetM(prhs[3]) * mxGetN(prhs[3]) > 1) ? mxGetData(prhs[3]) :  moglScalarToPtrOffset(prhs[3])));
 
 }
 
@@ -321,7 +321,7 @@ void gl_colorpointer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]
 	glColorPointer((GLint)mxGetScalar(prhs[0]),
 		(GLenum)mxGetScalar(prhs[1]),
 		(GLsizei)mxGetScalar(prhs[2]),
-		(const GLvoid*) (mxGetM(prhs[3]) * mxGetN(prhs[3]) > 1) ? mxGetData(prhs[3]) :  moglScalarToPtrOffset(prhs[3]));
+		(const GLvoid*) ((mxGetM(prhs[3]) * mxGetN(prhs[3]) > 1) ? mxGetData(prhs[3]) :  moglScalarToPtrOffset(prhs[3])));
 
 }
 
@@ -333,7 +333,7 @@ void gl_vertexattribpointer( int nlhs, mxArray *plhs[], int nrhs, const mxArray 
 		(GLenum)mxGetScalar(prhs[2]),
 		(GLboolean)mxGetScalar(prhs[3]),
 		(GLsizei)mxGetScalar(prhs[4]),
-		(const GLvoid*) (mxGetM(prhs[5]) * mxGetN(prhs[5]) > 1) ? mxGetData(prhs[5]) :  moglScalarToPtrOffset(prhs[5]));
+		(const GLvoid*) ((mxGetM(prhs[5]) * mxGetN(prhs[5]) > 1) ? mxGetData(prhs[5]) :  moglScalarToPtrOffset(prhs[5])));
 
 }
 
@@ -343,7 +343,7 @@ void gl_drawelements( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]
 	glDrawElements((GLenum)mxGetScalar(prhs[0]),
 		(GLsizei)mxGetScalar(prhs[1]),
 		(GLenum)mxGetScalar(prhs[2]),
-		(const GLvoid*) (mxGetM(prhs[3]) * mxGetN(prhs[3]) > 1) ? mxGetData(prhs[3]) :  moglScalarToPtrOffset(prhs[3]));
+		(const GLvoid*) ((mxGetM(prhs[3]) * mxGetN(prhs[3]) > 1) ? mxGetData(prhs[3]) :  moglScalarToPtrOffset(prhs[3])));
 
 }
 
@@ -355,7 +355,7 @@ void gl_drawrangeelements( int nlhs, mxArray *plhs[], int nrhs, const mxArray *p
 		(GLuint)mxGetScalar(prhs[2]),
 		(GLsizei)mxGetScalar(prhs[3]),
 		(GLenum)mxGetScalar(prhs[4]),
-		(const GLvoid*) (mxGetM(prhs[5]) * mxGetN(prhs[5]) > 1) ? mxGetData(prhs[5]) :  moglScalarToPtrOffset(prhs[5]));
+		(const GLvoid*) ((mxGetM(prhs[5]) * mxGetN(prhs[5]) > 1) ? mxGetData(prhs[5]) :  moglScalarToPtrOffset(prhs[5])));
 
 }
 

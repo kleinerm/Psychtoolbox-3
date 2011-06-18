@@ -224,6 +224,10 @@ if IsOctave
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFiles']);
         end
         
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFiles64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFiles64']);
+        end
+        
         if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles'], 'dir')
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles']);
         end
@@ -242,6 +246,11 @@ if IsOctave
         % Add proper OS dependent postfix:
         if IsLinux
             rdir = [rdir 'LinuxFiles'];
+        end
+        
+        if IsLinux(1)
+	    % 64 bit Octave on 64 bit Linux. Select 64 bit mex file folder:
+            rdir = [rdir '64'];
         end
         
         if IsOSX
