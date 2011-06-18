@@ -800,6 +800,8 @@ elseif ischar(arg)      % argument is a character, so find the code
              'period', '.>';
              'comma', ',<';
              'slash', '/?';
+	     'equal', '=+';
+	     'minus', '-_';
              '0', '0)';
              '1', '1!';
              '2', '2@';
@@ -810,6 +812,7 @@ elseif ischar(arg)      % argument is a character, so find the code
              '7', '7&';
              '8', '8*';
              '9', '9(' };
+
             for i=1:length(KEYREMAP_TABLE)
                 keycodes_indexes = find(strcmp(kkLinux, KEYREMAP_TABLE{i,1}));
                 for index=keycodes_indexes
