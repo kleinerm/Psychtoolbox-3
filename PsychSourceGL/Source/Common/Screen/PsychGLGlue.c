@@ -304,6 +304,11 @@ psych_bool PsychGetGLErrorListString(const char **errorListStr)
 	int		currentIndex, deltaStrLen, nextCurrentIndex;
     GLenum	glError;
     psych_bool	isError=FALSE;
+
+    // Skip this routine with "no error" return status, if kPsychAvoidCPUGPUSync
+    // is set as conserveVRAM setting by usercode:
+    *errorListStr = NULL;
+    if (PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync) return(FALSE);
 	
 	currentIndex=0;
     for(glError=glGetError(); glError!=GL_NO_ERROR; glError=glGetError()){
