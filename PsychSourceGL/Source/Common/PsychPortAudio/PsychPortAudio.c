@@ -5408,7 +5408,14 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 
 	// Set maxSample to maximum integer: The scheduler (aka PsychPAProcessSchedule()) will test at runtime if the playloop extends
 	// beyond valid playbuffer boundaries and clamp to end-of-buffer if needed, so this is safe:
-	maxSample = SIZE_MAX;
+	// Ok, not quite the maximum 64 bit signed integer, but 2^32 counts less. Why? Because we assign
+	// maxSample to a double variable below, then that back to a int64. Due to limited precision of
+	// the double data type, roundoff errors would cause a INT64_MAX to overflow the representable
+	// max value of 2^63 for psych_int64, thereby causing storage of wrapped around negative value,
+	// and the whole logic would blow up! Keep some (overly large) security margin to prevent this.
+	// Oh, and we need to divide by max number of device channels, as otherwise some multiplication
+	// in the audio schedule processing may overflow and wreak havoc:
+	maxSample = ((INT64_MAX - (psych_int64) INT32_MAX)) / ((psych_int64) MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE);
 
 	// Copy in optional startSample:
 	startSample = 0;
@@ -5468,7 +5475,7 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 		success = 0;
 		freeslots = 0;
 	}
-	
+
 	// Unlock device:
 	PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
 
