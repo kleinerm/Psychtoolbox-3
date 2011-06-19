@@ -1,0 +1,65 @@
+function linuxmakeit64_ubuntugutsy(mode)
+% This is the GNU/Linux version of makeit to build the Linux
+% version of PTB's Screen - command for 64 Bit Matlab.
+% This version is adapted to build on the "funky" Laptop under Ubuntu Linux 10.10 Maverick against Matlab R2007a and later 
+if nargin < 1
+    mode = 0
+end;
+
+fprintf('Building plugin type %i ...\n\n', mode);
+
+if mode==0
+    % Build Screen.mexglx:
+    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions' -v -outdir ../Projects/Linux/build/ -output Screen -largeArrayDims -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -I/usr/X11R6/include -I/usr/include/gstreamer-0.10 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib Common/Base/*.cc Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -lrt -ldl -lGL -lGLU -lX11 -lXext -lgstreamer-0.10 -lgstbase-0.10 -lgstapp-0.10 -lgstinterfaces-0.10 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lraw1394 -lusb-1.0 -lpciaccess
+    unix(['mv ../Projects/Linux/build/Screen.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+end;
+
+if mode==1
+    % Build GetSecs.mexglx:
+    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions' -v -outdir ../Projects/Linux/build/ -output GetSecs -largeArrayDims -DPTBMODULE_GetSecs -ICommon/Base -ILinux/Base -ICommon/GetSecs -ICommon/Screen Common/Base/*.cc Linux/Base/*.c Common/Base/*.c Common/GetSecs/*.c -lc -lrt 
+    unix(['mv ../Projects/Linux/build/GetSecs.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+end;
+
+if mode==2
+    % Build WaitSecs.mexglx:
+    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions' -v -outdir ../Projects/Linux/build/ -output WaitSecs -largeArrayDims -DPTBMODULE_WaitSecs -ICommon/Base -ILinux/Base -ICommon/WaitSecs -ICommon/Screen Common/Base/*.cc Linux/Base/*.c Common/Base/*.c Common/WaitSecs/*.c -lc -lrt 
+    unix(['mv ../Projects/Linux/build/WaitSecs.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+end;
+
+if mode==3
+    % Build PsychPortAudio.mexglx:
+    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions' -v -outdir ../Projects/Linux/build/ -output PsychPortAudio -largeArrayDims -DPTBMODULE_PsychPortAudio -ICommon/Base -ILinux/Base -ICommon/PsychPortAudio -ICommon/Screen Common/Base/*.cc Linux/Base/*.c Common/Base/*.c Common/PsychPortAudio/*.c /usr/local/lib/libportaudio.a -lc -lrt -lasound
+    unix(['mv ../Projects/Linux/build/PsychPortAudio.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+end
+
+if mode==4
+    % Build Eyelink.mexglx:
+    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions' -v -outdir ../Projects/Linux/build/ -output Eyelink -largeArrayDims -DPTBMODULE_Eyelink -ICommon/Base -ILinux/Base -ICommon/Eyelink -ICommon/Screen Common/Base/*.cc Linux/Base/*.c Common/Base/*.c Common/Eyelink/*.c -leyelink_core -lc -lrt
+    unix(['mv ../Projects/Linux/build/Eyelink.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+end
+
+if mode==5
+    % Build IOPort.mexglx:
+    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions' -v -outdir ../Projects/Linux/build/ -output IOPort -largeArrayDims -DPTBMODULE_IOPort -ICommon/Base -ILinux/Base -ICommon/IOPort -ICommon/Screen Common/Base/*.cc Linux/Base/*.c Common/Base/*.c Common/IOPort/*.c -lc -lrt
+    unix(['mv ../Projects/Linux/build/IOPort.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+end
+
+if mode==6
+    % Build moglcore.mexglx:
+    curdir = pwd;
+    cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
+    try
+    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions' -v -outdir ./ -output moglcore -DLINUX -DGLEW_STATIC -largeArrayDims -I/usr/X11R6/include -L/usr/X11R6/lib -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c
+    catch
+    end
+    unix(['mv moglcore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+    cd(curdir);
+end
+
+if mode==7
+    % Build PsychKinectCore.mexglx:
+    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions' -v -outdir ../Projects/Linux/build/ -output PsychKinectCore -largeArrayDims -DPTBMODULE_PsychKinectCore -I/usr/include/libusb-1.0 -I/usr/include/libfreenect -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen Common/Base/*.cc Linux/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -lfreenect -lusb-1.0
+    unix(['mv ../Projects/Linux/build/PsychKinectCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+end;
+
+return;
