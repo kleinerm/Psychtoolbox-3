@@ -7,11 +7,12 @@
 		f.w.cornelissen@rug.nl			fwc
 		E.Peters@ai.rug.nl				emp
   
-	PLATFORMS:	Currently only OS X  
+	PLATFORMS:	All.
     
 	HISTORY:
 
 		15/06/06  fwc		Adapted from early alpha version by emp.
+		19-06-11  mk            Refactored to share parser with other functions.
 
 	TARGET LOCATION:
 
@@ -44,73 +45,24 @@ PURPOSE:
   	
 PsychError EyelinkMessage(void)
 {
-   int i, numInArgs;
    int status = -1;
-   void **args_ptr = NULL; /* argument list, used as a va_list */
-   char s[256];
-   char *formatString;
-   PsychArgFormatType format;
-   double tempValue;
-   char *tempString = NULL;
    
-   //all sub functions should have these two lines
+   // All sub functions should have these two lines
    PsychPushHelp(useString, synopsisString, seeAlsoString);
    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
-   //check to see if the user supplied superfluous arguments
-   // PsychErrorExit(PsychCapNumInputArgs(1));
+   // Check to see if the user supplied superfluous arguments
    PsychErrorExit(PsychRequireNumInputArgs(1));
    PsychErrorExit(PsychCapNumOutputArgs(1));
    
-   	// Verify eyelink is up and running
-	EyelinkSystemIsConnected();
-	EyelinkSystemIsInitialized();
+   // Verify eyelink is up and running
+   EyelinkSystemIsConnected();
+   EyelinkSystemIsInitialized();
    
-   PsychAllocInCharArg(1, TRUE, &formatString);
-   numInArgs = PsychGetNumInputArgs();   
-
-   if (numInArgs > 1)
-   {
-      args_ptr = (void **)mxMalloc((numInArgs-1) * sizeof(char *));
-      //iterate over each of the supplied inputs.  
-      for(i=2;i<=numInArgs;i++){
-         format = PsychGetArgType(i);
-         switch(format){
-            case PsychArgType_double:
-               if(PsychGetArgM(i)==1 && PsychGetArgN(i)==1){
-                  PsychCopyInDoubleArg(i, TRUE, &tempValue);
-                  args_ptr[i-2] = (void *) (int) tempValue;
-               }
-               else
-               {
-                  PsychGiveHelp();
-                  return(PsychError_user);
-               }
-               break;
-            case PsychArgType_char:
-               args_ptr[i-2] = NULL;
-               PsychAllocInCharArg(i, TRUE, &tempString); 
-               args_ptr[i-2] = tempString;
-               break;
-            default:
-               PsychGiveHelp();
-               return(PsychError_user);
-               break;
-         }
-      }
-   }
-
-   vsprintf(s, formatString, (va_list)args_ptr);
-
-   status = eyemsg_printf(s);
-
-   if (args_ptr != NULL)
-      mxFree(args_ptr);
+   status = eyemsg_printf(PsychEyelinkParseToString(1));
 
    /* if there is an output variable available, assign eyecmd_printf status to it.   */
    PsychCopyOutDoubleArg(1, FALSE, status);
    
    return(PsychError_none);
 }
-
-

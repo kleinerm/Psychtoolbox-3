@@ -14,7 +14,8 @@
 	HISTORY:
 
 		11/23/05  cdb		Created.
-		30-10-06	fwc		does now actually output status
+		30-10-06  fwc		does now actually output status
+		19-06-11  mk            Refactored to share parser with other functions.
 
 	TARGET LOCATION:
 
@@ -51,18 +52,7 @@ PURPOSE:
 
 PsychError EyelinkCommand(void)
 {
-	int					i				= 0;
-	int					iNumInArgs		= 0;
-	int					iStatus			= -1;
-	PsychArgFormatType	psychArgType	= PsychArgType_none;
-	double				fTempValue		= 0.0;
-	char				*pstrTemp		= NULL;
-	char				*pstrFormat		= NULL;
-	void				**pArgs			= NULL;
-	char				strCommand[256];
-	
-	// Clear strings
-	memset(strCommand, 0, sizeof(strCommand));
+	int iStatus = -1;
 
 	// Add help strings
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -75,56 +65,17 @@ PsychError EyelinkCommand(void)
 
 	// Check arguments
 	PsychErrorExit(PsychRequireNumInputArgs(1));
-//	PsychErrorExit(PsychCapNumOutputArgs(0));
 	PsychErrorExit(PsychCapNumOutputArgs(1));
 	
 	// Verify eyelink is up and running
 	EyelinkSystemIsConnected();
 	EyelinkSystemIsInitialized();
 
-	// Alloc and grab the input format string
-	PsychAllocInCharArg(1, TRUE, &pstrFormat);
-	iNumInArgs = PsychGetNumInputArgs();   
-
-	// Alloc and grab input args
-	if (iNumInArgs > 1) {
-		pArgs = (void **)mxMalloc((iNumInArgs-1) * sizeof(char *));
-		// loop over the args
-		for (i = 2; i <= iNumInArgs; i++) {
-			psychArgType = PsychGetArgType(i);
-			switch(psychArgType) {
-				case PsychArgType_double:
-					if ((PsychGetArgM(i) == 1) && (PsychGetArgN(i) == 1)) {
-						PsychCopyInDoubleArg(i, TRUE, &fTempValue);
-						pArgs[i-2] = (void *) (int) fTempValue; 
-					} else {
-						PsychGiveHelp();
-						return(PsychError_user);
-					}
-					break;
-				case PsychArgType_char:
-					pArgs[i-2] = NULL;
-					PsychAllocInCharArg(i, TRUE, &pstrTemp);
-					pArgs[i-2] = pstrTemp;
-					break;
-				default:
-					PsychGiveHelp();
-					return(PsychError_user);
-					break;
-			} 
-		}
-	}
-	
 	// Build eyelink command and execute
-	vsprintf(strCommand, pstrFormat, (va_list)pArgs);
-	iStatus = eyecmd_printf(strCommand);
-	if (pArgs != NULL) {
-		mxFree(pArgs);
-	}
-	
+	iStatus = eyecmd_printf(PsychEyelinkParseToString(1));
+
 	// Copy out the command result
 	PsychCopyOutDoubleArg(1, FALSE, iStatus);
    
 	return(PsychError_none);
 }
-

@@ -141,6 +141,132 @@ int Verbosity(void) {
 	return(verbosity);
 }
 
+// Parse printf() style format string and variable number of
+// integer or string arguments into a printf() formatted
+// string and return static pointer to the final string.
+// Used, e.g., by Eyelink('Command') and Eyelink('Message'):
+const char* PsychEyelinkParseToString(int startIdx)
+{
+	static char			strCommand[256];
+	int				i			= 0;
+	int				iNumInArgs		= 0;
+	PsychArgFormatType	        psychArgType	        = PsychArgType_none;
+	int                             iTempValue              = 0;
+	char				*pstrTemp		= NULL;
+	char				*pstrFormat		= NULL;
+	char                            strFragment[256];
+	char                            fSpec[256];
+	int                             wIdx = 0;
+	int                             argIdx;
+
+	// Alloc and grab the input format string
+	PsychAllocInCharArg(startIdx, TRUE, &pstrFormat);
+	iNumInArgs = PsychGetNumInputArgs();   
+
+	// Define start index of variable argument list:
+	argIdx = startIdx + 1;
+
+	// Clear strings
+	memset(strCommand, 0, sizeof(strCommand));
+
+	// Parse complete format string:
+	while ((*pstrFormat != 0) && (wIdx < 255)) {
+	  // Special character % detected?
+	  if ((*pstrFormat != '%') || (*(pstrFormat+1) == '%')) {
+	    // Easy: Regular char or escaped %. Just copy into target command string:
+
+	    // Eat up the escape '%' character, if any:
+	    if (pstrFormat == strstr(pstrFormat, "%%")) pstrFormat++;
+
+	    // Copy escaped single % or regular character:
+	    strCommand[wIdx++] = *(pstrFormat++);
+
+	    // Next character...
+	    continue;
+	  }
+
+	  // Special % char detected, which is not escaped, therefore
+	  // a datatype format specifier follows immediately:
+
+	  // Is there an argument available to match the format string spec?
+	  if (iNumInArgs < argIdx) {
+	    PsychErrorExitMsg(PsychError_user, "Number of supplied arguments does not match number of arguments required by format string!");
+	  }
+
+	  // Find end of actual parameter spec:
+	  for (i = 0; (pstrFormat[i] > 0) && (pstrFormat[i] != ' '); i++);
+
+	  // Copy format substring to fSpec:
+	  memset(fSpec, 0, sizeof(fSpec));
+	  strncpy(fSpec, pstrFormat, (i < 256) ? i : 255);
+
+	  // Prepare output substring for writing:
+	  memset(strFragment, 0, sizeof(strFragment));
+
+	  // Check if input argument type matches parameter spec string
+	  // and assign, if so, abort otherwise:
+	  psychArgType = PsychGetArgType(argIdx);
+	  switch(psychArgType) {
+	    case PsychArgType_double:
+	      if ((PsychGetArgM(argIdx) == 1) && (PsychGetArgN(argIdx) == 1)) {
+		PsychCopyInIntegerArg(argIdx, TRUE, &iTempValue);
+		
+		// Got a int value. Was a int value expected?
+		if (strstr(fSpec, "d") || strstr(fSpec, "i")) {
+		  // Yes: Print into output string fragment:
+		  snprintf(strFragment, 255, fSpec, iTempValue);
+		} else {
+		  // No: This is a mismatch - Game over:
+		  PsychErrorExitMsg(PsychError_user, "Mismatch between provided scalar integer argument and expected argument!");
+		}
+	      } else {
+		PsychGiveHelp();
+		PsychErrorExitMsg(PsychError_user, "");
+	      }
+	      break;
+
+	    case PsychArgType_char:
+	      PsychAllocInCharArg(argIdx, TRUE, &pstrTemp);
+	      // Got a string. Was a string expected?
+	      if (strstr(fSpec, "s")) {
+		// Yes: Print into output string fragment:
+		snprintf(strFragment, 255, fSpec, pstrTemp);
+	      } else {
+		// No: This is a mismatch - Game over:
+		PsychErrorExitMsg(PsychError_user, "Mismatch between provided character string and expected argument!");
+	      }
+	      break;
+
+	    default:
+	      PsychGiveHelp();
+	      PsychErrorExitMsg(PsychError_user, "");
+	      break;
+	  }
+	  
+	  // If we made it here, then the strFragment is ready for
+	  // joining:
+	  if ((strlen(strCommand) + strlen(strFragment)) < 256) {
+	    strcat(strCommand, strFragment);
+	  } else {
+	    // Break out of parser - Need to truncate:
+	    break;
+	  }
+
+	  // Advance parse positions:
+	  wIdx = strlen(strCommand);
+	  pstrFormat += i;
+	  argIdx++;
+
+	  // Next parse iteration.
+	}
+
+	// Sanity check:
+	if (*pstrFormat != 0) printf("Eyelink-Warning:Final overall command truncated to '%s'!\nMaximum of 255 characters allowed.\n", strCommand);
+
+	// Return pointer to internally statically allocated final character string:
+	return(strCommand);
+}
+
 // Initialize all callback hook functions for use by Eyelink runtime, e.g.,
 // all the callbacks for eye camera image display:
 void PsychEyelink_init_core_graphics(const char* callback)

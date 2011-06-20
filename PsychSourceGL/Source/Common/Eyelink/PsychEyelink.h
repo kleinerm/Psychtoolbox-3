@@ -79,6 +79,7 @@ mxArray *CreateMXIEvent(const IEVENT *ie);
 
 // Defined in PsychEyelink.c
 int Verbosity(void);
+const char* PsychEyelinkParseToString(int startIdx);
 PsychError	EyelinkSystemIsConnected(void);
 PsychError	EyelinkSystemIsInitialized(void);
 void PsychEyelink_init_core_graphics(const char* callback);
