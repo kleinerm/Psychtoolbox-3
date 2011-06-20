@@ -14,9 +14,8 @@ function result=EyelinkDoTrackerSetup(el, sendkey)
 %				el is now passed as a variable, we also initialize Tracker state bit
 %				and Eyelink key values in 'initeyelinkdefaults.m'
 % 15-10-02	fwc	added sendkey variable that allows to go directly into a particular mode
-%
-%   22-06-06    fwc OSX-ed
-% 15-06-10  fwc added code for new callback version
+% 22-06-06	fwc OSX-ed
+% 15-06-10	fwc added code for new callback version
 
 
 result=-1;
