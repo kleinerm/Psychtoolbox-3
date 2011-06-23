@@ -10,6 +10,7 @@
 %           dhb         Better plots.  And, ask for which times to compare.
 % 2/15/10   dhb         Fix input, not a string.
 % 3/1/10    dhb         Allow drawing from different files, refitting data, etc.
+% 6/23/11   dhb         Make a chromaticity plot of the comparison as well.
 
 %% Clear and close
 clear; close all;
@@ -199,3 +200,26 @@ maxXYZNow2 = SettingsToSensorAcc(calNow,[1 1 1]');
 fprintf('Maximum luminance SettingsToSensor: then %0.3g; now %0.3g\n',maxXYZThen1(2),maxXYZNow1(2));
 fprintf('Maximum luminance SettingsToSensorAcc: then %0.3g; now %0.3g\n',maxXYZThen2(2),maxXYZNow2(2));
 
+%% Plot new and old white point and channel chromaticities
+figure; clf; hold on
+maxxyYThen = XYZToxyY(maxXYZThen1);
+maxxyYNow = XYZToxyY(maxXYZNow1);
+plot(maxxyYThen(1),maxxyYThen(2),'ro','MarkerFaceColor','r','MarkerSize',10);
+plot(maxxyYNow(1),maxxyYNow(2),'go','MarkerFaceColor','g','MarkerSize',10);
+
+redxyYThen = XYZToxyY(SettingsToSensor(calThen,[1 0 0]'));
+greenxyYThen = XYZToxyY(SettingsToSensor(calThen,[0 1 0]'));
+bluexyYThen = XYZToxyY(SettingsToSensor(calThen,[0 0 1]'));
+redxyYNow = XYZToxyY(SettingsToSensor(calNow,[1 0 0]'));
+greenxyYNow = XYZToxyY(SettingsToSensor(calNow,[0 1 0]'));
+bluexyYNow = XYZToxyY(SettingsToSensor(calNow,[0 0 1]'));
+plot(redxyYThen(1),redxyYThen(2),'ro','MarkerFaceColor','r','MarkerSize',10);
+plot(redxyYNow(1),redxyYNow(2),'go','MarkerFaceColor','g','MarkerSize',10);
+plot(greenxyYThen(1),greenxyYThen(2),'ro','MarkerFaceColor','r','MarkerSize',10);
+plot(greenxyYNow(1),greenxyYNow(2),'go','MarkerFaceColor','g','MarkerSize',10);
+plot(bluexyYThen(1),bluexyYThen(2),'ro','MarkerFaceColor','r','MarkerSize',10);
+plot(bluexyYNow(1),bluexyYNow(2),'go','MarkerFaceColor','g','MarkerSize',10);
+axis('square');
+axis([0.0 0.8 0.0 0.8]);
+xlabel('x chromaticity');
+ylabel('y chromaticity');
