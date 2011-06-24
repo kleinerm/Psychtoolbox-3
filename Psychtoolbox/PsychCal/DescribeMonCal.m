@@ -22,6 +22,7 @@ function same = DescribeMonCal(cal,file,whichScreen)
 % 9/23/02  dhb, jms  Fix small bug in way driver is compared, presumably introduced 6/29/02.
 % 9/29/08  dhb, tyl, ijk Update for OS/X, current computer stuff.
 %                    Comparison of computer name skipped, because it seems to vary with login. 
+% 6/24/11  dhb       Dump out gamma fit type and exponents if gamma function was fit with a simple power function.
 
 % Default args
 if (nargin < 2 || isempty(file))
@@ -49,6 +50,11 @@ fprintf(file,'\tCalibration performed on %s\n',cal.describe.date);
 fprintf(file,'\tCalibration program: %s\n',cal.describe.program);
 fprintf(file,'\tComment: %s\n',cal.describe.comment);
 fprintf(file,'\tCalibrated device has %g primaries\n',cal.nDevices);
+fprintf(file,'\tGamma fit type %s\n',cal.describe.gamma.fitType);
+if (strcmp(cal.describe.gamma.fitType,'simplePower'))
+    fprintf(file,'\tSimple power gamma exponents are: %0.2f, %0.2f, %0.2f\n',...
+        cal.describe.gamma.exponents(1),cal.describe.gamma.exponents(2),cal.describe.gamma.exponents(3));
+end
 fprintf(file,'\n');
 
 % Current configuration
