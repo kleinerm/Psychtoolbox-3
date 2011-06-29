@@ -603,8 +603,60 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
 
 	// Nothing to do if no such video plugin available:
 	if (!videosource) return;
+
+	// No property probe interface for dc1394src, but "enumeration by trying" requested?
+	// This is what we need to do for IIDC IEEE-1394 video sources via the dc1394src,
+	// as it doesn't support property probe interface:
+	if (!strcmp(srcname, "dc1394src")) {
+		// Try a reasonable range of cameras, e.g., up to 10 cameras:
+		n = 0;
+		for (i = 0; i < 100; i++) {
+			// Set suspected camera id (select i'th camera on bus):
+			g_object_set(G_OBJECT(videosource), devHandlePropName, i, NULL);
+			// Try to set it to "paused" state, which should fail if no such
+			// camera is connected:
+			if (gst_element_set_state(videosource, GST_STATE_PAUSED) == GST_STATE_CHANGE_FAILURE) {
+				// No such camera connected. Game over, no need to probe further non-existent cams:
+				if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: No camera %i connected to IIDC-1394 bus. Probe finished.\n", i);
+				break;
+			}
+
+			// i'th camera exists. Probe and assign:
+			inputIndex = i;
+			devices[ntotal].deviceIndex = classIndex * 10000 + inputIndex;
+			devices[ntotal].classIndex = classIndex;
+			devices[ntotal].inputIndex = inputIndex;
+			sprintf(devices[ntotal].deviceClassName, "%s", className);
+			sprintf(devices[ntotal].deviceHandle, "%i", inputIndex);
+			sprintf(devices[ntotal].deviceSelectorProperty, "%s", devHandlePropName);
+			sprintf(devices[ntotal].deviceVideoPlugin, "%s", srcname);
+			sprintf(devices[ntotal].deviceName, "%i", inputIndex);
+			sprintf(devices[ntotal].devicePath, "%i", inputIndex);
+			sprintf(devices[ntotal].device, "%i", inputIndex);
+			devices[ntotal].deviceURI = inputIndex;
+
+			ntotal++;
+			n++;
+
+			// Reset this cam:
+			gst_element_set_state(videosource, GST_STATE_READY);
+
+			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: %i'th IIDC-1394 camera enumerated.\n", inputIndex);
+		}
+
+		// Release videosource:
+		gst_element_set_state(videosource, GST_STATE_NULL);
+		gst_object_unref(GST_OBJECT(videosource));
 	
-	// Available: Generate property probe for videosource:
+		// Any success?
+		if (n == 0) {
+			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: No video devices to enumerate for plugin '%s'.\n", class_str);
+		}
+
+		return;
+	}
+
+	// Generate property probe for videosource:
 	// Make sure videosource implements property probe interface to avoid useless warning clutter,
 	// unless on Linux, where this query actually causes an assertion on some GStreamer versions...
 	if ((PSYCH_SYSTEM == PSYCH_LINUX) || gst_element_implements_interface(videosource, GST_TYPE_PROPERTY_PROBE)) {
@@ -788,13 +840,14 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 	}
 	
 	// Try DV-Cameras:
-	PsychGSEnumerateVideoSourceType("dv1394src", 5, "DV1394", "guid", 1);
+	PsychGSEnumerateVideoSourceType("dv1394src", 5, "DV1394", "guid", 0);
 	
 	// Try HDV-Cameras:
-	PsychGSEnumerateVideoSourceType("hdv1394src", 6, "HDV1394", "guid", 1);
+	PsychGSEnumerateVideoSourceType("hdv1394src", 6, "HDV1394", "guid", 0);
 	
 	// Try IIDC-1394 Cameras:
-	// Does not work, no property probe interface: PsychGSEnumerateVideoSourceType("dc1394src", 7, "1394-IIDC", "camera-number", 1);
+	// Does not work, no property probe interface:
+	PsychGSEnumerateVideoSourceType("dc1394src", 7, "1394-IIDC", "camera-number", 1);
 
 	if (ntotal <= 0) {
 		if (PsychPrefStateGet_Verbosity() > 4) {
@@ -1912,14 +1965,20 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 			}
 
 			// Attach correct video input device to it:
-			if ((config[0] != 0) && (prop_name[0] != 0) && (theDevice->deviceURI == 0)) {
-				if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device '%s' as video input [Property %s].\n", config, prop_name);
-				g_object_set(G_OBJECT(videosource), prop_name, config, NULL);
-			}
-
-			if ((theDevice->deviceURI > 0) && (prop_name[0] != 0)) {
+			if (!strcmp(plugin_name, "dc1394src") && (prop_name[0] != 0)) {
+				// DC1394 source:
 				if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device with guid '%llu' as video input [Property %s].\n", theDevice->deviceURI, prop_name);
-				g_object_set(G_OBJECT(videosource), prop_name, theDevice->deviceURI, NULL);
+				g_object_set(G_OBJECT(videosource), prop_name, (int) theDevice->deviceURI, NULL);
+			} else {
+				if ((config[0] != 0) && (prop_name[0] != 0) && (theDevice->deviceURI == 0)) {
+					if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device '%s' as video input [Property %s].\n", config, prop_name);
+					g_object_set(G_OBJECT(videosource), prop_name, config, NULL);
+				}
+
+				if ((theDevice->deviceURI > 0) && (prop_name[0] != 0)) {
+					if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device with guid '%llu' as video input [Property %s].\n", theDevice->deviceURI, prop_name);
+					g_object_set(G_OBJECT(videosource), prop_name, theDevice->deviceURI, NULL);
+				}
 			}
 		}
 		
