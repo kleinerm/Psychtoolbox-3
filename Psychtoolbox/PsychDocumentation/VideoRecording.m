@@ -35,18 +35,18 @@
 % select matching audio codecs and audio-video multiplexers and reasonable default
 % settings, so they are convenient for you to use:
 %
-% F- x264enc: A highly optimized H.264 video encoder, automatically combined with the
-% faacenc MPEG-4 AAC audio encoder and an AVI file multiplexer.
-% [M]- xvidenc: The XVid MPEG-4 video encoder + AAC audio in a AVI file.
-% U- ffenc_mpeg4: Another MPEG-4 video encoder + AAC audio in a AVI file. 
-% [P]- theoraenc: The Ogg Theora video encoder with Ogg Vorbis audio encoder and
-%              Ogg file format multiplexer (.ogv files).
-% U - vp8enc_webm: The VP-8 video codec with Ogg Vorbis audio in a WEBM (.webm)
-%                video container (HTML-5 video).
-% U - vp8enc_matroska: As above, but in a matroska file container.
-% U - ffenc_h263p: H.263 video encoder with AAC audio in a Quicktime container.
-% [MQP] - yuvraw: Raw, uncompressed YUV video data with AAC audio in a avi container.
-% U - huffyuv: Huffman encoded YUV raw video data + AAC audio in a matroska container.
+% x264enc:         A highly optimized H.264 video encoder, automatically combined with the
+%                  faacenc MPEG-4 AAC audio encoder and an AVI file multiplexer.
+% xvidenc:         The XVid MPEG-4 video encoder + AAC audio in a AVI file.
+% ffenc_mpeg4:     Another MPEG-4 video encoder + AAC audio in a AVI file. 
+% theoraenc:       The Ogg Theora video encoder with Ogg Vorbis audio encoder and
+%                  Ogg file format multiplexer (.ogv files).
+% vp8enc_webm:     The VP-8 video codec with Ogg Vorbis audio in a WEBM (.webm)
+%                  video container (HTML-5 video).
+% vp8enc_matroska: As above, but in a matroska file container.
+% ffenc_h263p:     H.263 video encoder with AAC audio in a Quicktime container.
+% yuvraw:          Raw, uncompressed YUV video data with AAC audio in a avi container.
+% huffyuv:         Huffman encoded YUV raw video data + AAC audio in a matroska container.
 %
 % Psychtoolbox supports high-level settings, which are relatively easy to use
 % and understand. We describe these first. Psychtoolbox also supports low-level

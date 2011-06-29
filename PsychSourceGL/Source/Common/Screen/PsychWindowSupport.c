@@ -1063,7 +1063,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
 	// Running on nouveau? Then issue some words of caution about lack of timing precision:
 	if ((PsychPrefStateGet_Verbosity() > 1) && (strstr((char*) glGetString(GL_VENDOR), "nouveau") || strstr((char*) glGetString(GL_RENDERER), "nouveau"))) {
-		printf("PTB-WARNING: \n\nYou are using the free nouveau graphics driver on your NVidia graphics card. As of %s,\n", PsychGetBuildDate());
+		printf("\n\nPTB-WARNING: You are using the free nouveau graphics driver on your NVidia graphics card. As of %s,\n", PsychGetBuildDate());
 		printf("PTB-WARNING: this driver does *not allow* robust and precise visual stimulus onset timestamping by any method at all!\n");
 		printf("PTB-WARNING: If you need precise visual stimulus timing, either install the binary NVidia driver, or double-check\n");
 		printf("PTB-WARNING: that a more recent version of nouveau is installed and in fact does provide proper timing.\n");
