@@ -137,10 +137,12 @@ if strcmpi(cmd, 'FullScreenWindowDisablesCompositor')
 			% Enable un-redirection: Fullscreen windows aren't subject to treatment by compositor,
 			% but can do (e.g. page-flipping) whatever they want:
 			rc(end+1) = system(sprintf('gconftool-2 -s --type bool /apps/compiz/general/screen%i/options/unredirect_fullscreen_windows true', screenId));
+			rc(end+1) = system(sprintf('gconftool-2 -s --type bool /apps/compiz-1/plugins/composite/screen%i/options/unredirect_fullscreen_windows true', screenId));
 			fprintf('PsychGPUControl:FullScreenWindowDisablesCompositor: Desktop composition for fullscreen windows on screen %i disabled.\n', screenId)
 		else
 			% Disable un-redirection: Fullscreen windows get composited as all other windows:
 			rc(end+1) = system(sprintf('gconftool-2 -s --type bool /apps/compiz/general/screen%i/options/unredirect_fullscreen_windows false', screenId));
+			rc(end+1) = system(sprintf('gconftool-2 -s --type bool /apps/compiz-1/plugins/composite/screen%i/options/unredirect_fullscreen_windows false', screenId));
 			fprintf('PsychGPUControl:FullScreenWindowDisablesCompositor: Desktop composition for fullscreen windows on screen %i enabled.\n', screenId);
 		end
 	end
