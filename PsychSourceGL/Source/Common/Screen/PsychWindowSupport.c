@@ -3145,9 +3145,12 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 			if (osspecific_asyncflip_scheduled && (tSwapComplete < tprescheduleswap - 0.001)) {
 				if (verbosity > 0) {
 					printf("PTB-ERROR: OpenML timestamping reports that flip completed before it was scheduled [Scheduled no earlier than %f secs, completed at %f secs]!\n", tprescheduleswap, tSwapComplete);
-					printf("PTB-ERROR: This could mean that sync of bufferswaps to vertical retrace is broken or some other driver bug! Falling back to raw timestamping.\n");
+					printf("PTB-ERROR: This could mean that sync of bufferswaps to vertical retrace is broken or some other driver bug! Switching to alternative timestamping method.\n");
 					printf("PTB-ERROR: Check your system setup!\n");
 				}
+
+				// Fall back to beamposition timestamping or raw timestamping:
+				PsychPrefStateSet_VBLTimestampingMode(1);
 
 				// Use override raw timestamp as temporary fallback:
 				time_at_vbl = time_at_swapcompletion;
