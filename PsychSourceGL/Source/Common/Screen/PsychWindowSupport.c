@@ -4887,9 +4887,9 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	// Init Id string for GPU core to zero. This has at most 8 Bytes, including 0-terminator,
 	// so use at most 7 letters!
 	memset(&(windowRecord->gpuCoreId[0]), 0, 8);
-	
+
 	if (strstr((char*) glGetString(GL_VENDOR), "ATI") || strstr((char*) glGetString(GL_VENDOR), "AMD") || strstr((char*) glGetString(GL_RENDERER), "AMD")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
-	if (strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_RENDERER), "nouveau")) { nvidia = TRUE; sprintf(windowRecord->gpuCoreId, "NV10"); }
+	if (strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_RENDERER), "nouveau") || strstr((char*) glGetString(GL_VENDOR), "nouveau")) { nvidia = TRUE; sprintf(windowRecord->gpuCoreId, "NV10"); }
 
 	// Detection code for Linux DRI driver stack with ATI GPU:
 	if (strstr((char*) glGetString(GL_VENDOR), "Advanced Micro Devices") || strstr((char*) glGetString(GL_RENDERER), "ATI")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
@@ -5021,10 +5021,10 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 			if (maxcolattachments > 1) {
 				// NV40 core of GF 6000 or later supports at least 16 bpc float texture filtering and framebuffer blending:
 				if (verbose) printf("Assuming NV40 core or later (maxcolattachments=%i): Hardware supports floating point blending and filtering on 16bpc float format.\n", maxcolattachments);
-                if (verbose) printf("Hardware also supports floating point framebuffers of 16bpc and 32bpc float format.\n");
+				if (verbose) printf("Hardware also supports floating point framebuffers of 16bpc and 32bpc float format.\n");
 				sprintf(windowRecord->gpuCoreId, "NV40");
-                windowRecord->gfxcaps |= kPsychGfxCapFPFBO16;
-                windowRecord->gfxcaps |= kPsychGfxCapFPFBO32;
+				windowRecord->gfxcaps |= kPsychGfxCapFPFBO16;
+				windowRecord->gfxcaps |= kPsychGfxCapFPFBO32;
 				windowRecord->gfxcaps |= kPsychGfxCapFPFilter16;
 				windowRecord->gfxcaps |= kPsychGfxCapFPBlend16;	
 				
@@ -5035,7 +5035,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 			
 			// The Geforce 8xxx/9xxx series and later (G80 cores and later) do support full 32 bpc float filtering and blending:
 			// They also support a max texture size of > 4096 texels --> 8192 texels, so we use that as detector:
-			if (maxtexsize > 4100) {
+			if ((maxtexsize > 4100) || (strstr((char*) glGetString(GL_VENDOR), "nouveau") && (maxtexsize >= 4096) && (maxaluinst >= 16384))) {
 				if (verbose) printf("Assuming G80 core or later (maxtexsize=%i): Hardware supports full floating point blending and filtering on 16bpc and 32bpc float format.\n", maxtexsize);
 				sprintf(windowRecord->gpuCoreId, "G80");
 				windowRecord->gfxcaps |= kPsychGfxCapFPBlend32;
@@ -5044,6 +5044,28 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 				windowRecord->gfxcaps |= kPsychGfxCapFPBlend16;				
 			}
 		}		
+	}
+
+	// Running under Chromium OpenGL virtualization?
+	if (strstr((char*) glGetString(GL_VENDOR), "Humper") && strstr((char*) glGetString(GL_RENDERER), "Chromium")) {
+		// Yes: We're very likely running inside a Virtual Machine, e.g., VirtualBox.
+		// This does not provide sufficiently accurate display timing for production use of Psychtoolbox.
+		// Output a info message for user and disable all calibrations and sync tests -- they would fail anyway.
+		if (PsychPrefStateGet_Verbosity() > 2) {
+			printf("\n\n");
+			printf("PTB-INFO: Seems like Psychtoolbox is running inside a Virtual Machine? This doesn't provide sufficient\n");
+			printf("PTB-INFO: visual stimulus timing precision for research grade visual stimulation. I will disable most\n");
+			printf("PTB-INFO: tests and calibrations so you can at least get your scripts running for demo purposes. Other\n");
+			printf("PTB-INFO: presentation modalities and various Psychtoolbox functions will only work with limited functionality\n");
+			printf("PTB-INFO: and precision. Only use this for demos and simple tests, not for real experiment sessions!\n\n");
+
+			// Disable all sync tests and display timing calibrations, unless usercode already did something similar:
+			if (PsychPrefStateGet_SkipSyncTests() < 1) PsychPrefStateSet_SkipSyncTests(2);
+			// Disable strict OpenGL error checking, so we don't abort for minor OpenGL errors and
+			// don't clutter the console with OpenGL error warnings. This keeps some scripts running in
+			// at least a bearable way:
+			PsychPrefStateSet_ConserveVRAM(PsychPrefStateGet_ConserveVRAM() | kPsychAvoidCPUGPUSync);
+		}
 	}
 	
 	#ifdef GLX_OML_sync_control
@@ -5108,6 +5130,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 
 	}
 	#else
+
         // Make sure we don't compile without OML_sync_control support on Linux, as that would be a shame:
         #if PSYCH_SYSTEM == PSYCH_LINUX
 		#error Build aborted. You *must* compile with the -std=gnu99  gcc compiler switch to enable the required OML_sync_control extension!
