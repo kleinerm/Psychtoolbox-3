@@ -161,7 +161,7 @@ else
         % We derive type of hardware and thereby our strategy from the vendor name:
         gfxhwtype = winfo.GLVendor;
 
-        if ~isempty(strfind(gfxhwtype, 'NVIDIA'))
+        if ~isempty(strfind(gfxhwtype, 'NVIDIA')) | ~isempty(strfind(gfxhwtype, 'nouveau'))
             % NVidia card:
 
             % We start with assumption that it is a "normal" one:
