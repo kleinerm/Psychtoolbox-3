@@ -204,7 +204,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     psych_bool multidisplay = FALSE;
     psych_bool sync_trouble = false;
     psych_bool sync_disaster = false;
-    int  skip_synctests = PsychPrefStateGet_SkipSyncTests();
+    int skip_synctests;
     int visual_debuglevel = PsychPrefStateGet_VisualDebugLevel();
     int conserveVRAM = PsychPrefStateGet_ConserveVRAM();
     int logo_x, logo_y;
@@ -577,6 +577,9 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	// Perform generic inquiry for interesting renderer capabilities and limitations/quirks
 	// and setup the proper status bits for the windowRecord:
 	PsychDetectAndAssignGfxCapabilities(*windowRecord);
+
+	// Get final synctest setting after GPU caps detection:
+	skip_synctests = PsychPrefStateGet_SkipSyncTests();
 
 #if PSYCH_SYSTEM == PSYCH_OSX
     CGLRendererInfoObj				rendererInfo;
