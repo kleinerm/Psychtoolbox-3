@@ -394,7 +394,8 @@ if strcmpi(cmd, 'GetResponse')
     % If audio recording was scheduled to start in sync with a certain
     % Screen flip, check if that specific target flip count has been
     % reached:
-    if (dpixaudioin.pendingForFlip > 0) && (PsychDataPixx('FlipCount') < dpixaudioin.pendingForFlip)
+%    if (dpixaudioin.pendingForFlip > 0) && (PsychDataPixx('FlipCount') < dpixaudioin.pendingForFlip)
+    if (dpixaudioin.pendingForFlip > 0) & (PsychDataPixx('FlipCount') < dpixaudioin.pendingForFlip)
         % Audio key shall start recording at a certain flipcount which
         % likely hasn't been reached yet (according to PsychDataPixx('FlipCount')).
         %
@@ -492,7 +493,7 @@ if strcmpi(cmd, 'GetResponse')
     if numFrames == -1
         numFrames = micstatus.newBufferFrames;
     end
-    
+
     % TODO FIXME: Does this make sense to use here?
     inDelaySecs = Datapixx('GetMicrophoneGroupDelay', dpixaudioin.samplerate);
 
