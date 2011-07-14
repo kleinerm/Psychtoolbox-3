@@ -2800,6 +2800,12 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 				// in IOKits workloop can do its job. But first let's try to do it without yielding...
 				vbltimestampquery_retrycount = 0;
 				PsychWaitIntervalSeconds(0.00025);
+
+				// TODO: TESTCODE - REMOVE BEFORE BETA RELEASE! On Linux we wait another msec before initial query
+				// to avoid race-condition between return from glFinish() and VBL-Timestamping -- this to test nouveau's
+				// KMS-Timestamping:
+				if (PSYCH_SYSTEM == PSYCH_LINUX) PsychWaitIntervalSeconds(0.001);
+
 				postflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord, &postflip_vblcount);
 				
 				// If a valid preflip timestamp equals the postflip timestamp although the swaprequest likely didn't
