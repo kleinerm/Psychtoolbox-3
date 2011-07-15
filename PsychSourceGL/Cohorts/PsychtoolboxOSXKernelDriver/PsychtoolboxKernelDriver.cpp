@@ -281,7 +281,8 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 			
 			mem = fPCIDevice->getDeviceMemoryWithIndex( index );
 			assert( mem );
-			IOLog("%s: PCI Range[%ld] %08lx:%08lx\n", getName(), index, mem->getPhysicalAddress(), mem->getLength());
+			// Disabled to handle Apple braindamage: IOLog("%s: PCI Range[%ld] %08lx:%08lx\n", getName(), index, mem->getPhysicalAddress(), mem->getLength());
+			IOLog("%s: PCI Range[%ld] Size %08lx\n", getName(), index, mem->getLength());
 			
 			// Find the MMIO range of expected size around 0x10000 - 0x20000: We find the one with size > 0x1000 and not bigger
 			// than 0x40000, ie. in the range 4 Kb < size < 256 Kb. This likely represents the register space.
@@ -290,10 +291,12 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 			// would be the PCI config space registerset (or maybe VGA set?!?)
 			if (mem->getLength() >= 0x1000 && mem->getLength() <= 0x40000) {
 				// A possible candidate:
-				candidate_phys_addr = mem->getPhysicalAddress();
+				// Disabled to handle Apple braindamage: candidate_phys_addr = mem->getPhysicalAddress();
+                candidate_phys_addr = 0xdeadbeef;
 				candidate_size = mem->getLength();
 				candidate_count++;
-				IOLog("%s: ==> AMD/ATI Radeon PCI Range[%ld] %08lx:%08lx is %ld. candidate for register block.\n", getName(), index, mem->getPhysicalAddress(), mem->getLength(), candidate_count);
+				// Disabled to handle Apple braindamage: IOLog("%s: ==> AMD/ATI Radeon PCI Range[%ld] %08lx:%08lx is %ld. candidate for register block.\n", getName(), index, mem->getPhysicalAddress(), mem->getLength(), candidate_count);
+				IOLog("%s: ==> AMD/ATI Radeon PCI Range[%ld] Size %08lx is %ld. candidate for register block.\n", getName(), index, mem->getLength(), candidate_count);
 			}
 		}
 		
@@ -305,7 +308,8 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 		/* look up a range based on its config space base address register */
 		mem = fPCIDevice->getDeviceMemoryWithRegister(pciBARReg);
 		if( mem ) {
-			IOLog("%s: Range@0x%x %08lx:%08lx\n", getName(), pciBARReg, mem->getPhysicalAddress(), mem->getLength());
+			// Disabled to handle Apple braindamage: IOLog("%s: Range@0x%x %08lx:%08lx\n", getName(), pciBARReg, mem->getPhysicalAddress(), mem->getLength());
+			IOLog("%s: Range@0x%x Length %08lx\n", getName(), pciBARReg, mem->getLength());
 		}
 		else {
 			IOLog("%s: Could not find MMIO mapping for config base address register 0x%x!\n", getName(), pciBARReg);
@@ -335,10 +339,9 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
      * for the register mapping */
     map = fPCIDevice->mapDeviceMemoryWithRegister( pciBARReg );
     if( map ) {
-        IOLog("%s: GPU MMIO register block Range@0x%x (%08lx) mapped to kernel virtual address %08x\n", getName(),
-                pciBARReg,
-                map->getPhysicalAddress(),
-                map->getVirtualAddress());
+        // Disabled to handle Apple braindamage: IOLog("%s: GPU MMIO register block Range@0x%x (%08lx) mapped to kernel virtual address %08x\n", getName(), pciBARReg, map->getPhysicalAddress(), map->getVirtualAddress());
+        IOLog("%s: GPU MMIO register block BAR@0x%x mapped to kernel virtual address %08x\n", getName(), pciBARReg, map->getVirtualAddress());
+
         /* Assign the map object, and the mapping itself to our private members: */
 		fRadeonMap = map;
 		fRadeonRegs = map->getVirtualAddress();
