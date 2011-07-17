@@ -2801,10 +2801,10 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 				vbltimestampquery_retrycount = 0;
 				PsychWaitIntervalSeconds(0.00025);
 
-				// TODO: TESTCODE - REMOVE BEFORE BETA RELEASE! On Linux we wait another msec before initial query
+				// Testcode: On Linux we wait another msec before initial query
 				// to avoid race-condition between return from glFinish() and VBL-Timestamping -- this to test nouveau's
 				// KMS-Timestamping:
-				if (PSYCH_SYSTEM == PSYCH_LINUX) PsychWaitIntervalSeconds(0.001);
+				// Disabled: Only uncomment for testing: if (PSYCH_SYSTEM == PSYCH_LINUX) PsychWaitIntervalSeconds(0.001);
 
 				postflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord, &postflip_vblcount);
 				
