@@ -1,5 +1,5 @@
 function number = GetEchoNumber(window,msg,x,y,textColor,bgColor,varargin)
-% number = GetEchoNumber(window,msg,x,y,textColor,bgColor)
+% number = GetEchoNumber(window,msg,x,y,textColor,bgColor, [untilTime=inf], [KbCheck args...])
 % 
 % Get a number typed at the keyboard. Entry is terminated by
 % <return> or <enter>. Typed characters are displayed on the screen.
@@ -19,5 +19,5 @@ function number = GetEchoNumber(window,msg,x,y,textColor,bgColor,varargin)
 % 3/18/97 dhb  Got rid of obsolete 's' interface.
 % 10/22/10  mk  Switch to use of KbGetChar for keyboard input.
 
-string=GetEchoString(window,msg,x,y,textColor,bgColor,1,varargin{:});
+string = GetEchoString(window,msg,x,y,textColor,bgColor,1,varargin{:});
 number = str2num(string); %#ok<ST2NM>

@@ -1,10 +1,13 @@
 function [ch, when] = GetKbChar(varargin)
-% [ch, when] = GetKbChar([optional KbCheck arguments...]);
+% [ch, when] = GetKbChar([deviceIndex][, untilTime=inf][, optional KbCheck arguments...]);
 %
 % GetKbChar reimplements basic functionality of GetChar() by use of KbCheck
 % and KbPressWait. It accepts optionally all arguments that KbCheck accepts
 % and passes those arguments to KbCheck, e.g., a keyboard index in order to
 % only query a specific keyboard for input.
+%
+% GetKbChar also returns with empty return values if the optional deadline
+% 'untilTime' is reached.
 %
 % The function only recognizes standard alpha-numeric keys, i.e., letters
 % and numbers, and a few special symbols like the ones on top of the
@@ -34,11 +37,22 @@ end
 when = KbPressWait(varargin{:});
 keycode = zeros(1,256);
 down = 1;
-while down
+secs = when;
+
+if length(varargin) < 2
+    untilTime = inf;
+else
+    untilTime = varargin{2};
+    if isempty(untilTime)
+        untilTime = inf;
+    end
+end
+
+while down & (secs < untilTime) %#ok<AND2>
     [down, secs, keyincode] = KbCheck(varargin{:});
     if down
         keycode = keycode + keyincode;
-        WaitSecs('YieldSecs', 0.001);
+        secs = WaitSecs('YieldSecs', 0.001);
     end
 end
 

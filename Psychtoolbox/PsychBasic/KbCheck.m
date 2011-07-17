@@ -1,4 +1,4 @@
-function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber)
+function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber, unusedUntilTime, varargin) %#ok<INUSD>
 % [keyIsDown, secs, keyCode, deltaSecs] = KbCheck([deviceNumber])
 % 
 % Return keyboard status (keyIsDown), time (secs) of the status check, and
@@ -172,7 +172,8 @@ if isempty(macosx)
 end
 
 if macosx
-    if nargin==1
+    if nargin >= 1
+        % Select keyboard(s):
         if deviceNumber==-1
             % Query all attached keyboards:
             keyt = kbs;
@@ -197,13 +198,10 @@ if macosx
             end
         else
             [keyIsDown, secs, keyCode]= PsychHID('KbCheck', [], ptb_kbcheck_enabledKeys);
-        end
-        
-    elseif nargin == 0
+        end   
+    else
         % Query primary keyboard:
         [keyIsDown, secs, keyCode]= PsychHID('KbCheck', [], ptb_kbcheck_enabledKeys);
-    elseif nargin > 1
-        error('Too many arguments supplied to KbCheck'); 
     end
 else
    % We use the built-in KbCheck facility of Screen on GNU/Linux and MS-Windows

@@ -1,10 +1,14 @@
-function [secs, keyCode, deltaSecs] = KbWait(deviceNumber, forWhat)
-% [secs, keyCode, deltaSecs] = KbWait([deviceNumber][, forWhat=0])
+function [secs, keyCode, deltaSecs] = KbWait(deviceNumber, forWhat, untilTime)
+% [secs, keyCode, deltaSecs] = KbWait([deviceNumber][, forWhat=0][, untilTime=inf])
 %
 % Waits until any key is down and optionally returns the time in seconds
 % and the keyCode vector of keyboard states, just as KbCheck would do. Also
 % allows to wait for release of all keys or for single keystrokes, see
 % below.
+%
+% If the optional parameter 'untilTime' is provided, KbWait will only wait
+% until that time and then return regardless if anything happened on the
+% keyboard or not.
 %
 % CAUTION: KbWait periodically checks the keyboard. After each failed check
 % (ie. no change in keyboard state) it will wait for 5 msecs before the
@@ -96,34 +100,43 @@ if nargin == 0
     deviceNumber = [];
 end
 
+if nargin < 3
+    untilTime = inf;
+end
+
+if isempty(untilTime)
+    untilTime = inf;
+end
+
 % Wait for keystroke?
 if (forWhat == 2) | (forWhat == 3) %#ok<OR2>
     % Wait for keystroke, ie., first make sure all keys are released, then
     % wait for a keypress:
     
     % Wait for key release. we know we have deviceNumber valid here:
-    KbWait(deviceNumber, 1);
+    KbWait(deviceNumber, 1, untilTime);
     
     if forWhat == 2
         % Now just go on with forWhat = 0, ie., wait for keypress:
         forWhat = 0;
     else
         % Wait for keypress:
-        [secs, keyCode, deltaSecs] = KbWait(deviceNumber);
+        [secs, keyCode, deltaSecs] = KbWait(deviceNumber, 0, untilTime);
         
         % Wait for key release. we know we have deviceNumber valid here:
-        KbWait(deviceNumber, 1);
+        KbWait(deviceNumber, 1, untilTime);
 
         return;
     end
 end
 
-while(1)
+secs = -inf;
+while secs < untilTime
     [isDown, secs, keyCode, deltaSecs] = KbCheck(deviceNumber);
-    if isDown == ~forWhat
+    if (isDown == ~forWhat) | (secs >= untilTime) %#ok<OR2>
         return;
     end
 
     % Wait for yieldInterval to prevent system overload.
-    WaitSecs('YieldSecs', yieldInterval);
+    secs = WaitSecs('YieldSecs', yieldInterval);
 end

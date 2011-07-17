@@ -1,5 +1,5 @@
 function number = GetNumber(varargin)
-% number = GetNumber([optional KbCheck arguments...])
+% number = GetNumber([deviceIndex][, untilTime=inf][, optional KbCheck arguments...])
 % 
 % Get a number typed at the keyboard. Entry is terminated by
 % <return> or <enter>. Typed keys are not echoed. Useful for

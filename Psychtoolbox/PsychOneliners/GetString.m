@@ -1,5 +1,5 @@
 function string = GetString(useKbCheck, varargin)
-% string = GetString([useKbCheck=0], [KbCheck args...])
+% string = GetString([useKbCheck=0][, deviceIndex][, untilTime=inf][, optional KbCheck arguments...])
 % 
 % Get a string typed at the keyboard. Entry is terminated by 
 % <return> or <enter>.
@@ -50,6 +50,11 @@ while 1	% Loop until <return> or <enter>
         char = GetKbChar(varargin{:});
     else
         char = GetChar;
+    end
+    
+    if isempty(char)
+        string = '';
+        return;
     end
     
 	switch(abs(char))

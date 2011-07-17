@@ -1,5 +1,5 @@
 function string = GetEchoString(windowPtr, msg, x, y, textColor, bgColor, useKbCheck, varargin)
-% string = GetEchoString(window, msg, x, y, [textColor], [bgColor], [useKbCheck=0], [KbCheck args...])
+% string = GetEchoString(window, msg, x, y, [textColor], [bgColor], [useKbCheck=0], [deviceIndex], [untilTime=inf], [KbCheck args...])
 % 
 % Get a string typed at the keyboard. Entry is terminated by
 % <return> or <enter>.
@@ -67,6 +67,11 @@ while true
         char = GetChar;
     end
 
+    if isempty(char)
+        string = '';
+        return;
+    end
+        
     switch (abs(char))
         case {13, 3, 10}
             % ctrl-C, enter, or return
