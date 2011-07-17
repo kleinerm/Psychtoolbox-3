@@ -1,6 +1,6 @@
-function PlayMoviesDemoOSX(moviename)
+function PlayMoviesDemoOSX(moviename, backgroundMaskOut, tolerance)
 %
-% PlayMoviesDemoOSX(moviename)
+% PlayMoviesDemoOSX(moviename [, backgroundMaskOut][, tolerance])
 %
 % This demo accepts a pattern for a valid moviename, e.g.,
 % moviename='*.mpg', then it plays all movies in the current working
@@ -14,15 +14,26 @@ function PlayMoviesDemoOSX(moviename)
 % The left- right arrow keys jump in 1 seconds steps. SPACE jumps to the
 % next movie in the list. ESC ends the demo.
 %
+% If the optional RGB color vector backgroundMaskOut is provided, then
+% color pixels in the video which are equal or close to backgroundMaskOut will be
+% discarded during drawing. E.g., backgroundMaskOut = [255 255 255] would
+% discard all white pixels, backgroundMaskOut = [0 0 0] would discard all
+% black pixels etc. The optional tolerance parameter allows for some
+% lenience, e.g., tolerance = 10 would discard all pixels whose euclidean
+% distance in RGB color space is less than 10 units to the backgroundMaskOut
+% color. Background color masking requires a graphics card with fragment
+% shader support and will fail otherwise.
 
 % History:
 % 10/30/05  mk  Wrote it.
+% 07/17/11  mk  Add support for background pixel color removal via shaders.
+%               Code cleanup, dead code removal.
 
 theanswer = [];
 
-if nargin < 1
+if (nargin < 1) || isempty(moviename) 
     moviename = [];
-    if IsOSX | IsLinux
+    if IsOSX || IsLinux
         theanswer = input('Serious or cool? Type s or c [s/c]? ', 's');
     end        
 end;
@@ -50,16 +61,21 @@ try
 
     % Open onscreen window:
     screen=max(Screen('Screens'));
-    [win, scr_rect] = Screen('OpenWindow', screen, 0);
+    win = Screen('OpenWindow', screen, 0);
 
-    % Retrieve duration of a single video refresh interval:
-    ifi = Screen('GetFlipInterval', win);
+    shader = [];
+    if (nargin > 1) && ~isempty(backgroundMaskOut)
+        if nargin < 3
+            tolerance = [];
+        end
+        shader = CreateSinglePassImageProcessingShader(win, 'BackgroundMaskOut', backgroundMaskOut, tolerance);
+    end
     
     % Clear screen to background color:
     Screen('FillRect', win, background);
     
     % Initial display and sync to timestamp:
-    vbl=Screen('Flip',win);
+    Screen('Flip',win);
     iteration=0;    
     abortit=0;
 
@@ -105,9 +121,6 @@ try
         fprintf('Movie: %s  : %f seconds duration, %f fps, w x h = %i x %i...\n', moviename, movieduration, fps, imgw, imgh);
         
         i=0;
-    
-        % Seek to start of movie (timeindex 0):
-        Screen('SetMovieTimeIndex', movie, 0);
         
         % Start playback of movie. This will start
         % the realtime playback clock and playback of audio tracks, if any.
@@ -122,12 +135,12 @@ try
             i=i+1;
 	    % Only perform video image fetch/drawing if playback is active
 	    % and the movie actually has a video track (imgw and imgh > 0):
-            if ((abs(rate)>0) & (imgw>0) & (imgh>0))
+            if ((abs(rate)>0) && (imgw>0) && (imgh>0))
                 % Return next frame in movie, in sync with current playback
                 % time and sound.
                 % tex either the texture handle or zero if no new frame is
                 % ready yet. pts = Presentation timestamp in seconds.
-                [tex pts] = Screen('GetMovieImage', win, movie, 1, [], [], 0);
+                tex = Screen('GetMovieImage', win, movie, 1, [], [], 0);
 
                 % Valid texture returned?
                 if tex<=0
@@ -135,10 +148,10 @@ try
                 end;
 
                 % Draw the new texture immediately to screen:
-                Screen('DrawTexture', win, tex);
+                Screen('DrawTexture', win, tex, [], [], [], [], [], [], shader);
 
                 % Update display:
-                vbl=Screen('Flip', win);
+                Screen('Flip', win);
 
                 % Release texture:
                 Screen('Close', tex);
@@ -147,28 +160,28 @@ try
             % Check for abortion:
             abortit=0;
             [keyIsDown,secs,keyCode]=KbCheck;
-            if (keyIsDown==1 & keyCode(esc))
+            if (keyIsDown==1 && keyCode(esc))
                 % Set the abort-demo flag.
                 abortit=2;
                 break;
             end;
             
-            if (keyIsDown==1 & keyCode(space))
+            if (keyIsDown==1 && keyCode(space))
                 % Exit while-loop: This will load the next movie...
                 break;
             end;
             
-            if (keyIsDown==1 & keyCode(right))
+            if (keyIsDown==1 && keyCode(right))
                 % Advance movietime by one second:
                 Screen('SetMovieTimeIndex', movie, Screen('GetMovieTimeIndex', movie) + 1);
             end;
 
-            if (keyIsDown==1 & keyCode(left))
+            if (keyIsDown==1 && keyCode(left))
                 % Rewind movietime by one second:
                 Screen('SetMovieTimeIndex', movie, Screen('GetMovieTimeIndex', movie) - 1);
             end;
 
-            if (keyIsDown==1 & keyCode(up))
+            if (keyIsDown==1 && keyCode(up))
                 % Increase playback rate by 1 unit.
                 if (keyCode(shift))
                     rate=rate+0.1;
@@ -179,7 +192,7 @@ try
                 Screen('PlayMovie', movie, rate, 1, 1.0);
             end;
 
-            if (keyIsDown==1 & keyCode(down))
+            if (keyIsDown==1 && keyCode(down))
                 % Decrease playback rate by 1 unit.
                 if (keyCode(shift))
                     rate=rate-0.1;
@@ -191,8 +204,8 @@ try
             end;
         end;
     
-        telapsed = GetSecs - t1
-        finalcount=i
+        telapsed = GetSecs - t1;
+        fprintf('Elapsed time %f seconds, for %i frames.\n', telapsed, i);
 
         Screen('Flip', win);
         while KbCheck; end;

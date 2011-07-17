@@ -42,6 +42,7 @@
 % CreateProceduralGabor.m         -- Create a procedural texture for fast drawing of Gabor patches.
 % CreateProceduralSineGrating.m   -- Create a procedural texture for fast drawing of sine grating patches.
 % CreatePseudoGrayLUT             -- Create a lookup table for pseudogray conversion -- Internal helper function.
+% CreateSinglePassImageProcessingShader -- Create a single pass image processing shader for simple but common operations.
 % DisplayUndistortionBezier.m     -- Interactive geometric display calibration for simple needs.
 % DisplayUndistortionBVL.m        -- Interactive geometric display calibration. Recommended!
 % DisplayUndistortionHalfCylinder -- Interactive geometric display calibration for half-cylinder or spherical projections.

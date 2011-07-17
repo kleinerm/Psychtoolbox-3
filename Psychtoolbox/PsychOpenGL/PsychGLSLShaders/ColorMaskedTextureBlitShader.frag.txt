@@ -1,0 +1,24 @@
+/* ColorMaskedTextureBlitShader: Shader for color-keyed blitting of 2D rectangle textures.
+// OpenGL program has to setup the the "color-key" value that is considered
+// background color and discarded during the blit.
+//
+// (w)2011 by Mario Kleiner. Licensed under MIT license.
+*/
+
+#extension GL_ARB_texture_rectangle : enable
+
+uniform sampler2DRect Image;
+uniform float         epsilon;
+uniform vec3          backgroundColor;
+
+void main()
+{
+    /* Fetch texel color at current location: */
+    vec4 texcolor = texture2DRect(Image, gl_TexCoord[0].st);
+
+    /* If texel color matches background color key --> Discard fragment */
+    if (distance(texcolor.rgb, backgroundColor) < epsilon) discard;
+
+    /* Assign, with modulateColor applied: */
+    gl_FragColor = texcolor * gl_Color;
+}
