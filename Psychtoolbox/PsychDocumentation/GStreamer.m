@@ -63,20 +63,28 @@
 % for GStreamer in its package management system, so you can easily install
 % it via the software management tool of your system.
 %
-% You will need at least the core GStreamer runtime and the gstreamer-base
-% set of plugins. A simple way to get GStreamer at least on Ubuntu Linux is
-% to install the "rhythmbox" or "totem" multimedia-players. You may need to
-% install additional plugin packages to play back all common audio- and
-% video file formats. Especially video recording or movie creation with
-% high quality will require recent versions of the additional plugin
-% packages gstreamer-bad, gstreamer-good, gstreamer-ugly. These are not
-% always installed by default and may need you to specifically request them
-% for installation.
+% You will need at least the core GStreamer runtime and the gstreamer-base set
+% of plugins. Modern desktop distros usually already ship with these. A simple
+% way to make sure GStreamer is available is to install the "totem" multimedia
+% player. This will pull in the needed GStreamer packages as a dependency.
 %
-% E.g., a "sudo apt-get install totem" typed into a terminal window,
-% followed by your administrator password, should do the trick. Most likely
-% this isn't needed though, as you likely already have GStreamer installed
-% if you ever used to playback any multimedia content on your Linux system.
+% E.g. via 
+%
+%    sudo apt-get install totem
+%
+% for Debian distros and derivatives like Ubuntu.
+%
+% You may need to install some restricted plugin packages to play back all
+% common audio and video file formats like MP3 and MP4. Video or movie
+% recording with high quality (DivX, H.264) will also require recent versions
+% of additional plugin packages containing support for these formats. These
+% are usually not installed by default due to licensing and patent clauses in
+% place for some territories. You may want to specifically add them to your
+% system depending on your format needs.
+%
+% On Debian 
+%
+%     sudo apt-get install gstreamer0.10-plugins-bad-multiverse gstreamer0.10-plugins-ugly-multiverse
 %
 % MS-Windows:
 %
