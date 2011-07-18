@@ -184,13 +184,22 @@ else
                     gfxhwtype = 2;
                 end
 
-                % 10.6.x Snow Leopard?
+                % 10.6.x Snow Leopard or later?
                 if (osxversion(1) == 10) & (osxversion(2) >= 6) & (osxversion(3) >=0) %#ok<AND2>
                     % Yes. One of the releases with an embarassing amount of bugs,
                     % brought to you by Apple. Need to apply an especially ugly
                     % clut to force these cards into an identity mapping:
-                    fprintf('LoadIdentityClut: NVidia Geforce 8000 or later on OS/X 10.6.x detected. Enabling special type-II LUT hacks for totally broken operating systems.\n');
-                    gfxhwtype = 3;
+                    
+                    % Peter April reports his GeForce GT 330M on 10.6.8
+                    % needs a type 0 LUT, so we handle this case:
+                    if ~isempty(strfind(winfo.GLRenderer, '330'))
+                        fprintf('LoadIdentityClut: NVidia Geforce GT 330 or later on OS/X 10.6.x or later detected. Enabling type-0 LUT.\n');
+                        gfxhwtype = 0;
+                    else
+                        % Something else: LUT-III is so far correct.
+                        fprintf('LoadIdentityClut: NVidia Geforce 8000 or later on OS/X 10.6.x or later detected. Enabling special type-II LUT hacks for totally broken operating systems.\n');
+                        gfxhwtype = 3;
+                    end
                 end
 
             end
