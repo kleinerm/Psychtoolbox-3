@@ -14,8 +14,9 @@ function i=Randi(n,dims)
 % Denis Pelli 4/19/96, 6/25/96, 6/29/96, 7/22/97
 % 7/24/04     awi  Cosmetic
 % 1/29/05     dgp  Changed default dims from 1 to [1 1].
+% 7/21/11     mk   Fix bug in arg checking, as reported by Todd Horowitz.
 
-if nargin<1 || nargin>2 || cumprod(size(n))~=1
+if nargin<1 || nargin>2 || numel(n)~=1
 	error('Usage: i=Randi(n,[dims])')
 end
 if nargin==1
