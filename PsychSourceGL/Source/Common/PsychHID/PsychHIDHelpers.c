@@ -3,10 +3,11 @@
   
   PROJECTS: PsychHID
   
-  PLATFORMS:  OSX
+  PLATFORMS:  All
   
   AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
+  Allen.Ingling@nyu.edu             awi 
+  mario.kleiner@tuebingen.mpg.de    mk
       
   HISTORY:
   5/05/03  awi		Created.
@@ -93,6 +94,40 @@ void PsychHIDCloseAllUSBDevices(void)
 }
 
 /*
+    PsychHIDCleanup() 
+    
+    Cleanup before flushing the mex file.   
+*/
+PsychError PsychHIDCleanup(void) 
+{
+	long error;
+
+	// Disable online help system:
+	PsychClearGiveHelp();
+	
+	// Shutdown keyboard queue functions on OS/X:
+    #if PSYCH_SYSTEM == PSYCH_OSX
+	error=PSYCHHIDKbQueueRelease();			// PsychHIDKbQueueRelease.c, but has to be called with uppercase PSYCH because that's how it's registered (otherwise crashes on clear mex)
+    #endif
+    
+	// Shutdown USB-HID report low-level functions, e.g., for DAQ toolbox on OS/X:
+	error=PsychHIDReceiveReportsCleanup(); // PsychHIDReceiveReport.c
+	
+	// Release all other HID device data structures:
+    #if PSYCH_SYSTEM == PSYCH_OSX
+        if(HIDHaveDeviceList()) HIDReleaseDeviceList();
+	#else
+    #endif
+    
+	// Close and release all open generic USB devices:
+	PsychHIDCloseAllUSBDevices();
+
+    return(PsychError_none);
+}
+
+#if PSYCH_SYSTEM == PSYCH_OSX
+
+/*
     PSYCHHIDCheckInit() 
     
     Check to see if we need to create the USB-HID device list. If it has not been created then create it.   
@@ -124,33 +159,6 @@ psych_bool PsychHIDWarnInputDisabled(const char* callerName)
 	return(FALSE);
 }
 
-/*
-    PsychHIDCleanup() 
-    
-    Cleanup before flushing the mex file.   
-*/
-PsychError PsychHIDCleanup(void) 
-{
-	long error;
-
-	// Disable online help system:
-	PsychClearGiveHelp();
-	
-	// Shutdown keyboard queue functions on OS/X:
-	error=PSYCHHIDKbQueueRelease();			// PsychHIDKbQueueRelease.c, but has to be called with uppercase PSYCH because that's how it's registered (otherwise crashes on clear mex)
-
-	// Shutdown USB-HID report low-level functions, e.g., for DAQ toolbox on OS/X:
-	error=PsychHIDReceiveReportsCleanup(); // PsychHIDReceiveReport.c
-	
-	// Release all other HID device data structures:
-    if(HIDHaveDeviceList())HIDReleaseDeviceList();
-	
-	// Close and release all open generic USB devices:
-	PsychHIDCloseAllUSBDevices();
-
-    return(PsychError_none);
-}
-
 /* 
     PsychHIDGetDeviceRecordPtrFromIndex()
     
@@ -177,8 +185,6 @@ pRecDevice PsychHIDGetDeviceRecordPtrFromIndex(int deviceIndex)
 
 /*
     PsychHIDGetDeviceListByUsage()
-    
-    
 */ 
 void PsychHIDGetDeviceListByUsage(long usagePage, long usage, int *numDeviceIndices, int *deviceIndices, pRecDevice *deviceRecords)
 {
@@ -199,9 +205,7 @@ void PsychHIDGetDeviceListByUsage(long usagePage, long usage, int *numDeviceIndi
 }
  
 /*
- PsychHIDGetDeviceListByUsages()
- 
- 
+    PsychHIDGetDeviceListByUsages()
  */ 
 void PsychHIDGetDeviceListByUsages(int numUsages, long *usagePages, long *usages, int *numDeviceIndices, int *deviceIndices, pRecDevice *deviceRecords)
 {
@@ -225,8 +229,6 @@ void PsychHIDGetDeviceListByUsages(int numUsages, long *usagePages, long *usages
 		}
 	}
 }
-
-
 
 
 /*
@@ -264,7 +266,6 @@ int PsychHIDGetIndexFromRecord(pRecDevice deviceRecord, pRecElement elementRecor
 }
 
 
-
 pRecElement PsychHIDGetElementRecordFromDeviceRecordAndElementIndex(pRecDevice deviceRecord, int elementIndex)
 {
     int				i;
@@ -286,7 +287,6 @@ pRecElement PsychHIDGetElementRecordFromDeviceRecordAndElementIndex(pRecDevice d
 }
 
 
-
 pRecElement PsychHIDGetCollectionRecordFromDeviceRecordAndCollectionIndex(pRecDevice deviceRecord, int elementIndex)
 {
     int				i;
@@ -306,7 +306,6 @@ pRecElement PsychHIDGetCollectionRecordFromDeviceRecordAndCollectionIndex(pRecDe
     return(NULL);  //make the compiler happy.
 
 }
-
 
 
 /*
@@ -387,7 +386,6 @@ void PsychHIDGetTypeMaskStringFromTypeMask(HIDElementTypeMask maskValue, char **
 }
 
 
-
 /*
     PsychHIDCountCollectionElements()
     
@@ -412,8 +410,6 @@ int PsychHIDCountCollectionElements(pRecElement collectionRecord, HIDElementType
     }
     return(numElements);
 }
-
-
 
 
 /*
@@ -444,3 +440,4 @@ int PsychHIDFindCollectionElements(pRecElement collectionRecord, HIDElementTypeM
     return(numElements);
 }
 	
+#endif

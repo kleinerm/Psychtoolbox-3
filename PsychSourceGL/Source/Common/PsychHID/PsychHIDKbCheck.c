@@ -6,20 +6,18 @@
   PLATFORMS:  Only OS X so far.  
   
   AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
-      
+  Allen.Ingling@nyu.edu             awi 
+  mario.kleiner@tuebingen.mpg.de    mk
+
   HISTORY:
   5/12/03  awi		Created.
   12/17/09 rpw		Added keypad support
   
   TO DO:
-  
-    write PsychHIDGetDeviceListByUsage
-  
-    define variables
-  
 
 */
+
+#if PSYCH_SYSTEM == PSYCH_OSX
 
 #include "PsychHID.h"
 
@@ -156,3 +154,5 @@ PsychError PSYCHHIDKbCheck(void)
 
     return(PsychError_none);	
 }
+
+#endif

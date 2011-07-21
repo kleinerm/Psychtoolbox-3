@@ -12,12 +12,12 @@
   5/12/03  awi		Created.
   
   TO DO:
-  
 
 */
 
-
 #include "PsychHID.h"
+
+#if PSYCH_SYSTEM == PSYCH_OSX
 
 static char useString[]= "elementState=PsychHID('CalibratedState', deviceNumber, elementNumber)";
 static char synopsisString[] = 
@@ -31,7 +31,6 @@ static char synopsisString[] =
         "the device element to its poles before calling 'CalibratedState'."; 
         
 static char seeAlsoString[] = "";
-
  
 PsychError PSYCHHIDGetCalibratedState(void) 
 {
@@ -58,8 +57,4 @@ PsychError PSYCHHIDGetCalibratedState(void)
     return(PsychError_none);	
 }
 
-
-
-
-
-
+#endif

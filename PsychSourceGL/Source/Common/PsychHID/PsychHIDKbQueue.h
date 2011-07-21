@@ -18,11 +18,9 @@
   
 	NOTES:
 
-
-		---
-    
-
 */
+
+#if PSYCH_SYSTEM == PSYCH_OSX
 
 #include <IOKit/hid/IOHIDUsageTables.h>
 #include <pthread.h>
@@ -48,3 +46,4 @@ typedef struct HIDElement {
 
 typedef HIDElement *HIDElementRef;
 
+#endif

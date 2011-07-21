@@ -106,7 +106,7 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
 	kr = IOServiceGetMatchingServices(kIOMasterPortDefault, matchingDict, &iterator);
 	if (kr) {
 		*errorcode = (int) kr;
-		PsychHIDErrors(*errorcode, &name, &description); 
+		PsychHIDErrors(NULL, *errorcode, &name, &description); 
 		printf("PsychHID: PsychHIDOSOpenUSBDevice: IO-KIT error: %08x = '%s' [%s]\n", *errorcode, name, description);
 		PsychErrorExitMsg(PsychError_system, "Couldn't get matching services\n");
 	}
@@ -123,7 +123,7 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
 
 		if ((kIOReturnSuccess != kr) || !plugInInterface) {
 			*errorcode = (int) kr;
-			PsychHIDErrors(*errorcode, &name, &description); 
+			PsychHIDErrors(NULL, *errorcode, &name, &description); 
 			printf("PsychHID: PsychHIDOSOpenUSBDevice: IO-KIT error: %08x = '%s' [%s]\n", *errorcode, name, description);			
 			printf("PsychHID: PsychHIDOSOpenUSBDevice: WARNING! Unable to create a plug-in (%08x)\n", kr);
 			continue;
@@ -139,7 +139,7 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
 		
 		if (result || !dev) {
 			*errorcode = (int) result;
-			PsychHIDErrors(*errorcode, &name, &description); 
+			PsychHIDErrors(NULL, *errorcode, &name, &description); 
 			printf("PsychHID: PsychHIDOSOpenUSBDevice: IO-KIT error: %08x = '%s' [%s]\n", *errorcode, name, description);
 			printf("PsychHID: PsychHIDOSOpenUSBDevice: WARNING! Couldn't create a device interface (%08x)\n", (int) result);
 			continue;
@@ -174,7 +174,7 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
 			(void) (*dev)->Release(dev);
 			
 			*errorcode = (int) kr;
-			PsychHIDErrors(*errorcode, &name, &description); 
+			PsychHIDErrors(NULL, *errorcode, &name, &description); 
 			printf("PsychHID: PsychHIDOSOpenUSBDevice: IO-KIT error: %08x = '%s' [%s]\n", *errorcode, name, description);
 			PsychErrorExitMsg(PsychError_system, "Unable to open USB device.");
 		}
@@ -186,7 +186,7 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
 			(void) (*dev)->Release(dev);
 
 			*errorcode = (int) kr;
-			PsychHIDErrors(*errorcode, &name, &description); 
+			PsychHIDErrors(NULL, *errorcode, &name, &description); 
 			printf("PsychHID: PsychHIDOSOpenUSBDevice: IO-KIT error: %08x = '%s' [%s]\n", *errorcode, name, description);
 			PsychErrorExitMsg(PsychError_system, "Unable to configure USB device.");
 		}

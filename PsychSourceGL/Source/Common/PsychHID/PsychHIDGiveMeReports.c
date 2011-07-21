@@ -3,10 +3,11 @@
 
 	PROJECTS: PsychHID
 
-	PLATFORMS:  OSX
+	PLATFORMS:  All
 
 	AUTHORS:
-	denis.pelli@nyu.edu dgp
+	denis.pelli@nyu.edu                 dgp
+    mario.kleiner@tuebingen.mpg.de      mk
 
 	HISTORY:
 	4/7/05  dgp	Wrote it, based on PsychHIDGetReport.c
@@ -42,7 +43,6 @@ PsychError PSYCHHIDGiveMeReports(void)
 	int deviceIndex;
 	int reportBytes=1024;
 	mxArray **outErr;
-	pRecDevice device;
 
     PsychPushHelp(useString,synopsisString,seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -52,8 +52,6 @@ PsychError PSYCHHIDGiveMeReports(void)
 	PsychCopyInIntegerArg(2,false,&reportBytes);
 
 	PsychHIDVerifyInit();
-    device=PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
-	if(!HIDIsValidDevice(device))PrintfExit("PsychHID:GiveMeReports: Invalid device.\n");
 
 	// reports
 	error=GiveMeReports(deviceIndex,reportBytes); // PsychHIDReceiveReports.c
@@ -65,7 +63,7 @@ PsychError PSYCHHIDGiveMeReports(void)
 		mxArray *fieldValue;
 		char *name="",*description="";
 
-		PsychHIDErrors(error,&name,&description); // Get error name and description, if available.
+		PsychHIDErrors(NULL, error,&name,&description); // Get error name and description, if available.
 		*outErr=mxCreateStructMatrix(1,1,3,fieldNames);
 		fieldValue=mxCreateString(name);
 		mxSetField(*outErr,0,"name",fieldValue);
@@ -77,4 +75,3 @@ PsychError PSYCHHIDGiveMeReports(void)
 	}
     return(PsychError_none);	
 }
-

@@ -3,31 +3,28 @@
   
   PROJECTS: PsychHID only.
   
-  PLATFORMS:  Only OS X so far.  
+  PLATFORMS:  All
   
   AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
+  Allen.Ingling@nyu.edu             awi 
+  mario.kleiner@tuebingen.mpg.de    mk
       
   HISTORY:
   4/29/03  awi		Created.
   
   TO DO:
-  
 
 */
 
 #include "PsychHID.h"
 
-
 static char useString[]= "numberOfDevices=PsychHID('NumDevices')";
-static char synopsisString[] = 
-        "Return the the number of USB HID devices connected to your computer.";
+static char synopsisString[] = "Return the the number of USB HID devices connected to your computer.";
 static char seeAlsoString[] = "";
-
 
 PsychError PSYCHHIDGetNumDevices(void) 
 {
-    UInt32 numDevices;
+    psych_uint32 numDevices;
     
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -41,8 +38,3 @@ PsychError PSYCHHIDGetNumDevices(void)
     
     return(PsychError_none);	
 }
-
-
-
-
-

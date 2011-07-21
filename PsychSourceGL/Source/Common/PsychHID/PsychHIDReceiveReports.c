@@ -3,10 +3,11 @@
 
 	PROJECTS: PsychHID
 
-	PLATFORMS:  OSX
+	PLATFORMS:  All
 
 	AUTHORS:
-	denis.pelli@nyu.edu dgp
+	denis.pelli@nyu.edu                 dgp
+    mario.kleiner@tuebingen.mpg.de      mk
 
 	HISTORY:
 	4/7/05  dgp	Wrote it, based on PsychHIDGetReport.c
@@ -63,56 +64,53 @@
 	now works.
  */
 
+/*
+file:///Developer/ADC%20Reference%20Library/documentation/Darwin/Reference/IOKit/IOHIDLib/Classes/IOHIDDeviceInterface122/CompositePage.html#//apple_ref/doc/compositePage/c/func/setInterruptReportHandlerCallback
+ 
+IOHIDDeviceInterface::
+ 
+ IOHIDReportCallbackFunction
+
+typedef void (*IOHIDReportCallbackFunction) (
+											 void * target, 
+											 IOReturn result, 
+											 void * refcon, 
+											 void * sender, 
+											 UInt32 bufferSize); 
+
+
+Type and arguments of callout C function that is used when a completion routine is called, see IOHIDLib.h:setReport().
+
+
+Parameter Descriptions
+
+target
+void * pointer to your data, often a pointer to an object.
+
+result
+Completion result of desired operation.
+
+refcon
+void * pointer to more data.
+
+sender
+Interface instance sending the completion routine.
+
+bufferSize
+Size of the buffer received upon completion.
+*/
+
 #include "PsychHID.h"
 
-#include <IOKit/HID/IOHIDLib.h>
-
-void CheckRunLoopSource(int deviceIndex,char *caller,int line);
-
-static char useString[]= "err=PsychHID('ReceiveReports',deviceNumber[,options])";
-static char synopsisString[]= 
-"Receive and save, internally, all reports from the specified USB HID device, now and forever more (unless stopped). "
-"Some parameters are persistent. When you don't explicitly supply a value they retain whatever value they had last time. "
-"They do have an initial default (built-in) that is present when PsychHID is first called after being CLEARed. "
-"Non-persistent parameters have a fixed default that applies every time you call PsychHID. "
-"The returned value \"err.n\" is zero upon success and a nonzero error code upon failure, "
-"as spelled out by \"err.name\" and \"err.description\". "
-"\"deviceNumber\" specifies which device. "
-"\"options.print\" =1 (initial default 0) enables diagnostic printing of a summary of each report when our callback routine receives it. "	
-"\"options.printCrashers\" =1 (initial default 0) enables diagnostic printing of the creation of the callback source and its addition to the CFRunLoop. "
-"\"options.consistencyChecks\" =1 (initial default 0) enables diagnostic printing of the consistency of all report structs. Very time consuming! "
-"\"options.maxReports\" (initial default 10000) allocate space for at least this many reports, shared among all devices. "
-"\"options.maxReportSize\" (initial default 64) allocate this many bytes per report. "
-"Requesting values of maxReports or maxReportSize beyond that provided by the current allocation will result in freeing the current allocation, "
-"losing all currently held reports, and reallocating as specified. "
-"\"options.secs\" (initial default 0.010 s) is how long to allow the run loop to issue callbacks. Each callback transfers one received report. "
-"The Mac OS receives reports all the time. "
-"It has a small buffer capacity, discarding the oldest. When requested by PsychHID, the Mac OS tranfers reports to "
-"PsychHID (for all devices for which ReceiveReports is still active) using callbacks from the CFRunLoop. "
-"(A callback means that the OS calls a routine of ours at some later time. "
-"A CFRunLoop is a special loop associated with each thread that is invoked when we request it.) "
-"Thus reports are received from the OS only during your call to ReceiveReports or GetReport. (They share the same callback routine.) "
-"So you may want call ReceiveReports several times. "
-"Reports can be received from multiple devices during a single call to ReceiveReports. "
-"Calling ReceiveReports enables callbacks (forever) for the incoming reports from that device; "
-"call ReceiveReportsStop to halt acquisition of further reports for a device; "
-" you can resume acquisition for a device by calling ReceiveReports again. "
-"Call GiveMeReports to get all the received reports and empty PsychHID's internal store for a device. "
-"PsychHID can hold up to options.maxReports reports (total among all devices), and discards new incoming reports when it has no room to hold them. "
-"For prolonged data acquisition you may need to call GiveMeReports periodically, emptying PsychHID's store before it becomes full. "
-"PsychHID was enhanced by adding HID commands to send and receive HID reports to support the PMD-1208FS. "
-"PsychHID is likely to work with other HID-compliant USB devices as well. "
-"The device-specific programming for the PMD-1208FS is entirely in the MATLAB M files of the Daq Toolbox; "
-"what is specific to Mac OS X is entirely in PsychHID. "
-"PsychHID is entirely generic, following the HID standard; none of the internal code is specific to any device, "
-"but we tested it primarily with the PMD-1208FS, "
-"as well as keyboards, mice, and gamepads, so working with new devices may be an adventure. "
-;
-static char seeAlsoString[]="SetReport, ReceiveReportsStop, GiveMeReports";
+// MK TODO FIXME: Question to former self: Why the hell does this exist?
+void mexMakeMemoryPersistent(void *ptr);
+#ifndef PTBOCTAVE
+void mxFree(void *ptr);
+void *mxCalloc(size_t n, size_t size);
+#endif
 
 // internal prototypes
 PsychError ReceiveReportsStop(int deviceIndex);  // function is below.
-void ReportCallback(void *target,IOReturn result,void *refcon,void *sender,UInt32 bufferSize); // function is below.
 void CountReports(char *string);
 
 #define MAXREPORTSIZE 64
@@ -121,8 +119,8 @@ void CountReports(char *string);
 
 typedef struct ReportStruct{
 	int deviceIndex;
-	IOReturn error;
-	UInt32 bytes;
+	long int error;
+	psych_uint32 bytes;
 	double time;
 	//int type; // 1=input, 2=output, 3=feature
 	struct ReportStruct *next;
@@ -130,15 +128,13 @@ typedef struct ReportStruct{
 } ReportStruct;
 
 // These are out here for easy access by several routines in this file.
-static psych_bool             ready[MAXDEVICEINDEXS]; 
-static CFRunLoopSourceRef source[MAXDEVICEINDEXS]; 
+static psych_bool ready[MAXDEVICEINDEXS]; 
 static psych_bool optionsPrintReportSummary=0;	// options.print: Enable diagnostic print of report by ReportCallback.
 static psych_bool optionsPrintCrashers=0;		// options.printCrashers
 static psych_bool optionsConsistencyChecks=0;	// options.consistencyChecks
 static int optionsMaxReports=10000;			// options.maxReports
 static int optionsMaxReportSize=64;			// options.maxReportSize
 static double optionsSecs=0.010;			// options.secs
-static CFStringRef myRunLoopMode=NULL;		// CFSTR("myMode");
 
 // These are out here for easy access by my report callback function: ReportCallback.
 static ReportStruct *freeReportsPtr=NULL,*deviceReportsPtr[MAXDEVICEINDEXS]; // linked list headers
@@ -146,64 +142,17 @@ static ReportStruct *freeReportsPtr=NULL,*deviceReportsPtr[MAXDEVICEINDEXS]; // 
 // Set by PsychHIDSetReport, read by ReportCallback solely for the optionsPrintReportSummary.
 double AInScanStart=0;
 
-void CountReports(char *string)
-{
-	int i,n;
-	int listLength[MAXDEVICEINDEXS];
-	ReportStruct *r;
-	static psych_bool reportsHaveBeenAllocated=0;
+#if PSYCH_SYSTEM == PSYCH_OSX
 
-	// First time init at first invocation after PsycHID load time:
-	if(myRunLoopMode==NULL)myRunLoopMode=CFSTR("myMode"); // kCFRunLoopDefaultMode
-	if(!reportsHaveBeenAllocated){
-		// initial set up. Allocate free reports.
-		static ReportStruct allocatedReports[MAXREPORTS];
-		
-		reportsHaveBeenAllocated=1;
-		freeReportsPtr=&(allocatedReports[0]);
-		for(i=0;i<MAXREPORTS;i++){
-			r=&(allocatedReports[i]);
-			r->next=&(allocatedReports[i+1]);
-		}
-		r->next=NULL;
-                // MK: Adding initialization of source and ready arrays.
-                // Does this resolve the bugreports about crashes from the forum?
-                // Messages of Ben Heasley and Maria McKinley, Bugid 5522?
-		for(i=0;i<MAXDEVICEINDEXS;i++) {
-                    deviceReportsPtr[i]=NULL;
-                    source[i]=NULL;
-                    ready[i]=0;
-                }
-	}
-	
-	// Optional consistency check, disabled by default. Do the numbers of
-	// reports enqueued in the different device lists and the free list
-	// sum up to the total number of allocated reports? Print warning and
-	// current numbers if this is not the case:
-	if (optionsConsistencyChecks > 0) {
-		n=0;
-		for(i=0;i<MAXDEVICEINDEXS;i++) {
-			if(i==0)r=freeReportsPtr;
-			else r=deviceReportsPtr[i];
-			listLength[i]=0;
+#include <IOKit/HID/IOHIDLib.h>
 
-			while(r!=NULL) {
-				r=r->next;
-				listLength[i]++;
-			}
-			n=n+listLength[i];
-		}
-		
-		if(n!=MAXREPORTS) {
-			printf("%s",string);
-			printf(" device:reports. free:%3d",listLength[0]);
-			for(i=1;i<MAXDEVICEINDEXS;i++) if(listLength[i]>0) printf(", %2d:%3d",i,listLength[i]);
-			printf("\n");
-		}
-	}
-}
+void CheckRunLoopSource(int deviceIndex,char *caller,int line);
+static CFRunLoopSourceRef source[MAXDEVICEINDEXS]; 
+static CFStringRef        myRunLoopMode=NULL;		// CFSTR("myMode");
 
-void ReportCallback(void *target,IOReturn result,void *refcon,void *sender,UInt32 bufferSize)
+void ReportCallback(void *target,IOReturn result,void *refcon,void *sender,psych_uint32 bufferSize); // function is below.
+
+void ReportCallback(void *target,IOReturn result,void *refcon,void *sender,psych_uint32 bufferSize)
 {
 	int deviceIndex,i,n,m;
 	unsigned char *ptr;
@@ -262,175 +211,6 @@ void ReportCallback(void *target,IOReturn result,void *refcon,void *sender,UInt3
 	return;
 }
 
-void mexMakeMemoryPersistent(void *ptr);
-#ifndef PTBOCTAVE
-void mxFree(void *ptr);
-void *mxCalloc(size_t n, size_t size);
-#endif
-
-PsychError PSYCHHIDReceiveReports(void) 
-{
-	long error=0;
-	int deviceIndex;
-	mxArray **mxErrPtr;
-	const mxArray *mxOptions,*mx;
-
-    PsychPushHelp(useString,synopsisString,seeAlsoString);
-    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-    PsychErrorExit(PsychCapNumOutputArgs(1));
-    PsychErrorExit(PsychCapNumInputArgs(2));
-	PsychCopyInIntegerArg(1,TRUE,&deviceIndex);
-	/*
-	 "\"options.print\" =1 (default 0) enables diagnostic printing of a summary of each report when our callback routine receives it. "	
-	 "\"options.printCrashers\" =1 (default 0) enables diagnostic printing of the creation of the callback source and its addition to the CFRunLoop. "
-	 "\"options.maxReports\" (default 10000) allocate space for at least this many reports, shared among all devices. "
-	 "\"options.maxReportSize\" (default 64) allocate this many bytes per report. "
-	 */
-	//optionsPrintReportSummary=0;	// options.print
-	//optionsPrintCrashers=0;		// options.printCrashers
-	//optionsMaxReports=10000;		// options.maxReports
-	//optionsMaxReportSize=64;		// options.maxReportSize
-	//optionsSecs=0.010;			// options.secs
-	mxOptions=PsychGetInArgMxPtr(2);
-	if(mxOptions!=NULL){
-		mx=mxGetField(mxOptions,0,"print");
-		if(mx!=NULL)optionsPrintReportSummary=(psych_bool)mxGetScalar(mx);
-		mx=mxGetField(mxOptions,0,"printCrashers");
-		if(mx!=NULL)optionsPrintCrashers=(psych_bool)mxGetScalar(mx);
-		mx=mxGetField(mxOptions,0,"maxReports");
-		if(mx!=NULL)optionsMaxReports=(int)mxGetScalar(mx);
-		mx=mxGetField(mxOptions,0,"maxReportSize");
-		if(mx!=NULL)optionsMaxReportSize=(int)mxGetScalar(mx);
-		mx=mxGetField(mxOptions,0,"secs");
-		if(mx!=NULL)optionsSecs=mxGetScalar(mx);
-		mx=mxGetField(mxOptions,0,"consistencyChecks");
-		if(mx!=NULL)optionsConsistencyChecks=(psych_bool)mxGetScalar(mx);
-	}
-	if(optionsMaxReports>MAXREPORTS)printf("PsychHID ReceiveReports: Sorry, maxReports is fixed at %d.\n",(int)MAXREPORTS);
-	if(optionsMaxReportSize>MAXREPORTSIZE)printf("PsychHID ReceiveReports: Sorry, maxReportSize is fixed at %d.\n",(int)MAXREPORTSIZE);
-
-	error=ReceiveReports(deviceIndex);
-
-	mxErrPtr=PsychGetOutArgMxPtr(1);
-	if(mxErrPtr!=NULL){
-		const char *fieldNames[]={"n", "name", "description"};
-		char *name="",*description="";
-		mxArray *fieldValue;
-
-		PsychHIDErrors(error,&name,&description); // Get error name and description, if available.
-		*mxErrPtr=mxCreateStructMatrix(1,1,3,fieldNames);
-		fieldValue=mxCreateString(name);
-		if(fieldValue==NULL)PrintfExit("PSYCHHIDReceiveReports: Couldn't allocate \"err\".");
-		mxSetField(*mxErrPtr,0,"name",fieldValue);
-		fieldValue=mxCreateString(description);
-		if(fieldValue==NULL)PrintfExit("PSYCHHIDReceiveReports: Couldn't allocate \"err\".");
-		mxSetField(*mxErrPtr,0,"description",fieldValue);
-		fieldValue=mxCreateDoubleMatrix(1,1,mxREAL);
-		if(fieldValue==NULL)PrintfExit("PSYCHHIDReceiveReports: Couldn't allocate \"err\".");
-		*mxGetPr(fieldValue)=(double)error;
-		mxSetField(*mxErrPtr,0,"n",fieldValue);
-	}
-    return(PsychError_none);	
-}
-
-// GiveMeReports is called solely by PsychHIDGiveMeReports, but the code resides here
-// in PsychHIDReceiveReports because it uses the typedefs and static variables that
-// are defined solely in this file. The linked lists of reports are unknown outside of this file.
-PsychError GiveMeReports(int deviceIndex,int reportBytes)
-{
-	long dims[]={1,1};
-	mxArray **outReports;
-	ReportStruct *r,*rTail;
-	const char *fieldNames[]={"report", "device", "time"};
-	mxArray *fieldValue;
-	unsigned char *reportBuffer;
-	int i,j,n;
-	long error=0;
-	double now;
-	
-	CountReports("GiveMeReports beginning.");
-
-	outReports=PsychGetOutArgMxPtr(1); 
-	r=deviceReportsPtr[deviceIndex];
-	n=0;
-	while(r!=NULL){
-		n++;
-		rTail=r;
-		r=r->next;
-	}
-	*outReports=mxCreateStructMatrix(1,n,3,fieldNames);
-	r=deviceReportsPtr[deviceIndex];
-	PsychGetPrecisionTimerSeconds(&now);
-	for(i=n-1;i>=0;i--){
-		assert(r!=NULL);
-		if(r->error)error=r->error;
-		dims[0]=1;
-		//printf("%2d: r->bytes %2d, reportBytes %4d, -%4.1f s\n",i,(int)r->bytes,(int)reportBytes, now-r->time);
-		if(r->bytes>reportBytes)r->bytes=reportBytes;
-		dims[1]=r->bytes;
-		fieldValue=mxCreateNumericArray(2,(void *)dims,mxUINT8_CLASS,mxREAL);
-		reportBuffer=(void *)mxGetData(fieldValue);
-		for(j=0;j<r->bytes;j++)reportBuffer[j]=r->report[j];
-		if(fieldValue==NULL)PrintfExit("Couldn't allocate report array.");
-		mxSetField(*outReports,i,"report",fieldValue);
-		fieldValue=mxCreateDoubleMatrix(1,1,mxREAL);
-		*mxGetPr(fieldValue)=(double)r->deviceIndex;
-		mxSetField(*outReports,i,"device",fieldValue);
-		fieldValue=mxCreateDoubleMatrix(1,1,mxREAL);
-		*mxGetPr(fieldValue)=r->time;
-		mxSetField(*outReports,i,"time",fieldValue);
-		r=r->next;
-	}
-	if(deviceReportsPtr[deviceIndex]!=NULL){
-		// transfer all these now-obsolete reports to the free list
-		rTail->next=freeReportsPtr;
-		freeReportsPtr=deviceReportsPtr[deviceIndex];
-		deviceReportsPtr[deviceIndex]=NULL;
-	}
-	CountReports("GiveMeReports end.");
-	return error;
-}
-
-
-// Called solely by PsychHIDGetReport, but resides here in order to access the linked list of reports.
-PsychError GiveMeReport(int deviceIndex,psych_bool *reportAvailablePtr,unsigned char *reportBuffer,UInt32 *reportBytesPtr,double *reportTimePtr)
-{
-	ReportStruct *r,*rOld;
-	long error;
-	int i;
-	
-	CountReports("GiveMeReport beginning.");
-
-	r=deviceReportsPtr[deviceIndex];
-	if(r!=NULL){ // report available?
-				 // grab the oldest report for this device
-		*reportAvailablePtr=1;
-		if(r->next==NULL){
-			deviceReportsPtr[deviceIndex]=NULL;
-		}else{
-			while(r->next->next!=NULL)r=r->next;
-			rOld=r;
-			r=r->next;
-			rOld->next=NULL;
-		}
-		if(*reportBytesPtr > r->bytes)*reportBytesPtr=r->bytes;
-		for(i=0;i<*reportBytesPtr;i++)reportBuffer[i]=r->report[i];
-		*reportTimePtr=r->time;
-		error=r->error;
-		
-		// add it to the free list
-		r->next=freeReportsPtr;
-		freeReportsPtr=r;
-	}else{
-		*reportAvailablePtr=0;
-		*reportBytesPtr=0;
-		*reportTimePtr=0.0/0.0;
-		error=0;
-	}
-	CountReports("GiveMeReport end.");
-	return error;
-}				  
-
 PsychError ReceiveReports(int deviceIndex)
 {
 	long error=0;
@@ -451,7 +231,7 @@ PsychError ReceiveReports(int deviceIndex)
 	if(!ready[deviceIndex]){
 		// setInterruptReportHandlerCallback
 		static unsigned char buffer[MAXREPORTSIZE];
-		UInt32 bufferSize=MAXREPORTSIZE;
+		psych_uint32 bufferSize=MAXREPORTSIZE;
 		psych_bool createSource;
 
 		createSource=(source[deviceIndex]==NULL);
@@ -566,40 +346,272 @@ void CheckRunLoopSource(int deviceIndex,char *caller,int line){
 		printf("%d: %s(%d): \"!ready\" yet source is in CFRunLoop.\n",(int)deviceIndex,caller,line);
 }
 
+#else
+// NON OSX CODE (Linux, Windows):
 
-/*
-file:///Developer/ADC%20Reference%20Library/documentation/Darwin/Reference/IOKit/IOHIDLib/Classes/IOHIDDeviceInterface122/CompositePage.html#//apple_ref/doc/compositePage/c/func/setInterruptReportHandlerCallback
- 
-IOHIDDeviceInterface::
- 
- IOHIDReportCallbackFunction
+#endif
 
-typedef void (*IOHIDReportCallbackFunction) (
-											 void * target, 
-											 IOReturn result, 
-											 void * refcon, 
-											 void * sender, 
-											 UInt32 bufferSize); 
+// OS INDEPENDENT CODE:
+// ====================
 
+void CountReports(char *string)
+{
+	int i,n;
+	int listLength[MAXDEVICEINDEXS];
+	ReportStruct *r;
+	static psych_bool reportsHaveBeenAllocated=0;
 
-Type and arguments of callout C function that is used when a completion routine is called, see IOHIDLib.h:setReport().
+	// First time init at first invocation after PsycHID load time:
+	if(myRunLoopMode==NULL)myRunLoopMode=CFSTR("myMode"); // kCFRunLoopDefaultMode
+	if(!reportsHaveBeenAllocated){
+		// initial set up. Allocate free reports.
+		static ReportStruct allocatedReports[MAXREPORTS];
+		
+		reportsHaveBeenAllocated=1;
+		freeReportsPtr=&(allocatedReports[0]);
+		for(i=0;i<MAXREPORTS;i++){
+			r=&(allocatedReports[i]);
+			r->next=&(allocatedReports[i+1]);
+		}
+		r->next=NULL;
+                // MK: Adding initialization of source and ready arrays.
+                // Does this resolve the bugreports about crashes from the forum?
+                // Messages of Ben Heasley and Maria McKinley, Bugid 5522?
+		for(i=0;i<MAXDEVICEINDEXS;i++) {
+                    deviceReportsPtr[i]=NULL;
+                    source[i]=NULL;
+                    ready[i]=0;
+                }
+	}
+	
+	// Optional consistency check, disabled by default. Do the numbers of
+	// reports enqueued in the different device lists and the free list
+	// sum up to the total number of allocated reports? Print warning and
+	// current numbers if this is not the case:
+	if (optionsConsistencyChecks > 0) {
+		n=0;
+		for(i=0;i<MAXDEVICEINDEXS;i++) {
+			if(i==0)r=freeReportsPtr;
+			else r=deviceReportsPtr[i];
+			listLength[i]=0;
 
+			while(r!=NULL) {
+				r=r->next;
+				listLength[i]++;
+			}
+			n=n+listLength[i];
+		}
+		
+		if(n!=MAXREPORTS) {
+			printf("%s",string);
+			printf(" device:reports. free:%3d",listLength[0]);
+			for(i=1;i<MAXDEVICEINDEXS;i++) if(listLength[i]>0) printf(", %2d:%3d",i,listLength[i]);
+			printf("\n");
+		}
+	}
+}
 
-Parameter Descriptions
+// GiveMeReports is called solely by PsychHIDGiveMeReports, but the code resides here
+// in PsychHIDReceiveReports because it uses the typedefs and static variables that
+// are defined solely in this file. The linked lists of reports are unknown outside of this file.
+PsychError GiveMeReports(int deviceIndex,int reportBytes)
+{
+	mwSize dims[]={1,1};
+	mxArray **outReports;
+	ReportStruct *r,*rTail;
+	const char *fieldNames[]={"report", "device", "time"};
+	mxArray *fieldValue;
+	unsigned char *reportBuffer;
+	int i,j,n;
+	long error=0;
+	double now;
+	
+	CountReports("GiveMeReports beginning.");
 
-target
-void * pointer to your data, often a pointer to an object.
+	outReports=PsychGetOutArgMxPtr(1); 
+	r=deviceReportsPtr[deviceIndex];
+	n=0;
+	while(r!=NULL){
+		n++;
+		rTail=r;
+		r=r->next;
+	}
+	*outReports=mxCreateStructMatrix(1,n,3,fieldNames);
+	r=deviceReportsPtr[deviceIndex];
+	PsychGetPrecisionTimerSeconds(&now);
+	for(i=n-1;i>=0;i--){
+		assert(r!=NULL);
+		if(r->error)error=r->error;
+		dims[0]=1;
+		//printf("%2d: r->bytes %2d, reportBytes %4d, -%4.1f s\n",i,(int)r->bytes,(int)reportBytes, now-r->time);
+		if(r->bytes>reportBytes)r->bytes=reportBytes;
+		dims[1]=r->bytes;
+		fieldValue=mxCreateNumericArray(2,(void *)dims,mxUINT8_CLASS,mxREAL);
+		reportBuffer=(void *)mxGetData(fieldValue);
+		for(j=0;j<r->bytes;j++)reportBuffer[j]=r->report[j];
+		if(fieldValue==NULL)PrintfExit("Couldn't allocate report array.");
+		mxSetField(*outReports,i,"report",fieldValue);
+		fieldValue=mxCreateDoubleMatrix(1,1,mxREAL);
+		*mxGetPr(fieldValue)=(double)r->deviceIndex;
+		mxSetField(*outReports,i,"device",fieldValue);
+		fieldValue=mxCreateDoubleMatrix(1,1,mxREAL);
+		*mxGetPr(fieldValue)=r->time;
+		mxSetField(*outReports,i,"time",fieldValue);
+		r=r->next;
+	}
+	if(deviceReportsPtr[deviceIndex]!=NULL){
+		// transfer all these now-obsolete reports to the free list
+		rTail->next=freeReportsPtr;
+		freeReportsPtr=deviceReportsPtr[deviceIndex];
+		deviceReportsPtr[deviceIndex]=NULL;
+	}
+	CountReports("GiveMeReports end.");
+	return error;
+}
 
-result
-Completion result of desired operation.
+// Called solely by PsychHIDGetReport, but resides here in order to access the linked list of reports.
+PsychError GiveMeReport(int deviceIndex,psych_bool *reportAvailablePtr,unsigned char *reportBuffer,psych_uint32 *reportBytesPtr,double *reportTimePtr)
+{
+	ReportStruct *r,*rOld;
+	long error;
+	int i;
+	
+	CountReports("GiveMeReport beginning.");
 
-refcon
-void * pointer to more data.
+	r=deviceReportsPtr[deviceIndex];
+	if(r!=NULL){ // report available?
+				 // grab the oldest report for this device
+		*reportAvailablePtr=1;
+		if(r->next==NULL){
+			deviceReportsPtr[deviceIndex]=NULL;
+		}else{
+			while(r->next->next!=NULL)r=r->next;
+			rOld=r;
+			r=r->next;
+			rOld->next=NULL;
+		}
+		if(*reportBytesPtr > r->bytes)*reportBytesPtr=r->bytes;
+		for(i=0;i<*reportBytesPtr;i++)reportBuffer[i]=r->report[i];
+		*reportTimePtr=r->time;
+		error=r->error;
+		
+		// add it to the free list
+		r->next=freeReportsPtr;
+		freeReportsPtr=r;
+	}else{
+		*reportAvailablePtr=0;
+		*reportBytesPtr=0;
+		*reportTimePtr=0.0/0.0;
+		error=0;
+	}
+	CountReports("GiveMeReport end.");
+	return error;
+}				  
 
-sender
-Interface instance sending the completion routine.
+/* OS independent entry point from PsychHID(): */
 
-bufferSize
-Size of the buffer received upon completion.
-*/
+static char useString[]= "err=PsychHID('ReceiveReports',deviceNumber[,options])";
+static char synopsisString[]= 
+"Receive and save, internally, all reports from the specified USB HID device, now and forever more (unless stopped). "
+"Some parameters are persistent. When you don't explicitly supply a value they retain whatever value they had last time. "
+"They do have an initial default (built-in) that is present when PsychHID is first called after being CLEARed. "
+"Non-persistent parameters have a fixed default that applies every time you call PsychHID. "
+"The returned value \"err.n\" is zero upon success and a nonzero error code upon failure, "
+"as spelled out by \"err.name\" and \"err.description\". "
+"\"deviceNumber\" specifies which device. "
+"\"options.print\" =1 (initial default 0) enables diagnostic printing of a summary of each report when our callback routine receives it. "	
+"\"options.printCrashers\" =1 (initial default 0) enables diagnostic printing of the creation of the callback source and its addition to the CFRunLoop. "
+"\"options.consistencyChecks\" =1 (initial default 0) enables diagnostic printing of the consistency of all report structs. Very time consuming! "
+"\"options.maxReports\" (initial default 10000) allocate space for at least this many reports, shared among all devices. "
+"\"options.maxReportSize\" (initial default 64) allocate this many bytes per report. "
+"Requesting values of maxReports or maxReportSize beyond that provided by the current allocation will result in freeing the current allocation, "
+"losing all currently held reports, and reallocating as specified. "
+"\"options.secs\" (initial default 0.010 s) is how long to allow the run loop to issue callbacks. Each callback transfers one received report. "
+"The Mac OS receives reports all the time. "
+"It has a small buffer capacity, discarding the oldest. When requested by PsychHID, the Mac OS tranfers reports to "
+"PsychHID (for all devices for which ReceiveReports is still active) using callbacks from the CFRunLoop. "
+"(A callback means that the OS calls a routine of ours at some later time. "
+"A CFRunLoop is a special loop associated with each thread that is invoked when we request it.) "
+"Thus reports are received from the OS only during your call to ReceiveReports or GetReport. (They share the same callback routine.) "
+"So you may want call ReceiveReports several times. "
+"Reports can be received from multiple devices during a single call to ReceiveReports. "
+"Calling ReceiveReports enables callbacks (forever) for the incoming reports from that device; "
+"call ReceiveReportsStop to halt acquisition of further reports for a device; "
+" you can resume acquisition for a device by calling ReceiveReports again. "
+"Call GiveMeReports to get all the received reports and empty PsychHID's internal store for a device. "
+"PsychHID can hold up to options.maxReports reports (total among all devices), and discards new incoming reports when it has no room to hold them. "
+"For prolonged data acquisition you may need to call GiveMeReports periodically, emptying PsychHID's store before it becomes full. "
+"PsychHID was enhanced by adding HID commands to send and receive HID reports to support the PMD-1208FS. "
+"PsychHID is likely to work with other HID-compliant USB devices as well. "
+"The device-specific programming for the PMD-1208FS is entirely in the MATLAB M files of the Daq Toolbox; "
+"what is specific to Mac OS X is entirely in PsychHID. "
+"PsychHID is entirely generic, following the HID standard; none of the internal code is specific to any device, "
+"but we tested it primarily with the PMD-1208FS, "
+"as well as keyboards, mice, and gamepads, so working with new devices may be an adventure. "
+;
+static char seeAlsoString[]="SetReport, ReceiveReportsStop, GiveMeReports";
 
+PsychError PSYCHHIDReceiveReports(void)
+{
+	long error=0;
+	int deviceIndex;
+	mxArray **mxErrPtr;
+	const mxArray *mxOptions,*mx;
+
+    PsychPushHelp(useString,synopsisString,seeAlsoString);
+    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(2));
+	PsychCopyInIntegerArg(1,TRUE,&deviceIndex);
+	/*
+	 "\"options.print\" =1 (default 0) enables diagnostic printing of a summary of each report when our callback routine receives it. "	
+	 "\"options.printCrashers\" =1 (default 0) enables diagnostic printing of the creation of the callback source and its addition to the CFRunLoop. "
+	 "\"options.maxReports\" (default 10000) allocate space for at least this many reports, shared among all devices. "
+	 "\"options.maxReportSize\" (default 64) allocate this many bytes per report. "
+	 */
+	//optionsPrintReportSummary=0;	// options.print
+	//optionsPrintCrashers=0;		// options.printCrashers
+	//optionsMaxReports=10000;		// options.maxReports
+	//optionsMaxReportSize=64;		// options.maxReportSize
+	//optionsSecs=0.010;			// options.secs
+	mxOptions=PsychGetInArgMxPtr(2);
+	if(mxOptions!=NULL){
+		mx=mxGetField(mxOptions,0,"print");
+		if(mx!=NULL)optionsPrintReportSummary=(psych_bool)mxGetScalar(mx);
+		mx=mxGetField(mxOptions,0,"printCrashers");
+		if(mx!=NULL)optionsPrintCrashers=(psych_bool)mxGetScalar(mx);
+		mx=mxGetField(mxOptions,0,"maxReports");
+		if(mx!=NULL)optionsMaxReports=(int)mxGetScalar(mx);
+		mx=mxGetField(mxOptions,0,"maxReportSize");
+		if(mx!=NULL)optionsMaxReportSize=(int)mxGetScalar(mx);
+		mx=mxGetField(mxOptions,0,"secs");
+		if(mx!=NULL)optionsSecs=mxGetScalar(mx);
+		mx=mxGetField(mxOptions,0,"consistencyChecks");
+		if(mx!=NULL)optionsConsistencyChecks=(psych_bool)mxGetScalar(mx);
+	}
+	if(optionsMaxReports>MAXREPORTS)printf("PsychHID ReceiveReports: Sorry, maxReports is fixed at %d.\n",(int)MAXREPORTS);
+	if(optionsMaxReportSize>MAXREPORTSIZE)printf("PsychHID ReceiveReports: Sorry, maxReportSize is fixed at %d.\n",(int)MAXREPORTSIZE);
+
+	error=ReceiveReports(deviceIndex);
+
+	mxErrPtr=PsychGetOutArgMxPtr(1);
+	if(mxErrPtr!=NULL){
+		const char *fieldNames[]={"n", "name", "description"};
+		char *name="",*description="";
+		mxArray *fieldValue;
+
+		PsychHIDErrors(NULL, error,&name,&description); // Get error name and description, if available.
+		*mxErrPtr=mxCreateStructMatrix(1,1,3,fieldNames);
+		fieldValue=mxCreateString(name);
+		if(fieldValue==NULL)PrintfExit("PSYCHHIDReceiveReports: Couldn't allocate \"err\".");
+		mxSetField(*mxErrPtr,0,"name",fieldValue);
+		fieldValue=mxCreateString(description);
+		if(fieldValue==NULL)PrintfExit("PSYCHHIDReceiveReports: Couldn't allocate \"err\".");
+		mxSetField(*mxErrPtr,0,"description",fieldValue);
+		fieldValue=mxCreateDoubleMatrix(1,1,mxREAL);
+		if(fieldValue==NULL)PrintfExit("PSYCHHIDReceiveReports: Couldn't allocate \"err\".");
+		*mxGetPr(fieldValue)=(double)error;
+		mxSetField(*mxErrPtr,0,"n",fieldValue);
+	}
+    return(PsychError_none);	
+}

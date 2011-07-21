@@ -12,12 +12,12 @@
   4/29/03  awi		Created.
   
   TO DO:
-  
 
 */
 
-#include "PsychHID.h"
+#if PSYCH_SYSTEM == PSYCH_OSX
 
+#include "PsychHID.h"
 
 static char useString[]= "numberOfElements=PsychHID('NumElements', deviceNumber)";
 static char synopsisString[] = 
@@ -45,7 +45,4 @@ PsychError PSYCHHIDGetNumElements(void)
     return(PsychError_none);	
 }
 
-
-
-
-
+#endif

@@ -3,10 +3,11 @@
   
   PROJECTS: PsychHID
   
-  PLATFORMS:  OSX  
+  PLATFORMS:  All  
   
   AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
+  Allen.Ingling@nyu.edu             awi 
+  mario.kleiner@tuebingen.mpg.de    mk
       
   HISTORY:
   4/29/03  awi		Created.
@@ -19,8 +20,7 @@
 #include "PsychHID.h"
 
 static char useString[]= "devices=PsychHID('Devices')";
-static char synopsisString[] = 
-        "Return a struct array describing each connected USB HID device.";
+static char synopsisString[] = "Return a struct array describing each connected USB HID device.";
 static char seeAlsoString[] = "";
 
 PsychError PSYCHHIDGetDevices(void) 
@@ -34,7 +34,6 @@ PsychError PSYCHHIDGetDevices(void)
     PsychGenericScriptType	*deviceStruct;		
     char usageName[PSYCH_HID_MAX_DEVICE_ELEMENT_USAGE_NAME_LENGTH];
 
-
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
@@ -44,6 +43,7 @@ PsychError PSYCHHIDGetDevices(void)
     numDeviceStructElements=(int)HIDCountDevices();
     PsychAllocOutStructArray(1, FALSE, numDeviceStructElements, numDeviceStructFieldNames, deviceFieldNames, &deviceStruct);
     deviceIndex=0;
+    #if PSYCH_SYSTEM == PSYCH_OSX
     for(currentDevice=HIDGetFirstDevice(); currentDevice != NULL; currentDevice=HIDGetNextDevice(currentDevice)){
         PsychSetStructArrayDoubleElement("usagePageValue",	deviceIndex, 	(double)currentDevice->usagePage,	deviceStruct);
         PsychSetStructArrayDoubleElement("usageValue",		deviceIndex, 	(double)currentDevice->usage, 		deviceStruct);
@@ -71,11 +71,7 @@ PsychError PSYCHHIDGetDevices(void)
         PsychSetStructArrayDoubleElement("wheels",		deviceIndex, 	(double)currentDevice->wheels, 		deviceStruct);
         ++deviceIndex; 
     }
-
+    #endif
+    
     return(PsychError_none);	
 }
-
-
-
-
-

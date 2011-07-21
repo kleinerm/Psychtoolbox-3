@@ -2,9 +2,10 @@
   PsychToolbox2/Source/Common/PsychHID/PsychHIDSynopsis.c	
   
   AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
+  Allen.Ingling@nyu.edu             awi 
+  mario.kleiner@tuebingen.mpg.de    mk
   
-  PLATFORMS: OSX
+  PLATFORMS: All
   
   PROJECTS: PsychHID
    
@@ -42,7 +43,10 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "[keyIsDown,secs,keyCode]=PsychHID('KbCheck' [, deviceNumber][, scanList])";
 	synopsis[i++] = "[report,err]=PsychHID('GetReport',deviceNumber,reportType,reportID,reportBytes)";
 	synopsis[i++] = "err=PsychHID('SetReport',deviceNumber,reportType,reportID,report)";
-
+	synopsis[i++] = "[reports,err]=PsychHID('GiveMeReports',deviceNumber,[reportBytes])";
+	synopsis[i++] = "err=PsychHID('ReceiveReports',deviceNumber[,options])";
+	synopsis[i++] = "err=PsychHID('ReceiveReportsStop',deviceNumber)";
+    
 	synopsis[i++] = "\n\nQueue based keyboard queries: See 'help KbQueueCreate' for explanations:\n\n";
 	synopsis[i++] = "PsychHID('KbQueueCreate', [deviceNumber], [keyFlags])";
 	synopsis[i++] = "PsychHID('KbQueueRelease')"; 

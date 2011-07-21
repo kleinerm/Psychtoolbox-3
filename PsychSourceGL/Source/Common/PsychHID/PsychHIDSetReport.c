@@ -3,10 +3,11 @@
  
  PROJECTS: PsychHID
  
- PLATFORMS:  OSX 
+ PLATFORMS:  All. 
  
  AUTHORS:
- denis.pelli@nyu.edu dgp
+    denis.pelli@nyu.edu                 dgp
+    mario.kleiner@tuebingen.mpg.de      mk
  
  HISTORY:
  3/15/05  dgp		Wrote it.
@@ -26,10 +27,6 @@ static char synopsisString[] = "Send a report to the connected USB HID device. \
 "For your convenience, if reportID is nonzero, then the first byte of \"report\" will be set to reportID.";
 static char seeAlsoString[] = "GetReport";
 
-// Get a report from an HID device.
-// prototype for routine in Apple's HID Utilities Source/HID_Queue_Utilities.c
-long HIDSetReport(pRecDevice pDevice,const IOHIDReportType reportType, const UInt32 reportID, void* reportBuffer, const UInt32 reportBufferSize);
-
 /*
  The HID firmware notes I have to program the Measurement Computing PMD1208FS indicate that the reportID is one byte. It specifies
  what the report is for (0x03 read digital, 0x04 write digital, 0x10 read analog, 0x14 write analog, etc.).
@@ -39,6 +36,10 @@ extern double AInScanStart;
 
 PsychError PSYCHHIDSetReport(void) 
 {
+    const char *fieldNames[]={"n", "name", "description"};
+    char *name="",*description="";
+    mxArray *fieldValue;
+    
 	long error;
 	pRecDevice device;
 	int deviceIndex;
@@ -62,7 +63,7 @@ PsychError PSYCHHIDSetReport(void)
 	report=PsychGetInArgMxPtr(4); 
 	reportBuffer=(void *)mxGetData(report);
 	assert(reportBuffer!=NULL);
-#ifndef PTBOCTAVE
+
 	switch(mxGetClassID(report)){
 		case mxCHAR_CLASS:    
 		case mxINT8_CLASS: 
@@ -76,52 +77,78 @@ PsychError PSYCHHIDSetReport(void)
 			PrintfExit("\"report\" array must be char or integer (8-, 16-, or 32-bit).");
 			break;
 	}
-#endif
+
 	reportSize=mxGetElementSize(report)*mxGetNumberOfElements(report);
 	PsychHIDVerifyInit();
+    
     device=PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
-	if(reportSize>0 && reportID!=0) *reportBuffer=0xff&reportID; // copy low byte of reportID to first byte of report.
-																 // Apple defines constants for the reportType with values (0,1,2) that are one less that those specified by USB (1,2,3).
-	assert(kIOHIDReportTypeInput==0 && kIOHIDReportTypeOutput==1 && kIOHIDReportTypeFeature==2);
-	if(reportType==0){
+	if(reportSize>0 && reportID!=0) *reportBuffer=0xff & reportID; // copy low byte of reportID to first byte of report.
+																   // Apple defines constants for the reportType with values (0,1,2) that are one less that those specified by USB (1,2,3).
+	if(reportType==0) {
 		printf("SetReport(reportType %d, reportID %d, report ",reportType,reportID);
 		for(i=0;i<reportSize;i++)printf("%d ",(int)reportBuffer[i]);
 		printf(")\n");
-		error=0;
-	}else{
-		if(1){
-			IOHIDDeviceInterface122 **interface;
-			interface=(IOHIDDeviceInterface122 **)(device->interface);
-			if(interface)error=(*interface)->setReport(interface,reportType-1,reportID,reportBuffer,(UInt32)reportSize,50,NULL,NULL,NULL);
-			else PrintfExit("PsychHID SetReport: Bad interface.\n");
-		}else error=HIDSetReport(device,reportType-1,reportID,reportBuffer,(UInt32)reportSize);
+		error=0;        
+	} else {
+#if PSYCH_SYSTEM == PSYCH_OSX
+        IOHIDDeviceInterface122 **interface;
+        interface=(IOHIDDeviceInterface122 **)(device->interface);
+        if(interface) error=(*interface)->setReport(interface,reportType-1,reportID,reportBuffer,(psych_uint32) reportSize,50,NULL,NULL,NULL);
+        else PrintfExit("PsychHID SetReport: Bad interface.\n");
+
+        // Timestamp:
+        if(reportID==0x11) {
+            PsychGetPrecisionTimerSeconds(&AInScanStart);
+        }
+
+        // Error condition?
+        PsychHIDErrors(NULL, error, &name, &description);
+#else
+        // Which report type?
+        if (reportType == 2 || reportType == 1) {
+            // Output report or input report:
+            // MK: CHECK: I have no clue if reportType == 1 aka input reports are really
+            // to be written via hid_write(). We have no way to distinguish between input
+            // and output reports or tell the HIDlib which is which?? Apple's method above
+            // does tell the system which is which?? Ambiguity???
+
+            // 1st byte always contains reportID:
+            reportBuffer[0] = (unsigned char) reportID;
+            
+            // Write it: error == -1 would mean error, otherwise it is number of bytes written.
+            error = hid_write(device, reportBuffer, (size_t) reportSize);
+        }
+        else {
+            // reportType == 3, aka Feature report:
+
+            // 1st byte always contains reportID:
+            reportBuffer[0] = (unsigned char) reportID;
+
+            // Send it: error == -1 would mean error, otherwise it is number of bytes written.
+            error = hid_send_feature_report(device, reportBuffer, (size_t) reportSize);
+        }
+        
+        // Timestamp:
+        if(reportID==0x11) {
+            PsychGetPrecisionTimerSeconds(&AInScanStart);
+        }
+
+        // Error condition?
+        PsychHIDErrors(device, error, &name, &description);
+#endif
 	}
-	if(reportID==0x11){
-		PsychGetPrecisionTimerSeconds(&AInScanStart);
-	}
-	//if(error)printf("Warning: PsychHID: HIDSetReport error %ld (0x%lx).",error,error);
-	if(0){
-		*outErr=mxCreateDoubleMatrix(1,1,mxREAL);
-		if(*outErr==NULL)PrintfExit("Couldn't allocate \"err\".");
-		*mxGetPr(*outErr)=(double)error;
-	}else{
-		const char *fieldNames[]={"n", "name", "description"};
-		char *name="",*description="";
-		mxArray *fieldValue;
-		
-		PsychHIDErrors(error,&name,&description);
-		*outErr=mxCreateStructMatrix(1,1,3,fieldNames);
-		fieldValue=mxCreateString(name);
-		if(fieldValue==NULL)PrintfExit("Couldn't allocate \"err\".");
-		mxSetField(*outErr,0,"name",fieldValue);
-		fieldValue=mxCreateString(description);
-		if(fieldValue==NULL)PrintfExit("Couldn't allocate \"err\".");
-		mxSetField(*outErr,0,"description",fieldValue);
-		fieldValue=mxCreateDoubleMatrix(1,1,mxREAL);
-		if(fieldValue==NULL)PrintfExit("Couldn't allocate \"err\".");
-		*mxGetPr(fieldValue)=(double)error;
-		mxSetField(*outErr,0,"n",fieldValue);
-	}		
+
+    *outErr=mxCreateStructMatrix(1,1,3,fieldNames);
+    fieldValue=mxCreateString(name);
+    if(fieldValue==NULL)PrintfExit("Couldn't allocate \"err\".");
+    mxSetField(*outErr,0,"name",fieldValue);
+    fieldValue=mxCreateString(description);
+    if(fieldValue==NULL)PrintfExit("Couldn't allocate \"err\".");
+    mxSetField(*outErr,0,"description",fieldValue);
+    fieldValue=mxCreateDoubleMatrix(1,1,mxREAL);
+    if(fieldValue==NULL)PrintfExit("Couldn't allocate \"err\".");
+    *mxGetPr(fieldValue)=(double)error;
+    mxSetField(*outErr,0,"n",fieldValue);
+    
     return(PsychError_none);	
 }
-

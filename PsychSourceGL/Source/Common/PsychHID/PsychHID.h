@@ -3,11 +3,12 @@
 
 	PROJECTS: PsychHID
 
-	PLATFORMS:  OSX 
+	PLATFORMS:  All
 
 	AUTHORS:
 
-	Allen.Ingling@nyu.edu		awi 
+	Allen.Ingling@nyu.edu             awi 
+    mario.kleiner@tuebingen.mpg.de    mk
 	  
 	HISTORY:
 		4/29/03  awi		Created.
@@ -59,6 +60,20 @@
 #include <mach/mach.h>
 #include <string.h>
 
+#else
+// Non OS/X:
+
+// Master include file for HIDAPI, as used on Linux and Windows:
+#include "hidapi.h"
+
+// Global variable which holds a reference to the last
+// accessed hid_device* on non-OS/X. This is for error
+// handling:
+hid_device* last_hid_device = NULL;
+
+// List with all known USB-HID devices from enumeration:
+hid_device_info *hid_devices = NULL;
+
 #endif
 
 // Structure which carries all required setup and matching parameters for
@@ -83,6 +98,8 @@ struct PsychUSBDeviceRecord_Struct {
 	// OS/X stuff:
 	#if PSYCH_SYSTEM == PSYCH_OSX
 		IOUSBDeviceInterface**    device;            // Actual low-level device specific pointer for OS/X.
+    #else
+        void*                     device;
 	#endif
 };
 
@@ -99,9 +116,11 @@ typedef struct PsychUSBDeviceRecord_Struct PsychUSBDeviceRecord;
 // Function prototypes for module subfunctions.
 PsychError MODULEVersion(void);						// MODULEVersion.c 
 PsychError PSYCHHIDGetNumDevices(void);				// PSYCHHIDGetNumDevices.c
+PsychError PSYCHHIDGetDevices(void);				// PsychHIDGetDeviceList.c 
+
+#if PSYCH_SYSTEM == PSYCH_OSX
 PsychError PSYCHHIDGetNumElements(void);			// PSYCHHIDGetNumElements.c
 PsychError PSYCHHIDGetNumCollections(void);			// PSYCHHIDGetNumCollections.c
-PsychError PSYCHHIDGetDevices(void);				// PsychHIDGetDeviceList.c 
 PsychError PSYCHHIDGetElements(void);				// PsychHIDGetElementList.c
 PsychError PSYCHHIDGetRawState(void);				// PsychHIDGetRawElementState.c
 PsychError PSYCHHIDGetCalibratedState(void);		// PsychHIDGetCalibratedState.c
@@ -115,6 +134,8 @@ PsychError PSYCHHIDKbQueueStop(void);				// PsychHIDKbQueueStop.c
 PsychError PSYCHHIDKbQueueCheck(void);				// PsychHIDKbQueueCheck.c
 PsychError PSYCHHIDKbQueueFlush(void);				// PsychHIDKbQueueFlush.c
 PsychError PSYCHHIDKbQueueRelease(void);			// PsychHIDKbQueueRelease.c
+#endif
+
 PsychError PSYCHHIDGetReport(void);					// PsychHIDGetReport.c
 PsychError PSYCHHIDSetReport(void);					// PsychHIDSetReport.c
 PsychError PSYCHHIDReceiveReports(void);			// PsychHIDReceiveReports.c
@@ -125,19 +146,20 @@ PsychError PSYCHHIDCloseUSBDevice(void);			// PSYCHHIDCloseUSBDevice.c
 PsychError PSYCHHIDUSBControlTransfer(void);		// PSYCHHIDUSBControlTransfer.c
 
 //internal function protototypes
-PsychError PsychHIDReceiveReportsCleanup(void); // PsychHIDReceiveReports.c
-PsychError ReceiveReports(int deviceIndex); // PsychHIDReceiveReports.c
-PsychError GiveMeReport(int deviceIndex,psych_bool *reportAvailablePtr,unsigned char *reportBuffer,UInt32 *reportBytesPtr,double *reportTimePtr); // PsychHIDReceiveReports.c
-PsychError GiveMeReports(int deviceIndex,int reportBytes); // PsychHIDReceiveReports.c
+PsychError  PsychHIDReceiveReportsCleanup(void); // PsychHIDReceiveReports.c
+PsychError  ReceiveReports(int deviceIndex); // PsychHIDReceiveReports.c
+PsychError  GiveMeReport(int deviceIndex, psych_bool *reportAvailablePtr, unsigned char *reportBuffer, psych_uint32 *reportBytesPtr, double *reportTimePtr); // PsychHIDReceiveReports.c
+PsychError  GiveMeReports(int deviceIndex,int reportBytes); // PsychHIDReceiveReports.c
 PsychError	ReceiveReportsStop(int deviceIndex);
-PsychError  PsychHIDReceiveReportsCleanup(void); // PsychHIDReceiveReportsCleanup.c
 PsychError 	PsychHIDCleanup(void);												// PsychHIDHelpers.c 
 void 		PsychHIDVerifyInit(void);											// PsychHIDHelpers.c 
 psych_bool	PsychHIDWarnInputDisabled(const char* callerName);					// PsychHIDHelpers.c
 pRecDevice 	PsychHIDGetDeviceRecordPtrFromIndex(int deviceIndex);								// PsychHIDHelpers.c 
+
+#if PSYCH_SYSTEM == PSYCH_OSX
 int 		PsychHIDGetIndexFromRecord(pRecDevice deviceRecord, pRecElement elementRecord, HIDElementTypeMask typeMask);	// PsychHIDHelpers.c 
-psych_bool 	PsychHIDCheckOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);						// PsychHIDHelpers.c 
-psych_bool 	PsychHIDCheckOpenDeviceInterfaceFromDeviceRecordPtr(pRecDevice deviceRecord);					// PsychHIDHelpers.c 
+//psych_bool 	PsychHIDCheckOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);						// PsychHIDHelpers.c 
+//psych_bool 	PsychHIDCheckOpenDeviceInterfaceFromDeviceRecordPtr(pRecDevice deviceRecord);					// PsychHIDHelpers.c 
 void 		PsychHIDVerifyOpenDeviceInterfaceFromDeviceRecordPtr(pRecDevice deviceRecord);					// PsychHIDHelpers.c 
 void 		PsychHIDGetTypeMaskStringFromTypeMask(HIDElementTypeMask maskValue, char **pStr);				// PsychHIDHelpers.c
 pRecElement 	PsychHIDGetElementRecordFromDeviceRecordAndElementIndex(pRecDevice deviceRecord, int elementIndex);		// PsychHIDHelpers.c
@@ -146,12 +168,14 @@ int 		PsychHIDCountCollectionElements(pRecElement collectionRecord, HIDElementTy
 int 		PsychHIDFindCollectionElements(pRecElement collectionRecord, HIDElementTypeMask elementTypeMask, pRecElement *collectionMembers, int maxListElements);  // PsychHIDHelpers.c
 void 		PsychHIDGetDeviceListByUsage(long usagePage, long usage, int *numDeviceIndices, int *deviceIndices, pRecDevice *deviceRecords);  //// PsychHIDHelpers.c
 void 		PsychHIDGetDeviceListByUsages(int numUsages, long *usagePages, long *usages, int *numDeviceIndices, int *deviceIndices, pRecDevice *deviceRecords);  //// PsychHIDHelpers.c
-void InitializeSynopsis();
-PsychError PsychDisplayPsychHIDSynopsis(void);
 psych_bool PsychHIDQueryOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);	// PsychHIDHelpers.c
 psych_bool PsychHIDQueryOpenDeviceInterfaceFromDeviceRecordPtr(pRecDevice deviceRecord);	// PsychHIDHelpers.c
-void PsychHIDVerifyOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);	// PsychHIDHelpers.c
-int PsychHIDErrors(int error,char **namePtr,char **descriptionPtr);
+// void PsychHIDVerifyOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);	// PsychHIDHelpers.c
+#endif
+
+void InitializeSynopsis();
+PsychError PsychDisplayPsychHIDSynopsis(void);
+int PsychHIDErrors(void* device, int error,char **namePtr,char **descriptionPtr);
 void PsychInitializePsychHID(void); // PsychHIDHelpers.c
 void PsychHIDCloseAllUSBDevices(void);
 PsychUSBDeviceRecord* PsychHIDGetFreeUSBDeviceSlot(int* usbHandle);

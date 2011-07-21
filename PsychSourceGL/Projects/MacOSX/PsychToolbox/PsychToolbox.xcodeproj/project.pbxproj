@@ -24709,7 +24709,7 @@
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
 				);
-				INSTALL_PATH = /usr/local/lib;
+				INSTALL_PATH = /PsychHardware;
 				KEEP_PRIVATE_EXTERNS = NO;
 				LIBRARY_SEARCH_PATHS = (
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/maci",
@@ -24737,7 +24737,7 @@
 				PREBINDING = NO;
 				PRODUCT_NAME = PsychHID;
 				PSYCHTOOLBOX_SUBFOLDER = PsychHardware;
-				STRIP_STYLE = all;
+				SKIP_INSTALL = NO;
 				WARNING_CFLAGS = "-Wno-long-double";
 			};
 			name = Development;

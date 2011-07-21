@@ -7,11 +7,12 @@
 	
 	PLATFORMS:
 	
-		OSX  
+		All  
 	
 	AUTHORS:
 	
-		denis.pelli@nyu.edu  dgp
+		denis.pelli@nyu.edu                 dgp
+        mario.kleiner@tuebingen.mpg.de      mk
 	  
 	HISTORY:
 	
@@ -37,12 +38,17 @@
  
  */
 #include "PsychHID.h"
-//#include <USB.h>
 
-int PsychHIDErrors(int error,char **namePtr,char **descriptionPtr);
-int PsychHIDErrors(int error,char **namePtr,char **descriptionPtr)
+#if PSYCH_SYSTEM == PSYCH_OSX
+
+// OS/X version:
+int PsychHIDErrors(void* device, int error,char **namePtr,char **descriptionPtr)
 {
 	assert(namePtr!=NULL && descriptionPtr!=NULL);
+
+    // Child protection:
+    if (device) printf("PsychHID: WARNING: hid_device* instead of NULL ptr passed into PsychHIDErrors() on OS/X! Implementation BUG!!!");
+
 	switch(error){
 	// IOUSBFamily error codes. USB.h Revision 1.44  2003/09/10 19:07:17 nano
 	// path /System/Library/Frameworks/Kernel.framework/Versions/A/Headers/IOKit/usb/USB.h
@@ -73,3 +79,29 @@ int PsychHIDErrors(int error,char **namePtr,char **descriptionPtr)
 	return 0;
 }
 
+#else
+
+// Non-OS/X version:
+int PsychHIDErrors(void* device, int error,char **namePtr,char **descriptionPtr)
+{
+        // Error condition?
+        static char lerrname[512];
+        lerrname[0] = 0;
+        hid_device* hdevice = (device) ? (hid_device*) device : last_hid_device;
+
+        // Child protection:
+        if (hdevice == NULL) PsychErrorExitMsg(PsychError_internal, "NULL Pointer insted of hid_device* passed into PsychHIDErrors() on non OS/X! Implementation BUG!!!");
+        
+        *namePtr = &lerrname;
+        *descriptionPtr = &lerrname;
+        
+        if (error < 0) {
+            const wchar_t* tmperr = hid_error(hdevice);
+            if (tmperr) {
+                wcstombs(&lerrname, tmperr, sizeof(lerrname));
+            }
+        }
+
+        return 0;
+}
+#endif

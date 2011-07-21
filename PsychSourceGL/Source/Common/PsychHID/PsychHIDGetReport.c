@@ -3,10 +3,11 @@
 
 	PROJECTS: PsychHID
 
-	PLATFORMS:  OSX
+	PLATFORMS:  All.
 
 	AUTHORS:
-	denis.pelli@nyu.edu dgp
+	denis.pelli@nyu.edu                 dgp
+    mario.kleiner@tuebingen.mpg.de      mk
 
 	HISTORY:
 	3/15/05  dgp	Wrote it.
@@ -56,17 +57,8 @@
 
 #include "PsychHID.h"
 
-// HIDGetReport
-
-// Get a report from an HID device.
-// Apple's HID Utilities Source/HID_Queue_Utilities.c
-long HIDGetReport(pRecDevice pDevice,const IOHIDReportType reportType, const UInt32 reportID, void* reportBuffer, UInt32* reportBufferSize);
-
-//#include "IOHIDLib.h" // setInterruptReportHandlerCallback
-
 static char useString[]= "[report,err]=PsychHID('GetReport',deviceNumber,reportType,reportID,reportBytes)";
-static char synopsisString[]="FIRST VERSION THAT IS COMPATIBLE WITH THE PMD-1208FS. 4 April 2005. "
-	"FOR DEBUGGING, I'VE ENABLED A PRINTOUT OF EACH INPUT REPORT RECEIVED FROM THE DEVICE. THAT WILL BE DISABLED IN THE FINAL VERSION. " 
+static char synopsisString[]=
 	"Get a report from the connected USB HID device. "
 	"\"deviceNumber\" specifies which device. \"reportType\" is 1=input, 2=output, 3=feature (0 to just echo arguments). "
 	"\"reportID\" is either zero or an integer (1 to 255) specifying the topic, e.g. read analog, read digital, write analog, etc. "
@@ -80,25 +72,21 @@ static char synopsisString[]="FIRST VERSION THAT IS COMPATIBLE WITH THE PMD-1208
 	"Resolving this ambiguity, \"err.reportLength\" is -1 when no report was received, and the report length in bytes when a report was received. "
 	"Each time that you use a new deviceNumber, PsychHID:GetReport enables callbacks for the incoming reports from that device. "
 	"If you use many devices, all their reports will cause callbacks, as documented in the diagnostic printout. "
-	"The overhead of the callback at present is moderately high because there is a diagnostic printf. Without that printf the overhead may "
-	"be negligible. "
 	"You can disable a callback that you no longer want by calling ReceiveReportsStop. ";
 static char seeAlsoString[]="SetReport, ReceiveReports, ReceiveReportsStop, GiveMeReports.";
 
 PsychError PSYCHHIDGetReport(void) 
 {
 	long error=0;
-	pRecDevice device;
 	int deviceIndex;
 	int reportType; // 1=input, 2=output, 3=feature
 	unsigned char *reportBuffer;
-	UInt32 reportBytes=0;
+	psych_uint32 reportBytes=0;
 	int reportBufferSize=0;
 	int reportID=0;
-	long dims[]={1,1};
+	mwSize dims[]= {1,1};
 	mxArray **outReport,**outErr;
 	char *name="",*description="",string[256];
-	IOHIDDeviceInterface122** interface=NULL;
 	psych_bool reportAvailable;
 	double reportTime;
 
@@ -120,42 +108,25 @@ PsychError PSYCHHIDGetReport(void)
 	if(reportBuffer==NULL)PrintfExit("Couldn't allocate report buffer.");
 	reportBytes=reportBufferSize;
 	PsychHIDVerifyInit();
-    device=PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
-	if(!HIDIsValidDevice(device))PrintfExit("PsychHID:GetReport: Invalid device.\n");
-	interface=device->interface;
-	if(interface==NULL)PrintfExit("PsychHID:GetReport: No interface for device.\n");
+
 	if(reportType==0){
 		printf("GetReport(reportType %d, reportID %d, reportBytes %d)\n",reportType,reportID,(int)reportBytes);
 	}else{
 		// Apple defines constants for the reportType with values (0,1,2) that are one less that those specified by USB (1,2,3).
-		if(0){
-			// HIDGetReport
-			error=HIDGetReport(device,reportType-1,reportID,reportBuffer,&reportBytes);
-		}
-		if(0){
-			// getReport
-			error=(*interface)->getReport(interface,reportType-1,reportID,reportBuffer,&reportBytes,-1,nil,nil,nil);
-		}
-		if(0){
-			// handleReport
-		}
-		if(1){
-			// using setInterruptReportHandlerCallback and CFRunLoopRunInMode
-			error=ReceiveReports(deviceIndex);
-			error=GiveMeReport(deviceIndex,&reportAvailable,reportBuffer,&reportBytes,&reportTime);
-		}else{
-			// using getReport
-			if(error==0)reportAvailable=1;
-			PsychGetPrecisionTimerSeconds(&reportTime);
-		}
+        // using setInterruptReportHandlerCallback and CFRunLoopRunInMode
+        error=ReceiveReports(deviceIndex);
+        error=GiveMeReport(deviceIndex,&reportAvailable,reportBuffer,&reportBytes,&reportTime);
 	}
+    
 	if(outReport==NULL)PrintfExit("Output argument is required."); // I think MATLAB always provides this.
+
 	if(error==0 && reportBytes>reportBufferSize){
 		error=2;
 		name="Warning";
 		description=string;
 		sprintf(description,"GetReport overflow. Expected %ld but received %ld bytes.",(long)reportBufferSize,(long)reportBytes); 
 	}
+
 	if(error==0 && reportBytes<reportBufferSize){
 		// Reduce the declared size of the array to that of the received report.
 		if(reportBytes>0)error=3;
@@ -164,11 +135,12 @@ PsychError PSYCHHIDGetReport(void)
 		sprintf(description,"GetReport expected %ld but received %ld bytes.",(long)reportBufferSize,(long)reportBytes);
 		mxSetN(*outReport,reportBytes);
 	}
+
 	if(outErr!=NULL){
 		const char *fieldNames[]={"n", "name", "description", "reportLength", "reportTime"};
 		mxArray *fieldValue;
 
-		PsychHIDErrors(error,&name,&description); // Get error name and description, if available.
+		PsychHIDErrors(NULL, error,&name,&description); // Get error name and description, if available.
 		*outErr=mxCreateStructMatrix(1,1,5,fieldNames);
 		fieldValue=mxCreateString(name);
 		if(fieldValue==NULL)PrintfExit("Couldn't allocate \"err\".");
@@ -192,36 +164,3 @@ PsychError PSYCHHIDGetReport(void)
 	}
     return(PsychError_none);	
 }
-
-
-/*
- handleReport
- 
- Handle an asynchronous report received from the HID device. 
- 
- public:
- 
- virtual IOReturn handleReport( 
-								IOMemoryDescriptor * report, 
-								IOHIDReportType reportType=kIOHIDReportTypeInput, 
-								IOOptionBits options=0 ); 
- 
- 
- Parameter Descriptions
- 
- 
- report
- A memory descriptor that describes the report.
- 
- reportType
- The type of report. Currently, only kIOHIDReportTypeInput report type is handled.
- 
- options
- Options to specify the request. No options are currently defined, and the default value is 0.
- 
- 
- 
- function result
- kIOReturnSuccess on success, or an error return otherwise.
-*/
-

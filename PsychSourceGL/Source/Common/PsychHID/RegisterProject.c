@@ -3,11 +3,12 @@
   
   PROJECTS: PsychHID
   
-  PLATFORMS:  OSX
+  PLATFORMS:  All
   
   AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
-      
+  Allen.Ingling@nyu.edu             awi 
+  mario.kleiner@tuebingen.mpg.de    mk
+  
   HISTORY:
   4/16/03  awi		Created. 
   4/15/05  dgp		Added Get/SetReport. 
@@ -35,13 +36,17 @@ PsychError PsychModuleInit(void)
 	//register module subfunctions
 	PsychErrorExit(PsychRegister("Version",  &MODULEVersion));
 	PsychErrorExit(PsychRegister("NumDevices",  &PSYCHHIDGetNumDevices));
-	PsychErrorExit(PsychRegister("NumElements",  &PSYCHHIDGetNumElements));
 	PsychErrorExit(PsychRegister("Devices",  &PSYCHHIDGetDevices));
+
+#if PSYCH_SYSTEM == PSYCH_OSX
+    // OS/X only, so far:
+	PsychErrorExit(PsychRegister("NumElements",  &PSYCHHIDGetNumElements));
 	PsychErrorExit(PsychRegister("Elements",  &PSYCHHIDGetElements));
 	PsychErrorExit(PsychRegister("RawState",  &PSYCHHIDGetRawState));
 	PsychErrorExit(PsychRegister("NumCollections",  &PSYCHHIDGetNumCollections));
 	PsychErrorExit(PsychRegister("Collections",  &PSYCHHIDGetCollections));
 	PsychErrorExit(PsychRegister("CalibratedState",  &PSYCHHIDGetCalibratedState));
+
 	PsychErrorExit(PsychRegister("KbCheck",  &PSYCHHIDKbCheck));
 	PsychErrorExit(PsychRegister("KbWait",  &PSYCHHIDKbWait));
 	PsychErrorExit(PsychRegister("KbTriggerWait", &PSYCHHIDKbTriggerWait));
@@ -51,6 +56,8 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("KbQueueCheck", &PSYCHHIDKbQueueCheck));
 	PsychErrorExit(PsychRegister("KbQueueFlush", &PSYCHHIDKbQueueFlush));
 	PsychErrorExit(PsychRegister("KbQueueRelease", &PSYCHHIDKbQueueRelease));
+#endif
+
 	PsychErrorExit(PsychRegister("GetReport",  &PSYCHHIDGetReport));
 	PsychErrorExit(PsychRegister("ReceiveReports",  &PSYCHHIDReceiveReports));
 	PsychErrorExit(PsychRegister("ReceiveReportsStop",  &PSYCHHIDReceiveReportsStop));

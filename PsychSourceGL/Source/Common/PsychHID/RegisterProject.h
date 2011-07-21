@@ -3,7 +3,7 @@
 
 	PROJECTS: Block only.
 
-	PLATFORMS:  Only OS X so far.  
+	PLATFORMS:  All.  
 
 	AUTHORS:
 
@@ -21,7 +21,6 @@
 			
 		To change the target location modify the script:
 			Psychtoolbox/Tools/Scripts/CopyOutMexFiles/MachPriority_CopyOut.sh
-  
 
 */
 
@@ -36,7 +35,3 @@ PsychError PsychModuleInit(void);
 
 //end include once
 #endif
-
-
-
-

@@ -12,9 +12,10 @@
   5/12/03  awi		Created.
   
   TO DO:
-  
 
 */
+
+#if PSYCH_SYSTEM == PSYCH_OSX
 
 #include "PsychHID.h"
 
@@ -22,7 +23,6 @@ static char useString[]= "elementState=PsychHID('RawState', deviceNumber, elemen
 static char synopsisString[] = 
         "Return the immediate state of the specified element on the specified device.";
 static char seeAlsoString[] = "";
-
  
 PsychError PSYCHHIDGetRawState(void) 
 {
@@ -30,7 +30,6 @@ PsychError PSYCHHIDGetRawState(void)
     pRecDevice          deviceRecord;
     pRecElement		elementRecord;
     int			deviceIndex, elementIndex;
-    	 
 
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -48,7 +47,4 @@ PsychError PSYCHHIDGetRawState(void)
     return(PsychError_none);	
 }
 
-
-
-
-
+#endif

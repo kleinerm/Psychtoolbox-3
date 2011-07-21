@@ -74,6 +74,8 @@
 
 */
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+
 #include "PsychHID.h"
 #include "PsychHIDKbQueue.h"
 
@@ -113,3 +115,4 @@ PsychError PSYCHHIDKbQueueStop(void)
     return(PsychError_none);	
 }
 
+#endif

@@ -12,12 +12,12 @@
   5/11/03  awi		Created.
   
   TO DO:
-  
 
 */
 
-#include "PsychHID.h"
+#if PSYCH_SYSTEM == PSYCH_OSX
 
+#include "PsychHID.h"
 
 static char useString[]= "collections=PsychHID('Collections', deviceNumber)";
 static char synopsisString[] = 
@@ -123,6 +123,4 @@ typedef struct IOHIDEventStruct IOHIDEventStruct;
 
 */
 
-
-
-
+#endif

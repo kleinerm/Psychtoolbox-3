@@ -3,10 +3,11 @@
 
 	PROJECTS: PsychHID
 
-	PLATFORMS:  OSX
+	PLATFORMS:  All
 
 	AUTHORS:
-	denis.pelli@nyu.edu dgp
+	denis.pelli@nyu.edu                 dgp
+    mario.kleiner@tuebingen.mpg.de      mk
 
 	HISTORY:
 	4/7/05  dgp	Wrote it, based on PsychHIDGetReport.c
@@ -17,8 +18,6 @@
 
 static char useString[]= "err=PsychHID('ReceiveReportsStop',deviceNumber)";
 static char synopsisString[]= 
-	"NOTE: THIS COMMAND IS CURRENTLY DISABLED AND DOES NOTHING. IT WILL BE RESTORED WHEN I CAN GET IT TO WORK PROPERLY. "
-"I'M NOT AWARE OF ANY SERIOUS LIMITATION TO WORKING WITHOUT THIS COMMAND. EVERYTHING SEEMS TO BE WORKING. "
 	"Stop receiving and saving reports from the specified USB HID device. "
 	"Calling ReceiveReports enables callbacks (forever) for the incoming reports from that device; "
 	"call ReceiveReportsStop to halt acquisition of further reports for this device; "
@@ -26,8 +25,8 @@ static char synopsisString[]=
 	"Call GiveMeReports to get all the received reports and empty PsychHID's internal store for that device. "
 	"\"deviceNumber\" specifies which device. "
 	"The returned value \"err.n\" is zero upon success and a nonzero error code upon failure, "
-	"as spelled out by \"err.name\" and \"err.description\". "
-;
+	"as spelled out by \"err.name\" and \"err.description\". ";
+
 static char seeAlsoString[]="SetReport, ReceiveReports, GiveMeReports";
 
 PsychError PSYCHHIDReceiveReportsStop(void) 
@@ -50,7 +49,7 @@ PsychError PSYCHHIDReceiveReportsStop(void)
 		const char *fieldNames[]={"n", "name", "description"};
 		mxArray *fieldValue;
 
-		PsychHIDErrors(error,&name,&description); // Get error name and description, if available.
+		PsychHIDErrors(NULL, error,&name,&description); // Get error name and description, if available.
 		*outErr=mxCreateStructMatrix(1,1,3,fieldNames);
 		fieldValue=mxCreateString(name);
 		if(fieldValue==NULL)PrintfExit("Couldn't allocate \"err\".");
@@ -65,4 +64,3 @@ PsychError PSYCHHIDReceiveReportsStop(void)
 	}
     return(PsychError_none);	
 }
-

@@ -16,6 +16,8 @@
 
 */
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+
 #include "PsychHID.h"
 
 
@@ -108,6 +110,4 @@ typedef struct IOHIDEventStruct IOHIDEventStruct;
 
 */
 
-
-
-
+#endif

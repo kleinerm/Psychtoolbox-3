@@ -16,6 +16,8 @@
 
 */
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+
 #include "PsychHID.h"
 
 static char useString[]= "numberOfCollections=PsychHID('NumCollections', deviceNumber)";
@@ -47,7 +49,4 @@ PsychError PSYCHHIDGetNumCollections(void)
     return(PsychError_none);	
 }
 
-
-
-
-
+#endif
