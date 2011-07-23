@@ -1666,6 +1666,8 @@
 		8330E9430B8DFB92003F0A67 /* MirrorFaceCoreSynopsis.c in Sources */ = {isa = PBXBuildFile; fileRef = 8330E9420B8DFB92003F0A67 /* MirrorFaceCoreSynopsis.c */; };
 		83347DB30C13692200293498 /* SCREENGetWindowInfo.c in Sources */ = {isa = PBXBuildFile; fileRef = 83347DB20C13692200293498 /* SCREENGetWindowInfo.c */; };
 		83347DB40C13692200293498 /* SCREENGetWindowInfo.c in Sources */ = {isa = PBXBuildFile; fileRef = 83347DB20C13692200293498 /* SCREENGetWindowInfo.c */; };
+		833A17A013DA1D2900C1911E /* PsychHIDGenericUSBLibSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 833A179F13DA1D2900C1911E /* PsychHIDGenericUSBLibSupport.c */; };
+		833A17A113DA1D2900C1911E /* PsychHIDGenericUSBLibSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 833A179F13DA1D2900C1911E /* PsychHIDGenericUSBLibSupport.c */; };
 		833C1EEE0BB19D0100FB9B4F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		833C1EEF0BB19D0100FB9B4F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		833C1EF00BB19D0100FB9B4F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -3745,6 +3747,7 @@
 		832CE7DB094D03D100578C09 /* libOpenAL.ar */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libOpenAL.ar; path = ../../../Source/Common/PsychSound/StaticOpenALLib/libOpenAL.ar; sourceTree = SOURCE_ROOT; };
 		8330E9420B8DFB92003F0A67 /* MirrorFaceCoreSynopsis.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = MirrorFaceCoreSynopsis.c; sourceTree = "<group>"; };
 		83347DB20C13692200293498 /* SCREENGetWindowInfo.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENGetWindowInfo.c; path = ../../../Source/Common/Screen/SCREENGetWindowInfo.c; sourceTree = SOURCE_ROOT; };
+		833A179F13DA1D2900C1911E /* PsychHIDGenericUSBLibSupport.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychHIDGenericUSBLibSupport.c; path = ../../../Source/Common/PsychHID/PsychHIDGenericUSBLibSupport.c; sourceTree = SOURCE_ROOT; };
 		833C1F080BB19D0100FB9B4F /* PsychPortAudio.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = PsychPortAudio.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		833C1F210BB1A49D00FB9B4F /* PsychPortAudio.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = PsychPortAudio.c; sourceTree = "<group>"; };
 		833C1F220BB1A49D00FB9B4F /* PsychPortAudio.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = PsychPortAudio.h; sourceTree = "<group>"; };
@@ -5443,6 +5446,7 @@
 				F16C715D0F86999500A8BE72 /* PsychHIDCloseUSBDevice.c */,
 				F16C715E0F86999500A8BE72 /* PsychHIDOpenUSBDevice.c */,
 				F1BCA5ED0F8676BD00EABA6F /* PsychHIDUSBControlTransfer.c */,
+				833A179F13DA1D2900C1911E /* PsychHIDGenericUSBLibSupport.c */,
 				F13E934E0F534180007D7EA0 /* PsychHIDGenericUSBSupport.c */,
 				CF566E6807F7D2FC00D4957A /* RegisterProject.h */,
 				CF566E6907F7D2FC00D4957A /* RegisterProject.c */,
@@ -11213,6 +11217,7 @@
 				F1BCA5F00F8676BD00EABA6F /* PsychHIDUSBControlTransfer.c in Sources */,
 				F16C715F0F86999500A8BE72 /* PsychHIDCloseUSBDevice.c in Sources */,
 				F16C71600F86999500A8BE72 /* PsychHIDOpenUSBDevice.c in Sources */,
+				833A17A013DA1D2900C1911E /* PsychHIDGenericUSBLibSupport.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11968,6 +11973,7 @@
 				8310AC490F87C222004AAE79 /* PsychHIDCloseUSBDevice.c in Sources */,
 				8310AC4A0F87C237004AAE79 /* PsychHIDOpenUSBDevice.c in Sources */,
 				8310AC4B0F87C24C004AAE79 /* PsychHIDUSBControlTransfer.c in Sources */,
+				833A17A113DA1D2900C1911E /* PsychHIDGenericUSBLibSupport.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

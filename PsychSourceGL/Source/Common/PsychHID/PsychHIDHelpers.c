@@ -101,22 +101,45 @@ void PsychHIDCloseAllUSBDevices(void)
 PsychError PsychHIDCleanup(void) 
 {
 	long error;
-
+    pRecDevice curdev = NULL;
+    
 	// Disable online help system:
 	PsychClearGiveHelp();
 	
 	// Shutdown keyboard queue functions on OS/X:
     #if PSYCH_SYSTEM == PSYCH_OSX
-	error=PSYCHHIDKbQueueRelease();			// PsychHIDKbQueueRelease.c, but has to be called with uppercase PSYCH because that's how it's registered (otherwise crashes on clear mex)
+	error = PSYCHHIDKbQueueRelease();	// PsychHIDKbQueueRelease.c, but has to be called with uppercase PSYCH because that's how it's registered (otherwise crashes on clear mex)
     #endif
     
 	// Shutdown USB-HID report low-level functions, e.g., for DAQ toolbox on OS/X:
-	error=PsychHIDReceiveReportsCleanup(); // PsychHIDReceiveReport.c
+	error = PsychHIDReceiveReportsCleanup(); // PsychHIDReceiveReport.c
 	
 	// Release all other HID device data structures:
     #if PSYCH_SYSTEM == PSYCH_OSX
+        // Via Apple HIDUtils:
         if(HIDHaveDeviceList()) HIDReleaseDeviceList();
 	#else
+        // First the HIDLIB low-level list:
+        if (hidlib_devices) hid_free_enumeration(hidlib_devices);
+        hidlib_devices = NULL;
+        
+        // Then our high-level list:
+        while (hid_devices) {
+            // Get current device record to release:
+            curdev = hid_devices;
+            
+            // Advance to the next one for next loop iteration:
+            hid_devices = hid_devices->pNext;
+            
+            // Interface attached aka device opened? If so we need to close the device handle:
+            if (curdev->interface) hid_close((hid_device*) curdev->interface);
+            
+            // Release:
+            free(curdev);
+        }
+        
+        // Reset last hid device for error handling:
+        last_hid_device = NULL;
     #endif
     
 	// Close and release all open generic USB devices:
@@ -124,6 +147,41 @@ PsychError PsychHIDCleanup(void)
 
     return(PsychError_none);
 }
+
+/* 
+    PsychHIDGetDeviceRecordPtrFromIndex()
+    
+    The inverse of PsychHIDGetIndexFromRecord()
+    
+    Accept the index from the list of device records and return a pointer to the indicated record.  Externally the list is one-indexed.  
+*/
+pRecDevice PsychHIDGetDeviceRecordPtrFromIndex(int deviceIndex)
+{
+    int				i;
+    pRecDevice 		currentDevice=NULL;
+
+    PsychHIDVerifyInit();
+    i=1;
+    for(currentDevice=HIDGetFirstDevice(); currentDevice != NULL; currentDevice=HIDGetNextDevice(currentDevice)){    
+        if(i==deviceIndex) {
+            #if PSYCH_SYSTEM != PSYCH_OSX
+                if (!currentDevice->interface) {
+                    currentDevice->interface = (void*) hid_open_path(currentDevice->transport);
+                    if (!currentDevice->interface) PsychErrorExitMsg(PsychError_system, "HIDLIB Failed to open USB device!");
+
+                    // Set read ops on device to non-blocking:
+                    hid_set_nonblocking((hid_device*) currentDevice->interface, 1);
+                }
+            #endif
+            return(currentDevice);
+        }
+        ++i;
+    }
+    
+    PsychErrorExitMsg(PsychError_internal, "Invalid device index specified.  Has a device has been unplugged? Try rebuilding the device list");
+    return(NULL);  //make the compiler happy.
+}
+
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 
@@ -158,30 +216,6 @@ psych_bool PsychHIDWarnInputDisabled(const char* callerName)
 
 	return(FALSE);
 }
-
-/* 
-    PsychHIDGetDeviceRecordPtrFromIndex()
-    
-    The inverse of PsychHIDGetIndexFromRecord()
-    
-    Accept the index from the list of device records and return a pointer to the indicated record.  Externally the list is one-indexed.  
-*/
-pRecDevice PsychHIDGetDeviceRecordPtrFromIndex(int deviceIndex)
-{
-    int				i;
-    pRecDevice 			currentDevice=NULL;
-
-    PsychHIDVerifyInit();
-    i=1;
-    for(currentDevice=HIDGetFirstDevice(); currentDevice != NULL; currentDevice=HIDGetNextDevice(currentDevice)){    
-        if(i==deviceIndex)
-            return(currentDevice);
-        ++i;
-    }
-    PsychErrorExitMsg(PsychError_internal, "Invalid device index specified.  Has a device has been unplugged? Try rebuilding the device list");
-    return(NULL);  //make the compiler happy.
-}
-
 
 /*
     PsychHIDGetDeviceListByUsage()
@@ -440,4 +474,89 @@ int PsychHIDFindCollectionElements(pRecElement collectionRecord, HIDElementTypeM
     return(numElements);
 }
 	
+#else
+
+/* Linux and MS-Windows support via HIDLIB: */
+/* ======================================== */
+
+
+/*
+    PSYCHHIDCheckInit() 
+    
+    Check to see if we need to create the USB-HID device list. If it has not been created then create it.   
+*/
+void PsychHIDVerifyInit(void)
+{
+    pRecDevice currentDevice = NULL;
+    struct hid_device_info* hid_dev = NULL;
+    
+    // If hid_devices list of all HID devices not yet initialized,
+    // perform device enumeration:
+    if (!hidlib_devices) {
+    
+        // Set verbosity level of libusb to maximum of 3:
+        libusb_set_debug(NULL, 3);
+        
+        // Low-Level enumeration by HIDLIB:
+        hidlib_devices = hid_enumerate(0x0, 0x0);
+
+        // Still no devices?
+        if (!hidlib_devices) {
+            // Game over!
+            PsychErrorExitMsg(PsychError_system, "USB-HID device enumeration failed!");
+        }
+        
+        // Build our own higher-level device list filled with info
+        // from the low-level list:
+        for (hid_dev = hidlib_devices; hid_dev != NULL; hid_dev = hid_dev->next) {
+            // Allocate and zero-init high level struct currentDevice:
+            currentDevice = calloc(1, sizeof(*pRecDevice));
+            
+            // Copy low-level props to corresponding high-level props:
+            currentDevice->usagePage = hid_dev->usage_page;
+            currentDevice->usage = hid_dev->usage;
+            sprintf(&currentDevice->transport, "%s", hid_dev->path);
+            currentDevice->vendorID = hid_dev->vendor_id;
+            currentDevice->productID = hid_dev->product_id;
+            currentDevice->version = hid_dev->release_number;
+            wcstombs(&currentDevice->manufacturer, hid_dev->manufacturer_string, 256);
+            wcstombs(&currentDevice->product, hid_dev->product_string, 256);
+            wcstombs(&currentDevice->serial, hid_dev->serial_number, 256);
+
+            // MK: Hmm. The interface number is not strictly the locationID, but it will have to do for now...
+            currentDevice->locID = hid_dev->interface_number;
+
+            // Enqueue record into linked list:
+            currentDevice->pNext = hid_devices;
+            hid_devices = currentDevice;
+        }
+    }
+    
+    return;
+}
+
+pRecDevice HIDGetFirstDevice(void)
+{
+    return hid_devices;
+}
+
+pRecDevice HIDGetNextDevice(pRecDevice pDevice)
+{
+    return pDevice->pNext;
+}
+
+/* HIDCountDevices(): Return count of all enumerated HID devices: */
+psych_uint32 HIDCountDevices(void)
+{
+    pRecDevice cur_dev = hid_devices;
+    psych_uint32 count = 0;
+    
+    while (cur_dev) {
+        count++;
+        cur_dev = cur_dev->pNext;
+    }
+    
+    return count;
+}
+
 #endif

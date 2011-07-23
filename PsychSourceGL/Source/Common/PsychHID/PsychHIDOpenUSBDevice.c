@@ -69,6 +69,9 @@ PsychError PSYCHHIDOpenUSBDevice(void)
 	// usercode to select some other index?
 	deviceSpec.configurationID = 0;
 
+    // Make sure hid infrastructure is online:
+    PsychHIDVerifyInit();
+
 	// Try to open the device. This will init the device structure properly and
 	// also set the valid flag to "active/open" if open succeeds:
 	if (!PsychHIDOSOpenUSBDevice(usbDev, &errcode, &deviceSpec)) {

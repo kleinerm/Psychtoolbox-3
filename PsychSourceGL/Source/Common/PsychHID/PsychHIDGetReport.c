@@ -79,6 +79,7 @@ PsychError PSYCHHIDGetReport(void)
 {
 	long error=0;
 	int deviceIndex;
+	pRecDevice device;    
 	int reportType; // 1=input, 2=output, 3=feature
 	unsigned char *reportBuffer;
 	psych_uint32 reportBytes=0;
@@ -107,18 +108,47 @@ PsychError PSYCHHIDGetReport(void)
 	reportBuffer=(void *)mxGetData(*outReport);
 	if(reportBuffer==NULL)PrintfExit("Couldn't allocate report buffer.");
 	reportBytes=reportBufferSize;
+
 	PsychHIDVerifyInit();
 
 	if(reportType==0){
 		printf("GetReport(reportType %d, reportID %d, reportBytes %d)\n",reportType,reportID,(int)reportBytes);
 	}else{
-		// Apple defines constants for the reportType with values (0,1,2) that are one less that those specified by USB (1,2,3).
-        // using setInterruptReportHandlerCallback and CFRunLoopRunInMode
-        error=ReceiveReports(deviceIndex);
-        error=GiveMeReport(deviceIndex,&reportAvailable,reportBuffer,&reportBytes,&reportTime);
+        #if PSYCH_SYSTEM == PSYCH_OSX
+            // Apple defines constants for the reportType with values (0,1,2) that are one less that those specified by USB (1,2,3).
+            // using setInterruptReportHandlerCallback and CFRunLoopRunInMode
+            error = ReceiveReports(deviceIndex);
+            if (!error) error = GiveMeReport(deviceIndex,&reportAvailable,reportBuffer,&reportBytes,&reportTime);
+        #else
+            if (reportType == 3) {
+                // Feature report: Use special HIDLIB method for this:
+                device = PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
+
+                // 1st byte always contains reportID:
+                reportBuffer[0] = (unsigned char) reportID;
+
+                // Get it: error == -1 would mean error, otherwise it is number of bytes retrieved.
+                last_hid_device = (hid_device*) device->interface;
+                error = hid_get_feature_report((hid_device*) device->interface, reportBuffer, (size_t) reportSize);
+                if (error >= 0) {
+                    reportBytes = error;
+                    error = 0;
+                    reportAvailable = 1;
+                } else {
+                    reportBytes = 0;
+                    reportAvailable = 0;
+                }
+                PsychGetAdjustedPrecisionTimerSeconds(&reportTime);
+            }
+            else {
+                // Regular IN/OUT reports:
+                error=ReceiveReports(deviceIndex);
+                if (!error) error=GiveMeReport(deviceIndex,&reportAvailable,reportBuffer,&reportBytes,&reportTime);
+            }
+        #endif
 	}
     
-	if(outReport==NULL)PrintfExit("Output argument is required."); // I think MATLAB always provides this.
+	if(outReport==NULL) PrintfExit("Output argument is required."); // I think MATLAB always provides this.
 
 	if(error==0 && reportBytes>reportBufferSize){
 		error=2;

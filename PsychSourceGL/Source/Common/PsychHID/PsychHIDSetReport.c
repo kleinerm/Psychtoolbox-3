@@ -116,7 +116,7 @@ PsychError PSYCHHIDSetReport(void)
             reportBuffer[0] = (unsigned char) reportID;
             
             // Write it: error == -1 would mean error, otherwise it is number of bytes written.
-            error = hid_write(device, reportBuffer, (size_t) reportSize);
+            error = hid_write((hid_device*) device->interface, reportBuffer, (size_t) reportSize);
         }
         else {
             // reportType == 3, aka Feature report:
@@ -125,7 +125,7 @@ PsychError PSYCHHIDSetReport(void)
             reportBuffer[0] = (unsigned char) reportID;
 
             // Send it: error == -1 would mean error, otherwise it is number of bytes written.
-            error = hid_send_feature_report(device, reportBuffer, (size_t) reportSize);
+            error = hid_send_feature_report((hid_device*) device->interface, reportBuffer, (size_t) reportSize);
         }
         
         // Timestamp:
@@ -134,7 +134,7 @@ PsychError PSYCHHIDSetReport(void)
         }
 
         // Error condition?
-        PsychHIDErrors(device, error, &name, &description);
+        PsychHIDErrors((hid_device*) device->interface, error, &name, &description);
 #endif
 	}
 

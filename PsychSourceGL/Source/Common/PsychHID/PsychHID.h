@@ -63,16 +63,62 @@
 #else
 // Non OS/X:
 
+// Master include file for libusb, as used on Linux and Windows:
+#include <libusb.h>
+
 // Master include file for HIDAPI, as used on Linux and Windows:
 #include "hidapi.h"
+
+// Dummy-Define so recDevice struct def works:
+typedef int recElement;
+
+struct recDevice
+{
+    void * interface;						// interface to device, NULL = no interface
+    void * queue;							// device queue, NULL = no queue
+	void * queueRunLoopSource;				// device queue run loop source, NULL == no source
+	void * transaction;						// output transaction interface, NULL == no interface
+	void * notification;					// notifications
+    char transport[256];					// device transport (c string)
+    long vendorID;							// id for device vendor, unique across all devices
+    long productID;							// id for particular product, unique across all of a vendors devices
+    long version;							// version of product
+    char manufacturer[256];					// name of manufacturer
+    char product[256];						// name of product
+    char serial[256];						// serial number of specific product, can be assumed unique across specific product or specific vendor (not used often)
+    long locID;								// long representing location in USB (or other I/O) chain which device is pluged into, can identify specific device on machine
+    long usage;								// usage page which defines general usage
+    long usagePage;							// usage within above page which defines specific usage
+    long totalElements;						// number of total elements (should be total of all elements on device including collections) (calculated, not reported by device)
+	long features;							// number of elements of type kIOHIDElementTypeFeature
+	long inputs;							// number of elements of type kIOHIDElementTypeInput_Misc or kIOHIDElementTypeInput_Button or kIOHIDElementTypeInput_Axis or kIOHIDElementTypeInput_ScanCodes
+	long outputs;							// number of elements of type kIOHIDElementTypeOutput
+	long collections;						// number of elements of type kIOHIDElementTypeCollection
+    long axis;								// number of axis (calculated, not reported by device)
+    long buttons;							// number of buttons (calculated, not reported by device)
+    long hats;								// number of hat switches (calculated, not reported by device)
+    long sliders;							// number of sliders (calculated, not reported by device)
+    long dials;								// number of dials (calculated, not reported by device)
+    long wheels;							// number of wheels (calculated, not reported by device)
+    recElement* pListElements; 				// head of linked list of elements 
+    struct recDevice* pNext; 				// next device
+};
+typedef struct recDevice recDevice;
+typedef recDevice* pRecDevice;
+
+// Internal helpers:
+psych_uint32 HIDCountDevices(void);
+pRecDevice   HIDGetFirstDevice(void);
+pRecDevice   HIDGetNextDevice(pRecDevice pDevice);
 
 // Global variable which holds a reference to the last
 // accessed hid_device* on non-OS/X. This is for error
 // handling:
 hid_device* last_hid_device = NULL;
 
-// List with all known USB-HID devices from enumeration:
-hid_device_info *hid_devices = NULL;
+// List with all known low level USB-HID devices from enumeration:
+struct hid_device_info* hidlib_devices = NULL;
+pRecDevice hid_devices = NULL;
 
 #endif
 
@@ -95,11 +141,12 @@ struct PsychUSBDeviceRecord_Struct {
 
 	// OS-Specific parts of the struct:
 	
-	// OS/X stuff:
 	#if PSYCH_SYSTEM == PSYCH_OSX
-		IOUSBDeviceInterface**    device;            // Actual low-level device specific pointer for OS/X.
+        // OS/X stuff:
+		IOUSBDeviceInterface**    device;  // Actual low-level device specific pointer for OS/X.
     #else
-        void*                     device;
+        // Linux & Windows stuff:
+        libusb_device_handle*     device;  // libusb device handle for other os'es.
 	#endif
 };
 

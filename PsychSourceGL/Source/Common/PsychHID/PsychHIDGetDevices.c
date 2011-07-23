@@ -14,7 +14,6 @@
   
   TO DO:
   
-
 */
 
 #include "PsychHID.h"
@@ -43,11 +42,16 @@ PsychError PSYCHHIDGetDevices(void)
     numDeviceStructElements=(int)HIDCountDevices();
     PsychAllocOutStructArray(1, FALSE, numDeviceStructElements, numDeviceStructFieldNames, deviceFieldNames, &deviceStruct);
     deviceIndex=0;
-    #if PSYCH_SYSTEM == PSYCH_OSX
     for(currentDevice=HIDGetFirstDevice(); currentDevice != NULL; currentDevice=HIDGetNextDevice(currentDevice)){
         PsychSetStructArrayDoubleElement("usagePageValue",	deviceIndex, 	(double)currentDevice->usagePage,	deviceStruct);
         PsychSetStructArrayDoubleElement("usageValue",		deviceIndex, 	(double)currentDevice->usage, 		deviceStruct);
-        HIDGetUsageName (currentDevice->usagePage, currentDevice->usage, usageName);
+        #if PSYCH_SYSTEM == PSYCH_OSX
+            HIDGetUsageName (currentDevice->usagePage, currentDevice->usage, usageName);
+        #else
+            // TODO FIXME Usage name: Mapping of usagePage + usage to human readable string
+            // is to be done for Linux/Windows: HIDGetUsageName (currentDevice->usagePage, currentDevice->usage, usageName);
+            sprintf(usageName, "TBD");        
+        #endif
         PsychSetStructArrayStringElement("usageName",		deviceIndex, 	usageName, 				deviceStruct);
         PsychSetStructArrayDoubleElement("index",		deviceIndex, 	(double)deviceIndex+1, 			deviceStruct);
         PsychSetStructArrayStringElement("transport",		deviceIndex, 	currentDevice->transport, 		deviceStruct);
@@ -71,7 +75,6 @@ PsychError PSYCHHIDGetDevices(void)
         PsychSetStructArrayDoubleElement("wheels",		deviceIndex, 	(double)currentDevice->wheels, 		deviceStruct);
         ++deviceIndex; 
     }
-    #endif
-    
+
     return(PsychError_none);	
 }
