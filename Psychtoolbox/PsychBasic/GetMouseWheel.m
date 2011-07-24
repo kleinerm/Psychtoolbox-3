@@ -32,7 +32,6 @@ function wheelDelta = GetMouseWheel(mouseIndex)
 % execution times:
 persistent wheelMouseIndex;
 if isempty(wheelMouseIndex)    
-    if IsOSX
         % On OS X we execute this script, otherwise either MATLAB found the mex file
         % file and exuted this, or else this file was exucuted and exited with
         % error on the AssertMex command above.
@@ -47,6 +46,12 @@ if isempty(wheelMouseIndex)
         allHidDevices=PsychHID('Devices');
         for i=1:numMice
             b=allHidDevices(mousedices(i)).wheels;
+	    if ~IsOSX
+	         % On Non-OS/X we can't detect .wheels yet, so fake
+	         % 1 wheel for each detected mouse and hope for the best:
+	         b = 1;
+	    end
+
             if b > 0 && isempty(strfind(lower(allHidDevices(mousedices(i)).product), 'trackpad'))
                 wheelMouseIndex = mousedices(i);
                 break;
@@ -56,11 +61,6 @@ if isempty(wheelMouseIndex)
         if isempty(wheelMouseIndex)
             error('GetMouseWheel could not find any mice with mouse wheels connected to your computer');
         end
-        
-    else
-        % Linux or Windows: We don't support this yet:
-        error('GetMouseWheel is not (yet?) supported on GNU/Linux or MS-Windows.');
-    end;
 end;
 
 % Override mouse index provided?

@@ -56,13 +56,13 @@ PsychError PSYCHHIDSetReport(void)
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(4));
 	outErr=PsychGetOutArgMxPtr(1);
-	assert(outErr!=NULL);
+	// assert(outErr!=NULL);
 	PsychCopyInIntegerArg(1,TRUE,&deviceIndex);
 	PsychCopyInIntegerArg(2,TRUE,&reportType);
 	PsychCopyInIntegerArg(3,TRUE,&reportID);
 	report=PsychGetInArgMxPtr(4); 
 	reportBuffer=(void *)mxGetData(report);
-	assert(reportBuffer!=NULL);
+	// assert(reportBuffer!=NULL);
 
 	switch(mxGetClassID(report)){
 		case mxCHAR_CLASS:    

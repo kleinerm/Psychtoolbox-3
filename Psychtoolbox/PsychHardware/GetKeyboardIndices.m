@@ -56,11 +56,6 @@ keyboardIndices=[];
 productNames=cell(0);
 allInfos=cell(0);
 
-% No op on non OS/X:
-if ~IsOSX
-	return;
-end
-
 % Enumerate all HID devices:
 d=PsychHID('Devices');
 

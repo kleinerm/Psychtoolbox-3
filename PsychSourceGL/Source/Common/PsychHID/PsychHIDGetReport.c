@@ -57,6 +57,10 @@
 
 #include "PsychHID.h"
 
+#if PSYCH_SYSTEM != PSYCH_OSX
+extern hid_device* last_hid_device;
+#endif
+
 static char useString[]= "[report,err]=PsychHID('GetReport',deviceNumber,reportType,reportID,reportBytes)";
 static char synopsisString[]=
 	"Get a report from the connected USB HID device. "
@@ -129,7 +133,7 @@ PsychError PSYCHHIDGetReport(void)
 
                 // Get it: error == -1 would mean error, otherwise it is number of bytes retrieved.
                 last_hid_device = (hid_device*) device->interface;
-                error = hid_get_feature_report((hid_device*) device->interface, reportBuffer, (size_t) reportSize);
+                error = hid_get_feature_report((hid_device*) device->interface, reportBuffer, (size_t) reportBytes);
                 if (error >= 0) {
                     reportBytes = error;
                     error = 0;

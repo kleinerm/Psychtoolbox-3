@@ -82,6 +82,8 @@ int PsychHIDErrors(void* device, int error,char **namePtr,char **descriptionPtr)
 #else
 
 // Non-OS/X version:
+extern hid_device* last_hid_device;
+
 int PsychHIDErrors(void* device, int error,char **namePtr,char **descriptionPtr)
 {
         // Error condition?
@@ -92,13 +94,13 @@ int PsychHIDErrors(void* device, int error,char **namePtr,char **descriptionPtr)
         // Child protection:
         if (hdevice == NULL) PsychErrorExitMsg(PsychError_internal, "NULL Pointer insted of hid_device* passed into PsychHIDErrors() on non OS/X! Implementation BUG!!!");
         
-        *namePtr = &lerrname;
-        *descriptionPtr = &lerrname;
+        *namePtr = &lerrname[0];
+        *descriptionPtr = &lerrname[0];
         
         if (error < 0) {
             const wchar_t* tmperr = hid_error(hdevice);
             if (tmperr) {
-                wcstombs(&lerrname, tmperr, sizeof(lerrname));
+                wcstombs(&lerrname[0], tmperr, sizeof(lerrname));
             }
         }
 

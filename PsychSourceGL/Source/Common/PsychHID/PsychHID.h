@@ -42,6 +42,10 @@
 #include "Psych.h" 
 #include "PsychTimeGlue.h"
 
+#define MAXREPORTSIZE 64
+#define MAXDEVICEINDEXS 64
+#define MAXREPORTS 10000
+
 // OS/X specific includes:
 #if PSYCH_SYSTEM == PSYCH_OSX
 
@@ -111,15 +115,6 @@ psych_uint32 HIDCountDevices(void);
 pRecDevice   HIDGetFirstDevice(void);
 pRecDevice   HIDGetNextDevice(pRecDevice pDevice);
 
-// Global variable which holds a reference to the last
-// accessed hid_device* on non-OS/X. This is for error
-// handling:
-hid_device* last_hid_device = NULL;
-
-// List with all known low level USB-HID devices from enumeration:
-struct hid_device_info* hidlib_devices = NULL;
-pRecDevice hid_devices = NULL;
-
 #endif
 
 // Structure which carries all required setup and matching parameters for
@@ -142,9 +137,9 @@ struct PsychUSBDeviceRecord_Struct {
 	// OS-Specific parts of the struct:
 	
 	#if PSYCH_SYSTEM == PSYCH_OSX
-        // OS/X stuff:
-		IOUSBDeviceInterface**    device;  // Actual low-level device specific pointer for OS/X.
-    #else
+	// OS/X stuff:
+	IOUSBDeviceInterface**    device;  // Actual low-level device specific pointer for OS/X.
+	#else
         // Linux & Windows stuff:
         libusb_device_handle*     device;  // libusb device handle for other os'es.
 	#endif

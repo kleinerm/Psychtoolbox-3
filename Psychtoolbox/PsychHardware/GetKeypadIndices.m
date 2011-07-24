@@ -35,4 +35,3 @@ for i =1:length(d);
         productNames{end+1}=d(i).product;
     end
 end
-

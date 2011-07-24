@@ -15,9 +15,9 @@
 
 */
 
-#if PSYCH_SYSTEM == PSYCH_OSX
-
 #include "PsychHID.h"
+
+#if PSYCH_SYSTEM == PSYCH_OSX
 
 static char useString[]= "collections=PsychHID('Collections', deviceNumber)";
 static char synopsisString[] = 

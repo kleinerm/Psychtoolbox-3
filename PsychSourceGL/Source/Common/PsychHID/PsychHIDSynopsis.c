@@ -15,7 +15,7 @@
   
 */
 
-#include "Screen.h"
+#include "PsychHID.h"
 
 void InitializeSynopsis(void); // I added this prototype to make the compiler happy. dgp.
 
@@ -35,7 +35,7 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "numberOfDevices=PsychHID('NumDevices')";
 	synopsis[i++] = "numberOfElements=PsychHID('NumElements',deviceNumber)";
 	synopsis[i++] = "numberOfCollections=PsychHID('NumCollections',deviceNumber)";
-    synopsis[i++] = "devices=PsychHID('Devices')";
+	synopsis[i++] = "devices=PsychHID('Devices')";
 	synopsis[i++] = "elements=PsychHID('Elements',deviceNumber)";
 	synopsis[i++] = "collections=PsychHID('Collections',deviceNumber)";
 	synopsis[i++] = "elementState=PsychHID('RawState',deviceNumber,elementNumber)";

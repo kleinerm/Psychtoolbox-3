@@ -75,9 +75,8 @@
 
 */
 
-#if PSYCH_SYSTEM == PSYCH_OSX
-
 #include "PsychHID.h"
+#if PSYCH_SYSTEM == PSYCH_OSX
 #include "PsychHIDKbQueue.h"
 #include <errno.h>
 

@@ -113,10 +113,6 @@ void *mxCalloc(size_t n, size_t size);
 PsychError ReceiveReportsStop(int deviceIndex);  // function is below.
 void CountReports(char *string);
 
-#define MAXREPORTSIZE 64
-#define MAXDEVICEINDEXS 64
-#define MAXREPORTS 10000
-
 typedef struct ReportStruct{
 	int deviceIndex;
 	long int error;
@@ -350,6 +346,9 @@ void CheckRunLoopSource(int deviceIndex,char *caller,int line){
 // NON OSX CODE (Linux, Windows):
 // ==============================
 
+extern hid_device* source[MAXDEVICEINDEXS]; 
+extern hid_device* last_hid_device;
+
 /* Do all the report processing: Iterates in a fetch loop
  * until either no more reports pending for processing, error condition,
  * or a maximum allowable processing time of optionSecs seconds has been
@@ -364,19 +363,19 @@ PsychError ReceiveReports(int deviceIndex)
 {
     double deadline, now;
 
-	pRecDevice device;
+    pRecDevice device;
     int i, n, m;
     unsigned char *ptr;
     ReportStruct *r;
-	long error = 0;
+    long error = 0;
 
-	CountReports("ReceiveReports beginning.");
-	if(freeReportsPtr==NULL) PrintfExit("No free reports.");
+    CountReports("ReceiveReports beginning.");
+    if(freeReportsPtr==NULL) PrintfExit("No free reports.");
 
-	if(deviceIndex < 0 || deviceIndex > MAXDEVICEINDEXS-1) PrintfExit("Sorry. Can't cope with deviceNumber %d (more than %d). Please tell denis.pelli@nyu.edu",deviceIndex, (int) MAXDEVICEINDEXS-1);
+    if(deviceIndex < 0 || deviceIndex > MAXDEVICEINDEXS-1) PrintfExit("Sorry. Can't cope with deviceNumber %d (more than %d). Please tell denis.pelli@nyu.edu",deviceIndex, (int) MAXDEVICEINDEXS-1);
 
-	PsychHIDVerifyInit();
-	device = PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
+    PsychHIDVerifyInit();
+    device = PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
     last_hid_device = (hid_device*) device->interface;
     
     PsychGetAdjustedPrecisionTimerSeconds(&deadline);
@@ -466,20 +465,16 @@ PsychError ReceiveReportsStop(int deviceIndex)
 
 	PsychHIDVerifyInit();
 	device = PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
-    last_hid_device = (hid_device*) device->interface;
+	last_hid_device = (hid_device*) device->interface;
 
-    if (device->interface) hid_close((hid_device*) device->interface);
-    device->interface = NULL;
+	if (device->interface) hid_close((hid_device*) device->interface);
+	device->interface = NULL;
     
 	return 0;
 }
 
 PsychError PsychHIDReceiveReportsCleanup(void) 
 {	
-    int deviceIndex;
-    
-	for(deviceIndex = 0; deviceIndex < MAXDEVICEINDEXS; deviceIndex++) ReceiveReportsStop(deviceIndex);
-    
 	return 0;
 }
 
@@ -577,7 +572,7 @@ PsychError GiveMeReports(int deviceIndex,int reportBytes)
 	r=deviceReportsPtr[deviceIndex];
 	PsychGetPrecisionTimerSeconds(&now);
 	for(i=n-1;i>=0;i--){
-		assert(r!=NULL);
+		// assert(r!=NULL);
 		if(r->error)error=r->error;
 		dims[0]=1;
 		//printf("%2d: r->bytes %2d, reportBytes %4d, -%4.1f s\n",i,(int)r->bytes,(int)reportBytes, now-r->time);

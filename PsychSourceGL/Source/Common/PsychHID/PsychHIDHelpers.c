@@ -21,6 +21,20 @@
 
 #include "PsychHID.h"
 
+#if PSYCH_SYSTEM != PSYCH_OSX
+
+// Global variable which holds a reference to the last
+// accessed hid_device* on non-OS/X. This is for error
+// handling:
+hid_device* last_hid_device = NULL;
+
+// List with all known low level USB-HID devices from enumeration:
+struct hid_device_info* hidlib_devices = NULL;
+pRecDevice hid_devices = NULL;
+hid_device* source[MAXDEVICEINDEXS];
+
+#endif
+
 // Tracker used to maintain references to open generic USB devices.
 // PsychUSBDeviceRecord is currently defined in PsychHID.h.
 PsychUSBDeviceRecord usbDeviceRecordBank[PSYCH_HID_MAX_GENERIC_USB_DEVICES];
@@ -101,22 +115,22 @@ void PsychHIDCloseAllUSBDevices(void)
 PsychError PsychHIDCleanup(void) 
 {
 	long error;
-    pRecDevice curdev = NULL;
+	pRecDevice curdev = NULL;
     
 	// Disable online help system:
 	PsychClearGiveHelp();
 	
 	// Shutdown keyboard queue functions on OS/X:
-    #if PSYCH_SYSTEM == PSYCH_OSX
+	#if PSYCH_SYSTEM == PSYCH_OSX
 	error = PSYCHHIDKbQueueRelease();	// PsychHIDKbQueueRelease.c, but has to be called with uppercase PSYCH because that's how it's registered (otherwise crashes on clear mex)
-    #endif
+	#endif
     
 	// Shutdown USB-HID report low-level functions, e.g., for DAQ toolbox on OS/X:
 	error = PsychHIDReceiveReportsCleanup(); // PsychHIDReceiveReport.c
 	
 	// Release all other HID device data structures:
-    #if PSYCH_SYSTEM == PSYCH_OSX
-        // Via Apple HIDUtils:
+	#if PSYCH_SYSTEM == PSYCH_OSX
+	// Via Apple HIDUtils:
         if(HIDHaveDeviceList()) HIDReleaseDeviceList();
 	#else
         // First the HIDLIB low-level list:
@@ -140,12 +154,12 @@ PsychError PsychHIDCleanup(void)
         
         // Reset last hid device for error handling:
         last_hid_device = NULL;
-    #endif
+	#endif
     
 	// Close and release all open generic USB devices:
 	PsychHIDCloseAllUSBDevices();
 
-    return(PsychError_none);
+	return(PsychError_none);
 }
 
 /* 
@@ -479,7 +493,6 @@ int PsychHIDFindCollectionElements(pRecElement collectionRecord, HIDElementTypeM
 /* Linux and MS-Windows support via HIDLIB: */
 /* ======================================== */
 
-
 /*
     PSYCHHIDCheckInit() 
     
@@ -492,13 +505,12 @@ void PsychHIDVerifyInit(void)
     
     // If hid_devices list of all HID devices not yet initialized,
     // perform device enumeration:
-    if (!hidlib_devices) {
-    
-        // Set verbosity level of libusb to maximum of 3:
-        libusb_set_debug(NULL, 3);
-        
+    if (!hidlib_devices) {        
         // Low-Level enumeration by HIDLIB:
         hidlib_devices = hid_enumerate(0x0, 0x0);
+
+        // Set verbosity level of libusb to maximum of 3:
+        libusb_set_debug(NULL, 3);
 
         // Still no devices?
         if (!hidlib_devices) {
@@ -510,18 +522,18 @@ void PsychHIDVerifyInit(void)
         // from the low-level list:
         for (hid_dev = hidlib_devices; hid_dev != NULL; hid_dev = hid_dev->next) {
             // Allocate and zero-init high level struct currentDevice:
-            currentDevice = calloc(1, sizeof(*pRecDevice));
+            currentDevice = calloc(1, sizeof(recDevice));
             
             // Copy low-level props to corresponding high-level props:
             currentDevice->usagePage = hid_dev->usage_page;
             currentDevice->usage = hid_dev->usage;
-            sprintf(&currentDevice->transport, "%s", hid_dev->path);
+            sprintf(&currentDevice->transport[0], "%s", hid_dev->path);
             currentDevice->vendorID = hid_dev->vendor_id;
             currentDevice->productID = hid_dev->product_id;
             currentDevice->version = hid_dev->release_number;
-            wcstombs(&currentDevice->manufacturer, hid_dev->manufacturer_string, 256);
-            wcstombs(&currentDevice->product, hid_dev->product_string, 256);
-            wcstombs(&currentDevice->serial, hid_dev->serial_number, 256);
+            if (hid_dev->manufacturer_string) wcstombs(&currentDevice->manufacturer[0], hid_dev->manufacturer_string, 256);
+            if (hid_dev->product_string) wcstombs(&currentDevice->product[0], hid_dev->product_string, 256);
+            if (hid_dev->serial_number) wcstombs(&currentDevice->serial[0], hid_dev->serial_number, 256);
 
             // MK: Hmm. The interface number is not strictly the locationID, but it will have to do for now...
             currentDevice->locID = hid_dev->interface_number;

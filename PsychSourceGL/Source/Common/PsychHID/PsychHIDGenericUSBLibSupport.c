@@ -115,6 +115,7 @@ int ConfigureDevice(libusb_device_handle* dev, int configIdx)
     struct libusb_device_descriptor deviceDesc;
 	struct libusb_config_descriptor* configDesc;
     psych_uint8     bConfigurationValue;
+	int rc;
 
     // Get device pointer for handle:
     usbdev = libusb_get_device(dev);
