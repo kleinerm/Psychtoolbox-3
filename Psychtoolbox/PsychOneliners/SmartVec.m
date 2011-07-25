@@ -7,12 +7,15 @@ function vect = SmartVec(start,slength,step,mode)
 %   indicates the length of all sequences or the length of the
 %   corresponding sequence in START.
 % STEP is optional and indicates the stepsize of the series. Default is 1
+%   STEP can be a scalar and indicate the stepsize for all segments, or it
+%   can be the same lenght as START if you want to provide a different
+%   stepsize for each segment
 % MODE is optional and has two options:
 %   'neg'  : the produced sequence will satisfy  : diff([n n+1]) = -1 
 %   'flat' : the produced sequence will satisfy  : diff([n n+1]) =  0
 % if no mode, the produced sequence will satisfy : diff([n n+1]) =  1
-% MODE can be the third input to the function if you do not wish to modify
-% the stepsize
+% MODE can be the third input to the function if you do not wish to
+% override the default stepsize
 %
 % examples:
 %   SmartVec([1 5],3)
@@ -40,6 +43,7 @@ function vect = SmartVec(start,slength,step,mode)
 % DN 2008-04-21 Written it, extention of SmartVec
 % DN 2008-09-05 Updated engine, no more meshgrid, less transposes needed
 % DN 2010-08-01 Now supports different stepsize than 1 for vectors
+% DN 2011-07-23 Now supports different stepsizes for each segment
 
 % check input
 psychassert(length(slength)==1 || length(slength)==length(start),'slength must be a scalar or a vector with the same length as start');
@@ -67,6 +71,7 @@ if nargin >= 3
         mult = step;
     end
 end
+psychassert(length(mult)==1 || length(mult)==length(start),'step must be a scalar or a vector with the same length as start');
 maxlen      = max(slength);
 slength     = slength(:);
 
@@ -75,11 +80,18 @@ start       = start(:)';
 startmat    = start(ones(maxlen,1),:);
 
 if ~qplat
-    vec         = mult*[0:maxlen-1]';
-    if qneg
-        vec = -1*vec;
-    end    
+    vec         = [0:maxlen-1]';
     vecmat      = vec(:,ones(1,length(start)));
+    if any(mult~=1)
+        if ~isscalar(mult)
+            vecmat  = bsxfun(@times,mult,vecmat);
+        else
+            vecmat  = mult .* vecmat;
+        end
+    end
+    if qneg
+        vecmat  = -1*vecmat;
+    end
 else
     vecmat      = zeros(maxlen,length(start));
 end

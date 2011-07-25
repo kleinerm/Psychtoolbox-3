@@ -17,7 +17,7 @@ function [vec] = Interleave(varargin)
 % DN 28-04-2008 simplified input checking
 % DN 28-05-2008 bugfix mixing numeric and char
 % DN 09-06-2011 Now works fine with empty inputs. Few changes for compatibility
-% 		with Octave, might have more up ahead.
+%               with Octave, might have more up ahead.
 
 for p=1:nargin
     psychassert(isvector(varargin{p}) || isscalar(varargin{p}),'not all inputs are vectors or scalars');

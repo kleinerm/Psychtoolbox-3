@@ -1,7 +1,7 @@
 function success = FileVar2Str
 
 if IsOctave
-    fprintf('Var2Str is not supported on Octave as its mat2str doesn''t handle logical or sparse input and we depend on that (I don''t want to replicate functionality from matlabs mat2str)\n Var2Str will work ok on Octave if you input numeric non-empty data, possibly contained in cells or structs.\n')
+    fprintf('Var2Str is not supported on Octave as its mat2str doesn''t handle logical or sparse input and we depend on that (I don''t want to replicate functionality from matlab''s mat2str)\nVar2Str will work ok on Octave if you input numeric non-empty data, possibly contained in cells or structs.\n')
     success = false;
     return;
 end
