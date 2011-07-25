@@ -500,6 +500,7 @@ int PsychHIDFindCollectionElements(pRecElement collectionRecord, HIDElementTypeM
 */
 void PsychHIDVerifyInit(void)
 {
+    int busId, devId, intId;
     pRecDevice currentDevice = NULL;
     struct hid_device_info* hid_dev = NULL;
     
@@ -527,6 +528,7 @@ void PsychHIDVerifyInit(void)
             // Copy low-level props to corresponding high-level props:
             currentDevice->usagePage = hid_dev->usage_page;
             currentDevice->usage = hid_dev->usage;
+	    // Abuse the "transport" string for the device path. On OS/X this just contains "USB":
             sprintf(&currentDevice->transport[0], "%s", hid_dev->path);
             currentDevice->vendorID = hid_dev->vendor_id;
             currentDevice->productID = hid_dev->product_id;
@@ -535,8 +537,13 @@ void PsychHIDVerifyInit(void)
             if (hid_dev->product_string) wcstombs(&currentDevice->product[0], hid_dev->product_string, 256);
             if (hid_dev->serial_number) wcstombs(&currentDevice->serial[0], hid_dev->serial_number, 256);
 
-            // MK: Hmm. The interface number is not strictly the locationID, but it will have to do for now...
-            currentDevice->locID = hid_dev->interface_number;
+	    // Convert unique device path into unique numeric location id:
+	    sscanf(hid_dev->path, "%i:%i:%i", &busId, &devId, &intId);
+            currentDevice->locID = busId * 1000000 + devId * 100 + intId;
+
+	    // Interface number is great for identifying DAQ devices, but not available
+	    // on OS/X, so this will be a Linux/Windows only thing.
+	    currentDevice->interfaceId = hid_dev->interface_number;
 
             // Enqueue record into linked list:
             currentDevice->pNext = hid_devices;

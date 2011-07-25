@@ -27,9 +27,9 @@ PsychError PSYCHHIDGetDevices(void)
     pRecDevice 			currentDevice=NULL;
     
     const char *deviceFieldNames[]={"usagePageValue", "usageValue", "usageName", "index", "transport", "vendorID", "productID", "version", 
-                                    "manufacturer", "product", "serialNumber", "locationID", "totalElements", "features", "inputs", 
+                                    "manufacturer", "product", "serialNumber", "locationID", "interfaceID", "totalElements", "features", "inputs", 
                                     "outputs", "collections", "axes", "buttons", "hats", "sliders", "dials", "wheels"};
-    int numDeviceStructElements, numDeviceStructFieldNames=23, deviceIndex;
+    int numDeviceStructElements, numDeviceStructFieldNames=24, deviceIndex;
     PsychGenericScriptType	*deviceStruct;		
     char usageName[PSYCH_HID_MAX_DEVICE_ELEMENT_USAGE_NAME_LENGTH];
 
@@ -62,6 +62,13 @@ PsychError PSYCHHIDGetDevices(void)
         PsychSetStructArrayStringElement("product",		deviceIndex, 	currentDevice->product, 		deviceStruct);
         PsychSetStructArrayStringElement("serialNumber",	deviceIndex, 	currentDevice->serial, 			deviceStruct);
         PsychSetStructArrayDoubleElement("locationID",		deviceIndex, 	(double)currentDevice->locID, 		deviceStruct);
+	#if PSYCH_SYSTEM == PSYCH_OSX
+	// Store dummy value -1 to mark interfaceID as invalid/unknown:
+        PsychSetStructArrayDoubleElement("interfaceID",		deviceIndex, 	(double) -1,                             deviceStruct);
+	#else
+	// USB interface id only available on non OS/X:
+        PsychSetStructArrayDoubleElement("interfaceID",		deviceIndex, 	(double)currentDevice->interfaceId,     deviceStruct);
+	#endif
         PsychSetStructArrayDoubleElement("totalElements",	deviceIndex, 	(double)currentDevice->totalElements, 	deviceStruct);
         PsychSetStructArrayDoubleElement("features",		deviceIndex, 	(double)currentDevice->features, 	deviceStruct);
         PsychSetStructArrayDoubleElement("inputs",		deviceIndex, 	(double)currentDevice->inputs, 		deviceStruct);

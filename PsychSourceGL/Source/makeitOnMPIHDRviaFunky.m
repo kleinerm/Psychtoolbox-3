@@ -67,6 +67,12 @@ if onoctave == 0
         mex -g -v -outdir T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\ -output PsychKinectCore.mexw32 -DPTBMODULE_PsychKinectCore -DTARGET_OS_WIN32 -DWIN32 -I..\Cohorts\Kinect-v16-withsource -I"C:\Programme\Microsoft Visual Studio 8\VC\Include" -ICommon\Base -IWindows\Base -ICommon\PsychKinect Windows\Base\*.c Common\Base\*.c Common\PsychKinect\*.c ..\Cohorts\Kinect-v16-withsource\*.cpp kernel32.lib user32.lib winmm.lib libusb.lib 
         dos('copy T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychKinectCore.mexw32 T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\MatlabWindowsFilesR2007a\');
     end;
+
+    if what == 9
+        % Build PsychHID.mexw32:
+        mex -g -v -outdir T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\ -output PsychHID.mexw32 -DPTBMODULE_PsychHID -DTARGET_OS_WIN32 -DWIN32 -I"C:\Programme\Microsoft Visual Studio 8\VC\Include" -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c Windows\PsychHID\*.cpp kernel32.lib user32.lib winmm.lib libusb.lib setupapi.lib
+        dos('copy T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychHID.mexw32 T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\MatlabWindowsFilesR2007a\');
+    end;
     
 else
     % Octave-3 build:
@@ -134,6 +140,13 @@ else
         mexoctave -g -v --output T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychKinectCore.mex -DPTBMODULE_PsychKinectCore -DTARGET_OS_WIN32 -I..\Cohorts\Kinect-v16-withsource -ICommon\Base -IWindows\Base -ICommon\PsychKinect Windows\Base\*.c Common\Base\*.c Common\PsychKinect\*.c ..\Cohorts\Kinect-v16-withsource\*.cpp kernel32.lib user32.lib winmm.lib libusb.lib 
         dos('copy T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychKinectCore.mex T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\Octave3WindowsFiles\');
     end;
+
+    if what == 9
+        % Build PsychHID.mex:
+        mexoctave -g -v --output T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychHID.mex -DPTBMODULE_PsychHID -DTARGET_OS_WIN32 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c Windows\PsychHID\*.cpp kernel32.lib user32.lib winmm.lib libusb.lib setupapi.lib
+        dos('copy T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychHID.mex T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\Octave3WindowsFiles\');
+    end;
+
 end
 
 delete('T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Source\Common\Base\PsychScriptingGlue.c');

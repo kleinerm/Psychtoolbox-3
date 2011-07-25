@@ -8,7 +8,7 @@
 	AUTHORS:
 
 	Allen.Ingling@nyu.edu             awi 
-    mario.kleiner@tuebingen.mpg.de    mk
+	mario.kleiner@tuebingen.mpg.de    mk
 	  
 	HISTORY:
 		4/29/03  awi		Created.
@@ -79,34 +79,36 @@ typedef int recElement;
 struct recDevice
 {
     void * interface;						// interface to device, NULL = no interface
-    void * queue;							// device queue, NULL = no queue
-	void * queueRunLoopSource;				// device queue run loop source, NULL == no source
-	void * transaction;						// output transaction interface, NULL == no interface
-	void * notification;					// notifications
+    void * queue;						// device queue, NULL = no queue
+    void * queueRunLoopSource;				        // device queue run loop source, NULL == no source
+    void * transaction;					        // output transaction interface, NULL == no interface
+    void * notification;					// notifications
     char transport[256];					// device transport (c string)
-    long vendorID;							// id for device vendor, unique across all devices
-    long productID;							// id for particular product, unique across all of a vendors devices
-    long version;							// version of product
+    long vendorID;						// id for device vendor, unique across all devices
+    long productID;						// id for particular product, unique across all of a vendors devices
+    long version;						// version of product
     char manufacturer[256];					// name of manufacturer
     char product[256];						// name of product
     char serial[256];						// serial number of specific product, can be assumed unique across specific product or specific vendor (not used often)
-    long locID;								// long representing location in USB (or other I/O) chain which device is pluged into, can identify specific device on machine
-    long usage;								// usage page which defines general usage
-    long usagePage;							// usage within above page which defines specific usage
+    long locID;							// long representing location in USB (or other I/O) chain which device is pluged into, can identify specific device on machine
+    long usage;							// usage page which defines general usage
+    long usagePage;						// usage within above page which defines specific usage
+    long interfaceId;                                           // HIDAPI only: USB interface id.
     long totalElements;						// number of total elements (should be total of all elements on device including collections) (calculated, not reported by device)
-	long features;							// number of elements of type kIOHIDElementTypeFeature
-	long inputs;							// number of elements of type kIOHIDElementTypeInput_Misc or kIOHIDElementTypeInput_Button or kIOHIDElementTypeInput_Axis or kIOHIDElementTypeInput_ScanCodes
-	long outputs;							// number of elements of type kIOHIDElementTypeOutput
-	long collections;						// number of elements of type kIOHIDElementTypeCollection
-    long axis;								// number of axis (calculated, not reported by device)
-    long buttons;							// number of buttons (calculated, not reported by device)
-    long hats;								// number of hat switches (calculated, not reported by device)
-    long sliders;							// number of sliders (calculated, not reported by device)
-    long dials;								// number of dials (calculated, not reported by device)
-    long wheels;							// number of wheels (calculated, not reported by device)
-    recElement* pListElements; 				// head of linked list of elements 
-    struct recDevice* pNext; 				// next device
+    long features;						// number of elements of type kIOHIDElementTypeFeature
+    long inputs;						// number of elements of type kIOHIDElementTypeInput_Misc or kIOHIDElementTypeInput_Button or kIOHIDElementTypeInput_Axis or kIOHIDElementTypeInput_ScanCodes
+    long outputs;						// number of elements of type kIOHIDElementTypeOutput
+    long collections;						// number of elements of type kIOHIDElementTypeCollection
+    long axis;							// number of axis (calculated, not reported by device)
+    long buttons;						// number of buttons (calculated, not reported by device)
+    long hats;							// number of hat switches (calculated, not reported by device)
+    long sliders;						// number of sliders (calculated, not reported by device)
+    long dials;							// number of dials (calculated, not reported by device)
+    long wheels;						// number of wheels (calculated, not reported by device)
+    recElement* pListElements; 				        // head of linked list of elements 
+    struct recDevice* pNext; 				        // next device
 };
+
 typedef struct recDevice recDevice;
 typedef recDevice* pRecDevice;
 
