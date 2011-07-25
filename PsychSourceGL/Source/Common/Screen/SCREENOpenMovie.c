@@ -28,18 +28,20 @@
 
 #include "Screen.h"
 
-static char useString[] = "[ moviePtr [duration] [fps] [width] [height] [count]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1]);";
+static char useString[] = "[ moviePtr [duration] [fps] [width] [height] [count] [aspectRatio]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1]);";
 static char synopsisString[] = 
 		"Try to open the multimediafile 'moviefile' for playback in onscreen window 'windowPtr' and "
-        "return a handle 'moviePtr' on success. On OS-X and Windows, media files are handled by use of "
+        "return a handle 'moviePtr' on success.\nOn OS-X and Windows, media files are handled by use of "
         "Apples Quicktime-7 API. On Linux, the GStreamer multimedia framework is used. "
         "The following movie properties are optionally returned: 'duration' Total duration of movie in seconds. "
         "'fps' Video playback framerate, assuming a linear spacing of videoframes in time. There may "
         "exist exotic movie formats which don't have this linear spacing. In that case, 'fps' would "
         "return bogus values and the check for skipped frames would report bogus values as well. "
-        "'width' Width of the images contained in the movie. 'height' Height of the images. "
+        "'width' Width of the images contained in the movie. 'height' Height of the images.\n"
         "'count' Total number of videoframes in the movie. Determined by counting, so querying 'count' "
-        "can significantly increase the execution time of this command. "
+        "can significantly increase the execution time of this command.\n"
+	"'aspectRatio' Pixel aspect ratio of pixels in the video frames. Typically 1.0 for square pixels. "
+	"Aspect ratio is only detected with the GStreamer playback engine. Quicktime always returns 1.0.\n"
         "If you want to play multiple movies in succession with lowest possible delay inbetween the movies "
         "then you can ask PTB to load a movie in the background while another movie is still playing: "
         "Call this function with the 'async' flag set to 1. This will initiate the background load operation. "
@@ -70,6 +72,7 @@ PsychError SCREENOpenMovie(void)
         int                                     framecount;
         double                                  durationsecs;
         double                                  framerate;
+	double                                  aspectRatio;
         int                                     width;
         int                                     height;
         int                                     asyncFlag = 0;
@@ -89,7 +92,7 @@ PsychError SCREENOpenMovie(void)
 
         PsychErrorExit(PsychCapNumInputArgs(4));            // Max. 4 input args.
         PsychErrorExit(PsychRequireNumInputArgs(1));        // Min. 1 input args required.
-        PsychErrorExit(PsychCapNumOutputArgs(6));           // Max. 6 output args.
+        PsychErrorExit(PsychCapNumOutputArgs(7));           // Max. 7 output args.
         
         // Get the window record from the window record argument and get info from the window record
 		windowRecord = NULL;
@@ -221,18 +224,19 @@ PsychError SCREENOpenMovie(void)
         // Is the "count" output argument (total number of frames) requested by user?
         if (PsychGetNumOutputArgs() > 5) {
             // Yes. Query the framecount (expensive!) and return it:
-            PsychGetMovieInfos(moviehandle, &width, &height, &framecount, &durationsecs, &framerate, NULL);
+            PsychGetMovieInfos(moviehandle, &width, &height, &framecount, &durationsecs, &framerate, NULL, &aspectRatio);
             PsychCopyOutDoubleArg(6, TRUE, (double) framecount);
         }
         else {
             // No. Don't compute and return it.
-            PsychGetMovieInfos(moviehandle, &width, &height, NULL, &durationsecs, &framerate, NULL);
+            PsychGetMovieInfos(moviehandle, &width, &height, NULL, &durationsecs, &framerate, NULL, &aspectRatio);
         }
 
         PsychCopyOutDoubleArg(2, FALSE, (double) durationsecs);
         PsychCopyOutDoubleArg(3, FALSE, (double) framerate);
         PsychCopyOutDoubleArg(4, FALSE, (double) width);
         PsychCopyOutDoubleArg(5, FALSE, (double) height);
+        PsychCopyOutDoubleArg(7, FALSE, (double) aspectRatio);
 
 		// Ready!
 		return(PsychError_none);

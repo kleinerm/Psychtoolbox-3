@@ -61,6 +61,7 @@ typedef struct {
     double		fps;
     int			width;
     int			height;
+    double              aspectRatio;
     double		last_pts;
     int			nr_droppedframes;
     int                 nrAudioTracks;
@@ -619,10 +620,16 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 	caps=gst_pad_get_negotiated_caps(peerpad);
 	if (caps) {
 		str=gst_caps_get_structure(caps,0);
+
 		/* Get some data about the frame */
+		rate1 = 1; rate2 = 1;
+		gst_structure_get_fraction(str, "pixel-aspect-ratio", &rate1, &rate2);
+		movieRecordBANK[slotid].aspectRatio = (double) rate1 / (double) rate2;
 		gst_structure_get_int(str,"width",&width);
 		gst_structure_get_int(str,"height",&height);
+		rate1 = 0; rate2 = 1;
 		gst_structure_get_fraction(str, "framerate", &rate1, &rate2);
+
 	 } else {
 		printf("PTB-DEBUG: No frame info available after preroll.\n");	
 	 }
@@ -692,7 +699,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
  *  nrdroppedframes = Total count of videoframes that had to be dropped during last movie playback,
  *                    in order to keep the movie synced with the realtime clock.
  */
-void PsychGSGetMovieInfos(int moviehandle, int* width, int* height, int* framecount, double* durationsecs, double* framerate, int* nrdroppedframes)
+void PsychGSGetMovieInfos(int moviehandle, int* width, int* height, int* framecount, double* durationsecs, double* framerate, int* nrdroppedframes, double* aspectRatio)
 {
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
@@ -708,6 +715,7 @@ void PsychGSGetMovieInfos(int moviehandle, int* width, int* height, int* frameco
     if (nrdroppedframes) *nrdroppedframes = movieRecordBANK[moviehandle].nr_droppedframes;
     if (width) *width = movieRecordBANK[moviehandle].width; 
     if (height) *height = movieRecordBANK[moviehandle].height; 
+    if (aspectRatio) *aspectRatio = movieRecordBANK[moviehandle].aspectRatio;
 
     return;
 }

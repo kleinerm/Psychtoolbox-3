@@ -206,17 +206,19 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double 
  *  height = Height of movie images in pixels.
  *  nrdroppedframes = Total count of videoframes that had to be dropped during last movie playback,
  *                    in order to keep the movie synced with the realtime clock.
+ *  aspectRatio = Pixel aspect ratio of encoded pixels in movie frame. (GStreamer only).
  */
-void PsychGetMovieInfos(int moviehandle, int* width, int* height, int* framecount, double* durationsecs, double* framerate, int* nrdroppedframes)
+void PsychGetMovieInfos(int moviehandle, int* width, int* height, int* framecount, double* durationsecs, double* framerate, int* nrdroppedframes, double* aspectRatio)
 {
 	if (usegs()) {
         #ifdef PTB_USE_GSTREAMER
-	PsychGSGetMovieInfos(moviehandle, width, height, framecount, durationsecs, framerate, nrdroppedframes);
+	PsychGSGetMovieInfos(moviehandle, width, height, framecount, durationsecs, framerate, nrdroppedframes, aspectRatio);
 	return;
 	#endif
 	} else {
 	#ifdef PSYCHQTAVAIL
 	PsychQTGetMovieInfos(moviehandle, width, height, framecount, durationsecs, framerate, nrdroppedframes);
+	if (aspectRatio) *aspectRatio = 1.0;
 	return;
 	#endif
 	}
