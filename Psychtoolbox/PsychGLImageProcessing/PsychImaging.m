@@ -2152,6 +2152,12 @@ if ~isempty(floc)
                         % Need a bufferflip command:
                         Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:FlipFBOs', '');
                     end
+
+                    % Must clear target buffer, because a geometrically
+                    % warped blit for geometry correction may not cover the
+                    % whole buffer area, and "uninitialized pixel trash"
+                    % may shine through otherwise:
+                    Screen('Hookfunction', win, 'AppendMFunction', 'StereoLeftCompositingBlit', 'Clear target buffer', 'glClear(16384);');
                     
                     if glsl
                         Screen('HookFunction', win, 'AppendShader', 'StereoLeftCompositingBlit', 'GeometricWarpShader', glsl, sprintf('Blitter:DisplayListBlit:Handle:%i%s', gld, filterMode));  
@@ -2169,6 +2175,8 @@ if ~isempty(floc)
                         Screen('HookFunction', win, 'AppendBuiltin', 'StereoRightCompositingBlit', 'Builtin:FlipFBOs', '');
                     end
 
+                    Screen('Hookfunction', win, 'AppendMFunction', 'StereoRightCompositingBlit', 'Clear target buffer', 'glClear(16384);');
+
                     if glsl
                         Screen('HookFunction', win, 'AppendShader', 'StereoRightCompositingBlit', 'GeometricWarpShader', glsl, sprintf('Blitter:DisplayListBlit:Handle:%i%s', gld, filterMode));
                     else
@@ -2185,6 +2193,8 @@ if ~isempty(floc)
                         Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
                     end
 
+                    Screen('Hookfunction', win, 'AppendMFunction', 'FinalOutputFormattingBlit', 'Clear target buffer', 'glClear(16384);');
+                    
                     if glsl
                         Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'GeometricWarpShader', glsl, sprintf('Blitter:DisplayListBlit:Handle:%i%s', gld, filterMode));
                     else
