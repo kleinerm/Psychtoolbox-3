@@ -23,7 +23,8 @@ alGetString(alGetError)
 % Create sound data:
 
 % Start of with 10 seconds of 44.1 Khz random noise as a fallback:
-mynoise = randn(1,44100 * 10);
+mynoise = randn(1, 44100 * 10);
+freq = 44100;
 
 % Try to load some impressive sound...
 if IsOSX
@@ -143,8 +144,11 @@ end
 % Stop playback:
 alSourceStop(source);
 
+% Wait a bit:
+WaitSecs(0.1);
+
 % Unqueue sound buffer:
-alSourceUnqueueBuffers(source, 1);
+alSourceUnqueueBuffers(source, 1, buffers);
 
 % Wait a bit:
 WaitSecs(0.1);

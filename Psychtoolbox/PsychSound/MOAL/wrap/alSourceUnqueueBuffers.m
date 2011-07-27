@@ -1,8 +1,8 @@
-function bids = alSourceUnqueueBuffers( sid, numEntries )
+function alSourceUnqueueBuffers( sid, numEntries, bids )
 
 % alSourceUnqueueBuffers  Interface to OpenAL function alSourceUnqueueBuffers
 %
-% usage:  bids = alSourceUnqueueBuffers( sid, numEntries )
+% usage:  alSourceUnqueueBuffers( sid, numEntries, bids )
 %
 % C function:  void alSourceUnqueueBuffers(ALuint sid, ALsizei numEntries, ALuint* bids)
 
@@ -11,11 +11,11 @@ function bids = alSourceUnqueueBuffers( sid, numEntries )
 % ---allocate---
 % ---protected---
 
-if nargin~=2,
+if nargin~=3,
     error('invalid number of arguments');
 end
 
-bids = uint32(zeros(numEntries, 1));
+bids = uint32(bids);
 
 moalcore( 'alSourceUnqueueBuffers', sid, numEntries, bids );
 

@@ -98,4 +98,17 @@ if mode==8
     striplibsfrommexfile([PsychtoolboxRoot target 'PsychHID.mex']);
 end;
 
+if mode==9
+    % Build moalcore.mex:
+    curdir = pwd;
+    cd('../../Psychtoolbox/PsychSound/MOAL/source/')
+    try
+       mex -v -g --output moalcore.mex -DLINUX -DPTBOCTAVE3MEX -lc -lopenal moalcore.c al_auto.c al_manual.c alm.c 
+    catch
+    end
+    unix(['mv moalcore.mex ' PsychtoolboxRoot target]);
+    cd(curdir);
+    striplibsfrommexfile([PsychtoolboxRoot target 'moalcore.mex']);
+end;
+
 return;

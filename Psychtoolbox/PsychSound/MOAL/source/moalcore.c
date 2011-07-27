@@ -70,7 +70,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
     // Start of dispatcher:
     int i;
-    bool errorcondition = false;
 
     // see whether there's a string command
     if(nrhs<1 || !mxIsChar(prhs[0])) mogl_usageerr();

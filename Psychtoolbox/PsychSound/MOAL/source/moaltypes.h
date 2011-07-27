@@ -38,6 +38,8 @@ ALenum  alcASASetListener(const ALuint property, ALvoid *data, ALuint dataSize);
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdio.h>
+#include <limits.h>
 #include <AL/al.h>
 #include <AL/alc.h>
 
@@ -62,6 +64,8 @@ mxArray* mxCreateNumericMatrix(int m, int n, int class, int complex);
 #endif
 
 #endif
+
+#define printf mexPrintf
 
 // Function prototype for error handler for unsupported al-Functions.
 void mogl_glunsupported(const char* fname);

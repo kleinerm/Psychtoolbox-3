@@ -68,4 +68,17 @@ if mode==8
     unix(['mv ../Projects/Linux/build/PsychHID.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end;
 
+if mode==9
+    % Build moalcore.mexglx:
+    curdir = pwd;
+    cd('../../Psychtoolbox/PsychSound/MOAL/source/')
+    try
+       mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions' -v -outdir ../Projects/Linux/build/ -output moalcore -DLINUX -lc -lopenal moalcore.c al_auto.c al_manual.c alm.c 
+    catch
+    end
+    unix(['mv ../Projects/Linux/build/moalcore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+
+    cd(curdir);
+end;
+
 return;
