@@ -28,10 +28,18 @@ function [keypadIndices, productNames]= GetKeypadIndices;
 
 keypadIndices=[];
 productNames=cell(0);
-d=PsychHID('Devices');
+% Enumerate all HID devices:
+if IsLinux
+  % On Linux we only enumerate type 4 - slave keyboard devices. These are what we want:
+  d = PsychHID('Devices', 4);
+else
+  % On other OS'es enumerate everything and filter later:
+  d = PsychHID('Devices');
+end
+
 for i =1:length(d);
     if d(i).usagePageValue==1 && d(i).usageValue == 7
-        keypadIndices(end+1)=i;
+        keypadIndices(end+1)=d(i).index;
         productNames{end+1}=d(i).product;
     end
 end

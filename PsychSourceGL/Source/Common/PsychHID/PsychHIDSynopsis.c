@@ -35,7 +35,7 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "numberOfDevices=PsychHID('NumDevices')";
 	synopsis[i++] = "numberOfElements=PsychHID('NumElements',deviceNumber)";
 	synopsis[i++] = "numberOfCollections=PsychHID('NumCollections',deviceNumber)";
-	synopsis[i++] = "devices=PsychHID('Devices')";
+	synopsis[i++] = "devices=PsychHID('Devices' [, deviceClass])";
 	synopsis[i++] = "elements=PsychHID('Elements',deviceNumber)";
 	synopsis[i++] = "collections=PsychHID('Collections',deviceNumber)";
 	synopsis[i++] = "elementState=PsychHID('RawState',deviceNumber,elementNumber)";

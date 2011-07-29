@@ -53,6 +53,9 @@ void PsychInitializePsychHID(void)
 		usbDeviceRecordBank[i].valid = 0;
 	}
 
+	// Initialize OS specific interfaces and routines:
+	PsychHIDInitializeHIDStandardInterfaces();
+
 	return;
 }
 
@@ -158,6 +161,9 @@ PsychError PsychHIDCleanup(void)
     
 	// Close and release all open generic USB devices:
 	PsychHIDCloseAllUSBDevices();
+
+	// Shutdown os specific interfaces and routines:
+	PsychHIDShutdownHIDStandardInterfaces();
 
 	return(PsychError_none);
 }

@@ -18,8 +18,13 @@
 
 #include "PsychHID.h"
 
-static char useString[]= "devices=PsychHID('Devices')";
-static char synopsisString[] = "Return a struct array describing each connected USB HID device.";
+static char useString[]= "devices=PsychHID('Devices' [, deviceClass])";
+static char synopsisString[] =  "Return a struct array describing each connected USB HID device.\n"
+				"'deviceClass' optionally selects for the class of input device. "
+				"This is not supported on all operating systems and will be silently "
+				"ignored if unsupported. On Linux you can select the following classes "
+				"of input devices: 1 = MasterPointer, 2 = MasterKeyboard, 3 = SlavePointer "
+				"4 = SlaveKeyboard, 5 = Floating slave device.\n";
 static char seeAlsoString[] = "";
 
 PsychError PSYCHHIDGetDevices(void) 
@@ -29,7 +34,7 @@ PsychError PSYCHHIDGetDevices(void)
     const char *deviceFieldNames[]={"usagePageValue", "usageValue", "usageName", "index", "transport", "vendorID", "productID", "version", 
                                     "manufacturer", "product", "serialNumber", "locationID", "interfaceID", "totalElements", "features", "inputs", 
                                     "outputs", "collections", "axes", "buttons", "hats", "sliders", "dials", "wheels"};
-    int numDeviceStructElements, numDeviceStructFieldNames=24, deviceIndex;
+    int numDeviceStructElements, numDeviceStructFieldNames=24, deviceIndex, deviceClass;
     PsychGenericScriptType	*deviceStruct;		
     char usageName[PSYCH_HID_MAX_DEVICE_ELEMENT_USAGE_NAME_LENGTH];
 
@@ -37,7 +42,14 @@ PsychError PSYCHHIDGetDevices(void)
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
     PsychErrorExit(PsychCapNumOutputArgs(1));
-    PsychErrorExit(PsychCapNumInputArgs(0));
+    PsychErrorExit(PsychCapNumInputArgs(1));
+
+    if (PsychCopyInIntegerArg(1, FALSE, &deviceClass)) {
+	// Operating system specific enumeration of devices, selected by
+	// deviceClass:
+	return(PsychHIDEnumerateHIDInputDevices(deviceClass));
+    }
+
     PsychHIDVerifyInit();
     numDeviceStructElements=(int)HIDCountDevices();
     PsychAllocOutStructArray(1, FALSE, numDeviceStructElements, numDeviceStructFieldNames, deviceFieldNames, &deviceStruct);

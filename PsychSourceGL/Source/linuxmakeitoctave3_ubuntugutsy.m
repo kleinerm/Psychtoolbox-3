@@ -93,7 +93,7 @@ end;
 
 if mode==8
     % Build PsychHID.mex:
-    mex -v -g --output ../Projects/Linux/build/PsychHID.mex -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -ICommon/Base -ILinux/Base -ICommon/PsychHID -ILinux/PsychHID -ICommon/Screen Common/Base/*.cc Linux/Base/*.c Common/Base/*.c Common/PsychHID/*.c Linux/PsychHID/*.c -lc -lrt -lusb-1.0
+    mex -v -g --output ../Projects/Linux/build/PsychHID.mex -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -ICommon/Base -ILinux/Base -ICommon/PsychHID -ILinux/PsychHID -ICommon/Screen Common/Base/*.cc Linux/Base/*.c Common/Base/*.c Common/PsychHID/*.c Linux/PsychHID/*.c -lc -lrt -lusb-1.0 -lXi
     unix(['mv ../Projects/Linux/build/PsychHID.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'PsychHID.mex']);
 end;

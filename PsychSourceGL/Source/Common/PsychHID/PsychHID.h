@@ -169,7 +169,6 @@ PsychError PSYCHHIDGetElements(void);				// PsychHIDGetElementList.c
 PsychError PSYCHHIDGetRawState(void);				// PsychHIDGetRawElementState.c
 PsychError PSYCHHIDGetCalibratedState(void);		// PsychHIDGetCalibratedState.c
 PsychError PSYCHHIDGetCollections(void);			// PsychHIDGetCollections.c
-PsychError PSYCHHIDKbCheck(void);					// PsychHIDKbCheck.c
 PsychError PSYCHHIDKbWait(void);					// PsychHIDKbWait.c 
 PsychError PSYCHHIDKbTriggerWait(void);				// PsychTriggerWait.c
 PsychError PSYCHHIDKbQueueCreate(void);				// PsychHIDKbQueueCreate.c
@@ -179,6 +178,8 @@ PsychError PSYCHHIDKbQueueCheck(void);				// PsychHIDKbQueueCheck.c
 PsychError PSYCHHIDKbQueueFlush(void);				// PsychHIDKbQueueFlush.c
 PsychError PSYCHHIDKbQueueRelease(void);			// PsychHIDKbQueueRelease.c
 #endif
+
+PsychError PSYCHHIDKbCheck(void);					// PsychHIDKbCheck.c
 
 PsychError PSYCHHIDGetReport(void);					// PsychHIDGetReport.c
 PsychError PSYCHHIDSetReport(void);					// PsychHIDSetReport.c
@@ -229,6 +230,12 @@ PsychUSBDeviceRecord* PsychHIDGetUSBDevice(int usbHandle);
 psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorcode, PsychUSBSetupSpec* spec);
 void PsychHIDOSCloseUSBDevice(PsychUSBDeviceRecord* devRecord);
 int PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmRequestType, psych_uint8 bRequest, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData);
+
+// These must be defined for each OS in their own PsychHIDStandardInterfaces.c:
+void PsychHIDInitializeHIDStandardInterfaces(void);
+void PsychHIDShutdownHIDStandardInterfaces(void);
+PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass);
+PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList);
 
 //end include once
 #endif

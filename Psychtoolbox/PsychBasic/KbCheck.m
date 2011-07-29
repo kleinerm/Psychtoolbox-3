@@ -159,7 +159,7 @@ if isempty(macosx)
     oldSecs = -inf;
     
     % Query indices of all attached keyboards, in case we need'em:
-    if macosx
+    if macosx | IsLinux
         kbs=GetKeyboardIndices;
         kps=GetKeypadIndices;
         
@@ -171,7 +171,7 @@ if isempty(macosx)
     end
 end
 
-if macosx
+if macosx | IsLinux
     if nargin >= 1
         % Select keyboard(s):
         if deviceNumber==-1
@@ -204,7 +204,7 @@ if macosx
         [keyIsDown, secs, keyCode]= PsychHID('KbCheck', [], ptb_kbcheck_enabledKeys);
     end
 else
-   % We use the built-in KbCheck facility of Screen on GNU/Linux and MS-Windows
+   % We use the built-in KbCheck facility of Screen on MS-Windows
    % for KbChecks until a PsychHID implementation is ready.
     [keyIsDown,secs, keyCode]= Screen('GetMouseHelper', -1);
 end

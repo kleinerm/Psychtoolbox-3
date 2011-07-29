@@ -57,7 +57,13 @@ productNames=cell(0);
 allInfos=cell(0);
 
 % Enumerate all HID devices:
-d=PsychHID('Devices');
+if IsLinux
+  % On Linux we only enumerate type 4 - slave keyboard devices. These are what we want:
+  d = PsychHID('Devices', 4);
+else
+  % On other OS'es enumerate everything and filter later:
+  d = PsychHID('Devices');
+end
 
 % Iterate through all of them:
 for i =1:length(d);
@@ -78,7 +84,7 @@ for i =1:length(d);
 
         % Match! Append to list of output keybords, including optional
         % detailed information:
-        keyboardIndices(end+1)=i; %#ok<AGROW>
+        keyboardIndices(end+1)=d(i).index; %#ok<AGROW>
         productNames{end+1}=d(i).product; %#ok<AGROW>
         allInfos{end+1}=d(i); %#ok<AGROW>
     end
