@@ -67,12 +67,16 @@ function SetMouse(x,y,windowPtrOrScreenNumber, mouseid)
 
 % SetMouse.m wraps the Screen('PositionCursor',..) call to emulate the old SetMouse.mex
 
-if(nargin==2)
-   windowPtrOrScreenNumber=0;
-end
-
-if(nargin<2)
+if nargin < 2
    error('SetMouse requires x and y positions');
 end
 
-Screen('SetMouseHelper',windowPtrOrScreenNumber, x,y);    
+if nargin < 3
+   windowPtrOrScreenNumber = 0;
+end
+
+if nargin < 4
+   mouseid = [];
+end
+
+Screen('SetMouseHelper', windowPtrOrScreenNumber, x, y, mouseid);
