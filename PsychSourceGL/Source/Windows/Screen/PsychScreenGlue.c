@@ -814,7 +814,7 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
 }
 
 
-void PsychHideCursor(int screenNumber)
+void PsychHideCursor(int screenNumber, int deviceIdx)
 {
   // Hide the mouse cursor: We ignore the screenNumber as Windows
   // doesn't allow to set the cursor per screen anyway.
@@ -822,14 +822,14 @@ void PsychHideCursor(int screenNumber)
   return;
 }
 
-void PsychShowCursor(int screenNumber)
+void PsychShowCursor(int screenNumber, int deviceIdx)
 {
   // Show the mouse cursor: We ignore the screenNumber as Windows
   // doesn't allow to set the cursor per screen anyway.
   while(ShowCursor(TRUE)<0);
 }
 
-void PsychPositionCursor(int screenNumber, int x, int y)
+void PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx)
 {
   // Reposition the mouse cursor: We ignore the screenNumber as Windows
   // doesn't allow to set the cursor per screen anyway.

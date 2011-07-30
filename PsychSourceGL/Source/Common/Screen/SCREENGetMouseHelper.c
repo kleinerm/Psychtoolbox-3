@@ -216,14 +216,15 @@ void ConsoleInputHelper(int ccode)
 }
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "[x, y, buttonValueArray]= Screen('GetMouseHelper', numButtons [, screenNumber]);";
-//                          1  2  3                                           1          2
+static char useString[] = "[x, y, buttonValueArray]= Screen('GetMouseHelper', numButtons [, screenNumber][, mouseIndex]);";
+//                          1  2  3                                           1          2                3
 static char synopsisString[] = 
 	"This is a helper function called by GetMouse.  Do not call Screen(\'GetMouseHelper\'), use "
 	"GetMouse instead.\n"
-	"\"numButtons\" is the number of mouse buttons to return in buttonValueArray. 1 <= numButtons <= 32. Ignored on Linux and Windows."
-   "\"screenNumber\" is the number of the PTB screen whose mouse should be queried on setups with multiple connected mice. "
-   "This value is optional (defaults to zero) and only honored on GNU/Linux. It's meaningless on OS-X or Windows.";
+	"\"numButtons\" is the number of mouse buttons to return in buttonValueArray. 1 <= numButtons <= 32. Ignored on Linux and Windows.\n"
+	"\"screenNumber\" is the number of the PTB screen whose mouse should be queried on setups with multiple connected mice. "
+	"This value is optional (defaults to zero) and only honored on GNU/Linux. It's meaningless on OS-X or Windows.\n"
+	"\"mouseIndex\" is the optional index of the (mouse)pointer device. Defaults to system pointer. Only honored on Linux.\n";
 static char seeAlsoString[] = "";
 	 
 
@@ -232,8 +233,8 @@ PsychError SCREENGetMouseHelper(void)
 #if PSYCH_SYSTEM == PSYCH_OSX
 	Point		mouseXY;
 	UInt32		buttonState;
-	double		numButtons, *buttonArray;
-	int			i;
+	double		*buttonArray;
+	int		numButtons, i;
 	psych_bool	doButtonArray;
 	PsychWindowRecordType *windowRecord;
 	
@@ -250,7 +251,7 @@ PsychError SCREENGetMouseHelper(void)
 	//that information but OS X seems to ignore it above the level of the HID driver, that is, no OS X API above the HID driver
 	//exposes it.  So GetMouse.m function calls PsychHID detect the number of buttons and then passes that value to GetMouseHelper 
 	//which returns that number of button values in a vector.      
-	PsychCopyInDoubleArg(1, kPsychArgRequired, &numButtons);
+	PsychCopyInIntegerArg(1, kPsychArgRequired, &numButtons);
 	if(numButtons > 32)
 		PsychErrorExitMsg(PsychErorr_argumentValueOutOfRange, "numButtons must not exceed 32");
 
@@ -503,8 +504,10 @@ PsychError SCREENGetMouseHelper(void)
 	CGDirectDisplayID dpy;
 	Window rootwin, childwin, mywin;
 	int i, j, mx, my, dx, dy;
+	double mxd, myd, dxd, dyd;
 	unsigned int mask_return;
-	double numButtons, timestamp;
+	double timestamp;
+	int numButtons;
 	double* buttonArray;
 	PsychNativeBooleanType* buttonStates;
 	int keysdown;
@@ -514,11 +517,15 @@ PsychError SCREENGetMouseHelper(void)
 	int priorityLevel;
 	struct sched_param schedulingparam;
 	PsychWindowRecordType *windowRecord;
+	int mouseIndex;
+	XIButtonState buttons_return;
+	XIModifierState modifiers_return;
+	XIGroupState group_return;
 
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
-	PsychCopyInDoubleArg(1, kPsychArgRequired, &numButtons);
+	PsychCopyInIntegerArg(1, kPsychArgRequired, &numButtons);
 
 	// Retrieve optional screenNumber argument:
 	if (numButtons!=-5) {
@@ -545,38 +552,126 @@ PsychError SCREENGetMouseHelper(void)
 		} else {
 			mywin = RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber));
 		}
-
 	}
+
+	// Default to "old school" mouse query - System default mouse via X core protocol:
+	mouseIndex = -1;
+	PsychCopyInIntegerArg(3, FALSE, &mouseIndex);
 
 	// Are we operating in 'GetMouseHelper' mode? numButtons>=0 indicates this.
 	if (numButtons>=0) {
 	  // Mouse pointer query mode:
-	  XQueryPointer(dpy, RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber)), &rootwin, &childwin, &mx, &my, &dx, &dy, &mask_return);
-	  
-	  // Copy out mouse x and y position:
-	  PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) mx);
-	  PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) my);
-	  
-	  // Copy out mouse button state:
-	  PsychAllocOutDoubleMatArg(3, kPsychArgOptional, (int)1, (int)numButtons, (int)1, &buttonArray);
+	  if (mouseIndex >= 0) {
+		// XInput-2 query for handling of multiple mouse pointers:
 
-	  // Bits 8, 9 and 10 of mask_return seem to correspond to mouse buttons
-	  // 1, 2 and 3 of a mouse for some weird reason. Bits 0-7 describe keyboard modifier keys
-	  // like Alt, Ctrl, Shift, ScrollLock, NumLock, CapsLock...
-	  // We remap here, so the first three returned entries correspond to the mouse buttons and
-	  // the rest is attached behind, if requested...
+		// Query input device list for screen:
+		int nDevices;
+		XIDeviceInfo* indevs = PsychGetInputDevicesForScreen(screenNumber, &nDevices);
+
+		// Sanity check:
+		if (NULL == indevs) PsychErrorExitMsg(PsychError_user, "Sorry, your system does not support individual mouse pointer queries.");
+		if (mouseIndex >= nDevices) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such device.");
+		if ((indevs[mouseIndex].use != XIMasterPointer) && (indevs[mouseIndex].use != XISlavePointer)) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. Not a pointer device.");
+
+		// Slave pointer? If so, we requery the device info struct to retrieve updated
+		// live device state:
+		if (indevs[mouseIndex].use != XIMasterPointer) {
+			indevs = XIQueryDevice(dpy, indevs[mouseIndex].deviceid, &numButtons);
+			mouseIndex = 0;
+			modifiers_return.effective = 0;
+		}
+
+		// Query real number of mouse buttons and the raw button and axis state
+		// stored inside the device itself. This is done mostly because slave pointer
+		// devices don't support XIQueryPointer() so we get their relevant info from the
+		// XIDeviceInfo struct itself:
+		numButtons = 0;
+		for (i = 0; i < indevs[mouseIndex].num_classes; i++) {
+			// printf("Class %i: Type %i\n", i, (int) indevs[mouseIndex].classes[i]->type);
+			if (indevs[mouseIndex].classes[i]->type == XIButtonClass) {
+				// Number of buttons: For all pointers.
+				numButtons = ((XIButtonClassInfo*) indevs[mouseIndex].classes[i])->num_buttons;
+
+				// Button state for slave pointers. Will get overriden for master pointers:
+				buttons_return.mask = ((XIButtonClassInfo*) indevs[mouseIndex].classes[i])->state.mask;
+				buttons_return.mask_len = ((XIButtonClassInfo*) indevs[mouseIndex].classes[i])->state.mask_len;
+			}
+
+			// Axis state for slave pointers. Will get overriden for master pointers:
+			if (indevs[mouseIndex].classes[i]->type == XIValuatorClass) {
+				XIValuatorClassInfo* axis = (XIValuatorClassInfo*) indevs[mouseIndex].classes[i];
+				if (axis->number == 0) mxd = axis->value;
+				if (axis->number == 1) myd = axis->value;
+
+				// printf("AXIS %i, LABEL = %s, MIN = %f, MAX = %f, VAL = %f\n", axis->number, (char*) "NONE", (float) axis->min, (float) axis->max, (float) axis->value);
+			}
+		}
+
+		// Add 32 buttons for modifier key state vector:
+		numButtons += 32;
+
+		// A real master pointer: Use official query for mouse devices.
+		if (indevs[mouseIndex].use == XIMasterPointer) {
+			// Query pointer location and state:
+			XIQueryPointer(dpy, indevs[mouseIndex].deviceid, RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber)), &rootwin, &childwin, &mxd, &myd, &dxd, &dyd,
+				       &buttons_return, &modifiers_return, &group_return);
+		}
+
+		// Copy out mouse x and y position:
+		PsychCopyOutDoubleArg(1, kPsychArgOptional, mxd);
+		PsychCopyOutDoubleArg(2, kPsychArgOptional, myd);
+
+		// Copy out mouse button state:
+		PsychAllocOutDoubleMatArg(3, kPsychArgOptional, (int)1, (int) numButtons, (int)1, &buttonArray);
+
+		if (numButtons > 0) {
+			// Mouse buttons:
+			for (i = 0; i < numButtons - 32; i++) {
+				buttonArray[i] = (double) ((buttons_return.mask[i / 8] & (1 << (i % 8))) ? 1 : 0);
+			}
+
+			// Free mask if retrieved via XIQueryPointer():
+			if (indevs[mouseIndex].use == XIMasterPointer) free(buttons_return.mask);
+
+			// Append modifier key state from associated master keyboard. Last 32 entries:
+			for (i = 0; i < 32; i++) {
+				buttonArray[numButtons - 32 + i] = (double) ((modifiers_return.effective & (1 << i)) ? 1 : 0);
+			}
+		}
+
+		// If this indevs is a single struct that was dynamically queried from a XISlavePointer, then
+		// release it:
+		if ((mouseIndex == 0) && (indevs[mouseIndex].use != XIMasterPointer)) XIFreeDeviceInfo(indevs);
+	  }
+	  else {
+		// Old school core protocol query of virtual core pointer:
+		XQueryPointer(dpy, RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber)), &rootwin, &childwin, &mx, &my, &dx, &dy, &mask_return);
 	  
-	  // Mouse buttons: Left, Middle, Right == 0, 1, 2, aka 1,2,3 in Matlab space...
-	  for (i=0; i<numButtons && i<3; i++) {
-	    buttonArray[i] = (mask_return & (1<<(i+8))) ? 1 : 0; 
-	  }
-	  // Modifier keys 0 to 7 appended:
-	  for (i=3; i<numButtons && i<3+8; i++) {
-	    buttonArray[i] = (mask_return & (1<<(i-3))) ? 1 : 0; 
-	  }
-	  // Everything else appended:
-	  for (i=11; i<numButtons; i++) {
-	    buttonArray[i] = (mask_return & (1<<i)) ? 1 : 0; 
+		// Copy out mouse x and y position:
+		PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) mx);
+		PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) my);
+	  
+		// Copy out mouse button state:
+		PsychAllocOutDoubleMatArg(3, kPsychArgOptional, (int)1, (int)numButtons, (int)1, &buttonArray);
+
+		// Bits 8, 9 and 10 of mask_return seem to correspond to mouse buttons
+		// 1, 2 and 3 of a mouse for some weird reason. Bits 0-7 describe keyboard modifier keys
+		// like Alt, Ctrl, Shift, ScrollLock, NumLock, CapsLock...
+		// We remap here, so the first three returned entries correspond to the mouse buttons and
+		// the rest is attached behind, if requested...
+	  
+		// Mouse buttons: Left, Middle, Right == 0, 1, 2, aka 1,2,3 in Matlab space...
+		for (i=0; i<numButtons && i<3; i++) {
+			buttonArray[i] = (mask_return & (1<<(i+8))) ? 1 : 0; 
+		}
+		// Modifier keys 0 to 7 appended:
+		for (i=3; i<numButtons && i<3+8; i++) {
+			buttonArray[i] = (mask_return & (1<<(i-3))) ? 1 : 0; 
+		}
+		// Everything else appended:
+		for (i=11; i<numButtons; i++) {
+			buttonArray[i] = (mask_return & (1<<i)) ? 1 : 0; 
+		}
 	  }
 
 	  // Return optional 4th argument: Focus state. Returns 1 if our window has

@@ -4,10 +4,11 @@
 	AUTHORS:
 
 		Allen.Ingling@nyu.edu		awi 
-  
+		mario.kleiner@tuebingen.mpg.de  mk
+
 	PLATFORMS:	
 	
-		Only OS X for now.
+		All.
     
 	HISTORY:
 
@@ -41,8 +42,8 @@
 
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "Screen('SetMouseHelper', windowPntrOrScreenNumber, x, y);";
-//                                                  1                         2  3
+static char useString[] = "Screen('SetMouseHelper', windowPntrOrScreenNumber, x, y [, mouseIndex]);";
+//                                                  1                         2  3  4
 static char synopsisString[] = 
 	"This is a helper function called by SetMouse.  Do not call Screen(\'SetMouseHelper\'), use "
 	"SetMouse instead.\n"
@@ -54,28 +55,21 @@ PsychError SCREENSetMouseHelper(void)
 {
 	int	screenNumber;
 	int 	xPos, yPos;
- 
-	//all subfunctions should have these two lines.  
+	int     deviceIdx = -1;
+
+	//all subfunctions should have these two lines.
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 	
-	PsychErrorExit(PsychCapNumInputArgs(3));   //The maximum number of inputs
+	PsychErrorExit(PsychCapNumInputArgs(4));   //The maximum number of inputs
 	PsychErrorExit(PsychCapNumOutputArgs(0));  //The maximum number of outputs
         
 	PsychCopyInScreenNumberArg(1, TRUE, &screenNumber);
 	PsychCopyInIntegerArg(2,TRUE, &xPos);
 	PsychCopyInIntegerArg(3,TRUE, &yPos);
-	PsychPositionCursor(screenNumber, xPos, yPos);
+	PsychCopyInIntegerArg(4,FALSE, &deviceIdx);
+
+	PsychPositionCursor(screenNumber, xPos, yPos, deviceIdx);
+
 	return(PsychError_none);
-	
 }
-
-
-	
-	
-
-
-
-
-
-

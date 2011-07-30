@@ -1,5 +1,5 @@
-function [x,y,buttons,focus] = GetMouse(windowPtrOrScreenNumber)
-% [x,y,buttons,focus] = GetMouse([windowPtrOrScreenNumber])
+function [x,y,buttons,focus] = GetMouse(windowPtrOrScreenNumber, mouseDev)
+% [x,y,buttons,focus] = GetMouse([windowPtrOrScreenNumber][, mouseDev])
 %
 % Returns the current (x,y) position of the cursor and the up/down state
 % of the mouse buttons. "buttons" is a 1xN matrix where N is the number of
@@ -11,6 +11,10 @@ function [x,y,buttons,focus] = GetMouse(windowPtrOrScreenNumber)
 % GetMouse will also return the window focus state as optional 4th
 % return argument 'focus'. 'focus' is 1 if the window has input focus
 % and zero otherwise. 
+%
+% The optional 'mouseDev' parameter allows to select a specific mouse or
+% pointer device to query if your system has multiple pointer devices.
+% Currently Linux only, silently ignored on other operating systems.
 %
 % % Test if any mouse button is pressed. 
 % if any(buttons)
@@ -111,6 +115,7 @@ function [x,y,buttons,focus] = GetMouse(windowPtrOrScreenNumber)
 % 09/20/06 mk   Updated help section for Windows: GetMouse now also works without onscreen windows.
 % 09/01/10 mk   Restrict number of mouse buttons on Windows and Linux to 3.
 % 11/03/10 mk   Return window focus state 'focus' as optional 4th return argument.
+% 07/29/11 mk   Allow specification of 'mouseDev' mouse device index.
 
 % We Cache the value of numMouseButtons between calls to GetMouse, so we
 % can skip the *very time-consuming* detection code on successive calls.
@@ -136,7 +141,8 @@ if isempty(numMouseButtons)
             numMouseButtons=max(b, numMouseButtons);
         end
     else
-        % Linux or Windows: Currently only support three mouse buttons.
+        % Windows: Currently only support three mouse buttons.
+        % Linux: A >= zero value (like 3 here) triggers mouse query.
         numMouseButtons = 3;
     end;
 end;
@@ -145,11 +151,15 @@ if nargin < 1
     windowPtrOrScreenNumber = [];
 end
 
+if nargin < 2
+    mouseDev = [];
+end
+
 %read the mouse position and  buttons
 if ~isempty(windowPtrOrScreenNumber)
-	[globalX, globalY, rawButtons, focus] = Screen('GetMouseHelper', numMouseButtons, windowPtrOrScreenNumber);
+	[globalX, globalY, rawButtons, focus] = Screen('GetMouseHelper', numMouseButtons, windowPtrOrScreenNumber, mouseDev);
 else
-	[globalX, globalY, rawButtons, focus] = Screen('GetMouseHelper', numMouseButtons);
+	[globalX, globalY, rawButtons, focus] = Screen('GetMouseHelper', numMouseButtons, [], mouseDev);
 end
 
 buttons=logical(rawButtons);
@@ -162,5 +172,4 @@ if ~isempty(windowPtrOrScreenNumber)
 else
     x=globalX;
     y=globalY;
-end   
-
+end

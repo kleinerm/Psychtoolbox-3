@@ -739,7 +739,7 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
     return(true);
 }
 
-void PsychHideCursor(int screenNumber)
+void PsychHideCursor(int screenNumber, int deviceIdx)
 {
 
     CGDisplayErr 	error;
@@ -752,7 +752,7 @@ void PsychHideCursor(int screenNumber)
 
 }
 
-void PsychShowCursor(int screenNumber)
+void PsychShowCursor(int screenNumber, int deviceIdx)
 {
 
     CGDisplayErr 	error;
@@ -765,7 +765,7 @@ void PsychShowCursor(int screenNumber)
 
 }
 
-void PsychPositionCursor(int screenNumber, int x, int y)
+void PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx)
 {
     CGDisplayErr 	error;
     CGDirectDisplayID	cgDisplayID;

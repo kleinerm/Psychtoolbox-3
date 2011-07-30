@@ -1,9 +1,14 @@
-function oldType = ShowCursor(type, screenid)
-% oldType = ShowCursor([type] [, screenid])
+function oldType = ShowCursor(type, screenid, mouseid)
+% oldType = ShowCursor([type] [, screenid][, mouseid])
 %
 % ShowCursor redisplays the mouse pointer after a previous call to
 % HideCursor. If the optional 'type' is specified, it also allows to alter
 % the shape of the cursor. See following sections for details.
+%
+% The optional 'mouseid' allows to select which mouse cursor shall
+% be redisplayed or changed in visual appearance. This only makes sense
+% if you have multiple visible mouse cursors and is currently a Linux only
+% feature.
 %
 % The return value 'oldType' is always zero, as this query mechanism is not
 % supported with PTB-3. Just returned for backwards-compatibility.
@@ -29,13 +34,10 @@ function oldType = ShowCursor(type, screenid)
 %  http://developer.apple.com/documentation/macos8/HumanInterfaceToolbox/Ap
 %  pManager/ProgWithAppearanceMgr/Appearance.9d.html#10244
 %
-% OS9: ___________________________________________________________________ 
+% LINUX: ___________________________________________________________________ 
 %
-% ShowCursor.mex asks the Macintosh OS to cancel one call to HideCursor.
-% You must call ShowCursor at least as many times as you've called
-% HideCursor before the cursor will appear. Excess calls to ShowCursor are
-% ignored. (When Screen closes its last window it calls InitCursor which
-% zeroes the count.)
+% Linux allows for display and handling of multiple mouse cursors if your
+% X-Server is of version 1.7 or later.
 %
 % If provided, the optional "type" argument changes the cursor shape to:
 %   0: Arrow
@@ -70,6 +72,8 @@ function oldType = ShowCursor(type, screenid)
 % 10/4/05  awi Note here that dgp made unnoted cosmetic changes between 11/16/04 and 10/4/05.
 % 09/21/07 mk  Added code for selecting 'type' - the shape of a cursor - on supported systems.
 
+oldType = 0;
+
 % We default to setup of display screen zero, if no
 % screenid provided. This argument is ignored on
 % Windows and OS/X anyway. Only meaningful for
@@ -80,6 +84,10 @@ end
 
 if isempty(screenid)
     screenid = 0;
+end
+
+if nargin < 3
+    mouseid = [];
 end
 
 % Default to: No change in cursor shape...
@@ -148,11 +156,11 @@ end
 if isempty(type)
     % Only unhide / show cursor, don't modify its shape:
     % Use Screen to emulate ShowCursor.mex
-    Screen('ShowCursorHelper', screenid);
+    Screen('ShowCursorHelper', screenid, [], mouseid);
 else
     % Cursor shape change requested as well. Mapping of
     % types to shapes is highly OS dependent...
-    Screen('ShowCursorHelper', screenid, type);
+    Screen('ShowCursorHelper', screenid, type, mouseid);
 end
 
 % Return a dummy oldtype, we don't have this info...

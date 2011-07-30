@@ -32,9 +32,6 @@ void PsychCleanupSCREENFillPoly(void);
 
 PsychError ScreenExitFunction(void)
 {
-  CGDirectDisplayID dpy, last_dpy;
-  int i;
-
 	//The timing array holds time values set by Screen internal diagnostics.  It allocates memory with 
 	//malloc to hold the array of times.  This call frees the memory prior to unloading Screen
 	ClearTimingArray();
@@ -45,24 +42,8 @@ PsychError ScreenExitFunction(void)
 	CloseWindowBank();
 
 	#if PSYCH_SYSTEM == PSYCH_LINUX
-	// Linux specific hack. Close display connection(s) to X-Server(s). This is a bit unclean.
-	last_dpy = NULL;
-	// Go trough full screen list:
-	for (i=0; i < PsychGetNumDisplays(); i++) {
-	  // Get display-ptr for this screen:
-	  PsychGetCGDisplayIDFromScreenNumber(&dpy, i);
-	  // Did we close this connection already (dpy==last_dpy)?
-	  if (dpy != last_dpy) {
-	    // Nope. Keep track of it...
-	    last_dpy=dpy;
-	    // ...and close display connection to X-Server:
-	    XCloseDisplay(dpy);
-	  }	  
-	}
-
-	// All connections should be closed now. We can't NULL-out the display list, but
-	// Matlab will flush the Screen - Mexfile anyway...
-
+		// Linux specific hack. Close display connection(s) to X-Server(s). This is a bit unclean.
+		PsychCleanupDisplayGlue();
 	#endif
 
 	#if PSYCH_SYSTEM == PSYCH_OSX
@@ -79,4 +60,3 @@ PsychError ScreenExitFunction(void)
 
 	return(PsychError_none);
 }
-

@@ -37,9 +37,14 @@
 
 #include "Screen.h"
 
+#include <X11/extensions/XInput.h>
+#include <X11/extensions/XInput2.h>
+
 //functions from PsychScreenGlue
 void						InitializePsychDisplayGlue(void);
+void                                            PsychCleanupDisplayGlue(void);
 void						PsychGetCGDisplayIDFromScreenNumber(CGDirectDisplayID *displayID, int screenNumber);
+XIDeviceInfo*                                   PsychGetInputDevicesForScreen(int screenNumber, int* nDevices);
 void						PsychCaptureScreen(int screenNumber);
 void						PsychReleaseScreen(int screenNumber);
 psych_bool					PsychIsScreenCaptured(int screenNumber);
@@ -61,9 +66,9 @@ int                         PsychGetDacBitsFromDisplay(int screenNumber);		//fro
 void						PsychGetScreenSettings(int screenNumber, PsychScreenSettingsType *settings);
 psych_bool					PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsType *settings);
 psych_bool					PsychRestoreScreenSettings(int screenNumber);
-void						PsychHideCursor(int screenNumber);
-void						PsychShowCursor(int screenNumber);
-void						PsychPositionCursor(int screenNumber, int x, int y);
+void						PsychHideCursor(int screenNumber, int deviceIdx);
+void						PsychShowCursor(int screenNumber, int deviceIdx);
+void						PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx);
 void						PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float **redTable, float **greenTable, float **blueTable);
 unsigned int                PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redTable, float *greenTable, float *blueTable);
 int                         PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber);

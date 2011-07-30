@@ -1,5 +1,5 @@
-function [clicks,x,y,whichButton] = GetClicks(w, interClickSecs)
-% [clicks,x,y,whichButton] = GetClicks([windowPtrOrScreenNumber][, interclickSecs])
+function [clicks,x,y,whichButton] = GetClicks(w, interClickSecs, mouseDev)
+% [clicks,x,y,whichButton] = GetClicks([windowPtrOrScreenNumber][, interclickSecs][, mouseDev])
 %
 % Wait for the user to click the mouse, count the number of clicks
 % that occur within a inter-click interval of each other, and
@@ -21,8 +21,11 @@ function [clicks,x,y,whichButton] = GetClicks(w, interClickSecs)
 % disable multi-click detection, ie., only wait for first mouse-click or
 % press, then return immediatly.
 %
+% The optional 'mouseDev' parameter allows to select a specific mouse or
+% pointer device to query if your system has multiple pointer devices.
+% Currently Linux only, silently ignored on other operating systems.
 %
-% See Also: GetMouse, SetMouse
+% See Also: GetMouse, SetMouse, GetMouseIndices
 
 % 5/12/96  dgp  Wrote it.
 % 5/16/96  dhb  Wrote as MEX-file, updated help.
@@ -39,6 +42,7 @@ function [clicks,x,y,whichButton] = GetClicks(w, interClickSecs)
 %               as suggested by Diederick Niehorster. Reduce rtwait to 2
 %               msecs but use WaitSecs('YieldSecs') waits to prevent
 %               overload.
+% 07/29/11 mk   Allow specification of 'mouseDev' mouse device index.
 
 % Inter-click interval (in secs.) for multiple mouse-clicks.
 global ptb_mouseclick_timeout;
@@ -56,6 +60,10 @@ if isempty(interClickSecs)
     interClickSecs = ptb_mouseclick_timeout;
 end
 
+if nargin < 3
+    mouseDev = [];
+end
+
 % Are we in nice mode?
 nice = 1;
 
@@ -69,7 +77,7 @@ rtwait = 0.002; % 2 msecs yielding, ie., could take a bit longer.
 % Wait for release of buttons if some already pressed:
 buttons=1;
 while any(buttons)
- 	[x,y,buttons] = GetMouse;
+    [x,y,buttons] = GetMouse([], mouseDev);
     if (nice>0), WaitSecs('YieldSecs', rtwait); end;
 end;
 
@@ -80,7 +88,7 @@ while ~any(buttons)
         [x,y,buttons] = GetMouse;
     else
         % Pass windowPtr argument to GetMouse for proper remapping.
-        [x,y,buttons] = GetMouse(w);
+        [x,y,buttons] = GetMouse(w, mouseDev);
     end;
     if (nice>0), WaitSecs('YieldSecs', rtwait); end;
 end;
@@ -96,13 +104,13 @@ tend=GetSecs + interClickSecs;
 while GetSecs < tend
     % If already down, wait for release...
     while any(buttons) & GetSecs < tend %#ok<AND2>
-        [xd,yd,buttons] = GetMouse;
+        [xd,yd,buttons] = GetMouse([], mouseDev);
         if (nice>0), WaitSecs('YieldSecs', rtwait); end;
     end;
 
     % Wait for a press or timeout:
     while ~any(buttons) & GetSecs < tend %#ok<AND2>
-        [xd,yd,buttons] = GetMouse;
+        [xd,yd,buttons] = GetMouse([], mouseDev);
         if (nice>0), WaitSecs('YieldSecs', rtwait); end;    
     end;
 

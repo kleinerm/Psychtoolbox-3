@@ -184,10 +184,10 @@ void InitializeSynopsis()
 	
 	// Helper functions.  Don't call these directly, use eponymous wrappers.
 	synopsis[i++] = "\n% Helper functions.  Don't call these directly, use eponymous wrappers:";
-	synopsis[i++] ="[x, y, buttonVector]= Screen('GetMouseHelper', numButtons);";
-	synopsis[i++] = "Screen('HideCursorHelper', windowPntr);";
-	synopsis[i++] = "Screen('ShowCursorHelper', windowPntr);";
-	synopsis[i++] = "Screen('SetMouseHelper', windowPntrOrScreenNumber, x, y);";
+	synopsis[i++] ="[x, y, buttonVector]= Screen('GetMouseHelper', numButtons [, screenNumber][, mouseIndex]);";
+	synopsis[i++] = "Screen('HideCursorHelper', windowPntr [, mouseIndex]);";
+	synopsis[i++] = "Screen('ShowCursorHelper', windowPntr [, cursorshapeid][, mouseIndex]);";
+	synopsis[i++] = "Screen('SetMouseHelper', windowPntrOrScreenNumber, x, y [, mouseIndex]);";
 	
 	// Internal testing of Screen
 	synopsis[i++] = "\n% Internal testing of Screen";

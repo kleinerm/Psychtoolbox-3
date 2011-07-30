@@ -4,10 +4,11 @@
 	AUTHORS:
 	
 		Allen.Ingling@nyu.edu		awi 
-  
+		mario.kleiner@tuebingen.mpg.de  mk
+
 	PLATFORMS:
 	
-		Only OS X for now.
+		All.
     
 	HISTORY:
 	
@@ -42,17 +43,18 @@
 #endif
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "Screen('ShowCursorHelper', screenIndex [, cursorshapeid]);";
+static char useString[] = "Screen('ShowCursorHelper', screenIndex [, cursorshapeid][, mouseIndex]);";
 //													  1			    2
 static char synopsisString[] = 
 	"This is a helper function called by ShowCursor.  Do not call Screen(\'ShowCursorHelper\'), use "
 	"ShowCursor instead.\n"
-	"Show the mouse pointer. If optional cursorshapeid is given, select a specific cursor shape as well.";
+	"Show the mouse pointer. If optional 'cursorshapeid' is given, select a specific cursor shape as well.\n"
+	"If optional 'mouseIndex' is given, setup cursor for given master mouseIndex device (Linux only).\n";
 static char seeAlsoString[] = "HideCursorHelper";
 	 
 PsychError SCREENShowCursorHelper(void) 
 {
-	int	screenNumber, cursorid;
+	int	screenNumber, cursorid, mouseIdx;
 #if PSYCH_SYSTEM == PSYCH_LINUX
 	Cursor  mycursor;
 #endif
@@ -60,11 +62,15 @@ PsychError SCREENShowCursorHelper(void)
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 	
-	PsychErrorExit(PsychCapNumInputArgs(2));   //The maximum number of inputs
+	PsychErrorExit(PsychCapNumInputArgs(3));   //The maximum number of inputs
 	PsychErrorExit(PsychCapNumOutputArgs(0));  //The maximum number of outputs
         
 	PsychCopyInScreenNumberArg(1, TRUE, &screenNumber);
-	PsychShowCursor(screenNumber);
+
+	mouseIdx = -1;
+	PsychCopyInIntegerArg(3, FALSE, &mouseIdx);
+
+	PsychShowCursor(screenNumber, mouseIdx);
 	
 	// Copy in optional cursor shape id argument: The default of -1 means to
 	// not change cursor appearance. Any other positive value changes to an
@@ -88,8 +94,24 @@ PsychError SCREENShowCursorHelper(void)
 		PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
 		// Create cursor spec from passed cursorid:
 		mycursor = XCreateFontCursor(dpy, (unsigned int) cursorid);
-		// Set cursor for our window:
-		XDefineCursor(dpy, RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber)), mycursor);
+		if (mouseIdx < 0) {
+			// Set cursor for our window:
+			XDefineCursor(dpy, RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber)), mycursor);
+		} else {
+			// XInput cursor: Master pointers only.
+			int nDevices;
+			XIDeviceInfo* indevs = PsychGetInputDevicesForScreen(screenNumber, &nDevices);
+
+			// Sanity check:
+			if (NULL == indevs) PsychErrorExitMsg(PsychError_user, "Sorry, your system does not support individual mouse pointers.");
+			if (mouseIdx >= nDevices) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such cursor pointer.");
+			if (indevs[mouseIdx].use != XIMasterPointer) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such master cursor pointer.");
+
+			XIDefineCursor(dpy, indevs[mouseIdx].deviceid, RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber)), mycursor);
+		}
+
+		XFlush(dpy);
+
 		// Done (hopefully).
 #endif
 

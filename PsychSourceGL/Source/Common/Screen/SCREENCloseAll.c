@@ -85,7 +85,7 @@ void ScreenCloseAllWindows(void)
 			PsychReleaseScreen(i);
 		}
 		 
-		PsychShowCursor(i);
+		PsychShowCursor(i, -1);
     }
 
     return;

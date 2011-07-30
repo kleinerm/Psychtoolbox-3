@@ -410,6 +410,11 @@ static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];
 static int                      displayX11Screens[kPsychMaxPossibleDisplays];
 static psych_bool               displayCursorHidden[kPsychMaxPossibleDisplays];
 
+// XInput-2 extension data per display:
+static int                      xi_opcode = 0, xi_event = 0, xi_error = 0;
+static int                      xinput_ndevices[kPsychMaxPossibleDisplays];
+static XIDeviceInfo*            xinput_info[kPsychMaxPossibleDisplays];
+
 // X11 has a different - and much more powerful and flexible - concept of displays than OS-X or Windows:
 // One can have multiple X11 connections to different logical displays. A logical display corresponds
 // to a specific X-Server. This X-Server could run on the same machine as Matlab+PTB or on a different
@@ -477,7 +482,9 @@ void InitializePsychDisplayGlue(void)
         displayLockSettingsFlags[i]=FALSE;
         displayOriginalCGSettingsValid[i]=FALSE;
         displayOverlayedCGSettingsValid[i]=FALSE;
-		displayCursorHidden[i]=FALSE;
+	displayCursorHidden[i]=FALSE;
+	xinput_ndevices[i]=0;
+	xinput_info[i]=NULL;
     }
     
 	if (firstTime) {
@@ -505,9 +512,44 @@ void InitializePsychDisplayGlue(void)
     InitPsychtoolboxKernelDriverInterface();
 }
 
+static void InitXInputExtensionForDisplay(CGDirectDisplayID dpy, int idx)
+{
+  int major, minor;
+  int rc, i;
+
+  // XInputExtension supported? If so do basic init:
+  if (!XQueryExtension(dpy, "XInputExtension", &xi_opcode, &xi_event, &xi_error)) {
+    printf("PTB-WARNING: XINPUT1/2 extension unsupported. Will only be able to handle one mouse and mouse cursor.\n");
+    goto out;
+  }
+
+  // XInput V 2.0 or later supported?
+  major = 2;
+  minor = 0;
+  rc = XIQueryVersion(dpy, &major, &minor);
+  if (rc == BadRequest) {
+    printf("PTB-WARNING: No XInput-2 support. Server supports version %d.%d only.\n", major, minor);
+    printf("PTB-WARNING: XINPUT1/2 extension unsupported. Will only be able to handle one mouse and mouse cursor.\n");
+    goto out;
+  } else if (rc != Success) {
+    printf("PTB-ERROR: Internal error during XInput-2 extension init sequence! This is a bug in Xlib!\n");
+    printf("PTB-WARNING: XINPUT1/2 extension unsupported. Will only be able to handle one mouse and mouse cursor.\n");
+    goto out;
+  }
+
+  // printf("PsychHID: INFO: XI2 supported. Server provides version %d.%d.\n", major, minor);
+
+  // Enumerate all XI2 input devices for this x-display:
+  xinput_info[idx] = XIQueryDevice(dpy, XIAllDevices, &xinput_ndevices[idx]);
+
+out:
+  return;
+}
+
 void InitCGDisplayIDList(void)
 {  
-  int i, j, k, count, scrnid;
+  int major, minor;
+  int rc, i, j, k, count, scrnid;
   char* ptbdisplays = NULL;
   char displayname[1000];
   CGDirectDisplayID x11_dpy = NULL;
@@ -544,6 +586,15 @@ void InitCGDisplayIDList(void)
 
 	  // Set the screenNumber --> X11 display mappings up:
 	  for (k=numDisplays; (k<numDisplays + count) && (k<kPsychMaxPossibleDisplays); k++) {
+	    if (k == numDisplays) {
+		// 1st entry for this x-display: Init XInput2 extension for it:
+		InitXInputExtensionForDisplay(x11_dpy, numDisplays);
+	    } else {
+		// Successive entry. Copy info from 1st entry:
+		xinput_info[k] = xinput_info[numDisplays];
+		xinput_ndevices[k] = xinput_ndevices[numDisplays];
+	    }
+
 	    // Mapping of logical screenNumber to X11 Display:
 	    displayCGIDs[k]= x11_dpy;
 	    // Mapping of logical screenNumber to X11 screenNumber for X11 Display:
@@ -584,18 +635,65 @@ void InitCGDisplayIDList(void)
     // Query number of available screens on this X11 display:
     count=ScreenCount(x11_dpy);
 
+    InitXInputExtensionForDisplay(x11_dpy, 0);
+
     // Set the screenNumber --> X11 display mappings up:
-    for (i=0; i<count && i<kPsychMaxPossibleDisplays; i++) { displayCGIDs[i]= x11_dpy; displayX11Screens[i]=i; }
+    for (i=0; i<count && i<kPsychMaxPossibleDisplays; i++) {
+	displayCGIDs[i]= x11_dpy;
+	displayX11Screens[i]=i;
+	xinput_info[i] = xinput_info[0];
+	xinput_ndevices[i] = xinput_ndevices[0];
+    }
     numDisplays=i;
   }
 
   if (numDisplays>1) printf("PTB-Info: A total of %i physical X-Windows display screens is available for use.\n", numDisplays);
-  fflush(NULL);
 
   // Initialize screenId -> GPU headId mapping:
   PsychInitScreenToHeadMappings(numDisplays);
 
   return;
+}
+
+void PsychCleanupDisplayGlue(void)
+{
+	CGDirectDisplayID dpy, last_dpy;
+	int i;
+
+	last_dpy = NULL;
+	// Go trough full screen list:
+	for (i=0; i < PsychGetNumDisplays(); i++) {
+	  // Get display-ptr for this screen:
+	  PsychGetCGDisplayIDFromScreenNumber(&dpy, i);
+
+	  // Did we close this connection already (dpy==last_dpy)?
+	  if (dpy != last_dpy) {
+	    // Nope. Keep track of it...
+	    last_dpy=dpy;
+	    // ...and close display connection to X-Server:
+	    XCloseDisplay(dpy);
+
+	    // Release actual xinput info list for this x11 display connection:
+	    if (xinput_info[i]) {
+		XIFreeDeviceInfo(xinput_info[i]);
+	    }
+	  }
+
+	  // NULL-Out xinput extension data:
+	  xinput_info[i] = NULL;
+	  xinput_ndevices[i] = 0;
+	}
+
+	// All connections should be closed now. We can't NULL-out the display list, but
+	// Matlab will flush the Screen - Mexfile anyway...
+	return;
+}
+
+XIDeviceInfo* PsychGetInputDevicesForScreen(int screenNumber, int* nDevices)
+{
+  if(screenNumber >= numDisplays) PsychErrorExit(PsychError_invalidScumber);
+  if (nDevices) *nDevices = xinput_ndevices[screenNumber];
+  return(xinput_info[screenNumber]);
 }
 
 int PsychGetXScreenIdForScreen(int screenNumber)
@@ -1142,7 +1240,7 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
 }
 
 
-void PsychHideCursor(int screenNumber)
+void PsychHideCursor(int screenNumber, int deviceIdx)
 {
   // Static "Cursor" object which defines a completely transparent - and therefore invisible
   // X11 cursor for the mouse-pointer.
@@ -1152,7 +1250,7 @@ void PsychHideCursor(int screenNumber)
   if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychHideCursor() is out of range"); //also checked within SCREENPixelSizes
 
   // Cursor already hidden on screen? If so, nothing to do:
-  if(displayCursorHidden[screenNumber]) return;
+  if ((deviceIdx < 0) && displayCursorHidden[screenNumber]) return;
 
   // nullCursor already ready?
   if( nullCursor == (Cursor) -1 ) {
@@ -1174,37 +1272,85 @@ void PsychHideCursor(int screenNumber)
     XFreeGC(displayCGIDs[screenNumber], gc );
   }
 
-  // Attach nullCursor to our onscreen window:
-  XDefineCursor(displayCGIDs[screenNumber], RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), nullCursor );
-  XFlush(displayCGIDs[screenNumber]);
-  displayCursorHidden[screenNumber]=TRUE;
+  if (deviceIdx < 0) {
+	  // Attach nullCursor to our onscreen window:
+	  XDefineCursor(displayCGIDs[screenNumber], RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), nullCursor );
+	  XFlush(displayCGIDs[screenNumber]);
+	  displayCursorHidden[screenNumber]=TRUE;
+  } else {
+	// XInput cursor: Master pointers only.
+	int nDevices;
+	XIDeviceInfo* indevs = PsychGetInputDevicesForScreen(screenNumber, &nDevices);
+
+	// Sanity check:
+	if (NULL == indevs) PsychErrorExitMsg(PsychError_user, "Sorry, your system does not support individual mouse pointers.");
+	if (deviceIdx >= nDevices) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such cursor pointer.");
+	if (indevs[deviceIdx].use != XIMasterPointer) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such master cursor pointer.");
+
+	// Attach nullCursor to our onscreen window:
+	XIDefineCursor(displayCGIDs[screenNumber], indevs[deviceIdx].deviceid, RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), nullCursor);
+	XFlush(displayCGIDs[screenNumber]);
+  }
 
   return;
 }
 
-void PsychShowCursor(int screenNumber)
+void PsychShowCursor(int screenNumber, int deviceIdx)
 {
   Cursor arrowCursor;
 
   // Check for valid screenNumber:
   if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychHideCursor() is out of range"); //also checked within SCREENPixelSizes
 
-  // Cursor not hidden on screen? If so, nothing to do:
-  if(!displayCursorHidden[screenNumber]) return;
+  if (deviceIdx < 0) {
+	// Cursor not hidden on screen? If so, nothing to do:
+	if(!displayCursorHidden[screenNumber]) return;
 
-  // Reset to standard Arrow-Type cursor, which is a visible one.
-  arrowCursor = XCreateFontCursor(displayCGIDs[screenNumber], 2);
-  XDefineCursor(displayCGIDs[screenNumber], RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), arrowCursor);
-  XFlush(displayCGIDs[screenNumber]);
-  displayCursorHidden[screenNumber]=FALSE;
+	// Reset to standard Arrow-Type cursor, which is a visible one.
+	arrowCursor = XCreateFontCursor(displayCGIDs[screenNumber], 2);
+	XDefineCursor(displayCGIDs[screenNumber], RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), arrowCursor);
+	XFlush(displayCGIDs[screenNumber]);
+	displayCursorHidden[screenNumber]=FALSE;
+  } else {
+	// XInput cursor: Master pointers only.
+	int nDevices;
+	XIDeviceInfo* indevs = PsychGetInputDevicesForScreen(screenNumber, &nDevices);
+
+	// Sanity check:
+	if (NULL == indevs) PsychErrorExitMsg(PsychError_user, "Sorry, your system does not support individual mouse pointers.");
+	if (deviceIdx >= nDevices) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such cursor pointer.");
+	if (indevs[deviceIdx].use != XIMasterPointer) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such master cursor pointer.");
+
+	// Reset to standard Arrow-Type cursor, which is a visible one.
+	arrowCursor = XCreateFontCursor(displayCGIDs[screenNumber], 2);
+	XIDefineCursor(displayCGIDs[screenNumber], indevs[deviceIdx].deviceid, RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), arrowCursor);
+	XFlush(displayCGIDs[screenNumber]);
+  }
 }
 
-void PsychPositionCursor(int screenNumber, int x, int y)
+void PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx)
 {
   // Reposition the mouse cursor:
-  if (XWarpPointer(displayCGIDs[screenNumber], None, RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), 0, 0, 0, 0, x, y)==BadWindow) {
-    PsychErrorExitMsg(PsychError_internal, "Couldn't position the mouse cursor! (XWarpPointer() failed).");
+  if (deviceIdx < 0) {
+	// Core protocol cursor:
+	if (XWarpPointer(displayCGIDs[screenNumber], None, RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), 0, 0, 0, 0, x, y)==BadWindow) {
+			  PsychErrorExitMsg(PsychError_internal, "Couldn't position the mouse cursor! (XWarpPointer() failed).");
+	}
+  } else {
+	// XInput cursor: Master pointers only.
+	int nDevices;
+	XIDeviceInfo* indevs = PsychGetInputDevicesForScreen(screenNumber, &nDevices);
+
+	// Sanity check:
+	if (NULL == indevs) PsychErrorExitMsg(PsychError_user, "Sorry, your system does not support individual mouse pointers.");
+	if (deviceIdx >= nDevices) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such cursor pointer.");
+	if (indevs[deviceIdx].use != XIMasterPointer) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such master cursor pointer.");
+
+	if (XIWarpPointer(displayCGIDs[screenNumber], indevs[deviceIdx].deviceid, None, RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), 0, 0, 0, 0, x, y)) {
+			  PsychErrorExitMsg(PsychError_internal, "Couldn't position the mouse cursor! (XIWarpPointer() failed).");
+	}
   }
+
   XFlush(displayCGIDs[screenNumber]);
 }
 
