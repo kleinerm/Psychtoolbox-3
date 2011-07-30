@@ -1,5 +1,5 @@
-function [mouseIndices, productNames]= GetMouseIndices;
-% mouseIndices = GetMouseIndices
+function [mouseIndices, productNames, allInfo]= GetMouseIndices(typeOnly);
+% [mouseIndices, productNames, allInfo] = GetMouseIndices([typeOnly])
 %
 % OS X: ___________________________________________________________________
 %
@@ -10,9 +10,12 @@ function [mouseIndices, productNames]= GetMouseIndices;
 % paticular index.  For complete information on a gampad use
 % PsychHID('Devices').
 %
-% OS 9: ___________________________________________________________________
+% LINUX: __________________________________________________________________
 %
-% GetMouseIndices does not exist in OS 9. 
+% GetMouseIndices allows selection of different types of pointing devices
+% via the optional 'typeOnly' argument:
+% 'masterPointer' will only return indices of so called "master pointer"
+% devices. These correspond to visible mouse cursors.
 %
 % WINDOWS: ________________________________________________________________
 % 
@@ -28,8 +31,18 @@ function [mouseIndices, productNames]= GetMouseIndices;
 
 mouseIndices=[];
 productNames=cell(0);
+allInfo=cell(0);
+
+if nargin < 1
+  typeOnly = [];
+end
+
 if IsLinux
-  d = [ PsychHID('Devices', 1) , PsychHID('Devices', 3) ];
+  if strcmpi(typeOnly, 'masterPointer')
+    d = PsychHID('Devices', 1);
+  else
+    d = [ PsychHID('Devices', 1) , PsychHID('Devices', 3) ];
+  end
 else
   d = PsychHID('Devices');
 end
@@ -38,5 +51,6 @@ for i =1:length(d);
     if d(i).usagePageValue==1 && d(i).usageValue == 2
         mouseIndices(end+1)=d(i).index;
         productNames{end+1}=d(i).product;
+	allInfo{end+1}=d(i);
     end
 end
