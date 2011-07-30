@@ -42,7 +42,6 @@ PsychError PsychModuleInit(void)
     // OS/X only, so far:
 	PsychErrorExit(PsychRegister("NumElements",  &PSYCHHIDGetNumElements));
 	PsychErrorExit(PsychRegister("Elements",  &PSYCHHIDGetElements));
-	PsychErrorExit(PsychRegister("RawState",  &PSYCHHIDGetRawState));
 	PsychErrorExit(PsychRegister("NumCollections",  &PSYCHHIDGetNumCollections));
 	PsychErrorExit(PsychRegister("Collections",  &PSYCHHIDGetCollections));
 	PsychErrorExit(PsychRegister("CalibratedState",  &PSYCHHIDGetCalibratedState));
@@ -56,7 +55,7 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("KbQueueFlush", &PSYCHHIDKbQueueFlush));
 	PsychErrorExit(PsychRegister("KbQueueRelease", &PSYCHHIDKbQueueRelease));
 #endif
-
+	PsychErrorExit(PsychRegister("RawState",  &PSYCHHIDGetRawState));
 	PsychErrorExit(PsychRegister("KbCheck",  &PSYCHHIDKbCheck));
 
 	PsychErrorExit(PsychRegister("GetReport",  &PSYCHHIDGetReport));

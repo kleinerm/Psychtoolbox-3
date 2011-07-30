@@ -112,7 +112,8 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
     int numDeviceStructElements, numDeviceStructFieldNames=24, deviceIndex;
     PsychGenericScriptType	*deviceStruct;
     XIDeviceInfo *dev;
-    int i;
+    int i, j;
+    int numKeys, numAxis;
     char *type = "";
 
     // Preparse: Count matching devices for deviceClass
@@ -169,17 +170,25 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
         //PsychSetStructArrayDoubleElement("version",		deviceIndex, 	(double)currentDevice->version, 	deviceStruct);
         //PsychSetStructArrayStringElement("manufacturer",	deviceIndex, 	currentDevice->manufacturer, 		deviceStruct);
         //PsychSetStructArrayStringElement("serialNumber",	deviceIndex, 	currentDevice->serial, 			deviceStruct);
-        //PsychSetStructArrayDoubleElement("totalElements",	deviceIndex, 	(double)currentDevice->totalElements, 	deviceStruct);
-        //PsychSetStructArrayDoubleElement("features",		deviceIndex, 	(double)currentDevice->features, 	deviceStruct);
-        //PsychSetStructArrayDoubleElement("inputs",		deviceIndex, 	(double)currentDevice->inputs, 		deviceStruct);
-        //PsychSetStructArrayDoubleElement("outputs",		deviceIndex, 	(double)currentDevice->outputs, 	deviceStruct);
-        //PsychSetStructArrayDoubleElement("collections",	deviceIndex, 	(double)currentDevice->collections, 	deviceStruct);
-        //PsychSetStructArrayDoubleElement("axes",		deviceIndex, 	(double)currentDevice->axis, 		deviceStruct);
-        //PsychSetStructArrayDoubleElement("buttons",		deviceIndex, 	(double)currentDevice->buttons, 	deviceStruct);
-        //PsychSetStructArrayDoubleElement("hats",		deviceIndex, 	(double)currentDevice->hats, 		deviceStruct);
-        //PsychSetStructArrayDoubleElement("sliders",		deviceIndex, 	(double)currentDevice->sliders, 	deviceStruct);
-        //PsychSetStructArrayDoubleElement("dials",		deviceIndex, 	(double)currentDevice->dials, 		deviceStruct);
-        //PsychSetStructArrayDoubleElement("wheels",		deviceIndex, 	(double)currentDevice->wheels, 		deviceStruct);
+
+	numKeys = numAxis = 0;
+	for (j = 0; j < dev->num_classes; j++) {
+		if (dev->classes[j]->type == XIKeyClass) numKeys += (int) (((XIKeyClassInfo*) dev->classes[j])->num_keycodes);
+		if (dev->classes[j]->type == XIButtonClass) numKeys += (int) (((XIButtonClassInfo*) dev->classes[j])->num_buttons);
+		if (dev->classes[j]->type == XIValuatorClass) numAxis++;
+	}
+
+        PsychSetStructArrayDoubleElement("totalElements",	deviceIndex, 	(double) numKeys + numAxis, deviceStruct);
+        PsychSetStructArrayDoubleElement("features",		deviceIndex, 	(double) dev->num_classes, deviceStruct);
+        PsychSetStructArrayDoubleElement("inputs",		deviceIndex, 	(double) numKeys + numAxis, deviceStruct);
+        PsychSetStructArrayDoubleElement("outputs",		deviceIndex, 	(double) 0, deviceStruct);
+	PsychSetStructArrayDoubleElement("collections",         deviceIndex, 	(double) 0, deviceStruct);
+        PsychSetStructArrayDoubleElement("axes",		deviceIndex, 	(double) numAxis, deviceStruct);
+        PsychSetStructArrayDoubleElement("buttons",		deviceIndex, 	(double) numKeys, deviceStruct);
+        PsychSetStructArrayDoubleElement("hats",		deviceIndex, 	(double) 0, deviceStruct);
+        PsychSetStructArrayDoubleElement("sliders",		deviceIndex, 	(double) 0, deviceStruct);
+        PsychSetStructArrayDoubleElement("dials",		deviceIndex, 	(double) 0, deviceStruct);
+        PsychSetStructArrayDoubleElement("wheels",		deviceIndex, 	(double) 0, deviceStruct);
 	
 	deviceIndex++;
     }
@@ -191,9 +200,7 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 	unsigned char keys_return[32];
 	int keysdown;
 	double timestamp;
-	int i, j, dummy1, nclasses;
-	XIDeviceInfo *dev = NULL;
-	XIAnyClassInfo *classes;
+	int i, j;
 
 	// Map "default" deviceIndex to legace "Core protocol" method of querying keyboard
 	// state. This will give us whatever X has setup as default keyboard:
@@ -227,9 +234,6 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 				// Copy 32 Byte keystate vector into key_return. Each bit encodes for one key:
 				memcpy(&keys_return[0], &(((XKeyState*) &(state->data[i]))->keys[0]), sizeof(keys_return));
 			}
-
-			//		if (dev->classes[i]->type == 1) printf("NumButtons %i\n", ((XIButtonClassInfo*) dev->classes[i])->num_buttons);
-			//		if (dev->classes[i]->type == 2) printf("Value %f\n", (float) ((XIValuatorClassInfo*) dev->classes[i])->value);
 		}
 
 		XFreeDeviceState(state);
@@ -269,16 +273,26 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 	return(PsychError_none);
 }
 
-/*
-//	dev = XIQueryDevice(dpy, info[deviceIndex].deviceid, &dummy1);
+PsychError PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, double* max, double* val, char* axisLabel)
+{
+	XIDeviceInfo *dev = NULL;
+	XIAnyClassInfo *classes;
+	int i, dummy1, nclasses;
+
+	dev = XIQueryDevice(dpy, info[deviceIndex].deviceid, &dummy1);
 
 	printf("Dummy = %i , NClasses = %i\n", dummy1, dev->num_classes);
 	for (i = 0; i < dev->num_classes; i++) {
 		printf("Class %i: Type %i\n", i, (int) dev->classes[i]->type);
 		if (dev->classes[i]->type == 0) printf("NumKeys %i\n", ((XIKeyClassInfo*) dev->classes[i])->num_keycodes);
 		if (dev->classes[i]->type == 1) printf("NumButtons %i\n", ((XIButtonClassInfo*) dev->classes[i])->num_buttons);
-		if (dev->classes[i]->type == 2) printf("Value %f\n", (float) ((XIValuatorClassInfo*) dev->classes[i])->value);
+		if (dev->classes[i]->type == 2) {
+			printf("Value %f\n", (float) ((XIValuatorClassInfo*) dev->classes[i])->value);
+			if (val) *val = (double) ((XIValuatorClassInfo*) dev->classes[i])->value;
+		}
 	}
 
 	XIFreeDeviceInfo(dev);
-*/
+
+	return(PsychError_none);
+}

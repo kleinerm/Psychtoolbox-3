@@ -28,10 +28,15 @@ function [mouseIndices, productNames]= GetMouseIndices;
 
 mouseIndices=[];
 productNames=cell(0);
-d=PsychHID('Devices');
+if IsLinux
+  d = [ PsychHID('Devices', 1) , PsychHID('Devices', 3) ];
+else
+  d = PsychHID('Devices');
+end
+
 for i =1:length(d);
     if d(i).usagePageValue==1 && d(i).usageValue == 2
-        mouseIndices(end+1)=i;
+        mouseIndices(end+1)=d(i).index;
         productNames{end+1}=d(i).product;
     end
 end

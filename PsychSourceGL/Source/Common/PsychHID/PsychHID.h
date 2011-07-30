@@ -166,7 +166,6 @@ PsychError PSYCHHIDGetDevices(void);				// PsychHIDGetDeviceList.c
 PsychError PSYCHHIDGetNumElements(void);			// PSYCHHIDGetNumElements.c
 PsychError PSYCHHIDGetNumCollections(void);			// PSYCHHIDGetNumCollections.c
 PsychError PSYCHHIDGetElements(void);				// PsychHIDGetElementList.c
-PsychError PSYCHHIDGetRawState(void);				// PsychHIDGetRawElementState.c
 PsychError PSYCHHIDGetCalibratedState(void);		// PsychHIDGetCalibratedState.c
 PsychError PSYCHHIDGetCollections(void);			// PsychHIDGetCollections.c
 PsychError PSYCHHIDKbWait(void);					// PsychHIDKbWait.c 
@@ -178,6 +177,7 @@ PsychError PSYCHHIDKbQueueCheck(void);				// PsychHIDKbQueueCheck.c
 PsychError PSYCHHIDKbQueueFlush(void);				// PsychHIDKbQueueFlush.c
 PsychError PSYCHHIDKbQueueRelease(void);			// PsychHIDKbQueueRelease.c
 #endif
+PsychError PSYCHHIDGetRawState(void);				// PsychHIDGetRawElementState.c
 
 PsychError PSYCHHIDKbCheck(void);					// PsychHIDKbCheck.c
 
@@ -236,6 +236,7 @@ void PsychHIDInitializeHIDStandardInterfaces(void);
 void PsychHIDShutdownHIDStandardInterfaces(void);
 PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass);
 PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList);
+PsychError PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, double* max, double* val, char* axisLabel);
 
 //end include once
 #endif
