@@ -589,13 +589,14 @@ PsychError SCREENGetMouseHelper(void)
 		if (mouseIndex >= nDevices) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such device.");
 		if ((indevs[mouseIndex].use != XIMasterPointer) && (indevs[mouseIndex].use != XISlavePointer)) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. Not a pointer device.");
 
-		// Slave pointer? If so, we requery the device info struct to retrieve updated
-		// live device state:
-		if (indevs[mouseIndex].use != XIMasterPointer) {
-			indevs = XIQueryDevice(dpy, indevs[mouseIndex].deviceid, &numButtons);
-			mouseIndex = 0;
-			modifiers_return.effective = 0;
-		}
+		// We requery the device info struct to retrieve updated live device state:
+		// Crucial for slave pointers to get any state at all, but also needed on
+		// master pointers to get the state of additional valuators, e.g., pen pressure,
+		// touch area, tilt etc. for digitizer tablets, touch pads etc. For master pointers,
+		// the primary 2 axis for 2D (x,y) position and the button/modifier state will be
+		// queried via a dedicated XIQueryPointer() call, so that info gets overriden.
+		indevs = XIQueryDevice(dpy, indevs[mouseIndex].deviceid, &numButtons);
+		modifiers_return.effective = 0;
 
 		// Query real number of mouse buttons and the raw button and axis state
 		// stored inside the device itself. This is done mostly because slave pointer
@@ -605,20 +606,20 @@ PsychError SCREENGetMouseHelper(void)
 		numvaluators = 0;
 		memset(myvaluators, 0, sizeof(myvaluators));
 
-		for (i = 0; i < indevs[mouseIndex].num_classes; i++) {
-			// printf("Class %i: Type %i\n", i, (int) indevs[mouseIndex].classes[i]->type);
-			if (indevs[mouseIndex].classes[i]->type == XIButtonClass) {
+		for (i = 0; i < indevs->num_classes; i++) {
+			// printf("Class %i: Type %i\n", i, (int) indevs->classes[i]->type);
+			if (indevs->classes[i]->type == XIButtonClass) {
 				// Number of buttons: For all pointers.
-				numButtons = ((XIButtonClassInfo*) indevs[mouseIndex].classes[i])->num_buttons;
+				numButtons = ((XIButtonClassInfo*) indevs->classes[i])->num_buttons;
 
 				// Button state for slave pointers. Will get overriden for master pointers:
-				buttons_return.mask = ((XIButtonClassInfo*) indevs[mouseIndex].classes[i])->state.mask;
-				buttons_return.mask_len = ((XIButtonClassInfo*) indevs[mouseIndex].classes[i])->state.mask_len;
+				buttons_return.mask = ((XIButtonClassInfo*) indevs->classes[i])->state.mask;
+				buttons_return.mask_len = ((XIButtonClassInfo*) indevs->classes[i])->state.mask_len;
 			}
 
-			// Axis state for slave pointers. Will get overriden for master pointers:
-			if (indevs[mouseIndex].classes[i]->type == XIValuatorClass) {
-				XIValuatorClassInfo* axis = (XIValuatorClassInfo*) indevs[mouseIndex].classes[i];
+			// Axis state for slave pointers. First two axis (x,y) will get overriden for master pointers:
+			if (indevs->classes[i]->type == XIValuatorClass) {
+				XIValuatorClassInfo* axis = (XIValuatorClassInfo*) indevs->classes[i];
 				if (axis->number == 0) mxd = axis->value;  // x-Axis.
 				if (axis->number == 1) myd = axis->value;  // y-Axis.
 				// Additional axis, e.g., digitizer tablet, touchpads etc.:
@@ -634,9 +635,9 @@ PsychError SCREENGetMouseHelper(void)
 		numButtons += 32;
 
 		// A real master pointer: Use official query for mouse devices.
-		if (indevs[mouseIndex].use == XIMasterPointer) {
+		if (indevs->use == XIMasterPointer) {
 			// Query pointer location and state:
-			XIQueryPointer(dpy, indevs[mouseIndex].deviceid, RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber)), &rootwin, &childwin, &mxd, &myd, &dxd, &dyd,
+			XIQueryPointer(dpy, indevs->deviceid, RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber)), &rootwin, &childwin, &mxd, &myd, &dxd, &dyd,
 				       &buttons_return, &modifiers_return, &group_return);
 		}
 
@@ -654,7 +655,7 @@ PsychError SCREENGetMouseHelper(void)
 			}
 
 			// Free mask if retrieved via XIQueryPointer():
-			if (indevs[mouseIndex].use == XIMasterPointer) free(buttons_return.mask);
+			if (indevs->use == XIMasterPointer) free(buttons_return.mask);
 
 			// Append modifier key state from associated master keyboard. Last 32 entries:
 			for (i = 0; i < 32; i++) {
@@ -662,9 +663,8 @@ PsychError SCREENGetMouseHelper(void)
 			}
 		}
 
-		// If this indevs is a single struct that was dynamically queried from a XISlavePointer, then
-		// release it:
-		if ((mouseIndex == 0) && (indevs[mouseIndex].use != XIMasterPointer)) XIFreeDeviceInfo(indevs);
+		// Release live state info structure:
+		XIFreeDeviceInfo(indevs);
 	  }
 	  else {
 		// Old school core protocol query of virtual core pointer:
