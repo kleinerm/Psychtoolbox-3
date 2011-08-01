@@ -235,14 +235,14 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 		// associated master pointer for the master keyboard we want
 		// to query. This way, all future queries will query our requested
 		// master keyboard:
-		XIGetClientPointer(dpy, None, &j);
-		XISetClientPointer(dpy, None, info[deviceIndex].attachment);
+		j = -1;
+		if (!XIGetClientPointer(dpy, None, &j) || (j != info[deviceIndex].attachment)) XISetClientPointer(dpy, None, info[deviceIndex].attachment);
 
 		// Request current keyboard state from X-Server:
 		XQueryKeymap(dpy, keys_return);
 
 		// Reset master pointer/keyboard assignment to pre-query state:
-		XISetClientPointer(dpy, None, j);
+		if ((j > 0) && (j != info[deviceIndex].attachment)) XISetClientPointer(dpy, None, j);
 	} else {
 		// Non-Default deviceIndex: Want to query specific slave keyboard.
 		// Validate it maps to a slave keyboard device, as we can't handle
