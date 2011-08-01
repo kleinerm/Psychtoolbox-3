@@ -257,18 +257,21 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 
 		// Query its current state:
 		XDeviceState* state = XQueryDeviceState(dpy, mydev);
+		XInputClass* data = state->data;
 
 		// printf("Dummy = %i , NClasses = %i\n", dummy1, state->num_classes);
 
 		// Find state structure with key status info:
 		for (i = 0; i < state->num_classes; i++) {
-			// printf("Class %i: Type %i - %i\n", i, (int) state->data[i].class, (int) state->data[i].length);
-			if (state->data[i].class == KeyClass) {
-				// printf("NumKeys %i\n", ((XKeyState*) &(state->data[i]))->num_keys);
+			// printf("Class %i: Type %i - %i\n", i, (int) data->class, (int) data->length);
+			if (data->class == KeyClass) {
+				// printf("NumKeys %i\n", ((XKeyState*) data)->num_keys);
 
 				// Copy 32 Byte keystate vector into key_return. Each bit encodes for one key:
-				memcpy(&keys_return[0], &(((XKeyState*) &(state->data[i]))->keys[0]), sizeof(keys_return));
+				memcpy(&keys_return[0], &(((XKeyState*) data)->keys[0]), sizeof(keys_return));
 			}
+
+			data = (XInputClass*) (((void*) data) + ((size_t) data->length));
 		}
 
 		XFreeDeviceState(state);
@@ -337,13 +340,16 @@ PsychError PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, 
 	printf("NClasses = %i\n", state->num_classes);
 
 	// Find state structure with key status info:
-	for (i = 0; i < state->num_classes; i++) {
-		printf("Class = %i\n", state->data[i].class);
-		if (state->data[i].class == ValuatorClass) {
-			XValuatorState* valuator = (XValuatorState*) &(state->data[i]);
+	XInputClass* data = state->data;
+	for (i = 0; i < state->num_classes; i++) {		 
+		printf("Class = %i\n", (int) data->class);
+		if (data->class == ValuatorClass) {
+			XValuatorState* valuator = (XValuatorState*) data;
 			printf("NumAxis %i [Mode=%s]\n", valuator->num_valuators, (valuator->mode == Absolute) ? "Absolute" : "Relative");
 			for (j = 0 ; j < valuator->num_valuators; j++) printf("Axis %i: %i\n", j, valuator->valuators[j]);
 		}
+
+		data = (XInputClass*) (((void*) data) + ((size_t) data->length));
 	}
 
 	XFreeDeviceState(state);
