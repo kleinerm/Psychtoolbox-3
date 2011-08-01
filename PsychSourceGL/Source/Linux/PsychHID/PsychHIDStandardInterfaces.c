@@ -22,11 +22,22 @@ static int xi_opcode, event, error;
 static XIDeviceInfo *info = NULL;
 static int ndevices = 0;
 static int masterDevice = -1;
+static XDevice* x_dev[PSYCH_HID_MAX_DEVICES];
+
+static XDevice* GetXDevice(int deviceIndex)
+{
+	if (deviceIndex < 0 || deviceIndex >= PSYCH_HID_MAX_DEVICES) PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex specified. No such device!");
+	if (x_dev[deviceIndex] == NULL) x_dev[deviceIndex] = XOpenDevice(dpy, (XID) info[deviceIndex].deviceid);
+	return(x_dev[deviceIndex]);
+}
 
 void PsychHIDInitializeHIDStandardInterfaces(void)
 {
 	int major, minor;
 	int rc, i;
+
+	// Init x_dev array:
+	for (i = 0; i < PSYCH_HID_MAX_DEVICES; i++) x_dev[i] = NULL;
 
 	// We must initialize XLib for multi-threaded operations / access on first
 	// call:
@@ -93,6 +104,14 @@ out:
 
 void PsychHIDShutdownHIDStandardInterfaces(void)
 {
+	int i;
+
+	// Close all devices registered in x_dev array:
+	for (i = 0; i < PSYCH_HID_MAX_DEVICES; i++) {
+		if (x_dev[i]) XCloseDevice(dpy, x_dev[i]);
+		x_dev[i] = NULL;
+	}
+
 	// Release list of enumerated input devices:
 	XIFreeDeviceInfo(info);
 	info = NULL;
@@ -202,23 +221,39 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 	double timestamp;
 	int i, j;
 
-	// Map "default" deviceIndex to legace "Core protocol" method of querying keyboard
+	// Map "default" deviceIndex to legacy "Core protocol" method of querying keyboard
 	// state. This will give us whatever X has setup as default keyboard:
 	if (deviceIndex == INT_MAX) {
+		// Request current keyboard state of default keyboard from X-Server:
+		XQueryKeymap(dpy, keys_return);
+	} else if (deviceIndex < 0 || deviceIndex >= ndevices) {
+		PsychErrorExitMsg(PsychError_user, "Invalid keyboard deviceIndex specified. No such device!");
+	} else if (info[deviceIndex].use == XIMasterKeyboard) {
+		// Master keyboard:
+
+		// Query current client pointer assignment, then switch it to
+		// associated master pointer for the master keyboard we want
+		// to query. This way, all future queries will query our requested
+		// master keyboard:
+		XIGetClientPointer(dpy, None, &j);
+		XISetClientPointer(dpy, None, info[deviceIndex].attachment);
+
 		// Request current keyboard state from X-Server:
 		XQueryKeymap(dpy, keys_return);
-	}
-	else {
+
+		// Reset master pointer/keyboard assignment to pre-query state:
+		XISetClientPointer(dpy, None, j);
+	} else {
 		// Non-Default deviceIndex: Want to query specific slave keyboard.
 		// Validate it maps to a slave keyboard device, as we can't handle
 		// master keyboard devices this way and don't want to touch anything
 		// but a keyboard'ish device:
-		if (deviceIndex < 0 || deviceIndex >= ndevices || info[deviceIndex].use != XISlaveKeyboard) {
-			PsychErrorExitMsg(PsychError_user, "Invalid keyboard deviceIndex specified. No such device or not a physical slave keyboard device!");
+		if (info[deviceIndex].use != XISlaveKeyboard) {
+			PsychErrorExitMsg(PsychError_user, "Invalid keyboard deviceIndex specified. Not a slave keyboard device!");
 		}
 
 		// Open connection to slave keyboard device:
-		XDevice* mydev = XOpenDevice(dpy, (XID) info[deviceIndex].deviceid);
+		XDevice* mydev = GetXDevice(deviceIndex);
 
 		// Query its current state:
 		XDeviceState* state = XQueryDeviceState(dpy, mydev);
@@ -237,7 +272,6 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 		}
 
 		XFreeDeviceState(state);
-		XCloseDevice(dpy, mydev);
 	}
 
 	// Done with query. We have keyboard state in keys_return[] now.
@@ -277,22 +311,42 @@ PsychError PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, 
 {
 	XIDeviceInfo *dev = NULL;
 	XIAnyClassInfo *classes;
-	int i, dummy1, nclasses;
+	int i, j, dummy1, nclasses;
 
 	dev = XIQueryDevice(dpy, info[deviceIndex].deviceid, &dummy1);
 
 	printf("Dummy = %i , NClasses = %i\n", dummy1, dev->num_classes);
 	for (i = 0; i < dev->num_classes; i++) {
 		printf("Class %i: Type %i\n", i, (int) dev->classes[i]->type);
-		if (dev->classes[i]->type == 0) printf("NumKeys %i\n", ((XIKeyClassInfo*) dev->classes[i])->num_keycodes);
-		if (dev->classes[i]->type == 1) printf("NumButtons %i\n", ((XIButtonClassInfo*) dev->classes[i])->num_buttons);
-		if (dev->classes[i]->type == 2) {
+		if (dev->classes[i]->type == XIKeyClass) printf("NumKeys %i\n", ((XIKeyClassInfo*) dev->classes[i])->num_keycodes);
+		if (dev->classes[i]->type == XIButtonClass) printf("NumButtons %i\n", ((XIButtonClassInfo*) dev->classes[i])->num_buttons);
+		if (dev->classes[i]->type == XIValuatorClass) {
 			printf("Value %f\n", (float) ((XIValuatorClassInfo*) dev->classes[i])->value);
 			if (val) *val = (double) ((XIValuatorClassInfo*) dev->classes[i])->value;
 		}
 	}
 
 	XIFreeDeviceInfo(dev);
+
+	// Open connection to slave keyboard device:
+	XDevice* mydev = GetXDevice(deviceIndex);
+
+	// Query its current state:
+	XDeviceState* state = XQueryDeviceState(dpy, mydev);
+
+	printf("NClasses = %i\n", state->num_classes);
+
+	// Find state structure with key status info:
+	for (i = 0; i < state->num_classes; i++) {
+		printf("Class = %i\n", state->data[i].class);
+		if (state->data[i].class == ValuatorClass) {
+			XValuatorState* valuator = (XValuatorState*) &(state->data[i]);
+			printf("NumAxis %i [Mode=%s]\n", valuator->num_valuators, (valuator->mode == Absolute) ? "Absolute" : "Relative");
+			for (j = 0 ; j < valuator->num_valuators; j++) printf("Axis %i: %i\n", j, valuator->valuators[j]);
+		}
+	}
+
+	XFreeDeviceState(state);
 
 	return(PsychError_none);
 }
