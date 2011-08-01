@@ -354,5 +354,41 @@ PsychError PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, 
 
 	XFreeDeviceState(state);
 
+	XIEventMask emask;
+	unsigned char mask[(XI_LASTEVENT + 7)/8];
+
+	memset(mask, 0, sizeof(mask));
+	XISetMask(mask, XI_ButtonPress);
+	XISetMask(mask, XI_ButtonRelease);
+	XISetMask(mask, XI_KeyPress);
+	XISetMask(mask, XI_KeyRelease);
+	XISetMask(mask, XI_Motion);
+
+	emask.deviceid = info[deviceIndex].deviceid;
+	emask.mask_len = sizeof(mask);
+	emask.mask = mask;
+	XISelectEvents(dpy, DefaultRootWindow(dpy), &emask, 1);
+
+	XEvent ev;
+
+	double deadline, now;
+	PsychGetAdjustedPrecisionTimerSeconds(&deadline);
+	deadline += 20;
+
+	while(now < deadline) {
+		XGenericEventCookie *cookie = &ev.xcookie;
+		PsychGetAdjustedPrecisionTimerSeconds(&now);
+
+//		XNextEvent(dpy, &ev);
+		if (!XCheckTypedEvent(dpy, GenericEvent, &ev)) continue;
+
+		if (cookie->type != GenericEvent || cookie->extension != xi_opcode) continue;
+
+		if (XGetEventData(dpy, cookie)) {
+			printf("Event type %d received\n", cookie->evtype);
+			XFreeEventData(dpy, &ev.xcookie);
+		}
+	}
+
 	return(PsychError_none);
 }
