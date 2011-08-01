@@ -1,5 +1,5 @@
-function [x,y,buttons,focus] = GetMouse(windowPtrOrScreenNumber, mouseDev)
-% [x,y,buttons,focus] = GetMouse([windowPtrOrScreenNumber][, mouseDev])
+function [x,y,buttons,focus,valuators] = GetMouse(windowPtrOrScreenNumber, mouseDev)
+% [x,y,buttons,focus,valuators] = GetMouse([windowPtrOrScreenNumber][, mouseDev])
 %
 % Returns the current (x,y) position of the cursor and the up/down state
 % of the mouse buttons. "buttons" is a 1xN matrix where N is the number of
@@ -156,10 +156,19 @@ if nargin < 2
 end
 
 %read the mouse position and  buttons
-if ~isempty(windowPtrOrScreenNumber)
-	[globalX, globalY, rawButtons, focus] = Screen('GetMouseHelper', numMouseButtons, windowPtrOrScreenNumber, mouseDev);
+if IsLinux
+  if ~isempty(windowPtrOrScreenNumber)
+    [globalX, globalY, rawButtons, focus, valuators] = Screen('GetMouseHelper', numMouseButtons, windowPtrOrScreenNumber, mouseDev);
+  else
+    [globalX, globalY, rawButtons, focus, valuators] = Screen('GetMouseHelper', numMouseButtons, [], mouseDev);
+  end
 else
-	[globalX, globalY, rawButtons, focus] = Screen('GetMouseHelper', numMouseButtons, [], mouseDev);
+  if ~isempty(windowPtrOrScreenNumber)
+    [globalX, globalY, rawButtons, focus] = Screen('GetMouseHelper', numMouseButtons, windowPtrOrScreenNumber, mouseDev);
+  else
+    [globalX, globalY, rawButtons, focus] = Screen('GetMouseHelper', numMouseButtons, [], mouseDev);
+  end
+  valuators = [];
 end
 
 buttons=logical(rawButtons);

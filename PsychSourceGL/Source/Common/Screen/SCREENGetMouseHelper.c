@@ -216,15 +216,20 @@ void ConsoleInputHelper(int ccode)
 }
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "[x, y, buttonValueArray]= Screen('GetMouseHelper', numButtons [, screenNumber][, mouseIndex]);";
-//                          1  2  3                                           1          2                3
+static char useString[] = "[x, y, buttonValueArray, hasKbFocus, valuators]= Screen('GetMouseHelper', numButtons [, screenNumber][, mouseIndex]);";
+//                          1  2  3                 4           5                                    1          2                3
 static char synopsisString[] = 
 	"This is a helper function called by GetMouse.  Do not call Screen(\'GetMouseHelper\'), use "
 	"GetMouse instead.\n"
 	"\"numButtons\" is the number of mouse buttons to return in buttonValueArray. 1 <= numButtons <= 32. Ignored on Linux and Windows.\n"
 	"\"screenNumber\" is the number of the PTB screen whose mouse should be queried on setups with multiple connected mice. "
 	"This value is optional (defaults to zero) and only honored on GNU/Linux. It's meaningless on OS-X or Windows.\n"
-	"\"mouseIndex\" is the optional index of the (mouse)pointer device. Defaults to system pointer. Only honored on Linux.\n";
+	"Well, not quite. If you pass in an onscreen window handle instead of a screenNumber, then the 4th optional return "
+	"argument \"hsKbFocus\" will return 1 if the given onscreen window has keyboard input focus, 0 otherwise.\n"
+	"\"mouseIndex\" is the optional index of the (mouse)pointer device. Defaults to system pointer. Only honored on Linux.\n"
+	"\"valuators\" If the input device has more than two axis (x and y position), e.g., in the case of a touch input device "
+	"or digitizer tablet, this will be a vector of double values, returning the values of those axis. Return values could "
+	"be, e.g., distance to surface, pen pressure, touch area, or pen orientation on a pen input device or touchscreen.\n";
 static char seeAlsoString[] = "";
 	 
 
@@ -293,6 +298,9 @@ PsychError SCREENGetMouseHelper(void)
 		}
 	}
 
+	// Return optional valuator values: Unimplemented on OS/X. Just return an empty matrix.
+	// The buttonArray is just a dummy assignment without any meaning.
+	PsychCopyOutDoubleMatArg(5, kPsychArgOptional, (int) 1, (int) 0, (int) 1, buttonArray);
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -341,6 +349,10 @@ PsychError SCREENGetMouseHelper(void)
 			// No. Just always return "has focus":
 			PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) 1);
 		}		
+
+		// Return optional valuator values: Unimplemented on Windows. Just return an empty matrix.
+		// The &timestamp is just a dummy assignment without any meaning.
+		PsychCopyOutDoubleMatArg(5, kPsychArgOptional, (int) 1, (int) 0, (int) 1, &timestamp);
 	}
 	else {
 	  // 'KeyboardHelper' mode: We implement either KbCheck() or KbWait() via X11.
@@ -498,6 +510,8 @@ PsychError SCREENGetMouseHelper(void)
 #endif
 	
 #if PSYCH_SYSTEM == PSYCH_LINUX
+	double myvaluators[100];
+	int    numvaluators;
 	unsigned char keys_return[32];
 	char* keystring;
 	PsychGenericScriptType *kbNames;
@@ -561,6 +575,8 @@ PsychError SCREENGetMouseHelper(void)
 	// Are we operating in 'GetMouseHelper' mode? numButtons>=0 indicates this.
 	if (numButtons>=0) {
 	  // Mouse pointer query mode:
+	  numvaluators = 0;
+
 	  if (mouseIndex >= 0) {
 		// XInput-2 query for handling of multiple mouse pointers:
 
@@ -586,6 +602,9 @@ PsychError SCREENGetMouseHelper(void)
 		// devices don't support XIQueryPointer() so we get their relevant info from the
 		// XIDeviceInfo struct itself:
 		numButtons = 0;
+		numvaluators = 0;
+		memset(myvaluators, 0, sizeof(myvaluators));
+
 		for (i = 0; i < indevs[mouseIndex].num_classes; i++) {
 			// printf("Class %i: Type %i\n", i, (int) indevs[mouseIndex].classes[i]->type);
 			if (indevs[mouseIndex].classes[i]->type == XIButtonClass) {
@@ -600,9 +619,13 @@ PsychError SCREENGetMouseHelper(void)
 			// Axis state for slave pointers. Will get overriden for master pointers:
 			if (indevs[mouseIndex].classes[i]->type == XIValuatorClass) {
 				XIValuatorClassInfo* axis = (XIValuatorClassInfo*) indevs[mouseIndex].classes[i];
-				if (axis->number == 0) mxd = axis->value;
-				if (axis->number == 1) myd = axis->value;
-
+				if (axis->number == 0) mxd = axis->value;  // x-Axis.
+				if (axis->number == 1) myd = axis->value;  // y-Axis.
+				// Additional axis, e.g., digitizer tablet, touchpads etc.:
+				if (axis->number >= 2 && axis->number < 102) {
+					myvaluators[axis->number - 2] = axis->value;
+					numvaluators = (numvaluators > axis->number - 1) ? numvaluators : axis->number - 1;
+				}
 				// printf("AXIS %i, LABEL = %s, MIN = %f, MAX = %f, VAL = %f\n", axis->number, (char*) "NONE", (float) axis->min, (float) axis->max, (float) axis->value);
 			}
 		}
@@ -678,6 +701,9 @@ PsychError SCREENGetMouseHelper(void)
 	  // keyboard input focus, zero otherwise:
 	  XGetInputFocus(dpy, &rootwin, &i);
 	  PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) (rootwin == mywin) ? 1 : 0);
+
+	  // Return optional valuator values:
+	  PsychCopyOutDoubleMatArg(5, kPsychArgOptional, (int) 1, (int) numvaluators, (int) 1, &myvaluators);
 	}
 	else {
 	  // 'KeyboardHelper' mode: We implement either KbCheck() or KbWait() via X11.
