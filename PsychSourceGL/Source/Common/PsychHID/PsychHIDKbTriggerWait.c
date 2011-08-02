@@ -7,11 +7,12 @@
   
 	PLATFORMS:  
 	
-		Only OS X for now.  
+		All.
   
 	AUTHORS:
 	
-		rwoods@ucla.edu		rpw 
+		rwoods@ucla.edu                     rpw
+        mario.kleiner@tuebingen.mpg.de      mk
       
 	HISTORY:
 		8/9/07  rpw		Created.
@@ -53,66 +54,90 @@
 */
 
 #include "PsychHID.h"
-#if PSYCH_SYSTEM == PSYCH_OSX
-#include "PsychHIDKbQueue.h"
-
-#define NUMDEVICEUSAGES 2
 
 static char useString[]= "secs=PsychHID('KbTriggerWait', KeysUsage, [deviceNumber])";
 static char synopsisString[] = 
-        "Scan a keyboard or keypad device and wait for a trigger key press "
+        "Scan a keyboard or keypad device and wait for a trigger key press.\n"
         "By default the first keyboard device (the one with the lowest device number) is "
         "scanned. If no keyboard is found, the first keypad device is "
-        "scanned.  Optionally, the device number of any keyboard or keypad may be specified. ";
-        
+        "scanned.  Optionally, the device number of any keyboard or keypad may be specified.\n"
+        "The 'KeysUsage' parameter must specify the keycode of a single key to wait for on "
+        "OS/X. On Linux and Windows, 'KeysUsage' can be a vector of trigger key codes and the "
+        "wait will finish as soon as at least one of the keys in the vector is pressed.\n"
+        "On Linux and OS/X handling of keyboard triggers is efficient. On MS-Windows, keyboard "
+        "triggers are implemented by periodic polling of the keyboard state with a frequency of "
+        "approximately 500 Hz. This is a brute-force approach which can lead to unreliable "
+        "stimulus presentation timing and trigger timestamping unless you have a fast "
+        "(multi-core) machine. It will also draw significant amounts of electrical power. "
+        "Therefore use this feature sparingly on MS-Windows and consider a different operating system.\n"
+        "On MS-Windows, the 'deviceNumber' argument is ignored and the default keyboard is waited for.\n";
+
 static char seeAlsoString[] = "";
-
-extern HIDDataRef hidDataRef;
-
  
 PsychError PSYCHHIDKbTriggerWait(void) 
 {
+    int	deviceIndex;
+    int numScankeys;
+    int* scanKeys;
+    
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(2));  	//Specify trigger key code and the deviceNumber of the keyboard or keypad to scan.  
+
+	// Identify the mandatory trigger array:
+    if (!PsychAllocInIntegerListArg(1, TRUE, &numScankeys, &scanKeys)){
+        PsychErrorExitMsg(PsychError_user, "Keycode is required.");
+    }
+	
+    // Get optional deviceIndex:
+    if (!PsychCopyInIntegerArg(2, FALSE, &deviceIndex)) deviceIndex = -1;
+
+    // Execute:
+    PsychHIDOSKbTriggerWait(deviceIndex, numScankeys, scanKeys);
+
+    return(PsychError_none);
+}
+
+#if PSYCH_SYSTEM == PSYCH_OSX
+
+#include "PsychHIDKbQueue.h"
+#define NUMDEVICEUSAGES 2
+extern HIDDataRef hidDataRef;
+
+void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
+{
     pRecDevice	deviceRecord;
-    int			i, deviceIndex, numDeviceIndices;
+    int			i, numDeviceIndices;
     long		KeysUsagePage=0x07;									// This is the keyboard usage page
 	long		KeysUsage;											// This will contain the key code of the trigger key
     long		KbDeviceUsagePages[NUMDEVICEUSAGES]= {0x01,0x01}, KbDeviceUsages[NUMDEVICEUSAGES]={0x06,0x07}; // Generic Desktop page (0x01), keyboard (0x06), keypad (0x07)
     int 		numDeviceUsages=NUMDEVICEUSAGES;
     int			deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
     pRecDevice	deviceRecords[PSYCH_HID_MAX_KEYBOARD_DEVICES];
-    psych_bool		isDeviceSpecified, foundUserSpecifiedDevice;
+    psych_bool	isDeviceSpecified, foundUserSpecifiedDevice;
     double		*timeValueOutput;
 	
 	IOHIDQueueInterface **queue;
 	HRESULT result;
 	IOHIDDeviceInterface122** interface=NULL;	// This requires Mac OS X 10.3 or higher
-	
-	IOReturn success;
-	
+	IOReturn success;	
 	IOHIDElementCookie triggerCookie;
 
-    PsychPushHelp(useString, synopsisString, seeAlsoString);
-    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+    // Assign single supported trigger key:
+    if (numScankeys != 1) PsychErrorExitMsg(PsychError_user, "Sorry, the OS/X version of KbTriggerWait only supports one trigger key.");
+    KeysUsage = (long) scanKeys[0];
 
-    PsychErrorExit(PsychCapNumOutputArgs(1));
-    PsychErrorExit(PsychCapNumInputArgs(2));  	//Specify trigger key code and the deviceNumber of the keyboard or keypad to scan.  
+    // Optional deviceIndex specified?
+    isDeviceSpecified = (deviceIndex >= 0) ? TRUE : FALSE;
     
-    PsychHIDVerifyInit();
-	
+    PsychHIDVerifyInit();	
 	if(hidDataRef!=NULL) PsychErrorExitMsg(PsychError_user, "A queue is already running, you must call KbQueueRelease() before invoking KbTriggerWait.");
-	
-	//Identify the trigger
-	{
-		int KeysUsageInteger;
-		if(!PsychCopyInIntegerArg(1, TRUE, &KeysUsageInteger)){
-			PsychErrorExitMsg(PsychError_user, "Keycode is required.");
-		}
-		KeysUsage=KeysUsageInteger;
-	}
-	
+
     //Choose the device index and its record
     PsychHIDGetDeviceListByUsages(numDeviceUsages, KbDeviceUsagePages, KbDeviceUsages, &numDeviceIndices, deviceIndices, deviceRecords);  
-    isDeviceSpecified=PsychCopyInIntegerArg(2, FALSE, &deviceIndex);
+    
     if(isDeviceSpecified){  //make sure that the device number provided by the user is really a keyboard or keypad.
         for(i=0;i<numDeviceIndices;i++){
             if(foundUserSpecifiedDevice=(deviceIndices[i]==deviceIndex))
@@ -305,8 +330,7 @@ PsychError PSYCHHIDKbTriggerWait(void)
 	(*queue)=NULL;				// Just in case queue is redefined as static in the future
 	
     // PsychGetPrecisionTimerSeconds(timeValueOutput);		// Less precise strategy than using event.timestamp
-        
-    return(PsychError_none);	
+    return;
 }
 
 #endif

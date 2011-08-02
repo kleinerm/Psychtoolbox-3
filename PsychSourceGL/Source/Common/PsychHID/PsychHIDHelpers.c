@@ -202,6 +202,19 @@ pRecDevice PsychHIDGetDeviceRecordPtrFromIndex(int deviceIndex)
     return(NULL);  //make the compiler happy.
 }
 
+#if PSYCH_SYSTEM != PSYCH_LINUX
+
+void PsychHIDInitializeHIDStandardInterfaces(void)
+{
+    return;
+}
+
+void PsychHIDShutdownHIDStandardInterfaces(void)
+{
+    return;
+}
+
+#endif
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 

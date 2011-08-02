@@ -24,7 +24,10 @@ static char synopsisString[] =  "Return a struct array describing each connected
 				"This is not supported on all operating systems and will be silently "
 				"ignored if unsupported. On Linux you can select the following classes "
 				"of input devices: 1 = MasterPointer, 2 = MasterKeyboard, 3 = SlavePointer "
-				"4 = SlaveKeyboard, 5 = Floating slave device.\n";
+				"4 = SlaveKeyboard, 5 = Floating slave device.\n\n"
+                "Not all device properties are returned on all operating systems. A zero, "
+                "empty or -1 value for a property in the returned structs can mean that "
+                "the information could not be returned.\n";
 static char seeAlsoString[] = "";
 
 PsychError PSYCHHIDGetDevices(void) 

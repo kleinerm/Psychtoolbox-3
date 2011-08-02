@@ -49,11 +49,11 @@ void InitializeSynopsis(void)
     
 	synopsis[i++] = "\n\nQueue based keyboard queries: See 'help KbQueueCreate' for explanations:\n\n";
 	synopsis[i++] = "PsychHID('KbQueueCreate', [deviceNumber], [keyFlags])";
-	synopsis[i++] = "PsychHID('KbQueueRelease')"; 
-	synopsis[i++] = "PsychHID('KbQueueFlush')"; 
-	synopsis[i++] = "PsychHID('KbQueueStart')"; 
-	synopsis[i++] = "PsychHID('KbQueueStop')"; 
-	synopsis[i++] = "[keyIsDown, firstKeyPressTimes, firstKeyReleaseTimes, lastKeyPressTimes, lastKeyReleaseTimes]=PsychHID('KbQueueCheck')"; 
+	synopsis[i++] = "PsychHID('KbQueueRelease' [, deviceIndex])"; 
+	synopsis[i++] = "PsychHID('KbQueueFlush' [, deviceIndex])"; 
+	synopsis[i++] = "PsychHID('KbQueueStart' [, deviceIndex])"; 
+	synopsis[i++] = "PsychHID('KbQueueStop' [, deviceIndex])"; 
+	synopsis[i++] = "[keyIsDown, firstKeyPressTimes, firstKeyReleaseTimes, lastKeyPressTimes, lastKeyReleaseTimes]=PsychHID('KbQueueCheck' [, deviceIndex])"; 
 	synopsis[i++] = "secs=PsychHID('KbTriggerWait', KeysUsage, [deviceNumber])"; 
 	
 	synopsis[i++] = "\n\nSupport for access to generic USB devices: See 'help ColorCal2' for one usage example:\n\n";

@@ -7,11 +7,12 @@
   
 	PLATFORMS:  
 	
-		Only OS X for now.  
+		All.  
   
 	AUTHORS:
 	
 		rwoods@ucla.edu		rpw 
+        mario.kleiner@tuebingen.mpg.de      mk
       
 	HISTORY:
 		8/19/07  rpw		Created.
@@ -75,26 +76,41 @@
 */
 
 #include "PsychHID.h"
-#if PSYCH_SYSTEM == PSYCH_OSX
-#include "PsychHIDKbQueue.h"
 
-static char useString[]= "PsychHID('KbQueueStop')";
+static char useString[]= "PsychHID('KbQueueStop' [, deviceIndex])";
 static char synopsisString[] = 
-		"Stops sending keypresses to a queue."
-        "PsychHID('KbQueueCreaate') must be called before this routine. ";
+		"Stops sending keypresses to a queue.\n"
+        "PsychHID('KbQueueCreate') must be called before this routine.\n"
+        "On Linux, the optional 'deviceIndex' is the index of the keyboard device whose queue should be stopped. "
+        "If omitted, the default keyboard's queue will be stopped. On other systems, the last queue will be stopped.\n";
         
 static char seeAlsoString[] = "KbQueueCreate, KbQueueStart, KbQueueCheck, KbQueueFlush, KbQueueRelease";
-
-extern HIDDataRef hidDataRef;
  
 PsychError PSYCHHIDKbQueueStop(void) 
 {
+    int deviceIndex;
+    
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
     PsychErrorExit(PsychCapNumOutputArgs(0));
-    PsychErrorExit(PsychCapNumInputArgs(0));  
-    
+    PsychErrorExit(PsychCapNumInputArgs(1));
+
+    deviceIndex = -1;
+    PsychCopyInIntegerArg(1, kPsychArgOptional, &deviceIndex);
+
+    PsychHIDOSKbQueueStop(deviceIndex);
+
+    return(PsychError_none);
+}
+
+#if PSYCH_SYSTEM == PSYCH_OSX
+
+#include "PsychHIDKbQueue.h"
+extern HIDDataRef hidDataRef;
+
+void PsychHIDOSKbQueueStop(int deviceIndex)
+{
 	if(!hidDataRef){
 		PsychErrorExitMsg(PsychError_user, "Queue has not been created.");
 	}
@@ -111,7 +127,6 @@ PsychError PSYCHHIDKbQueueStop(void)
 			}
 		}
 	}
-    return(PsychError_none);	
 }
 
 #endif

@@ -7,11 +7,12 @@
   
 	PLATFORMS:  
 	
-		Only OS X for now.  
+		All.  
   
 	AUTHORS:
 	
 		rwoods@ucla.edu		rpw 
+        mario.kleiner@tuebingen.mpg.de      mk
       
 	HISTORY:
 		8/23/07  rpw        Created.
@@ -74,15 +75,36 @@
 */
 
 #include "PsychHID.h"
-#if PSYCH_SYSTEM == PSYCH_OSX
-#include "PsychHIDKbQueue.h"
 
-static char useString[]= "PsychHID('KbQueueFlush')";
+static char useString[]= "PsychHID('KbQueueFlush' [, deviceIndex])";
 static char synopsisString[] = 
-		"Flushes all scored and unscored keyboard events from a queue."
-        "PsychHID('KbQueueCreate') must be called before this routine ";
+		"Flushes all scored and unscored keyboard events from a queue.\n"
+        "PsychHID('KbQueueCreate') must be called before this routine.\n"
+        "On Linux, the optional 'deviceIndex' is the index of the keyboard device whose queue should be flushed. "
+        "If omitted, the default keyboard's queue will be flushed. On other systems, the last queue will be flushed.\n";
         
 static char seeAlsoString[] = "KbQueueCreate, KbQueueStart, KbQueueStop, KbQueueCheck, KbQueueRelease";
+ 
+PsychError PSYCHHIDKbQueueFlush(void) 
+{
+    int deviceIndex;
+    
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+
+    PsychErrorExit(PsychCapNumOutputArgs(0));
+    PsychErrorExit(PsychCapNumInputArgs(1));
+
+    deviceIndex = -1;
+    PsychCopyInIntegerArg(1, kPsychArgOptional, &deviceIndex);
+
+    PsychHIDOSKbQueueFlush(deviceIndex);
+    
+    return(PsychError_none);	
+}
+
+#if PSYCH_SYSTEM == PSYCH_OSX
+#include "PsychHIDKbQueue.h"
 
 extern AbsoluteTime *psychHIDKbQueueFirstPress;
 extern AbsoluteTime *psychHIDKbQueueFirstRelease;
@@ -91,15 +113,9 @@ extern AbsoluteTime *psychHIDKbQueueLastRelease;
 extern HIDDataRef hidDataRef;
 
 extern pthread_mutex_t psychHIDKbQueueMutex;
- 
-PsychError PSYCHHIDKbQueueFlush(void) 
-{
-    PsychPushHelp(useString, synopsisString, seeAlsoString);
-    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-
-    PsychErrorExit(PsychCapNumOutputArgs(0));
-    PsychErrorExit(PsychCapNumInputArgs(0));
     
+void PsychHIDOSKbQueueFlush(int deviceIndex)
+{
 	if(!hidDataRef || !psychHIDKbQueueFirstPress || !psychHIDKbQueueFirstRelease || !psychHIDKbQueueLastPress || !psychHIDKbQueueLastRelease){
 		PsychErrorExitMsg(PsychError_user, "Queue has not been created.");
 	}
@@ -135,7 +151,6 @@ PsychError PSYCHHIDKbQueueFlush(void)
 		}
 	}
 	pthread_mutex_unlock(&psychHIDKbQueueMutex);
-    return(PsychError_none);	
 }
 
 #endif

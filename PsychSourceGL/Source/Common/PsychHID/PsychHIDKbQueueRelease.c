@@ -7,11 +7,12 @@
   
 	PLATFORMS:  
 	
-		Only OS X for now.  
+		All.  
   
 	AUTHORS:
 	
 		rwoods@ucla.edu		rpw 
+        mario.kleiner@tuebingen.mpg.de      mk
       
 	HISTORY:
 		8/19/07  rpw		Created.
@@ -75,14 +76,32 @@
 */
 
 #include "PsychHID.h"
-#if PSYCH_SYSTEM == PSYCH_OSX
-#include "PsychHIDKbQueue.h"
 
-static char useString[]= "PsychHID('KbQueueRelease')";
+static char useString[]= "PsychHID('KbQueueRelease' [, deviceIndex])";
 static char synopsisString[] = 
-		"Releases queue and other resources allocated by PsychHID('KbQueueCreate').";
+		"Releases queue and other resources allocated by PsychHID('KbQueueCreate').\n"
+        "On Linux, the optional 'deviceIndex' is the index of the keyboard device whose queue should be released. "
+        "If omitted, the default keyboard's queue will be released. On other systems, the last queue will be released.\n";
         
 static char seeAlsoString[] = "KbQueueCreate, KbQueueStart, KbQueueStop, KbQueueCheck, KbQueueFlush";
+
+PsychError PSYCHHIDKbQueueRelease(void) 
+{
+    int deviceIndex;
+    
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+
+    deviceIndex = -1;
+    PsychCopyInIntegerArg(1, kPsychArgOptional, &deviceIndex);
+    
+    PsychHIDOSKbQueueRelease(deviceIndex);
+
+    return(PsychError_none);
+}
+
+#if PSYCH_SYSTEM == PSYCH_OSX
+#include "PsychHIDKbQueue.h"
 
 extern AbsoluteTime *psychHIDKbQueueFirstPress;
 extern AbsoluteTime *psychHIDKbQueueFirstRelease;
@@ -92,14 +111,8 @@ extern HIDDataRef hidDataRef;
 extern CFRunLoopRef psychHIDKbQueueCFRunLoopRef;
 extern pthread_t psychHIDKbQueueThread;
 
-PsychError PSYCHHIDKbQueueRelease(void) 
+void PsychHIDOSKbQueueRelease(int deviceIndex)
 {
-    PsychPushHelp(useString, synopsisString, seeAlsoString);
-    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-
-    // PsychErrorExit(PsychCapNumOutputArgs(0));	// Don't error check this since it can be called from other contexts
-    // PsychErrorExit(PsychCapNumInputArgs(0));		// Don't error check this since it can be called from other contexts
-    		
 	// Remove the source from the CFRunLoop so queue transitions from empty
 	// to non-empty cannot trigger a new callout on the CFRunLoop thread
 	if(psychHIDKbQueueCFRunLoopRef){
@@ -157,7 +170,6 @@ PsychError PSYCHHIDKbQueueRelease(void)
 		free(psychHIDKbQueueLastRelease);
 		psychHIDKbQueueLastRelease=NULL;
 	}
-    return(PsychError_none);	
 }
 
 #endif

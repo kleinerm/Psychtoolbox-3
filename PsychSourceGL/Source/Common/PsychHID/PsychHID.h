@@ -169,6 +169,10 @@ PsychError PSYCHHIDGetElements(void);				// PsychHIDGetElementList.c
 PsychError PSYCHHIDGetCalibratedState(void);		// PsychHIDGetCalibratedState.c
 PsychError PSYCHHIDGetCollections(void);			// PsychHIDGetCollections.c
 PsychError PSYCHHIDKbWait(void);					// PsychHIDKbWait.c 
+#endif
+
+PsychError PSYCHHIDGetRawState(void);				// PsychHIDGetRawElementState.c
+
 PsychError PSYCHHIDKbTriggerWait(void);				// PsychTriggerWait.c
 PsychError PSYCHHIDKbQueueCreate(void);				// PsychHIDKbQueueCreate.c
 PsychError PSYCHHIDKbQueueStart(void);				// PsychHIDKbQueueStart.c
@@ -176,9 +180,6 @@ PsychError PSYCHHIDKbQueueStop(void);				// PsychHIDKbQueueStop.c
 PsychError PSYCHHIDKbQueueCheck(void);				// PsychHIDKbQueueCheck.c
 PsychError PSYCHHIDKbQueueFlush(void);				// PsychHIDKbQueueFlush.c
 PsychError PSYCHHIDKbQueueRelease(void);			// PsychHIDKbQueueRelease.c
-#endif
-PsychError PSYCHHIDGetRawState(void);				// PsychHIDGetRawElementState.c
-
 PsychError PSYCHHIDKbCheck(void);					// PsychHIDKbCheck.c
 
 PsychError PSYCHHIDGetReport(void);					// PsychHIDGetReport.c
@@ -242,6 +243,9 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 void PsychHIDOSKbQueueRelease(int deviceIndex);
 void PsychHIDOSKbQueueStop(int deviceIndex);
 void PsychHIDOSKbQueueStart(int deviceIndex);
+void PsychHIDOSKbQueueFlush(int deviceIndex);
+void PsychHIDOSKbQueueCheck(int deviceIndex);
+void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys);
 
 //end include once
 #endif

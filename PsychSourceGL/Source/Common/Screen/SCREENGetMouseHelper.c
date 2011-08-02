@@ -248,8 +248,8 @@ PsychError SCREENGetMouseHelper(void)
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 	
 	//cap the numbers of inputs and outputs
-	PsychErrorExit(PsychCapNumInputArgs(2));   //The maximum number of inputs
-	PsychErrorExit(PsychCapNumOutputArgs(4));  //The maximum number of outputs
+	PsychErrorExit(PsychCapNumInputArgs(3));   //The maximum number of inputs
+	PsychErrorExit(PsychCapNumOutputArgs(5));  //The maximum number of outputs
 	
 	//Buttons.  
 	// The only way I know to detect the  number number of mouse buttons is directly via HID.  The device reports
