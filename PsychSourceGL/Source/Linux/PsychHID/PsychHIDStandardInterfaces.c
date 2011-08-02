@@ -18,6 +18,7 @@
 #include "PsychHIDStandardInterfaces.h"
 
 static Display *dpy = NULL;
+static Display *thread_dpy = NULL;
 static int xi_opcode, event, error;
 static XIDeviceInfo *info = NULL;
 static int ndevices = 0;
@@ -57,7 +58,7 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
 	memset(&psychHIDKbQueueLastPress[0], 0, sizeof(psychHIDKbQueueLastPress));
 	memset(&psychHIDKbQueueLastRelease[0], 0, sizeof(psychHIDKbQueueLastRelease));
 	memset(&psychHIDKbQueueActive[0], 0, sizeof(psychHIDKbQueueActive));
-    memset(&psychHIDKbQueueScanKeys[0], 0, sizeof(psychHIDKbQueueScanKeys));
+	memset(&psychHIDKbQueueScanKeys[0], 0, sizeof(psychHIDKbQueueScanKeys));
 
 	// We must initialize XLib for multi-threaded operations / access on first
 	// call:
@@ -98,6 +99,31 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
 
 	// printf("PsychHID: INFO: XI2 supported. Server provides version %d.%d.\n", major, minor);
 
+	// Open our own 2nd private X-Display connection for HID handling. This one is for the
+	// async KbQueue processing thread:
+	thread_dpy = XOpenDisplay(NULL);
+	if (!thread_dpy) {
+		PsychErrorExitMsg(PsychError_system, "PsychHID: FATAL ERROR: Couldn't open default X11 display connection to X-Server! Game over!");
+	}
+
+	// XInputExtension supported? If so do basic init:
+	if (!XQueryExtension(thread_dpy, "XInputExtension", &xi_opcode, &event, &error)) {
+		printf("PsychHID: ERROR: XINPUT extension unsupported!\n");
+		goto out;
+	}
+
+	// XInput V2 supported?
+	major = 2;
+	minor = 0;
+	rc = XIQueryVersion(thread_dpy, &major, &minor);
+	if (rc == BadRequest) {
+		printf("PsychHID: ERROR: No XI2 support. Server supports version %d.%d only.\n", major, minor);
+		goto out;
+	} else if (rc != Success) {
+		printf("PsychHID: ERROR: Internal Error! This is a bug in Xlib.\n");
+		goto out;
+	}
+
 	// Enumerate all XI2 input devices:
 	info = XIQueryDevice(dpy, XIAllDevices, &ndevices);
 
@@ -117,13 +143,17 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
 	// Create keyboard queue mutex for later use:
 	KbQueueThreadTerminate = FALSE;
 	PsychInitMutex(&KbQueueMutex);
-    PsychInitCondition(&KbQueueCondition, NULL);
+	PsychInitCondition(&KbQueueCondition, NULL);
     
 	return;
 
 out:
-	XCloseDisplay(dpy);
+	if (dpy) XCloseDisplay(dpy);
 	dpy = NULL;
+
+	if (thread_dpy) XCloseDisplay(thread_dpy);
+	thread_dpy = NULL;
+
 	PsychErrorExitMsg(PsychError_system, "PsychHID: FATAL ERROR: X Input extension version 2.0 or later not available! Game over!");	
 }
 
@@ -150,12 +180,15 @@ void PsychHIDShutdownHIDStandardInterfaces(void)
 
 	// Release keyboard queue mutex:
 	PsychDestroyMutex(&KbQueueMutex);
-    PsychDestroyCondition(&KbQueueCondition);
+	PsychDestroyCondition(&KbQueueCondition);
 	KbQueueThreadTerminate = FALSE;
 
 	// Close our dedicated x-display connection and we are done:
-	XCloseDisplay(dpy);
+	if (dpy) XCloseDisplay(dpy);
 	dpy = NULL;
+
+	if (thread_dpy) XCloseDisplay(thread_dpy);
+	thread_dpy = NULL;
 
 	return;
 }
@@ -417,7 +450,7 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 			if (!XCheckTypedEvent(thread_dpy, GenericEvent, &KbQueue_xevent)) break;
 		}
 
-        // Take timestamp:
+		// Take timestamp:
 		PsychGetAdjustedPrecisionTimerSeconds(&tnow);
 
 		// Is this an event we're interested in?
@@ -427,16 +460,16 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 				// Process it:
 				printf("Event type %d received\n", cookie->evtype);
 
-                // Target condition met?
-                if (1) {
-                    // Enqueue this one!
-                    PsychLockMutex(&KbQueueMutex);
+				// Target condition met?
+				if (1) {
+					// Enqueue this one!
+					PsychLockMutex(&KbQueueMutex);
 
-                    PsychUnlockMutex(&KbQueueMutex);
+					PsychUnlockMutex(&KbQueueMutex);
 
-                    // Tell waiting userspace something's changed:
-                    PsychSignalCondition(&KbQueueCondition);
-                }
+					// Tell waiting userspace something's changed:
+					PsychSignalCondition(&KbQueueCondition);
+				}
                 
 				// Release event data:
 				XFreeEventData(thread_dpy, cookie);
@@ -478,7 +511,7 @@ void* KbQueueWorkerThreadMain(void* dummy)
 static int PsychHIDGetDefaultKbQueueDevice(void)
 {
     int deviceIndex;
-	XIDeviceInfo* dev = NULL;
+    XIDeviceInfo* dev = NULL;
 
     // Find:
     for(deviceIndex = 0; deviceIndex < ndevices; deviceIndex++) {
@@ -513,7 +546,7 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 	// Do we finally have a valid keyboard?
 	dev = &info[deviceIndex];
 	if ((dev->use != XIMasterKeyboard) && (dev->use != XISlaveKeyboard)) {
-			PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. Not a keyboard device!");
+		PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. Not a keyboard device!");
 	}
 
 	/* This would detect the number of keys on the keyboard:
@@ -534,16 +567,16 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 	psychHIDKbQueueFirstRelease[deviceIndex] = calloc(256, sizeof(double));
 	psychHIDKbQueueLastPress[deviceIndex]    = calloc(256, sizeof(double));
 	psychHIDKbQueueLastRelease[deviceIndex]  = calloc(256, sizeof(double));
-    psychHIDKbQueueScanKeys[deviceIndex]     = calloc(256, sizeof(int));
+	psychHIDKbQueueScanKeys[deviceIndex]     = calloc(256, sizeof(int));
     
-    // Assign scanKeys vector, if any:
-    if (scanKeys) {
-        // Copy it:
-        memcpy(psychHIDKbQueueScanKeys[deviceIndex], scanKeys, 256 * sizeof(int));
-    } else {
-        // None provided. Enable all keys by default:
-        memset(psychHIDKbQueueScanKeys[deviceIndex], 1, 256 * sizeof(int));        
-    }
+	// Assign scanKeys vector, if any:
+	if (scanKeys) {
+		// Copy it:
+		memcpy(psychHIDKbQueueScanKeys[deviceIndex], scanKeys, 256 * sizeof(int));
+	} else {
+		// None provided. Enable all keys by default:
+		memset(psychHIDKbQueueScanKeys[deviceIndex], 1, 256 * sizeof(int));        
+	}
 
 	// Ready to use this keybord queue.
 	return(PsychError_none);
@@ -552,9 +585,9 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 void PsychHIDOSKbQueueRelease(int deviceIndex)
 {
 	if (deviceIndex < 0) {
-        deviceIndex = PsychHIDGetDefaultKbQueueDevice();
+		deviceIndex = PsychHIDGetDefaultKbQueueDevice();
 		// Ok, deviceIndex now contains our default keyboard to use - The first suitable keyboard.
-    }
+	}
     
 	if ((deviceIndex < 0) || (deviceIndex >= ndevices)) {
 		// Out of range index:
@@ -575,7 +608,7 @@ void PsychHIDOSKbQueueRelease(int deviceIndex)
 	free(psychHIDKbQueueFirstRelease[deviceIndex]); psychHIDKbQueueFirstRelease[deviceIndex] = NULL;
 	free(psychHIDKbQueueLastPress[deviceIndex]); psychHIDKbQueueLastPress[deviceIndex] = NULL;
 	free(psychHIDKbQueueLastRelease[deviceIndex]); psychHIDKbQueueLastRelease[deviceIndex] = NULL;
-    free(psychHIDKbQueueScanKeys[deviceIndex]); psychHIDKbQueueScanKeys[deviceIndex] = NULL;
+	free(psychHIDKbQueueScanKeys[deviceIndex]); psychHIDKbQueueScanKeys[deviceIndex] = NULL;
 
 	// Done.
 	return;
@@ -589,9 +622,9 @@ void PsychHIDOSKbQueueStop(int deviceIndex)
 	XIDeviceInfo* dev = NULL;
 
 	if (deviceIndex < 0) {
-        deviceIndex = PsychHIDGetDefaultKbQueueDevice();
+		deviceIndex = PsychHIDGetDefaultKbQueueDevice();
 		// Ok, deviceIndex now contains our default keyboard to use - The first suitable keyboard.
-    }
+	}
 
 	if ((deviceIndex < 0) || (deviceIndex >= ndevices)) {
 		// Out of range index:
@@ -662,9 +695,9 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
 	int i;
 
 	if (deviceIndex < 0) {
-        deviceIndex = PsychHIDGetDefaultKbQueueDevice();
+		deviceIndex = PsychHIDGetDefaultKbQueueDevice();
 		// Ok, deviceIndex now contains our default keyboard to use - The first suitable keyboard.
-    }
+	}
 
 	if ((deviceIndex < 0) || (deviceIndex >= ndevices)) {
 		// Out of range index:
@@ -691,7 +724,7 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
 
 	PsychLockMutex(&KbQueueMutex);
 
-    // Clear out current state for this queue:
+	// Clear out current state for this queue:
 	memset(psychHIDKbQueueFirstPress[deviceIndex]   , 0, (256 * sizeof(double)));
 	memset(psychHIDKbQueueFirstRelease[deviceIndex] , 0, (256 * sizeof(double)));
 	memset(psychHIDKbQueueLastPress[deviceIndex]    , 0, (256 * sizeof(double)));
@@ -751,9 +784,9 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
 void PsychHIDOSKbQueueFlush(int deviceIndex)
 {
 	if (deviceIndex < 0) {
-        deviceIndex = PsychHIDGetDefaultKbQueueDevice();
+		deviceIndex = PsychHIDGetDefaultKbQueueDevice();
 		// Ok, deviceIndex now contains our default keyboard to use - The first suitable keyboard.
-    }
+	}
     
 	if ((deviceIndex < 0) || (deviceIndex >= ndevices)) {
 		// Out of range index:
@@ -767,7 +800,7 @@ void PsychHIDOSKbQueueFlush(int deviceIndex)
 		PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. No queue for that device yet!");
 	}
 
-    // Clear out current state for this queue:
+	// Clear out current state for this queue:
 	PsychLockMutex(&KbQueueMutex);
 	memset(psychHIDKbQueueFirstPress[deviceIndex]   , 0, (256 * sizeof(double)));
 	memset(psychHIDKbQueueFirstRelease[deviceIndex] , 0, (256 * sizeof(double)));
@@ -782,12 +815,12 @@ void PsychHIDOSKbQueueCheck(int deviceIndex)
 {
 	double *hasKeyBeenDownOutput, *firstPressTimeOutput, *firstReleaseTimeOutput, *lastPressTimeOutput, *lastReleaseTimeOutput;
 	psych_bool isFirstPressSpecified, isFirstReleaseSpecified, isLastPressSpecified, isLastReleaseSpecified;
-    int i;
+	int i;
 
 	if (deviceIndex < 0) {
-        deviceIndex = PsychHIDGetDefaultKbQueueDevice();
+		deviceIndex = PsychHIDGetDefaultKbQueueDevice();
 		// Ok, deviceIndex now contains our default keyboard to use - The first suitable keyboard.
-    }
+	}
     
 	if ((deviceIndex < 0) || (deviceIndex >= ndevices)) {
 		// Out of range index:
@@ -802,7 +835,7 @@ void PsychHIDOSKbQueueCheck(int deviceIndex)
 	}
 
 	// Allocate output
-    PsychAllocOutDoubleArg(1, FALSE, &hasKeyBeenDownOutput);
+	PsychAllocOutDoubleArg(1, FALSE, &hasKeyBeenDownOutput);
 	isFirstPressSpecified = PsychAllocOutDoubleMatArg(2, FALSE, 1, 256, 1, &firstPressTimeOutput);
 	isFirstReleaseSpecified = PsychAllocOutDoubleMatArg(3, FALSE, 1, 256, 1, &firstReleaseTimeOutput);
 	isLastPressSpecified = PsychAllocOutDoubleMatArg(4, FALSE, 1, 256, 1, &lastPressTimeOutput);
@@ -819,33 +852,33 @@ void PsychHIDOSKbQueueCheck(int deviceIndex)
 	// Compute and assign output:
 	PsychLockMutex(&KbQueueMutex);
     
-    for (i = 0; i < 256; i++) {
-        double lastRelease  = psychHIDKbQueueLastRelease[deviceIndex][i];
-        double lastPress    = psychHIDKbQueueLastPress[deviceIndex][i];
-        double firstRelease = psychHIDKbQueueFirstRelease[deviceIndex][i];
-        double firstPress   = psychHIDKbQueueFirstPress[deviceIndex][i];
+	for (i = 0; i < 256; i++) {
+		double lastRelease  = psychHIDKbQueueLastRelease[deviceIndex][i];
+		double lastPress    = psychHIDKbQueueLastPress[deviceIndex][i];
+		double firstRelease = psychHIDKbQueueFirstRelease[deviceIndex][i];
+		double firstPress   = psychHIDKbQueueFirstPress[deviceIndex][i];
         
-        if (firstPress) {
-            *hasKeyBeenDownOutput=1;
-            if(isFirstPressSpecified) firstPressTimeOutput[i] = firstPress;
-            psychHIDKbQueueFirstPress[deviceIndex][i] = 0;
-        }
+		if (firstPress) {
+			*hasKeyBeenDownOutput=1;
+			if(isFirstPressSpecified) firstPressTimeOutput[i] = firstPress;
+			psychHIDKbQueueFirstPress[deviceIndex][i] = 0;
+		}
         
-        if (firstRelease) {
-            if(isFirstReleaseSpecified) firstReleaseTimeOutput[i] = firstRelease;
-            psychHIDKbQueueFirstRelease[deviceIndex][i] = 0;
-        }
+		if (firstRelease) {
+			if(isFirstReleaseSpecified) firstReleaseTimeOutput[i] = firstRelease;
+			psychHIDKbQueueFirstRelease[deviceIndex][i] = 0;
+		}
         
-        if (lastPress) {
-            if(isLastPressSpecified) lastPressTimeOutput[i] = lastPress;
-            psychHIDKbQueueLastPress[deviceIndex][i] = 0;
-        }
+		if (lastPress) {
+			if(isLastPressSpecified) lastPressTimeOutput[i] = lastPress;
+			psychHIDKbQueueLastPress[deviceIndex][i] = 0;
+		}
         
-        if (lastRelease) {
-            if(isLastReleaseSpecified) lastReleaseTimeOutput[i] = lastRelease;
-            psychHIDKbQueueLastRelease[deviceIndex][i] = 0;
-        }
-    }
+		if (lastRelease) {
+			if(isLastReleaseSpecified) lastReleaseTimeOutput[i] = lastRelease;
+			psychHIDKbQueueLastRelease[deviceIndex][i] = 0;
+		}
+	}
 
 	PsychUnlockMutex(&KbQueueMutex);
     
@@ -858,17 +891,17 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
     int i;
     double t;
     
-	if (deviceIndex < 0) {
+    if (deviceIndex < 0) {
         deviceIndex = PsychHIDGetDefaultKbQueueDevice();
-		// Ok, deviceIndex now contains our default keyboard to use - The first suitable keyboard.
+	// Ok, deviceIndex now contains our default keyboard to use - The first suitable keyboard.
     }
     
-	if ((deviceIndex < 0) || (deviceIndex >= ndevices)) {
-		// Out of range index:
-		PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. No such device!");
-	}
+    if ((deviceIndex < 0) || (deviceIndex >= ndevices)) {
+	// Out of range index:
+	PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. No such device!");
+    }
 
-	if(psychHIDKbQueueFirstPress[deviceIndex]) PsychErrorExitMsg(PsychError_user, "A queue for this device is already running, you must call KbQueueRelease() before invoking KbTriggerWait.");
+    if(psychHIDKbQueueFirstPress[deviceIndex]) PsychErrorExitMsg(PsychError_user, "A queue for this device is already running, you must call KbQueueRelease() before invoking KbTriggerWait.");
 
     // Create a keyboard queue for this deviceIndex:
     memset(&keyMask[0], 0, sizeof(keyMask));
@@ -878,10 +911,10 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
     }
     
     // Create keyboard queue with proper mask:
-    PsychHIDOSKbQueueCreate(deviceIndex, 256, &keyMask);
+    PsychHIDOSKbQueueCreate(deviceIndex, 256, &keyMask[0]);
     PsychHIDOSKbQueueStart(deviceIndex);
 
-	PsychLockMutex(&KbQueueMutex);
+    PsychLockMutex(&KbQueueMutex);
     
     // Scan for trigger key:
     while (1) {
@@ -901,7 +934,7 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
     PsychGetAdjustedPrecisionTimerSeconds(&t);
 
     // Done. Release the lock:
-	PsychUnlockMutex(&KbQueueMutex);
+    PsychUnlockMutex(&KbQueueMutex);
     
     // Stop and release the queue:
     PsychHIDOSKbQueueStop(deviceIndex);
