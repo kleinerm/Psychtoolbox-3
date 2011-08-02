@@ -238,5 +238,10 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass);
 PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList);
 PsychError PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, double* max, double* val, char* axisLabel);
 
+PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys);
+void PsychHIDOSKbQueueRelease(int deviceIndex);
+void PsychHIDOSKbQueueStop(int deviceIndex);
+void PsychHIDOSKbQueueStart(int deviceIndex);
+
 //end include once
 #endif
