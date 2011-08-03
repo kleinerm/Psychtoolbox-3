@@ -402,6 +402,7 @@ static CFDictionaryRef	        displayOriginalCGSettings[kPsychMaxPossibleDispla
 static psych_bool		displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
 static CFDictionaryRef	        displayOverlayedCGSettings[kPsychMaxPossibleDisplays];        	//these track settings overlayed with 'Resolutions'.  
 static psych_bool		displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
+static psych_bool               displayBeampositionHealthy[kPsychMaxPossibleDisplays];
 static CGDisplayCount 		numDisplays;
 
 // displayCGIDs stores the X11 Display* handles to the display connections of each PTB logical screen:
@@ -483,6 +484,7 @@ void InitializePsychDisplayGlue(void)
         displayOriginalCGSettingsValid[i]=FALSE;
         displayOverlayedCGSettingsValid[i]=FALSE;
 	displayCursorHidden[i]=FALSE;
+	displayBeampositionHealthy[i]=TRUE;
 	xinput_ndevices[i]=0;
 	xinput_info[i]=NULL;
     }
@@ -1432,17 +1434,19 @@ unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, flo
 //
 int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 {
+
 	// Beamposition queries aren't supported by the X11 graphics system.
 	// However, for gfx-hardware where we have reliable register specs, we
 	// can do it ourselves, bypassing the X server.
 	
 	// On systems that we can't handle, we return -1 as an indicator
 	// to high-level routines that we don't know the rasterbeam position.
+	double tdeadline, tnow;
 	int vblbias, vbltotal;
 	int beampos = -1;
 
 	// Get beamposition from low-level driver code:
-	if (PsychOSIsKernelDriverAvailable(screenNumber)) {
+	if (PsychOSIsKernelDriverAvailable(screenNumber) && displayBeampositionHealthy[screenNumber]) {
 		// Is application of the beamposition workaround requested by high-level code?
 		// Or is this a NVidia GPU? In the latter case we always use the workaround,
 		// because many NVidia GPU's (especially pre NV-50 hardware) need this in many
@@ -1452,7 +1456,36 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 		    (fDeviceType == kPsychGeForce)) {
 			// Yes: Avoid queries that return zero -- If query result is zero, retry
 			// until it becomes non-zero: Some hardware may needs this to resolve...
-			while (0 == (beampos = PsychOSKDGetBeamposition(screenNumber)));
+			// We use a timeout of 100 msecs though to prevent hangs if we try to
+			// query a disabled crtc's scanout position or similar bad things happen...
+			PsychGetPrecisionTimerSeconds(&tdeadline);
+			tdeadline += 0.1;
+			while (0 == (beampos = PsychOSKDGetBeamposition(screenNumber))) {
+				PsychGetPrecisionTimerSeconds(&tnow);
+				if (tnow > tdeadline) {
+					// Trouble: Hanging here for more than 100 msecs?
+					// This display head is dead. Output a info to the user
+					// and disable it for further beamposition queries.
+					displayBeampositionHealthy[screenNumber] = FALSE;
+					beampos = -1;
+
+					if (PsychPrefStateGet_Verbosity() > 1) {
+						printf("PTB-WARNING: Hang in beamposition query detected! Seems my mapping of screen numbers to GPU's and display outputs is wrong?\n");
+						printf("PTB-WARNING: In a single GPU system you can resolve this by plugging in your monitors in a different order, changing the\n");
+						printf("PTB-WARNING: display arrangement in the control panel, or using the Screen('Preference', 'ScreenToHead', screenId [, newHeadId]);\n");
+						printf("PTB-WARNING: command at the top of your scripts to set the mapping manually.\n");
+						printf("PTB-WARNING: \n");
+						printf("PTB-WARNING: I am not yet able to handle multi-GPU systems reliably at all. If you have such a system it may work if\n");
+						printf("PTB-WARNING: you plug your monitor(s) into one of the other GPU's output connectors, trying different combinations.\n");
+						printf("PTB-WARNING: Or you simply live without high precision stimulus onset timestamping for now. Or you use the free and open-source\n");
+						printf("PTB-WARNING: graphics drivers (intel, radeon, or nouveau) instead of the proprietary Catalyst or NVidia binary drivers.\n");
+						printf("PTB-WARNING: I've disabled high precision timestamping for this screen for the remainder of the session.\n\n");
+						fflush(NULL);
+					}
+
+					break;
+				}
+			}
 		} else {
 			// Read final beampos:
 			beampos = PsychOSKDGetBeamposition(screenNumber);
