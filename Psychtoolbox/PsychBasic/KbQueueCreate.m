@@ -1,8 +1,6 @@
 function KbQueueCreate(deviceNumber, keyList)
 % KbQueueCreate([deviceNumber, keyList])
 %
-% Requires Mac OS X 10.3 or later
-%
 % The routines KbQueueCreate, KbQueueStart, KbQueueStop, KbQueueCheck
 %  KbQueueWait, KbQueueFlush and KbQueueRelease provide replacments for
 %  KbCheck and KbWait, providing the following advantages:
@@ -148,16 +146,12 @@ if isempty(macosxrecent)
    end
 end
 
-if macosxrecent
-	if nargin == 2
-		PsychHID('KbQueueCreate', deviceNumber, keyList);
-    elseif nargin == 1
-        PsychHID('KbQueueCreate', deviceNumber);
-	elseif nargin == 0
-		PsychHID('KbQueueCreate');
-    elseif nargin > 2
-        error('Too many arguments supplied to KbQueueCreate'); 
-    end
-else
-	error('KbQueueCreate requires Mac OS X 10.3 or later');
+if nargin == 2
+  PsychHID('KbQueueCreate', deviceNumber, keyList);
+elseif nargin == 1
+  PsychHID('KbQueueCreate', deviceNumber);
+elseif nargin == 0
+  PsychHID('KbQueueCreate');
+elseif nargin > 2
+  error('Too many arguments supplied to KbQueueCreate'); 
 end

@@ -1,7 +1,5 @@
-function KbQueueRelease()
-% KbQueueRelease()
-%
-% Requires Mac OS X 10.3 or later
+function KbQueueRelease(deviceIndex)
+% KbQueueRelease([deviceIndex])
 %
 % The routines KbQueueCreate, KbQueueStart, KbQueueStop, KbQueueCheck
 %  KbQueueWait, KbQueueFlush and KbQueueRelease provide replacments for
@@ -134,17 +132,8 @@ function KbQueueRelease()
 % Requires Mac OS X 10.3 or later. We sort this out on the first call 
 % and then store the result in macosrecent for subsequent calls
 
-persistent macosxrecent;
-if isempty(macosxrecent)
-   macosxrecent = IsOSX;
-end
-
-if macosxrecent
-    if nargin == 0
-		PsychHID('KbQueueRelease');
-    elseif nargin > 0
-        error('Too many arguments supplied to KbQueueRelease'); 
-    end
-else
-	error('KbQueueRelease requires Mac OS X 10.3 or later');
+if nargin == 0
+  PsychHID('KbQueueRelease');
+elseif nargin > 0
+  PsychHID('KbQueueRelease', deviceIndex);
 end

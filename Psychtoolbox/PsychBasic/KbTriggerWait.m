@@ -61,7 +61,7 @@ if isempty(macosxrecent)
     macosxrecent = IsOSX;
 end
 
-if macosxrecent
+if macosxrecent | IsLinux
     if nargin==2
         [secs]= PsychHID('KbTriggerWait', keyCode, deviceNumber);
     elseif nargin == 1
@@ -84,7 +84,7 @@ else
                 end
             end
             % Wait for 5 msecs to prevent system overload.
-            WaitSecs(0.005);
+            WaitSecs('YieldSecs', 0.005);
         end
     elseif nargin==1
         while(1)
@@ -95,7 +95,7 @@ else
                 end
             end
             % Wait for 5 msecs to prevent system overload.
-            WaitSecs(0.005);
+            WaitSecs('YieldSecs', 0.005);
         end
     elseif nargin == 0
         error('Trigger key code must be specified in KbTriggerWait');

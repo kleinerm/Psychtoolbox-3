@@ -1,7 +1,5 @@
-function secs=KbQueueWait()
-% secs=KbQueueWait()
-%
-% Requires Mac OS X 10.3 or later
+function secs=KbQueueWait(deviceIndex)
+% secs=KbQueueWait([deviceIndex])
 %
 % The routines KbQueueCreate, KbQueueStart, KbQueueStop, KbQueueCheck
 %  KbQueueWait, KbQueueFlush and KbQueueRelease provide replacments for
@@ -131,35 +129,23 @@ function secs=KbQueueWait()
 % 8/19/07    rpw  Wrote it.
 % 8/23/07    rpw  Modifications to add KbQueueFlush
 
-% Requires Mac OS X 10.3 or later. We sort this out on the first call 
-% and then store the result in macosrecent for subsequent calls
-
-global ptb_kbcheck_disabledKeys;
-
-persistent macosxrecent;
-if isempty(macosxrecent)
-   macosxrecent = IsOSX;
+if nargin < 1
+	deviceIndex = [];
 end
 
-if macosxrecent
-    if nargin==0
-		% It is implicit in invoking this function that the queue should be running
-		% and it is potentially problematic if it is not since the function will
-		% never return, therefore, go ahead and start the queue if it isn't running
-		KbQueueStart();
-		while(1)
-			[pressed, firstPress]=KbQueueCheck;
-			if pressed
-				break;
-			end
-			% Wait for 5 msecs to prevent system overload
-			WaitSecs(0.005);
-		end
-    elseif nargin > 0
-        error('Too many arguments supplied to KbQueueWait'); 
-    end
-else
-	error('KbQueueWait requires Mac OS X 10.3 or later');
+% It is implicit in invoking this function that the queue should be running
+% and it is potentially problematic if it is not since the function will
+% never return, therefore, go ahead and start the queue if it isn't running
+KbQueueStart(deviceIndex);
+while(1)
+	[pressed, firstPress] = KbQueueCheck(deviceIndex);
+	if pressed
+		break;
+	end
+
+	% Wait for 5 msecs to prevent system overload
+	WaitSecs('Yieldsecs', 0.005);
 end
+
 presses=find(firstPress);
 secs=min(firstPress(presses));

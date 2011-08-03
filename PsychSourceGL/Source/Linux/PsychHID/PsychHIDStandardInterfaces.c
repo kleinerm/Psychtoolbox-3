@@ -167,10 +167,6 @@ void PsychHIDShutdownHIDStandardInterfaces(void)
 		x_dev[i] = NULL;
 	}
 
-	// Release list of enumerated input devices:
-	XIFreeDeviceInfo(info);
-	info = NULL;
-
 	// Release all keyboard queues:
 	for (i = 0; i < PSYCH_HID_MAX_DEVICES; i++) {
 		if (psychHIDKbQueueFirstPress[i]) {
@@ -182,6 +178,10 @@ void PsychHIDShutdownHIDStandardInterfaces(void)
 	PsychDestroyMutex(&KbQueueMutex);
 	PsychDestroyCondition(&KbQueueCondition);
 	KbQueueThreadTerminate = FALSE;
+
+	// Release list of enumerated input devices:
+	XIFreeDeviceInfo(info);
+	info = NULL;
 
 	// Close our dedicated x-display connection and we are done:
 	if (dpy) XCloseDisplay(dpy);
@@ -435,7 +435,9 @@ PsychError PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, 
 // to iterate over all available events and process them instantaneously:
 void KbQueueProcessEvents(psych_bool blockingSinglepass)
 {
+	XIDeviceEvent* event;
 	double tnow;
+	int i;
 
 	while (1) {
 		XGenericEventCookie *cookie = &KbQueue_xevent.xcookie;
@@ -453,24 +455,60 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 		// Take timestamp:
 		PsychGetAdjustedPrecisionTimerSeconds(&tnow);
 
+		if (FALSE) {
+			if (KbQueue_xevent.type == KeyPress) {
+				printf("KeyPress core event: key %i = %i\n", (int) ((XKeyEvent*) (&KbQueue_xevent))->keycode, (int) ((XKeyEvent*) (&KbQueue_xevent))->state);
+				fflush(NULL);
+			}
+		}
+
 		// Is this an event we're interested in?
 		if ((cookie->type == GenericEvent) && (cookie->extension == xi_opcode)) {
 			// Yes. Process it:
 			if (XGetEventData(thread_dpy, cookie)) {
 				// Process it:
-				printf("Event type %d received\n", cookie->evtype);
+				// printf("Event type %d received\n", cookie->evtype);
+				event = (XIDeviceEvent*) cookie->data;
 
-				// Target condition met?
-				if (1) {
-					// Enqueue this one!
+				// Map Xinput device id to PTB 'deviceIndex' aka the proper keyboard queue:
+				for (i = 0; i < ndevices; i++) if (event->deviceid == info[i].deviceid) break;
+
+				// We're only interested in key press and release events, and only in
+				// real ones, not XServer generated synthetic key auto-repeat events.
+				// Also only for a device that we've registered:
+				if ((i < ndevices) && !(event->flags & XIKeyRepeat) &&
+				    ((cookie->evtype == XI_KeyPress) || (cookie->evtype == XI_KeyRelease))) {
+
+					// Need the lock from here on:
 					PsychLockMutex(&KbQueueMutex);
 
-					PsychUnlockMutex(&KbQueueMutex);
+					// This keyboard queue created and started? Interested in this
+					// keycode?
+					if (psychHIDKbQueueActive[i] && (psychHIDKbQueueScanKeys[i][event->detail] != 0)) {
+						// Yes: The queue wants to receive info about this key event.
 
-					// Tell waiting userspace something's changed:
-					PsychSignalCondition(&KbQueueCondition);
+						// Press or release?
+						if (cookie->evtype == XI_KeyPress) {
+							// Enqueue key press. Always in the "last press" array, because any
+							// press at this time is the best candidate for the last press.
+							// Only enqeue in "first press" if there wasn't any registered before,
+							// ie., the slot is so far empty:
+							if (psychHIDKbQueueFirstPress[i][event->detail] == 0) psychHIDKbQueueFirstPress[i][event->detail] = tnow;
+							psychHIDKbQueueLastPress[i][event->detail] = tnow;
+						} else {
+							// Enqueue key release. See logic above:
+							if (psychHIDKbQueueFirstRelease[i][event->detail] == 0) psychHIDKbQueueFirstRelease[i][event->detail] = tnow;
+							psychHIDKbQueueLastRelease[i][event->detail] = tnow;
+						}
+
+						// Tell waiting userspace something interesting has changed:
+						PsychSignalCondition(&KbQueueCondition);
+					}
+
+					// Done with shared data access:
+					PsychUnlockMutex(&KbQueueMutex);
 				}
-                
+
 				// Release event data:
 				XFreeEventData(thread_dpy, cookie);
 			}
@@ -486,6 +524,15 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 // Async processing thread for keyboard events:
 void* KbQueueWorkerThreadMain(void* dummy)
 {
+	int rc;
+
+	// Try to raise our priority: We ask to switch ourselves (NULL) to priority class 1 aka
+	// rt_fifo realtime scheduling, with a tweakPriority of +1, ie., raise the relative
+	// priority level by +1 wrt. to the current level:
+	if ((rc = PsychSetThreadPriority(NULL, 10, 1)) > 0) {
+		printf("PsychHID: KbQueueStart: Failed to switch to realtime priority [%s].\n", strerror(rc));
+	}
+
 	while (1) {
 		PsychLockMutex(&KbQueueMutex);
 
@@ -494,15 +541,17 @@ void* KbQueueWorkerThreadMain(void* dummy)
 
 		PsychUnlockMutex(&KbQueueMutex);
 
-		// Perfrom X-Event processing until no more events are pending:
+		// Perform X-Event processing until no more events are pending:
 		KbQueueProcessEvents(TRUE);
 
 		// Sleep for 2 msecs before next scan iteration:
-		PsychWaitIntervalSeconds(0.002);
+		// PsychWaitIntervalSeconds(0.002);
 	}
 
 	// Done. Unlock the mutex:
 	PsychUnlockMutex(&KbQueueMutex);
+
+	// printf("DEBUG: THREAD TERMINATING...\n"); fflush(NULL);
 
 	// Return and terminate:
 	return(NULL);
@@ -650,9 +699,6 @@ void PsychHIDOSKbQueueStop(int deviceIndex)
 
 	// Clear the event mask. That should to the trick:
 	memset(mask, 0, sizeof(mask));
-	// XISetMask(mask, XI_KeyPress);
-	// XISetMask(mask, XI_KeyRelease);
-
 	emask.deviceid = info[deviceIndex].deviceid;
 	emask.mask_len = sizeof(mask);
 	emask.mask = mask;
@@ -674,17 +720,40 @@ void PsychHIDOSKbQueueStop(int deviceIndex)
 
 	// No more active queues. Shutdown the common processing thread:
 	PsychLockMutex(&KbQueueMutex);
+
 	KbQueueThreadTerminate = TRUE;
 
 	// Send some event to unblock the thread:
-	// FIXME TODO
+	XKeyEvent event;
+	event.display = thread_dpy;
+	event.window = DefaultRootWindow(thread_dpy);
+	event.root = DefaultRootWindow(thread_dpy);
+	event.subwindow = None;
+	event.time = CurrentTime;
+	event.x = 1;
+	event.y = 1;
+	event.x_root = 1;
+	event.y_root = 1;
+	event.same_screen = TRUE;
+	event.type = KeyPress;
+	event.keycode = 0;
+	event.state = 0;
+	
+	// printf("DEBUG: Sending termination fake event...\n"); fflush(NULL);
+	XSelectInput(event.display, event.window, KeyPressMask);
+	XFlush(thread_dpy);
+	XSendEvent(event.display, event.window, TRUE, KeyPressMask, (XEvent *) &event);
+	XFlush(thread_dpy);
+	// printf("DEBUG: DONE.\n"); fflush(NULL);
+
+	// Done.
+	PsychUnlockMutex(&KbQueueMutex);
 
 	// Shutdown the thread, wait for its termination:
 	PsychDeleteThread(&KbQueueThread);
 	KbQueueThreadTerminate = FALSE;
 
-	// Done.
-	PsychUnlockMutex(&KbQueueMutex);
+	// printf("DEBUG: THREAD JOINED.\n"); fflush(NULL);
 
 	return;
 }
@@ -747,6 +816,11 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
 	emask.mask_len = sizeof(mask);
 	emask.mask = mask;
 	XISelectEvents(thread_dpy, DefaultRootWindow(thread_dpy), &emask, 1);
+
+	if (info[deviceIndex].use == XIMasterKeyboard) {
+		XSelectInput(thread_dpy, DefaultRootWindow(thread_dpy), KeyPressMask);
+		XFlush(thread_dpy);
+	}
 
 	// Mark this queue as logically started:
 	psychHIDKbQueueActive[deviceIndex] = TRUE;
@@ -906,8 +980,8 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
     // Create a keyboard queue for this deviceIndex:
     memset(&keyMask[0], 0, sizeof(keyMask));
     for (i = 0; i < numScankeys; i++) {
-        if (scanKeys[i] < 0 || scanKeys[i] > 255) PsychErrorExitMsg(PsychError_user, "Invalid entry for triggerKey specified. Not in valid range 0 - 255!");
-        keyMask[scanKeys[i]] = 1;
+        if (scanKeys[i] < 1 || scanKeys[i] > 256) PsychErrorExitMsg(PsychError_user, "Invalid entry for triggerKey specified. Not in valid range 1 - 256!");
+        keyMask[scanKeys[i] - 1] = 1;
     }
     
     // Create keyboard queue with proper mask:
@@ -924,9 +998,12 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
         // Check if our queue had one of the dedicated trigger keys pressed:
         for (i = 0; i < numScankeys; i++) {
             // Break out of scan loop if key pressed:
-            if (psychHIDKbQueueFirstPress[deviceIndex][scanKeys[i]] != 0) break;
+            if (psychHIDKbQueueFirstPress[deviceIndex][scanKeys[i] - 1] != 0) break;
         }
         
+	// Triggerkey pressed?
+        if ((i < numScankeys) && (psychHIDKbQueueFirstPress[deviceIndex][scanKeys[i] - 1] != 0)) break;
+
         // No change for our trigger keys. Repeat scan loop.
     }
 

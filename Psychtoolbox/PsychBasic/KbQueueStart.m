@@ -1,7 +1,5 @@
-function KbQueueStart()
-% KbQueueStart()
-%
-% Requires Mac OS X 10.3 or later
+function KbQueueStart(deviceIndex)
+% KbQueueStart([deviceIndex])
 %
 % The routines KbQueueCreate, KbQueueStart, KbQueueStop, KbQueueCheck
 %  KbQueueWait, KbQueueFlush and KbQueueRelease provide replacments for
@@ -134,17 +132,8 @@ function KbQueueStart()
 % Requires Mac OS X 10.3 or later. We sort this out on the first call 
 % and then store the result in macosrecent for subsequent calls
 
-persistent macosxrecent;
-if isempty(macosxrecent)
-   macosxrecent = IsOSX;
-end
-
-if macosxrecent
-    if nargin == 0
-		PsychHID('KbQueueStart');
-    elseif nargin > 0
-        error('Too many arguments supplied to KbQueueStart'); 
-    end
-else
-	error('KbQueueStart requires Mac OS X 10.3 or later');
+if nargin == 0
+  PsychHID('KbQueueStart');
+elseif nargin > 0
+  PsychHID('KbQueueStart', deviceIndex);
 end

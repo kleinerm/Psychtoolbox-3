@@ -1,7 +1,5 @@
-function [pressed, firstPress, firstRelease, lastPress, lastRelease] = KbQueueCheck()
-% [pressed, firstPress, firstRelease, lastPress, lastRelease] = KbQueueCheck()
-%
-% Requires Mac OS X 10.3 or later
+function [pressed, firstPress, firstRelease, lastPress, lastRelease] = KbQueueCheck(deviceIndex)
+% [pressed, firstPress, firstRelease, lastPress, lastRelease] = KbQueueCheck([deviceIndex])
 %
 % The routines KbQueueCreate, KbQueueStart, KbQueueStop, KbQueueCheck
 %  KbQueueWait, KbQueueFlush and KbQueueRelease provide replacments for
@@ -135,21 +133,10 @@ function [pressed, firstPress, firstRelease, lastPress, lastRelease] = KbQueueCh
 % and then store the result in macosrecent for subsequent calls
 
 global ptb_kbcheck_disabledKeys;
-
-persistent macosxrecent;
-
-if isempty(macosxrecent)
-    macosxrecent = IsOSX;
-end
-
-if macosxrecent
-    if nargin==0
-        [pressed, firstPress, firstRelease, lastPress, lastRelease] = PsychHID('KbQueueCheck');
-    elseif nargin > 0
-        error('Too many arguments supplied to KbQueueCheck'); 
-    end
-else
-	error('KbQueueCheck requires Mac OS X 10.3 or later');
+if nargin==0
+  [pressed, firstPress, firstRelease, lastPress, lastRelease] = PsychHID('KbQueueCheck');
+elseif nargin > 0
+  [pressed, firstPress, firstRelease, lastPress, lastRelease] = PsychHID('KbQueueCheck', deviceIndex);
 end
 
 % Any dead keys defined?

@@ -1,5 +1,5 @@
-function KbQueueDemo
-%% KbQueueDemo
+function KbQueueDemo(deviceIndex)
+%% KbQueueDemo([deviceIndex])
 % Shows how to detect when the user has pressed a key.
 % See KbQueueCheck, KbQueueWait, KbName, KbCheck, KbWait, GetChar, CharAvail.
 %
@@ -22,9 +22,8 @@ function KbQueueDemo
 
 % 11/3/07	rpw Wrote demos 1-5
 
-if ~IsOSX
-	fprintf('KbQueueDemo requires Mac OS X\n');
-	return;
+if nargin < 1
+  deviceIndex = [];
 end
 
 % Enable unified mode of KbName, so KbName accepts identical key names on
@@ -36,39 +35,39 @@ KbName('UnifyKeyNames');
 % Report keyboard key number for any pressed keys, including
 % modifier keys such as <shift>, <control>, <caps lock> and <option>.  The
 % only key not reported is the start key, which turns on the computer.
-KbQueueDemoPart1;
+KbQueueDemoPart1(deviceIndex);
 WaitSecs(0.5);
 
 % Report time of keypress, using KbQueueCheck.
-KbQueueDemoPart2;
+KbQueueDemoPart2(deviceIndex);
 WaitSecs(0.5);
 
 % Report time of keypress, using KbQueueWait.
-KbQueueDemoPart3;
+KbQueueDemoPart3(deviceIndex);
 WaitSecs(0.5);
 
 % Use keys as real-time controls of a dynamic display.
-KbQueueDemoPart4;
+KbQueueDemoPart4(deviceIndex);
 
 % Identify keys pressed while other code is executing
-KbQueueDemoPart5;
+KbQueueDemoPart5(deviceIndex);
 return
 
 %% Part 1
-function KbQueueDemoPart1
+function KbQueueDemoPart1(deviceIndex)
 % Displays the key number when the user presses a key.
 
 fprintf('1 of 5.  Testing KbQueueCheck and KbName: press a key to see its number.\n');
 fprintf('Press the escape key to proceed to the next demo.\n');
 escapeKey = KbName('ESCAPE');
-KbQueueCreate;
+KbQueueCreate(deviceIndex);
 while KbCheck; end % Wait until all keys are released.
 
-KbQueueStart;
+KbQueueStart(deviceIndex);
 
 while 1
     % Check the queue for key presses.
-    [ pressed, firstPress]=KbQueueCheck;
+    [ pressed, firstPress]=KbQueueCheck(deviceIndex);
 
     % If the user has pressed a key, then display its code number and name.
     if pressed
@@ -86,11 +85,11 @@ while 1
         end
     end
 end
-KbQueueRelease;
+KbQueueRelease(deviceIndex);
 return
 
 %% Part 2
-function KbQueueDemoPart2
+function KbQueueDemoPart2(deviceIndex)
 % Displays the number of seconds that have elapsed when the user presses a
 % key.
 fprintf('\n2 of 5. Testing KbQueueCheck timing: please type a few keys.  (Try shift keys too.)\n');
@@ -98,11 +97,11 @@ fprintf('Type the escape key to proceed to the next demo.\n');
 escapeKey = KbName('ESCAPE');
 startSecs = GetSecs;
 
-KbQueueCreate;
-KbQueueStart;
+KbQueueCreate(deviceIndex);
+KbQueueStart(deviceIndex);
 
 while 1
-    [ pressed, firstPress]=KbQueueCheck;
+    [ pressed, firstPress]=KbQueueCheck(deviceIndex);
 	timeSecs = firstPress(find(firstPress));
 	if pressed
 	
@@ -114,27 +113,27 @@ while 1
         end
 	end
 end
-KbQueueRelease;
+KbQueueRelease(deviceIndex);
 return
 
 %% Part 3
-function KbQueueDemoPart3
+function KbQueueDemoPart3(deviceIndex)
 
 % Wait for the "a" key with KbQueueWait.
 keysOfInterest=zeros(1,256);
 keysOfInterest(KbName('a'))=1;
-KbQueueCreate(-1, keysOfInterest);
+KbQueueCreate(deviceIndex, keysOfInterest);
 fprintf('\n3 of 5.  Testing KbQueueWait: waiting for a press of the "a" key; all others will be ignored\n');
 startSecs = GetSecs;
-KbQueueStart;
-timeSecs = KbQueueWait;
+KbQueueStart(deviceIndex);
+timeSecs = KbQueueWait(deviceIndex);
 
 fprintf('The "a" key was pressed at time %.3f seconds\n', timeSecs - startSecs);
-KbQueueRelease;
+KbQueueRelease(deviceIndex);
 return
 
 %% Part 4
-function KbQueueDemoPart4
+function KbQueueDemoPart4(deviceIndex)
 % Control a screen spot with the keyboard.
 
 % Here are the parameters for this demo.
@@ -145,7 +144,7 @@ initialRotationAngle = 3 * pi / 2; % The initial rotation angle in radians.
 try
 
     % Removes the blue screen flash and minimize extraneous warnings.
-	Screen('Preference', 'VisualDebugLevel', 3);
+    Screen('Preference', 'VisualDebugLevel', 3);
     Screen('Preference', 'SuppressAllWarnings', 1);
 	
     % Find out how many screens and use largest screen number.
@@ -184,8 +183,8 @@ try
     durationInSeconds = 60 * 2;
     numberOfSecondsRemaining = durationInSeconds;
     
-    KbQueueCreate(-1, keysOfInterest);
-    KbQueueStart;
+    KbQueueCreate(deviceIndex, keysOfInterest);
+    KbQueueStart(deviceIndex);
     
     % Loop while there is time.
     while numberOfSecondsRemaining > 0
@@ -207,13 +206,13 @@ try
             %
             % We could work around this by making note of whether the key
             % has been released using the call:
-            % [pressed, firstPress, firstRelease, lastPress, lastRelease]= KbQueueCheck()
+            % [pressed, firstPress, firstRelease, lastPress, lastRelease]= KbQueueCheck(deviceIndex)
             % and noting whether lastRelease is more recent than lastPress for
             % the keys of interest, tracking the status across loop iterations.
            	% However,it would be easier to use KbCheck, which reflects the
            	% current status of the key directly (see KbDemo.m)
             
-            [ pressed, firstPress]=KbQueueCheck;
+            [ pressed, firstPress]=KbQueueCheck(deviceIndex);
            
             if pressed
                 if firstPress(rightKey)
@@ -235,11 +234,11 @@ try
             
     end
     Screen('CloseAll');
-    KbQueueRelease;	% Note that KbQueueRelease is also in the catch clause
+    KbQueueRelease(deviceIndex);	% Note that KbQueueRelease is also in the catch clause
     fprintf('\n4 of 5.  Done.\n');    
 
 catch
-	KbQueueRelease;
+    KbQueueRelease(deviceIndex);
     Screen('CloseAll');
     psychrethrow(psychlasterror);
 end
@@ -247,20 +246,20 @@ return
 
 
 %% Part 5
-function KbQueueDemoPart5
+function KbQueueDemoPart5(deviceIndex)
 % Prints a list of keys that were pressed while other code was executing
 
 fprintf('5 of 5.  Testing KbQueueCheck asynchronously:\nPress one or more keys during the next 10 seconds.\n');
-KbQueueCreate;
-KbQueueStart;
+KbQueueCreate(deviceIndex);
+KbQueueStart(deviceIndex);
 WaitSecs(10);
 fprintf('\n');
-KbQueueStop;	% Stop delivering events to the queue
+KbQueueStop(deviceIndex);	% Stop delivering events to the queue
 fprintf('Keypresses during the next 5 seconds will be ignored\n\n');
 WaitSecs(5);
-[ pressed, firstPress]=KbQueueCheck;
+[ pressed, firstPress]=KbQueueCheck(deviceIndex);
 fprintf('You pressed the following keys during the interval when keypresses were being recorded:\n');
 pressedKeys=KbName(firstPress)
 
-KbQueueRelease;
+KbQueueRelease(deviceIndex);
 return

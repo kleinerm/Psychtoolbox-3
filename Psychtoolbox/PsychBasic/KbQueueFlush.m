@@ -1,7 +1,5 @@
-function KbQueueFlush()
-% KbQueueFlush()
-%
-% Requires Mac OS X 10.3 or later
+function KbQueueFlush(deviceIndex)
+% KbQueueFlush([deviceIndex])
 %
 % The routines KbQueueCreate, KbQueueStart, KbQueueStop, KbQueueCheck
 %  KbQueueWait, KbQueueFlush and KbQueueRelease provide replacments for
@@ -130,20 +128,8 @@ function KbQueueFlush()
 
 % 8/23/07    rpw  Wrote it.
 
-% Requires Mac OS X 10.3 or later. We sort this out on the first call 
-% and then store the result in macosrecent for subsequent calls
-
-persistent macosxrecent;
-if isempty(macosxrecent)
-   macosxrecent = IsOSX;
-end
-
-if macosxrecent
-    if nargin == 0
-		PsychHID('KbQueueFlush');
-    elseif nargin > 0
-        error('Too many arguments supplied to KbQueueFlush'); 
-    end
-else
-	error('KbQueueFlush requires Mac OS X 10.3 or later');
+if nargin == 0
+  PsychHID('KbQueueFlush');
+elseif nargin > 0
+  PsychHID('KbQueueFlush', deviceIndex);
 end

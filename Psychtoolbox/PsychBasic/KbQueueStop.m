@@ -1,7 +1,5 @@
-function KbQueueStop()
-% KbQueueStop()
-%
-% Requires Mac OS X 10.3 or later
+function KbQueueStop(deviceIndex)
+% KbQueueStop([deviceIndex])
 %
 % The routines KbQueueCreate, KbQueueStart, KbQueueStop, KbQueueCheck
 %  KbQueueWait, KbQueueFlush and KbQueueRelease provide replacments for
@@ -131,20 +129,8 @@ function KbQueueStop()
 % 8/19/07    rpw  Wrote it.
 % 8/23/07    rpw  Modifications to add KbQueueFlush
 
-% Requires Mac OS X 10.3 or later. We sort this out on the first call 
-% and then store the result in macosrecent for subsequent calls
-
-persistent macosxrecent;
-if isempty(macosxrecent)
-   macosxrecent = IsOSX;
-end
-
-if macosxrecent
-    if nargin == 0
-		PsychHID('KbQueueStop');
-    elseif nargin > 0
-        error('Too many arguments supplied to KbQueueStop'); 
-    end
-else
-	error('KbQueueStop requires Mac OS X 10.3 or later');
+if nargin == 0
+  PsychHID('KbQueueStop');
+elseif nargin > 0
+  PsychHID('KbQueueStop', deviceIndex);
 end
