@@ -464,6 +464,7 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 
 		// Is this an event we're interested in?
 		if ((cookie->type == GenericEvent) && (cookie->extension == xi_opcode)) {
+
 			// Yes. Process it:
 			if (XGetEventData(thread_dpy, cookie)) {
 				// Process it:
@@ -486,6 +487,7 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 					// keycode?
 					if (psychHIDKbQueueActive[i] && (psychHIDKbQueueScanKeys[i][event->detail] != 0)) {
 						// Yes: The queue wants to receive info about this key event.
+//printf("Event-Generic : hwdev %i --> ptbdev %i --> %i --> Accepted!\n", event->deviceid, i, cookie->evtype); fflush(NULL);
 
 						// Press or release?
 						if (cookie->evtype == XI_KeyPress) {
@@ -562,16 +564,23 @@ static int PsychHIDGetDefaultKbQueueDevice(void)
     int deviceIndex;
     XIDeviceInfo* dev = NULL;
 
-    // Find:
+    // Find first suitable slave device. For some reason, master keyboards don't work.
+
+    // Whitelist scan: Use mouseemu virtual keyboard, if any:
     for(deviceIndex = 0; deviceIndex < ndevices; deviceIndex++) {
         dev = &info[deviceIndex];
-        if ((dev->use == XIMasterKeyboard) || (dev->use == XISlaveKeyboard)) break;
+        if ((dev->use == XISlaveKeyboard) && strstr(dev->name, "Mouseemu")) return(deviceIndex);
+    }
+
+    // Blacklist scan: Use whatever comes first and isn't a button in disguise of
+    // a keyboard or the virtual XTEST keyboard:
+    for(deviceIndex = 0; deviceIndex < ndevices; deviceIndex++) {
+        dev = &info[deviceIndex];
+        if ((dev->use == XISlaveKeyboard) && !strstr(dev->name, "XTEST") && !strstr(dev->name, "Button")) return(deviceIndex);
     }
     
     // Nothing found? If so, abort:
-    if (deviceIndex >= ndevices) PsychErrorExitMsg(PsychError_user, "Could not find any useable keyboard device!");
-    
-    return(deviceIndex);
+    PsychErrorExitMsg(PsychError_user, "Could not find any useable keyboard device!");
 }
 
 PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys)
@@ -585,7 +594,7 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 	}
 
 	if (deviceIndex < 0) {
-        deviceIndex = PsychHIDGetDefaultKbQueueDevice();
+		deviceIndex = PsychHIDGetDefaultKbQueueDevice();
 		// Ok, deviceIndex now contains our default keyboard to use - The first suitable keyboard.
 	} else if (deviceIndex >= ndevices) {
 		// Out of range index:
@@ -703,6 +712,7 @@ void PsychHIDOSKbQueueStop(int deviceIndex)
 	emask.mask_len = sizeof(mask);
 	emask.mask = mask;
 	XISelectEvents(thread_dpy, DefaultRootWindow(thread_dpy), &emask, 1);
+	XFlush(thread_dpy);
 
 	// Mark queue logically stopped:
 	psychHIDKbQueueActive[deviceIndex] = FALSE;
@@ -816,11 +826,7 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
 	emask.mask_len = sizeof(mask);
 	emask.mask = mask;
 	XISelectEvents(thread_dpy, DefaultRootWindow(thread_dpy), &emask, 1);
-
-	if (info[deviceIndex].use == XIMasterKeyboard) {
-		XSelectInput(thread_dpy, DefaultRootWindow(thread_dpy), KeyPressMask);
-		XFlush(thread_dpy);
-	}
+	XFlush(thread_dpy);
 
 	// Mark this queue as logically started:
 	psychHIDKbQueueActive[deviceIndex] = TRUE;
