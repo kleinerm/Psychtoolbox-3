@@ -73,10 +73,10 @@ if mode==9
     curdir = pwd;
     cd('../../Psychtoolbox/PsychSound/MOAL/source/')
     try
-       mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions' -v -outdir ../Projects/Linux/build/ -output moalcore -largeArrayDims -DLINUX -lc -lopenal moalcore.c al_auto.c al_manual.c alm.c 
+       mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions' -v -outdir ./ -output moalcore -largeArrayDims -DLINUX -lc -lopenal moalcore.c al_auto.c al_manual.c alm.c 
     catch
     end
-    unix(['mv ../Projects/Linux/build/moalcore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+    unix(['mv ./moalcore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 
     cd(curdir);
 end;
