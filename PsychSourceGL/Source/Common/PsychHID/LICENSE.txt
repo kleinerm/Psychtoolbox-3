@@ -1,3 +1,23 @@
+PsychHID is licensed to you under the MIT license, like
+almost all other Psychtoolbox mex files.
+
+PsychHID uses HIDAPI as a backend for low-level USB-HID
+device enumeration and HID raw device access.
+See http://www.signal11.us/oss/hidapi for website and download
+location.
+
+The combined PsychHID binary mex file (the results of merging PsychHID's
+MIT licensed code with HIDAPI licensed under the original
+HIDAPI license (file LICENSE-orig.txt) is MIT licensed as
+already stated.
+
+You could use our included HIDAPI standalone in your own projects
+if you wanted -- although it would make more sense for you to get
+the most recent source code from HIDAPI's official website. If you choose
+to use our version of HIDAPI in your own projects, we give you the
+same freedom of license choice we received from HIDAPI's authors,
+as follows:
+
 HIDAPI can be used under one of three licenses.
 
 1. The GNU Public License, version 3.0, in LICENSE-gpl3.txt

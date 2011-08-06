@@ -424,6 +424,37 @@ PsychError PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, 
 
 	XFreeDeviceState(state);
 
+	int nSamples, mode_return, axis_count_return;
+	double* outSamples;
+	double tSample;
+
+	// Query motion history of this device:
+	XDeviceTimeCoord* samples = XGetDeviceMotionEvents(dpy, mydev, 0, CurrentTime, &nSamples, &mode_return, &axis_count_return);
+	printf("[%p] n = %i , mr = %s , ac = %i\n", samples, nSamples, (mode_return == Absolute) ? "Absolute" : "Relative" , axis_count_return);
+
+	// Return it as 1st argument to userspace if requested:
+	if (PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 2 + axis_count_return, nSamples, 1, &outSamples)) {
+		for (i = 0; i < nSamples; i++) {
+			// Sampleindex in row 1:
+			*(outSamples++) = (double) i;
+
+			// Sampletime in row 2: Need to convert msecs to sec and
+			// then map from CLOCK_MONOTONIC to our CLOCK_REALTIME
+			// GetSecs() timebase:
+			tSample = (double) samples[i].time / 1000.0;
+			*(outSamples++) = PsychOSMonotonicToRefTime(tSample);
+
+			// Axis motion samples in successive rows:
+			for (j = 0; j < axis_count_return; j++) {
+				*(outSamples++) = (double) samples[i].data[j];
+			}
+			// Next sample in next column:
+		}
+	}
+
+	// Release returned sample motion buffer:
+	XFreeDeviceMotionEvents(samples);
+
 	return(PsychError_none);
 }
 
@@ -487,7 +518,6 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 					// keycode?
 					if (psychHIDKbQueueActive[i] && (psychHIDKbQueueScanKeys[i][event->detail] != 0)) {
 						// Yes: The queue wants to receive info about this key event.
-//printf("Event-Generic : hwdev %i --> ptbdev %i --> %i --> Accepted!\n", event->deviceid, i, cookie->evtype); fflush(NULL);
 
 						// Press or release?
 						if (cookie->evtype == XI_KeyPress) {

@@ -6,7 +6,7 @@ function result = Gamepad(arg1, arg2, arg3)
 % USB Human Interface Device (HID) terminology.
 %
 % Gamepad provides built-in help.  For usage, enter "Gamepad" alone on the
-% MATLAB command line.
+% command line.
 %
 % Performance tips:
 %
@@ -14,7 +14,8 @@ function result = Gamepad(arg1, arg2, arg3)
 % once at the beginning of your script before entering the trial loop.
 % After plugging/unplugging or replugging of any USB devices you *must*
 % call Gamepad('Unplug') or clear all, so Gamepad can recognize the changed
-% hardware configuration at next invocation.
+% hardware configuration at next invocation. Actually, a clear all is
+% recommended, as Gamepad('Unplug') doesn't work reliably on non-OSX systems.
 %
 % The subfunctions for state queries of axis, button and hat state are
 % optimized for low execution time -- suitable for time critical parts of
@@ -27,45 +28,25 @@ function result = Gamepad(arg1, arg2, arg3)
 % but superfast way to query device state.
 %
 %
-% OSX: ___________________________________________________________________
+% LINUX: ______________________________________________________________________
 %
-% PsychGamePad uses the PsychHID function, which provides a universal
+% Gamepad uses the Screen() mex file and its mouse query functions.
+% On Linux, gamepads and joysticks are treated as a special type of
+% mouse/pointing device with multiple extra axes and buttons.
+%
+% OSX: ________________________________________________________________________
+%
+% GamePad uses the PsychHID function, which provides a universal
 % interface to USB HID devices, including keyboards.
 %
 % On OS X Gamepad is an .m file but provides built-in help to match the
 % behavior of Gamepad on other platforms where it is a mex file.
 %
-% OS9: ___________________________________________________________________
-%
-% Gamepad is still named Joystick.
-%
-% Joystick uses the Simple DirectMedia Layer (SDL) library which  is
-% included under the terms of the LGPL license. Enter "LGPL" at the Matlab
-% command  prompt to view the LGPL.  To learn more about SDL see
-% www.libsdl.org.
-%
-% Source code for the Psychtoolbox Joystick extensions is available from
-% www.psychtoolbox.org.   Upon request we will provide SDL source code,
-% which is also available from www.libsdl.org.
-%
-% Joystick requires:
-%
-% -Apple GameSprockets extensions.  The GameSprockts installer is available
-% from Apple at:
-% http://kbase.info.apple.com/cgi-bin/WebObjects/kbase.woa/28/wa/query?sear
-% chMode=Expert&type=id&val=KC.31236
-%
-% -The SDL extension must be moved to your System:Extensions folder and
-% your computer restarted.   If you used the Psychtoolbox installer this
-% should have been done for you.  The SDL extension is included in the
-% Psychtoolbox in the folder:
-%    Matlab:Toolbox:Psychtoolbox:PsychHardware:Joystick.
-%
-% WIN: ________________________________________________________________
+% WIN: ________________________________________________________________________
 %
 % Gamepad has been omitted from the WIN Psychtoolbox because of a bug that
 % prevents the extensions from loading.
-% _________________________________________________________________________
+% _____________________________________________________________________________
 %
 % See also: PsychGamepad, PsychHID
 
@@ -77,6 +58,7 @@ function result = Gamepad(arg1, arg2, arg3)
 %                   restructuring. Also new low-level access commands that
 %                   allow another 7x speedup at expense of more complex
 %                   usage.
+% 08/05/11  mk      Allow use on Linux as well.
 
 % NOTES
 %  7/21/03  awi     Gamepad does not support ball elements because I do not know what those are
@@ -92,7 +74,7 @@ function result = Gamepad(arg1, arg2, arg3)
 %                   for "joystick ball".
 %  7/22/03  awi     gamepadIndices and deviceStructs variables could be retained between invocations and
 %                   cleared with the 'unplug' command.
-%	10/6/05  awi     Note here cosmetic changes by dgp between 7/22/03 and 10/6/05.
+%  10/6/05  awi     Note here cosmetic changes by dgp between 7/22/03 and 10/6/05.
 
 persistent axisUsagePageValue axisUsageValues hatswitchUsagePageValue hastSwitchUsageValues buttonUsagePageValue allGamepadSubCommands allGamepadHelpRequests joyMin joyMax gamepadIndices deviceStructs gi ei
 
@@ -101,10 +83,10 @@ if isempty(deviceStructs)
     % structures by device detection and enumeration. Initialize all
     % other frequently used data structures...
 
-    % Check if we're called on a supported OS. Currently only OS/X is
-    % supported:
-    if ~IsOSX
-        error('Sorry, the Gamepad function only works on MacOS/X.');
+    % Check if we're called on a supported OS. Currently Windows is
+    % unsupported:
+    if IsWin
+        error('Sorry, the Gamepad function does not work on Windows yet.');
     end
 
     % Constants for device page and usage
@@ -133,9 +115,42 @@ if isempty(deviceStructs)
     % allPossibleCommands=upper(union(allGamepadHelpRequests, allGamepadSubCommands));
 
     % Device detection and enumeration:
-    gamepadIndices=GetGamepadIndices;
-    % Debugcode: Mouse as a Gamepad.... gamepadIndices=GetMouseIndices;
+    [gamepadIndices, gamepadNames] = GetGamepadIndices;
     
+    if IsLinux
+      % Linux method: Gamepads are treated as slave mouse devices with extra
+      % buttons and axis. Use GetMouse to get info about them:
+
+      % Query additional per-device configuration info and parameters:
+      for i=1:length(gamepadIndices)
+        [x,y,b,f,v,vi] = GetMouse([], gamepadIndices(i));
+	deviceStructs(gamepadIndices(i)).buttonIndices = 1:(length(b) - 32);
+	deviceStructs(gamepadIndices(i)).axisIndices = 1:length(v);
+	deviceStructs(gamepadIndices(i)).hatIndices = [];
+	deviceStructs(gamepadIndices(i)).product = char(gamepadNames(i));
+	deviceStructs(gamepadIndices(i)).buttons = length(b) - 32;
+	deviceStructs(gamepadIndices(i)).axes = length(v);
+	deviceStructs(gamepadIndices(i)).balls = 0;
+	deviceStructs(gamepadIndices(i)).hats = 0;
+
+	% Populate element properties:
+        elements = [];
+	for j = 1:length(vi)
+	  el.rangeMin = vi(j).min;
+	  el.rangeMax = vi(j).max;
+	  el.label = vi(j).label;
+	  if isempty(elements)
+	    elements = el;
+	  else
+	    elements(end+1) = el;
+	  end
+	end
+        deviceStructs(gamepadIndices(i)).elements = elements;
+      end
+    end
+
+    if IsOSX
+    % The following is OS/X only stuff:
     deviceStructs=PsychHID('Devices');
 
     % Query additional per-device configuration info and parameters:
@@ -176,6 +191,7 @@ if isempty(deviceStructs)
         end
         deviceStructs(gamepadIndices(i)).hatIndices = hatIndices;
     end
+    end % OSX
 
     % End of first-time initialization.
 end
@@ -262,10 +278,15 @@ switch subCommand
         try
             gi = gamepadIndices(argVal1);
             ei = deviceStructs(gi).buttonIndices(argVal2);
-            result = PsychHID('RawState', gi, ei);
+	    if IsLinux
+		[d1,d2,b] = GetMouse([], gi);
+		result = b(ei);
+            else
+	        result = PsychHID('RawState', gi, ei);
+	    end
         catch
             if nargin ~= 3
-                error('incorret number of arguments supplied');
+                error('incorrect number of arguments supplied');
             end
             if ~isa(argVal1, 'double') || length(argVal1) ~= 1 || ~isa(argVal2, 'double') || length(argVal2) ~= 1
                 error('1x1 double argument expected');
@@ -284,13 +305,18 @@ switch subCommand
         try
             gi = gamepadIndices(argVal1);
             ei = deviceStructs(gi).axisIndices(argVal2);
-            rawState = PsychHID('RawState', gi, ei);
+	    if IsLinux
+		[d1,d2,d3,d4,v] = GetMouse([], gi);
+		rawState = v(ei);
+            else
+                rawState = PsychHID('RawState', gi, ei);
+            end
             hidMin=deviceStructs(gi).elements(ei).rangeMin;
             hidMax=deviceStructs(gi).elements(ei).rangeMax;
             result = (rawState-hidMin)/(hidMax-hidMin) * (joyMax-joyMin) + joyMin;
         catch
             if nargin ~= 3
-                error('incorret number of arguments supplied');
+                error('incorrect number of arguments supplied');
             end
             if ~isa(argVal1, 'double') || length(argVal1) ~= 1 || ~isa(argVal2, 'double') || length(argVal2) ~= 1
                 error('1x1 double arguments expected');
@@ -308,10 +334,14 @@ switch subCommand
         try
             gi = gamepadIndices(argVal1);
             ei = deviceStructs(gi).hatIndices(argVal2);
-            result = PsychHID('RawState', gi, ei);
+	    if IsLinux
+		error('Sorry, GetHat function unsupported on Linux.');
+            else
+                result = PsychHID('RawState', gi, ei);
+	    end
         catch
             if nargin ~= 3
-                error('incorret number of arguments supplied');
+                error('incorrect number of arguments supplied');
             end
             if ~isa(argVal1, 'double') || length(argVal1) ~= 1 || ~isa(argVal2, 'double') || length(argVal2) ~= 1
                 error('1x1 double argument expected');
@@ -328,7 +358,7 @@ switch subCommand
 
     case {'GETBALL'}
         if nargin ~= 3
-            error('incorret number of arguments supplied');
+            error('incorrect number of arguments supplied');
         end
         if ~isa(argVal1, 'double') || length(argVal1) ~= 1 || ~isa(argVal2, 'double') || length(argVal2) ~= 1
             error('1x1 double argument expected');
@@ -427,17 +457,27 @@ switch subCommand
         end
         switch upper(subCommand)
             case {'GETNUMBUTTONS'}
-                result = deviceStructs(gamepadIndices(argVal1)).buttons;
+                result = length(deviceStructs(gamepadIndices(argVal1)).buttonIndices);
             case {'GETNUMAXES'}
-                result = deviceStructs(gamepadIndices(argVal1)).axes;
+                result = length(deviceStructs(gamepadIndices(argVal1)).axisIndices);
             case {'GETNUMBALLS'}
                 result = 0;    %Don't know what are the HID usage and usage page values for what SDL calls a "ball".  The OSX SDL source does not say.
             case {'GETNUMHATS'}
-                result = deviceStructs(gamepadIndices(argVal1)).hats;
+                result = length(deviceStructs(gamepadIndices(argVal1)).hatIndices);
         end
         return
 
     case {'UNPLUG'}
+	if IsOctave
+	   warning('Tried to call Gamepad(''Unplug''); which is unsupported under Octave. Ignored.');
+	   return;
+	end
+
+	if IsLinux
+	   warning('Called Gamepad(''Unplug''); - On Linx this implies a ''clear Screen'' aka closing all windows.');
+	   clear Screen;
+	end
+
         clear PsychHID;
         clear GamePad;
         return
@@ -476,7 +516,7 @@ if ismember(upper(subCommand), upper(allGamepadHelpRequests))
             fprintf('GamepadNames = Gamepad(''GetGamepadNamesFromNumbers'', gamepadIndices\n');
             fprintf('\n');
             fprintf('Given a vector of gamepad indices return a cell array of gamepad names.  The gamepad\n');
-            fprintf('name is the same as the product field of the HID device structure reurned by PsychHID,\n');
+            fprintf('name is the same as the product field of the HID device structure returned by PsychHID,\n');
             fprintf('the name of the device assigned by the manufacturer; Identical joysticks should report\n');
             fprintf('the same device name. Gamepads are indexed beginning with 1 up to the number of\n');
             fprintf('connected joysticks. Use Gamepad(''GetNumGamepads'') to find the number of connected\n');
@@ -490,7 +530,7 @@ if ismember(upper(subCommand), upper(allGamepadHelpRequests))
             fprintf('\n');
             fprintf('Given string or cell array of strings holding gamepad names return a vector\n');
             fprintf('of the indices of all gameads with those names.   The gamepad name is the same as the\n');
-            fprintf('product field of the HID device structure reurned by PsychHID, the name of the device \n');
+            fprintf('product field of the HID device structure returned by PsychHID, the name of the device \n');
             fprintf('assigned by the manufacturer; Identical joysticks should report\n');
             fprintf('the same device name.\n');
             fprintf('\n');
@@ -566,6 +606,7 @@ if ismember(upper(subCommand), upper(allGamepadHelpRequests))
             fprintf('Given a gamepad index and an axis index, returns low-level handles to the \n');
             fprintf('specified axis on the specified gamepad.\n');
             fprintf('You can query the raw state of the axis via rawState = PsychHID(''RawState'', handles(1), handles(2));\n');
+            fprintf('on OS/X. On Linux you can call [d1,d2,d3,d4,v] = GetMouse([], handles(1)); rawState = v(handles(2));.\n');
             fprintf('This is significantly faster than calling the ''GetAxis'' function, as it bypasses all error-checking\n');
             fprintf('and remapping of raw device values to the normalized range of (-32768 to 32768).\n\n');
             return
@@ -577,6 +618,7 @@ if ismember(upper(subCommand), upper(allGamepadHelpRequests))
             fprintf('Given a gamepad index and a button index, returns low-level handles to the \n');
             fprintf('specified button on the specified gamepad.\n');
             fprintf('You can query the raw state of the button via rawState = PsychHID(''RawState'', handles(1), handles(2));\n');
+            fprintf('on OS/X. On Linux you can call [d1,d2,b] = GetMouse([], handles(1)); rawState = b(handles(2));.\n');
             fprintf('This is significantly faster than calling the ''GetButton'' function, as it bypasses all error-checking\n');
             fprintf('and remapping of raw device values.\n\n');
             return
@@ -615,7 +657,7 @@ if ismember(upper(subCommand), upper(allGamepadHelpRequests))
             fprintf('''GetNumHats'' to find the maximum legal values for gamepadIndex and\n');
             fprintf('hatIndex arguments. The first gamepad and the first hat are index 1. It\n');
             fprintf('is an error to call ''GetHat'' if the specified gamepad has no hats.\n');
-            fprintf('hatState is an ineger in the range 1-9 indicting at which of eight \n');
+            fprintf('hatState is an integer in the range 1-9 indicting at which of eight \n');
             fprintf('compass points or center the hat switch is positioned.  see "help Gamepad"\n');
             fprintf('for a list of functions such as "HatUp" which return constants for named\n');
             fprintf('compass points.\n');
@@ -627,7 +669,7 @@ if ismember(upper(subCommand), upper(allGamepadHelpRequests))
             fprintf('Gamepad(''Unplug'')\n');
             fprintf('\n');
             fprintf('Resets the internal state of Gamepad function.  Call before plugging or\n');
-            fprintf('unplugging gamepads\n');
+            fprintf('unplugging gamepads. Unsupported with GNU/Octave, problematic on Linux!\n');
             fprintf('\n');
             return
     end %switch

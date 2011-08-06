@@ -40,7 +40,7 @@ PsychError PSYCHHIDGetRawState(void)
 
     PsychHIDOSGamePadAxisQuery(deviceIndex, elementIndex, NULL, NULL, &value, NULL);
 
-    PsychCopyOutDoubleArg(1, FALSE, value);
+    if (PSYCH_SYSTEM != PSYCH_LINUX) PsychCopyOutDoubleArg(1, FALSE, value);
 
     return(PsychError_none);
 }

@@ -216,8 +216,8 @@ void ConsoleInputHelper(int ccode)
 }
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "[x, y, buttonValueArray, hasKbFocus, valuators]= Screen('GetMouseHelper', numButtons [, screenNumber][, mouseIndex]);";
-//                          1  2  3                 4           5                                    1          2                3
+static char useString[] = "[x, y, buttonValueArray, hasKbFocus, valuators, valuatorNames]= Screen('GetMouseHelper', numButtons [, screenNumber][, mouseIndex]);";
+//                          1  2  3                 4           5          6                       1          2                3
 static char synopsisString[] = 
 	"This is a helper function called by GetMouse.  Do not call Screen(\'GetMouseHelper\'), use "
 	"GetMouse instead.\n"
@@ -235,6 +235,12 @@ static char seeAlsoString[] = "";
 
 PsychError SCREENGetMouseHelper(void) 
 {
+
+    const char *valuatorInfo[]={"label", "min", "max", "resolution", "mode", "sourceID"};
+    int numValuatorStructFieldNames = 6;
+    int numIValuators = 0;
+    PsychGenericScriptType *valuatorStruct = NULL;
+
 #if PSYCH_SYSTEM == PSYCH_OSX
 	Point		mouseXY;
 	UInt32		buttonState;
@@ -249,7 +255,7 @@ PsychError SCREENGetMouseHelper(void)
 	
 	//cap the numbers of inputs and outputs
 	PsychErrorExit(PsychCapNumInputArgs(3));   //The maximum number of inputs
-	PsychErrorExit(PsychCapNumOutputArgs(5));  //The maximum number of outputs
+	PsychErrorExit(PsychCapNumOutputArgs(6));  //The maximum number of outputs
 	
 	//Buttons.  
 	// The only way I know to detect the  number number of mouse buttons is directly via HID.  The device reports
@@ -301,6 +307,7 @@ PsychError SCREENGetMouseHelper(void)
 	// Return optional valuator values: Unimplemented on OS/X. Just return an empty matrix.
 	// The buttonArray is just a dummy assignment without any meaning.
 	PsychCopyOutDoubleMatArg(5, kPsychArgOptional, (int) 1, (int) 0, (int) 1, buttonArray);
+	PsychCopyOutDoubleMatArg(6, kPsychArgOptional, (int) 1, (int) 0, (int) 1, buttonArray);
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -353,6 +360,7 @@ PsychError SCREENGetMouseHelper(void)
 		// Return optional valuator values: Unimplemented on Windows. Just return an empty matrix.
 		// The &timestamp is just a dummy assignment without any meaning.
 		PsychCopyOutDoubleMatArg(5, kPsychArgOptional, (int) 1, (int) 0, (int) 1, &timestamp);
+		PsychCopyOutDoubleMatArg(6, kPsychArgOptional, (int) 1, (int) 0, (int) 1, buttonArray);
 	}
 	else {
 	  // 'KeyboardHelper' mode: We implement either KbCheck() or KbWait() via X11.
@@ -606,6 +614,12 @@ PsychError SCREENGetMouseHelper(void)
 		numvaluators = 0;
 		memset(myvaluators, 0, sizeof(myvaluators));
 
+		if (PsychIsArgPresent(PsychArgOut, 6)) {
+			// Usercode wants valuator info structs:
+			for (i = 0; i < indevs->num_classes; i++) if (indevs->classes[i]->type == XIValuatorClass) numIValuators++;
+			PsychAllocOutStructArray(6, TRUE, numIValuators, numValuatorStructFieldNames, valuatorInfo, &valuatorStruct);
+		}
+
 		for (i = 0; i < indevs->num_classes; i++) {
 			// printf("Class %i: Type %i\n", i, (int) indevs->classes[i]->type);
 			if (indevs->classes[i]->type == XIButtonClass) {
@@ -622,10 +636,28 @@ PsychError SCREENGetMouseHelper(void)
 				XIValuatorClassInfo* axis = (XIValuatorClassInfo*) indevs->classes[i];
 				if (axis->number == 0) mxd = axis->value;  // x-Axis.
 				if (axis->number == 1) myd = axis->value;  // y-Axis.
+
 				// Additional axis, e.g., digitizer tablet, touchpads etc.:
-				if (axis->number >= 2 && axis->number < 102) {
-					myvaluators[axis->number - 2] = axis->value;
-					numvaluators = (numvaluators > axis->number - 1) ? numvaluators : axis->number - 1;
+				if (axis->number >= 0 && axis->number < 100) {
+					myvaluators[axis->number] = axis->value;
+					numvaluators = (numvaluators >= axis->number + 1) ? numvaluators : axis->number + 1;
+				}
+
+				// Assign valuator info struct, if requested:
+				if (valuatorStruct) {
+					if (axis->label != None) {
+						char* atomlabel =  XGetAtomName(dpy, axis->label);
+						PsychSetStructArrayStringElement("label", axis->number, atomlabel, valuatorStruct);
+						XFree(atomlabel);
+					} else {
+						PsychSetStructArrayStringElement("label", axis->number, "None", valuatorStruct);
+					}
+
+					PsychSetStructArrayDoubleElement("min", axis->number, (double) axis->min, valuatorStruct);
+					PsychSetStructArrayDoubleElement("max", axis->number, (double) axis->max, valuatorStruct);
+					PsychSetStructArrayDoubleElement("resolution", axis->number, (double) axis->resolution, valuatorStruct);
+					PsychSetStructArrayDoubleElement("mode", axis->number, (double) axis->mode, valuatorStruct);
+					PsychSetStructArrayDoubleElement("sourceID", axis->number, (double) axis->sourceid, valuatorStruct);
 				}
 				// printf("AXIS %i, LABEL = %s, MIN = %f, MAX = %f, VAL = %f\n", axis->number, (char*) "NONE", (float) axis->min, (float) axis->max, (float) axis->value);
 			}
@@ -703,7 +735,7 @@ PsychError SCREENGetMouseHelper(void)
 	  PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) (rootwin == mywin) ? 1 : 0);
 
 	  // Return optional valuator values:
-	  PsychCopyOutDoubleMatArg(5, kPsychArgOptional, (int) 1, (int) numvaluators, (int) 1, &myvaluators);
+	  PsychCopyOutDoubleMatArg(5, kPsychArgOptional, (int) 1, (int) numvaluators, (int) 1, &myvaluators[0]);
 	}
 	else {
 	  // 'KeyboardHelper' mode: We implement either KbCheck() or KbWait() via X11.

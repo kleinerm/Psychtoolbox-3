@@ -28,11 +28,17 @@ function [gamepadIndices, productNames]= GetGamepadIndices;
 
 gamepadIndices=[];
 productNames=cell(0);
-d=PsychHID('Devices');
+
+if IsLinux
+  % On Linux, a mouse is a gamepad, is a mouse...
+  d = [ PsychHID('Devices', 3) , PsychHID('Devices', 5) ];
+else
+  d=PsychHID('Devices');
+end
+
 for i =1:length(d);
-    if d(i).usagePageValue==1 && (d(i).usageValue == 5 || d(i).usageValue == 4)
-        gamepadIndices(end+1)=i;
+    if IsLinux || (d(i).usagePageValue==1 && (d(i).usageValue == 5 || d(i).usageValue == 4))
+        gamepadIndices(end+1)=d(i).index;
         productNames{end+1}=d(i).product;
     end
 end
-

@@ -211,6 +211,17 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 	struct pci_mem_region *region;
 	int ret;
 	int screenId = 0;
+	int currentgpuidx = 0, targetgpuidx = -1;
+
+	// A bit of a hack for now: Allow user to select which gpu in a multi-gpu
+	// system should be used for low-level mmio based features. If the environment
+	// variable PSYCH_USE_GPUIDX is set to a number, it will try to use that GPU:
+	// TODO: Replace this by true multi-gpu support and - far in the future? -
+	// automatic mapping of screens to gpu's:
+	if (getenv("PSYCH_USE_GPUIDX")) {
+		targetgpuidx = atoi(getenv("PSYCH_USE_GPUIDX"));
+		if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Will try to use GPU number %i for low-level access during this session.\n", targetgpuidx);
+	}
 
 	// Safe-guard:
 	if (gfx_cntl_mem || gpu) {
@@ -246,8 +257,19 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			// dev is our current candidate gpu. Matching vendor?
 			if (dev->vendor_id == PCI_VENDOR_ID_NVIDIA || dev->vendor_id == PCI_VENDOR_ID_ATI || dev->vendor_id == PCI_VENDOR_ID_AMD || dev->vendor_id == PCI_VENDOR_ID_INTEL) {
 				// Yes. This is our baby from NVidia or ATI/AMD or Intel:
-				gpu = dev;
-				break;
+
+				// Select the targetgpuidx'th detected gpu:
+				// TODO: Replace this hack by true multi-gpu support and - far in the future? -
+				// automatic mapping of screens to gpu's:
+				if (currentgpuidx >= targetgpuidx) {
+					if ((PsychPrefStateGet_Verbosity() > 2) && (targetgpuidx >= 0)) printf("PTB-INFO: Choosing GPU number %i for low-level access during this session.\n", currentgpuidx);
+
+					// Assign as gpu:
+					gpu = dev;
+					break;
+				}
+
+				currentgpuidx++;
 			}
 		}
 	}
@@ -288,14 +310,14 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			// BAR 0 is MMIO:
 			region = &gpu->regions[0];
 			fDeviceType = kPsychGeForce;
-            fNumDisplayHeads = 2;
+			fNumDisplayHeads = 2;
 		}
 
 		if (gpu->vendor_id == PCI_VENDOR_ID_ATI || gpu->vendor_id == PCI_VENDOR_ID_AMD) {
 			// BAR 2 is MMIO:
 			region = &gpu->regions[2];
 			fDeviceType = kPsychRadeon;
-            fNumDisplayHeads = 2;
+			fNumDisplayHeads = 2;
 		}
 		
 		if (gpu->vendor_id == PCI_VENDOR_ID_INTEL) {
@@ -310,7 +332,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			}
 
 			fDeviceType = kPsychIntelIGP;
-            fNumDisplayHeads = 2;
+			fNumDisplayHeads = 2;
 		}
 
 		// Try to MMAP MMIO registers with write access, assign their base address to gfx_cntl_mem on success:
@@ -354,17 +376,17 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 		}
 		
 		if (fDeviceType == kPsychRadeon) {
-            // On Radeons we distinguish between Avivo (10) or DCE-4 style (40) or DCE-5 (50) for now.
+			// On Radeons we distinguish between Avivo (10) or DCE-4 style (40) or DCE-5 (50) for now.
 			fCardType = isDCE5(screenId) ? 50 : (isDCE4(screenId) ? 40 : 10);
             
 			// On DCE-4 and later GPU's (Evergreen) we limit the minimum MMIO
 			// offset to the base address of the 1st CRTC register block for now:
 			if (isDCE4(screenId) || isDCE5(screenId)) {
-                gfx_lowlimit = 0x6df0;
+				gfx_lowlimit = 0x6df0;
                 
-                // Also, DCE-4 supports up to six display heads:
-                fNumDisplayHeads = 6;
-            }
+				// Also, DCE-4 supports up to six display heads:
+				fNumDisplayHeads = 6;
+			}
 			
 			if (PsychPrefStateGet_Verbosity() > 2) {
 				printf("PTB-INFO: Connected to %s %s GPU with %s display engine. Beamposition timestamping enabled.\n", pci_device_get_vendor_name(gpu), pci_device_get_device_name(gpu), (fCardType >= 40) ? ((fCardType >= 50) ? "DCE-5" : "DCE-4") : "AVIVO");
@@ -379,8 +401,8 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			}
 		}
 
-        // Perform auto-detection of screen to head mappings:
-        PsychAutoDetectScreenToHeadMappings(fNumDisplayHeads);
+		// Perform auto-detection of screen to head mappings:
+		PsychAutoDetectScreenToHeadMappings(fNumDisplayHeads);
 
 		// Ready to rock!
 	} else {
