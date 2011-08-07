@@ -135,11 +135,7 @@ PsychError PsychHIDCleanup(void)
 	#if PSYCH_SYSTEM == PSYCH_OSX
 	// Via Apple HIDUtils:
         if(HIDHaveDeviceList()) HIDReleaseDeviceList();
-	#else
-        // First the HIDLIB low-level list:
-        if (hidlib_devices) hid_free_enumeration(hidlib_devices);
-        hidlib_devices = NULL;
-        
+	#else        
         // Then our high-level list:
         while (hid_devices) {
             // Get current device record to release:
@@ -157,6 +153,11 @@ PsychError PsychHIDCleanup(void)
         
         // Reset last hid device for error handling:
         last_hid_device = NULL;
+        
+        // Last the HIDLIB low-level list: This will also trigger
+        // HIDAPI shutdown and cleanup:
+        if (hidlib_devices) hid_free_enumeration(hidlib_devices);
+        hidlib_devices = NULL;
 	#endif
     
 	// Close and release all open generic USB devices:

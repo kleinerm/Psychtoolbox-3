@@ -25,6 +25,9 @@
 // Non OS/X only, for now:
 #if PSYCH_SYSTEM != PSYCH_OSX
 
+static int ctx_refcount = 0;
+static libusb_context *ctx = NULL;
+
 // Function Declarations
 int ConfigureDevice(libusb_device_handle* dev, int configIdx);
 
@@ -58,6 +61,13 @@ void PsychHIDOSCloseUSBDevice(PsychUSBDeviceRecord* devRecord)
     libusb_close((libusb_device_handle*) devRecord->device);
 	devRecord->device = NULL;
 	devRecord->valid = 0;
+
+    ctx_refcount--;
+    
+    if (ctx_refcount == 0) {
+        libusb_exit(ctx);
+        ctx = NULL;
+    }    
 }
 
 // Open first USB device that satisfies given matching critera, mark device record as "active/valid":
@@ -72,10 +82,18 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
 	libusb_device_handle*   dev = NULL;
     psych_bool              deviceFound = FALSE;
     
+    if (NULL == ctx) {
+		libusb_init(&ctx);
+        libusb_set_debug(ctx, 3);
+    }
+    
     dev = libusb_open_device_with_vid_pid(NULL, usbVendor, usbProduct);
     if (dev) {	
         // Got it!
         deviceFound = TRUE;
+
+        // Increment refcount of libusb users:
+        ctx_refcount++;
         
 		// Success! Assign device interface and mark device record as active/open/valid:
 		devRecord->device = dev;
@@ -103,6 +121,11 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
 		devRecord->valid = 0;
 		*errorcode = -1;
 	}
+
+    if (ctx_refcount == 0) {
+        libusb_exit(ctx);
+        ctx = NULL;
+    }    
 
 	// Return the success status.
 	return(deviceFound);
