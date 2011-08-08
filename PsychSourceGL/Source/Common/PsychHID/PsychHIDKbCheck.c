@@ -40,8 +40,8 @@ static char seeAlsoString[] = "";
  
 PsychError PSYCHHIDKbCheck(void) 
 {
-    int					i, deviceIndex, debuglevel = 0;
-    int					m, n, p, nout;
+    int					deviceIndex, debuglevel = 0;
+    int					m, n, p;
     double				*scanList = NULL;
     psych_bool                          isDeviceSpecified;
 

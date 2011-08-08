@@ -203,7 +203,7 @@ pRecDevice PsychHIDGetDeviceRecordPtrFromIndex(int deviceIndex)
     return(NULL);  //make the compiler happy.
 }
 
-#if PSYCH_SYSTEM != PSYCH_LINUX
+#if PSYCH_SYSTEM == PSYCH_OSX
 
 void PsychHIDInitializeHIDStandardInterfaces(void)
 {
@@ -214,10 +214,6 @@ void PsychHIDShutdownHIDStandardInterfaces(void)
 {
     return;
 }
-
-#endif
-
-#if PSYCH_SYSTEM == PSYCH_OSX
 
 /*
     PSYCHHIDCheckInit() 
@@ -529,15 +525,6 @@ void PsychHIDVerifyInit(void)
     if (!hidlib_devices) {        
         // Low-Level enumeration by HIDLIB:
         hidlib_devices = hid_enumerate(0x0, 0x0);
-
-        // Set verbosity level of libusb to maximum of 3:
-        libusb_set_debug(NULL, 3);
-
-        // Still no devices?
-        if (!hidlib_devices) {
-            // Game over!
-            PsychErrorExitMsg(PsychError_system, "USB-HID device enumeration failed!");
-        }
         
         // Build our own higher-level device list filled with info
         // from the low-level list:
@@ -548,7 +535,7 @@ void PsychHIDVerifyInit(void)
             // Copy low-level props to corresponding high-level props:
             currentDevice->usagePage = hid_dev->usage_page;
             currentDevice->usage = hid_dev->usage;
-	    // Abuse the "transport" string for the device path. On OS/X this just contains "USB":
+            // Abuse the "transport" string for the device path. On OS/X this just contains "USB":
             sprintf(&currentDevice->transport[0], "%s", hid_dev->path);
             currentDevice->vendorID = hid_dev->vendor_id;
             currentDevice->productID = hid_dev->product_id;
@@ -557,13 +544,13 @@ void PsychHIDVerifyInit(void)
             if (hid_dev->product_string) wcstombs(&currentDevice->product[0], hid_dev->product_string, 256);
             if (hid_dev->serial_number) wcstombs(&currentDevice->serial[0], hid_dev->serial_number, 256);
 
-	    // Convert unique device path into unique numeric location id:
-	    sscanf(hid_dev->path, "%i:%i:%i", &busId, &devId, &intId);
+            // Convert unique device path into unique numeric location id:
+            sscanf(hid_dev->path, "%i:%i:%i", &busId, &devId, &intId);
             currentDevice->locID = busId * 1000000 + devId * 100 + intId;
 
-	    // Interface number is great for identifying DAQ devices, but not available
-	    // on OS/X, so this will be a Linux/Windows only thing.
-	    currentDevice->interfaceId = hid_dev->interface_number;
+            // Interface number is great for identifying DAQ devices, but not available
+            // on OS/X, so this will be a Linux/Windows only thing.
+            currentDevice->interfaceId = hid_dev->interface_number;
 
             // Enqueue record into linked list:
             currentDevice->pNext = hid_devices;

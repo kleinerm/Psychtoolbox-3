@@ -88,9 +88,10 @@ int PsychHIDErrors(void* device, int error,char **namePtr,char **descriptionPtr)
 {
         // Error condition?
         static char lerrname[512];
-        lerrname[0] = 0;
         hid_device* hdevice = (device) ? (hid_device*) device : last_hid_device;
 
+        lerrname[0] = 0;
+        
         // Child protection:
         if (hdevice == NULL) PsychErrorExitMsg(PsychError_internal, "NULL Pointer insted of hid_device* passed into PsychHIDErrors() on non OS/X! Implementation BUG!!!");
         

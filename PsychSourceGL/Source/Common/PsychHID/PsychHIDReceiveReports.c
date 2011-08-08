@@ -364,8 +364,8 @@ PsychError ReceiveReports(int deviceIndex)
     double deadline, now;
 
     pRecDevice device;
-    int i, n, m;
-    unsigned char *ptr;
+    int n, m;
+    unsigned int i;
     ReportStruct *r;
     long error = 0;
 
@@ -439,9 +439,9 @@ PsychError ReceiveReports(int deviceIndex)
                 printf(" report ");
                 n = r->bytes;
                 if (n > 6) n=6;
-                for(i=0; i < n; i++) printf("%3d ", (int) r->report[i]);
+                for(i=0; i < (unsigned int) n; i++) printf("%3d ", (int) r->report[i]);
                 m = r->bytes - 2;
-                if (m > i) {
+                if (m > (int) i) {
                     printf("... ");
                     i = m;
                 }
@@ -554,7 +554,8 @@ PsychError GiveMeReports(int deviceIndex,int reportBytes)
 	const char *fieldNames[]={"report", "device", "time"};
 	mxArray *fieldValue;
 	unsigned char *reportBuffer;
-	int i,j,n;
+	int i,n;
+    unsigned int j;
 	long error=0;
 	double now;
 	
@@ -576,7 +577,7 @@ PsychError GiveMeReports(int deviceIndex,int reportBytes)
 		if(r->error)error=r->error;
 		dims[0]=1;
 		//printf("%2d: r->bytes %2d, reportBytes %4d, -%4.1f s\n",i,(int)r->bytes,(int)reportBytes, now-r->time);
-		if(r->bytes>reportBytes)r->bytes=reportBytes;
+		if(r->bytes> (unsigned int) reportBytes)r->bytes=reportBytes;
 		dims[1]=r->bytes;
 		fieldValue=mxCreateNumericArray(2,(void *)dims,mxUINT8_CLASS,mxREAL);
 		reportBuffer=(void *)mxGetData(fieldValue);
@@ -606,7 +607,7 @@ PsychError GiveMeReport(int deviceIndex,psych_bool *reportAvailablePtr,unsigned 
 {
 	ReportStruct *r,*rOld;
 	long error;
-	int i;
+	unsigned int i;
 	
 	CountReports("GiveMeReport beginning.");
 
@@ -633,7 +634,7 @@ PsychError GiveMeReport(int deviceIndex,psych_bool *reportAvailablePtr,unsigned 
 	}else{
 		*reportAvailablePtr=0;
 		*reportBytesPtr=0;
-		*reportTimePtr=0.0/0.0;
+		*reportTimePtr=0.0;
 		error=0;
 	}
 	CountReports("GiveMeReport end.");

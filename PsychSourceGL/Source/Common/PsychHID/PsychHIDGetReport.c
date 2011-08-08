@@ -87,7 +87,7 @@ PsychError PSYCHHIDGetReport(void)
 	int reportType; // 1=input, 2=output, 3=feature
 	unsigned char *reportBuffer;
 	psych_uint32 reportBytes=0;
-	int reportBufferSize=0;
+	unsigned int reportBufferSize=0;
 	int reportID=0;
 	mwSize dims[]= {1,1};
 	mxArray **outReport,**outErr;

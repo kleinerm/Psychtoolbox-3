@@ -25,7 +25,7 @@
 #define PSYCH_IS_INCLUDED_PsychMemory
 
 // Convert a double value (which encodes a memory address) into a ptr:
-void*  PsychDoubleToPtr(double dptr);
+void*  PsychDoubleToPtr(volatile double dptr);
 
 // Convert a memory address pointer into a double value:
 double PsychPtrToDouble(void* ptr);

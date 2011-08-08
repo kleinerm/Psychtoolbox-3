@@ -40,7 +40,7 @@ static char seeAlsoString[] = "";
 PsychError PSYCHHIDUSBControlTransfer(void) 
 {
 	PsychUSBDeviceRecord	*dev;
-	int usbHandle, bmRequestType, bRequest, wValue, wIndex, wLength, dataElementWidth;
+	int usbHandle, bmRequestType, bRequest, wValue, wIndex, wLength;
 	int m, n, p, err;
 	const int USB_OUTTRANSFER = 0x80;	// bmRequestType & USB_OUTTRANSFER? -> Receive data from device.
 	psych_uint8 *buffer = NULL;

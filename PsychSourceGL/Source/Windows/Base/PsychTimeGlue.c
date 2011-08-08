@@ -921,7 +921,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 	DWORD foo;
 	HANDLE thread;
 
-	if ((NULL != threadhandle) && (0x1 != threadhandle)) {
+	if ((NULL != threadhandle) && ((psych_thread*) 0x1 != threadhandle)) {
 		// Retrieve thread HANDLE of thread to change:
 		thread = (*threadhandle)->handle;
 	}
