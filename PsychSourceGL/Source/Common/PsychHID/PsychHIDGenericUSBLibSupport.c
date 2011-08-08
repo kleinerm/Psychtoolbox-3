@@ -87,7 +87,7 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
         libusb_set_debug(ctx, 3);
     }
     
-    dev = libusb_open_device_with_vid_pid(NULL, usbVendor, usbProduct);
+    dev = libusb_open_device_with_vid_pid(ctx, usbVendor, usbProduct);
     if (dev) {	
         // Got it!
         deviceFound = TRUE;

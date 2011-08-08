@@ -70,7 +70,7 @@ if onoctave == 0
 
     if what == 9
         % Build PsychHID.mexw32:
-        mex -g -v -outdir T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\ -output PsychHID.mexw32 -DPTBMODULE_PsychHID -DTARGET_OS_WIN32 -DWIN32 -I"C:\Programme\Microsoft Visual Studio 8\VC\Include" -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c Windows\PsychHID\*.cpp kernel32.lib user32.lib winmm.lib libusb.lib setupapi.lib
+        mex -g -v -outdir T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\ -output PsychHID.mexw32 -DPTBMODULE_PsychHID -DTARGET_OS_WIN32 -DWIN32 -I"C:\Programme\Microsoft Visual Studio 8\VC\Include" -I..\Cohorts\libusb1-win32\include\libusb-1.0 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\PsychHID\*.c Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c Windows\PsychHID\*.cpp kernel32.lib user32.lib winmm.lib libusb-1.0.lib setupapi.lib
         dos('copy T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychHID.mexw32 T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\MatlabWindowsFilesR2007a\');
     end;
     
@@ -143,7 +143,7 @@ else
 
     if what == 9
         % Build PsychHID.mex:
-        mexoctave -g -v --output T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychHID.mex -DPTBMODULE_PsychHID -DTARGET_OS_WIN32 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c Windows\PsychHID\*.cpp kernel32.lib user32.lib winmm.lib libusb.lib setupapi.lib
+        mexoctave -g -v --output T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychHID.mex -DPTBMODULE_PsychHID -DTARGET_OS_WIN32  -I..\Cohorts\libusb1-win32\include\libusb-1.0 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c Windows\PsychHID\*.cpp Windows\Base\*.c kernel32.lib user32.lib winmm.lib libusb-1.0.lib setupapi.lib
         dos('copy T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychHID.mex T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\Octave3WindowsFiles\');
     end;
 

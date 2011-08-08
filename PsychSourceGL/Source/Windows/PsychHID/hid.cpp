@@ -108,6 +108,9 @@ extern "C" {
 	static HidP_GetCaps_ HidP_GetCaps;
 
 	static BOOLEAN initialized = FALSE;
+    
+    // MK: Define missing NTSTATUS:
+    typedef LONG NTSTATUS;
 #endif // HIDAPI_USE_DDK
 
 struct hid_device_ {
