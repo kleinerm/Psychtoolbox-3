@@ -179,7 +179,9 @@ typedef unsigned char		psych_bool;
         typedef WORD                            psych_uint16;
         typedef GLubyte                         ubyte;
 		#ifndef PTBOCTAVE3MEX
+        #ifndef __cplusplus
         typedef psych_bool                      mxLogical;
+        #endif
 		#endif
 
         // The Visual C 6 compiler doesn't know about the __func__ keyword :(
