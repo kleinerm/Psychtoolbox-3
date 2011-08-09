@@ -29,7 +29,7 @@ function [gamepadIndices, productNames]= GetGamepadIndices;
 gamepadIndices=[];
 productNames=cell(0);
 
-if IsLinux
+if ~IsOSX
   % On Linux, a mouse is a gamepad, is a mouse...
   d = [ PsychHID('Devices', 3) , PsychHID('Devices', 5) ];
 else

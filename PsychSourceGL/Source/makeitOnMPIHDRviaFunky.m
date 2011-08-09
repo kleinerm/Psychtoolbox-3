@@ -70,7 +70,7 @@ if onoctave == 0
 
     if what == 9
         % Build PsychHID.mexw32:
-        mex -g -v -outdir T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\ -output PsychHID.mexw32 -DPTBMODULE_PsychHID -DTARGET_OS_WIN32 -DWIN32 -I"C:\Programme\Microsoft Visual Studio 8\VC\Include" -I..\Cohorts\libusb1-win32\include\libusb-1.0 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\PsychHID\*.c Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c Windows\PsychHID\*.cpp kernel32.lib user32.lib winmm.lib libusb-1.0.lib setupapi.lib
+        mex -g -v -outdir T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\ -output PsychHID.mexw32 -DPTBMODULE_PsychHID -DTARGET_OS_WIN32 -DWIN32 -I"C:\Programme\Microsoft Visual Studio 8\VC\Include" -I"D:\MicrosoftDirectXSDK\Include" -I..\Cohorts\libusb1-win32\include\libusb-1.0 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\PsychHID\*.cpp Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c -L"D:\MicrosoftDirectXSDK\Lib\x86\" -ldxguid -ldinput -ldinput8 kernel32.lib user32.lib winmm.lib libusb-1.0.lib setupapi.lib
         dos('copy T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychHID.mexw32 T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\MatlabWindowsFilesR2007a\');
     end;
     

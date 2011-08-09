@@ -57,7 +57,7 @@ productNames=cell(0);
 allInfos=cell(0);
 
 % Enumerate all HID devices:
-if IsLinux
+if ~IsOSX
   % On Linux we only enumerate type 4 - slave keyboard devices. These are what we want:
   d = PsychHID('Devices', 4);
 else

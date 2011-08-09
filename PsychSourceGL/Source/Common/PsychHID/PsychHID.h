@@ -67,11 +67,21 @@
 #else
 // Non OS/X:
 
-// Master include file for libusb, as used on Linux and Windows:
-#include <libusb.h>
-
 // Master include file for HIDAPI, as used on Linux and Windows:
 #include "hidapi.h"
+
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+/* 'interface' is defined as a macro on Windows! We must
+ * undefine it to not break the definition of struct recDevice,
+ * which contains the "macro" interface as a variable name:
+ */
+#if defined(_WIN32) || defined(__CYGWIN__)
+//#include <windows.h>
+#if defined(interface)
+#undef interface
+#endif
+#endif
+#endif
 
 // Dummy-Define so recDevice struct def works:
 typedef int recElement;
@@ -143,7 +153,7 @@ struct PsychUSBDeviceRecord_Struct {
 	IOUSBDeviceInterface**    device;  // Actual low-level device specific pointer for OS/X.
 	#else
         // Linux & Windows stuff:
-        libusb_device_handle*     device;  // libusb device handle for other os'es.
+        void*     device;  // libusb device handle for other os'es.
 	#endif
 };
 
@@ -233,6 +243,10 @@ void PsychHIDOSCloseUSBDevice(PsychUSBDeviceRecord* devRecord);
 int PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmRequestType, psych_uint8 bRequest, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData);
 
 // These must be defined for each OS in their own PsychHIDStandardInterfaces.c:
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void PsychHIDInitializeHIDStandardInterfaces(void);
 void PsychHIDShutdownHIDStandardInterfaces(void);
 PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass);
@@ -246,6 +260,10 @@ void PsychHIDOSKbQueueStart(int deviceIndex);
 void PsychHIDOSKbQueueFlush(int deviceIndex);
 void PsychHIDOSKbQueueCheck(int deviceIndex);
 void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys);
+
+#ifdef __cplusplus
+}
+#endif
 
 //end include once
 #endif

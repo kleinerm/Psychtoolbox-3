@@ -37,7 +37,7 @@ if nargin < 1
   typeOnly = [];
 end
 
-if IsLinux
+if ~IsOSX
   if strcmpi(typeOnly, 'masterPointer')
     d = PsychHID('Devices', 1);
   else

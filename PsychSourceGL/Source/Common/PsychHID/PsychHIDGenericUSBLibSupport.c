@@ -25,6 +25,16 @@
 // Non OS/X only, for now:
 #if PSYCH_SYSTEM != PSYCH_OSX
 
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+#pragma warning( disable : 4200 )
+#endif
+
+// Master include file for libusb, as used on Linux and Windows:
+// CAUTION: This #undef'ines the "interface" keyword on MS-Windows, which
+// will cause breakage with DirectX! Therefore this *must* be defined
+// *after* include's for dinput.h !!
+#include <libusb.h>
+
 static int ctx_refcount = 0;
 static libusb_context *ctx = NULL;
 
@@ -35,7 +45,7 @@ int ConfigureDevice(libusb_device_handle* dev, int configIdx);
 int PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmRequestType, psych_uint8 bRequest, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData)
 {
     int rc;
-	libusb_device_handle* dev = devRecord->device;
+	libusb_device_handle* dev = (libusb_device_handle*) devRecord->device;
     
 	if (dev == NULL) {
 		PsychErrorExitMsg(PsychError_internal, "libusb_device_handle* device points to NULL device!");
@@ -96,7 +106,7 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
         ctx_refcount++;
         
 		// Success! Assign device interface and mark device record as active/open/valid:
-		devRecord->device = dev;
+		devRecord->device = (void*) dev;
 		devRecord->valid = 1;
 
 		// Configure device
