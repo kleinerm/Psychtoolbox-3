@@ -433,6 +433,7 @@ int PsychInitText(void)
 	_needsRebuild = true;
 	faceT = NULL;
 	faceM = NULL;
+	ft_face = NULL;
 
 	// Try to initialize libfontconfig - our fontMapper library for font matching and selection:
 	if (!FcInit()) {
@@ -465,7 +466,7 @@ int PsychShutdownText(void)
 		faceM = NULL;
 
 		// Delete Freetype face object:
-		FT_Done_Face(ft_face);
+		if (ft_face) FT_Done_Face(ft_face);
 		ft_face = NULL;
 		if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: Shutting down.\n");
 	}
@@ -474,7 +475,14 @@ int PsychShutdownText(void)
 	_firstCall = false;
 	
 	// Shutdown fontmapper library:
-	FcFini();
+	// Actually, don't! Some versions of octave also use fontconfig internally, and there is only
+	// one shared library instance in the process. Calling FcFini() here will shutdown that instance
+	// and wreak havoc if octave or other clients later try to access that shutdown instance after
+	// we've closed down. Keeping it alive is ok, let octave/matlab/the os whatever do the cleanup.
+	// Luckily we can always call FcInit() in our init path, as it turns into a no-op if fontconfig
+	// has been already brought online by some other client, e.g., octave or matlab.
+	// Should fix bug from forum msg #12560
+	// FcFini();
 
 	return(0);
 }
