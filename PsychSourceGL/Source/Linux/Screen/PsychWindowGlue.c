@@ -647,6 +647,11 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
   // managers (e.g., Compiz).
   if (PsychOSGetPostSwapSBC(windowRecord) % 2) {
 	// Uneven count. Submit a swapbuffers request and wait for it to truly finish:
+
+	// We have to rebind the OpenGL context for this swapbuffers call to work around some
+	// mesa bug for intel drivers which would cause a crash without context:
+	glXMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.contextObject);
+
 	PsychOSFlipWindowBuffers(windowRecord);
 	PsychOSGetPostSwapSBC(windowRecord);
   }
