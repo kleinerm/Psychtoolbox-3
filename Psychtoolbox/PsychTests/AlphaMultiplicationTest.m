@@ -76,7 +76,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ZERO', 'GL_ZERO');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 size(readback)
 % Test the readback value, which should be all zeros.
 passed=all(all(all(readback==zeros(16,16,3))));
@@ -98,7 +98,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ZERO', 'GL_ONE');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 % Test the readback value, which should match what we wrote out.
 passed=all(all(all(readback==allValuesImage(:,:,1:3))));
 if ~passed
@@ -120,7 +120,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ZERO', 'GL_SRC_COLOR');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should be all zeros.
 passed=all(all(all(readback==zeros(16,16,3))));
@@ -144,7 +144,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ZERO', 'GL_SRC_COLOR');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should match what we wrote out.
 passed=all(all(all(readback==allValuesImage(:,:,1:3))));
@@ -167,7 +167,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ZERO', 'GL_ONE_MINUS_SRC_COLOR');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should be all zeros.
 passed=all(all(all(readback==zeros(16,16,3))));
@@ -190,7 +190,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ZERO', 'GL_ONE_MINUS_SRC_COLOR');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should match what we wrote out.
 passed=all(all(all(readback==allValuesImage(:,:,1:3))));
@@ -212,7 +212,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ZERO', 'GL_SRC_ALPHA');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should be all zeros.
 passed=all(all(all(readback==zeros(16,16,3))));
@@ -235,7 +235,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ZERO', 'GL_SRC_ALPHA');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should match what we wrote out.
 passed=all(all(all(readback==allValuesImage(:,:,1:3))));
@@ -258,7 +258,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ZERO', 'GL_ONE_MINUS_SRC_ALPHA');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should be all zeros.
 passed=all(all(all(readback==zeros(16,16,3))));
@@ -280,7 +280,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ZERO', 'GL_ONE_MINUS_SRC_ALPHA');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should match what we wrote out.
 passed=all(all(all(readback==allValuesImage(:,:,1:3))));
@@ -303,7 +303,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ZERO', 'GL_DST_ALPHA');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should be all zeros.
 passed=all(all(all(readback==zeros(16,16,3))));
@@ -326,7 +326,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ZERO', 'GL_DST_ALPHA');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should match what we wrote out.
 passed=all(all(all(readback==allValuesImage(:,:,1:3))));
@@ -350,7 +350,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ZERO', 'GL_ONE_MINUS_DST_ALPHA');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should be all zeros.
 passed=all(all(all(readback==zeros(16,16,3))));
@@ -373,7 +373,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ZERO', 'GL_ONE_MINUS_DST_ALPHA');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should match what we wrote out.
 passed=all(all(all(readback==allValuesImage(:,:,1:3))));
@@ -400,7 +400,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ZERO', 'GL_ZERO');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should be all zeros.
 passed=all(all(all(readback==zeros(16,16,3))));
@@ -423,7 +423,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ONE', 'GL_ZERO');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should match what we wrote out.
 passed=all(all(all(readback==allValuesImage(:,:,1:3))));
@@ -446,7 +446,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_DST_COLOR', 'GL_ZERO');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should be all zeros.
 passed=all(all(all(readback==zeros(16,16,3))));
@@ -469,7 +469,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_DST_COLOR', 'GL_ZERO');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should match what we wrote out.
 passed=all(all(all(readback==allValuesImage(:,:,1:3))));
@@ -493,7 +493,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ONE_MINUS_DST_COLOR', 'GL_ZERO');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should be all zeros.
 passed=all(all(all(readback==zeros(16,16,3))));
@@ -516,7 +516,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ONE_MINUS_DST_COLOR', 'GL_ZERO');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should match what we wrote out.
 passed=all(all(all(readback==allValuesImage(:,:,1:3))));
@@ -541,7 +541,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_SRC_ALPHA', 'GL_ZERO');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should be all zeros.
 passed=all(all(all(readback==zeros(16,16,3))));
@@ -564,7 +564,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_SRC_ALPHA', 'GL_ZERO');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should match what we wrote out.
 passed=all(all(all(readback==allValuesImage(:,:,1:3))));
@@ -589,7 +589,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ONE_MINUS_SRC_ALPHA', 'GL_ZERO');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should be all zeros.
 passed=all(all(all(readback==zeros(16,16,3))));
@@ -612,7 +612,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ONE_MINUS_SRC_ALPHA', 'GL_ZERO');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should match what we wrote out.
 passed=all(all(all(readback==allValuesImage(:,:,1:3))));
@@ -634,7 +634,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_DST_ALPHA', 'GL_ZERO');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should be all zeros.
 passed=all(all(all(readback==zeros(16,16,3))));
@@ -657,7 +657,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_DST_ALPHA', 'GL_ZERO');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should match what we wrote out.
 passed=all(all(all(readback==allValuesImage(:,:,1:3))));
@@ -681,7 +681,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ONE_MINUS_DST_ALPHA', 'GL_ZERO');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should be all zeros.
 passed=all(all(all(readback==zeros(16,16,3))));
@@ -704,7 +704,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_ONE_MINUS_DST_ALPHA', 'GL_ZERO');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should match what we wrote out.
 passed=all(all(all(readback==allValuesImage(:,:,1:3))));
@@ -728,7 +728,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_SRC_ALPHA_SATURATE', 'GL_ZERO');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should be all zeros.
 passed=all(all(all(readback==zeros(16,16,3))));
@@ -750,7 +750,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 % the source
 Screen('BlendFunction', w, 'GL_SRC_ALPHA_SATURATE', 'GL_ZERO');
 Screen('PutImage',w, newSourceImage, imageRect);
-readback=Screen('GetImage', w, imageRect);
+readback=Screen('GetImage', w, imageRect, 'backBuffer');
 Screen('Flip',w);
 % Test the readback value, which should match what we wrote out.
 passed=all(all(all(readback==allValuesImage(:,:,1:3))));

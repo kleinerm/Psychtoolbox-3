@@ -36,7 +36,7 @@ Screen('BlendFunction', w, 'GL_ONE', 'GL_ZERO');
 Screen('PutImage', w, testImage1, testImageRect);
 Screen('BlendFunction', w, 'GL_ONE', 'GL_ONE');
 Screen('PutImage', w, testImage2, testImageRect);
-readbackImage=Screen('GetImage', w, testImageRect);
+readbackImage=Screen('GetImage', w, testImageRect, 'backBuffer');
 Screen('Flip', w);
 WaitSecs(0.5);
 if find(readbackImage~=expectedImage)
@@ -53,7 +53,7 @@ Screen('BlendFunction', w, 'GL_ONE', 'GL_ZERO');
 Screen('PutImage', w, testImage2, testImageRect);
 Screen('BlendFunction', w, 'GL_ONE', 'GL_ONE');
 Screen('PutImage', w, testImage1, testImageRect);
-readbackImage=Screen('GetImage', w, testImageRect);
+readbackImage=Screen('GetImage', w, testImageRect, 'backBuffer');
 Screen('Flip', w);
 WaitSecs(0.5);
 if find(readbackImage~=expectedImage)
