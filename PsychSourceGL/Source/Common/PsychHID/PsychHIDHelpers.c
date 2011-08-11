@@ -122,12 +122,7 @@ PsychError PsychHIDCleanup(void)
     
 	// Disable online help system:
 	PsychClearGiveHelp();
-	
-	// Shutdown keyboard queue functions on OS/X:
-	#if PSYCH_SYSTEM == PSYCH_OSX
-	error = PSYCHHIDKbQueueRelease();	// PsychHIDKbQueueRelease.c, but has to be called with uppercase PSYCH because that's how it's registered (otherwise crashes on clear mex)
-	#endif
-    
+
 	// Shutdown USB-HID report low-level functions, e.g., for DAQ toolbox on OS/X:
 	error = PsychHIDReceiveReportsCleanup(); // PsychHIDReceiveReport.c
 	
@@ -212,6 +207,9 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
 
 void PsychHIDShutdownHIDStandardInterfaces(void)
 {
+    // Release the one single supported keyboard queue.
+    // The 0 is just a meaningless dummy.
+    PsychHIDOSKbQueueRelease(0);
     return;
 }
 
