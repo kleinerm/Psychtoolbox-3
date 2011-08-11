@@ -276,6 +276,7 @@ if strcmp(computer,'PCWIN64') | strcmp(computer,'MACI64') | ...
   (~isempty(findstr(computer, '_64')) & isempty(findstr(computer, 'linux'))) %#ok<OR2>
     fprintf('Psychtoolbox does not work on a 64 bit version of Matlab or Octave.\n');
     fprintf('You need to install a 32 bit Matlab or Octave to install & use Psychtoolbox.\n');
+    fprintf('ERROR: See also http://psychtoolbox.org/wikka.php?wakka=Faq64BitSupport.\n');
 
     if strcmp(computer,'GLNXA64') | ~isempty(findstr(computer, '_64')) %#ok<OR2>
         fprintf('\nHowever, if you are a user of a Debian based GNU/Linux system, e.g.,\n');

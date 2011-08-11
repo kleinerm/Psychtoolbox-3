@@ -116,6 +116,9 @@ end
 
 % Save old Psychtoolbox path
 oldPath = RemoveSVNPaths(genpath(targetdirectory));
+% get current path and only remove those folders that are currently on
+% path, to prevent some unnecessary warnings
+oldPath = PathListIsMember(oldPath,path);
 
 % Retrieve path to Subversion executable:
 svnpath = GetSubversionPath;
@@ -159,7 +162,7 @@ fprintf('"C" indicates that something went wrong. Please check manually.\n');
 fprintf('A conflict happens if you manually modified files in the Psychtoolbox folder in\n');
 fprintf('a way that conflicts with the new file from the update and if that conflict can\n');
 fprintf('not get automatically resolved.\n');
-fprintf('If you can not resolve such a conflict, the simplest solution is to manually\n');
+fprintf('If you cannot resolve such a conflict, the simplest solution is to manually\n');
 fprintf('delete the file or subfolder for which a conflict is reported, and then run\n');
 fprintf('UpdatePsychtoolbox again. It will download and add the proper missing files.\n');
 fprintf('If everything else fails, simply delete the whole Psychtoolbox folder and use\n');

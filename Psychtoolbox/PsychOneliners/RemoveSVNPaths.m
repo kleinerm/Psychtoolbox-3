@@ -25,27 +25,24 @@ try
     
     % Break the path list into individual path elements.
     if IsOctave
-        pathElements = cell(0,0);
-        mypath = pathList;
-        while ~isempty(mypath)
-            [pathElements{end+1}, mypath] = strtok(mypath, pathsep); %#ok<STTOK,AGROW>
-        end;
+        pathElements = strsplit(pathList,pathsep,true);
     else
-        pathElements = strread(pathList, '%s', 'delimiter', pathsep);
+        pathElements = textscan(pathList, '%s', 'delimiter', pathsep);
+        pathElements = pathElements{1}.';
     end
     
     % Look at each element from the path.  If it doesn't contain a .svn folder
     % then we add it to the end of our new path list.
-    newPathList = [];
-    for i = 1:length(pathElements)
-        if isempty(findstr(pathElements{i}, [filesep '.svn']))
-            newPathList = [newPathList, pathElements{i}, pathsep]; %#ok<AGROW>
-        end
-    end
-
-    % Drop the last path separator if the new path list is non-empty.
-    if ~isempty(newPathList)
-        newPathList = newPathList(1:end-1);
+    qNotSVN = cellfun(@isempty,strfind(pathElements,[filesep '.svn']));
+    pathElements = pathElements(qNotSVN);
+    
+    if ~isempty(pathElements)
+        % generate new pathList
+        pathElements = [pathElements; repmat({pathsep},1,length(pathElements))];
+        newPathList  = [pathElements{:}];
+        
+        % drop last separator
+        newPathList(end) = [];
     end
 catch
     % Fallback behaviour: We fail-safe by simply returning the unmodified
