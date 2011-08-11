@@ -126,7 +126,7 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
 	}
     
 	// Enumerate all DirectInput keyboard(-like) devices:
-    rc = dinput->EnumDevices(DI8DEVCLASS_KEYBOARD, (LPDIENUMDEVICESCALLBACK) keyboardEnumCallback, NULL, DIEDFL_ATTACHEDONLY | DIEDFL_INCLUDEALIASES | DIEDFL_INCLUDEHIDDEN);
+    rc = dinput->EnumDevices(DI8DEVCLASS_KEYBOARD, (LPDIENUMDEVICESCALLBACK) keyboardEnumCallback, NULL, DIEDFL_ATTACHEDONLY | DIEDFL_INCLUDEHIDDEN);
     if (DI_OK != rc) {
         printf("PsychHID-ERROR: Error return from DirectInput8 EnumDevices(): %i! Game over!\n", (int) rc);
         goto out;
@@ -287,104 +287,175 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
     return(PsychError_none);
 }
 
-PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
+static int PsychHIDGetDefaultKbQueueDevice(void)
 {
+    // Return first enumerated keyboard (index == 0) if any available:
+    if (ndevices > 0) return(0);
     
-    // MK FIXME - TODO:Could implement via: kb->GetDeviceState
+    // Nothing found? If so, abort:
+    PsychErrorExitMsg(PsychError_user, "Could not find any useable keyboard device!");
+
+	// Utterly bogus return to make crappy Microsoft compiler shut up:
+	return(0);
+}
+
+static unsigned int PsychHIDOSMapKey(unsigned int inkeycode)
+{
+	unsigned int keycode;
+
+	// Must also shift by one count to account for difference 1-based vs. zero-based indexing:
+	#ifndef MAPVK_VSC_TO_VK_EX
+	#define MAPVK_VSC_TO_VK_EX 3
+	#endif
+
+	keycode = MapVirtualKeyEx(inkeycode, MAPVK_VSC_TO_VK_EX, GetKeyboardLayout(0));
+	if (keycode > 0) {
+		// Translated keycode: Adapt for 1 offset:
+		keycode--;
+	} else {
+		// Untranslated keycode: Use table.
+		switch(inkeycode) {
+			case DIK_RCONTROL:
+				keycode = 163;
+			break;
+			case DIK_RALT:
+				keycode = 165;
+			break;
+			case DIK_LWIN:
+				keycode = 91;
+			break;
+			case DIK_RWIN:
+				keycode = 92;
+			break;
+			case DIK_LEFT:
+				keycode = 37;
+			break;
+			case DIK_RIGHT:
+				keycode = 39;
+			break;
+			case DIK_UP:
+				keycode = 38;
+			break;
+			case DIK_DOWN:
+				keycode = 40;
+			break;
+			case DIK_PRIOR:
+				keycode = 33;
+			break;
+			case DIK_NEXT:
+				keycode = 34;
+			break;
+			case DIK_HOME:
+				keycode = 36;
+			break;
+			case DIK_END:
+				keycode = 35;
+			break;
+			case DIK_INSERT:
+				keycode = 45;
+			break;
+			case DIK_DELETE:
+				keycode = 46;
+			break;
+			case DIK_DIVIDE:
+				keycode = 111;
+			break;
+			case DIK_NUMPADENTER:
+				keycode = 13;
+			break;
+			case DIK_PAUSE:
+				keycode = 19;
+			break;
+			case DIK_SYSRQ:
+				keycode = 44;
+			break;
+			case DIK_APPS:
+				keycode = 93;
+			break;
+
+			default:
+				keycode = inkeycode & 0xff;
+		}
+		// Translated keycode: Adapt for 1 offset:
+		keycode--;
+	}
+	return(keycode);
+}
+
+PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
+{    
+	psych_uint8 keys[256];
+    LPDIRECTINPUTDEVICE8 kb;
+	unsigned int i, j;
+	PsychNativeBooleanType* buttonStates;
+	int keysdown;
+	double timestamp;
     
-    /*
-     PsychNativeBooleanType* buttonStates;
-     unsigned char keys_return[32];
-     int keysdown;
-     double timestamp;
-     int i, j;
-     
-     // Map "default" deviceIndex to legacy "Core protocol" method of querying keyboard
-     // state. This will give us whatever X has setup as default keyboard:
-     if (deviceIndex == INT_MAX) {
-         // Request current keyboard state of default keyboard from X-Server:
-         XQueryKeymap(dpy, keys_return);
-     } else if (deviceIndex < 0 || deviceIndex >= ndevices) {
-         PsychErrorExitMsg(PsychError_user, "Invalid keyboard deviceIndex specified. No such device!");
-     } else if (info[deviceIndex].use == XIMasterKeyboard) {
-         // Master keyboard:
-         
-         // Query current client pointer assignment, then switch it to
-         // associated master pointer for the master keyboard we want
-         // to query. This way, all future queries will query our requested
-         // master keyboard:
-         j = -1;
-         if (!XIGetClientPointer(dpy, None, &j) || (j != info[deviceIndex].attachment)) XISetClientPointer(dpy, None, info[deviceIndex].attachment);
-         
-         // Request current keyboard state from X-Server:
-         XQueryKeymap(dpy, keys_return);
-         
-         // Reset master pointer/keyboard assignment to pre-query state:
-         if ((j > 0) && (j != info[deviceIndex].attachment)) XISetClientPointer(dpy, None, j);
-     } else {
-         // Non-Default deviceIndex: Want to query specific slave keyboard.
-         // Validate it maps to a slave keyboard device, as we can't handle
-         // master keyboard devices this way and don't want to touch anything
-         // but a keyboard'ish device:
-         if (info[deviceIndex].use != XISlaveKeyboard) {
-             PsychErrorExitMsg(PsychError_user, "Invalid keyboard deviceIndex specified. Not a slave keyboard device!");
-         }
-         
-         // Open connection to slave keyboard device:
-         XDevice* mydev = GetXDevice(deviceIndex);
-         
-         // Query its current state:
-         XDeviceState* state = XQueryDeviceState(dpy, mydev);
-         XInputClass* data = state->data;
-         
-         // printf("Dummy = %i , NClasses = %i\n", dummy1, state->num_classes);
-         
-         // Find state structure with key status info:
-         for (i = 0; i < state->num_classes; i++) {
-             // printf("Class %i: Type %i - %i\n", i, (int) data->class, (int) data->length);
-             if (data->class == KeyClass) {
-                 // printf("NumKeys %i\n", ((XKeyState*) data)->num_keys);
-                 
-                 // Copy 32 Byte keystate vector into key_return. Each bit encodes for one key:
-                 memcpy(&keys_return[0], &(((XKeyState*) data)->keys[0]), sizeof(keys_return));
-             }
-             
-             data = (XInputClass*) (((void*) data) + ((size_t) data->length));
-         }
-         
-         XFreeDeviceState(state);
-     }
-     
-     // Done with query. We have keyboard state in keys_return[] now.
-     
-     // Request current time of query:
-     PsychGetAdjustedPrecisionTimerSeconds(&timestamp);
-     
-     // Reset overall key state to "none pressed":
-     keysdown = 0;
-     
-     // Any key down?
-     for (i = 0; i < 32; i++) keysdown+=(unsigned int) keys_return[i];
-     
-     // Copy out overall keystate:
-     PsychCopyOutDoubleArg(1, kPsychArgOptional, (keysdown > 0) ? 1 : 0);
-     
-     // Copy out timestamp:
-     PsychCopyOutDoubleArg(2, kPsychArgOptional, timestamp);
-     
-     // Copy keyboard state:
-     PsychAllocOutBooleanMatArg(3, kPsychArgOptional, 1, 256, 1, &buttonStates);
-     
-     // Map 32 times 8 bitvector to 256 element return vector:
-     for(i = 0; i < 32; i++) {
-         for(j = 0; j < 8; j++) {
-             // This key down?
-             buttonStates[i*8 + j] = (PsychNativeBooleanType) (keys_return[i] & (1<<j)) ? 1 : 0;
-             // Apply scanList mask, if any provided:
-             if (scanList && (scanList[i*8 + j] <= 0)) buttonStates[i*8 + j] = (PsychNativeBooleanType) 0;
-         }
-     }
-     */
+	if (deviceIndex == INT_MAX) {
+		deviceIndex = PsychHIDGetDefaultKbQueueDevice();
+		// Ok, deviceIndex now contains our default keyboard to use - The first suitable keyboard.
+	}
+    
+	if ((deviceIndex < 0) || (deviceIndex >= ndevices)) {
+		// Out of range index:
+		PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. No such device!");
+	}
+
+	// Get DirectInput keyboard device:
+	kb = GetXDevice(deviceIndex);    
+
+	// Keyboard queue for this deviceIndex already exists?
+	if (NULL == psychHIDKbQueueFirstPress[deviceIndex]) {
+		// No. Create one which accepts all keys:
+		PsychHIDOSKbQueueCreate(deviceIndex, 0, NULL);
+	}
+
+	// Keyboard queue for this device active? If not, we need
+	// to start it:
+	if (!psychHIDKbQueueActive[deviceIndex]) {
+		// Keyboard idle: Need to start it:
+		PsychHIDOSKbQueueStart(deviceIndex);
+
+		// Startup to first key delivery takes time. Wait for
+		// 50 msecs to be on the safe side:
+		PsychYieldIntervalSeconds(0.050);
+	}
+
+	// Query current state snapshot of keyboard:
+	if (DI_OK != kb->GetDeviceState(256, (LPVOID) &keys[0])) {
+		printf("PsychHID-ERROR: KbCheck for keyboard with deviceIndex %i failed, because query of device failed!\n", deviceIndex);
+		PsychErrorExitMsg(PsychError_user, "KbCheck failed!");
+	}
+
+	// Request current time of query:
+	PsychGetAdjustedPrecisionTimerSeconds(&timestamp);
+
+	// Reset overall key state to "none pressed":
+	keysdown = 0;
+
+	// Copy out timestamp:
+	PsychCopyOutDoubleArg(2, kPsychArgOptional, timestamp);
+
+	// Copy keyboard state:
+	PsychAllocOutBooleanMatArg(3, kPsychArgOptional, 1, 256, 1, &buttonStates);
+	for (i = 0; i < 256; i++) buttonStates[i] = (PsychNativeBooleanType) 0;
+
+	// Copy button state to output vector, apply scanlist mask, compute
+	// resulting overall keysdown state:
+	for (i = 0; i < 256; i++) {
+		// Compute target key slot for this scancode i:
+		j = PsychHIDOSMapKey(i);
+
+		// This key down?
+		buttonStates[j] |= (PsychNativeBooleanType) (keys[i] > 0) ? 1 : 0;
+		// Apply scanList mask, if any provided:
+		if (scanList && (scanList[j] <= 0)) buttonStates[j] = (PsychNativeBooleanType) 0;
+		keysdown += (unsigned int) buttonStates[j];
+	}
+
+	// Copy out overall keystate:
+	PsychCopyOutDoubleArg(1, kPsychArgOptional, (keysdown > 0) ? 1 : 0);
+
 	return(PsychError_none);
 }
 
@@ -453,20 +524,7 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                 keystate = event.dwData & 0x80;
                 
 				// Map scancode 'keycode' to virtual key code 'keycode':
-				#ifndef MAPVK_VSC_TO_VK_EX
-				#define MAPVK_VSC_TO_VK_EX 3
-				#endif
-
-				// Must also shift by one count to account for difference 1-based vs. zero-based indexing:
-				keycode = MapVirtualKeyEx(keycode, MAPVK_VSC_TO_VK_EX, GetKeyboardLayout(0));
-				if (keycode > 0) {
-					// Translated keycode: Adapt for 1 offset:
-					keycode--;
-				} else {
-					// Untranslated keycode: Refetch raw code:
-					keycode = event.dwOfs & 0xff;
-					// TODO: Manually map the most important ones, e.g., Cursor keys!
-				}
+				keycode = PsychHIDOSMapKey(keycode);
 
                 // This keyboard queue interested in this keycode?
                 if (psychHIDKbQueueScanKeys[i][keycode] != 0) {
@@ -535,18 +593,6 @@ void* KbQueueWorkerThreadMain(void* dummy)
     
 	// Return and terminate:
 	return(NULL);
-}
-
-static int PsychHIDGetDefaultKbQueueDevice(void)
-{
-    // Return first enumerated keyboard (index == 0) if any available:
-    if (ndevices > 0) return(0);
-    
-    // Nothing found? If so, abort:
-    PsychErrorExitMsg(PsychError_user, "Could not find any useable keyboard device!");
-
-	// Utterly bogus return to make crappy Microsoft compiler shut up:
-	return(0);
 }
 
 PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys)

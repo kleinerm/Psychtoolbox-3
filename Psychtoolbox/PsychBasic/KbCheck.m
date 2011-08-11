@@ -67,7 +67,7 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber, unusedUnti
 % first called. They'll then stay loaded until you flush them (e.g. by
 % changing directory or calling CLEAR MEX).
 %
-% OSX: ___________________________________________________________________
+% OSX, Linux, and Windows with Octave or Matlab R2007a and later: _________
 %
 % KbCheck uses the PsychHID function, a general purpose function for
 % reading from the Human Interface Device (HID) class of USB devices.
@@ -86,11 +86,16 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber, unusedUnti
 % 'deviceNumber'. The function GetKeyboardIndices() allows to query the
 % device numbers of all attached keyboards, or keyboards matching specific
 % criteria, and the function GetKeypadIndices() allows the same for keypads.
+%
+% On MS-Windows XP and earlier, KbCheck can't address individual keyboards.
+% On Vista and later, it can.
 % 
-% Windows/Linux: __________________________________________________________
+% Windows with legacy Matlab versions prior to R2007a: ____________________
 %
 % KbCheck uses built-in helper functions of the Screen() mex file to query
-% keyboard state.
+% keyboard state. It cannot check individual keyboards, but treats all
+% connected keyboards a one single virtual keyboard which represents the
+% merged state of all keyboards.
 % _________________________________________________________________________
 % 
 % See also: FlushEvents, KbName, KbDemo, KbWait, GetChar, CharAvail.
@@ -159,7 +164,7 @@ if isempty(macosx)
     oldSecs = -inf;
     
     % Query indices of all attached keyboards, in case we need'em:
-    if macosx | IsLinux
+    if ~IsWinMatlabR11Style
         kbs=GetKeyboardIndices;
         kps=GetKeypadIndices;
         
@@ -171,7 +176,7 @@ if isempty(macosx)
     end
 end
 
-if macosx | IsLinux
+if ~IsWinMatlabR11Style
     if nargin >= 1
         % Select keyboard(s):
         if deviceNumber==-1
@@ -205,7 +210,7 @@ if macosx | IsLinux
     end
 else
    % We use the built-in KbCheck facility of Screen on MS-Windows
-   % for KbChecks until a PsychHID implementation is ready.
+   % for KbChecks with legacy Matlab versions prior to R2007a.
     [keyIsDown,secs, keyCode]= Screen('GetMouseHelper', -1);
 end
 
