@@ -229,6 +229,9 @@ typedef struct {
 // Apply our "bypass gamma LUT's in 10 bit framebuffer mode" hack also on FireGL/FirePro: 2^20
 #define kPsychBypassLUTFor10BitFramebuffer 1048576
 
+// Apply 10 bit framebuffer mode hack, regardless what automatic detection says: 2^21
+#define kPsychEnforce10BitFramebufferHack 2097152
+
 //function protoptypes
 
 //Accessors for PsychDepthType 

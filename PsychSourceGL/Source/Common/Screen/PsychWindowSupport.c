@@ -381,6 +381,13 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 			// Basic support seems to be there, set the request flag.
 			(*windowRecord)->specialflags|= kPsychNative10bpcFBActive;
 		}
+        
+        if (PsychPrefStateGet_ConserveVRAM() & kPsychEnforce10BitFramebufferHack) {
+            printf("PTB-INFO: Override: Will try to enable 10 bpc framebuffer mode regardless if i think it is needed/sensible or not.\n");
+            printf("PTB-INFO: Override: Doing so because you set the kPsychEnforce10BitFramebufferHack flag in Screen('Preference','ConserveVRAM').\n");
+            printf("PTB-INFO: Override: Cross your fingers, this may end badly...\n");
+            (*windowRecord)->specialflags|= kPsychNative10bpcFBActive;
+        }
 #else
 		// Not supported by our own code and kernel driver (we don't have such a driver for Windows), but some recent 2008
 		// series FireGL cards at least provide the option to enable this natively - although it didn't work properly in our tests.

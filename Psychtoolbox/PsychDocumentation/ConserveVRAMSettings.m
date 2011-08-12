@@ -224,6 +224,15 @@
 % ATI/AMD graphics drivers which are able to configure a 10 bit framebuffer
 % and scanout, but fail to setup the LUT's properly.
 %
+% 2097152 (= 2^21) == kPsychEnforce10BitFramebufferHack
+% Use 10 bpc framebuffer hack even if PTB thinks it is not needed or
+% appropriate. This implies kPsychBypassLUTFor10BitFramebuffer, and the
+% same conditions must be met for it to possibly work. This can be used to
+% enforce 10 bpc mode on FireGL/FirePro GPU's with broken drivers. It
+% overrides all our safeguards and may end in a hard machine crash is used
+% on the wrong setup. Try to use the regular way of enabling this in ATI's
+% Catalyst Control Center application if possible.
+%
 %
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are
