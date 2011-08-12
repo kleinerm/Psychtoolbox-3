@@ -63,7 +63,7 @@
 %                       -   This is the first data set in the table, not the Norren and Vos 
 %                       -   data.  It is for an open pupil.
 %   den_lens_ssf        - Stockman-Sharpe-Fach (1999) lens optical density spectrum.  See CVRL database.
-%   den_mac_bone        - Macular pigment density from Bone et al. (1992).  See CVRL database.
+%   den_mac_bone        - Macular pigment density from Bone et al. (1992).  See CVRL database, CIE 170-1:2006, Table 6.4, 2-deg.
 %   den_mac_vos         - Macular pigment density from Vos.  See CVRL database.
 %   den_mac_ws          - Macular pigment density from W&S, Table 2(2.4.6), p. 112.
 %   spd_appratusrel     - Relative spectrum from a monitor.  Used by IsomerizationInDishDemo.
@@ -82,6 +82,7 @@
 %   T_cones_ss2         - Stockman-Sharpe (2000) 2-degree cone fundamentals.  See CVRL database.
 %   T_cones_ss10        - Stockman-Sharpe (2000) 10-degree cone fundamentals.  See CVRL database.
 %   T_cones_sp          - Smith-Pokorny cone fundamentals.
+%   T_coneabsorbance_ss - Stockman-Sharpe (2000) LMS cone absorbance.   See CVRL database, CIE 170-1:2006, Table 6.6
 %   T_DCS200            - Sensitivities of a Kodak DCS-200 color camera.
 %   T_Lanom             - Demarco et al. anomolous L cone sensitivity.
 %   T_Manom             - Demarco et al. anomolous M cone sensitivity.
