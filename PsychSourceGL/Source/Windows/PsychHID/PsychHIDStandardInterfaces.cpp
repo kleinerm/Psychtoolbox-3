@@ -377,7 +377,7 @@ static unsigned int PsychHIDOSMapKey(unsigned int inkeycode)
 				keycode = inkeycode & 0xff;
 		}
 		// Translated keycode: Adapt for 1 offset:
-		keycode--;
+		if (keycode > 0) keycode--;
 	}
 	return(keycode);
 }
@@ -387,7 +387,7 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 	psych_uint8 keys[256];
     LPDIRECTINPUTDEVICE8 kb;
 	unsigned int i, j;
-	PsychNativeBooleanType* buttonStates;
+	double* buttonStates;
 	int keysdown;
 	double timestamp;
     
@@ -437,19 +437,21 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 	PsychCopyOutDoubleArg(2, kPsychArgOptional, timestamp);
 
 	// Copy keyboard state:
-	PsychAllocOutBooleanMatArg(3, kPsychArgOptional, 1, 256, 1, &buttonStates);
-	for (i = 0; i < 256; i++) buttonStates[i] = (PsychNativeBooleanType) 0;
+	PsychAllocOutDoubleMatArg(3, kPsychArgOptional, 1, 256, 1, &buttonStates);
+	for (i = 0; i < 256; i++) buttonStates[i] = 0;
 
 	// Copy button state to output vector, apply scanlist mask, compute
-	// resulting overall keysdown state:
-	for (i = 0; i < 256; i++) {
+	// resulting overall keysdown state. We ignore keyboard scancode zero and
+    // start with 1 instead. We also ignore code 255. These are borderline codes
+    // which may do weird things...
+	for (i = 1; i < 255; i++) {
 		// Compute target key slot for this scancode i:
 		j = PsychHIDOSMapKey(i);
 
 		// This key down?
-		buttonStates[j] |= (PsychNativeBooleanType) (keys[i] > 0) ? 1 : 0;
+		buttonStates[j] += (keys[i] > 0) ? 1 : 0;
 		// Apply scanList mask, if any provided:
-		if (scanList && (scanList[j] <= 0)) buttonStates[j] = (PsychNativeBooleanType) 0;
+		if (scanList && (scanList[j] <= 0)) buttonStates[j] = 0;
 		keysdown += (unsigned int) buttonStates[j];
 	}
 
@@ -461,6 +463,7 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 
 PsychError PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, double* max, double* val, char* axisLabel)
 {
+    PsychErrorExitMsg(PsychError_unimplemented, "This function is not yet implemented for MS-Windows, sorry!");
 	return(PsychError_none);
 }
 

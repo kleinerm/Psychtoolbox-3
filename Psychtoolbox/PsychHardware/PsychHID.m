@@ -1,10 +1,10 @@
-function varargout = PsychHID(varargin) 
+function varargout = PsychHID(varargin)  %#ok<STOUT>
 % 
 % returnValues=PsychHID(subcommand, arg1 [,arg2] ...)
 %  
-% OSX: ___________________________________________________________________
+% OSX, Linux, Windows with GNU/Octave or Matlab version R2007a and later:
 %  
-% PsychHID is a Matlab MEX file that communicates with any USB device that
+% PsychHID is a MEX file that communicates with any USB device that
 % is HID-compliant. The Universal Serial Bus (USB) is quite popular, and
 % there are many USB devices that conform to the Human Interface Device
 % (HID) class.  Typical HID devices are keyboards, mice and joysticks. That
@@ -28,6 +28,24 @@ function varargout = PsychHID(varargin)
 % restarting MATLAB. We find that this reliably restores normal
 % communication. 
 % 
+% MS-Windows and GNU/Linux: PsychHID uses the free/open-source libusb-1.0
+% library (http://libusb.org) as a backend for low-level device control.
+% libusb is licensed under LGPLv2+ license. PsychHID also uses the BSD
+% licensed HIDAPI library (http://www.signal11.us/oss/hidapi/) as backend
+% for USB-HID access.
+%
+% On Linux and Windows, not all PsychHID subfunctions are implemented, as
+% certain functionality can be handled in a better or different way on
+% those systems. USB-HID low-level access, and USB low-level access is
+% implemented though.
+%
+% MS-Windows: You must manually install the libusb-1.0.dll library on your
+% system to use PsychHID. A working version is contained in the
+% Psychtoolbox/PsychContributed folder. More recent versions may be
+% downloaded from the official project website:
+%
+% http://libusb.org/wiki/windows_backend
+%
 % HELP: Like Screen, PsychHID has built-in help. For a list of PsychHID
 % subcommands enter "PsychHID" at the MATLAB command line:
 % 
@@ -55,24 +73,18 @@ function varargout = PsychHID(varargin)
 %  
 % TestPsychHID shows a list of all the HID-compliant devices.
 %  
-% PsychHID links against Apples HID Utilities library.  For information on
+% PsychHID on OS/X links against Apples HID Utilities library.  For information on
 % how to program HID devices on OS X in C or Objective C see the HID
 % utilities project, its companion project, HID Explorer and related:
 % http://developer.apple.com/samplecode/HID_Utilities_Source/HID_Utilities_Source.html
 % http://developer.apple.com/samplecode/HID_Explorer/HID_Explorer.html
 % http://developer.apple.com/samplecode/Hardware/idxHumanInterfaceDeviceForceFeedback-date.html
 %  
-% OS9 & WIN: ______________________________________________________
+% OS9 & Windows with Matlab versions older than R2007a: ___________________
 %  
-% PsychHID does not exist in the OS9 and Win Psychtoolboxes.  The OS9 and
+% PsychHID does not exist in these Psychtoolboxes.  The OS9 and
 % WIN Psychtoolbox functions that read from user input devices use mex
-% files specific to each input device. The OSX Psychtoolbox accesses all
-% input devices through one mex file: PsychHID. USB in general and the
-% HID-class in particular are supported by Windows, and there is no
-% obstacle to writing a version of PsychHID for Windows, calling the
-% appropriate Windows API instead of the Mac OS X HID Manager. It's a
-% shame that the OSX and Win APIs are different given that the HID class,
-% and all of USB, is a platform-independent standard.
+% files specific to each input device.
 % _________________________________________________________________________
 %  
 % See also: PsychHIDTest, Daq, DaqTest, KbCheck, Gamepad, PsychHardware. 

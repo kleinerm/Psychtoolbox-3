@@ -34,6 +34,14 @@
 %                               Windows. Type "help PsychKinect" for more
 %                               infos.
 %
+% libusb-1.0.dll               This is the 32 bit Windows experimental version of
+%                              libusb-1.0 from ...
+%                              http://libusb.org/wiki/windows_backend
+%                              The dll is used by PsychHID on MS-Windows.
+%                              It is licensed under LGPL v2+. You can get a
+%                              more recent version of this dll from the
+%                              website mentioned above if you like.
+%
 % simplepsychtoolboxsetup.sh   Configure OS X priority.  Call from Unix shell, not MATLAB.
 %
 % macid.exe                    Microsoft Windows command line utility for retrieving the MAC

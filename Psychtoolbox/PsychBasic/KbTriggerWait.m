@@ -59,9 +59,10 @@ function secs = KbTriggerWait(keyCode, deviceNumber)
 persistent macosxrecent;
 if isempty(macosxrecent)
     macosxrecent = IsOSX;
+    LoadPsychHID;
 end
 
-if macosxrecent | IsLinux
+if ~IsWinMatlabR11Style
     if nargin==2
         [secs]= PsychHID('KbTriggerWait', keyCode, deviceNumber);
     elseif nargin == 1

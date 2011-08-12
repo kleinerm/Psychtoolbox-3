@@ -1,4 +1,4 @@
-function [mouseIndices, productNames, allInfo]= GetMouseIndices(typeOnly);
+function [mouseIndices, productNames, allInfo]= GetMouseIndices(typeOnly)
 % [mouseIndices, productNames, allInfo] = GetMouseIndices([typeOnly])
 %
 % OS X: ___________________________________________________________________
@@ -38,6 +38,7 @@ if nargin < 1
 end
 
 if ~IsOSX
+  LoadPsychHID;    
   if strcmpi(typeOnly, 'masterPointer')
     d = PsychHID('Devices', 1);
   else
@@ -49,8 +50,8 @@ end
 
 for i =1:length(d);
     if d(i).usagePageValue==1 && d(i).usageValue == 2
-        mouseIndices(end+1)=d(i).index;
-        productNames{end+1}=d(i).product;
-	allInfo{end+1}=d(i);
+        mouseIndices(end+1)=d(i).index; %#ok<AGROW>
+        productNames{end+1}=d(i).product; %#ok<AGROW>
+        allInfo{end+1}=d(i); %#ok<AGROW>
     end
 end

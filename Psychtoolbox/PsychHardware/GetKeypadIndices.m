@@ -1,4 +1,4 @@
-function [keypadIndices, productNames]= GetKeypadIndices;
+function [keypadIndices, productNames]= GetKeypadIndices
 % keypadIndices= GetKeypadIndices
 %
 % OS X: ___________________________________________________________________
@@ -31,6 +31,7 @@ productNames=cell(0);
 % Enumerate all HID devices:
 if ~IsOSX
   % On Linux we only enumerate type 4 - slave keyboard devices. These are what we want:
+  LoadPsychHID;
   d = PsychHID('Devices', 4);
 else
   % On other OS'es enumerate everything and filter later:
@@ -39,7 +40,7 @@ end
 
 for i =1:length(d);
     if d(i).usagePageValue==1 && d(i).usageValue == 7
-        keypadIndices(end+1)=d(i).index;
-        productNames{end+1}=d(i).product;
+        keypadIndices(end+1)=d(i).index; %#ok<AGROW>
+        productNames{end+1}=d(i).product; %#ok<AGROW>
     end
 end

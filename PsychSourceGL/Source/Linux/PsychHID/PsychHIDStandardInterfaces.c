@@ -285,7 +285,7 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
 
 PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 {
-	PsychNativeBooleanType* buttonStates;
+	double* buttonStates;
 	unsigned char keys_return[32];
 	int keysdown;
 	double timestamp;
@@ -365,15 +365,15 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 	PsychCopyOutDoubleArg(2, kPsychArgOptional, timestamp);
 
 	// Copy keyboard state:
-	PsychAllocOutBooleanMatArg(3, kPsychArgOptional, 1, 256, 1, &buttonStates);
+	PsychAllocOutDoubleMatArg(3, kPsychArgOptional, 1, 256, 1, &buttonStates);
 
 	// Map 32 times 8 bitvector to 256 element return vector:
 	for(i = 0; i < 32; i++) {
 		for(j = 0; j < 8; j++) {
 			// This key down?
-			buttonStates[i*8 + j] = (PsychNativeBooleanType) (keys_return[i] & (1<<j)) ? 1 : 0;
+			buttonStates[i*8 + j] = (keys_return[i] & (1<<j)) ? 1 : 0;
 			// Apply scanList mask, if any provided:
-			if (scanList && (scanList[i*8 + j] <= 0)) buttonStates[i*8 + j] = (PsychNativeBooleanType) 0;
+			if (scanList && (scanList[i*8 + j] <= 0)) buttonStates[i*8 + j] = 0;
 		}
 	}
 

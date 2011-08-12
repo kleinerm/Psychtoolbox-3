@@ -155,6 +155,7 @@ persistent oldSecs;
 persistent macosx;
 % ...and all keyboard indices as well:
 persistent kbs kps;
+persistent keyboardsdetected;
 
 if isempty(macosx)
     % First time invocation: Query and cache type of OS:
@@ -163,21 +164,28 @@ if isempty(macosx)
     % Set initial oldSecs to minus infinity: No such query before...
     oldSecs = -inf;
     
-    % Query indices of all attached keyboards, in case we need'em:
-    if ~IsWinMatlabR11Style
-        kbs=GetKeyboardIndices;
-        kps=GetKeypadIndices;
-        
-        % Init ptb_kbcheck_enabledKeys to empty, if it hasn't been set
-        % externally already:
-        if ~exist('ptb_kbcheck_enabledKeys', 'var')
-            ptb_kbcheck_enabledKeys = [];
-        end
+    % Init ptb_kbcheck_enabledKeys to empty, if it hasn't been set
+    % externally already:
+    if ~exist('ptb_kbcheck_enabledKeys', 'var')
+        ptb_kbcheck_enabledKeys = [];
     end
 end
 
-if ~IsWinMatlabR11Style
-    if nargin >= 1
+if nargin < 1
+    deviceNumber = [];
+end
+
+if ~IsWinMatlabR11Style & (~IsWin | (IsWin & ~isempty(deviceNumber))) %#ok<OR2,AND2>
+    if ~isempty(deviceNumber)
+        % All attached keyboards already detected?
+        if isempty(keyboardsdetected)
+            % No. Do it now:
+            % Query indices of all attached keyboards, in case we need'em:
+            kbs=GetKeyboardIndices;
+            kps=GetKeypadIndices;
+            keyboardsdetected = 1;
+        end
+        
         % Select keyboard(s):
         if deviceNumber==-1
             % Query all attached keyboards:
@@ -211,7 +219,12 @@ if ~IsWinMatlabR11Style
 else
    % We use the built-in KbCheck facility of Screen on MS-Windows
    % for KbChecks with legacy Matlab versions prior to R2007a.
-    [keyIsDown,secs, keyCode]= Screen('GetMouseHelper', -1);
+   %
+   % We also use this if the usercode didn't specify any 'deviceIndex', so
+   % the user gets a good "works out of the box" experience for the default
+   % use case without the need to install the libusb-1.0.dll in the system,
+   % which would be required for PsychHID on Windows to work.
+   [keyIsDown,secs, keyCode]= Screen('GetMouseHelper', -1);
 end
 
 % Compute time delta since previous keyboard query, and update internal
@@ -239,5 +252,4 @@ end
 
 % Must be double format for some client routines:
 keyCode = double(keyCode);
-
 return;

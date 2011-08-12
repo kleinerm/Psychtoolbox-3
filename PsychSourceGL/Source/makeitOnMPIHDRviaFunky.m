@@ -143,7 +143,7 @@ else
 
     if what == 9
         % Build PsychHID.mex:
-        mexoctave -g -v --output T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychHID.mex -DPTBMODULE_PsychHID -DTARGET_OS_WIN32  -I..\Cohorts\libusb1-win32\include\libusb-1.0 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c Windows\PsychHID\*.cpp Windows\Base\*.c kernel32.lib user32.lib winmm.lib libusb-1.0.lib setupapi.lib
+        mexoctave -g -v --output T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychHID.mex -DPTBMODULE_PsychHID -DTARGET_OS_WIN32 -ID:\MicrosoftDirectXSDK\Include -I..\Cohorts\libusb1-win32\include\libusb-1.0 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\PsychHID\*.cpp Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c dxguid.lib dinput.lib dinput8.lib kernel32.lib user32.lib winmm.lib libusb-1.0.lib setupapi.lib
         dos('copy T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychHID.mex T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\Octave3WindowsFiles\');
     end;
 

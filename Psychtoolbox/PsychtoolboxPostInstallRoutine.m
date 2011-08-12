@@ -568,6 +568,9 @@ try
         fprintf('* libusb-1.0 USB low-level access library.\n');
         fprintf('* libfreenect: Kinect driver library.\n');
         fprintf('\n');
+        fprintf('For PsychHID() support:\n\n');
+        fprintf('* libusb-1.0 USB low-level access library.\n');
+        fprintf('\n\n');
         fprintf('For Eyelink():\n\n');
         fprintf('* The Eyelink core libraries from the SR-Research download website.\n');
         fprintf('\n');
