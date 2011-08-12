@@ -49,9 +49,11 @@
 %   M_TToP              - Conversion matrix from source cmfs and dest. primaries.
 %   M_TToT              - Conversion matrix from source/dest. cmfs.
 %   PhotonAbsorptionRate - Compute photon absoroption rate.
+%   PowerToTrolands     - Convert monochromatic power to photopic trolands.
 %   PupilDiameterFromLum - Estimate pupil diameter from luminance.
 %   PsychMunsell        - Munsell renotation to xyY conversion.
 %   QuantaToEnergy      - Convert monochromatic quanta to energy.
+%   QuantaToTrolands    - Convert monochromatic quanta to photopic trolands.
 %   RadianceToRetIrradiance - Convert spectral radiance to spectral retinal irradiance (power units).
 %   RetIrradianceToTrolands - Convert retinal irradiance (power units) to trolands.
 %   RetIrradianceToIsoRecSec - Convert retinal irradiance (power units) to iso. per receptor per second.
@@ -71,7 +73,9 @@
 %   TestLxx             - Test routine for Lab/Luv calculations.
 %   TriToMetSPD         - Compute metamer from tristimulus coordinates.
 %   TrolandsToLum       - Convert trolands to luminance (cd/m2).
-%   TrolandsToRetIrradiance - Get retinal irradiance (power units) from re. spectrum and trolands.
+%   TrolandsToPower     - Convert monochromatic photopic trolands to power.
+%   TrolandsToQuanta    - Convert monochromatic photopic trolands to quanta.
+%   TrolandsToRetIrradiance - Get retinal irradiance (power units) from spectrum and trolands.
 %   WattsToRetIrradiance - Get absolute retinal irradiance (power units) from rel. spectrum and watts/area.
 %   uvTols              - Convert between CIE u'v' and a cone based (ls) chromaticity.
 %   uvToxy              - Convert between CIE u'v' and CIE xy chromaticity.

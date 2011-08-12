@@ -1,3 +1,4 @@
+
 function lensTransmit = LensTransmittance(S,species,source)
 % lensTransmit = LensTransmittance(S,[species],[source])
 %
@@ -7,7 +8,7 @@ function lensTransmit = LensTransmittance(S,species,source)
 %   Human (Default)
 %
 % Allowable sources:
-%   StockmanSharpe (Default)  - Stockman, Sharpe, & Fach (1999).
+%   StockmanSharpe (Default) - Stockman, Sharpe, & Fach (1999).
 %   WyszeckiStiles           - W&S, Table 1(2.4.6), p. 109.  First data set in table.
 %   None                     - Unity transmittance.
 %
