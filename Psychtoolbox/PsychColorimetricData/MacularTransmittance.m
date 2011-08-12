@@ -1,5 +1,5 @@
 function [macTransmit,macDensity] = MacularTransmittance(S,species,source,fieldSizeDegrees)
-% [macTransmit,macDensity] = MacularTransmittance(S,[species],[source],[fieldSizeDegrees])
+%  [macTransmit,macDensity] = MacularTransmittance(S,[species],[source],[fieldSizeDegrees])
 %
 % Return an estimate of the transmittance of the macular pigment transmittance
 % as a function of wavelength.
