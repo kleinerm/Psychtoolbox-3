@@ -1,5 +1,5 @@
 function [macTransmit,macDensity] = MacularTransmittance(S,species,source,fieldSizeDegrees)
-%  [macTransmit,macDensity] = MacularTransmittance(S,[species],[source],[fieldSizeDegrees])
+% [macTransmit,macDensity] = MacularTransmittance(S,[species],[source],[fieldSizeDegrees])
 %
 % Return an estimate of the transmittance of the macular pigment transmittance
 % as a function of wavelength.
@@ -15,6 +15,11 @@ function [macTransmit,macDensity] = MacularTransmittance(S,species,source,fieldS
 %   None                     - Unity transmittance.
 %
 % For the CIE option, can pass fieldSizeDegrees [Default 2 degrees].
+% The formulae for field size in 170-1:2006 do not reproduce the
+% values tabulated for 10-degrees.  The formula gets the peak right,
+% but the difference in the tabulated 2 and 10 degree densities is
+% not constant, so the simple additive correction recommended
+% is inconsistent with the tabular values.  Go figure.
 %
 % The Bone values match those in  CIE 170-1:2006, Table 6.4
 % for a 2-degree observer.
@@ -69,7 +74,8 @@ switch (species)
                 % 0.35, but the CIE formula assume normalization to peak
                 % of 1.  We simply adjust when applying the formula.
                 densityAdjustFieldSize = 0.485*exp(-fieldSizeDegrees/6.132) - 0.485*exp(-2/6.132);
-                macDensity = macDensity-densityAdjustFieldSize;
+                macDensity = macDensity+densityAdjustFieldSize;
+                macDensity(macDensity < 0) = 0;
                 
 				macTransmit = 10.^(-macDensity)';
 			otherwise,
