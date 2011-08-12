@@ -1,5 +1,5 @@
-function densities = PhotopigmentAxialDensity(receptorTypes,species,source)
-% densities = PhotopigmentAxialDensity(receptorTypes,[species],[source])
+function densities = PhotopigmentAxialDensity(receptorTypes,species,source,fieldSizeDegrees)
+% densities = PhotopigmentAxialDensity(receptorTypes,[species],[source],[fieldSizeDegrees])
 %
 % Return estimates of photopigment axial density, sometimes called peak
 % absorbance.
@@ -21,7 +21,7 @@ function densities = PhotopigmentAxialDensity(receptorTypes,species,source)
 % We have attempted to enforce this consistency in the set of routines
 % PhotopigmentSpecificDensity, PhotopigmentAxialDensity, and PhotoreceptorDimensions.
 % That is to say, for the same source, species, and cone type, you should get
-% a consistent triplet of numbers. 
+% a consistent triplet of numbers.
 % 
 % Supported species:
 %		Human (Default).
@@ -29,8 +29,20 @@ function densities = PhotopigmentAxialDensity(receptorTypes,species,source)
 % Supported sources:
 % 	Rodieck (Human) (Default).
 %   StockmanSharpe (Human).
+%   CIE (Human).
+%
+% The CIE method takes a field size argument.  This
+% overrides the specified foveal or not part of the
+% cone string.  If the field type is not passed and
+% the method is CIE, it is set to 10-degrees for Scone, Mcone,
+% and Lcone, and to 2-degrees for FovealScone, FovealMCone, and
+% FovealLCone.
+%
+% The fieldSizeDegrees argument is ignored for sources other than
+% CIE.
 %
 % 7/11/03  dhb  Wrote it.
+% 8/12/11  dhb  Added CIE source, and allow passing of fieldSizeDegrees.
 
 % Fill in defaults
 if (nargin < 2 || isempty(species))
@@ -38,6 +50,9 @@ if (nargin < 2 || isempty(species))
 end
 if (nargin < 3 || isempty(source))
 	source = 'Rodieck';
+end
+if (nargin < 4 || isempty(fieldSizeDegrees))
+    fieldSizeDegres = [];
 end
 
 % Fill in specific density according to specified source
@@ -88,6 +103,38 @@ for i = 1:length(densities)
 							densities(i) = 0.38;
 						case {'SCone'}
 							densities(i) = 0.3;
+						otherwise,
+							error(sprintf('Unsupported receptor type %s for %s estimates in %s',type,source,species));
+					end
+				otherwise,
+					error(sprintf('%s estimates not available for species %s',source,species));
+            end	
+            
+        case {'CIE'}
+			switch (species)
+				case {'Human'},
+					% These values computed according to formulae in CIE 170-1:2006.
+					switch (type)
+						case {'FovealLCone','FovealMCone'}
+                            if (isempty(fieldSizeDegrees))
+                                fieldSizeDegrees = 2;
+                            end
+                            densities(i) = 0.38+0.54*exp(-fieldSizeDegrees/1.333);
+						case 'FovealSCone'
+                             if (isempty(fieldSizeDegrees))
+                                fieldSizeDegrees = 2;
+                            end
+							densities(i) = 0.30+0.45*exp(-fieldSizeDegrees/1.333);
+						case {'LCone', 'MCone'}
+                             if (isempty(fieldSizeDegrees))
+                                fieldSizeDegrees = 10;
+                            end
+							densities(i) = 0.38+0.54*exp(-fieldSizeDegrees/1.333);
+						case {'SCone'}
+                             if (isempty(fieldSizeDegrees))
+                                fieldSizeDegrees = 10;
+                            end
+							densities(i) = 0.30+0.45*exp(-fieldSizeDegrees/1.333);
 						otherwise,
 							error(sprintf('Unsupported receptor type %s for %s estimates in %s',type,source,species));
 					end
