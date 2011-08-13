@@ -390,7 +390,7 @@ switch (flavor)
         fprintf('Please choose "beta" unless you have very good reasons not to do so.\n\n');
         fprintf('If you answer "no" to the following question, i will download the recommended "beta" flavor instead.\n');
         answer=input('Do you want to continue download of "unsupported" flavor despite the warnings (yes or no)? ','s');
-        if ~strcmp(answer,'yes')
+        if ~strcmpi(answer,'yes') && ~strcmpi(answer,'y')
             flavor = 'beta';
             fprintf('Download of "unsupported" flavor cancelled, will download recommended "beta" flavor instead...\n');
         else
@@ -517,7 +517,7 @@ if err
     fprintf('Alternatively you can choose to continue with installation, but then you will have\n');
     fprintf('to resolve this permission isssue later and add the path to the Psychtoolbox manually.\n\n');
     answer=input('Do you want to continue the installation despite the failure of SAVEPATH (yes or no)? ','s');
-    if ~strcmp(answer,'yes')
+    if ~strcmpi(answer,'yes') && ~strcmpi(answer,'y')
         fprintf('\n\n');
         error('SAVEPATH failed. Please get an administrator to allow everyone to write pathdef.m.');
     end
@@ -541,7 +541,7 @@ else
             'recommend installing into the /Applications/ folder, because it''s the \n'...
             'normal place to store programs. \n\n'],targetdirectory);
             answer=input('Even so, do you want to install the Psychtoolbox into the \n/Users/Shared/ folder (yes or no)? ','s');
-            if ~strcmp(answer,'yes')
+            if ~strcmpi(answer,'yes') && ~strcmpi(answer,'y')
                 fprintf('You didn''t say yes, so I cannot proceed.\n');
                 error('Need administrator privileges for requested installation into folder: %s.',targetdirectory);
             end
@@ -595,8 +595,8 @@ while (exist('Psychtoolbox','dir') | exist(fullfile(targetdirectory,'Psychtoolbo
 
     fprintf('Success.\n');
 
-    s=input('Shall I delete the old Psychtoolbox folder and all its contents \n(recommended in most cases), (yes or no)? ','s');
-    if strcmp(s,'yes')
+    answer=input('Shall I delete the old Psychtoolbox folder and all its contents \n(recommended in most cases), (yes or no)? ','s');
+    if strcmpi(answer,'yes') || ~strcmpi(answer,'y')
         skipdelete = 0;
         fprintf('Now we delete "Psychtoolbox" itself.\n');
         [success,m,mm]=rmdir(p,'s');
@@ -628,7 +628,7 @@ while any(regexp(path,searchpattern))
     paths=regexp(path,['[^' pathsep ']*' pathsep],'match');
     fprintf('Your old Psychtoolbox appears %d times in the MATLAB / OCTAVE path.\n',length(paths));
     answer=input('Before you decide to delete the paths, do you want to see them (yes or no)? ','s');
-    if ~strcmp(answer,'yes')
+    if ~strcmpi(answer,'yes') && ~strcmpi(answer,'y')
         fprintf('You didn''t say "yes", so I''m taking it as no.\n');
     else
         for p=paths
@@ -639,7 +639,7 @@ while any(regexp(path,searchpattern))
         end
     end
     answer=input('Shall I delete all those instances from the MATLAB / OCTAVE path (yes or no)? ','s');
-    if ~strcmp(answer,'yes')
+    if ~strcmpi(answer,'yes') && ~strcmpi(answer,'y')
         fprintf('You didn''t say yes, so I cannot proceed.\n');
         fprintf('Please use the MATLAB "File:Set Path" command to remove all instances of "Psychtoolbox" from the path.\n');
         error('Please remove Psychtoolbox from MATLAB / OCTAVE path.');
