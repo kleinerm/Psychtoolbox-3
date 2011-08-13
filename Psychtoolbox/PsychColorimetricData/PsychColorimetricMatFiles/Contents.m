@@ -86,9 +86,14 @@
 %   T_cones_ss2         - Stockman-Sharpe (2000) 2-degree cone fundamentals.  See CVRL database.
 %   T_cones_ss10        - Stockman-Sharpe (2000) 10-degree cone fundamentals.  See CVRL database.
 %   T_cones_sp          - Smith-Pokorny cone fundamentals.
-%   T_coneabsorbance_ss - Stockman-Sharpe (2000) LMS cone absorbance.   See CVRL database, CIE 170-1:2006, Table 6.6
 %   T_DCS200            - Sensitivities of a Kodak DCS-200 color camera.
 %   T_Lanom             - Demarco et al. anomolous L cone sensitivity.
+%   T_log10coneabsorbance_ss - Stockman-Sharpe (2000) LMS cone absorbance.   See
+%                       -   CVRL database, CIE 170-1:2006, Table 6.6.
+%                       -   Some values were unspecified on the low end in
+%                       -   the table.  These were set to -8 (log 10 units).
+%                       -   Note that you want to raise 10 to these numbers
+%                       -   to get absorbance, which itself is a log-like quantity.
 %   T_Manom             - Demarco et al. anomolous M cone sensitivity.
 %   T_photopigment_ss   - Stockman-Sharpe (2000) L,M,S cone photopigment absorbances.  See CVRL database.
 %   T_rods              - CIE scotopic luminous efficiency function.
