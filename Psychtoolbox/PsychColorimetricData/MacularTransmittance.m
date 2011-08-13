@@ -36,6 +36,8 @@ function [macTransmit,macDensity] = MacularTransmittance(S,species,source,fieldS
 %         dhb  Add CIE option and made it default.
 %         dhb  For CIE, can pass field size
 %         dhb  Also return density
+% 8/13/11 dhb  Linearly extrapolate read functions outside of range.
+
 
 % Default
 if (nargin < 2 || isempty(species))
@@ -56,19 +58,19 @@ switch (species)
 				macTransmit = ones(S(3),1)';
 			case 'WyszeckiStiles',
 				load den_mac_ws;
-				macDensity = SplineSrf(S_mac_ws,den_mac_ws,S,1);
+				macDensity = SplineSrf(S_mac_ws,den_mac_ws,S,2);
 				macTransmit = 10.^(-macDensity)';
 			case 'Vos',
 				load den_mac_vos;
-				macDensity = SplineSrf(S_mac_vos,den_mac_vos,S,1);
+				macDensity = SplineSrf(S_mac_vos,den_mac_vos,S,2);
 				macTransmit = 10.^(-macDensity)';
 			case 'Bone',
 				load den_mac_bone;
-				macDensity = SplineSrf(S_mac_bone,den_mac_bone,S,1);
+				macDensity = SplineSrf(S_mac_bone,den_mac_bone,S,2);
 				macTransmit = 10.^(-macDensity)';
             case 'CIE'
                 load den_mac_bone;
-				macDensity = SplineSrf(S_mac_bone,den_mac_bone,S,1);
+				macDensity = SplineSrf(S_mac_bone,den_mac_bone,S,2);
                 
                 % Adjust for field size.  Our bone values have a peak of
                 % 0.35, but the CIE formula assume normalization to peak

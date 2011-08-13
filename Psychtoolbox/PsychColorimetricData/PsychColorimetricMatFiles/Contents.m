@@ -90,8 +90,9 @@
 %   T_Lanom             - Demarco et al. anomolous L cone sensitivity.
 %   T_log10coneabsorbance_ss - Stockman-Sharpe (2000) LMS cone absorbance.   See
 %                       -   CVRL database, CIE 170-1:2006, Table 6.6.
-%                       -   Some values were unspecified on the low end in
-%                       -   the table.  These were set to -8 (log 10 units).
+%                       -   Some S-cone values were unspecified for wls >
+%                       -   615 nm in the table.  These were filled in here by
+%                       -   linear extrapolation.
 %                       -   Note that you want to raise 10 to these numbers
 %                       -   to get absorbance, which itself is a log-like quantity.
 %   T_Manom             - Demarco et al. anomolous M cone sensitivity.

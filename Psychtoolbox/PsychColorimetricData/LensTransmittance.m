@@ -31,6 +31,7 @@ function [lensTransmit,lensDensity] = LensTransmittance(S,species,source,ageInYe
 % 7/26/03 dhb  Extend functions, rather than zero truncate.
 % 8/12/11 dhb  Start to write CIE version.  Return lensDensity too.
 %         dhb  Finish. Add pupil size.
+% 8/13/11 dhb  Linearly extrapolate read functions outside of range.
 
 % Default
 if (nargin < 2 || isempty(species))
@@ -54,18 +55,18 @@ switch (species)
 				lensTransmit = ones(S(3),1)';
 			case 'WyszeckiStiles',
 				load den_lens_ws;
-				lensDensity = SplineSrf(S_lens_ws,den_lens_ws,S,1);
+				lensDensity = SplineSrf(S_lens_ws,den_lens_ws,S,2);
 				lensTransmit = 10.^(-lensDensity)';
 			case 'StockmanSharpe',
 				load den_lens_ssf;
-				lensDensity = SplineSrf(S_lens_ssf,den_lens_ssf,S,1);
+				lensDensity = SplineSrf(S_lens_ssf,den_lens_ssf,S,2);
 				lensTransmit = 10.^(-lensDensity)';
             case 'CIE'
                 % Load CIE age dependent and age independent components
                 load den_lens_cie_1
                 load den_lens_cie_2
-                lensDensity1 = SplineSrf(S_lens_cie_1,den_lens_cie_1,S,1);
-                lensDensity2 = SplineSrf(S_lens_cie_2,den_lens_cie_2,S,1);
+                lensDensity1 = SplineSrf(S_lens_cie_1,den_lens_cie_1,S,2);
+                lensDensity2 = SplineSrf(S_lens_cie_2,den_lens_cie_2,S,2);
                 
                 % Combine them according to age using CIE formulae
                 if (ageInYears < 20)

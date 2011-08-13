@@ -1,17 +1,17 @@
 function [spd_out] = SplineSpd(wls_in, spd_in, wls_out, extend)
 % [spd_out] = SplineSpd(wls_in, spd_in, wls_out, [extend])
 %
-% Convert the wavelength representation of a spectral
-% power distribution by using a cubic spline.  Takes
-% change of deltaLambda into account to keep matrix computations
+% Convert the wavelength representation of a spectral power distribution.
+% Takes change of deltaLambda into account to keep matrix computations
 % consistent across wavelength samplings.
 %
-% Truncates to zero outside the range of the input spectrum, unless
-% extend == 1.  In this case, it extends in each direction with the
-% last available value.
 %
-% spd_in may have multiple columns, in
-% which case srf_out does as well.
+% Handling of out of range values:
+%   extend == 0: Cubic spline, extends with zeros [default]
+%   extend == 1: Cubic spline, extends with last value in that direction
+%   extend == 2: Linear interpolation, linear extrapolation
+%
+% spd_in may have multiple columns, in which case srf_out does as well.
 %
 % wls_in and wls_out may be specified as a column vector of
 % wavelengths or as a [start delta n] description.
@@ -22,6 +22,7 @@ function [spd_out] = SplineSpd(wls_in, spd_in, wls_out, extend)
 % 12/7/98 dhb  Remove 5/6/98 change, as it produces the wrong power
 %              when you spline across different wavelength regions.
 % 7/26/03 dhb  Add extend argument and pass to SplineRaw.
+% 8/13/11 dhb  Update comment to reflect changes in SplineRaw.
 
 if (nargin < 4)
 	extend = [];
