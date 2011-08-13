@@ -62,7 +62,11 @@
 %   den_lens_ws         - Relative lens density data (re 700 nm).  W&S, Table 1(2.4.6), p. 109.
 %                       -   This is the first data set in the table, not the Norren and Vos 
 %                       -   data.  It is for an open pupil.
-%   den_lens_ssf        - Stockman-Sharpe-Fach (1999) lens optical density spectrum.  See CVRL database.
+%   den_lens_cie_1      - Part one of CIE component lens density function. CIE 170-1:2006, Table 6.10
+%   den_lens_cie_2      - Part two of CIE component lens density function. CIE 170-1:2006, Table 6.10
+%   den_lens_ssf        - Stockman-Sharpe-Fach (1999) lens optical density spectrum.
+%                       -   See CVRL database, CIE 170-1:2006, Table 6.10, 32 yo, pupil <= 3 degrees.
+%                       -   This is also the sum of den_lens_cie_1 and den_lens_cie_2
 %   den_mac_bone        - Macular pigment density from Bone et al. (1992).  See CVRL database, CIE 170-1:2006, Table 6.4, 2-deg.
 %   den_mac_vos         - Macular pigment density from Vos.  See CVRL database.
 %   den_mac_ws          - Macular pigment density from W&S, Table 2(2.4.6), p. 112.
