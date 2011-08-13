@@ -32,11 +32,11 @@
 */
 int PsychConvertColorToDoubleVector(PsychColorType *color, PsychWindowRecordType *windowRecord, GLdouble *valueArray)
 {
-	GLdouble deno;
+    GLdouble deno;
     
-	// Read denominator from windowRecord. Need to get rid of the sign, because it
-	// encodes if we have color clamping enabled or not:
-	deno = fabs(windowRecord->colorRange);
+    // Read denominator from windowRecord. Need to get rid of the sign, because it
+    // encodes if we have color clamping enabled or not:
+    deno = fabs(windowRecord->colorRange);
 	
     switch(color->mode){
         case kPsychIndexColor:
@@ -46,7 +46,7 @@ int PsychConvertColorToDoubleVector(PsychColorType *color, PsychWindowRecordType
             valueArray[0]=color->value.rgb.r/deno;
             valueArray[1]=color->value.rgb.g/deno;
             valueArray[2]=color->value.rgb.b/deno;
-			valueArray[3]=1.0;	// Needed to init the valueArray completely.
+	    valueArray[3]=1.0;	// Needed to init the valueArray completely.
             return(3); 
         case kPsychRGBAColor:
             valueArray[0]=color->value.rgba.r/deno;

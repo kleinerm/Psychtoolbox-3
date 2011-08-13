@@ -143,7 +143,7 @@ int PsychRebuildFont(void)
 	}
 
 	if (_useOwnFontmapper) {
-		FcResult result;
+		FcResult result = FcResultMatch; // Must init this due to weirdness in libfontconfig...
 		FcPattern* target = NULL;
 		
 		if (_fontName[0] == '-') {
@@ -169,7 +169,14 @@ int PsychRebuildFont(void)
 									 NULL);
 		}
 
+		// Set default settings for missing pattern properties:
 		FcDefaultSubstitute(target);
+		if (!FcConfigSubstitute(NULL, target, FcMatchPattern)) {
+			// Failed!
+			if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: FontConfig failed to substitute default properties for family %s, size %f pts and style flags %i.\n", _fontName, (float) _fontSize, _fontStyle);
+			FcPatternDestroy(target);
+			return(1);
+		}
 		
 		// Have a matching pattern:
 		if (_verbosity > 3) {
@@ -179,8 +186,8 @@ int PsychRebuildFont(void)
 
 		// Perform font matching for the font in the default configuration (0) that best matches the
 		// specified target pattern:
-		FcPattern* matched = FcFontMatch(0, target, &result);
-		if (result == FcResultNoMatch) {
+		FcPattern* matched = FcFontMatch(NULL, target, &result);
+		if ((matched == NULL) || (result == FcResultNoMatch)) {
 			// Failed!
 			if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: FontConfig failed to find a matching font for family %s, size %f pts and style flags %i.\n", _fontName, (float) _fontSize, _fontStyle);
 			FcPatternDestroy(target);
@@ -227,7 +234,7 @@ int PsychRebuildFont(void)
 	// Load & Create new font and face object, based on current spec settings:
 	// We directly use the Freetype library, so we can spec the faceIndex for selection of textstyle, which wouldn't be
 	// possible with the higher-level OGLFT constructor...
-    FT_Error error = FT_New_Face( OGLFT::Library::instance(), _fontFileName, _faceIndex, &ft_face );
+	FT_Error error = FT_New_Face( OGLFT::Library::instance(), _fontFileName, _faceIndex, &ft_face );
 	if (error) {
 		if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: Freetype did not load face with index %i from font file %s.\n", _faceIndex, _fontFileName);
 		return(1);
@@ -354,9 +361,9 @@ int PsychDrawText(double xStart, double yStart, int textLen, double* text)
 	
 	glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
 	glPushAttrib(GL_ALL_ATTRIB_BITS);
-    glPixelStorei( GL_UNPACK_ALIGNMENT, 1);
-    glEnable( GL_TEXTURE_2D );
-    glTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE );
+	glPixelStorei( GL_UNPACK_ALIGNMENT, 1);
+	glEnable( GL_TEXTURE_2D );
+	glTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE );
 	
 	glMatrixMode(GL_PROJECTION);
 	glPushMatrix();
@@ -392,7 +399,7 @@ int PsychDrawText(double xStart, double yStart, int textLen, double* text)
 	glMatrixMode(GL_PROJECTION);
 	glPopMatrix();
 	glMatrixMode(GL_MODELVIEW);
-    glDisable( GL_TEXTURE_2D );
+	glDisable( GL_TEXTURE_2D );
 	glPopAttrib();
 	glPopClientAttrib();
 	

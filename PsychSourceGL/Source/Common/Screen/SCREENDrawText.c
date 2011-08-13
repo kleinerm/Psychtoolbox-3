@@ -1840,13 +1840,15 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
 		PsychPluginSetTextSize((double) winRec->textAttributes.textSize);
 
 		// Assign viewport settings for rendering:
-		PsychPluginSetTextViewPort(winRec->rect[kPsychLeft], winRec->rect[kPsychTop], winRec->rect[kPsychRight] - winRec->rect[kPsychLeft], winRec->rect[kPsychBottom] - winRec->rect[kPsychTop]);	
+		PsychPluginSetTextViewPort(winRec->rect[kPsychLeft], winRec->rect[kPsychTop], winRec->rect[kPsychRight] - winRec->rect[kPsychLeft], winRec->rect[kPsychBottom] - winRec->rect[kPsychTop]);
 		
 		// Compute and assign text background color:
+		PsychCoerceColorMode(backgroundColor);
 		PsychConvertColorToDoubleVector(backgroundColor, winRec, backgroundColorVector);
 		PsychPluginSetTextBGColor(backgroundColorVector);
 		
 		// Compute and assign text foreground color - the actual color of the glyphs:
+		PsychCoerceColorMode(textColor);
 		PsychConvertColorToDoubleVector(textColor, winRec, colorVector);
 		PsychPluginSetTextFGColor(colorVector);
 		
@@ -1958,27 +1960,32 @@ PsychError SCREENDrawText(void)
     if (doSetColor) PsychSetTextColorInWindowRecord(&colorArg, winRec);
 
     // Same for background color:
-	doSetBackgroundColor = PsychCopyInColorArg(6, kPsychArgOptional, &backgroundColorArg);
-	if (doSetBackgroundColor) PsychSetTextBackgroundColorInWindowRecord(&backgroundColorArg, winRec);
+    doSetBackgroundColor = PsychCopyInColorArg(6, kPsychArgOptional, &backgroundColorArg);
+    if (doSetBackgroundColor) {
+	PsychSetTextBackgroundColorInWindowRecord(&backgroundColorArg, winRec);
+    } else {
+	// This just to coerce background color into proper format in case it hasn't been done already:
+	PsychSetTextBackgroundColorInWindowRecord(&(winRec->textAttributes.textBackgroundColor),  winRec);
+    }
 
-	// Special handling of offset for y position correction:
-	yPositionIsBaseline = PsychPrefStateGet_TextYPositionIsBaseline();
-	PsychCopyInIntegerArg(7, kPsychArgOptional, &yPositionIsBaseline);
+    // Special handling of offset for y position correction:
+    yPositionIsBaseline = PsychPrefStateGet_TextYPositionIsBaseline();
+    PsychCopyInIntegerArg(7, kPsychArgOptional, &yPositionIsBaseline);
 
-	// Get optional text writing direction flag: Defaults to left->right aka 0:
-	swapTextDirection = 0;
-	PsychCopyInIntegerArg(8, kPsychArgOptional, &swapTextDirection);
+    // Get optional text writing direction flag: Defaults to left->right aka 0:
+    swapTextDirection = 0;
+    PsychCopyInIntegerArg(8, kPsychArgOptional, &swapTextDirection);
 	
-	// Call Unicode text renderer: This will update the current text cursor positions as well.
-	PsychDrawUnicodeText(winRec, NULL, stringLengthChars, textUniDoubleString, &(winRec->textAttributes.textPositionX), &(winRec->textAttributes.textPositionY), yPositionIsBaseline, &(winRec->textAttributes.textColor), &(winRec->textAttributes.textBackgroundColor), swapTextDirection);
+    // Call Unicode text renderer: This will update the current text cursor positions as well.
+    PsychDrawUnicodeText(winRec, NULL, stringLengthChars, textUniDoubleString, &(winRec->textAttributes.textPositionX), &(winRec->textAttributes.textPositionY), yPositionIsBaseline, &(winRec->textAttributes.textColor), &(winRec->textAttributes.textBackgroundColor), swapTextDirection);
 
-	// We jump directly to this position in the code if the textstring is empty --> No op.
+    // We jump directly to this position in the code if the textstring is empty --> No op.
 drawtext_skipped:    
 
     // Copy out new, potentially updated, "cursor position":
     PsychCopyOutDoubleArg(1, FALSE, winRec->textAttributes.textPositionX);
     PsychCopyOutDoubleArg(2, FALSE, winRec->textAttributes.textPositionY);
     
-	// Done.
+    // Done.
     return(PsychError_none);
 }

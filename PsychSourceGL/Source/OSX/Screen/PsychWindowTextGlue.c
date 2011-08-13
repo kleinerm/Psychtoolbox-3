@@ -58,8 +58,8 @@ void PsychInitTextRecordSettings(PsychTextAttributes *settings)
     //settings->textFontName[0]='\0';		//should be read from preferences but for now we just make it up.
     //settings->textFontNumber=kPsychNoFont;	//should be read from preferences but for now we just use a constant meaning no setting.
 	
-	PsychLoadColorStruct(&(settings->textColor), kPsychIndexColor,  0);  //index type which may be coerced into anything.
-	PsychLoadColorStruct(&(settings->textBackgroundColor), kPsychRGBAColor, 0, 0, 0, 0); // Assign black with zero alpha -- transparent.
+	PsychLoadColorStruct(&(settings->textColor), kPsychIndexColor,  0.0);  //index type which may be coerced into anything.
+	PsychLoadColorStruct(&(settings->textBackgroundColor), kPsychRGBAColor, 0.0, 0.0, 0.0, 0.0); // Assign black with zero alpha -- transparent.
 	PsychCoerceColorMode(&(settings->textColor));
 	PsychCoerceColorMode(&(settings->textBackgroundColor));
 }

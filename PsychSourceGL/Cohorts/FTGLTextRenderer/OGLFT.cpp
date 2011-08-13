@@ -3525,10 +3525,12 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
     *width = nearestPowerCeil( bitmap.width );
     *height = nearestPowerCeil( bitmap.rows );
 
-    GLubyte* inverse = new GLubyte[ ( *width + 7) / 8 * *height ];
+    // MK: Alloc at least 128 Bytes to workaround potential gfx-driver out-of-bounds
+    //     memory access bugs for very small 1x1 pixel textures (NVidia?)
+    GLubyte* inverse = new GLubyte[ (( *width + 7) / 8 * *height) + 128 ];
     GLubyte* inverse_ptr = inverse;
 
-    memset( inverse, 0, sizeof( GLubyte )*( *width + 7 ) / 8 * *height );
+    memset( inverse, 0, sizeof( GLubyte ) * ((( *width + 7 ) / 8 * *height) + 128) );
 
     for ( int r = 0; r < bitmap.rows; r++ ) {
 
@@ -3640,6 +3642,8 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
     GLubyte* inverse = new GLubyte[ *width * *height ];
     GLubyte* inverse_ptr = inverse;
 
+    memset(inverse, 0, *width * *height);
+
     for ( int r = 0; r < bitmap.rows; r++ ) {
 
       GLubyte* bitmap_ptr = &bitmap.buffer[bitmap.pitch * ( bitmap.rows - r - 1 )];
@@ -3746,8 +3750,12 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
     *width = nearestPowerCeil( bitmap.width );
     *height = nearestPowerCeil( bitmap.rows );
 
-    GLubyte* inverse = new GLubyte[ 2 * *width * *height ];
+    // MK: Alloc at least 128 Bytes to workaround potential gfx-driver out-of-bounds
+    //     memory access bugs for very small 1x1 pixel textures (NVidia?)
+    GLubyte* inverse = new GLubyte[ (2 * *width * *height)  + 128];
     GLubyte* inverse_ptr = inverse;
+
+    memset(inverse, 0, (size_t) (2 * *width * *height) + 128);
 
     for ( int r = 0; r < bitmap.rows; r++ ) {
 
@@ -3760,6 +3768,7 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
 
       inverse_ptr += 2 * ( *width - bitmap.pitch );
     }
+
     return inverse;
   }
 
@@ -3797,8 +3806,7 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
     // Texture maps have be a power of 2 in size (is 1 a power of 2?), so
     // pad it out while flipping it over
     int width, height;
-    GLubyte* inverted_pixmap =
-      invertPixmap( face->glyph->bitmap, &width, &height );
+    GLubyte* inverted_pixmap = invertPixmap( face->glyph->bitmap, &width, &height );
 
     glPushAttrib( GL_PIXEL_MODE_BIT );
     glPixelTransferf( GL_RED_SCALE, foreground_color_[R] - background_color_[R] );
