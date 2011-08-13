@@ -93,7 +93,8 @@ switch (species)
                 elseif (pupilSizeMM >= 7)
                     lensDensity = 0.86207*lensDensity;
                 end
-                
+                lensTransmit = 10.^(-lensDensity)';
+          
 			otherwise,
 				error('Unsupported lens density estimate specified');
 		end
