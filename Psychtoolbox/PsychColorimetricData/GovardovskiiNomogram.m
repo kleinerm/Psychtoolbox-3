@@ -7,7 +7,7 @@ function T_absorbance = GovardovskiiNomogram(S,lambdaMax)
 %
 % The polynomial approximation has two bands.
 % Alpha-band, the major band of A1 pigments is taken from
-% Equation (1) and equation (2) in wavelength range [350,700] nm 
+% Equation (1) and equation (2) in wavelength range [350,700] nm
 % (see page 515 in paper)
 %
 % Beta-band, the minor band of A1 pigments is taken from
@@ -29,7 +29,7 @@ function T_absorbance = GovardovskiiNomogram(S,lambdaMax)
 %
 % Argument lambdaMax may be a column vector of wavelengths.
 %
-% 03/08/2002 ly  Wrote it starting from DawisNomogram. 
+% 03/08/2002 ly  Wrote it starting from DawisNomogram.
 
 % Valid range of wavelengh for A1-based visual pigments
 % (see page 516 in paper)
@@ -61,50 +61,50 @@ wls = MakeItWls(S);
 T_absorbance = zeros(nT,nWls);
 
 for i = 1:nT
-  theMax = lambdaMax(i);
-	if (theMax > lmaxLow & theMax < lmaxHigh)
-	
-	  % alpha-band polynomial
-		
-		% Parameter a depends on lambdamax, see equation (2) (page 515)
-	  a = 0.8795 + 0.0459*exp(-(theMax-300)^2/11940);
-	  a_b_c = [a, b_c];
-		
-		x = theMax./wls;
-		
-		% midStepN, N = 1, 2, ... are the middle steps in the caculation.
-		midStep1 = exp (ones(nWls,1)*(A_B_C.*a_b_c) - x*A_B_C);
-		midStep2 = sum(midStep1,2) + D;
-		
-		% Result of equation (1) (page 515)
-		S_x = 1./midStep2;
-		
-		% Beta-band polynomial
-		
-		% Parameter bbeta depends on lambdamax, see equation (5b) (page 516)
-		bbeta = -40.5 + 0.195*theMax;
-		
-		% Conversion of lambdamax to parameter lambdaMaxbeta, see equation (5a) (page 516)
-	  lambdaMaxbeta = 189 + 0.315*theMax;
-		
-		% midStepN, N = 1, 2, ... are the middle steps in the caculation.
-		midStep1 = -((wls - lambdaMaxbeta * ones (nWls,1)) / bbeta).^2;
-		midStep2 = Abeta * exp (midStep1);
-		
-		% Result of equation (4) (page 516)
-		S_beta = midStep2;
-		
-    % alpha band and beta band together.
-		T_absorbance(i,:) = (S_x + S_beta)';
-		
-  	% Zero sensitivity outsize valid range.
-  	index = find(wls < Lmin);
-	  T_absorbance(i,index) = zeros(size(index))';
-	  index = find(wls > Lmax);
-	  T_absorbance(i,index) = zeros(size(index))';
-		
-	else
-		error(sprintf('Lambda Max %g not in range of nomogram\n',theMax));
-	end
-
+    theMax = lambdaMax(i);
+    if (theMax > lmaxLow & theMax < lmaxHigh)
+        
+        % alpha-band polynomial
+        %
+        % Parameter a depends on lambdamax, see equation (2) (page 515)
+        a = 0.8795 + 0.0459*exp(-(theMax-300)^2/11940);
+        a_b_c = [a, b_c];
+        
+        x = theMax./wls;
+        
+        % midStepN, N = 1, 2, ... are the middle steps in the caculation.
+        midStep1 = exp (ones(nWls,1)*(A_B_C.*a_b_c) - x*A_B_C);
+        midStep2 = sum(midStep1,2) + D;
+        
+        % Result of equation (1) (page 515)
+        S_x = 1./midStep2;
+        
+        % Beta-band polynomial
+        
+        % Parameter bbeta depends on lambdamax, see equation (5b) (page 516)
+        bbeta = -40.5 + 0.195*theMax;
+        
+        % Conversion of lambdamax to parameter lambdaMaxbeta, see equation (5a) (page 516)
+        lambdaMaxbeta = 189 + 0.315*theMax;
+        
+        % midStepN, N = 1, 2, ... are the middle steps in the caculation.
+        midStep1 = -((wls - lambdaMaxbeta * ones (nWls,1)) / bbeta).^2;
+        midStep2 = Abeta * exp (midStep1);
+        
+        % Result of equation (4) (page 516)
+        S_beta = midStep2;
+        
+        % alpha band and beta band together.
+        T_absorbance(i,:) = (S_x + S_beta)';
+        
+        % Zero sensitivity outsize valid range.
+        index = find(wls < Lmin);
+        T_absorbance(i,index) = zeros(size(index))';
+        index = find(wls > Lmax);
+        T_absorbance(i,index) = zeros(size(index))';
+        
+    else
+        error(sprintf('Lambda Max %g not in range of nomogram\n',theMax));
+    end
+    
 end
