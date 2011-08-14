@@ -23,13 +23,13 @@ function T_absorbance = StockmanSharpeNomogram(S,lambdaMax)
 % absorbance spectra when you plot them on a log scale over 8 log units,
 % as in Stockman & Sharpe (2000), Figure 12.  The fit does not look so
 % good in my hands on a linear scale or an expanded log scale.
-% In part, I (DHB) think this is because the tabulated
+% I think the deviations occur in part because the tabulated
 % photopigment absorbances for the L are a mixture of the ser/ala 
-% pigments, and in part it is because developing the template by 
-% minimizing log error weights the long wavelength limbs very heavily.
-% I think that for most applications, we care about the sensitivity in the
-% first few decades below the peak, so that a template that did a better
-% job in that regime would be preferable.
+% pigments, and the nomogram was developed in part on the basis of fitting these
+% as if they corresponded to a single lambda max value. It may also be that
+% the template was built by minimizing the error in log sensitivity, and this
+% would more heavily weight the long wavelength limbs of the pigments, where
+% the linear sensitivity is essentially zero.
 %
 % 5/8/99	dhb  Started writing it.
 % 10/27/99	dhb  Added error return to prevent premature use of this routine.

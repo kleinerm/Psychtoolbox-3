@@ -81,14 +81,16 @@ switch (species)
                 % This is the answer for pupil size <= 3mm. But, can
                 % correct for pupil diameter.
                 %
-                % The CIE report says for pupil size > 7 mm, multiply (!) the density
-                % values by 0.86207.  SO that's what we do for that case.
+                % The CIE report says for pupil size > 7 mm, multiply the density
+                % values by 0.86207.  See note at Table 6.10.
+                % So that's what we do for that case.  It is not clear that this
+                % is actually part of the standard, and the effect is very small.
                 %
                 % It seems silly not to return anything for values between
                 % 3 and 7 mm, so for this case I linearly interpolate the
                 % factor.
                 if (pupilDiameterMM > 3 && pupilDiameterMM < 7)
-                    factor = (7-pupilSize)/4 + 0.86207*(pupilSize-3)/4;
+                    factor = (7-pupilDiameterMM)/4 + 0.86207*(pupilDiameterMM-3)/4;
                     lensDensity = factor*lensDensity;
                 elseif (pupilDiameterMM >= 7)
                     lensDensity = 0.86207*lensDensity;
