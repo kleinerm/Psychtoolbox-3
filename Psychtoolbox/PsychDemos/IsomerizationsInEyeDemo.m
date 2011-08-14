@@ -9,13 +9,15 @@
 % 07/08/03 dhb  Wrote starting from IsomerizationsInDishDemo.
 % 07/11/03 dhb  Grab data through subroutines.  Get rid of integration time.
 % 07/15/03 dhb  Take eye size from function.
+% 08/14/11 dhb  Comment out saving of T_dogrec at end.  Want to be careful when and where
+%               this is done, but the template may be useful someday.
 
 % Clear
 clear all; close all;
 
 % Set some photoreceptor properties.
-whatCalc = 'LivingDog';
-%whatCalc = 'LivingHumanFovea';
+% whatCalc = 'LivingDog';
+whatCalc = 'LivingHumanFovea';
 
 photoreceptors = DefaultPhotoreceptors(whatCalc);
 photoreceptors = FillInPhotoreceptors(photoreceptors);
@@ -179,15 +181,15 @@ fprintf('_______________________________________________________________________
 
 % Allow dumping out of photoreceptor sensitivities into a file for use elsewhere.  We want energy sensitivities
 % for this purpose
-switch (whatCalc)
-    % Dog receptors (L, S, rod) in energy units, normalized to max of 1.
-    case 'LivingDog'
-        T_dogrec = EnergyToQuanta(S,photoreceptors.isomerizationAbsorbtance')';
-        for i = 1:3
-            T_dogrec(i,:) = T_dogrec(i,:)/max(T_dogrec(i,:));
-        end
-        S_dogrec = S;
-        save T_dogrec T_dogrec S_dogrec
-    otherwise
-end
+% switch (whatCalc)
+%     % Dog receptors (L, S, rod) in energy units, normalized to max of 1.
+%     case 'LivingDog'
+%         T_dogrec = EnergyToQuanta(S,photoreceptors.isomerizationAbsorbtance')';
+%         for i = 1:3
+%             T_dogrec(i,:) = T_dogrec(i,:)/max(T_dogrec(i,:));
+%         end
+%         S_dogrec = S;
+%         save T_dogrec T_dogrec S_dogrec
+%     otherwise
+% end
 

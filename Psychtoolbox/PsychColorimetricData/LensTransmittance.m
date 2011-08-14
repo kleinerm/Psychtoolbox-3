@@ -1,6 +1,5 @@
-
-function [lensTransmit,lensDensity] = LensTransmittance(S,species,source,ageInYears,pupilSizeMM)
-% [lensTransmit,lensDensity] = LensTransmittance(S,[species],[source],[ageInYears],[pupilSizeMM])
+function [lensTransmit,lensDensity] = LensTransmittance(S,species,source,ageInYears,pupilDiameterMM)
+% [lensTransmit,lensDensity] = LensTransmittance(S,[species],[source],[ageInYears],[pupilDiameterMM])
 %
 % Return an estimate of the transmittance of the lens.
 %
@@ -43,8 +42,8 @@ end
 if (nargin < 4 || isempty(ageInYears))
 	ageInYears = 32;
 end
-if (nargin < 5 || isempty(pupilSizeMM))
-	pupilSizeMM = 3;
+if (nargin < 5 || isempty(pupilDiameterMM))
+	pupilDiameterMM = 3;
 end
 
 % Load correction for lens density
@@ -88,10 +87,10 @@ switch (species)
                 % It seems silly not to return anything for values between
                 % 3 and 7 mm, so for this case I linearly interpolate the
                 % factor.
-                if (pupilSizeMM > 3 && pupilSizeMM < 7)
+                if (pupilDiameterMM > 3 && pupilDiameterMM < 7)
                     factor = (7-pupilSize)/4 + 0.86207*(pupilSize-3)/4;
                     lensDensity = factor*lensDensity;
-                elseif (pupilSizeMM >= 7)
+                elseif (pupilDiameterMM >= 7)
                     lensDensity = 0.86207*lensDensity;
                 end
                 lensTransmit = 10.^(-lensDensity)';

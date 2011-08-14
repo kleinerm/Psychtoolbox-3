@@ -20,12 +20,26 @@ function photoreceptors = FillInPhotoreceptors(photoreceptors)
 %   IsomerizationsInEyeDemo, IsomerizationsInDishDemo 
 %
 % 7/25/03  dhb  Wrote it.
-
+% 8/14/11  dhb  Allow pass through of field size, pupil diameter, and age.
+%               Try not to break old code in how this is handled.
 
 % Define common wavelength sampling for this function.
 S = photoreceptors.nomogram.S;
 
-
+% Some defaults to avoid breaking older code.
+if (~isfield(photoreceptors,'fieldSizeDegrees'))
+    photoreceptors.fieldSizeDegrees = [];
+end
+if (~isfield(photoreceptors,'ageInYears'))
+    photoreceptors.ageInYears = [];
+end
+if (~isfield(photoreceptors,'pupilDiameter'))
+    photoreceptors.pupilDiameter.source = '';
+    photoreceptors.pupilDiameter.value = [];
+elseif (~isfield(photoreceptors.pupilDiameter,'value'))
+    photoreceptors.pupilDiameter.value = [];
+end
+    
 % Consistency checks
 if (length(photoreceptors.types) ~= length(photoreceptors.nomogram.lambdaMax))
 	error('Mismatch between length of types and lambdaMax fields');
@@ -71,10 +85,9 @@ if (~isfield(photoreceptors,'axialDensity'))
 else
 	if (~isfield(photoreceptors.axialDensity,'value'))
 		photoreceptors.axialDensity.value = PhotopigmentAxialDensity(photoreceptors.types,...
-				photoreceptors.species,photoreceptors.axialDensity.source);
+				photoreceptors.species,photoreceptors.axialDensity.source,photoreceptors.fieldSizeDegrees);
 	end
 end
-
 
 % Generate absorbance spectrum from specified nomogram
 if (~isfield(photoreceptors,'absorbance'))
@@ -93,7 +106,8 @@ end
 if (isfield(photoreceptors,'lensDensity'))
 	if (isfield(photoreceptors.lensDensity,'source'))
 		photoreceptors.lensDensity.transmittance = ...
-			LensTransmittance(S,photoreceptors.species,photoreceptors.lensDensity.source);
+			LensTransmittance(S,photoreceptors.species,photoreceptors.lensDensity.source,...
+            photoreceptors.ageInYears,photoreceptors.pupilDiameter.value);
 	else
 		if (~isfield(photoreceptors.lensDensity.transmittance))
 			error('photoreceptors.lensDensity passed, but without source or transmittance');
@@ -107,7 +121,7 @@ end
 if (isfield(photoreceptors,'macularPigmentDensity'))
 	if (isfield(photoreceptors.macularPigmentDensity,'source'))
 		photoreceptors.macularPigmentDensity.transmittance = ...
-			MacularTransmittance(S,photoreceptors.species,photoreceptors.macularPigmentDensity.source);
+			MacularTransmittance(S,photoreceptors.species,photoreceptors.macularPigmentDensity.source,photoreceptors.fieldSizeDegrees);
 	else
 		if (~isfield(photoreceptors.macularPigmentDensity.transmittance))
 			error('photoreceptors.macularPigmentDensity passed, but without source or transmittance');

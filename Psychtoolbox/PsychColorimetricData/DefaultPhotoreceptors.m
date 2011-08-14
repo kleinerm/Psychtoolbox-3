@@ -12,6 +12,8 @@ function photoreceptors = DefaultPhotoreceptors(kind)
 %
 % 7/25/03  dhb  Wrote it.
 % 12/04/07 dhb  Added dog parameters
+% 8/14/11  dhb  Added fieldSizeDegrees and ageInYears fields to photoreceptors for LivingHumanFovea case.
+%               These defaults match the CIE standard.
 
 % Default
 if (nargin < 1 || isempty(kind))
@@ -34,6 +36,8 @@ switch (kind)
 		photoreceptors.nomogram.lambdaMax = [558.9 530.3 420.7]';
 		photoreceptors.types = {'FovealLCone' 'FovealMCone' 'FovealSCone'};
 		photoreceptors.quantalEfficiency.source = 'Generic';
+        photoreceptors.fieldSizeDegrees = 2;
+        photoreceptors.ageInYears = 32;
     case 'LivingDog'
 		photoreceptors.species = 'Dog';
 		photoreceptors.OSlength.source = 'PennDog';
