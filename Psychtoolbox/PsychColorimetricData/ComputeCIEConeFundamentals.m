@@ -26,23 +26,27 @@ function T_quantal = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pu
 % density measurements only go down to 400 nm and these are extropolated
 % to go below 400.
 %
-% This will also compute from absorbance based on a nomogram, where
+% This routine will also compute from absorbance based on a nomogram, where
 % whichNomogram can be any source understood by the routine
 % PhotopigmentNomogram.  To obtain this behavior, pass a lambdaMax vector.
 % You can then also optionally pass a nomogram source (default: StockmanSharpe).
 %
-% If you pass lambaMax and its length is 4, the first two values are treated as
-% the peak wavelengths of the ser/ala variants of the L cone pigment, and these
-% are then weighted according to LserWeight and (1-LserWeight).  The default
-% for LserWeight is 0.56.
-%
-% The nominal values of lambdaMax to fit the CIE 2-degree fundamentals are
-% 558.9, 530.3, and 420.7 nm for the LMS cones respectively.  These in fact
-% do a reasonable job of reconstructing the CIE 2-degree fundamentals.  Thus
-% starting with these as nominal values and shifting is a reasonable way to
+% The nominal values of lambdaMax to fit the CIE 2-degree fundamentals with the
+% Stockman-Sharpe nomogram are 558.9, 530.3, and 420.7 nm for the LMS cones respectively.
+% These in fact do a reasonable job of reconstructing the CIE 2-degree fundamentals, although
+% there are small deviations from what you get if you simply read in the tabulated cone
+% absorbances.  Thus starting with these as nominal values and shifting is a reasonable way to
 % produce fundamentals tailored to observers with different known photopigments.
+% 
 % Relevant to that enterprise, S & S (2000) estimate the wavelength difference
 % between the ser/ala variants to be be 2.7 nm (ser longer).
+%
+% If you pass lambaMax and its length is 4, then first two values are treated as
+% the peak wavelengths of the ser/ala variants of the L cone pigment, and these
+% are then weighted according to LserWeight and (1-LserWeight).  The default
+% for LserWeight is 0.56.  After travelling it for a distance, I (DHB) do not
+% particularly recommend going down this road. But if you want to, I recommend
+% you look at and play with FitConeFundametnalsTest.
 %
 % See also: ComputeRawConeFundamentals, CIEConeFundamentalsTest, 
 % FitConeFundamentalsTest, FitConeFundamentalsWithNomogram, StockmanSharpeNomogram.
