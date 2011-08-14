@@ -12,7 +12,9 @@ function T_absorbance = StockmanSharpeNomogram(S,lambdaMax)
 %
 % The result is in quantal units, in the sense that to compute
 % absorbtions you want to incident spectra in quanta.
-% To get sensitivity in energy units, apply EnergyToQuanta().
+% To get sensitivity in energy units, apply EnergyToQuanta()
+% (not QuantaToEnergy, because here you are converting sensitivity
+% rather than spectra.)
 %
 % Argument lambdaMax may be a column vector of wavelengths.
 %
@@ -21,7 +23,7 @@ function T_absorbance = StockmanSharpeNomogram(S,lambdaMax)
 %
 % Note from DHB. By eye, this nomogram gives a good fit to the log10 LMS pigment
 % absorbance spectra when you plot them on a log scale over 8 log units,
-% as in Stockman & Sharpe (2000), Figure 12.  The fit does not look so
+% as in Stockman & Sharpe (2000), Figure 12.  The fit does not look quite so
 % good in my hands on a linear scale or an expanded log scale.
 % I think the deviations occur in part because the tabulated
 % photopigment absorbances for the L are a mixture of the ser/ala 
@@ -29,7 +31,12 @@ function T_absorbance = StockmanSharpeNomogram(S,lambdaMax)
 % as if they corresponded to a single lambda max value. It may also be that
 % the template was built by minimizing the error in log sensitivity, and this
 % would more heavily weight the long wavelength limbs of the pigments, where
-% the linear sensitivity is essentially zero.
+% the linear sensitivity is essentially zero.  In any case, though, if you
+% are working in the land of the CIE 170-1:2006 fundamentals, this is the
+% probably the best current nomogram to use.
+%
+% See ComputeCIEConeFundamentals, CIEConeFundamentalsTest,
+% FitConeFundamentalsFromNomogram, FitConeFundamentalsTest
 %
 % 5/8/99	dhb  Started writing it.
 % 10/27/99	dhb  Added error return to prevent premature use of this routine.

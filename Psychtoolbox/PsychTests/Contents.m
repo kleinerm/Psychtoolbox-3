@@ -10,6 +10,7 @@
 %   AlphaMultiplicationAccuracyTest - Test precision of alpha multiplication for values between 0 and 1.
 %   AnalyzeTiming                   - Analyze timing logs from FlipTimingWithRTBoxPhotoDiodeTest.
 %   BatchAnalyzeTiming              - Batch version of AnalyzeTiming.
+%   CIEConeFundamentalsTest         - Test/demonstrate routines for producing cone fundamentals according to CIE 170-1:2006
 %   ConvolutionKernelTest           - Test routine for correctness, accuracy and speed of PTB imaging convolution shaders.
 %   DeinterlacerTest                - Simple correctness test for GLSL video image deinterlacer. INCOMPLETE.
 %   DrawingIntoTexturesTest         - Tests if using a texture as an offscreen window, i.e., for drawing, works.
@@ -23,6 +24,7 @@
 %   DrawingStuffTest                - FrameRect, DrawLine, FillPoly, FramePoly.
 %   EventAvailTest                  - Test EventAvail
 %   FillPolyTest                    - Test drawing concave polygons.
+%   FitConeFundamentalsTest         - Test/explore fitting CIE cone fundamentals with absorbance obtained from nomograms.
 %   FitWeibullTAFCTest              - Fit a Weibull to 2AFC data.
 %   FitWeibullYNTest                - Fit a Weibull to yes-no data.
 %   FlipTest                        - Test frame synchroniziation.

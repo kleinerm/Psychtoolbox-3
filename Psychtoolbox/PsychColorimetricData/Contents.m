@@ -16,11 +16,14 @@
 % help PsychColorimetric         % For colorimetric calculations, triple-click me & hit enter.
 %
 %   BaylorNomogram            - Baylor et al. photopigment nomogram.
+%   ComputeCIEConeFundamentals - Compute cone fundamentals according to CIE 170-1:2006
+%   ComputeRawConeFundamentals - Compute cone fundamentals from specification of various components
 %   DawisNomogram             - Dawis(1981) photopigment nomogram.
 %   DefaultPhotoreceptors     - Set default values for photoreceptors structure.
 %   DegreesToRetinalMM        - Convert retinal extents from degrees to mm of retina.
 %   EyeLength                 - Return estimate of distance between nodal point and retina.
 %   FillInPhotoreceptors      - Convert from data source specification to numeric values in photoreceptors structure.
+%   FitConeFundamentalsWithNomogram - Try to fit CIE cone fundamentals with absorbance from various nomograms.
 %   GovardovskiiNomogram      - Govardoskii et al. (2000) A1 photopigment nomogram.
 %   LambNomogram              - Lamb's (1995) photopigment nomogram.
 %   LensTransmittance         - Return transmittance of human lens.
@@ -35,7 +38,5 @@
 %   StockmanSharpeNomogram    - Stockman/Sharpe photopigment nomogram (not finished).
 %   ValetonVanNorrenParams    - Return parameters of the Valeton-Van Norren model.
   
-%       
-%
 % Copyright (c) 1996-2003 by Denis Pelli & David Brainard
 
