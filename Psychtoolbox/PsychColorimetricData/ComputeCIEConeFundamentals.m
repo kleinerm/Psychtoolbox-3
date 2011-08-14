@@ -7,11 +7,24 @@ function T_quantal = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pu
 % This standard allows customizing the fundamentals for
 % field size, observer age, and pupil size in mm.
 %
+% To get the Stockman-Sharpe/CIE 2-deg fundamentals, use
+%   fieldSizeDegrees = 2;
+%   ageInYears = 32;
+%   pupilDiameterMM = 3;
+% and don't pass the rest of the arguments.
+%
+% Note that this routine returns normalized quantal sensitivities.  You
+% may want energy sensitivities.  In that case, use EnergyToQuanta to convert
+%   T_energy = EnergyToQuanta(S,T_quantal')'
+% and then renormalize.  (You call EnergyToQuanta because you're converting
+% sensitivities, which go the opposite directoin from spectra.)
+%
 % Note from DHB: Although this will compute something over any wavelength
 % range, I'd recommend not going lower than 390 or above about 780 without
 % thinking hard about how various pieces were extrapolated out of the range
 % that they are specified in the standard.  Indeed, the lens optical
-% density measurements only go down to 400 nm.
+% density measurements only go down to 400 nm and these are extropolated
+% to go below 400.
 %
 % This will also compute from absorbance based on a nomogram, where
 % whichNomogram can be any source understood by the routine
