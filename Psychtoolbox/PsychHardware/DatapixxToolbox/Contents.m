@@ -32,6 +32,14 @@
 %   For an explanation of any particular Datapixx sub-function just add a
 %   question mark after a command, eg: Datapixx SetDacSchedule?
 %
+%   LINUX: If you want to use these functions without the need to run
+%   Matlab or Octave as root user (i.e., without need for root login or the
+%   sudo command), please copy the file ...
+%   Psychtoolbox/PsychHardware/DatapixxToolbox/60-vpixx-permissions.rules
+%   ... into the folder /etc/udev/rules.d/ on your system. This one time copy will
+%   require administrator privileges, but after that, any user should be able
+%   to use the Datapixx devices or other VPixx devices without special permissions.
+%
 %   Peter April
 %   email: papril@vpixx.com
 %

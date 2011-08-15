@@ -1,0 +1,4 @@
+# Devices from "Cambridge Research Systems" are accessible by regular
+# user processes:
+ATTR{manufacturer}=="CRS Ltd", MODE="0666"
+ATTR{idVendor}=="0861", MODE="0666"

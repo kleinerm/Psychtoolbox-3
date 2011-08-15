@@ -2,53 +2,43 @@
 % The Daq Toolbox
 % Control the USB-1208FS or USB-1608FS (see below) data acquisition device. 
 %
-% The Daq Toolbox is a set of MATLAB functions providing communication with
+% The Daq Toolbox is a set of functions providing communication with
 % a particular USB data acquisition device (daq): the USB-1208FS made by
 % Measurement Computing (see URL below). This daq costs $150 and offers "50
 % kHz" input and output 12-bit sampling of analog voltages (8 in, 2 out)
 % and 16 digital i/o lines, with signals brought out to screw terminals.
 % ("50 kHz" is a theoretical upper limit: as of 18 April 2005 we attain 2
 % kHz. See DaqTest.) The USB-1208FS is the size of a wallet and is powered
-% through its USB cable. We have complete control of it from within Matlab,
-% via the PsychHID extension. 
+% through its USB cable. We have complete control of it from within Matlab or,
+% Octave via the PsychHID extension. 
 % 
 % There is a Daq M file (see DaqFunctions) for each USB-1208FS firmware
 % command, plus a few more to facilitate use of the device. 
 % 
-% The Daq Toolbox is free and can be downloaded from the Daq Toolbox web
-% page, below. It is self-contained, and may be used with or without the
-% rest of the Psychtoolbox. The Daq Toolbox consists of the Daq folder of M
-% files and the PsychHID MEX file (both in the PsychHardware folder) and
-% DaqTest.m (in the PsychTests folder). The only requirements are MATLAB,
-% Mac OS X 10.3 or better, and a USB port to connect the USB-1208FS. 
-% web http://psychtoolbox.org/daq.html -browser; [I believe the previous
-% statements are not quite correct.  There are calls to GetSecs and
-% WaitSecs sprinkled through the code, and these functions are both part of
-% the Psychophysics Toolbox distribution.  I have also added a bit more
-% dependency in the DaqTest function.  In addition to the files mentioned,
-% if you want to run the Daq toolbox without the PsychToolbox you will also
-% need copies of get_color.m, ConfirmInfo.m, and TwoStateQuery.m.  These
-% are functions I wrote for myself and have tinkered with quite a bit over
-% the years (except get_color which hasn't really changed since 1994), and
-% I just find them too useful to do without.  --  MPR 1/11/08]
-% 
 % There is a near-perfect isolation of the dependency on platform and
 % device at the two levels of code in the Daq Toolbox. The PsychHID MEX
-% file (written in C) is highly dependent on the platform, Mac OS X, but
+% file (written in C) is highly dependent on the platform, but
 % independent of the particular HID-compliant device. It provides generic
 % HID commands. (HID, or Human Interface Device, is a USB class specifying
 % a communication protocol for the device and host.) The Daq M files are
 % specific to our HID-compliant device, the USB-1208FS, but independent of
-% the platform (Mac OS X), and would run unchanged in MATLAB on any other
+% the platform, and would run unchanged in MATLAB or Octave on any other
 % computer for which we provided the PsychHID extension. We hope that users
-% of the OSX Psychtoolbox will find it easy to write new MATLAB M files
+% of the Psychtoolbox will find it easy to write new MATLAB M files
 % using PsychHID to support other HID-compliant devices, using the Daq
 % Toolbox as a model.
 % 
 % NOT RESPONDING? If PsychHID is not responding, e.g. after unplugging it 
-% and plugging it back in, try quitting and restarting MATLAB. We find that
-% this reliably restores normal communication. 
-% 
+% and plugging it back in, try quitting and restarting MATLAB or Octave.
+% We find that this reliably restores normal communication. 
+%
+% LINUX: If you want to use these functions without the need to run
+% Matlab or Octave as root user (i.e., without need for root login or the
+% sudo command), please copy the file Psychtoolbox/PsychHardware/60-mcc.rules
+% into the folder /etc/udev/rules.d/ on your system. This one time copy will
+% require administrator privileges, but after that, any user should be able
+% to use the USB DAQ devices without special permissions.
+%
 % Denis Pelli, 30 April 2005.
 %
 % From November 2007 through January 2008, the functions in this toolbox 
@@ -63,7 +53,14 @@
 % MickeyPRowe@gmail.com.
 %
 % Mickey P. Rowe, 10 January 2008.
-% 
+%
+% From August 2011 on, these functions should also work on MS-Windows and
+% GNU/Linux, due to the availability of PsychHID for these platforms. The
+% support is so far untested though.
+%
+% Mario Kleiner, 15 August 2011.
+%
+%
 % web http://www.measurementcomputing.com/cbicatalog/directory.asp?dept_id=403 -browser;
 % web http://psychtoolbox.org/daq.html -browser;
 % See also: DaqFunctions, DaqTest, PsychHIDTest, PsychHID,
