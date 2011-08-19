@@ -3084,7 +3084,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		}
 		
 		// VBL IRQ based timestamping in charge? Either because selected by usercode, or as a fallback for failed/disabled beampos timestamping or OS-Builtin timestamping?
-		if ((PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX) && ((vbltimestampmode == 3) || (vbltimestampmode == 4 && windowRecord->VBL_Endline == -1 && swap_msc < 0) || ((vbltimestampmode == 1 || vbltimestampmode == 2) && windowRecord->VBL_Endline == -1))) {
+		if ((PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX) && ((vbltimestampmode == 3) || (!osspecific_asyncflip_scheduled && vbltimestampmode == 4 && windowRecord->VBL_Endline == -1 && swap_msc < 0) || ((vbltimestampmode == 1 || vbltimestampmode == 2) && windowRecord->VBL_Endline == -1))) {
 			// Yes. Try some consistency checks for that:
 
 			// Some diagnostics at high debug-levels:
@@ -3148,7 +3148,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 				PsychPrefStateSet_VBLTimestampingMode(-1);
 				time_at_vbl = time_at_swapcompletion;
 				*time_at_onset=time_at_vbl;
-			}			
+			}
 		}
 		
 		// Shall OS-Builtin optimal timestamping override all other results (vbltimestampmode 4)
