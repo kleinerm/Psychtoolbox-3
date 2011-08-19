@@ -813,8 +813,10 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 		return(-1);
 	}
 	
-	// Check for valid return values:
-	if (ust == 0 || msc == 0) {
+	// Check for valid return values: A zero ust or msc means failure, except for results from nouveau,
+	// because there it is "expected" to get a constant zero return value for msc, at least when running
+	// on top of a pre Linux-3.2 kernel:
+	if ((ust == 0) || ((msc == 0) && !strstr((char*) glGetString(GL_VENDOR), "nouveau"))) {
 		// Ohoh:
 		if (PsychPrefStateGet_Verbosity() > 11) {
 			printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Invalid return values ust = %lld, msc = %lld from call with success return code (sbc = %lld)! Failing with rc = -1.\n", ust, msc, sbc);
@@ -826,6 +828,23 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 
 	// Success. Translate ust into system time in seconds:
 	if (tSwap) *tSwap = PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz());
+
+	// If we are running on a slightly incomplete nouveau-kms driver which always returns a zero msc,
+	// we need to get good ust,msc,sbc values for later use as reference and as return value via an
+	// extra roundtrip to the kernel. The most important info, the swap completion timestamp, aka ust
+	// as returned from glXWaitForSbcOML() has already been converted into GetSecs() timebase and returned
+	// in tSwap, so it is ok to overwrite ust here:
+	if (msc == 0) {
+		if (!glXGetSyncValuesOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc)) {
+			// Ohoh:
+			if (PsychPrefStateGet_Verbosity() > 11) {
+				printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Invalid return values ust = %lld, msc = %lld from glXGetSyncValuesOML() call with success return code (sbc = %lld)! Failing with rc = -1.\n", ust, msc, sbc);
+			}
+		
+			// Return with "unsupported" rc, so calling code can try fallback-path:
+			return(-1);
+		}
+	}
 
 	// Update cached reference values for future swaps:
 	windowRecord->reference_ust = ust;
