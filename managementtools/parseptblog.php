@@ -33,8 +33,8 @@
 $debugmode = 0;
 
 // Default filename for registration log file:
-$filename = "/tmp/ptbregistrationlog.fixed";
-
+$filename = "/Users/colorweb/ptbregistrationlog";
+//$filename = "./ptbregistrationlog";
 if (file_exists($filename)===FALSE) {
    print "<br />The file $filename does not exist!<br />";
    return;
@@ -52,6 +52,7 @@ $trunkcount = 0;
 $unknowncount = 0;
 $oldptb307count = 0;
 $ptb308pretigercount = 0;
+$ptb308count = 0;
 $osxcount = 0;
 $wincount = 0;
 $linuxcount = 0;
@@ -64,6 +65,7 @@ $panthercount = 0;
 $tigercount = 0;
 $leopardcount = 0;
 $snowleopardcount = 0;
+$lioncount = 0;
 
 $winunknowncount = 0;
 $win2kcount = 0;
@@ -78,10 +80,27 @@ $winmatrothercount = 0;
 $matv5count = 0;
 $matv6count = 0;
 $matv7count = 0;
+$matv70count = 0;
+$matv71count = 0;
+$matv72count = 0;
+$matv73count = 0;
+$matv74count = 0;
+$matv75count = 0;
+$matv76count = 0;
+$matv77count = 0;
+$matv78count = 0;
+$matv79count = 0;
+$matv710count = 0;
+$matv711count = 0;
+$matv712count = 0;
+$matv713count = 0;
+$matv714count = 0;
 
 $octavelinuxcount = 0;
 $octaveosxcount   = 0;
 $octavewincount   = 0;
+
+$linux64count = 0;
 
 $intransaction = 0;
 $linescount = 0;
@@ -183,6 +202,7 @@ foreach($uniqueptbs as $ofl) {
   if (strpos($ofl, '<FLAVOR>Psychtoolbox-3.0.7</FLAVOR>')) { $assigned++ ; $oldptb307count++; }
   if (strpos($ofl, '<FLAVOR>unknown</FLAVOR>')) { $assigned++ ; $unknowncount++; }
   if (strpos($ofl, '<FLAVOR>Psychtoolbox-3.0.8-PreTiger</FLAVOR>')) { $assigned++ ; $ptb308pretigercount++; }
+  if (strpos($ofl, '<FLAVOR>Psychtoolbox-3.0.8</FLAVOR>')) { $assigned++ ; $ptb308count++; }
   if (strpos($ofl, '<ENVIRONMENT>Matlab')) {
     $ismatlab = 1;
 
@@ -190,6 +210,21 @@ foreach($uniqueptbs as $ofl) {
     if (strpos($ofl, '<ENVVERSION>5.')) { $matv5count++; }
     if (strpos($ofl, '<ENVVERSION>6.')) { $matv6count++; }
     if (strpos($ofl, '<ENVVERSION>7.')) { $matv7count++; }
+    if (strpos($ofl, '<ENVVERSION>7.0')) { $matv70count++; }
+    if (strpos($ofl, '<ENVVERSION>7.1.')) { $matv71count++; }
+    if (strpos($ofl, '<ENVVERSION>7.2')) { $matv72count++; }
+    if (strpos($ofl, '<ENVVERSION>7.3')) { $matv73count++; }
+    if (strpos($ofl, '<ENVVERSION>7.4')) { $matv74count++; }
+    if (strpos($ofl, '<ENVVERSION>7.5')) { $matv75count++; }
+    if (strpos($ofl, '<ENVVERSION>7.6')) { $matv76count++; }
+    if (strpos($ofl, '<ENVVERSION>7.7')) { $matv77count++; }
+    if (strpos($ofl, '<ENVVERSION>7.8')) { $matv78count++; }
+    if (strpos($ofl, '<ENVVERSION>7.9')) { $matv79count++; }
+    if (strpos($ofl, '<ENVVERSION>7.10')) { $matv710count++; }
+    if (strpos($ofl, '<ENVVERSION>7.11')) { $matv711count++; }
+    if (strpos($ofl, '<ENVVERSION>7.12')) { $matv712count++; }
+    if (strpos($ofl, '<ENVVERSION>7.13')) { $matv713count++; }
+    if (strpos($ofl, '<ENVVERSION>7.14')) { $matv714count++; }
   }
 
   if (strpos($ofl, '<ENVIRONMENT>Octave')) {
@@ -197,7 +232,15 @@ foreach($uniqueptbs as $ofl) {
   }
 
   // Operating system:
-  if (strpos($ofl, '<OS>Linux')) { $assigned++ ; $linuxcount++; $islinux = 1;}
+  if (strpos($ofl, '<OS>Linux')) {
+    $assigned++ ;
+    $linuxcount++;
+    $islinux = 1;
+
+    if (strpos($ofl, '<ENVARCH>GLNXA64') || strpos($ofl, '<ENVARCH>x86_64-pc')) {
+      $linux64count++;
+    }
+  }
 
   if (strpos($ofl, '<OS>Windows')) {
     $assigned++ ;
@@ -237,6 +280,7 @@ foreach($uniqueptbs as $ofl) {
     if (strpos($ofl, '10.4.')) { $tigercount++; }
     if (strpos($ofl, '10.5.')) { $leopardcount++; }
     if (strpos($ofl, '10.6.')) { $snowleopardcount++; }
+    if (strpos($ofl, '10.7.')) { $lioncount++; }
 
     if (strpos($ofl, '<CPUARCH>ppc')) {
       // It is a PowerPC Macintosh:
@@ -264,7 +308,7 @@ foreach($uniqueptbs as $ofl) {
     }
   }
 
-  // Accounting for Octave-3 and later on Linux or OS/X:
+  // Accounting for Octave-3 and later:
   if ($isoctave > 0) {
     if ($islinux > 0) {
         $octavelinuxcount++;
@@ -300,12 +344,14 @@ print "'unsupported' aka 'stable'    : $stablecount<br />";
 print "'trunk'                       : $trunkcount<br />";
 print "Psychtoolbox-3.0.7            : $oldptb307count<br />";
 print "Psychtoolbox-3.0.8-PreTiger   : $ptb308pretigercount<br />";
+print "Psychtoolbox-3.0.8            : $ptb308count<br />";
 print "Unclassified                  : $unknowncount<br />";
 
 print "<br />Breakdown by host operating system:<br /><br />";
-printf('MacOS-X: %8d (%7.3f%%) <br />', $osxcount, 100 * $osxcount / $totalcount);
-printf('Windows: %8d (%7.3f%%) <br />', $wincount, 100 * $wincount / $totalcount);
-printf('Linux  : %8d (%7.3f%%) <br />', $linuxcount, 100 * $linuxcount / $totalcount);
+printf('MacOS-X                      : %8d (%7.3f%%) <br />', $osxcount, 100 * $osxcount / $totalcount);
+printf('Windows                      : %8d (%7.3f%%) <br />', $wincount, 100 * $wincount / $totalcount);
+printf('Linux all                    : %8d (%7.3f%%) <br />', $linuxcount, 100 * $linuxcount / $totalcount);
+printf('Linux 64 Bit Matlab/Octave   : %8d (%7.3f%% of all Linux systems) <br />', $linux64count, 100 * $linux64count / $linuxcount);
 
 print "<br />For Macintosh - Breakdown by system architecture:<br /><br />";
 
@@ -320,6 +366,7 @@ print "10.3 - Panther               : $panthercount<br />";
 print "10.4 - Tiger                 : $tigercount<br />";
 print "10.5 - Leopard               : $leopardcount<br />";
 print "10.6 - Snow Leopard          : $snowleopardcount<br />";
+print "10.7 - Lion                  : $lioncount<br />";
 
 print "<br />For MS-Windows - Breakdown by Windows version:<br /><br />";
 print "Windows additional preVistas : $winunknowncount<br />";
@@ -340,6 +387,21 @@ print "<br />Breakdown for all systems by Matlab major versions:<br /><br />";
 print "Matlab 5.x                   : $matv5count<br />";
 print "Matlab 6.x                   : $matv6count<br />";
 print "Matlab 7.x                   : $matv7count<br />";
+print "Matlab 7.0   (R2005a)        : $matv70count<br />";
+print "Matlab 7.1   (R2005b)        : $matv71count<br />";
+print "Matlab 7.2   (R2006a)        : $matv72count<br />";
+print "Matlab 7.3   (R2006b)        : $matv73count<br />";
+print "Matlab 7.4   (R2007a)        : $matv74count<br />";
+print "Matlab 7.5   (R2007b)        : $matv75count<br />";
+print "Matlab 7.6   (R2008a)        : $matv76count<br />";
+print "Matlab 7.7   (R2008b)        : $matv77count<br />";
+print "Matlab 7.8   (R2009a)        : $matv78count<br />";
+print "Matlab 7.9   (R2009b)        : $matv79count<br />";
+print "Matlab 7.10  (R2010a)        : $matv710count<br />";
+print "Matlab 7.11  (R2010b)        : $matv711count<br />";
+print "Matlab 7.12  (R2011a)        : $matv712count<br />";
+print "Matlab 7.13  (R2011b)        : $matv713count<br />";
+print "Matlab 7.14  (R2012a)        : $matv714count<br />";
 
 print "<br />Number of GNU/Octave V3+ installations by system:<br /><br />";
 print "Octave on OS/X               : $octaveosxcount<br />";
