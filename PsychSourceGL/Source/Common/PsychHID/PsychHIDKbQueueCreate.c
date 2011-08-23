@@ -85,15 +85,12 @@ static char synopsisString[] =
         "scanned. If no keyboard is found, the first keypad device is "
         "scanned. Optionally, the device number of any keyboard or keypad may be specified.\n"
         "On Linux you can have multiple parallel keyboard queues - one per keyboard device. "
-        "On OS/X and Windows only one queue is allowed at a time.\n"
-        "On Linux and OS/X handling of keyboard queues is efficient. On MS-Windows, the keyboard "
-        "queue is implemented by periodic polling of the keyboard state with a frequency of "
-        "approximately 500 Hz. This is a brute-force approach which can lead to unreliable "
-        "stimulus presentation timing and keyboard timestamping unless you have a fast "
-        "(multi-core) machine. It will also draw significant amounts of electrical power. "
-        "Therefore use this feature sparingly on MS-Windows and consider a different operating system.\n"
-        "On MS-Windows, the 'deviceNumber' argument is ignored and the default keyboard is checked.\n";
-        
+        "On OS/X only one queue is allowed at a time.\n"
+        "On Linux and OS/X, handling of keyboard queues is very efficient. On MS-Windows, the "
+        "keyboard queue might be a bit less efficient. On MS-Windows XP and later, to our knowledge "
+        "it is not possible to enumerate different keyboards separately. Therefore the 'deviceNumber' "
+        "argument is mostly useless and usually you can only check the default keyboard.\n";
+
 static char seeAlsoString[] = "KbQueueStart, KbQueueStop, KbQueueCheck, KbQueueFlush, KbQueueRelease";
 
 PsychError PSYCHHIDKbQueueCreate(void) 

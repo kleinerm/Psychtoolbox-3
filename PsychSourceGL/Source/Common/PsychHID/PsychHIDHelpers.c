@@ -126,6 +126,9 @@ PsychError PsychHIDCleanup(void)
 	// Shutdown USB-HID report low-level functions, e.g., for DAQ toolbox on OS/X:
 	error = PsychHIDReceiveReportsCleanup(); // PsychHIDReceiveReport.c
 	
+	// Shutdown os specific interfaces and routines:
+	PsychHIDShutdownHIDStandardInterfaces();
+
 	// Release all other HID device data structures:
 	#if PSYCH_SYSTEM == PSYCH_OSX
 	// Via Apple HIDUtils:
@@ -157,9 +160,6 @@ PsychError PsychHIDCleanup(void)
     
 	// Close and release all open generic USB devices:
 	PsychHIDCloseAllUSBDevices();
-
-	// Shutdown os specific interfaces and routines:
-	PsychHIDShutdownHIDStandardInterfaces();
 
 	return(PsychError_none);
 }
