@@ -9,6 +9,17 @@ function fhndl = MinExpEntStair
 % expected amount of information gain given a space of PSE and slope values
 % to test over.
 %
+% By default, a psychometric function ranging from 0% to 100% is used, as
+% is suitable for discrimination experiments with a standard in the middle
+% of the possible stimulus parameter range. For other paradigms, such as
+% n-AFC detection tasks, one can set the guessrate input during staircase
+% init to 1/num_alternatives, e.g. .5 when doing a 2IFC detection task.
+% This guess rate is thus not the rate at which participants guess instead
+% of do your task (thats the lapse rate), it the minimum rate of correct
+% responses as determined by your design. NB: below discussion is based on
+% the default psychometric function with the full range, but all points are
+% equally valid for a scaled psychometric function.
+%
 % It is recommended to have the staircase determine the optimal next probe
 % based on only a random subset of the response history (see options
 % 'toggle_use_resp_subset' and 'toggle_use_resp_subset_prop'). This makes
@@ -16,7 +27,7 @@ function fhndl = MinExpEntStair
 % oscillations when the fit estimate is converging.
 % When we are close to convergence, probes will tend to be near the 25% and
 % 75% points. If a probe is 25% and you answer '1' (pedestal faster, which
-% is likely, because it's near the correct 25% points), then for the next
+% is likely, because it's near the correct 25% point), then for the next
 % trial the peak in expected entropy reduction will generally be the 75%
 % point, and vice versa. This can lead to undesirable probe sequences where
 % the correct response alternates 0,1,0,1,0,1. If you choose a random
@@ -45,16 +56,28 @@ function fhndl = MinExpEntStair
 % optional probe value can be computed. If for any other reason choosing
 % the next probe based on the measure of minimum expected entropy fails,
 % the staircase will fall back on the same random probe sampling strategy.
+% There is an option to set the first probe value to be tested, which, for
+% the first trial only, will overrule both of the above probe choice
+% strategies. This can be useful if you want to be sure that the first
+% trial is an easy one so the participant knows what to expect.
 %
-% Another measure for robustness is to choose a small guess rate. If guess
+% Another measure for robustness is to choose a small lapse rate. If lapse
 % would be zero and a response error is made by the observer, immediately a
-% whole range of mean-slope combinations becomes impossible. If guess rate
+% whole range of mean-slope combinations becomes impossible. If lapse rate
 % is non-zero, these would still have a non-zero probability and the
-% staircase can rebound. Therefore a guess rate of 5% or even more
-% depending on task difficulty is always recommended.
-% Note that the staircase does not support a 0 guess rate in the first
+% staircase can rebound. Therefore a lapse rate of 5% or even more
+% depending on task difficulty is always recommended. NB: in the default
+% discrimination setup of the staircase (guessrate is not specified or set
+% to 0), half of the lapse rate is taken off the bottom of the psychometric
+% function and half is taken off the top. So if the lapse rate is 0.05, the
+% psychometric function will range from 0.025 to 0.975. In the setup for a
+% n-AFC detection experiment when the psychometric function has a lower
+% bound of 1/num_alternatives, the lapse rate is taken off the top. So when
+% the guess_rate is set to .5 (2AFC) and the pase rate is set to .05, the
+% psychometric function will range from 0.05 to 0.95.
+% Note that the staircase does not support a 0 lapse rate in the first
 % place as it works with log-probability and we get in trouble if we would
-% take the log of a 0 probability. Any guess rate lower than 1e-10 will be
+% take the log of a 0 probability. Any lapse rate lower than 1e-10 will be
 % adjusted to 1e-10 upon calling the 'init' function.
 %
 % If the staircase gets stuck at one of the bounds of the probe set, check
@@ -95,16 +118,16 @@ function fhndl = MinExpEntStair
 % or PSE and DL returned from staircase functions 'get_fit' and
 % 'get_PSE_DL'.
 % Also note that while the staircase runs far more robust when a small
-% guess rate is assumed, it is common to either fit the psychometric
-% function without a guess rate, or otherwise with the guess rate as a free
+% lapse rate is assumed, it is common to either fit the psychometric
+% function without a lapse rate, or otherwise with the lapse rate as a free
 % parameter (possibily varying only over subjects, but not over conditions
 % within each subject).
 %
 %
 % References:
 %  Based on the Minimum expected entropy staircase method developed by:
-%  Saunders JA & Backus BT (2006). Perception of surface
-%    slant from oriented textures. Journal of Vision 6(9), article 3
+%  Saunders JA & Backus BT (2006). Perception of surface slant from
+%    oriented textures. Journal of Vision 6(9), article 3
 %
 %  Discussions of conceptually similar staircases can be found in:
 %  Kontsevich LL & Tyler CW (1999). Bayesian adaptive estimation of
@@ -126,7 +149,7 @@ function fhndl = MinExpEntStair
 % (you can think of this as the string containing the name of the member
 % function to be called) and optionally any other arguments that are needed
 % for the call. See MESDemo for an example and the comments below for use
-% of the different staircase functions
+% of the different staircase functions.
 
 % Copyright (c) 2011 by DC Niehorster and JA Saunders
 
@@ -136,6 +159,7 @@ aset        = [];           % pse's tested (and fitted)
 bset        = [];           % slopes fitted
 agrid       = [];
 bgrid       = [];
+lapse_rate  = [];           % lapse/mistake rate
 guess_rate  = [];           % guess rate
 phist       = [];           % probe history
 rhist       = double([]);   % response history (0 or 1)
@@ -143,6 +167,7 @@ loglik      = [];
 lik         = [];
 g0          = [];
 g1          = [];
+g2          = [];
 
 % option: use a subset of all data for choosing the next probe, default values:
 quse_subset = false;        % use limited subset for computing next probe? Limited subset by discarding a fixed number of trials
@@ -151,7 +176,10 @@ minsetsize  = 10;           % minimum size to start subsetting
 subsetsize  = 3;            % subset contains subsetsize less datapoints than full dataset
 percsetsize = .8;           % percentage of data in set used
 
-% psychometric function that is used
+% option: set the value to test if probe history is empty
+first_value = [];           % first value to test instead of random or by prior
+
+% psychometric function that is used (default)
 psychofunc  = 'cumGauss';
 
 % subfunction
@@ -162,7 +190,7 @@ fhndl = @MinExpEntStair_internal;
         
         switch mode
             %%% init
-            case 'init' % [] = stair('init',probeset,meanset,slopeset,guess);
+            case 'init' % [] = stair('init',probeset,meanset,slopeset,lapse_rate,guess_rate);
                 probeset            = varargin{1};
                 aset                = varargin{2};
                 bset                = varargin{3};
@@ -170,17 +198,41 @@ fhndl = @MinExpEntStair_internal;
                 % init with uniform probability, normalized
                 loglik              = zeros(size(agrid)) - log(numel(agrid));
                 lik                 = ones(size(agrid))./numel(agrid);
-                % precomputes for guessrate
-                guess_rate          = varargin{4};
-                % the guess rate cannot be exactly 0 as the computed
+                % lapse rate and guess rate
+                lapse_rate          = varargin{4};
+                % the lapse rate cannot be exactly 0 as the computed
                 % probability must not be exactly 0 so we can work with
                 % log(prob) without trouble, so set it to 1e-10 at least.
-                guess_rate          = max(guess_rate,1e-10);
-                % the guessrate basically means that instead of ranging
-                % from 0 to 1, the psychometric function will range
-                % from guessrate/2 to 1-guessrate/2
-                g0                  =     guess_rate/2;
-                g1                  = 1 - guess_rate;
+                lapse_rate          = max(lapse_rate,1e-10);
+                % guess rate is optional, if not specified we assume a 2IFC
+                % discrimination experiment where the guess rate is
+                % irrelevant as function goes from always one option at the
+                % one end to always the other option at the other end.
+                if length(varargin)<5
+                    guess_rate = 0;
+                else
+                    guess_rate = varargin{5};
+                end
+                
+                % lapse rate:
+                % 1. for a discrimination setup (guess_rate==0) the
+                % lapserate basically means that instead of ranging from 0
+                % to 1, the psychometric function ranges from lapse_rate/2
+                % to 1-lapse_rate/2
+                % 2. for a detection setup, the lower bound is guess_rate
+                % and the upper bound is 1-lapse_rate
+                
+                % lower bound of pyschometric function
+                % and
+                % range of pyschometric function
+                if guess_rate==0
+                    g0 = lapse_rate/2;
+                    g1 = 1 - lapse_rate;
+                else
+                    g0 = guess_rate;
+                    g1 = 1 - lapse_rate - guess_rate;
+                end
+                g2 = 1 - g0;    % need to flip psychometric function for fitting responses <= 0, get upper bound of this flipped function
                 
                 
             %%% load bunch of previously run trials (need probes and
@@ -200,8 +252,8 @@ fhndl = @MinExpEntStair_internal;
                 assert(all(loglik(:)==-log(numel(agrid))),'Cannot load prior if we have a likelihood already'); % this tests if it is not default inited
                 
                 priorlik = varargin{1};
-                assert(size(priorlik,1)==length(bset),'Number of rows in prior much match length of DL set')
-                assert(size(priorlik,2)==length(aset),'Number of rows in prior much match length of PSE set')
+                assert(size(priorlik,1)==length(bset),'Number of rows in prior much match length of slope set')
+                assert(size(priorlik,2)==length(aset),'Number of columns in prior much match length of mean set')
                 assert(all(priorlik(:)>=0),'Loaded prior is not expected to be a log likelihood (that is: all your probabilities should be larger than or equal to 0!)');
                 
                 loglik  = normalize_loglik(log(priorlik));
@@ -247,8 +299,20 @@ fhndl = @MinExpEntStair_internal;
                 varargout{3} = percsetsize;
                 
                 
+            % set the first value to test. Normally the first is chosen
+            % randomly or by using the prior that you loaded. If you prefer
+            % to start at a fixed value, use this.
+            case 'set_first_value' % [] = stair('set_first_value',first_value);
+                first_value = varargin{1};
+                if ~isempty(phist)
+                    warning('the first trial has already been run. Setting the first value now is pointless and it''ll be ignored');
+                end
+                
+                
             % set the psychometric function to be used (default cumulative
-            % Gaussian). Can be called at any time.
+            % Gaussian). Can be called at any time (but it will refit all
+            % the data already present and thus remove the effect of any
+            % priors).
             case 'set_psychometric_func' % [] = stair('set_psychometric_func','funcID');
                 % currently supported:
                 %  'cumGauss' - Cumulative Gaussian
@@ -273,17 +337,23 @@ fhndl = @MinExpEntStair_internal;
                 
             %%% given history, get which probe is best to test next
             case 'get_next_probe' % [probe,entexp,ind]  = stair('get_next_probe');
-                [p,entexp,indmin]   = getnextprobe;
-                if isempty(p) || isscalar(unique(loglik))
-                    % if we couldn't compute expected entropy, or we have a
-                    % uniform likelihood on which calculation was based
-                    % (useless prior info, such as default inited), fall
-                    % back on random probe selection
-                    p                   = probeset(round(RandLim(1,1,length(probeset))));
-                    [varargout{2:3}]    = deal([]);
+                if isempty(phist) && ~isempty(first_value)
+                   % first trial and user requested a specific probe value to be tested
+                   p                = first_value;
+                   [varargout{2:3}] = deal([]);
                 else
-                    varargout{2}        = entexp;
-                    varargout{3}        = indmin;
+                    [p,entexp,indmin]   = getnextprobe;
+                    if isempty(p) || isscalar(unique(loglik))
+                        % if we couldn't compute expected entropy, or we have a
+                        % uniform likelihood on which calculation was based
+                        % (useless prior info, such as default inited), fall
+                        % back on random probe selection
+                        p                   = probeset(round(RandLim(1,1,length(probeset))));
+                        [varargout{2:3}]    = deal([]);
+                    else
+                        varargout{2}        = entexp;
+                        varargout{3}        = indmin;
+                    end
                 end
                 varargout{1}    = p;
                 phist           = [phist p];
@@ -314,6 +384,11 @@ fhndl = @MinExpEntStair_internal;
             %%% get fitted PSE and DL (distance of 75% point from the 50%
             %%% point) and loglik. This returns the fit of all data, also
             %%% when subsetting is enabled.
+            %%% This function is meant to be used for discrimination
+            %%% experiments only (hence the terminology), although it will
+            %%% return the inflection point and the distance between the
+            %%% points that are equivalent to the 50% and 75% points after
+            %%% scaling the psychometric function for all setups.
             case 'get_PSE_DL' % [PSE,DL,loglik]    = stair('get_PSE_DL');
                 [varargout{1:3}] = MinExpEntStair_internal('get_fit');
                 % convert b (dispersion) parameter to DL
@@ -402,9 +477,9 @@ fhndl = @MinExpEntStair_internal;
         
         if strcmp(psychofunc,'cumGauss')
             % we have a fast one for this!
-            loglik = FitCumGauss_MES(probes,resps,aset,bset,guess_rate);
-            
+            loglik = FitCumGauss_MES(probes,resps,aset,bset,lapse_rate,guess_rate);
         else
+            
             loglik = zeros(size(agrid));
             for p=1:length(probes)
                 loglik = fit_additional_data_point(loglik,probes(p),resps(p));
@@ -420,9 +495,9 @@ fhndl = @MinExpEntStair_internal;
         switch psychofunc
             case 'cumGauss'
                 if resp > 0
-                    pval = g0 + g1*normcdf( (probe-agrid)./bgrid);
+                    pval = g0 + g1*normcdf((probe-agrid)./bgrid);
                 else
-                    pval = g0 + g1*normcdf(-(probe-agrid)./bgrid);
+                    pval = g2 - g1*normcdf((probe-agrid)./bgrid);
                 end
                 
                 % this reduces to:
@@ -430,9 +505,8 @@ fhndl = @MinExpEntStair_internal;
                 %     pval =       normcdf( (probe-agrid)./bgrid);
                 % else
                 %     pval = 1.0 - normcdf( (probe-agrid)./bgrid);
-                %          =       normcdf(-(probe-agrid)./bgrid);
                 % end
-                % when guessrate is 0
+                % when lapse_rate and guess_rate are 0
                 %
                 %        1  [             x - a      ]
                 %   P = --- [ 1 + erf( ----------- ) ],
@@ -445,16 +519,16 @@ fhndl = @MinExpEntStair_internal;
                 if resp > 0
                     pval = g0 + g1./(1+exp(-(probe-agrid)./bgrid));
                 else
-                    pval = g0 + g1./(1+exp( (probe-agrid)./bgrid));
+                    pval = g2 - g1./(1+exp(-(probe-agrid)./bgrid));
                 end
                 
                 % this reduces to:
                 % if resp > 0
-                %     pval = 1./(1+exp(-(probe-agrid)./bgrid));
+                %     pval =       1./(1+exp(-(probe-agrid)./bgrid));
                 % else
-                %     pval = 1./(1+exp( (probe-agrid)./bgrid));
+                %     pval = 1.0 - 1./(1+exp(-(probe-agrid)./bgrid));
                 % end
-                % when guessrate is 0
+                % when lapse_rate and guess_rate are 0
                 %
                 %               1
                 % P =   ------------------,

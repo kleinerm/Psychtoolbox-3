@@ -4,29 +4,44 @@ close all; clear all
 probeset    = -15:0.5:15;       % set of possible probe values
 meanset     = -10:0.2:10;       % sampling of pses, doesn't have to be the same as probe set
 slopeset    = [.5:.1:5].^2;     % set of slopes, quad scale
-guess       = 0.05;             % guess rate
+lapse       = 0.05;             % lapse/mistake rate
+guess       = 0.50;             % guess rate / minimum correct response rate (for detection expt: 1/num_alternative, 0 for discrimination expt)
 
 % general settings
 ntrial  = 40;
 qpause  = false;    % pause after every iteration? (press any key to continue)
 qplot   = false;    % plot information about each trial? (this pauses as well, regardless of whether you specified qpause as true)
 
-% model observer using cum normal for psychometric function
-qusemodel = true;   % use model observer to get responses or, if false, input responses by hand (0 or 1)?
-truepse = 0;
-truedl  = 5;
-resp    = @(probe)  (guess/2 + (1-guess)*normcdf((probe-truepse)/(truedl*sqrt(0.5)/erfinv(0.5)))) > rand;
+% model observer parameters 
+qusemodel = true;   % use model observer to get responses? Or, if false, input responses by hand (0/1)
+truepse = 0;        % inflection point (50% if guess rate is 0)
+truedl  = 4;        % (75%-25% point)/2 if guess rate is 0. In general, take the position of the halfway points between the inflection point and the upper and lower asymptotes, then its the distance between them
+
+% model observer definition. uses a cum normal for psychometric function,
+% the formula for which is equivalent to what is used by the staircase
+% internally (if it is set up to use a cumulative Gaussian)
+if guess==0
+    resp    = @(probe)  lapse/2 + (1-lapse)      *normcdf(probe,truepse,truedl/sqrt(2)/erfinv(0.5)) > rand;
+else
+    resp    = @(probe)   guess  + (1-lapse-guess)*normcdf(probe,truepse,truedl/sqrt(2)/erfinv(0.5)) > rand;
+end
 
 
-% init stair
+% Create staircase instance. If you want to interleave staircases, or
+% otherwise run multiple conditions, create one staircase per condition.
+% You can store these in a cell-array and of course use different settings
+% for each as needed.
 stair = MinExpEntStair;
-% option: use logistic
+% init stair
+stair('init',probeset,meanset,slopeset,lapse,guess);
+% option: use logistic instead of default cumulative normal
 % stair('set_psychometric_func','logistic');
-% now init
-stair('init',probeset,meanset,slopeset,guess);
 % option: use a subset of all data for choosing the next probe, use
 % proportion of available data (good idea for robustness - see docs)
 stair('toggle_use_resp_subset_prop',10,.9);
+% option: instead of choosing a random value for the first probe,
+% you can set which value is to be tested first.
+stair('set_first_value',3)
 
 for ktrial = 1:ntrial
     % trial
@@ -54,14 +69,14 @@ for ktrial = 1:ntrial
         
         figure(1);
         subplot(1,3,1);
-        imagesc(exp(loglik));
+        imagesc(exp(.5*loglik));
         set(gca,'YTick',1:4:length(slopeset));
         set(gca,'YTickLabel',slopeset(1:4:end));
         set(gca,'XTick',1:5:length(meanset));
         set(gca,'XTickLabel',meanset(1:5:end));
         title('estimated likelihood function');
-        xlabel('PSE')
-        ylabel('psychometric function slope')
+        xlabel('mean (a)')
+        ylabel('slope (b)')
         
         subplot(1,3,2);
         hold off;
@@ -93,25 +108,25 @@ end % loop over trials
 
 %%% show final results
 %  [mu,sigma] = stair('get_fit');    % get fitted parameters of cumulative Gaussian
-%  DL = sigma*erfinv(.5)*sqrt(2)     % convert sigma (std) to DL (75% point)
+%  DL = sigma*erfinv(.5)*sqrt(2)     % convert sigma (std) to DL (75%-25% point)/2
 % get DL from staircase directly, NB: the space of the outputted
 % loglikelihood is the mean/slope space as defined atop this script, its
 % not a PSE/DL space
 [PSEfinal,DLfinal,loglikfinal]  = stair('get_PSE_DL');
 finalent                        = sum(-exp(loglikfinal(:)).*loglikfinal(:));
-fprintf('final estimates:\nm: %f\nd: %f\nent: %f\n',PSEfinal,DLfinal,finalent);
+fprintf('final estimates:\nPSE: %f\nDL: %f\nent: %f\n',PSEfinal,DLfinal,finalent);
 % for actual offline fitting of your data, you would probably want to use a
 % dedicated toolbox such as Prins, N & Kingdom, F. A. A. (2009) Palamedes:
 % Matlab routines for analyzing psychophysical data.
 % http://www.palamedestoolbox.org.
 % Also note that while the staircase runs far more rebust when a small
-% guess rate is assumed, it is common to either fit the psychometric
-% function without a guess rate, or otherwise with the guess rate as a free
+% lapse rate is assumed, it is common to either fit the psychometric
+% function without a lapse rate, or otherwise with the lapse rate as a free
 % parameter (possibily varying only over subjects, but not over conditions
 % within each subject).
 
 figure(2);
-imagesc(exp(loglikfinal));
+imagesc(exp(.5*loglikfinal));
 set(gca,'YTick',1:4:length(slopeset));
 set(gca,'YTickLabel',slopeset(1:4:end));
 set(gca,'XTick',1:5:length(meanset));
