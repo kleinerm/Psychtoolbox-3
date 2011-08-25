@@ -57,6 +57,8 @@ function [warpstruct, filterMode] = CreateDisplayWarp(window, calibfilename, sho
 % 13.4.2009 Improved support for bilinear texture filter shaders. (MK).
 %           Optional 'Query' command to query last warpstruct.    (MK).
 %           Support for half-cylinder projection. (MK).
+% 25.8.2011 Adapt code for sphere projection undistortion to new convention
+%           of Ingmar Schneider's shader code. (MK).
 
 % Global GL handle for access to OpenGL constants needed in setup:
 global GL;
@@ -249,8 +251,8 @@ switch(calib.warptype)
 
         if strcmpi(calib.warptype, 'SphereProjection')
             % Additional parameters for sphere projection:
-            glUniform1f(glGetUniformLocation(warpstruct.glsl, 'roff'), calib.roff);
-            glUniform1f(glGetUniformLocation(warpstruct.glsl, 'rpow'), calib.rpow);
+            glUniform1f(glGetUniformLocation(warpstruct.glsl, 'Wflat'), calib.Wflat);
+            glUniform1f(glGetUniformLocation(warpstruct.glsl, 'R'), calib.R);
         end        
         
         glUseProgram(0);

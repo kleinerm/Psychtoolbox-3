@@ -1,19 +1,26 @@
 /* Shader for application of a spherical projection of textures during drawing.
  *
- * (C)2010 by Ingmar Schneider and Mario Kleiner. Licensed to you under MIT license.
+ * (C)2010-2011 by Ingmar Schneider and Mario Kleiner.
+ * Licensed to you under MIT license.
+ *
+ * This is version 2, with improved math by Ingmar Schneider to fix the
+ * problems with central magnification and anisotropy.
+ *
  */
 
 #extension GL_ARB_texture_rectangle : enable
-
-const float           onedivpi = 0.318309886183791;
 
 uniform int           doFilter;
 uniform sampler2DRect Image;
 uniform vec2          inSize;
 uniform vec2          inOffset;
 uniform vec2          outSize;
-uniform float         roff;
-uniform float         rpow;
+
+/* Width of the projection area at a distance R in cm */
+uniform float         Wflat;
+
+/* Radius of the used spherical screen in cm */
+uniform float         R;
 
 void main()
 {
@@ -27,23 +34,24 @@ void main()
     /* Apply 2D offset to output pixel location, as well as a 2D rescaling: */
     /* This to account for situations where not the full display area of    */
     /* display device is used. */
-    texoutpos = clamp(texoutpos, vec2(0.0), outSize) / outSize;
+    texoutpos = clamp(texoutpos, vec2(0.0), outSize);
 
     /* Geometric remapping/warping: Recompute and assign modified components */
-    /* of texoutpos, based on texinpos and display geometry:                 */
-    float azimuth = (texoutpos.x * 2.0) - 1.0;     
-    float elevation = -1.0 * ((texoutpos.y * 2.0) - 1.0);
-
-    float r = sqrt(pow(abs(azimuth), 2.0) + pow(abs(elevation), 2.0)) / sqrt(2.0);
-    float rnorm = (r + roff) / (1.0 + roff);
-    float rcorr = sign(rnorm) * pow(abs(rnorm), rpow);
+    /* of texoutpos, based on texinpos and display geometry:                 */    
+    float Wunits = Wflat / R;
+    vec2 UnitsPerPixel = vec2(Wunits)/ outSize;
     
-    azimuth = acos(rcorr * azimuth) * onedivpi;
-    elevation = acos(rcorr * elevation) * onedivpi;
-
-    /* Apply some rescaling to a total input image size of inSize, in case */
-    /* that not the full size of the input image is used:                  */
-    vec2 texinpos = inOffset + (vec2(azimuth, elevation) * inSize);
+    /* Centering */
+    texoutpos = (texoutpos - ((outSize+1.0)/2.0)) * UnitsPerPixel;
+    
+    /* Unwarping */
+    texoutpos = texoutpos / sqrt(1.0 - pow(abs(texoutpos.x), 2.0) - pow(abs(texoutpos.y), 2.0));
+    
+    /* Retransformation to image coordinates */
+    texoutpos = (texoutpos/UnitsPerPixel) + ((outSize+1.0)/2.0);
+            
+    /* Offsetting */
+    vec2 texinpos = inOffset + texoutpos;
 
     /* texinpos now contains the location of the final input image pixel to read   */
     /* for creation of the final output color pixel. This value may be fractional. */
@@ -68,7 +76,14 @@ void main()
         texcolor = texture2DRect(Image, texinpos);
     }
 
-    /* Multiply filtered texcolor with incoming fragment color (GL_MODULATE emulation): */
-    /* Assign result as output fragment color: */
-    gl_FragColor = texcolor * gl_Color;
+    /* Set all undefined (outside input image) pixels to black background color. */
+    if (texinpos.x < 0.0 || texinpos.x > inSize.x || texinpos.y < 0.0 || texinpos.y > inSize.y) {
+        gl_FragColor = vec4(0.0);
+    }
+    else
+    {
+        /* Multiply filtered texcolor with incoming fragment color (GL_MODULATE emulation): */
+        /* Assign result as output fragment color: */
+        gl_FragColor = texcolor * gl_Color;
+    }
 }

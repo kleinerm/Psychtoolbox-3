@@ -31,8 +31,9 @@ function DisplayUndistortionHalfCylinder(calibfilename, screenid)
 % t      = Change translation of output image.
 % o      = Change size of output image.
 % i      = Change size of input image.
-% a      = Input numeric roff coefficient for sphere curvature correction.
-% b      = Input numeric rpow coefficient for sphere curvature correction.
+% w      = Width of the projection area at a radius distance R in cm for
+%          sphere curvature correction.
+% b      = Radius of the spherical projection screen for sphere curvature correction.
 %
 % -> Type "edit SphereProjectionShader.frag.txt" and look at the warp
 % shader code for a full understanding of the roff and rpow coefficients
@@ -47,6 +48,8 @@ function DisplayUndistortionHalfCylinder(calibfilename, screenid)
 % 13.4.2009  mk Written.
 % 19.12.2010 mk Updated with roff, rpow parameter setting for spherical
 %               projections as suggested by Ingmar Schneider.
+% 25.8.2011  mk Adapt code for sphere projection undistortion to new
+%               convention of Ingmar Schneider's shader code.
 
 global GL;
 
@@ -68,8 +71,8 @@ tkey = KbName('t');
 okey = KbName('o');
 ikey = KbName('i');
 skey = KbName('s');
-roffkey = KbName('a');
-rpowkey = KbName('b');
+Wflatkey = KbName('w');
+Rkey = KbName('b');
 
 if ~exist('screenid', 'var') || isempty(screenid)
     screenid=max(Screen('Screens'));
@@ -117,8 +120,8 @@ calib.inSize = [];
 calib.inOffset = [];
 calib.outOffset = [];
 calib.outSize = [];
-calib.roff = [];
-calib.rpow = [];
+calib.Wflat = [];
+calib.R = [];
 
 firsttime = 1;
 
@@ -145,10 +148,11 @@ try
     calib.outOffset = [0, 0];
     calib.outSize = [winWidth, winHeight];
     
-    % These rof, rpow settings are reasonable defaults, used by Ingmar
-    % Schneider for a tested spherical display setup:
-    calib.roff = 0.53;
-    calib.rpow = 0.825;
+    % These screen width, and sphere radius settings are reasonable
+    % defaults, used by Ingmar Schneider for a tested spherical display
+    % setup:
+    calib.Wflat = 44.5;
+    calib.R = 32.0392;
     
     % Query generated warpstruct:
     warpstruct = CreateDisplayWarp('Query');
@@ -190,13 +194,13 @@ try
                 inOffset = calib.inOffset; %#ok<NASGU>
                 outOffset = calib.outOffset; %#ok<NASGU>
                 outSize = calib.outSize; %#ok<NASGU>
-                roff = calib.roff; %#ok<NASGU>
-                rpow = calib.rpow; %#ok<NASGU>
+                Wflat = calib.Wflat; %#ok<NASGU>
+                R = calib.R; %#ok<NASGU>
                 
                 % Save all relevant calibration variables to file 'calibfilename'. This
                 % method should work on both, Matlab 6.x, 7.x, ... and GNU/Octave - create
                 % files that are readable by all runtime environments:
-                save(calibfilename, 'warptype', 'rotationAngle', 'inSize', 'inOffset', 'outOffset', 'outSize', 'roff', 'rpow', '-mat', '-V6');
+                save(calibfilename, 'warptype', 'rotationAngle', 'inSize', 'inOffset', 'outOffset', 'outSize', 'Wflat', 'R', '-mat', '-V6');
 
                 Beeper;
                 continue;
@@ -218,10 +222,10 @@ try
             if keyCode(ikey)
                 mode = 4;
             end
-            if keyCode(roffkey)
+            if keyCode(Wflatkey)
                 mode = 5;
             end
-            if keyCode(rpowkey)
+            if keyCode(Rkey)
                 mode = 6;
             end
 
@@ -251,21 +255,21 @@ try
                 case 4,
                     calib.inSize = calib.inSize  + [dx, dy];
                 case 5,
-                    old = calib.roff;
+                    old = calib.Wflat;
                     Screen('HookFunction', win, 'Disable', 'StereoLeftCompositingBlit');
-                    calib.roff = GetEchoNumber(win, sprintf('Enter roff coefficient for sphere proj. [%f]: ', calib.roff), 30, 30, 255, []);
+                    calib.Wflat = GetEchoNumber(win, sprintf('Enter width of the projection area in cm at the radius distance R in cm for sphere proj. [%f]: ', calib.Wflat), 30, 30, 255, []);
                     Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
-                    if isempty(calib.roff)
-                        calib.roff = old;
+                    if isempty(calib.Wflat)
+                        calib.Wflat = old;
                     end
                     mode = -1;
                 case 6,
-                    old = calib.rpow;
+                    old = calib.R;
                     Screen('HookFunction', win, 'Disable', 'StereoLeftCompositingBlit');
-                    calib.rpow = GetEchoNumber(win, sprintf('Enter rpow coefficient for sphere proj. [%f]: ', calib.rpow), 30, 30, 255, []);
+                    calib.R = GetEchoNumber(win, sprintf('Enter radius of the used spherical screen in cm for sphere proj. [%f]: ', calib.R), 30, 30, 255, []);
                     Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
-                    if isempty(calib.rpow)
-                        calib.rpow = old;
+                    if isempty(calib.R)
+                        calib.R = old;
                     end
                     mode = -1;
                 otherwise
@@ -319,8 +323,8 @@ try
             glUniform2f(glGetUniformLocation(warpstruct.glsl, 'outSize'), calib.outSize(1), calib.outSize(2));
             if strcmpi(calib.warptype, 'SphereProjection')
                 % Additional parameters for sphere projection:
-                glUniform1f(glGetUniformLocation(warpstruct.glsl, 'roff'), calib.roff);
-                glUniform1f(glGetUniformLocation(warpstruct.glsl, 'rpow'), calib.rpow);
+                glUniform1f(glGetUniformLocation(warpstruct.glsl, 'Wflat'), calib.Wflat);
+                glUniform1f(glGetUniformLocation(warpstruct.glsl, 'R'), calib.R);
             end
             glUseProgram(0);
 
