@@ -7,7 +7,7 @@
 %   ComputeDiffLimit    - Compute diffraction limit.
 %   DiffractionMTF      - Incoherent diffraction limited MTF from wl and pupil size
 %   GoodmanDiffrac      - Diffraction limited MTF, based on cutoff freq, Goodman's formula.
-%   MakeRadiusMat				- Create a matrix whose entries are equal to their radius.
+%   MakeRadiusMat       - Create a matrix whose entries are equal to their radius.
 %   WestLSFMinutes      - Compute Westheimer's line spread function.
 %   WestPSFDegrees      - Compute Westheimer's point spread function, in degrees.
 %   WestPSFMinutes      - Compute Westheimer's point spread function, in minutes.

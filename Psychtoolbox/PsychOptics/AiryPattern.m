@@ -6,7 +6,7 @@ function intensity = AiryPattern(angles,pupil,nm)
 %
 %   "angles" visual angle in radians
 %   "pupil" diameter in mm
-% 	"nm" is wavelength in nm
+%   "nm" is wavelength in nm
 %
 % Intensity is normalized to max of 1.
 %
