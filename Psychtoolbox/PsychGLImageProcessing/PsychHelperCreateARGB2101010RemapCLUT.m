@@ -30,73 +30,85 @@ function remapCLUTId = PsychHelperCreateARGB2101010RemapCLUT
 %
 % History:
 % 01/13/08  Written (MK).
+% 08/29/11  Add caching for LUT in mat file to speed this up a bit (MK).
 
 % This routine assumes that a mogl GL context is properly set up:
 global GL;
 
-% Build lookup table: 3 LUT's (Red,Green,Blue) with 1024 slots with 4
-% output color components RGBA8 per entry, ie., a 32 bpp value:
-clut = uint8(zeros(1, 3 * 1024 * 4));
+% Try to get LUT from cached .mat file -- faster:
+cachedFile = [PsychtoolboxConfigDir 'argb2101010remaplut.mat'];
 
-% Startindex for 1st LUT entry:
-j=1;
+if exist(cachedFile, 'file')
+    % Get cached LUT from file:
+    load(cachedFile);
+else
+    % Build lookup table: 3 LUT's (Red,Green,Blue) with 1024 slots with 4
+    % output color components RGBA8 per entry, ie., a 32 bpp value:
+    clut = uint8(zeros(1, 3 * 1024 * 4));
 
-% First the RED LUT: Texrow 1
-for i=0:1023
-    % Memory order is ARGB:
+    % Startindex for 1st LUT entry:
+    j=1;
 
-    % Nothing in blue:
-    clut(j)= 0;
-    j=j+1;
-    % Nothing in green:
-    clut(j)= 0;
-    j=j+1;
-    % 4 LSB of red into 4 MSB of red: 
-    clut(j)= bitshift(bitand(i, bin2dec('1111')), 4);
-    j=j+1;
-    % 6 MSB of red into 6 LSB of alpha:
-    clut(j)= bitshift(bitand(i, bin2dec('1111110000')), -4);
-    j=j+1;
-    % 2 MSB of alpha are left to a constant zero. They would encode the 2
-    % bit alpha channel, but that is unused in our configuration. Alpha is
-    % handled at render time by the high-res drawbuffer and earlier part of
-    % imaging pipeline...
-end
+    % First the RED LUT: Texrow 1
+    for i=0:1023
+        % Memory order is ARGB:
 
-% Then the GREEN LUT: Texrow 2
-for i=0:1023
-    % Memory order is ARGB:
+        % Nothing in blue:
+        clut(j)= 0;
+        j=j+1;
+        % Nothing in green:
+        clut(j)= 0;
+        j=j+1;
+        % 4 LSB of red into 4 MSB of red:
+        clut(j)= bitshift(bitand(i, bin2dec('1111')), 4);
+        j=j+1;
+        % 6 MSB of red into 6 LSB of alpha:
+        clut(j)= bitshift(bitand(i, bin2dec('1111110000')), -4);
+        j=j+1;
+        % 2 MSB of alpha are left to a constant zero. They would encode the 2
+        % bit alpha channel, but that is unused in our configuration. Alpha is
+        % handled at render time by the high-res drawbuffer and earlier part of
+        % imaging pipeline...
+    end
 
-    % Nothing in blue
-    clut(j)= 0;
-    j=j+1;
-    % LSB 6 bits of green into 6 MSB of green:
-    clut(j)= bitshift(bitand(i, bin2dec('111111')), 2);
-    j=j+1;
-    % MSB 4 bits of green into 4 LSB of red:
-    clut(j)= bitshift(bitand(i, bin2dec('1111000000')), -6);
-    j=j+1;
-    % Nothing in alpha:
-    clut(j)= 0;
-    j=j+1;
-end
+    % Then the GREEN LUT: Texrow 2
+    for i=0:1023
+        % Memory order is ARGB:
 
-% Finally the BLUE LUT: Texrow 3
-for i=0:1023
-    % Memory order is ARGB:
+        % Nothing in blue
+        clut(j)= 0;
+        j=j+1;
+        % LSB 6 bits of green into 6 MSB of green:
+        clut(j)= bitshift(bitand(i, bin2dec('111111')), 2);
+        j=j+1;
+        % MSB 4 bits of green into 4 LSB of red:
+        clut(j)= bitshift(bitand(i, bin2dec('1111000000')), -6);
+        j=j+1;
+        % Nothing in alpha:
+        clut(j)= 0;
+        j=j+1;
+    end
 
-    % LSB 8 bits of blue into blue:
-    clut(j)= bitand(i, bin2dec('11111111'));
-    j=j+1;
-    % MSB 2 bits of blue into 2 LSB of green:
-    clut(j)= bitshift(bitand(i, bin2dec('1100000000')), -8);
-    j=j+1;
-    % Nothing in red:
-    clut(j)= 0;
-    j=j+1;
-    % Nothing in alpha:
-    clut(j)= 0;
-    j=j+1;
+    % Finally the BLUE LUT: Texrow 3
+    for i=0:1023
+        % Memory order is ARGB:
+
+        % LSB 8 bits of blue into blue:
+        clut(j)= bitand(i, bin2dec('11111111'));
+        j=j+1;
+        % MSB 2 bits of blue into 2 LSB of green:
+        clut(j)= bitshift(bitand(i, bin2dec('1100000000')), -8);
+        j=j+1;
+        % Nothing in red:
+        clut(j)= 0;
+        j=j+1;
+        % Nothing in alpha:
+        clut(j)= 0;
+        j=j+1;
+    end
+
+    % Cache computed LUT in users config dir:
+    save(cachedFile, 'clut', '-mat', '-V6');
 end
 
 % Hostformat defines byte-order in host memory:
