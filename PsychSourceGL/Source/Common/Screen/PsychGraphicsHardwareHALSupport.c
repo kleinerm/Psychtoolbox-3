@@ -840,7 +840,7 @@ void PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal)
 				vblbias = 0;
 
 				// FP_TOTAL 0x804 relative to PRAMDAC base 0x680000 with stride 0x2000: Encodes VTOTAL in low-word:
-				vbltotal = (int) ((PsychOSKDReadRegister(crtcid, 0x680000 + 0x804 + ((crtcid > 0) ? 0x2000 : 0), NULL)) & 0xFFFF);
+				vbltotal = (int) ((PsychOSKDReadRegister(crtcid, 0x680000 + 0x804 + ((crtcid > 0) ? 0x2000 : 0), NULL)) & 0xFFFF) + 1;
 				#endif
 			}
 		}
