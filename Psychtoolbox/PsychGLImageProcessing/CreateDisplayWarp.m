@@ -200,6 +200,14 @@ switch(calib.warptype)
             calib.outSize = [winWidth, winHeight];
         end
 
+        if isempty(calib.Wflat)
+            calib.Wflat = 44;
+        end
+
+        if isempty(calib.R)
+            calib.R = 32;
+        end
+
         % No color gain correction:
         glColor4f(1,1,1,1);
         
