@@ -20,6 +20,7 @@ function bool = Ellipse(a,b,horpow,verpow)
 % DN 2008
 % DN 2009-02-02 Updated to do Circles and input argument handling more
 %               efficiently
+% DN 2011-08-31 Output wasn't always of right size (ceil(2*input))
 
 error(nargchk(1, 4, nargin, 'struct'));
 
@@ -32,12 +33,8 @@ end
 if nargin < 4
     verpow = horpow;
 end
-    
 
-a       = a + .5;                     % to produce a Ellipse with horizontal axis == ceil(2*hor semi axis)
-b       = b + .5;                     % to produce a Ellipse with vertical axis == ceil(2*vert semi axis)
-
-[x,y]   = meshgrid(-a:a,-b:b);
+[x,y]   = meshgrid(linspace(-a,a,ceil(2*a)+2),linspace(-b,b,ceil(2*b)+2));
 
 bool    = abs(x./a).^horpow + abs(y./b).^verpow  < 1;
 
