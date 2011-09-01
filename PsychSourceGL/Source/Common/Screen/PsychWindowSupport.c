@@ -1381,7 +1381,8 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
 				PsychReleaseFlipInfoStruct(windowRecord);
 
 				// Check if 10 bpc native framebuffer support was supposed to be enabled:
-				if ((windowRecord->specialflags & kPsychNative10bpcFBActive) && PsychOSIsKernelDriverAvailable(windowRecord->screenNumber)) {
+				if (((windowRecord->specialflags & kPsychNative10bpcFBActive) || (PsychPrefStateGet_ConserveVRAM() & kPsychBypassLUTFor10BitFramebuffer))
+				    && PsychOSIsKernelDriverAvailable(windowRecord->screenNumber)) {
 					// Try to switch framebuffer back to standard 8 bpc mode. This will silently
 					// do nothing if framebuffer wasn't in non-8bpc mode:
 					PsychEnableNative10BitFramebuffer(windowRecord, FALSE);
