@@ -485,6 +485,16 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // Show our new window:
   XMapWindow(dpy, win);
 
+  // Spin-Wait for it to be really mapped:
+  while (1) {
+      XEvent ev;
+      XNextEvent(dpy, &ev);
+      if (ev.type == MapNotify)
+          break;
+
+      PsychYieldIntervalSeconds(0.001);
+  }
+  
   // Setup window transparency for user input (keyboard and mouse events):
   if (windowLevel < 1500) {
 	// Need to try to be transparent for keyboard events and mouse clicks:
