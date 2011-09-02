@@ -37,6 +37,9 @@
 /* XAtom support for setup of transparent windows: */
 #include <X11/Xatom.h>
 
+// Use dedicated x-display handles for each onscreen window?
+static psych_bool usePerWindowXConnections = FALSE;
+
 // Number of currently open onscreen windows:
 static int x11_windowcount = 0;
 
@@ -189,6 +192,21 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // for the corresponding X-Server connection.
   PsychGetCGDisplayIDFromScreenNumber(&dpy, screenSettings->screenNumber);
   scrnum = PsychGetXScreenIdForScreen(screenSettings->screenNumber);
+
+  usePerWindowXConnections = (getenv("PTB_USEPERWINDOWXCONNECTIONS")) ? TRUE : FALSE;
+  if (usePerWindowXConnections) {
+    // Open a dedicated X-Display connection for this onscreen window. This to
+    // avoid parallel ops on multiple onscreen windows, e.g., async swaps via flip-threads,
+    // from blocking on a single shared x-display connection.
+    // The dedicated handle is a clone of the x-display handle/connection for
+    // the parent-screen associated with this onscreen window:
+    dpy = XOpenDisplay(DisplayString(dpy));
+    if (NULL == dpy) {
+      // Failed! We are sooo done :-(
+      printf("\nPTB-ERROR[XOpenDisplay() failed]: Couldn't get a dedicated x-display connection for this window to X-Server.\n\n");
+      return(FALSE);
+    }
+  }
 
   // Check if this should be a fullscreen window, and if not, what its dimensions
   // should be:
@@ -660,7 +678,7 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 
 	// We have to rebind the OpenGL context for this swapbuffers call to work around some
 	// mesa bug for intel drivers which would cause a crash without context:
-	glXMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.contextObject);
+	glXMakeCurrent(dpy, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.contextObject);
 
 	PsychOSFlipWindowBuffers(windowRecord);
 	PsychOSGetPostSwapSBC(windowRecord);
@@ -671,15 +689,15 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
   }
 
   // Detach OpenGL rendering context again - just to be safe!
-  glXMakeCurrent(windowRecord->targetSpecific.deviceContext, None, NULL);
+  glXMakeCurrent(dpy, None, NULL);
 
   // Delete rendering context:
-  glXDestroyContext(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.contextObject);
+  glXDestroyContext(dpy, windowRecord->targetSpecific.contextObject);
   windowRecord->targetSpecific.contextObject=NULL;
 
   // Delete userspace context, if any:
   if (windowRecord->targetSpecific.glusercontextObject) {
-    glXDestroyContext(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.glusercontextObject);
+    glXDestroyContext(dpy, windowRecord->targetSpecific.glusercontextObject);
     windowRecord->targetSpecific.glusercontextObject = NULL;
   }
 
@@ -687,19 +705,19 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
   XSync(dpy, 0);
 
   // Close & Destroy the window:
-  XUnmapWindow(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle);
+  XUnmapWindow(dpy, windowRecord->targetSpecific.windowHandle);
 
   // Wait for X-Server to settle...
   XSync(dpy, 0);
 
-  XDestroyWindow(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle);
+  XDestroyWindow(dpy, windowRecord->targetSpecific.windowHandle);
   windowRecord->targetSpecific.windowHandle=0;
 
   // Wait for X-Server to settle...
   XSync(dpy, 0);
 
   // Release device context: We just release the reference. The connection to the display is
-  // closed somewhere else.
+  // closed below.
   windowRecord->targetSpecific.deviceContext=NULL;
 
   // Decrement global count of open onscreen windows:
@@ -715,6 +733,11 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     
     // Unmap/release possibly mapped device memory: Defined in PsychScreenGlue.c
     PsychScreenUnmapDeviceMemory();
+  }
+
+  // Release dedicated x-display connection for the dead window:
+  if (usePerWindowXConnections) {
+    XCloseDisplay(dpy);
   }
 
   // Done.
