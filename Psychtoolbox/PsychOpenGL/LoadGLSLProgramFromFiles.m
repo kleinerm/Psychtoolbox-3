@@ -109,8 +109,8 @@ if ischar(filenames)
     filenames=[];
     
     for i=1:numshaders
-        [dummy1 curname curext curver] = fileparts(shaderobjs(i).name);
-        shadername = [curname curext curver];
+        [dummy1 curname curext] = fileparts(shaderobjs(i).name);
+        shadername = [curname curext];
         filenames{i} = [shaderobjpath shadername]; %#ok<AGROW>
     end;
 end;

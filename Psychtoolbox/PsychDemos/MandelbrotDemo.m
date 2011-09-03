@@ -112,7 +112,7 @@ while ~KbCheck
     [x y buttons] = GetMouse(win);
 
     % Left mouse button pressed?
-    if buttons(1) || 1
+    if buttons(1)
         % Increase zoom factor:
         zoom = zoom + 0.01 * zoom;
     end
@@ -122,7 +122,7 @@ while ~KbCheck
         % Decrease zoom factor:
         zoom = zoom - 0.01 * zoom;
     end
-        
+
     % Map the current mouse pointer position to the area of the texture
     % that should be drawn - the area of interest in the complex number
     % plane:
@@ -135,7 +135,7 @@ while ~KbCheck
     Screen('DrawTexture', win, mandelbrottex, srcRect, winRect);
 
     % Show updated image via buffer flip at next retrace:
-    vbl = Screen('Flip', win, vbl+0.001);
+    vbl = Screen('Flip', win, vbl+0.005);
 end
 
 % Done. Print some runtime stats:
