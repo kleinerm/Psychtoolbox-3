@@ -566,7 +566,7 @@ PsychError SCREENGetMouseHelper(void)
 			}
 
 			screenNumber = windowRecord->screenNumber;
-			mywin = windowRecord->targetSpecific.windowHandle;
+			mywin = windowRecord->targetSpecific.xwindowHandle;
 
 			// Map screenNumber to X11 display handle and screenid:
 			PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);

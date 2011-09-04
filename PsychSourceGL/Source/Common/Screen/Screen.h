@@ -236,6 +236,8 @@ PsychError		SCREENWaitUntilAsyncFlipCertain(void);
 PsychError		SCREENCreateMovie(void);
 PsychError		SCREENFinalizeMovie(void);
 PsychError      SCREENAddAudioBufferToMovie(void);
+PsychError      SCREENGetFlipInfo(void);
+
 //PsychError SCREENSetGLSynchronous(void);		//SCREENSetGLSynchronous.c
 
 

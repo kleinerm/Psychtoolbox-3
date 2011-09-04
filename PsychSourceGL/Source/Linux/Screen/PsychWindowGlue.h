@@ -58,8 +58,8 @@ int PsychGetXScreenIdForScreen(int screenNumber);
 // Special OpenML init and test, only defined on Linux/X11:
 void	PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord);
 
+// Special logging function, Linux/X11 only:
+psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int cmd, int aux1);
+
 //end include once
 #endif
-
-
-

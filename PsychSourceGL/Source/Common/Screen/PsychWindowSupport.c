@@ -2411,6 +2411,11 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		targetWhen = tremaining - 1.0;
 	}
 
+	// Invalidate target swapbuffer count values. Will get set to useful values
+	// if PsychOSScheduleFlipWindowBuffers() succeeds:
+	windowRecord->target_sbc = 0;
+	if (windowRecord->slaveWindow) windowRecord->slaveWindow->target_sbc = 0;
+
 	// Emit swap scheduling commands:
 	// These are allowed to fail, due to some error condition or simply because this
 	// function isn't supported on a given platform or configuration. Set our status
@@ -3214,9 +3219,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         
         // Invalidate timestamp of last vbl:
         windowRecord->time_at_last_vbl = 0;
-		windowRecord->rawtime_at_swapcompletion = 0;
-		windowRecord->postflip_vbltimestamp = -1;
-		windowRecord->osbuiltin_swaptime = 0;
+	windowRecord->rawtime_at_swapcompletion = 0;
+	windowRecord->postflip_vbltimestamp = -1;
+	windowRecord->osbuiltin_swaptime = 0;
     }
 
 	// Increment the "flips successfully completed" counter:
