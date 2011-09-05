@@ -1,5 +1,6 @@
-function strc = Explode(vect,splitvect,mode)
+function varargout = Explode(vect,splitvect,mode)
 % outputcell = Explode(vect,splitvect,mode)
+% [out1,out2,...] = Explode(vect,splitvect,mode)
 % 
 % Split a string or vector VECT by a string, scalar or vector SPLITSVECT.
 % Output OUTPUTCELL will be returned as an array of cells.
@@ -47,6 +48,7 @@ function strc = Explode(vect,splitvect,mode)
 % numerical vectors
 % SPLITSVECT can be specified using two formats (MODE):
 % If MODE is not specified, 'fixed' will be used
+% NB: splitting floats works, but precision will be lost
 %
 %   'fixed'    : a fixed number or sequence of number, which will be used
 %                literally to split the vector.
@@ -66,7 +68,8 @@ function strc = Explode(vect,splitvect,mode)
 %                       [ 45    15    64]
 % 
 %   'variable' : If you want to split on a sequence of numbers that
-%                contains (a) wildcard(s).
+%                contains (a) wildcard(s). Each wilcard can match a single
+%                item in the vector.
 %                NaN specifies a wildcard. When using 'variable' for
 %                numeric input, you can thus no longer use NaN in your
 %                pattern.
@@ -76,12 +79,21 @@ function strc = Explode(vect,splitvect,mode)
 %                   n2(:)
 %                   ans = 
 %                       [Inf    33]
-%                       [NaN    46    74]
-%                       [ 21]
+%                       [NaN    46    74    12    35    64    13    21]
+%
+%                   n2 = Explode(n1,[12 nan nan 13],'variable');
+%                   n2(:)
+%                   ans = 
+%                       [Inf    33    12    45    13   NaN    46    74]
+%                       [21]
 
 % DN 2008
 % DN 2008-07-31 Added checking of MATLAB version
 % DN 2010-12-29 Fixed version check now that subversion is over .9...
+% DN 2011-09-05 Fixed a lot of numeric splitting. Now deals with floats
+%               correctly (though precision is still lost), supports
+%               variable number of outputs and clarified meaning of
+%               wildcard for number splitting.
 
 mver = ver('matlab');
 psychassert(str2double(mver.Version(1))>=7 && str2double(mver.Version(3:end))>2,'Need at least MATLAB R2006b');
@@ -110,15 +122,23 @@ if ischar(vect)
 elseif isnumeric(vect)
     dtype       = class(vect);
     vect        = num2str(vect(:)');                                    % make sure its a columnvector and convert to string
-    splitvect   = num2str(splitvect);
+    qisNaN      = all(isnan(splitvect(:)));
+    splitvect   = num2str(splitvect(:)');
     splitvect   = regexprep(splitvect,'\s+','\\s+');
     if ~qfixed
-        splitvect   = regexprep(splitvect,'[nN]a[nN]','\.+?');
+        psychassert(~qisNaN,'When mode==''variable'', split vector cannot contain only nan, cannot split on only a wildcard')
+        splitvect   = regexprep(splitvect,'[nN]a[nN]','[\\w\\d\\.]+?');
     end
     
-    split       = regexp(vect,splitvect,'split');
-    func        = @(x)cast(str2num(x),dtype);
+    split       = regexp(vect,['(?<=\s)' splitvect '(?=\s)'],'split');
+    func        = @(x)cast(str2num(x),dtype); %#ok<ST2NM>
     strc        = cellfun(func,split,'UniformOutput',false);
 else
     error('input van type %s niet ondersteund',class(vect));
+end
+
+if nargout <= 1
+    varargout{1} = strc;
+else
+    varargout = strc;
 end
