@@ -214,6 +214,7 @@ typedef struct{
   GLXContext		contextObject;       // GLX OpenGL rendering context.
   int             	pixelFormatObject;   // Just here for compatibility. Its a dummy entry without meaning.
   Display*              deviceContext;       // Pointer to the X11 display connection.
+  Display*              privDpy;             // Pointer to the private X11 display connection for non-OpenGL ops.
   GLXWindow             windowHandle;        // Handle to the onscreen window.
   Window                xwindowHandle;       // Associated X-Window if any.
   GLXContext		glusercontextObject; // OpenGL context for userspace rendering code, e.g., moglcore...

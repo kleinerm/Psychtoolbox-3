@@ -202,15 +202,46 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   PsychGetCGDisplayIDFromScreenNumber(&dpy, screenSettings->screenNumber);
   scrnum = PsychGetXScreenIdForScreen(screenSettings->screenNumber);
 
+  // Default to use of one shared x-display connection "dpy" for all onscreen windows
+  // on a given x-display and x-screen:
+  windowRecord->targetSpecific.privDpy = dpy;
+
+  // Override with per-window x-display connection if requested by environment variable:
   usePerWindowXConnections = (getenv("PTB_USEPERWINDOWXCONNECTIONS")) ? TRUE : FALSE;
   if (usePerWindowXConnections) {
-    // Open a dedicated X-Display connection for this onscreen window. This to
+    // Open a dedicated X-Display connection for this onscreen window. This is meant to
     // avoid parallel ops on multiple onscreen windows, e.g., async swaps via flip-threads,
     // from blocking on a single shared x-display connection.
     // The dedicated handle is a clone of the x-display handle/connection for
     // the parent-screen associated with this onscreen window:
-    dpy = XOpenDisplay(DisplayString(dpy));
-    if (NULL == dpy) {
+    //
+    // NOTICE: As of September 2011 and X-Server 1.9.x and 1.10.x, this doesn't work
+    //         well at all! It is entirely useless in its current form, just left for
+    //         documentation, and in case we find some better - and actually working -
+    //         use case for per-window x-display connections in the future.
+    //
+    // Problems with the current approach:
+    //
+    // * If we create each onscreen window (== GLXDrawable) and associated OpenGL
+    //   contexts on a separate x-display connection, the OpenGL contexts apparently
+    //   can't share resources like texture objects, FBO's, PBO's, VBO's, display lists
+    //   or shaders. This is an absolute no-go for PTB's rendering architecture!
+    //
+    // * If we use the master dpy connection for OpenGL ops and only dedicated connections
+    //   for non-OpenGL GLX ops, e.g., the OML_sync_control functions, then those functions
+    //   fail with BadContext errors and i couldn't find any way or hack around it.
+    //
+    // * Other than those cases, there isn't any real use for dedicated x-display connections
+    //   at the moment.
+    //
+    // It is unclear if these problems are due to bugs in the X-Server / DRI2 infrastructure,
+    // really weird and subtile bugs in our code, or if we simply tried doing something that
+    // is unsupported and forbidden by design of the X-Window system / X11-Protocol.
+    //
+    // Anyway leave the setup code here, it is disabled by default anyway, so no harm done,
+    // and maybe useful for testing if it is our bug, their bug or unsupported behaviour...
+    windowRecord->targetSpecific.privDpy = XOpenDisplay(DisplayString(dpy));
+    if (NULL == windowRecord->targetSpecific.privDpy) {
       // Failed! We are sooo done :-(
       printf("\nPTB-ERROR[XOpenDisplay() failed]: Couldn't get a dedicated x-display connection for this window to X-Server.\n\n");
       return(FALSE);
@@ -737,7 +768,7 @@ static psych_int64 PsychOSGetPostSwapSBC(PsychWindowRecordType *windowRecord)
 	if ((NULL == glXWaitForSbcOML) || (windowRecord->specialflags & kPsychOpenMLDefective)) return(0);
 
 	// Extension supported: Perform query and error check.
-	if (!glXWaitForSbcOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, 0, &ust, &msc, &sbc)) {
+	if (!glXWaitForSbcOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, 0, &ust, &msc, &sbc)) {
 		// Failed! Return a "damage neutral" result:
 		return(0);
 	}
@@ -822,7 +853,7 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 
   // Release dedicated x-display connection for the dead window:
   if (usePerWindowXConnections) {
-    XCloseDisplay(dpy);
+    XCloseDisplay(windowRecord->targetSpecific.privDpy);
   }
 
   // Done.
@@ -845,7 +876,7 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
 	// Ok, this will return VBL count and last VBL time via the OML GetSyncValuesOML call
 	// if that extension is supported on this setup. As of mid 2009 i'm not aware of any
 	// affordable graphics card that would support this extension, but who knows??
-	if ((NULL != glXGetSyncValuesOML) && !(windowRecord->specialflags & kPsychOpenMLDefective) && (glXGetSyncValuesOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, (int64_t*) &ust, (int64_t*) &msc, (int64_t*) &sbc))) {
+	if ((NULL != glXGetSyncValuesOML) && !(windowRecord->specialflags & kPsychOpenMLDefective) && (glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, (int64_t*) &ust, (int64_t*) &msc, (int64_t*) &sbc))) {
 		*vblCount = msc;
 		if ((PsychGetKernelTimebaseFrequencyHz() > 10000) && !(windowRecord->specialflags & kPsychNeedOpenMLWorkaround1)) {
 			// Convert ust into regular GetSecs timestamp:
@@ -914,8 +945,14 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 
 	if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Supported. Calling with targetSBC = %lld.\n", targetSBC);
 
+	while (!PsychIsLastOnscreenWindow(windowRecord) &&
+	       glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc) &&
+	       (sbc < windowRecord->target_sbc)) {
+		PsychYieldIntervalSeconds(0.001);
+	}
+
 	// Extension supported: Perform query and error check.
-	if (!glXWaitForSbcOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, targetSBC, &ust, &msc, &sbc)) {
+	if (!glXWaitForSbcOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, targetSBC, &ust, &msc, &sbc)) {
 		// OpenML supposed to be supported and in good working order according to startup check?
 		if (windowRecord->gfxcaps & kPsychGfxCapSupportsOpenML) {
 			// Yes. Then this is a new failure condition and we report it as such:
@@ -953,7 +990,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 	// as returned from glXWaitForSbcOML() has already been converted into GetSecs() timebase and returned
 	// in tSwap, so it is ok to overwrite ust here:
 	if (msc == 0) {
-		if (!glXGetSyncValuesOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc)) {
+		if (!glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc)) {
 			// Ohoh:
 			if (PsychPrefStateGet_Verbosity() > 11) {
 				printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Invalid return values ust = %lld, msc = %lld from glXGetSyncValuesOML() call with success return code (sbc = %lld)! Failing with rc = -1.\n", ust, msc, sbc);
@@ -998,8 +1035,8 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 
 	// Perform a wait for 3 video refresh cycles to get valid (ust,msc,sbc)
 	// values for initialization of windowRecord's cached values:
-	if (!glXGetSyncValuesOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc) || (msc == 0) ||
-		!glXWaitForMscOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, msc + 3, 0, 0, &ust, &msc, &sbc) || (ust == 0)) {
+	if (!glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc) || (msc == 0) ||
+		!glXWaitForMscOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, msc + 3, 0, 0, &ust, &msc, &sbc) || (ust == 0)) {
 		
 		// Basic OpenML functions failed?!? Not good! Disable OpenML, warn user:
 		windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
@@ -1029,7 +1066,7 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 		PsychWaitIntervalSeconds(0.000250);
 		
 		// Query current (msc, ust):
-		if (!glXGetSyncValuesOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc)) {
+		if (!glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc)) {
 			// Query failed!
 			failed = TRUE;
 		}
@@ -1130,7 +1167,7 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 		// Get current (msc,ust) reference values for computation.
 		
 		// Get current values for (msc, ust, sbc) the textbook way: Return error code -2 on failure:
-		if (!glXGetSyncValuesOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc)) return(-2);
+		if (!glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc)) return(-2);
 		
 		// glXGetSyncValuesOML() known to return totally bogus ust timestamps? Or ust <= 0 returned,
 		// which means a temporary (EAGAIN style) failure?
@@ -1148,7 +1185,7 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 				// pair on return from blocking wait. Wait until msc+2 is reached and retrieve
 				// updated (msc, ust):
 				if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSScheduleFlipWindowBuffers: glXWaitForMscOML until msc = %lld, now msc = %lld.\n", msc + 2, msc);
-				if (!glXWaitForMscOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, msc + 2, 0, 0, &ust, &msc, &sbc)) return(-3);
+				if (!glXWaitForMscOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, msc + 2, 0, 0, &ust, &msc, &sbc)) return(-3);
 			}
 			else {
 				// No. Swap deadline is too close to current time. We have no option other than
@@ -1189,7 +1226,7 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 
 	// Ok, we have a valid final targetMSC. Schedule a bufferswap for that targetMSC, taking a potential
 	// (divisor, remainder) constraint into account:
-	rc = glXSwapBuffersMscOML(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, targetMSC, divisor, remainder);
+	rc = glXSwapBuffersMscOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, targetMSC, divisor, remainder);
 
 	// Failed? Return -4 error code if so:
 	if (rc == -1) return(-4);
@@ -1218,7 +1255,8 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 	PsychExecuteBufferSwapPrefix(windowRecord);
 	
 	// Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
-	glXSwapBuffers(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle);
+	glXSwapBuffers(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle);
+	windowRecord->target_sbc = 0;
 }
 
 /* Enable/disable syncing of buffer-swaps to vertical retrace. */
