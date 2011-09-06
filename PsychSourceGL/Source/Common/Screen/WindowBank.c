@@ -536,9 +536,7 @@ void  PsychAssignParentWindow(PsychWindowRecordType *childWin, PsychWindowRecord
 	childWin->parentWindow = parentWin;
 	
 	// Copy some state and settings from parent to child:
-	childWin->targetSpecific.contextObject = parentWin->targetSpecific.contextObject;
-	childWin->targetSpecific.deviceContext = parentWin->targetSpecific.deviceContext;
-	childWin->targetSpecific.glusercontextObject = parentWin->targetSpecific.glusercontextObject;
+	memcpy(&childWin->targetSpecific, &parentWin->targetSpecific, sizeof(parentWin->targetSpecific));
 
 	// Copy default drawing shaders from parent:
 	childWin->defaultDrawShader   = parentWin->defaultDrawShader;

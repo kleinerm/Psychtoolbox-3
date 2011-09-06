@@ -46,8 +46,8 @@ Screen('TextFont',w, 'Courier');
 Screen('TextSize', w, 50);
 Screen('TextStyle', w, 0);
 Screen('DrawText', w, 'This is text.', 100, 100, [255, 255, 255]);
+Screen('Flip', w);
 wImage=double(Screen('GetImage', w));
-
 
 Screen('PutImage', w, abs(oswImage - wImage));
 %Screen('PutImage', w, oswImage);

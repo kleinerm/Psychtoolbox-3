@@ -715,7 +715,7 @@ void PsychFreeTextureForWindowRecord(PsychWindowRecordType *win)
         if ((win->textureMemory) && (win->textureNumber > 0)) glFinish(); // FinishObjectAPPLE(GL_TEXTURE_2D, win->textureNumber);
 
         // Perform standard OpenGL texture cleanup if needed:
-		if (&win->textureNumber != 0) {
+		if (win->textureNumber != 0) {
 			glDeleteTextures(1, &win->textureNumber);
 
 			// Accounting... ...this is only a rough guesstimate:
