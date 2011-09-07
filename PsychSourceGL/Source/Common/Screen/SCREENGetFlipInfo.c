@@ -99,7 +99,7 @@ PsychError SCREENGetFlipInfo(void)
 		return(PsychError_none);
 	}
 #else
-	PsychErrorExitMsg(PsychError_unsupported, "Sorry, this function is only supported on Linux.");
+	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is only supported on Linux.");
 #endif
 
 	// Done.

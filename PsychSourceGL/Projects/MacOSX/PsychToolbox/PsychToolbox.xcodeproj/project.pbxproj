@@ -1839,6 +1839,8 @@
 		83CBD6840BC02323007CB68C /* moglcore.c in Sources */ = {isa = PBXBuildFile; fileRef = 83CBD67A0BC02323007CB68C /* moglcore.c */; };
 		83CBD6F90BC02F0E007CB68C /* mogl_rebinder.c in Sources */ = {isa = PBXBuildFile; fileRef = 83CBD6F80BC02F0E007CB68C /* mogl_rebinder.c */; settings = {COMPILER_FLAGS = "-x c"; }; };
 		83CC360C0F63046B00EBA5E7 /* PsychHIDGenericUSBSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = F13E934E0F534180007D7EA0 /* PsychHIDGenericUSBSupport.c */; };
+		83D42C2F1417FE9700C83ED1 /* SCREENGetFlipInfo.c in Sources */ = {isa = PBXBuildFile; fileRef = 83D42C2E1417FE9700C83ED1 /* SCREENGetFlipInfo.c */; };
+		83D42C301417FE9700C83ED1 /* SCREENGetFlipInfo.c in Sources */ = {isa = PBXBuildFile; fileRef = 83D42C2E1417FE9700C83ED1 /* SCREENGetFlipInfo.c */; };
 		83D93B2C0A4D03B900B82353 /* SCREENSetOpenGLTextureFromMemPointer.c in Sources */ = {isa = PBXBuildFile; fileRef = 83D93B2B0A4D03B900B82353 /* SCREENSetOpenGLTextureFromMemPointer.c */; };
 		83DBBD000C332374002B3C93 /* AGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83DBBCFF0C332374002B3C93 /* AGL.framework */; };
 		83DBBD010C332374002B3C93 /* AGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83DBBCFF0C332374002B3C93 /* AGL.framework */; };
@@ -3837,6 +3839,7 @@
 		83CBD67A0BC02323007CB68C /* moglcore.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = moglcore.c; path = ../../../../Psychtoolbox/PsychOpenGL/MOGL/source/moglcore.c; sourceTree = SOURCE_ROOT; };
 		83CBD67C0BC02323007CB68C /* mogltypes.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = mogltypes.h; path = ../../../../Psychtoolbox/PsychOpenGL/MOGL/source/mogltypes.h; sourceTree = SOURCE_ROOT; };
 		83CBD6F80BC02F0E007CB68C /* mogl_rebinder.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = mogl_rebinder.c; path = ../../../../Psychtoolbox/PsychOpenGL/MOGL/source/mogl_rebinder.c; sourceTree = SOURCE_ROOT; };
+		83D42C2E1417FE9700C83ED1 /* SCREENGetFlipInfo.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENGetFlipInfo.c; path = ../../../Source/Common/Screen/SCREENGetFlipInfo.c; sourceTree = SOURCE_ROOT; };
 		83D93B2B0A4D03B900B82353 /* SCREENSetOpenGLTextureFromMemPointer.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENSetOpenGLTextureFromMemPointer.c; path = ../../../Source/Common/Screen/SCREENSetOpenGLTextureFromMemPointer.c; sourceTree = SOURCE_ROOT; };
 		83DBBCFF0C332374002B3C93 /* AGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AGL.framework; path = /Developer/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks/AGL.framework; sourceTree = "<absolute>"; };
 		83E2C4130D2FC58200FFD350 /* PsychCV.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = PsychCV.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -5618,6 +5621,7 @@
 				2FE9BD3306B1C24B00DB1E5A /* SCREENFrameRect.c */,
 				F56F552003EDF2F101A80168 /* SCREENGamma.c */,
 				8365A786099921A9006FF0F4 /* SCREENGetCapturedImage.c */,
+				83D42C2E1417FE9700C83ED1 /* SCREENGetFlipInfo.c */,
 				2F56E1D006095AB300A62EA5 /* SCREENGetFlipInterval.c */,
 				F569F25C038E2C77017A7028 /* SCREENGetImage.c */,
 				2FC12E5E07433E3100991CF0 /* SCREENGetMouseHelper.c */,
@@ -11405,6 +11409,7 @@
 				833D8C9712DBDCB500C3B444 /* PsychVideoCaptureSupportGStreamer.c in Sources */,
 				8353D224139DA14400528754 /* PsychMovieWritingSupportGStreamer.c in Sources */,
 				8353D234139DA34C00528754 /* PsychMovieSupportGStreamer.c in Sources */,
+				83D42C2F1417FE9700C83ED1 /* SCREENGetFlipInfo.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11910,6 +11915,7 @@
 				833D8C9812DBDCB500C3B444 /* PsychVideoCaptureSupportGStreamer.c in Sources */,
 				8353D225139DA14400528754 /* PsychMovieWritingSupportGStreamer.c in Sources */,
 				8353D235139DA34C00528754 /* PsychMovieSupportGStreamer.c in Sources */,
+				83D42C301417FE9700C83ED1 /* SCREENGetFlipInfo.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
