@@ -945,10 +945,41 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 
 	if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Supported. Calling with targetSBC = %lld.\n", targetSBC);
 
-	while (!PsychIsLastOnscreenWindow(windowRecord) &&
+	// If this is a vsync'ed swap which potentially waits until a future point in time before completing, then
+	// glXWaitForSbcOML() may block until that future point in time. Doing so, it will block the used x-display
+	// connection to the X-Server. If we are not the only onscreen window in existence and use of per-window
+	// x-display connections is disabled then we share this connection with all other onscreen windows. If
+	// currently any asynchronous swaps are pending via async background flip threads, then us blocking
+	// the shared x-display connection in glXWaitForSbcOML() would prevent those other threads from
+	// communicating with the X-Server, effectively destroying all parallelism for background swap execution.
+	// As a consequence all scheduled swaps on all onscreen windows would execute and finalize in lock-step,
+	// rendering the requested stimulus onset presentation times for those windows dysfunctional, therefore
+	// massively disrupting the wanted presentation timing!
+	//
+	// To prevent this, we must only call glXWaitForSbcOML() after we can be certain the swap completed. We
+	// do this by waiting via polling. We poll the current sbc value and compare against the target value for
+	// confirmed swap completion. Only then we continue to glXWaitForSbcOML() to collect the swap info non-blocking.
+	//
+	// This is the polling loop:
+	while ((windowRecord->vSynced) && !PsychIsLastOnscreenWindow(windowRecord) && (PsychGetNrAsyncFlipsActive() > 0) &&
+	       (windowRecord->targetSpecific.privDpy == windowRecord->targetSpecific.deviceContext) &&
 	       glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc) &&
 	       (sbc < windowRecord->target_sbc)) {
-		PsychYieldIntervalSeconds(0.001);
+		// Wanted 'sbc' value of target_sbc not yet reached -> The bufferswap isn't confirmed to be completed yet.
+		// Need to wait a bit to release the cpu for other threads and processes, then repoll for swap completion.
+
+		// Is the current video refresh cycle count 'msc' already at or past the expected count of swap completion?
+		if (msc < windowRecord->lastSwaptarget_msc) {
+			// No: At time 'ust', the 'msc' was at least one refresh cycle duration away from the earliest possible
+			// count of swap completion. That means the swap won't complete earlier than at least one refresh
+			// duration after 'ust'. Let's go to sleep and wait until almost until that point in time, aka
+			// 'ust' + 1 video refresh duration:
+			PsychWaitUntilSeconds(PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz()) + windowRecord->VideoRefreshInterval - 0.001);
+		} else {
+			// Yes: Swap completion can happen almost any time now. Sleep for a millisecond, then repoll:
+			PsychYieldIntervalSeconds(0.001);
+		}
+		// Repoll for swap completion...
 	}
 
 	// Extension supported: Perform query and error check.

@@ -52,15 +52,16 @@ void	PsychSetUserspaceGLFlag(psych_bool inuserspace);
 psych_bool PsychIsUserspaceRendering(void);
 double	PsychGetWhiteValueFromWindow(PsychWindowRecordType *windowRecord);
 void	PsychSwitchFixedFunctionStereoDrawbuffer(PsychWindowRecordType *windowRecord);
-int		PsychRessourceCheckAndReminder(psych_bool displayMessage);
+int	PsychRessourceCheckAndReminder(psych_bool displayMessage);
 psych_bool	PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord);
 void	PsychReleaseFlipInfoStruct(PsychWindowRecordType *windowRecord);
-int		PsychSetShader(PsychWindowRecordType *windowRecord, int shader);
+int	PsychSetShader(PsychWindowRecordType *windowRecord, int shader);
 void	PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord);
 void	PsychExecuteBufferSwapPrefix(PsychWindowRecordType *windowRecord);
-int		PsychGetCurrentShader(PsychWindowRecordType *windowRecord);
+int	PsychGetCurrentShader(PsychWindowRecordType *windowRecord);
 void	PsychBackupFramebufferToBackingTexture(PsychWindowRecordType *backupRendertarget);
-int		PsychFindFreeSwapGroupId(int maxGroupId);
+int	PsychFindFreeSwapGroupId(int maxGroupId);
+unsigned int PsychGetNrAsyncFlipsActive(void);
 
 //end include once
 #endif

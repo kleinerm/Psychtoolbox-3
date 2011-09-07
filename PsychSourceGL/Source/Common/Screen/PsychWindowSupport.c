@@ -86,6 +86,12 @@ static psych_threadid	masterthread = (psych_threadid) NULL;
 // Count of currently async-flipping onscreen windows:
 static unsigned int	asyncFlipOpsActive = 0;
 
+// Return count of currently async-flipping onscreen windows:
+unsigned int PsychGetNrAsyncFlipsActive(void)
+{
+	return(asyncFlipOpsActive);
+}
+
 // Dynamic rebinding of ARB extensions to core routines:
 // This is a trick to get GLSL working on current OS-X (10.4.4). MacOS-X supports the OpenGL
 // shading language on all graphics cards as an ARB extension. But as OS-X only supports
