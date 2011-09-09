@@ -57,7 +57,7 @@ function PsychtoolboxRegistration(isUpdate, flavor)
 %            trouble for users with misconfigured virus scanners. (MK).
 
 % Address and port number of our statistics server:
-ptbserveraddress = 'platypus.psych.upenn.edu';
+ptbserveraddress = 'psychtoolbox.org';
 
 % Running under OpenGL-PTB? Otherwise we abort.
 AssertOpenGL;
