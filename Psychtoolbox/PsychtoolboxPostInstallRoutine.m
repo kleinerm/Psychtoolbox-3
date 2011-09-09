@@ -522,9 +522,9 @@ if ~IsOctave
         fprintf('%s\n\n', lerr.message);
         fprintf('Either you have a very old Matlab version which does not support JAVA or, most\n');
         fprintf('likely, you do not have sufficient access permissions for the Matlab application folder\n');
-        fprintf('to change the file %s .\n', classpathFile);
-        fprintf('Please ask the system administrator to enable write-access to that file and repeat the\n');        
-        fprintf('update procedure.\n');
+        fprintf('or file itself to change the file %s .\n', classpathFile);
+        fprintf('Please ask the system administrator to enable write-access to that file and its\n');        
+        fprintf('containing folder and then repeat the update procedure.\n');
         fprintf('Alternatively, ask the administrator to add the following line:\n');
         fprintf('%s\n', path_PsychJava);
         fprintf('to the file: %s\n\n', classpathFile);        
