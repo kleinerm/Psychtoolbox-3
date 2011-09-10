@@ -643,10 +643,10 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     crtcs[o] = crtcid;
 
     printf("PTB-INFO: Display '%s' : Screen %i : Output %i [%s]: %s : ",
-	   DisplayString(dpy), displayX11Screens[idx], o, (const char*) output_info->name, (isPrimary > -1) ? ((isPrimary == 1) ? "Primary output" : "Secondary output") : "Unknown output");
+	   DisplayString(dpy), displayX11Screens[idx], o, (const char*) output_info->name, (isPrimary > -1) ? ((isPrimary == 1) ? "Primary output" : "Secondary output") : "Unknown or offline output");
     printf("%s : CRTC %i [XID %i]\n", (output_info->connection == RR_Connected) ? "Connected" : "Offline", crtcid, (int) output_info->crtc);
 
-    if (isPrimary > 0) {
+    if ((isPrimary > 0) && (crtcid >= 0)) {
 	primaryOutput = o;
 	primaryCRTC = crtcid;
     }
@@ -658,7 +658,7 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     // output as primary output:
     for (o = 0; o < res->noutput; o++) {
       XRROutputInfo *output_info = XRRGetOutputInfo(dpy, res, res->outputs[o]);
-      if (output_info && output_info->connection == RR_Connected) {
+      if (output_info && (output_info->connection == RR_Connected) && (crtcs[o] >= 0)) {
 	primaryOutput = o;
 	primaryCRTC = crtcs[o];
 	break;
@@ -667,11 +667,14 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     // Still undefined? Use first output as primary output:
     if (primaryOutput == -1) {
 	primaryOutput = 0;
-	primaryCRTC = crtcs[0];
+	primaryCRTC = (crtcs[0] >= 0) ? crtcs[0] : 0;
     }
   }
 
-  printf("PTB-INFO: Display '%s' : Screen %i : Primary output is %i with crtc %i.\n", DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC);
+  printf("PTB-INFO: Display '%s' : Screen %i : Assigning primary output as %i with crtc %i.\n", DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC);
+
+  // Assign primary crtc of primary output as default display head for this screen:
+  PsychSetScreenToHead(idx, primaryCRTC);
 
   return;
 }
@@ -686,6 +689,9 @@ void InitCGDisplayIDList(void)
  
   // NULL-out array of displays:
   for(i=0;i<kPsychMaxPossibleDisplays;i++) displayCGIDs[i]=NULL;
+
+  // Preinit screen to head mappings to identity default:
+  PsychInitScreenToHeadMappings(0);
 
   // Initial count of screens is zero:
   numDisplays = 0;
@@ -785,8 +791,9 @@ void InitCGDisplayIDList(void)
 
   if (numDisplays>1) printf("PTB-Info: A total of %i physical X-Windows display screens is available for use.\n", numDisplays);
 
-  // Initialize screenId -> GPU headId mapping:
-  PsychInitScreenToHeadMappings(numDisplays);
+  // Initialize screenId -> GPU headId mapping to identity mappings,
+  // unless already setup by XRandR setup code:
+  if (!has_xrandr_1_2) PsychInitScreenToHeadMappings(numDisplays);
 
   return;
 }
