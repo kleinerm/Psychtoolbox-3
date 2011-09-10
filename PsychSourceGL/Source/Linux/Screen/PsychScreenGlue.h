@@ -39,6 +39,7 @@
 
 #include <X11/extensions/XInput.h>
 #include <X11/extensions/XInput2.h>
+#include <X11/extensions/Xrandr.h>
 
 //functions from PsychScreenGlue
 void						InitializePsychDisplayGlue(void);

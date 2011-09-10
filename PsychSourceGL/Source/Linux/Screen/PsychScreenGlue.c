@@ -63,6 +63,12 @@
 #define XF86VidModeNumberErrors 0
 #endif
 
+
+// Event and error base for XRandR extension:
+int xr_event, xr_error;
+psych_bool has_xrandr_1_2 = FALSE;
+psych_bool has_xrandr_1_3 = FALSE;
+
 /* Following structures are needed by our ATI/AMD/NVIDIA beamposition query implementation: */
 /* Location and format of the relevant hardware registers of the ATI R500/R600 chips
  * was taken from the official register spec for that chips which was released to
@@ -432,6 +438,7 @@ static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];
 // displayX11Screens stores the mapping of PTB screenNumber's to corresponding X11 screen numbers:
 static int                      displayX11Screens[kPsychMaxPossibleDisplays];
 static psych_bool               displayCursorHidden[kPsychMaxPossibleDisplays];
+static XRRScreenResources*      displayX11ScreenResources[kPsychMaxPossibleDisplays];
 
 // XInput-2 extension data per display:
 static int                      xi_opcode = 0, xi_event = 0, xi_error = 0;
@@ -507,9 +514,13 @@ void InitializePsychDisplayGlue(void)
         displayOverlayedCGSettingsValid[i]=FALSE;
 	displayCursorHidden[i]=FALSE;
 	displayBeampositionHealthy[i]=TRUE;
+	displayX11ScreenResources[i] = NULL;
 	xinput_ndevices[i]=0;
 	xinput_info[i]=NULL;
     }
+
+    has_xrandr_1_2 = FALSE;
+    has_xrandr_1_3 = FALSE;
     
 	if (firstTime) {
 		firstTime = FALSE;
@@ -570,6 +581,101 @@ out:
   return;
 }
 
+static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
+{
+  int major, minor;
+  int o, num_crtcs, isPrimary, crtcid;
+  int primaryOutput = -1, primaryCRTC = -1;
+  int crtcs[100];
+
+  // Preinit to "undefined":
+  displayX11ScreenResources[idx] = NULL;
+
+  // XRandR extension supported? If so do basic init:
+  if (!XRRQueryExtension(dpy, &xr_event, &xr_error) ||
+      !XRRQueryVersion(dpy, &major, &minor)) {
+    printf("PTB-WARNING: XRandR extension unsupported. Display infos and configuration functions will be very limited!\n");
+    return;
+  }
+
+  // Detect version of XRandR:
+  if (major > 1 || (major == 1 && minor >= 2)) has_xrandr_1_2 = TRUE;
+  if (major > 1 || (major == 1 && minor >= 3)) has_xrandr_1_3 = TRUE;
+
+  // Fetch current screen configuration info for this screen and display:
+  Window root = RootWindow(dpy, displayX11Screens[idx]);
+  XRRScreenResources* res = XRRGetScreenResourcesCurrent(dpy, root);
+  displayX11ScreenResources[idx] = res;
+  if (NULL == res) {
+    printf("PTB-WARNING: Could not query configuration of x-screen %i on display %s. Display infos and configuration will be very limited.\n",
+	   displayX11Screens[idx], DisplayString(dpy));
+    return;
+  }
+
+  if (!has_xrandr_1_2) {
+    printf("PTB-WARNING: XRandR version 1.2 unsupported! Could not query useful info for x-screen %i on display %s. Infos and configuration will be very limited.\n",
+	   displayX11Screens[idx], DisplayString(dpy));
+    return;
+  }
+
+  // Iterate over all outputs for this screen:
+  for (o = 0; o < res->noutput; o++) {
+    XRROutputInfo *output_info = XRRGetOutputInfo(dpy, res, res->outputs[o]);
+    if (!output_info) {
+      printf("PTB-WARNING: Could not get output info for %i'th output of screen %i [display %s]!\n", o, displayX11Screens[idx], DisplayString(dpy));
+      continue;
+    }
+
+    // Get info about this output:
+    if (has_xrandr_1_3 && (XRRGetOutputPrimary(dpy, root) > 0)) {
+      isPrimary = (XRRGetOutputPrimary(dpy, root) == output_info->crtc) ? 1 : 0;
+    }
+    else {
+      isPrimary = -1;
+    }
+
+    for (crtcid = 0; crtcid < res->ncrtc; crtcid++) {
+	if (res->crtcs[crtcid] == output_info->crtc) break;
+    }
+    if (crtcid == res->ncrtc) crtcid = -1;
+
+    // Store crtc for this output:
+    crtcs[o] = crtcid;
+
+    printf("PTB-INFO: Display '%s' : Screen %i : Output %i [%s]: %s : ",
+	   DisplayString(dpy), displayX11Screens[idx], o, (const char*) output_info->name, (isPrimary > -1) ? ((isPrimary == 1) ? "Primary output" : "Secondary output") : "Unknown output");
+    printf("%s : CRTC %i [XID %i]\n", (output_info->connection == RR_Connected) ? "Connected" : "Offline", crtcid, (int) output_info->crtc);
+
+    if (isPrimary > 0) {
+	primaryOutput = o;
+	primaryCRTC = crtcid;
+    }
+  }
+
+  // Found a defined primary output?
+  if (primaryOutput == -1) {
+    // Could not find primary output -- none defined. Use first connected
+    // output as primary output:
+    for (o = 0; o < res->noutput; o++) {
+      XRROutputInfo *output_info = XRRGetOutputInfo(dpy, res, res->outputs[o]);
+      if (output_info && output_info->connection == RR_Connected) {
+	primaryOutput = o;
+	primaryCRTC = crtcs[o];
+	break;
+      }
+    }
+    // Still undefined? Use first output as primary output:
+    if (primaryOutput == -1) {
+	primaryOutput = 0;
+	primaryCRTC = crtcs[0];
+    }
+  }
+
+  printf("PTB-INFO: Display '%s' : Screen %i : Primary output is %i with crtc %i.\n", DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC);
+
+  return;
+}
+
 void InitCGDisplayIDList(void)
 {  
   int major, minor;
@@ -623,6 +729,9 @@ void InitCGDisplayIDList(void)
 	    displayCGIDs[k]= x11_dpy;
 	    // Mapping of logical screenNumber to X11 screenNumber for X11 Display:
 	    displayX11Screens[k]=scrnid++;
+
+	    // Get all relevant screen config info and cache it internally:
+	    GetRandRScreenConfig(x11_dpy, k);
 	  }
 
 	  printf(" ...success! Added %i new physical display screens of %s as PTB screens %i to %i.\n",
@@ -667,6 +776,9 @@ void InitCGDisplayIDList(void)
 	displayX11Screens[i]=i;
 	xinput_info[i] = xinput_info[0];
 	xinput_ndevices[i] = xinput_ndevices[0];
+
+	// Get all relevant screen config info and cache it internally:
+	GetRandRScreenConfig(x11_dpy, i);
     }
     numDisplays=i;
   }
