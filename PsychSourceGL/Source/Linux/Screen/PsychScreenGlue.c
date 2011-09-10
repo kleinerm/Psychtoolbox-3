@@ -439,6 +439,7 @@ static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];
 static int                      displayX11Screens[kPsychMaxPossibleDisplays];
 static psych_bool               displayCursorHidden[kPsychMaxPossibleDisplays];
 static XRRScreenResources*      displayX11ScreenResources[kPsychMaxPossibleDisplays];
+static XRRModeInfo*             displayX11Modes[kPsychMaxPossibleDisplays];
 
 // XInput-2 extension data per display:
 static int                      xi_opcode = 0, xi_event = 0, xi_error = 0;
@@ -515,6 +516,7 @@ void InitializePsychDisplayGlue(void)
 	displayCursorHidden[i]=FALSE;
 	displayBeampositionHealthy[i]=TRUE;
 	displayX11ScreenResources[i] = NULL;
+	displayX11Modes[i] = NULL;
 	xinput_ndevices[i]=0;
 	xinput_info[i]=NULL;
     }
@@ -584,7 +586,7 @@ out:
 static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
 {
   int major, minor;
-  int o, num_crtcs, isPrimary, crtcid;
+  int o, m, num_crtcs, isPrimary, crtcid;
   int primaryOutput = -1, primaryCRTC = -1;
   int crtcs[100];
 
@@ -675,6 +677,15 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
 
   // Assign primary crtc of primary output as default display head for this screen:
   PsychSetScreenToHead(idx, primaryCRTC);
+
+  // Query info about primary crtc of primary output:
+  XRRCrtcInfo *crtc_info = XRRGetCrtcInfo(dpy, res, res->crtcs[primaryCRTC]);
+
+  displayX11Modes[idx] = NULL;
+  for (m = 0; m < res->nmode; m++) {
+    XRRModeInfo	*mode = &res->modes[m];
+    if (mode->id == crtc_info->mode) displayX11Modes[idx] = mode;
+  }
 
   return;
 }
@@ -1063,30 +1074,56 @@ float PsychGetNominalFramerate(int screenNumber)
   if(screenNumber>=numDisplays)
     PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); 
 
-  if (!XF86VidModeSetClientVersion(displayCGIDs[screenNumber])) {
-    // Failed to use VidMode-Extension. We just return a vrefresh of zero.
-    return(0);
+  if (displayX11Modes[screenNumber]) {
+    XRRModeInfo	*mode = displayX11Modes[screenNumber];
+
+    if (PsychPrefStateGet_Verbosity() > 4) {
+      printf ("  %s (0x%x) %6.1fMHz\n",
+      mode->name, (int)mode->id,
+      (double)mode->dotClock / 1000000.0);
+      printf ("        h: width  %4d start %4d end %4d total %4d skew %4d\n",
+      mode->width, mode->hSyncStart, mode->hSyncEnd,
+      mode->hTotal, mode->hSkew);
+      printf ("        v: height %4d start %4d end %4d total %4d\n",
+      mode->height, mode->vSyncStart, mode->vSyncEnd, mode->vTotal);
+    }
+
+    dot_clock = (int) ((double) mode->dotClock / 1000.0);
+    mode_line.htotal = mode->hTotal;
+    mode_line.vtotal = mode->vTotal;
+    mode_line.flags = 0;
+    mode_line.flags |= (mode->modeFlags & RR_DoubleScan) ? 0x0020 : 0x0;
+    mode_line.flags |= (mode->modeFlags & RR_Interlace) ? 0x0010 : 0x0;
+  }
+  else {
+    if (!XF86VidModeSetClientVersion(displayCGIDs[screenNumber])) {
+      // Failed to use VidMode-Extension. We just return a vrefresh of zero.
+      return(0);
+    }
+
+    if (!XF86VidModeGetModeLine(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), &dot_clock, &mode_line)) {
+      // Failed to use VidMode-Extension. We just return a vrefresh of zero.
+      return(0);
+    }
   }
 
   // Query vertical refresh rate. If it fails we default to the last known good value...
-  if (XF86VidModeGetModeLine(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), &dot_clock, &mode_line)) {
-    // Vertical refresh rate is: RAMDAC pixel clock / width of a scanline in clockcylces /
-    // number of scanlines per videoframe.
-    vrefresh = (((dot_clock * 1000) / mode_line.htotal) * 1000) / mode_line.vtotal;
+  // Vertical refresh rate is: RAMDAC pixel clock / width of a scanline in clockcylces /
+  // number of scanlines per videoframe.
+  vrefresh = (((dot_clock * 1000) / mode_line.htotal) * 1000) / mode_line.vtotal;
 
-    // Divide vrefresh by 1000 to get real Hz - value:
-    vrefresh = vrefresh / 1000.0f;
+  // Divide vrefresh by 1000 to get real Hz - value:
+  vrefresh = vrefresh / 1000.0f;
 
-    // Definitions from xserver's hw/xfree86/common/xf86str.h
-    // V_INTERLACE	= 0x0010,
-    // V_DBLSCAN	= 0x0020,
+  // Definitions from xserver's hw/xfree86/common/xf86str.h
+  // V_INTERLACE	= 0x0010,
+  // V_DBLSCAN	= 0x0020,
 
-    // Doublescan mode? If so, divide vrefresh by 2:
-    if (mode_line.flags & 0x0020) vrefresh /= 2;
+  // Doublescan mode? If so, divide vrefresh by 2:
+  if (mode_line.flags & 0x0020) vrefresh /= 2;
 
-    // Interlaced mode? If so, multiply vrefresh by 2:
-    if (mode_line.flags & 0x0010) vrefresh *= 2;
-  }
+  // Interlaced mode? If so, multiply vrefresh by 2:
+  if (mode_line.flags & 0x0010) vrefresh *= 2;
 
   // Done.
   return(vrefresh);
