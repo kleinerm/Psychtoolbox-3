@@ -233,6 +233,12 @@
 % on the wrong setup. Try to use the regular way of enabling this in ATI's
 % Catalyst Control Center application if possible.
 %
+% 4194304 (= 2^22) == kPsychIgnoreNominalFramerate
+% Do not use the nominal video refresh rate of a screen as reported by the
+% operating system for internal calibrations and tests. Return zero instead
+% of this rate in calls to Screen('Framerate') or Screen('NominalFramerate').
+% This to work around broken or problematic video refresh reporting mechanisms.
+%
 %
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are

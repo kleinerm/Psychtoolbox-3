@@ -592,6 +592,8 @@ int PsychGetScreenDepthValue(int screenNumber)
 
 int PsychGetNominalFramerate(int screenNumber)
 {
+  if (PsychPrefStateGet_ConserveVRAM() & kPsychIgnoreNominalFramerate) return(0);
+
   if(screenNumber>=numDisplays)
     PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); 
   return(GetDeviceCaps(displayCGIDs[screenNumber], VREFRESH));

@@ -492,6 +492,8 @@ float PsychGetNominalFramerate(int screenNumber)
     CFDictionaryRef currentMode;
     CFNumberRef n;
     double currentFrequency;
+
+    if (PsychPrefStateGet_ConserveVRAM() & kPsychIgnoreNominalFramerate) return(0);
     
     //Get the CG display ID index for the specified display
     if(screenNumber>=numDisplays)

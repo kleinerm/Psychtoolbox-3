@@ -1062,6 +1062,8 @@ int PsychGetScreenDepthValue(int screenNumber)
 
 float PsychGetNominalFramerate(int screenNumber)
 {
+  if (PsychPrefStateGet_ConserveVRAM() & kPsychIgnoreNominalFramerate) return(0);
+
 #ifdef USE_VIDMODEEXTS
 
   // Information returned by the XF86VidModeExtension:

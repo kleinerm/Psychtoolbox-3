@@ -232,6 +232,9 @@ typedef struct {
 // Apply 10 bit framebuffer mode hack, regardless what automatic detection says: 2^21
 #define kPsychEnforce10BitFramebufferHack 2097152
 
+// Do not return OS provided nominal framerate, but zero instead, to override defective OS queries: 2^22
+#define kPsychIgnoreNominalFramerate 4194304
+
 //function protoptypes
 
 //Accessors for PsychDepthType 
