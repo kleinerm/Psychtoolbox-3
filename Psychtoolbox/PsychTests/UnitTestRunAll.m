@@ -7,6 +7,9 @@ clear all; close all;
 % get all scripts from subfolder (note that the FileFromFolder function
 % can't be broken for this to work of course... :P)
 [utests,ntests] = FileFromFolder(fullfile(PsychtoolboxRoot,'PsychTests/UnitTests'),'silent','m');
+% delete contents file as its not executable
+qContents = strcmp('Contents',{utests.fname});
+utests(qContents) = [];
 
 if ntests==0
     error('No Unit Tests found');
