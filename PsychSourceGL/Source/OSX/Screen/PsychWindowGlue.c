@@ -972,22 +972,14 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 	if (windowRecord->targetSpecific.glusercontextObject) CGLDestroyContext(windowRecord->targetSpecific.glusercontextObject);
 
     // Disable low-level mapping of framebuffer cursor memory:
-    if (PsychPrefStateGet_VBLTimestampingMode()>0) {
-        // Map screen number to physical display handle cgDisplayID:
-        PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, windowRecord->screenNumber);
-        
-        // Unmap memory from our VM space, if any mapped:
-        if (fbsharedmem[windowRecord->screenNumber].shmem) {
-            IOConnectUnmapMemory(fbsharedmem[windowRecord->screenNumber].connect, kIOFBCursorMemory, mach_task_self(), (vm_address_t) fbsharedmem[windowRecord->screenNumber].shmem);
-            fbsharedmem[windowRecord->screenNumber].shmem = NULL;
-        }
+    if (fbsharedmem[windowRecord->screenNumber].shmem) {
+        IOConnectUnmapMemory(fbsharedmem[windowRecord->screenNumber].connect, kIOFBCursorMemory, mach_task_self(), (vm_address_t) fbsharedmem[windowRecord->screenNumber].shmem);
+        fbsharedmem[windowRecord->screenNumber].shmem = NULL;
         
         // Close the service port:
-        IOServiceClose(fbsharedmem[windowRecord->screenNumber].connect);  
-
-        // Cleanup done.
+        IOServiceClose(fbsharedmem[windowRecord->screenNumber].connect);
     }
-    
+
 	// Destroy Carbon onscreen window, if any:
 	if (windowRecord->targetSpecific.windowHandle) DisposeWindow(windowRecord->targetSpecific.windowHandle);
 

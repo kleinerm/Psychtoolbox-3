@@ -5074,8 +5074,9 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		}		
 	}
 
-	// Running under Chromium OpenGL virtualization?
-	if (strstr((char*) glGetString(GL_VENDOR), "Humper") && strstr((char*) glGetString(GL_RENDERER), "Chromium")) {
+	// Running under Chromium OpenGL virtualization or Mesa Software Rasterizer?
+	if ((strstr((char*) glGetString(GL_VENDOR), "Humper") && strstr((char*) glGetString(GL_RENDERER), "Chromium")) ||
+        (strstr((char*) glGetString(GL_VENDOR), "Mesa") && strstr((char*) glGetString(GL_RENDERER), "Software Rasterizer"))) {
 		// Yes: We're very likely running inside a Virtual Machine, e.g., VirtualBox.
 		// This does not provide sufficiently accurate display timing for production use of Psychtoolbox.
 		// Output a info message for user and disable all calibrations and sync tests -- they would fail anyway.

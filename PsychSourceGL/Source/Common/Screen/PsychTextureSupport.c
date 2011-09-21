@@ -78,13 +78,13 @@ void PsychDetectTextureTarget(PsychWindowRecordType *win)
         if ((strstr((char*) glGetString(GL_EXTENSIONS), "GL_EXT_texture_rectangle") || strstr((char*) glGetString(GL_EXTENSIONS), "GL_ARB_texture_rectangle")) && GL_TEXTURE_RECTANGLE_EXT != GL_TEXTURE_2D) {
 	    // Great! GL_TEXTURE_RECTANGLE_EXT is available! Use it.
 	    texturetarget = GL_TEXTURE_RECTANGLE_EXT;
-	    if(PsychPrefStateGet_Verbosity()>2)
+	    if(PsychPrefStateGet_Verbosity()>3)
 			printf("PTB-INFO: Using OpenGL GL_TEXTURE_RECTANGLE_EXT extension for efficient high-performance texture mapping...\n");
         }
         else if (strstr((char*) glGetString(GL_EXTENSIONS), "GL_NV_texture_rectangle") && GL_TEXTURE_RECTANGLE_NV != GL_TEXTURE_2D){
 	    // Try NVidia specific texture rectangle extension:
 	    texturetarget = GL_TEXTURE_RECTANGLE_NV;
-	    if(PsychPrefStateGet_Verbosity()>2)
+	    if(PsychPrefStateGet_Verbosity()>3)
 			printf("PTB-INFO: Using NVidia's GL_TEXTURE_RECTANGLE_NV extension for efficient high-performance texture mapping...\n");
         }
         else {

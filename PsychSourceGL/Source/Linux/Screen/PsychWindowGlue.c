@@ -1069,9 +1069,13 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 	if (!glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc) || (msc == 0) ||
 		!glXWaitForMscOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, msc + 3, 0, 0, &ust, &msc, &sbc) || (ust == 0)) {
 		
-		// Basic OpenML functions failed?!? Not good! Disable OpenML, warn user:
+		// Basic OpenML functions failed?!? Not good! Disable OpenML swap scheduling:
 		windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
-		
+
+		// OpenML timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
+		windowRecord->specialflags |= kPsychOpenMLDefective;
+
+		// Warn user:
 		if (PsychPrefStateGet_Verbosity() > 1) {
 			printf("PTB-WARNING: At least one test call for OpenML OML_sync_control extension failed! Will disable OpenML and revert to fallback implementation.\n");
 		}
