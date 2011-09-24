@@ -89,5 +89,8 @@ unsigned int                PsychOSKDGetLUTState(int screenId, unsigned int head
 psych_bool 					PsychScreenMapRadeonCntlMemory(void);
 void 						PsychScreenUnmapDeviceMemory(void);
 
+// Linux only: Retrieve modeline and crtc_info for a specific output on a specific screen:
+XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc);
+
 //end include once
 #endif

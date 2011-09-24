@@ -736,6 +736,17 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // Wait 250 msecs extra to give desktop compositor a chance to settle:
   PsychYieldIntervalSeconds(0.25);
 
+  // Retrieve modeline of current video mode on primary crtc for the screen to which
+  // this onscreen window is assigned. Could also query useful info about crtc, but let's not
+  // overdo it in the first iteration...
+  XRRModeInfo *mode = PsychOSGetModeLine(screenSettings->screenNumber, 0, NULL);
+  if (mode) {
+    // Assign modes display height aka vactive or vdisplay as startline of vblank interval:
+    windowRecord->VBL_Startline = mode->height;
+    // Assign vbl endline as vtotal - 1:
+    windowRecord->VBL_Endline   = mode->vTotal - 1;
+  }
+  
   // Well Done!
   return(TRUE);
 }

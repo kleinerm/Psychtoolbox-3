@@ -539,9 +539,17 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     // Retrieve display handle for beamposition queries:
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenSettings->screenNumber);
 
-    // Retrieve final vbl_startline, aka physical height of the display in pixels:
-    PsychGetScreenSize(screenSettings->screenNumber, &dummy_width, &vbl_startline);
-      
+    // VBL startline not yet assigned by PsychOSOpenOnscreenWindow()?
+    if ((*windowRecord)->VBL_Startline == 0) {
+        // Not yet assigned: Retrieve final vbl_startline, aka physical height of the display in pixels:
+        PsychGetScreenSize(screenSettings->screenNumber, &dummy_width, &vbl_startline);
+        (*windowRecord)->VBL_Startline = (int) vbl_startline;
+    }
+    else {
+        // Already assigned: Get it for our consumption:
+        vbl_startline = (*windowRecord)->VBL_Startline;
+    }
+
     // Associated screens id and depth:
     (*windowRecord)->screenNumber=screenSettings->screenNumber;
     (*windowRecord)->depth=PsychGetScreenDepthValue(screenSettings->screenNumber);
@@ -583,7 +591,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     // the projection and modelview matrices, viewports and such to proper values:
     PsychSetDrawingTarget(*windowRecord);
 
-	if(PsychPrefStateGet_Verbosity()>2) {		
+	if(PsychPrefStateGet_Verbosity() > 3) {		
 		  printf("\n\nOpenGL-Extensions are: %s\n\n", (char*) glGetString(GL_EXTENSIONS));
 	}
 
@@ -647,7 +655,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		}
 	}
 	
-    if((PsychPrefStateGet_Verbosity() > 1) && ((*windowRecord)->windowIndex == PSYCH_FIRST_WINDOW)) {
+    if((PsychPrefStateGet_Verbosity() > 2) && ((*windowRecord)->windowIndex == PSYCH_FIRST_WINDOW)) {
 		multidisplay = (totaldisplaycount>1) ? true : false;    
 		if (multidisplay) {
 			printf("\n\nPTB-INFO: You are using a multi-display setup (%i active displays):\n", totaldisplaycount);
@@ -2200,7 +2208,6 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     double vbl_lines_elapsed, onset_lines_togo;
     double vbl_time_elapsed; 
     double onset_time_togo;
-    long scw, sch;
 	psych_uint64 targetVBL;						// Target VBL count for scheduled flips with Windows Vista DWM.
     psych_uint64 preflip_vblcount = 0;          // VBL counters and timestamps acquired from low-level OS specific routines.
     psych_uint64 postflip_vblcount = 0;         // Currently only supported on OS-X, but Linux/X11 implementation will follow.
@@ -2273,9 +2280,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     PsychGetCGDisplayIDFromScreenNumber(&displayID, windowRecord->screenNumber);
     screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
     screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
-    // Query real size of the underlying display in order to define the vbl_startline:
-    PsychGetScreenSize(windowRecord->screenNumber, &scw, &sch);
-    vbl_startline = (int) sch;
+    vbl_startline = windowRecord->VBL_Startline;
 
     // Enable this windowRecords framebuffer as current drawingtarget:
     PsychSetDrawingTarget(windowRecord);
@@ -5206,8 +5211,8 @@ void PsychExecuteBufferSwapPrefix(PsychWindowRecordType *windowRecord)
 			PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, windowRecord->screenNumber);
 			
 			// Retrieve final vbl_startline, aka physical height of the display in pixels:
-			PsychGetScreenSize(windowRecord->screenNumber, &scanline, &vbl_startline);
-
+            vbl_startline = windowRecord->VBL_Startline;
+            
 			// Busy-Wait: The special handling of <=0 values makes sure we don't hang here
 			// if beamposition queries are broken as well:
 			lastline = (long) PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);

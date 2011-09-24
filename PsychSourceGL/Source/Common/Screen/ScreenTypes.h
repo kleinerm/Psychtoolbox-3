@@ -46,6 +46,10 @@
 //constants
 #define 	kPsychMaxPossiblePixelDepths		10
 
+#define		kPsychMaxPossibleDisplays			10
+#define     kPsychMaxPossibleCrtcs              10      //Maximum number of physical display scanout engines (crtc's) per screen.
+#define		kPsychMaxNumberWindowBuffers		2		//The maximum upper bound.  Really it depends on display hardware and should be probed.
+
 //includes 
 #include "Screen.h"
 

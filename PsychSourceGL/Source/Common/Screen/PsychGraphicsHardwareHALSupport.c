@@ -35,8 +35,10 @@
 #include "PsychGraphicsCardRegisterSpecs.h"
 
 // Maps screenid's to Graphics hardware pipelines: Used to choose pipeline for beampos-queries and similar
-// GPU crtc specific stuff:
-static int	displayScreensToPipes[kPsychMaxPossibleDisplays];
+// GPU crtc specific stuff. Each screen can have up to kPsychMaxPossibleCrtcs assigned. Slot 0 contains the
+// primary crtc, used for beamposition timestamping, framerate queries etc. A -1 value in a slot terminates
+// the sequence of assigned crtc's.
+static int	displayScreensToPipes[kPsychMaxPossibleDisplays][kPsychMaxPossibleCrtcs];
 static int  numScreenMappings = 0;
 static psych_bool displayScreensToPipesUserOverride = FALSE;
 static psych_bool displayScreensToPipesAutoDetected = FALSE;
@@ -79,7 +81,7 @@ PsychError PsychSynchronizeDisplayScreens(int *numScreens, int* screenIds, int* 
 	// successfull validation ;-)
 	
 	if (numScreens == NULL) PsychErrorExitMsg(PsychError_internal, "NULL-Ptr passed as numScreens argument!");
-	if (*numScreens < 0 || *numScreens >= PsychGetNumDisplays()) PsychErrorExitMsg(PsychError_internal, "Invalid number passed as numScreens argument! (Negativ or more than available screens)");
+	if (*numScreens < 0 || *numScreens > PsychGetNumDisplays()) PsychErrorExitMsg(PsychError_internal, "Invalid number passed as numScreens argument! (Negative or more than available screens)");
 	if (syncMethod < 0 || syncMethod > 2) PsychErrorExitMsg(PsychError_internal, "Invalid syncMethod argument passed!");
 	if (syncTimeOut < 0) PsychErrorExitMsg(PsychError_internal, "Invalid (negative) syncTimeOut argument passed!");
 	if (allowedResidual < 0) PsychErrorExitMsg(PsychError_internal, "Invalid (negative) allowedResidual argument passed!");
@@ -169,8 +171,11 @@ psych_bool  PsychSetOutputDithering(PsychWindowRecordType* windowRecord, int scr
 unsigned int PsychSetGPUIdentityPassthrough(PsychWindowRecordType* windowRecord, int screenId, psych_bool passthroughEnable)
 {
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
-    unsigned int rc;
-    unsigned int head;
+    unsigned int rc, rcret;
+    int head, iter;
+    
+    // Init return code to "unsupported":
+    rcret = 0xffffffff;
     
 	// Child protection:
 	if (windowRecord && !PsychIsOnscreenWindow(windowRecord)) PsychErrorExitMsg(PsychError_internal, "Invalid non-onscreen windowRecord provided!!!");
@@ -183,8 +188,6 @@ unsigned int PsychSetGPUIdentityPassthrough(PsychWindowRecordType* windowRecord,
         if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: GPU framebuffer passthrough setup requested, but this is not supported without kernel driver.\n");
         return(0xffffffff);
     }
-
-    head = (screenId >= 0) ? PsychScreenToHead(screenId) : -screenId;
     
     // Try to enable or disable dithering on display:
     PsychSetOutputDithering(windowRecord, screenId, (passthroughEnable) ? 0 : 1);
@@ -192,60 +195,93 @@ unsigned int PsychSetGPUIdentityPassthrough(PsychWindowRecordType* windowRecord,
     // We're done if this an actual passthrough disable, as a full disable isn't yet implemented:
     if (!passthroughEnable) return(0);
     
-    // Check if remaining GPU is already configured for untampered identity passthrough:
-    rc = PsychOSKDGetLUTState(screenId, head, (PsychPrefStateGet_Verbosity() > 4) ? 1 : 0);
-    if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: 1st LUT query rc = %i.\n", rc);
-    if (rc == 0xffffffff) {
-        // Unsupported for this GPU. We're done:
-        if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: GPU framebuffer passthrough setup requested, but this is not supported on this GPU.\n");
-        return(0xffffffff);
-    }
-
-    // Perfect identity passthrough already configured?
-    if (rc == 2) {
-        // Yes. We're successfully done!
-        if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: GPU framebuffer passthrough setup I completed. Perfect passthrough should work now.\n");
-        return(2);
-    }
+    // Start with head undefined:
+    head = -1;
     
-    // No. Try to setup GPU for passthrough:
-    if (!PsychOSKDLoadIdentityLUT(screenId, head)) {
-        // Failed.
-        if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: GPU framebuffer passthrough setup requested, but setup failed.\n");
-        return(0xffffffff);
-    }
-    
-    // Make sure, GPU's gamma table can settle by waiting 250 msecs:
-    PsychYieldIntervalSeconds(0.250);
-    
-    // Setup supposedly successfully finished. Re-Query state:
-    rc = PsychOSKDGetLUTState(screenId, head, (PsychPrefStateGet_Verbosity() > 4) ? 1 : 0);
-    if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: 2nd LUT query rc = %i.\n", rc);
-
-    // Perfect identity passthrough now configured?
-    if (rc == 2) {
-        // Yes. We're successfully done!
-        if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: GPU framebuffer passthrough setup II completed. Perfect passthrough should work now.\n");
-        return(2);
-    }
-    
-    if (rc == 3) {
-        // Not quite. We've done what we could. A perfect identity LUT is setup, but the rest of the hw
-        // isn't in that a great shape. This may or may not be good enough...
-        if(PsychPrefStateGet_Verbosity() > 3) {
-            printf("PTB-INFO: GPU framebuffer passthrough setup II completed. Sort of ok passthrough achieved. May or may not work.\n");
-            printf("PTB-INFO: A perfect identity gamma table is loaded, but the other GPU color transformation settings are still suboptimal.\n");
+    for (iter = 0; iter < kPsychMaxPossibleCrtcs; iter++) {
+        if (screenId >= 0) {
+            // Positive screenId: Apply to all crtc's for this screenId:
+            
+            // Is there an iter'th crtc assigned to this screen?
+            head = PsychScreenToHead(screenId, iter);
+            
+            // If end of list of associated crtc's for this screenId reached, then we're done:
+            if (head < 0) break;
         }
-        return(1);
+        else {
+            // Negative screenId -> Only affect one head defined by screenId:
+            if (head < 0) {
+                // Setup single target head in this iteration:
+                head = -screenId;
+            }
+            else {
+                // Single target head already set up: We're done:
+                break;
+            }
+        }
+        
+        // Check if remaining GPU is already configured for untampered identity passthrough:
+        rc = PsychOSKDGetLUTState(screenId, head, (PsychPrefStateGet_Verbosity() > 4) ? 1 : 0);
+        if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: [screen %i, head %i] 1st LUT query rc = %i.\n", screenId, head, rc);
+        if (rc == 0xffffffff) {
+            // Unsupported for this GPU. We're done:
+            if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: GPU framebuffer passthrough setup on screenid %i, head %i requested, but this is not supported on this GPU.\n", screenId, head);
+            rcret = 0xffffffff;
+            continue;
+        }
+        
+        // Perfect identity passthrough already configured?
+        if (rc == 2) {
+            // Yes. We're successfully done!
+            if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: GPU framebuffer passthrough setup I completed on screenid %i, head %i. Perfect passthrough should work now.\n", screenId, head);
+            rcret = 2;
+            continue;
+        }
+        
+        // No. Try to setup GPU for passthrough:
+        if (!PsychOSKDLoadIdentityLUT(screenId, head)) {
+            // Failed.
+            if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: GPU framebuffer passthrough setup requested on screenid %i, head %i, but setup failed.\n", screenId, head);
+            rcret = 0xffffffff;
+            continue;
+        }
+        
+        // Make sure, GPU's gamma table can settle by waiting 250 msecs:
+        PsychYieldIntervalSeconds(0.250);
+        
+        // Setup supposedly successfully finished. Re-Query state:
+        rc = PsychOSKDGetLUTState(screenId, head, (PsychPrefStateGet_Verbosity() > 4) ? 1 : 0);
+        if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: [screen %i, head %i] 2nd LUT query rc = %i.\n", screenId, head, rc);
+        
+        // Perfect identity passthrough now configured?
+        if (rc == 2) {
+            // Yes. We're successfully done!
+            if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: GPU framebuffer passthrough setup II completed on screenid %i, head %i. Perfect passthrough should work now.\n", screenId, head);
+            rcret = 2;
+            continue;
+        }
+        
+        if (rc == 3) {
+            // Not quite. We've done what we could. A perfect identity LUT is setup, but the rest of the hw
+            // isn't in that a great shape. This may or may not be good enough...
+            if(PsychPrefStateGet_Verbosity() > 3) {
+                printf("PTB-INFO: GPU framebuffer passthrough setup II completed on screenid %i, head %i. Sort of ok passthrough achieved. May or may not work.\n", screenId, head);
+                printf("PTB-INFO: A perfect identity gamma table is loaded, but the other GPU color transformation settings are still suboptimal.\n");
+            }
+            rcret = 1;
+            continue;
+        }
+        
+        // Ok, we failed.
+        if(PsychPrefStateGet_Verbosity() > 3) {
+            printf("PTB-INFO: GPU framebuffer passthrough setup II completed on screenid %i, head %i. Failed to establish identity passthrough!\n", screenId, head);
+            printf("PTB-INFO: Could not upload a perfect identity LUT. May still work due to hopefully disabled dithering, who knows?\n");
+        }
+
+        rcret = 0;
     }
     
-    // Ok, we failed.
-    if(PsychPrefStateGet_Verbosity() > 3) {
-        printf("PTB-INFO: GPU framebuffer passthrough setup II completed. Failed to establish identity passthrough!\n");
-        printf("PTB-INFO: Could not upload a perfect identity LUT. May still work due to hopefully disabled dithering, who knows?\n");
-    }
-    
-    return(0);
+    return(rcret);
 #else
 	// This cool stuff not supported on the uncool Windows OS:
     if(PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: GPU framebuffer passthrough setup requested, but this is not supported on MS-Windows.\n");
@@ -272,9 +308,8 @@ unsigned int PsychSetGPUIdentityPassthrough(PsychWindowRecordType* windowRecord,
 psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord, psych_bool enable)
 {
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
-	int i, si, ei, sh, eh, headid, screenId;
+	int i, si, ei, headid, headiter, screenId;
 	unsigned int lutreg, ctlreg, value, status;
-	long swidth, sheight;
 
 	// Child protection:
 	if (windowRecord && !PsychIsOnscreenWindow(windowRecord)) PsychErrorExitMsg(PsychError_internal, "Invalid non-onscreen windowRecord provided!!!");
@@ -287,28 +322,14 @@ psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord
 	ei = (screenId!=-1) ? screenId+1 : PsychGetNumDisplays();
 
 	// Loop over all target screens:
-	for (i=si; i<ei; i++) {
-		// Map screenid to headid: For now we only support 2 heads.
-		headid = PsychScreenToHead(i);
-		
-		// Linux: Is the target X-Screen more than twice as wide as it is
-		// high? Probably not an ultra-wide screen monitor, but a
-		// DualDisplay setup in desktop spanning mode -> Single
-		// X-Screen covers two display heads.
-		PsychGetScreenSize(i, &swidth, &sheight);
-		if ((PSYCH_SYSTEM == PSYCH_LINUX) && (swidth > 2 * sheight)) {
-			// Ok, assume dual-head display. Iterate over two
-			// consecutive heads in the hope that this is the right thing...
-			sh = headid;
-			eh = headid + 1;
-		}
-		else {
-			sh = headid;
-			eh = headid;
-		}
+	for (i = si; i < ei; i++) {
+		// Iterate over range of all assigned heads for this screenId 'i' and reconfigure them:
+		for (headiter = 0; headiter < kPsychMaxPossibleCrtcs; headiter++) {
+            // Map screenid to headid for headiter'th head:
+            headid = PsychScreenToHead(i, headiter);
 
-		// Iterate over range of heads and reconfigure them:
-		for (headid = sh; headid <= eh; headid++) {
+            // We're done as soon as we encounter invalid negative headid.
+            if (headid < 0) break;
 
 			// Select Radeon HW registers for corresponding heads:
 			lutreg = (headid == 0) ? RADEON_D1GRPH_LUT_SEL : RADEON_D2GRPH_LUT_SEL;
@@ -458,7 +479,7 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
 {
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
 
-	int headid, screenId;
+	int headiter, headid, screenId;
 	unsigned int ctlreg;
 
 	// Fixup needed? Only if 10bpc mode is supposed to be active! Early exit if not:
@@ -477,14 +498,23 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
 	// Map windows screen to gfx-headid aka register subset. TODO : We'll need something better,
 	// more generic, abstracted out for the future, but as a starter this will do:
 	screenId = windowRecord->screenNumber;
-	headid = PsychScreenToHead(screenId);
-	ctlreg = (headid == 0) ? RADEON_D1GRPH_CONTROL : RADEON_D2GRPH_CONTROL;
-	
-	// One-liner read-modify-write op, which simply sets bit 8 of the register - the "Enable 2101010 mode" bit:
-	PsychOSKDWriteRegister(screenId, ctlreg, (0x1 << 8) | PsychOSKDReadRegister(screenId, ctlreg, NULL), NULL);
-	
-	// Debug output, if wanted:
-	if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(): ARGB2101010 bit set on screen %i, head %i.\n", screenId, headid);
+
+    // Iterate over range of all assigned heads for this screenId 'i' and reconfigure them:
+    for (headiter = 0; headiter < kPsychMaxPossibleCrtcs; headiter++) {
+        // Map screenid to headid for headiter'th head:
+        headid = PsychScreenToHead(screenId, headiter);
+        
+        // We're done as soon as we encounter invalid negative headid.
+        if (headid < 0) break;
+        
+        ctlreg = (headid == 0) ? RADEON_D1GRPH_CONTROL : RADEON_D2GRPH_CONTROL;
+        
+        // One-liner read-modify-write op, which simply sets bit 8 of the register - the "Enable 2101010 mode" bit:
+        PsychOSKDWriteRegister(screenId, ctlreg, (0x1 << 8) | PsychOSKDReadRegister(screenId, ctlreg, NULL), NULL);
+        
+        // Debug output, if wanted:
+        if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(): ARGB2101010 bit set on screen %i, head %i.\n", screenId, headid);
+    }
 
 #endif
 
@@ -510,9 +540,9 @@ void PsychStoreGPUSurfaceAddresses(PsychWindowRecordType* windowRecord)
 	// Just need to check if GPU low-level access is supported:
 	if (!PsychOSIsKernelDriverAvailable(screenId)) return;
 	
-	// Driver is online: Read the registers:
-	windowRecord->gpu_preflip_Surfaces[0] = PsychOSKDReadRegister(screenId, (PsychScreenToHead(screenId) <= 0) ? RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS : RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS, NULL);
-	windowRecord->gpu_preflip_Surfaces[1] = PsychOSKDReadRegister(screenId, (PsychScreenToHead(screenId) <= 0) ? RADEON_D1GRPH_SECONDARY_SURFACE_ADDRESS : RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS, NULL);
+	// Driver is online: Read the registers, but only for primary crtc in a multi-crtc config:
+	windowRecord->gpu_preflip_Surfaces[0] = PsychOSKDReadRegister(screenId, (PsychScreenToHead(screenId, 0) < 1) ? RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS : RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS, NULL);
+	windowRecord->gpu_preflip_Surfaces[1] = PsychOSKDReadRegister(screenId, (PsychScreenToHead(screenId, 0) < 1) ? RADEON_D1GRPH_SECONDARY_SURFACE_ADDRESS : RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS, NULL);
 
 #endif
 
@@ -557,11 +587,11 @@ psych_bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* window
 	// Driver is online. Enter polling loop:
 	while (TRUE) {
 		// Read surface address registers:
-		primarySurface   = PsychOSKDReadRegister(screenId, (PsychScreenToHead(screenId) <= 0) ? RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS : RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS, NULL);
-		secondarySurface = PsychOSKDReadRegister(screenId, (PsychScreenToHead(screenId) <= 0) ? RADEON_D1GRPH_SECONDARY_SURFACE_ADDRESS : RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS, NULL);
+		primarySurface   = PsychOSKDReadRegister(screenId, (PsychScreenToHead(screenId, 0) < 1) ? RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS : RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS, NULL);
+		secondarySurface = PsychOSKDReadRegister(screenId, (PsychScreenToHead(screenId, 0) < 1) ? RADEON_D1GRPH_SECONDARY_SURFACE_ADDRESS : RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS, NULL);
 
 		// Read update status registers:
-		updateStatus     = PsychOSKDReadRegister(screenId, (PsychScreenToHead(screenId) <= 0) ? RADEON_D1GRPH_UPDATE : RADEON_D2GRPH_UPDATE, NULL);
+		updateStatus     = PsychOSKDReadRegister(screenId, (PsychScreenToHead(screenId, 0) < 1) ? RADEON_D1GRPH_UPDATE : RADEON_D2GRPH_UPDATE, NULL);
 
 		PsychGetAdjustedPrecisionTimerSeconds(timestamp);
 
@@ -571,7 +601,7 @@ psych_bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* window
 		}
 		
 		if (PsychPrefStateGet_Verbosity() > 9) {
-			printf("PTB-DEBUG: Head %i: primarySurface=%p : secondarySurface=%p : updateStatus=%i\n", PsychScreenToHead(screenId), primarySurface, secondarySurface, updateStatus);
+			printf("PTB-DEBUG: Head %i: primarySurface=%p : secondarySurface=%p : updateStatus=%i\n", PsychScreenToHead(screenId, 0), primarySurface, secondarySurface, updateStatus);
 		}
 
 		// Sleep slacky at least 200 microseconds, then retry:
@@ -660,17 +690,22 @@ unsigned int PsychGetNVidiaGPUType(PsychWindowRecordType* windowRecord)
 #endif
 }
 
-/* PsychScreenToHead() - Map PTB screenId to GPU headId (aka pipeId): */
-int	PsychScreenToHead(int screenId)
+/* PsychScreenToHead() - Map PTB screenId to GPU headId (aka pipeId):
+ * screenId = PTB screen index.
+ * rankId = Select which head in a multi-head config. rankId 0 == Primary crtc.
+ * A return value of -1 for a given rankId means that no such crtc is assigned,
+ * it terminates the array.
+ */
+int	PsychScreenToHead(int screenId, int rankId)
 {
-	return(displayScreensToPipes[screenId]);
+	return(displayScreensToPipes[screenId][rankId]);
 }
 
 /* PsychSetScreenToHead() - Change mapping of a PTB screenId to GPU headId: */
-void PsychSetScreenToHead(int screenId, int headId)
+void PsychSetScreenToHead(int screenId, int headId, int rankId)
 {
     // Assign new mapping:
-	displayScreensToPipes[screenId] = headId;
+	displayScreensToPipes[screenId][rankId] = headId;
     
     // Mark mappings as user-defined instead of auto-detected/default-setup:
     displayScreensToPipesUserOverride = TRUE;
@@ -691,14 +726,15 @@ void PsychSetScreenToHead(int screenId, int headId)
  */
 void PsychInitScreenToHeadMappings(int numDisplays)
 {
-    int i;
+    int i, j;
 	char* ptbpipelines = NULL;
     
     displayScreensToPipesAutoDetected = FALSE;
     
     // Setup default identity one-to-one mapping:
     for(i = 0; i < kPsychMaxPossibleDisplays; i++){
-		displayScreensToPipes[i] = i;
+		displayScreensToPipes[i][0] = i;
+		for (j = 1; j < kPsychMaxPossibleCrtcs; j++) displayScreensToPipes[i][j] = -1;
 
 		// We also setup beamposition bias values to "neutral defaults":
 		screenBeampositionBias[i] = 0;
@@ -709,8 +745,8 @@ void PsychInitScreenToHeadMappings(int numDisplays)
 	ptbpipelines = getenv("PSYCHTOOLBOX_PIPEMAPPINGS");
 	if (ptbpipelines) {
 		// The default is "012...", ie screen 0 = pipe 0, 1 = pipe 1, 2 =pipe 2, n = pipe n
-		for (i = 0; (i < strlen(ptbpipelines)) && (i < numDisplays); i++) {
-			PsychSetScreenToHead(i, (((ptbpipelines[i] - 0x30) >=0) && ((ptbpipelines[i] - 0x30) < kPsychMaxPossibleDisplays)) ? (ptbpipelines[i] - 0x30) : 0);
+		for (i = 0; (i < strlen(ptbpipelines)) && (i < kPsychMaxPossibleDisplays); i++) {
+			PsychSetScreenToHead(i, (((ptbpipelines[i] - 0x30) >=0) && ((ptbpipelines[i] - 0x30) < 10)) ? (ptbpipelines[i] - 0x30) : -1, 0);
 		}
 	}
     
@@ -769,7 +805,7 @@ void PsychAutoDetectScreenToHeadMappings(int maxHeads)
         for (headId = 0; headId < maxHeads; headId++) {
             if (PsychOSKDGetLUTState(screenId, headId, 0) == 1) {
                 // Got it. Store mapping:
-                displayScreensToPipes[screenId] = headId;
+                displayScreensToPipes[screenId][0] = headId;
                 
                 // Done with searching:
                 if (PsychPrefStateGet_Verbosity() > 2) printf(" found headId %i.", headId);
@@ -819,8 +855,8 @@ void PsychGetBeamposCorrection(int screenId, int *vblbias, int *vbltotal)
  */
 void PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal)
 {
-	// Need head id for auto-detection:
-	int crtcid = PsychScreenToHead(screenId);
+	// Need head id of primary crtc of this screen for auto-detection:
+	int crtcid = PsychScreenToHead(screenId, 0);
 	
 	// Auto-Detection of correct values requested? A valid OpenGL context must
 	// be bound for this to work or we will crash horribly:

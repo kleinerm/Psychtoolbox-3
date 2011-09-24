@@ -1296,7 +1296,7 @@ int PsychOSKDGetBeamposition(int screenId)
 	syncCommand.command = kPsychKDGetBeamposition;
 	
 	// Assign headid for this screen:
-	syncCommand.inOutArgs[0] = PsychScreenToHead(screenId);
+	syncCommand.inOutArgs[0] = PsychScreenToHead(screenId, 0);
 	
 	// Issue request:
 	kern_return_t kernResult = PsychOSKDDispatchCommand(connect,  &syncCommand, &syncCommand, NULL);    
@@ -1335,7 +1335,7 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
 	syncCommand.command = kPsychKDSetDitherMode;
 
 	// Assign headid for this screen:
-	syncCommand.inOutArgs[0] = (unsigned int) ((screenId >= 0) ? PsychScreenToHead(screenId) : -1 * screenId);
+	syncCommand.inOutArgs[0] = (unsigned int) ((screenId >= 0) ? PsychScreenToHead(screenId, 0) : -1 * screenId);
 
     // Assign dither setting:
 	syncCommand.inOutArgs[1] = ditherOn;

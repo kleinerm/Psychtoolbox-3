@@ -30,14 +30,6 @@
 #ifndef PSYCH_IS_INCLUDED_PsychVideoGlue
 #define PSYCH_IS_INCLUDED_PsychVideoGlue
 
-#include "Screen.h"
-
-//define some constants
-#define		kPsychMaxPossibleDisplays			10
-#define		kPsychMaxNumberWindowBuffers		2		//The maximum upper bound.  Really it depends on display hardware and should be probed.
-#define 	kPsychAllWindowsFull				TRUE	//If true then all onscreen windows must be full size.
-#define		kPsychAllowMultipleOnscreenWindows	FALSE	//If true then we can have more than one onscreen window per display. 
-
 //end include once
 #endif
 

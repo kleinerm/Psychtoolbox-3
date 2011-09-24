@@ -100,7 +100,6 @@ static int    numKernelDrivers = 0;
 
 // Offset of crtc blocks of evergreen gpu's for each of the six possible crtc's:
 unsigned int crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET, EVERGREEN_CRTC1_REGISTER_OFFSET, EVERGREEN_CRTC2_REGISTER_OFFSET, EVERGREEN_CRTC3_REGISTER_OFFSET, EVERGREEN_CRTC4_REGISTER_OFFSET, EVERGREEN_CRTC5_REGISTER_OFFSET };
-// unsigned int crtcoff[(DCE4_MAXHEADID + 1)] = { 0x6df0, 0x79f0, 0x105f0, 0x111f0, 0x11df0, 0x129f0 };
 
 /* Is a given ATI/AMD GPU a DCE5 type ASIC, i.e., with the new display engine? */
 static psych_bool isDCE5(int screenId)
@@ -407,8 +406,8 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			}
 		}
 
-		// Perform auto-detection of screen to head mappings:
-		PsychAutoDetectScreenToHeadMappings(fNumDisplayHeads);
+		// Perform auto-detection of screen to head mappings, unless already done by XRandR:
+		if (!has_xrandr_1_2) PsychAutoDetectScreenToHeadMappings(fNumDisplayHeads);
 
 		// Ready to rock!
 	} else {
@@ -439,7 +438,6 @@ static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];
 static int                      displayX11Screens[kPsychMaxPossibleDisplays];
 static psych_bool               displayCursorHidden[kPsychMaxPossibleDisplays];
 static XRRScreenResources*      displayX11ScreenResources[kPsychMaxPossibleDisplays];
-static XRRModeInfo*             displayX11Modes[kPsychMaxPossibleDisplays];
 
 // XInput-2 extension data per display:
 static int                      xi_opcode = 0, xi_event = 0, xi_error = 0;
@@ -516,7 +514,6 @@ void InitializePsychDisplayGlue(void)
 	displayCursorHidden[i]=FALSE;
 	displayBeampositionHealthy[i]=TRUE;
 	displayX11ScreenResources[i] = NULL;
-	displayX11Modes[i] = NULL;
 	xinput_ndevices[i]=0;
 	xinput_info[i]=NULL;
     }
@@ -586,7 +583,7 @@ out:
 static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
 {
   int major, minor;
-  int o, m, num_crtcs, isPrimary, crtcid;
+  int o, m, num_crtcs, isPrimary, crtcid, crtccount;
   int primaryOutput = -1, primaryCRTC = -1;
   int crtcs[100];
 
@@ -620,7 +617,10 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     return;
   }
 
-  // Iterate over all outputs for this screen:
+  // Total number of assigned crtc's for this screen:
+  crtccount = 0;
+
+  // Iterate over all outputs for this screen:  
   for (o = 0; o < res->noutput; o++) {
     XRROutputInfo *output_info = XRRGetOutputInfo(dpy, res, res->outputs[o]);
     if (!output_info) {
@@ -652,6 +652,13 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
 	primaryOutput = o;
 	primaryCRTC = crtcid;
     }
+    
+    // Is this output - and its crtc - really enabled for this screen?
+    if (crtcid >=0) {
+      // Yes: Add its crtcid to the list of crtc's for this screen:
+      PsychSetScreenToHead(idx, crtcid, crtccount);
+      crtccount++;
+    }
   }
 
   // Found a defined primary output?
@@ -675,19 +682,43 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
 
   printf("PTB-INFO: Display '%s' : Screen %i : Assigning primary output as %i with crtc %i.\n", DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC);
 
-  // Assign primary crtc of primary output as default display head for this screen:
-  PsychSetScreenToHead(idx, primaryCRTC);
-
-  // Query info about primary crtc of primary output:
-  XRRCrtcInfo *crtc_info = XRRGetCrtcInfo(dpy, res, res->crtcs[primaryCRTC]);
-
-  displayX11Modes[idx] = NULL;
-  for (m = 0; m < res->nmode; m++) {
-    XRRModeInfo	*mode = &res->modes[m];
-    if (mode->id == crtc_info->mode) displayX11Modes[idx] = mode;
+  // Assign primary crtc of primary output - index 0 - as default display head for this screen:
+  // We swap the contents of slot 0 - the primary crtc slot - and whatever slot currently
+  // contains the crtcid of our primaryCRTC. This way we shuffle the primary crtc into the
+  // 1st slot (zero):
+  for (o = 0; o < crtccount; o++) {
+    if (PsychScreenToHead(idx, o) == primaryCRTC) {
+      PsychSetScreenToHead(idx, PsychScreenToHead(idx, 0), o);
+    }
   }
+  PsychSetScreenToHead(idx, primaryCRTC, 0);
 
   return;
+}
+
+// Linux only: Retrieve modeline and crtc_info for a specific output on a specific screen:
+XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc)
+{
+  XRRModeInfo *mode = NULL;
+  XRRCrtcInfo *crtc_info = NULL;
+  
+  // Query info about video modeline and crtc of output 'outputIdx':
+  XRRScreenResources *res = displayX11ScreenResources[screenId];
+  if (PsychScreenToHead(screenId, outputIdx) >= 0) {
+    crtc_info = XRRGetCrtcInfo(displayCGIDs[screenId], res, res->crtcs[PsychScreenToHead(screenId, outputIdx)]);
+    
+    for (m = 0; (m < res->nmode) && crtc_info; m++) {
+      if (res->modes[m].id == crtc_info->mode) {
+        mode = &res->modes[m];
+        break;
+      }
+    }
+  }
+
+  // Optionally return crtc_info in *crtc:
+  if (crtc) *crtc = crtc_info;
+
+  return(mode);
 }
 
 void InitCGDisplayIDList(void)
@@ -1073,12 +1104,12 @@ float PsychGetNominalFramerate(int screenNumber)
   // We start with a default vrefresh of zero, which means "couldn't query refresh from OS":
   float vrefresh = 0;
 
-  if(screenNumber>=numDisplays)
+  if(screenNumber >= numDisplays || screenNumber < 0)
     PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); 
 
-  if (displayX11Modes[screenNumber]) {
-    XRRModeInfo	*mode = displayX11Modes[screenNumber];
-
+  // First we try to get modeline of primary crtc from RandR:
+  XRRModeInfo *mode = PsychOSGetModeLine(screenNumber, 0, NULL);
+  if (mode) {
     if (PsychPrefStateGet_Verbosity() > 4) {
       printf ("  %s (0x%x) %6.1fMHz\n",
       mode->name, (int)mode->id,
@@ -1719,7 +1750,7 @@ int PsychOSCheckKDAvailable(int screenId, unsigned int * status)
 	// but we don't have such a thing yet.  Could be also a pointer to a little struct with all
 	// relevant info...
 	// Currently we do a dummy assignment...
-	int connect = PsychScreenToHead(screenId);
+	int connect = PsychScreenToHead(screenId, 0);
 
 	if ((numKernelDrivers<=0) && (gfx_cntl_mem == NULL)) {
 		if (status) *status = ENODEV;
@@ -1778,7 +1809,7 @@ static PsychError PsychOSSynchronizeDisplayScreensDCE4(int *numScreens, int* scr
 	int								screenId = 0;
 	double							abortTimeOut, now;
 	int								residual;
-	unsigned int					i;
+	int                             i, iter;
 	unsigned int					old_crtc_master_enable = 0;
 	
 	// Check availability of connection:
@@ -1791,7 +1822,7 @@ static PsychError PsychOSSynchronizeDisplayScreensDCE4(int *numScreens, int* scr
 		return(PsychError_unimplemented);
 	}
 	
-	// The current implementation only supports syncing all heads of a single card
+	// The current implementation only supports syncing the heads of a single card
 	if (*numScreens <= 0) {
 		// Resync all displays requested: Choose screenID zero for connect handle:
 		screenId = 0;
@@ -1833,14 +1864,20 @@ static PsychError PsychOSSynchronizeDisplayScreensDCE4(int *numScreens, int* scr
 		
 		// Detect enabled heads:
 		old_crtc_master_enable = 0;
-		for (i = 0; i < 6; i++) {
+		for (iter = 0; iter < kPsychMaxPossibleCrtcs; iter++) {
+            // Map 'iter'th head for this screenId to crtc index 'i'. Iterate over all crtc's for screen:
+            if ((i = PsychScreenToHead(screenId, iter)) < 0) break;
+            
 			// Bit 16 "CRTC_CURRENT_MASTER_EN_STATE" allows read-only polling
 			// of current activation state of crtc:
 			if (ReadRegister(EVERGREEN_CRTC_CONTROL + crtcoff[i]) & (0x1 << 16)) old_crtc_master_enable |= (0x1 << i);
 		}
 
 		// Shut down heads, one after each other, wait for each one to settle at its defined resting position:
-		for (i = 0; i < 6; i++) {
+		for (iter = 0; iter < kPsychMaxPossibleCrtcs; iter++) {
+            // Map 'iter'th head for this screenId to crtc index 'i'. Iterate over all crtc's for screen:
+            if ((i = PsychScreenToHead(screenId, iter)) < 0) break;
+
 			if (PsychPrefStateGet_Verbosity() > 3) printf("Head %ld ...  ", i);
 			if (old_crtc_master_enable & (0x1 << i)) {		
 				if (PsychPrefStateGet_Verbosity() > 3) printf("active -> Shutdown. ");
@@ -1869,7 +1906,10 @@ static PsychError PsychOSSynchronizeDisplayScreensDCE4(int *numScreens, int* scr
 		
 		// Reenable all now disabled, but previously enabled display heads.
 		// This must be a tight loop, as every microsecond counts for a good sync...
-		for (i = 0; i < 6; i++) {
+		for (iter = 0; iter < kPsychMaxPossibleCrtcs; iter++) {
+            // Map 'iter'th head for this screenId to crtc index 'i'. Iterate over all crtc's for screen:
+            if ((i = PsychScreenToHead(screenId, iter)) < 0) break;
+        
 			if (old_crtc_master_enable & (0x1 << i)) {		
 				// Restart this CRTC by setting its master enable bit (bit 0):
 				WriteRegister(EVERGREEN_CRTC_CONTROL + crtcoff[i], ReadRegister(EVERGREEN_CRTC_CONTROL + crtcoff[i]) | (0x1 << 0));
@@ -2090,7 +2130,7 @@ PsychError PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds, int
 int PsychOSKDGetBeamposition(int screenId)
 {
 	int beampos = -1;
-	int headId  = PsychScreenToHead(screenId);
+	int headId  = PsychScreenToHead(screenId, 0);
 
 	// MMIO registers mapped?
 	if (gfx_cntl_mem) {
@@ -2166,87 +2206,118 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
 {
     static unsigned int oldDither[(DCE4_MAXHEADID + 1)] = { 0, 0, 0, 0, 0, 0 };
     unsigned int reg;
-	int headId  = (screenId >= 0) ? PsychScreenToHead(screenId) : -screenId;
+	int headId, iter;
     
     // MMIO registers mapped?
 	if (!gfx_cntl_mem) return;
 
-    // AMD/ATI Radeon, FireGL or FirePro GPU?
-	if (fDeviceType == kPsychRadeon) {
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Trying to %s digital display dithering on display head %d.\n", (ditherOn) ? "enable" : "disable", headId);
+    // Check if the method is supported for this GPU type:
+    // Currently ATI/AMD GPU's only...
+    if (fDeviceType != kPsychRadeon) {
+        // Other unsupported GPU:
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: SetDitherMode: Tried to call me on a non ATI/AMD GPU. Unsupported.\n");
+        return;
+    }
 
-        // Map headId to proper hardware control register offset:
-		if (isDCE4(screenId) || isDCE5(screenId)) {
-			// DCE-4 display engine (CEDAR and later afaik): Up to six crtc's. Map to proper
-            // register offset for this headId:
-            if (headId > DCE4_MAXHEADID) {
-                // Invalid head - bail:
-                if (PsychPrefStateGet_Verbosity() > 0) printf("SetDitherMode: ERROR! Invalid headId %d provided. Must be between 0 and 5. Aborted.\n", headId);
-                return;
-            }
-
-            // Map to dither format control register for head 'headId':
-            reg = EVERGREEN_FMT_BIT_DEPTH_CONTROL + crtcoff[headId];
-		} else {
-			// AVIVO display engine (R300 - R600 afaik): At most two display heads for dual-head gpu's.
-            if (headId > 1) {
-                if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: INFO! Special headId %d outside valid dualhead range 0-1 provided. Will control LVDS dithering.\n", headId);
-                headId = 0;
-            }
-            else {
-                if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: INFO! headId %d in valid dualhead range 0-1 provided. Will control TMDS (DVI et al.) dithering.\n", headId);
-                headId = 1;
-            }
+    // Start with headId undefined:
+    headId = -1;
+    
+    for (iter = 0; iter < kPsychMaxPossibleCrtcs; iter++) {
+        if (screenId >= 0) {
+            // Positive screenId: Apply to all crtc's for this screenId:
             
-            // On AVIVO we can't control dithering per display head. Instead there's one global switch
-            // for LVDS connected displays (LVTMA) aka internal flat panels, e.g., of Laptops, and
-            // on global switch for "all things DVI-D", aka TMDSA:
-            reg = (headId == 0) ? RADEON_LVTMA_BIT_DEPTH_CONTROL : RADEON_TMDSA_BIT_DEPTH_CONTROL;
-		}
-
-        // Perform actual enable/disable/reconfigure sequence for target encoder/head:
-
-        // Enable dithering?
-        if (ditherOn) {
-            // Reenable dithering with old, previously stored settings, if it is disabled:
+            // Is there an iter'th crtc assigned to this screen?
+            headId = PsychScreenToHead(screenId, iter);
             
-            // Dithering currently off (all zeros)?
-            if (ReadRegister(reg) == 0) {
-                // Dithering is currently off. Do we know the old setting from a previous
-                // disable?
-                if (oldDither[headId] > 0) {
-                    // Yes: Restore old "factory settings":
-                    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering previously disabled by us. Reenabling with old control setting %x.\n", oldDither[headId]);
-                    WriteRegister(reg, oldDither[headId]);
-                }
-                else {
-                    // No: Dithering was disabled all the time, so we don't know the
-                    // OS defaults. Use the numeric value of 'ditherOn' itself:
-                    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering off. Enabling with userspace provided setting %x. Cross your fingers!\n", ditherOn);
-                    WriteRegister(reg, ditherOn);
-                }
-            }
-            else {
-                if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering already enabled with current control value %x. Skipped.\n", ReadRegister(reg));
-            }
+            // If end of list of associated crtc's for this screenId reached, then we're done:
+            if (headId < 0) break;
         }
         else {
-            // Disable all dithering if it is enabled: Clearing the register to all zero bits does this.
-            if (ReadRegister(reg) > 0) {
-                oldDither[headId] = ReadRegister(reg);
-                if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Current dither setting before our dither disable on head %d is %x. Disabling.\n", headId, oldDither[headId]);
-                WriteRegister(reg, 0x0);
+            // Negative screenId -> Only affect one head defined by screenId:
+            if (headId < 0) {
+                // Setup single target head in this iteration:
+                headId = -screenId;
             }
             else {
-                if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering already disabled. Skipped.\n");
+                // Single target head already set up: We're done:
+                break;
             }
         }
         
-        // End of Radeon et al. support code.
-	}
-    else {
-        // Other unsupported GPU:
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Tried to call me on a non ATI/AMD GPU. Unsupported.\n");
+        // AMD/ATI Radeon, FireGL or FirePro GPU?
+        if (fDeviceType == kPsychRadeon) {
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Trying to %s digital display dithering on display head %d.\n", (ditherOn) ? "enable" : "disable", headId);
+            
+            // Map headId to proper hardware control register offset:
+            if (isDCE4(screenId) || isDCE5(screenId)) {
+                // DCE-4 display engine (CEDAR and later afaik): Up to six crtc's. Map to proper
+                // register offset for this headId:
+                if (headId > DCE4_MAXHEADID) {
+                    // Invalid head - bail:
+                    if (PsychPrefStateGet_Verbosity() > 0) printf("SetDitherMode: ERROR! Invalid headId %d provided. Must be between 0 and 5. Aborted.\n", headId);
+                    continue;
+                }
+                
+                // Map to dither format control register for head 'headId':
+                reg = EVERGREEN_FMT_BIT_DEPTH_CONTROL + crtcoff[headId];
+            } else {
+                // AVIVO display engine (R300 - R600 afaik): At most two display heads for dual-head gpu's.
+                if (headId > 1) {
+                    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: INFO! Special headId %d outside valid dualhead range 0-1 provided. Will control LVDS dithering.\n", headId);
+                    headId = 0;
+                }
+                else {
+                    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: INFO! headId %d in valid dualhead range 0-1 provided. Will control TMDS (DVI et al.) dithering.\n", headId);
+                    headId = 1;
+                }
+                
+                // On AVIVO we can't control dithering per display head. Instead there's one global switch
+                // for LVDS connected displays (LVTMA) aka internal flat panels, e.g., of Laptops, and
+                // on global switch for "all things DVI-D", aka TMDSA:
+                reg = (headId == 0) ? RADEON_LVTMA_BIT_DEPTH_CONTROL : RADEON_TMDSA_BIT_DEPTH_CONTROL;
+            }
+            
+            // Perform actual enable/disable/reconfigure sequence for target encoder/head:
+            
+            // Enable dithering?
+            if (ditherOn) {
+                // Reenable dithering with old, previously stored settings, if it is disabled:
+                
+                // Dithering currently off (all zeros)?
+                if (ReadRegister(reg) == 0) {
+                    // Dithering is currently off. Do we know the old setting from a previous
+                    // disable?
+                    if (oldDither[headId] > 0) {
+                        // Yes: Restore old "factory settings":
+                        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering previously disabled by us. Reenabling with old control setting %x.\n", oldDither[headId]);
+                        WriteRegister(reg, oldDither[headId]);
+                    }
+                    else {
+                        // No: Dithering was disabled all the time, so we don't know the
+                        // OS defaults. Use the numeric value of 'ditherOn' itself:
+                        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering off. Enabling with userspace provided setting %x. Cross your fingers!\n", ditherOn);
+                        WriteRegister(reg, ditherOn);
+                    }
+                }
+                else {
+                    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering already enabled with current control value %x. Skipped.\n", ReadRegister(reg));
+                }
+            }
+            else {
+                // Disable all dithering if it is enabled: Clearing the register to all zero bits does this.
+                if (ReadRegister(reg) > 0) {
+                    oldDither[headId] = ReadRegister(reg);
+                    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Current dither setting before our dither disable on head %d is %x. Disabling.\n", headId, oldDither[headId]);
+                    WriteRegister(reg, 0x0);
+                }
+                else {
+                    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering already disabled. Skipped.\n");
+                }
+            }
+            
+            // End of Radeon et al. support code.
+        }
+        // Next head for this screenId, if any...
     }
     
 	return;

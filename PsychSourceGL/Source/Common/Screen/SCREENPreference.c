@@ -128,8 +128,8 @@ static char synopsisString[] =
 	"\noldMode = Screen('Preference', 'DefaultVideocaptureEngine', [newmode (0=Quicktime-SequenceGrabbers, 1=LibDC1394-Firewire, 2=LibARVideo, 3=GStreamer)]);"
 	"\noldMode = Screen('Preference', 'OverrideMultimediaEngine', [newmode (0=System default, 1=GStreamer)]);"
 	"\noldLevel = Screen('Preference', 'WindowShieldingLevel', [newLevel (0 = Behind all other windows - 2000 = In front of all other windows, the default)]);"
-	"\nresiduals = Screen('Preference', 'SynchronizeDisplays', syncMethod);"
-	"\noldHeadId = Screen('Preference', 'ScreenToHead', screenId [, newHeadId]);"
+	"\nresiduals = Screen('Preference', 'SynchronizeDisplays', syncMethod [, screenId]);"
+	"\noldHeadIds = Screen('Preference', 'ScreenToHead', screenId [, newHeadId][, rank]);"
 
 	"\noldLevel = Screen('Preference', 'Verbosity' [,level]);";
 
@@ -175,6 +175,7 @@ PsychError SCREENPreference(void)
 	double					returnDoubleValue, inputDoubleValue;
 	double					maxStddev, maxDeviation, maxDuration;
 	int						minSamples;
+    double                  *dheads = NULL;
 
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -442,7 +443,7 @@ PsychError SCREENPreference(void)
 				preferenceNameArgumentValid=TRUE;
 		}else 
 			if(PsychMatch(preferenceName, "SynchronizeDisplays")){
-				if(numInputArgs==2){
+				if(numInputArgs >= 2) {
 					// This is a special call: It currently doesn't set a preference setting,
 					// but instead triggers an instantaneous synchronization of all available
 					// display heads, if possible. We may have a more clever and "standard" interface
@@ -452,8 +453,16 @@ PsychError SCREENPreference(void)
 					// Acceptable residual offset is +/- 2 scanlines.
 					// Returns the real residual offset after sync.
 					PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
-					tempInt2 = 0;
-					if (PsychSynchronizeDisplayScreens(&tempInt2, NULL, &tempInt, tempInt, 5.0, 2)!=PsychError_none) PsychErrorExitMsg(PsychError_user, "Sync failed for reasons mentioned above.");
+					if (!PsychCopyInIntegerArg(3, kPsychArgOptional, &tempInt3)) {
+                        // No screenId specified: Resync default screen or whatever...
+                        tempInt2 = 0;
+                        if (PsychSynchronizeDisplayScreens(&tempInt2, NULL, &tempInt, tempInt, 5.0, 2)!=PsychError_none) PsychErrorExitMsg(PsychError_user, "Sync failed for reasons mentioned above.");
+                    } else {
+                        // Specific screenId provided: Resync crtc's associated with this screenId if possible:
+                        tempInt2 = 1;
+                        if (PsychSynchronizeDisplayScreens(&tempInt2, &tempInt3, &tempInt, tempInt, 5.0, 2)!=PsychError_none) PsychErrorExitMsg(PsychError_user, "Sync failed for reasons mentioned above.");
+                    }
+                    
 					PsychCopyOutDoubleArg(1, kPsychArgOptional, tempInt);
 				}
 				preferenceNameArgumentValid=TRUE;
@@ -463,13 +472,23 @@ PsychError SCREENPreference(void)
 				PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
 				if (tempInt < 0 || tempInt >= PsychGetNumDisplays() || tempInt >= kPsychMaxPossibleDisplays) PsychErrorExitMsg(PsychError_user, "Invalid screenId provided. Out of valid range!");
 
-				// Return old mapping for this screenId:
-				PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_ScreenToHead(tempInt));
-				if(numInputArgs==3) {
+				// Return old mappings for this screenId:
+                for (tempInt2 = 0; (tempInt2 < kPsychMaxPossibleCrtcs) && (PsychPrefStateGet_ScreenToHead(tempInt, tempInt2) >= 0); tempInt2++);
+                PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, tempInt2, 1, &dheads);
+                for (tempInt3 = 0; tempInt3 < tempInt2; tempInt3++) dheads[tempInt3] = (double) PsychPrefStateGet_ScreenToHead(tempInt, tempInt3);
+                
+                // Optionally retrieve and set new mappings for this screenId:
+				if(numInputArgs>=3) {
 					// Set new headId for screenId:
 					PsychCopyInIntegerArg(3, kPsychArgRequired, &tempInt2);
-					if (tempInt2 < 0 || tempInt2 > 5) PsychErrorExitMsg(PsychError_user, "Invalid headId provided. Out of valid range [0 to 5]!");
-					PsychPrefStateSet_ScreenToHead(tempInt, tempInt2);
+					if (tempInt2 < 0) PsychErrorExitMsg(PsychError_user, "Invalid negative headId provided!");
+
+                    // Assign primary head by default (index 0), but allow optionally others as well:
+                    tempInt3 = 0;
+					PsychCopyInIntegerArg(4, kPsychArgOptional, &tempInt3);
+					if (tempInt3 < 0 || tempInt3 >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid rankId provided! Too many heads for one screen!");
+
+					PsychPrefStateSet_ScreenToHead(tempInt, tempInt2, tempInt3);
 				}
 				preferenceNameArgumentValid=TRUE;
 		}else 
