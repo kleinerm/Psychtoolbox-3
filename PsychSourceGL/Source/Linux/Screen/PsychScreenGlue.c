@@ -659,6 +659,9 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
       PsychSetScreenToHead(idx, crtcid, crtccount);
       crtccount++;
     }
+
+    // Release info for this output:
+    XRRFreeOutputInfo(output_info);
   }
 
   // Found a defined primary output?
@@ -670,9 +673,13 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
       if (output_info && (output_info->connection == RR_Connected) && (crtcs[o] >= 0)) {
 	primaryOutput = o;
 	primaryCRTC = crtcs[o];
+        XRRFreeOutputInfo(output_info);
 	break;
       }
+
+      if (output_info) XRRFreeOutputInfo(output_info);
     }
+
     // Still undefined? Use first output as primary output:
     if (primaryOutput == -1) {
 	primaryOutput = 0;
@@ -697,8 +704,11 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
 }
 
 // Linux only: Retrieve modeline and crtc_info for a specific output on a specific screen:
+// Caution: If crtc is non-NULL and receives a valid XRRCrtcInfo*, then this pointer must
+//          be released by the caller via XRRFreeCrtcInfo(crtc), or resources will leak!
 XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc)
 {
+  int m;
   XRRModeInfo *mode = NULL;
   XRRCrtcInfo *crtc_info = NULL;
   
@@ -716,7 +726,14 @@ XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc)
   }
 
   // Optionally return crtc_info in *crtc:
-  if (crtc) *crtc = crtc_info;
+  if (crtc) {
+    // Return crtc_info, if any - NULL otherwise:
+    *crtc = crtc_info;
+  }
+  else {
+    // crtc_info not required by caller. We release it:
+    if (crtc_info) XRRFreeCrtcInfo(crtc_info);
+  }
 
   return(mode);
 }
@@ -867,6 +884,10 @@ void PsychCleanupDisplayGlue(void)
 	  // NULL-Out xinput extension data:
 	  xinput_info[i] = NULL;
 	  xinput_ndevices[i] = 0;
+
+	  // Release per-screen RandR info structures:
+	  if (displayX11ScreenResources[i]) XRRFreeScreenResources(displayX11ScreenResources[i]);
+	  displayX11ScreenResources[i] = NULL;
 	}
 
 	// All connections should be closed now. We can't NULL-out the display list, but

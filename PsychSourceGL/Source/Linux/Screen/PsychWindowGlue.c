@@ -657,7 +657,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     fflush(NULL);
   }
   else {
-    printf("PTB-INFO: Using GLEW version %s for automatic detection of OpenGL extensions...\n", glewGetString(GLEW_VERSION));
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Using GLEW version %s for automatic detection of OpenGL extensions...\n", glewGetString(GLEW_VERSION));
   }
   
   fflush(NULL);
@@ -696,7 +696,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	
 	// Additionally bind the Mesa query call:
 	glXGetSwapIntervalMESA = (PFNGLXGETSWAPINTERVALMESAPROC) glXGetProcAddressARB("glXGetSwapIntervalMESA");
-	printf("PTB-INFO: Using GLX_MESA_swap_control extension for control of vsync.\n");
+	if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Using GLX_MESA_swap_control extension for control of vsync.\n");
   }
   else {
 	// Unsupported. Disable the get call:
