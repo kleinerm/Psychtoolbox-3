@@ -711,7 +711,7 @@ XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc)
   int m;
   XRRModeInfo *mode = NULL;
   XRRCrtcInfo *crtc_info = NULL;
-  
+
   // Query info about video modeline and crtc of output 'outputIdx':
   XRRScreenResources *res = displayX11ScreenResources[screenId];
   if (PsychScreenToHead(screenId, outputIdx) >= 0) {
@@ -1596,61 +1596,138 @@ void PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx)
             For example, PsychReadNormalizedGammaTable() vs. PsychGetNormalizedGammaTable().
     
 */
-void PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float **redTable, float **greenTable, float **blueTable)
+void PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntries, float **redTable, float **greenTable, float **blueTable)
 {
-#ifdef USE_VIDMODEEXTS
-
-  CGDirectDisplayID	cgDisplayID;
-  static  float localRed[256], localGreen[256], localBlue[256];
+  CGDirectDisplayID cgDisplayID;
+  static float localRed[256], localGreen[256], localBlue[256];
   
   // The X-Windows hardware LUT has 3 tables for R,G,B, 256 slots each.
   // Each entry is a 16-bit word with the n most significant bits used for an n-bit DAC.
   psych_uint16	RTable[256];
   psych_uint16	GTable[256];
   psych_uint16	BTable[256];
-  int     i;        
+  int i;        
 
   // Query OS for gamma table:
   PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
-  XF86VidModeGetGammaRamp(cgDisplayID, PsychGetXScreenIdForScreen(screenNumber), 256, (unsigned short*) RTable, (unsigned short*) GTable, (unsigned short*) BTable);
 
-  // Convert tables:Map 16-bit values into 0-1 normalized floats:
+  if (has_xrandr_1_2) {
+    // Use RandR V 1.2 for per-crtc query:
+    XRRScreenResources *res = displayX11ScreenResources[screenNumber];
+
+    if (outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid output index provided! No such output for this screen!");
+    outputId = PsychScreenToHead(screenNumber, ((outputId < 0) ? 0 : outputId));
+    if (outputId >= res->ncrtc || outputId < 0) PsychErrorExitMsg(PsychError_user, "Invalid output index provided! No such output for this screen!");
+
+    RRCrtc crtc = res->crtcs[outputId];
+    XRRCrtcGamma *lut = XRRGetCrtcGamma(cgDisplayID, crtc);
+
+    if ((lut->size != 256) && (PsychPrefStateGet_Verbosity() > 1)) {
+      printf("PTB-WARNING: ReadNormalizedGammatable: Hardware gamma table doesn't have required 256 slots, but %i slots! Returned LUT's may be wrong!\n", lut->size);
+    }
+
+    // Convert tables:Map 16-bit values into 0-1 normalized floats:
+    for (i=0; i<256; i++) localRed[i]   = ((float) lut->red[i]) / 65535.0f;
+    for (i=0; i<256; i++) localGreen[i] = ((float) lut->green[i]) / 65535.0f;
+    for (i=0; i<256; i++) localBlue[i]  = ((float) lut->blue[i]) / 65535.0f;
+    XRRFreeGamma(lut);
+  }
+  else {
+    // Use old-fashioned VidmodeExt path: No control over which output is queried on multi-display setups:
+    #ifdef USE_VIDMODEEXTS
+    XF86VidModeGetGammaRamp(cgDisplayID, PsychGetXScreenIdForScreen(screenNumber), 256, (unsigned short*) RTable, (unsigned short*) GTable, (unsigned short*) BTable);
+    #endif
+
+    // Convert tables:Map 16-bit values into 0-1 normalized floats:
+    for (i=0; i<256; i++) localRed[i]   = ((float) RTable[i]) / 65535.0f;
+    for (i=0; i<256; i++) localGreen[i] = ((float) GTable[i]) / 65535.0f;
+    for (i=0; i<256; i++) localBlue[i]  = ((float) BTable[i]) / 65535.0f;
+  }
+
+  // Assign output lut's:
   *redTable=localRed; *greenTable=localGreen; *blueTable=localBlue;
-  for (i=0; i<256; i++) localRed[i]   = ((float) RTable[i]) / 65535.0f;
-  for (i=0; i<256; i++) localGreen[i] = ((float) GTable[i]) / 65535.0f;
-  for (i=0; i<256; i++) localBlue[i]  = ((float) BTable[i]) / 65535.0f;
 
   // The LUT's always have 256 slots for the 8-bit framebuffer:
   *numEntries= 256;
-#endif
+
   return;
 }
 
-unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redTable, float *greenTable, float *blueTable)
+unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int numEntries, float *redTable, float *greenTable, float *blueTable)
 {
-#ifdef USE_VIDMODEEXTS
-
   CGDirectDisplayID	cgDisplayID;
-  int     i;        
-  psych_uint16	RTable[256];
-  psych_uint16	GTable[256];
-  psych_uint16	BTable[256];
-
-  // Table must have 256 slots!
-  if (numEntries!=256) PsychErrorExitMsg(PsychError_user, "Loadable hardware gamma tables must have 256 slots!");    
+  int     i, j;
+  static psych_uint16	RTable[256];
+  static psych_uint16	GTable[256];
+  static psych_uint16	BTable[256];
   
   // The X-Windows hardware LUT has 3 tables for R,G,B, 256 slots each.
   // Each entry is a 16-bit word with the n most significant bits used for an n-bit DAC.
-
-  // Convert input table to X11 specific gammaTable:
-  for (i=0; i<256; i++) RTable[i] = (int)(redTable[i]   * 65535.0f + 0.5f);
-  for (i=0; i<256; i++) GTable[i] = (int)(greenTable[i] * 65535.0f + 0.5f);
-  for (i=0; i<256; i++) BTable[i] = (int)(blueTable[i]  * 65535.0f + 0.5f);
   
   // Set new gammaTable:
   PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
-  XF86VidModeSetGammaRamp(cgDisplayID, PsychGetXScreenIdForScreen(screenNumber), 256, (unsigned short*) RTable, (unsigned short*) GTable, (unsigned short*) BTable);
-#endif
+
+  if (has_xrandr_1_2) {
+    // Use RandR V 1.2 for per-crtc setup:
+
+    // Setup of all crtc's with this gamma table requested?
+    if (outputId < 0) {
+      // Yes: Iterate over all outputs, set via recursive call:
+      j = 1;
+      for (i = 0; (j > 0) && (i < kPsychMaxPossibleCrtcs) && (PsychScreenToHead(screenNumber, i) > -1); i++) {
+	j = PsychLoadNormalizedGammaTable(screenNumber, i, numEntries, redTable, greenTable, blueTable);
+      }
+
+      // Done setting all crtc's. Return success:
+      return(1);
+    }
+
+    // No: Only load a specific crtc for output 'outputId':
+    XRRScreenResources *res = displayX11ScreenResources[screenNumber];
+
+    if (outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid output index provided! No such output for this screen!");
+    outputId = PsychScreenToHead(screenNumber, outputId);
+    if (outputId >= res->ncrtc || outputId < 0) PsychErrorExitMsg(PsychError_user, "Invalid output index provided! No such output for this screen!");
+
+    RRCrtc crtc = res->crtcs[outputId];
+
+    // Get required size of gamma table:
+    j = XRRGetCrtcGammaSize(cgDisplayID, crtc);
+    if (numEntries != j) {
+      printf("PTB-ERROR: Provided gamma table has %i slots, but graphics card requires %i slots!\n", numEntries, j);
+      PsychErrorExitMsg(PsychError_user, "Loadable hardware gamma table has wrong number of slots!");
+    }
+
+    // Allocate table of appropriate size:
+    XRRCrtcGamma *lut = XRRAllocGamma(numEntries);
+
+    // Convert tables:Map 16-bit values into 0-1 normalized floats:
+    j = lut->size;
+    for (i=0; i<j; i++) lut->red[i]   = (psych_uint16) (redTable[i]   * 65535.0f + 0.5f);
+    for (i=0; i<j; i++) lut->green[i] = (psych_uint16) (greenTable[i] * 65535.0f + 0.5f);
+    for (i=0; i<j; i++) lut->blue[i]  = (psych_uint16) (blueTable[i]  * 65535.0f + 0.5f);
+
+    // Assign to crtc:
+    XRRSetCrtcGamma(cgDisplayID, crtc, lut);
+
+    // Release:
+    XRRFreeGamma(lut);
+  }
+  else {
+    // Use old-fashioned VidmodeExt path: No control over which output is setup on multi-display setups:
+    if (numEntries != 256) PsychErrorExitMsg(PsychError_user, "Loadable hardware gamma tables must have 256 slots!");    
+
+    // Convert input table to X11 specific gammaTable:
+    for (i=0; i<256; i++) RTable[i] = (int)(redTable[i]   * 65535.0f + 0.5f);
+    for (i=0; i<256; i++) GTable[i] = (int)(greenTable[i] * 65535.0f + 0.5f);
+    for (i=0; i<256; i++) BTable[i] = (int)(blueTable[i]  * 65535.0f + 0.5f);
+
+    #ifdef USE_VIDMODEEXTS
+    XF86VidModeSetGammaRamp(cgDisplayID, PsychGetXScreenIdForScreen(screenNumber), 256, (unsigned short*) RTable, (unsigned short*) GTable, (unsigned short*) BTable);
+    #endif
+  }
+
+  XFlush(cgDisplayID);
 
   // Return "success":
   return(1);

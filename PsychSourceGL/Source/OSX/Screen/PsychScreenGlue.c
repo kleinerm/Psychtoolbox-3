@@ -790,7 +790,7 @@ void PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx)
             For example, PsychReadNormalizedGammaTable() vs. PsychGetNormalizedGammaTable().
     
 */
-void PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float **redTable, float **greenTable, float **blueTable)
+void PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntries, float **redTable, float **greenTable, float **blueTable)
 {
     CGDirectDisplayID	cgDisplayID;
     static float localRed[1024], localGreen[1024], localBlue[1024];
@@ -806,7 +806,7 @@ void PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float **re
     if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: ReadNormalizedGammatable: numEntries = %i.\n", *numEntries);
 }
 
-unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redTable, float *greenTable, float *blueTable)
+unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int numEntries, float *redTable, float *greenTable, float *blueTable)
 {
     CGDisplayErr 	error; 
     CGDirectDisplayID	cgDisplayID;

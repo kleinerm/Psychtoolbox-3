@@ -846,7 +846,7 @@ void PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx)
             For example, PsychReadNormalizedGammaTable() vs. PsychGetNormalizedGammaTable().
     
 */
-void PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float **redTable, float **greenTable, float **blueTable)
+void PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntries, float **redTable, float **greenTable, float **blueTable)
 {
     CGDirectDisplayID	cgDisplayID;
     static  float localRed[256], localGreen[256], localBlue[256];
@@ -873,7 +873,7 @@ void PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float **re
     *numEntries= 256;
 }
 
-unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redTable, float *greenTable, float *blueTable)
+unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int numEntries, float *redTable, float *greenTable, float *blueTable)
 {
     psych_bool 	ok; 
     CGDirectDisplayID	cgDisplayID;

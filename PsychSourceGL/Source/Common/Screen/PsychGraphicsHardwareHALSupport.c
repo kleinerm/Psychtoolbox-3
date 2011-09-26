@@ -792,10 +792,10 @@ void PsychAutoDetectScreenToHeadMappings(int maxHeads)
         if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to detect screenId to display head mapping for screenid %i ...", screenId);
         
         // Retrieve current gamma table. Need to back it up internally:
-        PsychReadNormalizedGammaTable(screenId, &numEntries, &redTable, &greenTable, &blueTable);
+        PsychReadNormalizedGammaTable(screenId, -1, &numEntries, &redTable, &greenTable, &blueTable);
         
         // Now load an all-zero gamma table for that screen:
-        PsychLoadNormalizedGammaTable(screenId, 256, nullTable, nullTable, nullTable);
+        PsychLoadNormalizedGammaTable(screenId, -1, 256, nullTable, nullTable, nullTable);
         
         // Wait for 100 msecs, so the gamma table has actually settled (e.g., if its update was
         // delayed until next vblank on a >= 20 Hz display):
@@ -814,7 +814,7 @@ void PsychAutoDetectScreenToHeadMappings(int maxHeads)
         } 
         
         // Now restore original gamma table for that screen:
-        PsychLoadNormalizedGammaTable(screenId, numEntries, redTable, greenTable, blueTable);
+        PsychLoadNormalizedGammaTable(screenId, -1, numEntries, redTable, greenTable, blueTable);
         
         // Wait for 100 msecs, so the gamma table has actually settled (e.g., if its update was
         // delayed until next vblank on a >= 20 Hz display):

@@ -90,7 +90,7 @@ PsychError SCREENLoadCLUT(void)
     maxval=(double) ((1 << bits) - 1);
 
     // First read the existing gamma table so we can return it.  
-    PsychReadNormalizedGammaTable(screenNumber, &numEntries, &outRedTable, &outGreenTable, &outBlueTable);
+    PsychReadNormalizedGammaTable(screenNumber, -1, &numEntries, &outRedTable, &outGreenTable, &outBlueTable);
 
     // Load and sanity check the input matrix, and convert from float to doubles:
     isclutprovided = PsychAllocInDoubleMatArg(2, FALSE, &inM,  &inN, &inP, &inTable);
@@ -137,7 +137,7 @@ PsychError SCREENLoadCLUT(void)
       }
       
       // Now set the new gamma table
-      PsychLoadNormalizedGammaTable(screenNumber, numEntries, inRedTable, inGreenTable, inBlueTable);
+      PsychLoadNormalizedGammaTable(screenNumber, -1, numEntries, inRedTable, inGreenTable, inBlueTable);
     }
 
     return(PsychError_none);

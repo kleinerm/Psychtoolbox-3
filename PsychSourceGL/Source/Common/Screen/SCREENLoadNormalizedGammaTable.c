@@ -27,8 +27,8 @@
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "Screen('LoadNormalizedGammaTable', windowPtrOrScreenNumber, table [, loadOnNextFlip] [, physicalDisplay]);";
 static char synopsisString[] = 
-			"Load the gamma table of the specified screen or window 'windowPtrOrScreenNumber'. You need to pass the new "
-			"hardware gamma table 'table' as a 256 rows by 3 columns matrix. Each row corresponds to "
+			"Load the gamma table of the specified screen or window 'windowPtrOrScreenNumber'.\n"
+			"You need to pass the new hardware gamma table 'table' as a 256 rows by 3 columns matrix. Each row corresponds to "
 			"a single color index value in the framebuffer and contains the Red- green- and blue values "
 			"to use for output. Column 1 is the red value, column 2 is the green value and column 3 is "
 			"the blue value. Values have to be in range between 0.0 (for dark pixel) and 1.0 (for maximum intensity). "
@@ -45,7 +45,9 @@ static char synopsisString[] =
 			"the flag is set to its default value of zero then update of the gamma table will happen at the next "
 			"vertical retrace (or immediately if the graphics driver doesn't support sync to vertical retrace). "
 			"A 'loadOnNextFlip' flag of 2 will load the provided table not into the hardware tables of your graphics "
-			"card, but into the hardware tables of special display devices, like e.g., the Bits++ box.\n"
+			"card, but into the hardware tables of special display devices, like e.g., the Bits++ box. It can also "
+			"be used to load clut's for color lookup table animation. Read the section about 'EnableCLUTMapping' "
+			"in the 'help PsychImaging' for info on how to enable and use color lookup table animation.\n"
 			"On MacOS-X, the optional 'physicalDisplay' flag can be set to 1, zero is the default. In this case, "
 			"the 'windowPtrOrScreenNumber' argument (which then must be a real screen number, not a window index) "
 			"selects among physically present display devices, instead of logical devices. "
@@ -53,7 +55,14 @@ static char synopsisString[] =
 			"'mirror mode' configuration, as there is only one logical display, but multiple physical displays, mirroring "
 			"each other. Please note that screen numbering is different for physical vs. logical displays. For a list of "
 			"physical display indices, call Screen('Screens', 1);\n"
-			"On MacOS-X, this function takes arbitrary gamma-tables which makes it suitable for fast CLUT animation. "
+			"On GNU/Linux, the optional 'physicalDisplay' parameter selects the video output to which the gamma "
+			"table should be applied in multi-display mode. On Linux a screen can output to multiple video displays, "
+			"therefore this parameter allows to setup individual gamma tables for each display. The default setting "
+			"is -1, which means to apply the (same) gamma table to all outputs of the given screen.\n"
+			"On MacOS-X and Linux, this function takes arbitrary gamma-tables which makes it suitable for CLUT animation, "
+			"although you should rather avoid CLUT animation, or use the PsychImaging(...'EnableCLUTMapping'...) method "
+			"instead. CLUT animation nowadays is almost always the wrong approach. If you really need it, the PsychImaging "
+			"based method provides cross-platform compatibility and reliable timing.\n"
 			"On Microsoft Windows, only tables with monotonically increasing values are considered valid. Other tables "
 			"get rejected by the operating system -- there's nothing we can do about this incredibly wise decision "
 			"of the Microsoft system designers :( , so this is not suitable for CLUT animation, but only for linearizing "
@@ -64,7 +73,7 @@ static char seeAlsoString[] = "ReadNormalizedGammaTable";
 
 PsychError SCREENLoadNormalizedGammaTable(void) 
 {
-    int i, screenNumber, numEntries, inM, inN, inP, loadOnNextFlip, physicalDisplay;
+    int i, screenNumber, numEntries, inM, inN, inP, loadOnNextFlip, physicalDisplay, outputId;
     float *outRedTable, *outGreenTable, *outBlueTable, *inRedTable, *inGreenTable, *inBlueTable;
     double *inTable, *outTable;	
     PsychWindowRecordType *windowRecord;
@@ -76,34 +85,44 @@ PsychError SCREENLoadNormalizedGammaTable(void)
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(4));
 
-	// Get optional physicalDisplay argument - It defaults to zero:
-	physicalDisplay = 0;
-	PsychCopyInIntegerArg(4, FALSE, &physicalDisplay);
+    // Get optional physicalDisplay argument - It defaults to zero on OS/X, -1 on Linux:
+    physicalDisplay = -1;
+    PsychCopyInIntegerArg(4, FALSE, &physicalDisplay);
 
     // Read in the screen number:
-	// On OS/X we also accept screen indices for physical displays (as opposed to active dispays).
-	// This only makes a difference in mirror-mode, where there is only 1 active display, but that
-	// corresponds to two physical displays which can have different gamma setting requirements:
-	if (PSYCH_SYSTEM == PSYCH_OSX && physicalDisplay > 0) {
-		PsychCopyInIntegerArg(1, TRUE, &screenNumber);
-		if (screenNumber < 1) PsychErrorExitMsg(PsychError_user, "A 'screenNumber' that is smaller than one provided, although 'physicalDisplay' flag set. This is not allowed!");
+    // On OS/X we also accept screen indices for physical displays (as opposed to active dispays).
+    // This only makes a difference in mirror-mode, where there is only 1 active display, but that
+    // corresponds to two physical displays which can have different gamma setting requirements:
+    if ((PSYCH_SYSTEM == PSYCH_OSX) && (physicalDisplay > 0)) {
+        PsychCopyInIntegerArg(1, TRUE, &screenNumber);
+        if (screenNumber < 1) PsychErrorExitMsg(PsychError_user, "A 'screenNumber' that is smaller than one provided, although 'physicalDisplay' flag set. This is not allowed!");
 
-		// Invert screenNumber as a sign its a physical display, not an active display:
-		screenNumber = -1 * screenNumber;
-	}
-	else {
-		PsychCopyInScreenNumberArg(1, TRUE, &screenNumber);
-	}
-    
+	// Invert screenNumber as a sign its a physical display, not an active display:
+	screenNumber = -1 * screenNumber;
+    }
+    else {
+        PsychCopyInScreenNumberArg(1, TRUE, &screenNumber);
+    }
+
+    if ((PSYCH_SYSTEM == PSYCH_LINUX) && (physicalDisplay > -1)) {
+	// Affect one specific display output for given screen:
+	outputId = physicalDisplay;
+    }
+    else {
+	// Other OS'es, and Linux with default setting: Affect all outputs
+	// for a screen.
+	outputId = -1;
+    }
+
     // Load and sanity check the input matrix:
-	inM = -1; inN = -1; inP = -1;
+    inM = -1; inN = -1; inP = -1;
     if (!PsychAllocInDoubleMatArg(2, FALSE, &inM,  &inN, &inP, &inTable)) {
         // Special case: Allow passing in an empty gamma table argument. This
         // triggers auto-load of identity LUT and setup of GPU for identity passthrough:
         inM = 0; inN = 3; inP = 1;
-	}
+    }
 
-	// Sanity check dimensions:
+    // Sanity check dimensions:
     if((inN != 3) || (inP != 1)) PsychErrorExitMsg(PsychError_user, "The gamma table must have 3 columns (Red, Green, Blue).");
 	
     // Identity passthrouh setup requested?
@@ -137,8 +156,9 @@ PsychError SCREENLoadNormalizedGammaTable(void)
 	 PsychCopyInIntegerArg(3, FALSE, &loadOnNextFlip);
 
 	 if (loadOnNextFlip>0) {
-	 
-		 if (physicalDisplay > 0) PsychErrorExitMsg(PsychError_user, "Non-zero 'loadOnNextFlip' flag not allowed if 'physicalDisplays' flag is non-zero!");
+		 if ((PSYCH_SYSTEM == PSYCH_OSX) && (physicalDisplay > 0)) PsychErrorExitMsg(PsychError_user, "Non-zero 'loadOnNextFlip' flag not allowed if 'physicalDisplays' flag is non-zero!");
+		 if ((PSYCH_SYSTEM == PSYCH_LINUX) && (physicalDisplay > -1)) PsychErrorExitMsg(PsychError_user, "Non-zero 'loadOnNextFlip' flag not allowed if 'physicalDisplays' setting is positive!");
+
 		 // Allocate tables in associated windowRecord: We will update during next
 		 // Flip operation for specified windowRecord.
 		 PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
@@ -191,7 +211,7 @@ PsychError SCREENLoadNormalizedGammaTable(void)
 
     if (loadOnNextFlip < 2) {
         //first read the existing gamma table so we can return it.  
-        PsychReadNormalizedGammaTable(screenNumber, &numEntries, &outRedTable, &outGreenTable, &outBlueTable);
+        PsychReadNormalizedGammaTable(screenNumber, outputId, &numEntries, &outRedTable, &outGreenTable, &outBlueTable);
         PsychAllocOutDoubleMatArg(1, FALSE, numEntries, 3, 0, &outTable);
         
         for(i=0;i<numEntries;i++){
@@ -202,7 +222,7 @@ PsychError SCREENLoadNormalizedGammaTable(void)
     }
      
     //Now set the new gamma table
-    if (loadOnNextFlip == 0) PsychLoadNormalizedGammaTable(screenNumber, inM, inRedTable, inGreenTable, inBlueTable);
+    if (loadOnNextFlip == 0) PsychLoadNormalizedGammaTable(screenNumber, outputId, inM, inRedTable, inGreenTable, inBlueTable);
 
     return(PsychError_none);
 }

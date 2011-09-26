@@ -2672,13 +2672,13 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	}
 	#endif
 	
-    // Update of hardware gamma table in sync with flip requested?
-    if ((windowRecord->inRedTable) && (windowRecord->loadGammaTableOnNextFlip > 0)) {
+	// Update of hardware gamma table in sync with flip requested?
+	if ((windowRecord->inRedTable) && (windowRecord->loadGammaTableOnNextFlip > 0)) {
 		// Perform hw-table upload on M$-Windows in sync with retrace, wait until completion. On
 		// OS-X just schedule update in sync with next retrace, but continue immediately.
 		// See above for code that made sure we only reach this statement immediately prior
 		// to the expected swap time, so this is as properly synced to target retrace as it gets:
-		PsychLoadNormalizedGammaTable(windowRecord->screenNumber, windowRecord->inTableSize, windowRecord->inRedTable, windowRecord->inGreenTable, windowRecord->inBlueTable);
+		PsychLoadNormalizedGammaTable(windowRecord->screenNumber, -1, windowRecord->inTableSize, windowRecord->inRedTable, windowRecord->inGreenTable, windowRecord->inBlueTable);
 	}
 	
 	// Only perform a bog-standard bufferswap request if no OS-specific method has been
