@@ -467,7 +467,7 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
  *	 of resolution, pixeldepth and refresh rate. Allocates temporary arrays for storage of this list
  *	 and returns it to the calling routine. This function is basically only used by Screen('Resolutions').
  */
-int PsychGetAllSupportedScreenSettings(int screenNumber, long** widths, long** heights, long** hz, long** bpp)
+int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** widths, long** heights, long** hz, long** bpp)
 {
     int i, rc, numPossibleModes;
     DEVMODE result;

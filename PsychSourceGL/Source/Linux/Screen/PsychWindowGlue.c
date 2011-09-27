@@ -716,10 +716,12 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	  strstr(glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control")==NULL && strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_MESA_swap_control")==NULL )) {
 	  // No, total failure to bind extension:
 	  glXSwapIntervalSGI = NULL;
-	  printf("PTB-WARNING: Your graphics driver doesn't allow me to control syncing wrt. vertical retrace!\n");
-	  printf("PTB-WARNING: Please update your display graphics driver as soon as possible to fix this.\n");
-	  printf("PTB-WARNING: Until then, you can manually enable syncing to VBL somehow in a manner that is\n");
-	  printf("PTB-WARNING: dependent on the type of gfx-card and driver. Google is your friend...\n");
+	  if (PsychPrefStateGet_Verbosity() > 1) { 
+		  printf("PTB-WARNING: Your graphics driver doesn't allow me to control syncing wrt. vertical retrace!\n");
+		  printf("PTB-WARNING: Please update your display graphics driver as soon as possible to fix this.\n");
+		  printf("PTB-WARNING: Until then, you can manually enable syncing to VBL somehow in a manner that is\n");
+		  printf("PTB-WARNING: dependent on the type of gfx-card and driver. Google is your friend...\n");
+	  }
   }
   fflush(NULL);
 
@@ -739,12 +741,26 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // Retrieve modeline of current video mode on primary crtc for the screen to which
   // this onscreen window is assigned. Could also query useful info about crtc, but let's not
   // overdo it in the first iteration...
-  XRRModeInfo *mode = PsychOSGetModeLine(screenSettings->screenNumber, 0, NULL);
+  XRRCrtcInfo *crtc_info = NULL;
+  XRRModeInfo *mode = PsychOSGetModeLine(screenSettings->screenNumber, 0, &crtc_info);
   if (mode) {
     // Assign modes display height aka vactive or vdisplay as startline of vblank interval:
     windowRecord->VBL_Startline = mode->height;
     // Assign vbl endline as vtotal - 1:
     windowRecord->VBL_Endline   = mode->vTotal - 1;
+
+    // Check for output display rotation enabled. Will likely impair timing/timestamping
+    // because it uses copy-swaps via an intermediate shadow framebuffer to do rotation
+    // during copy-swap blit, instead of via rotated crtc scanout, as most crtc's don't
+    // support this in hardware:
+    if ((crtc_info->rotation != RR_Rotate_0) && (PsychPrefStateGet_Verbosity() > 1)) {
+	printf("PTB-WARNING: Your primary output display has hardware rotation enabled. It is not displaying in upright orientation.\n");
+	printf("PTB-WARNING: On many graphics cards, this will cause unreliable stimulus presentation timing and timestamping.\n");
+	printf("PTB-WARNING: If you want non-upright stimulus presentation, look at 'help PsychImaging' on how to achieve this in\n");
+	printf("PTB-WARNING: a way that doesn't impair timing. The subfunctions 'FlipHorizontal' and 'FlipVertical' are what you probably need.\n");
+    }
+
+    XRRFreeCrtcInfo(crtc_info);
   }
   
   // Well Done!

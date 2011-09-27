@@ -218,6 +218,7 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("GetOpenGLDrawMode", &SCREENGetOpenGLDrawMode));
 	PsychErrorExit(PsychRegister("Resolutions", &SCREENResolutions));
 	PsychErrorExit(PsychRegister("Resolution", &SCREENResolution));
+	PsychErrorExit(PsychRegister("ConfigureDisplay", &SCREENConfigureDisplay));
 	PsychErrorExit(PsychRegister("CreateMovie", &SCREENCreateMovie));
 	PsychErrorExit(PsychRegister("FinalizeMovie", &SCREENFinalizeMovie));
 	PsychErrorExit(PsychRegister("AddFrameToMovie", &SCREENGetImage));

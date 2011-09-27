@@ -57,6 +57,10 @@ if nargin<4
 	hz=oldRes.hz;
 end
 
+if isempty(hz)
+	hz=oldRes.hz;
+end
+
 if nargin==2 & isa(width,'struct')
 	res=width;
 	if isfield(res,'width')

@@ -51,7 +51,7 @@ void						PsychReleaseScreen(int screenNumber);
 psych_bool					PsychIsScreenCaptured(int screenNumber);
 int                         PsychGetNumDisplays(void);
 void						PsychGetScreenDepths(int screenNumber, PsychDepthType *depths);
-int                         PsychGetAllSupportedScreenSettings(int screenNumber, long** widths, long** heights, long** hz, long** bpp);
+int                         PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** widths, long** heights, long** hz, long** bpp);
 psych_bool					PsychCheckVideoSettings(PsychScreenSettingsType *setting);
 void						PsychGetScreenDepth(int screenNumber, PsychDepthType *depth);   //dont' use this and get rid  of it.
 int                         PsychGetScreenDepthValue(int screenNumber);
@@ -91,6 +91,8 @@ void 						PsychScreenUnmapDeviceMemory(void);
 
 // Linux only: Retrieve modeline and crtc_info for a specific output on a specific screen:
 XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc);
+double PsychOSVRefreshFromMode(XRRModeInfo *mode);
+int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int newHeight, int newHz, int newX, int newY);
 
 //end include once
 #endif
