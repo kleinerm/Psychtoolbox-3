@@ -66,7 +66,9 @@ static char synopsisString[] =
 	"If you run your script with the imaging pipeline enabled (imagingmode flag > 0 in "
 	"Screen('OpenWindow'), then all Offscreen windows always have 4 color channels RGBA and "
 	"the selectable depths are additionally 64 bits or 128 bits, corresponding to 16 bits or "
-	"32 bits floating point precision per color compponent.\n"
+	"32 bits floating point precision per color component. If 64 bits are selected but the "
+	"hardware does not support this in float precision, a 15 bit precision per color channel "
+	"signed integer format will be tried instead.\n"
 	"'specialFlags' optional parameter to set special properties, defaults to zero. If you set "
 	"it to 2 then the offscreen window will be drawn with especially high precision, see "
 	"specialFlags setting of 2 in help for Screen('DrawTexture') for more explanation. \n"
@@ -273,7 +275,11 @@ PsychError SCREENOpenOffscreenWindow(void)
 		fboInternalFormat = GL_RGBA8; windowRecord->depth=32; usefloatformat = 0;
 		
 		// Need 16 bpc fixed point precision?
-		if (targetWindow->imagingMode & kPsychNeed16BPCFixed) { fboInternalFormat = GL_RGBA16; windowRecord->depth=64; usefloatformat = 0; }
+		if (targetWindow->imagingMode & kPsychNeed16BPCFixed) {
+			fboInternalFormat = (targetWindow->gfxcaps & kPsychGfxCapSNTex16) ? GL_RGBA16_SNORM : GL_RGBA16;
+			windowRecord->depth=64;
+			usefloatformat = 0;
+		}
 		
 		// Need 16 bpc floating point precision?
 		if (targetWindow->imagingMode & kPsychNeed16BPCFloat) { fboInternalFormat = GL_RGBA_FLOAT16_APPLE; windowRecord->depth=64; usefloatformat = 1; }
@@ -291,6 +297,17 @@ PsychError SCREENOpenOffscreenWindow(void)
 
 				case 64:
 					fboInternalFormat = GL_RGBA_FLOAT16_APPLE; windowRecord->depth=64; usefloatformat = 1;
+					// Need fallback for lack of float 16 support?
+					if (!(targetWindow->gfxcaps & kPsychGfxCapFPTex16)) {
+						// Yes. Try 16 bit signed normalized texture instead:
+						if (PsychPrefStateGet_Verbosity() > 4)
+							printf("PTB-INFO:OpenOffscreenWindow: Code requested 16 bpc float precision, but this is unsupported. Trying to use 15 bit snorm precision instead.\n");
+						fboInternalFormat = GL_RGBA16_SNORM; windowRecord->depth=64; usefloatformat = 0;
+						if (!(targetWindow->gfxcaps & kPsychGfxCapSNTex16)) {
+							printf("PTB-ERROR:OpenOffscreenWindow: Code requested 16 bpc float precision, but this is unsupported by this graphics card.\n");
+							printf("PTB-ERROR:OpenOffscreenWindow: Tried to use 16 bit snorm format instead, but failed as this is unsupported as well.\n");
+						}
+					}
 				break;
 
 				case 128:

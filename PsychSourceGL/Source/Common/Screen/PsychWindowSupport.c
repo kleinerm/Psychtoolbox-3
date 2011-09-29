@@ -4969,7 +4969,12 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 			windowRecord->gfxcaps |= kPsychGfxCapNeedsUnsignedByteRGBATextureUpload;
 		}
 	}
-	
+
+        if (glewIsSupported("GL_EXT_texture_snorm")) {
+		if (verbose) printf("Hardware supports signed normalized textures of 16 bpc integer format.\n");
+		windowRecord->gfxcaps |= kPsychGfxCapSNTex16;
+	}
+
 	// Support for basic FBO's? Needed for any operation of the imaging pipeline, e.g.,
 	// full imaging pipe, fast offscreen windows, Screen('TransformTexture')...
 	

@@ -337,7 +337,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	fboInternalFormat = GL_RGBA8; windowRecord->bpc = 8;
 	
 	// Need 16 bpc fixed point precision?
-	if (imagingmode & kPsychNeed16BPCFixed) { fboInternalFormat = GL_RGBA16; windowRecord->bpc = 16; }
+	if (imagingmode & kPsychNeed16BPCFixed) { fboInternalFormat = ((windowRecord->gfxcaps & kPsychGfxCapSNTex16) ? GL_RGBA16_SNORM : GL_RGBA16); windowRecord->bpc = 16; }
 	 
 	// Need 16 bpc floating point precision?
 	if (imagingmode & kPsychNeed16BPCFloat) { fboInternalFormat = GL_RGBA_FLOAT16_APPLE; windowRecord->bpc = 16; }
@@ -359,7 +359,8 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 
     // Sanity check: Is a floating point framebuffer requested which requires floating point texture support and
     // the hardware doesn't support float textures? Bail early, if so.
-    if (((windowRecord->bpc == 16) && !(windowRecord->gfxcaps & kPsychGfxCapFPTex16)) || ((windowRecord->bpc == 32) && !(windowRecord->gfxcaps & kPsychGfxCapFPTex32))) {
+    if (((windowRecord->bpc == 16) && !(windowRecord->gfxcaps & kPsychGfxCapFPTex16) && !(imagingmode & kPsychNeed16BPCFixed)) ||
+	((windowRecord->bpc == 32) && !(windowRecord->gfxcaps & kPsychGfxCapFPTex32))) {
         printf("PTB-ERROR: Your script requested a floating point resolution framebuffer with a resolution of more than 8 bits per color channel.\n");
         printf("PTB-ERROR: Your graphics hardware doesn't support floating point textures or framebuffers, so this is a no-go. Aborting...\n");
 		PsychErrorExitMsg(PsychError_user, "Sorry, the requested framebuffer color resolution is not supported by your graphics card. Game over.");
@@ -372,7 +373,11 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			break;
 
 			case GL_RGBA16:
-				printf("PTB-INFO: Will use 16 bits per color component framebuffer for stimulus drawing. Alpha blending may not work.\n");
+				printf("PTB-INFO: Will use 16 bits per color component unsigned integer framebuffer for stimulus drawing. Alpha blending may not work.\n");
+			break;
+
+			case GL_RGBA16_SNORM:
+				printf("PTB-INFO: Will use 15 bits per color component signed integer framebuffer for stimulus drawing. Alpha blending may not work.\n");
 			break;
 
 			case GL_RGBA_FLOAT16_APPLE:
@@ -540,7 +545,11 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			break;
 
 			case GL_RGBA16:
-				printf("PTB-INFO: Will use 16 bits per color component framebuffer for stimulus post-processing (if any).\n");
+				printf("PTB-INFO: Will use 16 bits per color component unsigned integer framebuffer for stimulus post-processing (if any).\n");
+			break;
+
+			case GL_RGBA16_SNORM:
+				printf("PTB-INFO: Will use 15 bits per color component signed integer framebuffer for stimulus post-processing (if any).\n");
 			break;
 
 			case GL_RGBA_FLOAT16_APPLE:
@@ -1665,7 +1674,7 @@ void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, psych_
 			fboInternalFormat = GL_RGBA8; textureRecord->bpc = 8;
 			
 			// Need 16 bpc fixed point precision?
-			if (forImagingmode & kPsychNeed16BPCFixed) { fboInternalFormat = GL_RGBA16; textureRecord->bpc = 16; }
+			if (forImagingmode & kPsychNeed16BPCFixed) { fboInternalFormat = ((textureRecord->gfxcaps & kPsychGfxCapSNTex16) ? GL_RGBA16_SNORM : GL_RGBA16); textureRecord->bpc = 16; }
 			
 			// Need 16 bpc floating point precision?
 			if (forImagingmode & kPsychNeed16BPCFloat) { fboInternalFormat = GL_RGBA_FLOAT16_APPLE; textureRecord->bpc = 16; }

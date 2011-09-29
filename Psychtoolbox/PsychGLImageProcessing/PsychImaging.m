@@ -141,15 +141,26 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %
 % * 'FixedPoint16Bit' Ask for a 16 bit integer precision framebuffer.
-%   This allows for 16 bits of precision for complex drawing. This allows
-%   to use a similar precision as the 'FloatingPoint32Bit' mode for
-%   high-precision display devices, but at a higher speed and lower memory
-%   requirements. However, alpha-blending is not supported, intermediate
-%   out-of-range values (smaller than zero or bigger than one) aren't
-%   supported either. Additionally this mode is only supported on ATI
+%   On graphics hardware that supports this, a 16 bit signed integer
+%   framebuffer will be created. Such a framebuffer can store intermediate
+%   color values in the normalized range [-1.0 ; +1.0] with a precision of
+%   15 bits per component. Only positive values between 0.0 and 1.0 are
+%   displayable in the end though. If the graphics hardware does not support this,
+%   a 16 bit unsigned integer framebuffer is tried instead. Such a framebuffer
+%   allows for 16 bits of precision per color component. However, many graphics
+%   cards do not support alpha-blending on such a framebuffer, and
+%   intermediate out-of-range values (smaller than zero or bigger than one) aren't
+%   supported either. Such values will be clamped to the representable [0.0 ; 1.0]
+%   range instead. Additionally this mode is only supported on some graphics
 %   hardware. It is a special purpose intermediate solution - more accurate
 %   than 16 bit floating point, but less capable and less accurate than 32
 %   bit floating point. If you need higher precision, choose 'FloatingPoint32Bit'.
+%
+%   The main sad reason this switch exists is because some graphics hardware or
+%   graphics drivers do not support floating point precision textures and
+%   framebuffers due to some ridiculous patent restrictions, but they do
+%   support a 16 bit signed or unsigned integer precision format. The switch
+%   is basically a workaround for the broken patent systems of many countries.
 %
 %   Usage: PsychImaging('AddTask', 'General', 'FixedPoint16Bit');
 %
@@ -1593,7 +1604,7 @@ if ~isempty(find(mystrcmp(reqs, 'EnableGenericHighPrecisionLuminanceOutput'))) |
 
     % Request 32bpc float FBO unless already a 16 bpc FBO or similar has
     % been explicitely requested:
-    if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap)
+    if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap) && ~bitand(imagingMode, kPsychNeed16BPCFixed)
         imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
     end
 end
@@ -1607,7 +1618,7 @@ if ~isempty(find(mystrcmp(reqs, 'EnableVideoSwitcherSimpleLuminanceOutput'))) ||
 
     % Request 32bpc float FBO unless already a 16 bpc FBO or similar has
     % been explicitely requested:
-    if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap)
+    if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap) && ~bitand(imagingMode, kPsychNeed16BPCFixed)
         imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
     end
 end
@@ -1641,7 +1652,7 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
     % Request 32bpc float FBO unless already a 16 bpc FBO or similar has
     % been explicitely requested: In principle, a 16 bpc FBO would be
     % sufficient for a native 10bpc framebuffer...
-    if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap)
+    if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap) && ~bitand(imagingMode, kPsychNeed16BPCFixed)
         imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
     end
 
@@ -1660,7 +1671,7 @@ if ~isempty(find(mystrcmp(reqs, 'EnableDualPipeHDROutput')))
 
     % Request 32bpc float FBO unless already a 16 bpc FBO or similar has
     % been explicitely requested:
-    if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap)
+    if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap) && ~bitand(imagingMode, kPsychNeed16BPCFixed)
         imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
     end
 

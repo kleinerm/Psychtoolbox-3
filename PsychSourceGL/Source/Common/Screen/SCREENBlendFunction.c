@@ -126,7 +126,7 @@ PsychError SCREENBlendFunction(void)
 	PsychStoreAlphaBlendingFactorsForWindow(windowRecord, newSource, newDestination);
 
 	// Check if alpha blending is possible for this windowRecord:
-	if ((newSource != GL_ONE || newDestination != GL_ZERO) && !((windowRecord->bpc < 16) || (windowRecord->bpc == 16 && (windowRecord->gfxcaps & kPsychGfxCapFPBlend16)) || (windowRecord->bpc == 32 && (windowRecord->gfxcaps & kPsychGfxCapFPBlend32)))) {
+	if ((newSource != GL_ONE || newDestination != GL_ZERO) && !((windowRecord->bpc < 16) || (windowRecord->bpc == 16 && (windowRecord->gfxcaps & kPsychGfxCapFPBlend16)) || (windowRecord->bpc == 32 && (windowRecord->gfxcaps & kPsychGfxCapFPBlend32)) || ((windowRecord->bpc == 16) && (windowRecord->imagingMode & kPsychNeed16BPCFixed)))) {
 		// Nope. Alpha blending requested but not possible for this windowRecord with this gfx-hardware.
 		if (PsychPrefStateGet_Verbosity() > 1) {
 			printf("PTB-WARNING: Screen('Blendfunction') called to enable alpha-blending on a window (handle=%i) which doesn't support\n", windowRecord->windowIndex);

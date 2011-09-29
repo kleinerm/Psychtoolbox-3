@@ -61,7 +61,10 @@ static char synopsisString[] =
 	"texture gets stored in half_float format, i.e. 16 bit per color component - Suitable for most display purposes and "
 	"fast on recent gfx-hardware. A value of 2 asks for full 32 bit single precision float per color component. Useful for complex "
 	"computations and image processing, but can be extremely slow when texture filtering is used on any piece of graphics hardware "
-	"manufactured before the year 2007.\n"
+	"manufactured before the year 2007. If a value of 1 is provided, asking for 16 bit floating point textures, but the graphics "
+	"hardware does not support this, then PTB tries to allocate a 15 bit precision signed integer texture instead, assuming the "
+	"graphics hardware supports that. Such a texture is more precise than the 16 bit floating point texture it replaces, but can "
+	"not store values outside the range [-1.0; 1.0].\n"
 	"'textureOrientation' This optional argument labels textures with a special orientation. "
 	"Normally (value 0) a Matlab matrix is passed in standard Matlab column-major dataformat. This is efficient for drawing of "
 	"textures but not for processing them via Screen('TransformTexture'). Therefore textures need to be transformed on demand "
@@ -246,6 +249,9 @@ PsychError SCREENMakeTexture(void)
 
 			textureRecord->textureinternalformat = (usefloatformat==1) ? GL_LUMINANCE_FLOAT16_APPLE : GL_LUMINANCE_FLOAT32_APPLE; 
 			textureRecord->textureexternalformat = GL_LUMINANCE;
+
+			// Override for missing floating point texture support: Try to use 16 bit fixed point signed normalized textures [-1.0 ; 1.0] resolved at 15 bits:
+			if ((usefloatformat==1) && !(windowRecord->gfxcaps & kPsychGfxCapFPTex16)) textureRecord->textureinternalformat = GL_LUMINANCE16_SNORM;
 		}
 
 		if(numMatrixPlanes==2) {
@@ -259,6 +265,9 @@ PsychError SCREENMakeTexture(void)
 			textureRecord->depth=(usefloatformat==1) ? 32 : 64;
 			textureRecord->textureinternalformat = (usefloatformat==1) ? GL_LUMINANCE_ALPHA_FLOAT16_APPLE : GL_LUMINANCE_ALPHA_FLOAT32_APPLE; 
 			textureRecord->textureexternalformat = GL_LUMINANCE_ALPHA;
+
+			// Override for missing floating point texture support: Try to use 16 bit fixed point signed normalized textures [-1.0 ; 1.0] resolved at 15 bits:
+			if ((usefloatformat==1) && !(windowRecord->gfxcaps & kPsychGfxCapFPTex16)) textureRecord->textureinternalformat = GL_LUMINANCE16_ALPHA16_SNORM;
 		}
 		
 		if(numMatrixPlanes==3) {
@@ -274,6 +283,9 @@ PsychError SCREENMakeTexture(void)
 			textureRecord->depth=(usefloatformat==1) ? 48 : 96;
 			textureRecord->textureinternalformat = (usefloatformat==1) ? GL_RGB_FLOAT16_APPLE : GL_RGB_FLOAT32_APPLE; 
 			textureRecord->textureexternalformat = GL_RGB;
+
+			// Override for missing floating point texture support: Try to use 16 bit fixed point signed normalized textures [-1.0 ; 1.0] resolved at 15 bits:
+			if ((usefloatformat==1) && !(windowRecord->gfxcaps & kPsychGfxCapFPTex16)) textureRecord->textureinternalformat = GL_RGB16_SNORM;
 		}
 		
 		if(numMatrixPlanes==4) {
@@ -291,6 +303,41 @@ PsychError SCREENMakeTexture(void)
 			textureRecord->depth=(usefloatformat==1) ? 64 : 128;
 			textureRecord->textureinternalformat = (usefloatformat==1) ? GL_RGBA_FLOAT16_APPLE : GL_RGBA_FLOAT32_APPLE; 
 			textureRecord->textureexternalformat = GL_RGBA;
+
+			// Override for missing floating point texture support: Try to use 16 bit fixed point signed normalized textures [-1.0 ; 1.0] resolved at 15 bits:
+			if ((usefloatformat==1) && !(windowRecord->gfxcaps & kPsychGfxCapFPTex16)) textureRecord->textureinternalformat = GL_RGBA16_SNORM;
+		}
+
+		// Override for missing floating point texture support?
+		if ((usefloatformat==1) && !(windowRecord->gfxcaps & kPsychGfxCapFPTex16)) {
+			// Override enabled. Instead of a 16bpc float texture with 11 bit linear precision in the
+			// range [-1.0 ; 1.0], we use a 16 bit signed normalized texture with a normalized value
+			// range of [-1.0; 1.0], encoded with 1 bit sign and 15 bit magnitude. These textures have
+			// an effective linear precision of 15 bits - better than 16 bpc float - but they are restricted
+			// to a value range of [-1.0 ; 1.0], as opposed to 16 bpc float textures. Tell user about this
+			// replacement at high verbosity levels:
+			if (PsychPrefStateGet_Verbosity() > 4)
+				printf("PTB-INFO:MakeTexture: Code requested 16 bpc float texture, but this is unsupported. Trying to use 16 bit snorm texture instead.\n");
+
+			// Signed normalized textures supported? Otherwise we bail...
+			if (!(windowRecord->gfxcaps & kPsychGfxCapSNTex16)) {
+				printf("PTB-ERROR:MakeTexture: Code requested 16 bpc floating point texture, but this is unsupported by this graphics card.\n");
+				printf("PTB-ERROR:MakeTexture: Tried to use 16 bit snorm texture instead, but failed as this is unsupported as well.\n");
+				PsychErrorExitMsg(PsychError_user, "Creation of 15 bit linear precision signed normalized texture failed. Not supported by your graphics hardware!");
+			}
+
+			// Check value range of pixels. This will not work for out of [-1; 1] range values.
+			texturePointer_f=(GLfloat*) texturePointer;
+			iters = iters * (size_t) numMatrixPlanes;
+			for (ix=0; ix<iters; ix++, texturePointer_f++) {
+				if(fabs((double) *texturePointer_f) > 1.0) {
+					// Game over!
+					printf("PTB-ERROR:MakeTexture: Code requested 16 bpc floating point texture, but this is unsupported by this graphics card.\n");
+					printf("PTB-ERROR:MakeTexture: Tried to use 16 bit snorm texture instead, but failed because some pixels are outside the\n");
+					printf("PTB-ERROR:MakeTexture: representable range -1.0 to 1.0 for this texture type. Change your code or update your graphics hardware.\n");
+					PsychErrorExitMsg(PsychError_user, "Creation of 15 bit linear precision signed normalized texture failed due to out of [-1 ; +1] range pixel values!");
+				}
+			}
 		}
 
 		// This is a special workaround for bugs in FLOAT16 texture creation on Mac OS/X 10.4.x and 10.5.x.
@@ -298,7 +345,7 @@ PsychError SCREENMakeTexture(void)
 		// type texture. Instead it seems to initialize with trash data, corrupting the texture.
 		// Therefore, if FLOAT16 texture creation is requested, we loop over the whole input buffer and
 		// set all values with magnitude smaller than 1e-9 to zero. Better safe than sorry...
-		if(usefloatformat==1) {
+		if ((usefloatformat==1) && (windowRecord->gfxcaps & kPsychGfxCapFPTex16)) {
 			texturePointer_f=(GLfloat*) texturePointer;
 			iters = iters * (size_t) numMatrixPlanes;
 			for(ix=0; ix<iters; ix++, texturePointer_f++) if(fabs((double) *texturePointer_f) < 1e-9) { *texturePointer_f = 0.0; }
