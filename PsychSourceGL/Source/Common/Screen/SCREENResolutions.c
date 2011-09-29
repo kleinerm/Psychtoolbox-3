@@ -30,16 +30,21 @@ PsychError SCREENConfigureDisplay(void)
 {
 	static char useString[] = "oldSettings = Screen('ConfigureDisplay', setting, screenNumber, outputId [, newwidth][, newheight][, newHz][, newX][, newY]);";
 	static char synopsisString[] =	"Query or change 'setting' for display output 'outputId' of screen 'screenNumber'.\n"
-					"Returns a struct 'oldSettings' with the current settings for that output. "
+					"This function allows you to configure the differnt attached display outputs of a virtual screen.\n"
+					"It returns a struct 'oldSettings' with the current settings for that output. "
 					"Optionally sets new settings for that output.\n"
-					"The only currently supported settings are of class setting = 'Scanout'. It has the following "
-					"optional parameters:\n"
-					"Display resolution \"newwidth\" x \"newheight\", and nominal refresh rate \"newHz\". "
-					"Panning ('newX','newY') - The location of the top-left corner of the display in the framebuffer.\n"
+					"Possible values for subfunction parameter 'setting':\n"
+					"'NumberOutputs': Return number of active separate display outputs for given screen 'screenNumber'.\n"
+					"'Scanout': Retrieve or set scanout parameters for a given output 'outputId' of screen 'screenNumber'\n"
+					"It has the following optional parameters:\n"
+					"* Display resolution \"newwidth\" x \"newheight\", and nominal refresh rate \"newHz\". "
+					"* Panning ('newX','newY') - The location of the top-left corner of the display in the framebuffer.\n"
 					"Providing invalid or incompatible settings will raise an error.\n"
 					"This function is currently only supported on Linux.\n";
+
 	static char seeAlsoString[] = "Screen('Resolutions'), Screen('Resolution');";
 
+	const char *OutputFieldNames[]={"width", "height", "pixelSize", "hz", "xStart", "yStart"};
 	char *settingName = NULL;
 	PsychGenericScriptType *oldResStructArray;
 	int screenNumber, outputId;
@@ -59,6 +64,20 @@ PsychError SCREENConfigureDisplay(void)
     
 	// Get name of parameter class:
 	PsychAllocInCharArg(1, kPsychArgRequired, &settingName);
+
+	// Usercode wants to know number of outputs for a screen?
+	if (PsychMatch(settingName, "NumberOutputs")) {
+		// Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
+		PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
+		if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number."); 
+
+		// Count and return assigned outputs for screen:
+		for (outputId = 0; (outputId < kPsychMaxPossibleCrtcs) && (PsychScreenToHead(screenNumber, outputId) >= 0); outputId++);
+		PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) outputId);
+
+		return(PsychError_none);
+	}
+
 	if(!PsychMatch(settingName, "Scanout")) PsychErrorExitMsg(PsychError_user, "Unknown 'setting' name provided. Typo?");
 
 	// Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
@@ -69,11 +88,17 @@ PsychError SCREENConfigureDisplay(void)
 	if(outputId < 0 || outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid display output index provided."); 
 
 	// Create a structure and populate it.
-	PsychAllocOutStructArray(1, FALSE, 1, 4, FieldNames, &oldResStructArray);
+	PsychAllocOutStructArray(1, FALSE, 1, 6, OutputFieldNames, &oldResStructArray);
 
 	// Query current video mode of this output:
-	XRRModeInfo *mode = PsychOSGetModeLine(screenNumber, outputId, NULL);
+	XRRCrtcInfo *crtc_info = NULL;
+	XRRModeInfo *mode = PsychOSGetModeLine(screenNumber, outputId, &crtc_info);
 	if (NULL == mode) PsychErrorExitMsg(PsychError_user, "Could not query video mode for this output. Invalid outputId?");
+
+	// Get (x,y) top-left corner of crtc's viewport -- panning info:
+	PsychSetStructArrayDoubleElement("xStart", 0, (double) crtc_info->x, oldResStructArray);
+	PsychSetStructArrayDoubleElement("yStart", 0, (double) crtc_info->y, oldResStructArray);
+	XRRFreeCrtcInfo(crtc_info);
 
 	// Query and return resolution:
 	newWidth = (int) mode->width;
@@ -127,10 +152,21 @@ PsychError SCREENResolution(void)
 					"A setting of 8 bpp is not supported at all on MacOS/X and will create artifacts "
 					"on all other systems. Use a size of 32 bpp even for clut animation. This function "
 					"may not work on all MS-Windows setups, your mileage may vary...\n"
+					"On Linux the function only switches display settings in the conventional sense on "
+					"a single display setup. On a multi-display setup, this function only changes the "
+					"total size of the total framebuffer, ie., 'newwidth' and 'newheight', the other "
+					"parameters are silently ignored. The video settings of each individual display, "
+					"e.g., resolution, video refresh rate, panning, are queried and changed via the "
+					"Screen('ConfigureDisplay') function instead. This allows for much more flexibility, "
+					"e.g., you can have a framebuffer bigger than the combined resolution of all displays "
+					"and only show a fraction of it. You can change the relative position of all physical "
+					"displays, configure \"mirror modes\", \"side by side\", or \"on top of each other\" "
+					"display configurations.\n"
 					"Psychtoolbox will automatically restore the systems display resolution to the "
 					"system settings made via the display control panel as soon as either your script "
 					"finishes by closing all its windows or by some error. Terminating Matlab due to "
-					"quit command or due to crash will also restore the system preference settings. "
+					"quit command will also restore the system preference settings. On a multi-display "
+					"Linux setup, display settings are never automatically restored.\n"
 					"If you call this command without ever opening onscreen windows and closing them "
 					"at some point, Psychtoolbox will not restore display settings automatically.\n"
 					"You can query a list of all supported combinations of display settings via the "
