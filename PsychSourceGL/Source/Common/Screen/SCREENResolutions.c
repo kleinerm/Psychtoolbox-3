@@ -56,7 +56,7 @@ PsychError SCREENConfigureDisplay(void)
 	if(PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
 #if PSYCH_SYSTEM != PSYCH_LINUX
-	PsychErrorExitMsg(PsychError_unsupported, "Sorry, this function is only supported on Linux.");
+	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is only supported on Linux.");
 #else
 	// Check to see if the user supplied superfluous arguments
 	PsychErrorExit(PsychCapNumOutputArgs(1));
