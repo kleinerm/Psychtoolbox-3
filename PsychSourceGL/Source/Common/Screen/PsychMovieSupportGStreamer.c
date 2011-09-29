@@ -562,7 +562,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, FALSE);
 
     // Should we preroll / preload?	
-    if (preloadSecs > 0) {
+    if ((preloadSecs > 0) || (preloadSecs == -1)) {
 	// Preload / Preroll the pipeline:
 	if (!PsychMoviePipelineSetState(theMovie, GST_STATE_PAUSED, 30.0)) {
 		PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
