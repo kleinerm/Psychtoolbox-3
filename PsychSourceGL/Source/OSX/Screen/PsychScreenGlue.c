@@ -138,39 +138,25 @@ void PsychDisplayReconfigurationCallBack(CGDirectDisplayID display, CGDisplayCha
 void InitCGDisplayIDList(void)
 {
     CGDisplayErr error;
-    // MK: This kills syncing in mirrored-setups: error = CGGetActiveDisplayList(kPsychMaxPossibleDisplays, displayCGIDs, &numDisplays);
-    // Therefore we query the list of displays that are "online" - That means: Connected and powered on.
-    // Displays that are in power-saving mode (asleep) or not in the ActiveDisplayList,
-    // because they are part of a mirror set and therefore not drawable, are still in the online list.
-    // We need handles for displays that are in a mirror set in order to send our beampos-queries
-    // and CGLFlushDrawable - requests to them -- Otherwise time-stamping and sync of bufferswap
-    // to VBL can fail due to syncing to / querying the wrong display in a mirror set...
-    // Currently we accept system failure in case of user switching on/off displays during a session...
-    // error = CGGetOnlineDisplayList(kPsychMaxPossibleDisplays, displayCGIDs, &numDisplays);
+
+    // Safe-Init to zero available displays:
+    numDisplays = numPhysicalDisplays = 0;
+
     error = CGGetActiveDisplayList(kPsychMaxPossibleDisplays, displayCGIDs, &numDisplays);
-    if(error) PsychErrorExitMsg(PsychError_internal, "CGGetActiveDisplayList failed to enumerate displays");
-    
+    if (error) {
+        printf("PTB-CRITICAL: CGGetActiveDisplayList failed to enumerate displays! Screen() will be mostly dysfunctional!\n");
+        numDisplays = numPhysicalDisplays = 0;
+        return;
+    }
+
 	// Also enumerate physical displays:
     error = CGGetOnlineDisplayList(kPsychMaxPossibleDisplays, displayOnlineCGIDs, &numPhysicalDisplays);
-    if(error) PsychErrorExitMsg(PsychError_internal, "CGGetOnlineDisplayList failed to enumerate displays");
-
-    // TESTCODE:
-    if (false) {
-        unsigned int testvals[kPsychMaxPossibleDisplays*100];    
-        int i;
-        for (i=0; i<numDisplays*100; i++) {
-            testvals[i]=0;
-        }
-        for (i=0; i<numDisplays*100; i++) {
-            testvals[i]=CGDisplayBeamPosition(displayCGIDs[i % numDisplays]);
-        }
-        
-        for (i=0; i<numDisplays*100; i++) {
-            mexPrintf("PTB TESTCODE : Display %i : beampos %i\n", i % numDisplays, testvals[i]);
-        }        
+    if (error) {
+        printf("PTB-CRITICAL: CGGetOnlineDisplayList failed to enumerate displays! Screen() will be mostly dysfunctional!\n");
+        numDisplays = numPhysicalDisplays = 0;
+        return;
     }
 }
-
 
 void PsychGetCGDisplayIDFromScreenNumber(CGDirectDisplayID *displayID, int screenNumber)
 {

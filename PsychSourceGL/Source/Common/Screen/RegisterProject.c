@@ -234,7 +234,6 @@ PsychError PsychModuleInit(void)
 	PsychSetModuleAuthorByInitials("cb");
 
 	InitializeSynopsis();
-	InitializePsychDisplayGlue();
 	InitWindowBank();
 	PsychMovieInit();
 	PsychVideoCaptureInit();
@@ -247,6 +246,10 @@ PsychError PsychModuleInit(void)
 	// Reset the "userspaceGL" flag which tells PTB that userspace GL rendering was active
 	// due to Screen('BeginOpenGL') command.
 	PsychSetUserspaceGLFlag(FALSE);
+
+    // Call display glue init last, as its error handling could go crazy if triggered
+    // before the init routines above got executed:
+	InitializePsychDisplayGlue();
 
 	return(PsychError_none);
 }
