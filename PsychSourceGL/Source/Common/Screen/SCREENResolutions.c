@@ -34,6 +34,7 @@ PsychError SCREENConfigureDisplay(void)
 					"It returns a struct 'oldSettings' with the current settings for that output. "
 					"Optionally sets new settings for that output.\n"
 					"Possible values for subfunction parameter 'setting':\n"
+					"'Brightness': Return or set brightness of attached display device. Not all displays and systems support this.\n"
 					"'NumberOutputs': Return number of active separate display outputs for given screen 'screenNumber'.\n"
 					"'Scanout': Retrieve or set scanout parameters for a given output 'outputId' of screen 'screenNumber'\n"
 					"It has the following optional parameters:\n"
@@ -55,9 +56,6 @@ PsychError SCREENConfigureDisplay(void)
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
-#if PSYCH_SYSTEM != PSYCH_LINUX
-	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is only supported on Linux.");
-#else
 	// Check to see if the user supplied superfluous arguments
 	PsychErrorExit(PsychCapNumOutputArgs(1));
 	PsychErrorExit(PsychCapNumInputArgs(8));
@@ -65,6 +63,57 @@ PsychError SCREENConfigureDisplay(void)
 	// Get name of parameter class:
 	PsychAllocInCharArg(1, kPsychArgRequired, &settingName);
 
+    // Usercode wants to change display brightness:
+    if (PsychMatch(settingName, "Brightness")) {
+        // OS/X specific section:
+#if PSYCH_SYSTEM == PSYCH_OSX
+        outputId = -1;
+        
+		// Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
+		if (PsychCopyInScreenNumberArg(2, FALSE, &screenNumber)) {
+            if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "Invalid screen number."); 
+            outputId = screenNumber;
+        }
+        
+        // Get outputId:
+        PsychCopyInIntegerArg(3, FALSE, &outputId);
+        if (outputId < 0 || outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid video output specified!");
+        
+        CGDirectDisplayID displayID;
+        CGDisplayErr err;
+        float brightness;
+        double nbrightness;
+        
+        PsychGetCGDisplayIDFromScreenNumber(&displayID, outputId);
+        io_service_t service = CGDisplayIOServicePort(displayID);
+        
+        // Return current brightness value:
+        err = IODisplayGetFloatParameter(service, kNilOptions, CFSTR(kIODisplayBrightnessKey), &brightness);
+        if (err != kIOReturnSuccess) PsychErrorExitMsg(PsychError_system, "Failed to query current display brightness from system.");
+		PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) brightness);
+        
+        // Optionally set new brightness value:
+        if (PsychCopyInDoubleArg(4, FALSE, &nbrightness)) {
+            // Clamp to valid range:
+            if (nbrightness < 0.0) nbrightness = 0.0;
+            if (nbrightness > 1.0) nbrightness = 1.0;
+            
+            // Set it:
+            err = IODisplaySetFloatParameter(service, kNilOptions, CFSTR(kIODisplayBrightnessKey), (float) nbrightness);
+            if (err != kIOReturnSuccess) PsychErrorExitMsg(PsychError_system, "Failed to set new display brightness.");
+        }
+        
+#else
+        PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is not yet implemented on this system.");
+#endif
+        
+		return(PsychError_none);
+    }
+    
+#if PSYCH_SYSTEM != PSYCH_LINUX
+	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is only supported on Linux.");
+#else
+    
 	// Usercode wants to know number of outputs for a screen?
 	if (PsychMatch(settingName, "NumberOutputs")) {
 		// Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
