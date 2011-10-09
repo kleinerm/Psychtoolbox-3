@@ -197,7 +197,9 @@ foreach($uniqueptbs as $ofl) {
 
   // Flavor:
   if (strpos($ofl, '<FLAVOR>beta</FLAVOR>')) { $assigned++ ; $betacount++; }
+  if (strpos($ofl, '<FLAVOR>current</FLAVOR>')) { $assigned++ ; $betacount++; }
   if (strpos($ofl, '<FLAVOR>stable</FLAVOR>')) { $assigned++ ; $stablecount++; }
+  if (strpos($ofl, '<FLAVOR>unsupported</FLAVOR>')) { $assigned++ ; $stablecount++; }
   if (strpos($ofl, '<FLAVOR>trunk</FLAVOR>')) { $assigned++ ; $trunkcount++; }
   if (strpos($ofl, '<FLAVOR>Psychtoolbox-3.0.7</FLAVOR>')) { $assigned++ ; $oldptb307count++; }
   if (strpos($ofl, '<FLAVOR>unknown</FLAVOR>')) { $assigned++ ; $unknowncount++; }
@@ -247,15 +249,17 @@ foreach($uniqueptbs as $ofl) {
     $wincount++;
     $iswin = 1;
 
-    if (strpos($ofl, 'Windows-Unknown')) { $winunknowncount++; }
-    if (strpos($ofl, 'Windows 2000 Version 5') || strpos($ofl, 'NT-5.0')) { $win2kcount++; }
-    if (strpos($ofl, 'Windows XP') || strpos($ofl, 'NT-5.1')) { $winxpcount++; }
-    if (strpos($ofl, 'Windows Vista Version 6.0') || strpos($ofl, 'Windows 2000 Version 6.0') || strpos($ofl, 'NT-6.0')) { $winvistacount++; }
-    if (strpos($ofl, 'Windows Vista Version 6.1') || strpos($ofl, 'NT-6.1')) { $win7count++; }
+    if (strpos($ofl, 'Windows-Unknown') || strpos($ofl, 'Windows Server') || strpos($ofl, 'Windows NT Version') || strpos($ofl, 'Windows 95 Version') || strpos($ofl, 'Windows 98 Version') || strpos($ofl, 'Windows Me Version')) { $winunknowncount++; $iswin = 2; }
+    if (strpos($ofl, 'Windows 2000 Version 5') || strpos($ofl, 'NT-5.0')) { $win2kcount++; $iswin = 2; }
+    if (strpos($ofl, 'Windows XP') || strpos($ofl, 'Windows-XP') || strpos($ofl, 'NT-5.1') || strpos($ofl, 'NT-5.2')) { $winxpcount++; $iswin = 2; }
+    if (strpos($ofl, 'Windows Vista Version 6.0') || strpos($ofl, 'Windows 2000 Version 6.0') || strpos($ofl, 'NT-6.0')) { $winvistacount++; $iswin = 2; }
+    if (strpos($ofl, 'Windows Vista Version 6.1') || strpos($ofl, 'Windows 7 Version') || strpos($ofl, 'NT-6.1')) { $win7count++; $iswin = 2; }
+
+    if (($iswin < 2) && ($debugmode > 0)) print "LOGPARSER-WARNING: UNASSIGNED WINDOWS - MACID: $ofl <br />";
 
     if ($ismatlab > 0) {
         // Which Matlab release class on Windows?
-        if (strpos($ofl, '(R200')) {
+        if (strpos($ofl, '(R20')) {
           // Some R200x release:
           $winmatr200xcount++;
 
