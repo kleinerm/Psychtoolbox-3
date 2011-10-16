@@ -1840,8 +1840,8 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
 		PsychPluginSetTextSize((double) winRec->textAttributes.textSize);
 
 		// Assign viewport settings for rendering:
-		PsychPluginSetTextViewPort(winRec->rect[kPsychLeft], winRec->rect[kPsychTop], winRec->rect[kPsychRight] - winRec->rect[kPsychLeft], winRec->rect[kPsychBottom] - winRec->rect[kPsychTop]);
-		
+		PsychPluginSetTextViewPort(winRec->rect[kPsychLeft], winRec->rect[kPsychTop], PsychGetWidthFromRect(winRec->rect)/((winRec->specialflags & kPsychHalfWidthWindow) ? 2 : 1), PsychGetHeightFromRect(winRec->rect)/((winRec->specialflags & kPsychHalfHeightWindow) ? 2 : 1));
+
 		// Compute and assign text background color:
 		PsychCoerceColorMode(backgroundColor);
 		PsychConvertColorToDoubleVector(backgroundColor, winRec, backgroundColorVector);
