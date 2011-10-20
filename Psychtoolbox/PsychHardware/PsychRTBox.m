@@ -583,6 +583,10 @@ function varargout = PsychRTBox(varargin)
 %
 %            * Add fast-engage commands for pulse and TR triggers as well.
 %
+% 10/20/2011 Switch fast calibration from robustfit to polyfit() - Now we
+%            always use polyfit() in all cases to avoid need for Matlab
+%            statistics toolbox. The PostHoc routine always did this, but
+%            the online routine didn't. (MK)
 
 % Global variables: Need to be persistent across driver invocation and
 % shared with internal subfunctions:
@@ -1447,19 +1451,16 @@ global rtbox_global;
                 startBox(id, 1);
             end
             
-            % Octave and older versions of Matlab don't have 'robustfit',
-            % so we fall back to 'regress' if this function is lacking:
-            if exist('robustfit') %#ok<EXIST>
-                [coef st]=robustfit(t(:,2)-t(1,2),t(:,1)-t(1,1));  % fit a line
-                sd=st.robust_s*1000; % std in ms
-            else
-                coef =regress(t(:,1)-t(1,1), [ones(size(t,1), 1) t(:,2)-t(1,2)]);  % fit a line
-                sd=0;
-            end
+            % Use always polyfit to fit a line (with least squares error)
+            % to the samples of host clock and box clock measurements. We
+            % use polyfit because it is part of default Matlab/Octave,
+            % doesn't require statistics toolbox or fitting toolbox:
+            [coef, st] = polyfit(t(:,2)-t(1,2),t(:,1)-t(1,1), 1);  % fit a line
+            sd = st.normr * 1000; % std in ms
 
             % Assign new clock ratio for use by the timestamp mapping
             % routines later on:
-            rtbox_info(id).clkRatio = coef(2);
+            rtbox_info(id).clkRatio = coef(1);
 
             if rtbox_info(id).verbosity > 2
                 fprintf('\n Clock ratio (computer/box): %.7f\n', rtbox_info(id).clkRatio);
