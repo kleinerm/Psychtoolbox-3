@@ -167,6 +167,7 @@ function kbNameResult = KbName(arg)
 %   21.11.09    mk      Add bugfix for failures with multiple 'Return' keys,
 %                       provided by Jochen Laubrock.
 %   29.09.10    mk      Add missing definition of ',<' key to Windows version.
+%   20.10.11    mk      Add missing definition of 'pause' key to Windows version.
 
 %   TO DO
 %
@@ -331,7 +332,8 @@ if isempty(kkOSX)
    kkWin{4} = 'middle_mouse';
    kkWin{45} = 'insert';
    kkWin{18} = 'alt';
-   
+   kkWin{19} = 'Pause';                            
+
    % Keynames used only in Windows >95
    kkWin{160} = 'left_shift';
    kkWin{161} = 'right_shift';
@@ -770,6 +772,7 @@ elseif ischar(arg)      % argument is a character, so find the code
             kk{91} = 'LeftGUI';
             kk{92} = 'RightGUI';
             kk{93} = 'Application';
+            kk{19} = 'Pause';
         end
         
         if IsLinux

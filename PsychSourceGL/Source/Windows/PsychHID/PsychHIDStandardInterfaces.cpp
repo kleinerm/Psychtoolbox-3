@@ -308,11 +308,8 @@ static unsigned int PsychHIDOSMapKey(unsigned int inkeycode)
 	#define MAPVK_VSC_TO_VK_EX 3
 	#endif
 
-	keycode = MapVirtualKeyEx(inkeycode, MAPVK_VSC_TO_VK_EX, GetKeyboardLayout(0));
-	if (keycode > 0) {
-		// Translated keycode: Adapt for 1 offset:
-		keycode--;
-	} else {
+	keycode = MapVirtualKeyEx(inkeycode, MAPVK_VSC_TO_VK_EX, GetKeyboardLayout(0));    
+	if (keycode == 0) {
 		// Untranslated keycode: Use table.
 		switch(inkeycode) {
 			case DIK_RCONTROL:
@@ -376,9 +373,50 @@ static unsigned int PsychHIDOSMapKey(unsigned int inkeycode)
 			default:
 				keycode = inkeycode & 0xff;
 		}
-		// Translated keycode: Adapt for 1 offset:
-		if (keycode > 0) keycode--;
 	}
+    
+    // This is a table of overrides for the numeric keypad. It makes sure that
+    // we always get keys from the keypad as if the "NumLock" key is active, aka
+    // numbers instead of other stuff:
+    switch(inkeycode) {
+        case DIK_NUMPAD0:
+            keycode = 96;
+        break;
+        case DIK_NUMPAD1:
+            keycode = 97;
+        break;
+        case DIK_NUMPAD2:
+            keycode = 98;
+        break;
+        case DIK_NUMPAD3:
+            keycode = 99;
+        break;
+        case DIK_NUMPAD4:
+            keycode = 100;
+        break;
+        case DIK_NUMPAD5:
+            keycode = 101;
+        break;
+        case DIK_NUMPAD6:
+            keycode = 102;
+        break;
+        case DIK_NUMPAD7:
+            keycode = 103;
+        break;
+        case DIK_NUMPAD8:
+            keycode = 104;
+        break;
+        case DIK_NUMPAD9:
+            keycode = 105;
+        break;
+        case DIK_DECIMAL:
+            keycode = 110;
+        break;
+    }
+
+	// Adapt for 1 offset:
+	if (keycode > 0) keycode--;
+
 	return(keycode);
 }
 
