@@ -85,6 +85,33 @@
 % List of submodules with their associated licenses, as far as they deviate
 % from the MIT license printed above, and their main authors:
 %
+% Psychtoolbox/PsychSound: portaudio_x86.dll and portaudio_x86.dll_nonASIO
+%
+% The PsychPortAudio driver on Microsoft Windows dynamically loads
+% a DLL, the "portaudio_x86.dll" from the Psychtoolbox/PsychSound/ subfolder.
+% This dll is bundled in two precompiled versions. The portaudio_x86.dll, which is
+% used by default, contains a backend for the proprietary ASIO sound system, whereas
+% the portaudio_x86.dll_nonASIO file does not contain ASIO support. Both dll's
+% are compiled from a modified version of the free/open-source PortAudio library.
+% The source code of this MIT licensed library and of all modifications we made
+% can be found in a Psychtoolbox C-Sourcecode download in the subfolder
+% PsychSourceGL/Cohorts/PortAudio/. Building from this source code will yield
+% portaudio_x86.dll_nonASIO which is fully MIT licensed. However, the portaudio_x86.dll
+% which is also bundled with Psychtoolbox and used by default is based on that source
+% code and additional source code from the proprietary ASIO SDK from Steinberg.
+%
+% We are not allowed to distribute the source code of that SDK with Psychtoolbox,
+% and you are not allowed to modify, reverse engineer or disassemble the portaudio_x86.dll
+% which "contains" that source code. You are only allowed to use the dll "as is" for
+% the purpose of using it with Psychtoolbox. If you don't like this, then delete
+% the dll from your Psychtoolbox and rename the portaudio_x86.dll_nonASIO file into
+% portaudio_x86.dll, so Psychtoolbox will use the completely free/open-source version.
+% The limitation will be that without ASIO backend support, you won't be able to
+% achieve any precise sound timing or low-latency. See the "PortAudioLICENSE.txt"
+% file inside Psychtoolbox/PsychSound/ for exact licensing details of this audio dll.
+%
+%
+%
 % Psychtoolbox/PsychContributed: See individual licenses and output of
 %                                "help PsychContributed" in that folder.
 %

@@ -24,11 +24,12 @@ function InitializePsychSound(reallyneedlowlatency)
 % with a standard deviation of about 1 millisecond, which is still good
 % enough for many purposes.
 %
-% If you need really low latency or high precision sound on Windows, there's
-% a second option which, for legal and technical reasons, requires a bit
-% more effort of you: Some (usually more expensive > 150$) sound
-% cards ship with ASIO enabled sound drivers, or at least there's such a
-% driver available from the support area of your sound card vendors website.
+% The driver also supports the ASIO sound system provided by professional
+% class sound cards. If you need really low latency or high precision sound
+% on Windows, ASIO is what you want to use: Some (usually more expensive >
+% 150$) professional class sound cards ship with ASIO enabled sound
+% drivers, or at least there's such a driver available from the support
+% area of the website of your sound card vendor.
 %
 % Disclaimer: "ASIO is a trademark and software of Steinberg Media
 % Technologies GmbH."
@@ -37,36 +38,22 @@ function InitializePsychSound(reallyneedlowlatency)
 % downloadable from http://asio4all.com, which may or may not work well on
 % your specific sound card - The driver emulates the ASIO interface on top
 % of the WDM-KS (Windows Driver Model Kernel Streaming) API from Microsoft,
-% so the quality depends on the underlying WDM driver. Assuming you get
-% ASIO working one way or the other on your setup, you will have to get a
-% special ASIO enabled version of the "portaudio_x86.dll" driver plugin for
-% Psychtoolbox:
+% so the quality depends on the underlying WDM driver. If you manage to get
+% such an ASIO enabled sound driver working on your sound hardware, and
+% your ASIO enabled driver and sound card are of sufficiently high quality,
+% you can enjoy latencies as low as 5 msecs and a sound onset accuracy with
+% a standard deviation from the mean of less than 0.1 milliseconds on
+% MS-Windows - We measured around 20 microseconds on some setups, e.g., the
+% M-Audio Delta 1010-LT soundcard under Windows-XP SP2.
 %
-% 1. Go to the PsychPortAudio section of the Psychtoolbox Wiki to download
-%    a zip file with a copy of the ASIO enabled driver:
-%
-%    http://psychtoolbox.org/wikka.php?wakka=PsychPortAudio
-%
-%
-% 2. When you have the driver, copy it into your Psychtoolbox root folder -
-%    the top level folder named "Psychtoolbox". Also make sure to read the
-%    README.txt file very carefully that comes bundled with the driver.
-%
-%
-% 3. Restart Matlab.
-%
-%
-% 4. Run this function, it'll tell you if ASIO is supported.
-%
-% If everything succeeds and your ASIO enabled driver and sound card are of
-% sufficiently high quality, you can enjoy latencies as low as 5 msecs and
-% a sound onset accuracy with a standard deviation from the mean of less
-% than 0.1 milliseconds - We measured around 20 microseconds on some
-% setups, e.g., the M-Audio Delta 1010-LT soundcard under Windows-XP SP2.
-%
+% Using OS/X or Linux will usually get you comparably good or better
+% results with standard sound hardware.
 
 % History:
-% 6/6/2007 Written (MK).
+% 6/6/2007    Written (MK).
+% 10/20/2011  Update: We always use ASIO enabled plugin on Windows by
+%             default, as the PTB V3.0.9 MIT style license allows bundling
+%             of an ASIO enabled proprietary dll with Psychtoolbox. (MK)
 
 if nargin < 1
     reallyneedlowlatency = [];
@@ -81,17 +68,12 @@ if IsWin
     % Special ASIO enabled low-latency driver installed?
     if exist([PsychtoolboxRoot 'portaudio_x86.dll']) >= 2 %#ok<EXIST>
         % Yes! Use it:
-        fprintf('Detected an ASIO enhanced PortAudio driver. Good!\n');
+        fprintf('Detected optional PortAudio override driver plugin in Psychtoolbox root folder. Will use that.\n');
         driverloadpath = PsychtoolboxRoot;
-        asio = 1;
     else
-        % No :( - We use our standard driver:
-        fprintf('Could not find a low-latency enhanced PortAudio driver. If you need\n');
-        fprintf('really accurate sound onset timing and latency < 30 msecs, please read\n');
-        fprintf('"help InitializePsychSound" carefully and follow the instructions.\n');
-        fprintf('Will use our standard driver instead of enhanced driver...\n');
+        % No - We use our standard driver, which is also ASIO capable since
+        % October 2011:
         driverloadpath = [PsychtoolboxRoot 'PsychSound'];
-        asio = 0;
     end
 
     % Standard path trick: Change working directory to driver load path,
@@ -106,24 +88,24 @@ if IsWin
         d = PsychPortAudio('GetDevices', 3);
         cd(olddir);
         
-        % ASIO requested?
-        if asio
-            % Comply with the license...
-            fprintf('\n\nDisclaimer: "ASIO is a trademark and software of Steinberg Media Technologies GmbH."\n');
-            
-            % Found ASIO device?
-            if ~isempty(d)
-                % And some more commercials as required by the license...
-                fprintf('Using "ASIO Interface Technology by Steinberg Media Technologies GmbH"\n\n');
-                fprintf('Found at least one ASIO enabled soundcard in your system. Good, will use that in low-latency mode!\n');
-            else
-                % ASIO PsychPortAudio driver, but no ASIO device in system!
-                fprintf('PTB-Warning: Although using the ASIO enabled Psychtoolbox sound driver,\n');
-                fprintf('PTB-Warning: could not find any ASIO capable soundcard in your system.\n');
-                fprintf('PTB-Warning: If you think you should have an ASIO card, please check your\n');
-                fprintf('PTB-Warning: system for properly installed and configured drivers and retry.\n');
-                fprintf('PTB-Warning: Read "help InitializePsychSound" for more info about ASIO et al.\n');
-            end
+        fprintf('\nWill use ASIO enhanced Portaudio driver DLL. See Psychtoolbox/PsychSound/PortAudioLICENSE.txt\n');
+        fprintf('for the exact terms of use for this dll.\n');
+        
+        % Comply with the license...
+        fprintf('\n\nDisclaimer: "ASIO is a trademark and software of Steinberg Media Technologies GmbH."\n');
+
+        % Found ASIO device?
+        if ~isempty(d)
+            % And some more commercials as required by the license...
+            fprintf('Using "ASIO Interface Technology by Steinberg Media Technologies GmbH"\n\n');
+            fprintf('Found at least one ASIO enabled soundcard in your system. Good, will use that in low-latency mode!\n');
+        else
+            % ASIO PsychPortAudio driver, but no ASIO device in system!
+            fprintf('PTB-Warning: Although using the ASIO enabled Psychtoolbox sound driver,\n');
+            fprintf('PTB-Warning: could not find any ASIO capable soundcard in your system.\n');
+            fprintf('PTB-Warning: If you think you should have an ASIO card, please check your\n');
+            fprintf('PTB-Warning: system for properly installed and configured drivers and retry.\n');
+            fprintf('PTB-Warning: Read "help InitializePsychSound" for more info about ASIO et al.\n');
         end
     catch
         cd(olddir);
