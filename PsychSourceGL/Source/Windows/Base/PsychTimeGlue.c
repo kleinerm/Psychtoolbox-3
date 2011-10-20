@@ -74,6 +74,7 @@ static psych_bool		Timertrouble;
 static psych_bool 		schedulingtrouble;
 static double			tickInSecsAtLastQuery;
 static double			timeInSecsAtLastQuery;
+static double           lowToHiBiasSecs;
 
 // Our critical section variable to guarantee exclusive access to PsychGetPrecisionTimerSeconds()
 // in order to prevent race-conditions for the timer correctness checks in multi-threaded code:
@@ -254,6 +255,7 @@ void PsychInitTimeGlue(void)
 	firstTime=TRUE;
 	sleepwait_threshold = 0.003;
 	Timertrouble = FALSE;
+    lowToHiBiasSecs = 0.0;
 	schedulingtrouble = FALSE;
 	tickInSecsAtLastQuery = -1;
 	timeInSecsAtLastQuery = -1;
@@ -555,7 +557,10 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 		// No timer problems yet. Perform checks:
 
 		// Time running backwards?
-		if (ss < oss) {
+        // We allow for a slack of 10 nanoseconds. Not sure if this is a good idea, as it weakens the test
+        // to avoid aggressive fallback on flaky but sort of still useable hardware. Some modern cpu's showed
+        // this effect, but the fallback would have been worse...
+		if (ss < (oss - 1e-8)) {
 			Timertrouble = TRUE;
 			printf("PTB-CRITICAL WARNING! Timing code detected problems with the high precision TIMER in your system hardware!\n");
 			printf("PTB-CRITICAL WARNING! Apparently time is reported as RUNNING BACKWARDS. (Timewarp Delta: %0.30f secs.)\n", ss - oss);
@@ -615,6 +620,16 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 		}
 		
 		if (Timertrouble) {
+            // Faulty high precision clock detected. We switch to the low-res clock for the rest of the session, in the hope that
+            // the low-res clock is less broken than the high-res clock.
+            //
+            // We need to make the switch as seamless as possible. As the low-res and high-res clocks have different "zero seconds"
+            // reference points, we need to compute the absolute offset between both and then apply that offset to the reported low
+            // res clock time to compensate for it. This should reduce any jumps or jerks in the monotonic system time as perceived
+            // by clients of this function, especially the PsychWaitUntilSeconds() and PsychWaitIntervalSeconds() functions, which
+            // could hang for a very long time if the switch between high-res and low-res clock happens at the wrong moment.
+            lowToHiBiasSecs = ss - ticks;
+
 			// More info for user at first detection of trouble:
 			printf("PTB-CRITICAL WARNING! It is NOT RECOMMENDED to continue using this machine for studies that require high\n");
 			printf("PTB-CRITICAL WARNING! timing precision in stimulus onset or response collection. No guarantees can be made\n");
@@ -637,7 +652,11 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 	else {
 		// Performance counter works unreliably: Fall back to result of timeGetTime().
 		// This only has 1 msec resolution at best, but at least it works (somewhat...).
-		ss = ticks;
+        //
+        // Correct for time bias between low-res clock and high-res clock to fake a time
+        // that looks to clients as if it comes from the high-res clock, albeit with a lower
+        // resolution of only 1 msec at best:
+		ss = ticks + lowToHiBiasSecs;
 	}	
 
 	//  ========= End of high precision timestamping. =========
@@ -651,13 +670,13 @@ void PsychGetPrecisionTimerSeconds(double *secs)
   // Finally assign time value:  
   *secs= ss;  
 
-	// Clear the firstTime flag - this was the first time, maybe.
-   firstTime = FALSE;
+  // Clear the firstTime flag - this was the first time, maybe.
+  firstTime = FALSE;
 
-	// Need to release our timelock - Done with access to shared data:
-	LeaveCriticalSection(&time_lock);
+  // Need to release our timelock - Done with access to shared data:
+  LeaveCriticalSection(&time_lock);
 
-	return;
+  return;
 }
 
 void PsychGetAdjustedPrecisionTimerSeconds(double *secs)

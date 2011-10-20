@@ -68,9 +68,15 @@
 	#define _WIN32_WINNT 0x0500
     #define WINVER       0x0500
 	#include <windows.h>
-	//#include <gl/gl.h>
-	//#include <gl/glu.h>
 	#include "../Screen/wglew.h"
+
+    #ifndef INT64_MAX
+    #define INT64_MAX _I64_MAX
+    #endif
+    
+    #ifndef INT32_MAX
+    #define INT32_MAX _I32_MAX
+    #endif
 
 #elif PSYCH_SYSTEM == PSYCH_OS9
 	#include <Types.h>
