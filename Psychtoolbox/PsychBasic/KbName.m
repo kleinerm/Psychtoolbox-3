@@ -179,7 +179,7 @@ function kbNameResult = KbName(arg)
 %   keys though the standard specifies different keycodes, the problem with the 'a' key.  
 
 persistent kkOSX kkOS9 kkWin kkLinux kk
-
+persistent escapedLine
 
 %_________________________________________________________________________
 % Windows part
