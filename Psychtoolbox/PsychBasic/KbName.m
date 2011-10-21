@@ -804,6 +804,8 @@ elseif ischar(arg)      % argument is a character, so find the code
              'Print', 'PrintScreen';
              'backslash', escapedLine;
              'Tab', 'tab';
+             'apostrophe', '''"';
+             'semicolon', ';:';
              'period', '.>';
              'comma', ',<';
              'slash', '/?';
