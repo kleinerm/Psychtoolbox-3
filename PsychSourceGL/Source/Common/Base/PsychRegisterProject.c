@@ -1,23 +1,20 @@
 /*
-  PsychToolbox2/Source/Common/PsychRegisterProject.cpp		
+  PsychToolbox3/Source/Common/PsychRegisterProject.cpp		
   
   PROJECTS: All.  
   
   AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
-  
-  PLATFORMS:	Mac OS 9
-    
+	Allen.Ingling@nyu.edu              awi 
+	mario.kleiner@tuebingen.mpg.de     mk
+
+  PLATFORMS: All.    
 
   HISTORY:
   8/23/02  awi		Created. 
  
-  
 */
 
-
 #include "Psych.h"
-
 
 //file static variable definitions
 static PsychFunctionPtr exitFunctionREGISTER = NULL;
@@ -71,10 +68,9 @@ PsychError PsychDescribeModuleFunctions(void)
 		if (fcn) {
 			// This will trigger the subfunction 'fcn' to execute its PsychGiveHelp() method, then
 			// return. PsychGiveHelp() will return the help text to Runtime as cell array of strings,
-			// due to the special flag currentFunctionNameREGISTER == NULL, instead of printing to
-			// runtimes console:
+			// instead of printing to runtimes console:
 			PsychSetGiveHelp();
-			currentFunctionNameREGISTER = NULL;
+			PsychOneShotReturnHelp();
 			(*fcn)();
 			PsychClearGiveHelp();
 		}
@@ -98,8 +94,6 @@ PsychError PsychDescribeModuleFunctions(void)
 	-subfunctions
 	-the project base function
 	-the project name
-	
-	
 
 */
 

@@ -8,22 +8,13 @@
   
   PROJECTS:
   08/19/02	awi		Screen on MacOS9
-   
 
   HISTORY:
   08/19/02  awi		 
   
   DESCRIPTION:
   
-  
-  
-
-  
   T0 DO: 
-  
-  The mexPrintf calls in here should be replaced with printf and printf should be 
-  defined in the platform glue file to call mexPrintf when building with Matlab.  
-	  
 
 */
 
@@ -31,9 +22,7 @@
 #ifndef PSYCH_IS_INCLUDED_PsychHelp
 #define PSYCH_IS_INCLUDED_PsychHelp
 
-
 #include "Psych.h"
-
 
 void PsychSetGiveHelp(void);
 void PsychClearGiveHelp(void);
@@ -43,10 +32,7 @@ void PsychGiveHelp(void);
 void PsychGiveUsage(void);
 void PsychGiveUsageExit(void);
 char *PsychGetFunctionName(void);
-
+void PsychOneShotReturnHelp(void);
 
 //end include once
 #endif
-
-
-

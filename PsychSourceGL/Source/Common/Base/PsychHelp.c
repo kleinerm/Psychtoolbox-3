@@ -1,19 +1,18 @@
 /*
- 	PsychToolbox2/Source/Common/PsychHelp.c		
+ 	PsychToolbox3/Source/Common/PsychHelp.c		
   
  	AUTHORS:
  
  		Allen.Ingling@nyu.edu		awi 
-  
+		mario.kleiner@tuebingen.mpg.de  mk
+ 
  	PLATFORMS: 
  	
- 		OS X only for now.
-  
-  
+ 		All.
+
   	PROJECTS:
   
   		08/19/02	awi		Screen on OS X
-   
 
   	HISTORY:
   
@@ -24,21 +23,16 @@
   	DESCRIPTION:
   
   	TO DO: 
-  
-
-	  
-
 */
 
 #include "Psych.h"
-
 
 //declare static variables for internal use by PsychHelp.cpp
 static char *functionUseHELP = NULL; 
 static char *functionSynopsisHELP = NULL;
 static char *functionSeeAlsoHELP = NULL;
-static psych_bool giveHelpHELP=FALSE;
-
+static psych_bool giveHelpHELP = FALSE;
+static psych_bool oneShotReturnHelp = FALSE;
 
 // functions for flipping a flag to indicate whether function help should be given.    
 void PsychSetGiveHelp(void)
@@ -56,7 +50,6 @@ psych_bool PsychIsGiveHelp(void)
 	return(giveHelpHELP);
 }
 
-
 // push the help strings onto a shallow stack 1 element deep
 void PsychPushHelp(char *functionUse, char *functionSynopsis, char *functionSeeAlso)
 {
@@ -66,20 +59,25 @@ void PsychPushHelp(char *functionUse, char *functionSynopsis, char *functionSeeA
         functionSeeAlsoHELP = functionSeeAlso;
 }	
 
+void PsychOneShotReturnHelp(void)
+{
+	oneShotReturnHelp = TRUE;
+}
 
 void PsychGiveHelp(void)
 {  
     PsychGenericScriptType		*cellVector;
 
 	// Special case: Asked to return help in a cell array of strings?
-	if (strlen(PsychGetFunctionName()) < 2) {
+	if (oneShotReturnHelp) {
 		// Yes. Return a 3 element cell array of strings, each containing one
 		// of the three help text arguments:
 		PsychAllocOutCellVector(1, FALSE, 3,  &cellVector);
 		PsychSetCellVectorStringElement(0, functionUseHELP, cellVector);
 		PsychSetCellVectorStringElement(1, BreakLines(functionSynopsisHELP, 80), cellVector);
 		PsychSetCellVectorStringElement(2, functionSeeAlsoHELP, cellVector);
-		
+		oneShotReturnHelp = FALSE;
+
 		return;
 	}
 	
@@ -99,8 +97,3 @@ void PsychGiveUsageExit(void)
 {  
 	PrintfExit("Usage:\n\n%s",functionUseHELP);
 }
-
-
-
-
-
