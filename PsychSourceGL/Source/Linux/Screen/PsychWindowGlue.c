@@ -317,9 +317,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // Setup pixelformat descriptor for selection of GLX visual:
   if (useGLX13) {
     attrib[attribcount++]= GLX_RENDER_TYPE; // Use RGBA true-color visual.
+    attrib[attribcount++]= GLX_RGBA_BIT;    // Use RGBA true-color visual.
+  } else {
+    attrib[attribcount++]= GLX_RGBA;        // Use RGBA true-color visual.
   }
 
-  attrib[attribcount++]= GLX_RGBA;        // Use RGBA true-color visual.
   attrib[attribcount++]= GLX_RED_SIZE;    // Setup requested minimum depth of each color channel:
   attrib[attribcount++]= (depth > 16) ? bpc : 1;
   attrib[attribcount++]= GLX_GREEN_SIZE;
