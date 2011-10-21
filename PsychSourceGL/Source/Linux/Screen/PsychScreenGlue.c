@@ -1759,6 +1759,31 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
     return(true);
 }
 
+void PsychOSDefineX11Cursor(int screenNumber, int deviceId, Cursor cursor)
+{
+    PsychWindowRecordType **windowRecordArray;
+    int i, numWindows;
+
+    // Iterate over all open onscreen windows associated with this screenNumber and
+    // apply new X11 cursor definition to each of them:
+    PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
+    for(i = 0; i < numWindows; i++) {
+	if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i]->screenNumber == screenNumber)) {
+		// Candidate.
+		if (deviceId >= 0) {
+			// XInput extension for per-device settings:
+			XIDefineCursor(displayCGIDs[screenNumber], deviceId, windowRecordArray[i]->targetSpecific.xwindowHandle, cursor);
+		}
+		else {
+			// Old-School global settings:
+			XDefineCursor(displayCGIDs[screenNumber], windowRecordArray[i]->targetSpecific.xwindowHandle, cursor);
+		}
+	}
+    }
+    PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
+
+    return;
+}
 
 void PsychHideCursor(int screenNumber, int deviceIdx)
 {
@@ -1794,7 +1819,7 @@ void PsychHideCursor(int screenNumber, int deviceIdx)
 
   if (deviceIdx < 0) {
 	  // Attach nullCursor to our onscreen window:
-	  XDefineCursor(displayCGIDs[screenNumber], RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), nullCursor );
+	  PsychOSDefineX11Cursor(screenNumber, deviceIdx, nullCursor);
 	  XFlush(displayCGIDs[screenNumber]);
 	  displayCursorHidden[screenNumber]=TRUE;
   } else {
@@ -1808,7 +1833,7 @@ void PsychHideCursor(int screenNumber, int deviceIdx)
 	if (indevs[deviceIdx].use != XIMasterPointer) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such master cursor pointer.");
 
 	// Attach nullCursor to our onscreen window:
-	XIDefineCursor(displayCGIDs[screenNumber], indevs[deviceIdx].deviceid, RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), nullCursor);
+	PsychOSDefineX11Cursor(screenNumber, indevs[deviceIdx].deviceid, nullCursor);
 	XFlush(displayCGIDs[screenNumber]);
   }
 
@@ -1828,7 +1853,8 @@ void PsychShowCursor(int screenNumber, int deviceIdx)
 
 	// Reset to standard Arrow-Type cursor, which is a visible one.
 	arrowCursor = XCreateFontCursor(displayCGIDs[screenNumber], 2);
-	XDefineCursor(displayCGIDs[screenNumber], RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), arrowCursor);
+
+	PsychOSDefineX11Cursor(screenNumber, deviceIdx, arrowCursor);
 	XFlush(displayCGIDs[screenNumber]);
 	displayCursorHidden[screenNumber]=FALSE;
   } else {
@@ -1843,7 +1869,7 @@ void PsychShowCursor(int screenNumber, int deviceIdx)
 
 	// Reset to standard Arrow-Type cursor, which is a visible one.
 	arrowCursor = XCreateFontCursor(displayCGIDs[screenNumber], 2);
-	XIDefineCursor(displayCGIDs[screenNumber], indevs[deviceIdx].deviceid, RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), arrowCursor);
+	PsychOSDefineX11Cursor(screenNumber, indevs[deviceIdx].deviceid, arrowCursor);
 	XFlush(displayCGIDs[screenNumber]);
   }
 }

@@ -96,7 +96,7 @@ PsychError SCREENShowCursorHelper(void)
 		mycursor = XCreateFontCursor(dpy, (unsigned int) cursorid);
 		if (mouseIdx < 0) {
 			// Set cursor for our window:
-			XDefineCursor(dpy, RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber)), mycursor);
+			PsychOSDefineX11Cursor(screenNumber, -1, mycursor);
 		} else {
 			// XInput cursor: Master pointers only.
 			int nDevices;
@@ -107,7 +107,7 @@ PsychError SCREENShowCursorHelper(void)
 			if (mouseIdx >= nDevices) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such cursor pointer.");
 			if (indevs[mouseIdx].use != XIMasterPointer) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such master cursor pointer.");
 
-			XIDefineCursor(dpy, indevs[mouseIdx].deviceid, RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber)), mycursor);
+			PsychOSDefineX11Cursor(screenNumber, indevs[mouseIdx].deviceid, mycursor);
 		}
 
 		XFlush(dpy);
