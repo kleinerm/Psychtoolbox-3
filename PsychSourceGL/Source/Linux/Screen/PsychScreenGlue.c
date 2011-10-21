@@ -1241,7 +1241,9 @@ float PsychGetNominalFramerate(int screenNumber)
 
   // First we try to get modeline of primary crtc from RandR:
   XRRModeInfo *mode = PsychOSGetModeLine(screenNumber, 0, NULL);
-  if (mode) {
+
+  // Modeline with plausible values returned by RandR?
+  if (mode && (mode->hTotal > mode->width) && (mode->vTotal > mode->height)) {
     if (PsychPrefStateGet_Verbosity() > 4) {
       printf ("  %s (0x%x) %6.1fMHz\n",
       mode->name, (int)mode->id,
@@ -1261,6 +1263,7 @@ float PsychGetNominalFramerate(int screenNumber)
     mode_line.flags |= (mode->modeFlags & RR_Interlace) ? 0x0010 : 0x0;
   }
   else {
+    // No modeline from RandR or invalid modeline. Retry with vidmode extensions:
     if (!XF86VidModeSetClientVersion(displayCGIDs[screenNumber])) {
       // Failed to use VidMode-Extension. We just return a vrefresh of zero.
       return(0);
