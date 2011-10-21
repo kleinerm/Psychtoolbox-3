@@ -63,52 +63,150 @@ PsychError SCREENConfigureDisplay(void)
 	// Get name of parameter class:
 	PsychAllocInCharArg(1, kPsychArgRequired, &settingName);
 
-    // Usercode wants to change display brightness:
-    if (PsychMatch(settingName, "Brightness")) {
-        // OS/X specific section:
-#if PSYCH_SYSTEM == PSYCH_OSX
-        outputId = -1;
+	// Usercode wants to change display brightness:
+	if (PsychMatch(settingName, "Brightness")) {
+		// OS/X specific section:
+		#if PSYCH_SYSTEM == PSYCH_OSX
+		outputId = -1;
         
 		// Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
 		if (PsychCopyInScreenNumberArg(2, FALSE, &screenNumber)) {
-            if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "Invalid screen number."); 
-            outputId = screenNumber;
-        }
+			if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "Invalid screen number."); 
+			outputId = screenNumber;
+		}
         
-        // Get outputId:
-        PsychCopyInIntegerArg(3, FALSE, &outputId);
-        if (outputId < 0 || outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid video output specified!");
+		// Get outputId:
+		PsychCopyInIntegerArg(3, FALSE, &outputId);
+		if (outputId < 0 || outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid video output specified!");
         
-        CGDirectDisplayID displayID;
-        CGDisplayErr err;
-        float brightness;
-        double nbrightness;
+		CGDirectDisplayID displayID;
+		CGDisplayErr err;
+		float brightness;
+		double nbrightness;
         
-        PsychGetCGDisplayIDFromScreenNumber(&displayID, outputId);
-        io_service_t service = CGDisplayIOServicePort(displayID);
+		PsychGetCGDisplayIDFromScreenNumber(&displayID, outputId);
+		io_service_t service = CGDisplayIOServicePort(displayID);
         
-        // Return current brightness value:
-        err = IODisplayGetFloatParameter(service, kNilOptions, CFSTR(kIODisplayBrightnessKey), &brightness);
-        if (err != kIOReturnSuccess) PsychErrorExitMsg(PsychError_system, "Failed to query current display brightness from system.");
+		// Return current brightness value:
+		err = IODisplayGetFloatParameter(service, kNilOptions, CFSTR(kIODisplayBrightnessKey), &brightness);
+		if (err != kIOReturnSuccess) PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Unsupported on this system.");
 		PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) brightness);
         
-        // Optionally set new brightness value:
-        if (PsychCopyInDoubleArg(4, FALSE, &nbrightness)) {
-            // Clamp to valid range:
-            if (nbrightness < 0.0) nbrightness = 0.0;
-            if (nbrightness > 1.0) nbrightness = 1.0;
+		// Optionally set new brightness value:
+		if (PsychCopyInDoubleArg(4, FALSE, &nbrightness)) {
+			// Clamp to valid range:
+			if (nbrightness < 0.0) nbrightness = 0.0;
+			if (nbrightness > 1.0) nbrightness = 1.0;
             
-            // Set it:
-            err = IODisplaySetFloatParameter(service, kNilOptions, CFSTR(kIODisplayBrightnessKey), (float) nbrightness);
-            if (err != kIOReturnSuccess) PsychErrorExitMsg(PsychError_system, "Failed to set new display brightness.");
-        }
+			// Set it:
+			err = IODisplaySetFloatParameter(service, kNilOptions, CFSTR(kIODisplayBrightnessKey), (float) nbrightness);
+			if (err != kIOReturnSuccess) PsychErrorExitMsg(PsychError_user, "Failed to set new display brightness. Unsupported on this system?");
+		}        
+		#endif
+
+		#if PSYCH_SYSTEM == PSYCH_LINUX
+
+		static Atom backlight, backlight_new, backlight_legacy;
         
-#else
-        PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is not yet implemented on this system.");
-#endif
+		// Get the screen number from the windowPtrOrScreenNumber. This also checks to make sure that the specified screen exists.
+		PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
+		if (screenNumber==-1) PsychErrorExitMsg(PsychError_user, "Invalid screen number."); 
+
+		// Get outputId:
+		outputId = 0;
+		PsychCopyInIntegerArg(3, FALSE, &outputId);
         
+		Display *dpy;
+		int screen;
+		float brightness;
+		double nbrightness;
+
+		// Map screenNumber and outputIdx to dpy, rootwindow and RandR output:
+		PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
+
+		backlight_new    = XInternAtom(dpy, "Backlight", True);
+		backlight_legacy = XInternAtom(dpy, "BACKLIGHT", True);
+		if (backlight_new == None && backlight_legacy == None) {
+			PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. System does not support brightness query and setting.");
+		}
+
+		screen = PsychGetXScreenIdForScreen(screenNumber);
+		Window root = RootWindow(dpy, screen);
+		XRRScreenResources *resources = XRRGetScreenResources(dpy, root);
+		if (outputId < 0 || outputId >= resources->noutput) PsychErrorExitMsg(PsychError_user, "Invalid video output specified!");
+		RROutput output = resources->outputs[outputId];
+
+		// Query current brightness of output, if possible. Bail otherwise:
+		unsigned long nitems;
+		unsigned long bytes_after;
+		unsigned char *prop;
+		Atom actual_type;
+		int actual_format;
+		long value;
+		XRRPropertyInfo *info;
+		double cur, new;
+		double min, max;
+    
+		backlight = backlight_new;
+		if (!backlight || XRRGetOutputProperty(dpy, output, backlight, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) != Success) {
+			backlight = backlight_legacy;
+			if (!backlight || XRRGetOutputProperty(dpy, output, backlight, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) != Success)
+				PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Unsupported feature?");
+		}
+
+		if (actual_type != XA_INTEGER || nitems != 1 || actual_format != 32) {
+			XFree(prop);
+			PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Unsupported feature?");
+		} else {
+			value = *((long *) prop);
+			XFree(prop);
+		}
+
+		info = XRRQueryOutputProperty(dpy, output, backlight);
+		if (info && (info->range) && (info->num_values == 2)) {
+			min = info->values[0];
+			max = info->values[1];
+			cur = (double) value;
+
+			// Return current value:
+			PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) ((cur - min) / (max - min)));
+
+			// Optionally set new brightness value:
+			if (PsychCopyInDoubleArg(4, FALSE, &nbrightness)) {
+				// Clamp to valid range:
+				if (nbrightness < 0.0) nbrightness = 0.0;
+				if (nbrightness > 1.0) nbrightness = 1.0;            
+
+				// Map to raw value:
+				new = (nbrightness * (max - min)) + min;
+
+				// Be paranoid, clamp again:
+				if (new > max) new = max;
+				if (new < min) new = min;
+
+				// Set new brightness value:
+				value = (long) new;
+				XRRChangeOutputProperty(dpy, output, backlight, XA_INTEGER, 32, PropModeReplace, (unsigned char *) &value, 1);
+
+				// Kick the server to do its job quickly:
+				XFlush(dpy);
+			}
+			XFree(info);
+		} else {
+			if (info) XFree(info);
+			PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Unsupported feature?");
+		}
+
+		XRRFreeScreenResources(resources);
+
+		#endif
+
+		#if PSYCH_SYSTEM == PSYCH_WINDOWS
+		PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is not implemented on MS-Windows.");
+		#endif
+
 		return(PsychError_none);
-    }
+	}
     
 #if PSYCH_SYSTEM != PSYCH_LINUX
 	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is only supported on Linux.");
