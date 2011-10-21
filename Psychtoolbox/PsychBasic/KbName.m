@@ -394,7 +394,7 @@ if isempty(kkOSX)
 	kkOSX{46} = '=+';                               kkOS9{25}='=+'; 
 	kkOSX{47} = '[{';                               kkOS9{34}='[{'; 
 	kkOSX{48} = ']}';                               kkOS9{31}=']}'; 
-    kkOSX{49} = escapedLine;                        kkOS9{43}=escapedLine;
+	kkOSX{49} = escapedLine;                        kkOS9{43}=escapedLine;
 	kkOSX{50} = '#-';                               
 	
 	kkOSX{51} = ';:';                               kkOS9{42}=';:';   
@@ -728,6 +728,7 @@ elseif ischar(arg)      % argument is a character, so find the code
             kk{13} = 'Return';
             kk{219} = '[{';
             kk{221} = ']}';
+            kk{192} = '`~';
             kk{46} = 'DELETE';
             kk{27} = 'ESCAPE';
             kk{12} = 'Clear';
@@ -777,9 +778,7 @@ elseif ischar(arg)      % argument is a character, so find the code
         
         if IsLinux
             % Remapping of Linux aka X11 keynames to OS-X/USB-HID keynames:
-            % This is work in progress, but the most important keys should
-            % be there.
-            fprintf('KbName: WARNING! Remapping of Linux/X11 keycodes to unified keynames not yet complete!!\nRemapping a subset...\n');
+            % All relevant/important keys should be there now.
             KEYREMAP_TABLE = {
              'Up', 'UpArrow';
              'Down', 'DownArrow';
@@ -795,16 +794,40 @@ elseif ischar(arg)      % argument is a character, so find the code
              'Control_R', 'RightControl';
              'Control_L', 'LeftControl';
              'Alt_L', 'LeftAlt';
+             'Alt_R', 'RightAlt';
              'Mode_switch', 'RightAlt';
              'Super_L', 'LeftGUI';
+             'Super_R', 'RightGUI';
              'Menu', 'Application';
              'Num_Lock', 'NumLock';
+             'Scroll_Lock', 'ScrollLock';
+             'Print', 'PrintScreen';
+             'backslash', escapedLine;
              'Tab', 'tab';
              'period', '.>';
              'comma', ',<';
              'slash', '/?';
 	     'equal', '=+';
 	     'minus', '-_';
+	     'bracketright', ']}';
+	     'bracketleft', '[{';
+	     'grave', '`~';
+	     'KP_Enter', 'Return';
+	     'KP_Add', '+';
+	     'KP_Subtract', '-';
+	     'KP_Multiply', '*';
+	     'KP_Divide', '/';
+	     'KP_Delete', '.';
+	     'KP_Insert', '0';
+	     'KP_End',   '1';
+	     'KP_Down',  '2';
+	     'KP_Next',  '3';
+	     'KP_Left',  '4';
+	     'KP_Begin', '5';
+	     'KP_Right', '6';
+	     'KP_Home',  '7';
+	     'KP_Up',    '8';
+	     'KP_Prior', '9';
              '0', '0)';
              '1', '1!';
              '2', '2@';
