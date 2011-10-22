@@ -286,21 +286,21 @@
 % PsychContributed/WinTab/wintabslowLoop.m
 % PsychContributed/ple.m
 % PsychContributed/read_rle_rgbe.m
-% PsychFiles/BreakLines.m
+% PsychFiles/BreakLines.m                                                 - Files_Test_LineTerminators.m 
 % PsychFiles/CheckDirs.m
 % PsychFiles/DirList.m
-% PsychFiles/FileFromFolder.m                                             - FileFromFolderTests.m
+% PsychFiles/FileFromFolder.m                                             - Files_Test_FileFromFolder.m
 % PsychFiles/FindFolder.m
-% PsychFiles/FolderFromFolder.m                                           - FolderFromFolder.m
-% PsychFiles/LiteralUnderscore.m
-% PsychFiles/LogVar.m
+% PsychFiles/FolderFromFolder.m                                           - Files_Test_FileFromFolder.m
+% PsychFiles/LiteralUnderscore.m                                          - trivial 
+% PsychFiles/LogVar.m                                                     - Files_Test_FileVar2Str.m
 % PsychFiles/PsychHomeDir.m
 % PsychFiles/PsychSaveAsEps.m
 % PsychFiles/PsychtoolboxConfigDir.m
 % PsychFiles/QuoteString.m
 % PsychFiles/ReadStructsFromText.m
-% PsychFiles/ReplaceLineTerminators.m
-% PsychFiles/Var2Str.m                                                    - FileVar2Str.m
+% PsychFiles/ReplaceLineTerminators.m                                     - Files_Test_LineTerminators.m 
+% PsychFiles/Var2Str.m                                                    - Files_Test_FileVar2Str.m
 % PsychFiles/WriteStructsToText.m
 % PsychGLImageProcessing/Add2DConvolutionToGLOperator.m
 % PsychGLImageProcessing/Add2DSeparableConvolutionToGLOperator.m

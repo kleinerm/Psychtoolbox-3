@@ -1,4 +1,4 @@
-function success = FileVar2Str
+function success = Files_Test_FileVar2Str
 
 if IsOctave
     fprintf('Var2Str is not supported on Octave as its mat2str doesn''t handle logical or sparse input and we depend on that (I don''t want to replicate functionality from matlab''s mat2str)\nVar2Str will work ok on Octave if you input numeric non-empty data, possibly contained in cells or structs.\n')
@@ -68,6 +68,12 @@ try
         fprintf('Var2Str failed with 1 input version\n');
     end
     
+    % and check LogVar (only check a trivial one and a complicated one as
+    % LogVar is only a thin wrapper around Var2Str)
+    success = LogVarTester(a,'a') && success;
+    success = LogVarTester(h,'h') && success;
+    
+    
 catch
     success = false;
     err = lasterror;
@@ -87,6 +93,20 @@ eval(str);
 if ~isequalwithequalnans(var,var2)
     success = false;
     fprintf('Var2Str failed on variable %s\n',name);
+else
+    success = true;
+end
+
+function [success,var2,str] = LogVarTester(var,name) %#ok<STOUT>
+fname = LogVar(var,'var2',cd);
+fid = fopen(fullfile(cd,fname),'rt');
+str = fread(fid,inf,'*char');
+fclose(fid);
+delete(fullfile(cd,fname));
+eval(str);
+if ~isequalwithequalnans(var,var2)
+    success = false;
+    fprintf('LogVar failed on variable %s\n',name);
 else
     success = true;
 end

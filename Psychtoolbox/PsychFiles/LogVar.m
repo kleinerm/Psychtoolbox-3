@@ -1,5 +1,5 @@
-function LogVar(var,name,dirnm)
-% LogVar(var,name,dirnm)
+function fname = LogVar(var,name,dirnm)
+% fname = LogVar(var,name,dirnm)
 %
 % Turns a variable VAR into a string that evaluates back to the original
 % variable, e.g. when feeding it to eval()
@@ -10,11 +10,11 @@ function LogVar(var,name,dirnm)
 %
 % DN 2008
 
-fs = filesep;
-
 str         = Var2Str(var,name);
+
 logtijd     = clock;
-logfilename = [dirnm fs name ' log ' StrPad(logtijd(1),4,0) '-' StrPad(logtijd(2),2,0) '-' StrPad(logtijd(3),2,0) ' ' StrPad(logtijd(4),2,0) StrPad(logtijd(5),2,0) '.txt'];
-fid         = fopen(logfilename, 'wt');
+fname       = [name ' log ' StrPad(logtijd(1),4,0) '-' StrPad(logtijd(2),2,0) '-' StrPad(logtijd(3),2,0) ' ' StrPad(logtijd(4),2,0) StrPad(logtijd(5),2,0) '.txt'];
+
+fid         = fopen(fullfile(dirnm,fname), 'wt');
 fprintf(fid,'%s',str);
 fclose(fid);

@@ -6,19 +6,11 @@ function str = LiteralUnderscore(instr)
 % character.  Calling this routine inserts a "\" before
 % any "_" in the passed string, so that it will come
 % out as passed.
+%
+% SEE ALSO texlabel
 
-% 10/28/97  dhb  LiteralUnderscr: Wrote it.
-% 2/17/97		dgp  LiteralUnderscore: new name.
+% 10/28/97  dhb     LiteralUnderscr: Wrote it.
+% 02/17/97  dgp     LiteralUnderscore: new name.
+% 10/21/11  dcn     Now a oneliner, strrep does the job
 
-n = length(instr);
-outi = 1;
-for i = 1:n
-	if (instr(i) == '_')
-		str(outi) = '\';
-		str(outi+1) = '_';
-		outi = outi+2;
-	else
-		str(outi) = instr(i);
-		outi = outi+1;
-	end
-end
+str = strrep(instr,'_','\_');

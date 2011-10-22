@@ -7,10 +7,9 @@ function string=QuoteString(string)
 % The quoting is necessary because the filename may contain spaces.
 % The doubling is necessary because a single quote would be interpreted
 % as the end of the string.
+
 % Denis Pelli 6/6/96
+% DCN, now a oneliner
 
 quote='''';
-for i=fliplr(find(string==quote))
-	string=string([1:i i:length(string)]);
-end
-string=[quote string quote];
+string=[quote strrep(string,quote,[quote quote]) quote];

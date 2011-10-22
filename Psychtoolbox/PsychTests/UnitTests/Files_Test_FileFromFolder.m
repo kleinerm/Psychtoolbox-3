@@ -1,4 +1,4 @@
-function success = FileFromFolderTests
+function success = Files_Test_FileFromFolder
 
 success = true;
 
@@ -12,7 +12,7 @@ fid=fopen(fullfile(newdir,'test3_noext'),'a'); fclose(fid);
 mkdir(fullfile(newdir,'testdir'));
 
 try
-    % first test: FileFromFolder
+    % test: FileFromFolder
     [f,nf]=FileFromFolder(newdir);
     if nf~=4
         success = false;
@@ -38,7 +38,7 @@ try
     end
     clear f; clear nf
     
-    % FolderFromFolder
+    % test: FolderFromFolder
     [f,nf]=FolderFromFolder(newdir);
     if nf~=1 || ~f.isdir || ~strcmp(f.name,'testdir')
         success = false;
