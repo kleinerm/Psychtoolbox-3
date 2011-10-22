@@ -297,7 +297,7 @@
 % PsychFiles/PsychHomeDir.m
 % PsychFiles/PsychSaveAsEps.m
 % PsychFiles/PsychtoolboxConfigDir.m
-% PsychFiles/QuoteString.m
+% PsychFiles/QuoteString.m                                                - trivial 
 % PsychFiles/ReadStructsFromText.m
 % PsychFiles/ReplaceLineTerminators.m                                     - Files_Test_LineTerminators.m 
 % PsychFiles/Var2Str.m                                                    - Files_Test_FileVar2Str.m
