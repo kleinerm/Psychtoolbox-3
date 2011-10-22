@@ -25,12 +25,11 @@ unixBreakChar=char(10);
 
 %find indices of line bounds
 breakIndices=find(unixStr==unixBreakChar);
-lineStartIndices=[1 breakIndices];
-lineEndIndices=[breakIndices length(unixStr)];
+lineStartIndices=[1 breakIndices+length(unixBreakChar)];
+lineEndIndices=[breakIndices-length(unixBreakChar) length(unixStr)];
 
 % build cell array of strings by gathering between the breakpoints.
 strArray={};
 for i=1:length(lineStartIndices)
-    tempLine=unixStr(lineStartIndices(i):lineEndIndices(i)); %divide between line breaks
-    strArray{i}=strrep(tempLine, unixBreakChar, '');         %remove line break characters
+    strArray{i}=unixStr(lineStartIndices(i):lineEndIndices(i)); %divide between line breaks
 end
