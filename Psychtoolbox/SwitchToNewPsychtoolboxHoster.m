@@ -64,7 +64,7 @@ if doSwitch
 
     % Yes: Execute svn switch command:
     if ~isempty(findstr(b, 'svn://'))
-        switchsvncommand = [GetSubversionPath 'svn switch --relocate svn://svn.berlios.de/svnroot/repos/osxptb http://psychtoolbox-3.googlecode.com/svn ' PsychtoolboxRoot];
+        switchsvncommand = [GetSubversionPath 'svn switch --relocate svn://svn.berlios.de/osxptb http://psychtoolbox-3.googlecode.com/svn ' PsychtoolboxRoot];
     else
         if ~isempty(findstr(b, 'https://'))
             switchsvncommand = [GetSubversionPath 'svn switch --relocate https://svn.berlios.de/svnroot/repos/osxptb http://psychtoolbox-3.googlecode.com/svn ' PsychtoolboxRoot];
