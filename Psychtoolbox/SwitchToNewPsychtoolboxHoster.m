@@ -18,12 +18,6 @@ function SwitchToNewPsychtoolboxHoster
 % History:
 % 31.10.2011  mk  Written.
 
-% Subversion client installed?
-if isempty(GetSubversionPath)
-    % No: No point trying further, we're done:
-    return;
-end
-
 fprintf('Are we hosted on Google''s GoogleCode service, as we should be? Checking...  ');
 
 % Check if this Psychtoolbox is still sourced from our old and (soon to be
@@ -41,7 +35,8 @@ doSwitch = 0;
 if (a ~= 0) | isempty(b) %#ok<OR2>
     % On failure to detect source URL, assume switch is not needed. This is
     % a tradeoff. Without it, we could fail miserably when called from
-    % SetupPsychtoolbox:
+    % SetupPsychtoolbox on a system where the working copy is stripped of
+    % .svn meta-info or the svn client is not installed:
     fprintf('Don''t know, don''t care.\n');
     return;
 else
@@ -68,12 +63,15 @@ if doSwitch
     fprintf('\n');
 
     % Yes: Execute svn switch command:
-    if ~isempty(findstr(b, 'https'))
-        switchsvncommand = [GetSubversionPath 'svn switch --relocate https://svn.berlios.de/svnroot/repos/osxptb http://psychtoolbox-3.googlecode.com/svn ' PsychtoolboxRoot];
+    if ~isempty(findstr(b, 'svn://'))
+        switchsvncommand = [GetSubversionPath 'svn switch --relocate svn://svn.berlios.de/svnroot/repos/osxptb http://psychtoolbox-3.googlecode.com/svn ' PsychtoolboxRoot];
     else
-        switchsvncommand = [GetSubversionPath 'svn switch --relocate http://svn.berlios.de/svnroot/repos/osxptb http://psychtoolbox-3.googlecode.com/svn ' PsychtoolboxRoot];
+        if ~isempty(findstr(b, 'https://'))
+            switchsvncommand = [GetSubversionPath 'svn switch --relocate https://svn.berlios.de/svnroot/repos/osxptb http://psychtoolbox-3.googlecode.com/svn ' PsychtoolboxRoot];
+        else
+            switchsvncommand = [GetSubversionPath 'svn switch --relocate http://svn.berlios.de/svnroot/repos/osxptb http://psychtoolbox-3.googlecode.com/svn ' PsychtoolboxRoot];
+        end
     end
-
     fprintf('Executing: %s\n\n', switchsvncommand);
     fprintf('This may take a moment, please standby...\n\n');
     drawnow;
