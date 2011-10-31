@@ -18,6 +18,12 @@ function SwitchToNewPsychtoolboxHoster
 % History:
 % 31.10.2011  mk  Written.
 
+% Subversion client installed?
+if isempty(GetSubversionPath)
+    % No: No point trying further, we're done:
+    return;
+end
+
 fprintf('Are we hosted on Google''s GoogleCode service, as we should be? Checking...  ');
 
 % Check if this Psychtoolbox is still sourced from our old and (soon to be
@@ -33,8 +39,11 @@ end
 % Assume no switch needed:
 doSwitch = 0;
 if (a ~= 0) | isempty(b) %#ok<OR2>
-    % On failure to detect source URL, assume switch is needed:
-    doSwitch = 1;
+    % On failure to detect source URL, assume switch is not needed. This is
+    % a tradeoff. Without it, we could fail miserably when called from
+    % SetupPsychtoolbox:
+    fprintf('Don''t know, don''t care.\n');
+    return;
 else
     if ~isempty(findstr(b, 'berlios'))
         % Still sourced from Berlios -> Switch needed.
