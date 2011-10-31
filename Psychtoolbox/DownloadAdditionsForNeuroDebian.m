@@ -210,9 +210,9 @@ if ~IsOctave
     sourcefolder = 'PsychBasic/';
     delpattern = '*.mexa64';
   end
-
+  
   % Build final checkout command string:
-  checkoutcommand = [svnpath 'svn export --force -N ' targetRevision ' https://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/' sourcefolder ' ' pt];
+  checkoutcommand = [svnpath 'svn export --force -N ' targetRevision ' http://psychtoolbox-3.googlecode.com/svn/' flavor '/Psychtoolbox/' sourcefolder ' ' pt];
 else
   % Additional Octave mex files:
   % Only Eyelink so far...
@@ -229,7 +229,7 @@ else
   pt = strcat('"',p,'/Eyelink.mex"');
 
   % Build final checkout command string:
-  checkoutcommand = [svnpath 'svn export --force -N ' targetRevision ' https://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/' sourcefolder ' ' pt];
+  checkoutcommand = [svnpath 'svn export --force -N ' targetRevision ' http://psychtoolbox-3.googlecode.com/svn/' flavor '/Psychtoolbox/' sourcefolder ' ' pt];
 end
 
 fprintf('The following EXPORT command asks the Subversion client to \ndownload the few additional bits of Psychtoolbox:\n');

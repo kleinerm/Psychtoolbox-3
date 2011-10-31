@@ -39,8 +39,17 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 05/27/2010 Update instructions for downloading the vcredist_x86.exe
 %            security update for users of MS-Windows. (MK)
 % 12/27/2010 Add check for unsupported Matlab versions prior to V6.5. (MK)
+% 10/31/2011 Add call to SwitchToNewPsychtoolboxHoster for switch to
+%            GoogleCode, if needed. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
+
+if exist('SwitchToNewPsychtoolboxHoster.m', 'file')
+   clear SwitchToNewPsychtoolboxHoster;
+
+   % Check if we are still hosted on Berlios, switch to GoogleCode, if so:
+   SwitchToNewPsychtoolboxHoster;
+end;
 
 if nargin < 1
    error('PsychtoolboxPostInstallRoutine: Required argument isUpdate missing!');

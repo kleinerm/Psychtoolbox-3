@@ -1,17 +1,17 @@
 function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flavor)
 % DownloadPsychtoolbox([targetdirectory] [,downloadmethod=0] [,targetRevision][,flavor])
 %
-% This script downloads the latest Mac OSX, GNU/Linux or Windows Psychtoolbox from the
-% Subversion master server to your disk, creating your working copy, ready
-% to use as a new toolbox in your MATLAB/OCTAVE application. Subject to your
-% permission, any old installation of the Psychtoolbox is first removed.
-% It's a careful program, checking for all required resources and
-% privileges before it starts.
+% This script downloads the latest Mac OSX, GNU/Linux or Windows
+% Psychtoolbox from the Subversion master server to your disk, creating
+% your working copy, ready to use as a new toolbox in your MATLAB/OCTAVE
+% application. Subject to your permission, any old installation of the
+% Psychtoolbox is first removed. It's a careful program, checking for all
+% required resources and privileges before it starts.
 %
 % CAUTION: Psychtoolbox *will not work* with 64 bit versions of Matlab or
-% Octave. An exception is if you use a Debian based GNU/Linux system, e.g.,
-% Debian GNU/Linux or Ubuntu Linux 10.04 or later. The NeuroDebian project
-% (see http://neuro.debian.net) provides a very convinient installation of
+% Octave, except if you use a GNU/Linux system, e.g., Debian GNU/Linux or
+% Ubuntu Linux 10.04 or later. The NeuroDebian project (see
+% http://neuro.debian.net) provides a very convinient installation of
 % Psychtoolbox for both 32 bit and 64 bit versions of Octave and Matlab via
 % the regular package management system of your Linux distribution.
 %
@@ -33,7 +33,7 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % The desired flavor of a Psychtoolbox release can be selected via the
 % optional "flavor" parameter: By default, 'beta' (aka 'current') will be
 % installed if you don't specify otherwise, as this is almost always the
-% best possible choice! You can download an old versioned release via a
+% best possible choice. You can download an old versioned release via a
 % namestring like 'Psychtoolbox-x.y.z', e.g., 'Psychtoolbox-3.0.7' if you'd
 % want to download version 3.0.7. This is only useful if you run a very old
 % operating system or Matlab version that isn't supported by the current
@@ -49,7 +49,7 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % if the preferred method fails, the 2nd best is tried etc. Should the
 % installer get stuck for an inappropriate amount of time (More than 5-10
 % minutes), you can try to abort it and restart it, providing the
-% additional 'downloadmethod' parameter with a setting of either 1, 2 or 3,
+% additional 'downloadmethod' parameter with a setting of either 0 or 1,
 % to change the order of tried download methods to prevent the downloader
 % from getting stuck with a specific method in rare cases. Very
 % infrequently, the download servers may be overloaded or down for
@@ -266,6 +266,10 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % 12/27/10 mk  Redirect 'beta' downloads on Matlab versions < 6.5 to the
 %              special "Psychtoolbox-3.0.8-PreMatlab6.5" compatibility
 %              version - The last one to support pre 6.5 Matlab's.
+%
+% 10/31/11 mk  Change location of SVN repository to
+%              http://psychtoolbox-3.googlecode.com/svn/
+%              our new home, now that Berlios is shutting down.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -274,18 +278,11 @@ clear mex
 % Check if this is a 64-bit Matlab or Octave, which we don't support at all:
 if strcmp(computer,'PCWIN64') | strcmp(computer,'MACI64') | ...
   (~isempty(findstr(computer, '_64')) & isempty(findstr(computer, 'linux'))) %#ok<OR2>
-    fprintf('Psychtoolbox does not work on a 64 bit version of Matlab or Octave.\n');
-    fprintf('You need to install a 32 bit Matlab or Octave to install & use Psychtoolbox.\n');
+    fprintf('Psychtoolbox does not work on a 64 bit version of Matlab or Octave on MS-Windows or Apple-OSX.\n');
+    fprintf('You need to install a 32 bit Matlab or Octave to install and use Psychtoolbox.\n');
+    fprintf('Use with 64 bit Matlab or Octave is fully supported on GNU/Linux.\n');
     fprintf('ERROR: See also http://psychtoolbox.org/wikka.php?wakka=Faq64BitSupport.\n');
-
-    if strcmp(computer,'GLNXA64') | ~isempty(findstr(computer, '_64')) %#ok<OR2>
-        fprintf('\nHowever, if you are a user of a Debian based GNU/Linux system, e.g.,\n');
-        fprintf('Debian GNU/Linux or Ubuntu Linux, you can get a fully functional 64-bit\n');
-        fprintf('version of Psychtoolbox very conveniently from the NeuroDebian project:\n');
-        fprintf('http://neuro.debian.net\n\n');
-    end
-    
-    error('Tried to install on a 64 bit version of Matlab or Octave, which is not supported.');
+    error('Tried to install on a 64 bit version of Matlab or Octave, which is not supported on this operating system.');
 end
 
 % Check OS
@@ -334,12 +331,11 @@ if nargin < 2
 end
 
 if isempty(downloadmethod)
-    % Try 2 by default (https://) as good ol' svnserve protocol seems to be
-    % disabled as of 13.06.2008:
-    downloadmethod = 2;
+    % Try 0 by default (http://):
+    downloadmethod = 0;
 else
-    if downloadmethod<0 | downloadmethod>3
-        error('Invalid downloadmethod provided. Valid are values between 0 and 3.');
+    if downloadmethod < 0 | downloadmethod > 1
+        error('Invalid downloadmethod provided. Valid are values 0 and 1.');
     end
 end
 
@@ -677,18 +673,12 @@ p=fullfile(targetdirectory,'Psychtoolbox');
 % Create quoted version of 'p'ath, so blanks in path are handled properly:
 pt = strcat('"',p,'"');
 
-% Choose initial download method. Defaults to zero, ie. svn-serve protocol:
-if downloadmethod <= 1
-    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' svn://svn.berlios.de/osxptb/' flavor '/Psychtoolbox/ ' pt];
+% Choose initial download method. Defaults to zero, ie. http protocol:
+if downloadmethod < 1
+    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://psychtoolbox-3.googlecode.com/svn/' flavor '/Psychtoolbox/ ' pt];
 else
-    if downloadmethod == 2
-        % Good to get through many firewalls and proxies:
-        checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' pt];
-    else
-        % If firewalls and proxies block everything, one can try this *and*
-        % reconfigure its proxy to allow it:
-        checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' pt];
-    end
+    % Good to get through many firewalls and proxies:
+    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://psychtoolbox-3.googlecode.com/svn/' flavor '/Psychtoolbox/ ' pt];
 end
 
 fprintf('The following CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
@@ -703,13 +693,13 @@ else
     [err,result]=dos(checkoutcommand, '-echo');
 end
 
-if err
+if err & (downloadmethod == 1)
     % Failed! Let's retry it via http protocol. This may work-around overly
     % restrictive firewalls or otherwise screwed network proxies:
     fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
     fprintf('%s\n\n',result);
     fprintf('Will retry now by use of alternative http protocol...\n');
-    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' pt];
+    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://psychtoolbox-3.googlecode.com/svn/' flavor '/Psychtoolbox/ ' pt];
     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
     fprintf('%s\n\n',checkoutcommand);
     if isOSX | isLinux
@@ -720,13 +710,13 @@ if err
     end    
 end
 
-if err
+if err & (downloadmethod == 0)
     % Failed! Let's retry it via https protocol. This may work-around overly
     % restrictive firewalls or otherwise screwed network proxies:
     fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
     fprintf('%s\n\n',result);
     fprintf('Will retry now by use of alternative https protocol...\n');
-    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' pt];
+    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://psychtoolbox-3.googlecode.com/svn/' flavor '/Psychtoolbox/ ' pt];
     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
     fprintf('%s\n\n',checkoutcommand);
     if isOSX | isLinux

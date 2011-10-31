@@ -83,17 +83,11 @@ end
 % Check if this is a 64-bit Matlab, which we don't support at all:
 if strcmp(computer,'PCWIN64') | strcmp(computer,'MACI64') | ...
   (~isempty(findstr(computer, '_64')) & isempty(findstr(computer, 'linux'))) %#ok<OR2>
-    fprintf('Psychtoolbox does not work on a 64 bit version of Matlab or Octave.\n');
-    fprintf('You need to install a 32 bit Matlab or Octave to install & use Psychtoolbox.\n');
-
-    if strcmp(computer,'GLNXA64') | ~isempty(findstr(computer, '_64')) %#ok<OR2>
-        fprintf('\nHowever, if you are a user of a Debian based GNU/Linux system, e.g.,\n');
-        fprintf('Debian GNU/Linux or Ubuntu Linux, you can get a fully functional 64-bit\n');
-        fprintf('version of Psychtoolbox very conveniently from the NeuroDebian project:\n');
-        fprintf('http://neuro.debian.net\n\n');
-    end
-    
-    error('Tried to update on a 64 bit version of Matlab or Octave, which is not supported.');
+    fprintf('Psychtoolbox does not work on a 64 bit version of Matlab or Octave on MS-Windows or Apple-OSX.\n');
+    fprintf('You need to install a 32 bit Matlab or Octave to install and use Psychtoolbox.\n');
+    fprintf('Use with 64 bit Matlab or Octave is fully supported on GNU/Linux.\n');
+    fprintf('ERROR: See also http://psychtoolbox.org/wikka.php?wakka=Faq64BitSupport.\n');
+    error('Tried to update on a 64 bit version of Matlab or Octave, which is not supported on this operating system.');
 end
 
 % Check OS
@@ -198,8 +192,6 @@ if err
     fprintf(['Once that''s done, run ' mfilename ' again. For this session, Psychtoolbox\n']);
     fprintf('will be fully functional, but you will need to save your path settings to make them persistent.\n\n');
 end
-
-fprintf('Fully done. Your new Psychtoolbox folder is ready to use. Enjoy!\n\n')
 
 % Does a post-install routine exist? If so, we execute it, now that PTB is basically ready.
 if exist('PsychtoolboxPostInstallRoutine.m', 'file')
