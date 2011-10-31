@@ -75,6 +75,7 @@ function [versionString, versionStructure]=PsychtoolboxVersion
 %                       of change, SVN revision and flavor. This code is pretty experimental and
 %                       probably also somewhat fragile. And its sloooow.
 %   9/17/06    mk       Improvements to parser: We try harder to get the flavor info.
+%   10/31/11   mk       Update for our new hoster GoogleCode.
 
 global Psychtoolbox
 
@@ -89,10 +90,11 @@ if IsOS9
 		fclose(f);
 		[Psychtoolbox.version,count,errmsg,n]=sscanf(s,'%% Version %f',1);
 		ss=s(n:end);
-		Psychtoolbox.date=ss(min(find(ss-' ')):end);
+		Psychtoolbox.date=ss(min(find(ss-' ')):end); %#ok<MXFND>
 	end
-	v=Psychtoolbox.version;
-elseif IsOSX | IsLinux | IsWin
+	versionStructure=Psychtoolbox.version;
+    versionString='Version 2.56 or whatever -- who cares?';
+elseif IsOSX | IsLinux | IsWin %#ok<OR2>
     if ~isfield(Psychtoolbox,'version')
         Psychtoolbox.version.major=0;
         Psychtoolbox.version.minor=0;
@@ -142,7 +144,7 @@ elseif IsOSX | IsLinux | IsWin
             % Ok, now find the flavor and such... This is super expensive - needs network access...
             %[status , result] = system([svncmdpath 'svn info --xml -r ' num2str(Psychtoolbox.version.revision) '  ' PsychtoolboxRoot]);
             status=-1;
-            if status<0 | status>0
+            if status<0 | status>0 %#ok<OR2>
                 % Fallback path:
                 if ~IsWin
                    [status , result] = system([svncmdpath 'svn info --xml ' PsychtoolboxRoot]);
@@ -151,7 +153,8 @@ elseif IsOSX | IsLinux | IsWin
                 end
             end
             
-            startdel = findstr(result, '/osxptb/') + length('/osxptb/');
+            marker = '/psychtoolbox-3.googlecode.com/svn/';
+            startdel = findstr(result, marker) + length(marker);
             
             if isempty(startdel)
                 if ~IsWin
@@ -159,7 +162,7 @@ elseif IsOSX | IsLinux | IsWin
                 else
                    [status , result] = dos([svncmdpath 'svn info ' PsychtoolboxRoot]);
                 end
-                startdel = findstr(result, '/osxptb/') + length('/osxptb/');
+                startdel = findstr(result, marker) + length(marker);
             end
             
             findel = min(findstr(result(startdel:length(result)), '/Psychtoolbox')) + startdel - 2;
@@ -170,7 +173,7 @@ elseif IsOSX | IsLinux | IsWin
             findel = findstr(result, 'T') - 1;
             Psychtoolbox.date = result(startdel:findel);            
             % Build final SVN URL: This is the location where one can find detailled info about this working copy:
-            Psychtoolbox.version.websvn = sprintf('http://svn.berlios.de/wsvn/osxptb/?rev=%d&sc=0', Psychtoolbox.version.revision);
+            Psychtoolbox.version.websvn = sprintf('http://code.google.com/p/psychtoolbox-3/source/detail?r=%d', Psychtoolbox.version.revision);
             % Build final version string:
             Psychtoolbox.version.string = sprintf('%d.%d.%d - Flavor: %s - %s\nFor more info visit:\n%s', Psychtoolbox.version.major, Psychtoolbox.version.minor, Psychtoolbox.version.point, ...
                                                   Psychtoolbox.version.flavor, Psychtoolbox.version.revstring, Psychtoolbox.version.websvn);
@@ -179,7 +182,7 @@ elseif IsOSX | IsLinux | IsWin
             fprintf('PsychtoolboxVersion: WARNING - Could not query additional version information from SVN -- svn tools not properly installed?!?\n');
             Psychtoolbox.version.string=sprintf('%d.%d.%d', Psychtoolbox.version.major, Psychtoolbox.version.minor, Psychtoolbox.version.point);
             ss=s(n:end);
-            Psychtoolbox.date=ss(min(find(ss-' ')):end);
+            Psychtoolbox.date=ss(min(find(ss-' ')):end); %#ok<MXFND>
         end    
     end
     versionString=Psychtoolbox.version.string;
