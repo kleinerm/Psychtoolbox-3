@@ -1,5 +1,5 @@
 function DownloadAdditionsForNeuroDebian(targetdirectory, flavor)
-% DownloadAdditionsForNeuroDebian(targetdirectory);
+% DownloadAdditionsForNeuroDebian(targetdirectory [, flavor]);
 % Install missing Matlab or Octave mex files for the NeuroDebian Psychtoolbox.
 %
 % This function must be called after you have installed octave-psychtoolbox-3
@@ -76,12 +76,19 @@ end
 targetRevision = ['-r ' num2str(rev) ' '];
 
 % Set flavor defaults and synonyms
-if nargin < 4
+if nargin < 2
     flavor = [];
 end
 
 if isempty(flavor)
-    flavor='beta';
+    % Default flavor is trunk. Why? Because NeuroDebian sync's with
+    % specific revisions of trunk, so the targetRevision number extracted
+    % from octave-psychtoolbox-3's PsychtoolboxVersion() corresponds to a
+    % stable point in trunk, not in beta. Therefore we need to fetch from
+    % exactly the same revision of trunk to get the missing mex files
+    % compatible with that revision of trunk - and thereby compatible
+    % with the installed octave-psychtoolbox-3:
+    flavor='trunk';
 end
 
 % Make sure that flavor is lower-case, unless its a 'Psychtoolbox-x.y.z'
@@ -120,7 +127,10 @@ switch (flavor)
 
         fprintf('\n\nPress any key to continue...\n');
         pause;
-        
+    case 'trunk'
+        % This is our default. Possibly the only reasonable choice at all for
+        % NeuroDebian.
+
     otherwise
         fprintf('\n\n\nHmm, requested flavor is the unusual flavor: %s\n',flavor);
         fprintf('Either you request something exotic, or you made a typo?\n');
@@ -129,7 +139,7 @@ switch (flavor)
         pause;
 end
 
-if strcmp(flavor, 'beta')
+if strcmp(flavor, 'beta') | strcmp(flavor, 'trunk')
     % Check if this is Matlab of version prior to V 6.5:
     v = ver('matlab');
     if ~isempty(v)
@@ -157,7 +167,7 @@ end
 
 fprintf('DownloadAdditionsForNeuroDebian(''%s'',''%s'')\n',targetdirectory, flavor);
 fprintf('Requested flavor is: %s\n',flavor);
-fprintf('Requested location for the Psychtoolbox folder is inside: %s\n',targetdirectory);
+fprintf('Requested location for the NeuroDebian additions folder is inside: %s\n',targetdirectory);
 fprintf('\n');
 
 % Search for Unix executable in path:
