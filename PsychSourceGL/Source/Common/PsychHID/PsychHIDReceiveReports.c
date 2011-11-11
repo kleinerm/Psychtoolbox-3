@@ -129,7 +129,7 @@ static psych_bool optionsPrintReportSummary=0;	// options.print: Enable diagnost
 static psych_bool optionsPrintCrashers=0;		// options.printCrashers
 static psych_bool optionsConsistencyChecks=0;	// options.consistencyChecks
 static int optionsMaxReports=10000;			// options.maxReports
-static int optionsMaxReportSize=64;			// options.maxReportSize
+static int optionsMaxReportSize=65;			// options.maxReportSize
 static double optionsSecs=0.010;			// options.secs
 
 // These are out here for easy access by my report callback function: ReportCallback.
@@ -656,7 +656,7 @@ static char synopsisString[]=
 "\"options.printCrashers\" =1 (initial default 0) enables diagnostic printing of the creation of the callback source and its addition to the CFRunLoop. "
 "\"options.consistencyChecks\" =1 (initial default 0) enables diagnostic printing of the consistency of all report structs. Very time consuming! "
 "\"options.maxReports\" (initial default 10000) allocate space for at least this many reports, shared among all devices. "
-"\"options.maxReportSize\" (initial default 64) allocate this many bytes per report. "
+"\"options.maxReportSize\" (initial default 65) allocate this many bytes per report. "
 "Requesting values of maxReports or maxReportSize beyond that provided by the current allocation will result in freeing the current allocation, "
 "losing all currently held reports, and reallocating as specified. "
 "\"options.secs\" (initial default 0.010 s) is how long to allow the run loop to issue callbacks. Each callback transfers one received report. "
@@ -700,12 +700,12 @@ PsychError PSYCHHIDReceiveReports(void)
 	 "\"options.print\" =1 (default 0) enables diagnostic printing of a summary of each report when our callback routine receives it. "	
 	 "\"options.printCrashers\" =1 (default 0) enables diagnostic printing of the creation of the callback source and its addition to the CFRunLoop. "
 	 "\"options.maxReports\" (default 10000) allocate space for at least this many reports, shared among all devices. "
-	 "\"options.maxReportSize\" (default 64) allocate this many bytes per report. "
+	 "\"options.maxReportSize\" (default 65) allocate this many bytes per report. "
 	 */
 	//optionsPrintReportSummary=0;	// options.print
 	//optionsPrintCrashers=0;		// options.printCrashers
 	//optionsMaxReports=10000;		// options.maxReports
-	//optionsMaxReportSize=64;		// options.maxReportSize
+	//optionsMaxReportSize=65;		// options.maxReportSize
 	//optionsSecs=0.010;			// options.secs
 	mxOptions=PsychGetInArgMxPtr(2);
 	if(mxOptions!=NULL){

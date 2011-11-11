@@ -42,7 +42,7 @@
 #include "Psych.h" 
 #include "PsychTimeGlue.h"
 
-#define MAXREPORTSIZE 64
+#define MAXREPORTSIZE 65
 #define MAXDEVICEINDEXS 64
 #define MAXREPORTS 10000
 
