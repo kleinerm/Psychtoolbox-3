@@ -120,11 +120,14 @@ typedef struct ReportStruct{
 	double time;
 	//int type; // 1=input, 2=output, 3=feature
 	struct ReportStruct *next;
-	unsigned char report[MAXREPORTSIZE];
+	psych_uint8 *report;
 } ReportStruct;
 
+static psych_bool firstTimeInit = TRUE;         // TRUE at PsychHID load & init time and after shutdown. FALSE during operation.
+
 // These are out here for easy access by several routines in this file.
-static psych_bool ready[MAXDEVICEINDEXS]; 
+static psych_bool oneShotRealloc = FALSE;
+static psych_bool ready[MAXDEVICEINDEXS];
 static psych_bool optionsPrintReportSummary=0;	// options.print: Enable diagnostic print of report by ReportCallback.
 static psych_bool optionsPrintCrashers=0;		// options.printCrashers
 static psych_bool optionsConsistencyChecks=0;	// options.consistencyChecks
@@ -133,7 +136,14 @@ static int optionsMaxReportSize=65;			// options.maxReportSize
 static double optionsSecs=0.010;			// options.secs
 
 // These are out here for easy access by my report callback function: ReportCallback.
-static ReportStruct *freeReportsPtr=NULL,*deviceReportsPtr[MAXDEVICEINDEXS]; // linked list headers
+static ReportStruct *freeReportsPtr[MAXDEVICEINDEXS];   // Per device linked list of free hid input reports.
+static ReportStruct *deviceReportsPtr[MAXDEVICEINDEXS]; // Per device linked list of filled hid input reports.
+
+static ReportStruct *allocatedReports[MAXDEVICEINDEXS]; // Per device linked list storage - list is tightly packed in memory.
+static psych_bool reportsHaveBeenAllocated[MAXDEVICEINDEXS]; // Allocated flag.
+static int MaxDeviceReports[MAXDEVICEINDEXS];           // Per device number of total reports.
+static int MaxDeviceReportSize[MAXDEVICEINDEXS];        // Per device max size of each report.
+psych_uint8 * reportData[MAXDEVICEINDEXS];              // Per device buffer for all reports databuffers, tightly packed.
 
 // Set by PsychHIDSetReport, read by ReportCallback solely for the optionsPrintReportSummary.
 double AInScanStart=0;
@@ -156,32 +166,40 @@ void ReportCallback(void *target,IOReturn result,void *refcon,void *sender,psych
 	
 	CountReports("ReportCallback beginning.");
 	
-	deviceIndex=(int)refcon;
-	if(deviceIndex<0 | deviceIndex>MAXDEVICEINDEXS-1){
-		printf("ReportCallback received out-of-range deviceIndex %d. Substituting zero.\n",deviceIndex);
-		deviceIndex=0;
+	deviceIndex = (int) refcon;
+	if(deviceIndex < 0 || deviceIndex >= MAXDEVICEINDEXS) {
+		printf("ReportCallback received out-of-range deviceIndex %d. Aborting.\n", deviceIndex);
+		return;
 	}
 	
 	// take report from free list.
-	if(freeReportsPtr==NULL){
+	if(freeReportsPtr[deviceIndex] == NULL){
 		// Darn. We're full. It might be elegant to discard oldest report, but for now, we'll just ignore the new one.
 		printf("ReportCallback warning. No more free reports. Discarding new report.\n");
 		return;
 	}
-	r=freeReportsPtr;
-	freeReportsPtr=r->next;
+    
+	r = freeReportsPtr[deviceIndex];
+	freeReportsPtr[deviceIndex] = r->next;
 	r->next=NULL;
 	
 	// install report into the device's list.
-	r->next=deviceReportsPtr[deviceIndex];
-	deviceReportsPtr[deviceIndex]=r;
+	r->next = deviceReportsPtr[deviceIndex];
+	deviceReportsPtr[deviceIndex] = r;
 	
 	// fill in the rest of the report struct
 	r->error=result;
 	r->bytes=bufferSize;
 	r->deviceIndex=deviceIndex;
 	ptr=target;
-	for(i=0;i<bufferSize && i<MAXREPORTSIZE;i++)r->report[i]=*(ptr+i);
+    
+    // Clamp amount of returned data to global and per-device limit:
+    if (bufferSize > MAXREPORTSIZE) bufferSize = MAXREPORTSIZE;
+    if (bufferSize > MaxDeviceReportSize[deviceIndex]) bufferSize = MaxDeviceReportSize[deviceIndex];
+    
+    // Copy data:
+	for(i = 0; i < bufferSize; i++) r->report[i] = *(ptr+i);
+    
 	PsychGetPrecisionTimerSeconds(&r->time);
 	if(optionsPrintReportSummary){
 		// print diagnostic summary of the report
@@ -214,15 +232,20 @@ PsychError ReceiveReports(int deviceIndex)
 	IOHIDDeviceInterface122** interface=NULL;
 	int reason; // kCFRunLoopRunFinished, kCFRunLoopRunStopped, kCFRunLoopRunTimedOut, kCFRunLoopRunHandledSource
 
-	CountReports("ReceiveReports beginning.");
-	if(freeReportsPtr==NULL)PrintfExit("No free reports.");
-
 	PsychHIDVerifyInit();
+
+	if(deviceIndex < 0 || deviceIndex >= MAXDEVICEINDEXS) PrintfExit("Sorry. Can't cope with deviceNumber %d (more than %d). Please tell denis.pelli@nyu.edu",deviceIndex,(int)MAXDEVICEINDEXS-1);
+
+    // Allocate report buffers if needed:
+    PsychHIDAllocateReports(deviceIndex);
+
+	CountReports("ReceiveReports beginning.");
+	if (freeReportsPtr[deviceIndex] == NULL) PrintfExit("No free reports.");
+
 	device=PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
 	if(!HIDIsValidDevice(device))PrintfExit("PsychHID: Invalid device.\n");
 	interface=device->interface;
 	if(interface==NULL)PrintfExit("PsychHID: No interface for device.\n");
-	if(deviceIndex<0 || deviceIndex>MAXDEVICEINDEXS-1)PrintfExit("Sorry. Can't cope with deviceNumber %d (more than %d). Please tell denis.pelli@nyu.edu",deviceIndex,(int)MAXDEVICEINDEXS-1);
 	CheckRunLoopSource(deviceIndex,"ReceiveReports",__LINE__);
 	if(!ready[deviceIndex]){
 		// setInterruptReportHandlerCallback
@@ -290,7 +313,8 @@ PsychError ReceiveReportsStop(int deviceIndex)
 	return 0;
 }
 
-/*
+/* PsychHIDReceiveReportsCleanup(void) -- Called at PsychHID shutdown time:
+
 1. one must call CFRunLoopSourceInvalidate to kill the callback established by setInterruptReportHandlerCallback 
  before calling HIDReleaseDeviceList.
 
@@ -298,28 +322,29 @@ PsychError ReceiveReportsStop(int deviceIndex)
 it, it is then impossible to re-enable the callback with that source. To later re-enable, simply remove the source, instead of
 invalidating it. Once i've called CFRunLoopSourceInvalidate it appears that my only option is to release the interface by calling 
  HIDReleaseDeviceList and start over.
+
 */
 PsychError PsychHIDReceiveReportsCleanup(void) 
 {
-// On a hunch, we now do both: remove the source and invalidate it. Alas, it makes no difference. I still get the CLEAR MEX crash.
 	int deviceIndex;
 	
 	//printf("Clean up before PsychHID is flushed.\n");
 	for(deviceIndex=0;deviceIndex<MAXDEVICEINDEXS;deviceIndex++) if(source[deviceIndex]!=NULL) {
-                CheckRunLoopSource(deviceIndex,"PsychHIDReceiveReportsCleanup",__LINE__);
+        CheckRunLoopSource(deviceIndex,"PsychHIDReceiveReportsCleanup",__LINE__);
 		CFRunLoopRemoveSource(CFRunLoopGetCurrent(),source[deviceIndex],myRunLoopMode);// kCFRunLoopDefaultMode
-		if(0 && optionsPrintCrashers)printf("%d: source %4.4lx validity %d, CFRunLoopContainsSource is %d.\n",deviceIndex,(unsigned long)source[deviceIndex]
-					,CFRunLoopSourceIsValid(source[deviceIndex])
-					,CFRunLoopContainsSource(CFRunLoopGetCurrent(),source[deviceIndex],myRunLoopMode));
-		if(optionsPrintCrashers)printf("%d: CFRunLoopSourceInvalidate\n",deviceIndex);
-		CFRunLoopSourceInvalidate(source[deviceIndex]);
-		if(optionsPrintCrashers)printf("%d: source %4.4lx validity %d, CFRunLoopContainsSource is %d.\n",deviceIndex,(unsigned long)source[deviceIndex]
-					,CFRunLoopSourceIsValid(source[deviceIndex])
-					,CFRunLoopContainsSource(CFRunLoopGetCurrent(),source[deviceIndex],myRunLoopMode));
-		ready[deviceIndex]=0;
-		CheckRunLoopSource(deviceIndex,"PsychHIDReceiveReportsCleanup",__LINE__);
-		source[deviceIndex]=NULL;
-	}			
+        if (optionsPrintCrashers) printf("%d: CFRunLoopSourceInvalidate\n",deviceIndex);
+        CFRunLoopSourceInvalidate(source[deviceIndex]);
+        if(optionsPrintCrashers) printf("%d: source %4.4lx validity %d, CFRunLoopContainsSource is %d.\n",deviceIndex,(unsigned long)source[deviceIndex]
+                                           ,CFRunLoopSourceIsValid(source[deviceIndex])
+                                           ,CFRunLoopContainsSource(CFRunLoopGetCurrent(),source[deviceIndex],myRunLoopMode));
+        ready[deviceIndex]=0;
+        CheckRunLoopSource(deviceIndex,"PsychHIDReceiveReportsCleanup",__LINE__);
+        source[deviceIndex]=NULL;
+	}
+    
+    // Release all report linked lists, memory buffers etc.:
+    PsychHIDReleaseAllReportMemory();
+
 	return 0;
 }
 
@@ -349,10 +374,9 @@ void CheckRunLoopSource(int deviceIndex,char *caller,int line){
 extern hid_device* source[MAXDEVICEINDEXS]; 
 extern hid_device* last_hid_device;
 
-/* Do all the report processing: Iterates in a fetch loop
- * until either no more reports pending for processing, error condition,
- * or a maximum allowable processing time of optionSecs seconds has been
- * exceeded.
+/* Do all the report processing for all devices: Iterates in a fetch loop
+ * until error condition, or a maximum allowable processing time of
+ * optionSecs seconds has been exceeded.
  *
  * Calls hidlib function hid_read() to get reports, one at a time, enqueues
  * it in our own reports lists for later retrieval by 'GiveMeReports' or
@@ -369,90 +393,101 @@ PsychError ReceiveReports(int deviceIndex)
     ReportStruct *r;
     long error = 0;
 
-    CountReports("ReceiveReports beginning.");
-    if(freeReportsPtr==NULL) PrintfExit("No free reports.");
+	PsychHIDVerifyInit();
 
-    if(deviceIndex < 0 || deviceIndex > MAXDEVICEINDEXS-1) PrintfExit("Sorry. Can't cope with deviceNumber %d (more than %d). Please tell denis.pelli@nyu.edu",deviceIndex, (int) MAXDEVICEINDEXS-1);
+    if(deviceIndex < 0 || deviceIndex >= MAXDEVICEINDEXS) PrintfExit("Sorry. Can't cope with deviceNumber %d (more than %d). Please tell denis.pelli@nyu.edu",deviceIndex, (int) MAXDEVICEINDEXS-1);
 
-    PsychHIDVerifyInit();
-    device = PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
-    last_hid_device = (hid_device*) device->interface;
-    
-    PsychGetAdjustedPrecisionTimerSeconds(&deadline);
-    deadline += optionsSecs;
+    // Allocate report buffers if needed:
+    PsychHIDAllocateReports(deviceIndex);
+
+	CountReports("ReceiveReports beginning.");
+	if (freeReportsPtr[deviceIndex] == NULL) PrintfExit("No free reports.");
+
+    // Enable this device for hid report reception:
+    ready[deviceIndex] = TRUE;
+
+    PsychGetAdjustedPrecisionTimerSeconds(&now);
+    deadline = now + optionsSecs;
     
     // Iterate until deadline reached or no more pending reports to process:
-    while (TRUE) {
-        // Test for timeout:
-        PsychGetAdjustedPrecisionTimerSeconds(&now);
-        if (now >= deadline) break;
-                
-        CountReports("ReportCallback beginning.");
-        
-        // take report from free list.
-        if(freeReportsPtr == NULL){
-            // Darn. We're full. It might be elegant to discard oldest report, but for now, we'll just ignore the new one.
-            printf("PsychHID: WARNING! ReportCallback warning. No more free reports. Discarding new report.\n");
-            break;
-        }
-        
-        r = freeReportsPtr;
-        freeReportsPtr = r->next;
-        r->next=NULL;
-        
-        // install report into the device's list.
-        r->next = deviceReportsPtr[deviceIndex];
-        deviceReportsPtr[deviceIndex] = r;
-        
-        // fill in the rest of the report struct
-        r->deviceIndex = deviceIndex;
-
-        // Fetch the actual data: Bytes fetched, or zero for no reports available, or
-        // -1 for error condition.
-        r->error = hid_read((hid_device*) device->interface, &(r->report[0]), MAXREPORTSIZE);
-        if (r->error >= 0) {
-            // Success: Reset error, assign size of retrieved report:
-            r->bytes = r->error;
-            r->error = 0;
-        }
-        else {
-            // Error: No data assigned.
-            r->bytes = 0;
+    while ((error == 0) && (now <= deadline)) {
+        // Iterate over all active devices:
+        for (deviceIndex = 0; deviceIndex < MAXDEVICEINDEXS; deviceIndex++) {            
+            // Skip this device if it isn't enabled to receive hid reports:
+            if (!ready[deviceIndex]) continue;
             
-            // Signal error return code -1:
-            error = -1;
-            
-            // Abort fetch loop:
-            break;
-        }
-        
-        // Timestamp processing:
-        PsychGetPrecisionTimerSeconds(&r->time);
-
-        if (optionsPrintReportSummary) {
-            // print diagnostic summary of the report
-            int serial;
-            
-            serial = r->report[62] + 256 * r->report[63]; // 32-bit serial number at end of AInScan report from PMD-1208FS
-            printf("Got input report %4d: %2ld bytes, dev. %d, %4.0f ms. ", serial, (long) r->bytes, deviceIndex, 1000 * (r->time - AInScanStart));
-            if(r->bytes>0) {
-                printf(" report ");
-                n = r->bytes;
-                if (n > 6) n=6;
-                for(i=0; i < (unsigned int) n; i++) printf("%3d ", (int) r->report[i]);
-                m = r->bytes - 2;
-                if (m > (int) i) {
-                    printf("... ");
-                    i = m;
-                }
-                for(; i < r->bytes; i++) printf("%3d ", (int) r->report[i]);
+            // Free target report buffers?
+            if(freeReportsPtr[deviceIndex] == NULL) {
+                // Darn. We're full. It might be elegant to discard oldest report, but for now, we'll just ignore the new one.
+                printf("PsychHID: WARNING! ReportCallback warning. No more free reports for deviceIndex %i. Discarding new report.\n", deviceIndex);
+                continue;
             }
-            printf("\n");
+            
+            // Test for timeout:
+            PsychGetAdjustedPrecisionTimerSeconds(&now);
+            if (now > deadline) break;
+            
+            // Handle one report for this device:
+            CountReports("ReportCallback beginning.");
+
+            device = PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
+            last_hid_device = (hid_device*) device->interface;
+
+            r = freeReportsPtr[deviceIndex];
+            freeReportsPtr[deviceIndex] = r->next;
+            r->next=NULL;
+            
+            // install report into the device's list.
+            r->next = deviceReportsPtr[deviceIndex];
+            deviceReportsPtr[deviceIndex] = r;
+            
+            // fill in the rest of the report struct
+            r->deviceIndex = deviceIndex;
+            
+            // Fetch the actual data: Bytes fetched, or zero for no reports available, or
+            // -1 for error condition.
+            r->error = hid_read((hid_device*) device->interface, &(r->report[0]), MaxDeviceReportSize[deviceIndex]);
+            if (r->error >= 0) {
+                // Success: Reset error, assign size of retrieved report:
+                r->bytes = r->error;
+                r->error = 0;
+            }
+            else {
+                // Error: No data assigned.
+                r->bytes = 0;
+                
+                // Signal error return code -1:
+                error = -1;
+                
+                // Abort fetch loop:
+                break;
+            }
+            
+            // Timestamp processing:
+            PsychGetPrecisionTimerSeconds(&r->time);
+            
+            if (optionsPrintReportSummary) {
+                // print diagnostic summary of the report
+                int serial;
+                
+                serial = r->report[62] + 256 * r->report[63]; // 32-bit serial number at end of AInScan report from PMD-1208FS
+                printf("Got input report %4d: %2ld bytes, dev. %d, %4.0f ms. ", serial, (long) r->bytes, deviceIndex, 1000 * (r->time - AInScanStart));
+                if(r->bytes>0) {
+                    printf(" report ");
+                    n = r->bytes;
+                    if (n > 6) n=6;
+                    for(i=0; i < (unsigned int) n; i++) printf("%3d ", (int) r->report[i]);
+                    m = r->bytes - 2;
+                    if (m > (int) i) {
+                        printf("... ");
+                        i = m;
+                    }
+                    for(; i < r->bytes; i++) printf("%3d ", (int) r->report[i]);
+                }
+                printf("\n");
+            }
+            CountReports("ReportCallback end.");
         }
-        CountReports("ReportCallback end.");
-        
-        // If no data has been returned then we're done for now:
-        if (r->bytes == 0) break;
     }
     
 	CountReports("ReceiveReports end.");
@@ -464,6 +499,10 @@ PsychError ReceiveReportsStop(int deviceIndex)
 	pRecDevice device;
 
 	PsychHIDVerifyInit();
+    
+    // Disable HID report reception:
+    ready[deviceIndex] = FALSE;
+
 	device = PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
 	last_hid_device = (hid_device*) device->interface;
 
@@ -475,6 +514,9 @@ PsychError ReceiveReportsStop(int deviceIndex)
 
 PsychError PsychHIDReceiveReportsCleanup(void) 
 {	
+    // Release all report linked lists, memory buffers etc.:
+    PsychHIDReleaseAllReportMemory();
+
 	return 0;
 }
 
@@ -483,63 +525,152 @@ PsychError PsychHIDReceiveReportsCleanup(void)
 // OS INDEPENDENT CODE:
 // ====================
 
+void PsychHIDReleaseAllReportMemory(void)
+{
+    int deviceIndex;    
+    for(deviceIndex = 0; deviceIndex < MAXDEVICEINDEXS; deviceIndex++) {        
+        if (!firstTimeInit && reportsHaveBeenAllocated[deviceIndex]) {
+            free(allocatedReports[deviceIndex]);
+            free(reportData[deviceIndex]);
+        }
+        
+        // Reset all stuff that needs to be reset at PsychHID init and shutdown:
+        freeReportsPtr[deviceIndex] = NULL;
+        deviceReportsPtr[deviceIndex] = NULL;
+        allocatedReports[deviceIndex] = NULL;
+        reportData[deviceIndex] = NULL;        
+        MaxDeviceReports[deviceIndex] = 0;
+        MaxDeviceReportSize[deviceIndex] = 0;
+        reportsHaveBeenAllocated[deviceIndex] = FALSE;
+        source[deviceIndex] = NULL;
+        ready[deviceIndex] = FALSE;
+    }
+
+    // Reset defaults:
+    optionsMaxReports = 10000; // options.maxReports
+    optionsMaxReportSize = 65; // options.maxReportSize
+    optionsSecs = 0.010;       // options.secs    
+    oneShotRealloc = FALSE;
+    
+    // Toggle firstTimeInit - If this was a shutdown, next call will be init,
+    // if it was an init, next call will be a shutdown:
+    firstTimeInit = !firstTimeInit;
+}
+
+void PsychHIDAllocateReports(int deviceIndex)
+{
+    int i;
+	ReportStruct *r;
+
+    // Reallocation of report buffers requested by caller?
+    if (oneShotRealloc) {
+        // Yes. Reset flag, as this is a one-shot query:
+        oneShotRealloc = FALSE;
+        
+        // Anything allocated that needs to be reallocated?
+        if(reportsHaveBeenAllocated[deviceIndex]) {
+            // Yes. Device stopped? Otherwise this is a no-go:
+            if (ready[deviceIndex]) {
+                // No-No:
+                printf("PTB-WARNING:PsychHID:ReceiveReports: Tried to set new option.maxReportSize or option.maxReports on deviceIndex %i while report\n", deviceIndex);
+                printf("PTB-WARNING:PsychHID:ReceiveReports: processing is active. Call PsychHID('ReceiveReportsStop', %i); first to release old reports!\n", deviceIndex);
+            } else {
+                // Release all databuffers, so they get reallocated below:
+                free(allocatedReports[deviceIndex]);
+                free(reportData[deviceIndex]);
+                freeReportsPtr[deviceIndex] = NULL;
+                deviceReportsPtr[deviceIndex] = NULL;
+                allocatedReports[deviceIndex] = NULL;
+                reportData[deviceIndex] = NULL;        
+                MaxDeviceReports[deviceIndex] = 0;
+                MaxDeviceReportSize[deviceIndex] = 0;
+
+                // Done. Code below will realloc with current settings:
+                reportsHaveBeenAllocated[deviceIndex] = FALSE;
+            }
+        }
+    }
+    
+    // Reports for device already allocated? Do so if not:
+	if (!reportsHaveBeenAllocated[deviceIndex]) {
+		// Initial set up. Allocate free reports.
+
+        // Allocate common buffer to store linked list of all
+        // ReportStruct's, tightly packed:
+        allocatedReports[deviceIndex] = (ReportStruct*) calloc(optionsMaxReports, sizeof(ReportStruct));
+        if (NULL == allocatedReports[deviceIndex]) PsychErrorExitMsg(PsychError_outofMemory, "Out of memory while trying to allocate hid reports!");
+
+        // Allocate common buffer to store actual report data
+        // referenced by ReportStruct's, tightly packed:
+        reportData[deviceIndex] = (psych_uint8*) calloc(optionsMaxReports, optionsMaxReportSize);
+        if (NULL == reportData[deviceIndex]) {
+            // Failed. Free previous allocations:
+            free(allocatedReports[deviceIndex]);
+            allocatedReports[deviceIndex] = NULL;
+            PsychErrorExitMsg(PsychError_outofMemory, "Out of memory while trying to allocate hid report data buffers!");
+        }
+
+        // Ok, we have memory allocated. Set it up:
+
+        // Store max number of reports and max size of reports
+        // for this device, as defined and allocated from global setting:
+        MaxDeviceReports[deviceIndex] = optionsMaxReports;
+        MaxDeviceReportSize[deviceIndex] = optionsMaxReportSize;
+        
+        // Setup pointer mappings to create the linked-list in the memory buffers:
+		freeReportsPtr[deviceIndex] = allocatedReports[deviceIndex];
+		for(i = 0; i < optionsMaxReports; i++) {
+            // Setup linked-list pointers for linked list of ReportStruct's
+            // insie the allocatedReports[deviceIndex] buffer:
+			r=&(allocatedReports[deviceIndex][i]);
+			r->next=&(allocatedReports[deviceIndex][i+1]);
+            
+            // Setup pointer to associated actual HID report data buffer
+            // inside the reportData[deviceIndex] buffer:
+            r->report = &(reportData[deviceIndex][i * optionsMaxReportSize]);
+		}
+		r->next=NULL;        
+
+		reportsHaveBeenAllocated[deviceIndex] = TRUE;
+	}
+}
+
 void CountReports(char *string)
 {
-	int i,n;
-	int listLength[MAXDEVICEINDEXS];
+	int i, l1, l2;
 	ReportStruct *r;
-	static psych_bool reportsHaveBeenAllocated=0;
 
 	// First time init at first invocation after PsycHID load time:
     #if PSYCH_SYSTEM == PSYCH_OSX
-	if(myRunLoopMode==NULL)myRunLoopMode=CFSTR("myMode"); // kCFRunLoopDefaultMode
+	if (myRunLoopMode==NULL) myRunLoopMode=CFSTR("myMode"); // kCFRunLoopDefaultMode
     #endif
-    
-	if(!reportsHaveBeenAllocated){
-		// initial set up. Allocate free reports.
-		static ReportStruct allocatedReports[MAXREPORTS];
-		
-		reportsHaveBeenAllocated=1;
-		freeReportsPtr=&(allocatedReports[0]);
-		for(i=0;i<MAXREPORTS;i++){
-			r=&(allocatedReports[i]);
-			r->next=&(allocatedReports[i+1]);
-		}
-		r->next=NULL;
-                // MK: Adding initialization of source and ready arrays.
-                // Does this resolve the bugreports about crashes from the forum?
-                // Messages of Ben Heasley and Maria McKinley, Bugid 5522?
-		for(i=0;i<MAXDEVICEINDEXS;i++) {
-                    deviceReportsPtr[i]=NULL;
-                    source[i]=NULL;
-                    ready[i]=0;
-                }
-	}
-	
+
 	// Optional consistency check, disabled by default. Do the numbers of
 	// reports enqueued in the different device lists and the free list
 	// sum up to the total number of allocated reports? Print warning and
 	// current numbers if this is not the case:
 	if (optionsConsistencyChecks > 0) {
-		n=0;
-		for(i=0;i<MAXDEVICEINDEXS;i++) {
-			if(i==0)r=freeReportsPtr;
-			else r=deviceReportsPtr[i];
-			listLength[i]=0;
-
-			while(r!=NULL) {
-				r=r->next;
-				listLength[i]++;
+		for(i = 0; i < MAXDEVICEINDEXS; i++) {
+			r = deviceReportsPtr[i];
+            l1 = 0;
+			while(r != NULL) {
+				r = r->next;
+				l1++;
 			}
-			n=n+listLength[i];
-		}
+			
+			r = freeReportsPtr[i];
+            l2 = 0;
+			while(r != NULL) {
+				r = r->next;
+				l2++;
+			}
 		
-		if(n!=MAXREPORTS) {
-			printf("%s",string);
-			printf(" device:reports. free:%3d",listLength[0]);
-			for(i=1;i<MAXDEVICEINDEXS;i++) if(listLength[i]>0) printf(", %2d:%3d",i,listLength[i]);
-			printf("\n");
-		}
+            if((l1 + l2) != MaxDeviceReports[i]) {
+                printf("%s", string);
+                printf(" device:reports. free:%3d, %2d:%3d",l2, i,l1);
+                printf("\n");
+            }
+        }
 	}
 }
 
@@ -594,8 +725,8 @@ PsychError GiveMeReports(int deviceIndex,int reportBytes)
 	}
 	if(deviceReportsPtr[deviceIndex]!=NULL){
 		// transfer all these now-obsolete reports to the free list
-		rTail->next=freeReportsPtr;
-		freeReportsPtr=deviceReportsPtr[deviceIndex];
+		rTail->next=freeReportsPtr[deviceIndex];
+		freeReportsPtr[deviceIndex]=deviceReportsPtr[deviceIndex];
 		deviceReportsPtr[deviceIndex]=NULL;
 	}
 	CountReports("GiveMeReports end.");
@@ -629,8 +760,8 @@ PsychError GiveMeReport(int deviceIndex,psych_bool *reportAvailablePtr,unsigned 
 		error=r->error;
 		
 		// add it to the free list
-		r->next=freeReportsPtr;
-		freeReportsPtr=r;
+		r->next=freeReportsPtr[deviceIndex];
+		freeReportsPtr[deviceIndex]=r;
 	}else{
 		*reportAvailablePtr=0;
 		*reportBytesPtr=0;
@@ -645,43 +776,42 @@ PsychError GiveMeReport(int deviceIndex,psych_bool *reportAvailablePtr,unsigned 
 
 static char useString[]= "err=PsychHID('ReceiveReports',deviceNumber[,options])";
 static char synopsisString[]= 
-"Receive and save, internally, all reports from the specified USB HID device, now and forever more (unless stopped). "
+"Receive and save, internally, all reports from the specified USB HID device, now and forever more (unless stopped).\n"
 "Some parameters are persistent. When you don't explicitly supply a value they retain whatever value they had last time. "
 "They do have an initial default (built-in) that is present when PsychHID is first called after being CLEARed. "
-"Non-persistent parameters have a fixed default that applies every time you call PsychHID. "
+"Non-persistent parameters have a fixed default that applies every time you call PsychHID.\n"
 "The returned value \"err.n\" is zero upon success and a nonzero error code upon failure, "
 "as spelled out by \"err.name\" and \"err.description\". "
-"\"deviceNumber\" specifies which device. "
-"\"options.print\" =1 (initial default 0) enables diagnostic printing of a summary of each report when our callback routine receives it. "	
-"\"options.printCrashers\" =1 (initial default 0) enables diagnostic printing of the creation of the callback source and its addition to the CFRunLoop. "
-"\"options.consistencyChecks\" =1 (initial default 0) enables diagnostic printing of the consistency of all report structs. Very time consuming! "
-"\"options.maxReports\" (initial default 10000) allocate space for at least this many reports, shared among all devices. "
-"\"options.maxReportSize\" (initial default 65) allocate this many bytes per report. "
-"Requesting values of maxReports or maxReportSize beyond that provided by the current allocation will result in freeing the current allocation, "
-"losing all currently held reports, and reallocating as specified. "
-"\"options.secs\" (initial default 0.010 s) is how long to allow the run loop to issue callbacks. Each callback transfers one received report. "
-"The Mac OS receives reports all the time. "
-"It has a small buffer capacity, discarding the oldest. When requested by PsychHID, the Mac OS tranfers reports to "
-"PsychHID (for all devices for which ReceiveReports is still active) using callbacks from the CFRunLoop. "
-"(A callback means that the OS calls a routine of ours at some later time. "
-"A CFRunLoop is a special loop associated with each thread that is invoked when we request it.) "
-"Thus reports are received from the OS only during your call to ReceiveReports or GetReport. (They share the same callback routine.) "
-"So you may want call ReceiveReports several times. "
+"\"deviceNumber\" specifies which device.\n"
+"\"options.print\" =1 (initial default 0) enables diagnostic printing of a summary of each report when our callback routine receives it.\n"	
+"\"options.printCrashers\" =1 (initial default 0) enables diagnostic printing of the creation of the callback source and its addition to the CFRunLoop.\n"
+"\"options.consistencyChecks\" =1 (initial default 0) enables diagnostic printing of the consistency of all report structs. Very time consuming!\n"
+"\"options.maxReports\" (initial default 10000) allocate space for at least this many reports for the given device.\n"
+"\"options.maxReportSize\" (initial default 65) allocate this many bytes per report. Most HID devices don't send HID reports of more than "
+"64 Bytes, so allowing for one extra byte for the reportID, a default of 65 Bytes is usually sufficient. If you need more, you can increase "
+"this value up to 8192 Bytes. If you need even more, contact us, because likely you are doing something wrong. Smaller values than 65 may "
+"make sense if you are very tight on memory.\n"
+"\"options.secs\" (initial default 0.010 s) is how long to allow the function to process reports received from all active HID devices. "
+"The operating system receives reports all the time after the first call to 'ReceiveReports' or 'GetReport'. "
+"It has a small buffer capacity, discarding the oldest received reports if its small buffer is full. When requested by PsychHID, the OS "
+"tranfers reports to PsychHID (for all devices for which ReceiveReports is still active). "
+"Thus reports are received from the OS only during your call to ReceiveReports or GetReport (GetReport implies an automatic call to ReceiveReports). "
+"You should call ReceiveReports frequently to avoid losing reports. "
 "Reports can be received from multiple devices during a single call to ReceiveReports. "
 "Calling ReceiveReports enables callbacks (forever) for the incoming reports from that device; "
 "call ReceiveReportsStop to halt acquisition of further reports for a device; "
 " you can resume acquisition for a device by calling ReceiveReports again. "
 "Call GiveMeReports to get all the received reports and empty PsychHID's internal store for a device. "
-"PsychHID can hold up to options.maxReports reports (total among all devices), and discards new incoming reports when it has no room to hold them. "
-"For prolonged data acquisition you may need to call GiveMeReports periodically, emptying PsychHID's store before it becomes full. "
+"PsychHID can hold up to options.maxReports reports, and discards new incoming reports when it has no room to hold them. "
+"For prolonged data acquisition you may need to call GiveMeReports periodically, emptying PsychHID's store before it becomes full.\n"
 "PsychHID was enhanced by adding HID commands to send and receive HID reports to support the PMD-1208FS. "
-"PsychHID is likely to work with other HID-compliant USB devices as well. "
+"PsychHID is likely to work with other HID-compliant USB devices as well.\n"
 "The device-specific programming for the PMD-1208FS is entirely in the MATLAB M files of the Daq Toolbox; "
-"what is specific to Mac OS X is entirely in PsychHID. "
+"what is specific to the different operating systems is (hopefully) entirely in PsychHID. "
 "PsychHID is entirely generic, following the HID standard; none of the internal code is specific to any device, "
 "but we tested it primarily with the PMD-1208FS, "
-"as well as keyboards, mice, and gamepads, so working with new devices may be an adventure. "
-;
+"as well as keyboards, mice, and gamepads, so working with new devices may be an adventure. ";
+
 static char seeAlsoString[]="SetReport, ReceiveReportsStop, GiveMeReports";
 
 PsychError PSYCHHIDReceiveReports(void)
@@ -696,6 +826,9 @@ PsychError PSYCHHIDReceiveReports(void)
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(2));
 	PsychCopyInIntegerArg(1,TRUE,&deviceIndex);
+
+    if(deviceIndex < 0 || deviceIndex >= MAXDEVICEINDEXS) PrintfExit("Sorry. Can't cope with deviceNumber %d (more than %d). Please tell denis.pelli@nyu.edu",deviceIndex, (int) MAXDEVICEINDEXS-1);
+    
 	/*
 	 "\"options.print\" =1 (default 0) enables diagnostic printing of a summary of each report when our callback routine receives it. "	
 	 "\"options.printCrashers\" =1 (default 0) enables diagnostic printing of the creation of the callback source and its addition to the CFRunLoop. "
@@ -707,25 +840,44 @@ PsychError PSYCHHIDReceiveReports(void)
 	//optionsMaxReports=10000;		// options.maxReports
 	//optionsMaxReportSize=65;		// options.maxReportSize
 	//optionsSecs=0.010;			// options.secs
+    
 	mxOptions=PsychGetInArgMxPtr(2);
 	if(mxOptions!=NULL){
 		mx=mxGetField(mxOptions,0,"print");
 		if(mx!=NULL)optionsPrintReportSummary=(psych_bool)mxGetScalar(mx);
 		mx=mxGetField(mxOptions,0,"printCrashers");
 		if(mx!=NULL)optionsPrintCrashers=(psych_bool)mxGetScalar(mx);
-		mx=mxGetField(mxOptions,0,"maxReports");
-		if(mx!=NULL)optionsMaxReports=(int)mxGetScalar(mx);
-		mx=mxGetField(mxOptions,0,"maxReportSize");
-		if(mx!=NULL)optionsMaxReportSize=(int)mxGetScalar(mx);
 		mx=mxGetField(mxOptions,0,"secs");
 		if(mx!=NULL)optionsSecs=mxGetScalar(mx);
 		mx=mxGetField(mxOptions,0,"consistencyChecks");
 		if(mx!=NULL)optionsConsistencyChecks=(psych_bool)mxGetScalar(mx);
-	}
-	if(optionsMaxReports>MAXREPORTS)printf("PsychHID ReceiveReports: Sorry, maxReports is fixed at %d.\n",(int)MAXREPORTS);
-	if(optionsMaxReportSize>MAXREPORTSIZE)printf("PsychHID ReceiveReports: Sorry, maxReportSize is fixed at %d.\n",(int)MAXREPORTSIZE);
 
-	error=ReceiveReports(deviceIndex);
+        // Changing maxReports or maxReportSize triggers a reallocation of
+        // buffer memory:
+		mx=mxGetField(mxOptions,0,"maxReports");
+		if(mx!=NULL) {
+            oneShotRealloc = TRUE;
+            optionsMaxReports = (int) mxGetScalar(mx);
+        }
+
+		mx=mxGetField(mxOptions,0,"maxReportSize");
+		if(mx!=NULL) {
+            oneShotRealloc = TRUE;
+            optionsMaxReportSize = (int) mxGetScalar(mx);
+        }
+	}
+
+    // Sanity check:
+	if(optionsMaxReports < 1) PsychErrorExitMsg(PsychError_user, "PsychHID ReceiveReports: Sorry, requested maxReports count must be at least 1!");
+	if(optionsMaxReportSize < 1) PsychErrorExitMsg(PsychError_user, "PsychHID ReceiveReports: Sorry, requested maxReportSize must be at least 1 byte!");
+	if(optionsMaxReportSize > MAXREPORTSIZE) {
+        printf("PsychHID ReceiveReports: Sorry, requested maximum report size %d bytes exceeds built-in maximum of %d bytes.\n", optionsMaxReportSize, (int) MAXREPORTSIZE);
+        PsychErrorExitMsg(PsychError_user, "Invalid option.maxReportSize provided!");
+    }
+    
+    // Start reception of reports: This will also allocate memory for the reports
+    // on first invocation for this deviceIndex:
+	error = ReceiveReports(deviceIndex);
 
 	mxErrPtr=PsychGetOutArgMxPtr(1);
 	if(mxErrPtr!=NULL){

@@ -42,9 +42,8 @@
 #include "Psych.h" 
 #include "PsychTimeGlue.h"
 
-#define MAXREPORTSIZE 65
-#define MAXDEVICEINDEXS 64
-#define MAXREPORTS 10000
+#define MAXREPORTSIZE 8192      // Maximum size of a single HID input report in bytes. Hard limit. Usercode can set lower per-device limits.
+#define MAXDEVICEINDEXS 64      // Maximum number of simultaneously open HID devices.
 
 // OS/X specific includes:
 #if PSYCH_SYSTEM == PSYCH_OSX
@@ -236,6 +235,10 @@ void PsychInitializePsychHID(void); // PsychHIDHelpers.c
 void PsychHIDCloseAllUSBDevices(void);
 PsychUSBDeviceRecord* PsychHIDGetFreeUSBDeviceSlot(int* usbHandle);
 PsychUSBDeviceRecord* PsychHIDGetUSBDevice(int usbHandle);
+
+// Helpers inside PsychHIDReceiveReports.c:
+void PsychHIDReleaseAllReportMemory(void);
+void PsychHIDAllocateReports(int deviceIndex);
 
 // These must be defined for each OS in their own PsychHIDGenericUSBSupport.c.
 psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorcode, PsychUSBSetupSpec* spec);

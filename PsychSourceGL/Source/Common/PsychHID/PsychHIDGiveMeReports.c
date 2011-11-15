@@ -18,21 +18,24 @@
 
 static char useString[]= "[reports,err]=PsychHID('GiveMeReports',deviceNumber,[reportBytes])";
 static char synopsisString[]= 
-	"Return, as an output argument, all the saved reports from the connected USB HID device. "
-	"\"deviceNumber\" specifies which device. "
+	"Return, as an output argument, all the saved reports from the connected USB HID device.\n"
+	"\"deviceNumber\" specifies which device.\n"
 	"If supplied, the optional \"reportBytes\" argument imposes a maximum length on each report; "
 	"if necessary, reports will be shortened, but not lengthened. "
 	"(This feature allows you to receive a report containing just the data you requested when "
-	"the firmware insists on providing a fixed length report that may be longer than the valid data. "
+	"the firmware insists on providing a fixed length report that may be longer than the valid data.\n"
 	"\"reports\" is a struct array, with a struct for each report. "
-	"\"reports(i).report\" is a uint8 vector. "
-	"If your device uses reportID then the first byte of the report is the reportID. "
-	"\"reports(i).device\" is the device number. "
-	"\"reports(i).type\" is the reportType: 1=input, 2=output, 3=feature. "
-	"\"reports(i).time\" is the GetSecs time at which it was received from the Mac OS. "
+	"\"reports(i).report\" is a uint8 vector with received report data. "
+	"If your device uses reportID then the first byte of the report is the reportID, the following "
+    "bytes contain the actual received report data. Otherwise (reportID==0), the received data "
+    "starts already in the first byte of reports(i).report.\n"
+	"\"reports(i).device\" is the device number of the device.\n"
+	"\"reports(i).time\" is the GetSecs time at which it was received from the system. This is *not* the "
+    "time when the hardware itself received the report, therefore this value is of limited use and should "
+    "be considered unreliable.\n"
 	"The returned value \"err.n\" is zero upon success and a nonzero error code upon failure, "
-	"as spelled out by \"err.name\" and \"err.description\". "
-	;
+	"as spelled out by \"err.name\" and \"err.description\". ";
+    
 static char seeAlsoString[]="SetReport, GetReport, ReceiveReports, ReceiveReportsStop, GiveMeReports.";
 
 PsychError GiveMeReports(int deviceIndex,int reportBytes); // PsychHIDReceiveReports.c

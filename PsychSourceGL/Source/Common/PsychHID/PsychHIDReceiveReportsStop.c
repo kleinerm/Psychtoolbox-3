@@ -18,7 +18,7 @@
 
 static char useString[]= "err=PsychHID('ReceiveReportsStop',deviceNumber)";
 static char synopsisString[]= 
-	"Stop receiving and saving reports from the specified USB HID device. "
+	"Stop receiving and saving reports from the specified USB HID device.\n"
 	"Calling ReceiveReports enables callbacks (forever) for the incoming reports from that device; "
 	"call ReceiveReportsStop to halt acquisition of further reports for this device; "
 	"you can resume acquisition by calling ReceiveReports again. "

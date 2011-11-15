@@ -56,6 +56,9 @@ void PsychInitializePsychHID(void)
 	// Initialize OS specific interfaces and routines:
 	PsychHIDInitializeHIDStandardInterfaces();
 
+    // This sets up data structures for HID report reception inside PsychHIDReceiveReports.c:
+    PsychHIDReleaseAllReportMemory();
+
 	return;
 }
 

@@ -17,14 +17,18 @@
 #include "PsychHID.h"
 
 static char useString[]= "err=PsychHID('SetReport',deviceNumber,reportType,reportID,report)";
-static char synopsisString[] = "Send a report to the connected USB HID device. \"deviceNumber\" specifies which device. "
-"\"reportType\" is 1=input, 2=output, 3=feature (0 to just echo arguments). "
+static char synopsisString[] = "Send a report to the connected USB HID device.\n"
+"\"deviceNumber\" specifies which device.\n"
+"\"reportType\" is 2=output, 3=feature (0 to just echo arguments).\n"
 "\"reportID\" is either zero or an integer (1 to 255) specifying the topic, e.g. read analog, read digital, write analog, etc. "
+"If you provide a non-zero reportID, the first byte of your \"report\" will be overwritten with this reportID. You have to "
+"take this into account, ie., leave a leading byte of space for the reportID to avoid corrupting your actual report data. "
+"If reportID is zero, then your \"report\" will be sent as-is, without any special treatment of the first byte.\n"
 "\"report\" must be an array of char or integer (8-, 16-, or 32-bit, signed or unsigned) holding "
-"the correct total number of bytes. "
+"the correct total number of bytes.\n"
 "The returned value \"err.n\" is zero upon success and a nonzero error code upon failure, "
-"as spelled out by \"err.name\" and \"err.description\". "
-"For your convenience, if reportID is nonzero, then the first byte of \"report\" will be set to reportID.";
+"as spelled out by \"err.name\" and \"err.description\".\n";
+
 static char seeAlsoString[] = "GetReport";
 
 /*
@@ -36,6 +40,8 @@ extern double AInScanStart;
 
 PsychError PSYCHHIDSetReport(void) 
 {
+    static unsigned char scratchBuffer[MAXREPORTSIZE+1];
+    
     const char *fieldNames[]={"n", "name", "description"};
     char *name="",*description="";
     mxArray *fieldValue;
@@ -56,13 +62,11 @@ PsychError PSYCHHIDSetReport(void)
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(4));
 	outErr=PsychGetOutArgMxPtr(1);
-	// assert(outErr!=NULL);
 	PsychCopyInIntegerArg(1,TRUE,&deviceIndex);
 	PsychCopyInIntegerArg(2,TRUE,&reportType);
 	PsychCopyInIntegerArg(3,TRUE,&reportID);
 	report=PsychGetInArgMxPtr(4); 
 	reportBuffer=(void *)mxGetData(report);
-	// assert(reportBuffer!=NULL);
 
 	switch(mxGetClassID(report)){
 		case mxCHAR_CLASS:    
@@ -79,12 +83,21 @@ PsychError PSYCHHIDSetReport(void)
 	}
 
 	reportSize=mxGetElementSize(report)*mxGetNumberOfElements(report);
+    if (reportSize > MAXREPORTSIZE) PsychErrorExitMsg(PsychError_user, "Tried to send a HID report which exceeds the maximum allowable size! Aborted.");
+    if (reportSize < 1) PsychErrorExitMsg(PsychError_user, "Tried to send an empty HID report! Aborted.");
+
+    // No invalid numbers, no input reports for 'SetReport':
+    if (reportType < 0 || reportType > 3 || reportType == 1) PsychErrorExitMsg(PsychError_user, "Invalid 'reportType' for this function provided!");
+
 	PsychHIDVerifyInit();
     
     device=PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
-	if(reportSize>0 && reportID!=0) *reportBuffer=0xff & reportID; // copy low byte of reportID to first byte of report.
-																   // Apple defines constants for the reportType with values (0,1,2) that are one less that those specified by USB (1,2,3).
-	if(reportType==0) {
+
+    // For non-zero reportID, the first byte of buffer is always overwritten with reportID on all os platforms:
+	if (reportID!=0) *reportBuffer= 0xff & reportID; // copy low byte of reportID to first byte of report.
+
+	if (reportType==0) {
+        // Echo report:
 		printf("SetReport(reportType %d, reportID %d, report ",reportType,reportID);
 		for(i=0;i<reportSize;i++)printf("%d ",(int)reportBuffer[i]);
 		printf(")\n");
@@ -104,25 +117,25 @@ PsychError PSYCHHIDSetReport(void)
         // Error condition?
         PsychHIDErrors(NULL, error, &name, &description);
 #else
+        // reportID zero is a special case. We must not touch/overwrite the 1st byte
+        // of the usercode provided buffer, but still prefix the buffer passed to HIDLIB
+        // with a zero byte:
+        if (reportID == 0) {
+            memcpy(&scratchBuffer[1], reportBuffer, reportSize);
+            scratchBuffer[0] = (unsigned char) 0;
+            reportBuffer =  &scratchBuffer[0];
+            reportSize++;
+        }
+        
         // Which report type?
-        if (reportType == 2 || reportType == 1) {
-            // Output report or input report:
-            // MK: CHECK: I have no clue if reportType == 1 aka input reports are really
-            // to be written via hid_write(). We have no way to distinguish between input
-            // and output reports or tell the HIDlib which is which?? Apple's method above
-            // does tell the system which is which?? Ambiguity???
-
-            // 1st byte always contains reportID:
-            reportBuffer[0] = (unsigned char) reportID;
+        if (reportType == 2) {
+            // Output report:
             
             // Write it: error == -1 would mean error, otherwise it is number of bytes written.
             error = hid_write((hid_device*) device->interface, reportBuffer, (size_t) reportSize);
         }
         else {
             // reportType == 3, aka Feature report:
-
-            // 1st byte always contains reportID:
-            reportBuffer[0] = (unsigned char) reportID;
 
             // Send it: error == -1 would mean error, otherwise it is number of bytes written.
             error = hid_send_feature_report((hid_device*) device->interface, reportBuffer, (size_t) reportSize);
@@ -132,6 +145,9 @@ PsychError PSYCHHIDSetReport(void)
         if(reportID==0x11) {
             PsychGetPrecisionTimerSeconds(&AInScanStart);
         }
+
+        // Positive value means no error:
+        if (error >= 0) error = 0;
 
         // Error condition?
         PsychHIDErrors((hid_device*) device->interface, error, &name, &description);

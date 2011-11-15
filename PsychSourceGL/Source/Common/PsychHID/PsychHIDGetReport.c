@@ -63,20 +63,21 @@ extern hid_device* last_hid_device;
 
 static char useString[]= "[report,err]=PsychHID('GetReport',deviceNumber,reportType,reportID,reportBytes)";
 static char synopsisString[]=
-	"Get a report from the connected USB HID device. "
-	"\"deviceNumber\" specifies which device. \"reportType\" is 1=input, 2=output, 3=feature (0 to just echo arguments). "
-	"\"reportID\" is either zero or an integer (1 to 255) specifying the topic, e.g. read analog, read digital, write analog, etc. "
-	"\"reportBytes\" is size in bytes. "
-	"\"report\" is a uint8 vector. "
-	"If your device uses reportID for this report then the first byte of the report is the reportID. "
+	"Get a report from the connected USB HID device.\n"
+	"\"deviceNumber\" specifies which device. \"reportType\" is 1=input, 3=feature (0 to just echo arguments).\n"
+	"\"reportID\" is either zero or an integer (1 to 255) specifying the topic, e.g. read analog, read digital, write analog, etc.\n"
+	"\"reportBytes\" is maximum size of report to retrieve in bytes.\n"
+	"\"report\" is a uint8 vector with the data of the retrieved report. "
+	"If your device uses reportID for this report then the first byte of the report is the reportID, "
+    "otherwise the first byte will be already the first byte of the retrieved report.\n"
 	"The returned value \"err.n\" is zero upon success and a nonzero error code upon failure, "
 	"as spelled out by \"err.name\" and \"err.description\". "
 	"When nothing has been received, \"report\" will be an empty matrix. "
 	"However, some devices may send a zero-length report, which will also result in \"report\" being an empty matrix. "
-	"Resolving this ambiguity, \"err.reportLength\" is -1 when no report was received, and the report length in bytes when a report was received. "
+	"Resolving this ambiguity, \"err.reportLength\" is -1 when no report was received, and the report length in bytes when a report was received.\n "
 	"Each time that you use a new deviceNumber, PsychHID:GetReport enables callbacks for the incoming reports from that device. "
 	"If you use many devices, all their reports will cause callbacks, as documented in the diagnostic printout. "
-	"You can disable a callback that you no longer want by calling ReceiveReportsStop. ";
+	"You can disable a callback that you no longer want by calling ReceiveReportsStop. This saves computation time. ";
 static char seeAlsoString[]="SetReport, ReceiveReports, ReceiveReportsStop, GiveMeReports.";
 
 PsychError PSYCHHIDGetReport(void) 
@@ -103,6 +104,8 @@ PsychError PSYCHHIDGetReport(void)
 	PsychCopyInIntegerArg(2,TRUE,&reportType);
 	PsychCopyInIntegerArg(3,TRUE,&reportID);
 	PsychCopyInIntegerArg(4,TRUE,&reportBufferSize);
+    if (reportBufferSize < 1) PsychErrorExitMsg(PsychError_user, "Size of receive buffer 'reportBytes' must be at least 1!");
+
 	outReport=PsychGetOutArgMxPtr(1); 
 	outErr=PsychGetOutArgMxPtr(2); // outErr==NULL if optional argument is absent.
 	dims[0]=1;
@@ -115,14 +118,37 @@ PsychError PSYCHHIDGetReport(void)
 
 	PsychHIDVerifyInit();
 
-	if(reportType==0){
+    // No invalid numbers, no output reports for 'GetReport':
+    if (reportType < 0 || reportType > 3 || reportType == 2) PsychErrorExitMsg(PsychError_user, "Invalid 'reportType' for this function provided!");
+    
+	if (reportType==0) {
+        // Echo report:
 		printf("GetReport(reportType %d, reportID %d, reportBytes %d)\n",reportType,reportID,(int)reportBytes);
-	}else{
+	} else {
         #if PSYCH_SYSTEM == PSYCH_OSX
-            // Apple defines constants for the reportType with values (0,1,2) that are one less that those specified by USB (1,2,3).
-            // using setInterruptReportHandlerCallback and CFRunLoopRunInMode
-            error = ReceiveReports(deviceIndex);
-            if (!error) error = GiveMeReport(deviceIndex,&reportAvailable,reportBuffer,&reportBytes,&reportTime);
+            if (reportType == 3) {
+                // Feature report: Use special method for this:
+                device = PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
+                if (!HIDIsValidDevice(device)) PrintfExit("PsychHID:GetReport: Invalid device.\n");
+
+                IOHIDDeviceInterface122** interface = device->interface;
+                if (interface==NULL) PrintfExit("PsychHID:GetReport: No interface for device.\n");                
+
+                // Apple defines constants for the reportType with values (0,1,2) that are one less that those specified by USB (1,2,3).
+                error = (*interface)->getReport(interface, reportType-1, reportID, reportBuffer, &reportBytes, -1, nil, nil, nil);
+                if (error == 0) {
+                    reportAvailable = 1;
+                } else {
+                    reportAvailable = 0;
+                }
+                
+                PsychGetAdjustedPrecisionTimerSeconds(&reportTime);
+            }
+            else { 
+                // Input report: Using setInterruptReportHandlerCallback and CFRunLoopRunInMode
+                error = ReceiveReports(deviceIndex);
+                if (!error) error = GiveMeReport(deviceIndex,&reportAvailable,reportBuffer,&reportBytes,&reportTime);
+            }
         #else
             if (reportType == 3) {
                 // Feature report: Use special HIDLIB method for this:
@@ -145,9 +171,9 @@ PsychError PSYCHHIDGetReport(void)
                 PsychGetAdjustedPrecisionTimerSeconds(&reportTime);
             }
             else {
-                // Regular IN/OUT reports:
+                // Regular Input reports:
                 error=ReceiveReports(deviceIndex);
-                if (!error) error=GiveMeReport(deviceIndex,&reportAvailable,reportBuffer,&reportBytes,&reportTime);
+                if (!error) error = GiveMeReport(deviceIndex,&reportAvailable,reportBuffer,&reportBytes,&reportTime);
             }
         #endif
 	}
@@ -174,7 +200,7 @@ PsychError PSYCHHIDGetReport(void)
 		const char *fieldNames[]={"n", "name", "description", "reportLength", "reportTime"};
 		mxArray *fieldValue;
 
-		PsychHIDErrors(NULL, error,&name,&description); // Get error name and description, if available.
+		if ((error != 2) && (error != 3)) PsychHIDErrors(NULL, error,&name,&description); // Get error name and description, if available.
 		*outErr=mxCreateStructMatrix(1,1,5,fieldNames);
 		fieldValue=mxCreateString(name);
 		if(fieldValue==NULL)PrintfExit("Couldn't allocate \"err\".");
