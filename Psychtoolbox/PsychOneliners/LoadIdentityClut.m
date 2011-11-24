@@ -201,7 +201,14 @@ else
                         gfxhwtype = 3;
                     end
                 end
-
+            end
+            
+            % Is this a latest generation NVidia QuadroFX card under Linux with NVidia binary blob?
+            [dummy, dummy2, nrslots] = Screen('ReadNormalizedGammatable', windowPtr); %#ok<ASGLU>
+            if IsLinux && ~isempty(strfind(winfo.GLRenderer, 'Quadro')) && (nrslots > 256)
+                % LUT type 3:
+                gfxhwtype = 3;
+                fprintf('LoadIdentityClut: NVidia Quadro or later on Linux with binary Blob detected. Enabling special type-III LUT.\n');
             end
         else
             if ~isempty(strfind(gfxhwtype, 'ATI')) | ~isempty(strfind(gfxhwtype, 'AMD')) | ~isempty(strfind(gfxhwtype, 'Advanced Micro Devices')) | ...
@@ -305,6 +312,15 @@ else
             end
         end
         loadlut = loadlut' * ones(1, 3);
+        oldClut = Screen('LoadNormalizedGammaTable', windowPtr, loadlut, loadOnNextFlip);
+    end
+
+    if gfxhwtype == 3 & IsLinux %#ok<AND2>
+        % NVidia QuadroFX cards with binary blob and lut's with more than
+        % 256 slots. Upload a standard linear lut with matching number of
+        % slots:
+        [dummy, dummy2, nrslots] = Screen('ReadNormalizedGammatable', windowPtr); %#ok<ASGLU>
+        loadlut = (linspace(0,((nrslots-1) / nrslots), nrslots)' * ones(1, 3));
         oldClut = Screen('LoadNormalizedGammaTable', windowPtr, loadlut, loadOnNextFlip);
     end
 
