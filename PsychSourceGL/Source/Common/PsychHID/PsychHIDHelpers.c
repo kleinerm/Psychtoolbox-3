@@ -158,6 +158,12 @@ PsychError PsychHIDCleanup(void)
         // Last the HIDLIB low-level list: This will also trigger
         // HIDAPI shutdown and cleanup:
         if (hidlib_devices) hid_free_enumeration(hidlib_devices);
+        // TODO FIXME: Add this hid_exit() call to Linux as well, once we've updated Linux HIDLIB
+        // to latest state:
+        #if PSYCH_SYSTEM == PSYCH_WINDOWS
+        if (hidlib_devices) hid_exit();
+        #endif
+
         hidlib_devices = NULL;
 	#endif
     
