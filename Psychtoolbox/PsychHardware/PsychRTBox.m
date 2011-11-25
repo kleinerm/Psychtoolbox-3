@@ -2275,7 +2275,13 @@ function bState = buttonQuery(handle)
                 % Uppermost 4 bits are button states:
                 rtbox_info(handle).buttons(1, :) = [ 0, 0, 0, 0 ];
                 % Set corresponding entries for pressed buttons:
-                rtbox_info(handle).buttons(1, logical(bitget(b2(1), 5:8))) = 1;
+                if rtbox_info(handle).version  < 1.4
+                    % Version prior 1.4: Data first, then ?
+                    rtbox_info(handle).buttons(1, logical(bitget(b2(1), 5:8))) = 1;
+                else
+                    % Version >= 1.4: ? first, then data:
+                    rtbox_info(handle).buttons(1, logical(bitget(b2(2), 5:8))) = 1;
+                end
             end
         end
     end
