@@ -8,7 +8,7 @@
 	AUTHORS:
 	
 		Allen Ingling		awi		Allen.Ingling@nyu.edu
-                Mario Kleiner           mk              mario.kleiner at tuebingen.mpg.de
+        Mario Kleiner       mk      mario.kleiner at tuebingen.mpg.de
 
 	HISTORY:
 	
@@ -65,6 +65,49 @@ static struct {
     vm_size_t           shmemSize;    
 } fbsharedmem[kPsychMaxPossibleDisplays];   
 
+static CVDisplayLinkRef cvDisplayLink[kPsychMaxPossibleDisplays] = { NULL };
+static int screenRefCount[kPsychMaxPossibleDisplays] = { 0 };
+
+// Display link callback: Needed so we can actually start the display link:
+static CVReturn PsychCVDisplayLinkOutputCallback(CVDisplayLinkRef displayLink, const CVTimeStamp *inNow, const CVTimeStamp *inOutputTime,
+                                                 CVOptionFlags flagsIn, CVOptionFlags *flagsOut, void *displayLinkContext)
+{
+    // This is a pure dummy implementation which does nothing but return a success return code
+    // to keep the CVDisplayLink thread running happily.
+
+    // Low-level timestamp debugging requested?
+    if (PsychPrefStateGet_Verbosity() > 19) {
+        // Compare CV timestamps against host time: They drift horribly against each other...
+        double tNow = (double) inNow->videoTime / (double) inNow->videoTimeScale;
+        double tPresent = (double) inOutputTime->videoTime / (double) inOutputTime->videoTimeScale;
+        double tHost;
+        PsychGetAdjustedPrecisionTimerSeconds(&tHost);
+        printf("CVCallback: %i : tNow = %lf secs, tPresent = %lf secs. tHost - tNow = %lf secs.\n", (int) displayLinkContext, tNow, tPresent, tHost - tNow);
+
+        // What to expect: Horrible drift between our GetSecs() timebase - the Mach host clock -
+        // and the timestamps of CoreVideo, with no known way to synchronize or map between
+        // them in a useful fashion. In other words: These timestamps are utterly useless for
+        // Psychtoolbox!
+        //
+        // Apparently CoreVideo uses a different physical clock timebase than the rest of OS/X.
+        // Could be the GPU's video clock. While the Mach timebase runs at 1 Ghz, the CV timebase
+        // on the tested MacbookPro with ATI Radeon Mobility X1600 runs at 120 Mhz. Both drift against
+        // each other with a rate of about 1 msec per second.
+        //
+        // Afaics we can't use inNow to compute a remapping to host time, because inNow does not seem
+        // to represent the current system time in the CV timebase, but the timestamp of the last video
+        // refresh in the CV timebase. Also inNow in one cycle is exactly identical to inOutputTime from
+        // a previous cycle, which probably means they are not calculated independently, but one is a
+        // cached copy of the other (seriously, wtf?!?).
+        //
+        // Conclusion: Unless i miss something, we can't use CoreVideo timestamping for us as a reliable
+        // source of stimulus onset timestamps. We can only hope that running a pointless "no-op" CoreVideo
+        // displaylink thread per display screen somehow keeps vertical blank interrupts alive and thereby
+        // our old VBL-IRQ timestamping mechanism working on 10.7 Lion and later. Testing will show...
+    }
+
+    return(kCVReturnSuccess);
+}
 
 /** PsychRealtimePriority: Temporarily boost priority to THREAD_TIME_CONSTRAINT_POLICY.
     PsychRealtimePriority(true) enables realtime-scheduling (like Priority(9) would do in Matlab).
@@ -808,12 +851,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
     // Initialize a low-level mapping of Framebuffer device data structures into
     // our address space: Needed for additional timing checks:
+    if ((PsychPrefStateGet_VBLTimestampingMode() > 0) && (screenRefCount[screenSettings->screenNumber] == 0)) {
+        // Initialize to safe default:
+        fbsharedmem[screenSettings->screenNumber].shmem = NULL;
 
-    // Initialize to safe default:
-    fbsharedmem[screenSettings->screenNumber].shmem = NULL;
-
-    // A value of zero would forcefully disable this method:
-    if (PsychPrefStateGet_VBLTimestampingMode()>0) {
         // Get access to Mach service port for the physical display device associated
         // with this onscreen window and open our own connection to the port:
         if ((kIOReturnSuccess == IOServiceOpen(CGDisplayIOServicePort(cgDisplayID), mach_task_self(), kIOFBSharedConnectType, &(fbsharedmem[screenSettings->screenNumber].connect))) ||
@@ -838,7 +879,41 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         
         // If the mapping worked, we have a pointer to the driver memory in .shmem, otherwise we have NULL:
     }
-    
+
+    if ((fbsharedmem[screenSettings->screenNumber].shmem) && (NULL == cvDisplayLink[screenSettings->screenNumber])) {
+        // Create and start a CVDisplayLink for this screen.
+        if (kCVReturnSuccess != CVDisplayLinkCreateWithCGDisplay(cgDisplayID, &cvDisplayLink[screenSettings->screenNumber])) {
+            if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to create CVDisplayLink for screenId %i. This may impair VBL timestamping.\n", screenSettings->screenNumber);
+        } else {
+            // Assign dummy output callback, as this is mandatory to get the link up and running:
+            CVDisplayLinkSetOutputCallback(cvDisplayLink[screenSettings->screenNumber], &PsychCVDisplayLinkOutputCallback, (void*) screenSettings->screenNumber);
+            
+            // Start the link:
+            if (kCVReturnSuccess != CVDisplayLinkStart(cvDisplayLink[screenSettings->screenNumber])) {
+                // Failed to start: Release it again and report error:
+                CVDisplayLinkRelease(cvDisplayLink[screenSettings->screenNumber]);
+                cvDisplayLink[screenSettings->screenNumber] = NULL;
+                
+                if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to start CVDisplayLink for screenId %i. This may impair VBL timestamping.\n", screenSettings->screenNumber);
+            }
+            else {
+                // Display link started: Report some stuff for the fun of it...
+                if (PsychPrefStateGet_Verbosity() > 3) {
+                    // Wait for 50 msecs before query of video refresh from display link to give it a chance to start up:
+                    PsychWaitIntervalSeconds(0.050);
+                    
+                    printf("PTB-INFO: CVDisplayLink for screen %i created to work around the brokenness of Apple Mac OS/X 10.7 and later:\n", screenSettings->screenNumber);
+                    printf("PTB-INFO: Video refresh interval as measured by CoreVideo display link: %f msecs.\n", (float) CVDisplayLinkGetActualOutputVideoRefreshPeriod(cvDisplayLink[screenSettings->screenNumber]) * 1000.0);
+                    CVTime outLatency = CVDisplayLinkGetOutputVideoLatency(cvDisplayLink[screenSettings->screenNumber]);
+                    printf("PTB-INFO: Video display output delay as reported by CoreVideo display link: %f msecs.\n", screenSettings->screenNumber, (float) (((double) outLatency.timeValue / (double) outLatency.timeScale) * 1000.0));
+                }
+            }
+        }
+    }
+
+    // Retain reference of this window to its screen:
+    screenRefCount[screenSettings->screenNumber]++;
+
     // Done.
     return(TRUE);
 }
@@ -855,6 +930,7 @@ double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint
 	unsigned int screenid = windowRecord->screenNumber;
 	double t1, t2;
 	psych_uint64 refvblcount;
+    CVTimeStamp cvTime;
 	
     // Do we have a valid shared mapping?
     if (fbsharedmem[screenid].shmem) {
@@ -876,7 +952,18 @@ double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint
 			t2 = ((double) UnsignedWideToUInt64(AbsoluteToNanoseconds(fbsharedmem[screenid].shmem->vblTime))) / 1000000000.0;
 			OSMemoryBarrier();
 		} while ((*vblCount != refvblcount) || (t1 != t2));
-		
+
+        // Diagnostic check of CV timestamps against our host timestamps:
+        // See comments in PsychCVDisplayLinkOutputCallback() on what to expect here...
+        if (PsychPrefStateGet_Verbosity() > 19) {
+            cvTime.version = 0;
+            if (cvDisplayLink[screenid] && (kCVReturnSuccess == CVDisplayLinkGetCurrentTime(cvDisplayLink[screenid], &cvTime)) && (cvTime.flags & kCVTimeStampVideoHostTimeValid)) {
+                t2 = (double) cvTime.videoTime / (double) cvTime.videoTimeScale;
+                t2 = t2 - t1;
+                printf("PTB-DEBUG: [videoTimeScale %lf] Difference CoreVideoTimestamp - vblTimestamp = %lf secs.\n", (double) cvTime.videoTimeScale, t2);
+            }
+        }
+        
         // Retrieve absolute system time of last retrace, convert into PTB standard time system and return it:
 		return(t1);
     }
@@ -972,14 +1059,28 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 	if (windowRecord->targetSpecific.glusercontextObject) CGLDestroyContext(windowRecord->targetSpecific.glusercontextObject);
 
     // Disable low-level mapping of framebuffer cursor memory:
-    if (fbsharedmem[windowRecord->screenNumber].shmem) {
+    if (fbsharedmem[windowRecord->screenNumber].shmem && (screenRefCount[windowRecord->screenNumber] == 1)) {
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Releasing shared memory mapping for screen %i.\n", windowRecord->screenNumber);
+
         IOConnectUnmapMemory(fbsharedmem[windowRecord->screenNumber].connect, kIOFBCursorMemory, mach_task_self(), (vm_address_t) fbsharedmem[windowRecord->screenNumber].shmem);
         fbsharedmem[windowRecord->screenNumber].shmem = NULL;
         
         // Close the service port:
         IOServiceClose(fbsharedmem[windowRecord->screenNumber].connect);
+        
+        // Shutdown and release CVDisplayLink for this windows screen, if any:
+        if (cvDisplayLink[windowRecord->screenNumber]) {
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Releasing CVDisplayLink for screen %i.\n", windowRecord->screenNumber);
+            
+            if (CVDisplayLinkIsRunning(cvDisplayLink[windowRecord->screenNumber])) CVDisplayLinkStop(cvDisplayLink[windowRecord->screenNumber]);
+            CVDisplayLinkRelease(cvDisplayLink[windowRecord->screenNumber]);
+            cvDisplayLink[windowRecord->screenNumber] = NULL;
+        }
     }
 
+    // Release reference of this window to its screen:
+    screenRefCount[windowRecord->screenNumber]--;
+    
 	// Destroy Carbon onscreen window, if any:
 	if (windowRecord->targetSpecific.windowHandle) DisposeWindow(windowRecord->targetSpecific.windowHandle);
 
