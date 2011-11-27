@@ -502,12 +502,18 @@ int PsychPrefStateGet_UseGStreamer(void)
 // mapping gets initialized during display initialization, and
 // the actual mappings are stored in PsychGraphicsHardwareHALSupport.c,
 // so these are just wrappers around the true accessor functions:
-void PsychPrefStateSet_ScreenToHead(int screenId, int headId, int rankId)
+void PsychPrefStateSet_ScreenToHead(int screenId, int headId, int crtcId, int rankId)
 {
 	PsychSetScreenToHead(screenId, headId, rankId);
+    PsychSetScreenToCrtcId(screenId, crtcId, rankId);
 }
 
 int PsychPrefStateGet_ScreenToHead(int screenId, int rankId)
 {
 	return(PsychScreenToHead(screenId, rankId));
+}
+
+int PsychPrefStateGet_ScreenToCrtcId(int screenId, int rankId)
+{
+	return(PsychScreenToCrtcId(screenId, rankId));
 }

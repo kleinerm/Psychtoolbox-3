@@ -95,6 +95,11 @@ unsigned int  fCardType = 0;
 unsigned int  fPCIDeviceId = 0;
 unsigned int  fNumDisplayHeads = 0;
 
+// Minimum allowed physical crtc id for assignment to X-Screens. Used
+// for the (x-screen, output) -> physical crtc id mapping heuristic
+// for multi-x-screen ZaphodHead display setups:
+static int    minimum_crtcid = 0;
+
 // Count of kernel drivers:
 static int    numKernelDrivers = 0;
 
@@ -597,7 +602,7 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
 {
   int major, minor;
   int o, m, num_crtcs, isPrimary, crtcid, crtccount;
-  int primaryOutput = -1, primaryCRTC = -1;
+  int primaryOutput = -1, primaryCRTC = -1, primaryCRTCIdx = -1;
   int crtcs[100];
 
   // Preinit to "undefined":
@@ -646,22 +651,22 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
 
     // Get info about this output:
     if (has_xrandr_1_3 && (XRRGetOutputPrimary(dpy, root) > 0)) {
-      isPrimary = (XRRGetOutputPrimary(dpy, root) == output_info->crtc) ? 1 : 0;
+      isPrimary = (XRRGetOutputPrimary(dpy, root) == res->outputs[o]) ? 1 : 0;
     }
     else {
       isPrimary = -1;
     }
 
     for (crtcid = 0; crtcid < res->ncrtc; crtcid++) {
-	if (res->crtcs[crtcid] == output_info->crtc) break;
+      if (res->crtcs[crtcid] == output_info->crtc) break;
     }
     if (crtcid == res->ncrtc) crtcid = -1;
 
     // Store crtc for this output:
     crtcs[o] = crtcid;
 
-    printf("PTB-INFO: Display '%s' : Screen %i : Output %i [%s]: %s : ",
-	   DisplayString(dpy), displayX11Screens[idx], o, (const char*) output_info->name, (isPrimary > -1) ? ((isPrimary == 1) ? "Primary output" : "Secondary output") : "Unknown or offline output");
+    printf("PTB-INFO: Display '%s' : XScreen %i : Output %i [%s]: %s : ",
+	   DisplayString(dpy), displayX11Screens[idx], o, (const char*) output_info->name, (isPrimary > -1) ? ((isPrimary == 1) ? "Primary output" : "Secondary output") : "Unknown output status");
     printf("%s : CRTC %i [XID %i]\n", (output_info->connection == RR_Connected) ? "Connected" : "Offline", crtcid, (int) output_info->crtc);
 
     if ((isPrimary > 0) && (crtcid >= 0)) {
@@ -673,6 +678,7 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     if (crtcid >=0) {
       // Yes: Add its crtcid to the list of crtc's for this screen:
       PsychSetScreenToHead(idx, crtcid, crtccount);
+      PsychSetScreenToCrtcId(idx, crtcid + minimum_crtcid, crtccount);
       crtccount++;
     }
 
@@ -703,8 +709,6 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     }
   }
 
-  printf("PTB-INFO: Display '%s' : Screen %i : Assigning primary output as %i with crtc %i.\n", DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC);
-
   // Assign primary crtc of primary output - index 0 - as default display head for this screen:
   // We swap the contents of slot 0 - the primary crtc slot - and whatever slot currently
   // contains the crtcid of our primaryCRTC. This way we shuffle the primary crtc into the
@@ -712,10 +716,35 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
   for (o = 0; o < crtccount; o++) {
     if (PsychScreenToHead(idx, o) == primaryCRTC) {
       PsychSetScreenToHead(idx, PsychScreenToHead(idx, 0), o);
+      primaryCRTCIdx = PsychScreenToCrtcId(idx, o);
+      PsychSetScreenToCrtcId(idx, PsychScreenToCrtcId(idx, 0), o);
     }
   }
-  PsychSetScreenToHead(idx, primaryCRTC, 0);
 
+  PsychSetScreenToHead(idx, primaryCRTC, 0);
+  PsychSetScreenToCrtcId(idx, primaryCRTCIdx, 0);
+
+  printf("PTB-INFO: Display '%s' : X-Screen %i : Assigning primary output as %i with RandR-Crtc %i and GPU-CRTC %i.\n", DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC, primaryCRTCIdx);
+  printf("PTB-INFO: You can use the xrandr command line utility to change primary output assignment, and the Screen('Preference', 'ScreenToHead', ...); function to fix wrong GPU-CRTC assignments.\n");
+  
+  // This X-Screen has res->ncrtc physical CRTC's available for exclusive use.
+  // These are not available to potential additional X-Screens in a multi-x-screen "ZaphodHead"
+  // configuration. Therefore we raise the minimum_crtcid - the smallest physical crtc id available to
+  // additional outputs on additional X-Screens by res->ncrtc, so the first RandR crtc of such an
+  // additional X-Screen will map to the minimum_crtcid'th physical crtc. This avoids allocation
+  // of one physical crtc by multiple X-Screens. It should work for bog-standard ZaphodHead setups.
+  // It will work in any case on single-display setups or multi-display setups where a single
+  // X-Screen spans multiple display outputs aka multiple crtcs.
+  //
+  // The working assumption is that the user of a ZaphodHead config assigned the different
+  // GPU outputs, and thereby their associated physical crtc's, in an ascending order to
+  // X-Screens. This is a reasonable assumption, but in no way guaranteed by the system.
+  // Therefore this heuristic can go wrong on non-standard ZaphodHead Multi-X-Screen setups.
+  // In such cases the user can always use the Screen('Preference', 'ScreenToHead', ...);
+  // command or the PSYCHTOOLBOX_PIPEMAPPINGS environment variable to override the wrong
+  // mapping, although it would be a pita for complex setups.
+  minimum_crtcid += res->ncrtc;
+  
   return;
 }
 
@@ -770,6 +799,9 @@ void InitCGDisplayIDList(void)
 
   // Initial count of screens is zero:
   numDisplays = 0;
+
+  // Initial minimum allowed crtc id is zero:
+  minimum_crtcid = 0;
 
   // Multiple X11 display specifier strings provided in the environment variable
   // $PSYCHTOOLBOX_DISPLAYS? If so, we connect to all of them and enumerate all
@@ -2163,14 +2195,14 @@ int PsychOSCheckKDAvailable(int screenId, unsigned int * status)
 	// but we don't have such a thing yet.  Could be also a pointer to a little struct with all
 	// relevant info...
 	// Currently we do a dummy assignment...
-	int connect = PsychScreenToHead(screenId, 0);
+	int connect = PsychScreenToCrtcId(screenId, 0);
 
 	if ((numKernelDrivers<=0) && (gfx_cntl_mem == NULL)) {
 		if (status) *status = ENODEV;
 		return(0);
 	}
 	
-	if (connect == 0xff) {
+	if (connect < 0) {
 		if (status) *status = ENODEV;
 		if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-DEBUGINFO: Could not access kernel driver connection for screenId %i - No such connection.\n", screenId);
 		return(0);
@@ -2279,7 +2311,7 @@ static PsychError PsychOSSynchronizeDisplayScreensDCE4(int *numScreens, int* scr
 		old_crtc_master_enable = 0;
 		for (iter = 0; iter < kPsychMaxPossibleCrtcs; iter++) {
             // Map 'iter'th head for this screenId to crtc index 'i'. Iterate over all crtc's for screen:
-            if ((i = PsychScreenToHead(screenId, iter)) < 0) break;
+            if ((i = PsychScreenToCrtcId(screenId, iter)) < 0) break;
             
 			// Bit 16 "CRTC_CURRENT_MASTER_EN_STATE" allows read-only polling
 			// of current activation state of crtc:
@@ -2289,7 +2321,7 @@ static PsychError PsychOSSynchronizeDisplayScreensDCE4(int *numScreens, int* scr
 		// Shut down heads, one after each other, wait for each one to settle at its defined resting position:
 		for (iter = 0; iter < kPsychMaxPossibleCrtcs; iter++) {
             // Map 'iter'th head for this screenId to crtc index 'i'. Iterate over all crtc's for screen:
-            if ((i = PsychScreenToHead(screenId, iter)) < 0) break;
+            if ((i = PsychScreenToCrtcId(screenId, iter)) < 0) break;
 
 			if (PsychPrefStateGet_Verbosity() > 3) printf("Head %ld ...  ", i);
 			if (old_crtc_master_enable & (0x1 << i)) {		
@@ -2321,7 +2353,7 @@ static PsychError PsychOSSynchronizeDisplayScreensDCE4(int *numScreens, int* scr
 		// This must be a tight loop, as every microsecond counts for a good sync...
 		for (iter = 0; iter < kPsychMaxPossibleCrtcs; iter++) {
             // Map 'iter'th head for this screenId to crtc index 'i'. Iterate over all crtc's for screen:
-            if ((i = PsychScreenToHead(screenId, iter)) < 0) break;
+            if ((i = PsychScreenToCrtcId(screenId, iter)) < 0) break;
         
 			if (old_crtc_master_enable & (0x1 << i)) {		
 				// Restart this CRTC by setting its master enable bit (bit 0):
@@ -2543,7 +2575,7 @@ PsychError PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds, int
 int PsychOSKDGetBeamposition(int screenId)
 {
 	int beampos = -1;
-	int headId  = PsychScreenToHead(screenId, 0);
+	int headId  = PsychScreenToCrtcId(screenId, 0);
 
 	// MMIO registers mapped?
 	if (gfx_cntl_mem) {
@@ -2640,7 +2672,7 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
             // Positive screenId: Apply to all crtc's for this screenId:
             
             // Is there an iter'th crtc assigned to this screen?
-            headId = PsychScreenToHead(screenId, iter);
+            headId = PsychScreenToCrtcId(screenId, iter);
             
             // If end of list of associated crtc's for this screenId reached, then we're done:
             if (headId < 0) break;

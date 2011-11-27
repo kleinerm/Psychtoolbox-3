@@ -120,8 +120,9 @@ void PsychPrefStateSet_UseGStreamer(int value);
 int PsychPrefStateGet_UseGStreamer(void);
 
 // Modify/Get screenid -> gpu head mapping:
-void PsychPrefStateSet_ScreenToHead(int screenId, int headId, int rankId);
+void PsychPrefStateSet_ScreenToHead(int screenId, int headId, int crtcId, int rankId);
 int PsychPrefStateGet_ScreenToHead(int screenId, int rankId);
+int PsychPrefStateGet_ScreenToCrtcId(int screenId, int rankId);
 
 //end include once
 #endif

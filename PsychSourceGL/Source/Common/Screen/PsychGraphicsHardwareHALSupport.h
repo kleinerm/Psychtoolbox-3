@@ -63,12 +63,17 @@ void		PsychStoreGPUSurfaceAddresses(PsychWindowRecordType* windowRecord);
 psych_bool		PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* windowRecord, double* timestamp, int *beamposition);
 unsigned int	PsychGetNVidiaGPUType(PsychWindowRecordType* windowRecord);
 
-// Map PTB screenId to GPU headId (aka pipeId): rankId selects which crtc (0 = primary).
+// Map PTB screenId to GPU output headId : rankId selects which output head (0 = primary).
 int			PsychScreenToHead(int screenId, int rankId);
-// Change mapping of a PTB screenId to GPU headId:
+// Change mapping of a PTB screenId to GPU output headId:
 void		PsychSetScreenToHead(int screenId, int headId, int rankId);
+
 // Setup initial mapping for 'numDisplays' displays:
 void		PsychInitScreenToHeadMappings(int numDisplays);
+
+// Map PTB screenId and output head id to the index of the associated low-level crtc scanout engine of the GPU: rankId selects which output head (0 = primary).
+int         PsychScreenToCrtcId(int screenId, int rankId);
+void		PsychSetScreenToCrtcId(int screenId, int crtcId, int rankId);
 
 // Get/Set corrective offsets for scanout position queries on certain GPU's:
 void		PsychGetBeamposCorrection(int screenId, int *vblbias, int *vbltotal);

@@ -38,6 +38,7 @@
 // GPU crtc specific stuff. Each screen can have up to kPsychMaxPossibleCrtcs assigned. Slot 0 contains the
 // primary crtc, used for beamposition timestamping, framerate queries etc. A -1 value in a slot terminates
 // the sequence of assigned crtc's.
+static int	displayScreensToCrtcIds[kPsychMaxPossibleDisplays][kPsychMaxPossibleCrtcs];
 static int	displayScreensToPipes[kPsychMaxPossibleDisplays][kPsychMaxPossibleCrtcs];
 static int  numScreenMappings = 0;
 static psych_bool displayScreensToPipesUserOverride = FALSE;
@@ -203,7 +204,7 @@ unsigned int PsychSetGPUIdentityPassthrough(PsychWindowRecordType* windowRecord,
             // Positive screenId: Apply to all crtc's for this screenId:
             
             // Is there an iter'th crtc assigned to this screen?
-            head = PsychScreenToHead(screenId, iter);
+            head = PsychScreenToCrtcId(screenId, iter);
             
             // If end of list of associated crtc's for this screenId reached, then we're done:
             if (head < 0) break;
@@ -326,7 +327,7 @@ psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord
 		// Iterate over range of all assigned heads for this screenId 'i' and reconfigure them:
 		for (headiter = 0; headiter < kPsychMaxPossibleCrtcs; headiter++) {
             // Map screenid to headid for headiter'th head:
-            headid = PsychScreenToHead(i, headiter);
+            headid = PsychScreenToCrtcId(i, headiter);
 
             // We're done as soon as we encounter invalid negative headid.
             if (headid < 0) break;
@@ -502,7 +503,7 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
     // Iterate over range of all assigned heads for this screenId 'i' and reconfigure them:
     for (headiter = 0; headiter < kPsychMaxPossibleCrtcs; headiter++) {
         // Map screenid to headid for headiter'th head:
-        headid = PsychScreenToHead(screenId, headiter);
+        headid = PsychScreenToCrtcId(screenId, headiter);
         
         // We're done as soon as we encounter invalid negative headid.
         if (headid < 0) break;
@@ -541,8 +542,8 @@ void PsychStoreGPUSurfaceAddresses(PsychWindowRecordType* windowRecord)
 	if (!PsychOSIsKernelDriverAvailable(screenId)) return;
 	
 	// Driver is online: Read the registers, but only for primary crtc in a multi-crtc config:
-	windowRecord->gpu_preflip_Surfaces[0] = PsychOSKDReadRegister(screenId, (PsychScreenToHead(screenId, 0) < 1) ? RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS : RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS, NULL);
-	windowRecord->gpu_preflip_Surfaces[1] = PsychOSKDReadRegister(screenId, (PsychScreenToHead(screenId, 0) < 1) ? RADEON_D1GRPH_SECONDARY_SURFACE_ADDRESS : RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS, NULL);
+	windowRecord->gpu_preflip_Surfaces[0] = PsychOSKDReadRegister(screenId, (PsychScreenToCrtcId(screenId, 0) < 1) ? RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS : RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS, NULL);
+	windowRecord->gpu_preflip_Surfaces[1] = PsychOSKDReadRegister(screenId, (PsychScreenToCrtcId(screenId, 0) < 1) ? RADEON_D1GRPH_SECONDARY_SURFACE_ADDRESS : RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS, NULL);
 
 #endif
 
@@ -587,11 +588,11 @@ psych_bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* window
 	// Driver is online. Enter polling loop:
 	while (TRUE) {
 		// Read surface address registers:
-		primarySurface   = PsychOSKDReadRegister(screenId, (PsychScreenToHead(screenId, 0) < 1) ? RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS : RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS, NULL);
-		secondarySurface = PsychOSKDReadRegister(screenId, (PsychScreenToHead(screenId, 0) < 1) ? RADEON_D1GRPH_SECONDARY_SURFACE_ADDRESS : RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS, NULL);
+		primarySurface   = PsychOSKDReadRegister(screenId, (PsychScreenToCrtcId(screenId, 0) < 1) ? RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS : RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS, NULL);
+		secondarySurface = PsychOSKDReadRegister(screenId, (PsychScreenToCrtcId(screenId, 0) < 1) ? RADEON_D1GRPH_SECONDARY_SURFACE_ADDRESS : RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS, NULL);
 
 		// Read update status registers:
-		updateStatus     = PsychOSKDReadRegister(screenId, (PsychScreenToHead(screenId, 0) < 1) ? RADEON_D1GRPH_UPDATE : RADEON_D2GRPH_UPDATE, NULL);
+		updateStatus     = PsychOSKDReadRegister(screenId, (PsychScreenToCrtcId(screenId, 0) < 1) ? RADEON_D1GRPH_UPDATE : RADEON_D2GRPH_UPDATE, NULL);
 
 		PsychGetAdjustedPrecisionTimerSeconds(timestamp);
 
@@ -601,7 +602,7 @@ psych_bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* window
 		}
 		
 		if (PsychPrefStateGet_Verbosity() > 9) {
-			printf("PTB-DEBUG: Head %i: primarySurface=%p : secondarySurface=%p : updateStatus=%i\n", PsychScreenToHead(screenId, 0), primarySurface, secondarySurface, updateStatus);
+			printf("PTB-DEBUG: Head %i: primarySurface=%p : secondarySurface=%p : updateStatus=%i\n", PsychScreenToCrtcId(screenId, 0), primarySurface, secondarySurface, updateStatus);
 		}
 
 		// Sleep slacky at least 200 microseconds, then retry:
@@ -690,10 +691,13 @@ unsigned int PsychGetNVidiaGPUType(PsychWindowRecordType* windowRecord)
 #endif
 }
 
-/* PsychScreenToHead() - Map PTB screenId to GPU headId (aka pipeId):
+/* PsychScreenToHead() - Map PTB screenId to GPU output headId (aka pipeId):
+ *
+ * See explanations for PsychScreenToCrtcId() to understand what this is good for!
+ *
  * screenId = PTB screen index.
- * rankId = Select which head in a multi-head config. rankId 0 == Primary crtc.
- * A return value of -1 for a given rankId means that no such crtc is assigned,
+ * rankId = Select which head in a multi-head config. rankId 0 == Primary output.
+ * A return value of -1 for a given rankId means that no such output is assigned,
  * it terminates the array.
  */
 int	PsychScreenToHead(int screenId, int rankId)
@@ -711,15 +715,58 @@ void PsychSetScreenToHead(int screenId, int headId, int rankId)
     displayScreensToPipesUserOverride = TRUE;
 }
 
+/* PsychScreenToCrtcId()
+ *
+ * Map PTB screenId and output head id to the index of the associated low-level
+ * crtc scanout engine of the GPU: rankId selects which output head (0 = primary).
+ *
+ * PsychScreenToHead() returns the os-specific identifier of a specific
+ * display output head, e.g., a display connector. On Windows and OS/X this is currently
+ * simply a running number: 0 for the first display output, 1 for the second etc. On
+ * Linux/X11 this is the X11 RandR extension protocol XID of the crtc associated
+ * with a given display output, which allows to use the RandR extension to address
+ * specific crtc's and do things like query and set video mode of a crtc (resolution,
+ * video refresh rate), viewport of a crtc, rotation, mirroring state and other
+ * geometric transforms, backlight and dithering settings etc. A XID of zero, which means
+ * "invalid/not assigned" gets mapped to -1 for compatibility reasons in PTB.
+ *
+ * PsychScreenToCrtcId() returns the operating system independent, but gpu-specific index
+ * of the low-level crtc display scanout engine associated with a display output. The
+ * naming convention here is purely Psychtoolbox specific, as this index is used for
+ * low-level direct access to GPU MMIO control registers via PTB's own magic. Values
+ * are -1 for "not assigned/invalid" and then 0, 1, 2, ... for scanout engine zero, one,
+ * two, ... These numbers are mapped in a gpu specific way to the addresses and offsets
+ * of low-level control registers of the GPU hardware.
+ *
+ * Unfortunately, operating systems don't provide any well defined means to find out the
+ * mapping between PsychScreenToHead() "high-level" output id's and PsychScreenToCrtcId()
+ * low-level crtc id's, so the mapping gets determined at Screen() startup time via some more
+ * or less clever heuristics which should do the right thing(tm) for common display and gpu
+ * setups, but may fail on exotic configs. To cope with those, manual overrides are provided to
+ * usercode, so the user can hopefully figure out correct mappings via trial and error.
+ */
+int	PsychScreenToCrtcId(int screenId, int rankId)
+{
+	return(displayScreensToCrtcIds[screenId][rankId]);
+}
+
+void PsychSetScreenToCrtcId(int screenId, int crtcId, int rankId)
+{
+    // Assign new mapping:
+	displayScreensToCrtcIds[screenId][rankId] = crtcId;
+}
+
 /* PsychInitScreenToHeadMappings() - Setup initial mapping for 'numDisplays' displays:
  *
  * Called from end of InitCGDisplayIDList() during os-specific display initialization.
  *
- * 1. Starts with an identity mapping screen 0 -> head 0, screen 1 -> head 1 ...
+ * 1. Starts with an identity mapping screen 0 -> (head 0 / crtcid 0), screen 1 -> (head 1 / crtcid 1) ...
  *
- * 2. Allows override of mapping via environment variable "PSYCHTOOLBOX_PIPEMAPPINGS",
- * Format is: One character (a number between "0" and "9") for each screenid,
- * e.g., "021" would map screenid 0 to pipe 0, screenid 1 to pipe 2 and screenid 2 to pipe 1.
+ * 2. Allows override of low-level crtc id mapping of the first output of a screen via
+ *    environment variable "PSYCHTOOLBOX_PIPEMAPPINGS".
+ *
+ *    Format is: One character (a number between "0" and "9") for each screenid,
+ *    e.g., "021" would map screenid 0 to crtcid 0, screenid 1 to crtcid 2 and screenid 2 to crtcid 1.
  *
  * 3. This mapping can be overriden via Screen('Preference', 'ScreenToHead') setting.
  *
@@ -734,7 +781,12 @@ void PsychInitScreenToHeadMappings(int numDisplays)
     // Setup default identity one-to-one mapping:
     for(i = 0; i < kPsychMaxPossibleDisplays; i++){
 		displayScreensToPipes[i][0] = i;
-		for (j = 1; j < kPsychMaxPossibleCrtcs; j++) displayScreensToPipes[i][j] = -1;
+        displayScreensToCrtcIds[i][0] = i;
+        
+		for (j = 1; j < kPsychMaxPossibleCrtcs; j++) {
+            displayScreensToPipes[i][j] = -1;
+            displayScreensToCrtcIds[i][j] = -1;   
+        }
 
 		// We also setup beamposition bias values to "neutral defaults":
 		screenBeampositionBias[i] = 0;
@@ -746,7 +798,7 @@ void PsychInitScreenToHeadMappings(int numDisplays)
 	if (ptbpipelines) {
 		// The default is "012...", ie screen 0 = pipe 0, 1 = pipe 1, 2 =pipe 2, n = pipe n
 		for (i = 0; (i < strlen(ptbpipelines)) && (i < kPsychMaxPossibleDisplays); i++) {
-			PsychSetScreenToHead(i, (((ptbpipelines[i] - 0x30) >=0) && ((ptbpipelines[i] - 0x30) < 10)) ? (ptbpipelines[i] - 0x30) : -1, 0);
+            PsychSetScreenToCrtcId(i, (((ptbpipelines[i] - 0x30) >=0) && ((ptbpipelines[i] - 0x30) < 10)) ? (ptbpipelines[i] - 0x30) : -1, 0);
 		}
 	}
     
@@ -856,7 +908,7 @@ void PsychGetBeamposCorrection(int screenId, int *vblbias, int *vbltotal)
 void PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal)
 {
 	// Need head id of primary crtc of this screen for auto-detection:
-	int crtcid = PsychScreenToHead(screenId, 0);
+	int crtcid = PsychScreenToCrtcId(screenId, 0);
 	
 	// Auto-Detection of correct values requested? A valid OpenGL context must
 	// be bound for this to work or we will crash horribly:

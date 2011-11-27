@@ -129,7 +129,7 @@ static char synopsisString[] =
 	"\noldMode = Screen('Preference', 'OverrideMultimediaEngine', [newmode (0=System default, 1=GStreamer)]);"
 	"\noldLevel = Screen('Preference', 'WindowShieldingLevel', [newLevel (0 = Behind all other windows - 2000 = In front of all other windows, the default)]);"
 	"\nresiduals = Screen('Preference', 'SynchronizeDisplays', syncMethod [, screenId]);"
-	"\noldHeadIds = Screen('Preference', 'ScreenToHead', screenId [, newHeadId][, rank]);"
+	"\noldMappings = Screen('Preference', 'ScreenToHead', screenId [, newHeadId, newCrtcId][, rank=0]);"
 
 	"\noldLevel = Screen('Preference', 'Verbosity' [,level]);";
 
@@ -171,7 +171,7 @@ PsychError SCREENPreference(void)
 	char					*preferenceName, *newFontName;
 	const char				*tableCreator, *oldDefaultFontName;
 	psych_bool				preferenceNameArgumentValid, booleanInput, ignoreCase, tempFlag, textAlphaBlendingFlag, suppressAllWarningsFlag;
-	int						numInputArgs, i, newFontStyleNumber, newFontSize, tempInt, tempInt2, tempInt3;
+	int						numInputArgs, i, newFontStyleNumber, newFontSize, tempInt, tempInt2, tempInt3, tempInt4;
 	double					returnDoubleValue, inputDoubleValue;
 	double					maxStddev, maxDeviation, maxDuration;
 	int						minSamples;
@@ -474,8 +474,13 @@ PsychError SCREENPreference(void)
 
 				// Return old mappings for this screenId:
                 for (tempInt2 = 0; (tempInt2 < kPsychMaxPossibleCrtcs) && (PsychPrefStateGet_ScreenToHead(tempInt, tempInt2) >= 0); tempInt2++);
-                PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, tempInt2, 1, &dheads);
-                for (tempInt3 = 0; tempInt3 < tempInt2; tempInt3++) dheads[tempInt3] = (double) PsychPrefStateGet_ScreenToHead(tempInt, tempInt3);
+                PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 2, tempInt2, 1, &dheads);
+                
+                tempInt4 = 0;
+                for (tempInt3 = 0; tempInt3 < tempInt2; tempInt3++) {
+                    dheads[tempInt4++] = (double) PsychPrefStateGet_ScreenToHead(tempInt, tempInt3);
+                    dheads[tempInt4++] = (double) PsychPrefStateGet_ScreenToCrtcId(tempInt, tempInt3);
+                }
                 
                 // Optionally retrieve and set new mappings for this screenId:
 				if(numInputArgs>=3) {
@@ -483,12 +488,16 @@ PsychError SCREENPreference(void)
 					PsychCopyInIntegerArg(3, kPsychArgRequired, &tempInt2);
 					if (tempInt2 < 0) PsychErrorExitMsg(PsychError_user, "Invalid negative headId provided!");
 
-                    // Assign primary head by default (index 0), but allow optionally others as well:
-                    tempInt3 = 0;
-					PsychCopyInIntegerArg(4, kPsychArgOptional, &tempInt3);
-					if (tempInt3 < 0 || tempInt3 >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid rankId provided! Too many heads for one screen!");
+					// Set new crtcId for screenId:
+					PsychCopyInIntegerArg(4, kPsychArgRequired, &tempInt3);
+					if (tempInt3 < 0) PsychErrorExitMsg(PsychError_user, "Invalid negative crtcId provided!");
 
-					PsychPrefStateSet_ScreenToHead(tempInt, tempInt2, tempInt3);
+                    // Assign primary head by default (index 0), but allow optionally others as well:
+                    tempInt4 = 0;
+					PsychCopyInIntegerArg(5, kPsychArgOptional, &tempInt4);
+					if (tempInt4 < 0 || tempInt4 >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid rankId provided! Too many heads for one screen!");
+
+					PsychPrefStateSet_ScreenToHead(tempInt, tempInt2, tempInt3, tempInt4);
 				}
 				preferenceNameArgumentValid=TRUE;
 		}else 

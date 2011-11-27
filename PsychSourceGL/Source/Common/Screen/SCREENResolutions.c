@@ -14,7 +14,7 @@
  
   DESCRIPTION:
   
-  Contains the two subfunctions 'Resolutions' and 'Resolution'.
+  Contains the subfunctions 'ConfigureDisplay', 'Resolutions' and 'Resolution'.
   Enumerates and returns all supported display modes - combinations of resolution, refresh rate and color depth.
   Allows to query and set display mode.
   
@@ -30,18 +30,18 @@ PsychError SCREENConfigureDisplay(void)
 {
 	static char useString[] = "oldSettings = Screen('ConfigureDisplay', setting, screenNumber, outputId [, newwidth][, newheight][, newHz][, newX][, newY]);";
 	static char synopsisString[] =	"Query or change 'setting' for display output 'outputId' of screen 'screenNumber'.\n"
-					"This function allows you to configure the differnt attached display outputs of a virtual screen.\n"
-					"It returns a struct 'oldSettings' with the current settings for that output. "
+					"This function allows you to configure the different attached display outputs of a virtual screen.\n"
 					"Optionally sets new settings for that output.\n"
 					"Possible values for subfunction parameter 'setting':\n"
-					"'Brightness': Return or set brightness of attached display device. Not all displays and systems support this.\n"
+					"'Brightness': Return or set brightness of an attached display device. Many displays and systems don't support this function. "
+                    " brightness values are in the range 0.0 to 1.0 from darkest to brightest. Returns old brightness setting.\n"
 					"'NumberOutputs': Return number of active separate display outputs for given screen 'screenNumber'.\n"
-					"'Scanout': Retrieve or set scanout parameters for a given output 'outputId' of screen 'screenNumber'\n"
-					"It has the following optional parameters:\n"
+					"'Scanout': Retrieve or set scanout parameters for a given output 'outputId' of screen 'screenNumber'. "
+					"Returns a struct 'oldSettings' with the current settings for that output. Only supported on Linux.\n"
+					"It returns and accepts the following optional parameters:\n"
 					"* Display resolution \"newwidth\" x \"newheight\", and nominal refresh rate \"newHz\". "
 					"* Panning ('newX','newY') - The location of the top-left corner of the display in the framebuffer.\n"
-					"Providing invalid or incompatible settings will raise an error.\n"
-					"This function is currently only supported on Linux.\n";
+					"Providing invalid or incompatible settings will raise an error.\n";
 
 	static char seeAlsoString[] = "Screen('Resolutions'), Screen('Resolution');";
 
@@ -208,10 +208,6 @@ PsychError SCREENConfigureDisplay(void)
 		return(PsychError_none);
 	}
     
-#if PSYCH_SYSTEM != PSYCH_LINUX
-	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is only supported on Linux.");
-#else
-    
 	// Usercode wants to know number of outputs for a screen?
 	if (PsychMatch(settingName, "NumberOutputs")) {
 		// Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
@@ -224,6 +220,11 @@ PsychError SCREENConfigureDisplay(void)
 
 		return(PsychError_none);
 	}
+
+    
+#if PSYCH_SYSTEM != PSYCH_LINUX
+	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is only supported on Linux.");
+#else
 
 	if(!PsychMatch(settingName, "Scanout")) PsychErrorExitMsg(PsychError_user, "Unknown 'setting' name provided. Typo?");
 
@@ -254,7 +255,17 @@ PsychError SCREENConfigureDisplay(void)
 	PsychSetStructArrayDoubleElement("height", 0, newHeight, oldResStructArray);
 
 	// Query and return refresh rate:
-	newHz = (int) (PsychOSVRefreshFromMode(mode) + 0.5);
+
+    // Modeline with plausible values returned by RandR?
+    if (mode && (mode->hTotal > mode->width) && (mode->vTotal > mode->height)) {
+        // Yes: use RandR results:
+        newHz = (int) (PsychOSVRefreshFromMode(mode) + 0.5);
+    } else {
+        // No: Fallback to old style - Refresh rate of primary output for this screen, following
+        //     the "whatever works" method:
+        newHz = (int) (PsychGetNominalFramerate(screenNumber) + 0.5);
+    }
+
 	PsychSetStructArrayDoubleElement("hz", 0, newHz, oldResStructArray);
 	
 	// Query and return current display depth:
@@ -300,9 +311,9 @@ PsychError SCREENResolution(void)
 					"on all other systems. Use a size of 32 bpp even for clut animation. This function "
 					"may not work on all MS-Windows setups, your mileage may vary...\n"
 					"On Linux the function only switches display settings in the conventional sense on "
-					"a single display setup. On a multi-display setup, this function only changes the "
-					"total size of the total framebuffer, ie., 'newwidth' and 'newheight', the other "
-					"parameters are silently ignored. The video settings of each individual display, "
+					"a single-display setup. On a multi-display setup, this function only changes the "
+					"total size of the framebuffer, ie., 'newwidth' and 'newheight', the other "
+					"parameters are silently ignored. On Linux, the video settings of each individual display, "
 					"e.g., resolution, video refresh rate, panning, are queried and changed via the "
 					"Screen('ConfigureDisplay') function instead. This allows for much more flexibility, "
 					"e.g., you can have a framebuffer bigger than the combined resolution of all displays "
@@ -311,7 +322,7 @@ PsychError SCREENResolution(void)
 					"display configurations.\n"
 					"Psychtoolbox will automatically restore the systems display resolution to the "
 					"system settings made via the display control panel as soon as either your script "
-					"finishes by closing all its windows or by some error. Terminating Matlab due to "
+					"finishes by closing all its windows, or by some error. Terminating Matlab due to "
 					"quit command will also restore the system preference settings. On a multi-display "
 					"Linux setup, display settings are never automatically restored.\n"
 					"If you call this command without ever opening onscreen windows and closing them "
@@ -419,11 +430,11 @@ PsychError SCREENResolutions(void)
 	static char useString[] = "resolutions = Screen('Resolutions', screenNumber [, outputId]);";
 	static char synopsisString[] =	"Query a list of all supported and valid display settings for screen "
 					"\"screenNumber\" and display output \"outputId\". If the optional "
-					"outputId is omitted, the unified settings of the screen are returned. "
-					"Currently outputId is only honored on Linux, ignored on other systems.\n"
+					"'outputId' is omitted, the unified settings of the screen are returned. "
+					"Currently 'outputId' is only honored on Linux, ignored on other systems.\n"
 					"You can set your display to one of the supported "
 					"combinations of settings via the Screen('Resolution') command.\n"
-					"Returns an array of Matlab/Octave structs \"resolutions\", where "
+					"Returns an array of structs \"resolutions\", where "
 					"each element in the array is a struct that describes one valid "
 					"combination of resolution, color depth and refresh rate. Fields are "
 					"self explanatory.\n"
