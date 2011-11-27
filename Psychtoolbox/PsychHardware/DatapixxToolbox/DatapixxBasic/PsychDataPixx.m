@@ -329,6 +329,9 @@ function varargout = PsychDataPixx(cmd, varargin)
 %                 Called as 'CheckGPUSanity' from imaging pipeline setup
 %                 code in BitsPlusPlus() for high precision display mode.
 %
+% 27.11.2011  mk  Improve online correction routine for LUT's. Need to
+%                 handle GPUs with more than 256 slot LUT's sensibly. E.g.,
+%                 the NVidia QuadroFX-3800 has 2048 LUT slots.
 
 % Need GL constant for low-level OpenGL calls. Already initialized by
 % PsychImaging() at first time of invocation of the driver:
@@ -1161,8 +1164,30 @@ if strcmpi(cmd, 'CheckGPUSanity')
             % 1 pixel unit error:
             deltavec = transpose(double(deltavec)) * stepsize;
             
+            % Build correction vector tweakvec: deltavec is a 256 rows by 3
+            % columns matrix of delta values to add to curlut for tweaking
+            % it to a more correct value. curlut, as read from the GPU,
+            % always has 3 columns for (Red, Green, Blue) just like
+            % deltavec, but it can have more than 256 slots on high-end
+            % GPU's with bigger gamma tables. E.g., the NVidia
+            % QuadroFX-3800 when run under Linux with the binary blob
+            % driver will have a 2^11 = 2048 slot lut. Therefore we need to
+            % "stretch" deltavec vertically so it matches the size of the
+            % 'curlut'. By design of the Datapixx and DVI-D data
+            % transmission, we can always only compute 256 rows of
+            % meaningful tweaking information, therefore we simply repmat
+            % replicate successive rows in deltavec to blow it up to a
+            % matching tweakvec. This should be good enough to init the 256
+            % rows subset of curlut we actually care about with the tweaked
+            % values we found:
+            tweakvec = zeros(size(curlut));
+            chunksize = nrlutslots / 256;
+            for tchunk = 0:255
+                tweakvec((1 + (tchunk * chunksize)):((tchunk * chunksize) + chunksize), :) = repmat(deltavec(1 + tchunk, :), chunksize, 1);
+            end
+            
             % Update gamma lut:
-            curlut = curlut + deltavec;
+            curlut = curlut + tweakvec;
             
             mmcount = sum(sum(deltavec ~= 0));
             fprintf('PsychDataPixx: INFO: Gamma table tweak iteration %i. Had %i mismatching pixels. Retesting with updated LUT...\n', failcount, mmcount);
