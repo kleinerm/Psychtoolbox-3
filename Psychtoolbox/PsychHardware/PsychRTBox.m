@@ -2,11 +2,19 @@ function varargout = PsychRTBox(varargin)
 % Driver for the USTC reaction time button box (RTBox) by Xiangrui Li et al.
 % varargout = PsychRTBox(cmd, varargin);
 %
-% This driver allows to control all functions of the USTC RTBox response
-% button box. The box is a USB device which provides 4 response buttons
-% (pushbuttons) for subject responses and can report any button press- or
-% release by the subject. Additionally it has an input for reporting of
-% external electronic trigger signals and a photo-diode input for reporting of
+% This driver allows to control most functions of the USTC RTBox response
+% button box. In theory this driver should support boxes up to Box/Firmware
+% version 5. In practice it has only been tested by the Psychtoolbox
+% developer up to firmware and box version 1.3, therefore you may encounter
+% bugs for later versions. The box itself comes bundled with an alternative
+% driver called "RTBox" which is maintained by the developers of the box
+% hardware itself, in case this driver doesn't work with your box or
+% firmware.
+%
+% The RTBox is a USB device which provides 4 response buttons (pushbuttons)
+% for subject responses and can report any button press- or release by the
+% subject. Additionally it has an input for reporting of external
+% electronic trigger signals and a photo-diode input for reporting of
 % visual stimulus onset. The box uses a built-in high-resolution clock to
 % timestamp all button- or trigger events, independent of the host
 % computers clock in order to make it more reliable for response time
@@ -16,22 +24,27 @@ function varargout = PsychRTBox(varargin)
 % GetSecs timebase for direct comparison with timestamps from GetSecs,
 % WaitSecs, KbCheck et al., Screen('Flip') and PsychPortAudio, etc. This
 % simplifies reaction time calculations. Timestamps can also be reported in
-% timebase of the boxes, e.g., time of a button press relative to the
-% photo-diode light trigger signal or electronic trigger signal, if this is more
-% convenient for a given experiment setup.
+% the timebase of the boxe, e.g., time of a button press relative to the
+% photo-diode light trigger signal or electronic trigger signal, if this is
+% more convenient for a given experiment setup.
 %
-% See http://lobes.usc.edu/RTbox for some product information.
+% Current versions of the RTBox have additional functionality, e.g., more
+% digital trigger inputs, some sound trigger, and TTL trigger outputs.
+%
+% See http://lobes.usc.edu/RTbox for up to date product information and
+% additional driver software.
 %
 % Please note that while the device documentation claims that the external
 % electronic pulse port is able to receive TTL trigger signals, we couldn't
-% verify that this is the case with our test sample of a RTbox. While the
-% pulse input port responded to some pulses sent by one TTL compatible device,
-% it failed to detect the majority of signals from TTL most other test devices.
+% verify that this is the case with our test sample of version 1 of the
+% RTbox hardware. While the pulse input port responded to some pulses sent
+% by one TTL compatible device, it failed to detect the majority of signals
+% from TTL most other test devices.
 %
 % This indicates that the pulse port may not be fully TTL compliant and
 % will need additional tinkering for your setup. However, results with
-% production level hardware may be different than our experience with our
-% test sample.
+% later versions of the hardware may be different than our experience with
+% our test sample.
 % 
 %
 % The following subcommands are currently suppported:
@@ -506,14 +519,14 @@ function varargout = PsychRTBox(varargin)
 %
 %
 % [timeSent, confidence] = PsychRTBox('TTL' [, handle] [, eventCode=1]);
-% -- Set 4-bit TTL pulse on pins 5-8 of the DB-25 port (pin 8 is bit 0).
-% 'eventCode' is a value from 0 to 15 (defaults to 1 if omitted).
-% It can also be a 4-bit binary string, such as '0011'. The 4 TTL pins will
-% be set to corresponding logic levels. E.g., eventCode = 1 is the same as
-% '0001', eventCode = 15 == '1111'.
+% - Send TTL to DB-25 port (pin 8 is bit 0). The second input is event code
+% (default 1 if omitted), 4-bit (0~15) for box versions < 5, and 8-bit
+% (0~255) for later versions. It can also be equivalent binary string, such
+% as '0011'.
 %
-% The optional return arguments are the 'timeSent' when the TTL update was performed,
-% and an upper bound on the uncertainty 'confidence' of 'timeSent'.
+% The optional return arguments are the 'timeSent' when the TTL update was
+% performed, and an upper bound on the uncertainty 'confidence' of
+% 'timeSent'.
 %
 % The width (duration) of the TTL pulse is controlled by the
 % PsychRTBox('TTLWidth') command.
@@ -533,14 +546,21 @@ function varargout = PsychRTBox(varargin)
 % This function is only supported for v3.0 RTBoxes and later, the ones with
 % EEG event code port support.
 %
+% In Version <5.0, the TTL width at DB-25 pins 17~24 is controlled by a
+% potentiometer inside the box. In Version >= 5, the width is also
+% controlled by 'TTLWidth' command. 
+% 
 %
 % [oldValue] = RTBox('TTLResting' [, handle][, newLevel]);
-% - Set/get TTL polarity. The default is 0, meaning the TTL resting level is
-% logical low. If you set newLevel to a nonzero value, the resting TTL
-% level will be a logic high level. This function is only supported with
-% firmware version 3.1 and later.
-%
-%
+% - Set/get TTL polarity for DB-25 pins 1~8. The default is 0, meaning the
+% TTL resting is low. If you set newLevel to nonzero, the resting TTL will
+% be high level. If you need different polarity for different pins, let us
+% know. This function is only supported with firmware version 3.1 and
+% later.
+% 
+% In Version 5.0 and later, newLevel has second value, which is the
+% polarity for pins 17~24.
+% 
 
 % TODO:
 %
@@ -587,6 +607,16 @@ function varargout = PsychRTBox(varargin)
 %            always use polyfit() in all cases to avoid need for Matlab
 %            statistics toolbox. The PostHoc routine always did this, but
 %            the online routine didn't. (MK)
+%
+% 11/26/2011 Updates for Firmware versions up to V5 (MK):
+%
+%            * TTL out is now 8 bit capable and 'ttlwidth' and 'ttlresting'
+%              needed to be updated as well.
+%            * Event enable handling has changed.
+%            * Various other stuff.
+%
+%            None of this is tested due to lack of hardware/firmware.
+%
 
 % Global variables: Need to be persistent across driver invocation and
 % shared with internal subfunctions:
@@ -870,14 +900,26 @@ global rtbox_global;
             if ischar(in2), in2=bin2dec(in2); end
             
             % Range check:
-            if in2<0 || in2>15 || in2~=round(in2)
+            if rtbox_info(id).version < 5
+                maxTTL = 15;
+            else
+                maxTTL = 255;
+            end
+            
+            if (in2 < 0) || (in2 > maxTTL) || (in2~=round(in2))
                 RTBoxError('invalidTTL');
             end
             
             % Decode to final trigger byte:
-            in2 = dec2bin(in2,4);
-            in2 = uint8(bin2dec(in2(4:-1:1))); % reverse bit order
-            
+            if rtbox_info(id).version < 3.2
+                in2 = dec2bin(in2,4);
+                in2 = uint8(bin2dec(in2(4:-1:1))); % reverse bit order
+            end
+
+            if rtbox_info(id).version >= 5
+                in2=[1 in2];
+            end
+
             % Emit via blocking write:
             [tsend twin] = sendTTLPortEvent(id, in2);
             if nargout
@@ -885,9 +927,8 @@ global rtbox_global;
             end
 
             if twin > 0.003
-                fprintf('PsychRTBox: Warning! TTL 4-bit trigger, send timestamp uncertainty %f msecs exceeds 3 msecs!\n', twin * 1000);
+                fprintf('PsychRTBox: Warning! TTL trigger, send timestamp uncertainty %f msecs exceeds 3 msecs!\n', twin * 1000);
             end
-            
             
         case 'debounceinterval'            
             % Return old debouncer settings for each button:
@@ -1227,6 +1268,7 @@ global rtbox_global;
             wUnit=0.139e-3; 
             
             % Return old/current setting as 1st argument:
+            if rtbox_info(id).version > 4, b8(1) = 255 - b8(1); end
             varargout{1} = b8(1) * wUnit;
 
             % New settings provided?
@@ -1250,6 +1292,7 @@ global rtbox_global;
 
                 width = double(uint8(in2 / wUnit)) * wUnit;
                 b8(1) = width / wUnit;
+                if rtbox_info(id).version > 4, b8(1) = 255 - b8(1); end
 
                 % Writeback new firmware settings:
                 set8bytes(id, b8);
@@ -1297,13 +1340,17 @@ global rtbox_global;
             if nIn >= 2
                 if isempty(in2)
                     % Default to 0:
-                    in2 = 0;
+                    in2 = logical([0 1]);
                 end
                                 
                 % Assign valid new setting:
-                in2 = (in2 ~= 0);
-                b8(3) = uint8(in2 * 255);
-
+                if rtbox_info(id).version < 5
+                    b8(3) = in2(1) * 240; % '11110000'
+                else
+                    b8(3) = bitset(b8(3),1,in2(1));
+                    b8(3) = bitset(b8(3),2,in2(2));
+                end
+                
                 % Writeback new firmware settings:
                 set8bytes(id, b8);
             end
@@ -2089,13 +2136,21 @@ function enableEvent(handle, str)
     end
     
     s = rtbox_info(handle).handle;
-            
+    
+    if isnumeric(str) && isscalar(str)
+        % Firmware version >= 4.1 : Encodes enabled events by a single byte.
+        
+        % First send event setup command code "e", then the given enable
+        % byte:
+        str = [uint8('e') , uint8(str)];
+    end
+    
     for ie=1:length(str)
         % Wait until we can be sure that the box is ready to receive new
         % commands. The deadline is computed so that in the worst conceivable
         % case the box will be ready to receive at least 1 new command byte:
         WaitSecs('UntilTime', rtbox_info(handle).busyUntil);
-        
+
         % Send control character for event enable/disable:
         [nw, tpost] = IOPort('Write', s, str(ie));
 
@@ -2305,7 +2360,7 @@ function startBox(handle, WaitForStart)
     buttonQuery(handle);
     
     % Enable all events that are selected by usercode:
-    customEnable = rtbox_info(handle).enabled(1:5);
+    customEnable = rtbox_info(handle).enabled(1:6);
     
     % Synchronize the button up/down events. Either both on or both off.
     % We do this so our software based button state live reporting in
@@ -2325,7 +2380,16 @@ function startBox(handle, WaitForStart)
     %
     % enableEvent() will enable the user defined events non-blocking, ie.
     % without waiting for acknowledge from the box:
-    enableEvent(handle, rtbox_global.enableCode(find(customEnable>0)) ); %#ok<FNDSB>
+    
+    if rtbox_info(handle).version < 4.1
+        % Old style enable codes:
+        enableEvent(handle, rtbox_global.enableCode(find(customEnable>0)) ); %#ok<FNDSB>
+    else
+        % Firmware version >= 4.1 : Encodes enabled events by a single byte.
+        % Translate our customEnable into a single byte:
+        byteEnable = 2.^(0:5) * customEnable';
+        enableEvent(handle, byteEnable);
+    end
     
     % Box event scanning and reporting is active:
     rtbox_info(handle).boxScanning = 1;
@@ -2769,6 +2833,7 @@ function openRTBox(deviceID, handle)
             % Suppose RTBox not assigned to COM1 or COM2, as these are
             % usually the native serial ports, if any:
             ports=cellstr(num2str((3:256)','\\\\.\\COM%i'));
+            ports=strtrim(ports); % needed for Matlab R2009b and later.
         end
         
         nPorts=length(ports);
@@ -2914,7 +2979,7 @@ function openRTBox(deviceID, handle)
                               'syncSamples', [], 'recQueue', [], 'boxClockTickIntervalSecs', 1/115200);
 
     % Enabled events at start:
-    rtbox_info(handle).enabled=logical([1 0 0 0 0]);
+    rtbox_info(handle).enabled=logical([1 0 0 0 0 0]);
     % IOPort serial port handle:
     rtbox_info(handle).handle=s;
     % DeviceID:
