@@ -223,13 +223,6 @@ PsychError SCREENLoadNormalizedGammaTable(void)
             outTable[PsychIndexElementFrom3DArray(numEntries, 3, 0, i, 1, 0)]=(double)outGreenTable[i];
             outTable[PsychIndexElementFrom3DArray(numEntries, 3, 0, i, 2, 0)]=(double)outBlueTable[i];
         }
-
-	// Sanity check for Linux: We accept a size for the input table that matches the native hw size,
-	// as well as the bog-standard size 256 for compatibility, but no other sizes:
-	if ((PSYCH_SYSTEM == PSYCH_LINUX) && ((inM != numEntries) && (inM != 256))) {
-		printf("PTB-ERROR: Provided gamma table has %i rows, but on Linux with this graphics card only 256 rows or %i rows are acceptable.\n", inM, numEntries);
-		PsychErrorExitMsg(PsychError_user, "Provided gamma table has wrong number of rows for this graphics card.");
-	}
     }
      
     //Now set the new gamma table

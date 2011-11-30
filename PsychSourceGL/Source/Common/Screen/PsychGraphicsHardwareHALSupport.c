@@ -774,34 +774,34 @@ void PsychSetScreenToCrtcId(int screenId, int crtcId, int rankId)
 void PsychInitScreenToHeadMappings(int numDisplays)
 {
     int i, j;
-	char* ptbpipelines = NULL;
+    char* ptbpipelines = NULL;
     
     displayScreensToPipesAutoDetected = FALSE;
     
     // Setup default identity one-to-one mapping:
     for(i = 0; i < kPsychMaxPossibleDisplays; i++){
-		displayScreensToPipes[i][0] = i;
+	displayScreensToPipes[i][0] = i;
         displayScreensToCrtcIds[i][0] = i;
-        
-		for (j = 1; j < kPsychMaxPossibleCrtcs; j++) {
+   
+	for (j = 1; j < kPsychMaxPossibleCrtcs; j++) {
             displayScreensToPipes[i][j] = -1;
             displayScreensToCrtcIds[i][j] = -1;   
         }
 
-		// We also setup beamposition bias values to "neutral defaults":
-		screenBeampositionBias[i] = 0;
-		screenBeampositionVTotal[i] = 0;
+	// We also setup beamposition bias values to "neutral defaults":
+	screenBeampositionBias[i] = 0;
+	screenBeampositionVTotal[i] = 0;
     }
 	
-	// Did user provide an override for the screenid --> pipeline mapping?
-	ptbpipelines = getenv("PSYCHTOOLBOX_PIPEMAPPINGS");
-	if (ptbpipelines) {
-		// The default is "012...", ie screen 0 = pipe 0, 1 = pipe 1, 2 =pipe 2, n = pipe n
-		for (i = 0; (i < strlen(ptbpipelines)) && (i < kPsychMaxPossibleDisplays); i++) {
-            PsychSetScreenToCrtcId(i, (((ptbpipelines[i] - 0x30) >=0) && ((ptbpipelines[i] - 0x30) < 10)) ? (ptbpipelines[i] - 0x30) : -1, 0);
-		}
-	}
-    
+    // Did user provide an override for the screenid --> pipeline mapping?
+    ptbpipelines = getenv("PSYCHTOOLBOX_PIPEMAPPINGS");
+    if (ptbpipelines) {
+        // The default is "012...", ie screen 0 = pipe 0, 1 = pipe 1, 2 =pipe 2, n = pipe n
+	for (i = 0; (i < strlen(ptbpipelines)) && (i < kPsychMaxPossibleDisplays); i++) {
+	    PsychSetScreenToCrtcId(i, (((ptbpipelines[i] - 0x30) >=0) && ((ptbpipelines[i] - 0x30) < 10)) ? (ptbpipelines[i] - 0x30) : -1, 0);
+        }
+    }
+
     // Store number of mapping entries internally:
     numScreenMappings = numDisplays;
 }

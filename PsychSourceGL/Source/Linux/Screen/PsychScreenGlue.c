@@ -667,7 +667,7 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     // Store crtc for this output:
     crtcs[o] = crtcid;
 
-    printf("PTB-INFO: Display '%s' : XScreen %i : Output %i [%s]: %s : ",
+    printf("PTB-INFO: Display '%s' : X-Screen %i : Output %i [%s]: %s : ",
 	   DisplayString(dpy), displayX11Screens[idx], o, (const char*) output_info->name, (isPrimary > -1) ? ((isPrimary == 1) ? "Primary output" : "Secondary output") : "Unknown output status");
     printf("%s : CRTC %i [XID %i]\n", (output_info->connection == RR_Connected) ? "Connected" : "Offline", crtcid, (int) output_info->crtc);
 
@@ -726,9 +726,10 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
   PsychSetScreenToHead(idx, primaryCRTC, 0);
   PsychSetScreenToCrtcId(idx, primaryCRTCIdx, 0);
 
-  printf("PTB-INFO: Display '%s' : X-Screen %i : Assigning primary output as %i with RandR-Crtc %i and GPU-CRTC %i.\n", DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC, primaryCRTCIdx);
-  printf("PTB-INFO: You can use the xrandr command line utility to change primary output assignment, and the Screen('Preference', 'ScreenToHead', ...); function to fix wrong GPU-CRTC assignments.\n");
-  
+  printf("PTB-INFO: Display '%s' : X-Screen %i : Assigning primary output as %i with RandR-CRTC %i and GPU-CRTC %i.\n", DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC, primaryCRTCIdx);
+  printf("PTB-INFO: You can use the xrandr command line utility to change primary output assignment, and the\n");
+  printf("PTB-INFO: Screen('Preference', 'ScreenToHead', ...); function to fix wrong GPU-CRTC assignments.\n");
+
   // This X-Screen has res->ncrtc physical CRTC's available for exclusive use.
   // These are not available to potential additional X-Screens in a multi-x-screen "ZaphodHead"
   // configuration. Therefore we raise the minimum_crtcid - the smallest physical crtc id available to
@@ -2038,6 +2039,52 @@ void PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntri
   return;
 }
 
+/* Copy provided input LUT into target output LUT. If input is smaller than target LUT, but
+ * fits nicely because output size is an integral multiple of input, then oversample input
+ * to create proper output. If size doesn't match or output is smaller than input, abort
+ * with error.
+ *
+ * Rationale: LUT's of standard GPUs are 256 slots, LUT's of high-end GPU's can be bigger
+ *            powers-of-two sizes, e.g., 512, 1024, 2048, 4096 for some NVidia QuadroFX
+ *            parts. For reasons of backwards compatibility we always want to be able to
+ *            accept a good'ol 256 slots input LUT, even if the GPU expects something bigger.
+ *            -> This simple oversampling via replication allows us to do that without obvious
+ *               bad consequences for precision.
+ *
+ */
+static void ConvertLUTToHwLUT(int nOut, psych_uint16* Rout, psych_uint16* Gout, psych_uint16* Bout, int nIn, float *redTable, float *greenTable, float *blueTable)
+{
+  int i, s;
+
+  // Can't handle too big input tables for GPU:
+  if (nOut < nIn) {
+    printf("PTB-ERROR: Provided gamma table has %i slots, but graphics card accepts at most %i slots!\n", nIn, nOut);
+    PsychErrorExitMsg(PsychError_user, "Provided gamma table has too many slots!");
+  }
+
+  // Can't handle tables which don't fit:
+  if ((nOut % nIn) != 0) {
+    printf("PTB-ERROR: Provided gamma table has %i slots, but graphics card expects %i slots.\n", nIn, nOut);
+    printf("PTB-ERROR: Unfortunately, graphics card LUT size is not a integral multiple of provided gamma table size.\n");
+    printf("PTB-ERROR: I can not handle this case, as it could cause ugly distortions in the displayed color range.\n");
+    PsychErrorExitMsg(PsychError_user, "Provided gamma table has wrong number of slots!");
+  }
+
+  // Compute oversampling factor:
+  s = nOut / nIn;
+  if (PsychPrefStateGet_Verbosity() > 5) {
+    printf("PTB-DEBUG: PsychLoadNormalizedGammaTable: LUT size nIn %i <= nOut %i --> Oversample %i times.\n", nIn, nOut, s);
+  }
+
+  // Copy and oversample: Each slot in red/green/blueTable is replicated
+  // into s consecutive slots of R/G/Bout:
+  for (i = 0; i < nOut; i++) {
+    Rout[i] = (psych_uint16) (redTable[i/s]   * 65535.0f + 0.5f);
+    Gout[i] = (psych_uint16) (greenTable[i/s] * 65535.0f + 0.5f);
+    Bout[i] = (psych_uint16) (blueTable[i/s]  * 65535.0f + 0.5f);
+  }
+}
+
 unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int numEntries, float *redTable, float *greenTable, float *blueTable)
 {
   CGDirectDisplayID cgDisplayID;
@@ -2088,19 +2135,12 @@ unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int n
 
   // RandR 1.2 supported and has ability to set LUT's?
   if (has_xrandr_1_2 && (n > 0)) {
-    if (numEntries != n) {
-      printf("PTB-ERROR: Provided gamma table has %i slots, but graphics card requires %i slots!\n", numEntries, n);
-      PsychErrorExitMsg(PsychError_user, "Provided gamma table has wrong number of slots!");
-    }
-
     // Allocate table of appropriate size:
     XRRCrtcGamma *lut = XRRAllocGamma(n);
+    n = lut->size;
 
     // Convert tables: Map 16-bit values into 0-1 normalized floats:
-    n = lut->size;
-    for (i = 0; i < n; i++) lut->red[i]   = (psych_uint16) (redTable[i]   * 65535.0f + 0.5f);
-    for (i = 0; i < n; i++) lut->green[i] = (psych_uint16) (greenTable[i] * 65535.0f + 0.5f);
-    for (i = 0; i < n; i++) lut->blue[i]  = (psych_uint16) (blueTable[i]  * 65535.0f + 0.5f);
+    ConvertLUTToHwLUT(n, lut->red, lut->green, lut->blue, numEntries, redTable, greenTable, blueTable);
 
     // Assign to crtc:
     XRRSetCrtcGamma(cgDisplayID, crtc, lut);
@@ -2130,17 +2170,12 @@ unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int n
     // Make sure this works at all:
     if (n <= 0) PsychErrorExitMsg(PsychError_user, "Gamma table setup failed while trying XF86VidModeExtension fallback path.");
 
-    if (numEntries != n) {
-      printf("PTB-ERROR: Provided gamma table has %i slots, but graphics card requires %i slots!\n", numEntries, n);
-      PsychErrorExitMsg(PsychError_user, "Provided gamma table has wrong number of slots!");
-    }
-
     // Convert input table to X11 specific gammaTable:
-    for (i = 0; i < n; i++) RTable[i] = (int)(redTable[i]   * 65535.0f + 0.5f);
-    for (i = 0; i < n; i++) GTable[i] = (int)(greenTable[i] * 65535.0f + 0.5f);
-    for (i = 0; i < n; i++) BTable[i] = (int)(blueTable[i]  * 65535.0f + 0.5f);
+    ConvertLUTToHwLUT(n, RTable, GTable, BTable, numEntries, redTable, greenTable, blueTable);
 
+    // Assign to X-Screen:
     XF86VidModeSetGammaRamp(cgDisplayID, PsychGetXScreenIdForScreen(screenNumber), n, (unsigned short*) RTable, (unsigned short*) GTable, (unsigned short*) BTable);
+
     #else
     PsychErrorExitMsg(PsychError_user, "Sorry, this graphics card and driver does not support gamma table setup!");
     #endif
