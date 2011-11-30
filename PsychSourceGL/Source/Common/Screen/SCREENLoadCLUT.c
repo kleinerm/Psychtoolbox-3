@@ -56,7 +56,7 @@ static char seeAlsoString[] = "LoadNormalizedGammaTable ReadNormalizedGammaTable
 
 PsychError SCREENLoadCLUT(void) 
 {
-    int		i, screenNumber, numEntries, inM, inN, inP, start, bits;
+    int		i, step, screenNumber, numEntries, inM, inN, inP, start, bits;
     float 	*outRedTable, *outGreenTable, *outBlueTable, *inRedTable, *inGreenTable, *inBlueTable;
     double	 *inTable, *outTable, maxval;	
     psych_bool     isclutprovided;
@@ -95,36 +95,37 @@ PsychError SCREENLoadCLUT(void)
     // Load and sanity check the input matrix, and convert from float to doubles:
     isclutprovided = PsychAllocInDoubleMatArg(2, FALSE, &inM,  &inN, &inP, &inTable);
 
-    if (isclutprovided) {
-      if((inM > 256 - start) || (inM < 1) || (inN != 3) || (inP != 1))
-        PsychErrorExitMsg(PsychError_user, "The provided CLUT table must have a size between 1 and (256 - startEntry) rows and 3 columns.");
-      
-      inRedTable=PsychMallocTemp(sizeof(float) * 256);
-      inGreenTable=PsychMallocTemp(sizeof(float) * 256);
-      inBlueTable=PsychMallocTemp(sizeof(float) * 256);
+    inRedTable = PsychMallocTemp(sizeof(float) * 256);
+    inGreenTable = PsychMallocTemp(sizeof(float) * 256);
+    inBlueTable = PsychMallocTemp(sizeof(float) * 256);
 
-      // Copy the table into the new inTable array:
-      for(i=0; i<numEntries; i++) {
-	inRedTable[i] = outRedTable[i];
-	inGreenTable[i] = outGreenTable[i];
-	inBlueTable[i] = outBlueTable[i];
-      }
+    // Copy the table, subsample it if it is bigger than 256 slots:
+    if (numEntries < 256) PsychErrorExitMsg(PsychError_system, "Returned hardware gamma table has less than 256 slots?!? I can not handle this!");
+    step = numEntries / 256;
+    for(i = 0; i < 256; i++) {
+      inRedTable[i]   = outRedTable[i * step];
+      inGreenTable[i] = outGreenTable[i * step];
+      inBlueTable[i]  = outBlueTable[i * step];
     }
 
     // Allocate output array:
-    PsychAllocOutDoubleMatArg(1, FALSE, numEntries, 3, 0, &outTable);
+    PsychAllocOutDoubleMatArg(1, FALSE, 256, 3, 0, &outTable);
 
     // Copy read table into output array, scale it by maxval to map range 0.0-1.0 to 0-maxval:
-    for(i=0;i<numEntries;i++){
-      outTable[PsychIndexElementFrom3DArray(numEntries, 3, 0, i, 0, 0)]=(double) outRedTable[i] * maxval;
-      outTable[PsychIndexElementFrom3DArray(numEntries, 3, 0, i, 1, 0)]=(double) outGreenTable[i] * maxval;
-      outTable[PsychIndexElementFrom3DArray(numEntries, 3, 0, i, 2, 0)]=(double) outBlueTable[i] * maxval;
+    for(i = 0; i < 256; i++){
+      outTable[PsychIndexElementFrom3DArray(256, 3, 0, i, 0, 0)]=(double) inRedTable[i] * maxval;
+      outTable[PsychIndexElementFrom3DArray(256, 3, 0, i, 1, 0)]=(double) inGreenTable[i] * maxval;
+      outTable[PsychIndexElementFrom3DArray(256, 3, 0, i, 2, 0)]=(double) inBlueTable[i] * maxval;
     }
 
     if (isclutprovided) {
+      // Sanity check:
+      if((inM > 256 - start) || (inM < 1) || (inN != 3) || (inP != 1))
+        PsychErrorExitMsg(PsychError_user, "The provided CLUT table must have a size between 1 and (256 - startEntry) rows and 3 columns.");
+
       // Now we can overwrite entries 'start' to start+inM of inTable with the user provided table values. We
       // need to scale the users values down from 0-maxval to 0.0-1.0:
-      for(i=start; (i<256) && (i-start < inM); i++){
+      for(i = start; (i < 256) && (i-start < inM); i++){
 	inRedTable[i]   = (float) (inTable[PsychIndexElementFrom3DArray(inM, 3, 0, i-start, 0, 0)] / maxval);
 	inGreenTable[i] = (float) (inTable[PsychIndexElementFrom3DArray(inM, 3, 0, i-start, 1, 0)] / maxval);
 	inBlueTable[i]  = (float) (inTable[PsychIndexElementFrom3DArray(inM, 3, 0, i-start, 2, 0)] / maxval);
@@ -137,9 +138,8 @@ PsychError SCREENLoadCLUT(void)
       }
       
       // Now set the new gamma table
-      PsychLoadNormalizedGammaTable(screenNumber, -1, numEntries, inRedTable, inGreenTable, inBlueTable);
+      PsychLoadNormalizedGammaTable(screenNumber, -1, 256, inRedTable, inGreenTable, inBlueTable);
     }
 
     return(PsychError_none);
 }
-

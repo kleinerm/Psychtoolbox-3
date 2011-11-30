@@ -727,8 +727,6 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
   PsychSetScreenToCrtcId(idx, primaryCRTCIdx, 0);
 
   printf("PTB-INFO: Display '%s' : X-Screen %i : Assigning primary output as %i with RandR-CRTC %i and GPU-CRTC %i.\n", DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC, primaryCRTCIdx);
-  printf("PTB-INFO: You can use the xrandr command line utility to change primary output assignment, and the\n");
-  printf("PTB-INFO: Screen('Preference', 'ScreenToHead', ...); function to fix wrong GPU-CRTC assignments.\n");
 
   // This X-Screen has res->ncrtc physical CRTC's available for exclusive use.
   // These are not available to potential additional X-Screens in a multi-x-screen "ZaphodHead"
