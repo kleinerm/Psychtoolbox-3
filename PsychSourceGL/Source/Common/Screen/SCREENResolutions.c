@@ -133,6 +133,7 @@ PsychError SCREENConfigureDisplay(void)
 		screen = PsychGetXScreenIdForScreen(screenNumber);
 		Window root = RootWindow(dpy, screen);
 		XRRScreenResources *resources = XRRGetScreenResources(dpy, root);
+		if (resources == NULL) PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Feature not supported.");
 		if (outputId < 0 || outputId >= resources->noutput) PsychErrorExitMsg(PsychError_user, "Invalid video output specified!");
 		RROutput output = resources->outputs[outputId];
 
@@ -241,7 +242,7 @@ PsychError SCREENConfigureDisplay(void)
 	// Query current video mode of this output:
 	XRRCrtcInfo *crtc_info = NULL;
 	XRRModeInfo *mode = PsychOSGetModeLine(screenNumber, outputId, &crtc_info);
-	if (NULL == mode) PsychErrorExitMsg(PsychError_user, "Could not query video mode for this output. Invalid outputId?");
+	if (NULL == mode) PsychErrorExitMsg(PsychError_user, "Could not query video mode for this output. Invalid outputId or unsupported function on this system?");
 
 	// Get (x,y) top-left corner of crtc's viewport -- panning info:
 	PsychSetStructArrayDoubleElement("xStart", 0, (double) crtc_info->x, oldResStructArray);

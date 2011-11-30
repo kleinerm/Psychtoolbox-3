@@ -28,16 +28,18 @@
 static char useString[] = "Screen('LoadNormalizedGammaTable', windowPtrOrScreenNumber, table [, loadOnNextFlip] [, physicalDisplay]);";
 static char synopsisString[] = 
 			"Load the gamma table of the specified screen or window 'windowPtrOrScreenNumber'.\n"
-			"You need to pass the new hardware gamma table 'table' as a 256 rows by 3 columns matrix. Each row corresponds to "
+			"You need to pass the new hardware gamma table 'table' as a 'nrows' rows by 3 columns matrix. Each row corresponds to "
 			"a single color index value in the framebuffer and contains the Red- green- and blue values "
 			"to use for output. Column 1 is the red value, column 2 is the green value and column 3 is "
 			"the blue value. Values have to be in range between 0.0 (for dark pixel) and 1.0 (for maximum intensity). "
 			"Example: table(127,1)=0.67 would mean that the red color value 127 should be displayed with 67% of "
 			"the maximum red-gun intensity, table(32, 3)=0.11 means that blue color value 32 should be displayed "
 			"with 11% of the maximum blue-gun intensity. The range of values 0-1 gets mapped to the hardware with "
-			"the accuracy attainable by the hardwares DAC's, typically between 8 and 10 bits. "
+			"the accuracy attainable by the hardwares DAC's, typically between 8 and 10 bits.\n"
+			"The required number of rows 'nrows' is typically 256 for consumer graphics cards.\n"
 			"On OS-X you can also pass 512, 1024, 2048, ..., 65535 rows instead of 256 rows, although this only "
-			"makes sense for a few selected applications, e.g., setup for the Bits++ box. "
+			"makes sense for a few selected applications, e.g., setup for the Bits++ box. On Linux with some "
+			"pro-graphics cards, e.g., some NVidia QuadroFX cards, you can pass more than 256 rows, similar to OS/X.\n"
 			"If you provide the index of an onscreen window as 'ScreenNumber' and you set the (optional) "
 			"flag 'loadOnNextFlip' to 1, then update of the gamma table will not happen immediately, but only at "
 			"execution of the Screen('Flip', windowPtrOrScreenNumber) command. This allows to synchronize change of "
@@ -136,14 +138,16 @@ PsychError SCREENLoadNormalizedGammaTable(void)
         return(PsychError_none);
     }
 
-	#if PSYCH_SYSTEM == PSYCH_OSX
-		// OS-X allows tables with other than 256 slots. It either passes them to hw if in native size, or performs
+	#if PSYCH_SYSTEM != PSYCH_WINDOWS
+		// OS-X and Linux allow tables with other than 256 slots:
+		// OS/X either passes them to hw if in native size, or performs
 		// software interpolation to convert it into native size. We allow any table size with 1 - x slots.
 		// A table size of 1 row will have a special meaning. It interprets the 1 row of the table as gamma formula
 		// min, max, gamma and lets the OS compute a corresponding gamma correction table.
 		// A table size of zero rows will trigger an internal upload of an identity table via byte transfer.
+		// On Linux we need to interpolate ourselves on non-matching table sizes.
 	#else
-		// Windows requires 256 slots, i didn't check for Linux yet, but this is always safe, so...
+		// Windows requires 256 slots:
 		if((inM != 256) && (inM != 0)) {
 			PsychErrorExitMsg(PsychError_user, "The gamma table must have 256 rows.");
 		}
@@ -219,6 +223,13 @@ PsychError SCREENLoadNormalizedGammaTable(void)
             outTable[PsychIndexElementFrom3DArray(numEntries, 3, 0, i, 1, 0)]=(double)outGreenTable[i];
             outTable[PsychIndexElementFrom3DArray(numEntries, 3, 0, i, 2, 0)]=(double)outBlueTable[i];
         }
+
+	// Sanity check for Linux: We accept a size for the input table that matches the native hw size,
+	// as well as the bog-standard size 256 for compatibility, but no other sizes:
+	if ((PSYCH_SYSTEM == PSYCH_LINUX) && ((inM != numEntries) && (inM != 256))) {
+		printf("PTB-ERROR: Provided gamma table has %i rows, but on Linux with this graphics card only 256 rows or %i rows are acceptable.\n", inM, numEntries);
+		PsychErrorExitMsg(PsychError_user, "Provided gamma table has wrong number of rows for this graphics card.");
+	}
     }
      
     //Now set the new gamma table

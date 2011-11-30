@@ -46,7 +46,7 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 
-// To us libpciaccess for GPU device detection and mmaping():
+// To use libpciaccess for GPU device detection and mmaping():
 #include "pciaccess.h"
 #define PCI_CLASS_DISPLAY	0x03
 
@@ -63,6 +63,8 @@
 #define XF86VidModeNumberErrors 0
 #endif
 
+// Maximum number of slots in a gamma table to set/query: This should be plenty.
+#define MAX_GAMMALUT_SIZE 16384
 
 // Event and error base for XRandR extension:
 int xr_event, xr_error;
@@ -1277,7 +1279,7 @@ float PsychGetNominalFramerate(int screenNumber)
   // Modeline with plausible values returned by RandR?
   if (mode && (mode->hTotal > mode->width) && (mode->vTotal > mode->height)) {
     if (PsychPrefStateGet_Verbosity() > 4) {
-      printf ("  %s (0x%x) %6.1fMHz\n",
+      printf ("RandR: %s (0x%x) %6.1fMHz\n",
       mode->name, (int)mode->id,
       (double)mode->dotClock / 1000000.0);
       printf ("        h: width  %4d start %4d end %4d total %4d skew %4d\n",
@@ -1296,13 +1298,17 @@ float PsychGetNominalFramerate(int screenNumber)
   }
   else {
     // No modeline from RandR or invalid modeline. Retry with vidmode extensions:
+    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychGetNominalFramerate: Using XF86VidModeExt fallback path...\n");
+
     if (!XF86VidModeSetClientVersion(displayCGIDs[screenNumber])) {
       // Failed to use VidMode-Extension. We just return a vrefresh of zero.
+      if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychGetNominalFramerate: XF86VidModeExt fallback path failed in init.\n");
       return(0);
     }
 
     if (!XF86VidModeGetModeLine(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), &dot_clock, &mode_line)) {
       // Failed to use VidMode-Extension. We just return a vrefresh of zero.
+      if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychGetNominalFramerate: XF86VidModeExt fallback path failed in modeline query.\n");
       return(0);
     }
   }
@@ -1937,23 +1943,21 @@ void PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx)
 
 /*
     PsychReadNormalizedGammaTable()
-    
-    TO DO: This should probably be changed so that the caller allocates the memory.
-    TO DO: Adopt a naming convention which distinguishes between functions which allocate memory for return variables from those which do not.
-            For example, PsychReadNormalizedGammaTable() vs. PsychGetNormalizedGammaTable().
-    
 */
 void PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntries, float **redTable, float **greenTable, float **blueTable)
 {
   CGDirectDisplayID cgDisplayID;
-  static float localRed[256], localGreen[256], localBlue[256];
+  static float localRed[MAX_GAMMALUT_SIZE], localGreen[MAX_GAMMALUT_SIZE], localBlue[MAX_GAMMALUT_SIZE];
   
-  // The X-Windows hardware LUT has 3 tables for R,G,B, 256 slots each.
-  // Each entry is a 16-bit word with the n most significant bits used for an n-bit DAC.
-  psych_uint16	RTable[256];
-  psych_uint16	GTable[256];
-  psych_uint16	BTable[256];
-  int i;        
+  // The X-Windows hardware LUT has 3 tables for R,G,B.
+  // Each entry is a 16-bit word with the n most significant bits used for an n-bit DAC or display encoder:
+  psych_uint16	RTable[MAX_GAMMALUT_SIZE];
+  psych_uint16	GTable[MAX_GAMMALUT_SIZE];
+  psych_uint16	BTable[MAX_GAMMALUT_SIZE];
+  int i, n;
+
+  // Initial assumption: Failed.
+  n = 0;
 
   // Query OS for gamma table:
   PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
@@ -1969,50 +1973,89 @@ void PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntri
     RRCrtc crtc = res->crtcs[outputId];
     XRRCrtcGamma *lut = XRRGetCrtcGamma(cgDisplayID, crtc);
 
-    if ((lut->size != 256) && (PsychPrefStateGet_Verbosity() > 1)) {
-      printf("PTB-WARNING: ReadNormalizedGammatable: Hardware gamma table doesn't have required 256 slots, but %i slots! Returned LUT's may be wrong!\n", lut->size);
+    n = (lut) ? lut->size : 0;
+
+    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychReadNormalizedGammaTable: Provided RandR HW-LUT size is n=%i.\n", n);
+
+    // Gamma lut query successfull?
+    if (n > 0) {
+      if ((n > MAX_GAMMALUT_SIZE) && (PsychPrefStateGet_Verbosity() > 1)) {
+        printf("PTB-WARNING: ReadNormalizedGammatable: Hardware gamma table size of %i slots exceeds our maximum of %i slots. Clamping returned size to %i slots. Returned LUT's may be wrong!\n", n, MAX_GAMMALUT_SIZE, MAX_GAMMALUT_SIZE);
+      }
+
+      // Clamp for safety:
+      n = (n <= MAX_GAMMALUT_SIZE) ? n : MAX_GAMMALUT_SIZE;
+
+      // Convert tables: Map 16-bit values into 0-1 normalized floats:
+      for (i = 0; i < n; i++) localRed[i]   = ((float) lut->red[i]) / 65535.0f;
+      for (i = 0; i < n; i++) localGreen[i] = ((float) lut->green[i]) / 65535.0f;
+      for (i = 0; i < n; i++) localBlue[i]  = ((float) lut->blue[i]) / 65535.0f;
     }
 
-    // Convert tables:Map 16-bit values into 0-1 normalized floats:
-    for (i=0; i<256; i++) localRed[i]   = ((float) lut->red[i]) / 65535.0f;
-    for (i=0; i<256; i++) localGreen[i] = ((float) lut->green[i]) / 65535.0f;
-    for (i=0; i<256; i++) localBlue[i]  = ((float) lut->blue[i]) / 65535.0f;
-    XRRFreeGamma(lut);
+    if (lut) XRRFreeGamma(lut); 
   }
-  else {
-    // Use old-fashioned VidmodeExt path: No control over which output is queried on multi-display setups:
+
+  // Do we need the fallback path with XVidmodeExtension on systems which don't support RandR-1.2?
+  // This applies to, e.g., the NVidia binary blob in the year 2011 (Sadly, not a joke):
+  if (n <= 0) {
+    // Use old-fashioned VidmodeExt path: No control over which output is queried on multi-display setups,
+    // except in a ZaphodHead configuration where each display corresponds to a separate x-screen:
     #ifdef USE_VIDMODEEXTS
-    XF86VidModeGetGammaRamp(cgDisplayID, PsychGetXScreenIdForScreen(screenNumber), 256, (unsigned short*) RTable, (unsigned short*) GTable, (unsigned short*) BTable);
+
+    // Query size of to-be-returned gamma table:
+    XF86VidModeGetGammaRampSize(cgDisplayID, PsychGetXScreenIdForScreen(screenNumber), &n);
+
+    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychReadNormalizedGammaTable: Provided XF86VidMode HW-LUT size is n=%i.\n", n);
+
+    // Make sure we stay within our limits:
+    if (n > MAX_GAMMALUT_SIZE) {
+      printf("PTB-ERROR: ReadNormalizedGammatable: Hardware gamma table size of %i slots exceeds our maximum of %i slots! Gamma table query failed!\n", n, MAX_GAMMALUT_SIZE);
+      PsychErrorExitMsg(PsychError_user, "Gamma table query failed due to size mismatch. Please report this on the Psychtoolbox forum.");
+    }
+
+    // Make sure this works at all:
+    if (n <= 0) PsychErrorExitMsg(PsychError_user, "Gamma table query failed while trying XF86VidModeExtension fallback path.");
+
+    // Retrieve gamma table with n slots:
+    XF86VidModeGetGammaRamp(cgDisplayID, PsychGetXScreenIdForScreen(screenNumber), n, (unsigned short*) RTable, (unsigned short*) GTable, (unsigned short*) BTable);
+
+    #else
+    PsychErrorExitMsg(PsychError_user, "Sorry, this graphics card and driver does not support gamma table queries!");
     #endif
 
-    // Convert tables:Map 16-bit values into 0-1 normalized floats:
-    for (i=0; i<256; i++) localRed[i]   = ((float) RTable[i]) / 65535.0f;
-    for (i=0; i<256; i++) localGreen[i] = ((float) GTable[i]) / 65535.0f;
-    for (i=0; i<256; i++) localBlue[i]  = ((float) BTable[i]) / 65535.0f;
+    // Convert tables: Map 16-bit values into 0-1 normalized floats:
+    for (i = 0; i < n; i++) localRed[i]   = ((float) RTable[i]) / 65535.0f;
+    for (i = 0; i < n; i++) localGreen[i] = ((float) GTable[i]) / 65535.0f;
+    for (i = 0; i < n; i++) localBlue[i]  = ((float) BTable[i]) / 65535.0f;
   }
 
   // Assign output lut's:
   *redTable=localRed; *greenTable=localGreen; *blueTable=localBlue;
 
-  // The LUT's always have 256 slots for the 8-bit framebuffer:
-  *numEntries= 256;
+  // Assign size of LUT's::
+  *numEntries = n;
 
   return;
 }
 
 unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int numEntries, float *redTable, float *greenTable, float *blueTable)
 {
-  CGDirectDisplayID	cgDisplayID;
-  int     i, j;
-  static psych_uint16	RTable[256];
-  static psych_uint16	GTable[256];
-  static psych_uint16	BTable[256];
+  CGDirectDisplayID cgDisplayID;
+  int i, j, n;
+  RRCrtc crtc;
+
+  static psych_uint16	RTable[MAX_GAMMALUT_SIZE];
+  static psych_uint16	GTable[MAX_GAMMALUT_SIZE];
+  static psych_uint16	BTable[MAX_GAMMALUT_SIZE];
   
-  // The X-Windows hardware LUT has 3 tables for R,G,B, 256 slots each.
-  // Each entry is a 16-bit word with the n most significant bits used for an n-bit DAC.
+  // The X-Windows hardware LUT has 3 tables for R,G,B.
+  // Each entry is a 16-bit word with the n most significant bits used for an n-bit DAC or display encoder.
   
   // Set new gammaTable:
   PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
+
+  // Initial assumption: Failure.
+  n = 0;
 
   if (has_xrandr_1_2) {
     // Use RandR V 1.2 for per-crtc setup:
@@ -2025,52 +2068,81 @@ unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int n
 	j = PsychLoadNormalizedGammaTable(screenNumber, i, numEntries, redTable, greenTable, blueTable);
       }
 
-      // Done setting all crtc's. Return success:
-      return(1);
+      // Done trying to set all crtc's. Return status:
+      return((unsigned int) j);
     }
 
-    // No: Only load a specific crtc for output 'outputId':
+    // No, or recursive self-call: Load a specific crtc for output 'outputId':
     XRRScreenResources *res = displayX11ScreenResources[screenNumber];
 
     if (outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid output index provided! No such output for this screen!");
     outputId = PsychScreenToHead(screenNumber, outputId);
     if (outputId >= res->ncrtc || outputId < 0) PsychErrorExitMsg(PsychError_user, "Invalid output index provided! No such output for this screen!");
 
-    RRCrtc crtc = res->crtcs[outputId];
+    crtc = res->crtcs[outputId];
 
     // Get required size of gamma table:
-    j = XRRGetCrtcGammaSize(cgDisplayID, crtc);
-    if (numEntries != j) {
-      printf("PTB-ERROR: Provided gamma table has %i slots, but graphics card requires %i slots!\n", numEntries, j);
-      PsychErrorExitMsg(PsychError_user, "Loadable hardware gamma table has wrong number of slots!");
+    n = XRRGetCrtcGammaSize(cgDisplayID, crtc);
+    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychLoadNormalizedGammaTable: Required RandR HW-LUT size is n=%i.\n", n);
+  }
+
+  // RandR 1.2 supported and has ability to set LUT's?
+  if (has_xrandr_1_2 && (n > 0)) {
+    if (numEntries != n) {
+      printf("PTB-ERROR: Provided gamma table has %i slots, but graphics card requires %i slots!\n", numEntries, n);
+      PsychErrorExitMsg(PsychError_user, "Provided gamma table has wrong number of slots!");
     }
 
     // Allocate table of appropriate size:
-    XRRCrtcGamma *lut = XRRAllocGamma(numEntries);
+    XRRCrtcGamma *lut = XRRAllocGamma(n);
 
-    // Convert tables:Map 16-bit values into 0-1 normalized floats:
-    j = lut->size;
-    for (i=0; i<j; i++) lut->red[i]   = (psych_uint16) (redTable[i]   * 65535.0f + 0.5f);
-    for (i=0; i<j; i++) lut->green[i] = (psych_uint16) (greenTable[i] * 65535.0f + 0.5f);
-    for (i=0; i<j; i++) lut->blue[i]  = (psych_uint16) (blueTable[i]  * 65535.0f + 0.5f);
+    // Convert tables: Map 16-bit values into 0-1 normalized floats:
+    n = lut->size;
+    for (i = 0; i < n; i++) lut->red[i]   = (psych_uint16) (redTable[i]   * 65535.0f + 0.5f);
+    for (i = 0; i < n; i++) lut->green[i] = (psych_uint16) (greenTable[i] * 65535.0f + 0.5f);
+    for (i = 0; i < n; i++) lut->blue[i]  = (psych_uint16) (blueTable[i]  * 65535.0f + 0.5f);
 
     // Assign to crtc:
     XRRSetCrtcGamma(cgDisplayID, crtc, lut);
 
-    // Release:
+    // Release lut:
     XRRFreeGamma(lut);
   }
-  else {
-    // Use old-fashioned VidmodeExt path: No control over which output is setup on multi-display setups:
-    if (numEntries != 256) PsychErrorExitMsg(PsychError_user, "Loadable hardware gamma tables must have 256 slots!");    
 
-    // Convert input table to X11 specific gammaTable:
-    for (i=0; i<256; i++) RTable[i] = (int)(redTable[i]   * 65535.0f + 0.5f);
-    for (i=0; i<256; i++) GTable[i] = (int)(greenTable[i] * 65535.0f + 0.5f);
-    for (i=0; i<256; i++) BTable[i] = (int)(blueTable[i]  * 65535.0f + 0.5f);
+  // RandR unsupported or failed?
+  if (n <= 0) {
+    // Use old-fashioned VidmodeExt fallback-path: No control over which output is setup on multi-display setups,
+    // except in a ZaphodHead configuration where each display corresponds to a separate x-screen:
+    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychLoadNormalizedGammaTable: Using XF86VidModeExt fallback path...\n");
 
     #ifdef USE_VIDMODEEXTS
-    XF86VidModeSetGammaRamp(cgDisplayID, PsychGetXScreenIdForScreen(screenNumber), 256, (unsigned short*) RTable, (unsigned short*) GTable, (unsigned short*) BTable);
+
+    // Query size of to-be-set hw-gamma table:
+    XF86VidModeGetGammaRampSize(cgDisplayID, PsychGetXScreenIdForScreen(screenNumber), &n);
+    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychLoadNormalizedGammaTable: Required HW-LUT size is n=%i.\n", n);
+
+    // Make sure we stay within our limits:
+    if (n > MAX_GAMMALUT_SIZE) {
+      printf("PTB-ERROR: LoadNormalizedGammatable: Hardware gamma table size of %i slots exceeds our maximum of %i slots! Gamma table setup failed!\n", n, MAX_GAMMALUT_SIZE);
+      PsychErrorExitMsg(PsychError_user, "Gamma table setup failed due to size mismatch. Please report this on the Psychtoolbox forum.");
+    }
+
+    // Make sure this works at all:
+    if (n <= 0) PsychErrorExitMsg(PsychError_user, "Gamma table setup failed while trying XF86VidModeExtension fallback path.");
+
+    if (numEntries != n) {
+      printf("PTB-ERROR: Provided gamma table has %i slots, but graphics card requires %i slots!\n", numEntries, n);
+      PsychErrorExitMsg(PsychError_user, "Provided gamma table has wrong number of slots!");
+    }
+
+    // Convert input table to X11 specific gammaTable:
+    for (i = 0; i < n; i++) RTable[i] = (int)(redTable[i]   * 65535.0f + 0.5f);
+    for (i = 0; i < n; i++) GTable[i] = (int)(greenTable[i] * 65535.0f + 0.5f);
+    for (i = 0; i < n; i++) BTable[i] = (int)(blueTable[i]  * 65535.0f + 0.5f);
+
+    XF86VidModeSetGammaRamp(cgDisplayID, PsychGetXScreenIdForScreen(screenNumber), n, (unsigned short*) RTable, (unsigned short*) GTable, (unsigned short*) BTable);
+    #else
+    PsychErrorExitMsg(PsychError_user, "Sorry, this graphics card and driver does not support gamma table setup!");
     #endif
   }
 
