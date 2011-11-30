@@ -136,7 +136,7 @@ PsychError PsychHIDCleanup(void)
 	#if PSYCH_SYSTEM == PSYCH_OSX
 	// Via Apple HIDUtils:
         if(HIDHaveDeviceList()) HIDReleaseDeviceList();
-	#else        
+	#else
         // Then our high-level list:
         while (hid_devices) {
             // Get current device record to release:
@@ -155,16 +155,13 @@ PsychError PsychHIDCleanup(void)
         // Reset last hid device for error handling:
         last_hid_device = NULL;
         
-        // Last the HIDLIB low-level list: This will also trigger
-        // HIDAPI shutdown and cleanup:
+        // Release the HIDLIB low-level device list:
         if (hidlib_devices) hid_free_enumeration(hidlib_devices);
-        // TODO FIXME: Add this hid_exit() call to Linux as well, once we've updated Linux HIDLIB
-        // to latest state:
-        #if PSYCH_SYSTEM == PSYCH_WINDOWS
-        if (hidlib_devices) hid_exit();
-        #endif
-
         hidlib_devices = NULL;
+
+	// Shutdown HIDAPI:
+        hid_exit();
+
 	#endif
     
 	// Close and release all open generic USB devices:
