@@ -5,7 +5,7 @@ function DownloadAdditionsForNeuroDebian(targetdirectory, flavor)
 % This function must be called after you have installed octave-psychtoolbox-3
 % properly from the NeuroDebian repository (http://neuro.debian.net).
 %
-% It needs subversion to be installed on your machine (sudo apt-get install subversion).
+% It needs Subversion to be installed on your machine (sudo apt-get install subversion).
 %
 % Then you can call this function from within Matlab, providing the full path
 % to a directory. The function will create a new folder PsychtoolboxAddOns inside
@@ -26,7 +26,8 @@ function DownloadAdditionsForNeuroDebian(targetdirectory, flavor)
 
 % History:
 % 29.09.2011  mk  Written.
-%
+% 30.11.2011  mk  Bugfix: Get from trunk, not beta.
+%                 Bugfix: On Linux + Octave, get Datapixx.mex as well.
 
 % NeuroDebian package installed?
 if ~exist('/usr/share/octave/site/m/psychtoolbox-3/', 'dir')
@@ -225,7 +226,7 @@ if ~IsOctave
   checkoutcommand = [svnpath 'svn export --force -N ' targetRevision ' http://psychtoolbox-3.googlecode.com/svn/' flavor '/Psychtoolbox/' sourcefolder ' ' pt];
 else
   % Additional Octave mex files:
-  % Only Eyelink so far...
+  % Get Eyelink:
   if IsLinux(1)
     sourcefolder = ['PsychBasic/Octave3LinuxFiles64/Eyelink.mex'];
   else
@@ -240,6 +241,20 @@ else
 
   % Build final checkout command string:
   checkoutcommand = [svnpath 'svn export --force -N ' targetRevision ' http://psychtoolbox-3.googlecode.com/svn/' flavor '/Psychtoolbox/' sourcefolder ' ' pt];
+  checkoutcommand = [checkoutcommand ' ; '];
+
+  % Get Datapixx:
+  if IsLinux(1)
+    sourcefolder = ['PsychBasic/Octave3LinuxFiles64/Datapixx.mex'];
+  else
+    sourcefolder = ['PsychBasic/Octave3LinuxFiles/Datapixx.mex'];
+  end
+
+  pt = strcat('"',p,'/Datapixx.mex"');
+
+  % Build final checkout command string:
+  checkoutcommand = [checkoutcommand ' ' svnpath 'svn export --force -N ' targetRevision ' http://psychtoolbox-3.googlecode.com/svn/' flavor '/Psychtoolbox/' sourcefolder ' ' pt];
+  checkoutcommand = [checkoutcommand ' ; '];
 end
 
 fprintf('The following EXPORT command asks the Subversion client to \ndownload the few additional bits of Psychtoolbox:\n');
