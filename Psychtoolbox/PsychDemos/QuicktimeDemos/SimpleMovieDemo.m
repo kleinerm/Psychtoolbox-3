@@ -1,7 +1,7 @@
-function SimpleMovieDemo(moviename)
+function SimpleMovieDemo(moviename, windowrect)
 % Most simplistic demo on how to play a movie.
 %
-% SimpleMovieDemo(moviename);
+% SimpleMovieDemo(moviename [, windowrect=[]]);
 %
 % This bare-bones demo plays a single movie whose name has to be provided -
 % including the full filesystem path to the movie - exactly once, then
@@ -22,9 +22,13 @@ function SimpleMovieDemo(moviename)
 % Check if Psychtoolbox is properly installed:
 AssertOpenGL;
 
-if nargin < 1
+if nargin < 1 || isempty(moviename)
     % No moviename given: Use our default movie:
     moviename = [ PsychtoolboxRoot 'PsychDemos/QuicktimeDemos/DualDiscs.mov' ];
+end
+
+if nargin < 2 || isempty(windowrect)
+    windowrect = [];
 end
 
 % Wait until user releases keys on keyboard:
@@ -36,8 +40,8 @@ screenid = max(Screen('Screens'));
 
 try
 
-% Open fullscreen window on screen, with black [0] background color:
-win = Screen('OpenWindow', screenid, 0);
+% Open 'windowrect' sized window on screen, with black [0] background color:
+win = Screen('OpenWindow', screenid, 0, windowrect);
 
 % Open movie file:
 movie = Screen('OpenMovie', win, moviename);
