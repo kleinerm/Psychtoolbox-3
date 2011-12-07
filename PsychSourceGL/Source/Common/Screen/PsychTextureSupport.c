@@ -444,7 +444,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 				glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_LUMINANCE_SIZE, &gl_lbits);
 
 				// Special override for YCBCR textures which return all component bits as zero:
-				if (glinternalFormat == GL_YCBCR_MESA || glinternalFormat == GL_YCBCR_422_APPLE) gl_rbits = 8;
+				if (glinternalFormat == GL_YCBCR_MESA || win->textureexternalformat == GL_YCBCR_422_APPLE) gl_rbits = 8;
 
 				// Store override per-component bit-depths:
 				win->bpc = (int) ((gl_rbits > gl_lbits) ? gl_rbits : gl_lbits); 
@@ -544,7 +544,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 						PsychErrorExitMsg(PsychError_user, "Texture creation failed, most likely due to unsupported precision or insufficient free memory.");
 					}
 					else {
-						if ((glerr == GL_INVALID_ENUM) && (glinternalFormat == GL_YCBCR_MESA || glinternalFormat == GL_YCBCR_422_APPLE)) {
+						if ((glerr == GL_INVALID_ENUM) && (glinternalFormat == GL_YCBCR_MESA || win->textureexternalformat == GL_YCBCR_422_APPLE)) {
 							printf("PTB-ERROR: Tried to use a memory-optimized YCBYCR texture, but your GPU + graphics driver doesn't support this.\n");
 							printf("PTB-ERROR: You'll need to update your graphics driver and/or upgrade your graphics card, or change your script code\n");
 							printf("PTB-ERROR: to avoid this special unsupported texture format.\n");

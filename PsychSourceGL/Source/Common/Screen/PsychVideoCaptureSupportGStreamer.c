@@ -3449,7 +3449,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 		    out_texture->textureinternalformat = GL_YCBCR_MESA;
 		    out_texture->textureexternalformat = GL_YCBCR_MESA;
 		    #else
-		    out_texture->textureinternalformat = GL_YCBCR_422_APPLE;
+		    out_texture->textureinternalformat = GL_RGB;
 		    out_texture->textureexternalformat = GL_YCBCR_422_APPLE;
 		    #endif
 		    out_texture->textureexternaltype   = GL_UNSIGNED_SHORT_8_8_MESA;

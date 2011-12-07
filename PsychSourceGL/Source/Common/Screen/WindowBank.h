@@ -92,6 +92,7 @@ TO DO:
 #define kPsychGfxCapNeedsUnsignedByteRGBATextureUpload 8192		// Hw requires use of GL_UNSIGNED_BYTE instead of GL_UNSIGNED_INT_8_8_8_8_REV for optimal RGBA8 texture upload.
 #define kPsychGfxCapSupportsOpenML 16384	// System supports OML_sync_control extension of OpenML for precisely timed bufferswaps and stimulus onset timestamping.
 #define kPsychGfxCapSNTex16		32768		// Hw supports 16 bit signed normalized integer textures.
+#define kPsychGfxCapUYVYTexture         65536		// Hw supports UYVY encoded textures. Used for GStreamer video capture/playback engine optimizations.
 
 // Definition of flags for imagingMode of Image processing pipeline.
 // These are used internally, but need to be exposed to Matlab as well.

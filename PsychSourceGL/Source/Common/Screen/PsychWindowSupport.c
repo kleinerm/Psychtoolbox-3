@@ -4946,7 +4946,12 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 				glewIsSupported("GL_EXT_framebuffer_object"),glewIsSupported("GL_ATI_texture_float"), glewIsSupported("GL_ARB_texture_float"), (char*) glGetString(GL_VENDOR), (char*) glGetString(GL_RENDERER));
 		printf("Indicator variables: maxcolorattachments = %i, maxrectangletexturesize = %i, maxnativealuinstructions = %i.\n", maxcolattachments, maxtexsize, maxaluinst);
 	}
-	
+
+	if (glewIsSupported("GL_MESA_ycbcr_texture") || glewIsSupported("GL_APPLE_ycbcr_422")) {
+		windowRecord->gfxcaps |= kPsychGfxCapUYVYTexture;
+		if (verbose) printf("PTB-DEBUG: GPU supports UYVY - YCrCb texture formats for optimized handling of video content.\n");
+	}
+
 	// Is this a GPU with known broken drivers that yield miserable texture creation performance
 	// for RGBA8 textures when using the standard optimized settings?
 	// As far as we know (June 2008), ATI hardware under MS-Windows and Linux has this driver bugs,
