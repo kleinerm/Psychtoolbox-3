@@ -119,7 +119,7 @@ PsychError SCREENGetMovieImage(void)
         }
         else if (rc==0 && waitForImage != 0) {
             // No new texture available yet. Just sleep a bit and then retry...
-            PsychWaitIntervalSeconds(0.005);
+            PsychYieldIntervalSeconds(0.001);
         }
     }
 
