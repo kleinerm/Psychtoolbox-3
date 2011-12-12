@@ -69,41 +69,37 @@ static CVDisplayLinkRef cvDisplayLink[kPsychMaxPossibleDisplays] = { NULL };
 static int screenRefCount[kPsychMaxPossibleDisplays] = { 0 };
 
 // Display link callback: Needed so we can actually start the display link:
+// Gets apparently called from a separate high-priority thread, close to vblank
+// time. "inNow" is the timestamp of last vblank.
 static CVReturn PsychCVDisplayLinkOutputCallback(CVDisplayLinkRef displayLink, const CVTimeStamp *inNow, const CVTimeStamp *inOutputTime,
                                                  CVOptionFlags flagsIn, CVOptionFlags *flagsOut, void *displayLinkContext)
 {
+    double tVBlank;
+    CVTimeStamp tVbl;
+
+    double tHost;
+    
     // This is a pure dummy implementation which does nothing but return a success return code
     // to keep the CVDisplayLink thread running happily.
 
     // Low-level timestamp debugging requested?
     if (PsychPrefStateGet_Verbosity() > 19) {
-        // Compare CV timestamps against host time: They drift horribly against each other...
-        double tNow = (double) inNow->videoTime / (double) inNow->videoTimeScale;
-        double tPresent = (double) inOutputTime->videoTime / (double) inOutputTime->videoTimeScale;
-        double tHost;
-        PsychGetAdjustedPrecisionTimerSeconds(&tHost);
-        printf("CVCallback: %i : tNow = %lf secs, tPresent = %lf secs. tHost - tNow = %lf secs.\n", (int) displayLinkContext, tNow, tPresent, tHost - tNow);
+        // Translate CoreVideo inNow timestamp with time of last vbl from gpu time
+        // to host system time, aka our GetSecs() timebase:
+        memset(&tVbl, 0, sizeof(tVbl));
+        tVbl.version = 0;
+        tVbl.flags = kCVTimeStampHostTimeValid;
+        CVDisplayLinkTranslateTime(displayLink, inNow, &tVbl);
+        tVBlank = (double) tVbl.hostTime / (double) 1000000000;
 
-        // What to expect: Horrible drift between our GetSecs() timebase - the Mach host clock -
-        // and the timestamps of CoreVideo, with no known way to synchronize or map between
-        // them in a useful fashion. In other words: These timestamps are utterly useless for
-        // Psychtoolbox!
-        //
-        // Apparently CoreVideo uses a different physical clock timebase than the rest of OS/X.
-        // Could be the GPU's video clock. While the Mach timebase runs at 1 Ghz, the CV timebase
-        // on the tested MacbookPro with ATI Radeon Mobility X1600 runs at 120 Mhz. Both drift against
-        // each other with a rate of about 1 msec per second.
-        //
-        // Afaics we can't use inNow to compute a remapping to host time, because inNow does not seem
-        // to represent the current system time in the CV timebase, but the timestamp of the last video
-        // refresh in the CV timebase. Also inNow in one cycle is exactly identical to inOutputTime from
-        // a previous cycle, which probably means they are not calculated independently, but one is a
-        // cached copy of the other (seriously, wtf?!?).
-        //
-        // Conclusion: Unless i miss something, we can't use CoreVideo timestamping for us as a reliable
-        // source of stimulus onset timestamps. We can only hope that running a pointless "no-op" CoreVideo
-        // displaylink thread per display screen somehow keeps vertical blank interrupts alive and thereby
-        // our old VBL-IRQ timestamping mechanism working on 10.7 Lion and later. Testing will show...
+        // Compare CV timestamps against host time for correctness check. We wait 4 msecs,
+        // then take tHost and hopefully tHost will be at least 4 msecs later than the
+        // computed vblank timestamp tVBlank:
+        PsychWaitIntervalSeconds(0.004);
+        PsychGetAdjustedPrecisionTimerSeconds(&tHost);
+        
+        // Caution: Don't run from Matlab GUI! This printf will crash Matlab otherwise.
+        printf("CVCallback: %i : tHost = %lf secs, tVBlank = %lf secs. tHost - tVBlank = %lf secs.\n", (int) displayLinkContext, tHost, tVBlank, tHost - tVBlank);
     }
 
     return(kCVReturnSuccess);
