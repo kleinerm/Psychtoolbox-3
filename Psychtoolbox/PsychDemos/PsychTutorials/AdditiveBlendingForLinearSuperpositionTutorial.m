@@ -436,6 +436,7 @@ try
         Screen('DrawTexture', w, tex, [], [], [], [], 0.5);
         i=i+rotate;
         [x,y,buttons]=GetMouse(w);
+        [x,y] = RemapMouse(w, 'AllViews', x, y);
         if any(buttons)
             if buttons(1)
                 i=i+0.1;

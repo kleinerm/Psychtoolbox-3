@@ -57,6 +57,9 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   If 'startright' is zero, then even columns are taken from left buffer. If
 %   'startright' is one, then even columns are taken from the right buffer.
 %
+%   You can use the RemapMouse() function to correct GetMouse() positions
+%   for potential geometric distortions introduced by this function.
+%
 %
 % * 'InterleavedLineStereo' Ask for stereo display in interleaved mode.
 %   The output image is composed from the lefteye and righteye stereo
@@ -73,6 +76,9 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %   If 'startright' is zero, then even lines are taken from left buffer. If
 %   'startright' is one, then even lines are taken from the right buffer.
+%
+%   You can use the RemapMouse() function to correct GetMouse() positions
+%   for potential geometric distortions introduced by this function.%
 %
 %
 % * 'UseVirtualFramebuffer' Ask for support of virtual framebuffer, even if
@@ -430,6 +436,10 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   See the section below about 'EnableBits++Color++Output' for the meaning
 %   of the mandatory "mode" parameter.
 %
+%   You can use the RemapMouse() function to correct GetMouse() positions
+%   for potential geometric distortions introduced by this function for
+%   "mode" zero.
+%
 %
 % * 'EnableBits++Bits++Output' Setup Psychtoolbox for Bits++ mode of the
 %   Cambridge Research Systems Bits++ box. This loads the graphics
@@ -522,6 +532,10 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   be twice as wide as its height. Circles or squares will turn into
 %   horizontal ellipses or rectangles etc. You'll need to do extra work in
 %   your code if you want to preserve aspect ratio properly.
+%
+%   You can use the RemapMouse() function to correct GetMouse() positions
+%   for potential geometric distortions introduced by this function for
+%   "mode" zero.
 %
 %   Example: A fine vertical grid with alternating vertical white and black
 %   lines would display as expected, but each white or black stripe would be
@@ -666,6 +680,9 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', whichChannel, 'FlipHorizontal');
 %   Usage: PsychImaging('AddTask', whichChannel, 'FlipVertical');
 %
+%   You can use the RemapMouse() function to correct GetMouse() positions
+%   for potential geometric distortions introduced by this function.
+%
 %
 % * 'GeometryCorrection' Apply some geometric warping operation during
 %   rendering of the final stimulus image to correct for geometric
@@ -689,6 +706,14 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %   The optional 'arg1', 'arg2', ..., are optional parameters whose
 %   meaning depends on the calibration method in use.
+%
+%   Use of geometry correction will break the 1:1 correspondence between
+%   framebuffer pixel locations (x,y) and the mouse cursor position, ie. a
+%   mouse cursor positioned at display position (x,y) will be no longer
+%   pointing to framebuffer pixel (x,y). If you want to know which
+%   pixel in your original stimulus image corresponds to a specific
+%   physical display pixel (or mouse cursor position), use the function
+%   RemapMouse() to perform the neccessary coordinate transformation.
 %
 %
 % * More actions will be supported in the future. If you can think of an
@@ -802,6 +827,8 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 % 03.04.2011  Add support for 'EnableCLUTMapping' for old fashioned clut animation. (MK)
 %
+% 26.12.2011  Add support for ptb_geometry_inverseWarpMap inverse mapping
+%             of geometry corrected displays. See RemapMouse.m. (MK)
 
 persistent configphase_active;
 persistent reqs;
@@ -1751,6 +1778,7 @@ return;
 function rc = PostConfiguration(reqs, win, clearcolor)
 global ptb_outputformatter_icmAware;
 global GL;
+global ptb_geometry_inverseWarpMap;
 
 if isempty(GL)
     % Perform minimal OpenGL init, so we can call OpenGL commands and use
@@ -1779,6 +1807,16 @@ rightLRFlip = 0;
 
 % Stereomode?
 winfo = Screen('GetWindowInfo', win);
+[winwidth, winheight] = Screen('Windowsize', win);
+
+% Setup inverse warp map matrices for this window handle:
+ptb_geometry_inverseWarpMap{win} = [];
+ptb_geometry_inverseWarpMap{win}.gx = 1;
+ptb_geometry_inverseWarpMap{win}.gy = 1;
+ptb_geometry_inverseWarpMap{win}.mx = winwidth;
+ptb_geometry_inverseWarpMap{win}.my = winheight;
+
+%if ismember(winfo.StereoMode, [2,3])
 
 % --- First action in pipe is a horizontal- or vertical flip, if any ---
 
@@ -1833,11 +1871,17 @@ if leftLRFlip || leftUDFlip
     if leftLRFlip
         sx = -1;
         ox = RectWidth(Screen('Rect', win));
+        hv = winwidth-1:-1:0;
+    else
+        hv = 0:winwidth-1;
     end
 
     if leftUDFlip
         sy = -1;
         oy = RectHeight(Screen('Rect', win));
+        vv = winheight-1:-1:0;
+    else
+        vv = 0:winheight-1;
     end
 
     % Enable left imaging chain:
@@ -1845,6 +1889,12 @@ if leftLRFlip || leftUDFlip
     % Append blitter for LR/UD flip:
     Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:IdentityBlit', sprintf('Offset:%i:%i:Scaling:%f:%f', ox, oy, sx, sy));
     leftcount = leftcount + 1;
+
+    clear curmap;
+    [xg,yg] = meshgrid(hv, vv);
+    curmap(:,:,1) = xg;
+    curmap(:,:,2) = yg;    
+    ptb_geometry_inverseWarpMap{win}.(reqs{row, 1}) = int16(curmap);
 end
 
 if winfo.StereoMode > 0
@@ -1862,11 +1912,17 @@ if winfo.StereoMode > 0
         if rightLRFlip
             sx = -1;
             ox = RectWidth(Screen('Rect', win));
+            hv = winwidth-1:-1:0;
+        else
+            hv = 0:winwidth-1;
         end
 
         if rightUDFlip
             sy = -1;
             oy = RectHeight(Screen('Rect', win));
+            vv = winheight-1:-1:0;
+        else
+            vv = 0:winheight-1;
         end
 
         % Enable right imaging chain:
@@ -1874,6 +1930,12 @@ if winfo.StereoMode > 0
         % Append blitter for LR/UD flip:
         Screen('HookFunction', win, 'AppendBuiltin', 'StereoRightCompositingBlit', 'Builtin:IdentityBlit', sprintf('Offset:%i:%i:Scaling:%f:%f', ox, oy, sx, sy));
         rightcount = rightcount + 1;
+
+        clear curmap;
+        [xg,yg] = meshgrid(hv, vv);
+        curmap(:,:,1) = xg;
+        curmap(:,:,2) = yg;
+        ptb_geometry_inverseWarpMap{win}.(reqs{row, 1}) = int16(curmap);
     end
 end
 
@@ -2140,8 +2202,9 @@ if ~isempty(floc)
             
             % Is it a display list handle?
             if ~isempty(warpstruct.gld)
-                % This must be a display list handle for pure display list
-                % blitting:
+                % This must be a display list handle for display list
+                % blitting, potentially with an additional GLSL shader
+                % attached:
                 gld = warpstruct.gld;
                 if ~glIsList(gld)
                     % Game over:
@@ -2154,9 +2217,95 @@ if ~isempty(floc)
                 else
                     glsl = 0;
                 end
-                
+
                 % Ok, 'gld' should contain a valid OpenGL display list for
-                % geometry correction. Attach proper blitter to proper chain:
+                % geometry correction.
+
+                % Before we setup the image warping ops for real in the pipeline, we
+                % do a "cold run" to compute a 2D reverse lookup table that allows to
+                % map warped 2D screen positions back to their originating pre-warp pixels.
+                % This is useful, e.g., if one wants to map 2D mouse click
+                % positions on the geometry corrected display back to the
+                % originating pixel positions in the uncorrected stimulus
+                % image.
+                %
+                % This works by creating a float texture whose texels
+                % color-code their spatial (x,y) locations in the R and G
+                % channels, then warping this texture with the same
+                % operations that the GPU will apply to the stimulus
+                % images, then reading back the warp-blitted texture into a
+                % 2-layer 2D matrix, where layer 1 (former red channel)
+                % encodes originating x-position of each "pixel", layer 2
+                % encodes y-position, Undefined positions are mapped to (0,0):
+
+                % At least 32 bpc float or 16 bit snorm textures/fbo's
+                % supported? Otherwise this is a no-go:
+                if (winfo.GLSupportsTexturesUpToBpc >= 32) || ~isempty(strfind(glGetString(GL.EXTENSIONS), '_texture_snorm'))
+                    % Yes.
+                    
+                    % Check if previous code already defined some inverse
+                    % mapping:
+                    if ~isempty(ptb_geometry_inverseWarpMap{win}) && isfield(ptb_geometry_inverseWarpMap{win}, reqs{row, 1})
+                        % Yes: Extract it and use it as starting point for
+                        % geometry inverse mapping:
+                        premap = double(ptb_geometry_inverseWarpMap{win}.(reqs{row, 1}));
+                        xg = premap(:,:,1);
+                        yg = premap(:,:,2);
+                    else
+                        % No: Create a default identity mapping as starting
+                        % point:
+                        [xg,yg] = meshgrid(0:winwidth-1, 0:winheight-1);
+                    end
+                    
+                    % Need to use snorm 16 bit textures because 32 bpc
+                    % float textures unavailable?
+                    invmap_needs_snorm = (winfo.GLSupportsTexturesUpToBpc < 32);
+
+                    % We always normalize to range 0..1, so it works for
+                    % both floating point textures and 16 bit snorm
+                    % textures:
+                    inmap = zeros(winheight, winwidth, 3);
+                    inmap(:,:,1) = xg / winwidth;
+                    inmap(:,:,2) = yg / winheight;
+                    
+                    if invmap_needs_snorm
+                        % Need to use 16 bit snorm textures. We request 16
+                        % bit floating point precision on this hw that
+                        % doesn't support it, but does support 16 bit
+                        % snorm. Screen() will choose 16 bit snorm as
+                        % fallback, so we get what we want and can properly
+                        % process mappings for up to 32k x 32k pixels aka 1
+                        % Gigapixel:
+                        premaptex = Screen('MakeTexture', win, inmap, [], [], 1);
+                        postmaptex = Screen('OpenOffscreenWindow', win, 0, Screen('Rect', premaptex), 64);                        
+                    else
+                        % We have 32 bpc float texture support: Use it.
+                        premaptex = Screen('MakeTexture', win, inmap, [], [], 2);
+                        postmaptex = Screen('OpenOffscreenWindow', win, 0, Screen('Rect', premaptex), 128);
+                    end
+                    warpoperator = CreateGLOperator(win);
+                    AddImageUndistortionToGLOperator(warpoperator, premaptex, warpstruct);
+                    postmaptex = Screen('TransformTexture', premaptex, warpoperator, [], postmaptex);
+                    curmap = Screen('GetImage', postmaptex, [], [], 1, 3);
+                    Screen('Close', [premaptex, postmaptex, warpoperator]);
+                    curmap(:,:,1) = curmap(:,:,1) * winwidth;
+                    curmap(:,:,2) = curmap(:,:,2) * winheight;
+                    curmap = round(curmap(:,:,1:2));
+
+                    % Assign inverse warp mapping tables for selected view. We
+                    % assume that 16 bit signed integer is enough - Can cope
+                    % with a framebuffer of up to 32768 * 32768 pixels.
+                    % ptb_geometry_inverseWarpMap{} is a global variable shared
+                    % with the RemapMouse() functions that uses these mapping
+                    % matrices:
+                    ptb_geometry_inverseWarpMap{win}.(reqs{row, 1}) = int16(curmap);
+                else
+                    % No: Cannot create remap textures at required
+                    % precision, inverse mapping won't work:
+                    fprintf('PsychImaging GeometryCorrection:Warning: GPU does not support features needed for RemapMouse() command.\n');
+                end
+                
+                % Setup imaging pipeline - Attach proper blitters to proper chains:
                 if mystrcmp(reqs{row, 1}, 'LeftView') || mystrcmp(reqs{row, 1}, 'AllViews')
                     % Need to setup left view warp:
                     if leftcount > 0
@@ -2176,7 +2325,7 @@ if ~isempty(floc)
                         Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i%s', gld, filterMode));
                     end
                     Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
-                    leftcount = leftcount + 1;
+                    leftcount = leftcount + 1;                    
                 end
 
                 if mystrcmp(reqs{row, 1}, 'RightView') || (mystrcmp(reqs{row, 1}, 'AllViews') && winfo.StereoMode > 0)
@@ -2257,6 +2406,9 @@ if ~isempty(find(mystrcmp(reqs, 'InterleavedLineStereo')))
     % Append our new shader and enable chain:
     Screen('HookFunction', win, 'AppendShader', 'StereoCompositingBlit', 'StereoCompositingShaderInterleavedLineStereo', shader);
     Screen('HookFunction', win, 'Enable', 'StereoCompositingBlit');
+    
+    % Correct mouse position via proper gain:
+    ptb_geometry_inverseWarpMap{win}.gy = ptb_geometry_inverseWarpMap{win}.gy * 0.5;
 end
 % --- End of interleaved line stereo setup code ---
 
@@ -2291,9 +2443,26 @@ if ~isempty(find(mystrcmp(reqs, 'InterleavedColumnStereo')))
     % Append our new shader and enable chain:
     Screen('HookFunction', win, 'AppendShader', 'StereoCompositingBlit', 'StereoCompositingShaderInterleavedColumnStereo', shader, 'Blitter:IdentityBlit:Offset:0:0:Scaling:2.0:1.0');
     Screen('HookFunction', win, 'Enable', 'StereoCompositingBlit');
+
+    % Correct mouse position via proper gain:
+    ptb_geometry_inverseWarpMap{win}.gx = ptb_geometry_inverseWarpMap{win}.gx * 0.5;
 end
 % --- End of interleaved column stereo setup code ---
 
+% --- "Mouse" remapping needed for half-width Color++ or C48 mode? ---
+if ~isempty(find(mystrcmp(reqs, 'EnableBits++Color++Output')))
+    floc = find(mystrcmp(reqs, 'EnableBits++Color++Output'));
+    [rows cols] = ind2sub(size(reqs), floc(1));
+    row = rows(1);
+    % Extract first parameter - This should be the colorConversionMode:
+    colorConversionMode = reqs{row, 3};
+
+    % Only mode 0 needs remapping:
+    if colorConversionMode == 0
+        % Correct mouse position via proper gain:
+        ptb_geometry_inverseWarpMap{win}.gx = ptb_geometry_inverseWarpMap{win}.gx * 0.5;
+    end
+end
 
 % --- Custom color correction for display wanted? ---
 %
