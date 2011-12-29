@@ -1274,7 +1274,7 @@ int PsychOSKDGetBeamposition(int screenId)
 	io_connect_t connect;
 	if (!(connect = PsychOSCheckKDAvailable(screenId, NULL))) {
 		// Beampos queries unavailable:
-		if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG: Kernel driver based beamposition queries unavailable for screenId %i.\n", screenId);
+		if (PsychPrefStateGet_Verbosity() > 21) printf("PTB-DEBUG: Kernel driver based beamposition queries unavailable for screenId %i.\n", screenId);
 		return(-1);
 	}
 	
