@@ -110,15 +110,11 @@ static char synopsisString[] =
       PsychErrorExitMsg(PsychError_user, "The first argument supplied was a window pointer, not a texture pointer");
     }
 
-    PsychCopyRect(sourceRect,source->rect);
-    PsychCopyRect(targetRect,source->rect);
+    PsychCopyRect(sourceRect,source->clientrect);
     PsychCopyInRectArg(3, kPsychArgOptional, sourceRect);
     if (IsPsychRectEmpty(sourceRect)) return(PsychError_none);
 
-	PsychMakeRect(tempRect, target->rect[kPsychLeft], target->rect[kPsychTop],
-				  target->rect[kPsychLeft] + PsychGetWidthFromRect(target->rect)/((target->specialflags & kPsychHalfWidthWindow) ? 2 : 1),
-				  target->rect[kPsychTop] + PsychGetHeightFromRect(target->rect)/((target->specialflags & kPsychHalfHeightWindow) ? 2 : 1));
-    
+    PsychCopyRect(tempRect, target->clientrect);    
     PsychCenterRectInRect(sourceRect, tempRect, targetRect);
     PsychCopyInRectArg(4, kPsychArgOptional, targetRect);
     if (IsPsychRectEmpty(targetRect)) return(PsychError_none);
@@ -444,7 +440,7 @@ PsychError SCREENDrawTextures(void)
 			PsychCopyRect(sourceRect, &(srcRects[0]));
 		} else {
 			// No source rect provided: Take rectangle of current texture as srcRect:
-			PsychCopyRect(sourceRect,source->rect);
+			PsychCopyRect(sourceRect,source->clientrect);
 		}
 		
 		// Skip this texture if sourceRect is an empty rect:
@@ -460,10 +456,7 @@ PsychError SCREENDrawTextures(void)
 		} else {
 			// No destination rect provided: Center the current sourceRect in the current
 			// target window and use that as destination:
-			PsychMakeRect(tempRect, target->rect[kPsychLeft], target->rect[kPsychTop],
-						  target->rect[kPsychLeft] + PsychGetWidthFromRect(target->rect)/((target->specialflags & kPsychHalfWidthWindow) ? 2 : 1),
-						  target->rect[kPsychTop] + PsychGetHeightFromRect(target->rect)/((target->specialflags & kPsychHalfHeightWindow) ? 2 : 1));
-			
+            PsychCopyRect(tempRect, target->clientrect);
 			PsychCenterRectInRect(sourceRect, tempRect, targetRect);
 		}
 		

@@ -132,20 +132,7 @@ PsychError SCREENOpenOffscreenWindow(void)
     if(PsychIsWindowIndexArg(1)){
         PsychAllocInWindowRecordArg(1, TRUE, &exampleWindowRecord);
 		// Assign normalized copy of example windows rect -- Top-Left corner is always (0,0)
-		PsychNormalizeRect(exampleWindowRecord->rect, rect);
-		
-		// Adapt rect for some stereo modes:
-		if (PsychIsOnscreenWindow(exampleWindowRecord) && (exampleWindowRecord->specialflags & kPsychHalfWidthWindow)) {
-			// Special case: Example window is a dualview stereo onscreen window: Its effective size is only half the real window width,
-			// so we cut the width of the examplerect in half to not be wasteful:
-			rect[kPsychRight] = rect[kPsychRight] / 2;
-		}
-
-		if (PsychIsOnscreenWindow(exampleWindowRecord) && (exampleWindowRecord->specialflags & kPsychHalfHeightWindow)) {
-			// Special case: Example window is a dualview stereo onscreen window: Its effective size is only half the real window width,
-			// so we cut the width of the examplerect in half to not be wasteful:
-			rect[kPsychBottom] = rect[kPsychBottom] / 2;
-		}
+		PsychNormalizeRect(exampleWindowRecord->clientrect, rect);
 
         // We copy depth only from exampleWindow if it is a offscreen window (=texture). Copying from
         // onscreen windows doesn't make sense, e.g. depth=16 for onscreen means RGBA8 window, but it
@@ -237,6 +224,9 @@ PsychError SCREENOpenOffscreenWindow(void)
     // Assign the computed rect, but normalize it to start with top-left at (0,0):
     PsychNormalizeRect(rect, windowRecord->rect);
 
+    // Client rect of an offscreen window is always == rect of it:
+    PsychCopyRect(windowRecord->clientrect, windowRecord->rect);
+    
 	// Until here no OpenGL commands executed. Now we need a valid context: Set targetWindow
 	// as drawing target. This will perform neccessary context-switch and all backbuffer
 	// backup/restore/whatever operations to make sure we can do what we want without

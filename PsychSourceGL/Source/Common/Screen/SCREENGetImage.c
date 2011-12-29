@@ -155,12 +155,7 @@ PsychError SCREENGetImage(void)
 
 	glGetBooleanv(GL_DOUBLEBUFFER, &isDoubleBuffer);
 	glGetBooleanv(GL_STEREO, &isStereo);
-	
-	// Retrieve optional read rectangle:
-	PsychGetRectFromWindowRecord(windowRect, windowRecord);
-	if(!PsychCopyInRectArg(2, FALSE, sampleRect)) memcpy(sampleRect, windowRect, sizeof(PsychRectType));
-	if (IsPsychRectEmpty(sampleRect)) return(PsychError_none);
-	
+
 	// Assign read buffer:
 	if(PsychIsOnscreenWindow(windowRecord)) {
 		// Onscreen window: We read from the front- or front-left buffer by default.
@@ -277,8 +272,24 @@ PsychError SCREENGetImage(void)
 	// Select requested read buffer, after some double-check:
 	if (whichBuffer == 0) PsychErrorExitMsg(PsychError_user, "Invalid or unknown 'bufferName' argument provided.");
 	glReadBuffer(whichBuffer);
-	
+
 	if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In Screen('GetImage'): GL-Readbuffer whichBuffer = %i\n", whichBuffer);
+
+    if (whichBuffer == GL_COLOR_ATTACHMENT0_EXT) {
+        // FBO of texture / offscreen window / onscreen drawBuffer/inputBuffer
+        // has size of clientrect -- potentially larger or smaller than backbuffer:
+        PsychCopyRect(windowRect, windowRecord->clientrect);
+    }
+    else {
+        // Non-FBO backed texture / offscreen window / onscreen window has size
+        // of raw rect (==clientrect for non-onscreen, == backbuffer size for onscreen):
+        PsychCopyRect(windowRect, windowRecord->rect);
+    }
+
+	// Retrieve optional read rectangle:    
+	if(!PsychCopyInRectArg(2, FALSE, sampleRect)) PsychCopyRect(sampleRect, windowRect);
+    
+	if (IsPsychRectEmpty(sampleRect)) return(PsychError_none);
 
 	// Compute sampling rectangle:
 	if ((PsychGetWidthFromRect(sampleRect) >= INT_MAX) || (PsychGetHeightFromRect(sampleRect) >= INT_MAX)) {

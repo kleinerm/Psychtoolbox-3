@@ -1286,6 +1286,7 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 		GetWindowBounds(windowRecord->targetSpecific.windowHandle, kWindowContentRgn, &globalBounds);
 		PsychMakeRect(windowRecord->globalrect, globalBounds.left, globalBounds.top, globalBounds.right, globalBounds.bottom);
 		PsychNormalizeRect(windowRecord->globalrect, windowRecord->rect);
-		PsychSetupView(windowRecord);
+		PsychSetupClientRect(windowRecord);
+		PsychSetupView(windowRecord, FALSE);
 	}
 }

@@ -470,8 +470,10 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		glGetIntegerv(GL_RED_BITS, &redbits);
 		
 		// This is by default always a standard 8bpc fixed point RGBA8 framebuffer without stencil- and z-buffers etc.
-		// If bit depths of native backbuffer is more than 8 bits, we allocate a float32 FBO though...
-		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), ((redbits <= 8) ? GL_RGBA8 : GL_RGBA_FLOAT32_APPLE), FALSE, winwidth, winheight, 0)) {
+		// If bit depths of native backbuffer is more than 8 bits, we allocate a float32 FBO though. Should we need a
+        // 32 bpc float FBO but the GPU doesn't support this, we try a 16 bit snorm FBO. A 16 bit snorm FBO has effective
+        // 15 bits linear integer precision, which is enough for all currently existing hw framebuffers:
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), ((redbits <= 8) ? GL_RGBA8 : ((windowRecord->gfxcaps & kPsychGfxCapFPFBO32) ? GL_RGBA_FLOAT32_APPLE : GL_RGBA16_SNORM)), FALSE, winwidth, winheight, 0)) {
 			// Failed!
 			PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 0 of imaging pipeline for dual-window stereo.");
 		}
@@ -497,9 +499,14 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			winwidth = winwidth / 2;
 		}
 
+		if (windowRecord->specialflags & kPsychTwiceWidthWindow) {
+			// Special case: Twice the real window width:
+			winwidth = winwidth * 2;
+		}
+
 		if (windowRecord->specialflags & kPsychHalfHeightWindow) {
 			// Special case for stereo: Only half the real window height:
-			// winheight = winheight / 2;
+			winheight = winheight / 2;
 		}
 
 		// These FBO's may need a z-buffer or stencil buffer as well if 3D rendering is
@@ -630,9 +637,14 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			winwidth = winwidth / 2;
 		}
 
+		if (windowRecord->specialflags & kPsychTwiceWidthWindow) {
+			// Special case: Twice the real window width:
+			winwidth = winwidth * 2;
+		}
+
 		if (windowRecord->specialflags & kPsychHalfHeightWindow) {
 			// Special case for stereo: Only half the real window height:
-			// winheight = winheight / 2;
+			winheight = winheight / 2;
 		}
 
 		// Is the target of imageprocessing (our processedDrawBufferFBO) the final destination? This is true if there is no further need
@@ -713,6 +725,14 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		// Define dimensions of 3rd stage FBO:
 		winwidth=(int)PsychGetWidthFromRect(windowRecord->rect);
 		winheight=(int)PsychGetHeightFromRect(windowRecord->rect);
+
+        // Must not take half width and half height flags into account,
+        // but need to make sure we retain info in a double-width buffer
+        // until we reach the final system framebuffer or final output fbo:
+		if (windowRecord->specialflags & kPsychTwiceWidthWindow) {
+			// Special case: Twice the real window width:
+			winwidth = winwidth * 2;
+		}
 
 		// These FBO's don't need z- or stencil buffers anymore:
 		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0)) {
@@ -1799,12 +1819,20 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 			if (sourceRecord->textureexternalformat == GL_LUMINANCE) {
 				// Upgrade luminance to RGB of matching precision:
 				// printf("UPGRADING TO RGBFloat %i\n", (sourceRecord->textureinternalformat == GL_LUMINANCE_FLOAT16_APPLE) ? 0:1);
-				fboInternalFormat = (sourceRecord->textureinternalformat == GL_LUMINANCE_FLOAT16_APPLE) ? GL_RGB_FLOAT16_APPLE : GL_RGB_FLOAT32_APPLE;
+                if (sourceRecord->textureinternalformat == GL_LUMINANCE16_SNORM) {
+                    fboInternalFormat = GL_RGB16_SNORM;
+                } else {
+                    fboInternalFormat = (sourceRecord->textureinternalformat == GL_LUMINANCE_FLOAT16_APPLE) ? GL_RGB_FLOAT16_APPLE : GL_RGB_FLOAT32_APPLE;
+                }
 			}
 			else {
 				// Upgrade luminance+alpha to RGBA of matching precision:
 				// printf("UPGRADING TO RGBAFloat %i\n", (sourceRecord->textureinternalformat == GL_LUMINANCE_ALPHA_FLOAT16_APPLE) ? 0:1);
-				fboInternalFormat = (sourceRecord->textureinternalformat == GL_LUMINANCE_ALPHA_FLOAT16_APPLE) ? GL_RGBA_FLOAT16_APPLE : GL_RGBA_FLOAT32_APPLE;
+                if (sourceRecord->textureinternalformat == GL_LUMINANCE16_ALPHA16_SNORM) {
+                    fboInternalFormat = GL_RGBA16_SNORM;
+                } else {
+                    fboInternalFormat = (sourceRecord->textureinternalformat == GL_LUMINANCE_ALPHA_FLOAT16_APPLE) ? GL_RGBA_FLOAT16_APPLE : GL_RGBA_FLOAT32_APPLE;
+                }
 			}
 		}
 		
@@ -1827,7 +1855,7 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 		// We can't use PsychSetDrawingTarget() here, as we might get called by that function, i.e.
 		// infinite recursion or other side effects if we tried to use it.
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, sourceRecord->fboTable[0]->fboid);
-		PsychSetupView(sourceRecord);
+		PsychSetupView(sourceRecord, FALSE);
 		// Reset MODELVIEW matrix, after backing it up...
 		glPushMatrix();
 		glLoadIdentity();

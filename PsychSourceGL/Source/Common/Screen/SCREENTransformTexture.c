@@ -146,6 +146,7 @@ PsychError SCREENTransformTexture(void)
 		targetRecord->nrchannels = 4;
 		
 		PsychCopyRect(targetRecord->rect, sourceRecord->rect);
+        PsychCopyRect(targetRecord->clientrect, targetRecord->rect);
 		
 		targetRecord->texturetarget = sourceRecord->texturetarget;
 
@@ -187,6 +188,8 @@ PsychError SCREENTransformTexture(void)
 	if (proxyRecord->imagingMode & (kPsychNeedDualPass | kPsychNeedMultiPass)) {
 		// Needs multi-pass processing. Create bounce buffer if neccessary:
 		PsychCopyRect(proxyRecord->rect, targetRecord->rect);
+        PsychCopyRect(proxyRecord->clientrect, targetRecord->rect);
+
 		PsychCreateShadowFBOForTexture(proxyRecord, TRUE, proxyRecord->imagingMode);
 	}
 	

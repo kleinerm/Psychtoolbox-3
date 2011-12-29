@@ -55,16 +55,11 @@ PsychError SCREENRect(void)
 		PsychGetScreenRect(screenNumber, rect);
 		PsychCopyOutRectArg(1, FALSE, rect);
 	}else if(PsychIsWindowIndexArg(1)){
-	   PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
-	   PsychOSProcessEvents(windowRecord, 0);
-
-		PsychMakeRect(rect, windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychTop],
-					  windowRecord->rect[kPsychLeft] + PsychGetWidthFromRect(windowRecord->rect)/((windowRecord->specialflags & kPsychHalfWidthWindow) ? 2 : 1),
-					  windowRecord->rect[kPsychTop] + PsychGetHeightFromRect(windowRecord->rect)/((windowRecord->specialflags & kPsychHalfHeightWindow) ? 2 : 1));
-		
-		PsychCopyOutRectArg(1,FALSE, rect);
+        PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
+        PsychOSProcessEvents(windowRecord, 0);		
+        PsychCopyOutRectArg(1,FALSE, windowRecord->clientrect);
 	}else
 		PsychErrorExitMsg(PsychError_user, "Argument was recognized as neither a window index nor a screen pointer");
-
+    
 	return(PsychError_none);
 }

@@ -1816,7 +1816,9 @@ ptb_geometry_inverseWarpMap{win}.gy = 1;
 ptb_geometry_inverseWarpMap{win}.mx = winwidth;
 ptb_geometry_inverseWarpMap{win}.my = winheight;
 
-%if ismember(winfo.StereoMode, [2,3])
+if ismember(winfo.StereoMode, [2,3])
+    ptb_geometry_inverseWarpMap{win}.gy = 2;
+end
 
 % --- First action in pipe is a horizontal- or vertical flip, if any ---
 
@@ -2394,9 +2396,7 @@ if ~isempty(find(mystrcmp(reqs, 'InterleavedLineStereo')))
     glUniform1i(glGetUniformLocation(shader, 'Image1'), 1-startright);
     glUniform1i(glGetUniformLocation(shader, 'Image2'), startright);
 
-    % Add a readout offset of window height in vertical direction:
-    [winwidth winheight] = Screen('WindowSize', win);
-    glUniform2f(glGetUniformLocation(shader, 'Offset'), 0, winheight);
+    glUniform2f(glGetUniformLocation(shader, 'Offset'), 0, 0);
     glUseProgram(0);
     
     % Reset compositor chain: It got initialized inside Screen() with an
@@ -2404,7 +2404,7 @@ if ~isempty(find(mystrcmp(reqs, 'InterleavedLineStereo')))
     Screen('HookFunction', win, 'Reset', 'StereoCompositingBlit');
 
     % Append our new shader and enable chain:
-    Screen('HookFunction', win, 'AppendShader', 'StereoCompositingBlit', 'StereoCompositingShaderInterleavedLineStereo', shader);
+    Screen('HookFunction', win, 'AppendShader', 'StereoCompositingBlit', 'StereoCompositingShaderInterleavedLineStereo', shader, 'Blitter:IdentityBlit:Offset:0:0:Scaling:1.0:2.0');
     Screen('HookFunction', win, 'Enable', 'StereoCompositingBlit');
     
     % Correct mouse position via proper gain:

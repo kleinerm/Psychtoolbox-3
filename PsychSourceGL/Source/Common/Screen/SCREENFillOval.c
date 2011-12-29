@@ -80,8 +80,8 @@ PsychError SCREENFillOval(void)
 	//get the window record from the window record argument and get info from the window record
 	PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
 
-	perfectUpToMaxDiameter = PsychGetWidthFromRect(windowRecord->rect);
-	if (PsychGetHeightFromRect(windowRecord->rect) < perfectUpToMaxDiameter) perfectUpToMaxDiameter = PsychGetHeightFromRect(windowRecord->rect);
+	perfectUpToMaxDiameter = PsychGetWidthFromRect(windowRecord->clientrect);
+	if (PsychGetHeightFromRect(windowRecord->clientrect) < perfectUpToMaxDiameter) perfectUpToMaxDiameter = PsychGetHeightFromRect(windowRecord->clientrect);
 	PsychCopyInDoubleArg(4, kPsychArgOptional, &perfectUpToMaxDiameter);
 	
 	if ((perfectUpToMaxDiameter != perfectUpToMaxDiameterOld) || (windowRecord->fillOvalDisplayList == 0)) {
@@ -125,7 +125,7 @@ PsychError SCREENFillOval(void)
 	// Only up to one rect provided?
 	if (numRects <= 1) {
 		// Get the oval and draw it:
-		PsychCopyRect(rect, windowRecord->rect);
+		PsychCopyRect(rect, windowRecord->clientrect);
 		isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect);	
 		if (isArgThere && IsPsychRectEmpty(rect)) return(PsychError_none);
 		numRects = 1;

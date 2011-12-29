@@ -123,6 +123,7 @@ TO DO:
 											// and needs some special handling it init, shutdown and during operation.
 // Value 32768 is defined in ScreenTypes.h as kPsychBusyWaitForVBLBeforeBufferSwapRequest and is also used as a 'specialflags' setting to define
 // this behaviour on a per-window basis.
+#define kPsychTwiceWidthWindow		  65536 // This flag is also used as 'specialflag' for onscreen windows. Ask for windows with twice-width, e.g., for packed pixel modes.
 
 #define kPsychIsFullscreenWindow		  4 // 'specialflags' setting 4 means: This is a fullscreen window.
 #define kPsychNeedOpenMLWorkaround1		  8 // 'specialflags' setting 8 means: This needs the special workarounds for slightly broken OpenML sync control ext.
@@ -131,10 +132,10 @@ TO DO:
 #define kPsychGUIWindow					 32 // 'specialflags' setting 32 means: This window should behave like a regular GUI window, e.g, allow moving it.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384. --> Flags of 32768 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,S-65536. --> Flag 32768 and Flags of 2^17 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,32,1024,S-2048,S-8192, 32768. --> Flags of 65536 and higher are available, as well as 64,128,256,512,4096, 16384
+// 1,2,4,8,16,32,1024,S-2048,S-8192, 32768, S-65536. --> Flags of 2^17 and higher are available, as well as 64,128,256,512,4096, 16384
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*	PtrPsychHookFunction;
@@ -239,8 +240,15 @@ typedef struct _PsychWindowRecordType_{
 	PsychWindowIndexType                    windowIndex;
 	void					*surface; 
 	size_t					surfaceSizeBytes;	// Estimate of used system memory in bytes. Only used for accounting and debugging output.
-	PsychRectType              rect;		// Effective rectangle of window -- Normalized to always have top-left corner in (0,0)!
-	PsychRectType			globalrect;		// Same as rect, but not normalized -- Contains real window location in global desktop reference frame.
+	PsychRectType           rect;           // Bounding rectangle of true window framebuffer -- Normalized to always have top-left corner in (0,0)!
+	PsychRectType			globalrect;		// Same as rect, but not normalized -- Describes real window location in global desktop reference frame.
+	PsychRectType           clientrect;     // Bounding rectangle of *useable* framebuffer size for client stimulus drawing code. This should be returned
+                                            // to calling client code as 'Rect', 'WindowSize' etc. and used by Screen 2D drawing functions as reference
+                                            // window size. Normally clientrect == rect, but for special display modes, e.g., stereo modes 2-5, Bits+
+                                            // Color++ mode etc., the drawable area for stimuli may be of different size than the physical window backbuffer,
+                                            // e.g., half or twice as wide or high than the true scanout buffer. This is usually due to special pixel
+                                            // encodings for video scanout (two display pixels packed into one framebuffer pixel, one display pixel
+                                            // encoded by two adjacent framebuffer pixels (color++), special ultra-wide or stretched/compressed stereo displays...
 	psych_bool					isValid;		//between when we allocate the record and when we fill in values.
 	int					depth;				//Number of bits per pixel -- Attention: This is often misleading and not really reliable!
 	int					nrchannels;

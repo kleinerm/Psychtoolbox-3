@@ -87,7 +87,7 @@ PsychError SCREENFillRect(void)
 	if (numRects <= 1) {
 		// Get the rect and draw it
 		isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect);	
-		isScreenRect= !isArgThere || isArgThere && PsychMatchRect(rect, windowRecord->rect);
+		isScreenRect= !isArgThere || isArgThere && PsychMatchRect(rect, windowRecord->clientrect);
 		if (isArgThere && IsPsychRectEmpty(rect)) return(PsychError_none);
 	}
 
@@ -124,7 +124,7 @@ PsychError SCREENFillRect(void)
 	}else{
 	  // Subregion fill or fullscreen fill into offscreen window or texture: Draw a colored rect.
 
-	  // At this point if we have a single color value, it is already set by PsychPrerpareRenderBatch,
+	  // At this point if we have a single color value, it is already set by PsychPrepareRenderBatch,
 	  // so we can skip this: PsychSetGLColor(&color, windowRecord);
 	  // that function has also set the proper shader, if any...
 	  
@@ -133,7 +133,7 @@ PsychError SCREENFillRect(void)
 	    // Fullscreen fill of a (non-)onscreen window:
 		
 		// Draw a rect in the clear color:
-	    PsychGLRect(windowRecord->rect);
+	    PsychGLRect(windowRecord->clientrect);
 		
 		// If this was an onscreen window which couldn't be glClear()'ed for some other reason,
 		// we need to set the glClearColor() in the windowRecord:

@@ -853,6 +853,7 @@ int PsychQTGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         // texture for proper texture coordinate assignments in drawing code et al.
         // rect.right = rect.right - padding;
         PsychMakeRect(out_texture->rect, rect.left, rect.top, rect.right, rect.bottom);    
+        PsychCopyRect(out_texture->clientrect, out_texture->rect);
 
         // Unlock GWorld surface.
         UnlockPixels(GetGWorldPixMap(movieRecordBANK[moviehandle].QTMovieGWorld));

@@ -392,6 +392,12 @@ PsychError SCREENOpenWindow(void)
 		imagingmode = imagingmode & (~kPsychHalfWidthWindow);
 	}
 
+    // Similar handling for twice-width windows: Used for certain packed-pixels (2 stimulus pixels in one fb pixel) formats:
+	if (imagingmode & kPsychTwiceWidthWindow) {
+		windowRecord->specialflags = windowRecord->specialflags | kPsychTwiceWidthWindow;
+		imagingmode = imagingmode & (~kPsychTwiceWidthWindow);
+	}
+
 	// Similar handling for windows of half the real height, except that none of our built-in stereo modes requires these,
 	// so this is only done on request from external code via the imagingmode flag kPsychHalfHeightWindow.
 	// One use of this is when using interleaved line stereo mode (PsychImaging(...'InterleavedLineStereo')) where windows
@@ -400,6 +406,12 @@ PsychError SCREENOpenWindow(void)
 		windowRecord->specialflags = windowRecord->specialflags | kPsychHalfHeightWindow;
 		imagingmode = imagingmode & (~kPsychHalfHeightWindow);
 	}
+
+	// Define windows clientrect. It is a copy of windows rect, but stretched or compressed
+    // to twice or half the width or height of the windows rect, depending on the special size
+    // flags. clientrect is used as reference for all size query functions Screen('Rect'), Screen('WindowSize')
+    // and for all Screen 2D drawing functions:
+    PsychSetupClientRect(windowRecord);
 
 	// Initialize internal image processing pipeline if requested:
 	PsychInitializeImagingPipeline(windowRecord, imagingmode, multiSample);
@@ -417,7 +429,9 @@ PsychError SCREENOpenWindow(void)
 	}
 
 	// Activate new onscreen window for userspace drawing: If imaging pipeline is active, this
-	// will bind the correct rendertargets for the first time:
+	// will bind the correct rendertargets for the first time. We soft-reset first to get
+    // into a defined state:
+	PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
 	PsychSetDrawingTarget(windowRecord);
 
     // Set the clear color and perform a backbuffer-clear:
@@ -434,7 +448,7 @@ PsychError SCREENOpenWindow(void)
     // is enabled, then do an initial bufferswap & clear, so the display starts in
     // the user selected background color instead of staying at the blue screen or
     // logo display until the Matlab script first calls 'Flip'.
-    if ((PsychPrefStateGet_VisualDebugLevel()>=4) && numWindowBuffers>=2) {
+    if (((PsychPrefStateGet_VisualDebugLevel()>=4) || (windowRecord->stereomode > 0)) && numWindowBuffers>=2) {
       // Do immediate bufferswap by an internal call to Screen('Flip'). This will also
 	  // take care of clearing the backbuffer in preparation of first userspace drawing
 	  // commands and such...
@@ -451,12 +465,8 @@ PsychError SCREENOpenWindow(void)
     //Return the window index and the rect argument.
     PsychCopyOutDoubleArg(1, FALSE, windowRecord->windowIndex);
 
-	// rect argument needs special treatment in stereo mode:
-	PsychMakeRect(rect, windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychTop],
-					windowRecord->rect[kPsychLeft] + PsychGetWidthFromRect(windowRecord->rect)/((windowRecord->specialflags & kPsychHalfWidthWindow) ? 2 : 1),
-					windowRecord->rect[kPsychTop] + PsychGetHeightFromRect(windowRecord->rect)/((windowRecord->specialflags & kPsychHalfHeightWindow) ? 2 : 1));
-
-    PsychCopyOutRectArg(2, FALSE, rect);
+    // Optionally return the windows clientrect:
+    PsychCopyOutRectArg(2, FALSE, windowRecord->clientrect);
 
     return(PsychError_none);   
 }

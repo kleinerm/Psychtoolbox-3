@@ -681,7 +681,10 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	// Reset pixel storage parameter:
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	
+
+    // Client rect of a texture is always == rect of it:
+    PsychCopyRect(win->clientrect, win->rect);
+
 	// Finished!
 	return;
 }

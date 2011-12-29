@@ -25,7 +25,7 @@ uniform vec2 Offset;
 void main()
 {
     /* Get default texel read position (x,y): x is column, y is row of image. */
-    vec2 pos = gl_TexCoord[0].xy;
+    vec2 pos = gl_FragCoord.xy;
 
     /* oddrow == 1 for odd lines, 0 for even lines: */
     float oddrow = mod(pos.y, 2.0);

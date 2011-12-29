@@ -796,6 +796,7 @@ int PsychQTGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     
 	// Normalize texture rectangle and assign it:
 	PsychNormalizeRect(outRect, out_texture->rect);
+    PsychCopyRect(out_texture->clientrect, out_texture->rect);
 	
     rate = FixedToFloat(GetMovieRate(theMovie));
     

@@ -47,7 +47,8 @@ void    PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmod
 void    PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode);
 PsychWindowRecordType* PsychGetDrawingTarget(void);
 void    PsychSetDrawingTarget(PsychWindowRecordType *windowRecord);
-void    PsychSetupView(PsychWindowRecordType *windowRecord);
+void    PsychSetupView(PsychWindowRecordType *windowRecord, psych_bool useRawFramebufferSize);
+void    PsychSetupClientRect(PsychWindowRecordType *windowRecord);
 void	PsychSetUserspaceGLFlag(psych_bool inuserspace);
 psych_bool PsychIsUserspaceRendering(void);
 double	PsychGetWhiteValueFromWindow(PsychWindowRecordType *windowRecord);

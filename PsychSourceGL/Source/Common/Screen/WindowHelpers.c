@@ -58,8 +58,7 @@ int PsychGetWindowDepthValueFromWindowRecord(PsychWindowRecordType *windowRecord
 
 void PsychGetRectFromWindowRecord(double *rect, PsychWindowRecordType *windowRecord)
 {
-    
-    PsychCopyRect(rect, windowRecord->rect);
+    PsychCopyRect(rect, windowRecord->clientrect);
 }
 
 int PsychGetNumPlanesFromWindowRecord(PsychWindowRecordType *windowRecord)

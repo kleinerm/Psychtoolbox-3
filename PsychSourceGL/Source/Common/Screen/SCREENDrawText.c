@@ -889,9 +889,9 @@ PsychError	PsychOSDrawUnicodeTextGDI(PsychWindowRecordType* winRec, PsychRectTyp
 	}
 		
 	// Reallocate device context and bitmap if needed:
-	if ((dc!=NULL) && (oldWidth != PsychGetWidthFromRect(winRec->rect) || oldHeight!=PsychGetHeightFromRect(winRec->rect))) {
+	if ((dc!=NULL) && (oldWidth != PsychGetWidthFromRect(winRec->clientrect) || oldHeight!=PsychGetHeightFromRect(winRec->clientrect))) {
 		// Target windows size doesn't match size of our backingstore: Reallocate...
-		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In DrawTextGDI: Reallocating backing DC due to change in target window size: %i x %i pixels. \n", (int) PsychGetWidthFromRect(winRec->rect), (int) PsychGetHeightFromRect(winRec->rect));
+		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In DrawTextGDI: Reallocating backing DC due to change in target window size: %i x %i pixels. \n", (int) PsychGetWidthFromRect(winRec->clientrect), (int) PsychGetHeightFromRect(winRec->clientrect));
 
 		// Unselect hbmBuffer from dc by reselecting default DIB:
 		SelectObject(dc, defaultDIB);
@@ -908,8 +908,8 @@ PsychError	PsychOSDrawUnicodeTextGDI(PsychWindowRecordType* winRec, PsychRectTyp
 	
 	// (Re-)allocation of memory device context and DIB bitmap needed?
 	if (dc==NULL) {
-		oldWidth=(int) PsychGetWidthFromRect(winRec->rect);
-		oldHeight=(int) PsychGetHeightFromRect(winRec->rect);
+		oldWidth=(int) PsychGetWidthFromRect(winRec->clientrect);
+		oldHeight=(int) PsychGetHeightFromRect(winRec->clientrect);
 		
 		// Fill in the header info.
 		memset(pBMIH, 0, BITMAPINFOHEADER_SIZE);
@@ -1160,8 +1160,7 @@ PsychError	PsychOSDrawUnicodeTextGDI(PsychWindowRecordType* winRec, PsychRectTyp
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 	// MK: Subracting one should be correct, but isn't (visually). Maybe a
-	// a side-effect of gfx-rasterizer inaccuracy or off-by-one error in our
-	// PsychSetupView() code?!?
+	// a side-effect of gfx-rasterizer inaccuracy?
 	// glRasterPos2i(0,(int) oldHeight - 1 - skiplines);
 	glRasterPos2i(0,(int) oldHeight - 0 - skiplines);
 
@@ -1840,7 +1839,7 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
 		PsychPluginSetTextSize((double) winRec->textAttributes.textSize);
 
 		// Assign viewport settings for rendering:
-		PsychPluginSetTextViewPort(winRec->rect[kPsychLeft], winRec->rect[kPsychTop], PsychGetWidthFromRect(winRec->rect)/((winRec->specialflags & kPsychHalfWidthWindow) ? 2 : 1), PsychGetHeightFromRect(winRec->rect)/((winRec->specialflags & kPsychHalfHeightWindow) ? 2 : 1));
+		PsychPluginSetTextViewPort(winRec->clientrect[kPsychLeft], winRec->clientrect[kPsychTop], PsychGetWidthFromRect(winRec->clientrect), PsychGetHeightFromRect(winRec->clientrect));
 
 		// Compute and assign text background color:
 		PsychCoerceColorMode(backgroundColor);
@@ -1895,7 +1894,7 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
 		}
 		else {
 			// Draw text by calling into the plugin:
-			rc += PsychPluginDrawText(*xp, winRec->rect[kPsychBottom] - myyp, stringLengthChars, textUniDoubleString);
+			rc += PsychPluginDrawText(*xp, winRec->clientrect[kPsychBottom] - myyp, stringLengthChars, textUniDoubleString);
 		}
 		
 		// Restore alpha-blending settings if needed:

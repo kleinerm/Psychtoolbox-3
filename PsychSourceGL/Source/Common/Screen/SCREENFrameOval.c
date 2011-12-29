@@ -112,7 +112,7 @@ PsychError SCREENFrameOval(void)
 	// Only up to one rect provided?
 	if (numRects <= 1) {
 		// Get the oval and draw it:
-		PsychCopyRect(rect, windowRecord->rect);
+		PsychCopyRect(rect, windowRecord->clientrect);
 		isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect);	
 		if (isArgThere && IsPsychRectEmpty(rect)) return(PsychError_none);
 		numRects = 1;

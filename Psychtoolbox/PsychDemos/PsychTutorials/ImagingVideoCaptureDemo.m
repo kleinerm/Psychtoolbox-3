@@ -21,6 +21,7 @@ try
     % doesn't get confused by orientation of its mirror image ;-)
     PsychImaging('AddTask', 'AllViews', 'FlipHorizontal');
     %PsychImaging('AddTask', 'AllViews', 'InterleavedColumnStereo', 0);
+    %PsychImaging('AddTask', 'AllViews', 'InterleavedLineStereo', 0);
     %PsychImaging('AddTask', 'AllViews', 'FlipVertical');
     %PsychImaging('AddTask', 'General', 'FloatingPoint16Bit');
     %PsychImaging('AddTask', 'General', 'EnableBits++Mono++Output');

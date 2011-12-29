@@ -59,12 +59,7 @@ PsychError SCREENCopyWindow(void)
         
 	//get parameters for the source window:
 	PsychAllocInWindowRecordArg(1, TRUE, &sourceWin);
-	PsychCopyRect(sourceRect, sourceWin->rect);
-
-	// Special case for stereo: Only half the real window width:
-	PsychMakeRect(sourceRect, sourceWin->rect[kPsychLeft], sourceWin->rect[kPsychTop],
-				  sourceWin->rect[kPsychLeft] + PsychGetWidthFromRect(sourceWin->rect)/((sourceWin->specialflags & kPsychHalfWidthWindow) ? 2 : 1),
-				  sourceWin->rect[kPsychTop] + PsychGetHeightFromRect(sourceWin->rect)/((sourceWin->specialflags & kPsychHalfHeightWindow) ? 2 : 1));
+	PsychCopyRect(sourceRect, sourceWin->clientrect);
 	
 	PsychCopyInRectArg(3, FALSE, sourceRect);
 	if (IsPsychRectEmpty(sourceRect)) return(PsychError_none);
@@ -74,12 +69,7 @@ PsychError SCREENCopyWindow(void)
 
 	// By default, the targetRect is equal to the sourceRect, but centered in
 	// the target window.
-	PsychCopyRect(targetRect, targetWin->rect);
-
-	// Special case for stereo: Only half the real window width:
-	PsychMakeRect(targetRect, targetWin->rect[kPsychLeft], targetWin->rect[kPsychTop],
-				  targetWin->rect[kPsychLeft] + PsychGetWidthFromRect(targetWin->rect)/((targetWin->specialflags & kPsychHalfWidthWindow) ? 2 : 1),
-				  targetWin->rect[kPsychTop] + PsychGetHeightFromRect(targetWin->rect)/((targetWin->specialflags & kPsychHalfHeightWindow) ? 2 : 1));
+	PsychCopyRect(targetRect, targetWin->clientrect);
 
 	PsychCopyInRectArg(4, FALSE, targetRect);
 	if (IsPsychRectEmpty(targetRect)) return(PsychError_none);

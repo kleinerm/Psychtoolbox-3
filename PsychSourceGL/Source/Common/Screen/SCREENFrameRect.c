@@ -84,7 +84,7 @@ PsychError SCREENFrameRect(void)
 	PsychPrepareRenderBatch(windowRecord, -3, &numRects, &xy, 2, &nc, &mc, &colors, &bytecolors, 4, &nrsize, &penSizes);
 
 	// Default rect is fullscreen:
-	PsychCopyRect(rect, windowRecord->rect);
+	PsychCopyRect(rect, windowRecord->clientrect);
 
 	// Only up to one rect provided?
 	if (numRects <= 1) {

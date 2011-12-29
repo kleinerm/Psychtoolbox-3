@@ -344,8 +344,8 @@ PsychError SCREENCreateMovie(void)
 	
 	// Get the optional size:
 	// Default Width and Height of movie frames is derived from size of window:
-	width = PsychGetWidthFromRect(windowRecord->rect);
-	height = PsychGetHeightFromRect(windowRecord->rect);
+	width = PsychGetWidthFromRect(windowRecord->clientrect);
+	height = PsychGetHeightFromRect(windowRecord->clientrect);
 	PsychCopyInIntegerArg(3, kPsychArgOptional, &width);
 	PsychCopyInIntegerArg(4, kPsychArgOptional, &height);
 	

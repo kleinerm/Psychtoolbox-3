@@ -59,18 +59,8 @@ PsychError SCREENWindowSize(void)
 		PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
 		PsychOSProcessEvents(windowRecord, 0);
 
-		rectWidth=PsychGetWidthFromRect(windowRecord->rect);
-		rectHeight=PsychGetHeightFromRect(windowRecord->rect);
-
-		if (windowRecord->specialflags & kPsychHalfWidthWindow) {
-			// Special case for stereo: Only half the real window width:
-			rectWidth = rectWidth / 2;
-		}
-
-		if (windowRecord->specialflags & kPsychHalfHeightWindow) {
-			// Special case for stereo: Only half the real window width:
-			rectHeight = rectHeight / 2;
-		}
+		rectWidth=PsychGetWidthFromRect(windowRecord->clientrect);
+		rectHeight=PsychGetHeightFromRect(windowRecord->clientrect);
 
 		PsychCopyOutDoubleArg(1, kPsychArgOptional, rectWidth);
 		PsychCopyOutDoubleArg(2, kPsychArgOptional, rectHeight);

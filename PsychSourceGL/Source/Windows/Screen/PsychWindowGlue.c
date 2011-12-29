@@ -442,7 +442,8 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 		GetClientRect(windowRecord->targetSpecific.windowHandle, &lRect);
 		PsychMakeRect(windowRecord->globalrect, lPoint.x, lPoint.y, lPoint.x + lRect.right - 1, lPoint.y + lRect.bottom - 1);
 		PsychNormalizeRect(windowRecord->globalrect, windowRecord->rect);
-		PsychSetupView(windowRecord);
+		PsychSetupClientRect(windowRecord);
+		PsychSetupView(windowRecord, FALSE);
 	}		
 }
 

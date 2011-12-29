@@ -522,6 +522,11 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     PsychCopyRect(dummyrect, (*windowRecord)->rect);
     PsychNormalizeRect(dummyrect, (*windowRecord)->rect);
 
+    // Setup a temporary clientrect for window which is a copy of rect. This is
+    // just to bring us through "bringup" of the window. It will be replaced in
+    // SCREENOpenWindow() by a properly computed clientrect:
+    PsychCopyRect((*windowRecord)->clientrect, (*windowRecord)->rect);
+
     // Compute logo_x and logo_y x,y offset for drawing the startup logo:
     logo_x = ((int) PsychGetWidthFromRect((*windowRecord)->rect) - (int) gimp_image.width) / 2;
     logo_x = (logo_x > 0) ? logo_x : 0;
@@ -1754,8 +1759,8 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 		// Attach to context - It's detached in the main thread:
 		PsychSetGLContext(windowRecord);
 		
-		// Setup view:
-		PsychSetupView(windowRecord);
+		// Setup view: We set the full backbuffer area of the window.
+		PsychSetupView(windowRecord, TRUE);
 
 		// Nothing more to do, the system backbuffer is bound, no FBO's are set at this point.
 
@@ -4299,7 +4304,7 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 		
 		if (clearmode==0) {
 			// Select proper viewport and cliprectangles for clearing:
-			PsychSetupView(windowRecord);
+			PsychSetupView(windowRecord, FALSE);
 			
 			// Bind left view (or mono view) buffer:
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[0]]->fboid);
@@ -4624,7 +4629,7 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 						// it will be unaffected by the switch --> No need to backup & restore.
 						if (!EmulateOldPTB || (EmulateOldPTB && !PsychIsOnscreenWindow(windowRecord))) {
 							// Setup viewport and projections to fit new dimensions of new rendertarget:
-							PsychSetupView(windowRecord);
+							PsychSetupView(windowRecord, TRUE);
 							glPushMatrix();
 							glLoadIdentity();
 
@@ -4661,7 +4666,7 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 			// Common code after fast- or slow-path switching:
 			
             // Setup viewport, clip rectangle and projections to fit new dimensions of new drawingtarget:
-            if (windowRecord) PsychSetupView(windowRecord);
+            if (windowRecord) PsychSetupView(windowRecord, FALSE);
 			
             // Update our bookkeeping, set windowRecord as current rendertarget:
             currentRendertarget = windowRecord;
@@ -4687,20 +4692,45 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 
 /* PsychSetupView()  -- Setup proper viewport, clip rectangle and projection
  * matrix for specified window.
+ *
+ * Usually call with useRawFramebufferSize = FALSE, so the clientrect of the
+ * windows/textures effective user-visible drawing area is used.
+ *
+ * useRawFramebufferSize = TRUE: Use full backbuffer area of window, e.g., for
+ * setup inside imaging pipeline or for other non-user controlled rendering.
+ *
  */
-void PsychSetupView(PsychWindowRecordType *windowRecord)
+void PsychSetupView(PsychWindowRecordType *windowRecord, psych_bool useRawFramebufferSize)
 {
-    // Set viewport to windowsize:
-    glViewport(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
-    glScissor(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
+    PsychRectType rect;
+    PsychCopyRect(rect, (useRawFramebufferSize) ? windowRecord->rect : windowRecord->clientrect);
+
+    // Set viewport and scissor rectangle to windowsize:
+    glViewport(0, 0, (int) PsychGetWidthFromRect(rect), (int) PsychGetHeightFromRect(rect));
+    glScissor(0, 0, (int) PsychGetWidthFromRect(rect), (int) PsychGetHeightFromRect(rect));
     
     // Setup projection matrix for a proper orthonormal projection for this framebuffer or window:
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluOrtho2D(windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychRight], windowRecord->rect[kPsychBottom], windowRecord->rect[kPsychTop]);
+    gluOrtho2D(rect[kPsychLeft], rect[kPsychRight], rect[kPsychBottom], rect[kPsychTop]);
 
     // Switch back to modelview matrix, but leave it unaltered:
     glMatrixMode(GL_MODELVIEW);
+    return;
+}
+
+/* PsychSetupClientRect() -- Compute windows clientrect from raw backbuffer size rect.
+ */
+void PsychSetupClientRect(PsychWindowRecordType *windowRecord)
+{
+	// Define windows clientrect. It is a copy of windows rect, but stretched or compressed
+    // to twice or half the width or height of the windows rect, depending on the special size
+    // flags. clientrect is used as reference for all size query functions Screen('Rect'), Screen('WindowSize')
+    // and for all Screen 2D drawing functions:
+	PsychMakeRect(windowRecord->clientrect,
+                  windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychTop],
+                  windowRecord->rect[kPsychLeft] + PsychGetWidthFromRect(windowRecord->rect) * ((windowRecord->specialflags & kPsychTwiceWidthWindow) ? 2 : 1) / ((windowRecord->specialflags & kPsychHalfWidthWindow) ? 2 : 1),
+                  windowRecord->rect[kPsychTop] + PsychGetHeightFromRect(windowRecord->rect) / ((windowRecord->specialflags & kPsychHalfHeightWindow) ? 2 : 1));
     return;
 }
 

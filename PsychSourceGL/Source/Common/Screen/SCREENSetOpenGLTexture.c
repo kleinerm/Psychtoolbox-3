@@ -147,6 +147,9 @@ PsychError SCREENSetOpenGLTexture(void)
 
     PsychMakeRect(textureRecord->rect, 0, 0, w, h);
 
+    // Client rect of a texture is always == rect of it:
+    PsychCopyRect(textureRecord->clientrect, textureRecord->rect);
+
     textureRecord->texturetarget = target;
     // Orientation is set to 2 - like an upright Offscreen window texture:
     textureRecord->textureOrientation = 2;
@@ -187,4 +190,3 @@ PsychError SCREENSetOpenGLTexture(void)
     // Done.
     return(PsychError_none);
 }
-

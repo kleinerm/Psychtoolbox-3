@@ -161,6 +161,9 @@ PsychError SCREENSetOpenGLTextureFromMemPointer(void)
 	textureRecord->nrchannels = d;
     PsychMakeRect(textureRecord->rect, 0, 0, w, h);
 
+    // Client rect of a texture is always == rect of it:
+    PsychCopyRect(textureRecord->clientrect, textureRecord->rect);
+
     // Override texture target, if one was provided:
     if (target!=0) textureRecord->texturetarget = target;
 
@@ -205,4 +208,3 @@ PsychError SCREENSetOpenGLTextureFromMemPointer(void)
     // Done.
     return(PsychError_none);
 }
-
