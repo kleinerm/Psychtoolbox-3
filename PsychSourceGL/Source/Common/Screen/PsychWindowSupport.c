@@ -1341,6 +1341,11 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		PsychEnableNative10BitFramebuffer((*windowRecord), TRUE);
 	}
 
+    // Allocate and zero-init the flipInfo struct for this window:
+    (*windowRecord)->flipInfo = (PsychFlipInfoStruct*) malloc(sizeof(PsychFlipInfoStruct));
+    if (NULL == (*windowRecord)->flipInfo) PsychErrorExitMsg(PsychError_outofMemory, "Out of memory when trying to malloc() flipInfo struct!");
+    memset((*windowRecord)->flipInfo, 0, sizeof(PsychFlipInfoStruct));
+
     // Done.
     return(TRUE);
 }
@@ -1490,7 +1495,7 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
     
 	// Output count of missed deadlines. Don't bother for 1 missed deadline -- that's an expected artifact of the measurement...
     if (PsychIsOnscreenWindow(windowRecord) && (windowRecord->nr_missed_deadlines>1)) {
-		if(PsychPrefStateGet_Verbosity()>1) {
+		if(PsychPrefStateGet_Verbosity() > 2) {
 			printf("\n\nINFO: PTB's Screen('Flip', %i) command seems to have missed the requested stimulus presentation deadline\n", windowRecord->windowIndex);
 			printf("INFO: a total of %i times out of a total of %i flips during this session.\n\n", windowRecord->nr_missed_deadlines, windowRecord->flipCount);
 			printf("INFO: This number is fairly accurate (and indicative of real timing problems in your own code or your system)\n");
@@ -1597,9 +1602,6 @@ void PsychReleaseFlipInfoStruct(PsychWindowRecordType *windowRecord)
 		}
 	}
 	
-	// Decrement the asyncFlipOpsActive count:
-	// asyncFlipOpsActive--;
-
 	// Any threads attached?
 	if (flipRequest->flipperThread) {
 		// Yes. Cancel and destroy / release it, also release all mutex locks:
@@ -1808,7 +1810,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
  *	passed in a struct PsychFlipInfoStruct, decodes that struct, calls the PsychFlipWindowBuffers()
  *	accordingly, then encodes the returned flip results into the struct.
  *
- *	This method not only allows synchronous flips - in which case its the same behaviour
+ *	This method not only allows synchronous flips - in which case it has the same behaviour
  *	as PsychFlipWindowBuffers(), just with struct parameters - but also asynchronous flips:
  *	In that case, the flip request is just scheduled for later async, parallel execution by
  *	a background helper thread. Another invocation allows to retrieve the results of that
@@ -1816,8 +1818,6 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
  *
  *	This is the preferred method of calling flips from userspace, used in SCREENFlip.c for
  *	standard Screen('Flips'), but also for async Screen('FlipAsyncStart') and Screen('FlipAsyncEnd').
- *
- *	Btw.: Async flips are only supported on Unix operating systems: GNU/Linux and Apple MacOS/X.
  *
  *	The passed windowRecord of the onscreen window to flip must contain a PsychFlipInfoStruct*
  *	flipRequest with all neccessary info for the flip parameters and the fields in which result
@@ -2243,7 +2243,15 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     PsychWindowRecordType **windowRecordArray=NULL;
     int	i;
     int numWindows=0; 
-	int verbosity = PsychPrefStateGet_Verbosity();
+	int verbosity;
+
+    // Assign level of verbosity:
+    verbosity = PsychPrefStateGet_Verbosity();
+    
+    // We force verbosity to -1 (no output at all except for critical timestamping errors) if we're executing
+    // from a background thread instead of the masterthread and verbosity is smaller than 11, because printing
+    // from suchthreads can potentially cause bigger problems than not seeing status output:
+    verbosity = (PsychIsCurrentThreadEqualToId(masterthread) || (verbosity > 10)) ? verbosity : ((verbosity > 0) ? -1 : 0);
 
     // Child protection:
     if(windowRecord->windowType!=kPsychDoubleBufferOnscreen)
@@ -2664,14 +2672,14 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		// Buffercount is arbitrarily set to the maximum of 8 for now...
 		if (!PsychOSSetPresentParameters(windowRecord, targetVBL, 8, -1)) {
 			// Failed!
-			if (verbosity > 0) printf("PTB-ERROR: PsychOSPresentParameters(%i, %i, %i) during bufferswap failed! Expect severe timing trouble!!\n", targetVBL, 8, -1);
+			if (verbosity > -1) printf("PTB-ERROR: PsychOSPresentParameters(%i, %i, %i) during bufferswap failed! Expect severe timing trouble!!\n", targetVBL, 8, -1);
 		}
 		
 		// Same game for slaveWindow's if any:
 		if (windowRecord->slaveWindow) {
 			if (!PsychOSSetPresentParameters(windowRecord, targetVBL, 8, -1)) {
 				// Failed!
-				if (verbosity > 0) printf("PTB-ERROR: PsychOSPresentParameters(%i, %i, %i) during slaveWindow bufferswap failed! Expect severe timing trouble!!\n", targetVBL, 8, -1);
+				if (verbosity > -1) printf("PTB-ERROR: PsychOSPresentParameters(%i, %i, %i) during slaveWindow bufferswap failed! Expect severe timing trouble!!\n", targetVBL, 8, -1);
 			}
 		}
 	}
@@ -2891,7 +2899,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 					PsychPrefStateSet_ConserveVRAM(PsychPrefStateGet_ConserveVRAM() | kPsychUseBeampositionQueryWorkaround);
 					PsychCaptureScreen(-1);
 
-					if (verbosity > 0) {
+					if (verbosity > -1) {
 						printf("PTB-WARNING: Beamposition query after flip returned the *impossible* value %i (Valid would be between zero and %i)!!!\n", *beamPosAtFlip, (int) vbl_endline);
 						printf("PTB-WARNING: This is a severe malfunction, indicating a bug in your graphics driver. Our startup test should have\n");
 						printf("PTB-WARNING: caught this and a workaround should have been enabled. Apparently we missed this. Will enable workaround\n");
@@ -2903,7 +2911,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 				else {
 					// Workaround enabled and still this massive beampos failure?!? Or a non-Windows system?
 					// Ok, this is completely foo-bared.
-					if (verbosity > 0) {
+					if (verbosity > -1) {
 						if (swap_msc < 0) {
 							// No support for OS-Builtin alternative timestamping, or that mechanism failed.
 							// This is serious:
@@ -3008,7 +3016,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 			(vbltimestampmode >= 0) && ((vbltimestampmode < 3) || (vbltimestampmode == 4 && swap_msc < 0 && !osspecific_asyncflip_scheduled))) {
 
 			// Ohoh! Broken timing. Disable beamposition timestamping for future operations, warn user.			
-			if (verbosity > 0) {
+			if (verbosity > -1) {
 				printf("\n\nPTB-ERROR: Screen('Flip'); beamposition timestamping computed an *impossible stimulus onset value* of %f secs, which would indicate that\n", time_at_vbl);
 				printf("PTB-ERROR: stimulus onset happened *before* it was actually requested! (Earliest theoretically possible %f secs).\n\n", time_at_swaprequest);
 				printf("PTB-ERROR: Some more diagnostic values (only for experts): rawTimestamp = %f, scanline = %i\n", time_at_swapcompletion, *beamPosAtFlip);
@@ -3021,7 +3029,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 			// Is VBL IRQ timestamping allowed as a fallback and delivered a valid result?
 			if (vbltimestampmode >= 1 && postflip_vbltimestamp > 0) {
 				// Available. Meaningful result?
-				if (verbosity > 0) {
+				if (verbosity > -1) {
 					printf("PTB-ERROR: The most likely cause of this error (based on cross-check with kernel-level timestamping) is:\n");
 					if (((postflip_vbltimestamp < time_at_swaprequest - 0.00005) && (postflip_vbltimestamp == preflip_vbltimestamp)) ||
 						((preflip_vblcount + 1 == postflip_vblcount) && (vbltimestampquery_retrycount > 1))) {
@@ -3072,7 +3080,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 					// iteration:
 					vbltimestampmode = 0;
 
-					if (verbosity > 0) {
+					if (verbosity > -1) {
 						printf("PTB-ERROR: I have enabled additional cross checking between beamposition based and kernel-level based timestamping.\n");
 						printf("PTB-ERROR: This should allow to get a better idea of what's going wrong if successive invocations of Screen('Flip');\n");
 						printf("PTB-ERROR: fail to deliver proper timestamps as well. It may even fix the problem if the culprit would be a bug in \n");
@@ -3092,7 +3100,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 					PsychPrefStateSet_VBLTimestampingMode(-1);
 					vbltimestampmode = -1;
 					
-					if (verbosity > 0) {
+					if (verbosity > -1) {
 						printf("PTB-ERROR: This error can be due to either of the following causes (No way to discriminate):\n");
 						printf("PTB-ERROR: Either something is broken in your systems beamposition timestamping. I've disabled high precision\n");
 						printf("PTB-ERROR: timestamping for now. Returned timestamps will be less robust and accurate, but if that was the culprit it should be fixed.\n\n");
@@ -3131,7 +3139,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 				else {
 					// Stupid values, but swaprequest not close to VBL, but likely within refresh cycle.
 					// This could be either broken queries, or broken sync to VBL:
-					if (verbosity > 0) {
+					if (verbosity > -1) {
 						printf("\n\nPTB-ERROR: Screen('Flip'); kernel-level timestamping computed bogus values!!!\n");
 						printf("PTB-ERROR: vbltimestampquery_retrycount = %i, preflip_vbltimestamp=postflip= %f, time_at_swaprequest= %f\n", (int) vbltimestampquery_retrycount, preflip_vbltimestamp, time_at_swaprequest);
 						printf("PTB-ERROR: This error can be due to either of the following causes (No simple way to discriminate):\n");
@@ -3160,7 +3168,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 			// the duration of a VBL interval is usually no longer than that.
 			if (postflip_vbltimestamp - time_at_swapcompletion > 0.0025) {
 				// VBL irq queries broken! Disable them.
-				if (verbosity > 0) {
+				if (verbosity > -1) {
 					printf("PTB-ERROR: VBL kernel-level timestamp queries broken on your setup [Impossible order of events]!\n");
 					printf("PTB-ERROR: Will disable them for now until the problem is resolved. You may want to restart Matlab and retry.\n");
 					printf("PTB-ERROR: postflip - time_at_swapcompletion == %f secs.\n", postflip_vbltimestamp - time_at_swapcompletion);
@@ -3181,7 +3189,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 			// Consistency check: Swap can't complete before it was scheduled: Have a fudge
 			// value of 1 msec to account for roundoff errors:
 			if (osspecific_asyncflip_scheduled && (tSwapComplete < tprescheduleswap - 0.001)) {
-				if (verbosity > 0) {
+				if (verbosity > -1) {
 					printf("PTB-ERROR: OpenML timestamping reports that flip completed before it was scheduled [Scheduled no earlier than %f secs, completed at %f secs]!\n", tprescheduleswap, tSwapComplete);
 					printf("PTB-ERROR: This could mean that sync of bufferswaps to vertical retrace is broken or some other driver bug! Switching to alternative timestamping method.\n");
 					printf("PTB-ERROR: Check your system setup!\n");
