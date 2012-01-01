@@ -3,6 +3,12 @@ function StereoDemo(stereoMode)
 %
 % Demo on how to use OpenGL-Psychtoolbox to present stereoscopic stimuli.
 %
+% DEPRECATED! THIS DEMO ONLY DEMONSTRATES THE LEGACY STEREO SUPPORT!
+% If you have a recent graphics card, have a look at ImagingStereoDemo.m
+% instead. It demonstrates a much better, more flexible, robust way of
+% presenting stereo stimuli with Psychtoolbox.
+%
+%
 % Press any key to abort demo any time.
 %
 % stereoMode specifies the type of stereo display algorithm to use:

@@ -335,6 +335,39 @@ PsychError SCREENOpenWindow(void)
     if(!isArgThere) PsychLoadColorStruct(&color, kPsychIndexColor, PsychGetWhiteValueFromWindow(windowRecord)); //or use the default
     PsychCoerceColorMode(&color);
 
+    // The imaging pipeline and graphics drivers had over 5 years of time to mature. As of 2012, imaging pipeline based
+    // support for fast offscreen windows and for stereoscopic display modes is far superior in performance,
+    // robustness, flexibility and convenience to the legacy method which was used in ptb by default so far.
+    // Now it is 2012+ and we switch the defaults: If the GPU+driver combo supports it, and usercode doesn't
+    // actively opt-out of it, we auto-enable use of FBO backed fast offscreen windows. We don't auto-enable
+    // the full pipeline for stereoscopic display modes, but we print some recommendations to the user to
+    // consider enabling the full pipeline for stereo display:
+    if ((windowRecord->gfxcaps & kPsychGfxCapFBO) && !(PsychPrefStateGet_ConserveVRAM() & kPsychDontAutoEnableImagingPipeline)) {
+        // Support for basic use of the PTB imaging pipeline and/or for fast offscreen windows
+        // is available - a GPU + driver combo with support for OpenGL framebuffer objects with
+        // at least RGBA8 format and rectangle rendertargets.
+        // Usercode doesn't disallow automatic use of imaging pipeline or fast offscreen windows,
+        // ie. it didn't set the kPsychDontAutoEnableImagingPipeline conserveVRAM flag.
+        // Good!
+        
+        // We will therefore auto-enable use of fast offscreen windows:
+        imagingmode |= kPsychNeedFastOffscreenWindows;
+        
+        // Is a stereomode requested which would benefit from enabling the full imaging pipeline?
+        if (!(imagingmode & kPsychNeedFastBackingStore) && (stereomode > 0)) {
+            // Yes: Provide the user with recommendations to enable the pipeline.
+            if (PsychPrefStateGet_Verbosity() > 2) {
+                printf("\n");
+                printf("PTB-INFO: Your script requests use of a stereoscopic display mode (stereomode = %i).\n", stereomode);
+                printf("PTB-INFO: Stereoscopic stimulus display is usually more flexible, convenient and robust if\n");
+                printf("PTB-INFO: the Psychtoolbox imaging pipeline is enabled. Your graphics card is capable\n");
+                printf("PTB-INFO: of using the pipeline but your script doesn't enable use of the pipeline.\n");
+                printf("PTB-INFO: I recommend you enable use of the pipeline for enhanced stereo stimulus display.\n");
+                printf("PTB-INFO: Have a look at the demoscript ImagingStereoDemo.m on how to do this.\n\n");
+            }
+        }
+    }
+
 	// Special setup code for dual window stereomode or output mode:
 	if (stereomode == kPsychDualWindowStereo || (imagingmode & kPsychNeedDualWindowOutput)) {
 		if (sharedContextWindow) {
