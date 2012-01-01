@@ -56,15 +56,14 @@
     after a flip, but restore the content of the buffer for incremental drawing of stims, this is implemented by
     copying the backbuffer to an AUX buffer before the Flip and restoring the backbuffer from AUX buffer after the
     Flip. Copy-ops take time (1-3 msecs on a GeForceFX5200-Ultra), so we try to perform the pre-flip copy op already
-    as part of DrawingFinished...
+    as part of DrawingFinished. If the Psychtoolbox imaging processing pipeline is enabled, this will run a full
+    execution cycle of the pipeline as well.
  
     Some flags indicate to the Flip command that a DrawingFinished has been performed to avoid redundant copy ops and
     redundant calls to glFlush()...
  
   TO DO:
-    Reduce amount of duplicated code between this routine and PsychWindowGlue.c PsychFlushDrawable()
-    by putting the "pre-flip" code in a separate function. Needs some cleanup before, though.
-
+  
 */
 
 
@@ -72,16 +71,17 @@
 
 static char useString[] = "[telapsed] = SCREEN('DrawingFinished', windowPtr[, dontclear][, sync]);";
 static char synopsisString[] =
-	"Tell Psychtoolbox, that no further drawing commands will be issued before "
-        "the next SCREEN('Flip') command. This is a hint to the PTB that allows to "
+        "Tell Psychtoolbox, that no further drawing commands will be issued to 'windowPtr' before "
+        "the next Screen('Flip') or Screen('AsyncFlipBegin') command. This is a hint to the PTB that allows it to "
         "optimize drawing in some occasions. If you provide the same value for dontclear "
         "that you're going to pass to the following Flip command, you can further improve "
         "performance. You can time the execution of all drawing commands between the most "
         "recent Flip and this command by setting the optional "
         "flag sync=1. In that case, telapsed is the elapsed time at drawing completion. "
         "Don't set the sync - Flag for real experiments, it will degrade performance! "
-        "Don't issue this command multiple times between a Flip, it will degrade performance!";  
-static char seeAlsoString[] = "Flip";	
+        "Don't issue this command multiple times between a Flip, it will degrade performance "
+        "or even cause undefined or corrupted stimulus display! ";  
+static char seeAlsoString[] = "Flip AsyncFlipBegin";
 
 PsychError SCREENDrawingFinished(void) 
 {
@@ -89,6 +89,7 @@ PsychError SCREENDrawingFinished(void)
     psych_bool syncflag=false;
     int dontclear=0;
     double t=0;
+    psych_bool runPreFlipOps = TRUE;
     
     //all sub functions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -105,9 +106,23 @@ PsychError SCREENDrawingFinished(void)
     //get Sync-Flag:
     PsychCopyInFlagArg(3, FALSE, &syncflag);
     
+    // Make sure we don't execute on an onscreen window with pending async flip, as this would interfere
+    // by touching the system backbuffer -> Impaired timing of the flip thread and undefined readback
+    // of image data due to racing with the ops of the flipperthread on the same drawable.
+    //
+    // If this passes then PsychSetDrawingTarget() below will trigger additional validations to check
+    // if execution of 'GetImage' is allowed under the current conditions for offscreen windows and
+    // textures:
+    if (PsychIsOnscreenWindow(windowRecord) && (windowRecord->flipInfo->asyncstate > 0)) runPreFlipOps = FALSE;
+
     // Perform preflip-operations: Backbuffer backups for the different dontclear-modes
     // and special compositing operations for specific stereo algorithms...
-    PsychPreFlipOperations(windowRecord, dontclear);
+    if (runPreFlipOps) {
+        PsychPreFlipOperations(windowRecord, dontclear);
+    }
+    else {
+        PsychSetGLContext(windowRecord);
+    }
 
     // At this point, the GL-context of windowRecord is active due to PsychPreFlipOp....
     if (syncflag) {
@@ -124,15 +139,11 @@ PsychError SCREENDrawingFinished(void)
         glFlush();
     }
     
-    // Tell Flip that pipeline - flushing has been done already to avoid redundant flush'es:
-    windowRecord->PipelineFlushDone = true;
+    // Tell Flip that final pipeline - flushing has been done already to avoid redundant flush'es:
+    if (runPreFlipOps) windowRecord->PipelineFlushDone = true;
     
     // Return elapsed time for rendering since Flip:
     PsychCopyOutDoubleArg(1, FALSE, t);
     
     return(PsychError_none);
 }
-
-
-
-

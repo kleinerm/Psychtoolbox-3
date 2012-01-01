@@ -52,8 +52,24 @@ PsychError SCREENCloseAll(void)
 void ScreenCloseAllWindows(void)
 {
     PsychWindowRecordType	**windowRecordArray;
-    int						i, numWindows, numScreens; 
+    int						i, numWindows, numScreens;
+    static unsigned int     recursionLevel = 0;
+    
+    // Recursive self-call?
+    if (recursionLevel > 0) {
+        // Ohoh: We are recursively calling ourselves, probably due to some
+        // error condition triggered during our execution. This is bad, we need
+        // to break the infinite recursion. How? We output a recursion warning,
+        // then return as no-op:
+        printf("PTB-ERROR: Error during error handling! ScreenCloseAllWindows() called recursively! Trying to break out of this vicious cycle...\n");
+        printf("PTB-ERROR: Maybe it is a good idea to exit and restart Matlab/Octave.\n");
 
+        // Skip to the release screen routine and hope for the best:
+        goto critical_abort;
+    }
+    
+    recursionLevel++;
+    
 	// Reset the "userspaceGL" flag which tells PTB that userspace GL rendering was active
 	// due to Screen('BeginOpenGL') command.
 	PsychSetUserspaceGLFlag(FALSE);
@@ -77,6 +93,8 @@ void ScreenCloseAllWindows(void)
 	}
     PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
 
+critical_abort:
+
     // Release all captured displays, unhide the cursor on each of them:
     numScreens=PsychGetNumDisplays();
     for(i=0;i<numScreens;i++){
@@ -88,5 +106,7 @@ void ScreenCloseAllWindows(void)
 		PsychShowCursor(i, -1);
     }
 
+    recursionLevel--;
+    
     return;
 }

@@ -193,7 +193,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   
   // Init userspace GL context to safe default:
   windowRecord->targetSpecific.glusercontextObject = NULL;
-  	 
+  windowRecord->targetSpecific.glswapcontextObject = NULL;
+    	 
   // Which display depth is requested?
   depth = PsychGetValueFromDepthStruct(0, &(screenSettings->depth));
 
@@ -587,6 +588,18 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   windowRecord->targetSpecific.deviceContext = dpy;
   windowRecord->targetSpecific.contextObject = ctx;
 
+  // Create rendering context for async flips with identical visual and display as main context, share all heavyweight ressources with it:
+  if (fbconfig) {
+      windowRecord->targetSpecific.glswapcontextObject = glXCreateNewContext(dpy, fbconfig[0], GLX_RGBA_TYPE, windowRecord->targetSpecific.contextObject, True);
+  } else {
+      windowRecord->targetSpecific.glswapcontextObject = glXCreateContext(dpy, visinfo, windowRecord->targetSpecific.contextObject, True);
+  }
+  
+  if (windowRecord->targetSpecific.glswapcontextObject == NULL) {
+      printf("\nPTB-ERROR[SwapContextCreation failed]: Creating a private OpenGL context for async flips failed for unknown reasons.\n\n");
+      return(FALSE);
+  }
+  
   // External 3D graphics support enabled?
   if (PsychPrefStateGet_3DGfx()) {
     // Yes. We need to create an extra OpenGL rendering context for the external
@@ -836,6 +849,10 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
   // Delete rendering context:
   glXDestroyContext(dpy, windowRecord->targetSpecific.contextObject);
   windowRecord->targetSpecific.contextObject=NULL;
+
+  // Delete swap context:
+  glXDestroyContext(dpy, windowRecord->targetSpecific.glswapcontextObject);
+  windowRecord->targetSpecific.glswapcontextObject=NULL;
 
   // Delete userspace context, if any:
   if (windowRecord->targetSpecific.glusercontextObject) {
@@ -1389,7 +1406,6 @@ void PsychOSUnsetGLContext(PsychWindowRecordType* windowRecord)
 		
 		// Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
 		if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-		glFlush();
     }
 	
 	glXMakeCurrent(windowRecord->targetSpecific.deviceContext, None, NULL);

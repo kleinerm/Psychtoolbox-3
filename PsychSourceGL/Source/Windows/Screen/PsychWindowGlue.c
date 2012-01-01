@@ -767,6 +767,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
 	 // Init to safe default:
     windowRecord->targetSpecific.glusercontextObject = NULL;
+    windowRecord->targetSpecific.glswapcontextObject = NULL;
     
     // Map the logical screen number to a device handle for the corresponding
     // physical display device: CGDirectDisplayID is currently typedef'd to a
@@ -1632,7 +1633,24 @@ dwmdontcare:
 			 fflush(NULL);
 		 }		 
 	 }
-	 
+
+     // Setup dedicated swap context for async flips:
+     windowRecord->targetSpecific.glswapcontextObject = wglCreateContext(hDC);
+     if (windowRecord->targetSpecific.glswapcontextObject == NULL) {
+         ReleaseDC(hDC, hWnd);
+         DestroyWindow(hWnd);
+         printf("\nPTB-ERROR[SwapContextCreation failed]: Creating a private OpenGL context for async flips failed for unknown reasons.\n\n");
+         return(FALSE);
+     }
+     
+     // Enable ressource sharing with master context for this context:
+     if (!wglShareLists(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glswapcontextObject)) {
+         // This is ugly, but not fatal...
+         if (PsychPrefStateGet_Verbosity()>1) {
+             printf("\nPTB-WARNING[wglShareLists for swap context failed]: Ressource sharing with private OpenGL context for async flips failed for unknown reasons.\n\n");
+         }		
+     }
+     
 	 if (PsychPrefStateGet_Verbosity()>6) {
 		 printf("PTB-DEBUG: Before slaveWindow context sharing: glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
 		 fflush(NULL);
@@ -1841,6 +1859,10 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
   // Delete rendering context:
   wglDeleteContext(windowRecord->targetSpecific.contextObject);
   windowRecord->targetSpecific.contextObject=NULL;
+
+  // Delete swap context:
+  wglDeleteContext(windowRecord->targetSpecific.glswapcontextObject);
+  windowRecord->targetSpecific.glswapcontextObject=NULL;
 
   // Delete userspace context:
   if (windowRecord->targetSpecific.glusercontextObject) {
@@ -2339,7 +2361,15 @@ void PsychOSSetGLContext(PsychWindowRecordType *windowRecord)
 */
 void PsychOSUnsetGLContext(PsychWindowRecordType* windowRecord)
 {
-  wglMakeCurrent(windowRecord->targetSpecific.deviceContext, NULL);
+    if (wglGetCurrentContext() != NULL) {
+        // We need to glFlush the context before switching, otherwise race-conditions may occur:
+        glFlush();
+        
+        // Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
+        if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+    }
+    
+    wglMakeCurrent(windowRecord->targetSpecific.deviceContext, NULL);
 }
 
 /* Same as PsychOSSetGLContext() but for selecting userspace rendering context,

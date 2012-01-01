@@ -546,7 +546,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Init to zero:
     windowRecord->targetSpecific.pixelFormatObject = NULL;
 	windowRecord->targetSpecific.glusercontextObject = NULL;
-		
+	windowRecord->targetSpecific.glswapcontextObject = NULL;
+
 	if (!useAGL && !AGLForFullscreen) {
 		// Context setup for CGL (non-windowed, non-multiscreen mode):
 		
@@ -851,6 +852,81 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		}
 	}
 
+    // Create glswapcontextObject - An OpenGL context for exclusive use by parallel
+    // background threads, e.g., our thread for async flip operations:
+    if (TRUE) {
+		if (!useAGL) {
+			error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, windowRecord->targetSpecific.contextObject, &(windowRecord->targetSpecific.glswapcontextObject));
+			if (error) {
+				printf("\nPTB-ERROR[SwapContextCreation failed: %s]: Creating a private OpenGL context for async-bufferswaps failed.\n\n", CGLErrorString(error));
+				return(FALSE);
+			}
+			// Attach it to our onscreen drawable:
+			error=CGLSetFullScreen(windowRecord->targetSpecific.glswapcontextObject);
+			if (error) {
+				printf("\nPTB-ERROR[CGLSetFullScreen for swapcontext failed: %s]: Attaching private OpenGL context async-bufferswaps failed.\n\n", CGLErrorString(error));
+				CGLSetCurrentContext(NULL);
+				return(FALSE);
+			}
+			// Copy full state from our main context:
+			error = CGLCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glswapcontextObject, GL_ALL_ATTRIB_BITS);
+			if (error) {
+				printf("\nPTB-ERROR[CGLCopyContext for swapcontext failed: %s]: Copying state to private OpenGL context for async-bufferswaps failed.\n\n", CGLErrorString(error));
+				CGLSetCurrentContext(NULL);
+				return(FALSE);
+			}
+		}
+		else {
+			AGLContext usercontext = NULL;
+			usercontext = aglCreateContext(pf, glcontext);
+			if (usercontext == NULL) {
+				printf("\nPTB-ERROR[AGL-SwapContextCreation failed: %s]: Creating a private OpenGL context for async-bufferswaps failed for unknown reasons.\n\n", aglErrorString(aglGetError()));
+				// Ok, this is dirty, but better than nothing...
+				DisposeWindow(carbonWindow);
+				return(FALSE);
+			}
+
+			if (!aglSetInteger(usercontext, AGL_BUFFER_NAME, &aglbufferid)) {
+				printf("\nPTB-ERROR[aglSetInteger for swapcontext failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
+				DisposeWindow(carbonWindow);
+				return(FALSE);
+			}
+			
+			if (AGLForFullscreen) {
+				// Attach context to our fullscreen device:
+				if (!aglSetFullScreen(usercontext, 0, 0, 0, 0)) {
+					printf("\nPTB-ERROR[aglSetFullScreen for swapcontext failed: %s]: Attaching private OpenGL context for async-bufferswaps failed for unknown reasons.\n\n",  aglErrorString(aglGetError()));
+					// Ok, this is dirty, but better than nothing...
+					return(FALSE);
+				}
+			}
+			else {
+				// Attach it to our onscreen drawable:
+				if (!aglSetDrawable(usercontext, GetWindowPort(carbonWindow))) {
+					printf("\nPTB-ERROR[aglSetDrawable for swapcontext failed: %s]: Attaching private OpenGL context for async-bufferswaps failed for unknown reasons.\n\n",  aglErrorString(aglGetError()));
+					// Ok, this is dirty, but better than nothing...
+					DisposeWindow(carbonWindow);
+					return(FALSE);
+				}
+			}
+			
+			// Copy full state from our main context:
+			if (!aglCopyContext(glcontext, usercontext, GL_ALL_ATTRIB_BITS)) {
+				printf("\nPTB-ERROR[aglCopyContext for swapcontext failed: %s]: Copying state to private OpenGL context for async-bufferswaps failed for unknown reasons.\n\n",  aglErrorString(aglGetError()));
+				// Ok, this is dirty, but better than nothing...
+				DisposeWindow(carbonWindow);
+				return(FALSE);
+			}
+
+			// Retrieve CGL context for userspace context:
+			if (!aglGetCGLContext(usercontext, (void**) &(windowRecord->targetSpecific.glswapcontextObject))) {
+				printf("\nPTB-ERROR[aglGetCGLContext failed: %s]: Getting CGL userspace context for async-bufferswaps failed for unknown reasons.\n\n", aglErrorString(aglGetError()));
+				DisposeWindow(carbonWindow);
+				return(FALSE);
+			}
+		}
+    }
+    
 	// Ok, if we reached this point and AGL is used, we should store its onscreen Carbon window handle:
 	if (useAGL && !AGLForFullscreen) {
 		windowRecord->targetSpecific.windowHandle = carbonWindow;
@@ -1082,6 +1158,7 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 			// Destroy onscreen window, detach context:
 			CGLClearDrawable(windowRecord->targetSpecific.contextObject);
 			if (windowRecord->targetSpecific.glusercontextObject) CGLClearDrawable(windowRecord->targetSpecific.glusercontextObject);
+			if (windowRecord->targetSpecific.glswapcontextObject) CGLClearDrawable(windowRecord->targetSpecific.glswapcontextObject);
 			PsychCaptureScreen(windowRecord->screenNumber);
 		}
 	}
@@ -1092,7 +1169,8 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 	// Destroy rendering context:
     CGLDestroyContext(windowRecord->targetSpecific.contextObject);
 	if (windowRecord->targetSpecific.glusercontextObject) CGLDestroyContext(windowRecord->targetSpecific.glusercontextObject);
-
+	if (windowRecord->targetSpecific.glswapcontextObject) CGLDestroyContext(windowRecord->targetSpecific.glswapcontextObject);
+    
     // Disable low-level mapping of framebuffer cursor memory:
     if (fbsharedmem[windowRecord->screenNumber].shmem && (screenRefCount[windowRecord->screenNumber] == 1)) {
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Releasing shared memory mapping for screen %i.\n", windowRecord->screenNumber);
@@ -1194,12 +1272,13 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 {	
 	CGLError			cglerr;
-
+    psych_bool oldStyle = (PsychPrefStateGet_ConserveVRAM() & kPsychUseOldStyleAsyncFlips) ? TRUE : FALSE;
+    
 	// Execute OS neutral bufferswap code first:
 	PsychExecuteBufferSwapPrefix(windowRecord);
 	
     // Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
-    if ((cglerr = CGLFlushDrawable(windowRecord->targetSpecific.contextObject))) {
+    if ((cglerr = CGLFlushDrawable((oldStyle || PsychIsMasterThread()) ? windowRecord->targetSpecific.contextObject : windowRecord->targetSpecific.glswapcontextObject))) {
 		// Failed! This is an internal OpenGL/CGL error. We can't do anything about it, just report it:
 		printf("PTB-ERROR: Doublebuffer-Swap failed (probably during 'Flip')! Internal OpenGL subsystem/driver error: %s. System misconfigured or driver/operating system bug?!?\n", CGLErrorString(cglerr));
 	}
@@ -1260,7 +1339,6 @@ void PsychOSUnsetGLContext(PsychWindowRecordType *windowRecord)
 		
 		// Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
 		if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-		glFlush();
 	}
 
 	// Detach totally:
@@ -1274,16 +1352,17 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
 {
     CGLError	error;
     long myinterval = (long) swapInterval;
-	
+    psych_bool oldStyle = (PsychPrefStateGet_ConserveVRAM() & kPsychUseOldStyleAsyncFlips) ? TRUE : FALSE;
+    	
 	// Store new setting also in internal helper variable, e.g., to allow workarounds to work:
 	windowRecord->vSynced = (swapInterval > 0) ? TRUE : FALSE;
 	
-    error=CGLSetParameter(windowRecord->targetSpecific.contextObject, kCGLCPSwapInterval, &myinterval);
+    error=CGLSetParameter((oldStyle || PsychIsMasterThread()) ? windowRecord->targetSpecific.contextObject : windowRecord->targetSpecific.glswapcontextObject, kCGLCPSwapInterval, &myinterval);
     if (error) {
         if (PsychPrefStateGet_Verbosity()>1) printf("\nPTB-WARNING: FAILED to %s synchronization to vertical retrace!\n\n", (swapInterval>0) ? "enable" : "disable");
     }
 
-    error=CGLGetParameter(windowRecord->targetSpecific.contextObject, kCGLCPSwapInterval, &myinterval);
+    error=CGLGetParameter((oldStyle || PsychIsMasterThread()) ? windowRecord->targetSpecific.contextObject : windowRecord->targetSpecific.glswapcontextObject, kCGLCPSwapInterval, &myinterval);
     if (error || (myinterval != (long) swapInterval)) {
         if (PsychPrefStateGet_Verbosity()>1) printf("\nPTB-WARNING: FAILED to %s synchronization to vertical retrace (System ignored setting)!\n\n", (swapInterval>0) ? "enable" : "disable");
     }

@@ -205,6 +205,7 @@
 % flag you can make a conscious decision between proper stimulus display
 % and use of GetChar.
 %
+%
 % 524288 (= 2^19) == kPsychDisableOpenMLScheduling
 % Disable use of OpenML scheduling for Screen('Flip') bufferswaps. OpenML
 % is currently supported on some recent versions of GNU/Linux with certain
@@ -215,6 +216,7 @@
 % with support for OpenML. The kPsychDisableOpenMLScheduling flag will
 % forcefully disable use of OpenML, e.g., for debugging/testing purpose.
 %
+%
 % 1048576 (= 2^20) == kPsychBypassLUTFor10BitFramebuffer
 % If a 30 bpp, 10 bpc native 10 bit framebuffer is requested and
 % Psychtoolbox is executing on Linux (as superuser) or OS/X (with the
@@ -223,6 +225,7 @@
 % the FireGL or FirePro cards from ATI/AMD. This as a workaround for broken
 % ATI/AMD graphics drivers which are able to configure a 10 bit framebuffer
 % and scanout, but fail to setup the LUT's properly.
+%
 %
 % 2097152 (= 2^21) == kPsychEnforce10BitFramebufferHack
 % Use 10 bpc framebuffer hack even if PTB thinks it is not needed or
@@ -233,11 +236,37 @@
 % on the wrong setup. Try to use the regular way of enabling this in ATI's
 % Catalyst Control Center application if possible.
 %
+%
 % 4194304 (= 2^22) == kPsychIgnoreNominalFramerate
 % Do not use the nominal video refresh rate of a screen as reported by the
 % operating system for internal calibrations and tests. Return zero instead
 % of this rate in calls to Screen('Framerate') or Screen('NominalFramerate').
 % This to work around broken or problematic video refresh reporting mechanisms.
+%
+%
+% 2^23 == kPsychUseOldStyleAsyncFlips
+% Do not use the enhanced Screen('AsyncFlipBegin') implementation which
+% allows for more parallelism between your code and pending async flips.
+% There is no reason to use this flag except for benchmarking by PTB
+% developers. Or, of course, if you should happen to have an operating
+% system + graphics driver + GPU combo which performs much worse with the
+% new method than with the old one.
+%
+%
+% 2^24 == kPsychDontAutoEnableImagingPipeline
+% Do not automatically enable support for fast offscreen windows on
+% graphics cards (GPU's) that support this. Do not automatically enable the
+% full Psychtoolbox image processing pipeline on supported GPU's for stereo
+% display modes which would benefit from it.
+%
+% On Psychtoolbox versions released before the year 2012, you needed to
+% enable those two features manually. 2012+ PTB's will auto-enable on
+% suitable hardware if this promises improvements in performance,
+% flexibility or robustness. In the unlikely case you should encounter
+% problems with this behaviour due to graphics driver or operating system
+% bugs, you can revert to the old opt-in behaviour: The PsychImaging()
+% command then allows you to enable those features manually and separately,
+% just as on pre 2012 PTB's.
 %
 %
 % --> It's always better to update your graphics drivers with fixed

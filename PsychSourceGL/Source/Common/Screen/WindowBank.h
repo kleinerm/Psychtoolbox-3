@@ -192,6 +192,7 @@ typedef struct{
         CGLContextObj		contextObject;
         CGLPixelFormatObj	pixelFormatObject;
 		CGLContextObj		glusercontextObject;    // OpenGL context for userspace rendering code, e.g., moglcore...
+		CGLContextObj		glswapcontextObject;    // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
         CVOpenGLTextureRef  QuickTimeGLTexture;     // Used for textures returned by movie routines in PsychMovieSupport.c
         void*				deviceContext;          // Pointer to an AGLContext object, or a NULL-pointer.
 		WindowRef			windowHandle;			// Handle for Carbon + AGL window when using windowed mode. (NULL in non-windowed mode).
@@ -206,6 +207,7 @@ typedef struct{
   HWND                    windowHandle;       // The window handle.
   PIXELFORMATDESCRIPTOR   pixelFormatObject;  // The context's pixel format object.
   HGLRC					  glusercontextObject;	   // OpenGL context for userspace rendering code, e.g., moglcore...
+  HGLRC                   glswapcontextObject;    // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
   CVOpenGLTextureRef      QuickTimeGLTexture; // Used for textures returned by movie routines in PsychMovieSupport.c
   // CVOpenGLTextureRef is not ready yet. Its typedefd to a void* to make the compiler happy.
 } PsychTargetSpecificWindowRecordType;
@@ -221,6 +223,7 @@ typedef struct{
   GLXWindow             windowHandle;        // Handle to the onscreen window.
   Window                xwindowHandle;       // Associated X-Window if any.
   GLXContext		glusercontextObject; // OpenGL context for userspace rendering code, e.g., moglcore...
+  GLXContext		glswapcontextObject;    // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
   CVOpenGLTextureRef QuickTimeGLTexture;     // Used for textures returned by movie routines in PsychMovieSupport.c
   // CVOpenGLTextureRef is not ready yet. Its typedefd to a void* to make the compiler happy.
 } PsychTargetSpecificWindowRecordType;

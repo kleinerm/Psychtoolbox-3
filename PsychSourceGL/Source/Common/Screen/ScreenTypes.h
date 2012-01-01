@@ -239,6 +239,13 @@ typedef struct {
 // Do not return OS provided nominal framerate, but zero instead, to override defective OS queries: 2^22
 #define kPsychIgnoreNominalFramerate 4194304
 
+// Do not use new-style asynchronous flips with dedicated OpenGL swapbuffer context per flipper thread:
+#define kPsychUseOldStyleAsyncFlips 2^23
+
+// Do not auto-enable fast offscreen window support or full imaging pipeline for stereo modes
+// by default on GPU's which support it:
+#define kPsychDontAutoEnableImagingPipeline 2^24
+
 //function protoptypes
 
 //Accessors for PsychDepthType 
