@@ -1,4 +1,15 @@
-# Udev rules to allow Psychtoolbox to access the MMIO registers of all supported GPU's
+# These are Linux udev rules (man udev) that setup device access permissions on your
+# Linux system, so that unprivileged user processes like Matlab and Octave - and thereby
+# Psychtoolbox - can access pieces of hardware relevant to Psychtoolbox.
+#
+# This allows to run Matlab/Octave safely as non-root user (without the "sudo" command)
+# and thus have full access to Linux low-level functionality.
+#
+# This file should be copied to /etc/udev/rules.d/ on a Debian/Ubuntu compatible/derived
+# Linux distribution. It has been tested on Ubuntu Linux 10.10. After copying the
+# file you need to reboot your machine once for all settings to take effect.
+
+# Rules to allow Psychtoolbox to access the MMIO registers of all supported GPU's
 # while running inside an unprivileged Matlab/Octave userspace process without sudo root:
 
 # For each attached ATI GPU, set the permisions on its resource2 file to o+rw to allow mapping BAR-2 from unprivileged userspace apps like Psychtoolbox:
@@ -12,3 +23,10 @@ ACTION=="add", SUBSYSTEM=="graphics", KERNEL=="fb?", SUBSYSTEMS=="pci", ATTRS{cl
 
 # For each attached Intel GPU, set the permisions on its resource0 file to o+rw to allow mapping BAR-0 from unprivileged userspace apps like Psychtoolbox:
 ACTION=="add", SUBSYSTEM=="graphics", KERNEL=="fb?", SUBSYSTEMS=="pci", ATTRS{class}=="0x030000", ATTRS{vendor}=="0x8086", RUN+="/bin/chmod o+rw %S/class/graphics/%k/device/resource0"
+
+# Make devices from "Cambridge Research Systems" accessible by unprivileged user processes:
+ATTR{manufacturer}=="CRS Ltd", MODE="0666"
+ATTR{idVendor}=="0861", MODE="0666"
+
+# Make devices from "VPixx Inc." accessible by unprivileged user processes:
+ATTR{manufacturer}=="VPixx", MODE="0666"
