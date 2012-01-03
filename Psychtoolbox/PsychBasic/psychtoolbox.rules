@@ -1,0 +1,14 @@
+# Udev rules to allow Psychtoolbox to access the MMIO registers of all supported GPU's
+# while running inside an unprivileged Matlab/Octave userspace process without sudo root:
+
+# For each attached ATI GPU, set the permisions on its resource2 file to o+rw to allow mapping BAR-2 from unprivileged userspace apps like Psychtoolbox:
+ACTION=="add", SUBSYSTEM=="graphics", KERNEL=="fb?", SUBSYSTEMS=="pci", ATTRS{class}=="0x030000", ATTRS{vendor}=="0x1002", RUN+="/usr/bin/find %S/class/graphics/%k/device/ -name resource2 -execdir /bin/chmod o+rw {} ;"
+
+# For each attached AMD GPU, set the permisions on its resource2 file to o+rw to allow mapping BAR-2 from unprivileged userspace apps like Psychtoolbox:
+ACTION=="add", SUBSYSTEM=="graphics", KERNEL=="fb?", SUBSYSTEMS=="pci", ATTRS{class}=="0x030000", ATTRS{vendor}=="0x1022", RUN+="/usr/bin/find %S/class/graphics/%k/device/ -name resource2 -execdir /bin/chmod o+rw {} ;"
+
+# For each attached NVidia GPU, set the permisions on its resource0 file to o+rw to allow mapping BAR-0 from unprivileged userspace apps like Psychtoolbox:
+ACTION=="add", SUBSYSTEM=="graphics", KERNEL=="fb?", SUBSYSTEMS=="pci", ATTRS{class}=="0x030000", ATTRS{vendor}=="0x10de", RUN+="/usr/bin/find %S/class/graphics/%k/device/ -name resource0 -execdir /bin/chmod o+rw {} ;"
+
+# For each attached Intel GPU, set the permisions on its resource0 file to o+rw to allow mapping BAR-0 from unprivileged userspace apps like Psychtoolbox:
+ACTION=="add", SUBSYSTEM=="graphics", KERNEL=="fb?", SUBSYSTEMS=="pci", ATTRS{class}=="0x030000", ATTRS{vendor}=="0x8086", RUN+="/usr/bin/find %S/class/graphics/%k/device/ -name resource0 -execdir /bin/chmod o+rw {} ;"
