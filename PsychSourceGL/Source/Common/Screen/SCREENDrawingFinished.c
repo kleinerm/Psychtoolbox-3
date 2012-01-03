@@ -69,18 +69,24 @@
 
 #include "Screen.h"
 
-static char useString[] = "[telapsed] = SCREEN('DrawingFinished', windowPtr[, dontclear][, sync]);";
+static char useString[] = "[telapsed] = SCREEN('DrawingFinished', windowPtr [, dontclear][, sync]);";
 static char synopsisString[] =
-        "Tell Psychtoolbox, that no further drawing commands will be issued to 'windowPtr' before "
-        "the next Screen('Flip') or Screen('AsyncFlipBegin') command. This is a hint to the PTB that allows it to "
-        "optimize drawing in some occasions. If you provide the same value for dontclear "
-        "that you're going to pass to the following Flip command, you can further improve "
-        "performance. You can time the execution of all drawing commands between the most "
-        "recent Flip and this command by setting the optional "
-        "flag sync=1. In that case, telapsed is the elapsed time at drawing completion. "
-        "Don't set the sync - Flag for real experiments, it will degrade performance! "
+        "Tell Psychtoolbox that no further drawing commands will be issued to 'windowPtr' "
+        "before the next Screen('Flip') or Screen('AsyncFlipBegin') command.\n\n"
+	"This is a hint that allows to optimize drawing performance on some occasions.\n"
         "Don't issue this command multiple times between a Flip, it will degrade performance "
-        "or even cause undefined or corrupted stimulus display! ";  
+        "or even cause undefined stimulus display!\n\n"
+        "You must provide the same value for 'dontclear' flag that you're going to pass to the "
+        "following Flip command, if you pass such an optional flag to the Flip command.\n\n"
+        "You can time the execution of all drawing commands between the most recent Flip "
+        "and this command by setting the optional "
+        "flag sync=1. In that case, telapsed is the elapsed time at drawing completion. "
+        "Don't set the sync - Flag for real experiments, it will degrade performance!\n\n"
+	"Some recent graphics cards provide a more fine-grained way to measure the time spent "
+	"drawing and processing your stimulus. See the help of 'Screen GetWindowInfo?' "
+	"about 'infoType' settings 5 and 6 on how to use that mechanism. That method "
+	"also has the advantage of measuring precise without degrading overall performance.";
+
 static char seeAlsoString[] = "Flip AsyncFlipBegin";
 
 PsychError SCREENDrawingFinished(void) 

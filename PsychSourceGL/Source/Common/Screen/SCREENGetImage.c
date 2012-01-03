@@ -32,8 +32,10 @@ static char useString[] =  "imageArray=Screen('GetImage', windowPtr [,rect] [,bu
 
 static char synopsisString[] =
 "Slowly copy an image from a window or texture to Matlab/Octave, by default returning a uint8 array.\n\n"
-"Calling this function while an asynchronous flip is pending due to Screen('AsyncFlipBegin') "
-"is not allowed! Finalize such flips first.\n\n"
+"Calling this function on an onscreen window while an asynchronous flip is pending on "
+"the window due to Screen('AsyncFlipBegin') is not allowed! Finalize such flips first. "
+"Readback of other onscreen or offscreen windows or textures is possible during async "
+"flip, but discouraged because it will have a significant impact on performance.\n\n"
 "The returned imageArray by default has three layers, i.e. it's an RGB image. "
 "\"windowPtr\" is the handle of the onscreen window, offscreen window or texture whose image "
 "should be returned. "
@@ -69,8 +71,10 @@ static char useString2[] = "Screen('AddFrameToMovie', windowPtr [,rect] [,buffer
 
 static char synopsisString2[] =
 "Get an image from a window or texture and add it as a new video frame to a movie.\n\n"
-"Calling this function while an asynchronous flip is pending due to Screen('AsyncFlipBegin') "
-"is not allowed! Finalize such flips first.\n\n"
+"Calling this function on an onscreen window while an asynchronous flip is pending on "
+"the window due to Screen('AsyncFlipBegin') is not allowed! Finalize such flips first. "
+"Readback of other onscreen or offscreen windows or textures is possible during async "
+"flip, but discouraged because it will have a significant impact on performance.\n\n"
 "\"windowPtr\" is the handle of the onscreen window, offscreen window or texture whose image "
 "should be added.\n\n"
 "\"rect\" is the rectangular subregion to get, and its default is the whole window. "
@@ -144,17 +148,21 @@ PsychError SCREENGetImage(void)
 	// Get windowRecord for this window:
 	PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
 
-    // Make sure we don't execute on an onscreen window with pending async flip, as this would interfere
-    // by touching the system backbuffer -> Impaired timing of the flip thread and undefined readback
-    // of image data due to racing with the ops of the flipperthread on the same drawable.
-    //
-    // If this passes then PsychSetDrawingTarget() below will trigger additional validations to check
-    // if execution of 'GetImage' is allowed under the current conditions for offscreen windows and
-    // textures:
-    if (PsychIsOnscreenWindow(windowRecord) && (windowRecord->flipInfo->asyncstate > 0)) {
-        PsychErrorExitMsg(PsychError_user, "Calling this function on an onscreen window with a pending asynchronous flip is not allowed!");
+	// Make sure we don't execute on an onscreen window with pending async flip, as this would interfere
+	// by touching the system backbuffer -> Impaired timing of the flip thread and undefined readback
+	// of image data due to racing with the ops of the flipperthread on the same drawable.
+	//
+	// Note: It would be possible to allow drawBuffer readback if the drawBuffer is not multi-sampled
+	// or if we can safely multisample-resolve without touching the backbuffer, but checking for all
+	// special cases adds ugly complexity and is not really worth the effort, so we don't allow this.
+	//
+	// If this passes then PsychSetDrawingTarget() below will trigger additional validations to check
+	// if execution of 'GetImage' is allowed under the current conditions for offscreen windows and
+	// textures:
+	if (PsychIsOnscreenWindow(windowRecord) && (windowRecord->flipInfo->asyncstate > 0)) {
+		PsychErrorExitMsg(PsychError_user, "Calling this function on an onscreen window with a pending asynchronous flip is not allowed!");
 	}
-    
+
 	// Set window as drawingtarget: Even important if this binding is changed later on!
 	// We need to make sure all needed transitions are done - esp. in non-imaging mode,
 	// so backbuffer is in a useable state:

@@ -141,23 +141,36 @@ extern int CGSGetDebugOptions(int *outCurrentOptions);
 
 static char useString[] = "info = Screen('GetWindowInfo', windowPtr [, infoType=0] [, auxArg1]);";
 static char synopsisString[] = 
-	"Returns a struct with miscellaneous info for the specified onscreen window."
-	"\"windowPtr\" is the handle of the onscreen window for which info should be returned. "
-	"\"infoType\" If left out or set to zero, all available information for the 'windowPtr' is returned. \n\n"
-	"If set to 1, only the rasterbeam position is returned (or -1 if unsupported).\n\n"
+	"Returns a struct with miscellaneous info for the specified onscreen window.\n\n"
+	"\"windowPtr\" is the handle of the onscreen window for which info should be returned.\n\n"
+	"\"infoType\" If left out or set to zero, all available information for the 'windowPtr' is returned.\n\n"
+	"If set to 1, only the rasterbeam position of the associated display device is returned (or -1 if unsupported).\n\n"
 	"If set to 2, information about the window server is returned (or -1 if unsupported).\n\n"
 	"If set to 3, low-level window server settings are changed according to 'auxArg1'. Do *not* use, "
 	"unless you really know what you're doing and have read the relevant PTB source code!\n\n"
 	"If set to 4, returns a single value with the current activity status of asynchronous flips. "
 	"1 if a Screen('AsyncFlipBegin') was called and the flip is still active, ie., hasn't "
-	"been finished with a matching Screen('AsyncFlipEnd') or Screen('AsyncFlipCheckEnd');, 0 otherwise."
-	"You can call this function with an infoType of zero only if no async flips are active. This is why "
-	"you need to use the special infoType 4 to find out if async flips are active.\n\n"
+	"been finished with a matching Screen('AsyncFlipEnd') or Screen('AsyncFlipCheckEnd');, zero otherwise."
+	"You can call this function with an infoType of zero only if no async flips are active, or if the "
+	"imaging pipeline is fully enabled. This is why you need to use the special infoType 4 to find "
+	"out if async flips are active.\n\n"
 	"If set to 5, will start measurement of GPU time for render operations. The clock will start "
-	"on the next drawing command after this call. The clock will stop at next bufferswap with call "
-	"to Screen('Flip', ..); After the flip, the elapsed rendertime will be returned in the 'GPULastFrameRenderTime' "
-	"field of the struct that you get when calling with infoType=0. Not all GPU's support this function. If the "
-	"function is unsupported, a value of zero will be returned in the info struct.\n\n"
+	"on the next drawing command after this call. The clock will by default stop at the next call to "
+	"Screen('Flip'), Screen('AsyncFlipBegin'), or Screen('DrawingFinished'). Measured time will "
+	"include all the time spent by the GPU for preparing the final visual stimulus image for the next "
+	"flip, including all post-processing operations performed by the imaging pipeline.\n\n"
+	"If you want to exclude time spent in image post-processing or just measure the time spent for "
+	"a defined set of drawing commands, you can stop the clock earlier by calling this function with "
+	"infoType set to 6. In that case, only GPU time spent between the infoType=5 call and the infoType=6 "
+	"call will be reported, excluding any later drawing commands or imaging pipeline post-processing.\n\n"
+	"After the measured GPU operations complete, the elapsed rendertime will be returned in the 'GPULastFrameRenderTime' "
+	"field of the struct that you get when calling with infoType=0.\n"
+	"Due to the asynchronous nature of GPU rendering, the measured time may not be immediately "
+	"available after the clock is stopped. In this case, 'GPULastFrameRenderTime' will be zero and "
+	"you will need to repeat the infoType=0 query later.\n"
+	"Please note that not all GPU's and operating systems support this function. If the "
+	"function is unsupported, a value of zero will be returned in the info struct and by any call "
+	"with 'infoType' of 5 or 6.\n\n"
 	"The info struct contains all kinds of information. Just check its output to see what "
 	"is returned. Most of this info is not interesting for normal users, mostly provided "
 	"for internal use by M-Files belonging to Psychtoolbox itself, e.g., display tests.\n\n"
@@ -169,7 +182,7 @@ static char synopsisString[] =
 	"TimePostSwapRequest: Timestamp taken after submission of the low-level swap command. Useful for micro-benchmarking.\n"
 	"VBLTimePostFlip: Optional flip completion timestamp from VBLANK timestamping. Useful for micro-benchmarking.\n"
 	"OSSwapTimestamp: Optional flip completion timestamp from OS-Builtin timestamping. Useful for micro-benchmarking.\n"
-	"GPULastFrameRenderTime: Duration of all rendering operations in the last frame, as measured by GPU, if infoType 5 was used.\n"
+	"GPULastFrameRenderTime: Duration of all rendering operations, as measured by GPU, if infoType=5 was used.\n"
 	"RawSwapTimeOfFlip: Raw (uncorrected by high-precision timestamping) timestamp of last finished Screen('Flip') operation.\n"
 	"LastVBLTime: System time when last vertical blank happened, or the same as "
 	"LastVBLTimeOfFlip if the system doesn't support queries of this property (currently only OS/X does.)\n"
@@ -213,20 +226,21 @@ PsychError SCREENGetWindowInfo(void)
 							   "GuesstimatedMemoryUsageMB", "VBLStartline", "VBLEndline", "VideoRefreshFromBeamposition", "GLVendor", "GLRenderer", "GLVersion", "GPUCoreId", 
 							   "GLSupportsFBOUpToBpc", "GLSupportsBlendingUpToBpc", "GLSupportsTexturesUpToBpc", "GLSupportsFilteringUpToBpc", "GLSupportsPrecisionColors",
 							   "GLSupportsFP32Shading", "BitsPerColorComponent", "IsFullscreen", "SpecialFlags", "SwapGroup", "SwapBarrier" };
-							   
-	const int  fieldCount = 35;
-	PsychGenericScriptType	*s;
+    const int fieldCount = 35;
+    PsychGenericScriptType *s;
 
     PsychWindowRecordType *windowRecord;
     double beamposition, lastvbl;
-	int infoType = 0, retIntArg;
-	double auxArg1, auxArg2, auxArg3;
-	CGDirectDisplayID displayId;
-	psych_uint64 postflip_vblcount;
-	double vbl_startline;
-	long scw, sch;
-	psych_bool onscreen;
-    
+    int infoType = 0, retIntArg;
+    double auxArg1, auxArg2, auxArg3;
+    CGDirectDisplayID displayId;
+    psych_uint64 postflip_vblcount;
+    double vbl_startline;
+    long scw, sch;
+    psych_bool onscreen;
+    int queryState;
+    unsigned int gpuTimeElapsed;
+
     //all subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -237,7 +251,7 @@ PsychError SCREENGetWindowInfo(void)
 
     // Query infoType flag: Defaults to zero.
     PsychCopyInIntegerArg(2, FALSE, &infoType);
-	if (infoType < 0 || infoType > 5) PsychErrorExitMsg(PsychError_user, "Invalid 'infoType' argument specified! Valid are 0, 1, 2, 3, 4 and 5.");
+	if (infoType < 0 || infoType > 6) PsychErrorExitMsg(PsychError_user, "Invalid 'infoType' argument specified! Valid are 0, 1, 2, 3, 4, 5 and 6.");
 
 	// Windowserver info requested?
 	if (infoType == 2 || infoType == 3) {
@@ -346,15 +360,19 @@ PsychError SCREENGetWindowInfo(void)
         PsychCopyOutDoubleArg(1, FALSE, (((NULL != windowRecord->flipInfo) && (0 != windowRecord->flipInfo->asyncstate)) ? 1 : 0));
     }
 	else if (infoType == 5) {
+		if (!PsychIsOnscreenWindow(windowRecord)) {
+			PsychErrorExitMsg(PsychError_user, "Tried to create a GPU rendertime query on a texture or offscreen window. Only supported on onscreen windows!");
+		}
+
+		// Only need OpenGL mastercontext, not full drawingtarget:
+		PsychSetGLContext(windowRecord);
+
 		// Create a GL_EXT_timer_query object for this window:
 		if (glewIsSupported("GL_EXT_timer_query")) {
 			// Pending queries finished?
 			if (windowRecord->gpuRenderTimeQuery > 0) {
 				PsychErrorExitMsg(PsychError_user, "Tried to create a new GPU rendertime query, but last query not yet finished! Call Screen('Flip') first!");
 			}
-			
-			// Enable our rendering context by selecting this window as drawing target:
-			PsychSetDrawingTarget(windowRecord);
 			
 			// Generate Query object:
 			glGenQueries(1, &windowRecord->gpuRenderTimeQuery);
@@ -365,12 +383,42 @@ PsychError SCREENGetWindowInfo(void)
 			
 			// Reset last measurement:
 			windowRecord->gpuRenderTime = 0;
+
+			// Report status "in progress" = 1:
+			PsychCopyOutDoubleArg(1, FALSE, 1);
 		}
 		else {
 			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: GetWindowInfo for infoType 5: GPU timer query objects are unsupported on this platform and GPU. Call ignored!\n");
+			// Report status "unsupported" = 0:
+			PsychCopyOutDoubleArg(1, FALSE, 0);
 		}
 	}
+	else if (infoType == 6) {
+		if (!PsychIsOnscreenWindow(windowRecord)) {
+			PsychErrorExitMsg(PsychError_user, "Tried to finish a GPU rendertime query on a texture or offscreen window. Only supported on onscreen windows!");
+		}
+
+		// End time measurement for any previously submitted rendering commands if a
+		// GPU rendertime query was requested, otherwise just no-op:
+		if (windowRecord->gpuRenderTimeQuery) {
+			// Only need OpenGL mastercontext, not full drawingtarget:
+			PsychSetGLContext(windowRecord);
+
+			// Unfinished query? If so, finish it.
+			glGetQueryiv(GL_TIME_ELAPSED_EXT, GL_CURRENT_QUERY, &queryState);
+			if (queryState > 0) glEndQuery(GL_TIME_ELAPSED_EXT);
+		}
+
+		// Report if a query was pending:
+		PsychCopyOutDoubleArg(1, FALSE, (windowRecord->gpuRenderTimeQuery) ? 1 : 0);
+	}
 	else {
+		// Set OpenGL context (always needed) and drawing target, as setting
+		// our windowRecord as a drawingtarget is an expected side-effect of
+		// this function. Quite a bit of PTB M-Functions and usercode rely on
+		// this:
+		PsychSetDrawingTarget(windowRecord);
+
 		// Return all information:
 		PsychAllocOutStructArray(1, FALSE, 1, fieldCount, FieldNames, &s);
 
@@ -404,6 +452,24 @@ PsychError SCREENGetWindowInfo(void)
 		// Swap completion timestamp for most recently completed swap, according to OS-builtin PsychOSGetSwapCompletionTimestamp() method:
 		PsychSetStructArrayDoubleElement("OSSwapTimestamp", 0, windowRecord->osbuiltin_swaptime, s);
 
+		// Any GPU rendertime queries submitted whose results we shall collect?
+		if (windowRecord->gpuRenderTimeQuery) {
+			// Yes: Poll if query result is available, otherwise no-op for this invocation:
+			gpuTimeElapsed = 0;
+			glGetQueryObjectuiv(windowRecord->gpuRenderTimeQuery, GL_QUERY_RESULT_AVAILABLE, &gpuTimeElapsed);
+			if (gpuTimeElapsed > 0) {
+				// Result available: Get it!
+				glGetQueryObjectuiv(windowRecord->gpuRenderTimeQuery, GL_QUERY_RESULT, &gpuTimeElapsed);
+		
+				// Destroy query object:
+				glDeleteQueries(1, &windowRecord->gpuRenderTimeQuery);
+				windowRecord->gpuRenderTimeQuery = 0;
+
+				// Convert result in Nanoseconds back to seconds, and assign it:
+				windowRecord->gpuRenderTime = (double) gpuTimeElapsed / (double) 1e9;
+			}
+		}
+
 		// Result from last GPU rendertime query as triggered by infoType 5: Zero if undefined.
 		PsychSetStructArrayDoubleElement("GPULastFrameRenderTime", 0, windowRecord->gpuRenderTime, s);
 
@@ -422,7 +488,7 @@ PsychError SCREENGetWindowInfo(void)
 		if (lastvbl < 0) lastvbl = windowRecord->time_at_last_vbl;
 		PsychSetStructArrayDoubleElement("LastVBLTime", 0, lastvbl, s);
 		PsychSetStructArrayDoubleElement("VBLCount", 0, (double) (psych_int64) postflip_vblcount, s);
-        
+
 		// Misc. window parameters:
 		PsychSetStructArrayDoubleElement("StereoMode", 0, windowRecord->stereomode, s);
 		PsychSetStructArrayDoubleElement("ImagingMode", 0, windowRecord->imagingMode, s);
@@ -434,7 +500,7 @@ PsychError SCREENGetWindowInfo(void)
 		PsychSetStructArrayDoubleElement("StereoDrawBuffer", 0, windowRecord->stereodrawbuffer, s);
 		PsychSetStructArrayDoubleElement("GuesstimatedMemoryUsageMB", 0, (double) windowRecord->surfaceSizeBytes / 1024 / 1024, s);
 		PsychSetStructArrayDoubleElement("BitsPerColorComponent", 0, (double) windowRecord->bpc, s);
-		
+
 		// Query real size of the underlying display in order to define the vbl_startline:
 		PsychGetScreenSize(windowRecord->screenNumber, &scw, &sch);
 		vbl_startline = (double) sch;
@@ -445,14 +511,14 @@ PsychError SCREENGetWindowInfo(void)
 
 		// Video refresh interval duration from beamposition method:
 		PsychSetStructArrayDoubleElement("VideoRefreshFromBeamposition", 0, windowRecord->ifi_beamestimate, s);
-    
+
 		// Swap group assignment and swap barrier assignment, if any:
 		PsychSetStructArrayDoubleElement("SwapGroup", 0, windowRecord->swapGroup, s);
 		PsychSetStructArrayDoubleElement("SwapBarrier", 0, windowRecord->swapBarrier, s);
-	
-        // Which basic GPU architecture is this?
+
+		// Which basic GPU architecture is this?
 		PsychSetStructArrayStringElement("GPUCoreId", 0, windowRecord->gpuCoreId, s);
-		
+
 		// FBO's supported, and how deep?
 		if (windowRecord->gfxcaps & kPsychGfxCapFBO) {
 			if (windowRecord->gfxcaps & kPsychGfxCapFPFBO32) {
@@ -496,12 +562,11 @@ PsychError SCREENGetWindowInfo(void)
 		} else PsychSetStructArrayDoubleElement("GLSupportsFP32Shading", 0, 0, s);
 
 		// Renderer information: This comes last, and would fail if async flips
-        // are active, because it needs PsychSetDrawingTarget, which in turn needs async
-        // flips to be inactive:
-        PsychSetDrawingTarget(windowRecord);
-        PsychSetStructArrayStringElement("GLVendor", 0, (char*) glGetString(GL_VENDOR), s);
-        PsychSetStructArrayStringElement("GLRenderer", 0, (char*) glGetString(GL_RENDERER), s);
-        PsychSetStructArrayStringElement("GLVersion", 0, (char*) glGetString(GL_VERSION), s);
+		// are active, because it needs PsychSetDrawingTarget, which in turn needs async
+		// flips to be inactive, unless imaging pipeline is fully enabled:
+		PsychSetStructArrayStringElement("GLVendor", 0, (char*) glGetString(GL_VENDOR), s);
+		PsychSetStructArrayStringElement("GLRenderer", 0, (char*) glGetString(GL_RENDERER), s);
+		PsychSetStructArrayStringElement("GLVersion", 0, (char*) glGetString(GL_VERSION), s);
     }
     
     // Done.

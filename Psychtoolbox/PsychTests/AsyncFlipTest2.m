@@ -12,7 +12,7 @@ if isempty(screenid)
 end
 
 w(1)=Screen('OpenWindow', screenid(1), 0, [], [], [], [], [], kPsychNeedFastBackingStore);
-cm=0.6;
+cm=0.8;
 
 t=[];
 t(end+1)=Screen('Flip', w(1));
@@ -54,10 +54,10 @@ while ~KbCheck
     %Screen('AsyncFlipEnd', w(1));
     % Draw something:
     cm = 1 - cm;
-%    Screen('FillRect', woff, [0, 255*cm, 0]);
-%    DrawFormattedText(woff, 'Hallo :-)', 'center', 'center', [255 255 0]);
+    Screen('FillRect', woff, [0, 255*cm, 0]);
+    DrawFormattedText(woff, 'Hallo :-)', 'center', 'center', [255 255 0]);
     Screen('DrawTexture', w(1), woff);
-%    Screen('Drawingfinished', w(1), 2);
+    Screen('Drawingfinished', w(1), 2);
     %img = Screen('GetImage', woff);
     t(end+1) = Screen('AsyncFlipBegin', w(1), t(end) + 0.018, [2]);
 end

@@ -1376,6 +1376,7 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
 {
     PsychWindowRecordType	**windowRecordArray;
     int                         i, numWindows; 
+    int                         queryState;
     
 	// Extra child-protection to protect against half-initialized windowRecords...
 	if (!windowRecord->isValid) {
@@ -1403,7 +1404,7 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
 		}
 	}
 	
-    if(PsychIsOnscreenWindow(windowRecord)){
+	if(PsychIsOnscreenWindow(windowRecord)){
 				// Call cleanup routine for the flipInfo record (and possible associated threads):
 				// This must be first in order to not get caught in infinite loops if this is
 				// a window close due to error-abort or other abort with async flips active:
@@ -1436,6 +1437,14 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
 				
 				// Call cleanup routine of text renderers to cleanup anything text related for this windowRecord:
 				PsychCleanupTextRenderer(windowRecord);
+
+		// Destroy a potentially orphaned GPU rendertime query:
+		if (windowRecord->gpuRenderTimeQuery) {
+			glGetQueryiv(GL_TIME_ELAPSED_EXT, GL_CURRENT_QUERY, &queryState);
+			if (queryState > 0) glEndQuery(GL_TIME_ELAPSED_EXT);
+			glDeleteQueries(1, &windowRecord->gpuRenderTimeQuery);
+			windowRecord->gpuRenderTimeQuery = 0;
+		}
 
 				// Sync and idle the pipeline again:
                 glFinish();
@@ -2283,7 +2292,6 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	double dwmPreOnsetVBLTime, dwmOnsetVBLTime;
 	double dwmCompositionRate = 0;
 	int	   dwmrc;
-	unsigned int gpuTimeElapsed;			// Elapsed GPU render time in Nanoseconds.
 	psych_bool flipcondition_satisfied;
 	psych_bool osspecific_asyncflip_scheduled = FALSE;		// Set to TRUE if PsychOSScheduleFlipWindowBuffers() has been successfully called.
 	psych_bool must_wait = FALSE;							// Set to TRUE if an active wait is absolutely needed, regardless of os specific flip scheduling.
@@ -2399,14 +2407,14 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     // and special compositing operations for specific stereo algorithms...
 	// These are not thread-safe! For async flip, this gets called in async flip start
 	// while still on the main thread, so this call here turns into a no-op:
-    PsychPreFlipOperations(windowRecord, dont_clear);
+	PsychPreFlipOperations(windowRecord, dont_clear);
     
 	// Special imaging mode active? in that case a FBO may be bound instead of the system framebuffer.
 	if (windowRecord->imagingMode > 0) {
 		// Reset our drawing engine: This will unbind any FBO's (i.e. reset to system framebuffer)
 		// and reset the current target window to 'none'. We need this to be sure that our flip
 		// sync pixel token is written to the real system backbuffer...
-        // No-Op on flipperthread, but ok, because it always has system-fb bound.
+		// No-Op on flipperthread, but ok, because it always has system-fb bound.
 		PsychSetDrawingTarget(NULL);
 	}
 
@@ -2420,10 +2428,6 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         glDrawPixels(1,1,GL_RED,GL_UNSIGNED_BYTE, &id);
     }
  
-	// End time measurement for any previously submitted rendering commands if a
-	// GPU rendertime query was requested (See Screen('GetWindowInfo', ..); for infoType 5.
-	if (windowRecord->gpuRenderTimeQuery) glEndQuery(GL_TIME_ELAPSED_EXT);
-
     // Update of hardware gamma table in sync with flip requested?
     if ((windowRecord->inRedTable) && (windowRecord->loadGammaTableOnNextFlip > 0)) {
       // Yes! Call the update routine now. It should schedule the actual update for
@@ -3384,27 +3388,14 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
     }
     
-	 // Cleanup temporary gamma tables if needed: Should be thread-safe due to standard libc call.
-	 if ((windowRecord->inRedTable) && (windowRecord->loadGammaTableOnNextFlip > 0)) {
-		free(windowRecord->inRedTable); windowRecord->inRedTable = NULL;
-		free(windowRecord->inGreenTable); windowRecord->inGreenTable = NULL;
-		free(windowRecord->inBlueTable); windowRecord->inBlueTable = NULL;
-		windowRecord->inTableSize = 0;
-		windowRecord->loadGammaTableOnNextFlip = 0;
-	 }
-
-	// Any GPU rendertime queries submitted whose results we shall collect?
-	if (windowRecord->gpuRenderTimeQuery) {
-		// Yes: Wait blocking on query object to return results:
-		glGetQueryObjectuiv(windowRecord->gpuRenderTimeQuery, GL_QUERY_RESULT, &gpuTimeElapsed);
-		
-		// Destroy query object:
-		glDeleteQueries(1, &windowRecord->gpuRenderTimeQuery);
-		windowRecord->gpuRenderTimeQuery = 0;
-
-		// Convert result in Nanoseconds back to seconds, and assign it:
-		windowRecord->gpuRenderTime = (double) gpuTimeElapsed / (double) 1e9;
-	}
+    // Cleanup temporary gamma tables if needed: Should be thread-safe due to standard libc call.
+    if ((windowRecord->inRedTable) && (windowRecord->loadGammaTableOnNextFlip > 0)) {
+	free(windowRecord->inRedTable); windowRecord->inRedTable = NULL;
+	free(windowRecord->inGreenTable); windowRecord->inGreenTable = NULL;
+	free(windowRecord->inBlueTable); windowRecord->inBlueTable = NULL;
+	windowRecord->inTableSize = 0;
+	windowRecord->loadGammaTableOnNextFlip = 0;
+    }
 
     // We take a second timestamp here to mark the end of the Flip-routine and return it to "userspace"
     PsychGetAdjustedPrecisionTimerSeconds(time_at_flipend);
@@ -3421,12 +3412,13 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 void PsychSetGLContext(PsychWindowRecordType *windowRecord)
 {
 	PsychWindowRecordType *parentRecord;
-	
+	psych_bool oldStyle = (PsychPrefStateGet_ConserveVRAM() & kPsychUseOldStyleAsyncFlips) ? TRUE : FALSE;
+
 	// Are we called from the main interpreter thread? If not, then we return
 	// immediately (No-Op). Worker threads for async flip don't expect this
 	// subroutine to execute, at least not with the new-style async flip method:
-	if (!(PsychPrefStateGet_ConserveVRAM() & kPsychUseOldStyleAsyncFlips) && !PsychIsMasterThread()) return;
-    
+	if (!oldStyle && !PsychIsMasterThread()) return;
+
 	// Check if any async flip on any onscreen window in progress: In that case only the async flip worker thread is allowed to call PsychSetGLContext()
 	// on async-flipping onscreen windows, and none of the threads is allowed to attach to non-onscreen-window ressources.
 	// asyncFlipOpsActive is a count of currently async-flipping onscreen windows...
@@ -3438,27 +3430,29 @@ void PsychSetGLContext(PsychWindowRecordType *windowRecord)
 		// itself if it is an onscreen window:
 		parentRecord = PsychGetParentWindow(windowRecord);
 		
-        // Behaviour depends on the enable state of the imaging pipeline:
-        //
-        // Imaging pipeline off (or only fast offscreen window support enabled):
+		// Behaviour depends on the enable state of the imaging pipeline:
+		//
+		// Imaging pipeline off (or only fast offscreen window support enabled):
 		// We allow the main thread to attach to the OpenGL contexts owned by "parentRecord" windows which are not (yet) involved in an async flip operation.
 		// Only the worker thread of an async flipping "parentRecord" window is allowed to attach that window while async flip in progress.
-        //
-        // Imaging pipeline fully enabled:
-        // Onscreen windows with fully active imaging pipeline don't pose a problem, because all userspace rendering to them is redirected
-        // to their offscreen FBO's. Only writing or reading to/from the backbuffer/frontbuffer could cause trouble, which can't happen
-        // due to redirection - and proper safe-guards in routines that touch the system fb like 'GetImage' and 'DrawingFinished'.
+		//
+		// Imaging pipeline fully enabled:
+		// Onscreen windows with fully active imaging pipeline don't pose a problem, because all userspace rendering to them is redirected
+		// to their offscreen FBO's. Only writing or reading to/from the backbuffer/frontbuffer could cause trouble, which can't happen
+		// due to redirection - and proper safe-guards in routines that touch the system fb like 'GetImage' and 'DrawingFinished'.
         
-        // Check for illegal operations in current mode:
-		if (!(parentRecord->imagingMode & kPsychNeedFastBackingStore) && (parentRecord->flipInfo) && (parentRecord->flipInfo->asyncstate == 1) && (!PsychIsCurrentThreadEqualToPsychThread(parentRecord->flipInfo->flipperThread))) {
+		// Check for illegal operations in current mode:
+		if ((oldStyle || !(parentRecord->imagingMode & kPsychNeedFastBackingStore)) &&
+		    (parentRecord->flipInfo) && (parentRecord->flipInfo->asyncstate == 1) &&
+		    (!PsychIsCurrentThreadEqualToPsychThread(parentRecord->flipInfo->flipperThread))) {
 			// Wrong thread - This one is not allowed to attach to any OpenGL context for this parentRecord at the moment.
 			// Likely a programming error by the user:
 			if (!PsychIsOnscreenWindow(windowRecord)) {
-                // Ok, we don't error-abort as usual via PsychErrorExitMsg() because this leads to
-                // infinite recursion and other funny problems. Instead we output a warning to the
-                // user and no-op this PsychSetGLContext() operation:
+				// Ok, we don't error-abort as usual via PsychErrorExitMsg() because this leads to
+				// infinite recursion and other funny problems. Instead we output a warning to the
+				// user and no-op this PsychSetGLContext() operation:
 				printf("PTB-ERROR: Your code tried to execute a Screen() graphics command or Matlab/Octave/C OpenGL command for an offscreen window,\ntexture or proxy while some asynchronous flip operation was in progress for the parent window!\nThis is not allowed for that command! Finalize the async flip(s) first via Screen('AsyncFlipCheckEnd') or Screen('AsyncFlipEnd')!\nAlternatively enable the imaging pipeline (help PsychImaging) to make this work.\n\n");
-                return;
+				return;
 			}
 			else {
 				PsychErrorExitMsg(PsychError_user, "Your code tried to execute a Screen() graphics command or Matlab/Octave/C OpenGL command for an onscreen window while an\nasynchronous flip operation was in progress on that window! This is not allowed for that command!\nFinalize the flip first via Screen('AsyncFlipCheckEnd') or Screen('AsyncFlipEnd')!\nAlternatively enable the imaging pipeline (help PsychImaging) to make this work.");
@@ -3467,12 +3461,12 @@ void PsychSetGLContext(PsychWindowRecordType *windowRecord)
 		
 		// Note: We allow drawing to non-async-flipping onscreen windows and offscreen windows/textures/proxies which don't have
 		// the same OpenGL context as any of the async-flipping windows, or drawing anywhere with the imaging pipeline on, because
-        // the parallel background flip thread uses its own dedicated OpenGL context for its operations and the imaging pipeline
-        // redirects any drawing into offscreen FBO's and thereby protects the system framebuffer from interference with flip ops.
-        // This should be sufficient to prevent crash'es and/or other GL malfunctions, so formally this is safe.
+		// the parallel background flip thread uses its own dedicated OpenGL context for its operations and the imaging pipeline
+		// redirects any drawing into offscreen FBO's and thereby protects the system framebuffer from interference with flip ops.
+		// This should be sufficient to prevent crash'es and/or other GL malfunctions, so formally this is safe.
 		// However, once created all textures/FBO's are shared between all contexts because we (have to) enable context resource
 		// sharing on all our contexts for optimal performance and various of our features. That means that operations performed
-        // on them may impact the performance and latency of operations in unrelated contexts, e.g., the ones involved in async flip
+		// on them may impact the performance and latency of operations in unrelated contexts, e.g., the ones involved in async flip
 		//  --> Potential to impair the stimulus onset timing of async-flipping windows. Another reason for impaired timing is that
 		// 
 		// some ressources on the GPU can't be used in parallel to async flips, so operations in parallely executing contexts get
@@ -3480,26 +3474,26 @@ void PsychSetGLContext(PsychWindowRecordType *windowRecord)
 		// so all command streams have to be serialized --> Bufferswap trigger command packet could get stuck/stalled behind a large
 		// bunch of drawing commands for an unrelated GL context and command stream in the worst case! This is totally dependent
 		// on the gfx-drivers implementation of register programming for swap -- e.g., done through CP or done via direct register writes?
-        //
-        // While recent NVidia gpu's have multiple command fifo's, the execution of the actual rendering work is also serialized, just the
-        // scheduling of command streams is offloaded to hardware. In summary, pretty much all shipping GPU's as of beginning 2012
-        // will impose some serialization somewhere in the rendering pipeline and by potentially vulnerable to cross-talk between
-        // parallely executing OpenGL command streams, potentially causing timing issues.
+		//
+		// While recent NVidia gpu's have multiple command fifo's, the execution of the actual rendering work is also serialized, just the
+		// scheduling of command streams is offloaded to hardware. In summary, pretty much all shipping GPU's as of beginning 2012
+		// will impose some serialization somewhere in the rendering pipeline and by potentially vulnerable to cross-talk between
+		// parallely executing OpenGL command streams, potentially causing timing issues.
 		//
 		// All in all, the option to render to non-flipping ressources may give a performance boost when used very carefully, but
 		// may also impair good timing if not used by advanced/experienced users. But in some sense that is true for the whole async
 		// flip stuff -- it is pushing the system pretty hard so it will always be more fragile wrt. system load fluctuations etc.
-        //
-        // A notable exception is Linux + DRI2 graphics stack on some GPU's, e.g., ATI/AMD: Its advanced swap scheduling allows to
-        // remove some of the timing problems mentioned above, so parallel rendering may not impair swapping as much as on other
-        // system configs.
+		//
+		// A notable exception is Linux + DRI2 graphics stack on some GPU's, e.g., ATI/AMD: Its advanced swap scheduling allows to
+		// remove some of the timing problems mentioned above, so parallel rendering may not impair swapping as much as on other
+		// system configs.
 	}
 
 	// Child protection: Calling this function is only allowed in non-userspace rendering mode:
-    if (PsychIsMasterThread() && PsychIsUserspaceRendering()) PsychErrorExitMsg(PsychError_user, "You tried to call a Screen graphics command after Screen('BeginOpenGL'), but without calling Screen('EndOpenGL') beforehand! Read the help for 'Screen EndOpenGL?'.");
+	if (PsychIsMasterThread() && PsychIsUserspaceRendering()) PsychErrorExitMsg(PsychError_user, "You tried to call a Screen graphics command after Screen('BeginOpenGL'), but without calling Screen('EndOpenGL') beforehand! Read the help for 'Screen EndOpenGL?'.");
 	
 	// Call OS - specific context switching code:
-    PsychOSSetGLContext(windowRecord);
+	PsychOSSetGLContext(windowRecord);
 }
 
 /*
@@ -3929,10 +3923,11 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     int screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
     int screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
     int stereo_mode=windowRecord->stereomode;
-	int imagingMode = windowRecord->imagingMode;
-	int viewid, hookchainid;
-	GLint read_buffer, draw_buffer, blending_on;
+    int imagingMode = windowRecord->imagingMode;
+    int viewid, hookchainid;
+    GLint read_buffer, draw_buffer, blending_on;
     GLint auxbuffers;
+    int queryState;
 
     // Early reject: If this flag is set, then there's no need for any processing:
     // We only continue processing textures, aka offscreen windows...
@@ -4298,8 +4293,16 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 	}	// End of preflip operations for imaging mode:
     
     // Tell Flip that backbuffer backup has been done already to avoid redundant backups. This is a bit of a
-	// unlucky name. It actually signals that all the preflip processing has been done, the old name is historical.
+    // unlucky name. It actually signals that all the preflip processing has been done, the old name is historical.
     windowRecord->backBufferBackupDone = true;
+
+    // End time measurement for any previously submitted rendering commands if a
+    // GPU rendertime query was requested (See Screen('GetWindowInfo', ..); for infoType 5.
+    if (windowRecord->gpuRenderTimeQuery) {
+	// Unfinished query? If so, finish it.
+	glGetQueryiv(GL_TIME_ELAPSED_EXT, GL_CURRENT_QUERY, &queryState);
+	if (queryState > 0) glEndQuery(GL_TIME_ELAPSED_EXT);
+    }
 
     return;
 }
