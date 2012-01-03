@@ -77,8 +77,8 @@ PsychError SCREENSetOpenGLTexture(void)
         textureRecord->windowType=kPsychTexture;
         textureRecord->screenNumber = windowRecord->screenNumber;
 
-		// Assign parent window and copy its inheritable properties:
-		PsychAssignParentWindow(textureRecord, windowRecord);
+	// Assign parent window and copy its inheritable properties:
+	PsychAssignParentWindow(textureRecord, windowRecord);
 
         // Mark it valid and return handle to userspace:
         PsychSetWindowRecordValid(textureRecord);
@@ -109,12 +109,12 @@ PsychError SCREENSetOpenGLTexture(void)
     // Query optional override depth:
     PsychCopyInIntegerArg(7, FALSE, &d);
 
-	// Get optional texture shader handle:
-	textureShader = 0;
-	PsychCopyInIntegerArg(8, FALSE, &textureShader);
+    // Get optional texture shader handle:
+    textureShader = 0;
+    PsychCopyInIntegerArg(8, FALSE, &textureShader);
 
-    // Activate OpenGL rendering context of windowRecord and make it the active drawing target:
-    PsychSetDrawingTarget(windowRecord);
+    // Activate OpenGL rendering context of windowRecord:
+    PsychSetGLContext(windowRecord);
     
     // Bind the provided external OpenGL texture object:
     PsychTestForGLErrors();
@@ -142,8 +142,8 @@ PsychError SCREENSetOpenGLTexture(void)
     PsychInitWindowRecordTextureFields(textureRecord);
     textureRecord->depth = d;
 	
-	// Assume this texture has four channels. FIXME: Is this problematic?
-	textureRecord->nrchannels = 4;
+    // Assume this texture has four channels. FIXME: Is this problematic?
+    textureRecord->nrchannels = 4;
 
     PsychMakeRect(textureRecord->rect, 0, 0, w, h);
 
@@ -155,28 +155,28 @@ PsychError SCREENSetOpenGLTexture(void)
     textureRecord->textureOrientation = 2;
     textureRecord->textureNumber = texid;
 
-	// Assign GLSL filter-/lookup-shaders if needed: usefloatformat is determined
-	// by query, whereas the 'userRequest' flag is set to zero for now.
-	glGetTexLevelParameteriv(target, 0, GL_TEXTURE_RED_SIZE, (GLint*) &d);
-	if (d <= 0) glGetTexLevelParameteriv(target, 0, GL_TEXTURE_LUMINANCE_SIZE, (GLint*) &d);
+    // Assign GLSL filter-/lookup-shaders if needed: usefloatformat is determined
+    // by query, whereas the 'userRequest' flag is set to zero for now.
+    glGetTexLevelParameteriv(target, 0, GL_TEXTURE_RED_SIZE, (GLint*) &d);
+    if (d <= 0) glGetTexLevelParameteriv(target, 0, GL_TEXTURE_LUMINANCE_SIZE, (GLint*) &d);
 	
-	if (d <  16) usefloatformat = 0;
-	if (d >= 16) usefloatformat = 1;
-	if (d >= 32) usefloatformat = 2;
+    if (d <  16) usefloatformat = 0;
+    if (d >= 16) usefloatformat = 1;
+    if (d >= 32) usefloatformat = 2;
 
-	// Assign bpc value:
-	textureRecord->bpc = (int) d;
+    // Assign bpc value:
+    textureRecord->bpc = (int) d;
 
-	PsychAssignHighPrecisionTextureShaders(textureRecord, windowRecord, usefloatformat, 0);
+    PsychAssignHighPrecisionTextureShaders(textureRecord, windowRecord, usefloatformat, 0);
 
-	// User specified override shader for this texture provided? This is useful for
-	// basic image processing and procedural texture shading:
-	if (textureShader!=0) {
-		// Assign provided shader as filtershader to this texture: We negate it so
-		// that the texture blitter routines know this is a custom shader, not our
-		// built in filter shader:
-		textureRecord->textureFilterShader = -1 * textureShader;
-	}
+    // User specified override shader for this texture provided? This is useful for
+    // basic image processing and procedural texture shading:
+    if (textureShader!=0) {
+	// Assign provided shader as filtershader to this texture: We negate it so
+	// that the texture blitter routines know this is a custom shader, not our
+	// built in filter shader:
+	textureRecord->textureFilterShader = -1 * textureShader;
+    }
 
     // Unbind texture:
     glBindTexture(target, 0);

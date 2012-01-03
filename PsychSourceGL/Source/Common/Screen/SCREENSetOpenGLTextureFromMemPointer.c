@@ -77,13 +77,13 @@ PsychError SCREENSetOpenGLTextureFromMemPointer(void)
     testarg=0;
     PsychCopyInIntegerArg(2, FALSE, &testarg);
     if (testarg==0) {
-        // No valid textureHandle provided. Create a new empty textureRecord.
+	// No valid textureHandle provided. Create a new empty textureRecord.
         PsychCreateWindowRecord(&textureRecord);
         textureRecord->windowType=kPsychTexture;
         textureRecord->screenNumber = windowRecord->screenNumber;
 
-		// Assign parent window and copy its inheritable properties:
-		PsychAssignParentWindow(textureRecord, windowRecord);
+	// Assign parent window and copy its inheritable properties:
+	PsychAssignParentWindow(textureRecord, windowRecord);
 
         // Mark it valid and return handle to userspace:
         PsychSetWindowRecordValid(textureRecord);
@@ -151,14 +151,14 @@ PsychError SCREENSetOpenGLTextureFromMemPointer(void)
         PsychErrorExitMsg(PsychError_user, "You tried to set invalid texture target.");
     }
 
-    // Activate OpenGL rendering context of windowRecord and make it the active drawing target:
-    PsychSetDrawingTarget(windowRecord);
+    // Activate OpenGL rendering context of windowRecord:
+    PsychSetGLContext(windowRecord);
 
     PsychTestForGLErrors();
 
     // Ok, setup texture record for texture:
     textureRecord->depth = d * 8;
-	textureRecord->nrchannels = d;
+    textureRecord->nrchannels = d;
     PsychMakeRect(textureRecord->rect, 0, 0, w, h);
 
     // Client rect of a texture is always == rect of it:
@@ -188,18 +188,18 @@ PsychError SCREENSetOpenGLTextureFromMemPointer(void)
     // filling an OpenGL texture with memory buffers image content:
     PsychCreateTexture(textureRecord);
 
-	// Assign GLSL filter-/lookup-shaders if needed: usefloatformat is queried.
-	// The 'userRequest' flag is set to zero for now.
-	target = PsychGetTextureTarget(textureRecord);
-	glBindTexture(target, textureRecord->textureNumber);
-	glGetTexLevelParameteriv(target, 0, GL_TEXTURE_RED_SIZE, (GLint*) &d);
-	if (d <= 0) glGetTexLevelParameteriv(target, 0, GL_TEXTURE_LUMINANCE_SIZE, (GLint*) &d);
-	glBindTexture(target, 0);
+    // Assign GLSL filter-/lookup-shaders if needed: usefloatformat is queried.
+    // The 'userRequest' flag is set to zero for now.
+    target = PsychGetTextureTarget(textureRecord);
+    glBindTexture(target, textureRecord->textureNumber);
+    glGetTexLevelParameteriv(target, 0, GL_TEXTURE_RED_SIZE, (GLint*) &d);
+    if (d <= 0) glGetTexLevelParameteriv(target, 0, GL_TEXTURE_LUMINANCE_SIZE, (GLint*) &d);
+    glBindTexture(target, 0);
 
-	usefloatformat = 0;
-	if (d == 16) usefloatformat = 1;
-	if (d >= 32) usefloatformat = 2;
-	PsychAssignHighPrecisionTextureShaders(textureRecord, windowRecord, usefloatformat, 0);
+    usefloatformat = 0;
+    if (d == 16) usefloatformat = 1;
+    if (d >= 32) usefloatformat = 2;
+    PsychAssignHighPrecisionTextureShaders(textureRecord, windowRecord, usefloatformat, 0);
 
     // Return new (or old) PTB textureHandle for this texture:
     PsychCopyOutDoubleArg(1, FALSE, textureRecord->windowIndex);

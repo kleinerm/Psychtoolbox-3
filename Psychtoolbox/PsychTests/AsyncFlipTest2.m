@@ -1,5 +1,5 @@
 function AsyncFlipTest2(screenid)
-
+%Screen('Preference', 'ConserveVRAM', 2^24);
 AssertOpenGL;
 
 if nargin < 1
@@ -48,17 +48,19 @@ Screen('FillRect', w(1), [0 255 0]);
 Screen('Flip', w(1), 0, 2);
 Screen('FillRect', w(1), [0 0 0]);
 Screen('Flip', w(1), 0, 2);
+try
 
 woff = Screen('Openoffscreenwindow', w(1), 128, [0 0 500 100]);
 while ~KbCheck
-    %Screen('AsyncFlipEnd', w(1));
     % Draw something:
     cm = 1 - cm;
     Screen('FillRect', woff, [0, 255*cm, 0]);
     DrawFormattedText(woff, 'Hallo :-)', 'center', 'center', [255 255 0]);
+
     Screen('DrawTexture', w(1), woff);
     Screen('Drawingfinished', w(1), 2);
     %img = Screen('GetImage', woff);
+    %Screen('AsyncFlipEnd', w(1));
     t(end+1) = Screen('AsyncFlipBegin', w(1), t(end) + 0.018, [2]);
 end
 
@@ -68,3 +70,6 @@ Screen('CloseAll');
 
 close all ; plot(diff(1000 * t))
 %figure; imshow(img);
+catch
+  sca;
+end
