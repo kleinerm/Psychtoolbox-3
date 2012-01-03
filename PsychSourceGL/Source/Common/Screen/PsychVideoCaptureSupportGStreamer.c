@@ -1882,12 +1882,19 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		    
 	    case 1: // Accept as is: L8   aka Luminance 8 bit.
 	    case 3: // Accept as is: RGB8 aka RGB 24 bit.
+	    break;
 	    case 5: // Accept as YVYU.
+		    if (!(win->gfxcaps & kPsychGfxCapUYVYTexture)) {
+		        // Usercode requested type 5 - UYVY textures, but GPU does not support them.
+			// Fallback to type 4 - RGBA8 textures:
+			reqdepth = 4;
+			if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Requested YUV texture format for video capture unsupported by GPU. Falling back to RGBA8 format.\n");
+		    }
 	    break;
 	    default:
 		    // Unknown format:
-		    PsychErrorExitMsg(PsychError_user, "You requested an invalid image depths (not one of 0, 1, 2, 3 or 4). Aborted.");
-	    }	    
+		    PsychErrorExitMsg(PsychError_user, "You requested an invalid image depths (not one of 0, 1, 2, 3, 4 or 5). Aborted.");
+	    }
     }
 
     // Requested output texture pixel depth in layers:
@@ -3444,15 +3451,20 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 	    out_texture->textureMemory = (GLuint*) input_image;
 	    
 	    // Special case depths == 2, aka YCBCR texture?
-	    if (capdev->reqpixeldepth == 2) {
-		    #if PSYCH_SYSTEM == PSYCH_LINUX
+	    if ((capdev->reqpixeldepth == 2) && (win->gfxcaps & kPsychGfxCapUYVYTexture)) {
+		// GPU supports UYVY textures and we get data in that YCbCr format. Tell
+		// texture creation routine to use this optimized format:
+		if (!glewIsSupported("GL_APPLE_ycbcr_422")) {
+		    // No support for more powerful Apple extension. Use Linux MESA extension:
 		    out_texture->textureinternalformat = GL_YCBCR_MESA;
 		    out_texture->textureexternalformat = GL_YCBCR_MESA;
-		    #else
+		} else {
+		    // Apple extension supported:
 		    out_texture->textureinternalformat = GL_RGB;
 		    out_texture->textureexternalformat = GL_YCBCR_422_APPLE;
-		    #endif
-		    out_texture->textureexternaltype   = GL_UNSIGNED_SHORT_8_8_MESA;
+		}
+		// Same enumerant for Apple and Mesa:
+		out_texture->textureexternaltype   = GL_UNSIGNED_SHORT_8_8_MESA;
 	    }
 
 	    // Let PsychCreateTexture() do the rest of the job of creating, setting up and

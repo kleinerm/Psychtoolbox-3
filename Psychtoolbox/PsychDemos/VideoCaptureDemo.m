@@ -1,7 +1,7 @@
-function VideoCaptureDemo(fullscreen, fullsize, roi, deviceId)
+function VideoCaptureDemo(fullscreen, fullsize, roi, depth, deviceId)
 % Demonstrate simple use of built-in video capture engine.
 %
-% VideoCaptureDemo([fullscreen=0][, fullsize=0][, roi=[0 0 640 480]][,deviceId=0])
+% VideoCaptureDemo([fullscreen=0][, fullsize=0][, roi=[0 0 640 480]][, depth][,deviceId=0])
 %
 % VideoCaptureDemo initializes the first attached and supported camera on
 % your computer (e.g, the built-in iSight of Apple Macintosh computers),
@@ -58,7 +58,11 @@ if nargin < 3
     roi = [];
 end
 
-if nargin < 4 || isempty(deviceId)
+if nargin < 4
+    depth = [];
+end
+
+if nargin < 5 || isempty(deviceId)
     deviceId = [];
 end
 
@@ -77,7 +81,7 @@ try
     % Set text size for info text. 24 pixels is also good for Linux.
     Screen('TextSize', win, 24);
     
-    grabber = Screen('OpenVideoCapture', win, deviceId, roi, [], [], [], []);
+    grabber = Screen('OpenVideoCapture', win, deviceId, roi, depth, [], [], []);
 %     brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness',383)
 %     exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure',130)
 %     gain = Screen('SetVideoCaptureParameter', grabber, 'Gain')

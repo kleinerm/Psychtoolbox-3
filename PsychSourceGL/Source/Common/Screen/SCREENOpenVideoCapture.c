@@ -45,7 +45,7 @@ static char synopsisString[] =
 "settings below on how to adjust this behaviour to your needs.\n"
 "The real ROI (region of interest) may differ from the requested one, depending on the capabilities of "
 "your capture device. 'pixeldepth' if provided, asks for the number of layers that captured textures "
-"should have: 1=Luminance image, 2=Luminance+Alpha image, 3=RGB image, 4=RGB+Alpha image. Default is "
+"should have: 1=Luminance image, 2=Luminance+Alpha image, 3=RGB image, 4=RGB+Alpha, 5=YCBCR image. Default is "
 "to take whatever the capture device provides by default. Different devices support different formats "
 "so some of these settings may be ignored. Some combinations of video capture devices and graphics "
 "cards may support a setting of 5=YCBCR encoding. If they do, then this is an especially efficient way "

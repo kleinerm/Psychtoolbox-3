@@ -1123,15 +1123,15 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     if ((win->gfxcaps & kPsychGfxCapUYVYTexture) && useYUVDecode) {
 	// GPU supports UYVY textures and we get data in that YCbCr format. Tell
 	// texture creation routine to use this optimized format:
-	#if PSYCH_SYSTEM == PSYCH_LINUX
-	// Linux MESA style:
-	out_texture->textureinternalformat = GL_YCBCR_MESA;
-	out_texture->textureexternalformat = GL_YCBCR_MESA;
-	#else
-	// Apple style:
-	out_texture->textureinternalformat = GL_RGB;
-	out_texture->textureexternalformat = GL_YCBCR_422_APPLE;
-	#endif
+	if (!glewIsSupported("GL_APPLE_ycbcr_422")) {
+	    // No support for more powerful Apple extension. Use Linux MESA extension:
+	    out_texture->textureinternalformat = GL_YCBCR_MESA;
+	    out_texture->textureexternalformat = GL_YCBCR_MESA;
+	} else {
+	    // Apple extension supported:
+	    out_texture->textureinternalformat = GL_RGB;
+	    out_texture->textureexternalformat = GL_YCBCR_422_APPLE;
+	}
 	// Same enumerant for Apple and Mesa:
 	out_texture->textureexternaltype   = GL_UNSIGNED_SHORT_8_8_MESA;
     }
