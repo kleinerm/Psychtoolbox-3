@@ -1,5 +1,5 @@
-function CopyWindowTest(sf, sd)
-% CopyWindowTest(sf, sd)
+function CopyWindowTest(uselegacy, sf, sd)
+% CopyWindowTest([uselegacy=0][, sf=1][, sd=1])
 %
 % Basic correctness test of different path's of Screen('CopyWindow')
 % Copies a small rectangular region from one window into another window.
@@ -18,26 +18,55 @@ function CopyWindowTest(sf, sd)
 % The optional [copyMode] argument is accepted but ignored.
 %
 % Result of these test need to be checked via visual inspection and common sense.
+%
+% Since the year 2012, Psychtoolbox uses fast offscreen window support from
+% the imaging pipeline by default, instead of the old legacy path, which was
+% less robust, slower, less flexible and more limited in its functionality (e.g.,
+% no support for floating point framebuffers, multi-sample anti-aliasing or
+% 3D rendering with correct occlusion testing). The legacy path is only enabled
+% if your graphics card + driver does not support fast offscreen windows, or if
+% you manually force use of the legacy path by including the flag 2^24 as a
+% ConsereVRAMSetting, e.g., Screen('Preference', 'ConserveVRAM', 2^24);
+% See "help ConserveVRAMSettings", the section titled "kPsychDontAutoEnableImagingPipeline".
+%
+% The only sensible reason to use the legacy path is if your graphics drivers
+% should have some bugs in handling of fast offscreen windows and a driver
+% update doesn't fix the problem. This CopyWindowTest() script should expose
+% such bugs. It also allows you to use test the legacy path with the optional
+% flag 'uselegacy' set to 1.
+%
 
 % History:
 % 01/30/06 mk Wrote it.
+% 01/01/12 mk Update with info about fast path and how to opt-out of it.
 
 AssertOpenGL;
 
+if nargin < 1 || isempty(uselegacy)
+   uselegacy = 0;
+end
+
 % Source rectangle scaling factor:
-if nargin < 1
+if nargin < 2 || isempty(sf)
    sf=1;
 end;
 sf
 
 % Target rectangle scaling factor:
-if nargin < 2
+if nargin < 3 || isemtpy(sd)
    sd=1;
 end;
 sd
 
-w=Screen('OpenWindow', 0, 0, [], 32, 2, []); %, 1, kPsychNeedImageProcessing);
-%w=Screen('OpenWindow', 0, 0, []);
+% Enable legacy Offscreen window support if requested:
+ov = Screen('Preference', 'ConserveVRAM');
+if uselegacy
+   Screen('Preference', 'ConserveVRAM', bitor(ov, 2^24));
+end
+
+% Open onscreen window:
+w=Screen('OpenWindow', 0, 0);
+
 % Clear to black background:
 Screen('FillRect', w, 0);
 x=200;
@@ -129,6 +158,9 @@ Screen('Flip',w);
 WaitKey;
 
 Screen('CloseAll');
+
+Screen('Preference', 'ConserveVRAM', ov);
+
 return;
 
 function DrawRect(win, x, y)
