@@ -12,17 +12,17 @@
 # Rules to allow Psychtoolbox to access the MMIO registers of all supported GPU's
 # while running inside an unprivileged Matlab/Octave userspace process without sudo root:
 
-# For each attached ATI GPU, set the permisions on its resource2 file to o+rw to allow mapping BAR-2 from unprivileged userspace apps like Psychtoolbox:
-ACTION=="add", SUBSYSTEM=="graphics", KERNEL=="fb?", SUBSYSTEMS=="pci", ATTRS{class}=="0x030000", ATTRS{vendor}=="0x1002", RUN+="/bin/chmod o+rw %S/class/graphics/%k/device/resource2"
+# For each attached ATI GPU, set the permissions on its resource2 file to o+rw to allow mapping BAR-2 from unprivileged userspace apps like Psychtoolbox:
+ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x1002", RUN+="/bin/chmod o+rw %S%p/resource2"
 
-# For each attached AMD GPU, set the permisions on its resource2 file to o+rw to allow mapping BAR-2 from unprivileged userspace apps like Psychtoolbox:
-ACTION=="add", SUBSYSTEM=="graphics", KERNEL=="fb?", SUBSYSTEMS=="pci", ATTRS{class}=="0x030000", ATTRS{vendor}=="0x1022", RUN+="/bin/chmod o+rw %S/class/graphics/%k/device/resource2"
+# For each attached AMD GPU, set the permissions on its resource2 file to o+rw to allow mapping BAR-2 from unprivileged userspace apps like Psychtoolbox:
+ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x1022", RUN+="/bin/chmod o+rw %S%p/resource2"
 
-# For each attached NVidia GPU, set the permisions on its resource0 file to o+rw to allow mapping BAR-0 from unprivileged userspace apps like Psychtoolbox:
-ACTION=="add", SUBSYSTEM=="graphics", KERNEL=="fb?", SUBSYSTEMS=="pci", ATTRS{class}=="0x030000", ATTRS{vendor}=="0x10de", RUN+="/bin/chmod o+rw %S/class/graphics/%k/device/resource0"
+# For each attached NVidia GPU, set the permissions on its resource0 file to o+rw to allow mapping BAR-0 from unprivileged userspace apps like Psychtoolbox:
+ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x10de", RUN+="/bin/chmod o+rw %S%p/resource0"
 
-# For each attached Intel GPU, set the permisions on its resource0 file to o+rw to allow mapping BAR-0 from unprivileged userspace apps like Psychtoolbox:
-ACTION=="add", SUBSYSTEM=="graphics", KERNEL=="fb?", SUBSYSTEMS=="pci", ATTRS{class}=="0x030000", ATTRS{vendor}=="0x8086", RUN+="/bin/chmod o+rw %S/class/graphics/%k/device/resource0"
+# For each attached Intel GPU, set the permissions on its resource0 file to o+rw to allow mapping BAR-0 from unprivileged userspace apps like Psychtoolbox:
+ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x8086", RUN+="/bin/chmod o+rw %S%p/resource0"
 
 # Make devices from "Cambridge Research Systems" accessible by unprivileged user processes:
 ATTR{manufacturer}=="CRS Ltd", MODE="0666"
