@@ -7,7 +7,7 @@ function S = WlsToS(wls)
 % 4/17/02  dhb  Handle special case of one wavelength passed.
 %               Delta argument is arbitrarily set to 0 for this case.
 % 7/11/03  dhb  Handle case the wls is passed in struct format.
-% 1/3/12   dhb  Fix check for evenly spaced wavelengths.
+% 1/3/12   dhb  Fix check for evenly spaced wavelengths. 
 
 % Check format.
 if (isstruct(wls))
