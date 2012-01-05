@@ -1865,7 +1865,7 @@
 		83E2C4250D2FCA2000FFD350 /* PsychCV.c in Sources */ = {isa = PBXBuildFile; fileRef = 83E2C4210D2FCA2000FFD350 /* PsychCV.c */; };
 		83E2C4260D2FCA2000FFD350 /* RegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = 83E2C4230D2FCA2000FFD350 /* RegisterProject.c */; };
 		83E2C42C0D2FCC1A00FFD350 /* PsychCV.cc in Sources */ = {isa = PBXBuildFile; fileRef = 83E2C42B0D2FCC1A00FFD350 /* PsychCV.cc */; };
-		83E588B8147F56D80073A92F /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83E588B7147F56D80073A92F /* CoreVideo.framework */; };
+		83E54DEF14B55A0900FDDC46 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83E54DEE14B55A0900FDDC46 /* QuartzCore.framework */; };
 		83E588B9147F56D90073A92F /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83E588B7147F56D80073A92F /* CoreVideo.framework */; };
 		83EFE9020F9A2795002211F0 /* PsychVideoCaptureSupportLibARVideo.c in Sources */ = {isa = PBXBuildFile; fileRef = 83EFE9010F9A2795002211F0 /* PsychVideoCaptureSupportLibARVideo.c */; };
 		83FD4C470BA5F0D700ECC9A4 /* VLTracker2D.cc in Sources */ = {isa = PBXBuildFile; fileRef = 83FD4C460BA5F0D700ECC9A4 /* VLTracker2D.cc */; };
@@ -3850,6 +3850,7 @@
 		83E2C4230D2FCA2000FFD350 /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = RegisterProject.c; path = ../../../Source/Common/PsychCV/RegisterProject.c; sourceTree = SOURCE_ROOT; };
 		83E2C4240D2FCA2000FFD350 /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = RegisterProject.h; path = ../../../Source/Common/PsychCV/RegisterProject.h; sourceTree = SOURCE_ROOT; };
 		83E2C42B0D2FCC1A00FFD350 /* PsychCV.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = PsychCV.cc; sourceTree = "<group>"; };
+		83E54DEE14B55A0900FDDC46 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = /System/Library/Frameworks/QuartzCore.framework; sourceTree = "<absolute>"; };
 		83E588B7147F56D80073A92F /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = /System/Library/Frameworks/CoreVideo.framework; sourceTree = "<absolute>"; };
 		83EFE9010F9A2795002211F0 /* PsychVideoCaptureSupportLibARVideo.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychVideoCaptureSupportLibARVideo.c; path = ../../../Source/Common/Screen/PsychVideoCaptureSupportLibARVideo.c; sourceTree = SOURCE_ROOT; };
 		83EFE9F00F9A6433002211F0 /* libARvideo-Intel.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = "libARvideo-Intel.a"; sourceTree = SOURCE_ROOT; };
@@ -4524,7 +4525,7 @@
 				2FEBA9DB0989AD1900F4165F /* System.framework in Frameworks */,
 				2FEBA9DC0989AD1A00F4165F /* SystemConfiguration.framework in Frameworks */,
 				83DBBD010C332374002B3C93 /* AGL.framework in Frameworks */,
-				83E588B8147F56D80073A92F /* CoreVideo.framework in Frameworks */,
+				83E54DEF14B55A0900FDDC46 /* QuartzCore.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -5164,6 +5165,7 @@
 			isa = PBXGroup;
 			children = (
 				83E588B7147F56D80073A92F /* CoreVideo.framework */,
+				83E54DEE14B55A0900FDDC46 /* QuartzCore.framework */,
 				83AA2C6F129F22E1005841CF /* libusb-1.0.dylib */,
 				83AA2C4E129F2190005841CF /* libfreenect.dylib */,
 				83DBBCFF0C332374002B3C93 /* AGL.framework */,

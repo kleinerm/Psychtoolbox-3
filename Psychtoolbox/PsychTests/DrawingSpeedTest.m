@@ -109,12 +109,12 @@ t1 = Screen('Flip', win);
 
 % Timing loop, 1000 trials:
 for i=1:1000
-    if gpumeasure    
+    if gpumeasure
         % Start GPU timer: gpumeasure will be true if this
         % is actually supported and will return valid results:
         gpumeasure = Screen('GetWindowInfo', win, 5);
     end
-    
+
     % Batch draw:
     if mode < 2
         switch primitivetype
@@ -188,16 +188,16 @@ for i=1:1000
         % so may return a zero time value at first invocation(s),
         % depending on how deep the rendering pipeline is:
         while 1
-          winfo = Screen('GetWindowInfo', win);
-	  if winfo.GPULastFrameRenderTime > 0
-	    break;
-	  end
-	end
+            winfo = Screen('GetWindowInfo', win);
+            if winfo.GPULastFrameRenderTime > 0
+                break;
+            end
+        end
 
         % Store it:
         gpudur(i) = winfo.GPULastFrameRenderTime;
     end
-    
+
     % Next iteration.
 end
 
