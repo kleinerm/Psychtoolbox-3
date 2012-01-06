@@ -160,8 +160,6 @@ for trial = 1:4
     fprintf('Ready? Push a button on the box as fast as possible when you hear the beep noise.\n');
     drawnow;
     WaitSecs(2);
-    clc;
-    drawnow;
     
     % Now we clear the input buffer of the RTBox to get rid of any button
     % press events from previous trials or activities:
@@ -177,7 +175,7 @@ for trial = 1:4
     
     % Emit standardized beep noise: Normally one would use the
     % PsychPortAudio driver here for good timing precision:
-    Beeper;
+    Beeper(400, 0.15, 0.8);
     
     % Now we wait for some button response from the box, but not forever.
     % We wait until either exactly one button response has been received
@@ -196,10 +194,10 @@ for trial = 1:4
     % Store result of this trial:
     if isempty(evt)
         fprintf('No response given within 5 seconds :-( Invalid trial.\n');
-        WaitSecs(2);
+        WaitSecs(5);
     else
         fprintf('Good boy!\n');
-        WaitSecs(2);
+        WaitSecs(3);
         t(end+1) = tPress; %#ok<AGROW>
         b(end+1) = evt; %#ok<AGROW>
         tBeep(end+1) = tOnset; %#ok<AGROW>
@@ -274,8 +272,6 @@ for trial = 1:4
     fprintf('Ready? Push a button on the box as fast as possible when you hear the beep noise.\n');
     drawnow;
     WaitSecs(2);
-    clc;
-    drawnow;
     
     % Now we clear the input buffer of the RTBox to get rid of any button
     % press events from previous trials or activities. Additionally we set
@@ -294,7 +290,7 @@ for trial = 1:4
     
     % Emit standardized beep noise: Normally one would use the
     % PsychPortAudio driver here for good timing precision:
-    Beeper;
+    Beeper(400, 0.15, 0.8);
     
     % Now we wait for some button response from the box, but not forever.
     % We wait until either exactly one button response has been received

@@ -617,6 +617,9 @@ function varargout = PsychRTBox(varargin)
 %
 %            None of this is tested due to lack of hardware/firmware.
 %
+% 01/06/2012 Bugfix for Firmware versions >= 4.1. Did not receive events
+%            due to wrong acknowledgement handling. (MK)
+%
 
 % Global variables: Need to be persistent across driver invocation and
 % shared with internal subfunctions:
@@ -2158,9 +2161,14 @@ function enableEvent(handle, str)
         % time. After that time, the box should have stopped at the latest:
         rtbox_info(handle).busyUntil = tpost + rtbox_global.maxbusy;
 
-        % Store this command code as one of the codes to be waited for
-        % in parseQueue:
-        rtbox_info(handle).ackTokens(end+1) = str(ie);
+	% On firmware versions < 4.1, we expect an acknowledge byte for each
+        % sent byte. On later versions we only get an acknowledge for the
+        % first 'e' character, but not the actual enable info byte afterwards:
+	if (rtbox_info(handle).version < 4.1) || (ie == 1)
+	    % Store this command code as one of the codes to be waited for
+            % in parseQueue:
+            rtbox_info(handle).ackTokens(end+1) = str(ie);
+	end
     end
 
     % All enable tokens submitted.
@@ -2291,7 +2299,7 @@ function bState = buttonQuery(handle)
     s = rtbox_info(handle).handle;
     
     % Box in scanning mode? And button state change event reporting active?
-    if (rtbox_info(handle).boxScanning) && any(rtbox_info(handle).enabled(1:2))
+    if (rtbox_info(handle).boxScanning) && all(rtbox_info(handle).enabled(1:2))
         % Yes. Box provides button press/release events, so its sufficient
         % to parse the receive queue.
         
@@ -2316,7 +2324,7 @@ function bState = buttonQuery(handle)
             startBox(handle, 1);
             
             % Done.
-        else        
+        else
             % Box is not scanning and reporting, all serial buffers are empty
             % and idle. We perform a synchronous query:
             IOPort('write',s,'?'); % ask button state: '4321'*16 63
@@ -2512,7 +2520,7 @@ function [nadded, tlastadd] = parseQueue(handle, minEvents, timeOut, interEventD
     while (tcurrent <= timeOut) && (minEvents > 0) && (tcurrent <= tInterTimeout)
 
         % Shall we repeat until all outstanding tokens acknowledged?
-        if untilAllAcknowledged & isempty(rtbox_info(handle).ackTokens) %#ok<AND2>
+        if untilAllAcknowledged && isempty(rtbox_info(handle).ackTokens) %#ok<AND2>
             % Yes. And we're done:
             break;
         end
@@ -2643,7 +2651,7 @@ function [nadded, tlastadd] = parseQueue(handle, minEvents, timeOut, interEventD
                 continue;
             end
         end
-                
+
         % Button state live query result packet? This has the evid 63 == '?'
         % Ok, this doesn't work due to a design-flaw in the protocol. The
         % box sends the data first in the evid byte, then the '?'
@@ -2678,6 +2686,10 @@ function [nadded, tlastadd] = parseQueue(handle, minEvents, timeOut, interEventD
         %         end
 
         % Next parse iteration:
+    end
+
+    if untilAllAcknowledged && ~isempty(rtbox_info(handle).ackTokens)
+        warning(['PsychRTBox: parseQeue: Did not receive expected acknowledgements from box! Missing acks: ' char(rtbox_info(handle).ackTokens)]); %#ok<WNTAG>
     end
 
     % Done.
