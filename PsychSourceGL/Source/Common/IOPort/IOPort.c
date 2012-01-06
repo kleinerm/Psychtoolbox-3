@@ -389,7 +389,7 @@ PsychError IOPORTOpenSerialPort(void)
 		"on OS/X and Linux, about 6 msecs on Windows.\n\n"
 		"SendTimeout=1.0 -- Interbyte send timeout in seconds. Only used on Windows.\n\n"
 		"ReceiveTimeout=1.0 -- Interbyte receive timeout in seconds.\n\n"
-		"ReceiveLatency=0.000001 -- Latency in seconds for processing of new input bytes. Only used on OS/X.\n\n"
+		"ReceiveLatency=0.000001 -- Latency in seconds for processing of new input bytes. Only used on OS/X and Linux.\n\n"
 		"PollLatency=0.0005 (0.001 on Windows) -- Latency between polls in seconds for polling in some 'Read' operations.\n\n"
 		"ProcessingMode=Raw -- Mode of input/output processing: Raw or Cooked. On Windows, only Raw (binary) mode is supported.\n\n"
 		"DontFlushOnWrite=0 -- Do not flush the serial port write buffer at device close time or during blocking writes. "

@@ -35,6 +35,11 @@
 
 #include "IOPort.h"
 
+#if PSYCH_SYSTEM == PSYCH_LINUX
+// Defines serial_struct and ASYNC_LOW_LATENCY
+#include <linux/serial.h>
+#endif
+
 // TODO FIXME: Do we really need volatile access to the device struct?
 // Or is our current locking sufficient to do without it? It doesn't hurt
 // at runtime, but creates ugly compiler warnings...
@@ -659,14 +664,17 @@ void PsychIOOSCloseSerialPort(PsychSerialDeviceRecord* device)
  */
 PsychError PsychIOOSConfigureSerialPort(PSYCHVOLATILE PsychSerialDeviceRecord* device, const char* configString)
 {
-	int				rc;
-    struct termios	options;
-    int				handshake;
-	char*			p;
-	float			infloat;
-	int				inint;
-	unsigned long	mics = 0UL;
-	psych_bool			updatetermios = FALSE;
+#if PSYCH_SYSTEM == PSYCH_LINUX
+	struct serial_struct serialstruct;
+#endif
+	int rc;
+	struct termios options;
+	int handshake;
+	char* p;
+	float infloat;
+	int inint;
+	unsigned long mics = 0UL;
+	psych_bool updatetermios = FALSE;
 
     // The serial port attributes such as timeouts and baud rate are set by modifying the termios
     // structure and then calling tcsetattr() to cause the changes to take effect. Note that the
@@ -1046,8 +1054,8 @@ PsychError PsychIOOSConfigureSerialPort(PSYCHVOLATILE PsychSerialDeviceRecord* d
 		if (strstr(configString, "Lenient") == NULL) return(PsychError_system);
     }
 	
-	// This function is OS/X specific, silently ignored on Linux...
 #if PSYCH_SYSTEM == PSYCH_OSX	
+	// OS/X specific implementation:
 	if ((p = strstr(configString, "ReceiveLatency="))) {
 		// Set receive latency for low-level driver: Minimum latency between dequeue and notify
 		// operation on reception of new input data. The granularity is microseconds...
@@ -1070,6 +1078,48 @@ PsychError PsychIOOSConfigureSerialPort(PSYCHVOLATILE PsychSerialDeviceRecord* d
 			// applications.			
 			if (ioctl(device->fileDescriptor, IOSSDATALAT, &mics) == -1) {
 				if (verbosity > 0) printf("Error setting receive latency for device %s to %d microseconds - %s(%d).\n", device->portSpec, mics, strerror(errno), errno);
+				if (strstr(configString, "Lenient") == NULL) return(PsychError_system);
+			}
+		}
+	}
+#endif
+
+#if PSYCH_SYSTEM == PSYCH_LINUX
+	// Linux specific implementation: Controls low-latency mode. If a value <= 0.001 seconds aka <= 1msec
+	// is requested, we set the low-latency flag, otherwise we clear it:
+	if ((p = strstr(configString, "ReceiveLatency="))) {
+		// Set receive latency for low-level driver: Minimum latency between dequeue and notify
+		// operation on reception of new input data. The granularity is microseconds...
+		if ((1!=sscanf(p, "ReceiveLatency=%f", &infloat)) || (infloat < 0)) {
+			if (verbosity > 0) printf("Invalid parameter for ReceiveLatency set! Typo, or negative value provided.\n");
+			return(PsychError_user);
+		}
+		else {
+			// Set timeout: It is in granularity microseconds, so we need to quantize to microseconds:
+			mics = (infloat <= 0.001) ? 1 : 0;
+			
+			// Retrieve current settings:
+			if (ioctl(device->fileDescriptor, TIOCGSERIAL, &serialstruct) == -1) {
+				if (verbosity > 0) printf("Error setting receive latency for device %s to %s latency mode - %s(%d).\n", device->portSpec, ((mics) ? "low" : "normal"), strerror(errno), errno);
+				if (strstr(configString, "Lenient") == NULL) return(PsychError_system);
+			}
+
+			// Clear or set low-latency flag:
+			// Setting it enables whatever leads to low receive latency on
+			// a given driver. In the FTDI serial-converter driver (ftdi_sio.c)
+			// it forces the chips receive latency timer to its minimum value of
+			// 1 msec, overriding whatever sysfs value is set. Clearing it will
+			// enable use of the latency_timer value fro sysfs. Other drivers or
+			// the higher level subsystem may make other/additional optimizations.
+			if (mics) {
+				serialstruct.flags |= ASYNC_LOW_LATENCY;
+			} else {
+				serialstruct.flags &= ~ASYNC_LOW_LATENCY;
+			}
+
+			// Set updated settings:
+			if (ioctl(device->fileDescriptor, TIOCSSERIAL, &serialstruct) == -1) {
+				if (verbosity > 0) printf("Error setting receive latency for device %s to %s latency mode - %s(%d).\n", device->portSpec, ((mics) ? "low" : "normal"), strerror(errno), errno);
 				if (strstr(configString, "Lenient") == NULL) return(PsychError_system);
 			}
 		}
