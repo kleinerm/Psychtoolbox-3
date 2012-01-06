@@ -41,6 +41,8 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 12/27/2010 Add check for unsupported Matlab versions prior to V6.5. (MK)
 % 10/31/2011 Add call to SwitchToNewPsychtoolboxHoster for switch to
 %            GoogleCode, if needed. (MK)
+% 01/06/2012 Add support for calling PsychLinuxConfiguration on Linux. (MK)
+%
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -634,6 +636,16 @@ catch
     fprintf('Thanks! Press RETURN or ENTER to confirm you read and understood the above message.\n');
     pause;
     fprintf('\n\n');
+end
+
+% Run Linux post-configuration script try-catch protected:
+if IsLinux
+    try
+	% This script modifies/extends system configuration files
+	% to optimize the system for use with Psychtoolbox:
+        PsychLinuxConfiguration;
+    catch
+    end
 end
 
 % Some goodbye, copyright and getting started blurb...
