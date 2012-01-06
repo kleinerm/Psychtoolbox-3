@@ -2901,14 +2901,26 @@ function openRTBox(deviceID, handle)
                 continue;
             end
 
+	    if IsLinux
+                % Switch serial port to low-latency mode on Linux:
+                % This is extra-paranoid, as our udev rules and the
+                % 'ReceiveLatency=0.0001' setting below does already the same.
+                system(sprintf('setserial %s low_latency', port));
+	    end
+
             % Try to open port: We open at maximum supported baud rate of 115200
             % bits, use a timeout for blocking reads of 1 second, and request
             % low-latency polling for write completion if the IOPort('Write')
             % command uses a polling method for waiting for write completion. Set
             % the "sleep time" between consecutive polls to 0.0001 seconds = 0.1
             % msecs. That is good enough for our purpose and still prevents system
-            % overload on OS/X and Linux:
-            [s errmsg]=IOPort('OpenSerialPort', port, 'BaudRate=115200 ReceiveTimeout=1.0 PollLatency=0.0001');
+            % overload on OS/X and Linux. We also set the ReceiveLatency to 0.1 msecs,
+            % aka 0.0001 seconds: This parameter is silently ignored on Windows, honored
+            % in some way by some serial port drivers on OS/X (well, maybe, who knows?),
+            % and on Linux any value <= 1 msecs enables ASYNC_LOW_LATENCY mode on serial
+            % ports, ie. some low-latency optimizations. E.g., with the FTDI chips used in
+            % RTBox it will automatically set the chips latency timer to its minimum of 1 msec:
+            [s errmsg]=IOPort('OpenSerialPort', port, 'BaudRate=115200 ReceiveTimeout=1.0 PollLatency=0.0001 ReceiveLatency=0.0001 ');
 
             % Worked?
             if s>=0
