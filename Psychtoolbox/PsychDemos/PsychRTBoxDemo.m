@@ -175,7 +175,7 @@ for trial = 1:4
     
     % Emit standardized beep noise: Normally one would use the
     % PsychPortAudio driver here for good timing precision:
-    Beeper(400, 0.15, 0.8);
+    Beeper(400, 0.8, 0.15);
     
     % Now we wait for some button response from the box, but not forever.
     % We wait until either exactly one button response has been received
@@ -254,10 +254,9 @@ rtbox = PsychRTBox('Open');
 PsychRTBox('ClockRatio', rtbox);
 
 % Wait for all button to be released:
+clc;
 fprintf('\n\nPlease release all buttons on the box.\n');
 PsychRTBox('WaitButtonUp', rtbox);
-
-fprintf('Thanks!\n\n');
 
 tBeep = [];
 t = [];
@@ -290,7 +289,7 @@ for trial = 1:4
     
     % Emit standardized beep noise: Normally one would use the
     % PsychPortAudio driver here for good timing precision:
-    Beeper(400, 0.15, 0.8);
+    Beeper(400, 0.8, 0.15);
     
     % Now we wait for some button response from the box, but not forever.
     % We wait until either exactly one button response has been received
@@ -311,12 +310,12 @@ for trial = 1:4
     % Store result of this trial:
     if isempty(evt)
         fprintf('No response given within 5 seconds :-( Invalid trial.\n');
-        WaitSecs(2);
+        WaitSecs(5);
     else        
         % We calculate the RT immediately this time:
         RT = tResponse - tOnset;
         fprintf('In trial %i: Button %s pressed. RT = %f msecs.\n', trial, char(evt), RT * 1000);
-        WaitSecs(2);
+        WaitSecs(3);
         t(end+1) = tBox; %#ok<AGROW>
         b(end+1) = evt; %#ok<AGROW>
         tBeep(end+1) = tOnset; %#ok<AGROW>
@@ -334,6 +333,8 @@ tResponse = PsychRTBox('BoxsecsToGetsecs', rtbox, t);
 % Calculate RT's:
 RT = tResponse - tBeep;
 
+clc;
+
 % Show results for all trials:
 for i = 1:length(RT)
     fprintf('In trial %i: Button %s pressed. RT = %f msecs.\n', i, char(b(i)), RT(i) * 1000);
@@ -345,6 +346,6 @@ end
 % multiple boxes open for uses:
 PsychRTBox('CloseAll');
 
-fprintf('Experiment II Done.\n\n');
+fprintf('\nExperiment II Done. Bye!\n\n');
 
 return;

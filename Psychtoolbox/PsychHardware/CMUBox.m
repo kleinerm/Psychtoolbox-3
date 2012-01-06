@@ -463,6 +463,14 @@ if strcmpi(cmd, 'Open')
         box.norelease = 0;
     end
 
+    if IsLinux
+        % Switch serial port to low-latency mode on Linux:
+        % This is extra-paranoid, as our udev rules and the
+        % 'ReceiveLatency=0.0001' setting below does already the same.
+        system(sprintf('setserial %s low_latency', port));
+        WaitSecs('YieldSecs', 0.100);
+    end
+
     % Try to open connection: Allocate an input buffer of a size of
     % 1600 * 9 * 3600 = 51840000 Bytes. This is sufficient for 1 hour of
     % uninterrupted box operation without ever reading out events from the
@@ -481,7 +489,7 @@ if strcmpi(cmd, 'Open')
     % low-latency for button transitions, as long as they are from none to
     % some and some to none.
     box.portName = portName;
-    box.port = IOPort('OpenSerialPort', portName, ['InputBufferSize=51840000 HardwareBufferSizes=32768,32768 Terminator=0 ' pString]);
+    box.port = IOPort('OpenSerialPort', portName, ['InputBufferSize=51840000 HardwareBufferSizes=32768,32768 Terminator=0 ReceiveLatency=0.0001 ' pString]);
     
     
     % Is this a testrun with an emulated CMU/PST box by use of the

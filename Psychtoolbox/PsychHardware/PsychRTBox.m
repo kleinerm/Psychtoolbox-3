@@ -2900,13 +2900,14 @@ function openRTBox(deviceID, handle)
                 % Yes. Skip this candidate:
                 continue;
             end
-
-	    if IsLinux
+            
+            if IsLinux
                 % Switch serial port to low-latency mode on Linux:
                 % This is extra-paranoid, as our udev rules and the
                 % 'ReceiveLatency=0.0001' setting below does already the same.
                 system(sprintf('setserial %s low_latency', port));
-	    end
+                WaitSecs('YieldSecs', 0.100);
+            end
 
             % Try to open port: We open at maximum supported baud rate of 115200
             % bits, use a timeout for blocking reads of 1 second, and request
