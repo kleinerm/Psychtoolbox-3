@@ -20,12 +20,12 @@
 % 3. The following command would download the current development branch of
 %    the full PTB distribution into the subdirectory /Users/kleinerm/MyPTB :
 %
-%    svn checkout https://svn.berlios.de/svnroot/repos/osxptb/trunk /Users/kleinerm/MyPTB/
+%    svn checkout http://psychtoolbox-3.googlecode.com/svn/trunk/Psychtoolbox/ /Users/kleinerm/MyPTB/
 %
 %    This command would download the full 'beta' distribution instead,
 %    which corresponds to the most recent official, tested, production release:
 %
-%    svn checkout https://svn.berlios.de/svnroot/repos/osxptb/beta /Users/kleinerm/MyPTB/
+%    svn checkout http://psychtoolbox-3.googlecode.com/svn/beta/Psychtoolbox/ /Users/kleinerm/MyPTB/
 %
 %    Inside the /Users/kleinerm/MyPTB folder you would see the following
 %    subfolders:
@@ -55,12 +55,18 @@
 %
 %    Be aware that you can only download code from the repository. If
 %    you want to participate in PTB's development you'll need write access
-%    to the repository. Contact David Brainard if you want to apply for
-%    write access. Make yourself familiar with the Subversion toolchain
-%    if you want to do serious work (http://subversion.tigris.org).
+%    to the repository. Contact David Brainard or Mario Kleiner if you want
+%    to apply for write access. Make yourself familiar with the Subversion
+%    toolchain or with Git if you want to do serious work.
 %
-%    You can also browse the source code and all development logs via a
-%    web interface: http://svn.berlios.de/wsvn/osxptb
+%    An even more recent view of current development can be found on GitHub,
+%    where our master and experimental branches are hosted. If you intend
+%    to contribute to C code development or other complex parts of the
+%    software, we will require you to use git instead of Subversion and
+%    you will work with the git repository at GitHub.
+%
+%    You can browse the source code and all development logs via a
+%    web interface: http://code.google.com/p/psychtoolbox-3/source/list
 %
 %    For almost all source code, i.e., unless otherwise stated in the
 %    source files themselves or accompanying documentation, the
