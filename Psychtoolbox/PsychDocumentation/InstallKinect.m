@@ -39,9 +39,10 @@
 %
 % If you use the Psychtoolbox distribution provided by the NeuroDebian
 % project (http://neuro.debian.net) there's nothing to do. It should "just
-% work(tm)". Otherwise the following steps are required:
+% work(tm)", well almost: Skip to step 2. Otherwise the following step 1
+% is required:
 %
-% 1. If you have Ubuntu Linux 10.04 LTS or 10.10 installed, open a terminal
+% 1. If you have Ubuntu Linux 10.04 LTS or later installed, open a terminal
 % window and type this sequence of commands, providing your administrator
 % password as requested.
 %
@@ -52,7 +53,25 @@
 %       --> (YOURNAME) is your user login name!
 %    e) Log out and Log in again.
 %
-% 2. Kinect is now useable from within Matlab or Octave.
+% 2. Kinect is now useable from within Matlab or Octave. Well almost.
+% Systems with Linux kernel version 3.0 or later can use the video camera
+% and microphones of the Kinect as regular sound and video devices, e.g.,
+% for use by the Psychtoolbox videocapture and recording functions or other
+% video apps (Skype, etc.). This however blocks use of the Kinect by our
+% PsychKinect() driver. If you want the Kinect as 3D depths camera with
+% our driver or other Kinect-specific software, you need to disable the
+% standard Linux kinect driver "gspca_kinect" by black-listing it. On
+% Ubuntu Linux (and probably most other distributions) you can do this
+% by copying the file linux_blacklist_kinectvideo from Psychtoolboxs
+% PsychContributed folder to Linux /etc/modprobe.d/ directory as a root
+% user. This is most simply done by executing this function InstallKinect,
+% and blindly entering your password while logged in as a user with
+% administrator rights (as the script calls the sudo command).
+%
+% 3. After this procedure, the Kinect should be fully useable by Psychtoolbox.
+%
+%
+% CAVEAT:
 %
 % This is still early prototype software, expect bugs, bumps and hickups.
 %
@@ -88,3 +107,31 @@
 %
 % web: http://www.libusb.org/
 %
+
+cmd = ['sudo cp ' PsychtoolboxRoot '/PsychContributed/linux_blacklist_kinectvideo /etc/modprobe.d/'];
+fprintf('Will copy the Kinect video driver blacklist file to your system. This will require\n');
+fprintf('administrator root permission. Please enter your admin password now. You will likely\n');
+fprintf('not see any visual feedback until you pressed ENTER and entered a valid password.\n');
+drawnow;
+[rc, msg] = system(cmd);
+if rc == 0
+  fprintf('Success! Now disabling the Kinect video driver. If this does not complete within a second,\n');
+  fprintf('you may need to blindly type your password again + ENTER, but usually it just completes.\n');
+  drawnow;
+  [rc, msg] = system('sudo rmmod gspca_kinect');
+  if rc == 0
+    fprintf('Success! Your Kinect should now be useable by Psychtoolbox PsychKinect driver.\n');
+  else
+    fprintf('Failed! Maybe retry? Other than that, unplug your Kinect and reboot your machine to make it work.\n');
+    fprintf('Reported error was: %s\n', msg);
+  end
+else
+  fprintf('Failed! Maybe retry? Or ask a system administrator for help.\n');
+  fprintf('Reported error was: %s\n', msg);
+end
+
+fprintf('If you want to enable use of Kinect as a regular webcam again, type the\n');
+fprintf('following: sudo rm /etc/modprobe.d/linux_blacklist_kinectvideo\n');
+fprintf('After that, unplug and replug your Kinect, or maybe reboot your machine.\n\n');
+
+return;

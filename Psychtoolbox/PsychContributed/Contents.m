@@ -10,6 +10,12 @@
 % help Psychtoolbox % For an overview, triple-click me & hit enter.
 %
 %
+% linux_blacklist_kinectvideo  Blacklist file for Linux, to be copied into the
+%                              /etc/modprobe.conf/ directory. Disables the Linux
+%                              standard video driver for Microsoft Kinect box. Allows
+%                              use of the Kinect with PsychKinect() driver et al.
+%                              See 'help InstallKinect'.
+%
 % ATIRadeonperf                ATIRadeonperf_Linux and ATIRadeonperf_Windows.exe are
 %                              compiled Linux and Windows executables that are called
 %                              as helpers from the function PsychGPUControl() via a

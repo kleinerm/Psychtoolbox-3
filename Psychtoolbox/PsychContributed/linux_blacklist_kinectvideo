@@ -1,0 +1,4 @@
+# Disable Video4Linux2 driver for Kinect camera, otherwise
+# no access by other Kinect software possible, e.g., by
+# the Psychtoolbox-3 Kinect driver PsychKinect()
+blacklist gspca_kinect
