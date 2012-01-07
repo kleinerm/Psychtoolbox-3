@@ -1,5 +1,5 @@
 # These are Linux udev rules (man udev) that setup device access permissions on your
-# Linux system, so that unprivileged user processes like Matlab and Octave - and thereby
+# Linux system so that unprivileged user processes like Matlab and Octave - and thereby
 # Psychtoolbox - can access pieces of hardware relevant to Psychtoolbox.
 #
 # This allows to run Matlab/Octave safely as non-root user (without the "sudo" command)
@@ -36,8 +36,8 @@ ATTR{manufacturer}=="VPixx", MODE="0666"
 # FTDI USB serial ports. We have this here just as a backup. The IOPort driver itself
 # will set the latency_timer to 1 msecs if 'ReceiveLatency' is set to a value <= 0.001
 # seconds. Yet another way to do it is to use the user-callable shell command:
-# "setserial /dev/ttyUSB0 ^low_latency"
-# And on current Linux kernels since this isn't strictly needed anyway, because
-# the ftdi_sio kernel driver inits low-latence mode by default since kernel 2.6.31
+# "setserial /dev/ttyUSB0 low_latency"
+# On current Linux kernels, this isn't strictly needed, because the ftdi_sio
+# kernel driver inits low-latency mode on its devices by default since kernel 2.6.31
 # from June 2009:
 ACTION=="add", SUBSYSTEM=="usb-serial", DRIVER=="ftdi_sio", ATTR{latency_timer}="1"
