@@ -2280,6 +2280,38 @@ psych_bool PsychCopyOutDoubleMatArg(int position, PsychArgRequirementType isRequ
 	return(putOut);
 }
 
+psych_bool PsychCopyOutUnsignedInt16MatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, psych_uint16 *fromArray)
+{
+	mxArray **mxpp;
+	psych_uint16 *toArray;
+	PsychError		matchError;
+	psych_bool		putOut;
+	mwSize dimArray[3];
+	int numDims;
+
+	// Compute output array dimensions:
+	if (m<=0 || n<=0) {
+		dimArray[0] = 0; dimArray[1] = 0; dimArray[2] = 0;	//this prevents a 0x1 or 1x0 empty matrix, we want 0x0 for empty matrices. 
+	} else {
+		PsychCheckmWSizeLimits(m,n,p);
+		dimArray[0] = (mwSize) m; dimArray[1] = (mwSize) n; dimArray[2] = (mwSize) p;
+	}
+	numDims = (p == 0 || p == 1) ? 2 : 3;
+	
+	PsychSetReceivedArgDescriptor(position, TRUE, PsychArgOut);
+	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_uint16, isRequired, m,m,n,n,p,p);
+	matchError=PsychMatchDescriptors();
+	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
+	if(putOut){
+		mxpp = PsychGetOutArgMxPtr(position);
+		*mxpp = mxCreateNumericArray(numDims, (mwSize*) dimArray, mxUINT16_CLASS, mxREAL);
+		toArray = (psych_uint16*) mxGetData(*mxpp);
+        
+		//copy the input array to the output array now
+		memcpy(toArray, fromArray, sizeof(psych_uint16) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));
+	}
+	return(putOut);
+}
 
 /*
 	PsychCopyOutCharArg()
@@ -2975,7 +3007,6 @@ psych_bool PsychCopyOutPointerArg(int position, PsychArgRequirementType isRequir
 
 	return(putOut);
 }
-
 
 /* PsychRuntimePutVariable()
  *

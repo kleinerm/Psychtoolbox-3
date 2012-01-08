@@ -84,6 +84,9 @@ psych_bool PsychCopyOutDoubleMatArg(int position, PsychArgRequirementType isRequ
     //doubles, detect if the position is -1, and if so accept the optional "nativeElement" value.   
 void 	PsychAllocateNativeDoubleMat(psych_int64 m, psych_int64 n, psych_int64 p, double **cArray, PsychGenericScriptType **nativeElement);	
 
+// for unsigned 16 bit integer:
+psych_bool PsychCopyOutUnsignedInt16MatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, psych_uint16 *fromArray);
+
 //for psych_bool.  These should be consolidated with the flags below. 
 psych_bool PsychAllocOutBooleanMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, PsychNativeBooleanType **array);
 psych_bool PsychCopyOutBooleanArg(int position, PsychArgRequirementType isRequired, PsychNativeBooleanType value);
