@@ -23,6 +23,8 @@ ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x10de"
 
 # For each attached Intel GPU, set the permissions on its resource0 file to o+rw to allow mapping BAR-0 from unprivileged userspace apps like Psychtoolbox:
 ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x8086", RUN+="/bin/chmod o+rw %S%p/resource0"
+# Intel GEN-2 hardware uses BAR-1 instead of BAR-0, therefore need to enable it as well:
+ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x8086", RUN+="/bin/chmod o+rw %S%p/resource1"
 
 # Make devices from "Cambridge Research Systems" accessible by unprivileged user processes:
 ATTR{manufacturer}=="CRS Ltd", MODE="0666"
