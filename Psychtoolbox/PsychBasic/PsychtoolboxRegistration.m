@@ -55,6 +55,10 @@ function PsychtoolboxRegistration(isUpdate, flavor)
 % 13.2.2009  Remove need for netcat on Matlab runtimes, esp. Windows, so we
 %            can get rid of our own nc.exe netcat distribution which made
 %            trouble for users with misconfigured virus scanners. (MK).
+% 08.1.2012  Add extra robust MACID parsing for Linux, so we actually get registrations. (MK)
+%            Latest distros, e.g., FedoraCore or Ubuntu 11.10 use unusual NIC names, which
+%            makes Screen()'s parsing of MACID fail and thereby our online registration
+%            reject the registration.
 
 % Address and port number of our statistics server:
 ptbserveraddress = 'psychtoolbox.org';
@@ -147,6 +151,30 @@ try
     if isfield(compinfo, 'MACAddress')
         % Success. Use it.
         mac = compinfo.MACAddress;
+
+	% Valid? Some recent Linux distros assign unusual ethernet names,
+	% e.g., do not call the primary NIC eth0, so our Screen() code
+	% fails. In this case we fallback to the clumsy but hopefully
+	% effective method here:
+        if strcmp(mac, '00:00:00:00:00:00');
+	    % No: Try alternative way, if possible:
+	    if IsLinux
+	        [rc, res] = system('ifconfig | grep Ethernet | grep HWaddr');
+		if rc == 0
+		    % Find first valid HWaddr:
+		    idx = strfind(res, 'HWaddr ');
+		    for j = idx
+		        mymacid = res(j+7:j+7+16);
+		        if ~strcmp(mymacid, '00:00:00:00:00:00')
+		            % This one seems to be valid. Assign as final mac,
+		            % and we're done:
+		            mac = upper(mymacid);
+		            break;
+		        end
+		    end
+		end
+	    end
+	end
     else
         % Failed: Try harder...
         if IsWin
