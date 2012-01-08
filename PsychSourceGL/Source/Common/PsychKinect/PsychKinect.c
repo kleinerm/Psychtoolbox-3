@@ -585,7 +585,7 @@ PsychError PSYCHKINECTOpen(void)
 	PsychCopyInIntegerArg(1, FALSE, &deviceIndex);
 	
 	// Don't support anything than a single "default" kinect yet:
-	if (deviceIndex != 0) PsychErrorExitMsg(PsychError_user, "No such kinect device with given 'deviceIndex'.");
+	if (deviceIndex < 0) PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' provided. Must be greater or equal to zero!");
 	
 	// Get optional numbuffers count:
 	PsychCopyInIntegerArg(2, FALSE, &numbuffers);
@@ -610,9 +610,11 @@ PsychError PSYCHKINECTOpen(void)
 	memset(&kinectdevices[handle], 0, sizeof(PsychKNDevice));
 	
 	// Connect with it, get usb connection handle:
-	
 	if (freenect_open_device(f_ctx, &dev, deviceIndex) < 0) {
-		PsychErrorExitMsg(PsychError_user, "Could not connect to kinect device with given 'deviceIndex' for some reason! [libusb_open_device failed]");
+		printf("PsychKinect: ERROR! Failed to connect to kinect with deviceIndex %i. This could mean that the device\n", deviceIndex);
+        printf("PsychKinect: ERROR: is already in use by another application or driver. On Linux it could mean it is\n");
+        printf("PsychKinect: ERROR: claimed by the Kinect video camera driver. See 'help InstallKinect' for how to resolve this.\n");
+		PsychErrorExitMsg(PsychError_user, "Could not connect to kinect device with given 'deviceIndex'! [libusb_open_device failed]");
 	}
 	
 	kinectdevices[handle].dev = dev;
@@ -1245,10 +1247,14 @@ PsychError PSYCHKINECTGetDepthImage(void)
 		"6/7 = Return a vertex buffer with vertex id's uniquely identifying each sensor \n"
 		"      position of depths sensor and raw sensor value at that location. The whole\n"
 		"      3D reconstructin is done on the GPU in a vertex shader for maximum speed.\n"
-		"8   = Return memory pointer to the 16 bit unsigned integer raw depth buffer.\n"
-		"      Return of a Matlab/Octave matrix is not supported! CAUTION: The reference\n"
-		"      becomes invalid as soon as the current buffer is released via\n"
-		"      'ReleaseFrame'! This is the fast-path.\n"
+		"8   = Return a uint16 buffer with a transposed copy of the raw depth buffer.\n"
+        "      This is the most compact and efficient way to return raw data to you. The\n"
+        "      transposed format is again for efficiency reasons. You need to transpose()\n"
+        "      the returned 2D data matrix yourself.\n"
+        "      Alternatively return a memory pointer to the 16 bit unsigned integer raw\n"
+        "      depth buffer. CAUTION: The pointer becomes invalid as soon as the\n"
+		"      current buffer is released via 'ReleaseFrame'! This is the fast-path.\n"
+		"      "
 		"\n\n";
 
 	static char seeAlsoString[] = "";	
@@ -1528,7 +1534,9 @@ PsychError PSYCHKINECTGetDepthImage(void)
 				// Just return a memory pointer to the depthbuffer:
 				PsychCopyOutPointerArg(1, FALSE, (void*) (buffer->depth));
 			} else {
-				PsychErrorExitMsg(PsychError_user, "Fetching 16 bit unsigned depth image as matrix in format 8 is not supported!");
+                // Return 16 bit unsigned integer raw depths data in untransposed raw format,
+                // (or transposed, from the perspective of the runtime):
+                PsychCopyOutUnsignedInt16MatArg(1, FALSE, buffer->dwidth, buffer->dheight, 1, (psych_uint16*) (buffer->depth));
 			}
 
 			components = 1;
