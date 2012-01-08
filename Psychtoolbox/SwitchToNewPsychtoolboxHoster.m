@@ -17,6 +17,20 @@ function SwitchToNewPsychtoolboxHoster
 
 % History:
 % 31.10.2011  mk  Written.
+% 08.01.2012  mk  Disable the copy of the routine hosted at GoogleCode,
+%                 as its execution would be entirely redundant by definition.
+
+% We can skip this routine. Why? Because all current copies of the routine
+% are hosted on GoogleCode since 2012, so the pure fact that this version
+% of the file is executed means that we *are* in fact hosted on GoogleCode.
+% Therefore no need for a redundant check :)
+% The write-locked copy of this routine on Berlios is still active and
+% important for switchovers.
+% We do leave this routine in place, in its disabled state, in case we
+% would need to do a move of ptb's hosting again in the future, so we
+% would only need to change the old and new hosting URL's and reenable the
+% routine.
+return;
 
 fprintf('Are we hosted on Google''s GoogleCode service, as we should be? Checking...  ');
 
