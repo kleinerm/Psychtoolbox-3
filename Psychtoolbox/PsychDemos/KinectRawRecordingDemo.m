@@ -14,7 +14,7 @@ function KinectRawRecordingDemo(deviceId)
 % 25.11.2010  mk  Written.
 
 if nargin < 1
-  deviceId = [];
+    deviceId = [];
 end
 
 AssertOpenGL
@@ -41,50 +41,54 @@ elapsed = [];
 while 1
     [rc, cts] = PsychKinect('GrabFrame', kinect, 1);
     if rc > 0
-	count = count + 1;
+        count = count + 1;
 
-% Visualization:
+        % Visualization:
 
-% Image:
-if 0
-	%fprintf('Kinect frame %i, cts = %f\n', count, cts);
-        [imbuff, width, height, channels] = PsychKinect('GetImage', kinect, 0, 1);
-	if width > 0 && height > 0
-		tex = Screen('SetOpenGLTextureFromMemPointer', w, [], imbuff, width, height, channels, 1, GL.TEXTURE_RECTANGLE_EXT);
-		Screen('DrawTexture', w, tex, [], dst1);
-		Screen('Close', tex);
-	end
-end
+        % Image:
+        if 0
+            %fprintf('Kinect frame %i, cts = %f\n', count, cts);
+            [imbuff, width, height, channels] = PsychKinect('GetImage', kinect, 0, 1);
+            if width > 0 && height > 0
+                tex = Screen('SetOpenGLTextureFromMemPointer', w, [], imbuff, width, height, channels, 1, GL.TEXTURE_RECTANGLE_EXT);
+                Screen('DrawTexture', w, tex, [], dst1);
+                Screen('Close', tex);
+            end
+        end
 
-% Color coded depth map:
-if 0
-        [imbuff, width, height, channels] = PsychKinect('GetImage', kinect, 1, 1);
-	if width > 0 && height > 0
-		tex = Screen('SetOpenGLTextureFromMemPointer', w, [], imbuff, width, height, channels, 1, GL.TEXTURE_RECTANGLE_EXT);
-		Screen('DrawTexture', w, tex, [], dst2);
-		Screen('Close', tex);
-	end
-end
+        % Color coded depth map:
+        if 0
+            [imbuff, width, height, channels] = PsychKinect('GetImage', kinect, 1, 1);
+            if width > 0 && height > 0
+                tex = Screen('SetOpenGLTextureFromMemPointer', w, [], imbuff, width, height, channels, 1, GL.TEXTURE_RECTANGLE_EXT);
+                Screen('DrawTexture', w, tex, [], dst2);
+                Screen('Close', tex);
+            end
+        end
 
         Screen('Flip', w, [], 2, 2);
 
-	% Image & Depth data disc writeout:
-	if 1
-	        t1 = GetSecs;
-		[imbuff, width, height, channels] = PsychKinect('GetImage', kinect, 0);
-	        depth = PsychKinect('GetDepthImage', kinect, 8);
-		save(sprintf('/tmp/testdepths_%i.mat', count), 'depth', 'imbuff');
-		elapsed(end+1) = (GetSecs - t1) * 1000;
-	end
+        % Image & Depth data disc writeout:
+        if 1
+            t1 = GetSecs;
+            [imbuff, width, height, channels] = PsychKinect('GetImage', kinect, 0);
+            depth = PsychKinect('GetDepthImage', kinect, 8);
+            if ~IsWin
+                save(sprintf('/tmp/testdepths_%i.mat', count), 'depth', 'imbuff');
+            else
+                save(sprintf('D:\\temp\\testdepths_%i.mat', count), 'depth', 'imbuff');
+            end
+            elapsed(end+1) = (GetSecs - t1) * 1000;
+        end
 
         PsychKinect('ReleaseFrame', kinect);
     else
-	WaitSecs('YieldSecs', 0.005);
+        WaitSecs('YieldSecs', 0.005);
     end
 
     [x,y,buttons]=GetMouse;
     if (x == 0 && y == 0)
-	GetClicks;
+        GetClicks;
     end
 
     if KbCheck(-1)
