@@ -348,6 +348,13 @@ end
 % Special case handling for different Matlab releases on MS-Windoze:
 if IsWin & ~IsOctave %#ok<AND2>
     rc = 0; %#ok<NASGU>
+    
+    if strfind(cd,'system32')
+        % the below code fails i've the current directory is system32 (e.g.
+        % C:\Windows\system32), as it contains dlls like version.dll, which
+        % get called instead of the built-in functions....
+        cd(PsychtoolboxRoot);
+    end
     try
         % Remove DLL folders from path:
         rmpath([PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR11\']);

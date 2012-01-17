@@ -8,11 +8,13 @@ function str = DirList(dirnm,qdispfiles,lim,pref,folderFilter,fileFilter, qRelPa
 % LIM is the maximum number of levels that will be listed (default unlimited (inf))
 % PREF is a prefix for each node in the directorylist
 % FOLDERFILTER is to filter out unwanted folders (regexp). If a match
-% occurs, the directory is not output and not recursed into
-% fileFilter is to filter out unwanted files (regexp). If a match
-% occurs, the files is output. Use e.g. '\.m$' to only display files with
+% occurs, the directory _IS NOT_ output and not recursed into
+% FILEFILTER is to filter out unwanted files (regexp). If a match
+% occurs, the files _ARE_ output. Use e.g. '\.m$' to only display files with
 % .m extensions, '\.mat$|\.m$' to include all files with .mat or .m files.
-% QRELPATH if true, a listing of existing paths relative to DIRNM
+% default: '.', shows all files.
+% QRELPATH if true, a listing of existing paths relative to DIRNM. Default
+% false
 
 % DN 2007
 % DN and Sam Yeung 2008-07-28 Optionally displays files
@@ -25,7 +27,7 @@ if nargin<7 || isempty(qRelPath)
     qRelPath = false;
 end
 if nargin<6 || isempty(fileFilter)
-    fileFilter = '';
+    fileFilter = '.';
 end
 if nargin<5 || isempty(folderFilter)
     folderFilter = '';
