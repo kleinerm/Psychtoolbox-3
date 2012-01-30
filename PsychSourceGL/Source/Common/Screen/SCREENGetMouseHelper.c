@@ -595,7 +595,9 @@ PsychError SCREENGetMouseHelper(void)
 		// Sanity check:
 		if (NULL == indevs) PsychErrorExitMsg(PsychError_user, "Sorry, your system does not support individual mouse pointer queries.");
 		if (mouseIndex >= nDevices) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such device.");
-		if ((indevs[mouseIndex].use != XIMasterPointer) && (indevs[mouseIndex].use != XISlavePointer)) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. Not a pointer device.");
+		if ((indevs[mouseIndex].use != XIMasterPointer) && (indevs[mouseIndex].use != XISlavePointer) && (indevs[mouseIndex].use != XIFloatingSlave)) {
+			PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. Not a pointer device.");
+		}
 
 		// We requery the device info struct to retrieve updated live device state:
 		// Crucial for slave pointers to get any state at all, but also needed on
@@ -871,7 +873,7 @@ PsychError SCREENGetMouseHelper(void)
 					if(!PsychPrefStateGet_SuppressAllWarnings()) {
 	    					printf("PTB-ERROR: Failed to enable realtime-scheduling with Priority(%i) [%s]!\n", schedulingparam.sched_priority, strerror(errno));
 						if (errno==EPERM) {
-							printf("PTB-ERROR: You need to run Matlab/Octave with root-privileges for this to work.\n");
+							printf("PTB-ERROR: You need to run Matlab/Octave with root-privileges, or run the script PsychLinuxConfiguration once for this to work.\n");
 						}
 					}
 					errno=0;
@@ -897,7 +899,7 @@ PsychError SCREENGetMouseHelper(void)
 					if(!PsychPrefStateGet_SuppressAllWarnings()) {
 	    					printf("PTB-ERROR: Failed to disable realtime-scheduling with Priority(%i) [%s]!\n", schedulingparam.sched_priority, strerror(errno));
 						if (errno==EPERM) {
-							printf("PTB-ERROR: You need to run Matlab/Octave with root-privileges for this to work.\n");
+							printf("PTB-ERROR: You need to run Matlab/Octave with root-privileges, or run the script PsychLinuxConfiguration once for this to work.\n");
 						}
 					}
 					errno=0;
