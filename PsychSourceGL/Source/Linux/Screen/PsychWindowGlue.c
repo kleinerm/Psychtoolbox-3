@@ -113,7 +113,7 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
 	  if(!PsychPrefStateGet_SuppressAllWarnings()) {
 	    printf("PTB-INFO: Failed to enable realtime-scheduling [%s]!\n", strerror(errno));
 	    if (errno==EPERM) {
-	      printf("PTB-INFO: You need to run Matlab or Octave with root-privileges for this to work.\n");
+	      printf("PTB-INFO: You need to run Matlab or Octave with root-privileges, or run the script PsychLinuxConfiguration once for this to work.\n");
 	    }
 	  }
 	  errno=0;
@@ -130,7 +130,7 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
 	if(!PsychPrefStateGet_SuppressAllWarnings()) {
 	  printf("PTB-INFO: Failed to disable realtime-scheduling [%s]!\n", strerror(errno));
 	  if (errno==EPERM) {
-	    printf("PTB-INFO: You need to run Matlab or Octave with root-privileges for this to work.\n");
+	    printf("PTB-INFO: You need to run Matlab or Octave with root-privileges or run the script PsychLinuxConfiguration once for this to work.\n");
 	  }
 	}
 	errno=0;
@@ -1050,12 +1050,13 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 	// on top of a pre Linux-3.2 kernel:
 	if ((ust == 0) || ((msc == 0) && !strstr((char*) glGetString(GL_VENDOR), "nouveau"))) {
 		// Ohoh:
-		if (PsychPrefStateGet_Verbosity() > 11) {
-			printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Invalid return values ust = %lld, msc = %lld from call with success return code (sbc = %lld)! Failing with rc = -1.\n", ust, msc, sbc);
+		if (PsychPrefStateGet_Verbosity() > 1) {
+			printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Invalid return values ust = %lld, msc = %lld from call with success return code (sbc = %lld)! Failing with rc = -2.\n", ust, msc, sbc);
+			printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: This likely means a driver bug or malfunction, or that timestamping support has been disabled by the user in the driver!\n");
 		}
 		
-		// Return with "unsupported" rc, so calling code can try fallback-path:
-		return(-1);
+		// Return with "failure" rc, so calling code can provide more error handling:
+		return(-2);
 	}
 
 	// Success. Translate ust into system time in seconds:

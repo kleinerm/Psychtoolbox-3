@@ -382,8 +382,9 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 				printf("\nPTB-ERROR: Your script requested a 30bpp, 10bpc framebuffer, but the Psychtoolbox kernel driver is not loaded and ready.\n");
 				printf("PTB-ERROR: The driver currently only supports selected ATI Radeon GPU's (X1000/HD2000/HD3000/HD4000 series and corresponding FireGL/FirePro models).\n");
 				printf("PTB-ERROR: On MacOS/X the driver must be loaded and functional for your graphics card for this to work.\n");
-				printf("PTB-ERROR: On Linux you must start Octave or Matlab as root, ie. system administrator or via sudo command for this to work.\n");
-				printf("PTB-ERROR: Read 'help PsychtoolboxKernelDriver' for more information.\n\n");
+				printf("PTB-ERROR: Read 'help PsychtoolboxKernelDriver' for setup information.\n");
+				printf("PTB-ERROR: On Linux you must either configure your system by executing the script PsychLinuxConfiguration once,\n");
+				printf("PTB-ERROR: or start Octave or Matlab as root, ie. system administrator or via sudo command for this to work.\n\n");
 				PsychOSCloseWindow(*windowRecord);
 				FreeWindowRecordFromPntr(*windowRecord);
 				return(FALSE);			
@@ -2816,8 +2817,13 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		}
 		else {
 			// OS-Builtin timestamping failed, is unsupported, or it is disabled by usercode.
-			if ((swap_msc < -1) && (verbosity > 1)) printf("PTB-WARNING:PsychOSGetSwapCompletionTimestamp() FAILED: errorcode = %lld, tSwapComplete = %lf.\n", swap_msc, tSwapComplete);
-
+			if ((swap_msc < -1) && (verbosity > 1)) {
+				printf("PTB-WARNING:PsychOSGetSwapCompletionTimestamp() FAILED: errorcode = %lld, tSwapComplete = %lf.\n", swap_msc, tSwapComplete);
+				printf("PTB-WARNING: This likely means that timestamping will *not work at all* and has to be considered\n");
+				printf("PTB-WARNING: not trustworthy! Check your system configuration, e.g., /etc/X11/xorg.conf and");
+				printf("PTB-WARNING: /var/log/XOrg.0.log on Linux for hints on what could be misconfigured. This is \n");
+				printf("PTB-WARNING: very likely not a bug, but a system misconfiguration by you or your distribution vendor.\n");
+			}
 
 			// Use one of our own home grown wait-for-swapcompletion and timestamping strategies:
 			if ((vbl_synclevel==3) && (windowRecord->VBL_Endline != -1)) {
