@@ -99,7 +99,7 @@ struct recDevice
     char manufacturer[256];					// name of manufacturer
     char product[256];						// name of product
     char serial[256];						// serial number of specific product, can be assumed unique across specific product or specific vendor (not used often)
-    long locID;							// long representing location in USB (or other I/O) chain which device is pluged into, can identify specific device on machine
+    double locID;						// double representing location in USB (or other I/O) chain which device is pluged into, can identify specific device on machine
     long usage;							// usage page which defines general usage
     long usagePage;						// usage within above page which defines specific usage
     long interfaceId;                                           // HIDAPI only: USB interface id.

@@ -385,23 +385,23 @@ extern hid_device* last_hid_device;
  */
 PsychError ReceiveReports(int deviceIndex)
 {
+    int rateLimit[MAXDEVICEINDEXS] = { 0 };
     double deadline, now;
-
     pRecDevice device;
     int n, m;
     unsigned int i;
     ReportStruct *r;
     long error = 0;
 
-	PsychHIDVerifyInit();
+    PsychHIDVerifyInit();
 
     if(deviceIndex < 0 || deviceIndex >= MAXDEVICEINDEXS) PrintfExit("Sorry. Can't cope with deviceNumber %d (more than %d). Please tell denis.pelli@nyu.edu",deviceIndex, (int) MAXDEVICEINDEXS-1);
 
     // Allocate report buffers if needed:
     PsychHIDAllocateReports(deviceIndex);
 
-	CountReports("ReceiveReports beginning.");
-	if (freeReportsPtr[deviceIndex] == NULL) PrintfExit("No free reports.");
+    CountReports("ReceiveReports beginning.");
+    if (freeReportsPtr[deviceIndex] == NULL) PrintfExit("No free reports.");
 
     // Enable this device for hid report reception:
     ready[deviceIndex] = TRUE;
@@ -413,19 +413,20 @@ PsychError ReceiveReports(int deviceIndex)
     while ((error == 0) && (now <= deadline)) {
         // Iterate over all active devices:
         for (deviceIndex = 0; deviceIndex < MAXDEVICEINDEXS; deviceIndex++) {            
+            // Test for timeout:
+            PsychGetAdjustedPrecisionTimerSeconds(&now);
+            if (now > deadline) break;
+
             // Skip this device if it isn't enabled to receive hid reports:
             if (!ready[deviceIndex]) continue;
             
             // Free target report buffers?
             if(freeReportsPtr[deviceIndex] == NULL) {
                 // Darn. We're full. It might be elegant to discard oldest report, but for now, we'll just ignore the new one.
-                printf("PsychHID: WARNING! ReportCallback warning. No more free reports for deviceIndex %i. Discarding new report.\n", deviceIndex);
+                if (!rateLimit[deviceIndex]) printf("PsychHID: WARNING! ReportCallback warning. No more free reports for deviceIndex %i. Discarding new report.\n", deviceIndex);
+		rateLimit[deviceIndex] = 1;
                 continue;
             }
-            
-            // Test for timeout:
-            PsychGetAdjustedPrecisionTimerSeconds(&now);
-            if (now > deadline) break;
             
             // Handle one report for this device:
             CountReports("ReportCallback beginning.");
@@ -433,7 +434,18 @@ PsychError ReceiveReports(int deviceIndex)
             device = PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
             last_hid_device = (hid_device*) device->interface;
 
+	    // Get a report struct to fill in:
             r = freeReportsPtr[deviceIndex];
+
+            // Fetch the actual data: Bytes fetched, or zero for no reports available, or
+            // -1 for error condition.
+            r->error = hid_read((hid_device*) device->interface, &(r->report[0]), MaxDeviceReportSize[deviceIndex]);
+
+	    // Skip remainder if no data received:
+	    if (r->error == 0) continue;
+
+	    // Ok, we got something, even if it is only an error code. Need
+	    // to move the (r)eport from the free list to the received list:
             freeReportsPtr[deviceIndex] = r->next;
             r->next=NULL;
             
@@ -444,10 +456,11 @@ PsychError ReceiveReports(int deviceIndex)
             // fill in the rest of the report struct
             r->deviceIndex = deviceIndex;
             
-            // Fetch the actual data: Bytes fetched, or zero for no reports available, or
-            // -1 for error condition.
-            r->error = hid_read((hid_device*) device->interface, &(r->report[0]), MaxDeviceReportSize[deviceIndex]);
-            if (r->error >= 0) {
+            // Timestamp processing:
+            PsychGetPrecisionTimerSeconds(&r->time);
+
+	    // Success or error?
+            if (r->error > 0) {
                 // Success: Reset error, assign size of retrieved report:
                 r->bytes = r->error;
                 r->error = 0;
@@ -462,10 +475,7 @@ PsychError ReceiveReports(int deviceIndex)
                 // Abort fetch loop:
                 break;
             }
-            
-            // Timestamp processing:
-            PsychGetPrecisionTimerSeconds(&r->time);
-            
+
             if (optionsPrintReportSummary) {
                 // print diagnostic summary of the report
                 int serial;
@@ -490,8 +500,8 @@ PsychError ReceiveReports(int deviceIndex)
         }
     }
     
-	CountReports("ReceiveReports end.");
-	return error;
+    CountReports("ReceiveReports end.");
+    return error;
 }
 
 PsychError ReceiveReportsStop(int deviceIndex)

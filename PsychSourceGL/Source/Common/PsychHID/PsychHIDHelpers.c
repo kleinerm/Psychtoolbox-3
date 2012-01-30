@@ -549,8 +549,8 @@ void PsychHIDVerifyInit(void)
             if (hid_dev->serial_number) wcstombs(&currentDevice->serial[0], hid_dev->serial_number, 256);
 
             // Convert unique device path into unique numeric location id:
-            sscanf(hid_dev->path, "%i:%i:%i", &busId, &devId, &intId);
-            currentDevice->locID = busId * 1000000 + devId * 100 + intId;
+            sscanf(hid_dev->path, "%x:%x:%x", &busId, &devId, &intId);
+            currentDevice->locID = (double) ((busId << 24) + (devId << 8) + intId);
 
             // Interface number is great for identifying DAQ devices, but not available
             // on OS/X, so this will be a Linux/Windows only thing.
