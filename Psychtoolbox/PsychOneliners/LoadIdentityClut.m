@@ -103,7 +103,7 @@ else
     elseif IsOSX || IsLinux
         fprintf('LoadIdentityClut: Info: Could not use GPU low-level setup for setup of pixel passthrough. Will use fallback method.\n');
         fprintf('LoadIdentityClut: Info: If you have an AMD/ATI GPU, you may get this working by loading the PsychtoolboxKernelDriver\n');
-        fprintf('LoadIdentityClut: Info: on OS/X or running Octave/Matlab as root on Linux (sudo command).\n');
+        fprintf('LoadIdentityClut: Info: on OS/X or using a Linux system properly setup with PsychLinuxConfiguration.\n');
     end
 
     % Carry on with our bag of clut heuristics and other tricks...
