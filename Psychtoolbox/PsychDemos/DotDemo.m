@@ -215,7 +215,7 @@ try
         % Create a small texture as offscreen window: Size is 30 x 30
         % pixels, background color is black and transparent:
         tex = Screen('OpenOffScreenWindow', w, [255,255,255,0], [0 0 30 30]);
-        % Draw a little white smiley into the window. The white color will
+        % Draw a white rectangle into the window. The white color will
         % be modulated by 'colvect' during drawing, so white is basically
         % just a placeholder:
         Screen('FillRect', tex, 255, [1 1 29 29]);

@@ -6,7 +6,7 @@ function q=QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,grain,range)
 % scale, which usually corresponds to log10 contrast.
 % 
 % QuestCreate saves in struct q the parameters for a Weibull psychometric function:
-% p2=delta*gamma+(1-delta)*(1-(1-gamma)*exp(-10.^(beta*(x2+xThreshold))));
+% p2=delta*gamma+(1-delta)*(1-(1-gamma)*exp(-10.^(beta*(x-xThreshold))));
 % where x represents log10 contrast relative to threshold. The Weibull
 % function itself appears only in QuestRecompute, which uses the
 % specified parameter values in q to compute a psychometric function
