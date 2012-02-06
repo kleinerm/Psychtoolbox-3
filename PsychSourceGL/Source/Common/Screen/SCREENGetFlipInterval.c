@@ -101,6 +101,15 @@ PsychError SCREENGetFlipInterval(void)
         PsychErrorExitMsg(PsychError_user, "GetFlipInterval failed to compute good estimate of monitor refresh! Somethings screwed up with VBL syncing!");
     }
 
+    // Need to adapt measured results for a real measured refresh interval in our own
+    // frame-sequential stereo mode:
+    if ((nrSamples > 0) && (windowRecord->stereomode == kPsychFrameSequentialStereo)) {
+	 // Adapt to a twice the video refresh interval value for our own frame-sequential stereomode, so
+	 // behaviour is consistent with native quad-buffered frame-sequential stereomode:
+	 windowRecord->IFIRunningSum = windowRecord->IFIRunningSum * 2;
+	 ifi_estimate = ifi_estimate * 2;
+    }
+
     // Return the measured IFI:
     PsychCopyOutDoubleArg(1, FALSE, ifi_estimate);
     // Return number of valid samples taken:

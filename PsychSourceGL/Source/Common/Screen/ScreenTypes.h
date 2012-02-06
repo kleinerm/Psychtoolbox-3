@@ -93,7 +93,8 @@ typedef enum  {
         kPsychAnaglyphGRStereo = 7,       // Stereo via color filter glasses (Anaglyph principle): Green-Red
         kPsychAnaglyphRBStereo = 8,       // Stereo via color filter glasses (Anaglyph principle): Red-Blue
         kPsychAnaglyphBRStereo = 9,       // Stereo via color filter glasses (Anaglyph principle): Blue-Red
-		kPsychDualWindowStereo = 10		  // Stereo for dual-display setups, where each view is rendered into its own onscreen window. (Imaging pipe only!)
+	kPsychDualWindowStereo = 10,      // Stereo for dual-display setups, where each view is rendered into its own onscreen window. (Imaging pipe only!)
+	kPsychFrameSequentialStereo = 11  // Stereo for frame-sequential display, but using PTB's own implementation instead of native OpenGL mode.
 } PsychStereoDisplayType;
 
 

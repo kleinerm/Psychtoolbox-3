@@ -106,7 +106,7 @@ psych_bool PsychAssignHighPrecisionTextureShaders(PsychWindowRecordType* texture
 // PsychPipelineBuiltinRenderClutBitsPlusPlus - Encode Bits++ CLUT into framebuffer.
 psych_bool PsychPipelineBuiltinRenderClutBitsPlusPlus(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc);
 // PsychPipelineBuiltinRenderStereoSyncLine - Rendering of blue-sync lines for stereo shutter glasses in quad-buffered stereo mode:
-psych_bool PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc);
+psych_bool PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windowRecord, int hookId, PsychHookFunction* hookfunc);
 // PsychPipelineBuiltinRenderClutViaRuntime - Encode CLUT via callback to runtime environment.
 psych_bool PsychPipelineBuiltinRenderClutViaRuntime(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc);
 
@@ -121,4 +121,3 @@ psych_bool PsychBlitterDisplayList(PsychWindowRecordType *windowRecord, PsychHoo
 
 //end include once
 #endif
-

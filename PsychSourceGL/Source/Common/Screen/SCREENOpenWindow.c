@@ -54,9 +54,10 @@ static char synopsisString[] =
         "screen display where left view is shown in left half, right view is shown in right half or the display. "
         "A value of 5 does the opposite (cross-fusion). Values of 6,7,8 and 9 enable Anaglyph stereo rendering "
         "of types left=Red, right=Green, vice versa and left=Red, right=Blue and vice versa. A value of 10 "
-		"enables multi-window stereo: Open one window for left eye view, one for right eye view, treat both "
-		"of them as one single stereo window. See StereoDemo.m for examples of usage of the different stereo "
-		"modes. See ImagingStereoDemo.m for more advanced usage on modern hardware.\n"
+	"enables multi-window stereo: Open one window for left eye view, one for right eye view, treat both "
+	"of them as one single stereo window. A value of 11 enables our own frame-sequential stereo mode. "
+	"See StereoDemo.m for examples of usage of the different stereo "
+	"modes. See ImagingStereoDemo.m for more advanced usage on modern hardware.\n"
         "\"multisample\" This parameter, if provided and set to a value greater than zero, enables automatic "
         "hardware anti-aliasing of the display: For each pixel, 'multisample' color samples are computed and "
         "combined into a single output pixel color. Higher numbers provide better quality but consume more "
@@ -64,8 +65,8 @@ static char synopsisString[] =
         "number of samples is hardware dependent. Psychtoolbox will silently clamp the number to the maximum "
         "supported by your hardware if you ask for too much. On very old hardware, the value will be ignored. "
         "Read 'help AntiAliasing' for more in-depth information about multi-sampling. "
-		"\"imagingmode\" This optional parameter enables PTB's internal image processing pipeline. The pipeline is "
-		"off by default. Read 'help PsychGLImageprocessing' for information about this feature.\n"
+	"\"imagingmode\" This optional parameter enables PTB's internal image processing pipeline. The pipeline is "
+	"off by default. Read 'help PsychGLImageprocessing' for information about this feature.\n"
         "Opening or closing a window takes about one to three seconds, depending on type of connected display. "
         "COMPATIBILITY TO OS-9 PTB: If you absolutely need to run old code for the old MacOS-9 or Windows "
         "Psychtoolbox, you can switch into a compatibility mode by adding the command "
@@ -203,21 +204,9 @@ PsychError SCREENOpenWindow(void)
     PsychCopyInIntegerArg(5,FALSE,&numWindowBuffers);
     if(numWindowBuffers < 1 || numWindowBuffers > kPsychMaxNumberWindowBuffers) PsychErrorExit(PsychError_invalidNumberBuffersArg);
 
-    // MK: Check for optional spec of stereoscopic display: 0 (the default) = monoscopic viewing.
-    // 1 == Stereo output via OpenGL built-in stereo facilities: This will drive any kind of
-    // stereo display hardware that is directly supported by MacOS-X.
-    // 2/3 == Stereo output via compressed frame output: Only one backbuffer is used for both
-    // views: The left view image is put into the top-half of the screen, the right view image
-    // is put into the bottom half of the screen. External hardware demangles this combi-image
-    // again into two separate images. CrystalEyes seems to be able to do this. One looses half
-    // of the vertical resolution, but potentially gains refresh rate...
-    // Future PTB version may include different stereo algorithms with an id > 1, e.g., 
-
-    // anaglyph stereo, interlaced stereo, ...
-
     stereomode=0;
     PsychCopyInIntegerArg(6,FALSE,&stereomode);
-    if(stereomode < 0 || stereomode > 10) PsychErrorExitMsg(PsychError_user, "Invalid stereomode provided (Valid between 0 and 10).");
+    if(stereomode < 0 || stereomode > 11) PsychErrorExitMsg(PsychError_user, "Invalid stereomode provided (Valid between 0 and 11).");
 	if (stereomode!=0 && EmulateOldPTB) PsychErrorExitMsg(PsychError_user, "Sorry, stereo display functions are not supported in OS-9 PTB emulation mode.");
 
     multiSample=0;
@@ -354,19 +343,63 @@ PsychError SCREENOpenWindow(void)
         imagingmode |= kPsychNeedFastOffscreenWindows;
         
         // Is a stereomode requested which would benefit from enabling the full imaging pipeline?
-        if (!(imagingmode & kPsychNeedFastBackingStore) && (stereomode > 0)) {
-            // Yes: Provide the user with recommendations to enable the pipeline.
-            if (PsychPrefStateGet_Verbosity() > 2) {
-                printf("\n");
-                printf("PTB-INFO: Your script requests use of a stereoscopic display mode (stereomode = %i).\n", stereomode);
-                printf("PTB-INFO: Stereoscopic stimulus display is usually more flexible, convenient and robust if\n");
-                printf("PTB-INFO: the Psychtoolbox imaging pipeline is enabled. Your graphics card is capable\n");
-                printf("PTB-INFO: of using the pipeline but your script doesn't enable use of the pipeline.\n");
-                printf("PTB-INFO: I recommend you enable use of the pipeline for enhanced stereo stimulus display.\n");
-                printf("PTB-INFO: Have a look at the demoscript ImagingStereoDemo.m on how to do this.\n\n");
-            }
+        if (stereomode > 0) {
+	    if (((stereomode == kPsychOpenGLStereo) && !(windowRecord->gfxcaps & kPsychGfxCapNativeStereo)) || (stereomode == kPsychFrameSequentialStereo)) {
+		// Native OpenGL quad-buffered frame-sequential stereo requested, but unsupported by gpu & driver.
+		// Or use of our own method requested. We have FBO and framebuffer blit support, so we can roll our
+		// own framesequential stereo by use of the imaging pipeline. Enable basic imaging pipeline:
+		imagingmode |= kPsychNeedFastBackingStore;
+
+		// Override stereomode to our own homegrown implementation:
+		stereomode = kPsychFrameSequentialStereo;
+		windowRecord->stereomode = stereomode;
+
+		if (PsychPrefStateGet_Verbosity() > 2) {
+		    printf("\n");
+		    printf("PTB-INFO: Your script requests use of frame-sequential stereo, but your graphics card\n");
+		    printf("PTB-INFO: and driver doesn't support this. I will now fully enable the imaging pipeline\n");
+		    printf("PTB-INFO: and use my own home-grown frame-sequential stereo implementation. Note that this\n");
+		    printf("PTB-INFO: may not be as robust and high-performance as using a graphics card with native\n");
+		    printf("PTB-INFO: frame-sequential stereo support. But let's see what i can do for you...\n\n");
+		}
+	    }
+	    else {
+		// Yes: Provide the user with recommendations to enable the pipeline.
+		if (!(imagingmode & kPsychNeedFastBackingStore) && (PsychPrefStateGet_Verbosity() > 2)) {
+		    printf("\n");
+		    printf("PTB-INFO: Your script requests use of a stereoscopic display mode (stereomode = %i).\n", stereomode);
+		    printf("PTB-INFO: Stereoscopic stimulus display is usually more flexible, convenient and robust if\n");
+		    printf("PTB-INFO: the Psychtoolbox imaging pipeline is enabled. Your graphics card is capable\n");
+		    printf("PTB-INFO: of using the pipeline but your script doesn't enable use of the pipeline.\n");
+		    printf("PTB-INFO: I recommend you enable use of the pipeline for enhanced stereo stimulus display.\n");
+		    printf("PTB-INFO: Have a look at the demoscript ImagingStereoDemo.m on how to do this.\n\n");
+		}
+	    }
         }
     }
+
+	// Query if OpenGL stereo is natively supported or if our own emulation mode will work:
+	if ((((stereomode == kPsychOpenGLStereo) && !(windowRecord->gfxcaps & kPsychGfxCapNativeStereo)) || (stereomode == kPsychFrameSequentialStereo)) &&
+	    (!(imagingmode & kPsychNeedFastBackingStore) || (windowRecord->stereomode != kPsychFrameSequentialStereo) || !(windowRecord->gfxcaps & kPsychGfxCapFBO))) {
+		// OpenGL native stereo was requested, but is obviously not supported and we can't roll our own implementation either :-(
+		printf("\nPTB-ERROR: Asked for OpenGL native stereo (frame-sequential mode) but this doesn't seem to be supported by your graphics hardware or driver.\n");
+		printf("PTB-ERROR: Unfortunately using my own implementation via imaging pipeline did not work either, due to lack of hardware support, or because\n");
+		printf("PTB-ERROR: did not allow me to auto-enable the pipeline and use this method. This means game over!\n");
+		if (PSYCH_SYSTEM == PSYCH_OSX) {
+			printf("PTB-ERROR: Frame-sequential stereo should be supported on all recent ATI/AMD and NVidia cards on OS/X, except for the Intel onboard chips,\n");
+			printf("PTB-ERROR: at least in fullscreen mode with OS/X 10.5, and also mostly on OS/X 10.4. If it doesn't work, check for OS updates etc.\n\n");
+		}
+		else {
+			printf("PTB-ERROR: Frame-sequential native stereo on Windows or Linux is usually only supported with the professional line of graphics cards\n");
+			printf("PTB-ERROR: from NVidia and ATI/AMD, e.g., NVidia Quadro series or ATI Fire series. If you happen to have such a card, check\n");
+			printf("PTB-ERROR: your driver settings and/or update your graphics driver.\n\n");
+		}
+		PsychErrMsgTxt("Frame-Sequential stereo display mode requested, but unsupported. Emulation unsupported as well. Game over!");
+	}
+
+	// Fake a twice the video refresh interval value for our own frame-sequential stereomode, so
+	// behaviour is consistent with native quad-buffered frame-sequential stereomode:
+	if (windowRecord->stereomode == kPsychFrameSequentialStereo) windowRecord->IFIRunningSum = windowRecord->IFIRunningSum * 2;
 
 	// Special setup code for dual window stereomode or output mode:
 	if (stereomode == kPsychDualWindowStereo || (imagingmode & kPsychNeedDualWindowOutput)) {
@@ -453,7 +486,7 @@ PsychError SCREENOpenWindow(void)
 	// blue-line-sync style sync lines for use with stereo shutter glasses. We don't do this
 	// by default on Windows or Linux: These systems either don't have stereo capable hardware,
 	// or they have some and its drivers already take care of sync signal generation.
-	if ((PSYCH_SYSTEM == PSYCH_OSX) && (windowRecord->stereomode==kPsychOpenGLStereo)) {
+	if (((PSYCH_SYSTEM == PSYCH_OSX) && (windowRecord->stereomode == kPsychOpenGLStereo)) || (windowRecord->stereomode == kPsychFrameSequentialStereo)) {
 		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Enabling internal blue line sync renderer for quad-buffered stereo...\n");
 		PsychPipelineAddBuiltinFunctionToHook(windowRecord, "LeftFinalizerBlitChain", "Builtin:RenderStereoSyncLine", INT_MAX, "");
 		PsychPipelineEnableHook(windowRecord, "LeftFinalizerBlitChain");		
@@ -463,13 +496,13 @@ PsychError SCREENOpenWindow(void)
 
 	// Activate new onscreen window for userspace drawing: If imaging pipeline is active, this
 	// will bind the correct rendertargets for the first time. We soft-reset first to get
-    // into a defined state:
+	// into a defined state:
 	PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
 	PsychSetDrawingTarget(windowRecord);
 
     // Set the clear color and perform a backbuffer-clear:
     PsychConvertColorToDoubleVector(&color, windowRecord, windowRecord->clearColor);
-	PsychGLClear(windowRecord);
+    PsychGLClear(windowRecord);
 
     // Mark end of drawing op. This is needed for single buffered drawing:
     PsychFlushGL(windowRecord);
@@ -483,17 +516,17 @@ PsychError SCREENOpenWindow(void)
     // logo display until the Matlab script first calls 'Flip'.
     if (((PsychPrefStateGet_VisualDebugLevel()>=4) || (windowRecord->stereomode > 0)) && numWindowBuffers>=2) {
       // Do immediate bufferswap by an internal call to Screen('Flip'). This will also
-	  // take care of clearing the backbuffer in preparation of first userspace drawing
-	  // commands and such...
-	  PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
+      // take care of clearing the backbuffer in preparation of first userspace drawing
+      // commands and such...
+      PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
       // Display now shows background color, so user knows that PTB's 'OpenWindow'
       // procedure is successfully finished.
     }
 
     PsychTestForGLErrors();
 
-	// Reset flipcounter to zero:
-	windowRecord->flipCount = 0;
+    // Reset flipcounter to zero:
+    windowRecord->flipCount = 0;
 	
     //Return the window index and the rect argument.
     PsychCopyOutDoubleArg(1, FALSE, windowRecord->windowIndex);

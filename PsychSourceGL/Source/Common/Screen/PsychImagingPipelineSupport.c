@@ -257,7 +257,7 @@ void PsychInitImagingPipelineDefaultsForWindowRecord(PsychWindowRecordType *wind
  */
 void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int imagingmode, int multiSample)
 {	
-	GLenum fboInternalFormat;
+	GLenum fboInternalFormat, finalizedFBOFormat;
 	int newimagingmode = 0;
 	int fbocount = 0;
 	int winwidth, winheight;
@@ -409,7 +409,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	needzbuffer = (PsychPrefStateGet_3DGfx()>0) ? TRUE : FALSE;
 	
 	// Do we need separate streams for stereo? Only for OpenGL quad-buffered mode and dual-window stereo mode:
-	needseparatestreams = (windowRecord->stereomode == kPsychOpenGLStereo || windowRecord->stereomode == kPsychDualWindowStereo) ? TRUE : FALSE;
+	needseparatestreams = (windowRecord->stereomode == kPsychOpenGLStereo || windowRecord->stereomode == kPsychDualWindowStereo || windowRecord->stereomode == kPsychFrameSequentialStereo) ? TRUE : FALSE;
 
 	// Do we need some intermediate image processing?
 	needimageprocessing= (imagingmode & kPsychNeedImageProcessing) ? TRUE : FALSE;
@@ -451,6 +451,16 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	windowRecord->finalizedFBO[1]=fbocount;
 	fbocount++;
 
+	// Compute format for a finalizedFBO which is not the backbuffer, but blits unmodified to the backbuffer:
+	// This is by default always a standard 8bpc fixed point RGBA8 framebuffer without stencil- and z-buffers etc.
+	// If bit depths of native backbuffer is more than 8 bits, we allocate a float32 FBO though. Should we need a
+	// 32 bpc float FBO but the GPU doesn't support this, we try a 16 bit snorm FBO. A 16 bit snorm FBO has effective
+	// 15 bits linear integer precision, which is enough for all currently existing hw framebuffers:
+	// Query bit depths of native backbuffer: Assume red bits == green bits == blue bits == bit depths.
+	glGetIntegerv(GL_RED_BITS, &redbits);
+	// Decide on proper format:
+	finalizedFBOFormat = (redbits <= 8) ? GL_RGBA8 : ((windowRecord->gfxcaps & kPsychGfxCapFPFBO32) ? GL_RGBA_FLOAT32_APPLE : GL_RGBA16_SNORM);
+
 	if ((windowRecord->stereomode == kPsychDualWindowStereo) || (imagingmode & kPsychNeedDualWindowOutput)) {
 		// Dual-window stereo or dual window output is a special case: This window contains the imaging pipeline for
 		// both views, but its OpenGL context and framebuffer only represents the left-view channel.
@@ -465,15 +475,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		// In dual window output mode, we may only have one merged/composited stereo view or even only
 		// a single monoscopic view, but we still distribute that view to both finalizedFBO's aka different
 		// onscreen windows backbuffers, possibly with separate output formatting / postprocessing.
-		
-		// Query bit depths of native backbuffer: Assume red bits == green bits == blue bits == bit depths.
-		glGetIntegerv(GL_RED_BITS, &redbits);
-		
-		// This is by default always a standard 8bpc fixed point RGBA8 framebuffer without stencil- and z-buffers etc.
-		// If bit depths of native backbuffer is more than 8 bits, we allocate a float32 FBO though. Should we need a
-        // 32 bpc float FBO but the GPU doesn't support this, we try a 16 bit snorm FBO. A 16 bit snorm FBO has effective
-        // 15 bits linear integer precision, which is enough for all currently existing hw framebuffers:
-		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), ((redbits <= 8) ? GL_RGBA8 : ((windowRecord->gfxcaps & kPsychGfxCapFPFBO32) ? GL_RGBA_FLOAT32_APPLE : GL_RGBA16_SNORM)), FALSE, winwidth, winheight, 0)) {
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), finalizedFBOFormat, FALSE, winwidth, winheight, 0)) {
 			// Failed!
 			PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 0 of imaging pipeline for dual-window stereo.");
 		}
@@ -482,8 +484,27 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		fbocount++;
 	}
 
+	if (windowRecord->stereomode == kPsychFrameSequentialStereo) {
+		// Home-Grown frame-sequential stereo mode: Need one real finalizedFBO for each of the
+		// two stereo streams:
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), finalizedFBOFormat, FALSE, winwidth, winheight, 0)) {
+			// Failed!
+			PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 0 of imaging pipeline for frame-sequential stereo (left eye).");
+		}
+		
+		windowRecord->finalizedFBO[0]=fbocount;
+		fbocount++;
+
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), finalizedFBOFormat, FALSE, winwidth, winheight, 0)) {
+			// Failed!
+			PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 0 of imaging pipeline for frame-sequential stereo (right eye).");
+		}
+		
+		windowRecord->finalizedFBO[1]=fbocount;
+		fbocount++;
+	}
+
 	// Now we preinit all further stages with the finalizedFBO assignment.
-	
 	if (needfastbackingstore) {
 		// We need at least the 1st level drawBufferFBO's as rendertargets for all
 		// user-space drawing, ie Screen 2D drawing functions, MOGL OpenGL rendering and
@@ -1007,6 +1028,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			break;
 
 			case kPsychOpenGLStereo:
+			case kPsychFrameSequentialStereo:
 				// Nothing to do for now: Setup of blue-line syncing is done in SCREENOpenWindow.c, because it also
 				// applies to non-imaging mode...
 			break;
@@ -1014,7 +1036,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			case kPsychDualWindowStereo:
 				// Nothing to do for now.
 			break;
-			
+
 			default:
 				PsychErrorExitMsg(PsychError_internal, "Unknown stereo mode encountered! FIX SCREENOpenWindow.c to catch this at the appropriate place!\n");
 		}
@@ -2428,8 +2450,8 @@ psych_bool PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hoo
 	}
 	
 	// Is this an image processing hook?
-	gfxprocessing = (srcfbo1!=NULL && dstfbo!=NULL) ? TRUE : FALSE;
-		
+	gfxprocessing = (dstfbo!=NULL) ? TRUE : FALSE;
+
 	// Get start of enabled chain:
 	hookfunc = windowRecord->HookChain[hookId];
 
@@ -2476,14 +2498,14 @@ psych_bool PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hoo
 		if ((pendingFBOpingpongs % 2) == 0) {
 			// Even number of ping-pongs needed in this chain. We stream from source fbo to
 			// destination fbo in first pass.
-			mysrcfbo1 = *srcfbo1;
+			mysrcfbo1 = (srcfbo1) ? *srcfbo1 : NULL;
 			mysrcfbo2 = (srcfbo2) ? *srcfbo2 : NULL;
 			mydstfbo  = *bouncefbo2;
 			mynxtfbo  = (bouncefbo) ? *bouncefbo : NULL;
 		}
 		else {
 			// Odd number of ping-pongs needed. Initially stream from source to bouncefbo:
-			mysrcfbo1 = *srcfbo1;
+			mysrcfbo1 = (srcfbo1) ? *srcfbo1 : NULL;
 			mysrcfbo2 = (srcfbo2) ? *srcfbo2 : NULL;
 			mydstfbo  = (bouncefbo) ? *bouncefbo : NULL;
 			mynxtfbo  = *bouncefbo2;
@@ -2820,7 +2842,7 @@ psych_bool PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int
 				// Draw a blue-line-sync sync line at the bottom of the current framebuffer. This is needed
 				// to drive stereo shutter glasses with blueline-sync in quad-buffered frame-sequential stereo
 				// mode.
-				if (!PsychPipelineBuiltinRenderStereoSyncLine(windowRecord, hookfunc)) {
+				if (!PsychPipelineBuiltinRenderStereoSyncLine(windowRecord, hookId, hookfunc)) {
 					// Operation failed!
 					return(FALSE);
 				}
@@ -2869,10 +2891,10 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
 	}
 	else {
 		// srcfbo2 doesn't exist: Unbind and deactivate 2nd unit:
+		if (PsychPrefStateGet_Verbosity() > 10) printf("TexUnit 1 not reading from srcfbo2\n");
 		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
 		glDisable(GL_TEXTURE_RECTANGLE_EXT);
 	}
-	
 
 	// Assign color texture of srcfbo1 to texture unit 0:
 	glActiveTextureARB(GL_TEXTURE0_ARB);
@@ -2894,6 +2916,7 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
 	}
 	else {
 		// srcfbo1 doesn't exist: Unbind and deactivate 1st unit:
+		if (PsychPrefStateGet_Verbosity() > 10) printf("TexUnit 0 not reading from srcfbo1\n");
 		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
 		glDisable(GL_TEXTURE_RECTANGLE_EXT);
 	}
@@ -2904,8 +2927,14 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
 		// target FBO or system framebuffer:
 		w = (int) dstfbo->width;
 		h = (int) dstfbo->height;
-		if (PsychPrefStateGet_Verbosity()>4) printf("Blitting to Targettex = %i , w x h = %i %i\n", dstfbo->coltexid, w, h);
-		
+		if (PsychPrefStateGet_Verbosity()>4) {
+			if (dstfbo->fboid > 0) {
+				printf("Blitting to Targettex = %i , w x h = %i %i\n", dstfbo->coltexid, w, h);
+			} else {
+				printf("Blitting to system framebuffer, w x h = %i %i\n", w, h);
+			}
+		}
+
 		// Settings changed? We skip if not - state changes are expensive...
 		if (w!=ow || h!=oh) {
 			ow=w;
@@ -3505,7 +3534,7 @@ psych_bool PsychPipelineBuiltinRenderClutViaRuntime(PsychWindowRecordType *windo
  *
  * A builtin function to be called for drawing of blue-line-sync marker lines in quad-buffered stereo mode.
  */
-psych_bool PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc)
+psych_bool PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windowRecord, int hookId, PsychHookFunction* hookfunc)
 {
 	GLenum draw_buffer;
 	char* strp;
@@ -3549,7 +3578,10 @@ psych_bool PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windo
 	
 	// Query current target buffer:
 	glGetIntegerv(GL_DRAW_BUFFER, (GLint*) &draw_buffer);
-	
+
+	// If a FBO is bound, we use the hookId of the originating chain to find out if this is left view or right view:
+	if (draw_buffer == GL_COLOR_ATTACHMENT0_EXT) draw_buffer = ((hookId == kPsychLeftFinalizerBlit) ? GL_BACK_LEFT : GL_BACK_RIGHT);
+
 	if (draw_buffer == GL_BACK_LEFT || draw_buffer == GL_FRONT_LEFT) {
 		// Left stereo buffer:
 		blackpoint = fraction;

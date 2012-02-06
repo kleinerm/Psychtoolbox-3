@@ -252,7 +252,7 @@ PsychError SCREENFlip(void)
 		if ((multiflip != 0) && (opmode != 0))  PsychErrorExitMsg(PsychError_user, "Using a non-zero 'multiflip' flag while starting an asynchronous flip! Sorry, this is currently not possible.\n");
 
 		// Query optional flipwhen argument:
-        // 0 (default value) == Flip at next vertical retrace and sync to VBL. This is the old PTB behaviour as of PTB 1.0.42.
+		// 0 (default value) == Flip at next vertical retrace and sync to VBL. This is the old PTB behaviour as of PTB 1.0.42.
 		// flipwhen>0 == Sleep/Wait until system time "flipwhen" and then flip at the next VBL after time "flipwhen".
 		flipwhen=0;
 		PsychCopyInDoubleArg(2,FALSE,&flipwhen);
@@ -260,7 +260,7 @@ PsychError SCREENFlip(void)
 			PsychErrorExitMsg(PsychError_user, "Only 'when' values greater or equal to 0 are supported");
 		}
 
-        PsychGetAdjustedPrecisionTimerSeconds(&tNow);
+		PsychGetAdjustedPrecisionTimerSeconds(&tNow);
 		if (flipwhen - tNow > 1000) {
 			PsychErrorExitMsg(PsychError_user, "\nYou specified a 'when' value to Flip that's over 1000 seconds in the future?!? Aborting, assuming that's an error.\n\n");
 		}
@@ -272,49 +272,49 @@ PsychError SCREENFlip(void)
 
 		if (flipRequest->asyncstate != 0) {
 			// Started, executing or finalized async flip in progress. We can't trigger a new flip request
-            // before the current one has finished. Perform a blocking wait for flip completion, basically
-            // a Screen('AsyncFlipEnd') op, collect its results for return to usercode, then continue with
-            // scheduling the new flip request:
-            flipRequest->opmode = 2;
-            flipstate = PsychFlipWindowBuffersIndirect(windowRecord);
+			// before the current one has finished. Perform a blocking wait for flip completion, basically
+			// a Screen('AsyncFlipEnd') op, collect its results for return to usercode, then continue with
+			// scheduling the new flip request:
+			flipRequest->opmode = 2;
+			flipstate = PsychFlipWindowBuffersIndirect(windowRecord);
 
-            // Reset state to zero, ie. ready for new adventures ;-)
-            if (flipstate) flipRequest->asyncstate = 0;
+			// Reset state to zero, ie. ready for new adventures ;-)
+			if (flipstate) flipRequest->asyncstate = 0;
 
-            // Ok, async flip completed. Its completion data is stored in flipRequest.
+			// Ok, async flip completed. Its completion data is stored in flipRequest.
 		}
-        else {
-            // No async flip -- Fake a "success", so cached results from
-            // previous flips can be returned:
-            flipstate = TRUE;
-        }
+		else {
+			// No async flip -- Fake a "success", so cached results from
+			// previous flips can be returned:
+			flipstate = TRUE;
+		}
 
-        // If this is a Screen('AsyncFlipBegin') aka opmode 1, we can return the
-        // completion data of previous async flips to usercode.
-        // In opmode 0 aka Screen('Flip') returning data here would not make
-        // sense as userspace expects the results from the synchronous flip we will
-        // schedule next.
-        if (opmode == 1) {
-            vbl_timestamp	= (flipstate) ? flipRequest->vbl_timestamp : 0.0;
-            time_at_onset	= flipRequest->time_at_onset;
-            time_at_flipend = flipRequest->time_at_flipend;
-            miss_estimate	= flipRequest->miss_estimate;
-            beamposatflip	= flipRequest->beamPosAtFlip;
+		// If this is a Screen('AsyncFlipBegin') aka opmode 1, we can return the
+		// completion data of previous async flips to usercode.
+		// In opmode 0 aka Screen('Flip') returning data here would not make
+		// sense as userspace expects the results from the synchronous flip we will
+		// schedule next.
+		if (opmode == 1) {
+			vbl_timestamp	= (flipstate) ? flipRequest->vbl_timestamp : 0.0;
+			time_at_onset	= flipRequest->time_at_onset;
+			time_at_flipend = flipRequest->time_at_flipend;
+			miss_estimate	= flipRequest->miss_estimate;
+			beamposatflip	= flipRequest->beamPosAtFlip;
             
-            // Return timestamp at start of VBL time:
-            PsychCopyOutDoubleArg(1, FALSE, vbl_timestamp);
-            // Return timestamp at stimulus onset time:
-            PsychCopyOutDoubleArg(2, FALSE, time_at_onset);
-            // Return time when Flip ended:
-            PsychCopyOutDoubleArg(3, FALSE, time_at_flipend);
-            // Return current estimate of deadline miss, if any:
-            PsychCopyOutDoubleArg(4, FALSE, miss_estimate);
-            // Return beam position at VBL time:
-            PsychCopyOutDoubleArg(5, FALSE, (double) beamposatflip);
-        }
-        
+			// Return timestamp at start of VBL time:
+			PsychCopyOutDoubleArg(1, FALSE, vbl_timestamp);
+			// Return timestamp at stimulus onset time:
+			PsychCopyOutDoubleArg(2, FALSE, time_at_onset);
+			// Return time when Flip ended:
+			PsychCopyOutDoubleArg(3, FALSE, time_at_flipend);
+			// Return current estimate of deadline miss, if any:
+			PsychCopyOutDoubleArg(4, FALSE, miss_estimate);
+			// Return beam position at VBL time:
+			PsychCopyOutDoubleArg(5, FALSE, (double) beamposatflip);
+		}
+
 		// This info needs to be provided for flip mechanism:
-		flipRequest->opmode			= opmode;
+		flipRequest->opmode		= opmode;
 		flipRequest->dont_clear		= dont_clear;
 		flipRequest->flipwhen		= flipwhen;
 		flipRequest->multiflip		= multiflip;
@@ -340,26 +340,26 @@ PsychError SCREENFlip(void)
 		if (flipRequest->asyncstate == 0) {
 			// No started, executing or finalized async flip in progress! No async flip operation triggered
 			// which we could finalize. This is fine. We basically no-op and return the cached last known
-            // values from previous async flips or sync flips, or all zeros if no flip was ever executed:
-            vbl_timestamp	= flipRequest->vbl_timestamp;
-            time_at_onset	= flipRequest->time_at_onset;
-            time_at_flipend = flipRequest->time_at_flipend;
-            miss_estimate	= flipRequest->miss_estimate;
-            beamposatflip	= flipRequest->beamPosAtFlip;
+			// values from previous async flips or sync flips, or all zeros if no flip was ever executed:
+			vbl_timestamp	= flipRequest->vbl_timestamp;
+			time_at_onset	= flipRequest->time_at_onset;
+			time_at_flipend = flipRequest->time_at_flipend;
+			miss_estimate	= flipRequest->miss_estimate;
+			beamposatflip	= flipRequest->beamPosAtFlip;
             
-            // Return timestamp at start of VBL time:
-            PsychCopyOutDoubleArg(1, FALSE, vbl_timestamp);
-            // Return timestamp at stimulus onset time:
-            PsychCopyOutDoubleArg(2, FALSE, time_at_onset);
-            // Return time when Flip ended:
-            PsychCopyOutDoubleArg(3, FALSE, time_at_flipend);
-            // Return current estimate of deadline miss, if any:
-            PsychCopyOutDoubleArg(4, FALSE, miss_estimate);
-            // Return beam position at VBL time:
-            PsychCopyOutDoubleArg(5, FALSE, (double) beamposatflip);
+			// Return timestamp at start of VBL time:
+			PsychCopyOutDoubleArg(1, FALSE, vbl_timestamp);
+			// Return timestamp at stimulus onset time:
+			PsychCopyOutDoubleArg(2, FALSE, time_at_onset);
+			// Return time when Flip ended:
+			PsychCopyOutDoubleArg(3, FALSE, time_at_flipend);
+			// Return current estimate of deadline miss, if any:
+			PsychCopyOutDoubleArg(4, FALSE, miss_estimate);
+			// Return beam position at VBL time:
+			PsychCopyOutDoubleArg(5, FALSE, (double) beamposatflip);
             
-            // We're done:
-            return(PsychError_none);
+			// We're done:
+			return(PsychError_none);
 		}
 
 		// Ok, there's an async flip going on and we have a handle to it...
@@ -404,8 +404,8 @@ PsychError SCREENFlip(void)
 		// Return beam position at VBL time:
 		PsychCopyOutDoubleArg(5, FALSE, (double) beamposatflip);
         
-        // Execute hook chain for preparation of user space drawing ops:
-        PsychPipelineExecuteHook(windowRecord, kPsychUserspaceBufferDrawingPrepare, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);        
+		// Execute hook chain for preparation of user space drawing ops:
+		PsychPipelineExecuteHook(windowRecord, kPsychUserspaceBufferDrawingPrepare, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);        
 	}
 	
 	return(PsychError_none);

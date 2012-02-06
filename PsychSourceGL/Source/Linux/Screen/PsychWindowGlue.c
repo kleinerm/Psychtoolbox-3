@@ -179,6 +179,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   psych_bool fullscreen = FALSE;
   int attrib[41];
   int attribcount=0;
+  int stereoenableattrib=0;
   int depth, bpc;
   int windowLevel;
   int major, minor;
@@ -348,6 +349,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // we request a stereo-enabled rendering context.
   if(stereomode==kPsychOpenGLStereo) {
     attrib[attribcount++]= GLX_STEREO;
+    stereoenableattrib = attribcount;
     attrib[attribcount++]= True;
   }
 
@@ -411,6 +413,20 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrdummy);
   } else {
     visinfo = glXChooseVisual(dpy, scrnum, attrib );
+  }
+
+  if (!visinfo && !fbconfig && (stereoenableattrib > 0)) {
+	// Failed to find matching visual and OpenGL native quad-buffered frame-sequential
+	// stereo requested. Probably the GPU does not support it. Disable it as we have a
+	// fallback implementation for this case.
+	attrib[stereoenableattrib] = False;
+
+	// Retry:
+	if (useGLX13) {
+		fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrdummy);
+	} else {
+		visinfo = glXChooseVisual(dpy, scrnum, attrib );
+	}
   }
 
   if (!visinfo && !fbconfig) {

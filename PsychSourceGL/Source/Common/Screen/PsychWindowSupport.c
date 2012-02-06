@@ -409,29 +409,6 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 #endif
 	}
 
-	// Query if OpenGL stereo is supported:
-	glGetBooleanv(GL_STEREO, &isFloatBuffer);
-	if (!isFloatBuffer && stereomode==kPsychOpenGLStereo) {
-		// OpenGL native stereo was requested, but is obviously not supported :-(
-		// Let's abort here with some error message.
-        printf("\nPTB-ERROR: Asked for OpenGL native stereo (frame-sequential mode) but this doesn't seem to be supported by your graphics hardware or driver.\n");
-		if (PSYCH_SYSTEM == PSYCH_OSX) {
-			printf("PTB-ERROR: Frame-sequential stereo should be supported on all recent ATI and NVidia cards on OS/X, except for the Intel onboard chips,\n");
-			printf("PTB-ERROR: at least in fullscreen mode with OS/X 10.5, and also mostly on OS/X 10.4. If it doesn't work, check for OS updates etc.\n\n");
-		}
-		else {
-			printf("PTB-ERROR: Frame-sequential stereo on Windows or Linux is usually only supported with the professional line of graphics cards\n");
-			printf("PTB-ERROR: from NVidia and ATI/AMD, e.g., NVidia Quadro series or ATI FireGL series. Probably also with professional hardware from 3DLabs.\n");
-			printf("PTB-ERROR: If you happen to have such a card, check your driver settings and/or update your graphics driver. This mode may also not\n");
-			printf("PTB-ERROR: work on flat panels, due to their too low refresh rate.\n\n");
-		}
-		printf("PTB-ERROR: You may also check if your display resolution is too demanding, so your hardware runs out of VRAM memory.\n\n");
-
-		PsychOSCloseWindow(*windowRecord);
-        FreeWindowRecordFromPntr(*windowRecord);
-        return(FALSE);		
-	}
-
 	if ((sharedContextWindow == NULL) && ((*windowRecord)->slaveWindow)) {
 		// Undo slave window assignment from context sharing:
 		(*windowRecord)->slaveWindow = NULL;
@@ -1139,7 +1116,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
       if (ifi_nominal > 0) printf("PTB-INFO: Reported monitor refresh interval from operating system = %f ms [%f Hz].\n", ifi_nominal * 1000, 1/ifi_nominal);
       printf("PTB-INFO: Small deviations between reported values are normal and no reason to worry.\n");
 
-      if ((*windowRecord)->stereomode==kPsychOpenGLStereo) printf("PTB-INFO: Stereo display via OpenGL built-in frame-sequential stereo enabled.\n");
+      if ((*windowRecord)->stereomode==kPsychOpenGLStereo) printf("PTB-INFO: Stereo display via OpenGL built-in frame-sequential stereo requested.\n");
       if ((*windowRecord)->stereomode==kPsychCompressedTLBRStereo) printf("PTB-INFO: Stereo display via vertical image compression enabled (Top=LeftEye, Bot.=RightEye).\n");
       if ((*windowRecord)->stereomode==kPsychCompressedTRBLStereo) printf("PTB-INFO: Stereo display via vertical image compression enabled (Top=RightEye, Bot.=LeftEye).\n");
       if ((*windowRecord)->stereomode==kPsychFreeFusionStereo) printf("PTB-INFO: Stereo for free fusion or dual-display desktop spanning enabled (2-in-1 stereo).\n");
@@ -1149,6 +1126,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
       if ((*windowRecord)->stereomode==kPsychAnaglyphRBStereo) printf("PTB-INFO: Stereo display via Anaglyph Red-Blue stereo enabled.\n");
       if ((*windowRecord)->stereomode==kPsychAnaglyphBRStereo) printf("PTB-INFO: Stereo display via Anaglyph Blue-Red stereo enabled.\n");
       if ((*windowRecord)->stereomode==kPsychDualWindowStereo) printf("PTB-INFO: Stereo display via dual window output with imaging pipeline enabled.\n");
+      if ((*windowRecord)->stereomode==kPsychFrameSequentialStereo) printf("PTB-INFO: Stereo display via non-native frame-sequential stereo method enabled.\n");
       if ((PsychPrefStateGet_ConserveVRAM() & kPsychDontCacheTextures) && (strstr((char*) glGetString(GL_EXTENSIONS), "GL_APPLE_client_storage")==NULL)) {
 		// User wants us to use client storage, but client storage is unavailable :(
 		printf("PTB-WARNING: You asked me for reducing VRAM consumption but for this, your graphics hardware would need\n");
@@ -1719,7 +1697,13 @@ void PsychReleaseFlipInfoStruct(PsychWindowRecordType *windowRecord)
 void* PsychFlipperThreadMain(void* windowRecordToCast)
 {
 	int rc;
-    
+	psych_bool needWork;
+	double tnow, lastvbl;
+	int dummy1;
+	double dummy2, dummy3, dummy4;
+	psych_uint64 vblcount = 0;
+	psych_uint64 vblqcount = 0;
+
 	// Select async flip implementation: Old-Style -- One context for both master-thread and flipper-thread:
 	psych_bool oldStyle = (PsychPrefStateGet_ConserveVRAM() & kPsychUseOldStyleAsyncFlips) ? TRUE : FALSE;
 
@@ -1744,7 +1728,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 		// attach to it. This attachment is permanent until the thread exits.
 		// Add os-specific context binding here directly, as it is the only place
 		// this is needed - not much of a point adding extra subfunctions for it
-		// (yes, i know, this layering violation out of lazyness is is lame!).
+		// (yes, i know, this layering violation out of lazyness is lame!).
 
 		#if PSYCH_SYSTEM == PSYCH_OSX
 		CGLSetCurrentContext(windowRecord->targetSpecific.glswapcontextObject);
@@ -1762,88 +1746,245 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 		PsychOSSetVBLSyncLevel(windowRecord, 1);
 	}
     
-	// Set our state as "initialized, ready & waiting":
-	flipRequest->flipperState = 1;
+	// We have a special dispatch loop for our home-grown frame-sequential stereo implementation:
+	if (windowRecord->stereomode != kPsychFrameSequentialStereo) {
+		// Set our state as "initialized, ready & waiting":
+		flipRequest->flipperState = 1;
 
-	// Dispatch loop: Repeats infinitely, processing one flip request per loop iteration.
-	// Well, not infinitely, but until we receive a shutdown request and terminate ourselves...
-	while (TRUE) {
-		// Unlock the lock and go to sleep, waiting on the condition variable for a start signal from
-		// the master thread. This is an atomic operation, both unlock and sleep happen simultaneously.
-		// After a wakeup due to signalling, the lock is automatically reacquired, so no need to mutex_lock
-		// anymore. This is also a thread cancellation point...
-		if ((rc=PsychWaitCondition(&(flipRequest->flipperGoGoGo), &(flipRequest->performFlipLock)))) {
-			// Failed: Log it in a hopefully not too unsafe way:
-			fprintf(stderr, "PTB-ERROR: In PsychFlipperThreadMain():  pthread_cond_wait() on flipperGoGoGo trigger failed  [%s].\n", strerror(rc));
-			
-			// Commit suicide with state "error, lock not held":
-			flipRequest->flipperState = 5;
+		// Standard dispatch loop: Repeats infinitely, processing one flip request per loop iteration.
+		// Well, not infinitely, but until we receive a shutdown request and terminate ourselves...
+		while (TRUE) {
+			// Unlock the lock and go to sleep, waiting on the condition variable for a start signal from
+			// the master thread. This is an atomic operation, both unlock and sleep happen simultaneously.
+			// After a wakeup due to signalling, the lock is automatically reacquired, so no need to mutex_lock
+			// anymore. This is also a thread cancellation point...
+			if ((rc=PsychWaitCondition(&(flipRequest->flipperGoGoGo), &(flipRequest->performFlipLock)))) {
+				// Failed: Log it in a hopefully not too unsafe way:
+				fprintf(stderr, "PTB-ERROR: In PsychFlipperThreadMain():  pthread_cond_wait() on flipperGoGoGo trigger failed  [%s].\n", strerror(rc));
 
-			// Make sure our thread detaches from its private OpenGL context before it dies:
-			PsychOSUnsetGLContext(windowRecord);
+				// Commit suicide with state "error, lock not held":
+				flipRequest->flipperState = 5;
 
-			// Die!
-			return(NULL);
+				// Make sure our thread detaches from its private OpenGL context before it dies:
+				PsychOSUnsetGLContext(windowRecord);
+
+				// Die!
+				return(NULL);
+			}
+
+			// Got woken up, work to do! We have the lock from auto-reaquire in cond_wait:
+
+			// Check if we are supposed to terminate:
+			if (flipRequest->opmode == -1) {
+				// We shall terminate: We are not waiting on the flipperGoGoGo variable.
+				// We hold the mutex, so set us to state "terminating with lock held" and exit the loop:
+				flipRequest->flipperState = 4;
+				break;	
+			}
+
+			// Got the lock: Set our state to "executing - flip in progress":
+			flipRequest->flipperState = 2;
+
+			// fprintf(stdout, "WAITING UNTIL T = %f\n", flipRequest->flipwhen); fflush(NULL);
+
+			// Setup context etc. manually, as PsychSetDrawingTarget() is a no-op when called from
+			// this thread:
+
+			// Old style method: Attach to context - It's detached in the main thread:
+			if (oldStyle) PsychSetGLContext(windowRecord);
+
+			// Setup view: We set the full backbuffer area of the window.
+			PsychSetupView(windowRecord, TRUE);
+
+			// Nothing more to do, the system backbuffer is bound, no FBO's are set at this point.
+
+			// Unpack struct and execute synchronous flip: Synchronous in our thread, asynchronous from Matlabs/Octaves perspective!
+			flipRequest->vbl_timestamp = PsychFlipWindowBuffers(windowRecord, flipRequest->multiflip, flipRequest->vbl_synclevel, flipRequest->dont_clear, flipRequest->flipwhen, &(flipRequest->beamPosAtFlip), &(flipRequest->miss_estimate), &(flipRequest->time_at_flipend), &(flipRequest->time_at_onset));
+
+			// Flip finished and struct filled with return arguments.
+			// Set our state to 3 aka "flip operation finished, ready for new commands":
+			flipRequest->flipperState = 3;
+
+			// Detach our GL context, so main interpreter thread can use it again. This will also unbind any bound FBO's.
+			// As there wasn't any drawing target bound throughout our execution, and the drawingtarget was reset to
+			// NULL in main thread before our invocation, there's none bound now. --> The first Screen command in
+			// the main thread will rebind and setup the context and drawingtarget properly:
+			if (oldStyle) {
+				PsychOSUnsetGLContext(windowRecord);
+			}
+			else {
+				// We must glFinish() here, to make sure all rendering commands submitted
+				// by our OpenGL context are finished before we signal async-flip completion
+				// to masterthread, ie., before we unblock a Screen('AsyncFlipEnd') etc.
+				// If we omitted this, those usercode commands would no longer act as barriers
+				// and we might race with userspace rendering that thinks it has exclusive access
+				// to the drawing buffer:
+				glFinish();
+
+				// Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
+				if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+			}
+
+			//fprintf(stdout, "DETACHED, CONDWAIT\n"); fflush(NULL);
+
+			// Repeat the dispatch loop. That will atomically unlock the lock and set us asleep until we
+			// get triggered again with more work to do:
 		}
-		
-		// Got woken up, work to do! We have the lock from auto-reaquire in cond_wait:
-		
-		// Check if we are supposed to terminate:
-		if (flipRequest->opmode == -1) {
-			// We shall terminate: We are not waiting on the flipperGoGoGo variable.
-			// We hold the mutex, so set us to state "terminating with lock held" and exit the loop:
-			flipRequest->flipperState = 4;
-			break;	
-		}
-
-		// Got the lock: Set our state to "executing - flip in progress":
-		flipRequest->flipperState = 2;
-
-		// fprintf(stdout, "WAITING UNTIL T = %f\n", flipRequest->flipwhen); fflush(NULL);
-
-		// Setup context etc. manually, as PsychSetDrawingTarget() is a no-op when called from
-		// this thread:
-		
-		// Old style method: Attach to context - It's detached in the main thread:
-		if (oldStyle) PsychSetGLContext(windowRecord);
-
-		// Setup view: We set the full backbuffer area of the window.
-		PsychSetupView(windowRecord, TRUE);
-
-		// Nothing more to do, the system backbuffer is bound, no FBO's are set at this point.
-
-		// Unpack struct and execute synchronous flip: Synchronous in our thread, asynchronous from Matlabs/Octaves perspective!
-		flipRequest->vbl_timestamp = PsychFlipWindowBuffers(windowRecord, flipRequest->multiflip, flipRequest->vbl_synclevel, flipRequest->dont_clear, flipRequest->flipwhen, &(flipRequest->beamPosAtFlip), &(flipRequest->miss_estimate), &(flipRequest->time_at_flipend), &(flipRequest->time_at_onset));
-
-		// Flip finished and struct filled with return arguments.
-		// Set our state to 3 aka "flip operation finished, ready for new commands":
-		flipRequest->flipperState = 3;
-		
-		// Detach our GL context, so main interpreter thread can use it again. This will also unbind any bound FBO's.
-		// As there wasn't any drawing target bound throughout our execution, and the drawingtarget was reset to
-		// NULL in main thread before our invocation, there's none bound now. --> The first Screen command in
-		// the main thread will rebind and setup the context and drawingtarget properly:
-		if (oldStyle) {
-			PsychOSUnsetGLContext(windowRecord);
-		}
-		else {
-			// We must glFinish() here, to make sure all rendering commands submitted
-			// by our OpenGL context are finished before we signal async-flip completion
-			// to masterthread, ie., before we unblock a Screen('AsyncFlipEnd') etc.
-			// If we omitted this, those usercode commands would no longer act as barriers
-			// and we might race with userspace rendering that thinks it has exclusive access
-			// to the drawing buffer:
-			glFinish();
-
-			// Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
-			if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-		}
-
-		//fprintf(stdout, "DETACHED, CONDWAIT\n"); fflush(NULL);
-		
-		// Repeat the dispatch loop. That will atomically unlock the lock and set us asleep until we
-		// get triggered again with more work to do:
+		// Exit from standard dispatch loop.
 	}
+	else {
+		// Frame-Sequential stereo dispatch loop: Repeats infinitely, processing one flip request or stereo buffer swap per loop iteration.
+		// Well, not infinitely, but until we receive a shutdown request and terminate ourselves...
+
+		// Set our state as "initialized and ready":
+		flipRequest->flipperState = 6;
+
+		PsychUnlockMutex(&(flipRequest->performFlipLock));
+		needWork = TRUE;
+
+		// Dispatch loop:
+		while (TRUE) {
+			// Do we need a new flip work item? If so, can we get the lock to check it?
+			if (needWork && (PsychTryLockMutex(&(flipRequest->performFlipLock)) == 0)) {
+				// Need new work and got lock.
+
+				// Check if we are supposed to terminate:
+				if (flipRequest->opmode == -1) {
+					// We shall terminate: We are not waiting on the flipperGoGoGo variable.
+					// We hold the mutex, so set us to state "terminating with lock held" and exit the loop:
+					flipRequest->flipperState = 4;
+					break;	
+				}
+				
+				// New work available?
+				if (flipRequest->flipperState == 1) {
+					// Yes: We have work and we have the mutex until we are
+					// done with the work.
+					needWork = FALSE;
+	
+					// Set our state to "executing - flip in progress":
+					flipRequest->flipperState = 2;
+				}
+				else {
+					// No: Release the lock, so master has a chance to give us new work:
+					PsychUnlockMutex(&(flipRequest->performFlipLock));
+				}
+			}
+
+			// Are we past the deadline for pending flip work?
+			PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+
+			// Update our vblank counter: On Linux and OS/X we can query the actual
+			// gpu counter. On Windows, manual increments after each completed swap
+			// must do as a less reliable replacement. Anyway we dynamically check this:
+			PsychOSGetVBLTimeAndCount(windowRecord, &vblqcount);
+			if (vblqcount > 0) vblcount = vblqcount;
+
+			// For performing a "virtual bufferswap" we need a swaprequest to be pending, and the flipwhen deadline being
+			// reached, and we need to be on the proper field -- so left-eye stims start always at even (or odd) fields,
+			// at the users discretion:
+			if (!needWork && (tnow >= flipRequest->flipwhen) &&
+			    ((windowRecord->targetFlipFieldType == -1) || (((vblcount + 1) % 2) == windowRecord->targetFlipFieldType))) {
+				// Yes: Time to update the backbuffers with our finalizedFBOs and do
+				// properly scheduled/timestamped bufferswaps:
+
+				// Copy left-view fbo to backbuffer.
+				// This sets up its viewports, texture and fbo bindings and restores them to pre-exec state:
+				PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->finalizedFBO[0]]), NULL,
+							 &(windowRecord->fboTable[0]), NULL);
+
+				// Execute synchronous flip to make it the frontbuffer: This resets the framebuffer binding to 0 at exit:
+				flipRequest->vbl_timestamp = PsychFlipWindowBuffers(windowRecord, 0, 0, 2, flipRequest->flipwhen, &(flipRequest->beamPosAtFlip),
+										    &(flipRequest->miss_estimate), &(flipRequest->time_at_flipend), &(flipRequest->time_at_onset));
+
+				// Maintain virtual vblank counter on platforms where we need it:
+				vblcount++;
+
+				// Copy right-view fbo to backbuffer.
+				// This sets up its viewports, texture and fbo bindings and restores them to pre-exec state:
+				PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->finalizedFBO[1]]), NULL,
+							 &(windowRecord->fboTable[0]), NULL);
+
+				// We glFinish() here, to make sure all rendering commands submitted
+				// by our OpenGL context are finished. This means the finalizedFBOs are
+				// "used up" for this redraw cycle and ready for refill by the masterthread:
+				glFinish();
+	
+				// "Double-Flip" is now on its way to finish and struct is filled with return arguments.
+				// The buffers now contain the new left/right view images and can be simply exchanged
+				// periodically to provide a "static" frame-sequential stimulus to the observer.
+
+				// Set our state to 3 aka "flip operation finished, ready for new commands":
+				flipRequest->flipperState = 3;
+
+				// Compute swap deadline for onset of 2nd view (right eye):
+				tnow = flipRequest->flipwhen + windowRecord->VideoRefreshInterval;
+
+				// We can release the lock already to unblock the client code on the masterthread,
+				// as it already has access to all timestamps and status information and can start
+				// rendering into the client framebuffers (drawBufferFBOs) already. It could even
+				// already perform new preflip operations, as we're done with the finalizedFBOs:
+				PsychUnlockMutex(&(flipRequest->performFlipLock));
+
+				// Execute synchronous flip to make it the frontbuffer: This resets the framebuffer binding to 0 at exit:
+				tnow = PsychFlipWindowBuffers(windowRecord, 0, 0, 2, tnow, &dummy1, &dummy2, &dummy3, &dummy4);
+
+				// Maintain virtual vblank counter on platforms where we need it:
+				vblcount++;
+
+				// We glFinish() here, to make sure all rendering commands submitted
+				// by our OpenGL context are finished:
+				glFinish();
+
+				// Unbind any FBO's:
+				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
+				// Ready to accept new work:
+				needWork = TRUE;
+
+				// Restart at beginning of dispatch while-loop:
+				continue;
+			}
+
+			// Ok, either swap deadline for client triggered flip not yet close,
+			// or nothing to do from client side. Idle swap handling...
+
+			// Get estimate of last vblank time of swap completion:
+			lastvbl = windowRecord->time_at_last_vbl;
+
+			// Estimate next vblank deadline: Safety headroom is 0.5 refresh cycles.
+			lastvbl += windowRecord->VideoRefreshInterval / 2;
+
+			// Time for a swap request?
+			if (tnow >= lastvbl) {
+				// Trigger a doublebuffer swap in sync with vblank:
+				PsychOSFlipWindowBuffers(windowRecord);
+
+				if (PsychPrefStateGet_Verbosity() > 10) {
+					printf("PTB-DEBUG: Idle-Swap tnow = %f >= deadline = %f  delta = %f  [lastvbl = %f]\n", tnow, lastvbl, tnow - lastvbl, windowRecord->time_at_last_vbl);
+				}
+	
+				// Wait for swap completion, so we get an updated vblank time estimate:
+				glBegin(GL_POINTS);
+				glColor4f(0, 0, 0, 0);
+				glVertex2i(10, 10);
+				glEnd();
+				glFinish();
+				PsychGetAdjustedPrecisionTimerSeconds(&(windowRecord->time_at_last_vbl));
+
+				// Maintain virtual vblank counter on platforms where we need it:
+				vblcount++;
+			} else {
+				// Nope. Need to sleep a bit here to kill some time:
+				PsychYieldIntervalSeconds(0.001);
+			}
+
+			// Next dispatch loop iteration...
+		}
+		// Exit from frame-sequential stereo dispatch loop.
+	}
+
+	// Exit path from thread at thread termination...
 
 	// Make sure our thread detaches from its private OpenGL context before it dies:
 	PsychOSUnsetGLContext(windowRecord);
@@ -1886,10 +2027,10 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
  *	flipRequest with all neccessary info for the flip parameters and the fields in which result
  *	shall be returned, as well as the datastructures for thread/mutex/cond locking etc...
  *
- *  flipRequest->opmode can be one of:
+ *      flipRequest->opmode can be one of:
  *	0 = Execute Synchronous flip, 1 = Start async flip, 2 = Finish async flip, 3 = Poll for finish of async flip.
  *
- *  *	Synchronous flips are performed without changing the mutex lock flipRequest->performFlipLock. We check if
+ *      *	Synchronous flips are performed without changing the mutex lock flipRequest->performFlipLock. We check if
  *		there are not flip ops scheduled or executing for the window, then simply execute the flip and return its
  *		results, if none are active.
  *
@@ -1906,7 +2047,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
  *
  *  More important stuff:
  *
- *  *	Code executing in the PsychFlipperThreadMain() worker thread is not allowed to print anything to the
+ *      *	Code executing in the PsychFlipperThreadMain() worker thread is not allowed to print anything to the
  *		Matlab/Octave console, alloate or deallocate memory or other stuff that might interact with the runtime
  *		environment Matlab or Octave. We don't know if they are thread-safe, but assume they are not!
  *
@@ -1915,12 +2056,12 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
  *		That routine must not only release the struct, but also make absolutely sure that our thread gets cancelled
  *		or signalled to exit and joined, then destroyed and all mutexes unlocked and destroyed!!!
  *
- *  *	The master interpreter thread must detach from the PTB internal OpenGL context for the windowRecord and
+ *      *	The master interpreter thread must detach from the PTB internal OpenGL context for the windowRecord and
  *		not reattach until an async flip is finished! PsychSetGLContext() contains appropriate checking code:
  *		Only one thread is allowed to attach to a specific context, so we must basically lock that ressource as
  *		long as our flipperThread needs it to perform preflip,bufferswap and timestamping, postflip operations...
  *
- *  *	The userspace OpenGL context is not so critical in theory, but we protect that one as well, as it is a
+ *      *	The userspace OpenGL context is not so critical in theory, but we protect that one as well, as it is a
  *		separate context, so no problems from the OpenGL/OS expected (multiple threads can have multiple contexts
  *		attached, as long as each context only has one thread attached), but both contexts share the same drawable
  *		and therefore the same backbuffer. That could prevent bufferswaps at requested deadline/VSYNC because some
@@ -1940,7 +2081,7 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 	if (NULL == flipRequest) PsychErrorExitMsg(PsychError_internal, "NULL-Ptr for 'flipRequest' field of windowRecord passed in PsychFlipWindowsIndirect()!!");
 
 	// Synchronous flip requested?
-	if (flipRequest->opmode == 0) {
+	if ((flipRequest->opmode == 0) && (windowRecord->stereomode != kPsychFrameSequentialStereo)) {
 		// Yes. Any pending operation in progress?
 		if (flipRequest->asyncstate != 0) PsychErrorExitMsg(PsychError_internal, "Tried to invoke synchronous flip while flip still in progress!");
 		
@@ -1955,12 +2096,16 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 	}
 
 	// Asynchronous flip mode, either request to trigger one or request to finalize one:
-	if (flipRequest->opmode == 1) {
-		// Async flip start request:
+	if ((flipRequest->opmode == 1) || ((flipRequest->opmode == 0) && (windowRecord->stereomode == kPsychFrameSequentialStereo))) {
+		// Async flip start request, or a sync flip turned into an async flip due to kPsychFrameSequentialStereo:
 		if (flipRequest->asyncstate != 0) PsychErrorExitMsg(PsychError_internal, "Tried to invoke asynchronous flip while flip still in progress!");
 
 		// Current multiflip > 0 implementation is not thread-safe, so we don't support this:
-		if (flipRequest->multiflip != 0)  PsychErrorExitMsg(PsychError_user, "Using a non-zero 'multiflip' flag while starting an asynchronous flip! This is forbidden! Aborted.\n");
+		if (flipRequest->multiflip != 0) PsychErrorExitMsg(PsychError_user, "Using a non-zero 'multiflip' flag while starting an asynchronous flip! This is forbidden! Aborted.\n");
+
+		if ((flipRequest->opmode == 0) && (PsychPrefStateGet_ConserveVRAM() & kPsychUseOldStyleAsyncFlips)) {
+			PsychErrorExitMsg(PsychError_user, "Tried to use frame-sequential stereo mode while Screen('Preference', 'ConserveVRAM') setting kPsychUseOldStyleAsyncFlips is set! Forbidden!");
+		}
 
 		// PsychPreflip operations are not thread-safe due to possible callbacks into Matlab interpreter thread
 		// as part of hookchain processing when the imaging pipeline is enabled: We perform/trigger them here
@@ -2057,7 +2202,7 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 				//printf("ENTERING THREADCREATEFINISHED MUTEX: MUTEX_LOCKED!\n"); fflush(NULL);
 
 				// Got it! Check condition:
-				if (flipRequest->flipperState == 1) {
+				if (flipRequest->flipperState == 1 || flipRequest->flipperState == 6) {
 					// Thread ready and we have the lock: Proceed...
 					break;
 				}
@@ -2103,6 +2248,9 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 
 		// printf("IN ASYNCSTART: MUTEXUNLOCK\n"); fflush(NULL);
 
+		// This is only needed for frame-sequential thread mode:
+		flipRequest->flipperState = 1;
+
 		// Release the lock:
 		if ((rc=PsychUnlockMutex(&(flipRequest->performFlipLock)))) {
 			printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): mutex_unlock in trigger operation failed  [%s].\n", strerror(rc));
@@ -2122,8 +2270,20 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 		// That's it, operation in progress: Mark it as such.
 		flipRequest->asyncstate = 1;
 		
-		// Done.
-		return(TRUE);
+		// Done, unless this wasn't a real async flip. If this was a pseudo-sync-flip,
+		// we fall through to finalization stage:
+		if (flipRequest->opmode == 1) {
+			// Was an async-flip begin: We´re done:
+			return(TRUE);
+		}
+		else {
+			// Was a sync flip turned into an async-flip begin for our
+			// frame-sequential stereo implementation. Turn this into
+			// a blocking wait for async-flip end and fall-through, so
+			// we get the effective semantics of a classic sync-flip,
+			// just executed indirectly by the flipperthread:
+			flipRequest->opmode = 2;
+		}
 	}
 	
 	// Request to wait or poll for finalization of an async flip operation:
@@ -2194,6 +2354,17 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 		
 		// Decrement the asyncFlipOpsActive count:
 		asyncFlipOpsActive--;
+
+		if (windowRecord->stereomode == kPsychFrameSequentialStereo) {
+			flipRequest->asyncstate = 0;
+			PsychPostFlipOperations(windowRecord, flipRequest->dont_clear);
+			flipRequest->asyncstate = 2;
+		}
+
+		// Reset flags used for avoiding redundant Pipeline flushes and backbuffer-backups:
+		// This flags are altered and checked by SCREENDrawingFinished() and PsychPreFlipOperations() as well:
+		windowRecord->PipelineFlushDone = false;
+		windowRecord->backBufferBackupDone = false;
 
 		// Call hookchain with callbacks to be performed after successfull flip completion:
 		PsychPipelineExecuteHook(windowRecord, kPsychScreenFlipImpliedOperations, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);
@@ -2411,21 +2582,21 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
     // Perform preflip-operations: Backbuffer backups for the different dontclear-modes
     // and special compositing operations for specific stereo algorithms...
-	// These are not thread-safe! For async flip, this gets called in async flip start
-	// while still on the main thread, so this call here turns into a no-op:
-	PsychPreFlipOperations(windowRecord, dont_clear);
+    // These are not thread-safe! For async flip, this gets called in async flip start
+    // while still on the main thread, so this call here turns into a no-op:
+    PsychPreFlipOperations(windowRecord, dont_clear);
     
-	// Special imaging mode active? in that case a FBO may be bound instead of the system framebuffer.
-	if (windowRecord->imagingMode > 0) {
-		// Reset our drawing engine: This will unbind any FBO's (i.e. reset to system framebuffer)
-		// and reset the current target window to 'none'. We need this to be sure that our flip
-		// sync pixel token is written to the real system backbuffer...
-		// No-Op on flipperthread, but ok, because it always has system-fb bound.
-		PsychSetDrawingTarget(NULL);
-	}
+    // Special imaging mode active? in that case a FBO may be bound instead of the system framebuffer.
+    if (windowRecord->imagingMode > 0) {
+	// Reset our drawing engine: This will unbind any FBO's (i.e. reset to system framebuffer)
+	// and reset the current target window to 'none'. We need this to be sure that our flip
+	// sync pixel token is written to the real system backbuffer...
+	// No-Op on flipperthread, but ok, because it always has system-fb bound.
+	PsychSetDrawingTarget(NULL);
+    }
 
-	// Reset color write mask to "all enabled"
-	glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);
+    // Reset color write mask to "all enabled"
+    glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);
 	
     // Part 1 of workaround- /checkcode for syncing to vertical retrace:
     if (vblsyncworkaround) {
@@ -2483,7 +2654,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	// Swap at a specific video field (even or odd) requested, e.g., to select the target field
 	// in a frame-sequential stereo presentations setup and thereby the specific eye for stimulus
 	// onset?
-	if (windowRecord->targetFlipFieldType != -1) {
+	if ((windowRecord->targetFlipFieldType != -1) && (windowRecord->stereomode != kPsychFrameSequentialStereo)) {
 		// Yes. Map it to swapflags: 0/1 maps to 1/2 aka even/odd frame:
 		targetSwapFlags |= (windowRecord->targetFlipFieldType == 0) ? 1 : 2;
 	}
@@ -2642,7 +2813,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		preflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord, &preflip_vblcount);
 		// Check if ready for flip, ie. if the proper even/odd video refresh cycle is approaching or
 		// if we don't care about this, or if care has been taken already by osspecific_asyncflip_scheduled:
-		flipcondition_satisfied = (windowRecord->targetFlipFieldType == -1) || (((preflip_vblcount + 1) % 2) == windowRecord->targetFlipFieldType) || (osspecific_asyncflip_scheduled && !must_wait);
+		flipcondition_satisfied = (windowRecord->stereomode == kPsychFrameSequentialStereo) || (windowRecord->targetFlipFieldType == -1) || (((preflip_vblcount + 1) % 2) == windowRecord->targetFlipFieldType) || (osspecific_asyncflip_scheduled && !must_wait);
 		// If in wrong video cycle, we simply sleep a millisecond, then retry...
 		if (!flipcondition_satisfied) PsychWaitIntervalSeconds(0.001);
 	} while (!flipcondition_satisfied);
@@ -3370,11 +3541,14 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     glReadBuffer(read_buffer);
     glDrawBuffer(draw_buffer);
 
-    // Reset flags used for avoiding redundant Pipeline flushes and backbuffer-backups:
-    // This flags are altered and checked by SCREENDrawingFinished() and PsychPreFlipOperations() as well:
-    windowRecord->PipelineFlushDone = false;
-    windowRecord->backBufferBackupDone = false;
-    
+    // Managing these flags is the sole job of the master thread:
+    if (PsychIsMasterThread()) {
+	// Reset flags used for avoiding redundant Pipeline flushes and backbuffer-backups:
+	// This flags are altered and checked by SCREENDrawingFinished() and PsychPreFlipOperations() as well:
+	windowRecord->PipelineFlushDone = false;
+	windowRecord->backBufferBackupDone = false;
+    }
+
     // If we disabled (upon request) VBL syncing, we have to reenable it here:
     if (vbl_synclevel==2 || (windowRecord->inRedTable && (PSYCH_SYSTEM == PSYCH_WINDOWS))) {
 		PsychOSSetVBLSyncLevel(windowRecord, 1);
@@ -3946,19 +4120,22 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     // We only continue processing textures, aka offscreen windows...
     if (windowRecord->windowType!=kPsychTexture && windowRecord->backBufferBackupDone) return;
 
+    // We also reject any request not coming from the master thread:
+    if (!PsychIsMasterThread()) return;
+
     // Enable this windowRecords framebuffer as current drawingtarget:
     PsychSetDrawingTarget(windowRecord);
     
     // We stop processing here if window is a texture, aka offscreen window...
     if (windowRecord->windowType==kPsychTexture) return;
 
-	#if PSYCH_SYSTEM == PSYCH_WINDOWS
-		// Enforce a one-shot GUI event queue dispatch via this dummy call to PsychGetMouseButtonState() to
-		// make MS-Windows GUI event processing happy. Not strictly related to preflip operations, but couldn't
-		// think of a better place to guarantee periodic execution of this function without screwing too much with
-		// timing:
-		PsychGetMouseButtonState(NULL);
-	#endif
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+	    // Enforce a one-shot GUI event queue dispatch via this dummy call to PsychGetMouseButtonState() to
+	    // make MS-Windows GUI event processing happy. Not strictly related to preflip operations, but couldn't
+	    // think of a better place to guarantee periodic execution of this function without screwing too much with
+	    // timing:
+	    PsychGetMouseButtonState(NULL);
+    #endif
 
     // Make sure we don't execute on an onscreen window with pending async flip, as this would interfere
     // by touching the system backbuffer -> Corruption of the flip-pending stimulus image by the new stimulus!
@@ -3966,8 +4143,8 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
         PsychErrorExitMsg(PsychError_internal, "PsychPreFlipOperations() called on onscreen window with pending async flip?!? Forbidden!");
     }
     
-	// Disable any shaders:
-	PsychSetShader(windowRecord, 0);
+    // Disable any shaders:
+    PsychSetShader(windowRecord, 0);
 	
     // Reset viewport to full-screen default:
     glViewport(0, 0, screenwidth, screenheight);
@@ -4162,8 +4339,8 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 		// user defined (or stereo) image processing.
 		
 		// Stereo processing: This depends on selected stereomode...
-		if (stereo_mode <= kPsychOpenGLStereo || stereo_mode == kPsychDualWindowStereo) {
-			// No stereo or quad-buffered stereo or dual-window stereo - Nothing to do in merge stage.
+		if (stereo_mode <= kPsychOpenGLStereo || stereo_mode == kPsychDualWindowStereo || stereo_mode == kPsychFrameSequentialStereo) {
+			// No stereo or quad-buffered stereo or dual-window stereo or own frame-seq stereo - Nothing to do in merge stage.
 		}
 		else if (stereo_mode <= kPsychAnaglyphBRStereo) {
 			// Merged stereo - All work is done by the anaglyph shader that was created for this purpose
@@ -4199,7 +4376,8 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 		// Each FBO is either a real FBO for framebuffer "screenshots" or the system framebuffer for final output into the backbuffer.
 
 		// Process each of the (up to two) streams:
-		for (viewid = 0; viewid < ((stereo_mode == kPsychOpenGLStereo || stereo_mode == kPsychDualWindowStereo || (imagingMode & kPsychNeedDualWindowOutput)) ? 2 : 1); viewid++) {
+		for (viewid = 0; viewid < ((stereo_mode == kPsychOpenGLStereo || stereo_mode == kPsychFrameSequentialStereo || stereo_mode == kPsychDualWindowStereo ||
+		     (imagingMode & kPsychNeedDualWindowOutput)) ? 2 : 1); viewid++) {
 
 			// Select final drawbuffer if our target is the system framebuffer:
 			if (windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]->fboid == 0) {
@@ -4433,12 +4611,11 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 	} // End of traditional postflip implementation for non-imaging mode:
 	
 	// Imaging pipeline enabled?
-    if (windowRecord->imagingMode > 0 && windowRecord->imagingMode != kPsychNeedFastOffscreenWindows) {
+	if (windowRecord->imagingMode > 0 && windowRecord->imagingMode != kPsychNeedFastOffscreenWindows) {
 		// Yes. This is rather simple. In dontclear=2 mode we do nothing, except reenable
 		// the windowRecord as drawing target again. In dontclear=1 mode ditto, because
 		// our backing store FBO's already retained a backup of the preflip-framebuffer.
-		// Only in dontclear = 0 mode, we need to clear the backing FBO's:
-		
+		// Only in dontclear = 0 mode, we need to clear the backing FBO's:		
 		if (clearmode==0) {
 			// Select proper viewport and cliprectangles for clearing:
 			PsychSetupView(windowRecord, FALSE);
@@ -5174,6 +5351,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	psych_bool nvidia = FALSE;
 	psych_bool ati = FALSE;
 	GLint maxtexsize=0, maxcolattachments=0, maxaluinst=0;
+	GLboolean nativeStereo = FALSE;
 
 	// Init Id string for GPU core to zero. This has at most 8 Bytes, including 0-terminator,
 	// so use at most 7 letters!
@@ -5345,6 +5523,13 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 				windowRecord->gfxcaps |= kPsychGfxCapFPBlend16;				
 			}
 		}		
+	}
+
+	// Native OpenGL quad-buffered stereo context?
+	glGetBooleanv(GL_STEREO, &nativeStereo);
+	if (nativeStereo) {
+		if (verbose) printf("Hardware supports native OpenGL quad-buffered stereo, e.g., frame-sequential mode.\n");
+		windowRecord->gfxcaps |= kPsychGfxCapNativeStereo;
 	}
 
 	// Running under Chromium OpenGL virtualization or Mesa Software Rasterizer?

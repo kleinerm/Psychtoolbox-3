@@ -93,6 +93,7 @@ TO DO:
 #define kPsychGfxCapSupportsOpenML 16384	// System supports OML_sync_control extension of OpenML for precisely timed bufferswaps and stimulus onset timestamping.
 #define kPsychGfxCapSNTex16		32768		// Hw supports 16 bit signed normalized integer textures.
 #define kPsychGfxCapUYVYTexture         65536		// Hw supports UYVY encoded textures. Used for GStreamer video capture/playback engine optimizations.
+#define kPsychGfxCapNativeStereo        (1 << 17)       // Hw supports native OpenGL quad-buffered stereo (frame-sequential etc.).
 
 // Definition of flags for imagingMode of Image processing pipeline.
 // These are used internally, but need to be exposed to Matlab as well.

@@ -1292,20 +1292,6 @@ dwmdontcare:
     
     DescribePixelFormat(hDC, pf, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
     
-    if ((stereomode==kPsychOpenGLStereo) && ((pfd.dwFlags & PFD_STEREO)==0)) {
-      // Ooops. Couldn't get the requested stereo-context from hardware :(
-
-	  // We handle this in higher-level code now, so error-handling is a bit nicer...
-
-      // ReleaseDC(hDC, hWnd);
-      // DestroyWindow(hWnd);
-      
-      printf("PTB-ERROR: OpenGL native stereo mode unavailable. Your hardware may not support it,\n"
-	     "PTB-ERROR: or at least not on a flat-panel? Expect abortion of your script soon...");
-      
-      // return(FALSE);
-    }
-
 	// Check for pageflipping for bufferswaps and output warning if we don't get it:
     if (!(pfd.dwFlags & PFD_SWAP_EXCHANGE) && (pfd.dwFlags & PFD_SWAP_COPY) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Created onscreen window on screenid %i will probably not be able to use GPU pageflipping for Screen('Flip')! May cause tearing artifacts...", screenSettings->screenNumber);
     
@@ -1464,19 +1450,6 @@ dwmdontcare:
 
       DescribePixelFormat(hDC, pf, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
 
-      if ((stereomode==kPsychOpenGLStereo) && ((pfd.dwFlags & PFD_STEREO)==0)) {
-         // Ooops. Couldn't get the requested stereo-context from hardware :(
-
-		 // We handle this in higher-level code now, so error-handling is a bit nicer...
-
-         //ReleaseDC(hDC, hWnd);
-         //DestroyWindow(hWnd);
-
-         printf("PTB-ERROR: OpenGL native stereo mode unavailable. Your hardware may not support it,\n"
-	             "PTB-ERROR: or at least not on a flat-panel? Expect abortion of your script soon...");
-
-         //return(FALSE);
-      }		
 		// Done with final window and OpenGL context setup. We've got our final context enabled.
 	 }
 
