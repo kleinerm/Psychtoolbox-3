@@ -673,7 +673,7 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     crtcs[o] = crtcid;
 
     printf("PTB-INFO: Display '%s' : X-Screen %i : Output %i [%s]: %s : ",
-	   DisplayString(dpy), displayX11Screens[idx], o, (const char*) output_info->name, (isPrimary > -1) ? ((isPrimary == 1) ? "Primary output" : "Secondary output") : "Unknown output status");
+	   DisplayString(dpy), displayX11Screens[idx], o, (const char*) output_info->name, (isPrimary > -1) ? ((isPrimary == 1) ? "Primary output" : "Secondary output") : "Unknown output priority");
     printf("%s : CRTC %i [XID %i]\n", (output_info->connection == RR_Connected) ? "Connected" : "Offline", crtcid, (int) output_info->crtc);
 
     if ((isPrimary > 0) && (crtcid >= 0)) {
