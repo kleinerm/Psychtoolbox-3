@@ -71,6 +71,10 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % 10/28/10  Add crude text clipping/culling, so multi-page text doesn't bog
 %           us down completely. Text clearly outside the 'win'dow gets
 %           preculled. (MK).
+% 02/07/12  Add re-cast operation to output string to make sure the actual
+%           string fed into Screen() is of the same datatype as the
+%           original input string, e.g., to prevent losing a double()
+%           unicode encoding during string processing/formatting. (MK)
 
 % Set ptb_drawformattedtext_disableClipping to 1 if text clipping should be disabled:
 global ptb_drawformattedtext_disableClipping;
@@ -88,6 +92,9 @@ if nargin < 2 || isempty(tstring)
     % Empty text string -> Nothing to do.
     return;
 end
+
+% Store data class of input string for later use in re-cast ops:
+stringclass = class(tstring);
 
 % Default x start position is left border of window:
 if nargin < 3 || isempty(sx)
@@ -269,6 +276,11 @@ while ~isempty(tstring)
     
     % Any string to draw?
     if ~isempty(curstring) && noclip
+        % Cast curstring back to the class of the original input string, to
+        % make sure special unicode encoding (e.g., double()'s) does not
+        % get lost for actual drawing:
+        curstring = cast(curstring, stringclass);
+        
         % Need bounding box?
         if xcenter || flipHorizontal || flipVertical
             % Compute text bounding box for this substring:
