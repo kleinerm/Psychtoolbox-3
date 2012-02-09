@@ -1701,6 +1701,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 	double tnow, lastvbl;
 	int dummy1;
 	double dummy2, dummy3, dummy4;
+    int viewid;
 	psych_uint64 vblcount = 0;
 	psych_uint64 vblqcount = 0;
 
@@ -1884,13 +1885,18 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 			// reached, and we need to be on the proper field -- so left-eye stims start always at even (or odd) fields,
 			// at the users discretion:
 			if (!needWork && (tnow >= flipRequest->flipwhen) &&
-			    ((windowRecord->targetFlipFieldType == -1) || (((vblcount + 1) % 2) == windowRecord->targetFlipFieldType))) {
+			    ((windowRecord->targetFlipFieldType == -1) || (((vblcount + 1) % 2) == (int) windowRecord->targetFlipFieldType))) {
 				// Yes: Time to update the backbuffers with our finalizedFBOs and do
 				// properly scheduled/timestamped bufferswaps:
 
-				// Copy left-view fbo to backbuffer.
+				// viewid = Which eye to select for first stereo frame. 0 == Predicted stereo frame onset on
+				// even vblank count -> Choose left-view buffer [0] first. 1 == Onset on odd vblank count -->
+				// choose right-view buffer [1] first.
+				viewid = (int) ((vblcount + 1) % 2);
+
+				// Copy viewid-view fbo to backbuffer.
 				// This sets up its viewports, texture and fbo bindings and restores them to pre-exec state:
-				PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->finalizedFBO[0]]), NULL,
+				PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), NULL,
 							 &(windowRecord->fboTable[0]), NULL);
 
 				// Execute synchronous flip to make it the frontbuffer: This resets the framebuffer binding to 0 at exit:
@@ -1900,9 +1906,9 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 				// Maintain virtual vblank counter on platforms where we need it:
 				vblcount++;
 
-				// Copy right-view fbo to backbuffer.
+				// Copy non-viewid-view fbo to backbuffer.
 				// This sets up its viewports, texture and fbo bindings and restores them to pre-exec state:
-				PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->finalizedFBO[1]]), NULL,
+				PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->finalizedFBO[1-viewid]]), NULL,
 							 &(windowRecord->fboTable[0]), NULL);
 
 				// We glFinish() here, to make sure all rendering commands submitted
@@ -1927,17 +1933,10 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 				PsychUnlockMutex(&(flipRequest->performFlipLock));
 
 				// Execute synchronous flip to make it the frontbuffer: This resets the framebuffer binding to 0 at exit:
-				tnow = PsychFlipWindowBuffers(windowRecord, 0, 0, 2, tnow, &dummy1, &dummy2, &dummy3, &dummy4);
+				PsychFlipWindowBuffers(windowRecord, 0, 0, 2, tnow, &dummy1, &dummy2, &dummy3, &dummy4);
 
 				// Maintain virtual vblank counter on platforms where we need it:
 				vblcount++;
-
-				// We glFinish() here, to make sure all rendering commands submitted
-				// by our OpenGL context are finished:
-				glFinish();
-
-				// Unbind any FBO's:
-				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
 				// Ready to accept new work:
 				needWork = TRUE;
@@ -3462,8 +3461,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
         // Check for missed / skipped frames: We exclude the very first "Flip" after
         // creation of the onscreen window from the check, as deadline-miss is expected
-        // in that case:
-        if ((time_at_vbl > tshouldflip) && (windowRecord->time_at_last_vbl!=0)) {
+        // in that case. We also disable the skipped frame detection if our own home-grown
+        // frame-sequential stereo mode is active, as the detector can't work sensibly with it:
+        if ((time_at_vbl > tshouldflip) && (windowRecord->time_at_last_vbl!=0) && (windowRecord->stereomode != kPsychFrameSequentialStereo)) {
             // Deadline missed!
             windowRecord->nr_missed_deadlines = windowRecord->nr_missed_deadlines + 1;
         }
@@ -3526,15 +3526,15 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     // Special imaging mode active? in that case we need to restore drawing engine state to preflip state.
     if (windowRecord->imagingMode > 0) {
         if (PsychIsMasterThread()) {
-	    // Can use PsychSetDrawingTarget for synchronous flip:
-	    PsychSetDrawingTarget(windowRecord);
-	}
-	else {
-	    // Async flip: need to manually reset framebuffer binding
-	    // to system framebuffer, as PsychSetDrawingTarget() is a no-op:
-	    glFinish();
-	    if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-	}
+			// Can use PsychSetDrawingTarget for synchronous flip:
+			PsychSetDrawingTarget(windowRecord);
+		}
+		else {
+			// Async flip: need to manually reset framebuffer binding
+			// to system framebuffer, as PsychSetDrawingTarget() is a no-op:
+			glFinish();
+			if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		}
     }
 
     // Restore assignments of read- and drawbuffers to pre-Flip state:

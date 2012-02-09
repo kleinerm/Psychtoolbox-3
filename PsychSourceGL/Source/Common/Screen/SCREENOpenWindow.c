@@ -397,10 +397,6 @@ PsychError SCREENOpenWindow(void)
 		PsychErrMsgTxt("Frame-Sequential stereo display mode requested, but unsupported. Emulation unsupported as well. Game over!");
 	}
 
-	// Fake a twice the video refresh interval value for our own frame-sequential stereomode, so
-	// behaviour is consistent with native quad-buffered frame-sequential stereomode:
-	if (windowRecord->stereomode == kPsychFrameSequentialStereo) windowRecord->IFIRunningSum = windowRecord->IFIRunningSum * 2;
-
 	// Special setup code for dual window stereomode or output mode:
 	if (stereomode == kPsychDualWindowStereo || (imagingmode & kPsychNeedDualWindowOutput)) {
 		if (sharedContextWindow) {
