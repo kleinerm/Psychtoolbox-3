@@ -251,6 +251,12 @@ try
     % stereo == 1.
     w=Screen('OpenWindow',screenNumber, 0,[],32,2, stereo);
     
+    % Query effective stereo mode, as Screen() could have changed it behind our
+    % back, e.g., if we asked for mode 1 but Screen() had to fallback to
+    % mode 11:
+    winfo = Screen('GetWindowInfo', w);
+    stereo = winfo.StereoMode;
+    
     % Clear screen to black background color: If in stereo mode, we only
     % clear the left-eye buffer...
     Screen('SelectStereoDrawBuffer', w, 0);
@@ -448,10 +454,17 @@ try
     figure
     hold on
     plot((ts(2:n) - ts(1:n-1)) * 1000);
-    ni=numifis;
-    if (numifis==0)
-        ni=1;
-    end;
+    ni = numifis;
+    if numifis < 1
+        ni = 1;
+    end
+    
+    if (ni < 2 ) && (stereo == 11)
+        % Special case: Stereomode 11 can't do better than one swap
+        % every two refresh cycles, so take this into account:
+        ni = 2;
+    end
+    
     plot(ones(1,n)*ifi*ni*1000);
     title('Delta between successive Flips in milliseconds:');
     hold off
@@ -499,13 +512,25 @@ try
     
     % Count and output number of missed flip on VBL deadlines:
     numbermisses=0;
-    if numifis>0
+    if numifis > 0
+        if (stereo == 11) && (numifis == 1)
+            % Special case: Stereomode 11 can't do better than one swap
+            % every two refresh cycles, so take this into account:
+            ifi = ifi * 2;
+        end
+
         for i=2:n
             if (ts(i)-ts(i-1) > ifi*(numifis+0.5))
                 numbermisses=numbermisses+1;
             end;
         end;
     else
+        if stereo == 11
+            % Special case: Stereomode 11 can't do better than one swap
+            % every two refresh cycles at best, so take this into account:
+            ifi = ifi * 2;
+        end
+        
         for i=2:n
             if (ts(i)-ts(i-1) > ifi*1.5)
                 numbermisses=numbermisses+1;

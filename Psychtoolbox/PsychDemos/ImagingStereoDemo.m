@@ -44,6 +44,9 @@ function ImagingStereoDemo(stereoMode, usedatapixx, writeMovie)
 %
 % 10 == Like mode 4, but for use on Mac OS/X with dualhead display setups.
 %
+% 11 == Like mode 1 (frame-sequential) but using Screen's built-in method,
+% instead of the native method supported by your graphics card.
+%
 % 100 == Interleaved line stereo: Left eye image is displayed in even
 % scanlines, right eye image is displayed in odd scanlines.
 %

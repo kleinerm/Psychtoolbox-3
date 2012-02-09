@@ -44,6 +44,10 @@ function StereoDemo(stereoMode)
 % on reasonably modern graphics hardware, will abort with an error on
 % unsupported hardware.
 %
+% 11 == Like mode 1 (frame-sequential) but using Screen's built-in method,
+% instead of the native method supported by your graphics card.
+%
+
 % Authors:
 % Finnegan Calabro  - fcalabro@bu.edu
 % Mario Kleiner     - mario.kleiner at tuebingen.mpg.de
