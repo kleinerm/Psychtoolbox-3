@@ -96,11 +96,11 @@ while ~KbCheck
     else
         tv1 = Screen('AsyncFlipEnd', w);
     end
-    
+
     % Draw something:
     cm = 1 - cm;
     Screen('FillRect', w, [255*cm 0   0]);
-    
+
     % Schedule new flip:
     Screen('AsyncFlipBegin', w, tv1 + ifi/2);
 end
@@ -126,58 +126,58 @@ try
 
     % Do the parallel async flip and draw stuff until keypress:
     while ~KbCheck && (fc < n)
-      % Drawing simulation:
-      cm = 1 - cm;
-      if ismember(0, workload)
-	% Simulate drawing into offscreen windows:
-	Screen('FillRect', woff, [0, 255*cm, 0]);
-	DrawFormattedText(woff, 'Hallo :-)', 'center', 'center', [255 255 0]);
+        % Drawing simulation:
+        cm = 1 - cm;
+        if ismember(0, workload)
+            % Simulate drawing into offscreen windows:
+            Screen('FillRect', woff, [0, 255*cm, 0]);
+            DrawFormattedText(woff, 'Hallo :-)', 'center', 'center', [255 255 0]);
 
-	% Draw final offscreen window to onscreen window:
-	Screen('DrawTexture', w, woff);
-      end
+            % Draw final offscreen window to onscreen window:
+            Screen('DrawTexture', w, woff);
+        end
 
-      if ismember(1, workload)
-	% Simulate luminance texture blitting:
-	tex = Screen('MakeTexture', w, img);
-	Screen('DrawTexture', w, tex, [], [], [], [], [], [0 0 255*cm]);
-	Screen('Close', tex);
-      end
+        if ismember(1, workload)
+            % Simulate luminance texture blitting:
+            tex = Screen('MakeTexture', w, img);
+            Screen('DrawTexture', w, tex, [], [], [], [], [], [0 0 255*cm]);
+            Screen('Close', tex);
+        end
 
-      if ismember(2, workload)
-	% Simulate RGB texture blitting as in HD video playback:
-	tex = Screen('MakeTexture', w, img3, [], [], [], 3);
-	Screen('DrawTexture', w, tex, [], [], [], [], [], 255 * cm * [1 1 1]);
-	Screen('Close', tex);
-      end
+        if ismember(2, workload)
+            % Simulate RGB texture blitting as in HD video playback:
+            tex = Screen('MakeTexture', w, img3, [], [], [], 3);
+            Screen('DrawTexture', w, tex, [], [], [], [], [], 255 * cm * [1 1 1]);
+            Screen('Close', tex);
+        end
 
-      % Measure completion of draw-command submission to GPU driver:
-      t(4,fc) = GetSecs;
+        % Measure completion of draw-command submission to GPU driver:
+        t(4,fc) = GetSecs;
 
-      % Finish it off: We do a sync flip, so we can measure how long
-      % the whole stimulus rendering takes:
-      Screen('Drawingfinished', w, 2, 1);
-      t(5,fc) = GetSecs;
+        % Finish it off: We do a sync flip, so we can measure how long
+        % the whole stimulus rendering takes:
+        Screen('Drawingfinished', w, 2, 1);
+        t(5,fc) = GetSecs;
 
-      % Update framecounter:
-      fc = fc + 1;
-      t(6,fc) = GetSecs;
+        % Update framecounter:
+        fc = fc + 1;
+        t(6,fc) = GetSecs;
 
-      % Wait for last AsyncFlip to complete, get its onset timestamp:
-      t(1, fc) = Screen('AsyncFlipEnd', w);
+        % Wait for last AsyncFlip to complete, get its onset timestamp:
+        t(1, fc) = Screen('AsyncFlipEnd', w);
 
-      % How long did async flip post-completion code run? This includes
-      % operating system scheduling delays and the completion timestamping.
-      t(2, fc) = GetSecs;
+        % How long did async flip post-completion code run? This includes
+        % operating system scheduling delays and the completion timestamping.
+        t(2, fc) = GetSecs;
 
-      % Schedule next async flip:
-      Screen('AsyncFlipBegin', w, t(1, fc) + ifi/2, 2);
+        % Schedule next async flip:
+        Screen('AsyncFlipBegin', w, t(1, fc) + ifi/2, 2);
 
-      % How long did preparing the async flip take? This includes running the
-      % PTB imaging pipeline to prepare the final framebuffer image:
-      t(3, fc) = GetSecs;
+        % How long did preparing the async flip take? This includes running the
+        % PTB imaging pipeline to prepare the final framebuffer image:
+        t(3, fc) = GetSecs;
 
-      % Draw next image...
+        % Draw next image...
     end
 
     % Final flip to avoid shutdown warning:
@@ -186,7 +186,7 @@ try
 
     % Truncate to valid range, convert to msec's:
     t = 1000 * t(:, 2:fc-2);
-    
+
     close all ;
 
     figure;

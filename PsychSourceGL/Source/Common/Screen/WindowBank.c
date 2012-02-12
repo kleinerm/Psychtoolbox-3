@@ -68,9 +68,7 @@ PsychWindowIndexType FindEmptyWindowIndex(void);
 	PsychFindScreenWindowFromScreenNumber()
 	
 	Walk down the list of onscreen windows looking for the window open on the specified screen and and set *winRec to point to its window recored if we find one.
-	Oherwise set *winRec to NULL.  
-	
-	This could be improved by storing the pointer to the onscreen window in the screen record.  
+	Otherwise set *winRec to NULL. If screenNumber is kPsychUnaffiliatedWindow, we return the first onscreen window we find, regardless of screen.
 */
 
 void PsychFindScreenWindowFromScreenNumber(int screenNumber, PsychWindowRecordType **winRec)
@@ -79,19 +77,16 @@ void PsychFindScreenWindowFromScreenNumber(int screenNumber, PsychWindowRecordTy
 	PsychWindowRecordType		**windowArray;
 	
 	*winRec=NULL;
-	if(screenNumber==kPsychUnaffiliatedWindow)
-		return;
 	PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowArray);
 	for(i=0;i<numWindows;i++){
 		if(PsychIsOnscreenWindow(windowArray[i])){
-			if(windowArray[i]->screenNumber==screenNumber){
+			if ((windowArray[i]->screenNumber == screenNumber) || (screenNumber == kPsychUnaffiliatedWindow)) {
 				*winRec=windowArray[i];
 				break;
 			}
 		}
 	}
-	PsychDestroyVolatileWindowRecordPointerList(windowArray);
-	
+	PsychDestroyVolatileWindowRecordPointerList(windowArray);	
 } 
 
 

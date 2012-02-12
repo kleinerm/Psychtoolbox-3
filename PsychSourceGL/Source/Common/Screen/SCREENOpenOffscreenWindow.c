@@ -151,10 +151,13 @@ PsychError SCREENOpenOffscreenWindow(void)
         targetWindow=NULL;
     } else if(PsychIsUnaffiliatedScreenNumberArg(1)){  //that means -1 or maybe also NaN if we add that option.  
         // Default to a depth of 32 bpp:
-        depth=32;
-        targetScreenNumber=PSYCH_FIRST_SCREEN; // We assign the first screen in the system.
+        depth = 32;
+        targetWindow = NULL;
+        // Get first open onscreen window as target window:
+        PsychFindScreenWindowFromScreenNumber(kPsychUnaffiliatedWindow, &targetWindow);
+		if (targetWindow == NULL) PsychErrorExitMsg(PsychError_user, "Could not find any open onscreen window to act as parent for this offscreen window. Open an onscreen window first!");
+		targetScreenNumber = targetWindow->screenNumber;
         PsychGetScreenRect(targetScreenNumber, rect);
-        targetWindow=NULL;
     } else {
         PsychErrorExit(PsychError_invalidNumdex);
     }
@@ -162,6 +165,8 @@ PsychError SCREENOpenOffscreenWindow(void)
     if (targetWindow==NULL) {
         // Get target window of screen:
         PsychFindScreenWindowFromScreenNumber(targetScreenNumber, &targetWindow);
+		if (targetWindow == NULL) PsychErrorExitMsg(PsychError_user, "Could not find any open onscreen window to act as parent for this offscreen window. Open an onscreen window first!");
+		targetScreenNumber = targetWindow->screenNumber;
     }
     
     //Depth and rect argument supplied as arguments override those inherited from reference screen or window.
