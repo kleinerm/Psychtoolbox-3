@@ -97,6 +97,9 @@ function varargout = CMUBox(cmd, handle, varargin)
 % powerup. The Box will send a byte of data for each event, each bit encoding
 % the new status of one button or other input.
 %
+% 'lumina' - Connect to a Cedrus Lumina response box.
+%
+%
 % CMUBox('Close', handle);
 % - Close connection to response box 'handle'. The 'handle' is invalid
 % thereafter.
@@ -168,6 +171,8 @@ function varargout = CMUBox(cmd, handle, varargin)
 % 9.08.2009  mk  Written. Initial prototype.
 % 3.03.2010  mk  Update to properly use Bitwhacker as response box as well
 %                as the Curdes fORP devices when connected via serial port.
+% 13.02.2012 mk  Update with support for Cedrus Lumina, based on
+%                information provided by some user named "Nick".
 
 % Cell array of structs for our boxes: One cell for each open box.
 persistent boxes;
@@ -425,6 +430,14 @@ if strcmpi(cmd, 'Open')
             box.Streaming = 1;
             box.type = 3;
             fprintf('CMUBox: Using fORP interface program 1 as serial response button box!\n');
+
+        case {'lumina'},
+            % BaudRate is 9.6 KiloBaud, 8-E-1 config without flow control:
+            pString = 'BaudRate=9600 Parity=Even';
+            box.useBitwhacker = 0;
+            box.Streaming = 0;
+            box.type = 1;
+            fprintf('CMUBox: Using Cedrus Lumina box!\n');
 
         otherwise,
             error('CMUBox: Open: Unknown "boxtype" specified! Typo?');
