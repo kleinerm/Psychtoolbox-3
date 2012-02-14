@@ -13,6 +13,7 @@
  
 	24.11.2010  mk		Created.
 	03.04.2011  mk		Make 64-bit clean.
+	14.02.2012  mk		Make Linux & OS/X version compatible to libfreenect 0.1.2
 
 	DESCRIPTION:
  
@@ -28,130 +29,15 @@
 #include <math.h>
 #include <errno.h>
 
-// Just simulate the beast:
-// #define EMULATE_LIBENECT 1
-
-#ifdef EMULATE_LIBENECT
-
-// Simulation: Fake behaviour of libusb and libfreeenect:
-#define FREENECT_FRAME_W 640
-#define FREENECT_FRAME_H 480
-#define FREENECT_FRAME_PIX (FREENECT_FRAME_H*FREENECT_FRAME_W)
-#define FREENECT_RGB_SIZE (FREENECT_FRAME_PIX*3)
-#define FREENECT_BAYER_SIZE (FREENECT_FRAME_PIX)
-#define FREENECT_DEPTH_SIZE (FREENECT_FRAME_PIX*sizeof(freenect_depth))
-#define FREENECT_COUNTS_PER_G 819
-
-typedef enum {
-	FREENECT_FORMAT_RGB = 0,
-	FREENECT_FORMAT_BAYER = 1,
-} freenect_rgb_format;
-
-typedef enum {
-	FREENECT_FORMAT_11_BIT = 0,
-	FREENECT_FORMAT_10_BIT = 1,
-	FREENECT_FORMAT_PACKED_11_BIT = 2,
-	FREENECT_FORMAT_PACKED_10_BIT = 3,
-} freenect_depth_format;
-
-typedef void* freenect_device;
-typedef freenect_device* freenect_context;
-typedef void* freenect_usb_context;
-typedef unsigned char freenect_pixel;
-
-typedef void (*freenect_depth_cb)(freenect_device *dev, freenect_depth *depth, unsigned int timestamp);
-typedef void (*freenect_rgb_cb)(freenect_device *dev, freenect_pixel *rgb, unsigned int timestamp);
-
-static freenect_depth_cb depth_cb;
-static freenect_rgb_cb rgb_cb;
-
-static usbevent_counter = 0;
-freenect_context devil;
-
-unsigned short depth_frame[640*480];
-unsigned char rgb_frame[640*480*3];
-
-int freenect_init(freenect_context **ctx, freenect_usb_context *usb_ctx) { *ctx = &devil; return(1); };
-int freenect_shutdown(freenect_context *ctx) { return(1); }
-
-int freenect_open_device(freenect_context *ctx, freenect_device **dev, int index) { usbevent_counter=0; *dev = (freenect_device*) malloc(sizeof(void*)); *ctx = *dev; return(1); };
-int freenect_close_device(freenect_device *dev) { usbevent_counter = 0 ; return(1); }
-
-void freenect_set_depth_callback(freenect_device *dev, freenect_depth_cb cb) { depth_cb = cb; };
-void freenect_set_rgb_callback(freenect_device *dev, freenect_rgb_cb cb) { rgb_cb = cb; };
-
-int freenect_set_rgb_format(freenect_device *dev, freenect_rgb_format fmt) {return(1);};
-int freenect_set_depth_format(freenect_device *dev, freenect_depth_format fmt) {return(1);};
-
-int freenect_start_depth(freenect_device *dev) {return(1);};
-int freenect_start_rgb(freenect_device *dev) {return(1);};
-int freenect_stop_depth(freenect_device *dev) {return(1);};
-int freenect_stop_rgb(freenect_device *dev) {return(1);};
-
-void freenect_set_user(freenect_device *dev, void *user) { *dev = user; };
-void *freenect_get_user(freenect_device *dev) { return(*dev); };
-
-int freenect_process_events(freenect_context *ctx)
-{
-	int x,y, pos;
-	
-	PsychYieldIntervalSeconds(0.0001);
-	usbevent_counter++;
-	
-	if (usbevent_counter % 32 == 0) {
-		pos = 0;
-		for(y=0; y<480; y++)
-			for (x=0; x<640; x++) {
-				// z channel:
-				depth_frame[pos++] = (unsigned short) usbevent_counter % 2048;
-			}
-		depth_cb(*ctx, depth_frame, usbevent_counter);
-	}
-	
-	if (usbevent_counter % 32 == 16) {
-		
-		/* Fill our rawimage image array with content: */
-		pos = 0;
-		for(y=0; y<480; y++)
-			for (x=0; x<640; x++) {
-				// Red channel:
-				rgb_frame[pos++] = (unsigned char) x + usbevent_counter / 4;
-				// Green channel:
-				rgb_frame[pos++] = (unsigned char) y + usbevent_counter / 4;
-				// Blue channel:
-				rgb_frame[pos++] = (unsigned char) usbevent_counter / 4;
-			}
-				
-		rgb_cb(*ctx, rgb_frame, usbevent_counter);
-	}
-	
-	return(0);
-}
-
-#else
-// The real thing: Include headers of libusb and libfreeenect to access the real Kinect:
+// Include header of libfreeenect:
 #include "libfreenect.h"
-#endif
 
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
 typedef void freenect_depth;
 typedef void freenect_pixel;
 #define freenect_set_rgb_callback freenect_set_video_callback
-#define freenect_set_rgb_format freenect_set_video_format
 #define freenect_start_rgb freenect_start_video
 #define freenect_stop_rgb freenect_stop_video
-#endif
-
-#ifndef FREENECT_RGB_SIZE
-#define FREENECT_RGB_SIZE FREENECT_VIDEO_RGB_SIZE
-#define FREENECT_BAYER_SIZE FREENECT_VIDEO_BAYER_SIZE
-#define FREENECT_FORMAT_RGB FREENECT_VIDEO_RGB
-#define FREENECT_FORMAT_BAYER FREENECT_VIDEO_BAYER
-#define FREENECT_FORMAT_11_BIT FREENECT_DEPTH_11BIT
-#endif
-
-#ifndef FREENECT_VIDEO_IR_8BIT
-#define FREENECT_VIDEO_IR_8BIT 2
 #endif
 
 // Number of maximum simultaneously open kinect devices:
@@ -190,7 +76,9 @@ typedef struct PsychKNDevice {
 	psych_thread captureThread;			// Processing thread.
 	freenect_device *dev;				// Handle to USB device representing the Kinect.
 	PsychKNBuffer* buffers;				// Bufferchain with capture buffers.
-	int	numbuffers;				// Number of allocated buffers.
+	int numbuffers;					// Number of allocated buffers.
+	int dwidth, dheight, dsize;			// Width x Height and size in bytes of depth buffer.
+	int cwidth, cheight, csize;			// Width x Height and size in bytes of color buffer.
 	int dropframes;					// dropframes = 1: Stall capture if FIFO full, 0 = Overwrite oldest frames.
 	int bayerFilterMode;				// 0 = Don't: Fetch unfiltered sensor data. 1 = Let libfreenect do Bayer filtering into RGB. 2 = ...
 	double	captureStartTime;			// Time of start of capture.
@@ -285,12 +173,11 @@ void PsychDepthCB(freenect_device *dev, freenect_depth *depth, uint32_t timestam
 	if (kinect->state == 0) return;
 	if (kinect->paCalls & 0x1) return;
 	
-	memcpy(buffer->depth, depth, FREENECT_FRAME_W * FREENECT_FRAME_H * 2);
-	buffer->dwidth = FREENECT_FRAME_W;
-	buffer->dheight = FREENECT_FRAME_H;
+	memcpy(buffer->depth, depth, kinect->dsize);
+	buffer->dwidth = kinect->dwidth;
+	buffer->dheight = kinect->dheight;
 	
 	// Mark depth frame as done:
-//	kinect->paCalls++;
 	kinect->paCalls |= 0x1;
 }
 
@@ -301,16 +188,16 @@ void PsychRGBCB(freenect_device *dev, freenect_pixel *rgb, uint32_t timestamp)
 
 	if (kinect->state == 0) return;
 	if (kinect->paCalls & 0x2) return;
-	memcpy(buffer->color, rgb, ((kinect->bayerFilterMode == 1) ? FREENECT_RGB_SIZE : FREENECT_BAYER_SIZE));
-	buffer->cwidth = FREENECT_FRAME_W;
-	buffer->cheight = FREENECT_FRAME_H;
+
+	memcpy(buffer->color, rgb, kinect->csize);
+	buffer->cwidth = kinect->cwidth;
+	buffer->cheight = kinect->cheight;
 	
 	// Timestamp the buffer:
 	buffer->cts = (double) timestamp;
 	
-//	kinect->paCalls++;
+	// Mark RGB frame available:
 	kinect->paCalls |= 0x2;
-
 }
 
 void* PsychKinectThreadMain(volatile void* deviceToCast)
@@ -318,23 +205,11 @@ void* PsychKinectThreadMain(volatile void* deviceToCast)
 	PsychKNDevice *kinect = (PsychKNDevice*) deviceToCast;
 	int abort = FALSE;
 	int headroom;
-	
+
 	// Child protection:
 	if ((NULL == kinect) || (NULL == kinect->dev)) return(NULL);
 	
-	// Initialize libkinect and attach callbacks, start kinect's iso-streaming:
-	freenect_set_depth_callback(kinect->dev, PsychDepthCB);
-	freenect_set_rgb_callback(kinect->dev, PsychRGBCB);
-	if (kinect->bayerFilterMode < 2) {
-		// RGB video feed:
-		freenect_set_rgb_format(kinect->dev, ((kinect->bayerFilterMode == 1) ? FREENECT_FORMAT_RGB : FREENECT_FORMAT_BAYER));
-	} else {
-		// IR depth cam video feed:
-		freenect_set_rgb_format(kinect->dev, FREENECT_VIDEO_IR_8BIT);
-	}
-
-	freenect_set_depth_format(kinect->dev, FREENECT_FORMAT_11_BIT);
-	
+	// Start kinect's iso streaming:
 	freenect_start_depth(kinect->dev);
 	freenect_start_rgb(kinect->dev);
 	
@@ -549,7 +424,7 @@ PsychError PSYCHKINECTOpen(void)
 		"a third of the storage memory if this is of concern, e.g., for high settings of 'numbuffers'.\n"
 		"The returned handle can be passed to the other subfunctions to operate the device.\n";
 	
-    static char seeAlsoString[] = "";	
+	static char seeAlsoString[] = "";	
 	
 	double R[3][3] = {{  9.9984628826577793e-01, 1.2635359098409581e-03, -1.7487233004436643e-02 },
 			  { -1.4779096108364480e-03, 9.9992385683542895e-01, -1.2251380107679535e-02 },
@@ -560,12 +435,17 @@ PsychError PSYCHKINECTOpen(void)
 	double rgbIntrinsics[5]   = {  2.6451622333009589e-01, -8.3990749424620825e-01, -1.9922302173693159e-03, 1.4371995932897616e-03, 9.1192465078713847e-01 };
 	double depthBaseAndOffset[2] = { 0.0 , 0.0 };
 
+	PsychKNDevice* kinect;
 	int i, j;
 	int deviceIndex = 0;
 	int handle = 0;
 	freenect_device *dev = NULL;
 	int numbuffers = 2;
 	int bayerFilterMode = 1;
+
+	#if PSYCH_SYSTEM != PSYCH_WINDOWS
+	freenect_frame_mode fmode;
+	#endif
 	
 	// All sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -603,22 +483,93 @@ PsychError PSYCHKINECTOpen(void)
 		// Initialize libusb:
 		if (freenect_init(&f_ctx, NULL) < 0) PsychErrorExitMsg(PsychError_system, "Driver initialization of libfreenect failed!");
 
+		// MK FIXME TODO: Adapt to bigger limits for future Kinect devices?
 		zmap = malloc(640 * 480 * 6 * sizeof(double));
 	}
 	
 	// Zero init device structure:
 	memset(&kinectdevices[handle], 0, sizeof(PsychKNDevice));
 	
+	kinect = &kinectdevices[handle];
+
 	// Connect with it, get usb connection handle:
 	if (freenect_open_device(f_ctx, &dev, deviceIndex) < 0) {
 		printf("PsychKinect: ERROR! Failed to connect to kinect with deviceIndex %i. This could mean that the device\n", deviceIndex);
-        printf("PsychKinect: ERROR: is already in use by another application or driver. On Linux it could mean it is\n");
-        printf("PsychKinect: ERROR: claimed by the Kinect video camera driver. See 'help InstallKinect' for how to resolve this.\n");
+		printf("PsychKinect: ERROR: is already in use by another application or driver. On Linux it could mean it is\n");
+		printf("PsychKinect: ERROR: claimed by the Kinect video camera driver. See 'help InstallKinect' for how to resolve this.\n");
 		PsychErrorExitMsg(PsychError_user, "Could not connect to kinect device with given 'deviceIndex'! [libusb_open_device failed]");
 	}
 	
 	kinectdevices[handle].dev = dev;
 	freenect_set_user(kinectdevices[handle].dev, (void*) &kinectdevices[handle]);
+
+	// Attach callbacks:
+	freenect_set_depth_callback(kinect->dev, PsychDepthCB);
+	freenect_set_rgb_callback(kinect->dev, PsychRGBCB);
+
+	// Retrieve frame properties of current mode:
+	#if PSYCH_SYSTEM != PSYCH_WINDOWS
+		// Set video format and resolution:
+		if (bayerFilterMode < 2) {
+			// RGB video feed:
+			fmode = freenect_find_video_mode(FREENECT_RESOLUTION_MEDIUM, ((bayerFilterMode == 1) ? FREENECT_VIDEO_RGB : FREENECT_VIDEO_BAYER));
+		} else {
+			// IR depth cam video feed:
+			fmode = freenect_find_video_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_VIDEO_IR_8BIT);
+		}
+		freenect_set_video_mode(kinect->dev, fmode);
+
+		// Set depth format and resolution:
+		fmode = freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_DEPTH_11BIT);
+		freenect_set_depth_mode(kinect->dev, fmode);
+
+		// Query mode properties for video & depth:
+		fmode = freenect_get_current_video_mode(kinect->dev);
+		kinect->cwidth = fmode.width;
+		kinect->cheight = fmode.height;
+		kinect->csize = fmode.bytes;
+		fmode = freenect_get_current_depth_mode(kinect->dev);
+		kinect->dwidth = fmode.width;
+		kinect->dheight = fmode.height;
+		kinect->dsize = fmode.bytes;
+	#else
+		if (bayerFilterMode < 2) {
+			// RGB video feed:
+			freenect_set_rgb_format(kinect->dev, ((bayerFilterMode == 1) ? FREENECT_FORMAT_RGB : FREENECT_FORMAT_BAYER));
+		} else {
+			// IR depth cam video feed:
+			freenect_set_rgb_format(kinect->dev, FREENECT_VIDEO_IR_8BIT);
+		}
+		freenect_set_depth_format(kinect->dev, FREENECT_FORMAT_11_BIT);
+
+		kinect->cwidth = FREENECT_FRAME_W;
+		kinect->cheight = FREENECT_FRAME_H;
+		kinect->csize = (bayerFilterMode == 1) ? FREENECT_RGB_SIZE : FREENECT_BAYER_SIZE;
+		kinect->dwidth = FREENECT_FRAME_W;
+		kinect->dheight = FREENECT_FRAME_H;
+		kinect->dsize = FREENECT_FRAME_W * FREENECT_FRAME_H * 2;
+	#endif
+		
+	// Allocate buffers:
+	kinectdevices[handle].buffers = (PsychKNBuffer*) calloc(numbuffers, sizeof(PsychKNBuffer));
+	if (NULL == kinectdevices[handle].buffers) {
+		printf("PTB-ERROR: Could not create requested %i kinect image buffers. Prepare for trouble!\n", numbuffers);
+		PsychErrorExitMsg(PsychError_outofMemory, "Buffer creation failed!");
+	}
+	
+	for (i = 0; i < numbuffers; i++) {
+		kinectdevices[handle].buffers[i].color = (unsigned char*) calloc(1, kinect->csize);
+		if (NULL == kinectdevices[handle].buffers[i].color) {
+			for (j = 0; j < i; j++) free(kinectdevices[handle].buffers[j].color);
+			free(kinectdevices[handle].buffers);
+			kinectdevices[handle].buffers = NULL;
+			printf("PTB-ERROR: Could not create requested %i kinect image buffers - Out of memory at %i'th buffer. Prepare for trouble!\n", numbuffers, i);
+			PsychErrorExitMsg(PsychError_outofMemory, "Buffer creation failed!");
+		}
+	}
+	
+	kinectdevices[handle].numbuffers = numbuffers;
+	kinectdevices[handle].bayerFilterMode = bayerFilterMode;
 	
 	// Have connection open and ready. Initialize mutexes, condition variables and processing thread:
 	if (PsychInitMutex(&(kinectdevices[handle].mutex))) {
@@ -628,26 +579,7 @@ PsychError PSYCHKINECTOpen(void)
 	
 	// If we use locking, this will create & init the associated event variable:
 	PsychInitCondition(&(kinectdevices[handle].changeSignal), NULL);
-	
-	// Allocate buffers:
-	kinectdevices[handle].buffers = (PsychKNBuffer*) calloc(numbuffers, sizeof(PsychKNBuffer));
-	if (NULL == kinectdevices[handle].buffers) {
-		printf("PTB-ERROR: Could not create requested %i kinect image buffers. Prepare for trouble!\n", numbuffers);
-		PsychErrorExitMsg(PsychError_outofMemory, "Buffer creation failed!");
-	}
-	
-	for (i = 0; i < numbuffers; i++) {
-		kinectdevices[handle].buffers[i].color = (unsigned char*) calloc(1, ((bayerFilterMode == 1) ? FREENECT_RGB_SIZE : FREENECT_BAYER_SIZE));
-		if (NULL == kinectdevices[handle].buffers[i].color) {
-			for (j = 0; j < i; j++) free(kinectdevices[handle].buffers[j].color);
-			free(kinectdevices[handle].buffers);
-			kinectdevices[handle].buffers = NULL;
-		}
-	}
-	
-	kinectdevices[handle].numbuffers = numbuffers;
-	kinectdevices[handle].bayerFilterMode = bayerFilterMode;
-	
+
 	// Preinit kinect camera parameters with ok values:
 	// These are a bit wrong for any Kinect except the one
 	// they were taken from, but at least they produce an
@@ -775,10 +707,10 @@ PsychError PSYCHKINECTStart(void)
 	
 	PsychCopyOutDoubleArg(1, FALSE, kinect->captureStartTime);
 	PsychCopyOutDoubleArg(2, FALSE, 30);
-	PsychCopyOutDoubleArg(3, FALSE, 640);
-	PsychCopyOutDoubleArg(4, FALSE, 480);
-	PsychCopyOutDoubleArg(5, FALSE, 640);
-	PsychCopyOutDoubleArg(6, FALSE, 480);
+	PsychCopyOutDoubleArg(3, FALSE, kinect->cwidth);
+	PsychCopyOutDoubleArg(4, FALSE, kinect->cheight);
+	PsychCopyOutDoubleArg(5, FALSE, kinect->dwidth);
+	PsychCopyOutDoubleArg(6, FALSE, kinect->dheight);
 	
     return(PsychError_none);	
 }
@@ -1248,11 +1180,11 @@ PsychError PSYCHKINECTGetDepthImage(void)
 		"      position of depths sensor and raw sensor value at that location. The whole\n"
 		"      3D reconstructin is done on the GPU in a vertex shader for maximum speed.\n"
 		"8   = Return a uint16 buffer with a transposed copy of the raw depth buffer.\n"
-        "      This is the most compact and efficient way to return raw data to you. The\n"
-        "      transposed format is again for efficiency reasons. You need to transpose()\n"
-        "      the returned 2D data matrix yourself.\n"
-        "      Alternatively return a memory pointer to the 16 bit unsigned integer raw\n"
-        "      depth buffer. CAUTION: The pointer becomes invalid as soon as the\n"
+		"      This is the most compact and efficient way to return raw data to you. The\n"
+		"      transposed format is again for efficiency reasons. You need to transpose()\n"
+		"      the returned 2D data matrix yourself.\n"
+		"      Alternatively return a memory pointer to the 16 bit unsigned integer raw\n"
+		"      depth buffer. CAUTION: The pointer becomes invalid as soon as the\n"
 		"      current buffer is released via 'ReleaseFrame'! This is the fast-path.\n"
 		"      "
 		"\n\n";
@@ -1534,9 +1466,9 @@ PsychError PSYCHKINECTGetDepthImage(void)
 				// Just return a memory pointer to the depthbuffer:
 				PsychCopyOutPointerArg(1, FALSE, (void*) (buffer->depth));
 			} else {
-                // Return 16 bit unsigned integer raw depths data in untransposed raw format,
-                // (or transposed, from the perspective of the runtime):
-                PsychCopyOutUnsignedInt16MatArg(1, FALSE, buffer->dwidth, buffer->dheight, 1, (psych_uint16*) (buffer->depth));
+				// Return 16 bit unsigned integer raw depths data in untransposed raw format,
+				// (or transposed, from the perspective of the runtime):
+				PsychCopyOutUnsignedInt16MatArg(1, FALSE, buffer->dwidth, buffer->dheight, 1, (psych_uint16*) (buffer->depth));
 			}
 
 			components = 1;

@@ -44,14 +44,19 @@
 %
 % 1. If you have Ubuntu Linux 10.04 LTS or later installed, open a terminal
 % window and type this sequence of commands, providing your administrator
-% password as requested.
+% password as requested. (Same procedure for Debian 4.0 or later)
 %
-%    a) sudo add-apt-repository ppa:arne-alamut/freenect
+%    a) Add the NeuroDebian repository to your software sources, as described
+%       at http://neuro.debian.net#how-to-use-this-repository
 %    b) sudo apt-get update
-%    c) sudo apt-get install libfreenect
+%    c) sudo apt-get install freenect
 %    d) sudo adduser YOURNAME video
 %       --> (YOURNAME) is your user login name!
 %    e) Log out and Log in again.
+%
+% For non-Debian or non-Ubuntu Linux distributions, you'll need to install
+% a version of libfreenect that is compatible to version 0.1.2 via whatever
+% means your system provides to do this.
 %
 % 2. Kinect is now useable from within Matlab or Octave. Well almost.
 % Systems with Linux kernel version 3.0 or later can use the video camera
@@ -80,7 +85,7 @@
 %
 % Mac OS/X:
 % See the OS/X section at http://openkinect.org/wiki/Getting_Started
-%
+% You will need libfreenect version 0.1.2 or compatible for this to work.
 %
 % Licenses: The driver consists of multiple components, which are licensed
 % under different free software / open source licenses. The drivers are
