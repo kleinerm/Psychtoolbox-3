@@ -1114,7 +1114,7 @@ PsychError	PsychOSDrawUnicodeTextGDI(PsychWindowRecordType* winRec, PsychRectTyp
     bincolors[3] = (unsigned int)(incolors[3] * 255);
 
 	scanptr = (unsigned char*) pBits + skiplines * oldWidth * 4;
-	for (i=0; i<oldWidth * renderheight; i++) {
+	for (i=0; i< oldWidth * renderheight; i++) {
 		*(scanptr++) = bincolors[0];	 // Copy blue text color to blue byte.
 		*(scanptr++) = bincolors[1];	 // Copy green text color to green byte.
 		// Copy red byte to alpha-channel (its our anti-aliasing alpha-value), but
@@ -1187,15 +1187,13 @@ PsychError	PsychOSDrawUnicodeTextGDI(PsychWindowRecordType* winRec, PsychRectTyp
 		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 		glTexImage2D(GL_TEXTURE_RECTANGLE_EXT, 0, GL_RGBA, (GLsizei) oldWidth, (GLsizei) renderheight, 0, GL_RGBA, GL_UNSIGNED_BYTE, scanptr);		
-		
-		oldWidth = boundingRect[kPsychRight] - boundingRect[kPsychLeft];
 
 		// Submit textured quad with text to pipeline:
 		glBegin(GL_QUADS);
-		glTexCoord2d(boundingRect[kPsychLeft], 0);				glVertex2d(boundingRect[kPsychLeft] , boundingRect[kPsychTop]);
-		glTexCoord2d(oldWidth				 , 0);				glVertex2d(boundingRect[kPsychRight], boundingRect[kPsychTop]);
-		glTexCoord2d(oldWidth				 , renderheight);	glVertex2d(boundingRect[kPsychRight], boundingRect[kPsychBottom]);
-		glTexCoord2d(boundingRect[kPsychLeft], renderheight);	glVertex2d(boundingRect[kPsychLeft] , boundingRect[kPsychBottom]);
+		glTexCoord2d(0, renderheight);			glVertex2d(0, oldHeight - skiplines - renderheight);
+		glTexCoord2d(oldWidth, renderheight);	glVertex2d(oldWidth, oldHeight - skiplines - renderheight);
+		glTexCoord2d(oldWidth, 0);				glVertex2d(oldWidth, oldHeight - skiplines);
+		glTexCoord2d(0, 0);						glVertex2d(0, oldHeight - skiplines);
 		glEnd();
 		
 		// Done with this texture:

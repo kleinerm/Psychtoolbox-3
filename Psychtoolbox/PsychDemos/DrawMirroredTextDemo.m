@@ -82,16 +82,9 @@ if isempty(upsideDown)
     upsideDown = 0;
 end
 
-text='Hello World! QqPpYyGgJj Press key multiple times to exit.'
+text = 'Hello World! QqPpYyGgJj Press key multiple times to exit.';
 x = 100;
 y = 100;
-
-% This demo only works with the old textrenderer on Windows: Enable it.
-if IsWin
-    oldRenderer = Screen('Preference', 'TextRenderer', 0);
-else
-    oldRenderer = Screen('Preference', 'TextRenderer');
-end
 
 try
     % Choosing the display with the highest dislay number is
@@ -164,17 +157,10 @@ try
 
     % Done!
     Screen('CloseAll');
-
-    % Restore previous setting for text renderer:
-    Screen('Preference', 'TextRenderer', oldRenderer);
-
 catch
     %this "catch" section executes in case of an error in the "try" section
     %above.  Importantly, it closes the onscreen window if its open.
     Screen('CloseAll');
-
-    % Restore previous setting for text renderer:
-    Screen('Preference', 'TextRenderer', oldRenderer);
 
     psychrethrow(psychlasterror);
 end % try..catch

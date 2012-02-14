@@ -35,17 +35,13 @@ try
     screenNumber=max(screens);
     
     % These preference setting selects the high quality text renderer on
-    % each operating system. On OS/X, its rather meaningless, because
-    % you'll always get the HQ renderer, on Linux its also meaningless,
-    % because there's only a low quality renderer. On Microsoft windows,
-    % the default renderer is the high quality, unicode capable
-    % renderer - which is about 10x slower on average, but still
-    % sufficiently fast for most purposes. We just have the command here
-    % for illustrative purpose...
+    % each operating system: It is not really needed, as the high quality
+    % renderer is the default on all operating systems, so this is more of
+    % a "better safe than sorry" setting.
     Screen('Preference', 'TextRenderer', 1);
 
     % This command uncoditionally enables text anti-aliasing for high
-    % quality text. Its not strictly needed here, because the default
+    % quality text. It is not strictly needed here, because the default
     % setting is to let the operating system decide what to use - which is
     % usually anti-aliased rendering. This here just to demonstrate the
     % switch. On WindowsXP or Vista, there also exists a setting of 2 for
@@ -108,7 +104,7 @@ try
     % the commented code:
     if 0
         fid = fopen([PsychtoolboxRoot 'PsychDemos/japanese_shiftJIS.txt'], 'r', 'n','Shift_JIS');
-        japanesetext = native2unicode(fread(fid),'Shift_JIS');
+        japanesetext = native2unicode(fread(fid),'Shift_JIS'); %#ok<N2UNI>
         fclose(fid);
         disp(japanesetext);
         japanesetext = double(transpose(japanesetext));
@@ -165,7 +161,7 @@ try
 		Screen('TextFont', w, '-:lang=he');
 		% Of course we also need to supply a text string with some
 		% hebrew characters (unicode code points) then:
-		japanesetext = [1488:1514];
+		japanesetext = 1488:1514;
 	end
 	% ... this would also work on OS/X if 'TextRenderer', type 2 is selected ...
     end
@@ -202,7 +198,7 @@ try
     vbl=Screen('Flip',w);
     tstart=vbl;
     count=-100;
-    while ~KbCheck & count < 1200
+    while ~KbCheck && count < 1200
         % Draw text baseline in green...
         Screen('DrawLine', w, [0 255 0], 100, count, 1400, count);
         % Compute texts bounding box...
