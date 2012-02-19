@@ -7,7 +7,7 @@ if nargin < 1
 end
 
 if nargin < 2
-    onoctave = 0;
+    onoctave = IsOctave;
 end
 
 % Matlab or Octave build?

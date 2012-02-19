@@ -40,6 +40,11 @@ typedef void freenect_pixel;
 #define freenect_stop_rgb freenect_stop_video
 #endif
 
+// For Windows build:
+#ifndef FREENECT_VIDEO_IR_8BIT
+#define FREENECT_VIDEO_IR_8BIT 2
+#endif
+
 // Number of maximum simultaneously open kinect devices:
 #define MAX_PSYCH_KINECT_DEVS 10
 #define MAX_SYNOPSIS_STRINGS 40  
