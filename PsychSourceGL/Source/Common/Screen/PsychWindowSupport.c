@@ -370,11 +370,13 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	if ((*windowRecord)->depth == 30) {
 		// Support for kernel driver available?
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
-		if ((PSYCH_SYSTEM == PSYCH_LINUX) && (strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || ((strstr((char*) glGetString(GL_VENDOR), "ATI") || strstr((char*) glGetString(GL_VENDOR), "AMD")) && strstr((char*) glGetString(GL_RENDERER), "Fire")))) {
-			// NVidia GPU or ATI Fire-Series GPU: Only native support by driver, if at all...
+		if ((PSYCH_SYSTEM == PSYCH_LINUX) && (strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_VENDOR), "nouveau") ||
+		    strstr((char*) glGetString(GL_VENDOR), "Intel") ||
+		    ((strstr((char*) glGetString(GL_VENDOR), "ATI") || strstr((char*) glGetString(GL_VENDOR), "AMD")) && strstr((char*) glGetString(GL_RENDERER), "Fire")))) {
+			// NVidia/Intel GPU or ATI Fire-Series GPU: Only native support by driver, if at all...
 			printf("\nPTB-INFO: Your script requested a 30bpp, 10bpc framebuffer, but this is only supported on few special graphics cards and drivers on Linux.");
-			printf("\nPTB-INFO: This may or may not work for you - Double check your results! Theoretically, the 2008 series ATI/AMD FireGL/FirePro and NVidia Quadro cards may support this with some drivers,");
-			printf("\nPTB-INFO: but you must enable it manually in the Catalyst control center or Quadro control center(somewhere under ''Workstation settings'')\n");
+			printf("\nPTB-INFO: This may or may not work for you - Double check your results! Theoretically, the 2008 series ATI/AMD FireGL/FirePro and NVidia cards may support this with some drivers,");
+			printf("\nPTB-INFO: but you must enable it manually in the Catalyst control center or NVidia control center (somewhere under ''Workstation settings'')\n");
 		}
 		else {
 			// Only support our homegrown method with PTB kernel driver on ATI/AMD hardware:
@@ -394,12 +396,12 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 			(*windowRecord)->specialflags|= kPsychNative10bpcFBActive;
 		}
         
-        if (PsychPrefStateGet_ConserveVRAM() & kPsychEnforce10BitFramebufferHack) {
-            printf("PTB-INFO: Override: Will try to enable 10 bpc framebuffer mode regardless if i think it is needed/sensible or not.\n");
-            printf("PTB-INFO: Override: Doing so because you set the kPsychEnforce10BitFramebufferHack flag in Screen('Preference','ConserveVRAM').\n");
-            printf("PTB-INFO: Override: Cross your fingers, this may end badly...\n");
-            (*windowRecord)->specialflags|= kPsychNative10bpcFBActive;
-        }
+		if (PsychPrefStateGet_ConserveVRAM() & kPsychEnforce10BitFramebufferHack) {
+			printf("PTB-INFO: Override: Will try to enable 10 bpc framebuffer mode regardless if i think it is needed/sensible or not.\n");
+			printf("PTB-INFO: Override: Doing so because you set the kPsychEnforce10BitFramebufferHack flag in Screen('Preference','ConserveVRAM').\n");
+			printf("PTB-INFO: Override: Cross your fingers, this may end badly...\n");
+			(*windowRecord)->specialflags|= kPsychNative10bpcFBActive;
+		}
 #else
 		// Not supported by our own code and kernel driver (we don't have such a driver for Windows), but some recent 2008
 		// series FireGL cards at least provide the option to enable this natively - although it didn't work properly in our tests.
