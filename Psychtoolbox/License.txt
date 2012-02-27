@@ -146,6 +146,11 @@
 % Copyright (C) 2002-2006  3Dlabs Inc. Ltd., licensed under a BSD-3 style
 % license. See file: PsychDemos/OpenGL4MatlabDemos/GLSLDemoShaders/3Dlabs-License.txt
 %
+% GLSL shaders for Perlin noise: - MIT license, Copyright (C) 2011 Ashima Arts and
+%                                  Copyright (c) 2011 Stefan Gustavson.
+%                                  Files from https://github.com/ashima/webgl-noise
+%                                  With minimal modifications for PTB by Mario Kleiner.
+%
 % All other OpenGL GLSL shaders - MIT license : Mario Kleiner.
 %
 % All OpenCL compute shaders    - MIT license : tbd.

@@ -1,0 +1,45 @@
+/* BasicPerlinNoiseShader.frag.txt - GLSL shader for on-the-fly generation
+ * of 2D Perlin noise textures. Used by CreateProceduralNoise, 'DrawTexture'
+ * and friends to generate procedural noise textures.
+ *
+ * This is a thin wrapper around the fast procedural perlin noise
+ * generation code from https://github.com/ashima/webgl-noise
+ *
+ * (c) 2011-2012 Mario Kleiner. This is licensed to you under the MIT license.
+ *
+ */
+
+uniform vec4  Offset;
+varying vec4  baseColor;
+varying float seed;
+varying vec2  texSize;
+
+/* Function prototype for the 3D simplex noise random number generator: */
+float perlinNoise(vec3 P);
+
+void main()
+{
+    vec3 v;
+
+    /* Query current output texel position: */
+    v.xy = gl_TexCoord[0].xy;
+
+    /* Normalization:
+     * 1. floor() position to remove texture coordinate interpolator skew.
+     * 2. Divide by texture size by multiplying with reciprocal, ie., 
+     *    texSize is = (1 / texture size), so multiply here is actual a divide.
+     * 3. Scale up normalized 0-1 range to 0.0 - 289.0, the period size of the
+     *    noise function.
+     */
+    v.xy = floor(v.xy) * vec2(289.0) * texSize.xy;
+
+    /* Assign random seed value as 3rd component of v: */
+    v.z = seed;
+
+    /* Compute random value rval, using the Perlin noise subroutines: */
+    float rval = perlinNoise(v);
+
+    /* Multiply/Modulate base color and alpha with calculated rval random number,   */
+    /* add some constant color/alpha Offset, assign as final fragment output color: */
+    gl_FragColor = (baseColor * rval) + Offset;
+}

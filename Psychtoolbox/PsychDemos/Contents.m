@@ -75,6 +75,7 @@
 %    OpenGL4MatlabDemos      - Subfolder: Demos on how to use MOGL OpenGL functions.
 %    ProceduralGaborDemo     - Demo for fast drawing of Gabors via procedural textures.
 %    ProceduralGarboriumDemo - Same as GarboriumDemo, just with procedural gabor drawing.
+%    ProceduralNoiseDemo     - Demo for fast drawing of noise patches via procedural texturing.
 %    PsychRTBoxDemo          - Demonstrates basic use of the RTBox reaction time button response box.
 %    QuicktimeDemos          - Subfolder: Demos on how to use Quicktime movie playback.
 %    RenderDemo              - Render CIE xyY as a color patch.

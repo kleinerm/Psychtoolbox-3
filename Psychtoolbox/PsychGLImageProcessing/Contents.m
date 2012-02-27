@@ -27,56 +27,55 @@
 % soon with more useful infos...
 %
 %
-% TODO: Write useful docu.
-%
 % Files:
 %
-% Add2DConvolutionToGLOperator.m  -- Create and add a shader for 2D image convolution to a GLOperator.
-% Add2DSeparableConvolutionToGLOperator.m  -- Create and add a shader for 2D separable image convolution to a GLOperator.
-% AddImageUndistortionToGLOperator -- Add geometric image correction to a GLOperator.
-% AddToGLOperator.m               -- Add a shader with options to a GLOperator.
-% BitsPlusPlus.m                  -- Setup function for imaging pipelines built-in Bits++ support.
-% CountSlotsInGLOperator.m        -- Count number of processing slots in a given GLOperator.
-% CreateDisplayWarp.m             -- Internal helper function for setup of geometric display undistortion.
-% CreateGLOperator.m              -- Create a new GLOperator as container for imaging operations.
-% CreateProceduralGabor.m         -- Create a procedural texture for fast drawing of Gabor patches.
-% CreateProceduralSineGrating.m   -- Create a procedural texture for fast drawing of sine grating patches.
-% CreatePseudoGrayLUT             -- Create a lookup table for pseudogray conversion -- Internal helper function.
-% CreateSinglePassImageProcessingShader -- Create a single pass image processing shader for simple but common operations.
-% DisplayUndistortionBezier.m     -- Interactive geometric display calibration for simple needs.
-% DisplayUndistortionBVL.m        -- Interactive geometric display calibration. Recommended!
-% DisplayUndistortionHalfCylinder -- Interactive geometric display calibration for half-cylinder or spherical projections.
-% DisplayUndistortionSphere
-% HookProcessingChains.m          -- Documentation about hook chains and their options.
-% ImagingStereoDemo.m             -- Counterpart to StereoDemo.m, but using imaging pipeline
+% Add2DConvolutionToGLOperator    - Create and add a shader for 2D image convolution to a GLOperator.
+% Add2DSeparableConvolutionToGLOperator  - Create and add a shader for 2D separable image convolution to a GLOperator.
+% AddImageUndistortionToGLOperator - Add geometric image correction to a GLOperator.
+% AddToGLOperator                 - Add a shader with options to a GLOperator.
+% BitsPlusPlus                  - Setup function for imaging pipelines built-in Bits++ support.
+% CountSlotsInGLOperator        - Count number of processing slots in a given GLOperator.
+% CreateDisplayWarp             - Internal helper function for setup of geometric display undistortion.
+% CreateGLOperator              - Create a new GLOperator as container for imaging operations.
+% CreateProceduralGabor         - Create a procedural texture for fast drawing of Gabor patches.
+% CreateProceduralNoise         - Create a procedural texture for fast drawing of random noise patches.
+% CreateProceduralSineGrating   - Create a procedural texture for fast drawing of sine grating patches.
+% CreatePseudoGrayLUT           - Create a lookup table for pseudogray conversion - Internal helper function.
+% CreateSinglePassImageProcessingShader - Create a single pass image processing shader for simple but common operations.
+% DisplayUndistortionBezier     - Interactive geometric display calibration for simple needs.
+% DisplayUndistortionBVL        - Interactive geometric display calibration. Recommended!
+% DisplayUndistortionHalfCylinder - Interactive geometric display calibration for half-cylinder or spherical projections.
+% DisplayUndistortionSphere     - Interactive geometric display calibration for spherical projections.
+% HookProcessingChains          - Documentation about hook chains and their options.
+% ImagingStereoDemo             - Counterpart to StereoDemo, but using imaging pipeline
 %                                    for increased fidelity, flexibility, ease of use.
-% MakeTextureDrawShader.m         -- Create GLSL shader for use with Screen('DrawTexture') and Screen('MakeTexture')
+% MakeTextureDrawShader         - Create GLSL shader for use with Screen('DrawTexture') and Screen('MakeTexture')
 %                                    to apply on-the-fly texture filtering operations during texture draw.
 %
-% PsychImaging.m                  -- Generic setup routine for the imaging pipeline. Allows to setup
+% PsychImaging                  - Generic setup routine for the imaging pipeline. Allows to setup
 %                                    and initialize the pipeline for many common tasks.
-% PsychVideoSwitcher              -- Setup routine for the Xiangru Li et al. "VideoSwitcher" video attenuator device.
+% PsychVideoSwitcher            - Setup routine for the Xiangru Li et al. "VideoSwitcher" video attenuator device.
 %
-% SetAnaglyphStereoParameters.m   -- Function for runtime tuning of Anaglyph stereo parameters,
+% SetAnaglyphStereoParameters   - Function for runtime tuning of Anaglyph stereo parameters,
 %                                    see ImagingStereoDemo for example of use.
-% SetStereoBlueLineSyncParameters -- Change settings for drawing of stereo sync lines in frame-sequential stereo mode.
-% VignetCalibration               -- Vignetted luminance calibration procedure for undistortion of distorted display luminance.
+% SetStereoBlueLineSyncParameters - Change settings for drawing of stereo sync lines in frame-sequential stereo mode.
+% VignetCalibration               - Vignetted luminance calibration procedure for undistortion of distorted display luminance.
 %
 % Constants for imagingmode flag of Screen('OpenWindow', ...., imagingmode);
 % One can 'or' them together, e.g., imagingmode = mor(kPsychNeed16BPCFixed, kPsychNeedFastBackingStore);
 %
-% kPsychNeed16BPCFixed.m          -- Request 16 bit per color component, fixed point framebuffer.
-% kPsychNeed16BPCFloat.m          -- Request 16 bit per color component, floating point framebuffer.
-% kPsychNeed32BPCFloat.m          -- Request 32 bit per color component, floating point framebuffer.
-% kPsychNeedDualPass.m            -- Indicate that some of the used image processing plugins will need
+% kPsychNeed16BPCFixed          - Request 16 bit per color component, fixed point framebuffer.
+% kPsychNeed16BPCFloat          - Request 16 bit per color component, floating point framebuffer.
+% kPsychNeed32BPCFloat          - Request 32 bit per color component, floating point framebuffer.
+% kPsychNeedDualPass            - Indicate that some of the used image processing plugins will need
 %                                    at two render passes for processing.
-% kPsychNeedFastBackingStore.m    -- Enable minimal imaging pipeline. This flag is implied when using any
+% kPsychNeedFastBackingStore    - Enable minimal imaging pipeline. This flag is implied when using any
 %                                    of the other flags.
-% kPsychNeedFastOffscreenWindows.m - Only enable support for fast Offscreen windows, nothing else.
-% kPsychNeedHalfWidthWindow       -- Tell imaging pipe to create internal buffers half the real window width. Internal flag, not useful for end-user code.
-% kPsychNeedHalfHeightWindow      -- Tell imaging pipe to create internal buffers half the real window height. Internal flag, not useful for end-user code.
-% kPsychNeedImageProcessing.m     -- Request explicit support for image processing.
-% kPsychNeedMultiPass.m           -- Indicate that some of the used plugins will need more than two passes.
-% kPsychNeedOutputConversion.m    -- Indicate that display output is going to some special output device that
-%                                 -- needs special output formatting, e.g., Bits++ or Brightside HDR.
+% kPsychNeedFastOffscreenWindows - Only enable support for fast Offscreen windows, nothing else.
+% kPsychNeedHalfWidthWindow     - Tell imaging pipe to create internal buffers half the real window width. Internal flag, not useful for end-user code.
+% kPsychNeedHalfHeightWindow    - Tell imaging pipe to create internal buffers half the real window height. Internal flag, not useful for end-user code.
+% kPsychNeedImageProcessing     - Request explicit support for image processing.
+% kPsychNeedMultiPass           - Indicate that some of the used plugins will need more than two passes.
+% kPsychNeedOutputConversion    - Indicate that display output is going to some special output device that
+%                                 needs special output formatting, e.g., Bits++ or Brightside HDR.
 
