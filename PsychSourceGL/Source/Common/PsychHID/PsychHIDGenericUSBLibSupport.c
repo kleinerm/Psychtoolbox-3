@@ -147,8 +147,11 @@ int ConfigureDevice(libusb_device_handle* dev, int configIdx)
     libusb_device*  usbdev;
     struct libusb_device_descriptor deviceDesc;
 	struct libusb_config_descriptor* configDesc;
-    psych_uint8     bConfigurationValue;
+    int bConfigurationValue, current_bConfigurationValue;
 	int rc;
+
+	// A configIdx == -1 means: Skip configuration.
+	if (configIdx == -1) return(0);
 
     // Get device pointer for handle:
     usbdev = libusb_get_device(dev);
@@ -160,7 +163,7 @@ int ConfigureDevice(libusb_device_handle* dev, int configIdx)
     numConfig = deviceDesc.bNumConfigurations;
 
 	if (rc || (numConfig == 0)) {
-		printf("PsychHID: USB ConfigureDevice: ERROR! Error getting number of configurations or no configurations available at all (err = %08x)\n", rc);
+		printf("PsychHID: USB ConfigureDevice: ERROR! Error getting number of configurations or no configurations available at all (err = %d)\n", rc);
 		return(rc);
 	}
 
@@ -172,21 +175,30 @@ int ConfigureDevice(libusb_device_handle* dev, int configIdx)
 	// Get the configuration descriptor for index 'configIdx':
     rc = libusb_get_config_descriptor(usbdev, (psych_uint8) configIdx, &configDesc);    	
 	if (rc) {
-		printf("PsychHID: USB ConfigureDevice: ERROR! Couldn't get configuration descriptor for index %d (err = %08x)\n", configIdx, rc);
+		printf("PsychHID: USB ConfigureDevice: ERROR! Couldn't get configuration descriptor for index %d (err = %d)\n", configIdx, rc);
 		return(rc);
 	}
 	
     // Extract bConfigurationValue:
-    bConfigurationValue = configDesc->bConfigurationValue;
+    bConfigurationValue = (int) configDesc->bConfigurationValue;
     
     // Release descriptor:
     libusb_free_config_descriptor(configDesc);
-    
+
+	rc = libusb_get_configuration(dev, &current_bConfigurationValue);
+	if (rc) {
+		printf("PsychHID: USB ConfigureDevice: ERROR! Couldn't get current configuration of device (err = %d)\n", rc);
+		return(rc);
+	}
+	
+	// If current value is already identical to requested value, we're done:
+	if (current_bConfigurationValue == bConfigurationValue) return(0);
+	
 	// Set the device's configuration. The configuration value is found in
 	// the bConfigurationValue field of the configuration descriptor
-    rc = libusb_set_configuration(dev, (int) bConfigurationValue);
+    rc = libusb_set_configuration(dev, bConfigurationValue);
 	if (rc) {
-		printf("PsychHID: USB ConfigureDevice: ERROR! Couldn't set configuration to value %d (err = %08x)\n", (int) bConfigurationValue, rc);
+		printf("PsychHID: USB ConfigureDevice: ERROR! Couldn't set configuration to value %d (err = %d)\n", bConfigurationValue, rc);
 		return(rc);
 	}
 	

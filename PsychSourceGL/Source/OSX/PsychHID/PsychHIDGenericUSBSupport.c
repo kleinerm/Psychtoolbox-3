@@ -213,9 +213,12 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
 
 IOReturn ConfigureDevice(IOUSBDeviceInterface **dev, int configIdx)
 {
-	UInt8                           numConfig;
+	UInt8                           numConfig, current_bConfigurationValue;
 	IOReturn                        kr;
 	IOUSBConfigurationDescriptorPtr configDesc;
+	
+	// A configIdx == -1 means: Skip configuration.
+	if (configIdx == -1) return(kIOReturnSuccess);
 	
 	// Get the number of configurations. The sample code always chooses
 	// the first configuration (at index 0) but your code may need a
@@ -238,6 +241,15 @@ IOReturn ConfigureDevice(IOUSBDeviceInterface **dev, int configIdx)
 		return(kr);
 	}
 	
+	kr = (*dev)->GetConfiguration(dev, &current_bConfigurationValue);
+	if (kr) {
+		printf("PsychHID: USB ConfigureDevice: ERROR! Couldn't get configuration of device (err = %08x)\n", kr);
+		return(kr);
+	}
+
+	// If current value is already identical to requested value, we're done:
+	if (current_bConfigurationValue == configDesc->bConfigurationValue) return kIOReturnSuccess;
+
 	// Set the device's configuration. The configuration value is found in
 	// the bConfigurationValue field of the configuration descriptor
 	kr = (*dev)->SetConfiguration(dev, configDesc->bConfigurationValue);

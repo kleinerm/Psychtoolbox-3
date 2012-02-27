@@ -103,7 +103,7 @@ PsychError PSYCHHIDGetReport(void)
 	PsychCopyInIntegerArg(1,TRUE,&deviceIndex);
 	PsychCopyInIntegerArg(2,TRUE,&reportType);
 	PsychCopyInIntegerArg(3,TRUE,&reportID);
-	PsychCopyInIntegerArg(4,TRUE,&reportBufferSize);
+	PsychCopyInIntegerArg(4,TRUE,(int*) &reportBufferSize);
     if (reportBufferSize < 1) PsychErrorExitMsg(PsychError_user, "Size of receive buffer 'reportBytes' must be at least 1!");
 
 	outReport=PsychGetOutArgMxPtr(1); 

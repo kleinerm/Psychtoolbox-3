@@ -20,19 +20,23 @@
 
 #include "PsychHID.h"
 
-static char useString[] = "usbHandle = PsychHID('OpenUSBDevice', vendorID, deviceID)";
-//																 1		   2
+static char useString[] = "usbHandle = PsychHID('OpenUSBDevice', vendorID, deviceID [, configurationId=0])";
+//																 1		   2           3
 static char synopsisString[] = "Tries to open and initialize a generic USB device specified by 'vendorID' and 'deviceID'.\n"
 							   "On success, a 'usbHandle' to the opened device is returned.\n"
 							   "'vendorID' and 'deviceID' must be numeric (integer) values which identify the "
 							   "target device by the official vendor id of the device manufacturer, and the "
-							   "device id of the specific model of a device. ";
+							   "device id of the specific model of a device.\n"
+							   "'configurationId' optional: Set USB device configuration to given value. By "
+							   "default, configuration zero is chosen. Changing the configuration id is only "
+							   "possible if the device isn't in use already, and not under control of an operating "
+							   "system device driver. A value of -1 would skip changing the configuration.\n";
 static char seeAlsoString[] = "";
 
 PsychError PSYCHHIDOpenUSBDevice(void) 
 {
 	PsychUSBSetupSpec deviceSpec;
-	int deviceID, vendorID;
+	int deviceID, vendorID, configurationId;
 	int errcode;
 	int usbHandle = -1;
 	PsychUSBDeviceRecord *usbDev = NULL;
@@ -45,7 +49,7 @@ PsychError PSYCHHIDOpenUSBDevice(void)
 	}
 	
 	// Make sure the correct number of input arguments is supplied.
-    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychCapNumInputArgs(3));
 	PsychErrorExit(PsychRequireNumInputArgs(2));
     PsychErrorExit(PsychCapNumOutputArgs(1));
 	
@@ -64,10 +68,10 @@ PsychError PSYCHHIDOpenUSBDevice(void)
 	deviceSpec.vendorID = vendorID;
 	deviceSpec.deviceID = deviceID;
 
-	// This is the index of the device configuration to choose:
-	// MK: For now always config zero. Might want to make this default to zero but allow
-	// usercode to select some other index?
-	deviceSpec.configurationID = 0;
+	// This is the index of the device configuration to choose: Defaults to zero.
+	configurationId = 0;
+	PsychCopyInIntegerArg(3, FALSE, &configurationId);	
+	deviceSpec.configurationID = (int) configurationId;
 
 	// Try to open the device. This will init the device structure properly and
 	// also set the valid flag to "active/open" if open succeeds:
