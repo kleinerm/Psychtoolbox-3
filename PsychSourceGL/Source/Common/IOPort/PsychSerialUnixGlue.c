@@ -238,10 +238,10 @@ void* PsychSerialUnixGlueReaderThreadMain(PSYCHVOLATILE void* deviceToCast)
 	// Get a handle to our device struct: These pointers must not be NULL!!!
 	PSYCHVOLATILE PsychSerialDeviceRecord* device = (PSYCHVOLATILE PsychSerialDeviceRecord*) deviceToCast;
 
-	// Try to raise our priority: We ask to switch ourselves (NULL) to priority class 1 aka
-	// round robin realtime scheduling, with a tweakPriority of +1, ie., raise the relative
+	// Try to raise our priority: We ask to switch ourselves (NULL) to priority class 2 aka
+	// realtime scheduling, with a tweakPriority of +1, ie., raise the relative
 	// priority level by +1 wrt. to the current level:
-	if ((rc = PsychSetThreadPriority(NULL, 1, 1)) > 0) {
+	if ((rc = PsychSetThreadPriority(NULL, 2, 1)) > 0) {
 		if (verbosity > 0) printf("PTB-ERROR: In IOPort:PsychSerialUnixGlueReaderThreadMain(): Failed to switch to realtime priority [%s]!\n", strerror(rc));
 	}
 
@@ -487,6 +487,51 @@ void PsychIOOSShutdownSerialReaderThread(PSYCHVOLATILE PsychSerialDeviceRecord* 
 	}
 	
 	return;
+}
+
+/* PsychSerialUnixGlueJLTriggerThreadMain() -- Timed trigger byte emission.
+ * This is a proof-of-concept prototype for the async-task API of IOPort,
+ * not for public use by regular users!
+ *
+ * Emits a 0xff triggerbyte over serial port at time device->triggerWhen.
+ *
+ */
+void* PsychSerialUnixGlueJLTriggerThreadMain(PSYCHVOLATILE void* deviceToCast)
+{
+	int rc;
+	unsigned char writedata = 0xff;
+	double timestamp[4];
+	char errmsg[256];
+	errmsg[0] = 0;
+	
+	// Get a handle to our device struct: These pointers must not be NULL!!!
+	PSYCHVOLATILE PsychSerialDeviceRecord* device = (PSYCHVOLATILE PsychSerialDeviceRecord*) deviceToCast;
+
+	// Try to raise our priority: We ask to switch ourselves (NULL) to priority class 2 aka
+	// realtime scheduling, with a tweakPriority of +2, ie., raise the relative
+	// priority level by +2 wrt. to the current level:
+	if ((rc = PsychSetThreadPriority(NULL, 2, 2)) > 0) {
+		if (verbosity > 0) printf("PTB-ERROR: In IOPort:PsychSerialUnixGlueJLTriggerThreadMain(): Failed to switch to realtime priority [%s]!\n", strerror(rc));
+	}
+
+	// Detach ourselves, so parent thread doesn't need to pthread_join() us:
+	if (pthread_detach(pthread_self())) printf("PTB-ERROR: In IOPort:PsychSerialUnixGlueJLTriggerThreadMain(): Failed to detach!\n");
+	
+	// Wait for our target time to come...
+	PsychWaitUntilSeconds(device->triggerWhen);
+
+	if (1 != PsychIOOSWriteSerialPort(device, &writedata, 1, 1, errmsg, timestamp)) {
+		printf("PTB-ERROR: In IOPort:PsychSerialUnixGlueJLTriggerThreadMain(): Failed to write triggerbyte!\n");
+	}
+
+	// Good enough?
+	if ((verbosity > 3) && (timestamp[0] - device->triggerWhen > 0.003)) printf("PTB-WARNING: In IOPort:PsychSerialUnixGlueJLTriggerThreadMain(): Trigger emission delayed by up to %f msecs wrt. to deadline!\n", (float) 1000.0 * (timestamp[0] - device->triggerWhen));
+
+	// Store write completion timestamp:
+	device->triggerWhen = timestamp[0];
+
+	// Go and die peacefully...
+	return(NULL);
 }
 
 /* PsychIOOSOpenSerialPort()
@@ -1239,13 +1284,13 @@ PsychError PsychIOOSConfigureSerialPort(PSYCHVOLATILE PsychSerialDeviceRecord* d
 			
 			// Create & Init the mutex:
 			if ((rc=PsychInitMutex(&(device->readerLock)))) {
-				printf("PTB-ERROR: In StartBackgroundReadCould(): Could not create readerLock mutex lock [%s].\n", strerror(rc));
+				printf("PTB-ERROR: In StartBackgroundRead(): Could not create readerLock mutex lock [%s].\n", strerror(rc));
 				return(PsychError_system);
 			}
 			
 			// Create and startup thread:
 			if ((rc=PsychCreateThread(&(device->readerThread), NULL, PsychSerialUnixGlueReaderThreadMain, (void*) device))) {
-				printf("PTB-ERROR: In StartBackgroundReadCould(): Could not create background reader thread [%s].\n", strerror(rc));
+				printf("PTB-ERROR: In StartBackgroundRead(): Could not create background reader thread [%s].\n", strerror(rc));
 				return(PsychError_system);
 			}
 		}
@@ -1259,6 +1304,27 @@ PsychError PsychIOOSConfigureSerialPort(PSYCHVOLATILE PsychSerialDeviceRecord* d
 		device->dontFlushOnWrite = inint;
 	}
 
+	// Proof-of-concept test code: Not for public use!
+	// Async triggerbyte emission via parallel thread requested?
+	if ((p = strstr(configString, "JLFireTrigger="))) {
+		if (1!=sscanf(p, "JLFireTrigger=%f", &infloat)) {
+			if (verbosity > 0) printf("Invalid parameter for JLFireTrigger set!\n");
+			return(PsychError_user);
+		}
+		else {
+			// Store target time in device struct:
+			device->triggerWhen = (double) infloat;
+			
+			// Create and startup trigger thread: It will detach itself from us, do
+			// its job and then die lonely and forgotten without us caring:
+			psych_thread threadhandle;
+			if ((rc=PsychCreateThread(&threadhandle, NULL, PsychSerialUnixGlueJLTriggerThreadMain, (void*) device))) {
+				printf("PTB-ERROR: In JLFireTrigger(): Could not create background trigger thread [%s].\n", strerror(rc));
+				return(PsychError_system);
+			}			
+		}
+	}
+	
 	// Done.
 	return(PsychError_none);
 }

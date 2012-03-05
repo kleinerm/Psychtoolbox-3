@@ -82,6 +82,7 @@ typedef volatile struct PsychSerialDeviceRecord {
 	unsigned char		lineTerminator;			// Line terminator byte, if any.
 	unsigned char		cookedMode;				// Cooked input processing mode active? Set to 1 if so.
 	int					dontFlushOnWrite;		// If set to 1, don't tcdrain() after blocking writes, otherwise do.
+	double				triggerWhen;			// Target time for trigger byte emission.
 } PsychSerialDeviceRecord;
 
 #endif
