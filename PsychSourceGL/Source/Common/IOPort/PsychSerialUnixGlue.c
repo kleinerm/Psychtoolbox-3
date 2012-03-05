@@ -690,7 +690,7 @@ PsychError PsychIOOSConfigureSerialPort(PSYCHVOLATILE PsychSerialDeviceRecord* d
 	
     // Print the current input and output baud rates.
     // See tcsetattr(4) ("man 4 tcsetattr") for details.
-    if (verbosity > 3) {
+    if (verbosity > 4) {
 		printf("IOPort-Info: Configuration for device %s:\n", device->portSpec);
 		printf("IOPort-Info: Current input baud rate is %d\n", ConstantToBaud((int) cfgetispeed(&options)));
 		printf("IOPort-Info: Current output baud rate is %d\n", ConstantToBaud((int) cfgetospeed(&options)));
@@ -955,14 +955,15 @@ PsychError PsychIOOSConfigureSerialPort(PSYCHVOLATILE PsychSerialDeviceRecord* d
 	// directly bypassing the termios struct. This means that the following two calls will not be able to read
 	// the current baud rate if the IOSSIOSPEED ioctl was used but will instead return the speed set by the last call
 	// to cfsetspeed.
-    if (verbosity > 3) {
-			// Retrieve baudrate and check for equal rate on input- and output queue:
-			inint = cfgetispeed(&options);
-			if ((inint != cfgetospeed(&options)) && (verbosity > 1)) printf("IOPort: Warning: Hmm, new input- and output baudrates %i vs. %i don't match!? May or may not be a problem...\n", ConstantToBaud((int) inint), ConstantToBaud((int) cfgetospeed(&options))); 
 
-			// Output new baud rate:
-			printf("IOPort-Info: Baud rate changed to %d\n", (int) ConstantToBaud(inint));
-    }
+	// Retrieve baudrate and check for equal rate on input- and output queue:
+	if (verbosity > 1) {
+		inint = cfgetispeed(&options);
+		if (inint != cfgetospeed(&options)) printf("IOPort: Warning: Hmm, new input- and output baudrates %i vs. %i don't match!? May or may not be a problem...\n", ConstantToBaud((int) inint), ConstantToBaud((int) cfgetospeed(&options))); 
+	}
+	
+	// Output new baud rate:
+    if (verbosity > 4) printf("IOPort-Info: Baud rate changed to %d\n", (int) ConstantToBaud(inint));
     
     // Cause the new options to take effect immediately.
     if (updatetermios && (tcsetattr(device->fileDescriptor, TCSANOW, &options) == -1))
@@ -980,7 +981,7 @@ PsychError PsychIOOSConfigureSerialPort(PSYCHVOLATILE PsychSerialDeviceRecord* d
 		if (verbosity > 0) printf("Error getting lines status for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
 		if (strstr(configString, "Lenient") == NULL) return(PsychError_system);
     }
-	else if (verbosity > 3) {
+	else if (verbosity > 4) {
 		printf("IOPort-Info: Handshake lines currently set to %d : ", handshake);
 		printf("DTR=%i : DSR=%i : RTS=%i : CTS=%i\n", (handshake & TIOCM_DTR) ? 1:0, (handshake & TIOCM_DSR) ? 1:0, (handshake & TIOCM_RTS) ? 1:0, (handshake & TIOCM_CTS) ? 1:0);
 	}
