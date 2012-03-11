@@ -1,5 +1,5 @@
-function q=QuestRecompute(q)
-% q=QuestRecompute(q)
+function q=QuestRecompute(q, plotIt)
+% q=QuestRecompute(q [,plotIt=0])
 %
 % Call this immediately after changing a parameter of the psychometric
 % function. QuestRecompute uses the specified parameters in "q" to
@@ -36,6 +36,9 @@ function q=QuestRecompute(q)
 % from QuestUpdate is one possible indication that your stated range is
 % too small.
 % 
+% If you set the optional parameter 'plotIt' to 1, the function will plot
+% the psychometric function in use.
+%
 % See QuestCreate, QuestUpdate, QuestQuantile, QuestMean, QuestMode,
 % QuestSd, and QuestSimulate.
 
@@ -44,11 +47,14 @@ function q=QuestRecompute(q)
 % 9/11/04   dgp  Explain why supplied "dim" should err on the high side.
 % 10/31/10   mk  Allocate q.intensity and q.response in chunks of 10000
 %                trials to reduce memory fragmentation problems.
+% 03/10/12   mk  Optionally plot psychometric function for debugging.
+%                Also some Matlab M-Lint warning cleanup.
 
 % Copyright (c) 1996-2004 Denis Pelli
-if nargin~=1
-	error('Usage: q=QuestRecompute(q)')
+if nargin < 1
+	error('Usage: q=QuestRecompute(q [,plotIt=0])')
 end
+
 if length(q)>1
 	for i=1:length(q(:))
 		q(i).normalizePdf=0; % any norming must be done across the whole set of pdfs, because it's actually one big multi-dimensional pdf.
@@ -56,13 +62,21 @@ if length(q)>1
 	end
 	return
 end
+
 if ~q.updatePdf
 	return
 end
+
 if q.gamma>q.pThreshold
-	warning(sprintf('reducing gamma from %.2f to 0.5',q.gamma))
+	warning(sprintf('reducing gamma from %.2f to 0.5',q.gamma)) %#ok<SPWRN>
 	q.gamma=0.5;
 end
+
+% Don't visualize functions by default:
+if nargin < 2 || isempty(plotIt)
+    plotIt = 0;
+end
+
 % prepare all the arrays
 q.i=-q.dim/2:q.dim/2;
 q.x=q.i*q.grain;
@@ -71,7 +85,14 @@ q.pdf=q.pdf/sum(q.pdf);
 i2=-q.dim:q.dim;
 q.x2=i2*q.grain;
 q.p2=q.delta*q.gamma+(1-q.delta)*(1-(1-q.gamma)*exp(-10.^(q.beta*q.x2)));
-if q.p2(1)>=q.pThreshold | q.p2(end)<=q.pThreshold
+
+% Plot Psychometric function if requested:
+if plotIt > 0
+    figure;
+    plot(q.x2, q.p2);
+end
+
+if q.p2(1)>=q.pThreshold || q.p2(end)<=q.pThreshold
 	error(sprintf('psychometric function range [%.2f %.2f] omits %.2f threshold',q.p2(1),q.p2(end),q.pThreshold))
 end
 if any(~isfinite(q.p2))
@@ -83,16 +104,16 @@ if length(index)<2
 end
 q.xThreshold=interp1(q.p2(index),q.x2(index),q.pThreshold);
 if ~isfinite(q.xThreshold)
-	q
+	q %#ok<NOPRT>
 	error(sprintf('psychometric function has no %.2f threshold',q.pThreshold))
 end
 q.p2=q.delta*q.gamma+(1-q.delta)*(1-(1-q.gamma)*exp(-10.^(q.beta*(q.x2+q.xThreshold))));
 if any(~isfinite(q.p2))
-	q
+	q %#ok<NOPRT>
 	error('psychometric function p2 is not finite')
 end
 q.s2=fliplr([1-q.p2;q.p2]);
-if ~isfield(q,'intensity') | ~isfield(q,'response')
+if ~isfield(q,'intensity') || ~isfield(q,'response')
     % Preallocate for 10000 trials, keep track of real useful content in
     % q.trialCount. We allocate such large chunks to reduce memory
     % fragmentation that would be caused by growing the arrays one element
@@ -133,7 +154,7 @@ for k=1:q.trialCount
 		ii=ii+size(q.s2,2)-ii(end);
 	end
 	q.pdf=q.pdf.*q.s2(q.response(k)+1,ii); % 4 ms
-	if q.normalizePdf & mod(k,100)==0
+	if q.normalizePdf && mod(k,100)==0
 		q.pdf=q.pdf/sum(q.pdf);	% avoid underflow; keep the pdf normalized	% 3 ms
 	end
 end

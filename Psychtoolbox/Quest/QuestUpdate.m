@@ -26,19 +26,19 @@ end
 if length(q)>1
 	error('can''t deal with q being a vector')
 end
-if response<0 | response>=size(q.s2,1)
+if response<0 || response>=size(q.s2,1)
 	error(sprintf('response %g out of range 0 to %d',response,size(q.s2,1)-1))
 end
 if q.updatePdf
 	inten=max(-1e10,min(1e10,intensity)); % make intensity finite
 	ii=size(q.pdf,2)+q.i-round((inten-q.tGuess)/q.grain);
-	if ii(1)<1 | ii(end)>size(q.s2,2)
+	if ii(1)<1 || ii(end)>size(q.s2,2)
 		if q.warnPdf
 			low=(1-size(q.pdf,2)-q.i(1))*q.grain+q.tGuess;
 			high=(size(q.s2,2)-size(q.pdf,2)-q.i(end))*q.grain+q.tGuess;
 			oldWarning=warning;
-			warning('on'); % no backtrace
-			warning(sprintf('QuestUpdate: intensity %.2f out of range %.2f to %.2f. Pdf will be inexact. Suggest that you increase "range" in call to QuestCreate.',intensity,low,high));
+			warning('on'); %#ok<WNON> % no backtrace
+			warning(sprintf('QuestUpdate: intensity %.2f out of range %.2f to %.2f. Pdf will be inexact. Suggest that you increase "range" in call to QuestCreate.',intensity,low,high)); %#ok<SPWRN>
 			warning(oldWarning);
 		end
 		if ii(1)<1

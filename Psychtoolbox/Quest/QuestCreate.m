@@ -1,5 +1,5 @@
-function q=QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,grain,range)
-% q=QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,[grain],[range])
+function q=QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,grain,range,plotIt)
+% q=QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,[grain],[range],[plotIt])
 %
 % Create a struct q with all the information necessary to measure
 % threshold. Threshold "t" is measured on an abstract "intensity"
@@ -103,13 +103,15 @@ function q=QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,grain,range)
 % 10/13/04 	dgp  Set q.normalizePdf to 1, to avoid underflow errors that otherwise accur after around 1000 trials.
 % 
 % Copyright (c) 1996-2004 Denis Pelli
-if nargin<6 || nargin>8
+if nargin < 6 || nargin > 9
 	error('Usage: q=QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,[grain],[range])')
 end
-if nargin<7
+
+if nargin < 7 || isempty(grain)
 	grain=0.01;
 end
-if nargin<8
+
+if nargin < 8 || isempty(range)
 	dim=500;
 else
 	if range<=0
@@ -118,6 +120,11 @@ else
 	dim=range/grain;
 	dim=2*ceil(dim/2);	% round up to an even integer
 end
+
+if nargin < 9 || isempty(plotIt)
+    plotIt = 0;
+end
+
 q.updatePdf=1; % boolean: 0 for no, 1 for yes
 q.warnPdf=1; % boolean
 q.normalizePdf=1; % boolean. This adds a few ms per call to QuestUpdate, but otherwise the pdf will underflow after about 1000 trials.
@@ -129,7 +136,7 @@ q.delta=delta;
 q.gamma=gamma;
 q.grain=grain;
 q.dim=dim;
-q=QuestRecompute(q);
+q=QuestRecompute(q, plotIt);
 
 % THIS CODE WAS IN THE OLD VERSION. I'VE PASTED "q." INTO THE OBVIOUS PLACES.
 % THIS IS RETAINED SOLELY TO HELP DEBUG ANY BUGS IN THE NEW CODE.
