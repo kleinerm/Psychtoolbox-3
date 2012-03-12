@@ -804,7 +804,12 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	  // --> PsychGetDisplayBeamPosition is not working correctly for some reason.
 	  sync_trouble = true;
 	  if(PsychPrefStateGet_Verbosity()>1) {
-			if (i >=-1) printf("\nWARNING: Querying rasterbeam-position doesn't work on your setup! (Returns a constant value %i)\n", i);
+			if (i >=-1) {
+				printf("\nWARNING: Querying rasterbeam-position doesn't work on your setup! (Returns a constant value %i)\n", i);
+				printf("WARNING: This can happen if Psychtoolbox gets the mapping of connected displays to graphics card\n");
+				printf("WARNING: outputs wrong. See 'help DisplayOutputMappings' for tips on how to resolve this problem.\n\n");
+			}
+
 			if (i < -1) printf("\nWARNING: Querying rasterbeam-position doesn't work on your setup! (Returns a negative value %i)\n", i);
 	  }
 	}

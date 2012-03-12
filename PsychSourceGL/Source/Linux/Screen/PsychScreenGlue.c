@@ -2238,8 +2238,8 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 					if (PsychPrefStateGet_Verbosity() > 1) {
 						printf("PTB-WARNING: Hang in beamposition query detected! Seems my mapping of screen numbers to GPU's and display outputs is wrong?\n");
 						printf("PTB-WARNING: In a single GPU system you can resolve this by plugging in your monitors in a different order, changing the\n");
-						printf("PTB-WARNING: display arrangement in the control panel, or using the Screen('Preference', 'ScreenToHead', screenId [, newHeadId]);\n");
-						printf("PTB-WARNING: command at the top of your scripts to set the mapping manually.\n");
+						printf("PTB-WARNING: display arrangement in the control panel, or using the Screen('Preference', 'ScreenToHead', ...);\n");
+						printf("PTB-WARNING: command at the top of your scripts to set the mapping manually. See 'help DisplayOutputMappings' for more info.\n");
 						printf("PTB-WARNING: \n");
 						printf("PTB-WARNING: I am not yet able to handle multi-GPU systems reliably at all. If you have such a system it may work if\n");
 						printf("PTB-WARNING: you plug your monitor(s) into one of the other GPU's output connectors, trying different combinations.\n");
