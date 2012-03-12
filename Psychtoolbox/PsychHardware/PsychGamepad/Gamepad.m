@@ -32,7 +32,14 @@ function result = Gamepad(arg1, arg2, arg3)
 %
 % Gamepad uses the Screen() mex file and its mouse query functions.
 % On Linux, gamepads and joysticks are treated as a special type of
-% mouse/pointing device with multiple extra axes and buttons.
+% mouse/pointing device with multiple extra axes and buttons. If your
+% GamePad is not recognized, you may need to install the joystick driver,
+% e.g., via "sudo apt-get install xf86-input-joystick" on a Debian/Ubuntu
+% system. You may also wish to install a custom joystick configuration file
+% to customize the mapping and behaviour of buttons and axis, and if the
+% Joystick also operates as a mouse or not. An example configuration file
+% with installation instructions is available in the
+% Psychtoolbox/PsychContributed folder under the name "52-MyLinuxJoystick.conf".
 %
 % OSX: ________________________________________________________________________
 %
@@ -44,8 +51,9 @@ function result = Gamepad(arg1, arg2, arg3)
 %
 % WIN: ________________________________________________________________________
 %
-% Gamepad has been omitted from the WIN Psychtoolbox because of a bug that
-% prevents the extensions from loading.
+% Gamepad is not yet supported on Windows. WinJoystickMex() in the
+% Psychtoolbox/PsychContributed subfolder may serve as a temporary
+% replacement.
 % _____________________________________________________________________________
 %
 % See also: PsychGamepad, PsychHID
