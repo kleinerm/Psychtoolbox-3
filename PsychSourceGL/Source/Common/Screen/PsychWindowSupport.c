@@ -1718,6 +1718,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 	// Get a handle to our info structs: These pointers must not be NULL!!!
 	PsychWindowRecordType*	windowRecord = (PsychWindowRecordType*) windowRecordToCast;
 	PsychFlipInfoStruct*	flipRequest	 = windowRecord->flipInfo;
+	psych_bool useOpenML = (windowRecord->gfxcaps & kPsychGfxCapSupportsOpenML) ? TRUE : FALSE;
 	
 	// Try to lock, block until available if not available:
 	if ((rc=PsychLockMutex(&(flipRequest->performFlipLock)))) {
@@ -1969,14 +1970,18 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 				if (PsychPrefStateGet_Verbosity() > 10) {
 					printf("PTB-DEBUG: Idle-Swap tnow = %f >= deadline = %f  delta = %f  [lastvbl = %f]\n", tnow, lastvbl, tnow - lastvbl, windowRecord->time_at_last_vbl);
 				}
-	
+
 				// Wait for swap completion, so we get an updated vblank time estimate:
-				glBegin(GL_POINTS);
-				glColor4f(0, 0, 0, 0);
-				glVertex2i(10, 10);
-				glEnd();
-				glFinish();
-				PsychGetAdjustedPrecisionTimerSeconds(&(windowRecord->time_at_last_vbl));
+				if (!(useOpenML && (PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &(windowRecord->time_at_last_vbl)) > 0))) {
+					// OpenML swap completion timestamping unsupported, disabled, or failed.
+					// Use our standard trick instead.
+					glBegin(GL_POINTS);
+					glColor4f(0, 0, 0, 0);
+					glVertex2i(10, 10);
+					glEnd();
+					glFinish();
+					PsychGetAdjustedPrecisionTimerSeconds(&(windowRecord->time_at_last_vbl));
+				}
 
 				// Maintain virtual vblank counter on platforms where we need it:
 				vblcount++;
