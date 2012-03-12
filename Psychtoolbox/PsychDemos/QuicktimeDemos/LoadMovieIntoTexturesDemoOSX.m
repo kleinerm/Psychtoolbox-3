@@ -2,7 +2,7 @@ function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime, indexisFrames
 %
 % LoadMovieIntoTexturesDemoOSX(moviename [, fromTime=0][, toTime=end][, indexisFrames=0][, benchmark=0])
 %
-% A demo implementation on how to load a Quicktime movie into standard
+% A demo implementation on how to load a movie into standard
 % Psychtoolbox textures for precisely controlled presentation timing and
 % presentation order.
 %
@@ -41,9 +41,6 @@ function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime, indexisFrames
 % To make it a bit more interesting, you can use this demo to "browse" short
 % videoclips, e.g., for selection of interesting parts...
 %
-%
-% This demo needs MacOS-X 10.3.9 or later, or MS-Windows with Quicktime 7
-% installed.
 
 % History:
 % 12/25/05  mk  Wrote it.
@@ -226,7 +223,7 @@ try
             [x, y]=Screen('DrawText', win, ['Framerate(fps): ' num2str(fps) ', total duration of movie (secs) ' num2str(movieduration)],10, y+10+tsize);
 
             % Draw info on current position in movie:
-            [x, y]=Screen('DrawText', win, ['Frame ' num2str(currentindex) ' of ' num2str(count) ' : Timeindex(secs) = ' num2str(texpts(currentindex))], 10, y + 10 + tsize);
+            Screen('DrawText', win, ['Frame ' num2str(currentindex) ' of ' num2str(count) ' : Timeindex(secs) = ' num2str(texpts(currentindex))], 10, y + 10 + tsize);
 
             % Show drawn stuff:
             Screen('Flip', win);
@@ -244,17 +241,17 @@ try
                     autoplay=1-autoplay;
                 end;
 
-                if (keyCode(right) & currentindex<count)
+                if (keyCode(right) && currentindex<count)
                     % One frame forward:
                     currentindex=currentindex+1;
                 end;
-                if (keyCode(left) & currentindex>1)
+                if (keyCode(left) && currentindex>1)
                     % One frame backward:
                     currentindex=currentindex-1;
                 end;
 
                 % Wait for key-release:
-                while KbCheck; WaitSecs(0.01); end;
+                KbReleaseWait;
             end;
         else
             % Benchmark mode: Repeat until Keypress.

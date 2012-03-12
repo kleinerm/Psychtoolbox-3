@@ -3,7 +3,7 @@ function DetectionRTInVideoDemoOSX(moviename, timeOfEvent, trials)
 % DetectionRTInVideoDemoOSX(moviename, timeOfEvent, trials)
 %
 % A demo implementation of how to collect reaction time for detection of a
-% specific time-locked event in a Quicktime movie file.
+% specific time-locked event in a movie file.
 %
 % Parameters:
 % moviename - Filename of moviefile to use. If none is provided, then the
@@ -35,11 +35,11 @@ function DetectionRTInVideoDemoOSX(moviename, timeOfEvent, trials)
 % all n frames in memory instead of only the current one) and the inability
 % to play sound in sync with video.
 %
-% This demo needs MacOS-X 10.3.9 or 10.4.x with Quicktime-7 installed!
 
 % History:
 % 12/19/05  mk  Wrote it.
 % 02/03/06  mk  Adapted for use on Windows.
+% 03/11/12  mk  Cleanup.
 
 if nargin < 1
     % Default movie is our own disc collision movie:
@@ -77,9 +77,10 @@ try
     % Open onscreen window. We use the display with the highest number on
     % multi-display setups:
     screen=max(Screen('Screens'));
+    
     % This will open a screen with default settings, aka black background,
     % fullscreen, double buffered with 32 bits color depth:
-    win = Screen('OpenWindow', screen); % , 0, [0 0 800 600]);
+    win = Screen('OpenWindow', screen);
     
     % Hide the mouse cursor:
     HideCursor;
@@ -93,14 +94,13 @@ try
     [x, y]=Screen('DrawText', win, 'Collision detection fake experiment.',40, 100);
     [x, y]=Screen('DrawText', win, 'Press ESC-ape key to abort anytime.', 40, y + 10 + tsize);
     [x, y]=Screen('DrawText', win, 'Press SPACE key when you see the discs colliding', 40, y + 10 + tsize);
-    [x, y]=Screen('DrawText', win, 'Press any key to start the experiment...', 40, y + 10 + tsize);
+    Screen('DrawText', win, 'Press any key to start the experiment...', 40, y + 10 + tsize);
     
     % Flip to show the grey screen:
     Screen('Flip',win);
     
     % Wait for keypress + release...
-    KbWait;
-    while KbCheck; end;
+    KbStrokeWait;
     
     % Show cleared screen...
     Screen('Flip',win);
@@ -114,7 +114,8 @@ try
         % width and height of video frames. We could also query the total count of frames in
         % the movie, but computing 'framecount' takes long, so avoid to query
         % this property if you don't need it!
-        [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename);
+        [movie movieduration fps] = Screen('OpenMovie', win, moviename);
+        
         % We estimate framecount instead of querying it - faster:
         framecount = movieduration * fps;
         
@@ -134,7 +135,7 @@ try
         onsettime=-1;       % Realtime at which the event was shown to the subject.
         rejecttrial=0;      % Flag which is set to 1 to reject an invalid trial.
         
-        while(movietexture>=0 & reactiontime==-1)
+        while(movietexture>=0 && reactiontime==-1)
             % Check if a new movie video frame is ready for visual
             % presentation: This call polls for arrival of a new frame. If
             % a new frame is ready, it converts the video frame into a
@@ -171,7 +172,7 @@ try
                 % range.
                 vbl=Screen('Flip', win);
                 % Is this the event video frame we've been waiting for? 
-                if (onsettime==-1 & pts >= timeOfEvent)
+                if (onsettime==-1 && pts >= timeOfEvent)
                     % Yes: This is the first frame with a pts timestamp that is
                     % equal or greater than the timeOfEvent, so 'vbl' is
                     % the exact time when the event was presented to the
@@ -244,7 +245,7 @@ try
             break;
         end;
         
-        if (reactiontime==-1 & rejecttrial==0)
+        if (reactiontime==-1 && rejecttrial==0)
             rejecttrial=3;
         end;
         
@@ -270,7 +271,7 @@ try
         end;
 
         % Wait for subject to release keys:
-        while KbCheck; end;
+        KbReleaseWait;
         
     end; % Trial done. Next trial...
         

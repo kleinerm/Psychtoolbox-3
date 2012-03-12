@@ -133,8 +133,8 @@ try
         % Infinite playback loop: Fetch video frames and display them...
         while(1)
             i=i+1;
-	    % Only perform video image fetch/drawing if playback is active
-	    % and the movie actually has a video track (imgw and imgh > 0):
+            % Only perform video image fetch/drawing if playback is active
+            % and the movie actually has a video track (imgw and imgh > 0):
             if ((abs(rate)>0) && (imgw>0) && (imgh>0))
                 % Return next frame in movie, in sync with current playback
                 % time and sound.
@@ -186,7 +186,7 @@ try
                 if (keyCode(shift))
                     rate=rate+0.1;
                 else
-                    while KbCheck; WaitSecs(0.01); end;
+                    KbReleaseWait;
                     rate=round(rate+1);
                 end;
                 Screen('PlayMovie', movie, rate, 1, 1.0);
@@ -208,7 +208,7 @@ try
         fprintf('Elapsed time %f seconds, for %i frames.\n', telapsed, i);
 
         Screen('Flip', win);
-        while KbCheck; end;
+        KbReleaseWait;
         
         % Done. Stop playback:
         Screen('PlayMovie', movie, 0);

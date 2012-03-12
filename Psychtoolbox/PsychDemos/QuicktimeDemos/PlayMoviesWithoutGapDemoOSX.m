@@ -26,7 +26,7 @@ function PlayMoviesWithoutGapDemoOSX(moviename)
 AssertOpenGL;
 
 if nargin < 1
-    moviename = '*.mov'
+    moviename = '*.mov' %#ok<NOPRT>
 end;
 
 % Switch KbName into unified mode: It will use the names of the OS-X
@@ -42,15 +42,11 @@ try
 
     % Open onscreen window:
     screen=max(Screen('Screens'));
-    [win, scr_rect] = Screen('OpenWindow', screen, background);
-
-    % Retrieve duration of a single video refresh interval:
-    ifi = Screen('GetFlipInterval', win);
+    win = Screen('OpenWindow', screen, background);
     
     % Initial display and sync to timestamp:
-    vbl=Screen('Flip',win);
-    iteration=0;    
-    abortit=0
+    Screen('Flip',win);
+    abortit = 0;
         
     % Return full list of movie files from directory+pattern:
     moviefiles=dir(moviename);
@@ -110,7 +106,7 @@ try
                     Screen('DrawTexture', win, tex);
 
                     % Update display:
-                    vbl=Screen('Flip', win);
+                    Screen('Flip', win);
 
                     % Release texture:
                     Screen('Close', tex);
@@ -120,7 +116,7 @@ try
             % Check for abortion by user:
             abortit=0;
             [keyIsDown,secs,keyCode]=KbCheck;
-            if (keyIsDown==1 & keyCode(esc))
+            if (keyIsDown==1 && keyCode(esc))
                 % Set the abort-demo flag.
                 abortit=2;
                 break;
@@ -128,7 +124,7 @@ try
 
             % We start background loading of the next movie 0.5 seconds
             % after start of playback of the current movie:
-            if prefetched==0 & pts > 0.5
+            if prefetched==0 && pts > 0.5
                 % Initiate background async load operation:
                 % We simply set the async flag to 1 and don't query any
                 % return values:
@@ -141,7 +137,7 @@ try
             % movie, then we try to finish the async load operation and
             % start playback of the new movie in order to give processing a
             % headstart:
-            if prefetched==1 & movieduration - pts < 0.5
+            if prefetched==1 && movieduration - pts < 0.5
                 % Less than 0.5 seconds until end of current movie. Try to
                 % start playback for next movie:
                 
@@ -159,8 +155,8 @@ try
             end;
         end;
     
-        telapsed = GetSecs - t1
-        finalcount=i
+        telapsed = GetSecs - t1 %#ok<NOPRT,NASGU>
+        finalcount=i %#ok<NOPRT,NASGU>
         
         % Done with old movie. Stop its playback:
         Screen('PlayMovie', movie, 0);
@@ -184,17 +180,16 @@ try
         % A prefetch operation for a movie is still in progress. We need to
         % finalize this cleanly by waiting for the movie to open and then
         % closing it.
-        [newmovie newmovieduration newfps newimgw newimgh] = Screen('OpenMovie', win, moviename);
+        newmovie = Screen('OpenMovie', win, moviename);
         prefetched = 2;
-    end;
+    end
     
     if prefetched == 2
         % Playback of a new prefetched movie has been started. We need to stop and
         % close it:
         Screen('PlayMovie', newmovie, 0);
         Screen('CloseMovie', newmovie);
-        prefetched = 0;
-    end;
+    end
     
     % Close screens.
     Screen('Close', win);
