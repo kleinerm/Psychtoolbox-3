@@ -56,6 +56,7 @@ typedef struct {
     int			frameAvail;
     int                 preRollAvail;
     double		rate;
+    int                 startPending;
     int			loopflag;
     double		movieduration;
     int			nrframes;
@@ -763,6 +764,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     movieRecordBANK[slotid].loopflag = 0;
     movieRecordBANK[slotid].frameAvail = 0;
     movieRecordBANK[slotid].imageBuffer = NULL;
+    movieRecordBANK[slotid].startPending = 0;
 
     *moviehandle = slotid;
 
@@ -932,6 +934,14 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     theMovie = movieRecordBANK[moviehandle].theMovie;
     if (theMovie == NULL) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. No movie associated with this handle.");
+    }
+
+    // Deferred start of movie playback requested? This so if movie is supposed to be
+    // actively playing (rate != 0) and the startPending flag marks a pending deferred start:
+    if ((movieRecordBANK[moviehandle].rate != 0) && movieRecordBANK[moviehandle].startPending) {
+        // Deferred start: Reset flag, start pipeline with a max timeout of 10 seconds:
+        movieRecordBANK[moviehandle].startPending = 0;
+        PsychMoviePipelineSetState(theMovie, GST_STATE_PLAYING, 10.0);
     }
 
     // Allow context task to do its internal bookkeeping and cleanup work:
@@ -1271,7 +1281,8 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
 	g_object_set(G_OBJECT(theMovie), "volume", soundvolume, NULL);
 
 	// Set playback rate:
-	gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, GST_SEEK_TYPE_NONE, 0, GST_SEEK_TYPE_NONE, 0);
+	gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
+
         movieRecordBANK[moviehandle].loopflag = loop;
         movieRecordBANK[moviehandle].last_pts = -1.0;
         movieRecordBANK[moviehandle].nr_droppedframes = 0;
@@ -1279,13 +1290,25 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
 	movieRecordBANK[moviehandle].frameAvail = 0;
 	movieRecordBANK[moviehandle].preRollAvail = 0;
 
-	// Start it:
-	PsychMoviePipelineSetState(theMovie, GST_STATE_PLAYING, 10.0);
-	PsychGSProcessMovieContext(movieRecordBANK[moviehandle].MovieContext, FALSE);
+	// Is this a movie with actual videotracks?
+	if (movieRecordBANK[moviehandle].nrVideoTracks > 0) {
+	    // Yes: We only schedule deferred start of playback at first Screen('GetMovieImage')
+	    // frame fetch. This to avoid dropped frames due to random delays between
+	    // call to Screen('PlayMovie') and Screen('GetMovieImage'):
+	    movieRecordBANK[moviehandle].startPending = 1;
+	}
+	else {
+	    // Only soundtrack - Start it immediately:
+	    movieRecordBANK[moviehandle].startPending = 0;
+	    PsychMoviePipelineSetState(theMovie, GST_STATE_PLAYING, 10.0);
+	    PsychGSProcessMovieContext(movieRecordBANK[moviehandle].MovieContext, FALSE);
+	}
     }
     else {
 	// Stop playback of movie:
 	movieRecordBANK[moviehandle].rate = 0;
+	movieRecordBANK[moviehandle].startPending = 0;
+
 	PsychMoviePipelineSetState(theMovie, GST_STATE_PAUSED, 10.0);
 	PsychGSProcessMovieContext(movieRecordBANK[moviehandle].MovieContext, FALSE);
 
