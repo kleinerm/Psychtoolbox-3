@@ -57,6 +57,7 @@ typedef struct {
     int                 preRollAvail;
     double		rate;
     int                 startPending;
+    int                 endOfFetch;
     int			loopflag;
     double		movieduration;
     int			nrframes;
@@ -790,6 +791,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     movieRecordBANK[slotid].frameAvail = 0;
     movieRecordBANK[slotid].imageBuffer = NULL;
     movieRecordBANK[slotid].startPending = 0;
+    movieRecordBANK[slotid].endOfFetch = 0;
 
     *moviehandle = slotid;
 
@@ -938,6 +940,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     GstEvent                    *event;
     static double               tStart = 0;
     double                      tNow;
+    double                      preT, postT;
 
     if (!PsychIsOnscreenWindow(win)) {
         PsychErrorExitMsg(PsychError_user, "Need onscreen window ptr!!!");
@@ -1005,8 +1008,8 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     if (checkForImage) {
 	// Take reference timestamps of fetch start:
 	if (tStart == 0) PsychGetAdjustedPrecisionTimerSeconds(&tStart);
-
 	PsychLockMutex(&movieRecordBANK[moviehandle].mutex);
+
 	if ((((0 != rate) && movieRecordBANK[moviehandle].frameAvail) || ((0 == rate) && movieRecordBANK[moviehandle].preRollAvail)) &&
 	    !gst_app_sink_is_eos(GST_APP_SINK(movieRecordBANK[moviehandle].videosink))) {
 		// New frame available. Unlock and report success:
@@ -1024,9 +1027,11 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 	}
 
 	// None available. Any chance there will be one in the future?
-        if (gst_app_sink_is_eos(GST_APP_SINK(movieRecordBANK[moviehandle].videosink)) && movieRecordBANK[moviehandle].loopflag == 0) {
+        if (((rate != 0) && gst_app_sink_is_eos(GST_APP_SINK(movieRecordBANK[moviehandle].videosink)) && (movieRecordBANK[moviehandle].loopflag == 0)) ||
+            ((rate == 0) && (movieRecordBANK[moviehandle].endOfFetch))) {
 		// No new frame available and there won't be any in the future, because this is a non-looping
 		// movie that has reached its end.
+		movieRecordBANK[moviehandle].endOfFetch = 0;
 		PsychUnlockMutex(&movieRecordBANK[moviehandle].mutex);
 		return(-1);
         }
@@ -1225,13 +1230,21 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     
     // Manually advance movie time, if in fetch mode:
     if (0 == rate) {
-        // We are in manual fetch mode: Need to manually advance movie to next
-        // media sample:
+	// We are in manual fetch mode: Need to manually advance movie to next
+	// media sample:
+	movieRecordBANK[moviehandle].endOfFetch = 0;
+	preT = PsychGSGetMovieTimeIndex(moviehandle);
 	event = gst_event_new_step(GST_FORMAT_BUFFERS, 1, 1.0, TRUE, FALSE);
-	gst_element_send_event(theMovie, event);
+	if (!gst_element_send_event(theMovie, event)) printf("PTB-DEBUG: In single-step seek I - Failed.\n");
 
 	// Block until seek completed, failed, or timeout of 30 seconds reached:
-        gst_element_get_state(theMovie, NULL, NULL, (GstClockTime) (30 * 1e9));
+	if (GST_STATE_CHANGE_FAILURE == gst_element_get_state(theMovie, NULL, NULL, (GstClockTime) (30 * 1e9))) printf("PTB-DEBUG: In single-step seek I - Failed.\n");
+	postT = PsychGSGetMovieTimeIndex(moviehandle);
+
+	if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-DEBUG: Movie fetch advance: preT %f   postT %f  DELTA %lf %s\n", preT, postT, postT - preT, (postT - preT < 0.001) ? "SAME" : "DIFF");
+
+	// Signal end-of-fetch if time no longer progresses signficiantly:
+	if (postT - preT < 0.001) movieRecordBANK[moviehandle].endOfFetch = 1;
     }
 
     PsychGetAdjustedPrecisionTimerSeconds(&tNow);
@@ -1344,6 +1357,8 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
 	// Stop playback of movie:
 	movieRecordBANK[moviehandle].rate = 0;
 	movieRecordBANK[moviehandle].startPending = 0;
+	movieRecordBANK[moviehandle].loopflag = 0;
+	movieRecordBANK[moviehandle].endOfFetch = 0;
 
 	PsychMoviePipelineSetState(theMovie, GST_STATE_PAUSED, 10.0);
 	PsychGSProcessMovieContext(movieRecordBANK[moviehandle].MovieContext, FALSE);
@@ -1493,6 +1508,9 @@ double PsychGSSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool in
     }
 
     if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Seeked to position %f secs in movie %i.\n", PsychGSGetMovieTimeIndex(moviehandle), moviehandle);
+
+    // Reset fetch flag:
+    movieRecordBANK[moviehandle].endOfFetch = 0;
 
     // Return old time value of previous position:
     return(oldtime);
