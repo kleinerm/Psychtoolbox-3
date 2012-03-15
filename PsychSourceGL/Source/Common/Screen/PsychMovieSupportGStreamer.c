@@ -1276,6 +1276,7 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
 {
     int			dropped = 0;
     GstElement		*theMovie = NULL;
+    double timeindex;
     
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
@@ -1294,8 +1295,11 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
 	g_object_set(G_OBJECT(theMovie), "mute", (soundvolume <= 0) ? TRUE : FALSE, NULL);
 	g_object_set(G_OBJECT(theMovie), "volume", soundvolume, NULL);
 
-	// Set playback rate:
-	gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
+	// Set playback rate: An explicit seek to the position we are already (supposed to be)
+	// is needed to avoid jumps in movies with bad encoding or keyframe placement:
+	timeindex = PsychGSGetMovieTimeIndex(moviehandle);
+	gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, GST_SEEK_TYPE_SET,
+			 (gint64) (timeindex * (double) 1e9), GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
 
         movieRecordBANK[moviehandle].loopflag = loop;
         movieRecordBANK[moviehandle].last_pts = -1.0;
