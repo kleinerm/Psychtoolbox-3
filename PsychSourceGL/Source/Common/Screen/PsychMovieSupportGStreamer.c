@@ -457,6 +457,45 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // run in our own Posix-Thread, not in the Matlab-Thread. Printing via Matlabs
     // printing facilities would likely cause a terrible crash.
     printErrors = (*moviehandle == -1000) ? FALSE : TRUE;
+
+    if ((*moviehandle >= 0) && (preloadSecs == -2)) {
+	// Queueing a new moviename of a movie to play next: This only works
+	// for already opened/created movies whose pipeline is at least in
+	// READY state, better PAUSED or PLAYING. Validate preconditions:
+
+	// Valid handle for existing movie?
+	if (*moviehandle < 0 || *moviehandle >= PSYCH_MAX_MOVIES) {
+	    PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
+	}
+        
+	// Fetch references to objects we need:
+	theMovie = movieRecordBANK[*moviehandle].theMovie;    
+	if (theMovie == NULL) {
+	    PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. No movie associated with this handle !!!");
+	}
+
+	// Ok, this means we have a handle to an existing, fully operational
+	// playback pipeline. Convert moviename to a valid URL and queue it:
+
+	// Create name-string for moviename: If an URI qualifier is at the beginning,
+	// we're fine and just pass the URI as-is. Otherwise we add the file:// URI prefix.
+	if (strstr(moviename, "://") || ((strstr(moviename, "v4l") == moviename) && strstr(moviename, "//"))) {
+	    snprintf(movieLocation, sizeof(movieLocation)-1, "%s", moviename);
+	} else {
+	    snprintf(movieLocation, sizeof(movieLocation)-1, "file:///%s", moviename);
+	}
+
+	strncpy(movieRecordBANK[*moviehandle].movieLocation, movieLocation, FILENAME_MAX);
+	strncpy(movieRecordBANK[*moviehandle].movieName, moviename, FILENAME_MAX);
+
+	// Assign name of movie to play to pipeline. If the pipeline is not in playing
+	// state, this will switch to the specified movieLocation immediately. If it
+	// is playing, it will switch to it at the end of the current playback iteration:
+	g_object_set(G_OBJECT(theMovie), "uri", movieLocation, NULL);
+
+	// Ready.
+	return;
+    }
     
     // Set movie handle to "failed" initially:
     *moviehandle = -1;
