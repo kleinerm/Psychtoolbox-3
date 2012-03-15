@@ -108,6 +108,7 @@ static int    numKernelDrivers = 0;
 // Offset of crtc blocks of evergreen gpu's for each of the six possible crtc's:
 unsigned int crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET, EVERGREEN_CRTC1_REGISTER_OFFSET, EVERGREEN_CRTC2_REGISTER_OFFSET, EVERGREEN_CRTC3_REGISTER_OFFSET, EVERGREEN_CRTC4_REGISTER_OFFSET, EVERGREEN_CRTC5_REGISTER_OFFSET };
 
+/* Mappings up to date for year 2011 (last update commit 14-Dec-2011). Will need updates for anything in 2012 */
 /* Is a given ATI/AMD GPU a DCE5 type ASIC, i.e., with the new display engine? */
 static psych_bool isDCE5(int screenId)
 {
@@ -117,7 +118,30 @@ static psych_bool isDCE5(int screenId)
 	// Barts, Turks, Caicos, Cayman, Antilles in 0x67xx range:
 	if ((fPCIDeviceId & 0xFF00) == 0x6700) isDCE5 = true;
 
+	// More Turks ids:
+	if ((fPCIDeviceId & 0xFFF0) == 0x6840) isDCE5 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x6850) isDCE5 = true;
+
 	return(isDCE5);
+}
+
+/* Is a given ATI/AMD GPU a DCE-4.1 type ASIC, i.e., with the new display engine? */
+static psych_bool isDCE41(int screenId)
+{
+	psych_bool isDCE41 = false;
+
+	// Everything after PALM which is an IGP is DCE-4.1
+	// Currently these are Palm, Sumo and Sumo2.
+	// DCE-4.1 is a real subset of DCE-4, with all its
+	// functionality, except it only has 2 crtcs instead of 6.
+
+	// Palm in 0x98xx range:
+	if ((fPCIDeviceId & 0xFF00) == 0x9800) isDCE41 = true;
+
+	// Sumo/Sumo2 in 0x964x range:
+	if ((fPCIDeviceId & 0xFFF0) == 0x9640) isDCE41 = true;
+
+	return(isDCE41);
 }
 
 /* Is a given ATI/AMD GPU a DCE4 type ASIC, i.e., with the new display engine? */
@@ -129,6 +153,7 @@ static psych_bool isDCE4(int screenId)
 	// in radeon_family.h which chips are CEDAR or later, and the mapping to
 	// these chip codes is done by matching against pci device id's in a
 	// mapping table inside linux/include/drm/drm_pciids.h
+	// Mapping of chip codes to DCE-generations is in drm/radeon/radeon.h
 	// Maintaining a copy of that table is impractical for PTB, so we simply
 	// check which range of PCI device id's is covered by the DCE-4 chips and
 	// code up matching rules here. This should do for now...
@@ -136,8 +161,8 @@ static psych_bool isDCE4(int screenId)
 	// Caiman, Cedar, Redwood, Juniper, Cypress, Hemlock in 0x6xxx range:
 	if ((fPCIDeviceId & 0xF000) == 0x6000) isDCE4 = true;
 	
-	// Palm in 0x98xx range:
-	if ((fPCIDeviceId & 0xFF00) == 0x9800) isDCE4 = true;
+	// All DCE-4.1 engines are also DCE-4, except for lower crtc count:
+	if (isDCE41(screenId)) isDCE4 = true;
 
 	return(isDCE4);
 }
@@ -401,8 +426,8 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			if (isDCE4(screenId) || isDCE5(screenId)) {
 				gfx_lowlimit = 0x6df0;
                 
-				// Also, DCE-4 supports up to six display heads:
-				fNumDisplayHeads = 6;
+				// Also, DCE-4 and DCE-5, but not DCE-41 (which still has only 2), supports up to six display heads:
+				if (!isDCE41(screenId)) fNumDisplayHeads = 6;
 			}
 			
 			if (PsychPrefStateGet_Verbosity() > 2) {
@@ -2420,9 +2445,15 @@ static PsychError PsychOSSynchronizeDisplayScreensDCE4(int *numScreens, int* scr
 		// Detect enabled heads:
 		old_crtc_master_enable = 0;
 		for (iter = 0; iter < kPsychMaxPossibleCrtcs; iter++) {
-            // Map 'iter'th head for this screenId to crtc index 'i'. Iterate over all crtc's for screen:
-            if ((i = PsychScreenToCrtcId(screenId, iter)) < 0) break;
-            
+			// Map 'iter'th head for this screenId to crtc index 'i'. Iterate over all crtc's for screen:
+			if ((i = PsychScreenToCrtcId(screenId, iter)) < 0) break;
+
+			// Sanity check crtc id i:
+			if (i > fNumDisplayHeads - 1) {
+				printf("PTB-ERROR: PsychOSSynchronizeDisplayScreens(): Invalid headId %i provided! Must be between 0 and %i. Aborted.\n", i, (fNumDisplayHeads - 1));
+				return(PsychError_user);
+			}
+
 			// Bit 16 "CRTC_CURRENT_MASTER_EN_STATE" allows read-only polling
 			// of current activation state of crtc:
 			if (ReadRegister(EVERGREEN_CRTC_CONTROL + crtcoff[i]) & (0x1 << 16)) old_crtc_master_enable |= (0x1 << i);
@@ -2430,8 +2461,8 @@ static PsychError PsychOSSynchronizeDisplayScreensDCE4(int *numScreens, int* scr
 
 		// Shut down heads, one after each other, wait for each one to settle at its defined resting position:
 		for (iter = 0; iter < kPsychMaxPossibleCrtcs; iter++) {
-            // Map 'iter'th head for this screenId to crtc index 'i'. Iterate over all crtc's for screen:
-            if ((i = PsychScreenToCrtcId(screenId, iter)) < 0) break;
+			// Map 'iter'th head for this screenId to crtc index 'i'. Iterate over all crtc's for screen:
+			if ((i = PsychScreenToCrtcId(screenId, iter)) < 0) break;
 
 			if (PsychPrefStateGet_Verbosity() > 3) printf("Head %ld ...  ", i);
 			if (old_crtc_master_enable & (0x1 << i)) {		
@@ -2462,9 +2493,9 @@ static PsychError PsychOSSynchronizeDisplayScreensDCE4(int *numScreens, int* scr
 		// Reenable all now disabled, but previously enabled display heads.
 		// This must be a tight loop, as every microsecond counts for a good sync...
 		for (iter = 0; iter < kPsychMaxPossibleCrtcs; iter++) {
-            // Map 'iter'th head for this screenId to crtc index 'i'. Iterate over all crtc's for screen:
-            if ((i = PsychScreenToCrtcId(screenId, iter)) < 0) break;
-        
+			// Map 'iter'th head for this screenId to crtc index 'i'. Iterate over all crtc's for screen:
+			if ((i = PsychScreenToCrtcId(screenId, iter)) < 0) break;
+
 			if (old_crtc_master_enable & (0x1 << i)) {		
 				// Restart this CRTC by setting its master enable bit (bit 0):
 				WriteRegister(EVERGREEN_CRTC_CONTROL + crtcoff[i], ReadRegister(EVERGREEN_CRTC_CONTROL + crtcoff[i]) | (0x1 << 0));
@@ -2693,8 +2724,8 @@ int PsychOSKDGetBeamposition(int screenId)
 		if (fDeviceType == kPsychRadeon) {
 			if (isDCE4(screenId) || isDCE5(screenId)) {
 				// DCE-4 display engine (CEDAR and later afaik): Up to six crtc's.
-                if (headId > DCE4_MAXHEADID) {
-                    printf("PTB-ERROR: PsychOSKDGetBeamposition: Invalid headId %i provided! Must be between 0-5!\n", headId);
+                if (headId > (fNumDisplayHeads - 1)) {
+                    printf("PTB-ERROR: PsychOSKDGetBeamposition: Invalid headId %i provided! Must be between 0 and %i. Aborted.\n", headId, (fNumDisplayHeads - 1));
                     return(beampos);
 				}
                 
@@ -2807,9 +2838,9 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
             if (isDCE4(screenId) || isDCE5(screenId)) {
                 // DCE-4 display engine (CEDAR and later afaik): Up to six crtc's. Map to proper
                 // register offset for this headId:
-                if (headId > DCE4_MAXHEADID) {
+                if (headId > (fNumDisplayHeads - 1)) {
                     // Invalid head - bail:
-                    if (PsychPrefStateGet_Verbosity() > 0) printf("SetDitherMode: ERROR! Invalid headId %d provided. Must be between 0 and 5. Aborted.\n", headId);
+                    if (PsychPrefStateGet_Verbosity() > 0) printf("SetDitherMode: ERROR! Invalid headId %d provided. Must be between 0 and %i. Aborted.\n", headId, (fNumDisplayHeads - 1));
                     continue;
                 }
                 
@@ -2892,9 +2923,9 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned in
 
         if (isDCE4(screenId) || isDCE5(screenId)) {
             // DCE-4.0 and later: Up to (so far) six display heads:
-            if (headId > DCE4_MAXHEADID) {
+            if (headId > (fNumDisplayHeads - 1)) {
                 // Invalid head - bail:
-                if (PsychPrefStateGet_Verbosity() > 2) printf("PsychOSKDGetLUTState: ERROR! Invalid headId %d provided. Must be between 0 and 5. Aborted.\n", headId);
+                if (PsychPrefStateGet_Verbosity() > 2) printf("PsychOSKDGetLUTState: ERROR! Invalid headId %d provided. Must be between 0 and %i. Aborted.\n", headId, (fNumDisplayHeads - 1));
                 return(0xffffffff);
             }
 
@@ -2993,9 +3024,9 @@ unsigned int PsychOSKDLoadIdentityLUT(int screenId, unsigned int headId)
 
         if (isDCE4(screenId) || isDCE5(screenId)) {
             // DCE-4.0 and later: Up to (so far) six display heads:
-            if (headId > DCE4_MAXHEADID) {
+            if (headId > (fNumDisplayHeads - 1)) {
                 // Invalid head - bail:
-                if (PsychPrefStateGet_Verbosity() > 3) printf("PsychOSKDLoadIdentityLUT: ERROR! Invalid headId %d provided. Must be between 0 and 5. Aborted.\n", headId);
+                if (PsychPrefStateGet_Verbosity() > 3) printf("PsychOSKDLoadIdentityLUT: ERROR! Invalid headId %d provided. Must be between 0 and %i. Aborted.\n", headId, (fNumDisplayHeads - 1));
                 return(0);
             }
 
