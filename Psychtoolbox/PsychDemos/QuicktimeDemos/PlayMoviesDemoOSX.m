@@ -7,6 +7,11 @@ function PlayMoviesDemoOSX(moviename, backgroundMaskOut, tolerance)
 % directory whose names match the provided pattern, e.g., the '*.mpg'
 % pattern would play all MPEG files in the current directory.
 %
+% If you don't specify a moviename, the demo will ask you if it should play
+% our standard DualDiscs.mov demo movie, or rather play through a set of
+% videos in a playlist which are streamed from the internet. These 'c'ool
+% videos may provide you with useful information for your daily work.
+%
 % This demo uses automatic asynchronous playback for synchronized playback
 % of video and sound. Each movie plays until end, then rewinds and plays
 % again from the start. Pressing the Cursor-Up/Down key pauses/unpauses the
@@ -23,11 +28,15 @@ function PlayMoviesDemoOSX(moviename, backgroundMaskOut, tolerance)
 % distance in RGB color space is less than 10 units to the backgroundMaskOut
 % color. Background color masking requires a graphics card with fragment
 % shader support and will fail otherwise.
+%
 
 % History:
 % 10/30/05  mk  Wrote it.
 % 07/17/11  mk  Add support for background pixel color removal via shaders.
 %               Code cleanup, dead code removal.
+% 04/14/12  mk  Code cleanup, refinements for network video streams.
+%               Add useful videos to playlist which are less pathetic than
+%               the fairy-tales of the iPhone company.
 
 theanswer = [];
 
@@ -76,8 +85,14 @@ try
     
     % Initial display and sync to timestamp:
     Screen('Flip',win);
-    iteration=0;    
-    abortit=0;
+    iteration = 0;    
+    abortit = 0;
+
+    % Use blocking wait for new frames by default:
+    blocking = 1;
+
+    % Default preload setting:
+    preloadsecs = [];
 
     if isempty(strfind(moviename, 'http'))
         % Return full list of movie files from directory+pattern:
@@ -98,13 +113,38 @@ try
     end
 
     if strcmpi(theanswer, 'c')
-        % Cool stuff,downloaded from the web ;-)
-        moviefiles(1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_group_20080512_480x272.mov';
-        moviefiles(2).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_sadsong_extended_20080519_480x272.mov';
-        moviefiles(3).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_breakthrough_20080401_480x272.mov';
-        moviefiles(4).name = 'http://movies.apple.com/movies/us/apple/getamac/apple-getamac-fat_480x376.mov';
-        moviefiles(5).name = 'http://movies.apple.com/movies/us/apple/getamac_ads4/prlady_480x272.mov';
+        % Cool stuff, streaming from the web ;-)
+
+        % On non-OS/X we add a few more movies to the playlist, before the pathetic Apple
+        % commercials. Can't use them on OS/X yet, as Apple's QT engine does not handle them
+        % with the default codec set:
+        if ~IsOSX
+            % Promotional videos for the best OS for cognitive science and technical/educational
+            % videos some users may find of practical use:
+
+            % ELC 2012 talk: Gstreamer-1.0 No-longer-compromise-flexibility-for-performance:
+            moviefiles(end+1).name = 'http://d17mmld7179ppq.cloudfront.net/gstreamer-10-no-longer-compromise-flexibility-for-performance_52ca47/hd_ready.webm';
+
+            % FOSDEM 2012 talk about Linux's next generation graphics display server "Wayland":
+            moviefiles(end+1).name = 'http://video.fosdem.org/2012/maintracks/k.1.105/Wayland.webm';
+        end
+
+        moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_group_20080512_480x272.mov';
+        moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_sadsong_extended_20080519_480x272.mov';
+        moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_breakthrough_20080401_480x272.mov';
+        moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple-getamac-fat_480x376.mov';
+        moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac_ads4/prlady_480x272.mov';
+
+	% Count all movies in our playlist:
         moviecount = size(moviefiles,2);
+
+        % Use polling to wait for new frames when playing movies from the
+        % internet. This to make sure we don't time out too early or block
+        % for too long if the network connection is slow / high-latency / bad.
+        blocking = 0;
+
+        % For network playback we use a higher than default caching time:
+        preloadsecs = 10;
     end
 
     % Playbackrate defaults to 1:
@@ -117,7 +157,7 @@ try
         moviename=moviefiles(mod(iteration, moviecount)+1).name;
         
         % Open movie file and retrieve basic info about movie:
-        [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename);
+        [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, [], preloadsecs);
         fprintf('Movie: %s  : %f seconds duration, %f fps, w x h = %i x %i...\n', moviename, movieduration, fps, imgw, imgh);
         
         i=0;
@@ -131,21 +171,45 @@ try
         t1 = GetSecs;
         
         % Infinite playback loop: Fetch video frames and display them...
-        while(1)
-            i=i+1;
+        while 1
+            % Check for abortion:
+            abortit=0;
+            [keyIsDown,secs,keyCode]=KbCheck;
+            if (keyIsDown==1 && keyCode(esc))
+                % Set the abort-demo flag.
+                abortit=2;
+                break;
+            end;
+
+            % Check for skip to next movie:
+            if (keyIsDown==1 && keyCode(space))
+                % Exit while-loop: This will load the next movie...
+                break;
+            end;
+
             % Only perform video image fetch/drawing if playback is active
             % and the movie actually has a video track (imgw and imgh > 0):
             if ((abs(rate)>0) && (imgw>0) && (imgh>0))
                 % Return next frame in movie, in sync with current playback
                 % time and sound.
-                % tex either the texture handle or zero if no new frame is
-                % ready yet. pts = Presentation timestamp in seconds.
-                tex = Screen('GetMovieImage', win, movie, 1, [], [], 0);
+                % tex is either the positive texture handle or zero if no
+                % new frame is ready yet in non-blocking mode (blocking == 0).
+                % It is -1 if something went wrong and playback needs to be stopped:
+                tex = Screen('GetMovieImage', win, movie, blocking);
 
                 % Valid texture returned?
-                if tex<=0
+                if tex < 0
+                    % No, and there won't be any in the future, due to some
+                    % error. Abort playback loop:
                     break;
-                end;
+                end
+
+                if tex == 0
+                    % No new frame in polling wait (blocking == 0). Just sleep
+                    % a bit and then retry.
+                    WaitSecs('YieldSecs', 0.005);
+                    continue;
+                end
 
                 % Draw the new texture immediately to screen:
                 Screen('DrawTexture', win, tex, [], [], [], [], [], [], shader);
@@ -155,22 +219,13 @@ try
 
                 % Release texture:
                 Screen('Close', tex);
+
+                % Framecounter:
+                i=i+1;
             end;
-            
-            % Check for abortion:
-            abortit=0;
-            [keyIsDown,secs,keyCode]=KbCheck;
-            if (keyIsDown==1 && keyCode(esc))
-                % Set the abort-demo flag.
-                abortit=2;
-                break;
-            end;
-            
-            if (keyIsDown==1 && keyCode(space))
-                % Exit while-loop: This will load the next movie...
-                break;
-            end;
-            
+
+            % Further keyboard checks...
+
             if (keyIsDown==1 && keyCode(right))
                 % Advance movietime by one second:
                 Screen('SetMovieTimeIndex', movie, Screen('GetMovieTimeIndex', movie) + 1);
