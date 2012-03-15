@@ -184,14 +184,25 @@ static psych_bool PsychMoviePipelineSetState(GstElement* theMovie, GstState stat
 }
 
 /* Receive messages from the playback pipeline message bus and handle them: */
-static gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr)
+gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr)
 {
   PsychMovieRecordType* movie = (PsychMovieRecordType*) dataptr;
 
   switch (GST_MESSAGE_TYPE (msg)) {
-    case GST_MESSAGE_EOS:
-	//printf("PTB-DEBUG: Message EOS received.\n");
-    break;
+    case GST_MESSAGE_EOS: {
+      // Rewind at end of movie if looped playback enabled:
+      if ((movie->loopflag & 0x1) && (movie->rate != 0)) {
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Message EOS in active looped playback received: Rewinding...\n");
+
+        // Seek:
+        gst_element_seek(movie->theMovie, movie->rate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
+
+        // Block until seek completed, failed, or timeout of 10 seconds reached:
+        gst_element_get_state(movie->theMovie, NULL, NULL, (GstClockTime) (10 * 1e9));
+      }
+
+      break;
+    }
 
     case GST_MESSAGE_WARNING: {
       gchar  *debug;
@@ -291,11 +302,10 @@ static void PsychEOSCallback(GstAppSink *sink, gpointer user_data)
 {
 	PsychMovieRecordType* movie = (PsychMovieRecordType*) user_data;
 
-	PsychLockMutex(&movie->mutex);
+	//PsychLockMutex(&movie->mutex);
 	//printf("PTB-DEBUG: Videosink reached EOS.\n");
-	PsychUnlockMutex(&movie->mutex);
-	PsychSignalCondition(&movie->condition);
-
+	//PsychUnlockMutex(&movie->mutex);
+	//PsychSignalCondition(&movie->condition);
 	return;
 }
 
@@ -337,10 +347,10 @@ static GstFlowReturn PsychNewBufferListCallback(GstAppSink *sink, gpointer user_
 {
 	PsychMovieRecordType* movie = (PsychMovieRecordType*) user_data;
 
-	PsychLockMutex(&movie->mutex);
+	//PsychLockMutex(&movie->mutex);
 	//printf("PTB-DEBUG: New Bufferlist received.\n");
-	PsychUnlockMutex(&movie->mutex);
-	PsychSignalCondition(&movie->condition);
+	//PsychUnlockMutex(&movie->mutex);
+	//PsychSignalCondition(&movie->condition);
 
 	return(GST_FLOW_OK);
 }
@@ -361,7 +371,7 @@ static void PsychDestroyNotifyCallback(gpointer user_data)
 static void PsychMovieAboutToFinishCB(GstElement *theMovie, gpointer user_data)
 {
 	PsychMovieRecordType* movie = (PsychMovieRecordType*) user_data;
-	if ((movie->loopflag > 0) && (movie->rate != 0)) {
+	if ((movie->loopflag & 0x2) && (movie->rate != 0)) {
 		g_object_set(G_OBJECT(theMovie), "uri", movie->movieLocation, NULL);
 		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: About-to-finish received: Rewinding...\n");
 	}
@@ -1068,6 +1078,9 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 		// One less frame available after our fetch:
 		movieRecordBANK[moviehandle].frameAvail--;
 
+		// We can unlock early, thanks to videosink's internal buffering: XXX FIXME: Perfectly race-free to do this before the pull?
+		PsychUnlockMutex(&movieRecordBANK[moviehandle].mutex);
+
 		// This will pull the oldest video buffer from the videosink. It would block if none were available,
 		// but that won't happen as we wouldn't reach this statement if none were available. It would return
 		// NULL if the stream would be EOS or the pipeline off, but that shouldn't ever happen:
@@ -1075,11 +1088,12 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 	} else {
 		// Passive fetch mode: Use prerolled buffers after seek:
 		// These are available even after eos...
+
+		// We can unlock early, thanks to videosink's internal buffering: XXX FIXME: Perfectly race-free to do this before the pull?
+		PsychUnlockMutex(&movieRecordBANK[moviehandle].mutex);
+
 		videoBuffer = gst_app_sink_pull_preroll(GST_APP_SINK(movieRecordBANK[moviehandle].videosink));
 	}
-
-	// We can unlock early, thanks to videosink's internal buffering:
-	PsychUnlockMutex(&movieRecordBANK[moviehandle].mutex);
 
 	if (videoBuffer) {
 		// Assign pointer to videoBuffer's data directly: Avoids one full data copy compared to oldstyle method.
