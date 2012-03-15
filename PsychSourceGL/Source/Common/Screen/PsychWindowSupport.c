@@ -2165,11 +2165,18 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 				// On Windows, we have to set flipperThread to +2 RT priority levels while
 				// throwing ourselves off RT priority scheduling. This is a brain-dead requirement
 				// of Vista et al's MMCSS scheduler which only allows one of our threads being
-				// scheduled like that :(
+				// scheduled like that :( -- Disable RT scheduling for ourselves (masterthread):
 				PsychSetThreadPriority(0x1, 0, 0);
+			#endif
+
+			#if PSYCH_SYSTEM != PSYCH_OSX
+				// Non-OSX: Same on Windows and Linux..
+				// Boost priority of flipperThread by 2 levels and switch it to RT scheduling,
+				// unless it is already RT-Scheduled. As the thread inherited our scheduling
+				// priority from PsychCreateThread(), we only need to +2 tweak it from there:
 				PsychSetThreadPriority(&(flipRequest->flipperThread), 10, 2);
 			#else
-				// Boost priority of flipperThread wrt. to us, ie., the PTB master thread
+				// OS/X: Boost priority of flipperThread wrt. to us, ie., the PTB master thread
 				// by at least 2 units:
 				
 				// Query our (masterthread) schedulingmode and priority:
@@ -2185,7 +2192,7 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 				// Set final priority as RT with 2 levels above our priority:
 				PsychSetThreadPriority(&(flipRequest->flipperThread), 10, sp.sched_priority + 2);
 			#endif
-			
+
 			//printf("ENTERING THREADCREATEFINISHED MUTEX\n"); fflush(NULL);
 			
 			// The thread is started with flipperState == 0, ie., not "initialized and ready", the lock is unlocked.
