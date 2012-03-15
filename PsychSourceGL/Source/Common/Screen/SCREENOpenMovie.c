@@ -109,8 +109,8 @@ PsychError SCREENOpenMovie(void)
         // Get the (optional) asyncFlag:
         PsychCopyInIntegerArg(3, FALSE, &asyncFlag);
 
-		PsychCopyInDoubleArg(4, FALSE, &preloadSecs);
-		if (preloadSecs < 0 && preloadSecs!= -1) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid (negative, but not equal -1) 'preloadSecs' argument!");
+        PsychCopyInDoubleArg(4, FALSE, &preloadSecs);
+        if (preloadSecs < 0 && preloadSecs!= -1) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid (negative, but not equal -1) 'preloadSecs' argument!");
 
         // Asynchronous Open operation in progress or requested?
         if ((asyncmovieinfo.asyncstate == 0) && (asyncFlag == 0)) {
@@ -127,18 +127,18 @@ PsychError SCREENOpenMovie(void)
                     // Fill all information needed for opening the movie into the info struct:
                     asyncmovieinfo.asyncstate = 1; // Mark state as "Operation in progress"
                     asyncmovieinfo.moviename = strdup(moviefile);
-					asyncmovieinfo.preloadSecs = preloadSecs;
+                    asyncmovieinfo.preloadSecs = preloadSecs;
                     if (windowRecord) {
-						memcpy(&asyncmovieinfo.windowRecord, windowRecord, sizeof(PsychWindowRecordType));
-					} else {
-						memcpy(&asyncmovieinfo.windowRecord, 0, sizeof(PsychWindowRecordType));
-					}
+                        memcpy(&asyncmovieinfo.windowRecord, windowRecord, sizeof(PsychWindowRecordType));
+                    } else {
+                        memcpy(&asyncmovieinfo.windowRecord, 0, sizeof(PsychWindowRecordType));
+                    }
 
                     asyncmovieinfo.moviehandle = -1;
 
-                    // Increase our scheduling priority to maximum FIFO priority: This way we should get
+                    // Increase our scheduling priority to basic FIFO priority: This way we should get
                     // more cpu time for our PTB main thread than the async. background prefetch-thread:
-                    if ((rc=PsychSetThreadPriority(NULL, 1, 0))!=0) {
+                    if ((rc=PsychSetThreadPriority(NULL, 2, 0))!=0) {
                         printf("PTB-WARNING: In OpenMovie(): Failed to raise priority of main thread [System error %i]. Expect movie timing problems.\n", rc);
                     }
 
@@ -162,12 +162,13 @@ PsychError SCREENOpenMovie(void)
                     // We need to join our terminated worker thread to release its ressources. If the worker-thread
                     // isn't done yet (fallthrough from case 1 for sync. wait), this join will block us until worker
                     // completes:
-					PsychDeleteThread(&asyncmovieinfo.pid);
+                    PsychDeleteThread(&asyncmovieinfo.pid);
 					
                     // Reset our priority to "normal" after async prefetch completion:
-                    if ((rc=PsychSetThreadPriority(NULL, 0, 0))!=0) {
-                        printf("PTB-WARNING: In OpenMovie(): Failed to lower priority of main thread [System error %i]. Expect movie timing problems.\n", rc);
-                    }
+                    // MK: Actually don't! This would undo potential previous Priority() calls by usercode behind its back!
+                    //if ((rc=PsychSetThreadPriority(NULL, 0, 0))!=0) {
+                    //    printf("PTB-WARNING: In OpenMovie(): Failed to lower priority of main thread [System error %i]. Expect movie timing problems.\n", rc);
+                    //}
 
                     asyncmovieinfo.asyncstate = 0; // Reset state to idle:
                     moviehandle = asyncmovieinfo.moviehandle;
