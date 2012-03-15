@@ -194,6 +194,7 @@ gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr)
       // We usually receive segment done message instead of eos if looped playback is active and
       // the end of the stream is approaching, so we fallthrough to message eos for rewinding...
       if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Message SEGMENT_DONE received.\n");
+
     case GST_MESSAGE_EOS: {
       // Rewind at end of movie if looped playback enabled:
       if ((GST_MESSAGE_TYPE (msg) == GST_MESSAGE_EOS) && (PsychPrefStateGet_Verbosity() > 5)) printf("PTB-DEBUG: Message EOS received.\n");
@@ -217,6 +218,15 @@ gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr)
         gst_element_get_state(movie->theMovie, NULL, NULL, (GstClockTime) (10 * 1e9));
       }
 
+      break;
+    }
+
+    case GST_MESSAGE_BUFFERING: {
+      // Pipeline is buffering data, e.g., during network streaming playback.
+      // Print some optional status info:
+      gint percent = 0;
+      gst_message_parse_buffering(msg, &percent);
+      if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Movie '%s', buffering video data: %i percent done ...\n", movie->movieName, (int) percent);
       break;
     }
 
@@ -558,6 +568,10 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 	g_object_set(G_OBJECT(theMovie), "uri", movieLocation, NULL);
 
 	// Would disable audio decoding - video only: g_object_set(G_OBJECT(theMovie), "flags", 1, NULL);
+
+	// Enable network buffering for network videos of at least 10 seconds, or preloadSecs seconds,
+	// whatever is bigger.
+	g_object_set(G_OBJECT(theMovie), "buffer-duration", (gint64) ((preloadSecs > 10) ? preloadSecs * 1e9 : 10 * 1e9), NULL);
 
 	// Connect callback to about-to-finish signal: Signal is emitted as soon as
 	// end of current playback iteration is approaching. The callback checks if
@@ -1006,9 +1020,19 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     // Deferred start of movie playback requested? This so if movie is supposed to be
     // actively playing (rate != 0) and the startPending flag marks a pending deferred start:
     if ((movieRecordBANK[moviehandle].rate != 0) && movieRecordBANK[moviehandle].startPending) {
-        // Deferred start: Reset flag, start pipeline with a max timeout of 10 seconds:
+        // Deferred start: Reset flag, start pipeline with a max timeout of 1 second:
         movieRecordBANK[moviehandle].startPending = 0;
-        PsychMoviePipelineSetState(theMovie, GST_STATE_PLAYING, 10.0);
+        PsychMoviePipelineSetState(theMovie, GST_STATE_PLAYING, 1);
+        // This point is reached after either the pipeline is fully started, or the
+        // timeout has elapsed. In the latter case, a GST_STATE_CHANGE_ASYNC message
+        // is printed and start of pipeline continues asynchronously. No big deal for
+        // us, as we'll simply block in the rest of the texture fetch (checkForImage) path
+        // until the first frame is ready and audio playback has started. The main purpose
+        // of setting a reasonable timeout above is to avoid cluttering the console with
+        // status messages (timeout big enough for common case) but allow user to interrupt
+        // ops that take too long (timeout small enough to avoid long user-perceived exec-hangs).
+        // 1 Second is used to cater to the common case of playing files from disc, but coping
+        // with multi-second delays for network streaming (buffering delays in preroll).
     }
 
     // Allow context task to do its internal bookkeeping and cleanup work:
