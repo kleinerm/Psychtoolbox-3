@@ -97,7 +97,7 @@ PsychError SCREENGetMovieImage(void)
     while (rc==0) {
         rc = PsychGetTextureFromMovie(windowRecord, moviehandle, TRUE, requestedTimeIndex, NULL, NULL);
 		PsychGetAdjustedPrecisionTimerSeconds(&tnow);
-        if (rc<0 || (tnow > deadline)) {
+        if (rc<0 || ((tnow > deadline) && (waitForImage != 0))) {
             // No image available and there won't be any in the future, because the movie has reached
             // its end and we are not in looped playback mode:
 	    if (tnow > deadline) printf("PTB-ERROR: In Screen('GetMovieImage') for movie %i: Timed out while waiting for new frame after 5 seconds!\n", moviehandle);
