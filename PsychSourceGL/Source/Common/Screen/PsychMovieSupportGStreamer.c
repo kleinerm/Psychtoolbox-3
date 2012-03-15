@@ -195,7 +195,12 @@ gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr)
         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Message EOS in active looped playback received: Rewinding...\n");
 
         // Seek:
-        gst_element_seek(movie->theMovie, movie->rate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
+        if (movie->rate > 0) {
+          gst_element_seek(movie->theMovie, movie->rate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
+        }
+        else {
+          gst_element_seek(movie->theMovie, movie->rate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE, GST_SEEK_TYPE_END, 0);
+        }
 
         // Block until seek completed, failed, or timeout of 10 seconds reached:
         gst_element_get_state(movie->theMovie, NULL, NULL, (GstClockTime) (10 * 1e9));
@@ -932,7 +937,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided.");
     }
     
-    if ((timeindex!=-1) && (timeindex < 0 || timeindex >= 10000.0)) {
+    if ((timeindex!=-1) && (timeindex < 0 || timeindex >= 100000.0)) {
         PsychErrorExitMsg(PsychError_user, "Invalid timeindex provided.");
     }
     
@@ -982,11 +987,6 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 			// Seek to target timeindex:
 			PsychGSSetMovieTimeIndex(moviehandle, timeindex, FALSE);
 		}
-		else {
-			// No. We just retrieve the next frame, given the current position.
-			// Nothing to do so far...
-		}
-
 		// Check for frame availability happens down there in the shared check code...
 	}
     }
@@ -1392,7 +1392,7 @@ double PsychGSGetMovieTimeIndex(int moviehandle)
 
     fmt = GST_FORMAT_TIME;
     if (!gst_element_query_position(theMovie, &fmt, &pos_nsecs)) {
-	printf("PTB-WARNING: Could not query position in movie %i in seconds. Returning zero.\n", moviehandle);
+	if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Could not query position in movie %i in seconds. Returning zero.\n", moviehandle);
 	pos_nsecs = 0;
     }
 
@@ -1407,7 +1407,7 @@ double PsychGSSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool in
 {
     GstElement		*theMovie;
     double		oldtime;
-    long		targetIndex;
+    gint64		targetIndex;
     GstEvent            *event;
     
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
@@ -1415,7 +1415,7 @@ double PsychGSSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool in
     }
     
     // Fetch references to objects we need:
-    theMovie = movieRecordBANK[moviehandle].theMovie;    
+    theMovie = movieRecordBANK[moviehandle].theMovie;
     if (theMovie == NULL) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. No movie associated with this handle !!!");
     }
@@ -1423,21 +1423,31 @@ double PsychGSSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool in
     // Retrieve current timeindex:
     oldtime = PsychGSGetMovieTimeIndex(moviehandle);
 
-    // TODO NOTE: We could use GST_SEEK_FLAG_SKIP to allow framedropping on fast forward/reverse playback...
+    // NOTE: We could use GST_SEEK_FLAG_SKIP to allow framedropping on fast forward/reverse playback...
 
     // Index based or target time based seeking?
     if (indexIsFrames) {
 	// Index based seeking:		
-	// TODO FIXME: This doesn't work (well) at all! Something's wrong here...
-	// Seek to given targetIndex:
-	targetIndex = (long) (timeindex + 0.5);
+	targetIndex = (gint64) (timeindex + 0.5);
 
-	// Simple seek, frame buffer (index) oriented, with pipeline flush and accurate seek,
-	// i.e., not locked to keyframes, but frame-accurate: GST_FORMAT_DEFAULT?
-	// gst_element_seek_simple(theMovie, GST_FORMAT_BUFFERS, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, targetIndex);
-	event = gst_event_new_seek(1.0, GST_FORMAT_BUFFERS, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE,
-				   GST_SEEK_TYPE_SET, targetIndex, GST_SEEK_TYPE_END, 0);
-	gst_element_send_event(theMovie, event);
+	// Simple seek, videobuffer (index) oriented, with pipeline flush and accurate seek,
+	// i.e., not locked to keyframes, but frame-accurate:
+	if (!gst_element_seek_simple(theMovie, GST_FORMAT_DEFAULT, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, targetIndex)) {
+		// Failed: This can happen on various movie formats as not all codecs and formats support frame-based seeks.
+		// Fallback to time-based seek by faking a target time for given targetIndex:
+		timeindex = (double) targetIndex / (double) movieRecordBANK[moviehandle].fps;
+
+		if (PsychPrefStateGet_Verbosity() > 1) {
+			printf("PTB-WARNING: Could not seek to frame index %i via frame-based seeking in movie %i.\n", (int) targetIndex, moviehandle);
+			printf("PTB-WARNING: Will do a time-based seek to approximately equivalent time %f seconds instead.\n", timeindex);
+			printf("PTB-WARNING: Not all movie formats support frame-based seeking. Please change your movie format for better precision.\n");
+		}
+
+		if (!gst_element_seek_simple(theMovie, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, (gint64) (timeindex * (double) 1e9)) &&
+		    (PsychPrefStateGet_Verbosity() > 1)) {
+			printf("PTB-WARNING: Time-based seek failed as well! Something is wrong with this movie!\n");
+		}
+	}
     }
     else {
 	// Time based seeking:
@@ -1445,11 +1455,21 @@ double PsychGSSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool in
 
 	// Simple seek, time-oriented, with pipeline flush and accurate seek,
 	// i.e., not locked to keyframes, but frame-accurate:
-	gst_element_seek_simple(theMovie, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, (gint64) (timeindex * (double) 1e9));
+	if (!gst_element_seek_simple(theMovie, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, (gint64) (timeindex * (double) 1e9)) &&
+	    (PsychPrefStateGet_Verbosity() > 1)) {
+		printf("PTB-WARNING: Time-based seek to %f seconds in movie %i failed. Something is wrong with this movie or the target time.\n", timeindex, moviehandle);
+	}
     }
 
     // Block until seek completed, failed or timeout of 30 seconds reached:
-    gst_element_get_state(theMovie, NULL, NULL, (GstClockTime) (30 * 1e9));
+    if (GST_STATE_CHANGE_FAILURE == gst_element_get_state(theMovie, NULL, NULL, (GstClockTime) (30 * 1e9)) &&
+        (PsychPrefStateGet_Verbosity() > 1)) {
+            printf("PTB-WARNING: SetTimeIndex on movie %i failed. Something is wrong with this movie or the target position. [Statechange-Failure in seek]\n", moviehandle);
+            printf("PTB-WARNING: Requested target position was %f %s. This could happen if the movie is not efficiently seekable and a timeout was hit.\n",
+                   timeindex, (indexIsFrames) ? "frames" : "seconds");
+    }
+
+    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Seeked to position %f secs in movie %i.\n", PsychGSGetMovieTimeIndex(moviehandle), moviehandle);
 
     // Return old time value of previous position:
     return(oldtime);
