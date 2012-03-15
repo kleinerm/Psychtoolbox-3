@@ -189,17 +189,27 @@ gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr)
   PsychMovieRecordType* movie = (PsychMovieRecordType*) dataptr;
 
   switch (GST_MESSAGE_TYPE (msg)) {
+    case GST_MESSAGE_SEGMENT_DONE:
+      // We usually receive segment done message instead of eos if looped playback is active and
+      // the end of the stream is approaching, so we fallthrough to message eos for rewinding...
+      if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Message SEGMENT_DONE received.\n");
     case GST_MESSAGE_EOS: {
       // Rewind at end of movie if looped playback enabled:
-      if ((movie->loopflag & 0x1) && (movie->rate != 0)) {
-        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Message EOS in active looped playback received: Rewinding...\n");
+      if ((GST_MESSAGE_TYPE (msg) == GST_MESSAGE_EOS) && (PsychPrefStateGet_Verbosity() > 5)) printf("PTB-DEBUG: Message EOS received.\n");
 
-        // Seek:
+      if ((movie->loopflag & 0x1) && (movie->rate != 0)) {
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: End of iteration in active looped playback reached: Rewinding...\n");
+
+        // Seek: We don't GST_SEEK_FLAG_FLUSH here, so the rewinding is smooth because we don't throw away buffers queued in the pipeline.
         if (movie->rate > 0) {
-          gst_element_seek(movie->theMovie, movie->rate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
+          if (!gst_element_seek(movie->theMovie, movie->rate, GST_FORMAT_TIME, GST_SEEK_FLAG_ACCURATE | GST_SEEK_FLAG_SEGMENT, GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE)) {
+            printf("PTB-DEBUG: Rewinding video in forward playback failed!\n");
+          }
         }
         else {
-          gst_element_seek(movie->theMovie, movie->rate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE, GST_SEEK_TYPE_END, 0);
+          if (!gst_element_seek(movie->theMovie, movie->rate, GST_FORMAT_TIME, GST_SEEK_FLAG_ACCURATE | GST_SEEK_FLAG_SEGMENT, GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE, GST_SEEK_TYPE_END, 0)) {
+            printf("PTB-DEBUG: Rewinding video in reverse playback failed!\n");
+          }
         }
 
         // Block until seek completed, failed, or timeout of 10 seconds reached:
@@ -1104,6 +1114,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 		if (GST_CLOCK_TIME_IS_VALID(GST_BUFFER_DURATION(videoBuffer)))
 			deltaT = (double) GST_BUFFER_DURATION(videoBuffer) / (double) 1e9;
 		bufferIndex = GST_BUFFER_OFFSET(videoBuffer);
+		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: pts %f secs, dT %f secs, bufferId %i.\n", movieRecordBANK[moviehandle].pts, deltaT, (int) bufferIndex);
 	} else {
 		printf("PTB-ERROR: No new video frame received in gst_app_sink_pull_buffer! Something's wrong. Aborting fetch.\n");
 		return(FALSE);
@@ -1298,8 +1309,15 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
 	// Set playback rate: An explicit seek to the position we are already (supposed to be)
 	// is needed to avoid jumps in movies with bad encoding or keyframe placement:
 	timeindex = PsychGSGetMovieTimeIndex(moviehandle);
-	gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, GST_SEEK_TYPE_SET,
-			 (gint64) (timeindex * (double) 1e9), GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
+
+	if (playbackrate > 0) {
+		gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE | ((loop & 0x1) ? GST_SEEK_FLAG_SEGMENT : 0), GST_SEEK_TYPE_SET,
+				 (gint64) (timeindex * (double) 1e9), GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
+	}
+	else {
+		gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE | ((loop & 0x1) ? GST_SEEK_FLAG_SEGMENT : 0), GST_SEEK_TYPE_SET,
+				 0, GST_SEEK_TYPE_SET, (gint64) (timeindex * (double) 1e9));
+	}
 
         movieRecordBANK[moviehandle].loopflag = loop;
         movieRecordBANK[moviehandle].last_pts = -1.0;
@@ -1409,7 +1427,8 @@ double PsychGSSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool in
     double		oldtime;
     gint64		targetIndex;
     GstEvent            *event;
-    
+    GstSeekFlags        flags;
+
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
     }
@@ -1424,6 +1443,10 @@ double PsychGSSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool in
     oldtime = PsychGSGetMovieTimeIndex(moviehandle);
 
     // NOTE: We could use GST_SEEK_FLAG_SKIP to allow framedropping on fast forward/reverse playback...
+    flags = GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE;
+
+    // Need segment seek flag for seek during active looped playback:
+    flags|= ((movieRecordBANK[moviehandle].rate != 0) && (movieRecordBANK[moviehandle].loopflag & 0x1)) ? GST_SEEK_FLAG_SEGMENT : 0;
 
     // Index based or target time based seeking?
     if (indexIsFrames) {
@@ -1432,7 +1455,7 @@ double PsychGSSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool in
 
 	// Simple seek, videobuffer (index) oriented, with pipeline flush and accurate seek,
 	// i.e., not locked to keyframes, but frame-accurate:
-	if (!gst_element_seek_simple(theMovie, GST_FORMAT_DEFAULT, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, targetIndex)) {
+	if (!gst_element_seek_simple(theMovie, GST_FORMAT_DEFAULT, flags, targetIndex)) {
 		// Failed: This can happen on various movie formats as not all codecs and formats support frame-based seeks.
 		// Fallback to time-based seek by faking a target time for given targetIndex:
 		timeindex = (double) targetIndex / (double) movieRecordBANK[moviehandle].fps;
@@ -1443,7 +1466,7 @@ double PsychGSSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool in
 			printf("PTB-WARNING: Not all movie formats support frame-based seeking. Please change your movie format for better precision.\n");
 		}
 
-		if (!gst_element_seek_simple(theMovie, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, (gint64) (timeindex * (double) 1e9)) &&
+		if (!gst_element_seek_simple(theMovie, GST_FORMAT_TIME, flags, (gint64) (timeindex * (double) 1e9)) &&
 		    (PsychPrefStateGet_Verbosity() > 1)) {
 			printf("PTB-WARNING: Time-based seek failed as well! Something is wrong with this movie!\n");
 		}
@@ -1455,7 +1478,7 @@ double PsychGSSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool in
 
 	// Simple seek, time-oriented, with pipeline flush and accurate seek,
 	// i.e., not locked to keyframes, but frame-accurate:
-	if (!gst_element_seek_simple(theMovie, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE, (gint64) (timeindex * (double) 1e9)) &&
+	if (!gst_element_seek_simple(theMovie, GST_FORMAT_TIME, flags, (gint64) (timeindex * (double) 1e9)) &&
 	    (PsychPrefStateGet_Verbosity() > 1)) {
 		printf("PTB-WARNING: Time-based seek to %f seconds in movie %i failed. Something is wrong with this movie or the target time.\n", timeindex, moviehandle);
 	}
