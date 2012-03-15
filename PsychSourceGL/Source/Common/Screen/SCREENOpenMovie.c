@@ -116,7 +116,7 @@ PsychError SCREENOpenMovie(void)
         PsychCopyInIntegerArg(3, FALSE, &asyncFlag);
 
         PsychCopyInDoubleArg(4, FALSE, &preloadSecs);
-        if (preloadSecs < 0 && preloadSecs!= -1) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid (negative, but not equal -1) 'preloadSecs' argument!");
+        if (preloadSecs < 0 && preloadSecs!= -1 && preloadSecs!= -2) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid (negative, but not equal -1) 'preloadSecs' argument!");
 
 	// Queueing of a new movie for seamless playback requested?
 	if (asyncFlag == 2) {

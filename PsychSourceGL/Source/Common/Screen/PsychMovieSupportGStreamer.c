@@ -40,6 +40,21 @@
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
 
+// Need to define this for playbin2 as it is not defined
+// in any header file: (Expected behaviour - not a bug)
+typedef enum {
+  GST_PLAY_FLAG_VIDEO         = (1 << 0),
+  GST_PLAY_FLAG_AUDIO         = (1 << 1),
+  GST_PLAY_FLAG_TEXT          = (1 << 2),
+  GST_PLAY_FLAG_VIS           = (1 << 3),
+  GST_PLAY_FLAG_SOFT_VOLUME   = (1 << 4),
+  GST_PLAY_FLAG_NATIVE_AUDIO  = (1 << 5),
+  GST_PLAY_FLAG_NATIVE_VIDEO  = (1 << 6),
+  GST_PLAY_FLAG_DOWNLOAD      = (1 << 7),
+  GST_PLAY_FLAG_BUFFERING     = (1 << 8),
+  GST_PLAY_FLAG_DEINTERLACE   = (1 << 9)
+} GstPlayFlags;
+
 static const psych_bool oldstyle = FALSE;
 static psych_bool useYUVDecode = FALSE;
 
@@ -226,7 +241,7 @@ gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr)
       // Print some optional status info:
       gint percent = 0;
       gst_message_parse_buffering(msg, &percent);
-      if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Movie '%s', buffering video data: %i percent done ...\n", movie->movieName, (int) percent);
+      if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie '%s', buffering video data: %i percent done ...\n", movie->movieName, (int) percent);
       break;
     }
 
@@ -462,12 +477,15 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     psych_bool			printErrors;
     GstIterator			*it;
     psych_bool			done;
+    GstPlayFlags		playflags = 0;
 
     // Suppress output of error-messages if moviehandle == 1000. That means we
     // run in our own Posix-Thread, not in the Matlab-Thread. Printing via Matlabs
     // printing facilities would likely cause a terrible crash.
     printErrors = (*moviehandle == -1000) ? FALSE : TRUE;
 
+    // Gapless playback requested? Normally *moviehandle is == -1, so a positive
+    // handle requests this mode and defines the actual handle of the movie to use:
     if ((*moviehandle >= 0) && (preloadSecs == -2)) {
 	// Queueing a new moviename of a movie to play next: This only works
 	// for already opened/created movies whose pipeline is at least in
@@ -567,11 +585,90 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 	// Assign name of movie to play:
 	g_object_set(G_OBJECT(theMovie), "uri", movieLocation, NULL);
 
-	// Would disable audio decoding - video only: g_object_set(G_OBJECT(theMovie), "flags", 1, NULL);
+	// Default flags for playbin: Decode video and audio, deinterlace video if needed, allow sound volume control:
+	playflags = GST_PLAY_FLAG_VIDEO | GST_PLAY_FLAG_AUDIO | GST_PLAY_FLAG_SOFT_VOLUME | GST_PLAY_FLAG_DEINTERLACE;
 
 	// Enable network buffering for network videos of at least 10 seconds, or preloadSecs seconds,
 	// whatever is bigger.
-	g_object_set(G_OBJECT(theMovie), "buffer-duration", (gint64) ((preloadSecs > 10) ? preloadSecs * 1e9 : 10 * 1e9), NULL);
+
+	// Setup without any buffering and caching (aka preloadSecs == 0) requested?
+	// Note: For now treat the default preloadSecs value 1 as a zero -> No buffering and caching.
+	// Why? Because the usefulness of this extra setup is not yet proven and the specific choice
+	// of buffering parameters may need a bit of tuning. We don't want to cause regressions in
+	// performance of existing scripts, so we stick to the GStreamer default buffering behaviour
+	// until more time has been spent tuning & testing this setup code.
+	if ((preloadSecs != 0) && (preloadSecs != 1)) {
+	    // No: Use internal buffering/caching [BUFFERING] of demultiplexed/parsed data, e.g., for fast
+	    // recycling during looped video playback, random access out-of-order frame fetching, fast
+	    // seeking and reverse playback:
+	    playflags |= GST_PLAY_FLAG_BUFFERING;
+
+	    // Ok, this is ugly: Some movie formats, when streamed from the internet, need progressive
+	    // download buffering to work without problems, whereas other formats will cause problems
+	    // with progressive download buffering. So far we know that some .mov Quicktime movies, e.g.,
+	    // Apple's commercials need it, whereas some .webm movies choke on it. Let's be optimistic
+	    // and assume it works with everything except .webm. Also provide secret cheat code == -2
+	    // to override the blacklisting of .webm to allow for further experiments:
+	    if ((preloadSecs == -2) || (!strstr(moviename, ".webm"))) {
+		// Want some local progressive download buffering [DOWNLOAD] for network video streams,
+		// as temporary file on local filesystem:
+		playflags |= GST_PLAY_FLAG_DOWNLOAD;
+	    }
+
+	    // Undo our cheat-code if used: Map to 10 seconds preload time:
+	    if (preloadSecs == -2) preloadSecs = 10;
+
+	    // Setting maximum size of internal RAM ringbuffer supported? (since v0.10.31)
+	    if (g_object_class_find_property(G_OBJECT_GET_CLASS(theMovie), "ring-buffer-max-size")) {
+		// Supported. The ringbuffer is disabled by default, we enable it with a certain maximum
+		// size in bytes. For preloadSecs == -1, aka "unlimited buffering", we set it to its
+		// allowable maximum of G_MAXUINT == 4 GB. For a given finite preloadSecs we have
+		// to set something reasonable. Set it to preloadSecs buffer duration (in seconds) multiplied
+		// by some assumed maximum datarate in bytes/second. We use 4e6 bytes, which is roughly
+		// 4 MB/sec. Why? This is a generously padded value, assuming a max. fps of 60 Hz, max.
+		// resolution 1920x1080p HD video + HD audio. Numbers are based on the bit rates of
+		// a HD movie trailer (Warner Brothers "I am Legend" public HD movie trailer), which has
+		// 7887 kbits/s for 1920x816 H264/AVC progessive scan video at 24 fps and 258 kbits/s for
+		// MPEG-4 AAC audio in Surround 5.1 format with 48 kHz sampling rate. This upscaled to
+		// research use and padded should give a good value for our purpose. Also at a default
+		// preloadSecs value of 1 second, this wastes at most 4 MB for buffering - a safe default:
+		g_object_set(G_OBJECT(theMovie), "ring-buffer-max-size", ((preloadSecs == -1) ? G_MAXUINT : (guint64) (preloadSecs * (double) 4e6)), NULL);
+		if (PsychPrefStateGet_Verbosity() > 4) {
+		    printf("PTB-INFO: Playback for movie %i will use adapted RAM ring-buffer-max-size of %f MB.\n", slotid,
+			   (float) (((double) ((preloadSecs == -1) ? G_MAXUINT : preloadSecs * (double) 4e6)) / 1024.0 / 1024.0));
+		}
+	    }
+
+	    // Setting of maximum buffer duration for network video stream playback:
+	    if (preloadSecs == -1) {
+		// "Unlimited" - Set maximum buffering size to G_MAXINT == 2 GB.
+		g_object_set(G_OBJECT(theMovie), "buffer-size", (gint) G_MAXINT, NULL);
+	    }
+	    else {
+		// Limited - Set maximum buffer-duration to preloadSecs, the playbin will derive
+		// a proper maximum buffering size from duration and streaming bitrate:
+		g_object_set(G_OBJECT(theMovie), "buffer-duration", (gint64) (preloadSecs * (double) 1e9), NULL);
+	    }
+
+	    if (PsychPrefStateGet_Verbosity() > 4) {
+		printf("PTB-INFO: Playback for movie %i will use RAM buffering. Additional prebuffering for network streams is\n", slotid);
+		printf("PTB-INFO: limited to %f %s.\n", (preloadSecs == -1) ? 2 : preloadSecs, (preloadSecs == -1) ? "GB" : "seconds");
+		if (playflags & GST_PLAY_FLAG_DOWNLOAD) printf("PTB-INFO: Network video streams will be additionally cached to the filesystem.\n");
+	    }
+
+	    // All in all, we can end up with up to 6*x GB RAM and 6 GB disc consumption for the "unlimited" setting,
+	    // about 4*x MB RAM and 4 MB disc consumption for the default setting of 1, and preloadSecs multiples of
+	    // that for a given value. x is an unkown factor, depending on which internal plugins maintain ringbuffers,
+	    // but assume x somewhere between 1 and maybe 4.
+	}
+	else {
+	    if (PsychPrefStateGet_Verbosity() > 4) {
+		printf("PTB-INFO: Playback for movie %i will not use additional buffering or caching due to 'preloadSecs' setting %i.\n", slotid, (int) preloadSecs);
+	    }
+	}
+
+	// Setup final playback control flags:
+	g_object_set(G_OBJECT(theMovie), "flags", playflags , NULL);
 
 	// Connect callback to about-to-finish signal: Signal is emitted as soon as
 	// end of current playback iteration is approaching. The callback checks if
@@ -642,7 +739,8 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 					  "green_mask", G_TYPE_INT, 0x00FF0000,
 					  "blue_mask", G_TYPE_INT,  0xFF000000,
 					  NULL);
-	if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures due to lack of YUV texture support on GPU.\n", slotid);
+	if ((PsychPrefStateGet_Verbosity() > 3) && useYUVDecode) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures due to lack of YUV texture support on GPU.\n", slotid);
+	if ((PsychPrefStateGet_Verbosity() > 3) && !useYUVDecode) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures.\n", slotid);
     }
 
     /*
@@ -681,8 +779,14 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 
     PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, FALSE);
 
-    // Should we preroll / preload?	
-    if ((preloadSecs > 0) || (preloadSecs == -1)) {
+    // Should we preroll / preload?
+    // MK: Actually, *always* preroll via transition to PAUSED. The other path
+    // is seldomly used, therefore not well tested, bound to cause regressions on
+    // future code changes. Also just readying the pipeline causes problems with
+    // movie duration queries and other property queries, so probably not worth
+    // the trouble...
+    // The preloadSecs parameter is used instead above to control buffering behaviour.
+    if (TRUE || (preloadSecs > 0) || (preloadSecs == -1)) {
 	// Preload / Preroll the pipeline:
 	if (!PsychMoviePipelineSetState(theMovie, GST_STATE_PAUSED, 30.0)) {
 		PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
@@ -693,7 +797,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 	if (!PsychMoviePipelineSetState(theMovie, GST_STATE_READY, 30.0)) {
 		PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
 		PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed II. Reason given above.");
-	}    
+	}
     }
 
     // Check if a multi-threaded decoder from is used: If so, set number of processing
@@ -1182,7 +1286,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 		if (GST_CLOCK_TIME_IS_VALID(GST_BUFFER_DURATION(videoBuffer)))
 			deltaT = (double) GST_BUFFER_DURATION(videoBuffer) / (double) 1e9;
 		bufferIndex = GST_BUFFER_OFFSET(videoBuffer);
-		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: pts %f secs, dT %f secs, bufferId %i.\n", movieRecordBANK[moviehandle].pts, deltaT, (int) bufferIndex);
+		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: pts %f secs, dT %f secs, bufferId %i.\n", movieRecordBANK[moviehandle].pts, deltaT, (int) bufferIndex);
 	} else {
 		printf("PTB-ERROR: No new video frame received in gst_app_sink_pull_buffer! Something's wrong. Aborting fetch.\n");
 		return(FALSE);
