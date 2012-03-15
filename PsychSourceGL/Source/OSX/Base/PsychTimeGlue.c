@@ -348,9 +348,9 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 			sp.sched_priority = 0;
 		break;
 		
-		case 1:   // High priority / Round robin realtime.
+		case 1: // High priority / Round robin realtime.
 			policy = SCHED_RR;
-			sp.sched_priority = sp.sched_priority + tweakPriority;		
+			sp.sched_priority = sp.sched_priority + tweakPriority;
 		break;
 		
 		case 2:   // Highest priority: FIFO scheduling
@@ -366,6 +366,9 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 
 	// Try to apply new priority and scheduling method:
 	if (rc == 0) {
+		// Make sure we have at least prio level 1 for RT scheduling policies:
+		if ((policy != SCHED_OTHER) && (sp.sched_priority < 1)) sp.sched_priority = 1;
+
 		rc = pthread_setschedparam(thread, policy, &sp);
 		if (rc != 0) printf("PTB-CRITICAL: In call to PsychSetThreadPriority(): Failed to set new basePriority %i, tweakPriority %i, effective %i [%s] for thread %p provided!\n",
 							basePriority, tweakPriority, sp.sched_priority, (policy != SCHED_OTHER) ? "REALTIME" : "NORMAL", (void*) threadhandle);

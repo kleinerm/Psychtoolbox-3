@@ -86,7 +86,8 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
     static psych_bool old_enable_realtime = FALSE;
     static int   oldPriority = SCHED_OTHER;
     const  int   realtime_class = SCHED_FIFO;
-    struct sched_param param, oldparam;
+    struct sched_param param;
+    static struct sched_param oldparam;
 
     if (old_enable_realtime == enable_realtime) {
         // No transition with respect to previous state -> Nothing to do.
@@ -98,8 +99,7 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
       // Transition to realtime requested:
       
       // Get current scheduling policy and back it up for later restore:
-      oldPriority = sched_getscheduler(0);
-      sched_getparam(0, &oldparam);
+      pthread_getschedparam(pthread_self(), &oldPriority, &oldparam);
 
       // Check if realtime scheduling isn't already active.
       // If we are already in RT mode (e.g., Priority(2) call in Matlab), we skip the switch...
@@ -108,7 +108,7 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
 	// We use the smallest realtime priority that's available for realtime_class.
 	// This way, other processes like watchdogs can preempt us, if needed.
 	param.sched_priority = sched_get_priority_min(realtime_class);
-	if (sched_setscheduler(0, realtime_class, &param)) {
+	if (pthread_setschedparam(pthread_self(), realtime_class, &param)) {
 	  // Failed!
 	  if(!PsychPrefStateGet_SuppressAllWarnings()) {
 	    printf("PTB-INFO: Failed to enable realtime-scheduling [%s]!\n", strerror(errno));
@@ -125,7 +125,7 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
       // policy: If the old policy wasn't Non-RT, then we don't switch back...
       if (oldPriority != realtime_class) oldparam.sched_priority = 0;
 
-      if (sched_setscheduler(0, oldPriority, &oldparam)) {
+      if (pthread_setschedparam(pthread_self(), oldPriority, &oldparam)) {
 	// Failed!
 	if(!PsychPrefStateGet_SuppressAllWarnings()) {
 	  printf("PTB-INFO: Failed to disable realtime-scheduling [%s]!\n", strerror(errno));

@@ -842,10 +842,9 @@ PsychError SCREENGetMouseHelper(void)
 	  else if (numButtons==-5) {
 		// Priority() - helper mode: The 2nd argument is the priority level:
 
-		// Query RT priority level (if RT scheduling active):
-		sched_getparam(0, &schedulingparam);
-		// Query scheduling mode:
-		priorityLevel = sched_getscheduler(0);
+		// Query scheduling policy and priority:
+		pthread_getschedparam(pthread_self(), &priorityLevel, &schedulingparam);
+
 		// If scheduling mode is a realtime mode (RoundRobin realtime RR, or FIFO realtime),
 		// then assign RT priority level (range 1-99) as current priorityLevel, otherwise
 		// assign non realtime priority level zero:
@@ -867,7 +866,7 @@ PsychError SCREENGetMouseHelper(void)
 			if (priorityLevel > 0) {
 				// Realtime FIFO scheduling and all pages of Matlab/Octave locked into memory:
 				schedulingparam.sched_priority = priorityLevel;
-				priorityLevel = sched_setscheduler(0, SCHED_FIFO, &schedulingparam);
+				priorityLevel = pthread_setschedparam(pthread_self(), SCHED_FIFO, &schedulingparam);
 				if (priorityLevel == -1) {
 					// Failed!
 					if(!PsychPrefStateGet_SuppressAllWarnings()) {
@@ -893,7 +892,7 @@ PsychError SCREENGetMouseHelper(void)
 			else {
 				// Standard scheduling and no memory locking:
 				schedulingparam.sched_priority = 0;
-				priorityLevel = sched_setscheduler(0, SCHED_OTHER, &schedulingparam);
+				priorityLevel = pthread_setschedparam(pthread_self(), SCHED_OTHER, &schedulingparam);
 				if (priorityLevel == -1) {
 					// Failed!
 					if(!PsychPrefStateGet_SuppressAllWarnings()) {
