@@ -154,9 +154,9 @@ PsychError SCREENOpenMovie(void)
 
                     asyncmovieinfo.moviehandle = -1;
 
-                    // Increase our scheduling priority to basic FIFO priority: This way we should get
+                    // Increase our scheduling priority to basic RT priority: This way we should get
                     // more cpu time for our PTB main thread than the async. background prefetch-thread:
-                    if ((rc=PsychSetThreadPriority(NULL, 2, 0))!=0) {
+                    if ((rc=PsychSetThreadPriority(NULL, ((PSYCH_SYSTEM == PSYCH_WINDOWS) ? 1 : 2), 0))!=0) {
                         printf("PTB-WARNING: In OpenMovie(): Failed to raise priority of main thread [System error %i]. Expect movie timing problems.\n", rc);
                     }
 
@@ -189,7 +189,7 @@ PsychError SCREENOpenMovie(void)
                     if (moviehandle < 0) {
                         // Movie loading failed for some reason.
                         printf("PTB-ERROR: When trying to asynchronously load movie %s, the operation failed: ", asyncmovieinfo.moviename);
-			#if PSYCH_SYSTEM == PSYCH_OSX
+                        #if PSYCH_SYSTEM == PSYCH_OSX
                         switch(moviehandle) {
                             case -2000:
                             case -50:

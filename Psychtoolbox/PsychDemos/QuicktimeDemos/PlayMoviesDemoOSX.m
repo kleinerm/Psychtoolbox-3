@@ -114,10 +114,10 @@ try
         % Cool stuff, streaming from the web ;-)
         moviefiles = [];
         
-        % On non-OS/X we add a few more movies to the playlist, before the pathetic Apple
+        % On GStreamer setups we add a few more movies to the playlist, before the pathetic Apple
         % commercials. Can't use them on OS/X yet, as Apple's QT engine does not handle them
         % with the default codec set:
-        if ~IsOSX
+        if IsLinux || (Screen('Preference', 'OverrideMultimediaEngine') == 1)
             % Promotional videos for the best OS for cognitive science and technical/educational
             % videos some users may find of practical use:
 
