@@ -2161,40 +2161,19 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 			// For some braindead reasons, apparently only one thread can be scheduled in class 10,
 			// so we need to make sure the masterthread is not MMCSS scheduled, otherwise our new
 			// request will fail:
-			#if PSYCH_SYSTEM == PSYCH_WINDOWS
+			if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
 				// On Windows, we have to set flipperThread to +2 RT priority levels while
 				// throwing ourselves off RT priority scheduling. This is a brain-dead requirement
 				// of Vista et al's MMCSS scheduler which only allows one of our threads being
 				// scheduled like that :( -- Disable RT scheduling for ourselves (masterthread):
-				PsychSetThreadPriority(0x1, 0, 0);
-			#endif
+				PsychSetThreadPriority((psych_thread*) 0x1, 0, 0);
+			}
 
-			#if PSYCH_SYSTEM != PSYCH_OSX
-				// Non-OSX: Same on Windows and Linux..
-				// Boost priority of flipperThread by 2 levels and switch it to RT scheduling,
-				// unless it is already RT-Scheduled. As the thread inherited our scheduling
-				// priority from PsychCreateThread(), we only need to +2 tweak it from there:
-				PsychSetThreadPriority(&(flipRequest->flipperThread), 10, 2);
-			#else
-				// OS/X: Boost priority of flipperThread wrt. to us, ie., the PTB master thread
-				// by at least 2 units:
-				
-				// Query our (masterthread) schedulingmode and priority:
-				int policy;
-				struct sched_param sp;
-				pthread_getschedparam(pthread_self(), &policy, &sp);
-				
-				// If we're a regular SCHED_OTHER non-RT thread, then flipperThread will be
-				// RT scheduled with priority 0 + 2. Otherwise it will be RT scheduled with
-				// whatever our priority is + 2, so it can preempt us whenever this is needed:
-				if (policy == SCHED_OTHER) sp.sched_priority = 0;
-				
-				// Set final priority as RT with 2 levels above our priority:
-				PsychSetThreadPriority(&(flipRequest->flipperThread), 10, sp.sched_priority + 2);
-			#endif
+			// Boost priority of flipperThread by 2 levels and switch it to RT scheduling,
+			// unless it is already RT-Scheduled. As the thread inherited our scheduling
+			// priority from PsychCreateThread(), we only need to +2 tweak it from there:
+			PsychSetThreadPriority(&(flipRequest->flipperThread), 10, 2);
 
-			//printf("ENTERING THREADCREATEFINISHED MUTEX\n"); fflush(NULL);
-			
 			// The thread is started with flipperState == 0, ie., not "initialized and ready", the lock is unlocked.
 			// First thing the thread will do is try to lock the lock, then set its flipperState to 1 == initialized and
 			// ready, then init itself, then enter a wait on our flipperGoGoGo condition variable and atomically unlock

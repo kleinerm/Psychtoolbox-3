@@ -181,12 +181,6 @@ PsychError SCREENOpenMovie(void)
                     // isn't done yet (fallthrough from case 1 for sync. wait), this join will block us until worker
                     // completes:
                     PsychDeleteThread(&asyncmovieinfo.pid);
-					
-                    // Reset our priority to "normal" after async prefetch completion:
-                    // MK: Actually don't! This would undo potential previous Priority() calls by usercode behind its back!
-                    //if ((rc=PsychSetThreadPriority(NULL, 0, 0))!=0) {
-                    //    printf("PTB-WARNING: In OpenMovie(): Failed to lower priority of main thread [System error %i]. Expect movie timing problems.\n", rc);
-                    //}
 
                     asyncmovieinfo.asyncstate = 0; // Reset state to idle:
                     moviehandle = asyncmovieinfo.moviehandle;
