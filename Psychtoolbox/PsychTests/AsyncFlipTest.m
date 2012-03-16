@@ -117,6 +117,10 @@ Screen('FillRect', w, [0 0 0]);
 Screen('Flip', w, 0, 2);
 
 n = Screen('NominalFramerate', w) * 10;
+if n == 0
+    n = 60 * 10;
+end
+
 t = zeros(6, n + 2);
 fc = 1;
 
