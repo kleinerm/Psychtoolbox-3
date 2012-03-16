@@ -217,12 +217,6 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
     
     // Preparse: Count matching devices for deviceClass
     numDeviceStructElements = ndevices;
-    /*
-     for(i = 0; i < ndevices; i++) {
-         dev = &info[i];
-         if ((int) (dev->use) == deviceClass) numDeviceStructElements++;
-     }
-     */
     
     // Alloc struct array of sufficient size:
     PsychAllocOutStructArray(1, kPsychArgOptional, numDeviceStructElements, numDeviceStructFieldNames, deviceFieldNames, &deviceStruct);
@@ -233,12 +227,7 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
         // Check i'th device:
         dev = &info[i];
         
-        // Skip if non matching class:
-        // if ((int) (dev->use) != deviceClass) continue;
-        
         switch(dev->dwDevType & 0xff) {
-            //case DI8DEVTYPE_MOUSE: type = "master pointer"; break;
-            //case DI8DEVTYPE_KEYBOARD: type = "master keyboard"; break;
             case DI8DEVTYPE_MOUSE:
 				type = "slave pointer";
 				if (dev->usagePage == 0) dev->usagePage = 1;
@@ -1024,7 +1013,7 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
 {
     int keyMask[256];
     int i;
-    double t;
+    double t, tc;
     
     if (deviceIndex < 0) {
         deviceIndex = PsychHIDGetDefaultKbQueueDevice();
@@ -1067,10 +1056,18 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
         
         // No change for our trigger keys. Repeat scan loop.
     }
-    
-    // Timestamp:
-    PsychGetAdjustedPrecisionTimerSeconds(&t);
-    
+
+    // If we reach this point, we know some triggerkey has been pressed. As we aborted
+    // the scan on detection of the first pressed key, we can't be certain we caught the
+    // key with the earliest key press, maybe one of the untested keys was pressed even
+    // earlier. Therefore do another pass over all keys to find the pressed one with the
+    // earliest (minimum) pressed time:
+    t = DBL_MAX;
+    for (i = 0; i < numScankeys; i++) {
+        tc = psychHIDKbQueueFirstPress[deviceIndex][scanKeys[i] - 1];
+        if ((tc != 0) && (tc <= t)) t = tc;
+    }
+
     // Done. Release the lock:
     PsychUnlockMutex(&KbQueueMutex);
     

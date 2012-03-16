@@ -999,7 +999,7 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
 {
     int keyMask[256];
     int i;
-    double t;
+    double t, tc;
     
     if (deviceIndex < 0) {
         deviceIndex = PsychHIDGetDefaultKbQueueDevice();
@@ -1037,14 +1037,22 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
             if (psychHIDKbQueueFirstPress[deviceIndex][scanKeys[i] - 1] != 0) break;
         }
         
-	// Triggerkey pressed?
+        // Triggerkey pressed?
         if ((i < numScankeys) && (psychHIDKbQueueFirstPress[deviceIndex][scanKeys[i] - 1] != 0)) break;
 
         // No change for our trigger keys. Repeat scan loop.
     }
 
-    // Timestamp:
-    PsychGetAdjustedPrecisionTimerSeconds(&t);
+    // If we reach this point, we know some triggerkey has been pressed. As we aborted
+    // the scan on detection of the first pressed key, we can't be certain we caught the
+    // key with the earliest key press, maybe one of the untested keys was pressed even
+    // earlier. Therefore do another pass over all keys to find the pressed one with the
+    // earliest (minimum) pressed time:
+    t = DBL_MAX;
+    for (i = 0; i < numScankeys; i++) {
+        tc = psychHIDKbQueueFirstPress[deviceIndex][scanKeys[i] - 1];
+        if ((tc != 0) && (tc <= t)) t = tc;
+    }
 
     // Done. Release the lock:
     PsychUnlockMutex(&KbQueueMutex);
