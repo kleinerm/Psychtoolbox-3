@@ -19,8 +19,7 @@ function [mouseIndices, productNames, allInfo]= GetMouseIndices(typeOnly)
 %
 % WINDOWS: ________________________________________________________________
 % 
-% GetMouseIndices does not exist in Windows.
-% 
+% GetMouseIndices works as on OS X.
 % _________________________________________________________________________
 %
 % see also: GetKeyboardIndices, GetKeypadIndices, GetGamepadIndices
@@ -38,7 +37,10 @@ if nargin < 1
 end
 
 if ~IsOSX
-  LoadPsychHID;    
+  LoadPsychHID;
+end
+
+if IsLinux
   if strcmpi(typeOnly, 'masterPointer')
     d = PsychHID('Devices', 1);
   else

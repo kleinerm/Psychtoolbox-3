@@ -46,11 +46,11 @@ if isempty(wheelMouseIndex)
         allHidDevices=PsychHID('Devices');
         for i=1:numMice
             b=allHidDevices(mousedices(i)).wheels;
-	    if ~IsOSX
-	         % On Non-OS/X we can't detect .wheels yet, so fake
-	         % 1 wheel for each detected mouse and hope for the best:
-	         b = 1;
-	    end
+            if ~IsOSX
+                % On Non-OS/X we can't detect .wheels yet, so fake
+                % 1 wheel for each detected mouse and hope for the best:
+                b = 1;
+            end
 
             if b > 0 && isempty(strfind(lower(allHidDevices(mousedices(i)).product), 'trackpad'))
                 wheelMouseIndex = mousedices(i);
