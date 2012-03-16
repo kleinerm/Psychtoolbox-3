@@ -42,9 +42,7 @@ theanswer = [];
 
 if (nargin < 1) || isempty(moviename) 
     moviename = [];
-    if IsOSX || IsLinux
-        theanswer = input('Serious or cool? Type s or c [s/c]? ', 's');
-    end        
+    theanswer = input('Serious or cool? Type s or c [s/c]? ', 's');
 end;
 
 if isempty(moviename)
@@ -114,7 +112,8 @@ try
 
     if strcmpi(theanswer, 'c')
         % Cool stuff, streaming from the web ;-)
-
+        moviefiles = [];
+        
         % On non-OS/X we add a few more movies to the playlist, before the pathetic Apple
         % commercials. Can't use them on OS/X yet, as Apple's QT engine does not handle them
         % with the default codec set:
@@ -135,7 +134,7 @@ try
         moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple-getamac-fat_480x376.mov';
         moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac_ads4/prlady_480x272.mov';
 
-	% Count all movies in our playlist:
+        % Count all movies in our playlist:
         moviecount = size(moviefiles,2);
 
         % Use polling to wait for new frames when playing movies from the
