@@ -22,19 +22,20 @@
 
 static char useString[]= "[keyIsDown,secs,keyCode]=PsychHID('KbCheck' [, deviceNumber][, scanList])";
 static char synopsisString[] = 
-        "Scan a keyboard or keypad device and return a vector of logical values indicating the "
-        "state of each key. By default the first keyboard device (the one with the lowest device number) is "
-        "scanned. If no keyboard is found, the first keypad device is "
-        "scanned.  Optionally, the device number of any keyboard or keypad may be specified in the argument "
-	"'deviceNumber'. As checking all potentially 256 keys on a HID device is a time consuming process, "
-	"which can easily take up to 1 msec on modern hardware, you can restrict the scan to a subset of "
-	"the 256 keys by providing the optional 'scanList' parameter: 'scanList' must be a vector of 256 "
-	"doubles, where the i'th element corresponds to the i'th key and a zero value means: Ignore this "
-	"key during scan, whereas a positive non-zero value means: Scan this key.\n"
+        "Scan a keyboard, keypad, or other HID device with buttons, and return a vector of logical values indicating the "
+        "state of each key.\n"
+        "By default the first keyboard device (the one with the lowest device number) is "
+        "scanned. If no keyboard is found, the first keypad device is scanned, followed by other "
+        "devices, e.g., mice.  Optionally, the 'deviceNumber' of any keyboard or HID device may be specified.\n"
+        "As checking all potentially 256 keys on a HID device is a time consuming process, "
+        "which can easily take up to 1 msec on modern hardware, you can restrict the scan to a subset of "
+        "the 256 keys by providing the optional 'scanList' parameter: 'scanList' must be a vector of 256 "
+        "doubles, where the i'th element corresponds to the i'th key and a zero value means: Ignore this "
+        "key during scan, whereas a positive non-zero value means: Scan this key.\n"
         "The PsychHID('KbCheck') implements the KbCheck command as provided by the  OS 9 Psychtoolbox. "
         "KbCheck is defined in the OS X Psychtoolbox and invokes PsychHID('KbCheck'). "
         "Always use KbCheck instead of directly calling PsychHID('KbCheck'), unless you have very good "
-	"reasons to do otherwise and really know what you're doing!";
+        "reasons to do otherwise and really know what you're doing!";
         
 static char seeAlsoString[] = "";
  
@@ -73,24 +74,24 @@ PsychError PSYCHHIDKbCheck(void)
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 
-#define NUMDEVICEUSAGES 2
+#define NUMDEVICEUSAGES 7
 
 PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 {
     pRecDevice			deviceRecord;
     pRecElement			currentElement;
-    int				i, debuglevel = 0;
+    int					i, debuglevel = 0;
     static int			numDeviceIndices = -1;
-    long			KeysUsagePage=7;
-    int 			numDeviceUsages=NUMDEVICEUSAGES;
-    long			KbDeviceUsagePages[NUMDEVICEUSAGES]= {1,1}, KbDeviceUsages[NUMDEVICEUSAGES]={6,7}; // Keyboards and keypads
+    int					numDeviceUsages=NUMDEVICEUSAGES;
+	long				KbDeviceUsagePages[NUMDEVICEUSAGES]= {kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop};
+	long				KbDeviceUsages[NUMDEVICEUSAGES]={kHIDUsage_GD_Keyboard, kHIDUsage_GD_Keypad, kHIDUsage_GD_Mouse, kHIDUsage_GD_Pointer, kHIDUsage_GD_Joystick, kHIDUsage_GD_GamePad, kHIDUsage_GD_MultiAxisController};
     static int			deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
-    static pRecDevice           deviceRecords[PSYCH_HID_MAX_KEYBOARD_DEVICES];
+    static pRecDevice	deviceRecords[PSYCH_HID_MAX_KEYBOARD_DEVICES];
     psych_bool			isDeviceSpecified, foundUserSpecifiedDevice;
-    double			*timeValueOutput, *isKeyDownOutput, *keyArrayOutput;
-    int				m, n, p, nout;
-    double			dummyKeyDown;
-    double			dummykeyArrayOutput[256];
+    double				*timeValueOutput, *isKeyDownOutput, *keyArrayOutput;
+    int					m, n, p, nout;
+    double				dummyKeyDown;
+    double				dummykeyArrayOutput[256];
 
     // We query keyboard and keypad devices only on first invocation, then cache and recycle the data:
     if (numDeviceIndices == -1) {
@@ -163,7 +164,7 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
         currentElement != NULL; 
         currentElement=HIDGetNextDeviceElement(currentElement, kHIDElementTypeInput))
     {
-        if((currentElement->usagePage==KeysUsagePage && currentElement->usage <= 256 && currentElement->usage >=1) &&
+        if(((currentElement->usagePage == kHIDPage_KeyboardOrKeypad) || (currentElement->usagePage == kHIDPage_Button)) && (currentElement->usage <= 256) && (currentElement->usage >= 1) &&
 			( (scanList == NULL) || (scanList[currentElement->usage - 1] > 0) ) ) {
             if (debuglevel > 0) printf("PTB-DEBUG: [KbCheck]: usage: %x value: %d \n", currentElement->usage, HIDGetElementValue(deviceRecord, currentElement));
             keyArrayOutput[currentElement->usage - 1]=((int) HIDGetElementValue(deviceRecord, currentElement) || (int) keyArrayOutput[currentElement->usage - 1]);

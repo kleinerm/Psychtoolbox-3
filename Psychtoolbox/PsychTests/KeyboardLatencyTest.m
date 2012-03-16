@@ -2,23 +2,37 @@ function KeyboardLatencyTest(triggerlevel, modality, submode, portString)
 % KeyboardLatencyTest([triggerlevel=0.01][,modality=0][,submode][,portString])
 %
 % Uses sound capture with high timing precision via
-% PsychPortAudio() for measuring keyboard and mouse latency.
+% PsychPortAudio() for measuring latency, timing accuracy and variability
+% of various response input devices, e.g., keyboard, keypad, mouse, other
+% HID devices like Joysticks etc., various response button boxes, and some
+% exotic response devices.
 %
-% Whenever the script tells you, hit a key on the keyboard - or a mouse
-% button - Loud enough so the noise of hitting the button or key can be
+% Whenever the script tells you, hit a key on the tested input device
+% hard and loud enough so the noise of hitting the button or key can be
 % recorded by the attached microphone. This noise will be timestamped by
-% the code as the "true" key press or mouse press time. Timestamps acquired
-% by standard KbCheck or GetMouse query are compared against that reference
+% the code as the "true" button press time. Timestamps acquired
+% by standard input device queries are compared against that reference
 % and the difference is computed as device latency.
 % 
 % Sound is captured from the default recording device, waiting
 % until the amplitude exceeds some 'triggerlevel'.
 %
 % The 'modality' flag chooses between keyboard (==0 - the default), and
-% mouse (==1). A setting of 2 queries the keyboard with a (theoretically
-% more accurate) method that is only supported on OS/X.
+% mouse (==1). 'portString' allows to select which keyboard to test on some
+% systems (OS/X and Linux). It also allows to select which mouse to test on
+% Linux, but not on other systems.
 %
-% A 'modality' of 3 will test the new driver for the USTCRTBOX reaction
+% A 'modality' of 2 queries the keyboard, a keypad, a mouse, or other HID
+% devices by use of the KbTriggerWait() function. 'submode' specifies the
+% KbName() keyCode of the key to test on a keyboard. By default the SPACE
+% key is used. For other devices you *must* specify a key or button number in
+% 'submode'. Specifiying numbers of non-existent keys or buttons will cause
+% an infinite hang of Matlab or Octave, as there is no way to interrupt the
+% function or press a non-existent key or button. The optional 'portString'
+% specifies the deviceIndex of the device to test. If omitted, the primary
+% keyboard is tested.
+%
+% A 'modality' of 3 will test the PsychRTBox() driver for the USTCRTBOX reaction
 % time button box, if such a box is attached. A setting 4 will also test
 % that box, but without opening a connection to it, ie., it is assumed that
 % the box is already open from a previous call of this function with
@@ -211,24 +225,28 @@ for trial = 1:10
     switch (modality)
         case 0
             % Wait for all keys to be released:
-            KbReleaseWait;
+            KbReleaseWait(portString);
 
             % Wait for keypress in a tight loop:
-            while ~KbCheck; end;
+            while ~KbCheck(portString); end;
             tKeypress = GetSecs;
         case 1
-            [x y b] = GetMouse;
+            [x y b] = GetMouse([], portString);
             while any(b)
-                [x y b] = GetMouse;
+                [x y b] = GetMouse([], portString);
             end;
 
             % Wait for mousebutton press in a tight loop:
             while ~any(b)
-                [x y b] = GetMouse;
+                [x y b] = GetMouse([], portString);
             end;
             tKeypress = GetSecs;
         case 2
-            tKeypress = KbTriggerWait(KbName('space'));
+            if submode == 0
+                tKeypress = KbTriggerWait(KbName('space'), portString);
+            else
+                tKeypress = KbTriggerWait(submode, portString);
+            end
         case {3, 4}
             % Test RTbox:
             

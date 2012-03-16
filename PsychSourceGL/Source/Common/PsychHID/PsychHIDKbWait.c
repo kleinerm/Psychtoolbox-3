@@ -39,10 +39,11 @@
 #include "PsychHID.h"
 #if PSYCH_SYSTEM == PSYCH_OSX
 
-#define NUMDEVICEUSAGES 2
+#define NUMDEVICEUSAGES 7
 
 static char useString[]= "secs=PsychHID('KbWait', [deviceNumber])";
 static char synopsisString[] = 
+		"THIS FUNCTION IS DEPRECATED AND SHOULD NOT BE USED! USE KbWait INSTEAD!\n\n"
         "Scan a keyboard or keypad device and return wait for a keypress "
         "By default the first keyboard device (the one with the lowest device number) is "
         "scanned. If no keyboard is found, the first keypad device is "
@@ -56,16 +57,16 @@ static char seeAlsoString[] = "";
  
 PsychError PSYCHHIDKbWait(void) 
 {
-    pRecDevice          	deviceRecord;
+    pRecDevice          deviceRecord;
     pRecElement			currentElement;
-    int				i, deviceIndex, numDeviceIndices;
-    long			KeysUsagePage=7;
+    int					i, deviceIndex, numDeviceIndices;
     int 				numDeviceUsages=NUMDEVICEUSAGES;
-    long				KbDeviceUsagePages[NUMDEVICEUSAGES]= {1,1}, KbDeviceUsages[NUMDEVICEUSAGES]={6,7}; // Keyboards and keypads
-    int				deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
+	long				KbDeviceUsagePages[NUMDEVICEUSAGES]= {kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop};
+	long				KbDeviceUsages[NUMDEVICEUSAGES]={kHIDUsage_GD_Keyboard, kHIDUsage_GD_Keypad, kHIDUsage_GD_Mouse, kHIDUsage_GD_Pointer, kHIDUsage_GD_Joystick, kHIDUsage_GD_GamePad, kHIDUsage_GD_MultiAxisController};
+    int					deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
     pRecDevice			deviceRecords[PSYCH_HID_MAX_KEYBOARD_DEVICES];
     psych_bool 			isDeviceSpecified, foundUserSpecifiedDevice;
-    double			*timeValueOutput;
+    double				*timeValueOutput;
     psych_bool 			isKeyDown;
     	 
 
@@ -108,7 +109,7 @@ PsychError PSYCHHIDKbWait(void)
             currentElement != NULL; 
             currentElement=HIDGetNextDeviceElement(currentElement, kHIDElementTypeInput))
         {
-            if(currentElement->usagePage==KeysUsagePage && currentElement->usage <= 256 && currentElement->usage >=1){
+            if(((currentElement->usagePage == kHIDPage_KeyboardOrKeypad) || (currentElement->usagePage == kHIDPage_Button)) && currentElement->usage <= 256 && currentElement->usage >=1){
                 if(HIDGetElementValue(deviceRecord, currentElement)){
                     isKeyDown=TRUE;
                     break;  //break out of inner for loop.  

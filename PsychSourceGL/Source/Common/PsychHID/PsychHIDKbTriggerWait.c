@@ -57,20 +57,16 @@
 
 static char useString[]= "secs=PsychHID('KbTriggerWait', KeysUsage, [deviceNumber])";
 static char synopsisString[] = 
-        "Scan a keyboard or keypad device and wait for a trigger key press.\n"
+        "Scan a keyboard, keypad, or other HID device with buttons, and wait for a trigger key press.\n"
         "By default the first keyboard device (the one with the lowest device number) is "
-        "scanned. If no keyboard is found, the first keypad device is "
-        "scanned.  Optionally, the device number of any keyboard or keypad may be specified.\n"
+        "scanned. If no keyboard is found, the first keypad device is scanned, followed by other "
+        "devices, e.g., mice.  Optionally, the deviceNumber of any keyboard or HID device may be specified.\n"
         "The 'KeysUsage' parameter must specify the keycode of a single key to wait for on "
         "OS/X. On Linux and Windows, 'KeysUsage' can be a vector of trigger key codes and the "
         "wait will finish as soon as at least one of the keys in the vector is pressed.\n"
-        "On Linux and OS/X handling of keyboard triggers is efficient. On MS-Windows, keyboard "
-        "triggers are implemented by periodic polling of the keyboard state with a frequency of "
-        "approximately 500 Hz. This is a brute-force approach which can lead to unreliable "
-        "stimulus presentation timing and trigger timestamping unless you have a fast "
-        "(multi-core) machine. It will also draw significant amounts of electrical power. "
-        "Therefore use this feature sparingly on MS-Windows and consider a different operating system.\n"
-        "On MS-Windows, the 'deviceNumber' argument is ignored and the default keyboard is waited for.\n";
+        "On MS-Windows XP and later, it is currently not possible to enumerate different keyboards and mice "
+        "separately. Therefore the 'deviceNumber' argument is mostly useless for keyboards and mice, usually you can "
+        "only check the system keyboard or mouse.\n";
 
 static char seeAlsoString[] = "";
  
@@ -103,16 +99,17 @@ PsychError PSYCHHIDKbTriggerWait(void)
 #if PSYCH_SYSTEM == PSYCH_OSX
 
 #include "PsychHIDKbQueue.h"
-#define NUMDEVICEUSAGES 2
+#define NUMDEVICEUSAGES 7
 extern HIDDataRef hidDataRef;
 
 void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
 {
     pRecDevice	deviceRecord;
     int			i, numDeviceIndices;
-    long		KeysUsagePage=0x07;									// This is the keyboard usage page
-	long		KeysUsage;											// This will contain the key code of the trigger key
-    long		KbDeviceUsagePages[NUMDEVICEUSAGES]= {0x01,0x01}, KbDeviceUsages[NUMDEVICEUSAGES]={0x06,0x07}; // Generic Desktop page (0x01), keyboard (0x06), keypad (0x07)
+    long		KeysUsagePage;			// This is the usage page of the target element: A key on a keyboard/keypad or a button.
+	long		KeysUsage;				// This will contain the key code of the trigger key
+	long		KbDeviceUsagePages[NUMDEVICEUSAGES]= {kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop};
+	long		KbDeviceUsages[NUMDEVICEUSAGES]={kHIDUsage_GD_Keyboard, kHIDUsage_GD_Keypad, kHIDUsage_GD_Mouse, kHIDUsage_GD_Pointer, kHIDUsage_GD_Joystick, kHIDUsage_GD_GamePad, kHIDUsage_GD_MultiAxisController};
     int 		numDeviceUsages=NUMDEVICEUSAGES;
     int			deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
     pRecDevice	deviceRecords[PSYCH_HID_MAX_KEYBOARD_DEVICES];
@@ -154,7 +151,8 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
         }
     }
     deviceRecord=deviceRecords[i]; 
-    
+	KeysUsagePage = ((deviceRecord->usage == kHIDUsage_GD_Keyboard) || (deviceRecord->usage == kHIDUsage_GD_Keypad)) ? kHIDPage_KeyboardOrKeypad : kHIDPage_Button;
+	
     //Allocate and init out return arguments.
     PsychAllocOutDoubleArg(1, FALSE, &timeValueOutput);
 	if(!timeValueOutput)
@@ -169,7 +167,7 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
 	// trivially to iterate over an array of KeysUsage to generate an array of 
 	// corresponding cookies
 	{
-		CFArrayRef elements;
+		CFArrayRef elements=NULL;
 		psych_bool usedDictionary=FALSE;
 		{
 			CFDictionaryRef dict=NULL;
@@ -201,7 +199,7 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
 			if(values[1]) CFRelease(values[1]);
 			
 			if(!elements){
-				PsychErrorExitMsg(PsychError_user, "Specified key code not found on device.");
+				PsychErrorExitMsg(PsychError_user, "Specified key code not found on device (I).");
 			}
 		}
 		{
@@ -210,7 +208,6 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
 			// for multiple keys
 			CFIndex i;
 			for (i=0; i<CFArrayGetCount(elements); i++)
-		
 			{
 				long number;
 				CFDictionaryRef element= CFArrayGetValueAtIndex(elements, i);
@@ -243,7 +240,7 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
 			}
 			if(CFArrayGetCount(elements)==i){
 				CFRelease(elements);
-				PsychErrorExitMsg(PsychError_user, "Specified key code not found on device.");
+				PsychErrorExitMsg(PsychError_user, "Specified key code not found on device (II).");
 			}
 			CFRelease(elements);
 		}

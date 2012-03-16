@@ -79,10 +79,10 @@
 
 static char useString[]= "PsychHID('KbQueueStop' [, deviceIndex])";
 static char synopsisString[] = 
-		"Stops sending keypresses to a queue.\n"
+		"Stops sending events to a queue.\n"
         "PsychHID('KbQueueCreate') must be called before this routine.\n"
-        "On Linux, the optional 'deviceIndex' is the index of the keyboard device whose queue should be stopped. "
-        "If omitted, the default keyboard's queue will be stopped. On other systems, the last queue will be stopped.\n";
+        "On Linux and Windows, the optional 'deviceIndex' is the index of the device whose queue should be stopped. "
+        "If omitted, the default devices queue will be stopped. On other systems, the last queue will be stopped.\n";
         
 static char seeAlsoString[] = "KbQueueCreate, KbQueueStart, KbQueueCheck, KbQueueFlush, KbQueueRelease";
  

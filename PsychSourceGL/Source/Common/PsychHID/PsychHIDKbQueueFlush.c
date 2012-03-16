@@ -80,8 +80,8 @@ static char useString[]= "PsychHID('KbQueueFlush' [, deviceIndex])";
 static char synopsisString[] = 
 		"Flushes all scored and unscored keyboard events from a queue.\n"
         "PsychHID('KbQueueCreate') must be called before this routine.\n"
-        "On Linux, the optional 'deviceIndex' is the index of the keyboard device whose queue should be flushed. "
-        "If omitted, the default keyboard's queue will be flushed. On other systems, the last queue will be flushed.\n";
+        "On Linux, the optional 'deviceIndex' is the index of the device whose queue should be flushed. "
+        "If omitted, the default devices queue will be flushed. On other systems, the last queue will be flushed.\n";
         
 static char seeAlsoString[] = "KbQueueCreate, KbQueueStart, KbQueueStop, KbQueueCheck, KbQueueRelease";
  

@@ -52,6 +52,7 @@
 // Apple's "HID Explorer" example and used for all generic USB-HID interface support:
 #include <Carbon/Carbon.h>
 #include <IOKit/HID/IOHIDKeys.h>
+#include <IOKit/hid/IOHIDUsageTables.h>
 #include "HID_Utilities_External.h"
 
 // Required for generic USB device support:

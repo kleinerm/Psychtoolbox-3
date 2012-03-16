@@ -80,8 +80,8 @@
 static char useString[]= "PsychHID('KbQueueRelease' [, deviceIndex])";
 static char synopsisString[] = 
 		"Releases queue and other resources allocated by PsychHID('KbQueueCreate').\n"
-        "On Linux, the optional 'deviceIndex' is the index of the keyboard device whose queue should be released. "
-        "If omitted, the default keyboard's queue will be released. On other systems, the last queue will be released.\n";
+        "On Linux and Windows, the optional 'deviceIndex' is the index of the device whose queue should be released. "
+        "If omitted, the default devices queue will be released. On other systems, the last queue will be released.\n";
         
 static char seeAlsoString[] = "KbQueueCreate, KbQueueStart, KbQueueStop, KbQueueCheck, KbQueueFlush";
 
