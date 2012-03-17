@@ -87,9 +87,15 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber, unusedUnti
 % device numbers of all attached keyboards, or keyboards matching specific
 % criteria, and the function GetKeypadIndices() allows the same for keypads.
 %
-% On MS-Windows XP and earlier, KbCheck can't address individual keyboards.
-% On Vista and later, it can.
+% On MS-Windows 2000 and earlier, KbCheck can address individual keyboards.
+% On Windows-XP and later, it can't.
 % 
+% As a little bonus, KbCheck can also query other HID human input devices
+% which have keys or buttons as if they were keyboards. If you pass in the
+% deviceIndex of a mouse (GetMouseIndices will provide with them), it will
+% report mouse button state as keyboard state. Similar behaviour usually
+% works with Joysticks, Gamepads and other input controllers.
+%
 % Windows with legacy Matlab versions prior to R2007a: ____________________
 %
 % KbCheck uses built-in helper functions of the Screen() mex file to query

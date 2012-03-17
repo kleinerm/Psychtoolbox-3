@@ -46,7 +46,7 @@ function [secs, keyCode, deltaSecs] = KbWait(deviceNumber, forWhat, untilTime)
 % -> waitForAllKeysReleased -> Return [secs, keyCode] of the key press.
 %
 %
-% OSX: ___________________________________________________________________
+% OSX and Linux: __________________________________________________________
 %
 % KbWait uses the PsychHID function, a general purpose function for
 % reading from the Human Interface Device (HID) class of USB devices.
@@ -59,6 +59,13 @@ function [secs, keyCode, deltaSecs] = KbWait(deviceNumber, forWhat, untilTime)
 % keypad devices will be checked. The device numbers to be checked are
 % determined only on the first call to the function.  If these numbers
 % change, the function can be reset using "clear KbWait".
+%
+% As a little bonus, KbWait can also query other HID human input devices
+% which have keys or buttons as if they were keyboards. If you pass in the
+% deviceIndex of a mouse (GetMouseIndices will provide with them), it will
+% treat mouse button state as keyboard state. Similar behaviour usually
+% works with Joysticks, Gamepads and other input controllers.
+%
 % _________________________________________________________________________
 %
 % See also: KbCheck, KbStrokeWait, KbPressWait, KbReleaseWait, GetChar, CharAvail, KbDemo.

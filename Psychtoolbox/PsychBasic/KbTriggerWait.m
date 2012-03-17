@@ -37,7 +37,9 @@ function secs = KbTriggerWait(keyCode, deviceNumber)
 %
 % KbTriggerWait tests the first USB-HID keyboard device by default.
 % Optionally, you can pass in a 'deviceNumber' to test a different keyboard
-% if multiple keyboards are connected to your machine.
+% if multiple keyboards are connected to your machine. The function also
+% allows to wait for button presses on keypads, mice or other HID devices
+% with buttons or keys.
 %
 % Passing a deviceNumber of -1 will NOT cause all keyboards to be detected
 %

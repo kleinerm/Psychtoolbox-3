@@ -1207,6 +1207,11 @@ PsychError PsychIOOSConfigureSerialPort(PSYCHVOLATILE PsychSerialDeviceRecord* d
 				device->readBuffer = (unsigned char*) p;
 				device->readBufferSize = (unsigned int) inint;
 			}
+			
+			// Zerofill, so each page of memory gets touched once and we fault in
+			// all memory pages to improve realtime behaviour of rt reader thread by
+			// minimizing / avoiding page-faults:
+			memset(device->readBuffer, 0, device->readBufferSize);
 		}
 	}
 

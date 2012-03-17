@@ -35,15 +35,18 @@ function KbQueueCreate(deviceNumber, keyList)
 %
 %  KbQueueCreate([deviceNumber][, keyList])
 %      Creates the queue for the specified (or default) device number
-%        If the device number is less than zero, the default device is used.
+%      If the device number is less than zero, the default device is used.
 %      keyList is an optional 256-length vector of doubles (not logicals)
-%        with each element corresponding to a particular key (use KbName
-%        to map between keys and their positions). If the double value
-%        corresponding to a particular key is zero, events for that key
-%        are not added to the queue and will not be reported.
+%      with each element corresponding to a particular key (use KbName
+%      to map between keys and their positions). If the double value
+%      corresponding to a particular key is zero, events for that key
+%      are not added to the queue and will not be reported.
 %      No events are delivered to the queue until KbQueueStart or 
-%        KbQueueWait is called.
-%      KbQueueCreate can be called again at any time
+%      KbQueueWait is called.
+%      KbQueueCreate can be called again at any time. The function can also
+%      treat other HID devices with buttons or keys as if they are
+%      keyboards. E.g., it can also record button state of a mouse, a
+%      joystick or a gamepad.
 %			
 %  KbQueueStart()
 %      Starts delivering keyboard events from the specified device to the 

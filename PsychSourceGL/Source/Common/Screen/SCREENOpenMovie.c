@@ -156,7 +156,10 @@ PsychError SCREENOpenMovie(void)
 
                     // Increase our scheduling priority to basic RT priority: This way we should get
                     // more cpu time for our PTB main thread than the async. background prefetch-thread:
-                    if ((rc=PsychSetThreadPriority(NULL, ((PSYCH_SYSTEM == PSYCH_WINDOWS) ? 1 : 2), 0))!=0) {
+					// On Windows we must not go higher than basePriority 1 (HIGH PRIORITY) or bad interference can happen.
+					// On OS/X we use basePriority 2 for robust realtime, using up to (4+1) == 5 msecs of time in every 10 msecs slice, allowing for up to 1 msec jitter/latency for ops.
+					// On Linux we just use standard basePriority 2 RT-FIFO scheduling and trust the os to do the right thing.
+                    if ((rc=PsychSetThreadPriority(NULL, ((PSYCH_SYSTEM == PSYCH_WINDOWS) ? 1 : 2), ((PSYCH_SYSTEM == PSYCH_OSX) ? 4 : 0)))!=0) {
                         printf("PTB-WARNING: In OpenMovie(): Failed to raise priority of main thread [System error %i]. Expect movie timing problems.\n", rc);
                     }
 

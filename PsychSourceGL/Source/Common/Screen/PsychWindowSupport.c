@@ -2172,6 +2172,10 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 			// Boost priority of flipperThread by 2 levels and switch it to RT scheduling,
 			// unless it is already RT-Scheduled. As the thread inherited our scheduling
 			// priority from PsychCreateThread(), we only need to +2 tweak it from there:
+			// Note: On OS/X this means ultra-low latency non-preemptible operation (as we need), with up to
+			// 3 msecs uninterrupted computation time out of 10 msecs if we really need it. Normally we can
+			// get along with << 1 msec, but some pathetic cases of GPU driver bugs could drive it up to 3 msecs
+			// in the async flipper thread:
 			PsychSetThreadPriority(&(flipRequest->flipperThread), 10, 2);
 
 			// The thread is started with flipperState == 0, ie., not "initialized and ready", the lock is unlocked.

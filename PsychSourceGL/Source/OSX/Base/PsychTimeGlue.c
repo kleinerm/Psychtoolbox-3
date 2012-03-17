@@ -32,13 +32,16 @@
 #include <sys/sysctl.h>
 #include <sched.h>
 
+#include <mach/mach_init.h>
+#include <mach/task_policy.h>
+
 /*
  *		file local state variables
  */
 
 static double		precisionTimerAdjustmentFactor=1;
 static double		estimatedGetSecsValueAtTickCountZero;
-static psych_bool		isKernelTimebaseFrequencyHzInitialized=FALSE;
+static psych_bool	isKernelTimebaseFrequencyHzInitialized=FALSE;
 static long double	kernelTimebaseFrequencyHz;
 
 /*
@@ -315,6 +318,25 @@ int PsychIsCurrentThreadEqualToPsychThread(psych_thread threadhandle)
 	return( pthread_equal(PsychGetThreadId(), threadhandle) );
 }
 
+// Helper for PsychSetThreadPriority(): Setup of Mach RT scheduling.
+// We want / "promise to not use more" than "computation" cycles out of every "period" cycles.
+// Once we started execution, we want to finish our "computation" cycles within at most "constraint" cycles.
+// We allow / or don't allow to be "isPreemptible" preempted - to finish our "computation" cycles split up into
+// multiple pieces, but finishing within at most "constraint" cycles.
+int set_realtime(task_t threadID, int period, int computation, int constraint, psych_bool isPreemptible) {
+    struct thread_time_constraint_policy ttcpolicy;
+    int ret;
+ 
+	// Set realtime scheduling with following parameters:
+    ttcpolicy.period = period;
+    ttcpolicy.computation = computation;
+    ttcpolicy.constraint = (constraint >= computation) ? constraint : computation;
+    ttcpolicy.preemptible = (isPreemptible) ? 1 : 0;
+ 
+    ret = thread_policy_set(threadID, THREAD_TIME_CONSTRAINT_POLICY, (thread_policy_t) &ttcpolicy, THREAD_TIME_CONSTRAINT_POLICY_COUNT);
+	return(ret);
+}
+
 /* Change priority for thread 'threadhandle', or for the calling thread if 'threadhandle' == NULL.
  * threadhandle == 0x1 means "Main Psychtoolbox thread" and may incur special treatment.
  * 'basePriority' can be 0 for normal scheduling, 1 for higher priority and 2 for highest priority.
@@ -325,11 +347,14 @@ int PsychIsCurrentThreadEqualToPsychThread(psych_thread threadhandle)
  */
 int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int tweakPriority)
 {
-	int rc = 0;
-	int policy;
-	struct sched_param sp;
-	pthread_t thread;
-
+	int							rc = 0;
+	pthread_t					thread;
+    int							kernError;
+    task_t						threadID;
+    thread_policy_t				threadPolicy;
+    mach_msg_type_number_t		policyCount, policyCountFilled;
+    boolean_t					isDefault;
+	
 	if ((NULL != threadhandle) && (0x1 != (int) threadhandle)) {
 		// Retrieve thread handle of thread to change:
 		thread = *threadhandle;
@@ -338,25 +363,68 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 		// Retrieve handle of calling thread:
 		thread = pthread_self();
 	}
-	
-	// Retrieve current scheduling policy and parameters:
-	pthread_getschedparam(thread, &policy, &sp);
 
+	// Map Posix thread handle to Mach thread handle:
+	threadID = pthread_mach_thread_np(thread);
+
+	// Get timebase:
+	double ticksPerSec = PsychGetKernelTimebaseFrequencyHz();
+	double baseQuantum = 0.010;
+	
+	// tweakPriority <= 0 -> 10% cpu. Can go up to 90% at level >=8 in 10% increments.
+	if (tweakPriority < 0) tweakPriority = 0;
+	if (tweakPriority > 8) tweakPriority = 8;
+	
 	switch(basePriority) {
-		case 0:	// Normal priority. No change to scheduling priority:
-			policy = SCHED_OTHER;
-			sp.sched_priority = 0;
+		case 0:	// Normal priority: Drop to standard scheduling.
+			threadPolicy = (thread_policy_t) malloc(sizeof(thread_standard_policy_data_t));
+			policyCount  = THREAD_STANDARD_POLICY_COUNT;
+			policyCountFilled = policyCount;
+			isDefault = TRUE;
+			kernError = thread_policy_get(threadID, THREAD_STANDARD_POLICY, threadPolicy, &policyCountFilled, &isDefault);
+			if (kernError == 0) kernError = thread_policy_set(threadID, THREAD_STANDARD_POLICY, threadPolicy, policyCountFilled);
+			free(threadPolicy);
+			rc = (int) kernError;
 		break;
 		
-		case 1: // High priority / Round robin realtime.
-			policy = SCHED_RR;
-			sp.sched_priority = sp.sched_priority + tweakPriority;
+		case 1: // High priority: Up to 90% cpu utilization, but preemptible for urgent tasks, with an allowable total time to completion of baseQuantum.
+			// This basically says: "I am more important than bog-standard threads, and i want to have x msecs of 10 msecs very 10 msecs, but i don't care
+			// about startup delay (reaction times) or interruptions, as long as i don't lose more than 10 msecs. Good for high priority compute tasks
+			// with lots of wiggle room wrt. when stuff happens, e.g., some data producer thread or i/o thread which needs to deliver/handle a certain
+			// amount of data processing/shuffling/io within a certain time quantum, because it is feeding some other realtime thread or hw process,
+			// due to things like intermediate fifo buffering, itself can tolerate a certain lag.
+			// This may become useful in the future for i/o functions in IOPort/PsychHID, movie playback/recording helper threads etc...
+			rc = set_realtime(threadID, baseQuantum * ticksPerSec, (((double) tweakPriority + 1) / 10) * baseQuantum * ticksPerSec, baseQuantum * ticksPerSec, TRUE);
 		break;
 		
-		case 2:   // Highest priority: FIFO scheduling
-		case 10:  // Multimedia class scheduling emulation for non-Windows:
-			policy = SCHED_FIFO;
-			sp.sched_priority = sp.sched_priority + tweakPriority;
+		case 2: // Realtime priority: Up to (tweakPriority + 1) msecs out of 10 msecs of *uninterrupted* computation (non-preemptible after start).
+			// However, after the thread becomes runnable, its actual start of uninterrupted execution can be delayed by up to 1 msec, e.g., if more
+			// important (basePriority 10) threads are executing, or a high priority or lower priority thread needs some computation time.
+			// This is our most common use-case: Most of our realtime threads are completely triggered (= reactive to) by external hardware input events.
+			// They wait on the arrival of some external event, e.g., a user key press or mouse click, some trigger signal from some I/O device like
+			// response box, serial port or parallel port, DAQ board etc., or for some timer going off at a certain time. Most often they have to respond
+			// to some trigger event by either executing some action, or by simply timestamping the event, like a button press of a subject, or some TTL
+			// trigger from some equipment. Executing the actual action, or timestamping, or storing the received data in some queue, is usually fast,
+			// the computation finishes quickly. As timestamping or external hardware control can be involved, we don't want to get preempted once running,
+			// to avoid impairing precision of timestamps or clock-sync algorithms or hw control actions. However for typical neuro-science experiments,
+			// we can tolerate a random time delay (or imprecision in acquired timestamps) of 1 msec.
+			// Typical consumers of this setup: IOPort, PsychHID, Movie playback or video capture high-level control.
+			rc = set_realtime(threadID, baseQuantum * ticksPerSec, (((double) tweakPriority + 1) / 10) * baseQuantum * ticksPerSec, (((double) tweakPriority + 1 + 1) / 10) * baseQuantum * ticksPerSec, FALSE);
+		break;
+
+		case 10:  // Critical priority: Up to (tweakPriority + 1) msecs out of 10 msecs of *uninterrupted* computation (non-preemptible after start),
+			// must run as soon as possible and then complete without distraction. This is good for timestamping operations that must not be interrupted
+			// in the wrong moment, because that would impair timestamps significantly, and for time-based triggering of execution of operations with
+			// the highest possible timing precision.
+			// Out main client of this is currently the OpenGL flipperThread used by Screen for async flip scheduling and timestamping, and for
+			// frame-sequential stereo fallback. For those apps, uninterrupted low latency is crucial. flipperThread uses tweakPriority == 2, so could
+			// run for up to 3 msecs uninterrupted, something it usually won't do (closer to << 1 msec is expected), but can do in a worst case scenario,
+			// where various workarounds for broken GPU drivers are active and screen resolution/refresh rate settings are especially suboptimal.
+			// The other client is video refresh rate calibration during Screen('GetFlipInterval') active calibration or during Screen('Openwindow')
+			// default calibration.
+			//
+			// Future clients may be found in the IOPort async-task framework for highly timing sensitive i/o operations.
+			rc = set_realtime(threadID, baseQuantum * ticksPerSec, (((double) tweakPriority + 1) / 10) * baseQuantum * ticksPerSec, 0, FALSE);
 		break;
 
 		default:
@@ -365,15 +433,12 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 	}
 
 	// Try to apply new priority and scheduling method:
-	if (rc == 0) {
-		// Make sure we have at least prio level 1 for RT scheduling policies:
-		if ((policy != SCHED_OTHER) && (sp.sched_priority < 1)) sp.sched_priority = 1;
-
-		rc = pthread_setschedparam(thread, policy, &sp);
-		if (rc != 0) printf("PTB-CRITICAL: In call to PsychSetThreadPriority(): Failed to set new basePriority %i, tweakPriority %i, effective %i [%s] for thread %p provided!\n",
-							basePriority, tweakPriority, sp.sched_priority, (policy != SCHED_OTHER) ? "REALTIME" : "NORMAL", (void*) threadhandle);
+	if (rc != 0) {
+		printf("PTB-WARNING: In call to PsychSetThreadPriority(): Failed to set new basePriority %i, tweakPriority %i, effective %i [%s] for thread %p provided!\n",
+				basePriority, tweakPriority, tweakPriority, (basePriority > 0) ? "REALTIME" : "NORMAL", (void*) threadhandle);
+		printf("PTB-WARNING: This can lead to timing glitches and odd performance behaviour.\n");
 	}
-	
+
 	// rc is either zero for success, or 2 for invalid arg, or some other non-zero failure code:
 	return(rc);
 }

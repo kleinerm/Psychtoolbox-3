@@ -130,12 +130,12 @@ static CVReturn PsychCVDisplayLinkOutputCallback(CVDisplayLinkRef displayLink, c
 psych_bool PsychRealtimePriority(psych_bool enable_realtime)
 {
     psych_bool				isError;
-    thread_policy_flavor_t		flavorConstant;
-    int					kernError;
-    task_t				threadID;
+    thread_policy_flavor_t	flavorConstant;
+    int						kernError;
+    task_t					threadID;
     thread_policy_t			threadPolicy;
-    static thread_policy_t		old_threadPolicy;
-    mach_msg_type_number_t		policyCount, policyCountFilled;
+    static thread_policy_t	old_threadPolicy;
+    mach_msg_type_number_t	policyCount, policyCountFilled;
     static mach_msg_type_number_t	old_policyCountFilled;
     boolean_t				isDefault;
     
@@ -144,84 +144,77 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
     
     if (old_enable_realtime == enable_realtime) {
         // No transition with respect to previous state -> Nothing to do.
-        return(true);
+        return(TRUE);
     }
     
     // Transition requested:
     old_enable_realtime = enable_realtime;
     
-    kernError=0;
     // Determine our threadID:
-    threadID= mach_thread_self();
+    threadID = mach_thread_self();
     
     if (enable_realtime) {
         // Transition to realtime requested:
-        
+
         // Get current scheduling policy and its settings and back it up for later restore:
-        old_threadPolicy=(thread_policy_t) malloc(sizeof(thread_time_constraint_policy_data_t));
-        policyCount=THREAD_TIME_CONSTRAINT_POLICY_COUNT;
-        old_policyCountFilled=policyCount;
-        isDefault=FALSE;
+        old_threadPolicy = (thread_policy_t) malloc(sizeof(thread_time_constraint_policy_data_t));
+        policyCount = THREAD_TIME_CONSTRAINT_POLICY_COUNT;
+        old_policyCountFilled = policyCount;
+        isDefault = FALSE;
         // We check if STANDARD_POLICY is active and query its settings, if so...
-        kernError=thread_policy_get(threadID, THREAD_STANDARD_POLICY, old_threadPolicy, &old_policyCountFilled, &isDefault);
+        kernError = thread_policy_get(threadID, THREAD_STANDARD_POLICY, old_threadPolicy, &old_policyCountFilled, &isDefault);
         if (kernError) {
             // Failed!
-            old_enable_realtime=FALSE;
+            old_enable_realtime = FALSE;
             free(old_threadPolicy);
+			printf("PsychRealtimePriority: ERROR! COULDN'T QUERY CURRENT SCHEDULING SETTINGS!!!\n");
             return(FALSE);
         }
         
         // oldModeWasStandard == TRUE --> We need to revert to STANDARD POLICY later...
-        oldModeWasStandard=!isDefault;
-        
-        // Prepare realtime-policy: Query default settings for it...
-        threadPolicy=(thread_policy_t) malloc(sizeof(thread_time_constraint_policy_data_t));
-        policyCount=THREAD_TIME_CONSTRAINT_POLICY_COUNT;
-        policyCountFilled=policyCount;
-        isDefault=TRUE;
-        kernError=thread_policy_get(threadID, THREAD_TIME_CONSTRAINT_POLICY, threadPolicy, &policyCountFilled, &isDefault);
-        if (kernError) {
-            // Failed!
-            old_enable_realtime=FALSE;
-            free(threadPolicy);
-            return(FALSE);
-        }
-        
-        // Check if realtime scheduling isn't already active (==oldModeWasSTanderd==FALSE)
-        // If we are already in RT mode (e.g., Priority(9) call in Matlab), we skip the switch...
-        if (oldModeWasStandard) {
-            // RT scheduling not yet active -> Switch to it.
-            kernError=thread_policy_set(threadID, THREAD_TIME_CONSTRAINT_POLICY, threadPolicy, policyCountFilled);
-            if (kernError) {
-                // Failed!
-                old_enable_realtime=FALSE;
-                free(threadPolicy);
-                return(FALSE);
-            }
-        }
-        
-        // Successfully switched to RT-Scheduling:
-        free((void*)threadPolicy);
+        oldModeWasStandard = !isDefault;
+
+        // printf("PRE-RT: CURRENTLY IN %s mode\n", oldModeWasStandard ? "STANDARD" : "REALTIME");
+
+		if (!oldModeWasStandard) {
+			// We are already RT scheduled. Backup settings for later switch-back:
+			policyCount = THREAD_TIME_CONSTRAINT_POLICY_COUNT;
+			old_policyCountFilled = policyCount;
+			isDefault = FALSE;
+			// We check if STANDARD_POLICY is active and query its settings, if so...
+			kernError = thread_policy_get(threadID, THREAD_TIME_CONSTRAINT_POLICY, old_threadPolicy, &old_policyCountFilled, &isDefault);
+			if (kernError) {
+				// Failed!
+				old_enable_realtime = FALSE;
+				free(old_threadPolicy);
+				printf("PsychRealtimePriority: ERROR! COULDN'T QUERY CURRENT RT SCHEDULING SETTINGS!!!\n");
+				return(FALSE);
+			}
+		}
+
+		// Switch to our ultra-high priority realtime mode: Guaranteed up to 3 msecs of uninterrupted
+		// runtime as soon as we want to run: Perfect for swap completion timestamping in refresh rate
+		// calibration - our only use-case:
+		PsychSetThreadPriority(NULL, 10, 2);
     }
     else {
         // Transition from RT to Non-RT scheduling requested: We just reestablish the backed-up old
-        // policy: If the old policy wasn't Non-RT, then we don't switch back...
-        if (oldModeWasStandard) {
-            kernError=thread_policy_set(threadID, THREAD_STANDARD_POLICY, old_threadPolicy, old_policyCountFilled);
-            if (kernError) {
-                // Failed!
-                old_enable_realtime=TRUE;
-                
-                printf("PsychRealtimePriority: ERROR! COULDN'T SWITCH BACK TO NON-RT SCHEDULING!!!");
-                fflush(NULL);
-                return(FALSE);
-            }
-        }
+        // policy:
+		kernError = thread_policy_set(threadID, (oldModeWasStandard) ? THREAD_STANDARD_POLICY : THREAD_TIME_CONSTRAINT_POLICY, old_threadPolicy, old_policyCountFilled);
+		if (kernError) {
+			// Failed!
+			old_enable_realtime = TRUE;
+			free((void*) old_threadPolicy);
+			
+			printf("PsychRealtimePriority: ERROR! COULDN'T SWITCH BACK TO NON-RT SCHEDULING!!!\n");
+			fflush(NULL);
+			return(FALSE);
+		}
         
         // Successfully switchted to RT-Scheduling:
         free((void*) old_threadPolicy);
     }
-    
+
     // Success.
     return(TRUE);
 }

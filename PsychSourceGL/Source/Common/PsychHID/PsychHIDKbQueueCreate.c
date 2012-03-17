@@ -141,6 +141,12 @@ static void *PsychHIDKbQueueNewThread(void *value){
 	if(!CFRunLoopContainsSource(psychHIDKbQueueCFRunLoopRef, hidDataRef->eventSource, kCFRunLoopDefaultMode))
 		CFRunLoopAddSource(psychHIDKbQueueCFRunLoopRef, hidDataRef->eventSource, kCFRunLoopDefaultMode);
 
+	// Switch ourselves (NULL) to RT scheduling: We promise to use / require at most (0+1) == 1 msec every
+	// 10 msecs and allow for wakeup delay/jitter of up to 2 msecs -- perfectly reasonable, given that we
+	// only do minimal << 1 msec processing, only at the timescale of human reaction times, and driven by
+	// input devices with at least 4+/-4 msecs jitter at 8 msec USB polling frequency.
+	PsychSetThreadPriority(NULL, 2, 0);
+
 	// Start the run loop, code execution will block here until run loop is stopped again by PsychHIDKbQueueRelease
 	// Meanwhile, the run loop of this thread will be responsible for executing code below in PsychHIDKbQueueCalbackFunction
 	CFRunLoopRun();
