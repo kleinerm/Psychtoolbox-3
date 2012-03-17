@@ -93,7 +93,7 @@ BOOL keyboardEnumCallback(LPCDIDEVICEINSTANCE lpddi, LPVOID pvRef)
     
     // Done. Continue with enumeration, unless the capacity of our internal
     // array is exhausted:
-    if (ndevices == PSYCH_HID_MAX_DEVICES) printf("PsychHID-WARNING: Number of detected keyboard devices %i now equal to our maximum capacity. May miss some keyboard devices!\n", ndevices);    
+    if (ndevices == PSYCH_HID_MAX_DEVICES) printf("PsychHID-WARNING: Number of detected HID input devices %i now equal to our maximum capacity. May miss some devices!\n", ndevices);    
     
     return((ndevices < PSYCH_HID_MAX_DEVICES) ? DIENUM_CONTINUE : DIENUM_STOP);
 }
@@ -127,6 +127,20 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
     
 	// Enumerate all DirectInput keyboard(-like) devices:
     rc = dinput->EnumDevices(DI8DEVCLASS_KEYBOARD, (LPDIENUMDEVICESCALLBACK) keyboardEnumCallback, NULL, DIEDFL_ATTACHEDONLY | DIEDFL_INCLUDEHIDDEN);
+    if (DI_OK != rc) {
+        printf("PsychHID-ERROR: Error return from DirectInput8 EnumDevices(): %i! Game over!\n", (int) rc);
+        goto out;
+	}
+
+	// Enumerate all DirectInput mouse(-like) devices:
+    rc = dinput->EnumDevices(DI8DEVCLASS_POINTER, (LPDIENUMDEVICESCALLBACK) keyboardEnumCallback, NULL, DIEDFL_ATTACHEDONLY | DIEDFL_INCLUDEHIDDEN);
+    if (DI_OK != rc) {
+        printf("PsychHID-ERROR: Error return from DirectInput8 EnumDevices(): %i! Game over!\n", (int) rc);
+        goto out;
+	}
+
+	// Enumerate all DirectInput joystick/gamepad(-like) devices:
+    rc = dinput->EnumDevices(DI8DEVCLASS_GAMECTRL, (LPDIENUMDEVICESCALLBACK) keyboardEnumCallback, NULL, DIEDFL_ATTACHEDONLY | DIEDFL_INCLUDEHIDDEN);
     if (DI_OK != rc) {
         printf("PsychHID-ERROR: Error return from DirectInput8 EnumDevices(): %i! Game over!\n", (int) rc);
         goto out;
@@ -229,6 +243,7 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
         
         switch(dev->dwDevType & 0xff) {
             case DI8DEVTYPE_MOUSE:
+			case DI8DEVTYPE_SCREENPOINTER:
 				type = "slave pointer";
 				if (dev->usagePage == 0) dev->usagePage = 1;
 				if (dev->usageValue == 0) dev->usageValue = 2;
@@ -239,6 +254,12 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
 				if (dev->usagePage == 0) dev->usagePage = 1;
 				if (dev->usageValue == 0) dev->usageValue = 6;
 			break;
+			
+			case DI8DEVTYPE_JOYSTICK:
+				type = "slave joystick";
+				if (dev->usagePage == 0) dev->usagePage = 1;
+				if (dev->usageValue == 0) dev->usageValue = 4;
+			break;			
         }
         
         PsychSetStructArrayDoubleElement("usagePageValue",	deviceIndex, 	(double) dev->usagePage, deviceStruct);        
@@ -282,7 +303,7 @@ static int PsychHIDGetDefaultKbQueueDevice(void)
     if (ndevices > 0) return(0);
     
     // Nothing found? If so, abort:
-    PsychErrorExitMsg(PsychError_user, "Could not find any useable keyboard device!");
+    PsychErrorExitMsg(PsychError_user, "Could not find any useable keyboard device or other default input device!");
 
 	// Utterly bogus return to make crappy Microsoft compiler shut up:
 	return(0);
@@ -411,13 +432,14 @@ static unsigned int PsychHIDOSMapKey(unsigned int inkeycode)
 
 PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 {    
-	psych_uint8 keys[256];
+	psych_uint8 keys[1024];
     LPDIRECTINPUTDEVICE8 kb;
 	unsigned int i, j;
 	double* buttonStates;
 	int keysdown;
 	double timestamp;
-    
+    DWORD cbSize;
+
 	if (deviceIndex == INT_MAX) {
 		deviceIndex = PsychHIDGetDefaultKbQueueDevice();
 		// Ok, deviceIndex now contains our default keyboard to use - The first suitable keyboard.
@@ -425,7 +447,7 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
     
 	if ((deviceIndex < 0) || (deviceIndex >= ndevices)) {
 		// Out of range index:
-		PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. No such device!");
+		PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. No such device!");
 	}
 
 	// Get DirectInput keyboard device:
@@ -448,9 +470,30 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 		PsychYieldIntervalSeconds(0.050);
 	}
 
+	// Size of state structure is device dependent:
+	switch (info[deviceIndex].dwDevType & 0xff) {
+		case DI8DEVTYPE_KEYBOARD:
+			cbSize = 256;
+		break;
+
+		case DI8DEVTYPE_MOUSE:
+		case DI8DEVTYPE_SCREENPOINTER:
+			cbSize = sizeof(DIMOUSESTATE2);
+		break;
+
+		case DI8DEVTYPE_JOYSTICK:
+			cbSize = sizeof(DIJOYSTATE2);
+		break;
+
+		default: // Unkown device. Fail.
+			cbSize = 0;
+	}
+
+
 	// Query current state snapshot of keyboard:
-	if (DI_OK != kb->GetDeviceState(256, (LPVOID) &keys[0])) {
-		printf("PsychHID-ERROR: KbCheck for keyboard with deviceIndex %i failed, because query of device failed!\n", deviceIndex);
+	memset(keys, 0, sizeof(keys));
+	if (DI_OK != kb->GetDeviceState(cbSize, (LPVOID) &keys[0])) {
+		printf("PsychHID-ERROR: KbCheck for deviceIndex %i failed, because query of device failed!\n", deviceIndex);
 		PsychErrorExitMsg(PsychError_user, "KbCheck failed!");
 	}
 
@@ -467,21 +510,56 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 	PsychAllocOutDoubleMatArg(3, kPsychArgOptional, 1, 256, 1, &buttonStates);
 	for (i = 0; i < 256; i++) buttonStates[i] = 0;
 
-	// Copy button state to output vector, apply scanlist mask, compute
-	// resulting overall keysdown state. We ignore keyboard scancode zero and
-    // start with 1 instead. We also ignore code 255. These are borderline codes
-    // which may do weird things...
-	for (i = 1; i < 255; i++) {
-		// Compute target key slot for this scancode i:
-		j = PsychHIDOSMapKey(i);
+	// Keyboard?
+	if (cbSize == 256) {
+		// Copy button state to output vector, apply scanlist mask, compute
+		// resulting overall keysdown state. We ignore keyboard scancode zero and
+		// start with 1 instead. We also ignore code 255. These are borderline codes
+		// which may do weird things...
+		for (i = 1; i < 255; i++) {
+			// Compute target key slot for this scancode i:
+			j = PsychHIDOSMapKey(i);
 
-		// This key down?
-		buttonStates[j] += (keys[i] > 0) ? 1 : 0;
-		// Apply scanList mask, if any provided:
-		if (scanList && (scanList[j] <= 0)) buttonStates[j] = 0;
-		keysdown += (unsigned int) buttonStates[j];
+			// This key down?
+			buttonStates[j] += (keys[i] > 0) ? 1 : 0;
+			// Apply scanList mask, if any provided:
+			if (scanList && (scanList[j] <= 0)) buttonStates[j] = 0;
+			keysdown += (unsigned int) buttonStates[j];
+		}
 	}
+	
+	// Joystick?
+	if (cbSize == sizeof(DIJOYSTATE2)) {
+		// Copy button state to output vector, apply scanlist mask, compute
+		// resulting overall keysdown state. There are 128 buttons at an offset:
+		for (i = (8 * sizeof(LONG) + 4 * sizeof(DWORD)); i < (8 * sizeof(LONG) + 4 * sizeof(DWORD)) + 128; i++) {
+			// Compute target key slot for this scancode i:
+			j = i - (8 * sizeof(LONG) + 4 * sizeof(DWORD));
 
+			// This key down?
+			buttonStates[j] += (keys[i] > 0) ? 1 : 0;
+			// Apply scanList mask, if any provided:
+			if (scanList && (scanList[j] <= 0)) buttonStates[j] = 0;
+			keysdown += (unsigned int) buttonStates[j];
+		}
+	}
+	
+	// Mouse?
+	if (cbSize == sizeof(DIMOUSESTATE2)) {
+		// Copy button state to output vector, apply scanlist mask, compute
+		// resulting overall keysdown state. There are 8 buttons at an offset:
+		for (i = (3 * sizeof(LONG)); i < (3 * sizeof(LONG)) + 8; i++) {
+			// Compute target key slot for this scancode i:
+			j = i - (3 * sizeof(LONG));
+
+			// This key down?
+			buttonStates[j] += (keys[i] > 0) ? 1 : 0;
+			// Apply scanList mask, if any provided:
+			if (scanList && (scanList[j] <= 0)) buttonStates[j] = 0;
+			keysdown += (unsigned int) buttonStates[j];
+		}
+	}
+	
 	// Copy out overall keystate:
 	PsychCopyOutDoubleArg(1, kPsychArgOptional, (keysdown > 0) ? 1 : 0);
 
@@ -553,8 +631,33 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                 keycode = event.dwOfs & 0xff;
                 keystate = event.dwData & 0x80;
                 
-				// Map scancode 'keycode' to virtual key code 'keycode':
-				keycode = PsychHIDOSMapKey(keycode);
+				// Remap keycode into target slot in our arrays, depending on input device:
+                switch (info[i].dwDevType & 0xff) {
+					case DI8DEVTYPE_KEYBOARD:
+						// Map scancode 'keycode' to virtual key code 'keycode':
+						keycode = PsychHIDOSMapKey(keycode);
+					break;
+
+					case DI8DEVTYPE_MOUSE:
+					case DI8DEVTYPE_SCREENPOINTER:
+						// Button event? Otherwise skip it.
+						if (keycode < 3 * sizeof(LONG)) continue;
+						// Correct for buttons offset in data structure DIMOUSESTATE2:
+						keycode -= 3 * sizeof(LONG);
+					break;
+
+					case DI8DEVTYPE_JOYSTICK:
+						// Button event? Otherwise skip it.
+						if (keycode < (8 * sizeof(LONG) + 4 * sizeof(DWORD))) continue;
+						// Correct for buttons offset in data structure DIJOYSTATE2:
+						keycode -= (8 * sizeof(LONG) + 4 * sizeof(DWORD));
+						// Also skip if beyond button array:
+						if (keycode >= 128) continue;
+					break;
+				
+					default: // Unkown device -- Skip it.
+						continue;
+                }
 
                 // This keyboard queue interested in this keycode?
                 if (psychHIDKbQueueScanKeys[i][keycode] != 0) {
@@ -639,13 +742,13 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 		// Ok, deviceIndex now contains our default keyboard to use - The first suitable keyboard.
 	} else if (deviceIndex >= ndevices) {
 		// Out of range index:
-		PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. No such device!");
+		PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. No such device!");
 	} 
     
 	// Do we finally have a valid keyboard?
 	dev = &info[deviceIndex];
 	if ((dev->dwDevType & 0xff) != DI8DEVTYPE_KEYBOARD) {
-		PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. Not a keyboard device!");
+		//		PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. Not a keyboard device!");
 	}
     
 	// Keyboard queue for this deviceIndex already created?
@@ -683,7 +786,7 @@ void PsychHIDOSKbQueueRelease(int deviceIndex)
     
 	if ((deviceIndex < 0) || (deviceIndex >= ndevices)) {
 		// Out of range index:
-		PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. No such device!");
+		PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. No such device!");
 	}
     
 	// Keyboard queue for this deviceIndex already exists?
@@ -719,7 +822,7 @@ void PsychHIDOSKbQueueStop(int deviceIndex)
     
 	if ((deviceIndex < 0) || (deviceIndex >= ndevices)) {
 		// Out of range index:
-		PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. No such device!");
+		PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. No such device!");
 	}
     
 	// Keyboard queue for this deviceIndex already exists?
@@ -796,7 +899,7 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
     
 	if ((deviceIndex < 0) || (deviceIndex >= ndevices)) {
 		// Out of range index:
-		PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. No such device!");
+		PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. No such device!");
 	}
     
 	// Does Keyboard queue for this deviceIndex already exist?
@@ -827,13 +930,36 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
     
 	// Setup event mask, so events from our associated xinput device
 	// get enqueued in our event queue:
-    kb = GetXDevice(deviceIndex);    
-    if (DI_OK != kb->SetDataFormat(&c_dfDIKeyboard)) {
-        PsychUnlockMutex(&KbQueueMutex);
-		printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but setting dataformat failed!\n", deviceIndex);
-		PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
-    }
-    
+    kb = GetXDevice(deviceIndex);
+	
+	// Device specific data format setup:
+	switch (info[deviceIndex].dwDevType & 0xff) {
+		case DI8DEVTYPE_KEYBOARD:
+			if (DI_OK != kb->SetDataFormat(&c_dfDIKeyboard)) {
+				PsychUnlockMutex(&KbQueueMutex);
+				printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but setting dataformat failed!\n", deviceIndex);
+				PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
+			}			
+		break;
+			
+		case DI8DEVTYPE_MOUSE:
+		case DI8DEVTYPE_SCREENPOINTER:
+			if (DI_OK != kb->SetDataFormat(&c_dfDIMouse2)) {
+				PsychUnlockMutex(&KbQueueMutex);
+				printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but setting dataformat failed!\n", deviceIndex);
+				PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
+			}			
+		break;
+			
+		case DI8DEVTYPE_JOYSTICK:
+			if (DI_OK != kb->SetDataFormat(&c_dfDIJoystick2)) {
+				PsychUnlockMutex(&KbQueueMutex);
+				printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but setting dataformat failed!\n", deviceIndex);
+				PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
+			}			
+		break;				
+	}
+
     // Set device event buffer size to 256 elements:
     dipdw.diph.dwSize = sizeof(DIPROPDWORD);
     dipdw.diph.dwHeaderSize = sizeof(DIPROPHEADER);
@@ -906,14 +1032,14 @@ void PsychHIDOSKbQueueFlush(int deviceIndex)
     
 	if ((deviceIndex < 0) || (deviceIndex >= ndevices)) {
 		// Out of range index:
-		PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. No such device!");
+		PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. No such device!");
 	}
     
 	// Does Keyboard queue for this deviceIndex already exist?
 	if (NULL == psychHIDKbQueueFirstPress[deviceIndex]) {
 		// No. Bad bad...
 		printf("PsychHID-ERROR: Tried to flush non-existent keyboard queue for deviceIndex %i! Call KbQueueCreate first!\n", deviceIndex);
-		PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. No queue for that device yet!");
+		PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. No queue for that device yet!");
 	}
     
     kb = GetXDevice(deviceIndex);    
@@ -948,14 +1074,14 @@ void PsychHIDOSKbQueueCheck(int deviceIndex)
     
 	if ((deviceIndex < 0) || (deviceIndex >= ndevices)) {
 		// Out of range index:
-		PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. No such device!");
+		PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. No such device!");
 	}
     
 	// Does Keyboard queue for this deviceIndex already exist?
 	if (NULL == psychHIDKbQueueFirstPress[deviceIndex]) {
 		// No. Bad bad...
 		printf("PsychHID-ERROR: Tried to check non-existent keyboard queue for deviceIndex %i! Call KbQueueCreate first!\n", deviceIndex);
-		PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. No queue for that device yet!");
+		PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. No queue for that device yet!");
 	}
     
 	// Allocate output
@@ -1022,7 +1148,7 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
     
     if ((deviceIndex < 0) || (deviceIndex >= ndevices)) {
         // Out of range index:
-        PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. No such device!");
+        PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. No such device!");
     }
     
     if(psychHIDKbQueueFirstPress[deviceIndex]) PsychErrorExitMsg(PsychError_user, "A queue for this device is already running, you must call KbQueueRelease() before invoking KbTriggerWait.");

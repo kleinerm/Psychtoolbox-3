@@ -38,9 +38,6 @@ end
 
 if ~IsOSX
   LoadPsychHID;
-end
-
-if IsLinux
   if strcmpi(typeOnly, 'masterPointer')
     d = PsychHID('Devices', 1);
   else
