@@ -42,8 +42,13 @@ if IsOSX
     error('Sorry, this demo is not supported on OS/X.');
 end
 
-% Enforce use of GStreamer on all systems:
-Screen('Preference', 'OverrideMultimediaEngine', 1);
+% Enforce use of GStreamer on Windows:
+if IsWin && (Screen('Preference', 'OverrideMultimediaEngine') ~= 1)
+    fprintf('This demo is not supported on Windows with Quicktime. Will now try to\n');
+    fprintf('switch to the GStreamer engine instead. If GStreamer is not installed, this\n');
+    fprintf('demo will abort with an error. See "help GStreamer" for installation instructions.\n');
+    Screen('Preference', 'OverrideMultimediaEngine', 1);
+end
 
 if nargin < 1
     moviename = '*.mov' %#ok<NOPRT>
