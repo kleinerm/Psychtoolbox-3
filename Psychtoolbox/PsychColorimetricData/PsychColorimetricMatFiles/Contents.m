@@ -87,6 +87,7 @@
 %   T_cones_ss10        - Stockman-Sharpe (2000) 10-degree cone fundamentals.  See CVRL database.
 %   T_cones_sp          - Smith-Pokorny cone fundamentals.
 %   T_DCS200            - Sensitivities of a Kodak DCS-200 color camera.
+%   T_ground            - Someone added this to the directory but not here.  What is it? (Ground squirrel?)
 %   T_Lanom             - Demarco et al. anomolous L cone sensitivity.
 %   T_log10coneabsorbance_ss - Stockman-Sharpe (2000) log10 LMS cone photopigment absorbance.
 %                       -   See CVRL database, CIE 170-1:2006, Table 6.6.
@@ -98,8 +99,8 @@
 %   T_photopigments_ss  - Removed.  Use T_log10coneabsorbance and raise 10 to it.
 %   T_rods              - CIE scotopic luminous efficiency function.
 %   T_stiles2           - Stiles 2-degree color matching functions.
-%   T_vos1978_Y         - Judd-Vos 1978 photopic luminance efficiency function.
 %   T_ss2000_Y2         - Stockman-Sharpe (2000) 2-degree photopic luminance efficiency function.  See CVRL database.
+%   T_vos1978_Y         - Judd-Vos 1978 photopic luminance efficiency function.
 %   T_xyz1931           - CIE 1931 color matching functions.
 %   T_xyz1964           - CIE 1964 supplemental color matching functions.
 %   T_xyzJuddVos        - Judd-Vos modified color matching functions.
