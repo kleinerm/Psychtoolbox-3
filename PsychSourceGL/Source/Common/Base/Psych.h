@@ -28,6 +28,7 @@
 extern "C" {
 #endif
 
+#define __USE_UNIX98 1
 
 //can include this alone
 #include "PsychConstants.h"

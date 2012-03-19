@@ -44,13 +44,16 @@
 
 //platform dependent includes stage 1
 #if PSYCH_SYSTEM == PSYCH_LINUX
-	//These are not needed anymore with GLEW:
-	//#include <GL/gl.h>
-	//#include <GL/glu.h>
-	//#include <GL/glx.h>
-	//#include <GL/glext.h>
-    #include <stdint.h>
-	
+	// We need __USE_UNIX98, so pthread.h defines/supports the mutex policy
+	// attribute for mutex priority inheritance for our realtime threads.
+	// For some reason this gets undefined in mex.h at least when building
+	// on Octave 3.2.4. Scary scary...
+	#ifndef __USE_UNIX98
+	#define __USE_UNIX98
+	// For testing only: #warning __USE_UNIX98 undefined. Redefining it.
+	#endif
+
+	#include <stdint.h>
 	// This is the new glew include for GLX extension support:
 	#include "../Screen/glxew.h"
 	
@@ -59,7 +62,11 @@
         #include <sys/time.h>
         #include <unistd.h>
         #include <stdarg.h>
-		#include <pthread.h>
+	#include <pthread.h>
+
+	#ifndef _POSIX_THREAD_PRIO_INHERIT
+	#error This build system does not support pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT); Fix your build system!
+	#endif
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS

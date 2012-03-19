@@ -405,7 +405,30 @@ double PsychGetEstimatedSecsValueAtTickCountZero(void)
 /* Init a Mutex: */
 int	PsychInitMutex(psych_mutex* mutex)
 {
-	return(pthread_mutex_init(mutex, NULL));
+	int rc;
+
+	// Use mutex attributes:
+	pthread_mutexattr_t attr;
+
+	// Set them to default settings, except for...
+	pthread_mutexattr_init(&attr);
+
+	// ... priority inheritance: We absolutely want it for extra
+	// good realtime behaviour - Avoidance of priority inversion
+	// at lock contention points:
+	pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT);
+
+	// Create mutex with attributes in attr:
+	rc = pthread_mutex_init(mutex, &attr);
+	if (rc != 0) {
+		printf("\n\nPTB-CRITICAL: PsychInitMutex(): Mutex initialization failed [%s]! Expect huge trouble and serious malfunctions!!!\n", strerror(rc));
+		printf("PTB-CRITICAL: PsychInitMutex(): Set a breakpoint on your debugger on pthread_mutexattr_destroy() to debug this.\n\n");
+	}
+
+	// Done with it:
+	pthread_mutexattr_destroy(&attr);
+
+	return(rc);
 }
 
 /* Deinit and destroy a Mutex: */
