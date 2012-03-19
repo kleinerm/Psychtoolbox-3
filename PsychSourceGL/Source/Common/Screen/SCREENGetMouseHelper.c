@@ -681,11 +681,13 @@ PsychError SCREENGetMouseHelper(void)
 
 		// Copy out mouse button state:
 		PsychAllocOutDoubleMatArg(3, kPsychArgOptional, (int)1, (int) numButtons, (int)1, &buttonArray);
+		memset(buttonArray, 0, sizeof(double) * numButtons);
 
 		if (numButtons > 0) {
 			// Mouse buttons:
-			for (i = 0; i < numButtons - 32; i++) {
-				buttonArray[i] = (double) ((buttons_return.mask[i / 8] & (1 << (i % 8))) ? 1 : 0);
+			const buttonOffset = 1; // Buttons start at bit 1, not 0 for some strange reason? At least so on Ubuntu 10.10 and 11.10 with 2 mice and 1 joystick?
+			for (i = buttonOffset; (i < numButtons - 32) && ((i / 8 ) < buttons_return.mask_len); i++) {
+				buttonArray[i - buttonOffset] = (double) ((buttons_return.mask[i / 8] & (1 << (i % 8))) ? 1 : 0);
 			}
 
 			// Free mask if retrieved via XIQueryPointer():
