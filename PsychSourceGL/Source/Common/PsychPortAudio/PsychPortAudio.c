@@ -746,14 +746,14 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 {
 	// Assign all variables, especially our dev device structure
 	// with info about this stream:
-    PsychPADevice* dev = (PsychPADevice*) userData;
-    float *out = (float*) outputBuffer;
-    float *in = (float*) inputBuffer;
+	PsychPADevice* dev = (PsychPADevice*) userData;
+	float *out = (float*) outputBuffer;
+	float *in = (float*) inputBuffer;
 	float *playoutbuffer;
 	float *tmpBuffer, *mixBuffer;
 	float masterVolume, neutralValue;
 	psych_int64  j, k;
-    psych_int64 i, silenceframes, committedFrames, max_i;
+	psych_int64 i, silenceframes, committedFrames, max_i;
 	psych_int64 inchannels, outchannels;
 	psych_int64  playposition, outsbsize, insbsize, recposition;
 	psych_int64  outsboffset;
@@ -762,9 +762,9 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	double repeatCount;	
 	psych_int64 playpositionlimit;
 	PaHostApiTypeId hA;
-	psych_bool	stopEngine;
-	psych_bool  isMaster, isSlave;
-	int			slaveId, modulatorSlave, parc, numSlavesHandled;
+	psych_bool stopEngine;
+	psych_bool isMaster, isSlave;
+	int slaveId, modulatorSlave, parc, numSlavesHandled;
 
 	// Device struct attached to stream? If no device struct
 	// is attached, we can't continue and tell the engine to abort
@@ -2355,7 +2355,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	
 	// Setup our final device structure:
 	audiodevices[audiodevicecount].opmode = mode;
-	audiodevices[audiodevicecount].runMode = 0;
+	audiodevices[audiodevicecount].runMode = 1; // Keep engine running by default. Minimal extra cpu-load for significant reduction in startup latency.
 	audiodevices[audiodevicecount].stream = stream;
 	audiodevices[audiodevicecount].streaminfo = Pa_GetStreamInfo(stream);
 	audiodevices[audiodevicecount].hostAPI = Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type;
@@ -4927,7 +4927,7 @@ PsychError PSYCHPORTAUDIORunMode(void)
 		"one wants to change the setting. If playback isn't stopped, it will be forcefully stopped. "
 		"Change of runMode is not supported on slave devices. "
 		"The current/old runMode is returned in the optional return value 'oldRunMode'. "
-		"'runMode' is the optional new runmode: At device open time, the runMode defaults to zero. "
+		"'runMode' is the optional new runmode: At device open time, the runMode defaults to one. "
 		"In mode zero, the audio hardware and all internal processing are completely stopped at end "
 		"of audio playback. This reduces system ressource usage (both hardware and computation time), "
 		"but may cause slightly longer latencies when re'Start'ing the device for playback of a different "
