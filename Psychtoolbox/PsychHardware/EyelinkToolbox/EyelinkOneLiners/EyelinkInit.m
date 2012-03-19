@@ -1,5 +1,5 @@
 function [result, dummy]=EyelinkInit(dummy, enableCallbacks)
-% USAGE: [result dummy]=EyelinkInit([dummy=0][enableCallbacks=0])
+% USAGE: [result dummy]=EyelinkInit([dummy=0][enableCallbacks=1])
 %
 % Initialize Eyelink system and connection. Optional arguments:
 %
@@ -9,11 +9,11 @@ function [result, dummy]=EyelinkInit(dummy, enableCallbacks)
 %        If regular initialization fails, it will provide option
 %        for dummy initilization.
 %
-% enableCallbacks: Omit, or set to 0 for operation without callbacks and
+% enableCallbacks: Set to 0 for operation without callbacks and
 %                  without display of eye camera images on the Subject PC.
-%                  Set to 1 for callback and video display operations
+%                  Omit or set to 1 for callback and video display operations
 %                  during tracker setup, drift correction with the default callback
-%                  dispatcher function EyelinkDispatchCallback.m.
+%                  dispatcher function PsychEyelinkDispatchCallback.m.
 %                  Provide namestring of your own dispatcher function if
 %                  you want to enable callbacks and video display with a
 %                  non-standard, customized dispatcher.
@@ -42,6 +42,7 @@ function [result, dummy]=EyelinkInit(dummy, enableCallbacks)
 % 15-06-10 fwc  for consistency, changed PsychEyelinkDispatchCallback to EyelinkDispatchCallback
 %               Enabled callbacks by default, because presence of eye image
 %               is much desired and expected behaviour
+% 15-03-12  mk  Make help text consistent with actual behaviour wrt. to callbacks.
 
 result=0;
 
