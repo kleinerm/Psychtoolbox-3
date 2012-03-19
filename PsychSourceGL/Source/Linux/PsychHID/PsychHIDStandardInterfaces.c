@@ -290,6 +290,9 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 	int keysdown;
 	double timestamp;
 	int i, j;
+	psych_bool isButtons;
+
+	memset(keys_return, 0, sizeof(keys_return));
 
 	// Map "default" deviceIndex to legacy "Core protocol" method of querying keyboard
 	// state. This will give us whatever X has setup as default keyboard:
@@ -315,14 +318,9 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 		if ((j > 0) && (j != info[deviceIndex].attachment)) XISetClientPointer(dpy, None, j);
 	} else {
 		// Non-Default deviceIndex: Want to query specific slave keyboard.
-		// Validate it maps to a slave keyboard device, as we can't handle
-		// master keyboard devices this way and don't want to touch anything
-		// but a keyboard'ish device:
-		if (info[deviceIndex].use != XISlaveKeyboard) {
-			PsychErrorExitMsg(PsychError_user, "Invalid keyboard deviceIndex specified. Not a slave keyboard device!");
-		}
+		if (info[deviceIndex].use == XIMasterPointer) PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex specified! Cannot query master mouse pointers as keyboards.");
 
-		// Open connection to slave keyboard device:
+		// Open connection to non-master-keyboard device:
 		XDevice* mydev = GetXDevice(deviceIndex);
 
 		// Query its current state:
@@ -339,8 +337,19 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 
 				// Copy 32 Byte keystate vector into key_return. Each bit encodes for one key:
 				memcpy(&keys_return[0], &(((XKeyState*) data)->keys[0]), sizeof(keys_return));
+				isButtons = FALSE;
 			}
 
+			// Also handle devices with buttons as if they are keyboards, e.g., mouse, joystick...
+			if (data->class == ButtonClass) {
+				// printf("NumButtons %i\n", ((XButtonState*) data)->num_buttons);
+
+				// Copy 32 Byte buttonstate vector into key_return. Each bit encodes for one button:
+				memcpy(&keys_return[0], &(((XButtonState*) data)->buttons[0]), sizeof(keys_return));
+				isButtons = TRUE;
+			}
+
+			// Advance to next entry:
 			data = (XInputClass*) (((void*) data) + ((size_t) data->length));
 		}
 
@@ -370,8 +379,17 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 	// Map 32 times 8 bitvector to 256 element return vector:
 	for(i = 0; i < 32; i++) {
 		for(j = 0; j < 8; j++) {
-			// This key down?
+			// This button or key down?
 			buttonStates[i*8 + j] = (keys_return[i] & (1<<j)) ? 1 : 0;
+
+			// Is this a button, e.g., on mouse/joystick, instead of a key on keyboard?
+			if (isButtons) {
+				// All buttons are shifted to + 1 index, so we need to shift back by
+				// 1 position. Do this in a pathetic way to save brain-cycles:
+				if (i*8 + j > 0) buttonStates[i*8 + j - 1] = buttonStates[i*8 + j];
+				if (i*8 + j >= 255) buttonStates[i*8 + j] = 0;
+			}
+
 			// Apply scanList mask, if any provided:
 			if (scanList && (scanList[i*8 + j] <= 0)) buttonStates[i*8 + j] = 0;
 		}
@@ -509,7 +527,12 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 				// real ones, not XServer generated synthetic key auto-repeat events.
 				// Also only for a device that we've registered:
 				if ((i < ndevices) && !(event->flags & XIKeyRepeat) &&
-				    ((cookie->evtype == XI_KeyPress) || (cookie->evtype == XI_KeyRelease))) {
+				    ((cookie->evtype == XI_KeyPress) || (cookie->evtype == XI_KeyRelease) || (cookie->evtype == XI_ButtonPress) || (cookie->evtype == XI_ButtonRelease))) {
+
+					// If this is a button event from a mouse/joystick etc. instead of a key event from a keyboard/keypad, then
+					// all button indices are shifted by an offset of 1 for some weird reason. Decrement index by one to compensate
+					// for this. [Tested on Ubuntu 10.10 and 11.10 with two mice and 1 joystick]
+					if (((cookie->evtype == XI_ButtonPress) || (cookie->evtype == XI_ButtonRelease)) && (event->detail > 0)) event->detail--;
 
 					// Need the lock from here on:
 					PsychLockMutex(&KbQueueMutex);
@@ -520,7 +543,7 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 						// Yes: The queue wants to receive info about this key event.
 
 						// Press or release?
-						if (cookie->evtype == XI_KeyPress) {
+						if ((cookie->evtype == XI_KeyPress) || (cookie->evtype == XI_ButtonPress)) {
 							// Enqueue key press. Always in the "last press" array, because any
 							// press at this time is the best candidate for the last press.
 							// Only enqeue in "first press" if there wasn't any registered before,
@@ -558,10 +581,10 @@ void* KbQueueWorkerThreadMain(void* dummy)
 {
 	int rc;
 
-	// Try to raise our priority: We ask to switch ourselves (NULL) to priority class 1 aka
+	// Try to raise our priority: We ask to switch ourselves (NULL) to priority class 2 aka
 	// rt_fifo realtime scheduling, with a tweakPriority of +1, ie., raise the relative
 	// priority level by +1 wrt. to the current level:
-	if ((rc = PsychSetThreadPriority(NULL, 10, 1)) > 0) {
+	if ((rc = PsychSetThreadPriority(NULL, 2, 1)) > 0) {
 		printf("PsychHID: KbQueueStart: Failed to switch to realtime priority [%s].\n", strerror(rc));
 	}
 
@@ -575,9 +598,6 @@ void* KbQueueWorkerThreadMain(void* dummy)
 
 		// Perform X-Event processing until no more events are pending:
 		KbQueueProcessEvents(TRUE);
-
-		// Sleep for 2 msecs before next scan iteration:
-		// PsychWaitIntervalSeconds(0.002);
 	}
 
 	// Done. Unlock the mutex:
@@ -628,13 +648,13 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 		// Ok, deviceIndex now contains our default keyboard to use - The first suitable keyboard.
 	} else if (deviceIndex >= ndevices) {
 		// Out of range index:
-		PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. No such device!");
+		PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. No such device!");
 	} 
 
 	// Do we finally have a valid keyboard?
 	dev = &info[deviceIndex];
-	if ((dev->use != XIMasterKeyboard) && (dev->use != XISlaveKeyboard)) {
-		PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. Not a keyboard device!");
+	if ((dev->use == XIMasterKeyboard) || (dev->use == XIMasterPointer)) {
+		PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. Master keyboards or master pointers cannot be handled by this function.");
 	}
 
 	/* This would detect the number of keys on the keyboard:
@@ -848,8 +868,10 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
 	XISetMask(mask, XI_KeyPress);
 	XISetMask(mask, XI_KeyRelease);
 
-	// XISetMask(mask, XI_ButtonPress);
-	// XISetMask(mask, XI_ButtonRelease);
+	// For mouse, joystick, gamepad and other "keyboardish" devices with buttons:
+	XISetMask(mask, XI_ButtonPress);
+	XISetMask(mask, XI_ButtonRelease);
+
 	// XISetMask(mask, XI_Motion);
 
 	emask.deviceid = info[deviceIndex].deviceid;
