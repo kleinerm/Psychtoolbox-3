@@ -11,6 +11,7 @@
 % 07/15/03 dhb  Take eye size from function.
 % 08/14/11 dhb  Comment out saving of T_dogrec at end.  Want to be careful when and where
 %               this is done, but the template may be useful someday.
+% 03/20/12 dhb  Update cal file for PTB 3.
 
 % Clear
 clear all; close all;
@@ -27,7 +28,7 @@ S = photoreceptors.nomogram.S;
 
 % Get light spectrum.  You can choose various
 % illustrative examples.
-whichLight = 'fromTrolands';
+whichLight = 'fromMonitorRadiance';
 
 % Here we'll start with a xenon arc lamp relative spectrum
 switch (whichLight)
@@ -59,7 +60,7 @@ switch (whichLight)
 	case 'fromMonitorRadiance'
 		% Load light radiance.  We'll use a monitor white.
 		% The original units are watts/sr-m^2-wlinterval.
-		cal = LoadCalFile(0);
+		cal = LoadCalFile('PTB3TestCal');
 		radianceWatts = SplineSpd(cal.S_device,sum(cal.P_device,2),S);
 		
 		% Find pupil area, needed to get retinal irradiance.  We compute

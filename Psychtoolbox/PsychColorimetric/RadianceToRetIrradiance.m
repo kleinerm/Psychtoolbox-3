@@ -8,7 +8,7 @@ function irradiance = RadianceToRetIrradiance(radiance,radianceS,pupilAreaMM,eye
 %   Input radianceS gives the wavelength sampling information.
 %   Input pupilAreaMM should be in units of mm^2.
 %   Input eyeSizeMM should be the length of the eye in mm.
-%   Output irradiance is in units of power/um^2-sec-wlinterval.
+%   Output irradiance is in units of power/um^2-wlinterval.
 %
 %   Light power may be expressed in watts or quanta-sec or in your
 %   favorite units.  Indeed, it may also be passed as energy rather
@@ -21,6 +21,8 @@ function irradiance = RadianceToRetIrradiance(radiance,radianceS,pupilAreaMM,eye
 %
 % 7/10/03  dhb  Wrote it.
 % 11/06/03 dhb  Fixed comments about units, as per Lu Yin email.
+% 3/29/12  dhb  Comment on output units was wrong.  It said power/um^2-sec-wlinterval
+%               but the 'sec' part makes no sense given the 'power' in the numerator.
 
 % Convert spectral units to power/sr-mm^2-wlinterval
 radianceMM = radiance*1e-6;
