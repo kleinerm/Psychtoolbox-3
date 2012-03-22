@@ -451,8 +451,10 @@ static GstAppSinkCallbacks videosinkCallbacks = {
  *      moviename = char* with the name of the moviefile.
  *      preloadSecs = How many seconds of the movie should be preloaded/prefetched into RAM at movie open time?
  *      moviehandle = handle to the new movie.
+ *      asyncFlag = As passed to 'OpenMovie'
+ *      specialFlags1 = As passed to 'OpenMovie'
  */
-void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle)
+void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1)
 {
     GstCaps                     *colorcaps;
     GstElement			*theMovie = NULL;
@@ -486,7 +488,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 
     // Gapless playback requested? Normally *moviehandle is == -1, so a positive
     // handle requests this mode and defines the actual handle of the movie to use:
-    if ((*moviehandle >= 0) && (preloadSecs == -2)) {
+    if (*moviehandle >= 0) {
 	// Queueing a new moviename of a movie to play next: This only works
 	// for already opened/created movies whose pipeline is at least in
 	// READY state, better PAUSED or PLAYING. Validate preconditions:
@@ -536,7 +538,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 	// Enable use of YUV textures for movie playback on supported GPUs if environment variable
 	// is defined. YUV mode defaults to "off", because as of 1st December 2011, at least H264
 	// to YUV decoding was much slower than bog standard decoding to RGBA8 -- much to my surprise.
-	if (getenv("PSYCHTOOLBOX_USE_YUV_MOVIEDECODING")) useYUVDecode = TRUE;
+	if (getenv("PSYCHTOOLBOX_USE_YUV_MOVIEDECODING") || (specialFlags1 & 1)) useYUVDecode = TRUE;
 
         firsttime = FALSE;
     }
@@ -585,8 +587,11 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 	// Assign name of movie to play:
 	g_object_set(G_OBJECT(theMovie), "uri", movieLocation, NULL);
 
-	// Default flags for playbin: Decode video and audio, deinterlace video if needed, allow sound volume control:
-	playflags = GST_PLAY_FLAG_VIDEO | GST_PLAY_FLAG_AUDIO | GST_PLAY_FLAG_SOFT_VOLUME | GST_PLAY_FLAG_DEINTERLACE;
+	// Default flags for playbin: Decode video and deinterlace it if needed:
+	playflags = GST_PLAY_FLAG_VIDEO  | GST_PLAY_FLAG_DEINTERLACE;
+
+	// Decode and play audio by default, with software audio volume control, unless specialFlags setting 2 enabled:
+	if (!(specialFlags1 & 2)) playflags |= GST_PLAY_FLAG_AUDIO | GST_PLAY_FLAG_SOFT_VOLUME;
 
 	// Enable network buffering for network videos of at least 10 seconds, or preloadSecs seconds,
 	// whatever is bigger.
@@ -894,14 +899,6 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 	gst_app_sink_set_callbacks(GST_APP_SINK(videosink), &videosinkCallbacks, &(movieRecordBANK[slotid]), PsychDestroyNotifyCallback);
     }
 
-    // Drop frames if callback can't pull buffers fast enough:
-    // This together with the max queue lengths of 1 allows to
-    // maintain audio-video sync by framedropping if needed.
-    gst_app_sink_set_drop(GST_APP_SINK(videosink), TRUE);
-
-    // Only allow one queued buffer before dropping:
-    gst_app_sink_set_max_buffers(GST_APP_SINK(videosink), 1);
-
     // Assign harmless initial settings for fps and frame size:
     rate1 = 0;
     rate2 = 1;
@@ -972,6 +969,23 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     movieRecordBANK[slotid].fps = (double) rate1 / (double) rate2;
     //printf("PTB-DEBUG: Framerate fps of movie %i [%s] is %lf fps.\n", slotid, moviename, movieRecordBANK[slotid].fps);
 
+    // Drop frames if callback can't pull buffers fast enough, unless ascynFlags & 4 is set:
+    // This together with a max queue lengths of 1 allows to
+    // maintain audio-video sync by framedropping if needed.
+    gst_app_sink_set_drop(GST_APP_SINK(videosink), (asyncFlag & 4) ? FALSE : TRUE);
+
+	// Buffering of decoded video frames requested?
+	if (asyncFlag & 4) {
+		// Yes: If a specific preloadSecs and a valid fps playback framerate is available, we
+		// set the maximum buffer capacity to the number of frames corresponding to the given 'preloadSecs'.
+		// Otherwise we set it to zero, which means "unlimited capacity", ie., until RAM full:
+		gst_app_sink_set_max_buffers(GST_APP_SINK(videosink), ((movieRecordBANK[slotid].fps > 0) && (preloadSecs >= 0)) ? ((int) (movieRecordBANK[slotid].fps * preloadSecs) + 1) : 0);
+	}
+	else {
+		// No: Only allow one queued buffer before dropping, to avoid optimal audio-video sync:
+		gst_app_sink_set_max_buffers(GST_APP_SINK(videosink), 1);
+	}
+	
     // Compute framecount from fps and duration:
     movieRecordBANK[slotid].nrframes = (int)(movieRecordBANK[slotid].fps * movieRecordBANK[slotid].movieduration + 0.5);
     //printf("PTB-DEBUG: Number of frames in movie %i [%s] is %i.\n", slotid, moviename, movieRecordBANK[slotid].nrframes);
@@ -1250,10 +1264,11 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 	// Active playback mode?
 	if (0 != rate) {
 		// Active playback mode:
-		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Pulling buffer from videosink, %d buffers decoded since last pull.\n", movieRecordBANK[moviehandle].frameAvail);
+		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Pulling buffer from videosink, %d buffers decoded and queued.\n", movieRecordBANK[moviehandle].frameAvail);
 
-		// Clamp frameAvail to maximum queue capacity:
-		if ((int) gst_app_sink_get_max_buffers(GST_APP_SINK(movieRecordBANK[moviehandle].videosink)) < movieRecordBANK[moviehandle].frameAvail) {
+		// Clamp frameAvail to maximum queue capacity, unless queue capacity is zero == "unlimited" capacity:
+		if (((int) gst_app_sink_get_max_buffers(GST_APP_SINK(movieRecordBANK[moviehandle].videosink)) < movieRecordBANK[moviehandle].frameAvail) &&
+			(gst_app_sink_get_max_buffers(GST_APP_SINK(movieRecordBANK[moviehandle].videosink)) > 0)) {
 			movieRecordBANK[moviehandle].frameAvail = (int) gst_app_sink_get_max_buffers(GST_APP_SINK(movieRecordBANK[moviehandle].videosink));
 		}
 
@@ -1506,15 +1521,15 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
 	movieRecordBANK[moviehandle].frameAvail = 0;
 	movieRecordBANK[moviehandle].preRollAvail = 0;
 
-	// Is this a movie with actual videotracks?
-	if (movieRecordBANK[moviehandle].nrVideoTracks > 0) {
+	// Is this a movie with actual videotracks and frame-dropping on videosink full enabled?
+	if ((movieRecordBANK[moviehandle].nrVideoTracks > 0) && gst_app_sink_get_drop(GST_APP_SINK(movieRecordBANK[moviehandle].videosink))) {
 	    // Yes: We only schedule deferred start of playback at first Screen('GetMovieImage')
 	    // frame fetch. This to avoid dropped frames due to random delays between
 	    // call to Screen('PlayMovie') and Screen('GetMovieImage'):
 	    movieRecordBANK[moviehandle].startPending = 1;
 	}
 	else {
-	    // Only soundtrack - Start it immediately:
+	    // Only soundtrack or framedropping disabled with videotracks - Start it immediately:
 	    movieRecordBANK[moviehandle].startPending = 0;
 	    PsychMoviePipelineSetState(theMovie, GST_STATE_PLAYING, 10.0);
 	    PsychGSProcessMovieContext(movieRecordBANK[moviehandle].MovieContext, FALSE);

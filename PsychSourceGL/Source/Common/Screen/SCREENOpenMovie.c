@@ -28,11 +28,11 @@
 
 #include "Screen.h"
 
-static char useString[] = "[ moviePtr [duration] [fps] [width] [height] [count] [aspectRatio]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1]);";
+static char useString[] = "[ moviePtr [duration] [fps] [width] [height] [count] [aspectRatio]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1] [, specialFlags1=0]);";
 static char synopsisString[] = 
-	"Try to open the multimediafile 'moviefile' for playback in onscreen window 'windowPtr' and "
+		"Try to open the multimediafile 'moviefile' for playback in onscreen window 'windowPtr' and "
         "return a handle 'moviePtr' on success.\nOn OS-X and Windows, media files are handled by use of "
-        "Apples Quicktime-7 API. On Linux, the GStreamer multimedia framework is used. "
+        "Apples Quicktime-7 API. On Linux, and optionally Windows, the GStreamer multimedia framework is used. "
         "The following movie properties are optionally returned: 'duration' Total duration of movie in seconds. "
         "'fps' Video playback framerate, assuming a linear spacing of videoframes in time. There may "
         "exist exotic movie formats which don't have this linear spacing. In that case, 'fps' would "
@@ -40,8 +40,8 @@ static char synopsisString[] =
         "'width' Width of the images contained in the movie. 'height' Height of the images.\n"
         "'count' Total number of videoframes in the movie. Determined by counting, so querying 'count' "
         "can significantly increase the execution time of this command.\n"
-	"'aspectRatio' Pixel aspect ratio of pixels in the video frames. Typically 1.0 for square pixels. "
-	"Aspect ratio is only detected with the GStreamer playback engine. Quicktime always returns 1.0.\n"
+		"'aspectRatio' Pixel aspect ratio of pixels in the video frames. Typically 1.0 for square pixels. "
+		"Aspect ratio is only detected with the GStreamer playback engine. Quicktime always returns 1.0.\n"
         "If you want to play multiple movies in succession with lowest possible delay inbetween the movies "
         "then you can ask PTB to load a movie in the background while another movie is still playing: "
         "Call this function with the 'async' flag set to 1. This will initiate the background load operation. "
@@ -52,14 +52,26 @@ static char synopsisString[] =
         "in duration and content, but not in image size, color depth or format, or fps, then you can also use "
         "an aync setting of 2 and provide the 'moviePtr' handle of an already opened movie in the 'preloadSecs' "
         "parameter. This will queue the movie 'moviefile' as a successor to the currently playing moviefile in "
-        "'ḿoviePtr'. Queuing movies this way is more efficient than async flag setting 1, although also more "
+        "'moviePtr'. Queuing movies this way is more efficient than async flag setting 1, although also more "
         "restricted.\n"
-	"'preloadSecs' This optional parameter allows to ask Screen() to load at least the first 'preloadSecs' "
-	"seconds of the movie into system RAM before the function returns. By default, the first second of the "
-	"movie file is loaded into RAM. This potentially allows for more stutter-free playback, but your mileage "
-	"may vary, depending on movie format, storage medium and lots of other factors. In most cases, the default "
-	"setting is perfectly sufficient. The special setting -1 means: Load whole movie into RAM. Caution: Long "
-	"movies may cause your system to run low on memory and have disastrous effects on playback performance!\n"
+		"If the 'async' flag also contains the number 4 or is equal to 4, then movie playback will not automatically "
+		"drop video frames to preserve audio-video sync in case fetching and display of video frames by your script "
+		"is delayed or too slow. This has the disadvantage that you'll need to take care of audio-video sync and framerate "
+		"control yourself by proper comparison of movie presentation timestamps and GetSecs or Screen('Flip') timestamps. "
+		"The advantage is, that after start of playback the playback engine can internally predecode and buffer up to "
+		"'preloadSecs' seconds worth of video and audio data. This may allow complex movies to play more smoothly or "
+		"at higher framerates. This option is only supported with the GStreamer playback engine.\n"
+		"'preloadSecs' This optional parameter allows to ask Screen() to load at least the first 'preloadSecs' "
+		"seconds of the movie into system RAM. By default, with Quicktime playback, the first second of the "
+		"movie file is loaded into RAM. This potentially allows for more stutter-free playback, but your mileage "
+		"may vary, depending on movie format, storage medium and lots of other factors. In most cases, the default "
+		"setting is perfectly sufficient. The special setting -1 means: Load whole movie into RAM. Caution: Long "
+		"movies may cause your system to run low on memory and have disastrous effects on playback performance! "
+		"Also, the exact type of buffering applied depends a lot on the movie playback engine and movie format, ie., "
+		"what the parameter exactly does can be different for Quicktime vs. GStreamer, but it always affects the "
+		"buffering behaviour and capacity of buffering in some meaningful way.\n"
+		"'specialFlags1' Optional flags, numbers to be added together: 1 = Use YUV video decoding instead of RGBA, if "
+		"supported by movie codec and GPU - May be more efficient. 2 = Don't decode and use sound - May be more efficient.\n"
         "CAUTION: On OS/X, some movie files, e.g., MPEG-1 movies sometimes cause Matlab to hang. This seems to be "
         "a bad interaction between parts of Apples Quicktime toolkit and Matlabs Java Virtual Machine (JVM). "
         "If you experience stability problems, please start Matlab with JVM and desktop disabled, e.g., "
@@ -82,6 +94,7 @@ PsychError SCREENOpenMovie(void)
         int                                     width;
         int                                     height;
         int                                     asyncFlag = 0;
+		int                                     specialFlags1 = 0;
         static psych_bool                       firstTime = TRUE;
 	double					preloadSecs = 1;
         int					rc;
@@ -96,7 +109,7 @@ PsychError SCREENOpenMovie(void)
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
-        PsychErrorExit(PsychCapNumInputArgs(4));            // Max. 4 input args.
+        PsychErrorExit(PsychCapNumInputArgs(5));            // Max. 5 input args.
         PsychErrorExit(PsychRequireNumInputArgs(1));        // Min. 1 input args required.
         PsychErrorExit(PsychCapNumOutputArgs(7));           // Max. 7 output args.
         
@@ -118,25 +131,29 @@ PsychError SCREENOpenMovie(void)
         PsychCopyInDoubleArg(4, FALSE, &preloadSecs);
         if (preloadSecs < 0 && preloadSecs!= -1 && preloadSecs!= -2) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid (negative, but not equal -1) 'preloadSecs' argument!");
 
+        // Get the (optional) specialFlags1:
+        PsychCopyInIntegerArg(5, FALSE, &specialFlags1);
+		if (specialFlags1 < 0) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'specialFlags1' setting! Only positive values allowed.");
+
 	// Queueing of a new movie for seamless playback requested?
-	if (asyncFlag == 2) {
+	if (asyncFlag & 2) {
             // Yes. Do a special call, just passing the moviename of the next
             // movie to play. Pass the relevant moviehandle as retrieved from
             // preloadSecs:
             moviehandle = (int) preloadSecs;
-            preloadSecs = -2;
-            PsychCreateMovie(windowRecord, moviefile, preloadSecs, &moviehandle);
+            preloadSecs = 0;
+            PsychCreateMovie(windowRecord, moviefile, preloadSecs, &moviehandle, asyncFlag, specialFlags1);
             if (moviehandle == -1) PsychErrorExitMsg(PsychError_user, "Could not queue new moviefile for gapless playback.");
             return(PsychError_none);
 	}
 
         // Asynchronous Open operation in progress or requested?
-        if ((asyncmovieinfo.asyncstate == 0) && (asyncFlag == 0)) {
+        if ((asyncmovieinfo.asyncstate == 0) && !(asyncFlag & 1)) {
             // No. We should just synchronously open the movie:
 
             // Try to open the named 'moviefile' and create & initialize a corresponding movie object.
             // A MATLAB handle to the movie object is returned upon successfull operation.
-            PsychCreateMovie(windowRecord, moviefile, preloadSecs, &moviehandle);
+            PsychCreateMovie(windowRecord, moviefile, preloadSecs, &moviehandle, asyncFlag, specialFlags1);
         }
         else {
             // Asynchronous open operation requested or running:
@@ -146,6 +163,9 @@ PsychError SCREENOpenMovie(void)
                     asyncmovieinfo.asyncstate = 1; // Mark state as "Operation in progress"
                     asyncmovieinfo.moviename = strdup(moviefile);
                     asyncmovieinfo.preloadSecs = preloadSecs;
+                    asyncmovieinfo.asyncFlag = asyncFlag;
+                    asyncmovieinfo.specialFlags1 = specialFlags1;
+					
                     if (windowRecord) {
                         memcpy(&asyncmovieinfo.windowRecord, windowRecord, sizeof(PsychWindowRecordType));
                     } else {
@@ -172,7 +192,7 @@ PsychError SCREENOpenMovie(void)
                     
                 case 1: // Async open operation in progress, but not yet finished.
                     // Should we wait for completion or just return?
-                    if (asyncFlag) {
+                    if (asyncFlag & 1) {
                         // Async poll requested. We just return -1 to signal that open isn't finished yet:
                         PsychCopyOutDoubleArg(1, TRUE, -1);
                         return(PsychError_none);

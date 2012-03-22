@@ -27,18 +27,17 @@ static char synopsisString[] =
 "return a texture-handle 'texturePtr' on successfull completion. 'waitForImage' If set to 1 (default), the function will wait "
 "until the image becomes available. If set to zero, the function will just poll for a new image. If none is ready, it will return "
 "a texturePtr of zero, or -1 if none will become ready because movie has reached its end and is not in loop mode. "
-"On MS-Windows, polling mode is not possible, the function always waits for a new image.\n"
+"On MS-Windows, polling mode is not possible, the function always waits for a new image, unless you use the GStreamer playback engine.\n"
 "'fortimeindex' Don't request the next image, but the image closest to time 'fortimeindex' in seconds. The (optional) return "
 "value 'timeindex' contains the exact time when the returned image should be displayed wrt. to the start of the movie - a presentation timestamp. \n"
 "'specialFlags' (optional) encodes special requirements for the returned texture. A setting of 2 will request that the texture "
-"is prepared for drawing it with highest possible precision. See explanation of 'specialFlags' == 2 in Screen('MakeTexture') "
+"is prepared for drawing it with highest possible spatial precision. See explanation of 'specialFlags' == 2 in Screen('MakeTexture') "
 "for details. \n"
 "'specialFlags2' (optional) More special flags: A setting of 1 tells the function to not return presentation timestamps in 'timeindex'. "
 "This means that 'timeindex' will be always returned as zero and that the built-in detector for skipped frames is disabled as well. This "
 "may (or may not) save a little bit of computation time during playback of very demanding movies on lower end systems, your mileage will "
 "vary, depending on many factors.\n"
-"On OS-X and Windows, media files are handled by use of Apples Quicktime-7 API. On other platforms, the playback engine may be different "
-"from Quicktime.";
+;
 static char seeAlsoString[] = "CloseMovie PlayMovie GetMovieImage GetMovieTimeIndex SetMovieTimeIndex";
 
 PsychError SCREENGetMovieImage(void) 

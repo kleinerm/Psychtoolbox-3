@@ -158,7 +158,7 @@ void* PsychAsyncCreateMovie(void* inmovieinfo)
     }
     
     // Execute our normal OpenMovie function: This does the hard work:
-    PsychCreateMovie(&(movieinfo->windowRecord), movieinfo->moviename, movieinfo->preloadSecs, &mymoviehandle);
+    PsychCreateMovie(&(movieinfo->windowRecord), movieinfo->moviename, movieinfo->preloadSecs, &mymoviehandle, movieinfo->asyncFlag, movieinfo->specialFlags1);
 	
     // Ok, either we have a moviehandle to a valid movie, or we failed, which would
     // be signalled to the calling function via some negative moviehandle:
@@ -179,11 +179,11 @@ void* PsychAsyncCreateMovie(void* inmovieinfo)
  *      moviename = char* with the name of the moviefile.
  *      moviehandle = handle to the new movie.
  */
-void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle)
+void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1)
 {
 	if (usegs()) {
 	#ifdef PTB_USE_GSTREAMER
-	PsychGSCreateMovie(win, moviename, preloadSecs, moviehandle);
+	PsychGSCreateMovie(win, moviename, preloadSecs, moviehandle, asyncFlag, specialFlags1);
 	return;
 	#endif
 	} else {

@@ -28,14 +28,16 @@ typedef struct PsychAsyncMovieInfo {
     char* moviename;
     PsychWindowRecordType windowRecord;
     int moviehandle;
-    double preloadSecs;	
+    double preloadSecs;
+	int asyncFlag;
+	int specialFlags1;
     psych_thread pid;
 } PsychAsyncMovieInfo;
 
 void PsychMovieInit(void);
 int PsychGetMovieCount(void);
 void* PsychAsyncCreateMovie(void* inmovieinfo);
-void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle);
+void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1);
 void PsychGetMovieInfos(int moviehandle, int* width, int* height, int* framecount, double* durationsecs, double* framerate, int* nrdroppedframes, double* aspectRatio);
 void PsychDeleteMovie(int moviehandle);
 void PsychDeleteAllMovies(void);
