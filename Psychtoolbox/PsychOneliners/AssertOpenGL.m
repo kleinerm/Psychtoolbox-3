@@ -59,6 +59,28 @@ function AssertOpenGL
 % 05/25/11  mk      Update linker failure message on Octave+Windows: Don't
 %                   need ARVideo libraries anymore, but instead the
 %                   GStreamer runtime.
+% 03/24/12  mk      Add do_braindead_shortcircuit_evaluation() to avoid
+%                   warnings on Octave 3.6 and later.
+
+% Ok, we sneak this in here, because we don't know a better place for it:
+if IsOctave
+    % If we're running on a Octave version which supports this...
+    if exist('do_braindead_shortcircuit_evaluation', 'builtin')
+        % ... we enable Matlab-style short-circuit operator evaluation,
+        % ie., treat & and | operators as if they are && and || operators,
+        % if they are used in if and while statements and the conditions do
+        % evaluate into logical expressions with a simple scalar truth
+        % value.
+        %
+        % This is a hack to silence interpreter warnings and get compatible
+        % behaviour. A better fix would be to fix all our M-Files to avoid
+        % use of & and |, but this would make ptb completely untestable on
+        % Matlab versions prior R2007a for MK. As long as we claim to
+        % support pre-R2007a at least to some degree, we should be able to
+        % run at least some basic correctness tests:
+        do_braindead_shortcircuit_evaluation(1);
+    end
+end
 
 % We put the detection code into a try-catch-end statement: The old Screen command on windows
 % doesn't have a 'Version' subfunction, so it would exit to Matlab with an error.
@@ -73,9 +95,9 @@ catch
    fprintf('that either Screen is totally dysfunctional, or you are trying to run your script on\n');
    fprintf('a system without Psychtoolbox-3 properly installed - or not installed at all.\n\n');
 
-   if IsWin	& IsOctave
+   if IsWin & IsOctave %#ok<AND2>
 		le = psychlasterror;
-		if ~isempty(strfind(le.message, 'library or dependents')) & ~isempty(strfind(le.message, 'Screen.mex'))
+		if ~isempty(strfind(le.message, 'library or dependents')) & ~isempty(strfind(le.message, 'Screen.mex')) %#ok<AND2>
 			% Likely the required GStreamer runtimes aren't installed yet!
 			fprintf('The most likely cause, based on the fact you are running on Octave under Windows\n');
 			fprintf('and given this error message: %s\n', le.message);
