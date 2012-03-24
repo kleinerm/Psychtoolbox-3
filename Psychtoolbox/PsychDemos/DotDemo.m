@@ -122,12 +122,9 @@ try
     % open the screen
     % ---------------
 
-    doublebuffer=1
     screens=Screen('Screens');
 	screenNumber=max(screens);
-
-    % [w, rect] = Screen('OpenWindow', screenNumber, 0,[1,1,801,601],[], doublebuffer+1);
-    [w, rect] = Screen('OpenWindow', screenNumber, 0,[], 32, doublebuffer+1);
+    [w, rect] = Screen('OpenWindow', screenNumber, 0);
     
     % If you'd uncomment these lines and had the Psychtoolbox kernel driver
     % loaded on a OS/X or Linux box with ATI Radeon X1000 or later, you'd
@@ -147,7 +144,6 @@ try
        fps=1/ifi;
     end;
     
-    black = BlackIndex(w);
     white = WhiteIndex(w);
     HideCursor;	% Hide the mouse cursor
     Priority(MaxPriority(w));
@@ -190,8 +186,6 @@ try
         s=(1+rand(1, ndots)*(differentsizes-1))*s;        
     end;
     
-    buttons=0;
-
     % Wanna show textured sprites instead of dots?
     if showSprites == 1
         % Create a small texture as offscreen window: Size is 30 x 30
@@ -243,8 +237,14 @@ try
             Screen('DrawingFinished', w); % Tell PTB that no further drawing commands will follow before Screen('Flip')
         end;
         
+        % Break out of animation loop if any key on keyboard or any button
+        % on mouse is pressed:
         [mx, my, buttons]=GetMouse(screenNumber);
-        if KbCheck | any(buttons) % break out of loop
+        if any(buttons)
+            break;
+        end
+        
+        if KbCheck
             break;
         end;
         
@@ -275,11 +275,7 @@ try
         end;
         xymatrix = transpose(xy);
         
-        if (doublebuffer==1)
-            vbl=Screen('Flip', w, vbl + (waitframes-0.5)*ifi);
-         end;
-         %pause(0.001);
-         %pause;
+        vbl=Screen('Flip', w, vbl + (waitframes-0.5)*ifi);
     end;
     Priority(0);
     ShowCursor

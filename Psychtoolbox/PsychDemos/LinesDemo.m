@@ -41,11 +41,9 @@ try
     % open the screen
     % ---------------
 
-    doublebuffer=1
     screens=Screen('Screens');
     screenNumber=max(screens);
-    % [w, rect] = Screen('OpenWindow', screenNumber, 0,[1,1,801,601],[], doublebuffer+1);
-    [w, rect] = Screen('OpenWindow', screenNumber, 0,[], 32, doublebuffer+1);
+    [w, rect] = Screen('OpenWindow', screenNumber, 0);
 
     % Enable alpha blending with proper blend-function. We need it
     % for drawing of smoothed points:
@@ -57,7 +55,6 @@ try
         fps=1/ifi;
     end;
 
-    black = BlackIndex(w);
     white = WhiteIndex(w);
     HideCursor;	% Hide the mouse cursor
 
@@ -98,8 +95,6 @@ try
     if (differentsizes>0)
         s=(1+rand(1, ndots)*(differentsizes-1))*s;
     end;
-
-    buttons=0;
 
     xymatrix=zeros(2, ndots*2);
 
@@ -150,16 +145,15 @@ try
         else
             % Slow synthesis of lines matrix for next frame:
             % This is 10-13x slower on Matlab, 320x slower on Octave 3.2!
-            for i=0:ndots - 1
+            for j=0:ndots - 1
                 xymatrix(:, 1 + i*2) = transpose(xy(i+1, :));
                 xymatrix(:, 2 + i*2) = transpose(oldxy(i+1, :));
             end
         end
 
-        if (doublebuffer==1)
-            vbl=Screen('Flip', w, vbl + (waitframes-0.5)*ifi);
-        end;
+        vbl=Screen('Flip', w, vbl + (waitframes-0.5)*ifi);
     end;
+
     ShowCursor
     Screen('CloseAll');
 catch

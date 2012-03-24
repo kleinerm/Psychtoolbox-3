@@ -153,11 +153,6 @@ try
        Screen('OpenWindow', screen(2), 0, rect2, 32, doublebuffer, stereomode);       
    end
    
-	if IsWin & 0
-		winfo = Screen('GetWindowInfo', win, 0);
-		Screen('GetWindowInfo', win, 3, winfo.VBLCount + 180, 1);
-	end
-
    flickerRect = InsetRect(winRect, 100, 0);
    color = 0;
    deadline = GetSecs + maxduration;
@@ -173,11 +168,11 @@ try
       % Draw alternating black/white rectangle:
       Screen('FillRect', win, color, flickerRect);
       % If beamposition is available (on OS-X), visualize it via yellow horizontal line:
-      if (beampos>=0) Screen('DrawLine', win, [255 255 0], 0, beampos, winRect(3), beampos, thickness); end;
+      if (beampos>=0), Screen('DrawLine', win, [255 255 0], 0, beampos, winRect(3), beampos, thickness); end;
       % Same for right-eye view...
       Screen('SelectStereoDrawBuffer', win, 1);
       Screen('FillRect', win, color, flickerRect);
-      if (beampos>=0) Screen('DrawLine', win, [255 255 0], 0, beampos, winRect(3), beampos, thickness); end;
+      if (beampos>=0), Screen('DrawLine', win, [255 255 0], 0, beampos, winRect(3), beampos, thickness); end;
       
       if stereomode == 0 & length(screen)>1
           Screen('FillRect', win2, color, flickerRect);
@@ -198,7 +193,7 @@ try
           else
               % Flip immediately without sync to vertical retrace, do clear
               % backbuffer after flip for visualization purpose:
-              [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + ifi/2, 0, 2, multiflip);
+              VBLTimestamp = Screen('Flip', win, VBLTimestamp + ifi/2, 0, 2, multiflip);
               % Above flip won't return a 'beampos' in non-VSYNC'ed mode,
               % so we query it manually:
               beampos = Screen('GetWindowInfo', win, 1);
