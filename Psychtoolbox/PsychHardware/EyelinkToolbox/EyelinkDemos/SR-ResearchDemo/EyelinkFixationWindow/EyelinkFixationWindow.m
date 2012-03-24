@@ -74,8 +74,8 @@ try
     fixationWindow = CenterRect(fixationWindow, wRect);
     
     % make textures 
-    happy = Screen('MakeTexture',window, imread(char(imageList(1)),'jpg'));
-    sad = Screen('MakeTexture',window, imread(char(imageList(2)),'jpg'));
+    happy = Screen('MakeTexture',window, imread(char(imageList(1))));
+    sad = Screen('MakeTexture',window, imread(char(imageList(2))));
     
     %%%%%%%%%%
     % STEP 3 %
@@ -91,7 +91,7 @@ try
     % We are changing calibration to a black background with white targets,
     % no sound and smaller targets
     el.backgroundcolour = BlackIndex(el.window);
-    el.msgfontcolour  = whiteIndex(el.window);
+    el.msgfontcolour  = WhiteIndex(el.window);
     el.imgtitlecolour = WhiteIndex(el.window);
     el.targetbeep = 0;
     el.calibrationtargetcolour= whiteIndex(el.window);
@@ -300,7 +300,7 @@ try
                 
                 % Query current mouse cursor position (our "pseudo-eyetracker") -
                 % (mx,my) is our gaze position.
-                [mx, my, buttons]=GetMouse(window); %#ok<*NASGU>
+                [mx, my]=GetMouse(window); %#ok<*NASGU>
            
             end
             if infixationWindow(mx,my) && ~infix

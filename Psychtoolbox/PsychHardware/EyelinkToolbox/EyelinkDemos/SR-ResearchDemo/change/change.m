@@ -21,7 +21,7 @@ function change
 %
 % 01/28/11  NJ  created
 
-if ~isoctave
+if ~IsOctave
     commandwindow;
 else
     more off;
@@ -69,7 +69,7 @@ try
     % Open a graphics window on the main screen
     % using the PsychToolbox's Screen function.
     screenNumber=max(Screen('Screens'));
-    [window, wRect]=Screen('OpenWindow', screenNumber, 0,[],32,2); 
+    window=Screen('OpenWindow', screenNumber, 0,[],32,2); 
     Screen(window,'BlendFunction',GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     [winWidth, winHeight] = WindowSize(window);
     
@@ -199,7 +199,6 @@ try
     % calls as well integration messages to the data file (message to mark
     % the time of critical events and the image/interest area/condition
     % information for the trial)
-    stopKeyPressed = 0;
     
     for i = 1 : 4
         stopKeyPressed = 0;
@@ -226,7 +225,7 @@ try
         WaitSecs(0.1);
         
         % transfer image A to host pc
-        imgArray = imread(imgfileA,'bmp');
+        imgArray = imread(imgfileA);
         finfo = imfinfo(imgfileA);
         transferStatus = Eyelink('ImageTransfer', finfo.Filename ,0,0,0,0,round(winWidth/2 - finfo.Width/2) ,round(winHeight/2 - finfo.Height/2),4);
         if transferStatus ~= 0
@@ -280,7 +279,7 @@ try
         Screen('Flip', window);
         % create trial textures
         tex(1) = Screen('MakeTexture', window,imgArray);
-        imgArray = imread(imgfileB,'bmp');
+        imgArray = imread(imgfileB);
         tex(2) = Screen('MakeTexture', window,imgArray);
         
         % variables to determine what to display in each iteration
@@ -379,7 +378,7 @@ try
                     end %end for
                 else
                     % using display PC mouse
-                    [x,y,button] = GetMouse(window); %#ok<*NASGU>
+                    [x,y] = GetMouse(window); %#ok<*NASGU>
                     evt.type=el.FIXUPDATE;
                     evt.gavx=x;
                     evt.gavy=y;                    
@@ -416,10 +415,8 @@ try
             if keyCode(stopkey )
                 sprintf('Space pressed, exiting trial\n');
                 EyeLink('Message', 'Key pressed');
-                stopKeyPressed = 1;
                 break;
             end
-            
         end
         
         

@@ -72,21 +72,20 @@ try
     Screen(w,'BlendFunction',GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     % Find the color values which correspond to white and black.
-    white=WhiteIndex(screenNumber);
     black=BlackIndex(screenNumber);
     gray=GrayIndex(screenNumber); 
 
     % Import image and and convert it, stored in
     % MATLAB matrix, into a Psychtoolbox OpenGL texture using 'MakeTexture';
-    myimgfile= 'konijntjes1024x768';
+    myimgfile= 'konijntjes1024x768.jpg';
     fprintf('Using image ''%s''\n', myimgfile);
-    imdata=imread(myimgfile, 'jpg');
+    imdata=imread(myimgfile);
     
     % Crop image if it is larger then screen size. There's no image scaling
     % in maketexture
-    [iy, ix, id]=size(imdata);
+    [iy, ix, iz]=size(imdata); %#ok<NASGU>
     [wW, wH]=WindowSize(w);
-    if ix>wW | iy>wH
+    if ix>wW || iy>wH
         fprintf('Image size exceeds screen size\n');
         fprintf('Image will be cropped\n');
     end
@@ -139,7 +138,6 @@ try
     [a,b]=WindowCenter(w);
     SetMouse(a,b,screenNumber); 
     HideCursor;
-    buttons=0;
 
     % Bump priority for speed        
 	priorityLevel=MaxPriority(w);
@@ -163,7 +161,7 @@ try
 
         % We only redraw if mouse has been moved:
         [mx, my, buttons]=GetMouse(screenNumber);
-        if (mx~=mxold | my~=myold)
+        if (mx~=mxold || my~=myold)
             myrect=[mx-ms my-ms mx+ms+1 my+ms+1]; % center dRect on current mouseposition
             dRect = ClipRect(myrect,ctRect);
             sRect=OffsetRect(dRect, -dx, -dy);
