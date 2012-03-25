@@ -264,7 +264,8 @@ function [data,params]=DaqAInScan(daq,options)
 % 3/15/09 mk  timer_preload calculation changed according to bug report and bugfix
 %             suggested by Peter Meilstrup in forum message 9221. There was an
 %             off-by-one bug present...
-
+% 3/24/12 mk  Add handling for options.livedata -- retrieval of data while
+%             DAQ is running.
 
 % These USB-1280FS parameters are computed from the user-supplied
 % arguments.
@@ -657,7 +658,10 @@ if options.continue
     end 
   end
 end
-if options.end
+
+% Large parts of code are shared between end of aquisition with return of
+% all captured data, and retrieval of livedata without stop of aquisition:
+if options.end || (isfield(options, 'livedata') && options.livedata)
   % Get and combine reports from all interfaces.
   r=[];
   params.times=[];
@@ -667,31 +671,41 @@ if options.end
       fprintf('AInScan DeviceIndex %d, GiveMeReports error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
     end
     r=[r reports];
-    err=PsychHID('ReceiveReportsStop',daq+d);
-    if err.n
-      fprintf('AInScan DeviceIndex %d, ReceiveReportsStop error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
+    
+    % Only stop reception if this is really end of aquisition:
+    if options.end
+        err=PsychHID('ReceiveReportsStop',daq+d);
+        if err.n
+            fprintf('AInScan DeviceIndex %d, ReceiveReportsStop error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
+        end
     end
   end
-  % hex2dec('12') is 18.
-  err=PsychHID('SetReport',daq,2,18,uint8(0)); % AInStop
-  if err.n
-    fprintf('AInStop SetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
-  end
-  for d=IndexRange
-    err=PsychHID('ReceiveReports',daq+d);
-    [reports,err]=PsychHID('GiveMeReports',daq+d);
-    if isfinite(options.count)
-      if ~isempty(reports)
-        fprintf('WARNING: received %d post-deadline reports from DeviceIndex %d.\n',length(reports),daq+d);
+  
+  % Stop DAQ and flush receive buffers if this is really end of aquisition:
+  if options.end
+      % hex2dec('12') is 18.
+      err=PsychHID('SetReport',daq,2,18,uint8(0)); % AInStop
+      if err.n
+          fprintf('AInStop SetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
       end
-    else
-      r=[r reports];
-    end
-    err=PsychHID('ReceiveReportsStop',daq+d);
-    if err.n
-      fprintf('AInScan DeviceIndex %d, ReceiveReportsStop error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
-    end
+      for d=IndexRange
+          err=PsychHID('ReceiveReports',daq+d);
+          [reports,err]=PsychHID('GiveMeReports',daq+d);
+          if isfinite(options.count)
+              if ~isempty(reports)
+                  fprintf('WARNING: received %d post-deadline reports from DeviceIndex %d.\n',length(reports),daq+d);
+              end
+          else
+              r=[r reports];
+          end
+          err=PsychHID('ReceiveReportsStop',daq+d);
+          if err.n
+              fprintf('AInScan DeviceIndex %d, ReceiveReportsStop error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
+          end
+      end
   end
+  
+  % Post processing of raw report data:
   reports=r;
   if isempty(reports)
     data=[];
