@@ -216,14 +216,22 @@ PsychError SCREENMakeTexture(void)
 		// Allocate one byte per color component and pixel:
 		textureRecord->textureMemorySizeBytes = (size_t) numMatrixPlanes * (size_t) xSize * (size_t) ySize;
     }
-	// MK: Allocate memory page-aligned... -> Helps Apple texture range extensions et al.
-    if(PsychPrefStateGet_DebugMakeTexture()) 	//MARK #2
-        StoreNowTime();
-    textureRecord->textureMemory=malloc(textureRecord->textureMemorySizeBytes);
-    if(PsychPrefStateGet_DebugMakeTexture()) 	//MARK #3
-        StoreNowTime();	
-    texturePointer=textureRecord->textureMemory;
-    
+	
+	// We allocate our own intermediate conversion buffer unless this is
+	// creation of a single-layer luminance8 integer texture from a single
+	// layer uint8 input matrix and client storage is disabled. In that case, we can use a zero-copy path:
+	if (!(isImageMatrixBytes && (numMatrixPlanes == 1) && (!usefloatformat) && !(PsychPrefStateGet_ConserveVRAM() & kPsychDontCacheTextures))) {
+		// Allocate memory:
+		if(PsychPrefStateGet_DebugMakeTexture()) StoreNowTime();
+		textureRecord->textureMemory = malloc(textureRecord->textureMemorySizeBytes);
+		if(PsychPrefStateGet_DebugMakeTexture()) StoreNowTime();
+		texturePointer = textureRecord->textureMemory;
+	}
+	else {
+		// Zero copy path:
+		texturePointer = NULL;
+	}
+	
     // Does script explicitely request usage of a GL_TEXTURE_2D power-of-two texture?
     if (usepoweroftwo & 1) {
       // Enforce creation as a power-of-two texture:
@@ -370,8 +378,25 @@ PsychError SCREENMakeTexture(void)
 		// NB: Implementing memcpy manually by a for-loop takes 10 ms! This is a huge difference.
 		// -> That's because memcpy on MacOS-X is implemented with hand-coded, highly tuned Assembler code for PowerPC.
 		// -> It's always wise to use system-routines if available, instead of coding it by yourself!
-		if(isImageMatrixBytes && numMatrixPlanes==1){
-			memcpy((void*) texturePointer, (void*) byteMatrix, iters);
+		if(isImageMatrixBytes && numMatrixPlanes==1) {
+			if (texturePointer) {
+				// Need to do a copy. Use optimized memcpy():
+				memcpy((void*) texturePointer, (void*) byteMatrix, iters);
+				
+				//texturePointer_b=(GLubyte*) texturePointer;
+				//for(ix=0;ix<iters;ix++){
+				//	*(texturePointer_b++) = *(byteMatrix++);  
+				//}
+			}
+			else {
+				// Zero-Copy path. Just pass a pointer to our input matrix:
+				texturePointer = (GLuint*) byteMatrix;
+				textureRecord->textureMemory = texturePointer;
+				// Set size to zero, so PsychCreateTexture() does not free() our
+				// input buffer:
+				textureRecord->textureMemorySizeBytes = 0;
+			}
+
 			textureRecord->depth=8;
 		}
 		

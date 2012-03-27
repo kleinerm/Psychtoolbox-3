@@ -106,13 +106,12 @@ try
 
         Screen('Flip', w);
 
-        texid = glGenTextures(1);
         glBindTexture(textarget, texid);
         switch channels
             case 4,
                         glTexImage2D(textarget, 0, GL.RGBA8, width, height, 0, GL.BGRA, GL.UNSIGNED_INT_8_8_8_8_REV, img);
             case 3,
-                        glTexImage2D(textarget, 0, GL.RGB8, width, height, 0, GL.RGB, GL.UNSIGNED_BYTE, img);
+                        glTexImage2D(textarget, 0, GL.RGBA8, width, height, 0, GL.RGB, GL.UNSIGNED_BYTE, img);
         end
         
         glBindTexture(textarget, 0);
