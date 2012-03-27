@@ -290,7 +290,7 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 	int keysdown;
 	double timestamp;
 	int i, j;
-	psych_bool isButtons;
+	psych_bool isButtons = FALSE;
 
 	memset(keys_return, 0, sizeof(keys_return));
 
