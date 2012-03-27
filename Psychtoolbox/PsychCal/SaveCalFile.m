@@ -18,6 +18,8 @@ function SaveCalFile(cal, filespec, dir)
 % 5/18/99  dhb  Add optional directory arg.
 % 8/10/00  dhb  Fix loading code for default.mat
 % 7/9/02   dhb  Incorporate filespec/filename fix as suggested by Eiji Kimura.
+% 3/27/12  dhb  Pass dir to LoadCalFile call, so that it does the right thing
+%               in cases where cal file location is expilcitly passed.
 
 % Set the filename
 if nargin < 3 || isempty(dir)
@@ -33,7 +35,7 @@ else
 end
 
 % Load the file to get older calibrations
-[oldCal, oldCals] = LoadCalFile(filespec);
+[oldCal, oldCals] = LoadCalFile(filespec,dir);
 if isempty(oldCals)
 	cals = {cal}; %#ok<NASGU>
 else
