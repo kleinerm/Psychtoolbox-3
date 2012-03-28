@@ -1,5 +1,5 @@
-function MakeTextureTimingTest2(screenid, width, height, channels, nSamples, preload)
-% MakeTextureTimingTest2([screenid][,width][,height][,channels][,nSamples][,preload]);
+function MakeTextureTimingTest2(screenid, width, height, channels, nSamples, preload, specialFlags)
+% MakeTextureTimingTest2([screenid][,width][,height][,channels][,nSamples][,preload][,specialFlags]);
 %
 % Test creation timing of a texture of specific 'width' x 'height' size with
 % 'channels' color channels (1=Luminance, 2=Luminance+Alpha, 3=RGB,
@@ -73,6 +73,10 @@ if isempty(preload)
     preload = 1;
 end
 
+if nargin < 7 || isempty(specialFlags)
+    specialFlags = [];
+end
+
 try
     % Open standard window:
     InitializeMatlabOpenGL(0,0,1);
@@ -81,19 +85,31 @@ try
     % Create random test pixel matrix:
     img = uint8(rand(height, width, channels) * 255);
     
-    Screen('Flip', w);
-        
+    tbase = Screen('Flip', w);
+
     % Perform nSamples sampling passes:
     for i=1:nSamples
-        tex = Screen('MakeTexture', w, img);
-        if preload
+        tex = Screen('MakeTexture', w, img, [], specialFlags);
+        if preload == 1
             Screen('PreloadTextures', w, tex);
         end
+        
+        if preload == 2
+            Screen('DrawTexture', w, tex);
+            if i == 1
+                Screen('Flip', w, [], 2, 1);
+            end
+        end
+        
         Screen('Close', tex);
     end
     
-    % Enforce completion of all GPU operations, take timestamp:
-    elapsed = Screen('DrawingFinished', w, 2, 1);
+    if preload ~= 2
+        % Enforce completion of all GPU operations, take timestamp:
+        elapsed = Screen('DrawingFinished', w, 2, 1);
+    else
+        elapsed = Screen('Flip', w) - tbase;
+    end
     
     avgmsecs = (elapsed / nSamples) * 1000;
     

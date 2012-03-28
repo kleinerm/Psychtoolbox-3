@@ -131,12 +131,13 @@ TO DO:
 #define kPsychOpenMLDefective		     16 // 'specialflags' setting 16 means: Don't use OpenML sync control extension for timestamping anywhere.
 
 #define kPsychGUIWindow					 32 // 'specialflags' setting 32 means: This window should behave like a regular GUI window, e.g, allow moving it.
+#define kPsychPlanarTexture				 64 // 'specialflags' setting 64: This texture uses a planar storage format instead of pixel-interleaved.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,S-65536. --> Flag 32768 and Flags of 2^17 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,32,1024,S-2048,S-8192, 32768, S-65536. --> Flags of 2^17 and higher are available, as well as 64,128,256,512,4096, 16384
+// 1,2,4,8,16,32,64,1024,S-2048,S-8192, 32768, S-65536. --> Flags of 2^17 and higher are available, as well as 128,256,512,4096, 16384
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*	PtrPsychHookFunction;
@@ -282,6 +283,8 @@ typedef struct _PsychWindowRecordType_{
 		GLint				textureFilterShader;	// Optional GLSL program handle for a shader to apply during PsychBlitTextureToDisplay().
 		GLint				textureLookupShader;	// Optional GLSL handle for nearest neighbour texture drawing shader.
 		GLint				textureByteAligned;		// 0 = No knowledge about byte alignment of texture data. > 1, texture rows are x byte aligned.
+		GLint				texturePlanarShader[4]; // Optional GLSL program handles for shaders to apply to planar storage textures - 4 handles for 4 possible channel counts.
+
 	//line stipple attributes, for windows not textures.
 	GLushort				stipplePattern;
 	GLint					stippleFactor;

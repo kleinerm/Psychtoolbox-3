@@ -53,6 +53,11 @@ static char synopsisString[] =
 	"textures or when Screen('ColorRange') is used to enable unclamped color processing: PTB will check if your hardware "
 	"is capable of unrestricted high precision color processing in that case. If your hardware can't guarantee high precision, "
 	"PTB will enable its own shader-based workarounds to provide higher precision at the cost of lower speed. \n"
+	"If 'specialFlags' is set to 4 then PTB tries to use an especially fast method of texture creation. This method can be "
+	"at least an order of magnitude faster on some systems. However, it only works on modern GPUs, only for certain maximum "
+	"image sizes, and with some restrictions, e.g., scrolling of textures or high-precision filtering may not work at all or "
+	"as well. Your mileage may vary, so only use this flag if you need extra speed and after verifying your stimuli still look "
+	"correct.\n"
 	"'floatprecision' defines the precision with which the texture should be stored and processed. Default value is zero, "
 	"which asks to store textures with 8 bit per color component precision, a suitable format for standard images read via "
 	"imread(). A non-zero value will store the textures color component values as floating point precision numbers, useful "
@@ -102,6 +107,7 @@ PsychError SCREENMakeTexture(void)
     int									usepoweroftwo, usefloatformat, assume_texorientation, textureShader;
     double								optimized_orientation;
     psych_bool							bigendian;
+	psych_bool							planar_storage = FALSE;
 
     // Detect endianity (byte-order) of machine:
     ix=255;
@@ -184,7 +190,7 @@ PsychError SCREENMakeTexture(void)
 			PsychErrorExitMsg(PsychError_inputMatrixIllegalDimensionSize, "Power-of-two texture requested but height of imageMatrix is not a power of two!");
 		}
     }
-	
+
 	// Check if creation of a floating point texture is requested? We default to non-floating point,
 	// standard 8 bpc textures if this parameter is not provided.
 	usefloatformat = 0;
@@ -206,9 +212,22 @@ PsychError SCREENMakeTexture(void)
     textureRecord->depth=32;
     PsychCopyRect(textureRecord->rect, rect);
     
+	// Is texture storage in planar format explicitely requested by usercode? Do the gpu and its size
+	// constraints on textures support planar storage for this image?
+	// Can a proper planar -> interleaved remapping GLSL shader be generated and assigned for this texture?
+	if ((usepoweroftwo == 4) && (numMatrixPlanes > 1) && (windowRecord->gfxcaps & kPsychGfxCapFBO) && !(PsychPrefStateGet_ConserveVRAM() & kPsychDontCacheTextures) &&
+		(ySize * numMatrixPlanes <= windowRecord->maxTextureSize) && PsychAssignPlanarTextureShaders(textureRecord, windowRecord, numMatrixPlanes)) {
+		// Yes: Use the planar texture storage fast-path.
+		planar_storage = TRUE;
+		if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-DEBUG: Using planar storage for %i layer texture of size %i x %i texels.\n", numMatrixPlanes, xSize, ySize);
+	}
+	else {
+		planar_storage = FALSE;
+		if (PsychPrefStateGet_Verbosity() > 7) printf("PTB-DEBUG: Using standard storage for %i layer texture of size %i x %i texels.\n", numMatrixPlanes, xSize, ySize);
+	}
+
     //Allocate the texture memory and copy the MATLAB matrix into the texture memory.
-    // MK: We only allocate the amount really needed for given format, aka numMatrixPlanes - Bytes per pixel.
-	if (usefloatformat) {
+	if (usefloatformat || (planar_storage && !isImageMatrixBytes)) {
 		// Allocate a double for each color component and pixel:
 		textureRecord->textureMemorySizeBytes = sizeof(double) * (size_t) numMatrixPlanes * (size_t) xSize * (size_t) ySize;		
 	}
@@ -216,20 +235,21 @@ PsychError SCREENMakeTexture(void)
 		// Allocate one byte per color component and pixel:
 		textureRecord->textureMemorySizeBytes = (size_t) numMatrixPlanes * (size_t) xSize * (size_t) ySize;
     }
-	
+
 	// We allocate our own intermediate conversion buffer unless this is
 	// creation of a single-layer luminance8 integer texture from a single
 	// layer uint8 input matrix and client storage is disabled. In that case, we can use a zero-copy path:
-	if (!(isImageMatrixBytes && (numMatrixPlanes == 1) && (!usefloatformat) && !(PsychPrefStateGet_ConserveVRAM() & kPsychDontCacheTextures))) {
+	if ((isImageMatrixBytes && (numMatrixPlanes == 1) && (!usefloatformat) && !(PsychPrefStateGet_ConserveVRAM() & kPsychDontCacheTextures)) ||
+		(isImageMatrixBytes && planar_storage)) {
+		// Zero copy path:
+		texturePointer = NULL;
+	}
+	else {
 		// Allocate memory:
 		if(PsychPrefStateGet_DebugMakeTexture()) StoreNowTime();
 		textureRecord->textureMemory = malloc(textureRecord->textureMemorySizeBytes);
 		if(PsychPrefStateGet_DebugMakeTexture()) StoreNowTime();
 		texturePointer = textureRecord->textureMemory;
-	}
-	else {
-		// Zero copy path:
-		texturePointer = NULL;
 	}
 	
     // Does script explicitely request usage of a GL_TEXTURE_2D power-of-two texture?
@@ -240,7 +260,62 @@ PsychError SCREENMakeTexture(void)
 
 	// Now the conversion routines that convert Matlab/Octave matrices into memory
 	// buffers suitable for OpenGL:
-	if (usefloatformat) {
+	if (planar_storage) {
+		// Planar texture storage, backed by a LUMINANCE texture container:
+
+		// Zero-Copy possible? Only for uint8 input -> uint8 output:
+		if (texturePointer == NULL) {
+			texturePointer = (GLuint*) byteMatrix;
+			textureRecord->textureMemory = texturePointer;
+			// Set size to zero, so PsychCreateTexture() does not free() our
+			// input buffer:
+			textureRecord->textureMemorySizeBytes = 0;
+			
+			// This is always a LUMINANCE8 texture, backing our planar uint8 texture:
+			textureRecord->depth = 8 * numMatrixPlanes;
+			textureRecord->textureexternaltype   = GL_UNSIGNED_BYTE;
+			textureRecord->textureexternalformat = GL_LUMINANCE;
+			textureRecord->textureinternalformat = GL_LUMINANCE8;
+		}
+		else {
+			// Some cast operation needed from double input format.
+			// We always cast from double to float, potentially with
+			// normalization and/or checking of value range.
+			textureRecord->textureexternalformat = GL_LUMINANCE;
+
+			if (usefloatformat) {
+				// Floating point or other high precision format:
+				textureRecord->depth = ((usefloatformat == 1) ? 16 : 32) * numMatrixPlanes;
+				textureRecord->textureexternaltype = GL_FLOAT;
+				textureRecord->textureinternalformat = (usefloatformat == 1) ? GL_LUMINANCE_FLOAT16_APPLE : GL_LUMINANCE_FLOAT32_APPLE;
+				
+				// Override for missing floating point texture support: Try to use 16 bit fixed point signed normalized textures [-1.0 ; 1.0] resolved at 15 bits:
+				if ((usefloatformat == 1) && !(windowRecord->gfxcaps & kPsychGfxCapFPTex16)) textureRecord->textureinternalformat = GL_LUMINANCE16_SNORM;
+
+				// Perform copy with double -> float cast:
+				iters = (size_t) xSize * (size_t) ySize * (size_t) numMatrixPlanes;
+				texturePointer_f = (GLfloat*) texturePointer;
+				for(ix = 0; ix < iters; ix++) {
+					*(texturePointer_f++) = (GLfloat) *(doubleMatrix++);
+				}
+				iters = (size_t) xSize * (size_t) ySize;
+			}
+			else {
+				// 8 Bit format, but from double input matrix -> cast to uint8:
+				textureRecord->depth = 8 * numMatrixPlanes;
+				textureRecord->textureexternaltype = GL_UNSIGNED_BYTE;
+				textureRecord->textureinternalformat = GL_LUMINANCE8;
+
+				iters = (size_t) xSize * (size_t) ySize * (size_t) numMatrixPlanes;
+				texturePointer_b = (GLubyte*) texturePointer;
+				for(ix = 0; ix < iters; ix++) {
+					*(texturePointer_b++) = (GLubyte) *(doubleMatrix++);
+				}
+				iters = (size_t) xSize * (size_t) ySize;
+			}
+		}
+	}
+	else if (usefloatformat) {
 		// Conversion routines for HDR 16 bpc or 32 bpc textures -- Slow path.
 		// Our input is always double matrices...
 		iters = (size_t) xSize * (size_t) ySize;
@@ -314,51 +389,7 @@ PsychError SCREENMakeTexture(void)
 
 			// Override for missing floating point texture support: Try to use 16 bit fixed point signed normalized textures [-1.0 ; 1.0] resolved at 15 bits:
 			if ((usefloatformat==1) && !(windowRecord->gfxcaps & kPsychGfxCapFPTex16)) textureRecord->textureinternalformat = GL_RGBA16_SNORM;
-		}
-
-		// Override for missing floating point texture support?
-		if ((usefloatformat==1) && !(windowRecord->gfxcaps & kPsychGfxCapFPTex16)) {
-			// Override enabled. Instead of a 16bpc float texture with 11 bit linear precision in the
-			// range [-1.0 ; 1.0], we use a 16 bit signed normalized texture with a normalized value
-			// range of [-1.0; 1.0], encoded with 1 bit sign and 15 bit magnitude. These textures have
-			// an effective linear precision of 15 bits - better than 16 bpc float - but they are restricted
-			// to a value range of [-1.0 ; 1.0], as opposed to 16 bpc float textures. Tell user about this
-			// replacement at high verbosity levels:
-			if (PsychPrefStateGet_Verbosity() > 4)
-				printf("PTB-INFO:MakeTexture: Code requested 16 bpc float texture, but this is unsupported. Trying to use 16 bit snorm texture instead.\n");
-
-			// Signed normalized textures supported? Otherwise we bail...
-			if (!(windowRecord->gfxcaps & kPsychGfxCapSNTex16)) {
-				printf("PTB-ERROR:MakeTexture: Code requested 16 bpc floating point texture, but this is unsupported by this graphics card.\n");
-				printf("PTB-ERROR:MakeTexture: Tried to use 16 bit snorm texture instead, but failed as this is unsupported as well.\n");
-				PsychErrorExitMsg(PsychError_user, "Creation of 15 bit linear precision signed normalized texture failed. Not supported by your graphics hardware!");
-			}
-
-			// Check value range of pixels. This will not work for out of [-1; 1] range values.
-			texturePointer_f=(GLfloat*) texturePointer;
-			iters = iters * (size_t) numMatrixPlanes;
-			for (ix=0; ix<iters; ix++, texturePointer_f++) {
-				if(fabs((double) *texturePointer_f) > 1.0) {
-					// Game over!
-					printf("PTB-ERROR:MakeTexture: Code requested 16 bpc floating point texture, but this is unsupported by this graphics card.\n");
-					printf("PTB-ERROR:MakeTexture: Tried to use 16 bit snorm texture instead, but failed because some pixels are outside the\n");
-					printf("PTB-ERROR:MakeTexture: representable range -1.0 to 1.0 for this texture type. Change your code or update your graphics hardware.\n");
-					PsychErrorExitMsg(PsychError_user, "Creation of 15 bit linear precision signed normalized texture failed due to out of [-1 ; +1] range pixel values!");
-				}
-			}
-		}
-
-		// This is a special workaround for bugs in FLOAT16 texture creation on Mac OS/X 10.4.x and 10.5.x.
-		// The OpenGL fails to properly flush very small values (< 1e-9) to zero when creating a FLOAT16
-		// type texture. Instead it seems to initialize with trash data, corrupting the texture.
-		// Therefore, if FLOAT16 texture creation is requested, we loop over the whole input buffer and
-		// set all values with magnitude smaller than 1e-9 to zero. Better safe than sorry...
-		if ((usefloatformat==1) && (windowRecord->gfxcaps & kPsychGfxCapFPTex16)) {
-			texturePointer_f=(GLfloat*) texturePointer;
-			iters = iters * (size_t) numMatrixPlanes;
-			for(ix=0; ix<iters; ix++, texturePointer_f++) if(fabs((double) *texturePointer_f) < 1e-9) { *texturePointer_f = 0.0; }
-		}
-		
+		}		
 		// End of HDR conversion code...
 	}
     else {
@@ -511,6 +542,49 @@ PsychError SCREENMakeTexture(void)
 		}
 	} // End of 8 bpc texture conversion code (fast-path for LDR textures)
     
+	// Override for missing floating point texture support?
+	if ((usefloatformat==1) && !(windowRecord->gfxcaps & kPsychGfxCapFPTex16)) {
+		// Override enabled. Instead of a 16bpc float texture with 11 bit linear precision in the
+		// range [-1.0 ; 1.0], we use a 16 bit signed normalized texture with a normalized value
+		// range of [-1.0; 1.0], encoded with 1 bit sign and 15 bit magnitude. These textures have
+		// an effective linear precision of 15 bits - better than 16 bpc float - but they are restricted
+		// to a value range of [-1.0 ; 1.0], as opposed to 16 bpc float textures. Tell user about this
+		// replacement at high verbosity levels:
+		if (PsychPrefStateGet_Verbosity() > 4)
+			printf("PTB-INFO:MakeTexture: Code requested 16 bpc float texture, but this is unsupported. Trying to use 16 bit snorm texture instead.\n");
+		
+		// Signed normalized textures supported? Otherwise we bail...
+		if (!(windowRecord->gfxcaps & kPsychGfxCapSNTex16)) {
+			printf("PTB-ERROR:MakeTexture: Code requested 16 bpc floating point texture, but this is unsupported by this graphics card.\n");
+			printf("PTB-ERROR:MakeTexture: Tried to use 16 bit snorm texture instead, but failed as this is unsupported as well.\n");
+			PsychErrorExitMsg(PsychError_user, "Creation of 15 bit linear precision signed normalized texture failed. Not supported by your graphics hardware!");
+		}
+		
+		// Check value range of pixels. This will not work for out of [-1; 1] range values.
+		texturePointer_f=(GLfloat*) texturePointer;
+		iters = iters * (size_t) numMatrixPlanes;
+		for (ix=0; ix<iters; ix++, texturePointer_f++) {
+			if(fabs((double) *texturePointer_f) > 1.0) {
+				// Game over!
+				printf("PTB-ERROR:MakeTexture: Code requested 16 bpc floating point texture, but this is unsupported by this graphics card.\n");
+				printf("PTB-ERROR:MakeTexture: Tried to use 16 bit snorm texture instead, but failed because some pixels are outside the\n");
+				printf("PTB-ERROR:MakeTexture: representable range -1.0 to 1.0 for this texture type. Change your code or update your graphics hardware.\n");
+				PsychErrorExitMsg(PsychError_user, "Creation of 15 bit linear precision signed normalized texture failed due to out of [-1 ; +1] range pixel values!");
+			}
+		}
+	}
+
+	// This is a special workaround for bugs in FLOAT16 texture creation on Mac OS/X 10.4.x and 10.5.x.
+	// The OpenGL fails to properly flush very small values (< 1e-9) to zero when creating a FLOAT16
+	// type texture. Instead it seems to initialize with trash data, corrupting the texture.
+	// Therefore, if FLOAT16 texture creation is requested, we loop over the whole input buffer and
+	// set all values with magnitude smaller than 1e-9 to zero. Better safe than sorry...
+	if ((usefloatformat==1) && (windowRecord->gfxcaps & kPsychGfxCapFPTex16)) {
+		texturePointer_f=(GLfloat*) texturePointer;
+		iters = iters * (size_t) numMatrixPlanes;
+		for(ix=0; ix<iters; ix++, texturePointer_f++) if(fabs((double) *texturePointer_f) < 1e-9) { *texturePointer_f = 0.0; }
+	}
+
     // The memory buffer now contains our texture data in a format ready to submit to OpenGL.
     
 	// Assign parent window and copy its inheritable properties:
@@ -522,12 +596,36 @@ PsychError SCREENMakeTexture(void)
 	// This is our best guess about the number of image channels:
 	textureRecord->nrchannels = numMatrixPlanes;
 
-    // Let's create and bind a new texture object and fill it with our new texture data.
-    PsychCreateTexture(textureRecord);
-    
-	// Assign GLSL filter-/lookup-shaders if needed:
-	PsychAssignHighPrecisionTextureShaders(textureRecord, windowRecord, usefloatformat, (usepoweroftwo & 2) ? 1 : 0);
+	if (planar_storage) {
+		// Setup special rect to fake PsychCreateTexture() into creating a luminance
+		// texture numMatrixPlanes times the height (in rows) of the texture, to store the
+		// numMatrixPlanes layers concatenated to each other.
+		if (textureRecord->textureOrientation == 0) {
+			// Normal case: Transposed storage.
+			PsychMakeRect(&(textureRecord->rect[0]), 0, 0, xSize * numMatrixPlanes, ySize);
+		}
+		else {
+			// Special case: Non-transposed or isotropic storage:
+			PsychMakeRect(&(textureRecord->rect[0]), 0, 0, xSize, ySize * numMatrixPlanes);
+		}
+		
+		// Create planar texture:
+		PsychCreateTexture(textureRecord);
 
+		// Restore rect and clientrect of texture to effective size:
+		PsychMakeRect(&(textureRecord->rect[0]), 0, 0, xSize, ySize);
+		PsychCopyRect(textureRecord->clientrect, textureRecord->rect);
+		
+		textureRecord->specialflags = kPsychPlanarTexture;
+	}
+	else {
+		// Let's create and bind a new texture object and fill it with our new texture data.
+		PsychCreateTexture(textureRecord);
+		
+		// Assign GLSL filter-/lookup-shaders if needed:
+		PsychAssignHighPrecisionTextureShaders(textureRecord, windowRecord, usefloatformat, (usepoweroftwo & 2) ? 1 : 0);
+	}
+	
 	// User specified override shader for this texture provided? This is useful for
 	// basic image processing and procedural texture shading:
 	if (textureShader!=0) {
@@ -545,7 +643,6 @@ PsychError SCREENMakeTexture(void)
 	if (assume_texorientation == 1) {
 		// Transform sourceRecord source texture into a normalized, upright texture if it isn't already in
 		// that format. We require this standard orientation for simplified shader design.
-
 		PsychSetShader(windowRecord, 0);
 		PsychNormalizeTextureOrientation(textureRecord);
 	}

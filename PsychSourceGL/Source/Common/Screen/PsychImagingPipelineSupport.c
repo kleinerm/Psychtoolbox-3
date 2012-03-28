@@ -36,6 +36,114 @@
 
 #include "Screen.h"
 
+static char texturePlanar1FragmentShaderSrc[] =
+"\n"
+" \n"
+"#extension GL_ARB_texture_rectangle : enable \n"
+" \n"
+"uniform sampler2DRect Image; \n"
+"varying vec4 unclampedFragColor; \n"
+"varying vec2 texNominalSize; \n"
+" \n"
+"void main() \n"
+"{ \n"
+"    vec4 texcolor; \n"
+"    texcolor.rgb = vec3(texture2DRect(Image, gl_TexCoord[0].st).r); \n"
+"    texcolor.a   = 1.0; \n"
+"\n"
+"    /* Multiply texcolor with incoming fragment color (GL_MODULATE emulation): */ \n"
+"    /* Assign result as output fragment color: */ \n"
+"    gl_FragColor = texcolor * unclampedFragColor; \n"
+"} \n";
+
+static char texturePlanar2FragmentShaderSrc[] =
+"\n"
+" \n"
+"#extension GL_ARB_texture_rectangle : enable \n"
+" \n"
+"uniform sampler2DRect Image; \n"
+"varying vec4 unclampedFragColor; \n"
+"varying vec2 texNominalSize; \n"
+" \n"
+"void main() \n"
+"{ \n"
+"    vec4 texcolor; \n"
+"    texcolor.rgb = vec3(texture2DRect(Image, gl_TexCoord[0].st).r); \n"
+"    texcolor.a   = texture2DRect(Image, gl_TexCoord[0].st + vec2(0.0, 1.0 * texNominalSize.y)).r; \n"
+"\n"
+"    /* Multiply texcolor with incoming fragment color (GL_MODULATE emulation): */ \n"
+"    /* Assign result as output fragment color: */ \n"
+"    gl_FragColor = texcolor * unclampedFragColor; \n"
+"} \n";
+
+static char texturePlanar3FragmentShaderSrc[] =
+"\n"
+" \n"
+"#extension GL_ARB_texture_rectangle : enable \n"
+" \n"
+"uniform sampler2DRect Image; \n"
+"varying vec4 unclampedFragColor; \n"
+"varying vec2 texNominalSize; \n"
+" \n"
+"void main() \n"
+"{ \n"
+"    vec4 texcolor; \n"
+"    texcolor.r = texture2DRect(Image, gl_TexCoord[0].st).r; \n"
+"    texcolor.g = texture2DRect(Image, gl_TexCoord[0].st + vec2(0.0, 1.0 * texNominalSize.y)).r; \n"
+"    texcolor.b = texture2DRect(Image, gl_TexCoord[0].st + vec2(0.0, 2.0 * texNominalSize.y)).r; \n"
+"    texcolor.a = 1.0; \n"
+"\n"
+"    /* Multiply texcolor with incoming fragment color (GL_MODULATE emulation): */ \n"
+"    /* Assign result as output fragment color: */ \n"
+"    gl_FragColor = texcolor * unclampedFragColor; \n"
+"} \n";
+
+static char texturePlanar4FragmentShaderSrc[] =
+"\n"
+" \n"
+"#extension GL_ARB_texture_rectangle : enable \n"
+" \n"
+"uniform sampler2DRect Image; \n"
+"varying vec4 unclampedFragColor; \n"
+"varying vec2 texNominalSize; \n"
+" \n"
+"void main() \n"
+"{ \n"
+"    vec4 texcolor; \n"
+"    texcolor.r = texture2DRect(Image, gl_TexCoord[0].st).r; \n"
+"    texcolor.g = texture2DRect(Image, gl_TexCoord[0].st + vec2(0.0, 1.0 * texNominalSize.y)).r; \n"
+"    texcolor.b = texture2DRect(Image, gl_TexCoord[0].st + vec2(0.0, 2.0 * texNominalSize.y)).r; \n"
+"    texcolor.a = texture2DRect(Image, gl_TexCoord[0].st + vec2(0.0, 3.0 * texNominalSize.y)).r; \n"
+"\n"
+"    /* Multiply texcolor with incoming fragment color (GL_MODULATE emulation): */ \n"
+"    /* Assign result as output fragment color: */ \n"
+"    gl_FragColor = texcolor * unclampedFragColor; \n"
+"} \n";
+
+char texturePlanarVertexShaderSrc[] =
+"/* Simple pass-through vertex shader: Emulates fixed function pipeline, but passes  */ \n"
+"/* modulateColor as varying unclampedFragColor to circumvent vertex color       */ \n"
+"/* clamping on gfx-hardware / OS combos that don't support unclamped operation:     */ \n"
+"/* PTBs color handling is expected to pass the vertex color in modulateColor    */ \n"
+"/* for unclamped drawing for this reason. */ \n"
+"\n"
+"varying vec4 unclampedFragColor;\n"
+"varying vec2 texNominalSize;\n"
+"attribute vec4 modulateColor;\n"
+"attribute vec4 sizeAngleFilterMode;\n"
+"\n"
+"void main()\n"
+"{\n"
+"    /* Simply copy input unclamped RGBA pixel color into output varying color: */\n"
+"    unclampedFragColor = modulateColor;\n"
+"    texNominalSize = sizeAngleFilterMode.xy;\n"
+"\n"
+"    gl_TexCoord[0] = gl_TextureMatrix[0] * gl_MultiTexCoord0;\n"
+"\n"
+"    /* Output position is the same as fixed function pipeline: */\n"
+"    gl_Position    = ftransform();\n"
+"}\n\0";
+
 // Source code for a fragment shader that performs texture lookup and
 // modulation, but taking the modulatecolor from 'unclampedFragColor'
 // instead of standard interpolated fragment color. This is used when
@@ -1767,9 +1875,9 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 	int tmpimagingmode;
 	PsychFBO *fboptr;
 	GLint fboInternalFormat;
-	psych_bool needzbuffer;
+	psych_bool needzbuffer, isplanar;
 	int width, height;
-	
+
 	// The source texture sourceRecord could be in any of PTB's supported
 	// internal texture orientations. It may be upright as an Offscreen window,
 	// or flipped upside down as some textures from the video grabber or Quicktime,
@@ -1783,6 +1891,9 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 	// we need to recreate it in a RGB renderable format.
 	if (sourceRecord->textureOrientation != 2 || sourceRecord->targetSpecific.QuickTimeGLTexture != NULL) {
 		if (PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: In PsychNormalizeTextureOrientation(): Performing GPU renderswap for source gl-texture %i --> ", sourceRecord->textureNumber);
+		
+		// Is this a planar encoding texture?
+		isplanar = (PsychIsTexture(sourceRecord) && (sourceRecord->specialflags & kPsychPlanarTexture)) ? TRUE : FALSE;
 		
 		// Soft-reset drawing engine in a safe way:
 		PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
@@ -1829,6 +1940,13 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 		}
 		
 		glBindTexture(PsychGetTextureTarget(sourceRecord), 0);
+
+		// Override detected width and height for planar textures:
+		if (isplanar) {
+			// They are actually the net size as specified by their rect's:
+			width  = PsychGetWidthFromRect(sourceRecord->rect);
+			height = PsychGetHeightFromRect(sourceRecord->rect);
+		}
 		
 		// Renderable format? Pure luminance or luminance+alpha formats are not renderable on most hardware.
 		
@@ -1862,6 +1980,16 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 		// This is a non-framebuffer renderable color format. Need to upgrade it to something safe:
 		if (fboInternalFormat == GL_YCBCR_422_APPLE) fboInternalFormat = GL_RGBA8;
 		
+		// Special case: Planar texture encoded in a luminance texture other than LUMINANCE8. Need to
+		// upgrade to a full RGBA format of sufficient precision:
+		if (isplanar && (fboInternalFormat != GL_RGBA8)) {
+			if (sourceRecord->textureinternalformat == GL_LUMINANCE16_SNORM) {
+				fboInternalFormat = GL_RGBA16_SNORM;
+			} else {
+				fboInternalFormat = (sourceRecord->textureinternalformat == GL_LUMINANCE_FLOAT16_APPLE) ? GL_RGBA_FLOAT16_APPLE : GL_RGBA_FLOAT32_APPLE;
+			}
+		}
+		
 		// Now create proper FBO:
 		if (!PsychCreateFBO(&(sourceRecord->fboTable[0]), (GLenum) fboInternalFormat, needzbuffer, width, height, 0)) {
 			PsychErrorExitMsg(PsychError_internal, "Failed to normalize texture orientation - Creation of framebuffer object failed!");
@@ -1882,6 +2010,9 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 		glPushMatrix();
 		glLoadIdentity();
 		
+		// For planar textures we need to bind the planar -> interleaved conversion shader:
+		if (isplanar) PsychSetShader(sourceRecord, -1 * sourceRecord->textureFilterShader);
+		
 		// Now blit the old "disoriented" texture into the new FBO: The textureNumber of sourceRecord
 		// references the old texture, the PsychFBO of sourceRecord defines the new texture...
 		if (glIsEnabled(GL_BLEND)) {
@@ -1894,7 +2025,18 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 			// Alpha blending not enabled. Just blit it:
 			PsychBlitTextureToDisplay(sourceRecord, sourceRecord, sourceRecord->rect, sourceRecord->rect, 0, 0, 1);
 		}
-		
+
+		// Reset shader binding:
+		if (isplanar) {
+			PsychSetShader(sourceRecord, 0);
+			
+			// Now the texture has been turned into a regular pixel-interleaved texture,
+			// it is no longer a planar texture, so we remove the planar->interleave
+			// conversion shader and clear the planar texture flag:
+			sourceRecord->textureFilterShader = 0;
+			sourceRecord->specialflags &= ~kPsychPlanarTexture;
+		}
+
 		// Restore modelview matrix:
 		glPopMatrix();
 		
@@ -3711,6 +3853,50 @@ psych_bool PsychAssignHighPrecisionTextureShaders(PsychWindowRecordType* texture
 		textureRecord->textureFilterShader = windowRecord->textureFilterShader;
 		textureRecord->textureLookupShader = windowRecord->textureLookupShader;
 	}
+
+	// Done.
+	return(TRUE);
+}
+
+psych_bool PsychAssignPlanarTextureShaders(PsychWindowRecordType* textureRecord, PsychWindowRecordType* windowRecord, int channels)
+{	
+	// Remap windowRecord to its parent if any. We want the associated "toplevel" onscreen window,
+	// because only that contains the required shaders and gfcaps in a reliable way:
+	windowRecord = PsychGetParentWindow(windowRecord);
+
+	// Do we have a planar texture shader for this channels-count already?
+	if (windowRecord->texturePlanarShader[channels - 1] == 0) {
+		// Nope. Need to create one:
+		switch (channels) {
+			case 1:
+				windowRecord->texturePlanarShader[channels - 1] = PsychCreateGLSLProgram(texturePlanar1FragmentShaderSrc, texturePlanarVertexShaderSrc, NULL);
+			break;
+
+			case 2:
+				windowRecord->texturePlanarShader[channels - 1] = PsychCreateGLSLProgram(texturePlanar2FragmentShaderSrc, texturePlanarVertexShaderSrc, NULL);
+			break;
+
+			case 3:
+				windowRecord->texturePlanarShader[channels - 1] = PsychCreateGLSLProgram(texturePlanar3FragmentShaderSrc, texturePlanarVertexShaderSrc, NULL);
+			break;
+
+			case 4:
+				windowRecord->texturePlanarShader[channels - 1] = PsychCreateGLSLProgram(texturePlanar4FragmentShaderSrc, texturePlanarVertexShaderSrc, NULL);
+			break;
+
+			default:
+				printf("PTB-BUG: In PsychAssignPlanarTextureShaders() unknown channels count of %i !!\n", channels);
+				return(FALSE);
+		}
+		
+		if (windowRecord->texturePlanarShader[channels - 1] == 0) {
+			printf("PTB-ERROR: Failed to create planar filter shader for planar texture (specialFlags == 4 in Screen('MakeTexture')). This will lead to a corrupted texture!\n");
+			return(FALSE);
+		}
+	}
+
+	// Assign our onscreen windows planarshader to this texture:
+	textureRecord->textureFilterShader = -1 * windowRecord->texturePlanarShader[channels - 1];
 
 	// Done.
 	return(TRUE);
