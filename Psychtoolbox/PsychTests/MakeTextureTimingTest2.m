@@ -1,14 +1,21 @@
-function MakeTextureTimingTest2(screenid, width, height, channels, nSamples, preload, specialFlags)
-% MakeTextureTimingTest2([screenid][,width][,height][,channels][,nSamples][,preload][,specialFlags]);
+function MakeTextureTimingTest2(screenid, width, height, channels, nSamples, preload, specialFlags, precision)
+% MakeTextureTimingTest2([screenid=max][,width=1024][,height=1024][,channels=4][,nSamples=100][,preload=1][,specialFlags=0][,precision=0]);
 %
 % Test creation timing of a texture of specific 'width' x 'height' size with
 % 'channels' color channels (1=Luminance, 2=Luminance+Alpha, 3=RGB,
-% 4=RGBA).
+% 4=RGBA). Also measure texture upload speed if 'preload==1' and drawing
+% speed if 'preload==2'. Use 'specialFlags' for texture creation, most
+% interestingly a value of 4 to use planar texture storage, which can be
+% faster under some circumstances. Create textures of 'precision' - 0 = 8
+% bit integer, -1 = 8 bit integer, but created from double() input instead
+% of uint8 input, 1 = 16 bpc float or 16 bit signed integer as fallback, 2 =
+% 32 bpc float. Use 'nSamples' samples to compute mean timing.
 %
 % All parameters are optional: Defaults are width x height = 1024 x 1024,
-% channels = 4 (RGBA), screenid = max id.
+% channels = 4 (RGBA), screenid = max id, 100 samples, preload but don't
+% draw, standard storage, 8 bit uint input to 8 bit integer precision.
 %
-% Performs 1000 sampling runs, shows average duration.
+% Shows average duration.
 %
 % Each run creates a new texture via Screen('MakeTexture'), then preloads
 % it onto the graphics card to measure that aspect as well, then deletes
@@ -74,7 +81,11 @@ if isempty(preload)
 end
 
 if nargin < 7 || isempty(specialFlags)
-    specialFlags = [];
+    specialFlags = 0;
+end
+
+if nargin < 8 || isempty(precision)
+    precision = 0;
 end
 
 try
@@ -84,12 +95,25 @@ try
 
     % Create random test pixel matrix:
     img = uint8(rand(height, width, channels) * 255);
+    if precision ~= 0 
+        img = double(img);
+    end
+    
+    if precision < 1
+        precision = 0;
+    end
+    
+    % Preheat: Screen() may need to allocate internal buffers or create
+    % shaders - we don't want this one-time setup overhead to spoil the
+    % numbers:
+    tex = Screen('MakeTexture', w, img, [], specialFlags, precision);
+    Screen('Close', tex);
     
     tbase = Screen('Flip', w);
 
     % Perform nSamples sampling passes:
     for i=1:nSamples
-        tex = Screen('MakeTexture', w, img, [], specialFlags);
+        tex = Screen('MakeTexture', w, img, [], specialFlags, precision);
         if preload == 1
             Screen('PreloadTextures', w, tex);
         end
@@ -115,7 +139,8 @@ try
     
     fprintf('\n\n\nAverage Make -> Upload -> Destroy time for a %i x %i pixels, %i channels texture over %i samples is: %f msecs.\n\n\n', width, height, channels, nSamples, avgmsecs);
 
-    if channels >= 3
+    % Only test common case:
+    if (channels >= 3) && (specialFlags == 0) && (precision == 0)
         % Ok, same thing again with low-level calls:
         tex = Screen('MakeTexture', w, img);
         [texid textarget] = Screen('GetOpenGLTexture', w, tex);
