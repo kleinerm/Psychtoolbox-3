@@ -2004,7 +2004,7 @@
 		F089BCBE0AD42DF500663D86 /* SCREENIsOffscreen.c in Sources */ = {isa = PBXBuildFile; fileRef = F5682A9E03E5D45701A80168 /* SCREENIsOffscreen.c */; };
 		F089BCBF0AD42DF500663D86 /* SCREENLineStipple.c in Sources */ = {isa = PBXBuildFile; fileRef = CF1D7E4C07F1E112004F308C /* SCREENLineStipple.c */; };
 		F089BCC00AD42DF500663D86 /* SCREENLoadNormalizedGammaTable.c in Sources */ = {isa = PBXBuildFile; fileRef = F56F533203EA1A4701A80168 /* SCREENLoadNormalizedGammaTable.c */; };
-		F089BCC10AD42DF500663D86 /* SCREENMakeTexture.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FC84FC2068E782A009B1AF2 /* SCREENMakeTexture.c */; };
+		F089BCC10AD42DF500663D86 /* SCREENMakeTexture.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FC84FC2068E782A009B1AF2 /* SCREENMakeTexture.c */; settings = {COMPILER_FLAGS = "-O3"; }; };
 		F089BCC20AD42DF500663D86 /* SCREENNominalFrameRate.c in Sources */ = {isa = PBXBuildFile; fileRef = F5D852D9039ED6E6017A7028 /* SCREENNominalFrameRate.c */; };
 		F089BCC30AD42DF500663D86 /* SCREENOpenMovie.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B06092824730062DB0A /* SCREENOpenMovie.c */; };
 		F089BCC40AD42DF500663D86 /* SCREENOpenOffscreenWindow.c in Sources */ = {isa = PBXBuildFile; fileRef = F5CF277203DA57B901D453F7 /* SCREENOpenOffscreenWindow.c */; };
