@@ -94,12 +94,17 @@ PsychError SCREENGetMovieImage(void)
     deadline += 5;
 
     while (rc==0) {
-        rc = PsychGetTextureFromMovie(windowRecord, moviehandle, TRUE, requestedTimeIndex, NULL, NULL);
+		// With some backends (GStreamer), we can use a checkForImage of type 2 if a blocking wait is
+		// requested. Type 2 actually blocks inside the backend, to minimize cpu load and achieve lowest signalling delay
+		// once a new frame becomes available. Type 1 only polls. With the deprecated Quicktime backend, a type 1 and type 2
+		// check are the same - they translate into a poll for new image, and this while() loop needs to emulate a blocking
+		// wait via a poll-sleep cycle:
+        rc = PsychGetTextureFromMovie(windowRecord, moviehandle, (waitForImage != 0) ? 2 : 1, requestedTimeIndex, NULL, NULL);
 		PsychGetAdjustedPrecisionTimerSeconds(&tnow);
         if (rc<0 || ((tnow > deadline) && (waitForImage != 0))) {
             // No image available and there won't be any in the future, because the movie has reached
             // its end and we are not in looped playback mode:
-	    if (tnow > deadline) printf("PTB-ERROR: In Screen('GetMovieImage') for movie %i: Timed out while waiting for new frame after 5 seconds!\n", moviehandle);
+            if (tnow > deadline) printf("PTB-ERROR: In Screen('GetMovieImage') for movie %i: Timed out while waiting for new frame after 5 seconds!\n", moviehandle);
 
             // No new texture available: Return a negative handle:
             PsychCopyOutDoubleArg(1, TRUE, -1);
@@ -118,6 +123,7 @@ PsychError SCREENGetMovieImage(void)
         }
         else if (rc==0 && waitForImage != 0) {
             // No new texture available yet. Just sleep a bit and then retry...
+			// This is thankfully only needed / used for the deprecated QT backend.
             PsychYieldIntervalSeconds(0.001);
         }
     }
