@@ -685,7 +685,7 @@ PsychError SCREENGetMouseHelper(void)
 
 		if (numButtons > 0) {
 			// Mouse buttons:
-			const buttonOffset = 1; // Buttons start at bit 1, not 0 for some strange reason? At least so on Ubuntu 10.10 and 11.10 with 2 mice and 1 joystick?
+			const int buttonOffset = 1; // Buttons start at bit 1, not 0 for some strange reason? At least so on Ubuntu 10.10 and 11.10 with 2 mice and 1 joystick?
 			for (i = buttonOffset; (i < numButtons - 32) && ((i / 8 ) < buttons_return.mask_len); i++) {
 				buttonArray[i - buttonOffset] = (double) ((buttons_return.mask[i / 8] & (1 << (i % 8))) ? 1 : 0);
 			}
