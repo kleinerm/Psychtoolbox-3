@@ -71,6 +71,13 @@ static const struct {
   1, 1, 4, "    ",};
 #endif
 
+static struct {
+  unsigned int 	 width;
+  unsigned int 	 height;
+  unsigned int 	 bytes_per_pixel; /* 3:RGB, 4:RGBA */ 
+  unsigned char* pixel_data;
+} splash_image;
+
 /* Flag which defines if userspace rendering is active: */
 static psych_bool inGLUserspace = FALSE;
 
@@ -194,7 +201,8 @@ void PsychRebindARBExtensionsToCore(void)
 psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow, int specialFlags)
 {
     PsychRectType dummyrect;
-    double ifi_nominal=0;    
+	double splashMinDurationSecs = 0;
+    double ifi_nominal=0;
     double ifi_estimate = 0;
     int retry_count=0;    
     int numSamples=0;
@@ -224,7 +232,11 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	double maxStddev, maxDeviation, maxDuration;	// Sync thresholds and settings...
 	int minSamples;
 	int vblbias, vbltotal;
-	
+
+	// Splash screen support:
+	char splashPath[FILENAME_MAX];
+	FILE* splashFd;
+
     // OS-9 emulation? If so, then we only work in double-buffer mode:
     if (PsychPrefStateGet_EmulateOldPTB()) numBuffers = 2;
 
@@ -512,10 +524,114 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     // SCREENOpenWindow() by a properly computed clientrect:
     PsychCopyRect((*windowRecord)->clientrect, (*windowRecord)->rect);
 
+	// Startup-Splashimage display code:
+	// ---------------------------------
+	
+	// Default to "No external splash screen assigned":
+	memset((void*) &splash_image, 0, sizeof(splash_image));
+
+	// We load and display the splash image if the 'welcome' screen is enabled and we can
+	// find it:
+	if ((visual_debuglevel >= 4) && (strlen(PsychRuntimeGetPsychtoolboxRoot(FALSE)) > 0)) {
+		// Yes! Assemble full path name to splash image:
+		sprintf(splashPath, "%sPsychBasic/WelcomeSplash.ppm", PsychRuntimeGetPsychtoolboxRoot(FALSE));
+
+		// Try to open splash image file:
+		splashFd = fopen(splashPath, "rb");
+		if (splashFd) {
+			// Worked. Read header:
+
+			// Check for valid "P6" magic of PPM file:
+			fgets(splashPath, sizeof(splashPath), splashFd);
+			splash_image.bytes_per_pixel = (strstr(splashPath, "P6")) ? 1 : 0;
+			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PPM file magic is %s -> %s\n", splashPath, (splash_image.bytes_per_pixel) ? "Ok" : "Rejected");
+
+			// Skip comment lines...
+			while (fgets(splashPath, sizeof(splashPath), splashFd) && strstr(splashPath, "#")) if (PsychPrefStateGet_Verbosity() > 5) {
+				printf("%s", splashPath);
+			}
+
+			// Check for valid header:
+			if ((splash_image.bytes_per_pixel) && (2 == sscanf(splashPath, "%i %i", &splash_image.width, &splash_image.height)) &&
+				(1 == fscanf(splashFd, "%i", &splash_image.bytes_per_pixel)) &&
+				(splash_image.width > 0 && splash_image.width <= 1280) && (splash_image.height > 0 && splash_image.height <= 1024) &&
+				(splash_image.bytes_per_pixel == 255)) {
+
+				// Header for a PPM file read, detected and valid. Image dimensions within valid size range up to 1024 x 768, 8 bpc, 24 bpp.
+				if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Recognized splash image of %i x %i pixels, maxlevel %i. Loading...\n", splash_image.width, splash_image.height, splash_image.bytes_per_pixel);
+
+				// Allocate image buffer:
+				splash_image.bytes_per_pixel = 0;
+				if ((splash_image.pixel_data = (unsigned char*) malloc(splash_image.width * splash_image.height * 3)) != NULL) {
+					// Allocated. Read content:
+
+					// Skip one byte:
+					fread(splash_image.pixel_data, 1, 1, splashFd);
+
+					if (fread(splash_image.pixel_data, splash_image.width * splash_image.height * 3, 1, splashFd) == 1) {
+						// Success! Mark loaded splash image as "valid" and set its format:
+						splash_image.bytes_per_pixel = GL_RGB;
+					}
+					else {
+						// Read failed. Revert to default splash:
+						free(splash_image.pixel_data);
+						splash_image.pixel_data = NULL;
+					}
+				}
+			}
+			else {
+				if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Splash image rejected: %s, %i x %i maxlevel %i. Fallback...\n", splashPath, splash_image.width, splash_image.height, splash_image.bytes_per_pixel);
+				splash_image.bytes_per_pixel = 0;
+			}
+			
+			fclose(splashFd);
+		}
+		else {
+			// Failed: We don't care why.
+			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Failed to read splash image from %s [%s].\n", splashPath, strerror(errno));
+			errno = 0;
+		}
+	}
+
+	// Need to use fallback hard-coded splash image?
+	if (splash_image.bytes_per_pixel != GL_RGB) {
+		// No splash image loaded. Use our old hard-coded "Welcome" splash:
+		splash_image.width = gimp_image.width;
+		splash_image.height = gimp_image.height;
+		splash_image.pixel_data = (unsigned char*) &(gimp_image.pixel_data[0]);
+		splash_image.bytes_per_pixel = GL_RGBA;
+	}
+	else if (strlen(PsychRuntimeGetPsychtoolboxRoot(TRUE)) > 0) {
+		// Splash image ready. Check if the splash image should be shown for
+		// longer because a Psychtoolbox update/installation was just performed
+		// and this is the first invocation of Screen() since then.
+		sprintf(splashPath, "%sscreen_buildnr_%i", PsychRuntimeGetPsychtoolboxRoot(TRUE), PsychGetBuildNumber());
+
+		// Does the marker file for this Screen build already exist?
+		splashFd = fopen(splashPath, "r");
+		if (NULL == splashFd) {
+			// No: This is the first invocation since this Screen() mex file
+			// was build/installed. Create the empty marker file:
+			splashFd = fopen(splashPath, "w");
+
+			// Ok, first invocation after installation or update. Increase
+			// presentation duration of our splash startup screen so users
+			// are nudged to at least once notice what is displayed there:
+
+			// Set splash image display duration to at least 10 seconds, unless our
+			// special joker is used:
+			if (NULL == getenv("PTB_SKIPSPLASH")) splashMinDurationSecs = 10.0;
+		}
+
+		// Close marker file in any case:
+		if (splashFd) fclose(splashFd);
+		errno = 0;		
+	}
+
     // Compute logo_x and logo_y x,y offset for drawing the startup logo:
-    logo_x = ((int) PsychGetWidthFromRect((*windowRecord)->rect) - (int) gimp_image.width) / 2;
+    logo_x = ((int) PsychGetWidthFromRect((*windowRecord)->rect) - (int) splash_image.width) / 2;
     logo_x = (logo_x > 0) ? logo_x : 0;
-    logo_y = ((int) PsychGetHeightFromRect((*windowRecord)->rect) - (int) gimp_image.height) / 2;
+    logo_y = ((int) PsychGetHeightFromRect((*windowRecord)->rect) - (int) splash_image.height) / 2;
     logo_y = (logo_y > 0) ? logo_y : 0;
 
     //if (PSYCH_DEBUG == PSYCH_ON) printf("OSOpenOnscreenWindow done.\n");
@@ -722,9 +838,19 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     // just to get rid of the junk that's in the framebuffers...
     // If visual debuglevel < 4 then we clear to black background...
     if (visual_debuglevel >= 4) {
-      // Clear to white to prepare drawing of our logo:
-      glClearColor(1,1,1,0);
-      glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		
+		// Splash image loaded?
+		if (splash_image.bytes_per_pixel == GL_RGB) {
+			// Yes: Adapt clear color to color of top-left splash pixel,
+			// so colors match:
+			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: glClear splash image top-left reference pixel: %i %i %i\n", splash_image.pixel_data[0],splash_image.pixel_data[1],splash_image.pixel_data[2]);
+			glClearColor(((float) splash_image.pixel_data[0]) / 255.0, ((float) splash_image.pixel_data[1]) / 255.0, ((float) splash_image.pixel_data[2]) / 255.0, 0.0);
+		}
+		else {
+			// No: Clear to white to prepare drawing of our default hard-coded logo:
+			glClearColor(1,1,1,0);
+		}
     }
     else {
       // Clear to black:
@@ -735,24 +861,31 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     glClear(GL_COLOR_BUFFER_BIT);
 
     glPixelZoom(1, -1);
-    if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(gimp_image.width, gimp_image.height, GL_RGBA, GL_UNSIGNED_BYTE, (void*) &gimp_image.pixel_data[0]); }
+    if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
     PsychOSFlipWindowBuffers(*windowRecord);
     glClear(GL_COLOR_BUFFER_BIT);
-    if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(gimp_image.width, gimp_image.height, GL_RGBA, GL_UNSIGNED_BYTE, (void*) &gimp_image.pixel_data[0]); }
+    if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
     PsychOSFlipWindowBuffers(*windowRecord);
     // We do it twice to clear possible stereo-contexts as well...
     if ((*windowRecord)->stereomode==kPsychOpenGLStereo) {
 	glDrawBuffer(GL_BACK_RIGHT);
 	glClear(GL_COLOR_BUFFER_BIT);
-	if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(gimp_image.width, gimp_image.height, GL_RGBA, GL_UNSIGNED_BYTE, (void*) &gimp_image.pixel_data[0]); }
+	if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
 	PsychOSFlipWindowBuffers(*windowRecord);
 	glClear(GL_COLOR_BUFFER_BIT);
-	if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(gimp_image.width, gimp_image.height, GL_RGBA, GL_UNSIGNED_BYTE, (void*) &gimp_image.pixel_data[0]); }
+	if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
 	PsychOSFlipWindowBuffers(*windowRecord);
     }    
     glPixelZoom(1, 1);
 
     glDrawBuffer(GL_BACK);
+
+	// Release dynamically allocated splash image buffer:
+	if (splash_image.bytes_per_pixel == GL_RGB) {
+		free(splash_image.pixel_data);
+		splash_image.pixel_data = NULL;
+		splash_image.bytes_per_pixel = 0;
+	}
 
     // Make sure that the gfx-pipeline has settled to a stable state...
     glFinish();
@@ -1336,6 +1469,10 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     (*windowRecord)->flipInfo = (PsychFlipInfoStruct*) malloc(sizeof(PsychFlipInfoStruct));
     if (NULL == (*windowRecord)->flipInfo) PsychErrorExitMsg(PsychError_outofMemory, "Out of memory when trying to malloc() flipInfo struct!");
     memset((*windowRecord)->flipInfo, 0, sizeof(PsychFlipInfoStruct));
+
+	// Wait for splashMinDurationSecs, so that the "Welcome" splash screen is
+	// displayed at least that long:
+	PsychYieldIntervalSeconds(splashMinDurationSecs);
 
     // Done.
     return(TRUE);

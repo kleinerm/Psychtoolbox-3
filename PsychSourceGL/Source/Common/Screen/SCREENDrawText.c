@@ -1268,9 +1268,9 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
             // If we manage to find the path to that folder, we can load with absolute path and thereby
             // don't need the plugin to be installed in a system folder -- No need for user to manually
             // install it, works plug & play :-)
-            if (strlen(PsychRuntimeGetPsychtoolboxRoot()) > 0) {
+            if (strlen(PsychRuntimeGetPsychtoolboxRoot(FALSE)) > 0) {
                 // Yes! Assemble full path name to plugin:
-                sprintf(pluginPath, "%s/PsychBasic/PsychPlugins/%s", PsychRuntimeGetPsychtoolboxRoot(), pluginName);
+                sprintf(pluginPath, "%s/PsychBasic/PsychPlugins/%s", PsychRuntimeGetPsychtoolboxRoot(FALSE), pluginName);
                 if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: DrawText: Trying to load external text renderer plugin from following file: [ %s ]\n", pluginPath);
             }
             else {

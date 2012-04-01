@@ -2897,16 +2897,21 @@ psych_bool PsychAllocInCharFromNativeArg(PsychGenericScriptType *nativeCharEleme
 /* PsychRuntimeGetPsychtoolboxRoot()
  *
  * Try to retrieve filesystem path to Psychtoolbox root folder (the result from PsychtoolboxRoot() in Matlab/Octave)
- * from runtime. The result, if any, will be cached for later fast lookup.
+ * or users configuration folder (the result from PsychtoolboxConfigDir() in Matlab/Octave) from runtime. The result,
+ * if any, will be cached for later fast lookup.
+ *
+ * getConfigDir = TRUE => Return PsychtoolboxConfigDir().
+ * getConfigDir = FALSE => Return PsychtoolboxRoot(). 
  *
  * This function may fail to retrieve the path, in which case it returns an empty null-terminated string, i.e., strlen() == 0.
  * On successfull recovery of the path, returns a const char* to a readonly string which encodes the path.
  *
  */
-const char* PsychRuntimeGetPsychtoolboxRoot(void)
+const char* PsychRuntimeGetPsychtoolboxRoot(psych_bool getConfigDir)
 {
 	static psych_bool firstTime = TRUE;
 	static char	psychtoolboxRootPath[FILENAME_MAX+1];
+	static char psychtoolboxConfigPath[FILENAME_MAX+1];
 	PsychGenericScriptType* myPathvar = NULL;
 	char*	myPathvarChar = NULL;
 
@@ -2914,9 +2919,10 @@ const char* PsychRuntimeGetPsychtoolboxRoot(void)
 		// Reset firstTime flag:
 		firstTime = FALSE;
 		
-		// Init to null-terminated empty string, so it is well-defined in case of error:
+		// Init to null-terminated empty strings, so it is well-defined in case of error:
 		psychtoolboxRootPath[0] = 0;
-	
+		psychtoolboxConfigPath[0] = 0;
+
 		// Call into runtime to persuade it to create a global ptb_RootPath variable with
 		// the path to the root folder: This will return zero on success.
 		if (0 == PsychRuntimeEvaluateString("global ptb_RootPath; ptb_RootPath = ''; if exist('PsychtoolboxRoot', 'file'), ptb_RootPath = PsychtoolboxRoot; end;")) {
@@ -2932,10 +2938,23 @@ const char* PsychRuntimeGetPsychtoolboxRoot(void)
 		
 		// At this point we did our best and psychtoolboxRootPath is valid: Either a path string,
 		// or an empty string signalling failure to get the path.
+
+		// Same game again for PsychtoolboxConfigDir:
+		if (0 == PsychRuntimeEvaluateString("global ptb_ConfigPath; ptb_ConfigPath = ''; if exist('PsychtoolboxConfigDir', 'file'), ptb_ConfigPath = PsychtoolboxConfigDir; end;")) {
+			// Success. Try to retrieve global ptb_RootPath from runtime:
+			if (PsychRuntimeGetVariablePtr("global", "ptb_ConfigPath", &myPathvar)) {
+				// Success, got a read-only pointer to variable. Try to convert into char* string:
+				if (PsychAllocInCharFromNativeArg(myPathvar, &myPathvarChar)) {
+					// Success. myPathvarChar is a temporary char string, so copy it to our persistent memory:
+					strncpy(psychtoolboxConfigPath, myPathvarChar, FILENAME_MAX);
+				}
+			}
+		}
+
 	}
 
 	// Return whatever we've got:
-	return(&psychtoolboxRootPath[0]);
+	return((getConfigDir) ? &psychtoolboxConfigPath[0] : &psychtoolboxRootPath[0]);
 }
 
 /* PsychCopyInPointerArg() - Copy in a void* memory pointer which is
