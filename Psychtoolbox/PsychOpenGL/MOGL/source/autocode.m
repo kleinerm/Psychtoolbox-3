@@ -17,6 +17,7 @@ function autocode(overwrite, glheaderpath, openal)
 %              added additional parsing code for headers/glext_edit.h
 % 06-Feb-07 -- added support for OpenAL (MK)
 % 24-Mar-11 -- Silence mlint warnings. (MK)
+% 01-Apr-12 -- Adapt to parsing of current glext_edit.h from OpenGL registry. (MK)
 
 clc;
 
@@ -66,8 +67,6 @@ tmplistfile='/tmp/mogl_listfile.txt';
 if openal
 	unix(sprintf('grep al[A-Z]   %s/al.h        | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >  %s',glheaderpath, tmplistfile));
 	unix(sprintf('grep alu[A-Z]  %s/alc.h       | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >> %s',glheaderpath, tmplistfile));
-	% unix(sprintf('grep glut[A-Z] headers/glut_edit.h | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >> %s',tmplistfile));
-	% unix(sprintf('grep gl[A-Z]   headers/glext_edit.h | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >>  %s',tmplistfile));
 
 	% initialize and open C file
 	cfile='al_auto.c';
@@ -78,9 +77,8 @@ else
 	unix(sprintf('grep gl[A-Z]   %s/gl.h        | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >  %s',glheaderpath, tmplistfile));
 	unix(sprintf('grep glu[A-Z]  %s/glu.h       | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >> %s',glheaderpath, tmplistfile));
 	unix(sprintf('grep glut[A-Z] headers/glut_edit.h | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >> %s',tmplistfile));
-	unix(sprintf('grep gl[A-Z]   headers/glext_edit.h | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >>  %s',tmplistfile));
-	% MK Disabled for now: unix(sprintf('grep gl[A-Z]   %s/glext.h     | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >>  %s',glheaderpath, tmplistfile));
-
+	unix(sprintf('grep gl[A-Z]   headers/glext_edit.h | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*GLAPI[[:space:]]*//''  | sed -E ''s/[[:space:]]*APIENTRY*//'' | sed -E ''s/;[[:space:]]*$//'' >>  %s',tmplistfile));
+    
 	% initialize and open C file
 	cfile='gl_auto.c';
 	if unix(sprintf('cat gl_auto_init.c | sed ''s/DATE/%s/'' > %s',datestr(now,1),cfile))~=0,
