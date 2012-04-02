@@ -229,13 +229,14 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     int logo_x, logo_y;
     GLboolean	isFloatBuffer;
     GLint bpc;
-	double maxStddev, maxDeviation, maxDuration;	// Sync thresholds and settings...
-	int minSamples;
-	int vblbias, vbltotal;
+    double maxStddev, maxDeviation, maxDuration;	// Sync thresholds and settings...
+    int minSamples;
+    int vblbias, vbltotal;
 
-	// Splash screen support:
-	char splashPath[FILENAME_MAX];
-	FILE* splashFd;
+    // Splash screen support:
+    char splashPath[FILENAME_MAX];
+    char* dummychar;
+    FILE* splashFd;
 
     // OS-9 emulation? If so, then we only work in double-buffer mode:
     if (PsychPrefStateGet_EmulateOldPTB()) numBuffers = 2;
@@ -542,7 +543,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 			// Worked. Read header:
 
 			// Check for valid "P6" magic of PPM file:
-			fgets(splashPath, sizeof(splashPath), splashFd);
+			dummychar = fgets(splashPath, sizeof(splashPath), splashFd);
 			splash_image.bytes_per_pixel = (strstr(splashPath, "P6")) ? 1 : 0;
 			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PPM file magic is %s -> %s\n", splashPath, (splash_image.bytes_per_pixel) ? "Ok" : "Rejected");
 
@@ -566,7 +567,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 					// Allocated. Read content:
 
 					// Skip one byte:
-					fread(splash_image.pixel_data, 1, 1, splashFd);
+					i = fread(splash_image.pixel_data, 1, 1, splashFd);
 
 					if (fread(splash_image.pixel_data, splash_image.width * splash_image.height * 3, 1, splashFd) == 1) {
 						// Success! Mark loaded splash image as "valid" and set its format:
