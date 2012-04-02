@@ -87,6 +87,7 @@ if isempty(ThePath)
         StringStart = [pwd filesep];
     end
 
+    StringStart = strtrim(StringStart);
     TheDir = [StringStart 'Psychtoolbox'];
 
     if exist(TheDir,'dir')
