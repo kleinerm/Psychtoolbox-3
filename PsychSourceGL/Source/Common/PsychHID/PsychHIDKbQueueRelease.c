@@ -170,6 +170,9 @@ void PsychHIDOSKbQueueRelease(int deviceIndex)
 		free(psychHIDKbQueueLastRelease);
 		psychHIDKbQueueLastRelease=NULL;
 	}
+
+	// Release kbqueue event buffer:
+	PsychHIDDeleteEventBuffer(0);
 }
 
 #endif

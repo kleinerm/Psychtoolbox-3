@@ -56,6 +56,7 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("KbQueueCheck", &PSYCHHIDKbQueueCheck));
 	PsychErrorExit(PsychRegister("KbQueueFlush", &PSYCHHIDKbQueueFlush));
 	PsychErrorExit(PsychRegister("KbQueueRelease", &PSYCHHIDKbQueueRelease));
+	PsychErrorExit(PsychRegister("KbQueueGetEvent", &PSYCHHIDKbQueueGetEvent));
 
 	PsychErrorExit(PsychRegister("RawState",  &PSYCHHIDGetRawState));
 	PsychErrorExit(PsychRegister("KbCheck",  &PSYCHHIDKbCheck));

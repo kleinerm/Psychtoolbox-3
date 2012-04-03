@@ -129,6 +129,16 @@ pRecDevice   HIDGetNextDevice(pRecDevice pDevice);
 
 #endif
 
+// Struct for storing keyboard(-like) events in KbQueue event buffer:
+struct PsychHIDEventRecord_Struct {
+	double timestamp;		// GetSecs timestamp of when event happened.
+	unsigned int status;	// Status: Bit zero = press(1) or release(0) of key/button?
+	int rawEventCode;		// Raw button/key code as returned by KbCheck, KbQueueCheck et al.
+	int cookedEventCode;	// Translated key code, e.g., GetChar() style. May be same as rawEventCode
+};
+
+typedef struct PsychHIDEventRecord_Struct PsychHIDEventRecord;
+
 // Structure which carries all required setup and matching parameters for
 // finding, opening and configuring a generic USB device. This is passed
 // to PsychHIDOSOpenUSBDevice(); to define what device should be opened,
@@ -191,6 +201,7 @@ PsychError PSYCHHIDKbQueueCheck(void);				// PsychHIDKbQueueCheck.c
 PsychError PSYCHHIDKbQueueFlush(void);				// PsychHIDKbQueueFlush.c
 PsychError PSYCHHIDKbQueueRelease(void);			// PsychHIDKbQueueRelease.c
 PsychError PSYCHHIDKbCheck(void);					// PsychHIDKbCheck.c
+PsychError PSYCHHIDKbQueueGetEvent(void);			// PsychHIDKbCheck.c
 
 PsychError PSYCHHIDGetReport(void);					// PsychHIDGetReport.c
 PsychError PSYCHHIDSetReport(void);					// PsychHIDSetReport.c
@@ -246,6 +257,14 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
 void PsychHIDOSCloseUSBDevice(PsychUSBDeviceRecord* devRecord);
 int PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmRequestType, psych_uint8 bRequest, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData);
 
+// Helpers for KbQueue event buffer:
+psych_bool PsychHIDCreateEventBuffer(int deviceIndex);
+psych_bool PsychHIDDeleteEventBuffer(int deviceIndex);
+psych_bool PsychHIDFlushEventBuffer(int deviceIndex);
+unsigned int PsychHIDAvailEventBuffer(int deviceIndex);
+int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex);
+int PsychHIDAddEventToEventBuffer(int deviceIndex, PsychHIDEventRecord* evt);
+
 // These must be defined for each OS in their own PsychHIDStandardInterfaces.c:
 #ifdef __cplusplus
 extern "C" {
@@ -256,6 +275,7 @@ void PsychHIDShutdownHIDStandardInterfaces(void);
 PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass);
 PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList);
 PsychError PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, double* max, double* val, char* axisLabel);
+int PsychHIDGetDefaultKbQueueDevice(void);
 
 PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys);
 void PsychHIDOSKbQueueRelease(int deviceIndex);

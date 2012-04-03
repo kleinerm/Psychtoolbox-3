@@ -1,5 +1,5 @@
-function KbQueueFlush(deviceIndex)
-% KbQueueFlush([deviceIndex])
+function nflushed = KbQueueFlush(deviceIndex, flushType)
+% nflushed = KbQueueFlush([deviceIndex])
 %
 % The routines KbQueueCreate, KbQueueStart, KbQueueStop, KbQueueCheck
 %  KbQueueWait, KbQueueFlush and KbQueueRelease provide replacments for
@@ -129,7 +129,10 @@ function KbQueueFlush(deviceIndex)
 % 8/23/07    rpw  Wrote it.
 
 if nargin == 0
-  PsychHID('KbQueueFlush');
+    nflushed = PsychHID('KbQueueFlush');
 elseif nargin > 0
-  PsychHID('KbQueueFlush', deviceIndex);
+    if nargin < 2 || isempty(flushType)
+        flushType = [];
+    end
+    nflushed = PsychHID('KbQueueFlush', deviceIndex, flushType);
 end

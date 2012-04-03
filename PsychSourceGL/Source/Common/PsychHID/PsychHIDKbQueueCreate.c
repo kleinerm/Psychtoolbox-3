@@ -96,7 +96,8 @@ PsychError PSYCHHIDKbQueueCreate(void)
 	int deviceIndex = -1;
 	int numScankeys = 0;
 	int* scanKeys = NULL;
-
+	int rc;
+	
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
@@ -109,7 +110,9 @@ PsychError PSYCHHIDKbQueueCreate(void)
 	PsychAllocInIntegerListArg(2, FALSE, &numScankeys, &scanKeys);
 
 	// Perform actual, OS-dependent init and return its status code:
-	return(PsychHIDOSKbQueueCreate(deviceIndex, numScankeys, scanKeys));
+	rc = PsychHIDOSKbQueueCreate(deviceIndex, numScankeys, scanKeys);
+
+	return(rc);
 }
 
 
@@ -158,6 +161,13 @@ static void *PsychHIDKbQueueNewThread(void *value){
 	pthread_mutex_destroy(&psychHIDKbQueueMutex);
 }
 
+static double convertTime(AbsoluteTime at){
+	Nanoseconds timeNanoseconds=AbsoluteToNanoseconds(at);
+	UInt64 timeUInt64=UnsignedWideToUInt64(timeNanoseconds);
+	double timeDouble=(double)timeUInt64;
+	return timeDouble / 1000000000;
+}
+
 static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void *refcon, void *sender)
 {
 	// This routine is executed each time the queue transitions from empty to non-empty
@@ -166,6 +176,7 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 	long keysUsage=-1;
 	IOHIDEventStruct event;
 	AbsoluteTime zeroTime= {0,0};
+	PsychHIDEventRecord evt;
 	
 	result=kIOReturnError;
 	if(!hidDataRef) return;	// Nothing we can do because we can't access queue, (shouldn't happen)
@@ -197,6 +208,9 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 			}
 		}
 		// if(keysUsage<1 || keysUsage>255) continue;	// This is redundant since usage is checked when elements are added
+
+		// Clear ringbuffer event:
+		memset(&evt, 0 , sizeof(evt));
 		
 		pthread_mutex_lock(&psychHIDKbQueueMutex);
 
@@ -212,6 +226,7 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 				// Last key press timestamp
 				psychHIDKbQueueLastPress[keysUsage-1]=event.timestamp;
 			}
+			evt.status |= (1 << 0);
 		}
 		else{
 			if(psychHIDKbQueueFirstRelease){
@@ -222,7 +237,15 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 				// Last key release timestamp
 				psychHIDKbQueueLastRelease[keysUsage-1]=event.timestamp;
 			}
+			evt.status &= ~(1 << 0);
 		}
+		
+		// Update event buffer:
+		evt.timestamp = convertTime(event.timestamp);
+		evt.rawEventCode = keysUsage;
+		evt.cookedEventCode = -1; // TODO FIXME - Proper mapping!
+		PsychHIDAddEventToEventBuffer(0, &evt);
+
 		pthread_mutex_unlock(&psychHIDKbQueueMutex);
 	}
 }
@@ -548,7 +571,16 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 			PsychErrorExitMsg(PsychError_system, "Failed to create thread");
 		}
 	}
+	
+	// Create event buffer:
+	PsychHIDCreateEventBuffer(0);
+
 	return(PsychError_none);	
+}
+
+int PsychHIDGetDefaultKbQueueDevice(void)
+{
+	return(0);
 }
 
 #endif

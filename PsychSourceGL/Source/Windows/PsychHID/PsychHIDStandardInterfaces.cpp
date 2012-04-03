@@ -297,7 +297,7 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
     return(PsychError_none);
 }
 
-static int PsychHIDGetDefaultKbQueueDevice(void)
+int PsychHIDGetDefaultKbQueueDevice(void)
 {
     // Return first enumerated keyboard (index == 0) if any available:
     if (ndevices > 0) return(0);
@@ -586,7 +586,8 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
     DWORD dwItems; 
 	double tnow;
 	unsigned int i, keycode, keystate;
-    
+ 	PsychHIDEventRecord evt;
+   
 	while (1) {
         
 		// Single pass or multi-pass?
@@ -602,7 +603,7 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
         
 		// Take timestamp:
 		PsychGetAdjustedPrecisionTimerSeconds(&tnow);
-        
+
         // Need the lock from here on:
         PsychLockMutex(&KbQueueMutex);
         
@@ -626,7 +627,10 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                 
                 // If failed or nothing more to fetch, break out of fetch loop:
                 if (!SUCCEEDED(rc) || (0 == dwItems)) break;
-                
+
+				// Clear ringbuffer event:
+				memset(&evt, 0 , sizeof(evt));
+
                 // Map to key code and key state:
                 keycode = event.dwOfs & 0xff;
                 keystate = event.dwData & 0x80;
@@ -671,11 +675,19 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                         // ie., the slot is so far empty:
                         if (psychHIDKbQueueFirstPress[i][keycode] == 0) psychHIDKbQueueFirstPress[i][keycode] = tnow;
                         psychHIDKbQueueLastPress[i][keycode] = tnow;
+						evt.status |= (1 << 0);
                     } else {
                         // Enqueue key release. See logic above:
                         if (psychHIDKbQueueFirstRelease[i][keycode] == 0) psychHIDKbQueueFirstRelease[i][keycode] = tnow;
                         psychHIDKbQueueLastRelease[i][keycode] = tnow;
+						evt.status &= ^(1 << 0);
                     }
+
+					// Update event buffer:
+					evt.timestamp = tnow;
+					evt.rawEventCode = keycode + 1;
+					evt.cookedEventCode = -1; // TODO FIXME - Proper mapping!
+					PsychHIDAddEventToEventBuffer(i, &evt);
                     
                     // Tell waiting userspace something interesting has changed:
                     PsychSignalCondition(&KbQueueCondition);
@@ -772,6 +784,9 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 		// None provided. Enable all keys by default:
 		memset(psychHIDKbQueueScanKeys[deviceIndex], 1, 256 * sizeof(int));        
 	}
+
+	// Create event buffer:
+	PsychHIDCreateEventBuffer(deviceIndex);
     
 	// Ready to use this keybord queue.
 	return(PsychError_none);
@@ -805,6 +820,9 @@ void PsychHIDOSKbQueueRelease(int deviceIndex)
 	free(psychHIDKbQueueLastRelease[deviceIndex]); psychHIDKbQueueLastRelease[deviceIndex] = NULL;
 	free(psychHIDKbQueueScanKeys[deviceIndex]); psychHIDKbQueueScanKeys[deviceIndex] = NULL;
     
+	// Release kbqueue event buffer:
+	PsychHIDDeleteEventBuffer(deviceIndex);
+
 	// Done.
 	return;
 }

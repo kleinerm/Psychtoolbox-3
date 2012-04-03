@@ -76,9 +76,14 @@
 
 #include "PsychHID.h"
 
-static char useString[]= "PsychHID('KbQueueFlush' [, deviceIndex])";
+static char useString[]= "[navail] = PsychHID('KbQueueFlush' [, deviceIndex][, flushType=1])";
 static char synopsisString[] = 
 		"Flushes all scored and unscored keyboard events from a queue.\n"
+		"Returns number of events 'navail' in keyboard event buffer before the flush takes place.\n"
+		"If 'flushType' is 0, only the number of currently queued events will be returned.\n"
+		"If 'flushType' is 1, only events returned by KbQueueCheck will be flushed. This is the default.\n"
+		"If 'flushType' is 2, only events returned by KbQueueGetEvent will be flushed.\n"
+		"If 'flushType' is 3, events returned by both KbQueueCheck and KbQueueGetEvent will be flushed.\n"
         "PsychHID('KbQueueCreate') must be called before this routine.\n"
         "On Linux, the optional 'deviceIndex' is the index of the device whose queue should be flushed. "
         "If omitted, the default devices queue will be flushed. On other systems, the last queue will be flushed.\n";
@@ -87,19 +92,26 @@ static char seeAlsoString[] = "KbQueueCreate, KbQueueStart, KbQueueStop, KbQueue
  
 PsychError PSYCHHIDKbQueueFlush(void) 
 {
-    int deviceIndex;
+    int deviceIndex, flushType;
     
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
-    PsychErrorExit(PsychCapNumOutputArgs(0));
-    PsychErrorExit(PsychCapNumInputArgs(1));
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(2));
 
     deviceIndex = -1;
     PsychCopyInIntegerArg(1, kPsychArgOptional, &deviceIndex);
 
-    PsychHIDOSKbQueueFlush(deviceIndex);
-    
+	flushType = 1;
+    PsychCopyInIntegerArg(2, kPsychArgOptional, &flushType);
+	
+	// Return current count of contained events pre-flush:
+	PsychCopyOutDoubleArg(1, FALSE, (double) PsychHIDAvailEventBuffer((PSYCH_SYSTEM != PSYCH_OSX) ? deviceIndex : 0));
+
+    if (flushType & 1) PsychHIDOSKbQueueFlush(deviceIndex);
+    if (flushType & 2) PsychHIDFlushEventBuffer((PSYCH_SYSTEM != PSYCH_OSX) ? deviceIndex : 0);
+
     return(PsychError_none);	
 }
 

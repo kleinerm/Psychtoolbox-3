@@ -39,6 +39,12 @@ hid_device* source[MAXDEVICEINDEXS];
 // PsychUSBDeviceRecord is currently defined in PsychHID.h.
 PsychUSBDeviceRecord usbDeviceRecordBank[PSYCH_HID_MAX_GENERIC_USB_DEVICES];
 
+PsychHIDEventRecord* hidEventBuffer[PSYCH_HID_MAX_KEYBOARD_DEVICES];
+unsigned int hidEventBufferCapacity[PSYCH_HID_MAX_KEYBOARD_DEVICES];
+unsigned int hidEventBufferReadPos[PSYCH_HID_MAX_KEYBOARD_DEVICES];
+unsigned int hidEventBufferWritePos[PSYCH_HID_MAX_KEYBOARD_DEVICES];
+psych_mutex  hidEventBufferMutex[PSYCH_HID_MAX_KEYBOARD_DEVICES];
+
 /* PsychInitializePsychHID()
  *
  * Master init routine - Called at module load time / first time init.
@@ -51,6 +57,14 @@ void PsychInitializePsychHID(void)
 	// Initialize the generic USB tracker to "all off" state:
 	for (i = 0; i < PSYCH_HID_MAX_GENERIC_USB_DEVICES; i++) {
 		usbDeviceRecordBank[i].valid = 0;
+	}
+
+	// Setup event ringbuffers:
+	for (i = 0; i < PSYCH_HID_MAX_KEYBOARD_DEVICES; i++) {
+		hidEventBuffer[i] = NULL;
+		hidEventBufferCapacity[i] = 10000; // Initial capacity of event buffer.
+		hidEventBufferReadPos[i] = 0;
+		hidEventBufferWritePos[i] = 0;
 	}
 
 	// Initialize OS specific interfaces and routines:
@@ -203,6 +217,130 @@ pRecDevice PsychHIDGetDeviceRecordPtrFromIndex(int deviceIndex)
     PsychErrorExitMsg(PsychError_internal, "Invalid device index specified.  Has a device has been unplugged? Try rebuilding the device list");
     return(NULL);  //make the compiler happy.
 }
+
+psych_bool PsychHIDCreateEventBuffer(int deviceIndex)
+{
+	unsigned int bufferSize;
+
+	if (deviceIndex < 0) deviceIndex = PsychHIDGetDefaultKbQueueDevice();
+
+	bufferSize = hidEventBufferCapacity[deviceIndex];
+
+	// Already created? If so, nothing to do:
+	if (hidEventBuffer[deviceIndex] || (bufferSize < 1)) return(FALSE);
+	
+	hidEventBuffer[deviceIndex] = (PsychHIDEventRecord*) calloc(sizeof(PsychHIDEventRecord), bufferSize);
+	if (NULL == hidEventBuffer[deviceIndex]) PsychErrorExitMsg(PsychError_outofMemory, "Insufficient memory to create KbQueue event buffer!");
+	
+	// Prepare mutex for buffer:
+	PsychInitMutex(&hidEventBufferMutex[deviceIndex]);
+
+	// Flush it:
+	PsychHIDFlushEventBuffer(deviceIndex);
+	
+	return(TRUE);
+}
+
+psych_bool PsychHIDDeleteEventBuffer(int deviceIndex)
+{
+	if (deviceIndex < 0) deviceIndex = PsychHIDGetDefaultKbQueueDevice();
+
+	if (hidEventBuffer[deviceIndex]) {
+		// Empty the buffer, reset read/writepointers:
+		PsychHIDFlushEventBuffer(deviceIndex);
+
+		// Release it:
+		free(hidEventBuffer[deviceIndex]);
+		hidEventBuffer[deviceIndex] = NULL;
+		hidEventBufferCapacity[deviceIndex] = 0;
+		PsychDestroyMutex(&hidEventBufferMutex[deviceIndex]);
+	}
+
+	return(TRUE);
+}
+
+psych_bool PsychHIDFlushEventBuffer(int deviceIndex)
+{
+	if (deviceIndex < 0) deviceIndex = PsychHIDGetDefaultKbQueueDevice();
+	
+	PsychLockMutex(&hidEventBufferMutex[deviceIndex]);
+	hidEventBufferReadPos[deviceIndex] = hidEventBufferWritePos[deviceIndex] = 0;
+	PsychUnlockMutex(&hidEventBufferMutex[deviceIndex]);
+	return(TRUE);
+}
+
+unsigned int PsychHIDAvailEventBuffer(int deviceIndex)
+{
+	unsigned int navail;
+	if (deviceIndex < 0) deviceIndex = PsychHIDGetDefaultKbQueueDevice();
+
+	PsychLockMutex(&hidEventBufferMutex[deviceIndex]);
+	navail = hidEventBufferWritePos[deviceIndex] - hidEventBufferReadPos[deviceIndex];
+	PsychUnlockMutex(&hidEventBufferMutex[deviceIndex]);
+	
+	return(navail);
+}
+
+int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex)
+{
+	unsigned int navail;
+	PsychHIDEventRecord evt;
+	PsychGenericScriptType *retevent;
+	double* foo = NULL;
+	const char *FieldNames[] = { "Time", "Pressed", "Keycode", "CookedKey" };
+
+	if (deviceIndex < 0) deviceIndex = PsychHIDGetDefaultKbQueueDevice();	
+	if (!hidEventBuffer[deviceIndex]) return(0);
+	
+	PsychLockMutex(&hidEventBufferMutex[deviceIndex]);
+	navail = hidEventBufferWritePos[deviceIndex] - hidEventBufferReadPos[deviceIndex];	
+	if (navail) {
+		memcpy(&evt, &(hidEventBuffer[deviceIndex][hidEventBufferReadPos[deviceIndex] % hidEventBufferCapacity[deviceIndex]]), sizeof(PsychHIDEventRecord));
+		hidEventBufferReadPos[deviceIndex]++;
+	}
+	PsychUnlockMutex(&hidEventBufferMutex[deviceIndex]);
+
+	if (navail) {
+		// Return event struct:
+		PsychAllocOutStructArray(outArgIndex, kPsychArgOptional, 1, 4, FieldNames, &retevent);
+		PsychSetStructArrayDoubleElement("Time", 0, evt.timestamp, retevent);
+		PsychSetStructArrayDoubleElement("Pressed", 0, (double) (evt.status & (1<<0)) ? 1 : 0, retevent);
+		PsychSetStructArrayDoubleElement("Keycode", 0, (double) evt.rawEventCode, retevent);
+		PsychSetStructArrayDoubleElement("CookedKey", 0, (double) evt.cookedEventCode, retevent);
+		return(navail - 1);
+	}
+	else {
+		// Return empty matrix:
+		PsychCopyOutDoubleMatArg(outArgIndex, kPsychArgOptional, 0, 0, 0, foo);
+		return(0);
+	}
+}
+
+int PsychHIDAddEventToEventBuffer(int deviceIndex, PsychHIDEventRecord* evt)
+{
+	unsigned int navail;
+	
+	if (deviceIndex < 0) deviceIndex = PsychHIDGetDefaultKbQueueDevice();	
+	if (!hidEventBuffer[deviceIndex]) return(0);
+	
+	PsychLockMutex(&hidEventBufferMutex[deviceIndex]);
+
+	navail = hidEventBufferWritePos[deviceIndex] - hidEventBufferReadPos[deviceIndex];	
+	if (navail < hidEventBufferCapacity[deviceIndex]) {
+		memcpy(&(hidEventBuffer[deviceIndex][hidEventBufferWritePos[deviceIndex] % hidEventBufferCapacity[deviceIndex]]), evt, sizeof(PsychHIDEventRecord));
+		hidEventBufferWritePos[deviceIndex]++;
+	}
+	else {
+		printf("PsychHID: WARNING: KbQueue event buffer is full! Maximum capacity of %i elements reached, will discard future events.\n", hidEventBufferCapacity[deviceIndex]);
+	}
+
+	PsychUnlockMutex(&hidEventBufferMutex[deviceIndex]);
+
+	return(navail - 1);
+}
+
+// Platform specific code starts here:
+// ===================================
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 

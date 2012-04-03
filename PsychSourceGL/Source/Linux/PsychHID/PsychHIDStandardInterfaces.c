@@ -484,6 +484,7 @@ PsychError PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, 
 // to iterate over all available events and process them instantaneously:
 void KbQueueProcessEvents(psych_bool blockingSinglepass)
 {
+	PsychHIDEventRecord evt;
 	XIDeviceEvent* event;
 	double tnow;
 	int i;
@@ -510,6 +511,9 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 				fflush(NULL);
 			}
 		}
+
+		// Clear ringbuffer event:
+		memset(&evt, 0 , sizeof(evt));
 
 		// Is this an event we're interested in?
 		if ((cookie->type == GenericEvent) && (cookie->extension == xi_opcode)) {
@@ -550,11 +554,19 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 							// ie., the slot is so far empty:
 							if (psychHIDKbQueueFirstPress[i][event->detail] == 0) psychHIDKbQueueFirstPress[i][event->detail] = tnow;
 							psychHIDKbQueueLastPress[i][event->detail] = tnow;
+							evt.status |= (1 << 0);
 						} else {
 							// Enqueue key release. See logic above:
 							if (psychHIDKbQueueFirstRelease[i][event->detail] == 0) psychHIDKbQueueFirstRelease[i][event->detail] = tnow;
 							psychHIDKbQueueLastRelease[i][event->detail] = tnow;
+							evt.status &= ^(1 << 0);
 						}
+
+						// Update event buffer:
+						evt.timestamp = tnow;
+						evt.rawEventCode = event->detail + 1;
+						evt.cookedEventCode = -1; // TODO FIXME - Proper mapping!
+						PsychHIDAddEventToEventBuffer(i, &evt);
 
 						// Tell waiting userspace something interesting has changed:
 						PsychSignalCondition(&KbQueueCondition);
@@ -609,7 +621,7 @@ void* KbQueueWorkerThreadMain(void* dummy)
 	return(NULL);
 }
 
-static int PsychHIDGetDefaultKbQueueDevice(void)
+int PsychHIDGetDefaultKbQueueDevice(void)
 {
     int deviceIndex;
     XIDeviceInfo* dev = NULL;
@@ -686,6 +698,9 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 		memset(psychHIDKbQueueScanKeys[deviceIndex], 1, 256 * sizeof(int));        
 	}
 
+	// Create event buffer:
+	PsychHIDCreateEventBuffer(deviceIndex);
+
 	// Ready to use this keybord queue.
 	return(PsychError_none);
 }
@@ -717,6 +732,9 @@ void PsychHIDOSKbQueueRelease(int deviceIndex)
 	free(psychHIDKbQueueLastPress[deviceIndex]); psychHIDKbQueueLastPress[deviceIndex] = NULL;
 	free(psychHIDKbQueueLastRelease[deviceIndex]); psychHIDKbQueueLastRelease[deviceIndex] = NULL;
 	free(psychHIDKbQueueScanKeys[deviceIndex]); psychHIDKbQueueScanKeys[deviceIndex] = NULL;
+
+	// Release kbqueue event buffer:
+	PsychHIDDeleteEventBuffer(deviceIndex);
 
 	// Done.
 	return;
