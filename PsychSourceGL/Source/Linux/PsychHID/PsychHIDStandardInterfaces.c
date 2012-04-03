@@ -559,7 +559,7 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 							// Enqueue key release. See logic above:
 							if (psychHIDKbQueueFirstRelease[i][event->detail] == 0) psychHIDKbQueueFirstRelease[i][event->detail] = tnow;
 							psychHIDKbQueueLastRelease[i][event->detail] = tnow;
-							evt.status &= ^(1 << 0);
+							evt.status &= ~(1 << 0);
 						}
 
 						// Update event buffer:

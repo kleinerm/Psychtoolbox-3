@@ -675,19 +675,19 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                         // ie., the slot is so far empty:
                         if (psychHIDKbQueueFirstPress[i][keycode] == 0) psychHIDKbQueueFirstPress[i][keycode] = tnow;
                         psychHIDKbQueueLastPress[i][keycode] = tnow;
-						evt.status |= (1 << 0);
+			evt.status |= (1 << 0);
                     } else {
                         // Enqueue key release. See logic above:
                         if (psychHIDKbQueueFirstRelease[i][keycode] == 0) psychHIDKbQueueFirstRelease[i][keycode] = tnow;
                         psychHIDKbQueueLastRelease[i][keycode] = tnow;
-						evt.status &= ^(1 << 0);
+			evt.status &= ~(1 << 0);
                     }
 
-					// Update event buffer:
-					evt.timestamp = tnow;
-					evt.rawEventCode = keycode + 1;
-					evt.cookedEventCode = -1; // TODO FIXME - Proper mapping!
-					PsychHIDAddEventToEventBuffer(i, &evt);
+		    // Update event buffer:
+		    evt.timestamp = tnow;
+		    evt.rawEventCode = keycode + 1;
+		    evt.cookedEventCode = -1; // TODO FIXME - Proper mapping!
+		    PsychHIDAddEventToEventBuffer(i, &evt);
                     
                     // Tell waiting userspace something interesting has changed:
                     PsychSignalCondition(&KbQueueCondition);
