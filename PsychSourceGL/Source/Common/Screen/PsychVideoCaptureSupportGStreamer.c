@@ -485,8 +485,8 @@ static GstFlowReturn PsychNewBufferCallback(GstAppSink *sink, gpointer user_data
 	PsychLockMutex(&capdev->mutex);
 	capdev->frameAvail++;
 	if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: New Buffer received. %i\n", capdev->frameAvail);
-	PsychUnlockMutex(&capdev->mutex);
 	PsychSignalCondition(&capdev->condition);
+	PsychUnlockMutex(&capdev->mutex);
 
 	return(GST_FLOW_OK);
 }

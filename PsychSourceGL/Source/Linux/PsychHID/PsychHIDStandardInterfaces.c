@@ -608,7 +608,7 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 						evt.rawEventCode = event->detail + 1;
 						PsychHIDAddEventToEventBuffer(i, &evt);
 
-						// Tell waiting userspace something interesting has changed:
+						// Tell waiting userspace (under KbQueueMutex protection for better scheduling) something interesting has changed:
 						PsychSignalCondition(&KbQueueCondition);
 					}
 

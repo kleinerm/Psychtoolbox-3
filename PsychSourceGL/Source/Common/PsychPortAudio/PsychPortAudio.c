@@ -504,12 +504,12 @@ void PAStreamFinishedCallback(void *userData)
 	// how much was really played out as this is highly hardware dependent:
 	if (dev->estStopTime == 0) dev->estStopTime = dev->currentTime;
 
-	// Unlock device struct:
-	PsychPAUnlockDeviceMutex(dev);
-	
 	// Signal state change:
 	PsychPASignalChange(dev);
-	
+
+	// Unlock device struct:
+	PsychPAUnlockDeviceMutex(dev);
+
 	// Ready.
 	return;
 }
@@ -980,12 +980,12 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		// Update "true" state to inactive:
 		dev->state = 0;
 
+		// Signal state change:
+		PsychPASignalChange(dev);
+
 		// Release mutex here, because dev->runMode never changes below us, and
 		// all other ops are on local variables:
 		PsychPAUnlockDeviceMutex(dev);
-
-		// Signal state change:
-		PsychPASignalChange(dev);
 		
 		// Prime the outputbuffer with silence, so playback is effectively stopped:
 		if (outputBuffer && !isSlave) memset(outputBuffer, 0, (size_t) framesPerBuffer * outchannels * sizeof(float));
@@ -1148,8 +1148,8 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 				// Out of memory! Perform an emergency abort:
 				dev->reqstate = 255;
 				dev->state = 0;				
-				PsychPAUnlockDeviceMutex(dev);			
 				PsychPASignalChange(dev);
+				PsychPAUnlockDeviceMutex(dev);			
 				return(paAbort);
 			}
 		}
@@ -1162,8 +1162,8 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 				// Out of memory! Perform an emergency abort:
 				dev->reqstate = 255;
 				dev->state = 0;				
-				PsychPAUnlockDeviceMutex(dev);			
 				PsychPASignalChange(dev);
+				PsychPAUnlockDeviceMutex(dev);			
 				return(paAbort);
 			}
 		}
@@ -1385,8 +1385,8 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 			dev->reqstate = 255;
 			dev->state = 0;
 
-			PsychPAUnlockDeviceMutex(dev);			
 			PsychPASignalChange(dev);
+			PsychPAUnlockDeviceMutex(dev);			
 
 			return(paAbort);
 		}
@@ -1518,12 +1518,12 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 			// Set estimated stop time to last committed sample time:
 			if ((dev->estStopTime == 0) && (dev->state == 0)) dev->estStopTime = dev->currentTime;
 			
-			// Safe to unlock, as dev->runMode never changes below us:
-			PsychPAUnlockDeviceMutex(dev);
-			
 			// Signal state change:
 			PsychPASignalChange(dev);
-			
+
+			// Safe to unlock, as dev->runMode never changes below us:
+			PsychPAUnlockDeviceMutex(dev);
+
 			if ((dev->runMode == 0) && (dev->state == 0)) {
 				// Either paComplete gracefully, playing out pending buffers, or
 				// request a hard paAbort if abortion is requested:

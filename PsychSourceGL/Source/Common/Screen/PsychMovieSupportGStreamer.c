@@ -332,8 +332,8 @@ static gboolean PsychHaveVideoDataCallback(GstPad *pad, GstBuffer *buffer, gpoin
 	// Fetch presentation timestamp and convert to seconds:
 	movie->pts = (double) buffer->timestamp / (double) 1e9;
 
-	PsychUnlockMutex(&movie->mutex);
 	PsychSignalCondition(&movie->condition);
+	PsychUnlockMutex(&movie->mutex);
 
 	return(TRUE);
 }
@@ -345,8 +345,8 @@ static void PsychEOSCallback(GstAppSink *sink, gpointer user_data)
 
 	//PsychLockMutex(&movie->mutex);
 	//printf("PTB-DEBUG: Videosink reached EOS.\n");
-	//PsychUnlockMutex(&movie->mutex);
 	//PsychSignalCondition(&movie->condition);
+	//PsychUnlockMutex(&movie->mutex);
 	return;
 }
 
@@ -361,8 +361,8 @@ static GstFlowReturn PsychNewPrerollCallback(GstAppSink *sink, gpointer user_dat
 	PsychLockMutex(&movie->mutex);
 	//printf("PTB-DEBUG: New PrerollBuffer received.\n");
 	movie->preRollAvail++;
-	PsychUnlockMutex(&movie->mutex);
 	PsychSignalCondition(&movie->condition);
+	PsychUnlockMutex(&movie->mutex);
 
 	return(GST_FLOW_OK);
 }
@@ -377,8 +377,8 @@ static GstFlowReturn PsychNewBufferCallback(GstAppSink *sink, gpointer user_data
 	PsychLockMutex(&movie->mutex);
 	//printf("PTB-DEBUG: New Buffer received.\n");
 	movie->frameAvail++;
-	PsychUnlockMutex(&movie->mutex);
 	PsychSignalCondition(&movie->condition);
+	PsychUnlockMutex(&movie->mutex);
 
 	return(GST_FLOW_OK);
 }
@@ -390,8 +390,8 @@ static GstFlowReturn PsychNewBufferListCallback(GstAppSink *sink, gpointer user_
 
 	//PsychLockMutex(&movie->mutex);
 	//printf("PTB-DEBUG: New Bufferlist received.\n");
-	//PsychUnlockMutex(&movie->mutex);
 	//PsychSignalCondition(&movie->condition);
+	//PsychUnlockMutex(&movie->mutex);
 
 	return(GST_FLOW_OK);
 }

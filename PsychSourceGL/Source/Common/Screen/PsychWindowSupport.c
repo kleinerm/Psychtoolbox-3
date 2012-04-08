@@ -1753,6 +1753,16 @@ void PsychReleaseFlipInfoStruct(PsychWindowRecordType *windowRecord)
 		// Set opmode to "terminate please":
 		flipRequest->opmode = -1;
 
+		// Signal the thread in case it is waiting on the condition variable:
+		if ((rc=PsychSignalCondition(&(flipRequest->flipperGoGoGo)))) {
+			printf("PTB-ERROR: In PsychReleaseFlipInfoStruct(): pthread_cond_signal in thread shutdown operation failed  [%s].\n", strerror(rc));
+			printf("PTB-ERROR: This must not ever happen! PTB design bug or severe operating system or runtime environment malfunction!! Memory corruption?!?");
+
+			// Anyway, just hope it is not fatal for us...
+			// Try to cancel the thread in a more cruel manner. That's the best we can do.
+			PsychAbortThread(&(flipRequest->flipperThread));
+		}
+
 		// Do we hold the mutex? Given a flipperThread exist if we made it until here,
 		// at least one async flip has happened in this session, which means that we do
 		// hold the lock after an async flip has finalized (2) and/or Screen('AsyncFlipEnd/Check')
@@ -1765,16 +1775,6 @@ void PsychReleaseFlipInfoStruct(PsychWindowRecordType *windowRecord)
 			PsychUnlockMutex(&(flipRequest->performFlipLock));
 		}
 		
-		// Signal the thread in case it is waiting on the condition variable:
-		if ((rc=PsychSignalCondition(&(flipRequest->flipperGoGoGo)))) {
-			printf("PTB-ERROR: In PsychReleaseFlipInfoStruct(): pthread_cond_signal in thread shutdown operation failed  [%s].\n", strerror(rc));
-			printf("PTB-ERROR: This must not ever happen! PTB design bug or severe operating system or runtime environment malfunction!! Memory corruption?!?");
-
-			// Anyway, just hope it is not fatal for us...
-			// Try to cancel the thread in a more cruel manner. That's the best we can do.
-			PsychAbortThread(&(flipRequest->flipperThread));
-		}
-
 		// Thread should wake up on the signal/condition now, reaquire the lock, parse
 		// our opmode = -1 abort command and therefore release the lock and terminate.
 
@@ -2390,22 +2390,18 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 		// This is only needed for frame-sequential thread mode:
 		flipRequest->flipperState = 1;
 
-		// Release the lock:
-		if ((rc=PsychUnlockMutex(&(flipRequest->performFlipLock)))) {
-			printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): mutex_unlock in trigger operation failed  [%s].\n", strerror(rc));
-			PsychErrorExitMsg(PsychError_internal, "This must not ever happen! PTB design bug or severe operating system or runtime environment malfunction!! Memory corruption?!?");
-		}
-
-		// printf("IN ASYNCSTART: MUTEXUNLOCKED -- SIGNALLING %s\n", strerror(rc)); fflush(NULL);
-		
 		// Trigger the thread:
 		if ((rc=PsychSignalCondition(&(flipRequest->flipperGoGoGo)))) {
 			printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): pthread_cond_signal in trigger operation failed  [%s].\n", strerror(rc));
 			PsychErrorExitMsg(PsychError_internal, "This must not ever happen! PTB design bug or severe operating system or runtime environment malfunction!! Memory corruption?!?");
 		}
 
-		// printf("IN ASYNCSTART: MUTEXUNLOCKED -- SIGNALLED -- ASYNCSTATE 1 -- RETURNING\n"); fflush(NULL);
-		
+		// Release the lock:
+		if ((rc=PsychUnlockMutex(&(flipRequest->performFlipLock)))) {
+			printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): mutex_unlock in trigger operation failed  [%s].\n", strerror(rc));
+			PsychErrorExitMsg(PsychError_internal, "This must not ever happen! PTB design bug or severe operating system or runtime environment malfunction!! Memory corruption?!?");
+		}
+
 		// That's it, operation in progress: Mark it as such.
 		flipRequest->asyncstate = 1;
 		
