@@ -1116,27 +1116,30 @@ int PsychWaitCondition(psych_condition* condition, psych_mutex* mutex)
 
 	// MS-Windows: Unlock mutex, wait for our event-object to go to signalled
 	// state, then reacquire the mutex:
+
+	// Manually reset our "auto-reset" event to non-signalled while we are still
+	// protected by the mutex to get Posix semantic:
+	ResetEvent(*condition);
+
 	if ((rc = PsychUnlockMutex(mutex))) {
 		printf("PTB-CRITICAL: In call to PsychWaitCondition(%p, %p): PsychUnlockMutex(%p) FAILED [rc=%i]! Expect disaster!!!", condition, mutex, mutex, rc);
 		return(rc);
 	}
 
-    // Manually reset our "auto-reset" event to get Posix semantic:
-    ResetEvent(*condition);
-    
 	if ((rc = WaitForSingleObject(*condition, INFINITE)) != WAIT_OBJECT_0) {
 		rc = (int) GetLastError();
 		printf("PTB-CRITICAL: In call to PsychWaitCondition(%p, %p): WaitForSingleObject(%p) FAILED [GetLastError()=%i]! Expect disaster!!!", condition, mutex, condition, rc);
 	}
 
-    // Manually reset our "auto-reset" event to get Posix semantic:
-    ResetEvent(*condition);
-    
-    if ((rc2 = PsychLockMutex(mutex))) {
+	if ((rc2 = PsychLockMutex(mutex))) {
 		printf("PTB-CRITICAL: In call to PsychWaitCondition(%p, %p): PsychLockMutex(%p) FAILED [rc=%i]! Expect disaster!!!", condition, mutex, mutex, rc2);
 		return(rc2);
 	}
-	
+
+	// Manually reset our "auto-reset" event to non-signalled while we are again
+	// protected by the mutex to get Posix semantic:
+	ResetEvent(*condition);
+
 	return(rc);
 }
 
@@ -1162,31 +1165,34 @@ int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, doub
 		// Convert seconds to milliseconds:
 		maxmillisecs = (int) (maxwaittimesecs * 1000.0);
 	}
-	
+
 	// MS-Windows: Unlock mutex, wait for our event-object to go to signalled
 	// state, then reacquire the mutex:
+
+	// Manually reset our "auto-reset" event to non-signalled while we are still
+	// protected by the mutex to get Posix semantic:
+	ResetEvent(*condition);
+
 	if ((rc = PsychUnlockMutex(mutex))) {
 		printf("PTB-CRITICAL: In call to PsychTimedWaitCondition(%p, %p, %f): PsychUnlockMutex(%p) FAILED [rc=%i]! Expect disaster!!!", condition, mutex, maxwaittimesecs, mutex, rc);
 		return(rc);
 	}
 
-    // Manually reset our "auto-reset" event to get Posix semantic:
-    ResetEvent(*condition);
-    
 	rc = (int) WaitForSingleObject(*condition, (DWORD) maxmillisecs);
 	if ((rc != WAIT_OBJECT_0) && (rc != WAIT_TIMEOUT)) {
 		rc = (int) GetLastError();
 		printf("PTB-CRITICAL: In call to PsychTimedWaitCondition(%p, %p, %f): WaitForSingleObject(%p, %i) FAILED [GetLastError()=%i]! Expect disaster!!!", condition, mutex, maxwaittimesecs, condition, maxmillisecs, rc);
 	}
 
-    // Manually reset our "auto-reset" event to get Posix semantic:
-    ResetEvent(*condition);
-    
 	if ((rc2 = PsychLockMutex(mutex))) {
 		printf("PTB-CRITICAL: In call to PsychTimedWaitCondition(%p, %p, %f): PsychLockMutex(%p) FAILED [rc=%i]! Expect disaster!!!", condition, mutex, maxwaittimesecs, mutex, rc2);
 		return(rc2);
 	}
-	
+
+	// Manually reset our "auto-reset" event to non-signalled while we are again
+	// protected by the mutex to get Posix semantic:
+	ResetEvent(*condition);
+
 	// Success: Either in the sense of "signalled" or in the sense of "timeout".
 	// rc will tell the caller what happened: 0 = Signalled, 0x00000102L == WAIT_TIMEOUT for timeout.
 	return(rc);
