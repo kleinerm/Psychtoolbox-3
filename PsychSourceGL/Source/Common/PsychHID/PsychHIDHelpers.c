@@ -40,10 +40,11 @@ hid_device* source[MAXDEVICEINDEXS];
 PsychUSBDeviceRecord usbDeviceRecordBank[PSYCH_HID_MAX_GENERIC_USB_DEVICES];
 
 PsychHIDEventRecord* hidEventBuffer[PSYCH_HID_MAX_KEYBOARD_DEVICES];
-unsigned int hidEventBufferCapacity[PSYCH_HID_MAX_KEYBOARD_DEVICES];
-unsigned int hidEventBufferReadPos[PSYCH_HID_MAX_KEYBOARD_DEVICES];
-unsigned int hidEventBufferWritePos[PSYCH_HID_MAX_KEYBOARD_DEVICES];
-psych_mutex  hidEventBufferMutex[PSYCH_HID_MAX_KEYBOARD_DEVICES];
+unsigned int    hidEventBufferCapacity[PSYCH_HID_MAX_KEYBOARD_DEVICES];
+unsigned int    hidEventBufferReadPos[PSYCH_HID_MAX_KEYBOARD_DEVICES];
+unsigned int    hidEventBufferWritePos[PSYCH_HID_MAX_KEYBOARD_DEVICES];
+psych_mutex     hidEventBufferMutex[PSYCH_HID_MAX_KEYBOARD_DEVICES];
+psych_condition hidEventBufferCondition[PSYCH_HID_MAX_KEYBOARD_DEVICES];
 
 /* PsychInitializePsychHID()
  *
@@ -234,6 +235,7 @@ psych_bool PsychHIDCreateEventBuffer(int deviceIndex)
 	
 	// Prepare mutex for buffer:
 	PsychInitMutex(&hidEventBufferMutex[deviceIndex]);
+	PsychInitCondition(&hidEventBufferCondition[deviceIndex], NULL);
 
 	// Flush it:
 	PsychHIDFlushEventBuffer(deviceIndex);
@@ -254,6 +256,7 @@ psych_bool PsychHIDDeleteEventBuffer(int deviceIndex)
 		hidEventBuffer[deviceIndex] = NULL;
 		hidEventBufferCapacity[deviceIndex] = 0;
 		PsychDestroyMutex(&hidEventBufferMutex[deviceIndex]);
+		PsychDestroyCondition(&hidEventBufferCondition[deviceIndex]);
 	}
 
 	return(TRUE);
@@ -262,10 +265,13 @@ psych_bool PsychHIDDeleteEventBuffer(int deviceIndex)
 psych_bool PsychHIDFlushEventBuffer(int deviceIndex)
 {
 	if (deviceIndex < 0) deviceIndex = PsychHIDGetDefaultKbQueueDevice();
-	
+
+    if (!hidEventBuffer[deviceIndex]) return(FALSE);
+
 	PsychLockMutex(&hidEventBufferMutex[deviceIndex]);
 	hidEventBufferReadPos[deviceIndex] = hidEventBufferWritePos[deviceIndex] = 0;
 	PsychUnlockMutex(&hidEventBufferMutex[deviceIndex]);
+
 	return(TRUE);
 }
 
@@ -274,6 +280,8 @@ unsigned int PsychHIDAvailEventBuffer(int deviceIndex)
 	unsigned int navail;
 	if (deviceIndex < 0) deviceIndex = PsychHIDGetDefaultKbQueueDevice();
 
+    if (!hidEventBuffer[deviceIndex]) return(0);
+
 	PsychLockMutex(&hidEventBufferMutex[deviceIndex]);
 	navail = hidEventBufferWritePos[deviceIndex] - hidEventBufferReadPos[deviceIndex];
 	PsychUnlockMutex(&hidEventBufferMutex[deviceIndex]);
@@ -281,7 +289,7 @@ unsigned int PsychHIDAvailEventBuffer(int deviceIndex)
 	return(navail);
 }
 
-int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex)
+int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double maxWaitTimeSecs)
 {
 	unsigned int navail;
 	PsychHIDEventRecord evt;
@@ -294,6 +302,17 @@ int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex)
 	
 	PsychLockMutex(&hidEventBufferMutex[deviceIndex]);
 	navail = hidEventBufferWritePos[deviceIndex] - hidEventBufferReadPos[deviceIndex];	
+
+	// If nothing available and we're asked to wait for something, then wait:
+	if ((navail == 0) && (maxWaitTimeSecs > 0)) {
+		// Wait for something:
+		PsychTimedWaitCondition(&hidEventBufferCondition[deviceIndex], &hidEventBufferMutex[deviceIndex], maxWaitTimeSecs);
+
+		// Recompute number of available events:
+		navail = hidEventBufferWritePos[deviceIndex] - hidEventBufferReadPos[deviceIndex];	
+	}
+
+	// Check if anything available, copy it if so:
 	if (navail) {
 		memcpy(&evt, &(hidEventBuffer[deviceIndex][hidEventBufferReadPos[deviceIndex] % hidEventBufferCapacity[deviceIndex]]), sizeof(PsychHIDEventRecord));
 		hidEventBufferReadPos[deviceIndex]++;
@@ -329,6 +348,9 @@ int PsychHIDAddEventToEventBuffer(int deviceIndex, PsychHIDEventRecord* evt)
 	if (navail < hidEventBufferCapacity[deviceIndex]) {
 		memcpy(&(hidEventBuffer[deviceIndex][hidEventBufferWritePos[deviceIndex] % hidEventBufferCapacity[deviceIndex]]), evt, sizeof(PsychHIDEventRecord));
 		hidEventBufferWritePos[deviceIndex]++;
+
+		// Announce new event to potential waiters:
+		PsychSignalCondition(&hidEventBufferCondition[deviceIndex]);
 	}
 	else {
 		printf("PsychHID: WARNING: KbQueue event buffer is full! Maximum capacity of %i elements reached, will discard future events.\n", hidEventBufferCapacity[deviceIndex]);

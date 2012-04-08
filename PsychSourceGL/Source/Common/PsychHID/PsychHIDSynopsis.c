@@ -55,7 +55,7 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "PsychHID('KbQueueStop' [, deviceIndex])"; 
 	synopsis[i++] = "[keyIsDown, firstKeyPressTimes, firstKeyReleaseTimes, lastKeyPressTimes, lastKeyReleaseTimes]=PsychHID('KbQueueCheck' [, deviceIndex])"; 
 	synopsis[i++] = "secs=PsychHID('KbTriggerWait', KeysUsage, [deviceNumber])";
-	synopsis[i++] = "[event, navail] = PsychHID('KbQueueGetEvent' [, deviceIndex])";
+	synopsis[i++] = "[event, navail] = PsychHID('KbQueueGetEvent' [, deviceIndex][, maxWaitTimeSecs=0])";
 
 	synopsis[i++] = "\n\nSupport for access to generic USB devices: See 'help ColorCal2' for one usage example:\n\n";
 	synopsis[i++] = "usbHandle = PsychHID('OpenUSBDevice', vendorID, deviceID [, configurationId=0])";

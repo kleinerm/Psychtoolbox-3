@@ -318,7 +318,7 @@ static unsigned int PsychHIDOSMapKey(unsigned int inkeycode)
 	#define MAPVK_VSC_TO_VK_EX 3
 	#endif
 
-	keycode = MapVirtualKeyEx(inkeycode, MAPVK_VSC_TO_VK_EX, GetKeyboardLayout(0));    
+	keycode = MapVirtualKeyEx(inkeycode, MAPVK_VSC_TO_VK_EX, GetKeyboardLayout(0));
 	if (keycode == 0) {
 		// Untranslated keycode: Use table.
 		switch(inkeycode) {
@@ -587,9 +587,10 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 	double tnow;
 	unsigned int i, keycode, keystate;
  	PsychHIDEventRecord evt;
-   
-	while (1) {
-        
+	WORD asciiValue[2];
+	UCHAR keyboardState[256];
+
+	while (1) {        
 		// Single pass or multi-pass?
 		if (blockingSinglepass) {
 			// Wait until at least one event available and dequeue it:
@@ -631,6 +632,9 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 				// Clear ringbuffer event:
 				memset(&evt, 0 , sizeof(evt));
 
+				// Init character code to "unmapped": It will stay like that for anything but real keyboards:
+				evt.cookedEventCode = -1;
+
                 // Map to key code and key state:
                 keycode = event.dwOfs & 0xff;
                 keystate = event.dwData & 0x80;
@@ -638,7 +642,20 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 				// Remap keycode into target slot in our arrays, depending on input device:
                 switch (info[i].dwDevType & 0xff) {
 					case DI8DEVTYPE_KEYBOARD:
-						// Map scancode 'keycode' to virtual key code 'keycode':
+						// Try to map scancode to ascii character:
+                        memset(keyboardState, 0, sizeof(keyboardState));
+                        if (GetAsyncKeyState(VK_SHIFT)) keyboardState[VK_SHIFT] = 0xff;
+                        
+                        if ((1 == ToAsciiEx(MapVirtualKeyEx(keycode, 1, GetKeyboardLayout(0)), keycode, keyboardState, (LPWORD) &(asciiValue[0]), 0, GetKeyboardLayout(0)))) {
+							// Mapped to single char: Return it as cooked keycode:
+							evt.cookedEventCode = (int) (asciiValue[0] & 0xff);
+						}
+						else {
+							// Could not map key to valid ascii character: Mark as "not mapped" aka zero:
+							evt.cookedEventCode = 0;
+						}
+
+                        // Map scancode 'keycode' to virtual key code 'keycode':
 						keycode = PsychHIDOSMapKey(keycode);
 					break;
 
@@ -675,19 +692,20 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                         // ie., the slot is so far empty:
                         if (psychHIDKbQueueFirstPress[i][keycode] == 0) psychHIDKbQueueFirstPress[i][keycode] = tnow;
                         psychHIDKbQueueLastPress[i][keycode] = tnow;
-			evt.status |= (1 << 0);
+						evt.status |= (1 << 0);
                     } else {
                         // Enqueue key release. See logic above:
                         if (psychHIDKbQueueFirstRelease[i][keycode] == 0) psychHIDKbQueueFirstRelease[i][keycode] = tnow;
                         psychHIDKbQueueLastRelease[i][keycode] = tnow;
-			evt.status &= ~(1 << 0);
+						evt.status &= ~(1 << 0);
+						// Clear cooked keycode - We don't record key releases this way:
+						if (evt.cookedEventCode > 0) evt.cookedEventCode = 0;
                     }
 
-		    // Update event buffer:
-		    evt.timestamp = tnow;
-		    evt.rawEventCode = keycode + 1;
-		    evt.cookedEventCode = -1; // TODO FIXME - Proper mapping!
-		    PsychHIDAddEventToEventBuffer(i, &evt);
+					// Update event buffer:
+					evt.timestamp = tnow;
+					evt.rawEventCode = keycode + 1;
+					PsychHIDAddEventToEventBuffer(i, &evt);
                     
                     // Tell waiting userspace something interesting has changed:
                     PsychSignalCondition(&KbQueueCondition);

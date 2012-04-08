@@ -132,6 +132,7 @@ HIDDataRef hidDataRef=NULL;
 pthread_mutex_t psychHIDKbQueueMutex=PTHREAD_MUTEX_INITIALIZER;
 CFRunLoopRef psychHIDKbQueueCFRunLoopRef=NULL;
 pthread_t psychHIDKbQueueThread = NULL;
+psych_bool queueIsAKeyboard;
 
 static void *PsychHIDKbQueueNewThread(void *value){
 	// The new thread is started after the global variables are initialized
@@ -209,6 +210,9 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 		}
 		// if(keysUsage<1 || keysUsage>255) continue;	// This is redundant since usage is checked when elements are added
 
+		// Don't bother with keysUsage of 0 (meaningless) or 1 (ErrorRollOver) for keyboards:
+		if ((queueIsAKeyboard) && (keysUsage <= 1)) continue;
+		
 		// Clear ringbuffer event:
 		memset(&evt, 0 , sizeof(evt));
 		
@@ -273,7 +277,10 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 		// We are reinitializing, so need to release prior initialization
 		PsychHIDOSKbQueueRelease(deviceIndex);
 	}
-	
+
+	// Mark as a non-keyboard device, to start with:
+	queueIsAKeyboard = FALSE;
+
 	// Find the requested device record
 	{
 		int deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
@@ -386,6 +393,9 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 				if (!number) continue;
 				CFNumberGetValue(number, kCFNumberSInt32Type, &newElement.usagePage );
 				if((newElement.usagePage != kHIDPage_KeyboardOrKeypad) && (newElement.usagePage != kHIDPage_Button)) continue;
+
+				// If at least one keyboard style device is detected, mark this queue as keyboard queue:
+				if (newElement.usagePage == kHIDPage_KeyboardOrKeypad) queueIsAKeyboard = TRUE;
 
 				// Get usage and make sure it is in range 1-256
 				number = (CFNumberRef)CFDictionaryGetValue(element, CFSTR(kIOHIDElementUsageKey));

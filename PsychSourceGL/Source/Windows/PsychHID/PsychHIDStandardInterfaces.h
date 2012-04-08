@@ -18,11 +18,6 @@
 #ifndef PSYCH_IS_INCLUDED_PsychHIDStandardIntefaces
 #define PSYCH_IS_INCLUDED_PsychHIDStandardIntefaces
 
-//#include <tchar.h>
-//#include <windows.h>
-//#include <commctrl.h>
-//#include <basetsd.h>
 #include "PsychHID.h"
-
 
 #endif

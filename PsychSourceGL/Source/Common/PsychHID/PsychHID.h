@@ -257,14 +257,6 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
 void PsychHIDOSCloseUSBDevice(PsychUSBDeviceRecord* devRecord);
 int PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmRequestType, psych_uint8 bRequest, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData);
 
-// Helpers for KbQueue event buffer:
-psych_bool PsychHIDCreateEventBuffer(int deviceIndex);
-psych_bool PsychHIDDeleteEventBuffer(int deviceIndex);
-psych_bool PsychHIDFlushEventBuffer(int deviceIndex);
-unsigned int PsychHIDAvailEventBuffer(int deviceIndex);
-int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex);
-int PsychHIDAddEventToEventBuffer(int deviceIndex, PsychHIDEventRecord* evt);
-
 // These must be defined for each OS in their own PsychHIDStandardInterfaces.c:
 #ifdef __cplusplus
 extern "C" {
@@ -284,6 +276,14 @@ void PsychHIDOSKbQueueStart(int deviceIndex);
 void PsychHIDOSKbQueueFlush(int deviceIndex);
 void PsychHIDOSKbQueueCheck(int deviceIndex);
 void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys);
+
+// Helpers for KbQueue event buffer: OS independent, but need C-linkage:
+psych_bool PsychHIDCreateEventBuffer(int deviceIndex);
+psych_bool PsychHIDDeleteEventBuffer(int deviceIndex);
+psych_bool PsychHIDFlushEventBuffer(int deviceIndex);
+unsigned int PsychHIDAvailEventBuffer(int deviceIndex);
+int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double maxWaitTimeSecs);
+int PsychHIDAddEventToEventBuffer(int deviceIndex, PsychHIDEventRecord* evt);
 
 #ifdef __cplusplus
 }
