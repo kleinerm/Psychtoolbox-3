@@ -1120,13 +1120,19 @@ int PsychWaitCondition(psych_condition* condition, psych_mutex* mutex)
 		printf("PTB-CRITICAL: In call to PsychWaitCondition(%p, %p): PsychUnlockMutex(%p) FAILED [rc=%i]! Expect disaster!!!", condition, mutex, mutex, rc);
 		return(rc);
 	}
-	
+
+    // Manually reset our "auto-reset" event to get Posix semantic:
+    ResetEvent(*condition);
+    
 	if ((rc = WaitForSingleObject(*condition, INFINITE)) != WAIT_OBJECT_0) {
 		rc = (int) GetLastError();
 		printf("PTB-CRITICAL: In call to PsychWaitCondition(%p, %p): WaitForSingleObject(%p) FAILED [GetLastError()=%i]! Expect disaster!!!", condition, mutex, condition, rc);
 	}
-	
-	if ((rc2 = PsychLockMutex(mutex))) {
+
+    // Manually reset our "auto-reset" event to get Posix semantic:
+    ResetEvent(*condition);
+    
+    if ((rc2 = PsychLockMutex(mutex))) {
 		printf("PTB-CRITICAL: In call to PsychWaitCondition(%p, %p): PsychLockMutex(%p) FAILED [rc=%i]! Expect disaster!!!", condition, mutex, mutex, rc2);
 		return(rc2);
 	}
@@ -1163,13 +1169,19 @@ int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, doub
 		printf("PTB-CRITICAL: In call to PsychTimedWaitCondition(%p, %p, %f): PsychUnlockMutex(%p) FAILED [rc=%i]! Expect disaster!!!", condition, mutex, maxwaittimesecs, mutex, rc);
 		return(rc);
 	}
-	
+
+    // Manually reset our "auto-reset" event to get Posix semantic:
+    ResetEvent(*condition);
+    
 	rc = (int) WaitForSingleObject(*condition, (DWORD) maxmillisecs);
 	if ((rc != WAIT_OBJECT_0) && (rc != WAIT_TIMEOUT)) {
 		rc = (int) GetLastError();
 		printf("PTB-CRITICAL: In call to PsychTimedWaitCondition(%p, %p, %f): WaitForSingleObject(%p, %i) FAILED [GetLastError()=%i]! Expect disaster!!!", condition, mutex, maxwaittimesecs, condition, maxmillisecs, rc);
 	}
-	
+
+    // Manually reset our "auto-reset" event to get Posix semantic:
+    ResetEvent(*condition);
+    
 	if ((rc2 = PsychLockMutex(mutex))) {
 		printf("PTB-CRITICAL: In call to PsychTimedWaitCondition(%p, %p, %f): PsychLockMutex(%p) FAILED [rc=%i]! Expect disaster!!!", condition, mutex, maxwaittimesecs, mutex, rc2);
 		return(rc2);
