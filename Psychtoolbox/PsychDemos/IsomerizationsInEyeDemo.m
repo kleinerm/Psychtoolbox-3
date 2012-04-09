@@ -12,6 +12,7 @@
 % 08/14/11 dhb  Comment out saving of T_dogrec at end.  Want to be careful when and where
 %               this is done, but the template may be useful someday.
 % 03/20/12 dhb  Update cal file for PTB 3.
+% 04/09/12 dhb  Add test of irradiance to troland conversion.
 
 % Clear
 clear all; close all;
@@ -29,6 +30,7 @@ S = photoreceptors.nomogram.S;
 % Get light spectrum.  You can choose various
 % illustrative examples.
 whichLight = 'fromMonitorRadiance';
+%whichLight = 'fromTrolands';
 
 % Here we'll start with a xenon arc lamp relative spectrum
 switch (whichLight)
@@ -36,9 +38,14 @@ switch (whichLight)
 	% Computation to retinal irradiance is done two ways just for fun.
 	case 'fromTrolands',
 		trolands = 100;
+        trolandType = 'Photopic';
 		load spd_xenonArc;
 		irradianceWatts = TrolandsToRetIrradiance(spd_xenonArc,S_xenonArc,trolands, ...
-			'Photopic',photoreceptors.species,photoreceptors.eyeLengthMM.value);
+			trolandType,photoreceptors.species,photoreceptors.eyeLengthMM.value);
+        irradianceTrolandsCheck = RetIrradianceToTrolands(irradianceWatts,S_xenonArc,trolandType, ...
+            photoreceptors.species,photoreceptors.eyeLengthMM.value);
+        trolandsCheck = sum(irradianceTrolandsCheck);
+        fprintf('\nInput trolands is %0.1f, checked value is %0.1f\n\n',trolands,trolandsCheck);
 		irradianceWatts = SplineSpd(S_xenonArc,irradianceWatts,S);
 	
 		% Another way to do this calculation.  Pupil size should cancel out.  Should get
@@ -46,7 +53,7 @@ switch (whichLight)
 		pupilSizeMM = 2;
 		pupilAreaMM = pi*(pupilSizeMM/2)^2;
 		luminance = TrolandsToLum(trolands,pupilAreaMM);
-		radianceWatts = LumToRadiance(spd_xenonArc,S_xenonArc,luminance,'Photopic');
+		radianceWatts = LumToRadiance(spd_xenonArc,S_xenonArc,luminance,trolandType);
 		irradianceWattsCheck = RadianceToRetIrradiance(radianceWatts,S_xenonArc,pupilAreaMM,photoreceptors.eyeLengthMM.value);
 		figure(1); clf; hold on
 		set(plot(SToWls(S),irradianceWatts,'r'),'LineWidth',2);
