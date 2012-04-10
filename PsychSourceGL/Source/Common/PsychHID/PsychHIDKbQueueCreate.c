@@ -129,18 +129,19 @@ AbsoluteTime *psychHIDKbQueueFirstRelease=NULL;
 AbsoluteTime *psychHIDKbQueueLastPress=NULL;
 AbsoluteTime *psychHIDKbQueueLastRelease=NULL;
 HIDDataRef hidDataRef=NULL;
-pthread_mutex_t psychHIDKbQueueMutex=PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t psychHIDKbQueueMutex;
 CFRunLoopRef psychHIDKbQueueCFRunLoopRef=NULL;
 pthread_t psychHIDKbQueueThread = NULL;
 psych_bool queueIsAKeyboard;
 
 static void *PsychHIDKbQueueNewThread(void *value){
 	// The new thread is started after the global variables are initialized
+	SInt32 rc;
 
 	// Get and retain the run loop associated with this thread
 	psychHIDKbQueueCFRunLoopRef=(CFRunLoopRef) GetCFRunLoopFromEventLoop(GetCurrentEventLoop());
 	CFRetain(psychHIDKbQueueCFRunLoopRef);
-	
+
 	// Put the event source into the run loop
 	if(!CFRunLoopContainsSource(psychHIDKbQueueCFRunLoopRef, hidDataRef->eventSource, kCFRunLoopDefaultMode))
 		CFRunLoopAddSource(psychHIDKbQueueCFRunLoopRef, hidDataRef->eventSource, kCFRunLoopDefaultMode);
@@ -153,13 +154,10 @@ static void *PsychHIDKbQueueNewThread(void *value){
 
 	// Start the run loop, code execution will block here until run loop is stopped again by PsychHIDKbQueueRelease
 	// Meanwhile, the run loop of this thread will be responsible for executing code below in PsychHIDKbQueueCalbackFunction
-	CFRunLoopRun();
+	while ((rc = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, false)) == kCFRunLoopRunTimedOut);
 		
 	// In case the CFRunLoop was interrupted while the mutex was locked, unlock it
-	pthread_mutex_unlock(&psychHIDKbQueueMutex);
-	
-	// Destroy the mutex
-	pthread_mutex_destroy(&psychHIDKbQueueMutex);
+	pthread_mutex_unlock(&psychHIDKbQueueMutex);	
 }
 
 static double convertTime(AbsoluteTime at){
@@ -168,6 +166,384 @@ static double convertTime(AbsoluteTime at){
 	double timeDouble=(double)timeUInt64;
 	return timeDouble / 1000000000;
 }
+
+/*	Table mapping HID usages in the KeyboardOrKeypad page to virtual key codes.
+	Names given for keys refer to US layout.
+	May be copied freely.
+*/
+// Taken from this MIT licensed software: <https://github.com/Ahruman/KeyNaming> according
+// to above permission note. So far not effectively used. Probably need to pull in the
+// whole project...
+/*  KeyNaming.cp
+	Keynaming 2.2 implementation
+	© 2001-2008 Jens Ayton <jens@ayton.se>, except where otherwise noted.
+	
+	Copyright © 2001Ð2008 Jens Ayton
+*/
+
+#define kVKC_Unknown		0xFFFF
+
+enum
+{
+	/*	Virtual key codes handled specially (from: Inside Macintosh: Text, Appendix C)
+		
+		Function keys. These are handled by loading the releveant string IFF the
+		character code 10 (kCC_FKey) is generated. This allows the function keys
+		to be remapped.
+		
+		The Menu/Application key on Windows keyboards also generates the character
+		code 10 by default. It isn't immediately clear whether the VKC is used for
+		an F key in other circumstances, but apps generally seem to interpret it as
+		a normal key. For now, I'm defining it as Menu Key. It's possible Unix-
+		oriented keyboards use it with a different key cap, e.g. Meta.
+	*/
+	kVKC_F1				= 122,
+	kVKC_F2				= 120,
+	kVKC_F3				= 99,
+	kVKC_F4				= 118,
+	kVKC_F5				= 96,
+	kVKC_F6				= 97,
+	kVKC_F7				= 98,
+	kVKC_F8				= 100,
+	kVKC_F9				= 101,
+	kVKC_F10			= 109,
+	kVKC_F11			= 103,
+	kVKC_F12			= 111,
+	kVKC_F13			= 105,
+	kVKC_F14			= 107,
+	kVKC_F15			= 113,
+	kVKC_F16			= 106,
+	kVKC_Menu			= 110,
+
+	/*	Escape and clear are like the F keys, using the character code kCC_EscClr. */
+	kVKC_Esc			= 53,
+	kVKC_Clear			= 71,
+
+	/*	The following are handled directy by recognising the virtual code. */
+	kVKC_Space			= 49,
+	kVKC_CapsLock		= 57,
+	kVKC_Shift			= 56,
+	kVKC_Option			= 58,
+	kVKC_Control		= 59,
+	kVKC_rShift			= 60,		/*	Right-hand modifiers; not implemented */
+	kVKC_rOption		= 61,
+	kVKC_rControl		= 62,
+	kVKC_Command		= 55,
+	kVKC_Return			= 36,
+	kVKC_Backspace		= 51,		/*	Left delete */
+	kVKC_Delete			= 117,		/*	right delete */
+	kVKC_Help			= 114,
+	kVKC_Home			= 115,
+	kVKC_PgUp			= 116,
+	kVKC_PgDn			= 121,
+	kVKC_End			= 119,
+	kVKC_LArrow			= 123,
+	kVKC_RArrow			= 124,
+	kVKC_UArrow			= 126,
+	kVKC_DArrow			= 125,
+	kVKC_KpdEnter		= 76,		/*	"normal" enter key */
+	kVKC_KbdEnter		= 52,		/*	Powerbooks (and some early Macs) */
+	kVKC_Fn				= 63,
+
+	/*	Keypad keys. These are named by loading the string "Keypad %@" and
+		replacing the %@ with the key's character name. The constant names
+		do not correspond to the key caps in any KCHR that I'm aware of;
+		they're just used to recognise the set of keys. Note that Enter and
+		Clear aren't handled this way. */
+	kVKC_Kpd_0			= 81,
+	kVKC_Kpd_1			= 75,
+	kVKC_Kpd_2			= 67,
+	kVKC_Kpd_3			= 89,
+	kVKC_Kpd_4			= 91,
+	kVKC_Kpd_5			= 92,
+	kVKC_Kpd_6			= 78,
+	kVKC_Kpd_7			= 86,
+	kVKC_Kpd_8			= 87,
+	kVKC_Kpd_9			= 88,
+	kVKC_Kpd_A			= 69,
+	kVKC_Kpd_B			= 83,
+	kVKC_Kpd_C			= 84,
+	kVKC_Kpd_D			= 85,
+	kVKC_Kpd_E			= 82,
+	kVKC_Kpd_F			= 65,
+
+	/* 2.1b5: values from new list in Event.h in OS X 10.5 */
+	kVKC_VolumeUp		= 72,
+	kVKC_VolumeDown		= 73,
+	kVKC_Mute			= 74,
+
+	kVKC_F17			= 64,
+	kVKC_F18			= 79,
+	kVKC_F19			= 80,
+	kVKC_F20			= 90,
+
+	#if KEYNAMING_ENABLE_HID
+
+	/*	Fake VKCs. These are used for HID usages that, to my knowledge, have
+		no corresponding VKC. I use the range 0x6000 up; GetKeys() can't return
+		in this range, and other VKC usages probably won't. */
+	kFKC_base_			= 0x6000,
+	kFKC_rCommand,
+/*	kFKC_Mute,			*/
+/*	kFKC_VolumeDown,	*/
+/*	kFKC_VolumeUp,		*/
+	kFKC_Power			= 0x6005,
+	kFKC_Eject,
+/*	kFKC_F17,			*/
+/*	kFKC_F18,			*/
+/*	kFKC_F19,			*/
+/*	kFKC_F20,			*/
+	kFKC_F21			= 0x600B,
+	kFKC_F22,
+	kFKC_F23,
+	kFKC_F24,
+
+	#endif
+
+	kEnumAtTheEndToSatisfyIrritableCompilers
+};
+
+static const uint16_t	kHID2VKC[] =
+{
+	kVKC_Unknown,		/* Reserved (no event indicated) */
+	kVKC_Unknown,		/* ErrorRollOver */
+	kVKC_Unknown,		/* POSTFail */
+	kVKC_Unknown,		/* ErrorUndefined */
+	0x00,				/* a and A */
+	0x0B,				/* b and B */
+	0x08,				/* ... */
+	0x02,
+	0x0E,
+	0x03,
+	0x05,
+	0x04,
+	0x22,
+	0x26,
+	0x28,
+	0x25,
+	0x2E,
+	0x2D,
+	0x1F,
+	0x23,
+	0x0C,
+	0x0F,
+	0x01,
+	0x11,
+	0x20,
+	0x09,
+	0x0D,
+	0x07,
+	0x10,
+	0x06,				/* z and Z */
+	0x12,				/* 1 */
+	0x13,				/* 2 */
+	0x14,				/* ... */
+	0x15,
+	0x17,
+	0x16,
+	0x1A,
+	0x1C,
+	0x19,				/* 9 */
+	0x1D,				/* 0 */
+	kVKC_Return,		/* Keyboard Return (ENTER) */
+	kVKC_Esc,			/* Escape */
+	kVKC_Backspace,		/* Delete (Backspace) */
+	0x30,				/* Tab */
+	kVKC_Space,			/* Space bar */
+	0x1B,				/* - and _ */
+	0x18,				/* = and + */
+	0x21,				/* [ and { */
+	0x1E,				/* ] and } */
+	0x2A,				/* \ and | */
+	kVKC_Unknown,		/* "Non-US # and ~" ?? */
+	0x29,				/* ; and : */
+	0x27,				/* ' and " */
+	0x32,				/* ` and ~ */
+	0x2B,				/* , and < */
+	0x2F,				/* . and > */
+	0x2C,				/* / and ? */
+	kVKC_CapsLock,		/* Caps Lock */
+	kVKC_F1,			/* F1 */
+	kVKC_F2,			/* ... */
+	kVKC_F3,
+	kVKC_F4,
+	kVKC_F5,
+	kVKC_F6,
+	kVKC_F7,
+	kVKC_F8,
+	kVKC_F9,
+	kVKC_F10,
+	kVKC_F11,
+	kVKC_F12,			/* F12 */
+	kVKC_Unknown,		/* Print Screen */
+	kVKC_Unknown,		/* Scroll Lock */
+	kVKC_Unknown,		/* Pause */
+	kVKC_Unknown,		/* Insert */
+	kVKC_Home,			/* Home */
+	kVKC_PgUp,			/* Page Up */
+	kVKC_Delete,		/* Delete Forward */
+	kVKC_End,			/* End */
+	kVKC_PgDn,			/* Page Down */
+	kVKC_RArrow,		/* Right Arrow */
+	kVKC_LArrow,		/* Left Arrow */
+	kVKC_DArrow,		/* Down Arrow */
+	kVKC_UArrow,		/* Up Arrow */
+	kVKC_Clear,			/* Keypad Num Lock and Clear */
+	0x4B,				/* Keypad / */
+	0x43,				/* Keypad * */
+	0x4E,				/* Keypad - */
+	0x45,				/* Keypad + */
+	kVKC_KpdEnter,		/* Keypad ENTER */
+	0x53,				/* Keypad 1 */
+	0x54,				/* Keypad 2 */
+	0x55,				/* Keypad 3 */
+	0x56,				/* Keypad 4 */
+	0x57,				/* Keypad 5 */
+	0x58,				/* Keypad 6 */
+	0x59,				/* Keypad 7 */
+	0x5B,				/* Keypad 8 */
+	0x5C,				/* Keypad 9 */
+	0x52,				/* Keypad 0 */
+	0x41,				/* Keypad . */
+	0x32,				/* "Keyboard Non-US \ and |" */
+	kVKC_Unknown,		/* "Keyboard Application" (Windows key for Windows 95, and "Compose".) */
+	kVKC_Unknown,		/* Keyboard Power (status, not key... but Apple doesn't seem to have read the spec properly) */
+	0x51,				/* Keypad = */
+	kVKC_F13,			/* F13 */
+	kVKC_F14,			/* ... */
+	kVKC_F15,
+	kVKC_F16,
+	kVKC_F17,
+	kVKC_F18,
+	kVKC_F19,
+	kVKC_F20,
+	kVKC_Unknown,
+	kVKC_Unknown,
+	kVKC_Unknown,
+	kVKC_Unknown,			/* F24 */
+	kVKC_Unknown,		/* Keyboard Execute */
+	kVKC_Help,			/* Keyboard Help */
+	kVKC_Unknown,		/* Keyboard Menu */
+	kVKC_Unknown,		/* Keyboard Select */
+	kVKC_Unknown,		/* Keyboard Stop */
+	kVKC_Unknown,		/* Keyboard Again */
+	kVKC_Unknown,		/* Keyboard Undo */
+	kVKC_Unknown,		/* Keyboard Cut */
+	kVKC_Unknown,		/* Keyboard Copy */
+	kVKC_Unknown,		/* Keyboard Paste */
+	kVKC_Unknown,		/* Keyboard Find */
+	kVKC_Mute,			/* Keyboard Mute */
+	kVKC_VolumeUp,		/* Keyboard Volume Up */
+	kVKC_VolumeDown,	/* Keyboard Volume Down */
+	kVKC_CapsLock,		/* Keyboard Locking Caps Lock */
+	kVKC_Unknown,		/* Keyboard Locking Num Lock */
+	kVKC_Unknown,		/* Keyboard Locking Scroll Lock */
+	0x41,				/*	Keypad Comma ("Keypad Comma is the appropriate usage for the Brazilian
+							keypad period (.) key. This represents the closest possible  match, and
+							system software should do the correct mapping based on the current locale
+							setting." If strange stuff happens on a (physical) Brazilian keyboard,
+							I'd like to know about it. */
+	0x51,				/* Keypad Equal Sign ("Used on AS/400 Keyboards.") */
+	kVKC_Unknown,		/* Keyboard International1 (Brazilian / and ? key? Kanji?) */
+	kVKC_Unknown,		/* Keyboard International2 (Kanji?) */
+	kVKC_Unknown,		/* Keyboard International3 (Kanji?) */
+	kVKC_Unknown,		/* Keyboard International4 (Kanji?) */
+	kVKC_Unknown,		/* Keyboard International5 (Kanji?) */
+	kVKC_Unknown,		/* Keyboard International6 (Kanji?) */
+	kVKC_Unknown,		/* Keyboard International7 (Kanji?) */
+	kVKC_Unknown,		/* Keyboard International8 (Kanji?) */
+	kVKC_Unknown,		/* Keyboard International9 (Kanji?) */
+	kVKC_Unknown,		/* Keyboard LANG1 (Hangul/English toggle) */
+	kVKC_Unknown,		/* Keyboard LANG2 (Hanja conversion key) */
+	kVKC_Unknown,		/* Keyboard LANG3 (Katakana key) */		// kVKC_Kana?
+	kVKC_Unknown,		/* Keyboard LANG4 (Hirigana key) */
+	kVKC_Unknown,		/* Keyboard LANG5 (Zenkaku/Hankaku key) */
+	kVKC_Unknown,		/* Keyboard LANG6 */
+	kVKC_Unknown,		/* Keyboard LANG7 */
+	kVKC_Unknown,		/* Keyboard LANG8 */
+	kVKC_Unknown,		/* Keyboard LANG9 */
+	kVKC_Unknown,		/* Keyboard Alternate Erase ("Example, Erase-Eazeª key.") */
+	kVKC_Unknown,		/* Keyboard SysReq/Attention */
+	kVKC_Unknown,		/* Keyboard Cancel */
+	kVKC_Unknown,		/* Keyboard Clear */
+	kVKC_Unknown,		/* Keyboard Prior */
+	kVKC_Unknown,		/* Keyboard Return */
+	kVKC_Unknown,		/* Keyboard Separator */
+	kVKC_Unknown,		/* Keyboard Out */
+	kVKC_Unknown,		/* Keyboard Oper */
+	kVKC_Unknown,		/* Keyboard Clear/Again */
+	kVKC_Unknown,		/* Keyboard CrSel/Props */
+	kVKC_Unknown,		/* Keyboard ExSel */
+	kVKC_Unknown,		/* Reserved */
+	kVKC_Unknown,		/* Reserved */
+	kVKC_Unknown,		/* Reserved */
+	kVKC_Unknown,		/* Reserved */
+	kVKC_Unknown,		/* Reserved */
+	kVKC_Unknown,		/* Reserved */
+	kVKC_Unknown,		/* Reserved */
+	kVKC_Unknown,		/* Reserved */
+	kVKC_Unknown,		/* Reserved */
+	kVKC_Unknown,		/* Reserved */
+	kVKC_Unknown,		/* Reserved */
+	kVKC_Unknown,		/* Keypad 00 */
+	kVKC_Unknown,		/* Keypad 000 */
+	kVKC_Unknown,		/* Thousands Separator */
+	kVKC_Unknown,		/* Decimal Separator */
+	kVKC_Unknown,		/* Currency Unit */
+	kVKC_Unknown,		/* Currency Sub-unit */
+	kVKC_Unknown,		/* Keypad ( */
+	kVKC_Unknown,		/* Keypad ) */
+	kVKC_Unknown,		/* Keypad { */
+	kVKC_Unknown,		/* Keypad } */
+	kVKC_Unknown,		/* Keypad Tab */
+	kVKC_Unknown,		/* Keypad Backspace */
+	kVKC_Unknown,		/* Keypad A */
+	kVKC_Unknown,		/* Keypad B */
+	kVKC_Unknown,		/* Keypad C */
+	kVKC_Unknown,		/* Keypad D */
+	kVKC_Unknown,		/* Keypad E */
+	kVKC_Unknown,		/* Keypad F */
+	kVKC_Unknown,		/* Keypad XOR */
+	kVKC_Unknown,		/* Keypad ^ */
+	kVKC_Unknown,		/* Keypad % */
+	kVKC_Unknown,		/* Keypad < */
+	kVKC_Unknown,		/* Keypad > */
+	kVKC_Unknown,		/* Keypad & */
+	kVKC_Unknown,		/* Keypad && */
+	kVKC_Unknown,		/* Keypad | */
+	kVKC_Unknown,		/* Keypad || */
+	kVKC_Unknown,		/* Keypad : */
+	kVKC_Unknown,		/* Keypad # */
+	kVKC_Unknown,		/* Keypad Space */
+	kVKC_Unknown,		/* Keypad @ */
+	kVKC_Unknown,		/* Keypad ! */
+	kVKC_Unknown,		/* Keypad Memory Store */
+	kVKC_Unknown,		/* Keypad Memory Recall */
+	kVKC_Unknown,		/* Keypad Memory Clear */
+	kVKC_Unknown,		/* Keypad Memory Add */
+	kVKC_Unknown,		/* Keypad Memory Subtract */
+	kVKC_Unknown,		/* Keypad Memory Multiply */
+	kVKC_Unknown,		/* Keypad Memory Divide */
+	kVKC_Unknown,		/* Keypad +/- */
+	kVKC_Unknown,		/* Keypad Clear */
+	kVKC_Unknown,		/* Keypad Clear Entry */
+	kVKC_Unknown,		/* Keypad Binary */
+	kVKC_Unknown,		/* Keypad Octal */
+	kVKC_Unknown,		/* Keypad Decimal */
+	kVKC_Unknown,		/* Keypad Hexadecimal */
+	kVKC_Unknown,		/* Reserved */
+	kVKC_Unknown,		/* Reserved */
+	kVKC_Control,		/* Keyboard LeftControl */
+	kVKC_Shift,			/* Keyboard LeftShift */
+	kVKC_Option,		/* Keyboard LeftAlt */
+	kVKC_Command,		/* Keyboard LeftGUI */
+	kVKC_rControl,		/* Keyboard RightControl */
+	kVKC_rShift,		/* Keyboard RightShift */
+	kVKC_rOption,		/* Keyboard RightAlt */
+	kVKC_Unknown		/* Keyboard RightGUI */
+};
+enum { kHID2VKCSize = sizeof kHID2VKC / sizeof kHID2VKC[0] };
+
 
 static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void *refcon, void *sender)
 {
@@ -215,6 +591,32 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 		
 		// Clear ringbuffer event:
 		memset(&evt, 0 , sizeof(evt));
+
+		// Cooked key code defaults to "unhandled", and stays that way for anything but keyboards:
+		evt.cookedEventCode = -1;
+		
+		// For real keyboards we can compute cooked key codes:
+		if (queueIsAKeyboard) {
+			// Keyboard(ish) device. We can handle this under some conditions.
+			// Init to a default of handled, but unmappable/ignored keycode:
+			evt.cookedEventCode = 0;
+
+			// Keypress event? And available in mapping table?
+			if ((event.value != 0) && (keysUsage < kHID2VKCSize)) {
+				// Yes: We try to map this to a character code:
+				
+				// Step 1: Map HID usage value to virtual keycode via LUT:
+				uint16_t vcKey = kHID2VKC[keysUsage];
+				
+				// Step 2: Translate virtual key code into unicode char:
+				// Ok, this is the usual horrifying complexity of Apple's system.
+				// If we want this implemented, our best shot is using/including a modified
+				// version of this MIT licensed software: <https://github.com/Ahruman/KeyNaming>
+				//
+				// For now, i just need a break - doing some enjoyable work on a less disgusting os...
+				evt.cookedEventCode = (int) vcKey;
+			}
+		}
 		
 		pthread_mutex_lock(&psychHIDKbQueueMutex);
 
@@ -247,9 +649,7 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 		// Update event buffer:
 		evt.timestamp = convertTime(event.timestamp);
 		evt.rawEventCode = keysUsage;
-		evt.cookedEventCode = -1; // TODO FIXME - Proper mapping!
 		PsychHIDAddEventToEventBuffer(0, &evt);
-
 		pthread_mutex_unlock(&psychHIDKbQueueMutex);
 	}
 }
@@ -521,6 +921,8 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 	{
 		int returnCode;
 		errno=0;
+
+		pthread_mutex_init(&psychHIDKbQueueMutex, NULL);
 		returnCode=pthread_mutex_trylock(&psychHIDKbQueueMutex);
 		if(returnCode){
 			if(EINVAL==errno){
@@ -566,6 +968,10 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 			pthread_mutex_unlock(&psychHIDKbQueueMutex);
 		}
 	}
+
+	// Create event buffer:
+	PsychHIDCreateEventBuffer(0);
+
 	{
 		int returnCode=pthread_create(&psychHIDKbQueueThread, NULL, PsychHIDKbQueueNewThread, NULL);
 		if(returnCode!=0){
@@ -581,9 +987,6 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 			PsychErrorExitMsg(PsychError_system, "Failed to create thread");
 		}
 	}
-	
-	// Create event buffer:
-	PsychHIDCreateEventBuffer(0);
 
 	return(PsychError_none);	
 }

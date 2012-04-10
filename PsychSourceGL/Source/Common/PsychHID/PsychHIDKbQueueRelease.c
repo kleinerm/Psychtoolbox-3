@@ -108,6 +108,7 @@ extern AbsoluteTime *psychHIDKbQueueFirstRelease;
 extern AbsoluteTime *psychHIDKbQueueLastPress;
 extern AbsoluteTime *psychHIDKbQueueLastRelease;
 extern HIDDataRef hidDataRef;
+extern pthread_mutex_t psychHIDKbQueueMutex;
 extern CFRunLoopRef psychHIDKbQueueCFRunLoopRef;
 extern pthread_t psychHIDKbQueueThread;
 
@@ -151,6 +152,9 @@ void PsychHIDOSKbQueueRelease(int deviceIndex)
 
 		CFRelease(psychHIDKbQueueCFRunLoopRef);
 		psychHIDKbQueueCFRunLoopRef=NULL;
+
+		// Destroy the mutex
+		pthread_mutex_destroy(&psychHIDKbQueueMutex);
 	}
 	
 	// Free and null the memory where presses and releases are stored

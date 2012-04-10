@@ -149,7 +149,7 @@ PsychError PsychHIDCleanup(void)
 
 	// Release all other HID device data structures:
 	#if PSYCH_SYSTEM == PSYCH_OSX
-	// Via Apple HIDUtils:
+        // Via Apple HIDUtils:
         if(HIDHaveDeviceList()) HIDReleaseDeviceList();
 	#else
         // Then our high-level list:
@@ -174,7 +174,7 @@ PsychError PsychHIDCleanup(void)
         if (hidlib_devices) hid_free_enumeration(hidlib_devices);
         hidlib_devices = NULL;
 
-	// Shutdown HIDAPI:
+        // Shutdown HIDAPI:
         hid_exit();
 
 	#endif
@@ -254,7 +254,6 @@ psych_bool PsychHIDDeleteEventBuffer(int deviceIndex)
 		// Release it:
 		free(hidEventBuffer[deviceIndex]);
 		hidEventBuffer[deviceIndex] = NULL;
-		hidEventBufferCapacity[deviceIndex] = 0;
 		PsychDestroyMutex(&hidEventBufferMutex[deviceIndex]);
 		PsychDestroyCondition(&hidEventBufferCondition[deviceIndex]);
 	}
@@ -340,6 +339,7 @@ int PsychHIDAddEventToEventBuffer(int deviceIndex, PsychHIDEventRecord* evt)
 	unsigned int navail;
 	
 	if (deviceIndex < 0) deviceIndex = PsychHIDGetDefaultKbQueueDevice();	
+
 	if (!hidEventBuffer[deviceIndex]) return(0);
 	
 	PsychLockMutex(&hidEventBufferMutex[deviceIndex]);
