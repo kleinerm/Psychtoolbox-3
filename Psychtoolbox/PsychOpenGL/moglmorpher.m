@@ -396,9 +396,9 @@ if strcmpi(cmd, 'ForceGPUMorphingEnabled')
     gpubasedmorphing = arg1;
     
     if gpubasedmorphing
-        fprintf('moglmorpher: INFO: Fully GPU based morphing forcefully enabled by usercode!');
+        fprintf('moglmorpher: INFO: Fully GPU based morphing forcefully enabled by usercode!\n');
     else
-        fprintf('moglmorpher: INFO: Fully GPU based morphing forcefully disabled by usercode!');
+        fprintf('moglmorpher: INFO: Fully GPU based morphing forcefully disabled by usercode!\n');
     end
 
     rc = 0;   
@@ -860,7 +860,22 @@ if strcmpi(cmd, 'addMesh')
         ctx.vertcolors = double(arg5);
         ctx.usecolors = 1;
     end;
+
+    if size(ctx.vertices, 1) ~= 3
+        error('addMesh: Vertex matrix must have 3 rows for (x,y,z) 3D vertices!');
+    end
     
+    if ctx.usenormals && (size(ctx.normals, 1) ~= 3)
+        error('addMesh: Normals matrix must have 3 rows for (nx,ny,nz) 3D normals!');
+    end
+
+    if ctx.usetextures && ~ismember(size(ctx.texcoords, 1), [1,2,3])
+        error('addMesh: Texture coordinate matrix must have 1-3 rows for 1D/2D/3D texture coordinates!');
+    end
+
+    if ctx.usecolors && ~ismember(size(ctx.vertcolors, 1), [3,4])
+        error('addMesh: Vertex color matrix must have 3-4 rows for RGB or RGBA colors!');
+    end
     
     % Assign vertex array and normals array to new slot in keyshape vector:
     ctx.objcount = ctx.objcount + 1;
