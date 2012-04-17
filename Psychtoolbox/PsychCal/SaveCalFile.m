@@ -35,7 +35,7 @@ else
 end
 
 % Load the file to get older calibrations
-[oldCal, oldCals] = LoadCalFile(filespec,dir);
+[oldCal, oldCals] = LoadCalFile(filespec, [], dir);
 if isempty(oldCals)
 	cals = {cal}; %#ok<NASGU>
 else
