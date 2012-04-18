@@ -678,7 +678,7 @@ int PsychHIDGetDefaultKbQueueDevice(void)
     // a keyboard or the virtual XTEST keyboard:
     for(deviceIndex = 0; deviceIndex < ndevices; deviceIndex++) {
         dev = &info[deviceIndex];
-        if ((dev->use == XISlaveKeyboard) && !strstr(dev->name, "XTEST") && !strstr(dev->name, "Button")) return(deviceIndex);
+        if ((dev->use == XISlaveKeyboard) && !strstr(dev->name, "XTEST") && !strstr(dev->name, "Button") && !strstr(dev->name, "Bus")) return(deviceIndex);
     }
     
     // Nothing found? If so, abort:
