@@ -81,6 +81,8 @@
 %   sur_nickerson       - The Nickerson measurements of the Munsell papers.
 %   sur_macbeth         - Reflectance of Macbeth color checker (not accurate, needs updating).
 %   sur_vrhel           - Reflectances measured by Vrhel.
+%   T_CIE_Y2            - CIE physiologically relevant 2-degree luminosity function.  See CVRL database.
+%   T_CIE_Y10           - CIE physiologically relevant 10-degree luminosity function.  See CVRL database.
 %   T_cones_smj         - Stockman-MacLeod-Johnson cone fundamentals.  See CVRL database.
 %   T_cones_smj10       - Stockman-MacLeod-Johnson 10-degree cone fundamentals.  See CVRL database.
 %   T_cones_ss2         - Stockman-Sharpe (2000) 2-degree cone fundamentals.  See CVRL database.
