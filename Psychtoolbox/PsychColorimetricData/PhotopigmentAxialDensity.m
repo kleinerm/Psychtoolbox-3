@@ -30,6 +30,7 @@ function densities = PhotopigmentAxialDensity(receptorTypes,species,source,field
 % 	Rodieck (Human) (Default).
 %   StockmanSharpe (Human).
 %   CIE (Human).
+%   Tsujimuar (Human, melanopsin gc's)
 %
 % The CIE method takes a field size argument.  This
 % overrides the specified foveal or not part of the
@@ -43,6 +44,7 @@ function densities = PhotopigmentAxialDensity(receptorTypes,species,source,field
 %
 % 7/11/03  dhb  Wrote it.
 % 8/12/11  dhb  Added CIE source, and allow passing of fieldSizeDegrees.
+% 4/20/12  dhb  Add Tsujimura's estimate of melanopsin optical density in human.
 
 % Fill in defaults
 if (nargin < 2 || isempty(species))
@@ -52,7 +54,7 @@ if (nargin < 3 || isempty(source))
 	source = 'Rodieck';
 end
 if (nargin < 4 || isempty(fieldSizeDegrees))
-    fieldSizeDegres = [];
+    fieldSizeDegrees = [];
 end
 
 % Fill in specific density according to specified source
@@ -135,6 +137,19 @@ for i = 1:length(densities)
                                 fieldSizeDegrees = 10;
                             end
 							densities(i) = 0.30+0.45*exp(-fieldSizeDegrees/1.333);
+						otherwise,
+							error(sprintf('Unsupported receptor type %s for %s estimates in %s',type,source,species));
+					end
+				otherwise,
+					error(sprintf('%s estimates not available for species %s',source,species));
+            end	
+            
+        case {'Tsujimura'}
+			switch (species)
+				case {'Human'},
+					switch (type)
+						case {'Melanopsin'}
+							densities(i) = 0.50;
 						otherwise,
 							error(sprintf('Unsupported receptor type %s for %s estimates in %s',type,source,species));
 					end

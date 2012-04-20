@@ -6,6 +6,9 @@ function photoreceptors = DefaultPhotoreceptors(kind)
 %
 % Available kinds
 %   LivingHumanFovea (Default) - Human foveal cones in the eye
+%   LivingHumanMelanopsin - Estimate of melanopsin gc spectral sensitivity in living eye
+%   LivingDog - Canine
+%   GuineaPig - Guinea pig in dish
 %
 % See also:  FillInPhotoreceptors, RetIrradianceToIsoRecSec
 %  IsomerizationsInEyeDemo, IsomerizationsInDishDemo 
@@ -14,6 +17,7 @@ function photoreceptors = DefaultPhotoreceptors(kind)
 % 12/04/07 dhb  Added dog parameters
 % 8/14/11  dhb  Added fieldSizeDegrees and ageInYears fields to photoreceptors for LivingHumanFovea case.
 %               These defaults match the CIE standard.
+% 4/20/12  dhb  Add LivingHumanMelanopsin
 
 % Default
 if (nargin < 1 || isempty(kind))
@@ -38,6 +42,24 @@ switch (kind)
 		photoreceptors.quantalEfficiency.source = 'Generic';
         photoreceptors.fieldSizeDegrees = 2;
         photoreceptors.ageInYears = 32;
+    
+    % This creates Tsujiumura's estimate of the melanopsin gc
+    % spectral sensitivity in the human eye. The quantal efficiency
+    % is just made up, though, so that the code runs.
+    case 'LivingHumanMelanopsin'
+        photoreceptors.species = 'Human';
+		photoreceptors.lensDensity.source = 'CIE';
+		photoreceptors.macularPigmentDensity.source = 'CIE';
+        photoreceptors.axialDensity.source = 'Tsujimura';
+        photoreceptors.axialDensity.value = 0.5;
+		photoreceptors.nomogram.source = 'Govardovskii';
+		photoreceptors.nomogram.S = [380 1 401];
+		photoreceptors.nomogram.lambdaMax = [482]';
+		photoreceptors.types = {'Melanopsin'};
+        photoreceptors.quantalEfficiency.source = 'None';
+        photoreceptors.quantalEfficiency.value = 1;
+        photoreceptors.fieldSizeDegrees = 10;
+
     case 'LivingDog'
 		photoreceptors.species = 'Dog';
 		photoreceptors.OSlength.source = 'PennDog';
@@ -52,6 +74,7 @@ switch (kind)
 		photoreceptors.nomogram.lambdaMax = [555 429 506]';
 		photoreceptors.types = {'LCone' 'SCone' 'Rod'};
 		photoreceptors.quantalEfficiency.source = 'Generic';
+        
 	case 'GuineaPig'
 		photoreceptors.species = 'GuineaPig';
 		photoreceptors.OSlength.source = 'SterlingLab';
