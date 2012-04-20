@@ -59,6 +59,7 @@ switch (kind)
         photoreceptors.quantalEfficiency.source = 'None';
         photoreceptors.quantalEfficiency.value = 1;
         photoreceptors.fieldSizeDegrees = 10;
+        photoreceptors.ageInYears = 32;
 
     case 'LivingDog'
 		photoreceptors.species = 'Dog';
