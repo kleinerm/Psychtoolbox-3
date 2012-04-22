@@ -188,7 +188,7 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double 
 	#endif
 	} else {
 	#ifdef PSYCHQTAVAIL
-	PsychQTCreateMovie(win, moviename, preloadSecs, moviehandle);
+	PsychQTCreateMovie(win, moviename, preloadSecs, moviehandle, specialFlags1);
 	return;
 	#endif
 	}

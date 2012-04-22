@@ -33,7 +33,7 @@
 
 void PsychQTMovieInit(void);
 int  PsychQTGetMovieCount(void);
-void PsychQTCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle);
+void PsychQTCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int specialFlags1);
 void PsychQTGetMovieInfos(int moviehandle, int* width, int* height, int* framecount, double* durationsecs, double* framerate, int* nrdroppedframes);
 void PsychQTDeleteMovie(int moviehandle);
 void PsychQTDeleteAllMovies(void);

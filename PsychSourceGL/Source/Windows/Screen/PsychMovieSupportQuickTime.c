@@ -65,7 +65,8 @@ typedef struct {
     int height;
     double last_pts;
     int nr_droppedframes;
-	 GLuint cached_texture;
+    GLuint cached_texture;
+    int specialFlags1;
 } PsychMovieRecordType;
 
 static PsychMovieRecordType movieRecordBANK[PSYCH_MAX_MOVIES];
@@ -153,7 +154,7 @@ int PsychQTGetMovieCount(void) {
  *      preloadSecs = How many seconds of the movie should be preloaded/prefetched into RAM at movie open time?
  *      moviehandle = handle to the new movie.
  */
-void PsychQTCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle)
+void PsychQTCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int specialFlags1)
 {
     Movie theMovie = NULL;
     QTVisualContextRef QTMovieContext = NULL;
@@ -228,6 +229,9 @@ void PsychQTCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     movieRecordBANK[slotid].QTAudioContext=NULL;
     movieRecordBANK[slotid].QTMovieGWorld=NULL;
     movieRecordBANK[slotid].cached_texture = 0;
+
+    // Assign flags:
+    movieRecordBANK[slotid].specialFlags1 = specialFlags1;
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 
@@ -989,7 +993,11 @@ int PsychQTPlaybackRate(int moviehandle, double playbackrate, int loop, double s
     if (theMovie == NULL) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. No movie associated with this handle !!!");
     }
-    
+
+    // Fake the "no-audio decoding" request by muting the sound output,
+    // the best we can do on this retarded QT implementation:
+    if (movieRecordBANK[moviehandle].specialFlags1 & 0x2) soundvolume = 0;
+
     if (playbackrate != 0) {
         // Start playback of movie:
         // Not needed and harmful on Windows : SetMovieAudioMute(theMovie, (soundvolume==0) ? TRUE : FALSE, 0);

@@ -64,6 +64,7 @@ typedef struct {
     int height;
     double last_pts;
     int nr_droppedframes;
+    int specialFlags1;
 } PsychMovieRecordType;
 
 static PsychMovieRecordType movieRecordBANK[PSYCH_MAX_MOVIES];
@@ -150,7 +151,7 @@ int PsychQTGetMovieCount(void) {
  *      preloadSecs = How many seconds of the movie should be preloaded/prefetched into RAM at movie open time?
  *      moviehandle = handle to the new movie.
  */
-void PsychQTCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle)
+void PsychQTCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int specialFlags1)
 {
     Movie theMovie = NULL;
     QTVisualContextRef QTMovieContext = NULL;
@@ -229,6 +230,9 @@ void PsychQTCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     movieRecordBANK[slotid].QTMovieContext=NULL;    
     movieRecordBANK[slotid].QTAudioContext=NULL;
     movieRecordBANK[slotid].QTMovieGWorld=NULL;
+
+    // Assign flags:
+    movieRecordBANK[slotid].specialFlags1 = specialFlags1;
     
     if (!PSYCH_USE_QT_GWORLDS) {
         // Create QTGLTextureContext:
@@ -268,7 +272,13 @@ void PsychQTCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         newMovieProperties[propcount++].propValueAddress = &QTMovieContext;
     }
     
-    if (TRUE) {
+	// Also create and attach an audio decoding and playback context, unless forbidden
+	// by specialFlags1 setting 0x2:
+	// MK: Ok, this does not work, as the brain-damaged Apple QT implementation simply assigns
+	// a default audio context if we skip this setup step :-( - It also isn't possible to
+	// remove the context later via SetMovieAudioContext(NULL), and the wisdom of Apple's
+	// Quicktime forum tells us it is really a no-go. Retarded tech from a retarded company...
+    if (!(specialFlags1 & 0x2)) {
         // Create QTAudioContext for default CoreAudio device:
         coreAudioDeviceUID = NULL; // Use default audio-output device.
         error =QTAudioContextCreateForAudioDevice (kCFAllocatorDefault,
@@ -296,7 +306,7 @@ void PsychQTCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     error = NewMovieFromProperties(propcount, newMovieProperties, 0, NULL, &theMovie);
     if (error!=noErr) {
         QTVisualContextRelease(QTMovieContext);
-        QTAudioContextRelease(QTAudioContext);
+        if (QTAudioContext) QTAudioContextRelease(QTAudioContext);
         switch(error) {
             case -2000:
             case -50:
@@ -334,7 +344,7 @@ void PsychQTCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 			// error = QTNewGWorld(&movieRecordBANK[slotid].QTMovieGWorld, k32ABGRPixelFormat, &movierect,  NULL, NULL, 0);
 			error = QTNewGWorld(&movieRecordBANK[slotid].QTMovieGWorld, 0, &movierect,  NULL, NULL, 0);
 			if (error!=noErr) {
-				QTAudioContextRelease(QTAudioContext);
+				if (QTAudioContext) QTAudioContextRelease(QTAudioContext);
 				DisposeMovie(movieRecordBANK[slotid].theMovie);
 				movieRecordBANK[slotid].theMovie=NULL;    
 				if (printErrors) PsychErrorExitMsg(PsychError_internal, "Quicktime GWorld creation failed!!!"); else return;
@@ -463,7 +473,7 @@ void PsychQTDeleteMovie(int moviehandle)
     movieRecordBANK[moviehandle].QTMovieContext = NULL;
 
     // Delete audio context for this movie:
-    QTAudioContextRelease(movieRecordBANK[moviehandle].QTAudioContext);
+    if (movieRecordBANK[moviehandle].QTAudioContext) QTAudioContextRelease(movieRecordBANK[moviehandle].QTAudioContext);
     movieRecordBANK[moviehandle].QTAudioContext = NULL;
     
     // Decrease counter:
@@ -901,6 +911,10 @@ int PsychQTPlaybackRate(int moviehandle, double playbackrate, int loop, double s
     if (theMovie == NULL) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. No movie associated with this handle !!!");
     }
+
+    // Fake the "no-audio decoding" request by muting the sound output,
+    // the best we can do on this retarded QT implementation:
+    if (movieRecordBANK[moviehandle].specialFlags1 & 0x2) soundvolume = 0;
     
     if (playbackrate != 0) {
         // Start playback of movie:
