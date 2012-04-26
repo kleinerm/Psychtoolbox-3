@@ -20,6 +20,7 @@ function theStructs = ReadStructsFromText(filename)
 % 07/03/03  dhb         More little tweaks.
 % 08/06/03  dhb         Handle fgetl returns empty string.
 % 08/22/07  dhb         This was modified on disk but not commented our uploaded to SVN repository.
+% 4/26/12   dhb         Squeeze '/' out of field names too.
 
 % Open the file
 fid = fopen(filename);
@@ -66,7 +67,7 @@ for i = 1:nFields
 	newField = [];
 	oldField = theFields{i};
 	for j = 1:length(oldField)
-		if (~isspace(oldField(j)) && oldField(j) ~= '.')
+		if (~isspace(oldField(j)) && oldField(j) ~= '.' && oldField(j) ~= '/')
 			newField = [newField oldField(j)];
 		end
 	end
