@@ -50,6 +50,10 @@ switch (kind)
     % This creates Tsujiumura's estimate of the melanopsin gc
     % spectral sensitivity in the human eye. The quantal efficiency
     % is just made up, though, so that the code runs.
+    %
+    % Tsujimura has used different lambda-max in different papers.
+    % The 482 value given here is from the 2010 paper.  His email
+    % suggests he may have used 489 and 502 at different times.
     case 'LivingHumanMelanopsin'
         photoreceptors.species = 'Human';
 		photoreceptors.lensDensity.source = 'CIE';

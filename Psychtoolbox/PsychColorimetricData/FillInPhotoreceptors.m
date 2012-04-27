@@ -22,6 +22,7 @@ function photoreceptors = FillInPhotoreceptors(photoreceptors)
 % 7/25/03  dhb  Wrote it.
 % 8/14/11  dhb  Allow pass through of field size, pupil diameter, and age.
 %               Try not to break old code in how this is handled.
+% 4/26/12  dhb  Return density as well as transmittance for lens and macular pigment.
 
 % Define common wavelength sampling for this function.
 S = photoreceptors.nomogram.S;
@@ -105,7 +106,7 @@ end
 % Lens density.  Put in unity if there is none.
 if (isfield(photoreceptors,'lensDensity'))
 	if (isfield(photoreceptors.lensDensity,'source'))
-		photoreceptors.lensDensity.transmittance = ...
+		[photoreceptors.lensDensity.transmittance,photoreceptors.lensDensity.density] = ...
 			LensTransmittance(S,photoreceptors.species,photoreceptors.lensDensity.source,...
             photoreceptors.ageInYears,photoreceptors.pupilDiameter.value);
 	else
@@ -120,7 +121,7 @@ end
 % Macular pigment density.  Put in unity if there is none.
 if (isfield(photoreceptors,'macularPigmentDensity'))
 	if (isfield(photoreceptors.macularPigmentDensity,'source'))
-		photoreceptors.macularPigmentDensity.transmittance = ...
+		[photoreceptors.macularPigmentDensity.transmittance,photoreceptors.macularPigmentDensity.density] = ...
 			MacularTransmittance(S,photoreceptors.species,photoreceptors.macularPigmentDensity.source,photoreceptors.fieldSizeDegrees);
 	else
 		if (~isfield(photoreceptors.macularPigmentDensity.transmittance))
