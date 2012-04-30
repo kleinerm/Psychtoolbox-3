@@ -1,6 +1,6 @@
 function [versionString, versionStructure]=PsychtoolboxVersion
 % OS X, Windows, Linux: ___________________________________________________
-% 
+%
 % [versionString, versionStructure]=PsychtoolboxVersion
 %
 % Return a string identifying this release of the Psychtoolbox.
@@ -49,7 +49,7 @@ function [versionString, versionStructure]=PsychtoolboxVersion
 % which returns version for themselves.  The version string for the
 % built-in version numbers contains a fourth numeric field named "build".
 % The build number is a unique serial number.  Mex files distinquished only
-% by build numbers were compiled from identical C source files. 
+% by build numbers were compiled from identical C source files.
 %
 % OS 9 : __________________________________________________________________
 %
@@ -57,136 +57,118 @@ function [versionString, versionStructure]=PsychtoolboxVersion
 %
 % Return a number identifying this release of the Psychtoolbox.   Digits to
 % the left of the decimal point are the major version number.  Digits to
-% the right of the decimal point are the minor version number.  
+% the right of the decimal point are the minor version number.
 % _________________________________________________________________________
 %
 % see also: Screen('Version')
 
-%   2/9/01      awi     added fullfile command for platform-independent pathname   
+%   2/9/01      awi     added fullfile command for platform-independent pathname
 %   6/29/02     dgp     Use new PsychtoolboxRoot function to cope with user-changed folder names.
 %   7/12/04     awi     ****** OS X-specific fork from the OS 9 version *******
-%                       Noted mex file versioning. 
+%                       Noted mex file versioning.
 %   7/26/04     awi     Partitioned help and added OS X section.  Enhanced
 %                       OS9+Windows section.
 %   10/4/05	   awi      Note here that dgp changed "IsWindows" to "IsWin" at unknown date prior
-%						between 7/26/04 and 10/4/05.    
+%						between 7/26/04 and 10/4/05.
 %
 %   5/5/06     mk       Tries to query info from Subversion and displays info about last date
 %                       of change, SVN revision and flavor. This code is pretty experimental and
 %                       probably also somewhat fragile. And its sloooow.
 %   9/17/06    mk       Improvements to parser: We try harder to get the flavor info.
 %   10/31/11   mk       Update for our new hoster GoogleCode.
+%   04/30/12   mk       Kill MacOS-9 support.
 
 global Psychtoolbox
 
-if IsOS9
-	if ~isfield(Psychtoolbox,'version')
-		% Get version and date of Psychtoolbox from Psychtoolbox:Contents.m
-		Psychtoolbox.version=0;
-		file=fullfile(PsychtoolboxRoot,'Contents.m');
-		f=fopen(file,'r');
-		fgetl(f);
-		s=fgetl(f);
-		fclose(f);
-		[Psychtoolbox.version,count,errmsg,n]=sscanf(s,'%% Version %f',1);
-		ss=s(n:end);
-		Psychtoolbox.date=ss(min(find(ss-' ')):end); %#ok<MXFND>
-	end
-	versionStructure=Psychtoolbox.version;
-    versionString='Version 2.56 or whatever -- who cares?';
-elseif IsOSX | IsLinux | IsWin %#ok<OR2>
-    if ~isfield(Psychtoolbox,'version')
-        Psychtoolbox.version.major=0;
-        Psychtoolbox.version.minor=0;
-        Psychtoolbox.version.point=0;
-        Psychtoolbox.version.string='';
-        Psychtoolbox.version.flavor='';
-        Psychtoolbox.version.revision=0;
-        Psychtoolbox.version.revstring='';
-        Psychtoolbox.version.websvn='';
-        
-        file=fullfile(PsychtoolboxRoot,'Contents.m');
-		f=fopen(file,'r');
-		fgetl(f);
-		s=fgetl(f);
-		fclose(f);
-        [cvv,count,errmsg,n]=sscanf(s,'%% Version %d.%d.%d',3);
-        Psychtoolbox.version.major=cvv(1);
-        Psychtoolbox.version.minor=cvv(2);
-        Psychtoolbox.version.point=cvv(3);
-
-        % Additional parser code for SVN information. This is slooow!
-        svncmdpath = GetSubversionPath;
-        
-        % Find revision string for Psychtoolbox that defines the SVN revision
-        % to which this working copy corresponds:
-        if ~IsWin
-           [status , result] = system([svncmdpath 'svnversion -c ' PsychtoolboxRoot]);
+if ~isfield(Psychtoolbox,'version')
+    Psychtoolbox.version.major=0;
+    Psychtoolbox.version.minor=0;
+    Psychtoolbox.version.point=0;
+    Psychtoolbox.version.string='';
+    Psychtoolbox.version.flavor='';
+    Psychtoolbox.version.revision=0;
+    Psychtoolbox.version.revstring='';
+    Psychtoolbox.version.websvn='';
+    
+    file=fullfile(PsychtoolboxRoot,'Contents.m');
+    f=fopen(file,'r');
+    fgetl(f);
+    s=fgetl(f);
+    fclose(f);
+    [cvv,count,errmsg,n]=sscanf(s,'%% Version %d.%d.%d',3);
+    Psychtoolbox.version.major=cvv(1);
+    Psychtoolbox.version.minor=cvv(2);
+    Psychtoolbox.version.point=cvv(3);
+    
+    % Additional parser code for SVN information. This is slooow!
+    svncmdpath = GetSubversionPath;
+    
+    % Find revision string for Psychtoolbox that defines the SVN revision
+    % to which this working copy corresponds:
+    if ~IsWin
+        [status , result] = system([svncmdpath 'svnversion -c ' PsychtoolboxRoot]);
+    else
+        [status , result] = dos([svncmdpath 'svnversion -c ' PsychtoolboxRoot]);
+    end
+    
+    if status==0
+        % Parse output of svnversion: Find revision number of the working copy.
+        colpos=findstr(result, ':');
+        if isempty(colpos)
+            Psychtoolbox.version.revision=sscanf(result, '%d',1);
         else
-           [status , result] = dos([svncmdpath 'svnversion -c ' PsychtoolboxRoot]);
+            cvv = sscanf(result, '%d:%d',2);
+            Psychtoolbox.version.revision=cvv(2);
+        end
+        if isempty(findstr(result, 'M'))
+            Psychtoolbox.version.revstring = sprintf('Corresponds to SVN Revision %d', Psychtoolbox.version.revision);
+        else
+            Psychtoolbox.version.revstring = sprintf('Corresponds to SVN Revision %d but is *locally modified* !', Psychtoolbox.version.revision);
         end
         
-        if status==0
-            % Parse output of svnversion: Find revision number of the working copy.
-            colpos=findstr(result, ':');
-            if isempty(colpos)
-                Psychtoolbox.version.revision=sscanf(result, '%d',1);
+        % Ok, now find the flavor and such... This is super expensive - needs network access...
+        %[status , result] = system([svncmdpath 'svn info --xml -r ' num2str(Psychtoolbox.version.revision) '  ' PsychtoolboxRoot]);
+        status=-1;
+        if status<0 | status>0 %#ok<OR2>
+            % Fallback path:
+            if ~IsWin
+                [status , result] = system([svncmdpath 'svn info --xml ' PsychtoolboxRoot]);
             else
-                cvv = sscanf(result, '%d:%d',2);
-                Psychtoolbox.version.revision=cvv(2);
+                [status , result] = dos([svncmdpath 'svn info --xml ' PsychtoolboxRoot]);
             end
-            if isempty(findstr(result, 'M'))
-                Psychtoolbox.version.revstring = sprintf('Corresponds to SVN Revision %d', Psychtoolbox.version.revision);
+        end
+        
+        marker = '/psychtoolbox-3.googlecode.com/svn/';
+        startdel = findstr(result, marker) + length(marker);
+        
+        if isempty(startdel)
+            if ~IsWin
+                [status , result] = system([svncmdpath 'svn info ' PsychtoolboxRoot]);
             else
-                Psychtoolbox.version.revstring = sprintf('Corresponds to SVN Revision %d but is *locally modified* !', Psychtoolbox.version.revision);
+                [status , result] = dos([svncmdpath 'svn info ' PsychtoolboxRoot]);
             end
-            
-            % Ok, now find the flavor and such... This is super expensive - needs network access...
-            %[status , result] = system([svncmdpath 'svn info --xml -r ' num2str(Psychtoolbox.version.revision) '  ' PsychtoolboxRoot]);
-            status=-1;
-            if status<0 | status>0 %#ok<OR2>
-                % Fallback path:
-                if ~IsWin
-                   [status , result] = system([svncmdpath 'svn info --xml ' PsychtoolboxRoot]);
-                else
-                   [status , result] = dos([svncmdpath 'svn info --xml ' PsychtoolboxRoot]);
-                end
-            end
-            
-            marker = '/psychtoolbox-3.googlecode.com/svn/';
             startdel = findstr(result, marker) + length(marker);
-            
-            if isempty(startdel)
-                if ~IsWin
-                   [status , result] = system([svncmdpath 'svn info ' PsychtoolboxRoot]);
-                else
-                   [status , result] = dos([svncmdpath 'svn info ' PsychtoolboxRoot]);
-                end
-                startdel = findstr(result, marker) + length(marker);
-            end
-            
-            findel = min(findstr(result(startdel:length(result)), '/Psychtoolbox')) + startdel - 2;
-            Psychtoolbox.version.flavor = result(startdel:findel);
-            
-            % And the date of last commit:
-            startdel = findstr(result, '<date>') + length('<date>');
-            findel = findstr(result, 'T') - 1;
-            Psychtoolbox.date = result(startdel:findel);            
-            % Build final SVN URL: This is the location where one can find detailled info about this working copy:
-            Psychtoolbox.version.websvn = sprintf('http://code.google.com/p/psychtoolbox-3/source/detail?r=%d', Psychtoolbox.version.revision);
-            % Build final version string:
-            Psychtoolbox.version.string = sprintf('%d.%d.%d - Flavor: %s - %s\nFor more info visit:\n%s', Psychtoolbox.version.major, Psychtoolbox.version.minor, Psychtoolbox.version.point, ...
-                                                  Psychtoolbox.version.flavor, Psychtoolbox.version.revstring, Psychtoolbox.version.websvn);
-        else        
-            % Fallback path if svn commands fail for some reason. Output as much as we can.
-            fprintf('PsychtoolboxVersion: WARNING - Could not query additional version information from SVN -- svn tools not properly installed?!?\n');
-            Psychtoolbox.version.string=sprintf('%d.%d.%d', Psychtoolbox.version.major, Psychtoolbox.version.minor, Psychtoolbox.version.point);
-            ss=s(n:end);
-            Psychtoolbox.date=ss(min(find(ss-' ')):end); %#ok<MXFND>
-        end    
+        end
+        
+        findel = min(findstr(result(startdel:length(result)), '/Psychtoolbox')) + startdel - 2;
+        Psychtoolbox.version.flavor = result(startdel:findel);
+        
+        % And the date of last commit:
+        startdel = findstr(result, '<date>') + length('<date>');
+        findel = findstr(result, 'T') - 1;
+        Psychtoolbox.date = result(startdel:findel);
+        % Build final SVN URL: This is the location where one can find detailled info about this working copy:
+        Psychtoolbox.version.websvn = sprintf('http://code.google.com/p/psychtoolbox-3/source/detail?r=%d', Psychtoolbox.version.revision);
+        % Build final version string:
+        Psychtoolbox.version.string = sprintf('%d.%d.%d - Flavor: %s - %s\nFor more info visit:\n%s', Psychtoolbox.version.major, Psychtoolbox.version.minor, Psychtoolbox.version.point, ...
+            Psychtoolbox.version.flavor, Psychtoolbox.version.revstring, Psychtoolbox.version.websvn);
+    else
+        % Fallback path if svn commands fail for some reason. Output as much as we can.
+        fprintf('PsychtoolboxVersion: WARNING - Could not query additional version information from SVN -- svn tools not properly installed?!?\n');
+        Psychtoolbox.version.string=sprintf('%d.%d.%d', Psychtoolbox.version.major, Psychtoolbox.version.minor, Psychtoolbox.version.point);
+        ss=s(n:end);
+        Psychtoolbox.date=ss(min(find(ss-' ')):end); %#ok<MXFND>
     end
-    versionString=Psychtoolbox.version.string;
-    versionStructure=Psychtoolbox.version;
-else
-    error('Unrecognized Psychtoolbox platform');
 end
+versionString=Psychtoolbox.version.string;
+versionStructure=Psychtoolbox.version;
