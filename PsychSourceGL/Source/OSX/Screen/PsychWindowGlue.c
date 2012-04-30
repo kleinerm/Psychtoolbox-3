@@ -54,6 +54,7 @@
 
 // Includes for low-level access to IOKit Framebuffer device:
 #include <CoreFoundation/CoreFoundation.h>
+#include <CoreVideo/CoreVideo.h>
 #include <ApplicationServices/ApplicationServices.h>
 #include <IOKit/graphics/IOGraphicsLib.h>
 #include <IOKit/graphics/IOFramebufferShared.h>
@@ -602,7 +603,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		// Fullscreen mode?
 		if (AGLForFullscreen) {
 			// Need to map to target display device:
-			err = DMGetGDeviceByDisplayID((DisplayIDType) cgDisplayID, &gdhDisplay, FALSE);
+			err = DMGetGDeviceByDisplayID(cgDisplayID, &gdhDisplay, FALSE);
 			if (noErr != err) {
 				printf("\nPTB-ERROR[DMGetGDeviceByDisplayID failed: %s]: Can't map screenId to valid AGL display device id.\n\n", aglErrorString(aglGetError()));
 				return(FALSE);
