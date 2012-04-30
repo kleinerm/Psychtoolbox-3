@@ -42,7 +42,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 10/31/2011 Add call to SwitchToNewPsychtoolboxHoster for switch to
 %            GoogleCode, if needed. (MK)
 % 01/06/2012 Add support for calling PsychLinuxConfiguration on Linux. (MK)
-%
+% 04/30/2012 Add support for 64-Bit OSX. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -139,7 +139,7 @@ end
 % Check for operating system minor version on Mac OS/X when running under
 % Matlab:
 if IsOSX
-    if ~IsOctave %#ok<AND2>
+    if ~IsOctave & ~IsOSX(1) %#ok<AND2>
         % Running on Matlab + OS/X. Find the operating system minor version,
         % i.e., the 'y' in the x.y.z number, e.g., y=3 for 10.3.7:
 
@@ -243,6 +243,10 @@ if IsOctave
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles']);
         end
         
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles64']);
+        end
+        
         if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3WindowsFiles'], 'dir')
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3WindowsFiles']);
         end
@@ -266,6 +270,11 @@ if IsOctave
         
         if IsOSX
             rdir = [rdir 'OSXFiles'];
+        end
+        
+        if IsOSX(1)
+	    % 64 bit Octave on 64 bit OSX. Select 64 bit mex file folder:
+            rdir = [rdir '64'];
         end
         
         if IsWin
