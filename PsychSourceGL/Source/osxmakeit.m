@@ -90,4 +90,10 @@ if mode==9
     cd(curdir);
 end;
 
+if mode==10
+    % Build FontInfo:
+    mex -v -outdir ../Projects/MacOSX/build -output FontInfo -largeArrayDims -DPTBMODULE_FontInfo LDFLAGS="\$LDFLAGS -framework CoreServices -framework CoreFoundation -framework ApplicationServices -framework CoreAudio -framework OpenGL -framework CoreVideo -framework IOKit -framework AGL -framework SystemConfiguration -framework Carbon" CFLAGS="" CXXFLAGS="" -I/usr/include -ICommon/Base -ICommon/Fonts -IOSX/Base -IOSX/Screen -ICommon/Screen -IOSX/Fonts "Common/Base/*.cc" "OSX/Base/*.c" "OSX/Fonts/*FontGlue*.c" "OSX/Fonts/FontInfo.c" "Common/Base/*.c"
+    unix(['mv ../Projects/MacOSX/build/FontInfo.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+end;
+
 return;

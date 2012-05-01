@@ -24,7 +24,7 @@
 #ifndef PSYCH_IS_INCLUDED_ScreenFontGlue
 #define PSYCH_IS_INCLUDED_ScreenFontGlue
 
-#include "Psych.h"
+#include "Screen.h"
 
 void PsychSetATSUStyleAttributesFromPsychWindowRecord(ATSUStyle atsuStyle,  PsychWindowRecordType *winRec);
 

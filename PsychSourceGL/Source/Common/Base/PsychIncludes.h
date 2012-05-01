@@ -40,7 +40,7 @@
 // Platform independent include for glew: This is a catch-all
 // for all OpenGL definitions and functions, currently up to
 // OpenGL 2.1:
-#ifdef PTBMODULE_Screen
+#if defined(PTBMODULE_Screen) || defined(PTBMODULE_FontInfo)
 #include "../Screen/glew.h"
 #endif
 
@@ -124,7 +124,7 @@
     // Used to work on Tiger/32-Bit, but does not work now: #include <CoreServices/Frameworks/CarbonCore.framework/Headers/MacTypes.h>
     #endif
 
-    #ifdef PTBMODULE_Screen
+    #if defined(PTBMODULE_Screen) || defined(PTBMODULE_FontInfo)
     #include <OpenGL/OpenGL.h>
     #endif
 #endif 
