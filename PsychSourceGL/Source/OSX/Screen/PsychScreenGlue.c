@@ -87,6 +87,34 @@ void PsychDisplayReconfigurationCallBack (CGDirectDisplayID display, CGDisplayCh
 void PsychOSKDGetGPUInfo(io_connect_t connect);
 unsigned int PsychOSKDGetRevision(io_connect_t connect);
 
+// Surrogate routines for routines missing in 64-Bit OSX:
+#ifdef __LP64__
+
+kern_return_t
+IOConnectMethodStructureIStructureO(
+                                    io_connect_t	connect,
+                                    uint32_t	index,
+                                    IOItemCount	structureInputSize,
+                                    IOByteCount *	structureOutputSize,
+                                    void *		inputStructure,
+                                    void *		ouputStructure )
+{
+    return KERN_NOT_SUPPORTED;
+}
+
+kern_return_t
+IOConnectMethodScalarIScalarO( 
+                              io_connect_t	connect,
+                              uint32_t	index,
+                              IOItemCount	scalarInputCount,
+                              IOItemCount	scalarOutputCount,
+                              ... )
+{
+    return KERN_NOT_SUPPORTED;
+}
+
+#endif
+
 //Initialization functions
 void InitializePsychDisplayGlue(void)
 {
