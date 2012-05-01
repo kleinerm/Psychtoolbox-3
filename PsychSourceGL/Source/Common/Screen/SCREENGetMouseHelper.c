@@ -282,14 +282,25 @@ PsychError SCREENGetMouseHelper(void)
 			buttonArray[i]=(double)(buttonState & (1<<i));
 	}
 			
-	//cursor position
+	// Get cursor position:
+#ifndef __LP64__
+    // 32-Bit Carbon version:
 	GetGlobalMouse(&mouseXY);
 	PsychCopyOutDoubleArg(1, kPsychArgOptional, (double)mouseXY.h);
 	PsychCopyOutDoubleArg(2, kPsychArgOptional, (double)mouseXY.v);
-
+#else
+    // 64-Bit HIToolbox version (OSX 10.5 and later):
+    HIPoint outPoint;
+    HIGetMousePosition(kHICoordSpaceScreenPixel, NULL, &outPoint);
+	PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) outPoint.x);
+	PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) outPoint.y);
+#endif
 	// Return optional keyboard input focus status:
 	if (numButtons > 0) {
 		// Window provided?
+#ifndef __LP64__
+        // We only have the function GetUserFocusWindow on 32-Bit Carbon.
+        // TODO 64BIT: Replace with 64-bit implementation.
 		if (PsychIsWindowIndexArg(2)) {
 			// Yes: Check if it has focus.
 			PsychAllocInWindowRecordArg(2, TRUE, &windowRecord);
@@ -298,7 +309,9 @@ PsychError SCREENGetMouseHelper(void)
 			}
 
 			PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) (GetUserFocusWindow() == windowRecord->targetSpecific.windowHandle) ? 1 : 0);
-		} else {
+		} else
+#endif
+        {
 			// No. Just always return "has focus":
 			PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) 1);
 		}
