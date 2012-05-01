@@ -8,6 +8,7 @@
 	AUTHORS:
 
 		Allen Ingling		awi		Allen.Ingling@nyu.edu
+        Mario Kleiner       mk      mario.kleiner@tuebingen.mpg.de
 
 	HISTORY:
 		
@@ -61,12 +62,9 @@ void PsychInitTextRecordSettings(PsychTextAttributes *settings)
         strcpy((char*) settings->textFontName, tryFontName);
         settings->textFontNumber=initFontRecord->fontNumber;
     }
-#ifndef __LP64__
-    // TODO FIXME 64BIT: Don't work around this...
     else {
 		PsychErrorExitMsg(PsychError_internal,"Failed to initialze the window record because the default font for DrawText, Geneva, was not found.");
     }
-#endif
 	
 	PsychLoadColorStruct(&(settings->textColor), kPsychIndexColor,  0.0);  //index type which may be coerced into anything.
 	PsychLoadColorStruct(&(settings->textBackgroundColor), kPsychRGBAColor, 0.0, 0.0, 0.0, 0.0); // Assign black with zero alpha -- transparent.
@@ -110,8 +108,3 @@ psych_bool PsychGetTextDrawingModeConstantFromTextDrawingModeName(PsychTextDrawi
     } //for
     return(TRUE);
 }
-
-
-
-                               
-
