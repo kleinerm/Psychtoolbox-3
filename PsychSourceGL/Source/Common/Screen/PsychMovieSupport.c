@@ -122,7 +122,6 @@ int PsychGetMovieCount(void)
 	#endif
 	}
 
-	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
 	return(0);
 }
 
@@ -312,8 +311,6 @@ void PsychFreeMovieTexture(PsychWindowRecordType *win)
 	return;
 	#endif
 	}
-
-	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
 }
 
 /*
