@@ -185,7 +185,10 @@ void PsychInitFontList(void)
             //Get  FM and ATS font and font family references from the ATS font reference, which we get from iteration.
             fontRecord->fontATSRef=tempATSFontRef; 
             fontRecord->fontFMRef=FMGetFontFromATSFontRef(fontRecord->fontATSRef);
+#ifndef __LP64__
+            // MK TODO 64BIT: Replace deprecated function:
             fmStatus=FMGetFontFamilyInstanceFromFont(fontRecord->fontFMRef, &(fontRecord->fontFamilyFMRef), &fmStyle);
+#endif
             fontRecord->fontFamilyATSRef=FMGetATSFontFamilyRefFromFontFamily(fontRecord->fontFamilyFMRef);
             //get the font name and set the the corresponding field of the struct
             if (ATSFontGetName(fontRecord->fontATSRef, kATSOptionFlagsDefault, &cfFontName)!=noErr) {
@@ -221,17 +224,21 @@ void PsychInitFontList(void)
 
             //get the QuickDraw name of the font
             ATSFontFamilyGetQuickDrawName(fontRecord->fontFamilyATSRef, fontFamilyQuickDrawNamePString);
+#ifndef __LP64__
             CopyPascalStringToC(fontFamilyQuickDrawNamePString, (char*) fontRecord->fontFamilyQuickDrawName);
 
             //get the font file used for this font
             osStatus= ATSFontGetFileSpecification(fontRecord->fontATSRef, &fontFileSpec);
+#endif
             if(osStatus != noErr) {
 				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to get the font file specifier for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
 				trouble = TRUE;
 				continue;
 			}
 
+#ifndef __LP64__            
             FSpMakeFSRef(&fontFileSpec, &fontFileRef);
+#endif
             osStatus= FSRefMakePath(&fontFileRef, (UInt8*) fontRecord->fontFile, (UInt32)(kPsychMaxFontFileNameChars - 1));
             if(osStatus!=noErr){
 				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to get the font file path for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
@@ -275,8 +282,10 @@ void PsychInitFontList(void)
             fontRecord->verticalMetrics.underlineThickness=		verticalMetrics.underlineThickness;
             fontRecord->verticalMetrics.underlineThickness=		verticalMetrics.underlineThickness;
             //use Font Manager to get the FM  font family name font style
+#ifndef __LP64__
             fmStatus=FMGetFontFamilyName(fontRecord->fontFamilyFMRef, fmFontFamilyNamePString);
             CopyPascalStringToC(fmFontFamilyNamePString, (char*) fontRecord->fontFMFamilyName);
+#endif
             fontRecord->fontFMStyle=fmStyle;
             fontRecord->fontFMNumStyles=PsychFindNumFMFontStylesFromStyle(fmStyle);
             fontRecord->fontFMNumStyles= fontRecord->fontFMNumStyles ? fontRecord->fontFMNumStyles : 1; //because the name is "normal" even if there are no styles.  

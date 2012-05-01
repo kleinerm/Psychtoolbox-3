@@ -51,10 +51,16 @@ void PsychInitTextRecordSettings(PsychTextAttributes *settings)
 	settings->textStyle= PsychPrefStateGet_DefaultTextStyle();	// 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend	
 	/* to initialize the font record to coherent settings, we choose a default font and lookup the matching number */
 	foundFont=PsychGetFontRecordFromFontFamilyNameAndFontStyle((char*) tryFontName, settings->textStyle, &initFontRecord);
+#ifndef __LP64__
+    // TODO FIXME 64BIT: Don't work around this...
 	if(!foundFont)
 		PsychErrorExitMsg(PsychError_internal,"Failed to initialze the window record because the default font for DrawText, Geneva, was not found.");
 	strcpy((char*) settings->textFontName, tryFontName);
 	settings->textFontNumber=initFontRecord->fontNumber;
+#else
+	strcpy((char*) settings->textFontName, "Geneva");
+	settings->textFontNumber = 0;
+#endif
     //settings->textFontName[0]='\0';		//should be read from preferences but for now we just make it up.
     //settings->textFontNumber=kPsychNoFont;	//should be read from preferences but for now we just use a constant meaning no setting.
 	
