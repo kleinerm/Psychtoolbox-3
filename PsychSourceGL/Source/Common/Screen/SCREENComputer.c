@@ -132,7 +132,7 @@ PsychError SCREENComputer(void)
     size_t						tempIntSize,  tempStrSize, tempULongIntSize; 	
 	int							mib[2];
 	int							tempInt;
-	unsigned long int			tempULongInt;
+	psych_uint64                tempULongInt;
 	char						*tempStrPtr;
 	CFStringRef					tempCFStringRef;
 	psych_bool						stringSuccess;
