@@ -83,7 +83,10 @@ PsychError SCREENShowCursorHelper(void)
 		// Yes.
 #if PSYCH_SYSTEM == PSYCH_OSX
 		// OS/X:
+#ifndef __LP64__
+        // TODO 64BIT: Replace...
 		SetThemeCursor((ThemeCursor) cursorid);
+#endif
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
