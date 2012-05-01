@@ -60,6 +60,68 @@
 #include <IOKit/graphics/IOFramebufferShared.h>
 #include <libkern/OSAtomic.h>
 
+// Surrogate routines for missing implementations on MacOS/X 64-Bit:
+#ifdef __LP64__
+OSStatus
+GetWindowBounds(
+                WindowRef          window,
+                WindowRegionCode   regionCode,
+                Rect *             globalBounds)
+{
+    // Return failure:
+    return 0x1;
+}
+
+void DisposeWindow(WindowRef window) { return; }
+
+OSStatus CreateNewWindow(
+                WindowClass        windowClass,
+                WindowAttributes   attributes,
+                const Rect *       contentBounds,
+                WindowRef *        outWindow)
+{
+    // Return failure:
+    return 0x1;
+}
+
+void MacShowWindow(WindowRef window);
+void SendBehind(WindowRef   window,
+                WindowRef   behindWindow);
+
+WindowGroupRef GetWindowGroup(WindowRef inWindow)
+{
+    return 0;
+}
+
+OSStatus SetWindowGroupLevel(
+                    WindowGroupRef   inGroup,
+                    SInt32           inLevel)
+{
+    // Return failure:
+    return 0x1;
+}
+
+OSErr DMGetGDeviceByDisplayID(
+                        int   displayID,
+                        GDHandle *      displayDevice,
+                        Boolean         failToMain)
+{
+    // Return failure:
+    return 0x1;
+}
+
+OSStatus SetWindowAlpha(
+               WindowRef   inWindow,
+               CGFloat     inAlpha)
+{
+    // Return failure:
+    return 0x1;
+}
+
+CGrafPtr GetWindowPort(WindowRef window) { return 0; }
+
+#endif
+
 static struct {
     io_connect_t        connect;
     StdFBShmem_t *      shmem;
