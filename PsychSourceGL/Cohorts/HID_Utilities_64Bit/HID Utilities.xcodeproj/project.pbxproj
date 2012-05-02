@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 45;
+	objectVersion = 46;
 	objects = {
 
 /* Begin PBXAggregateTarget section */
@@ -22,6 +22,18 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		83571B061551F7FD00EE961F /* HID_Utilities_External.h in Headers */ = {isa = PBXBuildFile; fileRef = 97876DB31033682400AD1095 /* HID_Utilities_External.h */; };
+		83571B081551F7FD00EE961F /* HID_Utilities.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DB61033682400AD1095 /* HID_Utilities.c */; };
+		83571B091551F7FD00EE961F /* IOHIDDevice_.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DC41033682B00AD1095 /* IOHIDDevice_.c */; };
+		83571B0A1551F7FD00EE961F /* HID_Queue_Utilities.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DB41033682400AD1095 /* HID_Queue_Utilities.c */; };
+		83571B0B1551F7FD00EE961F /* HID_Error_Handler.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DB71033682400AD1095 /* HID_Error_Handler.c */; };
+		83571B0C1551F7FD00EE961F /* HID_Name_Lookup.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DB51033682400AD1095 /* HID_Name_Lookup.c */; };
+		83571B0D1551F7FD00EE961F /* IOHIDElement_.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DC61033682B00AD1095 /* IOHIDElement_.c */; };
+		83571B0E1551F7FD00EE961F /* HID_Config_Utilities.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DB91033682400AD1095 /* HID_Config_Utilities.c */; };
+		83571B0F1551F7FD00EE961F /* ImmrHIDUtilAddOn.c in Sources */ = {isa = PBXBuildFile; fileRef = 97876DC21033682B00AD1095 /* ImmrHIDUtilAddOn.c */; };
+		83571B111551F7FD00EE961F /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 97876F57103368D600AD1095 /* CoreFoundation.framework */; };
+		83571B121551F7FD00EE961F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 97876F661033698600AD1095 /* CoreServices.framework */; };
+		83571B131551F7FD00EE961F /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 97876F51103368B900AD1095 /* IOKit.framework */; };
 		8D07F2C00486CC7A007CD1D0 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C1666FE841158C02AAC07 /* InfoPlist.strings */; };
 		974497E61034A4D9003588F5 /* HID_Utilities_External.h in Headers */ = {isa = PBXBuildFile; fileRef = 97876DB31033682400AD1095 /* HID_Utilities_External.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		974497E71034A4D9003588F5 /* ImmrHIDUtilAddOn.h in Headers */ = {isa = PBXBuildFile; fileRef = 97876DC31033682B00AD1095 /* ImmrHIDUtilAddOn.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -76,6 +88,7 @@
 /* Begin PBXFileReference section */
 		089C1667FE841158C02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		32BAE0B70371A74B00C91783 /* HID Utilities_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "HID Utilities_Prefix.pch"; sourceTree = "<group>"; };
+		83571B171551F7FD00EE961F /* libstatic library.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = "libstatic library.dylib"; sourceTree = BUILT_PRODUCTS_DIR; };
 		8D07F2C70486CC7A007CD1D0 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		8D07F2C80486CC7A007CD1D0 /* HID Utilities.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = "HID Utilities.framework"; sourceTree = BUILT_PRODUCTS_DIR; };
 		97876DB31033682400AD1095 /* HID_Utilities_External.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HID_Utilities_External.h; sourceTree = "<group>"; };
@@ -101,6 +114,16 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		83571B101551F7FD00EE961F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				83571B111551F7FD00EE961F /* CoreFoundation.framework in Frameworks */,
+				83571B121551F7FD00EE961F /* CoreServices.framework in Frameworks */,
+				83571B131551F7FD00EE961F /* IOKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8D07F2C30486CC7A007CD1D0 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -129,6 +152,7 @@
 			children = (
 				8D07F2C80486CC7A007CD1D0 /* HID Utilities.framework */,
 				97F808C710347C9A00D58924 /* libHID_Utilities.dylib */,
+				83571B171551F7FD00EE961F /* libstatic library.dylib */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -198,6 +222,14 @@
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
+		83571B051551F7FD00EE961F /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				83571B061551F7FD00EE961F /* HID_Utilities_External.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		974497ED1034A503003588F5 /* Headers */ = {
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
@@ -221,6 +253,23 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
+		83571B041551F7FD00EE961F /* static library */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 83571B141551F7FD00EE961F /* Build configuration list for PBXNativeTarget "static library" */;
+			buildPhases = (
+				83571B051551F7FD00EE961F /* Headers */,
+				83571B071551F7FD00EE961F /* Sources */,
+				83571B101551F7FD00EE961F /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "static library";
+			productName = "HID Utilities dylib";
+			productReference = 83571B171551F7FD00EE961F /* libstatic library.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
 		8D07F2BC0486CC7A007CD1D0 /* Framework */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 4FADC24208B4156D00ABE55E /* Build configuration list for PBXNativeTarget "Framework" */;
@@ -262,9 +311,16 @@
 /* Begin PBXProject section */
 		0867D690FE84028FC02AAC07 /* Project object */ = {
 			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0430;
+			};
 			buildConfigurationList = 4FADC24608B4156D00ABE55E /* Build configuration list for PBXProject "HID Utilities" */;
-			compatibilityVersion = "Xcode 3.1";
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
 			hasScannedForEncodings = 1;
+			knownRegions = (
+				en,
+			);
 			mainGroup = 0867D691FE84028FC02AAC07 /* HID Utilities */;
 			productRefGroup = 034768DDFF38A45A11DB9C8B /* Products */;
 			projectDirPath = "";
@@ -273,6 +329,7 @@
 				8D07F2BC0486CC7A007CD1D0 /* Framework */,
 				97F808C610347C9A00D58924 /* dynamic library */,
 				97F808D910347D6C00D58924 /* Aggregate */,
+				83571B041551F7FD00EE961F /* static library */,
 			);
 		};
 /* End PBXProject section */
@@ -292,6 +349,21 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		83571B071551F7FD00EE961F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				83571B081551F7FD00EE961F /* HID_Utilities.c in Sources */,
+				83571B091551F7FD00EE961F /* IOHIDDevice_.c in Sources */,
+				83571B0A1551F7FD00EE961F /* HID_Queue_Utilities.c in Sources */,
+				83571B0B1551F7FD00EE961F /* HID_Error_Handler.c in Sources */,
+				83571B0C1551F7FD00EE961F /* HID_Name_Lookup.c in Sources */,
+				83571B0D1551F7FD00EE961F /* IOHIDElement_.c in Sources */,
+				83571B0E1551F7FD00EE961F /* HID_Config_Utilities.c in Sources */,
+				83571B0F1551F7FD00EE961F /* ImmrHIDUtilAddOn.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8D07F2C10486CC7A007CD1D0 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -411,8 +483,8 @@
 				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEPLOYMENT_LOCATION = YES;
 				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_ENABLE_FIX_AND_CONTINUE = NO;
 				GCC_FAST_OBJC_DISPATCH = NO;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
@@ -440,13 +512,14 @@
 				GCC_WARN_UNUSED_PARAMETER = YES;
 				GCC_WARN_UNUSED_VALUE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				LD_DYLIB_INSTALL_NAME = /usr/local/lib/libHID_Utilities64.a;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = (
 					"$(value)",
 					"-Wimplicit-function-declaration",
 				);
 				OTHER_CPLUSPLUSFLAGS = "";
-				PREBINDING = NO;
 				WARNING_CFLAGS = (
 					"-Wall",
 					"-Wcast-align",
@@ -469,18 +542,40 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
-				COPY_PHASE_STRIP = YES;
+				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEPLOYMENT_LOCATION = YES;
 				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_ENABLE_FIX_AND_CONTINUE = NO;
 				GCC_FAST_OBJC_DISPATCH = YES;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
 				GCC_OPTIMIZATION_LEVEL = s;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_WARN_FOUR_CHARACTER_CONSTANTS = NO;
+				LD_DYLIB_INSTALL_NAME = /usr/local/lib/libHID_Utilities64.a;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
 				ONLY_ACTIVE_ARCH = NO;
-				PREBINDING = NO;
 				ZERO_LINK = NO;
+			};
+			name = Release;
+		};
+		83571B151551F7FD00EE961F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXECUTABLE_PREFIX = lib;
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/lib;
+				MACH_O_TYPE = staticlib;
+				PRODUCT_NAME = HIDUtilities;
+			};
+			name = Debug;
+		};
+		83571B161551F7FD00EE961F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXECUTABLE_PREFIX = lib;
+				INSTALL_PATH = /usr/local/lib;
+				MACH_O_TYPE = staticlib;
+				PRODUCT_NAME = HIDUtilities;
 			};
 			name = Release;
 		};
@@ -534,6 +629,15 @@
 			buildConfigurations = (
 				4FADC24708B4156D00ABE55E /* Debug */,
 				4FADC24808B4156D00ABE55E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		83571B141551F7FD00EE961F /* Build configuration list for PBXNativeTarget "static library" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				83571B151551F7FD00EE961F /* Debug */,
+				83571B161551F7FD00EE961F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

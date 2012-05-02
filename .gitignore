@@ -2,3 +2,5 @@ PsychSourceGL/Projects/MacOSX/build/*
 *.o
 *~
 .DS_Store
+
+PsychSourceGL/Projects/MacOSX/PsychToolbox/PsychToolbox64.xcodeproj/.LSOverride
