@@ -423,8 +423,12 @@ void PsychHIDGetDeviceListByUsage(long usagePage, long usage, int *numDeviceIndi
     currentDeviceIndex=0;
     *numDeviceIndices=0;
     for(currentDevice=HIDGetFirstDevice(); currentDevice != NULL; currentDevice=HIDGetNextDevice(currentDevice)){    
-        ++currentDeviceIndex;     
+        ++currentDeviceIndex;
+#ifndef __LP64__        
         if(currentDevice->usagePage==usagePage && currentDevice->usage==usage){
+#else
+        if(IOHIDDevice_GetUsagePage(currentDevice) == usagePage && IOHIDDevice_GetUsage(currentDevice) == usage){
+#endif
             deviceRecords[*numDeviceIndices]=currentDevice;
             deviceIndices[*numDeviceIndices]=currentDeviceIndex;  //the array is 0-indexed, devices are 1-indexed.   
             ++(*numDeviceIndices);
@@ -449,7 +453,11 @@ void PsychHIDGetDeviceListByUsages(int numUsages, long *usagePages, long *usages
 		currentDeviceIndex=0;
 		for(currentDevice=HIDGetFirstDevice(); currentDevice != NULL; currentDevice=HIDGetNextDevice(currentDevice)){    
 			++currentDeviceIndex;     
+#ifndef __LP64__        
 			if(currentDevice->usagePage==*usagePage && currentDevice->usage==*usage){
+#else
+            if(IOHIDDevice_GetPrimaryUsagePage(currentDevice) == *usagePage && IOHIDDevice_GetPrimaryUsage(currentDevice) == *usage){
+#endif
 				deviceRecords[*numDeviceIndices]=currentDevice;
 				deviceIndices[*numDeviceIndices]=currentDeviceIndex;  //the array is 0-indexed, devices are 1-indexed.   
 				++(*numDeviceIndices);
@@ -555,13 +563,21 @@ psych_bool PsychHIDQueryOpenDeviceInterfaceFromDeviceIndex(int deviceIndex)
 
     PsychHIDVerifyInit();
     deviceRecord=PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
-    return(deviceRecord->interface != NULL);    
+#ifndef __LP64__
+    return(deviceRecord->interface != NULL);
+#else
+    return(true);
+#endif
 }
 
 psych_bool PsychHIDQueryOpenDeviceInterfaceFromDeviceRecordPtr(pRecDevice deviceRecord)
 {
     PsychHIDVerifyInit();
+#ifndef __LP64__
     return(deviceRecord->interface != NULL);
+#else
+    return(true);
+#endif
 }
 
 void PsychHIDVerifyOpenDeviceInterfaceFromDeviceIndex(int deviceIndex)
@@ -629,13 +645,16 @@ int PsychHIDCountCollectionElements(pRecElement collectionRecord, HIDElementType
     pRecElement		currentElement;
     int			numElements=0;
     HIDElementTypeMask	currentElementMaskValue;
-    
+
+// TODO FIXME 64BIT:
+#ifndef __LP64__
     for(currentElement=collectionRecord->pChild; currentElement != NULL; currentElement= currentElement->pSibling)
     {
         currentElementMaskValue=HIDConvertElementTypeToMask(currentElement->type);  
         if(currentElementMaskValue & elementTypeMask)
             ++numElements;
     }
+#endif
     return(numElements);
 }
 
@@ -655,6 +674,8 @@ int PsychHIDFindCollectionElements(pRecElement collectionRecord, HIDElementTypeM
     int			numElements=0;
     HIDElementTypeMask	currentElementMaskValue;
     
+    // TODO FIXME 64BIT:
+#ifndef __LP64__
     for(currentElement=collectionRecord->pChild; currentElement != NULL; currentElement= currentElement->pSibling)
     {
         currentElementMaskValue=HIDConvertElementTypeToMask(currentElement->type);  
@@ -665,6 +686,7 @@ int PsychHIDFindCollectionElements(pRecElement collectionRecord, HIDElementTypeM
             ++numElements;
         }
     }
+#endif
     return(numElements);
 }
 	

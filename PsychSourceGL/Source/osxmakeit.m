@@ -10,7 +10,7 @@ fprintf('Building plugin type %i ...\n\n', mode);
 %  LDFLAGS="\$LDFLAGS -framework CoreServices -framework CoreFoundation -framework CoreAudio" CFLAGS="" CXXFLAGS="" -I/usr/include 
 
 if mode==0
-    %TODO: Depends -- All kind of shit...
+    %TODO: Depends -- All kind of shit: GStreamer, libdc1394
     % Build Screen:
     % mex -v -outdir ../Projects/MacOSX/build -output Screen -largeArrayDims -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC LDFLAGS="\$LDFLAGS -framework CoreServices -framework CoreFoundation -framework CoreAudio" CFLAGS="-framework CoreServices -framework CoreFoundation -framework CoreAudio" CXXFLAGS="-framework CoreServices" -I/usr/include -I/usr/include/gstreamer-0.10 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/include/libxml2 -ICommon/Base -ICommon/Screen -IOSX/Base -IOSX/Screen "Common/Base/*.cc" "OSX/Base/*.c" "OSX/Screen/*.c" "Common/Screen/*.c" "Common/Base/*.c" -lc -lrt -ldl -lGL -lGLU -lX11 -lXext -lgstreamer-0.10 -lgstbase-0.10 -lgstapp-0.10 -lgstinterfaces-0.10 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -ldc1394 -lusb-1.0
     mex -v -outdir ../Projects/MacOSX/build -output Screen -largeArrayDims -DPTBMODULE_Screen LDFLAGS="\$LDFLAGS -framework CoreServices -framework CoreFoundation -framework ApplicationServices -framework CoreAudio -framework OpenGL -framework CoreVideo -framework IOKit -framework AGL -framework SystemConfiguration -framework Carbon" CFLAGS="" CXXFLAGS="" -I/usr/include -ICommon/Base -ICommon/Screen -IOSX/Base -IOSX/Screen -IOSX/Fonts -IOSX/EthernetAddress "Common/Base/*.cc" "OSX/Base/*.c" "OSX/Screen/*.c" "OSX/Fonts/*FontGlue*.c" "OSX/Fonts/FontInfo.c" "OSX/EthernetAddress/*.c" "Common/Screen/*.c" "Common/Base/*.c" % -lgstreamer-0.10 -lgstbase-0.10 -lgstapp-0.10 -lgstinterfaces-0.10 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -ldc1394 -lusb-1.0
@@ -72,7 +72,7 @@ end;
 if mode==8
     %TODO -- Depends: HIDTOOLS
     % Build PsychHID:
-    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions' -v -outdir ../Projects/MacOSX/build/ -output PsychHID -largeArrayDims -DPTBMODULE_PsychHID -I/usr/include/libusb-1.0 -ICommon/Base -IOSX/Base -ICommon/PsychHID -IOSX/PsychHID -ICommon/Screen Common/Base/*.cc OSX/Base/*.c Common/Base/*.c Common/PsychHID/*.c OSX/PsychHID/*.c -lc -lrt -lusb-1.0 -lX11 -lXi
+    mex -v -outdir ../Projects/MacOSX/build -output PsychHID -largeArrayDims -DPTBMODULE_PsychHID LDFLAGS="\$LDFLAGS -framework ApplicationServices -framework Carbon -framework CoreAudio -framework IOKit" CFLAGS="" CXXFLAGS="" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/PsychHID -IOSX/PsychHID -I../Cohorts/HID_Utilities_64Bit/ -I../Cohorts/HID_Utilities_64Bit/IOHIDManager "Common/Base/*.cc" "Common/PsychHID/*.c" "OSX/PsychHID/*.c" "OSX/Base/*.c" "Common/Base/*.c" -L../Cohorts/HID_Utilities_64Bit/build/Release -lHID_Utilities
     unix(['mv ../Projects/MacOSX/build/PsychHID.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end;
 

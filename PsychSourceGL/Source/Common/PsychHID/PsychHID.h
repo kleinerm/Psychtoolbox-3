@@ -64,6 +64,12 @@
 #include <mach/mach.h>
 #include <string.h>
 
+#ifdef __LP64__
+typedef IOHIDDeviceRef pRecDevice;
+typedef IOHIDElementRef pRecElement;
+
+#endif
+
 #else
 // Non OS/X:
 

@@ -719,8 +719,10 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 	// to the queue and events from that key will not be detected.
 	// Note that psychHIDKbQueueList does not need to be freed because it is allocated
 	// within PsychAllocInIntegerListArg using mxMalloc
-
+#ifndef __LP64__
+    // TODO FIXME 64BIT
 	interface=deviceRecord->interface;
+#endif
 	if(!interface)
 		PsychErrorExitMsg(PsychError_system, "Could not get interface to device.");
 		

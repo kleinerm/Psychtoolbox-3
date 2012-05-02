@@ -29,13 +29,13 @@ static char seeAlsoString[] = "";
 PsychError PSYCHHIDGetElements(void) 
 {
     pRecDevice 			specDevice=NULL;
-    UInt32                      numDeviceElements;
+    UInt32              numDeviceElements;
     
     const char 			*elementFieldNames[]={"typeMaskName", "name", "deviceIndex", "elementIndex", "typeValue", "typeName", "usagePageValue", "usageValue", 							"usageName", "dataSize", "rangeMin", "rangeMax", "scaledRangeMin", "scaledRangeMax", "relative", 
                                                         "wrapping", "nonLinear", "preferredState", "nullState", "calMin", "calMax", "scalingMin", "scalingMax"};
     int 			numElementStructElements, numElementStructFieldNames=23, elementIndex, deviceIndex;
     PsychGenericScriptType	*elementStruct;	
-    pRecElement			currentElement;
+    pRecElement     currentElement, lastElement = NULL;
     char			elementTypeName[PSYCH_HID_MAX_DEVICE_ELEMENT_TYPE_NAME_LENGTH];	
     char			usageName[PSYCH_HID_MAX_DEVICE_ELEMENT_USAGE_NAME_LENGTH];
     char			*typeMaskName;
@@ -57,11 +57,14 @@ PsychError PSYCHHIDGetElements(void)
     PsychAllocOutStructArray(1, FALSE, numElementStructElements, numElementStructFieldNames, elementFieldNames, &elementStruct);
     elementIndex=0;
     for(currentElement=HIDGetFirstDeviceElement(specDevice,kHIDElementTypeIO); 
-        currentElement != NULL; 
-        currentElement=HIDGetNextDeviceElement(currentElement, kHIDElementTypeIO))
-        {
+        (currentElement != NULL) && (currentElement != lastElement);
+        currentElement=HIDGetNextDeviceElement(currentElement, kHIDElementTypeIO)) {
+        lastElement = currentElement;
+
+#ifndef __LP64__
+        // TODO FIXME 64BIT:
         typeMask=HIDConvertElementTypeToMask (currentElement->type);
- 	PsychHIDGetTypeMaskStringFromTypeMask(typeMask, &typeMaskName);
+        PsychHIDGetTypeMaskStringFromTypeMask(typeMask, &typeMaskName);
         PsychSetStructArrayStringElement("typeMaskName",	elementIndex, 	typeMaskName,	 			elementStruct);
         PsychSetStructArrayStringElement("name",		elementIndex, 	currentElement->name,	 		elementStruct);
         PsychSetStructArrayDoubleElement("deviceIndex",		elementIndex, 	(double)deviceIndex, 			elementStruct);
@@ -88,25 +91,11 @@ PsychError PSYCHHIDGetElements(void)
         PsychSetStructArrayDoubleElement("calMax",		elementIndex, 	(double)currentElement->calMax,		elementStruct);	
         PsychSetStructArrayDoubleElement("scalingMin",		elementIndex, 	(double)currentElement->userMin,	elementStruct);	
         PsychSetStructArrayDoubleElement("scalingMax",		elementIndex, 	(double)currentElement->userMax,	elementStruct);	
-                                
+#endif
         ++elementIndex; 
     }
 
     return(PsychError_none);	
 }
-
-/*
-struct IOHIDEventStruct
-{
-    IOHIDElementType	type;
-    IOHIDElementCookie	elementCookie;
-    SInt32		value;
-    AbsoluteTime	timestamp;
-    UInt32		longValueSize;
-    void *		longValue;
-};
-typedef struct IOHIDEventStruct IOHIDEventStruct;
-
-*/
 
 #endif

@@ -121,6 +121,7 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
 	IOHIDDeviceInterface122** interface=NULL;	// This requires Mac OS X 10.3 or higher
 	IOReturn success;	
 	IOHIDElementCookie triggerCookie;
+    uint32_t usage;
 
     // Assign single supported trigger key:
     if (numScankeys != 1) PsychErrorExitMsg(PsychError_user, "Sorry, the OS/X version of KbTriggerWait only supports one trigger key.");
@@ -151,14 +152,23 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
         }
     }
     deviceRecord=deviceRecords[i]; 
-	KeysUsagePage = ((deviceRecord->usage == kHIDUsage_GD_Keyboard) || (deviceRecord->usage == kHIDUsage_GD_Keypad)) ? kHIDPage_KeyboardOrKeypad : kHIDPage_Button;
-	
+#ifndef __LP64__
+    usage = deviceRecord->usage;
+#else
+    usage = IOHIDDevice_GetUsage(deviceRecord);
+#endif
+
+	KeysUsagePage = ((usage == kHIDUsage_GD_Keyboard) || (usage == kHIDUsage_GD_Keypad)) ? kHIDPage_KeyboardOrKeypad : kHIDPage_Button;
+
     //Allocate and init out return arguments.
     PsychAllocOutDoubleArg(1, FALSE, &timeValueOutput);
 	if(!timeValueOutput)
 		PsychErrorExitMsg(PsychError_system, "Failed to allocate memory for output.");
-		
+
+#ifndef __LP64__
+    // TODO FIXME 64BIT		
 	interface=deviceRecord->interface;
+#endif
 	if(!interface)
 		PsychErrorExitMsg(PsychError_system, "Could not get interface to device.");
 	
