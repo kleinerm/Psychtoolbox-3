@@ -50,12 +50,11 @@ if mode==5
 end
 
 if mode==6
-    %TODO
     % Build moglcore:
     curdir = pwd;
     cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
     try
-    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions' -v -outdir ./ -output moglcore -DOSX -DGLEW_STATIC -largeArrayDims -I/usr/X11R6/include -L/usr/X11R6/lib -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c
+        mex -v -outdir ./ -output moglcore -DMACOSX -DGLEW_STATIC -largeArrayDims CFLAGS="" CXXFLAGS="" LDFLAGS="\$LDFLAGS -framework OpenGL -framework GLUT" -I/usr/include moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c
     catch
     end
     unix(['mv moglcore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
@@ -77,12 +76,11 @@ if mode==8
 end
 
 if mode==9
-    %TODO
     % Build moalcore:
     curdir = pwd;
     cd('../../Psychtoolbox/PsychSound/MOAL/source/')
     try
-       mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions' -v -outdir ./ -output moalcore -largeArrayDims -DOSX -lc -lopenal moalcore.c al_auto.c al_manual.c alm.c 
+        mex -v -outdir ./ -output moalcore -largeArrayDims -DMACOSX CFLAGS="" CXXFLAGS="" LDFLAGS="\$LDFLAGS -framework OpenAL" -I/usr/include moalcore.c al_auto.c al_manual.c alm.c
     catch
     end
     unix(['mv ./moalcore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
