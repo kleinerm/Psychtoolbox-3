@@ -40,8 +40,14 @@ what's available to your app.
 static void						PsychInitFontList(void);
 static PsychFontStructPtrType	PsychFontListHeadKeeper(psych_bool set, PsychFontStructPtrType value);
 
-
-
+#ifndef PTBMODULE_Screen
+// Provide surrogate for FontInfo() build:
+int PsychPrefStateGet_Verbosity(void)
+{
+    // Shut up all time:
+    return(0);
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Functions for maintaining and accessing psych font lists.

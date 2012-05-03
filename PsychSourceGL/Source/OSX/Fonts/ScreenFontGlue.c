@@ -20,6 +20,9 @@
 
 #include "ScreenFontGlue.h"
 
+// Only include this function when building Screen(), but not FontInfo():
+#ifdef PTBMODULE_Screen
+
 /*
 	PsychSetATSUStyleAttributesFromPsychWindowRecord()
 	
@@ -74,8 +77,5 @@ void PsychSetATSUStyleAttributesFromPsychWindowRecord(ATSUStyle atsuStyle,  Psyc
 	//assign attributes to the style object
 	callError=ATSUSetAttributes(atsuStyle, 4, aaTags, aaSizes, aaValue);
 }
-    
 
-
-
-
+#endif
