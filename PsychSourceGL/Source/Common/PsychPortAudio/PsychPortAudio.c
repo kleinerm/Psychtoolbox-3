@@ -838,7 +838,13 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		}
 		#endif
 		
+        #if (PSYCH_SYSTEM == PSYCH_OSX) && defined(__LP64__)
+        // Make sure we use the else-path on 64-Bit OSX to work around bugs in
+        // Portaudio for 64-Bit OSX at the moment:
+        if (FALSE) {
+        #else
 		if (hA==paCoreAudio || hA==paDirectSound || hA==paMME || hA==paALSA) {
+        #endif
 			// On these systems, DAC-time is already returned in the system timebase,
 			// at least with our modified version of PortAudio, so a simple
 			// query will return the onset time of the first sample. Well,
