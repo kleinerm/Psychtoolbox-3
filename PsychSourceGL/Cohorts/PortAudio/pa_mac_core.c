@@ -856,7 +856,8 @@ static PaError OpenAndSetupOneAudioUnit(
 
                             OUTPUT_ELEMENT,
                             actualOutputFramesPerBuffer,
-                            sizeof(unsigned long) ) );
+// MK CHANGED PTB 64-BIT OSX sizeof(unsigned long) ) );
+                            sizeof(UInt32) ) );
        ERR_WRAP( AudioUnitGetProperty( *audioUnit,
                             kAudioUnitProperty_MaximumFramesPerSlice,
                             kAudioUnitScope_Global,
@@ -872,7 +873,9 @@ static PaError OpenAndSetupOneAudioUnit(
 							kAudioUnitScope_Input,
                             INPUT_ELEMENT,
                             actualInputFramesPerBuffer,
-                            sizeof(unsigned long) ) );
+// MK CHANGED PTB 64-BIT OSX sizeof(unsigned long) ) );
+                            sizeof(UInt32) ) );
+
 /* Don't know why this causes problems
        ERR_WRAP( AudioUnitGetProperty( *audioUnit,
                             kAudioUnitProperty_MaximumFramesPerSlice,
