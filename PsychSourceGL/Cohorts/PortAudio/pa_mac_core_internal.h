@@ -61,11 +61,11 @@
 #ifndef PA_MAC_CORE_INTERNAL_H__
 #define PA_MAC_CORE_INTERNAL_H__
 
-// MK: Modified to build on OSX: 10.7 Lion Add CoreServices includes:
+// MK: Modified to build on OSX: 10.7 Lion Add CoreServices.h and CoreAudio.h includes:
 #include <CoreServices/CoreServices.h>
+#include <CoreAudio/CoreAudio.h>
 #include <AudioUnit/AudioUnit.h>
 #include <AudioToolbox/AudioToolbox.h>
-#include <CoreServices/CoreServices.h>
 
 #include "portaudio.h"
 #include "pa_util.h"
