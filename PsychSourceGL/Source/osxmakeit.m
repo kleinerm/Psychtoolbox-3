@@ -30,9 +30,9 @@ if mode==2
 end;
 
 if mode==3
-    %TODO -- Depends: PortAudio
+    % Depends: PortAudio
     % Build PsychPortAudio:
-    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions' -v -outdir ../Projects/MacOSX/build/ -output PsychPortAudio -largeArrayDims -DPTBMODULE_PsychPortAudio -ICommon/Base -IOSX/Base -ICommon/PsychPortAudio -ICommon/Screen Common/Base/*.cc OSX/Base/*.c Common/Base/*.c Common/PsychPortAudio/*.c /usr/local/lib/libportaudio.a -lc -lrt -lasound
+    mex -v -outdir ../Projects/MacOSX/build -output PsychPortAudio -largeArrayDims -DPTBMODULE_PsychPortAudio LDFLAGS="\$LDFLAGS -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework AudioToolbox -framework AudioUnit" CFLAGS="" CXXFLAGS="" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/PsychPortAudio "Common/Base/*.cc" "OSX/Base/*.c" "Common/Base/*.c" "Common/PsychPortAudio/*.c" ../Cohorts/PortAudio/libportaudio_osx_64.a
     unix(['mv ../Projects/MacOSX/build/PsychPortAudio.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
