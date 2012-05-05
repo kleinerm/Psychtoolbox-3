@@ -1,6 +1,6 @@
 % GStreamer - Installation instructions for the GStreamer media framework.
 %
-% Psychtoolbox in all versions for GNU/Linux, and in (future) 64 bit
+% Psychtoolbox for all versions for GNU/Linux, and for (future) 64 bit
 % versions for Mac OS/X and MS-Windows uses the GStreamer multi-media
 % framework for all multi-media related operations.
 %
@@ -130,5 +130,8 @@
 %
 % Mac OS/X:
 %
-% No support for GStreamer yet. Stay tuned!
+% For 64-Bit versions of Mac OS/X 10.6 "Snow Leopard" and later, you can
+% download and install GStreamer via an easy to use installer from here:
+%
+% <http://itee.uq.edu.au/~davel/gstreamer/>
 %

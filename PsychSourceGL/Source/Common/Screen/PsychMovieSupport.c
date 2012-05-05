@@ -82,6 +82,9 @@ static psych_bool usegs(void) {
 				doUsegs = TRUE;
 			}
 		}
+        
+        // Signal use of GStreamer to userspace via preference setting:
+        if (doUsegs) PsychPrefStateSet_UseGStreamer(1);
 	}
 
 	// Return cached engine use flag:
