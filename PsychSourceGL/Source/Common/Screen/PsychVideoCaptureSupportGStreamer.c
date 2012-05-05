@@ -153,6 +153,10 @@ PsychVidcapRecordType* PsychGetGSVidcapRecord(int deviceIndex)
 	return(&vidcapRecordBANK[deviceIndex]);
 }
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+extern gboolean	gst_init_check(int *argc, char **argv[], GError **err) __attribute__((weak_import));
+#endif
+
 /* Internal: Check if GStreamer is already initialized. Initialize it,
  * if neccessary.
  */
@@ -162,24 +166,47 @@ void PsychGSCheckInit(const char* engineName)
 
 	if (gs_firsttime) {
 		// First time invocation:
-        #if PSYCH_SYSTEM == PSYCH_WINDOWS
-        // On Windows, we need to delay-load the GStreamer DLL's. This loading
-        // and linking will automatically happen downstream. However, if delay loading
-        // would fail, we would end up with a crash! For that reason, we try here to
-        // load the DLL, just to probe if the real load/link/bind op later on will
-        // likely succeed. If the following LoadLibrary() call fails and returns NULL,
-        // then we know we would end up crashing. Therefore we'll output some helpful
-        // error-message instead:
-        if ((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll"))) {
-            // Failed:
-            printf("\n\nPTB-ERROR: Tried to startup GStreamer. This didn't work,\n");
-            printf("PTB-ERROR: because one of the required GStreamer DLL libraries failed to load. Probably because they\n");
-            printf("PTB-ERROR: could not be found, could not be accessed (e.g., due to permission problems),\n");
-            printf("PTB-ERROR: or they aren't installed on this machine at all.\n\n");
-            printf("PTB-ERROR: Please read the online help by typing 'help GStreamer' for troubleshooting\nand installation instructions.\n\n");
-			printf("PTB-ERROR: Due to failed GStreamer initialization, the %s engine is out of order.\n", engineName);
-			PsychErrorExitMsg(PsychError_user, "GStreamer initialization failed due to DLL loading problems. Aborted.");
-        }
+        
+        // Check if GStreamer is properly installed and (can be) dynamically loaded and linked:
+        #if PSYCH_SYSTEM != PSYCH_LINUX
+            // On Windows and OSX, we need to delay-load the GStreamer libraries. This loading
+            // and linking will automatically happen downstream. However, if delay loading
+            // would fail, we would end up with a crash! For that reason, on MS-Windows, we
+            // try to load the DLL, just to probe if the real load/link/bind op later on will
+            // likely succeed. If the following LoadLibrary() call fails and returns NULL,
+            // then we know we would end up crashing.
+            // On OSX we check if the gst_init_check() function is defined, aka non-NULL. The
+            // OSX linker sets the symbol to NULL if dynamic weak linking during runtime failed.
+            // On failure we'll output some helpful error-message instead:
+            #if PSYCH_SYSTEM == PSYCH_WINDOWS
+                if ((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll"))) {
+            #endif
+            #if PSYCH_SYSTEM == PSYCH_OSX
+                if (NULL == gst_init_check) {
+            #endif
+                // Failed:
+                printf("\n\n\n");
+                printf("PTB-ERROR: Tried to startup GStreamer multi-media framework. This didn't work, because one\n");
+                printf("PTB-ERROR: of the required GStreamer runtime libraries failed to load, probably because it\n");
+                printf("PTB-ERROR: could not be found, could not be accessed (e.g., due to permission problems),\n");
+                printf("PTB-ERROR: or most likely because GStreamer isn't installed on this machine at all.\n\n");
+                printf("PTB-ERROR: Please read the help by typing 'help GStreamer' for installation and troubleshooting\n");
+                printf("PTB-ERROR: instructions.\n\n");
+                printf("PTB-ERROR: Due to failed GStreamer initialization, the %s engine is disabled for this session.\n\n", engineName);
+
+                // Quicktime supported on this setup?
+                #if (PSYCH_SYSTEM != PSYCH_LINUX) && defined(PSYCHQTAVAIL)
+                    // Yes. Give user a hint about this alternative, at least for movie playback or video capture,
+                    // but not for movie writing:
+                    if (NULL == strstr(engineName, "movie writing")) {
+                        printf("PTB-TIP: As a stop-gap measure until you've installed or fixed GStreamer on your system,\n");
+                        printf("PTB-TIP: you could try to use the legacy Quicktime based %s engine instead via use of the\n", engineName);
+                        printf("PTB-TIP: override Screen('Preference', ...); switches 'DefaultVideoCaptureEngine' and\n");
+                        printf("PTB-TIP: 'OverrideMultimediaEngine'.\n\n");
+                    }
+                #endif
+                PsychErrorExitMsg(PsychError_user, "GStreamer initialization failed due to library loading problems. Aborted.");
+            }
         #endif
 
 		// Initialize GStreamer:
@@ -207,6 +234,8 @@ void PsychGSCheckInit(const char* engineName)
         else {
             // Other OS: Zero-Point of GStreamer clock is identical to Zero-Point
             // of our GetSecs() clock, so apply zero-correction:
+            // TODO FIXME: Check if this assumption holds on OSX for the Video capture engine.
+            // We can only test this once we have 
             gs_startupTime = 0.0;
         }
 
