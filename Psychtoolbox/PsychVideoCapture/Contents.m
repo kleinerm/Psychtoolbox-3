@@ -14,12 +14,11 @@
 % capture tasks, e.g., setup of the camera or a video feedback
 % loop with low and controlled latency.
 %
-% THIS IS EXPERIMENTAL CODE FOR NOW! It is well tested and known
-% to work perfectly on Linux, but support on MacOS-X and Windows
-% is not yet as feature rich, flexible and mature as on Linux.
-% Especially, the OS-X and Windows versions are not as extensively
-% tested. Some of the functions here are work in progress, useful,
-% but not finished.
+% The functions are well tested and known to work perfectly on Linux, but
+% support on MacOS-X and Windows is not yet as feature rich, flexible and
+% mature as on Linux. Especially, the OS-X and Windows versions are not as
+% extensively tested. Some of the functions here are work in progress,
+% useful, but not finished.
 %
 % OS-X & Windows: We use the Sequence-Grabber API of Apples Quicktime
 % for video capture on OS-X and Windows. On Windows, you'll need
@@ -70,6 +69,11 @@
 % their reliability and internal working is unknown.
 %
 % Contents:
+%
+% libdc1394.22.dylib - The runtime library for the libdc1394 firewire video
+%                      capture engine for 64-Bit MacOS/X. For installation
+%                      into the /usr/local/lib/ system folder of your
+%                      machine.
 %
 % PsychCamSettings - Function for programmatically querying and setting
 %                    camera parameters like exposure time, gain, brightness
