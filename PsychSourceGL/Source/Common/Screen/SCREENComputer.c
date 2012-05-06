@@ -139,9 +139,8 @@ PsychError SCREENComputer(void)
 	int							stringLengthChars, ethernetMACStrSizeBytes;
 	long						gestaltResult;
 	OSErr						gestaltError;
-//	Str255						systemVersionStr, systemVersionStrForward;
 	int							i,strIndex, bcdDigit, lengthSystemVersionString;
-	long						osMajor, osMinor, osBugfix;
+	SInt32						osMajor, osMinor, osBugfix;
 	char						systemVersionStr[256];
 	
     //all subfunctions should have these two lines

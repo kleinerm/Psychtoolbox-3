@@ -218,8 +218,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     CGDirectDisplayID				cgDisplayID;
     int attribcount=0;
     int ringTheBell=-1;
-    long VRAMTotal=0;
-    long TexmemTotal=0;
+    GLint VRAMTotal=0;
+    GLint TexmemTotal=0;
     psych_bool multidisplay = FALSE;
     psych_bool sync_trouble = false;
     psych_bool sync_disaster = false;
@@ -717,7 +717,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     displayMask=CGDisplayIDToOpenGLDisplayMask(cgDisplayID);
 
     if (true) {
-        long numRenderers, i;
+        GLint numRenderers, i;
         error= CGLQueryRendererInfo(displayMask, &rendererInfo, &numRenderers);
         if(numRenderers>1) numRenderers=1;
         for(i=0;i<numRenderers;i++) {
@@ -739,7 +739,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		// Yes. Is this an ATI GPU?
 		if (strstr((char*) glGetString(GL_VENDOR), "ATI")) {
 			// Is this OS/X 10.5.7 or later?
-			long osMinor, osBugfix, osArch;
+			SInt32 osMinor, osBugfix, osArch;
 			Gestalt(gestaltSystemVersionMinor, &osMinor);
 			Gestalt(gestaltSystemVersionBugFix, &osBugfix);
 			Gestalt(gestaltSysArchitecture, &osArch);

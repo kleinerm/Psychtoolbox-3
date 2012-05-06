@@ -124,8 +124,8 @@ CGrafPtr GetWindowPort(WindowRef window) { return 0; }
 
 static struct {
     io_connect_t        connect;
-    StdFBShmem_t *      shmem;
-    vm_size_t           shmemSize;    
+    StdFBShmem_t*       shmem;
+    mach_vm_size_t      shmemSize;    
 } fbsharedmem[kPsychMaxPossibleDisplays];   
 
 static struct {
@@ -137,7 +137,7 @@ static struct {
 static CVDisplayLinkRef cvDisplayLink[kPsychMaxPossibleDisplays] = { NULL };
 static int screenRefCount[kPsychMaxPossibleDisplays] = { 0 };
 
-static long osMajor, osMinor;
+static SInt32 osMajor, osMinor;
 static psych_bool useCoreVideoTimestamping;
 
 // Display link callback: Needed so we can actually start the display link:
@@ -151,7 +151,7 @@ static CVReturn PsychCVDisplayLinkOutputCallback(CVDisplayLinkRef displayLink, c
     double tHost;
     
     // Retrieve screenId of associated display screen:
-    int screenId = (int) displayLinkContext;
+    int screenId = (int) (long int) displayLinkContext;
     
     // Translate CoreVideo inNow timestamp with time of last vbl from gpu time
     // to host system time, aka our GetSecs() timebase:
@@ -315,7 +315,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	OSStatus						err;
     CGDirectDisplayID				cgDisplayID;
     CGLPixelFormatAttribute			attribs[40];
-    long							numVirtualScreens;
+    GLint							numVirtualScreens;
     GLboolean						isDoubleBuffer, isFloatBuffer;
     GLint bpc;
 	GLenum glerr;
@@ -1005,7 +1005,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
 			// Map the slice of device memory into our VM space:
 			if (kIOReturnSuccess != IOConnectMapMemory(fbsharedmem[screenSettings->screenNumber].connect, kIOFBCursorMemory, mach_task_self(),
-													   (vm_address_t *) &(fbsharedmem[screenSettings->screenNumber].shmem),
+													   (mach_vm_address_t *) &(fbsharedmem[screenSettings->screenNumber].shmem),
 													   &(fbsharedmem[screenSettings->screenNumber].shmemSize), kIOMapAnywhere)) {
 				// Mapping failed!
 				fbsharedmem[screenSettings->screenNumber].shmem = NULL;
@@ -1038,7 +1038,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to create CVDisplayLink for screenId %i. This may impair VBL timestamping.\n", screenSettings->screenNumber);
         } else {
             // Assign dummy output callback, as this is mandatory to get the link up and running:
-            CVDisplayLinkSetOutputCallback(cvDisplayLink[screenSettings->screenNumber], &PsychCVDisplayLinkOutputCallback, (void*) screenSettings->screenNumber);
+            CVDisplayLinkSetOutputCallback(cvDisplayLink[screenSettings->screenNumber], &PsychCVDisplayLinkOutputCallback, (void*) (long int) screenSettings->screenNumber);
             
             // Setup shared data structure and mutex:
             memset(&cvDisplayLinkData[screenSettings->screenNumber], 0, sizeof(cvDisplayLinkData[screenSettings->screenNumber]));
@@ -1155,7 +1155,7 @@ psych_bool PsychOSOpenOffscreenWindow(double *rect, int depth, PsychWindowRecord
     //PsychTargetSpecificWindowRecordType 	cgStuff;
     CGLPixelFormatAttribute 			attribs[5];
     //CGLPixelFormatObj					pixelFormatObj;
-    long								numVirtualScreens;
+    GLint								numVirtualScreens;
     CGLError							error;
     int									windowWidth, windowHeight;
     int									depthBytes;
@@ -1407,7 +1407,7 @@ void PsychOSUnsetGLContext(PsychWindowRecordType *windowRecord)
 void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterval)
 {
     CGLError	error;
-    long myinterval = (long) swapInterval;
+    GLint myinterval = (GLint) swapInterval;
     psych_bool oldStyle = (PsychPrefStateGet_ConserveVRAM() & kPsychUseOldStyleAsyncFlips) ? TRUE : FALSE;
     	
 	// Store new setting also in internal helper variable, e.g., to allow workarounds to work:
