@@ -197,15 +197,24 @@ void PsychInitFontList(void)
 #ifndef __LP64__
             fmStatus=FMGetFontFamilyInstanceFromFont(fontRecord->fontFMRef, &(fontRecord->fontFamilyFMRef), &fmStyle);
             fontRecord->fontFamilyATSRef = FMGetATSFontFamilyRefFromFontFamily(fontRecord->fontFamilyFMRef);
-#else
-            fmStyle = 0;
-            
+#else            
             // Create CTFont from given ATSFontRef. Available since OSX 10.5
             tempCTFontRef = CTFontCreateWithPlatformFont(fontRecord->fontATSRef, 0.0, NULL, NULL);
 
             // Get font family name from CTFont:
             CFStringRef cfFamilyName = CTFontCopyFamilyName(tempCTFontRef);
 
+            // Retrieve symbolic traits of font -- the closest equivalent of the fmStyle from the
+            // good'ol fontManager:
+            CTFontSymbolicTraits ctTraits = CTFontGetSymbolicTraits(tempCTFontRef);
+            
+            // Remap new trait constants to old constants for later Screen('TextStyle') matching.
+            fmStyle = 0;
+            if (ctTraits & kCTFontBoldTrait) fmStyle |= 1;
+            if (ctTraits & kCTFontItalicTrait) fmStyle |= 2;
+            if (ctTraits & kCTFontCondensedTrait) fmStyle |= 32;
+            if (ctTraits & kCTFontExpandedTrait) fmStyle |= 64;
+            
             // CTFont no longer needed:
             CFRelease(tempCTFontRef);
 
@@ -606,8 +615,8 @@ void PsychCopyFontRecordsToNativeStructArray(int numFonts, PsychFontStructType *
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //For dealing with Font Manager font styles.
 
-#define		kPsychFMMaxStyles	8		//the max number of non-normal styles, the maximum index of FontStyleNameTable[].  
-static char *FontStyleNameTable[] = {"normal",	"bold",	"italic", "underline", "outline", "condense", "extend",	"unknownStyle1", "unknownStyle2"};
+#define		kPsychFMMaxStyles	9		//the max number of non-normal styles, the maximum index of FontStyleNameTable[].  
+static char *FontStyleNameTable[] = {"normal",	"bold",	"italic", "underline", "outline", "unknownStyle3", "condense", "extend", "unknownStyle1", "unknownStyle2"};
 
 /*  
     PsychFindNumFMFontStylesFromStyle()

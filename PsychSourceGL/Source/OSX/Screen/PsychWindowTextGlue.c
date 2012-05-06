@@ -52,7 +52,7 @@ void PsychInitTextRecordSettings(PsychTextAttributes *settings)
 	settings->textStyle= PsychPrefStateGet_DefaultTextStyle();	// 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend
 
 	// Set default font number and name:
-    strcpy((char*) settings->textFontName, "Geneva");
+    strcpy((char*) settings->textFontName, "");
 	settings->textFontNumber = 0;
     
 	/* to initialize the font record to coherent settings, we choose a default font and lookup the matching number */
