@@ -51,6 +51,11 @@
 
 #define kMyPathToSystemLog			"/var/log/system.log"
 
+// Disable warnings about deprecated API calls on OSX 10.7
+// of which we are aware and that we can't remove as long as
+// we need to stay compatible to 10.4 - 10.6
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 // file local variables
 unsigned int  fDeviceType = 0;
 unsigned int  fCardType = 0;
