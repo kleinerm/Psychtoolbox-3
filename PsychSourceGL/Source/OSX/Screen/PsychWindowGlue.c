@@ -89,7 +89,7 @@ OSStatus CreateNewWindow(
     return 0x1;
 }
 
-void MacShowWindow(WindowRef window);
+void ShowWindow(WindowRef window);
 void SendBehind(WindowRef   window,
                 WindowRef   behindWindow);
 
