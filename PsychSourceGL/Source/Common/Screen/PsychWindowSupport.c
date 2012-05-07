@@ -846,16 +846,16 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 			// Yes: Adapt clear color to color of top-left splash pixel,
 			// so colors match:
 			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: glClear splash image top-left reference pixel: %i %i %i\n", splash_image.pixel_data[0],splash_image.pixel_data[1],splash_image.pixel_data[2]);
-			glClearColor(((float) splash_image.pixel_data[0]) / 255.0, ((float) splash_image.pixel_data[1]) / 255.0, ((float) splash_image.pixel_data[2]) / 255.0, 0.0);
+			glClearColor(((float) splash_image.pixel_data[0]) / 255.0, ((float) splash_image.pixel_data[1]) / 255.0, ((float) splash_image.pixel_data[2]) / 255.0, 1.0);
 		}
 		else {
 			// No: Clear to white to prepare drawing of our default hard-coded logo:
-			glClearColor(1,1,1,0);
+			glClearColor(1,1,1,1);
 		}
     }
     else {
       // Clear to black:
-      glClearColor(0,0,0,0);
+      glClearColor(0,0,0,1);
     }
 
     glDrawBuffer(GL_BACK_LEFT);
@@ -4116,7 +4116,7 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
     h=PsychGetHeightFromRect(windowRecord->rect);
     
     // Clear out both buffers so it doesn't lool like junk:
-    glClearColor(0,0,0,0);
+    glClearColor(0,0,0,1);
     glClear(GL_COLOR_BUFFER_BIT);
     PsychOSFlipWindowBuffers(windowRecord);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -4137,13 +4137,13 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
         
         switch (belltype) {
             case 0: // Info - Make it blue
-                glClearColor(0,0,v,0);
+                glClearColor(0,0,v,1);
                 break;
             case 1: // Warning - Make it yellow
-                glClearColor(v,v,0,0);
+                glClearColor(v,v,0,1);
                 break;
             case 2: // Error - Make it red
-                glClearColor(v,0,0,0);
+                glClearColor(v,0,0,1);
             break;
             case 3: // Test-Sheet - Don't clear...
                 // Draw some flickering area (alternating black-white flicker)

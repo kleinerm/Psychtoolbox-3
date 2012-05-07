@@ -64,6 +64,11 @@
 // Current ListenChar state:
 static int	listenchar_enabled = 0;
 
+// Include Cocoa glue on OSX 64-Bit for window focus queries:
+#if (PSYCH_SYSTEM == PSYCH_OSX) && defined(__LP64__)
+#include "PsychCocoaGlue.h"
+#endif
+
 #if PSYCH_SYSTEM == PSYCH_LINUX
 
 /* These are needed for realtime scheduling and memory locking control: */
@@ -298,9 +303,8 @@ PsychError SCREENGetMouseHelper(void)
 	// Return optional keyboard input focus status:
 	if (numButtons > 0) {
 		// Window provided?
-#ifndef __LP64__
         // We only have the function GetUserFocusWindow on 32-Bit Carbon.
-        // TODO 64BIT: Replace with 64-bit implementation.
+        // We have a drop-in replacement in OSX/PsychCocoaGlue.c for 64-Bit Cocoa.
 		if (PsychIsWindowIndexArg(2)) {
 			// Yes: Check if it has focus.
 			PsychAllocInWindowRecordArg(2, TRUE, &windowRecord);
@@ -310,7 +314,6 @@ PsychError SCREENGetMouseHelper(void)
 
 			PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) (GetUserFocusWindow() == windowRecord->targetSpecific.windowHandle) ? 1 : 0);
 		} else
-#endif
         {
 			// No. Just always return "has focus":
 			PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) 1);

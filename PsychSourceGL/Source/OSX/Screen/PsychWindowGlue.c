@@ -67,57 +67,13 @@
 
 // Surrogate routines for missing implementations on MacOS/X 64-Bit:
 #ifdef __LP64__
-OSStatus
-GetWindowBounds(
-                WindowRef          window,
-                WindowRegionCode   regionCode,
-                Rect *             globalBounds)
-{
-    // Return failure:
-    return 0x1;
-}
 
-void DisposeWindow(WindowRef window) { return; }
-
-OSStatus CreateNewWindow(
-                WindowClass        windowClass,
-                WindowAttributes   attributes,
-                const Rect *       contentBounds,
-                WindowRef *        outWindow)
-{
-    // Return failure:
-    return 0x1;
-}
-
-void ShowWindow(WindowRef window);
-void SendBehind(WindowRef   window,
-                WindowRef   behindWindow);
-
-WindowGroupRef GetWindowGroup(WindowRef inWindow)
-{
-    return 0;
-}
-
-OSStatus SetWindowGroupLevel(
-                    WindowGroupRef   inGroup,
-                    SInt32           inLevel)
-{
-    // Return failure:
-    return 0x1;
-}
+#include "PsychCocoaGlue.h"
 
 OSErr DMGetGDeviceByDisplayID(
                         int   displayID,
                         GDHandle *      displayDevice,
                         Boolean         failToMain)
-{
-    // Return failure:
-    return 0x1;
-}
-
-OSStatus SetWindowAlpha(
-               WindowRef   inWindow,
-               CGFloat     inAlpha)
 {
     // Return failure:
     return 0x1;
@@ -328,7 +284,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     int attribcount=0;
     int i;
 	int								windowLevel;
-	psych_bool							useAGL, AGLForFullscreen;
+	psych_bool						useAGL, AGLForFullscreen;
 	WindowRef						carbonWindow = NULL;
 	int								aglbufferid;
 	AGLPixelFormat					pf = NULL;
@@ -337,7 +293,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	GDHandle						*gdhDisplayPtr = NULL; 
 	int								gdhcount = 0;
 	
-	// NULL-out Carbon window handle, so this is well-defined in case of error:
+	// NULL-out Carbon/Cocoa window handle, so this is well-defined in case of error:
 	windowRecord->targetSpecific.windowHandle = NULL;
 
 	// Retrieve windowLevel, an indicator of where non-fullscreen AGL windows should
@@ -424,23 +380,40 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		else {
 			addAttribs = kWindowNoUpdatesAttribute | kWindowNoActivatesAttribute;
 		}
-
+        
 		// For levels 1000 to 1499, where the window is a partially transparent
 		// overlay window with global alpha 0.0 - 1.0, we disable reception of mouse
 		// events. --> Can move and click to windows behind the window!
 		// A range 1500 to 1999 would also allow transparency, but block mouse events:
 		if (windowLevel >= 1000 && windowLevel < 1500) addAttribs += kWindowIgnoreClicksAttribute;
 		
-		if (noErr !=CreateNewWindow(wclass, addAttribs, &winRect, &carbonWindow)) {
-			printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to open Carbon onscreen window\n\n");
-			return(FALSE);
-		}
-		
+        #ifndef __LP64__
+            // 32-Bit Carbon path:
+            if (noErr != CreateNewWindow(wclass, addAttribs, &winRect, &carbonWindow)) {
+                printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to open Carbon onscreen window\n\n");
+                return(FALSE);
+            }
+        #else
+            // 64-Bit Cocoa path:
+            if (PsychCocoaCreateWindow(windowRecord, screenrect, &winRect, wclass, addAttribs, &carbonWindow)) {
+                printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to open Carbon onscreen window\n\n");
+                return(FALSE);
+            }
+        
+            if ((windowLevel >= 1000) && (windowLevel < 2000)) {
+                // Setup of global window alpha value for transparency. This is premultiplied to
+                // the individual per-pixel alpha values if transparency is enabled by Cocoa code.
+                //
+                // Levels 1000 - 1499 and 1500 to 1999 map to a master opacity level of 0.0 - 1.0:
+                SetWindowAlpha(carbonWindow, ((float) (windowLevel % 500)) / 499.0);
+            }
+        #endif
+
 		// Show it! Unless a windowLevel of -1 requests hiding the window:
 		if (windowLevel != -1) ShowWindow(carbonWindow);
 
 		// Level zero means: Place behind all other windows:
-		if (windowLevel ==  0) SendBehind(carbonWindow, NULL);
+		if (windowLevel == 0) SendBehind(carbonWindow, NULL);
 
 		// Levels 1 to 998 define window levels for the group of the window. A level
 		// of 999 would leave this to the system:
@@ -667,6 +640,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	else {
 		// Context setup for AGL (windowed or multiscreen mode or fullscreen mode):
 
+        #ifndef __LP64__
 		// Fullscreen mode?
 		if (AGLForFullscreen) {
 			// Need to map to target display device:
@@ -794,6 +768,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		windowRecord->targetSpecific.deviceContext = (void*) glcontext;
 		
 		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: AGL context setup finished..\n");
+        
+        #endif // 32-Bit AGL setup path.
+        
+        // 64-Bit setup path, using Cocoa + NSOpenGLView via Objective-C:
+        #ifdef __LP64__
+        windowRecord->targetSpecific.contextObject = PsychGetCocoaOpenGLContext(carbonWindow);
+        #endif
 	}
 			
 	// Ok, the OpenGL rendering context is up and running. Auto-detect and bind all
@@ -863,6 +844,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 			}
 		}
 		else {
+            // TODO FIXME 64BIT
+            #ifndef __LP64__
 			AGLContext usercontext = NULL;
 			usercontext = aglCreateContext(pf, glcontext);
 			if (usercontext == NULL) {
@@ -910,12 +893,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 				DisposeWindow(carbonWindow);
 				return(FALSE);
 			}
+            #endif
 		}
 	}
 
     // Create glswapcontextObject - An OpenGL context for exclusive use by parallel
     // background threads, e.g., our thread for async flip operations:
-    if (TRUE) {
+    if (TRUE)
+    {
 		if (!useAGL) {
 			error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, windowRecord->targetSpecific.contextObject, &(windowRecord->targetSpecific.glswapcontextObject));
 			if (error) {
@@ -938,6 +923,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 			}
 		}
 		else {
+            // TODO FIXME 64BIT
+            #ifndef __LP64__
 			AGLContext usercontext = NULL;
 			usercontext = aglCreateContext(pf, glcontext);
 			if (usercontext == NULL) {
@@ -985,6 +972,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 				DisposeWindow(carbonWindow);
 				return(FALSE);
 			}
+            #endif
 		}
     }
     
