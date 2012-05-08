@@ -8,8 +8,10 @@
 % specfied cone fundamentals.
 %
 % This shows that the standard does an excellent job of reconstructing
-% the Stockman/Sharpe 2-degree fundamentals and a pretty good job of
-% reconstructing the 10-degree fundamentals.
+% the Stockman/Sharpe 2-degree and 10 degree fundamentals if one starts
+% with the tabulated LMS absorbances.  The agreement is less perfect
+% if one uses the nomogram and recommended lambda-max values to
+% generate the absorbances.  See comment on this point in StockmanSharpeNomogram.m
 %
 % 8/11/11  dhb  Wrote it
 % 8/14/11  dhb  Clean up a little.
@@ -23,6 +25,7 @@ S = WlsToS((390:5:780)');
 
 %% Low end of log plot scale
 lowEndLogPlot = -4;
+
 %% Get tabulated fundamentals and normalize. These correspond
 % to a 32 year old observer with a small (<= 3 mm) pupil.
 %
@@ -44,6 +47,7 @@ end
 
 %% Compute 2 degree and plot
 T_predictQuantalCIE2 = ComputeCIEConeFundamentals(S,2,32,3);
+T_predictQuantalCIE2Nomo = ComputeCIEConeFundamentals(S,2,32,3,[558.9 530.3 420.7]');
 figure; clf; hold on
 position = get(gcf,'Position');
 position(3) = 1200; position(4) = 700;
@@ -51,16 +55,18 @@ set(gcf,'Position',position);
 subplot(1,2,1); hold on
 plot(SToWls(S),T_targetQuantal2','k','LineWidth',3);
 plot(SToWls(S),T_predictQuantalCIE2','r','LineWidth',1);
-title('S-S 2-deg fundamentals (blk) vs. constructed (red)');
+plot(SToWls(S),T_predictQuantalCIE2Nomo','g','LineWidth',0.5);
+title('S-S 2-deg fundamentals (blk), table constructed (red), nomo constructed (grn)');
 ylabel('Normalized quantal sensitivity');
 xlabel('Wavelength');
 subplot(1,2,2); hold on
 plot(SToWls(S),log10(T_targetQuantal2'),'k','LineWidth',3);
 plot(SToWls(S),log10(T_predictQuantalCIE2'),'r','LineWidth',1);
+plot(SToWls(S),log10(T_predictQuantalCIE2Nomo'),'g','LineWidth',0.5);
 ylim([lowEndLogPlot 0.5]);
-title('S-S 2-deg fundamentals (blk) vs. constructed (red)');
 ylabel('Log10 normalized quantal sensitivity');
 xlabel('Wavelength');
+title('S-S 2-deg fundamentals (blk), table constructed (red), nomo constructed (grn)');
 drawnow;
 if (DUMPFIGURES)
     if (exist('savefig','file'))
@@ -72,6 +78,7 @@ end
 
 %% Compute 10 degree and plot
 T_predictQuantalCIE10 = ComputeCIEConeFundamentals(S,10,32,3);
+T_predictQuantalCIE10Nomo = ComputeCIEConeFundamentals(S,10,32,3,[558.9 530.3 420.7]');
 figure; clf; hold on
 position = get(gcf,'Position');
 position(3) = 1200; position(4) = 700;
@@ -79,14 +86,16 @@ set(gcf,'Position',position);
 subplot(1,2,1); hold on
 plot(SToWls(S),T_targetQuantal10','k','LineWidth',3);
 plot(SToWls(S),T_predictQuantalCIE10','r','LineWidth',1);
-title('S-S 10-deg fundamentals (blk) vs. constructed (red)');
+plot(SToWls(S),T_predictQuantalCIE10Nomo','g','LineWidth',0.5);
+title('S-S 10-deg fundamentals (blk), table constructed (red), nomo constructed (grn)');
 ylabel('Normalized quantal sensitivity');
 xlabel('Wavelength');
 subplot(1,2,2); hold on
 plot(SToWls(S),log10(T_targetQuantal10'),'k','LineWidth',3);
 plot(SToWls(S),log10(T_predictQuantalCIE10'),'r','LineWidth',1);
+plot(SToWls(S),log10(T_predictQuantalCIE10Nomo'),'g','LineWidth',0.5);
 ylim([lowEndLogPlot 0.5]);
-title('S-S 10-deg fundamentals (blk) vs. constructed (red)');
+title('S-S 10-deg fundamentals (blk), table constructed (red), nomo constructed (grn)');
 ylabel('Log10 normalized quantal sensitivity');
 xlabel('Wavelength');
 drawnow;
