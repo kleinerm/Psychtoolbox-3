@@ -15,14 +15,10 @@ function [macTransmit,macDensity] = MacularTransmittance(S,species,source,fieldS
 %   None                     - Unity transmittance.
 %
 % For the CIE option, can pass fieldSizeDegrees [Default 2 degrees].
-% The formulae for field size in 170-1:2006 do not reproduce the
-% values tabulated for 10-degrees.  The formula gets the peak right,
-% but the difference in the tabulated 2 and 10 degree densities is
-% not constant, so the simple additive correction recommended
-% is inconsistent with the tabular values.  Go figure.
+% This was buggy until the version of 5/8/12.
 %
-% The Bone values match those in  CIE 170-1:2006, Table 6.4
-% for a 2-degree observer.
+% The Bone values that we use a the basis for this calculation
+% match those in  CIE 170-1:2006, Table 6.4 for a 2-degree observer.
 % 
 % The answer is returned in a row vector.  This function
 % depends on data contained in directory
@@ -37,7 +33,12 @@ function [macTransmit,macDensity] = MacularTransmittance(S,species,source,fieldS
 %         dhb  For CIE, can pass field size
 %         dhb  Also return density
 % 8/13/11 dhb  Linearly extrapolate read functions outside of range.
-
+% 5/8/12  dhb  Fixed two bugs.  First, peak optical density correction is
+%              multiplicative rather than additive.  Second, there was
+%              an operator precedence grouping error in the computation
+%              of the correction factor.
+% 5/8/12  dhb  Removed comment that we can't reproduce CIE tabular 10 deg
+%              values.
 
 % Default
 if (nargin < 2 || isempty(species))
@@ -72,11 +73,11 @@ switch (species)
                 load den_mac_bone;
 				macDensity = SplineSrf(S_mac_bone,den_mac_bone,S,2);
                 
-                % Adjust for field size.  Our bone values have a peak of
+                % Adjust for field size.  Our Bone values have a peak of
                 % 0.35, but the CIE formula assume normalization to peak
                 % of 1.  We simply adjust when applying the formula.
-                densityAdjustFieldSize = 0.485*exp(-fieldSizeDegrees/6.132) - 0.485*exp(-2/6.132);
-                macDensity = macDensity+densityAdjustFieldSize;
+                densityAdjustFieldSize = 0.485*exp(-fieldSizeDegrees/6.132) / (0.485*exp(-2/6.132));
+                macDensity = macDensity*densityAdjustFieldSize;
                 macDensity(macDensity < 0) = 0;
                 
 				macTransmit = 10.^(-macDensity)';

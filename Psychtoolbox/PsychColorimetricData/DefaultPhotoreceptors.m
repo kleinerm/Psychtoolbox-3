@@ -47,20 +47,23 @@ switch (kind)
         photoreceptors.fieldSizeDegrees = 2;
         photoreceptors.ageInYears = 32;
     
-    % This creates Tsujiumura's estimate of the melanopsin gc
+    % This creates Tsujiumura's (2010) estimate of the melanopsin gc
     % spectral sensitivity in the human eye. The quantal efficiency
     % is just made up, though, so that the code runs.
     %
     % Tsujimura has used different lambda-max in different papers.
     % The 482 value given here is from the 2010 paper.  His email
-    % suggests he may have used 489 and 502 at different times.
+    % suggests he may have used 489 and 502 at different times.  Also
+    % by email, he used Stockman-Sharpe not Govardovskii nomogram
+    % for the 2010 paper, despite what the paper says.
     case 'LivingHumanMelanopsin'
         photoreceptors.species = 'Human';
 		photoreceptors.lensDensity.source = 'CIE';
 		photoreceptors.macularPigmentDensity.source = 'CIE';
         photoreceptors.axialDensity.source = 'Tsujimura';
         photoreceptors.axialDensity.value = 0.5;
-		photoreceptors.nomogram.source = 'Govardovskii';
+		%photoreceptors.nomogram.source = 'Govardovskii';
+        photoreceptors.nomogram.source = 'StockmanSharpe';
 		photoreceptors.nomogram.S = [380 1 401];
 		photoreceptors.nomogram.lambdaMax = [482]';
 		photoreceptors.types = {'Melanopsin'};
