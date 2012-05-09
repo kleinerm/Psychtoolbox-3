@@ -33,7 +33,8 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
                                   const Rect *       contentBounds,
                                   WindowClass        wclass,
                                   WindowAttributes   addAttribs,
-                                  WindowRef *        outWindow);
+                                  WindowRef *        outWindow,
+                                  bool               newStyle);
 
 WindowRef GetUserFocusWindow(void);
 

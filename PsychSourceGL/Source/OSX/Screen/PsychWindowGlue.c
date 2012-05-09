@@ -292,7 +292,12 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	GDHandle						gdhDisplay;
 	GDHandle						*gdhDisplayPtr = NULL; 
 	int								gdhcount = 0;
-	
+    psych_bool                      useCocoa = FALSE;
+	    
+    // Query OS/X version:
+	Gestalt(gestaltSystemVersionMajor, &osMajor);
+	Gestalt(gestaltSystemVersionMinor, &osMinor);
+    
 	// NULL-out Carbon/Cocoa window handle, so this is well-defined in case of error:
 	windowRecord->targetSpecific.windowHandle = NULL;
 
@@ -394,8 +399,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
                 return(FALSE);
             }
         #else
+            // Request use of Cocoa specific setup path on 10.6 and later:
+            if ((osMajor > 10) || ((osMajor == 10) && (osMinor > 5))) useCocoa = TRUE;
+
             // 64-Bit Cocoa path:
-            if (PsychCocoaCreateWindow(windowRecord, screenrect, &winRect, wclass, addAttribs, &carbonWindow)) {
+            if (PsychCocoaCreateWindow(windowRecord, screenrect, &winRect, wclass, addAttribs, &carbonWindow, useCocoa)) {
                 printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to open Carbon onscreen window\n\n");
                 return(FALSE);
             }
@@ -406,7 +414,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
                 //
                 // Levels 1000 - 1499 and 1500 to 1999 map to a master opacity level of 0.0 - 1.0:
                 SetWindowAlpha(carbonWindow, ((float) (windowLevel % 500)) / 499.0);
-            }
+            }        
         #endif
 
 		// Show it! Unless a windowLevel of -1 requests hiding the window:
@@ -444,8 +452,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenSettings->screenNumber);
     displayMask=CGDisplayIDToOpenGLDisplayMask(cgDisplayID);
 
-	if (!useAGL && !AGLForFullscreen) {
-		attribs[attribcount++]=kCGLPFAFullScreen;
+	if (useCocoa || (!useAGL && !AGLForFullscreen)) {
+		if (!useCocoa) attribs[attribcount++]=kCGLPFAFullScreen;
 		attribs[attribcount++]=kCGLPFADisplayMask;
 		attribs[attribcount++]=displayMask;
 
@@ -530,7 +538,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		// Alloc an accumulation buffer as well?
 		if (PsychPrefStateGet_3DGfx() & 2) {
 			// Yes: Alloc accum buffer, request 64 bpp, aka 16 bits integer per color component if possible:
-			if (!useAGL && !AGLForFullscreen) {
+			if (useCocoa || (!useAGL && !AGLForFullscreen)) {
 				attribs[attribcount++]=kCGLPFAAccumSize;
 				attribs[attribcount++]=64;
 			}
@@ -582,7 +590,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	windowRecord->targetSpecific.glusercontextObject = NULL;
 	windowRecord->targetSpecific.glswapcontextObject = NULL;
 
-	if (!useAGL && !AGLForFullscreen) {
+	if (useCocoa || (!useAGL && !AGLForFullscreen)) {
 		// Context setup for CGL (non-windowed, non-multiscreen mode):
 		
 		// First try in choosing a matching format for multisample mode:
@@ -626,14 +634,16 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 			return(FALSE);
 		}
 		
-		// Switch to fullscreen display: We don't support windowed display on OS-X
-		error=CGLSetFullScreen(windowRecord->targetSpecific.contextObject);
-		if (error) {
-			printf("\nPTB-ERROR[CGLSetFullScreen failed: %s]:The specified display may not support the current color depth -\nPlease switch to 'Millions of Colors' in Display Settings.\n\n", CGLErrorString(error));
-			CGLSetCurrentContext(NULL);
-			return(FALSE);
-		}
-		
+        if (!useCocoa) {
+            // Switch to fullscreen display: We don't support windowed display on OS-X
+            error=CGLSetFullScreen(windowRecord->targetSpecific.contextObject);
+            if (error) {
+                printf("\nPTB-ERROR[CGLSetFullScreen failed: %s]:The specified display may not support the current color depth -\nPlease switch to 'Millions of Colors' in Display Settings.\n\n", CGLErrorString(error));
+                CGLSetCurrentContext(NULL);
+                return(FALSE);
+            }
+        }
+        
 		// NULL-out the AGL context field, just for safety...
 		windowRecord->targetSpecific.deviceContext = NULL;
 	}
@@ -771,7 +781,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         
         #endif // 32-Bit AGL setup path.
         
-        // 64-Bit setup path, using Cocoa + NSOpenGLView via Objective-C:
+        // 64-Bit setup path, using Cocoa + NSOpenGLView via Objective-C.
+        // This is the compatibility path for 10.5 "Leopard", which only provides
+        // basic functionality:
         #ifdef __LP64__
         windowRecord->targetSpecific.contextObject = PsychGetCocoaOpenGLContext(carbonWindow);
         #endif
@@ -800,7 +812,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         isDoubleBuffer=false;
         glGetBooleanv(GL_DOUBLEBUFFER, &isDoubleBuffer);
         if(!isDoubleBuffer){
-			if (!useAGL) {
+			if (useCocoa || !useAGL) {
 				CGLDestroyPixelFormat(windowRecord->targetSpecific.pixelFormatObject);
 				CGLSetCurrentContext(NULL);
 				CGLClearDrawable(windowRecord->targetSpecific.contextObject ) ;
@@ -822,19 +834,23 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		// heavyweight ressources likes textures, FBOs, VBOs, PBOs, display lists and
 		// starts off as an identical copy of PTB's context as of here.
 
-		if (!useAGL) {
+		if (useCocoa || !useAGL) {
 			error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, windowRecord->targetSpecific.contextObject, &(windowRecord->targetSpecific.glusercontextObject));
 			if (error) {
 				printf("\nPTB-ERROR[UserContextCreation failed: %s]: Creating a private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n", CGLErrorString(error));
 				return(FALSE);
 			}
-			// Attach it to our onscreen drawable:
-			error=CGLSetFullScreen(windowRecord->targetSpecific.glusercontextObject);
-			if (error) {
-				printf("\nPTB-ERROR[CGLSetFullScreen for user context failed: %s]: Attaching private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n", CGLErrorString(error));
-				CGLSetCurrentContext(NULL);
-				return(FALSE);
-			}
+            
+            if (!useCocoa) {
+                // Attach it to our onscreen drawable:
+                error=CGLSetFullScreen(windowRecord->targetSpecific.glusercontextObject);
+                if (error) {
+                    printf("\nPTB-ERROR[CGLSetFullScreen for user context failed: %s]: Attaching private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n", CGLErrorString(error));
+                    CGLSetCurrentContext(NULL);
+                    return(FALSE);
+                }
+            }
+            
 			// Copy full state from our main context:
 			error = CGLCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS);
 			if (error) {
@@ -901,19 +917,23 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // background threads, e.g., our thread for async flip operations:
     if (TRUE)
     {
-		if (!useAGL) {
+		if (useCocoa || !useAGL) {
 			error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, windowRecord->targetSpecific.contextObject, &(windowRecord->targetSpecific.glswapcontextObject));
 			if (error) {
 				printf("\nPTB-ERROR[SwapContextCreation failed: %s]: Creating a private OpenGL context for async-bufferswaps failed.\n\n", CGLErrorString(error));
 				return(FALSE);
 			}
-			// Attach it to our onscreen drawable:
-			error=CGLSetFullScreen(windowRecord->targetSpecific.glswapcontextObject);
-			if (error) {
-				printf("\nPTB-ERROR[CGLSetFullScreen for swapcontext failed: %s]: Attaching private OpenGL context async-bufferswaps failed.\n\n", CGLErrorString(error));
-				CGLSetCurrentContext(NULL);
-				return(FALSE);
-			}
+            
+            if (!useCocoa) {
+                // Attach it to our onscreen drawable:
+                error=CGLSetFullScreen(windowRecord->targetSpecific.glswapcontextObject);
+                if (error) {
+                    printf("\nPTB-ERROR[CGLSetFullScreen for swapcontext failed: %s]: Attaching private OpenGL context async-bufferswaps failed.\n\n", CGLErrorString(error));
+                    CGLSetCurrentContext(NULL);
+                    return(FALSE);
+                }
+            }
+            
 			// Copy full state from our main context:
 			error = CGLCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glswapcontextObject, GL_ALL_ATTRIB_BITS);
 			if (error) {
@@ -977,12 +997,20 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     }
     
 	// Ok, if we reached this point and AGL is used, we should store its onscreen Carbon window handle:
-	if (useAGL && !AGLForFullscreen) {
+	if (useCocoa || (useAGL && !AGLForFullscreen)) {
 		windowRecord->targetSpecific.windowHandle = carbonWindow;
 	}
 	else {
 		windowRecord->targetSpecific.windowHandle = NULL;
 	}
+
+    // 64-Bit setup path, using Cocoa + NSOpenGLView via Objective-C.
+    // This is the modern path for 10.6 "Snow Leopard" and later:
+    #ifdef __LP64__
+    if (useCocoa) {
+        PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(carbonWindow, windowRecord);
+    }
+    #endif
 
     // Initialize a low-level mapping of Framebuffer device data structures into
     // our address space: Needed for additional timing checks:
@@ -1014,10 +1042,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         
         // If the mapping worked, we have a pointer to the driver memory in .shmem, otherwise we have NULL:
     }
-
-    // Query OS/X version:
-	Gestalt(gestaltSystemVersionMajor, &osMajor);
-	Gestalt(gestaltSystemVersionMinor, &osMinor);
+    
+    // Use of CoreVideo is needed on 10.7 and later due to brokeness of the old method (thanks Apple!):
     if ((osMajor > 10) || (osMinor >= 7)) {
         useCoreVideoTimestamping = TRUE;
         if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Broken Apple OS/X 10.7 or later detected: Using CoreVideo timestamping instead of precise vbl-irq timestamping.\n");
@@ -1216,9 +1242,18 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     CGLDestroyPixelFormat(windowRecord->targetSpecific.pixelFormatObject);
     
 	// Destroy rendering context:
-    CGLDestroyContext(windowRecord->targetSpecific.contextObject);
-	if (windowRecord->targetSpecific.glusercontextObject) CGLDestroyContext(windowRecord->targetSpecific.glusercontextObject);
-	if (windowRecord->targetSpecific.glswapcontextObject) CGLDestroyContext(windowRecord->targetSpecific.glswapcontextObject);
+    #ifdef __LP64__
+        // 64-Bit Path: We're on OSX 10.5 or later. Use new-style CGLReleaseContext(), which is needed for our
+        // Cocoa windowed mode with NSOpenGLContext wrapped around CGLContext:
+        CGLReleaseContext(windowRecord->targetSpecific.contextObject);
+        if (windowRecord->targetSpecific.glusercontextObject) CGLReleaseContext(windowRecord->targetSpecific.glusercontextObject);
+        if (windowRecord->targetSpecific.glswapcontextObject) CGLReleaseContext(windowRecord->targetSpecific.glswapcontextObject);
+    #else
+        // 32-Bit Path: Use good ol' CGLDestroyContext():
+        CGLDestroyContext(windowRecord->targetSpecific.contextObject);
+        if (windowRecord->targetSpecific.glusercontextObject) CGLDestroyContext(windowRecord->targetSpecific.glusercontextObject);
+        if (windowRecord->targetSpecific.glswapcontextObject) CGLDestroyContext(windowRecord->targetSpecific.glswapcontextObject);
+    #endif
     
     // Disable low-level mapping of framebuffer cursor memory:
     if (fbsharedmem[windowRecord->screenNumber].shmem && (screenRefCount[windowRecord->screenNumber] == 1)) {

@@ -45,13 +45,15 @@
 // Number of currently open Cocoa based onscreen windows:
 static unsigned int cocoaWindowCount = 0;
 static bool hadFullscreenwindow = false;
+static bool useNewStyleOpenGL = false;
 
 PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
                            PsychRectType      screenRect,
                            const Rect *       contentBounds,
                            WindowClass        wclass,
                            WindowAttributes   addAttribs,
-                           WindowRef *        outWindow)
+                           WindowRef *        outWindow,
+                           bool               newStyle)
 {
     char windowTitle[100];
     NSWindow *cocoaWindow;
@@ -130,34 +132,42 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
     NSPoint winPosition = NSMakePoint(contentBounds->left, screenRect[kPsychBottom] - contentBounds->top);
     [cocoaWindow setFrameTopLeftPoint:winPosition];
 
-    // Set up a pixel format for the context
-    NSOpenGLPixelFormatAttribute attrs[] = {
-        NSOpenGLPFADoubleBuffer,
-        0
-    };
-    
-    NSOpenGLPixelFormat* cocoaPixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:attrs];
-    if (cocoaPixelFormat == nil) {
-        printf("PTB-ERROR: Could not create NSOpenGLPixelFormat!\n");
-        return(1);
+    if (!newStyle) {
+        // Set up a pixel format for the context
+        NSOpenGLPixelFormatAttribute attrs[] = {
+            NSOpenGLPFADoubleBuffer,
+            0
+        };
+        
+        NSOpenGLPixelFormat* cocoaPixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:attrs];
+        if (cocoaPixelFormat == nil) {
+            printf("PTB-ERROR: Could not create NSOpenGLPixelFormat!\n");
+            return(1);
+        }
+        
+        // Create NSOpenGLView for embedding into our Cocoa window:    
+        cocoaOpenGLView = [[NSOpenGLView alloc] initWithFrame:windowRect pixelFormat:cocoaPixelFormat];
+        if (cocoaOpenGLView == nil) {
+            printf("PTB-ERROR: Could not create NSOpenGLView!");
+            // Return failure:
+            return(1);
+        }
+        
+        // Don't need the pixelformat object anymore:
+        [cocoaPixelFormat release];
+        
+        // Assign view to window:
+        [cocoaWindow setContentView:cocoaOpenGLView];
+        
+        // Release reference to the cocoaOpenGLView:
+        [cocoaOpenGLView release];
+        
+        // Mark use of old fallback path globally:
+        useNewStyleOpenGL = false;
     }
-    
-    // Create NSOpenGLView for embedding into our Cocoa window:    
-    cocoaOpenGLView = [[NSOpenGLView alloc] initWithFrame:windowRect pixelFormat:cocoaPixelFormat];
-    if (cocoaOpenGLView == nil) {
-        printf("PTB-ERROR: Could not create NSOpenGLView!");
-        // Return failure:
-        return(1);
+    else {
+        useNewStyleOpenGL = true;
     }
-    
-    // Don't need the pixelformat object anymore:
-    [cocoaPixelFormat release];
-    
-    // Assign view to window:
-    [cocoaWindow setContentView:cocoaOpenGLView];
-    
-    // Release reference to the cocoaOpenGLView:
-    [cocoaOpenGLView release];
     
     // Bring to front:
     [cocoaWindow orderFrontRegardless];    
@@ -240,8 +250,12 @@ void DisposeWindow(WindowRef window)
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
-    // Destroy OpenGL rendering context of our windows NSOpenGLView:
-    [[cocoaWindow contentView] clearGLContext];
+    if (!useNewStyleOpenGL) {
+        // Destroy OpenGL rendering context of our windows NSOpenGLView:
+        [[cocoaWindow contentView] clearGLContext];
+    }
+    else {
+    }
     
     // Close window:
     [cocoaWindow close];
@@ -285,10 +299,43 @@ void PsychCocoaShowWindow(WindowRef window)
 
 psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(WindowRef window, PsychWindowRecordType *windowRecord)
 {
+    GLint opaque = 0;
+    NSOpenGLContext *masterContext = NULL;
+    NSOpenGLContext *gluserContext = NULL;
+    NSOpenGLContext *glswapContext = NULL;
+    
     NSWindow *cocoaWindow = (NSWindow*) window;
     
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
+    // Sleeping here for 100 msecs seems to help reliability. Some race
+    // between us and the Coregraphics server?
+    PsychYieldIntervalSeconds(0.1);
+
+    // Build NSOpenGLContexts as wrappers around existing CGLContexts already
+    // created in calling routine:
+    masterContext = [[NSOpenGLContext alloc] initWithCGLContextObj: windowRecord->targetSpecific.contextObject];
+    [masterContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
+    [masterContext setView:[cocoaWindow contentView]];
+    [masterContext makeCurrentContext];
+    printf("MasterContext created & Made current!\n");
+    
+    // Ditto for potential gl userspace rendering context:
+    if (windowRecord->targetSpecific.glusercontextObject) {
+        gluserContext = [[NSOpenGLContext alloc] initWithCGLContextObj: windowRecord->targetSpecific.glusercontextObject];
+        [gluserContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
+        [gluserContext setView:[cocoaWindow contentView]];
+        printf("GLUserContext created!\n");
+    }
+    
+    // Ditto for potential glswapcontext for async flips and frame sequential stereo:
+    if (windowRecord->targetSpecific.glswapcontextObject) {
+        glswapContext = [[NSOpenGLContext alloc] initWithCGLContextObj: windowRecord->targetSpecific.glswapcontextObject];
+        [glswapContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
+        [glswapContext setView:[cocoaWindow contentView]];
+        printf("GLSwapContext created!\n");
+    }
 
     // Drain the pool:
     [pool drain];
