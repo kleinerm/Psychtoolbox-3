@@ -73,9 +73,15 @@ switch (species)
                 load den_mac_bone;
 				macDensity = SplineSrf(S_mac_bone,den_mac_bone,S,2);
                 
-                % Adjust for field size.  Our Bone values have a peak of
-                % 0.35, but the CIE formula assume normalization to peak
-                % of 1.  We simply adjust when applying the formula.
+                % Adjust for field size by adjusting peak optical density.
+                % This is a multiplicative adjustment, which is pretty
+                % easy to derive from first principles.  See Rodieck, pp. 443-445.
+                % Our Bone values have a peak of 0.35, but the CIE formula for peak
+                % density produces coefficients for a peak of 1.  We handle this by
+                % dividing the Bone values by their peak density and then applying the
+                % formula.  And, the peak density of 0.35 is in fact obtained by
+                % applying the CIE formula for a 2 degree field.  For tabulated
+                % values to check this against, see CIE 170-1:2006, p.  29, Table 6.4.
                 densityAdjustFieldSize = 0.485*exp(-fieldSizeDegrees/6.132) / (0.485*exp(-2/6.132));
                 macDensity = macDensity*densityAdjustFieldSize;
                 macDensity(macDensity < 0) = 0;
