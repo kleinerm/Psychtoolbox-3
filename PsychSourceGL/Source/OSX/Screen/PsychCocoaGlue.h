@@ -29,14 +29,12 @@
 #define PSYCH_COCOAGLUE_H
 
 // Create windowed onscreen window via Cocoa:
-// Also creates legacy OpenGL context on OSX versions < 10.6 if newStyle == false.
 PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
                                   PsychRectType      screenRect,
                                   const Rect *       contentBounds,
                                   WindowClass        wclass,
                                   WindowAttributes   addAttribs,
-                                  WindowRef *        outWindow,
-                                  bool               newStyle);
+                                  WindowRef *        outWindow);
 
 // Close Cocoa onscreen window, release OpenGL resources:
 void PsychCocoaDisposeWindow(PsychWindowRecordType *windowRecord);
@@ -48,8 +46,8 @@ WindowRef GetUserFocusWindow(void);
 // Show the window onscreen:
 void PsychCocoaShowWindow(WindowRef window);
 
-// Legacy path for < 10.6: Retrieve CGLContextObj for Cocoa window:
-CGLContextObj PsychGetCocoaOpenGLContext(WindowRef window);
+// Legacy path for < 10.6: Setup minimally viable OpenGL contexts for Cocoa window:
+psych_bool PsychCocoaSetupAndAssignLegacyOpenGLContext(WindowRef window, PsychWindowRecordType *windowRecord);
 
 // Modern >= 10.6 path: Setup all OpenGL contexts and CGL contexts:
 psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(WindowRef window, PsychWindowRecordType *windowRecord);

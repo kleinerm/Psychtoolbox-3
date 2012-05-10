@@ -351,13 +351,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		PsychPrefStateSet_VBLTimestampingMode(-1);
 		
 		// Warn user about what's going on:
-		if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Using Carbon + AGL for composited onscreen window creation: High precision timestamping disabled,\nany kind of visual stimulus onset timing wil be very unreliable!!\n");		
+		if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Using desktop compositor for composited onscreen window creation: High precision timestamping disabled,\nany kind of visual stimulus onset timing wil be very unreliable!!\n");		
 	}
 
 	// Do we need to use windowed mode with AGL?
 	if (useAGL) {
 		// Yes. Need to create Carbon window and attach OpenGL to it via AGL:		
-		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Using Carbon + AGL for onscreen window creation...\n");
+		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Using desktop compositor for onscreen window creation...\n");
 		
 		// Create onscreen Carbon window of requested position and size:
 		Rect winRect;
@@ -403,7 +403,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             if ((osMajor > 10) || ((osMajor == 10) && (osMinor > 5))) useCocoa = TRUE;
 
             // 64-Bit Cocoa path:
-            if (PsychCocoaCreateWindow(windowRecord, screenrect, &winRect, wclass, addAttribs, &carbonWindow, useCocoa)) {
+            if (PsychCocoaCreateWindow(windowRecord, screenrect, &winRect, wclass, addAttribs, &carbonWindow)) {
                 printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to open Carbon onscreen window\n\n");
                 return(FALSE);
             }
@@ -649,7 +649,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	}
 	else {
 		// Context setup for AGL (windowed or multiscreen mode or fullscreen mode):
-
+        // Disabled on 64-Bit.
         #ifndef __LP64__
 		// Fullscreen mode?
 		if (AGLForFullscreen) {
@@ -781,11 +781,15 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         
         #endif // 32-Bit AGL setup path.
         
-        // 64-Bit setup path, using Cocoa + NSOpenGLView via Objective-C.
-        // This is the compatibility path for 10.5 "Leopard", which only provides
+        // 64-Bit setup path, using Cocoa + NSOpenGLContext via Objective-C.
+        // This is the legacy path for OSX 10.5 "Leopard", which only provides
         // basic functionality:
         #ifdef __LP64__
-        windowRecord->targetSpecific.contextObject = PsychGetCocoaOpenGLContext(carbonWindow);
+        if (PsychCocoaSetupAndAssignLegacyOpenGLContext(carbonWindow, windowRecord)) {
+            printf("\nPTB-ERROR[Cocoa Legacy-OpenGL setup failed]: Setup failed for unknown reasons.\n\n");
+            PsychCocoaDisposeWindow(windowRecord);
+            return(FALSE);
+        }
         #endif
 	}
 			
@@ -860,7 +864,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 			}
 		}
 		else {
-            // TODO FIXME 64BIT
+            // Disabled on 64-Bit
             #ifndef __LP64__
 			AGLContext usercontext = NULL;
 			usercontext = aglCreateContext(pf, glcontext);
@@ -943,7 +947,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 			}
 		}
 		else {
-            // TODO FIXME 64BIT
+            // Disabled on 64-Bit
             #ifndef __LP64__
 			AGLContext usercontext = NULL;
 			usercontext = aglCreateContext(pf, glcontext);
@@ -1004,11 +1008,16 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		windowRecord->targetSpecific.windowHandle = NULL;
 	}
 
-    // 64-Bit setup path, using Cocoa + NSOpenGLView via Objective-C.
-    // This is the modern path for 10.6 "Snow Leopard" and later:
+    // 64-Bit setup path, using Cocoa + NSOpenGLContext wrapped around already
+    // setup CGLContext via Objective-C.
+    // This is the modern path for OSX 10.6 "Snow Leopard" and later:
     #ifdef __LP64__
     if (useCocoa) {
-        PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(carbonWindow, windowRecord);
+        if (PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(carbonWindow, windowRecord)) {
+            printf("\nPTB-ERROR[Cocoa OpenGL setup failed]: Setup failed for unknown reasons.\n\n");
+            PsychCocoaDisposeWindow(windowRecord);
+            return(FALSE);
+        }
     }
     #endif
 

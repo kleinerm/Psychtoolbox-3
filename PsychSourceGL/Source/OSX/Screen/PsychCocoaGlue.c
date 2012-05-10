@@ -28,8 +28,9 @@
     The setup code for multiple OpenGL contexts per Cocoa window makes
     use of functions only supported on OSX 10.6 "Snow Leopard" and later.
     Therefore, full windowed mode functionality is only available with
-    10.6 and later. 10.5 only provides very restricted basic 2D drawing
-    contexts with hard-coded parameters.
+    10.6 and later. 10.5 only provides restricted basic 2D/3D drawing
+    contexts with hard-coded pixelformat parameters and no resource sharing
+    across onscreen windows.
 
 */
 
@@ -45,21 +46,18 @@
 // Number of currently open Cocoa based onscreen windows:
 static unsigned int cocoaWindowCount = 0;
 static bool hadFullscreenwindow = false;
-static bool useNewStyleOpenGL = false;
 
 PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
                            PsychRectType      screenRect,
                            const Rect *       contentBounds,
                            WindowClass        wclass,
                            WindowAttributes   addAttribs,
-                           WindowRef *        outWindow,
-                           bool               newStyle)
+                           WindowRef *        outWindow)
 {
     char windowTitle[100];
     NSWindow *cocoaWindow;
-    NSOpenGLView *cocoaOpenGLView;
 
-    // Zero-Init NSOpenGLContext-Pointers for 'newStyle' mode:
+    // Zero-Init NSOpenGLContext-Pointers for our private Cocoa OpenGL contexts:
     windowRecord->targetSpecific.nsmasterContext = NULL;
     windowRecord->targetSpecific.nsswapContext = NULL;
     windowRecord->targetSpecific.nsuserContext = NULL;
@@ -136,46 +134,6 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
     // overlap the menu bar or dock area by default.
     NSPoint winPosition = NSMakePoint(contentBounds->left, screenRect[kPsychBottom] - contentBounds->top);
     [cocoaWindow setFrameTopLeftPoint:winPosition];
-
-    if (!newStyle) {
-        // Define a pixelformat for the context. We use a hard-coded format which
-        // is used in legacy mode for 10.5 and covers the most common use cases:
-        NSOpenGLPixelFormatAttribute attrs[] = {
-            NSOpenGLPFADoubleBuffer,
-            NSOpenGLPFADepthSize, 24,
-            NSOpenGLPFAStencilSize, 8,
-            0
-        };
-        
-        NSOpenGLPixelFormat* cocoaPixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:attrs];
-        if (cocoaPixelFormat == nil) {
-            printf("PTB-ERROR: Could not create NSOpenGLPixelFormat!\n");
-            return(1);
-        }
-        
-        // Create NSOpenGLView for embedding into our Cocoa window:    
-        cocoaOpenGLView = [[NSOpenGLView alloc] initWithFrame:windowRect pixelFormat:cocoaPixelFormat];
-        if (cocoaOpenGLView == nil) {
-            printf("PTB-ERROR: Could not create NSOpenGLView!");
-            // Return failure:
-            return(1);
-        }
-        
-        // Don't need the pixelformat object anymore:
-        [cocoaPixelFormat release];
-        
-        // Assign view to window:
-        [cocoaWindow setContentView:cocoaOpenGLView];
-        
-        // Release reference to the cocoaOpenGLView:
-        [cocoaOpenGLView release];
-        
-        // Mark use of old fallback path globally:
-        useNewStyleOpenGL = false;
-    }
-    else {
-        useNewStyleOpenGL = true;
-    }
     
     // Bring to front:
     [cocoaWindow orderFrontRegardless];    
@@ -258,28 +216,18 @@ void PsychCocoaDisposeWindow(PsychWindowRecordType *windowRecord)
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
-    if (!useNewStyleOpenGL) {
-        // Detach OpenGL rendering context of our window associated NSOpenGLView
-        // content view:
-        [[cocoaWindow contentView] clearGLContext];
-    }
-    else {
-        // Release NSOpenGLContext's - this will also release the wrapped
-        // CGLContext's and finally really destroy them:
-        if (windowRecord->targetSpecific.nsmasterContext) [windowRecord->targetSpecific.nsmasterContext release];
-        if (windowRecord->targetSpecific.nsswapContext) [windowRecord->targetSpecific.nsswapContext release];
-        if (windowRecord->targetSpecific.nsuserContext) [windowRecord->targetSpecific.nsuserContext release];
+    // Release NSOpenGLContext's - this will also release the wrapped
+    // CGLContext's and finally really destroy them:
+    if (windowRecord->targetSpecific.nsmasterContext) [windowRecord->targetSpecific.nsmasterContext release];
+    if (windowRecord->targetSpecific.nsswapContext) [windowRecord->targetSpecific.nsswapContext release];
+    if (windowRecord->targetSpecific.nsuserContext) [windowRecord->targetSpecific.nsuserContext release];
 
-        // Zero-Out the contexts after release:
-        windowRecord->targetSpecific.nsmasterContext = NULL;
-        windowRecord->targetSpecific.nsswapContext = NULL;
-        windowRecord->targetSpecific.nsuserContext = NULL;
-    }
+    // Zero-Out the contexts after release:
+    windowRecord->targetSpecific.nsmasterContext = NULL;
+    windowRecord->targetSpecific.nsswapContext = NULL;
+    windowRecord->targetSpecific.nsuserContext = NULL;
 
-    // Close window. This will also release the associated contentView, ie.,
-    // in legacy mode (for OSX 10.5) the NSOpenGLView and its associated
-    // OpenGL context, and in modern mode will release the NSView associated
-    // with the window:
+    // Close window. This will also release the associated contentView:
     [cocoaWindow close];
 
     // Drain the pool:
@@ -328,13 +276,10 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(WindowRef windo
     
     NSWindow *cocoaWindow = (NSWindow*) window;
     
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: MacOSX 10.6+ primary window display path enabled. Should be fully functional.\n");
+
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-
-    // Sleeping here for 100 msecs seems to help reliability. Some race
-    // between us and the Coregraphics server?
-    // MK: Apparently not needed in the newStyle setup path. We'll see
-    // how this holds up during further testing: PsychYieldIntervalSeconds(0.1);
 
     // Build NSOpenGLContexts as wrappers around existing CGLContexts already
     // created in calling routine:
@@ -370,7 +315,80 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(WindowRef windo
     // Drain the pool:
     [pool drain];
     
-    return(true);
+    // Return success:
+    return(false);
+}
+
+
+psych_bool PsychCocoaSetupAndAssignLegacyOpenGLContext(WindowRef window, PsychWindowRecordType *windowRecord)
+{
+    GLint opaque = 0;
+    NSOpenGLContext *masterContext = NULL;
+    NSOpenGLContext *gluserContext = NULL;
+    NSOpenGLContext *glswapContext = NULL;
+    
+    NSWindow *cocoaWindow = (NSWindow*) window;
+    
+    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: MacOSX 10.5 legacy window display mode for backward compatibility enabled. Functionality will be limited.\n");
+    
+    // Allocate auto release pool:
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    
+    // Define a pixelformat for the context. We use a hard-coded "one size fits all"
+    // format which is used in legacy mode for OSX 10.5 and covers the most common use cases:
+    NSOpenGLPixelFormatAttribute attrs[] = {
+        NSOpenGLPFADoubleBuffer,
+        NSOpenGLPFADepthSize, 24,
+        NSOpenGLPFAStencilSize, 8,
+        0
+    };
+    
+    NSOpenGLPixelFormat* cocoaPixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:attrs];
+    if (cocoaPixelFormat == nil) {
+        printf("PTB-ERROR: Could not create NSOpenGLPixelFormat!\n");
+        return(true);
+    }
+    
+    // Build NSOpenGLContexts as wrappers around existing CGLContexts already
+    // created in calling routine:
+    masterContext = [[NSOpenGLContext alloc] initWithFormat: cocoaPixelFormat shareContext:nil];
+    [masterContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
+    [masterContext setView:[cocoaWindow contentView]];
+    [masterContext makeCurrentContext];
+    windowRecord->targetSpecific.contextObject = [masterContext CGLContextObj];
+    CGLRetainContext(windowRecord->targetSpecific.contextObject);
+    // printf("Legacy:MasterContext created & Made current!\n");
+    
+    // Ditto for potential glswapcontext for async flips and frame sequential stereo:
+    glswapContext = [[NSOpenGLContext alloc] initWithFormat: cocoaPixelFormat shareContext:masterContext];
+    [glswapContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
+    [glswapContext setView:[cocoaWindow contentView]];
+    windowRecord->targetSpecific.glswapcontextObject = [glswapContext CGLContextObj];
+    CGLRetainContext(windowRecord->targetSpecific.glswapcontextObject);
+    // printf("Legacy:GLSwapContext created!\n");
+    
+    // Ditto for potential gl userspace rendering context:
+    gluserContext = [[NSOpenGLContext alloc] initWithFormat: cocoaPixelFormat shareContext:masterContext];
+    [gluserContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
+    [gluserContext setView:[cocoaWindow contentView]];
+    windowRecord->targetSpecific.glusercontextObject = [gluserContext CGLContextObj];
+    CGLRetainContext(windowRecord->targetSpecific.glusercontextObject);
+    // printf("Legacy:GLUserContext created!\n");
+    
+    // Don't need the pixelformat object anymore:
+    [cocoaPixelFormat release];
+    
+    // printf("Legacy:Refcounts: window=%i , view=%i , mc=%i mccgl=%i sc=%i sccgl=%i\n", [cocoaWindow retainCount], [[cocoaWindow contentView] retainCount], [masterContext retainCount],CGLGetContextRetainCount(windowRecord->targetSpecific.contextObject), [glswapContext retainCount], CGLGetContextRetainCount(windowRecord->targetSpecific.glswapcontextObject));
+           
+    // Assign contexts for use in window close sequence later on:
+    windowRecord->targetSpecific.nsmasterContext = masterContext;
+    windowRecord->targetSpecific.nsswapContext = glswapContext;
+    windowRecord->targetSpecific.nsuserContext = gluserContext;
+
+    // Drain the pool:
+    [pool drain];
+
+    return(false);
 }
 
 void SendBehind(WindowRef   window,
@@ -424,39 +442,6 @@ OSStatus SetWindowAlpha(
     [pool drain];
     
     return(0);
-}
-
-CGLContextObj PsychGetCocoaOpenGLContext(WindowRef window)
-{
-    CGLContextObj ctx = NULL;
-    NSWindow *cocoaWindow = (NSWindow*) window;
-    
-    // Allocate auto release pool:
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-
-    // Sleeping here for 100 msecs seems to help reliability. Some race
-    // between us and the Coregraphics server?
-    PsychYieldIntervalSeconds(0.1);
-    
-    // Make the OpenGL context current:
-    [[[cocoaWindow contentView] openGLContext] makeCurrentContext];
-    [[cocoaWindow contentView] prepareOpenGL];
-
-    GLint opaque = 0;
-    [[[cocoaWindow contentView] openGLContext] setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
-
-    // Retrieve CGL OpenGL rendering context of our windows NSOpenGLView:
-    ctx = [[[cocoaWindow contentView] openGLContext] CGLContextObj];
-    
-    // Protect context against premature deletion in PsychOSWindowClose():
-    CGLRetainContext(ctx);
-
-    // printf("LEGACY-Refcounts: window=%i , view=%i , mc=%i mccgl=%i\n", [cocoaWindow retainCount], [[cocoaWindow contentView] retainCount], [[[cocoaWindow contentView] openGLContext] retainCount], CGLGetContextRetainCount(ctx));
-    
-    // Drain the pool:
-    [pool drain];
-    
-    return(ctx);
 }
 
 #endif
