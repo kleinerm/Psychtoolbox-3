@@ -297,7 +297,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Query OS/X version:
 	Gestalt(gestaltSystemVersionMajor, &osMajor);
 	Gestalt(gestaltSystemVersionMinor, &osMinor);
-    
+
 	// NULL-out Carbon/Cocoa window handle, so this is well-defined in case of error:
 	windowRecord->targetSpecific.windowHandle = NULL;
 
@@ -1245,6 +1245,8 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     #ifdef __LP64__
         // 64-Bit Path: We're on OSX 10.5 or later. Use new-style CGLReleaseContext(), which is needed for our
         // Cocoa windowed mode with NSOpenGLContext wrapped around CGLContext:
+
+        // printf("PRERELEASE: Refcounts: mccgl=%i sccgl=%i\n", CGLGetContextRetainCount(windowRecord->targetSpecific.contextObject), CGLGetContextRetainCount(windowRecord->targetSpecific.glswapcontextObject));
         CGLReleaseContext(windowRecord->targetSpecific.contextObject);
         if (windowRecord->targetSpecific.glusercontextObject) CGLReleaseContext(windowRecord->targetSpecific.glusercontextObject);
         if (windowRecord->targetSpecific.glswapcontextObject) CGLReleaseContext(windowRecord->targetSpecific.glswapcontextObject);
@@ -1282,8 +1284,15 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     // Release reference of this window to its screen:
     screenRefCount[windowRecord->screenNumber]--;
     
-	// Destroy Carbon onscreen window, if any:
-	if (windowRecord->targetSpecific.windowHandle) DisposeWindow(windowRecord->targetSpecific.windowHandle);
+    #ifdef __LP64__
+        // Destroy Cocoa onscreen window, if any:
+        if (windowRecord->targetSpecific.windowHandle) PsychCocoaDisposeWindow(windowRecord);
+    #else
+        // Destroy Carbon onscreen window, if any:
+        if (windowRecord->targetSpecific.windowHandle) DisposeWindow(windowRecord->targetSpecific.windowHandle);
+    #endif
+    
+    // printf("POSTWINDISPOSE: Refcounts: mccgl=%i sccgl=%i\n", CGLGetContextRetainCount(windowRecord->targetSpecific.contextObject), CGLGetContextRetainCount(windowRecord->targetSpecific.glswapcontextObject));
 
     return;
 }

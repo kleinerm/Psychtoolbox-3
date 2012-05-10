@@ -59,6 +59,11 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
     NSWindow *cocoaWindow;
     NSOpenGLView *cocoaOpenGLView;
 
+    // Zero-Init NSOpenGLContext-Pointers for 'newStyle' mode:
+    windowRecord->targetSpecific.nsmasterContext = NULL;
+    windowRecord->targetSpecific.nsswapContext = NULL;
+    windowRecord->targetSpecific.nsuserContext = NULL;
+    
     // Include onscreen window index in title:
     sprintf(windowTitle, "PTB Onscreen Window [%i]:", windowRecord->windowIndex);
     
@@ -133,9 +138,12 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
     [cocoaWindow setFrameTopLeftPoint:winPosition];
 
     if (!newStyle) {
-        // Set up a pixel format for the context
+        // Define a pixelformat for the context. We use a hard-coded format which
+        // is used in legacy mode for 10.5 and covers the most common use cases:
         NSOpenGLPixelFormatAttribute attrs[] = {
             NSOpenGLPFADoubleBuffer,
+            NSOpenGLPFADepthSize, 24,
+            NSOpenGLPFAStencilSize, 8,
             0
         };
         
@@ -243,21 +251,35 @@ WindowRef GetUserFocusWindow(void)
     return((WindowRef) focusWindow);
 }
 
-void DisposeWindow(WindowRef window)
+void PsychCocoaDisposeWindow(PsychWindowRecordType *windowRecord)
 {
-    NSWindow *cocoaWindow = (NSWindow*) window;
+    NSWindow *cocoaWindow = (NSWindow*) windowRecord->targetSpecific.windowHandle;
     
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
     if (!useNewStyleOpenGL) {
-        // Destroy OpenGL rendering context of our windows NSOpenGLView:
+        // Detach OpenGL rendering context of our window associated NSOpenGLView
+        // content view:
         [[cocoaWindow contentView] clearGLContext];
     }
     else {
+        // Release NSOpenGLContext's - this will also release the wrapped
+        // CGLContext's and finally really destroy them:
+        if (windowRecord->targetSpecific.nsmasterContext) [windowRecord->targetSpecific.nsmasterContext release];
+        if (windowRecord->targetSpecific.nsswapContext) [windowRecord->targetSpecific.nsswapContext release];
+        if (windowRecord->targetSpecific.nsuserContext) [windowRecord->targetSpecific.nsuserContext release];
+
+        // Zero-Out the contexts after release:
+        windowRecord->targetSpecific.nsmasterContext = NULL;
+        windowRecord->targetSpecific.nsswapContext = NULL;
+        windowRecord->targetSpecific.nsuserContext = NULL;
     }
-    
-    // Close window:
+
+    // Close window. This will also release the associated contentView, ie.,
+    // in legacy mode (for OSX 10.5) the NSOpenGLView and its associated
+    // OpenGL context, and in modern mode will release the NSView associated
+    // with the window:
     [cocoaWindow close];
 
     // Drain the pool:
@@ -311,7 +333,8 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(WindowRef windo
 
     // Sleeping here for 100 msecs seems to help reliability. Some race
     // between us and the Coregraphics server?
-    PsychYieldIntervalSeconds(0.1);
+    // MK: Apparently not needed in the newStyle setup path. We'll see
+    // how this holds up during further testing: PsychYieldIntervalSeconds(0.1);
 
     // Build NSOpenGLContexts as wrappers around existing CGLContexts already
     // created in calling routine:
@@ -319,14 +342,14 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(WindowRef windo
     [masterContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
     [masterContext setView:[cocoaWindow contentView]];
     [masterContext makeCurrentContext];
-    printf("MasterContext created & Made current!\n");
+    // printf("MasterContext created & Made current!\n");
     
     // Ditto for potential gl userspace rendering context:
     if (windowRecord->targetSpecific.glusercontextObject) {
         gluserContext = [[NSOpenGLContext alloc] initWithCGLContextObj: windowRecord->targetSpecific.glusercontextObject];
         [gluserContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
         [gluserContext setView:[cocoaWindow contentView]];
-        printf("GLUserContext created!\n");
+        // printf("GLUserContext created!\n");
     }
     
     // Ditto for potential glswapcontext for async flips and frame sequential stereo:
@@ -334,8 +357,15 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(WindowRef windo
         glswapContext = [[NSOpenGLContext alloc] initWithCGLContextObj: windowRecord->targetSpecific.glswapcontextObject];
         [glswapContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
         [glswapContext setView:[cocoaWindow contentView]];
-        printf("GLSwapContext created!\n");
+        // printf("GLSwapContext created!\n");
     }
+
+    // printf("Refcounts: window=%i , view=%i , mc=%i mccgl=%i sc=%i sccgl=%i\n", [cocoaWindow retainCount], [[cocoaWindow contentView] retainCount], [masterContext retainCount], CGLGetContextRetainCount(windowRecord->targetSpecific.contextObject), [glswapContext retainCount], CGLGetContextRetainCount(windowRecord->targetSpecific.glswapcontextObject));
+    
+    // Assign contexts for use in window close sequence later on:
+    windowRecord->targetSpecific.nsmasterContext = masterContext;
+    windowRecord->targetSpecific.nsswapContext = glswapContext;
+    windowRecord->targetSpecific.nsuserContext = gluserContext;
 
     // Drain the pool:
     [pool drain];
@@ -417,6 +447,11 @@ CGLContextObj PsychGetCocoaOpenGLContext(WindowRef window)
 
     // Retrieve CGL OpenGL rendering context of our windows NSOpenGLView:
     ctx = [[[cocoaWindow contentView] openGLContext] CGLContextObj];
+    
+    // Protect context against premature deletion in PsychOSWindowClose():
+    CGLRetainContext(ctx);
+
+    // printf("LEGACY-Refcounts: window=%i , view=%i , mc=%i mccgl=%i\n", [cocoaWindow retainCount], [[cocoaWindow contentView] retainCount], [[[cocoaWindow contentView] openGLContext] retainCount], CGLGetContextRetainCount(ctx));
     
     // Drain the pool:
     [pool drain];
