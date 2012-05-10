@@ -6,7 +6,7 @@ function photoreceptors = DefaultPhotoreceptors(kind)
 %
 % Available kinds
 %   LivingHumanFovea (Default) - Human foveal cones in the eye
-%   LivingHumanMelanopsin - Estimate of melanopsin gc spectral sensitivity in living eye
+%   LivingHumanMelanopsinTsujimura2010 - Estimate of melanopsin gc spectral sensitivity in living eye
 %   LivingDog - Canine
 %   GuineaPig - Guinea pig in dish
 %
@@ -18,6 +18,7 @@ function photoreceptors = DefaultPhotoreceptors(kind)
 % 8/14/11  dhb  Added fieldSizeDegrees and ageInYears fields to photoreceptors for LivingHumanFovea case.
 %               These defaults match the CIE standard.
 % 4/20/12  dhb  Add LivingHumanMelanopsin
+% 5/10/12  dhb  Changed name for LivingHumanMelanopsin to postpend Tsujimura2010
 %
 % NOTES: Should probably update the parameters for LivingHumanFovea so that
 % they produce the Stockman-Sharpe fundamentals.  This should be pretty
@@ -56,7 +57,7 @@ switch (kind)
     % suggests he may have used 489 and 502 at different times.  Also
     % by email, he used Stockman-Sharpe not Govardovskii nomogram
     % for the 2010 paper, despite what the paper says.
-    case 'LivingHumanMelanopsin'
+    case 'LivingHumanMelanopsinTsujimura2010'
         photoreceptors.species = 'Human';
 		photoreceptors.lensDensity.source = 'CIE';
 		photoreceptors.macularPigmentDensity.source = 'CIE';

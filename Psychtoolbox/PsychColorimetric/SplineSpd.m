@@ -11,7 +11,7 @@ function [spd_out] = SplineSpd(wls_in, spd_in, wls_out, extend)
 %   extend == 1: Cubic spline, extends with last value in that direction
 %   extend == 2: Linear interpolation, linear extrapolation
 %
-% spd_in may have multiple columns, in which case srf_out does as well.
+% spd_in may have multiple columns, in which case spd_out does as well.
 %
 % wls_in and wls_out may be specified as a column vector of
 % wavelengths or as a [start delta n] description.
@@ -23,6 +23,7 @@ function [spd_out] = SplineSpd(wls_in, spd_in, wls_out, extend)
 %              when you spline across different wavelength regions.
 % 7/26/03 dhb  Add extend argument and pass to SplineRaw.
 % 8/13/11 dhb  Update comment to reflect changes in SplineRaw.
+% 5/10/12 dhb  Small comment fix
 
 if (nargin < 4)
 	extend = [];
