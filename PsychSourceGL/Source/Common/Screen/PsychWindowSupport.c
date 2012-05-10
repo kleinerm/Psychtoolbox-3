@@ -4806,6 +4806,12 @@ PsychWindowRecordType* PsychGetDrawingTarget(void)
 	return(currentRendertarget);
 }
 
+/* Hard-Reset the current rendertarget. Only call this from the ScreenCloseAllWindows() function! */
+void PsychColdResetDrawingTarget(void)
+{
+    currentRendertarget = NULL;
+}
+
 /* PsychSetDrawingTarget - Set the target window for following drawing ops.
  *
  * Set up 'windowRecord' as the target window for all drawing operations.
