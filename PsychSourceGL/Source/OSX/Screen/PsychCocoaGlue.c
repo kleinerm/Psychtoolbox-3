@@ -415,4 +415,37 @@ OSStatus SetWindowAlpha(
     return(0);
 }
 
+OSStatus SetThemeCursor(ThemeCursor inCursor)
+{
+    // Allocate auto release pool:
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
+    switch(inCursor) {
+        case kThemeArrowCursor:
+            [[NSCursor arrowCursor] set];
+        break;
+            
+        case kThemeIBeamCursor:
+            [[NSCursor IBeamCursor] set];
+        break;
+
+        case kThemeCrossCursor:
+            [[NSCursor crosshairCursor] set];
+        break;
+
+        case kThemePointingHandCursor:
+            [[NSCursor pointingHandCursor] set];
+        break;
+
+        default:
+            // Failed - Unknown cursor type:
+            return(1);
+    }
+
+    // Drain the pool:
+    [pool drain];
+    
+    return(0);
+}
+
 #endif

@@ -94,7 +94,7 @@ unsigned int PsychOSKDGetRevision(io_connect_t connect);
 
 // Surrogate routines for routines missing in 64-Bit OSX:
 #ifdef __LP64__
-
+// TODO FIXME 64BIT -- Reimplement with new kernel interface.
 kern_return_t
 IOConnectMethodStructureIStructureO(
                                     io_connect_t	connect,
