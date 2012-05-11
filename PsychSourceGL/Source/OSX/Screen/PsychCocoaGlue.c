@@ -116,6 +116,9 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
         [cocoaWindow setLevel:NSScreenSaverWindowLevel];
     }
 
+    // Disable auto-flushing of drawed content to frontbuffer:
+    [cocoaWindow disableFlushWindow];
+
     // Position the window. Origin is bottom-left of screen, as opposed to Carbon / PTB origin
     // of top-left. Therefore need to invert the vertical position. Cocoa only takes our request
     // as a hint. It tries to position as requested, but places the window differently if required
