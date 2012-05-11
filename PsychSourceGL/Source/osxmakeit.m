@@ -138,4 +138,10 @@ if mode==11
     unix(['mv ../Projects/MacOSX/build/MachSetPriorityMex.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
+if mode==12
+    % Build Gestalt:
+    mex -v -outdir ../Projects/MacOSX/build -output Gestalt -largeArrayDims -DPTBMODULE_Gestalt LDFLAGS="\$LDFLAGS -framework CoreServices -framework CoreFoundation -framework CoreAudio" CFLAGS="" CXXFLAGS="" -I/usr/include -ICommon/Base -IOSX/Base -IOSX/Gestalt -IOSX/OS9ToolboxFragments "Common/Base/*.cc" "OSX/Base/*.c" "Common/Base/*.c" "OSX/Gestalt/*.c"
+    unix(['mv ../Projects/MacOSX/build/Gestalt.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+end
+
 return;
