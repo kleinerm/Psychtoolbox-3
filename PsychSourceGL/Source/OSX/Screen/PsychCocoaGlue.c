@@ -43,10 +43,6 @@
 #include <ApplicationServices/ApplicationServices.h>
 #include <Cocoa/Cocoa.h>
 
-// Number of currently open Cocoa based onscreen windows:
-static unsigned int cocoaWindowCount = 0;
-static bool hadFullscreenwindow = false;
-
 PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
                            PsychRectType      screenRect,
                            const Rect *       contentBounds,
@@ -87,13 +83,6 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
         windowStyle = NSBorderlessWindowMask;
     }
 
-    // Hide Apple menu and dock for fullscreen windows:
-    if (windowRecord->specialflags & kPsychIsFullscreenWindow) {
-        // Only hide if this is the first Cocoa window, aka current count is zero:
-        if (cocoaWindowCount == 0) SetSystemUIMode(kUIModeAllSuppressed, 0);
-        hadFullscreenwindow = true;
-    }
-
     cocoaWindow = [[NSWindow alloc] initWithContentRect:windowRect styleMask:windowStyle backing:NSBackingStoreBuffered defer:false];
     if (cocoaWindow == nil) {
         printf("PTB-ERROR:PsychCocoaCreateWindow(): Could not create Cocoa-Window!\n");
@@ -117,14 +106,14 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
     // Make window "transparent" for mouse events like clicks and drags, if requested:
     if (addAttribs & kWindowIgnoreClicksAttribute) [cocoaWindow setIgnoresMouseEvents:true];
 
-    // In non-GUI mode we want the window to float above all other regular windows, so the
+    // In non-GUI mode we want the window to be above all other regular windows, so the
     // stimulus doesn't get occluded. If we make ourselves transparent to mouse clicks, we
-    // must float above all other windows, as otherwise any mouse-click that "goes through"
+    // must be above all other windows, as otherwise any mouse-click that "goes through"
     // to an underlying window will raise that window above ours and we get occluded, ie.,
     // any actual passed-through mouse-click would defeat the purpose of pass-through mode:
     if (!(windowRecord->specialflags & kPsychGUIWindow) || (addAttribs & kWindowIgnoreClicksAttribute)) {
         // Set level of window to be in front of every regular window:
-        [cocoaWindow setLevel:NSFloatingWindowLevel];
+        [cocoaWindow setLevel:NSScreenSaverWindowLevel];
     }
 
     // Position the window. Origin is bottom-left of screen, as opposed to Carbon / PTB origin
@@ -134,9 +123,6 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
     // overlap the menu bar or dock area by default.
     NSPoint winPosition = NSMakePoint(contentBounds->left, screenRect[kPsychBottom] - contentBounds->top);
     [cocoaWindow setFrameTopLeftPoint:winPosition];
-    
-    // Bring to front:
-    [cocoaWindow orderFrontRegardless];    
     
     // Query and translate content rect of final window to a PTB rect:
     NSRect clientRect = [cocoaWindow contentRectForFrameRect:[cocoaWindow frame]];
@@ -148,9 +134,6 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
     // Return window pointer, packed into an old-school Carbon window ref:
     *outWindow = (WindowRef) cocoaWindow;
 
-    // One more Cocoa window:
-    cocoaWindowCount++;
-    
     // Return success:
     return(PsychError_none);
 }
@@ -232,21 +215,6 @@ void PsychCocoaDisposeWindow(PsychWindowRecordType *windowRecord)
 
     // Drain the pool:
     [pool drain];
-
-    // We got one less Cocoa window:
-    cocoaWindowCount--;
-
-    // Last Cocoa window closed and at least one of them was a fullscreen
-    // style window? If so, the system UI dock and menu bar was hidden, so
-    // we need to restore them:
-    if ((cocoaWindowCount == 0) && hadFullscreenwindow) {
-        hadFullscreenwindow = false;
-
-        // Restore Apple menu and dock:
-        // MK FIXME: A nice way to crash Matlab on 10.7. Can't do this, as it
-        // crashes Matlab R2012a on OSX 10.7 at least every 2nd iteration.
-        // SetSystemUIMode(kUIModeNormal, 0);
-    }
     
     return;
 }
@@ -257,7 +225,10 @@ void PsychCocoaShowWindow(WindowRef window)
     
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-    
+
+    // Bring to front:
+    [cocoaWindow orderFrontRegardless];    
+
     // Show window:
     [cocoaWindow display];
     
