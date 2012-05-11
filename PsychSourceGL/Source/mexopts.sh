@@ -39,7 +39,7 @@
         # libmx.dylib exists both inside Matlab and inside MacOS/X, but while
         # both libs have the same name, they are totally different things!
         # Otherwise horrible linker errors happen.
-        MLIBS="-L$TMW_ROOT/bin/$Arch -L/usr/lib -F/System/Library/Frameworks/ -lmx -lmex -lmat"
+        MLIBS="-L$TMW_ROOT/bin/$Arch -L/usr/lib -F/System/Library/Frameworks/ -F/Library/Frameworks/ -lmx -lmex -lmat"
     fi
     case "$Arch" in
         Undetermined)

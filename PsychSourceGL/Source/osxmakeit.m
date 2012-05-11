@@ -2,7 +2,7 @@ function osxmakeit(mode)
 % This is the MacOS/X version of makeit:
 
 if nargin < 1
-    mode = 0
+    mode = 0;
 end;
 
 fprintf('Building plugin type %i ...\n\n', mode);
@@ -63,9 +63,9 @@ if mode==3
 end
 
 if mode==4
-    %TODO -- Depends: eyelink-SDK
+    % Depends: eyelink-SDK: eyelink_core.framework
     % Build Eyelink:
-    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions' -v -outdir ../Projects/MacOSX/build/ -output Eyelink -largeArrayDims -DPTBMODULE_Eyelink -ICommon/Base -IOSX/Base -ICommon/Eyelink -ICommon/Screen Common/Base/*.cc OSX/Base/*.c Common/Base/*.c Common/Eyelink/*.c -leyelink_core -lc -lrt
+    mex -v -outdir ../Projects/MacOSX/build -output Eyelink -largeArrayDims -DPTBMODULE_Eyelink LDFLAGS="\$LDFLAGS -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework eyelink_core" CFLAGS="" CXXFLAGS="" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/Eyelink "Common/Base/*.cc" "OSX/Base/*.c" "Common/Base/*.c" "Common/Eyelink/*.c"
     unix(['mv ../Projects/MacOSX/build/Eyelink.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
