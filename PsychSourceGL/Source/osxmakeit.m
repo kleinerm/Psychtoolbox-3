@@ -88,9 +88,9 @@ if mode==6
 end
 
 if mode==7
-    %TODO -- Depends: libfreenect
+    % Depends: libfreenect, libusb-1.0
     % Build PsychKinectCore:
-    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions' -v -outdir ../Projects/MacOSX/build/ -output PsychKinectCore -largeArrayDims -DPTBMODULE_PsychKinectCore -I/usr/include/libusb-1.0 -I/usr/include/libfreenect -ICommon/Base -IOSX/Base -ICommon/PsychKinect -ICommon/Screen Common/Base/*.cc OSX/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -lfreenect -lusb-1.0
+    mex -v -outdir ../Projects/MacOSX/build -output PsychKinectCore -largeArrayDims -DPTBMODULE_PsychKinectCore LDFLAGS="\$LDFLAGS -framework CoreServices -framework CoreFoundation -framework CoreAudio" CFLAGS="" CXXFLAGS="" -I/usr/include -I/usr/local/include/libusb-1.0 -I/usr/local/include/libfreenect -ICommon/Base -IOSX/Base -ICommon/PsychKinect "Common/Base/*.cc" "OSX/Base/*.c" "Common/Base/*.c" "Common/PsychKinect/*.c" -L/usr/local/lib -lfreenect -lusb-1.0
     unix(['mv ../Projects/MacOSX/build/PsychKinectCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
