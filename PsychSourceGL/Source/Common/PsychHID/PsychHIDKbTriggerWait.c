@@ -58,6 +58,7 @@
 static char useString[]= "secs=PsychHID('KbTriggerWait', KeysUsage, [deviceNumber])";
 static char synopsisString[] = 
         "Scan a keyboard, keypad, or other HID device with buttons, and wait for a trigger key press.\n"
+        "NOTE: This function should not be called directly! Use KbTriggerWait() instead.\n"
         "By default the first keyboard device (the one with the lowest device number) is "
         "scanned. If no keyboard is found, the first keypad device is scanned, followed by other "
         "devices, e.g., mice.  Optionally, the deviceNumber of any keyboard or HID device may be specified.\n"
@@ -66,7 +67,8 @@ static char synopsisString[] =
         "wait will finish as soon as at least one of the keys in the vector is pressed.\n"
         "On MS-Windows XP and later, it is currently not possible to enumerate different keyboards and mice "
         "separately. Therefore the 'deviceNumber' argument is mostly useless for keyboards and mice, usually you can "
-        "only check the system keyboard or mouse.\n";
+        "only check the system keyboard or mouse.\n"
+        "OS/X on 64-Bit runtimes: This function is unsupported. You must use KbTriggerWait() instead.\n";
 
 static char seeAlsoString[] = "";
  
@@ -165,10 +167,7 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
 	if(!timeValueOutput)
 		PsychErrorExitMsg(PsychError_system, "Failed to allocate memory for output.");
 
-#ifndef __LP64__
-    // TODO FIXME 64BIT		
-	interface=deviceRecord->interface;
-#endif
+	interface = PsychHIDGetDeviceInterfacePtrFromIndex(deviceIndex);
 	if(!interface)
 		PsychErrorExitMsg(PsychError_system, "Could not get interface to device.");
 	
@@ -336,7 +335,6 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
 	(*queue)->Release(queue);
 	(*queue)=NULL;				// Just in case queue is redefined as static in the future
 	
-    // PsychGetPrecisionTimerSeconds(timeValueOutput);		// Less precise strategy than using event.timestamp
     return;
 }
 

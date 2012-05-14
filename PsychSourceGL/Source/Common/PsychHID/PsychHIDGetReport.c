@@ -132,10 +132,7 @@ PsychError PSYCHHIDGetReport(void)
                 if (!HIDIsValidDevice(device)) PrintfExit("PsychHID:GetReport: Invalid device.\n");
 
                 IOHIDDeviceInterface122** interface = NULL;
-#ifndef __LP64__
-                // TODO FIXME 64BIT
-                interface = device->interface;
-#endif
+                interface = PsychHIDGetDeviceInterfacePtrFromIndex(deviceIndex);
                 if (interface==NULL) PrintfExit("PsychHID:GetReport: No interface for device.\n");                
 
                 // Apple defines constants for the reportType with values (0,1,2) that are one less that those specified by USB (1,2,3).

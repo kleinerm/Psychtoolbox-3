@@ -244,10 +244,8 @@ PsychError ReceiveReports(int deviceIndex)
 
 	device=PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
 	if(!HIDIsValidDevice(device))PrintfExit("PsychHID: Invalid device.\n");
-#ifndef __LP64__
-    // TODO FIXME 64BIT:
-	interface=device->interface;
-#endif
+
+	interface = PsychHIDGetDeviceInterfacePtrFromIndex(deviceIndex);
 	if(interface==NULL)PrintfExit("PsychHID: No interface for device.\n");
 	CheckRunLoopSource(deviceIndex,"ReceiveReports",__LINE__);
 	if(!ready[deviceIndex]){
@@ -356,12 +354,13 @@ void CheckRunLoopSource(int deviceIndex,char *caller,int line){
 	pRecDevice device;
 	IOHIDDeviceInterface122** interface = NULL;
 	
+    // Skip this function if hardcore debugging is not enabled:
+    if (!optionsPrintCrashers) return;
+
 	device=PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
 	if(!HIDIsValidDevice(device))PrintfExit("PsychHID: Invalid device.\n");
-#ifndef __LP64__
-    // TODO FIXME 64BIT:
-	interface=device->interface;
-#endif
+
+	interface = PsychHIDGetDeviceInterfacePtrFromIndex(deviceIndex);
 	if(interface==NULL)PrintfExit("PsychHID: No interface for device.\n");
 	currentSource=(*interface)->getAsyncEventSource(interface);
 	if(source[deviceIndex] != currentSource)printf("%s (%d): source[%d] %4.4lx != current source %4.4lx.\n"

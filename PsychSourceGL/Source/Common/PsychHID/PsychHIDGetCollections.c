@@ -90,7 +90,7 @@ PsychError PSYCHHIDGetCollections(void)
     PsychCopyInIntegerArg(1, TRUE, &deviceIndex);
     PsychHIDVerifyInit();
     specDevice= PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
-    PsychHIDVerifyOpenDeviceInterfaceFromDeviceRecordPtr(specDevice);
+    PsychHIDVerifyOpenDeviceInterfaceFromDeviceIndex(deviceIndex);
     numDeviceElements= HIDCountDeviceElements(specDevice, kHIDElementTypeCollection);
     numElementStructElements = (int)numDeviceElements;
     PsychAllocOutStructArray(1, FALSE, numElementStructElements, numElementStructFieldNames, elementFieldNames, &elementStruct);

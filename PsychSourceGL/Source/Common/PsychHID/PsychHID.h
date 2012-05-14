@@ -67,7 +67,6 @@
 #ifdef __LP64__
 typedef IOHIDDeviceRef pRecDevice;
 typedef IOHIDElementRef pRecElement;
-
 #endif
 
 #else
@@ -233,7 +232,6 @@ pRecDevice 	PsychHIDGetDeviceRecordPtrFromIndex(int deviceIndex);								// Psyc
 int 		PsychHIDGetIndexFromRecord(pRecDevice deviceRecord, pRecElement elementRecord, HIDElementTypeMask typeMask);	// PsychHIDHelpers.c 
 //psych_bool 	PsychHIDCheckOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);						// PsychHIDHelpers.c 
 //psych_bool 	PsychHIDCheckOpenDeviceInterfaceFromDeviceRecordPtr(pRecDevice deviceRecord);					// PsychHIDHelpers.c 
-void 		PsychHIDVerifyOpenDeviceInterfaceFromDeviceRecordPtr(pRecDevice deviceRecord);					// PsychHIDHelpers.c 
 void 		PsychHIDGetTypeMaskStringFromTypeMask(HIDElementTypeMask maskValue, char **pStr);				// PsychHIDHelpers.c
 pRecElement 	PsychHIDGetElementRecordFromDeviceRecordAndElementIndex(pRecDevice deviceRecord, int elementIndex);		// PsychHIDHelpers.c
 pRecElement 	PsychHIDGetCollectionRecordFromDeviceRecordAndCollectionIndex(pRecDevice deviceRecord, int elementIndex);	// PsychHIDHelpers.c
@@ -242,8 +240,9 @@ int 		PsychHIDFindCollectionElements(pRecElement collectionRecord, HIDElementTyp
 void 		PsychHIDGetDeviceListByUsage(long usagePage, long usage, int *numDeviceIndices, int *deviceIndices, pRecDevice *deviceRecords);  //// PsychHIDHelpers.c
 void 		PsychHIDGetDeviceListByUsages(int numUsages, long *usagePages, long *usages, int *numDeviceIndices, int *deviceIndices, pRecDevice *deviceRecords);  //// PsychHIDHelpers.c
 psych_bool PsychHIDQueryOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);	// PsychHIDHelpers.c
-psych_bool PsychHIDQueryOpenDeviceInterfaceFromDeviceRecordPtr(pRecDevice deviceRecord);	// PsychHIDHelpers.c
-// void PsychHIDVerifyOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);	// PsychHIDHelpers.c
+void PsychHIDVerifyOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);
+IOHIDDeviceInterface122** PsychHIDGetDeviceInterfacePtrFromIndex(int deviceIndex);
+
 #endif
 
 void InitializeSynopsis();

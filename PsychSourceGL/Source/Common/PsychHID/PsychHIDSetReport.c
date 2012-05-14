@@ -105,10 +105,7 @@ PsychError PSYCHHIDSetReport(void)
 	} else {
 #if PSYCH_SYSTEM == PSYCH_OSX
         IOHIDDeviceInterface122 **interface = NULL;
-#ifndef __LP64__
-        // TODO FIXME 64BIT:
-        interface=(IOHIDDeviceInterface122 **)(device->interface);
-#endif
+        interface = PsychHIDGetDeviceInterfacePtrFromIndex(deviceIndex);
         if(interface) error=(*interface)->setReport(interface,reportType-1,reportID,reportBuffer,(psych_uint32) reportSize,50,NULL,NULL,NULL);
         else PrintfExit("PsychHID SetReport: Bad interface.\n");
 
