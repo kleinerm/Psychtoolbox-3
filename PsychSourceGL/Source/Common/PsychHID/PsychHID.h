@@ -242,7 +242,7 @@ void 		PsychHIDGetDeviceListByUsages(int numUsages, long *usagePages, long *usag
 psych_bool PsychHIDQueryOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);	// PsychHIDHelpers.c
 void PsychHIDVerifyOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);
 IOHIDDeviceInterface122** PsychHIDGetDeviceInterfacePtrFromIndex(int deviceIndex);
-
+void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * cstrName);
 #endif
 
 void InitializeSynopsis();
