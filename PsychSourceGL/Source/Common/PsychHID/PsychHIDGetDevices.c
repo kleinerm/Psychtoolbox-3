@@ -173,16 +173,66 @@ PsychError PSYCHHIDGetDevices(void)
                 PsychSetStructArrayDoubleElement("features",   deviceIndex,    HIDCountDeviceElements(currentDevice, kHIDElementTypeFeature), deviceStruct);
                 PsychSetStructArrayDoubleElement("inputs",   deviceIndex,    HIDCountDeviceElements(currentDevice, kHIDElementTypeInput), deviceStruct);
                 PsychSetStructArrayDoubleElement("outputs",   deviceIndex,    HIDCountDeviceElements(currentDevice, kHIDElementTypeOutput), deviceStruct);
-        
-/* TODO FIXME 64BIT:        
-                
-                PsychSetStructArrayDoubleElement("axes",            deviceIndex, 	(double)currentDevice->axis, 		deviceStruct);
-                PsychSetStructArrayDoubleElement("buttons",         deviceIndex, 	(double)currentDevice->buttons, 	deviceStruct);
-                PsychSetStructArrayDoubleElement("hats",            deviceIndex, 	(double)currentDevice->hats, 		deviceStruct);
-                PsychSetStructArrayDoubleElement("sliders",         deviceIndex, 	(double)currentDevice->sliders, 	deviceStruct);
-                PsychSetStructArrayDoubleElement("dials",           deviceIndex, 	(double)currentDevice->dials, 		deviceStruct);
-                PsychSetStructArrayDoubleElement("wheels",          deviceIndex, 	(double)currentDevice->wheels, 		deviceStruct);
- */
+    
+                // Iterate over all device input elements and count buttons, sliders, axis, hats etc.:
+                pRecElement currentElement, lastElement = NULL;
+                long usagePage, usage;
+                unsigned int axis = 0, sliders = 0, dials = 0, wheels = 0, hats = 0, buttons = 0;
+                for(currentElement = HIDGetFirstDeviceElement(currentDevice, kHIDElementTypeInput); 
+                    (currentElement != NULL) && (currentElement != lastElement);
+                    currentElement = HIDGetNextDeviceElement(currentElement, kHIDElementTypeInput)) {
+                    lastElement = currentElement;
+                    
+                    usagePage = IOHIDElementGetUsagePage(currentElement);
+                    usage = IOHIDElementGetUsage(currentElement);
+                    
+                    switch (usagePage) {
+                        case kHIDPage_GenericDesktop:
+                            switch (usage) {
+                                case kHIDUsage_GD_X:
+                                case kHIDUsage_GD_Y:
+                                case kHIDUsage_GD_Z:
+                                case kHIDUsage_GD_Rx:
+                                case kHIDUsage_GD_Ry:
+                                case kHIDUsage_GD_Rz:
+                                    axis++;
+                                break;
+                                    
+                                case kHIDUsage_GD_Slider:
+                                    sliders++;
+                                break;
+
+                                case kHIDUsage_GD_Dial:
+                                    dials++;
+                                    break;
+
+                                case kHIDUsage_GD_Wheel:
+                                    wheels++;
+                                    break;
+
+                                case kHIDUsage_GD_Hatswitch:
+                                    hats++;
+                                    break;
+                                default:
+                                    break;
+                            }
+                        break;
+                            
+                        case kHIDPage_Button:
+                            buttons++;
+                        break;
+                            
+                        default:
+                        break;
+                    }
+                }
+
+                PsychSetStructArrayDoubleElement("axes",            deviceIndex, 	(double) axis, 		deviceStruct);
+                PsychSetStructArrayDoubleElement("buttons",         deviceIndex, 	(double) buttons, 	deviceStruct);
+                PsychSetStructArrayDoubleElement("hats",            deviceIndex, 	(double) hats, 		deviceStruct);
+                PsychSetStructArrayDoubleElement("sliders",         deviceIndex, 	(double) sliders, 	deviceStruct);
+                PsychSetStructArrayDoubleElement("dials",           deviceIndex, 	(double) dials, 		deviceStruct);
+                PsychSetStructArrayDoubleElement("wheels",          deviceIndex, 	(double) wheels, 		deviceStruct);
             #else
                 // 32-Bit OSX 10.4 and later:
                 HIDGetUsageName(currentDevice->usagePage, currentDevice->usage, usageName);

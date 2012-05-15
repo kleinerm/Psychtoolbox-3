@@ -243,6 +243,7 @@ psych_bool PsychHIDQueryOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);	// 
 void PsychHIDVerifyOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);
 IOHIDDeviceInterface122** PsychHIDGetDeviceInterfacePtrFromIndex(int deviceIndex);
 void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * cstrName);
+HIDElementTypeMask HIDConvertElementTypeToMask (const long type);
 #endif
 
 void InitializeSynopsis();

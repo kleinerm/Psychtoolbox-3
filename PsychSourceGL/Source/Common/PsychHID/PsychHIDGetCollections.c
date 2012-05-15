@@ -55,12 +55,11 @@ HIDElementTypeMask HIDConvertElementTypeToMask (const long type)
 
 static char useString[]= "collections=PsychHID('Collections', deviceNumber)";
 static char synopsisString[] = 
-        "Return a flat list of all collections on the specified USB HID device. "
-        "A collection is a grouping of elements." 
-        "Collections are hierarchial. A collection can contain other collections. "
+        "Return a flat list of all collections on the specified USB HID device.\n"
+        "A collection is a grouping of elements.\n"
+        "Collections are hierarchical. A collection can contain other collections. "
         "Use the \"memberCollectionIndices\" field of the returned structures, "
-        "which indexs the member collections,  to "
-        "expose the hierarchy.";
+        "which indexes the member collections, to expose the hierarchy.";
 
 static char seeAlsoString[] = "";
 
@@ -76,6 +75,7 @@ PsychError PSYCHHIDGetCollections(void)
     char                usageName[PSYCH_HID_MAX_DEVICE_ELEMENT_USAGE_NAME_LENGTH];
     char                *typeMaskName;
     HIDElementTypeMask	typeMask;
+    char                tmpName[1024];    
     pRecElement			*memberCollectionRecords, *memberIOElementRecords;     
     double              *memberCollectionIndices, *memberIOElementIndices; 
     int                 numSubCollections, numSubIOElements;
@@ -103,15 +103,15 @@ PsychError PSYCHHIDGetCollections(void)
         #ifdef __LP64__
             // 64-Bit path: HIDUtilities V2.0, available since OSX 10.5:
             IOHIDElementType type = IOHIDElementGetType(currentElement);
-            typeMask = (type);
-            
-            CFStringRef nameString = IOHIDElementGetName(currentElement);
-            if (nameString) {
-                PsychSetStructArrayStringElement("name", elementIndex, (char*) CFStringGetCStringPtr(nameString, kCFStringEncodingASCII), elementStruct);
-                CFRelease(nameString);
-            } else {
-                PsychSetStructArrayStringElement("name", elementIndex, "", elementStruct);
+            typeMask = HIDConvertElementTypeToMask(type);
+
+            tmpName[0] = 0;
+            CFStringRef cfString = IOHIDElementGetName(currentElement);
+            if (cfString) {
+                CFStringGetCString(cfString, tmpName, sizeof(tmpName), kCFStringEncodingASCII);
+                CFRelease(cfString);
             }
+            PsychSetStructArrayStringElement("name",            elementIndex, 	tmpName, elementStruct);
         
             PsychSetStructArrayDoubleElement("typeValue", elementIndex, (double) type, elementStruct);
             HIDGetTypeName(type, elementTypeName);
@@ -119,20 +119,13 @@ PsychError PSYCHHIDGetCollections(void)
             PsychSetStructArrayDoubleElement("usagePageValue", elementIndex, (double) IOHIDElementGetUsagePage(currentElement), elementStruct);
             PsychSetStructArrayDoubleElement("usageValue", elementIndex, (double) IOHIDElementGetUsage(currentElement), elementStruct);
 
-            CFStringRef cfusageName = HIDCopyUsageName(IOHIDElementGetUsagePage(currentElement), IOHIDElementGetUsage(currentElement));
-            if (cfusageName) {
-                sprintf(usageName, "%s", (char*) CFStringGetCStringPtr(cfusageName, kCFStringEncodingASCII));
-                CFRelease(cfusageName);
-            } else {
-                sprintf(usageName, "Unknown");
-            }
-
-            PsychSetStructArrayStringElement("usageName",		elementIndex, 	usageName,	 			elementStruct);
+            HIDGetUsageName(IOHIDElementGetUsagePage(currentElement), IOHIDElementGetUsage(currentElement), usageName);
+            PsychSetStructArrayStringElement("usageName",		elementIndex, 	usageName,                  elementStruct);
         #else
             // 32-Bit path: HIDUtilities V1.0:
             typeMask = HIDConvertElementTypeToMask(currentElement->type);
-            PsychSetStructArrayStringElement("name",		elementIndex, 	currentElement->name,	 		elementStruct);
-            PsychSetStructArrayDoubleElement("typeValue",		elementIndex, 	(double)currentElement->type, 		elementStruct);
+            PsychSetStructArrayStringElement("name",		elementIndex, 	currentElement->name,               elementStruct);
+            PsychSetStructArrayDoubleElement("typeValue",		elementIndex, 	(double)currentElement->type, 	elementStruct);
             HIDGetTypeName(currentElement->type, elementTypeName);
 
             PsychSetStructArrayDoubleElement("usagePageValue",	elementIndex, 	(double)currentElement->usagePage, 	elementStruct);
@@ -143,8 +136,8 @@ PsychError PSYCHHIDGetCollections(void)
         
         PsychHIDGetTypeMaskStringFromTypeMask(typeMask, &typeMaskName);
         PsychSetStructArrayStringElement("typeMaskName",	elementIndex, 	typeMaskName,	 			elementStruct);
-        PsychSetStructArrayDoubleElement("deviceIndex",		elementIndex, 	(double)deviceIndex, 			elementStruct);
-        PsychSetStructArrayDoubleElement("collectionIndex",	elementIndex, 	(double)elementIndex+1, 		elementStruct);
+        PsychSetStructArrayDoubleElement("deviceIndex",		elementIndex, 	(double)deviceIndex, 		elementStruct);
+        PsychSetStructArrayDoubleElement("collectionIndex",	elementIndex, 	(double)elementIndex+1, 	elementStruct);
         PsychSetStructArrayStringElement("typeName",		elementIndex, 	elementTypeName,	 		elementStruct);
         //find and return the indices of this collection's member collections and indices
         numSubCollections=PsychHIDCountCollectionElements(currentElement, kHIDElementTypeCollection);

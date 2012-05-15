@@ -600,8 +600,7 @@ int PsychHIDGetIndexFromRecord(pRecDevice deviceRecord, pRecElement elementRecor
     else{
         PsychErrorExitMsg(PsychError_internal, "Element record not found within device record");
         return(0); //make the compiler happy
-    }    
-    
+    }
 }
 
 
@@ -721,19 +720,27 @@ void PsychHIDGetTypeMaskStringFromTypeMask(HIDElementTypeMask maskValue, char **
 */
 int PsychHIDCountCollectionElements(pRecElement collectionRecord, HIDElementTypeMask elementTypeMask)
 {
-    pRecElement		currentElement;
-    int			numElements=0;
+    pRecElement         currentElement;
+    int                 numElements = 0;
+    CFIndex             i, nmax;
     HIDElementTypeMask	currentElementMaskValue;
 
-// TODO FIXME 64BIT:
-#ifndef __LP64__
+    #ifdef __LP64__
+    CFArrayRef children = IOHIDElementGetChildren(collectionRecord);
+    nmax = CFArrayGetCount(children);
+    for (i = 0 ; i < nmax; i++) {
+        currentElement = (pRecElement) CFArrayGetValueAtIndex(children, i);
+        currentElementMaskValue = HIDConvertElementTypeToMask(IOHIDElementGetType(currentElement));  
+        if(currentElementMaskValue & elementTypeMask) ++numElements;
+    }
+    #else
     for(currentElement=collectionRecord->pChild; currentElement != NULL; currentElement= currentElement->pSibling)
     {
         currentElementMaskValue=HIDConvertElementTypeToMask(currentElement->type);  
         if(currentElementMaskValue & elementTypeMask)
             ++numElements;
     }
-#endif
+    #endif
     return(numElements);
 }
 
@@ -749,12 +756,24 @@ int PsychHIDCountCollectionElements(pRecElement collectionRecord, HIDElementType
 */
 int PsychHIDFindCollectionElements(pRecElement collectionRecord, HIDElementTypeMask elementTypeMask, pRecElement *collectionMembers, int maxListElements)
 {
-    pRecElement		currentElement;
-    int			numElements=0;
+    pRecElement         currentElement;
+    int                 numElements = 0;
+    CFIndex             i, nmax;
     HIDElementTypeMask	currentElementMaskValue;
     
-    // TODO FIXME 64BIT:
-#ifndef __LP64__
+    #ifdef __LP64__
+    CFArrayRef children = IOHIDElementGetChildren(collectionRecord);
+    nmax = CFArrayGetCount(children);
+    for (i = 0 ; i < nmax; i++) {
+        currentElement = (pRecElement) CFArrayGetValueAtIndex(children, i);
+        currentElementMaskValue = HIDConvertElementTypeToMask(IOHIDElementGetType(currentElement));  
+        if(currentElementMaskValue & elementTypeMask) {
+            if(numElements == maxListElements) PsychErrorExitMsg(PsychError_internal, "Number of collection elements exceeds allocated storage space." );
+            collectionMembers[numElements] = currentElement;
+            ++numElements;
+        }
+    }
+    #else
     for(currentElement=collectionRecord->pChild; currentElement != NULL; currentElement= currentElement->pSibling)
     {
         currentElementMaskValue=HIDConvertElementTypeToMask(currentElement->type);  
@@ -765,7 +784,7 @@ int PsychHIDFindCollectionElements(pRecElement collectionRecord, HIDElementTypeM
             ++numElements;
         }
     }
-#endif
+    #endif
     return(numElements);
 }
 	

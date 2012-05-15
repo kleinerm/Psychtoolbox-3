@@ -38,6 +38,7 @@ PsychError PSYCHHIDGetElements(void)
     pRecElement     currentElement, lastElement = NULL;
     char			elementTypeName[PSYCH_HID_MAX_DEVICE_ELEMENT_TYPE_NAME_LENGTH];	
     char			usageName[PSYCH_HID_MAX_DEVICE_ELEMENT_USAGE_NAME_LENGTH];
+    char            tmpName[1024];
     char			*typeMaskName;
     HIDElementTypeMask		typeMask;
     	 
@@ -61,12 +62,51 @@ PsychError PSYCHHIDGetElements(void)
         currentElement=HIDGetNextDeviceElement(currentElement, kHIDElementTypeIO)) {
         lastElement = currentElement;
 
-#ifndef __LP64__
-        // TODO FIXME 64BIT:
+#ifdef __LP64__
+        // Skip this entry if it isn't a valid element:
+        if (!HIDIsValidElement(currentElement)) continue;
+
+        IOHIDElementType type = IOHIDElementGetType(currentElement);
+        typeMask = HIDConvertElementTypeToMask(type);
+        PsychHIDGetTypeMaskStringFromTypeMask(typeMask, &typeMaskName);
+        PsychSetStructArrayStringElement("typeMaskName",	elementIndex, 	typeMaskName,	 	elementStruct);
+        tmpName[0] = 0;
+        CFStringRef cfString = IOHIDElementGetName(currentElement);
+        if (cfString) {
+            CFStringGetCString(cfString, tmpName, sizeof(tmpName), kCFStringEncodingASCII);
+            CFRelease(cfString);
+        }
+        PsychSetStructArrayStringElement("name",            elementIndex, 	tmpName,	 		elementStruct);
+        PsychSetStructArrayDoubleElement("deviceIndex",		elementIndex, 	(double)deviceIndex, 			elementStruct);
+        PsychSetStructArrayDoubleElement("elementIndex",	elementIndex, 	(double)elementIndex+1, 		elementStruct);
+        
+        PsychSetStructArrayDoubleElement("typeValue",		elementIndex, 	(double) type, 		elementStruct);
+        HIDGetTypeName(type, elementTypeName);
+        PsychSetStructArrayStringElement("typeName",		elementIndex, 	elementTypeName,	elementStruct);
+        PsychSetStructArrayDoubleElement("usagePageValue",	elementIndex, 	(double)IOHIDElementGetUsagePage(currentElement), 	elementStruct);
+        PsychSetStructArrayDoubleElement("usageValue",		elementIndex, 	(double)IOHIDElementGetUsage(currentElement), 		elementStruct);
+        HIDGetUsageName(IOHIDElementGetUsagePage(currentElement), IOHIDElementGetUsage(currentElement), usageName);
+        PsychSetStructArrayStringElement("usageName",		elementIndex, 	usageName,	 		elementStruct);
+
+        PsychSetStructArrayDoubleElement("dataSize",		elementIndex, 	(double)IOHIDElementGetReportSize(currentElement), 	elementStruct);
+        PsychSetStructArrayDoubleElement("rangeMin",		elementIndex, 	(double)IOHIDElementGetLogicalMin(currentElement), 	elementStruct);
+        PsychSetStructArrayDoubleElement("rangeMax",		elementIndex, 	(double)IOHIDElementGetLogicalMax(currentElement), 	elementStruct);
+        PsychSetStructArrayDoubleElement("scaledRangeMin",	elementIndex, 	(double)IOHIDElementGetPhysicalMin(currentElement), 	elementStruct);
+        PsychSetStructArrayDoubleElement("scaledRangeMax",	elementIndex, 	(double)IOHIDElementGetPhysicalMax(currentElement),	elementStruct);
+        PsychSetStructArrayDoubleElement("relative",		elementIndex, 	(double)IOHIDElementIsRelative(currentElement),	elementStruct);	//psych_bool flag
+        PsychSetStructArrayDoubleElement("wrapping",		elementIndex, 	(double)IOHIDElementIsWrapping(currentElement),	elementStruct);	//psych_bool flag	
+        PsychSetStructArrayDoubleElement("nonLinear",		elementIndex, 	(double)IOHIDElementIsNonLinear(currentElement),	elementStruct);	//psych_bool flag
+        PsychSetStructArrayDoubleElement("preferredState",	elementIndex, 	(double)IOHIDElementHasPreferredState(currentElement),	elementStruct);	//psych_bool flag
+        PsychSetStructArrayDoubleElement("nullState",		elementIndex, 	(double)IOHIDElementHasNullState(currentElement),	elementStruct);	//psych_bool flag
+        PsychSetStructArrayDoubleElement("calMin",          elementIndex, 	(double)IOHIDElement_GetCalibrationMin(currentElement),	elementStruct);
+        PsychSetStructArrayDoubleElement("calMax",          elementIndex, 	(double)IOHIDElement_GetCalibrationMax(currentElement),	elementStruct);
+        PsychSetStructArrayDoubleElement("scalingMin",		elementIndex, 	(double) 0,     elementStruct);
+        PsychSetStructArrayDoubleElement("scalingMax",		elementIndex, 	(double) 255,	elementStruct);
+#else
         typeMask=HIDConvertElementTypeToMask (currentElement->type);
         PsychHIDGetTypeMaskStringFromTypeMask(typeMask, &typeMaskName);
         PsychSetStructArrayStringElement("typeMaskName",	elementIndex, 	typeMaskName,	 			elementStruct);
-        PsychSetStructArrayStringElement("name",		elementIndex, 	currentElement->name,	 		elementStruct);
+        PsychSetStructArrayStringElement("name",            elementIndex, 	currentElement->name,	 		elementStruct);
         PsychSetStructArrayDoubleElement("deviceIndex",		elementIndex, 	(double)deviceIndex, 			elementStruct);
         PsychSetStructArrayDoubleElement("elementIndex",	elementIndex, 	(double)elementIndex+1, 		elementStruct);
         PsychSetStructArrayDoubleElement("typeValue",		elementIndex, 	(double)currentElement->type, 		elementStruct);

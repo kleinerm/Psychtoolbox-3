@@ -167,8 +167,7 @@ if isempty(numMouseButtons)
         end
         
         % Invalid number of mouse buttons or no number at all returned by
-        % PsychHID? Assign a reasonable value of 5 buttons. This currently
-        % happens on PsychHID for 64-Bit MacOS/X due to Apple braindamage.
+        % PsychHID? Assign a reasonable value of 5 buttons.
         if isempty(numMouseButtons) || (numMouseButtons < 1)
             numMouseButtons = 5;
         end
