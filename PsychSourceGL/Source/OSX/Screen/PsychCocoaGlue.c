@@ -48,7 +48,8 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
                            const Rect *       contentBounds,
                            WindowClass        wclass,
                            WindowAttributes   addAttribs,
-                           WindowRef *        outWindow)
+                           WindowRef *        outWindow,
+                           psych_bool         enableTransparentGL)
 {
     char windowTitle[100];
     NSWindow *cocoaWindow;
@@ -92,8 +93,8 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
 
     [cocoaWindow setTitle:[NSString stringWithUTF8String:windowTitle]];
     
-    if (!(windowRecord->specialflags & kPsychGUIWindow)) {
-        // Set non-GUI windows as non-opaque, with a transparent window background color:
+    if (enableTransparentGL) {
+        // Set window as non-opaque, with a transparent window background color:
         // This together with the OpenGL context setup for transparency allows the OpenGL
         // colorbuffer alpha-channel to determine window opacity at a per-pixel level, so
         // experimental code has full control over transpareny if it wishes so. By default,
@@ -255,6 +256,9 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(WindowRef windo
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
+    // Enable opacity for OpenGL contexts if underlying window is opaque:
+    if ([cocoaWindow isOpaque] == true) opaque = 1;
+    
     // Build NSOpenGLContexts as wrappers around existing CGLContexts already
     // created in calling routine:
     masterContext = [[NSOpenGLContext alloc] initWithCGLContextObj: windowRecord->targetSpecific.contextObject];
@@ -307,7 +311,10 @@ psych_bool PsychCocoaSetupAndAssignLegacyOpenGLContext(WindowRef window, PsychWi
     
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-    
+
+    // Enable opacity for OpenGL contexts if underlying window is opaque:
+    if ([cocoaWindow isOpaque] == true) opaque = 1;
+
     // Define a pixelformat for the context. We use a hard-coded "one size fits all"
     // format which is used in legacy mode for OSX 10.5 and covers the most common use cases:
     NSOpenGLPixelFormatAttribute attrs[] = {

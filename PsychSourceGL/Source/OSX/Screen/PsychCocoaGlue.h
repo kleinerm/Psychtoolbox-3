@@ -34,7 +34,8 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
                                   const Rect *       contentBounds,
                                   WindowClass        wclass,
                                   WindowAttributes   addAttribs,
-                                  WindowRef *        outWindow);
+                                  WindowRef *        outWindow,
+                                  psych_bool         enableTransparentGL);
 
 // Close Cocoa onscreen window, release OpenGL resources:
 void PsychCocoaDisposeWindow(PsychWindowRecordType *windowRecord);

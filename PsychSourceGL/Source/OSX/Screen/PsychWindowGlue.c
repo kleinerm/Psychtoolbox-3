@@ -402,13 +402,16 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             // Request use of Cocoa specific setup path on 10.6 and later:
             if ((osMajor > 10) || ((osMajor == 10) && (osMinor > 5))) useCocoa = TRUE;
 
+            // Usercode wants transparency?
+            psych_bool enableTransparentGL = ((windowLevel >= 1000) && (windowLevel < 2000)) ? TRUE : FALSE;
+
             // 64-Bit Cocoa path:
-            if (PsychCocoaCreateWindow(windowRecord, screenrect, &winRect, wclass, addAttribs, &carbonWindow)) {
+            if (PsychCocoaCreateWindow(windowRecord, screenrect, &winRect, wclass, addAttribs, &carbonWindow, enableTransparentGL)) {
                 printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to open Carbon onscreen window\n\n");
                 return(FALSE);
             }
         
-            if ((windowLevel >= 1000) && (windowLevel < 2000)) {
+            if (enableTransparentGL) {
                 // Setup of global window alpha value for transparency. This is premultiplied to
                 // the individual per-pixel alpha values if transparency is enabled by Cocoa code.
                 //
