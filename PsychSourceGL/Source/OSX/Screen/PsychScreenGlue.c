@@ -92,30 +92,60 @@ void PsychDisplayReconfigurationCallBack (CGDirectDisplayID display, CGDisplayCh
 void PsychOSKDGetGPUInfo(io_connect_t connect);
 unsigned int PsychOSKDGetRevision(io_connect_t connect);
 
-// Surrogate routines for routines missing in 64-Bit OSX:
+// Replacement routines for routines missing in 64-Bit OSX:
+
 #ifdef __LP64__
-// TODO FIXME 64BIT -- Reimplement with new kernel interface.
+// Reimplement deprecated 32-Bit kernel driver interface with new 64-Bit
+// kernel interface for OSX 10.5 and later:
 kern_return_t
 IOConnectMethodStructureIStructureO(
                                     io_connect_t	connect,
-                                    uint32_t	index,
-                                    IOItemCount	structureInputSize,
+                                    uint32_t        index,
+                                    IOItemCount     structureInputSize,
                                     IOByteCount *	structureOutputSize,
-                                    void *		inputStructure,
-                                    void *		ouputStructure )
+                                    void *          inputStructure,
+                                    void *          ouputStructure )
 {
-    return KERN_NOT_SUPPORTED;
+    kern_return_t result;
+    size_t outputStructCnt = (size_t) *structureOutputSize;
+
+    // IOConnectCallStructMethod replaces IOConnectMethodStructureIStructureO
+    // in OS/X 10.5 and later, but luckily has almost the same semantic/syntax,
+    // just slightly different types and order of parameters, so we can wrap it:
+    result = IOConnectCallStructMethod((mach_port_t)    connect,
+                                                        index,
+                                       (const void*)    inputStructure,
+                                       (size_t)         structureInputSize,
+                                                        ouputStructure,
+                                                        &outputStructCnt);
+
+    *structureOutputSize = (IOByteCount) outputStructCnt;
+
+    return(result);
 }
 
 kern_return_t
 IOConnectMethodScalarIScalarO( 
                               io_connect_t	connect,
-                              uint32_t	index,
+                              uint32_t      index,
                               IOItemCount	scalarInputCount,
                               IOItemCount	scalarOutputCount,
                               ... )
 {
-    return KERN_NOT_SUPPORTED;
+    kern_return_t result;
+    uint32_t outputCnt = 0;
+
+    if ((scalarInputCount != 0) || (scalarOutputCount != 0))
+        PsychErrorExitMsg(PsychError_internal, "You *must not* call 64-Bit IOConnectMethodScalarIScalarO() shim with anything but 0,0 in/out argument counts! BUG!");
+
+    // IOConnectCallScalarMethod replaces IOConnectMethodScalarIScalarO
+    // in OS/X 10.5 and later, and it has an incompatible interface in general,
+    // but luckily we only use this method in its most simple form with 0 inputs
+    // and outputs. For this special case we have a very simple 1-to-1 mapping,
+    // and we reject any other kind of usage for this interface:
+    result = IOConnectCallScalarMethod((mach_port_t) connect, index, NULL, 0, NULL, &outputCnt);
+
+    return(result);
 }
 
 #endif
