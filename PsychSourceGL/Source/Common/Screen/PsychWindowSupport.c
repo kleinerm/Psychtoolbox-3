@@ -709,6 +709,10 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	// Get final synctest setting after GPU caps detection:
 	skip_synctests = PsychPrefStateGet_SkipSyncTests();
 
+    // If this is a windowed onscreen window, be lenient with synctests. Make sure they never fail,
+    // because miserable timing is expected in windowed mode:
+    if (!((*windowRecord)->specialflags & kPsychIsFullscreenWindow) && (skip_synctests < 1)) skip_synctests = 1;
+
 #if PSYCH_SYSTEM == PSYCH_OSX
     CGLRendererInfoObj				rendererInfo;
     CGOpenGLDisplayMask 			displayMask;
