@@ -444,6 +444,8 @@ static void PsychEOSCallback(GstAppSink *sink, gpointer user_data)
 
 	PsychLockMutex(&capdev->mutex);
 	printf("PTB-DEBUG: Videosink reached EOS.\n");
+    // Signal EOS to trigger an abort of device open sequence:
+    capdev->grabber_active = true;
 	PsychUnlockMutex(&capdev->mutex);
 
 	return;
@@ -2777,6 +2779,18 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         capdev->height = height;
     }
     
+    // Sanity check: grabber_active should be false, because we initialized it so.
+    // It will be true if the videosink went EOS during the open and preroll sequence
+    // due to something going wrong (see PsychEOSCallback()). We try to catch this here
+    // and abort the open sequence instead of later hanging the whole app...
+    PsychLockMutex(&capdev->mutex);
+    if (capdev->grabber_active) {
+        capdev->grabber_active = false;
+        PsychUnlockMutex(&capdev->mutex);
+        PsychErrorExitMsg(PsychError_user, "In OpenVideoCapture: Opening the video capture device failed during preroll due to premature EOS.");
+    }
+    PsychUnlockMutex(&capdev->mutex);
+
     // Reset framecounter:
     capdev->nrframes = 0;
     capdev->grabber_active = 0;
@@ -2931,6 +2945,18 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    printf("PTB-INFO: Camera %i opened [Source resolution width x height = %i x %i, video image size %i x %i]\n",
 		   slotid, capdev->width, capdev->height, capdev->frame_width, capdev->frame_height);
     }
+
+    // Sanity check: grabber_active should be false, because we initialized it so.
+    // It will be true if the videosink went EOS during the open and preroll sequence
+    // due to something going wrong (see PsychEOSCallback()). We try to catch this here
+    // and abort the open sequence instead of later hanging the whole app...
+    PsychLockMutex(&capdev->mutex);
+    if (capdev->grabber_active) {
+        capdev->grabber_active = false;
+        PsychUnlockMutex(&capdev->mutex);
+        PsychErrorExitMsg(PsychError_user, "In OpenVideoCapture: Opening the video capture device failed during preroll due to premature EOS.");
+    }
+    PsychUnlockMutex(&capdev->mutex);
 
     return(TRUE);
 }
