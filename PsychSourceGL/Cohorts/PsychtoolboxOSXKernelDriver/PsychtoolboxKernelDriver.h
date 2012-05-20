@@ -3,7 +3,7 @@
 	
 	Description:	This file implements the I/O Kit driver kernel extension for Psychtoolbox (KEXT).
 
-	Copyright:		Copyright © 2008-2011 Mario Kleiner, derived from an Apple example code.
+	Copyright:		Copyright © 2008-2012 Mario Kleiner, derived from an Apple example code.
 
 	Change History of original Apple sample code (most recent first):
 
