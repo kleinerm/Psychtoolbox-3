@@ -43,7 +43,7 @@
     Copyrights and license:
 
             This drivers copyright:
-            Copyright © 2008-2011 Mario Kleiner.
+            Copyright © 2008-2012 Mario Kleiner.
 
             This driver contains code for radeon DCE-4 and AVIVO which are derived from the free software radeon kms
             driver for Linux (radeon_display.c, radeon_regs.h). The Radeon kms driver has the following copyright:
@@ -282,7 +282,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 			mem = fPCIDevice->getDeviceMemoryWithIndex( index );
 			assert( mem );
 			// Disabled to handle Apple braindamage: IOLog("%s: PCI Range[%ld] %08lx:%08lx\n", getName(), index, mem->getPhysicalAddress(), mem->getLength());
-			IOLog("%s: PCI Range[%ld] Size %08lx\n", getName(), index, mem->getLength());
+			IOLog("%s: PCI Range[%d] Size " ByteCount_FORMAT "\n", getName(), index, mem->getLength());
 			
 			// Find the MMIO range of expected size around 0x10000 - 0x20000: We find the one with size > 0x1000 and not bigger
 			// than 0x40000, ie. in the range 4 Kb < size < 256 Kb. This likely represents the register space.
@@ -296,20 +296,20 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 				candidate_size = mem->getLength();
 				candidate_count++;
 				// Disabled to handle Apple braindamage: IOLog("%s: ==> AMD/ATI Radeon PCI Range[%ld] %08lx:%08lx is %ld. candidate for register block.\n", getName(), index, mem->getPhysicalAddress(), mem->getLength(), candidate_count);
-				IOLog("%s: ==> AMD/ATI Radeon PCI Range[%ld] Size %08lx is %ld. candidate for register block.\n", getName(), index, mem->getLength(), candidate_count);
+				IOLog("%s: ==> AMD/ATI Radeon PCI Range[%d] Size " ByteCount_FORMAT " is %d. candidate for register block.\n", getName(), index, mem->getLength(), candidate_count);
 			}
 		}
 		
 		/* More than one candidate found? */
 		if (candidate_count != 1) {
-			IOLog("%s: Found %ld candidates for Radeon register block.\n", getName(), candidate_count);		
+			IOLog("%s: Found %d candidates for Radeon register block.\n", getName(), candidate_count);		
 		}
 		
 		/* look up a range based on its config space base address register */
 		mem = fPCIDevice->getDeviceMemoryWithRegister(pciBARReg);
 		if( mem ) {
 			// Disabled to handle Apple braindamage: IOLog("%s: Range@0x%x %08lx:%08lx\n", getName(), pciBARReg, mem->getPhysicalAddress(), mem->getLength());
-			IOLog("%s: Range@0x%x Length %08lx\n", getName(), pciBARReg, mem->getLength());
+			IOLog("%s: Range@0x%x Length " ByteCount_FORMAT "\n", getName(), pciBARReg, mem->getLength());
 		}
 		else {
 			IOLog("%s: Could not find MMIO mapping for config base address register 0x%x!\n", getName(), pciBARReg);
@@ -340,7 +340,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
     map = fPCIDevice->mapDeviceMemoryWithRegister( pciBARReg );
     if( map ) {
         // Disabled to handle Apple braindamage: IOLog("%s: GPU MMIO register block Range@0x%x (%08lx) mapped to kernel virtual address %08x\n", getName(), pciBARReg, map->getPhysicalAddress(), map->getVirtualAddress());
-        IOLog("%s: GPU MMIO register block BAR@0x%x mapped to kernel virtual address %08x\n", getName(), pciBARReg, map->getVirtualAddress());
+        IOLog("%s: GPU MMIO register block BAR@0x%x mapped to kernel virtual address " VirtAddr_FORMAT "\n", getName(), pciBARReg, map->getVirtualAddress());
 
         /* Assign the map object, and the mapping itself to our private members: */
 		fRadeonMap = map;
@@ -456,9 +456,9 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 
 	// We should be ready...
 	IOLog("\n");
-	IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.4 (Revision %d) for ATI Radeon and NVidia GeForce GPU's ready for use!\n", getName(), PTBKDRevision);
-	IOLog("%s: This driver is copyright 2008, 2009, 2010, 2011 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
-	IOLog("%s: The driver is licensed to you under the MIT free software license.\n", getName());
+	IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.5 (Revision %d) for ATI Radeon and NVidia GeForce GPU's ready for use!\n", getName(), PTBKDRevision);
+	IOLog("%s: This driver is copyright 2008 - 2012 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
+	IOLog("%s: The driver is licensed to you under the MIT free and open-source software license.\n", getName());
 	IOLog("%s: See the file License.txt in the Psychtoolbox root installation folder for details.\n", getName());
 	IOLog("%s: The driver contains bits of code derived from the free software nouveau and radeon kms drivers on Linux.\n", getName());
 	IOLog("%s: See driver source code for specific copyright notices of the compatible licenses of those bits.\n", getName());
@@ -494,8 +494,8 @@ void PsychtoolboxKernelDriver::stop(IOService* provider)
 			myWorkLoop->removeEventSource(fInterruptSrc);
 			fInterruptSrc->release();
 			
-			IOLog("%s::stop(): Final total interrupt count is %ld.\n", getName(), fInterruptCounter);
-			IOLog("%s::stop(): Final VBL interrupt counts are Head[0] = %ld, Head[1] = %ld \n", getName(), fVBLCounter[0], fVBLCounter[1]);
+			IOLog("%s::stop(): Final total interrupt count is %d.\n", getName(), fInterruptCounter);
+			IOLog("%s::stop(): Final VBL interrupt counts are Head[0] = %d, Head[1] = %d \n", getName(), fVBLCounter[0], fVBLCounter[1]);
 			fastPathInterruptHandler(NULL, NULL);
 
 			fInterruptSrc = NULL;
@@ -653,8 +653,8 @@ bool PsychtoolboxKernelDriver::InitializeInterruptHandler(void)
 	}
 
 	// Dump current IRQ status of GPU:
-	IOLog("%s: In IRQ handler setup: Initial: Current hw irqControl is %lx.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
-	IOLog("%s: In IRQ handler setup: Initial: Current hw irqStatus is  %lx.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
+	IOLog("%s: In IRQ handler setup: Initial: Current hw irqControl is %x.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
+	IOLog("%s: In IRQ handler setup: Initial: Current hw irqStatus is  %x.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
 
 	// Disable currently attached ATI interrupt handler on IRQ1 and detach it:
 	if (kIOReturnSuccess != fPCIDevice->disableInterrupt(1)) {
@@ -663,8 +663,8 @@ bool PsychtoolboxKernelDriver::InitializeInterruptHandler(void)
 	}
 
 	// Dump current IRQ status of GPU:
-	IOLog("%s: In IRQ handler setup: After disable IRQ: Current hw irqControl is %lx.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
-	IOLog("%s: In IRQ handler setup: After disable IRQ: Current hw irqStatus is  %lx.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
+	IOLog("%s: In IRQ handler setup: After disable IRQ: Current hw irqControl is %x.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
+	IOLog("%s: In IRQ handler setup: After disable IRQ: Current hw irqStatus is  %x.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
 
 	if (kIOReturnSuccess != fPCIDevice->unregisterInterrupt(1)) {
 		fPCIDevice->enableInterrupt(1);
@@ -675,8 +675,8 @@ bool PsychtoolboxKernelDriver::InitializeInterruptHandler(void)
 	IOLog("%s: In IRQ handler setup: ATI IRQ1 handler on Display provider permanently detached...\n", getName());
 
 	// Dump current IRQ status of GPU:
-	IOLog("%s: In IRQ handler setup: After detach IRQ: Current hw irqControl is %lx.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
-	IOLog("%s: In IRQ handler setup: After detach IRQ: Current hw irqStatus is  %lx.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
+	IOLog("%s: In IRQ handler setup: After detach IRQ: Current hw irqControl is %x.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
+	IOLog("%s: In IRQ handler setup: After detach IRQ: Current hw irqStatus is  %x.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
 
 	// Option A: Attach a filter handler in the primary interrupt path, and a deferred workloop handler
 	// in the workloop --> More flexible than option B, but both don't yield useable results at the end
@@ -721,8 +721,8 @@ bool PsychtoolboxKernelDriver::InitializeInterruptHandler(void)
 	myWorkLoop->enableAllInterrupts();
 	
 	// Dump current IRQ status of GPU:
-	IOLog("%s: In IRQ handler setup: After setup IRQ: Current hw irqControl is %lx.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
-	IOLog("%s: In IRQ handler setup: After setup IRQ: Current hw irqStatus is  %lx.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
+	IOLog("%s: In IRQ handler setup: After setup IRQ: Current hw irqControl is %x.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
+	IOLog("%s: In IRQ handler setup: After setup IRQ: Current hw irqStatus is  %x.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
 
 	// Acknowledge all pending IRQ's via a special-call to our fastPathInterruptHandler:
 	fastPathInterruptHandler(NULL, (IOFilterInterruptEventSource*) 0x1);
@@ -742,10 +742,10 @@ bool PsychtoolboxKernelDriver::fastPathInterruptHandler(OSObject* myself, IOFilt
 	// Special readout request from outside interrupt path?
 	if (myself == NULL && mySource == NULL) {
 		// Yes: Log current internal counters value to log:
-		IOLog("Internal fastPath invocation count [total number of hardware interrupts on this line] is %ld.\n", myCounter);
-		IOLog("Internal fastPath irqStatus is %lx.\n", irqStatus);
-		IOLog("Current hw irqControl is %lx.\n",	ReadRegister(RADEON_R500_GEN_INT_CNTL));
-		IOLog("Current hw irqStatus is  %lx.\n",	ReadRegister(RADEON_R500_GEN_INT_STATUS));
+		IOLog("Internal fastPath invocation count [total number of hardware interrupts on this line] is %d.\n", myCounter);
+		IOLog("Internal fastPath irqStatus is %x.\n", irqStatus);
+		IOLog("Current hw irqControl is %x.\n",	ReadRegister(RADEON_R500_GEN_INT_CNTL));
+		IOLog("Current hw irqStatus is  %x.\n",	ReadRegister(RADEON_R500_GEN_INT_STATUS));
 
 		return(false);
 	}
@@ -1100,19 +1100,19 @@ SInt32	PsychtoolboxKernelDriver::FastSynchronizeAllDisplayHeads(void)
 	for (UInt32 i = 0; i<10; i++) { 
 		beampos0 = GetBeamPosition(0);
 		beampos1 = GetBeamPosition(1);
-		IOLog("%s: Sample %ld: Beampositions are %ld vs. %ld . Offset %ld\n", getName(), i, beampos0, beampos1, (SInt32) beampos1 - (SInt32) beampos0);
+		IOLog("%s: Sample %d: Beampositions are %d vs. %d . Offset %d\n", getName(), i, beampos0, beampos1, (SInt32) beampos1 - (SInt32) beampos0);
 	}
 
 	// Query the CRTC scan-converter master enable state: Bit 0 (value 0x1) controls Pipeline 1,
 	// whereas Bit 1(value 0x2) controls Pipeline 2:
 	old_crtc_master_enable = ReadRegister(RADEON_DC_CRTC_MASTER_ENABLE);
-	IOLog("%s: Current CRTC Master enable state is %ld . Trying to stop and reset all display heads.\n", getName(), old_crtc_master_enable);
+	IOLog("%s: Current CRTC Master enable state is %d . Trying to stop and reset all display heads.\n", getName(), old_crtc_master_enable);
 	IOLog("%s: Will wait individually for each head to get close to scanline 0, then disable it.\n", getName());
 
 	// Shut down heads, one after each other, each one at the start of a new refresh cycle:
 	for (UInt32 i = 0; i <= 1; i++) { 
 		// Wait for head i to start a new display cycle (scanline 0), then shut it down - well if it is active at all:
-		IOLog("%s: Head %ld ...  ", getName(), i);
+		IOLog("%s: Head %d ...  ", getName(), i);
 		if (old_crtc_master_enable & (0x1 << i)) {		
 			IOLog("active -> Shutdown. ");
 			// Wait for beam going above scanline 240: We choose 240, because even at the lowest conceivable
@@ -1128,7 +1128,7 @@ SInt32	PsychtoolboxKernelDriver::FastSynchronizeAllDisplayHeads(void)
 			// Start of new refresh interval! Shut down this heads CRTC!
 			// We do so by clearing enable bit for this head:
 			WriteRegister(RADEON_DC_CRTC_MASTER_ENABLE, ReadRegister(RADEON_DC_CRTC_MASTER_ENABLE) & ~(0x1 << i));
-			IOLog("New state is %ld.\n", ReadRegister(RADEON_DC_CRTC_MASTER_ENABLE));
+			IOLog("New state is %d.\n", ReadRegister(RADEON_DC_CRTC_MASTER_ENABLE));
 
 			// Head should be down, close to scanline 0.
 			IOSleep(50);
@@ -1149,10 +1149,10 @@ SInt32	PsychtoolboxKernelDriver::FastSynchronizeAllDisplayHeads(void)
 	new_crtc_master_enable = ReadRegister(RADEON_DC_CRTC_MASTER_ENABLE);
 
 	if (new_crtc_master_enable == 0) {
-		IOLog("%s: CRTC's down (state %ld): Beampositions are [0]=%ld and [1]=%ld. Synchronized restart in 1 second...\n", getName(), new_crtc_master_enable, beampos0, beampos1);
+		IOLog("%s: CRTC's down (state %d): Beampositions are [0]=%d and [1]=%d. Synchronized restart in 1 second...\n", getName(), new_crtc_master_enable, beampos0, beampos1);
 	}
 	else {
-		IOLog("%s: CRTC's shutdown failed!! (state %ld): Beamposition are [0]=%ld and [1]=%ld. Will try to restart in 1 second...\n", getName(), new_crtc_master_enable, beampos0, beampos1);
+		IOLog("%s: CRTC's shutdown failed!! (state %d): Beamposition are [0]=%d and [1]=%d. Will try to restart in 1 second...\n", getName(), new_crtc_master_enable, beampos0, beampos1);
 	}
 	
 	// Sleep for 1 secs == 1000 milliseconds: This is a blocking call, ie. the thread goes to sleep and may wakeup a bit later:
@@ -1166,21 +1166,21 @@ SInt32	PsychtoolboxKernelDriver::FastSynchronizeAllDisplayHeads(void)
 	beampos1 = GetBeamPosition(1);
 	new_crtc_master_enable = ReadRegister(RADEON_DC_CRTC_MASTER_ENABLE);
 	if (new_crtc_master_enable == old_crtc_master_enable) {
-		IOLog("%s: CRTC's restarted in sync: Master enable state is %ld. Beampositions after restart: [0]=%ld and [1]=%ld.\n", getName(), new_crtc_master_enable, beampos0, beampos1);
+		IOLog("%s: CRTC's restarted in sync: Master enable state is %d. Beampositions after restart: [0]=%d and [1]=%d.\n", getName(), new_crtc_master_enable, beampos0, beampos1);
 	}
 	else {
-		IOLog("%s: CRTC's restart FAILED!!: Master enable state is %ld. Beampositions: [0]=%ld and [1]=%ld.\n", getName(), new_crtc_master_enable, beampos0, beampos1);
+		IOLog("%s: CRTC's restart FAILED!!: Master enable state is %d. Beampositions: [0]=%d and [1]=%d.\n", getName(), new_crtc_master_enable, beampos0, beampos1);
 	}
 
 	deltabeampos = (SInt32) beampos1 - (SInt32) beampos0;
-	IOLog("%s: Residual beam offset after display sync: %ld.\n\n", getName(), deltabeampos);
+	IOLog("%s: Residual beam offset after display sync: %d.\n\n", getName(), deltabeampos);
 
 	// A little posttest...
 	IOLog("%s: Posttest...\n", getName());
 	for (UInt32 i = 0; i<10; i++) { 
 		beampos0 = GetBeamPosition(0);
 		beampos1 = GetBeamPosition(1);
-		IOLog("%s: Sample %ld: Beampositions are %ld vs. %ld . Offset %ld\n", getName(), i, beampos0, beampos1, (SInt32) beampos1 - (SInt32) beampos0);
+		IOLog("%s: Sample %d: Beampositions are %d vs. %d . Offset %d\n", getName(), i, beampos0, beampos1, (SInt32) beampos1 - (SInt32) beampos0);
 	}
 	
 	IOLog("\n%s: Display head resync operation finished.\n\n", getName());
@@ -1449,11 +1449,11 @@ void PsychtoolboxKernelDriver::GetStateSnapshot(PsychKDCommandStruct* outStruct)
 void PsychtoolboxKernelDriver::DumpGfxState(void)
 {
 	UInt32 regidx;
-	UInt32 col;
+	UInt32 col = 0;
 	
 	// Output some range of registers to IOLog:
 	for (regidx = 0; regidx <= 0x200; regidx+=4) {
-		IOLog("Reg[%lx] = %lx :: ", regidx, ReadRegister(regidx));
+		IOLog("Reg[%x] = %x :: ", regidx, ReadRegister(regidx));
 		if ((col++) % 5 == 0) IOLog("\n");
 	}
 	
@@ -1506,7 +1506,7 @@ IOReturn PsychtoolboxKernelDriver::PsychKDDispatchCommand(PsychKDCommandStruct* 
 	UInt32 cmd = inStruct->command;
 	
 	// Validate it:
-	if (cmd < 0 || cmd >= kPsychKDMaxCommands) {
+	if (cmd >= kPsychKDMaxCommands) {
 		IOLog("%s: Invalid/Unknown command code received - Out of range.\n", getName());
 		return(kIOReturnBadArgument);
 	}
