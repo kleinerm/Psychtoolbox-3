@@ -94,7 +94,7 @@ try
     el.msgfontcolour  = WhiteIndex(el.window);
     el.imgtitlecolour = WhiteIndex(el.window);
     el.targetbeep = 0;
-    el.calibrationtargetcolour= whiteIndex(el.window);
+    el.calibrationtargetcolour = WhiteIndex(el.window);
     
     % for lower resolutions you might have to play around with these values
     % a little. If you would like to draw larger targets on lower res
