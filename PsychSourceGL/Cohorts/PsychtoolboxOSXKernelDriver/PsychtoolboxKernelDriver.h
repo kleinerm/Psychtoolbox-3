@@ -113,8 +113,17 @@ private:
 	// Is a given ATI/AMD GPU a DCE4 type ASIC, i.e., with the new display engine?
 	bool isDCE4(void);
 
+	// Is a given ATI/AMD GPU a DCE4.1 type ASIC, i.e., with the new display engine?
+	bool isDCE41(void);
+
 	// Is a given ATI/AMD GPU a DCE5 type ASIC, i.e., with the new display engine?
 	bool isDCE5(void);
+
+	// Is a given ATI/AMD GPU a DCE6 type ASIC, i.e., with the new display engine?
+	bool isDCE6(void);
+
+	// Is a given ATI/AMD GPU a DCE6.1 type ASIC, i.e., with the new display engine?
+	bool isDCE61(void);
 
 public:
 	// IOService methods

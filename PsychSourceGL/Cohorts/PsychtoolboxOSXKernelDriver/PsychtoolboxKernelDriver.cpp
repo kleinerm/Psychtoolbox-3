@@ -92,10 +92,49 @@
 
 // Offset of crtc blocks of AMD Evergreen gpu's for each of the six possible crtc's:
 static UInt32 crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET, EVERGREEN_CRTC1_REGISTER_OFFSET, EVERGREEN_CRTC2_REGISTER_OFFSET, EVERGREEN_CRTC3_REGISTER_OFFSET, EVERGREEN_CRTC4_REGISTER_OFFSET, EVERGREEN_CRTC5_REGISTER_OFFSET };
-// static UInt32 crtcoff[(DCE4_MAXHEADID + 1)] = { 0x6df0, 0x79f0, 0x105f0, 0x111f0, 0x11df0, 0x129f0 };
 
 #define super IOService
 OSDefineMetaClassAndStructors(PsychtoolboxKernelDriver, IOService)
+
+/* Mappings up to date for April 2012 (last update commit 21-Mar-2012). Will need updates for anything after April 2012 */
+
+/* Is a given ATI/AMD GPU a DCE6.1 type ASIC, i.e., with the new display engine? */
+bool PsychtoolboxKernelDriver::isDCE61(void)
+{
+	bool isDCE61 = false;
+
+	// Everything >= ARUBA which is an IGP is DCE6.1 -- This is the "Trinity" GPU family.
+    
+    // ARUBA in 0x99xx range: This is the "Trinity" chip family.
+	if ((fPCIDeviceId & 0xFF00) == 0x9900) isDCE61 = true;
+    
+	return(isDCE61);    
+}
+
+/* Is a given ATI/AMD GPU a DCE6 type ASIC, i.e., with the new display engine? */
+bool PsychtoolboxKernelDriver::isDCE6(void)
+{
+	bool isDCE6 = false;
+    
+	// Everything >= ARUBA is DCE6 -- This is the "Southern Islands" GPU family.
+	// TAHITI is first real DCE-6 core in 0x678x - 0x679x range:
+	if ((fPCIDeviceId & 0xFFF0) == 0x6780) isDCE6 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x6790) isDCE6 = true;
+    
+	// PITCAIRN, VERDE in 0x6800 - 0x683x range:
+	if ((fPCIDeviceId & 0xFFF0) == 0x6800) isDCE6 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x6810) isDCE6 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x6820) isDCE6 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x6830) isDCE6 = true;
+    
+    // And one outlier PITCAIRN:
+	if ((fPCIDeviceId & 0xFFFF) == 0x684c) isDCE6 = true;
+    
+	// All DCE-6.1 engines are also DCE-6:
+	if (isDCE61()) isDCE6 = true;
+    
+	return(isDCE6);
+}
 
 /* Is a given ATI/AMD GPU a DCE5 type ASIC, i.e., with the new display engine? */
 bool PsychtoolboxKernelDriver::isDCE5(void)
@@ -105,8 +144,34 @@ bool PsychtoolboxKernelDriver::isDCE5(void)
 	// Everything after BARTS is DCE5 -- This is the "Northern Islands" GPU family.
 	// Barts, Turks, Caicos, Cayman, Antilles in 0x67xx range:
 	if ((fPCIDeviceId & 0xFF00) == 0x6700) isDCE5 = true;
+    
+	// More Turks ids:
+	if ((fPCIDeviceId & 0xFFF0) == 0x6840) isDCE5 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x6850) isDCE5 = true;
+
+	// All DCE-6 engines are also DCE-5:
+	if (isDCE6()) isDCE5 = true;
 
 	return(isDCE5);
+}
+
+/* Is a given ATI/AMD GPU a DCE-4.1 type ASIC, i.e., with the new display engine? */
+bool PsychtoolboxKernelDriver::isDCE41(void)
+{
+	bool isDCE41 = false;
+    
+	// Everything after PALM which is an IGP is DCE-4.1
+	// Currently these are Palm, Sumo and Sumo2.
+	// DCE-4.1 is a real subset of DCE-4, with all its
+	// functionality, except it only has 2 crtcs instead of 6.
+    
+	// Palm in 0x98xx range:
+	if ((fPCIDeviceId & 0xFF00) == 0x9800) isDCE41 = true;
+    
+	// Sumo/Sumo2 in 0x964x range:
+	if ((fPCIDeviceId & 0xFFF0) == 0x9640) isDCE41 = true;
+    
+	return(isDCE41);
 }
 
 /* Is a given ATI/AMD GPU a DCE4 type ASIC, i.e., with the new display engine? */
@@ -118,6 +183,7 @@ bool PsychtoolboxKernelDriver::isDCE4(void)
 	// in radeon_family.h which chips are CEDAR or later, and the mapping to
 	// these chip codes is done by matching against pci device id's in a
 	// mapping table inside linux/include/drm/drm_pciids.h
+	// Mapping of chip codes to DCE-generations is in drm/radeon/radeon.h
 	// Maintaining a copy of that table is impractical for PTB, so we simply
 	// check which range of PCI device id's is covered by the DCE-4 chips and
 	// code up matching rules here. This should do for now...
@@ -125,10 +191,8 @@ bool PsychtoolboxKernelDriver::isDCE4(void)
 	// Caiman, Cedar, Redwood, Juniper, Cypress, Hemlock in 0x6xxx range:
 	if ((fPCIDeviceId & 0xF000) == 0x6000) isDCE4 = true;
 	
-	// Palm in 0x98xx range: DCE4.1 --> Only two crtc's instead of six.
-	if ((fPCIDeviceId & 0xFF00) == 0x9800) isDCE4 = true;
-
-    // Sumo and Sumo2 is 0x964x range DCE4.1 --> Only two crtc's instead of six.
+	// All DCE-4.1 engines are also DCE-4, except for lower crtc count:
+	if (isDCE41()) isDCE4 = true;
 	return(isDCE4);
 }
 
@@ -208,15 +272,18 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 		if (PCI_VENDOR_ID_ATI == fPCIDevice->configRead16(0)) IOLog("%s: Confirmed to have ATI's vendor id.\n", getName());
 		if (PCI_VENDOR_ID_AMD == fPCIDevice->configRead16(0)) IOLog("%s: Confirmed to have AMD's vendor id.\n", getName());
 
-		IOLog("%s: This is a GPU with %s display engine.\n", getName(), isDCE5() ? "DCE-5" : (isDCE4() ? "DCE-4" : "AVIVO"));
+		IOLog("%s: This is a GPU with %s display engine.\n", getName(), isDCE6() ? "DCE-6" : (isDCE5() ? "DCE-5" : (isDCE4() ? "DCE-4" : "AVIVO")));
 
 		// On DCE-4 and later GPU's (Evergreen) we limit the minimum MMIO
 		// offset to the base address of the 1st CRTC register block for now:
-		if (isDCE4() || isDCE5()) {
+		if (isDCE4() || isDCE5() || isDCE6()) {
             fRadeonLowlimit = 0x6df0;
 
-            // GPU has up to six display heads:
-            fNumDisplayHeads = 6;
+            // Also, DCE-4 and DCE-5 and DCE-6, but not DCE-4.1 (which still has only 2) or DCE-6.1 (4 heads), supports up to six display heads:
+            if (!isDCE41() && !isDCE61()) fNumDisplayHeads = 6;
+            
+            // DCE-6.1 "Trinity" chip family supports 4 display heads:
+            if (!isDCE41() && isDCE61()) fNumDisplayHeads = 4;
         }
 	}
 
@@ -456,7 +523,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 
 	// We should be ready...
 	IOLog("\n");
-	IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.5 (Revision %d) for ATI Radeon and NVidia GeForce GPU's ready for use!\n", getName(), PTBKDRevision);
+	IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.6 (Revision %d) for ATI Radeon and NVidia GeForce GPU's ready for use!\n", getName(), PTBKDRevision);
 	IOLog("%s: This driver is copyright 2008 - 2012 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
 	IOLog("%s: The driver is licensed to you under the MIT free and open-source software license.\n", getName());
 	IOLog("%s: See the file License.txt in the Psychtoolbox root installation folder for details.\n", getName());
@@ -1205,8 +1272,8 @@ void PsychtoolboxKernelDriver::GetGPUInfo(UInt32 *inOutArgs)
     // Default to "don't know".
     inOutArgs[2] = 0;
 
-    // On Radeons we distinguish between Avivo (10) or DCE-4 style (40) or DCE-5 (50) for now.
-    if (fDeviceType == kPsychRadeon) inOutArgs[2] = isDCE5() ? 50 : (isDCE4() ? 40 : 10);
+    // On Radeons we distinguish between Avivo (10) or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60) for now.
+    if (fDeviceType == kPsychRadeon) inOutArgs[2] = isDCE6() ? 60 : (isDCE5() ? 50 : (isDCE4() ? 40 : 10));
 
     // On NVidia's we distinguish between chip family, e.g., 0x40 for the NV-40 family.
     if (fDeviceType == kPsychGeForce) inOutArgs[2] = fCardType;
