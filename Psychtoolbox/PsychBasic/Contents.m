@@ -27,6 +27,9 @@
 %     InitCocoaEventBridge - Prepare GetChar helper "CocoaEventBridge" 
 %     IOPort               - A I/O driver for access to serial ports.
 %     KbCheck              - Get instantaneous keyboard state.
+%     KbEventAvail         - Return number of pending keyboard events in ringbuffer.
+%     KbEventFlush         - Remove all pending keyboard events in ringbuffer.
+%     KbEventGet           - Get oldest pending keyboard event in ringbuffer.
 %     KbKeysAction         - Return an incremented or decremented value, depending on keys pressed.
 %     KbName               - Convert keycode to key name and vice versa.
 %     KbPressWait          - Wait for key press, make sure no keys pressed before.

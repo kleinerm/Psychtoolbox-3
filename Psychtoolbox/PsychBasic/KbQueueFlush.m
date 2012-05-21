@@ -1,5 +1,10 @@
 function nflushed = KbQueueFlush(deviceIndex, flushType)
-% nflushed = KbQueueFlush([deviceIndex])
+% nflushed = KbQueueFlush([deviceIndex][flushType=1])
+%
+% Flush KbQueue and/or KbQueue event buffer. By default, if flushType is
+% omitted, only the KbQueues events are deleted. Other 'flushTypes' affect
+% the KbQueue event buffer, but rather use the KbBufferFlush() function to
+% do this.
 %
 % The routines KbQueueCreate, KbQueueStart, KbQueueStop, KbQueueCheck
 %  KbQueueWait, KbQueueFlush and KbQueueRelease provide replacments for

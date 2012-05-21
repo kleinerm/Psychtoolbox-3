@@ -21,6 +21,7 @@ function KbQueueDemo(deviceIndex)
 % Roger Woods, November, 2007
 
 % 11/3/07	rpw Wrote demos 1-5
+% 05/21/12  mk  Add event buffer test to demo 5.
 
 if nargin < 1
   deviceIndex = [];
@@ -102,14 +103,14 @@ KbQueueStart(deviceIndex);
 
 while 1
     [ pressed, firstPress]=KbQueueCheck(deviceIndex);
-	timeSecs = firstPress(find(firstPress));
+	timeSecs = firstPress(find(firstPress)); %#ok<FNDSB>
 	if pressed
 	
 		% Again, fprintf will give an error if multiple keys have been pressed
 		fprintf('"%s" typed at time %.3f seconds\n', KbName(firstPress), timeSecs - startSecs);
         
-		if firstPress(escapeKey)
-			break;
+        if firstPress(escapeKey)
+            break;
         end
 	end
 end
@@ -259,7 +260,25 @@ fprintf('Keypresses during the next 5 seconds will be ignored\n\n');
 WaitSecs(5);
 [ pressed, firstPress]=KbQueueCheck(deviceIndex);
 fprintf('You pressed the following keys during the interval when keypresses were being recorded:\n');
-pressedKeys=KbName(firstPress)
+pressedKeys = KbName(firstPress) %#ok<NOPRT,NASGU>
+
+fprintf('\n\nTesting KbEvent-Buffer. It should contain the same information.\n');
+fprintf('During the test interval, %i events were recorded.\n', KbEventAvail(deviceIndex));
+fprintf('Will print all of them:\n\n');
+while KbEventAvail(deviceIndex)
+    [evt, n] = KbEventGet(deviceIndex);
+    fprintf('Event is:\n'); disp(evt);
+    fprintf('\nNow %i events remaining.\n', n);
+end
+
+fprintf('Done. Flushing the buffer for fun...\n');
+n = KbEventFlush(deviceIndex);
+if n == 0
+    fprintf('There were zero events remaining at flush time, as expected.\n');
+else
+    fprintf('Ohoh! There were %i events remaining, while i expected zero events?!?\n', n);
+end
+fprintf('KbEventBuffer test finished.\n\n');
 
 KbQueueRelease(deviceIndex);
 return
