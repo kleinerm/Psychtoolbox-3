@@ -108,7 +108,46 @@ static int    numKernelDrivers = 0;
 // Offset of crtc blocks of evergreen gpu's for each of the six possible crtc's:
 unsigned int crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET, EVERGREEN_CRTC1_REGISTER_OFFSET, EVERGREEN_CRTC2_REGISTER_OFFSET, EVERGREEN_CRTC3_REGISTER_OFFSET, EVERGREEN_CRTC4_REGISTER_OFFSET, EVERGREEN_CRTC5_REGISTER_OFFSET };
 
-/* Mappings up to date for year 2011 (last update commit 14-Dec-2011). Will need updates for anything in 2012 */
+/* Mappings up to date for April 2012 (last update commit 21-Mar-2012). Will need updates for anything after April 2012 */
+
+/* Is a given ATI/AMD GPU a DCE6.1 type ASIC, i.e., with the new display engine? */
+static psych_bool isDCE61(int screenId)
+{
+	psych_bool isDCE61 = false;
+    
+	// Everything >= ARUBA which is an IGP is DCE6.1 -- This is the "Trinity" GPU family.
+
+    // ARUBA in 0x99xx range: This is the "Trinity" chip family.
+	if ((fPCIDeviceId & 0xFF00) == 0x9900) isDCE61 = true;
+
+	return(isDCE61);
+}
+
+/* Is a given ATI/AMD GPU a DCE6 type ASIC, i.e., with the new display engine? */
+static psych_bool isDCE6(int screenId)
+{
+	psych_bool isDCE6 = false;
+    
+	// Everything >= ARUBA is DCE6 -- This is the "Southern Islands" GPU family.
+	// First real DCE-6.0 is TAHITI in 0x678x - 0x679x range:
+	if ((fPCIDeviceId & 0xFFF0) == 0x6780) isDCE6 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x6790) isDCE6 = true;
+    
+	// Then PITCAIRN, VERDE in 0x6800 - 0x683x range:
+	if ((fPCIDeviceId & 0xFFF0) == 0x6800) isDCE6 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x6810) isDCE6 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x6820) isDCE6 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x6830) isDCE6 = true;
+    
+    // And one outlier PITCAIRN:
+	if ((fPCIDeviceId & 0xFFFF) == 0x684c) isDCE6 = true;
+
+	// All DCE-6.1 engines are also DCE-6:
+	if (isDCE61(screenId)) isDCE6 = true;
+
+	return(isDCE6);
+}
+
 /* Is a given ATI/AMD GPU a DCE5 type ASIC, i.e., with the new display engine? */
 static psych_bool isDCE5(int screenId)
 {
@@ -122,6 +161,9 @@ static psych_bool isDCE5(int screenId)
 	if ((fPCIDeviceId & 0xFFF0) == 0x6840) isDCE5 = true;
 	if ((fPCIDeviceId & 0xFFF0) == 0x6850) isDCE5 = true;
 
+	// All DCE-6 engines are also DCE-5:
+	if (isDCE6(screenId)) isDCE5 = true;
+    
 	return(isDCE5);
 }
 
@@ -140,7 +182,7 @@ static psych_bool isDCE41(int screenId)
 
 	// Sumo/Sumo2 in 0x964x range:
 	if ((fPCIDeviceId & 0xFFF0) == 0x9640) isDCE41 = true;
-
+    
 	return(isDCE41);
 }
 
@@ -419,19 +461,22 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 		
 		if (fDeviceType == kPsychRadeon) {
 			// On Radeons we distinguish between Avivo (10) or DCE-4 style (40) or DCE-5 (50) for now.
-			fCardType = isDCE5(screenId) ? 50 : (isDCE4(screenId) ? 40 : 10);
-            
+			fCardType = isDCE6(screenId) ? 60 : (isDCE5(screenId) ? 50 : (isDCE4(screenId) ? 40 : 10));
+
 			// On DCE-4 and later GPU's (Evergreen) we limit the minimum MMIO
 			// offset to the base address of the 1st CRTC register block for now:
-			if (isDCE4(screenId) || isDCE5(screenId)) {
+			if (isDCE4(screenId) || isDCE5(screenId) || isDCE6(screenId)) {
 				gfx_lowlimit = 0x6df0;
                 
-				// Also, DCE-4 and DCE-5, but not DCE-41 (which still has only 2), supports up to six display heads:
-				if (!isDCE41(screenId)) fNumDisplayHeads = 6;
+				// Also, DCE-4 and DCE-5 and DCE-6, but not DCE-4.1 (which still has only 2) or DCE-6.1 (4 heads), supports up to six display heads:
+				if (!isDCE41(screenId) && !isDCE61(screenId)) fNumDisplayHeads = 6;
+
+                // DCE-6.1 "Trinity" chip family supports 4 display heads:
+				if (!isDCE41(screenId) && isDCE61(screenId)) fNumDisplayHeads = 4;
 			}
 			
 			if (PsychPrefStateGet_Verbosity() > 2) {
-				printf("PTB-INFO: Connected to %s %s GPU with %s display engine. Beamposition timestamping enabled.\n", pci_device_get_vendor_name(gpu), pci_device_get_device_name(gpu), (fCardType >= 40) ? ((fCardType >= 50) ? "DCE-5" : "DCE-4") : "AVIVO");
+				printf("PTB-INFO: Connected to %s %s GPU with %s display engine. Beamposition timestamping enabled.\n", pci_device_get_vendor_name(gpu), pci_device_get_device_name(gpu), (fCardType >= 40) ? (fCardType >= 60) ? "DCE-6" : ((fCardType >= 50) ? "DCE-5" : "DCE-4") : "AVIVO");
 				fflush(NULL);
 			}
 		}
