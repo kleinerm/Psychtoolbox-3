@@ -64,8 +64,7 @@ ylabel('Linear output');
 title('Device Gamma');
 
 %% Gamma correction without worrying about color
-% Show how to linearize a gamma table, assuming 8-bits channel in the frame
-% buffer (256 entry lookup table for each channel).  If there were no
+% Show how to linearize a gamma table.  If there were no
 % quantization in the DAC, these values would linearize perfectly.
 % Actually linearization will be affected by the precision of the DACs.
 
