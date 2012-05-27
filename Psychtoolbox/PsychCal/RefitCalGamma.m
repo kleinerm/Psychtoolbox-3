@@ -22,7 +22,7 @@
 % 5/26/12  dhb      Added ability to use raw measured data as the fit gamma table.  See comment where that's done below.
 
 % Enter load code
-defaultFileName = 'monitor';
+defaultFileName = 'PTB3TestCal';
 thePrompt = sprintf('Enter calibration filename [%s]: ',defaultFileName);
 newFileName = input(thePrompt,'s');
 if (isempty(newFileName))
