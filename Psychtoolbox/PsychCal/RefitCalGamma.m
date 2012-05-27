@@ -2,7 +2,7 @@
 %
 % Refit the gamma data from a calibration.
 %
-% See also CalibrateFitGamma, SetGammaMethod, GamutToSettings
+% See also CalDemo, CalibrateFitGamma, SetGammaMethod, GamutToSettings
 %
 % 3/27/02  dhb  Wrote it.
 % 8/26/03  dhb, jl  Allow changing dacsize of calibraiton.  Useful for dropping from 10 to 8.
