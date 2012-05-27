@@ -1,0 +1,13 @@
+TODO 64-Bit OSX Port:
+
+Medium priority: (Possibly pre-release, but not a release-blocker):
+
+* 64-Bit Octave version.
+* Check why Videocapture works, but not VideoRecording.
+
+Low priority: (Post-Release)
+
+* Setup CMake & XCode-Project…
+
+Screen generic GStreamer (homebrew). brew install gstreamer: Duration: 8 minutes
+brew install gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly
