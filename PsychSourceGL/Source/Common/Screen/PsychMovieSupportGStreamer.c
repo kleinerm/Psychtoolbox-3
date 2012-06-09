@@ -831,7 +831,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 	}
     }
 
-    // Check if a multi-threaded decoder from is used: If so, set number of processing
+    // Check if a multi-threaded decoder is used: If so, set number of processing
     // threads to use: By default many codecs would only use one single thread on any system,
     // even if they are multi-threading capable.
     it = gst_bin_iterate_recurse(GST_BIN(theMovie));
@@ -839,27 +839,27 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     videocodec = NULL;
 
     while (!done) {
-	switch (gst_iterator_next(it, (void**) &videocodec)) {
-	    case GST_ITERATOR_OK:
-		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In pipeline: Child element name: %s\n", (const char*) gst_object_get_name(GST_OBJECT(videocodec)));
-		//if (strstr((const char*) gst_object_get_name(GST_OBJECT(videocodec)), "h264")) {
-		if (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads")) {
-		    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Found video decoder element %s.\n", (const char*) gst_object_get_name(GST_OBJECT(videocodec)));
-		    done = TRUE;
-		} else {
-		    gst_object_unref(videocodec);
-		    videocodec = NULL;
-		}
-	    break;
+        switch (gst_iterator_next(it, (void**) &videocodec)) {
+            case GST_ITERATOR_OK:
+                if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In pipeline: Child element name: %s\n", (const char*) gst_object_get_name(GST_OBJECT(videocodec)));
+                //if (strstr((const char*) gst_object_get_name(GST_OBJECT(videocodec)), "h264")) {
+                if (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads")) {
+                    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Found video decoder element %s.\n", (const char*) gst_object_get_name(GST_OBJECT(videocodec)));
+                    done = TRUE;
+                } else {
+                    gst_object_unref(videocodec);
+                    videocodec = NULL;
+                }
+            break;
 
-	    case GST_ITERATOR_RESYNC:
-	        gst_iterator_resync(it);
-	    break;
+            case GST_ITERATOR_RESYNC:
+                gst_iterator_resync(it);
+            break;
 
-	    case GST_ITERATOR_DONE:
-		done = TRUE;
-	    break;
-       }
+            case GST_ITERATOR_DONE:
+                done = TRUE;
+            break;
+        }
     }
 
     gst_iterator_free(it);
@@ -867,34 +867,40 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 
     if (videocodec && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads"))) {
         max_video_threads = 1;
-	g_object_get(G_OBJECT(videocodec), "max-threads", &max_video_threads, NULL);
-	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Movie playback for movie %i uses video decoder with a default maximum number of %i processing threads.\n", slotid, max_video_threads);
+        g_object_get(G_OBJECT(videocodec), "max-threads", &max_video_threads, NULL);
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Movie playback for movie %i uses video decoder with a default maximum number of %i processing threads.\n", slotid, max_video_threads);
 
-	// Set max_threads to 0: This means to auto-detect the optimal number of threads.
-	if (getenv("PSYCHTOOLBOX_MAX_VIDEODECODER_THREADS")) {
-	    max_video_threads = atoi(getenv("PSYCHTOOLBOX_MAX_VIDEODECODER_THREADS"));
-	    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Setting video decoder to use a maximum of %i processing threads.\n", max_video_threads);
-	} else {
-	    max_video_threads = 0;
-	    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Setting video decoder to use auto-selected optimal number of processing threads.\n");
-	}
+        // Set max_threads to 0: This means to auto-detect the optimal number of threads.
+        if (getenv("PSYCHTOOLBOX_MAX_VIDEODECODER_THREADS")) {
+            max_video_threads = atoi(getenv("PSYCHTOOLBOX_MAX_VIDEODECODER_THREADS"));
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Setting video decoder to use a maximum of %i processing threads.\n", max_video_threads);
+        } else {
+            max_video_threads = 0;
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Setting video decoder to use auto-selected optimal number of processing threads.\n");
+        }
 
-	// Ready the video codec, so a new max thread count can be set:
-	if (!PsychMoviePipelineSetState(videocodec, GST_STATE_READY, 30.0)) {
-		PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
-		PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed III. Reason given above.");
-	}    
+        // Ready the video codec, so a new max thread count can be set:
+        if (!PsychMoviePipelineSetState(videocodec, GST_STATE_READY, 30.0)) {
+            PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
+            PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed III. Reason given above.");
+        }    
 
-	g_object_set(G_OBJECT(videocodec), "max-threads", max_video_threads, NULL);
+        g_object_set(G_OBJECT(videocodec), "max-threads", max_video_threads, NULL);
 
-	// Pause the video codec, so the new max thread count is accepted:
-	if (!PsychMoviePipelineSetState(videocodec, GST_STATE_PAUSED, 30.0)) {
-		PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
-		PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed IV. Reason given above.");
-	}
+        // Pause the video codec, so the new max thread count is accepted:
+        if (!PsychMoviePipelineSetState(videocodec, GST_STATE_PAUSED, 30.0)) {
+            PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
+            PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed IV. Reason given above.");
+        }
 
-	g_object_get(G_OBJECT(videocodec), "max-threads", &max_video_threads, NULL);
-	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Movie playback for movie %i uses video decoder with a current maximum number of %i processing threads.\n", slotid, max_video_threads);
+        g_object_get(G_OBJECT(videocodec), "max-threads", &max_video_threads, NULL);
+        if (PsychPrefStateGet_Verbosity() > 4) {
+            if (max_video_threads != 0) {
+                printf("PTB-INFO: Movie playback for movie %i uses video decoder with a current maximum number of %i processing threads.\n", slotid, max_video_threads);
+            } else {
+                printf("PTB-INFO: Movie playback for movie %i uses video decoder with a current auto-selected optimal number of processing threads.\n", slotid);
+            }
+        }
     }
 
     // Release reference to videocodec:
@@ -1427,8 +1433,8 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         // Try to check for dropped frames in playback mode:
 
         // Expected delta between successive presentation timestamps:
-	// This is not dependent on playback rate, as it measures time in the
-	// GStreamer movies timeline == Assuming 1x playback rate.
+        // This is not dependent on playback rate, as it measures time in the
+        // GStreamer movies timeline == Assuming 1x playback rate.
         targetdelta = 1.0f / movieRecordBANK[moviehandle].fps;
 
         // Compute real delta, given rate and playback direction:
@@ -1452,29 +1458,29 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 
     // Unlock.
     if (oldstyle) {
-	PsychUnlockMutex(&movieRecordBANK[moviehandle].mutex);
+        PsychUnlockMutex(&movieRecordBANK[moviehandle].mutex);
     } else {
-	gst_buffer_unref(videoBuffer);
-	videoBuffer = NULL;
+        gst_buffer_unref(videoBuffer);
+        videoBuffer = NULL;
     }
     
     // Manually advance movie time, if in fetch mode:
     if (0 == rate) {
-	// We are in manual fetch mode: Need to manually advance movie to next
-	// media sample:
-	movieRecordBANK[moviehandle].endOfFetch = 0;
-	preT = PsychGSGetMovieTimeIndex(moviehandle);
-	event = gst_event_new_step(GST_FORMAT_BUFFERS, 1, 1.0, TRUE, FALSE);
-	if (!gst_element_send_event(theMovie, event)) printf("PTB-DEBUG: In single-step seek I - Failed.\n");
+        // We are in manual fetch mode: Need to manually advance movie to next
+        // media sample:
+        movieRecordBANK[moviehandle].endOfFetch = 0;
+        preT = PsychGSGetMovieTimeIndex(moviehandle);
+        event = gst_event_new_step(GST_FORMAT_BUFFERS, 1, 1.0, TRUE, FALSE);
+        if (!gst_element_send_event(theMovie, event)) printf("PTB-DEBUG: In single-step seek I - Failed.\n");
 
-	// Block until seek completed, failed, or timeout of 30 seconds reached:
-	if (GST_STATE_CHANGE_FAILURE == gst_element_get_state(theMovie, NULL, NULL, (GstClockTime) (30 * 1e9))) printf("PTB-DEBUG: In single-step seek I - Failed.\n");
-	postT = PsychGSGetMovieTimeIndex(moviehandle);
+        // Block until seek completed, failed, or timeout of 30 seconds reached:
+        if (GST_STATE_CHANGE_FAILURE == gst_element_get_state(theMovie, NULL, NULL, (GstClockTime) (30 * 1e9))) printf("PTB-DEBUG: In single-step seek I - Failed.\n");
+        postT = PsychGSGetMovieTimeIndex(moviehandle);
 
-	if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-DEBUG: Movie fetch advance: preT %f   postT %f  DELTA %lf %s\n", preT, postT, postT - preT, (postT - preT < 0.001) ? "SAME" : "DIFF");
+        if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-DEBUG: Movie fetch advance: preT %f   postT %f  DELTA %lf %s\n", preT, postT, postT - preT, (postT - preT < 0.001) ? "SAME" : "DIFF");
 
-	// Signal end-of-fetch if time no longer progresses signficiantly:
-	if (postT - preT < 0.001) movieRecordBANK[moviehandle].endOfFetch = 1;
+        // Signal end-of-fetch if time no longer progresses signficiantly:
+        if (postT - preT < 0.001) movieRecordBANK[moviehandle].endOfFetch = 1;
     }
 
     PsychGetAdjustedPrecisionTimerSeconds(&tNow);
