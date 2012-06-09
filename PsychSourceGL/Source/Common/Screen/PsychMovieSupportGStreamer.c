@@ -1153,10 +1153,6 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         PsychErrorExitMsg(PsychError_user, "Invalid timeindex provided.");
     }
     
-    if (NULL == out_texture && !checkForImage) {
-        PsychErrorExitMsg(PsychError_internal, "NULL-Ptr instead of out_texture ptr passed!!!");
-    }
-    
     // Fetch references to objects we need:
     theMovie = movieRecordBANK[moviehandle].theMovie;
     if (theMovie == NULL) {
@@ -1304,7 +1300,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 		movieRecordBANK[moviehandle].frameAvail = 0;
 		
 		// This will retrieve an OpenGL compatible pointer to the pixel data and assign it to our texmemptr:
-		out_texture->textureMemory = (GLuint*) movieRecordBANK[moviehandle].imageBuffer;
+		if (out_texture) out_texture->textureMemory = (GLuint*) movieRecordBANK[moviehandle].imageBuffer;
     } else {
 	// Active playback mode?
 	if (0 != rate) {
@@ -1339,7 +1335,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 
 	if (videoBuffer) {
 		// Assign pointer to videoBuffer's data directly: Avoids one full data copy compared to oldstyle method.
-		out_texture->textureMemory = (GLuint*) GST_BUFFER_DATA(videoBuffer);
+		if (out_texture) out_texture->textureMemory = (GLuint*) GST_BUFFER_DATA(videoBuffer);
 
 		// Assign pts presentation timestamp in pipeline stream time and convert to seconds:
 		movieRecordBANK[moviehandle].pts = (double) GST_BUFFER_TIMESTAMP(videoBuffer) / (double) 1e9;
@@ -1361,61 +1357,68 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     // Assign presentation_timestamp:
     if (presentation_timestamp) *presentation_timestamp = movieRecordBANK[moviehandle].pts;
 
-    // Activate OpenGL context of target window:
-    PsychSetGLContext(win);
+    // Only create actual OpenGL texture if out_texture is non-NULL. Otherwise we're
+    // just skipping this. Useful for benchmarks, fast forward seeking, etc.
+    if (out_texture) {
+        // Activate OpenGL context of target window:
+        PsychSetGLContext(win);
 
-    #if PSYCH_SYSTEM == PSYCH_OSX
-    // Explicitely disable Apple's Client storage extensions. For now they are not really useful to us.
-    glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
-    #endif
+        #if PSYCH_SYSTEM == PSYCH_OSX
+        // Explicitely disable Apple's Client storage extensions. For now they are not really useful to us.
+        glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
+        #endif
 
-    // Build a standard PTB texture record:
-    PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height);    
+        // Build a standard PTB texture record:
+        PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height);    
 
-    // Set NULL - special texture object as part of the PTB texture record:
-    out_texture->targetSpecific.QuickTimeGLTexture = NULL;
+        // Set NULL - special texture object as part of the PTB texture record:
+        out_texture->targetSpecific.QuickTimeGLTexture = NULL;
 
-    // Set texture orientation as if it were an inverted Offscreen window: Upside-down.
-    out_texture->textureOrientation = 3;
+        // Set texture orientation as if it were an inverted Offscreen window: Upside-down.
+        out_texture->textureOrientation = 3;
 
-    // We use zero client storage memory bytes:
-    out_texture->textureMemorySizeBytes = 0;
+        // We use zero client storage memory bytes:
+        out_texture->textureMemorySizeBytes = 0;
 
-    // Textures are aligned on 4 Byte boundaries because texels are RGBA8:
-    out_texture->textureByteAligned = 4;
+        // Textures are aligned on 4 Byte boundaries because texels are RGBA8:
+        out_texture->textureByteAligned = 4;
 
-    // Assign texturehandle of our cached texture, if any, so it gets recycled now:
-    out_texture->textureNumber = movieRecordBANK[moviehandle].cached_texture;
+        // Assign texturehandle of our cached texture, if any, so it gets recycled now:
+        out_texture->textureNumber = movieRecordBANK[moviehandle].cached_texture;
 
-    if ((win->gfxcaps & kPsychGfxCapUYVYTexture) && useYUVDecode) {
-	// GPU supports UYVY textures and we get data in that YCbCr format. Tell
-	// texture creation routine to use this optimized format:
-	if (!glewIsSupported("GL_APPLE_ycbcr_422")) {
-	    // No support for more powerful Apple extension. Use Linux MESA extension:
-	    out_texture->textureinternalformat = GL_YCBCR_MESA;
-	    out_texture->textureexternalformat = GL_YCBCR_MESA;
-	} else {
-	    // Apple extension supported:
-	    out_texture->textureinternalformat = GL_RGB;
-	    out_texture->textureexternalformat = GL_YCBCR_422_APPLE;
-	}
-	// Same enumerant for Apple and Mesa:
-	out_texture->textureexternaltype   = GL_UNSIGNED_SHORT_8_8_MESA;
+        if ((win->gfxcaps & kPsychGfxCapUYVYTexture) && useYUVDecode) {
+            // GPU supports UYVY textures and we get data in that YCbCr format. Tell
+            // texture creation routine to use this optimized format:
+            if (!glewIsSupported("GL_APPLE_ycbcr_422")) {
+                // No support for more powerful Apple extension. Use Linux MESA extension:
+                out_texture->textureinternalformat = GL_YCBCR_MESA;
+                out_texture->textureexternalformat = GL_YCBCR_MESA;
+            } else {
+                // Apple extension supported:
+                out_texture->textureinternalformat = GL_RGB;
+                out_texture->textureexternalformat = GL_YCBCR_422_APPLE;
+            }
+
+            // Same enumerant for Apple and Mesa:
+            out_texture->textureexternaltype   = GL_UNSIGNED_SHORT_8_8_MESA;
+        }
+
+        // Let PsychCreateTexture() do the rest of the job of creating, setting up and
+        // filling an OpenGL texture with content:
+        PsychCreateTexture(out_texture);
+
+        // After PsychCreateTexture() the cached texture object from our cache is used
+        // and no longer available for recycling. We mark the cache as empty:
+        // It will be filled with a new textureid for recycling if a texture gets
+        // deleted in PsychMovieDeleteTexture()....
+        movieRecordBANK[moviehandle].cached_texture = 0;
+
+        PsychGetAdjustedPrecisionTimerSeconds(&tNow);
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Decode completion to texture created: %f msecs.\n", (tNow - tStart) * 1000.0);
+        tStart = tNow;
+        
+        // End of texture creation code.
     }
-
-    // Let PsychCreateTexture() do the rest of the job of creating, setting up and
-    // filling an OpenGL texture with content:
-    PsychCreateTexture(out_texture);
-
-    // After PsychCreateTexture() the cached texture object from our cache is used
-    // and no longer available for recycling. We mark the cache as empty:
-    // It will be filled with a new textureid for recycling if a texture gets
-    // deleted in PsychMovieDeleteTexture()....
-    movieRecordBANK[moviehandle].cached_texture = 0;
-
-    PsychGetAdjustedPrecisionTimerSeconds(&tNow);
-    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Decode completion to texture created: %f msecs.\n", (tNow - tStart) * 1000.0);
-    tStart = tNow;
 
     // Detection of dropped frames: This is a heuristic. We'll see how well it works out...
     // TODO: GstBuffer videoBuffer provides special flags that should allow to do a more
