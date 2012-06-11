@@ -608,7 +608,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 		// If there is a mismatch between wish and reality, report it:
 		if (false || gl_realinternalformat != glinternalFormat) {
 			// Mismatch between requested format and format that the OpenGL has chosen:
-			printf("PTB-WARNING: In glTexImage2D: Mismatch between requested and real format: depth=%i, fcode=%x\n", win->depth, gl_realinternalformat);
+			printf("PTB-WARNING: In glTexImage2D: Mismatch between requested and real format: depth=%i, fcode=x%x\n", win->depth, gl_realinternalformat);
 			printf("PTB-WARNING: Requested size = %i bits, real size = %i bits.\n", win->depth, gl_rbits + gl_gbits + gl_bbits + gl_abits + gl_lbits); 
 			printf("PTB-WARNING: This could mean that something went wrong when creating the texture!\n");
 			fflush(NULL);

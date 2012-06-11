@@ -56,7 +56,6 @@ typedef enum {
 } GstPlayFlags;
 
 static const psych_bool oldstyle = FALSE;
-static psych_bool useYUVDecode = FALSE;
 
 #define PSYCH_MAX_MOVIES 100
     
@@ -73,6 +72,8 @@ typedef struct {
     double		rate;
     int                 startPending;
     int                 endOfFetch;
+    psych_bool  useYUVDecode;
+    int         specialFlags1;
     int			loopflag;
     double		movieduration;
     int			nrframes;
@@ -561,12 +562,6 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     if (firsttime) {        
         // Initialize GStreamer: The routine is defined in PsychVideoCaptureSupportGStreamer.c
         PsychGSCheckInit("movie playback");
-
-        // Enable use of YUV textures for movie playback on supported GPUs if environment variable
-        // is defined. YUV mode defaults to "off", because as of 1st December 2011, at least H264
-        // to YUV decoding was much slower than bog standard decoding to RGBA8 -- much to my surprise.
-        if (getenv("PSYCHTOOLBOX_USE_YUV_MOVIEDECODING") || (specialFlags1 & 1)) useYUVDecode = TRUE;
-
         firsttime = FALSE;
     }
 
@@ -596,6 +591,14 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // Zero-out new record in moviebank:
     memset(&movieRecordBANK[slotid], 0, sizeof(PsychMovieRecordType));
     
+    // Store specialFlags1 from open call:
+    movieRecordBANK[slotid].specialFlags1 = specialFlags1;
+
+    // Enable use of YUV textures for movie playback on supported GPUs if environment variable
+    // is defined. YUV mode defaults to "off", because as of 1st December 2011, at least H264
+    // to YUV decoding was much slower than bog standard decoding to RGBA8 -- much to my surprise.
+    movieRecordBANK[slotid].useYUVDecode = (getenv("PSYCHTOOLBOX_USE_YUV_MOVIEDECODING") || (specialFlags1 & 1)) ? TRUE : FALSE;
+
     // Create name-string for moviename: If an URI qualifier is at the beginning,
     // we're fine and just pass the URI as-is. Otherwise we add the file:// URI prefix.
     if (strstr(moviename, "://") || ((strstr(moviename, "v4l") == moviename) && strstr(moviename, "//"))) {
@@ -753,7 +756,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // data as textures. If we are on such a GPU we request yuv UYVU data and upload it
     // directly in this format to the GPU. This more efficient both for GStreamers decode
     // pipeline, and the later Videobuffer -> OpenGL texture conversion:
-    if (win && (win->gfxcaps & kPsychGfxCapUYVYTexture) && useYUVDecode) {
+    if (win && (win->gfxcaps & kPsychGfxCapUYVYTexture) && movieRecordBANK[slotid].useYUVDecode) {
         // GPU supports handling and decoding of UYVY type yuv textures: We use these,
         // as they are more efficient to decode and handle by typical video codecs:
         colorcaps = gst_caps_new_simple ( "video/x-raw-yuv",
@@ -771,8 +774,8 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
                           "green_mask", G_TYPE_INT, 0x00FF0000,
                           "blue_mask", G_TYPE_INT,  0xFF000000,
                           NULL);
-        if ((PsychPrefStateGet_Verbosity() > 3) && useYUVDecode) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures due to lack of YUV texture support on GPU.\n", slotid);
-        if ((PsychPrefStateGet_Verbosity() > 3) && !useYUVDecode) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures.\n", slotid);
+        if ((PsychPrefStateGet_Verbosity() > 3) && movieRecordBANK[slotid].useYUVDecode) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures due to lack of YUV texture support on GPU.\n", slotid);
+        if ((PsychPrefStateGet_Verbosity() > 3) && !movieRecordBANK[slotid].useYUVDecode) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures.\n", slotid);
     }
 
     /*
@@ -1438,13 +1441,14 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         // We use zero client storage memory bytes:
         out_texture->textureMemorySizeBytes = 0;
 
-        // Textures are aligned on 4 Byte boundaries because texels are RGBA8:
-        out_texture->textureByteAligned = 4;
+        // Textures are aligned on at least 4 Byte boundaries because texels are RGBA8. For
+        // frames of even-numbered pixel width, we can even get 8 Byte alignment:
+        out_texture->textureByteAligned = (movieRecordBANK[moviehandle].width % 2) ? 4 : 8;
 
         // Assign texturehandle of our cached texture, if any, so it gets recycled now:
         out_texture->textureNumber = movieRecordBANK[moviehandle].cached_texture;
 
-        if ((win->gfxcaps & kPsychGfxCapUYVYTexture) && useYUVDecode) {
+        if ((win->gfxcaps & kPsychGfxCapUYVYTexture) && movieRecordBANK[moviehandle].useYUVDecode) {
             // GPU supports UYVY textures and we get data in that YCbCr format. Tell
             // texture creation routine to use this optimized format:
             if (!glewIsSupported("GL_APPLE_ycbcr_422")) {
@@ -1453,12 +1457,12 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
                 out_texture->textureexternalformat = GL_YCBCR_MESA;
             } else {
                 // Apple extension supported:
-                out_texture->textureinternalformat = GL_RGB;
+                out_texture->textureinternalformat = GL_RGB8;
                 out_texture->textureexternalformat = GL_YCBCR_422_APPLE;
             }
 
             // Same enumerant for Apple and Mesa:
-            out_texture->textureexternaltype   = GL_UNSIGNED_SHORT_8_8_MESA;
+            out_texture->textureexternaltype = GL_UNSIGNED_SHORT_8_8_MESA;
         }
 
         // Let PsychCreateTexture() do the rest of the job of creating, setting up and
