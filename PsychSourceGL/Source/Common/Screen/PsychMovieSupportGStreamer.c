@@ -762,8 +762,15 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         colorcaps = gst_caps_new_simple ( "video/x-raw-yuv",
                           "format", GST_TYPE_FOURCC, GST_MAKE_FOURCC('U', 'Y', 'V', 'Y'),
                           NULL);
-        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use UYVY YCrCb textures for optimized decode and rendering.\n", slotid);
-    } else {
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use UYVY YCrCb 4:2:2 textures for optimized decode and rendering.\n", slotid);
+    }
+    else if (win && (win->gfxcaps & kPsychGfxCapFBO) && glewIsSupported("GL_ARB_fragment_shader") && (movieRecordBANK[slotid].specialFlags1 & 0x4)) {
+        colorcaps = gst_caps_new_simple ( "video/x-raw-yuv",
+                                         "format", GST_TYPE_FOURCC, GST_MAKE_FOURCC('I', '4', '2', '0'),
+                                         NULL);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use UYVY YCrCb I4:2:0p textures for optimized decode and rendering.\n", slotid);
+    }
+    else {
         // GPU does not support yuv textures. Need to go brute-force and convert
         // video into RGBA8 format:
         colorcaps = gst_caps_new_simple ( "video/x-raw-rgb",
@@ -1465,9 +1472,27 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             out_texture->textureexternaltype = GL_UNSIGNED_SHORT_8_8_MESA;
         }
 
-        // Let PsychCreateTexture() do the rest of the job of creating, setting up and
-        // filling an OpenGL texture with content:
-        PsychCreateTexture(out_texture);
+        if (movieRecordBANK[moviehandle].specialFlags1 & 0x4) {
+			out_texture->textureexternaltype   = GL_UNSIGNED_BYTE;
+			out_texture->textureexternalformat = GL_LUMINANCE;
+			out_texture->textureinternalformat = GL_LUMINANCE8;
+
+			// Special case: Non-transposed or isotropic storage:
+			PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height * 1.5);
+
+            // Create planar texture:
+            PsychCreateTexture(out_texture);
+            
+            // Restore rect and clientrect of texture to effective size:
+            PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height);
+            PsychCopyRect(out_texture->clientrect, out_texture->rect);
+            out_texture->specialflags = kPsychPlanarTexture;
+        }
+        else {
+            // Let PsychCreateTexture() do the rest of the job of creating, setting up and
+            // filling an OpenGL texture with content:
+            PsychCreateTexture(out_texture);
+        }
 
         // After PsychCreateTexture() the cached texture object from our cache is used
         // and no longer available for recycling. We mark the cache as empty:
