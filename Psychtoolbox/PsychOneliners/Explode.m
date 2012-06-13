@@ -134,7 +134,7 @@ elseif isnumeric(vect)
     func        = @(x)cast(str2num(x),dtype); %#ok<ST2NM>
     strc        = cellfun(func,split,'UniformOutput',false);
 else
-    error('input van type %s niet ondersteund',class(vect));
+    error('input type %s not supported',class(vect));
 end
 
 if nargout <= 1
