@@ -60,34 +60,34 @@ static const psych_bool oldstyle = FALSE;
 #define PSYCH_MAX_MOVIES 100
     
 typedef struct {
-    psych_mutex		mutex;
+    psych_mutex         mutex;
     psych_condition     condition;
-    double		pts;
-    GstElement		*theMovie;
-    GMainLoop		*MovieContext;
+    double              pts;
+    GstElement          *theMovie;
+    GMainLoop           *MovieContext;
     GstElement          *videosink;
-    unsigned char	*imageBuffer;
-    int			frameAvail;
+    unsigned char       *imageBuffer;
+    int                 frameAvail;
     int                 preRollAvail;
-    double		rate;
+    double              rate;
     int                 startPending;
     int                 endOfFetch;
-    psych_bool  useYUVDecode;
-    int         specialFlags1;
-    int			loopflag;
-    double		movieduration;
-    int			nrframes;
-    double		fps;
-    int			width;
-    int			height;
+    int                 specialFlags1;
+    int                 pixelFormat;
+    int                 loopflag;
+    double              movieduration;
+    int                 nrframes;
+    double              fps;
+    int                 width;
+    int                 height;
     double              aspectRatio;
-    double		last_pts;
-    int			nr_droppedframes;
+    double              last_pts;
+    int                 nr_droppedframes;
     int                 nrAudioTracks;
     int                 nrVideoTracks;
     char                movieLocation[FILENAME_MAX];
     char                movieName[FILENAME_MAX];
-    GLuint		cached_texture;
+    GLuint              cached_texture;
 } PsychMovieRecordType;
 
 static PsychMovieRecordType movieRecordBANK[PSYCH_MAX_MOVIES];
@@ -480,8 +480,9 @@ static GstAppSinkCallbacks videosinkCallbacks = {
  *      moviehandle = handle to the new movie.
  *      asyncFlag = As passed to 'OpenMovie'
  *      specialFlags1 = As passed to 'OpenMovie'
+ *      pixelFormat = As passed to 'OpenMovie'
  */
-void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1)
+void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1, int pixelFormat)
 {
     GstCaps                     *colorcaps;
     GstElement			*theMovie = NULL;
@@ -517,42 +518,42 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // Gapless playback requested? Normally *moviehandle is == -1, so a positive
     // handle requests this mode and defines the actual handle of the movie to use:
     if (*moviehandle >= 0) {
-	// Queueing a new moviename of a movie to play next: This only works
-	// for already opened/created movies whose pipeline is at least in
-	// READY state, better PAUSED or PLAYING. Validate preconditions:
+        // Queueing a new moviename of a movie to play next: This only works
+        // for already opened/created movies whose pipeline is at least in
+        // READY state, better PAUSED or PLAYING. Validate preconditions:
 
-	// Valid handle for existing movie?
-	if (*moviehandle < 0 || *moviehandle >= PSYCH_MAX_MOVIES) {
-	    PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
-	}
-        
-	// Fetch references to objects we need:
-	theMovie = movieRecordBANK[*moviehandle].theMovie;    
-	if (theMovie == NULL) {
-	    PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. No movie associated with this handle !!!");
-	}
+        // Valid handle for existing movie?
+        if (*moviehandle < 0 || *moviehandle >= PSYCH_MAX_MOVIES) {
+            PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
+        }
+            
+        // Fetch references to objects we need:
+        theMovie = movieRecordBANK[*moviehandle].theMovie;    
+        if (theMovie == NULL) {
+            PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. No movie associated with this handle !!!");
+        }
 
-	// Ok, this means we have a handle to an existing, fully operational
-	// playback pipeline. Convert moviename to a valid URL and queue it:
+        // Ok, this means we have a handle to an existing, fully operational
+        // playback pipeline. Convert moviename to a valid URL and queue it:
 
-	// Create name-string for moviename: If an URI qualifier is at the beginning,
-	// we're fine and just pass the URI as-is. Otherwise we add the file:// URI prefix.
-	if (strstr(moviename, "://") || ((strstr(moviename, "v4l") == moviename) && strstr(moviename, "//"))) {
-	    snprintf(movieLocation, sizeof(movieLocation)-1, "%s", moviename);
-	} else {
-	    snprintf(movieLocation, sizeof(movieLocation)-1, "file:///%s", moviename);
-	}
+        // Create name-string for moviename: If an URI qualifier is at the beginning,
+        // we're fine and just pass the URI as-is. Otherwise we add the file:// URI prefix.
+        if (strstr(moviename, "://") || ((strstr(moviename, "v4l") == moviename) && strstr(moviename, "//"))) {
+            snprintf(movieLocation, sizeof(movieLocation)-1, "%s", moviename);
+        } else {
+            snprintf(movieLocation, sizeof(movieLocation)-1, "file:///%s", moviename);
+        }
 
-	strncpy(movieRecordBANK[*moviehandle].movieLocation, movieLocation, FILENAME_MAX);
-	strncpy(movieRecordBANK[*moviehandle].movieName, moviename, FILENAME_MAX);
+        strncpy(movieRecordBANK[*moviehandle].movieLocation, movieLocation, FILENAME_MAX);
+        strncpy(movieRecordBANK[*moviehandle].movieName, moviename, FILENAME_MAX);
 
-	// Assign name of movie to play to pipeline. If the pipeline is not in playing
-	// state, this will switch to the specified movieLocation immediately. If it
-	// is playing, it will switch to it at the end of the current playback iteration:
-	g_object_set(G_OBJECT(theMovie), "uri", movieLocation, NULL);
+        // Assign name of movie to play to pipeline. If the pipeline is not in playing
+        // state, this will switch to the specified movieLocation immediately. If it
+        // is playing, it will switch to it at the end of the current playback iteration:
+        g_object_set(G_OBJECT(theMovie), "uri", movieLocation, NULL);
 
-	// Ready.
-	return;
+        // Ready.
+        return;
     }
     
     // Set movie handle to "failed" initially:
@@ -593,11 +594,6 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     
     // Store specialFlags1 from open call:
     movieRecordBANK[slotid].specialFlags1 = specialFlags1;
-
-    // Enable use of YUV textures for movie playback on supported GPUs if environment variable
-    // is defined. YUV mode defaults to "off", because as of 1st December 2011, at least H264
-    // to YUV decoding was much slower than bog standard decoding to RGBA8 -- much to my surprise.
-    movieRecordBANK[slotid].useYUVDecode = (getenv("PSYCHTOOLBOX_USE_YUV_MOVIEDECODING") || (specialFlags1 & 1)) ? TRUE : FALSE;
 
     // Create name-string for moviename: If an URI qualifier is at the beginning,
     // we're fine and just pass the URI as-is. Otherwise we add the file:// URI prefix.
@@ -742,6 +738,13 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 
     movieRecordBANK[slotid].videosink = videosink;
 
+    // Setting flag 1 in specialFlags1 is equivalent to setting pixelFormat == 5, to retain
+    // backwards compatibility to previous ptb releases:
+    if (specialFlags1 & 0x1) pixelFormat = 5;
+
+    // Assign initial pixelFormat to use, as requested by usercode:
+    movieRecordBANK[slotid].pixelFormat = pixelFormat;
+
     // Our OpenGL texture creation routine usually needs GL_BGRA8 data in G_UNSIGNED_8_8_8_8_REV
     // format, but the pipeline usually delivers YUV data in planar format. Therefore
     // need to perform colorspace/colorformat conversion. We build a little videobin
@@ -752,37 +755,66 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // thereby receiving decoded video data. We place a videocaps filter inbetween the
     // converter and the appsink to enforce a color format conversion to the "colorcaps"
     // we need. colorcaps define the needed data format for efficient conversion into
-    // a RGBA8 texture. Some GPU + driver combos do support direct handling of UYVU YCrCb
-    // data as textures. If we are on such a GPU we request yuv UYVU data and upload it
-    // directly in this format to the GPU. This more efficient both for GStreamers decode
+    // a RGBA8 texture. Some GPU + driver combos do support direct handling of UYVU YCrCb 4:2:2
+    // packed pixel data as textures. If we are on such a GPU we request UYVY data and upload it
+    // directly in this format to the GPU. This more efficient both for the GStreamers decode
     // pipeline, and the later Videobuffer -> OpenGL texture conversion:
-    if (win && (win->gfxcaps & kPsychGfxCapUYVYTexture) && movieRecordBANK[slotid].useYUVDecode) {
+    if (win && (win->gfxcaps & kPsychGfxCapUYVYTexture) && (movieRecordBANK[slotid].pixelFormat == 5)) {
         // GPU supports handling and decoding of UYVY type yuv textures: We use these,
         // as they are more efficient to decode and handle by typical video codecs:
-        colorcaps = gst_caps_new_simple ( "video/x-raw-yuv",
-                          "format", GST_TYPE_FOURCC, GST_MAKE_FOURCC('U', 'Y', 'V', 'Y'),
-                          NULL);
+        colorcaps = gst_caps_new_simple ("video/x-raw-yuv",
+                                         "format", GST_TYPE_FOURCC, GST_MAKE_FOURCC('U', 'Y', 'V', 'Y'),
+                                         NULL);
+
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use UYVY YCrCb 4:2:2 textures for optimized decode and rendering.\n", slotid);
     }
-    else if (win && (win->gfxcaps & kPsychGfxCapFBO) && glewIsSupported("GL_ARB_fragment_shader") && (movieRecordBANK[slotid].specialFlags1 & 0x4)) {
-        colorcaps = gst_caps_new_simple ( "video/x-raw-yuv",
+    else if ((movieRecordBANK[slotid].pixelFormat == 6) && win && (win->gfxcaps & kPsychGfxCapFBO) && PsychAssignPlanarI420TextureShader(NULL, win)) {
+        // Usercode wants YUV I420 planar encoded format and GPU suppports needed fragment shaders and FBO's.
+        // Ask for I420 decoded video. This is the native output format of HuffYUV and H264 codecs, so using it
+        // allows to skip colorspace conversion in GStreamer. The format is also highly efficient for texture
+        // creation and upload to the GPU, but requires a fragment shader for colorspace conversion during drawing:
+        colorcaps = gst_caps_new_simple ("video/x-raw-yuv",
                                          "format", GST_TYPE_FOURCC, GST_MAKE_FOURCC('I', '4', '2', '0'),
                                          NULL);
-        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use UYVY YCrCb I4:2:0p textures for optimized decode and rendering.\n", slotid);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use YUV-I420 planar textures for optimized decode and rendering.\n", slotid);
     }
     else {
         // GPU does not support yuv textures. Need to go brute-force and convert
         // video into RGBA8 format:
-        colorcaps = gst_caps_new_simple ( "video/x-raw-rgb",
-                          "bpp", G_TYPE_INT, 32,
-                          "depth", G_TYPE_INT, 32,
-                          "alpha_mask", G_TYPE_INT, 0x000000FF,
-                          "red_mask", G_TYPE_INT,   0x0000FF00,
-                          "green_mask", G_TYPE_INT, 0x00FF0000,
-                          "blue_mask", G_TYPE_INT,  0xFF000000,
-                          NULL);
-        if ((PsychPrefStateGet_Verbosity() > 3) && movieRecordBANK[slotid].useYUVDecode) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures due to lack of YUV texture support on GPU.\n", slotid);
-        if ((PsychPrefStateGet_Verbosity() > 3) && !movieRecordBANK[slotid].useYUVDecode) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures.\n", slotid);
+        
+        // Force unsupportable formats to RGBA8 aka format 4:
+        if (movieRecordBANK[slotid].pixelFormat > 4) movieRecordBANK[slotid].pixelFormat = 4;
+        
+        // Map 2 == LA8 to 1 == L8:
+        if (movieRecordBANK[slotid].pixelFormat == 2) movieRecordBANK[slotid].pixelFormat = 1;
+
+        // Map 3 == RGB8 to 4 == RGBA8:
+        if (movieRecordBANK[slotid].pixelFormat == 3) movieRecordBANK[slotid].pixelFormat = 4;
+
+        if (movieRecordBANK[slotid].pixelFormat == 4) {
+            // Use RGBA8 format:
+            colorcaps = gst_caps_new_simple("video/x-raw-rgb",
+                                            "bpp", G_TYPE_INT, 32,
+                                            "depth", G_TYPE_INT, 32,
+                                            "alpha_mask", G_TYPE_INT, 0x000000FF,
+                                            "red_mask", G_TYPE_INT,   0x0000FF00,
+                                            "green_mask", G_TYPE_INT, 0x00FF0000,
+                                            "blue_mask", G_TYPE_INT,  0xFF000000,
+                                            NULL);
+            if ((PsychPrefStateGet_Verbosity() > 3) && (pixelFormat == 5)) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures due to lack of YUV-422 texture support on GPU.\n", slotid);
+            if ((PsychPrefStateGet_Verbosity() > 3) && (pixelFormat == 6)) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures due to lack of YUV-I420 support on GPU.\n", slotid);
+            
+            if ((PsychPrefStateGet_Verbosity() > 3) && !(pixelFormat < 5)) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures.\n", slotid);
+        }
+        
+        if (movieRecordBANK[slotid].pixelFormat == 1) {
+            // Use LUMINANCE8 format:
+            colorcaps = gst_caps_new_simple("video/x-raw-gray",
+                                            "bpp", G_TYPE_INT, 8,
+                                            "depth", G_TYPE_INT, 8,
+                                            NULL);
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use L8 luminance textures.\n", slotid);
+        }
     }
 
     /*
@@ -891,7 +923,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // to our needs:
     needCodecSetup = FALSE;
     if (videocodec && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads") ||
-                       (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "lowres") && (specialFlags1 & (8 | 16))))) {
+                       (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "lowres") && (specialFlags1 & (4 | 8))))) {
         needCodecSetup = TRUE;
     }
 
@@ -910,11 +942,11 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // hangs, probably due to some negotiation failure between codec and appsink.
     // Anyway, the web says that the benefit of the 'lowres' flag is minimal at best, so
     // probably this is not a big loss.
-    if (videocodec && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "lowres")) && (specialFlags1 & (8 | 16))) {
+    if (videocodec && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "lowres")) && (specialFlags1 & (4 | 8))) {
         // Yes. Set it:
-        if (specialFlags1 & 8)  g_object_set(G_OBJECT(videocodec), "lowres", 1, NULL);
-        if (specialFlags1 & 16) g_object_set(G_OBJECT(videocodec), "lowres", 2, NULL);
-        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i decodes video at %s resolution to reduce load.\n", slotid, (specialFlags1 & 16) ? "quarter" : "half");
+        if (specialFlags1 & 4) g_object_set(G_OBJECT(videocodec), "lowres", 1, NULL);
+        if (specialFlags1 & 8) g_object_set(G_OBJECT(videocodec), "lowres", 2, NULL);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i decodes video at %s resolution to reduce load.\n", slotid, (specialFlags1 & 8) ? "quarter" : "half");
         
         g_object_get(G_OBJECT(videocodec), "lowres", &tmpint, NULL);
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i decodes video at lowres setting %i.\n", slotid, tmpint);
@@ -1448,14 +1480,28 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         // We use zero client storage memory bytes:
         out_texture->textureMemorySizeBytes = 0;
 
-        // Textures are aligned on at least 4 Byte boundaries because texels are RGBA8. For
-        // frames of even-numbered pixel width, we can even get 8 Byte alignment:
-        out_texture->textureByteAligned = (movieRecordBANK[moviehandle].width % 2) ? 4 : 8;
-
+        // Assign default number of effective color channels:
+        out_texture->nrchannels = movieRecordBANK[moviehandle].pixelFormat;
+        
+        // Assign default depth according to number of channels, assuming 8 bpc:
+        out_texture->depth = out_texture->nrchannels * 8;
+        
+        if (out_texture->nrchannels < 4) {
+            // For 1-3 channel textures, play safe, don't assume alignment:
+            out_texture->textureByteAligned = 1;
+        }
+        else {
+            // 4 channel format:
+            // Textures are aligned on at least 4 Byte boundaries because texels are RGBA8. For
+            // frames of even-numbered pixel width, we can even get 8 Byte alignment:
+            out_texture->textureByteAligned = (movieRecordBANK[moviehandle].width % 2) ? 4 : 8;
+        }
+        
         // Assign texturehandle of our cached texture, if any, so it gets recycled now:
         out_texture->textureNumber = movieRecordBANK[moviehandle].cached_texture;
 
-        if ((win->gfxcaps & kPsychGfxCapUYVYTexture) && movieRecordBANK[moviehandle].useYUVDecode) {
+        // YUV 422 packed pixel upload requested?
+        if ((win->gfxcaps & kPsychGfxCapUYVYTexture) && (movieRecordBANK[moviehandle].pixelFormat == 5)) {
             // GPU supports UYVY textures and we get data in that YCbCr format. Tell
             // texture creation routine to use this optimized format:
             if (!glewIsSupported("GL_APPLE_ycbcr_422")) {
@@ -1470,23 +1516,66 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 
             // Same enumerant for Apple and Mesa:
             out_texture->textureexternaltype = GL_UNSIGNED_SHORT_8_8_MESA;
+            
+            // Number of effective channels is 3 for RGB8:
+            out_texture->nrchannels = 3;
+
+            // And 24 bpp depth:
+            out_texture->depth = 24;
+
+            // Byte alignment: For even number of pixels, assume at least 4 Byte alignment due to packing of 2 effective
+            // pixels into one 32-Bit packet, maybe even 8 Byte alignment if divideable by 4. For other width's, assume
+            // no alignment ie., 1 Byte:
+            out_texture->textureByteAligned = (movieRecordBANK[moviehandle].width % 2) ? 1 : ((movieRecordBANK[moviehandle].width % 4) ? 4 : 8);
         }
 
-        if (movieRecordBANK[moviehandle].specialFlags1 & 0x4) {
+        // YUV I420 planar pixel upload requested?
+        if (movieRecordBANK[moviehandle].pixelFormat == 6) {
+            // We encode I420 planar data inside a 8 bit per pixel luminance texture of
+            // 1.5x times the height of the video frame. First the "Y" luminance plane
+            // is stored at full 1 sample per pixel resolution with 8 bits. Then a 0.25x
+            // height slice with "U" Cr chrominance data at half the horizontal and vertical
+            // resolution aka 1 sample per 2x2 pixel quad. Then a 0.25x height slice with "V"
+            // Cb chrominance data at 1 sample per 2x2 pixel quad resolution. As such the texture
+            // appears to OpenGL as a normal LUMINANCE8 texture. Conversion of the planar format
+            // into useable RGBA8 pixel fragments will happen during rendering via a suitable fragment
+            // shader. The net gain of this is that we effectively only need 1.5 Bytes per pixel instead
+            // of 3 Bytes for RGB8 or 4 Bytes for RGBA8:
 			out_texture->textureexternaltype   = GL_UNSIGNED_BYTE;
 			out_texture->textureexternalformat = GL_LUMINANCE;
 			out_texture->textureinternalformat = GL_LUMINANCE8;
 
-			// Special case: Non-transposed or isotropic storage:
+			// Define a rect of 1.5 times the video frame height, so PsychCreateTexture() will source
+            // the whole input data buffer:
 			PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height * 1.5);
 
-            // Create planar texture:
+            // Check if 1.5x height texture fits within hardware limits of this GPU:
+            if (movieRecordBANK[moviehandle].height * 1.5 > win->maxTextureSize) PsychErrorExitMsg(PsychError_user, "Videoframe size too big for this graphics card and pixelFormat! Please retry with a pixelFormat of 4 in 'OpenMovie'.");
+            
+            // Create planar "I420 inside L8" texture:
             PsychCreateTexture(out_texture);
             
-            // Restore rect and clientrect of texture to effective size:
+            // Restore rect and clientrect of texture to effective size of video frame:
             PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height);
             PsychCopyRect(out_texture->clientrect, out_texture->rect);
-            out_texture->specialflags = kPsychPlanarTexture;
+            
+            // Mark texture as planar encoded, so proper conversion shader gets applied during
+            // call to PsychNormalizeTextureOrientation(), prior to any render-to-texture operation, e.g.,
+            // if used as an offscreen window, or as a participant of a Screen('TransformTexture') call:
+            out_texture->specialflags |= kPsychPlanarTexture;
+
+            // Assign special filter shader for sampling and color-space conversion of the
+            // planar texture during drawing or PsychNormalizeTextureOrientation():
+            if (!PsychAssignPlanarI420TextureShader(out_texture, win)) PsychErrorExitMsg(PsychError_user, "Assignment of I420 video decoding shader failed during movie texture creation!");
+            
+            // Number of effective channels is 3 for RGB8:
+            out_texture->nrchannels = 3;
+            
+            // And 24 bpp depth:
+            out_texture->depth = 24;
+            
+            // Byte alignment: Assume no alignment for now:
+            out_texture->textureByteAligned = 1;
         }
         else {
             // Let PsychCreateTexture() do the rest of the job of creating, setting up and

@@ -1,6 +1,6 @@
-function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime, indexisFrames, benchmark, async, preloadSecs, specialflags)
+function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime, indexisFrames, benchmark, async, preloadSecs, specialflags, pixelFormat)
 %
-% LoadMovieIntoTexturesDemoOSX(moviename [, fromTime=0][, toTime=end][, indexisFrames=0][, benchmark=0][, async=0][, preloadSecs=1][, specialflags=0])
+% LoadMovieIntoTexturesDemoOSX(moviename [, fromTime=0][, toTime=end][, indexisFrames=0][, benchmark=0][, async=0][, preloadSecs=1][, specialflags=0][, pixelFormat=4])
 %
 % A demo implementation on how to load a movie into standard
 % Psychtoolbox textures for precisely controlled presentation timing and
@@ -58,6 +58,12 @@ function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime, indexisFrames
 % of out own builtin YUV decoder, which may be more limited in
 % functionality and flexibility, but helpful if highest performance is a
 % requirement.
+%
+% pixelFormat - Format of video texture to create: 1 = Luminance/Grayscale
+% only, 2 = Luminance+Alpha, 3 = RGB color, 4 = RGBA, 5 = YUV-422 packed
+% pixel, 6 = YUV-I420 planar format. Not all formats are supported by all
+% GPU's, operating systems and video codecs. Defaults to 4 = RGBA 8 Bit per
+% color channel.
 %
 %
 % How the demo works: Read the source code - its well documented ;-)
@@ -150,6 +156,10 @@ if nargin < 8
     specialflags = [];
 end
 
+if nargin < 9
+    pixelFormat = [];
+end
+
 fprintf('Loading movie %s ...\n', moviename);
 try    
     % Background color will be a grey one:
@@ -161,7 +171,7 @@ try
 
     % This will open a screen with default settings, aka black background,
     % fullscreen, double buffered with 32 bits color depth:
-    win = Screen('OpenWindow', screen); % , 0, [0 0 800 600]);
+    [win, winrect] = Screen('OpenWindow', screen); % , 0, [0 0 800 600]);
     
     % Hide the mouse cursor:
     HideCursor;
@@ -179,7 +189,7 @@ try
         
     % Open the moviefile and query some infos like duration, framerate,
     % width and height of video frames...
-    [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, async, preloadSecs, specialflags)
+    [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, async, preloadSecs, specialflags, pixelFormat)
 
     % Move to requested timeindex where texture loading should start:
     if indexisFrames
@@ -253,7 +263,11 @@ try
                     texpts(count)=pts;
                 else
                     if benchmark ~=4
+                        %Screen('TextSize', movietexture, 60);
+                        %DrawFormattedText(movietexture, num2str(count), 'center', 'center', [255 255 0]);
+                        Screen('DrawTexture', win, movietexture, [], winrect, [], 0);
                         Screen('Close', movietexture);
+                        Screen('Flip', win, [], 2, 2);
                     end
                 end
                 lastpts=pts;
