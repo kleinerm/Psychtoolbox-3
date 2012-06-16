@@ -1610,6 +1610,15 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         // deleted in PsychMovieDeleteTexture()....
         movieRecordBANK[moviehandle].cached_texture = 0;
 
+        // Does usercode want immediate conversion of texture into standard RGBA8 packed pixel
+        // upright format for use as a render-target? If so, do it:
+        if (movieRecordBANK[moviehandle].specialFlags1 & 16) {
+            // Transform out_texture video texture into a normalized, upright texture if it isn't already in
+            // that format. We require this standard orientation for simplified shader design.
+            PsychSetShader(win, 0);
+            PsychNormalizeTextureOrientation(out_texture);
+        }
+
         PsychGetAdjustedPrecisionTimerSeconds(&tNow);
         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Decode completion to texture created: %f msecs.\n", (tNow - tStart) * 1000.0);
         tStart = tNow;
