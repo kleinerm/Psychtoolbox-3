@@ -891,7 +891,9 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
                 if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In pipeline: Child element name: %s\n", (const char*) gst_object_get_name(GST_OBJECT(videocodec)));
                 // Our current match critera for video codecs: Having at least one of the properties "max-threads" or "lowres":
                 if ((g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads")) ||
-                    (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "lowres"))) {
+                    (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "lowres")) ||
+                    (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "debug-mv")) ||
+                    (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "skip-frame"))) {
                     if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Found video decoder element %s.\n", (const char*) gst_object_get_name(GST_OBJECT(videocodec)));
                     done = TRUE;
                 } else {
@@ -922,8 +924,11 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // or if the codec is multi-threaded, in which case we configure its multi-threading behaviour
     // to our needs:
     needCodecSetup = FALSE;
-    if (videocodec && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads") ||
-                       (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "lowres") && (specialFlags1 & (4 | 8))))) {
+    if (videocodec &&  (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads") ||
+                       (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "lowres") && (specialFlags1 & (0))) || /* MK: 'lowres' disabled for now. */
+                       (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "debug-mv") && (specialFlags1 & 4)) ||
+                       (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "skip-frame") && (specialFlags1 & 8))
+                       )) {
         needCodecSetup = TRUE;
     }
 
@@ -937,21 +942,37 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         }    
     }
 
+    // Drawing of motion vectors requested by usercode specialflags1 flag 4? If so, enable it:
+    if (needCodecSetup && (specialFlags1 & 4) && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "debug-mv"))) {
+        g_object_set(G_OBJECT(videocodec), "debug-mv", 1, NULL);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Playback for movie %i will display motion vectors for visualizaton of optic flow.\n", slotid);
+    }
+    
+    // Skipping of B-Frames video decoding requested by usercode specialflags1 flag 8? If so, enable skipping:
+    if (needCodecSetup && (specialFlags1 & 8) && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "skip-frame"))) {
+        g_object_set(G_OBJECT(videocodec), "skip-frame", 1, NULL);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Playback for movie %i will skip B-Frames during video decoding for higher speed.\n", slotid);
+    }
+    
     // Setup of override decode resolution requested by usercode via specialFlags1 flags?
-    // MK: This is totally broken so far! A pipeline that uses these flags and lowres settings just
+    /*
+    // MK: DISABLED: This is broken! A pipeline that uses these flags and lowres settings just
     // hangs, probably due to some negotiation failure between codec and appsink.
-    // Anyway, the web says that the benefit of the 'lowres' flag is minimal at best, so
-    // probably this is not a big loss.
-    if (videocodec && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "lowres")) && (specialFlags1 & (4 | 8))) {
+    // Anyway, the web says that the benefit of the 'lowres' flag is minimal at best, and that it
+    // may get removed or is implemented inefficiently on most codecs, so probably this is not a big loss.
+    // Leave code snippet here for documentation of the approach in case we need it for other codec settings:
+    if (videocodec && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "lowres")) && (specialFlags1 & (0))) {
         // Yes. Set it:
-        if (specialFlags1 & 4) g_object_set(G_OBJECT(videocodec), "lowres", 1, NULL);
-        if (specialFlags1 & 8) g_object_set(G_OBJECT(videocodec), "lowres", 2, NULL);
-        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i decodes video at %s resolution to reduce load.\n", slotid, (specialFlags1 & 8) ? "quarter" : "half");
+        if (specialFlags1 & 0) g_object_set(G_OBJECT(videocodec), "lowres", 1, NULL);
+        if (specialFlags1 & 0) g_object_set(G_OBJECT(videocodec), "lowres", 2, NULL);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i decodes video at %s resolution to reduce load.\n", slotid, (specialFlags1 & 0) ? "quarter" : "half");
         
         g_object_get(G_OBJECT(videocodec), "lowres", &tmpint, NULL);
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i decodes video at lowres setting %i.\n", slotid, tmpint);
     }
-
+    */
+    
+    
     // Multi-threaded codec? If so, set its multi-threading behaviour: By default many codecs would only
     // use one single thread on any system, even if they are multi-threading capable.
     if (needCodecSetup && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads"))) {
