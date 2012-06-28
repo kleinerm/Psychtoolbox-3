@@ -95,7 +95,8 @@ static int numMovieRecords = 0;
 static psych_bool firsttime = TRUE;
 
 #if PSYCH_SYSTEM == PSYCH_OSX
-extern void g_thread_init(GThreadFunctions *vtable) __attribute__((weak_import));
+// This is the function prototype for compile against GLib 2.32.0 "deprecated":
+extern void g_thread_init(gpointer vtable) __attribute__((weak_import));
 #endif
 
 /*
@@ -154,6 +155,10 @@ void PsychGSMovieInit(void)
     #endif
     
     // Initialize GLib's threading system early:
+    // Note: This is deprecated and not needed anymore on GLib 2.32.0 and later, as
+    // GLib's threading system auto-initializes on first use since that version. We
+    // keep it for now to stay compatible to older systems, e.g., Ubuntu 10.04 LTS,
+    // for the time being...
     g_thread_init(NULL);
 
     return;

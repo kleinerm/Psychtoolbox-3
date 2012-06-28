@@ -250,6 +250,8 @@ void PsychGSCheckInit(const char* engineName)
 		// clocks we use for GetSecs(), but realtime clock on Linux:
 		g_object_set(G_OBJECT(gst_system_clock_obtain()), "clock-type", ((PSYCH_SYSTEM == PSYCH_LINUX) ? GST_CLOCK_TYPE_REALTIME : GST_CLOCK_TYPE_MONOTONIC), NULL);
 
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Using GStreamer version '%s'.\n", (char*) gst_version_string());
+
 		// Reset firsttime flag:
 		gs_firsttime = FALSE;
 	}	
