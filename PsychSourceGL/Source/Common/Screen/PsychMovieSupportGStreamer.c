@@ -778,13 +778,32 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
                                          NULL);
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use YUV-I420 planar textures for optimized decode and rendering.\n", slotid);
     }
+    else if (((movieRecordBANK[slotid].pixelFormat == 7) || (movieRecordBANK[slotid].pixelFormat == 8)) && win && (win->gfxcaps & kPsychGfxCapFBO) && PsychAssignPlanarI800TextureShader(NULL, win)) {
+        // Usercode wants Y8/Y800 planar encoded format and GPU suppports needed fragment shaders and FBO's.
+        // Ask for I420 or Y800 decoded video. I420 is the native output format of HuffYUV and H264 codecs, so using it
+        // allows to skip colorspace conversion in GStreamer. The format is also highly efficient for texture
+        // creation and upload to the GPU, but requires a fragment shader for colorspace conversion during drawing:
+        // Note: The FOURCC 'Y800' is equivalent to 'Y8  ' and 'GREY' as far as we know. As of June 2012, using the
+        // Y800 decoding doesn't have any performance benefits compared to I420 decoding, actually performance is a
+        // little bit lower. Apparently the video codecs don't take the Y800 format into account, ie., they don't skip
+        // decoding of the chroma components, instead they probably decode as usual and the colorspace conversion then
+        // throws away the unwanted chroma planes, causing possible extra overhead for discarding this data. We leave
+        // the option in anyway, because there may be codecs (possibly in future GStreamer versions) that can take
+        // advantage of Y800 format for higher performance.
+        colorcaps = gst_caps_new_simple ("video/x-raw-yuv",
+                                         "format", GST_TYPE_FOURCC, (movieRecordBANK[slotid].pixelFormat == 8) ? GST_MAKE_FOURCC('Y', '8', '0', '0') : GST_MAKE_FOURCC('I', '4', '2', '0'),
+                                         NULL);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use Y8-I800 planar textures for optimized decode and rendering.\n", slotid);
+    }
     else {
-        // GPU does not support yuv textures. Need to go brute-force and convert
+        // GPU does not support yuv textures or shader based decoding. Need to go brute-force and convert
         // video into RGBA8 format:
         
-        // Force unsupportable formats to RGBA8 aka format 4:
-        if (movieRecordBANK[slotid].pixelFormat > 4) movieRecordBANK[slotid].pixelFormat = 4;
-        
+        // Force unsupportable formats to RGBA8 aka format 4, except for formats 7/8, which map
+        // to 1 == L8:
+        if ((movieRecordBANK[slotid].pixelFormat == 7) || (movieRecordBANK[slotid].pixelFormat == 8)) movieRecordBANK[slotid].pixelFormat = 1;
+        if (movieRecordBANK[slotid].pixelFormat  > 4) movieRecordBANK[slotid].pixelFormat = 4;
+
         // Map 2 == LA8 to 1 == L8:
         if (movieRecordBANK[slotid].pixelFormat == 2) movieRecordBANK[slotid].pixelFormat = 1;
 
@@ -803,6 +822,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
                                             NULL);
             if ((PsychPrefStateGet_Verbosity() > 3) && (pixelFormat == 5)) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures due to lack of YUV-422 texture support on GPU.\n", slotid);
             if ((PsychPrefStateGet_Verbosity() > 3) && (pixelFormat == 6)) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures due to lack of YUV-I420 support on GPU.\n", slotid);
+            if ((PsychPrefStateGet_Verbosity() > 3) && ((pixelFormat == 7) || (pixelFormat == 8))) printf("PTB-INFO: Movie playback for movie %i will use L8 textures due to lack of Y8-I800 support on GPU.\n", slotid);
             
             if ((PsychPrefStateGet_Verbosity() > 3) && !(pixelFormat < 5)) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures.\n", slotid);
         }
@@ -1550,6 +1570,38 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             out_texture->textureByteAligned = (movieRecordBANK[moviehandle].width % 2) ? 1 : ((movieRecordBANK[moviehandle].width % 4) ? 4 : 8);
         }
 
+        // Upload of a "pseudo YUV" planar texture with only 8 bits Y component requested?
+        if ((movieRecordBANK[moviehandle].pixelFormat == 7) || (movieRecordBANK[moviehandle].pixelFormat == 8)) {
+            // We encode Y luminance data inside a 8 bit per pixel luminance texture. The
+            // "Y" luminance plane is stored at full 1 sample per pixel resolution with 8 bits.
+            // As such the texture appears to OpenGL as a normal LUMINANCE8 texture. Conversion of the Y
+            // luminance data into useable RGBA8 pixel fragments will happen during rendering via a suitable fragment
+            // shader. The net gain of this is that we can skip any kind of cpu based colorspace conversion
+            // for video formats/codecs which provide YUV data, by offloading the conversion to the GPU:
+			out_texture->textureinternalformat = 0;
+
+            // Mark texture as planar encoded, so proper conversion shader gets applied during
+            // call to PsychNormalizeTextureOrientation(), prior to any render-to-texture operation, e.g.,
+            // if used as an offscreen window, or as a participant of a Screen('TransformTexture') call:
+            out_texture->specialflags |= kPsychPlanarTexture;
+            
+            // Assign special filter shader for Y8 -> RGBA8 color-space conversion of the
+            // planar texture during drawing or PsychNormalizeTextureOrientation():
+            if (!PsychAssignPlanarI800TextureShader(out_texture, win)) PsychErrorExitMsg(PsychError_user, "Assignment of Y8-Y800 video decoding shader failed during movie texture creation!");
+            
+            // Number of effective channels is 1 for L8:
+            out_texture->nrchannels = 1;
+            
+            // And 8 bpp depth: This will trigger bog-standard LUMINANCE8 texture creation in PsychCreateTexture():
+            out_texture->depth = 8;
+            
+            // Byte alignment - Only depends on width of an image row, given the 1 Byte per pixel data:
+            out_texture->textureByteAligned = 1;
+            if (movieRecordBANK[moviehandle].width % 2 == 0) out_texture->textureByteAligned = 2;
+            if (movieRecordBANK[moviehandle].width % 4 == 0) out_texture->textureByteAligned = 4;
+            if (movieRecordBANK[moviehandle].width % 8 == 0) out_texture->textureByteAligned = 8;
+        }
+        
         // YUV I420 planar pixel upload requested?
         if (movieRecordBANK[moviehandle].pixelFormat == 6) {
             // We encode I420 planar data inside a 8 bit per pixel luminance texture of

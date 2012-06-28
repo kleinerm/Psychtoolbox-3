@@ -160,7 +160,7 @@ try
         moviename=moviefiles(mod(iteration, moviecount)+1).name;
         
         % Open movie file and retrieve basic info about movie:
-        [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, [], preloadsecs, 2+4);
+        [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, [], preloadsecs, [], []);
         fprintf('Movie: %s  : %f seconds duration, %f fps, w x h = %i x %i...\n', moviename, movieduration, fps, imgw, imgh);
         
         i=0;
@@ -215,8 +215,7 @@ try
                 end
 
                 % Draw the new texture immediately to screen:
-                ofs = 1080;
-                Screen('DrawTexture', win, tex, [0, ofs, 1920, 2160+ofs], Screen('Rect', win), [], [], [], [], shader);
+                Screen('DrawTexture', win, tex, [], Screen('Rect', win), [], [], [], [], shader);
 
                 % Update display:
                 Screen('Flip', win);

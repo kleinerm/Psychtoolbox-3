@@ -171,6 +171,31 @@ static char texturePlanarI420FragmentShaderSrc[] =
 "    gl_FragColor = vec4(r, g, b, 1.0) * unclampedFragColor; \n"
 "} \n";
 
+/* Sampling and conversion shader from Y8-I800 planar format to standard RGBA8
+ * format. Samples our Y8 I800 planar luminance texture, then performs color
+ * space conversion from y to rgb.
+ */
+static char texturePlanarI800FragmentShaderSrc[] =
+"/* Y8-I800 planar texture sampling fragment shader.                */ \n"
+"/* Retrieves Y8 sample from proper location.                       */ \n"
+"/* Converts Y8 sample to RGB color triplet and applies             */ \n"
+"/* GL_MODULATE texture function emulation before fragment output.  */ \n"
+"\n"
+"#extension GL_ARB_texture_rectangle : enable \n"
+" \n"
+"uniform sampler2DRect Image; \n"
+"varying vec4 unclampedFragColor; \n"
+" \n"
+"void main() \n"
+"{ \n"
+"    float y = texture2DRect(Image, gl_TexCoord[0].xy).r;\n"
+"    y = 1.1643 * (y - 0.0625);\n"
+"\n"
+"    /* Multiply texcolor with incoming fragment color (GL_MODULATE emulation): */ \n"
+"    /* Assign result as output fragment color: */ \n"
+"    gl_FragColor = vec4(y, y, y, 1.0) * unclampedFragColor; \n"
+"} \n";
+
 char texturePlanarVertexShaderSrc[] =
 "/* Simple pass-through vertex shader: Emulates fixed function pipeline, but passes  */ \n"
 "/* modulateColor as varying unclampedFragColor to circumvent vertex color       */ \n"
@@ -3974,6 +3999,30 @@ psych_bool PsychAssignPlanarI420TextureShader(PsychWindowRecordType* textureReco
     // Assign our onscreen windows planar I420 shader to this texture:
     if (textureRecord) textureRecord->textureFilterShader = -1 * windowRecord->textureI420PlanarShader;
 
+    // Done.
+    return(TRUE);
+}
+
+psych_bool PsychAssignPlanarI800TextureShader(PsychWindowRecordType* textureRecord, PsychWindowRecordType* windowRecord)
+{
+    // Remap windowRecord to its parent if any. We want the associated "toplevel" onscreen window,
+    // because only that contains the required shader and gfcaps in a reliable way:
+    windowRecord = PsychGetParentWindow(windowRecord);
+    
+    // Do we already have a I800 planar sampling texture shader?
+    if (windowRecord->textureI800PlanarShader == 0) {
+        // Nope. Need to create one:
+        windowRecord->textureI800PlanarShader = PsychCreateGLSLProgram(texturePlanarI800FragmentShaderSrc, texturePlanarVertexShaderSrc, NULL);
+        
+        if (windowRecord->textureI800PlanarShader == 0) {
+            printf("PTB-ERROR: Failed to create planar Y8-I800 filter shader for video texture.\n");
+            return(FALSE);
+        }
+    }
+    
+    // Assign our onscreen windows planar I800 shader to this texture:
+    if (textureRecord) textureRecord->textureFilterShader = -1 * windowRecord->textureI800PlanarShader;
+    
     // Done.
     return(TRUE);
 }

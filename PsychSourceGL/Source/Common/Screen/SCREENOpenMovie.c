@@ -89,8 +89,10 @@ static char synopsisString[] =
         "performance or other restrictions, the function will abort with an error. The following formats are supported "
         "on some setups: 1 = Luminance/Greyscale image, 2 = Luminance+Alpha, 3 = RGB 8 bit per channel, 4 = RGBA8, "
         "5 = YUV 4:2:2 packed pixel format on some graphics hardware, 6 = YUV-I420 planar format, using GLSL shaders "
-        "for color space conversion on suitable graphics cards. The always supported default is '4' == RGBA8 format. "
-        "A setting of 6 for YUV-I420 format, as supported by at least the H264 and HuffYUV video codecs on any GPU with "
+        "for color space conversion on suitable graphics cards. 7 or 8 = Y8-Y800 planar format, using GLSL shaders. "
+        "The always supported default is '4' == RGBA8 format. "
+        "A setting of 6 (for color) or 7/8 (for grayscale) for selection of YUV-I420/Y8-Y800 format, as supported by at "
+        "least the H264 and HuffYUV video codecs on any GPU with "
         "shader support, can be especially efficient for fast playback of high resolution video. As this format uses "
         "shaders for post-processing, it should be fast for texture drawing, but can incur significant overhead if you "
         "try to draw into a texture of this format, or try to post-process it via Screen('TransformTexture'). If you try "
@@ -162,8 +164,8 @@ PsychError SCREENOpenMovie(void)
 
         // Get the (optional) pixelFormat:
         PsychCopyInIntegerArg(6, FALSE, &pixelFormat);
-        if (pixelFormat < 1 || pixelFormat > 6) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'pixelFormat' setting! Only values 1 to 6 are allowed.");
-    
+        if (pixelFormat < 1 || pixelFormat > 8) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'pixelFormat' setting! Only values 1 to 8 are allowed.");
+
         // Queueing of a new movie for seamless playback requested?
         if (asyncFlag & 2) {
             // Yes. Do a special call, just passing the moviename of the next
