@@ -174,12 +174,15 @@ void PsychGSCheckInit(const char* engineName)
             // would fail, we would end up with a crash! For that reason, on MS-Windows, we
             // try to load the DLL, just to probe if the real load/link/bind op later on will
             // likely succeed. If the following LoadLibrary() call fails and returns NULL,
-            // then we know we would end up crashing.
+            // then we know we would end up crashing. We check for two versions of the dll's, as
+            // different GStreamer runtime distributions use different filenames for the dll's.
+            //
             // On OSX we check if the gst_init_check() function is defined, aka non-NULL. The
             // OSX linker sets the symbol to NULL if dynamic weak linking during runtime failed.
             // On failure we'll output some helpful error-message instead:
             #if PSYCH_SYSTEM == PSYCH_WINDOWS
-                if ((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll"))) {
+                if (((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll"))) &&
+                    ((NULL == LoadLibrary("libgstreamer-0.10-0.dll")) || (NULL == LoadLibrary("libgstapp-0.10-0.dll")))) {
             #endif
             #if PSYCH_SYSTEM == PSYCH_OSX
                 if (NULL == gst_init_check) {
@@ -190,6 +193,9 @@ void PsychGSCheckInit(const char* engineName)
                 printf("PTB-ERROR: of the required GStreamer runtime libraries failed to load, probably because it\n");
                 printf("PTB-ERROR: could not be found, could not be accessed (e.g., due to permission problems),\n");
                 printf("PTB-ERROR: or most likely because GStreamer isn't installed on this machine at all.\n\n");
+                #if PSYCH_SYSTEM == PSYCH_WINDOWS
+                    printf("PTB-ERROR: The system returned error code %d.\n", GetLastError());
+                #endif
                 printf("PTB-ERROR: Please read the help by typing 'help GStreamer' for installation and troubleshooting\n");
                 printf("PTB-ERROR: instructions.\n\n");
                 printf("PTB-ERROR: Due to failed GStreamer initialization, the %s engine is disabled for this session.\n\n", engineName);
