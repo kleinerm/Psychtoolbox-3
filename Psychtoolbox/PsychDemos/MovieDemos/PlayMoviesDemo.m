@@ -1,6 +1,6 @@
-function PlayMoviesDemoOSX(moviename, backgroundMaskOut, tolerance)
+function PlayMoviesDemo(moviename, backgroundMaskOut, tolerance, pixelFormat)
 %
-% PlayMoviesDemoOSX(moviename [, backgroundMaskOut][, tolerance])
+% PlayMoviesDemo(moviename [, backgroundMaskOut][, tolerance][, pixelFormat=4])
 %
 % This demo accepts a pattern for a valid moviename, e.g.,
 % moviename='*.mpg', then it plays all movies in the current working
@@ -29,6 +29,13 @@ function PlayMoviesDemoOSX(moviename, backgroundMaskOut, tolerance)
 % color. Background color masking requires a graphics card with fragment
 % shader support and will fail otherwise.
 %
+% If the optional 'pixelFormat' is specified, it is used to choose
+% optimized video playback methods for specific content. Valid values are 1
+% or 2 for greyscale video playback, and 7 or 8 for optimized grayscale
+% video playback on modern GPU's with GLSL shading support. Values 3, 4, 5
+% and 6 play back color video. 4 is the default, 5 or 6 may provide
+% significantly improved playback performance on modern GPUs.
+%
 
 % History:
 % 10/30/05  mk  Wrote it.
@@ -37,6 +44,8 @@ function PlayMoviesDemoOSX(moviename, backgroundMaskOut, tolerance)
 % 04/14/12  mk  Code cleanup, refinements for network video streams.
 %               Add useful videos to playlist which are less pathetic than
 %               the fairy-tales of the iPhone company.
+% 06/30/12  mk  Add 'pixelFormat' parameter, disable pathetic Apple PR
+%               videos. Enable cool videos on OSX-64Bit as well.
 
 theanswer = [];
 
@@ -78,6 +87,11 @@ try
         shader = CreateSinglePassImageProcessingShader(win, 'BackgroundMaskOut', backgroundMaskOut, tolerance);
     end
     
+    % Use default pixelFormat if none specified:
+    if nargin < 4
+        pixelFormat = [];
+    end
+    
     % Clear screen to background color:
     Screen('FillRect', win, background);
     
@@ -97,7 +111,7 @@ try
         moviefiles=dir(moviename);
         
         if isempty(moviefiles)
-            moviefiles(1).name = [ PsychtoolboxRoot 'PsychDemos/QuicktimeDemos/DualDiscs.mov' ];
+            moviefiles(1).name = [ PsychtoolboxRoot 'PsychDemos/MovieDemos/DualDiscs.mov' ];
         else
             for i=1:size(moviefiles,1)
                 moviefiles(i).name = [ pwd filesep moviefiles(i).name ];
@@ -118,29 +132,32 @@ try
         % commercials. Can't use them on 32-Bit OS/X yet, as Apple's QT engine does not handle them
         % with the default codec set. However, 64-Bit OS/X has GStreamer:
         if IsLinux || IsOSX(1) || (Screen('Preference', 'OverrideMultimediaEngine') == 1)
-            % Promotional videos for the best OS for cognitive science and technical/educational
+            % Promotional videos for the best OS for cognitive science, and technical/educational
             % videos some users may find of practical use:
 
-            % These are VP-8 encoded and OSX GStreamer 0.10.29 does not
-            % ship required vpi-8 video decoder plugin...
-            if ~IsOSX
-                % ELC 2012 talk: Gstreamer-1.0 No-longer-compromise-flexibility-for-performance:
-                moviefiles(end+1).name = 'http://d17mmld7179ppq.cloudfront.net/gstreamer-10-no-longer-compromise-flexibility-for-performance_52ca47/hd_ready.webm';
-                
-                % FOSDEM 2012 talk about Linux's next generation graphics display server "Wayland":
-                moviefiles(end+1).name = 'http://video.fosdem.org/2012/maintracks/k.1.105/Wayland.webm';
-            end
+            % ELC 2012 talk: Gstreamer-1.0 No-longer-compromise-flexibility-for-performance:
+            moviefiles(end+1).name = 'http://d17mmld7179ppq.cloudfront.net/gstreamer-10-no-longer-compromise-flexibility-for-performance_52ca47/hd_ready.webm';
+            
+            % FOSDEM 2012 talk about Linux's next generation graphics display server "Wayland":
+            moviefiles(end+1).name = 'http://video.fosdem.org/2012/maintracks/k.1.105/Wayland.webm';
         end
 
-        moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_group_20080512_480x272.mov';
-        moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_sadsong_extended_20080519_480x272.mov';
-        moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_breakthrough_20080401_480x272.mov';
-        moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple-getamac-fat_480x376.mov';
-        moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac_ads4/prlady_480x272.mov';
-
+        % Don't play Apple PR bullshit videos anymore by default. Only left here
+        % for debugging.
+        %         moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_group_20080512_480x272.mov';
+        %         moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_sadsong_extended_20080519_480x272.mov';
+        %         moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_breakthrough_20080401_480x272.mov';
+        %         moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple-getamac-fat_480x376.mov';
+        %         moviefiles(end+1).name = 'http://movies.apple.com/movies/us/apple/getamac_ads4/prlady_480x272.mov';
+        
         % Count all movies in our playlist:
         moviecount = size(moviefiles,2);
 
+        if moviecount == 0
+            fprintf('Sorry, i do not have any cool movies for your system configuration. Will use boring default movie file.\n');
+            moviefiles(1).name = [ PsychtoolboxRoot 'PsychDemos/MovieDemos/DualDiscs.mov' ];
+        end
+        
         % Use polling to wait for new frames when playing movies from the
         % internet. This to make sure we don't time out too early or block
         % for too long if the network connection is slow / high-latency / bad.
@@ -160,7 +177,7 @@ try
         moviename=moviefiles(mod(iteration, moviecount)+1).name;
         
         % Open movie file and retrieve basic info about movie:
-        [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, [], preloadsecs, [], []);
+        [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, [], preloadsecs, [], pixelFormat);
         fprintf('Movie: %s  : %f seconds duration, %f fps, w x h = %i x %i...\n', moviename, movieduration, fps, imgw, imgh);
         
         i=0;
@@ -177,7 +194,7 @@ try
         while 1
             % Check for abortion:
             abortit=0;
-            [keyIsDown,secs,keyCode]=KbCheck;
+            [keyIsDown,secs,keyCode]=KbCheck; %#ok<ASGLU>
             if (keyIsDown==1 && keyCode(esc))
                 % Set the abort-demo flag.
                 abortit=2;
@@ -215,7 +232,7 @@ try
                 end
 
                 % Draw the new texture immediately to screen:
-                Screen('DrawTexture', win, tex, [], Screen('Rect', win), [], [], [], [], shader);
+                Screen('DrawTexture', win, tex, [], [], [], [], [], [], shader);
 
                 % Update display:
                 Screen('Flip', win);
@@ -280,7 +297,7 @@ try
 
     % Done.
     return;
-catch
+catch %#ok<*CTCH>
     % Error handling: Close all windows and movies, release all ressources.
     Screen('CloseAll');
-end;
+end

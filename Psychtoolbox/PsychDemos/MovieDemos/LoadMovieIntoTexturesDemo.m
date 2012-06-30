@@ -1,6 +1,6 @@
-function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime, indexisFrames, benchmark, async, preloadSecs, specialflags, pixelFormat)
+function LoadMovieIntoTexturesDemo(moviename, fromTime, toTime, indexisFrames, benchmark, async, preloadSecs, specialflags, pixelFormat)
 %
-% LoadMovieIntoTexturesDemoOSX(moviename [, fromTime=0][, toTime=end][, indexisFrames=0][, benchmark=0][, async=0][, preloadSecs=1][, specialflags=0][, pixelFormat=4])
+% LoadMovieIntoTexturesDemo(moviename [, fromTime=0][, toTime=end][, indexisFrames=0][, benchmark=0][, async=0][, preloadSecs=1][, specialflags=0][, pixelFormat=4])
 %
 % A demo implementation on how to load a movie into standard
 % Psychtoolbox textures for precisely controlled presentation timing and
@@ -61,16 +61,16 @@ function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime, indexisFrames
 %
 % pixelFormat - Format of video texture to create: 1 = Luminance/Grayscale
 % only, 2 = Luminance+Alpha, 3 = RGB color, 4 = RGBA, 5 = YUV-422 packed
-% pixel, 6 = YUV-I420 planar format. Not all formats are supported by all
-% GPU's, operating systems and video codecs. Defaults to 4 = RGBA 8 Bit per
-% color channel.
+% pixel, 6 = YUV-I420 planar format. 5 and 6 = Y8-Y800 planar luminance
+% only format. Not all formats are supported by all GPU's, operating
+% systems and video codecs. Defaults to 4 = RGBA 8 Bit per color channel.
 %
 %
 % How the demo works: Read the source code - its well documented ;-)
 %
 % This demo "preloads" the movie into textures:
 % The whole movie gets read into PTB textures before start of trial. Then
-% you show the textures in quick succession like in MovieDemoOSX. The
+% you show the textures in quick succession like in PlayMoviesDemo. The
 % advantage of this approach is exact control over display timing and
 % display order: You can show frames in any order you like at any rate you
 % like (and that your hardware likes). Disadvantage: Longer trial
@@ -86,6 +86,7 @@ function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime, indexisFrames
 % 12/25/05  mk  Wrote it.
 % 02/03/06  mk  Adapted for use on Windows.
 % 09/03/09  mk  Add support for frameindex seeking instead of timeindex.
+% 30/06/12  mk  Add benchmarking support for new GStreamer modes.
 
 % Child protection: Make sure we run on the OSX / OpenGL Psychtoolbox.
 % Abort if we don't:
@@ -106,7 +107,7 @@ end
 
 if isempty(moviename)
     % Default movie is our own disc collision movie:
-    moviename = [ PsychtoolboxRoot 'PsychDemos/QuicktimeDemos/DualDiscs.mov' ];
+    moviename = [ PsychtoolboxRoot 'PsychDemos/MovieDemos/DualDiscs.mov' ];
 end;
 
 if nargin < 2
@@ -189,7 +190,7 @@ try
         
     % Open the moviefile and query some infos like duration, framerate,
     % width and height of video frames...
-    [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, async, preloadSecs, specialflags, pixelFormat)
+    [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, async, preloadSecs, specialflags, pixelFormat);
 
     % Move to requested timeindex where texture loading should start:
     if indexisFrames
@@ -199,7 +200,7 @@ try
     end
     
     movietexture=0;     % Texture handle for the current movie frame.
-    lastpts=-1;          % Presentation timestamp of last frame.
+    lastpts=-1;         % Presentation timestamp of last frame.
     pts=-1;
     count=0;            % Number of loaded movie frames.
     
@@ -215,7 +216,7 @@ try
     % benchmark for how long actual video decoding takes:
     if benchmark == 4
         % Discard fetched video frames before texture creation:
-        dontfetch = 2
+        dontfetch = 2;
     else
         % Convert decoded video frames into textures:
         dontfetch = 0;
@@ -248,6 +249,12 @@ try
             % The 1 - flag means: Wait for arrival of new frame. Next
             % invocation of this command will retrieve the next frame in
             % the movie.
+            % A 'dontfetch' setting of 2 would just discard the new frame,
+            % instead of returning a real PTB texture it returns a value of
+            % 1 to indicate discard of the frame. This can be used to
+            % quickly skip through movies by skipping frames, and for
+            % benchmarking of the video decoder without the overhead of
+            % actual texture creation and drawing:
             [movietexture pts] = Screen('GetMovieImage', win, movie, 1, [], [], dontfetch);
             
             % Valid and *new* texture? If pts would be *smaller* than
@@ -258,10 +265,15 @@ try
                 % Store its texture handle and exact movie timestamp in
                 % arrays for later use:
                 count=count + 1;
+                
+                % Only store textures for benchmark modes 0 to 3.
                 if (benchmark ~= 3) && (benchmark ~= 4)
                     texids(count)=movietexture;
                     texpts(count)=pts;
                 else
+                    % Mode 3 or 4. Draw and delete texture immediately,
+                    % resembling typical movie playback, or - in mode 4 -
+                    % don't draw at all:
                     if benchmark ~=4
                         %Screen('TextSize', movietexture, 60);
                         %DrawFormattedText(movietexture, num2str(count), 'center', 'center', [255 255 0]);
