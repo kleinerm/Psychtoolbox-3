@@ -24,7 +24,7 @@ AssertOpenGL;
 
 if nargin < 1 || isempty(moviename)
     % No moviename given: Use our default movie:
-    moviename = [ PsychtoolboxRoot 'PsychDemos/QuicktimeDemos/DualDiscs.mov' ];
+    moviename = [ PsychtoolboxRoot 'PsychDemos/MovieDemos/DualDiscs.mov' ];
 end
 
 if nargin < 2 || isempty(windowrect)

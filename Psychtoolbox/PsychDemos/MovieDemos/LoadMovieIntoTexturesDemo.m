@@ -1,6 +1,6 @@
-function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime, indexisFrames, benchmark)
+function LoadMovieIntoTexturesDemo(moviename, fromTime, toTime, indexisFrames, benchmark, async, preloadSecs, specialflags, pixelFormat)
 %
-% LoadMovieIntoTexturesDemoOSX(moviename [, fromTime=0][, toTime=end][, indexisFrames=0][, benchmark=0])
+% LoadMovieIntoTexturesDemo(moviename [, fromTime=0][, toTime=end][, indexisFrames=0][, benchmark=0][, async=0][, preloadSecs=1][, specialflags=0][, pixelFormat=4])
 %
 % A demo implementation on how to load a movie into standard
 % Psychtoolbox textures for precisely controlled presentation timing and
@@ -18,19 +18,59 @@ function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime, indexisFrames
 %
 % indexIsFrames - If set to 1 then the fromTime and toTime parameters are
 % interpreted as frameindex (starting with 0 for the first frame), instead
-% of seconds.
+% of seconds. If set to 2 then presentation timestamps are ignored for the
+% decision when to stop loading a movie. This is needed for certain movies
+% with a broken encoding of time, as those would stop loading way too early
+% otherwise.
 %
 % benchmark - If you set this parameter to 1, the demo will compute the
-% time it takes to load the movie and the maximum display speed without
-% syncing to vertical refresh. All visual progress feedback is disabled.
-% This is mostly useful to benchmark different movie file formats and
-% codecs for their relative efficiency on a given machine.
+% time it takes to load the movie, and - after the movie has been loaded
+% into textures - the maximum display speed without syncing to vertical
+% refresh. All visual progress feedback is disabled. This is mostly
+% useful to benchmark different movie file formats and codecs for their
+% relative efficiency on a given machine. A setting of 2 will additionally
+% disable test of abort keys during loading of the movie - to discount
+% possible pollution of the benchmark results with time spent checking the
+% keyboard. A setting of 3 will also skip keyboard queries during the load
+% phase, additionally it will not queue up textures in video memory, but
+% instead load a texture and then immediately discard it. This is more
+% resembling typical movie playback, where a frame is pulled, presented on
+% screen, then discarded. It tests a different decoding path in Screen(). A
+% setting of 4 will only test decoding performance of the movie, but omit
+% creation of actual Psychtoolbox textures for presentation. This allows to
+% separate computation time spent in the video decoder from time consumed
+% by the graphics driver or graphics card.
+%
+% async - If you set this parameter to 4, the video decoding engine will
+% prebuffer frames ahead of time, up to 'preloadSecs' seconds worth of
+% video data. This is unsuitable for playback with audio-video sync, but
+% for pure video playback it can decouple decoding from presentation
+% further and provide a potential performance boost for very demanding
+% playback scenarios.
+%
+% preloadSecs - How many seconds of video to prebuffer if async == 4?
+% Specify a maximum amount in seconds, or the value -1 for unlimited
+% prebuffering.
+%
+% specialflags - Special flags for 'OpenMovie'. E.g., a setting of 1 will
+% try to use YUV textures for higher performance, if the installed graphics
+% card supports this. A setting of 4 will always use YUV decoding, by use
+% of out own builtin YUV decoder, which may be more limited in
+% functionality and flexibility, but helpful if highest performance is a
+% requirement.
+%
+% pixelFormat - Format of video texture to create: 1 = Luminance/Grayscale
+% only, 2 = Luminance+Alpha, 3 = RGB color, 4 = RGBA, 5 = YUV-422 packed
+% pixel, 6 = YUV-I420 planar format. 5 and 6 = Y8-Y800 planar luminance
+% only format. Not all formats are supported by all GPU's, operating
+% systems and video codecs. Defaults to 4 = RGBA 8 Bit per color channel.
+%
 %
 % How the demo works: Read the source code - its well documented ;-)
 %
 % This demo "preloads" the movie into textures:
 % The whole movie gets read into PTB textures before start of trial. Then
-% you show the textures in quick succession like in MovieDemoOSX. The
+% you show the textures in quick succession like in PlayMoviesDemo. The
 % advantage of this approach is exact control over display timing and
 % display order: You can show frames in any order you like at any rate you
 % like (and that your hardware likes). Disadvantage: Longer trial
@@ -46,6 +86,7 @@ function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime, indexisFrames
 % 12/25/05  mk  Wrote it.
 % 02/03/06  mk  Adapted for use on Windows.
 % 09/03/09  mk  Add support for frameindex seeking instead of timeindex.
+% 30/06/12  mk  Add benchmarking support for new GStreamer modes.
 
 % Child protection: Make sure we run on the OSX / OpenGL Psychtoolbox.
 % Abort if we don't:
@@ -66,7 +107,7 @@ end
 
 if isempty(moviename)
     % Default movie is our own disc collision movie:
-    moviename = [ PsychtoolboxRoot 'PsychDemos/QuicktimeDemos/DualDiscs.mov' ];
+    moviename = [ PsychtoolboxRoot 'PsychDemos/MovieDemos/DualDiscs.mov' ];
 end;
 
 if nargin < 2
@@ -104,6 +145,22 @@ if isempty(benchmark)
     benchmark = 0;
 end;
 
+if nargin < 6
+    async = [];
+end
+
+if nargin < 7
+    preloadSecs = [];
+end
+
+if nargin < 8
+    specialflags = [];
+end
+
+if nargin < 9
+    pixelFormat = [];
+end
+
 fprintf('Loading movie %s ...\n', moviename);
 try    
     % Background color will be a grey one:
@@ -115,7 +172,7 @@ try
 
     % This will open a screen with default settings, aka black background,
     % fullscreen, double buffered with 32 bits color depth:
-    win = Screen('OpenWindow', screen); % , 0, [0 0 800 600]);
+    [win, winrect] = Screen('OpenWindow', screen); % , 0, [0 0 800 600]);
     
     % Hide the mouse cursor:
     HideCursor;
@@ -133,20 +190,51 @@ try
         
     % Open the moviefile and query some infos like duration, framerate,
     % width and height of video frames...
-    [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename);
+    [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, async, preloadSecs, specialflags, pixelFormat);
 
     % Move to requested timeindex where texture loading should start:
-    Screen('SetMovieTimeIndex', movie, fromTime, indexisFrames);
+    if indexisFrames
+        Screen('SetMovieTimeIndex', movie, fromTime, 1);
+    else
+        Screen('SetMovieTimeIndex', movie, fromTime, 0);
+    end
     
     movietexture=0;     % Texture handle for the current movie frame.
-    lastpts=-1;          % Presentation timestamp of last frame.
+    lastpts=-1;         % Presentation timestamp of last frame.
     pts=-1;
     count=0;            % Number of loaded movie frames.
+    
+    % Preallocate texids and texpts if maximum possible allocation size is
+    % known:
+    if (movieduration > 0) && (movieduration < intmax) && (fps > 0)
+        texids = zeros(1, ceil(movieduration * fps));
+        texpts = zeros(1, ceil(movieduration * fps));
+    end
+    
+    % In benchmark mode 4 we don't actually convert decoded video frames
+    % into textures. Instead we immediately discard them, so we just get a
+    % benchmark for how long actual video decoding takes:
+    if benchmark == 4
+        % Discard fetched video frames before texture creation:
+        dontfetch = 2;
+    else
+        % Convert decoded video frames into textures:
+        dontfetch = 0;
+    end
+
+    % In async buffering mode we have to start the playback engine, so that
+    % any ahead-of-time predecoding and prebuffering is actually happening:
+    if bitand(async, 4)
+        % We run playback at 100x the normal speed, non-looped, without
+        % sound:
+        Screen('PlayMovie', movie, 100, 0, 0);
+        WaitSecs(5);
+    end
     
     tloadstart=GetSecs;
     
     % Movie to texture conversion loop:
-    while (movietexture>=0) & ((~indexisFrames & (pts < toTime)) | (indexisFrames & (fromTime + count <= toTime))) %#ok<OR2,AND2>
+    while (movietexture>=0) && ((~indexisFrames && (pts < toTime)) || (indexisFrames && (fromTime + count <= toTime)))
             % This call waits for arrival of a new frame from the movie. If
             % a new frame is ready, it converts the video frame into a
             % Psychtoolbox texture image and returns a handle in
@@ -161,33 +249,54 @@ try
             % The 1 - flag means: Wait for arrival of new frame. Next
             % invocation of this command will retrieve the next frame in
             % the movie.
-            [movietexture pts] = Screen('GetMovieImage', win, movie, 1);
+            % A 'dontfetch' setting of 2 would just discard the new frame,
+            % instead of returning a real PTB texture it returns a value of
+            % 1 to indicate discard of the frame. This can be used to
+            % quickly skip through movies by skipping frames, and for
+            % benchmarking of the video decoder without the overhead of
+            % actual texture creation and drawing:
+            [movietexture pts] = Screen('GetMovieImage', win, movie, 1, [], [], dontfetch);
             
             % Valid and *new* texture? If pts would be *smaller* than
             % lastpts then we would have ran over the end of movie - in
             % that case, the time will automatically wrap around to zero.
             % If we don't check for this, we'll have an infinite loop!
-            if (movietexture>0 & pts>lastpts) %#ok<AND2>
+            if (movietexture > 0) && ((pts >= lastpts) || (indexisFrames == 2))
                 % Store its texture handle and exact movie timestamp in
                 % arrays for later use:
                 count=count + 1;
-                texids(count)=movietexture;
-                texpts(count)=pts;
+                
+                % Only store textures for benchmark modes 0 to 3.
+                if (benchmark ~= 3) && (benchmark ~= 4)
+                    texids(count)=movietexture;
+                    texpts(count)=pts;
+                else
+                    % Mode 3 or 4. Draw and delete texture immediately,
+                    % resembling typical movie playback, or - in mode 4 -
+                    % don't draw at all:
+                    if benchmark ~=4
+                        %Screen('TextSize', movietexture, 60);
+                        %DrawFormattedText(movietexture, num2str(count), 'center', 'center', [255 255 0]);
+                        Screen('DrawTexture', win, movietexture, [], winrect, [], 0);
+                        Screen('Close', movietexture);
+                        Screen('Flip', win, [], 2, 2);
+                    end
+                end
                 lastpts=pts;
             else
                 break;
-            end;
+            end
 
             % Allow for abortion...
-            if KbCheck
+            if (benchmark < 2) && KbCheck
                 break;
-            end;
+            end
             
             if (benchmark==0)
                 % Show the progress text:
                 Screen('DrawText', win, ['Loaded texture ' num2str(count) '...'],40, 100);
                 Screen('Flip',win);
-            end;
+            end
     end;
     
     if (benchmark>0)
@@ -199,6 +308,15 @@ try
         fprintf('Movie to texture conversion speed is %f frames per second == %f Megapixels/second.\n', loadrate, loadvolume);
     end;
 
+    if bitand(async, 4)
+        % Stop "playback":
+        Screen('PlayMovie', movie, 0, 0, 0);
+    end
+    
+    if (benchmark == 3) || (benchmark == 4)
+        count = 0;
+    end
+    
     % Ok, now the requested part of the movie has been (hopefully) loaded
     % and converted into standard PTB textures. We can simply use the
     % 'DrawTexture' command in a loop to show the textures...
@@ -219,8 +337,8 @@ try
 
         if (benchmark==0)
             % Draw some help text:
-            [x, y]=Screen('DrawText', win, 'Press left-/right cursor key to navigate in movie, SPACE to toggle playback, ESC to exit.',10, 40);
-            [x, y]=Screen('DrawText', win, ['Framerate(fps): ' num2str(fps) ', total duration of movie (secs) ' num2str(movieduration)],10, y+10+tsize);
+            [x, y]=Screen('DrawText', win, 'Press left-/right cursor key to navigate in movie, SPACE to toggle playback, ESC to exit.',10, 40); %#ok<ASGLU>
+            [x, y]=Screen('DrawText', win, ['Framerate(fps): ' num2str(fps) ', total duration of movie (secs) ' num2str(movieduration)],10, y+10+tsize); %#ok<ASGLU>
 
             % Draw info on current position in movie:
             Screen('DrawText', win, ['Frame ' num2str(currentindex) ' of ' num2str(count) ' : Timeindex(secs) = ' num2str(texpts(currentindex))], 10, y + 10 + tsize);
@@ -229,7 +347,7 @@ try
             Screen('Flip', win);
 
             % Check for key press:
-            [keyIsDown, secs, keyCode]=KbCheck;
+            [keyIsDown, secs, keyCode]=KbCheck; %#ok<ASGLU>
             if keyIsDown
                 if (keyCode(esc))
                     % Exit
@@ -279,8 +397,10 @@ try
         fprintf('Movietexture playback rate is %f frames per second == %f Megapixels/second.\n', playbackrate, playbackvolume);
     end;
     
-    % This will release all textures...
-    Screen('Close', texids);
+    if benchmark ~= 3
+        % This will release all textures...
+        Screen('Close', texids(1:count));
+    end
     
     % Close movie file.
     Screen('CloseMovie', movie);
@@ -290,7 +410,7 @@ try
     fprintf('Done. Bye!\n');
     return;
 
-catch
+catch %#ok<CTCH>
     % Error handling: Close all windows and movies, release all ressources.
     ShowCursor;
     Screen('CloseAll');

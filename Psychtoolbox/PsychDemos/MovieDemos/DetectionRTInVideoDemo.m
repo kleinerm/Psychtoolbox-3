@@ -1,6 +1,6 @@
-function DetectionRTInVideoDemoOSX(moviename, timeOfEvent, trials)
+function DetectionRTInVideoDemo(moviename, timeOfEvent, trials)
 %
-% DetectionRTInVideoDemoOSX(moviename, timeOfEvent, trials)
+% DetectionRTInVideoDemo(moviename, timeOfEvent, trials)
 %
 % A demo implementation of how to collect reaction time for detection of a
 % specific time-locked event in a movie file.
@@ -43,7 +43,7 @@ function DetectionRTInVideoDemoOSX(moviename, timeOfEvent, trials)
 
 if nargin < 1
     % Default movie is our own disc collision movie:
-    moviename = [ PsychtoolboxRoot 'PsychDemos/QuicktimeDemos/DualDiscs.mov' ];
+    moviename = [ PsychtoolboxRoot 'PsychDemos/MovieDemos/DualDiscs.mov' ];
 end;
 
 if nargin < 2

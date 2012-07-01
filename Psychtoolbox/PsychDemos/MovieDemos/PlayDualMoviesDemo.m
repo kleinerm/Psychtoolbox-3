@@ -1,6 +1,6 @@
-function PlayDualMoviesDemoOSX(moviename)
+function PlayDualMoviesDemo(moviename)
 %
-% PlayDualMoviesDemoOSX(moviename)
+% PlayDualMoviesDemo(moviename)
 %
 % This demo accepts a pattern for a valid moviename, e.g.,
 % moviename='*.mpg', then it plays all movies in the current working
