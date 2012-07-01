@@ -37,6 +37,10 @@
 
 //platform dependent macro defines 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
+    // Define snprintf as _snprintf to take Microsoft brain-damage into account:
+	#ifndef snprintf
+	#define snprintf _snprintf
+	#endif
 #elif PSYCH_SYSTEM == PSYCH_OSX
 #elif PSYCH_SYSTEM == PSYCH_LINUX
 #endif 
@@ -194,20 +198,7 @@ typedef unsigned char		psych_bool;
         typedef mxLogical PsychNativeBooleanType; 
 #endif
 
-//macros
-#if PSYCH_SYSTEM == PSYCH_WINDOWS
-	#define EXP  //nothing
-	
-	// Define snprintf as _snprintf to take Microsoft brain-damage into account:
-	#ifndef snprintf
-	#define snprintf _snprintf
-	#endif
-	
-	// This didn't work with Matlab5:	#define EXP __declspec(dllexport)
-#else
-	#define EXP  //nothing
-#endif
-	
+#define EXP
 #ifndef APIENTRY
 #define APIENTRY
 #endif
