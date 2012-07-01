@@ -77,7 +77,10 @@
 	#define _WIN32_WINNT 0x0500
     #define WINVER       0x0500
 	#include <windows.h>
-	#include "../Screen/wglew.h"
+            
+    #if defined(PTBMODULE_Screen)
+    #include "../Screen/wglew.h"
+    #endif
 
     #ifndef INT64_MAX
     #define INT64_MAX _I64_MAX
