@@ -147,7 +147,6 @@ typedef unsigned char		psych_bool;
         typedef unsigned int                    psych_uint32;
         typedef unsigned char                   psych_uint8;
         typedef unsigned short                  psych_uint16;
-        typedef GLubyte                         ubyte;          
         #if PSYCH_LANGUAGE == PSYCH_OCTAVE
         typedef psych_bool                      mxLogical;
         #endif
@@ -177,7 +176,6 @@ typedef unsigned char		psych_bool;
         typedef DWORD                           psych_uint32;
         typedef BYTE                            psych_uint8;
         typedef WORD                            psych_uint16;
-        typedef GLubyte                         ubyte;
 		#ifndef PTBOCTAVE3MEX
         #ifndef __cplusplus
         typedef psych_bool                      mxLogical;
@@ -223,7 +221,6 @@ typedef unsigned char		psych_bool;
 	typedef unsigned long 			psych_uint32;
 	typedef Byte					psych_uint8;
 	typedef unsigned short 			psych_uint16;
-	typedef GLubyte				ubyte;		
 
 #elif PSYCH_SYSTEM == PSYCH_OSX
         #if PSYCH_LANGUAGE == PSYCH_OCTAVE
@@ -231,7 +228,6 @@ typedef unsigned char		psych_bool;
         #endif
 
         typedef UInt8				psych_uint8;
-        typedef UInt8				ubyte;
 		typedef UInt16				psych_uint16;
         typedef UInt32				psych_uint32;
         typedef unsigned long long	psych_uint64;

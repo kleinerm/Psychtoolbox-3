@@ -2237,7 +2237,7 @@ psych_bool PsychAllocOutBooleanMatArg(int position, PsychArgRequirementType isRe
     
     Like PsychAllocOutDoubleMatArg() execept for unsigned bytes instead of doubles.  
 */
-psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, ubyte **array)
+psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, psych_uint8 **array)
 {
 	mxArray			**mxpp;
 	PsychError		matchError;
@@ -2250,9 +2250,9 @@ psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType
 	if(putOut){
 		mxpp = PsychGetOutArgMxPtr(position);
 		*mxpp = mxCreateByteMatrix3D(m,n,p);
-		*array = (ubyte *)mxGetData(*mxpp);
+		*array = (psych_uint8 *)mxGetData(*mxpp);
 	}else{
-		*array= (ubyte *) mxMalloc(sizeof(ubyte) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));
+		*array= (psych_uint8 *) mxMalloc(sizeof(psych_uint8) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));
 	}
 	return(putOut);
 }

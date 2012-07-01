@@ -116,7 +116,7 @@ PsychError SCREENGetImage(void)
 	int 			nrchannels, invertedY;
 	size_t			ix, iy, sampleRectWidth, sampleRectHeight, redReturnIndex, greenReturnIndex, blueReturnIndex, alphaReturnIndex, planeSize;
 	int				viewid;
-	ubyte 			*returnArrayBase, *redPlane, *greenPlane, *bluePlane, *alphaPlane;
+	psych_uint8 	*returnArrayBase, *redPlane, *greenPlane, *bluePlane, *alphaPlane;
 	float 			*dredPlane;
 	double 			*returnArrayBaseDouble;
 	PsychWindowRecordType	*windowRecord;
@@ -339,7 +339,7 @@ PsychError SCREENGetImage(void)
 		if (!floatprecision) {
 			// Readback of standard 8bpc uint8 pixels:  
 			PsychAllocOutUnsignedByteMatArg(1, TRUE, (int) sampleRectHeight, (int) sampleRectWidth, (int) nrchannels, &returnArrayBase);
-			redPlane  = (ubyte*) PsychMallocTemp((size_t) nrchannels * sampleRectWidth * sampleRectHeight);
+			redPlane  = (psych_uint8*) PsychMallocTemp((size_t) nrchannels * sampleRectWidth * sampleRectHeight);
 			planeSize = sampleRectWidth * sampleRectHeight;
 			greenPlane= redPlane + planeSize;
 			bluePlane = redPlane + 2 * planeSize;
