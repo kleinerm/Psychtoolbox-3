@@ -1,6 +1,6 @@
-function PlayMoviesWithoutGapDemoOSX(moviename)
+function PlayMoviesWithoutGapDemo1(moviename)
 %
-% PlayMoviesWithoutGapDemoOSX(moviename)
+% PlayMoviesWithoutGapDemo1(moviename)
 %
 % This demo accepts a pattern for a valid moviename, e.g.,
 % moviename='*.mpg', then it plays all movies in the current working
@@ -13,12 +13,7 @@ function PlayMoviesWithoutGapDemoOSX(moviename)
 % gaps between end of movie i and start of movie i+1 by asynchronous
 % loading: While movie i is played back, we ask Psychtoolbox to load the
 % next movie i+1 in the background, so startup time for movie i+1 will be
-% minimized. This feature is currently only supported on MacOS-X and it
-% doesn't work well with movies that have sound tracks. The reason for this
-% is currently unknown, but it leads to frequent lockups of the playback
-% engine. How well this feature works depends strongly on the computational
-% horsepower of your machine. Slow machines will probably stutter...
-%
+% minimized.
 
 % History:
 % 7/5/06  mk  Wrote it.
