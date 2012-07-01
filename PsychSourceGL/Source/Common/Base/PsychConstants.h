@@ -58,39 +58,6 @@
 #define true TRUE
 #endif
 
-// MK: These GL defines are likely obsolete - covered by glew.h
-#ifndef GL_TABLE_TOO_LARGE
-#define GL_TABLE_TOO_LARGE   0x8031  
-#endif
-#ifndef GL_TEXTURE_RECTANGLE_EXT
-#define GL_TEXTURE_RECTANGLE_EXT 0x84F5
-#endif
-#ifndef GL_TEXTURE_RECTANGLE_NV
-#define GL_TEXTURE_RECTANGLE_NV  0x84F5
-#endif
-#ifndef GL_UNSIGNED_INT_8_8_8_8
-#define GL_UNSIGNED_INT_8_8_8_8  0x8035
-#endif
-// Define GL_BGRA as GL_BGRA_EXT aka 0x80E1 if it isn''t defined already
-#ifndef GL_BGRA
-#define GL_BGRA              0x80E1
-#endif
-#ifndef GL_UNSIGNED_INT_8_8_8_8_REV
-#define GL_UNSIGNED_INT_8_8_8_8_REV 0x8367
-#endif
-#ifndef GL_CLAMP_TO_EDGE
-#define GL_CLAMP_TO_EDGE 0x812F
-#endif
-#ifndef GL_SAMPLES_ARB
-#define GL_SAMPLES_ARB   0x80A9
-#endif
-#ifndef GL_SAMPLE_BUFFERS_ARB
-#define GL_SAMPLE_BUFFERS_ARB   0x80A8
-#endif
-#ifndef GL_TEXTURE_DEPTH
-#define GL_TEXTURE_DEPTH 0x8071
-#endif
-
 #ifndef PTBOCTAVE3MEX
 // mwSize is a new type introduced around Matlab R2006b. Define
 // it to be an integer on older Matlab releases and other runtime
