@@ -1,9 +1,11 @@
 /*
-  Psychtoolbox2/Source/Common/PsychIncludes.h		
+  Psychtoolbox3/Source/Common/PsychIncludes.h		
   
   AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
-  
+ 
+  Allen.Ingling@nyu.edu                 awi
+  mario.kleiner@tuebingen.mpg.de        mk
+ 
   PLATFORMS: All 
   
   PROJECTS:
@@ -20,9 +22,6 @@
   would require.
   
   This file should ONLY be included by PsychConstants.h 
-
-  T0 DO: 
-	  
 
 */
 
@@ -90,15 +89,6 @@
     #define INT32_MAX _I32_MAX
     #endif
 
-#elif PSYCH_SYSTEM == PSYCH_OS9
-	#include <Types.h>
-	#include <MacTypes.h>
-	#include <Events.h>
-	#include <stdarg.h>
-	#include <string.h>
-	#include <ctype.h>
-	#include "gl.h"
-	#include "glu.h"
 #elif PSYCH_SYSTEM == PSYCH_OSX
 	//includes for Apple OpenGL
     #include <stdint.h>
@@ -138,24 +128,6 @@
 #include <limits.h>
 #include <string.h>
 #include <float.h>
-
-#if PSYCH_LANGUAGE == PSYCH_OCTAVE
-// File with pseudo MATLAB interface API definitions:
-// Emulates missing Matlab functions and structures...
-// Stored in the Source/Octave subfolder...
-    #include <octavemex.h>
-#endif
-
-//SDL_getenv.h includes a macro which redefines getenv() to be
-//SDL getenv().   This then conflicts with the statement "using 
-//std::getenv" within stdlib.h.  To avoid the conflict, include 
-//SDL.h only after the standard includes above. 
-//platform dependent includes stage 2
-#if PSYCH_SYSTEM == PSYCH_WINDOWS
-
-#elif PSYCH_SYSTEM == PSYCH_OS9
-	#include "SDL.h"
-#endif
 
 //end include once
 #endif

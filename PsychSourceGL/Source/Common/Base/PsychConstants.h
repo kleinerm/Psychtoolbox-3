@@ -1,10 +1,12 @@
 /*
-        Psychtoolbox2/Source/Common/PsychConstants.h            
+        Psychtoolbox3/Source/Common/PsychConstants.h            
   
         AUTHORS:
-        Allen.Ingling@nyu.edu           awi 
-  
-        PLATFORMS:      Mac OS 9   
+ 
+        Allen.Ingling@nyu.edu                 awi 
+        mario.kleiner@tuebingen.mpg.de        mk
+ 
+        PLATFORMS:      All
 
         HISTORY:
         7/16/02         awi     Split off from PsychProject.h
@@ -16,65 +18,33 @@
         PsychConstants.h defines constants which abstract out platform-specific types.  Note
         That all such abstract types are prefixed with "psych_" as in "psych_uint32".   
 
-        This file also includes platform-specific macros
-        
-        
-         
- 
-
+        This file also includes platform-specific macros.
 */
 
 //begin include once 
 #ifndef PSYCH_IS_INCLUDED_PsychConstants
 #define PSYCH_IS_INCLUDED_PsychConstants
 
-// This is obsolete, as PTBOCTAVE is only defined for Octave-2, which we have
-// effectively phased out, but leave it here for documentation:
-#if !defined(__cplusplus) && !defined(bool)
-#ifdef PTBOCTAVE
-typedef unsigned char bool;
-#endif
-#endif
-
 #define __STDC_LIMIT_MACROS 1
 
 //bring in the standard c and system headers 
 #include "PsychIncludes.h"
 
-// Define SIZE_MAX if not defined. Mostly for ancient Windows + R11 builds.
-#ifndef SIZE_MAX
-#define SIZE_MAX (4294967295U)
-#endif
-
-#if PSYCH_LANGUAGE == PSYCH_OCTAVE
-
-// Definitions for constants:
-#define mxUINT8_CLASS 0
-#define mxDOUBLE_CLASS 1
-#define mxLOGICAL_CLASS 2
-
-#endif
-
-#if PSYCH_LANGUAGE == PSYCH_MATLAB | PSYCH_LANGUAGE == PSYCH_OCTAVE
+#if PSYCH_LANGUAGE == PSYCH_MATLAB
 	#undef printf
 	#define printf mexPrintf
 #endif
 
+        
 //platform dependent macro defines 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
-        #define FALSE   0
-        #define TRUE    1
-#elif PSYCH_SYSTEM == PSYCH_OS9
-        #define FALSE   0
-        #define TRUE    1
 #elif PSYCH_SYSTEM == PSYCH_OSX
-        #define FALSE   0
-        #define TRUE    1
 #elif PSYCH_SYSTEM == PSYCH_LINUX
-        #define FALSE   0
-        #define TRUE    1
 #endif 
 
+#define FALSE   0
+#define TRUE    1
+        
 #ifndef false
 #define false FALSE
 #endif
@@ -147,9 +117,6 @@ typedef unsigned char		psych_bool;
         typedef unsigned int                    psych_uint32;
         typedef unsigned char                   psych_uint8;
         typedef unsigned short                  psych_uint16;
-        #if PSYCH_LANGUAGE == PSYCH_OCTAVE
-        typedef psych_bool                      mxLogical;
-        #endif
         typedef char                            Str255[256];
 
         // We don't have Quicktime for Linux, so we provide a little hack to
@@ -200,7 +167,6 @@ typedef unsigned char		psych_bool;
         typedef int CGDisplayCount;
         typedef HDC CGDirectDisplayID;
         typedef int CGDisplayErr;
-        //typedef unsigned int CFDictionaryRef;
 
 		// Datatype for condition variables:
 		typedef HANDLE					psych_condition;		
@@ -216,11 +182,6 @@ typedef unsigned char		psych_bool;
 		typedef struct psych_threadstruct*	psych_thread;
 
 		typedef psych_uint32		psych_threadid;
-
-#elif PSYCH_SYSTEM == PSYCH_OS9
-	typedef unsigned long 			psych_uint32;
-	typedef Byte					psych_uint8;
-	typedef unsigned short 			psych_uint16;
 
 #elif PSYCH_SYSTEM == PSYCH_OSX
         #if PSYCH_LANGUAGE == PSYCH_OCTAVE
@@ -242,9 +203,8 @@ typedef unsigned char		psych_bool;
 		typedef pthread_t			psych_threadid;
 #endif
 
-
-#if PSYCH_LANGUAGE == PSYCH_MATLAB | PSYCH_LANGUAGE == PSYCH_OCTAVE
-	typedef const mxArray CONSTmxArray;
+#if PSYCH_LANGUAGE == PSYCH_MATLAB
+        typedef const mxArray CONSTmxArray;
         #define PsychGenericScriptType mxArray
         typedef mxLogical PsychNativeBooleanType; 
 #endif
@@ -269,5 +229,3 @@ typedef unsigned char		psych_bool;
 
 //end include once
 #endif
-
-
