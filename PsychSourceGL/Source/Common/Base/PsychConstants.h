@@ -35,16 +35,17 @@
 	#define printf mexPrintf
 #endif
 
-        
 //platform dependent macro defines 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 #elif PSYCH_SYSTEM == PSYCH_OSX
 #elif PSYCH_SYSTEM == PSYCH_LINUX
 #endif 
 
+#ifndef FALSE
 #define FALSE   0
 #define TRUE    1
-        
+#endif
+
 #ifndef false
 #define false FALSE
 #endif
@@ -53,6 +54,7 @@
 #define true TRUE
 #endif
 
+// MK: These GL defines are likely obsolete - covered by glew.h
 #ifndef GL_TABLE_TOO_LARGE
 #define GL_TABLE_TOO_LARGE   0x8031  
 #endif
@@ -143,27 +145,14 @@ typedef unsigned char		psych_bool;
         typedef DWORD                           psych_uint32;
         typedef BYTE                            psych_uint8;
         typedef WORD                            psych_uint16;
-		#ifndef PTBOCTAVE3MEX
-        #ifndef __cplusplus
-        typedef psych_bool                      mxLogical;
-        #endif
-		#endif
 
-        // The Visual C 6 compiler doesn't know about the __func__ keyword :(
-        #define __func__ "UNKNOWN"
-        // Matlab 5 doesn't know about mxLOGICAL_CLASS :(
-        #define mxLOGICAL_CLASS mxUINT8_CLASS
-        #define mxGetLogicals(p) ((PsychNativeBooleanType*)mxGetData((p)))
-        mxArray* mxCreateNativeBooleanMatrix3D(size_t m, size_t n, size_t p);
-
-        #if PSYCH_LANGUAGE == PSYCH_MATLAB
-		#ifndef TARGET_OS_WIN32 
-        #define mxCreateLogicalMatrix(m,n) mxCreateNativeBooleanMatrix3D((m), (n), 1)
-		#endif
+        // The Microsoft Visual C compiler doesn't know about the __func__ keyword, but it knows __FUNCTION__ instead:
+        #ifdef _MSC_VER
+        #define __func__ __FUNCTION__
         #endif
 
         // Hack to make compiler happy until QT7 Windows supports this:
-        typedef void*                           CVOpenGLTextureRef;
+        typedef void* CVOpenGLTextureRef;
         typedef int CGDisplayCount;
         typedef HDC CGDirectDisplayID;
         typedef int CGDisplayErr;
@@ -184,10 +173,6 @@ typedef unsigned char		psych_bool;
 		typedef psych_uint32		psych_threadid;
 
 #elif PSYCH_SYSTEM == PSYCH_OSX
-        #if PSYCH_LANGUAGE == PSYCH_OCTAVE
-        typedef psych_bool			mxLogical;
-        #endif
-
         typedef UInt8				psych_uint8;
 		typedef UInt16				psych_uint16;
         typedef UInt32				psych_uint32;
