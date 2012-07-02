@@ -10,19 +10,16 @@ if nargin < 1
 end
 
 if isempty(postR2007a)
-    postR2007a = 0;
+    postR2007a = 1;
 end
 
-postR2007a
-
 if postR2007a
-    % R2007a or later build: User R2007a:
-    mex -v -outdir T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\ -output moalcore -I"C:\Programme\Microsoft Visual Studio 8\VC\Include" -IT:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychSound\MOAL\source -DWINDOWS -DTARGET_OS_WIN32 windowhacks.c al_auto.c al_manual.c moalcore.c alm.c user32.lib openal32.lib
-    dos('copy T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\moalcore.mexw32 T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\MatlabWindowsFilesR2007a\');
+    % R2007a or later build:
+    mex -v -outdir T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\ -output moalcore -I"C:\Programme\Microsoft Visual Studio 8\VC\Include" -IT:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychSound\MOAL\source -DWINDOWS windowhacks.c al_auto.c al_manual.c moalcore.c alm.c user32.lib openal32.lib
+    dos('copy T:\projects\OpenGLPsychtoolbox\Psychtoolbox-3\PsychSourceGL\Projects\Windows\build\moalcore.mexw32 T:\projects\OpenGLPsychtoolbox\Psychtoolbox-3\Psychtoolbox\PsychBasic\MatlabWindowsFilesR2007a\');
 else
-    % Pre R2007a build: Use Matlab R11:
-    mex -v -outdir T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychSound\MOAL\source\ -output moalcore -IC:\Programme\MicrosoftVisualStudio\VC98\Include -IT:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychSound\MOAL\source -DWINDOWS windowhacks.c al_auto.c al_manual.c moalcore.c alm.c user32.lib openal32.lib
-    dos('copy T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychSound\MOAL\source\moalcore.dll T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\MatlabWindowsFilesR11\');
+    % Pre R2007a build: Unsupported:
+    error('Building moalcore on pre R2007a Matlab is no longer supported.');
 end
 
 return;
