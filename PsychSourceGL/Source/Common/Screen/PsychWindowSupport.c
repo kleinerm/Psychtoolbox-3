@@ -56,7 +56,6 @@
 #endif
 
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
-//#ifndef MATLAB_R11
 #include "ptbstartlogo.h"
 #else
 /* This is a placeholder for ptbstartlogo.h until the fu%&$ing M$-Compiler can handle it.

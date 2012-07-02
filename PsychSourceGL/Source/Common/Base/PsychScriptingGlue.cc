@@ -3068,12 +3068,7 @@ psych_bool PsychCopyOutPointerArg(int position, PsychArgRequirementType isRequir
 int PsychRuntimePutVariable(const char* workspace, const char* variable, PsychGenericScriptType* pcontent)
 {
 	#if PSYCH_LANGUAGE == PSYCH_MATLAB
-		#ifndef MATLAB_R11
-			// Post R11 Matlab or Octave 3.2.x: New method for putting variables...
-			return(mexPutVariable(workspace, variable, pcontent));
-		#else
-			return(1);
-		#endif
+		return(mexPutVariable(workspace, variable, pcontent));
 	#else
 		PsychErrorExitMsg(PsychError_unimplemented, "Function PsychRuntimePutVariable() not yet supported for this runtime system!");
 	#endif
@@ -3105,10 +3100,7 @@ psych_bool PsychRuntimeGetVariable(const char* workspace, const char* variable, 
 	*pcontent = NULL;
 
 	#if PSYCH_LANGUAGE == PSYCH_MATLAB
-		#ifndef MATLAB_R11
-			// Post R11 Matlab or Octave 3.2.x: New method for putting variables...
-			*pcontent = mexGetVariable(workspace, variable);
-		#endif
+		*pcontent = mexGetVariable(workspace, variable);
 
 		// Return true on success, false on failure:
 		return((*pcontent) ? TRUE : FALSE);
@@ -3144,10 +3136,7 @@ psych_bool PsychRuntimeGetVariablePtr(const char* workspace, const char* variabl
 	*pcontent = NULL;
 
 	#if PSYCH_LANGUAGE == PSYCH_MATLAB
-		#ifndef MATLAB_R11
-			// Post R11 Matlab or Octave 3.2.x: New method for putting variables...
-			*pcontent = (PsychGenericScriptType*) mexGetVariablePtr(workspace, variable);
-		#endif
+		*pcontent = (PsychGenericScriptType*) mexGetVariablePtr(workspace, variable);
 
 		// Return true on success, false on failure:
 		return((*pcontent) ? TRUE : FALSE);

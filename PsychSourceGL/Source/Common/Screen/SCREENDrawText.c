@@ -1413,17 +1413,12 @@ void PsychCleanupTextRenderer(PsychWindowRecordType* windowRecord)
 // MS-Windows:
 #include <locale.h>
 
-// The usual ugliness: When building against R11, we don't have support for
+// When building against Octave-3, we don't have support for
 // _locale_t datatype and associated functions like mbstowcs_l. Therefore
 // we use setlocale() and mbstowcs() instead to set/query/use the global
-// process-wide locale instead. This could possibly wreak-havoc with Matlabs
-// own locale processing. Otoh, only R2006b became locale aware, earlier releases
-// don't use locales at all, and later releases R2007a et al. use the non R11
-// build procedure where everything is fine.
-// -> If there is potential for trouble at all, then probably only for
-// R2006b. Cross your fingers...
-
-#if defined(MATLAB_R11) || defined(PTBOCTAVE3MEX)
+// process-wide locale instead. This should be ok, as Octave does not implement
+// locale processing itself on Windows, so we cannot interfere here.
+#if defined(PTBOCTAVE3MEX)
 #define _locale_t	char*
 #endif
 
@@ -1457,7 +1452,7 @@ psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 {
 	unsigned int	mycodepage;
 
-#if !defined(MATLAB_R11) && !defined(PTBOCTAVE3MEX)
+#if !defined(PTBOCTAVE3MEX)
 	_locale_t		myloc = NULL;
 
 	// Was only destruction/release of current locale requested?
@@ -1559,7 +1554,7 @@ psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 // Returns NULL on error, a const char* string with the current locale setting on success.
 const char* PsychGetUnicodeTextConversionLocale(void)
 {
-#if !defined(MATLAB_R11) && !defined(PTBOCTAVE3MEX)
+#if !defined(PTBOCTAVE3MEX)
 	return(&drawtext_localestring[0]);
 #else
 	// Return encoded codepage:
@@ -1739,7 +1734,7 @@ psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isReq
 			}
 			else {
 				// Locale-based text conversion:
-				#if defined(MATLAB_R11) || defined(PTBOCTAVE3MEX)
+				#if defined(PTBOCTAVE3MEX)
 						*textLength = mbstowcs(NULL, textCString, 0);
 				#else
 						*textLength = mbstowcs_l(NULL, textCString, 0, drawtext_locale);
@@ -1770,7 +1765,7 @@ psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isReq
 			}
 			else {
 				// Locale-based text conversion:
-				#if defined(MATLAB_R11) || defined(PTBOCTAVE3MEX)
+				#if defined(PTBOCTAVE3MEX)
 					mbstowcs(textUniString, textCString, (*textLength + 1));
 				#else
 					mbstowcs_l(textUniString, textCString, (*textLength + 1), drawtext_locale);

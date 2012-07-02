@@ -268,11 +268,7 @@ void InitCGDisplayIDList(void)
 	for (i = 1; i < numDisplays; i++) {
 		// Enumerate for display screen 'i':
 		rc = 0;
-		// We only support per-display beampos queries on R2007a and later builds, due to limitations
-		// of the R11 build-system: The DirectDraw libraries we'd need to use to utilize the DirectDrawEnumerateEx()
-		// functions are incompatible with the old operating system, compilers and Matlab versions used for R11 builds.
-		#ifndef MATLAB_R11
-		// R2007a or later, or Octave: Enumerate and assign individual DDRAW objects per display:
+
 		if (((rc = DirectDrawEnumerateEx(PsychDirectDrawEnumProc, (LPVOID) i, DDENUM_ATTACHEDSECONDARYDEVICES)) == DD_OK) && (displayDeviceGUIDValid[i] > 1)) {
 			// Success: Create corresponding DDRAW device interface for this screen:
 			if ((rc = DirectDrawCreate(&displayDeviceGUID[i], &(displayDeviceDDrawObject[i]), NULL)) != DD_OK) {
@@ -294,16 +290,6 @@ void InitCGDisplayIDList(void)
 			printf("PTB-WARNING: Failed to detect specific DirectDraw interface GUID for display screen %i [rc = %x]. Will use primary display DirectDraw object as backup and hope for the best.\n", i, rc);
 			printf("PTB-WARNING: This means that beamposition queries for high-precision timestamping may not work correctly on your multi-display setup. We'll see...\n");
 		}
-		#else
-		// R11 aka pre R2007a and not Octave: Don't have support for this. Just assign one common shared
-		// DDRAW object for all displays and screens, just like we did in all PTB's before October 2009:
-		displayDeviceDDrawObject[i] = displayDeviceDDrawObject[0];
-		if (i == 1) {
-			printf("PTB-INFO: You are using a Matlab version older than V7.4 (R2007a). This will limit the flexibility of multi-display functionality.\n");
-			printf("PTB-INFO: If you want more flexible support for multi-display configurations and high-precision timestamping on such setups, consider\n");
-			printf("PTB-INFO: upgrading to a more recent version of Matlab ( > R2007a ) or to the free, open-source GNU/Octave (Version 3.2.2 or later).\n");
-		}
-		#endif
 		// Done with this one. Init next display...
 	}
 

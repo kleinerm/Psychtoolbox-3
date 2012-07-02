@@ -62,18 +62,6 @@ BOOL SetLayeredWindowAttributes(
     DWORD dwFlags);
 #endif
 
-#ifdef MATLAB_R11
-/* This is the rusty old build system that can't handle Windows 200 only
-   headers and their functions. It doesn't support SetLayeredWindowAttributes()
-   We define our own dummy "do nothing" implementation here: */
-BOOL SetLayeredWindowAttributes(HWND hwnd, COLORREF crKey, BYTE bAlpha, DWORD dwFlags)
-{
-	printf("PTB-INFO: Sorry, transparent windows unsupported. You need Matlab 7.4 (R2007a) or later for this to work at all.\n");
-	return(TRUE);
-}
-
-#endif
-
 // Add missing defines from Vista SDK for the DWM, if not already defined:
 
 // Need to enable 1-Byte alignment of structures:
@@ -745,27 +733,24 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // the new Java-GetChar can do its job.
   DWORD windowExtendedStyle = WS_EX_APPWINDOW | 0x08000000; // const int WS_EX_NOACTIVATE = 0x08000000;
 
-	if (PsychPrefStateGet_Verbosity()>6) {
-		printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Entering Win32 specific window setup...\n");
-		fflush(NULL);
-	}
+  if (PsychPrefStateGet_Verbosity()>6) {
+    printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Entering Win32 specific window setup...\n");
+    fflush(NULL);
+  }
 
-	// Retrieve windowLevel, an indicator of where non-fullscreen windows should
-	// be located wrt. to other windows. 0 = Behind everything else, occluded by
-	// everything else. 1 - 999 = At layer windowLevel -> Occludes stuff on layers "below" it.
-	// 1000 - 1999 = At highest level, but partially translucent / alpha channel allows to make
-	// regions transparent. 2000 or higher: Above everything, fully opaque, occludes everything.
-	// 2000 is the default.
-	windowLevel = PsychPrefStateGet_WindowShieldingLevel();
+  // Retrieve windowLevel, an indicator of where non-fullscreen windows should
+  // be located wrt. to other windows. 0 = Behind everything else, occluded by
+  // everything else. 1 - 999 = At layer windowLevel -> Occludes stuff on layers "below" it.
+  // 1000 - 1999 = At highest level, but partially translucent / alpha channel allows to make
+  // regions transparent. 2000 or higher: Above everything, fully opaque, occludes everything.
+  // 2000 is the default.
+  windowLevel = PsychPrefStateGet_WindowShieldingLevel();
+  
+  // Shielding levels below 1500 will let mouse event through to underlying windows, i.e.,
+  // the window is non-existent for the mouse:
+  if (windowLevel < 1500) windowExtendedStyle = windowExtendedStyle | WS_EX_TRANSPARENT;
 
-	#ifndef MATLAB_R11
-		// No op on old R11 builds due to lack of API support.
-		// Shielding levels below 1500 will let mouse event through to underlying windows, i.e.,
-		// the window is non-existent for the mouse:
-		if (windowLevel < 1500) windowExtendedStyle = windowExtendedStyle | WS_EX_TRANSPARENT;
-	#endif
-
-	 // Init to safe default:
+    // Init to safe default:
     windowRecord->targetSpecific.glusercontextObject = NULL;
     windowRecord->targetSpecific.glswapcontextObject = NULL;
     
