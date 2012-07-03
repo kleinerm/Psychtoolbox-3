@@ -73,20 +73,33 @@
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 	// Need to define #define _WIN32_WINNT as >= 0x0400 so we can use TryEnterCriticalSection() call for PsychTryLockMutex() implementation.
     // We set WINVER and _WIN32_WINNT to 0x0500, which requires Windows 2000 or later as target system:
-	#define _WIN32_WINNT 0x0500
-    #define WINVER       0x0500
-	#include <windows.h>
-            
+    // Ok, actually we don't. When building on a modern build system like the new Win-7 build
+    // system -- or pretty much against any SDK since WindowsXP -- the MSVC compiler / platform SDK
+    // already defines WINVER et al. to 0x0500 or later, e.g., to Win-7 on the Win-7 system.
+    // That means we'd only need these defines on pre-WinXP build systems, which we no longer
+    // support. We now just have to be careful to not use post-WinXP functionality.
+    // Same goes for the INT64_MAX defines etc.
+    // We comment these defines out and trust the platform SDK / compiler,
+    // but leave them here for quick WinXP backwards compatibility testing.
+    #if 0   
+        #define _WIN32_WINNT 0x0500
+        #define WINVER       0x0500
+
+        #ifndef INT64_MAX
+        #define INT64_MAX _I64_MAX
+        #endif
+
+        #ifndef INT32_MAX
+        #define INT32_MAX _I32_MAX
+        #endif
+    #endif // Conditional enable.
+
+    // Master include for windows header file:
+    #include <windows.h>
+
+    // For building Screen, include wglew.h - Windows specific GLEW header files:
     #if defined(PTBMODULE_Screen)
     #include "../Screen/wglew.h"
-    #endif
-
-    #ifndef INT64_MAX
-    #define INT64_MAX _I64_MAX
-    #endif
-    
-    #ifndef INT32_MAX
-    #define INT32_MAX _I32_MAX
     #endif
 
 #elif PSYCH_SYSTEM == PSYCH_OSX
