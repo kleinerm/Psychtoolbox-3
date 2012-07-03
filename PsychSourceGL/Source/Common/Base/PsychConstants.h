@@ -62,6 +62,16 @@
 // i.e., 1 byte per value on each platform:
 typedef unsigned char		psych_bool;
 
+// Master enable switch for use of Apple Quicktime technology:
+// Starting July 2012, we only enable Quicktime on 32-Bit Apple-OSX build.
+// We no longer enable it on 32-Bit MS-Windows build, as we did in the past.
+// We never support it on any 64-Bit build.
+#if (PSYCH_SYSTEM != PSYCH_LINUX) && (PSYCH_SYSTEM != PSYCH_WINDOWS)
+#if !defined(__LP64__) && !defined(_M_IA64) && !defined(_WIN64)
+#define PSYCHQTAVAIL 1
+#endif
+#endif
+
 //abstract up simple data types. 
 #if PSYCH_SYSTEM == PSYCH_LINUX
         typedef int64_t                         psych_int64;
@@ -107,6 +117,11 @@ typedef unsigned char		psych_bool;
         typedef HDC CGDirectDisplayID;
         typedef int CGDisplayErr;
 
+        // Define missing types if Quicktime is not enabled on Windows:
+        #ifndef PSYCHQTAVAIL
+        typedef char         Str255[256];
+        typedef unsigned int CFDictionaryRef;                
+        #endif
 		// Datatype for condition variables:
 		typedef HANDLE					psych_condition;		
 		// Datatype for Mutex Locks:

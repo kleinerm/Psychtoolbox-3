@@ -41,7 +41,8 @@
 #include "PsychMovieSupportQuickTime.h"
 #endif
 
-#if defined(__LP64__) || defined(_M_IA64)
+// Detect if this is a 64-Bit build system:
+#if defined(__LP64__) || defined(_M_IA64) || defined(_WIN64)
 #define PSYCHOTHER64BIT 1
 #else
 #define PSYCHOTHER64BIT 0
@@ -68,14 +69,14 @@ static psych_bool usegs(void) {
 		doUsegs = FALSE;
 
 		// We always use GStreamer if we are running on
-		// Linux, or 64-Bit builds on OS/X or Windows, as
+		// Linux, Windows, or 64-Bit builds on OS/X, as
 		// these systems only support GStreamer, but they
 		// support it consistently:
-		if ((PSYCH_SYSTEM == PSYCH_LINUX) || PSYCHOTHER64BIT) {
+		if ((PSYCH_SYSTEM == PSYCH_LINUX) || (PSYCH_SYSTEM == PSYCH_WINDOWS) || PSYCHOTHER64BIT) {
 			// Yep: Unconditionally use GStreamer:
 			doUsegs = TRUE;
 		} else {
-			// This is a 32-bit build on Windows or OS/X.
+			// This is a 32-bit build on OS/X.
 			// We use GStreamer if it is supported and usercode
 			// wants to use it, according to preference setting:
 			if (USE_GSTREAMER && (PsychPrefStateGet_UseGStreamer()==1)) {
