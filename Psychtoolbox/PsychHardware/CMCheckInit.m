@@ -13,6 +13,7 @@ function CMCheckInit(meterType, PortString)
 % meterType 2 is the CVI (need CVIToolbox) - Not yet implemented!
 % meterType 3 is the CRS Colorimeter
 % meterType 4 is the PR655
+% meterType 5 is the PR670
 %
 % For the PR-series colorimeters, 'PortString' is the optional name of a
 % device string for the serial port or Serial-over-USB port to which the
@@ -198,8 +199,32 @@ switch meterType
             end
         else
             error(['Unsupported OS ' computer]);
-        end
-        
+		end
+		
+	% PR-670 - Functionality should be very similar to the PR-655, though
+	%          it looks like there are a few more commands available for
+	%          the 670.
+	case 5
+		if IsWin || IsOSX || IsLinux
+			% Look for port information in "calibration" file.  If
+			% no special information present, then use defaults.
+			meterports = LoadCalFile('PR670Ports');
+			if isempty(meterports)
+				portNameIn = FindSerialPort(PortString, g_useIOPort);
+			else
+				portNameIn = meterports.in;
+			end
+			
+			stat = PR670init(portNameIn);
+			if strcmp(stat, ' REMOTE MODE')
+				disp('Successfully connected to PR-670!');
+			else
+				disp('Failed to make contact.  If device is connected, try turning it off and re-trying CMCheckInit.');
+			end
+		else
+			error(['Unsupported OS ' computer]);
+		end
+		
     otherwise,
         error('Unknown meter type');
 end
