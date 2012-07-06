@@ -55,6 +55,13 @@
 // Include DirectDraw header for access to the GetScanLine() function:
 #include <ddraw.h>
 
+// Module handle for the DirectDraw library 'ddraw.dll': Or 0 if unsupported.
+HMODULE ddrawlibrary = 0;
+
+typedef HRESULT (WINAPI * LPDIRECTDRAWCREATE)(GUID FAR *lpGUID, LPDIRECTDRAW FAR *lplpDD, IUnknown FAR *pUnkOuter);
+LPDIRECTDRAWCREATE      PsychDirectDrawCreate = NULL;
+LPDIRECTDRAWENUMERATEEX PsychDirectDrawEnumerateEx = NULL;
+
 // file local variables
 
 // Maybe use NULLs in the settings arrays to mark entries invalid instead of using psych_bool flags in a different array.   
@@ -147,7 +154,7 @@ psych_bool CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lp
 }
 
 // Callback for DirectDraw display enumeration which complements monitor enumeration above:
-// Called by DirectDrawEnumerateEx() below...
+// Called by PsychDirectDrawEnumerateEx() below...
 BOOL WINAPI PsychDirectDrawEnumProc(GUID FAR* lpGUID, LPSTR lpDriverDescription, LPSTR lpDriverName, LPVOID displayIdx, HMONITOR hMonitor)
 {
 	// Retrieve index into our display array for the display to enumerate / map in this callback:
@@ -198,16 +205,43 @@ void InitCGDisplayIDList(void)
   displayDeviceStartX[0] = 0;
   displayDeviceStartY[0] = 0;
 
+  // Since Windows Vista/7 we need to manually load the DirectDraw runtime DLL and bind
+  // the functions we need manually. Thanks Microsoft for creating pointless extra work!
+  ddrawlibrary = LoadLibrary("ddraw.dll");
+  if (ddrawlibrary) {
+    // Load success. Dynamically bind the relevant functions:
+    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: DirectDraw DLL available. Binding controls ...");
+
+    PsychDirectDrawCreate      = (LPDIRECTDRAWCREATE) GetProcAddress(ddrawlibrary, "DirectDrawCreate");
+    PsychDirectDrawEnumerateEx = (LPDIRECTDRAWENUMERATEEX) GetProcAddress(ddrawlibrary, "DirectDrawEnumerateExA");
+
+    if (PsychDirectDrawCreate && PsychDirectDrawEnumerateEx) {
+      // Mark DirectDraw as supported:
+      if (PsychPrefStateGet_Verbosity() > 5) printf(" ...done\n");
+    }
+    else {
+      FreeLibrary(ddrawlibrary);
+      ddrawlibrary = 0;
+        if (PsychPrefStateGet_Verbosity() > 0) {
+            printf("PTB-WARNING: Could not attach to DirectDraw library ddraw.dll - Trouble ahead!\n");
+            printf("PTB-WARNING: DirectDrawCreate() = %p : DirectDrawEnumerateEx() = %p\n", PsychDirectDrawCreate, PsychDirectDrawEnumerateEx);
+        }
+    }
+  }
+  else {
+    if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: DirectDraw runtime DLL unsupported! Trouble ahead!\n"); 
+  }
+
   // Create a DirectDraw object for the primary display device, i.e. the single display on a
   // single display setup or the display device corresponding to the desktop on a multi-display setup:
-  if (DirectDrawCreate(DDCREATE_HARDWAREONLY, &(displayDeviceDDrawObject[0]), NULL)!=DD_OK) {
+  if ((ddrawlibrary == 0) || (PsychDirectDrawCreate((GUID FAR *) DDCREATE_HARDWAREONLY, &(displayDeviceDDrawObject[0]), NULL) != DD_OK)) {
     // Failed to create Direct Draw object:
     displayDeviceDDrawObject[0]=NULL;
     printf("PTB-WARNING: Failed to create DirectDraw interface for primary display. Won't be able to generate high-precision 'Flip' timestamps.\n");
   }
   else {
     rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[0], (LPDWORD) &beampos);
-	 if (rc!=DD_OK && rc!=DDERR_VERTICALBLANKINPROGRESS) {
+    if (rc!=DD_OK && rc!=DDERR_VERTICALBLANKINPROGRESS) {
 		// Beamposition query failed :(
 		switch(rc) {
 			case DDERR_UNSUPPORTED:
@@ -269,9 +303,9 @@ void InitCGDisplayIDList(void)
 		// Enumerate for display screen 'i':
 		rc = 0;
 
-		if (((rc = DirectDrawEnumerateEx(PsychDirectDrawEnumProc, (LPVOID) i, DDENUM_ATTACHEDSECONDARYDEVICES)) == DD_OK) && (displayDeviceGUIDValid[i] > 1)) {
+		if (PsychDirectDrawEnumerateEx && ((rc = PsychDirectDrawEnumerateEx(PsychDirectDrawEnumProc, (LPVOID) i, DDENUM_ATTACHEDSECONDARYDEVICES)) == DD_OK) && (displayDeviceGUIDValid[i] > 1)) {
 			// Success: Create corresponding DDRAW device interface for this screen:
-			if ((rc = DirectDrawCreate(&displayDeviceGUID[i], &(displayDeviceDDrawObject[i]), NULL)) != DD_OK) {
+			if ((rc = PsychDirectDrawCreate(&displayDeviceGUID[i], &(displayDeviceDDrawObject[i]), NULL)) != DD_OK) {
 				// Failed to create Direct Draw object for this screen:
 				// We use the primary display DDRAW object [0] as a fallback:
 				displayDeviceDDrawObject[i] = displayDeviceDDrawObject[0];
