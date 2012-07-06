@@ -673,12 +673,16 @@ unsigned int PsychGetNVidiaGPUType(PsychWindowRecordType* windowRecord)
 		case 0x80:
 		case 0x90:
 		case 0xa0:
-			// NV50: GeForce8/9/Gxxx
+			// NV50: GeForce8/9/G100-G300.
 			card_type = 0x50;
 			break;
 		case 0xc0:
-			// Curie: GTX-400 and later:
+			// Fermi: GeForce G400/500 series:
 			card_type = 0xc0;
+			break;
+		case 0xe0:
+			// Kepler: GeForce G600+ series:
+			card_type = 0xe0;
 			break;
 		default:
 			printf("PTB-DEBUG: Unknown NVidia chipset 0x%08x \n", reg0);
