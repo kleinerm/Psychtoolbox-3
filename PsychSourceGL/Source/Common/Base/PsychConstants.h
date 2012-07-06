@@ -27,6 +27,11 @@
 
 #define __STDC_LIMIT_MACROS 1
 
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+// Try to cut down compile time on Windows by only including important headers:
+#define WINDOWS_LEAN_AND_MEAN
+#endif
+
 //bring in the standard c and system headers 
 #include "PsychIncludes.h"
 
