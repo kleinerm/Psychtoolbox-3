@@ -157,7 +157,15 @@ GL.GL_2D = 1536;
 if IsWin   
    % Windows system: Change working dir to location of our glut32.dll
    olddir = pwd;
-   cd([PsychtoolboxRoot 'PsychOpenGL/MOGL/core']);
+   
+   if IsWin(1)
+       % Need 64-Bit freeglut.dll:
+       cd([PsychtoolboxRoot 'PsychOpenGL/MOGL/core/x64']);
+   else
+       % Need 32-Bit freeglut.dll:
+       cd([PsychtoolboxRoot 'PsychOpenGL/MOGL/core']);
+   end
+   
    % Preload (and thereby link against glut32.dll) moglcore into Matlab. The
    % special command 'PREINIT' forces loading and performs a no-operation.
    moglcore('PREINIT');
