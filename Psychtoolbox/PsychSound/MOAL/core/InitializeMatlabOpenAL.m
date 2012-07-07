@@ -108,7 +108,7 @@ if IsWin
    try
       % Preinit with system installed OpenAL.dll
       moalcore('PREINIT');
-   catch
+   catch %#ok<CTCH>
       % Failed. Retry in our own private OpenAL.dll install location:
       
       % Change working dir to location of our dll's
@@ -118,7 +118,7 @@ if IsWin
       % special command 'PREINIT' forces loading and performs a no-operation.
       try
          moalcore('PREINIT');
-      catch
+      catch %#ok<CTCH>
          targetdir = pwd;
          cd(olddir);
          fprintf('\n');

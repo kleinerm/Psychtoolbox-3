@@ -52,8 +52,8 @@ ALenum  alcASASetListener(const ALuint property, ALvoid *data, ALuint dataSize);
 #include <windows.h>
 #include <stdlib.h>
 #include <string.h>
-#include <AL/al.h>
-#include <AL/alc.h>
+#include <al.h>
+#include <alc.h>
 
 #endif
 
