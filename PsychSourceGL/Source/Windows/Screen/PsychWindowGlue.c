@@ -7,7 +7,7 @@
 				
 	AUTHORS:
 	
-		Allen Ingling		awi		Allen.Ingling@nyu.edu
+                Allen Ingling           awi             Allen.Ingling@nyu.edu
                 Mario Kleiner           mk              mario.kleiner at tuebingen.mpg.de
 
 	HISTORY:
@@ -392,7 +392,7 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
 			// Additionally try to schedule us MMCSS: This will lift us roughly into the
 			// same scheduling range as REALTIME_PRIORITY_CLASS, even if we are non-admin users
 			// on Vista and Windows-7 and later, however with a scheduler safety net applied.
-			PsychSetThreadPriority(0x1, 10, 0);			
+			PsychSetThreadPriority((psych_thread*) 0x1, 10, 0);			
       }
     }
     else {
@@ -401,7 +401,7 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
       SetPriorityClass(currentProcess, oldPriority);
 	  
 	  // Disable any MMCSS scheduling for us if new priority class is non-RT, bog-standard normal scheduling:
-	  if (oldPriority == NORMAL_PRIORITY_CLASS) PsychSetThreadPriority(0x1, 0, 0);
+	  if (oldPriority == NORMAL_PRIORITY_CLASS) PsychSetThreadPriority((psych_thread*) 0x1, 0, 0);
     }
 
     // Success.
@@ -980,10 +980,10 @@ dwmdontcare:
     }
 
     // Define final position and size of window:
-    x=windowRecord->rect[kPsychLeft];
-    y=windowRecord->rect[kPsychTop];
-    width=PsychGetWidthFromRect(windowRecord->rect);
-    height=PsychGetHeightFromRect(windowRecord->rect);
+    x = (int) windowRecord->rect[kPsychLeft];
+    y = (int) windowRecord->rect[kPsychTop];
+    width  = (int) PsychGetWidthFromRect(windowRecord->rect);
+    height = (int) PsychGetHeightFromRect(windowRecord->rect);
 
     // Assemble windows caption name from window index:
     sprintf(winname, "PTB Onscreen window [%i]:", (int) windowRecord->windowIndex);
@@ -1215,7 +1215,7 @@ dwmdontcare:
     // Do we have a valid pixelformat?
     if (pf == 0) {
       // Nope. We give up!
-      ReleaseDC(hDC, hWnd);
+      ReleaseDC(hWnd, hDC);
       DestroyWindow(hWnd);      
       printf("\nPTB-ERROR[ChoosePixelFormat() failed]: Unknown error, Win32 specific.\n\n");
       return(FALSE);
@@ -1223,7 +1223,7 @@ dwmdontcare:
     
     // Yes. Set it:
     if (SetPixelFormat(hDC, pf, &pfd) == FALSE) {
-      ReleaseDC(hDC, hWnd);
+      ReleaseDC(hWnd, hDC);
       DestroyWindow(hWnd);      
       
       printf("\nPTB-ERROR[SetPixelFormat() failed]: Unknown error, Win32 specific.\n\n");
@@ -1238,7 +1238,7 @@ dwmdontcare:
     // Ok, create and attach the rendering context.
     windowRecord->targetSpecific.contextObject = wglCreateContext(hDC);
     if (windowRecord->targetSpecific.contextObject == NULL) {
-      ReleaseDC(hDC, hWnd);
+      ReleaseDC(hWnd, hDC);
       DestroyWindow(hWnd);
       
       printf("\nPTB-ERROR:[Context creation failed] Unknown, Win32 specific.\n\n");
@@ -1310,10 +1310,10 @@ dwmdontcare:
 	  windowRecord->targetSpecific.contextObject=NULL;
 
       // Release device context:
-      ReleaseDC(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle);
+      ReleaseDC(windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.deviceContext);
       windowRecord->targetSpecific.deviceContext=NULL;
 
-   	// Close & Destroy the window:
+      // Close & Destroy the window:
       DestroyWindow(windowRecord->targetSpecific.windowHandle);
       windowRecord->targetSpecific.windowHandle=NULL;
 
@@ -1391,7 +1391,7 @@ dwmdontcare:
 	   // Do we have a valid pixelformat?
       if (nNumFormats == 0) {
 		   // Nope. We give up!
-         ReleaseDC(hDC, hWnd);
+         ReleaseDC(hWnd, hDC);
          DestroyWindow(hWnd);      
          printf("\nPTB-ERROR[wglChoosePixelFormat() failed]: Unknown error, Win32 specific. Code: %i.\n\n", GetLastError());
          return(FALSE);
@@ -1399,7 +1399,7 @@ dwmdontcare:
 
       // Yes. Set it:
       if (SetPixelFormat(hDC, pf, &pfd) == FALSE) {
-         ReleaseDC(hDC, hWnd);
+         ReleaseDC(hWnd, hDC);
          DestroyWindow(hWnd);      
 
          printf("\nPTB-ERROR[SetPixelFormat() - II failed]: Unknown error, Win32 specific.\n\n");
@@ -1414,7 +1414,7 @@ dwmdontcare:
       // Ok, create and attach the rendering context.
       windowRecord->targetSpecific.contextObject = wglCreateContext(hDC);
       if (windowRecord->targetSpecific.contextObject == NULL) {
-         ReleaseDC(hDC, hWnd);
+         ReleaseDC(hWnd, hDC);
          DestroyWindow(hWnd);
 
          printf("\nPTB-ERROR:[Context creation II failed] Unknown, Win32 specific.\n\n");
@@ -1478,7 +1478,7 @@ dwmdontcare:
 
 		windowRecord->targetSpecific.glusercontextObject = wglCreateContext(hDC);
 		if (windowRecord->targetSpecific.glusercontextObject == NULL) {
-         ReleaseDC(hDC, hWnd);
+         ReleaseDC(hWnd, hDC);
          DestroyWindow(hWnd);
 			printf("\nPTB-ERROR[UserContextCreation failed]: Creating a private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n");
 			return(FALSE);
@@ -1595,7 +1595,7 @@ dwmdontcare:
      // Setup dedicated swap context for async flips:
      windowRecord->targetSpecific.glswapcontextObject = wglCreateContext(hDC);
      if (windowRecord->targetSpecific.glswapcontextObject == NULL) {
-         ReleaseDC(hDC, hWnd);
+         ReleaseDC(hWnd, hDC);
          DestroyWindow(hWnd);
          printf("\nPTB-ERROR[SwapContextCreation failed]: Creating a private OpenGL context for async flips failed for unknown reasons.\n\n");
          return(FALSE);
@@ -1829,7 +1829,7 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
   }
 
   // Release device context:
-  ReleaseDC(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle);
+  ReleaseDC(windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.deviceContext);
   windowRecord->targetSpecific.deviceContext=NULL;
 
   // Release the capture, whatever that means...
@@ -1955,7 +1955,7 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
 psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord, psych_bool postSwap, unsigned int flags, psych_uint64* onsetVBLCount, double* onsetVBLTime, psych_uint64* frameId, double* compositionRate, int fullStateStructReturnArgPos)
 {
 	DWM_TIMING_INFO	dwmtiming;	
-	psych_uint64 qpcFrameDisplayed, qpcFrameComplete;
+	psych_uint64 qpcFrameDisplayed;
 	static double qpcfreq = -1;
 	HRESULT rc1 = 0;
 
@@ -2166,7 +2166,7 @@ psych_bool PsychOSSetPresentParameters(PsychWindowRecordType *windowRecord, psyc
 	dwmPresentParams.cBuffer = queueLength;
 	dwmPresentParams.fUseSourceRate = (rateDuration > 0) ? TRUE : FALSE;
 	dwmPresentParams.rateSource = rateSource;
-	dwmPresentParams.cRefreshesPerFrame = (int) (rateDuration <= 0) ? -rateDuration : 0;
+	dwmPresentParams.cRefreshesPerFrame = (UINT) ((rateDuration <= 0) ? -rateDuration : 0);
 	dwmPresentParams.eSampling = DWM_SOURCE_FRAME_SAMPLING_POINT;
 	
 	// Call function if DWM is supported and enabled:
