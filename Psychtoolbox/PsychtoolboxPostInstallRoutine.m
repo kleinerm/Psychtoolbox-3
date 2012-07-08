@@ -81,7 +81,7 @@ if nargin < 2
                 end
             end
         end
-    catch
+    catch %#ok<*CTCH>
         fprintf('Info: Failed to determine flavor of this Psychtoolbox. Not a big deal...\n');
     end
 else
@@ -133,7 +133,7 @@ end
 % Check for operating system minor version on Mac OS/X when running under
 % Matlab:
 if IsOSX
-    if ~IsOctave & ~IsOSX(1) %#ok<AND2>
+    if ~IsOctave & ~IsOSX(1) 
         % Running on Matlab + OS/X. Find the operating system minor version,
         % i.e., the 'y' in the x.y.z number, e.g., y=3 for 10.3.7:
 
@@ -217,7 +217,7 @@ if IsOSX
     end
 
     % Is the operating system minor version 'minorver' < 6 on 64-Bit OSX?
-    if (minorver < 6) & IsOSX(1)
+    if (minorver < 6) & IsOSX(1) %#ok<*AND2>
         % Yes. This is MacOS/X 10.5 or earlier, i.e., older than 10.6
         % Snow Leopard. 64-Bit PTB will only provide limited functionality:
         fprintf('\n\n\n\n\n\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n');
@@ -459,15 +459,17 @@ if IsWin & ~IsOctave %#ok<AND2>
         % Try if WaitSecs MEX file works...
         WaitSecs('YieldSecs', 0.1)
     catch
-        % Failed! Either screwed setup of path or missing VC++ 2005 runtime
-        % libraries.
-        fprintf('ERROR: Most likely cause: The most recent security updates to the Visual C++ 2005 runtime libraries\n');
-        fprintf('ERROR: are missing on your system. Go to the following URL:\n\n');
-        fprintf('http://www.microsoft.com/downloads/details.aspx?familyid=766A6AF7-EC73-40FF-B072-9112BAB119C2&displaylang=en#filelist\n\n');
-        fprintf('ERROR: Download and install the required runtime libraries.\n\n');
-        fprintf('ERROR: Use the download button right to vcredist_x86.exe - The file with a size of 2.6 MB.\n');
-        fprintf('ERROR: Then double-click and run the downloaded vcredist_x86.exe installer to update your system.\n');
-        fprintf('ERROR: If you install the wrong runtime, it will still not work.\n\n');
+        % Failed! Either screwed setup of path or missing VC++ 2010 runtime libraries.
+        fprintf('ERROR: Most likely cause: The Microsoft Visual C++ 2010 runtime libraries\n');
+        fprintf('ERROR: are missing on your system.\n\n');
+        fprintf('Execute the installer file vcredist_x86.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
+        fprintf('You must execute that installer as an administrator user. Exit Matlab before the installation, then restart it.\n');
+        %fprintf('Go to the following URL:\n\n');
+        %fprintf('http://www.microsoft.com/downloads/details.aspx?familyid=766A6AF7-EC73-40FF-B072-9112BAB119C2&displaylang=en#filelist\n\n');
+        %fprintf('ERROR: Download and install the required runtime libraries.\n\n');
+        %fprintf('ERROR: Use the download button right to vcredist_x86.exe - The file with a size of 2.6 MB.\n');
+        %fprintf('ERROR: Then double-click and run the downloaded vcredist_x86.exe installer to update your system.\n');
+        %fprintf('ERROR: If you install the wrong runtime, it will still not work.\n\n');
         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
         fprintf('ERROR: You can also just do a: cd(PsychtoolboxRoot); SetupPsychtoolbox;\n\n');
         fprintf('ERROR: This will avoid a full download of Psychtoolbox over the internet and just finish the setup.\n');
@@ -587,7 +589,7 @@ if ~IsOctave
 
         % Restore the old classpath file if necessary.
         if exist('madeBackup', 'var')
-            [s, w] = copyfile(bakclasspathFile, classpathFile, 'f'); %#ok<NASGU>
+            [s, w] = copyfile(bakclasspathFile, classpathFile, 'f'); %#ok<*ASGLU,NASGU>
         end
     end
 end % if ~IsOctave
