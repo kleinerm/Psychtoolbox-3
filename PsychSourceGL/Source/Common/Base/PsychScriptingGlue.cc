@@ -2142,7 +2142,7 @@ psych_bool PsychAllocOutFloatMatArg(int position, PsychArgRequirementType isRequ
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
 	if(putOut){
 		mxpp = PsychGetOutArgMxPtr(position);
-		*mxpp = mxCreateFloatMatrix3D(m,n,p);
+		*mxpp = mxCreateFloatMatrix3D((size_t) m, (size_t) n, (size_t) p);
 		*array = (float*) mxGetData(*mxpp);
 	}else
 		*array = (float*) mxMalloc(sizeof(float) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));
@@ -2221,7 +2221,7 @@ psych_bool PsychAllocOutBooleanMatArg(int position, PsychArgRequirementType isRe
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
 	if(putOut){
 		mxpp = PsychGetOutArgMxPtr(position);
-		*mxpp = mxCreateNativeBooleanMatrix3D(m,n,p);
+		*mxpp = mxCreateNativeBooleanMatrix3D((size_t) m, (size_t) n, (size_t) p);
 		*array = (PsychNativeBooleanType *)mxGetLogicals(*mxpp);
 	}else{
 		*array= (PsychNativeBooleanType *) mxMalloc(sizeof(PsychNativeBooleanType) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));
@@ -2249,7 +2249,7 @@ psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
 	if(putOut){
 		mxpp = PsychGetOutArgMxPtr(position);
-		*mxpp = mxCreateByteMatrix3D(m,n,p);
+		*mxpp = mxCreateByteMatrix3D((size_t) m, (size_t) n, (size_t) p);
 		*array = (psych_uint8 *)mxGetData(*mxpp);
 	}else{
 		*array= (psych_uint8 *) mxMalloc(sizeof(psych_uint8) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));

@@ -797,8 +797,8 @@ void PsychInitScreenToHeadMappings(int numDisplays)
     ptbpipelines = getenv("PSYCHTOOLBOX_PIPEMAPPINGS");
     if (ptbpipelines) {
         // The default is "012...", ie screen 0 = pipe 0, 1 = pipe 1, 2 =pipe 2, n = pipe n
-	for (i = 0; (i < strlen(ptbpipelines)) && (i < kPsychMaxPossibleDisplays); i++) {
-	    PsychSetScreenToCrtcId(i, (((ptbpipelines[i] - 0x30) >=0) && ((ptbpipelines[i] - 0x30) < 10)) ? (ptbpipelines[i] - 0x30) : -1, 0);
+        for (i = 0; (i < (int) strlen(ptbpipelines)) && (i < kPsychMaxPossibleDisplays); i++) {
+            PsychSetScreenToCrtcId(i, (((ptbpipelines[i] - 0x30) >=0) && ((ptbpipelines[i] - 0x30) < 10)) ? (ptbpipelines[i] - 0x30) : -1, 0);
         }
     }
 

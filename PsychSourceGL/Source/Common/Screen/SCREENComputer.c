@@ -430,11 +430,6 @@ PsychError SCREENComputer(void)
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 
-//#include <Windows.h>
-//#include <rpc.h>
-//#include <rpcdce.h>
-//#pragma comment(lib, "rpcrt4.lib")
-
 // M$-Windows implementation of Screen('Computer'): This is very rudimentary for now.
 // We only report the operating sytem type (="Windows") and MAC-Address, but don't report any more useful
 // information. MAC query does not work yet - We do not have the neccessary libraries to compile the code :(
@@ -442,7 +437,7 @@ PsychError SCREENComputer(void)
 {
 	// Info struct for queries to OS:
 	OSVERSIONINFO osvi;
-	char	versionString[256];
+	char versionString[256];
 	
     // const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "kern", "hw", "processUserLongName", 
     //      "processUserShortName", "consoleUserName", "machineName", "localHostName", "location", "MACAddress", "system" };
@@ -452,12 +447,8 @@ PsychError SCREENComputer(void)
     const char *hwStructFieldNames[]={"machine", "model", "ncpu", "physmem", "usermem", "busfreq", "cpufreq"};
     int numMajorStructDimensions=1, numKernStructDimensions=1, numHwStructDimensions=1;
     int numMajorStructFieldNames=5, numKernStructFieldNames=5, numHwStructFieldNames=7;
-    // char ethernetMACStr[20];
-    // unsigned char MACData[6];
-    // UUID uuid;
-    int i;
 
-    PsychGenericScriptType	*kernStruct, *hwStruct, *majorStruct;
+    PsychGenericScriptType *majorStruct;
     //all subfunctions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -482,22 +473,6 @@ PsychError SCREENComputer(void)
 	// Versions to products: 6.1 = Windows-7, 6.0  = Vista, 5.2 = Windows Server 2003, 5.1 = WindowsXP, 5.0 = Windows 2000, 4.x = NT
 	sprintf(versionString, "%i.%i.%i - %s", osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber, (char*) osvi.szCSDVersion);
 	PsychSetStructArrayStringElement("system", 0, versionString, majorStruct);
-
-    
-    // Query hardware MAC address of primary ethernet interface: This is a unique id of the computer,
-    // good enough to disambiguate our statistics:
-    // sprintf(ethernetMACStr, "00:00:00:00:00:00");
-   
-    // Ask OS to create UUID. Windows uses the MAC address of primary interface
-    // in bytes 2 to 7  to do this:
-    //UuidCreateSequential( &uuid );    // Ask OS to create UUID
-    //for (i=2; i<8; i++) MACData[i - 2] = uuid.Data4[i];
-    //sprintf(ethernetMACStr, "%.2X:%.2X:%.2X:%.2X:%.2X:%.2X",
-	 //   MACData[0] & 0xff, MACData[1] & 0xff,
-	 //   MACData[2] & 0xff, MACData[3] & 0xff,
-	 //   MACData[4] & 0xff, MACData[5] & 0xff);
-	    	    	    
-    // PsychSetStructArrayStringElement("MACAddress", 0, ethernetMACStr, majorStruct);
 
     return(PsychError_none);
 }
@@ -555,7 +530,7 @@ PsychError SCREENComputer(void)
     if (s>=0) {
       strcpy(devea.ifr_name, "eth0");
       if (ioctl(s, SIOCGIFHWADDR, &devea) >= 0) {
-	sprintf(ethernetMACStr, "%.2X:%.2X:%.2X:%.2X:%.2X:%.2X",
+		sprintf(ethernetMACStr, "%.2X:%.2X:%.2X:%.2X:%.2X:%.2X",
 		devea.ifr_ifru.ifru_hwaddr.sa_data[0]&0xff, devea.ifr_ifru.ifru_hwaddr.sa_data[1]&0xff,
 		devea.ifr_ifru.ifru_hwaddr.sa_data[2]&0xff, devea.ifr_ifru.ifru_hwaddr.sa_data[3]&0xff,
 		devea.ifr_ifru.ifru_hwaddr.sa_data[4]&0xff, devea.ifr_ifru.ifru_hwaddr.sa_data[5]&0xff);

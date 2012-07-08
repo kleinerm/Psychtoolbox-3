@@ -11,10 +11,10 @@
  
 	HISTORY:
 	
-	9.01.2011				Created initial version.
-	8.04.2011                               Make video/audio recording work ok.
-	5.06.2011                               Make video/audio recording good enough
-						for initial release on Linux.
+	9.01.2011               Created initial version.
+	8.04.2011               Make video/audio recording work ok.
+	5.06.2011               Make video/audio recording good enough
+                            for initial release on Linux.
 
 	DESCRIPTION:
 	
@@ -842,10 +842,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 	PsychGenericScriptType 	*devs;
 	const char *FieldNames[]={"DeviceIndex", "ClassIndex", "InputIndex", "ClassName", "InputHandle", "Device", "DevicePath", "DeviceName", "GUID", "DevicePlugin", "DeviceSelectorProperty" };
 
-	int					i, n;
-	char				port_str[64];
-	char				class_str[64];
-	int					inputIndex;
+	int					i;
 	GstElement			*videosource = NULL;
 	GstPropertyProbe	*probe = NULL;
 	GValueArray			*viddevs = NULL;
@@ -990,7 +987,7 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
 			printf("PTB-DEBUG: Videosource caps are: %" GST_PTR_FORMAT "\n\n", caps);
 
 		// Iterate through all supported video capture modes:
-		for (i = 0; i < gst_caps_get_size(caps); i++) {
+		for (i = 0; i < (int) gst_caps_get_size(caps); i++) {
 			str = gst_caps_get_structure(caps, i);
 
 			gst_structure_get_int(str, "width", &qwidth);
@@ -1884,7 +1881,6 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	gint			width, height;
 	gint			rate1, rate2;
 	gint			twidth, theight;
-	int			i;
 	char                    *codecSpec;
 	char                    codecName[10000];
 
@@ -3298,24 +3294,18 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 								 PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer)
 {
     PsychVidcapRecordType *capdev;
-    GstElement *camera;
     GstBuffer *videoBuffer = NULL;
     gint64 bufferIndex;
     double deltaT = 0;
-    GstEvent *event;
     GstClockTime baseTime;
 
     int waitforframe;
-    GLuint texid;
     int w, h;
-    double targetdelta, realdelta, frames;
     unsigned int intensity = 0;
     unsigned int count, i, bpp;
     unsigned char* pixptr;
     psych_bool newframe = FALSE;
     double tstart, tend;
-    unsigned int pixval, alphacount;
-    int error;
     int nrdropped = 0;
     unsigned char* input_image = NULL;
 
@@ -3727,9 +3717,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 */
 double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, double value)
 {
-	unsigned int minval, maxval, intval, oldintval;
-	int triggercount;
-
+	unsigned int intval, oldintval;
 	float oldfvalue = FLT_MAX;
 	double oldvalue = DBL_MAX; // Initialize return value to the "unknown/unsupported" default.
 	psych_bool assigned = false;
@@ -3996,8 +3984,8 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 				oldvalue = (double) gst_color_balance_get_value(cb, cc);
 
 				// Optionally assign new setting:
-				if (intval < (int) cc->min_value) intval = (int) cc->min_value;
-				if (intval > (int) cc->max_value) intval = (int) cc->max_value;
+				if (intval < (unsigned int) cc->min_value) intval = (unsigned int) cc->min_value;
+				if (intval > (unsigned int) cc->max_value) intval = (unsigned int) cc->max_value;
 				if (value != DBL_MAX) gst_color_balance_set_value(cb, cc, intval);
 			}
 		}

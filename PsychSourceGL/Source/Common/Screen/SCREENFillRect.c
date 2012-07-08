@@ -58,9 +58,8 @@ PsychError SCREENFillRect(void)
 	PsychColorType					color;
 	PsychRectType					rect;
 	PsychWindowRecordType			*windowRecord;
-	int								whiteValue;
-	psych_bool							isArgThere, isScreenRect;
-	GLdouble						dVals[4]; 
+	double							whiteValue;
+	psych_bool						isArgThere, isScreenRect;
     double							*xy, *colors;
 	unsigned char					*bytecolors;
 	int								numRects, i, nc, mc, nrsize;

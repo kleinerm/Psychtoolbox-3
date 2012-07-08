@@ -121,16 +121,16 @@ void InitializePsychDisplayGlue(void)
 // hMonitor struct which contains the Windows internal name for the detected display. We
 // need to pass this name string to a variety of Windows-Functions to refer to the monitor
 // of interest.
-psych_bool CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData);
+BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData);
 BOOL WINAPI PsychDirectDrawEnumProc(GUID FAR* lpGUID, LPSTR lpDriverDescription, LPSTR lpDriverName, LPVOID displayIdx, HMONITOR hMonitor);
 
-psych_bool CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
+BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
 {
 	MONITORINFOEX moninfo;
 
 	// hMonitor is the handle to the monitor info. Resolve it to a moninfo information struct:
 	moninfo.cbSize = sizeof(MONITORINFOEX);
-	GetMonitorInfo(hMonitor, &moninfo);
+	GetMonitorInfo(hMonitor, (LPMONITORINFO) &moninfo);
 
 	// Query and copy the display device name into our own screenNumber->Name mapping array:
 	displayDeviceName[numDisplays] = (char*) malloc(256);
@@ -746,12 +746,9 @@ void PsychGetScreenSettings(int screenNumber, PsychScreenSettingsType *settings)
 
 psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsType *settings)
 {
-    CFDictionaryRef 		cgMode;
-    psych_bool 			isValid, isCaptured;
-    CGDisplayErr 		error;
+    CFDictionaryRef     cgMode;
+    psych_bool          isValid, isCaptured;
 
-    //get the display IDs.  Maybe we should consolidate this out of these functions and cache the IDs in a file static
-    //variable, since basicially every core graphics function goes through this deal.    
     if(settings->screenNumber>=numDisplays)
         PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychSetScreenSettings() is out of range");
 
@@ -789,7 +786,7 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
     // Change the display mode.   
 	// We do this in PsychOSOpenWindow() if necessary for fullscreen-mode, but without changing any settings except
 	// switch to fullscreen mode. Here we call PsychOSOpenWindow's helper routine to really change video settings:
-	return(ChangeScreenResolution(settings->screenNumber, PsychGetWidthFromRect(settings->rect), PsychGetHeightFromRect(settings->rect), PsychGetValueFromDepthStruct(0,&(settings->depth)), settings->nominalFrameRate));
+	return(ChangeScreenResolution(settings->screenNumber, (int) PsychGetWidthFromRect(settings->rect), (int) PsychGetHeightFromRect(settings->rect), PsychGetValueFromDepthStruct(0,&(settings->depth)), settings->nominalFrameRate));
 }
 
 /*

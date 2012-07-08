@@ -46,6 +46,12 @@
 	#ifndef snprintf
 	#define snprintf _snprintf
 	#endif
+
+    // MSVC wants _strdup instead of strdup:
+    #ifdef _MSC_VER
+    #define strdup _strdup
+    #endif
+
 #elif PSYCH_SYSTEM == PSYCH_OSX
 #elif PSYCH_SYSTEM == PSYCH_LINUX
 #endif 

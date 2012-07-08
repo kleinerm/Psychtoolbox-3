@@ -346,12 +346,12 @@ PsychError SCREENGetImage(void)
 			alphaPlane= redPlane + 3 * planeSize; 
 
 			glPixelStorei(GL_PACK_ALIGNMENT,1);
-			invertedY = windowRect[kPsychBottom] - sampleRect[kPsychBottom];
+			invertedY = (int) (windowRect[kPsychBottom] - sampleRect[kPsychBottom]);
 
-			glReadPixels(sampleRect[kPsychLeft], invertedY, (int) sampleRectWidth, (int) sampleRectHeight, GL_RED, GL_UNSIGNED_BYTE, redPlane); 
-			if (nrchannels>1) glReadPixels(sampleRect[kPsychLeft],invertedY, (int) sampleRectWidth, (int) sampleRectHeight, GL_GREEN, GL_UNSIGNED_BYTE, greenPlane);
-			if (nrchannels>2) glReadPixels(sampleRect[kPsychLeft],invertedY, (int) sampleRectWidth, (int) sampleRectHeight, GL_BLUE, GL_UNSIGNED_BYTE, bluePlane);
-			if (nrchannels>3) glReadPixels(sampleRect[kPsychLeft],invertedY, (int) sampleRectWidth, (int) sampleRectHeight, GL_ALPHA, GL_UNSIGNED_BYTE, alphaPlane);
+			glReadPixels((int) sampleRect[kPsychLeft], invertedY, (int) sampleRectWidth, (int) sampleRectHeight, GL_RED, GL_UNSIGNED_BYTE, redPlane); 
+			if (nrchannels>1) glReadPixels((int) sampleRect[kPsychLeft],invertedY, (int) sampleRectWidth, (int) sampleRectHeight, GL_GREEN, GL_UNSIGNED_BYTE, greenPlane);
+			if (nrchannels>2) glReadPixels((int) sampleRect[kPsychLeft],invertedY, (int) sampleRectWidth, (int) sampleRectHeight, GL_BLUE, GL_UNSIGNED_BYTE, bluePlane);
+			if (nrchannels>3) glReadPixels((int) sampleRect[kPsychLeft],invertedY, (int) sampleRectWidth, (int) sampleRectHeight, GL_ALPHA, GL_UNSIGNED_BYTE, alphaPlane);
 			
 			//in one pass transpose and flip what we read with glReadPixels before returning.  
 			//-glReadPixels insists on filling up memory in sequence by reading the screen row-wise whearas Matlab reads up memory into columns.
@@ -380,7 +380,7 @@ PsychError SCREENGetImage(void)
 			planeSize = sampleRectWidth * sampleRectHeight * sizeof(float);
 
 			glPixelStorei(GL_PACK_ALIGNMENT, 1);
-			invertedY=windowRect[kPsychBottom]-sampleRect[kPsychBottom];
+			invertedY = (int) (windowRect[kPsychBottom]-sampleRect[kPsychBottom]);
 
 			if (nrchannels==1) glReadPixels((int) sampleRect[kPsychLeft], invertedY, (int) sampleRectWidth, (int) sampleRectHeight, GL_RED, GL_FLOAT, dredPlane); 
 			if (nrchannels==2) glReadPixels((int) sampleRect[kPsychLeft], invertedY, (int) sampleRectWidth, (int) sampleRectHeight, GL_LUMINANCE_ALPHA, GL_FLOAT, dredPlane);
@@ -425,7 +425,7 @@ PsychError SCREENGetImage(void)
 		framepixels = PsychGetVideoFrameForMoviePtr(moviehandle, &twidth, &theight);
 		if (framepixels) {
 			glPixelStorei(GL_PACK_ALIGNMENT,1);
-			invertedY = windowRect[kPsychBottom] - sampleRect[kPsychBottom];
+			invertedY = (int) (windowRect[kPsychBottom] - sampleRect[kPsychBottom]);
 			
 			glReadPixels((int) sampleRect[kPsychLeft], invertedY, twidth, theight, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8, framepixels);
 			if (PsychAddVideoFrameToMovie(moviehandle, frameduration, TRUE) != 0) {
