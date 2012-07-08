@@ -699,8 +699,8 @@ PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
       maxHeight   = (winRec->textAttributes.glyphHeight[textString[i]] > maxHeight) ? winRec->textAttributes.glyphHeight[textString[i]] : maxHeight;
     }
 
-    accumWidth *= (PSYCH_SYSTEM == PSYCH_WINDOWS) ? winRec->textAttributes.textSize : 1.0;
-    maxHeight  *= (PSYCH_SYSTEM == PSYCH_WINDOWS) ? winRec->textAttributes.textSize : 1.0;
+    accumWidth *= (PSYCH_SYSTEM == PSYCH_WINDOWS) ? (float) winRec->textAttributes.textSize : 1.0f;
+    maxHeight  *= (PSYCH_SYSTEM == PSYCH_WINDOWS) ? (float) winRec->textAttributes.textSize : 1.0f;
 
 	if (yPositionIsBaseline) {
 		// Y position of drawing cursor defines distance between top of text and
@@ -748,10 +748,10 @@ PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
 		// Position our "cursor": These are 3D fonts where the glyphs are represented by 3D geometry.
-		glTranslatef(*xp, *yp - textHeightToBaseline + winRec->textAttributes.textSize, -0.5f);
+		glTranslated(*xp, *yp - textHeightToBaseline + winRec->textAttributes.textSize, -0.5);
 
 		// Scale to final size:
-		scalef = MulDiv(winRec->textAttributes.textSize, GetDeviceCaps(winRec->targetSpecific.deviceContext, LOGPIXELSY), 72);
+		scalef = (float) MulDiv(winRec->textAttributes.textSize, GetDeviceCaps(winRec->targetSpecific.deviceContext, LOGPIXELSY), 72);
 		glScalef(scalef, -1 * scalef, 1);
     #endif
 
@@ -881,7 +881,7 @@ PsychError	PsychOSDrawUnicodeTextGDI(PsychWindowRecordType* winRec, PsychRectTyp
 	
 	// Convert input double unicode string into WCHAR unicode string for Windows renderer:
 	textUniString = (WCHAR*) PsychMallocTemp(sizeof(WCHAR) * stringLengthChars);
-	for (i = 0; i < stringLengthChars; i++) textUniString[i] = (WCHAR) textUniDoubleString[i];
+	for (i = 0; i < (int) stringLengthChars; i++) textUniString[i] = (WCHAR) textUniDoubleString[i];
 
 	// 'DrawText' mode?
 	if (boundingbox == NULL) {
@@ -1069,7 +1069,7 @@ PsychError	PsychOSDrawUnicodeTextGDI(PsychWindowRecordType* winRec, PsychRectTyp
 	// Is this a 'Textbounds' op?
 	if (boundingbox) {
 		// "Textbounds" op, no real text drawing. Assign final bounding box, then return:
-		PsychCopyRect(boundingbox, boundingRect);
+		PsychCopyRect(*boundingbox, boundingRect);
 		
 		// Restore to default font after text drawing:
 		SelectObject(dc, defaultFont);
@@ -1470,7 +1470,7 @@ psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 	}
 
 	// Special # symbol to directly set a codepage provided?
-	if (strstr(mnewlocale, "#") && (sscanf("#%i", &mycodepage) > 0)) {
+	if (strstr(mnewlocale, "#") && (sscanf(mnewlocale, "#%i", &mycodepage) > 0)) {
 		// Yes, parse numeric codepage id and assign it:
 		strcpy(drawtext_localestring, mnewlocale);
 		drawtext_codepage = mycodepage;
@@ -1478,7 +1478,7 @@ psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 	}
 	else {
 		// Special case "UTF-8" string provided?
-		if (PsychMatch(mnewlocale, "UTF-8")) {
+		if (PsychMatch((char*) mnewlocale, "UTF-8")) {
 			// Yes: Switch to UTF-8 codepage:
 			strcpy(drawtext_localestring, mnewlocale);
 			drawtext_codepage = CP_UTF8;
@@ -1523,7 +1523,7 @@ psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 	}
 
 	// Special # symbol to directly set a codepage provided?
-	if (strstr(mnewlocale, "#") && (sscanf("#%i", &mycodepage) > 0)) {
+	if (strstr(mnewlocale, "#") && (sscanf(mnewlocale, "#%i", &mycodepage) > 0)) {
 		// Yes, parse numeric codepage id and assign it:
 		strcpy(drawtext_localestring, mnewlocale);
 		drawtext_codepage = mycodepage;
@@ -1813,7 +1813,7 @@ allocintext_skipped:
 void PsychDrawCharText(PsychWindowRecordType* winRec, const char* textString, double* xp, double* yp, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor, PsychRectType* boundingbox)
 {
 	// Convert textString to Unicode format double vector:
-	int ix;
+	unsigned int ix;
 	unsigned int textLength = (unsigned int) strlen(textString);
 	double* unicodeText = (double*) PsychCallocTemp(textLength + 1, sizeof(double));
 	for (ix = 0; ix < textLength; ix++) unicodeText[ix] = (double) textString[ix];
@@ -1833,7 +1833,7 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
 	float			xmin, ymin, xmax, ymax;
 	double			myyp;
 	double			dummy;
-	int				i;
+	unsigned int	i;
 	int				rc = 0;
 
 	// Invert text string (read it "backwards") if swapTextDirection is requested:
@@ -1960,7 +1960,7 @@ PsychError SCREENDrawText(void)
     PsychWindowRecordType	*winRec;
     psych_bool				doSetColor, doSetBackgroundColor;
     PsychColorType			colorArg, backgroundColorArg;
-    int						i, yPositionIsBaseline, swapTextDirection;
+    int						yPositionIsBaseline, swapTextDirection;
     int						stringLengthChars;
 	double*					textUniDoubleString = NULL;
 
@@ -1990,10 +1990,10 @@ PsychError SCREENDrawText(void)
     // Same for background color:
     doSetBackgroundColor = PsychCopyInColorArg(6, kPsychArgOptional, &backgroundColorArg);
     if (doSetBackgroundColor) {
-	PsychSetTextBackgroundColorInWindowRecord(&backgroundColorArg, winRec);
+        PsychSetTextBackgroundColorInWindowRecord(&backgroundColorArg, winRec);
     } else {
-	// This just to coerce background color into proper format in case it hasn't been done already:
-	PsychSetTextBackgroundColorInWindowRecord(&(winRec->textAttributes.textBackgroundColor),  winRec);
+        // This just to coerce background color into proper format in case it hasn't been done already:
+        PsychSetTextBackgroundColorInWindowRecord(&(winRec->textAttributes.textBackgroundColor),  winRec);
     }
 
     // Special handling of offset for y position correction:
