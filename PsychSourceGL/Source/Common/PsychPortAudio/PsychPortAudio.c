@@ -758,7 +758,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	psych_int64  playposition, outsbsize, insbsize, recposition;
 	psych_int64  outsboffset;
 	unsigned int reqstate;
-	double now, firstsampleonset, onsetDelta, offsetDelta, captureStartTime, tMonotonic;
+	double now, firstsampleonset, onsetDelta, offsetDelta, captureStartTime;
 	double repeatCount;	
 	psych_int64 playpositionlimit;
 	PaHostApiTypeId hA;
@@ -820,7 +820,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 			// further processing.
 
 			// Get current CLOCK_MONOTONIC time:
-			tMonotonic = PsychOSGetLinuxMonotonicTime();
+			double tMonotonic = PsychOSGetLinuxMonotonicTime();
 			
 			// Returned current time timestamp closer to tMonotonic than to GetSecs time?
 			if (fabs(timeInfo->currentTime - tMonotonic) < fabs(timeInfo->currentTime - now)) {
@@ -966,7 +966,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	// Assign 1 as neutral value for AM modulator slaves, as 1 is the neutral
 	// element for gain-modulation (multiplication), as opposed to zero as neutral
 	// element for mixing and for outputting "silence":
-	neutralValue = (dev->opmode & kPortAudioIsAMModulator) ? 1.0 : 0;
+	neutralValue = (dev->opmode & kPortAudioIsAMModulator) ? 1.0f : 0.0f;
 
 	// Requested logical playback state is "stopped" or "aborting" ? If so, abort.
 	if ((reqstate == 0) || (reqstate == 3)) {		
@@ -988,7 +988,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		PsychPAUnlockDeviceMutex(dev);
 		
 		// Prime the outputbuffer with silence, so playback is effectively stopped:
-		if (outputBuffer && !isSlave) memset(outputBuffer, 0, (size_t) framesPerBuffer * outchannels * sizeof(float));
+		if (outputBuffer && !isSlave) memset(outputBuffer, 0, (size_t) (framesPerBuffer * outchannels * sizeof(float)));
 
 		if (dev->runMode == 0) {
 			// Runmode 0: We shall really stop the engine:
@@ -1019,7 +1019,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		PsychPAUnlockDeviceMutex(dev);
 		
 		// Prime the outputbuffer with silence to simulate a stopped audio device:
-		if (outputBuffer && !isSlave) memset(outputBuffer, 0, (size_t) framesPerBuffer * outchannels * sizeof(float));
+		if (outputBuffer && !isSlave) memset(outputBuffer, 0, (size_t) (framesPerBuffer * outchannels * sizeof(float)));
 
 		// Done:
 		return(paContinue);
@@ -1084,7 +1084,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 				PsychPAUnlockDeviceMutex(dev);
 				
 				// At least one buffer away. Fill our buffer with zeros, aka silence:
-				if (!isSlave) memset(outputBuffer, 0, (size_t) framesPerBuffer * outchannels * sizeof(float));
+				if (!isSlave) memset(outputBuffer, 0, (size_t) (framesPerBuffer * outchannels * sizeof(float)));
 				
 				// Ready. Tell engine to continue stream processing, i.e., call us again...
 				return(paContinue);
@@ -1097,7 +1097,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 				// Fill in some silence:
 				if (neutralValue == 0) {
 					// Fast-path: Zerofill for silence...
-					memset(outputBuffer, 0, (size_t) silenceframes * outchannels * sizeof(float));
+					memset(outputBuffer, 0, (size_t) (silenceframes * outchannels * sizeof(float)));
 					out+= (silenceframes * outchannels);
 				}
 				else {
@@ -1143,7 +1143,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		// Scratch buffers for slave callbacks already allocated?
 		if ((dev->opmode & kPortAudioCapture) && (dev->slaveInBuffer == NULL)) {
 			// Allocate input distribution buffer:
-			dev->slaveInBuffer = (float*) malloc(sizeof(float) * dev->batchsize * inchannels);
+			dev->slaveInBuffer = (float*) malloc(sizeof(float) * (size_t) (dev->batchsize * inchannels));
 			if (NULL == dev->slaveInBuffer) {
 				// Out of memory! Perform an emergency abort:
 				dev->reqstate = 255;
@@ -1156,8 +1156,8 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 
 		if ((dev->opmode & kPortAudioPlayBack) && (dev->slaveOutBuffer == NULL)) {
 			// Allocate output receive buffer and output gain receive buffer:
-			dev->slaveOutBuffer = (float*) malloc(sizeof(float) * dev->batchsize * outchannels);
-			dev->slaveGainBuffer = (float*) malloc(sizeof(float) * dev->batchsize * outchannels);
+			dev->slaveOutBuffer = (float*) malloc(sizeof(float) * (size_t) (dev->batchsize * outchannels));
+			dev->slaveGainBuffer = (float*) malloc(sizeof(float) * (size_t) (dev->batchsize * outchannels));
 			if ((NULL == dev->slaveOutBuffer) || (NULL == dev->slaveGainBuffer)) {
 				// Out of memory! Perform an emergency abort:
 				dev->reqstate = 255;
@@ -1169,7 +1169,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		}
 
 		// Have scratch buffers ready. Clear output intermix buffer:
-		memset(outputBuffer, 0, dev->batchsize * outchannels * sizeof(float));
+		memset(outputBuffer, 0, (size_t) (dev->batchsize * outchannels * sizeof(float)));
 
 		// Iterate over all slave device callbacks: Or at least until all registered slaves are handled.
 		numSlavesHandled = 0;
@@ -1359,7 +1359,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	// from input to output, without any involvement of Matlab/Octave code:
 	if (!isMaster && (dev->opmode & kPortAudioMonitoring)) {
 		// Copy input buffer to output buffer:
-		memcpy(out, &(in[committedFrames * inchannels]), framesPerBuffer * outchannels * sizeof(float));
+		memcpy(out, &(in[committedFrames * inchannels]), (size_t) (framesPerBuffer * outchannels * sizeof(float)));
 
 		// Store updated positions in device structure:
 		dev->playposition = playposition + (framesPerBuffer * outchannels);
@@ -1992,7 +1992,6 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	int  m, n, p;
 	double* mychannelmap;
 	double suggestedLatency, lowlatency;
-	PaDeviceIndex paDevice;
 	PaHostApiIndex paHostAPI;
 	PaStreamParameters outputParameters;
 	PaStreamParameters inputParameters;
@@ -2248,7 +2247,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 		// No specific frequency requested:
 		if (latencyclass < 3) {
 			// At levels < 3, we select the device specific default.
-			freq = referenceDevInfo->defaultSampleRate;
+			freq = (int) referenceDevInfo->defaultSampleRate;
 		}
 		else {
 			freq = 96000; // Go really high...
@@ -2403,14 +2402,14 @@ PsychError PSYCHPORTAUDIOOpen(void)
 		if (mode & kPortAudioPlayBack) {
 			// Allocate a dummy outputbuffer with one sampleframe:
 			audiodevices[audiodevicecount].outputbuffersize = sizeof(float) * audiodevices[audiodevicecount].outchannels * 1;
-			audiodevices[audiodevicecount].outputbuffer = (float*) malloc(audiodevices[audiodevicecount].outputbuffersize);
+			audiodevices[audiodevicecount].outputbuffer = (float*) malloc((size_t) audiodevices[audiodevicecount].outputbuffersize);
 			if (audiodevices[audiodevicecount].outputbuffer==NULL) PsychErrorExitMsg(PsychError_outofMemory, "Out of system memory when trying to allocate audio buffer.");
 		}
 		
 		if (mode & kPortAudioCapture) {
 			// Allocate a dummy inputbuffer with one sampleframe:
 			audiodevices[audiodevicecount].inputbuffersize = sizeof(float) * audiodevices[audiodevicecount].inchannels * 1;
-			audiodevices[audiodevicecount].inputbuffer = (float*) calloc(1, audiodevices[audiodevicecount].inputbuffersize);
+			audiodevices[audiodevicecount].inputbuffer = (float*) calloc(1, (size_t) audiodevices[audiodevicecount].inputbuffersize);
 			if (audiodevices[audiodevicecount].inputbuffer == NULL) PsychErrorExitMsg(PsychError_outofMemory, "Free system memory exhausted when trying to allocate audio recording buffer!");
 		}		
 	}
@@ -2604,9 +2603,9 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 	PsychAllocInIntegerListArg(3, kPsychArgOptional, &numel, &nrchannels);
 	if (numel == 0) {
 		// No optional channelcount argument provided: Default to pamaster settings:
-		mynrchannels[0] = audiodevices[pamaster].outchannels;
-		mynrchannels[1] = audiodevices[pamaster].inchannels;
-		if (mode & kPortAudioIsOutputCapture) mynrchannels[1] = audiodevices[pamaster].outchannels;
+		mynrchannels[0] = (int) audiodevices[pamaster].outchannels;
+		mynrchannels[1] = (int) audiodevices[pamaster].inchannels;
+		if (mode & kPortAudioIsOutputCapture) mynrchannels[1] = (int) audiodevices[pamaster].outchannels;
 	}
 	else if (numel == 1) {
 		// One argument provided: Set same count for playback and recording:
@@ -2785,7 +2784,7 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 
 	// Setup per-channel output volumes for slave: Each channel starts with a 1.0 setting, ie., max volume:
 	if (audiodevices[audiodevicecount].outchannels > 0) {
-		audiodevices[audiodevicecount].outChannelVolumes = (float*) malloc(sizeof(float) * audiodevices[audiodevicecount].outchannels);
+		audiodevices[audiodevicecount].outChannelVolumes = (float*) malloc(sizeof(float) * (size_t) audiodevices[audiodevicecount].outchannels);
 		if (audiodevices[audiodevicecount].outChannelVolumes == NULL) PsychErrorExitMsg(PsychError_outofMemory, "Memory exhausted during audio volume vector allocation.");
 		for (i = 0; i < audiodevices[audiodevicecount].outchannels; i++) audiodevices[audiodevicecount].outChannelVolumes[i] = 1.0;
 	}
@@ -3030,7 +3029,7 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 		PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
 		
 		// Ok, everything sane, fill the buffer:
-		buffersize = sizeof(float) * inchannels * insamples;
+		buffersize = sizeof(float) * (size_t) (inchannels * insamples);
 		if (audiodevices[pahandle].outputbuffer && (audiodevices[pahandle].outputbuffersize != buffersize)) {
 			free(audiodevices[pahandle].outputbuffer);
 			audiodevices[pahandle].outputbuffer = NULL;
@@ -3100,7 +3099,7 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 		if (audiodevices[pahandle].outputbuffer == NULL) PsychErrorExitMsg(PsychError_user, "No audio buffer allocated! You must call this method once before start of playback to initially allocate a buffer of sufficient size.");
 
 		// Buffer of sufficient size for a streaming refill of this amount?
-		buffersize = sizeof(float) * (psych_int64) inchannels * (psych_int64) insamples;
+		buffersize = sizeof(float) * (size_t) ((psych_int64) inchannels * (psych_int64) insamples);
 		if (audiodevices[pahandle].outputbuffersize < buffersize) PsychErrorExitMsg(PsychError_user, "Total capacity of audio buffer is too small for a refill of this size! Allocate an initial buffer of at least the size of the biggest refill.");
 
 		// Need to lock b'cause of 'playposition':
@@ -3329,12 +3328,12 @@ PsychError PSYCHPORTAUDIORefillBuffer(void)
 	if (bufferhandle > 0) {
 		// Generic buffer:
 		outdata = buffer->outputbuffer;
-		outbuffersize = buffer->outputbuffersize;
+		outbuffersize = (size_t) buffer->outputbuffersize;
 	}
 	else {
 		// Standard playout buffer:
 		outdata = audiodevices[pahandle].outputbuffer;
-		outbuffersize = audiodevices[pahandle].outputbuffersize;
+		outbuffersize = (size_t) audiodevices[pahandle].outputbuffersize;
 	}
 
 	// Buffer exists?
@@ -3529,7 +3528,7 @@ PsychError PSYCHPORTAUDIOCreateBuffer(void)
 	// Deref bufferHandle:
 	buffer = PsychPAGetAudioBuffer(bufferhandle);
 	outdata = buffer->outputbuffer;
-	outbuffersize = buffer->outputbuffersize;
+	outbuffersize = (size_t) buffer->outputbuffersize;
 	buffersize = sizeof(float) * (size_t) inchannels * (size_t) insamples;
 
 	if (indata) {
@@ -3632,7 +3631,7 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
 	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
 	if ((audiodevices[pahandle].opmode & kPortAudioCapture) == 0) PsychErrorExitMsg(PsychError_user, "Audio device has not been opened for audio capture, so this call doesn't make sense.");
 
-	buffersize = audiodevices[pahandle].inputbuffersize;
+	buffersize = (size_t) audiodevices[pahandle].inputbuffersize;
 	
 	// Copy in optional amount of buffer memory to allocate for internal recording ringbuffer:
 	allocsize = 0;
@@ -3672,7 +3671,7 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
 		
 		// Calculate needed buffersize in samples: Convert allocsize in seconds to size in bytes:
 		audiodevices[pahandle].inputbuffersize = sizeof(float) * ((psych_int64) (allocsize * audiodevices[pahandle].streaminfo->sampleRate)) * audiodevices[pahandle].inchannels;
-		audiodevices[pahandle].inputbuffer = (float*) calloc(1, audiodevices[pahandle].inputbuffersize);
+		audiodevices[pahandle].inputbuffer = (float*) calloc(1, (size_t) audiodevices[pahandle].inputbuffersize);
 		if (audiodevices[pahandle].inputbuffer == NULL) PsychErrorExitMsg(PsychError_outofMemory, "Free system memory exhausted when trying to allocate audio recording buffer!");
 
 		// This was an (re-)allocation call, so no data is pending in the buffer.
@@ -3752,13 +3751,13 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
 	PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
 	
 	insamples = (insamples < 0) ? 0 : insamples;
-	buffersize = insamples * sizeof(float);
+	buffersize = (size_t) insamples * sizeof(float);
 
 	// Buffer "overflow" detected?
 	if (buffersize > audiodevices[pahandle].inputbuffersize) {
 		// Ok, the buffer did overrun and captured data was lost. Limit returned data
 		// to buffersize and set the overrun flag, optionally output a warning:
-		buffersize = audiodevices[pahandle].inputbuffersize;
+		buffersize = (size_t) audiodevices[pahandle].inputbuffersize;
 		insamples = buffersize / sizeof(float);
 		
 		// Set overrun flag:
@@ -3774,7 +3773,7 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
 		// Clamp insamples to that value, if neccessary:
 		if (insamples > maxSamples) {
 			insamples = maxSamples;
-			buffersize = insamples * sizeof(float);
+			buffersize = (size_t) insamples * sizeof(float);
 		}
 	}
 	
@@ -3864,7 +3863,6 @@ PsychError PSYCHPORTAUDIORescheduleStart(void)
 
 	static char seeAlsoString[] = "Open";	 
   	
-	PaError err;
 	int pahandle= -1;
 	int waitForStart = 0;
 	double when = 0.0;
@@ -4578,7 +4576,7 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 	PsychSetStructArrayDoubleElement("XRuns", 0, audiodevices[pahandle].xruns, status);
 	PsychSetStructArrayDoubleElement("TotalCalls", 0, audiodevices[pahandle].paCalls, status);
 	PsychSetStructArrayDoubleElement("TimeFailed", 0, audiodevices[pahandle].noTime, status);
-	PsychSetStructArrayDoubleElement("BufferSize", 0, audiodevices[pahandle].batchsize, status);
+	PsychSetStructArrayDoubleElement("BufferSize", 0, (double) audiodevices[pahandle].batchsize, status);
 	PsychSetStructArrayDoubleElement("CPULoad", 0, (Pa_IsStreamActive(audiodevices[pahandle].stream)) ? Pa_GetStreamCpuLoad(audiodevices[pahandle].stream) : 0.0, status);
 	PsychSetStructArrayDoubleElement("PredictedLatency", 0, audiodevices[pahandle].predictedLatency, status);
 	PsychSetStructArrayDoubleElement("LatencyBias", 0, audiodevices[pahandle].latencyBias, status);
@@ -5041,7 +5039,7 @@ PsychError PSYCHPORTAUDIOSetLoop(void)
 		if (endSample > maxSample) PsychErrorExitMsg(PsychError_user, "Invalid 'endSample' provided. Must be no greater than total buffersize!");
 	}
 	else {
-		endSample = maxSample;
+		endSample = (double) maxSample;
 	}
 
 	if (endSample < startSample) PsychErrorExitMsg(PsychError_user, "Invalid 'endSample' provided. Must be greater or equal than 'startSample'!");
@@ -5181,7 +5179,7 @@ PsychError PSYCHPORTAUDIOUseSchedule(void)
 	int pahandle = -1;
 	int enableSchedule;
 	int maxSize = 128;
-	int j;
+	unsigned int j;
 	
 	// Setup online help: 
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -5429,7 +5427,7 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 		if (endSample > maxSample) PsychErrorExitMsg(PsychError_user, "Invalid 'endSample' provided. Must be no greater than total buffersize!");
 	}
 	else {
-		endSample = maxSample;
+		endSample = (double) maxSample;
 	}
 
 	if (endSample < startSample) PsychErrorExitMsg(PsychError_user, "Invalid 'endSample' provided. Must be greater or equal than 'startSample'!");
@@ -5452,8 +5450,8 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 		slot->mode = 1 | 2 | ((specialFlags & 1) ? 4 : 0);
 		slot->bufferhandle   = bufferHandle;
 		slot->repetitions    = (commandCode == 0) ? ((repetitions == 0) ? -1 : repetitions) : 0.0;;
-		slot->loopStartFrame = startSample;
-		slot->loopEndFrame   = endSample;
+		slot->loopStartFrame = (psych_int64) startSample;
+		slot->loopEndFrame   = (psych_int64) endSample;
 		slot->command		 = commandCode;
 		slot->tWhen			 = (commandCode > 0) ? repetitions : 0.0;
 

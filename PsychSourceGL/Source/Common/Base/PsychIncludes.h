@@ -45,29 +45,28 @@
 
 //platform dependent includes stage 1
 #if PSYCH_SYSTEM == PSYCH_LINUX
-	// We need __USE_UNIX98, so pthread.h defines/supports the mutex policy
-	// attribute for mutex priority inheritance for our realtime threads.
-	// For some reason this gets undefined in mex.h at least when building
-	// on Octave 3.2.4. Scary scary...
-	#ifndef __USE_UNIX98
-	#define __USE_UNIX98
-	// For testing only: #warning __USE_UNIX98 undefined. Redefining it.
-	#endif
+    // We need __USE_UNIX98, so pthread.h defines/supports the mutex policy
+    // attribute for mutex priority inheritance for our realtime threads.
+    // For some reason this gets undefined in mex.h at least when building
+    // on Octave 3.2.4. Scary scary...
+    #ifndef __USE_UNIX98
+    #define __USE_UNIX98
+    // For testing only: #warning __USE_UNIX98 undefined. Redefining it.
+    #endif
 
-	#include <stdint.h>
-	// This is the new glew include for GLX extension support:
-	#include "../Screen/glxew.h"
-	
-        #include <X11/Xlib.h>
-        #include <X11/keysym.h>
-        #include <sys/time.h>
-        #include <unistd.h>
-        #include <stdarg.h>
-	#include <pthread.h>
+    // This is the new glew include for GLX extension support:
+    #include "../Screen/glxew.h"
 
-	#ifndef _POSIX_THREAD_PRIO_INHERIT
-	#error This build system does not support pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT); Fix your build system!
-	#endif
+    #include <X11/Xlib.h>
+    #include <X11/keysym.h>
+    #include <sys/time.h>
+    #include <unistd.h>
+    #include <stdarg.h>
+    #include <pthread.h>
+
+    #ifndef _POSIX_THREAD_PRIO_INHERIT
+    #error This build system does not support pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT); Fix your build system!
+    #endif
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -78,20 +77,11 @@
     // already defines WINVER et al. to 0x0500 or later, e.g., to Win-7 on the Win-7 system.
     // That means we'd only need these defines on pre-WinXP build systems, which we no longer
     // support. We now just have to be careful to not use post-WinXP functionality.
-    // Same goes for the INT64_MAX defines etc.
     // We comment these defines out and trust the platform SDK / compiler,
     // but leave them here for quick WinXP backwards compatibility testing.
     #if 0   
         #define _WIN32_WINNT 0x0500
         #define WINVER       0x0500
-
-        #ifndef INT64_MAX
-        #define INT64_MAX _I64_MAX
-        #endif
-
-        #ifndef INT32_MAX
-        #define INT32_MAX _I32_MAX
-        #endif
     #endif // Conditional enable.
 
     // Master include for windows header file:
@@ -104,7 +94,6 @@
 
 #elif PSYCH_SYSTEM == PSYCH_OSX
 	//includes for Apple OpenGL
-    #include <stdint.h>
     #include <sys/time.h>
 	#include <pthread.h>
 
@@ -136,6 +125,7 @@
 #endif 
 
 //C standard library headers
+#include <stdint.h>
 #include <math.h>
 #include <stdio.h>
 #include <limits.h>
