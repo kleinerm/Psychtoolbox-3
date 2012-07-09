@@ -441,12 +441,12 @@ PsychError SCREENComputer(void)
 	
     // const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "kern", "hw", "processUserLongName", 
     //      "processUserShortName", "consoleUserName", "machineName", "localHostName", "location", "MACAddress", "system" };
-    const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "system", "MACAddress"};
+    const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "system", "IsVistaClass", "MACAddress"};
 
     const char *kernStructFieldNames[]={"ostype", "osrelease", "osrevision", "version","hostname"};
     const char *hwStructFieldNames[]={"machine", "model", "ncpu", "physmem", "usermem", "busfreq", "cpufreq"};
     int numMajorStructDimensions=1, numKernStructDimensions=1, numHwStructDimensions=1;
-    int numMajorStructFieldNames=5, numKernStructFieldNames=5, numHwStructFieldNames=7;
+    int numMajorStructFieldNames=6, numKernStructFieldNames=5, numHwStructFieldNames=7;
 
     PsychGenericScriptType *majorStruct;
     //all subfunctions should have these two lines
@@ -473,6 +473,8 @@ PsychError SCREENComputer(void)
 	// Versions to products: 6.1 = Windows-7, 6.0  = Vista, 5.2 = Windows Server 2003, 5.1 = WindowsXP, 5.0 = Windows 2000, 4.x = NT
 	sprintf(versionString, "%i.%i.%i - %s", osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber, (char*) osvi.szCSDVersion);
 	PsychSetStructArrayStringElement("system", 0, versionString, majorStruct);
+
+    PsychSetStructArrayDoubleElement("IsVistaClass", 0, (PsychIsMSVista() ? 1 : 0), majorStruct);
 
     return(PsychError_none);
 }
