@@ -362,18 +362,22 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 			printf("PTB-WARNING: Another reason could be that you disabled hardware acceleration in the display settings panel: Make sure that\n");
 			printf("PTB-WARNING: in Display settings panel -> Settings -> Advanced -> Troubleshoot -> The hardware acceleration slider is\n");
 			printf("PTB-WARNING: set to 'Full' (rightmost position).\n\n");
-			printf("PTB-WARNING: Actually..., it is pointless to continue with the software renderer, that will cause more trouble than good.\n");
-			printf("PTB-WARNING: I will abort now. Read the troubleshooting tips above to fix the problem. You can override this if you add the following\n");
-			printf("PTB-WARNING: command: Screen('Preference', 'Verbosity', 1); to get a functional, but close to useless window up and running.\n\n\n");
-			
-			// We abort! Close the onscreen window:
-			PsychOSCloseWindow(*windowRecord);
-
-			// Free the windowRecord:
-			FreeWindowRecordFromPntr(*windowRecord);
-
-			// Done. Return failure:
-			return(FALSE);			
+            
+            // Only allow to continue if kPsychUseSoftwareRenderer flag is set. Otherwise abort here:
+            if ((PsychPrefStateGet_ConserveVRAM() & kPsychUseSoftwareRenderer) == 0) {
+                printf("PTB-WARNING: Actually..., it is pointless to continue with the software renderer, that will cause more trouble than good.\n");
+                printf("PTB-WARNING: I will abort now. Read the troubleshooting tips above to fix the problem. You can override this if you add the following\n");
+                printf("PTB-WARNING: command: Screen('Preference', 'ConserveVRAM', 64); to get a functional, but close to useless window up and running.\n\n\n");
+                
+                // We abort! Close the onscreen window:
+                PsychOSCloseWindow(*windowRecord);
+                
+                // Free the windowRecord:
+                FreeWindowRecordFromPntr(*windowRecord);
+                
+                // Done. Return failure:
+                return(FALSE);
+            }
 		}
 	}
 	#endif
