@@ -188,8 +188,8 @@ PsychPADevice audiodevices[MAX_PSYCH_AUDIO_DEVS];
 unsigned int  audiodevicecount = 0;
 unsigned int  verbosity = 4;
 double        yieldInterval = 0.001;            // How long to wait in calls to PsychYieldIntervalSeconds().
-psych_bool    uselocking = TRUE;		// Use Mutex locking and signalling code for thread synchronization?
-psych_bool    lockToCore1 = TRUE;		// Lock all engine threads to run on cpu core 1 on Windows to work around broken TSC sync on multi-cores?
+psych_bool    uselocking = TRUE;                // Use Mutex locking and signalling code for thread synchronization?
+psych_bool    lockToCore1 = TRUE;               // NO LONGER USED: Lock all engine threads to run on cpu core 1 on Windows to work around broken TSC sync on multi-cores?
 psych_bool    pulseaudio_autosuspend = TRUE;    // Should we try to suspend the Pulseaudio sound server on Linux while we're active?
 psych_bool    pulseaudio_isSuspended = FALSE;   // Is PulseAudio suspended by us?
 
@@ -797,7 +797,10 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		// the audio thread to cpu core 1, hope that repeated redundant
 		// calls don't create scheduling overhead or excessive other overhead.
 		// The explanation for this can be found in Source/Windows/Base/PsychTimeGlue.c
-		if (lockToCore1) SetThreadAffinityMask(GetCurrentThread(), 1);
+        //
+        // Update: We leave the decision to the time glue if we should lock to core zero,
+        // or some other usercode defined subset of cores, or all cores. PsychAutoLockThreadToCores()
+		PsychAutoLockThreadToCores(0);
 #endif
 		
 		// Retrieve current system time:
@@ -5073,12 +5076,13 @@ PsychError PSYCHPORTAUDIOEngineTunables(void)
 		"potential race-conditions between internal processing threads. Locking is enabled by default. Only "
 		"disable locking to work around seriously broken audio device drivers or system setups and be aware "
 		"that this may have unpleasant side effects and can cause all kinds of malfunctions by itself!\n"
-		"'lockToCore1' - Enable (1) or Disable (0) locking of all audio engine processing threads to cpu core 1 "
+		"'lockToCore1' - Deprecated: Enable (1) or Disable (0) locking of all audio engine processing threads to cpu core 1 "
 		"on Microsoft Windows systems. By default threads are locked to cpu core 1 to avoid problems with "
 		"timestamping due to bugs in some microprocessors clocks and in Microsoft Windows itself. If you're "
 		"confident/certain that your system is bugfree wrt. to its clocks and want to get a bit more "
 		"performance out of multi-core machines, you can disable this. You must perform this setting before "
-		"you open the first audio device the first time, otherwise the setting might be ignored.\n"
+		"you open the first audio device the first time, otherwise the setting might be ignored. In the current "
+        "driver this setting is silently ignored, as a new method of handling this has been implemented.\n"
 		"'audioserver_autosuspend' - Enable (1) or Disable (0) automatic suspending of running desktop "
 		"audio servers, e.g., PulseAudio, while PsychPortAudio is active. Default is (1) - suspend while "
 		"PsychPortAudio does its thing. Desktop sound servers like the commonly used PulseAudio server "
