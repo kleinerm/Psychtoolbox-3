@@ -517,3 +517,18 @@ int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, doub
 	// Perform wait for signalled condition with a timeout at absolute system time abstime:
 	return(pthread_cond_timedwait(condition, mutex, &abstime));
 }
+
+/* Set thread affinity mask of calling thread to the modules global cpuMask:
+ * Pass in previous cpuMask as oldCpuMask of thread, or zero if unknown.
+ * Returns new affinity mask as 64-Bit bitfield.
+ *
+ * For now, this function is a no-op on OS/X.
+ *
+ * If this function is called without the time lock held, ie., from outside
+ * of other timeglue functions, a small race condition exists which may cause
+ * deferred updated to the real new affinity mask.
+ */
+psych_uint64 PsychAutoLockThreadToCores(psych_uint64 oldCpuMask)
+{
+    return(INT64_MAX);
+}
