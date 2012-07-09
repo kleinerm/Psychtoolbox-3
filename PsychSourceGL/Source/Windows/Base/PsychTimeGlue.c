@@ -968,7 +968,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 	
 	switch(basePriority) {
 		case 0:	// Normal priority.
-			rc = SetThreadPriority(thread, THREAD_PRIORITY_NORMAL);
+			rc = SetThreadPriority(thread, THREAD_PRIORITY_NORMAL + tweakPriority);
 			if (rc == 0) {
 				rc = GetLastError();	// Failed!
 			}
@@ -979,7 +979,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 		break;
 		
 		case 1: // High priority / Round robin realtime.
-			rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+			rc = SetThreadPriority(thread, THREAD_PRIORITY_ABOVE_NORMAL + tweakPriority);
 			if (rc == 0) {
 				rc = GetLastError();	// Failed!
 			}
@@ -1005,17 +1005,17 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 					}
 					else {
 						// Failed! Retry with HIGHEST priority:
-						rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+						rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST + tweakPriority);
 						// printf("PTB-WARNING: Call to PsychAvSetMmMaxThreadCharacteristics() for Vista-MMCSS scheduling failed for threadhandle %p. Setting thread priority to HIGHEST as a work-around...\n", threadhandle);
 					}
 				}
 				else {
 					// MMCSS not supported on pre-Vista system, or thread not eligible for MMCSS.
 					// Retry with HIGHEST priority, the best we can do on pre-Vista:
-					rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
-				}
-				 
+					rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST + tweakPriority);
+				} 
 			}
+            
 			if (rc == 0) {
 				rc = GetLastError();	// Failed!
 			}
@@ -1036,14 +1036,31 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 				}
 				else {
 					// Failed! Retry with HIGHEST priority:
-					rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+                    if (HIGH_PRIORITY_CLASS != GetPriorityClass(GetCurrentProcess())) {
+                        // This really is realtime priority, so we're pushing:
+                        rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+                    } else {
+                        // Go a bit lower than THREAD_PRIORITY_HIGHEST, so other important
+                        // threads, e.g., the userspace callback thread of an audio device
+                        // driver has a chance of getting enough cpu time. We do this because
+                        // Windows doesn't distinguish between THREAD_PRIORITY_HIGHEST and
+                        // THREAD_PRIORITY_TIME_CRITICAL while the process is in priority
+                        // class HIGH_PRIORITY_CLASS:
+                        rc = SetThreadPriority(thread, THREAD_PRIORITY_ABOVE_NORMAL);
+                    }
 					printf("PTB-WARNING: Call to PsychAvSetMmMaxThreadCharacteristics() for Vista-MMCSS scheduling failed for threadhandle %p. Setting thread priority to HIGHEST as a work-around...\n", threadhandle);
 				}
 			}
 			else {
 				// MMCSS not supported on pre-Vista system, or thread not eligible for MMCSS.
 				// Retry with HIGHEST priority, the best we can do on pre-Vista:
-				rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+                if (HIGH_PRIORITY_CLASS != GetPriorityClass(GetCurrentProcess())) {
+                    // This really is realtime priority, so we're pushing:
+                    rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+                } else {
+                    // See rationale above:
+                    rc = SetThreadPriority(thread, THREAD_PRIORITY_ABOVE_NORMAL);
+                }
 			}
 		break;
 
