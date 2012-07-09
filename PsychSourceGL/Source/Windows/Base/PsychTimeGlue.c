@@ -466,7 +466,8 @@ void PsychGetPrecisionTimerSeconds(double *secs)
   psych_uint32				tick1, tick2, hangcount;
   psych_uint64				curRawticks;
   psych_bool				skipCheck;
-
+  const char*               envval;
+  
   // First time init of timeglue: Set up system for high precision timing,
   // and enable workarounds for broken systems:
   if (firstTime) {
@@ -598,9 +599,9 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 	EnterCriticalSection(&time_lock);
 
     // Check for updated cpu mask environment variable:
-    if ((failureHandlingModes & 0x2) && getenv("PSYCH_CPU_MASK")) {
+    if ((failureHandlingModes & 0x2) && (envval = getenv("PSYCH_CPU_MASK"))) {
         // Assign new cpuMask and relock thread to corresponding cores:
-        cpuMask = (DWORD_PTR) atoi(getenv("PSYCH_CPU_MASK"));
+        cpuMask = (DWORD_PTR) atoi(envval);
         PsychAutoLockThreadToCores(0);     
     }
     
@@ -641,7 +642,7 @@ void PsychGetPrecisionTimerSeconds(double *secs)
             // the moment, so this temporary glitch should not matter. Tell user anyway:
             if (failureHandlingModes & 0x1) {
                 printf("PTB-WARNING: Low precision timer glitch / wraparound detected. This won't matter if it\n");
-                printf("PTB-WARNING: is an isolated event. Otherwise you should reboot your system to resolve the problem.\n");
+                printf("PTB-WARNING: is an isolated event. Otherwise you should reboot your system to maybe resolve the problem.\n");
                 printf("PTB-WARNING: Current time %f seconds < old time %f seconds.\n", ticks, tickInSecsAtLastQuery);
             }
         }
@@ -672,13 +673,10 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 	tickInSecsAtLastQuery = ticks;
 	
   // Start actual processing of result of QueryPerformanceCounter(). We do this here,
-  // deferred under protection of the time_lock lock. The Query has been done above,
-  // outside of the critical section, so multiple threads can't collide on a contended
-  // time_lock and get delayed needlessly:
+  // deferred under protection of the time_lock lock.
   if (counterExists) {
-
-   ss = ((double)count.QuadPart)/((double)counterFreq.QuadPart);
-   timeInSecsAtLastQuery = ss;
+    ss = ((double)count.QuadPart)/((double)counterFreq.QuadPart);
+    timeInSecsAtLastQuery = ss;
 
 	// Initialize base time for slow consistency checks at first invocation:
 	if (firstTime) {
@@ -695,6 +693,55 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 	if (!Timertrouble && !firstTime && !skipCheck) {
 		// No timer problems yet. Perform checks:
 
+        // Is our high precision timer supposed to be healthy and we are asked to
+        // switch to the lowres timer in case of trouble?
+        if (!Timertrouble && (failureHandlingModes & 0x4)) {
+            // Yes. We so far think our highres timer works fine, but one of our sibling
+            // Psychtoolbox mex files may have already spotted problems and may have
+            // switched to the low-res backup timer. If this were the case, then all mex
+            // files, including us, must immediately switch to the low-res timer as well,
+            // to avoid inconsistent use of timebases across Psychtoolbox modules. Such
+            // a switch request is signalled by the existence of a special "signalling
+            // environment variable "PSYCH_LOWRESCLOCK_FALLBACK". Check if the variable is defined:
+            if (getenv("PSYCH_LOWRESCLOCK_FALLBACK")) {
+                // Signalling variable set! We have to switch to lowres timer immediately:
+                Timertrouble = TRUE;
+                
+                // We also need to compute a proper bias value for seamless remapping of
+                // high-res time to low-res time, so transition is as glitchfree as possible.
+                // We unfortunately cannot pass one common lowToHiBiasSecs value from the
+                // mex module which triggered the lowres timer transition to all slave modules,
+                // because communication the value without a way to synchronize access via a
+                // common mutex lock is inherently racy and could cause transmission of a corrupted
+                // value - or even a crash due to segfault. So each module calculates the bias on
+                // its own and we just hope all modules calculate a consistent value.
+                // This is inherently shaky as we are basically using a known-to-be-faulty timer
+                // to calculate a bias value to workaround the faulty timer. If timer faults are
+                // transient, we may get away with this ok. If they are frequent or permanent, we
+                // may just have found a more elaborate way to fail as badly as if we would not
+                // switch to a backup at all. Such is life...
+                lowToHiBiasSecs = ss - ticks;
+                
+                // Assign time value ss a last time:
+                *secs = ss;
+
+                // Clear the firstTime flag - this was the first time, maybe.
+                firstTime = FALSE;
+
+                // Tell user about switch:
+                if (failureHandlingModes & 0x1) {
+                    printf("PTB-INFO: Timing system of one mex module switching to low-resolution timer now (RemapBias = %f seconds).\n", lowToHiBiasSecs);
+                }
+                                
+                // Need to release our timelock - Done with access to shared data:
+                LeaveCriticalSection(&time_lock);
+
+                // Exit here. The next call will go through the "Timertrouble == TRUE"
+                // low-resolution timer fallback path.
+                return;                
+            }
+        }
+        
 		// Time running backwards?
         // We allow for a slack of backwardTimeJumpTolerance seconds. Not sure if this is a good idea, as it weakens the test
         // to avoid aggressive fallback on flaky but sort of still useable hardware. Some modern cpu's showed
@@ -796,22 +843,30 @@ void PsychGetPrecisionTimerSeconds(double *secs)
                 Timertrouble = FALSE;
             }
             else {
-                // We switch to the low-res clock for the rest of the session, in the hope that
-                // the low-res clock is less broken than the high-res clock.
-                //
-                // We need to make the switch as seamless as possible. As the low-res and high-res clocks have different "zero seconds"
-                // reference points, we need to compute the absolute offset between both and then apply that offset to the reported low
-                // res clock time to compensate for it. This should reduce any jumps or jerks in the monotonic system time as perceived
-                // by clients of this function, especially the PsychWaitUntilSeconds() and PsychWaitIntervalSeconds() functions, which
-                // could hang for a very long time if the switch between high-res and low-res clock happens at the wrong moment.
-                lowToHiBiasSecs = ss - ticks;
+                // Switch to low-res timer as a workaround requested?
+                if (failureHandlingModes & 0x4) {
+                    // We switch to the low-res clock for the rest of the session, in the hope that
+                    // the low-res clock is less broken than the high-res clock.
+                    
+                    // We need to make the switch as seamless as possible. As the low-res and high-res clocks have different "zero seconds"
+                    // reference points, we need to compute the absolute offset between both and then apply that offset to the reported low
+                    // res clock time to compensate for it. This should reduce any jumps or jerks in the monotonic system time as perceived
+                    // by clients of this function, especially the PsychWaitUntilSeconds() and PsychWaitIntervalSeconds() functions, which
+                    // could hang for a very long time if the switch between high-res and low-res clock happens at the wrong moment.
+                    lowToHiBiasSecs = ss - ticks;
+                    
+                    // Announce to ourselves and all other modules that we all should
+                    // switch to the low-res timer:
+                    _putenv_s("PSYCH_LOWRESCLOCK_FALLBACK", "1");
 
-                if (failureHandlingModes & 0x1) {            
-                    // More info for user at first detection of trouble:
-                    if (failureHandlingModes & 0x4) {
+                    if (failureHandlingModes & 0x1) {
                         printf("PTB-CRITICAL WARNING! Will switch to a lower precision backup timer with only +/- 1 msec precision to try\n");
                         printf("PTB-CRITICAL WARNING! to keep going, but this may fail or cause various timing problems in itself.\n");
                     }
+                }
+
+                if (failureHandlingModes & 0x1) {
+                    // More info for user at first detection of trouble:
                     printf("PTB-CRITICAL WARNING! It is NOT RECOMMENDED to continue using this machine for studies that require high\n");
                     printf("PTB-CRITICAL WARNING! timing precision in stimulus onset or response collection. No guarantees can be made\n");
                     printf("PTB-CRITICAL WARNING! wrt. to timing or correctness of any timestamps or stimulus onsets!\n");
@@ -865,18 +920,21 @@ void PsychGetPrecisionTimerSeconds(double *secs)
         // that looks to clients as if it comes from the high-res clock, albeit with a lower
         // resolution of only 1 msec at best:
 		ss = ticks + lowToHiBiasSecs;
-	}	
+	}
 
 	//  ========= End of high precision timestamping. =========
   }
   else {
 	//  ========= Low precision fallback path for ancient machines: 1 khz tick counter: =========
-	ss = ticks;
+        
+    // Apply lowToHiBiasSecs, so our time is consistent with the original time of the
+    // high precision timer and of other modules:
+	ss = ticks + lowToHiBiasSecs;
 	timeInSecsAtLastQuery = -1;
   }
 
-  // Finally assign time value:  
-  *secs= ss;  
+  // Finally assign time value:
+  *secs= ss;
 
   // Clear the firstTime flag - this was the first time, maybe.
   firstTime = FALSE;
