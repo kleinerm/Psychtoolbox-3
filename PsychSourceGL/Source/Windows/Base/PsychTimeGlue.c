@@ -79,6 +79,8 @@ static unsigned int     failureHandlingModes;
 
 static DWORD_PTR        cpuMask;
 
+static int              verbosity = 0;
+
 // Our critical section variable to guarantee exclusive access to PsychGetPrecisionTimerSeconds()
 // in order to prevent race-conditions for the timer correctness checks in multi-threaded code:
 CRITICAL_SECTION	time_lock;
@@ -247,6 +249,11 @@ void PsychInitTimeGlue(void)
 	//	printf("PTBCRITICAL -ERROR: In PsychInitTimeGlue() - failed to init time_lock!!! May malfunction or crash soon....\n");
 	//}
 
+    // Set override internal verbosity level for debugging, if specified by
+    // environment variable:
+    if (getenv("PSYCH_TIMEGLUE_VERBOSITY")) verbosity = atoi(getenv("PSYCH_TIMEGLUE_VERBOSITY"));
+    if (verbosity > 0) printf("PTB-INFO: TimeGlue debug output enabled at verbosity %i.\n", verbosity);
+    
 	// Setup defaults for all state variables:
 	precisionTimerAdjustmentFactor=1;
 	kernelTimebaseFrequencyHz = 0;
@@ -313,9 +320,16 @@ void PsychInitTimeGlue(void)
     // Allow override with environment variable:
     if (getenv("PSYCH_CPU_MASK")) {
         cpuMask = (DWORD_PTR) atoi(getenv("PSYCH_CPU_MASK"));
-    } else {
-        _putenv_s("PSYCH_CPU_MASK", (1 == (psych_uint64) cpuMask) ? "1" : "2147483647");
     }
+    
+    // Set thread to new cpuMask:
+    PsychAutoLockThreadToCores(NULL);
+    
+    // Redundant call just to retrieve effective cpuMask:
+    // This is needed because Windows translates our INT64_MAX cpu mask - 
+    // allowing execution on the first 63 cores - into the effective mask,
+    // e.g., allowing execution on the 4 cores of a quad-processor system.
+    cpuMask = (DWORD_PTR) PsychAutoLockThreadToCores(NULL);
     
     // Retrieve id of current thread, which is by definition the master thread:
     masterThreadId = PsychGetThreadId();
@@ -425,21 +439,39 @@ void PsychGetPrecisionTimerTicksMinimumDelta(psych_uint32 *delta)
 }
 
 /* Set thread affinity mask of calling thread to the modules global cpuMask:
- * Pass in previous cpuMask as oldCpuMask of thread, or zero if unknown.
- * Returns new affinity mask as 64-Bit bitfield.
+ * 
+ * 'curCpuMask' is an in/out pointer. If NULL, it is completely ignored. If non-NULL,
+ * the target variable of the pointer will contain the new cpu mask after a change
+ * of mask. If the target variable already contains a valid (non-zero) current cpu mask
+ * and it matches the new target cpu mask, then the actual mask change is omitted, assuming it
+ * is redundant, thereby saving some system call overhead.
+ *
+ * Threads can avoid redundant switches if they keep track of their current cpu mask
+ * by caching it in the *curCpuMask pointer target. They can pass in a zero value if
+ * unsure, or a NULL pointer if they are neither interested in caching, nor in the old
+ * or new value.
+ *
+ * Returns the old pre-switch affinity mask as a 64-Bit bitfield.
+ * Comparing the return value (previous mask) with the *curCpuMask value (new mask)
+ * allows the caller to check if the affinity mask was actually changed, resulting
+ * in a possible thread migration.
  *
  * If this function is called without the time lock held, ie., from outside
  * of other timeglue functions, a small race condition exists which may cause
- * deferred updated to the real new affinity mask.
+ * deferred updated to the real new affinity mask due to 
+ *
  */
-psych_uint64 PsychAutoLockThreadToCores(psych_uint64 oldCpuMask)
+psych_uint64 PsychAutoLockThreadToCores(psych_uint64* curCpuMask)
 {
-    // If oldCpuMask is valid and identical to current cpuMask, then our thread
-    // is already assigned the proper affinity mask and we no-op:
-    if (oldCpuMask && (oldCpuMask == (psych_uint64) cpuMask)) return((psych_uint64) cpuMask);
+    DWORD_PTR oldCpuMask;
     
-    // Real work to do:
-    if (SetThreadAffinityMask(GetCurrentThread(), cpuMask)==0) {
+    // If curCpuMask is valid and identical to current cpuMask, then our thread
+    // is already assigned the proper affinity mask and we no-op:
+    if (curCpuMask && (*curCpuMask != 0) && (*curCpuMask == (psych_uint64) cpuMask)) return((psych_uint64) cpuMask);
+
+    // Different curCpuMask and new cpuMask or curCpuMask unknown.
+    // Need to do a real transition:
+    if ((oldCpuMask = SetThreadAffinityMask(GetCurrentThread(), cpuMask)) == 0) {
         // Binding failed! Output warning on first failed invocation...
         if (!schedulingtrouble) {
             schedulingtrouble = TRUE;
@@ -448,10 +480,19 @@ psych_uint64 PsychAutoLockThreadToCores(psych_uint64 oldCpuMask)
             printf("PTBCRITICAL -ERROR: FIX YOUR SYSTEM! In its current state its not useable for conduction of studies!!!\n");
             printf("PTBCRITICAL -ERROR: Check the FAQ section of the Psychtoolbox Wiki for more information.\n");
         }
+        
+        // Changing the cpu mask to cpuMask failed. The cpu mask is unchanged.
+        // Therefore curCpuMask is the same as before calling us, so we leave
+        // it unchanged. Return the old cpu mask as zero to signal failure:
+        return(0);
     }
     
-    // Return new cpuMask:
-    return((psych_uint64) cpuMask);
+    // If we reach this point, then the new cpu mask is cpuMask, because the call
+    // succeeded. Return it by updating curCpuMask if caller wants to know this:
+    if (curCpuMask) *curCpuMask = (psych_uint64) cpuMask;
+    
+    // Return the old cpu mask oldCpuMask prior to the change:
+    return((psych_uint64) oldCpuMask);
 }
 
 void PsychGetPrecisionTimerSeconds(double *secs)
@@ -465,8 +506,9 @@ void PsychGetPrecisionTimerSeconds(double *secs)
   static double				lastSlowcheckTimeTicks;
   psych_uint32				tick1, tick2, hangcount;
   psych_uint64				curRawticks;
-  psych_bool				skipCheck;
   const char*               envval;
+  psych_uint64              oldCpuMask;
+  psych_bool				skipCheck = FALSE;
   
   // First time init of timeglue: Set up system for high precision timing,
   // and enable workarounds for broken systems:
@@ -511,7 +553,7 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 		// this could lead to time inconsistencies - even time going backwards between queries!!!
 		// Drawback: We may not make optimal use of a multi-core system. On Vista and later, we assume
 		// everything will be fine, but still perform consistency checks at each call to PsychGetPrecisionTimerSeconds():
-        PsychAutoLockThreadToCores(0);
+        PsychAutoLockThreadToCores(NULL);
 		
 		// Sleep us at least 10 msecs, so the system will reschedule us, with the
 		// thread affinity mask above applied. Don't know if this is needed, but
@@ -602,7 +644,36 @@ void PsychGetPrecisionTimerSeconds(double *secs)
     if ((failureHandlingModes & 0x2) && (envval = getenv("PSYCH_CPU_MASK"))) {
         // Assign new cpuMask and relock thread to corresponding cores:
         cpuMask = (DWORD_PTR) atoi(envval);
-        PsychAutoLockThreadToCores(0);     
+        oldCpuMask = PsychAutoLockThreadToCores(NULL);
+        
+        // If the cpu affinity mask really changed for this thread during
+        // PsychAutoLockThreadToCores() then the thread may have migrated
+        // between cpu cores as a result of the mask change. This means that
+        // it has jumped TSCs and we should skip all correctness checks during
+        // this iteration, so a new baseline for checks can be established for
+        // the next invocation:
+        if (oldCpuMask && (oldCpuMask != (psych_uint64) cpuMask)) {
+            // We can get here because either the effective cpu mask has really
+            // changed above, or because the effective cpu mask is not identical
+            // in value to cpuMask, e.g., because we passed in 0xffffffff as mask,
+            // but the system truncated it to 0x3 for a dual-core system with only
+            // cpus 0 and 1 installed. Only if the effective mask has really changed
+            // then we should skip tests. Disambiguate: Executing the lock operation again
+            // will be effectively a no-op, but it returns the "old" cpuMask which is due
+            // to the no-op already the effective new cpuMask. In other words, cpuMask
+            // now really contains a value we can effectively compare against oldCpuMask.
+            //
+            // If the comparison still shows a preswitch to postswitch difference, then
+            // the affinity mask for this thread has really changed and we need to skip
+            // the timing checks aka skipCheck = TRUE.
+            // (Yes it is mind-bending -- thanks to Microsoft for such a shoddy and
+            // convoluted api.)
+            cpuMask = (DWORD_PTR) PsychAutoLockThreadToCores(NULL);
+            if (cpuMask && (oldCpuMask != (psych_uint64) cpuMask)) {
+                if (verbosity > 2) printf("PTB-DEBUG: Skipping clock checks due to affinity mask change detected [old %i vs. new %i].\n", (int) oldCpuMask, (int) cpuMask);
+                skipCheck = TRUE;
+            }
+        }
     }
     
     // Query system time of low resolution counter:
@@ -624,7 +695,10 @@ void PsychGetPrecisionTimerSeconds(double *secs)
     // Skip inter-timer agreement checks below if query of both clocks took more than
     // 1 msec, because that may mean the measured difference is unreliable due to
     // scheduling delays or thread preemption:
-    skipCheck = ((timeGetTime() - curRawticks) > 1) ? TRUE : FALSE;
+    if ((timeGetTime() - curRawticks) > 1) {
+        skipCheck = TRUE;
+        if (verbosity > 2) printf("PTB-DEBUG: Skipping clock checks due to time query duration > 1 msec.\n");
+    }
     
 	// Convert to ticks in seconds for further processing:
 	ticks = ((double) (psych_int64) curRawticks) * 0.001;
@@ -636,6 +710,8 @@ void PsychGetPrecisionTimerSeconds(double *secs)
         // Skip inter-timer check, as it would likely detect a false positive:
         skipCheck = TRUE;
         
+        if (verbosity > 2) printf("PTB-DEBUG: Skipping clock checks due to possible timeGetTime() wraparound or backwards jump.\n");
+
         // If we are not currently running on the low-res timer, we leave it at this:
         if ((!Timertrouble || !(failureHandlingModes & 0x4)) && counterExists) {
             // Low-Res timer glitched / wrapped around, but we don't depend on it at
@@ -828,15 +904,14 @@ void PsychGetPrecisionTimerSeconds(double *secs)
                 cpuMask = (DWORD_PTR) 0x1;
                 
                 // Make sure other PTB modules notice this as well:
-                // This is still problematic. Modules loaded after us detecting trouble will
-                // pick it up, but modules loaded before the trouble will not recheck the
-                // variable, therefore not notice it and continue to run on other cores until
-                // they run into timer trouble themselves. This is a better than nothing solution,
-                // but far from great.
                 _putenv_s("PSYCH_CPU_MASK", "1");
 
-                // Relock thread:
-                PsychAutoLockThreadToCores(0);
+                // Relock thread to new cpuMask:
+                PsychAutoLockThreadToCores(NULL);
+                
+                // Redundant relock to query effective cpuMask -- which is returned
+                // as the "old" cpuMask:
+                cpuMask = (DWORD_PTR) PsychAutoLockThreadToCores(NULL);
                 
                 // Reset timertrouble flag. On next failure, we won't get away with
                 // this workaround.
@@ -1075,7 +1150,7 @@ int PsychCreateThread(psych_thread* threadhandle, void* threadparams, void *(*st
 		// time source) and proper HPET support and error handling in Vista et al's timing core. On such systems we
 		// don't lock to a core by default, so we can benefit from multi-core processing. Our consistency checks in PsychGetPrecisionTimerSeconds()
 		// should be able to eventually detect multi-core sync problems if they happen:
-        PsychAutoLockThreadToCores(0);
+        PsychAutoLockThreadToCores(NULL);
 
 		// Return success:
 		return(0);

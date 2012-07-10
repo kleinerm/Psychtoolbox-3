@@ -800,7 +800,10 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
         //
         // Update: We leave the decision to the time glue if we should lock to core zero,
         // or some other usercode defined subset of cores, or all cores. PsychAutoLockThreadToCores()
-		PsychAutoLockThreadToCores(0);
+		// Update: No longer needed, as the job is done implicitely by the call to 
+        // PsychGetAdjustedPrecisionTimerSeconds(&now);
+        //
+        // DISABLED: PsychAutoLockThreadToCores(NULL);
 #endif
 		
 		// Retrieve current system time:

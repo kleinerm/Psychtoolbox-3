@@ -16,6 +16,16 @@ function varargout = PsychTweak(cmd, varargin) %#ok<STOUT>
 % Available subfunctions:
 % =======================
 %
+% PsychTweak('Reset');
+% -- Reset some, but not all, tweaks to defaults.
+%
+% PsychTweak('PrepareForVirtualMachine');
+% -- Tweak some settings so Psychtoolbox can sort of run inside a Virtual
+% Machine - or at least limp along in a way that is unsuitable for
+% production use, but good enough for some basic testing & development of
+% the toolbox itself, or maybe for some simple demos.
+%
+%
 % MS-Windows only tweaks:
 % -----------------------
 %
@@ -139,6 +149,32 @@ if exist('inmem') %#ok<EXIST>
             error('At least one Psychtoolbox mex file is already loaded: (%s). PsychTweak must be executed before any other Psychtoolbox mex file!', mexf{i});
         end
     end
+end
+
+% Reset some signalling environment variables used by mex files:
+if strcmpi(cmd, 'Reset')
+    setenv('PSYCH_LOWRESCLOCK_FALLBACK');
+    return;
+else
+    % Reset this one even if no 'Reset' command given:
+    setenv('PSYCH_LOWRESCLOCK_FALLBACK');    
+end
+
+if strcmpi(cmd, 'PrepareForVirtualMachine')
+    if IsWin
+        % Allow Screen() to execute on the Microsoft GDI software renderer.
+        % That's horrible, but it is the best we can get on some VM's with
+        % Windows as a guest system. E.g., a Windows-7 64-Bit guest on a MacOSX
+        % host with VirtualBox (Win-7 Enterprise 64-Bit on OSX 10.7.4
+        % 64-Bit, with VirtualBox from July 2012), has reasonably well
+        % working OpenGL WDDM hardware accelerated support via
+        % Chromium/Humper from within 32-Bit Matlab, but falls over with
+        % 64-Bit Matlab, so we are forced to use the GDI software renderer
+        % to be able to test that config at all inside a VM:
+        Screen('Preference', 'ConserveVRAM', bitor(Screen('Preference', 'ConserveVRAM'), 64));
+    end
+    
+    return;
 end
 
 if strcmpi(cmd, 'BackwardTimejumpTolerance')

@@ -905,7 +905,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		if (compositorPostEnabled != compositorEnabled) {
             if (PsychPrefStateGet_Verbosity() > 0) {
                 printf("PTB-ERROR: PsychOSOpenOnscreenWindow: Windows desktop compositor is not %s as requested!\n", (compositorEnabled) ? "enabled" : "disabled");
-                printf("PTB-ERROR: PsychOSOpenOnscreenWindow: EXPECT SERIOUS PROBLEMS WITH VISUAL STIMULUS ONSET TIMING AND TIMESTAMPING!!\n");
+                if (compositorPostEnabled) printf("PTB-ERROR: PsychOSOpenOnscreenWindow: EXPECT SERIOUS PROBLEMS WITH VISUAL STIMULUS ONSET TIMING AND TIMESTAMPING!!\n");
             }
 		}
         
