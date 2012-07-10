@@ -70,6 +70,12 @@
 %                              a helper routine for ReadHDR - the recommended function for user
 %                              scripts.
 %
+% vcredist_x86.exe             Microsoft Visual C++ 2010 runtime
+%                              redistributable installer. You must use this
+%                              to install the Visual C runtime if you want
+%                              to use the Psychtoolbox for 32-Bit Matlab on
+%                              Microsoft Windows.
+%
 % WinJoystickMex               WinJoystickMex is a very simple/rudimentary
 %                              joystick driver for basic query of position
 %                              and button state of joysticks under

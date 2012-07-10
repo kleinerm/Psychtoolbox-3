@@ -54,6 +54,7 @@
 %     PsychtoolboxDate     - Current version date, e.g. '1 August 1998'
 %     PsychtoolboxVersion  - Current version number, e.g. 2.32
 %     PsychWatchDog        - Watchdog mechanism and error handler for Psychtoolbox.
+%     PsychTweak           - Tweak Psychtoolbox low-level operating parameters.
 %     RemapMouse           - Map mouse position to stimulus position.
 %     RestrictKeysForKbCheck - Restrict operation of KbCheck et al. to a subset of keys on the keyboard.
 %     Screen               - Control the video display. ** Type "Screen" for a list. ** 

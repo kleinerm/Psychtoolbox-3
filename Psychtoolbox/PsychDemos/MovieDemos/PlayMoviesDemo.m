@@ -131,7 +131,7 @@ try
         % On GStreamer setups we add a few more movies to the playlist, before the pathetic Apple
         % commercials. Can't use them on 32-Bit OS/X yet, as Apple's QT engine does not handle them
         % with the default codec set. However, 64-Bit OS/X has GStreamer:
-        if IsLinux || IsOSX(1) || (Screen('Preference', 'OverrideMultimediaEngine') == 1)
+        if IsLinux || IsWin || IsOSX(1) || (Screen('Preference', 'OverrideMultimediaEngine') == 1)
             % Promotional videos for the best OS for cognitive science, and technical/educational
             % videos some users may find of practical use:
 

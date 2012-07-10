@@ -1099,19 +1099,19 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 					// cross-talk / ghosting:
 					
 					// Left-eye channel (channel 1):
-					rg = (windowRecord->stereomode==kPsychAnaglyphRGStereo || windowRecord->stereomode==kPsychAnaglyphRBStereo) ? 1.0 : 0.0;
-					gg = (windowRecord->stereomode==kPsychAnaglyphGRStereo) ? 1.0 : 0.0;
-					bg = (windowRecord->stereomode==kPsychAnaglyphBRStereo) ? 1.0 : 0.0;
+					rg = (float) ((windowRecord->stereomode==kPsychAnaglyphRGStereo || windowRecord->stereomode==kPsychAnaglyphRBStereo) ? 1.0 : 0.0);
+					gg = (float) ((windowRecord->stereomode==kPsychAnaglyphGRStereo) ? 1.0 : 0.0);
+					bg = (float) ((windowRecord->stereomode==kPsychAnaglyphBRStereo) ? 1.0 : 0.0);
 					glUniform3f(glGetUniformLocation(glsl, "Gains1"), rg, gg, bg);
 
 					// Right-eye channel (channel 2):
-					rg = (windowRecord->stereomode==kPsychAnaglyphGRStereo || windowRecord->stereomode==kPsychAnaglyphBRStereo) ? 1.0 : 0.0;
-					gg = (windowRecord->stereomode==kPsychAnaglyphRGStereo) ? 1.0 : 0.0;
-					bg = (windowRecord->stereomode==kPsychAnaglyphRBStereo) ? 1.0 : 0.0;
+					rg = (float) ((windowRecord->stereomode==kPsychAnaglyphGRStereo || windowRecord->stereomode==kPsychAnaglyphBRStereo) ? 1.0 : 0.0);
+					gg = (float) ((windowRecord->stereomode==kPsychAnaglyphRGStereo) ? 1.0 : 0.0);
+					bg = (float) ((windowRecord->stereomode==kPsychAnaglyphRBStereo) ? 1.0 : 0.0);
 					glUniform3f(glGetUniformLocation(glsl, "Gains2"), rg, gg, bg);
 					
 					// Define default weights for RGB -> Luminance conversion: We default to the standardized NTSC color weights.
-					glUniform3f(glGetUniformLocation(glsl, "ColorToGrayWeights"), 0.299, 0.587, 0.114);
+					glUniform3f(glGetUniformLocation(glsl, "ColorToGrayWeights"), 0.299f, 0.587f, 0.114f);
 					// Define background bias color to add: Normally zero for standard anaglyph:
 					glUniform3f(glGetUniformLocation(glsl, "ChannelBias"), 0.0, 0.0, 0.0);
 
@@ -2021,8 +2021,8 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 		// Override detected width and height for planar textures:
 		if (isplanar) {
 			// They are actually the net size as specified by their rect's:
-			width  = PsychGetWidthFromRect(sourceRecord->rect);
-			height = PsychGetHeightFromRect(sourceRecord->rect);
+			width  = (int) PsychGetWidthFromRect(sourceRecord->rect);
+			height = (int) PsychGetHeightFromRect(sourceRecord->rect);
 		}
 		
 		// Renderable format? Pure luminance or luminance+alpha formats are not renderable on most hardware.
@@ -2150,7 +2150,6 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 void PsychShutdownImagingPipeline(PsychWindowRecordType *windowRecord, psych_bool openglpart)
 {
 	int i;
-	PtrPsychHookFunction hookfunc, hookiter;
 	PsychFBO* fboptr;
 	
 	// Do OpenGL specific cleanup:
@@ -2447,7 +2446,7 @@ void PsychPipelineDeleteHookSlot(PsychWindowRecordType *windowRecord, const char
 {
 	PtrPsychHookFunction hookfunc;
 	PtrPsychHookFunction *prehookfunc;
-	int targetidx, idx;
+	int idx;
 	int hookidx=PsychGetHookByName(hookString);
 	if (hookidx==-1) PsychErrorExitMsg(PsychError_user, "RemoveHook: Unknown (non-existent) hook name provided.");
 
@@ -2872,7 +2871,7 @@ int PsychPipelineProcessMacros(PsychWindowRecordType *windowRecord, char* cmdStr
 	char  varName[256];
 	char* pCurrent		= cmdString;
 	char* pToken		= NULL;
-	int   i, j, k, count;
+	int   i;
 	
 	double* dbltarget	= NULL;
 	PsychGenericScriptType*	newvar = NULL;
@@ -3429,7 +3428,7 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 		glPushMatrix();
 		
 		// Apply global (x,y) offset:
-		glTranslatef(x, y, 0);
+		glTranslatef((float) x, (float) y, 0);
 		
 		// Apply scaling:
 		glScalef(sx, sy, 1);
@@ -3447,25 +3446,25 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 	// but PTB has to use a different system (changed by special gluOrtho2D) transform),
 	// because our 2D coordinate system needs to conform to the standards of the old
 	// Psychtoolboxes and of typical windowing systems. -- A tribute to the past.
-	
+
 	// Upper left vertex in window
-	glTexCoord2f(0, h);
-	glVertex2f(0, 0);		
-	
+	glTexCoord2f(0, (float) h);
+	glVertex2f(0, 0);
+
 	// Lower left vertex in window
 	glTexCoord2f(0, 0);
-	glVertex2f(0, h);		
-	
+	glVertex2f(0, (float) h);
+
 	// Lower right  vertex in window
-	glTexCoord2f(w, 0);
-	glVertex2f(w, h);		
-	
+	glTexCoord2f((float) w, 0);
+	glVertex2f((float) w, (float) h);
+
 	// Upper right in window
-	glTexCoord2f(w, h);
-	glVertex2f(w, 0);		
-	
+	glTexCoord2f((float) w, (float) h);
+	glVertex2f((float) w, 0);
+
 	glEnd();
-	
+
 	if (x!=0 || y!=0 || sx!=1.0 || sy!=1.0) {
 		glPopMatrix();
 	}
@@ -3549,7 +3548,7 @@ psych_bool PsychBlitterDisplayList(PsychWindowRecordType *windowRecord, PsychHoo
 		glPushMatrix();
 		
 		// Apply global (x,y) offset:
-		glTranslatef(x, y, 0);
+		glTranslatef((float) x, (float) y, 0);
 		
 		// Apply scaling:
 		glScalef(sx, sy, 1);
@@ -3820,8 +3819,8 @@ psych_bool PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windo
 	glBegin(GL_QUADS);
 	glVertex2f(0, h-2);
 	glVertex2f(w, h-2);
-	glVertex2f(w, PsychGetHeightFromRect(windowRecord->rect)+1);
-	glVertex2f(0, PsychGetHeightFromRect(windowRecord->rect)+1);
+	glVertex2f(w, (float) PsychGetHeightFromRect(windowRecord->rect)+1);
+	glVertex2f(0, (float) PsychGetHeightFromRect(windowRecord->rect)+1);
 	glEnd();
 
 	// Draw the sync-lines:

@@ -503,13 +503,11 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     GstStructure		*str;
     gint			width,height;
     gint			rate1, rate2;
-    int				i, slotid, tmpint;
+    int				i, slotid;
     int				max_video_threads;
     GError			*error = NULL;
     char			movieLocation[FILENAME_MAX];
     psych_bool			trueValue = TRUE;
-    char			msgerr[10000];
-    char			errdesc[1000];
     psych_bool			printErrors;
     GstIterator			*it;
     psych_bool			done;
@@ -1932,11 +1930,10 @@ double PsychGSGetMovieTimeIndex(int moviehandle)
  */
 double PsychGSSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool indexIsFrames)
 {
-    GstElement		*theMovie;
-    double		oldtime;
-    gint64		targetIndex;
-    GstEvent            *event;
-    GstSeekFlags        flags;
+    GstElement      *theMovie;
+    double          oldtime;
+    gint64          targetIndex;
+    GstSeekFlags    flags;
 
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");

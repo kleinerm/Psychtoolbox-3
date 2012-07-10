@@ -135,9 +135,6 @@ PsychError SCREENOpenVideoCapture(void)
 	PsychWindowRecordType                   *windowRecord;
 	int                                     deviceIndex;
 	int                                     capturehandle = -1;
-	double                                  framerate;
-	int                                     width;
-	int                                     height;
 	PsychRectType                           roirectangle;
 	psych_bool                              roiassigned;
 	int                                     reqdepth = 0;
