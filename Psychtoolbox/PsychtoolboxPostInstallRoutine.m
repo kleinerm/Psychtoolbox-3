@@ -353,9 +353,9 @@ if IsOctave
     
     if octavemajorv > 3 | (octavemajorv == 3 & octaveminorv > 2) %#ok<AND2,OR2>
         fprintf('\n\n=================================================================================\n');
-        fprintf('WARNING: Your version %s of Octave is version 3.3 or later.\n', version);
-        fprintf('WARNING: Psychtoolbox is likely not yet compatible with this version and may fail to work.\n');
-        fprintf('WARNING: We currently recommend the latest stable version of the Octave 3.2.x series for use with Psychtoolbox.\n');
+        fprintf('INFO: Your version %s of Octave is version 3.3 or later.\n', version);
+        fprintf('INFO: Psychtoolbox seems to work correctly on Octave 3.4 - 3.6, but no extensive\n');
+        fprintf('INFO: systematic testing has been performed yet by the core developers.\n');
         fprintf('\nPress any key to continue with setup.\n');
         fprintf('=================================================================================\n\n');
         pause;
@@ -455,7 +455,13 @@ if IsWin & ~IsOctave %#ok<AND2>
         % Failed! Either screwed setup of path or missing VC++ 2010 runtime libraries.
         fprintf('ERROR: Most likely cause: The Microsoft Visual C++ 2010 runtime libraries\n');
         fprintf('ERROR: are missing on your system.\n\n');
-        fprintf('Execute the installer file vcredist_x86.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
+        if IsWin(1)
+            % Need 64-Bit runtime:
+            fprintf('Execute the installer file vcredist_x64.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
+        else
+            % Need 32-Bit runtime:
+            fprintf('Execute the installer file vcredist_x86.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
+        end
         fprintf('You must execute that installer as an administrator user. Exit Matlab before the installation, then restart it.\n');
         %fprintf('Go to the following URL:\n\n');
         %fprintf('http://www.microsoft.com/downloads/details.aspx?familyid=766A6AF7-EC73-40FF-B072-9112BAB119C2&displaylang=en#filelist\n\n');
@@ -466,21 +472,6 @@ if IsWin & ~IsOctave %#ok<AND2>
         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
         fprintf('ERROR: You can also just do a: cd(PsychtoolboxRoot); SetupPsychtoolbox;\n\n');
         fprintf('ERROR: This will avoid a full download of Psychtoolbox over the internet and just finish the setup.\n');
-        
-        if strcmp(computer,'PCWIN64')
-            % 64 bit Matlab running on 64 bit Windows?!? That won't work.
-            fprintf('ERROR:\n');
-            fprintf('ERROR: It seems that you are running a 64-bit version of Matlab on your system.\n');
-            fprintf('ERROR: That won''t work at all! Psychtoolbox currently only supports 32-bit versions\n');
-            fprintf('ERROR: of Matlab.\n');
-            fprintf('ERROR: You can try to exit Matlab and then restart it in 32-bit emulation mode to\n');
-            fprintf('ERROR: make Psychtoolbox work on your 64 bit Windows. You do this by adding the\n');
-            fprintf('ERROR: startup option -win32 to the matlab.exe start command, ie.\n');
-            fprintf('ERROR: matlab.exe -win32\n');
-            fprintf('ERROR: If you do not know how to do this, consult the Matlab help about startup\n');
-            fprintf('ERROR: options for Windows.\n');
-            fprintf('ERROR: See also http://psychtoolbox.org/wikka.php?wakka=Faq64BitSupport.\n\n');
-        end
         
         fprintf('\n\nInstallation aborted. Fix the reported problem and retry.\n\n');
         return;
