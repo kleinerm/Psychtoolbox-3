@@ -1,11 +1,15 @@
 function makefile_windows_r2007a
 % Build moglcore on MS-Windows for Matlab 32/64 Bit:
 %
-% Requires freeglut import libraries and header files to be installed
-% inside the Microsoft Windows-7 platform SDK include and lib folders.
+% Requires freeglut import libraries and header files which are bundled
+% inside the PsychSourceGL\Cohorts\freeglut folder of the PTB source distro.
 %
 % Requires freeglut dll's included within Psychtoolbox distribution.
 %
+
+if ~IsWin
+    error('This makefile is only for building moglcore on MS-Windows!');
+end
 
 if IsWin(1)
     % 64-Bit build:

@@ -166,9 +166,10 @@ if IsWin
        cd([PsychtoolboxRoot 'PsychOpenGL/MOGL/core']);
    end
    
-   % Preload (and thereby link against glut32.dll) moglcore into Matlab. The
+   % Preload (and thereby link against freeglut.dll) moglcore into Matlab. The
    % special command 'PREINIT' forces loading and performs a no-operation.
    moglcore('PREINIT');
+   
    % Now that moglcore is (hopefully) properly loaded, we can revert the working
    % directory to its previous setting:
    cd(olddir);
