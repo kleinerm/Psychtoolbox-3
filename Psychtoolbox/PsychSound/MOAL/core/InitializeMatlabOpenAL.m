@@ -47,7 +47,7 @@ function InitializeMatlabOpenAL(debuglevel, snddevicename, openal_c_style)
 % Prof. Richard F. Murray, University of York, Canada and Mario Kleiner.
 %
 % MOAL is now licensed under the more permissive MIT license since 2011.
-%
+% Relicensing with permission of Richard Murray.
 
 % History:
 % 07.02.2007 mk Written - Based on InitializeMatlabOpenGL.
@@ -122,7 +122,7 @@ if IsWin
          targetdir = pwd;
          cd(olddir);
          fprintf('\n');
-         fprintf('InitializeMatlabOpenAL: Failed to load our moalcore.dll plugin!\n\n');
+         fprintf('InitializeMatlabOpenAL: Failed to load our moalcore plugin!\n\n');
          fprintf('The most likely reason is that you did not install the required,\n');
          fprintf('freely available OpenAL DLL library from Creative Labs Inc. on\n');
          fprintf('your system. You can either download the OpenAL runtime from Creative\n');
@@ -132,8 +132,8 @@ if IsWin
          fprintf('%s \n\n', targetdir);
          fprintf('Type "help InitializeMatlabOpenAL" and read the help text to find out about\n');
          fprintf('download locations for the runtime. After installing the OpenAL32.dll or \n');
-         fprintf('OpenAL64.dll (Windows 64 bit systems), restart Matlab and retry.\n\n');
-         error('Loading Matlab OpenAL wrapper core moalcore.dll failed! OpenAL library not installed?');
+         fprintf('64-Bit OpenAL32.dll (Windows 64 bit systems), restart Matlab and retry.\n\n');
+         error('Loading Matlab OpenAL wrapper core moalcore failed! OpenAL library not installed?');
       end
      
       % Now that moalcore is (hopefully) properly loaded, we can revert the working

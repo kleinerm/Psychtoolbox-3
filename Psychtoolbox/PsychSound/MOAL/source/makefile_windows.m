@@ -9,6 +9,10 @@ function makefile_windows
 % http://connect.creativelabs.com/openal
 %
 
+if ~IsWin
+    error('This makefile is only for building moalcore on MS-Windows!');
+end
+
 if IsWin(1)
     % 64-Bit R2007a or later build:
     mex -g -v -outdir . -output moalcore -largeArrayDims -DWINDOWS -I"C:\Program Files (x86)\OpenAL 1.1 SDK\include" -L"C:\Program Files (x86)\OpenAL 1.1 SDK\libs\Win64" moalcore.c al_auto.c al_manual.c alm.c user32.lib -lOpenAL32
