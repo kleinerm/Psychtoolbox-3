@@ -131,35 +131,6 @@ if nargin < 1 || isempty(cmd)
     return;
 end
 
-% This routine must be called before any PTB mex files are loaded,
-% otherwise they won't pick up the tweak settings consistently. Check if
-% any ptb mex files are loaded:
-
-% inmem not yet implemented as of Octave 3.6.x, so Matlab only:
-if exist('inmem') %#ok<EXIST>
-    % Get list of all loaded mex files in cell array mexf:
-    [foo, mexf] = inmem('-completenames'); %#ok<ASGLU>
-    % We check for files who are stored in a filesystem path that has the
-    % string 'psychtoolbox' in its name. We cannot simply check for
-    % PsychtoolboxRoot, as users may place mex files in non-standard
-    % locations, but one would at least hope they store them in something
-    % with 'psychtoolbox' in its name:
-    for i=1:length(mexf)
-        if ~isempty(strfind(lower(mexf{i}), lower('psychtoolbox')))
-            error('At least one Psychtoolbox mex file is already loaded: (%s). PsychTweak must be executed before any other Psychtoolbox mex file!', mexf{i});
-        end
-    end
-end
-
-% Reset some signalling environment variables used by mex files:
-if strcmpi(cmd, 'Reset')
-    setenv('PSYCH_LOWRESCLOCK_FALLBACK');
-    return;
-else
-    % Reset this one even if no 'Reset' command given:
-    setenv('PSYCH_LOWRESCLOCK_FALLBACK');    
-end
-
 if strcmpi(cmd, 'PrepareForVirtualMachine')
     if IsWin
         % Allow Screen() to execute on the Microsoft GDI software renderer.
@@ -175,6 +146,35 @@ if strcmpi(cmd, 'PrepareForVirtualMachine')
     end
     
     return;
+end
+
+% The following routines must be called before any PTB mex files are loaded,
+% otherwise they won't pick up the tweak settings consistently. Check if
+% any ptb mex files are loaded:
+
+% inmem not yet implemented as of Octave 3.6.x, so Matlab only:
+if exist('inmem') %#ok<EXIST>
+    % Get list of all loaded mex files in cell array mexf:
+    [foo, mexf] = inmem('-completenames'); %#ok<ASGLU>
+    % We check for files who are stored in a filesystem path that has the
+    % string 'psychtoolbox' in its name. We cannot simply check for
+    % PsychtoolboxRoot, as users may place mex files in non-standard
+    % locations, but one would at least hope they store them in something
+    % with 'psychtoolbox' in its name:
+    for i=1:length(mexf)
+        if ~isempty(strfind(lower(mexf{i}), lower('psychtoolbox')))
+            error('At least one Psychtoolbox mex file is already loaded: (%s). PsychTweak(''%s'' must be executed before any other Psychtoolbox mex file!', mexf{i}, cmd);
+        end
+    end
+end
+
+% Reset some signalling environment variables used by mex files:
+if strcmpi(cmd, 'Reset')
+    setenv('PSYCH_LOWRESCLOCK_FALLBACK');
+    return;
+else
+    % Reset this one even if no 'Reset' command given:
+    setenv('PSYCH_LOWRESCLOCK_FALLBACK');    
 end
 
 if strcmpi(cmd, 'BackwardTimejumpTolerance')
