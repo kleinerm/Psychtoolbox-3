@@ -1278,7 +1278,10 @@ dwmdontcare:
     DescribePixelFormat(hDC, pf, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
     
 	// Check for pageflipping for bufferswaps and output warning if we don't get it:
-    if (!(pfd.dwFlags & PFD_SWAP_EXCHANGE) && (pfd.dwFlags & PFD_SWAP_COPY) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Created onscreen window on screenid %i will probably not be able to use GPU pageflipping for Screen('Flip')! May cause tearing artifacts...", screenSettings->screenNumber);
+    if (!(pfd.dwFlags & PFD_SWAP_EXCHANGE) && (pfd.dwFlags & PFD_SWAP_COPY) && (PsychPrefStateGet_Verbosity() > 1)) {
+        printf("PTB-WARNING: Created onscreen window on screenid %i will probably not be able to use GPU pageflipping for\n", screenSettings->screenNumber);
+        printf("PTB-WARNING: Screen('Flip')! May cause tearing artifacts and unreliable or wrong visual stimulus onset timestamping!\n");
+    }
     
 	// Special debug override for faulty drivers with non-working extension:
 	if (conserveVRAM & kPsychOverrideWglChoosePixelformat) wglChoosePixelFormatARB = NULL;
