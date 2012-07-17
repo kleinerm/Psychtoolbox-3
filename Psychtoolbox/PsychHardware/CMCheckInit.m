@@ -51,11 +51,17 @@ function CMCheckInit(meterType, PortString)
 % 2/07/09  mk       Add experimental setup code for use of IOPort instead of SerialComm.
 % 2/11/09  cgb,mk   Small fixes: Now we use IOPort instead of SerialComm --
 %                   by default. Verified to work for both PR650 and PR655 toolboxes.
+% 7/16/12  dhb      Choose right global default for 64-bit Matlab.  Hope I
+%                   did this in a way that doesn't break anything else.
 
 global g_serialPort g_useIOPort;
 
-% If g_useIOPort == 1 the IOPort driver shall be used instead of SerialComm:
-if isempty(g_useIOPort)
+% On 64 bit Matlab setups, we can't use IOPort because it's only 32 bit.
+% This will flag the calibration routines to use SerialComm if a 64 bit
+% version is on the path.
+if (strcmp(computer, 'MACI64') && exist('SerialComm.mexmaci64','file'))
+    g_useIOPort = 0;
+elseif isempty(g_useIOPort)
     g_useIOPort = 1;
 end
 
