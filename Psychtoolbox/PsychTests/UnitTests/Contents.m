@@ -446,11 +446,9 @@
 % PsychOneliners/IsACell.m
 % PsychOneliners/IsLinux.m
 % PsychOneliners/IsMinimumOSXVersion.m
-% PsychOneliners/IsOS9.m
 % PsychOneliners/IsOSX.m
 % PsychOneliners/IsOctave.m
 % PsychOneliners/IsWin.m
-% PsychOneliners/IsWinMatlabR11Style.m
 % PsychOneliners/KbMapKey.m
 % PsychOneliners/LoadIdentityClut.m
 % PsychOneliners/MacModelName.m
