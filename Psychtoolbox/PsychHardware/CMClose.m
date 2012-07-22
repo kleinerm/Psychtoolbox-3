@@ -1,4 +1,4 @@
-function CMClose(meterType)
+unction CMClose(meterType)
 % CMClose([meterType])
 %
 % Close color meter interface.
@@ -22,7 +22,7 @@ end
 switch meterType
 	case 1
 		% PR-650
-		if IsWin || IsOS9 || IsOSX || IsLinux
+		if IsWin || IsOSX || IsLinux
 			PR650close;
 		else
 			error(['Unsupported OS ' computer]);
@@ -36,7 +36,7 @@ switch meterType
 		CRSColorClose;
 	case 4
 		% PR-655
-		if IsWin || IsOS9 || IsOSX || IsLinux
+		if IsWin || IsOSX || IsLinux
 			PR655close;
 		else
 			error(['Unsupported OS ' computer]);
