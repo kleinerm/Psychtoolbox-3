@@ -275,9 +275,9 @@ def postsinglefiles(files):
         pathlinks = """
                     ""
                     <div class="code_header" style="text-align:right;">
-                      <span style="float:left;">Path&nbsp;&nbsp;</span> <span class="counter">Retrieve current version of %s from berliOS: <a href=
-                      "http://svn.berlios.de/svnroot/repos/osxptb/beta/%s">beta</a> | view WebSVN <a href=
-                      "http://svn.berlios.de/wsvn/osxptb/trunk/%s?op=log">changelog</a> of trunk branch</span>
+                      <span style="float:left;">Path&nbsp;&nbsp;</span> <span class="counter">Retrieve current version of from GitHub: <a href=
+                      "http://raw.github.com/Psychtoolbox-3/Psychtoolbox-3/beta/%s">%s</a> | view <a href=
+                      "http://github.com/Psychtoolbox-3/Psychtoolbox-3/commits/beta/managementtools/%s">changelog</a></span>
                     </div>
                     <div class="code">
                       <code>%s</code>
