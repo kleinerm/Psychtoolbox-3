@@ -29,8 +29,6 @@ function CMCheckInit(meterType, PortString)
 % methods and this routine just calls their setup code with default
 % settings.
 %
-
-%
 % 9/15/93 dhb		Modified to use new CMInit properly.
 % 1/18/94 jms		Added gHardware switch
 % 1/24/94 dhb		Changed sign of gHardware switch.
@@ -53,15 +51,12 @@ function CMCheckInit(meterType, PortString)
 %                   by default. Verified to work for both PR650 and PR655 toolboxes.
 % 7/16/12  dhb      Choose right global default for 64-bit Matlab.  Hope I
 %                   did this in a way that doesn't break anything else.
+% 7/20/12  dhb      Undid 7/16/12 change.  Error was due to a stale IOPort on my path
 
 global g_serialPort g_useIOPort;
 
-% On 64 bit Matlab setups, we can't use IOPort because it's only 32 bit.
-% This will flag the calibration routines to use SerialComm if a 64 bit
-% version is on the path.
-if (strcmp(computer, 'MACI64') && exist('SerialComm.mexmaci64','file'))
-    g_useIOPort = 0;
-elseif isempty(g_useIOPort)
+% Default method of serial communication
+if isempty(g_useIOPort)
     g_useIOPort = 1;
 end
 
