@@ -275,15 +275,15 @@ def postsinglefiles(files):
         pathlinks = """
                     ""
                     <div class="code_header" style="text-align:right;">
-                      <span style="float:left;">Path&nbsp;&nbsp;</span> <span class="counter">Retrieve current version of from GitHub: <a href=
-                      "http://raw.github.com/Psychtoolbox-3/Psychtoolbox-3/beta/%s">%s</a> | view <a href=
-                      "http://github.com/Psychtoolbox-3/Psychtoolbox-3/commits/beta/managementtools/%s">changelog</a></span>
+                      <span style="float:left;">Path&nbsp;&nbsp;</span> <span class="counter">Retrieve <a href=
+                      "https://raw.github.com/Psychtoolbox-3/Psychtoolbox-3/beta/%s">current version from GitHub</a> | View <a href=
+                      "https://github.com/Psychtoolbox-3/Psychtoolbox-3/commits/beta/%s">changelog</a></span>
                     </div>
                     <div class="code">
                       <code>%s</code>
                     </div>
                     ""
-                    """ % tuple([basename]+3*[os.path.join(path,basename)])
+                    """ % tuple([os.path.join(path,basename)]*3)
 
         text = headline \
                 + breadcrumb \
