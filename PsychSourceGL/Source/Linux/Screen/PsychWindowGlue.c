@@ -657,6 +657,41 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	  XChangeProperty(dpy, win, atom_window_opacity, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &opacity, 1);
   }
 
+  // If this window isn't a GUI window then disable all window decorations:
+  if (!(windowRecord->specialflags & kPsychGUIWindow)) {
+    // Not a GUI window - Tell window manager we want something simple and borderless:
+
+    struct MwmHints {
+        uint32_t flags;
+        uint32_t functions;
+        uint32_t decorations;
+        int32_t  input_mode;
+        uint32_t status;
+    };
+
+    enum {
+        MWM_HINTS_FUNCTIONS = (1L << 0),
+        MWM_HINTS_DECORATIONS =  (1L << 1),
+        
+        MWM_FUNC_ALL = (1L << 0),
+        MWM_FUNC_RESIZE = (1L << 1),
+        MWM_FUNC_MOVE = (1L << 2),
+        MWM_FUNC_MINIMIZE = (1L << 3),
+        MWM_FUNC_MAXIMIZE = (1L << 4),
+        MWM_FUNC_CLOSE = (1L << 5)
+    };
+
+    Atom mwmHintsProperty = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
+
+    struct MwmHints hints;
+    memset(&hints, 0, sizeof(hints));
+
+    hints.flags       = MWM_HINTS_DECORATIONS;
+    hints.decorations = 0;
+
+    XChangeProperty(dpy, win, mwmHintsProperty, mwmHintsProperty, 32, PropModeReplace, (unsigned char *) &hints, 5);
+  }
+
   // Show our new window:
   XMapWindow(dpy, win);
 
