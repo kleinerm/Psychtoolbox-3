@@ -72,7 +72,7 @@ username = "DocBot"
 password = ""
 _recursive = 0
 _mexmode = 0
-_mexext = '.mexglx'
+_mexext = '.mexa64'
 _debug = 0
 _fulldiff = 0
 
@@ -122,6 +122,7 @@ def beackern(mkstring):
             + r'\bExplode\b|' \
             + r'\bFlip\b|' \
             + r'\bGestalt\b|' \
+            + r'\bGStreamer\b|' \
             + r'\bIOPort\b|' \
             + r'\bInterleave\b|' \
             + r'\bM_PToP\b|' \
