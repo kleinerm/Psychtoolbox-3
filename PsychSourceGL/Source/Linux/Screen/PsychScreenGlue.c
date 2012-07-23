@@ -593,11 +593,11 @@ void InitializePsychDisplayGlue(void)
         displayLockSettingsFlags[i]=FALSE;
         displayOriginalCGSettingsValid[i]=FALSE;
         displayOverlayedCGSettingsValid[i]=FALSE;
-	displayCursorHidden[i]=FALSE;
-	displayBeampositionHealthy[i]=TRUE;
-	displayX11ScreenResources[i] = NULL;
-	xinput_ndevices[i]=0;
-	xinput_info[i]=NULL;
+        displayCursorHidden[i]=FALSE;
+        displayBeampositionHealthy[i]=TRUE;
+        displayX11ScreenResources[i] = NULL;
+        xinput_ndevices[i]=0;
+        xinput_info[i]=NULL;
     }
 
     has_xrandr_1_2 = FALSE;
@@ -742,13 +742,14 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     // Store crtc for this output:
     crtcs[o] = crtcid;
 
-    printf("PTB-INFO: Display '%s' : X-Screen %i : Output %i [%s]: %s : ",
-	   DisplayString(dpy), displayX11Screens[idx], o, (const char*) output_info->name, (isPrimary > -1) ? ((isPrimary == 1) ? "Primary output" : "Secondary output") : "Unknown output priority");
-    printf("%s : CRTC %i [XID %i]\n", (output_info->connection == RR_Connected) ? "Connected" : "Offline", crtcid, (int) output_info->crtc);
-
+    if (PsychPrefStateGet_Verbosity() > 3) {
+        printf("PTB-INFO: Display '%s' : X-Screen %i : Output %i [%s]: %s : ", DisplayString(dpy), displayX11Screens[idx], o, (const char*) output_info->name, (isPrimary > -1) ? ((isPrimary == 1) ? "Primary output" : "Secondary output") : "Unknown output priority");
+        printf("%s : CRTC %i [XID %i]\n", (output_info->connection == RR_Connected) ? "Connected" : "Offline", crtcid, (int) output_info->crtc);
+    }
+      
     if ((isPrimary > 0) && (crtcid >= 0)) {
-	primaryOutput = o;
-	primaryCRTC = crtcid;
+        primaryOutput = o;
+        primaryCRTC = crtcid;
     }
     
     // Is this output - and its crtc - really enabled for this screen?
@@ -794,10 +795,10 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     for (o = 0; o < res->noutput; o++) {
       XRROutputInfo *output_info = XRRGetOutputInfo(dpy, res, res->outputs[o]);
       if (output_info && (output_info->connection == RR_Connected) && (crtcs[o] >= 0)) {
-	primaryOutput = o;
-	primaryCRTC = crtcs[o];
+        primaryOutput = o;
+        primaryCRTC = crtcs[o];
         XRRFreeOutputInfo(output_info);
-	break;
+        break;
       }
 
       if (output_info) XRRFreeOutputInfo(output_info);
@@ -805,8 +806,8 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
 
     // Still undefined? Use first output as primary output:
     if (primaryOutput == -1) {
-	primaryOutput = 0;
-	primaryCRTC = (crtcs[0] >= 0) ? crtcs[0] : 0;
+        primaryOutput = 0;
+        primaryCRTC = (crtcs[0] >= 0) ? crtcs[0] : 0;
     }
   }
 
@@ -825,8 +826,10 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
   PsychSetScreenToHead(idx, primaryCRTC, 0);
   PsychSetScreenToCrtcId(idx, primaryCRTCIdx, 0);
 
-  printf("PTB-INFO: Display '%s' : X-Screen %i : Assigning primary output as %i with RandR-CRTC %i and GPU-CRTC %i.\n", DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC, primaryCRTCIdx);
-  
+  if (PsychPrefStateGet_Verbosity() > 2) {
+      printf("PTB-INFO: Display '%s' : X-Screen %i : Assigning primary output as %i with RandR-CRTC %i and GPU-CRTC %i.\n", DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC, primaryCRTCIdx);
+  }
+
   return;
 }
 
