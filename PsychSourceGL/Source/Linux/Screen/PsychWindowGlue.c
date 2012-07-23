@@ -176,7 +176,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   XVisualInfo *visinfo = NULL;
   int i, x, y, width, height, nrdummy;
   GLenum glerr;
-  psych_bool fullscreen = FALSE;
   int attrib[41];
   int attribcount=0;
   int stereoenableattrib=0;
@@ -283,16 +282,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     width=PsychGetWidthFromRect(screenrect);
     height=PsychGetHeightFromRect(screenrect);      
     
-    // Switch system to fullscreen-mode without changing any settings:
-    fullscreen = TRUE;
+    // Mark this window as fullscreen window:
+    windowRecord->specialflags |= kPsychIsFullscreenWindow;
 
-	// Mark this window as fullscreen window:
-	windowRecord->specialflags |= kPsychIsFullscreenWindow;
-	
-	// Copy absolute screen location and area of window to 'globalrect',
-	// so functions like Screen('GlobalRect') can still query the real
-	// bounding gox of a window onscreen:
-	PsychGetGlobalScreenRect(screenSettings->screenNumber, windowRecord->globalrect);
+    // Copy absolute screen location and area of window to 'globalrect',
+    // so functions like Screen('GlobalRect') can still query the real
+    // bounding gox of a window onscreen:
+    PsychGetGlobalScreenRect(screenSettings->screenNumber, windowRecord->globalrect);
   }
   else {
     // Window size different from current screen size:
@@ -302,11 +298,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     y=windowRecord->rect[kPsychTop];
     width=PsychGetWidthFromRect(windowRecord->rect);
     height=PsychGetHeightFromRect(windowRecord->rect);
-    fullscreen = FALSE;
 	
-	// Copy absolute screen location and area of window to 'globalrect',
-	// so functions like Screen('GlobalRect') can still query the real
-	// bounding gox of a window onscreen:
+    // Copy absolute screen location and area of window to 'globalrect',
+    // so functions like Screen('GlobalRect') can still query the real
+    // bounding gox of a window onscreen:
     PsychCopyRect(windowRecord->globalrect, windowRecord->rect);
   }
 
@@ -539,20 +534,12 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // If this setup is fbconfig based, get associated visual:
   if (fbconfig) visinfo = glXGetVisualFromFBConfig(dpy, fbconfig[0]);
 
-  // Set window to non-fullscreen mode if it is a transparent or otherwise special window.
-  // This will prevent setting the override_redirect attribute, which would lock out the
-  // desktop window compositor:
-  if (windowLevel < 2000) fullscreen = FALSE;
-
-  // Also disable fullscreen mode for GUI-like windows:
-  if (windowRecord->specialflags & kPsychGUIWindow) fullscreen = FALSE;  
-
   // Setup window attributes:
   attr.background_pixel = 0;  // Background color defaults to black.
   attr.border_pixel = 0;      // Border color as well.
   attr.colormap = XCreateColormap( dpy, root, visinfo->visual, AllocNone);  // Dummy colormap assignment.
   attr.event_mask = KeyPressMask | StructureNotifyMask; // | ExposureMask;  // We're only interested in keypress events for GetChar() and StructureNotify to wait for Windows to be mapped.
-  attr.override_redirect = (fullscreen) ? 1 : 0;                            // Lock out window manager if fullscreen window requested.
+  attr.override_redirect = (windowRecord->specialflags & kPsychGUIWindow) ? 0 : 1; // Lock out window manager, unless it is a GUI window.
   mask = CWOverrideRedirect | CWBackPixel | CWBorderPixel | CWColormap | CWEventMask;
 
   // Create our onscreen window:
@@ -739,9 +726,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     XForceScreenSaver(dpy, ScreenSaverReset);
   }
 
-  // Some info for the user regarding non-fullscreen and ATI hw:
-  if (!(windowRecord->specialflags & kPsychIsFullscreenWindow) && (strstr(glGetString(GL_VENDOR), "ATI"))) {
-    printf("PTB-INFO: Some ATI graphics cards may not support proper syncing to vertical retrace when\n");
+  // Some info for the user regarding non-fullscreen mode and sync problems:
+  if (!(windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_Verbosity() > 2)) {
+    printf("PTB-INFO: Many graphics cards do not support proper syncing to vertical retrace when\n");
     printf("PTB-INFO: running in windowed mode (non-fullscreen). If PTB aborts with 'Synchronization failure'\n");
     printf("PTB-INFO: you can disable the sync test via call to Screen('Preference', 'SkipSyncTests', 1); .\n");
     printf("PTB-INFO: You won't get proper stimulus onset timestamps though, so windowed mode may be of limited use.\n");
