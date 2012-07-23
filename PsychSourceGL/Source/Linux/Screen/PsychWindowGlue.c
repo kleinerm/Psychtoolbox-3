@@ -644,16 +644,20 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	  XChangeProperty(dpy, win, atom_window_opacity, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &opacity, 1);
   }
 
-  // If this window isn't a GUI window then disable all window decorations:
-  if (!(windowRecord->specialflags & kPsychGUIWindow)) {
-    // Not a GUI window - Tell window manager we want something simple and borderless:
-
+  // If this window is a GUI window then enable all window decorations and
+  // manipulations, except for the window close button, which would wreak havoc:
+  if (windowRecord->specialflags & kPsychGUIWindow) {
+    // For some reason we need to use unsigned long and long here instead of
+    // int32_t etc., despite the fact that on a 64-Bit build, a long is 64-Bit
+    // and on a 32-Bit build, a long is 32-Bit, whereas the XChangeProperty()
+    // request says a single unit is 32-Bits? Anyway, it works correctly on a
+    // 64-Bit build, so this seems to be magically ok.
     struct MwmHints {
-        uint32_t flags;
-        uint32_t functions;
-        uint32_t decorations;
-        int32_t  input_mode;
-        uint32_t status;
+        unsigned long flags;
+        unsigned long functions;
+        unsigned long decorations;
+        long          input_mode;
+        unsigned long status;
     };
 
     enum {
@@ -673,10 +677,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     struct MwmHints hints;
     memset(&hints, 0, sizeof(hints));
 
-    hints.flags       = MWM_HINTS_DECORATIONS;
-    hints.decorations = 0;
+    hints.flags       = MWM_HINTS_DECORATIONS | MWM_HINTS_FUNCTIONS;
+    hints.decorations = MWM_FUNC_ALL;
+    hints.functions   = MWM_FUNC_RESIZE | MWM_FUNC_MOVE | MWM_FUNC_MINIMIZE | MWM_FUNC_MAXIMIZE;
 
-    XChangeProperty(dpy, win, mwmHintsProperty, mwmHintsProperty, 32, PropModeReplace, (unsigned char *) &hints, 5);
+    XChangeProperty(dpy, win, mwmHintsProperty, mwmHintsProperty, 32, PropModeReplace, (unsigned char *) &hints, sizeof(hints) / sizeof(long));
   }
 
   // Show our new window:
