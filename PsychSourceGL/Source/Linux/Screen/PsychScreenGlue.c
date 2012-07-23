@@ -753,10 +753,34 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     
     // Is this output - and its crtc - really enabled for this screen?
     if (crtcid >=0) {
-      // Yes: Add its crtcid to the list of crtc's for this screen:
-      PsychSetScreenToHead(idx, crtcid, crtccount);
-      PsychSetScreenToCrtcId(idx, crtcid + minimum_crtcid, crtccount);
-      crtccount++;
+        // Yes: Add its crtcid to the list of crtc's for this screen:
+        PsychSetScreenToHead(idx, crtcid, crtccount);
+        PsychSetScreenToCrtcId(idx, minimum_crtcid, crtccount);
+
+        // Increment id of next allocated crtc scanout engine on GPU:
+        // We assume they are allocated in the order of activated outputs,
+        // e.g., first output of first X-Screen -> crtc 0, 2nd output of first
+        // X-Screen -> crtc 1, first output of 2nd X-Screen -> crtc 2 etc.
+        //
+        // This is as heuristic as previous approach, but it should continue
+        // work as well or as bad as previous one, except it should fix the
+        // problem reported in forum message #14200 for AMD Catalyst driver.
+        // It should work for bog-standard ZaphodHead setups. It will work in
+        // any case on single-display setups or multi-display setups where a single
+        // X-Screen spans multiple display outputs aka multiple crtcs.
+        //
+        // The working assumption is that the user of a ZaphodHead config assigned the different
+        // GPU outputs, and thereby their associated physical crtc's, in an ascending order to
+        // X-Screens. This is a reasonable assumption, but in no way guaranteed by the system.
+        // Therefore this heuristic can go wrong on non-standard ZaphodHead Multi-X-Screen setups.
+        // In such cases the user can always use the Screen('Preference', 'ScreenToHead', ...);
+        // command or the PSYCHTOOLBOX_PIPEMAPPINGS environment variable to override the wrong
+        // mapping, although it would be a pita for complex setups.
+        minimum_crtcid++;
+
+        // Increment running count of active outputs (displays) attached to
+        // the currently processed X-Screend idx:
+        crtccount++;
     }
 
     // Release info for this output:
@@ -802,24 +826,6 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
   PsychSetScreenToCrtcId(idx, primaryCRTCIdx, 0);
 
   printf("PTB-INFO: Display '%s' : X-Screen %i : Assigning primary output as %i with RandR-CRTC %i and GPU-CRTC %i.\n", DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC, primaryCRTCIdx);
-
-  // This X-Screen has res->ncrtc physical CRTC's available for exclusive use.
-  // These are not available to potential additional X-Screens in a multi-x-screen "ZaphodHead"
-  // configuration. Therefore we raise the minimum_crtcid - the smallest physical crtc id available to
-  // additional outputs on additional X-Screens by res->ncrtc, so the first RandR crtc of such an
-  // additional X-Screen will map to the minimum_crtcid'th physical crtc. This avoids allocation
-  // of one physical crtc by multiple X-Screens. It should work for bog-standard ZaphodHead setups.
-  // It will work in any case on single-display setups or multi-display setups where a single
-  // X-Screen spans multiple display outputs aka multiple crtcs.
-  //
-  // The working assumption is that the user of a ZaphodHead config assigned the different
-  // GPU outputs, and thereby their associated physical crtc's, in an ascending order to
-  // X-Screens. This is a reasonable assumption, but in no way guaranteed by the system.
-  // Therefore this heuristic can go wrong on non-standard ZaphodHead Multi-X-Screen setups.
-  // In such cases the user can always use the Screen('Preference', 'ScreenToHead', ...);
-  // command or the PSYCHTOOLBOX_PIPEMAPPINGS environment variable to override the wrong
-  // mapping, although it would be a pita for complex setups.
-  minimum_crtcid += res->ncrtc;
   
   return;
 }
