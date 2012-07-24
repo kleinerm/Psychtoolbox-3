@@ -182,6 +182,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   int depth, bpc;
   int windowLevel;
   int major, minor;
+  int xfixes_event_base1, xfixes_event_base2;
+  psych_bool xfixes_available = FALSE;
 
   // Retrieve windowLevel, an indicator of where non-fullscreen windows should
   // be located wrt. to other windows. 0 = Behind everything else, occluded by
@@ -248,6 +250,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
       return(FALSE);
     }
   }
+
+  // XFixes extension version 2.0 or later available and initialized?
+  if (XFixesQueryExtension(dpy, &xfixes_event_base1, &xfixes_event_base2) &&
+      XFixesQueryVersion(dpy, &major, &minor) && (major >= 2)) xfixes_available = TRUE;
 
   // Init GLX extension, get its version, determine if at least V1.3 supported:
   useGLX13 = (glXQueryExtension(dpy, &glx_error_base, &glx_event_base) &&
@@ -560,6 +566,21 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 			   None, (char **)NULL, 0, &sizehints);
   }
 
+  // Setup window transparency for user input (keyboard and mouse events):
+  if (xfixes_available && (windowLevel < 1500)) {
+    // Define region as an empty input region:
+    XserverRegion region = XFixesCreateRegion(dpy, NULL, 0);
+ 
+    // Assign as region in which window receives input events, thereby
+    // setting the input region to empty, so the window is transparent
+    // to any input events like key presses or mouse clicks:
+    XFixesSetWindowShapeRegion(dpy, win, ShapeInput, 0, 0, region);
+
+    // Destroy region after assignment:
+    XFixesDestroyRegion(dpy, region);
+  }
+
+  // Create corresponding glx window:
   if (fbconfig) {
 	glxwindow = glXCreateWindow(dpy, fbconfig[0], win, NULL);
   }
