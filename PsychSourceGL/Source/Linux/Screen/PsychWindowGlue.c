@@ -41,7 +41,7 @@
 static psych_bool usePerWindowXConnections = FALSE;
 
 // Use GLX version 1.3 setup code? Enabled INTEL_SWAP_EVENTS and other goodies...
-static psych_bool useGLX13;
+static psych_bool useGLX13 = FALSE;
 
 // Event base for GLX extension:
 static int glx_error_base, glx_event_base;
@@ -174,7 +174,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   GLXFBConfig *fbconfig = NULL;
   GLXWindow glxwindow;
   XVisualInfo *visinfo = NULL;
-  int i, x, y, width, height, nrdummy;
+  int i, x, y, width, height, nrconfigs, buffdepth;
   GLenum glerr;
   int attrib[41];
   int attribcount=0;
@@ -254,6 +254,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // XFixes extension version 2.0 or later available and initialized?
   if (XFixesQueryExtension(dpy, &xfixes_event_base1, &xfixes_event_base2) &&
       XFixesQueryVersion(dpy, &major, &minor) && (major >= 2)) xfixes_available = TRUE;
+  major = minor = 0;
 
   // Init GLX extension, get its version, determine if at least V1.3 supported:
   useGLX13 = (glXQueryExtension(dpy, &glx_error_base, &glx_event_base) &&
@@ -411,7 +412,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
   // Select matching visual for our pixelformat:
   if (useGLX13) {
-    fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrdummy);
+    fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
   } else {
     visinfo = glXChooseVisual(dpy, scrnum, attrib );
   }
@@ -424,7 +425,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
 	// Retry:
 	if (useGLX13) {
-		fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrdummy);
+		fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
 	} else {
 		visinfo = glXChooseVisual(dpy, scrnum, attrib );
 	}
@@ -445,7 +446,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		  
 		  // Retry:
 		  if (useGLX13) {
-			  fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrdummy);
+			  fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
 		  } else {
 			  visinfo = glXChooseVisual(dpy, scrnum, attrib );
 		  }
@@ -463,7 +464,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 			  windowRecord->multiSample--;
 
 			  if (useGLX13) {
-				  fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrdummy);
+				  fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
 			  } else {
 				  visinfo = glXChooseVisual(dpy, scrnum, attrib );
 			  }
@@ -478,7 +479,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 			  attrib[i+1]=0;
 
 			  if (useGLX13) {
-				  fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrdummy);
+				  fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
 			  } else {
 				  visinfo = glXChooseVisual(dpy, scrnum, attrib );
 			  }
@@ -499,7 +500,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
       
       // Retry...
       if (useGLX13) {
-	      fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrdummy);
+	      fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
       } else {
 	      visinfo = glXChooseVisual(dpy, scrnum, attrib );
       }
@@ -512,7 +513,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	fflush(NULL);
 	
 	if (useGLX13) {
-		fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrdummy);
+		fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
 	} else {
 		visinfo = glXChooseVisual(dpy, scrnum, attrib );
 	}
@@ -523,7 +524,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	  for (i=0; i<attribcount && attrib[i]!=GLX_STENCIL_SIZE; i++);
 	  if (attrib[i]==GLX_STENCIL_SIZE && i<attribcount) attrib[i+1]=0;
 	  if (useGLX13) {
-		  fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrdummy);
+		  fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
 	  } else {
 		  visinfo = glXChooseVisual(dpy, scrnum, attrib );
 	  }
@@ -535,6 +536,21 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   if (!visinfo && !fbconfig) {
     printf("\nPTB-ERROR[glXChooseVisual() failed]: Couldn't get any suitable visual from X-Server.\n\n");
     return(FALSE);
+  }
+
+  if (fbconfig && (windowLevel >=1000 && windowLevel < 2000)) {
+    // Transparent window requested and fbconfig's found. Iterate over them
+    // and try to find one with 32 bit color depths:
+    for (i = 0; i < nrconfigs; i++) {
+      if (glXGetFBConfigAttrib(dpy, fbconfig[i], GLX_BUFFER_SIZE, &buffdepth) && (buffdepth >= 32)) {
+	fbconfig[0] = fbconfig[i];
+	if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Choosing GLX framebuffer config %i for transparent window.\n", i);
+	break;
+      }
+      else if (PsychPrefStateGet_Verbosity() > 4) {
+	printf("PTB-INFO: Trying GLX framebuffer config %i for transparent window: Depths %i bpp.\n", i, buffdepth);
+      }
+    }
   }
 
   // If this setup is fbconfig based, get associated visual:
@@ -552,6 +568,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   win = XCreateWindow( dpy, root, x, y, width, height,
 		       0, visinfo->depth, InputOutput,
 		       visinfo->visual, mask, &attr );
+
+  if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: GLX Visual info depths is %i bits\n", visinfo->depth);
 
   // Set hints and properties:
   {
@@ -703,6 +721,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     hints.functions   = MWM_FUNC_RESIZE | MWM_FUNC_MOVE | MWM_FUNC_MINIMIZE | MWM_FUNC_MAXIMIZE;
 
     XChangeProperty(dpy, win, mwmHintsProperty, mwmHintsProperty, 32, PropModeReplace, (unsigned char *) &hints, sizeof(hints) / sizeof(long));
+
+    // For windowLevels of at least 500, tell window manager to try to keep
+    // our window above most other windows, by setting the state to WM_STATE_ABOVE:
+    if (windowLevel >= 500) {
+      Atom stateAbove = XInternAtom(dpy, "_NET_WM_STATE_ABOVE", False);
+      XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_STATE", False), XA_ATOM, 32, PropModeReplace, (unsigned char *) &stateAbove, 1);
+    }
   }
 
   // Show our new window: Also raise it to the top for
