@@ -606,6 +606,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	glxwindow = glXCreateWindow(dpy, fbconfig[0], win, NULL);
   }
 
+  // Make sure a potential slaveWindow of us resides on the same X-Screen == has same screenNumber as us,
+  // otherwise trying to perform OpenGL context resource sharing would end badly:
+  if ((windowRecord->slaveWindow) && (windowRecord->slaveWindow->screenNumber != screenSettings->screenNumber)) {
+      // Ohoh! Let's abort with some more helpful error message than a simple hard application crash:
+      printf("\nPTB-ERROR:[glXCreateContext() resource sharing] Our peer window resides on a different X-Screen, which is forbidden. Aborting.\n\n");
+      return(FALSE);
+  }
+
   // Create associated GLX OpenGL rendering context: We use ressource
   // sharing of textures, display lists, FBO's and shaders if 'slaveWindow'
   // is assigned for that purpose as master-window. We request a direct
