@@ -262,6 +262,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
   // Initialze GLX-1.3 protocol support. Use if possible:
   glXChooseFBConfig = (PFNGLXCHOOSEFBCONFIGPROC) glXGetProcAddressARB("glXChooseFBConfig");
+  glXGetFBConfigAttrib = (PFNGLXGETFBCONFIGATTRIBPROC) glXGetProcAddressARB("glXGetFBConfigAttrib");
   glXGetVisualFromFBConfig = (PFNGLXGETVISUALFROMFBCONFIGPROC) glXGetProcAddressARB("glXGetVisualFromFBConfig");
   glXCreateWindow = (PFNGLXCREATEWINDOWPROC) glXGetProcAddressARB("glXCreateWindow");
   glXCreateNewContext = (PFNGLXCREATENEWCONTEXTPROC) glXGetProcAddressARB("glXCreateNewContext");
@@ -271,7 +272,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
   // Check if everything we need from GLX-1.3 is supported:
   if (!useGLX13 || !glXChooseFBConfig || !glXGetVisualFromFBConfig || !glXCreateWindow || !glXCreateNewContext ||
-      !glXDestroyWindow || !glXSelectEvent || !glXGetSelectedEvent) {
+      !glXDestroyWindow || !glXSelectEvent || !glXGetSelectedEvent || !glXGetFBConfigAttrib) {
     useGLX13 = FALSE;
     printf("PTB-INFO: Not using GLX-1.3 extension. Unsupported? Some features may be disabled.\n");
   } else {
@@ -542,6 +543,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Transparent window requested and fbconfig's found. Iterate over them
     // and try to find one with 32 bit color depths:
     for (i = 0; i < nrconfigs; i++) {
+      buffdepth = 0;
       if (glXGetFBConfigAttrib(dpy, fbconfig[i], GLX_BUFFER_SIZE, &buffdepth) && (buffdepth >= 32)) {
 	fbconfig[0] = fbconfig[i];
 	if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Choosing GLX framebuffer config %i for transparent window.\n", i);
