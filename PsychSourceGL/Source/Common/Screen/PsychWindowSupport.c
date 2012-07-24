@@ -306,28 +306,34 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	// some 'ConserveVRAM' flag, we will try to share ressources of all OpenGL contexts
 	// to simplify multi-window operations.
 	if ((sharedContextWindow == NULL) && ((conserveVRAM & kPsychDontShareContextRessources) == 0) && (PsychCountOpenWindows(kPsychDoubleBufferOnscreen) + PsychCountOpenWindows(kPsychSingleBufferOnscreen) > 0)) {
-		// Try context ressource sharing: Assign first onscreen window as sharing window:
-		i = PSYCH_FIRST_WINDOW - 1;
-		do {
-			i++;
-			// Abort search if no further windowRecords available (invalid_Windex return code):
-			if (PsychError_invalidWindex == FindWindowRecord(i, &((*windowRecord)->slaveWindow))) break;
-		} while (!PsychIsOnscreenWindow((*windowRecord)->slaveWindow) ||
-			 ((PSYCH_SYSTEM == PSYCH_LINUX) && ((*windowRecord)->slaveWindow->screenNumber != screenSettings->screenNumber)));
+	  // Try context ressource sharing: Assign first onscreen window as sharing window:
+	  i = PSYCH_FIRST_WINDOW - 1;
+	  do {
+	    // Try next window index:
+	    i++;
 
-		// Sanity check:
-		if (!((*windowRecord)->slaveWindow) || !PsychIsOnscreenWindow((*windowRecord)->slaveWindow) ||
-		    ((PSYCH_SYSTEM == PSYCH_LINUX) && ((*windowRecord)->slaveWindow->screenNumber != screenSettings->screenNumber))) {
-		  // Failed: Invalidate slaveWindow, so no context sharing takes place - It would fail anyway in lower-level layer:
-		  (*windowRecord)->slaveWindow = NULL;
-		  if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: This onscreen window could not find a peer window for sharing of OpenGL context ressources.\n");
-		} else {
-		  // Ok, now we should have the first onscreen window assigned as slave window.
-		  if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: This onscreen window tries to share OpenGL context ressources with window %i.\n", i);
-		}
+	    // Skip this one if it is ourselves:
+	    if (i == (*windowRecord)->windowIndex) i++;
+
+	    // Abort search if no further windowRecords available (invalid_Windex return code):
+	    if (PsychError_invalidWindex == FindWindowRecord(i, &((*windowRecord)->slaveWindow))) break;
+
+	    // Repeat search if this ain't an onscreen window, or on Linux, if it is located on a
+	    // different X-Screen aka screenNumber, because windows can't share resources across X-Screens:
+	  } while (!PsychIsOnscreenWindow((*windowRecord)->slaveWindow) ||
+		   ((PSYCH_SYSTEM == PSYCH_LINUX) && ((*windowRecord)->slaveWindow->screenNumber != screenSettings->screenNumber)));
+
+	  // Sanity check - Do conditions hold for valid sharing window?
+	  if (!((*windowRecord)->slaveWindow) || !PsychIsOnscreenWindow((*windowRecord)->slaveWindow) ||
+	      ((PSYCH_SYSTEM == PSYCH_LINUX) && ((*windowRecord)->slaveWindow->screenNumber != screenSettings->screenNumber))) {
+	    // Failed: Invalidate slaveWindow, so no context sharing takes place - It would fail anyway in lower-level layer:
+	    (*windowRecord)->slaveWindow = NULL;
+	    if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: This onscreen window could not find a peer window for sharing of OpenGL context ressources.\n");
+	  } else {
+	    // Ok, now we should have the first onscreen window assigned as slave window.
+	    if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: This onscreen window tries to share OpenGL context ressources with window %i.\n", i);
+	  }
 	}
-
-    //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering PsychOSOpenOnscreenWindow\n");
     
     // Call the OS specific low-level Window & Context setup routine:
     if (!PsychOSOpenOnscreenWindow(screenSettings, (*windowRecord), numBuffers, stereomode, conserveVRAM)) {
