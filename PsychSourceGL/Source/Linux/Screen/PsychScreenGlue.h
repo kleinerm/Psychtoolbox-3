@@ -100,5 +100,8 @@ int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int new
 // Calls XDefineCursor() or XIDefineCursor(..., deviceId, ...), setting cursor of all onscreen windows to 'cursor': 
 void PsychOSDefineX11Cursor(int screenNumber, int deviceId, Cursor cursor);
 
+// Return identifying information about GPU for a given screen screenNumber:
+psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortype, int* pciDeviceId, int* numDisplayHeads);
+
 //end include once
 #endif

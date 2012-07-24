@@ -231,6 +231,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     double maxStddev, maxDeviation, maxDuration;	// Sync thresholds and settings...
     int minSamples;
     int vblbias, vbltotal;
+    int gpuMaintype, gpuMinortype;
 
     // Splash screen support:
     char splashPath[FILENAME_MAX];
@@ -413,16 +414,18 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		}
 		else {
 			// Only support our homegrown method with PTB kernel driver on ATI/AMD hardware:
-			if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) || strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_VENDOR), "Intel")) {
+			if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) ||
+			    !PsychGetGPUSpecs(screenSettings->screenNumber, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
+			    (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0x10)) {
 				printf("\nPTB-ERROR: Your script requested a 30bpp, 10bpc framebuffer, but the Psychtoolbox kernel driver is not loaded and ready.\n");
 				printf("PTB-ERROR: The driver currently only supports selected ATI Radeon GPU's (X1000/HD2000/HD3000/HD4000 series and corresponding FireGL/FirePro models).\n");
 				printf("PTB-ERROR: On MacOS/X the driver must be loaded and functional for your graphics card for this to work.\n");
 				printf("PTB-ERROR: Read 'help PsychtoolboxKernelDriver' for setup information.\n");
-				printf("PTB-ERROR: On Linux you must either configure your system by executing the script PsychLinuxConfiguration once,\n");
+				printf("PTB-ERROR: On Linux you must either configure your system by executing the script 'PsychLinuxConfiguration' once,\n");
 				printf("PTB-ERROR: or start Octave or Matlab as root, ie. system administrator or via sudo command for this to work.\n\n");
 				PsychOSCloseWindow(*windowRecord);
 				FreeWindowRecordFromPntr(*windowRecord);
-				return(FALSE);			
+				return(FALSE);
 			}
 			
 			// Basic support seems to be there, set the request flag.

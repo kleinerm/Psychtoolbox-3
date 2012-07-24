@@ -505,6 +505,34 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 	return((gfx_cntl_mem) ? TRUE : FALSE);
 }
 
+
+/*
+ * Return identifying information about GPU for a given screen screenNumber:
+ *
+ * Returns TRUE on success, and the actual info in int variables, FALSE if info
+ * not available:
+ * Input: screenNumber of the screen for which to query GPU.
+ *
+ * Output: All optional - NULL == Don't return info.
+ *
+ * gpuMaintype = Basically what vendor.
+ * gpuMinortype = Vendor specific id meaningful to us to define a certain class or generation of hardware.
+ * pciDeviceId = The PCI device id.
+ * numDisplayHeads = Maximum number of crtc's.
+ *
+ */
+psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortype, int* pciDeviceId, int* numDisplayHeads)
+{
+  if (!PsychOSIsKernelDriverAvailable(screenNumber)) return(FALSE);
+
+  if (gpuMaintype) *gpuMaintype = fDeviceType;
+  if (gpuMinortype) *gpuMinortype = fCardType;
+  if (pciDeviceId) *pciDeviceId = fPCIDeviceId;
+  if (numDisplayHeads) *numDisplayHeads = fNumDisplayHeads;
+
+  return(TRUE);
+}
+
 // Maybe use NULLs in the settings arrays to mark entries invalid instead of using psych_bool flags in a different array.   
 static psych_bool		displayLockSettingsFlags[kPsychMaxPossibleDisplays];
 static PsychScreenSettingsType	displayOriginalCGSettings[kPsychMaxPossibleDisplays];        	//these track the original video state before the Psychtoolbox changed it.  
