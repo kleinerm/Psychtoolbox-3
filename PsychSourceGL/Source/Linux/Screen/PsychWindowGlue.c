@@ -544,7 +544,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // and try to find one with 32 bit color depths:
     for (i = 0; i < nrconfigs; i++) {
       buffdepth = 0;
-      if (glXGetFBConfigAttrib(dpy, fbconfig[i], GLX_BUFFER_SIZE, &buffdepth) && (buffdepth >= 32)) {
+      if ((Success == glXGetFBConfigAttrib(dpy, fbconfig[i], GLX_BUFFER_SIZE, &buffdepth)) && (buffdepth >= 32)) {
 	fbconfig[0] = fbconfig[i];
 	if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Choosing GLX framebuffer config %i for transparent window.\n", i);
 	break;
