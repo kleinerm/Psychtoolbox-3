@@ -3105,17 +3105,25 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		PsychOSFlipWindowBuffers(windowRecord);
 		
 		// Also swap the slave window, if any:
-		if (windowRecord->slaveWindow) PsychOSFlipWindowBuffers(windowRecord->slaveWindow);
-		
+		if (windowRecord->slaveWindow) {
+		  // Some drivers need the context of the to-be-swapped window, e.g., NVidia binary blob on Linux:
+		  PsychSetGLContext(windowRecord->slaveWindow);
+		  PsychOSFlipWindowBuffers(windowRecord->slaveWindow);
+		  PsychSetGLContext(windowRecord);
+		}
+
 		// Multiflip with vbl-sync requested?
 		if (multiflip==1) {
 			//  Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace"
 			//  for all onscreen windows except our primary one:
 			for(i=0;i<numWindows;i++) {
 				if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i]!=windowRecord)) {
-					PsychOSFlipWindowBuffers(windowRecordArray[i]);
+				  // Some drivers need the context of the to-be-swapped window, e.g., NVidia binary blob on Linux:
+				  PsychSetGLContext(windowRecordArray[i]);
+				  PsychOSFlipWindowBuffers(windowRecordArray[i]);
 				}
 			}
+			PsychSetGLContext(windowRecord);
 		}
     }
 
@@ -3190,9 +3198,13 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 			// Immediately flip all onscreen windows except our primary one:
 			for(i=0;i<numWindows;i++) {
 				if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i]!=windowRecord)) {
-					PsychOSFlipWindowBuffers(windowRecordArray[i]);
+				  // Some drivers need the context of the to-be-swapped window, e.g., NVidia binary blob on Linux:
+				  PsychSetGLContext(windowRecordArray[i]);
+				  PsychOSFlipWindowBuffers(windowRecordArray[i]);
 				}
 			}
+			// Restore to our context:
+			PsychSetGLContext(windowRecord);
 		}
 		
         // Query and return rasterbeam position immediately after Flip and before timestamp:
