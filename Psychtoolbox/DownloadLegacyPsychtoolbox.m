@@ -298,9 +298,9 @@ end
 % Check OS
 IsWin=strcmp(computer,'PCWIN') | strcmp(computer,'PCWIN64')| strcmp(computer, 'i686-pc-mingw32');
 IsOSX=strcmp(computer,'MAC') | strcmp(computer,'MACI') | ~isempty(findstr(computer, 'apple-darwin'));
-isLinux=strcmp(computer,'GLNX86') | strcmp(computer,'GLNXA64') | ~isempty(findstr(computer, 'linux-gnu'));
+IsLinux=strcmp(computer,'GLNX86') | strcmp(computer,'GLNXA64') | ~isempty(findstr(computer, 'linux-gnu'));
 
-if ~IsWin & ~IsOSX & ~isLinux
+if ~IsWin & ~IsOSX & ~IsLinux
     os=computer;
     if strcmp(os,'MAC2')
         os='Mac OS9';
@@ -670,7 +670,7 @@ end
 if IsOSX
     fprintf('I will now download the latest Psychtoolbox for OSX.\n');
 else
-    if isLinux
+    if IsLinux
         fprintf('I will now download the latest Psychtoolbox for Linux.\n');
     else
         fprintf('I will now download the latest Psychtoolbox for Windows.\n');
@@ -696,7 +696,7 @@ fprintf('%s\n',checkoutcommand);
 fprintf('Downloading. It''s nearly 100 MB, which can take many minutes. \nAlas there may be no output to this window to indicate progress until the download is complete. \nPlease be patient ...\n');
 fprintf('If you see some message asking something like "accept certificate (p)ermanently, (t)emporarily? etc."\n');
 fprintf('then please press the p key on your keyboard, possibly followed by pressing the ENTER key.\n\n');
-if IsOSX | isLinux
+if IsOSX | IsLinux
     [err]=system(checkoutcommand);
     result = 'For reason, see output above.';
 else
@@ -712,7 +712,7 @@ if err & (downloadmethod == 1)
     checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://psychtoolbox-3.googlecode.com/svn/' flavor '/Psychtoolbox/ ' pt];
     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
     fprintf('%s\n\n',checkoutcommand);
-    if IsOSX | isLinux
+    if IsOSX | IsLinux
         [err]=system(checkoutcommand);
         result = 'For reason, see output above.';
     else
@@ -729,7 +729,7 @@ if err & (downloadmethod == 0)
     checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://psychtoolbox-3.googlecode.com/svn/' flavor '/Psychtoolbox/ ' pt];
     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
     fprintf('%s\n\n',checkoutcommand);
-    if IsOSX | isLinux
+    if IsOSX | IsLinux
         [err]=system(checkoutcommand);
         result = 'For reason, see output above.';
     else
@@ -773,7 +773,7 @@ end
 fprintf(['Now setting permissions to allow everyone to write to the Psychtoolbox folder. This will \n'...
     'allow future updates by every user on this machine without requiring administrator privileges.\n']);
 try
-    if IsOSX | isLinux
+    if IsOSX | IsLinux
         [s,m]=fileattrib(p,'+w','a','s'); % recursively add write privileges for all users.
     else
         [s,m]=fileattrib(p,'+w','','s'); % recursively add write privileges for all users.

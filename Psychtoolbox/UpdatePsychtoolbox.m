@@ -103,9 +103,9 @@ end
 % Check OS
 IsWin = ~isempty(strfind(computer, 'PCWIN')) || strcmp(computer, 'i686-pc-mingw32');
 IsOSX = ~isempty(strfind(computer, 'MAC')) || ~isempty(strfind(computer, 'apple-darwin'));
-isLinux = strcmp(computer,'GLNX86') || strcmp(computer,'GLNXA64') || ~isempty(strfind(computer, 'linux-gnu'));
+IsLinux = strcmp(computer,'GLNX86') || strcmp(computer,'GLNXA64') || ~isempty(strfind(computer, 'linux-gnu'));
 
-if ~IsWin && ~IsOSX && ~isLinux
+if ~IsWin && ~IsOSX && ~IsLinux
     os = computer;
     if strcmp(os,'MAC2')
         os = 'Mac OS9';
@@ -142,7 +142,7 @@ fprintf('About to update your working copy of the OpenGL-based Psychtoolbox-3.\n
 updatecommand=[svnpath 'svn update '  targetRevision ' ' strcat('"',targetdirectory,'"') ];
 fprintf('Will execute the following update command:\n');
 fprintf('%s\n', updatecommand);
-if IsOSX || isLinux
+if IsOSX || IsLinux
     err=system(updatecommand);
     result = 'For reason, see output above.';
 else
