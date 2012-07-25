@@ -102,10 +102,10 @@ end
 
 % Check OS
 isWin = ~isempty(strfind(computer, 'PCWIN')) || strcmp(computer, 'i686-pc-mingw32');
-isOSX = ~isempty(strfind(computer, 'MAC')) || ~isempty(strfind(computer, 'apple-darwin'));
+IsOSX = ~isempty(strfind(computer, 'MAC')) || ~isempty(strfind(computer, 'apple-darwin'));
 isLinux = strcmp(computer,'GLNX86') || strcmp(computer,'GLNXA64') || ~isempty(strfind(computer, 'linux-gnu'));
 
-if ~isWin && ~isOSX && ~isLinux
+if ~isWin && ~IsOSX && ~isLinux
     os = computer;
     if strcmp(os,'MAC2')
         os = 'Mac OS9';
@@ -129,7 +129,7 @@ svnpath = GetSubversionPath;
 
 % Check that subversion client is installed.
 % Currently, we only know how to check this for Mac OSX.
-if isOSX && isempty(svnpath)
+if IsOSX && isempty(svnpath)
     fprintf('The Subversion client "svn" is not in its expected\n');
     fprintf('location "/usr/local/bin/svn" on your disk. Please \n');
     fprintf('download and install the most recent Subversion client from:\n');
@@ -142,7 +142,7 @@ fprintf('About to update your working copy of the OpenGL-based Psychtoolbox-3.\n
 updatecommand=[svnpath 'svn update '  targetRevision ' ' strcat('"',targetdirectory,'"') ];
 fprintf('Will execute the following update command:\n');
 fprintf('%s\n', updatecommand);
-if isOSX || isLinux
+if IsOSX || isLinux
     err=system(updatecommand);
     result = 'For reason, see output above.';
 else
