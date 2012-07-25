@@ -69,11 +69,11 @@ if strcmp(computer,'MAC')
 end
 
 % Check OS
-isWin = ~isempty(strfind(computer, 'PCWIN')) || strcmp(computer, 'i686-pc-mingw32');
+IsWin = ~isempty(strfind(computer, 'PCWIN')) || strcmp(computer, 'i686-pc-mingw32');
 IsOSX = ~isempty(strfind(computer, 'MAC')) || ~isempty(strfind(computer, 'apple-darwin'));
 isLinux = strcmp(computer,'GLNX86') || strcmp(computer,'GLNXA64') || ~isempty(strfind(computer, 'linux-gnu'));
 
-if ~isWin && ~IsOSX && ~isLinux
+if ~IsWin && ~IsOSX && ~isLinux
     os = computer;
     if strcmp(os,'MAC2')
         os = 'Mac OS9';
@@ -128,7 +128,7 @@ end
 
 % Handle Windows ambiguity of \ symbol being the fileseparator and a
 % parameter marker:
-if isWin
+if IsWin
     searchpattern = [filesep filesep 'Psychtoolbox[' filesep pathsep ']'];
     searchpattern2 = [filesep filesep 'Psychtoolbox'];
 else

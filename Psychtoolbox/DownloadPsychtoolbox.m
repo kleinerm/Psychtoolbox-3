@@ -296,11 +296,11 @@ if strcmp(computer,'MAC')
 end
 
 % Check OS
-isWin = ~isempty(strfind(computer, 'PCWIN')) || strcmp(computer, 'i686-pc-mingw32');
+IsWin = ~isempty(strfind(computer, 'PCWIN')) || strcmp(computer, 'i686-pc-mingw32');
 IsOSX = ~isempty(strfind(computer, 'MAC')) | ~isempty(strfind(computer, 'apple-darwin'));
 isLinux = strcmp(computer,'GLNX86') | strcmp(computer,'GLNXA64') | ~isempty(strfind(computer, 'linux-gnu'));
 
-if ~isWin & ~IsOSX & ~isLinux
+if ~IsWin & ~IsOSX & ~isLinux
     os = computer;
     if strcmp(os,'MAC2')
         os = 'Mac OS9';
@@ -442,7 +442,7 @@ fprintf('Requested location for the Psychtoolbox folder is inside: %s\n',targetd
 fprintf('\n');
 
 % Check for alternative install location of Subversion:
-if isWin
+if IsWin
     % Search for Windows executable in path:
     svnpath = which('svn.exe');
 else
@@ -616,7 +616,7 @@ end
 
 % Handle Windows ambiguity of \ symbol being the filesep'arator and a
 % parameter marker:
-if isWin
+if IsWin
     searchpattern = [filesep filesep 'Psychtoolbox[' filesep pathsep ']'];
     searchpattern2 = [filesep filesep 'Psychtoolbox'];
 else
