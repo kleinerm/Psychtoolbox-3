@@ -158,18 +158,35 @@ PsychError SCREENBeginOpenGL(void)
 				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fboid);
 			}
 		}
+
+        // Is this the first time that the userspace rendering context of this window
+        // is selected for real userspace rendering?
+        if (windowRecord->needsViewportSetup) {
+            // Yes. Need to perform one-time setup actions for this context:
+            windowRecord->needsViewportSetup = FALSE;
+            
+            // Need to setup glViewPort, scissor rectangle, projection and modelview
+            // matrices to values that match the windows client rectangle. We need to
+            // do this here because some imaging pipeline display modes, e.g, stereomodes
+            // for top-bottom stereo or dualview stereo may have altered the useable client
+            // rendering area after the context was initially created. OpenGL spec states that
+            // at least the viewport and scissor rectangles are set to the full client window
+            // area at first bind of a context to its drawable, so we emulate this here on first
+            // 'BeginOpenGL' to avoid unpleasant surprises for unsuspecting users:
+            PsychSetupView(windowRecord, FALSE);        
+        }        
 		
 		// Running without imaging pipeline and a stereo mode is active?
 		if ((windowRecord->stereomode) > 0 && !(windowRecord->imagingMode & kPsychNeedFastBackingStore)) {
 			// Perform setup work for stereo drawbuffers in fixed function mode:
 			PsychSwitchFixedFunctionStereoDrawbuffer(windowRecord);
-		}
+		}        
 	}
 	else {
 		// Userspace shares context with PTB. Let's disable possibly bound GLSL shaders:
 		PsychSetShader(windowRecord, 0);
 	}
-    
+
 	// Check for GL errors:
     PsychTestForGLErrors();
     
