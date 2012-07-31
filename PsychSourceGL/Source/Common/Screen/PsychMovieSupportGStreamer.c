@@ -66,6 +66,7 @@ typedef struct {
     GstElement          *theMovie;
     GMainLoop           *MovieContext;
     GstElement          *videosink;
+    PsychWindowRecordType* parentRecord;    
     unsigned char       *imageBuffer;
     int                 frameAvail;
     int                 preRollAvail;
@@ -1165,6 +1166,9 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     movieRecordBANK[slotid].width = width;
     movieRecordBANK[slotid].height = height;
 
+    // Assign parent window record, for use in movie deletion code:
+    movieRecordBANK[slotid].parentRecord = win;
+
     // Ready to rock!
     return;
 }
@@ -1232,8 +1236,9 @@ void PsychGSDeleteMovie(int moviehandle)
     movieRecordBANK[moviehandle].videosink = NULL;
 
 	// Recycled texture in texture cache?
-    if (movieRecordBANK[moviehandle].cached_texture > 0) {
+	if ((movieRecordBANK[moviehandle].parentRecord) && (movieRecordBANK[moviehandle].cached_texture > 0)) {
 		// Yes. Release it.
+		PsychSetGLContext(movieRecordBANK[moviehandle].parentRecord);
 		glDeleteTextures(1, &(movieRecordBANK[moviehandle].cached_texture));
 		movieRecordBANK[moviehandle].cached_texture = 0;
 	}
@@ -1870,27 +1875,13 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
  *  void PsychGSExitMovies() - Shutdown handler.
  *
  *  This routine is called by Screen('CloseAll') and on clear Screen time to
- *  do final cleanup. It deletes all textures and releases all movie objects.
+ *  do final cleanup. It releases all movie objects.
  *
  */
 void PsychGSExitMovies(void)
 {
-    PsychWindowRecordType	**windowRecordArray;
-    int				i, numWindows; 
-    
-    // Release all Quicktime related OpenGL textures:
-    PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
-    for(i=0; i<numWindows; i++) {
-        // Delete all Quicktime textures:
-        if ((windowRecordArray[i]->windowType == kPsychTexture) && (windowRecordArray[i]->targetSpecific.QuickTimeGLTexture !=NULL)) { 
-            PsychCloseWindow(windowRecordArray[i]);
-        }
-    }
-    PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
-    
     // Release all movies:
     PsychGSDeleteAllMovies();
-
     firsttime = TRUE;
     
     return;
