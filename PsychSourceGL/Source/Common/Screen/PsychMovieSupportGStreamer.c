@@ -1210,6 +1210,9 @@ void PsychGSGetMovieInfos(int moviehandle, int* width, int* height, int* frameco
  */
 void PsychGSDeleteMovie(int moviehandle)
 {
+    PsychWindowRecordType **windowRecordArray;
+    int i, numWindows;
+
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
     }
@@ -1243,6 +1246,16 @@ void PsychGSDeleteMovie(int moviehandle)
 		movieRecordBANK[moviehandle].cached_texture = 0;
 	}
 
+    // Delete all references to us in textures originally originating from us:    
+    PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
+    for(i = 0; i < numWindows; i++) {
+        if ((windowRecordArray[i]->windowType == kPsychTexture) && (windowRecordArray[i]->texturecache_slot == moviehandle)) {
+            // This one is referencing us. Reset its reference to "undefined" to detach it from us:
+            windowRecordArray[i]->texturecache_slot = -1;
+        }
+    }
+    PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
+    
     // Decrease counter:
     if (numMovieRecords>0) numMovieRecords--;
         
@@ -1550,6 +1563,10 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         // Assign texturehandle of our cached texture, if any, so it gets recycled now:
         out_texture->textureNumber = movieRecordBANK[moviehandle].cached_texture;
 
+        // Mark this texture as originating from us, ie., our moviehandle, so texture recycling
+        // actually gets used:
+        out_texture->texturecache_slot = moviehandle;
+        
         // YUV 422 packed pixel upload requested?
         if ((win->gfxcaps & kPsychGfxCapUYVYTexture) && (movieRecordBANK[moviehandle].pixelFormat == 5)) {
             // GPU supports UYVY textures and we get data in that YCbCr format. Tell
