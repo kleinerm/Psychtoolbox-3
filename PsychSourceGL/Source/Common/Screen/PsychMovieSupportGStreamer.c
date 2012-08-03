@@ -1497,15 +1497,52 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 	}
 
 	if (videoBuffer) {
-		// Assign pointer to videoBuffer's data directly: Avoids one full data copy compared to oldstyle method.
-		if (out_texture) out_texture->textureMemory = (GLuint*) GST_BUFFER_DATA(videoBuffer);
-
 		// Assign pts presentation timestamp in pipeline stream time and convert to seconds:
 		movieRecordBANK[moviehandle].pts = (double) GST_BUFFER_TIMESTAMP(videoBuffer) / (double) 1e9;
+        
+        // Iff forward playback is active and a target timeindex was specified and this buffer is not at least of
+        // that timeindex and at least one more buffer is queued, then skip this buffer, pull the next one and check
+        // if that one meets the required pts:
+        while ((rate > 0) && (timeindex >= 0) && (movieRecordBANK[moviehandle].pts < timeindex) && (movieRecordBANK[moviehandle].frameAvail > 0)) {
+            // Tell user about reason for rejecting this buffer:
+            if (PsychPrefStateGet_Verbosity() > 5) {
+                printf("PTB-DEBUG: Fast-Skipped buffer id %i with pts %f secs < targetpts %f secs.\n", (int) GST_BUFFER_OFFSET(videoBuffer), movieRecordBANK[moviehandle].pts, timeindex);
+            }
+            
+            // Decrement available frame counter:
+            PsychLockMutex(&movieRecordBANK[moviehandle].mutex);
+            movieRecordBANK[moviehandle].frameAvail--;
+            PsychUnlockMutex(&movieRecordBANK[moviehandle].mutex);
+            
+            // Return the unused buffer to queue:
+            gst_buffer_unref(videoBuffer);
+            
+            // Pull the next one. As frameAvail was > 0 at check-time, we know there is at least one pending,
+            // so there shouldn't be a danger of hanging here:
+            videoBuffer = gst_app_sink_pull_buffer(GST_APP_SINK(movieRecordBANK[moviehandle].videosink));
+            if (NULL == videoBuffer) {
+                // This should never happen!
+                printf("PTB-ERROR: No new video frame received in gst_app_sink_pull_buffer skipper loop! Something's wrong. Aborting fetch.\n");
+                return(FALSE);                
+            }
+
+            // Assign updated pts presentation timestamp of new candidate in pipeline stream time and convert to seconds:
+            movieRecordBANK[moviehandle].pts = (double) GST_BUFFER_TIMESTAMP(videoBuffer) / (double) 1e9;
+            
+            // Recheck if this is a better candidate...
+        }
+        
+        // Ok, now we really have a suitable videoBuffer -- or the best we could get:
+        
+        // Compute timedelta and bufferindex:
 		if (GST_CLOCK_TIME_IS_VALID(GST_BUFFER_DURATION(videoBuffer)))
 			deltaT = (double) GST_BUFFER_DURATION(videoBuffer) / (double) 1e9;
 		bufferIndex = GST_BUFFER_OFFSET(videoBuffer);
+
 		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: pts %f secs, dT %f secs, bufferId %i.\n", movieRecordBANK[moviehandle].pts, deltaT, (int) bufferIndex);
+
+		// Assign pointer to videoBuffer's data directly: Avoids one full data copy compared to oldstyle method.
+		if (out_texture) out_texture->textureMemory = (GLuint*) GST_BUFFER_DATA(videoBuffer);
 	} else {
 		printf("PTB-ERROR: No new video frame received in gst_app_sink_pull_buffer! Something's wrong. Aborting fetch.\n");
 		return(FALSE);
