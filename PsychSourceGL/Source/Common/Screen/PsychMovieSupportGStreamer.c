@@ -1166,6 +1166,14 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // Assign parent window record, for use in movie deletion code:
     movieRecordBANK[slotid].parentRecord = win;
 
+    // Should we dump the whole decoding pipeline graph to a file for visualization
+    // with GraphViz? This can be controlled via PsychTweak('GStreamerDumpFilterGraph' dirname);
+    if (getenv("GST_DEBUG_DUMP_DOT_DIR")) {
+        // Dump complete decoding filter graph to a .dot file for later visualization with GraphViz:
+        printf("PTB-DEBUG: Dumping movie decoder graph for movie %s to directory %s.\n", moviename, getenv("GST_DEBUG_DUMP_DOT_DIR"));
+        GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(movieRecordBANK[slotid].theMovie), GST_DEBUG_GRAPH_SHOW_ALL, "PsychMoviePlaybackGraph");
+    }
+    
     // Ready to rock!
     return;
 }

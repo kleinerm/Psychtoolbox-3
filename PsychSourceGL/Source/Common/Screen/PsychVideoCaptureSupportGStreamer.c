@@ -3173,6 +3173,14 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 		}
 		*/
 
+        // Should we dump the whole encoding pipeline graph to a file for visualization
+        // with GraphViz? This can be controlled via PsychTweak('GStreamerDumpFilterGraph' dirname);
+        if (getenv("GST_DEBUG_DUMP_DOT_DIR")) {
+            // Dump complete capture/recording filter graph to a .dot file for later visualization with GraphViz:
+            printf("PTB-DEBUG: Dumping video capture/recording graph to directory %s.\n", getenv("GST_DEBUG_DUMP_DOT_DIR"));
+            GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(camera), GST_DEBUG_GRAPH_SHOW_ALL, "PsychVideoCaptureGraph");
+        }
+
 		if(PsychPrefStateGet_Verbosity() > 3) {
 			printf("PTB-INFO: Capture started on device %i - Input video resolution %i x %i - Framerate: %f fps.\n",
 			       capturehandle, capdev->width, capdev->height, capdev->fps);

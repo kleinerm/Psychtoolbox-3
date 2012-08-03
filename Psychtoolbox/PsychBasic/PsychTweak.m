@@ -51,8 +51,8 @@ function varargout = PsychTweak(cmd, varargin) %#ok<STOUT>
 % PsychTweak('GStreamerDumpFilterGraph', targetDirectory);
 %
 % -- Ask GStreamer to dump a snapshot of its current media processing
-% pipeline into a .dot file at each pipeline state change. These .dot files
-% can be read by open-source tools like GraphViz and turned into
+% pipeline into a .dot file at each important pipeline state change. These
+% .dot files can be read by open-source tools like GraphViz and turned into
 % visualizations of the complete structure and state of the media
 % processing pipeline. `targetDirectory` must be the full path to an
 % existing directory where the .dot files should be written to.
