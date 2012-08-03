@@ -58,14 +58,6 @@ function varargout = PsychTweak(cmd, varargin) %#ok<STOUT>
 % existing directory where the .dot files should be written to.
 %
 %
-% PsychTweak('GStreamerDecodeThreads', numThreads);
-%
-% -- Ask GStreamer to use up to `numThreads` processing threads for video
-% decoding during movie playback. By default, GStreamer decides itself,
-% based on a given hardware configuration, e.g., the number of processor
-% cores in a system.
-%
-%
 % MS-Windows only tweaks:
 % -----------------------
 %
@@ -235,20 +227,6 @@ if strcmpi(cmd, 'GStreamerDumpFilterGraph')
     end
     
     setenv('GST_DEBUG_DUMP_DOT_DIR', val);
-    return;
-end
-
-if strcmpi(cmd, 'GStreamerDecodeThreads')
-    if length(varargin) < 1
-        error('Must provide number of video decoder threads.');
-    end
-    
-    val = varargin{1};
-    if ~isscalar(val) || ~isnumeric(val)
-        error('Must provide an integer as argument!');
-    end
-    
-    setenv('PSYCHTOOLBOX_MAX_VIDEODECODER_THREADS', sprintf('%i', round(val)));
     return;
 end
 

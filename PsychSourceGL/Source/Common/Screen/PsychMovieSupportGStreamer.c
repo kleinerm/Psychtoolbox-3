@@ -489,7 +489,7 @@ static GstAppSinkCallbacks videosinkCallbacks = {
  *      specialFlags1 = As passed to 'OpenMovie'
  *      pixelFormat = As passed to 'OpenMovie'
  */
-void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1, int pixelFormat)
+void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1, int pixelFormat, int maxNumberThreads)
 {
     GstCaps                     *colorcaps;
     GstElement			*theMovie = NULL;
@@ -946,10 +946,9 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 
     // Check if some codec properties need to be changed.
     // This happens if usercode provides some supported non-default override parameter for the codec,
-    // or if the codec is multi-threaded, in which case we configure its multi-threading behaviour
-    // to our needs:
+    // or if the codec is multi-threaded and usercode wants us to configure its multi-threading behaviour:
     needCodecSetup = FALSE;
-    if (videocodec &&  (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads") ||
+    if (videocodec &&  ((g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads") && (maxNumberThreads > -1)) ||
                        (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "lowres") && (specialFlags1 & (0))) || /* MK: 'lowres' disabled for now. */
                        (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "debug-mv") && (specialFlags1 & 4)) ||
                        (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "skip-frame") && (specialFlags1 & 8))
@@ -960,7 +959,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // Set videocodec state to "ready" if parameter change is needed, as the codec only
     // accepts the new settings in that state:
     if (needCodecSetup) {
-        // Ready the video codec, so a new max thread count can be set:
+        // Ready the video codec, so a new max thread count or other parameters can be set:
         if (!PsychMoviePipelineSetState(videocodec, GST_STATE_READY, 30.0)) {
             PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
             PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed III. Reason given above.");
@@ -998,19 +997,17 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     */
     
     
-    // Multi-threaded codec? If so, set its multi-threading behaviour: By default many codecs would only
-    // use one single thread on any system, even if they are multi-threading capable.
-    if (needCodecSetup && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads"))) {
+    // Multi-threaded codec and usercode requests setup? If so, set its multi-threading behaviour:
+    // By default many codecs would only use one single thread on any system, even if they are multi-threading capable.
+    if (needCodecSetup && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads")) && (maxNumberThreads > -1)) {
         max_video_threads = 1;
         g_object_get(G_OBJECT(videocodec), "max-threads", &max_video_threads, NULL);
         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Movie playback for movie %i uses video decoder with a default maximum number of %i processing threads.\n", slotid, max_video_threads);
 
-        // Set max_threads to 0: This means to auto-detect the optimal number of threads,
-        // unless usercode provides an override for exact number of threads to use via some
-        // environment variable:
-        if (getenv("PSYCHTOOLBOX_MAX_VIDEODECODER_THREADS")) {
-            // Override provided: Use it.
-            max_video_threads = atoi(getenv("PSYCHTOOLBOX_MAX_VIDEODECODER_THREADS"));
+        // Specific number of threads requested, or zero for auto-select?
+        if (maxNumberThreads > 0) {
+            // Specific value provided: Use it.
+            max_video_threads = maxNumberThreads;
             if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Setting video decoder to use a maximum of %i processing threads.\n", max_video_threads);
         } else {
             // Default behaviour: A settig of zero asks GStreamer to auto-detect the optimal
