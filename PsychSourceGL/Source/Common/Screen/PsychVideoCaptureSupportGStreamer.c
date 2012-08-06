@@ -800,7 +800,7 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
 				ntotal++;
 				
 				if (ntotal >= PSYCH_MAX_VIDSRC) {
-					printf("PTB-WARNING: Maximum number of allowable video sourced during enumeration %i exceeded! Aborting enumeration.\n", PSYCH_MAX_VIDSRC);
+					printf("PTB-WARNING: Maximum number of allowable video sources during enumeration %i exceeded! Aborting enumeration.\n", PSYCH_MAX_VIDSRC);
 					break;
 				}
 			}
@@ -896,6 +896,9 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 	// Does not work, no property probe interface:
 	PsychGSEnumerateVideoSourceType("dc1394src", 7, "1394-IIDC", "camera-number", 1);
 
+	// Try GeniCam-Cameras via aravis plugin:
+	PsychGSEnumerateVideoSourceType("aravissrc", 8, "GeniCam-Aravis", "camera-name", 0);
+    
 	if (ntotal <= 0) {
 		if (PsychPrefStateGet_Verbosity() > 4) {
             printf("PTB-INFO: Could not detect any supported video devices on this system.\n");
@@ -2078,7 +2081,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		}
 		
 		// MS-Windows specific setup path:
-		if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
+		if ((PSYCH_SYSTEM == PSYCH_WINDOWS) && (deviceIndex > -8)) {
 			if (deviceIndex < 0) {
 				// Non-Firewire video source selected:
 				
@@ -2176,7 +2179,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		} // End of MS-Windows Video source creation.
 		
 		// MacOS/X specific setup path:
-		if (PSYCH_SYSTEM == PSYCH_OSX) {
+		if ((PSYCH_SYSTEM == PSYCH_OSX) && (deviceIndex > -8)) {
 			if (deviceIndex < 0) {
 				if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach osxvideosrc as video source...\n");
 				videosource = gst_element_factory_make("osxvideosrc", "ptb_videosource");
@@ -2219,6 +2222,33 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 				}
 			}
 		} // End of OS/X Video source creation.
+
+        // OS independent special sources with no support for enumeration:
+        
+        // aravissrc for GeniCam cams: Doesn't support enumeration, just opening of cams by name:
+        if (deviceIndex == -8) {
+
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach aravissrc as GeniCam video source...\n");
+            videosource = gst_element_factory_make("aravissrc", "ptb_videosource");
+            
+            if (!videosource) {
+                if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to create aravissrc GeniCam video source! We are out of options and will probably fail soon.\n");
+                PsychErrorExitMsg(PsychError_system, "GStreamer failed to find a suitable video source! Game over.");
+            }
+            
+
+            // Fetch optional targetmoviename parameter as name spec string:
+            if (targetmoviefilename) {
+                // Assign:
+                strcat(config, targetmoviefilename);
+
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach GeniCam video device '%s' as video input.\n", config);
+                g_object_set(G_OBJECT(videosource), "camera-name", config, NULL);
+            }
+            else {
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach default Aravis GeniCam video device as video input.\n");
+            }
+        }
 
 		// The usual crap for MS-Windows:
 		if (strstr(plugin_name, "dshowvideosrc")) g_object_set(G_OBJECT(videosource), "typefind", 1, NULL);
@@ -2873,6 +2903,18 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		}
 	}
 
+	if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "camera-name")) {
+		g_object_get(G_OBJECT(videosource), "camera-name", &pstring, NULL);
+		if (pstring) {
+			if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Camera friendly device-name is '%s'.\n", pstring);
+			capdev->cameraFriendlyName = strdup(pstring);
+			g_free(pstring); pstring = NULL;
+		}
+		else {
+			capdev->cameraFriendlyName = strdup("Unknown");
+		}
+	}
+        
 	// Get the pad from the src pad of the source for probing width x height
 	// of video frames and nominal framerate of video source:	
 	pad = gst_element_get_pad(videosource, "src");
