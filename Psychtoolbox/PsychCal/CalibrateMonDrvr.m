@@ -134,7 +134,7 @@ if USERPROMPT == 1
     fprintf('Set up radiometer and hit any key when ready\n');
     GetChar;
     fprintf('Pausing for %d seconds ...', cal.describe.leaveRoomTime);
-    %WaitSecs(cal.describe.leaveRoomTime);
+    WaitSecs(cal.describe.leaveRoomTime);
     fprintf(' done\n');
 end
 
