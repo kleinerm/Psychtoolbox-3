@@ -47,6 +47,7 @@ function cal = CalibrateMonDrvr(cal, USERPROMPT, whichMeterType, blankOtherScree
 % 11/08/06  dhb, cgb Living in the 0-1 world ....
 % 11/10/06  dhb     Get rid of round() around production of input levels.
 % 9/26/08   cgb, dhb Fix dacsize when Bits++ is used.  Fit gamma with full number of levels. 
+% 8/19/12   dhb     Add codelet suggested by David Jones to clean up at end.  See comment in CalibrateMonSpd.
 
 global g_usebitspp;
 
@@ -183,9 +184,20 @@ for a = 1:cal.describe.nAverage
 end
 mon = mon / cal.describe.nAverage;
 
-% Close the screen
+% Close the screen.  This makes some attempt to restore
+% a reasonable clut at the end, but probably is not quite
+% right.  See comment in CalibrateMonSpd.
+theClut = repmat(linspace(0,1,256)',1,3);
+if g_usebitspp
+    Screen('LoadNormalizedGammaTable', window, linspace(0, 1, 256)' * [1 1 1]);
+    BitsPlusSetClut(window, theClut);
+else
+    Screen('LoadNormalizedGammaTable', window, theClut);
+end
 Screen(window, 'Close');
-ShowCursor;
+if cal.describe.whichScreen == 0
+	ShowCursor;
+end
 
 % Report time
 t1 = clock;

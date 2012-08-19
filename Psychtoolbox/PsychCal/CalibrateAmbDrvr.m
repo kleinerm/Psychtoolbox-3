@@ -29,6 +29,8 @@ function cal = CalibrateAmbDrvr(cal,USERPROMPT,whichMeterType,blankOtherScreen)
 % 9/23/02   dhb, jmh  Force background to zero when measurements come on.
 % 2/26/03   dhb   Tidy comments.
 % 4/1/03    dhb   Fix ambient averaging.
+% 8/19/12   dhb     Add codelet suggested by David Jones to clean up at end.  See comment in CalibrateMonSpd.
+
 global g_usebitspp;
 
 % If the global flag for using Bits++ is empty, then it hasn't been
@@ -130,8 +132,17 @@ for a = 1:cal.describe.nAverage
 end
 ambient = ambient / cal.describe.nAverage;
 
-% Close the screen
-Screen('Close', window);
+% Close the screen.  This makes some attempt to restore
+% a reasonable clut at the end, but probably is not quite
+% right.  See comment in CalibrateMonSpd.
+theClut = repmat(linspace(0,1,256)',1,3);
+if g_usebitspp
+    Screen('LoadNormalizedGammaTable', window, linspace(0, 1, 256)' * [1 1 1]);
+    BitsPlusSetClut(window, theClut);
+else
+    Screen('LoadNormalizedGammaTable', window, theClut);
+end
+Screen(window, 'Close');
 if cal.describe.whichScreen == 0
 	ShowCursor;
 end
