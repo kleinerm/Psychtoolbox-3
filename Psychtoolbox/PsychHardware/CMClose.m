@@ -7,6 +7,7 @@ function CMClose(meterType)
 % meterType 2 is the CVI (need CVIToolbox)
 % meterType 3 is the CRS Colorimeter
 % meterType 4 is the PR655
+% meterType 5 is the PR670
 %
 % 2/15/02  dhb  Wrote it.
 % 4/13/02  dgp	Cosmetic.
@@ -33,6 +34,9 @@ switch meterType
 	case 4
 		% PR-655
         PR655close;
+    case 5
+		% PR-670
+        PR670close;
 	otherwise,
 		error('Unknown meter type');
 end

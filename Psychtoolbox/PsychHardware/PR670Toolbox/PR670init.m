@@ -38,6 +38,7 @@ end
 % first time it's asked to go into remote mode.  There is no return code
 % for this command.
 PR670write('Q', 0);
+pause(0.5);
 
 % Put in remote mode.
 PR670write('PHOTO', 0);

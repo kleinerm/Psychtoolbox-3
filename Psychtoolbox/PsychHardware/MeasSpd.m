@@ -12,6 +12,7 @@ function [spectrum,qual] = MeasSpd(S,meterType,syncMode)
 %
 % meterType == 1:  PR650 (default)
 % meterType == 4:  PR655
+% meterType == 5:  PR670
 %
 % syncMode = 'on':  Try to sync integration time with display, if meter supports it (default)
 % syncMode = 'off': Don't try to sync, even if meter supports it.

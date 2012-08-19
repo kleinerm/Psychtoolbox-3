@@ -9,11 +9,10 @@ function PR670close
 
 global g_serialPort;
 
-% Exit Remote Mode
-PR670write('Q', 0);
-
-% Close and clear serial port
+% Close and clear serial port, if it is open.
+% Also take the device out of remote mode.
 if ~isempty(g_serialPort)
+   PR670write('Q', 0);
    IOPort('close', g_serialPort);
    g_serialPort = [];
 end
