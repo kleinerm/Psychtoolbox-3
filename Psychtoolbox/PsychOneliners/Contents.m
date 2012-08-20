@@ -49,6 +49,7 @@
 %   IsOSX                   - Shorthand for streq(computer,'MAC').
 %   IsWin                   - Shorthand for streq(computer,'PCWIN').
 %   KbMapKey                - Checks if any of specified keys is depressed in a vector returned by KbCheck, KbWait etc.
+%   kPsychGUIWindow         - Flag to ask Screen() to create onscreen windows with behaviour similar to normal GUI windows.
 %   LoadIdentityClut        - Loads the identity CLUT on a specified monitor.
 %   log10nw                 - Compute log base 10 without annoying warnings.
 %   MacModelName            - Mac model name, e.g. 'PowerBook G4 15"'.
