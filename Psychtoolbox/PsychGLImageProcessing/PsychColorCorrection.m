@@ -116,6 +116,18 @@ function varargout = PsychColorCorrection(cmd, varargin)
 %   additional parameters for use of a more complex gamma correction function.
 %
 %
+% * 'MatrixMultiply4' : Multiply with 4x4 color transformation matrix:
+%
+%   Extend RGB component of color by a fourth "constant 1" component,
+%   multiply by specified 4-by-4 matrix, normalize by dividing result by
+%   4'th component, return transformed rgb components as output color. Pass
+%   through alpha-channel unmodified.
+%
+%   rgbw' = M * [r,g,b,1]'
+%   out.rgb = [r', g', b'] / w'
+%   out.a = a
+%
+%
 % * 'LookupTable' : Apply color correction by color table lookup, ie. a CLUT.
 %
 %   This will allow to pass in a color lookup table of selectable
@@ -252,6 +264,12 @@ function varargout = PsychColorCorrection(cmd, varargin)
 % 'maxL' Maximum expected input luminance/intensity value (Default is 1.0).
 % 'gain' Gain factor to apply after power-law mapping (Default is 1.0).
 % 'bias' Bias/Offset to apply to final result before output (Default is 0.0).
+%
+%
+% PsychColorCorrection('SetMultMatrix4', window, matrix [, viewId]);
+% - Set the 4-by-4 color transformation matrix to use for the 'MatrixMultiply4'
+% color correction method. 'matrix' must be the 2D 4 rows by 4 columns
+% matrix to use. By default, the matrix is set to an identity matrix.
 %
 %
 % PsychColorCorrection('SetLookupTable', window, clut [, viewId][, maxinput=1][, scalefactor]);
@@ -430,6 +448,7 @@ function varargout = PsychColorCorrection(cmd, varargin)
 %            setup. (MK)
 % 21.08.2012 Add support for 3D CLUTs for "color cube" lookups. (MK)
 % 21.08.2012 Add 'Verbosity' level support. (MK)
+% 24.08.2012 Add 'SetMultMatrix4' support for 4-by-4 matrix multiply. (MK)
 %
 
 % GL is needed for shader setup and parameter changes:
@@ -532,6 +551,11 @@ if strcmpi(cmd, 'GetCompiledShaders')
         case {'SimpleGamma'}
             % Load our bog-standard power-law shader:
             icmShaders = LoadShaderFromFile('ICMSimpleGammaCorrectionShader.frag.txt', [], debuglevel);
+            icmIdString = sprintf('ICM:%s', icmSpec.type);
+            
+        case {'MatrixMultiply4'}
+            % Load our matrix multiply shader:
+            icmShaders = LoadShaderFromFile('ICMMatrixMult4Shader.frag.txt', [], debuglevel);
             icmIdString = sprintf('ICM:%s', icmSpec.type);
             
         % Color correction by CLUT texture lookup table operation:
@@ -679,6 +703,10 @@ if strcmpi(cmd, 'ApplyPostGLSLLinkSetup')
                 % Set 3x3 transform matrix to identity matrix by default:
                 glUniformMatrix3fv(glGetUniformLocation(glsl, 'GainsLeft'), 1, 0, [[1 0 0]; [0 1 0]; [0 0 1]]);
 
+            case {'MatrixMultiply4'}
+                % Set 4x4 transform matrix to identity matrix by default:
+                glUniformMatrix4fv(glGetUniformLocation(glsl, 'M'), 1, 0, [[1 0 0 0]; [0 1 0 0]; [0 0 1 0]; [0 0 0 1]]);
+                
             otherwise
                 error('Unknown type of color correction requested! Internal bug?!?');
         end
@@ -984,6 +1012,57 @@ if strcmpi(cmd, 'SetExtendedGammaParameters')
     % Unbind shader:
     glUseProgram(0);
     
+    return;
+end
+
+if strcmpi(cmd, 'SetMultMatrix4')
+    % Need GL from here on...
+    if isempty(GL)
+        error('SetMultMatrix4: No internal GL struct defined in "SetMultMatrix4" routine?!? This is a bug - Check code!!');
+    end
+    
+    if nargin < 2
+        error('SetMultMatrix4: Must provide window handle to onscreen window as 2nd argument!');
+    end
+
+    if nargin < 3
+        error('SetMultMatrix4: Must provide 4-by-4 color transformation matrix.');
+    end
+    
+    % Fetch window handle:
+    win = varargin{1};
+    
+    % Fetch matrix:
+    mat = varargin{2};
+    
+    if ~isnumeric(mat)
+        error('SetMultMatrix4: Matrix must contain numbers!');
+    end
+    
+    if size(mat,1)~=4 || size(mat,2)~=4
+        error('SetMultMatrix4: Matrix must have 4 rows and 4 columns!');
+    end
+
+    if nargin < 4
+        viewId = [];
+    else
+        viewId = varargin{3};
+    end
+
+    icmId = 'MatrixMultiply4';
+    [slot shaderid blittercfg voidptr glsl luttexid] = GetSlotForTypeAndBind(win, icmId, viewId); %#ok<NASGU>
+    
+    try
+        % Set 4x4 transform matrix to identity matrix by default:
+        glUniformMatrix4fv(glGetUniformLocation(glsl, 'M'), 1, 0, single(mat));
+    catch
+        % Empty...
+        psychrethrow(psychlasterror);
+    end
+    
+    % Unbind shader:
+    glUseProgram(0);
+
     return;
 end
 
