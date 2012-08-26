@@ -178,7 +178,7 @@ PsychError SCREENTransformTexture(void)
 	usefloatformat = 0;
 	if (d == 16) usefloatformat = 1;
 	if (d >= 32) usefloatformat = 2;
-	PsychAssignHighPrecisionTextureShaders(targetRecord, sourceRecord, usefloatformat, (specialFlags & 2) ?  0 : 1);
+	PsychAssignHighPrecisionTextureShaders(targetRecord, sourceRecord, usefloatformat, (specialFlags & 2) ?  1 : 0);
 	
 	// Make sure our proxy has suitable bounce buffers if we need any:
 	if (proxyRecord->imagingMode & (kPsychNeedDualPass | kPsychNeedMultiPass)) {
