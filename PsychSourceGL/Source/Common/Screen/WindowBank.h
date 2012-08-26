@@ -96,8 +96,9 @@ TO DO:
 #define kPsychGfxCapNeedsUnsignedByteRGBATextureUpload 8192		// Hw requires use of GL_UNSIGNED_BYTE instead of GL_UNSIGNED_INT_8_8_8_8_REV for optimal RGBA8 texture upload.
 #define kPsychGfxCapSupportsOpenML 16384	// System supports OML_sync_control extension of OpenML for precisely timed bufferswaps and stimulus onset timestamping.
 #define kPsychGfxCapSNTex16		32768		// Hw supports 16 bit signed normalized integer textures.
-#define kPsychGfxCapUYVYTexture         65536		// Hw supports UYVY encoded textures. Used for GStreamer video capture/playback engine optimizations.
-#define kPsychGfxCapNativeStereo        (1 << 17)       // Hw supports native OpenGL quad-buffered stereo (frame-sequential etc.).
+#define kPsychGfxCapUYVYTexture 65536		// Hw supports UYVY encoded textures. Used for GStreamer video capture/playback engine optimizations.
+#define kPsychGfxCapNativeStereo (1 << 17)  // Hw supports native OpenGL quad-buffered stereo (frame-sequential etc.).
+#define kPsychGfxCapNPOTTex     (1 << 18)   // Hw supports non-power-of-twp GL_TEXTURE_2D textures.
 
 // Definition of flags for imagingMode of Image processing pipeline.
 // These are used internally, but need to be exposed to Matlab as well.
@@ -164,6 +165,7 @@ typedef struct PsychFBO {
 	int						width;		// Width of FBO.
 	int						height;		// Height of FBO.
 	int						multisample; // Multisampling level of FBO: 0 == No multisampling. > 0 means Multisampled.
+    GLenum                  textarget;  // Type of texture target for texture coltexid (GL_TEXTURE_RECTANGLE_EXT or GL_TEXTURE_2D etc.)
 } PsychFBO;
 
 // Typedefs for WindowRecord in WindowBank.h

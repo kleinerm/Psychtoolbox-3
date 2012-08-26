@@ -34,7 +34,9 @@ static char synopsisString[] =
 "of the returned movie frame actually satisfies the given 'fortimeindex' value if you choose to use 'fortimeindex'.\n"
 "The (optional) return value 'timeindex' contains the exact time when the returned image should be displayed wrt. to the "
 "start of the movie - a presentation timestamp. \n"
-"'specialFlags' (optional) encodes special requirements for the returned texture. A setting of 2 will request that the texture "
+"'specialFlags' (optional) encodes special requirements for the returned texture. A setting of 1 will try to create the texture "
+"as a GL_TEXTURE_2D texture. However this is not well supported with a setting of 2 (see below) or with use of a special 'pixelFormat' > 4 in "
+"Screen('OpenMovie'). A setting of 2 will request that the texture "
 "is prepared for drawing it with highest possible spatial precision. See explanation of 'specialFlags' == 2 in Screen('MakeTexture') "
 "for details. \n"
 "'specialFlags2' (optional) More special flags: A setting of 1 tells the function to not return presentation timestamps in 'timeindex'. "
@@ -179,6 +181,9 @@ PsychError SCREENGetMovieImage(void)
     // Assign parent window and copy its inheritable properties:
     PsychAssignParentWindow(textureRecord, windowRecord);
 
+    // Special texture format requested?
+    if (specialFlags & 0x1) textureRecord->texturetarget = GL_TEXTURE_2D;
+    
     // Try to fetch an image from the movie object and return it as texture:
     PsychGetTextureFromMovie(windowRecord, moviehandle, FALSE, requestedTimeIndex, textureRecord, ((specialFlags2 & 1) ? NULL : &presentation_timestamp));
 

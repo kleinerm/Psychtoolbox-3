@@ -156,7 +156,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	long							screenWidth, screenHeight;
 	int								twidth, theight, pass, texcount;
 	void*							texmemptr;
-	psych_bool							recycle = FALSE, avoidCPUGPUSync;
+	psych_bool						recycle = FALSE, avoidCPUGPUSync;
 	GLenum							glerr;
 	int								verbosity;
 
@@ -282,8 +282,8 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	// This obviously wastes storage space for LA and RGB textures, but it is the only mode that is
 	// well supported (=fast) on all common gfx-hardware. Only the very latest models of NVidia and ATI
 	// are capable of handling the other formats natively in hardware :-(
-	if (texturetarget==GL_TEXTURE_2D) {
-		// This hardware doesn't support rectangle textures. We create and use power of two
+	if ((texturetarget == GL_TEXTURE_2D) && !(win->gfxcaps & kPsychGfxCapNPOTTex)) {
+		// This hardware doesn't support non-power-of-two GL_TEXTURE_2D textures. We create and use power of two
 		// textures to emulate rectangle textures...
 		
 		// Compute smallest power of two dimension that fits the texture.
@@ -490,7 +490,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 				
 	}  // End of new texture creation.
 	
-	// Stage 2: If its a 2D texture or a recycled texture, fill it with content via glTexSubImage2D:
+	// Stage 2: If it is a 2D texture or a recycled texture, fill it with content via glTexSubImage2D:
 	if (texturetarget==GL_TEXTURE_2D || recycle) {
 	  // Special setup code for pot2 textures: Fill the empty power of two texture object with content:
 	  // We only fill a subrectangle (of sourceWidth x sourceHeight size) with our images content. The
@@ -737,32 +737,40 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
             sourceYEnd=sourceHeight - sourceRect[kPsychTop];
         }
 
-        // Special case handling for GL_TEXTURE_2D textures. We need to map the
-	// absolute texture coordinates (in pixels) to the interval 0.0 - 1.0 where
-	// 1.0 == full extent of power of two texture...
-	if (texturetarget==GL_TEXTURE_2D) {
-	  // Find size of real underlying texture (smallest power of two which is
-	  // greater than or equal to the image size:
-	  tWidth=1;
-	  while (tWidth < sourceWidth) tWidth*=2;
-	  tHeight=1;
-	  while (tHeight < sourceHeight) tHeight*=2;
+    // Special case handling for GL_TEXTURE_2D textures. We need to map the
+    // absolute texture coordinates (in pixels) to the interval 0.0 - 1.0 where
+    // 1.0 == full extent of power of two texture...
+	if (texturetarget == GL_TEXTURE_2D) {
+        // NPOT supported?
+        if (!(source->gfxcaps & kPsychGfxCapNPOTTex)) {
+            // No: Find size of real underlying texture (smallest power of two which is
+            // greater than or equal to the image size:
+            tWidth=1;
+            while (tWidth < sourceWidth) tWidth*=2;
+            tHeight=1;
+            while (tHeight < sourceHeight) tHeight*=2;
+        }
+        else {
+            // Yes:
+            tWidth = sourceWidth;
+            tHeight = sourceHeight;
+        }
+        
+        // Remap texcoords into 0-1 subrange: We subtract 0.5 pixel-units before
+        // mapping to accomodate for roundoff-error in the power-of-two gfx
+        // hardware...
+        // For a good intro into the issue of texture border seams, due to interpolation
+        // problems at texture borders, see:
+        // http://home.planet.nl/~monstrous/skybox.html
 
-	  // Remap texcoords into 0-1 subrange: We subtract 0.5 pixel-units before
-	  // mapping to accomodate for roundoff-error in the power-of-two gfx
-	  // hardware...
-	  // For a good intro into the issue of texture border seams, due to interpolation
-	  // problems at texture borders, see:
-	  // http://home.planet.nl/~monstrous/skybox.html
-	  //sourceX-=0.5f;
-	  //sourceY-=0.5f;
-	  sourceXEnd-=0.5f;
-	  sourceYEnd-=0.5f;
-	  // Remap:
-	  sourceX=sourceX / tWidth;
-	  sourceXEnd=sourceXEnd / tWidth;
-	  sourceY=sourceY / tHeight;
-	  sourceYEnd=sourceYEnd / tHeight;
+        sourceXEnd-=0.5f;
+        sourceYEnd-=0.5f;
+
+        // Remap:
+        sourceX=sourceX / tWidth;
+        sourceXEnd=sourceXEnd / tWidth;
+        sourceY=sourceY / tHeight;
+        sourceYEnd=sourceYEnd / tHeight;
 	}
 
 	// MK: We need to reenable the proper texturing mode. This fixes bug reported in Forum message 3055,
@@ -1131,12 +1139,20 @@ void PsychMapTexCoord(PsychWindowRecordType *tex, double* tx, double* ty)
     // absolute texture coordinates (in pixels) to the interval 0.0 - 1.0 where
     // 1.0 == full extent of power of two texture...
     if (texturetarget==GL_TEXTURE_2D) {
-        // Find size of real underlying texture (smallest power of two which is
-        // greater than or equal to the image size:
-        tWidth=1;
-        while (tWidth < sourceWidth) tWidth*=2;
-        tHeight=1;
-        while (tHeight < sourceHeight) tHeight*=2;
+        // NPOT supported?
+        if (!(tex->gfxcaps & kPsychGfxCapNPOTTex)) {
+            // No: Find size of real underlying texture (smallest power of two which is
+            // greater than or equal to the image size:
+            tWidth=1;
+            while (tWidth < sourceWidth) tWidth*=2;
+            tHeight=1;
+            while (tHeight < sourceHeight) tHeight*=2;
+        }
+        else {
+            // Yes:
+            tWidth = sourceWidth;
+            tHeight = sourceHeight;
+        }
         
         // Remap texcoords into 0-1 subrange: We subtract 0.5 pixel-units before
         // mapping to accomodate for roundoff-error in the power-of-two gfx
@@ -1160,4 +1176,3 @@ void PsychMapTexCoord(PsychWindowRecordType *tex, double* tx, double* ty)
     // Done.
     return;
 }
-

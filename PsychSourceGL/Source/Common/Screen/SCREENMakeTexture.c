@@ -42,10 +42,12 @@ static char synopsisString[] =
 	"You need to enable Alpha-Blending via Screen('BlendFunction',...) for the transparency values to have an effect.\n"
 	"The argument 'optimizeForDrawAngle' if provided, asks Psychtoolbox to optimize the texture for especially fast "
 	"drawing at the specified rotation angle. The default is 0 == Optimize for upright drawing. If 'specialFlags' is set "
-	"to 1 and the width and height of the imageMatrix are powers of two (e.g., 64 x 64, 256 x 256, 512 x 512, ...), then "
-	"the texture is created as an OpenGL power-of-two texture of type GL_TEXTURE_2D. Otherwise Psychtoolbox will try to "
-	"pick the most optimal format for fast drawing and low memory consumption. Power-of-two textures are especially useful "
-	"for animation of drifting gratings (see the demos) and for simple use with the OpenGL 3D graphics functions.\n"
+	"to 1 and the width and height of the imageMatrix are powers of two (e.g., 64 x 64, 256 x 256, 512 x 512, ...), or "
+    "your graphics card supports so called non-power-of-two textures, then the texture is created as an OpenGL texture "
+	"of type GL_TEXTURE_2D. Otherwise Psychtoolbox will try to "
+	"pick the most optimal format for fast drawing and low memory consumption. GL_TEXTURE_2D textures are especially useful "
+	"for animation of drifting gratings, for simple use with the OpenGL 3D graphics functions and for blurring. Use of "
+    "GL_TEXTURE_2D textures is currently not automatically compatible with use of specialFlags settings 2 or 4.\n"
 	"If 'specialFlags' is set to 2 then PTB will try to use its own high quality texture filtering algorithm for drawing "
 	"of bilinearly filtered textures instead of the hardwares built-in method. This only works on modern hardware with "
 	"fragment shader support and is slower than using the hardwares built in filtering, but it may provide higher precision "
@@ -180,7 +182,8 @@ PsychError SCREENMakeTexture(void)
     PsychCopyInIntegerArg(4, FALSE, &usepoweroftwo);
 
     // Check if size constraints are fullfilled for power-of-two mode:
-    if (usepoweroftwo & 1) {
+    // We relax this constraint if GPU supports non-power-of-two texture extension.
+    if ((usepoweroftwo & 1) && !(windowRecord->gfxcaps & kPsychGfxCapNPOTTex)) {
 		for(ix = 1; ix < (size_t) xSize; ix*=2);
 		if (ix != (size_t) xSize) {
 			PsychErrorExitMsg(PsychError_inputMatrixIllegalDimensionSize, "Power-of-two texture requested but width of imageMatrix is not a power of two!");
@@ -253,9 +256,9 @@ PsychError SCREENMakeTexture(void)
 		texturePointer = textureRecord->textureMemory;
 	}
 	
-    // Does script explicitely request usage of a GL_TEXTURE_2D power-of-two texture?
+    // Does script explicitely request usage of a GL_TEXTURE_2D texture?
     if (usepoweroftwo & 1) {
-      // Enforce creation as a power-of-two texture:
+      // Enforce creation as a GL_TEXTURE_2D texture:
       textureRecord->texturetarget=GL_TEXTURE_2D;
     }
 
