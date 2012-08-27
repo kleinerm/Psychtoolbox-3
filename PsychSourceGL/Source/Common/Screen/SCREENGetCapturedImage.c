@@ -45,7 +45,7 @@ static char synopsisString[] =
 "provide a double-encoded memory pointer in 'targetmemptr', then PTB will copy the raw image data into that buffer. The buffer is "
 "expected to be of sufficient size, otherwise a crash will occur (Experts only!).\n"
 "A 'specialmode' == 8 will require high-precision drawing, see the specialFlag == 2 setting in Screen('MakeTexture') for a "
-"description of its meaning. \n"
+"description of its meaning. A 'specialMode' == 16 will prevent automatic mipmap-generation for GL_TEXTURE_2D textures.\n"
 "'capturetimestamp' contains the system time when the returned image was captured. This timestamp has been verified to "
 "be very precise on Linux with suitable professional IIDC 1394 firewire cameras when the dc1394 capture engine is used. "
 "The same may be true for OS/X, although this hasn't been extensively tested. If other operating systems, capture engines "
@@ -270,6 +270,9 @@ PsychError SCREENGetCapturedImage(void)
 		// our current capture engine implementations only return 8 bpc fixed textures.
 		// The 'userRequest' flag is set if specialmode flag is set to 8.
 		PsychAssignHighPrecisionTextureShaders(textureRecord, windowRecord, 0, (specialmode & 8) ? 1 : 0);
+
+        // specialmode setting 16? Disable auto-mipmap generation:
+        if (specialmode & 16) textureRecord->specialflags |= kPsychDontAutoGenMipMaps;    
 
 		// Mark it valid and return handle to userspace:
         PsychSetWindowRecordValid(textureRecord);

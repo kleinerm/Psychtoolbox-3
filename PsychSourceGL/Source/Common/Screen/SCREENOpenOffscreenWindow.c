@@ -73,7 +73,8 @@ static char synopsisString[] =
     "If you set it to 1 then the offscreen window is created in GL_TEXTURE_2D format if possible. Use of "
     "GL_TEXTURE_2D format is currently not automatically compatible with use of specialFlags setting 2.\n"
     "If you set 'specialFlags' to 2 then the offscreen window will be drawn with especially high precision, see "
-	"specialFlags setting of 2 in help for Screen('DrawTexture') for more explanation. \n"
+	"specialFlags setting of 2 in help for Screen('DrawTexture') for more explanation.\n"
+    "A 'specialFlags' == 8 will prevent automatic mipmap-generation for GL_TEXTURE_2D textures.\n"
 	"'multiSample' optional number of samples to use for anti-aliased drawing: This defaults "
 	"to zero if omitted, ie., no anti-aliasing is performed when drawing into this offscreen "
 	"window. If you set a positive non-zero number of samples and your system supports "
@@ -472,6 +473,9 @@ PsychError SCREENOpenOffscreenWindow(void)
 	// Assign GLSL filter-/lookup-shaders if needed:
 	PsychAssignHighPrecisionTextureShaders(windowRecord, targetWindow, usefloatformat, (specialFlags & 2) ? 1 : 0);
 	
+    // specialFlags setting 8? Disable auto-mipmap generation:
+    if (specialFlags & 0x8) windowRecord->specialflags |= kPsychDontAutoGenMipMaps;    
+
     // Window ready. Mark it valid and return handle to userspace:
     PsychSetWindowRecordValid(windowRecord);
     
