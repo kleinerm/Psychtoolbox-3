@@ -203,6 +203,9 @@ PsychError SCREENTransformTexture(void)
 	// Restore previous settings:
 	glPopAttrib();
 
+    // Set "dirty" flag on texture: (Ab)used to trigger regeneration of mip-maps during texture drawing of mip-mapped textures.
+    targetRecord->needsViewportSetup = TRUE;
+    
 	//Return the window index and the rect argument.
     PsychCopyOutDoubleArg(1, FALSE, targetRecord->windowIndex);
 

@@ -137,12 +137,13 @@ TO DO:
 
 #define kPsychGUIWindow					 32 // 'specialflags' setting 32 means: This window should behave like a regular GUI window, e.g, allow moving it.
 #define kPsychPlanarTexture				 64 // 'specialflags' setting 64: This texture uses a planar storage format instead of pixel-interleaved.
+#define kPsychDontAutoGenMipMaps        128 // 'specialflags' setting 128: This texture shall not auto-generate its mip-map chain on demand.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,S-65536. --> Flag 32768 and Flags of 2^17 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,32,64,1024,S-2048,S-8192, 32768, S-65536. --> Flags of 2^17 and higher are available, as well as 128,256,512,4096, 16384
+// 1,2,4,8,16,32,64,128,1024,S-2048,S-8192, 32768, S-65536. --> Flags of 2^17 and higher are available, as well as 256,512,4096, 16384
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*	PtrPsychHookFunction;
@@ -298,7 +299,8 @@ typedef struct _PsychWindowRecordType_{
         GLint               textureI420PlanarShader; // Optional GLSL program handle for shader to convert a YUV-I420 planar texture into a standard RGBA8 texture.
         GLint               textureI800PlanarShader; // Optional GLSL program handle for shader to convert a Y8-I800 planar texture into a standard RGBA8 texture.
 
-        psych_bool          needsViewportSetup;      // Set on userspace OpenGL contexts to signal need for glViewport setup and other one-time stuff on first 'BeginOpenGL'.
+        psych_bool          needsViewportSetup;     // Set on userspace OpenGL contexts of onscreen windows to signal need for glViewport setup and other one-time
+                                                    // stuff on first Screen('BeginOpenGL'). Also (ab)used for textures and offscreen windows to track "dirty" state.
 
         //line stipple attributes, for windows not textures.
         psych_bool          stippleEnabled;

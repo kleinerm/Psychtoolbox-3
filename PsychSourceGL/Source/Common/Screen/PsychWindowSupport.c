@@ -5101,6 +5101,9 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 					// only create a full blown FBO on demand here.
 					PsychCreateShadowFBOForTexture(windowRecord, TRUE, -1);
 
+                    // Set "dirty" flag on texture: (Ab)used to trigger regeneration of mip-maps during texture drawing of mip-mapped textures.
+                    windowRecord->needsViewportSetup = TRUE;
+                    
 					// Switch to FBO for given texture or offscreen window:
 					glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[0]->fboid);
 
@@ -5150,15 +5153,15 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 		else {
                 // Use standard OpenGL without framebuffer objects for drawing target switch:
                 // This code path is executed when the imaging pipeline is disabled. It only uses
-		// OpenGL 1.1 functionality so it should work on any piece of gfx-hardware:
-				
+                // OpenGL 1.1 functionality so it should work on any piece of gfx-hardware:
+
                 // Whatever is bound at the moment needs to be backed-up into a texture...
                 // If currentRendertarget is NULL then we've got nothing to back up.
-		// If currentRendertarget is using the imaging pipeline in any way, then there's also no
-		// need for any backups, as all textures/offscreen windows are backed by FBO's and the
-		// system framebuffer is just used as backingstore for onscreen windows, ie., no need
-		// to ever backup system framebuffer into any kind of texture based storage.
-		// Therefore skip this if any imaging mode is active (i.e., imagingMode is non-zero):
+                // If currentRendertarget is using the imaging pipeline in any way, then there's also no
+                // need for any backups, as all textures/offscreen windows are backed by FBO's and the
+                // system framebuffer is just used as backingstore for onscreen windows, ie., no need
+                // to ever backup system framebuffer into any kind of texture based storage.
+                // Therefore skip this if any imaging mode is active (i.e., imagingMode is non-zero):
                 if (currentRendertarget && (currentRendertarget->imagingMode == 0)) {
                     // There is a bound render target in non-imaging mode: Any backups of its current backbuffer to some
 					// texture backing store needed?
@@ -5266,10 +5269,10 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
     else {
         // windowRecord==NULL. Reset of currentRendertarget and framebufferobject requested:
 
-	// Bind system framebuffer if FBO's supported on this system:
+        // Bind system framebuffer if FBO's supported on this system:
         if (glBindFramebufferEXT && currentRendertarget) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
-	// Reset current rendertarget to 'none':
+        // Reset current rendertarget to 'none':
         currentRendertarget = NULL;
     }
 
