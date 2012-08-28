@@ -1,4 +1,4 @@
-function BlurredMipmapDemo(deviceIndexOrMoviename, gazeRadius)
+function BlurredMipmapDemo(deviceIndexOrMoviename, gazeRadius, customMipmap)
 % BlurredMipmapDemo - Show blurring of live video or movies via adaptive mipmapping.
 %
 % This demo shows how to selectively blur regions of a live video stream
@@ -26,7 +26,7 @@ function BlurredMipmapDemo(deviceIndexOrMoviename, gazeRadius)
 %
 % Usage:
 %
-% BlurredMipmapDemo([deviceIndexOrMoviename=0][, gazeRadius=25])
+% BlurredMipmapDemo([deviceIndexOrMoviename=0][, gazeRadius=25][, customMipmap=0])
 %
 % 'gazeRadius' Some falloff radius in pixels. Controls how quickly the
 % resolution degrades with increasing distance from the cursorposition.
@@ -35,6 +35,10 @@ function BlurredMipmapDemo(deviceIndexOrMoviename, gazeRadius)
 % 'deviceIndexOrMoviename' = Optional: Either the index of the video
 % capture device, or the full path to a movie file. Defaults to
 % auto-selected default video source.
+%
+% 'customMipmap' Optional: If non-zero, use a custom shader for
+% downsampling during mipmap building, instead of the relatively simple
+% builtin filter of the GPU.
 %
 % Press any key to finish the demo.
 %
@@ -53,6 +57,10 @@ if nargin < 2 || isempty(gazeRadius)
     gazeRadius = 25;
 end
 
+if nargin < 3 || isempty(customMipmap)
+    customMipmap = 0;
+end
+
 % Is it a movie file name?
 if ischar(deviceIndexOrMoviename)
     % Yes: Playback the movie.
@@ -61,6 +69,20 @@ if ischar(deviceIndexOrMoviename)
 else
     % No: Nothing or a numeric video capture deviceindex. Do videocapture.
     ismovie = 0;
+end
+
+if customMipmap == 0
+    % Use automatic mipmap generation by GPU driver builtin method:
+    dontautomip = 0;
+else
+    % Don't generate mipmaps automatically, roll our own downsampling:
+    if ismovie
+        % This is the correct flag for 'GetMovieImage':
+        dontautomip = 8; 
+    else
+        % This is the correct flag for 'GetCapturedImage':
+        dontautomip = 16;
+    end
 end
 
 try
@@ -77,6 +99,11 @@ try
     glUniform1i(glGetUniformLocation(shader, 'Image'), 0);
     glUseProgram(0);
 
+    mipmapshader = LoadGLSLProgramFromFiles([shaderpath filesep 'MipMapDownsamplingShader.frag.txt'], 1);
+    glUseProgram(mipmapshader);
+    glUniform1i(glGetUniformLocation(mipmapshader, 'Image'), 0);
+    glUseProgram(0);
+    
     if ismovie
         % Open movie and start its playback:
         movie = Screen('OpenMovie', win, moviename);
@@ -106,10 +133,10 @@ try
         % low-pass filtering to work:
         if ismovie
             % Get next movie frame:
-            tex = Screen('GetMovieImage', win, movie, 1, [], 1);
+            tex = Screen('GetMovieImage', win, movie, 1, [], 1 + dontautomip);
         else
             % Get next video frame:
-            tex = Screen('GetCapturedImage', win, grabber, 1, tex, 1);
+            tex = Screen('GetCapturedImage', win, grabber, 1, tex, 1 + dontautomip);
         end
         
         % Valid 'tex'ture with new videoframe returned?
@@ -121,6 +148,13 @@ try
             % Flip y-axis direction -- Shader has origin bottom-left, not
             % top-left as GetMouse():
             gazeY = h - gazeY;
+            
+            % Need to create mipmaps ourselves?
+            if dontautomip
+                % Yes: Use PTB's utility function for shader-based mipmap
+                % generation with more control, but less performance:
+                CreateResolutionPyramid(tex, mipmapshader, 1);
+            end
             
             % Draw new video texture from framegrabber. Apply GLSL 'shader'
             % during drawing. Use filterMode 3: This will automatically

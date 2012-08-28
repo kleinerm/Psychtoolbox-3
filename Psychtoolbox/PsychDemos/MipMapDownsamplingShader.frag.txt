@@ -1,0 +1,20 @@
+/* MipMapDownsamplingShader.frag.txt
+ * Shader for downsampling during OpenGL Mipmap generation.
+ *
+ * For now, this is just a placeholder for something meaningful. We
+ * simply convert all "downsampled" texels to grayscale, so user can
+ * see some difference.
+ *
+ * (c) 2012 by Mario Kleiner. Licensed under MIT license.
+ */
+
+const vec3 ColorToGrayWeights = vec3(0.3, 0.59, 0.11); 
+uniform sampler2D Image;
+
+void main()
+{
+    vec4 incolor = texture2D(Image, gl_TexCoord[0].st);
+    float luminance = dot(incolor.rgb, ColorToGrayWeights);
+    gl_FragColor.a = incolor.a;
+    gl_FragColor.rgb = vec3(luminance);
+}
