@@ -91,8 +91,19 @@ th = glGetTexLevelParameteriv(gltextarget, maxlod, GL.TEXTURE_HEIGHT);
 
 % If no such mip-level exists?
 if tw == 0 || th == 0
-    % Then generate mip-chain for this texture:
-    glGenerateMipmapEXT(gltextarget);
+    % No such mip-level: Generate initial mip-chain for this texture. We
+    % allocate mip-levels of proper format and size, but empty, ie.,
+    % without actually computing any content here:
+    internalFormat = glGetTexLevelParameteriv(gltextarget, 0, GL.TEXTURE_INTERNAL_FORMAT);
+
+    for miplevel = 1:maxlod
+        % Need to case tw, th to double(), use max() operators and whatnot
+        % to get proper size specs -- Matlab arithmetic on the returned
+        % int32's from query behaves rather strange otherwise:
+        tw = double(glGetTexLevelParameteriv(gltextarget, miplevel - 1, GL.TEXTURE_WIDTH));
+        th = double(glGetTexLevelParameteriv(gltextarget, miplevel - 1, GL.TEXTURE_HEIGHT));
+        glTexImage2D(gltextarget, miplevel, internalFormat, max(floor(tw/2), 1), max(floor(th/2), 1), 0, GL.RGBA, GL.UNSIGNED_BYTE, 0);
+    end
 end
 
 % Bind downsampling shader and set it up to read from texture unit 0:
@@ -101,13 +112,17 @@ glUseProgram(glsl);
 % If we've actually bound the fixed-function pipeline, we skip this step:
 if glsl ~= 0
     glUniform1i(glGetUniformLocation(glsl, 'Image'), 0);
+    
+    % Query locations of uniforms for passing src / dst dimensions:
+    srcSize = glGetUniformLocation(glsl, 'srcSize');
+    dstSize = glGetUniformLocation(glsl, 'dstSize');
 end
 
 % Just to be extra safe:
 glTexParameteri(gltextarget, GL.TEXTURE_WRAP_S, GL.CLAMP_TO_EDGE);
 glTexParameteri(gltextarget, GL.TEXTURE_WRAP_T, GL.CLAMP_TO_EDGE);
 
-if glsl ~= 0 || usebilinear
+if glsl ~= 0 && ~usebilinear
     % Use nearest neighbour sampling for real downsampling shaders, so they
     % have full control over actual sampling:
     glTexParameteri(gltextarget, GL.TEXTURE_MIN_FILTER, GL.NEAREST);
@@ -118,6 +133,9 @@ else
     glTexParameteri(gltextarget, GL.TEXTURE_MIN_FILTER, GL.LINEAR);
     glTexParameteri(gltextarget, GL.TEXTURE_MAG_FILTER, GL.LINEAR);
 end
+
+% Base level 0 is always enabled, as we never write to it:
+glTexParameteri(gltextarget, GL.TEXTURE_BASE_LEVEL, 0);
 
 % Iterate over all mip-levels 'miplevel' from 1 to maxlod, and source each
 % 'miplevel-1' to compute 'miplevel':
@@ -131,10 +149,7 @@ for miplevel = 1:maxlod
         break;
     end
     
-    % Set mip-level range for sampling from texture from to "miplevel-1
-    % only". We only sample from this preceeding level, so no need for read
-    % access to any other level:
-    glTexParameteri(gltextarget, GL.TEXTURE_BASE_LEVEL, miplevel-1);
+    % Set mip-level upper range limit for sampling from texture from to "miplevel-1":
     glTexParameteri(gltextarget, GL.TEXTURE_MAX_LEVEL, miplevel-1);
     
     % Select the target mip-level for drawing into (== render-to-texture
@@ -152,7 +167,14 @@ for miplevel = 1:maxlod
     % Ok, we should be setup properly now. Any shader sampling from the
     % texture can only do nearest neighbour sampling from level
     % 'miplevel-1', and all writes go to 'miplevel'.
-
+    
+    % Communicate sizes of source and destination surface to possible
+    % shaders:
+    if glsl
+        glUniform2f(srcSize, glGetTexLevelParameteriv(gltextarget, miplevel-1, GL.TEXTURE_WIDTH), glGetTexLevelParameteriv(gltextarget, miplevel-1, GL.TEXTURE_HEIGHT));
+        glUniform2f(dstSize, tw, th);
+    end
+    
     % Blit a "fullscreen quad" - or more specifically a full-texture quad
     % to drive the downsampling shader:
     glColor4f(1,1,1,1);
