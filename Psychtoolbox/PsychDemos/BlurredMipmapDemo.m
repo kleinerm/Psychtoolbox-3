@@ -43,6 +43,9 @@ function BlurredMipmapDemo(deviceIndexOrMoviename, gazeRadius, customMipmap)
 % Press any key to finish the demo.
 %
 
+% History:
+% 28.08.2012  mk  Written.
+
 % Child protection:
 AssertOpenGL;
 
@@ -99,10 +102,10 @@ try
     glUniform1i(glGetUniformLocation(shader, 'Image'), 0);
     glUseProgram(0);
 
+    % Load & Create a GLSL shader for downsampling during MipMap pyramid
+    % creation. This specific example shader uses a 3-by-3 gaussian filter
+    % kernel with a standard deviation of 1.0:
     mipmapshader = LoadGLSLProgramFromFiles([shaderpath filesep 'MipMapDownsamplingShader.frag.txt'], 1);
-    glUseProgram(mipmapshader);
-    glUniform1i(glGetUniformLocation(mipmapshader, 'Image'), 0);
-    glUseProgram(0);
     
     if ismovie
         % Open movie and start its playback:
@@ -152,7 +155,9 @@ try
             % Need to create mipmaps ourselves?
             if dontautomip
                 % Yes: Use PTB's utility function for shader-based mipmap
-                % generation with more control, but less performance:
+                % generation with more control, but less performance. We
+                % use 'mipmapshader' as downsampling shader, and '1' enable
+                % bilinear filtering for the shader:
                 CreateResolutionPyramid(tex, mipmapshader, 1);
             end
             
