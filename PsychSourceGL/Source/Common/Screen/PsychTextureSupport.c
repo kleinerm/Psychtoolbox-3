@@ -868,6 +868,16 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
                     glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
                     glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
                     break;
+
+                case 4: // Nearest-Neighbour filtering with nearest neighbour mipmapping:
+                    glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+                    glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                    break;
+                    
+                case 5: // Nearest-Neighbour filtering with linear mipmapping:
+                    glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+                    glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                    break;
             }
 
             // Don't restrict mipmap-levels for sampling, reset to initial system defaults:

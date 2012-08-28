@@ -48,7 +48,8 @@ static char synopsisString[] =
 	"'filterMode' How to compute the pixel color values when the texture is drawn magnified, minified or drawn shifted, e.g., "
 	"if sourceRect and destinationRect do not have the same size or if sourceRect specifies fractional pixel values. 0 = Nearest "
 	"neighbour filtering, 1 = Bilinear filtering - this is the default. Values 2 or 3 select use of OpenGL mip-mapping for improved "
-    "quality: 2 = Bilinear filtering for nearest mipmap level, 3 = Trilinear filtering across mipmap levels. Mipmap filtering is "
+    "quality: 2 = Bilinear filtering for nearest mipmap level, 3 = Trilinear filtering across mipmap levels, 4 = Nearest neighbour "
+    "filtering for nearest mipmap level, 5 = nearest neighbour filtering with linear interpolation between mipmap levels. Mipmap filtering is "
     "only supported for GL_TEXTURE_2D textures (see description of 'specialFlags' flag 1 below). A negative filterMode value will "
     "also use mip-mapping for fast drawing of blurred textures if the GL_TEXTURE_2D format is used: Mip-maps are essentially image "
     "resolution pyramids, the filterMode value selects a specific layer in that pyramid. A value of -1 draws the highest resolution "
@@ -132,8 +133,8 @@ static char synopsisString[] =
 
     PsychCopyInDoubleArg(5, kPsychArgOptional, &rotationAngle);
     PsychCopyInIntegerArg(6, kPsychArgOptional, &filterMode);
-    if (filterMode > 3) {
-        PsychErrorExitMsg(PsychError_user, "filterMode needs to be negative for a specific blur level, 0 for nearest neighbour filter, or 1 for bilinear filter, or 2 for mipmapped filter or 3 for mipmapped-linear filter.");    
+    if (filterMode > 5) {
+        PsychErrorExitMsg(PsychError_user, "filterMode needs to be negative for a specific blur level, or at most 5 for other modes.");    
     }
 
 	// Copy in optional 'globalAlpha': We don't put restrictions on its valid range
@@ -537,8 +538,8 @@ PsychError SCREENDrawTextures(void)
 		}
 		
 		// Ok, everything assigned. Check parameters:
-        if (filterMode > 3) {
-            PsychErrorExitMsg(PsychError_user, "filterMode needs to be negative for a specific blur level, 0 for nearest neighbour filter, or 1 for bilinear filter, or 2 for mipmapped filter or 3 for mipmapped-linear filter.");    
+        if (filterMode > 5) {
+            PsychErrorExitMsg(PsychError_user, "filterMode needs to be negative for a specific blur level, or at most 5 for other modes.");    
         }
 
 		// Set rotation mode flag for texture matrix rotation if secialFlags is set accordingly:
