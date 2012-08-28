@@ -2796,21 +2796,6 @@ void gl_teximage1d( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 
 }
 
-void gl_teximage2d( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glTexImage2D) mogl_glunsupported("glTexImage2D");
-	glTexImage2D((GLenum)mxGetScalar(prhs[0]),
-		(GLint)mxGetScalar(prhs[1]),
-		(GLenum)mxGetScalar(prhs[2]),
-		(GLsizei)mxGetScalar(prhs[3]),
-		(GLsizei)mxGetScalar(prhs[4]),
-		(GLint)mxGetScalar(prhs[5]),
-		(GLenum)mxGetScalar(prhs[6]),
-		(GLenum)mxGetScalar(prhs[7]),
-		(const GLvoid*)mxGetData(prhs[8]));
-
-}
-
 void gl_teximage3d( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
 	if (NULL == glTexImage3D) mogl_glunsupported("glTexImage3D");
@@ -5585,7 +5570,7 @@ void gl_samplepatternsgis( int nlhs, mxArray *plhs[], int nrhs, const mxArray *p
 
 }
 
-int gl_auto_map_count=637;
+int gl_auto_map_count=636;
 cmdhandler gl_auto_map[] = {
 { "glAccum",                         gl_accum                            },
 { "glActiveTexture",                 gl_activetexture                    },
@@ -6056,7 +6041,6 @@ cmdhandler gl_auto_map[] = {
 { "glTexGeni",                       gl_texgeni                          },
 { "glTexGeniv",                      gl_texgeniv                         },
 { "glTexImage1D",                    gl_teximage1d                       },
-{ "glTexImage2D",                    gl_teximage2d                       },
 { "glTexImage3D",                    gl_teximage3d                       },
 { "glTexParameterf",                 gl_texparameterf                    },
 { "glTexParameterfv",                gl_texparameterfv                   },

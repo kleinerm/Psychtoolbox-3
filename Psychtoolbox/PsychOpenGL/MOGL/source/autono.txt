@@ -51,5 +51,6 @@ glDrawRangeElements
 glNormalPointer
 glReadPixels
 glTexCoordPointer
+glTexImage2D
 glVertexAttribPointer
 glVertexPointer
