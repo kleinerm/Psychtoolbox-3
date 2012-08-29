@@ -16,6 +16,8 @@ glShaderSource          - special interface implemented manually
 glMultiDrawElements		- need alternate interface to this function, as it
             			  involves arrays of pointers, whereas we normally don't have
 				          access to pointers to a matrix's data in MATLAB
+- these use pointers to structs and other impossible to handle stuff
+glCreateSyncFromCLeventARB
 
 - these involve C callback functions
 gluNurbsCallback
@@ -35,6 +37,8 @@ gluTessVertex
 gluBeginPolygon
 gluEndPolygon
 gluNextContour
+glDebugMessageCallbackARB
+glDebugMessageCallback
 
 - these are not defined yet in the GLEW library - need to manually implement interface
 glSamplePass        - implemented manually
