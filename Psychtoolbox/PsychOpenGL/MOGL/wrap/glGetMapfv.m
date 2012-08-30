@@ -1,8 +1,8 @@
-function v = glGetMapfv( target, query )
+function glGetMapfv( target, query, v )
 
 % glGetMapfv  Interface to OpenGL function glGetMapfv
 %
-% usage:  v = glGetMapfv( target, query )
+% usage: glGetMapfv( target, query, v )
 %
 % C function:  void glGetMapfv(GLenum target, GLenum query, GLfloat* v)
 
@@ -11,11 +11,9 @@ function v = glGetMapfv( target, query )
 % ---allocate---
 % ---protected---
 
-if nargin~=2,
+if nargin~=3,
     error('invalid number of arguments');
 end
-
-v = single(0);
 
 moglcore( 'glGetMapfv', target, query, v );
 

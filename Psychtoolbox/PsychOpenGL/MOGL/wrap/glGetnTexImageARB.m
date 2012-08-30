@@ -9,13 +9,13 @@ function img = glGetnTexImageARB( target, level, format, type, bufSize )
 % 30-Aug-2012 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
 
 if nargin~=5,
     error('invalid number of arguments');
 end
 
-img = (0);
-
-moglcore( 'glGetnTexImageARB', target, level, format, type, bufSize, img );
+% This is actually implemented as a special case in glGetTexImage():
+img = glGetTexImage( target, level, format, type, bufSize );
 
 return

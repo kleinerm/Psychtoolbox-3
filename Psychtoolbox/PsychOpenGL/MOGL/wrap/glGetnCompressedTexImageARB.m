@@ -9,12 +9,14 @@ function img = glGetnCompressedTexImageARB( target, lod, bufSize )
 % 30-Aug-2012 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
 
 if nargin~=3,
     error('invalid number of arguments');
 end
 
-img = (0);
+% Query size of compressed image and alloc properly sized output buffer:
+img = uint8(zeros(1, bufSize));
 
 moglcore( 'glGetnCompressedTexImageARB', target, lod, bufSize, img );
 

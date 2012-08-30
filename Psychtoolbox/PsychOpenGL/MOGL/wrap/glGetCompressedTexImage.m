@@ -11,12 +11,16 @@ function img = glGetCompressedTexImage( target, lod )
 % ---allocate---
 % ---protected---
 
+global GL;
+
 if nargin~=2,
     error('invalid number of arguments');
 end
 
-img = (0);
+% Query size of compressed image and alloc properly sized output buffer:
+img = uint8(zeros(1, glGetTexLevelParameteriv(target, lod, GL.TEXTURE_COMPRESSED_IMAGE_SIZE)));
 
+% Go get it:
 moglcore( 'glGetCompressedTexImage', target, lod, img );
 
 return

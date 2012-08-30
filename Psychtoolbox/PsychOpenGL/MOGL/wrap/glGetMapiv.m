@@ -1,8 +1,8 @@
-function v = glGetMapiv( target, query )
+function glGetMapiv( target, query, v )
 
 % glGetMapiv  Interface to OpenGL function glGetMapiv
 %
-% usage:  v = glGetMapiv( target, query )
+% usage:  glGetMapiv( target, query, v )
 %
 % C function:  void glGetMapiv(GLenum target, GLenum query, GLint* v)
 
@@ -11,11 +11,9 @@ function v = glGetMapiv( target, query )
 % ---allocate---
 % ---protected---
 
-if nargin~=2,
+if nargin~=3,
     error('invalid number of arguments');
 end
-
-v = int32(0);
 
 moglcore( 'glGetMapiv', target, query, v );
 
