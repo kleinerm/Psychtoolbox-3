@@ -2,7 +2,7 @@
 /*
  * gl_auto.c
  *
- * 29-Aug-2012 -- created (moglgen)
+ * 30-Aug-2012 -- created (moglgen)
  *
  */
 
@@ -8485,13 +8485,6 @@ void gl_pushdebuggroup( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs
 
 }
 
-void gl_popdebuggroup( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glPopDebugGroup) mogl_glunsupported("glPopDebugGroup");
-	glPopDebugGroup();
-
-}
-
 void gl_objectlabel( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
 	if (NULL == glObjectLabel) mogl_glunsupported("glObjectLabel");
@@ -8685,69 +8678,6 @@ void gl_vertexbindingdivisor( int nlhs, mxArray *plhs[], int nrhs, const mxArray
 	if (NULL == glVertexBindingDivisor) mogl_glunsupported("glVertexBindingDivisor");
 	glVertexBindingDivisor((GLuint)mxGetScalar(prhs[0]),
 		(GLuint)mxGetScalar(prhs[1]));
-
-}
-
-void gl_vertexarraybindvertexbufferext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glVertexArrayBindVertexBufferEXT) mogl_glunsupported("glVertexArrayBindVertexBufferEXT");
-	glVertexArrayBindVertexBufferEXT((GLuint)mxGetScalar(prhs[0]),
-		(GLuint)mxGetScalar(prhs[1]),
-		(GLuint)mxGetScalar(prhs[2]),
-		(GLint)mxGetScalar(prhs[3]),
-		(GLsizei)mxGetScalar(prhs[4]));
-
-}
-
-void gl_vertexarrayvertexattribformatext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glVertexArrayVertexAttribFormatEXT) mogl_glunsupported("glVertexArrayVertexAttribFormatEXT");
-	glVertexArrayVertexAttribFormatEXT((GLuint)mxGetScalar(prhs[0]),
-		(GLuint)mxGetScalar(prhs[1]),
-		(GLint)mxGetScalar(prhs[2]),
-		(GLenum)mxGetScalar(prhs[3]),
-		(GLboolean)mxGetScalar(prhs[4]),
-		(GLuint)mxGetScalar(prhs[5]));
-
-}
-
-void gl_vertexarrayvertexattribiformatext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glVertexArrayVertexAttribIFormatEXT) mogl_glunsupported("glVertexArrayVertexAttribIFormatEXT");
-	glVertexArrayVertexAttribIFormatEXT((GLuint)mxGetScalar(prhs[0]),
-		(GLuint)mxGetScalar(prhs[1]),
-		(GLint)mxGetScalar(prhs[2]),
-		(GLenum)mxGetScalar(prhs[3]),
-		(GLuint)mxGetScalar(prhs[4]));
-
-}
-
-void gl_vertexarrayvertexattriblformatext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glVertexArrayVertexAttribLFormatEXT) mogl_glunsupported("glVertexArrayVertexAttribLFormatEXT");
-	glVertexArrayVertexAttribLFormatEXT((GLuint)mxGetScalar(prhs[0]),
-		(GLuint)mxGetScalar(prhs[1]),
-		(GLint)mxGetScalar(prhs[2]),
-		(GLenum)mxGetScalar(prhs[3]),
-		(GLuint)mxGetScalar(prhs[4]));
-
-}
-
-void gl_vertexarrayvertexattribbindingext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glVertexArrayVertexAttribBindingEXT) mogl_glunsupported("glVertexArrayVertexAttribBindingEXT");
-	glVertexArrayVertexAttribBindingEXT((GLuint)mxGetScalar(prhs[0]),
-		(GLuint)mxGetScalar(prhs[1]),
-		(GLuint)mxGetScalar(prhs[2]));
-
-}
-
-void gl_vertexarrayvertexbindingdivisorext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glVertexArrayVertexBindingDivisorEXT) mogl_glunsupported("glVertexArrayVertexBindingDivisorEXT");
-	glVertexArrayVertexBindingDivisorEXT((GLuint)mxGetScalar(prhs[0]),
-		(GLuint)mxGetScalar(prhs[1]),
-		(GLuint)mxGetScalar(prhs[2]));
 
 }
 
@@ -9029,7 +8959,7 @@ void gl_texturestorage3dmultisampleext( int nlhs, mxArray *plhs[], int nrhs, con
 
 }
 
-int gl_auto_map_count=989;
+int gl_auto_map_count=982;
 cmdhandler gl_auto_map[] = {
 { "glAccum",                         gl_accum                            },
 { "glActiveShaderProgram",           gl_activeshaderprogram              },
@@ -9567,7 +9497,6 @@ cmdhandler gl_auto_map[] = {
 { "glPolygonStipple",                gl_polygonstipple                   },
 { "glPopAttrib",                     gl_popattrib                        },
 { "glPopClientAttrib",               gl_popclientattrib                  },
-{ "glPopDebugGroup",                 gl_popdebuggroup                    },
 { "glPopMatrix",                     gl_popmatrix                        },
 { "glPopName",                       gl_popname                          },
 { "glPrioritizeTextures",            gl_prioritizetextures               },
@@ -9870,12 +9799,6 @@ cmdhandler gl_auto_map[] = {
 { "glVertex4iv",                     gl_vertex4iv                        },
 { "glVertex4s",                      gl_vertex4s                         },
 { "glVertex4sv",                     gl_vertex4sv                        },
-{ "glVertexArrayBindVertexBufferEXT",gl_vertexarraybindvertexbufferext   },
-{ "glVertexArrayVertexAttribBindingEXT",gl_vertexarrayvertexattribbindingext },
-{ "glVertexArrayVertexAttribFormatEXT",gl_vertexarrayvertexattribformatext },
-{ "glVertexArrayVertexAttribIFormatEXT",gl_vertexarrayvertexattribiformatext },
-{ "glVertexArrayVertexAttribLFormatEXT",gl_vertexarrayvertexattriblformatext },
-{ "glVertexArrayVertexBindingDivisorEXT",gl_vertexarrayvertexbindingdivisorext },
 { "glVertexAttrib1d",                gl_vertexattrib1d                   },
 { "glVertexAttrib1dv",               gl_vertexattrib1dv                  },
 { "glVertexAttrib1f",                gl_vertexattrib1f                   },
