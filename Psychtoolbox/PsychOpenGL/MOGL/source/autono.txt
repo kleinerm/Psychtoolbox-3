@@ -19,6 +19,27 @@ glMultiDrawElements		- need alternate interface to this function, as it
 - these use pointers to structs and other impossible to handle stuff
 glCreateSyncFromCLeventARB
 
+- these are part of the ARB_imaging extension, which we will never ever support:
+glGetColorTable
+glGetColorTableParameteriv
+glGetColorTableParameterfv
+glGetnColorTableARB
+glGetConvolutionFilter
+glGetnConvolutionFilterARB
+glGetConvolutionParameteriv
+glGetConvolutionParameterfv
+glGetHistogram
+glGetnHistogramARB
+glGetHistogramParameteriv
+glGetHistogramParameterfv
+glGetSeparableFilter
+glGetnSeparableFilterARB
+glGetMinmax
+glGetnMinmaxARB
+glGetnPixelMapfvARB
+glGetnPixelMapusvARB
+glGetnPixelMapuivARB
+
 - these involve C callback functions
 gluNurbsCallback
 gluNurbsCallbackData
