@@ -26,6 +26,9 @@ C = C{1};
 % the first line doesn't contain wavelength data so we toss it.
 C = C(2:end);
 numWavelengths = length(C);
+if (numWavelengths ~= 201)
+    error('Unexpected native number of wavelength samples for PR-670');
+end
 spd = zeros(numWavelengths, 1);
 wavelengths = spd;
 for i = 1:length(C)
@@ -39,7 +42,10 @@ for i = 1:length(C)
 end
 
 % Convert to our units standard.
-spd = 4 * spd;
+spd = 2 * spd;
+if (wavelengths(2)-wavelengths(1) ~= 2)
+    error('Unexpected native wavelength sampling for PR-670');
+end
 
 % Spline to desired wavelength sampling.
 startWavelength = wavelengths(1);
