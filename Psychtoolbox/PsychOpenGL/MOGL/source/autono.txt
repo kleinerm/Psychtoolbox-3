@@ -40,8 +40,15 @@ gluNextContour
 glDebugMessageCallbackARB
 glDebugMessageCallback
 
-- these are not defined yet in the GLEW library - need to manually implement interface
+- these are not defined yet in the GLEW 1.9.0 library - need to manually implement interface
 glSamplePass        - implemented manually
+glPopDebugGroup                         - omit for now.
+glVertexArrayBindVertexBufferEXT        - omit for now.
+glVertexArrayVertexAttribFormatEXT      - omit for now.
+glVertexArrayVertexAttribIFormatEXT     - omit for now.
+glVertexArrayVertexAttribLFormatEXT     - omit for now.
+glVertexArrayVertexAttribBindingEXT     - omit for now.
+glVertexArrayVertexBindingDivisorEXT    - omit for now.
 
 - these need our special malloc(),calloc(),free() buffer management to work on Matlab & Octave:
 glFeedbackBuffer    - implemented manually
