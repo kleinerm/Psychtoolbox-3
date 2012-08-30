@@ -9,6 +9,7 @@ function image = glGetConvolutionFilter( target, format, type )
 % 25-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
 
 if nargin~=3,
     error('invalid number of arguments');

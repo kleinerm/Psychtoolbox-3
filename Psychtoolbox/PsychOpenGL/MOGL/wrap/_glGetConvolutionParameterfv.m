@@ -9,6 +9,7 @@ function params = glGetConvolutionParameterfv( target, pname )
 % 25-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
 
 if nargin~=2,
     error('invalid number of arguments');

@@ -9,6 +9,7 @@ function values = glGetHistogram( target, reset, format, type )
 % 25-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
 
 if nargin~=4,
     error('invalid number of arguments');
