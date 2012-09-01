@@ -16,8 +16,12 @@ glShaderSource          - special interface implemented manually
 glMultiDrawElements		- need alternate interface to this function, as it
             			  involves arrays of pointers, whereas we normally don't have
 				          access to pointers to a matrix's data in MATLAB
+glMultiDrawElementsBaseVertex - ditto.
+glCreateShaderProgramv - ditto.
+
 - these use pointers to structs and other impossible to handle stuff
 glCreateSyncFromCLeventARB
+glGetUniformIndices
 
 - these are part of the ARB_imaging extension, which we will never ever support:
 glGetColorTable
