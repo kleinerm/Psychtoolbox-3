@@ -87,7 +87,7 @@ if IsOctave
             % Correct file with correct extension, still load failure:
             % Check for supported Octave version:
             curversion = sscanf(version, '%i.%i.%i');
-            if curversion(1) < 3 | curversion(2) < 2 %#ok<OR2>
+            if curversion(1) < 3 || curversion(2) < 2
                 fprintf('Your version of Octave (%s) is incompatible with Psychtoolbox: We support Octave 3.2.0 or later.\n', version);
                 error('Tried to run Psychtoolbox on an incompatible Octave version.\n');
             end
@@ -109,7 +109,7 @@ end
 inputNames = [];
 
 % Check to see if there should be a mex file for our platform.
-if isempty(inputNames) | ismember(computer, inputNames) %#ok<OR2>
+if isempty(inputNames) || ismember(computer, inputNames)
     % Element 1 will always be AssertMex. Element 2 will be the calling
     % function unless it is invoked from the commnand line.
     callStack = dbstack;
