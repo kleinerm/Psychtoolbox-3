@@ -49,11 +49,6 @@ TO DO:
 
 #include "Screen.h"
 
-// Need Cocoa definition of NSOpenGLContext for windowing:
-#if (PSYCH_SYSTEM == PSYCH_OSX) && defined(__LP64__)
-#include <Cocoa/Cocoa.h>
-#endif
-
 //constants
 #define PSYCH_MAX_SCREENS				10		//the total possible number of screens
 #define PSYCH_LAST_SCREEN				9		//the highest possible screen index
@@ -206,9 +201,10 @@ typedef struct{
         void*				deviceContext;          // Pointer to an AGLContext object, or a NULL-pointer.
 		WindowRef			windowHandle;			// Handle for Carbon + AGL window when using windowed mode. (NULL in non-windowed mode).
         #ifdef __LP64__
-        NSOpenGLContext*    nsmasterContext;        // Cocoa OpenGL master context.
-        NSOpenGLContext*    nsswapContext;          // Cocoa OpenGL async swap context.
-        NSOpenGLContext*    nsuserContext;          // Cocoa OpenGL userspace rendering context.
+        // NSOpenGLContext* type stored in void* to avoid "Cocoa/Objective-C pollution" in this header file.
+        void*    nsmasterContext;        // Cocoa OpenGL master context.
+        void*    nsswapContext;          // Cocoa OpenGL async swap context.
+        void*    nsuserContext;          // Cocoa OpenGL userspace rendering context.
         #endif
 } PsychTargetSpecificWindowRecordType;
 #endif 
