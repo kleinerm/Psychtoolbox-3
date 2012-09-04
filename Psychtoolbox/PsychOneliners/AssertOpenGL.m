@@ -61,6 +61,7 @@ function AssertOpenGL
 %                   GStreamer runtime.
 % 03/24/12  mk      Add do_braindead_shortcircuit_evaluation() to avoid
 %                   warnings on Octave 3.6 and later.
+% 09/05/12  mk      Disable shortcircuit operator warning.
 
 % Ok, we sneak this in here, because we don't know a better place for it:
 if IsOctave
@@ -79,6 +80,9 @@ if IsOctave
         % support pre-R2007a at least to some degree, we should be able to
         % run at least some basic correctness tests:
         do_braindead_shortcircuit_evaluation(1);
+        
+        % Disable associated Octave warning:
+        warning('off', 'Octave:possible-matlab-short-circuit-operator');
     end
 end
 
