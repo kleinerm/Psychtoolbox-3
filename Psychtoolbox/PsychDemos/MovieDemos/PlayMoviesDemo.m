@@ -154,9 +154,6 @@ try
             % FOSDEM 2012 talk about Linux's next generation graphics display server "Wayland":
             moviefiles(end+1).name = 'http://video.fosdem.org/2012/maintracks/k.1.105/Wayland.webm';            
 
-            % "How Linux is built" by the Linux Foundation:
-            moviefiles(end+1).name = 'http://o-o---preferred---ber01s06---v11---lscache6.c.youtube.com/videoplayback?upn=pqeQXygDQ4c&sparams=cp%2Cgcr%2Cid%2Cip%2Cipbits%2Citag%2Cratebypass%2Csource%2Cupn%2Cexpire&fexp=906717%2C907333%2C901420%2C922401%2C920704%2C912806%2C924412%2C913558%2C912706&key=yt1&itag=18&ipbits=8&signature=6B644AE93BC65912231F4BD019852893ADB0EE5A.4CB13683DC66168BAAB8EFCFCE23D17CC5F96C25&mv=m&sver=3&mt=1346635873&ratebypass=yes&source=youtube&ms=au&gcr=de&expire=1346660194&ip=95.113.169.39&cp=U0hTS1ZRTl9OTkNOM19OS1JCOmdOY0xIRk1ZbTUw&id=c95a5b14c84e0301';
-            
             % ELC 2012 talk: Gstreamer-1.0 No-longer-compromise-flexibility-for-performance:
             moviefiles(end+1).name = 'http://d17mmld7179ppq.cloudfront.net/gstreamer-10-no-longer-compromise-flexibility-for-performance_52ca47/hd_ready.webm';
         end
