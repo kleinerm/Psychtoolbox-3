@@ -69,14 +69,20 @@ if IsOctave
         % Proper extension for the .mex file?
         if isempty(strfind(fpathext, '.mex'))
             % Nope, wrong file bound:
+            if Is64Bit
+                oext = ['64' filesep];
+            else
+                oext = filesep;
+            end
+            
             if IsLinux
-                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles/']);
+                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles' oext]);
             end
             if IsOSX
-                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles/']);
+                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles' oext]);
             end
             if IsWindows
-                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic\Octave3WindowsFiles\']);
+                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic\Octave3WindowsFiles' oext]);
             end
             
             fprintf('\n\nIf you have just installed Psychtoolbox, it worked properly and suddenly stopped working\n');
