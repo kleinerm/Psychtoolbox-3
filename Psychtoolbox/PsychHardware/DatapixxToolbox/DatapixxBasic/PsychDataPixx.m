@@ -257,6 +257,24 @@ function varargout = PsychDataPixx(cmd, varargin)
 % settings and explanation of their purpose and behaviour.
 %
 %
+% PsychDataPixx('EnableVideoScanningBacklight');
+% -- Enable ViewPixx panels scanning backlight.
+%
+%
+% PsychDataPixx('DisableVideoScanningBacklight');
+% -- Disable ViewPixx panels scanning backlight.
+%
+%
+% PsychDataPixx('EnableVideoStereoBlueline');
+% -- Enable detection and handling of blue-line stereo sync lines by the
+% DataPixx.
+%
+%
+% PsychDataPixx('DisableVideoStereoBlueline');
+% -- Disable detection and handling of blue-line stereo sync lines by the
+% DataPixx.
+%
+%
 % Internal commands: NOT FOR USE BY PURE MORTALS!
 %
 % PsychDataPixx('PerformPostWindowOpenSetup');
@@ -332,6 +350,9 @@ function varargout = PsychDataPixx(cmd, varargin)
 % 27.11.2011  mk  Improve online correction routine for LUT's. Need to
 %                 handle GPUs with more than 256 slot LUT's sensibly. E.g.,
 %                 the NVidia QuadroFX-3800 has 2048 LUT slots.
+%
+% 11.09.2012  mk  Add support for stereo sync line handling, and for
+%                 scanning backlight control of the ViewPixx.
 
 % Need GL constant for low-level OpenGL calls. Already initialized by
 % PsychImaging() at first time of invocation of the driver:
@@ -892,6 +913,32 @@ end
 if strcmpi(cmd, 'SetVideoVerticalStereo')
     % Set new vertical sync-doubling mode, apply immediately:
     doDatapixx('SetVideoVerticalStereo', varargin{1});
+    doDatapixx('RegWrRd');
+    return;
+end
+
+% Stereo sync line control:
+if strcmpi(cmd, 'EnableVideoStereoBlueline')
+    doDatapixx('EnableVideoStereoBlueline');
+    doDatapixx('RegWrRd');
+    return;
+end
+
+if strcmpi(cmd, 'DisableVideoStereoBlueline')
+    doDatapixx('DisableVideoStereoBlueline');
+    doDatapixx('RegWrRd');
+    return;
+end
+
+% Scanning backlight control:
+if strcmpi(cmd, 'EnableVideoScanningBacklight')
+    doDatapixx('EnableVideoScanningBacklight');
+    doDatapixx('RegWrRd');
+    return;
+end
+
+if strcmpi(cmd, 'DisableVideoScanningBacklight')
+    doDatapixx('DisableVideoScanningBacklight');
     doDatapixx('RegWrRd');
     return;
 end
