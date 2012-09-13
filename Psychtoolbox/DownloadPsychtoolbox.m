@@ -778,27 +778,27 @@ else
     fprintf('Success.\n\n');
 end
 
-fprintf(['Now setting permissions to allow everyone to write to the Psychtoolbox folder. This will \n'...
-    'allow future updates by every user on this machine without requiring administrator privileges.\n']);
-try
-    if IsOSX | IsLinux
-        [s,m]=fileattrib(p,'+w','a','s'); % recursively add write privileges for all users.
-    else
-        [s,m]=fileattrib(p,'+w','','s'); % recursively add write privileges for all users.
-    end
-catch
-    s = 0;
-    m = 'Setting file attributes is not supported under Octave.';
-end
-
-if s
-    fprintf('Success.\n\n');
-else
-    fprintf('\nFILEATTRIB failed. Psychtoolbox will still work properly for you and other users, but only you\n');
-    fprintf('or the system administrator will be able to run the UpdatePsychtoolbox script to update Psychtoolbox,\n');
-    fprintf('unless you or the system administrator manually set proper write permissions on the Psychtoolbox folder.\n');
-    fprintf('The error message of FILEATTRIB was: %s\n\n', m);
-end
+% fprintf(['Now setting permissions to allow everyone to write to the Psychtoolbox folder. This will \n'...
+%     'allow future updates by every user on this machine without requiring administrator privileges.\n']);
+% try
+%     if IsOSX | IsLinux
+%         [s,m]=fileattrib(p,'+w','a','s'); % recursively add write privileges for all users.
+%     else
+%         [s,m]=fileattrib(p,'+w','','s'); % recursively add write privileges for all users.
+%     end
+% catch
+%     s = 0;
+%     m = 'Setting file attributes is not supported under Octave.';
+% end
+% 
+% if s
+%     fprintf('Success.\n\n');
+% else
+%     fprintf('\nFILEATTRIB failed. Psychtoolbox will still work properly for you and other users, but only you\n');
+%     fprintf('or the system administrator will be able to run the UpdatePsychtoolbox script to update Psychtoolbox,\n');
+%     fprintf('unless you or the system administrator manually set proper write permissions on the Psychtoolbox folder.\n');
+%     fprintf('The error message of FILEATTRIB was: %s\n\n', m);
+% end
 
 fprintf('You can now use your newly installed ''%s''-flavor Psychtoolbox. Enjoy!\n',flavor);
 fprintf('Whenever you want to upgrade your Psychtoolbox to the latest ''%s'' version, just\n',flavor);
