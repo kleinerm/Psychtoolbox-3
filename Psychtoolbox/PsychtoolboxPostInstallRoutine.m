@@ -48,6 +48,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 09/05/2012 Update support for 64-Bit Octave and versions > 3.2. (MK)
 % 09/13/2012 Add startup.m setup for 64-Bit Matlab + 64-Bit Windows. (MK)
 % 09/14/2012 Cancel support for Octave on MS-Windows. (MK)
+% 09/14/2012 Cancel support for 32-Bit Octave on OSX. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -137,6 +138,11 @@ end
 % Octave on Windows? This is unsupported as of Version 3.0.10.
 if IsWin && IsOctave
     error('Use of GNU/Octave on MS-Windows with Psychtoolbox 3.0.10 is no longer supported. Aborted.');
+end
+
+% 32-Bit Octave on OSX? This is unsupported as of Version 3.0.10.
+if IsOctave && IsOSX && ~IsOSX(1)
+    error('Use of 32-Bit GNU/Octave on OSX with Psychtoolbox 3.0.10 is no longer supported (but 64-Bit Octave would work). Aborted.');
 end
 
 % Check if our own startup function is part of the startup file and add it,

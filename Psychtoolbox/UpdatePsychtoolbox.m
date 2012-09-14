@@ -51,6 +51,7 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 %              Remove PowerPC support.
 %
 % 09/14/12 mk  Drop support for Octave on MS-Windows.
+% 09/14/12 mk  Drop support for 32-Bit Octave on OSX.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -82,6 +83,15 @@ fprintf('\n');
 % Do notify user about potential trouble with path names with blanks in them:
 if any(isspace(targetdirectory))
     fprintf('The targetdirectory spec contains white-space. This should work, but has not been tested extensively.\n');
+end
+
+% Check if this is 32-Bit Octave on OSX, which we don't support anymore:
+if ~isempty(strfind(computer, 'apple-darwin')) && isempty(strfind(computer, '64'))
+    fprintf('Psychtoolbox 3.0.10 and later does no longer work with 32-Bit GNU/Octave on OSX.\n');
+    fprintf('You need to upgrade to a 64-Bit version of Octave on OSX, which is fully supported.\n');
+    fprintf('You can also use the alternate download function DownloadLegacyPsychtoolbox() to download\n');
+    fprintf('an old legacy copy of Psychtoolbox-3.0.9, which did support 32-Bit Octave 3.2 on OSX.\n');
+    error('Tried to setup on 32-Bit Octave, which is no longer supported on OSX.');
 end
 
 % Check if this is Octave on Windows, which we don't support at all:
