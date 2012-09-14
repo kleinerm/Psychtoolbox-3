@@ -46,6 +46,8 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 06/13/2012 Removed call to SwitchToNewPsychtoolboxHoster, no longer needed (DN)
 % 07/10/2012 Use textscan() on R2012a+ and verLessThan() to detect R2007a+ (MK)
 % 09/05/2012 Update support for 64-Bit Octave and versions > 3.2. (MK)
+% 09/13/2012 Add startup.m setup for 64-Bit Matlab + 64-Bit Windows. (MK)
+% 09/14/2012 Cancel support for Octave on MS-Windows. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -130,6 +132,11 @@ try
     end
 catch
     fprintf('Info: Failed to remove .svn subfolders from path. Not a big deal...\n');
+end
+
+% Octave on Windows? This is unsupported as of Version 3.0.10.
+if IsWin && IsOctave
+    error('Use of GNU/Octave on MS-Windows with Psychtoolbox 3.0.10 is no longer supported. Aborted.');
 end
 
 % Check if our own startup function is part of the startup file and add it,

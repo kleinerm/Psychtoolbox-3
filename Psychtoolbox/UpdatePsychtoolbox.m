@@ -49,6 +49,8 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 %              clients.
 % 05/27/12 mk  Strip backwards compatibility support to pre-R2007a.
 %              Remove PowerPC support.
+%
+% 09/14/12 mk  Drop support for Octave on MS-Windows.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -82,13 +84,13 @@ if any(isspace(targetdirectory))
     fprintf('The targetdirectory spec contains white-space. This should work, but has not been tested extensively.\n');
 end
 
-% Check if this is a 64-bit Octave on Windows, which we don't support at all:
-if ~isempty(strfind(computer, '_64')) & isempty(strfind(computer, 'linux')) & isempty(strfind(computer, 'apple'))
-    fprintf('Psychtoolbox does not work on a 64 bit version of GNU/Octave on MS-Windows.\n');
-    fprintf('You need to install a 32 Bit version to use Psychtoolbox with Octave on Windows.\n');
-    fprintf('Use with 64 Bit Matlab is fully supported on all operating systems.\n');
-    fprintf('ERROR: See also http://psychtoolbox.org/wikka.php?wakka=Faq64BitSupport.\n');
-    error('Tried to setup on a 64 bit version of Octave, which is not supported on this operating system.');
+% Check if this is Octave on Windows, which we don't support at all:
+if strcmp(computer, 'i686-pc-mingw32')
+    fprintf('Psychtoolbox 3.0.10 and later does no longer work with GNU/Octave on MS-Windows.\n');
+    fprintf('You need to use MacOS/X or GNU/Linux if you want to use Psychtoolbox with Octave.\n');
+    fprintf('You can also use the alternate download function DownloadLegacyPsychtoolbox() to download\n');
+    fprintf('an old legacy copy of Psychtoolbox-3.0.9 which did support 32-Bit Octave 3.2 on Windows.\n');
+    error('Tried to setup on Octave, which is no longer supported on MS-Windows.');
 end
 
 if strcmp(computer,'MAC')
