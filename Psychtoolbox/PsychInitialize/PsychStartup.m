@@ -26,6 +26,21 @@ try
         
         % Find path to SDK-Root folder:
         sdkroot = getenv('GSTREAMER_SDK_ROOT_X86_64');
+        if isempty(sdkroot) && exist('C:\gstreamer-sdk\2012.5\', 'dir')
+            sdkroot = 'C:\gstreamer-sdk\2012.5\x86_64\';
+        end
+        
+        if isempty(sdkroot) && exist('C:\gstreamer-sdk\2012.7\', 'dir')
+            sdkroot = 'C:\gstreamer-sdk\2012.7\x86_64\';
+        end
+        
+        if isempty(sdkroot) && exist('D:\gstreamer-sdk\2012.5\', 'dir')
+            sdkroot = 'D:\gstreamer-sdk\2012.5\x86_64\';
+        end
+        
+        if isempty(sdkroot) && exist('D:\gstreamer-sdk\2012.7\', 'dir')
+            sdkroot = 'D:\gstreamer-sdk\2012.7\x86_64\';
+        end
         
         if isempty(sdkroot)
             fprintf('\nPsychStartup: Path to GStreamer runtime is undefined! This probably means that\n');
