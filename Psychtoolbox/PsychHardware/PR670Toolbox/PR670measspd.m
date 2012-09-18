@@ -25,7 +25,7 @@ if nargin < 1 || isempty(S)
 end
 
 % Initialize
-timeout = 30;
+timeout = 300;
 
 % See if we can sync to the source and set sync mode appropriately.
 if strcmp(syncMode, 'on')

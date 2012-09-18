@@ -26,13 +26,19 @@ static char synopsisString[] =
 "Try to fetch a new texture image from movie object 'moviePtr' for visual playback/display in onscreen window 'windowPtr' and "
 "return a texture-handle 'texturePtr' on successfull completion. 'waitForImage' If set to 1 (default), the function will wait "
 "until the image becomes available. If set to zero, the function will just poll for a new image. If none is ready, it will return "
-"a texturePtr of zero, or -1 if none will become ready because movie has reached its end and is not in loop mode. "
-"On MS-Windows, polling mode is not possible, the function always waits for a new image, unless you use the GStreamer playback engine.\n"
-"'fortimeindex' Don't request the next image, but the image closest to time 'fortimeindex' in seconds. The (optional) return "
-"value 'timeindex' contains the exact time when the returned image should be displayed wrt. to the start of the movie - a presentation timestamp. \n"
-"'specialFlags' (optional) encodes special requirements for the returned texture. A setting of 2 will request that the texture "
+"a texturePtr of zero, or -1 if none will become ready because movie has reached its end and is not in loop mode.\n"
+"'fortimeindex' Don't request the next image, but the image closest to time 'fortimeindex' in seconds. 'fortimeindex' is only used "
+"if either playback is stopped in any case, or if forward playback is active while using the GStreamer playback engine and "
+"fetching video frames asynchronously due to opening the movie with async flag set and sufficient buffering enabled on suitable "
+"movie file formats. In all other cases the 'fortimeindex' is silently ignored. Therefore you should always check if the timestamp "
+"of the returned movie frame actually satisfies the given 'fortimeindex' value if you choose to use 'fortimeindex'.\n"
+"The (optional) return value 'timeindex' contains the exact time when the returned image should be displayed wrt. to the "
+"start of the movie - a presentation timestamp. \n"
+"'specialFlags' (optional) encodes special requirements for the returned texture. A setting of 1 will try to create the texture "
+"as a GL_TEXTURE_2D texture. However this is not well supported with a setting of 2 (see below) or with use of a special 'pixelFormat' > 4 in "
+"Screen('OpenMovie'). A setting of 2 will request that the texture "
 "is prepared for drawing it with highest possible spatial precision. See explanation of 'specialFlags' == 2 in Screen('MakeTexture') "
-"for details. \n"
+"for details. A 'specialFlags' == 8 will prevent automatic mipmap-generation for GL_TEXTURE_2D textures.\n"
 "'specialFlags2' (optional) More special flags: A setting of 1 tells the function to not return presentation timestamps in 'timeindex'. "
 "This means that 'timeindex' will be always returned as zero and that the built-in detector for skipped frames is disabled as well. This "
 "may (or may not) save a little bit of computation time during playback of very demanding movies on lower end systems, your mileage will "
@@ -137,7 +143,7 @@ PsychError SCREENGetMovieImage(void)
     if (specialFlags2 & 2) {
         // Yes. We skip OpenGL texture creation and just return some dummy value:
 
-        // Stil need to do a dummy-fetch from the movie object to retrieve a potential
+        // Still need to do a dummy-fetch from the movie object to retrieve a potential
         // presentation timestamp and to make sure the videobuffers get properly dequeued, so
         // the playback engine stays happy. We pass a textureRecord pointer of NULL to tell the
         // engine to skip most work:
@@ -175,6 +181,12 @@ PsychError SCREENGetMovieImage(void)
     // Assign parent window and copy its inheritable properties:
     PsychAssignParentWindow(textureRecord, windowRecord);
 
+    // Special texture format requested?
+    if (specialFlags & 0x1) textureRecord->texturetarget = GL_TEXTURE_2D;
+    
+    // specialFlags setting 8? Disable auto-mipmap generation:
+    if (specialFlags & 0x8) textureRecord->specialflags |= kPsychDontAutoGenMipMaps;    
+    
     // Try to fetch an image from the movie object and return it as texture:
     PsychGetTextureFromMovie(windowRecord, moviehandle, FALSE, requestedTimeIndex, textureRecord, ((specialFlags2 & 1) ? NULL : &presentation_timestamp));
 

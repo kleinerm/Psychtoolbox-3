@@ -5083,10 +5083,7 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 
 				// Transition to offscreen rendertarget?
 				if (windowRecord->windowType == kPsychTexture) {
-					// Yes. Need to bind the texture as framebuffer object. This only works for rectangle textures.
-					if (PsychGetTextureTarget(windowRecord)!=GL_TEXTURE_RECTANGLE_EXT) {
-						PsychErrorExitMsg(PsychError_user, "You tried to draw into a special power-of-two offscreen window or texture. Sorry, this is not supported.");
-					}
+					// Yes. Need to bind the texture as framebuffer object.
 					
 					// It also only works on RGB or RGBA textures, not Luminance or LA textures, and the texture needs to be upright.
 					// PsychNormalizeTextureOrientation takes care of swapping it upright and converting it into a RGB or RGBA format,
@@ -5104,6 +5101,9 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 					// only create a full blown FBO on demand here.
 					PsychCreateShadowFBOForTexture(windowRecord, TRUE, -1);
 
+                    // Set "dirty" flag on texture: (Ab)used to trigger regeneration of mip-maps during texture drawing of mip-mapped textures.
+                    windowRecord->needsViewportSetup = TRUE;
+                    
 					// Switch to FBO for given texture or offscreen window:
 					glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[0]->fboid);
 
@@ -5153,15 +5153,15 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 		else {
                 // Use standard OpenGL without framebuffer objects for drawing target switch:
                 // This code path is executed when the imaging pipeline is disabled. It only uses
-		// OpenGL 1.1 functionality so it should work on any piece of gfx-hardware:
-				
+                // OpenGL 1.1 functionality so it should work on any piece of gfx-hardware:
+
                 // Whatever is bound at the moment needs to be backed-up into a texture...
                 // If currentRendertarget is NULL then we've got nothing to back up.
-		// If currentRendertarget is using the imaging pipeline in any way, then there's also no
-		// need for any backups, as all textures/offscreen windows are backed by FBO's and the
-		// system framebuffer is just used as backingstore for onscreen windows, ie., no need
-		// to ever backup system framebuffer into any kind of texture based storage.
-		// Therefore skip this if any imaging mode is active (i.e., imagingMode is non-zero):
+                // If currentRendertarget is using the imaging pipeline in any way, then there's also no
+                // need for any backups, as all textures/offscreen windows are backed by FBO's and the
+                // system framebuffer is just used as backingstore for onscreen windows, ie., no need
+                // to ever backup system framebuffer into any kind of texture based storage.
+                // Therefore skip this if any imaging mode is active (i.e., imagingMode is non-zero):
                 if (currentRendertarget && (currentRendertarget->imagingMode == 0)) {
                     // There is a bound render target in non-imaging mode: Any backups of its current backbuffer to some
 					// texture backing store needed?
@@ -5269,10 +5269,10 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
     else {
         // windowRecord==NULL. Reset of currentRendertarget and framebufferobject requested:
 
-	// Bind system framebuffer if FBO's supported on this system:
+        // Bind system framebuffer if FBO's supported on this system:
         if (glBindFramebufferEXT && currentRendertarget) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
-	// Reset current rendertarget to 'none':
+        // Reset current rendertarget to 'none':
         currentRendertarget = NULL;
     }
 
@@ -5353,8 +5353,15 @@ void PsychBackupFramebufferToBackingTexture(PsychWindowRecordType *backupRendert
 		if (PsychGetTextureTarget(backupRendertarget)==GL_TEXTURE_2D) {
 			// Ok, we need to create an empty texture of suitable power-of-two size:
 			// Now we can do subimage texturing...
-			twidth=1; while(twidth < (int) PsychGetWidthFromRect(backupRendertarget->rect)) { twidth = twidth * 2; };
-			theight=1; while(theight < (int) PsychGetHeightFromRect(backupRendertarget->rect)) { theight = theight * 2; };
+            if (!(backupRendertarget->gfxcaps & kPsychGfxCapNPOTTex)) {            
+                twidth=1; while(twidth < (int) PsychGetWidthFromRect(backupRendertarget->rect)) { twidth = twidth * 2; };
+                theight=1; while(theight < (int) PsychGetHeightFromRect(backupRendertarget->rect)) { theight = theight * 2; };
+            } else {
+                // GPU has NPOT support, take it "as is":
+                twidth  = (int) PsychGetWidthFromRect(backupRendertarget->rect);
+                theight = (int) PsychGetHeightFromRect(backupRendertarget->rect);
+            }
+            
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, twidth, theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
 			glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(backupRendertarget->rect), (int) PsychGetHeightFromRect(backupRendertarget->rect));
 		}
@@ -5374,8 +5381,11 @@ void PsychBackupFramebufferToBackingTexture(PsychWindowRecordType *backupRendert
 			// Texture. Handle size correctly:
 			if ((backupRendertarget->textureOrientation <= 1) && (PsychGetTextureTarget(backupRendertarget)==GL_TEXTURE_2D)) {
 				// Transposed power of two texture. Need to realloc texture...
-				twidth=1; while(twidth < (int) PsychGetWidthFromRect(backupRendertarget->rect)) { twidth = twidth * 2; };
-				theight=1; while(theight < (int) PsychGetHeightFromRect(backupRendertarget->rect)) { theight = theight * 2; };
+                if (!(backupRendertarget->gfxcaps & kPsychGfxCapNPOTTex)) {
+                    // No non-power-of-two support: Need to find closest matching POT texture size:
+                    twidth=1; while(twidth < (int) PsychGetWidthFromRect(backupRendertarget->rect)) { twidth = twidth * 2; };
+                    theight=1; while(theight < (int) PsychGetHeightFromRect(backupRendertarget->rect)) { theight = theight * 2; };
+                }
 				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, twidth, theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
 				
 				// Reassign real size:
@@ -5538,6 +5548,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	psych_bool nvidia = FALSE;
 	psych_bool ati = FALSE;
 	psych_bool intel = FALSE;
+    psych_bool llvmpipe = FALSE;
 	GLint maxtexsize=0, maxcolattachments=0, maxaluinst=0;
 	GLboolean nativeStereo = FALSE;
 
@@ -5548,6 +5559,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	if (strstr((char*) glGetString(GL_VENDOR), "ATI") || strstr((char*) glGetString(GL_VENDOR), "AMD") || strstr((char*) glGetString(GL_RENDERER), "AMD")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
 	if (strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_RENDERER), "nouveau") || strstr((char*) glGetString(GL_VENDOR), "nouveau")) { nvidia = TRUE; sprintf(windowRecord->gpuCoreId, "NV10"); }
 	if (strstr((char*) glGetString(GL_VENDOR), "INTEL") || strstr((char*) glGetString(GL_VENDOR), "Intel") || strstr((char*) glGetString(GL_RENDERER), "Intel")) { intel = TRUE; sprintf(windowRecord->gpuCoreId, "Intel"); }
+	if (strstr((char*) glGetString(GL_VENDOR), "VMware") || strstr((char*) glGetString(GL_RENDERER), "llvmpipe")) { llvmpipe = TRUE; sprintf(windowRecord->gpuCoreId, "gllvm"); }
 
 	// Detection code for Linux DRI driver stack with ATI GPU:
 	if (strstr((char*) glGetString(GL_VENDOR), "Advanced Micro Devices") || strstr((char*) glGetString(GL_RENDERER), "ATI")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
@@ -5577,6 +5589,11 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		if (verbose) printf("GPU supports UYVY - YCrCb texture formats for optimized handling of video content.\n");
 	}
 
+    if (glewIsSupported("GL_ARB_texture_non_power_of_two")) {
+        windowRecord->gfxcaps |= kPsychGfxCapNPOTTex;
+		if (verbose) printf("GPU supports non-power-of-two textures.\n");        
+    }
+    
 	// Is this a GPU with known broken drivers that yield miserable texture creation performance
 	// for RGBA8 textures when using the standard optimized settings?
 	// As far as we know (June 2008), ATI hardware under MS-Windows and Linux has this driver bugs,
@@ -5714,12 +5731,13 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		}
 
 		// INTEL specific detection logic:
-		if (intel && (windowRecord->gfxcaps & kPsychGfxCapFBO) && glewIsSupported("GL_ARB_texture_float")) {
+		if ((intel || llvmpipe) && (windowRecord->gfxcaps & kPsychGfxCapFBO) && glewIsSupported("GL_ARB_texture_float")) {
 			// An Intel GPU with FBO and ARB_texture_float support: These are usually of the HD graphics series and
 			// recent enough to support floating point textures and rendertargets with 16 bpc and 32 bpc float, including
 			// texture filtering and frame buffer blending, and as a bonus FP32 shading. Iow. they support the whole
 			// shebang, as they are at least OpenGL 3.0 / Direct3D-10 compliant:
-			if (verbose) printf("Assuming HD graphics core or later: Hardware supports full 16/32 bit floating point textures, frame buffers, filtering and blending, as well as some 32 bit float shading.\n");
+			if (verbose && intel) printf("Assuming HD graphics core or later: Hardware supports full 16/32 bit floating point textures, frame buffers, filtering and blending, as well as some 32 bit float shading.\n");
+			if (verbose && llvmpipe) printf("Assuming Gallium LLVM-Pipe rasterizer: Renderer supports full 16/32 bit floating point textures, frame buffers, filtering and blending, as well as some 32 bit float shading.\n");
 
 			windowRecord->gfxcaps |= kPsychGfxCapFPFBO16;
 			windowRecord->gfxcaps |= kPsychGfxCapFPFBO32;

@@ -220,7 +220,7 @@ switch meterType
 			if strcmp(stat, ' REMOTE MODE')
 				disp('Successfully connected to PR-670!');
 			else
-				disp('Failed to make contact.  If device is connected, try turning it off and re-trying CMCheckInit.');
+				disp('Failed to make contact.  If device is connected, try turning it off, type clear all, and then re-trying CMCheckInit.');
 			end
 		else
 			error(['Unsupported OS ' computer]);
