@@ -1702,8 +1702,12 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
 	if (cmd == 0 || cmd == 1) {
 		// Check if GLX_INTEL_swap_event extension is supported. Enable/Disable swap completion event
 		// delivery for our window, if so:
+        // We enable if override env var "PSYCH_FORCE_INTEL_swap_event" is set, or if the extension is
+        // in the glXQueryExtensionsString() or it is in both the server- and client-extension string.
 		scrnum = PsychGetXScreenIdForScreen(windowRecord->screenNumber);
-		if (useGLX13 && strstr(glXQueryExtensionsString(windowRecord->targetSpecific.deviceContext, scrnum), "GLX_INTEL_swap_event")) {
+		if (useGLX13 && (strstr(glXQueryExtensionsString(windowRecord->targetSpecific.deviceContext, scrnum), "GLX_INTEL_swap_event") || getenv("PSYCH_FORCE_INTEL_swap_event") ||
+                         (strstr(glXGetClientString(windowRecord->targetSpecific.deviceContext, GLX_EXTENSIONS), "GLX_INTEL_swap_event") &&
+                          strstr(glXQueryServerString(windowRecord->targetSpecific.deviceContext, scrnum, GLX_EXTENSIONS), "GLX_INTEL_swap_event")))) {
 			glXSelectEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, (unsigned long) ((cmd == 1) ? GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK : 0));
 			return(TRUE);
 		} else {
@@ -1712,7 +1716,7 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
 	}
 
 	if (cmd == 2) {
-		// Experimental support for INTEL_swap_event extension enabled? Process swap events if so:
+		// Support for INTEL_swap_event extension enabled? Process swap events if so:
 		if (useGLX13) {
 			glXGetSelectedEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &glxmask);
 			if (glxmask & GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK) {
@@ -1745,8 +1749,13 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
 						default:
 							PsychSetStructArrayStringElement("SwapType", 0, "Unknown", s);
 					}
+                    
+                    return(TRUE);
 				}
 			}
 		}
 	}
+    
+    // Invalid cmd or failed cmd:
+    return(FALSE);
 }
