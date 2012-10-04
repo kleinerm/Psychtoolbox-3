@@ -1167,8 +1167,43 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 		return(-2);
 	}
 
-	// Success. Translate ust into system time in seconds:
+	// Success at least for timestamping. Translate ust into system time in seconds:
 	if (tSwap) *tSwap = PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz());
+
+    // Another consistency check: This one is meant to catch the totally broken glXSwapBuffersMscOML()
+    // implementation of the Intel-DDX from June 2011 to October 2012.
+    //
+    // That driver completely ignores the provided targetMSC for fullscreen page-flips!!! It just swaps
+    // at next vblank. Iow, the real msc of swap completion can be much lower than the requested targetMSC,
+    // killing any kind of stimulus onset timing.
+    //
+    // Check for this: If the swapcompletion msc is at least 2000 counts, we assume it didn't just wrap
+    // around by chance, but is a valid target for concsistency checks. 2000 vblanks ~ 10-33 secs with typical
+    // refresh rates. This means a blind spot of about 10-30 seconds every ~ 8 months of system uptime, so
+    // at most a dozen trials could get screwed unnoticed if somebody is really really unlucky.
+    //
+    // If the check is executed, the msc of swap completion should always be >= targetMSC, otherwise something
+    // is deeply broken in the driver:
+    if ((msc > 2000) && (windowRecord->lastSwaptarget_msc > 2000) && (msc < windowRecord->lastSwaptarget_msc)) {
+        // Utterly broken OML swap scheduling! Disable it, so we can use our old fallback path. Warn user once
+        // about broken driver:
+        
+        // First detected failure? Skip it on successive failures, as the fallback path will have taken
+        // care of it -- One would hope at least.
+        if (windowRecord->gfxcaps & kPsychGfxCapSupportsOpenML) {
+            // Disable OpenML swap scheduling, we will use the classic wait + glXSwapBuffers path, but
+            // still keep glXWaitForSBC() timestamping functional:
+            windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
+
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: The flip stimulus onset completed at vblank count %lld before the target onset time == target vblank count %lld !!\n", msc, windowRecord->lastSwaptarget_msc);
+                printf("PTB-WARNING: This likely means a serious graphics driver bug or malfunction in the swap scheduling mechanism!\n");
+                printf("PTB-WARNING: I will now switch to a fallback / backup method for the remainder of this session, trying to work around this bug.\n");
+                printf("PTB-WARNING: All Intel graphics drivers released between June 2011 and at least October 2012 are known to have this bug.\n");
+                printf("PTB-WARNING: If you use such a graphics card or driver, please try to update your graphics driver as soon as possible for reliable operation.\n\n");
+            }
+        }
+    }
 
 	// If we are running on a slightly incomplete nouveau-kms driver which always returns a zero msc,
 	// we need to get good ust,msc,sbc values for later use as reference and as return value via an
@@ -1293,6 +1328,23 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 			printf("PTB-INFO: OpenML OML_sync_control implementation with problematic glXGetSyncValuesOML() function detected. Enabling workaround for ok performance.\n");
 		}
 	}
+    
+    if (glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc)) {
+        // Check swap scheduling for reliable operation. Intel ddx drivers from June 2011 to at least October 2012 are known
+        // to be seriously buggy here. Schedule a swap a few vblanks in the future, wait for its completion and timestamp it.
+        // This will run a consistency check inside PsychOSGetSwapCompletionTimestamp() which would trigger warnings and fallbacks
+        // if it detects problems of the driver with sticking to the schedule:
+        PsychOSScheduleFlipWindowBuffers(windowRecord, 0.0, msc + 5, 0, 0, 0);
+        
+        // Just a dummy call to wait for completion and to trigger consistency checks and workarounds if needed:
+        PsychOSGetSwapCompletionTimestamp(windowRecord, 0, NULL);
+    }
+    else {
+		if (PsychPrefStateGet_Verbosity() > 1) {
+			printf("PTB-WARNING: Spurious failure of glXGetSyncValuesOML(). Could not perform some correctness tests. Something may be broken in your systems timestamping!\n");
+		}
+    }
+    
 	#else
 		// Disable extension:
 		windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;	
