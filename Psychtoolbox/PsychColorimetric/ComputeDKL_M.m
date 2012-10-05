@@ -25,14 +25,14 @@ function M = ComputeDKL_M(bg,T_cones,T_Y)
 % 4/9/05    dhb  Allow passing of cones and luminance to be used.
 % 11/17/05  dhb  Require passing of cones and luminance.
 %           dhb  Fixed definition of M_raw to handle arbitrary L,M scaling.
-% 10/5/12   dhb  Comment specifying coordinate system convention.
+% 10/5/12   dhb  Comment specifying coordinate system convention.  Supress extraneous printout.
 
 % If cones and luminance are passed, find how L and
 % M cone incrments sum to best approximate change in
 % luminance.
 if (nargin == 3)
 	T_LM = T_cones(1:2,:);
-	LMLumWeights = T_LM'\T_Y'
+	LMLumWeights = T_LM'\T_Y';
 else
     fprintf('ComputeDKL_M now requires explicit specification\n');
     fprintf('of cone fundamentals and luminosity function\n');
