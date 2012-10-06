@@ -466,7 +466,7 @@ PsychError SCREENOpenWindow(void)
     PsychSetupClientRect(windowRecord);
 
 	// Initialize internal image processing pipeline if requested:
-	PsychInitializeImagingPipeline(windowRecord, imagingmode, multiSample);
+	if (numWindowBuffers > 0) PsychInitializeImagingPipeline(windowRecord, imagingmode, multiSample);
 	
 	// On OS-X, if we are in quad-buffered frame sequential stereo mode, we automatically generate
 	// blue-line-sync style sync lines for use with stereo shutter glasses. We don't do this
