@@ -1159,7 +1159,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 	// Check for valid return values: A zero ust or msc means failure, except for results from nouveau,
 	// because there it is "expected" to get a constant zero return value for msc, at least when running
 	// on top of a pre Linux-3.2 kernel:
-	if ((ust == 0) || ((msc == 0) && !strstr((char*) glGetString(GL_VENDOR), "nouveau"))) {
+	if ((windowRecord->vSynced) && ((ust == 0) || ((msc == 0) && !strstr((char*) glGetString(GL_VENDOR), "nouveau")))) {
 		// Ohoh:
 		if (PsychPrefStateGet_Verbosity() > 1) {
 			printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Invalid return values ust = %lld, msc = %lld from call with success return code (sbc = %lld)! Failing with rc = -2.\n", ust, msc, sbc);
@@ -1187,7 +1187,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
     //
     // If the check is executed, the msc of swap completion should always be >= targetMSC, otherwise something
     // is deeply broken in the driver:
-    if ((msc > 2000) && (windowRecord->lastSwaptarget_msc > 2000) && (msc < windowRecord->lastSwaptarget_msc)) {
+    if ((windowRecord->vSynced) && (msc > 2000) && (windowRecord->lastSwaptarget_msc > 2000) && (msc < windowRecord->lastSwaptarget_msc)) {
         // Utterly broken OML swap scheduling! Disable it, so we can use our old fallback path. Warn user once
         // about broken driver:
         

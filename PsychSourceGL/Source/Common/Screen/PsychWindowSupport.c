@@ -725,6 +725,9 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		  printf("\n\nOpenGL-Extensions are: %s\n\n", (char*) glGetString(GL_EXTENSIONS));
 	}
 
+    // Activate syncing to onset of vertical retrace (VBL) for double-buffered windows:
+    if (numBuffers > 1) PsychOSSetVBLSyncLevel(*windowRecord, 1);
+    
 	// Perform generic inquiry for interesting renderer capabilities and limitations/quirks
 	// and setup the proper status bits for the windowRecord:
 	PsychDetectAndAssignGfxCapabilities(*windowRecord);
@@ -850,9 +853,6 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     }
     
     // Everything below this line is only for double-buffered contexts!
-
-    // Activate syncing to onset of vertical retrace (VBL) for double-buffered windows:
-    PsychOSSetVBLSyncLevel(*windowRecord, 1);
     
     // Setup of initial interframe-interval by multiple methods, for comparison:
     
