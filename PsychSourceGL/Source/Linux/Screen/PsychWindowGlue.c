@@ -1206,6 +1206,25 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
                 printf("PTB-WARNING: If you use such a graphics card or driver, please try to update your graphics driver as soon as possible for reliable operation.\n\n");
             }
         }
+        else {
+            // Failure detected again, *after* our workaround was activated! This must be another independent bug!
+            // Note: So far no driver ever exposed this bug, but some of the work the Intel developers are currently
+            // doing on their driver has some potential to introduce such a bug, so we are better safe than sorry.
+            // Specifically: If the kms pageflip completion handler in the intel-kms driver should return a stale
+            // msc and ust from previous vblank, because our special workaround and safety code was removed in Oct. 2012.
+            // In theory, the driver has been fixed for all current Intel gpu's, but in practice you never know what
+            // kind of hardware bugs may show up or hide in future and current gpus. Better safe than sorry...
+            
+            // Disable OpenML completely, in the hope that our old "classic" path can somehow deal with the problem,
+            windowRecord->specialflags |= kPsychOpenMLDefective;
+            if (PsychPrefStateGet_Verbosity() > 0) {
+                printf("\nPTB-ERROR: The flip stimulus onset completed at vblank count %lld before the requested target vblank count %lld !!\n", msc, windowRecord->lastSwaptarget_msc);
+                printf("PTB-ERROR: This likely means a serious graphics driver bug or malfunction in the drivers swap scheduling or timestamping mechanism!\n");
+                printf("PTB-ERROR: I will now switch to a fallback / backup method for the remainder of this session, trying to work around this bug.\n");
+                printf("PTB-ERROR: There are no guarantees though. Your system should be considered *not trustwhorthy* for timing sensitive tasks\n");
+                printf("PTB-ERROR: until the problem is properly diagnosed and fixed. Please report this failure to the Psychtoolbox user forum.\n\n");
+            }
+        }
     }
 
 	// If we are running on a slightly incomplete nouveau-kms driver which always returns a zero msc,
