@@ -801,9 +801,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
   // Some info for the user regarding non-fullscreen mode and sync problems:
   if (!(windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_Verbosity() > 2)) {
-    printf("PTB-INFO: Many graphics cards do not support proper syncing to vertical retrace when\n");
-    printf("PTB-INFO: running in windowed mode (non-fullscreen). If PTB aborts with 'Synchronization failure'\n");
-    printf("PTB-INFO: you can disable the sync test via call to Screen('Preference', 'SkipSyncTests', 1); .\n");
+    printf("PTB-INFO: Many graphics cards do not support proper timing and timestamping of visual stimulus onset\n");
+    printf("PTB-INFO: when running in windowed mode (non-fullscreen). If PTB aborts with 'Synchronization failure'\n");
+    printf("PTB-INFO: you can disable the sync test via call to Screen('Preference', 'SkipSyncTests', 2); .\n");
     printf("PTB-INFO: You won't get proper stimulus onset timestamps though, so windowed mode may be of limited use.\n");
   }
   fflush(NULL);
@@ -1199,8 +1199,8 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
             windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
 
             if (PsychPrefStateGet_Verbosity() > 1) {
-                printf("PTB-WARNING: The flip stimulus onset completed at vblank count %lld before the target onset time == target vblank count %lld !!\n", msc, windowRecord->lastSwaptarget_msc);
-                printf("PTB-WARNING: This likely means a serious graphics driver bug or malfunction in the swap scheduling mechanism!\n");
+                printf("\nPTB-WARNING: The flip stimulus onset completed at vblank count %lld before the requested target vblank count %lld !!\n", msc, windowRecord->lastSwaptarget_msc);
+                printf("PTB-WARNING: This likely means a serious graphics driver bug or malfunction in the drivers swap scheduling mechanism!\n");
                 printf("PTB-WARNING: I will now switch to a fallback / backup method for the remainder of this session, trying to work around this bug.\n");
                 printf("PTB-WARNING: All Intel graphics drivers released between June 2011 and at least October 2012 are known to have this bug.\n");
                 printf("PTB-WARNING: If you use such a graphics card or driver, please try to update your graphics driver as soon as possible for reliable operation.\n\n");
