@@ -260,6 +260,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   useGLX13 = (glXQueryExtension(dpy, &glx_error_base, &glx_event_base) &&
               glXQueryVersion(dpy, &major, &minor) && ((major > 1) || ((major == 1) && (minor >= 3))));
 
+  // Can't use GLX-1.3 with apitrace:
+  if (getenv("PSYCH_ALLOW_APITRACE")) useGLX13 = FALSE;
+
   // Initialze GLX-1.3 protocol support. Use if possible:
   glXChooseFBConfig = (PFNGLXCHOOSEFBCONFIGPROC) glXGetProcAddressARB("glXChooseFBConfig");
   glXGetFBConfigAttrib = (PFNGLXGETFBCONFIGATTRIBPROC) glXGetProcAddressARB("glXGetFBConfigAttrib");
