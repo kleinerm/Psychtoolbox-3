@@ -889,6 +889,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     XRRFreeCrtcInfo(crtc_info);
   }
   
+  // Try to enable swap event delivery to us:
+  if (PsychOSSwapCompletionLogging(windowRecord, 2, 0) && (PsychPrefStateGet_Verbosity() > 3)) {
+      printf("PTB-INFO: INTEL_swap_event support for additional swap completion correctness checks enabled.\n");
+  }
+
   // Well Done!
   return(TRUE);
 }
@@ -1216,6 +1221,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
             // kind of hardware bugs may show up or hide in future and current gpus. Better safe than sorry...
             
             // Disable OpenML completely, in the hope that our old "classic" path can somehow deal with the problem,
+            // or perform further diagnostics at least:
             windowRecord->specialflags |= kPsychOpenMLDefective;
             if (PsychPrefStateGet_Verbosity() > 0) {
                 printf("\nPTB-ERROR: The flip stimulus onset completed at vblank count %lld before the requested target vblank count %lld !!\n", msc, windowRecord->lastSwaptarget_msc);
@@ -1250,6 +1256,24 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 	windowRecord->reference_sbc = sbc;
 
 	if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Success! refust = %lld, refmsc = %lld, refsbc = %lld.\n", ust, msc, sbc);
+    
+    // Try to get corresponding INTEL_swap_event for cross-checking:
+    if (PsychOSSwapCompletionLogging(windowRecord, 4, (int) sbc)) {
+        // Got it. We are only interested in one thing: Was this a fullscreen window bufferswap with a non page-flipped swap?
+        // For non-fullscreen windows, all bets are off wrt. stimulus onset timing or timestamping, and the user knows this,
+        // as we've told so at window creation time.
+        //
+        // For fullscreen windows however, the user can expect pageflip swaps for best precision. If this doesn't work out,
+        // it hints to some configuration problem on the system and we better warn the user about unreliable timing:
+        if ((windowRecord->vSynced) && (windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_SkipSyncTests() < 2) && (windowRecord->swapcompletiontype > 1)) {
+            // Ohoh: Non-pageflipped fullscreen window swap:
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: Flip for window %i didn't use pageflipping for flip. Presentation timing and timestamps are likely unreliable!\n", windowRecord->windowIndex);
+                printf("PTB-WARNING: Something is misconfigured on your system, otherwise pageflipping would have been used by the graphics driver for reliable timing.\n");
+            }
+        }
+    }
+    
 	#endif
 	
 	// Return msc of swap completion:
@@ -1772,8 +1796,12 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
 	unsigned long glxmask = 0;
 	XEvent evt;
 	int scrnum;
+    int event_type;
+    
+    // Invalidate stored swap completion type for this window:
+    windowRecord->swapcompletiontype = 0;
 
-	if (cmd == 0 || cmd == 1) {
+	if (cmd == 0 || cmd == 1 || cmd == 2) {
 		// Check if GLX_INTEL_swap_event extension is supported. Enable/Disable swap completion event
 		// delivery for our window, if so:
         // We enable if override env var "PSYCH_FORCE_INTEL_swap_event" is set, or if the extension is
@@ -1782,50 +1810,111 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
 		if (useGLX13 && (strstr(glXQueryExtensionsString(windowRecord->targetSpecific.deviceContext, scrnum), "GLX_INTEL_swap_event") || getenv("PSYCH_FORCE_INTEL_swap_event") ||
                          (strstr(glXGetClientString(windowRecord->targetSpecific.deviceContext, GLX_EXTENSIONS), "GLX_INTEL_swap_event") &&
                           strstr(glXQueryServerString(windowRecord->targetSpecific.deviceContext, scrnum, GLX_EXTENSIONS), "GLX_INTEL_swap_event")))) {
-			glXSelectEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, (unsigned long) ((cmd == 1) ? GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK : 0));
-			return(TRUE);
+            // Always enable the swap event delivery, either to us or to user code:
+			glXSelectEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, (unsigned long) GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK);
+                             
+            // Logical enable state: Usercode has precedence. If it enables it goes to it. If it disabled,
+            // it gets directed to us:
+            if (cmd == 0 || cmd == 1) windowRecord->swapevents_enabled = (cmd == 1) ? 1 : 2;
+
+            // If we want the data and usercode doesn't have exclusive access to it already, then redirect to us:
+            if (cmd == 2 && (windowRecord->swapevents_enabled != 1)) windowRecord->swapevents_enabled = 2;
+
+            return(TRUE);
 		} else {
+            // Failed to enable swap events, possibly because they're unsupported:
+            windowRecord->swapevents_enabled = 0;
 			return(FALSE);
 		}
 	}
 
-	if (cmd == 2) {
+	if (cmd == 3 || 4) {
 		// Support for INTEL_swap_event extension enabled? Process swap events if so:
 		if (useGLX13) {
 			glXGetSelectedEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &glxmask);
 			if (glxmask & GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK) {
-				// INTEL_swap_event delivery enabled and requested. Try to fetch all pending ones for this window:			
-				if (XCheckTypedWindowEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.xwindowHandle, glx_event_base + GLX_BufferSwapComplete, &evt)) {
-					// Cast to proper event type:
-					GLXBufferSwapComplete *sce = (GLXBufferSwapComplete*) &evt;
-					if (PsychPrefStateGet_Verbosity() > 5) {
-						printf("SWAPEVENT: OurWin=%i ust = %lld, msc = %lld, sbc = %lld, type %s.\n", (int) (sce->drawable == windowRecord->targetSpecific.xwindowHandle),
-						       sce->ust, sce->msc, sce->sbc, (sce->event_type == GLX_FLIP_COMPLETE_INTEL) ? "PAGEFLIP" : "BLIT/EXCHANGE");
-					}
 
-					PsychAllocOutStructArray(aux1, FALSE, 1, fieldCount, FieldNames, &s);
 					PsychSetStructArrayDoubleElement("OnsetTime", 0, PsychOSMonotonicToRefTime(((double) sce->ust) / PsychGetKernelTimebaseFrequencyHz()), s);
-					PsychSetStructArrayDoubleElement("OnsetVBLCount", 0, (double) sce->msc, s);
 					PsychSetStructArrayDoubleElement("SwapbuffersCount", 0, (double) sce->sbc, s);
-					switch (sce->event_type) {
 						case GLX_FLIP_COMPLETE_INTEL:
-							PsychSetStructArrayStringElement("SwapType", 0, "Pageflip", s);
-						break;
+				// INTEL_swap_event delivery enabled and requested.
+                
+                // Delivery to user-code?
+                if (cmd == 3 && windowRecord->swapevents_enabled == 1) {
+                    // Try to fetch oldest pending one for this window:			
+                    if (XCheckTypedWindowEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.xwindowHandle, glx_event_base + GLX_BufferSwapComplete, &evt)) {
+                        // Cast to proper event type:
+                        GLXBufferSwapComplete *sce = (GLXBufferSwapComplete*) &evt;
+                        if (PsychPrefStateGet_Verbosity() > 5) {
+                            printf("SWAPEVENT: OurWin=%i ust = %lld, msc = %lld, sbc = %lld, type %s.\n", (int) (sce->drawable == windowRecord->targetSpecific.xwindowHandle),
+                                   sce->ust, sce->msc, sce->sbc, (sce->event_type == GLX_FLIP_COMPLETE_INTEL) ? "PAGEFLIP" : "BLIT/EXCHANGE");
+                        }
 
-						case GLX_EXCHANGE_COMPLETE_INTEL:
-							PsychSetStructArrayStringElement("SwapType", 0, "Exchange", s);
-						break;
+                        PsychAllocOutStructArray(aux1, FALSE, 1, fieldCount, FieldNames, &s);
+                        PsychSetStructArrayDoubleElement("OnsetTime", 0, PsychOSMonotonicToRefTime(((double) sce->ust) / PsychGetKernelTimebaseFrequencyHz()), s);
+                        PsychSetStructArrayDoubleElement("OnsetVBLCount", 0, (double) sce->msc, s);
+                        PsychSetStructArrayDoubleElement("SwapbuffersCount", 0, (double) sce->sbc, s);
+                        switch (sce->event_type) {
+                            case GLX_FLIP_COMPLETE_INTEL:
+                                PsychSetStructArrayStringElement("SwapType", 0, "Pageflip", s);
+                            break;
 
-						case GLX_COPY_COMPLETE_INTEL:
-							PsychSetStructArrayStringElement("SwapType", 0, "Copy", s);
-						break;
+                            case GLX_EXCHANGE_COMPLETE_INTEL:
+                                PsychSetStructArrayStringElement("SwapType", 0, "Exchange", s);
+                            break;
 
-						default:
-							PsychSetStructArrayStringElement("SwapType", 0, "Unknown", s);
-					}
+                            case GLX_COPY_COMPLETE_INTEL:
+                                PsychSetStructArrayStringElement("SwapType", 0, "Copy", s);
+                            break;
+
+                            default:
+                                PsychSetStructArrayStringElement("SwapType", 0, "Unknown", s);
+                        }
+                        
+                        return(TRUE);
+                    }                    
+                }
+                
+                // Delivery to internal code "us"?
+                if (cmd == 4 && windowRecord->swapevents_enabled == 2) {
+                    // Get the most recent event in the queue, old ones are not interesting to us atm.:
+                    event_type = 0; // Init to "undefined"
                     
+                    // Fetch until exhausted:
+                    while (XCheckTypedWindowEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.xwindowHandle, glx_event_base + GLX_BufferSwapComplete, &evt)) {
+                        // Cast to proper event type:
+                        GLXBufferSwapComplete *sce = (GLXBufferSwapComplete*) &evt;
+                        if (PsychPrefStateGet_Verbosity() > 10) {
+                            printf("SWAPEVENT: OurWin=%i ust = %lld, msc = %lld, sbc = %lld, type %s.\n", (int) (sce->drawable == windowRecord->targetSpecific.xwindowHandle),
+                                   sce->ust, sce->msc, sce->sbc, (sce->event_type == GLX_FLIP_COMPLETE_INTEL) ? "PAGEFLIP" : "BLIT/EXCHANGE");
+                        }
+                        
+                        // Assign the one that matches our last 'sbc' for swap completion on our windowRecord:
+                        if ((sce->drawable == windowRecord->targetSpecific.xwindowHandle) && (((int) sce->sbc) == aux1)) event_type = sce->event_type;
+                    }
+                    
+                    // event_type is either zero if nothing fetched, or the swap type of the most
+                    // recent bufferswap:
+                    switch (event_type) {
+                        case GLX_FLIP_COMPLETE_INTEL:
+                            windowRecord->swapcompletiontype = 1;
+                            break;
+                            
+                        case GLX_EXCHANGE_COMPLETE_INTEL:
+                            windowRecord->swapcompletiontype = 2;
+                            break;
+                            
+                        case GLX_COPY_COMPLETE_INTEL:
+                            windowRecord->swapcompletiontype = 3;
+                            break;
+                            
+                        default:
+                            windowRecord->swapcompletiontype = 0;
+                            return(FALSE);
+                    }
+
                     return(TRUE);
-				}
+                }
 			}
 		}
 	}
