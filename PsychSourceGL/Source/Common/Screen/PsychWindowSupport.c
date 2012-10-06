@@ -1893,7 +1893,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 	// Get a handle to our info structs: These pointers must not be NULL!!!
 	PsychWindowRecordType*	windowRecord = (PsychWindowRecordType*) windowRecordToCast;
 	PsychFlipInfoStruct*	flipRequest	 = windowRecord->flipInfo;
-	psych_bool useOpenML = (windowRecord->gfxcaps & kPsychGfxCapSupportsOpenML) ? TRUE : FALSE;
+	psych_bool useOpenML = (windowRecord->gfxcaps & kPsychOpenMLDefective) ? FALSE : TRUE;
 	
 	// Try to lock, block until available if not available:
 	if ((rc=PsychLockMutex(&(flipRequest->performFlipLock)))) {
@@ -3916,7 +3916,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
     int fallthroughcount=0;
     double* samples = NULL;
     int maxlogsamples = 0;
-    psych_bool useOpenML = ((PsychPrefStateGet_VBLTimestampingMode() == 4) && (windowRecord->gfxcaps & kPsychGfxCapSupportsOpenML));
+    psych_bool useOpenML = ((PsychPrefStateGet_VBLTimestampingMode() == 4) && !(windowRecord->gfxcaps & kPsychOpenMLDefective));
 
     // Child protection: We only work on double-buffered onscreen-windows...
     if (windowRecord->windowType != kPsychDoubleBufferOnscreen) {
