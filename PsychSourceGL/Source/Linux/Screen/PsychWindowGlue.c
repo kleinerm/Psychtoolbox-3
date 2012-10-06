@@ -1833,10 +1833,6 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
 		if (useGLX13) {
 			glXGetSelectedEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &glxmask);
 			if (glxmask & GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK) {
-
-					PsychSetStructArrayDoubleElement("OnsetTime", 0, PsychOSMonotonicToRefTime(((double) sce->ust) / PsychGetKernelTimebaseFrequencyHz()), s);
-					PsychSetStructArrayDoubleElement("SwapbuffersCount", 0, (double) sce->sbc, s);
-						case GLX_FLIP_COMPLETE_INTEL:
 				// INTEL_swap_event delivery enabled and requested.
                 
                 // Delivery to user-code?
