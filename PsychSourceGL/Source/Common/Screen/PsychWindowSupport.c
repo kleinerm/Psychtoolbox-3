@@ -966,12 +966,19 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	  sync_trouble = true;
 	  if(PsychPrefStateGet_Verbosity()>1) {
 			if (i >=-1) {
-				printf("\nWARNING: Querying rasterbeam-position doesn't work on your setup! (Returns a constant value %i)\n", i);
-				printf("WARNING: This can happen if Psychtoolbox gets the mapping of connected displays to graphics card\n");
-				printf("WARNING: outputs wrong. See 'help DisplayOutputMappings' for tips on how to resolve this problem.\n\n");
+				printf("\nPTB-WARNING: Querying rasterbeam-position doesn't work on your setup! (Returns a constant value %i)\n", i);
+				printf("PTB-WARNING: This can happen if Psychtoolbox gets the mapping of connected displays to graphics card\n");
+				printf("PTB-WARNING: outputs wrong. See 'help DisplayOutputMappings' for tips on how to resolve this problem.\n");
 			}
 
-			if (i < -1) printf("\nWARNING: Querying rasterbeam-position doesn't work on your setup! (Returns a negative value %i)\n", i);
+			if (i < -1) printf("\nPTB-WARNING: Querying rasterbeam-position doesn't work on your setup! (Returns a negative value %i)\n", i);
+          
+          if ((PsychPrefStateGet_VBLTimestampingMode() == 4) && !((*windowRecord)->gfxcaps & kPsychOpenMLDefective)) {
+              printf("PTB-WARNING: However, this probably doesn't really matter on your setup for most purposes, as i can use OpenML\n");
+              printf("PTB-WARNING: timestamping instead, which is even more precise. Only few applications need beampos queries in this case.\n");
+          }
+
+          printf("\n");
 	  }
 	}
 	else {
@@ -1033,12 +1040,12 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	if ((VBL_Endline < (int) vbl_startline - 1) || ((VBL_Endline > vbl_startline * 1.25) && ((VBL_Endline > vbl_startline * 2.25) || (VBL_Endline < vbl_startline * 2.0)))) {
 		// Completely bogus VBL_Endline detected! Warn the user and mark VBL_Endline
 		// as invalid so it doesn't get used anywhere:
+		if(!sync_trouble && PsychPrefStateGet_Verbosity()>1) {
+			printf("\nPTB-WARNING: Couldn't determine end-line of vertical blanking interval for your display! Trouble with beamposition queries?!?\n");
+			printf("PTB-WARNING: Detected end-line is %i, which is either lower or more than 25%% higher than vbl startline %i --> Out of sane range!\n", VBL_Endline, vbl_startline);
+		}
 		sync_trouble = true;
 		ifi_beamestimate = 0;
-		if(PsychPrefStateGet_Verbosity()>1) {
-			printf("\nWARNING: Couldn't determine end-line of vertical blanking interval for your display! Trouble with beamposition queries?!?\n");
-			printf("\nWARNING: Detected end-line is %i, which is either lower or more than 25%% higher than vbl startline %i --> Out of sane range!\n", VBL_Endline, vbl_startline);
-		}
 	}
 	else {
 		// Check if VBL_Endline is greater than 2 * vbl_startline. This would indicate the backend is running in
@@ -1443,15 +1450,18 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     // This would indicate that the beam position is reported from a different display device
     // than the one we are VBL syncing to. -> Trouble!
     if ((ifi_beamestimate < 0.8 * ifi_estimate || ifi_beamestimate > 1.2 * ifi_estimate) && (ifi_beamestimate > 0)) {
-        if(PsychPrefStateGet_Verbosity()>1)
-	  printf("\nWARNING: Mismatch between measured monitor refresh intervals! This indicates problems with rasterbeam position queries.\n");    
+        if(!sync_trouble && PsychPrefStateGet_Verbosity()>1)
+            printf("\nWARNING: Mismatch between measured monitor refresh intervals! This indicates problems with rasterbeam position queries.\n");    
         sync_trouble = true;
     }
 
     if (sync_trouble) {
         // Fail-Safe: Mark VBL-Endline as invalid, so a couple of mechanisms get disabled in Screen('Flip') aka PsychFlipWindowBuffers().
         VBL_Endline = -1;
-		if(PsychPrefStateGet_Verbosity()>1){		
+        
+        // Only warn user and flash the warning triangle if we can't use OpenML timestamping because it is disabled or broken.
+        // If OpenML timestamping is available then beamposition queries are not needed anyway, so no reason to make a big fuss...
+		if((PsychPrefStateGet_Verbosity() > 1) && ((PsychPrefStateGet_VBLTimestampingMode() != 4) || ((*windowRecord)->gfxcaps & kPsychOpenMLDefective))){		
 			printf("\n\n");
 			printf("----- ! PTB - WARNING: SYNCHRONIZATION TROUBLE ! ----\n\n");
 			printf("One or more internal checks (see Warnings above) indicate that\n");
