@@ -501,9 +501,11 @@ PsychError SCREENOpenWindow(void)
     // the user selected background color instead of staying at the blue screen or
     // logo display until the Matlab script first calls 'Flip'.
     if (((PsychPrefStateGet_VisualDebugLevel()>=4) || (windowRecord->stereomode > 0)) && numWindowBuffers>=2) {
-      // Do immediate bufferswap by an internal call to Screen('Flip'). This will also
+      // Do three immediate bufferswaps by an internal call to Screen('Flip'). This will also
       // take care of clearing the backbuffer in preparation of first userspace drawing
-      // commands and such...
+      // commands and such. We need up-to 3 calls to clear triple-buffered setups from framebuffer junk.
+      PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
+      PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
       PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
       // Display now shows background color, so user knows that PTB's 'OpenWindow'
       // procedure is successfully finished.

@@ -863,8 +863,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     }
 
     // This is pure eye-candy: We clear both framebuffers to a background color,
-    // just to get rid of the junk that's in the framebuffers...
-    // If visual debuglevel < 4 then we clear to black background...
+    // just to get rid of the junk that's in the framebuffers.
+    // If visual debuglevel < 4 then we clear to black background.
     if (visual_debuglevel >= 4) {
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		
@@ -885,27 +885,37 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
       glClearColor(0,0,0,1);
     }
 
-    glDrawBuffer(GL_BACK_LEFT);
-    glClear(GL_COLOR_BUFFER_BIT);
-
     glPixelZoom(1, -1);
-    if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
-    PsychOSFlipWindowBuffers(*windowRecord);
+    glDrawBuffer(GL_BACK_LEFT);
+
+    // Draw and swapbuffers the startup screen 3 times, so everything works with single-/double-/triple-buffered framebuffer setups:
     glClear(GL_COLOR_BUFFER_BIT);
     if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
     PsychOSFlipWindowBuffers(*windowRecord);
-    // We do it twice to clear possible stereo-contexts as well...
-    if ((*windowRecord)->stereomode==kPsychOpenGLStereo) {
-	glDrawBuffer(GL_BACK_RIGHT);
-	glClear(GL_COLOR_BUFFER_BIT);
-	if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
-	PsychOSFlipWindowBuffers(*windowRecord);
-	glClear(GL_COLOR_BUFFER_BIT);
-	if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
-	PsychOSFlipWindowBuffers(*windowRecord);
-    }    
-    glPixelZoom(1, 1);
 
+    glClear(GL_COLOR_BUFFER_BIT);
+    if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
+    PsychOSFlipWindowBuffers(*windowRecord);
+
+    glClear(GL_COLOR_BUFFER_BIT);
+    if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
+    PsychOSFlipWindowBuffers(*windowRecord);
+
+    // We do it again for right backbuffer to clear possible stereo-contexts as well...
+    if ((*windowRecord)->stereomode==kPsychOpenGLStereo) {
+        glDrawBuffer(GL_BACK_RIGHT);
+        glClear(GL_COLOR_BUFFER_BIT);
+        if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
+        PsychOSFlipWindowBuffers(*windowRecord);
+        glClear(GL_COLOR_BUFFER_BIT);
+        if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
+        PsychOSFlipWindowBuffers(*windowRecord);
+        glClear(GL_COLOR_BUFFER_BIT);
+        if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
+        PsychOSFlipWindowBuffers(*windowRecord);
+    }    
+
+    glPixelZoom(1, 1);
     glDrawBuffer(GL_BACK);
 
 	// Release dynamically allocated splash image buffer:
@@ -4171,8 +4181,11 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
     w = (float) PsychGetWidthFromRect(windowRecord->rect);
     h = (float) PsychGetHeightFromRect(windowRecord->rect);
     
-    // Clear out both buffers so it doesn't lool like junk:
+    // Clear out all potentially 3 buffers so it doesn't look like junk,
+    // even if on a triple-buffered graphics system:
     glClearColor(0,0,0,1);
+    glClear(GL_COLOR_BUFFER_BIT);
+    PsychOSFlipWindowBuffers(windowRecord);
     glClear(GL_COLOR_BUFFER_BIT);
     PsychOSFlipWindowBuffers(windowRecord);
     glClear(GL_COLOR_BUFFER_BIT);
