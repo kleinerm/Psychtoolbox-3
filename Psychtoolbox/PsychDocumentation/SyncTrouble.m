@@ -389,7 +389,7 @@
 %
 % On Intel graphics drivers, add the options:
 %
-% Option "TripleBufferi"    "off"
+% Option "TripleBuffer"    "off"
 % Option "SwapbuffersWait"  "on"
 %
 % On the nouveau driver for NVidia cards, add:
