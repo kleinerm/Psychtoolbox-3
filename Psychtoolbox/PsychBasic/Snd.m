@@ -170,7 +170,8 @@ end
 % Don't use PsychPortAudio backend if already a PPA device open on Linux or
 % Windows, as that device will often have exclusive access, so we would
 % fail here:
-if ~ptb_snd_oldstyle && ~IsOSX && (PsychPortAudio('GetOpenDeviceCount') > 0)
+if isempty(pahandle) && ~ptb_snd_oldstyle && ~IsOSX && (PsychPortAudio('GetOpenDeviceCount') > 0)
+    fprintf('Snd(): PsychPortAudio already in use. Using old sound() fallback instead...\n');
     ptb_snd_oldstyle = 1;
 end
 
