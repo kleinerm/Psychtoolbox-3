@@ -1,5 +1,5 @@
-function PsychPortAudioDataPixxTimingTest(waitTime, exactstart, deviceid, latbias)
-% PsychPortAudioDataPixxTimingTest([waitTime = 1][, exactstart=1] [, deviceid=-1] [, latbias=0])
+function PsychPortAudioDataPixxTimingTest(waitTime, exactstart, deviceid, latbias, triggerLevel)
+% PsychPortAudioDataPixxTimingTest([waitTime = 1][, exactstart=1][, deviceid=-1][, latbias=0][, triggerLevel=0.01])
 %
 % Test script for sound onset timing reliability and sound onset
 % latency of the PsychPortAudio sound driver.
@@ -15,8 +15,8 @@ function PsychPortAudioDataPixxTimingTest(waitTime, exactstart, deviceid, latbia
 % will receive the audio output of PsychPortAudio/Your Soundcard, timestamp
 % it and send the computed timing data to your computer via USB.
 %
-% Some parameters may need tweaking. Make sure you got the special driver
-% plugin as described in 'help InitializePsychSound' for best results.
+% Some parameters may need tweaking, especially the 'triggerLevel'
+% parameter.
 %
 % This is early alpha code, expect some rough edges...
 %
@@ -35,6 +35,10 @@ function PsychPortAudioDataPixxTimingTest(waitTime, exactstart, deviceid, latbia
 % 'latbias'    = Hardware inherent latency bias. To be determined by
 %                measurement - allows to PA to correct for it if provided.
 %                Unit is seconds. Defaults to zero.
+%
+% 'triggerLevel' = Sound signal amplitude for DataPixx to detect sound
+%                  onset. Defaults to 0.01 = 1% of max amplitude. This will
+%                  likely need tweaking on your setup.
 %
 
 nTrials = 10;
@@ -134,6 +138,10 @@ if isempty(latbias)
     latbias = 0;
 end
 
+if nargin < 5 || isempty(triggerLevel)
+    triggerLevel = 0.01;
+end
+
 % Open audio device for low-latency output:
 pahandle = PsychPortAudio('Open', deviceid, [], reqlatencyclass, freq, 2, buffersize, suggestedLatencySecs);
 
@@ -142,8 +150,7 @@ pahandle = PsychPortAudio('Open', deviceid, [], reqlatencyclass, freq, 2, buffer
 prelat = PsychPortAudio('LatencyBias', pahandle, latbias) %#ok<NOPRT,NASGU>
 postlat = PsychPortAudio('LatencyBias', pahandle) %#ok<NOPRT,NASGU>
 
-%mynoise = randn(2,freq * 0.1);
-% Generate some beep sound 1000 Hz, 0.1 secs, 90% amplitude:
+% Generate some beep sound 1000 Hz, 0.1 secs, 50% amplitude:
 mynoise(1,:) = 0.5 * MakeBeep(1000, 0.1, freq);
 mynoise(2,:) = mynoise(1,:);
 
@@ -161,8 +168,9 @@ DatapixxAudioKey('Open', 96000, 0, 2, 1);
 % Check settings by printing them:
 dpixstatus = Datapixx('GetMicrophoneStatus') %#ok<NOPRT,NASGU>
 
-% Triggerlevel shall be 10% aka 0.1:
-DatapixxAudioKey('TriggerLevel', 0.1);
+% Triggerlevel for DataPixx sound onset detection:
+fprintf('Using a trigger level for DataPixx of %f. This may need tweaking by you...\n', triggerLevel);
+DatapixxAudioKey('TriggerLevel', triggerLevel);
 
 % Wait for keypress.
 fprintf('\n\nPress any key to start measurement.\n\n');

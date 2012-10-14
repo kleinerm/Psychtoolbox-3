@@ -1,5 +1,5 @@
-function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes, useDPixx)
-% PsychPortAudioTimingTest([exactstart=1] [, deviceid=-1] [, latbias=0] [, waitframes=1] [,useDPixx=0])
+function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes, useDPixx, triggerLevel)
+% PsychPortAudioTimingTest([exactstart=1][, deviceid=-1][, latbias=0][, waitframes=1][, useDPixx=0][, triggerLevel=0.01])
 %
 % Test script for sound onset timing reliability and sound onset
 % latency of the PsychPortAudio sound driver.
@@ -39,6 +39,20 @@ function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes, use
 % 'useDPixx'   = 1 -- Use DataPixx device to automatically measure the true
 %                     audio onset time wrt. to visual stimulus onset.
 %                0 -- Don't use DataPixx. This is the default.
+%
+% 'triggerLevel' = Sound signal amplitude for DataPixx to detect sound
+%                  onset. Defaults to 0.01 = 1% of max amplitude. This will
+%                  likely need tweaking on your setup. If the measured
+%                  audio onset delta by DataPixx is much lower (or almost
+%                  zero) than the expected delta reported by
+%                  PsychPortAudio, then the triggerLevel may be too low and
+%                  you should try if slightly higher thresholds help to
+%                  discriminate signal from noise. Too high values may
+%                  cause a hang of the script. In practice, levels between
+%                  0.01 and 0.1 should yield good results. Setting the
+%                  'useDPixx' flag to 2 also plots the waveforms captured
+%                  by DataPixx, which may help in selection of the optimal
+%                  triggerLevel.
 %
 
 % Initialize driver, request low-latency preinit:
@@ -150,6 +164,11 @@ if isempty(useDPixx)
     useDPixx = 0;
 end
 
+if nargin < 6 || isempty(triggerLevel)
+    % Default triggerLevel is 1%
+    triggerLevel = 0.01;
+end
+
 % Open audio device for low-latency output:
 pahandle = PsychPortAudio('Open', deviceid, [], reqlatencyclass, freq, 2, buffersize, suggestedLatencySecs);
 
@@ -180,8 +199,8 @@ if useDPixx
     % Check settings by printing them:
     dpixstatus = Datapixx('GetMicrophoneStatus') %#ok<NOPRT,NASGU>
 
-    % Triggerlevel shall be 10% aka 0.1: Will need tweaking in practice...
-    DatapixxAudioKey('TriggerLevel', 0.1);
+    fprintf('Using a trigger level for DataPixx of %f. This may need tweaking by you...\n', triggerLevel);
+    DatapixxAudioKey('TriggerLevel', triggerLevel);
 
     % DataPixx: Setup Screen imagingpipeline to support measurement:
     PsychImaging('PrepareConfiguration');
