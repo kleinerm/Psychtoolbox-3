@@ -40,6 +40,7 @@ function FlushEvents(varargin)
 %               brain-damage.
 %
 % 05/31/09 mk   Add support for Octave and Matlab in noJVM mode.
+% 10/22/12 mk   Remove support for legacy Matlab R11 GetCharNoJVM.dll.
 
 global OSX_JAVA_GETCHAR;
 
@@ -62,14 +63,14 @@ end;
 % into Matlab GUI after end of an experiment script.
 drawnow;
 
-% This is Matlab. Is the Java VM and AWT running?
-if psychusejava('desktop')
+% Is this Matlab? Is the JVM running? Isn't this Windows Vista or later?
+if psychusejava('desktop') && ~IsWinVista
     % Make sure that the GetCharJava class is loaded and registered with
     % the java focus manager.
     if isempty(OSX_JAVA_GETCHAR)
         try
             OSX_JAVA_GETCHAR = AssignGetCharJava;
-        catch
+        catch %#ok<*CTCH>
             error('Could not load Java class GetCharJava! Read ''help PsychJavaTrouble'' for help.');
         end
         OSX_JAVA_GETCHAR.register;
@@ -84,28 +85,44 @@ if psychusejava('desktop')
     end
 
     return;
-else
-    % Java VM unavailable, i.e., running in -nojvm mode.
-    % On Windows, we can fall back to the old FlushEvents.dll.
-    if IsWin & ~IsOctave %#ok<AND2>
-        % FlushEvents.dll has been renamed to FlushEventsNoJVM.dll. Call it.
-        FlushEventsNoJVM(char(varargin{:}));
-        return;
-    end
 end
 
-% Running either on Octave or on OS/X or Linux with Matlab in No JVM mode:
-
+% Running either on Octave, or on Matlab in No JVM mode or on MS-Vista+:
 if doclear == 1
     % Clear the internal queue of characters:
 
-    % Screen's GetMouseHelper with command code 13 clears the queue of
-    % characters on stdin:
-    Screen('GetMouseHelper', -13);
+    if IsLinux
+        % Screen's GetMouseHelper with command code 13 clears the queue of
+        % characters on stdin:
+        Screen('GetMouseHelper', -13);
 
-    % This is a stupid hack that hopefully "fixes" GetChar race-conditions as
-    % reported by Denis:
-    while CharAvail, drawnow; dummy = GetChar; end; %#ok<NASGU>
+        % This is a stupid hack that hopefully "fixes" GetChar race-conditions as
+        % reported by Denis:
+        while CharAvail, drawnow; dummy = GetChar; end; %#ok<NASGU>
+    else
+        % Need to (ab)use keyboard queue on OSX or Windows:
+        
+        % Only need to reserve/create/start queue if we don't have it
+        % already:
+        if ~KbQueueReserve(3, 1, [])
+            if isempty(OSX_JAVA_GETCHAR)
+                LoadPsychHID;
+                OSX_JAVA_GETCHAR = 1;
+            end
+            
+            % Try to reserve default keyboard queue for our exclusive use:
+            if ~KbQueueReserve(1, 1, [])
+                error('Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar/GetChar etc. and keyboard queues is mutually exclusive!');
+            end
+            
+            % Got it. Allocate and start it:
+            PsychHID('KbQueueCreate');
+            PsychHID('KbQueueStart');
+        end
+        
+        % Flush KbEvent buffer:
+        PsychHID('KbQueueFlush', [], 2);
+    end    
 end
 
 return;

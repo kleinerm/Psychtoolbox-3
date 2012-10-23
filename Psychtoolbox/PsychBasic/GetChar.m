@@ -160,6 +160,7 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 %              Windows DLL ...
 %
 % 05/31/09 mk  Add support for Octave and Matlab in noJVM mode.
+% 10/22/12 mk   Remove support for legacy Matlab R11 GetCharNoJVM.dll.
 
 % TO DO
 % 
@@ -193,8 +194,8 @@ elseif nargin == 1
     getRawCode = 0;
 end
 
-% This is Matlab. Is the Java VM and AWT and Desktop running?
-if psychusejava('desktop')
+% Is this Matlab? Is the JVM running? Isn't this Windows Vista or later?
+if psychusejava('desktop') && ~IsWinVista
     % Java virtual machine and AWT and Desktop are running. Use our Java based
     % GetChar.
 
@@ -260,44 +261,82 @@ if psychusejava('desktop')
     end
 
     return;
-else
-    % Java VM unavailable, i.e., running in -nojvm mode.
-    % On Windows, we can fall back to the old GetChar.dll, although we
-    % only get info about typed characters, no 'when' extended data.
-    if IsWin & ~IsOctave %#ok<AND2>
-        % GetChar.dll has been renamed to GetCharNoJVM.dll. Call it.
-        ch = GetCharNoJVM;
-        when = [];
-        return;
-    end
 end
 
-% Either Octave or Matlab in No JVM mode on Linux or OS/X:
-
-% Loop until we receive character input.
-keepChecking = 1;
-while keepChecking
-    % Check to see if a character is available, and stop looking if
-    % we've found one.
-
-    % Screen's GetMouseHelper with command code 15 delivers
-    % id of currently pending characters on stdin:
-    charValue = Screen('GetMouseHelper', -15);
-    keepChecking = charValue == 0;
-    if keepChecking
-        drawnow;
-        if exist('fflush') %#ok<EXIST>
-            builtin('fflush', 1);
+% Running either on Octave, or on Matlab in No JVM mode or on MS-Vista+:
+if IsLinux
+    % Loop until we receive character input.
+    keepChecking = 1;
+    while keepChecking
+        % Check to see if a character is available, and stop looking if
+        % we've found one.
+        
+        % Screen's GetMouseHelper with command code 15 delivers
+        % id of currently pending characters on stdin:
+        charValue = Screen('GetMouseHelper', -15);
+        keepChecking = charValue == 0;
+        if keepChecking
+            drawnow;
+            if exist('fflush') %#ok<EXIST>
+                builtin('fflush', 1);
+            end
         end
     end
-end
-
-% Throw an error if we've exceeded the buffer size.
-if charValue == -1
-    % Reenable keystroke display to leave us with a
-    % functional console.
-    Screen('GetMouseHelper', -11);
-    error('GetChar buffer overflow. Use "FlushEvents" to clear error');
+    
+    % Throw an error if we've exceeded the buffer size.
+    if charValue == -1
+        % Reenable keystroke display to leave us with a
+        % functional console.
+        Screen('GetMouseHelper', -11);
+        error('GetChar buffer overflow. Use "FlushEvents" to clear error');
+    end
+else
+    % Need to (ab)use keyboard queue on OSX or Windows:
+    
+    % Only need to reserve/create/start queue if we don't have it
+    % already:
+    if ~KbQueueReserve(3, 1, [])
+        if isempty(OSX_JAVA_GETCHAR)
+            LoadPsychHID;
+            OSX_JAVA_GETCHAR = 1;
+        end
+        
+        % Try to reserve default keyboard queue for our exclusive use:
+        if ~KbQueueReserve(1, 1, [])
+            error('Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar/GetChar etc. and keyboard queues is mutually exclusive!');
+        end
+        
+        % Got it. Allocate and start it:
+        PsychHID('KbQueueCreate');
+        PsychHID('KbQueueStart');
+    end
+    
+    % Queue is running: Poll it for new events we're interested in:
+    % Loop until we receive character input.
+    keepChecking = 1;
+    while keepChecking
+        % Check to see if a character is available, and stop looking if
+        % we've found one.
+        
+        % Screen's GetMouseHelper with command code 15 delivers
+        % id of currently pending characters on stdin:
+        % charValue = Screen('GetMouseHelper', -15);
+        event = PsychHID('KbQueueGetEvent', [], 0.1);
+        if ~isempty(event) && event.Pressed && (event.CookedKey > 0)
+            charValue = event.CookedKey;
+            keepChecking = 0;
+        else
+            charValue = 0;
+            keepChecking = 1;
+        end
+        
+        if keepChecking
+            drawnow;
+            if exist('fflush') %#ok<EXIST>
+                builtin('fflush', 1);
+            end
+        end
+    end    
 end
 
 % Get the typed character.

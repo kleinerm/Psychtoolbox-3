@@ -136,6 +136,16 @@ function KbQueueCreate(deviceNumber, keyList)
 % and then store the result in macosrecent for subsequent calls
 
 persistent macosxrecent;
+
+if nargin < 1
+    deviceNumber = [];
+end
+
+% Try to reserve keyboard queue for 'deviceNumber' for our exclusive use:
+if ~KbQueueReserve(1, 2, deviceNumber)
+    error('Keyboard queue for device %i already in use by GetChar() et al. Use of GetChar and keyboard queues is mutually exclusive!', deviceNumber);
+end
+
 if isempty(macosxrecent)
     macosxrecent = IsOSX;
     LoadPsychHID;
@@ -147,6 +157,11 @@ if isempty(macosxrecent)
     if macosxrecent && IsOctave
         KbQueueCreate;
         KbQueueRelease;
+        
+        % Undo unreserve from release above:
+        if ~KbQueueReserve(1, 2, deviceNumber)
+            error('Keyboard queue for device %i already in use by GetChar() et al. Use of GetChar and keyboard queues is mutually exclusive!', deviceNumber);
+        end
     end
 end
 

@@ -44,6 +44,7 @@ function [avail, numChars] = CharAvail
 %               Windows DLL ...
 %
 % 05/31/09 mk   Add support for Octave and Matlab in noJVM mode.
+% 10/22/12 mk   Remove support for legacy Matlab R11 GetCharNoJVM.dll.
 
 global OSX_JAVA_GETCHAR;
 persistent isjavadesktop;
@@ -53,13 +54,14 @@ if isempty(isjavadesktop)
     isjavadesktop = psychusejava('desktop');
 end
 
-if isjavadesktop
+% Is this Matlab? Is the JVM running? Isn't this Windows Vista or later?
+if psychusejava('desktop') && ~IsWinVista
     % Make sure that the GetCharJava class is loaded and registered with
     % the java focus manager.
     if isempty(OSX_JAVA_GETCHAR)
         try
             OSX_JAVA_GETCHAR = AssignGetCharJava;
-        catch
+        catch %#ok<*CTCH>
             error('Could not load Java class GetCharJava! Read ''help PsychJavaTrouble'' for help.');
         end
         OSX_JAVA_GETCHAR.register;
@@ -77,26 +79,45 @@ if isjavadesktop
     avail = avail > 0;
 
     return;
-else
-    % Java VM unavailable, i.e., running in -nojvm mode.
-    % On Windows, we can fall back to the old CharAvail.dll.
-    if IsWin & ~IsOctave %#ok<AND2>
-        % CharAvail.dll has been renamed to CharAvailNoJVM.dll. Call it.
-        avail = CharAvailNoJVM;
-        numChars = [];
-        return;
-    end
 end
 
-% Running either on Octave or on OS/X or Linux with Matlab in No JVM mode:
+% Running either on Octave, or on Matlab in No JVM mode or on MS-Vista+:
 drawnow;
-if exist('fflush')
+if exist('fflush') %#ok<EXIST>
     builtin('fflush', 1);
 end
 
-% Screen's GetMouseHelper with command code 14 delivers
-% count of currently pending characters on stdin:
-avail = Screen('GetMouseHelper', -14);
+if IsLinux
+    % Screen's GetMouseHelper with command code 14 delivers
+    % count of currently pending characters on stdin:
+    avail = Screen('GetMouseHelper', -14);
+else
+    % Need to (ab)use keyboard queue on OSX or Windows:
+    
+    % Only need to reserve/create/start queue if we don't have it
+    % already:
+    if ~KbQueueReserve(3, 1, [])
+        if isempty(OSX_JAVA_GETCHAR)
+            LoadPsychHID;
+            OSX_JAVA_GETCHAR = 1;
+        end
+        
+        % Try to reserve default keyboard queue for our exclusive use:
+        if ~KbQueueReserve(1, 1, [])
+            error('Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar/GetChar etc. and keyboard queues is mutually exclusive!');
+        end
+        
+        % Got it. Allocate and start it:
+        PsychHID('KbQueueCreate');
+        PsychHID('KbQueueStart');
+    end
+    
+    % Queue is running: Check number of pending key presses:
+    % TODO FIXME: This counts key presses and releases, so the count will
+    % be inaccurate!
+    avail = PsychHID('KbQueueFlush', [], 0);
+end
+
 numChars = avail;
 avail = avail > 0;
 

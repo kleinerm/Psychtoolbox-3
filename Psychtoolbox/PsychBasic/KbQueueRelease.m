@@ -129,8 +129,12 @@ function KbQueueRelease(deviceIndex)
 % 8/19/07    rpw  Wrote it.
 % 8/23/07    rpw  Modifications to add KbQueueFlush
 
-% Requires Mac OS X 10.3 or later. We sort this out on the first call 
-% and then store the result in macosrecent for subsequent calls
+if nargin < 1
+    deviceIndex = [];
+end
+
+% Try to release keyboard queue for 'deviceIndex' from our exclusive use:
+KbQueueReserve(2, 2, deviceIndex);
 
 if nargin == 0
   PsychHID('KbQueueRelease');

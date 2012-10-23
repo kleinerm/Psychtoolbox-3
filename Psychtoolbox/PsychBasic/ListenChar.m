@@ -47,15 +47,16 @@ if ~ismember(listenFlag, [0,1,2])
     error('Invalid listenFlag provided!  See "help ListenChar" for more information');
 end
 
-% This is Matlab. Is the JVM running?
-if psychusejava('desktop')
-    % Java enabled. There's work to do.
+
+% Is this Matlab? Is the JVM running? Isn't this Windows Vista or later?
+if psychusejava('desktop') && ~IsWinVista
+    % Java enabled on Matlab and not Windows Vista or later. There's work to do.
 
     % Make sure that the GetCharJava class is loaded.
     if isempty(OSX_JAVA_GETCHAR)
         try
             OSX_JAVA_GETCHAR = AssignGetCharJava;
-        catch
+        catch %#ok<*CTCH>
             error('Could not load Java class GetCharJava! Read ''help PsychJavaTrouble'' for help.');
         end
     end
@@ -90,7 +91,42 @@ if psychusejava('desktop')
     return;
 end
 
-% Running either on Octave or on OS/X or Linux with Matlab in No JVM mode:
+% Running either on Octave, or on Matlab in No JVM mode, or on a MS-Vista
+% system or later.
+
+% On all systems but Linux, we need to (ab)use keyboard queues to get anywhere:
+if ~IsLinux    
+    if isempty(OSX_JAVA_GETCHAR)
+        LoadPsychHID;
+        OSX_JAVA_GETCHAR = 1;
+    end
+    
+    if listenFlag > 0
+        % Only need to reserve/create/start queue if we don't have it
+        % already:
+        if ~KbQueueReserve(3, 1, [])
+            % Try to reserve default keyboard queue for our exclusive use:
+            if ~KbQueueReserve(1, 1, [])
+                error('Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar/GetChar etc. and keyboard queues is mutually exclusive!');
+            end
+            
+            % Got it. Allocate and start it:
+            PsychHID('KbQueueCreate');
+            PsychHID('KbQueueStart');
+        end
+    else
+        % Does default keyboard queue belong to us?
+        if KbQueueReserve(3, 1, [])
+            % Yes. Stop and release it:
+            PsychHID('KbQueueStop');
+            PsychHID('KbQueueRelease');
+            KbQueueReserve(2, 1, []);            
+        end
+    end
+end
+
+% This code is only effective on Linux, but doesn't hurt on the other
+% systems, so do it:
 switch listenFlag
     case 0,
         Screen('GetMouseHelper', -10);
