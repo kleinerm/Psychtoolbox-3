@@ -287,7 +287,7 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys);
 psych_bool PsychHIDCreateEventBuffer(int deviceIndex);
 psych_bool PsychHIDDeleteEventBuffer(int deviceIndex);
 psych_bool PsychHIDFlushEventBuffer(int deviceIndex);
-unsigned int PsychHIDAvailEventBuffer(int deviceIndex);
+unsigned int PsychHIDAvailEventBuffer(int deviceIndex, unsigned int flags);
 int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double maxWaitTimeSecs);
 int PsychHIDAddEventToEventBuffer(int deviceIndex, PsychHIDEventRecord* evt);
 

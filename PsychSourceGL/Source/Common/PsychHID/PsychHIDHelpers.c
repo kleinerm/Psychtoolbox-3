@@ -295,15 +295,34 @@ psych_bool PsychHIDFlushEventBuffer(int deviceIndex)
 	return(TRUE);
 }
 
-unsigned int PsychHIDAvailEventBuffer(int deviceIndex)
+/* Return number of events in buffer for 'deviceIndex':
+ * flags == 0 -> All events.
+ * flags &  1 -> Only keypress events with valid mapped ASCII CookedKey keycode.
+ */
+unsigned int PsychHIDAvailEventBuffer(int deviceIndex, unsigned int flags)
 {
-	unsigned int navail;
+	unsigned int navail, i, j;
+    
 	if (deviceIndex < 0) deviceIndex = PsychHIDGetDefaultKbQueueDevice();
 
     if (!hidEventBuffer[deviceIndex]) return(0);
 
 	PsychLockMutex(&hidEventBufferMutex[deviceIndex]);
+    
+    // Compute total number of available events by default:
 	navail = hidEventBufferWritePos[deviceIndex] - hidEventBufferReadPos[deviceIndex];
+    
+    // Only count of valid "CookedKey" mapped keypress events, e.g., for use by CharAvail(), requested?
+    if (flags & 1) {
+        // Yes: Iterate over all available events and only count number of keypress events
+        // with meaningful 'CookedKey' field:
+        navail = 0;
+        for (i = hidEventBufferReadPos[deviceIndex]; i < hidEventBufferWritePos[deviceIndex]; i++) {
+            j = i % hidEventBufferCapacity[deviceIndex];
+            if ((hidEventBuffer[deviceIndex][j].status & (1<<0)) && (hidEventBuffer[deviceIndex][j].cookedEventCode > 0)) navail++;
+        }
+    }
+    
 	PsychUnlockMutex(&hidEventBufferMutex[deviceIndex]);
 	
 	return(navail);
