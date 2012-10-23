@@ -3,23 +3,13 @@ function FlushEvents(varargin)
 % 
 % Remove events from the system event queue.
 %
-% Windows + Matlab in -nojvm mode: ________________________________________
-%
 % Removes all events of the specified types from the event queue.
 % The arguments can be in any order. Empty strings are ignored.
 %
-% Windows, Linux, OS-X under Matlab with Java enabled: ____________________
+% FlushEvents will accept all arguments for backward compatibility with
+% Psychtoolbox-2, but only 'keyDown' (or no argument at all) removes
+% keypress events. Events other than keypress events are not supported.
 %
-% FlushEvents will accept all arguments, but only 'keyDown' (or no
-% argument at all) removes keypress events. Events other than keypress
-% events are not supported.
-%
-% Octave or Matlab in -nojvm mode under Linux and OS-X: ___________________
-%
-% FlushEvents, GetChar and CharAvail are not supported under GNU/Octave or
-% under Matlab running in -nojvm mode, except for the Microsoft Windows
-% version.
-% 
 % See also: GetChar, CharAvail, FlushEvents, EventAvail.
 
 % 3/25/97  dgp	Wrote it.
@@ -105,10 +95,8 @@ if doclear == 1
         % Only need to reserve/create/start queue if we don't have it
         % already:
         if ~KbQueueReserve(3, 1, [])
-            if isempty(OSX_JAVA_GETCHAR)
-                LoadPsychHID;
-                OSX_JAVA_GETCHAR = 1;
-            end
+            % LoadPsychHID is needed on MS-Windows. It no-ops if called redundantly:
+            LoadPsychHID;
             
             % Try to reserve default keyboard queue for our exclusive use:
             if ~KbQueueReserve(1, 1, [])

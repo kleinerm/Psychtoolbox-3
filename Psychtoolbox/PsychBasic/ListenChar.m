@@ -48,8 +48,8 @@ if ~ismember(listenFlag, [0,1,2])
 end
 
 
-% Is this Matlab? Is the JVM running? Isn't this Windows Vista or later?
-if psychusejava('desktop') && ~IsWinVista
+% Is this Matlab? Is the JVM running?
+if psychusejava('desktop')
     % Java enabled on Matlab and not Windows Vista or later. There's work to do.
 
     % Make sure that the GetCharJava class is loaded.
@@ -66,7 +66,7 @@ if psychusejava('desktop') && ~IsWinVista
         OSX_JAVA_GETCHAR.register;
 
         % Make sure the Matlab window has keyboard focus:
-        if exist('commandwindow') %#ok<EXIST>
+        if ~IsWinVista && exist('commandwindow') %#ok<EXIST>
             % Call builtin implementation:
             commandwindow;
             drawnow;
@@ -88,18 +88,22 @@ if psychusejava('desktop') && ~IsWinVista
         OSX_JAVA_GETCHAR.setRedispatchFlag(0);
     end
 
-    return;
+    % On non-Vista we're done. On Vista and later, we fall-through to the
+    % fallback path below, as Java based GetChar() is only useful to
+    % suppress character output to the Matlab command window, aka clutter
+    % prevention, not for actually recording key strokes.
+    if ~IsWinVista
+        return;
+    end
 end
 
 % Running either on Octave, or on Matlab in No JVM mode, or on a MS-Vista
 % system or later.
 
 % On all systems but Linux, we need to (ab)use keyboard queues to get anywhere:
-if ~IsLinux    
-    if isempty(OSX_JAVA_GETCHAR)
-        LoadPsychHID;
-        OSX_JAVA_GETCHAR = 1;
-    end
+if ~IsLinux
+    % LoadPsychHID is needed on MS-Windows. It no-ops if called redundantly:
+    LoadPsychHID;
     
     if listenFlag > 0
         % Only need to reserve/create/start queue if we don't have it

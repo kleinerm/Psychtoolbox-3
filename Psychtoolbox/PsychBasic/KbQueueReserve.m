@@ -24,7 +24,7 @@ if isempty(reservedFor)
 end
 
 % Special case handling for Linux and Windows:
-if IsLinux || (IsWin && (isempty(deviceIndex) || (deviceIndex ~= 0)))
+if IsLinux || (IsWin && ~isempty(deviceIndex) && (deviceIndex ~= 0))
     % On Linux, all queues are always reserved for usercode, never for
     % GetChar(). Why? Because we don't need them for GetChar(), as the old
     % GetChar() implementations for Matlab jvm/novjm and Octave just work.

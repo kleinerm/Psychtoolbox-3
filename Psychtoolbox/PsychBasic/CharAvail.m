@@ -11,10 +11,6 @@ function [avail, numChars] = CharAvail
 % Note that this routine does not actually remove characters from the event
 % queue.  Call GetChar to remove characters from the queue.
 %
-% CharAvail works on all platforms with Matlab and Java enabled. It works
-% also on M$-Windows under matlab -nojvm mode. It does not work on OS-X or
-% Linux in Matlab -nojvm mode and it also doesn't work under GNU/Octave.
-% 
 % GetChar and CharAvail are character-oriented (and slow), whereas KbCheck
 % and KbWait are keypress-oriented (and fast). See KbCheck.
 % 
@@ -97,10 +93,8 @@ else
     % Only need to reserve/create/start queue if we don't have it
     % already:
     if ~KbQueueReserve(3, 1, [])
-        if isempty(OSX_JAVA_GETCHAR)
-            LoadPsychHID;
-            OSX_JAVA_GETCHAR = 1;
-        end
+        % LoadPsychHID is needed on MS-Windows. It no-ops if called redundantly:
+        LoadPsychHID;
         
         % Try to reserve default keyboard queue for our exclusive use:
         if ~KbQueueReserve(1, 1, [])
@@ -113,9 +107,7 @@ else
     end
     
     % Queue is running: Check number of pending key presses:
-    % TODO FIXME: This counts key presses and releases, so the count will
-    % be inaccurate!
-    avail = PsychHID('KbQueueFlush', [], 0);
+    avail = PsychHID('KbQueueFlush', [], 4);
 end
 
 numChars = avail;
