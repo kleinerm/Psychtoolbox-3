@@ -133,6 +133,7 @@ pthread_mutex_t psychHIDKbQueueMutex;
 CFRunLoopRef psychHIDKbQueueCFRunLoopRef=NULL;
 pthread_t psychHIDKbQueueThread = NULL;
 psych_bool queueIsAKeyboard;
+UInt32 modifierKeyState = 0;
 
 static void *PsychHIDKbQueueNewThread(void *value){
 	// The new thread is started after the global variables are initialized
@@ -171,9 +172,9 @@ static double convertTime(AbsoluteTime at){
 	Names given for keys refer to US layout.
 	May be copied freely.
 */
+
 // Taken from this MIT licensed software: <https://github.com/Ahruman/KeyNaming> according
-// to above permission note. So far not effectively used. Probably need to pull in the
-// whole project...
+// to above permission note.
 /*  KeyNaming.cp
 	Keynaming 2.2 implementation
 	© 2001-2008 Jens Ayton <jens@ayton.se>, except where otherwise noted.
@@ -595,6 +596,13 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 		// Cooked key code defaults to "unhandled", and stays that way for anything but keyboards:
 		evt.cookedEventCode = -1;
 		
+        // We only support .cookedEventCode mapping for the 64-Bit OSX Psychtoolbox, ie., for
+        // 64-Bit Octave and 64-Bit Matlab. Why? Because this code requires OSX version 10.5 or
+        // later and our 64-Bit PTB requires the same. The 32-Bit Matlab PTB still supports 10.4,
+        // on which this code would not work. But 32-Bit OSX is legacy and the only affected mode
+        // would be 32-Bit matlab -nojvm mode, so who cares?
+        #ifdef __LP64__
+
 		// For real keyboards we can compute cooked key codes:
 		if (queueIsAKeyboard) {
 			// Keyboard(ish) device. We can handle this under some conditions.
@@ -602,22 +610,63 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 			evt.cookedEventCode = 0;
 
 			// Keypress event? And available in mapping table?
-			if ((event.value != 0) && (keysUsage < kHID2VKCSize)) {
+			if (keysUsage < kHID2VKCSize) {
 				// Yes: We try to map this to a character code:
 				
 				// Step 1: Map HID usage value to virtual keycode via LUT:
 				uint16_t vcKey = kHID2VKC[keysUsage];
 				
-				// Step 2: Translate virtual key code into unicode char:
-				// Ok, this is the usual horrifying complexity of Apple's system.
-				// If we want this implemented, our best shot is using/including a modified
-				// version of this MIT licensed software: <https://github.com/Ahruman/KeyNaming>
-				//
-				// For now, i just need a break - doing some enjoyable work on a less disgusting os...
-				evt.cookedEventCode = (int) vcKey;
+                // Keep track of SHIFT keys as modifier keys: Bits 0 == Command, 1 == Shift, 2 == CapsLock, 3 == Alt/Option, 4 == CTRL
+                if ((vcKey == kVKC_Shift || vcKey == kVKC_rShift) && (event.value != 0)) modifierKeyState |=  (1 << 1);
+                if ((vcKey == kVKC_Shift || vcKey == kVKC_rShift) && (event.value == 0)) modifierKeyState &= ~(1 << 1);
+
+                // Keep track of ALT keys as modifier keys:
+                if ((vcKey == kVKC_Option || vcKey == kVKC_rOption) && (event.value != 0)) modifierKeyState |=  (1 << 3);
+                if ((vcKey == kVKC_Option || vcKey == kVKC_rOption) && (event.value == 0)) modifierKeyState &= ~(1 << 3);
+                
+                // Key press?
+                if (event.value != 0) {
+                    // Step 2: Translate virtual key code into unicode char:
+                    // Ok, this is the usual horrifying complexity of Apple's system. We use code
+                    // snippets found on StackOverflow, modified to suit our needs, e.g., we track
+                    // modifier keys manually, at least left and right ALT and SHIFT keys. We don't
+                    // care about other modifiers.
+                    TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
+                    CFDataRef uchr = (CFDataRef) ((currentKeyboard) ? TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData) : NULL);
+                    const UCKeyboardLayout *keyboardLayout = (const UCKeyboardLayout*) ((uchr) ? CFDataGetBytePtr(uchr) : NULL);
+                    
+                    if (keyboardLayout) {
+                        UInt32 deadKeyState = 0;
+                        UniCharCount maxStringLength = 255;
+                        UniCharCount actualStringLength = 0;
+                        UniChar unicodeString[maxStringLength];
+                        
+                        OSStatus status = UCKeyTranslate(keyboardLayout,
+                                                         vcKey, kUCKeyActionDown, modifierKeyState,
+                                                         LMGetKbdType(), 0,
+                                                         &deadKeyState,
+                                                         maxStringLength,
+                                                         &actualStringLength, unicodeString);
+                        
+                        if ((actualStringLength == 0) && deadKeyState) {
+                            status = UCKeyTranslate(keyboardLayout,
+                                                    kVK_Space, kUCKeyActionDown, 0,
+                                                    LMGetKbdType(), 0,
+                                                    &deadKeyState,
+                                                    maxStringLength,
+                                                    &actualStringLength, unicodeString);
+                        }
+                        
+                        if((actualStringLength > 0) && (status == noErr)) {
+                            evt.cookedEventCode = (int) unicodeString[0];
+                        }
+                    }
+                }
 			}
 		}
-		
+
+        #endif
+        
 		pthread_mutex_lock(&psychHIDKbQueueMutex);
 
 		// Update records of first and latest key presses and releases
