@@ -1042,7 +1042,10 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 
 int PsychHIDGetDefaultKbQueueDevice(void)
 {
-	return(0);
+    // Always 0 on OSX, because we only have one kb queue with index zero.
+    // There ain't a one-to-one mapping of HID 'deviceIndex'es and keyboard queue
+    // slots:
+    return(0);
 }
 
 #endif
