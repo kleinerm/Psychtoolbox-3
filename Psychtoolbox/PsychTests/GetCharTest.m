@@ -311,7 +311,7 @@ try
         end
         % TEST 7 of 7: Comparing GetChar timing with KbWait timing: Only
         % makes sense with Java-based GetChar, skip test in -nojvm mode.
-        if (nargin==0 || (nargin==1 && startAt <= 7)) & (psychusejava('desktop'))
+        if (nargin==0 || (nargin==1 && startAt <= 7))
             fprintf('GetChar test 7 of 7: Comparison of keypress timing reported by KbWait and GetChar\n');
             fprintf('  Timing test: The test will wait five times for a keypress of you. Each time, waiting\n');
             fprintf('  is performed via KbWait. Then the typed character is retrieved via GetChar as well and\n');
