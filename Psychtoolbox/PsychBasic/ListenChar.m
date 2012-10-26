@@ -100,8 +100,17 @@ end
 % Running either on Octave, or on Matlab in No JVM mode, or on a MS-Vista
 % system or later.
 
-% On all systems but Linux, we need to (ab)use keyboard queues to get anywhere:
-if ~IsLinux
+% On all systems we prefer to (ab)use keyboard queues. This allows character
+% suppression via ListenChar(2) to work at least on OSX and Linux and provides
+% high robustness against keyboard focus changes. If we can't get the relevant
+% keyboard queue on OSX or Windows at this point, we have to fail. However,
+% if we are on Linux and the keyboard queue is already in use by usercode,
+% we can fall back to 'GetMouseHelper' low-level terminal tty magic. The
+% only downside is that typed characters will spill into the console, ie.,
+% ListenChar(2) suppression is unsupported:
+if ~IsLinux || ~KbQueueReserve(3, 2, [])
+    % We can use the default keyboard's keyboard queue - Good:
+
     % LoadPsychHID is needed on MS-Windows. It no-ops if called redundantly:
     LoadPsychHID;
     
@@ -132,17 +141,28 @@ if ~IsLinux
             KbQueueReserve(2, 1, []);            
         end
     end
+
+    if listenFlag > 1
+        % Disable character forwarding to console:
+        Screen('GetMouseHelper', -12);   
+    else
+        % Enable character forwarding to console,
+        % disable it for us, as we use keyboard
+        % queues, not tty magic:
+        Screen('GetMouseHelper', -10);
+    end
+
+   return;
 end
 
-% This code is only effective on Linux, but doesn't hurt on the other
-% systems, so do it:
-switch listenFlag
-    case 0,
-        Screen('GetMouseHelper', -10);
-    case 1,
+% This fallback code is only effective on Linux. It uses low-level tty magic
+% to get some characters from the stdin stream of the controlling tty:
+if listenFlag > 0
+        % Enable character input:
         Screen('GetMouseHelper', -11);
-    case 2,
-        Screen('GetMouseHelper', -12);
+else
+        % Disable character input:
+        Screen('GetMouseHelper', -10);
 end
 
 return;

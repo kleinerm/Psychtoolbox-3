@@ -258,7 +258,12 @@ if psychusejava('desktop') && ~IsWinVista
 end
 
 % Running either on Octave, or on Matlab in No JVM mode or on MS-Vista+:
-if IsLinux
+
+% If we are on Linux and the keyboard queue is already in use by usercode,
+% we can fall back to 'GetMouseHelper' low-level terminal tty magic. The
+% only downside is that typed characters will spill into the console, ie.,
+% ListenChar(2) suppression is unsupported:
+if IsLinux && KbQueueReserve(3, 2, [])
     % Loop until we receive character input.
     keepChecking = 1;
     while keepChecking
@@ -288,7 +293,7 @@ if IsLinux
     % No extended data in this mode:
     when = [];
 else
-    % Need to (ab)use keyboard queue on OSX or Windows:
+    % Use keyboard queue:
     
     % Only need to reserve/create/start queue if we don't have it
     % already:
@@ -316,11 +321,7 @@ else
     keepChecking = 1;
     while keepChecking
         % Check to see if a character is available, and stop looking if
-        % we've found one.
-        
-        % Screen's GetMouseHelper with command code 15 delivers
-        % id of currently pending characters on stdin:
-        % charValue = Screen('GetMouseHelper', -15);
+        % we've found one.        
         event = PsychHID('KbQueueGetEvent', [], 0.1);
         if ~isempty(event) && event.Pressed && (event.CookedKey > 0)
             charValue = event.CookedKey;

@@ -134,6 +134,10 @@ if nargin < 1
 end
 
 % Try to release keyboard queue for 'deviceIndex' from our exclusive use:
+if ~KbQueueReserve(3, 2, deviceIndex)
+  return;
+end
+
 KbQueueReserve(2, 2, deviceIndex);
 
 if nargin == 0

@@ -17,21 +17,22 @@ function isReserved = KbQueueReserve(action, actor, deviceIndex)
 
 % Store for whom the default queue is reserved:
 persistent reservedFor;
+persistent defaultKbDevice;
 
 if isempty(reservedFor)
     % Initially not reserved for anybody:
     reservedFor = 0;
+
+    % Get deviceIndex of default keyboard device for KbQueues:
+    LoadPsychHID;
+    defaultKbDevice = PsychHID('Devices', -1);
 end
 
 % Special case handling for Linux and Windows:
-if IsLinux || (IsWin && ~isempty(deviceIndex) && (deviceIndex ~= 0))
-    % On Linux, all queues are always reserved for usercode, never for
-    % GetChar(). Why? Because we don't need them for GetChar(), as the old
-    % GetChar() implementations for Matlab jvm/novjm and Octave just work.
-    %
-    % On MS-Windows all non-default-keyboard queues are always reserved for
-    % usercode, as only the default keyboard queue zero (== empty) matters
-    % for GetChar:
+if ~IsOSX && ~isempty(deviceIndex) && (deviceIndex ~= defaultKbDevice)
+    % On non-OSX, all non-default-keyboard queues are always reserved for
+    % usercode, as only the default keyboard queue (aka empty deviceIndex)
+    % matters for GetChar:
     if actor == 2
         isReserved = 1;
     else
@@ -41,9 +42,9 @@ if IsLinux || (IsWin && ~isempty(deviceIndex) && (deviceIndex ~= 0))
     return;
 end
 
-% Either OSX or MS-Windows on default keyboard device zero. There's only
-% one deviceIndex zero/default on Windows, and only one keyboard queue in
-% total on OSX, irrespective of deviceIndex, so a simple variable is enough
+% Either OSX, or MS-Windows/Linux on default keyboard device. There's only
+% one such deviceIndex zero/default on non-OSX, and only one keyboard queue in
+% total on OSX, irrespective of deviceIndex. Therefore a simple variable is enough
 % to keep reservation status for that one queue.
 
 % Reserve request?

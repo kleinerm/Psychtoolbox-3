@@ -81,7 +81,11 @@ end
 if doclear == 1
     % Clear the internal queue of characters:
 
-    if IsLinux
+    % If we are on Linux and the keyboard queue is already in use by usercode,
+    % we can fall back to 'GetMouseHelper' low-level terminal tty magic. The
+    % only downside is that typed characters will spill into the console, ie.,
+    % ListenChar(2) suppression is unsupported:
+    if IsLinux && KbQueueReserve(3, 2, [])
         % Screen's GetMouseHelper with command code 13 clears the queue of
         % characters on stdin:
         Screen('GetMouseHelper', -13);
@@ -90,7 +94,7 @@ if doclear == 1
         % reported by Denis:
         while CharAvail, drawnow; dummy = GetChar; end; %#ok<NASGU>
     else
-        % Need to (ab)use keyboard queue on OSX or Windows:
+        % Use keyboard queue by default:
         
         % Only need to reserve/create/start queue if we don't have it
         % already:

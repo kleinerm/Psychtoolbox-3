@@ -83,12 +83,16 @@ if exist('fflush') %#ok<EXIST>
     builtin('fflush', 1);
 end
 
-if IsLinux
+% If we are on Linux and the keyboard queue is already in use by usercode,
+% we can fall back to 'GetMouseHelper' low-level terminal tty magic. The
+% only downside is that typed characters will spill into the console, ie.,
+% ListenChar(2) suppression is unsupported:
+if IsLinux && KbQueueReserve(3, 2, [])
     % Screen's GetMouseHelper with command code 14 delivers
     % count of currently pending characters on stdin:
     avail = Screen('GetMouseHelper', -14);
 else
-    % Need to (ab)use keyboard queue on OSX or Windows:
+    % Use keyboard queue:
     
     % Only need to reserve/create/start queue if we don't have it
     % already:
