@@ -139,8 +139,14 @@ static void *PsychHIDKbQueueNewThread(void *value){
 	// The new thread is started after the global variables are initialized
 	SInt32 rc;
 
-	// Get and retain the run loop associated with this thread
-	psychHIDKbQueueCFRunLoopRef=(CFRunLoopRef) GetCFRunLoopFromEventLoop(GetCurrentEventLoop());
+    pthread_mutex_lock(&psychHIDKbQueueMutex);    
+    
+    // Get and retain the run loop associated with this thread. We have to use
+    // CFRunLoopGetCurrent() instead of GetCFRunLoopFromEventLoop(GetCurrentEventLoop()),
+    // so it works reliably with Octave. The old GetCFRunLoopFromEventLoop(GetCurrentEventLoop())
+    // for some weird reason only worked reliably with Matlab. On Octave it was a hit and miss thing,
+    // sometimes working, sometimes not -- a race condition somewhere?!?
+	psychHIDKbQueueCFRunLoopRef=(CFRunLoopRef) CFRunLoopGetCurrent(); // Old: Only reliable on Matlab: GetCFRunLoopFromEventLoop(GetCurrentEventLoop());
 	CFRetain(psychHIDKbQueueCFRunLoopRef);
 
 	// Put the event source into the run loop
@@ -153,12 +159,11 @@ static void *PsychHIDKbQueueNewThread(void *value){
 	// input devices with at least 4+/-4 msecs jitter at 8 msec USB polling frequency.
 	PsychSetThreadPriority(NULL, 2, 0);
 
+	pthread_mutex_unlock(&psychHIDKbQueueMutex);	
+    
 	// Start the run loop, code execution will block here until run loop is stopped again by PsychHIDKbQueueRelease
 	// Meanwhile, the run loop of this thread will be responsible for executing code below in PsychHIDKbQueueCalbackFunction
 	while ((rc = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, false)) == kCFRunLoopRunTimedOut);
-		
-	// In case the CFRunLoop was interrupted while the mutex was locked, unlock it
-	pthread_mutex_unlock(&psychHIDKbQueueMutex);	
 }
 
 static double convertTime(AbsoluteTime at){
@@ -949,8 +954,8 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 	}
 
 	{
-		IOHIDCallbackFunction function=PsychHIDKbQueueCallbackFunction;
-		result= (*hidDataRef->hidQueueInterface)->setEventCallout(hidDataRef->hidQueueInterface, function, NULL, hidDataRef);
+		//IOHIDCallbackFunction function=PsychHIDKbQueueCallbackFunction;
+		result= (*hidDataRef->hidQueueInterface)->setEventCallout(hidDataRef->hidQueueInterface, PsychHIDKbQueueCallbackFunction, NULL, hidDataRef);
 		if (kIOReturnSuccess!=result)
 		{
 			free(psychHIDKbQueueFirstPress);

@@ -9,14 +9,12 @@ function ListenChar(listenFlag)
 % listening, additionally any output of keypresses to Matlab windows is
 % suppressed. Use this with care, if your script aborts with an error,
 % Matlab may be left with a dead keyboard until the user presses CTRL+C to
-% reenable keyboard input.
+% reenable keyboard input. 'listenFlag' 2 is silently ignored with matlab
+% -nojvm mode under MS-Windows.
 %
 % This function isn't entirely necessary to turn on listening as calling
 % GetChar, CharAvail, or FlushEvents will trigger listening on.  However,
 % it is the only method by which to disable listening.
-%
-% The function does nothing when executed under matlab in -nojvm mode or on
-% other runtime environments, e.g., GNU/Octave.
 %
 % For further explanation see help for "GetChar".  
 %
@@ -125,11 +123,6 @@ if ~IsLinux || ~KbQueueReserve(3, 2, [])
             
             % Got it. Allocate and start it:
             PsychHID('KbQueueCreate');
-            if IsOSX && IsOctave
-                % Need weird quirk for this combo:
-                PsychHID('KbQueueRelease');
-                PsychHID('KbQueueCreate');                
-            end
             PsychHID('KbQueueStart');
         end
     else

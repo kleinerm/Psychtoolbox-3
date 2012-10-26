@@ -149,20 +149,6 @@ end
 if isempty(macosxrecent)
     macosxrecent = IsOSX;
     LoadPsychHID;
-
-    % Little hack for Octave + OS/X: For some reason the first KbQueueCreate
-    % fails to work properly within PsychHID - something related to Carbon
-    % event queues. Creating and releasing on first invocation makes it work
-    % for the rest of the session...
-    if macosxrecent && IsOctave
-        KbQueueCreate;
-        KbQueueRelease;
-        
-        % Undo unreserve from release above:
-        if ~KbQueueReserve(1, 2, deviceNumber)
-            error('Keyboard queue for device %i already in use by GetChar() et al. Use of GetChar and keyboard queues is mutually exclusive!', deviceNumber);
-        end
-    end
 end
 
 if nargin == 2

@@ -109,11 +109,6 @@ if doclear == 1
             
             % Got it. Allocate and start it:
             PsychHID('KbQueueCreate');
-            if IsOSX && IsOctave
-                % Need weird quirk for this combo:
-                PsychHID('KbQueueRelease');
-                PsychHID('KbQueueCreate');                
-            end            
             PsychHID('KbQueueStart');
         end
         
