@@ -46,8 +46,12 @@ if nargin < 1
 end
 
 % Try to check if keyboard queue for 'deviceIndex' is reserved for our exclusive use:
-if ~KbQueueReserve(3, 2, deviceIndex)
+if ~KbQueueReserve(3, 2, deviceIndex) && KbQueueReserve(3, 1, deviceIndex)
     error('Keyboard queue for device %i already in use by GetChar() et al. Use of GetChar and keyboard queues is mutually exclusive!', deviceIndex);
+end
+
+if ~KbQueueReserve(3, 2, deviceIndex)
+    error('Keyboard queue for device %i not yet created. KbQueueCreate() it first!\n', deviceIndex);
 end
 
 if nargin < 2
