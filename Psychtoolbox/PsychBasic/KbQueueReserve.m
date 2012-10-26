@@ -52,6 +52,14 @@ if action == 1
     % If it is already reserved for us, or not reserved to anybody, then we
     % can reserve it for us:
     if (reservedFor == 0) || (reservedFor == actor)
+        
+        if (actor == 1) && IsOSX && ~Is64Bit
+            % Special case: Tried to use KbQueue for GetChar() et al. on
+            % 32-Bit OSX runtime, which is unsupported due to limitations
+            % in PsychHID:
+            error('GetChar/CharAvail/FlushEvents/ListenChar are not supported on 32-Bit Matlab in -nojvm mode on OSX.');
+        end
+        
         reservedFor = actor;
     end
 end
