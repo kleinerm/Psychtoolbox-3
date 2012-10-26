@@ -120,6 +120,7 @@ PsychError PSYCHHIDKbQueueCreate(void)
 
 #include "PsychHIDKbQueue.h"
 #include <errno.h>
+#include <dlfcn.h>
 
 #define NUMDEVICEUSAGES 7
 
@@ -590,7 +591,6 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 				keysUsage=tempHIDElement->usage;
 			}
 		}
-		// if(keysUsage<1 || keysUsage>255) continue;	// This is redundant since usage is checked when elements are added
 
 		// Don't bother with keysUsage of 0 (meaningless) or 1 (ErrorRollOver) for keyboards:
 		if ((queueIsAKeyboard) && (keysUsage <= 1)) continue;
@@ -614,7 +614,7 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 			// Init to a default of handled, but unmappable/ignored keycode:
 			evt.cookedEventCode = 0;
 
-			// Keypress event? And available in mapping table?
+			// Keypress event code available in mapping table?
 			if (keysUsage < kHID2VKCSize) {
 				// Yes: We try to map this to a character code:
 				
@@ -628,6 +628,27 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
                 // Keep track of ALT keys as modifier keys:
                 if ((vcKey == kVKC_Option || vcKey == kVKC_rOption) && (event.value != 0)) modifierKeyState |=  (1 << 3);
                 if ((vcKey == kVKC_Option || vcKey == kVKC_rOption) && (event.value == 0)) modifierKeyState &= ~(1 << 3);
+                
+                // Keep track of CTRL keys as modifier keys:
+                if ((vcKey == kVKC_Control || vcKey == kVKC_rControl) && (event.value != 0)) modifierKeyState |=  (1 << 4);
+                if ((vcKey == kVKC_Control || vcKey == kVKC_rControl) && (event.value == 0)) modifierKeyState &= ~(1 << 4);
+
+                // Was this a CTRL + C interrupt request?
+                if ((vcKey == 0x08) && (modifierKeyState & (1 << 4))) {
+                    // Yes: Try to call the ConsoleInputHelper() function of the Screen() mex file
+                    // to reenable keystroke character dispatch in the terminal. This will undo
+                    // a potential ListenChar(2) op if GetChar() et al. are used with the help of this
+                    // keyboard queue from within Octave Currently does not work from within matlab -nojvm,
+                    // as Matlab does not expose the required symbol via dlsym() -- apparently uses a different
+                    // type of dynamic plugin loader or a different type of linking mode.
+                    
+                    // Try to dynamically bind the function:
+                    void (*ConsoleInputHelper)(int ccode) = dlsym(RTLD_DEFAULT, "ConsoleInputHelper");
+                    //printf("KBQ: CTRL+C DETECTED! ConsoleInputHelper = %p\n", ConsoleInputHelper);
+                    
+                    // Execute it if binding was successfull:
+                    if (ConsoleInputHelper) ConsoleInputHelper(-10);
+                }
                 
                 // Key press?
                 if (event.value != 0) {
@@ -663,7 +684,8 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
                         }
                         
                         if((actualStringLength > 0) && (status == noErr)) {
-                            evt.cookedEventCode = (int) unicodeString[0];
+                            // Assign final cooked / mapped keycode:
+                            evt.cookedEventCode = (int) unicodeString[0];                            
                         }
                     }
                 }
