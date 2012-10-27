@@ -17,6 +17,9 @@
 
 #include "PsychHIDStandardInterfaces.h"
 
+// For dlsym() to map CTRL+C to a call to Screen() ConsoleInputHelper(-10):
+#include <dlfcn.h>
+
 static Display *dpy = NULL;
 static Display *thread_dpy = NULL;
 static int xi_opcode, event, error;
@@ -577,6 +580,24 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 							// Not mappable:
 							evt.cookedEventCode = 0;
 						}
+                        
+                        // Was this a CTRL + C interrupt request? This is mapped to ASCII control character 3 "ETX".
+                        if (evt.cookedEventCode == 3) {
+                            // Yes: Try to call the ConsoleInputHelper() function of the Screen() mex file
+                            // to reenable keystroke character dispatch in the terminal. This will undo
+                            // a potential ListenChar(2) op if GetChar() et al. are used with the help of this
+                            // keyboard queue from within Octave. Currently does not work from within matlab -nojvm,
+                            // as Matlab does not expose the required symbol via dlsym() -- apparently uses a different
+                            // type of dynamic plugin loader or a different type of linking mode.
+                            
+                            // Try to dynamically bind the function:
+                            void (*ConsoleInputHelper)(int ccode) = dlsym(RTLD_DEFAULT, "ConsoleInputHelper");
+                            dlerror();
+                            printf("KBQ: CTRL+C DETECTED! ConsoleInputHelper = %p [%s]\n", ConsoleInputHelper, dlerror());
+                            
+                            // Execute it if binding was successfull:
+                            if (ConsoleInputHelper) ConsoleInputHelper(-10);
+                        }                        
 					}
 
 					// Need the lock from here on:
