@@ -48,7 +48,7 @@ end
 
 % Is this Matlab? Is the JVM running?
 if psychusejava('desktop')
-    % Java enabled on Matlab and not Windows Vista or later. There's work to do.
+    % Java enabled on Matlab. There's work to do.
 
     % Make sure that the GetCharJava class is loaded.
     if isempty(OSX_JAVA_GETCHAR)
@@ -137,12 +137,12 @@ if ~IsLinux || ~KbQueueReserve(3, 2, [])
 
     if listenFlag > 1
         % Disable character forwarding to console:
-        Screen('GetMouseHelper', -12);   
+        PsychHID('KeyboardHelper', -12);   
     else
         % Enable character forwarding to console,
         % disable it for us, as we use keyboard
         % queues, not tty magic:
-        Screen('GetMouseHelper', -10);
+        PsychHID('KeyboardHelper', -10);
     end
 
    return;

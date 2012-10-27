@@ -73,10 +73,6 @@ void ScreenCloseAllWindows(void)
     
     recursionLevel++;
     
-    // Disable keystroke character suppression via stdin+tty low-level magic,
-    // as used by ListenChar(2) when running on Octave or in matlab -nojvm mode:
-    ConsoleInputHelper(-10);
-    
     // Cold-Reset the drawing target:
     PsychColdResetDrawingTarget();
 

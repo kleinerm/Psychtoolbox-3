@@ -216,8 +216,10 @@ PsychError PSYCHHIDGiveMeReports(void);				// PsychHIDGiveMeReports.c
 PsychError PSYCHHIDOpenUSBDevice(void);				// PSYCHHIDOpenUSBDevice.c
 PsychError PSYCHHIDCloseUSBDevice(void);			// PSYCHHIDCloseUSBDevice.c
 PsychError PSYCHHIDUSBControlTransfer(void);		// PSYCHHIDUSBControlTransfer.c
+PsychError PSYCHHIDKeyboardHelper(void);            // PSYCHHIDKeyboardHelper.c
 
 //internal function protototypes
+void ConsoleInputHelper(int ccode); // PsychHIDKeyboardHelper.c -- Called from kbqueue handling thread.
 PsychError  PsychHIDReceiveReportsCleanup(void); // PsychHIDReceiveReports.c
 PsychError  ReceiveReports(int deviceIndex); // PsychHIDReceiveReports.c
 PsychError  GiveMeReport(int deviceIndex, psych_bool *reportAvailablePtr, unsigned char *reportBuffer, psych_uint32 *reportBytesPtr, double *reportTimePtr); // PsychHIDReceiveReports.c
