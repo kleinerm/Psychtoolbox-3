@@ -120,7 +120,6 @@ PsychError PSYCHHIDKbQueueCreate(void)
 
 #include "PsychHIDKbQueue.h"
 #include <errno.h>
-#include <dlfcn.h>
 
 #define NUMDEVICEUSAGES 7
 
@@ -634,7 +633,7 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
                 if ((vcKey == kVKC_Control || vcKey == kVKC_rControl) && (event.value == 0)) modifierKeyState &= ~(1 << 4);
 
                 // Was this a CTRL + C interrupt request?
-                if ((vcKey == 0x08) && (modifierKeyState & (1 << 4))) {
+                if ((event.value != 0) && (vcKey == 0x08) && (modifierKeyState & (1 << 4))) {
                     // Yes: Try to call our ConsoleInputHelper() function to reenable keystroke
                     // character dispatch in the terminal. This will undo a potential ListenChar(2)
                     // op if GetChar() et al. are used with the help of this keyboard queue from
