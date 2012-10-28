@@ -120,6 +120,7 @@ PsychError PSYCHHIDKbQueueCreate(void)
 
 #include "PsychHIDKbQueue.h"
 #include <errno.h>
+#include <signal.h>
 
 #define NUMDEVICEUSAGES 7
 
@@ -134,6 +135,9 @@ CFRunLoopRef psychHIDKbQueueCFRunLoopRef=NULL;
 pthread_t psychHIDKbQueueThread = NULL;
 psych_bool queueIsAKeyboard;
 UInt32 modifierKeyState = 0;
+
+// Stream that feeds into stdin of host application:
+extern FILE* stdininject;
 
 static void *PsychHIDKbQueueNewThread(void *value){
 	// The new thread is started after the global variables are initialized
@@ -638,7 +642,18 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
                     // character dispatch in the terminal. This will undo a potential ListenChar(2)
                     // op if GetChar() et al. are used with the help of this keyboard queue from
                     // within Octave or Matlab in -nojvm mode.
-                    printf("\nPsychHID-INFO: CTRL+C DETECTED! Trying to reenable keyboard input to console.\n\n");
+                    printf("\nPsychHID-INFO: CTRL+C DETECTED! Trying to reenable keyboard input to console. [%p]\n\n", stdininject);
+                    if (stdininject) {
+                        // Inject CTRL+C INTERRUPT signal: Should stop running script and get runtime back into interactive mode.
+                        kill(getpid(), SIGINT);
+                        
+                        // fputc(3, stdininject);
+                        // Inject "sca" Screen-Close-All command.
+                        fprintf(stdininject, "sca; %% Shutdown shop.\n");
+                        // Flush the stream, so runtime gets going:
+                        fflush(stdininject);
+                        while (_kbhit());
+                    }
                     ConsoleInputHelper(-10);
                 }
                 
@@ -677,7 +692,13 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
                         
                         if((actualStringLength > 0) && (status == noErr)) {
                             // Assign final cooked / mapped keycode:
-                            evt.cookedEventCode = (int) unicodeString[0];                            
+                            evt.cookedEventCode = (int) unicodeString[0];
+                            
+                            if (stdininject) {
+                                // Inject character into runtime:
+                                fputc(evt.cookedEventCode, stdininject);
+                                fflush(stdininject);
+                            }
                         }
                     }
                 }

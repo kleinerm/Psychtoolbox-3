@@ -33,6 +33,8 @@
 
 // Current ListenChar state:
 static int listenchar_enabled = 0;
+static int stdinpipe[2] = {-1, -1};
+FILE* stdininject = NULL;
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
 #include <errno.h>
@@ -83,6 +85,7 @@ int _kbhit(void) {
             term.c_lflag &= ~ECHO;
             tcsetattr(fileno(stdin), TCSANOW, &term);
             
+            #if PSYCH_SYSTEM != PSYCH_OSX
             // Detach stdin from controlling tty, redirect to
             // /dev/zero, so it doesn't get any input from now on,
             // regardless what characters go to the terminal:
@@ -90,6 +93,27 @@ int _kbhit(void) {
             
             // We are detached: No characters received from terminal,
             // no characters echo'ed by terminal itself.
+            
+            #else
+            // Create a unidirectional Unix communication pipe and
+            // return a read [0] and write [1] fildescriptor pair to both
+            // ends:
+            pipe(stdinpipe);
+            
+            // Attach the read descriptor [0] to stdin of the runtime.
+            // This way, everything written into stdinpipe[1] will appear
+            // as input to stdin -> gets fed into our host application:
+            dup2(stdinpipe[0], fileno(stdin));
+            
+            // Attach write descriptor to standard FILE* stdinject for
+            // simple use with fwrite() et al.:
+            stdininject = fdopen(stdinpipe[1], "a");
+            if (stdininject) {
+                //setvbuf(stdininject, NULL, _IONBF, 0);
+                fprintf(stdininject, "%% Hello world!\n"); fflush(stdininject);
+            }
+            else printf("STDInject failed! [%s]\n", strerror(errno));
+            #endif
         }
         
         // Disable of character suppression requested?
@@ -116,6 +140,16 @@ int _kbhit(void) {
             tcsetattr(fileno(stdin), TCSAFLUSH, &oldterm);
             
             // We are reattached.
+            
+            #if PSYCH_SYSTEM == PSYCH_OSX
+            // Close our, now unused stdinpipe by closeing both ends:
+            close(stdinpipe[1]);
+            close(stdinpipe[0]);
+            stdinpipe[1] = -1;
+            stdinpipe[0] = -1;
+            fclose(stdininject);
+            stdininject = NULL;
+            #endif
         }
         
         // Transition to active character listening?
