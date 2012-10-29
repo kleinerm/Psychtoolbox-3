@@ -150,6 +150,10 @@ PsychError PsychHIDCleanup(void)
 	// Disable online help system:
 	PsychClearGiveHelp();
 
+    // Disable any kind of low-level stdin<->tty magic for character reception
+    // or suppression in console mode (for octave and matlab -nojvm):
+    ConsoleInputHelper(-10);
+    
 	// Shutdown USB-HID report low-level functions, e.g., for DAQ toolbox on OS/X:
 	error = PsychHIDReceiveReportsCleanup(); // PsychHIDReceiveReport.c
 	
