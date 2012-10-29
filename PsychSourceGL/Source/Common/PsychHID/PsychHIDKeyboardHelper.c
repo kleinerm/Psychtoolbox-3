@@ -34,7 +34,8 @@
 // Current ListenChar state:
 static int listenchar_enabled = 0;
 static int stdinpipe[2] = {-1, -1};
-FILE* stdininject = NULL;
+static FILE* stdininject = NULL;
+static char ptyname[FILENAME_MAX];
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
 #include <errno.h>
@@ -51,6 +52,8 @@ FILE* stdininject = NULL;
 #include <sys/select.h>
 #include <sys/ioctl.h>
 #include <termios.h>
+#include <signal.h>
+#include <util.h>
 
 // This implementation also does at/detaching of the stdin stream
 // from the controlling tty, control of character echo'ing, buffering,
@@ -68,9 +71,16 @@ int _kbhit(void) {
 	// Change of mode requested?
     if (current_mode != listenchar_enabled) {
         
-        // Enable of character suppression requested?
+        // Enable of character suppression requested on Linux?
+        // Or enable of any character listening on OSX?
+        #if PSYCH_SYSTEM == PSYCH_LINUX
         if (!(current_mode & 2) && (listenchar_enabled & 2)) {
+        #else
+        if ((current_mode == 0) && (listenchar_enabled > 0)) {
+        #endif
             // Switching from unsuppressed to suppressed.
+            // Or more specifically: From ctty->stdin to
+            // pipe->stdin.
             
             // Get backup of filedescriptor fd of real stdin:
             fd = dup(fileno(stdin));
@@ -86,6 +96,8 @@ int _kbhit(void) {
             tcsetattr(fileno(stdin), TCSANOW, &term);
             
             #if PSYCH_SYSTEM != PSYCH_OSX
+            // Linux: No need for a pipe.
+            //
             // Detach stdin from controlling tty, redirect to
             // /dev/zero, so it doesn't get any input from now on,
             // regardless what characters go to the terminal:
@@ -95,29 +107,45 @@ int _kbhit(void) {
             // no characters echo'ed by terminal itself.
             
             #else
+            // OSX: All modes via pseudo-pty acting as a pipe:
+            //
             // Create a unidirectional Unix communication pipe and
             // return a read [0] and write [1] fildescriptor pair to both
-            // ends:
-            pipe(stdinpipe);
+            // ends.
+            // We try to use a pty - a pseudo-terminal, with the same settings
+            // oldterm as our real controlling tty. This allows good compatibility
+            // with Matlab. If we can't use a pty, we fall back to a Unix pipe(),
+            // which works equally well with octave, but has serious limitations on Matlab.
+            if (openpty(&stdinpipe[1], &stdinpipe[0], ptyname, &oldterm, NULL)) {
+                printf("PsychHID-WARNING: openpty() for pseudo-tty failed! [%s]. Falling back to Unix pipe().\n", strerror(errno));
+                pipe(stdinpipe);
+            }
+            else {
+                printf("PsychHID-INFO: Using pty %s.\n", ptyname);
+            }
             
             // Attach the read descriptor [0] to stdin of the runtime.
             // This way, everything written into stdinpipe[1] will appear
             // as input to stdin -> gets fed into our host application:
             dup2(stdinpipe[0], fileno(stdin));
+
+            // Clear potential error conditions:
+            clearerr(stdin);
             
             // Attach write descriptor to standard FILE* stdinject for
             // simple use with fwrite() et al.:
             stdininject = fdopen(stdinpipe[1], "a");
-            if (stdininject) {
-                //setvbuf(stdininject, NULL, _IONBF, 0);
-                fprintf(stdininject, "%% Hello world!\n"); fflush(stdininject);
-            }
-            else printf("STDInject failed! [%s]\n", strerror(errno));
+            if (NULL == stdininject) printf("PsychHID-WARNING: Creation of stdinject failed! [%s]\n", strerror(errno));
             #endif
         }
         
-        // Disable of character suppression requested?
+        // Disable of character suppression requested Linux?
+        // Or disable of any character processing requested on OSX?
+        #if PSYCH_SYSTEM == PSYCH_LINUX
         if ((current_mode & 2) && !(listenchar_enabled & 2)) {
+        #else
+        if ((current_mode > 0) && (listenchar_enabled == 0)) {
+        #endif
             // Switching from suppressed to unsuppressed:
             
             // Reassign filedescriptor fd of real stdin to stdin from
@@ -142,7 +170,7 @@ int _kbhit(void) {
             // We are reattached.
             
             #if PSYCH_SYSTEM == PSYCH_OSX
-            // Close our, now unused stdinpipe by closeing both ends:
+            // Close our, now unused stdinpipe by closing both ends:
             close(stdinpipe[1]);
             close(stdinpipe[0]);
             stdinpipe[1] = -1;
@@ -191,10 +219,61 @@ int _kbhit(void) {
 void ConsoleInputHelper(int ccode)
 {
 	int ret;
-	
+
+    // Keystroke character from KbQueue thread received? This is on the kbqueue thread,
+    // not the main interpreter thread!
+    if (ccode >= 0) {
+        // Yes. If our console-based ListenChar(1) mode is active, but
+        // not ListenChar(2), then we need to forward the character to
+        // the runtime via our pipe, if there is a pipe:
+        if ((stdininject) && (listenchar_enabled == 1) && (ccode != 3 || PSYCH_SYSTEM == PSYCH_LINUX)) {
+            // Inject character into runtime:
+            fputc(ccode, stdininject);
+            fflush(stdininject);            
+        }
+
+        if (ccode == 3) printf("PsychHID-INFO: Inline x-mit of code 3 [ctrl+c]\n");
+        
+        // Done.
+        return;
+    }
+
+    // Negatice ccode -- A command code:
 	switch(ccode) {
+        case  -1:   // KeyboardQueue-Thread reports detection of CTRL+C interrupt keys:
+            // We are on the kbqueue thread, not the main interpreter thread.
+            printf("\nPsychHID-INFO: CTRL+C DETECTED! Trying to reenable keyboard input to console. [%p]\n\n", stdininject);
+            
+            // If console based ListenChar() is enabled at all, ie., ListenChar(1)
+            // or ListenChar(2) are active by use of the KeyboardQueue thread,
+            // then we need dispatch a SIGINT interrupt signal to our host process,
+            // so that it interrupts running processing on the console or inside M-Files,
+            // ie., execution of M-Scripts or M-Functions, and returns to the interactive
+            // command prompt, waiting for user input and commands via the stdin terminal
+            // input stream:
+            if (listenchar_enabled > 0) {
+                // We only need to send an explicit signal on OSX. On Linux, the
+                // signal is delivered inline in the stdin character stream as ASCII
+                // code 3 (CTRL+C). On MS-Windows, it is maybe the same, maybe not, but
+                // there ain't nothing we could do there if it isn't:
+                #if PSYCH_SYSTEM == PSYCH_OSX
+                kill(getpid(), SIGINT);
+                #endif
+            }
+
+            // If we are in ListenChar(2) mode, drop us down to ListenChar(1) mode:
+            // This disables character suppression, so command input by the user
+            // into the - now interactive - command line session works as expected:
+            if (listenchar_enabled > 1) {
+                // Enable char listening:
+                listenchar_enabled = 1;
+                _kbhit();
+            }
+
+            break;
+            
 		case -10:	// ListenChar(0);
-			// Disable char listening:
+			// Disable char listening:            
 			listenchar_enabled = 0;
 			_kbhit();
             break;
