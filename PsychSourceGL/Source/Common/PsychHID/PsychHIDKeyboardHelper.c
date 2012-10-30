@@ -53,7 +53,13 @@ static char ptyname[FILENAME_MAX];
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <signal.h>
+
+// Pseudo-TTY includes for OSX and Linux (openpty() et al.):
+#if PSYCH_SYSTEM == PSYCH_OSX
 #include <util.h>
+#else
+#include <pty.h>
+#endif
 
 // This implementation also does at/detaching of the stdin stream
 // from the controlling tty, control of character echo'ing, buffering,
@@ -73,6 +79,20 @@ int _kbhit(void) {
         
         // Enable of character suppression requested on Linux?
         // Or enable of any character listening on OSX?
+        //
+        // Why the difference? On Linux, our controlling tty
+        // receives keystroke input even if an onscreen window
+        // obscures the terminal window, so we can use regular
+        // ctty for ListenChar(1), only need this code for
+        // character suppression in ListenChar(2) mode. On OSX
+        // a fullscreen window completely blocks this ctty path,
+        // so even in ListenChar(1) mode we need to route key input
+        // around this blockade by use of the keyboard queue thread
+        // and our pty for injecting keystrokes/characters into the
+        // runtime. This rerouting works, but loses the special features
+        // of a real pty/terminal: No keyboard auto-repeat, no cursor
+        // keys, etc. The Linux way is preferrable, that's why we retain
+        // it here by special-casing OSX.
         #if PSYCH_SYSTEM == PSYCH_LINUX
         if (!(current_mode & 2) && (listenchar_enabled & 2)) {
         #else
@@ -95,34 +115,74 @@ int _kbhit(void) {
             term.c_lflag &= ~ECHO;
             tcsetattr(fileno(stdin), TCSANOW, &term);
             
-            #if PSYCH_SYSTEM != PSYCH_OSX
-            // Linux: No need for a pipe.
+            #if (PSYCH_SYSTEM == PSYCH_LINUX) && defined(PTBOCTAVE3MEX)
+            // Linux with Octave: We can't use a pty or unix pipe(), as
+            // Octave would terminate if we tried to detach from a pty or
+            // pipe while it is in interactive mode, waiting for input.
+            //
+            // This is because Octave uses the readline library for i/o,
+            // and readline doesn't like this while it is watching. Apparently
+            // it does accept detaching files, but not pipes or ptys.
+            //
+            // Anyway, what does work perfectly with no known limitations
+            // is to attach a simple file "/dev/zero" instead, so we do that.
             //
             // Detach stdin from controlling tty, redirect to
             // /dev/zero, so it doesn't get any input from now on,
             // regardless what characters go to the terminal:
             freopen("/dev/zero", "r", stdin);
-            
+
             // We are detached: No characters received from terminal,
             // no characters echo'ed by terminal itself.
             
             #else
-            // OSX: All modes via pseudo-pty acting as a pipe:
+            // OSX, or Linux with Matlab:
             //
-            // Create a unidirectional Unix communication pipe and
-            // return a read [0] and write [1] fildescriptor pair to both
-            // ends.
+            // On OSX with Octave, we must use a pipe(), again because of
+            // the readline library: When going to interactive mode, readline()
+            // tries to tcsetattr() its favorite settings on its tty. This implies
+            // a tcsetattr(TCSADRAIN) and the drain blocks infinitely if the tty
+            // contains pending data at that time, e.g., because the user has
+            // done some keystrokes during non-interactive compute ops, so characters
+            // are pending in our pty. Bad bad. How to avoid? On OSX we can't use
+            // a /dev/zero file as on Linux, because we always must do kbqueue based
+            // redirection. However, if we use a pipe() instead of a pty, then readline
+            // detects that a tcsetattr() on a pipe() will not work (ENOTTY), so the
+            // blocking tcsetattr() turns into a no-op and all is good. Except that a
+            // CTRL+C press while in interactive mode (SIGINT) can screw occassionally
+            // with readline and cause an app termination. Luckily this is nothing joe
+            // average user would normally do, as it is meaningless while in interactive
+            // input mode, so having this potential (but low probability) hazard is the
+            // less of two evils.
+            //
+            // On OSX with Matlab, we use a pty() instead, as Matlab doesn't like connecting
+            // to anything but a full-fledged pty. We only fallback to a pipe() in the unlikely
+            // (impossible?) case that pty() creation fails, as that is somewhat hazardous on
+            // Matlab.
+            //
             // We try to use a pty - a pseudo-terminal, with the same settings
-            // oldterm as our real controlling tty. This allows good compatibility
-            // with Matlab. If we can't use a pty, we fall back to a Unix pipe(),
-            // which works equally well with octave, but has serious limitations on Matlab.
-            if (openpty(&stdinpipe[1], &stdinpipe[0], ptyname, &oldterm, NULL)) {
+            // "oldterm" as our real controlling tty. This allows good compatibility
+            // with Matlab.
+            //
+            // So basically we have 1 code path (with pty()) for use with Matlab, as Matlab
+            // only works reliably with ptys, and 2 code pathes for Octave to account for
+            // the peculiarities of lib readline x 2 cases for the peculiarities of the
+            // windowing systems of Linux vs. OSX.
+            #if (PSYCH_SYSTEM == PSYCH_OSX) && defined(PTBOCTAVE3MEX)
+            if (0 != pipe(stdinpipe)) {
+                printf("PsychHID-WARNING: Unix pipe() creation failed [%s]. This may end badly!\n", strerror(errno));
+                fflush(stdout);
+            }
+            #else
+            if (0 != openpty(&stdinpipe[1], &stdinpipe[0], ptyname, &oldterm, NULL)) {
                 printf("PsychHID-WARNING: openpty() for pseudo-tty failed! [%s]. Falling back to Unix pipe().\n", strerror(errno));
-                pipe(stdinpipe);
+                if (0 != pipe(stdinpipe)) printf("PsychHID-WARNING: Unix pipe() creation failed [%s]. This may end badly!\n", strerror(errno));
+                fflush(stdout);
             }
             else {
-                printf("PsychHID-INFO: Using pty %s.\n", ptyname);
+                // printf("PsychHID-INFO: Using pty %s.\n", ptyname);
             }
+            #endif
             
             // Attach the read descriptor [0] to stdin of the runtime.
             // This way, everything written into stdinpipe[1] will appear
@@ -141,6 +201,7 @@ int _kbhit(void) {
         
         // Disable of character suppression requested Linux?
         // Or disable of any character processing requested on OSX?
+        // See above for explanation of this OS difference.
         #if PSYCH_SYSTEM == PSYCH_LINUX
         if ((current_mode & 2) && !(listenchar_enabled & 2)) {
         #else
@@ -169,15 +230,16 @@ int _kbhit(void) {
             
             // We are reattached.
             
-            #if PSYCH_SYSTEM == PSYCH_OSX
-            // Close our, now unused stdinpipe by closing both ends:
-            close(stdinpipe[1]);
-            close(stdinpipe[0]);
-            stdinpipe[1] = -1;
-            stdinpipe[0] = -1;
-            fclose(stdininject);
-            stdininject = NULL;
-            #endif
+            // Injector stream used? If so, close it:
+            if (stdininject) {
+                // Close our, now unused, stdinpipe by closing both ends:
+                close(stdinpipe[1]);
+                close(stdinpipe[0]);
+                stdinpipe[1] = -1;
+                stdinpipe[0] = -1;
+                fclose(stdininject);
+                stdininject = NULL;
+            }
         }
         
         // Transition to active character listening?
@@ -226,13 +288,13 @@ void ConsoleInputHelper(int ccode)
         // Yes. If our console-based ListenChar(1) mode is active, but
         // not ListenChar(2), then we need to forward the character to
         // the runtime via our pipe, if there is a pipe:
-        if ((stdininject) && (listenchar_enabled == 1) && (ccode != 3 || PSYCH_SYSTEM == PSYCH_LINUX)) {
+        if ((PSYCH_SYSTEM != PSYCH_LINUX) && (stdininject) && (listenchar_enabled == 1) && (ccode != 3)) {
             // Inject character into runtime:
             fputc(ccode, stdininject);
-            fflush(stdininject);            
+            fflush(stdininject);
         }
 
-        if (ccode == 3) printf("PsychHID-INFO: Inline x-mit of code 3 [ctrl+c]\n");
+        // if (ccode == 3) printf("PsychHID-INFO: Inline x-mit of code 3 [ctrl+c] suppressed.\n");
         
         // Done.
         return;
