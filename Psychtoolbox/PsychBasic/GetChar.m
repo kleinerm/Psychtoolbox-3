@@ -309,6 +309,12 @@ else
         % Got it. Allocate and start it:
         PsychHID('KbQueueCreate');
         PsychHID('KbQueueStart');
+
+        if IsOSX(1)
+            % Enable keystroke redirection via kbyqueue and pty to bypass
+            % blockade of onscreen windows:
+            PsychHID('KeyboardHelper', -14);
+        end        
     end
     
     % Queue is running: Poll it for new events we're interested in:
