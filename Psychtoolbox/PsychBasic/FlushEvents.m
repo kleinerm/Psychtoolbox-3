@@ -6,6 +6,10 @@ function FlushEvents(varargin)
 % Removes all events of the specified types from the event queue.
 % The arguments can be in any order. Empty strings are ignored.
 %
+% Please read the 'help ListenChar' carefully to understand various
+% limitations and caveats of this function, and to learn about - often
+% better - alternatives.
+%
 % FlushEvents will accept all arguments for backward compatibility with
 % Psychtoolbox-2, but only 'keyDown' (or no argument at all) removes
 % keypress events. Events other than keypress events are not supported.
@@ -86,9 +90,9 @@ if doclear == 1
     % only downside is that typed characters will spill into the console, ie.,
     % ListenChar(2) suppression is unsupported:
     if IsLinux && KbQueueReserve(3, 2, [])
-        % Screen's GetMouseHelper with command code 13 clears the queue of
+        % KeyboardHelper with command code 13 clears the queue of
         % characters on stdin:
-        Screen('GetMouseHelper', -13);
+        PsychHID('KeyboardHelper', -13);
 
         % This is a stupid hack that hopefully "fixes" GetChar race-conditions as
         % reported by Denis:
@@ -104,15 +108,30 @@ if doclear == 1
             
             % Try to reserve default keyboard queue for our exclusive use:
             if ~KbQueueReserve(1, 1, [])
-                error('Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar/GetChar etc. and keyboard queues is mutually exclusive!');
+                % Failed, because usercode already uses it. This is
+                % non-fatal, so just issue a warning.
+                if IsOSX(1)
+                    % OSX:
+                    warning('PTB3:KbQueueBusy', 'Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar(2) may work for keystroke suppression, but GetChar() etc. will not work.\n');
+                else
+                    % 32-Bit OSX, or MS-Windows:
+                    warning('PTB3:KbQueueBusy', 'Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar/GetChar etc. and keyboard queues is mutually exclusive!');
+                end
+
+                % We fall through to KeyboardHelper to enable input
+                % redirection on 64-Bit OSX. While our CharAvail() and
+                % GetChar() are lost causes, input redirection and CTRL+C
+                % can work if usercode has called KbQueueStart, as the
+                % users kbqueue-thread gives us a free-ride for our
+                % purpose.
+            else
+                % Got it. Allocate and start it:
+                PsychHID('KbQueueCreate');
+                PsychHID('KbQueueStart');
             end
             
-            % Got it. Allocate and start it:
-            PsychHID('KbQueueCreate');
-            PsychHID('KbQueueStart');
-            
             if IsOSX(1)
-                % Enable keystroke redirection via kbyqueue and pty to bypass
+                % Enable keystroke redirection via kbqueue and pty to bypass
                 % blockade of onscreen windows:
                 PsychHID('KeyboardHelper', -14);
             end

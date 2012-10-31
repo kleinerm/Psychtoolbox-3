@@ -5,6 +5,10 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 % before calling GetChar then GetChar will return that character immediatly.
 % Characters flushed by FlushEvents are all ignored by GetChar. Characters
 % are returned in the first return argument "ch".
+%
+% Please read the 'help ListenChar' carefully to understand various
+% limitations and caveats of this function, and to learn about - often
+% better - alternatives.
 % 
 % CAUTION: Do not rely on the keypress timestamps returned by GetChar
 % without fully reading and understanding this help text. Run your own
@@ -270,9 +274,9 @@ if IsLinux && KbQueueReserve(3, 2, [])
         % Check to see if a character is available, and stop looking if
         % we've found one.
         
-        % Screen's GetMouseHelper with command code 15 delivers
+        % KeyboardHelper with command code 15 delivers
         % id of currently pending characters on stdin:
-        charValue = Screen('GetMouseHelper', -15);
+        charValue = PsychHID('KeyboardHelper', -15);
         keepChecking = charValue == 0;
         if keepChecking
             drawnow;
@@ -286,7 +290,7 @@ if IsLinux && KbQueueReserve(3, 2, [])
     if charValue == -1
         % Reenable keystroke display to leave us with a
         % functional console.
-        Screen('GetMouseHelper', -11);
+        PsychHID('KeyboardHelper', -11);
         error('GetChar buffer overflow. Use "FlushEvents" to clear error');
     end
 
@@ -303,6 +307,10 @@ else
         
         % Try to reserve default keyboard queue for our exclusive use:
         if ~KbQueueReserve(1, 1, [])
+            % Ok, we have to abort here. While the same issue is only worth
+            % a warning for CharAvail and FlushEvents, it is game over for
+            % GetChar, as we must not touch a user managed kbqueue, and we
+            % can't provide any sensible behaviour if we can't do that:
             error('Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar/GetChar etc. and keyboard queues is mutually exclusive!');
         end
         

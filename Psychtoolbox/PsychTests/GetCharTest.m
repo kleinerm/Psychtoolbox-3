@@ -37,7 +37,7 @@ function GetCharTest(startAt)
 % We test for some common failings of previous implementations of
 % GetChar.  The labeling of each testing step is somewhat
 % inaccurate because
-fprintf('\nGetCharTest tests the Psychtoolbox function "GetChar". ');
+fprintf('\nGetCharTest tests the Psychtoolbox function "GetChar".\n\n');
 query=1;
 % Enable character key press listening. We use mode 2, which will
 % suppress any output to Matlabs windows.
