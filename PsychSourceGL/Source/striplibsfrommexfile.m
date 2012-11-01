@@ -40,6 +40,7 @@ if exist(filename, 'file')
     image = stripLibrary(image, 'libgfortran');
     image = stripLibrary(image, 'libz');
     image = stripLibrary(image, 'libcruft');
+    image = stripLibrary(image, 'liboctave');
 
     % Write stripped image:
     frewind(fd);
