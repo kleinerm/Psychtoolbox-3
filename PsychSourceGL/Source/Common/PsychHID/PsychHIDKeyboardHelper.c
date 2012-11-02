@@ -314,12 +314,22 @@ void ConsoleInputHelper(int ccode)
             // command prompt, waiting for user input and commands via the stdin terminal
             // input stream:
             if (listenchar_enabled > 0) {
-                // We only need to send an explicit signal on OSX. On Linux, the
-                // signal is delivered inline in the stdin character stream as ASCII
-                // code 3 (CTRL+C). On MS-Windows, it is maybe the same, maybe not, but
+                // We only need to always send an explicit signal on OSX.
+                // On Linux with Matlab, or with Octave in console mode, the signal
+                // is delivered inline in the stdin character stream as ASCII code 3
+                // (CTRL+C). On Linux with Octave's builtin QT based GUI enabled, we
+                // need to send an explicit signal, as the implementation of Octave's
+                // GUI does not send any CTRL+C signal to the interpreter inline or
+                // in any other way. Presence of the Octave QT-GUI is signalled by the
+                // GNUTERM environment variable being set to "qt".
+                //
+                // On MS-Windows, this may be the same, maybe not, but
                 // there ain't nothing we could do there if it isn't:
-                #if PSYCH_SYSTEM == PSYCH_OSX
-                kill(getpid(), SIGINT);
+                #if PSYCH_SYSTEM != PSYCH_WINDOWS
+                if ((PSYCH_SYSTEM == PSYCH_OSX) ||
+                    (getenv("GNUTERM") && strstr(getenv("GNUTERM"), "qt"))) {
+                    kill(getpid(), SIGINT);
+                }
                 #endif
             }
 
