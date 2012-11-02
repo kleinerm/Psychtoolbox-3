@@ -100,7 +100,7 @@ $matv711count = 0;
 $matv712count = 0;
 $matv713count = 0;
 $matv714count = 0;
-$matv715count = 0;
+$matv80count = 0;
 
 $octavelinuxcount = 0;
 $octaveosxcount   = 0;
@@ -237,7 +237,7 @@ foreach($uniqueptbs as $ofl) {
     if (strpos($ofl, '<ENVVERSION>7.12')) { $matv712count++; }
     if (strpos($ofl, '<ENVVERSION>7.13')) { $matv713count++; }
     if (strpos($ofl, '<ENVVERSION>7.14')) { $matv714count++; }
-    if (strpos($ofl, '<ENVVERSION>7.15')) { $matv715count++; }
+    if (strpos($ofl, '<ENVVERSION>8.0')) { $matv80count++; }
   }
 
   if (strpos($ofl, '<ENVIRONMENT>Octave')) {
@@ -432,7 +432,7 @@ print "Matlab 7.11  (R2010b)        : $matv711count<br />";
 print "Matlab 7.12  (R2011a)        : $matv712count<br />";
 print "Matlab 7.13  (R2011b)        : $matv713count<br />";
 print "Matlab 7.14  (R2012a)        : $matv714count<br />";
-print "Matlab 7.15  (R2012b)        : $matv715count<br />";
+print "Matlab 8.0   (R2012b)        : $matv80count<br />";
 
 print "<br />Number of GNU/Octave V3+ installations by system:<br /><br />";
 printf('Octave on OS/X               : %8d (%7.3f%% of all OS/X installs) <br />', $octaveosxcount, 100 * $octaveosxcount / $osxcount);
