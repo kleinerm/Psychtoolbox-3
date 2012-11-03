@@ -215,7 +215,7 @@ if ~IsLinux || ~KbQueueReserve(3, 2, [])
     if listenFlag > 1
         % Disable character forwarding to console:
         PsychHID('KeyboardHelper', -12);
-    elseif (listenFlag == 1) && IsOSX(1)
+    elseif (listenFlag == 1) && (IsOSX(1) || (IsOctave && IsGUI))
         % Enable character forwarding to the runtime/console.
         % This is special: We receive our characters via the KbQueues event
         % buffer. At the same time, the runtime receives characters via
