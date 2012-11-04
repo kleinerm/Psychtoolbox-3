@@ -945,6 +945,9 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	// sound content (ie., not simply zero silence padding frames):
 	committedFrames = 0;
 
+    // Reset number of silence frames so far:
+    silenceframes = 0;
+    
 	// NULL-out pointer to buffer with sound data to play. It will get initialized later on
 	// in PsychPAProcessSchedule():
 	playoutbuffer = NULL;
@@ -1490,14 +1493,14 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		// Store updated playposition in device structure:
 		dev->playposition = playposition;
 
-		// Update total count of emitted valid non-silence sample frames:
+		// Update total count of emitted sample frames during this callback by number of non-silence frames:
 		committedFrames += i / outchannels;
 
 		// Compute output time of last outputted sample from this iteration:
 		dev->currentTime = firstsampleonset + ((double) committedFrames / (double) dev->streaminfo->sampleRate);
 
 		// Update total count of emitted samples since start of playback:
-		dev->totalplaycount+= committedFrames * outchannels;
+		dev->totalplaycount+= (committedFrames - silenceframes) * outchannels;
 		
 		// Another end-of-playback check:
 		if (parc > 0) {
