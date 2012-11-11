@@ -1,8 +1,8 @@
 function PsychPortAudioDataPixxTimingTest(waitTime, exactstart, deviceid, latbias, triggerLevel)
 % PsychPortAudioDataPixxTimingTest([waitTime = 1][, exactstart=1][, deviceid=-1][, latbias=0][, triggerLevel=0.01])
 %
-% Test script for sound onset timing reliability and sound onset
-% latency of the PsychPortAudio sound driver.
+% Test script for sound onset timing reliability and sound onset latency of
+% the PsychPortAudio sound driver.
 %
 % This script configures the driver for low latency and high timing
 % precision, then executes ten trials where it tries to emit a beep sound,
@@ -17,8 +17,6 @@ function PsychPortAudioDataPixxTimingTest(waitTime, exactstart, deviceid, latbia
 %
 % Some parameters may need tweaking, especially the 'triggerLevel'
 % parameter.
-%
-% This is early alpha code, expect some rough edges...
 %
 % Optional parameters:
 %
@@ -37,8 +35,10 @@ function PsychPortAudioDataPixxTimingTest(waitTime, exactstart, deviceid, latbia
 %                Unit is seconds. Defaults to zero.
 %
 % 'triggerLevel' = Sound signal amplitude for DataPixx to detect sound
-%                  onset. Defaults to 0.01 = 1% of max amplitude. This will
-%                  likely need tweaking on your setup.
+%                  onset. Defaults to 0.01 = 1% of max amplitude if
+%                  exactstart == 0, otherwise it is auto-detected by
+%                  calibration. This will likely need tweaking on your
+%                  setup.
 %
 
 nTrials = 10;
@@ -122,7 +122,12 @@ buffersize = 0;     % Pointless to set this. Auto-selected to be optimal.
 suggestedLatencySecs = [];
 
 if IsWin
+    % Hack to accomodate bad Windows systems or sound cards. By default,
+    % the more aggressive default setting of something like 5 msecs can
+    % cause sound artifacts on cheaper / less pro sound cards:
     suggestedLatencySecs = 0.015 %#ok<NOPRT>
+    fprintf('Choosing a high suggestedLatencySecs setting of 15 msecs to account for shoddy Windows operating system.\n');
+    fprintf('For low-latency applications, you may want to tweak this to lower values if your system works better than average timing-wise.\n');
 end
 
 % Needs to determined via measurement once for each piece of audio
@@ -138,8 +143,8 @@ if isempty(latbias)
     latbias = 0;
 end
 
-if nargin < 5 || isempty(triggerLevel)
-    triggerLevel = 0.01;
+if nargin < 5
+    triggerLevel = [];
 end
 
 % Open audio device for low-latency output:
@@ -157,6 +162,16 @@ mynoise(2,:) = mynoise(1,:);
 % Fill buffer with data:
 PsychPortAudio('FillBuffer', pahandle, mynoise);
 
+% Perform one warmup trial, to get the sound hardware fully up and running,
+% performing whatever lazy initialization only happens at real first use.
+% This "useless" warmup will allow for lower latency for start of playback
+% during actual use of the audio driver in the real trials:
+PsychPortAudio('Start', pahandle, 1, 0, 1);
+PsychPortAudio('Stop', pahandle, 1);
+
+% Ok, now the audio hardware is fully initialized and our driver is on
+% hot-standby, ready to start playback of any sound with minimal latency.
+
 % Switch to realtime scheduling at maximum allowable Priority:
 Priority(MaxPriority(0));
 
@@ -168,39 +183,47 @@ DatapixxAudioKey('Open', 96000, 0, 2, 1);
 % Check settings by printing them:
 dpixstatus = Datapixx('GetMicrophoneStatus') %#ok<NOPRT,NASGU>
 
-% Triggerlevel for DataPixx sound onset detection:
-fprintf('Using a trigger level for DataPixx of %f. This may need tweaking by you...\n', triggerLevel);
-DatapixxAudioKey('TriggerLevel', triggerLevel);
+% Auto-Selection of triggerLevel for Datapixx timestamping requested?
+if exactstart && isempty(triggerLevel)
+    % Use auto-trigger mode. Tell the function how long the silence
+    % interval at start of each trial is expected to be. This will be
+    % used for calibration: We set it to 75% of the duration of the pause
+    % between start of Datapixx recording and scheduled sound onset time:
+    DatapixxAudioKey('AutoTriggerLevel', waitTime * 0.75);
+    fprintf('Setting lead time of silence in Datapixx auto-trigger mode to %f msecs.\n', waitTime * 0.75 * 1000);    
+else
+    % Triggerlevel for DataPixx sound onset detection:
+    if isempty(triggerLevel)
+        % Default to 1%:
+        triggerLevel = 0.01;
+    end
+    
+    fprintf('Using a trigger level for DataPixx of %f. This may need tweaking by you...\n', triggerLevel);
+    DatapixxAudioKey('TriggerLevel', triggerLevel);
+end
 
 % Wait for keypress.
 fprintf('\n\nPress any key to start measurement.\n\n');
 KbStrokeWait;
 
 % nTrials measurement trials:
-for i=1:nTrials
-    % Start the playback engine with an infinite start deadline, ie.,
-    % start hardware, but don't play sound:
-    PsychPortAudio('Start', pahandle, 1, inf, 0);
-
-    % Wait a bit, say 100 msecs, so hardware is certainly running and settled:
-    WaitSecs(0.1);
-    
+for i=1:nTrials    
     % Start audio capture on DataPixx now. Return true 'tStartBox'
     % timestamp of start in box clock time:
     tStartBox = DatapixxAudioKey('CaptureNow');
     
     if exactstart
         % Schedule start of audio at exactly 'waitTime' seconds ahead:
-        PsychPortAudio('RescheduleStart', pahandle, GetSecs + waitTime, 0);
+        PsychPortAudio('Start', pahandle, 1, GetSecs + waitTime, 0);
     else
         % No test of scheduling, but of absolute latency: Start audio
         % playback immediately:
-        PsychPortAudio('RescheduleStart', pahandle, 0, 0);
+        PsychPortAudio('Start', pahandle, 1, 0, 0);
     end
 
     if 0
         % Spin-Wait until hw reports the first sample is played...
-        offset = 0;
+        offset = 0; %#ok<*UNRCH>
         while offset == 0
             status = PsychPortAudio('GetStatus', pahandle);
             offset = status.PositionSecs;
@@ -214,7 +237,7 @@ for i=1:nTrials
     end
     
     % Retrieve true delay from DataPixx measurement and stop recording on the device:
-    [audiodata, measuredAudioDelta] = DatapixxAudioKey('GetResponse', waitTime + 1, [], 1);
+    [audiodata, measuredAudioDelta] = DatapixxAudioKey('GetResponse', waitTime + 1, [], 1); %#ok<*ASGLU>
 
     % Compute expected delay based on audio onset time as predicted/measured by
     % PsychPortAudio:
