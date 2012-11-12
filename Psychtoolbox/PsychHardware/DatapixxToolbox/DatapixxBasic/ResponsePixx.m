@@ -536,7 +536,10 @@ function cmdStr = buildRPixxCommand(rpixstatus, startLogging, clearLog, buttonLi
     
     if ~isempty(buttonLightState)
         % Setup output state for button lights:
-        v = sum(buttonLightState .* [2^16, 2^17, 2^18, 2^19, 2^20]);
+        v = 0;
+        for j=1:rpixstatus.nrButtons
+            v = v + (buttonLightState(j) * 2^(15+j));
+        end
         cmdStr = [ cmdStr sprintf('Datapixx(''SetDinDataOut'', %i); ', v) ];
     end
     
