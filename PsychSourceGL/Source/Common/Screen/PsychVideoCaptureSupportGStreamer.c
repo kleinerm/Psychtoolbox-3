@@ -2010,9 +2010,11 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     PsychInitCondition(&vidcapRecordBANK[slotid].condition, NULL);
     
     // Try to open and initialize camera according to given settings:
-    // Create video capture pipeline with camerabin plugin:
+    // Create video capture pipeline with camerabin plugin, unless this
+    // is forcefully disabled by setting the env variable "PSYCH_FORCE_CAMERABIN2":
     usecamerabin = 1;
-    camera = gst_element_factory_make ("camerabin", "ptbvideocapturepipeline");
+    if (!getenv("PSYCH_FORCE_CAMERABIN2")) camera = gst_element_factory_make ("camerabin", "ptbvideocapturepipeline");
+
     if (NULL == camera) {
         // Failed to create camerabin plugin. Retry with new camerabin2:
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Failed to create camerabin plugin. Retrying with camerabin2 ...\n");
