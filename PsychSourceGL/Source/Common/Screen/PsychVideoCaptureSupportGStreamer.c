@@ -972,6 +972,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 
 psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int* width, int* height, double* fps, int reqdepth)
 {
+    GstElement      *videowrappersource = NULL;
 	GstCaps         *caps = NULL;
 	GstStructure	*str;
 	gint			qwidth, qheight;
@@ -988,13 +989,19 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
 		return(FALSE);
 	}
 
-	// Camerabin, we can actually enumerate and match.
+	// Camerabin in use, we can actually enumerate and match.
 
 	// Query caps of videosource and extract supported video capture modes:
-	g_object_get(G_OBJECT(capdev->camera), (usecamerabin == 1) ? "video-source-caps" : "video-capture-supported-caps", &caps, NULL);
-
-    // Retry on failure if camerabin2 in use:
-    if ((caps == NULL) && (usecamerabin == 2)) g_object_get(G_OBJECT(capdev->camera), "video-capture-caps", &caps, NULL);
+    if (usecamerabin == 1) {
+        // Camerabin1:
+        g_object_get(G_OBJECT(capdev->camera), "video-source-caps", &caps, NULL);
+    }
+    else {
+        // Camerabin2: FIXME - Doesn't work at all, as preview-caps are NULL, video-source-caps don't exist,
+        // and camerabin2 itself only reports ANY_CAPS and nothing else as capture-caps, which is quite useless...
+        g_object_get(G_OBJECT(capdev->camera), "camera-source", &videowrappersource, NULL);
+        g_object_get(G_OBJECT(videowrappersource), "preview-caps", &caps, NULL);
+    }
 
 	if (caps) {
 		if (PsychPrefStateGet_Verbosity() > 4)
@@ -1889,6 +1896,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	GstElement              *videosource = NULL;
 	GstElement              *videosource_filter = NULL;
 	GstElement              *videocrop_filter = NULL;
+    GstElement              *videowrappersrc = NULL;
 	GstPad			*pad, *peerpad;
 	GstCaps                 *caps;
 	GstStructure		*str;
@@ -2279,7 +2287,16 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		g_object_set(G_OBJECT(videosource), "do-timestamp", 1, NULL);
 
 		// Assign video source to pipeline:
-		g_object_set(camera, (usecamerabin == 1) ? "video-source" : "camera-source", videosource, NULL);
+        if (usecamerabin == 1) {
+            // Attach directly to camerabin aka camerabin1:
+            g_object_set(camera, "video-source", videosource, NULL);
+        }
+        else {
+            // Attach indirectly to camerabin2 via a camerawrappersrc:
+            videowrappersrc = gst_element_factory_make ("wrappercamerabinsrc", "ptbwrappervideosrc0");
+            g_object_set(videowrappersrc, "video-source", videosource, NULL);
+            g_object_set(camera, "camera-source", videowrappersrc, NULL);
+        }
 	}
 
     // Assign message context, message bus and message callback for
@@ -2557,11 +2574,11 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    if ((twidth != -1) && (theight != -1)) {
             // Yes. Validate and request it.
             
-            // The usual Windows crap. Enumeration of supported resolutions doesn't work, so
-            // we skip validation and trust blindly that the usercode is right if this is the
-            // DirectShow video source. Ditto for autovideosrc and videotestsrc:
+            // The usual crap. Enumeration of supported resolutions doesn't work with various video sources, so
+            // we skip validation and trust blindly that the usercode is right if this is one of the non-enumerating
+            // video sources. Ditto for camerabin2 at the moment:
             if (!strstr(plugin_name, "dshowvideosrc") && !strstr(plugin_name, "autovideosrc") && !strstr(plugin_name, "videotestsrc") &&
-                !strstr(plugin_name, "aravissrc")) {
+                !strstr(plugin_name, "aravissrc") && (usecamerabin !=2)) {
                 // Query camera if it supports the requested resolution:
                 capdev->fps = -1;
                 if (!PsychGSGetResolutionAndFPSForSpec(capdev, &twidth, &theight, &capdev->fps, reqdepth)) {
@@ -2589,9 +2606,9 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             capdev->height = -1;
             capdev->fps = -1;
 
-            // Auto-Detection doesn't work with Windows DirectShow video plugin :-( Skip it. Ditto for autovideosrc and videotestsrc:
+            // Auto-Detection doesn't work with various video source plugins and with camerabin2 - Skip it and hope that later probing code will do the job:
             if (!strstr(plugin_name, "dshowvideosrc") && !strstr(plugin_name, "autovideosrc") && !strstr(plugin_name, "videotestsrc") &&
-                !strstr(plugin_name, "aravissrc")) {
+                !strstr(plugin_name, "aravissrc") && (usecamerabin !=2)) {
                 // Ask camera to provide auto-detected parameters:
                 if (!PsychGSGetResolutionAndFPSForSpec(capdev, &capdev->width, &capdev->height, &capdev->fps, reqdepth)) {
                     // Unsupported resolution. Game over!
@@ -2884,7 +2901,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
     // Assign our first guess on video device resolution, only already
     // setup by detection code above:
-    if ((capdev->width == 0) && (capdev->height)) {
+    if ((capdev->width == 0) && (capdev->height == 0)) {
         capdev->width = width;
         capdev->height = height;
     }
@@ -2918,9 +2935,13 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 			  NULL);
 	    capdev->videoenc = NULL;
     } else {
-	    g_object_get (G_OBJECT(camera),
-			  (usecamerabin == 1) ? "video-source" : "camera-source", &videosource,
-			  NULL);
+        if (usecamerabin == 1) {
+            g_object_get (G_OBJECT(camera), "video-source", &videosource, NULL);
+        }
+        else {
+            g_object_get (G_OBJECT(videowrappersrc), "video-source", &videosource, NULL);
+        }
+        
         if (usecamerabin == 1) {
             g_object_get (G_OBJECT(camera),
                   "video-encoder", &capdev->videoenc,
