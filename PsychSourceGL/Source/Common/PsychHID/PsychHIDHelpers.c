@@ -458,6 +458,28 @@ void PsychHIDVerifyInit(void)
     
     // Verify no security sensitive application is blocking our low-level access to HID devices:
 	PsychHIDWarnInputDisabled(NULL);
+    
+    #if defined(__LP64__)
+    // Try to load all bundles from Psychtoolbox/PsychHardware/
+    // This loads the HID_Utilities.framework bundle if it is present. The whole point of it is
+    // to allow our statically compiled-in version of the library to find the location of
+    // the XML file with the database of (vendorId, productId) -> (VendorName, ProductName) and
+    // (usagePage, usage) -> (usageName) mappings.
+    //
+    // In practice, the XML file only serves as a fallback, and one that doesn't contain much
+    // useful info for mainstream products, only for a few niche products. Given its limited
+    // value, i think we can refrain from shipping the framework as part of Psychtoolbox and
+    // just provide the option to use it (== its XML file) if users decide to install it themselves.
+    char tmpString[1024];
+    
+    sprintf(tmpString, "%sPsychHardware/", PsychRuntimeGetPsychtoolboxRoot(FALSE));
+    CFStringRef urlString = CFStringCreateWithCString(kCFAllocatorDefault, tmpString, kCFStringEncodingASCII);
+    CFURLRef directoryURL = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, urlString, kCFURLPOSIXPathStyle, false);
+    CFRelease(urlString);
+    CFArrayRef bundleArray = CFBundleCreateBundlesFromDirectory(kCFAllocatorDefault, directoryURL, NULL);
+    CFRelease(directoryURL);
+    CFRelease(bundleArray);    
+    #endif
 }
 
 /*
