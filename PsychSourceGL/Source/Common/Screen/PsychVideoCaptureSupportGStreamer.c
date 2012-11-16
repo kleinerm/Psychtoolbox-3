@@ -972,7 +972,6 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 
 psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int* width, int* height, double* fps, int reqdepth)
 {
-    GstElement      *videowrappersource = NULL;
 	GstCaps         *caps = NULL;
 	GstStructure	*str;
 	gint			qwidth, qheight;
@@ -997,10 +996,8 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
         g_object_get(G_OBJECT(capdev->camera), "video-source-caps", &caps, NULL);
     }
     else {
-        // Camerabin2: FIXME - Doesn't work at all, as preview-caps are NULL, video-source-caps don't exist,
-        // and camerabin2 itself only reports ANY_CAPS and nothing else as capture-caps, which is quite useless...
-        g_object_get(G_OBJECT(capdev->camera), "camera-source", &videowrappersource, NULL);
-        g_object_get(G_OBJECT(videowrappersource), "preview-caps", &caps, NULL);
+        // Camerabin2:
+        g_object_get(G_OBJECT(capdev->camera), "viewfinder-supported-caps", &caps, NULL);        
     }
 
 	if (caps) {
@@ -1015,8 +1012,7 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
 			gst_structure_get_int(str, "height", &qheight);
 			gst_structure_get_int(str, "bpp", &qbpp);
 			gst_structure_get_fraction(str, "framerate", &rate1, &rate2);
-			// if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Videosource cap %i: w = %i h = %i fps = %f\n", i, qwidth, qheight, (float) rate1 / (float) rate2);
-			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Videosource cap %i: w = %i h = %i.\n", i, qwidth, qheight);
+			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Videosource cap %i: w = %i h = %i\n", i, qwidth, qheight);
 
 			// Check for matching pixel color resolution, reject too low modes:
 			// TODO: Not yet implemented, don't know if it makes sense at all, as the
@@ -2487,9 +2483,12 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    if (!capdev->recording_active) {
 		    // Pure video capture, no recording: Optimize pipeline for this case:
 		    g_object_set(G_OBJECT(camera),
-				 "flags", 1+2+4,
-                 (usecamerabin == 1) ? "filter-caps" : "viewfinder-caps", colorcaps,
-				 NULL);
+                         "flags", 1+2+4,
+                         NULL);
+            
+            // Setup colorcaps for camerabin1, do it later for camerabin2:
+            if (usecamerabin == 1) g_object_set(G_OBJECT(camera), "filter-caps", colorcaps, NULL);
+            
 	    } else {
 		    // Video recording (with optional capture). Setup pipeline:
             if (usecamerabin == 1) {
@@ -2576,9 +2575,9 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             
             // The usual crap. Enumeration of supported resolutions doesn't work with various video sources, so
             // we skip validation and trust blindly that the usercode is right if this is one of the non-enumerating
-            // video sources. Ditto for camerabin2 at the moment:
+            // video sources:
             if (!strstr(plugin_name, "dshowvideosrc") && !strstr(plugin_name, "autovideosrc") && !strstr(plugin_name, "videotestsrc") &&
-                !strstr(plugin_name, "aravissrc") && (usecamerabin !=2)) {
+                !strstr(plugin_name, "aravissrc")) {
                 // Query camera if it supports the requested resolution:
                 capdev->fps = -1;
                 if (!PsychGSGetResolutionAndFPSForSpec(capdev, &twidth, &theight, &capdev->fps, reqdepth)) {
@@ -2589,10 +2588,17 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             }
             
             // Resolution supported. Request it:
-            g_object_set(G_OBJECT(camera),
-                         "video-capture-width", twidth,
-                         "video-capture-height", theight,
-                         NULL);
+            if (usecamerabin == 1) {
+                g_object_set(G_OBJECT(camera),
+                             "video-capture-width", twidth,
+                             "video-capture-height", theight,
+                             NULL);
+            }
+            else {
+                // Setup colorcaps for camerabin2:
+                gst_caps_set_simple(colorcaps, "width", G_TYPE_INT, twidth, "height", G_TYPE_INT, theight, NULL);
+                g_object_set(G_OBJECT(camera), "viewfinder-caps", colorcaps, NULL);
+            }
             
             // Assign requested and validated resolution as capture resolution of video source:
             capdev->width = twidth;
@@ -2606,9 +2612,9 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             capdev->height = -1;
             capdev->fps = -1;
 
-            // Auto-Detection doesn't work with various video source plugins and with camerabin2 - Skip it and hope that later probing code will do the job:
+            // Auto-Detection doesn't work with various video source plugins. Skip it and hope that later probing code will do the job:
             if (!strstr(plugin_name, "dshowvideosrc") && !strstr(plugin_name, "autovideosrc") && !strstr(plugin_name, "videotestsrc") &&
-                !strstr(plugin_name, "aravissrc") && (usecamerabin !=2)) {
+                !strstr(plugin_name, "aravissrc")) {
                 // Ask camera to provide auto-detected parameters:
                 if (!PsychGSGetResolutionAndFPSForSpec(capdev, &capdev->width, &capdev->height, &capdev->fps, reqdepth)) {
                     // Unsupported resolution. Game over!
@@ -2617,10 +2623,17 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                 }
                 
                 // Resolution supported. Request it:
-                g_object_set(G_OBJECT(camera),
-                             "video-capture-width", capdev->width,
-                             "video-capture-height", capdev->height,
-                             NULL);
+                if (usecamerabin == 1) {
+                    g_object_set(G_OBJECT(camera),
+                                 "video-capture-width", capdev->width,
+                                 "video-capture-height", capdev->height,
+                                 NULL);
+                }
+                else {
+                    // Setup colorcaps for camerabin2:
+                    gst_caps_set_simple(colorcaps, "width", G_TYPE_INT, capdev->width, "height", G_TYPE_INT, capdev->height, NULL);
+                    g_object_set(G_OBJECT(camera), "viewfinder-caps", colorcaps, NULL);
+                }
             }
             else {
                 // Directshow source. Set "don't know" values and hope the fallback code below
@@ -3154,10 +3167,12 @@ int PsychGSDrainBufferQueue(PsychVidcapRecordType* capdev, int numFramesToDrain,
 */
 int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime)
 {
-	GstElement		*camera = NULL;
+	GstElement              *camera = NULL;
 	GstBuffer               *videoBuffer = NULL;
 	GValue                  fRate = { 0, };
 	guint64                 nrInFrames, nrOutFrames, nrDroppedFrames, nrDuplicatedFrames;
+    GstCaps                 *caps = NULL;
+    GstCaps                 *capsi = NULL;
 	int dropped = 0;
 	int drainedCount;
 	float framerate = 0;
@@ -3199,6 +3214,26 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 				PsychErrorExitMsg(PsychError_user, "Failure in pipeline transition null -> ready - Start of video capture failed!");
 			}
 
+            if (usecamerabin == 2) {
+                // Camerabin 2:
+                // Modify caps for camerabin2 - Set a framerate property matching our requirements:
+                g_object_get(G_OBJECT(camera), "viewfinder-caps", &capsi, NULL);
+                caps = gst_caps_copy(capsi);
+                gst_caps_unref(capsi);
+                
+                g_object_get(G_OBJECT(camera), "viewfinder-supported-caps", &capsi, NULL);
+                int idx, fps_n, fps_d;
+                for (idx = 0; idx < (int) gst_caps_get_size(capsi); idx++) {
+                    GstStructure *capsstruct = gst_caps_get_structure (capsi, idx);
+                    if (gst_structure_get_fraction (capsstruct, "framerate", &fps_n, &fps_d)) printf("%i : FPS %f Hz.\n", idx, fps_n / fps_d);
+                }
+                gst_caps_unref(capsi);
+                
+                if (capturerate < DBL_MAX) gst_caps_set_simple(caps, "framerate", GST_TYPE_FRACTION, (int)(capturerate + 0.5), 1, NULL);
+                g_object_set(G_OBJECT(camera), "viewfinder-caps", caps, NULL);
+                gst_caps_unref(caps);
+            }
+
 			if (!PsychVideoPipelineSetState(camera, GST_STATE_PAUSED, 10.0)) {
 				// Failed!
 				PsychGSProcessVideoContext(capdev->VideoContext, FALSE);
@@ -3209,12 +3244,15 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 		// Setup of capture framerate & resolution:
 		if (usecamerabin) {
 			// Set requested capture/recording video resolution and framerate:
-			// Map special capturerate value DBL_MAX to a fps nominator of zero. This
-			// asks the engine to capture at the maximum supported framerate for given
-			// format and resolution:
-			g_signal_emit_by_name (G_OBJECT(camera),
-					       "set-video-resolution-fps", capdev->width, capdev->height,
-					       ((capturerate < DBL_MAX) ? (int)(capturerate + 0.5) : 0), 1);
+            if (usecamerabin == 1) {
+                // Camerabin 1:
+                // Map special capturerate value DBL_MAX to a fps nominator of zero. This
+                // asks the engine to capture at the maximum supported framerate for given
+                // format and resolution:
+                g_signal_emit_by_name (G_OBJECT(camera),
+                                       "set-video-resolution-fps", capdev->width, capdev->height,
+                                       ((capturerate < DBL_MAX) ? (int)(capturerate + 0.5) : 0), 1);
+            }
 		}
 		else {
 			// Set playback rate in non camerabin configuration:
