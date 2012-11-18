@@ -346,12 +346,12 @@ end
 if ~isfield(options,'channel')
     options.channel=[];
 elseif Is1608
-    warning('"channel" is not a useable option for USB-1608FS and will be ignored.');
+    warning('Psych:Daq:UnusedOption', '"channel" is not a useable option for USB-1608FS and will be ignored.');
 end
 if ~isfield(options,'range')
     options.range=[];
 end
-if ~Is1608 & length(options.channel)~=length(options.range)
+if ~Is1608 && length(options.channel)~=length(options.range)
     error('"options.channel" and "options.range" vectors must be of the same length.');
 end
 if Is1608
@@ -397,7 +397,7 @@ if ~isfield(options,'queue')
     options.queue=channelRangeOk;
 elseif Is1608
     options.queue = 0;
-    warning('"queue" option has no meaning for USB-1608FS, so will be ignored');
+    warning('Psych:Daq:UnusedOption', '"queue" option has no meaning for USB-1608FS, so will be ignored');
 end
 if options.queue~=channelRangeOk
     error('options.queue setting inconsistent with other parameters. Let us set it for you.');
@@ -411,7 +411,7 @@ if ~isfield(options,'sendChannelRange')
         options.sendChannelRange=channelRangeOk;
     end
 elseif Is1608
-    warning('"sendChannelRange" has no meaning for USB-1608FS, so will be ignored.');
+    warning('Psych:Daq:UnusedOption', '"sendChannelRange" has no meaning for USB-1608FS, so will be ignored.');
 end
 if ~Is1608 && (options.sendChannelRange && ~channelRangeOk)
     error('You are not supplying channel and range, so you can''t send them. Omit options.sendChannelRange.');
@@ -507,7 +507,7 @@ if Is1608
     % How many channels?
     c = options.LastChannel-options.FirstChannel+1;
     if length(options.range) ~= c && ~ismember(numel(options.range),0:1)
-        error(sprintf('Specified length of range is %d and number of channels is %d',length(options.range),options.LastChannel-options.FirstChannel+1));
+        error('Specified length of range is %d and number of channels is %d',length(options.range),options.LastChannel-options.FirstChannel+1);
     end
     if isempty(options.range)
         PrefsNotFound = 1;
@@ -597,7 +597,7 @@ if options.begin
     end
     report=uint8(zeros(1,11));
     report(1)=17;
-    if Is1608 | ~options.queue
+    if Is1608 || ~options.queue
         report(2) = options.FirstChannel;
         report(3) = options.LastChannel;
     end
@@ -634,7 +634,6 @@ if options.continue
     % interrupt IN endpoints in interfaces 1-3 as input reports with a
     % report ID of 0. The last two bytes are a sequential index,
     % "reports.serial".
-    data=[];
     if isfinite(options.count)
         while GetSecs<start+options.count/options.f+0.02;
             for d=IndexRange % Interfaces 1,2,3 (1208FS) or 1:6 (1608FS)
@@ -690,13 +689,19 @@ if options.end || (isfield(options, 'livedata') && options.livedata)
         end
         for d=IndexRange
             err=PsychHID('ReceiveReports',daq+d);
+            if err.n
+                fprintf('AInScan DeviceIndex %d, ReceiveReports error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
+            end
             [reports,err]=PsychHID('GiveMeReports',daq+d);
+            if err.n
+                fprintf('AInScan DeviceIndex %d, GiveMeReports error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
+            end
             if isfinite(options.count)
                 if ~isempty(reports)
                     fprintf('WARNING: received %d post-deadline reports from DeviceIndex %d.\n',length(reports),daq+d);
                 end
             else
-                r=[r reports];
+                r=[r reports]; %#ok<*AGROW>
             end
             err=PsychHID('ReceiveReportsStop',daq+d);
             if err.n
@@ -747,7 +752,7 @@ if options.end || (isfield(options, 'livedata') && options.livedata)
             diffindex = diff(r);
             % I think the index math is such that this will always be
             % length(reports)-1, but to be safe:
-            BadOne = r(find(diffindex > 1));
+            BadOne = r(find(diffindex > 1)); %#ok<*FNDSB>
             fprintf('\n1 report discarded (%d reports received, but report(s) missed after report %d).\n', ...
                 length(InitReports),BadOne);
         else
@@ -830,7 +835,7 @@ if options.end || (isfield(options, 'livedata') && options.livedata)
     data=reshape(data,c,options.count)';
     
     range=ones([1 size(data,2)]);
-    if length(options.range)>0
+    if ~isempty(options.range)
         if length(options.range)~=size(data,2)
             error('Wrong length of "options.range" vector.');
         end
@@ -892,7 +897,7 @@ if options.end || (isfield(options, 'livedata') && options.livedata)
                         MostRecentPolyFit = CalData(GoodIndices(AllThatDay(end)),3:5);
                         
                         if DaysSinceLast > 30
-                            warning('Calibration of channel %d has not been performed since %s!!',TheChannels(k),datestr(TheDays(BestIndex)));
+                            warning('Psych:Daq:CalibOutdated', 'Calibration of channel %d has not been performed since %s!!',TheChannels(k),datestr(TheDays(BestIndex)));
                         end
                         
                         data(:,k) = polyval(MostRecentPolyFit,data(:,k));
@@ -902,7 +907,7 @@ if options.end || (isfield(options, 'livedata') && options.livedata)
             end % if isfield(DaqVars,'CalData')
         end % if exist([Preferences file])
         if any(DataUncalibrated)
-            warning('It looks like some of your channels have not been calibrated.');
+            warning('Psych:Daq:CalibMissing', 'It looks like some of your channels have not been calibrated.');
             TheIndices = find(DataUncalibrated);
             if length(TheIndices) == 1
                 fprintf('I did not find calibration data for channel %d.\n\n',TheChannels(find(DataUncalibrated)));
