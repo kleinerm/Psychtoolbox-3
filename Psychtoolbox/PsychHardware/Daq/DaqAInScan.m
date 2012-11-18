@@ -438,7 +438,6 @@ end
 % or DaqAInScanEnd.  Keeping these persistent means they will remain even when
 % options.begin = 0
 persistent start;
-persistent dinc;
 persistent IndexRange;
 
 if options.begin
@@ -475,27 +474,26 @@ if options.begin
         AllSNs = strvcat(AllHIDDevices.serialNumber);
         InterfaceInds = strmatch(SN,AllSNs);
         if length(InterfaceInds) ~= 7 || ~all(InterfaceInds' == (daq-6):daq)
-            ConfirmInfo('Not all interfaces found.  Run "help DaqReset" for suggestions.');
-            data = [];
-            params = [];
-            return;
+            error('Not all interfaces found.  Run "help DaqReset" for suggestions.');
         end
         IndexRange = -1:-1:-6;
     else
-        for dinc=[-1 1]
-            if daq+dinc>=1 && daq+dinc<=length(AllHIDDevices) && (AllHIDDevices(daq+dinc).outputs==65 || AllHIDDevices(daq+dinc).outputs==1)
-                break
-            else
-                dinc=[];
-            end
+        % Find all other interfaces of device 'daq', by looking for devices
+        % with the same serial number:
+        SN = AllHIDDevices(daq).serialNumber;
+        AllSNs = strvcat(AllHIDDevices.serialNumber);
+        InterfaceInds = strmatch(SN,AllSNs);
+        if length(InterfaceInds) ~= 4
+            error('Not all interfaces found.  Run "help DaqReset" for suggestions.');
         end
         
-        if AllHIDDevices(daq).outputs<70 || isempty(dinc) || ~streq(AllHIDDevices(daq).serialNumber,AllHIDDevices(daq+dinc).serialNumber)
-            error(sprintf('Invalid device, not the original USB-1208FS.'));
-        end
+        % Throw out the primary interface with index 'daq':
+        InterfaceInds = InterfaceInds(find(InterfaceInds ~= daq)); 
         
-        IndexRange = (1:3)*dinc;
+        % Convert to indices/range relative to 'daq', as needed later on:
+        IndexRange = InterfaceInds - daq;
     end
+    
     % Flush any stale reports.
     for d=IndexRange % Interfaces 1,2,3 (1208FS) or 1:6 (1608FS)
         err=PsychHID('ReceiveReports',daq+d);
