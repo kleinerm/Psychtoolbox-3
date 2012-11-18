@@ -638,13 +638,12 @@ if options.continue
     % report ID of 0. The last two bytes are a sequential index,
     % "reports.serial".
     if isfinite(options.count)
-        while GetSecs<start+options.count/options.f+0.02;
-            for d=IndexRange % Interfaces 1,2,3 (1208FS) or 1:6 (1608FS)
-                % Tell PsychHID to receive reports, storing them internally.
-                err=PsychHID('ReceiveReports',daq+d,options);
-                if err.n
-                    fprintf('AInScan DeviceIndex %d, ReceiveReports error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
-                end
+        % Perform exactly one pass per interface:
+        for d=IndexRange % Interfaces 1,2,3 (1208FS) or 1:6 (1608FS)
+            % Tell PsychHID to receive reports, storing them internally.
+            err=PsychHID('ReceiveReports',daq+d,options);
+            if err.n
+                fprintf('AInScan DeviceIndex %d, ReceiveReports error 0x%s. %s: %s\n',daq+d,hexstr(err.n),err.name,err.description);
             end
         end
     else % isfinite(options.count)
