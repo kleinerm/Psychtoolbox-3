@@ -302,7 +302,12 @@ function [data,params]=DaqAInScan(daq,options)
 % MPR changed number of outputs so that this function would work with a
 % USB-1608FS under Leopard.
 
-AllHIDDevices = PsychHID('devices');
+% Perform internal caching of list of HID devices to speedup call:
+persistent AllHIDDevices;
+if isempty(AllHIDDevices)
+    AllHIDDevices = PsychHID('Devices');
+end
+
 if strcmp(AllHIDDevices(daq).product(5:6),'16')
     Is1608 = 1;
     
