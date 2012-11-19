@@ -3173,6 +3173,7 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 	guint64                 nrInFrames, nrOutFrames, nrDroppedFrames, nrDuplicatedFrames;
     GstCaps                 *caps = NULL;
     GstCaps                 *capsi = NULL;
+    int                     idx, fps_n, fps_d;
 	int dropped = 0;
 	int drainedCount;
 	float framerate = 0;
@@ -3222,7 +3223,6 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 gst_caps_unref(capsi);
                 
                 g_object_get(G_OBJECT(camera), "viewfinder-supported-caps", &capsi, NULL);
-                int idx, fps_n, fps_d;
                 for (idx = 0; idx < (int) gst_caps_get_size(capsi); idx++) {
                     GstStructure *capsstruct = gst_caps_get_structure (capsi, idx);
                     if (gst_structure_get_fraction (capsstruct, "framerate", &fps_n, &fps_d)) printf("%i : FPS %f Hz.\n", idx, fps_n / fps_d);
