@@ -482,7 +482,7 @@ if options.begin
         % with the same serial number:
         SN = AllHIDDevices(daq).serialNumber;
         AllSNs = strvcat(AllHIDDevices.serialNumber);
-        InterfaceInds = strmatch(SN,AllSNs);
+        InterfaceInds = transpose(strmatch(SN,AllSNs));
         if length(InterfaceInds) ~= 4
             error('Not all interfaces found.  Run "help DaqReset" for suggestions.');
         end
