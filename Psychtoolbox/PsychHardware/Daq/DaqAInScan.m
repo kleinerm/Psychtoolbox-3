@@ -470,8 +470,8 @@ if options.begin
     % -- mpr
     
     if Is1608
-        SN = AllHIDDevices(daq).serialNumber;
-        AllSNs = strvcat(AllHIDDevices.serialNumber);
+        SN = AllHIDDevices(daq).product;
+        AllSNs = strvcat(AllHIDDevices.product);
         InterfaceInds = strmatch(SN,AllSNs);
         if length(InterfaceInds) ~= 7 || ~all(InterfaceInds' == (daq-6):daq)
             error('Not all interfaces found.  Run "help DaqReset" for suggestions.');
@@ -480,8 +480,8 @@ if options.begin
     else
         % Find all other interfaces of device 'daq', by looking for devices
         % with the same serial number:
-        SN = AllHIDDevices(daq).serialNumber;
-        AllSNs = strvcat(AllHIDDevices.serialNumber);
+        SN = AllHIDDevices(daq).product;
+        AllSNs = strvcat(AllHIDDevices.product);
         InterfaceInds = transpose(strmatch(SN,AllSNs));
         if length(InterfaceInds) ~= 4
             error('Not all interfaces found.  Run "help DaqReset" for suggestions.');
