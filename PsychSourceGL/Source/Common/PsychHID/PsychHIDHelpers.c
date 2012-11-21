@@ -915,7 +915,7 @@ void PsychHIDVerifyInit(void)
                 busId = 0;
                 devId = (int) hid_dev;
                 if (strstr(hid_dev->path, "{")) sscanf(strstr(hid_dev->path, "{"), "{%x-%x", &busId, &devId);
-                currentDevice->locID = (double) ((busId << 32) + (devId << 0));
+                currentDevice->locID = (double) (((psych_uint64) busId << 32) + devId);
             }
 
             // Interface number is great for identifying DAQ devices, but not available
