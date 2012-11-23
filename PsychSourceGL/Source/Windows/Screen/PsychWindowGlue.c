@@ -990,45 +990,54 @@ dwmdontcare:
 		}
     }
 
-	 // Special case for explicit multi-display setup under Windows when opening a window on
-	 // screen zero. We enforce the fullscreen - flag, aka a borderless top level window. This way,
+    // Special case for explicit multi-display setup under Windows when opening a window on
+    // screen zero. We enforce the fullscreen - flag, aka a borderless top level window. This way,
     // if anything of our automatic full-desktop window emulation code goes wrong on exotic setups,
     // the user can still enforce a suitably positioned and sized borderless toplevel window.
     if (PsychGetNumDisplays()>2 && screenSettings->screenNumber == 0) fullscreen = TRUE;
 
     if (fullscreen) {
-      windowStyle |= WS_POPUP;					// Set The WindowStyle To WS_POPUP (Popup Window without borders)
-      windowExtendedStyle |= WS_EX_TOPMOST;		// Set The Extended Window Style To WS_EX_TOPMOST
-	  
-	  // Copy absolute screen location and area of window to 'globalrect',
-	  // so functions like Screen('GlobalRect') can still query the real
-	  // bounding gox of a window onscreen:
-	  PsychGetGlobalScreenRect(screenSettings->screenNumber, windowRecord->globalrect);
-	  
-	  // Mark this window as fullscreen window:
-	  windowRecord->specialflags |= kPsychIsFullscreenWindow;
+        windowStyle |= WS_POPUP;					// Set The WindowStyle To WS_POPUP (Popup Window without borders)
+        windowExtendedStyle |= WS_EX_TOPMOST;		// Set The Extended Window Style To WS_EX_TOPMOST
+
+        // Copy absolute screen location and area of window to 'globalrect',
+        // so functions like Screen('GlobalRect') can still query the real
+        // bounding gox of a window onscreen:
+        PsychGetGlobalScreenRect(screenSettings->screenNumber, windowRecord->globalrect);
+
+        // Mark this window as fullscreen window:
+        windowRecord->specialflags |= kPsychIsFullscreenWindow;
     }
     else {
-      windowStyle |= WS_OVERLAPPEDWINDOW;
-	  // Set The Extended Window Style To WS_EX_TOPMOST, ie., this window is in front of all other
-	  // windows all the time, unless windowLevel is smaller than 1000:
-	  if (windowLevel >= 1000) windowExtendedStyle |= WS_EX_TOPMOST;
-	  
-	  // If windowLevel is that of a transparent window, then try to enable support for transparent
-	  // windows:
-	  // Could also define _WIN32_WINNT >= 0x0500
-	  #ifndef WS_EX_LAYERED
-	  #define WS_EX_LAYERED           0x00080000
-	  #endif
-	  #ifndef LWA_ALPHA
-	  #define LWA_ALPHA               2
-	  #endif
-	  if ((windowLevel >= 1000) && (windowLevel <  2000)) windowExtendedStyle |= WS_EX_LAYERED;
+        // Only GUI windows have decorations. Non-GUI windows are border/decorationless:
+        if (!windowRecord->specialflags & kPsychGUIWindow) {
+            // Decorationless, borderless window:
+            windowStyle |= WS_POPUP;
+        }
+        else {
+            // GUI window: Needs title-bar, borders, resize handles, the whole bling:
+            windowStyle |= WS_OVERLAPPEDWINDOW;
+        }
 
-	  // Copy absolute screen location and area of window to 'globalrect',
-	  // so functions like Screen('GlobalRect') can still query the real
-	  // bounding gox of a window onscreen:
-	  PsychCopyRect(windowRecord->globalrect, windowRecord->rect);	  
+        // Set The Extended Window Style To WS_EX_TOPMOST, ie., this window is in front of all other
+        // windows all the time, unless windowLevel is smaller than 1000:
+        if (windowLevel >= 1000) windowExtendedStyle |= WS_EX_TOPMOST;
+
+        // If windowLevel is that of a transparent window, then try to enable support for transparent
+        // windows:
+        // Could also define _WIN32_WINNT >= 0x0500
+        #ifndef WS_EX_LAYERED
+        #define WS_EX_LAYERED           0x00080000
+        #endif
+        #ifndef LWA_ALPHA
+        #define LWA_ALPHA               2
+        #endif
+        if ((windowLevel >= 1000) && (windowLevel <  2000)) windowExtendedStyle |= WS_EX_LAYERED;
+
+        // Copy absolute screen location and area of window to 'globalrect',
+        // so functions like Screen('GlobalRect') can still query the real
+        // bounding gox of a window onscreen:
+        PsychCopyRect(windowRecord->globalrect, windowRecord->rect);	  
     }
 
     // Define final position and size of window:
