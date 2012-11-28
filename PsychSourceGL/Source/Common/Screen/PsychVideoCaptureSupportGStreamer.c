@@ -2024,6 +2024,10 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Failed to create camerabin plugin. Retrying with camerabin2 ...\n");
         camera = gst_element_factory_make ("camerabin2", "ptbvideocapturepipeline");
         usecamerabin = 2;
+        
+        // Set basic opmode to 2 for video capture/recording, instead of default 1
+        // for still image capture:
+        g_object_set(G_OBJECT(camera), "mode", 2, NULL);
     }
     
     sprintf(config, "%s", device_name);
