@@ -3994,7 +3994,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
         PsychRealtimePriority(false);
         
         // Ok, now we should have a pretty good estimate of IFI.
-        if ( windowRecord->nrIFISamples <= 0 ) {
+        if ((windowRecord->nrIFISamples <= 0) && (PsychPrefStateGet_Verbosity() > 1)) {
             printf("PTB-WARNING: Couldn't even collect one single valid flip interval sample! Sanity range checks failed!\n");
             printf("PTB-WARNING: Could be a system bug, or a temporary timing problem. Retrying the procedure might help if\n");
             printf("PTB-WARNING: the latter is the culprit.\n");
@@ -4007,9 +4007,11 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
             n=0;
             tstddev=1000000.0;
             windowRecord->VideoRefreshInterval = 0;
-            printf("PTB-WARNING: Couldn't collect valid flip interval samples! Fatal VBL sync failure!\n");
-            printf("PTB-WARNING: Either synchronization of doublebuffer swapping to the vertical retrace signal of your display is broken,\n");
-            printf("PTB-WARNING: or the mechanism for detection of swap completion is broken. In any case, this is an operating system or gfx-driver bug!\n");
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: Couldn't collect valid flip interval samples! Fatal VBL sync failure!\n");
+                printf("PTB-WARNING: Either synchronization of doublebuffer swapping to the vertical retrace signal of your display is broken,\n");
+                printf("PTB-WARNING: or the mechanism for detection of swap completion is broken. In any case, this is an operating system or gfx-driver bug!\n");
+            }
         }
         
         *numSamples = (int) n;
