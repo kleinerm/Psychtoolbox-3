@@ -3159,7 +3159,7 @@ int PsychGSDrainBufferQueue(PsychVidcapRecordType* capdev, int numFramesToDrain,
 *  PsychGSVideoCaptureRate() - Start- and stop video capture.
 *
 *  capturehandle = Grabber to start-/stop.
-*  playbackrate = zero == Stop capture, non-zero == Capture
+*  capturerate = zero == Stop capture, non-zero == Capture at given rate if possible.
 *  dropframes = 0 - Always deliver oldest frame in DMA ringbuffer. 1 - Always deliver newest frame.
 *               --> 1 == drop frames in ringbuffer if behind -- low-latency capture.
 *
@@ -3173,14 +3173,16 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 {
 	GstElement              *camera = NULL;
 	GstBuffer               *videoBuffer = NULL;
-	GValue                  fRate = { 0, };
 	guint64                 nrInFrames, nrOutFrames, nrDroppedFrames, nrDuplicatedFrames;
     GstCaps                 *caps = NULL;
     GstCaps                 *capsi = NULL;
-    int                     idx, fps_n, fps_d;
-	int dropped = 0;
-	int drainedCount;
-	float framerate = 0;
+    GstCaps                 *capss = NULL;
+    psych_bool              fps_matched = FALSE;
+    int                     idx, idx2, fps_n, fps_d;
+    double                  fpsmin, fpsmax;
+	int                     dropped = 0;
+	int                     drainedCount;
+	float                   framerate = 0;
 
 	// Retrieve device record for handle:
 	PsychVidcapRecordType* capdev = PsychGetGSVidcapRecord(capturehandle);
@@ -3219,22 +3221,88 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 				PsychErrorExitMsg(PsychError_user, "Failure in pipeline transition null -> ready - Start of video capture failed!");
 			}
 
-            if (usecamerabin == 2) {
-                // Camerabin 2:
-                // Modify caps for camerabin2 - Set a framerate property matching our requirements:
+            // Camerabin2 in use and requested capturerate is not DBL_MAX aka "auto-selected default"?
+            if ((usecamerabin == 2) && (capturerate < DBL_MAX)) {
+                // Camerabin 2 with specific capturerate requested.
+                // Modify caps for camerabin2 - Add a "framerate" property matching our requirements, but first
+                // validate the requested capturerate against supported capture rates of this device at its
+                // current settings for resolution, color format and color depths.
+
+                // Get current capture caps (so far without a framerate) - Store a writable copy of them in caps:
                 g_object_get(G_OBJECT(camera), "viewfinder-caps", &capsi, NULL);
                 caps = gst_caps_copy(capsi);
                 gst_caps_unref(capsi);
                 
-                g_object_get(G_OBJECT(camera), "viewfinder-supported-caps", &capsi, NULL);
+                // Get list of supported capture caps for this device in capss:
+                g_object_get(G_OBJECT(camera), "viewfinder-supported-caps", &capss, NULL);
+                
+                // Intersect with current caps to find the subset of possible caps, given the
+                // already set/fixed resolution and color format/depth. This essentially leaves
+                // us with caps representing the available framerates in capsi:
+                capsi = gst_caps_intersect(caps, capss);
+                gst_caps_unref(capss);
+                
+                // Print 'em:
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Videosource intersected caps are: %" GST_PTR_FORMAT "\n\n", capsi);
+                
+                // Match requested framerate against supported framerates:
                 for (idx = 0; idx < (int) gst_caps_get_size(capsi); idx++) {
+                    // For idx'th cap, get framerate value with all framerates of that cap:
                     GstStructure *capsstruct = gst_caps_get_structure (capsi, idx);
-                    if (gst_structure_get_fraction (capsstruct, "framerate", &fps_n, &fps_d)) printf("%i : FPS %f Hz.\n", idx, fps_n / fps_d);
+                    const GValue* framerates = gst_structure_get_value(capsstruct, "framerate");
+                    
+                    // framerates can be in the format of a single fraction, a list of fractions, or
+                    // an allowable range of fractions:
+                    if (GST_VALUE_HOLDS_FRACTION(framerates)) {
+                        if (gst_structure_get_fraction (capsstruct, "framerate", &fps_n, &fps_d)) {
+                            if (fabs((int)(capturerate + 0.5) - ((double) fps_n / (double) fps_d)) < 1.0) fps_matched = TRUE;
+                            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Caps %i : FPS %f Hz.\n", idx, (float) fps_n / (float) fps_d);
+                        }
+                    }
+                    else if (GST_VALUE_HOLDS_LIST(framerates)) {
+                        for (idx2 = 0; idx2 < (int) gst_value_list_get_size(framerates); idx2++) {
+                            const GValue* value = gst_value_list_get_value (framerates, idx2);
+                            fps_n = gst_value_get_fraction_numerator(value);
+                            fps_d = gst_value_get_fraction_denominator(value);
+                            if (fabs((int)(capturerate + 0.5) - ((double) fps_n / (double) fps_d)) < 1.0) fps_matched = TRUE;
+                            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: %i-%i : FPS %f Hz.\n", idx, idx2, (float) fps_n / (float) fps_d);
+                        }
+                    }
+                    else if (GST_VALUE_HOLDS_FRACTION_RANGE(framerates)) {
+                        const GValue* frmin = gst_value_get_fraction_range_min(framerates);
+                        fps_n = gst_value_get_fraction_numerator(frmin);
+                        fps_d = gst_value_get_fraction_denominator(frmin);
+                        fpsmin = (double) fps_n / (double) fps_d;
+                        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: %i: FPS min %f - ", idx, fpsmin);
+
+                        const GValue* frmax = gst_value_get_fraction_range_max(framerates);
+                        fps_n = gst_value_get_fraction_numerator(frmax);
+                        fps_d = gst_value_get_fraction_denominator(frmax);
+                        fpsmax = (double) fps_n / (double) fps_d;
+                        if (PsychPrefStateGet_Verbosity() > 4) printf("max %f\n", fpsmax);
+
+                        if (((int)(capturerate + 0.5) >= fpsmin) && ((int)(capturerate + 0.5) <= fpsmax)) fps_matched = TRUE;
+                    }
                 }
                 gst_caps_unref(capsi);
                 
-                if (capturerate < DBL_MAX) gst_caps_set_simple(caps, "framerate", GST_TYPE_FRACTION, (int)(capturerate + 0.5), 1, NULL);
-                g_object_set(G_OBJECT(camera), "viewfinder-caps", caps, NULL);
+                // capturerate supported?
+                if (fps_matched) {
+                    // Yes! Add it to our caps object:
+                    gst_caps_set_simple(caps, "framerate", GST_TYPE_FRACTION, (int)(capturerate + 0.5), 1, NULL);
+                    
+                    // Set caps object and thereby capture/recording framerate:
+                    g_object_set(G_OBJECT(camera), "viewfinder-caps", caps, NULL);
+                }
+                else {
+                    // No. Play it safe and just refrain from setting a capture framerate. This will
+                    // run the capture and recording at whatever the default framerate of the device is.
+                    // However, warn user about unsupported setting and our fallback solution:
+                    if (PsychPrefStateGet_Verbosity() > 1) {
+                        printf("PTB-WARNING: Video device %i does not support requested framerate %f Hz at current settings for video resolution\n", capturehandle, capturerate);
+                        printf("PTB-WARNING: and color depth. Will workaround this by trying to capture at the default framerate of the device.\n");
+                    }
+                }
                 gst_caps_unref(caps);
             }
 
