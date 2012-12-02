@@ -2487,7 +2487,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    if (!capdev->recording_active) {
 		    // Pure video capture, no recording: Optimize pipeline for this case:
 		    g_object_set(G_OBJECT(camera),
-                         "flags", 1+2+4,
+                         "flags", (usecamerabin == 1) ? 1+2+4 : 0,
                          NULL);
             
             // Setup colorcaps for camerabin1, do it later for camerabin2:
@@ -2505,14 +2505,15 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             else {
                 // camerabin2:
                 g_object_set(G_OBJECT(camera),
-                             "flags", 0x08 + 0x04 + 0x02 + 0x01,
+                             "flags", 0,
                              NULL);
+                
                 // Audio recording requested?
                 if (recordingflags & 2) {
                     // Yes:
                     g_object_set(G_OBJECT(camera),
                                  "mute", FALSE,
-                                 "video-profile", 0, // TODO: Set video encoding profile with sound.
+//                                 "video-profile", 0, // TODO: Set video encoding profile with sound.
                                  NULL);
                     
                 }
@@ -2520,7 +2521,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                     // No:
                     g_object_set(G_OBJECT(camera),
                                  "mute", TRUE,
-                                 "video-profile", 0, // TODO: Set video encoding profile without sound.
+//                                 "video-profile", 0, // TODO: Set video encoding profile without sound.
                                  NULL);
                 }
             }
@@ -2602,6 +2603,9 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                 // Setup colorcaps for camerabin2:
                 gst_caps_set_simple(colorcaps, "width", G_TYPE_INT, twidth, "height", G_TYPE_INT, theight, NULL);
                 g_object_set(G_OBJECT(camera), "viewfinder-caps", colorcaps, NULL);
+                if (capdev->recording_active) {
+                    g_object_set(G_OBJECT(camera), "video-capture-caps", colorcaps, NULL);
+                }
             }
             
             // Assign requested and validated resolution as capture resolution of video source:
@@ -2637,16 +2641,19 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                     // Setup colorcaps for camerabin2:
                     gst_caps_set_simple(colorcaps, "width", G_TYPE_INT, capdev->width, "height", G_TYPE_INT, capdev->height, NULL);
                     g_object_set(G_OBJECT(camera), "viewfinder-caps", colorcaps, NULL);
+                    if (capdev->recording_active) {
+                        g_object_set(G_OBJECT(camera), "video-capture-caps", colorcaps, NULL);
+                    }
                 }
             }
             else {
-                // Directshow source. Set "don't know" values and hope the fallback code below
+                // Source without enumeration capability. Set "don't know" values and hope the fallback code below
                 // does a better job at guessing the true source resolution:
                 capdev->width  = 0;
                 capdev->height = 0;
 
                 // ROI defined? We can't handle this, because we don't know the true video capture resolution
-                // which would be needed at this point in the setup path due to the broken enumeration of dshowvideosrc.
+                // which would be needed at this point in the setup path due to the broken enumeration.
                 if (capturerectangle) {
                     capturerectangle = NULL;
                     overrideFrameSize = TRUE;
@@ -2659,7 +2666,6 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                         printf("PTB-WARNING: Usercode specified a 'roirectangle' with a ROI for video cropping, but this system setup\n");
                         printf("PTB-WARNING: doesn't support this. Ignoring 'roirectangle' and reverting to full video capture resolution.\n");
                     }
-
                 }
             }
             
@@ -2677,6 +2683,13 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 				 "bottom", capdev->height - (int) capturerectangle[kPsychBottom],
 				 NULL);
 
+            if (usecamerabin == 2) {
+                if (!PsychVideoPipelineSetState(camera, GST_STATE_NULL, 30.0)) {
+                    PsychGSProcessVideoContext(vidcapRecordBANK[slotid].VideoContext, TRUE);
+                    PsychErrorExitMsg(PsychError_user, "In OpenVideoCapture: Opening the video capture device failed during intermediate camerabin2 pipeline ready -> zero transition. Reason given above.");
+                }
+            }
+            
 		    // HACK HACK HACK: This video ROI cropping implementation is not what we want,
 		    // but it is the best we can do to workaround what i think are GStreamer bugs.
 		    // Will work correctly for live capture cropping only. As soon as videorecording
@@ -3293,6 +3306,7 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                     
                     // Set caps object and thereby capture/recording framerate:
                     g_object_set(G_OBJECT(camera), "viewfinder-caps", caps, NULL);
+                    if (capdev->recording_active) g_object_set(G_OBJECT(camera), "video-capture-caps", caps, NULL);
                 }
                 else {
                     // No. Play it safe and just refrain from setting a capture framerate. This will
@@ -3367,6 +3381,14 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 			if (PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Recording started...\n");
 		}
 
+        // Should we dump the whole encoding pipeline graph to a file for visualization
+        // with GraphViz? This can be controlled via PsychTweak('GStreamerDumpFilterGraph' dirname);
+        if (getenv("GST_DEBUG_DUMP_DOT_DIR")) {
+            // Dump complete capture/recording filter graph to a .dot file for later visualization with GraphViz:
+            printf("PTB-DEBUG: Dumping video capture/recording graph to directory %s.\n", getenv("GST_DEBUG_DUMP_DOT_DIR"));
+            GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(camera), GST_DEBUG_GRAPH_SHOW_ALL, "PsychVideoCaptureGraph");
+        }
+
 		// Wait for real start of capture, i.e., arrival of 1st captured
 		// video buffer:
 		PsychLockMutex(&capdev->mutex);
@@ -3410,14 +3432,6 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 			capdev->scratchbuffer = malloc(capdev->frame_width * capdev->frame_height * 3);
 		}
 		*/
-
-        // Should we dump the whole encoding pipeline graph to a file for visualization
-        // with GraphViz? This can be controlled via PsychTweak('GStreamerDumpFilterGraph' dirname);
-        if (getenv("GST_DEBUG_DUMP_DOT_DIR")) {
-            // Dump complete capture/recording filter graph to a .dot file for later visualization with GraphViz:
-            printf("PTB-DEBUG: Dumping video capture/recording graph to directory %s.\n", getenv("GST_DEBUG_DUMP_DOT_DIR"));
-            GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(camera), GST_DEBUG_GRAPH_SHOW_ALL, "PsychVideoCaptureGraph");
-        }
 
 		if(PsychPrefStateGet_Verbosity() > 3) {
 			printf("PTB-INFO: Capture started on device %i - Input video resolution %i x %i - Framerate: %f fps.\n",
