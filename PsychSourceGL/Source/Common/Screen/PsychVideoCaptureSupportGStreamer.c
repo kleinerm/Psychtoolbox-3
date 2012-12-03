@@ -2542,25 +2542,46 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 			    if (PsychPrefStateGet_Verbosity() > 1) {
 				    printf("PTB-WARNING: Could not create video rate conversion filter. Therefore can't compensate\n");
 				    printf("PTB-WARNING: for possible fluctuations in videocapture framerate. This can cause\n");
-				    printf("PTB-WARNING: audio-video sync problems or wrong timing/speed in videostream!\n");
+				    printf("PTB-WARNING: audio-video sync problems or wrong timing/speed in recorded videos!\n");
 			    }
 		    }
 		    else {
-			    // By default we apply the videorate converter upstream at the videosource,
-			    // so it affects both video recording and live video feedback. Usercode can
-			    // restrict conversion to the recorded video stream only by setting
-			    // recordingflags & 256:
-			    if (recordingflags & 256) {
-				    // Attach to video-post-processing -- immediately before video encoder:
-                    // TODO NOTE: Probably unsupported with camerabin2
-				    g_object_set(G_OBJECT(camera), "video-post-processing", capdev->videorate_filter, NULL);
-				    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Restricting video framerate conversion to recorded video.\n"); 
-			    }
-			    else {
-				    // Attach as video-source-filter -- upstream right at the source:
-				    videosource_filter = capdev->videorate_filter;
-				    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Video framerate conversion applies to recorded video and live video.\n"); 
-			    }
+                if (usecamerabin == 2) {
+                    // Camerabin 2 path:
+                    //
+                    // By default we apply the videorate converter upstream at the videosource,
+                    // so it affects both video recording and live video feedback. Usercode can
+                    // restrict conversion to the recorded video stream only by setting
+                    // recordingflags & 256:
+                    if (recordingflags & 256) {
+                        // Apply to video recording only -- attach to video-filter:
+                        g_object_set(G_OBJECT(camera), "video-filter", capdev->videorate_filter, NULL);
+                        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Restricting video framerate conversion to recorded video.\n");                        
+                    }
+                    else {
+                        // Attach as video-source-filter -- upstream right at the source:
+                        videosource_filter = capdev->videorate_filter;
+                        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Video framerate conversion applies to recorded video and live video.\n");
+                    }
+                }
+                else {
+                    // Camerabin 1 path:
+                    //
+                    // By default we apply the videorate converter upstream at the videosource,
+                    // so it affects both video recording and live video feedback. Usercode can
+                    // restrict conversion to the recorded video stream only by setting
+                    // recordingflags & 256:
+                    if (recordingflags & 256) {
+                        // Attach to video-post-processing -- immediately before video encoder:
+                        g_object_set(G_OBJECT(camera), "video-post-processing", capdev->videorate_filter, NULL);
+                        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Restricting video framerate conversion to recorded video.\n"); 
+                    }
+                    else {
+                        // Attach as video-source-filter -- upstream right at the source:
+                        videosource_filter = capdev->videorate_filter;
+                        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Video framerate conversion applies to recorded video and live video.\n"); 
+                    }
+                }
 		    }
 	    }
 
@@ -2673,6 +2694,15 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             capdev->fps = 0;
 	    }
         
+        // We can only assign videosource_filters (for videorate plugin) or videocrop_filter
+        // to camerabin2 while the pipeline is in NULL state. Therefore make it so:
+        if ((usecamerabin == 2) && (videosource_filter || videocrop_filter)) {
+            if (!PsychVideoPipelineSetState(camera, GST_STATE_NULL, 30.0)) {
+                PsychGSProcessVideoContext(vidcapRecordBANK[slotid].VideoContext, TRUE);
+                PsychErrorExitMsg(PsychError_user, "In OpenVideoCapture: Opening the video capture device failed during intermediate camerabin2 pipeline ready -> zero transition. Reason given above.");
+            }
+        }
+
 	    // videocrop_filter for ROI processing available?
 	    if (videocrop_filter) {
 		    // Setup final cropping region:
@@ -2683,12 +2713,6 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 				 "bottom", capdev->height - (int) capturerectangle[kPsychBottom],
 				 NULL);
 
-            if (usecamerabin == 2) {
-                if (!PsychVideoPipelineSetState(camera, GST_STATE_NULL, 30.0)) {
-                    PsychGSProcessVideoContext(vidcapRecordBANK[slotid].VideoContext, TRUE);
-                    PsychErrorExitMsg(PsychError_user, "In OpenVideoCapture: Opening the video capture device failed during intermediate camerabin2 pipeline ready -> zero transition. Reason given above.");
-                }
-            }
             
 		    // HACK HACK HACK: This video ROI cropping implementation is not what we want,
 		    // but it is the best we can do to workaround what i think are GStreamer bugs.
@@ -2798,10 +2822,16 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 #endif
 	    }
 
-
-	    // Attach videosource filter, if any:
+	    // Attach videosource filter upstream at video source, if any. This way it affects
+        // both video recording and video live feed:
 	    if (videosource_filter) {
-		    g_object_set(G_OBJECT(camera), (usecamerabin == 1) ? "video-source-filter" : "video-filter", videosource_filter, NULL);
+            if (usecamerabin == 1) {
+                g_object_set(G_OBJECT(camera), "video-source-filter", videosource_filter, NULL);
+            }
+            else {
+                // Camerabin2: Can't attach to camerabin2 directly, but to wrappercamerasrc:
+                g_object_set(G_OBJECT(videowrappersrc), "video-source-filter", videosource_filter, NULL);                
+            }
 	    }
     }
 
@@ -3536,7 +3566,7 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 				}
 
 				if (capdev->videorate_filter) {
-					printf("PTB-INFO: Framerate compensation received %i frames, delivered %i frames, had to drop %i frames and duplicate %i frames\n",
+					printf("PTB-INFO: Framerate stabilization received %i frames, delivered %i frames, had to drop %i frames and duplicate %i frames\n",
 					       (int) nrInFrames, (int) nrOutFrames, (int) nrDroppedFrames, (int) nrDuplicatedFrames);
 					printf("PTB-INFO: to compensate for framerate fluctuations or mismatch between expected vs. real framerate on device %i.\n", capturehandle);
 				}
