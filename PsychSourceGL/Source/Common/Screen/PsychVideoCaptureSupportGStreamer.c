@@ -3190,6 +3190,7 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
     GstCaps                 *caps = NULL;
     GstCaps                 *capsi = NULL;
     GstCaps                 *capss = NULL;
+    GstCaps                 *capsr = NULL;
     psych_bool              fps_matched = FALSE;
     int                     idx, idx2, fps_n, fps_d;
     double                  fpsmin, fpsmax;
@@ -3244,6 +3245,7 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 // Get current capture caps (so far without a framerate) - Store a writable copy of them in caps:
                 g_object_get(G_OBJECT(camera), "viewfinder-caps", &capsi, NULL);
                 caps = gst_caps_copy(capsi);
+                capsr = gst_caps_copy(capsi);
                 gst_caps_unref(capsi);
                 
                 // Get list of supported capture caps for this device in capss:
@@ -3252,7 +3254,9 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 // Intersect with current caps to find the subset of possible caps, given the
                 // already set/fixed resolution and color format/depth. This essentially leaves
                 // us with caps representing the available framerates in capsi:
-                capsi = gst_caps_intersect(caps, capss);
+                gst_caps_set_simple(capsr, "width", G_TYPE_INT, capdev->width, "height", G_TYPE_INT, capdev->height, NULL);
+                capsi = gst_caps_intersect(capsr, capss);
+                gst_caps_unref(capsr);
                 gst_caps_unref(capss);
                 
                 // Print 'em:
@@ -3299,25 +3303,48 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 }
                 gst_caps_unref(capsi);
                 
-                // capturerate supported?
+                // Requested capturerate supported?
                 if (fps_matched) {
                     // Yes! Add it to our caps object:
                     gst_caps_set_simple(caps, "framerate", GST_TYPE_FRACTION, (int)(capturerate + 0.5), 1, NULL);
                     
                     // Set caps object and thereby capture/recording framerate:
                     g_object_set(G_OBJECT(camera), "viewfinder-caps", caps, NULL);
-                    if (capdev->recording_active) g_object_set(G_OBJECT(camera), "video-capture-caps", caps, NULL);
+
+                    // Free "used up" caps object with writable viewfinder caps:
+                    gst_caps_unref(caps);
+                    
+                    // If recording is active we want to add the "framerate" property to the recording
+                    // caps as well:
+                    if (capdev->recording_active) {
+                        // Need to create a fresh copy of the current recording caps, so it is mutable
+                        // and we can add the new "framerate" constraint/property.                        
+                        g_object_get(G_OBJECT(camera), "video-capture-caps", &capsi, NULL);
+                        caps = gst_caps_copy(capsi);
+                        gst_caps_unref(capsi);
+
+                        // Assign our validated recording framerate to recording caps:
+                        gst_caps_set_simple(caps, "framerate", GST_TYPE_FRACTION, (int)(capturerate + 0.5), 1, NULL);
+
+                        // Assign new caps as video recording caps:
+                        g_object_set(G_OBJECT(camera), "video-capture-caps", caps, NULL);
+
+                        // Free "used up" caps object with writable video recording caps:
+                        gst_caps_unref(caps);
+                    }
                 }
                 else {
                     // No. Play it safe and just refrain from setting a capture framerate. This will
                     // run the capture and recording at whatever the default framerate of the device is.
                     // However, warn user about unsupported setting and our fallback solution:
                     if (PsychPrefStateGet_Verbosity() > 1) {
-                        printf("PTB-WARNING: Video device %i does not support requested framerate %f Hz at current settings for video resolution\n", capturehandle, capturerate);
-                        printf("PTB-WARNING: and color depth. Will workaround this by trying to capture at the default framerate of the device.\n");
+                        printf("PTB-WARNING: Video device %i does not support requested framerate %i fps at current settings for video resolution\n", capturehandle, (int)(capturerate + 0.5));
+                        printf("PTB-WARNING: and color depth. Will workaround this by trying to capture at the default framerate of the device for current settings.\n");
                     }
+
+                    // Free unneeded caps object with writable viewfinder caps:
+                    gst_caps_unref(caps);
                 }
-                gst_caps_unref(caps);
             }
 
 			if (!PsychVideoPipelineSetState(camera, GST_STATE_PAUSED, 10.0)) {
