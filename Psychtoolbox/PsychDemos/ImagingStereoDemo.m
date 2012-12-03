@@ -203,6 +203,15 @@ if stereoMode == 10
     Screen('OpenWindow', slaveScreen, BlackIndex(slaveScreen), [], [], [], stereoMode);
 end
 
+if ismember(stereoMode, [4, 5])
+    % This uncommented bit of code would allow to exercise the
+    % SetStereoSideBySideParameters() function, which allows to change
+    % presentation parameters for dual-display / side-by-side stereo modes 4
+    % and 5:
+    % "Shrink display a bit to the center": SetStereoSideBySideParameters(windowPtr, [0.25, 0.25], [0.75, 0.5], [1, 0.25], [0.75, 0.5]);
+    % Restore defaults: SetStereoSideBySideParameters(windowPtr, [0, 0], [1, 1], [1, 0], [1, 1]);
+end
+
 % Stimulus settings:
 numDots = 1000;
 vel = 1;   % pix/frames
