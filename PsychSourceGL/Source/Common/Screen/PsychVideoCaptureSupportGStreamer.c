@@ -1884,39 +1884,39 @@ psych_bool PsychGetCodecLaunchLineFromString(char* codecSpec, char* launchString
 psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
 								   int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags)
 {
-	GstCaps         *colorcaps;
-	GstElement		*camera = NULL;
-	GMainLoop		*VideoContext = NULL;
-	GstBus			*bus = NULL;
-	GstElement              *videosink = NULL;
-	GstElement              *videosource = NULL;
-	GstElement              *videosource_filter = NULL;
-	GstElement              *videocrop_filter = NULL;
-    GstElement              *videowrappersrc = NULL;
-	GstPad			*pad, *peerpad;
-	GstCaps                 *caps;
-	GstStructure		*str;
-	gint			width, height;
-	gint			rate1, rate2;
-	gint			twidth, theight;
-	char                    *codecSpec;
-	char                    codecName[10000];
+    GstCaps         *colorcaps;
+    GstCaps         *vfcaps, *reccaps;
+    GstElement      *camera = NULL;
+    GMainLoop       *VideoContext = NULL;
+    GstBus          *bus = NULL;
+    GstElement      *videosink = NULL;
+    GstElement      *videosource = NULL;
+    GstElement      *videosource_filter = NULL;
+    GstElement      *videocrop_filter = NULL;
+    GstElement      *videowrappersrc = NULL;
+    GstPad          *pad, *peerpad;
+    GstCaps         *caps;
+    GstStructure    *str;
+    gint            width, height;
+    gint            rate1, rate2;
+    gint            twidth, theight;
+    char            *codecSpec;
+    char            codecName[10000];
+    PsychVidcapRecordType   *capdev = NULL;
+    char            config[1000];
+    char            tmpstr[1000];
+    char            device_name[1000];
+    char            plugin_name[1000];
+    char            prop_name[1000];
+    gchar           *pstring = NULL; 
+    PsychVideosourceRecordType  *theDevice = NULL;
+    psych_bool      overrideFrameSize = FALSE;
 
-	PsychVidcapRecordType	*capdev = NULL;
-	char			config[1000];
-	char			tmpstr[1000];
-	char			device_name[1000];
-	char			plugin_name[1000];
-	char			prop_name[1000];
-	gchar                   *pstring = NULL; 
-	PsychVideosourceRecordType *theDevice = NULL;
-	psych_bool              overrideFrameSize = FALSE;
-	
-	config[0] = 0;
-	tmpstr[0] = 0;
-	device_name[0] = 0;
-	plugin_name[0] = 0;
-	prop_name[0] = 0;
+    config[0] = 0;
+    tmpstr[0] = 0;
+    device_name[0] = 0;
+    plugin_name[0] = 0;
+    prop_name[0] = 0;
 
 	// Init capturehandle to none:
 	*capturehandle = -1;
