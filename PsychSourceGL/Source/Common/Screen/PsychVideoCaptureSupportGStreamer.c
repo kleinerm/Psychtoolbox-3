@@ -2497,10 +2497,10 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		    // Video recording (with optional capture). Setup pipeline:
             if (usecamerabin == 1) {
                 g_object_set(G_OBJECT(camera),
-                     // Only enable sound encoding if "audio recording" flag 2 is set in
-                     // recordingflags. Otherwise add flags 0x20 to disable audio encoding:
-                     "flags", 0x08 + 0x04 + 0x02 + 0x01 + ((recordingflags & 2) ? 0x10 : 0x20),
-                     NULL);
+                                // Only enable sound encoding if "audio recording" flag 2 is set in
+                                // recordingflags. Otherwise add flags 0x20 to disable audio encoding:
+                                "flags", 0x04 + 0x02 + ((recordingflags & 2) ? 0x10 : 0x20),
+                                NULL);
             }
             else {
                 // camerabin2:
@@ -2716,43 +2716,19 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             if (usecamerabin == 1) {
                 // Camerabin1 path:
 
-                // HACK HACK HACK: This video ROI cropping implementation is not what we want,
-                // but it is the best we can do to workaround what i think are GStreamer bugs.
-                // Will work correctly for live capture cropping only. As soon as videorecording
-                // gets cropped as well, it affects the live feed in ugly ways...
-                
                 // Is video recording active and ROI cropping for recording explicitely enabled
                 // via recordingflags setting 512?
                 if (capdev->recording_active && (recordingflags & 512)) {
                     // Yes. Attach filter to video-post-processing. This way it affects
-                    // recorded video, but unfortunately also *always* the viewfinder video feed
-                    // - which i think is a bug - and it affects the viewfinder feed in a weird way -
-                    // which i think is a 2nd bug: The viewfinder/appsink gets the cropped
-                    // ROI, but upscaled to full video resolution! We need to hack the
-                    // capdev->frame_width and capdev->frame_height fields to take this
-                    // into account, so we at least get a distorted image in the video
-                    // textures. Usercode can Screen('DrawTexture') such distorted textures
-                    // with a properly scaled 'dstrect' to undistort, although this is a
-                    // messy endeveaour -- but not impossible.
-
-                    // So we attach to video-post-processing and set a special flag to
-                    // signal the capdev->frame_width and capdev->frame_height needs to
-                    // get hacked into shape :-(
+                    // recorded video, but unfortunately also *always* the viewfinder video feed.
                     g_object_set(G_OBJECT(camera), "video-post-processing", videocrop_filter, NULL);
-                    overrideFrameSize = TRUE;
+                    overrideFrameSize = FALSE;
 
                     if (PsychPrefStateGet_Verbosity() > 1) {
-                        printf("PTB-WARNING: Application of ROI's to recorded video is buggy, due to\n");
-                        printf("PTB-WARNING: GStreamer bugs. The ROI gets correctly applied to the \n");
-                        printf("PTB-WARNING: recorded video. It also gets applied to the live video feed,\n");
-                        printf("PTB-WARNING: regardless if you want it or not. The live ROI texture images are\n");
-                        printf("PTB-WARNING: distorted. They have the full video resolution size, but only\n");
-                        printf("PTB-WARNING: show the ROI, zoomed and scaled to fit the full video resolution!\n");
-                        printf("PTB-WARNING: You can either manually undistort the images during texture drawing,\n");
-                        printf("PTB-WARNING: by proper choice of the 'dstRect' parameter in Screen('DrawTexture',...),\n");
-                        printf("PTB-WARNING: or you can avoid application of ROI's to recorded video. In that case\n");
-                        printf("PTB-WARNING: the video will be recorded at full video resolution, but application of\n");
-                        printf("PTB-WARNING: ROI's to the live video textures will work correctly.\n\n");
+                        printf("PTB-WARNING: Application of ROI's to recorded video is somewhat limited:\n");
+                        printf("PTB-WARNING: The ROI is correctly applied to the recorded video, but it\n");
+                        printf("PTB-WARNING: also is applied to the live video feed, regardless if you\n");
+                        printf("PTB-WARNING: want this or not. This is a limitation of camerabin1 capture.\n");
                     }
                 }
                 else {
