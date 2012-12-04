@@ -91,6 +91,7 @@ typedef struct {
 	GMainLoop *VideoContext;          // Message bus context for delivery of status/error/warning messages by GStreamer.
 	GstElement *videosink;            // Our appsink for retrieval of live video feeds --> PTB texture conversion.
 	GstElement *videosource;          // The videosource, encapsulating the actual video capture device.
+	GstElement *videowrappersrc;      // The wrappercambinsrc used for encapsulating videosource for camerabin2 capture.
 	GstElement *videoenc;             // Video encoder for video recording.
 	GstElement *videorate_filter;     // Video framerate converter to guarantee constant framerate and a/v sync for recording.
 	GstClockTime lastSavedBaseTime;   // Last time the pipeline was put into PLAYING state. Saved at StopCapture time before stop.
@@ -3151,6 +3152,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     
     // Store a pointer to the videosource plugin:
     capdev->videosource = videosource;
+    capdev->videowrappersrc = videowrappersrc;
     
     if (PsychPrefStateGet_Verbosity() > 2) {
 	    printf("PTB-INFO: Camera %i opened [Source resolution width x height = %i x %i, video image size %i x %i]\n",
@@ -4047,12 +4049,6 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 	// Make sure GStreamer is ready:
 	PsychGSCheckInit("videocapture");
 
-	if (usecamerabin && gst_element_implements_interface(capdev->camera, GST_TYPE_COLOR_BALANCE)) {
-		cb = GST_COLOR_BALANCE(capdev->camera);
-	} else {
-		if (usecamerabin && (PsychPrefStateGet_Verbosity() > 3)) printf("PTB-WARNING: Camerabin does not suppport GstColorBalance interface as expected.\n");
-	}
-	
 	oldintval = 0xFFFFFFFF;
 	
 	// Round value to integer:
@@ -4099,11 +4095,27 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 		// Query of cameras internal trigger counter or waiting for a specific
 		// value in the counter requested. Trigger counters are special features,
 		// (so called "Smart Features" or "Advanced Features" in the IIDC spec)
-		// which are only available on selected cameras.
-		// We currently only know how to do this on Basler cameras.
+		// which are only available on selected cameras. They are not currently
+		// available on GStreamer.
 		return(-2);
 	}
 	
+    // Check if GstColorBalanceInterface is supported and assign it for use downstream. Probe
+    // different providers: camerabin1 (should support it), camerabin2 (doesn't at this point in time),
+    // the wrappercamerabinsrc of camerabin2 (doesn't at this point in time), the video source attached
+    // to the wrappercamerabinsrc (currently the video4linux2 source does support it):
+    if (usecamerabin) {
+        cb = NULL;
+        // Probe camerabin1 / camerabin2:
+        if (!cb && gst_element_implements_interface(capdev->camera, GST_TYPE_COLOR_BALANCE)) cb = GST_COLOR_BALANCE(capdev->camera);
+        // If fail, probe wrappercamerabinsrc:
+        if (!cb && gst_element_implements_interface(capdev->videowrappersrc, GST_TYPE_COLOR_BALANCE)) cb = GST_COLOR_BALANCE(capdev->videowrappersrc);
+        // If fail, probe videosource itself:
+        if (!cb && gst_element_implements_interface(capdev->videosource, GST_TYPE_COLOR_BALANCE)) cb = GST_COLOR_BALANCE(capdev->videosource);
+        // If fail, game over:
+        if (!cb && (PsychPrefStateGet_Verbosity() > 3)) printf("PTB-WARNING: Video device %i does not suppport GstColorBalance interface as expected.\n", capturehandle);
+	}
+
 	if (strcmp(pname, "PrintParameters")==0) {
 		// Special command: List and print all features...
 		printf("PTB-INFO: The video source provides the following controllable parameters:\n");
