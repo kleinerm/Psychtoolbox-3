@@ -92,7 +92,7 @@ end
 % Blank other screen, if requested:
 if blankOtherScreen
     % We simply open an onscreen window with black background color:
-    Screen('OpenWindow', cal.describe.whichBlankScreen, 0);
+    Screen('OpenWindow', cal.describe.whichBlankScreen, [0 0 0]);
 end
 
 % Setup screen to be measured
@@ -103,19 +103,21 @@ end
 % device is used, the Screen('LoadNormalizedGammatable', win, clut, 2);
 % command uploads 'clut's into the device at next Screen('Flip'), taking
 % care of possible graphics driver bugs and other quirks:
+% Prepare imaging pipeline for Bits++ Color++ mode, or DataPixx/ViewPixx
+% C48 mode (which is pretty much the same).
 PsychImaging('PrepareConfiguration');
 
 if g_usebitspp == 1
-    % Setup for Bits++ CLUT mode. This will automatically load proper
+    % Setup for Bits++ Color++ mode. This will automatically load proper
     % identity gamma tables into the graphics hardware and into the Bits+:
-    PsychImaging('AddTask', 'General', 'EnableBits++Bits++Output');
+    PsychImaging('AddTask', 'General', 'EnableBits++Color++Output', 0);
 end
 
 if g_usebitspp == 2
-    % Setup for DataPixx/ViewPixx etc. L48 CLUT mode. This will
+    % Setup for DataPixx/ViewPixx etc. C48 mode. This will
     % automatically load proper identity gamma tables into the graphics
     % hardware and into the device:
-    PsychImaging('AddTask', 'General', 'EnableDataPixxL48Output');
+    PsychImaging('AddTask', 'General', 'EnableDataPixxC48Output', 0);
 end
 
 % Open the window:
@@ -124,31 +126,20 @@ if (cal.describe.whichScreen == 0)
     HideCursor;
 end
 
-theClut = zeros(256,3);
-if g_usebitspp
-    % Load zero theClut into device:
-    Screen('LoadNormalizedGammaTable', window, theClut, 2);
-    Screen('Flip', window);    
-else
-    % Load zero lut into regular graphics card:
-    Screen('LoadNormalizedGammaTable', window, theClut);
-end
-
 % Draw a box in the center of the screen
 if ~isfield(cal.describe, 'boxRect')
-	boxRect = [0 0 cal.describe.boxSize cal.describe.boxSize];
-	boxRect = CenterRect(boxRect,screenRect);
-else
-	boxRect = cal.describe.boxRect;
+    if g_usebitspp % halve the horizontal size (2:1 aspect ratio in either color mode)
+        boxRect = [0 0 cal.describe.boxSize/2 cal.describe.boxSize];
+    else
+        boxRect = [0 0 cal.describe.boxSize cal.describe.boxSize];
+    end
+	cal.describe.boxRect = CenterRect(boxRect,screenRect);
 end
-theClut(2,:) = [1 1 1];
-Screen('FillRect', window, 1, boxRect);
-if g_usebitspp
-    Screen('LoadNormalizedGammaTable', window, theClut, 2);
-    Screen('Flip', window, 0, 1);
-else
-    Screen('LoadNormalizedGammaTable', window, theClut);
-end
+
+% Put the correct surround and draw an aiming box.
+Screen('FillRect', window, cal.bgColor');
+Screen('FillRect', window, [1 1 1], cal.describe.boxRect);
+Screen('Flip', window, 0, 1);
 
 % Wait for user
 if USERPROMPT == 1
@@ -159,18 +150,8 @@ if USERPROMPT == 1
     fprintf(' done\n');
 end
 
-% Put correct surround for measurements.
-theClut(1,:) = cal.bgColor';
-if g_usebitspp
-    Screen('FillRect', window, 1, boxRect);
-    Screen('LoadNormalizedGammaTable', window, theClut, 2);
-    Screen('Flip', window, 0, 1);
-else
-    Screen('LoadNormalizedGammaTable', window, theClut);
-end
-
 % Start timing
-t0 = clock;
+tic
 
 mon = zeros(cal.describe.S(3)*cal.describe.nMeas,cal.nDevices);
 for a = 1:cal.describe.nAverage
@@ -205,19 +186,12 @@ for a = 1:cal.describe.nAverage
 end
 mon = mon / cal.describe.nAverage;
 
-% Close the screen, restore cluts:
-if g_usebitspp
-    % Load identity clut on Bits++ / DataPixx et al.:
-    BitsPlusPlus('LoadIdentityClut', window);
-    Screen('Flip', window);
-end
-
-% Restore graphics card gamma tables to original state:
-RestoreCluts;
-
-% Show hidden cursor:
+% Show hidden cursor, close windows, and restore cluts:
 if cal.describe.whichScreen == 0
-	ShowCursor;
+	sca();
+else % don't ShowCursor
+    RestoreCluts;
+    Screen('CloseAll');
 end
 
 % Close all windows:
@@ -225,7 +199,7 @@ Screen('CloseAll');
 
 % Report time
 t1 = clock;
-fprintf('CalibrateMonDrvr measurements took %g minutes\n', etime(t1, t0)/60);
+fprintf('CalibrateMonDrvr measurements took %g minutes\n', toc/60);
 
 % Pre-process data to get rid of negative values.
 mon = EnforcePos(mon);
