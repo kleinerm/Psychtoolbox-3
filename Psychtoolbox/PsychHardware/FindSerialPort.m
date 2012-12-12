@@ -41,6 +41,8 @@ function PortNumber = FindSerialPort(PortString, forIOPort, dontFail)
 %                           minimal modifications) from sample code donated
 %                           by Xiangrui Li. Thanks!
 %           6/14/09   mk    Remove redundant special case code for Octave.
+%          12/04/12   zlb   Removed usa19* from PortDB since Keyserial1 is
+%                           an alias for the first port anyway.
 
 % Comments from mpr:
 %
@@ -71,7 +73,7 @@ function PortNumber = FindSerialPort(PortString, forIOPort, dontFail)
 if ~nargin || isempty(PortString)	
 	% List of serial port devices to look for. These should all be lower case:
     if IsOSX
-        PortDB = { lower('usa19'), lower('keyserial1'), lower('usbmodem'), lower('usbserial') };
+        PortDB = { lower('keyserial1'), lower('usbmodem'), lower('usbserial') };
     end
     
     if IsLinux
