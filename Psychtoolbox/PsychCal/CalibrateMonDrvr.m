@@ -51,6 +51,8 @@ function cal = CalibrateMonDrvr(cal, USERPROMPT, whichMeterType, blankOtherScree
 % 8/19/12   mk      Rewrite setup and clut code to be able to better cope with all
 %                   the broken operating systems / drivers / gpus and to also
 %                   support DataPixx/ViewPixx devices.
+% 12/05/12  zlb     No longer using a clut drawing method and fully
+%                   randomizing the displayed colors.
 
 global g_usebitspp;
 
@@ -98,11 +100,6 @@ end
 % Setup screen to be measured
 % ---------------------------
 
-% Prepare imaging pipeline for Bits+ Bits++ CLUT mode, or DataPixx/ViewPixx
-% L48 CLUT mode (which is pretty much the same). If such a special output
-% device is used, the Screen('LoadNormalizedGammatable', win, clut, 2);
-% command uploads 'clut's into the device at next Screen('Flip'), taking
-% care of possible graphics driver bugs and other quirks:
 % Prepare imaging pipeline for Bits++ Color++ mode, or DataPixx/ViewPixx
 % C48 mode (which is pretty much the same).
 PsychImaging('PrepareConfiguration');
@@ -155,34 +152,29 @@ tic
 
 mon = zeros(cal.describe.S(3)*cal.describe.nMeas,cal.nDevices);
 for a = 1:cal.describe.nAverage
-    for i = 1:cal.nDevices
-        disp(sprintf('Monitor device %g',i)); %#ok<*DSPS>
-        Screen('FillRect', window, 1, boxRect);
-        Screen('Flip', window, 0, 1);
-
-        % Measure ambient
-        darkAmbient1 = MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType, theClut);
-
-        % Measure full gamma in random order
-        mGammaInput = zeros(cal.nDevices, cal.describe.nMeas);
-        mGammaInput(i,:) = mGammaInputRaw';
-        sortVals = rand(cal.describe.nMeas,1);
-        [null, sortIndex] = sort(sortVals); %#ok<*ASGLU>
-        %fprintf(1,'MeasMonSpd run %g, device %g\n',a,i);
-        [tempMon, cal.describe.S] = MeasMonSpd(window, mGammaInput(:,sortIndex), ...
-            cal.describe.S, [], whichMeterType, theClut);
-        tempMon(:, sortIndex) = tempMon;
-
-        % Take another ambient reading and average
-        darkAmbient2 = MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType, theClut);
-        darkAmbient = ((darkAmbient1+darkAmbient2)/2)*ones(1, cal.describe.nMeas);
-
-        % Subtract ambient
-        tempMon = tempMon - darkAmbient;
-
-        % Store data
-        mon(:, i) = mon(:, i) + reshape(tempMon,cal.describe.S(3)*cal.describe.nMeas,1);
+    % Measure ambient
+    darkAmbient1 = MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType, cal.describe.boxRect);
+    
+    % Measure full gamma in random order across all guns
+    mGammaInput = zeros(cal.nDevices,cal.nDevices*cal.describe.nMeas);
+    for i = 1:cal.nDevices % [gamma 0 ... 0; 0 ... 0 gamma 0 ... 0; 0 ... 0 gamma]
+        mGammaInput(i,1+(i-1)*cal.describe.nMeas:i*cal.describe.nMeas) = mGammaInputRaw';
     end
+    sortIndex = randperm(size(mGammaInput,2));
+    
+    [tempMon, cal.describe.S] = MeasMonSpd(window, mGammaInput(:,sortIndex), ...
+        cal.describe.S, 0, whichMeterType, cal.describe.boxRect);
+    tempMon(:,sortIndex) = tempMon;
+    
+    % Take another ambient reading and average
+    darkAmbient2 = MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType, cal.describe.boxRect);
+    darkAmbient = ((darkAmbient1+darkAmbient2)/2)*ones(1, cal.describe.nMeas*cal.nDevices);
+    
+    % Subtract ambient
+    tempMon = tempMon - darkAmbient;
+    
+    % Store data
+    mon = mon + reshape(tempMon,cal.describe.S(3)*cal.describe.nMeas,cal.nDevices);
 end
 mon = mon / cal.describe.nAverage;
 
@@ -194,11 +186,7 @@ else % don't ShowCursor
     Screen('CloseAll');
 end
 
-% Close all windows:
-Screen('CloseAll');
-
 % Report time
-t1 = clock;
 fprintf('CalibrateMonDrvr measurements took %g minutes\n', toc/60);
 
 % Pre-process data to get rid of negative values.
