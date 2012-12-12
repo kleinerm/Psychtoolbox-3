@@ -1,5 +1,5 @@
-function [spd,S] = MeasMonSpd(window, settings, S, syncMode, whichMeterType, bitsppClut)
-% [spd,S] = MeasMonSpd(window, settings, [S], [syncMode], [whichMeterType], [bitsppClut])
+function [spd,S] = MeasMonSpd(window, settings, S, syncMode, whichMeterType, boxRect)
+% [spd,S] = MeasMonSpd(window, settings, [S], [syncMode], [whichMeterType], [boxRect])
 %
 % Measure the Spd of a series of monitor settings.
 %
@@ -13,6 +13,10 @@ function [spd,S] = MeasMonSpd(window, settings, S, syncMode, whichMeterType, bit
 % Other valid types:
 %  1 - Use PR650 (default)
 %  2 - Use CVI
+%  3 - CRS ColorCAL (not implemented)
+%  4 - PR-655
+%  5 - PR-670
+%  6 - PR-705
 %
 % 10/26/93  dhb	  Wrote it based on ccc code.
 % 11/12/93  dhb	  Modified to use SetColor.
@@ -29,6 +33,8 @@ function [spd,S] = MeasMonSpd(window, settings, S, syncMode, whichMeterType, bit
 % 2/27/02   dhb   Change noMeterAvail to whichMeterType.
 % 8/19/12   mk    Rewrite g_usebitspp path to use PTB imaging pipeline for higher robustness 
 %                 and to support more display devices.
+% 12/05/12  zlb   Passing the boxRect instead of a clut. Also allowing
+%                 other meters to be used.
 
 % Declare Bits++ box global
 global g_usebitspp;
@@ -40,7 +46,7 @@ if isempty(g_usebitspp)
 end
 
 % Check args and make sure window is passed right.
-usageStr = 'Usage: [spd,S] = MeasMonSpd(window, settings, [S], [syncMode], [whichMeterType])';
+usageStr = 'Usage: [spd,S] = MeasMonSpd(window, settings, [S], [syncMode], [whichMeterType], [boxRect])';
 if nargin < 2 || nargin > 6 || nargout > 2
 	error(usageStr);
 end
@@ -53,19 +59,14 @@ defaultS = [380 5 81];
 defaultSync = 0;
 defaultWhichMeterType = 1;
 
-% Get the current gamma table.
-if g_usebitspp
-    theClut = bitsppClut;
-else
-    theClut = Screen('ReadNormalizedGammaTable', window);
-end
-
 % Check args and set defaults
+if nargin < 6 || isempty(boxRect)
+    boxRect = []; % paint the whole screen
+end
 if nargin < 5 || isempty(whichMeterType)
 	whichMeterType = defaultWhichMeterType;
 end
 if nargin < 4 || isempty(syncMode)
-    % FIXME: Not used? MeasSpd() would accept it as argument.
 	syncMode = defaultSync;
 end
 if nargin < 3 || isempty(S)
@@ -76,32 +77,22 @@ end
 spd = zeros(S(3), nMeas);
 for i = 1:nMeas
     % Set the color.
+    Screen('FillRect', window, settings(:,i)', boxRect);
+    Screen('Flip', window, 0, 1);
     
     % Measure spectrum
     switch whichMeterType
         case 0
-            theClut(2,:) = settings(:, i)';
-            if g_usebitspp
-                Screen('LoadNormalizedGammaTable', window, theClut, 2);
-                Screen('Flip', window, 0, 1);
-            else
-                Screen('LoadNormalizedGammaTable', window, theClut);
-            end
-            spd(:,i) = sum(settings(:, i)) * ones(S(3), 1);
+            spd(:,i) = sum(settings(:,i)) * ones(S(3), 1);
             WaitSecs(.1);
-        case 1
-            theClut(2,:) = settings(:, i)';
-            if g_usebitspp
-                Screen('LoadNormalizedGammaTable', window, theClut, 2);
-                Screen('Flip', window, 0, 1);
-            else
-                Screen('LoadNormalizedGammaTable',window, theClut);
-            end
-            spd(:,i) = MeasSpd(S);
+        case {1,4,5,6}
+            spd(:,i) = MeasSpd(S, whichMeterType, syncMode);
         case 2
             error('CVI interface not yet ported to PTB-3.');
             % cviCal = LoadCVICalFile;
             % spd(:,i) =  CVICalibratedDarkMeasurement(cviCal, S, [], [], [], window, 1, settings(:,i));
+        case 3
+            error('CRS ColorCAL not yet implemented.');
         otherwise
             error('Invalid meter type set');
     end
