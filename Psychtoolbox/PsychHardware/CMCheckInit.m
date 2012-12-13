@@ -235,6 +235,14 @@ switch meterType
             else
                 disp('Failed to make contact.  If device is connected, try turning it off, type clear all, and then re-trying CMCheckInit.');
             end
+            errcode = PR705config('Lens', 0, 'Aperture', 0, 'Units', 1, 'ExposureTime', 0, ...
+                'CaptureMode', 0, 'Cycles', 1, 'CalcMode', 0, 'TriggerMode', 0, ...
+                'ViewShutter', 1, 'CIEObserver', 0);
+            if ~errcode
+                disp('Successfully updated the PR-705''s configuration!');
+            else
+                disp('There was an error updating the PR-705''s configuration!');
+            end
         else
             error(['Unsupported OS ' computer]);
         end
