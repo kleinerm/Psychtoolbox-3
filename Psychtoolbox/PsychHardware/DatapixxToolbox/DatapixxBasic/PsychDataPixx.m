@@ -918,9 +918,9 @@ if strcmpi(cmd, 'SetVideoVerticalStereo')
 end
 
 % No-Op the new blue-line-stereo and scanning backlight functions, which
-% are not yet supported by the Datapixx driver on 64-Bit Octave,
-% Matlab on Linux and 64-Bit Matlab on Windows:
-if (IsOctave && Is64Bit) || (IsLinux && ~IsOctave) || (IsWin(1) && ~IsOctave)
+% are not yet supported by the Datapixx driver on 64-Bit Octave and
+% Matlab on Linux:
+if (IsOctave && Is64Bit) || (IsLinux && ~IsOctave)
     % Skip the else branch with the new unsupported commands.
 else
     % New Datapixx driver: Expose new functions...
