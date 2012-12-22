@@ -97,7 +97,7 @@ typedef struct {
 	GstClockTime lastSavedBaseTime;   // Last time the pipeline was put into PLAYING state. Saved at StopCapture time before stop.
 	int nrAudioTracks;
 	int nrVideoTracks;
-	int dropframes;			  // 1 == Always deliver most recent frame in FIFO, even if dropping of frames is neccessary.
+	int dropframes;                   // 1 == Always deliver most recent frame in FIFO, even if dropping of frames is neccessary.
 	unsigned char* scratchbuffer;     // Scratch buffer for YUV->RGB conversion.
 	int reqpixeldepth;                // Requested depth of single pixel in output texture.
 	int pixeldepth;                   // Depth of single pixel from grabber in bits.
@@ -165,7 +165,8 @@ extern gboolean	gst_init_check(int *argc, char **argv[], GError **err) __attribu
  */
 void PsychGSCheckInit(const char* engineName)
 {
-	GError			*error = NULL;
+	GError      *error = NULL;
+	GstClock    *system_clock = NULL;
 
 	if (gs_firsttime) {
 		// First time invocation:
@@ -249,14 +250,16 @@ void PsychGSCheckInit(const char* engineName)
         }
 
         // Select opmode of GStreamers master clock:
-		// We use monotonic clock on Windows and OS/X, as these correspond to the
-		// clocks we use for GetSecs(), but realtime clock on Linux:
-		g_object_set(G_OBJECT(gst_system_clock_obtain()), "clock-type", ((PSYCH_SYSTEM == PSYCH_LINUX) ? GST_CLOCK_TYPE_REALTIME : GST_CLOCK_TYPE_MONOTONIC), NULL);
-
+        // We use monotonic clock on Windows and OS/X, as these correspond to the
+        // clocks we use for GetSecs(), but realtime clock on Linux:
+        system_clock = gst_system_clock_obtain();
+        if (system_clock) {
+            g_object_set(G_OBJECT(system_clock), "clock-type", ((PSYCH_SYSTEM == PSYCH_LINUX) ? GST_CLOCK_TYPE_REALTIME : GST_CLOCK_TYPE_MONOTONIC), NULL);
+        }
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Using GStreamer version '%s'.\n", (char*) gst_version_string());
 
-		// Reset firsttime flag:
-		gs_firsttime = FALSE;
+        // Reset firsttime flag:
+        gs_firsttime = FALSE;
 	}	
 }
 
@@ -1009,15 +1012,14 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
 		for (i = 0; i < (int) gst_caps_get_size(caps); i++) {
 			str = gst_caps_get_structure(caps, i);
 
+            // Set a default of 1 pixel, in case query doesn't return anything:
+            qwidth = 1;
 			gst_structure_get_int(str, "width", &qwidth);
+            qheight = 1;
 			gst_structure_get_int(str, "height", &qheight);
 			gst_structure_get_int(str, "bpp", &qbpp);
 			gst_structure_get_fraction(str, "framerate", &rate1, &rate2);
 			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Videosource cap %i: w = %i h = %i\n", i, qwidth, qheight);
-
-			// Check for matching pixel color resolution, reject too low modes:
-			// TODO: Not yet implemented, don't know if it makes sense at all, as the
-			// colorspace converters can always take care of this.
 
 			// Is this detection of default resolution, or validation of a
 			// given resolution?
@@ -1034,12 +1036,8 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
 			}
 			else {
 				// Validation: Reject/Skip modes which don't support requested resolution.
-				if ((*width != (int) qwidth) || (*height != (int) qheight)) continue;
-
-				// Videomode which supports this resolution. Framerate validation?
-				if (*fps != -1) {
-					// TODO FIXME.
-				}
+				if (((*width != (int) qwidth) && (qwidth > 1)) || ((*height != (int) qheight) && (qheight > 1))) continue;
+                if ((qwidth == 1) && (qheight == 1)) continue;
 
 				// Acceptable mode for requested resolution and framerate. Set it:
 				maxpixelarea = qwidth * qheight;
@@ -1059,6 +1057,29 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
 			return(FALSE);
 		}
 
+        // Special case DV video source, which has defined horizontal resolution of 720 pixels,
+        // but no defined vertical resolution? Two possible values: 576 (PAL) or 480 (NTSC).
+        if ((twidth == 720) && (theight == 1)) {
+            // If auto-detection requested, then assume PAL is the correct choice,
+            // ie., 576 pixels height. If just validation is requested, just pass-through
+            // whatever was passed in if it was 480 or 576 pixels:
+            if (*height == -1) {
+                // Auto-Detect: Assume 576 pixels PAL:
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Special case auto-detect DV video source resolution. Defaulting to 720 x 576 PAL.\n");
+                theight = 576;
+            }
+            else if (*height == 576 || *height == 480) {
+                // Potentially valid height value: Accept.
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Special case DV video source resolution 720 x %i. Assuming ok.\n", *height);
+                theight = *height;
+            }
+            else {
+                // Impossible value: Reject.
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Could not validate DV video source resolution %i x %i. Returning failure.\n", *width, *height);
+                return(FALSE);                
+            }
+        }
+        
 		// Yes. Return settings:
 		*fps = tfps;
 		*width = twidth;
@@ -1160,7 +1181,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 	memset(audiocodec, 0, sizeof(audiocodec));
 	memset(videocodec, 0, sizeof(videocodec));
 
-	// Get camera object - the camerabin2:
+	// Get camera object - the camerabin1/2:
 	camera = capdev->camera;
 
 	// Parse and assign high-level properties if any:
@@ -1896,6 +1917,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     GstElement      *videocrop_filter = NULL;
     GstElement      *videowrappersrc = NULL;
     GstPad          *pad, *peerpad;
+    GstPad          *dvpad;
     GstCaps         *caps;
     GstStructure    *str;
     gint            width, height;
@@ -2084,15 +2106,31 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		if (deviceIndex >= 0) {
 			// Create proper videosource plugin if possible:
 			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach '%s' as video source...\n", plugin_name);
-			videosource = gst_element_factory_make(plugin_name, "ptb_videosource");
-
+            
+            if (strstr(plugin_name, "dv1394src")) {
+                // dv1394src and hdv1394src need special treatment:
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device with guid '%llu' as video input [Property %s].\n", theDevice->deviceURI, prop_name);                
+                sprintf(tmpstr, "%s typefind=true do-timestamp=true guid=%llu ! dvdemux ! dvdec name=ptbdvsource", plugin_name, theDevice->deviceURI);
+                videosource = gst_parse_bin_from_description((const gchar *) tmpstr, FALSE, NULL);                
+            }
+            else {
+                // Standard path:
+                videosource = gst_element_factory_make(plugin_name, "ptb_videosource");
+            }
+            
 			if (!videosource) {
 				if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed! We are out of options and will probably fail soon.\n");
 				PsychErrorExitMsg(PsychError_system, "GStreamer failed to find a suitable video source! Game over.");
 			}
 
 			// Attach correct video input device to it:
-			if ((!strcmp(plugin_name, "dc1394src") || !strcmp(plugin_name, "qtkitvideosrc")) && (prop_name[0] != 0)) {
+            if (strstr(plugin_name, "dv1394src")) {
+                dvpad = gst_element_get_static_pad(gst_bin_get_by_name(GST_BIN(videosource), "ptbdvsource"), "src");
+                gst_element_add_pad(videosource, gst_ghost_pad_new("src", dvpad));
+                gst_object_unref(GST_OBJECT(dvpad));
+                dvpad = NULL;                
+            }
+            else if ((!strcmp(plugin_name, "dc1394src") || !strcmp(plugin_name, "qtkitvideosrc")) && (prop_name[0] != 0)) {
 				// DC1394 source or QTKITVideosource:
 				if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device with guid '%llu' as video input [Property %s].\n", theDevice->deviceURI, prop_name);
 				g_object_set(G_OBJECT(videosource), prop_name, (int) theDevice->deviceURI, NULL);
@@ -2106,7 +2144,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 					if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device with guid '%llu' as video input [Property %s].\n", theDevice->deviceURI, prop_name);
 					g_object_set(G_OBJECT(videosource), prop_name, theDevice->deviceURI, NULL);
 				}
-			}
+			}           
 		}
 		
 		// MS-Windows specific setup path:
@@ -2281,11 +2319,11 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             }
         }
 
-		// Some plugins need typefind'ing dhowvideosrc for sure, we also set it for aravissrc to be safe:
+		// Some plugins need typefind'ing dhowvideosrc for sure, but we also set it for aravissrc to be safe:
 		if (strstr(plugin_name, "dshowvideosrc") || strstr(plugin_name, "aravissrc")) g_object_set(G_OBJECT(videosource), "typefind", 1, NULL);
 		
-		// Enable timestamping by videosource:
-		g_object_set(G_OBJECT(videosource), "do-timestamp", 1, NULL);
+		// Enable timestamping by videosource, unless its been done already for a dv1394src:
+		if (!strstr(plugin_name, "dv1394src")) g_object_set(G_OBJECT(videosource), "do-timestamp", 1, NULL);
 
 		// Assign video source to pipeline:
         if (usecamerabin == 1) {
@@ -2588,7 +2626,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
         // If we are using camerabin2, we need to READY the pipeline, otherwise the queries
         // and validations below will fail due to lack of available video capture caps:
-        if (!(recordingflags & 8) && (usecamerabin == 2)) {
+        if (usecamerabin == 2) {
             // Ready the pipeline:
             if (!PsychVideoPipelineSetState(camera, GST_STATE_READY, 30.0)) {
                 PsychGSProcessVideoContext(vidcapRecordBANK[slotid].VideoContext, TRUE);
@@ -2879,6 +2917,11 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Pipeline preroll skipped because only harddisc recording (recordingflags & 4).\n");
     }
 
+    if (strstr(plugin_name, "dv1394src")) {
+	    recordingflags |= 8;        
+	    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Pipeline preroll skipped because DV capture via dv1394src or hdv1394src is active.\n");
+    }
+
     // Only preroll if prerolling not disabled by recordingflag 8,
     // or if we use the fallback path, which utterly needs this:
     if (!(recordingflags & 8) || !usecamerabin) {
@@ -3006,7 +3049,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                   NULL);
         }
         else {
-            // TODO FIXME: camerabin2
+            // camerabin2: Doesn't use explicit video encoder, but video encoding profiles...
             capdev->videoenc = NULL;
         }
     }
