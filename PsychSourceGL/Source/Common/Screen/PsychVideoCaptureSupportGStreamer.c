@@ -73,6 +73,31 @@
 #include <gst/interfaces/propertyprobe.h>
 #include <gst/interfaces/colorbalance.h>
 
+// Compile-Time enable GStreamer encoding profile support by default on
+// MacOSX and on 64-Bit Windows. These are the platforms where we know
+// for sure that the installed GStreamer runtimes support this feature,
+// because 64-Bit Windows == GStreamer-SDK and OSX == GStreamer-SDK or
+// Homebrews GStreamer. Both Homebrew installs and the SDK do support this.
+//
+// 32-Bit Windows requires the OSSBuilds GStreamer which is too old to support this, but
+// there we use camerabin1 + old setup path anyway, so no loss.
+//
+// Linux is mixed: Recent distros support it, old ones don't. I'm simply too lazy atm.
+// to implement dynamic detection of support and dynamic linking on Linux, and use of
+// camerabin2 + these profiles doesn't have any advantage over use of camerabin1 + the old
+// codec setup, so as the old-school method is supported everywhere on Linux, we simply
+// default to camerabin1 capture+recording and old style setup on Linux and safe ourselves
+// a bit of hassle. Once we support a GStreamer V1.0 multi-media backend, we can implement
+// this unconditionally without any pain or compatibility issues.
+#if (PSYCH_SYSTEM == PSYCH_OSX) || ((PSYCH_SYSTEM == PSYCH_WINDOWS) && (defined(__LP64__) || defined(_M_IA64) || defined(_WIN64)))
+#define PTB_USE_GSTENCODINGPROFILES 1
+#endif
+
+// For camerabin2 based video encoding:
+#ifdef PTB_USE_GSTENCODINGPROFILES
+#include <gst/pbutils/encoding-profile.h>
+#endif
+
 // 0 = No camerabin, 1 = camerabin, 2 = camerabin2:
 static unsigned int usecamerabin = 1;
 
@@ -1145,7 +1170,37 @@ GstElement* CreateGStreamerElementFromString(const char* codecSpec, const char* 
 	return(element);
 }
 
-psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char* codecSpec, char* outCodecName, psych_bool launchline)
+// If encoding profiles are supported, use this function to create one from given specs:
+#ifdef PTB_USE_GSTENCODINGPROFILES
+GstEncodingProfile* PsychCreateEncodingProfile(const char* muxer, const char* videocodec, const char* audiocodec)
+{
+    GstEncodingContainerProfile *prof = NULL;
+    GstCaps *caps;
+
+    // Create media container from 'muxer' spec:
+    caps = gst_caps_from_string(muxer);
+    prof = gst_encoding_container_profile_new("Psychtoolbox audio/video",
+                                              "Psychtoolbox recorded audio and video",
+                                              caps, NULL);
+    gst_caps_unref(caps);
+
+    // Create video encoding profile from 'videocodec' spec:
+    caps = gst_caps_from_string(videocodec);
+    gst_encoding_container_profile_add_profile(prof, (GstEncodingProfile*) gst_encoding_video_profile_new(caps, NULL, NULL, 0));
+    gst_caps_unref(caps);
+
+    // Create audio encoding profile from 'audiocodec' spec, if any. Otherwise omit audio encoding:
+    if (audiocodec) {
+        caps = gst_caps_from_string(audiocodec);
+        gst_encoding_container_profile_add_profile(prof, (GstEncodingProfile*) gst_encoding_audio_profile_new(caps, NULL, NULL, 0));
+        gst_caps_unref(caps);
+    }
+    
+    return((GstEncodingProfile*) prof);
+}
+#endif
+
+psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char* codecSpec, char* outCodecName, psych_bool launchline, psych_bool forCamerabin, psych_bool soundForVideoRecording)
 {
 	GstElement *camera = NULL;
 	GstElement *some_element = NULL;
@@ -1175,6 +1230,9 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 	int fastStart = -1;
 	int indexItemsSec = -1;
 	int profile = -1;
+
+	// Use GStreamer encoding profiles instead of low-level do-it-yourself setup?
+	psych_bool use_profiles = (forCamerabin && (usecamerabin == 2)) ? TRUE : FALSE;
 
 	memset(muxer, 0, sizeof(muxer));
 	memset(audiosrc, 0, sizeof(audiosrc));
@@ -1243,9 +1301,9 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 	// we will try to choose the best codec, then on failure fallback to the 2nd best, 3rd best, etc.
 
 	// Video encoder from parameter string?
-	if ((some_element = CreateGStreamerElementFromString(codecSpec, "VideoCodec=", videocodec)) != NULL) {
+	if ((use_profiles && strstr(codecSpec, "VideoCodec=")) || ((some_element = CreateGStreamerElementFromString(codecSpec, "VideoCodec=", videocodec)) != NULL)) {
 		// Yes. Assign it as our encoder:
-		capdev->videoenc = some_element;
+		capdev->videoenc = (use_profiles) ? ((GstElement*) 0x1) : some_element;
 
 		// Need to extract the actual name of the codec from the codecSpec string:
 		codecName = strstr(codecSpec, "VideoCodec=");
@@ -1263,9 +1321,16 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 	// Start with H264 encoder as default:
 	if (strstr(codecSpec, "x264enc") || strstr(codecSpec, "1635148593") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
 		// Define recommended (compatible) audioencoder/muxer and their default options:
-		sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
-		sprintf(muxer, "qtmux");                 // Need to use Quicktime-Multiplexer.
-
+        if (use_profiles) {
+            sprintf(audiocodec, "audio/mpeg,mpegversion=4");
+            sprintf(muxer, "video/x-msvideo");
+            sprintf(outCodecName, "video/x-h264");
+        }
+        else {
+            sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+            sprintf(muxer, "qtmux");                 // Need to use Quicktime-Multiplexer.
+        }
+        
 		// Videoencoder not yet created? If so, we have to do it now:
 		if (!capdev->videoenc) {
 			// Not yet created. Create full codec & option string from high level properties,
@@ -1322,22 +1387,29 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 			}
 
 			// Create videocodec from options string:
-			capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+			capdev->videoenc = (!use_profiles) ? CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec) : ((GstElement*) 0x1);
 		}
 
 		if (!capdev->videoenc) {
 			printf("PTB-WARNING: Failed to create 'x264enc' H.264 video encoder! Does not seem to be installed on your system?\n");
 		}
 		else {
-			sprintf(outCodecName, "x264enc");
+			if (!use_profiles) sprintf(outCodecName, "x264enc");
 		}
 	}
 
 	// Try then Apple OSX specific H264 encoder:
 	if (strstr(codecSpec, "vtenc_h264") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
 		// Define recommended (compatible) audioencoder/muxer and their default options:
-		sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
-		sprintf(muxer, "qtmux");                 // Need to use Quicktime-Multiplexer.
+        if (use_profiles) {
+            sprintf(audiocodec, "audio/mpeg,mpegversion=4");
+            sprintf(muxer, "video/x-msvideo");
+            sprintf(outCodecName, "video/x-h264");
+        }
+        else {
+            sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+            sprintf(muxer, "qtmux");                 // Need to use Quicktime-Multiplexer.
+        }
         
 		// Videoencoder not yet created? If so, we have to do it now:
 		if (!capdev->videoenc) {
@@ -1352,14 +1424,14 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 			}
             
 			// Create videocodec from options string:
-			capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+			capdev->videoenc = (!use_profiles) ? CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec) : ((GstElement*) 0x1);
 		}
         
 		if (!capdev->videoenc) {
 			printf("PTB-WARNING: Failed to create 'vtenc_h264' H.264 MacOSX specific video encoder! Does not seem to be installed on your system?\n");
 		}
 		else {
-			sprintf(outCodecName, "vtenc_h264");
+			if (!use_profiles) sprintf(outCodecName, "vtenc_h264");
 		}
 	}
 
@@ -1367,9 +1439,16 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 	// a 4 year old MacBookPro Core2Duo 2.2 Ghz with about 70% - 100% cpu load, depending on settings.
 	if (strstr(codecSpec, "xvidenc") || strstr(codecSpec, "1836070006") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
 		// Define recommended (compatible) audioencoder/muxer and their default options:
-		sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
-		sprintf(muxer, "avimux");                // Need to use avi-multiplexer.
-
+        if (use_profiles) {
+            sprintf(audiocodec, "audio/mpeg,mpegversion=4");
+            sprintf(muxer, "video/x-msvideo");
+            sprintf(outCodecName, "video/x-xvid");
+        }
+        else {
+            sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+            sprintf(muxer, "avimux");                // Need to use avi-multiplexer.
+        }
+        
 		// Videoencoder not yet created? If so, we have to do it now:
 		if (!capdev->videoenc) {
 			// Not yet created. Create full codec & option string from high level properties,
@@ -1397,23 +1476,30 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 			}
 
 			// Create videocodec from options string:
-			capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+			capdev->videoenc = (!use_profiles) ? CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec) : ((GstElement*) 0x1);
 		}
 
 		if (!capdev->videoenc) {
 			printf("PTB-WARNING: Failed to create 'xvidenc' xvid/mpeg-4 video encoder! Does not seem to be installed on your system?\n");
 		}
 		else {
-			sprintf(outCodecName, "xvidenc");
+			if (!use_profiles) sprintf(outCodecName, "xvidenc");
 		}
 	}
 
 	// ffenc_mpeg4 also creates MPEG4, but at lower quality - much more blocky etc.
 	if (strstr(codecSpec, "ffenc_mpeg4") || ((strstr(codecSpec, "DEFAULTenc") || strstr(codecSpec, "1836070006")) && !capdev->videoenc)) {
 		// Define recommended (compatible) audioencoder/muxer and their default options:
-		sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
-		sprintf(muxer, "avimux");                // Need to use avi-multiplexer.
-
+        if (use_profiles) {
+            sprintf(audiocodec, "audio/mpeg,mpegversion=4");
+            sprintf(muxer, "video/x-msvideo");
+            sprintf(outCodecName, "video/mpeg,mpegversion=4");
+        }
+        else {
+            sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+            sprintf(muxer, "avimux");                // Need to use avi-multiplexer.
+        }
+        
 		// Videoencoder not yet created? If so, we have to do it now:
 		if (!capdev->videoenc) {
 			// Not yet created. Create full codec & option string from high level properties,
@@ -1441,23 +1527,30 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 			}
 
 			// Create videocodec from options string:
-			capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+			capdev->videoenc = (!use_profiles) ? CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec) : ((GstElement*) 0x1);
 		}
 
 		if (!capdev->videoenc) {
 			printf("PTB-WARNING: Failed to create 'ffenc_mpeg4' mpeg-4 video encoder! Does not seem to be installed on your system?\n");
 		}
 		else {
-			sprintf(outCodecName, "ffenc_mpeg4");
+			if (!use_profiles) sprintf(outCodecName, "ffenc_mpeg4");
 		}
 	}
 
 	// Theora + Ogg vorbis audio in .ogv container:
 	if (strstr(codecSpec, "theoraenc") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
 		// Define recommended (compatible) audioencoder/muxer and their default options:
-		sprintf(audiocodec, "AudioCodec=vorbisenc "); // Need to use Ogg Vorbis audio encoder.
-		sprintf(muxer, "oggmux");                // Need to use Ogg-multiplexer.
-
+        if (use_profiles) {
+            sprintf(audiocodec, "audio/x-vorbis");
+            sprintf(muxer, "application/ogg");
+            sprintf(outCodecName, "video/x-theora");
+        }
+        else {
+            sprintf(audiocodec, "AudioCodec=vorbisenc "); // Need to use Ogg Vorbis audio encoder.
+            sprintf(muxer, "oggmux");                // Need to use Ogg-multiplexer.
+        }
+        
 		// Videoencoder not yet created? If so, we have to do it now:
 		if (!capdev->videoenc) {
 			// Not yet created. Create full codec & option string from high level properties,
@@ -1487,26 +1580,33 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 			}
 
 			// Create videocodec from options string:
-			capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+			capdev->videoenc = (!use_profiles) ? CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec) : ((GstElement*) 0x1);
 		}
 
 		if (!capdev->videoenc) {
 			printf("PTB-WARNING: Failed to create 'theoraenc' video encoder! Does not seem to be installed on your system?\n");
 		}
 		else {
-			sprintf(outCodecName, "theoraenc");
+			if (!use_profiles) sprintf(outCodecName, "theoraenc");
 		}
 	}
 
-	// VP-8 in WebM container:
+	// VP-8 in WebM or Matroska container:
 	if (strstr(codecSpec, "vp8enc") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
 		// Define recommended (compatible) audioencoder/muxer and their default options:
-		sprintf(audiocodec, "AudioCodec=vorbisenc "); // Need to use Ogg Vorbis audio encoder.
-		sprintf(muxer, "webmmux");                    // Default to WebM multiplexer.
-
+        if (use_profiles) {
+            sprintf(audiocodec, "audio/x-vorbis");
+            sprintf(muxer, "video/webm");
+            sprintf(outCodecName, "video/x-vp8");
+        }
+        else {
+            sprintf(audiocodec, "AudioCodec=vorbisenc "); // Need to use Ogg Vorbis audio encoder.
+            sprintf(muxer, "webmmux");                    // Default to WebM multiplexer.
+        }
+        
 		// Need to use matroska/webm-multiplexer:
-		if (strstr(codecSpec, "_matroska")) sprintf(muxer, "matroskamux");
-		if (strstr(codecSpec, "_webm")) sprintf(muxer, "webmmux");
+		if (strstr(codecSpec, "_matroska")) sprintf(muxer, (use_profiles) ? "video/x-matroska" : "matroskamux");
+		if (strstr(codecSpec, "_webm")) sprintf(muxer, (use_profiles) ? "video/webm" : "webmmux");
 
 		// Videoencoder not yet created? If so, we have to do it now:
 		if (!capdev->videoenc) {
@@ -1537,23 +1637,30 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 			}
 
 			// Create videocodec from options string:
-			capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+			capdev->videoenc = (!use_profiles) ? CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec) : ((GstElement*) 0x1);
 		}
 
 		if (!capdev->videoenc) {
 			printf("PTB-WARNING: Failed to create 'vp8enc' VP-8 video encoder! Does not seem to be installed on your system?\n");
 		}
 		else {
-			sprintf(outCodecName, "vp8enc");
+			if (!use_profiles) sprintf(outCodecName, "vp8enc");
 		}
 	}
 
-	// Raw YUV: Works, but only for fixed hard-coded size 640 x 480 by now.
+	// Raw YUV: Works with camerabin1, but only for fixed hard-coded size 640 x 480 by now. Always works with camerabin2.
 	if (strstr(codecSpec, "yuvraw") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
 		// Define recommended (compatible) audioencoder/muxer and their default options:
-		sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
-		sprintf(muxer, "avimux");                // Need to use AVI-Multiplexer.
-
+        if (use_profiles) {
+            sprintf(audiocodec, "audio/mpeg,mpegversion=4");
+            sprintf(muxer, "video/x-msvideo");
+            sprintf(outCodecName, "video/x-raw-yuv");
+        }
+        else {
+            sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+            sprintf(muxer, "avimux");                // Need to use AVI-Multiplexer.
+        }
+        
 		// Videoencoder not yet created? If so, we have to do it now:
 		if (!capdev->videoenc) {
 			// Not yet created. Create full codec & option string from high level properties,
@@ -1561,23 +1668,30 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 			sprintf(videocodec, "VideoCodec=capsfilter caps=\"video/x-raw-yuv, format=(fourcc)I420, width=(int)640, height=(int)480\" ");
 
 			// Create videocodec from options string:
-			capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+			capdev->videoenc = (!use_profiles) ? CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec) : ((GstElement*) 0x1);
 		}
 
 		if (!capdev->videoenc) {
 			printf("PTB-WARNING: Failed to create 'capsfilter' YUV pass-through video encoder! Does not seem to be installed on your system?\n");
 		}
 		else {
-			sprintf(outCodecName, "yuvraw");
+			if (!use_profiles) sprintf(outCodecName, "yuvraw");
 		}
 	}
 
 	// H263 -- Does not work well yet.
 	if (strstr(codecSpec, "ffenc_h263p") || strstr(codecSpec, "1748121139") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
 		// Define recommended (compatible) audioencoder/muxer and their default options:
-		sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
-		sprintf(muxer, "qtmux");                 // Need to use Quicktime-Multiplexer.
-
+        if (use_profiles) {
+            sprintf(audiocodec, "audio/mpeg,mpegversion=4");
+            sprintf(muxer, "video/x-msvideo");
+            sprintf(outCodecName, "video/x-h263");
+        }
+        else {
+            sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+            sprintf(muxer, "qtmux");                 // Need to use Quicktime-Multiplexer.
+        }
+        
 		// Videoencoder not yet created? If so, we have to do it now:
 		if (!capdev->videoenc) {
 			// Not yet created. Create full codec & option string from high level properties,
@@ -1605,23 +1719,30 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 			}
 
 			// Create videocodec from options string:
-			capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+			capdev->videoenc = (!use_profiles) ? CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec) : ((GstElement*) 0x1);
 		}
 
 		if (!capdev->videoenc) {
 			printf("PTB-WARNING: Failed to create 'ffenc_h263p' H.263 video encoder! Does not seem to be installed on your system?\n");
 		}
 		else {
-			sprintf(outCodecName, "ffenc_h263p");
+			if (!use_profiles) sprintf(outCodecName, "ffenc_h263p");
 		}
 	}
 
-	// Raw Huffman encoded YUV -- Does not work yet.
+	// Raw Huffman encoded YUV: Works with camerabin2.
 	if (strstr(codecSpec, "huffyuv") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
 		// Define recommended (compatible) audioencoder/muxer and their default options:
-		sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
-		sprintf(muxer, "avimux");           // Need to use AVI-Multiplexer.
-
+        if (use_profiles) {
+            sprintf(audiocodec, "audio/mpeg,mpegversion=4");
+            sprintf(muxer, "video/x-msvideo");
+            sprintf(outCodecName, "video/x-huffyuv");
+        }
+        else {
+            sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+            sprintf(muxer, "avimux");           // Need to use AVI-Multiplexer.
+        }
+        
 		// Videoencoder not yet created? If so, we have to do it now:
 		if (!capdev->videoenc) {
 			// Not yet created. Create full codec & option string from high level properties,
@@ -1642,20 +1763,35 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 			}
 
 			// Create videocodec from options string:
-			capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+			capdev->videoenc = (!use_profiles) ? CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec) : ((GstElement*) 0x1);
 		}
 
 		if (!capdev->videoenc) {
 			printf("PTB-WARNING: Failed to create 'ffenc_huffyuv' compressed YUV lossless video encoder! Does not seem to be installed on your system?\n");
 		}
 		else {
-			sprintf(outCodecName, "ffenc_huffyuv");
+			if (!use_profiles) sprintf(outCodecName, "ffenc_huffyuv");
 		}
 	}
 
-	// Audio encoder from parameter string?
-	if ((audio_enc = CreateGStreamerElementFromString(codecSpec, "AudioCodec=", audiocodec)) != NULL) {
-		// Yes: Assign it.
+	// Audio encoder from parameter string? Or new-style encoding profiles in use?
+	if (use_profiles || ((audio_enc = CreateGStreamerElementFromString(codecSpec, "AudioCodec=", audiocodec)) != NULL)) {
+		// Yes: Encoding profiles in use? Then we need to parse AudioCodec= string ourselves for the MIME spec:
+        if (use_profiles && strstr(codecSpec, "AudioCodec=")) {
+            poption = strstr(codecSpec, "AudioCodec=");
+            poption+= strlen("AudioCodec=");
+            
+            // Store audiocodec name in 'audiocodec':
+            sprintf(audiocodec, "%s", poption);
+            
+            // Terminate audiocodec string if a ::: marker is encountered:
+            poption = strstr(audiocodec, ":::");
+            if (poption) *poption = 0;
+            
+            // audiocodec now contains audiocodec spec.
+        }
+        
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Created audio encoder according to: %s\n", audiocodec);
 	} else {
 		// No: Build from preset as defined by video codec and some high level settings:
 
@@ -1710,8 +1846,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 	// device = The audio device name.
 	// server = Audio server name for Jack and PulseAudio.
 	// slave-method = Type of syncing to master clock.
-	if ((audio_src = CreateGStreamerElementFromString(codecSpec, "AudioSource=", audiosrc)) != NULL) {
-	}
+	if (soundForVideoRecording) audio_src = CreateGStreamerElementFromString(codecSpec, "AudioSource=", audiosrc);
 
 	// Multiplexer from parameter string?
 	if (strstr(codecSpec, "Muxer=")) {
@@ -1727,11 +1862,13 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 		// Terminate muxer string if a ::: marker is encountered:
 		poption = strstr(muxer, ":::");
 		if (poption) *poption = 0;
-
-		// Build element from muxer spec:
-		muxer_elt = gst_element_factory_make(muxer, "ptbvideomuxer0");
-	} else {
-		// As assigned by video codec init path:
+        
+        // muxer now contains muxer spec.
+	}
+    
+    // Only build actual muxer if encoding profiles aren't in use:
+    if (!use_profiles) {
+		// Build multiplexer from 'muxer' spec:
 		muxer_elt = gst_element_factory_make(muxer, "ptbvideomuxer0");
 	}
 
@@ -1799,25 +1936,54 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 
 	// Still no video codec? Then this is game over: FIXME Small memory leak here on error exit.
 	if (capdev->videoenc == NULL) PsychErrorExitMsg(PsychError_user, "Could not find or setup requested video codec or any fallback codec for video recording. Aborted.");
-	if (!audio_enc) PsychErrorExitMsg(PsychError_user, "Could not find or setup requested audio codec for recording. Aborted.");
-	if (!muxer_elt) PsychErrorExitMsg(PsychError_user, "Could not find or setup requested audio-video multiplexer for recording. Aborted.");
+	if (!audio_enc && !use_profiles) PsychErrorExitMsg(PsychError_user, "Could not find or setup requested audio codec for recording. Aborted.");
+	if (!muxer_elt && !use_profiles) PsychErrorExitMsg(PsychError_user, "Could not find or setup requested audio-video multiplexer for recording. Aborted.");
 
+    // Invalidate our no longer needed fake videoenc entry if profiles are in use:
+    if (use_profiles && (capdev->videoenc == (GstElement*) 0x1)) capdev->videoenc = NULL;
+    
 	if (PsychPrefStateGet_Verbosity() > 3) {
 		printf("PTB-INFO: Audiosource: %s\n", audiosrc);
 		printf("PTB-INFO: Audiocodec : %s\n", audiocodec);
-		printf("PTB-INFO: Videocodec : %s\n", videocodec);
+		printf("PTB-INFO: Videocodec : %s\n", (use_profiles) ? outCodecName : videocodec);
 		printf("PTB-INFO: Multiplexer: %s\n", muxer);
 	}
 
-	if (!launchline) {
-		// Attach our created objects to camerabin:
-		g_object_set(camera, "video-encoder", capdev->videoenc, NULL);
-		g_object_set(camera, "audio-encoder", audio_enc, NULL);
-		g_object_set(camera, "video-muxer", muxer_elt, NULL);
-		if (audio_src) g_object_set(camera, "audio-source", audio_src, NULL);
+	if (!launchline || forCamerabin) {
+        if (usecamerabin == 1) {
+            // Attach our created objects to camerabin1:
+            g_object_set(camera, "video-encoder", capdev->videoenc, NULL);
+            g_object_set(camera, "audio-encoder", audio_enc, NULL);
+            g_object_set(camera, "video-muxer", muxer_elt, NULL);
+            if (audio_src) g_object_set(camera, "audio-source", audio_src, NULL);
+        }
+        else {
+            // Camerabin2 in use:
+
+            // Release our objects, if any. We have our configuration:
+            if (capdev->videoenc) {
+                gst_object_unref(G_OBJECT(capdev->videoenc));
+                capdev->videoenc = NULL;
+            }
+            if (audio_enc) gst_object_unref(G_OBJECT(audio_enc));
+            if (muxer_elt) gst_object_unref(G_OBJECT(muxer_elt));
+
+            // Assign special audio source, if any:
+            if (audio_src) g_object_set(camera, "audio-source", audio_src, NULL);
+            
+            // Assign video (and audio) encoding and muxing profile:
+            #ifdef PTB_USE_GSTENCODINGPROFILES
+            g_object_set(camera, "video-profile", PsychCreateEncodingProfile(muxer, outCodecName, (soundForVideoRecording) ? audiocodec : NULL), NULL);
+            #else
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: Using default (low-performance) Ogg Theora/Vorbis video/audio encoding for camerabin2 video\n");
+                printf("PTB-WARNING: recording, because your GStreamer installation lacks support for selectable encoding profiles.\n");
+            }
+            #endif
+        }
 	} else {
 		// Release our objects, we have our launch line:
-		gst_object_unref(G_OBJECT(capdev->videoenc)); capdev->videoenc = NULL;
+		if (capdev->videoenc) { gst_object_unref(G_OBJECT(capdev->videoenc)); capdev->videoenc = NULL; }
 		if (audio_enc) gst_object_unref(G_OBJECT(audio_enc));
 		if (audio_src) gst_object_unref(G_OBJECT(audio_src));
 		if (muxer_elt) gst_object_unref(G_OBJECT(muxer_elt));
@@ -1882,7 +2048,7 @@ psych_bool PsychGetCodecLaunchLineFromString(char* codecSpec, char* launchString
 
 	// Pass off the job and just return its results. This is shared with encoder/muxer
 	// creation, setup, configuration and testing for the video recording engine:
-	return(PsychSetupRecordingPipeFromString(&dummydev, codecSpec, launchString, TRUE));
+	return(PsychSetupRecordingPipeFromString(&dummydev, codecSpec, launchString, TRUE, FALSE, FALSE));
 }
 
 /*  
@@ -2382,7 +2548,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    }
 
 	    // Create matching video encoder for codecSpec:
-	    if (PsychSetupRecordingPipeFromString(capdev, codecSpec, codecName, FALSE)) {
+	    if (PsychSetupRecordingPipeFromString(capdev, codecSpec, codecName, FALSE, TRUE, (recordingflags & 2) ? TRUE : FALSE)) {
 		    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Video%s recording into file [%s] enabled for device %i. Codec is [%s].\n",
 								  ((recordingflags & 2) ? " and audio" : ""), targetmoviefilename, deviceIndex, codecName);
 		    if (strcmp(codecSpec, "DEFAULTenc") == 0) free(codecSpec);
@@ -2525,9 +2691,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    // Setup pipeline for video recording or pure capture:
 	    if (!capdev->recording_active) {
 		    // Pure video capture, no recording: Optimize pipeline for this case:
-		    g_object_set(G_OBJECT(camera),
-                         "flags", (usecamerabin == 1) ? 1+2+4 : 0,
-                         NULL);
+		    g_object_set(G_OBJECT(camera), "flags", (usecamerabin == 1) ? 1+2+4 : 0, NULL);
             
             // Setup colorcaps for camerabin1, do it later for camerabin2:
             if (usecamerabin == 1) g_object_set(G_OBJECT(camera), "filter-caps", colorcaps, NULL);
@@ -2552,15 +2716,12 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                     // Yes:
                     g_object_set(G_OBJECT(camera),
                                  "mute", FALSE,
-//                                 "video-profile", 0, // TODO: Set video encoding profile with sound.
-                                 NULL);
-                    
+                                 NULL);                    
                 }
                 else {
                     // No:
                     g_object_set(G_OBJECT(camera),
                                  "mute", TRUE,
-//                                 "video-profile", 0, // TODO: Set video encoding profile without sound.
                                  NULL);
                 }
             }
