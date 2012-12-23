@@ -395,7 +395,7 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
     n=CFDictionaryGetValue(currentMode, kCGDisplayRefreshRate );
     CFNumberGetValue(n, kCFNumberLongType, &currentFrequency ) ;
 
-    //get a list of avialable modes for the specified display
+    //get a list of available modes for the specified display
     modeList = CGDisplayAvailableModes(displayCGIDs[screenNumber]);
     numPossibleModes= CFArrayGetCount(modeList);
     for(i=0;i<numPossibleModes;i++){
@@ -411,9 +411,21 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
             CFNumberGetValue(n, kCFNumberLongType, &tempDepth) ;
             PsychAddValueToDepthStruct((int)tempDepth, depths);
         }
-		// printf("mode %i : w x h = %i x %i, fps = %i, depths = %i\n", i, tempWidth, tempHeight, tempFrequency, tempDepth);
+		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: PsychGetScreenDepths(): mode %i : w x h = %i x %i, fps = %i, depths = %i\n", i, tempWidth, tempHeight, tempFrequency, tempDepth);
     }
 
+    // At least one match?
+    if (PsychGetNumDepthsFromStruct(depths) < 1) {
+        // Yes, this should not ever happen on a sane operating system, but this is
+        // OSX, so it does. Observed on a 2010 MacBookPro with OSX 10.7.5 on a external
+        // panel. Output a warning and fake entries for the most common pixel sizes:
+        PsychAddValueToDepthStruct(16, depths);
+        PsychAddValueToDepthStruct(32, depths);
+        if (PsychPrefStateGet_Verbosity() > 1) {
+            printf("PTB-WARNING: Broken MacOS/X detected. It misreports (== omits some) available video modes and thereby empty display depths due to matching failure.\n");
+            printf("PTB-WARNING: Will try to workaround this by creating a fake list of available display depths of 16 bpp and 32 bpp. Expect potential trouble further on...\n");
+        }
+    }
 }
 
 /*   PsychGetAllSupportedScreenSettings()
