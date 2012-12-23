@@ -1126,7 +1126,8 @@ if strcmpi(cmd, 'CheckGPUSanity')
     % correction loop. It will tweak the gamma tables until a match is
     % achieved. We can't do anything about dithering though beyond
     % reporting it:
-    [oldlut, dummy, nrlutslots] = Screen('ReadNormalizedGammaTable', win);
+    oldlut = Screen('ReadNormalizedGammaTable', win);
+    nrlutslots = size(oldlut, 1);
     curlut = oldlut;
     
     psychlasterror('reset');
