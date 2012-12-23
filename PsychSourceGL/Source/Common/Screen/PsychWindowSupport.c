@@ -658,8 +658,6 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     logo_y = ((int) PsychGetHeightFromRect((*windowRecord)->rect) - (int) splash_image.height) / 2;
     logo_y = (logo_y > 0) ? logo_y : 0;
 
-    //if (PSYCH_DEBUG == PSYCH_ON) printf("OSOpenOnscreenWindow done.\n");
-
     // Retrieve real number of samples/pixel for multisampling:
     (*windowRecord)->multiSample = 0;
     while(glGetError()!=GL_NO_ERROR);
@@ -1295,29 +1293,33 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
       if (PsychPrefStateGet_3DGfx() > 0) printf("PTB-INFO: Support for OpenGL 3D graphics rendering enabled: 24 bit depth-buffer and 8 bit stencil buffer attached.\n");
       if (PsychPrefStateGet_3DGfx() & 2) printf("PTB-INFO: Additional accumulation buffer for OpenGL 3D graphics rendering attached.\n");
 	  
-      if (multiSample>0) {
-	if ((*windowRecord)->multiSample >= multiSample) {
-	  printf("PTB-INFO: Anti-Aliasing with %i samples per pixel enabled.\n", (*windowRecord)->multiSample);
-	}
-	if ((*windowRecord)->multiSample < multiSample && (*windowRecord)->multiSample>0) {
-	  printf("PTB-WARNING: Anti-Aliasing with %i samples per pixel enabled. Requested value of %i not supported by hardware.\n",
-		 (*windowRecord)->multiSample, multiSample);
-	}
-	if ((*windowRecord)->multiSample <= 0) {
-	  printf("PTB-WARNING: Could not enable Anti-Aliasing as requested. Your hardware does not support this feature!\n");
-	}
-      }
-      else {
-	// Multisampling enabled by external code, e.g., operating system override on M$-Windows?
-	if ((*windowRecord)->multiSample > 0) {
-	  // Report this, so user is aware of possible issues reg. performance and stimulus properties:
-	  printf("PTB-WARNING: Anti-Aliasing with %i samples per pixel enabled, contrary to Psychtoolboxs request\n", (*windowRecord)->multiSample);                        
-	  printf("PTB-WARNING: for non Anti-Aliased drawing! This will reduce drawing performance and will affect\n");                        
-	  printf("PTB-WARNING: low-level properties of your visual stimuli! Check your display settings for a way\n");                        
-	  printf("PTB-WARNING: to disable this behaviour if you don't like it. I will try to forcefully disable it now,\n");                        
-	  printf("PTB-WARNING: but have no way to check if disabling it worked.\n");                        
-	}
-      }
+        if (multiSample>0) {
+            if ((*windowRecord)->multiSample >= multiSample) {
+                printf("PTB-INFO: Anti-Aliasing with %i samples per pixel enabled.\n", (*windowRecord)->multiSample);
+            }
+            if ((*windowRecord)->multiSample < multiSample && (*windowRecord)->multiSample>0) {
+                printf("PTB-WARNING: Anti-Aliasing with %i samples per pixel enabled. Requested value of %i not supported by hardware.\n",
+                       (*windowRecord)->multiSample, multiSample);
+            }
+            if ((*windowRecord)->multiSample <= 0) {
+                printf("PTB-WARNING: Could not enable Anti-Aliasing as requested. Your hardware does not support this feature!\n");
+            }
+        }
+        else {
+            // Multisampling enabled by external code, e.g., operating system override on M$-Windows?
+            // We require at least 2 samples for concluding it is erroneously enabled, instead of at least
+            // 1 sample. Why? Because most Intel graphics drivers on MS-Windows have a bug where they report
+            // number of samples == 1 even if multisampling is disabled, therefore causing false alarms/clutter.
+            // Let's declutter this a bit by being more lenient:
+            if ((*windowRecord)->multiSample > 1) {
+                // Report this, so user is aware of possible issues reg. performance and stimulus properties:
+                printf("PTB-WARNING: Anti-Aliasing with %i samples per pixel enabled, contrary to Psychtoolboxs request\n", (*windowRecord)->multiSample);                        
+                printf("PTB-WARNING: for non Anti-Aliased drawing! This will reduce drawing performance and will affect\n");                        
+                printf("PTB-WARNING: low-level properties of your visual stimuli! Check your display settings for a way\n");                        
+                printf("PTB-WARNING: to disable this behaviour if you don't like it. I will try to forcefully disable it now,\n");                        
+                printf("PTB-WARNING: but have no way to check if disabling it worked.\n");                        
+            }
+        }
     }
     
     // Final master-setup for multisampling:
