@@ -1717,8 +1717,19 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 			glGenRenderbuffersEXT(1, (GLuint*) &((*fbo)->ztexid));
 			glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, (*fbo)->ztexid);
 		
-			glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_DEPTH_COMPONENT24_ARB, width, height);
-						
+            
+            // Use of depth+stencil requested and packed depth+stencil possible?
+            if (!(PsychPrefStateGet_ConserveVRAM() & kPsychDontAttachStencilToFBO) && glewIsSupported("GL_EXT_packed_depth_stencil")) {
+                // Try a packed depth + stencil buffer:
+                glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_DEPTH24_STENCIL8_EXT, width, height);
+                (*fbo)->stexid = (*fbo)->ztexid;
+            }
+            else {
+                // Depth buffer only:
+                glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_DEPTH_COMPONENT24_ARB, width, height);
+                (*fbo)->stexid = 0;
+            }
+            
 			if (glGetError()!=GL_NO_ERROR) {
 				printf("PTB-ERROR: Failed to setup internal framebuffer objects depths renderbuffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
 				printf("PTB-ERROR: Most likely the requested size, depth and multisampling level of the window or texture is not supported by your graphics hardware.\n");
@@ -1736,11 +1747,18 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 			// Unbind, we're done with setup:
 			glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
 			
-			// Attach z-buffer:
-			glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, (*fbo)->ztexid);
-			
+            // Non-zero stexid marks that we've created a packed depth+stencil renderbuffer above:
+            if ((*fbo)->stexid) {
+                // Attach combined z + stencil buffer:
+                glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER_EXT, (*fbo)->ztexid);                
+            }
+            else {
+                // Attach z-buffer only:
+                glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, (*fbo)->ztexid);
+			}
+            
 			// Now try to attach stencil buffer:
-			if (!(PsychPrefStateGet_ConserveVRAM() & kPsychDontAttachStencilToFBO)) {
+			if (!((*fbo)->stexid) && !(PsychPrefStateGet_ConserveVRAM() & kPsychDontAttachStencilToFBO)) {
 				// Create and attach renderbuffer as a stencil buffer of 8 bit depths:
 				glGenRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
 				glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, (*fbo)->stexid);
@@ -1807,9 +1825,14 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
                 }
 			}
 			else {
-				// Override: Do not attach stencil attachment!
-				(*fbo)->stexid = 0;
-				if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: PsychCreateFBO(): Pathway-3: Won't attach a stencil buffer to FBO due to user override...\n"); 
+				// Override: Do not attach stencil attachment, or combined depth+stencil attached?
+                if ((*fbo)->stexid) {
+                    // Non-Zero stexid indicates we use a combined depth+stencil renderbuffer. Its handle
+                    // is already stored in ztexid, so zero-out stexid to avoid redundant destruction on
+                    // framebuffer cleanup later on:
+                    (*fbo)->stexid = 0;
+                } // Zero stexid indicates that no stencil buffer shall be used, according to usercode's preferences:
+                else if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: PsychCreateFBO(): Pathway-3: Won't attach a stencil buffer to FBO due to user override...\n"); 
 			}
 			
 			// Ok, all depths- and stencil- renderbuffers with same number of multisamples as color renderbuffer attached. Check for completeness will
@@ -1842,7 +1865,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
                 sprintf(fbodiag, "Framebuffer attachment incomplete.");
             break;
             
-            case 0x8D56: // GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE_EXT
+            case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
                 sprintf(fbodiag, "Framebuffer attachment multisample-incomplete.");
             break;
 
