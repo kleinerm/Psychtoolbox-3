@@ -3168,7 +3168,28 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 				// This glFinish() will wait until point drawing is finished, ergo backbuffer was ready
 				// for drawing, ergo buffer swap in sync with start of VBL has happened.
 				glFinish();
-			}			
+			}
+			
+            #if PSYCH_SYSTEM == PSYCH_LINUX
+
+            #ifndef GLX_BACK_BUFFER_AGE_EXT
+            #define GLX_BACK_BUFFER_AGE_EXT 0x20F4
+            #endif
+
+            {
+                // Linux: GLX_EXT_buffer_age supported? If so, then we can query the age in frames of our current post-swap backbuffer.
+                // A value of 2 means double-buffering is used by the gfx-driver, a value of 3 is triple-buffering, zero is single-buffering, n is n-nbuffering, ...
+                // Our currently chosen classic timestamping path absolutely requires double-buffering, so any value other than 2 means big trouble for timing:
+                unsigned int buffer_age = 2; // Init to 2 to give benefit of doubt in case query below fails.
+                if (windowRecord->gfxcaps & kPsychGfxCapSupportsBufferAge) {
+                    glXQueryDrawable(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, GLX_BACK_BUFFER_AGE_EXT, &buffer_age);
+                    if ((buffer_age != 2) && (verbosity > 1)) {
+                        printf("PTB-WARNING: OpenGL driver uses %i-buffering instead of the required double-buffering for Screen('Flip')!\n", buffer_age);
+                        printf("PTB-WARNING: All returned Screen('Flip') timestamps will be wrong! Please fix this now (read 'help SyncTrouble').\n");
+                    }
+                }
+            }
+            #endif
 		}
 
 		// At this point, start of VBL on masterdisplay has happened, the bufferswap has completed and we can continue execution...
@@ -5774,7 +5795,6 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 
 	}
 	#else
-
         // Make sure we don't compile without OML_sync_control support on Linux, as that would be a shame:
         #if PSYCH_SYSTEM == PSYCH_LINUX
 		#error Build aborted. You *must* compile with the -std=gnu99  gcc compiler switch to enable the required OML_sync_control extension!
@@ -5789,7 +5809,14 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		// OpenML swap scheduling in PsychFlipWindowBuffers() disabled:
 		windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
 	#endif
-	
+
+    #if PSYCH_SYSTEM == PSYCH_LINUX
+    if (strstr(glXQueryExtensionsString(windowRecord->targetSpecific.deviceContext, PsychGetXScreenIdForScreen(windowRecord->screenNumber)), "GLX_EXT_buffer_age")) {
+        // Age queries for current backbuffer supported:
+        windowRecord->gfxcaps |= kPsychGfxCapSupportsBufferAge;
+    }
+    #endif
+    
 	if (verbose) printf("PTB-DEBUG: Interrogation done.\n\n");
 	
 	return;

@@ -94,6 +94,7 @@ TO DO:
 #define kPsychGfxCapUYVYTexture 65536		// Hw supports UYVY encoded textures. Used for GStreamer video capture/playback engine optimizations.
 #define kPsychGfxCapNativeStereo (1 << 17)  // Hw supports native OpenGL quad-buffered stereo (frame-sequential etc.).
 #define kPsychGfxCapNPOTTex     (1 << 18)   // Hw supports non-power-of-twp GL_TEXTURE_2D textures.
+#define kPsychGfxCapSupportsBufferAge (1 << 19) // Hw supports EXT_buffer_age extension.
 
 // Definition of flags for imagingMode of Image processing pipeline.
 // These are used internally, but need to be exposed to Matlab as well.
