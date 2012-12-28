@@ -1161,7 +1161,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 	
 	// Check for valid return values: A zero ust or msc means failure, except for results from nouveau,
 	// because there it is "expected" to get a constant zero return value for msc, at least when running
-	// on top of a pre Linux-3.2 kernel:
+	// on top of a current Linux kernel (not fixed as of Linux 3.8 timeframe):
 	if ((windowRecord->vSynced) && ((ust == 0) || ((msc == 0) && !strstr((char*) glGetString(GL_VENDOR), "nouveau")))) {
 		// Ohoh:
 		if (PsychPrefStateGet_Verbosity() > 1) {
@@ -1177,7 +1177,8 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 	if (tSwap) *tSwap = PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz());
 
     // Another consistency check: This one is meant to catch the totally broken glXSwapBuffersMscOML()
-    // implementation of the Intel-DDX from June 2011 to October 2012.
+    // implementation of the Intel-DDX from June 2011 to December 2012. The bug has been fixed in the
+    // ddx driver version 2.20.16, released at 15th December 2012.
     //
     // That driver completely ignores the provided targetMSC for fullscreen page-flips!!! It just swaps
     // at next vblank. Iow, the real msc of swap completion can be much lower than the requested targetMSC,
@@ -1205,7 +1206,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
                 printf("\nPTB-WARNING: The flip stimulus onset completed at vblank count %lld before the requested target vblank count %lld !!\n", msc, windowRecord->lastSwaptarget_msc);
                 printf("PTB-WARNING: This likely means a serious graphics driver bug or malfunction in the drivers swap scheduling mechanism!\n");
                 printf("PTB-WARNING: I will now switch to a fallback / backup method for the remainder of this session, trying to work around this bug.\n");
-                printf("PTB-WARNING: All Intel graphics drivers released between June 2011 and at least October 2012 are known to have this bug.\n");
+                printf("PTB-WARNING: All Intel graphics drivers released between June 2011 and up to 14th December 2012 are known to have this bug.\n");
                 printf("PTB-WARNING: If you use such a graphics card or driver, please try to update your graphics driver as soon as possible for reliable operation.\n\n");
             }
         }
@@ -1508,6 +1509,27 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 		// Make sure initial targetMSC obeys (divisor,remainder) constraint:
 		targetMSC += (targetMSC % divisor == remainder) ? 0 : 1; 
 	}
+
+    // Workaround for bugs in Intel-DDX from June 2011 until 15. December 2012 (Bug fixed in driver version 2.20.16).
+    // If the ddx uses SNA ("SandyBridge Acceleration Architecture") for swap scheduling then two bugs are at work:
+    // a) The "Option" "TripleBuffer" "off" in xorg.conf is ignored, causing triple-buffering to be active by default,
+    //    causing our timestamping to fail completely.
+    // b) The targetMSC is completely ignored, causing total failure of Screen('Flip', .., when); swap scheduling by
+    //    always swapping at next vblank. -> This one has a workaround though.
+    //
+    // Good news: If SNA is used, we can trick SNA to use a different swap scheduling path in the driver if
+    // divisor is non-zero. This path doesn't have bug b) and never uses triple-buffering, but always double-buffering,
+    // thereby nicely solving bug a). Net result: Bug-free operation. Soo, if the driver is Intel and divisor is set
+    // to its zero default, we set (divisor, remainder) == (1, 0) -> non-zero divisor "fixes" the bugs, but the (1,0)
+    // combo causes the divisor/remainder constraint to be ignored anyway -> effective behaviour of a zero divisor.
+    //
+    // If the non-SNA classic UXA ("Unified X-Acceleration") is used, then bug a) doesn't exist and bug b) is either
+    // fixed by our workaround from previous ptb release (commit c90abbfbebaf80036844614141ebc9cd12723f0a), or by the
+    // proper bug-fix also in the Intel ddx v2.20.16.
+    if ((divisor <= 0) && strstr(windowRecord->gpuCoreId, "Intel")) {
+        divisor = 1;
+        remainder = 0;
+    }
 
 	if (PsychPrefStateGet_Verbosity() > 12) printf("PTB-DEBUG:PsychOSScheduleFlipWindowBuffers: Submitting swap request for targetMSC = %lld, divisor = %lld, remainder = %lld.\n", targetMSC, divisor, remainder);
 
