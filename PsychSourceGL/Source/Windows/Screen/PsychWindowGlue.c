@@ -1551,10 +1551,13 @@ dwmdontcare:
 
 		windowRecord->targetSpecific.glusercontextObject = wglCreateContext(hDC);
 		if (windowRecord->targetSpecific.glusercontextObject == NULL) {
-         ReleaseDC(hWnd, hDC);
-         DestroyWindow(hWnd);
-			printf("\nPTB-ERROR[UserContextCreation failed]: Creating a private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n");
-			return(FALSE);
+            ReleaseDC(hWnd, hDC);
+            DestroyWindow(hWnd);
+            windowRecord->targetSpecific.windowHandle = NULL;
+            windowRecord->targetSpecific.deviceContext = NULL;
+
+            printf("\nPTB-ERROR[UserContextCreation failed]: Creating a private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n");
+            return(FALSE);
 		}
 
 		if (PsychPrefStateGet_Verbosity()>4) {
@@ -1670,6 +1673,9 @@ dwmdontcare:
      if (windowRecord->targetSpecific.glswapcontextObject == NULL) {
          ReleaseDC(hWnd, hDC);
          DestroyWindow(hWnd);
+         windowRecord->targetSpecific.windowHandle = NULL;
+         windowRecord->targetSpecific.deviceContext = NULL;
+         
          printf("\nPTB-ERROR[SwapContextCreation failed]: Creating a private OpenGL context for async flips failed for unknown reasons.\n\n");
          return(FALSE);
      }
