@@ -3463,8 +3463,8 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 	h = (*srcfbo1)->height;
     
     // Same for texture coordinate space, depending on type of texture in use:
-    wt = ((*srcfbo1)->textarget == GL_TEXTURE_2D) ? 1.0 : (float) w;
-    ht = ((*srcfbo1)->textarget == GL_TEXTURE_2D) ? 1.0 : (float) h;
+    wt = ((*srcfbo1)->textarget == GL_TEXTURE_2D) ? 1 : (float) w;
+    ht = ((*srcfbo1)->textarget == GL_TEXTURE_2D) ? 1 : (float) h;
 
 	// Check for override width x height parameter in the blitterString: An integral (w,h)
 	// size the blit. This allows to blit a target quad with a size different from srcfbo1, without
@@ -3798,7 +3798,7 @@ psych_bool PsychPipelineBuiltinRenderClutViaRuntime(PsychWindowRecordType *windo
 		PsychGetAdjustedPrecisionTimerSeconds(&t1);
 	}
 
-	cmdlen = strlen(hookfunc->pString1);
+	cmdlen = (int) strlen(hookfunc->pString1);
 	outcmd = (char*) calloc(cmdlen + 10 + (windowRecord->inTableSize * 3 * 10), sizeof(char));
 	sprintf(outcmd, "%s [", hookfunc->pString1);
 	strp = &outcmd[strlen(outcmd)];

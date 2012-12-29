@@ -3520,12 +3520,12 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                     }
                     else if (GST_VALUE_HOLDS_FRACTION_RANGE(framerates)) {
                         const GValue* frmin = gst_value_get_fraction_range_min(framerates);
+                        const GValue* frmax = gst_value_get_fraction_range_max(framerates);
                         fps_n = gst_value_get_fraction_numerator(frmin);
                         fps_d = gst_value_get_fraction_denominator(frmin);
                         fpsmin = (double) fps_n / (double) fps_d;
                         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: %i: FPS min %f - ", idx, fpsmin);
 
-                        const GValue* frmax = gst_value_get_fraction_range_max(framerates);
                         fps_n = gst_value_get_fraction_numerator(frmax);
                         fps_d = gst_value_get_fraction_denominator(frmax);
                         fpsmax = (double) fps_n / (double) fps_d;

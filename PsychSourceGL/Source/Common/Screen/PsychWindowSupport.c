@@ -439,6 +439,10 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 			(*windowRecord)->specialflags|= kPsychNative10bpcFBActive;
 		}
 #else
+        // Make compiler happy:
+        (void) gpuMaintype;
+        (void) gpuMinortype;
+        
 		// Not supported by our own code and kernel driver (we don't have such a driver for Windows), but some recent 2008
 		// series FireGL cards at least provide the option to enable this natively - although it didn't work properly in our tests.
 		printf("\nPTB-INFO: Your script requested a 30bpp, 10bpc framebuffer, but this is only supported on few special graphics cards and drivers on MS-Windows.");
@@ -590,7 +594,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 					// Allocated. Read content:
 
 					// Skip one byte:
-					i = fread(splash_image.pixel_data, 1, 1, splashFd);
+					i = (int) fread(splash_image.pixel_data, 1, 1, splashFd);
 
 					if (fread(splash_image.pixel_data, splash_image.width * splash_image.height * 3, 1, splashFd) == 1) {
 						// Success! Mark loaded splash image as "valid" and set its format:

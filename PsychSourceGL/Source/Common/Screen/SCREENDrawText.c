@@ -1748,7 +1748,7 @@ psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isReq
 		}
 		
 		// Get length in bytes, derived from location of null-terminator character:
-		stringLengthBytes = strlen(textCString);
+		stringLengthBytes = (int) strlen(textCString);
 		
 		// Empty string? If so, we skip processing:
 		if (stringLengthBytes < 1) goto allocintext_skipped;
@@ -1769,7 +1769,7 @@ psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isReq
 				#if defined(PTBOCTAVE3MEX)
 						*textLength = mbstowcs(NULL, textCString, 0);
 				#else
-						*textLength = mbstowcs_l(NULL, textCString, 0, drawtext_locale);
+						*textLength = (int) mbstowcs_l(NULL, textCString, 0, drawtext_locale);
 				#endif
 			}
 		#else

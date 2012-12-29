@@ -438,7 +438,7 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 }
 
 // Callback handler for Window manager: Handles some events
-LONG FAR PASCAL WndProc(HWND hWnd, unsigned uMsg, unsigned wParam, LONG lParam)
+LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	static PAINTSTRUCT ps;
 	PsychWindowRecordType	**windowRecordArray;
