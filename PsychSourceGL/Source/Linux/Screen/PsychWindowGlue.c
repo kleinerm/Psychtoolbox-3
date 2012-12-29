@@ -695,6 +695,31 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	  XChangeProperty(dpy, win, atom_window_opacity, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &opacity, 1);
   }
 
+    // Is this is a non-transparent (fully opaque), non-GUI, fullscreen onscreen window?
+    if (!((windowLevel >= 1000) && (windowLevel < 2000)) && !(windowRecord->specialflags & kPsychGUIWindow) &&
+        (windowRecord->specialflags & kPsychIsFullscreenWindow)) {
+        // Yes. This is a standard stimulus presentation window which should get best
+        // timing precision and performance for stimulus presentation. We don't want
+        // any desktop composition to interfere with it, so it is eligible for direct
+        // page-flipping (unredirected). If we are running under KDE's KWin desktop
+        // manager, then we can explicitely ask KWin to disable compositing et al. while
+        // our onscreen window is open by setting a special NETWM property on the window.
+        // This property may become (or already have become?) a NETWM standard that would
+        // work with other compositors in the future.
+        // On other compositors, e.g., compiz / unity et al. this problem is solved by
+        // asking them to unredirect_fullscreen_windows, as done by PsychGPUControl.m during
+        // installation of PTB.
+        //
+        // Btw. for other properties that KDE supports/understands see function create_netwm_atoms()
+        // in file netwm.cpp, e.g., at http://code.woboq.org/kde/kdelibs/kdeui/windowmanagement/netwm.cpp.html
+        //
+        unsigned int dontcomposite = 1;
+        Atom atom_window_dontcomposite = XInternAtom(dpy, "_KDE_NET_WM_BLOCK_COMPOSITING", False);
+        
+        // Assign new value for property:
+        XChangeProperty(dpy, win, atom_window_dontcomposite, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &dontcomposite, 1);
+    }
+    
   // If this window is a GUI window then enable all window decorations and
   // manipulations, except for the window close button, which would wreak havoc:
   if (windowRecord->specialflags & kPsychGUIWindow) {
