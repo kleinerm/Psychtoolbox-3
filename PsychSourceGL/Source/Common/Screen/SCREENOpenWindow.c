@@ -513,8 +513,9 @@ PsychError SCREENOpenWindow(void)
 
     PsychTestForGLErrors();
 
-    // Reset flipcounter to zero:
+    // Reset flipcounter and missed flip deadline counter to zero:
     windowRecord->flipCount = 0;
+    windowRecord->nr_missed_deadlines = 0;
 	
     //Return the window index and the rect argument.
     PsychCopyOutDoubleArg(1, FALSE, windowRecord->windowIndex);
