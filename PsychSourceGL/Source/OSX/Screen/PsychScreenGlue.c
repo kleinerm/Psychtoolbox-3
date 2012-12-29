@@ -179,6 +179,15 @@ void InitializePsychDisplayGlue(void)
 	InitPsychtoolboxKernelDriverInterface();
 }
 
+void PsychCleanupDisplayGlue(void)
+{
+    // Shutdown connection to kernel level driver, if any exists:
+    PsychOSShutdownPsychtoolboxKernelDriverInterface();
+
+    // Unregister our display reconfiguration callback:
+    CGDisplayRemoveReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);    
+}
+
 void PsychDisplayReconfigurationCallBack(CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo)
 {
 	(void) userInfo;
@@ -1223,11 +1232,6 @@ void PsychOSShutdownPsychtoolboxKernelDriverInterface(void)
 
     // Ok, whatever happened, we're detached (for good or bad):
     numKernelDrivers = 0;
-
-    // Unregister our display reconfiguration callback: This doesn't really belong here,
-    // but we know that PsychOSShutdownPsychtoolboxKernelDriverInterface() gets called
-    // from higher level code at shutdown time and we're lazy:
-    CGDisplayRemoveReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);
 
     return;
 }
