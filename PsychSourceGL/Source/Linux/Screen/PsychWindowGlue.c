@@ -704,8 +704,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // page-flipping (unredirected). If we are running under KDE's KWin desktop
         // manager, then we can explicitely ask KWin to disable compositing et al. while
         // our onscreen window is open by setting a special NETWM property on the window.
-        // This property may become (or already have become?) a NETWM standard that would
-        // work with other compositors in the future.
+        // This property has just become a NETWM standard that should work with other
+        // compositors in the future, e.g., Mutter/GNOME-3 as of 18th December 2012.
+        //
         // On other compositors, e.g., compiz / unity et al. this problem is solved by
         // asking them to unredirect_fullscreen_windows, as done by PsychGPUControl.m during
         // installation of PTB.
@@ -713,11 +714,23 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // Btw. for other properties that KDE supports/understands see function create_netwm_atoms()
         // in file netwm.cpp, e.g., at http://code.woboq.org/kde/kdelibs/kdeui/windowmanagement/netwm.cpp.html
         //
+
+        // Set KDE-4 specific property: This is supported since around KWin 4.6, since July 2011:
         unsigned int dontcomposite = 1;
         Atom atom_window_dontcomposite = XInternAtom(dpy, "_KDE_NET_WM_BLOCK_COMPOSITING", False);
         
         // Assign new value for property:
         XChangeProperty(dpy, win, atom_window_dontcomposite, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &dontcomposite, 1);
+        
+        // Set the standardized NETWM property. This is supported in Mutter (== GNOME-3) since
+        // 18. December 2012 (see last comment/patch in https://bugzilla.gnome.org/show_bug.cgi?id=683020 ),
+        // and will supposedly get supported by other compositing window managers in the future as well,
+        // e.g., future KWin/KDE releases or possibly Unity/Compiz:
+        dontcomposite = 1;
+        Atom atom_window_dontcomposite2 = XInternAtom(dpy, "_NET_WM_BYPASS_COMPOSITOR", False);
+        
+        // Assign new value for property:
+        XChangeProperty(dpy, win, atom_window_dontcomposite2, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &dontcomposite, 1);
     }
     
   // If this window is a GUI window then enable all window decorations and
