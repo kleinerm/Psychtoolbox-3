@@ -718,7 +718,7 @@ static void OptimizeDWMParameters(PsychWindowRecordType *windowRecord)
 {
     DWM_PRESENT_PARAMETERS dwmPresentParams;
 
-    if (!PsychOSIsDWMEnabled()) return;
+    if (!PsychOSIsDWMEnabled(0)) return;
     if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Optimizing windows DWM present parameters. Using minimum queue length of 2 buffers.\n");
 
     memset(&dwmPresentParams, 0, sizeof(dwmPresentParams));
@@ -1942,7 +1942,7 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
       // Detach from and release dwmapi.dll if loaded and attached:
       if (dwmSupported && dwmlibrary) {
 		  // Reenable DWM if it was disabled (by us or others):
-		  if (!PsychOSIsDWMEnabled()) {
+		  if (!PsychOSIsDWMEnabled(0)) {
 	          // Enable compositor:
 			  if (PsychDwmEnableComposition(1)) {
 				  if (PsychPrefStateGet_Verbosity() > 1) {
@@ -1984,7 +1984,7 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
 	// Windows Vista DWM available, supported and enabled?
 	dwmtiming.cbSize = sizeof(dwmtiming);
 	
-	if (PsychOSIsDWMEnabled() && (NULL != PsychDwmGetCompositionTimingInfo) &&
+	if (PsychOSIsDWMEnabled(0) && (NULL != PsychDwmGetCompositionTimingInfo) &&
 		((rc = PsychDwmGetCompositionTimingInfo(NULL, &dwmtiming)) == 0)) {
 		// Yes. Supported, enabled, and we got timing info from it. Extract:
 		
@@ -2002,7 +2002,7 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
 		return(PsychMapPrecisionTimerTicksToSeconds(ust));
 	}
 	else {
-		 if (PsychOSIsDWMEnabled() && PsychPrefStateGet_Verbosity()>6) {
+		 if (PsychOSIsDWMEnabled(0) && PsychPrefStateGet_Verbosity()>6) {
 			 printf("PTB-DEBUG: Call to PsychDwmGetCompositionTimingInfo(%i) failed with rc = %x, GetLastError() = %i\n", dwmtiming.cbSize, rc, GetLastError());
 		}
 	}
@@ -2067,7 +2067,7 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
 
 	// Windows Vista DWM available, supported and enabled?
 	dwmtiming.cbSize = sizeof(dwmtiming);
-	if ( PsychOSIsDWMEnabled() && ((rc1 = PsychDwmGetCompositionTimingInfo(NULL, &dwmtiming)) == 0) ) {
+	if ( PsychOSIsDWMEnabled(0) && ((rc1 = PsychDwmGetCompositionTimingInfo(NULL, &dwmtiming)) == 0) ) {
 		// Yes. Supported, enabled, and we got valid timing info from it. Extract:
 
 		// Only qpcRefreshPeriod requested?
@@ -2173,7 +2173,7 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
 		return(TRUE);
 	}
 	else {
-		if (PsychOSIsDWMEnabled() && PsychPrefStateGet_Verbosity() > 6) {
+		if (PsychOSIsDWMEnabled(0) && PsychPrefStateGet_Verbosity() > 6) {
 			printf("PTB-DEBUG: Call to PsychDwmGetCompositionTimingInfo() failed with rc1 = %x, GetLastError() = %i\n", rc1, GetLastError());			
 		}
 	}
@@ -2186,12 +2186,15 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
  *
  * Return current Desktop Window Manager (DWM) status. Zero for disabled, Non-Zero for enabled.
  */
-int	PsychOSIsDWMEnabled(void)
+int	PsychOSIsDWMEnabled(int screenNumber)
 {
     DWM_TIMING_INFO	dwmtiming;
     BOOL compositorEnabled;
     psych_bool IsDWMEnabled;
 
+    // screenNumber unused on MS-Windows:
+    (void) screenNumber;
+    
     // Need to init dwmtiming for our dummy-call to get composition timing info:
     dwmtiming.cbSize = sizeof(dwmtiming);
 
@@ -2253,7 +2256,7 @@ psych_bool PsychOSSetPresentParameters(PsychWindowRecordType *windowRecord, psyc
 	dwmPresentParams.eSampling = DWM_SOURCE_FRAME_SAMPLING_POINT;
 	
 	// Call function if DWM is supported and enabled:
-	if (PsychOSIsDWMEnabled() && ((rc = PsychDwmSetPresentParameters(windowRecord->targetSpecific.windowHandle, &dwmPresentParams)) == 0)) return(TRUE);
+	if (PsychOSIsDWMEnabled(0) && ((rc = PsychDwmSetPresentParameters(windowRecord->targetSpecific.windowHandle, &dwmPresentParams)) == 0)) return(TRUE);
 	
 	// DWM unsupported, disabled, or call failed:
 	return(FALSE);
@@ -2292,7 +2295,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
     // We only support (or need) Windows-OS specific swap timestamping if the DWM
     // is active for our onscreen windows display. Fallback to default timestamping
     // if DWM is inactive:
-    if (!PsychOSIsDWMEnabled()) return(-1);
+    if (!PsychOSIsDWMEnabled(0)) return(-1);
 
     // DWM active on at least one display. Check if this is a single-display setup,
     // in which case we can try to wait for and timestamp swap completion. On a

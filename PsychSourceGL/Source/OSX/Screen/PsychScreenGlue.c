@@ -923,6 +923,15 @@ unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int n
 	return(1);
 }
 
+// Return true (non-zero) if a desktop compositor is likely active on screen 'screenNumber':
+int PsychOSIsDWMEnabled(int screenNumber)
+{
+    // Only way to disable compositing on OSX is to capture the screen
+    // for exclusive fullscreen use, so composition state is the negation
+    // of capture state:
+    return(!PsychIsScreenCaptured(screenNumber));
+}
+
 // PsychGetDisplayBeamPosition() contains the implementation of display beamposition queries.
 // It requires both, a cgDisplayID handle, and a logical screenNumber and uses one of both for
 // deciding which display pipe to query, whatever of both is more efficient or suitable for the

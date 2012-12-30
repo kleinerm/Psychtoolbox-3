@@ -1170,7 +1170,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		  numSamples = minSamples;      // Require at least minSamples *valid* samples...
 		  // Require a std-deviation less than 200 microseconds on all systems except Microsoft Windows Vista / 7 and later
 		  // with DWM enabled, where we accept up to maxStddev sec(!) noise. This is lame, but the only way to get 'em working at all :-(
-		  stddev     = (PsychOSIsDWMEnabled()) ? maxStddev : 0.00020;
+		  stddev     = (PsychOSIsDWMEnabled(screenSettings->screenNumber)) ? maxStddev : 0.00020;
 		  // If skipping of sync-test is requested, we limit the calibration to 1 sec.
 		  maxsecs=(skip_synctests) ? 1 : maxDuration;
 		  retry_count++;
@@ -1356,7 +1356,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     PsychDetectTextureTarget(*windowRecord);
     
     // Check for desktop compositor activity on MS-Windows Vista and later:
-	if ((PsychPrefStateGet_Verbosity() > 1) && PsychIsMSVista() && PsychOSIsDWMEnabled()) {
+	if ((PsychPrefStateGet_Verbosity() > 1) && PsychIsMSVista() && PsychOSIsDWMEnabled(0)) {
         // DWM is active on at least one display. On a single-display setup, this means
         // it will definitely affect/interfere with our onscreen windows timing and we should
         // warn the user about likely performance and timing degradation. The same is true if
@@ -1393,7 +1393,17 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         printf("PTB-WARNING: DO NOT USE MULTI-DISPLAY MODE FOR RUNNING REAL EXPERIMENT SESSIONS WITH ANY REQUIREMENTS FOR ACCURATE TIMING!\n");
         printf("PTB-WARNING: ==============================================================================================================\n");        
     }
-	
+
+    // Check for desktop compositor activity on non MS-Windows, ie., Linux and OSX:
+    if ((PSYCH_SYSTEM != PSYCH_WINDOWS) && PsychOSIsDWMEnabled(screenSettings->screenNumber) && (PsychPrefStateGet_Verbosity() > 1)) {
+        // Desktop compositor active for our onscreen window. Explain consequences to user:
+        printf("PTB-WARNING: ==================================================================================================================\n");
+        printf("PTB-WARNING: DESKTOP COMPOSITOR IS ACTIVE! ALL FLIP STIMULUS ONSET TIMESTAMPS WILL BE VERY LIKELY UNRELIABLE AND LESS ACCURATE!\n");
+        printf("PTB-WARNING: STIMULUS ONSET TIMING WILL BE UNRELIABLE AS WELL, AND GRAPHICS PERFORMANCE MAY BE REDUCED!\n");
+        printf("PTB-WARNING: DO NOT USE THIS MODE FOR RUNNING REAL EXPERIMENT SESSIONS WITH ANY REQUIREMENTS FOR ACCURATE TIMING!\n");
+        printf("PTB-WARNING: ==================================================================================================================\n");        
+    }
+
     if (skip_synctests < 2) {
       // Reliable estimate? These are our minimum requirements...
       if (numSamples< minSamples || stddev> maxStddev) {
@@ -2934,7 +2944,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         tshouldflip = flipwhen;
 
         // Will the MS-Windows DWM desktop compositor affect our window?
-        if (PsychIsMSVista() && PsychOSIsDWMEnabled() && ((PsychGetNumDisplays() == 1) || !(windowRecord->specialflags & kPsychIsFullscreenWindow))) {
+        if (PsychIsMSVista() && PsychOSIsDWMEnabled(0) && ((PsychGetNumDisplays() == 1) || !(windowRecord->specialflags & kPsychIsFullscreenWindow))) {
             // Yes. Definitely our window will be subject to desktop composition. This will introduce
             // an additional swap delay of at least 1 video refresh cycle after submitting the SwapBuffers()
             // request, because a SwapBuffers() request will be translated into a composition request for
@@ -3180,7 +3190,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             #define GLX_BACK_BUFFER_AGE_EXT 0x20F4
             #endif
 
-            {
+            // Extra-paranoia for fullscreen windows on Linux, just because we can:
+            if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_SkipSyncTests() < 2)) {
                 // Linux: GLX_EXT_buffer_age supported? If so, then we can query the age in frames of our current post-swap backbuffer.
                 // A value of 2 means double-buffering is used by the gfx-driver, a value of 3 is triple-buffering, zero is single-buffering, n is n-nbuffering, ...
                 // Our currently chosen classic timestamping path absolutely requires double-buffering, so any value other than 2 means big trouble for timing:
@@ -3192,6 +3203,12 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                         printf("PTB-WARNING: All returned Screen('Flip') timestamps will be wrong! Please fix this now (read 'help SyncTrouble').\n");
                     }
                 }
+                
+                // Additional paranoia check at high debug levels where performance doesn't matter anymore.
+                // Check if compositor is active. This just to test functionality, we won't enable this check
+                // for normal operation yet, as i suspect it involves a potentially expensive time-consuming
+                // roundtrip to the x-server, which may not be acceptable for high-framerate stimulus presentation.
+                if ((verbosity > 5) && PsychOSIsDWMEnabled(windowRecord->screenNumber)) printf("PTB-DEBUG:Screen('Flip'): After swapcomplete compositor reported active!!\n");
             }
             #endif
 		}

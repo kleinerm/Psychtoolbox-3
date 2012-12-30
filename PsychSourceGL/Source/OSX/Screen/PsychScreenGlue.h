@@ -87,6 +87,7 @@ psych_bool					PsychOSIsKernelDriverAvailable(int screenId);
 void                        PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn);
 unsigned int                PsychOSKDLoadIdentityLUT(int screenId, unsigned int head);
 unsigned int                PsychOSKDGetLUTState(int screenId, unsigned int head, unsigned int debug);
+int                         PsychOSIsDWMEnabled(int screenNumber);
 
 // Return identifying information about GPU for a given screen screenNumber:
 psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortype, int* pciDeviceId, int* numDisplayHeads);

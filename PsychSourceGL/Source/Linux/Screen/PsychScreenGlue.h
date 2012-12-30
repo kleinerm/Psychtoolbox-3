@@ -85,6 +85,7 @@ psych_bool					PsychOSIsKernelDriverAvailable(int screenId);
 void                        PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn);
 unsigned int                PsychOSKDLoadIdentityLUT(int screenId, unsigned int headId);
 unsigned int                PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned int debug);
+int                         PsychOSIsDWMEnabled(int screenNumber);
 
 // Internal helper routines for memory mapped gfx-hardware register low level access: Called
 // from PsychWindowGlue.c PsychOSOpenOnscreenWindow() and PsychOSCloseOnscreenWindow() routines
