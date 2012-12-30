@@ -35,7 +35,7 @@ if mode==0
     % Setting "if 1" would enable GStreamer-SDK functions, but be backwards
     % incompatible with older Linux distros we'd like to keep supporting,
     % e.g., Debian 6.0:
-    if 1
+    if 0
         % Build against GStreamer-SDK for Linux from www.gstreamer.com and
         % enable support for camerabin2 recording with selection of video
         % encoding profiles via -DPTB_USE_GSTENCODINGPROFILES
