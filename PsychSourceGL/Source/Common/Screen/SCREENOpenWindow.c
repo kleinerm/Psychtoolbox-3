@@ -196,10 +196,6 @@ PsychError SCREENOpenWindow(void)
 	}
 	
     //find the number of specified buffers. 
-
-    //OS X:	The number of backbuffers is not a property of the display mode but an attribute of the pixel format.
-    //		Therefore the value is held by a window record and not a screen record.    
-
     numWindowBuffers=2;	
     PsychCopyInIntegerArg(5,FALSE,&numWindowBuffers);
     if(numWindowBuffers < 1 || numWindowBuffers > kPsychMaxNumberWindowBuffers) PsychErrorExit(PsychError_invalidNumberBuffersArg);
@@ -466,7 +462,7 @@ PsychError SCREENOpenWindow(void)
     PsychSetupClientRect(windowRecord);
 
 	// Initialize internal image processing pipeline if requested:
-	if (numWindowBuffers > 0) PsychInitializeImagingPipeline(windowRecord, imagingmode, multiSample);
+	if (numWindowBuffers > 1) PsychInitializeImagingPipeline(windowRecord, imagingmode, multiSample);
 	
 	// On OS-X, if we are in quad-buffered frame sequential stereo mode, we automatically generate
 	// blue-line-sync style sync lines for use with stereo shutter glasses. We don't do this
