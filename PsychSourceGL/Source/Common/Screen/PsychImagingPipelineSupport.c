@@ -523,11 +523,8 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 				printf("PTB-WARNING: Will therefore continue without anti-aliasing...\n\n");
 				printf("PTB-WARNING: A driver upgrade may resolve this issue. Users of MacOS-X need at least OS/X 10.5.2 Leopard for support on recent ATI hardware.\n\n");
 			}
-		}
-        
-        // Panel scaling requested? If so we need support for scaled multisample resolve blits to satisfy needs
-        // of multisampling and scaling:
-        if ((imagingmode & kPsychNeedGPUPanelFitter) && !(windowRecord->gfxcaps & kPsychGfxCapFBOScaledResolveBlit)) {
+		}    // Panel scaling requested? If so we need support for scaled multisample resolve blits to satisfy needs of multisampling and scaling:
+        else if ((imagingmode & kPsychNeedGPUPanelFitter) && !(windowRecord->gfxcaps & kPsychGfxCapFBOScaledResolveBlit)) {
             // Not supported by GPU. Disable multisampling to satisfy at least the requirement for panelscaling,
             // which is probably more important, as usercode usually only uses panel scaling to workaround serious
             // trouble with experimental setups, ie., it is more urgent:
