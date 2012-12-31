@@ -560,14 +560,50 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // If this setup is fbconfig based, get associated visual:
   if (fbconfig) visinfo = glXGetVisualFromFBConfig(dpy, fbconfig[0]);
 
-  // Setup window attributes:
-  attr.background_pixel = 0;  // Background color defaults to black.
-  attr.border_pixel = 0;      // Border color as well.
-  attr.colormap = XCreateColormap( dpy, root, visinfo->visual, AllocNone);  // Dummy colormap assignment.
-  attr.event_mask = KeyPressMask | StructureNotifyMask; // | ExposureMask;  // We're only interested in keypress events for GetChar() and StructureNotify to wait for Windows to be mapped.
-  attr.override_redirect = (windowRecord->specialflags & kPsychGUIWindow) ? 0 : 1; // Lock out window manager, unless it is a GUI window.
-  mask = CWOverrideRedirect | CWBackPixel | CWBorderPixel | CWColormap | CWEventMask;
-
+    // Setup basic window attributes:
+    attr.background_pixel = 0;  // Background color defaults to black.
+    attr.border_pixel = 0;      // Border color as well.
+    attr.colormap = XCreateColormap(dpy, root, visinfo->visual, AllocNone);  // Dummy colormap assignment.
+    attr.event_mask = KeyPressMask | StructureNotifyMask;                    // We're only interested in keypress events for GetChar() and StructureNotify to wait for Windows to be mapped.
+    
+    // Mask of everything we define(d):
+    mask = CWOverrideRedirect | CWBackPixel | CWBorderPixel | CWColormap | CWEventMask;
+    
+    // Old style of override_redirect handling requested? This was used until beginning 2013
+    // and worked well for us, but it prevents the windowmanager from seeing properties on
+    // our windows which allow us to control desktop composition, e.g., on KDE/KWIN and GNOME-3/Mutter,
+    // as well as on other wm's compliant with latest ICCCM spec:
+    if (PsychPrefStateGet_ConserveVRAM() & kPsychOldStyleOverrideRedirect) {
+        // Old style: Always override_redirect to lock out window manager, except when a real "GUI-Window"
+        // is requested, which needs to behave and be treated like any other desktop app window:
+        attr.override_redirect = (windowRecord->specialflags & kPsychGUIWindow) ? 0 : 1;
+    }
+    else {
+        // New style: override_redirect by default:
+        attr.override_redirect = 1;
+        
+        // Don't override if it is a GUI window, for some reasons as in classic path:
+        if (windowRecord->specialflags & kPsychGUIWindow) attr.override_redirect = 0;
+        
+        // Don't override if it is a fullscreen window. The NETM_FULLSCREEN state should
+        // take care of fullscreen windows nicely without need to override. Although we
+        // could override for transparent fullscreen windows if we were extra paranoid,
+        // we *must not* override for opaque (standard) fullscreen windows, because that
+        // would prevent us from disabling desktop composition on our window by use of
+        // special properties -- the window manager wouldn't notice those properties/requests
+        // on a override_redirected window.
+        // Now here's a catch: While the WM picks up our window properties this way, and at
+        // least KWIN honors them by disabling composition, the WM also takes this opportunity
+        // to "misplace" our onscreen window on multi-display setups. It follows various rules on
+        // where a fullscreen window should be placed on a multi-display setup, but while these
+        // rules are pretty sensible for regular desktop users, they are absolutely not what we
+        // want. How to solve? We let the WM have its way during window creation, so it picks up
+        // our window props. Later on (see below) after the Window is mapped and the WM satisified,
+        // we set the override_redirect flag to lock out the WM, then move the window to its proper
+        // location, no that the WM can't interfere anymore.
+        if (windowRecord->specialflags & kPsychIsFullscreenWindow) attr.override_redirect = 0;
+    }
+    
   // Create our onscreen window:
   win = XCreateWindow( dpy, root, x, y, width, height,
 		       0, visinfo->depth, InputOutput,
@@ -680,31 +716,31 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // Release fbconfig array, if any:
   if (fbconfig) XFree(fbconfig);
 
-  // Setup window transparency:
-  if ((windowLevel >= 1000) && (windowLevel < 2000)) {
-	  // For windowLevels between 1000 and 1999, make the window background transparent, so standard GUI
-	  // would be visible, wherever nothing is drawn, i.e., where alpha channel is zero:
-	  
-	  // Levels 1000 - 1499 and 1500 to 1999 map to a master opacity level of 0.0 - 1.0:	  
-	  unsigned int opacity = (unsigned int) (0xffffffff * (((float) (windowLevel % 500)) / 499.0));
-	  
-	  // Get handle on opacity property of X11:
-	  Atom atom_window_opacity = XInternAtom(dpy, "_NET_WM_WINDOW_OPACITY", False);
-	  
-	  // Assign new value for property:
-	  XChangeProperty(dpy, win, atom_window_opacity, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &opacity, 1);
-  }
-
-    // Is this is a non-transparent (fully opaque), non-GUI, fullscreen onscreen window?
+    // Setup window transparency:
+    if ((windowLevel >= 1000) && (windowLevel < 2000)) {
+        // For windowLevels between 1000 and 1999, make the window background transparent, so standard GUI
+        // would be visible, wherever nothing is drawn, i.e., where alpha channel is zero:
+        
+        // Levels 1000 - 1499 and 1500 to 1999 map to a master opacity level of 0.0 - 1.0:	  
+        unsigned int opacity = (unsigned int) (0xffffffff * (((float) (windowLevel % 500)) / 499.0));
+        
+        // Get handle on opacity property of X11:
+        Atom atom_window_opacity = XInternAtom(dpy, "_NET_WM_WINDOW_OPACITY", False);
+        
+        // Assign new value for property:
+        XChangeProperty(dpy, win, atom_window_opacity, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &opacity, 1);
+    }
+    
+    // Is this a non-transparent (fully opaque), non-GUI, fullscreen onscreen window?
     if (!((windowLevel >= 1000) && (windowLevel < 2000)) && !(windowRecord->specialflags & kPsychGUIWindow) &&
         (windowRecord->specialflags & kPsychIsFullscreenWindow)) {
         // Yes. This is a standard stimulus presentation window which should get best
         // timing precision and performance for stimulus presentation. We don't want
         // any desktop composition to interfere with it, so it is eligible for direct
         // page-flipping (unredirected). If we are running under KDE's KWin desktop
-        // manager, then we can explicitely ask KWin to disable compositing et al. while
-        // our onscreen window is open by setting a special NETWM property on the window.
-        // This property has just become a NETWM standard that should work with other
+        // manager, then we can explicitely ask KWin to disable compositing while
+        // our onscreen window is open, by setting a special NETWM property on the window.
+        // This approach has just become a NETWM standard that should work with other
         // compositors in the future, e.g., Mutter/GNOME-3 as of 18th December 2012.
         //
         // On other compositors, e.g., compiz / unity et al. this problem is solved by
@@ -714,7 +750,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // Btw. for other properties that KDE supports/understands see function create_netwm_atoms()
         // in file netwm.cpp, e.g., at http://code.woboq.org/kde/kdelibs/kdeui/windowmanagement/netwm.cpp.html
         //
-
+        
         // Set KDE-4 specific property: This is supported since around KWin 4.6, since July 2011:
         unsigned int dontcomposite = 1;
         Atom atom_window_dontcomposite = XInternAtom(dpy, "_KDE_NET_WM_BLOCK_COMPOSITING", False);
@@ -733,80 +769,147 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         XChangeProperty(dpy, win, atom_window_dontcomposite2, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &dontcomposite, 1);
     }
     
-  // If this window is a GUI window then enable all window decorations and
-  // manipulations, except for the window close button, which would wreak havoc:
-  if (windowRecord->specialflags & kPsychGUIWindow) {
-    // For some reason we need to use unsigned long and long here instead of
-    // int32_t etc., despite the fact that on a 64-Bit build, a long is 64-Bit
-    // and on a 32-Bit build, a long is 32-Bit, whereas the XChangeProperty()
-    // request says a single unit is 32-Bits? Anyway, it works correctly on a
-    // 64-Bit build, so this seems to be magically ok.
-    struct MwmHints {
-        unsigned long flags;
-        unsigned long functions;
-        unsigned long decorations;
-        long          input_mode;
-        unsigned long status;
-    };
-
-    enum {
-        MWM_HINTS_FUNCTIONS = (1L << 0),
-        MWM_HINTS_DECORATIONS =  (1L << 1),
-        
-        MWM_FUNC_ALL = (1L << 0),
-        MWM_FUNC_RESIZE = (1L << 1),
-        MWM_FUNC_MOVE = (1L << 2),
-        MWM_FUNC_MINIMIZE = (1L << 3),
-        MWM_FUNC_MAXIMIZE = (1L << 4),
-        MWM_FUNC_CLOSE = (1L << 5)
-    };
-
-    Atom mwmHintsProperty = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
-
-    struct MwmHints hints;
-    memset(&hints, 0, sizeof(hints));
-
-    hints.flags       = MWM_HINTS_DECORATIONS | MWM_HINTS_FUNCTIONS;
-    hints.decorations = MWM_FUNC_ALL;
-    hints.functions   = MWM_FUNC_RESIZE | MWM_FUNC_MOVE | MWM_FUNC_MINIMIZE | MWM_FUNC_MAXIMIZE;
-
-    XChangeProperty(dpy, win, mwmHintsProperty, mwmHintsProperty, 32, PropModeReplace, (unsigned char *) &hints, sizeof(hints) / sizeof(long));
-
-    // For windowLevels of at least 500, tell window manager to try to keep
-    // our window above most other windows, by setting the state to WM_STATE_ABOVE:
-    if (windowLevel >= 500) {
-      Atom stateAbove = XInternAtom(dpy, "_NET_WM_STATE_ABOVE", False);
-      XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_STATE", False), XA_ATOM, 32, PropModeReplace, (unsigned char *) &stateAbove, 1);
+    // Is this a non-GUI fullscreen window? If so, set the fullscreen NETWM property:
+    if (!(windowRecord->specialflags & kPsychGUIWindow) && (windowRecord->specialflags & kPsychIsFullscreenWindow)) {
+        // Yes. Set the fullscreen state hint. Any well behaved window manager should understand this as
+        // a request to turn the window into a completely decorationless fullscreen window, something
+        // similar to what you'd get with override_redirect = 1, just in a less dirty way, that still
+        // allows us to communicate our wishes, e.g., wrt. desktop composition, to the window manager.
+        Atom stateFullscreen = XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
+        XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_STATE", False), XA_ATOM, 32, PropModeReplace, (unsigned char *) &stateFullscreen, 1);        
     }
-  }
 
-  // Show our new window: Also raise it to the top for
-  // non-zero window levels:
-  if (windowLevel > 0) {
-    XMapRaised(dpy, win);
-  } else {
-    XMapWindow(dpy, win);
-  }
+    // This one disabled for now. Doesn't work well and simply doing a good'ol override_redirect solves it for us in a more brutal way:
+    //    // Is this a non-GUI non-fullscreen "windowed" window?
+    //    if (!(windowRecord->specialflags & kPsychGUIWindow) && !(windowRecord->specialflags & kPsychIsFullscreenWindow)) {
+    //        // Yes. What we want is essentially a static non-fullscreen rectangle on the screen - no decorations,
+    //        // no way to modify, control, resize, move, minimize or otherwise mess with it.
+    //        // Potentially transparent (as setup above) therefore in need for desktop composition.
+    //        
+    //        // Clear out _NET_WM_STATE list and set a first element, the "sticky" property.
+    //        // It should make sure that the window sticks to its position onscreen, even if
+    //        // the virtual desktop scrolls or other similar things:
+    //        Atom stateSticky = XInternAtom(dpy, "_NET_WM_STATE_STICKY", False);
+    //        XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_STATE", False), XA_ATOM, 32, PropModeReplace, (unsigned char *) &stateSticky, 1);
+    //
+    //        // Shall not show up in taskbar:
+    //        Atom stateSkipTB = XInternAtom(dpy, "_NET_WM_STATE_SKIP_TASKBAR", False);
+    //        XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_STATE", False), XA_ATOM, 32, PropModeAppend, (unsigned char *) &stateSkipTB, 1);
+    //
+    //        // Shall not show up in pager, dock etc.:
+    //        Atom stateSkipPG = XInternAtom(dpy, "_NET_WM_STATE_SKIP_PAGER", False);
+    //        XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_STATE", False), XA_ATOM, 32, PropModeAppend, (unsigned char *) &stateSkipPG, 1);
+    //        
+    //        // For windowLevels of at least 500, tell window manager to try to keep
+    //        // our window above most other windows, by adding the state WM_STATE_ABOVE:
+    //        if (windowLevel >= 500) {
+    //            Atom stateAbove = XInternAtom(dpy, "_NET_WM_STATE_ABOVE", False);
+    //            XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_STATE", False), XA_ATOM, 32, PropModeAppend, (unsigned char *) &stateAbove, 1);
+    //        }
+    //        
+    //        // Prevent the user from interacting with / manipulating the window by defining
+    //        // an empty list of allowed actions:
+    //        XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_ALLOWED_ACTIONS", False), XA_ATOM, 32, PropModeReplace, (unsigned char *) NULL, 0);
+    //    }
+    
+    // If this window is a GUI window then enable all window decorations and
+    // manipulations, except for the window close button, which would wreak havoc:
+    if (windowRecord->specialflags & kPsychGUIWindow) {
+        // For some reason we need to use unsigned long and long here instead of
+        // int32_t etc., despite the fact that on a 64-Bit build, a long is 64-Bit
+        // and on a 32-Bit build, a long is 32-Bit, whereas the XChangeProperty()
+        // request says a single unit is 32-Bits? Anyway, it works correctly on a
+        // 64-Bit build, so this seems to be magically ok.
+        struct MwmHints {
+            unsigned long flags;
+            unsigned long functions;
+            unsigned long decorations;
+            long          input_mode;
+            unsigned long status;
+        };
+        
+        enum {
+            MWM_HINTS_FUNCTIONS = (1L << 0),
+            MWM_HINTS_DECORATIONS =  (1L << 1),
+            
+            MWM_FUNC_ALL = (1L << 0),
+            MWM_FUNC_RESIZE = (1L << 1),
+            MWM_FUNC_MOVE = (1L << 2),
+            MWM_FUNC_MINIMIZE = (1L << 3),
+            MWM_FUNC_MAXIMIZE = (1L << 4),
+            MWM_FUNC_CLOSE = (1L << 5)
+        };
+        
+        Atom mwmHintsProperty = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
+        
+        struct MwmHints hints;
+        memset(&hints, 0, sizeof(hints));
+        
+        hints.flags       = MWM_HINTS_DECORATIONS | MWM_HINTS_FUNCTIONS;
+        hints.decorations = MWM_FUNC_ALL;
+        hints.functions   = MWM_FUNC_RESIZE | MWM_FUNC_MOVE | MWM_FUNC_MINIMIZE | MWM_FUNC_MAXIMIZE;
+        
+        XChangeProperty(dpy, win, mwmHintsProperty, mwmHintsProperty, 32, PropModeReplace, (unsigned char *) &hints, sizeof(hints) / sizeof(long));
+        
+        // For windowLevels of at least 500, tell window manager to try to keep
+        // our window above most other windows, by setting the state to WM_STATE_ABOVE:
+        if (windowLevel >= 500) {
+            Atom stateAbove = XInternAtom(dpy, "_NET_WM_STATE_ABOVE", False);
+            XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_STATE", False), XA_ATOM, 32, PropModeReplace, (unsigned char *) &stateAbove, 1);
+        }
+    }
 
-  // Spin-Wait for it to be really mapped:
-  while (1) {
-      XEvent ev;
-      XNextEvent(dpy, &ev);
-      if (ev.type == MapNotify)
-          break;
-
-      PsychYieldIntervalSeconds(0.001);
-  }
-  
-  // If windowLevel is zero, lower it to the bottom of the stack of windows:
-  if (windowLevel <= 0) XLowerWindow(dpy, win);
-
-  // Setup window transparency for user input (keyboard and mouse events):
-  if (windowLevel < 1500) {
-	// Need to try to be transparent for keyboard events and mouse clicks:
-	XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);	
-  }
-
+    // Show our new window: Also raise it to the top for
+    // non-zero window levels:
+    if (windowLevel > 0) {
+        XMapRaised(dpy, win);
+    } else {
+        XMapWindow(dpy, win);
+    }
+    
+    // Spin-Wait for it to be really mapped:
+    while (1) {
+        XEvent ev;
+        XNextEvent(dpy, &ev);
+        if (ev.type == MapNotify)
+            break;
+        
+        PsychYieldIntervalSeconds(0.001);
+    }
+    
+    // If windowLevel is zero, lower it to the bottom of the stack of windows:
+    if (windowLevel <= 0) XLowerWindow(dpy, win);
+    
+    // Setup window transparency for user input (keyboard and mouse events):
+    if (windowLevel < 1500) {
+        // Need to try to be transparent for keyboard events and mouse clicks:
+        XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
+    }
+    
+    // Is this a non-GUI fullscreen window? In the new-style path?
+    if (!(windowRecord->specialflags & kPsychGUIWindow) && (windowRecord->specialflags & kPsychIsFullscreenWindow) &&
+        !(PsychPrefStateGet_ConserveVRAM() & kPsychOldStyleOverrideRedirect)) {
+        // Yes. As we didn't override_redirect it during creation and mapping, so the
+        // WM could pick up our special window properties, the WM very likely misplaced
+        // it on the screen at a very ergonomic location for desktop users which doesn't
+        // suit our needs. Let's fix this:
+        
+        // First we override_redirect it to lock out the WM from further manipulations:
+        attr.override_redirect = 1;
+        XChangeWindowAttributes(dpy, win, mask, &attr);
+        
+        // Wait for override to complete...
+        XSync(dpy, False);
+        
+        // Then we move it to its proper location, now hopefully untampered by the WM:
+        XMoveWindow(dpy, win, x, y);
+        
+        // Make sure it reaches its target position:
+        XSync(dpy, False);
+    }
+    
+    // Ok, the onscreen window is ready on the screen. Time for OpenGL setup...
+    
   // Activate the associated rendering context:
   PsychOSSetGLContext(windowRecord);
 
