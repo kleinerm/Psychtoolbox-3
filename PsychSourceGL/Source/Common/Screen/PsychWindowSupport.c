@@ -4272,6 +4272,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     GLint read_buffer, draw_buffer, blending_on;
     GLint auxbuffers;
     int queryState;
+    GLenum blitscalemode;
 
     // Early reject: If this flag is set, then there's no need for any processing:
     // We only continue processing textures, aka offscreen windows...
@@ -4456,13 +4457,54 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 			if (windowRecord->inputBufferFBO[viewid] != windowRecord->drawBufferFBO[viewid]) {
 				// Separate draw- and inputbuffers: We need to copy the drawBufferFBO to its
 				// corresponding inputBufferFBO, applying a special conversion operation.
-				// We use this for multisample-resolve of multisampled drawBufferFBO's.
-				// A simple glBlitFramebufferEXT() call will do the copy & downsample operation:
+                
+                // Set proper binding of source and destination FBO for blit:
 				glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]->fboid);
 				glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->fboid);
-				glBlitFramebufferEXT(0, 0, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->width, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->height,
-									 0, 0, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->width, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->height,
-									 GL_COLOR_BUFFER_BIT, GL_NEAREST);
+                
+                // Panelfitter requested?
+                if (windowRecord->imagingMode & kPsychNeedGPUPanelFitter) {
+                    // Need to rescale and/or reposition during src->dest blit to implement panel scaling.
+                    
+                    // Define potentially missing GLenum value from GL_EXT_framebuffer_multisample_blit_scaled extension:
+                    #ifndef GL_SCALED_RESOLVE_NICEST_EXT
+                    #define GL_SCALED_RESOLVE_NICEST_EXT 0x90BB
+                    #endif
+                    
+                    // Simultaneous Multisample-resolve during blit requested and supported? If so, use special blitmode to do both in one go.
+                    // Otherwise just use bilinear filtering for nice scaling:
+                    blitscalemode = ((windowRecord->multiSample > 0) && (windowRecord->gfxcaps & kPsychGfxCapFBOScaledResolveBlit)) ? GL_SCALED_RESOLVE_NICEST_EXT : GL_LINEAR;
+                    
+                    // Do src- and dst- rectangles match in size? Then we can optimize:
+                    if (((windowRecord->panelFitterParams[2] - windowRecord->panelFitterParams[0]) == (windowRecord->panelFitterParams[6] - windowRecord->panelFitterParams[4])) &&
+                        ((windowRecord->panelFitterParams[3] - windowRecord->panelFitterParams[1]) == (windowRecord->panelFitterParams[7] - windowRecord->panelFitterParams[5]))) {
+                        // Sizes of source and destination rectangles for blit are identical, therefore no scaling required, therefore we
+                        // don't need a filter for the blit, just simple nearest-neighbour sampling, ie., a one-to-one blit from one location
+                        // to the other, possibly with different (x,y) start and end offsets:
+                        blitscalemode = GL_NEAREST;
+                    }
+
+                    if (PsychPrefStateGet_Verbosity() > 4) {
+                        printf("PTB-DEBUG: Panel-Fitter %s %sblit: [%i %i %i %i] -> [%i %i %i %i]\n", (blitscalemode == GL_NEAREST) ? "unscaled" : "scaled",
+                               (windowRecord->multiSample > 0) ? "MultisampleResolveScale" : "Scale",
+                               windowRecord->panelFitterParams[0], windowRecord->panelFitterParams[1], windowRecord->panelFitterParams[2], windowRecord->panelFitterParams[3],
+                               windowRecord->panelFitterParams[4], windowRecord->panelFitterParams[5], windowRecord->panelFitterParams[6], windowRecord->panelFitterParams[7]);
+                    }
+                    
+                    // This is a scaled blit, but all blit parameters are defined in the panelFitterParams array, which
+                    // has to be set up by external code via Screen('PanelFitterProperties'):
+                    glBlitFramebufferEXT(windowRecord->panelFitterParams[0], windowRecord->panelFitterParams[1], windowRecord->panelFitterParams[2], windowRecord->panelFitterParams[3],
+                                         windowRecord->panelFitterParams[4], windowRecord->panelFitterParams[5], windowRecord->panelFitterParams[6], windowRecord->panelFitterParams[7],
+                                         GL_COLOR_BUFFER_BIT, blitscalemode);
+                }
+                else {
+                    // No rescaling by panel-fitter required:
+                    // We use this for multisample-resolve of multisampled drawBufferFBO's.
+                    // A simple glBlitFramebufferEXT() call will do the copy & downsample operation:
+                    glBlitFramebufferEXT(0, 0, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->width, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->height,
+                                         0, 0, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->width, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->height,
+                                         GL_COLOR_BUFFER_BIT, GL_NEAREST);
+                }
 			}
 		}
 		
@@ -5290,6 +5332,10 @@ void PsychSetupView(PsychWindowRecordType *windowRecord, psych_bool useRawFrameb
  */
 void PsychSetupClientRect(PsychWindowRecordType *windowRecord)
 {
+    // Do nothing if panel fitter is active and the clientrect has been set to a fixed
+    // size at openwindow time for the lifetime of this window:
+    if (windowRecord->imagingMode & kPsychNeedGPUPanelFitter) return;
+    
 	// Define windows clientrect. It is a copy of windows rect, but stretched or compressed
     // to twice or half the width or height of the windows rect, depending on the special size
     // flags. clientrect is used as reference for all size query functions Screen('Rect'), Screen('WindowSize')
@@ -5601,7 +5647,8 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	// full imaging pipe, fast offscreen windows, Screen('TransformTexture')...
 	
 	// Check if this system does support OpenGL framebuffer objects and rectangle textures:
-	if (glewIsSupported("GL_EXT_framebuffer_object") && (glewIsSupported("GL_EXT_texture_rectangle") || glewIsSupported("GL_ARB_texture_rectangle") || glewIsSupported("GL_NV_texture_rectangle"))) {
+	if ((glewIsSupported("GL_EXT_framebuffer_object") || glewIsSupported("GL_ARB_framebuffer_object")) &&
+        (glewIsSupported("GL_EXT_texture_rectangle") || glewIsSupported("GL_ARB_texture_rectangle") || glewIsSupported("GL_NV_texture_rectangle"))) {
 		// Basic FBO's utilizing texture rectangle textures as rendertargets are supported.
 		// We've got at least RGBA8 rendertargets, including full alpha blending:
 		if (verbose) printf("Basic framebuffer objects with rectangle texture rendertargets supported --> RGBA8 rendertargets with blending.\n");
@@ -5616,8 +5663,15 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		// Support for multisampled FBO's?
 		if (glewIsSupported("GL_EXT_framebuffer_multisample") && (windowRecord->gfxcaps & kPsychGfxCapFBOBlit)) {
 			if (verbose) printf("Framebuffer objects support anti-aliasing via multisampling.\n");
-			windowRecord->gfxcaps |= kPsychGfxCapFBOMultisample;			
+			windowRecord->gfxcaps |= kPsychGfxCapFBOMultisample;
 		}
+        
+        // Support for framebuffer blits which do a scaling operation and a multisample resolve at once?
+        if ((windowRecord->gfxcaps & kPsychGfxCapFBOMultisample) &&
+            (glewIsSupported("GL_EXT_framebuffer_multisample_blit_scaled") || strstr(glGetString(GL_EXTENSIONS), "GL_EXT_framebuffer_multisample_blit_scaled"))) {
+			if (verbose) printf("Framebuffer objects support single-pass multisample resolve blits and image rescaling.\n");
+            windowRecord->gfxcaps |= kPsychGfxCapFBOScaledResolveBlit;
+        }
 	}
 
 	// ATI_texture_float is supported by R300 ATI cores and later, as well as NV30/40 NVidia cores and later.
@@ -5834,6 +5888,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     #if PSYCH_SYSTEM == PSYCH_LINUX
     if (strstr(glXQueryExtensionsString(windowRecord->targetSpecific.deviceContext, PsychGetXScreenIdForScreen(windowRecord->screenNumber)), "GLX_EXT_buffer_age")) {
         // Age queries for current backbuffer supported:
+        if (verbose) printf("System supports backbuffer age queries.\n");
         windowRecord->gfxcaps |= kPsychGfxCapSupportsBufferAge;
     }
     #endif

@@ -445,6 +445,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	int newimagingmode = 0;
 	int fbocount = 0;
 	int winwidth, winheight;
+    int clientwidth, clientheight;
 	psych_bool needzbuffer, needoutputconversion, needimageprocessing, needseparatestreams, needfastbackingstore, targetisfinalFB;
 	GLuint glsl;
 	GLint redbits;
@@ -468,7 +469,6 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		printf("PTB-ERROR: more recent graphics card. You'll need at minimum a NVidia GeforceFX-5000 or a ATI Radeon 9600 or Intel GMA 950 for this to work.\n");
 		printf("PTB-ERROR: See the www.psychtoolbox.org Wiki for recommendations. You can still use basic stereo support (with restricted performance and features)\n");
 		printf("PTB-ERROR: by disabling the imaging pipeline (imagingmode = 0) but still selecting a stereomode in the 'OpenWindow' subfunction.\n");
-		fflush(NULL);
 		PsychErrorExitMsg(PsychError_user, "Imaging Pipeline setup: Sorry, your graphics card does not meet the minimum requirements for use of the imaging pipeline.");
 	}
 
@@ -496,14 +496,25 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 
 	// Safe default:
 	targetisfinalFB = FALSE;
-	
+
+    // Panel fitter requested? If so, framebuffer blit extension supported?
+    if ((imagingmode & kPsychNeedGPUPanelFitter) && !(windowRecord->gfxcaps & kPsychGfxCapFBOBlit)) {
+        // This is a no-go:
+        printf("PTB-ERROR: You requested use of the panel-fitter via the 'clientRect' parameter of Screen('OpenWindow', ...);\n");
+        printf("PTB-ERROR: but this graphics card and driver does not support the required GL_EXT_framebuffer_blit extension.\n");
+        printf("PTB-ERROR: Please upgrade your system or remove the 'clientRect' parameter from Screen('OpenWindow', ...); so\n");
+        printf("PTB-ERROR: we can resolve this issue.\n\n");
+        PsychErrorExitMsg(PsychError_user, "Imaging Pipeline setup: Sorry, panel-fitter not supported on your graphics hardware.");
+    }
+
 	// Multisampled anti-aliasing requested?
 	if (multiSample > 0) {
 		// Yep. Supported by GPU?
 		if (!(windowRecord->gfxcaps & kPsychGfxCapFBOMultisample)) {
 			// No. We fall back to non-multisampled mode:
 			multiSample = 0;
-			
+			windowRecord->multiSample = 0;
+            
 			// Tell user if warnings enabled:
 			if (PsychPrefStateGet_Verbosity() > 1) {
 				printf("PTB-WARNING: You requested stimulus anti-aliasing by multisampling by setting the multiSample parameter of Screen('OpenWindow', ...) to a non-zero value.\n");
@@ -513,6 +524,27 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 				printf("PTB-WARNING: A driver upgrade may resolve this issue. Users of MacOS-X need at least OS/X 10.5.2 Leopard for support on recent ATI hardware.\n\n");
 			}
 		}
+        
+        // Panel scaling requested? If so we need support for scaled multisample resolve blits to satisfy needs
+        // of multisampling and scaling:
+        if ((imagingmode & kPsychNeedGPUPanelFitter) && !(windowRecord->gfxcaps & kPsychGfxCapFBOScaledResolveBlit)) {
+            // Not supported by GPU. Disable multisampling to satisfy at least the requirement for panelscaling,
+            // which is probably more important, as usercode usually only uses panel scaling to workaround serious
+            // trouble with experimental setups, ie., it is more urgent:
+			multiSample = 0;
+			windowRecord->multiSample = 0;
+			
+			// Tell user if warnings enabled:
+			if (PsychPrefStateGet_Verbosity() > 1) {
+				printf("PTB-WARNING: You requested stimulus anti-aliasing by multisampling by setting the multiSample parameter of Screen('OpenWindow', ...) to a non-zero value.\n");
+				printf("PTB-WARNING: You also requested use of the imaging pipeline and of the GPU panel-fitter / rescaler via the 'clientRect' argument.\n");
+                printf("PTB-WARNING: Unfortunately, your combination of operating system, graphics hardware and driver does not support simultaneous\n");
+				printf("PTB-WARNING: use of multisampled anti-aliasing and the panel-fitter. I assume your request for panel fitting is more important.\n");
+				printf("PTB-WARNING: Will therefore continue without anti-aliasing to make the panel-fitter work.\n");
+                printf("PTB-WARNING: You would need a graphics card, os or graphics driver that supports the GL_EXT_framebuffer_multisample_blit_scaled\n");
+                printf("PTB-WARNING: extension to avoid this degradation of functionality.\n\n");
+			}
+        }
 	}
 
 	// Determine required precision for our framebuffer objects:
@@ -714,9 +746,25 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			winheight = winheight / 2;
 		}
 
+        // Special setup of FBO size for use with panel-fitter needed?
+        if (imagingmode & kPsychNeedGPUPanelFitter) {
+            // Panel-fitter: Use override values from windows clientrectangle:            
+            clientwidth  = (int) PsychGetWidthFromRect(windowRecord->clientrect);
+            clientheight = (int) PsychGetHeightFromRect(windowRecord->clientrect);
+            
+            if (PsychPrefStateGet_Verbosity() > 2) {
+                printf("PTB-INFO: Enabling panel fitter. Rescaling from %i x %i pixels virtual size to real framebuffer resolution.\n", clientwidth, clientheight);
+            }
+        }
+        else {
+            // No panel-fitter, use calculated winwidth x winheight for 1st level drawBufferFBO's:
+            clientwidth  = winwidth;
+            clientheight = winheight;
+        }
+
 		// These FBO's may need a z-buffer or stencil buffer as well if 3D rendering is
 		// enabled:
-		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, winwidth, winheight, multiSample, 0)) {
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, clientwidth, clientheight, multiSample, 0)) {
 			// Failed!
 			PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 1 of imaging pipeline.");
 		}
@@ -731,7 +779,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		
 		// If we are in stereo mode, we'll need a 2nd buffer for the right-eye channel:
 		if (windowRecord->stereomode > 0) {
-			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, winwidth, winheight, multiSample, 0)) {
+			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, clientwidth, clientheight, multiSample, 0)) {
 				// Failed!
 				PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 1 of imaging pipeline.");
 			}
@@ -774,10 +822,10 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		}
 	}
 
-	// Multisampling requested?
-	if (multiSample > 0) {
-		// Multisampling requested. Need to find out if we are a intermediate multisample resolve buffer
-		// or if this is already the final destination and we can resolve directly into system framebuffer/
+	// Multisampling requested? Or panel-fitter active?
+	if ((multiSample > 0) || (imagingmode & kPsychNeedGPUPanelFitter)) {
+		// Multisampling or panel-fitting requested. Need to find out if we are an intermediate multisample-resolve / rescaler buffer
+		// or if this is already the final destination and we can resolve and/or scale-blit directly into system framebuffer/
 		// into finalizedFBO's:
 	
 		// The target of the drawBufferFBO's is already the final FB if not processing is needed. This is the case
@@ -788,7 +836,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		targetisfinalFB = ( !needimageprocessing && (windowRecord->stereomode == kPsychMonoscopic) && !needoutputconversion ) ? TRUE : FALSE;
 	
 		if (!targetisfinalFB) {
-			// Yes. Setup real inputBuffers as multisample-resolve targets:
+			// Yes. Setup real inputBuffers as multisample-resolve / scaler targets:
 			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight, 0, 0)) {
 				// Failed!
 				PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 1 inputBufferFBO of imaging pipeline.");
@@ -1044,6 +1092,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		newimagingmode |= kPsychNeed16BPCFixed;
 	}
 	if (imagingmode & kPsychNeedDualWindowOutput) newimagingmode |= kPsychNeedDualWindowOutput;
+    if (imagingmode & kPsychNeedGPUPanelFitter) newimagingmode |= kPsychNeedGPUPanelFitter;
 	
 	// Set new final imaging mode and fbocount:
 	windowRecord->imagingMode = newimagingmode;
@@ -1239,6 +1288,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	// Multisampling requested? If so, we need to enable it:
 	if (multiSample > 0) {
 		glEnable(GL_MULTISAMPLE);
+        windowRecord->multiSample = multiSample;
 	}
 
 	// Perform a safe reset of current drawing target. This is a warm-start of PTB's drawing
