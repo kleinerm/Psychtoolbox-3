@@ -185,6 +185,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   int major, minor;
   int xfixes_event_base1, xfixes_event_base2;
   psych_bool xfixes_available = FALSE;
+  psych_bool newstyle_setup = FALSE;
 
   // Retrieve windowLevel, an indicator of where non-fullscreen windows should
   // be located wrt. to other windows. 0 = Behind everything else, occluded by
@@ -573,13 +574,19 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // and worked well for us, but it prevents the windowmanager from seeing properties on
     // our windows which allow us to control desktop composition, e.g., on KDE/KWIN and GNOME-3/Mutter,
     // as well as on other wm's compliant with latest ICCCM spec:
-    if (PsychPrefStateGet_ConserveVRAM() & kPsychOldStyleOverrideRedirect) {
+    // Ok, for now we only use the new-style path if we are running under KDE/KWin and user
+    // doesn't explicitely override/forbid that choice. Otherwise we use the old path, as
+    // that seems to perform better, at least on tested Unity/compiz, GNOME3-Shell and LXDE/OpenBox.
+    if ((PsychPrefStateGet_ConserveVRAM() & kPsychOldStyleOverrideRedirect) ||
+        !getenv("KDE_FULL_SESSION")) {
         // Old style: Always override_redirect to lock out window manager, except when a real "GUI-Window"
         // is requested, which needs to behave and be treated like any other desktop app window:
         attr.override_redirect = (windowRecord->specialflags & kPsychGUIWindow) ? 0 : 1;
     }
     else {
         // New style: override_redirect by default:
+        newstyle_setup = TRUE;
+        
         attr.override_redirect = 1;
         
         // Don't override if it is a GUI window, for some reasons as in classic path:
@@ -603,6 +610,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // location, no that the WM can't interfere anymore.
         if (windowRecord->specialflags & kPsychIsFullscreenWindow) attr.override_redirect = 0;
     }
+    
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Using %s-style override-redirect setup path for onscreen window creation.\n", (newstyle_setup) ? "new" : "old");
     
   // Create our onscreen window:
   win = XCreateWindow( dpy, root, x, y, width, height,
@@ -887,8 +896,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     }
     
     // Is this a non-GUI fullscreen window? In the new-style path?
-    if (!(windowRecord->specialflags & kPsychGUIWindow) && (windowRecord->specialflags & kPsychIsFullscreenWindow) &&
-        !(PsychPrefStateGet_ConserveVRAM() & kPsychOldStyleOverrideRedirect)) {
+    if (!(windowRecord->specialflags & kPsychGUIWindow) && (windowRecord->specialflags & kPsychIsFullscreenWindow) && newstyle_setup) {
         // Yes. As we didn't override_redirect it during creation and mapping, so the
         // WM could pick up our special window properties, the WM very likely misplaced
         // it on the screen at a very ergonomic location for desktop users which doesn't
