@@ -1394,8 +1394,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         printf("PTB-WARNING: ==============================================================================================================\n");        
     }
 
-    // Check for desktop compositor activity on non MS-Windows, ie., Linux and OSX:
-    if ((PSYCH_SYSTEM != PSYCH_WINDOWS) && PsychOSIsDWMEnabled(screenSettings->screenNumber) && (PsychPrefStateGet_Verbosity() > 1)) {
+    // Check for desktop compositor activity on OSX: Check not (yet) applicable on Linux, as it is only reliable with KDE/KWin...
+    if ((PSYCH_SYSTEM == PSYCH_OSX) && PsychOSIsDWMEnabled(screenSettings->screenNumber) && (PsychPrefStateGet_Verbosity() > 1)) {
         // Desktop compositor active for our onscreen window. Explain consequences to user:
         printf("PTB-WARNING: ==================================================================================================================\n");
         printf("PTB-WARNING: DESKTOP COMPOSITOR IS ACTIVE! ALL FLIP STIMULUS ONSET TIMESTAMPS WILL BE VERY LIKELY UNRELIABLE AND LESS ACCURATE!\n");
@@ -3202,14 +3202,20 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                         printf("PTB-WARNING: OpenGL driver uses %i-buffering instead of the required double-buffering for Screen('Flip')!\n", buffer_age);
                         printf("PTB-WARNING: All returned Screen('Flip') timestamps will be wrong! Please fix this now (read 'help SyncTrouble').\n");
                     }
-                }
-                
-                // Additional paranoia check at high debug levels where performance doesn't matter anymore.
-                // Check if compositor is active. This just to test functionality, we won't enable this check
-                // for normal operation yet, as i suspect it involves a potentially expensive time-consuming
-                // roundtrip to the x-server, which may not be acceptable for high-framerate stimulus presentation.
-                if ((verbosity > 5) && PsychOSIsDWMEnabled(windowRecord->screenNumber)) printf("PTB-DEBUG:Screen('Flip'): After swapcomplete compositor reported active!!\n");
+                }                
             }
+            
+            // Additional paranoia check at high debug levels where performance doesn't matter anymore.
+            // Check if compositor is active. This just to test functionality, we won't enable this check
+            // for normal operation yet, as i suspect it involves a potentially expensive time-consuming
+            // roundtrip to the x-server, which may not be acceptable for high-framerate stimulus presentation.
+            //
+            // In its current form this is only useful for development and testing, as the method implemented
+            // only detects true compositor activity reliably with KDE/KWin. On other compositors it always
+            // reports composition on, even if the compositor is just hanging around idly in standby mode. We
+            // can't afford that many false alerts.
+            if ((verbosity > 10) && PsychOSIsDWMEnabled(windowRecord->screenNumber)) printf("PTB-DEBUG:Linux:Screen('Flip'): After swapcomplete compositor reported active.\n");
+            
             #endif
 		}
 
