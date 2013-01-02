@@ -4318,7 +4318,10 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     glColorMask(TRUE, TRUE, TRUE, TRUE);
 
     // Query number of available AUX-buffers:
-    glGetIntegerv(GL_AUX_BUFFERS, &auxbuffers);
+    if (PsychPrefStateGet_ConserveVRAM() & kPsychDisableAUXBuffers) {
+        auxbuffers = 0;
+    }
+    else glGetIntegerv(GL_AUX_BUFFERS, &auxbuffers);
 
     // Set transform matrix to well-defined state:
     glMatrixMode(GL_MODELVIEW);
@@ -4779,7 +4782,13 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 				}
 				else {
 					// At least one AUX buffer supported?
-					glGetIntegerv(GL_AUX_BUFFERS, &auxbuffers);
+                    if (PsychPrefStateGet_ConserveVRAM() & kPsychDisableAUXBuffers) {
+                        auxbuffers = 0;
+                    }
+                    else {
+                        glGetIntegerv(GL_AUX_BUFFERS, &auxbuffers);
+                    }
+                    
 					if (auxbuffers > 0) {
 						// Restore backbuffer from aux buffer 0:
 						glDrawBuffer(GL_BACK);
