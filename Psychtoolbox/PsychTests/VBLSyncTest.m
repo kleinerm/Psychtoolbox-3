@@ -389,8 +389,14 @@ try
         % beampos > screen height means that flip returned during the VBL
         % interval. Small values << screen height are also ok,
         % they just indicate either a slower machine or some types of flat-panels...
-        [ tvbl so(i) flipfin(i) missest(i) beampos(i)]=Screen('Flip', w, tdeadline, clearmode);
-        
+	if usedpixx && IsOctave
+	    % Workaround for Datapixx + Octave bug in January 2013 ptb:
+	    tvbl = Screen('Flip', w, tdeadline, clearmode);
+	    so(i) = tvbl;
+	else
+            [ tvbl so(i) flipfin(i) missest(i) beampos(i)]=Screen('Flip', w, tdeadline, clearmode);
+        end
+
         if usedpixx
             % Ask for a Datapixx onset timestamp from last 'Flip':
             [boxTime, sodpixx(i)] = PsychDataPixx('GetLastOnsetTimestamp'); %#ok<ASGLU>
