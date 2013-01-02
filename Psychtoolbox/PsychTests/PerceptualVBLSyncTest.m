@@ -185,7 +185,7 @@ try
    
    VBLTimestamp = Screen('Flip', win, 0, 2);
    
-   while (~KbCheck) & (GetSecs < deadline)
+   while (~KbCheck) && (GetSecs < deadline)
       % Draw left eye view (if stereo enabled):
       Screen('SelectStereoDrawBuffer', win, 0);
       % Draw alternating black/white rectangle:
@@ -197,7 +197,7 @@ try
       Screen('FillRect', win, color, flickerRect);
       if (beampos>=0), Screen('DrawLine', win, [255 255 0], 0, beampos, winRect(3), beampos, thickness); end;
       
-      if stereomode == 0 & length(screen)>1
+      if stereomode == 0 && length(screen)>1
           Screen('FillRect', win2, color, flickerRect);
           Screen('DrawingFinished', win2, 0, 2);
           Screen('DrawingFinished', win, 0, 2);
