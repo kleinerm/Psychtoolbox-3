@@ -3155,6 +3155,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 				printf("PTB-WARNING: not trustworthy! Check your system configuration, e.g., /etc/X11/xorg.conf and\n");
 				printf("PTB-WARNING: /var/log/XOrg.0.log on Linux for hints on what could be misconfigured. This is \n");
 				printf("PTB-WARNING: very likely not a bug, but a system misconfiguration by you or your distribution vendor.\n");
+                printf("PTB-WARNING: Read the Linux specific section of 'help SyncTrouble' for some common causes and fixes for this problem.\n");                
 			}
 
 			// Use one of our own home grown wait-for-swapcompletion and timestamping strategies:
@@ -3209,6 +3210,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                         if (buffer_age == 1) printf("PTB-WARNING: The most likely cause for this is that some kind of desktop compositor is active and interfering.\n");
                         if (buffer_age == 3) printf("PTB-WARNING: The most likely cause for this is that TripleBuffering is enabled somewhere in the driver or xorg.conf settings.\n");
                         if (buffer_age > 3) printf("PTB-WARNING: The most likely cause for this is that %i-Buffering is enabled somewhere in the driver or xorg.conf settings.\n", buffer_age);
+                        printf("PTB-WARNING: Read the Linux specific section of 'help SyncTrouble' for some common causes and fixes for this problem.\n");
                     }
                     
                     if (verbosity > 9) printf("PTB-DEBUG: GLX_BACK_BUFFER_AGE_EXT == %i after swap completion.\n", buffer_age);

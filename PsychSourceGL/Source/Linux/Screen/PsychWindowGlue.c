@@ -1659,27 +1659,6 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 		targetMSC += (targetMSC % divisor == remainder) ? 0 : 1; 
 	}
 
-    // Workaround for bugs in Intel-DDX from June 2011 until 15. December 2012 (Bug fixed in driver version 2.20.16).
-    // If the ddx uses SNA ("SandyBridge Acceleration Architecture") for swap scheduling then two bugs are at work:
-    // a) The "Option" "TripleBuffer" "off" in xorg.conf is ignored, causing triple-buffering to be active by default,
-    //    causing our timestamping to fail completely.
-    // b) The targetMSC is completely ignored, causing total failure of Screen('Flip', .., when); swap scheduling by
-    //    always swapping at next vblank. -> This one has a workaround though.
-    //
-    // Good news: If SNA is used, we can trick SNA to use a different swap scheduling path in the driver if
-    // divisor is non-zero. This path doesn't have bug b) and never uses triple-buffering, but always double-buffering,
-    // thereby nicely solving bug a). Net result: Bug-free operation. Soo, if the driver is Intel and divisor is set
-    // to its zero default, we set (divisor, remainder) == (1, 0) -> non-zero divisor "fixes" the bugs, but the (1,0)
-    // combo causes the divisor/remainder constraint to be ignored anyway -> effective behaviour of a zero divisor.
-    //
-    // If the non-SNA classic UXA ("Unified X-Acceleration") is used, then bug a) doesn't exist and bug b) is either
-    // fixed by our workaround from previous ptb release (commit c90abbfbebaf80036844614141ebc9cd12723f0a), or by the
-    // proper bug-fix also in the Intel ddx v2.20.16.
-    if ((divisor <= 0) && strstr(windowRecord->gpuCoreId, "Intel")) {
-        divisor = 1;
-        remainder = 0;
-    }
-
 	if (PsychPrefStateGet_Verbosity() > 12) printf("PTB-DEBUG:PsychOSScheduleFlipWindowBuffers: Submitting swap request for targetMSC = %lld, divisor = %lld, remainder = %lld.\n", targetMSC, divisor, remainder);
 
 	// Ok, we have a valid final targetMSC. Schedule a bufferswap for that targetMSC, taking a potential
