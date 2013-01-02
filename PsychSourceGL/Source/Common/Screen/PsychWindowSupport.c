@@ -3195,14 +3195,24 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                 // Linux: GLX_EXT_buffer_age supported? If so, then we can query the age in frames of our current post-swap backbuffer.
                 // A value of 2 means double-buffering is used by the gfx-driver, a value of 3 is triple-buffering, zero is single-buffering, n is n-nbuffering, ...
                 // Our currently chosen classic timestamping path absolutely requires double-buffering, so any value other than 2 means big trouble for timing:
+                // However, we also accept a value of zero, as this can legally happen if the driver employs some special optimizations -- zero is non-diagnostic,
+                // neither a sign of success, nor a sign of failure, so we just ignore it to avoid meaningless warning clutter in the rare cases where it turns up.
+                // One example of such an optimization are first time use of AUX buffers on a NVidia gpu with NVidia proprietary driver. Some funny lazy allocation going on...
+                // The value of 1 is observed when a desktop compositor (3d OpenGL, or 2d X-RENDER based) is active and redirecting our window to a composition surface
+                // by a framebuffer copy from backbuffer -> compositor buffer -- copy leads to constant buffer_age of 1.
                 unsigned int buffer_age = 2; // Init to 2 to give benefit of doubt in case query below fails.
                 if (windowRecord->gfxcaps & kPsychGfxCapSupportsBufferAge) {
                     glXQueryDrawable(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, GLX_BACK_BUFFER_AGE_EXT, &buffer_age);
-                    if ((buffer_age != 2) && (verbosity > 1)) {
+                    if ((buffer_age > 0) && (buffer_age != 2) && (verbosity > 1)) {
                         printf("PTB-WARNING: OpenGL driver uses %i-buffering instead of the required double-buffering for Screen('Flip')!\n", buffer_age);
                         printf("PTB-WARNING: All returned Screen('Flip') timestamps will be wrong! Please fix this now (read 'help SyncTrouble').\n");
+                        if (buffer_age == 1) printf("PTB-WARNING: The most likely cause for this is that some kind of desktop compositor is active and interfering.\n");
+                        if (buffer_age == 3) printf("PTB-WARNING: The most likely cause for this is that TripleBuffering is enabled somewhere in the driver or xorg.conf settings.\n");
+                        if (buffer_age > 3) printf("PTB-WARNING: The most likely cause for this is that %i-Buffering is enabled somewhere in the driver or xorg.conf settings.\n", buffer_age);
                     }
-                }                
+                    
+                    if (verbosity > 9) printf("PTB-DEBUG: GLX_BACK_BUFFER_AGE_EXT == %i after swap completion.\n", buffer_age);
+                }
             }
             
             // Additional paranoia check at high debug levels where performance doesn't matter anymore.
