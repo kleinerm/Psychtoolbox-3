@@ -103,7 +103,7 @@
 %
 % To get best precision and reliability on OSX 10.7 and later we strongly
 % recommend you install the PsychtoolboxKernelDriver and use the
-% Screen('Preference','ConserverVRAM') setting 2^16
+% Screen('Preference','ConserveVRAM') setting 2^16
 % (kPsychDontUseNativeBeamposQueries -- see "help ConserveVRAMSettings").
 %
 % On Linux, built-in OpenML timestamping has the highest priority and is
