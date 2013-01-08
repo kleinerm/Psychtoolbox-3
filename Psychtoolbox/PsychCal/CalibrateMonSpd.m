@@ -85,42 +85,58 @@
 % 11/08/06 cgb, dhb  OS/X.
 % 9/27/08 dhb  Default primary bases is 1 now.  Use RefitCalLinMod to change later if desired.
 % 8/19/12 mk   Ask user for choice of display output device.
+% 12/04/12 zlb Adding full support for the various meter types.
 
 global g_usebitspp;
 
 % If the global flag for using Bits++ is empty, then it hasn't been
 % initialized and we ask user what to use:
 if isempty(g_usebitspp)
-    g_usebitspp = input('Which high-res display device? [0=None, 1=Bits++, 2=DataPixx/ViewPixx]');
+    g_usebitspp = input('Which high-res display device? [0=None, 1=Bits++, 2=DataPixx/ViewPixx] ');
     switch(g_usebitspp)
         case 0
             fprintf('Using standard graphics card with 8 bpc framebuffer.\n');
         case 1
-            fprintf('Using Bits++ device in Bits+ CLUT mode.\n');
+            fprintf('Using Bits++ device in Color++ mode.\n');
         case 2
-            fprintf('Using DataPixx/ViewPixx et al. in L48 CLUT mode.\n');
+            fprintf('Using DataPixx/ViewPixx et al. in C48 mode.\n');
         otherwise
             error('Unsupported display device. Aborted.');
     end
 end
 
+whichMeterType = input('Which meter? [1=PR-650, 2=CVI, 3=CRS, 4=PR-655, 5=PR-670, 6=PR-705] ');
+switch whichMeterType
+    case 1
+        fprintf('Using the PR-650.\n');
+    case 3
+        fprintf('Using the CRS toolbox.\n');
+    case 4
+        fprintf('Using the PR-655.\n');
+    case 5
+        fprintf('Using the PR-670.\n');
+    case 6
+        fprintf('Using the PR-705.\n');
+    otherwise
+        error('Unknown or unsupported meter. Aborted.');
+end
 % Create calibration structure;
 cal = [];
 
 % Script parameters
 whichScreen = max(Screen('Screens'));
-whichMeterType = 1;
 cal.describe.leaveRoomTime = 10;
 cal.describe.nAverage = 2;  
 cal.describe.nMeas = 30;
-cal.describe.boxSize = 400;
+cal.describe.boxSize = 200;
 cal.nDevices = 3;
 cal.nPrimaryBases = 1;
+
 switch whichMeterType
-	case {0,1}
-		cal.describe.S = [380 4 101];
 	case 2
 		cal.describe.S = [380 1 401];
+    case {4,5,6}
+        cal.describe.S = [380 2 201];
     otherwise
 		cal.describe.S = [380 4 101];
 end
@@ -215,15 +231,11 @@ cal.describe.gamma.fitBreakThresh = 0.02;
 
 % Initialize
 switch whichMeterType
-	case 0
-	case 1
-		CMCheckInit;
-	case 2
-		CVIOpen;
+    case 2
+        CVIOpen;
     otherwise
-		error('Invalid meter type');
+		CMCheckInit(whichMeterType);
 end
-ClockRandSeed;
 
 % Calibrate monitor
 USERPROMPT = 1;
@@ -259,16 +271,10 @@ hold off
 figure(gcf);
 drawnow;
 
-% Reenable screen saver.
-%ScreenSaver(1);
-
 % Close down meter
 switch whichMeterType
-	case 0
-	case 1
-		CMClose;
 	case 2
 		CVIClose;
     otherwise
-		error('Invalid meter type');
+		CMClose(whichMeterType);
 end

@@ -51,6 +51,8 @@ function cal = CalibrateMonDrvr(cal, USERPROMPT, whichMeterType, blankOtherScree
 % 8/19/12   mk      Rewrite setup and clut code to be able to better cope with all
 %                   the broken operating systems / drivers / gpus and to also
 %                   support DataPixx/ViewPixx devices.
+% 12/05/12  zlb     No longer using a clut drawing method and fully
+%                   randomizing the displayed colors.
 
 global g_usebitspp;
 
@@ -92,30 +94,27 @@ end
 % Blank other screen, if requested:
 if blankOtherScreen
     % We simply open an onscreen window with black background color:
-    Screen('OpenWindow', cal.describe.whichBlankScreen, 0);
+    Screen('OpenWindow', cal.describe.whichBlankScreen, [0 0 0]);
 end
 
 % Setup screen to be measured
 % ---------------------------
 
-% Prepare imaging pipeline for Bits+ Bits++ CLUT mode, or DataPixx/ViewPixx
-% L48 CLUT mode (which is pretty much the same). If such a special output
-% device is used, the Screen('LoadNormalizedGammatable', win, clut, 2);
-% command uploads 'clut's into the device at next Screen('Flip'), taking
-% care of possible graphics driver bugs and other quirks:
+% Prepare imaging pipeline for Bits++ Color++ mode, or DataPixx/ViewPixx
+% C48 mode (which is pretty much the same).
 PsychImaging('PrepareConfiguration');
 
 if g_usebitspp == 1
-    % Setup for Bits++ CLUT mode. This will automatically load proper
+    % Setup for Bits++ Color++ mode. This will automatically load proper
     % identity gamma tables into the graphics hardware and into the Bits+:
-    PsychImaging('AddTask', 'General', 'EnableBits++Bits++Output');
+    PsychImaging('AddTask', 'General', 'EnableBits++Color++Output', 0);
 end
 
 if g_usebitspp == 2
-    % Setup for DataPixx/ViewPixx etc. L48 CLUT mode. This will
+    % Setup for DataPixx/ViewPixx etc. C48 mode. This will
     % automatically load proper identity gamma tables into the graphics
     % hardware and into the device:
-    PsychImaging('AddTask', 'General', 'EnableDataPixxL48Output');
+    PsychImaging('AddTask', 'General', 'EnableDataPixxC48Output', 0);
 end
 
 % Open the window:
@@ -124,31 +123,20 @@ if (cal.describe.whichScreen == 0)
     HideCursor;
 end
 
-theClut = zeros(256,3);
-if g_usebitspp
-    % Load zero theClut into device:
-    Screen('LoadNormalizedGammaTable', window, theClut, 2);
-    Screen('Flip', window);    
-else
-    % Load zero lut into regular graphics card:
-    Screen('LoadNormalizedGammaTable', window, theClut);
-end
-
 % Draw a box in the center of the screen
 if ~isfield(cal.describe, 'boxRect')
-	boxRect = [0 0 cal.describe.boxSize cal.describe.boxSize];
-	boxRect = CenterRect(boxRect,screenRect);
-else
-	boxRect = cal.describe.boxRect;
+    if g_usebitspp % halve the horizontal size (2:1 aspect ratio in either color mode)
+        boxRect = [0 0 cal.describe.boxSize/2 cal.describe.boxSize];
+    else
+        boxRect = [0 0 cal.describe.boxSize cal.describe.boxSize];
+    end
+	cal.describe.boxRect = CenterRect(boxRect,screenRect);
 end
-theClut(2,:) = [1 1 1];
-Screen('FillRect', window, 1, boxRect);
-if g_usebitspp
-    Screen('LoadNormalizedGammaTable', window, theClut, 2);
-    Screen('Flip', window, 0, 1);
-else
-    Screen('LoadNormalizedGammaTable', window, theClut);
-end
+
+% Put the correct surround and draw an aiming box.
+Screen('FillRect', window, cal.bgColor');
+Screen('FillRect', window, [1 1 1], cal.describe.boxRect);
+Screen('Flip', window, 0, 1);
 
 % Wait for user
 if USERPROMPT == 1
@@ -159,73 +147,47 @@ if USERPROMPT == 1
     fprintf(' done\n');
 end
 
-% Put correct surround for measurements.
-theClut(1,:) = cal.bgColor';
-if g_usebitspp
-    Screen('FillRect', window, 1, boxRect);
-    Screen('LoadNormalizedGammaTable', window, theClut, 2);
-    Screen('Flip', window, 0, 1);
-else
-    Screen('LoadNormalizedGammaTable', window, theClut);
-end
-
 % Start timing
-t0 = clock;
+tic
 
 mon = zeros(cal.describe.S(3)*cal.describe.nMeas,cal.nDevices);
 for a = 1:cal.describe.nAverage
-    for i = 1:cal.nDevices
-        disp(sprintf('Monitor device %g',i)); %#ok<*DSPS>
-        Screen('FillRect', window, 1, boxRect);
-        Screen('Flip', window, 0, 1);
-
-        % Measure ambient
-        darkAmbient1 = MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType, theClut);
-
-        % Measure full gamma in random order
-        mGammaInput = zeros(cal.nDevices, cal.describe.nMeas);
-        mGammaInput(i,:) = mGammaInputRaw';
-        sortVals = rand(cal.describe.nMeas,1);
-        [null, sortIndex] = sort(sortVals); %#ok<*ASGLU>
-        %fprintf(1,'MeasMonSpd run %g, device %g\n',a,i);
-        [tempMon, cal.describe.S] = MeasMonSpd(window, mGammaInput(:,sortIndex), ...
-            cal.describe.S, [], whichMeterType, theClut);
-        tempMon(:, sortIndex) = tempMon;
-
-        % Take another ambient reading and average
-        darkAmbient2 = MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType, theClut);
-        darkAmbient = ((darkAmbient1+darkAmbient2)/2)*ones(1, cal.describe.nMeas);
-
-        % Subtract ambient
-        tempMon = tempMon - darkAmbient;
-
-        % Store data
-        mon(:, i) = mon(:, i) + reshape(tempMon,cal.describe.S(3)*cal.describe.nMeas,1);
+    % Measure ambient
+    darkAmbient1 = MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType, cal.describe.boxRect);
+    
+    % Measure full gamma in random order across all guns
+    mGammaInput = zeros(cal.nDevices,cal.nDevices*cal.describe.nMeas);
+    for i = 1:cal.nDevices % [gamma 0 ... 0; 0 ... 0 gamma 0 ... 0; 0 ... 0 gamma]
+        mGammaInput(i,1+(i-1)*cal.describe.nMeas:i*cal.describe.nMeas) = mGammaInputRaw';
     end
+    sortIndex = randperm(size(mGammaInput,2));
+    
+    [tempMon, cal.describe.S] = MeasMonSpd(window, mGammaInput(:,sortIndex), ...
+        cal.describe.S, 0, whichMeterType, cal.describe.boxRect);
+    tempMon(:,sortIndex) = tempMon;
+    
+    % Take another ambient reading and average
+    darkAmbient2 = MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType, cal.describe.boxRect);
+    darkAmbient = ((darkAmbient1+darkAmbient2)/2)*ones(1, cal.describe.nMeas*cal.nDevices);
+    
+    % Subtract ambient
+    tempMon = tempMon - darkAmbient;
+    
+    % Store data
+    mon = mon + reshape(tempMon,cal.describe.S(3)*cal.describe.nMeas,cal.nDevices);
 end
 mon = mon / cal.describe.nAverage;
 
-% Close the screen, restore cluts:
-if g_usebitspp
-    % Load identity clut on Bits++ / DataPixx et al.:
-    BitsPlusPlus('LoadIdentityClut', window);
-    Screen('Flip', window);
-end
-
-% Restore graphics card gamma tables to original state:
-RestoreCluts;
-
-% Show hidden cursor:
+% Show hidden cursor, close windows, and restore cluts:
 if cal.describe.whichScreen == 0
-	ShowCursor;
+	sca();
+else % don't ShowCursor
+    RestoreCluts;
+    Screen('CloseAll');
 end
-
-% Close all windows:
-Screen('CloseAll');
 
 % Report time
-t1 = clock;
-fprintf('CalibrateMonDrvr measurements took %g minutes\n', etime(t1, t0)/60);
+fprintf('CalibrateMonDrvr measurements took %g minutes\n', toc/60);
 
 % Pre-process data to get rid of negative values.
 mon = EnforcePos(mon);

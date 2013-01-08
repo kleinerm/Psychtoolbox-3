@@ -24,6 +24,7 @@ function dacBits = ScreenDacBits(w)
 % 10/10/06 dhb     Just always return 8 bits, until we figure out how to update.
 % 05/21/07 mk      Return queried dac size from screen. This will return 8
 %                  bits if it can't query real dac size.
+% 11/29/12 zlb     Allow Screen to handle dacBits for non-Bits++ displays.
 
 global g_usebitspp;
 
@@ -33,9 +34,7 @@ if isempty(g_usebitspp)
     g_usebitspp = 0;
 end
 
-% dacBits=Screen(w,'Preference','DacBits');
-%dacBits = 8;
-if g_usebitspp
+if g_usebitspp == 1
 	dacBits = 14;
 else
 	[gammatable, dacBits, reallutsize] = Screen('ReadNormalizedGammaTable', w);
