@@ -461,6 +461,10 @@ while 1
                             Vertices(:,index) = Vertices(:,Faces(j,i));
                             Faces(j,i) = index;
                             Faces(j+3,i) = index;
+                            if vnnum > 0
+                                Normals(:,index) = Normals(:, Faces(j+6,i));
+                                Faces(j+6,i) = index;
+                            end
                         end
                     end
                 end
@@ -502,8 +506,10 @@ while 1
         % after our remap operation:
         Faces = Faces(1:3, :);
         
+        Faces = Faces - min(min(Faces));
+        
         % Take difference in indexing between OpenGL and OBJ into account.
-        Faces = Faces - 1;
+%        Faces = Faces - 1;
         
         % Array with triangle definitions exists. Check for additional quad-definitions:
         if f4num > 0
