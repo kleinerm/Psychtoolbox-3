@@ -91,6 +91,8 @@ function objobject=LoadOBJFile(modelname, debug, preparse)
 % 02/08/11  Implement parsing/assignment of 'g' submesh-names, mtllib
 %           definitions and usemat selectors. (MK)
 % 01/09/13  Fix MLint warnings and replace findstr() by future-proof strfind(). (MK)
+% 01/09/13  Transplant Katha's fixes to the triangle parser. (MK)
+% 01/09/13  Transplant Katha's fixes to the quad parser. (MK)
 
 if nargin<1
     error('You did not provide any filename for the Alias-/Wavefront OBJ file!')
@@ -341,7 +343,7 @@ while 1
                 end
                 
                 SrcTexCoords = Texcoords;
-                Texcoords = zeros(size(SrcTexCoords, 1), vnum);
+                Texcoords = nan(size(SrcTexCoords, 1), vnum);
                 
                 % Remap/rebuild for each of the f4num faces:
                 for i=1:f4num
@@ -349,6 +351,17 @@ while 1
                     Texcoords(:, F4(2,i)) = SrcTexCoords(:, F4(6,i));
                     Texcoords(:, F4(3,i)) = SrcTexCoords(:, F4(7,i));
                     Texcoords(:, F4(4,i)) = SrcTexCoords(:, F4(8,i));
+                    for j=1:4
+                        if all(isnan(Texcoords(:, F4(j,i))))
+                            Texcoords(:, F4(j,i)) = SrcTexCoords(:, F4(j+4,i));
+                        else
+                            index = size(Texcoords,2) + 1;
+                            Texcoords(:,index) = SrcTexCoords(:, F4(j+4,i));
+                            Vertices(:,index) = Vertices(:,F4(j,i));
+                            F4(j,i) = index;
+                            F4(j+4,i) = index;
+                        end
+                    end                    
                 end
             end
         end
@@ -432,13 +445,24 @@ while 1
                 end
                 
                 SrcTexCoords = Texcoords;
-                Texcoords = zeros(size(SrcTexCoords, 1), vnum);
+                Texcoords = nan(size(SrcTexCoords, 1), vnum);
                 
                 % Remap/rebuild for each of the f3num faces:
                 for i=1:f3num
                     Texcoords(:, Faces(1,i)) = SrcTexCoords(:, Faces(4,i));
                     Texcoords(:, Faces(2,i)) = SrcTexCoords(:, Faces(5,i));
                     Texcoords(:, Faces(3,i)) = SrcTexCoords(:, Faces(6,i));
+                    for j=1:3
+                        if all(isnan(Texcoords(:, Faces(j,i))))
+                            Texcoords(:, Faces(j,i)) = SrcTexCoords(:, Faces(j+3,i));
+                        else
+                            index = size(Texcoords,2) + 1;
+                            Texcoords(:,index) = SrcTexCoords(:, Faces(j+3,i));
+                            Vertices(:,index) = Vertices(:,Faces(j,i));
+                            Faces(j,i) = index;
+                            Faces(j+3,i) = index;
+                        end
+                    end
                 end
             end
         end
