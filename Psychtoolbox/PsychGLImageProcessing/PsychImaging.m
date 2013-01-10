@@ -1859,7 +1859,7 @@ rightLRFlip = 0;
 
 % Stereomode?
 winfo = Screen('GetWindowInfo', win);
-[winwidth, winheight] = Screen('Windowsize', win);
+[winwidth, winheight] = Screen('WindowSize', win);
 
 % Setup inverse warp map matrices for this window handle:
 ptb_geometry_inverseWarpMap{win} = [];
@@ -3164,12 +3164,26 @@ if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayToSingleSplitWindow')))
     
     % Simply set up the left finalizer chain with a glCopyPixels command
     % that copies the left half of the system backbuffer to the right half
-    % of the system backbuffer. As kPsychHalfWidthWindow was requested at
-    % window creation time, the reported 'WindowSize' will be already the
-    % virtual size of the window, ie., half the real size...
+    % of the system backbuffer. Query the real backbuffer width x height,
+    % but use half the width as source region and destination region
+    % offset, as the right half of the backbuffer shall be a copy of the
+    % left half:
+    [w, h] = Screen('WindowSize', win, 1);
+    w = w / 2;
+
+    % Imaging pipeline fully enabled? Specific offsets used for blitter
+    % commands depend on this:
+    if bitand(winfo.ImagingMode, kPsychNeedFastBackingStore) > 0
+        % Yes: Use proper offsets for active imaging pipeline:
+        myblitstring = sprintf('glRasterPos2f(%f, %f); glCopyPixels(0, 0, %f, %f, 6144);', w, h, w, h);
+    else
+        % No: Need different x-offset for glRasterPos2f, because the good
+        % ol' fixed function pipeline uses different viewport / projection
+        % matrix etc.:
+        myblitstring = sprintf('glRasterPos2f(%f, %f); glCopyPixels(0, 0, %f, %f, 6144);', w/2, h, w, h);
+    end
     
-    [w, h] = Screen('WindowSize', win);
-    myblitstring = sprintf('glRasterPos2f(%f, %f); glCopyPixels(0, 0, %f, %f, 6144);', w, h, w, h);
+    % Attach blit command sequence to finalizer chain:
     Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'MirrorSplitWindowToSplitWindow', myblitstring);
     Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
 end
@@ -3250,7 +3264,7 @@ if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
     % first opened onscreen window (ie., 99% of the time). If that
     % assumption doesn't hold, we will guess the wrong texture handle and
     % bad things will happen!
-    [w, h] = Screen('WindowSize', win);
+    [w, h] = Screen('WindowSize', win, 1);
     myblitstring = sprintf('glBindTexture(34037, 1); glCopyTexSubImage2D(34037, 0, 0, 0, 0, 0, %i, %i); glBindTexture(34037, 0);', w, h);
     Screen('Hookfunction', win, 'AppendMFunction', 'RightFinalizerBlitChain', 'MirrorMasterToSlaveWindow', myblitstring);
     Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
