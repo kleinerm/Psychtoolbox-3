@@ -1312,7 +1312,7 @@ if strcmp(cmd, 'RestrictProcessingToROI')
 
     ox = scissorrect(RectLeft);
 
-    [winwidth, winheight] = Screen('WindowSize', win);
+    [winwidth, winheight] = InterBufferSize(win);
     oy = winheight - scissorrect(RectBottom);
 
     w  = RectWidth(scissorrect);
@@ -1330,18 +1330,20 @@ if strcmp(cmd, 'RestrictProcessingToROI')
         Screen('HookFunction', win, 'PrependBuiltin', 'StereoRightCompositingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
     end
 
-    if (mystrcmp(whichView, 'AllViews') || mystrcmp(whichView, 'Compositor')) && winfo.StereoMode > 5
+    if (mystrcmp(whichView, 'AllViews') || mystrcmp(whichView, 'Compositor')) && ismember(winfo.StereoMode, [6,7,8,9])
         % Needed to restrict both views processing and a
         % compositing mode is active. If both views are restricted
         % in their output area then it makes sense to restrict the
         % compositor to the same area. We also restrict the
         % compositor if that was requested.
+        oy = RectHeight(Screen('Rect', win, 1)) - scissorrect(RectBottom);
         DoRemoveScissorRestriction(win, 'StereoCompositingBlit');
         Screen('HookFunction', win, 'PrependBuiltin', 'StereoCompositingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
     end
 
     if mystrcmp(whichView, 'FinalFormatting')
         % Need to restrict final formatting blit processing:
+        oy = RectHeight(Screen('Rect', win, 1)) - scissorrect(RectBottom);
         DoRemoveScissorRestriction(win, 'FinalOutputFormattingBlit');
         Screen('HookFunction', win, 'PrependBuiltin', 'FinalOutputFormattingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
     end
@@ -1383,7 +1385,7 @@ if strcmp(cmd, 'UnrestrictProcessing')
         DoRemoveScissorRestriction(win, 'StereoRightCompositingBlit');
     end
 
-    if (mystrcmp(whichView, 'AllViews') || mystrcmp(whichView, 'Compositor')) && winfo.StereoMode > 5
+    if (mystrcmp(whichView, 'AllViews') || mystrcmp(whichView, 'Compositor')) && ismember(winfo.StereoMode, [6,7,8,9])
         % Needed to restrict both views processing and a
         % compositing mode is active. If both views are restricted
         % in their output area then it makes sense to restrict the
@@ -1859,7 +1861,7 @@ rightLRFlip = 0;
 
 % Stereomode?
 winfo = Screen('GetWindowInfo', win);
-[winwidth, winheight] = Screen('WindowSize', win);
+[winwidth, winheight] = InterBufferSize(win);
 
 % Setup inverse warp map matrices for this window handle:
 ptb_geometry_inverseWarpMap{win} = [];
@@ -1924,7 +1926,7 @@ if leftLRFlip || leftUDFlip
 
     if leftLRFlip
         sx = -1;
-        ox = RectWidth(Screen('Rect', win));
+        ox = RectWidth(InterBufferRect(win));
         hv = winwidth-1:-1:0;
     else
         hv = 0:winwidth-1;
@@ -1932,7 +1934,7 @@ if leftLRFlip || leftUDFlip
 
     if leftUDFlip
         sy = -1;
-        oy = RectHeight(Screen('Rect', win));
+        oy = RectHeight(InterBufferRect(win));
         vv = winheight-1:-1:0;
     else
         vv = 0:winheight-1;
@@ -1965,7 +1967,7 @@ if winfo.StereoMode > 0
 
         if rightLRFlip
             sx = -1;
-            ox = RectWidth(Screen('Rect', win));
+            ox = RectWidth(InterBufferRect(win));
             hv = winwidth-1:-1:0;
         else
             hv = 0:winwidth-1;
@@ -1973,7 +1975,7 @@ if winfo.StereoMode > 0
 
         if rightUDFlip
             sy = -1;
-            oy = RectHeight(Screen('Rect', win));
+            oy = RectHeight(InterBufferRect(win));
             vv = winheight-1:-1:0;
         else
             vv = 0:winheight-1;
@@ -3207,8 +3209,6 @@ if ~isempty(floc)
             end
 
             ox = scissorrect(RectLeft);
-
-            [winwidth, winheight] = Screen('WindowSize', win);
             oy = winheight - scissorrect(RectBottom);
 
             w  = RectWidth(scissorrect);
@@ -3224,17 +3224,19 @@ if ~isempty(floc)
                 Screen('HookFunction', win, 'PrependBuiltin', 'StereoRightCompositingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
             end
             
-            if (mystrcmp(reqs{row, 1}, 'AllViews') || mystrcmp(reqs{row, 1}, 'Compositor')) && winfo.StereoMode > 5
+            if (mystrcmp(reqs{row, 1}, 'AllViews') || mystrcmp(reqs{row, 1}, 'Compositor')) && ismember(winfo.StereoMode, [6,7,8,9])
                 % Needed to restrict both views processing and a
                 % compositing mode is active. If both views are restricted
                 % in their output area then it makes sense to restrict the
                 % compositor to the same area. We also restrict the
                 % compositor if that was requested.
+                oy = RectHeight(Screen('Rect', win, 1)) - scissorrect(RectBottom);
                 Screen('HookFunction', win, 'PrependBuiltin', 'StereoCompositingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
             end
 
             if mystrcmp(reqs{row, 1}, 'FinalFormatting')
                 % Need to restrict final formatting blit processing:
+                oy = RectHeight(Screen('Rect', win, 1)) - scissorrect(RectBottom);
                 Screen('HookFunction', win, 'PrependBuiltin', 'FinalOutputFormattingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
             end
             
@@ -3361,4 +3363,38 @@ function DoRemoveScissorRestriction(win, hookname)
             break;
         end
     end
+return;
+
+% Helper: Calculate and return bounding rectangle of intermediate
+% framebuffers inside the imaging pipeline. These intermediates don't have
+% the size of the client framebuffer (aka Screen('Rect', win);) and don't
+% have the size of the windows backbuffer (aka Screen('Rect', win, 1);),
+% but some size derived from the backbuffer size and various flags:
+function rect = InterBufferRect(win)
+    % Get window info flags about possible size transformations:
+    winfo = Screen('GetWindowInfo', win);
+    
+    % Get raw rectangle of true window backbuffer size as baseline:
+    % Left and Top entry is always zero, due to normalized rect.
+    rect = Screen('Rect', win, 1);
+    
+    % Apply half-height flag, if any:
+    if bitand(winfo.SpecialFlags, kPsychNeedHalfHeightWindow)
+        rect(RectBottom) = rect(RectBottom) / 2;
+    end
+    
+    % Apply half-width flag, if any:
+    if bitand(winfo.SpecialFlags, kPsychNeedHalfWidthWindow)
+        rect(RectRight) = rect(RectRight) / 2;
+    end
+
+    % Apply twice-width flag, if any:
+    if bitand(winfo.SpecialFlags, kPsychNeedTwiceWidthWindow)
+        rect(RectRight) = rect(RectRight) * 2;
+    end
+return;
+
+function [w, h] = InterBufferSize(win)
+    w = RectWidth(InterBufferRect(win));
+    h = RectHeight(InterBufferRect(win));
 return;
