@@ -108,6 +108,76 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
 %
 %
+% * 'UsePanelFitter' Ask to use builtin panel fitter. This allows you to
+%   define a virtual size for your onscreen window. The window will behave
+%   as if it had that virtual size wrt. all size queries and drawing
+%   operations. However, at Screen('Flip') time, the visual content of the
+%   window will be resized by a fast scaling operation to the real size of
+%   the windows framebuffer, ie., its real onscreen size. Scaling uses
+%   bilinear interpolation or better for high quality results. After
+%   rescaling to the real size, post-processing and display of your
+%   stimulus image will proceed at full resolution. This function is useful
+%   if you want to display a stimulus designed for a specific display
+%   resolution on a display device of different higher or lower resolution.
+%   Given that size and shape of the virtual framebuffer and real display
+%   window will not match, the function provides you with multiple possible
+%   choices on how to rescale your stimulus image, e.g., to maximize
+%   display area, or to preserve the aspect ratio of the original image,
+%   trading off displayed area etc.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'UsePanelFitter', size, strategy [, srcRect, dstRect]);
+%
+%   'size' is a [width, height] vector defining the width x height of the
+%   virtual window in pixels.
+%
+%   'strategy' a text string selecting the scaling method. Following settings are possible:
+%
+%   'Full' - Scale to full window size. Aspect ratio is not preserved,
+%            unless the virtual window and the real onscreen windows 'rect'
+%            already have the same aspect ratio, in which case this will be
+%            a simple scaling operation.
+%
+%   'Aspect' - Scale to maximum size possible while preserving aspect
+%              ratio. This will center the stimulus and add black
+%              horizontal or vertical borders as neccessary.
+%
+%   'AspectWidth' - Scale aspect ratio preserving to cover full display
+%                   width. Cut off top and bottom content if neccessary.
+%
+%   'AspectHeight' - Scale aspect ratio preserving to cover full display
+%                    height. Cut off left and right content if neccessary.
+%
+%   'Centered' - Center stimulus without any scaling, add black borders
+%                around stimulus or cut away border regions to get a
+%                one-to-one mapping.
+%
+%   'Custom' - This works like the 'srcRect' and 'dstRect' parameters of
+%              Screen('DrawTexture'): Cut out a 'srcRect' region from the
+%              virtual framebuffer and display it in the 'dstRect' region.
+%              'srcRect' and 'dstRect' are given in typical [left, top, right, bottom]
+%              format.
+%
+%   Example: Suppose your real window covers a 1920 x 1080 display.
+%
+%   PsychImaging('AddTask', 'General', 'UsePanelFitter', [800 600], 'Aspect');
+%   -> This would give you a virtual window of 800 x 600 pixels to draw
+%   into and would rescale the 800 x 600 stimulus image to 1440 x 1080
+%   pixels and display it centered on the 1920 x 1080 pixels display.
+%   Aspect ratio would be correct and the image would cover the full height
+%   1080 pixels of the display, but only 1440 out of 1920 pixels of its
+%   width, thereby leaving black borders on the left and right side of your
+%   stimulus.
+%
+%   PsychImaging('AddTask', 'General', 'UsePanelFitter', [800 600], 'AspectHeight');
+%   -> Would do the same as above.
+%
+%   PsychImaging('AddTask', 'General', 'UsePanelFitter', [800 600], 'AspectWidth');
+%   -> Would create a final image of 1920 pixels width, as you asked to
+%   cover the full display width, aspect ratio would be correct, but the
+%   top and bottom 75 pixels of your original stimulus would get cut away,
+%   because they wouldn't fit after scaling without distorting the image.
+%
+%
 % * 'UseFastOffscreenWindows' Ask for support of fast Offscreen windows.
 %   These use a more efficient storage, backed by OpenGL framebuffer
 %   objects (FBO's). Drawing into them isn't faster, but *switching*
@@ -849,7 +919,9 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % 11.09.2012  Add support for stereo sync line handling, and for
 %             scanning backlight control of the ViewPixx in stereomode. (MK)
 %
-% 23.12.2012  Add support for 'SideBySideCompressedStereo' stereo mode. (MK) 
+% 23.12.2012  Add support for 'SideBySideCompressedStereo' stereo mode. (MK)
+%
+% 13.12.2013  Add support for 'UsePanelFitter' Screen panelfitter setup. (MK)
 %
 
 persistent configphase_active;
@@ -1051,6 +1123,175 @@ if strcmp(cmd, 'OpenWindow')
     
     imagingMode = mor(imagingMode, imagingovm);
     
+    if nargin < 10 || isempty(varargin{9})
+        specialFlags = [];
+    else
+        specialFlags = varargin{9};
+    end
+    
+    if nargin < 11 || isempty(varargin{10})
+        clientRect = [];
+    else
+        clientRect = varargin{10};
+    end
+    
+    % Use and high-level setup of panelfitter requested?
+    if ~isempty(find(mystrcmp(reqs, 'UsePanelFitter'))) %#ok<*EFIND>
+        % Yes. Extract parameters:
+        floc = find(mystrcmp(reqs, 'UsePanelFitter'));
+        if length(floc) > 1
+            error('PsychImaging: Multiple definitions of task "UsePanelFitter"! There can be only one.');
+        end
+        
+        [row cols] = ind2sub(size(reqs), floc); %#ok<NASGU>
+        
+        % Extract requested resolution of virtual framebuffer...
+        clientRes = reqs{row, 3};
+        if length(clientRes) ~= 2 || ~isnumeric(clientRes) || min(clientRes) < 1
+            error('PsychImaging: Mandatory "size" parameter of task "UsePanelFitter" is missing or not a two component [width, height] size vector with positive width and height as expected.');
+        end
+        
+        clientRes = round(clientRes);
+        
+        if ~isempty(clientRect)
+            fprintf('PsychImaging: OpenWindow: Warning: User provided "clientRect" overriden by specification in PsychImaging task "UsePanelFitter".');
+        end
+        
+        % ... and define clientRect accordingly:
+        clientRect = [0, 0, clientRes(1), clientRes(2)];
+        
+        % Extract scaling strategy:
+        fitterStrategy = reqs{row, 4};
+        if isempty(fitterStrategy) || ~ischar(fitterStrategy)
+            error('PsychImaging: Mandatory parameter "strategy" of task "UsePanelFitter" missing or not a string.');
+        end
+
+        % Define full size of output framebuffer:
+        if isempty(winRect)
+            dstFit = Screen('Rect', screenid);
+        else
+            dstFit = SetRect(0, 0, RectWidth(winRect), RectHeight(winRect));
+        end
+        
+        % Adapt dstFit according to window size flags:
+        
+        % Apply half-height flag, if any:
+        if bitand(imagingMode, kPsychNeedHalfHeightWindow)
+            dstFit(RectBottom) = dstFit(RectBottom) / 2;
+        end
+        
+        % Apply half-width flag, if any:
+        if bitand(imagingMode, kPsychNeedHalfWidthWindow) || ismember(stereomode, [4, 5])
+            dstFit(RectRight) = dstFit(RectRight) / 2;
+        end
+        
+        % Apply twice-width flag, if any:
+        if bitand(imagingMode, kPsychNeedTwiceWidthWindow)
+            dstFit(RectRight) = dstFit(RectRight) * 2;
+        end
+
+        % Which strategy to use?
+        if strcmpi(fitterStrategy, 'Custom')
+            % Custom scaling with provided srcRect and dstRect:
+            srcFit = reqs{row, 5};
+            dstFit = reqs{row, 6};
+            if ~isnumeric(srcFit) || length(srcFit) ~= 4
+                error('PsychImaging: Mandatory parameter "srcRect" of task "UsePanelFitter" for fitting strategy "Custom" missing or not a 4 element rect.');
+            end
+            
+            if ~isnumeric(dstFit) || length(dstFit) ~= 4
+                error('PsychImaging: Mandatory parameter "dstRect" of task "UsePanelFitter" for fitting strategy "Custom" missing or not a 4 element rect.');
+            end
+            
+            % Just concatenate source and destination rectangle and we're done:
+            fitterParams = [srcFit , dstFit];
+            
+        elseif strcmpi(fitterStrategy, 'Centered')
+            % Don't rescale but blit one-to-one. Center in target
+            % framebuffer, crop if neccessary:
+
+            % Try to center clientRect in destination framebuffer rect:
+            srcFit = CenterRect(clientRect, dstFit);
+            
+            % Does it fully fit in?
+            if any(srcFit < 0)
+                % No. We need to crop/clip it to fit in:
+                dstFit = ClipRect(srcFit, dstFit);
+                srcFit = CenterRect(dstFit, clientRect);
+                fprintf('PsychImaging: For Centered fitting, needed to crop source framebuffer to central region [%i,%i,%i,%i]. Borders will be missing.\n', srcFit(1), srcFit(2), srcFit(3), srcFit(4));
+            else
+                % Yes: Center in destination framebuffer:
+                dstFit = srcFit;
+                srcFit = clientRect;
+            end
+            
+            fitterParams = [srcFit , dstFit];
+            
+        elseif strcmpi(fitterStrategy, 'Full')
+            % Rescale source framebuffer to full target framebuffer, not
+            % taking aspect ratio into account:
+            srcFit = clientRect;
+            
+            if RectWidth(srcFit) / RectHeight(srcFit) ~= RectWidth(dstFit) / RectHeight(dstFit)
+                fprintf('PsychImaging: Using full resolution fitting strategy, scaling will not preserve aspect ratio of original stimulus!\n');
+            else
+                fprintf('PsychImaging: Using full resolution fitting strategy. Aspect ratio is preserved.\n');
+            end
+            
+            fitterParams = [srcFit , dstFit];
+            
+        elseif strcmpi(fitterStrategy, 'AspectWidth') || strcmpi(fitterStrategy, 'AspectHeight') || strcmpi(fitterStrategy, 'Aspect')
+            % Rescale aspect ratio preserving:
+            
+            if strcmpi(fitterStrategy, 'AspectWidth')
+                % Cover full width of window, maybe crop top and bottom:
+                sf = RectWidth(dstFit) / RectWidth(clientRect);
+                fprintf('PsychImaging: Using scaling to full width. Aspect ratio is preserved, top and bottom may be cut away.\n');
+            end
+
+            if strcmpi(fitterStrategy, 'AspectHeight')
+                % Cover full width of window, maybe crop top and bottom:
+                sf = RectHeight(dstFit) / RectHeight(clientRect);
+                fprintf('PsychImaging: Using scaling to full height. Aspect ratio is preserved, left and right margins may be cut away.\n');
+            end
+
+            if strcmpi(fitterStrategy, 'Aspect')
+                % Cover as much as possible, aspect ratio preserving, leaving
+                % borders as neccessary:
+                sfw = RectWidth(dstFit) / RectWidth(clientRect);
+                sfh = RectHeight(dstFit) / RectHeight(clientRect);
+                sf = min(sfw, sfh);
+                fprintf('PsychImaging: Using scaling to maximum size which preserves aspect ratio. There may be black borders.\n');
+            end
+            
+            % Compute scaled size target rectangle:
+            scaleFit = ScaleRect(clientRect, sf, sf);
+            
+            % Center it in destination framebuffer dstFit:
+            scaleFit = CenterRect(scaleFit, dstFit);
+            
+            % Clip it against dstFit's size, crop away borders if neccessary:
+            % dstFit now contains the destination retangle in the window:
+            dstFit = ClipRect(scaleFit, dstFit);
+            
+            % Compute originating source rectangle of original size for
+            % 'dstFit' by undoing the scaling:
+            scaleFit = SetRect(0, 0, RectWidth(dstFit)/sf, RectHeight(dstFit)/sf);
+            
+            % Center properly sized source rectangle in clientRect source
+            % framebuffer to compute final srcRect for scaling blit:
+            srcFit = CenterRect(scaleFit, clientRect);
+            
+            fitterParams = [srcFit , dstFit];
+            
+        else
+            error('PsychImaging: Mandatory parameter "strategy" of task "UsePanelFitter" has invalid setting ''%s''.', fitterStrategy);
+        end
+    else
+        % No panel fitter in use. Or at least, none we would set up:
+        fitterParams = [];
+    end
+    
     % Custom color correction for display wanted on a Bits+ display in
     % Mono++ or Color++ mode or a DataPixx?
     if ~isempty(find(mystrcmp(reqs, 'DisplayColorCorrection')))
@@ -1114,10 +1355,10 @@ if strcmp(cmd, 'OpenWindow')
             warning('BrightSide HDR output device selected on a non MS-Windows platform! Unsupported! Will use dummy emulation mode instead!');
         end
         
-        if nargin >= 10
-            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
+        if nargin >= 12
+            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
         else
-            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
+            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
         end        
     end
 
@@ -1128,10 +1369,10 @@ if strcmp(cmd, 'OpenWindow')
             error('You specified multiple conflicting output display device drivers! This will not work.');
         end
 
-        if nargin >= 10
-            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
+        if nargin >= 12
+            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
         else
-            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
+            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
         end        
     end
 
@@ -1148,10 +1389,10 @@ if strcmp(cmd, 'OpenWindow')
             bpcom = 'OpenWindowMono++';
         end
         
-        if nargin >= 10
-            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
+        if nargin >= 12
+            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
         else
-            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
+            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
         end        
     end
 
@@ -1162,19 +1403,19 @@ if strcmp(cmd, 'OpenWindow')
             error('You specified multiple conflicting output display device drivers! This will not work.');
         end
 
-        if nargin >= 10
-            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
+        if nargin >= 12
+            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
         else
-            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
+            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
         end        
     end
 
     if isempty(win)
         % Standard openwindow path:
-        if nargin >= 10
-            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
+        if nargin >= 12
+            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
         else
-            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
+            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
         end
     end
     
@@ -1267,6 +1508,28 @@ if strcmp(cmd, 'OpenWindow')
     % Window open. Perform imaging pipe postconfiguration:
     PostConfiguration(reqs, win, clearcolor);
 
+    % Panel fitter in use and setup by us?
+    if ~isempty(fitterParams)
+        % Yes: Apply fitter parameters now, so the scaling method takes
+        % effect at next flip. We only do it now, so the preceeding
+        % Screen('Flip') ops after imaging pipeline initialization were
+        % able to operate with the default "cover full framebuffer" fitter
+        % params, ie., they applied their implicit "clear to background
+        % color" ops to the full framebuffer and thereby initialized all
+        % stages of the pipeline down to the real window backbuffer with
+        % background clear color. This way, regardless which panel fitting
+        % strategy is chosen by user code, potential top-bottom or
+        % left-right borders will get initialized to the selected
+        % background clear color, which should be the most well defined
+        % choice:
+        Screen('PanelFitter', win, fitterParams);
+        
+        % Now that the fitter is fully configured, perform an extra
+        % double-flip to apply proper scaling and borders and such:
+        Screen('Flip', win);
+        Screen('Flip', win);
+    end
+    
     rc = win;
     
     % Done.
