@@ -894,6 +894,13 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
             % Retrieve low-level OpenGl texture handle to the window:
             overlaytex = Screen('GetOpenGLTexture', win, overlaywin);
             
+            % Disable bilinear filtering on this texture - always use
+            % nearest neighbour sampling to avoid interpolation artifacts
+            % in color index image for clut indexing:
+            glBindTexture(GL.TEXTURE_RECTANGLE_EXT, overlaytex);
+            glTexParameteri(GL.TEXTURE_RECTANGLE_EXT, GL.TEXTURE_MAG_FILTER, GL.NEAREST);
+            glTexParameteri(GL.TEXTURE_RECTANGLE_EXT, GL.TEXTURE_MIN_FILTER, GL.NEAREST);
+            glBindTexture(GL.TEXTURE_RECTANGLE_EXT, 0);
         else
             % No.: Create "no-op" shader for zero overlay:
             shSrc = 'float getMonoOverlayIndex(vec2 pos) { return(0.0); }';
