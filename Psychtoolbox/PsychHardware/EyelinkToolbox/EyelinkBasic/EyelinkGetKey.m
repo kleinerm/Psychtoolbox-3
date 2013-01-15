@@ -1,9 +1,12 @@
-function [key, el]=EyelinkGetKey(el)
+function [key, el]=EyelinkGetKey(el, deviceNumber)
 
-	% USAGE: [key, el]=EyelinkGetKey(el)
+	% USAGE: [key, el]=EyelinkGetKey(el,[deviceNumber])
 	%
 	%		el: eyelink default values, also stores
 	%           getkeytime (last time this function was used)
+	%		deviceNumber: optional value to select a particular input
+	%			device or pool over all devices, see KbCheck.m for more details; 
+	%			default is [], the same as KbCheck.m  
 
 	% matlab version of eyelink supplied getkey() function
 	% we can't call it getkey() as there is already a similar,
@@ -45,8 +48,12 @@ function [key, el]=EyelinkGetKey(el)
 
 	key=0;
 
-	if nargin < 1
-		error( 'USAGE: [key, el]=EyelinkGetKey(el)' );
+	if nargin < 1 || ~isstruct(el)
+		error( 'USAGE: [key, el]=EyelinkGetKey(el,[deviceNumber])' );
+	end
+	
+	if nargin < 2 
+		deviceNumber = [];
 	end
 
 	%if exist('el.getkeytime', 'var') & ~isempty( el.getkeytime )
@@ -61,7 +68,7 @@ function [key, el]=EyelinkGetKey(el)
 	% you can change this by setting el.modifierkey en el.quitkey
 	% specific quitkey defined in 'EyelinkInitDefaults.m' file.
 
-	[keyIsDown,secs,keyCodes] = KbCheck;
+	[keyIsDown,secs,keyCodes] = KbCheck(deviceNumber);
 
 	if 1==isequal(keyCodes, el.lastKeyCodes)
 		return;
