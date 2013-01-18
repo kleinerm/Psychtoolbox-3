@@ -99,7 +99,7 @@ static CVDisplayLinkRef cvDisplayLink[kPsychMaxPossibleDisplays] = { NULL };
 static int screenRefCount[kPsychMaxPossibleDisplays] = { 0 };
 
 static SInt32 osMajor, osMinor;
-static psych_bool useCoreVideoTimestamping;
+psych_bool useCoreVideoTimestamping = FALSE;
 
 // Display link callback: Needed so we can actually start the display link:
 // Gets apparently called from a separate high-priority thread, close to vblank
@@ -1152,6 +1152,11 @@ double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint
 
         // Current time more than 0.9 video refresh durations after queried
         // vblank timestamps cvTime?
+        /* Doesn't work, as calls to this function are often not synced to vblank, so
+           this may easily detect false positives and do the wrong thing, especially in
+           high load situations where it would be most urgently needed to fix Apple's
+           lame os. The PsychtoolboxKernelDriver method seems to be the only reasonable
+           choice going forward with the products of the iPhone company...
         cvRefresh = CVDisplayLinkGetActualOutputVideoRefreshPeriod(cvDisplayLink[screenid]);
         if ((tnow - cvTime) > (0.9 * cvRefresh)) {
             // Yes: It is more likely that we fetched a stale cvTime timestamp from
@@ -1162,7 +1167,8 @@ double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint
             cvTime += cvRefresh;
             *vblCount = *vblCount + 1;
         }
-
+        */
+        
         // If timestamp debugging is off, we're done:
         if (PsychPrefStateGet_Verbosity() <= 19) return(cvTime);
     }
