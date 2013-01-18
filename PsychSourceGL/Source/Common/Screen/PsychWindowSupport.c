@@ -2738,12 +2738,13 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     }
     
     // Setup reasonable slack-factor for deadline miss detector:
-    if (windowRecord->VBL_Endline!=-1) {
-        // If beam position queries work, we use a tight value:
+    if (((windowRecord->VBL_Endline!=-1) && (vbltimestampmode>=0) && (vbltimestampmode<=2)) ||
+        ((vbltimestampmode == 4) && (!(windowRecord->specialflags & kPsychOpenMLDefective) || (windowRecord->VBL_Endline!=-1)))) {
+        // If beamposition queries work, or OpenML timestamping is supported and working, we use a tight value:
         slackfactor = 1.05;
     }
     else {
-        // If beam position queries don't work, we use a "slacky" value:
+        // If beam position queries don't work, or are disabled, we use a "slacky" value:
         slackfactor = 1.2;
     }
     
