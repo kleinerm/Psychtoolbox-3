@@ -1,11 +1,10 @@
 % RenderDemo
 %
-% Illustrates calibration interface for simple task of
-% producing a uniform color patch of desired CIE xyY
-% coordinates.
+% Illustrates calibration interface for simple task of producing a uniform
+% color patch of desired CIE xyY coordinates.
 %
-% The calculation is done with respect to the current
-% PTB demonstration calibration file.
+% The calculation is done with respect to the current PTB demonstration
+% calibration file.
 %
 % The demo shows multiple different ways to implement this, starting with a
 % purely Matlab based method, progressing to more advanced methods. The
@@ -14,17 +13,22 @@
 %
 % Demo 1:
 %
-% The RGB values are gamma corrected and live in the range
-% [0,1].  If they contain 0 or 1, the xyY coordinates
-% requested may have been out of gamut.
+% The RGB values are gamma corrected and live in the range [0,1].  If they
+% contain 0 or 1, the xyY coordinates requested may have been out of gamut.
 %
-% A uniform color patch is displayed in the MATLAB figure window.
-% This is not a well-controlled display method, but does give
-% a sense of the patch color if the calibration file is a
-% reasonable description of the display.
+% A uniform color patch is displayed in the MATLAB figure window. This is
+% not a well-controlled display method, but does give a sense of the patch
+% color if the calibration file is a reasonable description of the display.
 %
-% Demo 2: As demo 1, but displaying in a onscreen window, performing the
-% gamma correction via the gamma lookup tables of the graphics card.
+% Immediately afterwards, the same color patch is shown in a PTB onscreen
+% window, with the same gamma table loaded which was used during
+% calibration measurements. This should render an accurate stimulus.
+%
+% Demo 2: As demo 1, but displaying in a onscreen window and performing the
+% gamma correction via proper inverse gamma lookup tables loaded into the
+% graphics card, thereby presenting on a linearized display, instead of
+% using the SensorToSettings() routine to adapt the stimulus to a
+% non-linearized display.
 %
 % The last two demos Demo 3 and Demo 4 require a recent graphics card and
 % perform all color space conversions and calibrated display automatically
@@ -56,7 +60,7 @@
 % Clear out workspace
 clear
 
-% Load calibration file
+% Load default calibration file:
 cal = LoadCalFile('PTB3TestCal');
 load T_xyz1931
 T_xyz1931 = 683*T_xyz1931;
@@ -68,9 +72,16 @@ xyY = input('Enter xyY (as a row vector) default [.3 .3 50]: ')';
 if isempty(xyY)
     xyY = [.3 .3 50]';
 end
+
+% Pure software conversion:
 XYZ = xyYToXYZ(xyY);
-RGB = SensorToSettings(cal, XYZ);
+[RGB, outOfRangePixels] = SensorToSettings(cal, XYZ);
 fprintf('Computed RGB: [%g %g %g]\n', RGB(1), RGB(2), RGB(3));
+
+% Check for out-of-range non-displayable color values:
+if any(outOfRangePixels)
+    fprintf('WARNING: Out of range RGB values -- not displayable!\n');
+end
 
 % Make it an image
 nX = 256; nY = 128;
@@ -91,36 +102,80 @@ drawnow;
 
 fprintf('\n\nPress any key to continue. This will do the same thing in a set of Psychtoolbox onscreen windows.\n');
 KbStrokeWait(-1);
-
-% Show same thing in a GUI window of 300 x 300 pixels.
-fprintf('First we do exactly the same thing, just displaying in a onscreen window.\n');
-fprintf('However, we use gamma correction via the graphics hardware, so we have a linearized\n');
-fprintf('display. This allows to use the simpler SensorToPrimary() instead of SensorToSettings().\n\n');
+close all;
+drawnow;
 
 try
     % Open window in GUI mode, top-left, 300 x 300 pixels:
     AssertOpenGL;
     
+    % Define our desired background color in RGB primary space:
+    % RGB = [0.01, 0.01, 0.01] for almost black.
+    bgcolor = [0.01; 0.01; 0.01];
+
     % Declutter our output for this demo:
     Screen('Preference', 'SuppressAllWarnings', 1);
     
+    % Skip display sync tests:
+    oldsync = Screen('Preference', 'SkipSyncTests', 2);
+
+    % Select display screen to show windows:
     screenId = max(Screen('Screens'));
-    [win1, winRect1] = Screen('OpenWindow', screenId, 0, [0 0 300 300], [], [], [], [], [], kPsychGUIWindow);
     
-    % Load a gamma correction table into the graphics card, as defined in
-    % 'cal.gammaTable'. However, we sub-sample the table to make sure it has
-    % 256 slots, so this not only works on OSX and Linux, but also on Windows:
-    if size(cal.gammaTable, 1) == 1024
-        % Our standard demo gamma table - 1024 slots - downsample by factor 4:
-        gammaLUT = cal.gammaTable(1:4:end, :);
+    [win0, winRect0] = Screen('OpenWindow', screenId, bgcolor * 255, [0 0 300 300], [], [], [], [], [], kPsychGUIWindow);
+    
+    % Load the gamma table which was used during calibration measurements:
+    % If this is a 1024 slot table we downsample to 256 slots, so it works
+    % with MS-Windows, otherwise we hope it is a compatible table.
+    % We could do better here, but this is just a demo...
+    if length(cal.gammaInput) == 1024
+        gammaInput = cal.gammaInput(1:4:end);
     else
-        % Something else, hope for the best aka 256 slots:
-        gammaLUT = cal.gammaTable;
+        gammaInput = cal.gammaInput;
     end
     
-    % Load gamma table into GPU, retain a backup of the original table:
+    % Replicate to 3 columns for the three primary colors:
+    gammaInput = repmat(gammaInput, 1, 3);
+    
+    % Before table upload, we store a backup copy of the original table, so
+    % it can get restored at end of session:
     BackupCluts(screenId);
-    Screen('LoadNormalizedGammaTable', screenId, gammaLUT);
+    Screen('LoadNormalizedGammaTable', screenId, gammaInput);
+    
+    % Convert new theRGBImage to texture and draw it into win1:
+    tex = Screen('MakeTexture', win0, round(theRGBImage * 255));
+    Screen('DrawTexture', win0, tex);
+    Screen('Close', tex);
+    
+    % Show it:
+    Screen('Flip', win0);
+    dstRect0 = CenterRect([0 0 nX nY], winRect0);
+    readBack0 = Screen('GetImage', win0, dstRect0);
+    
+    fprintf('\n\nPress any key to continue. This will demonstrate another way, using SensorToPrimary() + \n');
+    fprintf('a proper inverse gamma table, to linearize your display, instead of SensorToSettings().\n\n');
+    KbStrokeWait(-1);
+    
+    % Close old window, as its content is not compatible with the gamma
+    % table we're gonna set now:
+    Screen('CloseAll');
+    
+    % Show same thing in a GUI window of 300 x 300 pixels.
+    fprintf('Now we do exactly the same thing, just displaying in a onscreen window.\n');
+    fprintf('However, we use gamma correction via the graphics hardware, so we have a linearized\n');
+    fprintf('display. This allows to use the simpler SensorToPrimary() instead of SensorToSettings().\n\n');
+    
+    % Open a standard window:
+    [win1, winRect1] = Screen('OpenWindow', screenId, bgcolor * 255, [0 0 300 300], [], [], [], [], [], kPsychGUIWindow);
+    
+    % Load a gamma correction table into the graphics card, as defined as
+    % the inverse gamma table for given measured display gamma table
+    % 'cal.gammaTable'. However, we sub-sample the table to 256 slots to
+    % make sure it works on MS-Windows, not only on OSX or Linux:
+    iGammaTable = InvertGammaTable(cal.gammaInput, cal.gammaTable, 256);
+    
+    % Load inverse gamma table into GPU:
+    Screen('LoadNormalizedGammaTable', screenId, iGammaTable);
     
     % Ok, now we have a linearized display due to gamma correction. This means
     % we can define our stimulus in tristimulus XYZ space. This allows us to
@@ -129,6 +184,11 @@ try
     XYZ = xyYToXYZ(xyY);
     RGB = SensorToPrimary(cal, XYZ);
     fprintf('Recomputed linear RGB: [%g %g %g]\n', RGB(1), RGB(2), RGB(3));
+
+    % Check for out-of-range non-displayable color values:
+    if any(RGB < 0 | RGB > 1)
+        fprintf('WARNING: Out of range RGB values -- not displayable!\n');
+    end
     
     % Make it an image. Now need to scale by 255, as onscreen windows want
     % color values in range 0 - 255 instead of 0 - 1 by default:
@@ -139,6 +199,7 @@ try
     % Convert new theRGBImage to texture and draw it into win1:
     tex = Screen('MakeTexture', win1, round(theRGBImage));
     Screen('DrawTexture', win1, tex);
+    Screen('Close', tex);
     
     % Show it:
     Screen('Flip', win1);
@@ -167,8 +228,15 @@ try
     % It shall use builtin fast SensorToPrimary() plugin:
     PsychImaging('AddTask', 'AllViews', 'DisplayColorCorrection', 'SensorToPrimary');
     
-    % Open it:
-    [win2, winRect2] = PsychImaging('OpenWindow', screenId, 0, [310 0 610 300], [], [], [], [], [], kPsychGUIWindow);
+    % Check for valid (displayable) final color values in 0.0 - 1.0 range.
+    % Mark out-of-range pixels visually:
+    PsychImaging('AddTask', 'AllViews', 'DisplayColorCorrection', 'CheckOnly');
+    
+    % Open it: Our window operates in XYZ color space, so we need to define
+    % a XYZ background input color that leads to our desired background
+    % color 'bgcolor':
+    background = PrimaryToSensor(cal, bgcolor);
+    [win2, winRect2] = PsychImaging('OpenWindow', screenId, background, [310 0 610 300], [], [], [], [], [], kPsychGUIWindow);
     
     % Assign 'cal' struct for XYZ -> RGB conversion:
     PsychColorCorrection('SetSensorToPrimary', win2, cal);
@@ -183,7 +251,7 @@ try
     Screen('FillRect', win2, XYZ, dstRect2);
     
     % Readback image in XYZ format from framebuffer:    
-    readBack2In = Screen('GetImage', win2, dstRect2, 'drawBuffer', 1);
+    readBack2In = Screen('GetImage', win2, [], 'drawBuffer', 1);
     
     % Show it:
     Screen('Flip', win2);
@@ -224,9 +292,16 @@ try
     
     % It shall use builtin fast SensorToPrimary() plugin:
     PsychImaging('AddTask', 'AllViews', 'DisplayColorCorrection', 'SensorToPrimary');
+
+    % Check for valid (displayable) final color values in 0.0 - 1.0 range.
+    % Mark out-of-range pixels visually:
+    PsychImaging('AddTask', 'AllViews', 'DisplayColorCorrection', 'CheckOnly');
     
-    % Open it:
-    [win3, winRect3] = PsychImaging('OpenWindow', screenId, 0, [0 330 300 630], [], [], [], [], [], kPsychGUIWindow);
+    % Open it: Our window operates in xyY color space, so we need to define
+    % a xyY background input color that leads to our desired background
+    % color 'bgcolor':
+    background = XYZToxyY(PrimaryToSensor(cal, bgcolor));
+    [win3, winRect3] = PsychImaging('OpenWindow', screenId, background, [0 330 300 630], [], [], [], [], [], kPsychGUIWindow);
     
     % Assign 'cal' struct for XYZ -> RGB conversion:
     PsychColorCorrection('SetSensorToPrimary', win3, cal);
@@ -257,9 +332,11 @@ try
     sca;
     
     Screen('Preference', 'SuppressAllWarnings', 0);
-    
+    Screen('Preference', 'SkipSyncTests', oldsync);
+
 catch %#ok<CTCH>
     sca;
     Screen('Preference', 'SuppressAllWarnings', 0);
+    Screen('Preference', 'SkipSyncTests', oldsync);
     psychrethrow(psychlasterror);
 end
