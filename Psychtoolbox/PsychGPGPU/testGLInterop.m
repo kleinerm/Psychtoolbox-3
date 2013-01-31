@@ -10,19 +10,24 @@ t = Screen('MakeTexture', w, tex, [], [], 2);
 bunnyimg = imread([PsychtoolboxRoot 'PsychDemos/konijntjes1024x768.jpg']);
 bunnyimg(:,:,4) = 255;
 bunnytex = Screen('MakeTexture', w, double(bunnyimg)/255, [], [], 2);
+bunnytex = Screen('Openoffscreenwindow', w, [1 1 0 0], [0 0 1024 768], 128);
+DrawFormattedText(bunnytex, 'HELLO WORLD!', 'center', 'center', [255 0 0]);
+
 t = bunnytex;
 
 Screen('DrawTexture', w, t);
 Screen('Flip', w);
 
-%G = GPUTypeFromGL(w, t);
-T = GPUTypeFromToGL(w, bunnytex);
+T = GPUTypeFromToGL(0, bunnytex);
 foo = size(T)
 
 while ~KbCheck
     T = T .* 0.99;
     H = T .* (0.5 + 0.5 * sin(GetSecs * 10));
-    GPUTypeFromToGL(w, t, H, 1);
+    t = GPUTypeFromToGL(1, H, 0, t);
+%     Screen('Close', t);
+%     t = GPUTypeFromToGL(1, H, 0);
+    
     Screen('DrawTexture', w, t);
     Screen('Flip', w);
 end
