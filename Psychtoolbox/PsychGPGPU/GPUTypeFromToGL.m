@@ -47,6 +47,10 @@ function outObj = GPUTypeFromToGL(cmd, inObj, glObjType, outObj)
 % Screen('OpenVideoCapture').
 %
 %
+% glObjType == 2: Read or write from/to current virtual framebuffer for a
+% given onscreen window handle passed as 'inObj'.
+%
+%
 % Current Limitations:
 %
 % Currently only supports the GPUmat toolbox as hard-coded backend:
@@ -74,14 +78,19 @@ function outObj = GPUTypeFromToGL(cmd, inObj, glObjType, outObj)
 % History:
 % 30.01.2013  mk  Written.
 %
-
+global GL;
 persistent initialized;
+
 if isempty(initialized)
     % Start/Initialize GPUmat GPU computing toolkit if not already started:
     if ~GPUstart(1)
         GPUstart;
     end
 
+    if isempty(GL)
+        InitializeMatlabOpenGL([], [], 1);
+    end
+    
     % Ready to rock!
     initialized = 1;
 end
@@ -219,6 +228,61 @@ if glObjType == 1
     end
 end
 
+% Use currently bound drawBufferFBO if imaging pipeline is active --
+% accessing the regular onscreen windows virtual framebuffer. inObj is a
+% onscreen window handle:
+if glObjType == 2
+    if direction == 0
+        % OpenGL -> GPUtype conversion:        
+        win = inObj;
+        if isempty(win)
+            error('No valid Psychtoolbox onscreen window provided!');
+        end
+    else
+        % GPUtype -> OpenGL conversion:
+        win = outObj;
+        if isempty(win)
+            % No existing onscreen window provided as output destination.
+            error('Creating a virtual framebuffer from a given GPU object type is not supported.');
+        end
+    end
+
+    % Make sure inObj is a onscreen window, with imaging pipeline active
+    % and in proper format:
+    if Screen('WindowKind', win) ~= 1
+        error('For glObjType 2, inObj must be a valid onscreen window handle. This is something else!');
+    end
+    
+    % This queries window properties and binds the FBO for the onscreen
+    % windows virtual framebuffer if it isn't already bound:
+    winfo = Screen('GetWindowInfo', win);
+    if ~bitand(winfo.ImagingMode, kPsychNeedFastBackingStore) || winfo.BitsPerColorComponent < 32
+        error('For glObjType 2, onscreen window must have imaging pipeline enabled with a 32 bpc float framebuffer!');
+    end
+    
+    % Proper FBO is bound. Query its color attachment zero, which is the
+    % OpenGL handle of the attached texture or renderbuffer:
+    gltexid = glGetFramebufferAttachmentParameterivEXT(GL.FRAMEBUFFER_EXT, GL.COLOR_ATTACHMENT0_EXT, GL.FRAMEBUFFER_ATTACHMENT_OBJECT_NAME_EXT);
+    
+    % Query type of attachment:
+    gltextarget = glGetFramebufferAttachmentParameterivEXT(GL.FRAMEBUFFER_EXT, GL.COLOR_ATTACHMENT0_EXT, GL.FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE_EXT);
+    
+    % Texture?
+    if gltextarget == GL.TEXTURE
+        % Yes: We only support rectangle textures in the imaging pipeline,
+        % so this is our final target:
+        gltextarget = GL.TEXTURE_RECTANGLE_EXT;
+    else
+        % No: A renderbuffer:
+        gltextarget = GL.RENDERBUFFER;
+    end
+
+    % Only 4 channel RGBA32F supported, aka 16 Bytes per pixel:
+    bpp = 16;
+    nrchannels = 4;
+    [width, height] = Screen('Windowsize', win);
+end
+
 if ~ismember(nrchannels, [1, 2, 4])
     error('Tried to convert a 3 layer RGB texture or framebuffer. This is not supported.');
 end
@@ -278,8 +342,8 @@ else
         outObj = texid;
     end
     
-    if glObjType == 1
-        % TODO:
+    if glObjType == 1 || glObjType == 2
+        % TODO for type 1, ok for type 2.
         outObj = outObj; %#ok<ASGSL>
     end
 end
