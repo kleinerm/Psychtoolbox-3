@@ -14,6 +14,21 @@ function outObj = GPUTypeFromToGL(cmd, inObj, glObjType, outObj)
 % glObjType == 0 (default): Provided OpenGL object is a Psychtoolbox
 % texture or offscreen window handle.
 %
+% glObjType == 1: Provided inObj is a struct which defines the low-level
+% OpenGL object, which can be a texture or a renderbuffer. The struct must
+% have the following fields:
+%
+%     texstruct.glhandle     == OpenGL object handle.
+%     texstruct.gltarget     == Target: texture target or renderbuffer.
+%     texstruct.width        == Width in texels/pixels.
+%     texstruct.height       == Height in texels/pixels.
+%     texstruct.bpp          == Bytes per texel/pixel/element.
+%     texstruct.nrchannels   == Number of layers / color channels.
+%
+% -> glObjType 1 can be used in places where no calls to Screen() functions
+%    are allowed or possible, e.g., inside the imaging pipeline, or 3rd
+%    party low-level OpenGL code.
+%
 %
 % Note: If you pass in a Psychtoolbox texture, it should be already in
 % normalized orientation (upright and in row-major format). This is a given
@@ -30,6 +45,34 @@ function outObj = GPUTypeFromToGL(cmd, inObj, glObjType, outObj)
 % If you get the texture from the video capture engine, you need to pass
 % the optional 'recordingflags' to 2048 in a call to
 % Screen('OpenVideoCapture').
+%
+%
+% Current Limitations:
+%
+% Currently only supports the GPUmat toolbox as hard-coded backend:
+% (http://sourceforge.net/projects/gpumat/)
+%
+% In the future it should support more GPGPU backends and allow dynamic
+% detection and/or runtime selection of backends. Possible candidates are,
+% e.g., AccelerEyes "Jacket", low-level CUDA or OpenCL, and other toolkits
+% based on CUDA or OpenCL, as well as our own to-be-done backed.
+%
+% Only really supports 32 bpc floating point precision textures and
+% renderbuffers. This because this single precision float format is the
+% only format common to both OpenGL and our one and only GPUmat backend.
+% One can provide RGBA8 4-layer textures/renderbuffers, but these will be
+% interpreted by the backend as single layer (luminance) single precision
+% float matrix. Special CUDA kernels would be required in GPUmat to depack
+% each apparent float pixel into a RGBA8 interleaved pixel for meaningful
+% processing. Otherwise hilarious results will ensue.
+%
+% CUDA-5.0 interop as used by GPUmat currently only supports 1-layer,
+% 2-layer and 4-layer textures and renderbuffers, ie., L, LA and RGBA, but
+% not RGB format.
+%
+
+% History:
+% 30.01.2013  mk  Written.
 %
 
 persistent initialized;
@@ -137,22 +180,44 @@ if glObjType == 0
     
     % Retrieve depth of texture in bytes per texel:
     bpp = Screen('Pixelsize', texid) / 8;
+    
+    % Number of channels:
+    nrchannels = bpp / 4;
 end
 
-% GL object is a OpenGL object handle?
+% GL object is a struct with OpenGL object handle, target, and other info?
 if glObjType == 1
-    % TODO...
-    warning('Use of OpenGL object handles not yet supported!'); %#ok<*WNTAG>
-end
+    if direction == 0
+        % OpenGL -> GPUtype conversion:        
+        texstruct = inObj;
+        if isempty(texstruct)
+            error('No valid Psychtoolbox OpenGL input object provided!');
+        end
+    else
+        % GPUtype -> OpenGL conversion:
+        texid = outObj;
+        if isempty(texid)
+            % No existing texture object provided as output destination.
+            error('Creating an OpenGL object from a given GPU object type is not yet supported.');
+        end
+    end
 
-% GL object is color buffer attachment of currently bound FBO?
-if glObjType == 2
-    % TODO...
-    warning('Use of currently bound OpenGL FBO not yet supported!');
+    if ~isstruct(texstruct)
+        error('No OpenGL info struct for inObj provided! Must be a struct!');
+    end
+    
+    % Extract info:
+    try
+        gltexid = texstruct.glhandle;
+        gltextarget = texstruct.gltarget;
+        width = texstruct.width;
+        height = texstruct.height;
+        bpp = texstruct.bpp;
+        nrchannels = texstruct.nrchannels;
+    catch %#ok<CTCH>
+        error('OpenGL info struct inObj is malformed or misses fields!');
+    end
 end
-
-% Number of channels:
-nrchannels = bpp / 4;
 
 if ~ismember(nrchannels, [1, 2, 4])
     error('Tried to convert a 3 layer RGB texture or framebuffer. This is not supported.');
@@ -211,7 +276,9 @@ else
     % GPU -> OpenGL:
     if glObjType == 0
         outObj = texid;
-    else
+    end
+    
+    if glObjType == 1
         % TODO:
         outObj = outObj; %#ok<ASGSL>
     end

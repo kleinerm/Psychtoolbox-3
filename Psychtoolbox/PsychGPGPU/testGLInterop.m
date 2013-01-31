@@ -21,7 +21,21 @@ t = bunnytex;
 Screen('DrawTexture', w, t);
 Screen('Flip', w);
 
-T = GPUTypeFromToGL(0, bunnytex);
+if 1
+    % Test high-level interface for pure mortals:
+    T = GPUTypeFromToGL(0, bunnytex);
+else
+    % Test low-level OpenGL object interface which does without any calls
+    % into Screen() -- Important for interop with non-ptb code and for use
+    % within imaging pipeline, ie., within Screen's execution context, as
+    % Screen is currently non-reentrant.
+    [texstruct.glhandle, texstruct.gltarget] = Screen('GetOpenGLTexture', w, t);
+    [texstruct.width, texstruct.height] = Screen('Windowsize', t);
+    texstruct.bpp = Screen('Pixelsize', t) / 8;
+    texstruct.nrchannels = 4;
+    T = GPUTypeFromToGL(0, texstruct, 1);
+end
+
 foo = size(T)
 
 while ~KbCheck
