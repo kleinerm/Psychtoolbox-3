@@ -48,7 +48,13 @@ function outObj = GPUTypeFromToGL(cmd, inObj, glObjType, outObj)
 %
 %
 % glObjType == 2: Read or write from/to current virtual framebuffer for a
-% given onscreen window handle passed as 'inObj'.
+% given onscreen window handle passed as 'inObj', specifically the 1st
+% color attachment.
+%
+%
+% glObjType == 3: Read or write from/to currently bound FBO, specifically
+% the 1st color attachment. 'inObj' or 'outObj' doesn't really have a
+% meaning here, as we always query the current binding.
 %
 %
 % Current Limitations:
@@ -95,7 +101,7 @@ if isempty(initialized)
     initialized = 1;
 end
 
-if nargin < 2 || isempty(cmd) || isempty(inObj) || ~isscalar(cmd) || ~isnumeric(cmd)
+if nargin < 2 || isempty(cmd) || ~isscalar(cmd) || ~isnumeric(cmd)
     error('Missing minimum required arguments "cmd" and "inObj".');
 end
 
@@ -283,6 +289,61 @@ if glObjType == 2
     [width, height] = Screen('Windowsize', win);
 end
 
+% Use currently bound OpenGL FBO, assuming the imaging pipeline is active
+% and properly setup -- otherwise we'd crash or screw up.
+if glObjType == 3
+    % Proper FBO is hopefully bound. Query its color attachment zero, which
+    % is the OpenGL handle of the attached texture or renderbuffer:
+    gltexid = glGetFramebufferAttachmentParameterivEXT(GL.FRAMEBUFFER_EXT, GL.COLOR_ATTACHMENT0_EXT, GL.FRAMEBUFFER_ATTACHMENT_OBJECT_NAME_EXT);
+    
+    % Query type of attachment:
+    gltextarget = glGetFramebufferAttachmentParameterivEXT(GL.FRAMEBUFFER_EXT, GL.COLOR_ATTACHMENT0_EXT, GL.FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE_EXT);
+    if gltextarget == GL.FRAMEBUFFER_DEFAULT
+        error('For glObjType 3, an OpenGL FBO must be bound, not the system default framebuffer, as here!');
+    end
+    
+    % Query bits per pixel:
+    bpc = glGetFramebufferAttachmentParameterivEXT(GL.FRAMEBUFFER_EXT, GL.COLOR_ATTACHMENT0_EXT, GL.FRAMEBUFFER_ATTACHMENT_RED_SIZE);
+    bpp = 0   + bpc;
+    bpp = bpp + glGetFramebufferAttachmentParameterivEXT(GL.FRAMEBUFFER_EXT, GL.COLOR_ATTACHMENT0_EXT, GL.FRAMEBUFFER_ATTACHMENT_GREEN_SIZE);
+    bpp = bpp + glGetFramebufferAttachmentParameterivEXT(GL.FRAMEBUFFER_EXT, GL.COLOR_ATTACHMENT0_EXT, GL.FRAMEBUFFER_ATTACHMENT_BLUE_SIZE);
+    bpp = bpp + glGetFramebufferAttachmentParameterivEXT(GL.FRAMEBUFFER_EXT, GL.COLOR_ATTACHMENT0_EXT, GL.FRAMEBUFFER_ATTACHMENT_ALPHA_SIZE);
+     
+    % Number of channels == Bits per pixel bpp / Bits per component, e.g.,
+    % RED channel:
+    nrchannels = bpp / bpc;
+    
+    % Translate to bytes per pixel:
+    bpp = bpp / 8;
+
+    % Texture?
+    if gltextarget == GL.TEXTURE
+        % Yes: We only support rectangle textures in the imaging pipeline,
+        % so this is our final target:
+        % TODO FIXME MK: Technically not quite correct, as at least
+        % Screen('TransformTexture') could also use a GL_TEXTURE_2D target
+        % instead of texture rectangle. However, this is a seldomly used
+        % special case and i don't know at the moment how to find out which
+        % target is actually used.
+        gltextarget = GL.TEXTURE_RECTANGLE_EXT;
+        
+        % Query size width x height of texture image:
+        glPushAttrib(GL.TEXTURE_BIT);
+        glBindTexture(gltextarget, gltexid);
+        width  = glGetTexLevelParameteriv(gltextarget, 0, GL.TEXTURE_WIDTH);
+        height = glGetTexLevelParameteriv(gltextarget, 0, GL.TEXTURE_HEIGHT);
+        glBindTexture(gltextarget, 0);
+        glPopAttrib();
+    else
+        % No: A renderbuffer:
+        gltextarget = GL.RENDERBUFFER;
+        glBindRenderbuffer(gltextarget, gltexid);
+        width  = glGetRenderbufferParameteriv(gltextarget, GL.RENDERBUFFER_WIDTH);
+        height = glGetRenderbufferParameteriv(gltextarget, GL.RENDERBUFFER_HEIGHT);
+        glBindRenderbuffer(gltextarget, 0);
+    end
+end
+
 if ~ismember(nrchannels, [1, 2, 4])
     error('Tried to convert a 3 layer RGB texture or framebuffer. This is not supported.');
 end
@@ -317,8 +378,11 @@ if isempty(gpu)
     % Set it to real format:
     setReal(gpu);
     
-    % Set its size:
-    setSize(gpu, [nrchannels, width, height]);
+    % Set its size: We *must* double-cast the size vector here, because the
+    % gpuType == 3 path delivers int32's and GPUmat doesn't like this at
+    % all, punishing us with GPUallocVector failure, if we don't cast to
+    % double():
+    setSize(gpu, double([nrchannels, width, height]));
     
     % Allocate its CUDA backing memory:
     GPUallocVector(gpu);
@@ -342,8 +406,8 @@ else
         outObj = texid;
     end
     
-    if glObjType == 1 || glObjType == 2
-        % TODO for type 1, ok for type 2.
+    if glObjType == 1 || glObjType == 2 || glObjType == 3
+        % TODO for type 1, ok for types 2 and 3.
         outObj = outObj; %#ok<ASGSL>
     end
 end

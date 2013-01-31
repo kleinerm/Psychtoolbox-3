@@ -22,13 +22,13 @@ t = bunnytex;
 
 Screen('DrawTexture', w, t);
 
-if 0
-    T = GPUTypeFromToGL(0, w, 2);
+if 1
+    T = GPUTypeFromToGL(0, [], 3);
 end
 Screen('Flip', w);
 
 
-if 1
+if 0
     if 1
         % Test high-level interface for pure mortals:
         T = GPUTypeFromToGL(0, bunnytex);
@@ -50,14 +50,14 @@ foo = size(T)
 while ~KbCheck
     T = T .* 0.99;
     H = T .* (0.5 + 0.5 * sin(GetSecs * 10));
-    if 1
+    if 0
         t = GPUTypeFromToGL(1, H, 0, t);
         %     Screen('Close', t);
         %     t = GPUTypeFromToGL(1, H, 0);
         
         Screen('DrawTexture', w, t);
     else
-        GPUTypeFromToGL(1, H, 2, w);
+        GPUTypeFromToGL(1, H, 3);
     end
     Screen('Flip', w);
 end
