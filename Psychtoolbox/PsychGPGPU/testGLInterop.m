@@ -9,9 +9,12 @@ t = Screen('MakeTexture', w, tex, [], [], 2);
 % Read our beloved bunny image from filesystem:
 bunnyimg = imread([PsychtoolboxRoot 'PsychDemos/konijntjes1024x768.jpg']);
 bunnyimg(:,:,4) = 255;
-bunnytex = Screen('MakeTexture', w, double(bunnyimg)/255, [], [], 2);
-bunnytex = Screen('Openoffscreenwindow', w, [1 1 0 0], [0 0 1024 768], 128);
-DrawFormattedText(bunnytex, 'HELLO WORLD!', 'center', 'center', [255 0 0]);
+
+% Maketexture in float precision with upright texture orientation:
+bunnytex = Screen('MakeTexture', w, double(bunnyimg)/255, [], [], 2, 1);
+
+%bunnytex = Screen('Openoffscreenwindow', w, [1 1 0 0], [0 0 1024 768], 128);
+%DrawFormattedText(bunnytex, 'HELLO WORLD!', 'center', 'center', [255 0 0]);
 
 t = bunnytex;
 

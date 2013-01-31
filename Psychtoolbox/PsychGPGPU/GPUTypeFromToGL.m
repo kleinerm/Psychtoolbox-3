@@ -14,6 +14,23 @@ function outObj = GPUTypeFromToGL(cmd, inObj, glObjType, outObj)
 % glObjType == 0 (default): Provided OpenGL object is a Psychtoolbox
 % texture or offscreen window handle.
 %
+%
+% Note: If you pass in a Psychtoolbox texture, it should be already in
+% normalized orientation (upright and in row-major format). This is a given
+% if the texture was created via Screen('SetOpenGLTexture') or
+% Screen('SetOpenGLTextureFromMemPointer'); or if your texture is actually
+% an offscreen window created via Screen('OpenOffscreenWindow'). If your
+% texture is created via Screen('MakeTexture') you need to usually set the
+% optional 'textureOrientation' flag to 1, unless you've pretransposed the
+% Matlab/octave image matrix (setting of 2 is fine), or it is entirely
+% isotropic (setting of 3 is fine). If you get your texture from a movie
+% file, you need to pass the optional 'specialFlags1' parameter in
+% Screen('OpenMovie') as 16.
+%
+% If you get the texture from the video capture engine, you need to pass
+% the optional 'recordingflags' to 2048 in a call to
+% Screen('OpenVideoCapture').
+%
 
 persistent initialized;
 if isempty(initialized)
@@ -102,7 +119,12 @@ if glObjType == 0
                 error('No onscreen window opened. This does not work without at least one open onscreen window.');
             end
             
-            texid = Screen('MakeTexture', win, zeros(size(gpu, 3), size(gpu, 2), size(gpu, 1)), [], [], 2);
+            % Create a 32 bpc float texture 'float = 2', with no need for
+            % orientation swap (transpose) 'textureOrientation = 3). We
+            % assume all buffers derived from the GPU backend are always in
+            % upright row-major format, like Offscreen windows. Input code
+            % therefore must do needed conversions.
+            texid = Screen('MakeTexture', win, zeros(size(gpu, 3), size(gpu, 2), size(gpu, 1)), [], [], 2, 3);
         end
     end
     
