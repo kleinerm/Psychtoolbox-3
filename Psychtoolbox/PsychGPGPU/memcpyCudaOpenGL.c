@@ -107,7 +107,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   /* Copy from OpenGL object to CUDA buffer? */
   if (direction == 0) {
       // OpenGL -> CUDA copy:
-      cudastatus = cudaMemcpyFromArray(gpuptr, (const struct cudaArray*) mappedArray, 0, 0, (size_t) nrbytes, cudaMemcpyDeviceToDevice);
+      cudastatus = cudaMemcpyFromArrayAsync(gpuptr, (const struct cudaArray*) mappedArray, 0, 0, (size_t) nrbytes, cudaMemcpyDeviceToDevice, 0);
       if (cudastatus != cudaSuccess) {
           mexPrintf("\nmemcpyCudaOpenGL: ERROR in cudaMemcpyFromArray(): %s\n", cudaGetErrorString(cudastatus));
           goto err_unmap;
@@ -116,7 +116,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 
   if (direction == 1) {
       // CUDA -> OpenGL copy:
-      cudastatus = cudaMemcpyToArray((struct cudaArray*) mappedArray, 0, 0, (const void*) gpuptr, (size_t) nrbytes, cudaMemcpyDeviceToDevice);
+      cudastatus = cudaMemcpyToArrayAsync((struct cudaArray*) mappedArray, 0, 0, (const void*) gpuptr, (size_t) nrbytes, cudaMemcpyDeviceToDevice, 0);
       if (cudastatus != cudaSuccess) {
           mexPrintf("\nmemcpyCudaOpenGL: ERROR in cudaMemcpyToArray(): %s\n", cudaGetErrorString(cudastatus));
           goto err_unmap;
