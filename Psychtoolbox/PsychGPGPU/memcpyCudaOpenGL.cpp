@@ -1,5 +1,5 @@
 /*
- * memcpyCudaOpenGL.c -- Fast memory copy between CUDA and OpenGL resources.
+ * memcpyCudaOpenGL.cpp -- Fast memory copy between CUDA and OpenGL resources.
  *
  * This function, compiled into a MEX file for Mathworks Matlab or GNU/Octave
  * allows to exchange data between NVidia CUDA memory buffers and other resources
@@ -36,12 +36,11 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-// MATLAB / OCTAVE includes:
+/* MATLAB / OCTAVE includes: */
 #include "mex.h"
 
-// CUDA includes:
-#include "cuda.h"
-#include "cuda_runtime.h"
+/* CUDA includes: */
+#include "cuda_runtime_api.h"
 #include "cuda_gl_interop.h"
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
@@ -60,7 +59,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
       mexPrintf("(c) 2013 by Mario Kleiner. Licensed to you under the MIT license.\n\n");
   }
   
-  // Exactly 5 arguments expected:
   if (nrhs!=5) mexErrMsgTxt("Wrong number of arguments");
 
   /* Retrieve OpenGL object handle to our image buffer: */
@@ -106,7 +104,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   
   /* Copy from OpenGL object to CUDA buffer? */
   if (direction == 0) {
-      // OpenGL -> CUDA copy:
+      /* OpenGL -> CUDA copy: */
       cudastatus = cudaMemcpyFromArrayAsync(gpuptr, (const struct cudaArray*) mappedArray, 0, 0, (size_t) nrbytes, cudaMemcpyDeviceToDevice, 0);
       if (cudastatus != cudaSuccess) {
           mexPrintf("\nmemcpyCudaOpenGL: ERROR in cudaMemcpyFromArray(): %s\n", cudaGetErrorString(cudastatus));
@@ -115,7 +113,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
   }
 
   if (direction == 1) {
-      // CUDA -> OpenGL copy:
+      /* CUDA -> OpenGL copy: */
       cudastatus = cudaMemcpyToArrayAsync((struct cudaArray*) mappedArray, 0, 0, (const void*) gpuptr, (size_t) nrbytes, cudaMemcpyDeviceToDevice, 0);
       if (cudastatus != cudaSuccess) {
           mexPrintf("\nmemcpyCudaOpenGL: ERROR in cudaMemcpyToArray(): %s\n", cudaGetErrorString(cudastatus));
@@ -141,5 +139,6 @@ err_unregister:
 
 err_final:      
       
-  if (cudastatus != cudaSuccess) mexErrMsgTxt("Error in nmemcpyCudaOpenGL(), reason see above.");
+  if (cudastatus != cudaSuccess) mexErrMsgTxt("Error in memcpyCudaOpenGL(), reason see above.");
 }
+
