@@ -1,8 +1,12 @@
 function testGLInterop
 
+GPUstart;
+%memcpyCudaOpenGL(6, 1); % Be verbose.
+%memcpyCudaOpenGL(5, 50); % Use 50 slots in LRU cache.
+
 Screen('Preference','SkipSyncTests', 2);
 PsychImaging('PrepareConfiguration');
-PsychImaging('AddTask', 'General', 'FloatingPoint32Bit');
+%PsychImaging('AddTask', 'General', 'FloatingPoint32Bit');
 w = PsychImaging('OpenWindow', 0, 0);
 
 tex = ones(200, 200, 4);
@@ -31,7 +35,7 @@ Screen('Flip', w);
 if 1
     if 1
         % Test high-level interface for pure mortals:
-        T = GPUTypeFromToGL(0, bunnytex);
+        T = GPUTypeFromToGL(0, bunnytex, [], [], 1);
     else
         % Test low-level OpenGL object interface which does without any calls
         % into Screen() -- Important for interop with non-ptb code and for use
@@ -45,21 +49,32 @@ if 1
     end
 end
 
+%T = GPUsingle(rand(4, 1024, 768));
 foo = size(T)
-
-while ~KbCheck
-    T = T .* 0.99;
-    H = T .* (0.5 + 0.5 * sin(GetSecs * 10));
+H = T;
+c = 0;
+t0 = GetSecs;
+while c < 500
+    %T = T .* 0.99;
+    %H = T .* (0.5 + 0.5 * sin(GetSecs * 10));
     if 1
-        t = GPUTypeFromToGL(1, H, 0, t);
-        %     Screen('Close', t);
-        %     t = GPUTypeFromToGL(1, H, 0);
+        t = GPUTypeFromToGL(1, H, 0, t, 0);
+        %ptr = GPUTypeFromToGL(6, t, 0);
+            GPUTypeFromToGL(3, t, 0);
+            % Screen('Close', t);
+            % t = GPUTypeFromToGL(1, H, 0, [], 1);
         
-        Screen('DrawTexture', w, t);
+        %Screen('DrawTexture', w, t, [], [], [], 0);
     else
         GPUTypeFromToGL(1, H, 2, w);
     end
-    Screen('Flip', w);
+    %Screen('Flip', w, 0, 2, 2);
+    c = c + 1;
 end
-
+Screen('DrawingFinished', w, 2, 1);
+fps = c / (GetSecs - t0);
+gbs = fps * 2 * numel(T) * 4 / 1024 / 1024 / 1024;
+fprintf('FPS = %f [%f GB/sec]\n', fps, gbs);
+GPUTypeFromToGL(4);
 sca;
+

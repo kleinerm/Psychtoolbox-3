@@ -1,16 +1,44 @@
-function outObj = GPUTypeFromToGL(cmd, inObj, glObjType, outObj)
-% outObj = GPUTypeFromToGL(cmd, inObj [, glObjType][, outObj])
+function outObj = GPUTypeFromToGL(cmd, inObj, glObjType, outObj, keepmapped, mapflags)
+% outObj = GPUTypeFromToGL(cmd, inObj [, glObjType][, outObj][, keepmapped][, mapflags])
 %
 % if cmd is zero, then convert an OpenGL object of type glObjType,
 % referenced by handle inObj into a GPU object and return it in outObj. If
 % the optional outObj is provided as input argument, try to recycle it --
 % just fill its content with OpenGL object's content. Otherwise, create an
-% outObj of matching format for content.
+% outObj of matching format for content. If 'keepmapped' is set to 1, the OpenGL
+% object will stay mapped for the GPU compute api, otherwise it gets immediately
+% unmapped after the conversion. Keeping the object mapped is more efficient, but
+% requires more careful management of objects to prevent malfunctions.
 %
 % If cmd is == 1, then convert GPU object inObj to OpenGL object of type
 % glObjType and return it in outObj. Try to recycle a passed in outObj, if
-% possible, otherwise create a new one.
+% possible, otherwise create a new one. 'keepmapped' - see explanation for cmd zero.
 %
+% If cmd is == 2, then unmap the OpenGL object. You must do this if you previously
+% set the optional 'keepmapped' flag to 1 during a copy operation and now want to
+% use the object which was the source or the target of that copy again with OpenGL
+% or Screen(), ie., with a Psychtoolbox drawing or image processing function.
+% Unmapping is neccessary for proper OpenGL operation, but costs a fraction of a
+% millisecond of overhead on well working operating systems like Linux. Clever use
+% of the 'keepmapped' flag and this manual unmapping method sometimes allows to
+% save some redundant unmap calls.
+%
+% If cmd is == 3, then remove the OpenGL object from use by the GPU compute toolkit.
+% This must be done before destroying/deleting the OpenGL object, e.g., before
+% a call to Screen('Close', x); for a window or texture handle x. This operation
+% can be very expensive -- on the order of multiple milliseconds, so use sparingly.
+%
+% If cmd is == 4, all OpenGL objects are removed. Usually used before closing (all)
+% onscreen windows, e.g., via Screen('CloseAll') or sca. This cache flush is very
+% expensive!
+%
+% If cmd is == 5, then the given OpenGL object 'inObj' of type glObjType is mapped
+% and a CUDA memory pointer is returned, for use with external mex files, so these
+% can directly access the mapped resource. The object is mapped read-only.
+%
+% If cmd is == 6, the same operation as cmd == 5 happens, but the object is mapped
+% write-only.
+
 % glObjType == 0 (default): Provided OpenGL object is a Psychtoolbox
 % texture or offscreen window handle.
 %
@@ -101,8 +129,8 @@ if isempty(initialized)
     initialized = 1;
 end
 
-if nargin < 2 || isempty(cmd) || ~isscalar(cmd) || ~isnumeric(cmd)
-    error('Missing minimum required arguments "cmd" and "inObj".');
+if nargin < 1 || isempty(cmd) || ~isscalar(cmd) || ~isnumeric(cmd)
+    error('Missing or invalid minimum required argument "cmd".');
 end
 
 switch cmd
@@ -111,23 +139,39 @@ switch cmd
         direction = 0;
     
     case 1,
-        % Copre from GPU backend to OpenGL:
+        % Copy from GPU backend to OpenGL:
         direction = 1;
         
     case 2,
-        % Purge object from cache:
-        % No-Op so far.
+        % Unmap object from cache:
         outObj = 1;
-        return;
-        
+        direction = 0;
+
     case 3,
-        % Cache invalidate:
-        % No-Op so far.
+        % Purge object from cache:
         outObj = 1;
+        direction = 0;
+        
+    case 4,
+        % Cache invalidate:
+        outObj = 1;
+        memcpyCudaOpenGL(0);
         return;
     
+    case 5
+        % Retrieve mapped pointers for reading from OpenGL:
+        direction = 0;
+        
+    case 6
+        % Retrieve mapped pointers for writing to OpenGL:
+        direction = 0;
+        
     otherwise
         error('Invalid cmd specified.');
+end
+
+if nargin < 2
+    error('Missing required 2nd argument "inObj".');
 end
 
 if nargin < 3 || isempty(glObjType)
@@ -138,6 +182,14 @@ end
 % No outObj provided for recycling?
 if nargin < 4
     outObj = [];
+end
+
+if nargin < 5 || isempty(keepmapped)
+    keepmapped = 0;
+end
+
+if nargin < 6 || isempty(mapflags)
+    mapflags = -1;
 end
 
 if direction == 0
@@ -344,7 +396,23 @@ if glObjType == 3
     end
 end
 
-if ~ismember(nrchannels, [1, 2, 4])
+% Unmap or Unregister object from cache?
+if cmd == 2 || cmd == 3
+    memcpyCudaOpenGL(cmd - 1, gltexid, gltextarget);
+    return;
+end
+
+% Map OpenGL resource, then return a memory pointer in a uint64 for it?
+if cmd == 5 || cmd == 6
+    % This maps the resource and returns a pointer to it in uint64 outObj:
+    % cmd 5 and 6 are translated into direction values 0 and 1 via 'cmd - 5'. This
+    % is important to get the correct mapping flags for resource mapping (readonly vs.
+    % writeonly):
+    outObj = memcpyCudaOpenGL(4, gltexid, gltextarget, 0, 0, cmd - 5, 1, mapflags);
+    return;
+end
+
+if (nrchannels ~= 1) && (nrchannels ~= 2) && (nrchannels ~= 4)
     error('Tried to convert a 3 layer RGB texture or framebuffer. This is not supported.');
 end
 
@@ -395,7 +463,7 @@ if gpuptr == 0
 end
 
 % Perform copy of image content from OpenGL texture into CUDA backing store:
-memcpyCudaOpenGL(gltexid, gltextarget, gpuptr, nrbytes, direction);
+memcpyCudaOpenGL(3, gltexid, gltextarget, gpuptr, nrbytes, direction, keepmapped, mapflags);
 
 if direction == 0
     % OpenGL -> GPU:
@@ -404,10 +472,7 @@ else
     % GPU -> OpenGL:
     if glObjType == 0
         outObj = texid;
-    end
-    
-    if glObjType == 1 || glObjType == 2 || glObjType == 3
-        % TODO for type 1, ok for types 2 and 3.
+    else    
         outObj = outObj; %#ok<ASGSL>
     end
 end
