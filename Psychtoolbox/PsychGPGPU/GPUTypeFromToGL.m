@@ -244,12 +244,43 @@ if glObjType == 0
     
     % Retrieve width and height of texture in texels:
     [width, height] = Screen('Windowsize', texid);
+
+    glPushAttrib(GL.TEXTURE_BIT);
+    glBindTexture(gltextarget, gltexid);
     
-    % Retrieve depth of texture in bytes per texel:
-    bpp = Screen('Pixelsize', texid) / 8;
+    % Query bits per pixel:
+    bpc = glGetTexLevelParameteriv(gltextarget, 0, GL.TEXTURE_RED_SIZE);
+    if bpc == 0
+      bpc = glGetTexLevelParameteriv(gltextarget, 0, GL.TEXTURE_LUMINANCE_SIZE);
+    end
     
-    % Number of channels:
-    nrchannels = bpp / 4;
+    bpp = bpc;
+    bpp = bpp + glGetTexLevelParameteriv(gltextarget, 0, GL.TEXTURE_GREEN_SIZE);
+    bpp = bpp + glGetTexLevelParameteriv(gltextarget, 0, GL.TEXTURE_BLUE_SIZE);
+    bpp = bpp + glGetTexLevelParameteriv(gltextarget, 0, GL.TEXTURE_ALPHA_SIZE);
+     
+    % Number of channels == Bits per pixel bpp / Bits per component, e.g., RED channel:
+    nrchannels = bpp / bpc;
+    
+    % Translate to bytes per pixel:
+    bpp = bpp / 8;
+        
+    glBindTexture(gltextarget, 0);
+    glPopAttrib();
+    
+    % fprintf('nrchannels = %i  : Byteperpixel = %i  : bpc = %i\n', nrchannels, bpp, bpc);
+    
+    % Override a detected RGB32F format to become a 4-channel RGBA32F format. Why?
+    % Because at least NVidia on Linux silently allocates storage for RGBA32F when asked
+    % for RGB32F, ie., it allocates essentially a RGBX32F format with padding. The problem
+    % is that the system lies about this and reports internal format as RGB32F and bpp
+    % bits per pixel as 96 bpp instead of the real 128 bpp. This would cause us to misallocate
+    % memory and copy the wrong amount, leading to incomplete damaged data transfers. We try
+    % to work around this special case by faking the real format and just hope for the best...
+    if (bpc == 32 && nrchannels == 3)
+      nrchannels = 4;
+      bpp = 16;
+    end    
 end
 
 % GL object is a struct with OpenGL object handle, target, and other info?
