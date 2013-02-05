@@ -16,7 +16,7 @@ bunnyimg = imread([PsychtoolboxRoot 'PsychDemos/konijntjes1024x768.jpg']);
 bunnyimg(:,:,4) = 255;
 
 % Maketexture in float precision with upright texture orientation:
-bunnytex = Screen('MakeTexture', w, double(bunnyimg(:,:,1:1))/255, [], [], 2, 1);
+bunnytex = Screen('MakeTexture', w, double(bunnyimg(:,:,1:2))/255, [], [], 2, 1);
 
 bunre = Screen('Rect', bunnytex)
 bunp  = Screen('Pixelsize', bunnytex)
@@ -50,15 +50,6 @@ if 1
         T = GPUTypeFromToGL(0, texstruct, 1);
     end
 end
-%global pixels
-pixels = single(T);
-pixels = squeeze(pixels(1,:,:))';
-
-pixelsize = size(pixels)
-imshow(pixels);
-%sca;
-
-%t = Screen('MakeTexture', w, 0.5 * ones(768, 1024,4), [], [], 2, 1);
 
 rect = Screen('Rect', t)
 
@@ -70,19 +61,19 @@ c = 0;
 t0 = GetSecs;
 while c < 500
     %T = T .* 0.99;
-    %H = T .* (0.5 + 0.5 * sin(GetSecs * 10));
+    H = T .* (0.5 + 0.5 * sin(GetSecs * 10));
     if 1
-        t = GPUTypeFromToGL(1, H, 0, t, 1);
+        t = GPUTypeFromToGL(1, H, 0, t, 0);
         %ptr = GPUTypeFromToGL(6, t, 0);
             %GPUTypeFromToGL(3, t, 0);
             % Screen('Close', t);
             % t = GPUTypeFromToGL(1, H, 0, [], 1);
         
- %       Screen('DrawTexture', w, t, [], [], [], 0);
+        Screen('DrawTexture', w, t, [], [], [], 0);
     else
         GPUTypeFromToGL(1, H, 2, w);
     end
-%    Screen('Flip', w, 0, 2, 2);
+    Screen('Flip', w, 0, 2, 2);
     c = c + 1;
 end
 Screen('DrawingFinished', w, 2, 1);
