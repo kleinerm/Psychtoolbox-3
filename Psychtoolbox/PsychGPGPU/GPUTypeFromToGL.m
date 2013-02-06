@@ -201,6 +201,67 @@ else
     if isempty(gpu)
         error('Empty GPUtype inObj variable provided, but update of OpenGL object requested. How is this supposed to work?!?');
     end
+    
+    % Impedance matching code. Try to massage input 'gpu' variable into a
+    % format that is compatible with CUDA-OpenGL interop and OpenGL itself:
+    switch ndims(gpu)
+        case 1,
+            % One dimensional vector: Turn into "row-vector"
+            % style single texel row luminance texture:
+            d1 = 1;
+            d2 = numel(gpu);
+            cc = 1;
+            % Reshape into 3-D matrix with two singleton dimensions
+            % to checks further down don't fail due to
+            % size/dimension mismatch:
+            gpu = reshape(gpu, 1, d1, d2);
+        case 2,
+            % Two dimensional matrix: Turn into luminance texture,
+            % the 2D size of the two non-singleton dimensions:
+            d1 = size(gpu, 2);
+            d2 = size(gpu, 1);
+            cc = 1;
+            
+            % Reshape gpu into a 3D matrix with the 1st dimension
+            % being a singleton dimension which represents the
+            % single luminance channel. We need this so that
+            % further checks in the code below don't fail:
+            gpu = reshape(gpu, 1, d2, d1);
+        case 3,
+            % 3D matrix, hopefully a width x height x channels
+            % matrix with x = 1 to 4 channels.
+            d1 = size(gpu, 3);
+            d2 = size(gpu, 2);
+            cc = size(gpu, 1);
+            
+            % Reject any zero-channel textures or more than 4
+            % channel RGBA textures for now:
+            if cc < 1 || cc > 4
+                error('Provided 3D input GPU matrix "inObj" has less than 1 or more than 4 elements in 1st dimension, which would result in an unsupported color channel count of < 1 or > 4!');
+            end
+            
+            % 3 channel input? This would translate into a 3
+            % channel RGB texture, but at least CUDA-5.0 does not
+            % support this. Extend it into a 4 channel format:
+            if cc == 3
+                % We add a value 1.0 to the fourth channel,
+                % resulting in a alpha channel of 1 for fully
+                % opaque:
+                oldgpu = gpu;
+                gpu = zeros(4, d2, d1, GPUsingle);
+                gpu(1:3, :, :) = oldgpu(1:3, :, :);
+                gpu(4  , :, :) = 1.0;
+                cc = 4;
+                
+                % Give a performance warning:
+                warning('GPUTYPEFROMTOGL:gputypeRGBtoRGBAautocast', 'Input GPU 3D matrix inObj has 3 elements in 1st dimension, which would result in a unsupported RGB texture! Extending to RGBA texture with A=1.');
+            end
+            
+        otherwise,
+            error('Input argument N-d matrix inObj has more than 3 dimensions. This is unsupported for conversion to OpenGL objects!');
+    end
+    
+    % Hopefully 'gpu' is now safe to convert into a OpenGL object.
 end
 
 % GL object is a Psychtoolbox texture/offscreen window handle?
@@ -233,65 +294,7 @@ if glObjType == 0
             % orientation swap (transpose) 'textureOrientation = 3). We
             % assume all buffers derived from the GPU backend are always in
             % upright row-major format, like Offscreen windows. Input code
-            % therefore must do needed conversions.
-            switch ndims(gpu)
-                case 1,
-                    % One dimensional vector: Turn into "row-vector"
-                    % style single texel row luminance texture:
-                    d1 = 1;
-                    d2 = numel(gpu);
-                    cc = 1;
-                    % Reshape into 3-D matrix with two singleton dimensions
-                    % to checks further down don't fail due to
-                    % size/dimension mismatch:
-                    gpu = reshape(gpu, 1, d1, d2);                    
-                case 2,
-                    % Two dimensional matrix: Turn into luminance texture,
-                    % the 2D size of the two non-singleton dimensions:
-                    d1 = size(gpu, 2);
-                    d2 = size(gpu, 1);
-                    cc = 1;
-                    
-                    % Reshape gpu into a 3D matrix with the 1st dimension
-                    % being a singleton dimension which represents the
-                    % single luminance channel. We need this so that
-                    % further checks in the code below don't fail:
-                    gpu = reshape(gpu, 1, d2, d1);
-                case 3,
-                    % 3D matrix, hopefully a width x height x channels
-                    % matrix with x = 1 to 4 channels.
-                    d1 = size(gpu, 3);
-                    d2 = size(gpu, 2);
-                    cc = size(gpu, 1);
-                    
-                    % Reject any zero-channel textures or more than 4
-                    % channel RGBA textures for now:
-                    if cc < 1 || cc > 4
-                        error('Provided 3D input GPU matrix "inObj" has less than 1 or more than 4 elements in 1st dimension, which would result in an unsupported color channel count of < 1 or > 4!');
-                    end
-                    
-                    % 3 channel input? This would translate into a 3
-                    % channel RGB texture, but at least CUDA-5.0 does not
-                    % support this. Extend it into a 4 channel format:
-                    if cc == 3
-                        % We add a value 1.0 to the fourth channel,
-                        % resulting in a alpha channel of 1 for fully
-                        % opaque:
-                        oldgpu = gpu;
-                        gpu = zeros(4, d2, d1, GPUsingle);
-                        gpu(1:3, :, :) = oldgpu(1:3, :, :);
-                        gpu(4  , :, :) = 1.0;
-                        cc = 4;
-                        
-                        % Give a performance warning:
-                        warning('GPUTYPEFROMTOGL:gputypeRGBtoRGBAautocast', 'Input GPU 3D matrix inObj has 3 elements in 1st dimension, which would result in a unsupported RGB texture! Extending to RGBA texture with A=1.');
-                    end
-                    
-                otherwise,
-                    error('Input argument N-d matrix inObj has more than 3 dimensions. This is unsupported for conversion to OpenGL objects!');
-            end
-            
-            % Hopefully now safe to convert:
+            % therefore must do needed conversions.            
             texid = Screen('MakeTexture', win, zeros(d1, d2, cc), [], [], 2, 3);
         end
     end
