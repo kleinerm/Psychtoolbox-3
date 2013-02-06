@@ -75,9 +75,9 @@ try
     dbunny = dbunny(:,:,2);
     
     % Show it pre-transform:
-    close all;
-    imshow(dbunny);
-    title('Pre-FFT Bunny.');
+%     close all;
+%     imshow(dbunny);
+%     title('Pre-FFT Bunny.');
     
     % Perform 2D-FFT in Matlab/Octave on CPU:
     f = fft2(dbunny);
@@ -98,10 +98,12 @@ try
     % frequency spectrum matches -- Don't do this at home (or for real research scripts)!
     mask = mask(2:end, 2:end);
     
-    figure;
-    imshow(mask);
-    title('Gaussian low pass filter mask for FFT space filtering:');
-    
+%     figure;
+%     imshow(mask);
+%     title('Gaussian low pass filter mask for FFT space filtering:');
+tic;
+
+    for trials = 1:1000
     % Low pass filter by point-wise multiply of fs with filter 'mask' in
     % frequency space:
     fs = fs .* mask;
@@ -111,13 +113,14 @@ try
     
     % Perform inverse 2D-FFT in Matlab/Octave on CPU:
     b = ifft2(f);
-    
+    end
+elapsedcpu = toc
     % Extract real component for display:
     r = real(b);
     
-    figure;
-    imshow(r);
-    title('Post-FFT->Filter->IFFT Bunny.');
+%     figure;
+%     imshow(r);
+%     title('Post-FFT->Filter->IFFT Bunny.');
     
     %% Perform FFT->Process->IFFT on GPU via GPUmat / CUDA:
     
@@ -168,14 +171,23 @@ try
     % transpose fixes this for our mask to match GPU format:
     FM = transpose(GPUsingle(mask));
     
-    % Filter the amplitude spectrum by point-wise multiply with filter FM:
-    FS = FM .* FS;
+    cudaThreadSynchronize;
+    tic;
+
+    for trials = 1:1000
+        
+        % Filter the amplitude spectrum by point-wise multiply with filter FM:
+        FS = FM .* FS;
+        
+        % Shift back DC component to original position to prepare inverse FFT:
+        F = ifftshift(FS);
+        
+        % Process inverse 2D FFT on GPU:
+        B = ifft2(F);
+    end
     
-    % Shift back DC component to original position to prepare inverse FFT:
-    F = ifftshift(FS);
-    
-    % Process inverse 2D FFT on GPU:
-    B = ifft2(F);
+    cudaThreadSynchronize;
+    elapsedgpu = toc
     
     % Extract real component for display:
     R = real(B);
