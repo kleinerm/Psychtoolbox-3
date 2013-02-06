@@ -78,16 +78,16 @@ if nargin < 7
     cameraname = [];
 end
 
-% On Linux + NVidia + CUDA it is safe to keep texture resources mapped
-% during OpenGL operations on CUDA-OpenGL interop textures. On Windows we
-% don't know yet. On OSX it is a no-go:
-if IsLinux
-    % Linux: Keep'em mapped for higher performance:
-    keepmapped = 1;
-else
-    % OSX, no way! Play safe on Windows for now:
-    keepmapped = 0;
-end
+% At least on Linux + NVidia + CUDA-5.0 it is currently safe to keep
+% texture resources mapped during OpenGL operations on CUDA-OpenGL interop
+% textures. On Windows we don't know yet. On OSX it is a total no-go. However,
+% the CUDA-5.0 programming guide strongly advices against keeping resources
+% mapped during OpenGL operations, as the "results of such actions will be
+% undefined". In other words, nothing guarantees it will work, or even if it
+% works now, will continue to work in the future. So better safe than sorry
+% and default this to off on all platforms. Adventureous or performance
+% desparate users can enable it on their system and see if it works.
+keepmapped = 0;
 
 % Running under PTB-3 hopefully?
 AssertOpenGL;
