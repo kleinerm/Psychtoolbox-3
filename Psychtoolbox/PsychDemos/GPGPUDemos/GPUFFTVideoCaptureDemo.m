@@ -105,6 +105,17 @@ try
     
     Screen('TextSize', win, 28);
     
+    % Color or mono capture and processing?
+    if ~usegpu
+        depth = 1;
+    end
+    
+    if depth > 2
+        mc = 3;
+    else
+        mc = 1;
+    end
+    
     % Open videocapture device:
     grabber = Screen('OpenVideoCapture', win, deviceId, roi, depth, [], [], cameraname);
     Screen('StartVideoCapture', grabber, realmax, 1);
@@ -175,11 +186,17 @@ try
         % Create 32 bpc floating point resolution offscreen
         % window as intermediate storage:
         texf = Screen('OpenOffscreenWindow', win, 0, texrect, 128);
+
+        if mc > 1
+          R = ones(4, size(FM, 1), size(FM, 2), GPUsingle);
+        else
+          R = ones(1, size(FM, 1), size(FM, 2), GPUsingle);
+        end
     end
     
     % First texture was only for setup above. Get rid of it:
     Screen('Close', tex);
-    
+
     tex = [];
     A = [];
     rtex = [];
@@ -208,36 +225,40 @@ try
             % Create GPUsingle matrix with input image from float tex with video image:
             A = GPUTypeFromToGL(0, texf, [], A, keepmapped);
             
-            % Extract 1st layer, the red aka luminance channel from it for further use:
-            % Note: The 1st dimension of a GPUsingle matrix created from a
-            % Psychtoolbox texture always selects the "color channel":
-            AL = A(1, :, :);
-            
-            % Squeeze it to remove the singleton 1st dimension of A, because
-            % fft2 and ifft2 can only work on 2D input matrices, not 3D
-            % matrices, not even ones with a singleton dimension, ie., a 2D
-            % matrix in disguise:
-            AL = squeeze(AL);
-            
-            % Perform forward 2D FFT on GPU:
-            F = fft2(AL);
-            
-            if showfft
-                % Generate the amplitude spectrum, scaled to 1/100th via abs(FS)/100.0,
-                % then converte the image into a texture 'fftmag' and display it:
-                fftmag = GPUTypeFromToGL(1, abs(F)/100.0, [], fftmag, keepmapped);
-                Screen('DrawTexture', win, fftmag, [], fftRect, [], 0);
-                DrawFormattedText(win, 'Amplitude spectrum of video:', fftRect(RectLeft), fftRect(RectTop) - 30, [0 255 0]);
+            for c = 1:mc
+                % Extract 1st layer, the red aka luminance channel from it for further use:
+                % Note: The 1st dimension of a GPUsingle matrix created from a
+                % Psychtoolbox texture always selects the "color channel":
+                AL = A(c, :, :);
+                
+                % Squeeze it to remove the singleton 1st dimension of A, because
+                % fft2 and ifft2 can only work on 2D input matrices, not 3D
+                % matrices, not even ones with a singleton dimension, ie., a 2D
+                % matrix in disguise:
+                AL = squeeze(AL);
+                
+                % Perform forward 2D FFT on GPU:
+                F = fft2(AL);
+                
+                if showfft
+                    % Generate the amplitude spectrum, scaled to 1/100th via abs(FS)/100.0,
+                    % then converte the image into a texture 'fftmag' and display it:
+                    fftmag = GPUTypeFromToGL(1, abs(fftshift(F))/100.0, [], fftmag, keepmapped);
+                    Screen('Blendfunction', win, [], [], [double(c==1), double(c==2), double(c==3), 1]);
+                    Screen('DrawTexture', win, fftmag, [], fftRect, [], 0);
+                    Screen('Blendfunction', win, [], [], [1 1 1 1]);
+                    DrawFormattedText(win, 'Amplitude spectrum of video:', fftRect(RectLeft), fftRect(RectTop) - 30, [0 255 0]);
+                end
+                
+                % Filter the amplitude spectrum by point-wise multiply with filter FM:
+                F = F .* FM;
+                
+                % Process inverse 2D FFT on GPU:
+                B = ifft2(F);
+                
+                % Extract real component for display:
+                R(c,:,:) = real(B);
             end
-            
-            % Filter the amplitude spectrum by point-wise multiply with filter FM:
-            F = F .* FM;
-            
-            % Process inverse 2D FFT on GPU:
-            B = ifft2(F);
-            
-            % Extract real component for display:
-            R = real(B);
             
             % Convert R back into a floating point luminance texture 'tex' for
             % processing/display by Screen. Here it is fine to pass a
@@ -282,7 +303,7 @@ try
             
             % Extract real component for display:
             r = real(b);
-            
+
             % Convert real component result image into texture:
             
             % Doing it as float texture is a little bit slower:
