@@ -37,6 +37,8 @@ function GPUFFTVideoCaptureDemo(usegpu, showfft, fwidth, roi, depth, deviceId, c
 % for some cameras, as some drivers have bugs and don't work well with all
 % settings.
 %
+% 'depth' = 1 for Mono, 3 for color processing.
+%
 % 'deviceId' Device index of video capture device. Defaults to system default.
 %
 % 'cameraname' Name string for selection of video capture device. This is
