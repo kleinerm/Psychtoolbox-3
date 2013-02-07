@@ -66,6 +66,10 @@
 
 #include "string.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 /* CUDA includes: */
 #include "cuda_runtime_api.h"
 #include "cuda_gl_interop.h"
