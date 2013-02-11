@@ -2126,7 +2126,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 			// reached, and we need to be on the proper field -- so left-eye stims start always at even (or odd) fields,
 			// at the users discretion:
 			if (!needWork && (tnow >= flipRequest->flipwhen) &&
-			    ((windowRecord->targetFlipFieldType == -1) || (((vblcount + 1) % 2) == (int) windowRecord->targetFlipFieldType))) {
+			    ((windowRecord->targetFlipFieldType == -1) || (((vblcount + 1) % 2) == (psych_uint64) windowRecord->targetFlipFieldType))) {
 				// Yes: Time to update the backbuffers with our finalizedFBOs and do
 				// properly scheduled/timestamped bufferswaps:
 
@@ -3055,7 +3055,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		preflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord, &preflip_vblcount);
 		// Check if ready for flip, ie. if the proper even/odd video refresh cycle is approaching or
 		// if we don't care about this, or if care has been taken already by osspecific_asyncflip_scheduled:
-		flipcondition_satisfied = (windowRecord->stereomode == kPsychFrameSequentialStereo) || (windowRecord->targetFlipFieldType == -1) || (((preflip_vblcount + 1) % 2) == windowRecord->targetFlipFieldType) || (osspecific_asyncflip_scheduled && !must_wait);
+		flipcondition_satisfied = (windowRecord->stereomode == kPsychFrameSequentialStereo) || (windowRecord->targetFlipFieldType == -1) || (((preflip_vblcount + 1) % 2) == (psych_uint64) windowRecord->targetFlipFieldType) || (osspecific_asyncflip_scheduled && !must_wait);
 		// If in wrong video cycle, we simply sleep a millisecond, then retry...
 		if (!flipcondition_satisfied) PsychWaitIntervalSeconds(0.001);
 	} while (!flipcondition_satisfied);
