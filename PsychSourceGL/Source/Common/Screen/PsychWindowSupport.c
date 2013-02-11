@@ -1258,17 +1258,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
       ifi_beamestimate = 0;
     }
 
-	if(PsychPrefStateGet_Verbosity()>2) printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", (char*) glGetString(GL_VENDOR), (char*) glGetString(GL_RENDERER), (char*) glGetString(GL_VERSION));
-
-	// Running on nouveau? Then issue some words of caution about lack of timing precision:
-	if ((PsychPrefStateGet_Verbosity() > 1) && (strstr((char*) glGetString(GL_VENDOR), "nouveau") || strstr((char*) glGetString(GL_RENDERER), "nouveau"))) {
-		printf("\n\nPTB-WARNING: You are using the free nouveau graphics driver on your NVidia graphics card. As of %s,\n", PsychGetBuildDate());
-		printf("PTB-WARNING: this driver does *not allow* robust and precise visual stimulus onset timestamping by any method at all!\n");
-		printf("PTB-WARNING: If you need precise visual stimulus timing, either install the binary NVidia driver, or double-check\n");
-		printf("PTB-WARNING: that a more recent version of nouveau is installed and in fact does provide proper timing.\n");
-		printf("PTB-WARNING: You may find relevant info on the Psychtoolbox forum, Psychtoolbox Wiki, or by updating your Psychtoolbox.\n");
-		printf("PTB-WARNING: If this warning goes away by a Psychtoolbox update then your nouveau driver is probably safe to use.\n\n");
-	}
+    if(PsychPrefStateGet_Verbosity()>2) printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", (char*) glGetString(GL_VENDOR), (char*) glGetString(GL_RENDERER), (char*) glGetString(GL_VERSION));
 
     if(PsychPrefStateGet_Verbosity()>2) {
       if (VRAMTotal>0) printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal / 1024 / 1024, TexmemTotal / 1024 / 1024);
