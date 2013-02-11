@@ -30,6 +30,10 @@
 
 #include "Screen.h"
 
+#ifdef PTB_USE_WAFFLE
+#include "PsychWindowGlueWaffle.h"
+#endif
+
 /* These are needed for realtime scheduling control: */
 #include <sched.h>
 #include <errno.h>
@@ -186,6 +190,12 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   int xfixes_event_base1, xfixes_event_base2;
   psych_bool xfixes_available = FALSE;
   psych_bool newstyle_setup = FALSE;
+
+  // Waffle backend enabled at compile-time, e.g., for embedded/mobile/special-purpose system?
+  #ifdef PTB_USE_WAFFLE
+  // Yes: Try to use it for opening the window. Fallback to our regular X11/GLX path on failure:
+  if (PsychOSOpenOnscreenWindowWaffle(screenSettings, windowRecord, numBuffers, stereomode, conserveVRAM)) return (TRUE);
+  #endif
 
   // Retrieve windowLevel, an indicator of where non-fullscreen windows should
   // be located wrt. to other windows. 0 = Behind everything else, occluded by
@@ -1085,6 +1095,12 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 {
   Display* dpy = windowRecord->targetSpecific.deviceContext;
 
+  // Waffle backend enabled at compile-time, e.g., for embedded/mobile/special-purpose system?
+  #ifdef PTB_USE_WAFFLE
+  // Yes: Try to use it for closing the window. Fallback to our regular X11/GLX path on failure:
+  if (PsychOSCloseWindowWaffle(windowRecord)) return;
+  #endif
+
   // Check if we are trying to close the window after it had an "odd" (== non-even)
   // number of bufferswaps. If so, we execute one last bufferswap to make the count
   // even. This means that if this window was swapped via page-flipping, the system
@@ -1691,6 +1707,12 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 	// Execute OS neutral bufferswap code first:
 	PsychExecuteBufferSwapPrefix(windowRecord);
 	
+    // Waffle backend enabled at compile-time, e.g., for embedded/mobile/special-purpose system?
+    #ifdef PTB_USE_WAFFLE
+    // Yes: Try to use it for closing the window. Fallback to our regular X11/GLX path on failure:
+    if (PsychOSFlipWindowBuffersWaffle(windowRecord)) return;
+    #endif
+
 	// Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
 	glXSwapBuffers(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle);
 	windowRecord->target_sbc = 0;
@@ -1735,6 +1757,12 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
 */
 void PsychOSSetGLContext(PsychWindowRecordType *windowRecord)
 {
+  // Waffle backend enabled at compile-time, e.g., for embedded/mobile/special-purpose system?
+  #ifdef PTB_USE_WAFFLE
+  // Yes: Try to use it for closing the window. Fallback to our regular X11/GLX path on failure:
+  if (PsychOSSetGLContextWaffle(windowRecord)) return;
+  #endif
+
   if (glXGetCurrentContext() != windowRecord->targetSpecific.contextObject) {
     if (glXGetCurrentContext() != NULL) {
       // We need to glFlush the context before switching, otherwise race-conditions may occur:
@@ -1756,6 +1784,12 @@ void PsychOSSetGLContext(PsychWindowRecordType *windowRecord)
 */
 void PsychOSUnsetGLContext(PsychWindowRecordType* windowRecord)
 {
+    // Waffle backend enabled at compile-time, e.g., for embedded/mobile/special-purpose system?
+    #ifdef PTB_USE_WAFFLE
+    // Yes: Try to use it for closing the window. Fallback to our regular X11/GLX path on failure:
+    if (PsychOSUnsetGLContextWaffle(windowRecord)) return;
+    #endif
+
 	if (glXGetCurrentContext() != NULL) {
 		// We need to glFlush the context before switching, otherwise race-conditions may occur:
 		glFlush();
@@ -1772,6 +1806,12 @@ void PsychOSUnsetGLContext(PsychWindowRecordType* windowRecord)
  */
 void PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, psych_bool copyfromPTBContext)
 {
+  // Waffle backend enabled at compile-time, e.g., for embedded/mobile/special-purpose system?
+  #ifdef PTB_USE_WAFFLE
+  // Yes: Try to use it for closing the window. Fallback to our regular X11/GLX path on failure:
+  if (PsychOSSetUserGLContextWaffle(windowRecord, copyfromPTBContext)) return;
+  #endif
+
   // Child protection:
   if (windowRecord->targetSpecific.glusercontextObject == NULL) PsychErrorExitMsg(PsychError_user,"GL Userspace context unavailable! Call InitializeMatlabOpenGL *before* Screen('OpenWindow')!");
   

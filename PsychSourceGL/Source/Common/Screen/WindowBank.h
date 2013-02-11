@@ -49,6 +49,10 @@ TO DO:
 
 #include "Screen.h"
 
+#ifdef PTB_USE_WAFFLE
+#include <waffle.h>
+#endif
+
 //constants
 #define PSYCH_MAX_SCREENS				10		//the total possible number of screens
 #define PSYCH_LAST_SCREEN				9		//the highest possible screen index
@@ -229,19 +233,35 @@ typedef struct{
 #endif 
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
+#ifdef PTB_USE_WAFFLE
+// Definition of Linux/Waffle specific information:
+typedef struct {
+  struct waffle_context*	contextObject;       // GLX OpenGL rendering context.
+  int             	        pixelFormatObject;   // Just here for compatibility. Its a dummy entry without meaning.
+  struct waffle_display*    deviceContext;       // Pointer to the X11 display connection.
+  Display*                  privDpy;             // Pointer to the private X11 display connection for non-OpenGL ops.
+  struct waffle_window*     windowHandle;        // Handle to the onscreen window.
+  Window                    xwindowHandle;       // Associated X-Window if any.
+  struct waffle_context*	glusercontextObject; // OpenGL context for userspace rendering code, e.g., moglcore...
+  struct waffle_context*	glswapcontextObject; // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
+  CVOpenGLTextureRef        QuickTimeGLTexture;  // Used for textures returned by movie routines in PsychMovieSupport.c
+  // CVOpenGLTextureRef is not ready yet. Its typedefd to a void* to make the compiler happy.
+} PsychTargetSpecificWindowRecordType;
+#else
 // Definition of Linux/X11 specific information:
 typedef struct{
   GLXContext		contextObject;       // GLX OpenGL rendering context.
   int             	pixelFormatObject;   // Just here for compatibility. Its a dummy entry without meaning.
-  Display*              deviceContext;       // Pointer to the X11 display connection.
-  Display*              privDpy;             // Pointer to the private X11 display connection for non-OpenGL ops.
-  GLXWindow             windowHandle;        // Handle to the onscreen window.
-  Window                xwindowHandle;       // Associated X-Window if any.
+  Display*          deviceContext;       // Pointer to the X11 display connection.
+  Display*          privDpy;             // Pointer to the private X11 display connection for non-OpenGL ops.
+  GLXWindow         windowHandle;        // Handle to the onscreen window.
+  Window            xwindowHandle;       // Associated X-Window if any.
   GLXContext		glusercontextObject; // OpenGL context for userspace rendering code, e.g., moglcore...
-  GLXContext		glswapcontextObject;    // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
-  CVOpenGLTextureRef QuickTimeGLTexture;     // Used for textures returned by movie routines in PsychMovieSupport.c
+  GLXContext		glswapcontextObject; // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
+  CVOpenGLTextureRef QuickTimeGLTexture; // Used for textures returned by movie routines in PsychMovieSupport.c
   // CVOpenGLTextureRef is not ready yet. Its typedefd to a void* to make the compiler happy.
 } PsychTargetSpecificWindowRecordType;
+#endif
 #endif 
 
 #define kPsychUnaffiliatedWindow	-1		// valid value for screenNumber field of a window record meaning that that pixel format

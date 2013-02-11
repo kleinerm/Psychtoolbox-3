@@ -5862,7 +5862,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	}
 	
 	#ifdef GLX_OML_sync_control
-	
+	#ifndef PTB_USE_WAFFLE
 	// Running on a XServer prior to version 1.8.2 with broken OpenML implementation? Mark it, if so:
 	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Running on '%s' XServer, Vendor release %i.\n", XServerVendor(windowRecord->targetSpecific.deviceContext), (int) XVendorRelease(windowRecord->targetSpecific.deviceContext));
 
@@ -5874,6 +5874,10 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 
 	// Check if OpenML extensions for precisely scheduled stimulus onset and onset timestamping are supported:
 	if (glxewIsSupported("GLX_OML_sync_control") && (glXGetSyncValuesOML && glXWaitForMscOML && glXWaitForSbcOML && glXSwapBuffersMscOML)) {
+    #else
+    // Disable this whole code-path if PTB_USE_WAFFLE:
+    if (FALSE) {
+    #endif
 		if (verbose) printf("System supports OpenML OML_sync_control extension for high-precision scheduled swaps and timestamping.\n");
 
 		// If prior 1.8.2 and therefore defective, disable use of OpenML for anything, even timestamping:
@@ -5920,7 +5924,6 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		
 		// OpenML swap scheduling in PsychFlipWindowBuffers() disabled:
 		windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
-
 	}
 	#else
         // Make sure we don't compile without OML_sync_control support on Linux, as that would be a shame:
@@ -5938,7 +5941,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
 	#endif
 
-    #if PSYCH_SYSTEM == PSYCH_LINUX
+    #if (PSYCH_SYSTEM == PSYCH_LINUX) && !defined(PTB_USE_WAFFLE)
     if (strstr(glXQueryExtensionsString(windowRecord->targetSpecific.deviceContext, PsychGetXScreenIdForScreen(windowRecord->screenNumber)), "GLX_EXT_buffer_age")) {
         // Age queries for current backbuffer supported:
         if (verbose) printf("System supports backbuffer age queries.\n");
