@@ -1971,7 +1971,8 @@ void PsychOSDefineX11Cursor(int screenNumber, int deviceId, Cursor cursor)
     // apply new X11 cursor definition to each of them:
     PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
     for(i = 0; i < numWindows; i++) {
-	if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i]->screenNumber == screenNumber)) {
+	if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i]->screenNumber == screenNumber) &&
+        windowRecordArray[i]->targetSpecific.xwindowHandle) {
 		// Candidate.
 		if (deviceId >= 0) {
 			// XInput extension for per-device settings:
