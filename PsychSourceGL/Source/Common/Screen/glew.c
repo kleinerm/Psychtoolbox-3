@@ -6820,7 +6820,7 @@ GLboolean glewGetExtension (const char* name)
 /* ------------------------------------------------------------------------- */
 
 #ifndef GLEW_MX
-static
+/* MK CHANGED: DISABLED: static  */
 #endif
 GLenum glewContextInit (GLEW_CONTEXT_ARG_DEF_LIST)
 {
