@@ -193,8 +193,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
   // Waffle backend enabled at compile-time, e.g., for embedded/mobile/special-purpose system?
   #ifdef PTB_USE_WAFFLE
-  // Yes: Try to use it for opening the window. Fallback to our regular X11/GLX path on failure:
-  if (PsychOSOpenOnscreenWindowWaffle(screenSettings, windowRecord, numBuffers, stereomode, conserveVRAM)) return (TRUE);
+  // Yes: Try to use it for opening the window:
+  return(PsychOSOpenOnscreenWindowWaffle(screenSettings, windowRecord, numBuffers, stereomode, conserveVRAM));
   #endif
 
   // Retrieve windowLevel, an indicator of where non-fullscreen windows should
@@ -1098,7 +1098,8 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
   // Waffle backend enabled at compile-time, e.g., for embedded/mobile/special-purpose system?
   #ifdef PTB_USE_WAFFLE
   // Yes: Try to use it for closing the window. Fallback to our regular X11/GLX path on failure:
-  if (PsychOSCloseWindowWaffle(windowRecord)) return;
+  PsychOSCloseWindowWaffle(windowRecord);
+  return;
   #endif
 
   // Check if we are trying to close the window after it had an "odd" (== non-even)
@@ -1710,7 +1711,8 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
     // Waffle backend enabled at compile-time, e.g., for embedded/mobile/special-purpose system?
     #ifdef PTB_USE_WAFFLE
     // Yes: Try to use it for closing the window. Fallback to our regular X11/GLX path on failure:
-    if (PsychOSFlipWindowBuffersWaffle(windowRecord)) return;
+    PsychOSFlipWindowBuffersWaffle(windowRecord);
+    return;
     #endif
 
 	// Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
@@ -1760,7 +1762,8 @@ void PsychOSSetGLContext(PsychWindowRecordType *windowRecord)
   // Waffle backend enabled at compile-time, e.g., for embedded/mobile/special-purpose system?
   #ifdef PTB_USE_WAFFLE
   // Yes: Try to use it for closing the window. Fallback to our regular X11/GLX path on failure:
-  if (PsychOSSetGLContextWaffle(windowRecord)) return;
+  PsychOSSetGLContextWaffle(windowRecord);
+  return;
   #endif
 
   if (glXGetCurrentContext() != windowRecord->targetSpecific.contextObject) {
@@ -1787,7 +1790,8 @@ void PsychOSUnsetGLContext(PsychWindowRecordType* windowRecord)
     // Waffle backend enabled at compile-time, e.g., for embedded/mobile/special-purpose system?
     #ifdef PTB_USE_WAFFLE
     // Yes: Try to use it for closing the window. Fallback to our regular X11/GLX path on failure:
-    if (PsychOSUnsetGLContextWaffle(windowRecord)) return;
+    PsychOSUnsetGLContextWaffle(windowRecord);
+    return;
     #endif
 
 	if (glXGetCurrentContext() != NULL) {
@@ -1808,8 +1812,9 @@ void PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, psych_bool cop
 {
   // Waffle backend enabled at compile-time, e.g., for embedded/mobile/special-purpose system?
   #ifdef PTB_USE_WAFFLE
-  // Yes: Try to use it for closing the window. Fallback to our regular X11/GLX path on failure:
-  if (PsychOSSetUserGLContextWaffle(windowRecord, copyfromPTBContext)) return;
+    // Yes: Try to use it for closing the window. Fallback to our regular X11/GLX path on failure:
+    PsychOSSetUserGLContextWaffle(windowRecord, copyfromPTBContext);
+    return;
   #endif
 
   // Child protection:
@@ -1852,18 +1857,24 @@ psych_bool PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindo
 	
 	// GNU/Linux: Try NV_swap_group support first, then SGI swap group support.
 
+    // Bail out / No-Op if we're not running on the original X11+GLX based backend:
+    #ifdef PTB_USE_WAFFLE
+    return(FALSE);
+    #endif
+    if (!masterWindow->targetSpecific.privDpy || !masterWindow->targetSpecific.xwindowHandle) return(FALSE);
+
 	// NVidia swap group extension supported?
 	if((glxewIsSupported("GLX_NV_swap_group") || glewIsSupported("GLX_NV_swap_group")) && (NULL != glXQueryMaxSwapGroupsNV)) {
 		// Yes. Check if given GPU really supports it:
 		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: NV_swap_group supported. Querying available groups...\n");
 
-		if (glXQueryMaxSwapGroupsNV(masterWindow->targetSpecific.deviceContext, PsychGetXScreenIdForScreen(masterWindow->screenNumber), &maxGroups, &maxBarriers) && (maxGroups > 0)) {
+		if (glXQueryMaxSwapGroupsNV(masterWindow->targetSpecific.privDpy, PsychGetXScreenIdForScreen(masterWindow->screenNumber), &maxGroups, &maxBarriers) && (maxGroups > 0)) {
 			// Yes. What to do?
 			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: NV_swap_group supported. Implementation supports up to %i swap groups. Trying to join or unjoin group.\n", maxGroups);
 
 			if (NULL == slaveWindow) {
 				// Asked to remove master from swap group:
-				glXJoinSwapGroupNV(masterWindow->targetSpecific.deviceContext, masterWindow->targetSpecific.windowHandle, 0);
+				glXJoinSwapGroupNV(masterWindow->targetSpecific.privDpy, masterWindow->targetSpecific.windowHandle, 0);
 				masterWindow->swapGroup = 0;
 				return(TRUE);
 			}
@@ -1874,7 +1885,7 @@ psych_bool PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindo
 					// Nope. Try to attach it to first available one:
 					targetGroup = (GLuint) PsychFindFreeSwapGroupId(maxGroups);
 					
-					if ((targetGroup == 0) || !glXJoinSwapGroupNV(masterWindow->targetSpecific.deviceContext, masterWindow->targetSpecific.windowHandle, targetGroup)) {
+					if ((targetGroup == 0) || !glXJoinSwapGroupNV(masterWindow->targetSpecific.privDpy, masterWindow->targetSpecific.windowHandle, targetGroup)) {
 						// Failed!
 						if (PsychPrefStateGet_Verbosity() > 1) {
 							printf("PTB-WARNING: Tried to enable framelock support for master-slave window pair, but masterWindow failed to join swapgroup %i! Skipped.\n", targetGroup);
@@ -1888,7 +1899,7 @@ psych_bool PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindo
 				}
 				
 				// Now try to join the masters swapgroup with the slave:
-				if (!glXJoinSwapGroupNV(slaveWindow->targetSpecific.deviceContext, slaveWindow->targetSpecific.windowHandle,  masterWindow->swapGroup)) {
+				if (!glXJoinSwapGroupNV(slaveWindow->targetSpecific.privDpy, slaveWindow->targetSpecific.windowHandle,  masterWindow->swapGroup)) {
 					// Failed!
 					if (PsychPrefStateGet_Verbosity() > 1) {
 						printf("PTB-WARNING: Tried to enable framelock support for master-slave window pair, but slaveWindow failed to join swapgroup %i of master! Skipped.\n", masterWindow->swapGroup);
@@ -1920,7 +1931,7 @@ try_sgi_swapgroup:
 		// Yes. What to do?
 		if (NULL == slaveWindow) {
 			// Asked to remove master from swap group:
-			glXJoinSwapGroupSGIX(masterWindow->targetSpecific.deviceContext, masterWindow->targetSpecific.windowHandle, None);
+			glXJoinSwapGroupSGIX(masterWindow->targetSpecific.privDpy, masterWindow->targetSpecific.windowHandle, None);
 			masterWindow->swapGroup = 0;
 			return(TRUE);
 		}
@@ -1932,7 +1943,7 @@ try_sgi_swapgroup:
 			
 			// Now try to join the masters swapgroup with the slave. This can't fail in a non-fatal way.
 			// Either it succeeds, or the whole runtime will abort with some GLX command stream error :-I
-			glXJoinSwapGroupSGIX(slaveWindow->targetSpecific.deviceContext, slaveWindow->targetSpecific.windowHandle,  masterWindow->targetSpecific.windowHandle);
+			glXJoinSwapGroupSGIX(slaveWindow->targetSpecific.privDpy, slaveWindow->targetSpecific.windowHandle,  masterWindow->targetSpecific.windowHandle);
 			
 			// Success! Now both windows are in a common swapgroup and framelock should work!
 			slaveWindow->swapGroup = masterWindow->swapGroup;
@@ -1962,14 +1973,17 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 		// No op, so far...
 		return;
 	}
+
+    // Bail out / No-Op if we're not running on a X11 based backend:
+    if (!windowRecord->targetSpecific.privDpy || !windowRecord->targetSpecific.xwindowHandle) return;
 	
 	// GUI windows need to behave GUIyee:
 	if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord)) {
 		// Update windows rect and globalrect, based on current size and location:
-		XGetGeometry(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.xwindowHandle, &rootRet, &x, &y,
-			     &w, &h, &border_width_return, &depth_return);
-		XTranslateCoordinates(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.xwindowHandle, rootRet,
-				      0,0, &x, &y, &rootRet);
+		XGetGeometry(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.xwindowHandle, &rootRet, &x, &y,
+                     &w, &h, &border_width_return, &depth_return);
+		XTranslateCoordinates(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.xwindowHandle, rootRet,
+                              0,0, &x, &y, &rootRet);
 		PsychMakeRect(windowRecord->globalrect, x, y, x + (int) w - 1, y + (int) h - 1);
 		PsychNormalizeRect(windowRecord->globalrect, windowRecord->rect);
 		PsychSetupClientRect(windowRecord);
@@ -1987,6 +2001,9 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
 	int scrnum;
     int event_type;
     
+    // Bail out if we're not running on a X11 based backend:
+    if (!windowRecord->targetSpecific.privDpy || !windowRecord->targetSpecific.xwindowHandle) return(FALSE);
+
     // Invalidate stored swap completion type for this window:
     windowRecord->swapcompletiontype = 0;
 
@@ -1996,12 +2013,12 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
         // We enable if override env var "PSYCH_FORCE_INTEL_swap_event" is set, or if the extension is
         // in the glXQueryExtensionsString() or it is in both the server- and client-extension string.
 		scrnum = PsychGetXScreenIdForScreen(windowRecord->screenNumber);
-		if (useGLX13 && (strstr(glXQueryExtensionsString(windowRecord->targetSpecific.deviceContext, scrnum), "GLX_INTEL_swap_event") || getenv("PSYCH_FORCE_INTEL_swap_event") ||
-                         (strstr(glXGetClientString(windowRecord->targetSpecific.deviceContext, GLX_EXTENSIONS), "GLX_INTEL_swap_event") &&
-                          strstr(glXQueryServerString(windowRecord->targetSpecific.deviceContext, scrnum, GLX_EXTENSIONS), "GLX_INTEL_swap_event")))) {
+		if (useGLX13 && (strstr(glXQueryExtensionsString(windowRecord->targetSpecific.privDpy, scrnum), "GLX_INTEL_swap_event") || getenv("PSYCH_FORCE_INTEL_swap_event") ||
+                         (strstr(glXGetClientString(windowRecord->targetSpecific.privDpy, GLX_EXTENSIONS), "GLX_INTEL_swap_event") &&
+                          strstr(glXQueryServerString(windowRecord->targetSpecific.privDpy, scrnum, GLX_EXTENSIONS), "GLX_INTEL_swap_event")))) {
             // Always enable the swap event delivery, either to us or to user code:
-			glXSelectEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, (unsigned long) GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK);
-                             
+			glXSelectEvent(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, (unsigned long) GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK);
+
             // Logical enable state: Usercode has precedence. If it enables it goes to it. If it disabled,
             // it gets directed to us:
             if (cmd == 0 || cmd == 1) windowRecord->swapevents_enabled = (cmd == 1) ? 1 : 2;
@@ -2020,14 +2037,14 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
 	if (cmd == 3 || 4) {
 		// Support for INTEL_swap_event extension enabled? Process swap events if so:
 		if (useGLX13) {
-			glXGetSelectedEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &glxmask);
+			glXGetSelectedEvent(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &glxmask);
 			if (glxmask & GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK) {
 				// INTEL_swap_event delivery enabled and requested.
                 
                 // Delivery to user-code?
                 if (cmd == 3 && windowRecord->swapevents_enabled == 1) {
                     // Try to fetch oldest pending one for this window:			
-                    if (XCheckTypedWindowEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.xwindowHandle, glx_event_base + GLX_BufferSwapComplete, &evt)) {
+                    if (XCheckTypedWindowEvent(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.xwindowHandle, glx_event_base + GLX_BufferSwapComplete, &evt)) {
                         // Cast to proper event type:
                         GLXBufferSwapComplete *sce = (GLXBufferSwapComplete*) &evt;
                         if (PsychPrefStateGet_Verbosity() > 5) {
@@ -2066,7 +2083,7 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
                     event_type = 0; // Init to "undefined"
                     
                     // Fetch until exhausted:
-                    while (XCheckTypedWindowEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.xwindowHandle, glx_event_base + GLX_BufferSwapComplete, &evt)) {
+                    while (XCheckTypedWindowEvent(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.xwindowHandle, glx_event_base + GLX_BufferSwapComplete, &evt)) {
                         // Cast to proper event type:
                         GLXBufferSwapComplete *sce = (GLXBufferSwapComplete*) &evt;
                         if (PsychPrefStateGet_Verbosity() > 10) {

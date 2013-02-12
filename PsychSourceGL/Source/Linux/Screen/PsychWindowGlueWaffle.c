@@ -35,7 +35,8 @@
 #include "PsychWindowGlueWaffle.h"
 #include <waffle.h>
 
-// Use X11/GLX backend?
+// Use X11 / GLX backend?
+static psych_bool useX11 = FALSE;
 static psych_bool useGLX = FALSE;
 
 // Use GLX version 1.3 setup code? Enabled INTEL_SWAP_EVENTS and other goodies...
@@ -100,16 +101,15 @@ psych_bool PsychOSOpenOnscreenWindowWaffle(PsychScreenSettingsType * screenSetti
     // First time invocation?
     if (x11_windowcount == 0) {
         // Initialize waffle for selected display system backend:
-        if (!waffle_init(init_attrs)) {
-            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Could not initialize Waffle display backend: %s. Falling back to X11/GLX classic backend\n",
-                                                          waffle_error_to_string(waffle_error_get_code()));
+        if (!waffle_init(init_attrs) && (waffle_error_get_code() != WAFFLE_ERROR_ALREADY_INITIALIZED)) {
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Could not initialize Waffle display backend: %s.\n", waffle_error_to_string(waffle_error_get_code()));
             return(FALSE);
         }
 
         // Connect it to the default display device:
         wdpy = waffle_display_connect(NULL);
         if (!wdpy) {
-            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Could not connect Waffle to display backend '%s': %s. Falling back to X11/GLX classic backend\n",
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Could not connect Waffle to display backend '%s': %s.\n",
                                                           "Default", waffle_error_to_string(waffle_error_get_code()));
             return(FALSE);
         }
@@ -117,7 +117,7 @@ psych_bool PsychOSOpenOnscreenWindowWaffle(PsychScreenSettingsType * screenSetti
         // Exit if OpenGL ES2 is unsupported.
         if (!waffle_display_supports_context_api(wdpy, opengl_api) ||
             !waffle_dl_can_open(WAFFLE_DL_OPENGL_ES2)) {
-            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Waffle display backend does not requested OpenGL context API '%s': %s. Falling back to X11/GLX classic backend\n",
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Waffle display backend does not requested OpenGL context API '%s': %s.\n",
                                                           "Default", waffle_error_to_string(waffle_error_get_code()));
             return(FALSE);
         }
@@ -154,7 +154,7 @@ psych_bool PsychOSOpenOnscreenWindowWaffle(PsychScreenSettingsType * screenSetti
         xfixes_available = TRUE;
     major = minor = 0;
 
-    if (useGLX) {
+    if (useX11) {
         // Init GLX extension, get its version, determine if at least V1.3 supported:
         useGLX13 = (glXQueryExtension(dpy, &glx_error_base, &glx_event_base) && glXQueryVersion(dpy, &major, &minor) && ((major > 1) || ((major == 1) && (minor >= 3))));
 
@@ -428,7 +428,7 @@ psych_bool PsychOSOpenOnscreenWindowWaffle(PsychScreenSettingsType * screenSetti
     window = waffle_window_create(config, width, height);
 
     // TODO FIXME: Implement properly.
-    if (useGLX && FALSE) {
+    if (useX11 && FALSE) {
         // Retrieve underlying native X11 window:
         // win = waffle_window_get_native(window);
         win = 0;
@@ -528,7 +528,7 @@ psych_bool PsychOSOpenOnscreenWindowWaffle(PsychScreenSettingsType * screenSetti
         // Levels 1000 - 1499 and 1500 to 1999 map to a master opacity level of 0.0 - 1.0:        
         unsigned int opacity = (unsigned int)(0xffffffff * (((float)(windowLevel % 500)) / 499.0));
 
-        if (useGLX) {
+        if (useX11) {
             // Get handle on opacity property of X11:
             Atom atom_window_opacity = XInternAtom(dpy, "_NET_WM_WINDOW_OPACITY", False);
 
@@ -556,7 +556,7 @@ psych_bool PsychOSOpenOnscreenWindowWaffle(PsychScreenSettingsType * screenSetti
         // in file netwm.cpp, e.g., at http://code.woboq.org/kde/kdelibs/kdeui/windowmanagement/netwm.cpp.html
         //
 
-        if (useGLX) {
+        if (useX11) {
             // Set KDE-4 specific property: This is supported since around KWin 4.6, since July 2011:
             unsigned int dontcomposite = 1;
             Atom atom_window_dontcomposite = XInternAtom(dpy, "_KDE_NET_WM_BLOCK_COMPOSITING", False);
@@ -577,7 +577,7 @@ psych_bool PsychOSOpenOnscreenWindowWaffle(PsychScreenSettingsType * screenSetti
     }
 
     // Is this a non-GUI fullscreen window? If so, set the fullscreen NETWM property:
-    if (useGLX && !(windowRecord->specialflags & kPsychGUIWindow) && (windowRecord->specialflags & kPsychIsFullscreenWindow)) {
+    if (useX11 && !(windowRecord->specialflags & kPsychGUIWindow) && (windowRecord->specialflags & kPsychIsFullscreenWindow)) {
         // Yes. Set the fullscreen state hint. Any well behaved window manager should understand this as
         // a request to turn the window into a completely decorationless fullscreen window, something
         // similar to what you'd get with override_redirect = 1, just in a less dirty way, that still
@@ -588,7 +588,7 @@ psych_bool PsychOSOpenOnscreenWindowWaffle(PsychScreenSettingsType * screenSetti
 
     // If this window is a GUI window then enable all window decorations and
     // manipulations, except for the window close button, which would wreak havoc:
-    if (useGLX && windowRecord->specialflags & kPsychGUIWindow) {
+    if (useX11 && windowRecord->specialflags & kPsychGUIWindow) {
         // For some reason we need to use unsigned long and long here instead of
         // int32_t etc., despite the fact that on a 64-Bit build, a long is 64-Bit
         // and on a 32-Bit build, a long is 32-Bit, whereas the XChangeProperty()
@@ -636,7 +636,7 @@ psych_bool PsychOSOpenOnscreenWindowWaffle(PsychScreenSettingsType * screenSetti
     // Show our new window:
     waffle_window_show(window);
 
-    if (useGLX) {
+    if (useX11) {
         // If windowLevel is zero, lower it to the bottom of the stack of windows:
         if (windowLevel <= 0)
             XLowerWindow(dpy, win);
@@ -692,7 +692,7 @@ psych_bool PsychOSOpenOnscreenWindowWaffle(PsychScreenSettingsType * screenSetti
     x11_windowcount++;
 
     // Disable X-Windows screensavers:
-    if (useGLX && (x11_windowcount == 1)) {
+    if (useX11 && (x11_windowcount == 1)) {
         // First window. Disable future use of screensaver:
         XSetScreenSaver(dpy, 0, 0, DefaultBlanking, DefaultExposures);
 
@@ -711,7 +711,7 @@ psych_bool PsychOSOpenOnscreenWindowWaffle(PsychScreenSettingsType * screenSetti
 
     // Check for availability of VSYNC extension:
 
-    if (useGLX) {
+    if (useX11) {
         // First we try if the MESA variant of the swap control extensions is available. It has two advantages:
         // First, it also provides a function to query the current swap interval. Second it allows to set a
         // zero swap interval to dynamically disable sync to retrace, just as on OS/X and Windows:
@@ -762,7 +762,7 @@ psych_bool PsychOSOpenOnscreenWindowWaffle(PsychScreenSettingsType * screenSetti
     fflush(NULL);
 
     // Wait for X-Server to settle...
-    if (useGLX) XSync(dpy, 1);
+    if (useX11) XSync(dpy, 1);
 
     // Wait 250 msecs extra to give desktop compositor a chance to settle:
     PsychYieldIntervalSeconds(0.25);
@@ -864,7 +864,7 @@ psych_bool PsychOSCloseWindowWaffle(PsychWindowRecordType * windowRecord)
 
         // (Re-)enable X-Windows screensavers if they were enabled before opening windows:
         // Set screensaver to previous settings, potentially enabling it:
-        if (useGLX) XSetScreenSaver(dpy, -1, 0, DefaultBlanking, DefaultExposures);
+        if (useX11) XSetScreenSaver(dpy, -1, 0, DefaultBlanking, DefaultExposures);
 
         // Unmap/release possibly mapped device memory: Defined in PsychScreenGlue.c
         PsychScreenUnmapDeviceMemory();
@@ -938,7 +938,7 @@ psych_bool PsychOSSetUserGLContextWaffle(PsychWindowRecordType * windowRecord, p
     if (windowRecord->targetSpecific.glusercontextObject == NULL)
         PsychErrorExitMsg(PsychError_user, "GL Userspace context unavailable! Call InitializeMatlabOpenGL *before* Screen('OpenWindow')!");
 
-    if (useGLX && copyfromPTBContext) {
+    if (useX11 && copyfromPTBContext) {
         // This unbind is probably not needed on X11/GLX, but better safe than sorry...
         glXMakeCurrent(windowRecord->targetSpecific.privDpy, None, NULL);
 
