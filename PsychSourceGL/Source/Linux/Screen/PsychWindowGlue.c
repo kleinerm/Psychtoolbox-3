@@ -232,6 +232,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // 2000 is the default.
   windowLevel = PsychPrefStateGet_WindowShieldingLevel();
   
+  // Set windowing system backend type to zero, aka "classic" aka X11/GLX:
+  windowRecord->winsysType = 0;
+
   // Init userspace GL context to safe default:
   windowRecord->targetSpecific.glusercontextObject = NULL;
   windowRecord->targetSpecific.glswapcontextObject = NULL;

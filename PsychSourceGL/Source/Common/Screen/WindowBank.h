@@ -270,7 +270,8 @@ typedef struct _PsychWindowRecordType_{
 
 	//need to be divided up according to use for textures, windows, or both.
 	PsychWindowType                         windowType;
-	int					screenNumber;   // kPsychUnaffiliated is -1 and means the offscreen window is unaffiliated.
+    int                     winsysType;     // Windowing/Display system backend type: 0 = Classic (=X11/GLX on Linux), or a Waffle backend type if waffle is used.
+	int					    screenNumber;   // kPsychUnaffiliated is -1 and means the offscreen window is unaffiliated.
 	PsychWindowIndexType                    windowIndex;
 	void					*surface; 
 	size_t					surfaceSizeBytes;	// Estimate of used system memory in bytes. Only used for accounting and debugging output.

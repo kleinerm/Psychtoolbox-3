@@ -33,6 +33,8 @@
 
 #include "Screen.h"
 #include <waffle.h>
+#include <waffle_glx.h>
+#include <waffle_x11_egl.h>
 
 // Use X11 / GLX backend?
 static psych_bool useX11 = FALSE;
@@ -89,43 +91,120 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     psych_bool xfixes_available = FALSE;
     psych_bool newstyle_setup = FALSE;
     int32_t opengl_api = WAFFLE_CONTEXT_OPENGL;
-
+    char backendname[16];
     struct waffle_display *wdpy;
     struct waffle_config *config;
     struct waffle_window *window;
     struct waffle_context *ctx;
 
-    const int32_t init_attrs[] = {
-        WAFFLE_PLATFORM, WAFFLE_PLATFORM_X11_EGL,
+    // Define waffle window system backend to use by default: It is our good'ol X11/GLX:
+    static int32_t init_attrs[3] = {
+        WAFFLE_PLATFORM, WAFFLE_PLATFORM_GLX,
         0,
     };
+
+    // Map the logical screen number to the corresponding X11 display connection handle
+    // for the corresponding X-Server connection.
+    PsychGetCGDisplayIDFromScreenNumber(&dpy, screenSettings->screenNumber);
+    scrnum = PsychGetXScreenIdForScreen(screenSettings->screenNumber);
+
+    // Override default windowing system backend with requested type, if any requested:
+    if (getenv("PSYCH_USE_GFX_BACKEND")) windowRecord->winsysType = (int) atoi(getenv("PSYCH_USE_GFX_BACKEND"));
+    if (windowRecord->winsysType > 0) init_attrs[1] = (int32_t) windowRecord->winsysType;
 
     // First time invocation?
     if (x11_windowcount == 0) {
         // Initialize waffle for selected display system backend:
         if (!waffle_init(init_attrs) && (waffle_error_get_code() != WAFFLE_ERROR_ALREADY_INITIALIZED)) {
-            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Could not initialize Waffle display backend: %s.\n", waffle_error_to_string(waffle_error_get_code()));
-            return(FALSE);
+            // Failed to init with requested backend. Try different other backends:
+
+            // X11/GLX (classic):
+            init_attrs[1] = WAFFLE_PLATFORM_GLX;
+            if (!waffle_init(init_attrs)) {
+                // X11/EGL:
+                init_attrs[1] = WAFFLE_PLATFORM_X11_EGL;
+                if (!waffle_init(init_attrs)) {
+                    // Wayland:
+                    init_attrs[1] = WAFFLE_PLATFORM_WAYLAND;
+                    if (!waffle_init(init_attrs)) {
+                        // GBM/DRM/KMS raw framebuffer:
+                        init_attrs[1] = WAFFLE_PLATFORM_GBM;
+                        if (!waffle_init(init_attrs)) {
+                            // Android:
+                            init_attrs[1] = WAFFLE_PLATFORM_ANDROID;
+                            if (!waffle_init(init_attrs)) {
+                                // Final fail:
+                                if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Could not initialize any Waffle display backend: %s.\n", waffle_error_to_string(waffle_error_get_code()));
+                                return(FALSE);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
-        // Connect it to the default display device:
-        wdpy = waffle_display_connect(NULL);
-        if (!wdpy) {
-            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Could not connect Waffle to display backend '%s': %s.\n",
-                                                          "Default", waffle_error_to_string(waffle_error_get_code()));
-            return(FALSE);
+        switch (init_attrs[1]) {
+            case WAFFLE_PLATFORM_GLX:
+                sprintf(backendname, "X11/GLX");
+            break;
+
+            case WAFFLE_PLATFORM_X11_EGL:
+                sprintf(backendname, "X11/EGL");
+            break;
+
+            case WAFFLE_PLATFORM_WAYLAND:
+                sprintf(backendname, "Wayland/EGL");
+            break;
+
+            case WAFFLE_PLATFORM_GBM:
+                sprintf(backendname, "GBM/EGL");
+            break;
+
+            case WAFFLE_PLATFORM_ANDROID:
+                sprintf(backendname, "Android/EGL");
+            break;
         }
 
-        // Exit if OpenGL ES2 is unsupported.
-        if (!waffle_display_supports_context_api(wdpy, opengl_api) ||
-            !waffle_dl_can_open(WAFFLE_DL_OPENGL_ES2)) {
-            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Waffle display backend does not requested OpenGL context API '%s': %s.\n",
-                                                          "Default", waffle_error_to_string(waffle_error_get_code()));
-            return(FALSE);
-        }
-
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Waffle display backend and OpenGL context API initialized.\n");
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Waffle display backend %s initialized.\n", backendname);
     }
+
+    // Set windowing system backend type to truly selected type:
+    windowRecord->winsysType = (int) init_attrs[1];
+
+    // Connect it to the chosen or default display device:
+    if ((init_attrs[1] == WAFFLE_PLATFORM_GLX) || (init_attrs[1] == WAFFLE_PLATFORM_X11_EGL)) {
+        // X11 backend: Use X11 display as specified by our Psychtoolbox screenId:
+        wdpy = waffle_display_connect(DisplayString(dpy));
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to connect Waffle to display '%s'.\n", DisplayString(dpy));
+    }
+    else {
+        // Other backend: Environment variable or NULL aka auto-selected default, if variable is undefined:
+        wdpy = waffle_display_connect(getenv("PSYCH_WAFFLE_DISPLAY"));
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to connect Waffle to display '%s'.\n", getenv("PSYCH_WAFFLE_DISPLAY"));
+    }
+
+    if (!wdpy) {
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Could not connect Waffle to display: %s.\n",
+                                                      waffle_error_to_string(waffle_error_get_code()));
+        return(FALSE);
+    }
+
+    // Exit if OpenGL context api opengl_api is unsupported.
+    
+    if (!waffle_display_supports_context_api(wdpy, opengl_api) ||
+        !waffle_dl_can_open(WAFFLE_DL_OPENGL_ES2)) {
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Waffle display backend does not support requested OpenGL context API '%s': %s.\n",
+                                                      "Default", waffle_error_to_string(waffle_error_get_code()));
+        return(FALSE);
+    }
+
+    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Waffle display backend and OpenGL context API initialized.\n");
+
+    // Enable X11 specific setup code if running on X11 backend:
+    if ((init_attrs[1] == WAFFLE_PLATFORM_GLX) || (init_attrs[1] == WAFFLE_PLATFORM_X11_EGL)) useX11 = TRUE;
+
+    // Ditto for GLX:
+    if (init_attrs[1] == WAFFLE_PLATFORM_GLX) useGLX = TRUE;
 
     // Retrieve windowLevel, an indicator of where non-fullscreen windows should
     // be located wrt. to other windows. 0 = Behind everything else, occluded by
@@ -142,21 +221,15 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // Which display depth is requested?
     depth = PsychGetValueFromDepthStruct(0, &(screenSettings->depth));
 
-    // Map the logical screen number to the corresponding X11 display connection handle
-    // for the corresponding X-Server connection.
-    PsychGetCGDisplayIDFromScreenNumber(&dpy, screenSettings->screenNumber);
-    scrnum = PsychGetXScreenIdForScreen(screenSettings->screenNumber);
-
     // Default to use of one shared x-display connection "dpy" for all onscreen windows
     // on a given x-display and x-screen:
     windowRecord->targetSpecific.privDpy = dpy;
 
     // XFixes extension version 2.0 or later available and initialized?
-    if (XFixesQueryExtension(dpy, &xfixes_event_base1, &xfixes_event_base2) && XFixesQueryVersion(dpy, &major, &minor) && (major >= 2))
-        xfixes_available = TRUE;
+    if (useX11 && XFixesQueryExtension(dpy, &xfixes_event_base1, &xfixes_event_base2) && XFixesQueryVersion(dpy, &major, &minor) && (major >= 2)) xfixes_available = TRUE;
     major = minor = 0;
 
-    if (useX11) {
+    if (useX11 && useGLX) {
         // Init GLX extension, get its version, determine if at least V1.3 supported:
         useGLX13 = (glXQueryExtension(dpy, &glx_error_base, &glx_event_base) && glXQueryVersion(dpy, &major, &minor) && ((major > 1) || ((major == 1) && (minor >= 3))));
 
@@ -429,10 +502,21 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // Create our onscreen window:
     window = waffle_window_create(config, width, height);
 
-    // TODO FIXME: Implement properly.
-    if (useX11 && FALSE) {
+    // Setup X11 window properties:
+    if (useX11) {
         // Retrieve underlying native X11 window:
-        // win = waffle_window_get_native(window);
+        union waffle_native_window *wafflewin = waffle_window_get_native(window);
+        if (init_attrs[1] == WAFFLE_PLATFORM_GLX) {
+            struct waffle_glx_window* glx = wafflewin->glx;
+            win = (Window) glx->xlib_window;
+        }
+        else {
+            win = (Window) ((struct waffle_x11_egl_window*) (wafflewin->x11_egl))->xlib_window;
+        }
+
+        free(wafflewin);
+        wafflewin = NULL;
+
         // Set hints and properties:
         {
             XSizeHints sizehints;
@@ -460,16 +544,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         }
     }
 
-    // TODO FIXME: Create corresponding glx window:
-    if (FALSE) {
-        // glxwindow = glXCreateWindow(dpy, fbconfig[0], win, NULL);
-    }
-
     // Make sure a potential slaveWindow of us resides on the same X-Screen == has same screenNumber as us,
     // otherwise trying to perform OpenGL context resource sharing would end badly:
     if ((windowRecord->slaveWindow) && (windowRecord->slaveWindow->screenNumber != screenSettings->screenNumber)) {
         // Ohoh! Let's abort with some more helpful error message than a simple hard application crash:
-        printf("\nPTB-ERROR:[glXCreateContext() resource sharing] Our peer window resides on a different X-Screen, which is forbidden. Aborting.\n\n");
+        printf("\nPTB-ERROR:[waffle_context_create() resource sharing] Our peer window resides on a different screen, which is forbidden. Aborting.\n\n");
         return (FALSE);
     }
 
@@ -657,12 +736,22 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
             // First we override_redirect it to lock out the WM from further manipulations:
             attr.override_redirect = 1;
+            mask = CWOverrideRedirect;
             XChangeWindowAttributes(dpy, win, mask, &attr);
 
             // Wait for override to complete...
             XSync(dpy, False);
 
             // Then we move it to its proper location, now hopefully untampered by the WM:
+            XMoveWindow(dpy, win, x, y);
+
+            // Make sure it reaches its target position:
+            XSync(dpy, False);
+        }
+
+        // Waffle-created X11 windows need to be manually repositioned at target location,
+        // as waffle itself ignores our position specs:
+        if (!(windowRecord->specialflags & kPsychIsFullscreenWindow)) {
             XMoveWindow(dpy, win, x, y);
 
             // Make sure it reaches its target position:
@@ -712,7 +801,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
     // Check for availability of VSYNC extension:
 
-    if (useX11) {
+    if (useX11 && useGLX) {
         // First we try if the MESA variant of the swap control extensions is available. It has two advantages:
         // First, it also provides a function to query the current swap interval. Second it allows to set a
         // zero swap interval to dynamically disable sync to retrace, just as on OS/X and Windows:
