@@ -49,10 +49,6 @@ TO DO:
 
 #include "Screen.h"
 
-#ifdef PTB_USE_WAFFLE
-#include <waffle.h>
-#endif
-
 //constants
 #define PSYCH_MAX_SCREENS				10		//the total possible number of screens
 #define PSYCH_LAST_SCREEN				9		//the highest possible screen index

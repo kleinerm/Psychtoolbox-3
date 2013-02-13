@@ -1966,8 +1966,12 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 		CGLSetCurrentContext(windowRecord->targetSpecific.glswapcontextObject);
 		#endif
 
-		#if PSYCH_SYSTEM == PSYCH_LINUX
-		glXMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.glswapcontextObject);
+        #if PSYCH_SYSTEM == PSYCH_LINUX
+        #ifndef PTB_USE_WAFFLE
+		    glXMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.glswapcontextObject);
+        #else
+		    waffle_make_current(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.glswapcontextObject);
+        #endif
 		#endif
 
 		#if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -3207,6 +3211,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             #define GLX_BACK_BUFFER_AGE_EXT 0x20F4
             #endif
 
+            #ifndef PTB_USE_WAFFLE
             // Extra-paranoia for fullscreen windows on Linux, just because we can:
             if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_SkipSyncTests() < 2)) {
                 // Linux: GLX_EXT_buffer_age supported? If so, then we can query the age in frames of our current post-swap backbuffer.
@@ -3232,7 +3237,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                     if (verbosity > 9) printf("PTB-DEBUG: GLX_BACK_BUFFER_AGE_EXT == %i after swap completion.\n", buffer_age);
                 }
             }
-            
+            #endif
+
             // Additional paranoia check at high debug levels where performance doesn't matter anymore.
             // Check if compositor is active. This just to test functionality, we won't enable this check
             // for normal operation yet, as i suspect it involves a potentially expensive time-consuming
@@ -5881,7 +5887,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		if (verbose) printf("System supports OpenML OML_sync_control extension for high-precision scheduled swaps and timestamping.\n");
 
 		// If prior 1.8.2 and therefore defective, disable use of OpenML for anything, even timestamping:
-		if (XVendorRelease(windowRecord->targetSpecific.deviceContext) < 10802000) {
+		if (XVendorRelease(windowRecord->targetSpecific.privDpy) < 10802000) {
 			// OpenML timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
 			windowRecord->specialflags |= kPsychOpenMLDefective;
 			

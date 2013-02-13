@@ -64,6 +64,10 @@
 #endif
 #endif
 
+#ifdef PTB_USE_WAFFLE
+#include <waffle.h>
+#endif
+
 // Include specifications of the GPU registers:
 #include "PsychGraphicsCardRegisterSpecs.h"
 

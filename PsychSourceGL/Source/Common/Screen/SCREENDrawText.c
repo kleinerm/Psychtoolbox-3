@@ -586,6 +586,10 @@ psych_bool PsychOSRebuildFont(PsychWindowRecordType *winRec)
     return(TRUE);
   }
 
+  // No-op if no X-Display connection handle is available because we are not running
+  // on a X11 based display backend:
+  if (!winRec->targetSpecific.privDpy) return(TRUE);
+
   // Rebuild needed. Do we have already a display list?
   if (winRec->textAttributes.DisplayList > 0) {
     // Yep. Destroy it...
@@ -611,13 +615,13 @@ psych_bool PsychOSRebuildFont(PsychWindowRecordType *winRec)
   for(i = 0; i < (int) strlen(fontname); i++) fontname[i]=tolower(fontname[i]);
 
   // Try to load font:
-  fontstruct = XLoadQueryFont(winRec->targetSpecific.deviceContext, fontname); 
+  fontstruct = XLoadQueryFont(winRec->targetSpecific.privDpy, fontname); 
 
   // Child-protection against invalid fontNames or unavailable/unknown fonts:
   if (fontstruct == NULL) {
     // Something went wrong...
     printf("Failed to load X11 font with name %s.\n\n", winRec->textAttributes.textFontName);
-    fontnames = XListFonts(winRec->targetSpecific.deviceContext, "*", 1000, &actual_count_return);
+    fontnames = XListFonts(winRec->targetSpecific.privDpy, "*", 1000, &actual_count_return);
     if (fontnames) {
       printf("Available X11 fonts are:\n\n");
       for (i=0; i<actual_count_return; i++) printf("%s\n", (char*) fontnames[i]);
@@ -665,7 +669,7 @@ psych_bool PsychOSRebuildFont(PsychWindowRecordType *winRec)
   // Release font and associated font info:
   XFreeFontInfo(NULL, fontstruct, 1);
   fontstruct=NULL;
-  XUnloadFont(winRec->targetSpecific.deviceContext, font);
+  XUnloadFont(winRec->targetSpecific.privDpy, font);
 
   // Our new font is ready to rock!
   return(TRUE);
