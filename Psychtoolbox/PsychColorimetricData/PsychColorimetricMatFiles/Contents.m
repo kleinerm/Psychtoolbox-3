@@ -72,7 +72,7 @@
 %   den_mac_ws          - Macular pigment density from W&S, Table 2(2.4.6), p. 112.
 %   spd_appratusrel     - Relative spectrum from a monitor.  Used by IsomerizationInDishDemo.
 %   spd_CIEA            - Spectral power distribtion for CIE illuminant A.
-%   spd_CIDC            - Spectral power distribution for CIE illuminant C.
+%   spd_CIEC            - Spectral power distribution for CIE illuminant C.
 %   spd_D65             - Spectral power distribution for CIE illuminant D65.
 %   spd_flourescent     - Spectral power distribution for some flourescent lamp.
 %   spd_incanCC         - Spectral power distribution for some incandescent lamp.
