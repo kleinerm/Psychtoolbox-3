@@ -49,6 +49,9 @@ static int glx_error_base, glx_event_base;
 // Number of currently open onscreen windows:
 static int open_windowcount = 0;
 
+// Shared waffle display connection handle for whole session:
+static struct waffle_display *wdpy = NULL;
+
 // Forward define prototype for glewContextInit(), which is normally not a public function:
 GLenum glewContextInit(void);
 
@@ -92,7 +95,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     psych_bool newstyle_setup = FALSE;
     int32_t opengl_api = WAFFLE_CONTEXT_OPENGL;
     char backendname[16];
-    struct waffle_display *wdpy;
     struct waffle_config *config;
     struct waffle_window *window;
     struct waffle_context *ctx;
@@ -106,6 +108,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // Map the logical screen number to the corresponding X11 display connection handle
     // for the corresponding X-Server connection.
     PsychGetCGDisplayIDFromScreenNumber(&dpy, screenSettings->screenNumber);
+
+    // TODO FIXME: We currently don't have any way of selecting the target X-Screen 'scrnum' for
+    // our window, as Waffle does not yet support selection of X-Screen. It always opens
+    // windows on the display's default screen. Therefore this is mostly a dead placeholder for now:
     scrnum = PsychGetXScreenIdForScreen(screenSettings->screenNumber);
 
     // Override default windowing system backend with requested type, if any requested:
@@ -171,16 +177,21 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // Set windowing system backend type to truly selected type:
     windowRecord->winsysType = (int) init_attrs[1];
 
-    // Connect it to the chosen or default display device:
-    if ((init_attrs[1] == WAFFLE_PLATFORM_GLX) || (init_attrs[1] == WAFFLE_PLATFORM_X11_EGL)) {
-        // X11 backend: Use X11 display as specified by our Psychtoolbox screenId:
-        wdpy = waffle_display_connect(DisplayString(dpy));
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to connect Waffle to display '%s'.\n", DisplayString(dpy));
-    }
-    else {
-        // Other backend: Environment variable or NULL aka auto-selected default, if variable is undefined:
-        wdpy = waffle_display_connect(getenv("PSYCH_WAFFLE_DISPLAY"));
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to connect Waffle to display '%s'.\n", getenv("PSYCH_WAFFLE_DISPLAY"));
+    // Waffle display connection not yet initialized? Create one if not yet done. Currently
+    // we are limited to one connection per session, until we move waffle init and connection
+    // init to the screen glue and manage those as we do with classic X11 display connections.
+    if (NULL == wdpy) {
+        // Connect it to the chosen or default display device:
+        if ((init_attrs[1] == WAFFLE_PLATFORM_GLX) || (init_attrs[1] == WAFFLE_PLATFORM_X11_EGL)) {
+            // X11 backend: Use X11 display as specified by our Psychtoolbox screenId:
+            wdpy = waffle_display_connect(DisplayString(dpy));
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to connect Waffle to display '%s'.\n", DisplayString(dpy));
+        }
+        else {
+            // Other backend: Environment variable or NULL aka auto-selected default, if variable is undefined:
+            wdpy = waffle_display_connect(getenv("PSYCH_WAFFLE_DISPLAY"));
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to connect Waffle to display '%s'.\n", getenv("PSYCH_WAFFLE_DISPLAY"));
+        }
     }
 
     if (!wdpy) {
@@ -932,17 +943,16 @@ void PsychOSCloseWindow(PsychWindowRecordType * windowRecord)
     windowRecord->targetSpecific.windowHandle = 0;
     windowRecord->targetSpecific.xwindowHandle = 0;
 
-    // Release device context: We just release the reference. The connection to the display is
-    // closed below.
-    waffle_display_disconnect(windowRecord->targetSpecific.deviceContext);
-    windowRecord->targetSpecific.deviceContext = NULL;
-
     // Decrement global count of open onscreen windows:
     open_windowcount--;
 
     // Was this the last window?
     if (open_windowcount <= 0) {
         open_windowcount = 0;
+
+        // Release our shared waffle display connection:
+        waffle_display_disconnect(windowRecord->targetSpecific.deviceContext);
+        wdpy = NULL;
 
         // (Re-)enable X-Windows screensavers if they were enabled before opening windows:
         // Set screensaver to previous settings, potentially enabling it:
@@ -951,6 +961,8 @@ void PsychOSCloseWindow(PsychWindowRecordType * windowRecord)
         // Unmap/release possibly mapped device memory: Defined in PsychScreenGlue.c
         PsychScreenUnmapDeviceMemory();
     }
+
+    windowRecord->targetSpecific.deviceContext = NULL;
 
     // Done.
     return;
