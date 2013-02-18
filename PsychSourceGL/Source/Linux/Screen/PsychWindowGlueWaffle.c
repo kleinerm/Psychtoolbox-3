@@ -47,7 +47,7 @@ static psych_bool useGLX13 = FALSE;
 static int glx_error_base, glx_event_base;
 
 // Number of currently open onscreen windows:
-static int x11_windowcount = 0;
+static int open_windowcount = 0;
 
 // Forward define prototype for glewContextInit(), which is normally not a public function:
 GLenum glewContextInit(void);
@@ -113,7 +113,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     if (windowRecord->winsysType > 0) init_attrs[1] = (int32_t) windowRecord->winsysType;
 
     // First time invocation?
-    if (x11_windowcount == 0) {
+    if (open_windowcount == 0) {
         // Initialize waffle for selected display system backend:
         if (!waffle_init(init_attrs) && (waffle_error_get_code() != WAFFLE_ERROR_ALREADY_INITIALIZED)) {
             // Failed to init with requested backend. Try different other backends:
@@ -189,8 +189,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         return(FALSE);
     }
 
-    // Exit if OpenGL context api opengl_api is unsupported.
-    
+    // Exit if OpenGL context api opengl_api is unsupported.    
     if (!waffle_display_supports_context_api(wdpy, opengl_api) ||
         !waffle_dl_can_open(WAFFLE_DL_OPENGL_ES2)) {
         if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Waffle display backend does not support requested OpenGL context API '%s': %s.\n",
@@ -473,8 +472,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         attr.override_redirect = 1;
 
         // Don't override if it is a GUI window, for some reasons as in classic path:
-        if (windowRecord->specialflags & kPsychGUIWindow)
-            attr.override_redirect = 0;
+        if (windowRecord->specialflags & kPsychGUIWindow) attr.override_redirect = 0;
 
         // Don't override if it is a fullscreen window. The NETM_FULLSCREEN state should
         // take care of fullscreen windows nicely without need to override. Although we
@@ -492,8 +490,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         // our window props. Later on (see below) after the Window is mapped and the WM satisified,
         // we set the override_redirect flag to lock out the WM, then move the window to its proper
         // location, no that the WM can't interfere anymore.
-        if (windowRecord->specialflags & kPsychIsFullscreenWindow)
-            attr.override_redirect = 0;
+        if (windowRecord->specialflags & kPsychIsFullscreenWindow) attr.override_redirect = 0;
     }
 
     if (PsychPrefStateGet_Verbosity() > 3)
@@ -635,7 +632,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         // Btw. for other properties that KDE supports/understands see function create_netwm_atoms()
         // in file netwm.cpp, e.g., at http://code.woboq.org/kde/kdelibs/kdeui/windowmanagement/netwm.cpp.html
         //
-
         if (useX11) {
             // Set KDE-4 specific property: This is supported since around KWin 4.6, since July 2011:
             unsigned int dontcomposite = 1;
@@ -653,7 +649,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
             // Assign new value for property:
             XChangeProperty(dpy, win, atom_window_dontcomposite2, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&dontcomposite, 1);
-        }   
+        }
     }
 
     // Is this a non-GUI fullscreen window? If so, set the fullscreen NETWM property:
@@ -666,9 +662,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_STATE", False), XA_ATOM, 32, PropModeReplace, (unsigned char *)&stateFullscreen, 1);
     }
 
-    // If this window is a GUI window then enable all window decorations and
-    // manipulations, except for the window close button, which would wreak havoc:
-    if (useX11 && windowRecord->specialflags & kPsychGUIWindow) {
+    if (useX11) {
         // For some reason we need to use unsigned long and long here instead of
         // int32_t etc., despite the fact that on a 64-Bit build, a long is 64-Bit
         // and on a 32-Bit build, a long is 32-Bit, whereas the XChangeProperty()
@@ -698,10 +692,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
         struct MwmHints hints;
         memset(&hints, 0, sizeof(hints));
-
         hints.flags = MWM_HINTS_DECORATIONS | MWM_HINTS_FUNCTIONS;
-        hints.decorations = MWM_FUNC_ALL;
-        hints.functions = MWM_FUNC_RESIZE | MWM_FUNC_MOVE | MWM_FUNC_MINIMIZE | MWM_FUNC_MAXIMIZE;
+
+        // If this window is a GUI window then enable all window decorations and
+        // manipulations, except for the window close button, which would wreak havoc:
+        if (windowRecord->specialflags & kPsychGUIWindow) {
+            hints.decorations = MWM_FUNC_ALL;
+            hints.functions = MWM_FUNC_RESIZE | MWM_FUNC_MOVE | MWM_FUNC_MINIMIZE | MWM_FUNC_MAXIMIZE;
+        }
 
         XChangeProperty(dpy, win, mwmHintsProperty, mwmHintsProperty, 32, PropModeReplace, (unsigned char *)&hints, sizeof(hints) / sizeof(long));
 
@@ -709,7 +707,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         // our window above most other windows, by setting the state to WM_STATE_ABOVE:
         if (windowLevel >= 500) {
             Atom stateAbove = XInternAtom(dpy, "_NET_WM_STATE_ABOVE", False);
-            XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_STATE", False), XA_ATOM, 32, PropModeReplace, (unsigned char *)&stateAbove, 1);
+            XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_STATE", False), XA_ATOM, 32, PropModeAppend, (unsigned char *)&stateAbove, 1);
         }
     }
 
@@ -718,8 +716,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
     if (useX11) {
         // If windowLevel is zero, lower it to the bottom of the stack of windows:
-        if (windowLevel <= 0)
-            XLowerWindow(dpy, win);
+        if (windowLevel <= 0) XLowerWindow(dpy, win);
 
         // Setup window transparency for user input (keyboard and mouse events):
         if (windowLevel < 1500) {
@@ -727,12 +724,15 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
         }
 
-        // Is this a non-GUI fullscreen window? In the new-style path?
-        if (!(windowRecord->specialflags & kPsychGUIWindow) && (windowRecord->specialflags & kPsychIsFullscreenWindow) && newstyle_setup) {
-            // Yes. As we didn't override_redirect it during creation and mapping, so the
+        // Is this a non-GUI window?
+        if (!(windowRecord->specialflags & kPsychGUIWindow)) {
+            // Yes. As Waffle didn't override_redirect it during creation and mapping, so the
             // WM could pick up our special window properties, the WM very likely misplaced
             // it on the screen at a very ergonomic location for desktop users which doesn't
             // suit our needs. Let's fix this:
+
+            // Wait for pending ops to complete...
+            XSync(dpy, False);
 
             // First we override_redirect it to lock out the WM from further manipulations:
             attr.override_redirect = 1;
@@ -741,22 +741,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
             // Wait for override to complete...
             XSync(dpy, False);
-
-            // Then we move it to its proper location, now hopefully untampered by the WM:
-            XMoveWindow(dpy, win, x, y);
-
-            // Make sure it reaches its target position:
-            XSync(dpy, False);
         }
 
-        // Waffle-created X11 windows need to be manually repositioned at target location,
-        // as waffle itself ignores our position specs:
-        if (!(windowRecord->specialflags & kPsychIsFullscreenWindow)) {
-            XMoveWindow(dpy, win, x, y);
-
-            // Make sure it reaches its target position:
-            XSync(dpy, False);
-        }
+        // Then we move it to its proper location. This step is needed with Waffle even on
+        // GUI windows, as Waffle has no way for us to specify window (x,y) start location:
+        XMoveWindow(dpy, win, x, y);
+        
+        // Make sure it reaches its target position:
+        XSync(dpy, False);
     }
 
     // Ok, the onscreen window is ready on the screen. Time for OpenGL setup...
@@ -779,10 +771,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     fflush(NULL);
 
     // Increase our own open window counter:
-    x11_windowcount++;
+    open_windowcount++;
 
     // Disable X-Windows screensavers:
-    if (useX11 && (x11_windowcount == 1)) {
+    if (useX11 && (open_windowcount == 1)) {
         // First window. Disable future use of screensaver:
         XSetScreenSaver(dpy, 0, 0, DefaultBlanking, DefaultExposures);
 
@@ -846,13 +838,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
     // First opened onscreen window? If so, we try to map GPU MMIO registers
     // to enable beamposition based timestamping and other special goodies:
-    if (x11_windowcount == 1) PsychScreenMapRadeonCntlMemory();
+    if (open_windowcount == 1) PsychScreenMapRadeonCntlMemory();
 
     // Ok, we should be ready for OS independent setup...
     fflush(NULL);
 
     // Wait for X-Server to settle...
-    if (useX11) XSync(dpy, 1);
+    if (useX11) XSync(dpy, False);
 
     // Wait 250 msecs extra to give desktop compositor a chance to settle:
     PsychYieldIntervalSeconds(0.25);
@@ -946,11 +938,11 @@ void PsychOSCloseWindow(PsychWindowRecordType * windowRecord)
     windowRecord->targetSpecific.deviceContext = NULL;
 
     // Decrement global count of open onscreen windows:
-    x11_windowcount--;
+    open_windowcount--;
 
     // Was this the last window?
-    if (x11_windowcount <= 0) {
-        x11_windowcount = 0;
+    if (open_windowcount <= 0) {
+        open_windowcount = 0;
 
         // (Re-)enable X-Windows screensavers if they were enabled before opening windows:
         // Set screensaver to previous settings, potentially enabling it:
