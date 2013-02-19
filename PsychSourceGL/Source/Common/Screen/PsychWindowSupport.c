@@ -2202,11 +2202,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 				if (!(useOpenML && (PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &(windowRecord->time_at_last_vbl)) > 0))) {
 					// OpenML swap completion timestamping unsupported, disabled, or failed.
 					// Use our standard trick instead.
-					glBegin(GL_POINTS);
-					glColor4f(0, 0, 0, 0);
-					glVertex2i(10, 10);
-					glEnd();
-					glFinish();
+                    PsychWaitPixelSyncToken(windowRecord);
 					PsychGetAdjustedPrecisionTimerSeconds(&(windowRecord->time_at_last_vbl));
 				}
 
@@ -3194,15 +3190,10 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 				// waits for VBL instead of just "falling through" due to the asynchronous nature of
 				// OpenGL:                
 				glDrawBuffer(GL_BACK_LEFT);
+
 				// We draw our single pixel with an alpha-value of zero - so effectively it doesn't
 				// change the color buffer - just the z-buffer if z-writes are enabled...
-				glColor4f(0,0,0,0);
-				glBegin(GL_POINTS);
-				glVertex2i(10,10);
-				glEnd();
-				// This glFinish() will wait until point drawing is finished, ergo backbuffer was ready
-				// for drawing, ergo buffer swap in sync with start of VBL has happened.
-				glFinish();
+                PsychWaitPixelSyncToken(windowRecord);
 			}
 			
             #if PSYCH_SYSTEM == PSYCH_LINUX
@@ -3984,14 +3975,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                 // Use our standard trick instead.
 
                 // Wait for it, aka VBL start: See PsychFlipWindowBuffers for explanation...
-                glBegin(GL_POINTS);
-                glColor4f(0,0,0,0);
-                glVertex2i(10,10);
-                glEnd();
-
-                // This glFinish() will wait until point drawing is finished, ergo backbuffer was ready
-                // for drawing, ergo buffer swap in sync with start of VBL has happened.
-                glFinish();
+                PsychWaitPixelSyncToken(windowRecord);
 
                 // At this point, start of VBL has happened and we can continue execution...
                 // We take our timestamp here:
@@ -4265,15 +4249,7 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
         
         // Our old VBL-Sync trick again... We need sync to VBL to visually check if
         // beamposition is locked to VBL:
-        // We draw our single pixel with an alpha-value of zero - so effectively it doesn't
-        // change the color buffer - just the z-buffer if z-writes are enabled...
-        glColor4f(0,0,0,0);
-        glBegin(GL_POINTS);
-        glVertex2i(10,10);
-        glEnd();        
-        // This glFinish() will wait until point drawing is finished, ergo backbuffer was ready
-        // for drawing, ergo buffer swap in sync with start of VBL has happened.
-        glFinish();
+        PsychWaitPixelSyncToken(windowRecord);
 
         // Query and visualize scanline immediately after VBL onset, aka return of glFinish();
         scanline = (float) PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);    

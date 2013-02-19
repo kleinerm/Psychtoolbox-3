@@ -144,6 +144,9 @@ PsychError SCREENDrawLines(void)
         glGetFloatv(GL_LINE_WIDTH_RANGE, (GLfloat*) &linesizerange);
     }
 
+    // Hack for OpenGL-ES api's:
+    if (windowRecord->glApiType > 0) { linesizerange[0] = 0; linesizerange[1] = 64.0; }
+
     if (size[0] < linesizerange[0] || size[0] > linesizerange[1]) {
 		printf("PTB-ERROR: You requested a line width of %f units, which is not in the range (%f to %f) supported by your graphics hardware.\n",
 			   size[0], linesizerange[0], linesizerange[1]);

@@ -522,3 +522,31 @@ void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos
 		
 	return;
 }
+
+/* Emit a single pixel in top-left corner of window and wait for its rendering
+ * to complete. Our classic trick to wait for double-buffer swap completion on
+ * systems where we don't have better system-provided timestamping and syncing
+ * methods. This needs different implementations on classic OpenGL vs. non-
+ * immediate mode OpenGL.
+ */
+void PsychWaitPixelSyncToken(PsychWindowRecordType *windowRecord)
+{
+    // Classic desktop OpenGL in use?
+    if (windowRecord->glApiType == 0) {
+        // Yes. Use our classic fixed-function immediate mode method:
+        glBegin(GL_POINTS);
+        glColor4f(0, 0, 0, 0);
+        glVertex2i(10, 10);
+        glEnd();
+        glFinish();        
+    }
+    else {
+        // No. Avoid immediate mode functions, they won't work:
+        GLfloat glverts[2] = { 10, 10 };
+        glVertexPointer(2, GL_FLOAT, 0, glverts);
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glDrawArrays(GL_POINTS, 0, 1);
+        glDisableClientState(GL_VERTEX_ARRAY);
+        glFinish();
+    }
+}
