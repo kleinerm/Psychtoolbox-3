@@ -138,12 +138,15 @@ TO DO:
 #define kPsychGUIWindow					 32 // 'specialflags' setting 32 means: This window should behave like a regular GUI window, e.g, allow moving it.
 #define kPsychPlanarTexture				 64 // 'specialflags' setting 64: This texture uses a planar storage format instead of pixel-interleaved.
 #define kPsychDontAutoGenMipMaps        128 // 'specialflags' setting 128: This texture shall not auto-generate its mip-map chain on demand.
+#define kPsychIsX11Window               256 // 'specialflags' setting 256: This window is living on a Linux X11/XServer backend.
+#define kPsychIsGLXWindow               512 // 'specialflags' setting 512: This window is living on a Linux X11/GLX backend.
+#define kPsychIsEGLWindow              4096 // 'specialflags' setting 4096: This window is living on a EGL backend (X11/Wayland/GBM/Android/...)
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536. --> Flags of 2^17 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,32,64,128,1024,S-2048,S-8192, 32768, S-65536. --> Flags of 2^17 and higher are available, as well as 256,512,4096, 16384
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 32768, S-65536. --> Flags of 2^17 and higher are available, as well as 16384
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*	PtrPsychHookFunction;
@@ -270,9 +273,10 @@ typedef struct _PsychWindowRecordType_{
 
 	//need to be divided up according to use for textures, windows, or both.
 	PsychWindowType                         windowType;
-    int                     winsysType;     // Windowing/Display system backend type: 0 = Classic (=X11/GLX on Linux), or a Waffle backend type if waffle is used.
-	int					    screenNumber;   // kPsychUnaffiliated is -1 and means the offscreen window is unaffiliated.
-	PsychWindowIndexType                    windowIndex;
+	int                     winsysType;     // Windowing/Display system backend type: 0 = Classic (=X11/GLX on Linux), or a Waffle backend type if waffle is used.
+	int                     glApiType;      // Type of OpenGL rendering API in use: 0 = Classic desktop OpenGL-1/2/3/4, 10 = GL-ES1.0, 20 = GL-ES2.0, 30 = GL-ES3.0 ...
+	int                     screenNumber;   // kPsychUnaffiliated is -1 and means the offscreen window is unaffiliated.
+	PsychWindowIndexType    windowIndex;
 	void					*surface; 
 	size_t					surfaceSizeBytes;	// Estimate of used system memory in bytes. Only used for accounting and debugging output.
 	PsychRectType           rect;           // Bounding rectangle of true window framebuffer -- Normalized to always have top-left corner in (0,0)!

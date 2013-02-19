@@ -303,34 +303,54 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         }
     }
 
+    // Assign human readable name to selected OpenGL rendering api. Also assign
+    // type flag for higher-level code:
     switch (opengl_api) {
         case WAFFLE_CONTEXT_OPENGL:
             sprintf(backendname, "OpenGL");
+            windowRecord->glApiType = 0;
             break;
 
         case WAFFLE_CONTEXT_OPENGL_ES1:
             sprintf(backendname, "OpenGL-ES 1");
+            windowRecord->glApiType = 10;
             break;
 
         case WAFFLE_CONTEXT_OPENGL_ES2:
             sprintf(backendname, "OpenGL-ES 2");
+            windowRecord->glApiType = 20;
             break;
 
         case WAFFLE_CONTEXT_OPENGL_ES3:
             sprintf(backendname, "OpenGL-ES 3");
+            windowRecord->glApiType = 30;
             break;
 
         default:
             sprintf(backendname, "UNKNOWN");
+            windowRecord->glApiType = 0;
     }
 
     if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Waffle display backend connected to OpenGL rendering API '%s'.\n", backendname);
 
+    // OpenGL embedded subset api in use?
+    if (windowRecord->glApiType > 0) {
+        // Yes: Try to disable all OpenGL error checking for now during initial OpenGL-ES support bringup.
+        // We know there will be many errors due to incompatibilities but just try to keep going and rely
+        // on external trace and debug tools to find and fix errors at this point:
+        PsychPrefStateSet_ConserveVRAM(PsychPrefStateGet_ConserveVRAM() | kPsychAvoidCPUGPUSync);
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Will try to disable/suppress all internal OpenGL error reporting/handling for OpenGL-ES operation.\n");
+    }
+
     // Enable X11 specific setup code if running on X11 backend:
     useX11 = ((windowRecord->winsysType == WAFFLE_PLATFORM_GLX) || (windowRecord->winsysType == WAFFLE_PLATFORM_X11_EGL)) ? TRUE : FALSE;
+    if (useX11) windowRecord->specialflags |= kPsychIsX11Window;
 
     // Ditto for GLX:
     useGLX = (windowRecord->winsysType == WAFFLE_PLATFORM_GLX) ? TRUE : FALSE;
+
+    // Mark window as either GLX or EGL controlled:
+    windowRecord->specialflags |= ((useGLX) ? kPsychIsGLXWindow : kPsychIsEGLWindow);
 
     // Retrieve windowLevel, an indicator of where non-fullscreen windows should
     // be located wrt. to other windows. 0 = Behind everything else, occluded by

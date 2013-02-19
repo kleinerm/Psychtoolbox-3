@@ -232,8 +232,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // 2000 is the default.
   windowLevel = PsychPrefStateGet_WindowShieldingLevel();
   
-  // Set windowing system backend type to zero, aka "classic" aka X11/GLX:
+  // Set windowing system backend type to zero, aka "classic" aka X11/GLX: Not strictly needed, as this is init-default.
   windowRecord->winsysType = 0;
+
+  // Set OpenGL api type to classic desktop OpenGL: Not strictly needed, as this is init-default.
+  windowRecord->glApiType = 0;
 
   // Init userspace GL context to safe default:
   windowRecord->targetSpecific.glusercontextObject = NULL;
@@ -726,6 +729,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
   windowRecord->targetSpecific.deviceContext = dpy;
   windowRecord->targetSpecific.contextObject = ctx;
+
+  // Set flags to mark this window as a classic X11/GLX window:
+  windowRecord->specialflags |= (kPsychIsX11Window | kPsychIsGLXWindow);
 
   // Create rendering context for async flips with identical visual and display as main context, share all heavyweight ressources with it:
   if (fbconfig) {
