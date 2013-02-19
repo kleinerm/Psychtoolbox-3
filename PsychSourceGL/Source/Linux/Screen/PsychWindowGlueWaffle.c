@@ -133,7 +133,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         // Initialize waffle for selected display system backend:
 
         // Override default windowing system backend selection with requested type, if any requested:
-        if (getenv("PSYCH_USE_DISPLAY_BACKEND")) windowRecord->winsysType = (int) atoi(getenv("PSYCH_USE_DISPLAY_BACKEND"));
+        if (getenv("PSYCH_USE_DISPLAY_BACKEND")) {
+            if (!strcmp(getenv("PSYCH_USE_DISPLAY_BACKEND"), "glx")) windowRecord->winsysType = (int) WAFFLE_PLATFORM_GLX; 
+            if (!strcmp(getenv("PSYCH_USE_DISPLAY_BACKEND"), "x11egl")) windowRecord->winsysType = (int) WAFFLE_PLATFORM_X11_EGL; 
+            if (!strcmp(getenv("PSYCH_USE_DISPLAY_BACKEND"), "wayland")) windowRecord->winsysType = (int) WAFFLE_PLATFORM_WAYLAND; 
+            if (!strcmp(getenv("PSYCH_USE_DISPLAY_BACKEND"), "gbm")) windowRecord->winsysType = (int) WAFFLE_PLATFORM_GBM; 
+            if (!strcmp(getenv("PSYCH_USE_DISPLAY_BACKEND"), "android")) windowRecord->winsysType = (int) WAFFLE_PLATFORM_ANDROID; 
+        }
+
         if (windowRecord->winsysType > 0) init_attrs[1] = (int32_t) windowRecord->winsysType;
 
         if (!waffle_init(init_attrs) && (waffle_error_get_code() != WAFFLE_ERROR_ALREADY_INITIALIZED)) {
@@ -256,7 +263,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     }
 
     // Allow usercode to override our default backend choice via environment variable:
-    if (getenv("PSYCH_USE_GFX_BACKEND")) opengl_api = (int32_t) atoi(getenv("PSYCH_USE_GFX_BACKEND"));
+    if (getenv("PSYCH_USE_GFX_BACKEND")) {
+        if (!strcmp(getenv("PSYCH_USE_GFX_BACKEND"), "gl")) opengl_api = WAFFLE_CONTEXT_OPENGL;
+        if (!strcmp(getenv("PSYCH_USE_GFX_BACKEND"), "gles1")) opengl_api = WAFFLE_CONTEXT_OPENGL_ES1;
+        if (!strcmp(getenv("PSYCH_USE_GFX_BACKEND"), "gles2")) opengl_api = WAFFLE_CONTEXT_OPENGL_ES2;
+        if (!strcmp(getenv("PSYCH_USE_GFX_BACKEND"), "gles3")) opengl_api = WAFFLE_CONTEXT_OPENGL_ES3;
+    }
+
     switch (opengl_api) {
         case WAFFLE_CONTEXT_OPENGL:
             sprintf(backendname, "OpenGL");
