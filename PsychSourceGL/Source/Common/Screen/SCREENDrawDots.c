@@ -82,6 +82,7 @@ PsychError SCREENDrawDots(void)
 	int                                     i, nrpoints, nrsize;
 	psych_bool                              isArgThere, usecolorvector, isdoublecolors, isuint8colors;
 	double									*xy, *size, *center, *dot_type, *colors;
+    float                                   *sizef;
 	unsigned char                           *bytecolors;
 	GLfloat									pointsizerange[2];
     
@@ -106,7 +107,10 @@ PsychError SCREENDrawDots(void)
 	isdoublecolors = (colors) ? TRUE:FALSE;
 	isuint8colors  = (bytecolors) ? TRUE:FALSE;
 	usecolorvector = (nc>1) ? TRUE:FALSE;
-	
+
+    // Assign sizef as float-type array of sizes, if float mode active, NULL otherwise:
+    sizef = (GL_FLOAT == PsychGLFloatType(windowRecord)) ? (float*) size : NULL;
+
 	// Get center argument
 	isArgThere = PsychIsArgPresent(PsychArgIn, 5);
 	if(!isArgThere){
@@ -129,14 +133,6 @@ PsychError SCREENDrawDots(void)
 		idot_type = (int) dot_type[0];
 	}
 	
-	// Child-protection: Alpha blending needs to be enabled for smoothing to work:
-	// Ok, not such a good idea :-( The flag also enables drawing of round dots and
-	// there are applications were we want to set the flag without using alpha blending...
-	// Therefore disabled -> May want to turn this into some kind of warning or hint in the future...
-	if (idot_type>0 && windowRecord->actualEnableBlending!=TRUE) {
-		//PsychErrorExitMsg(PsychError_user, "Point smoothing doesn't work with alpha-blending disabled! See Screen('BlendFunction') on how to enable it.");
-	}
-	
 	// Turn on antialiasing to draw circles	
 	if(idot_type) {
 		glEnable(GL_POINT_SMOOTH);
@@ -145,22 +141,19 @@ PsychError SCREENDrawDots(void)
 		glHint(GL_POINT_SMOOTH_HINT, (idot_type>1) ? GL_NICEST : GL_DONT_CARE);
 	}
 	else {
-		#ifndef GL_ALIASED_POINT_SIZE_RANGE
-		#define GL_ALIASED_POINT_SIZE_RANGE 0x846D
-		#endif
-		
 		glGetFloatv(GL_ALIASED_POINT_SIZE_RANGE, (GLfloat*) &pointsizerange);
 	}
 	
 	// Set size of a single dot:
-	if (size[0] > pointsizerange[1] || size[0] < pointsizerange[0]) {
+	if ((sizef && (sizef[0] > pointsizerange[1] || sizef[0] < pointsizerange[0])) ||
+        (!sizef && (size[0] > pointsizerange[1] || size[0] < pointsizerange[0]))){
 		printf("PTB-ERROR: You requested a point size of %f units, which is not in the range (%f to %f) supported by your graphics hardware.\n",
-			   size[0], pointsizerange[0], pointsizerange[1]);
+			   (sizef) ? sizef[0] : size[0], pointsizerange[0], pointsizerange[1]);
 		PsychErrorExitMsg(PsychError_user, "Unsupported point size requested in Screen('DrawDots').");
 	}
 	
 	// Setup initial common point size for all points:
-	glPointSize((float) size[0]);
+    glPointSize((sizef) ? sizef[0] : (float) size[0]);
 	
 	// Setup modelview matrix to perform translation by 'center':
 	glMatrixMode(GL_MODELVIEW);
@@ -169,7 +162,7 @@ PsychError SCREENDrawDots(void)
 	glPushMatrix();
 	
 	// Apply a global translation of (center(x,y)) pixels to all following points:
-	glTranslated(center[0], center[1], 0);
+	glTranslatef((float) center[0], (float) center[1], 0);
 	
 	// Render the array of 2D-Points - Efficient version:
 	// This command sequence allows fast processing of whole arrays
@@ -178,7 +171,7 @@ PsychError SCREENDrawDots(void)
 	// optimized in specific OpenGL implementations.
 	
 	// Pass a pointer to the start of the point-coordinate array:
-	glVertexPointer(2, GL_DOUBLE, 0, &xy[0]);
+	glVertexPointer(2, PSYCHGLFLOAT, 0, &xy[0]);
 	
 	// Enable fast rendering of arrays:
 	glEnableClientState(GL_VERTEX_ARRAY);
@@ -199,14 +192,15 @@ PsychError SCREENDrawDots(void)
 		// Point-Sprite extensions, cleverly used display lists or via vertex-shaders...
 		// For now we do it the stupid way:
 		for (i=0; i<nrpoints; i++) {
-			if (size[i] > pointsizerange[1] || size[i] < pointsizerange[0]) {
+            if ((sizef && (sizef[i] > pointsizerange[1] || sizef[i] < pointsizerange[0])) ||
+                (!sizef && (size[i] > pointsizerange[1] || size[i] < pointsizerange[0]))){
 				printf("PTB-ERROR: You requested a point size of %f units, which is not in the range (%f to %f) supported by your graphics hardware.\n",
-					   size[i], pointsizerange[0], pointsizerange[1]);
+					   (sizef) ? sizef[i] : size[i], pointsizerange[0], pointsizerange[1]);
 				PsychErrorExitMsg(PsychError_user, "Unsupported point size requested in Screen('DrawDots').");
 			}
 			
 			// Setup point size for this point:
-			glPointSize((float) size[i]);
+			glPointSize((sizef) ? sizef[i] : (float) size[i]);
 			
 			// Render point:
 			glDrawArrays(GL_POINTS, i, 1);
@@ -215,7 +209,7 @@ PsychError SCREENDrawDots(void)
 	
 	// Disable fast rendering of arrays:
 	glDisableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(2, GL_DOUBLE, 0, NULL);
+	glVertexPointer(2, PSYCHGLFLOAT, 0, NULL);
 	
 	if (usecolorvector) PsychSetupVertexColorArrays(windowRecord, FALSE, 0, NULL, NULL);
 	
