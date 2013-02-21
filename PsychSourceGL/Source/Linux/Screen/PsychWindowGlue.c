@@ -156,11 +156,6 @@ static int glx_error_base, glx_event_base;
 // Number of currently open onscreen windows:
 static int x11_windowcount = 0;
 
-// Typedef and fcn-pointer for optional Mesa get swap interval call:
-typedef int (*PFNGLXGETSWAPINTERVALMESAPROC)(void);
-PFNGLXGETSWAPINTERVALMESAPROC __glXGetSwapIntervalMESA = NULL;
-#define glXGetSwapIntervalMESA __glXGetSwapIntervalMESA
-
 #ifndef GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK
 #define GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK	0x04000000
 #endif

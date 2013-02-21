@@ -52,11 +52,6 @@ static psych_bool useGLX13 = FALSE;
 // Event base for GLX extension:
 static int glx_error_base, glx_event_base;
 
-// Typedef and fcn-pointer for optional Mesa get swap interval call:
-typedef int (*PFNGLXGETSWAPINTERVALMESAPROC)(void);
-PFNGLXGETSWAPINTERVALMESAPROC __glXGetSwapIntervalMESA = NULL;
-#define glXGetSwapIntervalMESA __glXGetSwapIntervalMESA
-
 // Number of currently open onscreen windows:
 static int open_windowcount = 0;
 
