@@ -125,6 +125,11 @@ void		PsychTestForGLErrorsC(int lineNum, const char *funcName, const char *fileN
 GLdouble	*PsychExtractQuadVertexFromRect(double *rect, int vertexNumber, GLdouble *vertex);
 void		PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos, int* coords_count, double** xy, int colors_pos, int* colors_count, int* colorcomponent_count, double** colors, unsigned char** bytecolors, int sizes_pos, int* sizes_count, double** size);
 void		PsychWaitPixelSyncToken(PsychWindowRecordType *windowRecord);
+psych_bool	PsychIsGLClassic(PsychWindowRecordType *windowRecord);
+GLenum		PsychGLFloatType(PsychWindowRecordType *windowRecord);
+#define PSYCHGLFLOAT PsychGLFloatType(windowRecord)
+psych_bool	PsychIsGLES(PsychWindowRecordType *windowRecord);
+#define PSYCHEXECNONGLES(x) if (!PsychIsGLES(windowRecord)) (x)
 
 // Helper routines for vertically compressed stereo displays: Defined in SCREENSelectStereoDrawBuffer.c
 int PsychSwitchCompressedStereoDrawBuffer(PsychWindowRecordType *windowRecord, int newbuffer);

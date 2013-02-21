@@ -5356,7 +5356,12 @@ void PsychSetupView(PsychWindowRecordType *windowRecord, psych_bool useRawFrameb
     // Setup projection matrix for a proper orthonormal projection for this framebuffer or window:
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluOrtho2D(rect[kPsychLeft], rect[kPsychRight], rect[kPsychBottom], rect[kPsychTop]);
+    if (!PsychIsGLES(windowRecord)) {
+        gluOrtho2D(rect[kPsychLeft], rect[kPsychRight], rect[kPsychBottom], rect[kPsychTop]);
+    }
+    else {
+        glOrthofOES((float) rect[kPsychLeft], (float) rect[kPsychRight], (float) rect[kPsychBottom], (float) rect[kPsychTop], (float) -1, (float) 1);
+    }
 
     // Switch back to modelview matrix, but leave it unaltered:
     glMatrixMode(GL_MODELVIEW);

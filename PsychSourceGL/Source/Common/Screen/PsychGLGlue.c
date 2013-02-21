@@ -85,7 +85,14 @@ void PsychSetGLColor(PsychColorType *color, PsychWindowRecordType *windowRecord)
 	}
 	else {
 		// Fixed function pipe:
-		glColor4dv(windowRecord->currentColor);
+        if (PsychIsGLClassic(windowRecord)) {
+            // OpenGL-1/2:
+            glColor4dv(windowRecord->currentColor);
+        }
+        else {
+            // OpenGL-ES 1.x: glColor4f() is only available function.
+            glColor4f((float) windowRecord->currentColor[0], (float) windowRecord->currentColor[1], (float) windowRecord->currentColor[2], (float) windowRecord->currentColor[3]);
+        }
 	}
 }
 
@@ -99,21 +106,21 @@ void PsychSetupVertexColorArrays(PsychWindowRecordType *windowRecord, psych_bool
 		// Enable and setup whatever's used:
 		if (windowRecord->defaultDrawShader) {
 			// Shader based unclamped path:
-			if (colors)     glTexCoordPointer(mc, GL_DOUBLE, 0, colors);
+			if (colors) glTexCoordPointer(mc, PSYCHGLFLOAT, 0, colors);
 
 			// Can't support uint8 datatype for this vertex attribute :-(
 			if (bytecolors) PsychErrorExitMsg(PsychError_user, "Sorry, this function can't accept matrices of uint8 type for colors\nif color clamping is disabled or high precision mode active.\n Use the double() operator to convert to double matrix.");
 
 			glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-			glColorPointer(4, GL_DOUBLE, 0, NULL);
+			glColorPointer(4, PSYCHGLFLOAT, 0, NULL);
 		}
 		else {
 			// Standard path:
-			if (colors)     glColorPointer(mc, GL_DOUBLE, 0, colors);
+			if (colors)     glColorPointer(mc, PSYCHGLFLOAT, 0, colors);
 			if (bytecolors) glColorPointer(mc, GL_UNSIGNED_BYTE, 0, bytecolors);
 
 			glEnableClientState(GL_COLOR_ARRAY);
-			glTexCoordPointer(4, GL_DOUBLE, 0, NULL);
+			glTexCoordPointer(4, PSYCHGLFLOAT, 0, NULL);
 		}
 	}
 	else {
@@ -127,8 +134,8 @@ void PsychSetupVertexColorArrays(PsychWindowRecordType *windowRecord, psych_bool
 			glDisableClientState(GL_COLOR_ARRAY);
 		}
 		
-		glColorPointer(4, GL_DOUBLE, 0, NULL);
-		glTexCoordPointer(4, GL_DOUBLE, 0, NULL);
+		glColorPointer(4, PSYCHGLFLOAT, 0, NULL);
+		glTexCoordPointer(4, PSYCHGLFLOAT, 0, NULL);
 	}
 }
 
@@ -391,15 +398,22 @@ void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos
 	PsychColorType							color;
 	int                                     m,n,p,mc,nc,pc;
 	int                                     i, nrpoints, nrsize;
-	psych_bool                              isArgThere, isdoublecolors, isuint8colors, usecolorvector, needxy;
+	psych_bool                              isArgThere, isdoublecolors, isuint8colors, usecolorvector, needxy, usefloat;
 	double									*tmpcolors, *pcolors, *tcolors;
 	double									convfactor, whiteValue;
+	float									*pcolorsf, *tcolorsf;
+    float                                   convfactorf;
+    unsigned char                           *pcolorsb, *tcolorsb;
 
 	needxy = (coords_pos > 0) ? TRUE: FALSE;
 	coords_pos = abs(coords_pos);
 	colors_pos = abs(colors_pos);
 	sizes_pos = abs(sizes_pos);
-	
+
+    // On OpenGL-ES we only have GL_FLOAT data type, not GL_DOUBLE, so we need
+    // to convert all double input data into float data for the calling routine:
+    usefloat = PsychIsGLES(windowRecord);
+
 	// Get mandatory or optional xy coordinates argument
 	isArgThere = PsychIsArgPresent(PsychArgIn, coords_pos);
 	if(!isArgThere && needxy) {
@@ -407,7 +421,13 @@ void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos
 	}
 	
 	if (isArgThere) {
-		PsychAllocInDoubleMatArg(coords_pos, TRUE, &m, &n, &p, xy);
+		if (usefloat) {
+            PsychAllocInFloatMatArg(coords_pos, TRUE, &m, &n, &p, (float**) xy);
+        }
+        else {
+            PsychAllocInDoubleMatArg(coords_pos, TRUE, &m, &n, &p, xy);
+        }
+
 		if(p!=1 || (m!=*coords_count && (m*n)!=*coords_count)) {
 			printf("PTB-ERROR: Coordinates must be a %i tuple or a %i rows vector.\n", *coords_count, *coords_count);
 			PsychErrorExitMsg(PsychError_user, "Invalid format for coordinate specification.");
@@ -437,7 +457,12 @@ void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos
 			*size[0] = 1;
 			nrsize=1;
 		} else {
-			PsychAllocInDoubleMatArg(sizes_pos, TRUE, &m, &n, &p, size);
+            if (usefloat) {
+                PsychAllocInFloatMatArg(sizes_pos, TRUE, &m, &n, &p, (float**) size);
+            }
+            else {
+                PsychAllocInDoubleMatArg(sizes_pos, TRUE, &m, &n, &p, size);
+            }
 			if(p!=1) PsychErrorExitMsg(PsychError_user, "Size must be a scalar or a vector with one column or row");
 			nrsize=m*n;
 			if (nrsize!=nrpoints && nrsize!=1 && *sizes_count!=1) PsychErrorExitMsg(PsychError_user, "Size vector must contain one size value per item.");
@@ -447,7 +472,7 @@ void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos
 	}	
 
 	// Check if color argument is provided:
-	isArgThere = PsychIsArgPresent(PsychArgIn, colors_pos);        
+	isArgThere = PsychIsArgPresent(PsychArgIn, colors_pos);
 	if(!isArgThere) {
 		// No color argument provided - Use defaults:
 		whiteValue=PsychGetWhiteValueFromWindow(windowRecord);
@@ -456,7 +481,13 @@ void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos
 	}
 	else {
 		// Some color argument provided. Check first, if it's a valid color vector:
-		isdoublecolors = PsychAllocInDoubleMatArg(colors_pos, kPsychArgAnything, &mc, &nc, &pc, colors);
+        if (usefloat) {
+            isdoublecolors = PsychAllocInFloatMatArg(colors_pos, kPsychArgAnything, &mc, &nc, &pc, (float**) colors);
+        }
+        else {
+            isdoublecolors = PsychAllocInDoubleMatArg(colors_pos, kPsychArgAnything, &mc, &nc, &pc, colors);
+        }
+
 		isuint8colors  = PsychAllocInUnsignedByteMatArg(colors_pos, kPsychArgAnything, &mc, &nc, &pc, bytecolors);
 		
 		// Do we have a color vector, aka one element per vertex?
@@ -473,24 +504,83 @@ void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos
 					// a color vector is passed in Double- or Float format.
 					// This is inefficient, as it burns some cpu-cycles, but necessary to keep color
 					// specifications consistent in the PTB - API.
-					convfactor = 1.0 / fabs(windowRecord->colorRange);
-					tmpcolors=PsychMallocTemp(sizeof(double) * nc * mc);
-					pcolors = *colors;
-					tcolors = tmpcolors;
-					for (i=0; i<(nc*mc); i++) {
-						*(tcolors++)=(*pcolors++) * convfactor;
-					}
+                    if (usefloat) {
+                        // OpenGL-ES 1 code path: Color arrays must have 4 component RGBA spec in
+                        // single precision float format. Make it so:
+                        convfactorf = (float) (1.0 / fabs(windowRecord->colorRange));
+                        tmpcolors = PsychMallocTemp(sizeof(float) * nc * 4);
+                        pcolorsf = (float*) *colors;
+                        tcolorsf = (float*) tmpcolors;
+                        if (mc == 4) {
+                            // 4 channel RGBA input: Normalize.
+                            for (i=0; i<(nc*mc); i++) {
+                                *(tcolorsf++) = *(pcolorsf++) * convfactorf;
+                            }
+                        }
+                        else {
+                            // 3 channel RGB input: Normalize RGB, add a 1.0 alpha channel:
+                            for (i=0; i < nc; i++) {
+                                *(tcolorsf++) = *(pcolorsf++) * convfactorf;
+                                *(tcolorsf++) = *(pcolorsf++) * convfactorf;
+                                *(tcolorsf++) = *(pcolorsf++) * convfactorf;
+                                *(tcolorsf++) = 1.0;
+                            }
+                        }
+                    }
+                    else {
+                        // Desktop OpenGL:
+                        convfactor = 1.0 / fabs(windowRecord->colorRange);
+                        tmpcolors=PsychMallocTemp(sizeof(double) * nc * mc);
+                        pcolors = *colors;
+                        tcolors = tmpcolors;
+                        for (i=0; i<(nc*mc); i++) {
+                            *(tcolors++)=(*pcolors++) * convfactor;
+                        }
+                    }
 				}
 				else {
-					// colorRange is == 1 --> No remapping needed as colors are already in proper range!
-					// Just setup pointer to our unaltered input color vector:
-					tmpcolors=*colors;
+					// colorRange is == 1 --> No remapping needed as colors are already in proper range.
+                    if (usefloat && (mc == 3)) {
+                        // OpenGL-ES 1 and only 3 channel RGB input: Extend to RGBA:
+                        tmpcolors = PsychMallocTemp(sizeof(float) * nc * 4);
+                        pcolorsf = (float*) *colors;
+                        tcolorsf = (float*) tmpcolors;
+
+                        // 3 channel RGB input: Add a 1.0 alpha channel:
+                        for (i = 0; i < nc; i++) {
+                            *(tcolorsf++) = *(pcolorsf++);
+                            *(tcolorsf++) = *(pcolorsf++);
+                            *(tcolorsf++) = *(pcolorsf++);
+                            *(tcolorsf++) = 1.0;
+                        }
+                    }
+                    else {
+                        // Desktop OpenGL: Just setup pointer to our unaltered input color vector:
+                        tmpcolors=*colors;
+                    }
 				}
 				
 				*colors = tmpcolors;
 			}
 			else {
-				// Color vector in uint8 format. Nothing to do.
+				// Color vector in uint8 format. Nothing to do, unless this is OpenGL-ES 1 and
+                // input is only RGB instead of required RGBA:
+                if (usefloat && (mc == 3)) {
+                    // OpenGL-ES 1 and only 3 channel RGB input: Extend to RGBA:
+                    tmpcolors = PsychMallocTemp(nc * 4);
+                    pcolorsb = *bytecolors;
+                    tcolorsb = (unsigned char*) tmpcolors;
+
+                    // 3 channel RGB input: Add a 1.0 aka 255 alpha channel:
+                    for (i = 0; i < nc; i++) {
+                        *(tcolorsb++) = *(pcolorsb++);
+                        *(tcolorsb++) = *(pcolorsb++);
+                        *(tcolorsb++) = *(pcolorsb++);
+                        *(tcolorsb++) = 255;
+                    }
+
+                    *bytecolors = (unsigned char*) tmpcolors;
+                }
 			}
 		}
 		else {
@@ -499,6 +589,9 @@ void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos
 			isArgThere=PsychCopyInColorArg(colors_pos, TRUE, &color);                
 		}
 	}
+
+    // OpenGL-ES 1 always has 4 component RGBA color vectors:
+    if (usefloat) mc = 4;
 	
 	// Enable this windowRecords framebuffer as current drawingtarget:
 	PsychSetDrawingTarget(windowRecord);
@@ -532,7 +625,7 @@ void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos
 void PsychWaitPixelSyncToken(PsychWindowRecordType *windowRecord)
 {
     // Classic desktop OpenGL in use?
-    if (windowRecord->glApiType == 0) {
+    if (PsychIsGLClassic(windowRecord)) {
         // Yes. Use our classic fixed-function immediate mode method:
         glBegin(GL_POINTS);
         glColor4f(0, 0, 0, 0);
@@ -549,4 +642,21 @@ void PsychWaitPixelSyncToken(PsychWindowRecordType *windowRecord)
         glDisableClientState(GL_VERTEX_ARRAY);
         glFinish();
     }
+}
+
+GLenum PsychGLFloatType(PsychWindowRecordType *windowRecord)
+{
+    // On OpenGL-ES we only have GL_FLOAT data type, not GL_DOUBLE, so we need
+    // to convert all double input data into float data for the calling routine:
+    return((PsychIsGLES(windowRecord)) ? GL_FLOAT : GL_DOUBLE);
+}
+
+psych_bool PsychIsGLES(PsychWindowRecordType *windowRecord)
+{
+    return((windowRecord->glApiType > 0) ? TRUE : FALSE);
+}
+
+psych_bool PsychIsGLClassic(PsychWindowRecordType *windowRecord)
+{
+    return((windowRecord->glApiType == 0) ? TRUE : FALSE);
 }
