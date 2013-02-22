@@ -349,6 +349,12 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
 	// At this point, the new onscreen windows master OpenGL context is active and bound...
 
+    // Do a dummy query for type of OpenGL api that is in use. This will initialize the
+    // cached global copy of OpenGL api type to the setting of this windowRecord. The cached
+    // copy is used whenever code can't access the per windowRecord copy, e.g., because it
+    // does not have access to a windowRecord:
+    PsychIsGLClassic(*windowRecord);
+
 	// Check for properly working glGetString() -- Some drivers (Some NVidia GF8/9 drivers on WinXP)
 	// have a bug in conjunction with context ressource sharing here. Non-working glGetString is
 	// a showstopper bug, but we should tell the user about the problem and stop safely instead

@@ -103,7 +103,7 @@ PsychError SCREENDrawDots(void)
 	colors = NULL;
 	bytecolors = NULL;
 
-	PsychPrepareRenderBatch(windowRecord, 2, &nrpoints, &xy, 4, &nc, &mc, &colors, &bytecolors, 3, &nrsize, &size);
+	PsychPrepareRenderBatch(windowRecord, 2, &nrpoints, &xy, 4, &nc, &mc, &colors, &bytecolors, 3, &nrsize, &size, (GL_FLOAT == PsychGLFloatType(windowRecord)));
 	isdoublecolors = (colors) ? TRUE:FALSE;
 	isuint8colors  = (bytecolors) ? TRUE:FALSE;
 	usecolorvector = (nc>1) ? TRUE:FALSE;

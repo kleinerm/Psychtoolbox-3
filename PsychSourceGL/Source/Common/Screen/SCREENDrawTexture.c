@@ -283,7 +283,7 @@ PsychError SCREENDrawTextures(void)
 	
 	// The negative position -4 means: dstRects coords are expected at position 4, but they are optional.
 	// NULL means - don't want a size's vector.
-	PsychPrepareRenderBatch(target, -4, &numdstRects, &dstRects, 8, &nc, &mc, &colors, &bytecolors, 5, &nrsize, &penSizes);
+	PsychPrepareRenderBatch(target, -4, &numdstRects, &dstRects, 8, &nc, &mc, &colors, &bytecolors, 5, &nrsize, &penSizes, FALSE);
 
 	// At this point, target is set up as target window, i.e. its GL-Context is active, it is set as drawing target,
 	// alpha blending is set up according to Screen('BlendFunction'), and the drawing color is set if it is a singular one.

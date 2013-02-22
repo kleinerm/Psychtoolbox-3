@@ -3,7 +3,8 @@
 
 	AUTHORS:
 
-	Allen.Ingling@nyu.edu		awi 
+	Allen.Ingling@nyu.edu           awi
+    mario.kleiner@tuebingen.mpg.de  mk
 
 	PLATFORMS:	
 
@@ -19,7 +20,6 @@
 	TO DO:
 
 */
-
 
 #include "Screen.h"
 
@@ -88,14 +88,14 @@ PsychError SCREENDrawLine(void)
 		PsychErrorExitMsg(PsychError_user, "Unsupported line width requested.");
 	}
 
-	glLineWidth((GLfloat)penSize);
+	glLineWidth((GLfloat) penSize);
 
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 	PsychSetGLColor(&color, windowRecord);
-	glBegin(GL_LINES);
-		glVertex2d((GLdouble)sX, (GLdouble)sY);
-		glVertex2d((GLdouble)dX, (GLdouble)dY);
-	glEnd();
+	GLBEGIN(GL_LINES);
+		GLVERTEX2f((GLfloat)sX, (GLfloat)sY);
+		GLVERTEX2f((GLfloat)dX, (GLfloat)dY);
+	GLEND();
 	
 	glLineWidth((GLfloat) 1);
 
