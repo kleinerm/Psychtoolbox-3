@@ -51,7 +51,9 @@
 %   PhotonAbsorptionRate - Compute photon absoroption rate.
 %   PowerToTrolands     - Convert monochromatic power to photopic trolands.
 %   PupilDiameterFromLum - Estimate pupil diameter from luminance.
+%   PsychAnsiZ136MPE     - Ansi 136.1-2007 standard for maximum permissible light exposure.
 %   PsychMunsell        - Munsell renotation to xyY conversion.
+%   PsychRadiometric    - Radiometric calculations and conversions.
 %   QuantaToEnergy      - Convert monochromatic quanta to energy.
 %   QuantaToTrolands    - Convert monochromatic quanta to photopic trolands.
 %   RadianceToRetIrradiance - Convert spectral radiance to spectral retinal irradiance (power units).
@@ -93,8 +95,6 @@
 %   XYZTouvY            - Convert between XYZ and u'v'Y.
 %   XYZToxyY            - Convert between XYZ and xyY.
   
-%       
-%
-% Copyright (c) 1996-2008 by Denis Pelli & David Brainard
+% Copyright (c) 1996-2013 by David Brainard, Denis Pelli, & Mario Kleiner
 
 

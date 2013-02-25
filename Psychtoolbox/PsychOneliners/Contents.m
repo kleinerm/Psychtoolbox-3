@@ -19,6 +19,7 @@
 %   CreateUniformDotsIn3DFrustum - Sample dots in 3D frustum uniformly.
 %   CropBlackEdges          - Detects if there are any black edges around an image and returns indices that can be used to cut away these edges.
 %   DeEmptify               - Deletes empty cells or rows from cellarray.
+%   DegToMrad               - Convert angle in degrees to milliradians (mrad).
 %   DescribeComputer        - Print a description of the environment.
 %   DotOffset               - Calculate offsets for a 3D movement. Various per-dot options.
 %   Ellipse                 - Returns a boolean mask in the shape of a (super-) Ellipse.
@@ -64,6 +65,7 @@
 %   MakeSineImage           - Make a sinusoidal image.
 %   MapIndexColorThroughClut - Convert an index color image and clut to a true color image.
 %   MergeCell               - Concatenates contents of input cells element-wise.
+%   MradToDeg               - Convert angle in milliradians (mrad) to degrees.
 %   NameBytes               - Nicely format memory size for human readers.
 %   NameFrequency           - Nicely format clock rate for human readers.
 %   NearestResolution       - Find a screen resolution that most closely matches a requested resolution.
