@@ -4344,7 +4344,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     glColorMask(TRUE, TRUE, TRUE, TRUE);
 
     // Query number of available AUX-buffers:
-    if (PsychPrefStateGet_ConserveVRAM() & kPsychDisableAUXBuffers) {
+    if ((PsychPrefStateGet_ConserveVRAM() & kPsychDisableAUXBuffers) || !PsychIsGLClassic(windowRecord)) {
         auxbuffers = 0;
     }
     else glGetIntegerv(GL_AUX_BUFFERS, &auxbuffers);
@@ -4808,7 +4808,7 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 				}
 				else {
 					// At least one AUX buffer supported?
-                    if (PsychPrefStateGet_ConserveVRAM() & kPsychDisableAUXBuffers) {
+                    if ((PsychPrefStateGet_ConserveVRAM() & kPsychDisableAUXBuffers) || !PsychIsGLClassic(windowRecord)) {
                         auxbuffers = 0;
                     }
                     else {
