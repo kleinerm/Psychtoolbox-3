@@ -5429,7 +5429,12 @@ void PsychBackupFramebufferToBackingTexture(PsychWindowRecordType *backupRendert
                 theight = (int) PsychGetHeightFromRect(backupRendertarget->rect);
             }
             
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, twidth, theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
+            if (PsychIsGLES(backupRendertarget)) {
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, twidth, theight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+            }
+            else {
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, twidth, theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
+            }
 			glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(backupRendertarget->rect), (int) PsychGetHeightFromRect(backupRendertarget->rect));
 		}
 		else {
@@ -5453,7 +5458,13 @@ void PsychBackupFramebufferToBackingTexture(PsychWindowRecordType *backupRendert
                     twidth=1; while(twidth < (int) PsychGetWidthFromRect(backupRendertarget->rect)) { twidth = twidth * 2; };
                     theight=1; while(theight < (int) PsychGetHeightFromRect(backupRendertarget->rect)) { theight = theight * 2; };
                 }
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, twidth, theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
+
+                if (PsychIsGLES(backupRendertarget)) {
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, twidth, theight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+                }
+                else {
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, twidth, theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
+                }
 				
 				// Reassign real size:
 				twidth  = (int) PsychGetWidthFromRect(backupRendertarget->rect);
@@ -5656,9 +5667,9 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		if (verbose) printf("GPU supports UYVY - YCrCb texture formats for optimized handling of video content.\n");
 	}
 
-    if (glewIsSupported("GL_ARB_texture_non_power_of_two")) {
+    if (glewIsSupported("GL_ARB_texture_non_power_of_two") || strstr(glGetString(GL_EXTENSIONS), "GL_OES_texture_npot")) {
         windowRecord->gfxcaps |= kPsychGfxCapNPOTTex;
-		if (verbose) printf("GPU supports non-power-of-two textures.\n");        
+		if (verbose) printf("GPU supports non-power-of-two textures.\n");
     }
     
 	// Is this a GPU with known broken drivers that yield miserable texture creation performance

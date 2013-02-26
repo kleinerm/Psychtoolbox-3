@@ -784,10 +784,10 @@ void PsychGLVertex4f(PsychWindowRecordType *windowRecord, float x, float y, floa
 void PsychGLColor4f(PsychWindowRecordType *windowRecord, float r, float g, float b, float a)
 {
     double colors[4];
-    colors[0] = (float) r;
-    colors[1] = (float) g;
-    colors[2] = (float) b;
-    colors[3] = (float) a;
+    colors[0] = r;
+    colors[1] = g;
+    colors[2] = b;
+    colors[3] = a;
     PsychSetArrayColor(windowRecord, 0, 4, colors, NULL);
 }
 

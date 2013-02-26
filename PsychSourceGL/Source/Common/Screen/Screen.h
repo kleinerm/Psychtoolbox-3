@@ -144,7 +144,7 @@ void PsychDrawDisc(PsychWindowRecordType *windowRecord, float xc, float yc, floa
 #define GLVERTEX2f(x,y) PsychGLVertex4f(windowRecord, (x), (y), 0.0, 1.0)
 #define GLVERTEX2d(x,y) PsychGLVertex4f(windowRecord, (float) (x), (float) (y), (float) 0.0, (float) 1.0)
 #define GLRECTd(x1, y1, x2, y2) PsychGLRectd(windowRecord, (x1), (y1), (x2), (y2))
-
+#define GLTEXCOORD2f(s,t) PsychGLTexCoord4f(windowRecord, (s), (t), 0.0, 1.0)
 
 // Helper routines for vertically compressed stereo displays: Defined in SCREENSelectStereoDrawBuffer.c
 int PsychSwitchCompressedStereoDrawBuffer(PsychWindowRecordType *windowRecord, int newbuffer);
