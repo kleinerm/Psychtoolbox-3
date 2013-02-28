@@ -70,6 +70,7 @@
 % PsychOptics            - Optics calculations, mostly for human optics.
 % PsychPriority          - Priority and Rush.  (formerly within PsychBasic)
 % PsychProbability       - Probability and statistics.
+% PsychRadiometric       - Radiometric/photometric calculations and conversions.
 % PsychRects             - Manipulate rectangles for drawing.
 % PsychSignal            - Signal processing and math routines.
 % PsychTests             - Evaluate performance of software and hardware.

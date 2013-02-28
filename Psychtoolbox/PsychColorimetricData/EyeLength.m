@@ -11,8 +11,9 @@ function eyeLengthMM = EyeLength(species,source)
 %		Human (Default), Rhesus, Dog
 %
 % Supported sources:
-%   LeGrand (Human, Default)
-%   Rodieck (Human)
+%   LeGrand (Human, 16.6832 mm, Default)
+%   Rodieck (Human, 16.1 mm)
+%   17 (Human, 17 mm)
 %   PerryCowey (Rhesus)
 %   Packer (Rhesus)
 %   PennDog (Dog)
@@ -27,7 +28,7 @@ function eyeLengthMM = EyeLength(species,source)
 % the answer.
 %
 % 7/15/03  dhb  Wrote it.
-% 
+% 2/27/13  dhb  Added 17 mm option
 
 % Fill in defaults
 if (nargin < 1 || isempty(species))
@@ -68,7 +69,16 @@ switch (source)
 				eyeLengthMM = 16.1;
 			otherwise,
 				error(sprintf('%s estimates not available for species %s',source,species));
-			end
+        end
+    
+    % I think some people use 17 mm
+    case {'17'}
+        switch (species)
+			case {'Human'}
+				eyeLengthMM = 17;
+			otherwise,
+				error(sprintf('%s estimates not available for species %s',source,species));
+        end
 
 	% Orin Packer provided me with this information:
     % Monkey eye size varies a lot, so any particular number
