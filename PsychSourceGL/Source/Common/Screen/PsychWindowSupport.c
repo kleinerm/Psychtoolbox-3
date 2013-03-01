@@ -846,7 +846,6 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     // the currently set glScissor() rectangle (which is identical to the glViewport).
     if (stereomode == 4 || stereomode == 5) glEnable(GL_SCISSOR_TEST);
 
-
     if (numBuffers<2) {
 		if(PsychPrefStateGet_Verbosity()>1){
 			// Setup for single-buffer mode is finished!
@@ -897,38 +896,99 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
       glClearColor(0,0,0,1);
     }
 
-    glPixelZoom(1, -1);
-    glDrawBuffer(GL_BACK_LEFT);
+    if (PsychIsGLClassic(*windowRecord)) {
+        // Classic OpenGL-1/2 splash image drawing code:
+        glPixelZoom(1, -1);
+        glDrawBuffer(GL_BACK_LEFT);
 
-    // Draw and swapbuffers the startup screen 3 times, so everything works with single-/double-/triple-buffered framebuffer setups:
-    glClear(GL_COLOR_BUFFER_BIT);
-    if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
-    PsychOSFlipWindowBuffers(*windowRecord);
-
-    glClear(GL_COLOR_BUFFER_BIT);
-    if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
-    PsychOSFlipWindowBuffers(*windowRecord);
-
-    glClear(GL_COLOR_BUFFER_BIT);
-    if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
-    PsychOSFlipWindowBuffers(*windowRecord);
-
-    // We do it again for right backbuffer to clear possible stereo-contexts as well...
-    if ((*windowRecord)->stereomode==kPsychOpenGLStereo) {
-        glDrawBuffer(GL_BACK_RIGHT);
+        // Draw and swapbuffers the startup screen 3 times, so everything works with single-/double-/triple-buffered framebuffer setups:
         glClear(GL_COLOR_BUFFER_BIT);
         if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
         PsychOSFlipWindowBuffers(*windowRecord);
-        glClear(GL_COLOR_BUFFER_BIT);
-        if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
-        PsychOSFlipWindowBuffers(*windowRecord);
-        glClear(GL_COLOR_BUFFER_BIT);
-        if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
-        PsychOSFlipWindowBuffers(*windowRecord);
-    }    
 
-    glPixelZoom(1, 1);
-    glDrawBuffer(GL_BACK);
+        glClear(GL_COLOR_BUFFER_BIT);
+        if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
+        PsychOSFlipWindowBuffers(*windowRecord);
+
+        glClear(GL_COLOR_BUFFER_BIT);
+        if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
+        PsychOSFlipWindowBuffers(*windowRecord);
+
+        // We do it again for right backbuffer to clear possible stereo-contexts as well...
+        if ((*windowRecord)->stereomode==kPsychOpenGLStereo) {
+            glDrawBuffer(GL_BACK_RIGHT);
+            glClear(GL_COLOR_BUFFER_BIT);
+            if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
+            PsychOSFlipWindowBuffers(*windowRecord);
+            glClear(GL_COLOR_BUFFER_BIT);
+            if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
+            PsychOSFlipWindowBuffers(*windowRecord);
+            glClear(GL_COLOR_BUFFER_BIT);
+            if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]); }
+            PsychOSFlipWindowBuffers(*windowRecord);
+        }    
+
+        glPixelZoom(1, 1);
+        glDrawBuffer(GL_BACK);
+    }
+    else {
+        // Non-classic (OpenGL-3/4 and OpenGL-ES) splash screen display code:
+        PsychWindowRecordType *textureRecord;
+        PsychCreateWindowRecord(&textureRecord);
+        textureRecord->windowType = kPsychTexture;
+        textureRecord->screenNumber = (*windowRecord)->screenNumber;
+
+        // Assign parent window and copy its inheritable properties:
+        PsychAssignParentWindow(textureRecord, *windowRecord);
+
+        // Mark it valid and return handle to userspace:
+        PsychSetWindowRecordValid(textureRecord);
+
+        // Ok, setup texture record for RGB8 texture:
+        textureRecord->depth = 3 * 8;
+        textureRecord->nrchannels = 3;
+        PsychMakeRect(textureRecord->rect, 0, 0, splash_image.width, splash_image.height);
+
+        // Orientation is 3 - like an upside down Offscreen window texture.
+        textureRecord->textureOrientation = 3;
+
+        // Setting memsize to zero prevents unwanted free() operation in PsychDeleteTexture...
+        textureRecord->textureMemorySizeBytes = 0;
+
+        // Assign pointer to pixeldata:
+        textureRecord->textureMemory = (GLuint*) &splash_image.pixel_data[0];
+
+        // Let PsychCreateTexture() do the rest of the job of creating, setting up and
+        // filling an OpenGL texture with memory buffers image content:
+        PsychCreateTexture(textureRecord);
+
+        // Client rect of a texture is always == rect of it, but here we abuse it as
+        // target rect:
+        PsychCopyRect(textureRecord->clientrect, textureRecord->rect);
+        textureRecord->clientrect[kPsychLeft]   += logo_x;
+        textureRecord->clientrect[kPsychRight]  += logo_x;
+        textureRecord->clientrect[kPsychTop]    += logo_y;
+        textureRecord->clientrect[kPsychBottom] += logo_y;
+
+        // Clear framebuffer and (optionally, usually) blit texture with splash-image three times with
+        // intermediate bufferswap, to make sure we get a well defined image even on a triple-buffered
+        // setup:
+        glClear(GL_COLOR_BUFFER_BIT);
+        if (visual_debuglevel >= 4) PsychBlitTextureToDisplay(textureRecord, *windowRecord, textureRecord->rect, textureRecord->clientrect, 0, 1, 1);
+        PsychOSFlipWindowBuffers(*windowRecord);
+
+        glClear(GL_COLOR_BUFFER_BIT);
+        if (visual_debuglevel >= 4) PsychBlitTextureToDisplay(textureRecord, *windowRecord, textureRecord->rect, textureRecord->clientrect, 0, 1, 1);
+        PsychOSFlipWindowBuffers(*windowRecord);
+
+        glClear(GL_COLOR_BUFFER_BIT);
+        if (visual_debuglevel >= 4) PsychBlitTextureToDisplay(textureRecord, *windowRecord, textureRecord->rect, textureRecord->clientrect, 0, 1, 1);
+        PsychOSFlipWindowBuffers(*windowRecord);
+
+        // Done. Delete splash-image texture:
+        PsychFreeTextureForWindowRecord(textureRecord);
+        textureRecord = NULL;
+    }
 
 	// Release dynamically allocated splash image buffer:
 	if (splash_image.bytes_per_pixel == GL_RGB) {
