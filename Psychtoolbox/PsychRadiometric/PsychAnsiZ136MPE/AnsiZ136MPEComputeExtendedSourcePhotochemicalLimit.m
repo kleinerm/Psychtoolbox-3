@@ -2,17 +2,32 @@ function [MPEPhotochemicalIntegratedRadiance_JoulesPerCm2Sr, ...
           MPEPhotochemicalRadiance_WattsPerCm2Sr, ...
           MPEPhotochemicalCornealIrradiance_WattsPerCm2, ...
           MPEPhotochemicalCornealRadiantExposure_JoulesPerCm2] = ...
-          AnsiZ136MPEComputeExtendedSourcePhotochemicalLimit(stimulusDurationSec,stimulusSizeDeg,stimulusWavelengthNm)
+          AnsiZ136MPEComputeExtendedSourcePhotochemicalLimit(stimulusDurationSec,stimulusSizeDeg,stimulusWavelengthNm,CONELIMITFLAG)
 % [MPEPhotochemicalIntegratedRadiance_JoulesPerCm2Sr, ...
 %  MPEPhotochemicalRadiance_WattsPerCm2S, ...
 %  MPEPhotochemicalCornealIrradiance_WattsPerCm2, ...
 %  MPEPhotochemicalCornealRadiantExposure_JoulesPerCm2] = ...
-%  AnsiZ136MPEComputeExtendedSourcePhotochemicalLimit(stimulusDurationSec,stimulusSizeDeg,stimulusWavelengthNm)
+%  AnsiZ136MPEComputeExtendedSourcePhotochemicalLimit(stimulusDurationSec,stimulusSizeDeg,stimulusWavelengthNm,[CONELIMITFLAG])
+%
+% ****************************************************************************
+% IMPORTANT: Before using the AnsiZ136 routines, please see the notes on usage
+% and responsibility in PsychAnsiZ136MPE/Contents.m (type "help PsychAnsiZ136MPE"
+% at the Matlab prompt.
+% ****************************************************************************
 %
 % Compute time photochemical MPE for an extended source
-% ANSI Z136.1-2007, Table 5b, p. 75
+% ANSI Z136.1-2007, Table 5b, p. 75.
+%
+% Set CONELIMITFLAG to false (default true) to skip the asterisked 
+% alternative computation desribed in Table 5 (see comments in code).
 %
 % 2/20/13  dhb  Wrote it.
+% 3/2/13   dhb  Make limiting cone angle computation controllable.
+
+%% Default arg 
+if (nargin < 4 || isempty(CONELIMITFLAG))
+    CONELIMITFLAG = true;
+end
 
 %% Check that we are in wavelength range
 % Compute CB if so
@@ -72,7 +87,7 @@ if (stimulusSizeMrad > 11)
         % variants of the same general idea, or omitting this part of the calculation,
         % cause a mismatch between what we compute for the cases of 10d and 10e and the
         % figures in the standard.  See AnsiZ136MPETest.
-        if (limitingConeAngleMrad < stimulusSizeMrad)
+        if (limitingConeAngleMrad < stimulusSizeMrad || ~CONELIMITFLAG)
             MPEPhotochemicalIntegratedRadiance_JoulesPerCm2Sr = 100*Cb;
         else
             MPEPhotochemicalIntegratedRadiance_JoulesPerCm2Sr = 100*Cb*((limitingConeAngleMrad/stimulusSizeMrad)^2);
@@ -83,7 +98,7 @@ if (stimulusSizeMrad > 11)
         MPEPhotochemicalCornealRadiantExposure_JoulesPerCm2 = MPEPhotochemicalCornealIrradiance_WattsPerCm2*stimulusDurationSec;
     elseif (stimulusDurationSec >= 1e4 & stimulusDurationSec < 3e4)
         limitingConeAngleMrad = AnsiZ136MPEComputeLimitingConeAngle(stimulusDurationSec);
-        if (limitingConeAngleMrad < stimulusSizeMrad)
+        if (limitingConeAngleMrad < stimulusSizeMrad || ~CONELIMITFLAG)
             MPEPhotochemicalRadiance_WattsPerCm2Sr = Cb*(1e-2);
         else
             MPEPhotochemicalRadiance_WattsPerCm2Sr = Cb*(1e-2)*((limitingConeAngleMrad/stimulusSizeMrad)^2);

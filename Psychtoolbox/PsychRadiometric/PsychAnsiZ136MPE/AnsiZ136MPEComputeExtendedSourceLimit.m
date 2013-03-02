@@ -2,18 +2,32 @@ function [MPELimitIntegratedRadiance_JoulesPerCm2Sr, ...
     MPELimitRadiance_WattsPerCm2Sr, ...
     MPELimitCornealIrradiance_WattsPerCm2, ...
     MPELimitCornealRadiantExposure_JoulesPerCm2] = ...
-    AnsiZ136MPEComputeExtendedSourceLimit(stimulusDurationSec,stimulusSizeDeg,stimulusWavelengthNm)
+    AnsiZ136MPEComputeExtendedSourceLimit(stimulusDurationSec,stimulusSizeDeg,stimulusWavelengthNm,CONELIMITFLAG)
 % [MPELimitIntegratedRadiance_JoulesPerCm2Sr, ...
 %  MPELimitRadiance_WattsPerCm2S, ...
 %  MPELimitCornealIrradiance_WattsPerCm2, ...
 %  MPELimitCornealRadiantExposure_JoulesPerCm2] = ...
-%  AnsiZ136MPEComputeExtendedSourceLimit(stimulusDurationSec,stimulusSizeDeg,stimulusWavelengthNm)
+%  AnsiZ136MPEComputeExtendedSourceLimit(stimulusDurationSec,stimulusSizeDeg,stimulusWavelengthNm,[CONELIMITFLAG])
 %
-% Compute thermal MPE for an extended source
-% ANSI Z136.1-2007, Table 5b, p. 75
+% ****************************************************************************
+% IMPORTANT: Before using the AnsiZ136 routines, please see the notes on usage
+% and responsibility in PsychAnsiZ136MPE/Contents.m (type "help PsychAnsiZ136MPE"
+% at the Matlab prompt.
+% ****************************************************************************
+%
+% Compute thermal MPE for an extended source ANSI Z136.1-2007, Table 5b, p. 75
+%
+% Set CONELIMITFLAG to false (default true) to skip the asterisked 
+% alternative computation for the photochemical limit
+% desribed in Table 5 (see comments in code).
 %
 % 2/20/13  dhb  Wrote it.
+% 3/2/13   dhb  Make limiting cone angle computation controllable.
 
+%% Default arg 
+if (nargin < 4 || isempty(CONELIMITFLAG))
+    CONELIMITFLAG = true;
+end
 %% Convert angle to mrad and get T2
 stimulusSizeMrad = DegToMrad(stimulusSizeDeg);
 stimulusAreaDeg2 = (pi/4)*stimulusSizeDeg^2;
@@ -60,7 +74,7 @@ elseif (stimulusWavelengthNm >= 400 & stimulusWavelengthNm < 700)
         MPEThermalCornealRadiantExposure_JoulesPerCm2 = 1.8*Ce*(stimulusDurationSec^0.75)*(1e-3);
         
         [~, ~, ~, MPEPhotochemicalCornealRadiantExposure_JoulesPerCm2] = ...
-          AnsiZ136MPEComputeExtendedSourcePhotochemicalLimit(stimulusDurationSec,stimulusSizeDeg,stimulusWavelengthNm);
+          AnsiZ136MPEComputeExtendedSourcePhotochemicalLimit(stimulusDurationSec,stimulusSizeDeg,stimulusWavelengthNm,CONELIMITFLAG);
         if (MPEThermalCornealRadiantExposure_JoulesPerCm2 <= MPEPhotochemicalCornealRadiantExposure_JoulesPerCm2)
             MPELimitCornealRadiantExposure_JoulesPerCm2 = MPEThermalCornealRadiantExposure_JoulesPerCm2;
         else
@@ -74,7 +88,7 @@ elseif (stimulusWavelengthNm >= 400 & stimulusWavelengthNm < 700)
         % take whichever is smaller.
         MPEThermalCornealIrradiance_WattsPerCm2 = 1.8*Ce*(T2Sec^(-0.25))*(1e-3);
         [~, ~, MPEPhotochemicalCornealIrradiance_WattsPerCm2, ~] = ...
-          AnsiZ136MPEComputeExtendedSourcePhotochemicalLimit(stimulusDurationSec,stimulusSizeDeg,stimulusWavelengthNm);
+          AnsiZ136MPEComputeExtendedSourcePhotochemicalLimit(stimulusDurationSec,stimulusSizeDeg,stimulusWavelengthNm,CONELIMITFLAG);
         if (MPEThermalCornealIrradiance_WattsPerCm2 <= MPEPhotochemicalCornealIrradiance_WattsPerCm2)
             MPELimitCornealIrradiance_WattsPerCm2 = MPEThermalCornealIrradiance_WattsPerCm2;
         else
