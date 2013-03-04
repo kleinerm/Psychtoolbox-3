@@ -10,14 +10,14 @@
 % help PsychColorimetricData     % For colorimetric calculations, triple-click me & hit enter.
 % help PsychColorimetricMatFiles % For list of data .mat files, triple-click me & hit enter.
 %
-%   CornealIrradianceAndDegrees2ToRadiance - Convert corneal irradiance to radiance, given stimulus area in degrees^2.
 %   EnergyToQuanta      - Convert monochromatic energy to quanta.
 %   PowerToTrolands     - Convert monochromatic power to photopic trolands.
 %   PsychAnsiZ136MPE    - Ansi 136.1-2007 standard for maximum permissible light exposure.
 %   QuantaToEnergy      - Convert monochromatic quanta to energy.
 %   QuantaToTrolands    - Convert monochromatic quanta to photopic trolands.
-%   RadianceAndDegrees2ToCornealIrradiance - Convert radiance to corneal irradiance, given stimulus area in degrees^2.
-%   RadianceAndDistanceAreaToCornealIrradiance - Convert radiance to corneal irradiance, given stimulus area and distance in linear units (e.g, cm).
+%   radCornIrradianceAndDegrees2ToRadiance - Convert corneal irradiance to radiance, given stimulus area in degrees^2.
+%   radRadianceAndDegrees2ToCornIrradiance - Convert radiance to corneal irradiance, given stimulus area in degrees^2.
+%   radRadianceAndDistanceAreaToCornIrradiance - Convert radiance to corneal irradiance, given stimulus area and distance in linear units (e.g, cm).
 %   RadianceToRetIrradiance - Convert spectral radiance to spectral retinal irradiance (power units).
 %   RadiometricBasicTest - Some basic tests of radiometric conversions.
 %   RetIrradianceToTrolands - Convert retinal irradiance (power units) to trolands.
