@@ -76,6 +76,9 @@
 %   spd_D65             - Spectral power distribution for CIE illuminant D65.
 %   spd_flourescent     - Spectral power distribution for some flourescent lamp.
 %   spd_incanCC         - Spectral power distribution for some incandescent lamp.
+%   spd_phillybright    - Direct bright sunlight measured through window and off of a piece of white paper towel
+%                       -   on the floor of DB's office in Philly, March 2013.
+%                       -   Measurements made with PR-650, power in Watts/[m2-sr-wlband].
 %   spd_xenonArc        - Spectral power distribution for some xenon arc lamp.
 %   spd_xenonFlash      - Spectral power distribuiton for some xenon flash tube.
 %   sur_nickerson       - The Nickerson measurements of the Munsell papers.
