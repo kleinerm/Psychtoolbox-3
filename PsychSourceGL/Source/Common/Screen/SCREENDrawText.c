@@ -1958,8 +1958,8 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
 			PsychMakeRect((double*) boundingbox, xmin + *xp, myyp - ymax, xmax + *xp, myyp - ymin);
 		}
 		else {
-			// Draw text by calling into the plugin:
-			rc += PsychPluginDrawText(*xp, winRec->clientrect[kPsychBottom] - myyp, stringLengthChars, textUniDoubleString);
+			// Draw text by calling into the plugin: No-Op on OpenGL-ES for now.
+			if (!PsychIsGLES(winRec)) rc += PsychPluginDrawText(*xp, winRec->clientrect[kPsychBottom] - myyp, stringLengthChars, textUniDoubleString);
 		}
 		
 		// Restore alpha-blending settings if needed:
