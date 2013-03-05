@@ -206,6 +206,9 @@ PsychError SCREENOpenOffscreenWindow(void)
     // Get the optional specialmode flag:
     PsychCopyInIntegerArg(5, FALSE, &specialFlags);
 
+    // OpenGL-ES only supports GL_TEXTURE_2D targets, so enforce these via flags setting 1:
+    if (PsychIsGLES(targetWindow)) specialFlags |= 1;
+
 	// This command converts whatever color we got into RGBA format:
     PsychCoerceColorMode(&color);
 
