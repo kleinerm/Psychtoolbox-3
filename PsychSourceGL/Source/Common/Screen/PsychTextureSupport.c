@@ -918,7 +918,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         // This makes even sense for negative filterMode arguments, because the filterMode
         // parameter is passed as an attribute to the filtershader, so the shader itself can
         // decide how to implement a specific blur level on its own, unrestricted by us:
-        if (texturetarget == GL_TEXTURE_2D) {
+        if ((texturetarget == GL_TEXTURE_2D) && !PsychIsGLES(source)) {
             glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, 0);
             glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  1000);
         }
