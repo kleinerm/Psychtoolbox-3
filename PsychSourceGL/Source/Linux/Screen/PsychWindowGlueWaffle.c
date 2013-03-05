@@ -1034,7 +1034,46 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         printf("PTB-INFO: INTEL_swap_event support for additional swap completion correctness checks enabled.\n");
     }
 
-    // Well Done!
+    // OpenGL-ES bindings:
+    if (PsychIsGLES(windowRecord)) {
+        // Which version of OpenGL-ES? Set proper selector:
+        int32_t apidl = 0;
+
+        if (windowRecord->glApiType < 20) {
+            apidl = WAFFLE_DL_OPENGL_ES1;
+        }
+        else if (windowRecord->glApiType < 30) {
+            apidl = WAFFLE_DL_OPENGL_ES2;
+        }
+        else if (windowRecord->glApiType < 40) {
+            apidl = WAFFLE_DL_OPENGL_ES3;
+        }
+        else printf("PTB-WARNING: Unsupported OpenGL-ES API version >= 4.0! Update the code, this may end badly!!\n");
+
+        // Try to rebind OpenGL-ES specific entry points to standard desktop OpenGL entry
+        // points of compatible syntax and semantics, so we don't need to rewrite lots of
+        // desktop GL support code just to account for syntactic sugar:
+        if (NULL == glBindFramebufferEXT) glBindFramebufferEXT = waffle_dl_sym(apidl, "glBindFramebufferOES");
+        if (NULL == glDeleteFramebuffersEXT) glDeleteFramebuffersEXT = waffle_dl_sym(apidl, "glDeleteFramebuffersOES");
+        if (NULL == glGenFramebuffersEXT) glGenFramebuffersEXT = waffle_dl_sym(apidl, "glGenFramebuffersOES");
+        if (NULL == glIsFramebufferEXT) glIsFramebufferEXT = waffle_dl_sym(apidl, "glIsFramebufferOES");
+        if (NULL == glCheckFramebufferStatusEXT) glCheckFramebufferStatusEXT = waffle_dl_sym(apidl, "glCheckFramebufferStatusOES");
+
+        if (NULL == glFramebufferTexture2DEXT) glFramebufferTexture2DEXT = waffle_dl_sym(apidl, "glFramebufferTexture2DOES");
+        if (NULL == glFramebufferRenderbufferEXT) glFramebufferRenderbufferEXT = waffle_dl_sym(apidl, "glFramebufferRenderbufferOES");
+        if (NULL == glGetFramebufferAttachmentParameterivEXT) glGetFramebufferAttachmentParameterivEXT = waffle_dl_sym(apidl, "glGetFramebufferAttachmentParameterivOES");
+        if (NULL == glGenerateMipmapEXT) glGenerateMipmapEXT = waffle_dl_sym(apidl, "glGenerateMipmapOES");
+
+        if (NULL == glIsRenderbufferEXT) glIsRenderbufferEXT = waffle_dl_sym(apidl, "glIsRenderbufferOES");
+        if (NULL == glBindRenderbufferEXT) glBindRenderbufferEXT = waffle_dl_sym(apidl, "glBindRenderbufferOES");
+        if (NULL == glDeleteRenderbuffersEXT) glDeleteRenderbuffersEXT = waffle_dl_sym(apidl, "glDeleteRenderbuffersOES");
+        if (NULL == glGenRenderbuffersEXT) glGenRenderbuffersEXT = waffle_dl_sym(apidl, "glGenRenderbuffersOES");
+        if (NULL == glRenderbufferStorageEXT) glRenderbufferStorageEXT = waffle_dl_sym(apidl, "glRenderbufferStorageOES");
+        if (NULL == glGetRenderbufferParameterivEXT) glGetRenderbufferParameterivEXT = waffle_dl_sym(apidl, "glGetRenderbufferParameterivOES");
+
+        if (NULL == glActiveTextureARB) glActiveTextureARB = waffle_dl_sym(apidl, "glActiveTexture");
+    }
+
     return (TRUE);
 }
 
