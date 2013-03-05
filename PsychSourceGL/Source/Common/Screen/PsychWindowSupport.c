@@ -129,7 +129,6 @@ void PsychRebindARBExtensionsToCore(void)
     if (NULL == glLinkProgram) glLinkProgram = glLinkProgramARB;
     if (NULL == glUseProgram) glUseProgram = glUseProgramObjectARB;
     if (NULL == glGetAttribLocation) glGetAttribLocation = glGetAttribLocationARB;
-    // if (NULL == glGetUniformLocation) glGetUniformLocation = (GLint (*)(GLint, const GLchar*)) glGetUniformLocationARB;
     if (NULL == glGetUniformLocation) glGetUniformLocation = glGetUniformLocationARB;
     if (NULL == glUniform1f) glUniform1f = glUniform1fARB;
     if (NULL == glUniform2f) glUniform2f = glUniform2fARB;
@@ -160,7 +159,7 @@ void PsychRebindARBExtensionsToCore(void)
     if (NULL == glBeginQuery) glBeginQuery = glBeginQueryARB;
     if (NULL == glEndQuery) glEndQuery = glEndQueryARB;
     if (NULL == glGetQueryObjectuiv) glGetQueryObjectuiv = glGetQueryObjectuivARB;
-	
+
     // Misc other stuff to remap...
     if (NULL == glDrawRangeElements) glDrawRangeElements = glDrawRangeElementsEXT;
     return;
@@ -5731,6 +5730,12 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         windowRecord->gfxcaps |= kPsychGfxCapNPOTTex;
 		if (verbose) printf("GPU supports non-power-of-two textures.\n");
     }
+
+	// OES framebuffer objects supported?
+	if (strstr(glGetString(GL_EXTENSIONS), "GL_OES_framebuffer_object")) {
+		if (verbose) printf("Basic OES framebuffer objects supported --> RGBA rendertargets with blending.\n");
+		windowRecord->gfxcaps |= kPsychGfxCapFBO;
+	}
     
 	// Is this a GPU with known broken drivers that yield miserable texture creation performance
 	// for RGBA8 textures when using the standard optimized settings?
@@ -5755,7 +5760,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		}
 	}
 
-        if (glewIsSupported("GL_EXT_texture_snorm")) {
+	if (glewIsSupported("GL_EXT_texture_snorm")) {
 		if (verbose) printf("Hardware supports signed normalized textures of 16 bpc integer format.\n");
 		windowRecord->gfxcaps |= kPsychGfxCapSNTex16;
 	}
