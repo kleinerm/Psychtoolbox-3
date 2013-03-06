@@ -2137,6 +2137,9 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 		// Frame-Sequential stereo dispatch loop: Repeats infinitely, processing one flip request or stereo buffer swap per loop iteration.
 		// Well, not infinitely, but until we receive a shutdown request and terminate ourselves...
 
+		// Setup view: We set the full backbuffer area of the window.
+		PsychSetupView(windowRecord, TRUE);
+
 		// Set our state as "initialized and ready":
 		flipRequest->flipperState = 6;
 
@@ -5795,6 +5798,27 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
             windowRecord->gfxcaps |= kPsychGfxCapFBOScaledResolveBlit;
         }
 	}
+
+    // 32-bpc floating point textures on OpenGL-ES hardware supported?
+    if (strstr((char*) glGetString(GL_EXTENSIONS), "GL_OES_texture_float")) {
+        // Yes: This means we (only) have 32 bpc float textures and possibly framebuffers,
+        // not 16 bpc. It also means we only have nearest neighbour textures sampling/filtering,
+        // and probably no alpha blending. But better than nothing:
+        windowRecord->gfxcaps |= kPsychGfxCapFPTex32;
+        if (verbose) printf("Hardware supports floating point textures of 32bpc float format.\n");
+
+        if (strstr((char*) glGetString(GL_EXTENSIONS), "GL_OES_texture_float_linear")) {
+            windowRecord->gfxcaps |= kPsychGfxCapFPFilter32;					
+            if (verbose) printf("Hardware supports filtering of 32 bpc floating point textures.\n");
+        }
+
+        // 32-bpc float FBO's supported?
+        if ((windowRecord->gfxcaps & kPsychGfxCapFBO) && strstr((char*) glGetString(GL_EXTENSIONS), "GL_EXT_color_buffer_float")) {
+            windowRecord->gfxcaps |= kPsychGfxCapFPFBO32;
+            windowRecord->gfxcaps |= kPsychGfxCapFPBlend32;
+            if (verbose) printf("Hardware supports floating point framebuffers of 32bpc float format with blending.\n");
+        }
+   }
 
 	// ATI_texture_float is supported by R300 ATI cores and later, as well as NV30/40 NVidia cores and later.
 	if (glewIsSupported("GL_ATI_texture_float") || glewIsSupported("GL_ARB_texture_float") || strstr((char*) glGetString(GL_EXTENSIONS), "GL_MESAX_texture_float")) {
