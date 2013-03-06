@@ -58,7 +58,7 @@
 clear; close all
 
 %% Load conditions
-conditionStructs = ReadStructsFromText('AnsiZ136DeloriTestInput.txt');
+conditionStructs = ReadStructsFromText('AnsiZ136MPEDeloriTestInput.txt');
 
 %% Loop over conditions and report
 for i = 1:length(conditionStructs)
