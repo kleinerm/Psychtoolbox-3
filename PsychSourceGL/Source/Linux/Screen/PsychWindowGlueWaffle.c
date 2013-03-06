@@ -61,6 +61,9 @@ static struct waffle_display *wdpy = NULL;
 // Also share native underlying EGL display for EGL based backends (NULL otherwise):
 static EGLDisplay egl_display = NULL;
 
+// Tracking of currently bound OpenGL rendering context for master-thread:
+static struct waffle_context *currentContext = NULL;
+
 // Forward define prototype for glewContextInit(), which is normally not a public function:
 GLenum glewContextInit(void);
 
@@ -1318,14 +1321,23 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
 */
 void PsychOSSetGLContext(PsychWindowRecordType * windowRecord)
 {
-    // We need to glFlush the context before switching, otherwise race-conditions may occur:
-    glFlush();
+    // Only change context if not already proper context bound:
+    // This is very important not only for performance, but also to avoid harmful
+    // glBindFrameBufferEXT(0) calls without switching away from context -- something
+    // that would completely mess up imaging pipeline state!
+    if (currentContext != windowRecord->targetSpecific.contextObject) {
+        // Update context tracking:
+        currentContext = windowRecord->targetSpecific.contextObject;
 
-    // Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
-    if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+        // We need to glFlush the context before switching, otherwise race-conditions may occur:
+        glFlush();
 
-    // Switch to new context:
-    waffle_make_current(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.contextObject);
+        // Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
+        if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
+        // Switch to new context:
+        waffle_make_current(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.contextObject);
+    }
 
     return;
 }
@@ -1346,6 +1358,9 @@ void PsychOSUnsetGLContext(PsychWindowRecordType * windowRecord)
     // Detach context:
     waffle_make_current(windowRecord->targetSpecific.deviceContext, NULL, NULL);
 
+    // Reset tracking state:
+    currentContext = NULL;
+
     return;
 }
 
@@ -1358,16 +1373,25 @@ void PsychOSSetUserGLContext(PsychWindowRecordType * windowRecord, psych_bool co
     if (windowRecord->targetSpecific.glusercontextObject == NULL)
         PsychErrorExitMsg(PsychError_user, "GL Userspace context unavailable! Call InitializeMatlabOpenGL *before* Screen('OpenWindow')!");
 
-    if (useX11 && copyfromPTBContext) {
-        // This unbind is probably not needed on X11/GLX, but better safe than sorry...
-        glXMakeCurrent(windowRecord->targetSpecific.privDpy, None, NULL);
+    // Only change context if not already proper context bound:
+    // This is very important not only for performance, but also to avoid harmful
+    // glBindFrameBufferEXT(0) calls without switching away from context -- something
+    // that would completely mess up imaging pipeline state!
+    if (currentContext != windowRecord->targetSpecific.glusercontextObject) {
+        // Update context tracking:
+        currentContext = windowRecord->targetSpecific.glusercontextObject;
 
-        // Copy render context state:
-        // glXCopyContext(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS);
+        if (useX11 && copyfromPTBContext) {
+            // This unbind is probably not needed on X11/GLX, but better safe than sorry...
+            glXMakeCurrent(windowRecord->targetSpecific.privDpy, None, NULL);
+
+            // Copy render context state:
+            // glXCopyContext(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS);
+        }
+
+        // Bind it:
+        waffle_make_current(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.glusercontextObject);
     }
-
-    // Bind it:
-    waffle_make_current(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.glusercontextObject);
 
     return;
 }
