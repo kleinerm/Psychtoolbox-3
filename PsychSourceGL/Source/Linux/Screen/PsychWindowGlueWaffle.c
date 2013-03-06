@@ -192,7 +192,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             break;
         }
 
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Waffle display backend '%s' initialized.\n", backendname);
+        if (PsychPrefStateGet_Verbosity() > 2) {
+            printf("PTB-INFO: Waffle display backend '%s' initialized.\n", backendname);
+            printf("PTB-INFO: Waffle is written and maintained by Chad Versace, Copyright 2012 Intel, licensed under a OSS license.\n");
+        }
 
         // First-Time init done:
         firstTime = FALSE;
