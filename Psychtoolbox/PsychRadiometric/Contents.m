@@ -18,7 +18,8 @@
 %   radCornIrradianceAndDegrees2ToRadiance - Convert corneal irradiance to radiance, given stimulus area in degrees^2.
 %   radRadianceAndDegrees2ToCornIrradiance - Convert radiance to corneal irradiance, given stimulus area in degrees^2.
 %   radRadianceAndDistanceAreaToCornIrradiance - Convert radiance to corneal irradiance, given stimulus area and distance in linear units (e.g, cm).
-%   RadianceToRetIrradiance - Convert spectral radiance to spectral retinal irradiance (power units).
+%   radRadianceAndPupilAreaEyeLengthToRetIrradiance - Convert radiance to retinal irradiance, given pupil area and eye length.
+%   radRetIrradianceAndPupilAreaEyeLengthToRadiance - Convert retinal irradiance to radiance, given pupil area and eye length.
 %   RadiometricBasicTest - Some basic tests of radiometric conversions.
 %   RetIrradianceToTrolands - Convert retinal irradiance (power units) to trolands.
 %   TrolandsToLum       - Convert trolands to luminance (cd/m2).
@@ -26,6 +27,16 @@
 %   TrolandsToQuanta    - Convert monochromatic photopic trolands to quanta.
 %   TrolandsToRetIrradiance - Get retinal irradiance (power units) from spectrum and trolands.
 %   WattsToRetIrradiance - Get absolute retinal irradiance (power units) from rel. spectrum and watts/area.
+%
+% Obsolete
+%   The routines below use specific unit conventions.  I now think it is better not to mix unit conversions
+%   in so intimately with radiometric conversions.  These routines have been reimplemented to call 
+%   the newer more unit free versions, but since they are used throughout various user programs are
+%   kept here for now.  Someday we may decide to make them go away.
+% 
+%   RadianceToRetIrradiance - See radRadianceAndPupilAreaEyeLengthToRetIrradiance.
+%   RetIrradianceToRadiance - 
+
   
 % Copyright (c) 1996-2013 by David Brainard, Denis Pelli, & Mario Kleiner
 

@@ -5,22 +5,22 @@
 %
 % *****************************************************************
 % IMPORTANT:
-%   a) Individuals using these routines mustaccept full responsibility 
-%   for light exposures they implement. We recommend that values be
-%   carefully checked against independent calculations.  We have done
-%   our best to follow the standard, but it is very complex and there
-%   may be errors.
+%   a) Individuals using these routines must accept full responsibility 
+%   for light exposures they implement. We recommend that values computed
+%   with these routines be carefully checked against independent calculations.
+%   We have done our best to follow the standard, but it is very complex and
+%   there may be errors.
 %
 %   b) As of March, 2013, these routines are still very much a work
 %   in progress and should thus be treated with special caution.  See
 %   AnsiZ136MPEBasicTest and AnsiZ136MPEDeloriTest, both for test 
 %   code, and for comments about points of uncertainty.
 %
-%   c) Particularly obscure to me at present is the limitine cone aperture
+%   c) Particularly obscure to me at present is the limiting cone aperture
 %   section described with an asterisk in Table 2 of the 2007 standard 
 %   document.
 %
-%   d) Our knowledge of safe light levels is evolving, and it is important
+%   d) The field's knowledge of safe light levels is evolving, and it is important
 %   to keep abreast of current research and not to rely soley on the
 %   Ansi standard.  In particular, note that there
 %   are reports of disrubption at light levels below the limits specified
@@ -29,7 +29,21 @@
 %     Morgan et al., (2009), IOVS, 50, 6015-6022.
 %     Hunter et al., (2012), Prog. Ret. Eye. Res., 31, 28-42.
 %
-%  - David Brainard, March 2, 2013.
+%   e) Apparently a new version of the Ansi Z136 standard is forthcoming,
+%   but I do not have information as to what changed.
+%
+%   f) The Z136 standard is for laser light, which is coherent and monochromatic.
+%   Different standards apply for broadband lights.  Two relevant references are:
+%     ISO 15004-2:2007, Ophthalmic instruments -- Fundamental requirements and
+%     test methods -- Part 2: Light hazard protection.
+%
+%     ICNIRP (International Commission on Non-Ionizing Radiation Protection) Guidelines,
+%     (1997), Guidelines on exposure to broad-band inchoherent optical radiation (0.38 to 3 uM),
+%     Health Physics, 73, 539-554.
+%   The second seems a little old, but is the most recent ICNIRP guideline for broadband
+%   that I could easily locate.
+%
+%  - David Brainard, March 6, 2013.
 % *****************************************************************
 %
 % REFERENCES.
