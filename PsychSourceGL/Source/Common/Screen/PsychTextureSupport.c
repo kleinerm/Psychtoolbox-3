@@ -483,7 +483,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 							printf("PTB-ERROR: Your image or texture exceeds the maximum width and/or height of %i texels supported by your graphics hardware.\n", gl_rbits);
 							printf("PTB-ERROR: You'll have to either reduce the size of your images below that limit, or upgrade your hardware.\n\n");
 						}
-						else {							
+						else {
 							// Either out-of-memory in VRAM for such large textures, or unsupported format/precision:
 							if (glinternalFormat!=GL_LUMINANCE8 && glinternalFormat!=GL_RGBA8 && !glewIsSupported("GL_APPLE_float_pixels") && !glewIsSupported("GL_ATI_texture_float") && !glewIsSupported("GL_ARB_texture_float")) {
 								// Requested format is not one of the 8bpc fixed-point LDR formats, but a HDR format which

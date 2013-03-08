@@ -2035,7 +2035,10 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
         #ifndef PTB_USE_WAFFLE
 		    glXMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.glswapcontextObject);
         #else
-		    waffle_make_current(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.glswapcontextObject);
+		    if (!waffle_make_current(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.glswapcontextObject) &&
+                (PsychPrefStateGet_Verbosity() > 0)) {
+                    printf("\nPTB-ERROR: Failed to bind OpenGL context for async flip thread [%s]! This will end badly...\n", waffle_error_to_string(waffle_error_get_code()));
+                }
         #endif
 		#endif
 
@@ -2055,6 +2058,13 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 		// Standard dispatch loop: Repeats infinitely, processing one flip request per loop iteration.
 		// Well, not infinitely, but until we receive a shutdown request and terminate ourselves...
 		while (TRUE) {
+            // EGL-backed windows need special treatment:
+            if (windowRecord->specialflags & kPsychIsEGLWindow) {
+                // We must unbind our context, so the masterthread can bind its context(s) to our EGL backing surface
+                // in order to perform rendering, even without imaging pipeline active, ie. to regular backbuffer:
+                PsychOSUnsetGLContext(windowRecord);
+            }
+
 			// Unlock the lock and go to sleep, waiting on the condition variable for a start signal from
 			// the master thread. This is an atomic operation, both unlock and sleep happen simultaneously.
 			// After a wakeup due to signalling, the lock is automatically reacquired, so no need to mutex_lock
@@ -2090,9 +2100,24 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 
 			// Setup context etc. manually, as PsychSetDrawingTarget() is a no-op when called from
 			// this thread:
-
-			// Old style method: Attach to context - It's detached in the main thread:
-			if (oldStyle) PsychSetGLContext(windowRecord);
+			if (oldStyle) {
+                // Old style method: Attach to context - It's detached in the main thread:
+                PsychSetGLContext(windowRecord);
+            }
+            else if (windowRecord->specialflags & kPsychIsEGLWindow) {
+                // New style method: For EGL backend on Linux + Waffle, we need to rebind
+                // our swap context to the windows EGL backing surface, knowing the master
+                // thread doesn't have the surface bound and won't bind it until we're fully
+                // done with the swap:
+                #if PSYCH_SYSTEM == PSYCH_LINUX
+                #ifdef PTB_USE_WAFFLE
+                if (!waffle_make_current(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.glswapcontextObject) &&
+                    (PsychPrefStateGet_Verbosity() > 0)) {
+                    printf("\nPTB-ERROR: Failed to rebind OpenGL context for async flip thread [%s]! This will end badly...\n", waffle_error_to_string(waffle_error_get_code()));
+                }
+                #endif
+                #endif
+            }
 
 			// Setup view: We set the full backbuffer area of the window.
 			PsychSetupView(windowRecord, TRUE);
@@ -2409,7 +2434,7 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 			PsychErrorExitMsg(PsychError_user, "Tried to use frame-sequential stereo mode while Screen('Preference', 'ConserveVRAM') setting kPsychUseOldStyleAsyncFlips is set! Forbidden!");
 		}
 
-		// PsychPreflip operations are not thread-safe due to possible callbacks into Matlab interpreter thread
+		// PsychPreflip operations are not thread-safe due to possible callbacks into runtime interpreter thread
 		// as part of hookchain processing when the imaging pipeline is enabled: We perform/trigger them here
 		// before entering the async flip thread:
 		PsychPreFlipOperations(windowRecord, flipRequest->dont_clear);
@@ -2419,6 +2444,24 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 
 		// ... and flush & finish the pipe:
 		glFinish();
+
+		// Detach from our OpenGL context:
+		// This is important even with the new-style model, because it enforces
+		// rebinding of our rendering context in PsychSetGLContext() at the first
+		// operation that wants to touch this windowRecord or its children.
+		// Rebinding will imply a validation to make sure rebinding is allowed
+		// under the current mode of operation.
+		//
+		// It is also needed with EGL display backend, so we don't keep the
+		// binding to the windows EGL surface during startup of flipperThread or
+		// any execution of async flip. The thread must bind the surface exclusively
+		// for it to work, at least while executing the async flip. frame-sequential
+		// stereo mode handles it differently, see SCREENOpenWindow.c for explanation.
+		//
+		// Note: PsychPreflipOperations() has already made sure the drawing target is
+		// backed up and warm-reset properly, so we can do a NULL cold reset here safely:
+		PsychSetDrawingTarget(NULL);
+		PsychOSUnsetGLContext(windowRecord);
 
 		// First time async request? Threads already set up?
 		if (flipRequest->flipperThread == (psych_thread) NULL) {
@@ -2524,17 +2567,6 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 		// for a flip request, so we can simply release our lock and signal the thread that it should do its
 		// job:
 
-		// printf("IN ASYNCSTART: DROP CONTEXT\n"); fflush(NULL);
-
-		// Detach from our OpenGL context:
-		// This is important even with the new-style model, because it enforces
-		// rebinding of our rendering context in PsychSetGLContext() at the first
-		// operation that wants to touch this windowRecord or its children.
-		// Rebinding will imply a validation to make sure rebinding is allowed
-		// under the current mode of operation.
-		PsychSetDrawingTarget(NULL);
-		PsychOSUnsetGLContext(windowRecord);
-		
 		// Increment the counter asyncFlipOpsActive:
 		asyncFlipOpsActive++;
 
@@ -2554,6 +2586,15 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 			printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): mutex_unlock in trigger operation failed  [%s].\n", strerror(rc));
 			PsychErrorExitMsg(PsychError_internal, "This must not ever happen! PTB design bug or severe operating system or runtime environment malfunction!! Memory corruption?!?");
 		}
+
+        // Scheduling regular async-flip as opposed to frame-seq stereo flip,
+        // and EGL windowing backend active? If so we must prevent binding of
+        // our masterthread contexts to the EGL backing surface of the window
+        // while our async flipper thread has the surface bound:
+        if ((windowRecord->stereomode != kPsychFrameSequentialStereo) && (windowRecord->specialflags & kPsychIsEGLWindow)) {
+            // Yes: Veto all EGL surface binds for this windowRecords regular contexts:
+            windowRecord->specialflags |= kPsychSurfacelessContexts;
+        }
 
 		// That's it, operation in progress: Mark it as such.
 		flipRequest->asyncstate = 1;
@@ -2644,10 +2685,30 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 		asyncFlipOpsActive--;
 
 		if (windowRecord->stereomode == kPsychFrameSequentialStereo) {
+            // Finalize frame-seq stereo flip: run post-flip ops:
 			flipRequest->asyncstate = 0;
 			PsychPostFlipOperations(windowRecord, flipRequest->dont_clear);
 			flipRequest->asyncstate = 2;
 		}
+        else {
+            // Finalize regular async-flip (== not frame-sequential stereo ops flip)
+
+            // EGL-backed windows need special treatment:
+            if (windowRecord->specialflags & kPsychIsEGLWindow) {
+                // The async thread has unbound its context. We unbind our context
+                // to force a rebind. Why? Because if one of our contexts was bound
+                // while the async flip was pending, it will have been bound without
+                // attachment to the EGL framebuffer surface - this is needed for
+                // multi-threaded flips to work on EGL. Now before we reenter regular
+                // usercode driven rendering, we must rebind the context with attachment
+                // to the EGL backing surface. Unbinding will automatically trigger this:
+                PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
+                PsychOSUnsetGLContext(windowRecord);
+
+                // Remove our veto to all EGL surface binds for this windowRecords regular contexts:
+                windowRecord->specialflags &= ~kPsychSurfacelessContexts;
+            }
+        }
 
 		// Reset flags used for avoiding redundant Pipeline flushes and backbuffer-backups:
 		// This flags are altered and checked by SCREENDrawingFinished() and PsychPreFlipOperations() as well:

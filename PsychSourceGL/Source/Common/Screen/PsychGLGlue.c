@@ -643,7 +643,7 @@ void PsychWaitPixelSyncToken(PsychWindowRecordType *windowRecord)
         glColor4f(0, 0, 0, 0);
         glVertex2i(10, 10);
         glEnd();
-        glFinish();        
+        glFinish();
     }
     else {
         // No. Avoid immediate mode functions, they won't work:

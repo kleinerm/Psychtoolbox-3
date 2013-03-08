@@ -606,6 +606,32 @@ PsychError SCREENOpenWindow(void)
 
     PsychTestForGLErrors();
 
+    // Homegrown frame-sequential strereo mode on a EGL backed window active?
+    if ((windowRecord->stereomode == kPsychFrameSequentialStereo) && (windowRecord->specialflags & kPsychIsEGLWindow)) {
+        // Detach the OpenGL context from window surface. The following PsychSetDrawingTarget()
+        // command will rebind the context as a first step, but it will not attach it to the
+        // windowing system framebuffer surface (== the associated EGLSurface) anymore due to
+        // the selected frame-sequential stereo mode on EGL. This will allow the background
+        // frame-sequential stereo swapper-thread to bind its context to the surface and all
+        // will be good. Rationale: With a EGL windowing system backend, only at most one context
+        // is allowed to attach to a EGL surface (window framebuffer) at a given time. Because the
+        // stereo thread needs to bind its context permanently to the surface to do its job, we
+        // must make sure going forward that we'll never ever bind our contexts from the master-thread
+        // to 'windowRecord's surface again, or bad things will happen:
+        PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
+        PsychOSUnsetGLContext(windowRecord);
+        windowRecord->specialflags |= kPsychSurfacelessContexts;
+        PsychSetDrawingTarget(windowRecord);
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Preventing master-thread contexts from future binding to this windows (%i) backing surface.\n", windowRecord->windowIndex);
+
+        // TODO: Ideally we should check if KHR_surfaceless_context extension is supported,
+        // because otherwise this won't work and we should reject use of multi-threaded ops
+        // like frame-sequential stereo or async flips as unsupported on a given system.
+        // Doing this check is a bit difficult at the moment without querying the EGL
+        // extension string - we don't want to introduce a hard dependency on libEGL at
+        // this point of development...
+    }
+
     // Reset flipcounter and missed flip deadline counter to zero:
     windowRecord->flipCount = 0;
     windowRecord->nr_missed_deadlines = 0;

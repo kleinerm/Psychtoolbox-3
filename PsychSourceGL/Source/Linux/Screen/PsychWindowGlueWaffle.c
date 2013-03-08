@@ -1111,6 +1111,7 @@ void PsychOSCloseWindow(PsychWindowRecordType * windowRecord)
 
     // Detach OpenGL rendering context again - just to be safe!
     waffle_make_current(windowRecord->targetSpecific.deviceContext, NULL, NULL);
+    currentContext = NULL;
 
     // Delete rendering context:
     waffle_context_destroy(windowRecord->targetSpecific.contextObject);
@@ -1279,7 +1280,7 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
 {
     int error, myinterval;
 
-    // Enable rendering context of window:
+    // Enable rendering context of window (no-ops internally when not called from master-thread):
     PsychSetGLContext(windowRecord);
 
     // Store new setting also in internal helper variable, e.g., to allow workarounds to work:
@@ -1329,17 +1330,24 @@ void PsychOSSetGLContext(PsychWindowRecordType * windowRecord)
     // glBindFrameBufferEXT(0) calls without switching away from context -- something
     // that would completely mess up imaging pipeline state!
     if (currentContext != windowRecord->targetSpecific.contextObject) {
-        // Update context tracking:
-        currentContext = windowRecord->targetSpecific.contextObject;
+        if (currentContext) {
+            // We need to glFlush the context before switching, otherwise race-conditions may occur:
+            glFlush();
 
-        // We need to glFlush the context before switching, otherwise race-conditions may occur:
-        glFlush();
+            // Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
+            if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+        }
 
-        // Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
-        if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-
-        // Switch to new context:
-        waffle_make_current(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.contextObject);
+        // Switch to new context: Skip surface bind if forbidden by higher-level code, e.g., for multi-threaded EGL use.
+        if (!waffle_make_current(windowRecord->targetSpecific.deviceContext,
+                                 (PsychGetParentWindow(windowRecord)->specialflags & kPsychSurfacelessContexts) ? EGL_NO_SURFACE : windowRecord->targetSpecific.windowHandle,
+                                 windowRecord->targetSpecific.contextObject) && (PsychPrefStateGet_Verbosity() > 0)) {
+            printf("PTB-ERROR: PsychOSSetGLContext(): Failed to bind master context of window %i: [%s] - Expect trouble!\n", windowRecord->windowIndex, waffle_error_to_string(waffle_error_get_code()));
+        }
+        else {
+            // Update context tracking:
+            currentContext = windowRecord->targetSpecific.contextObject;
+        }
     }
 
     return;
@@ -1352,17 +1360,21 @@ void PsychOSSetGLContext(PsychWindowRecordType * windowRecord)
 */
 void PsychOSUnsetGLContext(PsychWindowRecordType * windowRecord)
 {
-    // We need to glFlush the context before switching, otherwise race-conditions may occur:
-    glFlush();
+    if (PsychIsMasterThread()) {
+        if (currentContext) {
+            // We need to glFlush the context before switching, otherwise race-conditions may occur:
+            glFlush();
 
-    // Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
-    if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+            // Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
+            if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+        }
+
+        // Reset tracking state:
+        currentContext = NULL;
+    }
 
     // Detach context:
     waffle_make_current(windowRecord->targetSpecific.deviceContext, NULL, NULL);
-
-    // Reset tracking state:
-    currentContext = NULL;
 
     return;
 }
@@ -1381,19 +1393,22 @@ void PsychOSSetUserGLContext(PsychWindowRecordType * windowRecord, psych_bool co
     // glBindFrameBufferEXT(0) calls without switching away from context -- something
     // that would completely mess up imaging pipeline state!
     if (currentContext != windowRecord->targetSpecific.glusercontextObject) {
-        // Update context tracking:
-        currentContext = windowRecord->targetSpecific.glusercontextObject;
 
-        if (useX11 && copyfromPTBContext) {
-            // This unbind is probably not needed on X11/GLX, but better safe than sorry...
-            glXMakeCurrent(windowRecord->targetSpecific.privDpy, None, NULL);
-
-            // Copy render context state:
-            // glXCopyContext(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS);
+        // Copy from context unsupported on Waffle backends:
+        if (copyfromPTBContext && (PsychPrefStateGet_Verbosity() > 1)) {
+            printf("PTB-WARNING: Tried to set the 'sharecontext' flag to 2 in Screen('BeginOpenGL'), but this is not supported with Waffle display backends. Ignored!\n");
         }
 
-        // Bind it:
-        waffle_make_current(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.glusercontextObject);
+        // Bind it: Skip surface bind if forbidden by higher-level code, e.g., for multi-threaded EGL use.
+        if (!waffle_make_current(windowRecord->targetSpecific.deviceContext,
+                                 (PsychGetParentWindow(windowRecord)->specialflags & kPsychSurfacelessContexts) ? EGL_NO_SURFACE : windowRecord->targetSpecific.windowHandle,
+                                 windowRecord->targetSpecific.glusercontextObject) && (PsychPrefStateGet_Verbosity() > 0)) {
+            printf("PTB-ERROR: PsychOSSetUserGLContext(): Failed to bind userspace gl-context of window %i: [%s] - Expect trouble!\n", windowRecord->windowIndex, waffle_error_to_string(waffle_error_get_code()));
+        }
+        else {
+            // Update context tracking:
+            currentContext = windowRecord->targetSpecific.glusercontextObject;
+        }
     }
 
     return;
