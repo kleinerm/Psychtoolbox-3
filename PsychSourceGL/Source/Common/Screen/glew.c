@@ -8908,7 +8908,10 @@ GLenum GLEWAPIENTRY glewContextInit (GLEW_CONTEXT_ARG_DEF_LIST)
 
   if (major == 1 && minor == 0)
   {
-    return GLEW_ERROR_GL_VERSION_10_ONLY;
+      /* MK CHANGED FOR PTB: Assume 1.0 means OpenGL-ES 1.0, not that we're
+         on a totally outdated system! */
+    glewExperimental = GL_TRUE;
+    /* MK CHANGED FOR PTB: return GLEW_ERROR_GL_VERSION_10_ONLY; */
   }
   else
   {

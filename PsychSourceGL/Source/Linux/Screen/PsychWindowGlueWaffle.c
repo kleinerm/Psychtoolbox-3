@@ -1099,6 +1099,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         if (NULL == glGetRenderbufferParameterivEXT) glGetRenderbufferParameterivEXT = waffle_dl_sym(apidl, "glGetRenderbufferParameterivOES");
 
         if (NULL == glActiveTextureARB) glActiveTextureARB = waffle_dl_sym(apidl, "glActiveTexture");
+
+        // Fun with NVidia ES implementation:
+        if (NULL == glOrthofOES) glOrthofOES = waffle_dl_sym(apidl, "glOrthofOES");
+        if (NULL == glOrthofOES) glOrthofOES = waffle_dl_sym(apidl, "glOrthof");
+        if (NULL == glOrthofOES) printf("PTB-ERROR: NO glOrthofOES() - This will end badly!!!\n");
     }
 
     return (TRUE);

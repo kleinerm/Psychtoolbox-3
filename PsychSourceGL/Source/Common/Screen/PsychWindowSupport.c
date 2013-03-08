@@ -725,16 +725,17 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     // See code in PsychDrawingTarget()...
     (*windowRecord)->textureOrientation=2;
 
+	if(PsychPrefStateGet_Verbosity() > 3) {		
+		  printf("\n\nOpenGL-Vendor / renderer / version are: %s - %s - %s\n", (char*) glGetString(GL_VENDOR), (char*) glGetString(GL_RENDERER), (char*) glGetString(GL_VERSION));
+		  printf("\n\nOpenGL-Extensions are: %s\n\n", (char*) glGetString(GL_EXTENSIONS));
+	}
+
     // Perform a full safe reset of the framebuffer-object switching code:
     PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
     
     // Enable this windowRecords OpenGL context and framebuffer as current drawingtarget. This will also setup
     // the projection and modelview matrices, viewports and such to proper values:
     PsychSetDrawingTarget(*windowRecord);
-
-	if(PsychPrefStateGet_Verbosity() > 3) {		
-		  printf("\n\nOpenGL-Extensions are: %s\n\n", (char*) glGetString(GL_EXTENSIONS));
-	}
 
     // Activate syncing to onset of vertical retrace (VBL) for double-buffered windows:
     if (numBuffers > 1) PsychOSSetVBLSyncLevel(*windowRecord, 1);
