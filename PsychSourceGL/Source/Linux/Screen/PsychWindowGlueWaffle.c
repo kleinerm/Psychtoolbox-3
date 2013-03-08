@@ -1309,9 +1309,9 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
     else {
         // EGL-based backend in use:
         if (egl_display) {
-            if (!eglSwapInterval(egl_display, (EGLint) swapInterval)) {
-                if (PsychPrefStateGet_Verbosity() > 1) printf("\nPTB-WARNING: FAILED to %s synchronization to vertical retrace!\n\n", (swapInterval > 0) ? "enable" : "disable");
-            }
+            //            if (!eglSwapInterval(egl_display, (EGLint) swapInterval)) {
+            //                if (PsychPrefStateGet_Verbosity() > 1) printf("\nPTB-WARNING: FAILED to %s synchronization to vertical retrace!\n\n", (swapInterval > 0) ? "enable" : "disable");
+            //            }
         }
     }
 
