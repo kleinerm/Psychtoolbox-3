@@ -188,13 +188,27 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         // Yes. Initialize GLEW, the GL Extension Wrangler Library. This will
         // auto-detect and dynamically link/bind all core OpenGL functionality
         // as well as all possible OpenGL extensions on OS-X, Linux and Windows.
+        err = GLEW_OK;
+        #ifdef LINUX
+        // Linux is special: If we use the Waffle backend for display system binding, then our display backend
+        // may be something else than GLX (e.g., X11/EGL, Wayland/EGL, GBM/EGL, ANDROID/EGL etc.), in which case
+        // glewInit() would not work and would crash hard. Detect if we're on classic Linux or Linux with X11/GLX.
+        // If so, execute glewInit(), otherwise skip it and trust that glewInit() was already safely executed in
+        // Screen() and all relevant gl symbols have been hopefully exposed to us via the re-dlopen() of Screen under
+        // Octave + Linux:
+        if (!getenv("PSYCH_USE_DISPLAY_BACKEND") || strstr(getenv("PSYCH_USE_DISPLAY_BACKEND"), "glx")) err = glewInit();
+        #else
+        // Other os'es: Always init GLEW:
         err = glewInit();
+        #endif
+
         if (GLEW_OK != err) {
             // Failed! Something is seriously wrong - We have to abort :(
             printf("MOGL: Failed to initialize! Probably you called an OpenGL command *before* opening an onscreen window?!?\n");
             printf("GLEW reported the following error: %s\n", glewGetErrorString(err)); fflush(NULL);
             goto moglreturn;
         }
+
         // Success. Ready to go...
 		if (debuglevel > 1) {
 			printf("MOGL - OpenGL for Matlab & GNU/Octave initialized. MOGL is (c) 2006-2012 Richard F. Murray & Mario Kleiner, licensed to you under MIT license.\n");

@@ -107,6 +107,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     psych_bool newstyle_setup = FALSE;
     int32_t opengl_api = WAFFLE_CONTEXT_OPENGL;
     char backendname[16];
+    char backendname2[16];
     struct waffle_config *config;
     struct waffle_window *window;
     struct waffle_context *ctx;
@@ -173,29 +174,41 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         switch (init_attrs[1]) {
             case WAFFLE_PLATFORM_GLX:
                 sprintf(backendname, "X11/GLX");
+                sprintf(backendname2, "glx");
             break;
 
             case WAFFLE_PLATFORM_X11_EGL:
                 sprintf(backendname, "X11/EGL");
+                sprintf(backendname2, "x11egl");
             break;
 
             case WAFFLE_PLATFORM_WAYLAND:
                 sprintf(backendname, "Wayland/EGL");
+                sprintf(backendname2, "wayland");
             break;
 
             case WAFFLE_PLATFORM_GBM:
                 sprintf(backendname, "GBM/EGL");
+                sprintf(backendname2, "gbm");
             break;
 
             case WAFFLE_PLATFORM_ANDROID:
                 sprintf(backendname, "Android/EGL");
+                sprintf(backendname2, "android");
             break;
         }
 
         if (PsychPrefStateGet_Verbosity() > 2) {
-            printf("PTB-INFO: Waffle display backend '%s' initialized.\n", backendname);
+            printf("PTB-INFO: Waffle display backend '%s' initialized [%s].\n", backendname, backendname2);
             printf("PTB-INFO: Waffle is written and maintained by Chad Versace, Copyright 2012 Intel, licensed under a OSS license.\n");
         }
+
+        // Announce final choice of backend to runtime environment. This is a marker
+        // to, e.g., moglcore, so it can adapt its context/gl setup:
+        // The important bit is that moglcore should avoid performing its own
+        // glewInit() on Linux if a non-GLX backend is active, as this would
+        // end badly:
+        setenv("PSYCH_USE_DISPLAY_BACKEND", backendname2, 1);
 
         // First-Time init done:
         firstTime = FALSE;
@@ -322,30 +335,38 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     switch (opengl_api) {
         case WAFFLE_CONTEXT_OPENGL:
             sprintf(backendname, "OpenGL");
+            sprintf(backendname2, "gl");
             windowRecord->glApiType = 0;
             break;
 
         case WAFFLE_CONTEXT_OPENGL_ES1:
             sprintf(backendname, "OpenGL-ES 1");
+            sprintf(backendname2, "gles1");
             windowRecord->glApiType = 10;
             break;
 
         case WAFFLE_CONTEXT_OPENGL_ES2:
             sprintf(backendname, "OpenGL-ES 2");
+            sprintf(backendname2, "gles2");
             windowRecord->glApiType = 20;
             break;
 
         case WAFFLE_CONTEXT_OPENGL_ES3:
             sprintf(backendname, "OpenGL-ES 3");
+            sprintf(backendname2, "gles3");
             windowRecord->glApiType = 30;
             break;
 
         default:
             sprintf(backendname, "UNKNOWN");
+            sprintf(backendname2, "X");
             windowRecord->glApiType = 0;
     }
 
-    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Waffle display backend connected to OpenGL rendering API '%s'.\n", backendname);
+    // Tell environment about our final rendering backend choice:
+    setenv("PSYCH_USE_GFX_BACKEND", backendname2, 1);
+
+    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Waffle display backend connected to OpenGL rendering API '%s' [%s].\n", backendname, backendname2);
 
     // OpenGL embedded subset api in use?
     if (windowRecord->glApiType > 0) {
