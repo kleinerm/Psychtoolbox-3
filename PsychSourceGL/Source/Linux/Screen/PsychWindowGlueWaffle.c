@@ -296,18 +296,18 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     if (!waffle_display_supports_context_api(wdpy, opengl_api)) {
         if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Waffle display backend does not support requested OpenGL rendering API '%s': %s. Trying fallbacks...\n",
                                                       backendname, waffle_error_to_string(waffle_error_get_code()));
-        // Try fallbacks: OpenGL > OpenGL-ES3 > OpenGL-ES2 > OpenGL-ES1
+        // Try fallbacks: OpenGL > OpenGL-ES1 > OpenGL-ES2 > OpenGL-ES3
         if (waffle_display_supports_context_api(wdpy, WAFFLE_CONTEXT_OPENGL)) {
             opengl_api = WAFFLE_CONTEXT_OPENGL;
         }
-        else if (waffle_display_supports_context_api(wdpy, WAFFLE_CONTEXT_OPENGL_ES3)) {
-            opengl_api = WAFFLE_CONTEXT_OPENGL_ES3;
+        else if (waffle_display_supports_context_api(wdpy, WAFFLE_CONTEXT_OPENGL_ES1)) {
+            opengl_api = WAFFLE_CONTEXT_OPENGL_ES1;
         }
         else if (waffle_display_supports_context_api(wdpy, WAFFLE_CONTEXT_OPENGL_ES2)) {
             opengl_api = WAFFLE_CONTEXT_OPENGL_ES2;
         }
-        else if (waffle_display_supports_context_api(wdpy, WAFFLE_CONTEXT_OPENGL_ES1)) {
-            opengl_api = WAFFLE_CONTEXT_OPENGL_ES1;
+        else if (waffle_display_supports_context_api(wdpy, WAFFLE_CONTEXT_OPENGL_ES3)) {
+            opengl_api = WAFFLE_CONTEXT_OPENGL_ES3;
         }
         else {
             // Game over:
