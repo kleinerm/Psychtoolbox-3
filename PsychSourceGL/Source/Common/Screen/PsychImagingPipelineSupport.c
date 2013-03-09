@@ -1515,9 +1515,9 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
                     theight = height;
                 }
 
-                if (fboInternalFormat == GL_RGBA_FLOAT32_APPLE) {
+                if (fboInternalFormat == GL_RGBA_FLOAT32_APPLE || fboInternalFormat == GL_RGB_FLOAT32_APPLE) {
                     // 32-bpc float path:
-                    fboInternalFormat = GL_RGBA;
+                    fboInternalFormat = (fboInternalFormat == GL_RGBA_FLOAT32_APPLE) ? GL_RGBA : GL_RGB;
                     glTexImage2D(texturetarget, 0, fboInternalFormat, twidth, theight, 0, fboInternalFormat, GL_FLOAT, NULL);
                 }
                 else {
@@ -2221,7 +2221,7 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
             fboInternalFormat = GL_RGBA8;
 
             // OpenGL-ES + float precision requested?
-            if (sourceRecord->bpc > 8) {
+            if ((sourceRecord->bpc > 8) || ((sourceRecord->depth / sourceRecord->nrchannels) >= 32)) {
                 // Upgrade to full 32bpc float -- we only support this, if at all:
                 fboInternalFormat = GL_RGBA_FLOAT32_APPLE;
 

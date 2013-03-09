@@ -405,11 +405,9 @@ void PsychCreateTexture(PsychWindowRecordType *win)
                 }
 			}
             else {
-                // OpenGL-ES: Can't query bit depth of texture. Assume 8 bits per channel:
-                win->bpc = 8;
-
-                // Null out to catch implementation error in our own code, if any:
-                gl_rbits = gl_gbits = gl_bbits = gl_abits = gl_lbits = 0;
+                // OpenGL-ES: Can't query bit depth of texture. Assume 8 (integer) or 32 (float) bits per channel:
+                win->bpc = (win->textureexternaltype == GL_FLOAT) ? 32 : 8;
+                gl_rbits = gl_gbits = gl_bbits = gl_abits = gl_lbits = win->bpc;
             }
 
             if (PsychIsGLES(win)) {
