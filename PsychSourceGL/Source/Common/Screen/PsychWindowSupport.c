@@ -5797,7 +5797,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     }
 
 	// OES framebuffer objects supported?
-	if (strstr(glGetString(GL_EXTENSIONS), "GL_OES_framebuffer_object")) {
+	if (strstr(glGetString(GL_EXTENSIONS), "GL_OES_framebuffer_object") || glewIsSupported("GL_EXT_framebuffer_object") || glewIsSupported("GL_ARB_framebuffer_object")) {
 		if (verbose) printf("Basic OES framebuffer objects supported --> RGBA rendertargets with blending.\n");
 		windowRecord->gfxcaps |= kPsychGfxCapFBO;
 	}
@@ -5875,12 +5875,12 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         }
 
         // 32-bpc float FBO's supported?
-        if ((windowRecord->gfxcaps & kPsychGfxCapFBO) && strstr((char*) glGetString(GL_EXTENSIONS), "GL_EXT_color_buffer_float")) {
+        if ((windowRecord->gfxcaps & kPsychGfxCapFBO)) { //  && strstr((char*) glGetString(GL_EXTENSIONS), "GL_EXT_color_buffer_float")) {
             windowRecord->gfxcaps |= kPsychGfxCapFPFBO32;
             windowRecord->gfxcaps |= kPsychGfxCapFPBlend32;
             if (verbose) printf("Hardware supports floating point framebuffers of 32bpc float format with blending.\n");
         }
-   }
+    }
 
 	// ATI_texture_float is supported by R300 ATI cores and later, as well as NV30/40 NVidia cores and later.
 	if (glewIsSupported("GL_ATI_texture_float") || glewIsSupported("GL_ARB_texture_float") || strstr((char*) glGetString(GL_EXTENSIONS), "GL_MESAX_texture_float")) {
