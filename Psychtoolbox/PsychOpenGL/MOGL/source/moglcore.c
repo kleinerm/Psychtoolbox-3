@@ -193,13 +193,20 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         // Linux is special: If we use the Waffle backend for display system binding, then our display backend
         // may be something else than GLX (e.g., X11/EGL, Wayland/EGL, GBM/EGL, ANDROID/EGL etc.), in which case
         // glewInit() would not work and would crash hard. Detect if we're on classic Linux or Linux with X11/GLX.
-        // If so, execute glewInit(), otherwise skip it and trust that glewInit() was already safely executed in
-        // Screen() and all relevant gl symbols have been hopefully exposed to us via the re-dlopen() of Screen under
-        // Octave + Linux:
-        if (!getenv("PSYCH_USE_DISPLAY_BACKEND") || strstr(getenv("PSYCH_USE_DISPLAY_BACKEND"), "glx")) err = glewInit();
+        // If so, execute glewInit(), otherwise call glewContextInit() - a routine which skips GLX specific setup,
+        // therefore only initializes the non-GLX parts. We need a hacked glew.c for this function to be available,
+        // as original upstream GLEW makes that function private (static):
+        if (!getenv("PSYCH_USE_DISPLAY_BACKEND") || strstr(getenv("PSYCH_USE_DISPLAY_BACKEND"), "glx")) {
+            // Classic backend or GLX backend: The full show.
+            err = glewInit();
+        }
+        else {
+            // Non-GLX backend, probably EGL: Reduced show.
+            err = glewContextInit();
+        }
         #else
-        // Other os'es: Always init GLEW:
-        err = glewInit();
+            // Other os'es: Always init GLEW:
+            err = glewInit();
         #endif
 
         if (GLEW_OK != err) {

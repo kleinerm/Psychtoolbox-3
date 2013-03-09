@@ -108,6 +108,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     int32_t opengl_api = WAFFLE_CONTEXT_OPENGL;
     char backendname[16];
     char backendname2[16];
+    int32_t oldBackend;
     struct waffle_config *config;
     struct waffle_window *window;
     struct waffle_context *ctx;
@@ -130,6 +131,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // First time invocation?
     if (firstTime) {
         // Initialize waffle for selected display system backend:
+        if (PsychPrefStateGet_Verbosity() > 2) {
+            printf("PTB-INFO: Using FOSS Waffle display backend library, written and maintained by Chad Versace, Copyright 2012 Intel, licensed under OSS license.\n");
+        }
 
         // Override default windowing system backend selection with requested type, if any requested:
         if (getenv("PSYCH_USE_DISPLAY_BACKEND")) {
@@ -140,6 +144,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             if (!strcmp(getenv("PSYCH_USE_DISPLAY_BACKEND"), "android")) windowRecord->winsysType = (int) WAFFLE_PLATFORM_ANDROID; 
         }
 
+        // If any backend chosen from calling code or by env-variable, assign it as new requested choice,
+        // but backup current setting for possible later restore:
+        oldBackend = init_attrs[1];
         if (windowRecord->winsysType > 0) init_attrs[1] = (int32_t) windowRecord->winsysType;
 
         if (!waffle_init(init_attrs) && (waffle_error_get_code() != WAFFLE_ERROR_ALREADY_INITIALIZED)) {
@@ -162,7 +169,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
                             init_attrs[1] = WAFFLE_PLATFORM_ANDROID;
                             if (!waffle_init(init_attrs)) {
                                 // Final fail:
-                                if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Could not initialize any Waffle display backend: %s.\n", waffle_error_to_string(waffle_error_get_code()));
+                                if (PsychPrefStateGet_Verbosity() > 0) {
+                                    printf("PTB-ERROR: Could not initialize any Waffle display backend - Error: %s.\n", waffle_error_to_string(waffle_error_get_code()));
+                                    printf("PTB-ERROR: Try to fix the reason for the error, then restart Octave/Matlab, then retry.\n");
+                                }
                                 return(FALSE);
                             }
                         }
@@ -170,45 +180,23 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
                 }
             }
         }
+        else if (waffle_error_get_code() == WAFFLE_ERROR_ALREADY_INITIALIZED) {
+            // waffle_init() skipped/no-opped because waffle was already initialized with a
+            // backend and this choice is permanent until the host runtime (Matlab/Octave) is
+            // restarted. Was a different backend chosen? If so we warn the user that this is
+            // not possible without a restart of the runtime environment:
+            if ((oldBackend != init_attrs[1]) && (PsychPrefStateGet_Verbosity() > 1)) {
+                printf("PTB-WARNING: Tried to choose a different display backend, but this is only possible on first invocation in a session.\n");
+                printf("PTB-WARNING: Sticking to previous initial choice. You must restart Octave/Matlab before you can choose a different backend.\n");
+            }
 
-        switch (init_attrs[1]) {
-            case WAFFLE_PLATFORM_GLX:
-                sprintf(backendname, "X11/GLX");
-                sprintf(backendname2, "glx");
-            break;
-
-            case WAFFLE_PLATFORM_X11_EGL:
-                sprintf(backendname, "X11/EGL");
-                sprintf(backendname2, "x11egl");
-            break;
-
-            case WAFFLE_PLATFORM_WAYLAND:
-                sprintf(backendname, "Wayland/EGL");
-                sprintf(backendname2, "wayland");
-            break;
-
-            case WAFFLE_PLATFORM_GBM:
-                sprintf(backendname, "GBM/EGL");
-                sprintf(backendname2, "gbm");
-            break;
-
-            case WAFFLE_PLATFORM_ANDROID:
-                sprintf(backendname, "Android/EGL");
-                sprintf(backendname2, "android");
-            break;
+            // Restore actual backend choice from backup:
+            init_attrs[1] = oldBackend;
         }
-
-        if (PsychPrefStateGet_Verbosity() > 2) {
-            printf("PTB-INFO: Waffle display backend '%s' initialized [%s].\n", backendname, backendname2);
-            printf("PTB-INFO: Waffle is written and maintained by Chad Versace, Copyright 2012 Intel, licensed under a OSS license.\n");
+        else {
+            // Success. init_attrs[1] contains correct choice, set oldBackend to it for completeness:
+            oldBackend = init_attrs[1];
         }
-
-        // Announce final choice of backend to runtime environment. This is a marker
-        // to, e.g., moglcore, so it can adapt its context/gl setup:
-        // The important bit is that moglcore should avoid performing its own
-        // glewInit() on Linux if a non-GLX backend is active, as this would
-        // end badly:
-        setenv("PSYCH_USE_DISPLAY_BACKEND", backendname2, 1);
 
         // First-Time init done:
         firstTime = FALSE;
@@ -216,6 +204,42 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
     // Set windowing system backend type to truly selected type:
     windowRecord->winsysType = (int) init_attrs[1];
+
+    // Translate spec to human readable name and spec string:
+    switch (init_attrs[1]) {
+    case WAFFLE_PLATFORM_GLX:
+        sprintf(backendname, "X11/GLX");
+        sprintf(backendname2, "glx");
+        break;
+
+    case WAFFLE_PLATFORM_X11_EGL:
+        sprintf(backendname, "X11/EGL");
+        sprintf(backendname2, "x11egl");
+        break;
+
+    case WAFFLE_PLATFORM_WAYLAND:
+        sprintf(backendname, "Wayland/EGL");
+        sprintf(backendname2, "wayland");
+        break;
+
+    case WAFFLE_PLATFORM_GBM:
+        sprintf(backendname, "GBM/EGL");
+        sprintf(backendname2, "gbm");
+        break;
+
+    case WAFFLE_PLATFORM_ANDROID:
+        sprintf(backendname, "Android/EGL");
+        sprintf(backendname2, "android");
+        break;
+    }
+
+    // Announce actual choice of backend to runtime environment. This is a marker
+    // to, e.g., moglcore, so it can adapt its context/gl setup:
+    setenv("PSYCH_USE_DISPLAY_BACKEND", backendname2, 1);
+
+    if (PsychPrefStateGet_Verbosity() > 2) {
+        printf("PTB-INFO: Waffle display backend '%s' initialized [%s].\n", backendname, backendname2);
+    }
 
     // Waffle display connection not yet initialized? Create one if not yet done. Currently
     // we are limited to one connection per session, until we move waffle init and connection
@@ -307,7 +331,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
     // Try the requested backend, try alternate backends on failure:
     if (!waffle_display_supports_context_api(wdpy, opengl_api)) {
-        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Waffle display backend does not support requested OpenGL rendering API '%s': %s. Trying fallbacks...\n",
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Selected Waffle display backend does not support requested OpenGL rendering API '%s': %s. Trying fallbacks...\n",
                                                       backendname, waffle_error_to_string(waffle_error_get_code()));
         // Try fallbacks: OpenGL > OpenGL-ES1 > OpenGL-ES2 > OpenGL-ES3
         if (waffle_display_supports_context_api(wdpy, WAFFLE_CONTEXT_OPENGL)) {
@@ -324,7 +348,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         }
         else {
             // Game over:
-            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Waffle display backend does not support any OpenGL rendering API: %s.\n",
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Waffle display backend does not support any OpenGL rendering API: %s. Game over!\n",
                                                           waffle_error_to_string(waffle_error_get_code()));
             return(FALSE);
         }
@@ -1100,13 +1124,17 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
         if (NULL == glActiveTextureARB) glActiveTextureARB = waffle_dl_sym(apidl, "glActiveTexture");
 
-        // Fun with NVidia ES implementation:
+        // Fun with NVidia ES implementation, which defines glOrthof() but not glOrthofOES() on their
+        // desktop drivers for GeForce and Quadro:
         if (NULL == glOrthofOES) glOrthofOES = waffle_dl_sym(apidl, "glOrthofOES");
         if (NULL == glOrthofOES) glOrthofOES = waffle_dl_sym(apidl, "glOrthof");
-        if (NULL == glOrthofOES) printf("PTB-ERROR: NO glOrthofOES() - This will end badly!!!\n");
+        if (NULL == glOrthofOES) {
+            printf("PTB-ERROR: NO glOrthofOES() available under OpenGL-ES api! This will not work with OpenGL-ES! Aborting.\n");
+            return(FALSE);
+        }
     }
 
-    return (TRUE);
+    return(TRUE);
 }
 
 void PsychOSCloseWindow(PsychWindowRecordType * windowRecord)
