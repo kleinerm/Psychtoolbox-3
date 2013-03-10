@@ -390,7 +390,7 @@ if strcmpi(cmd, 'DIOCommand')
             % Set default position: 3rd scanline of display, so we don't get
             % into the way of a possible CLUT T-Lock code:
             xDIO = 0;
-            yDIO = 3;
+            yDIO = 2 + i;
         end
         
         % Add command sequence for this T-Lock code to display list:
