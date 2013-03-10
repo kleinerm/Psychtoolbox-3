@@ -11,8 +11,9 @@ function eyeLengthMM = EyeLength(species,source)
 %		Human (Default), Rhesus, Dog
 %
 % Supported sources:
-%   LeGrand (Human, Default)
-%   Rodieck (Human)
+%   LeGrand (Human, 16.6832 mm, Default)
+%   Rodieck (Human, 16.1 mm)
+%   Gulstrand (Human, 17 mm)
 %   PerryCowey (Rhesus)
 %   Packer (Rhesus)
 %   PennDog (Dog)
@@ -25,9 +26,23 @@ function eyeLengthMM = EyeLength(species,source)
 % Passing None is appropriate as an error check -- if a calculation
 % uses the eye length when none is passed, NaN's will show up in
 % the answer.
+% 
+% Finally, if you pass a decimal number as a string, this value
+% will be returned.  Useful for passing arbitrary numbers through
+% routines that rely on this function.
 %
 % 7/15/03  dhb  Wrote it.
-% 
+% 2/27/13  dhb  Added 17 mm option
+% 3/1/13   dhb  Changed '17' to 'Gulstrand'
+%          dhb  Added option of passing a number as a string.
+
+% Check if a direct value was passed as a string.  If so,
+% ignore everything else and return it.
+directVal = str2num(source);
+if (~isempty(directVal))
+    eyeLengthMM = directVal;
+    return;
+end
 
 % Fill in defaults
 if (nargin < 1 || isempty(species))
@@ -68,7 +83,16 @@ switch (source)
 				eyeLengthMM = 16.1;
 			otherwise,
 				error(sprintf('%s estimates not available for species %s',source,species));
-			end
+        end
+    
+    % Gulstrand model eye, as described by Delori et. al., 2007, JOSA A, 24, pp. 1250-1265.
+    case {'Gulstrand'}
+        switch (species)
+			case {'Human'}
+				eyeLengthMM = 17;
+			otherwise,
+				error(sprintf('%s estimates not available for species %s',source,species));
+        end
 
 	% Orin Packer provided me with this information:
     % Monkey eye size varies a lot, so any particular number
