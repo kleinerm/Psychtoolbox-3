@@ -1517,12 +1517,14 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 
                 if (fboInternalFormat == GL_RGBA_FLOAT32_APPLE || fboInternalFormat == GL_RGB_FLOAT32_APPLE) {
                     // 32-bpc float path:
-                    fboInternalFormat = (fboInternalFormat == GL_RGBA_FLOAT32_APPLE) ? GL_RGBA : GL_RGB;
-                    glTexImage2D(texturetarget, 0, fboInternalFormat, twidth, theight, 0, fboInternalFormat, GL_FLOAT, NULL);
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In PsychCreateFBO: OpenGL-ES allocated 32-Bit float %s texture.\n",
+                                                                  (fboInternalFormat == GL_RGBA_FLOAT32_APPLE) ? "RGBA32F" : "RGB32F");
+                    glTexImage2D(texturetarget, 0, fboInternalFormat, twidth, theight, 0, (fboInternalFormat == GL_RGBA_FLOAT32_APPLE) ? GL_RGBA : GL_RGB, GL_FLOAT, NULL);
                 }
                 else {
                     // Classic 8-Bit integer path:
                     glTexImage2D(texturetarget, 0, fboInternalFormat, twidth, theight, 0, fboInternalFormat, GL_UNSIGNED_BYTE, NULL);
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In PsychCreateFBO: OpenGL-ES allocated 8-Bit integer texture.\n");
                 }
             }
             else {
@@ -1533,7 +1535,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
             }
 		}
 		else {
-			// Yes. Bind it as rectangle texture:
+			// Yes. Bind it as texture:
 			glBindTexture(texturetarget, (*fbo)->coltexid);
 		}
 		

@@ -603,7 +603,10 @@ PsychError SCREENMakeTexture(void)
     // internal format must be == external format == not defining resolution. External format is already
     // properly set by common desktop/es HDR setup code, as is type spec, so we just need to make sure that
     // internal format is consistent with external one:
-    if ((usefloatformat == 2) && PsychIsGLES(windowRecord)) textureRecord->textureinternalformat = textureRecord->textureexternalformat;
+    // MK NOPE: Seems i misread the spec and float textures are treated identical to desktop OpenGL, so this
+    // is probably not needed, at least not on NVidia. Leave it here in case this is a NVidia peculiarity and
+    // my old interpretation was actually correct for any other hardware.
+    //    if ((usefloatformat == 2) && PsychIsGLES(windowRecord)) textureRecord->textureinternalformat = textureRecord->textureexternalformat;
 
     // The memory buffer now contains our texture data in a format ready to submit to OpenGL.
     

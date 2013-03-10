@@ -5866,6 +5866,10 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         // Yes: This means we (only) have 32 bpc float textures and possibly framebuffers,
         // not 16 bpc. It also means we only have nearest neighbour textures sampling/filtering,
         // and probably no alpha blending. But better than nothing:
+        //
+        // Note: Seems that 16/32 bpc float textures behave the same as on desktop GL. We still
+        // restrict ourselves to 32 bpc formats instead of additionally 16 bpc to simplify initial
+        // porting to embedded gl - no need to complicate things.
         windowRecord->gfxcaps |= kPsychGfxCapFPTex32;
         if (verbose) printf("Hardware supports floating point textures of 32bpc float format.\n");
 
@@ -5874,11 +5878,14 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
             if (verbose) printf("Hardware supports filtering of 32 bpc floating point textures.\n");
         }
 
-        // 32-bpc float FBO's supported?
+        // 32-bpc float FBO's supported? We assume that if FBO's are supported and float textures
+        // are supported, that then also float FBO's with float blending are available. The spec
+        // does not say much about this, but at least on the NVidia binary desktop drivers this seems
+        // to be the case:
         if ((windowRecord->gfxcaps & kPsychGfxCapFBO)) { //  && strstr((char*) glGetString(GL_EXTENSIONS), "GL_EXT_color_buffer_float")) {
             windowRecord->gfxcaps |= kPsychGfxCapFPFBO32;
             windowRecord->gfxcaps |= kPsychGfxCapFPBlend32;
-            if (verbose) printf("Hardware supports floating point framebuffers of 32bpc float format with blending.\n");
+            if (verbose) printf("Hardware likely supports floating point framebuffers of 32bpc float format with blending.\n");
         }
     }
 
