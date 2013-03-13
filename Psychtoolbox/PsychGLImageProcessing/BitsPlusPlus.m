@@ -1,9 +1,9 @@
 function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % BitsPlusPlus(cmd [, arg1][, arg2, ...]) -- Psychtoolbox interface to
-% Cambridge Research Systems Bits++ box for high precision stimulus
-% output to analog displays via 14 bit video converters.
+% Cambridge Research Systems Bits++ and Bits# boxes for high precision
+% stimulus output to analog displays via 14 bit video converters.
 %
-% This function is used to set up and interface with the Bits++ box of
+% This function is used to set up and interface with the Bits++ / Bits# box of
 % CRS. It is a Matlab wrapper around lower level GLSL Psychtoolbox
 % functions. This function depends on graphics hardware that supports the
 % Psychtoolbox imaging pipeline and framebuffers with more than 14 bit
@@ -16,6 +16,10 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % harder to use, much slower and not fully integrated into PTB, ie, you
 % can't take full advantage of PTB's advanced drawing and image processing
 % functions when using the old Bits++ toolbox.
+%
+% See the help section about Bits# for advanced Bits# commands and how to
+% establish communication and convenient control for the Bits# via USB
+% connection.
 %
 % cmd - The command that BitsPlusPlus should execute. cmd can be any of
 % the following:
@@ -281,6 +285,13 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % -- Decrement reference count to a Bits# device, close the serial connection
 % to it once the count drops to zero, ie., as soon as nobody is using the
 % connection anymore.
+%
+%
+% rc = BitsPlusPlus('ResetOnWindowClose');
+% -- Like 'Close', but switch display back to Bits++ video mode first, as
+% that mode is "GUI friendly". Usually automatically called from Screen()
+% when the Bits# stimulation onscreen window gets closed, at least if you
+% used PsychImaging() to control the device.
 %
 %
 % rc = BitsPlusPlus('CheckGPUSanity', window, xoffset [, injectFault=0]);
@@ -617,14 +628,14 @@ if strcmpi(cmd, 'OpenBits#')
         oldverblevel = IOPort('Verbosity', 0);
         [bitsSharpPort, errmsg] = IOPort('OpenSerialPort', bitsSharpPortname, 'Lenient');
         IOPort('Verbosity', oldverblevel);
-    catch
+    catch %#ok<*CTCH>
         error('Failed to establish a connection to the Bits# via serial port. The error message was: %s', errmsg);
     end
 
     % Success?
     if bitsSharpPort < 0
         % No: Delete invalid port handle.
-        bitsSharpPort = [];
+        bitsSharpPort = []; %#ok<NASGU>
         error('Failed to establish a connection to the Bits# via serial port. The error message was: %s', errmsg);
     end
 
@@ -929,7 +940,7 @@ if strcmpi(cmd, 'OpenWindowBits++')
 
     % windowRect is always full screen -- Anything else would make the
     % Bits++ display fail.
-    if IsLinux && length(varargin) > 0
+    if IsLinux && ~isempty(varargin)
         winRect = varargin{1};
     else
         winRect = [];
@@ -1104,7 +1115,7 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
     
     % windowRect is always full screen -- Anything else would make the
     % Bits++ display fail.
-    if IsLinux && length(varargin) > 0
+    if IsLinux && ~isempty(varargin)
         winRect = varargin{1};
     else
         winRect = [];
@@ -1868,7 +1879,7 @@ function scanline = BitsSharpGetScanline(bitsSharpPort, lineNr, nrPixels)
     % Then we iterate over non-blocking reads until we find the end-of-date terminator code 13:
     while ~isempty(rawline) && (rawline(end) ~= 13)
         WaitSecs('YieldSecs', 0.001);
-        rawline = [rawline IOPort('Read', bitsSharpPort)];
+        rawline = [rawline IOPort('Read', bitsSharpPort)]; %#ok<AGROW>
     end
 
     % Cut away header:
@@ -1882,7 +1893,7 @@ function scanline = BitsSharpGetScanline(bitsSharpPort, lineNr, nrPixels)
     % Convert into integer array:
     rawline = char(rawline);
     rawline(rawline == ';') = ' ';
-    scanline = sscanf(rawline, "%d");
+    scanline = sscanf(rawline, '%d');
     if (length(scanline) ~= 3 * nrPixels)
         warning('BitsSharpGetScanline: Incomplete pixelline %s with only %i elements (less than %i) returned!', rawline, length(scanline), 3 * nrPixels);
         scanline = [];
