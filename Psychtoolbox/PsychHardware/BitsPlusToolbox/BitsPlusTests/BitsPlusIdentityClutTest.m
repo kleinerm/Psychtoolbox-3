@@ -318,6 +318,9 @@ try
     % This flip is needed for the 'LoadIdentityClut' to take effect:
     Screen('Flip', win);
     
+    % Release our dedicated "encoder test" connection to Bits#
+    BitsPlusPlus('Close');
+
     % Done. Close everything down:
     ShowCursor;
     Screen('CloseAll');
@@ -334,6 +337,9 @@ try
 catch
     sca;
     Screen('Preference', 'TextAntiAliasing', oldAntialias);
+
+    % Release our dedicated "encoder test" connection to Bits#
+    BitsPlusPlus('Close');
 
     % Restore psync timeout on Datapixx, if any in use:
     if exist('oldpsynctimeout', 'var')

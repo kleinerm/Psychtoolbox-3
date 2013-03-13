@@ -264,7 +264,7 @@ if (mdr>0 || mdg>0 || mdb>0) && ~forcesuccess
     Screen('Preference', 'Verbosity', oldverbosity);
     Screen('Preference', 'SkipSyncTests', oldsynclevel);
 
-    BitsPlusPlus('Close');
+    BitsPlusPlus('ResetOnWindowClose');
     error('Bits++ Color++ test failed. Results of Matlab code and GPU conversion differ!');
 end
 
@@ -476,7 +476,7 @@ if (mdr>0 || mdg>0 || mdb>0) && ~forcesuccess
     fprintf('script to one and rerun it.\n\n');
     sca;
 
-    BitsPlusPlus('Close');
+    BitsPlusPlus('ResetOnWindowClose');
     error('Bits++ Mono++ test failed. Results of Matlab code and GPU conversion differ!');
 end
 
@@ -487,7 +487,7 @@ fprintf('\n\n------------------- Mono++ test success! --------------------------
 BitsPlusPlus('StoreValidation', window);
 
 % Done. Close everything down:
-BitsPlusPlus('Close');
+BitsPlusPlus('ResetOnWindowClose');
 Screen('CloseAll');
 RestoreCluts;
 
