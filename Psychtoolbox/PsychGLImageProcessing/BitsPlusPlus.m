@@ -304,6 +304,31 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % received over the DVI-D link.
 %
 %
+% BitsPlusPlus('SwitchToBits++');
+% -- Switch Bits# to Bits++ mode.
+%
+%
+% BitsPlusPlus('SwitchToMono++');
+% -- Switch Bits# to Mono++ mode.
+%
+%
+% BitsPlusPlus('SwitchToColor++');
+% -- Switch Bits# to Color++ mode.
+%
+%
+% BitsPlusPlus('SwitchToStatusScreen');
+% -- Switch Bits# to Status screen display.
+%
+%
+% BitsPlusPlus('MassStorageMode');
+% -- Switch Bits# to MassStorageMode. This will forcefully close allow
+% client connections to the device, close the USB serial port connection
+% and close the driver. The Bits# will report into USB mass storage mode,
+% where it can get accessed like a USB flash drive, e.g., to edit configuration
+% files, update firmware or EDID's etc. Only a power-cycle will bring the
+% device back into a mode which allows us to connect to it again.
+%
+%
 
 % History:
 % 22.04.2007 Written (MK).
@@ -314,6 +339,7 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % 14.12.2009 Add support for other target devices, e.g., DataPixx (MK).
 %  3.01.2010 Some bugfixes to DataPixx support. (MK)
 % 12.01.2013 Make compatible with PTB panelfitter. (MK)
+% 13.03.2013 Make compatible with CRS Bits# video display system. (MK)
 
 global GL;
 
@@ -724,6 +750,112 @@ if strcmpi(cmd, 'Close')
         win = 1;
     else
         % Signal that device connection was not actually open:
+        win = 0;
+    end
+
+    return;
+end
+
+if strcmpi(cmd, 'SwitchToBits++')
+    
+    % Connection to Bits# established?
+    if ~isempty(bitsSharpPort)
+        % Yes. Switch back to Bits++ display mode, which provides a reasonably
+        % useable display of the regular desktop GUI:
+        fprintf('BitsPlusPlus: Switching Bits# device to Bits++ mode.\n');
+        IOPort('Write', bitsSharpPort, ['$BitsPlusPlus' char(13)]);
+
+        % Flush commands:
+        IOPort('Flush', bitsSharpPort);
+
+        win = 1;
+    else
+        win = 0;
+    end
+
+    return;
+end
+
+if strcmpi(cmd, 'SwitchToMono++')
+    
+    % Connection to Bits# established?
+    if ~isempty(bitsSharpPort)
+        % Yes. Switch back to Bits++ display mode, which provides a reasonably
+        % useable display of the regular desktop GUI:
+        fprintf('BitsPlusPlus: Switching Bits# device to Mono++ mode.\n');
+        IOPort('Write', bitsSharpPort, ['$monoPlusPlus' char(13)]);
+
+        % Flush commands:
+        IOPort('Flush', bitsSharpPort);
+
+        win = 1;
+    else
+        win = 0;
+    end
+
+    return;
+end
+
+if strcmpi(cmd, 'SwitchToColor++')
+    
+    % Connection to Bits# established?
+    if ~isempty(bitsSharpPort)
+        % Yes. Switch back to Bits++ display mode, which provides a reasonably
+        % useable display of the regular desktop GUI:
+        fprintf('BitsPlusPlus: Switching Bits# device to Color++ mode.\n');
+        IOPort('Write', bitsSharpPort, ['$colourPlusPlus' char(13)]);
+
+        % Flush commands:
+        IOPort('Flush', bitsSharpPort);
+
+        win = 1;
+    else
+        win = 0;
+    end
+
+    return;
+end
+
+if strcmpi(cmd, 'SwitchToStatusScreen')
+    
+    % Connection to Bits# established?
+    if ~isempty(bitsSharpPort)
+        % Yes. Switch back to Bits++ display mode, which provides a reasonably
+        % useable display of the regular desktop GUI:
+        fprintf('BitsPlusPlus: Switching Bits# device to Diagnostic display mode.\n');
+        IOPort('Write', bitsSharpPort, ['$statusScreen' char(13)]);
+
+        % Flush commands:
+        IOPort('Flush', bitsSharpPort);
+
+        win = 1;
+    else
+        win = 0;
+    end
+
+    return;
+end
+
+if strcmpi(cmd, 'MassStorageMode')
+    
+    % Connection to Bits# established?
+    if ~isempty(bitsSharpPort)
+        % Yes. Switch back to Bits++ display mode, which provides a reasonably
+        % useable display of the regular desktop GUI:
+        fprintf('BitsPlusPlus: Switching Bits# device to MassStorageMode mode and disconnecting...\n');
+        IOPort('Write', bitsSharpPort, ['$USB_massStorage' char(13)]);
+
+        % Flush commands:
+        IOPort('Flush', bitsSharpPort);
+
+        % Disconnect forcefully, as the Bits# will no longer respond to our
+        % commands until it is manually restarted:
+        refCount = 0;
+        IOPort('Close', bitsSharpPort);
+        bitsSharpPort = [];
+        
+        win = 1;
+    else
         win = 0;
     end
 
