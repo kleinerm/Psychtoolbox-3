@@ -1,4 +1,8 @@
-function BitsPlusIdentityClutTest(whichScreen, dpixx)
+function BitsPlusIdentityClutTest(whichScreen, dpixx, winrect)
+% Test signal transmission from the framebuffer to your CRS Bits+/Bits#
+% device or VPixx Inc. DataPixx/ViewPixx device and similar CRS and VPixx
+% products.
+%
 % Test proper function of the T-Lock mechanism, proper loading of identity
 % gamma tables into the GPU, and for bad interference of dithering hardware
 % with the DVI stream. This test is meant for Mono++ mode of Bits+, it
@@ -10,25 +14,27 @@ function BitsPlusIdentityClutTest(whichScreen, dpixx)
 % defects in the Bits+ device or similar devices, nor Psychtoolbox bugs. As
 % such, sadly they are mostly out of our control and there is only a
 % limited number of ways we can try to help you to workaround the problems
-% caused by miserable workmanship and insufficient quality control at those big
-% companies.
+% caused by miserable workmanship and insufficient quality control at those
+% big companies.
 %
 % Usage:
 %
-% BitsPlusIdentityClutTest([whichScreen=max][usedpixx=0]);
+% BitsPlusIdentityClutTest([whichScreen=max][, usedpixx=0][, winrect=[]]);
 %
 % How to test:
 %
 % 1. Make sure your Bits+ box is switched to Mono++ mode by uploading the
-%    proper firmware.
+%    proper firmware. Or make sure your DataPixx is connected, both DVI
+%    cable and USB cable.
 %
 % 2. Run the BitsPlusImagingPipelineTest script to validate that your
 %    graphics card can create properly formatted images in the framebuffer
-%    for Bits+.
+%    for Bits+ or DataPixx.
 %
 % 3. Run this script, optionally passing a screenid. It will test the
 %    secondary display on a multi-display setup by default, or the external
-%    display on a laptop.
+%    display on a laptop. For a DataPixx device or similar, set the
+%    optional 'usedpixx' flag to 1.
 %
 % If everything works, what you see onscreen should match the description
 % in the blue text that is displayed.
@@ -74,12 +80,17 @@ if nargin < 1 || isempty(whichScreen)
     whichScreen = max(Screen('Screens'));
 end
 
-if nargin < 2
+if nargin < 2 || isempty(dpixx)
     dpixx = 0;
+end
+
+if nargin < 3
+    winrect = [];
 end
 
 % Disable text anti-aliasing for this test:
 oldAntialias = Screen('Preference', 'TextAntiAliasing', 0);
+oldTextAlpha = Screen('Preference', 'TextAlphaBlending', 1);
 
 try
     % Setup imaging pipeline:
@@ -95,25 +106,33 @@ try
     PsychImaging('AddTask', 'FinalFormatting', 'DisplayColorCorrection', 'ClampOnly');
 
     if dpixx
-        % Use Mono++ mode with overlay:
+        % Use M16 mode with overlay:
         PsychImaging('AddTask', 'General', 'EnableDataPixxM16OutputWithOverlay');
         
         % Reduce timeout for recognition of PSYNC code to about 1 second on
         % a 100 Hz display:
-        oldpsynctimeout = PsychDataPixx('PsyncTimeoutFrames', 100);
-        
-        answer = input('Run DataPixx based diagnostics as well [Time consuming]? [y/n] ', 's');
-        if answer == 'y'
-            % Enable one-shot diagnostic of GPU encoders via DataPixx:
-            BitsPlusPlus('TestGPUEncoders');
-        end
+        oldpsynctimeout = PsychDataPixx('PsyncTimeoutFrames', 100);        
     else
         % Use Mono++ mode with overlay:
         PsychImaging('AddTask', 'General', 'EnableBits++Mono++OutputWithOverlay');
     end
-    
+
+    % DataPixx or Bits# used? They allow advanced diagnostics.
+    if dpixx || BitsPlusPlus('OpenBits#')
+        fprintf('\n\nYou can run extended diagnostics and fixes if you answer the following question\n');
+        fprintf('with yes. However, we recommend first running this script once, answering no. Then\n');
+        fprintf('if that at least somewhat succeeds, rerun the script and answer yes, to either fix\n');
+        fprintf('remaining errors and glitches, or verify perfect function of your setup. If you don''t\n');
+        fprintf('do it in this order, the test may hang on some setups.\n\n');
+        answer = input('Run DataPixx/Bits# based diagnostics as well [Time consuming]? [y/n] ', 's');
+        if answer == 'y'
+            % Enable one-shot diagnostic of GPU encoders via Data/View/ProPixx or Bits# :
+            BitsPlusPlus('TestGPUEncoders');
+        end
+    end
+
     % Open the window, assign a gray background color with a 50% intensity gray:
-    [win, screenRect] = PsychImaging('OpenWindow', whichScreen, 0.5);
+    [win, screenRect] = PsychImaging('OpenWindow', whichScreen, 0.5, winrect);
 
     % Get handle to overlay:
     overlaywin = PsychImaging('GetOverlayWindow', win);
@@ -241,7 +260,7 @@ try
         % Color in low slots gets re-randomized:
         ovllut(1:100,:) = rand(100,3);
 
-        [isdown, secs, keyCode] = KbCheck;
+        [isdown, secs, keyCode] = KbCheck; %#ok<*ASGLU>
         if isdown
             if keyCode(escape)
                 break;
@@ -271,7 +290,10 @@ try
                 end
             end
 
-            if keyCode(key_o)
+            % Playing with gamma lut's for the overlay, only on
+            % non-Windows, as Windows doesn't allow loading arbitrary gpu
+            % gamma tables:
+            if keyCode(key_o) && ~IsWin
                 bluelutenable = 1 - bluelutenable;
                 if bluelutenable
                     % Reupload identity gamma table to reenable overlay:
@@ -300,11 +322,15 @@ try
     % This flip is needed for the 'LoadIdentityClut' to take effect:
     Screen('Flip', win);
     
+    % Release our dedicated "encoder test" connection to Bits#
+    BitsPlusPlus('Close');
+
     % Done. Close everything down:
     ShowCursor;
     Screen('CloseAll');
     RestoreCluts;
     Screen('Preference', 'TextAntiAliasing', oldAntialias);
+    Screen('Preference', 'TextAlphaBlending', oldTextAlpha);
 
     % Restore psync timeout on Datapixx, if any in use:
     if exist('oldpsynctimeout', 'var')
@@ -313,9 +339,13 @@ try
     
     fprintf('Finished. Bye.\n\n');
 
-catch
+catch %#ok<CTCH>
     sca;
     Screen('Preference', 'TextAntiAliasing', oldAntialias);
+    Screen('Preference', 'TextAlphaBlending', oldTextAlpha);
+
+    % Release our dedicated "encoder test" connection to Bits#
+    BitsPlusPlus('Close');
 
     % Restore psync timeout on Datapixx, if any in use:
     if exist('oldpsynctimeout', 'var')

@@ -18,6 +18,31 @@
 
 #include "PsychHID.h"
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+
+#define NUMDEVICEUSAGES 7
+
+int PsychHIDOSXGetRealDefaultKbQueueDevice(void)
+{
+	long KbDeviceUsagePages[NUMDEVICEUSAGES] = {kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop};
+	long KbDeviceUsages[NUMDEVICEUSAGES] = {kHIDUsage_GD_Keyboard, kHIDUsage_GD_Keypad, kHIDUsage_GD_Mouse, kHIDUsage_GD_Pointer, kHIDUsage_GD_Joystick, kHIDUsage_GD_GamePad, kHIDUsage_GD_MultiAxisController};
+	int	numDeviceUsages = NUMDEVICEUSAGES;
+    
+    int deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
+    pRecDevice deviceRecords[PSYCH_HID_MAX_KEYBOARD_DEVICES];
+    int numDeviceIndices;
+    
+    // Enumerate all possible candidates for default keyboard device:
+    PsychHIDGetDeviceListByUsages(numDeviceUsages, KbDeviceUsagePages, KbDeviceUsages, &numDeviceIndices, deviceIndices, deviceRecords);
+    
+    // Nothing?
+    if (numDeviceIndices == 0) PsychErrorExitMsg(PsychError_user, "No keyboard or keypad devices detected.");
+    
+    // Return the default keyboard or keypad device as the first keyboard device or, if no keyboard, the first keypad:
+    return(deviceIndices[0]);
+}
+#endif
+
 static char useString[]= "devices=PsychHID('Devices' [, deviceClass])";
 static char synopsisString[] =  "Return a struct array describing each connected USB HID device.\n"
 				"'deviceClass' optionally selects for the class of input device. "
@@ -25,6 +50,7 @@ static char synopsisString[] =  "Return a struct array describing each connected
 				"ignored if unsupported. On Linux you can select the following classes "
 				"of input devices: 1 = MasterPointer, 2 = MasterKeyboard, 3 = SlavePointer "
 				"4 = SlaveKeyboard, 5 = Floating slave device.\n\n"
+                "deviceClass -1 returns the numeric deviceIndex of the default keyboard device for keyboard queues.\n\n"
                 "Not all device properties are returned on all operating systems. A zero, "
                 "empty or -1 value for a property in the returned structs can mean that "
                 "the information could not be returned.\n";
@@ -49,33 +75,28 @@ PsychError PSYCHHIDGetDevices(void)
 
     if (PsychCopyInIntegerArg(1, FALSE, &deviceClass)) {
         // Operating system specific enumeration of devices, selected by deviceClass:
-        // Currently unsupported on OSX:
+        
+        // Other classes currently unsupported on OSX:
         #if PSYCH_SYSTEM != PSYCH_OSX
-        return(PsychHIDEnumerateHIDInputDevices(deviceClass));
+            if (deviceClass == -1) {
+                PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) PsychHIDGetDefaultKbQueueDevice());
+                return(PsychError_none);
+            }
+
+            return(PsychHIDEnumerateHIDInputDevices(deviceClass));
+        #else
+            // Horrible hack: Usercode wants 'deviceIndex' or real default HID keyboard,
+            // but we can't use PsychHIDGetDefaultKbQueueDevice() as on other OS'es, as
+            // that always has to return a hard-coded zero, because much of our code relies
+            // on that function for indexing into keyboard queues, and on OSX there is only
+            // one keyboard queue with index zero, regardless what deviceIndex is attached to
+            // that queue:
+            if (deviceClass == -1) {
+                PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) PsychHIDOSXGetRealDefaultKbQueueDevice());
+                return(PsychError_none);
+            }
         #endif
     }
-
-#if (PSYCH_SYSTEM == PSYCH_OSX) && defined(__LP64__)
-    // Try to load all bundles from Psychtoolbox/PsychHardware/
-    // This loads the HID_Utilities.framework bundle if it is present. The whole point of it is
-    // to allow our statically compiled-in version of the library to find the location of
-    // the XML file with the database of (vendorId, productId) -> (VendorName, ProductName) and
-    // (usagePage, usage) -> (usageName) mappings.
-    //
-    // In practice, the XML file only serves as a fallback, and one that doesn't contain much
-    // useful info for mainstream products, only for a few niche products. Given its limited
-    // value, i think we can refrain from shipping the framework as part of Psychtoolbox and
-    // just provide the option to use it (== its XML file) if users decide to install it themselves.
-    char tmpString[1024];
-    
-    sprintf(tmpString, "%sPsychHardware/", PsychRuntimeGetPsychtoolboxRoot(FALSE));
-    CFStringRef urlString = CFStringCreateWithCString(kCFAllocatorDefault, tmpString, kCFStringEncodingASCII);
-    CFURLRef directoryURL = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, urlString, kCFURLPOSIXPathStyle, false);
-    CFRelease(urlString);
-    CFArrayRef bundleArray = CFBundleCreateBundlesFromDirectory(kCFAllocatorDefault, directoryURL, NULL);
-    CFRelease(directoryURL);
-    CFRelease(bundleArray);    
-#endif
 
     PsychHIDVerifyInit();
     numDeviceStructElements=(int)HIDCountDevices();
@@ -114,11 +135,18 @@ PsychError PSYCHHIDGetDevices(void)
         #if PSYCH_SYSTEM == PSYCH_OSX
             // OSX 64-Bit specific: OSX 10.5 and later:
             #ifdef __LP64__
+                char tmpString[1024];
+                CFStringRef cfusageName = NULL;
+        
                 PsychSetStructArrayDoubleElement("usagePageValue", deviceIndex, (double) IOHIDDevice_GetPrimaryUsagePage(currentDevice), deviceStruct);
                 PsychSetStructArrayDoubleElement("usageValue", deviceIndex, (double) IOHIDDevice_GetPrimaryUsage(currentDevice), deviceStruct);
 
                 sprintf(usageName, "");
-                CFStringRef cfusageName = HIDCopyUsageName(IOHIDDevice_GetPrimaryUsagePage(currentDevice), IOHIDDevice_GetPrimaryUsage(currentDevice));
+                // HIDCopyUsageName() is slow: It takes about 22 msecs to map one HID device on a modern machine!
+                // However, the functions below are also rather slow, taking another ~ 8 msecs for a total of ~30 msecs
+                // on a mid-2010 MacBookPro with quad-core cpu.
+                cfusageName = HIDCopyUsageName(IOHIDDevice_GetPrimaryUsagePage(currentDevice), IOHIDDevice_GetPrimaryUsage(currentDevice));
+
                 if (cfusageName && (CFStringGetLength(cfusageName) > 0)) {
                     CFStringGetCString(cfusageName, usageName, sizeof(usageName), kCFStringEncodingASCII);
                     CFRelease(cfusageName);

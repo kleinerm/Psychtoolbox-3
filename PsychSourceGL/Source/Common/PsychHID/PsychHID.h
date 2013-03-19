@@ -165,7 +165,7 @@ struct PsychUSBDeviceRecord_Struct {
 	
 	#if PSYCH_SYSTEM == PSYCH_OSX
 	// OS/X stuff:
-	IOUSBDeviceInterface**    device;  // Actual low-level device specific pointer for OS/X.
+	IOUSBDeviceInterface182**    device;  // Actual low-level device specific pointer for OS/X.
 	#else
         // Linux & Windows stuff:
         void*     device;  // libusb device handle for other os'es.
@@ -216,8 +216,10 @@ PsychError PSYCHHIDGiveMeReports(void);				// PsychHIDGiveMeReports.c
 PsychError PSYCHHIDOpenUSBDevice(void);				// PSYCHHIDOpenUSBDevice.c
 PsychError PSYCHHIDCloseUSBDevice(void);			// PSYCHHIDCloseUSBDevice.c
 PsychError PSYCHHIDUSBControlTransfer(void);		// PSYCHHIDUSBControlTransfer.c
+PsychError PSYCHHIDKeyboardHelper(void);            // PSYCHHIDKeyboardHelper.c
 
 //internal function protototypes
+void ConsoleInputHelper(int ccode); // PsychHIDKeyboardHelper.c -- Called from kbqueue handling thread.
 PsychError  PsychHIDReceiveReportsCleanup(void); // PsychHIDReceiveReports.c
 PsychError  ReceiveReports(int deviceIndex); // PsychHIDReceiveReports.c
 PsychError  GiveMeReport(int deviceIndex, psych_bool *reportAvailablePtr, unsigned char *reportBuffer, psych_uint32 *reportBytesPtr, double *reportTimePtr); // PsychHIDReceiveReports.c
@@ -287,7 +289,7 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys);
 psych_bool PsychHIDCreateEventBuffer(int deviceIndex);
 psych_bool PsychHIDDeleteEventBuffer(int deviceIndex);
 psych_bool PsychHIDFlushEventBuffer(int deviceIndex);
-unsigned int PsychHIDAvailEventBuffer(int deviceIndex);
+unsigned int PsychHIDAvailEventBuffer(int deviceIndex, unsigned int flags);
 int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double maxWaitTimeSecs);
 int PsychHIDAddEventToEventBuffer(int deviceIndex, PsychHIDEventRecord* evt);
 

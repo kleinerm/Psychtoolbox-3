@@ -150,6 +150,10 @@ PsychError PsychHIDCleanup(void)
 	// Disable online help system:
 	PsychClearGiveHelp();
 
+    // Disable any kind of low-level stdin<->tty magic for character reception
+    // or suppression in console mode (for octave and matlab -nojvm):
+    ConsoleInputHelper(-10);
+    
 	// Shutdown USB-HID report low-level functions, e.g., for DAQ toolbox on OS/X:
 	error = PsychHIDReceiveReportsCleanup(); // PsychHIDReceiveReport.c
 	
@@ -295,15 +299,34 @@ psych_bool PsychHIDFlushEventBuffer(int deviceIndex)
 	return(TRUE);
 }
 
-unsigned int PsychHIDAvailEventBuffer(int deviceIndex)
+/* Return number of events in buffer for 'deviceIndex':
+ * flags == 0 -> All events.
+ * flags &  1 -> Only keypress events with valid mapped ASCII CookedKey keycode.
+ */
+unsigned int PsychHIDAvailEventBuffer(int deviceIndex, unsigned int flags)
 {
-	unsigned int navail;
+	unsigned int navail, i, j;
+    
 	if (deviceIndex < 0) deviceIndex = PsychHIDGetDefaultKbQueueDevice();
 
     if (!hidEventBuffer[deviceIndex]) return(0);
 
 	PsychLockMutex(&hidEventBufferMutex[deviceIndex]);
+    
+    // Compute total number of available events by default:
 	navail = hidEventBufferWritePos[deviceIndex] - hidEventBufferReadPos[deviceIndex];
+    
+    // Only count of valid "CookedKey" mapped keypress events, e.g., for use by CharAvail(), requested?
+    if (flags & 1) {
+        // Yes: Iterate over all available events and only count number of keypress events
+        // with meaningful 'CookedKey' field:
+        navail = 0;
+        for (i = hidEventBufferReadPos[deviceIndex]; i < hidEventBufferWritePos[deviceIndex]; i++) {
+            j = i % hidEventBufferCapacity[deviceIndex];
+            if ((hidEventBuffer[deviceIndex][j].status & (1<<0)) && (hidEventBuffer[deviceIndex][j].cookedEventCode > 0)) navail++;
+        }
+    }
+    
 	PsychUnlockMutex(&hidEventBufferMutex[deviceIndex]);
 	
 	return(navail);
@@ -407,8 +430,56 @@ void PsychHIDShutdownHIDStandardInterfaces(void)
 */
 void PsychHIDVerifyInit(void)
 {
-    if(!HIDHaveDeviceList()) HIDBuildDeviceList( 0, 0);
+    psych_bool success = TRUE;
+    
+    // Build HID device list if it doesn't already exist:
+    if (!HIDHaveDeviceList()) success = (psych_bool) HIDBuildDeviceList(0, 0);
+    
+    // This check can only be made against the 64-Bit HID Utilities, as the older 32-Bit
+    // version is even more crappy and can't report meaningful error status:
+    #if defined(__LP64__)
+    if (!success) {
+        printf("PsychHID-ERROR: Could not enumerate HID devices (HIDBuildDeviceList() failed)! There can be various reasons,\n");
+        printf("PsychHID-ERROR: ranging from bugs in Apples HID software to a buggy HID device driver for some connected device,\n");
+        printf("PsychHID-ERROR: to general operating system malfunction. A reboot or device driver update for 3rd party HID devices\n");
+        printf("PsychHID-ERROR: maybe could help. Check the OSX system log for possible HID related error messages or hints. Aborting...\n");
+        PsychErrorExitMsg(PsychError_system, "HID device enumeration failed due to malfunction in the OSX 64 Bit Apple HID Utilities framework.");
+    }
+    #endif
+    
+    // Double-Check to protect against pathetic Apple software:
+    if (!HIDHaveDeviceList()) {
+        printf("PsychHID-ERROR: Could not enumerate HID devices (HIDBuildDeviceList() success, but HIDHaveDeviceList() still failed)!\n");
+        printf("PsychHID-ERROR: Reasons can be ranging from bugs in Apples HID software to a buggy HID device driver for some connected device,\n");
+        printf("PsychHID-ERROR: to general operating system malfunction. A reboot or device driver update for 3rd party HID devices\n");
+        printf("PsychHID-ERROR: maybe could help. Check the OSX system log for possible HID related error messages or hints. Aborting...\n");
+        PsychErrorExitMsg(PsychError_system, "HID device enumeration failed due to malfunction in the OSX Apple HID Utilities framework (II).");
+    }
+    
+    // Verify no security sensitive application is blocking our low-level access to HID devices:
 	PsychHIDWarnInputDisabled(NULL);
+    
+    #if defined(__LP64__)
+    // Try to load all bundles from Psychtoolbox/PsychHardware/
+    // This loads the HID_Utilities.framework bundle if it is present. The whole point of it is
+    // to allow our statically compiled-in version of the library to find the location of
+    // the XML file with the database of (vendorId, productId) -> (VendorName, ProductName) and
+    // (usagePage, usage) -> (usageName) mappings.
+    //
+    // In practice, the XML file only serves as a fallback, and one that doesn't contain much
+    // useful info for mainstream products, only for a few niche products. Given its limited
+    // value, i think we can refrain from shipping the framework as part of Psychtoolbox and
+    // just provide the option to use it (== its XML file) if users decide to install it themselves.
+    char tmpString[1024];
+    
+    sprintf(tmpString, "%sPsychHardware/", PsychRuntimeGetPsychtoolboxRoot(FALSE));
+    CFStringRef urlString = CFStringCreateWithCString(kCFAllocatorDefault, tmpString, kCFStringEncodingASCII);
+    CFURLRef directoryURL = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, urlString, kCFURLPOSIXPathStyle, false);
+    CFRelease(urlString);
+    CFArrayRef bundleArray = CFBundleCreateBundlesFromDirectory(kCFAllocatorDefault, directoryURL, NULL);
+    CFRelease(directoryURL);
+    CFRelease(bundleArray);    
+    #endif
 }
 
 /*
@@ -800,7 +871,7 @@ int PsychHIDFindCollectionElements(pRecElement collectionRecord, HIDElementTypeM
 */
 void PsychHIDVerifyInit(void)
 {
-    int busId, devId, intId;
+    int busId, devId;
     pRecDevice currentDevice = NULL;
     struct hid_device_info* hid_dev = NULL;
     
@@ -829,8 +900,23 @@ void PsychHIDVerifyInit(void)
             if (hid_dev->serial_number) wcstombs(&currentDevice->serial[0], hid_dev->serial_number, 256);
 
             // Convert unique device path into unique numeric location id:
-            sscanf(hid_dev->path, "%x:%x:%x", &busId, &devId, &intId);
-            currentDevice->locID = (double) ((busId << 24) + (devId << 8) + intId);
+            if (PSYCH_SYSTEM == PSYCH_LINUX) {
+                // Use USB bus-id and device-id as unique location identifier:
+                sscanf(hid_dev->path, "%x:%x", &busId, &devId);
+                currentDevice->locID = (double) ((busId << 16) + (devId << 0));
+            }
+        
+            if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
+                // Use device container id as unique location identifier.
+                // This may only work on Windows-7+ and is a bit of a hack here,
+                // the id is a GUID, nothing related to busId or devId. We init
+                // devId with the hid_dev pointer value, to get a devId and thereby
+                // location id in case proper parsing of a container id doesn't work:
+                busId = 0;
+                devId = (int) hid_dev;
+                if (strstr(hid_dev->path, "{")) sscanf(strstr(hid_dev->path, "{"), "{%x-%x", &busId, &devId);
+                currentDevice->locID = (double) (((psych_uint64) busId << 32) + devId);
+            }
 
             // Interface number is great for identifying DAQ devices, but not available
             // on OS/X, so this will be a Linux/Windows only thing.

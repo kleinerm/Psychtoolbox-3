@@ -40,6 +40,22 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % 'whichTask' contains the name string of one of the supported
 % actions:
 %
+% * 'SideBySideCompressedStereo' Ask for stereo display in a horizontally
+%   compressed side-by-side format. Left and Right eye images are drawn at
+%   full framebuffer resolution by usercode. Screen('Flip', ...) draws them
+%   horizontally compressed side-by-side to each other. They are scanned
+%   out to the display device this way and then the display device itself
+%   uncompresses them back to full resolution and displays them
+%   stereoscopically, typically via built-in alternating frame-sequential
+%   stereo with stereo goggles, but other methods are conceivable. This is
+%   one popular stereo frame packing format for stereo on HDMI display
+%   devices. Once you've set up a stereo display mode via PsychImaging, you
+%   can tweak its specific parameters by calling the function
+%   SetCompressedStereoSideBySideParameters().
+%
+%   Usage: PsychImaging('AddTask', 'General', 'SideBySideCompressedStereo');
+%
+%
 % * 'InterleavedColumnStereo' Ask for stereo display in interleaved mode.
 %   The output image is composed from the lefteye and righteye stereo
 %   buffers by interleaving their content: Even columns are filled with
@@ -90,6 +106,76 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   cmponent fixed point precision.
 %
 %   Usage: PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
+%
+%
+% * 'UsePanelFitter' Ask to use builtin panel fitter. This allows you to
+%   define a virtual size for your onscreen window. The window will behave
+%   as if it had that virtual size wrt. all size queries and drawing
+%   operations. However, at Screen('Flip') time, the visual content of the
+%   window will be resized by a fast scaling operation to the real size of
+%   the windows framebuffer, ie., its real onscreen size. Scaling uses
+%   bilinear interpolation or better for high quality results. After
+%   rescaling to the real size, post-processing and display of your
+%   stimulus image will proceed at full resolution. This function is useful
+%   if you want to display a stimulus designed for a specific display
+%   resolution on a display device of different higher or lower resolution.
+%   Given that size and shape of the virtual framebuffer and real display
+%   window will not match, the function provides you with multiple possible
+%   choices on how to rescale your stimulus image, e.g., to maximize
+%   display area, or to preserve the aspect ratio of the original image,
+%   trading off displayed area etc.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'UsePanelFitter', size, strategy [, srcRect, dstRect]);
+%
+%   'size' is a [width, height] vector defining the width x height of the
+%   virtual window in pixels.
+%
+%   'strategy' a text string selecting the scaling method. Following settings are possible:
+%
+%   'Full' - Scale to full window size. Aspect ratio is not preserved,
+%            unless the virtual window and the real onscreen windows 'rect'
+%            already have the same aspect ratio, in which case this will be
+%            a simple scaling operation.
+%
+%   'Aspect' - Scale to maximum size possible while preserving aspect
+%              ratio. This will center the stimulus and add black
+%              horizontal or vertical borders as neccessary.
+%
+%   'AspectWidth' - Scale aspect ratio preserving to cover full display
+%                   width. Cut off top and bottom content if neccessary.
+%
+%   'AspectHeight' - Scale aspect ratio preserving to cover full display
+%                    height. Cut off left and right content if neccessary.
+%
+%   'Centered' - Center stimulus without any scaling, add black borders
+%                around stimulus or cut away border regions to get a
+%                one-to-one mapping.
+%
+%   'Custom' - This works like the 'srcRect' and 'dstRect' parameters of
+%              Screen('DrawTexture'): Cut out a 'srcRect' region from the
+%              virtual framebuffer and display it in the 'dstRect' region.
+%              'srcRect' and 'dstRect' are given in typical [left, top, right, bottom]
+%              format.
+%
+%   Example: Suppose your real window covers a 1920 x 1080 display.
+%
+%   PsychImaging('AddTask', 'General', 'UsePanelFitter', [800 600], 'Aspect');
+%   -> This would give you a virtual window of 800 x 600 pixels to draw
+%   into and would rescale the 800 x 600 stimulus image to 1440 x 1080
+%   pixels and display it centered on the 1920 x 1080 pixels display.
+%   Aspect ratio would be correct and the image would cover the full height
+%   1080 pixels of the display, but only 1440 out of 1920 pixels of its
+%   width, thereby leaving black borders on the left and right side of your
+%   stimulus.
+%
+%   PsychImaging('AddTask', 'General', 'UsePanelFitter', [800 600], 'AspectHeight');
+%   -> Would do the same as above.
+%
+%   PsychImaging('AddTask', 'General', 'UsePanelFitter', [800 600], 'AspectWidth');
+%   -> Would create a final image of 1920 pixels width, as you asked to
+%   cover the full display width, aspect ratio would be correct, but the
+%   top and bottom 75 pixels of your original stimulus would get cut away,
+%   because they wouldn't fit after scaling without distorting the image.
 %
 %
 % * 'UseFastOffscreenWindows' Ask for support of fast Offscreen windows.
@@ -439,6 +525,35 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   You can use the RemapMouse() function to correct GetMouse() positions
 %   for potential geometric distortions introduced by this function for
 %   "mode" zero.
+%
+%
+% * 'UseBits#' Tell Psychtoolbox that additional functionality for
+%   displaying the onscreen window on a Cambridge Research Systems Bits#
+%   device should be enabled.
+%
+%   This command is implied by enabling a Bits+ or Bits# video mode by one
+%   of the commands for the Bits+/Bits# in the following sections, if the
+%   driver can auto-detect a connected Bits# device. If it cannot auto-detect
+%   a connected Bits# device and this command is omitted, Psychtoolbox will
+%   instead assume that an older Bits+ is in use and only allow functionality
+%   common to Bits# and Bits+, without automatic video mode switching.
+%
+%   If you provide this command, you can optionally specify the name of the
+%   serial port to which your Bits# is connected, instead of leaving it to
+%   the system to find this out (either via configuration file or via a
+%   guess-o-matic).
+%
+%   Usage: PsychImaging('AddTask', 'General', 'UseBits#' [, BitsSharpSerialPort]);
+%
+%   'BitsSharpSerialPort' is optional and can be set to the name of a serial
+%   port for your specific operating system and computer, to which the Bits#
+%   is connected. If omitted, Psychtoolbox will look for the name in the first
+%   line of text of a text file stored under the filesystem path and filename
+%   [PsychtoolboxConfigDir 'BitsSharpConfig.txt']. If that file is empty, the
+%   serial port is auto-detected (Good luck!).
+%
+%   'UseBits#' mostly prepares use of a variety of new Bits# subfunctions
+%   in the BitsPlusPlus() high-level driver ("help BitsPlusPlus").
 %
 %
 % * 'EnableBits++Bits++Output' Setup Psychtoolbox for Bits++ mode of the
@@ -833,6 +948,10 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % 11.09.2012  Add support for stereo sync line handling, and for
 %             scanning backlight control of the ViewPixx in stereomode. (MK)
 %
+% 23.12.2012  Add support for 'SideBySideCompressedStereo' stereo mode. (MK)
+%
+% 13.12.2013  Add support for 'UsePanelFitter' Screen panelfitter setup. (MK)
+%
 
 persistent configphase_active;
 persistent reqs;
@@ -1033,6 +1152,175 @@ if strcmp(cmd, 'OpenWindow')
     
     imagingMode = mor(imagingMode, imagingovm);
     
+    if nargin < 10 || isempty(varargin{9})
+        specialFlags = [];
+    else
+        specialFlags = varargin{9};
+    end
+    
+    if nargin < 11 || isempty(varargin{10})
+        clientRect = [];
+    else
+        clientRect = varargin{10};
+    end
+    
+    % Use and high-level setup of panelfitter requested?
+    if ~isempty(find(mystrcmp(reqs, 'UsePanelFitter'))) %#ok<*EFIND>
+        % Yes. Extract parameters:
+        floc = find(mystrcmp(reqs, 'UsePanelFitter'));
+        if length(floc) > 1
+            error('PsychImaging: Multiple definitions of task "UsePanelFitter"! There can be only one.');
+        end
+        
+        [row cols] = ind2sub(size(reqs), floc); %#ok<NASGU>
+        
+        % Extract requested resolution of virtual framebuffer...
+        clientRes = reqs{row, 3};
+        if length(clientRes) ~= 2 || ~isnumeric(clientRes) || min(clientRes) < 1
+            error('PsychImaging: Mandatory "size" parameter of task "UsePanelFitter" is missing or not a two component [width, height] size vector with positive width and height as expected.');
+        end
+        
+        clientRes = round(clientRes);
+        
+        if ~isempty(clientRect)
+            fprintf('PsychImaging: OpenWindow: Warning: User provided "clientRect" overriden by specification in PsychImaging task "UsePanelFitter".');
+        end
+        
+        % ... and define clientRect accordingly:
+        clientRect = [0, 0, clientRes(1), clientRes(2)];
+        
+        % Extract scaling strategy:
+        fitterStrategy = reqs{row, 4};
+        if isempty(fitterStrategy) || ~ischar(fitterStrategy)
+            error('PsychImaging: Mandatory parameter "strategy" of task "UsePanelFitter" missing or not a string.');
+        end
+
+        % Define full size of output framebuffer:
+        if isempty(winRect)
+            dstFit = Screen('Rect', screenid);
+        else
+            dstFit = SetRect(0, 0, RectWidth(winRect), RectHeight(winRect));
+        end
+        
+        % Adapt dstFit according to window size flags:
+        
+        % Apply half-height flag, if any:
+        if bitand(imagingMode, kPsychNeedHalfHeightWindow)
+            dstFit(RectBottom) = dstFit(RectBottom) / 2;
+        end
+        
+        % Apply half-width flag, if any:
+        if bitand(imagingMode, kPsychNeedHalfWidthWindow) || ismember(stereomode, [4, 5])
+            dstFit(RectRight) = dstFit(RectRight) / 2;
+        end
+        
+        % Apply twice-width flag, if any:
+        if bitand(imagingMode, kPsychNeedTwiceWidthWindow)
+            dstFit(RectRight) = dstFit(RectRight) * 2;
+        end
+
+        % Which strategy to use?
+        if strcmpi(fitterStrategy, 'Custom')
+            % Custom scaling with provided srcRect and dstRect:
+            srcFit = reqs{row, 5};
+            dstFit = reqs{row, 6};
+            if ~isnumeric(srcFit) || length(srcFit) ~= 4
+                error('PsychImaging: Mandatory parameter "srcRect" of task "UsePanelFitter" for fitting strategy "Custom" missing or not a 4 element rect.');
+            end
+            
+            if ~isnumeric(dstFit) || length(dstFit) ~= 4
+                error('PsychImaging: Mandatory parameter "dstRect" of task "UsePanelFitter" for fitting strategy "Custom" missing or not a 4 element rect.');
+            end
+            
+            % Just concatenate source and destination rectangle and we're done:
+            fitterParams = [srcFit , dstFit];
+            
+        elseif strcmpi(fitterStrategy, 'Centered')
+            % Don't rescale but blit one-to-one. Center in target
+            % framebuffer, crop if neccessary:
+
+            % Try to center clientRect in destination framebuffer rect:
+            srcFit = CenterRect(clientRect, dstFit);
+            
+            % Does it fully fit in?
+            if any(srcFit < 0)
+                % No. We need to crop/clip it to fit in:
+                dstFit = ClipRect(srcFit, dstFit);
+                srcFit = CenterRect(dstFit, clientRect);
+                fprintf('PsychImaging: For Centered fitting, needed to crop source framebuffer to central region [%i,%i,%i,%i]. Borders will be missing.\n', srcFit(1), srcFit(2), srcFit(3), srcFit(4));
+            else
+                % Yes: Center in destination framebuffer:
+                dstFit = srcFit;
+                srcFit = clientRect;
+            end
+            
+            fitterParams = [srcFit , dstFit];
+            
+        elseif strcmpi(fitterStrategy, 'Full')
+            % Rescale source framebuffer to full target framebuffer, not
+            % taking aspect ratio into account:
+            srcFit = clientRect;
+            
+            if RectWidth(srcFit) / RectHeight(srcFit) ~= RectWidth(dstFit) / RectHeight(dstFit)
+                fprintf('PsychImaging: Using full resolution fitting strategy, scaling will not preserve aspect ratio of original stimulus!\n');
+            else
+                fprintf('PsychImaging: Using full resolution fitting strategy. Aspect ratio is preserved.\n');
+            end
+            
+            fitterParams = [srcFit , dstFit];
+            
+        elseif strcmpi(fitterStrategy, 'AspectWidth') || strcmpi(fitterStrategy, 'AspectHeight') || strcmpi(fitterStrategy, 'Aspect')
+            % Rescale aspect ratio preserving:
+            
+            if strcmpi(fitterStrategy, 'AspectWidth')
+                % Cover full width of window, maybe crop top and bottom:
+                sf = RectWidth(dstFit) / RectWidth(clientRect);
+                fprintf('PsychImaging: Using scaling to full width. Aspect ratio is preserved, top and bottom may be cut away.\n');
+            end
+
+            if strcmpi(fitterStrategy, 'AspectHeight')
+                % Cover full width of window, maybe crop top and bottom:
+                sf = RectHeight(dstFit) / RectHeight(clientRect);
+                fprintf('PsychImaging: Using scaling to full height. Aspect ratio is preserved, left and right margins may be cut away.\n');
+            end
+
+            if strcmpi(fitterStrategy, 'Aspect')
+                % Cover as much as possible, aspect ratio preserving, leaving
+                % borders as neccessary:
+                sfw = RectWidth(dstFit) / RectWidth(clientRect);
+                sfh = RectHeight(dstFit) / RectHeight(clientRect);
+                sf = min(sfw, sfh);
+                fprintf('PsychImaging: Using scaling to maximum size which preserves aspect ratio. There may be black borders.\n');
+            end
+            
+            % Compute scaled size target rectangle:
+            scaleFit = ScaleRect(clientRect, sf, sf);
+            
+            % Center it in destination framebuffer dstFit:
+            scaleFit = CenterRect(scaleFit, dstFit);
+            
+            % Clip it against dstFit's size, crop away borders if neccessary:
+            % dstFit now contains the destination retangle in the window:
+            dstFit = ClipRect(scaleFit, dstFit);
+            
+            % Compute originating source rectangle of original size for
+            % 'dstFit' by undoing the scaling:
+            scaleFit = SetRect(0, 0, RectWidth(dstFit)/sf, RectHeight(dstFit)/sf);
+            
+            % Center properly sized source rectangle in clientRect source
+            % framebuffer to compute final srcRect for scaling blit:
+            srcFit = CenterRect(scaleFit, clientRect);
+            
+            fitterParams = [srcFit , dstFit];
+            
+        else
+            error('PsychImaging: Mandatory parameter "strategy" of task "UsePanelFitter" has invalid setting ''%s''.', fitterStrategy);
+        end
+    else
+        % No panel fitter in use. Or at least, none we would set up:
+        fitterParams = [];
+    end
+    
     % Custom color correction for display wanted on a Bits+ display in
     % Mono++ or Color++ mode or a DataPixx?
     if ~isempty(find(mystrcmp(reqs, 'DisplayColorCorrection')))
@@ -1096,10 +1384,10 @@ if strcmp(cmd, 'OpenWindow')
             warning('BrightSide HDR output device selected on a non MS-Windows platform! Unsupported! Will use dummy emulation mode instead!');
         end
         
-        if nargin >= 10
-            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
+        if nargin >= 12
+            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
         else
-            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
+            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
         end        
     end
 
@@ -1110,10 +1398,10 @@ if strcmp(cmd, 'OpenWindow')
             error('You specified multiple conflicting output display device drivers! This will not work.');
         end
 
-        if nargin >= 10
-            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
+        if nargin >= 12
+            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
         else
-            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
+            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
         end        
     end
 
@@ -1130,10 +1418,10 @@ if strcmp(cmd, 'OpenWindow')
             bpcom = 'OpenWindowMono++';
         end
         
-        if nargin >= 10
-            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
+        if nargin >= 12
+            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
         else
-            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
+            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
         end        
     end
 
@@ -1144,19 +1432,19 @@ if strcmp(cmd, 'OpenWindow')
             error('You specified multiple conflicting output display device drivers! This will not work.');
         end
 
-        if nargin >= 10
-            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
+        if nargin >= 12
+            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
         else
-            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
+            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
         end        
     end
 
     if isempty(win)
         % Standard openwindow path:
-        if nargin >= 10
-            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
+        if nargin >= 12
+            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
         else
-            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
+            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
         end
     end
     
@@ -1249,6 +1537,28 @@ if strcmp(cmd, 'OpenWindow')
     % Window open. Perform imaging pipe postconfiguration:
     PostConfiguration(reqs, win, clearcolor);
 
+    % Panel fitter in use and setup by us?
+    if ~isempty(fitterParams)
+        % Yes: Apply fitter parameters now, so the scaling method takes
+        % effect at next flip. We only do it now, so the preceeding
+        % Screen('Flip') ops after imaging pipeline initialization were
+        % able to operate with the default "cover full framebuffer" fitter
+        % params, ie., they applied their implicit "clear to background
+        % color" ops to the full framebuffer and thereby initialized all
+        % stages of the pipeline down to the real window backbuffer with
+        % background clear color. This way, regardless which panel fitting
+        % strategy is chosen by user code, potential top-bottom or
+        % left-right borders will get initialized to the selected
+        % background clear color, which should be the most well defined
+        % choice:
+        Screen('PanelFitter', win, fitterParams);
+        
+        % Now that the fitter is fully configured, perform an extra
+        % double-flip to apply proper scaling and borders and such:
+        Screen('Flip', win);
+        Screen('Flip', win);
+    end
+    
     rc = win;
     
     % Done.
@@ -1294,7 +1604,7 @@ if strcmp(cmd, 'RestrictProcessingToROI')
 
     ox = scissorrect(RectLeft);
 
-    [winwidth, winheight] = Screen('WindowSize', win);
+    [winwidth, winheight] = InterBufferSize(win);
     oy = winheight - scissorrect(RectBottom);
 
     w  = RectWidth(scissorrect);
@@ -1312,18 +1622,20 @@ if strcmp(cmd, 'RestrictProcessingToROI')
         Screen('HookFunction', win, 'PrependBuiltin', 'StereoRightCompositingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
     end
 
-    if (mystrcmp(whichView, 'AllViews') || mystrcmp(whichView, 'Compositor')) && winfo.StereoMode > 5
+    if (mystrcmp(whichView, 'AllViews') || mystrcmp(whichView, 'Compositor')) && ismember(winfo.StereoMode, [6,7,8,9])
         % Needed to restrict both views processing and a
         % compositing mode is active. If both views are restricted
         % in their output area then it makes sense to restrict the
         % compositor to the same area. We also restrict the
         % compositor if that was requested.
+        oy = RectHeight(Screen('Rect', win, 1)) - scissorrect(RectBottom);
         DoRemoveScissorRestriction(win, 'StereoCompositingBlit');
         Screen('HookFunction', win, 'PrependBuiltin', 'StereoCompositingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
     end
 
     if mystrcmp(whichView, 'FinalFormatting')
         % Need to restrict final formatting blit processing:
+        oy = RectHeight(Screen('Rect', win, 1)) - scissorrect(RectBottom);
         DoRemoveScissorRestriction(win, 'FinalOutputFormattingBlit');
         Screen('HookFunction', win, 'PrependBuiltin', 'FinalOutputFormattingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
     end
@@ -1365,7 +1677,7 @@ if strcmp(cmd, 'UnrestrictProcessing')
         DoRemoveScissorRestriction(win, 'StereoRightCompositingBlit');
     end
 
-    if (mystrcmp(whichView, 'AllViews') || mystrcmp(whichView, 'Compositor')) && winfo.StereoMode > 5
+    if (mystrcmp(whichView, 'AllViews') || mystrcmp(whichView, 'Compositor')) && ismember(winfo.StereoMode, [6,7,8,9])
         % Needed to restrict both views processing and a
         % compositing mode is active. If both views are restricted
         % in their output area then it makes sense to restrict the
@@ -1427,6 +1739,65 @@ stereoMode = -1;
 
 % No datapixx by default:
 datapixxmode = 0;
+
+% No Bits+ or Bits# by default:
+crsbitsdevice = 0;
+
+% Special setup for CRS Bits# next-generation devices:
+% Is a Bits+ / Bits# specific video display mode requested? Or
+% explicit use of a Bits# device?
+floc = [ find(mystrcmp(reqs, 'EnableBits++Bits++Output')) ];
+floc = [floc ; find(mystrcmp(reqs, 'EnableBits++Mono++Output')) ; find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay')) ];
+floc = [floc ; find(mystrcmp(reqs, 'EnableBits++Color++Output')) ; find(mystrcmp(reqs, 'UseBits#')) ];
+if ~isempty(floc)
+    % Explicit use of Bits# requested? Or only implicit by video mode?
+    floc = find(mystrcmp(reqs, 'UseBits#'));
+    if ~isempty(floc)
+        % Use of Bits# requested. Try to retrieve any special Bits# parameters to
+        % pass them to the OpenBits# function:
+        [row cols] = ind2sub(size(reqs), floc);
+
+        % Extract first parameter - This should be the serial port name, or [] empty:
+        bitsSharpPortname = reqs{row, 3};
+    else
+        % No specific usage of Bits# requested. Leave it to auto-detection
+        % if we work with a Bits# or with a Bits+:
+        bitsSharpPortname = [];
+    end
+
+    % Initialize serial port connection to Bits#, if any such device present:
+    if BitsPlusPlus('OpenBits#', bitsSharpPortname)
+        % Connection to Bits# established. Do we need to explicitely
+        % specify use of it? Only if it was not already done by usercode via
+        % keyword UseBits#
+        if isempty(floc)
+            % Bits# connected. Makeit explicit by adding the reqs task UseBits#
+            reqs(end+1, :) = cell(1, size(reqs, 2));
+            reqs{end, 2} = 'UseBits#';
+        end
+
+        % Mark use of Bits#:
+        crsbitsdevice = 2;
+
+        fprintf('PsychImaging: Will use a connected CRS Bits# device instead of a Bits+ for this session - Connection established.\n');
+    else
+        % No connection to Bits#. Was one requested? If not, we just assume we are
+        % operating against a good old Bits+ which does not support connections.
+        % Otherwise, failure to connect to Bits# would be, well, a failure:
+        if ~isempty(floc)
+            % Bummer:
+            sca;
+            error('PsychImaging: Use of a CRS Bits# device was requested, but connecting to it failed. Disconnected or misconfigured?!?');
+        else
+            % Mark use of Bits+:
+            crsbitsdevice = 1;
+
+            fprintf('PsychImaging: Will use a CRS Bits+ device, which i assume is connected to target display output screen.\n');
+        end
+    end
+end
+
+% End of Bits# setup, start of DataPixx/ViewPixx/ProPixx setup:
 
 % Remap Datapixx L48 mode to equivalent Bits++ mode:
 floc = find(mystrcmp(reqs, 'EnableDataPixxL48Output'));
@@ -1584,6 +1955,13 @@ if ~isempty(find(mystrcmp(reqs, 'InterleavedColumnStereo')))
     % We also request an effective window width that is only half the real
     % width. This affects all drawing and query commands of Screen:
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore, kPsychNeedHalfWidthWindow);
+end
+
+% Stereomode 2 for side-by-side compressed stereo needed?
+if ~isempty(find(mystrcmp(reqs, 'SideBySideCompressedStereo')))
+    % Yes: Must use stereomode 2.
+    stereoMode = 2;
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
 end
 
 % Display replication needed?
@@ -1834,7 +2212,7 @@ rightLRFlip = 0;
 
 % Stereomode?
 winfo = Screen('GetWindowInfo', win);
-[winwidth, winheight] = Screen('Windowsize', win);
+[winwidth, winheight] = InterBufferSize(win);
 
 % Setup inverse warp map matrices for this window handle:
 ptb_geometry_inverseWarpMap{win} = [];
@@ -1899,7 +2277,7 @@ if leftLRFlip || leftUDFlip
 
     if leftLRFlip
         sx = -1;
-        ox = RectWidth(Screen('Rect', win));
+        ox = RectWidth(InterBufferRect(win));
         hv = winwidth-1:-1:0;
     else
         hv = 0:winwidth-1;
@@ -1907,7 +2285,7 @@ if leftLRFlip || leftUDFlip
 
     if leftUDFlip
         sy = -1;
-        oy = RectHeight(Screen('Rect', win));
+        oy = RectHeight(InterBufferRect(win));
         vv = winheight-1:-1:0;
     else
         vv = 0:winheight-1;
@@ -1940,7 +2318,7 @@ if winfo.StereoMode > 0
 
         if rightLRFlip
             sx = -1;
-            ox = RectWidth(Screen('Rect', win));
+            ox = RectWidth(InterBufferRect(win));
             hv = winwidth-1:-1:0;
         else
             hv = 0:winwidth-1;
@@ -1948,7 +2326,7 @@ if winfo.StereoMode > 0
 
         if rightUDFlip
             sy = -1;
-            oy = RectHeight(Screen('Rect', win));
+            oy = RectHeight(InterBufferRect(win));
             vv = winheight-1:-1:0;
         else
             vv = 0:winheight-1;
@@ -1973,6 +2351,15 @@ end
 
 % --- Implementation of CLUT animation via clut remapping of colors ---
 floc = find(mystrcmp(reqs, 'EnableCLUTMapping'));
+% Is a display mode on a CRS Bits+/Bits# or VPixx DataPixx/ViewPixx/ProPixx requested which requires use
+% and setup of the devices hardware CLUT? If so we must turn 'EnableCLUTMapping' into a no-op, as it
+% would clash with the hardware clut update - and is also superseded by it. Detect the namestrings of
+% Bits++ CLUT palette display mode and Mono++ CLUT overlay palette mode. These Bits+ namestrings also
+% cover VPixx devices due to the remapping of VPixx names into CRS reqs:
+if ~isempty(find(mystrcmp(reqs, 'EnableBits++Bits++Output'))) || ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay')))
+    % Yep. We must no-op this 'EnableCLUTMapping' request:
+    floc = [];
+end
 if ~isempty(floc)
     % Which channel?
     for x=floc
@@ -2472,6 +2859,25 @@ if ~isempty(find(mystrcmp(reqs, 'InterleavedColumnStereo')))
     ptb_geometry_inverseWarpMap{win}.gx = ptb_geometry_inverseWarpMap{win}.gx * 0.5;
 end
 % --- End of interleaved column stereo setup code ---
+
+% --- SideBySideCompressedStereo wanted? ---
+if ~isempty(find(mystrcmp(reqs, 'SideBySideCompressedStereo')))
+    % Yes: Call external setup routine with its default parameters to
+    % modify our default "stereomode 2" top-bottom compressed stereo
+    % shader, which was automatically generated by Screen('Openwindow'),
+    % into a left-right side-by-side compressed shader.
+    SetCompressedStereoSideBySideParameters(win);
+    
+    % Correct mouse position via proper gain:
+    % Need to apply a 2x gain to horizontal cursor position to compensate
+    % for horizontal compression...
+    ptb_geometry_inverseWarpMap{win}.gx = ptb_geometry_inverseWarpMap{win}.gx * 2;
+    % ... need to undo the 2x gain automatically applied at the top of this
+    % function when a stereomode of 2 is used, as we do to implement our
+    % stereo method:
+    ptb_geometry_inverseWarpMap{win}.gy = ptb_geometry_inverseWarpMap{win}.gy / 2;
+end
+% --- End of SideBySideCompressedStereo setup code ---
 
 % --- "Mouse" remapping needed for half-width Color++ or C48 mode? ---
 if ~isempty(find(mystrcmp(reqs, 'EnableBits++Color++Output')))
@@ -3120,12 +3526,26 @@ if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayToSingleSplitWindow')))
     
     % Simply set up the left finalizer chain with a glCopyPixels command
     % that copies the left half of the system backbuffer to the right half
-    % of the system backbuffer. As kPsychHalfWidthWindow was requested at
-    % window creation time, the reported 'WindowSize' will be already the
-    % virtual size of the window, ie., half the real size...
+    % of the system backbuffer. Query the real backbuffer width x height,
+    % but use half the width as source region and destination region
+    % offset, as the right half of the backbuffer shall be a copy of the
+    % left half:
+    [w, h] = Screen('WindowSize', win, 1);
+    w = w / 2;
+
+    % Imaging pipeline fully enabled? Specific offsets used for blitter
+    % commands depend on this:
+    if bitand(winfo.ImagingMode, kPsychNeedFastBackingStore) > 0
+        % Yes: Use proper offsets for active imaging pipeline:
+        myblitstring = sprintf('glRasterPos2f(%f, %f); glCopyPixels(0, 0, %f, %f, 6144);', w, h, w, h);
+    else
+        % No: Need different x-offset for glRasterPos2f, because the good
+        % ol' fixed function pipeline uses different viewport / projection
+        % matrix etc.:
+        myblitstring = sprintf('glRasterPos2f(%f, %f); glCopyPixels(0, 0, %f, %f, 6144);', w/2, h, w, h);
+    end
     
-    [w, h] = Screen('WindowSize', win);
-    myblitstring = sprintf('glRasterPos2f(%f, %f); glCopyPixels(0, 0, %f, %f, 6144);', w, h, w, h);
+    % Attach blit command sequence to finalizer chain:
     Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'MirrorSplitWindowToSplitWindow', myblitstring);
     Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
 end
@@ -3149,8 +3569,6 @@ if ~isempty(floc)
             end
 
             ox = scissorrect(RectLeft);
-
-            [winwidth, winheight] = Screen('WindowSize', win);
             oy = winheight - scissorrect(RectBottom);
 
             w  = RectWidth(scissorrect);
@@ -3166,17 +3584,19 @@ if ~isempty(floc)
                 Screen('HookFunction', win, 'PrependBuiltin', 'StereoRightCompositingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
             end
             
-            if (mystrcmp(reqs{row, 1}, 'AllViews') || mystrcmp(reqs{row, 1}, 'Compositor')) && winfo.StereoMode > 5
+            if (mystrcmp(reqs{row, 1}, 'AllViews') || mystrcmp(reqs{row, 1}, 'Compositor')) && ismember(winfo.StereoMode, [6,7,8,9])
                 % Needed to restrict both views processing and a
                 % compositing mode is active. If both views are restricted
                 % in their output area then it makes sense to restrict the
                 % compositor to the same area. We also restrict the
                 % compositor if that was requested.
+                oy = RectHeight(Screen('Rect', win, 1)) - scissorrect(RectBottom);
                 Screen('HookFunction', win, 'PrependBuiltin', 'StereoCompositingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
             end
 
             if mystrcmp(reqs{row, 1}, 'FinalFormatting')
                 % Need to restrict final formatting blit processing:
+                oy = RectHeight(Screen('Rect', win, 1)) - scissorrect(RectBottom);
                 Screen('HookFunction', win, 'PrependBuiltin', 'FinalOutputFormattingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
             end
             
@@ -3202,11 +3622,11 @@ if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
     % slave window, thereby cloning the master windows framebuffer to the
     % slave windows framebuffer:
     % TODO FIXME: We assume that texture handle '1' denotes the color
-    % attachment exture of finalizedFBO[1]. This is true if this is the
+    % attachment texture of finalizedFBO[1]. This is true if this is the
     % first opened onscreen window (ie., 99% of the time). If that
     % assumption doesn't hold, we will guess the wrong texture handle and
     % bad things will happen!
-    [w, h] = Screen('WindowSize', win);
+    [w, h] = Screen('WindowSize', win, 1);
     myblitstring = sprintf('glBindTexture(34037, 1); glCopyTexSubImage2D(34037, 0, 0, 0, 0, 0, %i, %i); glBindTexture(34037, 0);', w, h);
     Screen('Hookfunction', win, 'AppendMFunction', 'RightFinalizerBlitChain', 'MirrorMasterToSlaveWindow', myblitstring);
     Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
@@ -3218,8 +3638,14 @@ if ~isempty(find(mystrcmp(reqs, 'UseDataPixx')))
     % Yes: Need to call into high level DataPixx driver for final setup:
     PsychDataPixx('PerformPostWindowOpenSetup', win);    
 end
-
 % --- End of Datapixx in use? ---
+
+% --- Bits# in use? ---
+if ~isempty(find(mystrcmp(reqs, 'UseBits#')))
+    % Yes: Need to call into high level BitsPlusPlus driver for final setup:
+    BitsPlusPlus('PerformPostWindowOpenSetup', win);    
+end
+% --- End of Bits# in use? ---
 
 % Do we need identity gamma tables / CLUT's loaded into the graphics card?
 if needsIdentityCLUT
@@ -3303,4 +3729,38 @@ function DoRemoveScissorRestriction(win, hookname)
             break;
         end
     end
+return;
+
+% Helper: Calculate and return bounding rectangle of intermediate
+% framebuffers inside the imaging pipeline. These intermediates don't have
+% the size of the client framebuffer (aka Screen('Rect', win);) and don't
+% have the size of the windows backbuffer (aka Screen('Rect', win, 1);),
+% but some size derived from the backbuffer size and various flags:
+function rect = InterBufferRect(win)
+    % Get window info flags about possible size transformations:
+    winfo = Screen('GetWindowInfo', win);
+    
+    % Get raw rectangle of true window backbuffer size as baseline:
+    % Left and Top entry is always zero, due to normalized rect.
+    rect = Screen('Rect', win, 1);
+    
+    % Apply half-height flag, if any:
+    if bitand(winfo.SpecialFlags, kPsychNeedHalfHeightWindow)
+        rect(RectBottom) = rect(RectBottom) / 2;
+    end
+    
+    % Apply half-width flag, if any:
+    if bitand(winfo.SpecialFlags, kPsychNeedHalfWidthWindow)
+        rect(RectRight) = rect(RectRight) / 2;
+    end
+
+    % Apply twice-width flag, if any:
+    if bitand(winfo.SpecialFlags, kPsychNeedTwiceWidthWindow)
+        rect(RectRight) = rect(RectRight) * 2;
+    end
+return;
+
+function [w, h] = InterBufferSize(win)
+    w = RectWidth(InterBufferRect(win));
+    h = RectHeight(InterBufferRect(win));
 return;

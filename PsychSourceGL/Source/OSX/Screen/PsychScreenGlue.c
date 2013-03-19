@@ -179,6 +179,15 @@ void InitializePsychDisplayGlue(void)
 	InitPsychtoolboxKernelDriverInterface();
 }
 
+void PsychCleanupDisplayGlue(void)
+{
+    // Shutdown connection to kernel level driver, if any exists:
+    PsychOSShutdownPsychtoolboxKernelDriverInterface();
+
+    // Unregister our display reconfiguration callback:
+    CGDisplayRemoveReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);    
+}
+
 void PsychDisplayReconfigurationCallBack(CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo)
 {
 	(void) userInfo;
@@ -342,6 +351,14 @@ void PsychReleaseScreen(int screenNumber)
 	InitCGDisplayIDList();
 	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychReleaseScreen(): After display release for screen %i (New CGDisplayId %p). Reenumeration done.\n", screenNumber, displayCGIDs[screenNumber]);
 
+	// Try to restore keyboard input focus to whatever window had focus before
+	// the CGDisplayCapture()/CGDisplayRelease(). 64-Bit OSX Cocoa only:
+	// Turns out to be a bit unreliable, and of limited use when it
+	// works.
+	#ifdef __LP64__
+	SetUserFocusWindow(NULL);
+	#endif
+
 	return;
 }
 
@@ -387,7 +404,7 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
     n=CFDictionaryGetValue(currentMode, kCGDisplayRefreshRate );
     CFNumberGetValue(n, kCFNumberLongType, &currentFrequency ) ;
 
-    //get a list of avialable modes for the specified display
+    //get a list of available modes for the specified display
     modeList = CGDisplayAvailableModes(displayCGIDs[screenNumber]);
     numPossibleModes= CFArrayGetCount(modeList);
     for(i=0;i<numPossibleModes;i++){
@@ -403,9 +420,21 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
             CFNumberGetValue(n, kCFNumberLongType, &tempDepth) ;
             PsychAddValueToDepthStruct((int)tempDepth, depths);
         }
-		// printf("mode %i : w x h = %i x %i, fps = %i, depths = %i\n", i, tempWidth, tempHeight, tempFrequency, tempDepth);
+		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: PsychGetScreenDepths(): mode %i : w x h = %i x %i, fps = %i, depths = %i\n", i, tempWidth, tempHeight, tempFrequency, tempDepth);
     }
 
+    // At least one match?
+    if (PsychGetNumDepthsFromStruct(depths) < 1) {
+        // Yes, this should not ever happen on a sane operating system, but this is
+        // OSX, so it does. Observed on a 2010 MacBookPro with OSX 10.7.5 on a external
+        // panel. Output a warning and fake entries for the most common pixel sizes:
+        PsychAddValueToDepthStruct(16, depths);
+        PsychAddValueToDepthStruct(32, depths);
+        if (PsychPrefStateGet_Verbosity() > 1) {
+            printf("PTB-WARNING: Broken MacOS/X detected. It misreports (== omits some) available video modes and thereby empty display depths due to matching failure.\n");
+            printf("PTB-WARNING: Will try to workaround this by creating a fake list of available display depths of 16 bpp and 32 bpp. Expect potential trouble further on...\n");
+        }
+    }
 }
 
 /*   PsychGetAllSupportedScreenSettings()
@@ -430,28 +459,30 @@ int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** wi
 	
 	// Allocate output arrays: These will get auto-released at exit
 	// from Screen():
-	*widths = (long*) PsychMallocTemp(numPossibleModes * sizeof(int));
-	*heights = (long*) PsychMallocTemp(numPossibleModes * sizeof(int));
-	*hz = (long*) PsychMallocTemp(numPossibleModes * sizeof(int));
-	*bpp = (long*) PsychMallocTemp(numPossibleModes * sizeof(int));
+	*widths = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
+	*heights = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
+	*hz = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
+	*bpp = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
 	
 	// Fetch modes and store into arrays:
     for(i=0; i<numPossibleModes; i++) {
+        tempWidth = tempHeight = tempFrequency = tempDepth = 0;
+        
         tempMode = CFArrayGetValueAtIndex(modeList,i);
         n=CFDictionaryGetValue(tempMode, kCGDisplayWidth);
-        CFNumberGetValue(n,kCFNumberLongType, &tempWidth);
+        if (n) CFNumberGetValue(n,kCFNumberLongType, &tempWidth);
 		(*widths)[i] = tempWidth;
 		
         n=CFDictionaryGetValue(tempMode, kCGDisplayHeight);
-        CFNumberGetValue(n,kCFNumberLongType, &tempHeight);
+        if (n) CFNumberGetValue(n,kCFNumberLongType, &tempHeight);
 		(*heights)[i] = tempHeight;
 
         n=CFDictionaryGetValue(tempMode, kCGDisplayRefreshRate);
-        CFNumberGetValue(n, kCFNumberLongType, &tempFrequency) ;
+        if (n) CFNumberGetValue(n, kCFNumberLongType, &tempFrequency) ;
 		(*hz)[i] = tempFrequency;
 
 		n=CFDictionaryGetValue(tempMode, kCGDisplayBitsPerPixel);
-		CFNumberGetValue(n, kCFNumberLongType, &tempDepth) ;
+		if (n) CFNumberGetValue(n, kCFNumberLongType, &tempDepth) ;
 		(*bpp)[i] = tempDepth;
     }
 
@@ -892,6 +923,15 @@ unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int n
 	return(1);
 }
 
+// Return true (non-zero) if a desktop compositor is likely active on screen 'screenNumber':
+int PsychOSIsDWMEnabled(int screenNumber)
+{
+    // Only way to disable compositing on OSX is to capture the screen
+    // for exclusive fullscreen use, so composition state is the negation
+    // of capture state:
+    return(!PsychIsScreenCaptured(screenNumber));
+}
+
 // PsychGetDisplayBeamPosition() contains the implementation of display beamposition queries.
 // It requires both, a cgDisplayID handle, and a logical screenNumber and uses one of both for
 // deciding which display pipe to query, whatever of both is more efficient or suitable for the
@@ -1132,6 +1172,15 @@ void InitPsychtoolboxKernelDriverInterface(void)
         // but MacBookPro's with hybrid graphics have a decent chance of working.
     }
     
+    // A bit of a hack for now: Allow usercode to select which gpu in a multi-gpu
+    // system should be used for low-level mmio based features. If the environment
+    // variable PSYCH_USE_GPUIDX is set to a number, it will try to use that GPU:
+    // TODO: Replace this by true multi-gpu support and - far in the future? -
+    // automatic mapping of screens to gpu's:
+    if (getenv("PSYCH_USE_GPUIDX")) {
+      activeGPU = atoi(getenv("PSYCH_USE_GPUIDX"));
+      if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Will try to use GPU number %i for low-level access during this session, as requested by usercode.\n", activeGPU);
+    }
     
 error_abort:
     
@@ -1192,11 +1241,6 @@ void PsychOSShutdownPsychtoolboxKernelDriverInterface(void)
 
     // Ok, whatever happened, we're detached (for good or bad):
     numKernelDrivers = 0;
-
-    // Unregister our display reconfiguration callback: This doesn't really belong here,
-    // but we know that PsychOSShutdownPsychtoolboxKernelDriverInterface() gets called
-    // from higher level code at shutdown time and we're lazy:
-    CGDisplayRemoveReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);
 
     return;
 }

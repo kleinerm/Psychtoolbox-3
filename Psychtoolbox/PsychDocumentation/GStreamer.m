@@ -4,7 +4,8 @@
 % 64 bit versions of Mac OS/X uses the GStreamer multi-media framework for
 % all multi-media related operations. For 32 bit versions of Matlab on
 % OS/X, use of GStreamer is still optional, Apple Quicktime is the default
-% on such setups.
+% on such setups, but Quicktime is a deprecated technology in Psychtoolbox,
+% so we encourage you to use GStreamer on all system configurations.
 %
 % All movie playback, movie creation, video capture and video recording
 % operations are based on GStreamer. These functions won't work without a
@@ -61,10 +62,12 @@
 % for GStreamer in its package management system, so you can easily install
 % it via the software management tool of your system.
 %
-% You will need at least the core GStreamer runtime and the gstreamer-base set
-% of plugins. Modern desktop distros usually already ship with these. A simple
-% way to make sure GStreamer is available is to install the "totem" multimedia
-% player. This will pull in the needed GStreamer packages as a dependency.
+% You will need at least the core GStreamer runtime and the gstreamer-base
+% set of plugins, but we recommend all available plugins for full
+% functionality and performance. Modern desktop distros usually already
+% ship with these. A simple way to make sure GStreamer is available is to
+% install the "totem" or "rhythmbox" multimedia player. This will pull in
+% the needed GStreamer packages as a dependency.
 %
 % E.g. via 
 %
@@ -110,14 +113,23 @@
 % recommend this one: "GStreamer WinBuilds v0.10.6, LGPL (x86)"
 %
 % However, some features may be disabled or limited with such an older
-% version, e.g., playback performance may be reduced, certain video formats
-% may not play at all, etc.
+% version, e.g., playback performance may be reduced, certain common video
+% file formats may not play at all, etc.
 %
 % For 64-Bit Matlab on Windows, install the 64-Bit GStreamer runtime from
 % <http://www.gstreamer.com>. This runtime has higher performance for movie
 % playback, but does lack support for video capture/recording as of
 % September 2012.
 %
+% In any case, if the installer gives you the choice of components to
+% install, go for a "full installation" or select all components manually
+% in a checklist, if you want support for all video formats and all
+% functionality. Without this, many popular video formats like H264 video
+% may not play at all, or video recording / video capture and similar
+% functions may not work.
+%
+% Video capture/recording is not yet supported by PTB for 64-Bit Matlab on
+% Windows.
 %
 % Mac OS/X:
 %
@@ -128,10 +140,18 @@
 %
 % This is the most convenient installation method and provides
 % high-performance support for movie playback and movie writing (although
-% with some limitations on available codecs for movie writing). If you also
-% need to capture or record live video from cameras or other live video
-% sources, you will need to install GStreamer via the Homebrew package
-% manager instead:
+% with some limitations on available codecs for movie writing).
+%
+% In any case, if the installer gives you the choice of components to
+% install, go for a "full installation" or select all components manually
+% in a checklist, if you want support for all video formats and all
+% functionality. Without this, many popular video formats like H264 video
+% may not play at all, or video recording / video capture and similar
+% functions may not work.
+%
+% If you also need to capture or record live video from cameras or other
+% live video sources, you will need to install GStreamer via the Homebrew
+% package manager instead:
 %
 % Get Homebrew at ...
 %
@@ -144,9 +164,4 @@
 % After a couple minutes of download and compile time, you'll have a fully
 % functional GStreamer compiled from source - assuming everything goes
 % well, that is.
-%
-% Yet another alternative download location for older versions of GStreamer
-% can be found here:
-%
-% <http://itee.uq.edu.au/~davel/gstreamer/>
 %
