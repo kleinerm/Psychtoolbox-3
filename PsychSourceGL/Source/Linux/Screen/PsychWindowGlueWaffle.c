@@ -1103,12 +1103,12 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         else printf("PTB-WARNING: Unsupported OpenGL-ES API version >= 4.0! Update the code, this may end badly!!\n");
 
         // Some diagnostics for forceRebind mode:
-        if (forceRebind) printf("PTB-DEBUG: Pre-GLES-Rebind: glBindFramebufferEXT = %p , glBindFramebufferOES = %p\n", (void*) glBindFramebufferEXT, (void*) waffle_dl_sym(apidl, "glBindFramebufferOES"));
+        if (forceRebind) printf("PTB-DEBUG: Pre-GLES-Rebind: glBindFramebufferEXT = %p , glBindFramebuffer = %p\n", (void*) glBindFramebufferEXT, (void*) waffle_dl_sym(WAFFLE_DL_OPENGL_ES2, "glBindFramebuffer"));
 
         // Try to rebind OpenGL-ES specific entry points to standard desktop OpenGL entry
         // points of compatible syntax and semantics, so we don't need to rewrite lots of
         // desktop GL support code just to account for syntactic sugar:
-        if (NULL == glBindFramebufferEXT || forceRebind) glBindFramebufferEXT = waffle_dl_sym(apidl, "glBindFramebufferOES");
+        if (NULL == glBindFramebufferEXT || forceRebind) glBindFramebufferEXT = waffle_dl_sym(WAFFLE_DL_OPENGL_ES2, "glBindFramebuffer");
         if (NULL == glDeleteFramebuffersEXT || forceRebind) glDeleteFramebuffersEXT = waffle_dl_sym(apidl, "glDeleteFramebuffersOES");
         if (NULL == glGenFramebuffersEXT || forceRebind) glGenFramebuffersEXT = waffle_dl_sym(apidl, "glGenFramebuffersOES");
         if (NULL == glIsFramebufferEXT || forceRebind) glIsFramebufferEXT = waffle_dl_sym(apidl, "glIsFramebufferOES");
@@ -1127,10 +1127,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         if (NULL == glGetRenderbufferParameterivEXT || forceRebind) glGetRenderbufferParameterivEXT = waffle_dl_sym(apidl, "glGetRenderbufferParameterivOES");
 
         if (NULL == glActiveTextureARB || forceRebind) glActiveTextureARB = waffle_dl_sym(apidl, "glActiveTexture");
+        if (NULL == glOrthofOES) {
+            printf("PTB-UIIIII: NO glOrthofOES() available under OpenGL-ES api! This will not work with OpenGL-ES!\n");
+        }
 
         // Fun with NVidia ES implementation, which defines glOrthof() but not glOrthofOES() on their
         // desktop drivers for GeForce and Quadro:
-        if (NULL == glOrthofOES) glOrthofOES = waffle_dl_sym(apidl, "glOrthofOES");
+        glOrthofOES = waffle_dl_sym(apidl, "glOrthofOES");
         if (NULL == glOrthofOES) glOrthofOES = waffle_dl_sym(apidl, "glOrthof");
         if (NULL == glOrthofOES) {
             printf("PTB-ERROR: NO glOrthofOES() available under OpenGL-ES api! This will not work with OpenGL-ES! Aborting.\n");
