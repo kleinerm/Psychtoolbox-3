@@ -85,7 +85,8 @@ PsychError SCREENDrawDots(void)
     float                                   *sizef;
 	unsigned char                           *bytecolors;
 	GLfloat									pointsizerange[2];
-    
+    psych_bool                              lenient = FALSE;
+
 	// All sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString,seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -144,16 +145,23 @@ PsychError SCREENDrawDots(void)
 		glGetFloatv(GL_ALIASED_POINT_SIZE_RANGE, (GLfloat*) &pointsizerange);
 	}
 	
+    // Does ES-GPU only support a fixed point diameter of 1 pixel?
+    if ((pointsizerange[0] == pointsizerange[1]) && (pointsizerange[0] <= 1) && PsychIsGLES(windowRecord)) {
+        // Yes. Not much point bailing on this, as it should be easily visible
+        // during testing of a studies code on a OpenGL-ES device.
+        lenient = TRUE;
+    }
+
 	// Set size of a single dot:
-	if ((sizef && (sizef[0] > pointsizerange[1] || sizef[0] < pointsizerange[0])) ||
-        (!sizef && (size[0] > pointsizerange[1] || size[0] < pointsizerange[0]))){
+	if (!lenient && ((sizef && (sizef[0] > pointsizerange[1] || sizef[0] < pointsizerange[0])) ||
+                     (!sizef && (size[0] > pointsizerange[1] || size[0] < pointsizerange[0])))) {
 		printf("PTB-ERROR: You requested a point size of %f units, which is not in the range (%f to %f) supported by your graphics hardware.\n",
 			   (sizef) ? sizef[0] : size[0], pointsizerange[0], pointsizerange[1]);
 		PsychErrorExitMsg(PsychError_user, "Unsupported point size requested in Screen('DrawDots').");
 	}
 	
 	// Setup initial common point size for all points:
-    glPointSize((sizef) ? sizef[0] : (float) size[0]);
+    if (!lenient) glPointSize((sizef) ? sizef[0] : (float) size[0]);
 	
 	// Setup modelview matrix to perform translation by 'center':
 	glMatrixMode(GL_MODELVIEW);
@@ -192,15 +200,15 @@ PsychError SCREENDrawDots(void)
 		// Point-Sprite extensions, cleverly used display lists or via vertex-shaders...
 		// For now we do it the stupid way:
 		for (i=0; i<nrpoints; i++) {
-            if ((sizef && (sizef[i] > pointsizerange[1] || sizef[i] < pointsizerange[0])) ||
-                (!sizef && (size[i] > pointsizerange[1] || size[i] < pointsizerange[0]))){
+            if (!lenient && ((sizef && (sizef[i] > pointsizerange[1] || sizef[i] < pointsizerange[0])) ||
+                             (!sizef && (size[i] > pointsizerange[1] || size[i] < pointsizerange[0])))) {
 				printf("PTB-ERROR: You requested a point size of %f units, which is not in the range (%f to %f) supported by your graphics hardware.\n",
 					   (sizef) ? sizef[i] : size[i], pointsizerange[0], pointsizerange[1]);
 				PsychErrorExitMsg(PsychError_user, "Unsupported point size requested in Screen('DrawDots').");
 			}
 			
 			// Setup point size for this point:
-			glPointSize((sizef) ? sizef[i] : (float) size[i]);
+			if (!lenient) glPointSize((sizef) ? sizef[i] : (float) size[i]);
 			
 			// Render point:
 			glDrawArrays(GL_POINTS, i, 1);

@@ -84,6 +84,7 @@ PsychError SCREENDrawLines(void)
 	unsigned char               *bytecolors;
 	float						linesizerange[2];
     float						*sizef;
+    psych_bool                  lenient = FALSE;
 
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -148,15 +149,22 @@ PsychError SCREENDrawLines(void)
         glGetFloatv(GL_ALIASED_LINE_WIDTH_RANGE, (GLfloat*) &linesizerange);
     }
 
-	if ((sizef && (sizef[0] > linesizerange[1] || sizef[0] < linesizerange[0])) ||
-        (!sizef && (size[0] > linesizerange[1] || size[0] < linesizerange[0]))){
+    // Does ES-GPU only support a fixed line width of 1 pixel?
+    if ((linesizerange[0] == linesizerange[1]) && (linesizerange[0] <= 1) && PsychIsGLES(windowRecord)) {
+        // Yes. Not much point bailing on this, as it should be easily visible
+        // during testing of a studies code on a OpenGL-ES device.
+        lenient = TRUE;
+    }
+
+	if (!lenient && ((sizef && (sizef[0] > linesizerange[1] || sizef[0] < linesizerange[0])) ||
+                     (!sizef && (size[0] > linesizerange[1] || size[0] < linesizerange[0])))) {
 		printf("PTB-ERROR: You requested a line width of %f units, which is not in the range (%f to %f) supported by your graphics hardware.\n",
 			   (sizef) ? sizef[0] : size[0], linesizerange[0], linesizerange[1]);
 		PsychErrorExitMsg(PsychError_user, "Unsupported line width requested.");
 	}
 
 	// Set global width of lines:
-	glLineWidth((sizef) ? sizef[0] : (float) size[0]);
+	if (!lenient) glLineWidth((sizef) ? sizef[0] : (float) size[0]);
 
 	// Setup modelview matrix to perform translation by 'center':
 	glMatrixMode(GL_MODELVIEW);	
@@ -190,14 +198,14 @@ PsychError SCREENDrawLines(void)
 	else {
 		// Different line-width per line: Need to manually loop through this mess:
 		for (i=0; i < nrvertices/2; i++) {
-            if ((sizef && (sizef[i] > linesizerange[1] || sizef[i] < linesizerange[0])) ||
-                (!sizef && (size[i] > linesizerange[1] || size[i] < linesizerange[0]))){
+            if (!lenient && ((sizef && (sizef[i] > linesizerange[1] || sizef[i] < linesizerange[0])) ||
+                             (!sizef && (size[i] > linesizerange[1] || size[i] < linesizerange[0])))) {
                 printf("PTB-ERROR: You requested a line width of %f units, which is not in the range (%f to %f) supported by your graphics hardware.\n",
                        (sizef) ? sizef[i] : size[i], linesizerange[0], linesizerange[1]);
                 PsychErrorExitMsg(PsychError_user, "Unsupported line width requested.");
             }
             
-            glLineWidth((sizef) ? sizef[i] : (float) size[i]);
+            if (!lenient) glLineWidth((sizef) ? sizef[i] : (float) size[i]);
 
             // Render line:
             glDrawArrays(GL_LINES, i * 2, 2);
