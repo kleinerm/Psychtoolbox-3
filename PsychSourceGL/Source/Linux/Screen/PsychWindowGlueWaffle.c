@@ -1085,11 +1085,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         printf("PTB-INFO: INTEL_swap_event support for additional swap completion correctness checks enabled.\n");
     }
 
-    // OpenGL-ES bindings:
+    // OpenGL-ES bindings needed?
     if (PsychIsGLES(windowRecord)) {
+        // Yes: Allow userspace to force rebinding:
+        psych_bool forceRebind = (getenv("PSYCH_FORCE_REBINDGLES")) ? TRUE : FALSE;
+
         // Which version of OpenGL-ES? Set proper selector:
         int32_t apidl = 0;
-        psych_bool forceRebind = (getenv("PSYCH_FORCE_REBINDGLES")) ? TRUE : FALSE;
 
         if (windowRecord->glApiType < 20) {
             apidl = WAFFLE_DL_OPENGL_ES1;
@@ -1103,43 +1105,99 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         else printf("PTB-WARNING: Unsupported OpenGL-ES API version >= 4.0! Update the code, this may end badly!!\n");
 
         // Some diagnostics for forceRebind mode:
-        if (forceRebind) printf("PTB-DEBUG: Pre-GLES-Rebind: glBindFramebufferEXT = %p , glBindFramebuffer = %p\n", (void*) glBindFramebufferEXT, (void*) waffle_dl_sym(WAFFLE_DL_OPENGL_ES2, "glBindFramebuffer"));
+        if (forceRebind) printf("PTB-DEBUG: Forced rebinding of OpenGL-ES extensions requested.\n");
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Pre-GLES-Rebind: glBindFramebufferEXT = %p , glBindFramebuffer = %p \n",
+                                                      (void*) glBindFramebufferEXT, (void*) waffle_dl_sym(WAFFLE_DL_OPENGL_ES2, "glBindFramebuffer"));
 
         // Try to rebind OpenGL-ES specific entry points to standard desktop OpenGL entry
         // points of compatible syntax and semantics, so we don't need to rewrite lots of
-        // desktop GL support code just to account for syntactic sugar:
-        if (NULL == glBindFramebufferEXT || forceRebind) glBindFramebufferEXT = waffle_dl_sym(WAFFLE_DL_OPENGL_ES2, "glBindFramebuffer");
-        if (NULL == glDeleteFramebuffersEXT || forceRebind) glDeleteFramebuffersEXT = waffle_dl_sym(apidl, "glDeleteFramebuffersOES");
-        if (NULL == glGenFramebuffersEXT || forceRebind) glGenFramebuffersEXT = waffle_dl_sym(apidl, "glGenFramebuffersOES");
-        if (NULL == glIsFramebufferEXT || forceRebind) glIsFramebufferEXT = waffle_dl_sym(apidl, "glIsFramebufferOES");
-        if (NULL == glCheckFramebufferStatusEXT || forceRebind) glCheckFramebufferStatusEXT = waffle_dl_sym(apidl, "glCheckFramebufferStatusOES");
+        // desktop GL support code just to account for syntactic sugar.
 
-        if (NULL == glFramebufferTexture2DEXT || forceRebind) glFramebufferTexture2DEXT = waffle_dl_sym(apidl, "glFramebufferTexture2DOES");
-        if (NULL == glFramebufferRenderbufferEXT || forceRebind) glFramebufferRenderbufferEXT = waffle_dl_sym(apidl, "glFramebufferRenderbufferOES");
-        if (NULL == glGetFramebufferAttachmentParameterivEXT || forceRebind) glGetFramebufferAttachmentParameterivEXT = waffle_dl_sym(apidl, "glGetFramebufferAttachmentParameterivOES");
-        if (NULL == glGenerateMipmapEXT || forceRebind) glGenerateMipmapEXT = waffle_dl_sym(apidl, "glGenerateMipmapOES");
-
-        if (NULL == glIsRenderbufferEXT || forceRebind) glIsRenderbufferEXT = waffle_dl_sym(apidl, "glIsRenderbufferOES");
-        if (NULL == glBindRenderbufferEXT || forceRebind) glBindRenderbufferEXT = waffle_dl_sym(apidl, "glBindRenderbufferOES");
-        if (NULL == glDeleteRenderbuffersEXT || forceRebind) glDeleteRenderbuffersEXT = waffle_dl_sym(apidl, "glDeleteRenderbuffersOES");
-        if (NULL == glGenRenderbuffersEXT || forceRebind) glGenRenderbuffersEXT = waffle_dl_sym(apidl, "glGenRenderbuffersOES");
-        if (NULL == glRenderbufferStorageEXT || forceRebind) glRenderbufferStorageEXT = waffle_dl_sym(apidl, "glRenderbufferStorageOES");
-        if (NULL == glGetRenderbufferParameterivEXT || forceRebind) glGetRenderbufferParameterivEXT = waffle_dl_sym(apidl, "glGetRenderbufferParameterivOES");
-
+        // Needed in imaging pipeline: ES implementations don't expose the ARB suffixed version anymore,
+        // as glActiveTexture() is part of core-spec:
         if (NULL == glActiveTextureARB || forceRebind) glActiveTextureARB = waffle_dl_sym(apidl, "glActiveTexture");
-        if (NULL == glOrthofOES) {
-            printf("PTB-UIIIII: NO glOrthofOES() available under OpenGL-ES api! This will not work with OpenGL-ES!\n");
-        }
 
         // Fun with NVidia ES implementation, which defines glOrthof() but not glOrthofOES() on their
-        // desktop drivers for GeForce and Quadro:
-        glOrthofOES = waffle_dl_sym(apidl, "glOrthofOES");
-        if (NULL == glOrthofOES) glOrthofOES = waffle_dl_sym(apidl, "glOrthof");
+        // desktop drivers for GeForce and Quadro and their Tegra drivers for embedded.
+        // It is crucial to force rebind here, especially on embedded, as the entry point might
+        // be already bound to a dead zombie desktop GL implementation lib:
+        glOrthofOES = waffle_dl_sym(WAFFLE_DL_OPENGL_ES1, "glOrthofOES");
+        if (NULL == glOrthofOES) glOrthofOES = waffle_dl_sym(WAFFLE_DL_OPENGL_ES1, "glOrthof");
         if (NULL == glOrthofOES) {
-            printf("PTB-ERROR: NO glOrthofOES() available under OpenGL-ES api! This will not work with OpenGL-ES! Aborting.\n");
+            printf("PTB-ERROR: NO glOrthofOES() or glOrthof() available under OpenGL-ES api! This will not work with OpenGL-ES! Aborting.\n");
             return(FALSE);
         }
-    }
+
+        // Framebuffer objects supported? As extension on ES-1, core on ES-2+
+        if (strstr(glGetString(GL_EXTENSIONS), "framebuffer_object") || (windowRecord->glApiType >= 20)) {
+            // FBO extension or core code binding:
+            // Some of this is a mess, as apparently each ES implementation vendor does its own non-standard thing. In theory it should be
+            // enough to query for the "OES" suffixed entry points on the api as defined by apidl. In practice, three different
+            // implementations (MESA, NVidia binary desktop GL drivers, NVidia binary Tegra drivers) required three different types
+            // of hacks to get it working. We try the following strategy:
+
+            // First try to bind ES-1 standard compliant: OES suffix and apidl as selected. Then retry without OES suffix with higher
+            // apidl versions:
+            if (apidl == WAFFLE_DL_OPENGL_ES1) {
+                // OpenGL-ES 1: Framebuffer objects are only available as extension, so entry points should be OES-suffixed. Try with OES suffix:
+                if (NULL == glBindFramebufferEXT || forceRebind) glBindFramebufferEXT = waffle_dl_sym(apidl, "glBindFramebufferOES");
+                if (NULL == glDeleteFramebuffersEXT || forceRebind) glDeleteFramebuffersEXT = waffle_dl_sym(apidl, "glDeleteFramebuffersOES");
+                if (NULL == glGenFramebuffersEXT || forceRebind) glGenFramebuffersEXT = waffle_dl_sym(apidl, "glGenFramebuffersOES");
+                if (NULL == glIsFramebufferEXT || forceRebind) glIsFramebufferEXT = waffle_dl_sym(apidl, "glIsFramebufferOES");
+                if (NULL == glCheckFramebufferStatusEXT || forceRebind) glCheckFramebufferStatusEXT = waffle_dl_sym(apidl, "glCheckFramebufferStatusOES");
+
+                if (NULL == glFramebufferTexture2DEXT || forceRebind) glFramebufferTexture2DEXT = waffle_dl_sym(apidl, "glFramebufferTexture2DOES");
+                if (NULL == glFramebufferRenderbufferEXT || forceRebind) glFramebufferRenderbufferEXT = waffle_dl_sym(apidl, "glFramebufferRenderbufferOES");
+                if (NULL == glGetFramebufferAttachmentParameterivEXT || forceRebind) glGetFramebufferAttachmentParameterivEXT = waffle_dl_sym(apidl, "glGetFramebufferAttachmentParameterivOES");
+                if (NULL == glGenerateMipmapEXT || forceRebind) glGenerateMipmapEXT = waffle_dl_sym(apidl, "glGenerateMipmapOES");
+
+                if (NULL == glIsRenderbufferEXT || forceRebind) glIsRenderbufferEXT = waffle_dl_sym(apidl, "glIsRenderbufferOES");
+                if (NULL == glBindRenderbufferEXT || forceRebind) glBindRenderbufferEXT = waffle_dl_sym(apidl, "glBindRenderbufferOES");
+                if (NULL == glDeleteRenderbuffersEXT || forceRebind) glDeleteRenderbuffersEXT = waffle_dl_sym(apidl, "glDeleteRenderbuffersOES");
+                if (NULL == glGenRenderbuffersEXT || forceRebind) glGenRenderbuffersEXT = waffle_dl_sym(apidl, "glGenRenderbuffersOES");
+                if (NULL == glRenderbufferStorageEXT || forceRebind) glRenderbufferStorageEXT = waffle_dl_sym(apidl, "glRenderbufferStorageOES");
+                if (NULL == glGetRenderbufferParameterivEXT || forceRebind) glGetRenderbufferParameterivEXT = waffle_dl_sym(apidl, "glGetRenderbufferParameterivOES");
+            }
+
+            // Try binding without OES suffix: We do this for OpenGL-ES2 and later, as FBO's are part of the core,
+            // and on OpenGL-ES1 if the "OES" binding failed, e.g., on the non standard compliant NVidia Tegra binary drivers:
+            if ((apidl != WAFFLE_DL_OPENGL_ES1) || (NULL == glBindFramebufferEXT)) {
+                // NVidia weirdness?
+                if (apidl == WAFFLE_DL_OPENGL_ES1) {
+                    // Yes. Their Tegra OpenGL-ES1 library internally loads their OpenGL-ES2 library behind our back
+                    // and then uses their ES-2 functionality to emulate ES-1 behaviour, ie., their ES-1 lib is a wrapper
+                    // around ES-2 libs, using self-defined shaders etc. to replicate fixed-pipeline behaviour. Unfortunately
+                    // their emulation is not perfectly transparent, as their ES-1 libs claim FBO support, but get FBO entry
+                    // points from ES-2 libs, thereby their entry points don't have the ES-1 compliant OES suffixes and our
+                    // binding procedure for ES-1 above fails miserably. What to do? We query their ES-2 implementation/libs
+                    // directly and bind ES2 entry points and hope this works and doesn't die a miserable death:
+                    apidl = WAFFLE_DL_OPENGL_ES2;
+
+                    // Of course they may pull the same trick with ES-2 vs. ES-3 some time, so if their ES-2 libs don't
+                    // expose the most basic FBO entry point, we try with ES3:
+                    if (NULL == waffle_dl_sym(apidl, "glBindFramebuffer")) apidl = WAFFLE_DL_OPENGL_ES3;
+                }
+
+                if (NULL == glBindFramebufferEXT || forceRebind) glBindFramebufferEXT = waffle_dl_sym(apidl, "glBindFramebuffer");
+                if (NULL == glDeleteFramebuffersEXT || forceRebind) glDeleteFramebuffersEXT = waffle_dl_sym(apidl, "glDeleteFramebuffers");
+                if (NULL == glGenFramebuffersEXT || forceRebind) glGenFramebuffersEXT = waffle_dl_sym(apidl, "glGenFramebuffers");
+                if (NULL == glIsFramebufferEXT || forceRebind) glIsFramebufferEXT = waffle_dl_sym(apidl, "glIsFramebuffer");
+                if (NULL == glCheckFramebufferStatusEXT || forceRebind) glCheckFramebufferStatusEXT = waffle_dl_sym(apidl, "glCheckFramebufferStatus");
+
+                if (NULL == glFramebufferTexture2DEXT || forceRebind) glFramebufferTexture2DEXT = waffle_dl_sym(apidl, "glFramebufferTexture2D");
+                if (NULL == glFramebufferRenderbufferEXT || forceRebind) glFramebufferRenderbufferEXT = waffle_dl_sym(apidl, "glFramebufferRenderbuffer");
+                if (NULL == glGetFramebufferAttachmentParameterivEXT || forceRebind) glGetFramebufferAttachmentParameterivEXT = waffle_dl_sym(apidl, "glGetFramebufferAttachmentParameteriv");
+                if (NULL == glGenerateMipmapEXT || forceRebind) glGenerateMipmapEXT = waffle_dl_sym(apidl, "glGenerateMipmap");
+
+                if (NULL == glIsRenderbufferEXT || forceRebind) glIsRenderbufferEXT = waffle_dl_sym(apidl, "glIsRenderbuffer");
+                if (NULL == glBindRenderbufferEXT || forceRebind) glBindRenderbufferEXT = waffle_dl_sym(apidl, "glBindRenderbuffer");
+                if (NULL == glDeleteRenderbuffersEXT || forceRebind) glDeleteRenderbuffersEXT = waffle_dl_sym(apidl, "glDeleteRenderbuffers");
+                if (NULL == glGenRenderbuffersEXT || forceRebind) glGenRenderbuffersEXT = waffle_dl_sym(apidl, "glGenRenderbuffers");
+                if (NULL == glRenderbufferStorageEXT || forceRebind) glRenderbufferStorageEXT = waffle_dl_sym(apidl, "glRenderbufferStorage");
+                if (NULL == glGetRenderbufferParameterivEXT || forceRebind) glGetRenderbufferParameterivEXT = waffle_dl_sym(apidl, "glGetRenderbufferParameteriv");
+            }
+        } // End of FBO binding.
+    } // End of OpenGL-ES binding.
 
     return(TRUE);
 }
