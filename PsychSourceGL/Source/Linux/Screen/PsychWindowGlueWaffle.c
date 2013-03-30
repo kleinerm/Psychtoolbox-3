@@ -113,9 +113,15 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     struct waffle_window *window;
     struct waffle_context *ctx;
 
-    // Define waffle window system backend to use by default: It is our good'ol X11/GLX:
+    // Define waffle window system backend to use by default: It is our good'ol X11/GLX,
+    // unless EGL is explicitely requested at compile time:
     static int32_t init_attrs[3] = {
-        WAFFLE_PLATFORM, WAFFLE_PLATFORM_GLX,
+        WAFFLE_PLATFORM,
+        #ifdef PTB_USE_EGL
+        WAFFLE_PLATFORM_X11_EGL,
+        #else
+        WAFFLE_PLATFORM_GLX,
+        #endif
         0,
     };
 
@@ -1428,9 +1434,11 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
     else {
         // EGL-based backend in use:
         if (egl_display) {
-            //            if (!eglSwapInterval(egl_display, (EGLint) swapInterval)) {
-            //                if (PsychPrefStateGet_Verbosity() > 1) printf("\nPTB-WARNING: FAILED to %s synchronization to vertical retrace!\n\n", (swapInterval > 0) ? "enable" : "disable");
-            //            }
+        #ifdef PTB_USE_EGL
+            if (!eglSwapInterval(egl_display, (EGLint) swapInterval)) {
+                if (PsychPrefStateGet_Verbosity() > 1) printf("\nPTB-WARNING: FAILED to %s synchronization to vertical retrace!\n\n", (swapInterval > 0) ? "enable" : "disable");
+            }
+        #endif
         }
     }
 
