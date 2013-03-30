@@ -987,6 +987,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
         // Done. Delete splash-image texture:
         PsychFreeTextureForWindowRecord(textureRecord);
+        FreeWindowRecordFromPntr(textureRecord);
         textureRecord = NULL;
     }
 
