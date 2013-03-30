@@ -146,7 +146,7 @@ PsychError SCREENDrawDots(void)
 	}
 	
     // Does ES-GPU only support a fixed point diameter of 1 pixel?
-    if ((pointsizerange[0] == pointsizerange[1]) && (pointsizerange[0] <= 1) && PsychIsGLES(windowRecord)) {
+    if ((pointsizerange[1] <= 1) && PsychIsGLES(windowRecord)) {
         // Yes. Not much point bailing on this, as it should be easily visible
         // during testing of a studies code on a OpenGL-ES device.
         lenient = TRUE;
