@@ -232,7 +232,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         
 		#ifdef FREEGLUT
 		// FreeGlut must be initialized, otherwise it will emergency abort the whole application.
-		glutInit( &noargs, &dummyargp);
+		// However, we skip init if we're on a setup without GLX display backend, as this would
+		// abort us due to lack of GLX. On non-GLX we simply can't use FreeGlut at all.
+		if (!getenv("PSYCH_USE_DISPLAY_BACKEND") || strstr(getenv("PSYCH_USE_DISPLAY_BACKEND"), "glx")) {
+			// GLX display backend - Init and use FreeGlut:
+			glutInit( &noargs, &dummyargp);
+		}
 		#endif
 		
 		// Register exit-handler: When flushing the mex-file, we free all allocated buffer memory:
