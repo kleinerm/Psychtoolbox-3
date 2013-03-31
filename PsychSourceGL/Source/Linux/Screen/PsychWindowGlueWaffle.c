@@ -105,13 +105,20 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     int xfixes_event_base1, xfixes_event_base2;
     psych_bool xfixes_available = FALSE;
     psych_bool newstyle_setup = FALSE;
-    int32_t opengl_api = WAFFLE_CONTEXT_OPENGL;
+    int32_t opengl_api;
     char backendname[16];
     char backendname2[16];
     int32_t oldBackend;
     struct waffle_config *config;
     struct waffle_window *window;
     struct waffle_context *ctx;
+
+    // Define default rendering backend:
+    #ifdef PTB_USE_GLES1
+    opengl_api = WAFFLE_CONTEXT_OPENGL_ES1;
+    #else
+    opengl_api = WAFFLE_CONTEXT_OPENGL;
+    #endif
 
     // Define waffle window system backend to use by default: It is our good'ol X11/GLX,
     // unless EGL is explicitely requested at compile time:
