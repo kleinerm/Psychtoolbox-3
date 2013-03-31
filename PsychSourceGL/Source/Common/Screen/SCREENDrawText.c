@@ -1292,7 +1292,7 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
 	// The functions in the plugin will be linked immediately and if successfull, made available
 	// directly for use within the code, with no need to dlsym() manually bind'em:
 	if (NULL == drawtext_plugin) {
-        while ((NULL == drawtext_plugin) && (retrycount < 2)) {
+        while ((NULL == drawtext_plugin) && (retrycount < ((PSYCH_SYSTEM == PSYCH_LINUX) ? 3 : 2))) {
             // Assign name to search for:
             // Assign name of plugin shared library based on target OS:
             #if PSYCH_SYSTEM == PSYCH_OSX
@@ -1300,9 +1300,21 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
                 if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl.dylib");
                 if (retrycount == 1) sprintf(pluginName, "libptbdrawtext_ftgl64.dylib");
             #else
-                // Linux:
-                if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl.so.1");;
-                if (retrycount == 1) sprintf(pluginName, "libptbdrawtext_ftgl64.so.1");;
+                // Linux: Try 32-Bit Intel, or Debian machine arch specific version first:
+                if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl.so.1");
+
+                // ARM 32-Bit has its own version suffix, unless provided by Debian:
+                #if defined(__arm__) || defined(__thumb__)
+                if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl_arm.so.1");
+                #endif
+
+                // ARM 64-Bit has its own version suffix, unless provided by Debian:
+                #if defined(__aarch64__)
+                if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl_arm64.so.1");
+                #endif
+
+                if (retrycount == 1) sprintf(pluginName, "libptbdrawtext_ftgl.so.1");
+                if (retrycount == 2) sprintf(pluginName, "libptbdrawtext_ftgl64.so.1");
             #endif
 
             // Try to auto-detect install location of plugin inside the Psychtoolbox/PsychBasic folder.
