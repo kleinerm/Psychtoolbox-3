@@ -1260,11 +1260,12 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
       // We try 3 times a maxDuration seconds max., in case something goes wrong...
       while(ifi_estimate==0 && retry_count<3) {
 		  numSamples = minSamples;      // Require at least minSamples *valid* samples...
-		  // Require a std-deviation less than 200 microseconds on all systems except Microsoft Windows Vista / 7 and later
-		  // with DWM enabled, where we accept up to maxStddev sec(!) noise. This is lame, but the only way to get 'em working at all :-(
-		  stddev     = (PsychOSIsDWMEnabled(screenSettings->screenNumber)) ? maxStddev : 0.00020;
+		  // Require a std-deviation of maxStddev (default is less than 200 microseconds) on all systems.
+		  // If a non-Linux system likely has desktop composition enabled, we are more lenient and allow
+		  // up to 5x the maxStddev which would end up with 1 msec at default settings:
+		  stddev = (PsychOSIsDWMEnabled(screenSettings->screenNumber) && (PSYCH_SYSTEM != PSYCH_LINUX)) ? (5 * maxStddev) : maxStddev;
 		  // If skipping of sync-test is requested, we limit the calibration to 1 sec.
-		  maxsecs=(skip_synctests) ? 1 : maxDuration;
+		  maxsecs = (skip_synctests) ? 1 : maxDuration;
 		  retry_count++;
 		  ifi_estimate = PsychGetMonitorRefreshInterval(*windowRecord, &numSamples, &maxsecs, &stddev, ifi_nominal);
 		  if((PsychPrefStateGet_Verbosity()>1) && (ifi_estimate==0 && retry_count<3)) {
