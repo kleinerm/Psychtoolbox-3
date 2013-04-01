@@ -743,7 +743,8 @@ void PsychFreeTextureForWindowRecord(PsychWindowRecordType *win)
 void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordType *target, double *sourceRect, double *targetRect,
                                double rotationAngle, int filterMode, double globalAlpha)
 {
-        GLdouble				sourceWidth, sourceHeight, tWidth, tHeight;
+        int                     tWidth, tHeight;
+        GLdouble				sourceWidth, sourceHeight;
         GLdouble                sourceX, sourceY, sourceXEnd, sourceYEnd;
 		double                  transX, transY;
         GLenum                  texturetarget;
@@ -821,14 +822,14 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
             // No: Find size of real underlying texture (smallest power of two which is
             // greater than or equal to the image size:
             tWidth=1;
-            while (tWidth < sourceWidth) tWidth*=2;
+            while (tWidth < (int) sourceWidth) tWidth*=2;
             tHeight=1;
-            while (tHeight < sourceHeight) tHeight*=2;
+            while (tHeight < (int) sourceHeight) tHeight*=2;
         }
         else {
             // Yes:
-            tWidth = sourceWidth;
-            tHeight = sourceHeight;
+            tWidth = (int) sourceWidth;
+            tHeight = (int) sourceHeight;
         }
         
         // Remap texcoords into 0-1 subrange: We subtract 0.5 pixel-units before
@@ -842,10 +843,10 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         sourceYEnd-=0.5f;
 
         // Remap:
-        sourceX=sourceX / tWidth;
-        sourceXEnd=sourceXEnd / tWidth;
-        sourceY=sourceY / tHeight;
-        sourceYEnd=sourceYEnd / tHeight;
+        sourceX=sourceX / (double) tWidth;
+        sourceXEnd=sourceXEnd / (double) tWidth;
+        sourceY=sourceY / (double) tHeight;
+        sourceYEnd=sourceYEnd / (double) tHeight;
 	}
 
 	// MK: We need to reenable the proper texturing mode. This fixes bug reported in Forum message 3055,
