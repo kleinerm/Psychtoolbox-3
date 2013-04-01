@@ -1501,7 +1501,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
                 if (fboInternalFormat == GL_RGB8) fboInternalFormat = GL_RGB;
 
                 // Non-power-of-two textures supported on OES?
-                if (!strstr(glGetString(GL_EXTENSIONS), "texture_npot")) {
+                if (!strstr(glGetString(GL_EXTENSIONS), "GL_OES_texture_npot")) {
                     // No: Find size of suitable pot texture (smallest power of two which is
                     // greater than or equal to the image size:
                     twidth=1;
