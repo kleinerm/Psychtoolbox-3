@@ -5556,7 +5556,15 @@ void PsychBackupFramebufferToBackingTexture(PsychWindowRecordType *backupRendert
             }
             
             if (PsychIsGLES(backupRendertarget)) {
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, twidth, theight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+                // OES extension for faster format supported?
+                if (strstr(glGetString(GL_EXTENSIONS), "GL_EXT_texture_format_BGRA8888")) {
+                    // Faster path:
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_BGRA_EXT, twidth, theight, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, NULL);
+                }
+                else {
+                    // Slower fallback:
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, twidth, theight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+                }
             }
             else {
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, twidth, theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
@@ -5569,7 +5577,7 @@ void PsychBackupFramebufferToBackingTexture(PsychWindowRecordType *backupRendert
 		}
 	}
 	else {
-		// Texture for this one already exist: Bind and update it:
+		// Texture for this one already exists: Bind and update it:
 		twidth  = (int) PsychGetWidthFromRect(backupRendertarget->rect);
 		theight = (int) PsychGetHeightFromRect(backupRendertarget->rect);
 		
@@ -5586,7 +5594,15 @@ void PsychBackupFramebufferToBackingTexture(PsychWindowRecordType *backupRendert
                 }
 
                 if (PsychIsGLES(backupRendertarget)) {
-                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, twidth, theight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+                    // OES extension for faster format supported?
+                    if (strstr(glGetString(GL_EXTENSIONS), "GL_EXT_texture_format_BGRA8888")) {
+                        // Faster path:
+                        glTexImage2D(GL_TEXTURE_2D, 0, GL_BGRA_EXT, twidth, theight, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, NULL);
+                    }
+                    else {
+                        // Slower fallback:
+                        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, twidth, theight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+                    }
                 }
                 else {
                     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, twidth, theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
