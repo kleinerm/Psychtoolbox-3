@@ -1167,6 +1167,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             return(FALSE);
         }
 
+        // Bind glBlitFrameBuffer() if provided by extension or by core OpenGL-ES3:
+        if (strstr(glGetString(GL_EXTENSIONS), "GL_NV_framebuffer_blit") || (windowRecord->glApiType >= 30)) {
+            glBlitFramebufferEXT = waffle_dl_sym(apidl, "glBlitFramebufferNV");
+            if (NULL == glBlitFramebufferEXT) glBlitFramebufferEXT = waffle_dl_sym(WAFFLE_DL_OPENGL_ES3, "glBlitFramebuffer");
+            if (NULL == glBlitFramebufferEXT) printf("PTB-ERROR: Could not bind glBlitFramebuffer() function as expected! This may end in a crash!\n");
+        }
+
         // Framebuffer objects supported? As extension on ES-1, core on ES-2+
         if (strstr(glGetString(GL_EXTENSIONS), "framebuffer_object") || (windowRecord->glApiType >= 20)) {
             // FBO extension or core code binding:

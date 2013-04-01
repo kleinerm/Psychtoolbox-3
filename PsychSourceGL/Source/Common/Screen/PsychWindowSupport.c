@@ -5814,12 +5814,20 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		if (verbose) printf("GPU supports non-power-of-two textures.\n");
     }
 
-	// OES framebuffer objects supported?
-	if (strstr(glGetString(GL_EXTENSIONS), "GL_OES_framebuffer_object") || glewIsSupported("GL_EXT_framebuffer_object") || glewIsSupported("GL_ARB_framebuffer_object")) {
-		if (verbose) printf("Basic OES framebuffer objects supported --> RGBA rendertargets with blending.\n");
-		windowRecord->gfxcaps |= kPsychGfxCapFBO;
-	}
-    
+    // OpenGL-ES setup?
+    if (PsychIsGLES(windowRecord)) {
+        // OES framebuffer objects supported?
+        if (strstr(glGetString(GL_EXTENSIONS), "GL_OES_framebuffer_object") || glewIsSupported("GL_EXT_framebuffer_object") || glewIsSupported("GL_ARB_framebuffer_object")) {
+            if (verbose) printf("Basic OES framebuffer objects supported --> RGBA rendertargets with blending.\n");
+            windowRecord->gfxcaps |= kPsychGfxCapFBO;
+
+            if (strstr(glGetString(GL_EXTENSIONS), "_framebuffer_blit")) {
+                if (verbose) printf("OES Framebuffer objects support fast blitting between each other.\n");
+                windowRecord->gfxcaps |= kPsychGfxCapFBOBlit;			
+            }
+        }
+    }
+
 	// Is this a GPU with known broken drivers that yield miserable texture creation performance
 	// for RGBA8 textures when using the standard optimized settings?
 	// As far as we know (June 2008), ATI hardware under MS-Windows and Linux has this driver bugs,
