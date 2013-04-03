@@ -1300,21 +1300,23 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
                 if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl.dylib");
                 if (retrycount == 1) sprintf(pluginName, "libptbdrawtext_ftgl64.dylib");
             #else
-                // Linux: Try 32-Bit Intel, or Debian machine arch specific version first:
-                if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl.so.1");
+                // Linux: More machine architectures, also support for OpenGL-ES et al.:
+
+                // Try 32-Bit Intel, or Debian machine arch specific version first:
+                if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl%s.so.1", (PsychIsGLES(windowRecord)) ? "es" : "");
 
                 // ARM 32-Bit has its own version suffix, unless provided by Debian:
                 #if defined(__arm__) || defined(__thumb__)
-                if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl_arm.so.1");
+                if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl%s_arm.so.1", (PsychIsGLES(windowRecord)) ? "es" : "");
                 #endif
 
                 // ARM 64-Bit has its own version suffix, unless provided by Debian:
                 #if defined(__aarch64__)
-                if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl_arm64.so.1");
+                if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl%s_arm64.so.1", (PsychIsGLES(windowRecord)) ? "es" : "");
                 #endif
 
-                if (retrycount == 1) sprintf(pluginName, "libptbdrawtext_ftgl.so.1");
-                if (retrycount == 2) sprintf(pluginName, "libptbdrawtext_ftgl64.so.1");
+                if (retrycount == 1) sprintf(pluginName, "libptbdrawtext_ftgl%s.so.1", (PsychIsGLES(windowRecord)) ? "es" : "");
+                if (retrycount == 2) sprintf(pluginName, "libptbdrawtext_ftgl%s64.so.1", (PsychIsGLES(windowRecord)) ? "es" : "");
             #endif
 
             // Try to auto-detect install location of plugin inside the Psychtoolbox/PsychBasic folder.
@@ -1970,8 +1972,8 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
 			PsychMakeRect((double*) boundingbox, xmin + *xp, myyp - ymax, xmax + *xp, myyp - ymin);
 		}
 		else {
-			// Draw text by calling into the plugin: No-Op on OpenGL-ES for now.
-			if (!PsychIsGLES(winRec)) rc += PsychPluginDrawText(*xp, winRec->clientrect[kPsychBottom] - myyp, stringLengthChars, textUniDoubleString);
+			// Draw text by calling into the plugin:
+			rc += PsychPluginDrawText(*xp, winRec->clientrect[kPsychBottom] - myyp, stringLengthChars, textUniDoubleString);
 		}
 		
 		// Restore alpha-blending settings if needed:

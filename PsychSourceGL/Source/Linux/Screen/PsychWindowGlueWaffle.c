@@ -145,7 +145,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     if (firstTime) {
         // Initialize waffle for selected display system backend:
         if (PsychPrefStateGet_Verbosity() > 2) {
-            printf("PTB-INFO: Using FOSS Waffle display backend library, written and maintained by Chad Versace, Copyright 2012 Intel, licensed under OSS license.\n");
+            printf("PTB-INFO: Using FOSS Waffle display backend library, written by Chad Versace, Copyright 2012 Intel.\n");
         }
 
         // Override default windowing system backend selection with requested type, if any requested:
