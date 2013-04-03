@@ -30,8 +30,11 @@
  * Requires libfontconfig and libFreeType-2.
  *
  * Building the plugin for Linux:
- *
+ * Intel-64 Bit:
  * g++ -g -fPIC -I. -I/usr/include/ -I/usr/include/freetype2/ -I/usr/include/GLES -L/usr/lib libptbdrawtext_ftgles.cpp -lGLESv1_CM -lfontconfig -lfreetype -pie -shared -Wl,-Bsymbolic -Wl,-Bsymbolic-functions -Wl,--version-script=linuxexportlist.txt -o ../../../Psychtoolbox/PsychBasic/PsychPlugins/libptbdrawtext_ftgles64.so.1 libftgles_intel64.a
+ *
+ * ARM-32 Bit:
+ * g++ -g -fPIC -I. -I/usr/include/ -I/usr/include/freetype2/ -I/usr/include/GLES -L/usr/lib libptbdrawtext_ftgles.cpp -lGLESv1_CM -lfontconfig -lfreetype -pie -shared -Wl,-Bsymbolic -Wl,-Bsymbolic-functions -Wl,--version-script=linuxexportlist.txt -o ../../../Psychtoolbox/PsychBasic/PsychPlugins/libptbdrawtext_ftgles_arm.so.1 libftgles_arm32.a
  *
  * libptbdrawtext_ftgles is copyright (c) 2013 by Mario Kleiner.
  * It is licensed to you as follows:
