@@ -142,7 +142,7 @@ extern "C" {
         static bool firstAntiAliasCall = true;
 
         // FTGLES as of April 2013 can't support non-anti-aliased rendering. Give a one-time warning:
-        if ((antiAliasing <= 0) && (_verbosity > 0) && firstAntiAliasCall) {
+        if ((antiAliasing == 0) && (_verbosity > 0) && firstAntiAliasCall) {
             firstAntiAliasCall = false;
             fprintf(stderr, "libptbdrawtext_ftgles: WARNING: Asked to disable text anti-aliasing for Screen('DrawText'), but this is not yet supported on OpenGL-ES! Ignored.\n");
         }
