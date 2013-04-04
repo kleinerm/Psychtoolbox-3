@@ -330,6 +330,10 @@ if IsOctave
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFiles64']);
         end
         
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFilesARM'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFilesARM']);
+        end
+        
         if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles'], 'dir')
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles']);
         end
@@ -362,6 +366,11 @@ if IsOctave
             rdir = [rdir 'WindowsFiles'];
         end
         
+        if IsARM
+            % ARM processor architecture:
+            rdir = [rdir 'ARM'];
+        end
+
         if Is64Bit
             % 64 bit Octave. Select 64 bit mex file folder:
             rdir = [rdir '64'];
@@ -416,7 +425,7 @@ if IsOctave
     end
     
     try
-        % Try if Screen MEX file works...
+        % Try if WaitSecs MEX file works...
         WaitSecs(0.1);
     catch
         % Failed! Either screwed setup of path or missing runtime
@@ -659,6 +668,14 @@ try
         fprintf('If you receive an installation failure soon, then please read the output of\n');
         fprintf('"help GStreamer" first and follow the installation instructions for GStreamer\n');
         fprintf('on Linux. Psychtoolbox''s Screen() command will not work without GStreamer!\n\n');
+
+        % Additional setup instructions for embedded/mobile devices with ARM cpu required?
+        if IsARM
+            fprintf('Additionally, as this is a device with ARM processor, the helper library\n');
+            fprintf('libwaffle-1.so needs to be installed in a system library folder for Screen\n');
+            fprintf('to work. You can find a copy of the library in the PsychContributed/ArmArch/\n');
+            fprintf('subfolder of your Psychtoolbox main folder.\n\n');
+        end
     end
 
     % Check Screen:
