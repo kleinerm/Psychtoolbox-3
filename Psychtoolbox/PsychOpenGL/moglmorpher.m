@@ -61,7 +61,8 @@ function [rc, varargout] = moglmorpher(cmd, arg1, arg2, arg3, arg4, arg5)
 %
 % GPU based operation should be efficiently supported on all ATI Radeon
 % X-1000 or later hardware and all NVidia Geforce-6000 and later hardware.
-%
+% GPU based operation is not supported under OpenGL-ES1.x mobile/embedded
+% GPUs.
 %
 %
 % All following subfunctions must be only called when at least one onscreen
@@ -180,6 +181,8 @@ function [rc, varargout] = moglmorpher(cmd, arg1, arg2, arg3, arg4, arg5)
 % later on via the command glCallList(glListHandle); and delete it via
 % glDeleteLists(glListHandle, 1);
 %
+% Unsupported on OpenGL-ES.
+%
 %
 % moglmorpher('renderRange' [, startfaceidx=0] [, endfaceidx]);
 % moglmorpher('renderRangeToDisplayList' [, startfaceidx=0] [, endfaceidx]);
@@ -211,7 +214,7 @@ function [rc, varargout] = moglmorpher(cmd, arg1, arg2, arg3, arg4, arg5)
 % index of the first vertex, resp. the last vertex to transform. The returned 'vpos' is a
 % vcount-by-3 matrix, where vcount is the number of returned vertices, and row i contains the
 % projected 3D position of the i'th vertex vcount(i,:) = (screen_x, screen_y, depth_z);
-%
+% Unsupported on OpenGL-ES.
 %
 % count = moglmorpher('getMeshCount');
 % -- Returns number of stored shapes.
@@ -343,6 +346,7 @@ function [rc, varargout] = moglmorpher(cmd, arg1, arg2, arg3, arg4, arg5)
 %             can delete all keyshapes without incurring a full reset cycle (MK).
 %
 % 10.01.2013  Fix bug in argument checking (MK).
+% 04.04.2013  Make OpenGL-ES compatible, at least basic functionality (MK).
 
 % The GL OpenGL constant definition struct is shared with all other modules:
 global GL;
@@ -1564,17 +1568,25 @@ if strcmpi(cmd, 'renderNormals')
         end;
     end;
     
-    % Loop over all vertices and draw their corresponding normals:
-    % This is OpenGL immediate-mode rendering, so it will be slow...
-    glBegin(GL.LINES);
+    % Loop over all vertices and draw their corresponding normals to
+    % build a vertex array for line drawing:
+    j = 2 * (endidx - startidx + 1);
+    tmpvertices = zeros(size(ctx.vertices,1), j, 'single');
+    j = 0;
     for i=startidx:endidx
         % Start position of normal is vertex position:
-        glVertex3dv(ctx.vertices(:,i));
+        tmpvertices(:,j+1) = ctx.vertices(:,i);
         % End position is defined by scaled normal vector: Argument 1 defines length of normal:
-        glVertex3dv(ctx.vertices(:,i) + (ctx.normals(:,i)/norm(ctx.normals(:,i)))*arg1);
-    end;
-    glEnd;
-    
+        tmpvertices(:,j+2) = ctx.vertices(:,i) + ((ctx.normals(:,i)/norm(ctx.normals(:,i))) * arg1);
+        j = j + 2;
+    end
+
+    % Set pointer to start of vertex array:
+    glEnableClientState(GL.VERTEX_ARRAY);
+    glVertexPointer(size(ctx.vertices,1), GL.FLOAT, 0, tmpvertices);
+    glDrawArrays(GL.LINES, 0, j);
+    glDisableClientState(GL.VERTEX_ARRAY);
+
     % Done.
     return;
 end;
@@ -1627,6 +1639,12 @@ if strcmpi(cmd, 'render') || strcmpi(cmd, 'renderToDisplaylist') || ...
     end
     
     if strcmpi(cmd, 'renderToDisplaylist') || strcmpi(cmd, 'renderRangeToDisplaylist')
+        % No such thing as display lists on the embedded subset:
+        if IsGLES
+            fprintf('moglmorpher: WARNING: Rendering to display list requested, but this is not possible on OpenGL-ES! Ignored.\n');
+            return;
+        end
+
         % Create new display list and direct all rendering into it:
         rc = glGenLists(1);
         glNewList(rc, GL.COMPILE);
@@ -1764,7 +1782,14 @@ end;
 if strcmpi(cmd, 'getVertexPositions')   
    % Calling routine wants projected screen space vertex positions of all vertices
    % in our current renderbuffer.
-   
+
+   % No such thing as glFeedbackPointer() on the embedded subset:
+   % TODO: Reimplement some day via transform feedback on modern GL implementations?
+   if IsGLES
+       error('moglmorpher: ERROR: ''getVertexPositions'' requested, but this is not possible on OpenGL-ES! Aborted.');
+       return;
+   end
+
    if nargin < 2 || isempty(arg1)
       error('win Windowhandle missing in call to getVertexPositions!')
    end;
