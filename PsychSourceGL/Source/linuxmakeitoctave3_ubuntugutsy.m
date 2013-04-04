@@ -124,6 +124,19 @@ if mode==6
     striplibsfrommexfile([PsychtoolboxRoot target 'moglcore.mex']);
 end;
 
+if mode==6000
+    % Build moglcore.mex for OpenGL-ES:
+    curdir = pwd;
+    cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
+    try
+       mex -v -g --output moglcore.mex -DLINUX -DGLEW_STATIC -DPTBOCTAVE3MEX -I/usr/X11R6/include -L/usr/X11R6/lib -lc -lGLESv1_CM -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c
+    catch
+    end
+    unix(['mv moglcore.mex ' PsychtoolboxRoot target]);
+    cd(curdir);
+    striplibsfrommexfile([PsychtoolboxRoot target 'moglcore.mex']);
+end;
+
 if mode==7
     % Build PsychKinectCore.mex:
     mex -v -g --output ../Projects/Linux/build/PsychKinectCore.mex -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -I/usr/include/libfreenect -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen Common/Base/*.cc Linux/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -lfreenect -lusb-1.0
