@@ -140,7 +140,11 @@ end
 
 % Setup magnification and minification filters:
 glTexParameteri(GL.TEXTURE_2D,GL.TEXTURE_MAG_FILTER,GL.LINEAR); %  scale linearly when rendered image bigger than texture
-glTexParameteri(GL.TEXTURE_2D,GL.TEXTURE_MIN_FILTER,GL.LINEAR_MIPMAP_LINEAR); %  scale linearly + mipmap when rendered image smalled than texture
+if ~IsGLES
+    glTexParameteri(GL.TEXTURE_2D,GL.TEXTURE_MIN_FILTER,GL.LINEAR_MIPMAP_LINEAR); %  scale linearly + mipmap when rendered image smalled than texture
+else
+    glTexParameteri(GL.TEXTURE_2D,GL.TEXTURE_MIN_FILTER,GL.LINEAR);
+end
 
 % Set wrapping behaviour to repeat infinite in any direction:
 glTexParameteri(GL.TEXTURE_2D,GL.TEXTURE_WRAP_S,GL.REPEAT);
@@ -267,8 +271,9 @@ zpos=0;
 while 1
     % Check keyboard:
     [isdown secs keycode]=KbCheck;
-    if isdown
-        if keycode(escape)
+    [mox, moy, buttons]=GetMouse;
+    if isdown || any(buttons)
+        if keycode(escape) || any(buttons)
             % Exit loop, and thereby the demo.
             break;
         end
