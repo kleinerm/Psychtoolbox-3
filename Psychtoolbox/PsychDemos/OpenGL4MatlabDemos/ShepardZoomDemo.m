@@ -88,7 +88,7 @@ end
 
 % For quick texture mipmap creation, the hardware needs to support
 % framebuffer object extensions...
-if ~isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_EXT_framebuffer_object'))
+if ~isempty(findstr(glGetString(GL.EXTENSIONS), '_framebuffer_object'))
     % Automatic, fast, hardware based creation of mipmap texture resolution
     % pyramids supported on this system. Use it to quickly create the
     % texture mipmap object:
@@ -319,7 +319,7 @@ while 1
     % moving textured layers.
 
     % Draw lowest layer of groundplane in uniform color:
-    glColor4fv(texcolor(1,:));
+    glColor4f(texcolor(1,1), texcolor(1,2), texcolor(1,3), texcolor(1,4));
     glDisable(GL.TEXTURE_2D);
     glBlendFunc(GL.ONE,GL.ZERO);
     glBegin(GL.QUADS);
@@ -352,7 +352,7 @@ while 1
     rotpos=rotpos+rotspeed;
     if (rotpos>360.0) rotpos=rotpos-360.0; end
     if (rotpos<-360.0) rotpos=rotpos+360.0; end
-    glRotated(rotpos,0.0,1.0,0.0);
+    glRotatef(rotpos,0.0,1.0,0.0);
 
     % Update layer scalings and layer order:
     for i=0:4

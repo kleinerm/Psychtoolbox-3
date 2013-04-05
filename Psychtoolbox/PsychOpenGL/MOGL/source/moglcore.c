@@ -218,7 +218,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
         // Success. Ready to go...
 		if (debuglevel > 1) {
-			printf("MOGL - OpenGL for Matlab & GNU/Octave initialized. MOGL is (c) 2006-2012 Richard F. Murray & Mario Kleiner, licensed to you under MIT license.\n");
+			printf("MOGL - OpenGL for Matlab & GNU/Octave initialized. MOGL is (c) 2006-2013 Richard F. Murray & Mario Kleiner, licensed to you under MIT license.\n");
             #ifdef WINDOWS
 			printf("On MS-Windows, we make use of the freeglut library, which is Copyright (c) 1999-2000 Pawel W. Olszta, licensed under compatible MIT/X11 license.\n");
             printf("The precompiled Windows binary DLL's have been kindly provided by http://www.transmissionzero.co.uk/software/freeglut-devel/ -- Thanks!\n");
@@ -239,7 +239,17 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 			glutInit( &noargs, &dummyargp);
 		}
 		#endif
-		
+
+        // Running on a OpenGL-ES rendering api under Linux?
+        if (getenv("PSYCH_USE_GFX_BACKEND") && strstr(getenv("PSYCH_USE_GFX_BACKEND"), "gles")) {
+            // Yes. We emulate some immediate mode rendering commands, which aren't available
+            // in OpenGL Embedded Subset at all, via "our" own emulation code. This code emulates
+            // immediate mode on top of client vertex arrays and batch submission.
+            if (debuglevel > 1) {
+                printf("OpenGL-ES rendering API active: Emulating immediate mode rendering via David Petrie's ftglesGlue emulation code.\n");
+            }
+        }
+
 		// Register exit-handler: When flushing the mex-file, we free all allocated buffer memory:
 		mexAtExit(&mexExitFunction);
 		
