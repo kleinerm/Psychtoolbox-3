@@ -357,6 +357,9 @@ persistent ctx;
 % Data type for OpenGL data, GL_FLOAT or GL_DOUBLE.
 persistent usetype;
 
+% Data type for indices, GL_UNSIGNED_INT or GL_UNSIGNED_SHORT.
+persistent indextype;
+
 % glDrawRangeElements() command supported?
 persistent drawrangeelements;
 
@@ -478,6 +481,12 @@ if isempty(isbuggyatidriver)
     if gpubasedmorphing
         usetype = GL.FLOAT;
     end    
+
+    indextype = GL.UNSIGNED_INT;
+    if IsGLES
+        % We are pretty limited on ES:
+        indextype = GL.UNSIGNED_SHORT;
+    end
 end
 
 if isempty(gpubasedmorphing)
@@ -839,7 +848,12 @@ if strcmpi(cmd, 'addMesh')
     end;
         
     % Cast vector of face indices to unsigned int 32 for use by OpenGL and assign it:
-    ctx.faces = uint32(arg1);
+    if indextype == GL.UNSIGNED_INT
+        ctx.faces = uint32(arg1);
+    else
+        ctx.faces = uint16(arg1);
+    end
+
     ctx.minvertex=min(min(ctx.faces));
     ctx.maxvertex=max(max(ctx.faces));
     
@@ -971,8 +985,8 @@ if strcmpi(cmd, 'addMesh')
         end
 
         % First time invocation? A warm restart (dontReset = 1 set in 'deleteMeshXXX')
-	% does not count as first time invocation, as a dontReset does keep all
-	% shaders, FBOs and other resources setup, so no need to do it here again.
+        % does not count as first time invocation, as a dontReset does keep all
+        % shaders, FBOs and other resources setup, so no need to do it here again.
         if (ctx.objcount == 1) && isempty(ctx.warmstart)
             % Yes! Need to allocate and setup FBO's PBO's and VBO's and create
             % GLSL operator for morphing on GPU:
@@ -1075,11 +1089,17 @@ if strcmpi(cmd, 'addMesh')
             ctx.ibo = glGenBuffers(1);
             glBindBuffer(GL.ELEMENT_ARRAY_BUFFER_ARB, ctx.ibo);
             % Allocate buffer for number of face indices stored in 'ctx.faces',
-            % each taking up 4 Bytes (== sizeof(uint32)) of memory.
+            % each taking up elsize Bytes (== sizeof(indextype)) of memory.
             % Initialize immediately with content of 'ctx.faces' array and tell
             % OpenGL that this won't change at all during operation
             % (STATIC_DRAW):
-            glBufferData(GL.ELEMENT_ARRAY_BUFFER_ARB, size(ctx.faces,1) * size(ctx.faces,2) * 4, ctx.faces, GL.STATIC_DRAW);
+            if indextype == GL.UNSIGNED_INT
+                elsize = 4;
+            else
+                elsize = 2;
+            end
+
+            glBufferData(GL.ELEMENT_ARRAY_BUFFER_ARB, size(ctx.faces,1) * size(ctx.faces,2) * elsize, ctx.faces, GL.STATIC_DRAW);
             glBindBuffer(GL.ELEMENT_ARRAY_BUFFER_ARB, 0);
 
             Screen('EndOpenGL', ctx.win);
@@ -1691,18 +1711,18 @@ if strcmpi(cmd, 'render') || strcmpi(cmd, 'renderToDisplaylist') || ...
         if drawrangeelements
             % Faster rendering-path, needs OpenGL-1.2 or higher:
             if (size(ctx.faces,1)==3)
-                glDrawRangeElements(GL.TRIANGLES, ctx.minvertex, ctx.maxvertex, fcount * 3, GL.UNSIGNED_INT, ctx.faces(:, startIdx:end));
+                glDrawRangeElements(GL.TRIANGLES, ctx.minvertex, ctx.maxvertex, fcount * 3, indextype, ctx.faces(:, startIdx:end));
             elseif size(ctx.faces,1)==4
-                glDrawRangeElements(GL.QUADS, ctx.minvertex, ctx.maxvertex, fcount * 4, GL.UNSIGNED_INT, ctx.faces(:, startIdx:end));
+                glDrawRangeElements(GL.QUADS, ctx.minvertex, ctx.maxvertex, fcount * 4, indextype, ctx.faces(:, startIdx:end));
             else
                 error('Invalid number of rows in face index array!');
             end;
         else
             % Slower rendering path, needed to support OpenGL-1.1 renderers as well:
             if (size(ctx.faces,1)==3)
-                glDrawElements(GL.TRIANGLES, fcount * 3, GL.UNSIGNED_INT, ctx.faces(:, startIdx:end));
+                glDrawElements(GL.TRIANGLES, fcount * 3, indextype, ctx.faces(:, startIdx:end));
             elseif size(ctx.faces,1)==4
-                glDrawElements(GL.QUADS, fcount * 4, GL.UNSIGNED_INT, ctx.faces(:, startIdx:end));
+                glDrawElements(GL.QUADS, fcount * 4, indextype, ctx.faces(:, startIdx:end));
             else
                 error('Invalid number of rows in face index array!');
             end;
@@ -1749,9 +1769,9 @@ if strcmpi(cmd, 'render') || strcmpi(cmd, 'renderToDisplaylist') || ...
 
         % Render mesh, using topology given by 'ctx.faces':
         if (size(ctx.faces,1)==3)
-            glDrawRangeElements(GL.TRIANGLES, ctx.minvertex, ctx.maxvertex, fcount * 3, GL.UNSIGNED_INT, startIdx * 3 * 4);
+            glDrawRangeElements(GL.TRIANGLES, ctx.minvertex, ctx.maxvertex, fcount * 3, indextype, startIdx * 3 * 4);
         elseif size(ctx.faces,1)==4
-            glDrawRangeElements(GL.QUADS, ctx.minvertex, ctx.maxvertex, fcount * 4, GL.UNSIGNED_INT, startIdx * 4 * 4);
+            glDrawRangeElements(GL.QUADS, ctx.minvertex, ctx.maxvertex, fcount * 4, indextype, startIdx * 4 * 4);
         else
             error('Invalid number of rows in face index array!');
         end;
