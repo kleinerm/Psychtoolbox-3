@@ -4,8 +4,7 @@
  *
  */
 
-//#include "glew.h"
-#include "mogltypes.h"
+#include "glew.h"
 
 // Dynamic extension rebinding: This is in an extra file mogl_rebinder.c and defined
 // with explicit C linkage. Reason: For the Octave version, we need to compile all
@@ -92,12 +91,6 @@ void mogl_rebindARBExtensionsToCore(void)
 
     // Misc other stuff to remap...
     if (NULL == glDrawRangeElements) glDrawRangeElements = glDrawRangeElementsEXT;
-
-    #ifdef PTB_USE_GLES
-    printf("glGenerateMipmapEXT pre = %p\n", glGenerateMipmapEXT);
-    if (NULL == glGenerateMipmapEXT) glGenerateMipmapEXT = glGenerateMipmapOES;
-    printf("glGenerateMipmapEXT post = %p\n", glGenerateMipmapEXT);
-    #endif
 
     return;
 }

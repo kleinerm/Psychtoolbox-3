@@ -88,9 +88,6 @@ double gluUnProject4(double a1, double a2, double a3, double a4, double* a5, dou
 
 #endif
 
-typedef void (GLAPIENTRY * PFNGLGENERATEMIPMAPOESPROC) (GLenum target);
-extern PFNGLGENERATEMIPMAPOESPROC glGenerateMipmapOES;
-
 // Mapping of scalar buffer offset value (in units of bytes) to an
 // equivalent memory void*.
 void* moglScalarToPtrOffset(const mxArray *m);
