@@ -1681,20 +1681,10 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 	
 	// Do we need additional buffers for 3D rendering?
 	if (needzbuffer) {
-		// Yes. Try to setup and attach them:
-		if (multisample <= 0) {
-			// No multisampled FBO: Can use textures etc...
+		// Yes. Try to setup and attach them: We use depth textures if they are supported and no MSAA is needed:
+		if ((multisample <= 0) && (glewIsSupported("GL_ARB_depth_texture") || strstr(glGetString(GL_EXTENSIONS), "GL_OES_depth_texture"))) {
+			// No multisampling requested on FBO and depth textures are supported. Use those to implement depth + stencil buffers:
 			if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Trying to attach depth+stencil attachments to FBO...\n"); 
-			if (!glewIsSupported("GL_ARB_depth_texture") && !strstr(glGetString(GL_EXTENSIONS), "GL_OES_depth_texture") &&
-                !strstr(glGetString(GL_EXTENSIONS), "GL_OES_packed_depth_stencil")) {
-				printf("PTB-ERROR: Failed to setup internal framebuffer object for imaging pipeline! Your graphics hardware does not support\n");
-				printf("PTB-ERROR: the required GL_ARB_depth_texture or GL_OES_depth_texture extension.\n");
-				if (!PsychIsGLES(NULL)) {
-                	printf("PTB-ERROR: You'll need at least a NVidia GeforceFX 5200, ATI Radeon 9600\n");
-					printf("PTB-ERROR: or Intel GMA-950 with recent graphics-drivers for this to work.\n");
-				}
-				return(FALSE);
-			}
 			
 			// Create texture object for z-buffer (or z+stencil buffer) and set it up:
 			glGenTextures(1, (GLuint*) &((*fbo)->ztexid));
@@ -1756,9 +1746,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 							printf("PTB-WARNING: OpenGL stencil buffers not supported in imagingmode by your hardware. This won't affect Screen 2D drawing functions and won't affect\n");
 							printf("PTB-WARNING: the majority of OpenGL (MOGL) 3D drawing code either, but OpenGL code that needs a stencil buffer will misbehave or fail in random ways!\n");
 							printf("PTB-WARNING: If you need to use such code, you'll either have to disable the internal imaging pipeline, or carefully work-around this limitation by\n");
-							printf("PTB-WARNING: proper modifications and testing of the affected code. Good luck... Alternatively, upgrade your graphics hardware or drivers. According to specs,\n");
-							printf("PTB-WARNING: all gfx-cards starting with GeForceFX 5200 on Windows and Linux and all cards on Intel-Macs except the Intel GMA cards should work, whereas\n");
-							printf("PTB-WARNING: none of the PowerPC hardware is supported as of OS-X 10.4.9.\n"); 
+							printf("PTB-WARNING: proper modifications and testing of the affected code. Good luck... Alternatively, upgrade your graphics hardware or drivers.\n");
 						}
 					}
 				}
@@ -1830,37 +1818,58 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 		else {
 			// Setup code of z- and stencilbuffer for multisampled mode. We must allocate these attachments as renderbuffers,
 			// as they need the same sample count as the color buffers, and textures do not support multisampling.
-			if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Trying to attach multisampled renderbuffer depth+stencil attachments to FBO...\n"); 
+			// We also use this path for non-multisampled renderbuffer setup if depth textures aren't available.
+			if (PsychPrefStateGet_Verbosity()>4) {
+				printf("PTB-DEBUG: Trying to attach %s renderbuffer depth+stencil attachments to FBO...\n", (multisample > 0) ? "multisample" : ""); 
+			}
+
 			glGenRenderbuffersEXT(1, (GLuint*) &((*fbo)->ztexid));
 			glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, (*fbo)->ztexid);
-		
-            
+
             // Use of depth+stencil requested and packed depth+stencil possible?
-            if (!(PsychPrefStateGet_ConserveVRAM() & kPsychDontAttachStencilToFBO) && glewIsSupported("GL_EXT_packed_depth_stencil")) {
+            if (!(PsychPrefStateGet_ConserveVRAM() & kPsychDontAttachStencilToFBO) && 
+                (glewIsSupported("GL_EXT_packed_depth_stencil") || strstr(glGetString(GL_EXTENSIONS), "GL_OES_packed_depth_stencil"))) {
                 // Try a packed depth + stencil buffer:
-                glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_DEPTH24_STENCIL8_EXT, width, height);
+                if (multisample > 0) {
+                    glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_DEPTH24_STENCIL8_EXT, width, height);
+                }
+                else {
+                    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH24_STENCIL8_EXT, width, height);
+                }
+
                 (*fbo)->stexid = (*fbo)->ztexid;
             }
             else {
                 // Depth buffer only:
-                glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_DEPTH_COMPONENT24_ARB, width, height);
+                if (multisample > 0) {
+                    glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_DEPTH_COMPONENT24_ARB, width, height);
+                }
+                else {
+                    // OES doesn't guarantee 24 bit depth buffers, only 16 bit, so fallback to them on OES if 24 bits are unsupported:
+                    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT,
+                                             (!PsychIsGLES(NULL) || strstr(glGetString(GL_EXTENSIONS), "GL_OES_depth24")) ? GL_DEPTH_COMPONENT24_ARB : GL_DEPTH_COMPONENT16_ARB,
+                                             width, height);
+                }
+
                 (*fbo)->stexid = 0;
             }
             
 			if (glGetError()!=GL_NO_ERROR) {
-				printf("PTB-ERROR: Failed to setup internal framebuffer objects depths renderbuffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
-				printf("PTB-ERROR: Most likely the requested size, depth and multisampling level of the window or texture is not supported by your graphics hardware.\n");
+				printf("PTB-ERROR: Failed to setup internal framebuffer objects depths renderbuffer attachment as a %s renderbuffer for imaging pipeline!\n", (multisample > 0) ? "multisample" : "");
+				printf("PTB-ERROR: Most likely the requested size, depth and multisampling level is not supported by your graphics hardware.\n");
 				return(FALSE);
 			}
 			
-			// Query real number of samples for renderbuffer:
-			glGetRenderbufferParameterivEXT(GL_RENDERBUFFER_EXT, GL_RENDERBUFFER_SAMPLES_EXT, &multisample);
-			if ((*fbo)->multisample != multisample) {
-				printf("PTB-ERROR: Failed to setup internal framebuffer objects depths renderbuffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
-				printf("PTB-ERROR: Could not get the same number of samples for depths renderbuffer as for color buffer, which is a requirement.\n");
-				return(FALSE);
+            if (multisample > 0) {
+                // Query real number of samples for renderbuffer:
+                glGetRenderbufferParameterivEXT(GL_RENDERBUFFER_EXT, GL_RENDERBUFFER_SAMPLES_EXT, &multisample);
+                if ((*fbo)->multisample != multisample) {
+                    printf("PTB-ERROR: Failed to setup internal framebuffer objects depths renderbuffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
+                    printf("PTB-ERROR: Could not get the same number of samples for depths renderbuffer as for color buffer, which is a requirement.\n");
+                    return(FALSE);
+                }
 			}
-			
+
 			// Unbind, we're done with setup:
 			glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
 			
@@ -1876,16 +1885,24 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
             
 			// Now try to attach stencil buffer:
 			if (!((*fbo)->stexid) && !(PsychPrefStateGet_ConserveVRAM() & kPsychDontAttachStencilToFBO)) {
-				// Create and attach renderbuffer as a stencil buffer of 8 bit depths:
+				// Create and attach renderbuffer as a stencil buffer of hopefully 8 bit depths:
 				glGenRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
 				glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, (*fbo)->stexid);
 
                 // Try to get stencil buffer with matching sample count to depth and color buffers:
-				glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_STENCIL_INDEX8_EXT, width, height);
+                if (multisample > 0) {
+                    glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_STENCIL_INDEX8_EXT, width, height);
+                }
+                else {
+                    // OES does not guarantee 8 bit stencil buffers, only with extension. In fact, it does not even guarantee
+                    // stencil buffers at all, so we aim for 8 bit, fallback to 4 bit and leave it to the error handling below to disable
+                    // stencil buffers if the implementation doesn't support at least the 4 bit case:
+                    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, (!PsychIsGLES(NULL) || strstr(glGetString(GL_EXTENSIONS), "GL_OES_stencil8")) ? GL_STENCIL_INDEX8_EXT : GL_STENCIL_INDEX4_EXT, width, height);
+                }
 
 				if (glGetError()!=GL_NO_ERROR) {
 					if (PsychPrefStateGet_Verbosity() > 2) {
-                        printf("PTB-WARNING: Failed to setup internal framebuffer objects stencil renderbuffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
+                        printf("PTB-WARNING: Failed to setup internal framebuffer objects stencil renderbuffer attachment as a %s renderbuffer for imaging pipeline!\n", (multisample > 0) ? "multisample" : "");
                     }
                     
                     // Clean up:
@@ -1893,21 +1910,23 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 					glDeleteRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
 					(*fbo)->stexid = 0;
 				}
-				
-				// Query real number of samples for renderbuffer:
-				glGetRenderbufferParameterivEXT(GL_RENDERBUFFER_EXT, GL_RENDERBUFFER_SAMPLES_EXT, &multisample);
-				if ((*fbo)->multisample != multisample) {
-					if (PsychPrefStateGet_Verbosity() > 2) {
-                        printf("PTB-WARNING: Failed to setup internal framebuffer objects stencil renderbuffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
-                        printf("PTB-WARNING: Could not get the same number of samples for stencil renderbuffer as for color buffer, which is a requirement.\n");
-                    }
 
-                    // Clean up:
-                    glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
-					glDeleteRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
-					(*fbo)->stexid = 0;
+                if (multisample > 0) {				
+                    // Query real number of samples for renderbuffer:
+                    glGetRenderbufferParameterivEXT(GL_RENDERBUFFER_EXT, GL_RENDERBUFFER_SAMPLES_EXT, &multisample);
+                    if ((*fbo)->multisample != multisample) {
+                        if (PsychPrefStateGet_Verbosity() > 2) {
+                            printf("PTB-WARNING: Failed to setup internal framebuffer objects stencil renderbuffer attachment as a multisampled renderbuffer for imaging pipeline!\n");
+                            printf("PTB-WARNING: Could not get the same number of samples for stencil renderbuffer as for color buffer, which is a requirement.\n");
+                        }
+
+                        // Clean up:
+                        glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
+                        glDeleteRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
+                        (*fbo)->stexid = 0;
+                    }
 				}
-				
+
                 if ((*fbo)->stexid > 0) {
                     glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
                     glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, (*fbo)->stexid);
@@ -1917,7 +1936,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
                     if (GL_FRAMEBUFFER_COMPLETE_EXT != fborc && 0 != fborc) {
                         // Nope. Our trick doesn't work, this hardware won't let us attach a stencil buffer at all. Remove it
                         // and live with a depth-buffer only setup.
-                        if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Stencil multisampled renderbuffer attachment failed! Detaching multisampled stencil buffer...\n");                        
+                        if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Stencil % renderbuffer attachment failed! Detaching stencil buffer...\n", (multisample > 0) ? "multisample" : "");                        
                         glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, 0);
                         glDeleteRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
                         (*fbo)->stexid = 0;
@@ -1926,7 +1945,8 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
                         // Checking command itself failed?!?
                         if (PsychPrefStateGet_Verbosity() > 1) {
                             // Warn the user:
-                            printf("PTB-WARNING: In setup of framebuffer object multisampled stencil attachment: glCheckFramebufferStatusEXT() malfunctioned. (glGetError reports: %s)\n", gluErrorString(glGetError()));
+                            printf("PTB-WARNING: In setup of framebuffer object %s stencil attachment: glCheckFramebufferStatusEXT() malfunctioned. (glGetError reports: %s)\n",
+                                   (multisample > 0) ? "multisample" : "", gluErrorString(glGetError()));
                             printf("PTB-WARNING: Therefore can't determine if FBO setup worked or not. Will continue and hope for the best :(\n");
                             printf("PTB-WARNING: This is most likely a graphics driver bug. You may want to update your graphics drivers, maybe it helps.\n");
                         }
@@ -1935,7 +1955,8 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
                 }
                 
                 if (((*fbo)->stexid == 0) && (PsychPrefStateGet_Verbosity() > 1)) {
-                    printf("PTB-WARNING: OpenGL multisampled stencil buffers not supported in imagingmode by your hardware. This won't affect Screen 2D drawing functions and won't affect\n");
+                    printf("PTB-WARNING: OpenGL %s stencil buffers not supported in imagingmode by your hardware. This won't affect Screen 2D drawing functions and won't affect\n",
+                           (multisample > 0) ? "multisample" : "");
                     printf("PTB-WARNING: the majority of OpenGL (MOGL) 3D drawing code either, but OpenGL code that needs a stencil buffer will misbehave or fail in random ways!\n");
                     printf("PTB-WARNING: If you need to use such code, you'll either have to disable the internal imaging pipeline, or carefully work-around this limitation by\n");
                     printf("PTB-WARNING: proper modifications and testing of the affected code. Good luck... Alternatively, upgrade your graphics hardware or drivers.\n\n");
@@ -2010,7 +2031,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 		// Output framebuffer properties:
 		glGetIntegerv(GL_RED_BITS, &bpc);
 		printf("PTB-DEBUG: FBO has %i bits precision per color component in ", bpc);
-		if (glewIsSupported("GL_ARB_color_buffer_float")) {
+		if (glewIsSupported("GL_ARB_color_buffer_float") || glewIsSupported("GL_EXT_color_buffer_float")) {
 			glGetBooleanv(GL_RGBA_FLOAT_MODE_ARB, &isFloatBuffer);
 			if (isFloatBuffer) {
 				printf("floating point format ");
@@ -2030,7 +2051,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 		}
 		else {
 			isFloatBuffer = FALSE;
-			printf("unknown format ");
+			printf("unknown (but likely fixed point) format ");
 		}
 
 		glGetIntegerv(GL_DEPTH_BITS, &bpc);
