@@ -1684,7 +1684,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 		// Yes. Try to setup and attach them: We use depth textures if they are supported and no MSAA is needed:
 		if ((multisample <= 0) && (glewIsSupported("GL_ARB_depth_texture") || strstr(glGetString(GL_EXTENSIONS), "GL_OES_depth_texture"))) {
 			// No multisampling requested on FBO and depth textures are supported. Use those to implement depth + stencil buffers:
-			if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Trying to attach depth+stencil attachments to FBO...\n"); 
+			if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Trying to attach texture depth+stencil attachments to FBO...\n"); 
 			
 			// Create texture object for z-buffer (or z+stencil buffer) and set it up:
 			glGenTextures(1, (GLuint*) &((*fbo)->ztexid));
@@ -2213,14 +2213,21 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 		fboptr = sourceRecord->fboTable[0];
 		if (fboptr!=NULL) { 			
 			// Detach and delete color buffer texture:
-
 			needzbuffer = (fboptr->ztexid) ? TRUE : FALSE;
 
-			// if (fboptr->coltexid) glDeleteTextures(1, &(fboptr->coltexid));
 			// Detach and delete depth buffer (and probably stencil buffer) texture, if any:
-			if (fboptr->ztexid) glDeleteTextures(1, &(fboptr->ztexid));
+			if (fboptr->ztexid) {
+                if (glIsTexture(fboptr->ztexid)) {
+                    glDeleteTextures(1, &(fboptr->ztexid));
+                }
+                else {
+                    glDeleteRenderbuffersEXT(1, &(fboptr->ztexid));
+                }
+            }
+
 			// Detach and delete stencil renderbuffer, if a separate stencil buffer was needed:
 			if (fboptr->stexid) glDeleteRenderbuffersEXT(1, &(fboptr->stexid));
+
 			// Delete FBO itself:
 			if (fboptr->fboid) glDeleteFramebuffersEXT(1, &(fboptr->fboid));
 						

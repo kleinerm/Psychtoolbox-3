@@ -1410,11 +1410,12 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     }
     
     // Final master-setup for multisampling:
-    if (multiSample>0) {
+    if (multiSample > 1) {
       // Try to enable multisampling in software:
       while(glGetError()!=GL_NO_ERROR);
-      glEnable(0x809D); // 0x809D == GL_MULTISAMPLE_ARB
+      glEnable(GL_MULTISAMPLE_ARB);
       while(glGetError()!=GL_NO_ERROR);
+
       // Set sampling algorithm to the most high-quality one, even if it is
       // computationally more expensive: This will only work if the NVidia
       // GL_NV_multisample_filter_hint extension is supported...
@@ -1424,8 +1425,11 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     else {
       // Try to disable multisampling in software. That is the best we can do here:
       while(glGetError()!=GL_NO_ERROR);
-      glDisable(0x809D);
+      glDisable(GL_MULTISAMPLE_ARB);
       while(glGetError()!=GL_NO_ERROR);
+
+      // Set it to zero, so remaining code can rely on zero == off:
+      (*windowRecord)->multiSample = 0;
     }
     
 	// Master override: If context isolation is disabled then we use the PTB internal context...
@@ -1715,13 +1719,13 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
 				// Call cleanup routine of text renderers to cleanup anything text related for this windowRecord:
 				PsychCleanupTextRenderer(windowRecord);
 
-		// Destroy a potentially orphaned GPU rendertime query:
-		if (windowRecord->gpuRenderTimeQuery) {
-			glGetQueryiv(GL_TIME_ELAPSED_EXT, GL_CURRENT_QUERY, &queryState);
-			if (queryState > 0) glEndQuery(GL_TIME_ELAPSED_EXT);
-			glDeleteQueries(1, &windowRecord->gpuRenderTimeQuery);
-			windowRecord->gpuRenderTimeQuery = 0;
-		}
+				// Destroy a potentially orphaned GPU rendertime query:
+				if (windowRecord->gpuRenderTimeQuery) {
+					glGetQueryiv(GL_TIME_ELAPSED_EXT, GL_CURRENT_QUERY, &queryState);
+					if (queryState > 0) glEndQuery(GL_TIME_ELAPSED_EXT);
+					glDeleteQueries(1, &windowRecord->gpuRenderTimeQuery);
+					windowRecord->gpuRenderTimeQuery = 0;
+				}
 
 				// Sync and idle the pipeline again:
                 glFinish();
@@ -4442,7 +4446,10 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 
     // Enable this windowRecords framebuffer as current drawingtarget:
     PsychSetDrawingTarget(windowRecord);
-    
+
+    // Execute hook chain for ops post-user space drawing (e.g., drawing an overlay over user content):
+    PsychPipelineExecuteHook(windowRecord, kPsychUserspaceBufferDrawingFinished, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);        
+
     // We stop processing here if window is a texture, aka offscreen window...
     if (windowRecord->windowType==kPsychTexture) return;
 
