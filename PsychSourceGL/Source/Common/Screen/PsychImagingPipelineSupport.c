@@ -1831,10 +1831,10 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
                 (glewIsSupported("GL_EXT_packed_depth_stencil") || strstr(glGetString(GL_EXTENSIONS), "GL_OES_packed_depth_stencil"))) {
                 // Try a packed depth + stencil buffer:
                 if (multisample > 0) {
-                    glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_DEPTH24_STENCIL8_EXT, width, height);
+                    glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_DEPTH24_STENCIL8_EXT, twidth, theight);
                 }
                 else {
-                    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH24_STENCIL8_EXT, width, height);
+                    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH24_STENCIL8_EXT, twidth, theight);
                 }
 
                 (*fbo)->stexid = (*fbo)->ztexid;
@@ -1842,13 +1842,13 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
             else {
                 // Depth buffer only:
                 if (multisample > 0) {
-                    glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_DEPTH_COMPONENT24_ARB, width, height);
+                    glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_DEPTH_COMPONENT24_ARB, twidth, theight);
                 }
                 else {
                     // OES doesn't guarantee 24 bit depth buffers, only 16 bit, so fallback to them on OES if 24 bits are unsupported:
                     glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT,
                                              (!PsychIsGLES(NULL) || strstr(glGetString(GL_EXTENSIONS), "GL_OES_depth24")) ? GL_DEPTH_COMPONENT24_ARB : GL_DEPTH_COMPONENT16_ARB,
-                                             width, height);
+                                             twidth, theight);
                 }
 
                 (*fbo)->stexid = 0;
@@ -1891,13 +1891,13 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 
                 // Try to get stencil buffer with matching sample count to depth and color buffers:
                 if (multisample > 0) {
-                    glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_STENCIL_INDEX8_EXT, width, height);
+                    glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_STENCIL_INDEX8_EXT, twidth, theight);
                 }
                 else {
                     // OES does not guarantee 8 bit stencil buffers, only with extension. In fact, it does not even guarantee
                     // stencil buffers at all, so we aim for 8 bit, fallback to 4 bit and leave it to the error handling below to disable
                     // stencil buffers if the implementation doesn't support at least the 4 bit case:
-                    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, (!PsychIsGLES(NULL) || strstr(glGetString(GL_EXTENSIONS), "GL_OES_stencil8")) ? GL_STENCIL_INDEX8_EXT : GL_STENCIL_INDEX4_EXT, width, height);
+                    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, (!PsychIsGLES(NULL) || strstr(glGetString(GL_EXTENSIONS), "GL_OES_stencil8")) ? GL_STENCIL_INDEX8_EXT : GL_STENCIL_INDEX4_EXT, twidth, theight);
                 }
 
 				if (glGetError()!=GL_NO_ERROR) {
@@ -2004,7 +2004,27 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
             break;
             
             case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
-                sprintf(fbodiag, "Framebuffer attachment multisample-incomplete.");
+                sprintf(fbodiag, "Framebuffer attachment multisample incomplete.");
+            break;
+
+            case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT:
+                sprintf(fbodiag, "Framebuffer attachments missing incomplete.");
+            break;
+
+            case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT:
+                sprintf(fbodiag, "Framebuffer dimensions incomplete.");
+            break;
+
+            case GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT:
+                sprintf(fbodiag, "Framebuffer formats incomplete.");
+            break;
+
+            case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT:
+                sprintf(fbodiag, "Framebuffer drawbuffer incomplete.");
+            break;
+
+            case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT:
+                sprintf(fbodiag, "Framebuffer readbuffer incomplete.");
             break;
 
             default:
