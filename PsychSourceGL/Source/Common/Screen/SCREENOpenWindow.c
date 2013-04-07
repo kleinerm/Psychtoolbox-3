@@ -665,7 +665,7 @@ PsychError SCREENPanelFitter(void)
         "routine, e.g., PsychImaging() and its 'UsePanelFitter' setup code.\n\n";
     static char seeAlsoString1[] = "OpenWindow";
 
-    PsychWindowRecordType   *windowRecord;    
+    PsychWindowRecordType   *windowRecord;
     double* outParams;
     int*    newParams;
     int     count, i;
@@ -689,7 +689,18 @@ PsychError SCREENPanelFitter(void)
     if (PsychAllocInIntegerListArg(2, FALSE, &count, &newParams)) {
         if (count != 8) PsychErrorExitMsg(PsychError_user, "'newParams' must be a vector with 8 integer elements.");
         for (i = 0; i < count; i++) windowRecord->panelFitterParams[i] = newParams[i];
+
+        // Fallback path and problematic new config setting?
+        if (!(windowRecord->gfxcaps & kPsychGfxCapFBOBlit) && (PsychPrefStateGet_Verbosity() > 1) &&
+            (windowRecord->panelFitterParams[0] != 0 || windowRecord->panelFitterParams[1] != 0 ||
+             windowRecord->panelFitterParams[2] != (int) PsychGetWidthFromRect(windowRecord->clientrect) ||
+             windowRecord->panelFitterParams[3] != (int) PsychGetHeightFromRect(windowRecord->clientrect))) {
+            // Fallback path for panelFitter in use and sourceRegion is not == full clientRect. This is an
+            // unsupported setting with the fallback, which will cause wrong results. Warn user:
+            printf("PTB-WARNING: Selected a non-default srcRegion in Screen('PanelFitter'). This is not supported when\n");
+            printf("PTB-WARNING: the fallback path for the panel fitter is in use. Expect distorted visual stimuli!\n");
+        }
     }
-    
+
     return(PsychError_none);
 }

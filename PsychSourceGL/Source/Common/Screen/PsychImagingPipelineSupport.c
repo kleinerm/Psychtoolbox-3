@@ -500,11 +500,9 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
     // Panel fitter requested? If so, framebuffer blit extension supported?
     if ((imagingmode & kPsychNeedGPUPanelFitter) && !(windowRecord->gfxcaps & kPsychGfxCapFBOBlit)) {
         // This is a no-go:
-        printf("PTB-ERROR: You requested use of the panel-fitter via the 'clientRect' parameter of Screen('OpenWindow', ...);\n");
-        printf("PTB-ERROR: but this graphics card and driver does not support the required GL_EXT_framebuffer_blit extension.\n");
-        printf("PTB-ERROR: Please upgrade your system or remove the 'clientRect' parameter from Screen('OpenWindow', ...); so\n");
-        printf("PTB-ERROR: we can resolve this issue.\n\n");
-        PsychErrorExitMsg(PsychError_user, "Imaging Pipeline setup: Sorry, panel-fitter not supported on your graphics hardware.");
+        printf("PTB-WARNING: You requested use of the panel-fitter via the 'clientRect' parameter of Screen('OpenWindow', ...);\n");
+        printf("PTB-WARNING: but this graphics card or graphics driver does not support the required GL_EXT_framebuffer_blit extension.\n");
+        printf("PTB-WARNING: Will use a lower performance fallback path to do it anyway. Some restrictions apply, check further status output.\n\n");
     }
 
 	// Multisampled anti-aliasing requested?
@@ -3249,7 +3247,7 @@ psych_bool PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int
 
 			if (strstr(hookfunc->idString, "Builtin:IdentityBlit")) {
 				// Perform the most simple blit operation: A simple one-to-one copy of input FBO to output FBO:
-				if (!PsychPipelineExecuteBlitter(windowRecord, hookfunc, NULL, NULL, TRUE, FALSE, srcfbo1, NULL, dstfbo, NULL)) {
+				if (!PsychPipelineExecuteBlitter(windowRecord, hookfunc, hookUserData, hookBlitterFunction, TRUE, FALSE, srcfbo1, NULL, dstfbo, NULL)) {
 					// Blitter failed!
 					return(FALSE);
 				}
@@ -3607,6 +3605,9 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 	char* strp;
 	psych_bool bilinearfiltering;
 
+    // hookUserData, if non-NULL, can provide override parameter string:
+    char* pString1 = (hookUserData) ? (char*) hookUserData : hookfunc->pString1;
+
 	// Child protection:
 	if (!(srcfbo1 && (*srcfbo1))) {
 		PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): srcfbo1 is a NULL - Pointer!!!");
@@ -3639,7 +3640,7 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 	// Check for override width x height parameter in the blitterString: An integral (w,h)
 	// size the blit. This allows to blit a target quad with a size different from srcfbo1, without
 	// scaling or filtering it. Mostly useful in conjunction with specific shaders.
-	if (strp=strstr(hookfunc->pString1, "OvrSize:")) {
+	if (strp=strstr(pString1, "OvrSize:")) {
 		// Parse and assign offset:
 		if (sscanf(strp, "OvrSize:%i:%i", &w, &h)!=2) {
 			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): OvrSize: blit string parameter is invalid! Parse error...\n");
@@ -3647,7 +3648,7 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 	}
 
 	// Bilinear filtering of srcfbo1 texture requested?
-	if (strstr(hookfunc->pString1, "Bilinear")) {
+	if (strstr(pString1, "Bilinear")) {
 		// Yes. Enable it.
 		bilinearfiltering = TRUE;
 		glTexParameteri((*srcfbo1)->textarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -3661,7 +3662,7 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 	// offset for the destination of the blit. This allows to blit the srcfbo1, without
 	// scaling or filtering it, to a different start location than (0,0):
 	x=y=0;
-	if (strp=strstr(hookfunc->pString1, "Offset:")) {
+	if (strp=strstr(pString1, "Offset:")) {
 		// Parse and assign offset:
 		if (sscanf(strp, "Offset:%i:%i", &x, &y)!=2) {
 			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): Offset: blit string parameter is invalid! Parse error...\n");
@@ -3670,7 +3671,7 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 
 	// Check for scaling parameter:
 	sx = sy = 1.0;
-	if (strp=strstr(hookfunc->pString1, "Scaling:")) {
+	if (strp=strstr(pString1, "Scaling:")) {
 		// Parse and assign offset:
 		if (sscanf(strp, "Scaling:%f:%f", &sx, &sy)!=2) {
 			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): Scaling: blit string parameter is invalid! Parse error...\n");
@@ -3740,28 +3741,6 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         glDisableClientState(GL_VERTEX_ARRAY);
         glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-
-        /*
-        GLBEGIN(GL_TRIANGLE_STRIP);
-	
-        // Lower left vertex in window
-        GLTEXCOORD2f(0, 0);
-        GLVERTEX2f(0, (float) h);
-
-        // Upper left vertex in window
-        GLTEXCOORD2f(0, ht);
-        GLVERTEX2f(0, 0);
-
-        // Lower right  vertex in window
-        GLTEXCOORD2f(wt, 0);
-        GLVERTEX2f((float) w, (float) h);
-
-        // Upper right in window
-        GLTEXCOORD2f(wt, ht);
-        GLVERTEX2f((float) w, 0);
-
-        GLEND();
-        */
     }
 
 	if (x!=0 || y!=0 || sx!=1.0 || sy!=1.0) {

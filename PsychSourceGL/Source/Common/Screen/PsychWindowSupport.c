@@ -4431,6 +4431,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     GLint auxbuffers;
     int queryState;
     GLenum blitscalemode;
+    char overridepString1[100];
 
     // Early reject: If this flag is set, then there's no need for any processing:
     // We only continue processing textures, aka offscreen windows...
@@ -4619,10 +4620,20 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 				// Separate draw- and inputbuffers: We need to copy the drawBufferFBO to its
 				// corresponding inputBufferFBO, applying a special conversion operation.
                 
-                // Set proper binding of source and destination FBO for blit:
-				glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]->fboid);
-				glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->fboid);
-                
+                // Set proper binding of source and destination FBO for blit, unless we use the texture
+                // blitter fallback below, in which case these separte low-level bindings are not needed:
+                if (windowRecord->gfxcaps & kPsychGfxCapFBOBlit) {
+                    // Supported:
+                    glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]->fboid);
+                    glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->fboid);
+                }
+                else {
+                    // Only fallback possible. This rules out any multisample resolve blits, and thereby means failure on
+                    // multisampled configs:
+                    if ((windowRecord->multiSample > 0) || !(windowRecord->imagingMode & kPsychNeedGPUPanelFitter))
+                        PsychErrorExitMsg(PsychError_internal, "Tried to do multisample resolve or non-panelfitter op in drawbuffer->inputbuffer stage, but this is unsupported on your gpu! Bug?!?");
+                }
+
                 // Panelfitter requested?
                 if (windowRecord->imagingMode & kPsychNeedGPUPanelFitter) {
                     // Need to rescale and/or reposition during src->dest blit to implement panel scaling.
@@ -4654,9 +4665,33 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
                     
                     // This is a scaled blit, but all blit parameters are defined in the panelFitterParams array, which
                     // has to be set up by external code via Screen('PanelFitterProperties'):
-                    glBlitFramebufferEXT(windowRecord->panelFitterParams[0], windowRecord->panelFitterParams[1], windowRecord->panelFitterParams[2], windowRecord->panelFitterParams[3],
-                                         windowRecord->panelFitterParams[4], windowRecord->panelFitterParams[5], windowRecord->panelFitterParams[6], windowRecord->panelFitterParams[7],
-                                         GL_COLOR_BUFFER_BIT, blitscalemode);
+                    if (windowRecord->gfxcaps & kPsychGfxCapFBOBlit) {
+                        // Framebuffer blitting supported, good!
+                        glBlitFramebufferEXT(windowRecord->panelFitterParams[0], windowRecord->panelFitterParams[1], windowRecord->panelFitterParams[2], windowRecord->panelFitterParams[3],
+                                             windowRecord->panelFitterParams[4], windowRecord->panelFitterParams[5], windowRecord->panelFitterParams[6], windowRecord->panelFitterParams[7],
+                                             GL_COLOR_BUFFER_BIT, blitscalemode);
+                    }
+                    else {
+                        // Framebuffer blit unsupported. Use our normal texture blitting code as a fallback.
+                        // This has two downsides: It doesn't allow multisampling resolve, and it only allows
+                        // to blit the original drawBufferFBO at its full size into a potentially scaled and
+                        // offset inputBufferFBO destination region, ie., the source region is ignored aka
+                        // panelFitterParams[0-3] are ignored. Should still work ok with many panelfitter
+                        // modes, e.g., whenever a lower resolution virtual framebuffer is centered in, or
+                        // upscaled to a higher resolution real framebuffer:
+                        if (blitscalemode == GL_NEAREST) {
+                            // Unscaled blit, possibly with offset in destination FBO:
+                            sprintf(overridepString1, "Offset:%i:%i", windowRecord->panelFitterParams[4], windowRecord->panelFitterParams[5]);
+                        }
+                        else {
+                            // Scaled blit with bilinear filtering:
+                            sprintf(overridepString1, "Bilinear:Offset:%i:%i:OvrSize:%i:%i", windowRecord->panelFitterParams[4], windowRecord->panelFitterParams[5],
+                                    (windowRecord->panelFitterParams[6] - windowRecord->panelFitterParams[4]),
+                                    (windowRecord->panelFitterParams[7] - windowRecord->panelFitterParams[5]));
+                        }
+                        PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, overridepString1, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]), NULL,
+                                                 &(windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]), NULL);
+                    }
                 }
                 else {
                     // No rescaling by panel-fitter required:
