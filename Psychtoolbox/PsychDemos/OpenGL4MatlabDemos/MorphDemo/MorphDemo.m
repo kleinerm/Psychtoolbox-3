@@ -103,7 +103,7 @@ else
 end;
 
 % Go for it!
-[win , winRect] = Screen('OpenWindow', screenid, 0, rect, [], [], stereomode, [], kPsychNeedFastBackingStore);
+[win , winRect] = Screen('OpenWindow', screenid, 0, rect, [], [], stereomode);
 
 % Setup texture mapping if wanted:
 if ( textureon==1 )
@@ -288,7 +288,7 @@ w=[ 0 1 ];
 % Setup initial z-distance of objects:
 zz = 20.0;
 
-ang = 90.0;      % Initial rotation angle
+ang = 0.0;      % Initial rotation angle
 
 % Half eye separation in length units for quick & dirty stereoscopic
 % rendering. Our way of stereo is not correct, but it makes for a
