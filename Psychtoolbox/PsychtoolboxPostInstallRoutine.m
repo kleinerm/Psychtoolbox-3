@@ -674,7 +674,13 @@ try
             fprintf('Additionally, as this is a device with ARM processor, the helper library\n');
             fprintf('libwaffle-1.so needs to be installed in a system library folder for Screen\n');
             fprintf('to work. You can find a copy of the library in the PsychContributed/ArmArch/\n');
-            fprintf('subfolder of your Psychtoolbox main folder.\n\n');
+            fprintf('subfolder of your Psychtoolbox main folder. Rename it to libwaffle-1.so.0 during\n');
+            fprintf('the copy.\n');
+            fprintf('Another requirement, at least as of April 2013 and Ubuntu 13.04 for the Nexus-7,\n');
+            fprintf('is that you must start octave from the command line, or via some script, like this:\n');
+            fprintf('LD_PRELOAD=/usr/lib/libGLESv1_CM.so octave\n');
+            fprintf('This is a workaround for a small bug in octave for Nexus-7, which would cause Screen()\n');
+            fprintf('to crash shortly after opening an onscreen window.\n\n');
         end
     end
 
