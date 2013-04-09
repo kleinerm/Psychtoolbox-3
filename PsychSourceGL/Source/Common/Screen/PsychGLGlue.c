@@ -831,7 +831,11 @@ void PsychGLRectd(PsychWindowRecordType *windowRecord, double x1, double y1, dou
  */
 void PsychDrawDisc(PsychWindowRecordType *windowRecord, float xc, float yc, float innerRadius, float outerRadius, int numSlices, float xScale, float yScale, float startAngle, float arcAngle)
 {
+    float Rads, outerX, outerY, innerX, innerY;
 	int i, count = 0;
+	#ifndef M_PI
+	#define M_PI 3.141592654
+	#endif
 
     // Sweep clock-wise over arcAngle degrees, split up into 'numSlices' steps:
     float step = (arcAngle * 2 * M_PI / 360) / (float) numSlices;
@@ -847,16 +851,16 @@ void PsychDrawDisc(PsychWindowRecordType *windowRecord, float xc, float yc, floa
     GLBEGIN(GL_TRIANGLE_STRIP);
 	for (i = 0; i <= numSlices; i++) {
 		// calculating the current vertice on the outer side of the segment
-		float Rads = startAngle - i * step;
-		float outerX = xScale * outerRadius * cos( Rads );
-		float outerY = yScale * outerRadius * sin( Rads );
+		Rads = startAngle - i * step;
+		outerX = xScale * outerRadius * (float) cos( Rads );
+		outerY = yScale * outerRadius * (float) sin( Rads );
 		//vertices[count++] = outerX;
 		//vertices[count++] = outerY;
 		GLVERTEX2f(xc + outerX, yc + outerY);
 
 		// calculating the current vertice on the inner side of the segment
-		float innerX = xScale * innerRadius * cos( Rads );
-		float innerY = yScale * innerRadius * sin( Rads );
+		innerX = xScale * innerRadius * (float) cos( Rads );
+		innerY = yScale * innerRadius * (float) sin( Rads );
 		//vertices[count++] = innerX;
 		//vertices[count++] = innerY;
 		GLVERTEX2f(xc + innerX, yc + innerY);
