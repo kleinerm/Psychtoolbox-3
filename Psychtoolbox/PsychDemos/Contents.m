@@ -68,8 +68,9 @@
 %    MandelbrotDemo          - Visualize the Mandelbrot fractal set by use
 %                              of a GLSL procedural texture.
 %    MouseTraceDemo          - Track mouse around screen and draw contour.
-%    MouseTraceDemo2         - More Tracking mouse around screen drawing contour.
-%    MouseTraceDemo3         - Like MouseTraceDemo2, but for multiple mice.
+%    MouseTraceDemo2         - More efficient tracking of mouse around screen drawing contour.
+%    MouseTraceDemo3         - Like MouseTraceDemo2, but faster, and for multiple mice.
+%    MouseTraceDemo4         - Like MouseTraceDemo2, but faster on modern hardware.
 %    MovieDemo               - Animation without offscreen windows.
 %    MovingLineDemo          - Shows some horizontally moving lines to demonstrate flat panel display artifacts.
 %    NomogramDemo            - Compute photoreceptor nomograms.
