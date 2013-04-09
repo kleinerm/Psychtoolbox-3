@@ -48,9 +48,11 @@ bool ftglesQuadIndicesInitted = false;
 
 GLvoid ftglBegin(GLenum prim) 
 {
+    int i;
+    
 	if (!ftglesQuadIndicesInitted)
 	{
-		for (int i = 0; i < FTGLES_GLUE_MAX_VERTICES * 3 / 2; i += 6) 
+		for (i = 0; i < FTGLES_GLUE_MAX_VERTICES * 3 / 2; i += 6) 
 		{
 			int q = i / 6 * 4;
 			ftglesGlueArrays.quadIndices[i + 0] = q + 0;
