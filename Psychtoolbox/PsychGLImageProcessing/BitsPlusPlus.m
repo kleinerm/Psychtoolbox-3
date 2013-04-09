@@ -610,9 +610,18 @@ if strcmpi(cmd, 'OpenBits#')
             bitsSharpPortname = deblank(fileContentsWrapped);
             fprintf('BitsPlusPlus: Connecting to Bits# device via serial port [%s], as provided by configuration file [%s].\n', bitsSharpPortname, configfile);
         else
-            % No: Do the guess-o-matic dance: Fail if it doesn't work:
-            bitsSharpPortname = FindSerialPort([], 1, 0);
-            fprintf('BitsPlusPlus: Connecting to Bits# device via auto-detected serial port [%s].\n', bitsSharpPortname);
+            % No: Do the guess-o-matic dance: Fail softly if it doesn't work:
+            try
+                % Try to find proper serial port:
+                bitsSharpPortname = FindSerialPort([], 1, 0);
+                fprintf('BitsPlusPlus: Connecting to Bits# device via auto-detected serial port [%s].\n', bitsSharpPortname);
+            catch
+                lerr = psychlasterror('reset');
+                disp(lerr.message);
+                fprintf('BitsPlusPlus: Failed to find the Bits# device! Is it connected and ready? See diagnostics above. Continuing without Bits# support.\n');
+                win = 0;
+                return;
+            end
         end
     else
         fprintf('BitsPlusPlus: Connecting to Bits# device via serial port [%s], as provided by usercode.\n', bitsSharpPortname);
@@ -1885,7 +1894,7 @@ function scanline = BitsSharpGetScanline(bitsSharpPort, lineNr, nrPixels)
     % Cut away header:
     rawline = rawline(length('#GetVideoLine;')+1:end);
     if isempty(rawline)
-        warning('BitsSharpGetScanline: Empty pixelline returned!');
+        warning('BitsSharpGetScanline: Empty pixelline returned!'); %#ok<WNTAG>
         scanline = [];
         return;
     end
@@ -1895,7 +1904,7 @@ function scanline = BitsSharpGetScanline(bitsSharpPort, lineNr, nrPixels)
     rawline(rawline == ';') = ' ';
     scanline = sscanf(rawline, '%d');
     if (length(scanline) ~= 3 * nrPixels)
-        warning('BitsSharpGetScanline: Incomplete pixelline %s with only %i elements (less than %i) returned!', rawline, length(scanline), 3 * nrPixels);
+        warning('BitsSharpGetScanline: Incomplete pixelline %s with only %i elements (less than %i) returned!', rawline, length(scanline), 3 * nrPixels); %#ok<WNTAG>
         scanline = [];
     else
         scanline = uint8(reshape(scanline, 3, nrPixels));
