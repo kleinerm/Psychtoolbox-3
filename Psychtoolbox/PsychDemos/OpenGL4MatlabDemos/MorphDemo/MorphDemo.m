@@ -185,8 +185,8 @@ if ( textureon==1 )
     glTexParameteri(gltextarget, GL.TEXTURE_MAG_FILTER, GL.LINEAR);
     glTexParameteri(gltextarget, GL.TEXTURE_MIN_FILTER, GL.LINEAR);
 
-    glTexParameteri(gltextarget, GL.TEXTURE_WRAP_S, GL.REPEAT);
-    glTexParameteri(gltextarget, GL.TEXTURE_WRAP_T, GL.REPEAT);
+    glTexParameteri(gltextarget, GL.TEXTURE_WRAP_S, GL.CLAMP_TO_EDGE);
+    glTexParameteri(gltextarget, GL.TEXTURE_WRAP_T, GL.CLAMP_TO_EDGE);
 end
 
 % Get the aspect ratio of the screen, we need to correct for non-square
