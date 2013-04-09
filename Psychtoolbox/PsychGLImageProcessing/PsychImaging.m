@@ -1522,7 +1522,7 @@ if strcmp(cmd, 'OpenWindow')
         % left-right borders will get initialized to the selected
         % background clear color, which should be the most well defined
         % choice:
-        Screen('PanelFitter', win, fitterParams);
+        Screen('PanelFitter', win, round(fitterParams));
         
         % Now that the fitter is fully configured, perform an extra
         % double-flip to apply proper scaling and borders and such:
