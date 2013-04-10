@@ -1893,6 +1893,19 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
     if (theMovie == NULL) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. No movie associated with this handle !!!");
     }
+
+    // Try to set movie playback rate to value identical to current value?
+    if (playbackrate == movieRecordBANK[moviehandle].rate) {
+        // Yes: This would be a no-op, except we allow to change the sound output volume
+        // dynamically and on-the-fly with low overhead this way:
+        
+        // Set volume and mute state for audio:
+        g_object_set(G_OBJECT(theMovie), "mute", (soundvolume <= 0) ? TRUE : FALSE, NULL);
+        g_object_set(G_OBJECT(theMovie), "volume", soundvolume, NULL);
+        
+        // Done. Return success status code:
+        return(0);
+    }
     
     if (playbackrate != 0) {
         // Start playback of movie:
