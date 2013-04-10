@@ -1762,16 +1762,29 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
                 // Texture or Offscreen window - which is also just a form of texture.
 				PsychFreeTextureForWindowRecord(windowRecord);
 
+                // Execute hook chain for OpenGL related shutdown:
+                PsychPipelineExecuteHook(windowRecord, kPsychCloseWindowPreGLShutdown, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);
+        
 				// Shutdown only OpenGL related parts of imaging pipeline for this windowRecord, i.e.
 				// do the shutdown work which still requires a fully functional OpenGL context and
 				// hook-chains:
 				PsychShutdownImagingPipeline(windowRecord, TRUE);
+        
+                // Execute hook chain for final non-OpenGL related shutdown:
+                PsychPipelineExecuteHook(windowRecord, kPsychCloseWindowPostGLShutdown, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);        
     }
     else if(windowRecord->windowType==kPsychProxyWindow) {
 				// Proxy window object without associated OpenGL state or content.
+        
+                // Execute hook chain for OpenGL related shutdown:
+                PsychPipelineExecuteHook(windowRecord, kPsychCloseWindowPreGLShutdown, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);
+        
 				// Run shutdown sequence for imaging pipeline in case the proxy has bounce-buffer or
 				// lookup table textures or FBO's attached:
 				PsychShutdownImagingPipeline(windowRecord, TRUE);
+        
+                // Execute hook chain for final non-OpenGL related shutdown:
+                PsychPipelineExecuteHook(windowRecord, kPsychCloseWindowPostGLShutdown, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);        
     }
     else if(windowRecord->windowType==kPsychNoWindow) {
 				// Partially initialized windowRecord, not yet associated to a real Window system
