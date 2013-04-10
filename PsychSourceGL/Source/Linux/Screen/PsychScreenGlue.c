@@ -111,19 +111,32 @@ void PsychInitNonX11(void);
 // Offset of crtc blocks of evergreen gpu's for each of the six possible crtc's:
 unsigned int crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET, EVERGREEN_CRTC1_REGISTER_OFFSET, EVERGREEN_CRTC2_REGISTER_OFFSET, EVERGREEN_CRTC3_REGISTER_OFFSET, EVERGREEN_CRTC4_REGISTER_OFFSET, EVERGREEN_CRTC5_REGISTER_OFFSET };
 
-/* Mappings up to date for December 2012 (last update e-mail patch / commit 21-Nov-2012). Will need updates for anything after start of 2013 */
+/* Mappings up to date for March 2013 (last update e-mail patch / commit 15-Mar-2013). Will need updates for anything after start of April 2013 */
+
+/* Is a given ATI/AMD GPU a DCE6.4 type ASIC, i.e., with the new display engine? */
+static psych_bool isDCE64(int screenId)
+{
+	psych_bool isDCE64 = false;
+    
+	// Everything == OLAND is DCE6.4 -- This is part of the "Southern Islands" GPU family.
+    
+    // OLAND in 0x66xx range:
+	if ((fPCIDeviceId & 0xFF00) == 0x6600) isDCE64 = true;
+    
+	return(isDCE64);
+}
 
 /* Is a given ATI/AMD GPU a DCE6.1 type ASIC, i.e., with the new display engine? */
 static psych_bool isDCE61(int screenId)
 {
-	psych_bool isDCE61 = false;
-    
-	// Everything >= ARUBA which is an IGP is DCE6.1 -- This is the "Trinity" GPU family.
+    psych_bool isDCE61 = false;
+
+    // Everything >= ARUBA which is an IGP is DCE6.1 -- This is the "Trinity" GPU family.
 
     // ARUBA in 0x99xx range: This is the "Trinity" chip family.
-	if ((fPCIDeviceId & 0xFF00) == 0x9900) isDCE61 = true;
+    if ((fPCIDeviceId & 0xFF00) == 0x9900) isDCE61 = true;
 
-	return(isDCE61);
+    return(isDCE61);
 }
 
 /* Is a given ATI/AMD GPU a DCE6 type ASIC, i.e., with the new display engine? */
@@ -147,6 +160,9 @@ static psych_bool isDCE6(int screenId)
 
 	// All DCE-6.1 engines are also DCE-6:
 	if (isDCE61(screenId)) isDCE6 = true;
+
+	// All DCE-6.4 engines are also DCE-6:
+	if (isDCE64(screenId)) isDCE6 = true;
 
 	return(isDCE6);
 }
@@ -479,8 +495,8 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			if (isDCE4(screenId) || isDCE5(screenId) || isDCE6(screenId)) {
 				gfx_lowlimit = 0x6df0;
                 
-				// Also, DCE-4 and DCE-5 and DCE-6, but not DCE-4.1 (which still has only 2) or DCE-6.1 (4 heads), supports up to six display heads:
-				if (!isDCE41(screenId) && !isDCE61(screenId)) fNumDisplayHeads = 6;
+				// Also, DCE-4 and DCE-5 and DCE-6, but not DCE-4.1 or DCE-6.4 (which have only 2) or DCE-6.1 (4 heads), supports up to six display heads:
+				if (!isDCE41(screenId) && !isDCE61(screenId) && !isDCE64(screenId)) fNumDisplayHeads = 6;
 
                 // DCE-6.1 "Trinity" chip family supports 4 display heads:
 				if (!isDCE41(screenId) && isDCE61(screenId)) fNumDisplayHeads = 4;
