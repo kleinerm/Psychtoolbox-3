@@ -28,7 +28,7 @@ function CMCheckInit(meterType, PortString)
 % it will override what is in CMPrefferedPort.txt.  There are two
 % possible formats for the structure in this file.
 %   If the structure has a PortString field, this is passed to
-%   routine FindSerialPort to get the actual port.  Otherwise, 
+%   routine FindSerialPort to get the actual port.  Otherwise,
 %   if the structure has a .in field, this string is used directly.
 %
 % Other Colorimeters, e.g., CRS ColorCal, have their own specific setup
@@ -249,17 +249,18 @@ switch meterType
                 else
                     portNameIn = meterports.in;
                 end
-                
-                stat = PR705init(portNameIn);
-                if strcmp(stat, [' REMOTE MODE' 13 10])
-                    disp('Successfully connected to the PR-705!');
-                else
-                    disp('Failed to make contact.  If device is connected, try turning it off, type clear all, and then re-trying CMCheckInit.');
-                end
-            else
-                error(['Unsupported OS ' computer]);
             end
             
-            otherwise,
-                error('Unknown meter type');
+            stat = PR705init(portNameIn);
+            if strcmp(stat, [' REMOTE MODE' 13 10])
+                disp('Successfully connected to the PR-705!');
+            else
+                disp('Failed to make contact.  If device is connected, try turning it off, type clear all, and then re-trying CMCheckInit.');
+            end
+        else
+            error(['Unsupported OS ' computer]);
         end
+        
+    otherwise,
+        error('Unknown meter type');
+end
