@@ -62,6 +62,8 @@ static char synopsisString[] =
 	"correct. The biggest speedup is expected for creation of standard 8 bit integer textures from uint8 input matrices, "
 	"e.g., images from imread(), but also for 8 bit integer Luminance+Alpha and RGB textures from double format input matrices.\n"
     "A 'specialFlags' == 8 will prevent automatic mipmap-generation for GL_TEXTURE_2D textures.\n"
+    "A 'specialFlags' == 32 setting will prevent automatic closing of the texture if Screen('Close'); is called. Only "
+    "Screen('Close', textureIndex); would close the texture.\n"
 	"'floatprecision' defines the precision with which the texture should be stored and processed. Default value is zero, "
 	"which asks to store textures with 8 bit per color component precision, a suitable format for standard images read via "
 	"imread(). A non-zero value will store the textures color component values as floating point precision numbers, useful "
@@ -681,7 +683,10 @@ PsychError SCREENMakeTexture(void)
     
     // specialFlags setting 8? Disable auto-mipmap generation:
     if (usepoweroftwo & 0x8) textureRecord->specialflags |= kPsychDontAutoGenMipMaps;
-    
+
+    // A specialFlags setting of 32? Protect texture against deletion via Screen('Close') without providing a explicit handle:
+    if (usepoweroftwo & 32) textureRecord->specialflags |= kPsychDontDeleteOnClose;    
+
     if(PsychPrefStateGet_DebugMakeTexture()) 	//MARK #4
         StoreNowTime();
     

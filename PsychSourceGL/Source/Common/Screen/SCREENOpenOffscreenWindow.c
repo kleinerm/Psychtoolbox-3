@@ -77,6 +77,7 @@ static char synopsisString[] =
     "If you set 'specialFlags' to 2 then the offscreen window will be drawn with especially high precision, see "
 	"specialFlags setting of 2 in help for Screen('DrawTexture') for more explanation.\n"
     "A 'specialFlags' == 8 will prevent automatic mipmap-generation for GL_TEXTURE_2D textures.\n"
+    "A 'specialFlags' == 32 will prevent automatic closing of the offscreen window by a call to Screen('Close');\n"
 	"'multiSample' optional number of samples to use for anti-aliased drawing: This defaults "
 	"to zero if omitted, ie., no anti-aliasing is performed when drawing into this offscreen "
 	"window. If you set a positive non-zero number of samples and your system supports "
@@ -491,6 +492,9 @@ PsychError SCREENOpenOffscreenWindow(void)
 	
     // specialFlags setting 8? Disable auto-mipmap generation:
     if (specialFlags & 0x8) windowRecord->specialflags |= kPsychDontAutoGenMipMaps;    
+
+    // A specialFlags setting of 32? Protect texture against deletion via Screen('Close') without providing a explicit handle:
+    if (specialFlags & 32) windowRecord->specialflags |= kPsychDontDeleteOnClose;    
 
     // Window ready. Mark it valid and return handle to userspace:
     PsychSetWindowRecordValid(windowRecord);

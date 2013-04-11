@@ -142,12 +142,13 @@ TO DO:
 #define kPsychIsGLXWindow               512 // 'specialflags' setting 512: This window is living on a Linux X11/GLX backend.
 #define kPsychIsEGLWindow              4096 // 'specialflags' setting 4096: This window is living on a EGL backend (X11/Wayland/GBM/Android/...)
 #define kPsychSurfacelessContexts     16384 // 'specialflags' setting 16384: This windows main context and userspace contexts must not attach to windowing system framebuffer surfaces.
+#define kPsychDontDeleteOnClose   (1 << 17) // 'specialflags' setting 2^17: Do not close this texture/offscreen window on a call to Screen('Close'), only if explicitely closed by handle.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536. --> Flags of 2^17 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536. --> Flags of 2^17 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536, 2^17. --> Flags of 2^18 and higher are available...
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*	PtrPsychHookFunction;
