@@ -26,6 +26,7 @@ function SaveCalFile(cal, filespec, dir)
 % 3/27/12  dhb  Pass dir to LoadCalFile call, so that it does the right thing
 %               in cases where cal file location is expilcitly passed.
 % 4/2/13   dhb  Updated for subdir searching logic.
+% 4/12/13  dhb  Make this save to cal file folder when file doesn't yet exist.
 
 % Set the filename
 if nargin < 2 || isempty(filespec)
@@ -46,7 +47,7 @@ end
 [oldCal, oldCals, fullFilename] = LoadCalFile(filespec, [], dir);
 if isempty(oldCals)
 	cals = {cal}; %#ok<NASGU>
-    eval(['save ' QuoteString(filename) ' cals']);
+    eval(['save ' QuoteString(fullFilename) ' cals']);
 else
 	nOldCals = length(oldCals);
 	cals = oldCals;
