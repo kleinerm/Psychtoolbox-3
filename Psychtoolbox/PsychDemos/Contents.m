@@ -58,6 +58,7 @@
 %    GazeContingentDemo      - Implementation of a simple gaze contingent display 
 %    GLSLCLUTAnimDemo        - Demonstrates use of function moglClutBlit to
 %                              perform CLUT animation with GLSL in an OS independent way.
+%    GPGPUDemos              - Demos for use of GPGPU computing with Psychtoolbox.
 %    GratingDemo             - Basic display of a grating on the screen.
 %    IsomerizationsInDishDemo - Compute photoreceptor isomerizations for retina in a dish.
 %    IsomerizationsInEyeDemo  - Compute photoreceptor isomerizations for human eye.
