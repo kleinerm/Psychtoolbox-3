@@ -182,6 +182,9 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % explanation of this mandatory parameter. The setting before 22nd
 % September 2010 for all PTB-3 versions was 0 (==zero).
 %
+% You can query the mode for an onscreen window 'win' by a call to:
+% mode = BitsPlusPlus('GetColorConversionMode', win);
+%
 %
 % Notes for both Mono++ and Color++ mode:
 %
@@ -351,6 +354,7 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 %  3.01.2010 Some bugfixes to DataPixx support. (MK)
 % 12.01.2013 Make compatible with PTB panelfitter. (MK)
 % 13.03.2013 Make compatible with CRS Bits# video display system. (MK)
+% 15.04.2013 Add mode = BitsPlusPlus('GetColorConversionMode', win); (MK)
 
 global GL;
 
@@ -385,6 +389,9 @@ persistent tlockXOffset;
 
 % Opmode for color conversion/buffer sampling in Color++ / C48 mode:
 persistent colorConversionMode;
+
+% Vector of cached per-window colorConversionMode:
+persistent colorConversionModeWin;
 
 if nargin < 1
     error('You must specify a command in argument "cmd"!');
@@ -434,6 +441,7 @@ if isempty(validated)
     devbits = 14;
     checkGPUEncoders = 0;
     colorConversionMode = [];
+    colorConversionModeWin = [];
     bitsSharpPort = [];
     refCount = 0;
 end
@@ -892,6 +900,16 @@ if strcmpi(cmd, 'SetColorConversionMode')
     return;
 end
 
+if strcmpi(cmd, 'GetColorConversionMode')
+    % Return the mode of operation for color conversion in Color++ / C48 mode.
+    if nargin < 2 || isempty(arg) || ~isa(arg, 'double') || (Screen('WindowKind', arg) ~= 1)
+        error('%s: "GetColorConversionMode" called without valid onscreen window handle.', drivername);
+    end
+
+    win = colorConversionModeWin(arg);
+    return;
+end
+
 if strcmpi(cmd, 'TestGPUEncoders')
     % Perform check of GPU identity gamma tables and encoders during next
     % 'OpenWindowXXX' call in Datapixx mode or Bits# mode. This is a one-shot,
@@ -1094,6 +1112,9 @@ if strcmpi(cmd, 'OpenWindowBits++')
     
     % Reset validation flag after first run:
     validated = 0;
+
+    % Set colorConversionMode for this window to safe "undefined" default:
+    colorConversionModeWin(win) = -1;
     
     % Ready!
     return;
@@ -1604,7 +1625,13 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
     validated = 0;
 
     % Reset colorConversionMode after opening the window. It is a one-shot
-    % parameter:
+    % parameter, but not before storing a cached copy in the per-window
+    % vector:
+    if ~isempty(colorConversionMode)
+        colorConversionModeWin(win) = colorConversionMode;
+    else
+        colorConversionModeWin(win) = -1;
+    end
     colorConversionMode = [];
     
     % Ready!
