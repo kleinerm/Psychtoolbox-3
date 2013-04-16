@@ -50,6 +50,8 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 09/14/2012 Cancel support for Octave on MS-Windows. (MK)
 % 09/14/2012 Cancel support for 32-Bit Octave on OSX. (MK)
 % 11/11/2012 More cleanup. E.g., don't warn about Octave > 3.2 anymore. (MK)
+% 04/16/2013 Use javaclasspath.txt instead of classpath.txt on R2013a and later. (MK)
+%
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -533,10 +535,34 @@ if ~IsOctave
         % classpath.
         path_PsychJava = [PsychtoolboxRoot, 'PsychJava'];
 
-        % Open up the classpath.txt file and find any PsychJava entries.  If
-        % they exist, remove them, and put the current one in the file.  This
-        % only allows on PsychJava to be on the path.
-        classpathFile = which('classpath.txt');
+        % Matlab 8.1 changes the rules about static java classpath. Lovely.
+        if verLessThan('matlab', '8.1')
+            % Legacy: Open up the classpath.txt file and find any PsychJava
+            % entries.  If they exist, remove them, and put the current one
+            % in the file.  This only allows on PsychJava to be on the
+            % path.
+            classpathFile = which('classpath.txt');
+        else
+            % Matlab version 8.1 (R2013a) or later. classpath.txt can't be
+            % used anymore. Now they want us to store static classpath
+            % definitions in a file called javaclasspath.txt inside the
+            % Matlab preference folder:
+            
+            % Try to find the file, if it already exists, e.g., inside the
+            % Matlab startup folder:
+            classpathFile = which('javaclasspath.txt');
+            
+            % Found it?
+            if isempty(classpathFile)
+                % Nope. So we try the preference folder.
+                % Retrieve path to preference folder. Create the folder if it
+                % doesn't already exist:
+                prefFolder = prefdir(1);
+                classpathFile = [prefFolder filesep 'javaclasspath.txt'];
+            end
+        end
+        
+        % Define name of backup file:
         bakclasspathFile = [classpathFile '.bak'];
         
         if ~verLessThan('matlab', '7.14')
@@ -587,7 +613,7 @@ if ~IsOctave
             [s, w] = copyfile(classpathFile, bakclasspathFile, 'f');
 
             if s==0
-                error(['Could not make a backup copy of Matlab''s JAVA path definition file ''classpath.txt''. ' ...
+                error(['Could not make a backup copy of Matlab''s JAVA static path definition file. ' ...
                     'The system reports: ', w]);
             end
             madeBackup = 1; %#ok<NASGU>
@@ -595,7 +621,7 @@ if ~IsOctave
             % Write out the new contents.
             FID = fopen(classpathFile, 'w');
             if FID == -1
-                error('Could not open Matlab''s JAVA path definition file ''classpath.txt'' for write access.');
+                error('Could not open Matlab''s JAVA path definition file for write access.');
             end
             for i = 1:length(newFileContents)
                 fprintf(FID, '%s\n', newFileContents{i});
@@ -609,7 +635,7 @@ if ~IsOctave
         end
     catch
         lerr = psychlasterror;
-        fprintf('Could not update the Matlab JAVA classpath.txt file due to the following error:\n');
+        fprintf('Could not update the Matlab JAVA classpath file due to the following error:\n');
         fprintf('%s\n\n', lerr.message);
         fprintf('Probably you do not have sufficient access permissions for the Matlab application folder\n');
         fprintf('or the file itself to change the file %s .\n\n', classpathFile);
