@@ -976,7 +976,7 @@ if strcmpi(cmd, 'addMesh')
         % into a 32bpc floating point texture (floatprecision == 2) and
         % request immediate conversion into optimal storage format for
         % Screen('TransformTexture') (orientation == 1):
-        ctx.keyshapes(ctx.objcount) = Screen('MakeTexture', ctx.win, myshapeimg, [], [], 2, 1);
+        ctx.keyshapes(ctx.objcount) = Screen('MakeTexture', ctx.win, myshapeimg, [], 32, 2, 1);
            
         % Reset masterkeyshape texture, if any:
         if ~isempty(ctx.masterkeyshapetex)
@@ -1039,8 +1039,8 @@ if strcmpi(cmd, 'addMesh')
             % Create offscreen floating point windows as morph-accumulation
             % buffers: Need two of them for buffer-pingpong...
             % We request 128 bpp == 32 bpc float precision:
-            ctx.morphbuffer(1) = Screen('OpenOffscreenWindow', ctx.win, [0 0 0 0], [0 0 ncols nrows], 128);
-            ctx.morphbuffer(2) = Screen('OpenOffscreenWindow', ctx.win, [0 0 0 0], [0 0 ncols nrows], 128);
+            ctx.morphbuffer(1) = Screen('OpenOffscreenWindow', ctx.win, [0 0 0 0], [0 0 ncols nrows], 128, 32);
+            ctx.morphbuffer(2) = Screen('OpenOffscreenWindow', ctx.win, [0 0 0 0], [0 0 ncols nrows], 128, 32);
 
             % Create and setup PBO-backed VBO:
             Screen('BeginOpenGL', ctx.win);
@@ -1367,7 +1367,7 @@ if strcmpi(cmd, 'renderMorph') || strcmpi(cmd, 'computeMorph')
             if (h * ctx.objcount < glGetIntegerv(GL.MAX_RECTANGLE_TEXTURE_SIZE_EXT))
                 % Number and size of keyshapes fits within contraints of
                 % hardware. Build unified keyshape texture:
-                ctx.masterkeyshapetex = Screen('OpenOffscreenWindow', ctx.win, [0 0 0 0], [0 0 w h*ctx.objcount], 128);
+                ctx.masterkeyshapetex = Screen('OpenOffscreenWindow', ctx.win, [0 0 0 0], [0 0 w h*ctx.objcount], 128, 32);
                 for i=1:ctx.objcount
                     Screen('DrawTexture', ctx.masterkeyshapetex, ctx.keyshapes(ctx.objcount+1-i), [], OffsetRect([0 0 w h], 0, h*(i-1)), 0, 0);
                 end
@@ -1448,7 +1448,7 @@ if strcmpi(cmd, 'renderMorph') || strcmpi(cmd, 'computeMorph')
             % Convert weight-vector into float texture:
             if isempty(ctx.weighttex)
                 % Doesn't exist yet: Create it:
-                ctx.weighttex = Screen('MakeTexture', ctx.win, arg1, [], [], 2, 2);
+                ctx.weighttex = Screen('MakeTexture', ctx.win, arg1, [], 32, 2, 2);
                 ctx.weighttexgl = Screen('GetOpenGLTexture', ctx.win, ctx.weighttex);
             else
                 % ctx.weighttex exists already and can be recycled. Just bind
@@ -1958,15 +1958,15 @@ if strcmpi(cmd, 'morphTexture')
     if isempty(ctx.texmorphbuffer)
         if highprec
             % Create float buffers of matching size:
-            ctx.texmorphbuffer(1) = Screen('OpenOffscreenWindow', mywin, [0 0 0 0], refrect, 128);
-            ctx.texmorphbuffer(2) = Screen('OpenOffscreenWindow', mywin, [0 0 0 0], refrect, 128);
+            ctx.texmorphbuffer(1) = Screen('OpenOffscreenWindow', mywin, [0 0 0 0], refrect, 128, 32);
+            ctx.texmorphbuffer(2) = Screen('OpenOffscreenWindow', mywin, [0 0 0 0], refrect, 128, 32);
 
             % Setup proper blend mode:
             Screen('Blendfunction', ctx.texmorphbuffer(1), GL_ONE, GL_ZERO);
             Screen('Blendfunction', ctx.texmorphbuffer(2), GL_ONE, GL_ZERO);
         else
             % Create low precision buffer of matching size:
-            ctx.texmorphbuffer(1) = Screen('OpenOffscreenWindow', mywin, [0 0 0 0], refrect, 32);
+            ctx.texmorphbuffer(1) = Screen('OpenOffscreenWindow', mywin, [0 0 0 0], refrect, 32, 32);
 
             % Setup proper blend mode for morphing via blending: alpha
             % value will define blend weight:
