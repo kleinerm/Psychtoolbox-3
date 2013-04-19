@@ -559,8 +559,10 @@ if ~IsOctave
                 % doesn't already exist:
                 prefFolder = prefdir(1);
                 classpathFile = [prefFolder filesep 'javaclasspath.txt'];
-                fid = fopen(classpathFile, 'w');
-                fclose(fid);
+                if ~exist(classpathFile, 'file')
+                    fid = fopen(classpathFile, 'w');
+                    fclose(fid);
+                end
             end
         end
         
