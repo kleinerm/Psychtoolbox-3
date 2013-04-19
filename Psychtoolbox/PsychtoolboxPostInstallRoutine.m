@@ -559,11 +559,13 @@ if ~IsOctave
                 % doesn't already exist:
                 prefFolder = prefdir(1);
                 classpathFile = [prefFolder filesep 'javaclasspath.txt'];
+                fid = fopen(classpathFile, 'w');
+                fclose(fid);
             end
         end
         
         % Define name of backup file:
-        bakclasspathFile = [classpathFile '.bak'];
+        bakclasspathFile = [classpathFile '.bak'];        
         
         if ~verLessThan('matlab', '7.14')
             % New style method: (textread() is deprecated as of at least R2012a)
