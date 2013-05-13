@@ -21,7 +21,7 @@ if ~exist('maxwait', 'var')
     maxwait = [];
 end
 
-if isempty(maxwait) || maxwait <= 0 %#ok<OR2>
+if isempty(maxwait) || maxwait <= 0
 	usemaxwait=0; % do not timeout
 else
 	usemaxwait=1;

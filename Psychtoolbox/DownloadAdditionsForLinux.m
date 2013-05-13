@@ -372,7 +372,7 @@ if ~IsOctave
             if isempty(strfind('PsychJava', fileContents{i}))
                 newFileContents{j, 1} = fileContents{i}; %#ok<AGROW>
                 j = j + 1;
-            elseif ~isempty(strfind('PsychJava', fileContents{i})) && ~pathInserted %#ok<AND2>
+            elseif ~isempty(strfind('PsychJava', fileContents{i})) && ~pathInserted
                 newFileContents{j, 1} = path_PsychJava; %#ok<AGROW>
                 pathInserted = 1;
                 j = j + 1;

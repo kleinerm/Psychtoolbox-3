@@ -280,32 +280,32 @@ while ((GetSecs - t) < 600)
     % Check for keyboard press:
     [KeyIsDown, endrt, KeyCode] = KbCheck(-1);
     if KeyIsDown
-        if ( KeyIsDown==1 && KeyCode(closer)==1 ) %#ok<AND2>
+        if ( KeyIsDown==1 && KeyCode(closer)==1 )
             zz=zz-0.25;
             KeyIsDown=0;
         end
 
-        if ( KeyIsDown==1 && KeyCode(farther)==1 ) %#ok<AND2>
+        if ( KeyIsDown==1 && KeyCode(farther)==1 )
             zz=zz+0.25;
             KeyIsDown=0;
         end
 
-        if ( KeyIsDown==1 && KeyCode(rotateright)==1 ) %#ok<AND2>
+        if ( KeyIsDown==1 && KeyCode(rotateright)==1 )
             ang=ang+1.0;
             KeyIsDown=0;
         end
 
-        if ( KeyIsDown==1 && KeyCode(rotateleft)==1 ) %#ok<AND2>
+        if ( KeyIsDown==1 && KeyCode(rotateleft)==1 )
             ang=ang-1.0;
             KeyIsDown=0;
         end
 
-        if ( KeyIsDown==1 && KeyCode(rotatedown)==1 ) %#ok<AND2>
+        if ( KeyIsDown==1 && KeyCode(rotatedown)==1 )
             tilt=tilt+1.0;
             KeyIsDown=0;
         end
 
-        if ( KeyIsDown==1 && KeyCode(rotateup)==1 ) %#ok<AND2>
+        if ( KeyIsDown==1 && KeyCode(rotateup)==1 )
             tilt=tilt-1.0;
             KeyIsDown=0;
         end
@@ -314,17 +314,17 @@ while ((GetSecs - t) < 600)
     if KeyIsDown && ~oldKeyIsDown
         oldKeyIsDown = KeyIsDown;
 
-        if ( KeyIsDown==1 && KeyCode(toggleCapture)==1 ) %#ok<AND2>
+        if ( KeyIsDown==1 && KeyCode(toggleCapture)==1 )
             doCapture = ~doCapture;
             KeyIsDown=0;
         end
 
-        if ( KeyIsDown==1 && KeyCode(toggleMesh)==1 ) %#ok<AND2>
+        if ( KeyIsDown==1 && KeyCode(toggleMesh)==1 )
             doMesh = ~doMesh;
             KeyIsDown=0;
         end
 
-        if ( KeyIsDown==1 && KeyCode(quitkey)==1 ) %#ok<AND2>
+        if ( KeyIsDown==1 && KeyCode(quitkey)==1 )
             break;
         end
     else
