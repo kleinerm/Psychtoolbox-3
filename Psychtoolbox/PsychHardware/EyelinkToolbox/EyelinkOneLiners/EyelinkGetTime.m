@@ -40,7 +40,7 @@ if Eyelink('isconnected') == el.connected   % readtime doesn't work in dummymode
 			return;
 		end
 	
-		if (usemaxwait==1) && (GetSecs-start>maxwait)	%#ok<AND2> % repeat until available or timeout
+		if (usemaxwait==1) && (GetSecs-start>maxwait) % repeat until available or timeout
 			fprintf('EyelinkGetTime: timeout of time request');
 			return;
 		end

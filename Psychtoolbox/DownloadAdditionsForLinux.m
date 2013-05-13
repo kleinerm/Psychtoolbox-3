@@ -168,7 +168,7 @@ if ~IsOctave
     v = ver('matlab');
     if ~isempty(v)
         v = v(1).Version; v = sscanf(v, '%i.%i.%i');
-        if (v(1) < 7) || ((v(1) == 7) && (v(2) < 4)) %#ok<AND2,OR2>
+        if (v(1) < 7) || ((v(1) == 7) && (v(2) < 4))
             % Matlab version < 7.4 detected. This is no longer
             % supported by current PTB beta.
             fprintf('\n\n\nYou request download of Psychtoolbox V 3.0.10 or later.\n');

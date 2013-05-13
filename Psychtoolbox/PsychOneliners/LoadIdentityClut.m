@@ -230,13 +230,13 @@ else
                 % A good default at least on OS/X is type 1:
                 gfxhwtype = 1;
 
-                if (IsWin || IsLinux) && ~isempty(strfind(winfo.GPUCoreId, 'R600')) %#ok<OR2,AND2>
+                if (IsWin || IsLinux) && ~isempty(strfind(winfo.GPUCoreId, 'R600'))
                     % At least the Radeon HD 3470 under Windows Vista and Linux needs type 0
                     % LUT's. Let's assume for the moment this is true for all R600
                     % cores, ie., all Radeon HD series cards.
                     fprintf('LoadIdentityClut: ATI Radeon HD-2000 or later detected. Enabling special type-0 LUT hacks for totally broken drivers.\n');
                     gfxhwtype = 0;
-                elseif (IsLinux) && (~isempty(strfind(winfo.GLRenderer, 'DRI R')) || ~isempty(strfind(winfo.GLRenderer, 'on ATI R'))) %#ok<OR2,AND2>
+                elseif (IsLinux) && (~isempty(strfind(winfo.GLRenderer, 'DRI R')) || ~isempty(strfind(winfo.GLRenderer, 'on ATI R')))
                     % At least the Radeon R3xx/4xx/5xx under Linux with DRI2 Mesa needs type 0
                     % LUT's. Let's assume for the moment this is true for all R600
                     % cores, ie., all Radeon HD series cards.

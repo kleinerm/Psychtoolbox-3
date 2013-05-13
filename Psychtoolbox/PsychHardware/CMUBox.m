@@ -271,7 +271,7 @@ if strcmpi(cmd, 'GetEvent')
         % Timestamps at least 0.5 msecs apart and no more than 2 msecs
         % apart? This window should be sufficient for the CMU and PST box
         % in all streaming modes:
-        if (t - box.oldTime < 0.0005) || (box.deltaScan < 0.0005) || ((box.deltaScan > 0.002) && (box.Streaming > 0)) %#ok<AND2,OR2>
+        if (t - box.oldTime < 0.0005) || (box.deltaScan < 0.0005) || ((box.deltaScan > 0.002) && (box.Streaming > 0))
             % Too close to each other! Timestamp is not reliable!
             tTrouble = 1;
             fprintf('CMUBox: GetEvent: Timestamp trouble!! Delta %f msecs, ScanInterval %f msecs.\n', 1000 * (t - box.oldTime), 1000 * box.deltaScan); 
