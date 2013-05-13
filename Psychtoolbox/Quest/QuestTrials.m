@@ -27,7 +27,7 @@ if nargin < 2
     binsize = [];
 end
 
-if isempty(binsize) | ~isfinite(binsize)  %#ok<OR2>
+if isempty(binsize) || ~isfinite(binsize)  %#ok<OR2>
 	binsize=0;
 end
 
