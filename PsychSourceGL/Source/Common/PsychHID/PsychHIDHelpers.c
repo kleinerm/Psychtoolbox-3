@@ -518,6 +518,7 @@ static IOHIDDeviceInterface122** HIDCreateOpenDeviceInterface(pRecDevice pDevice
     IOCFPlugInInterface** ppPlugInInterface = NULL;
     IOHIDDeviceInterface** interface = NULL;
     io_service_t hidDevice = 0L;
+    mach_port_t port;
     
     // Get low-level device for given HIDDeviceRef from HID Utilities v2.0:
     hidDevice = AllocateHIDObjectFromIOHIDDeviceRef((IOHIDDeviceRef) pDevice);
@@ -530,23 +531,35 @@ static IOHIDDeviceInterface122** HIDCreateOpenDeviceInterface(pRecDevice pDevice
     // Create and open interface for IORegistry device:
     result = IOCreatePlugInInterfaceForService (hidDevice, kIOHIDDeviceUserClientTypeID,
                                                 kIOCFPlugInInterfaceID, &ppPlugInInterface, &score);
-    if (kIOReturnSuccess == result)
+    if ((kIOReturnSuccess == result) && ppPlugInInterface)
     {
         // Call a method of the intermediate plug-in to create the device interface
         plugInResult = (*ppPlugInInterface)->QueryInterface (ppPlugInInterface,
                                                              CFUUIDGetUUIDBytes (kIOHIDDeviceInterfaceID), (void *) &interface);
-        if (S_OK != plugInResult)
-            printf("PTB-ERROR: PsychHID: CouldnÕt query HID class device interface from plugInInterface: %x [].", plugInResult);
+        if ((S_OK != plugInResult) || (NULL == interface))
+            printf("PTB-ERROR: PsychHID: CouldnÕt query HID class device interface from plugInInterface: %x.", plugInResult);
+
+        // Release ppPlugInInterface in any case - no longer needed:
         IODestroyPlugInInterface(ppPlugInInterface);
     }
     else
-        printf("PTB-ERROR: PsychHID: Failed to create **plugInInterface via IOCreatePlugInInterfaceForService: %x [].\n", result);
+        printf("PTB-ERROR: PsychHID: Failed to create **plugInInterface via IOCreatePlugInInterfaceForService: %x.\n", result);
     
+	// Successfully retrieved an interface?
 	if (NULL != interface)
 	{
+		// Yes: Open it.
 		result = (*interface)->open(interface, 0);
-		if (kIOReturnSuccess != result)
-			printf("PTB-ERROR: PsychHID: Failed to open HID device low-level interface via open: %x [].\n", result);
+		if (kIOReturnSuccess != result) {
+			printf("PTB-ERROR: PsychHID: Failed to open HID device low-level interface via open: %x.\n", result);
+		}
+		else {
+			// Interface open. Create async mach port for it to deliver interrupt in endpoint data:
+			result = (*interface)->createAsyncPort(interface, &port);
+			if (kIOReturnSuccess != result) {
+				printf("PTB-ERROR: PsychHID: Failed to create async port for HID device low-level interface: %x.\n", result);
+			}
+		}
 	}
     
     // Release reference to high-level device via HID Utilities v2.0::
