@@ -1,6 +1,6 @@
 function newPathList = RemoveSVNPaths(pathList)
 % newPathList = RemoveSVNPaths(pathList)
-% Removes any .svn paths from the pathList.  If no pathList is specified,
+% Removes any .svn/.git paths from the pathList.  If no pathList is specified,
 % then the program sets pathList to the result of the 'path' command.  This
 % function returns a 'pathsep' delimited list of paths omitting the .svn
 % paths.
@@ -9,6 +9,7 @@ function newPathList = RemoveSVNPaths(pathList)
 % 14.07.06 Written by Christopher Broussard.
 % 25.07.06 Modified to work on M$-Windows and GNU/Octave as well (MK).
 % 31.05.09 Adapted to fully work on Octave-3 (MK).
+% 29.05.13 Remove .git elements as well.
 
 % If no pathList was passed to the function we'll just grab the one from
 % Matlab.
@@ -18,7 +19,7 @@ if nargin ~= 1
 end
 
 try
-    % We do the .svn path removal in a try-catch block, because some of the
+    % We do the .svn/.git path removal in a try-catch block, because some of the
     % functions used inside this block are not available in Matlab-5 and
     % GNU/Octave. Our catch - block provides fail-safe behaviour for that
     % case.
@@ -35,6 +36,12 @@ try
     % then we add it to the end of our new path list.
     qNotSVN = cellfun(@isempty,strfind(pathElements,[filesep '.svn']));
     pathElements = pathElements(qNotSVN);
+    
+    
+    % Look at each element from the path.  If it doesn't contain a .git folder
+    % then we add it to the end of our new path list.
+    qNotGit = cellfun(@isempty,strfind(pathElements,[filesep '.git']));
+    pathElements = pathElements(qNotGIT);
     
     if ~isempty(pathElements)
         % generate new pathList
