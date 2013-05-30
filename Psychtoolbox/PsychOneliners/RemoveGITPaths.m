@@ -1,17 +1,12 @@
-function newPathList = RemoveSVNPaths(pathList)
-% newPathList = RemoveSVNPaths(pathList)
-% Removes any .svn paths from the pathList.  If no pathList is specified,
+function newPathList = RemoveGITPaths(pathList)
+% newPathList = RemoveGITPaths(pathList)
+% Removes any .git paths from the pathList.  If no pathList is specified,
 % then the program sets pathList to the result of the 'path' command.  This
-% function returns a 'pathsep' delimited list of paths omitting the .svn
+% function returns a 'pathsep' delimited list of paths omitting the .git
 % paths.
 
 % History:
-% 14.07.06 Written by Christopher Broussard.
-% 25.07.06 Modified to work on M$-Windows and GNU/Octave as well (MK).
-% 31.05.09 Adapted to fully work on Octave-3 (MK).
-% 29.05.13 Remove .git elements as well.
-% 30.05.13 Decided it would be better to have a separate .git function.  Wrote that and made
-%          this one just .svn (DHB)
+% 30.05.13 Made .git version from RemoveSVNPaths (DHB).
 
 % If no pathList was passed to the function we'll just grab the one from
 % Matlab.
@@ -21,7 +16,7 @@ if nargin ~= 1
 end
 
 try
-    % We do the .svn path removal in a try-catch block, because some of the
+    % We do the .git path removal in a try-catch block, because some of the
     % functions used inside this block are not available in Matlab-5 and
     % GNU/Octave. Our catch - block provides fail-safe behaviour for that
     % case.
@@ -34,10 +29,10 @@ try
         pathElements = pathElements{1}.';
     end
     
-    % Look at each element from the path.  If it doesn't contain a .svn folder
+    % Look at each element from the path.  If it doesn't contain a .git folder
     % then we add it to the end of our new path list.
-    qNotSVN = cellfun(@isempty,strfind(pathElements,[filesep '.svn']));
-    pathElements = pathElements(qNotSVN);
+    qNotGit = cellfun(@isempty,strfind(pathElements,[filesep '.git']));
+    pathElements = pathElements(qNotGIT);
     
     if ~isempty(pathElements)
         % generate new pathList
@@ -49,7 +44,7 @@ try
     end
 catch
     % Fallback behaviour: We fail-safe by simply returning the unmodified
-    % pathList. No .svn paths removed, but the whole beast is still
+    % pathList. No .git paths removed, but the whole beast is still
     % functional.
     newPathList = pathList;
 end
