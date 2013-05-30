@@ -31,7 +31,7 @@ try
     
     % Look at each element from the path.  If it doesn't contain a .git folder
     % then we add it to the end of our new path list.
-    qNotGit = cellfun(@isempty,strfind(pathElements,[filesep '.git']));
+    qNotGIT = cellfun(@isempty,strfind(pathElements,[filesep '.git']));
     pathElements = pathElements(qNotGIT);
     
     if ~isempty(pathElements)
