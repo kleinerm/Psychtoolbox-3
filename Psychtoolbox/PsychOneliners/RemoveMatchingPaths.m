@@ -1,5 +1,6 @@
 function newPathList = RemoveMatchingPaths(pathList, matchString)
 % newPathList = RemoveMatchingPaths(pathList, matchString)
+%
 % Removes any paths that contain the given matchString from the pathList.
 % If no pathList is specified, then the program sets pathList to the result
 % of the 'path' command.  This function returns a 'pathsep' delimited list
@@ -7,11 +8,13 @@ function newPathList = RemoveMatchingPaths(pathList, matchString)
 
 % History:
 % 30.05.13 Adapted from RemoveSVNPaths, to remove arbitrary paths (BSH)
-%
+% 31.05.13 Allow empty string for pathList to get current path.
+%          Remove filesep prepended to match string, so that what this does
+%          matches the comment.
 
 % If no pathList was passed to the function we'll just grab the one from
 % Matlab.
-if nargin < 1
+if (nargin < 1 || isempty(pathList))
     % Grab the path list.
     pathList = path;
 end
@@ -38,7 +41,7 @@ try
     
     % Look at each element from the path.  If it doesn't contain a matching
     % folder then we add it to the end of our new path list.
-    isNotMatching = cellfun(@isempty,strfind(pathElements,[filesep matchString]));
+    isNotMatching = cellfun(@isempty,strfind(pathElements,matchString));
     pathElements = pathElements(isNotMatching);
     
     if ~isempty(pathElements)
