@@ -32,8 +32,8 @@ function directory=CalDataFolder(forceDemo,calFileName,calDir)
 % 4/2/13   dhb  Add calFileName and associated behavior.
 % 6/2/13   dhb  Make this properly return subfolder containing calibration file
 %               if .mat is not postpended.
-% 6/10/13  dhb  Fix bug introduced 6/2/13 -- need to handle empty calFileName (thnks to MS for
-%               identifying the bug and the fix.
+% 6/10/13  dhb  Fix buglet introduced 6/2/13 -- need to handle empty calFileName (thanks to MS for
+%               identifying the problem and the fix.
 
 % Set forceDemo flag
 if (nargin < 1 || isempty(forceDemo))
