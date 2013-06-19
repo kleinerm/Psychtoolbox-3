@@ -221,7 +221,9 @@ void PsychGSCheckInit(const char* engineName)
                 printf("PTB-ERROR: Tried to startup GStreamer multi-media framework. This didn't work, because one\n");
                 printf("PTB-ERROR: of the required GStreamer runtime libraries failed to load, probably because it\n");
                 printf("PTB-ERROR: could not be found, could not be accessed (e.g., due to permission problems),\n");
-                printf("PTB-ERROR: or most likely because GStreamer isn't installed on this machine at all.\n\n");
+                printf("PTB-ERROR: or most likely because GStreamer isn't installed on this machine at all.\n");
+                printf("PTB-ERROR: Another reason could be that you have GStreamer version 1.0 instead of the required\n");
+                printf("PTB-ERROR: version 0.10 installed. The version 1 series is not yet supported.\n\n");
                 #if PSYCH_SYSTEM == PSYCH_WINDOWS
                     printf("PTB-ERROR: The system returned error code %d.\n", GetLastError());
                 #endif
@@ -1217,6 +1219,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 	char videocodec[1000];
 	char codecoption[1000];
 	char audiosrc[1000];
+    char aactype[20];
 
 	int nrAudioChannels;
 	int audioFreq;
@@ -1235,6 +1238,25 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 	// Use GStreamer encoding profiles instead of low-level do-it-yourself setup?
 	psych_bool use_profiles = (forCamerabin && (usecamerabin == 2)) ? TRUE : FALSE;
 
+	// Require setup of an audio-codec for audio recording or audio track writing?
+	psych_bool use_audio = (soundForVideoRecording || strstr(codecSpec, "AddAudioTrack")) ? TRUE : FALSE;
+
+    // Use of audio encoder, manual style without high-level MIME type profiles?
+    if (use_audio && !use_profiles) {
+        // Yes. Try if faac AAC encoder is available, choose it as default choice for
+        // AAC encoding. If unavailable, choose ffenc_aac instead as fallback:
+        audio_enc = gst_parse_bin_from_description("faac", TRUE, NULL);
+        if (audio_enc) {
+            gst_object_unref(G_OBJECT(audio_enc));
+            audio_enc = NULL;
+            sprintf(aactype, "faac");
+        }
+        else {
+            sprintf(aactype, "ffenc_aac");
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: faac audio encoder not available. Using ffenc_aac instead.\n");
+        }
+    }
+    
 	memset(muxer, 0, sizeof(muxer));
 	memset(audiosrc, 0, sizeof(audiosrc));
 	memset(audiocodec, 0, sizeof(audiocodec));
@@ -1328,8 +1350,8 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
             sprintf(outCodecName, "video/x-h264");
         }
         else {
-            sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
-            sprintf(muxer, "qtmux");                 // Need to use Quicktime-Multiplexer.
+            sprintf(audiocodec, "AudioCodec=%s ", aactype); // Need to use faac MPEG-4 audio encoder.
+            sprintf(muxer, "qtmux");                        // Need to use Quicktime-Multiplexer.
         }
         
 		// Videoencoder not yet created? If so, we have to do it now:
@@ -1370,9 +1392,9 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 				// Yes: Map quality vs. speed scalar to 0-10 number for speed preset:
 				if (videoQuality > 1) videoQuality = 1;
 
-				// Speed-Quality profile set to 1 "Ultra fast".
-				// (1 = "Ultra fast", 2 = "Super fast", 3 = "Very fast",  4 = "Faster", 5 = "Fast",
-				//  6 = "Medium" - the default,7 = "Slow", 8 = "Slower", 9 = "Very slow")
+				// Speed-Quality profile: 0 = "None"
+				// 1 = "Ultra fast", 2 = "Super fast", 3 = "Very fast",  4 = "Faster", 5 = "Fast",
+				// 6 = "Medium" - the default,7 = "Slow", 8 = "Slower", 9 = "Very slow", 10 = "Placebo"
 				sprintf(codecoption, "speed-preset=%i ", (int) (videoQuality * 10.0 + 0.5));
 				strcat(videocodec, codecoption);
 			}
@@ -1408,7 +1430,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
             sprintf(outCodecName, "video/x-h264");
         }
         else {
-            sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+            sprintf(audiocodec, "AudioCodec=%s ", aactype); // Need to use faac MPEG-4 audio encoder.
             sprintf(muxer, "qtmux");                 // Need to use Quicktime-Multiplexer.
         }
         
@@ -1446,7 +1468,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
             sprintf(outCodecName, "video/x-xvid");
         }
         else {
-            sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+            sprintf(audiocodec, "AudioCodec=%s ", aactype); // Need to use faac MPEG-4 audio encoder.
             sprintf(muxer, "avimux");                // Need to use avi-multiplexer.
         }
         
@@ -1497,7 +1519,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
             sprintf(outCodecName, "video/mpeg,mpegversion=4");
         }
         else {
-            sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+            sprintf(audiocodec, "AudioCodec=%s ", aactype); // Need to use faac MPEG-4 audio encoder.
             sprintf(muxer, "avimux");                // Need to use avi-multiplexer.
         }
         
@@ -1658,7 +1680,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
             sprintf(outCodecName, "video/x-raw-yuv");
         }
         else {
-            sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+            sprintf(audiocodec, "AudioCodec=%s ", aactype); // Need to use faac MPEG-4 audio encoder.
             sprintf(muxer, "avimux");                // Need to use AVI-Multiplexer.
         }
         
@@ -1689,7 +1711,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
             sprintf(outCodecName, "video/x-h263");
         }
         else {
-            sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+            sprintf(audiocodec, "AudioCodec=%s ", aactype); // Need to use faac MPEG-4 audio encoder.
             sprintf(muxer, "qtmux");                 // Need to use Quicktime-Multiplexer.
         }
         
@@ -1740,7 +1762,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
             sprintf(outCodecName, "video/x-huffyuv");
         }
         else {
-            sprintf(audiocodec, "AudioCodec=faac "); // Need to use faac MPEG-4 audio encoder.
+            sprintf(audiocodec, "AudioCodec=%s ", aactype); // Need to use faac MPEG-4 audio encoder.
             sprintf(muxer, "avimux");           // Need to use AVI-Multiplexer.
         }
         
@@ -1775,80 +1797,95 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 		}
 	}
 
-	// Audio encoder from parameter string? Or new-style encoding profiles in use?
-	if (use_profiles || ((audio_enc = CreateGStreamerElementFromString(codecSpec, "AudioCodec=", audiocodec)) != NULL)) {
-		// Yes: Encoding profiles in use? Then we need to parse AudioCodec= string ourselves for the MIME spec:
-        if (use_profiles && strstr(codecSpec, "AudioCodec=")) {
-            poption = strstr(codecSpec, "AudioCodec=");
-            poption+= strlen("AudioCodec=");
+    // Use of audio encoding for any means requested? If so, perform codec and audio source setup:
+    if (use_audio) {
+        // Audio encoder from parameter string? Or new-style encoding profiles in use?
+        if (use_profiles || ((audio_enc = CreateGStreamerElementFromString(codecSpec, "AudioCodec=", audiocodec)) != NULL)) {
+            // Yes: Encoding profiles in use? Then we need to parse AudioCodec= string ourselves for the MIME spec,
+            // unless none specified. In that case audiocodec will already contain the auto-setup MIME string from
+            // video codec setup above.
+            if (use_profiles && strstr(codecSpec, "AudioCodec=")) {
+                poption = strstr(codecSpec, "AudioCodec=");
+                poption+= strlen("AudioCodec=");
+                
+                // Store audiocodec name in 'audiocodec':
+                sprintf(audiocodec, "%s", poption);
+                
+                // Terminate audiocodec string if a ::: marker is encountered:
+                poption = strstr(audiocodec, ":::");
+                if (poption) *poption = 0;
+                
+                // audiocodec now contains audiocodec spec.
+            }
             
-            // Store audiocodec name in 'audiocodec':
-            sprintf(audiocodec, "%s", poption);
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: %s audio encoder according to: %s\n", (use_profiles) ? "Selecting" : "Created", audiocodec);
+        } else {
+            // No: Build from preset as defined by video codec and some high level settings:
+            // This path is hit if encoding-profiles aren't used, so we need to do our own
+            // codec setup (ie., camerabin1 or classic movie writing) and usercode didn't
+            // specify a codec and its settings manually via "AudioCodec=" parameter.
             
-            // Terminate audiocodec string if a ::: marker is encountered:
-            poption = strstr(audiocodec, ":::");
-            if (poption) *poption = 0;
+            // Audio quality flag specified?
+            if (audioQuality >= 0) {
+                if (audioQuality > 1) audioQuality = 1;
+                
+                if (strstr(audiocodec, "faac") || strstr(audiocodec, "ffenc_aac")) {
+                    // Map quality range 0.0 - 1.0 to bitrate range 0 - 320000 bits/sec:
+                    sprintf(codecoption, "bitrate=%i ", (int) (audioQuality * 320000));
+                    strcat(audiocodec, codecoption);
+                }
+                
+                if (strstr(audiocodec, "vorbisenc")) {
+                    // Assign quality range 0.0 - 1.0 directly:
+                    sprintf(codecoption, "quality=%f ", audioQuality);
+                    strcat(audiocodec, codecoption);
+                }
+            }
             
-            // audiocodec now contains audiocodec spec.
+            // Audio bitrate specified?
+            if (audioBitrate >= 0) {
+                if (strstr(audiocodec, "faac") || strstr(audiocodec, "ffenc_aac")) {
+                    sprintf(codecoption, "bitrate=%i ", audioBitrate * 1000);
+                    strcat(audiocodec, codecoption);
+                }
+                
+                if (strstr(audiocodec, "vorbisenc")) {
+                    sprintf(codecoption, "managed=1 bitrate=%i ", audioBitrate * 1000);
+                    strcat(audiocodec, codecoption);
+                }
+            }
+            
+            // Create audio encoder:
+            if ((audio_enc = CreateGStreamerElementFromString(audiocodec, "AudioCodec=", audiocodec)) != NULL) {
+                // Yes: Assign it.
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Created audio encoder according to: %s\n", audiocodec);
+            } else {
+                if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Failed to create requested audio encoder [%s]! Falling back to default encoder.\n", audiocodec);
+            }
         }
         
-        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Created audio encoder according to: %s\n", audiocodec);
-	} else {
-		// No: Build from preset as defined by video codec and some high level settings:
-
-		// Audio quality flag specified?
-		if (audioQuality >= 0) {
-			if (audioQuality > 1) audioQuality = 1;
-
-			if (strstr(audiocodec, "faac")) {
-				// Map quality range 0.0 - 1.0 to bitrate range 0 - 320000 bits/sec:
-				sprintf(codecoption, "bitrate=%i ", (int) (audioQuality * 320000));
-				strcat(audiocodec, codecoption);
-			}
-
-			if (strstr(audiocodec, "vorbisenc")) {
-				// Assign quality range 0.0 - 1.0 directly:
-				sprintf(codecoption, "quality=%f ", audioQuality);
-				strcat(audiocodec, codecoption);
-			}
-		}
-
-		// Audio bitrate specified?
-		if (audioBitrate >= 0) {
-			if (strstr(audiocodec, "faac")) {
-				sprintf(codecoption, "bitrate=%i ", audioBitrate * 1024);
-				strcat(audiocodec, codecoption);
-			}
-
-			if (strstr(audiocodec, "vorbisenc")) {
-				sprintf(codecoption, "managed=1 bitrate=%i ", audioBitrate * 1024);
-				strcat(audiocodec, codecoption);
-			}
-		}
-
-		// Create audio encoder:
-		if ((audio_enc = CreateGStreamerElementFromString(audiocodec, "AudioCodec=", audiocodec)) != NULL) {
-			// Yes: Assign it.
-			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Created audio encoder according to: %s\n", audiocodec);
-		} else {
-			if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Failed to create requested audio encoder [%s]! Falling back to default encoder.\n", audiocodec);
-		}
-	}
-
-	// Audio source from parameter string? Most of the time usercode would not want
-	// to change type/assignment/source parameters of a source. Also, the available
-	// settings are common enough across sources that it doesn't make sense for us to
-	// introduce our own high-level parameters. Therefore we only provide the low-level
-	// interface here.
-	// Interesting sources would be: alsasrc, osssrc, oss4src, pulsesrc, jackaudiosrc,
-	// autoaudiosrc, gconfaudiosrc.
-	//
-	// Interesting settings would be:
-	// device = The audio device name.
-	// server = Audio server name for Jack and PulseAudio.
-	// slave-method = Type of syncing to master clock.
-	if (soundForVideoRecording) audio_src = CreateGStreamerElementFromString(codecSpec, "AudioSource=", audiosrc);
-
+        // Audio source from parameter string? Most of the time usercode would not want
+        // to change type/assignment/source parameters of a source. Also, the available
+        // settings are common enough across sources that it doesn't make sense for us to
+        // introduce our own high-level parameters. Therefore we only provide the low-level
+        // interface here.
+        // Interesting sources would be: alsasrc, osssrc, oss4src, pulsesrc, jackaudiosrc,
+        // autoaudiosrc, gconfaudiosrc.
+        //
+        // Interesting settings would be:
+        // device = The audio device name.
+        // server = Audio server name for Jack and PulseAudio.
+        // slave-method = Type of syncing to master clock.
+        if (soundForVideoRecording) audio_src = CreateGStreamerElementFromString(codecSpec, "AudioSource=", audiosrc);
+        
+    }
+    else {
+        // No audio encoding/writing: Disable all audio related stuff.
+        audio_src = NULL;
+        audio_enc = NULL;
+        audiocodec[0] = 0;
+    }
+    
 	// Multiplexer from parameter string?
 	if (strstr(codecSpec, "Muxer=")) {
 		// Must create it without help of CreateGStreamerElementFromString() as the muxer has
@@ -1937,24 +1974,25 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 
 	// Still no video codec? Then this is game over: FIXME Small memory leak here on error exit.
 	if (capdev->videoenc == NULL) PsychErrorExitMsg(PsychError_user, "Could not find or setup requested video codec or any fallback codec for video recording. Aborted.");
-	if (!audio_enc && !use_profiles) PsychErrorExitMsg(PsychError_user, "Could not find or setup requested audio codec for recording. Aborted.");
+	if (use_audio && (!audio_enc && !use_profiles)) PsychErrorExitMsg(PsychError_user, "Could not find or setup requested audio codec for recording. Aborted.");
 	if (!muxer_elt && !use_profiles) PsychErrorExitMsg(PsychError_user, "Could not find or setup requested audio-video multiplexer for recording. Aborted.");
 
     // Invalidate our no longer needed fake videoenc entry if profiles are in use:
     if (use_profiles && (capdev->videoenc == (GstElement*) 0x1)) capdev->videoenc = NULL;
     
 	if (PsychPrefStateGet_Verbosity() > 3) {
-		printf("PTB-INFO: Audiosource: %s\n", audiosrc);
-		printf("PTB-INFO: Audiocodec : %s\n", audiocodec);
+		if (use_audio) printf("PTB-INFO: Audiosource: %s\n", audiosrc);
+		if (use_audio) printf("PTB-INFO: Audiocodec : %s\n", audiocodec);
 		printf("PTB-INFO: Videocodec : %s\n", (use_profiles) ? outCodecName : videocodec);
 		printf("PTB-INFO: Multiplexer: %s\n", muxer);
 	}
 
+	// Setup for video recording via generated codecs or encoding profiles for use with camerabin-1/2?
 	if (!launchline || forCamerabin) {
         if (usecamerabin == 1) {
             // Attach our created objects to camerabin1:
             g_object_set(camera, "video-encoder", capdev->videoenc, NULL);
-            g_object_set(camera, "audio-encoder", audio_enc, NULL);
+            if (audio_enc) g_object_set(camera, "audio-encoder", audio_enc, NULL);
             g_object_set(camera, "video-muxer", muxer_elt, NULL);
             if (audio_src) g_object_set(camera, "audio-source", audio_src, NULL);
         }
@@ -1983,7 +2021,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
             #endif
         }
 	} else {
-		// Release our objects, we have our launch line:
+		// Setup for launch-line based movie writing : Release our objects, we have our launch line:
 		if (capdev->videoenc) { gst_object_unref(G_OBJECT(capdev->videoenc)); capdev->videoenc = NULL; }
 		if (audio_enc) gst_object_unref(G_OBJECT(audio_enc));
 		if (audio_src) gst_object_unref(G_OBJECT(audio_src));
