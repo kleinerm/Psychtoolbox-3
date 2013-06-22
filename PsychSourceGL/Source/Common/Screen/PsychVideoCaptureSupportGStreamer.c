@@ -2256,6 +2256,20 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         // Set basic opmode to 2 for video capture/recording, instead of default 1
         // for still image capture:
         g_object_set(G_OBJECT(camera), "mode", 2, NULL);
+        
+        // Workaround the continued brokeness of GStreamer-SDK, as of 2013.6. We create a dummy image/jpeg MIME
+        // encoding profile and assign it for use with still image capture, despite the fact that we never use
+        // still image capture. However this is neccessary because by default, camerabin2 has a image/jpeg container
+        // profile assigned which doesn't work due to apparently missing jpeg muxer plugins (jifmux?) in the SDK. Our
+        // MIME profile is valid but only defines image encoding, no container, so no muxer plugin needed -> problem solved.
+        // I don't know if this would work for actual still image capture, but our workarounds purpose is only to prevent
+        // error handling/error abort during camerabin2 init from kicking in, so we don't care:
+        #ifdef PTB_USE_GSTENCODINGPROFILES
+        caps = gst_caps_new_simple("image/jpeg", NULL);
+        // We probably leak the created GstEncodingProfile here, but will be a small leak...
+        g_object_set(G_OBJECT(camera), "image-profile", gst_encoding_video_profile_new(caps, NULL, NULL, 0), NULL);
+        gst_caps_unref(caps); caps = NULL;
+        #endif
     }
     
     sprintf(config, "%s", device_name);
