@@ -3,7 +3,8 @@
 % Radiometric and photometric calculations.  See also the closely related
 % Psychtoolbox:PsychColorimetric and its related data folders.  Sometimes
 % it is not entirely clear whether a routine is better classified as
-% radiometric or colorimetric. Apologies if our intuitions don't match yours
+% radiometric or colorimetric. Apologies if our intuitions don't match
+% yours.
 %
 % help Psychtoolbox              % For an overview, triple-click me & hit enter.
 % help PsychColorimetric         % For colorimetric calculations, triple-click me & hit enter.
@@ -19,7 +20,10 @@
 %   radRadianceAndDegrees2ToCornIrradiance - Convert radiance to corneal irradiance, given stimulus area in degrees^2.
 %   radRadianceAndDistanceAreaToCornIrradiance - Convert radiance to corneal irradiance, given stimulus area and distance in linear units (e.g, cm).
 %   radRadianceAndPupilAreaEyeLengthToRetIrradiance - Convert radiance to retinal irradiance, given pupil area and eye length.
+%   radRadiometricConversionsTest - Test some of the radiometric conversion routines.
 %   radRetIrradianceAndPupilAreaEyeLengthToRadiance - Convert retinal irradiance to radiance, given pupil area and eye length.
+%   radRetIrradiancePerAreaAndEyeLengthToRetIrradiancePerDegrees2 - Convert retinal irradiance per area to retinal irradiance per degrees2.
+%   radRetIrradiancePerDegrees2AndEyeLengthToRetIrradiancePerArea - Convert retinal irradiance per degrees2 to retinal irradiance per area.
 %   RadiometricBasicTest - Some basic tests of radiometric conversions.
 %   RetIrradianceToTrolands - Convert retinal irradiance (power units) to trolands.
 %   TrolandsToLum       - Convert trolands to luminance (cd/m2).
