@@ -14,6 +14,7 @@
 %   EnergyToQuanta      - Convert monochromatic energy to quanta.
 %   PowerToTrolands     - Convert monochromatic power to photopic trolands.
 %   PsychAnsiZ136MPE    - Ansi 136.1-2007 standard for maximum permissible light exposure.
+%   PsychISO2007MPE     - ISO 2007 standard for maximum permissible light exposure
 %   QuantaToEnergy      - Convert monochromatic quanta to energy.
 %   QuantaToTrolands    - Convert monochromatic quanta to photopic trolands.
 %   radCornIrradianceAndDegrees2ToRadiance - Convert corneal irradiance to radiance, given stimulus area in degrees^2.
