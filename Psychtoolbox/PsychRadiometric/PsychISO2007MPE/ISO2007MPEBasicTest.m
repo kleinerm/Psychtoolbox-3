@@ -14,9 +14,36 @@
 %% Clear and close
 clear; close all;
 
-%% Read in and plot the spectral functions used by the standard
+%% Wavelength sampling.
+%
+% Easiest to cover the whole range covered by the standard,
+% that way we don't have to think.
 S = [200 1 1301];
-[wls,weightingR,weightingA,weightingS,wls_R,rawWeigtingR,wls_A,rawWeightingA,wls_S,rawWeightingS] = ISO2007MPEGetWeighings(S);
+
+%% Load CIE functions.   
+load T_xyz1931
+T_xyz = SplineCmf(S_xyz1931,683*T_xyz1931,S);
+
+%% Load in a test spectrum
+%
+% This is a bright sunlight measured through a window in Philly.
+% We only have measurements between 380 and 780 nm.  In this
+% example, we zero extend when we spline to the whole range.
+load spd_phillybright
+spd_phillybright = SplineSpd(S_phillybright,spd_phillybright,S,0);
+photopicLuminancePhillyBrightCdM2 = T_xyz(2,:)*spd_phillybright;
+figure; 
+plot(SToWls(S),spd_phillybright,'r','LineWidth',2);
+xlabel('Wavelength (nm)');
+ylabel('Radiance (Watts/[sr-m2-wlinterval]');
+
+%% Specify stimulus parameters
+stimulusDiameterDegrees = 10;
+stimulusAreaDegrees2 = pi*((stimulusDiameterDegrees/2)^2);
+stimulusDurationSecs = 60*60;
+
+%% Read in and plot the spectral functions used by the standard
+[wls,weightingR,weightingA,weightingS,wls_R,rawWeightingR,wls_A,rawWeightingA,wls_S,rawWeightingS] = ISO2007MPEGetWeighings(S);
 
 figure; clf; set(gcf,'Position',[400 500 1400 550]);
 subplot(1,3,1); hold on
@@ -41,11 +68,13 @@ ylabel('S_lambda')
 title('UV Radiation Hazard Function');
 xlim([200 1500]);
 
-% figure; clf; hold on
-% plot(theStimulusSizesMrad,T2Sec,'ro','MarkerSize',8,'MarkerFaceColor','r');
-% xlabel('Stimulus Size (mrad)');
-% ylabel('T2 (sec)');
-% xlim([0 max(theStimulusSizesMrad)]);
-% ylim([0 100]);
-% title('Figure 9b: Test of AnsiZ136MPEComputeT2');
-% grid on
+%% Corenal weighted UV limit
+[val1_UWattsPerCm2,limit1_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousCornealUVWeightedValue(S,spd_phillybright,weightingS,stimulusAreaDegrees2,stimulusDurationSecs);
+fprintf('  * Type 1 continuous corneal UV weighted (5.4.1.1)\n');
+fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',val1_UWattsPerCm2,limit1_UWattsPerCm2);
+
+% Corenal uweighted UV limit
+[val2_UWattsPerCm2,limit2_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousCornealUVUnweightedValue(S,spd_phillybright,stimulusAreaDegrees2,stimulusDurationSecs);
+fprintf('  * Type 1 continuous corneal UV unweighted (5.4.1.2)\n');
+fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',val2_UWattsPerCm2,limit2_UWattsPerCm2);
+

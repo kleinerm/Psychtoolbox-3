@@ -1,4 +1,4 @@
-function [wls,weightingR,weightingA,weightingS,wls_R,rawWeigtingR,wls_A,rawWeightingA,wls_S,rawWeightingS] = ISO2007MPEGetWeighings(S)
+function [wls,weightingR,weightingA,weightingS,wls_R,rawWeightingR,wls_A,rawWeightingA,wls_S,rawWeightingS] = ISO2007MPEGetWeighings(S)
 % [wls,weightingR,weightingA,weightingS,wls_R,rawWeigtingR,wls_A,rawWeightingA,wls_S,rawWeightingS] = ISO2007MPEGetWeighings(S)
 %
 % Read the text files and get the three weighting functions needed for the
