@@ -36,7 +36,7 @@ else
 end
 
 %% Convert radiance to corneal irradiance
-cornealIrradiance_WattsPerM2 = radRadianceAndDegrees2ToCornIrradiance(radiance_WattsPerSrM2,stimulusAreaDegrees2);
+cornealIrradiance_WattsPerM2 = RadianceAndDegrees2ToCornIrradiance(radiance_WattsPerSrM2,stimulusAreaDegrees2);
 cornealIrradiance_UWattsPerM2 = (10^6)*cornealIrradiance_WattsPerM2;
 cornealIrradiance_UWattsPerCm2 = (10^-4)*cornealIrradiance_UWattsPerM2;
 

@@ -1,8 +1,8 @@
-function configOUT = PR670set(vargin)
-% PR670set - Update the PR-670 configuration.
+function values = PR670setget(vargin)
+% PR670setget - Set and get PR-670 attributes
 %
 % Syntax:
-% configOUT = PR670set(
+% configOUT = PR670setget(
 % configOUT = PR670config(configIN)
 %
 % Description:
@@ -11,11 +11,9 @@ function configOUT = PR670set(vargin)
 % Arguments are attribute, value pairs
 %
 % Supported attributes
-%   'Aperture' -- Set apperture.  Values are numeric
-%      0 -> 1 deg
-%      1 -> 1/2 deg
-%      2 -> 1/4 deg
-%      3 -> 1/8 deg
+%   'GetAperture' -- Get apperture.  Values are numeric in degrees
+%   'SetAperture' -- Set apperture.  Values are numeric in degrees
+%    Allowable values: 1 , 0.5, 0.25, 0.125
 
 % ordered { Units, Exposure, N Samples, CIE Observer, Sync Mode, Frequency }.
 
@@ -38,13 +36,19 @@ if ~isempty(p.UsingDefaults)
 end
 method = p.Results.method;
 
-% If no inputs, get current state of PR-655 and return string
+% If no inputs, get current state of PR-670 and return string
 if nargin == 0
     PR670read;
     PR670write('D601')
     configOUT = PR670read;
     return
 end
+
+% PR-670 aperture codes
+%      0 -> 1 deg
+%      1 -> 1/2 deg
+%      2 -> 1/4 deg
+%      3 -> 1/8 deg
 
 % otherwise, parse string input and configure PR
 if ~iscell(configIN)

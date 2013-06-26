@@ -1,4 +1,4 @@
-% radRadiometricConversionsTest
+% RadiometricConversionsTest
 %
 % Test out the radiometric conversion routines.
 %
@@ -20,13 +20,13 @@ pupilDiameterM = 0.003;
 pupilAreaM2 = 2*pi*((pupilDiameterM/2)^2);
 
 %% Convert radiance to retinal irradiance
-retIrradianceWattsPerM2 = radRadianceAndPupilAreaEyeLengthToRetIrradiance(radianceWattsPerSrM2,S,pupilAreaM2,eyeLengthM);
+retIrradianceWattsPerM2 = RadianceAndPupilAreaEyeLengthToRetIrradiance(radianceWattsPerSrM2,S,pupilAreaM2,eyeLengthM);
 
 %% Convert retinal irradiance to units of degrees2.
-retIrradianceWattsPerDegrees2 = radRetIrradiancePerAreaAndEyeLengthToRetIrradiancePerDegrees2(retIrradianceWattsPerM2,eyeLengthM);
+retIrradianceWattsPerDegrees2 = RetIrradiancePerAreaAndEyeLengthToRetIrradiancePerDegrees2(retIrradianceWattsPerM2,eyeLengthM);
 
 %% Convert back to units of area and check that we get what we put in.
-retIrradianceWattsPerM2Check = radRetIrradiancePerDegrees2AndEyeLengthToRetIrradiancePerArea(retIrradianceWattsPerDegrees2,eyeLengthM);
+retIrradianceWattsPerM2Check = RetIrradiancePerDegrees2AndEyeLengthToRetIrradiancePerArea(retIrradianceWattsPerDegrees2,eyeLengthM);
 fprintf('Retinal irradiance: %0.3g Watts/M2 (%0.3g check), %0.3g Watts/deg2\n', ...
     retIrradianceWattsPerM2,retIrradianceWattsPerM2Check,retIrradianceWattsPerDegrees2);
 if (abs(retIrradianceWattsPerM2-retIrradianceWattsPerM2Check) > 1e-10)

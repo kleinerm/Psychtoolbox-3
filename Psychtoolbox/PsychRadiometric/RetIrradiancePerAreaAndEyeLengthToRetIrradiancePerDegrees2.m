@@ -1,5 +1,5 @@
-function retIrradiance_PerDegrees2 = radRetIrradiancePerAreaAndEyeLengthToRetIrradiancePerDegrees2(retIrradiance_PerArea,eyeLength)
-% retIrradiance_PerDegrees2 = radRetIrradiancePerAreaAndEyeLengthToRetIrradiancePerDegrees2(retIrradiance_PerArea,eyeLength)
+function retIrradiance_PerDegrees2 = RetIrradiancePerAreaAndEyeLengthToRetIrradiancePerDegrees2(retIrradiance_PerArea,eyeLength)
+% retIrradiance_PerDegrees2 = RetIrradiancePerAreaAndEyeLengthToRetIrradiancePerDegrees2(retIrradiance_PerArea,eyeLength)
 %
 % Convert retinal irradiance measured in units of Y/x^2 to units of
 % Y/deg^2, where x is a unit of distance (m, cm, mm, um, etc.) and
@@ -10,7 +10,7 @@ function retIrradiance_PerDegrees2 = radRetIrradiancePerAreaAndEyeLengthToRetIrr
 % The conversion assumes that we are in the small angle regime, where
 % degrees are essentially linear with retinal extent.
 %
-% See also: PsychRadiometric, radRetIrradiancePerDegrees2AndEyeLengthToRetIrradiancePerArea.
+% See also: PsychRadiometric, RetIrradiancePerDegrees2AndEyeLengthToRetIrradiancePerArea.
 %
 % 6/23/13  dhb  Wrote it.
 
