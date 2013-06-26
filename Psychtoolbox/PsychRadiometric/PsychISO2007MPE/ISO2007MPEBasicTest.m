@@ -78,3 +78,8 @@ fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',val1_UWattsPerCm2,limit
 fprintf('  * Type 1 continuous corneal UV unweighted (5.4.1.2)\n');
 fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',val2_UWattsPerCm2,limit2_UWattsPerCm2);
 
+%% Retinal irradiacne weighted aphakic limit
+[val3_UWattsPerCm2,limit3_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousRetIrradianceWeightedValue(...
+    S,spd_phillybright,weightingA,stimulusAreaDegrees2,stimulusDurationSecs);
+fprintf('  * Type 1 continuous aphakic retinal illumiance weighted (5.4.1.3.a)\n');
+fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',val3_UWattsPerCm2,limit3_UWattsPerCm2);

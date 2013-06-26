@@ -22,6 +22,7 @@
 %   ISO2007MPEBasicTest  - Test the suite of routines.  Generates many figures that should match those in the standard.
 %   ISO2007MPEComputeType1ContinuousCornealUVUnweightedValue - As the name indicates.
 %   ISO2007MPEComputeType1ContinuousCornealUVWeightedValue - As the name indicates.
+%   ISO2007MPEComputeType1ContinuousRetIrradianceWeightedValue - As the name indicates.
 %   ISO2007MPEGetWeigthtings - Get the spectral weighting functions needed by the standard.
 %
 %   ISO2007MPETableA1.txt    - Table A1 of the standard as tab delimited text.
