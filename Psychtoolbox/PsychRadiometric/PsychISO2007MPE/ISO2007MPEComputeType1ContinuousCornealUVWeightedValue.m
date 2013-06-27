@@ -1,5 +1,5 @@
-function [val_UWattsPerCm2,limit_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousCornealUVWeightedValue(S,radiance_WattsPerSrM2,weightingS,stimulusAreaDegrees2,exposureDurationSecs)
-% [val_UWattsPerCm2,limit_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousCornealUVWeightedValue(S,radiance_WattsPerSrM2,weightingS,stimulusAreaDegrees2,exposureDurationSecs)
+function [val_UWattsPerCm2,limit_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousCornealUVWeightedValue(S,radiance_WattsPerSrM2,weightingS,stimulusDurationSecs,stimulusAreaDegrees2)
+% [val_UWattsPerCm2,limit_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousCornealUVWeightedValue(S,radiance_WattsPerSrM2,weightingS,stimulusDurationSecs,stimulusAreaDegrees2)
 %
 % Compute the weighted UV radiation for Type 1 instruments as given on page 7, Table 2, 
 % 5.4.1.1.
@@ -25,7 +25,7 @@ function [val_UWattsPerCm2,limit_UWattsPerCm2] = ISO2007MPEComputeType1Continuou
 % 6/25/13  dhb  Wrote it.
 
 %% Specify the limit (from table)
-exposureDurationHours = exposureDurationSecs/3600;
+exposureDurationHours = stimulusDurationSecs/3600;
 if (exposureDurationHours <= 2)
     limit_UWattsPerCm2 = 0.4;
 else

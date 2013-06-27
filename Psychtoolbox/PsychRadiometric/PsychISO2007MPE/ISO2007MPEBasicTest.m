@@ -6,10 +6,9 @@
 % at the Matlab prompt.
 % ****************************************************************************
 %
-% Test code for our implementation of ANSI Z136.1-2007. Reproduces many figures from the
-% standard.
+% Test code for our implementation of the ISO 2007 broadband MPE standard.
 %
-% 2/22/13  dhb  Wrote it.
+% 6/26/13  dhb  Wrote it.
 
 %% Clear and close
 clear; close all;
@@ -68,18 +67,44 @@ ylabel('S_lambda')
 title('UV Radiation Hazard Function');
 xlim([200 1500]);
 
-%% Corenal weighted UV limit
-[val1_UWattsPerCm2,limit1_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousCornealUVWeightedValue(S,spd_phillybright,weightingS,stimulusAreaDegrees2,stimulusDurationSecs);
-fprintf('  * Type 1 continuous corneal UV weighted (5.4.1.1)\n');
+%% Corenal irradiance weighted UV limit
+[val1_UWattsPerCm2,limit1_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousCornealUVWeightedValue(...
+    S,spd_phillybright,weightingS,stimulusDurationSecs,stimulusAreaDegrees2);
+fprintf('  * Type 1 continuous corneal irradiance UV weighted (5.4.1.1)\n');
 fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',val1_UWattsPerCm2,limit1_UWattsPerCm2);
 
-% Corenal uweighted UV limit
-[val2_UWattsPerCm2,limit2_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousCornealUVUnweightedValue(S,spd_phillybright,stimulusAreaDegrees2,stimulusDurationSecs);
-fprintf('  * Type 1 continuous corneal UV unweighted (5.4.1.2)\n');
+%% Corenal irradiance uweighted UV limit
+[val2_UWattsPerCm2,limit2_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousCornealUVUnweightedValue(...
+S,spd_phillybright,stimulusDurationSecs,stimulusAreaDegrees2);
+fprintf('  * Type 1 continuous corneal irradiance UV unweighted (5.4.1.2)\n');
 fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',val2_UWattsPerCm2,limit2_UWattsPerCm2);
 
-%% Retinal irradiacne weighted aphakic limit
-[val3_UWattsPerCm2,limit3_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousRetIrradianceWeightedValue(...
-    S,spd_phillybright,weightingA,stimulusAreaDegrees2,stimulusDurationSecs);
+%% Retinal irradiance weighted aphakic limit
+[val3_UWattsPerCm2,limit3_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousRetIrradiancePCWeightedValue(...
+    S,spd_phillybright,weightingA,stimulusDurationSecs);
 fprintf('  * Type 1 continuous aphakic retinal illumiance weighted (5.4.1.3.a)\n');
 fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',val3_UWattsPerCm2,limit3_UWattsPerCm2);
+
+%% Radiance weighted aphakic limit
+[val4_UWattsPerSrCm2,limit4_UWattsPerSrCm2] = ISO2007MPEComputeType1ContinuousRadiancePCWeightedValue(...
+    S,spd_phillybright,weightingA,stimulusDurationSecs);
+fprintf('  * Type 1 continuous aphakic radiance weighted (5.4.1.3.b)\n');
+fprintf('    * Value: %0.3f, limit %0.3f (uWatts/[sr-cm2])\n',val4_UWattsPerSrCm2,limit4_UWattsPerSrCm2);
+
+%% Corneal irradiance unweighted IR limit
+[val5_UWattsPerCm2,limit5_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousCornealIRUnweightedValue(...
+    S,spd_phillybright,stimulusDurationSecs,stimulusAreaDegrees2);
+fprintf('  * Type 1 continuous corneal irradiance IR unweighted (5.4.1.3.b)\n');
+fprintf('    * Value: %0.3f, limit %0.3f (uWatts/[sr-cm2])\n',val5_UWattsPerCm2,limit5_UWattsPerCm2);
+
+%% Retinal irradiance weighted thermal limit
+[val6_UWattsPerCm2,limit6_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousRetIrradianceTHWeightedValue(...
+    S,spd_phillybright,weightingR,stimulusDurationSecs);
+fprintf('  * Type 1 continuous thermal retinal illumiance weighted (5.4.1.3.a)\n');
+fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',val6_UWattsPerCm2,limit6_UWattsPerCm2);
+
+%% Radiance weighted thermal limit
+[val7_UWattsPerSrCm2,limit7_UWattsPerSrCm2] = ISO2007MPEComputeType1ContinuousRadianceTHWeightedValue(...
+    S,spd_phillybright,weightingR,stimulusDurationSecs);
+fprintf('  * Type 1 continuous thermal radiance weighted (5.4.1.3.b)\n');
+fprintf('    * Value: %0.3f, limit %0.3f (uWatts/[sr-cm2])\n',val7_UWattsPerSrCm2,limit7_UWattsPerSrCm2);

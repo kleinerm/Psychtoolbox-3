@@ -1,10 +1,10 @@
-function [val_UWattsPerCm2,limit_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousRetIrradianceWeightedValue(...
-    S,radiance_WattsPerSrM2,weightingA,stimulusAreaDegrees2,exposureDurationSecs,eyeLengthMm)
-% function [val_UWattsPerCm2,limit_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousRetIrradianceWeightedValue(...
-%   S,radiance_WattsPerSrM2,weightingA,stimulusAreaDegrees2,exposureDurationSecs,[eyeLengthMm])
+function [val_UWattsPerSrCm2,limit_UWattsPerSrCm2] = ISO2007MPEComputeType1ContinuousRadiancePCWeightedValue(...
+    S,radiance_WattsPerSrM2,weightingA,stimulusDurationSecs)
+%[val_UWattsPerSrCm2,limit_UWattsPerSrCm2] = ISO2007MPEComputeType1ContinuousRadiancePCWeightedValue(...
+%    S,radiance_WattsPerSrM2,weightingA,stimulusDurationSecs)
 %
-% Compute the weighted aphakic retinal irradiance for Type 1 instruments as given on page 8, Table 2, 
-% 5.4.1.3.a.
+% Compute the weighted aphakic (photochemical) radiance for Type 1 instruments as given on page 8, Table 2, 
+% 5.4.1.3.b.
 %
 % Input spectrum is radiance in units of Watts/[sr-m2-wlinterval].
 %
@@ -23,9 +23,13 @@ function [val_UWattsPerCm2,limit_UWattsPerCm2] = ISO2007MPEComputeType1Continuou
 % routine does not worry about that aspect.  The most conservative thing to do is
 % to pass the highest localized power that will be presented.
 %
-% The standard specifies a pupil diameter (7 mm) to use for the conversion from radiance
-% to retinal irradiance, but not an eye length.  We use 17 mm here by default.  You
-% can override this by passing a different length in mm.
+% The indicates that radiance should be measured through a 7 mm aperture at the cornea.
+% I believe this refers to the case where you are measuring radiance by measuring radiant
+% flux through two apertures at a known distance apart.  It would then make sense that you'd
+% want to know the radiance defined by the direction subtended by a 7 mm aperture at the
+% cornea, e.g. right where a large pupil would be.  If you measure using some other device
+% (e.g. a PhotoResearch PR-XXX that directly obtains radiance and do so from the eye position,
+% that also seems reasonable.
 %
 % ****************************************************************************
 % IMPORTANT: Before using the ISO2007MPE routines, please see the notes on usage
@@ -35,31 +39,17 @@ function [val_UWattsPerCm2,limit_UWattsPerCm2] = ISO2007MPEComputeType1Continuou
 %
 % 6/26/13  dhb  Wrote it.
 
-%% Default eye length
-if (nargin < 6 || isempty(eyeLengthMm))
-    eyeLengthMm = 17;
-end
-eyeLengthM = (10^-3)*eyeLengthMm;
-
 %% Specify the limit (from table)
-exposureDurationHours = exposureDurationSecs/3600;
+exposureDurationHours = stimulusDurationSecs/3600;
 if (exposureDurationHours <= 2)
-    limit_UWattsPerCm2 = 220;
+    limit_UWattsPerSrCm2 = 2*(10^3);
 else
-    limit_UWattsPerCm2 = 220/(exposureDurationHours/2);
+    limit_UWattsPerSrCm2 = 2*(10^3)/(exposureDurationHours/2);
 end
 
-%% Convert radiance to retinal irradiance
-%
-% The standard says to do this with for a 7 mm pupil.  It does
-% not give an eye length to assume.  We assume 17 mm.
-pupilDiameterMm = 7;
-pupilAreaMm2 = pi*((pupilDiameterMm/2)^2);
-pupilAreaM2 = (10^-6)*pupilAreaMm2;
-
-retIrradiance_WattsPerM2 = RadianceAndPupilAreaEyeLengthToRetIrradiance(radiance_WattsPerSrM2,S,pupilAreaM2,eyeLengthM);
-retIrradiance_UWattsPerM2 = (10^6)*retIrradiance_WattsPerM2;
-retIrradiance_UWattsPerCm2 = (10^-4)*retIrradiance_UWattsPerM2;
+%% Unit conversion
+radiance_UWattsPerSrM2 = (10^6)*radiance_WattsPerSrM2;
+radiance_UWattsPerSrCm2 = (10^-4)*radiance_UWattsPerSrM2;
 
 %% Get weighted sum.  The weighting function is zero outside the
 % specified wavelength range, so we don't have to worry about the
@@ -70,5 +60,5 @@ index = find(wls >= 305 & wls <= 700);
 if (isempty(index))
     error('Should not call this routine with no spectral sampling between 305 and 700');
 end
-val_UWattsPerCm2 = sum(retIrradiance_UWattsPerCm2 .* weightingA);
+val_UWattsPerSrCm2 = sum(radiance_UWattsPerSrCm2 .* weightingA);
 
