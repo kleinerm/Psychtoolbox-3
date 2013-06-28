@@ -47,7 +47,8 @@
 %   Part 2: Light hazard protection.  The standard document.  Tables listed below are in
 %   this document.
 %
-%   ISO2007MPEBasicTest  - Test the suite of routines.  Generates many figures that should match those in the standard.
+%   ISO2007MPEBasicTest      - Test the suite of routines.  Generates many figures that should match those in the standard.
+%   ISO2007MPECheckType1ContinuousRadiance - Wrapper function for comparing a measured radiance to MPE limits.
 %   ISO2007MPEComputeType1ContinuousAntConvrgUnweightedValue - Placeholder (not tested) for convergent beam limit.  Table 2, 5.4.1.5.
 %   ISO2007MPEComputeType1ContinuousCornealIRUnweightedValue - As the name indicates.  Table 2, 5.4.1.4.
 %   ISO2007MPEComputeType1ContinuousCornealUVUnweightedValue - As the name indicates.  Table 2, 5.4.1.2.
@@ -57,6 +58,7 @@
 %   ISO2007MPEComputeType1ContinuousRetIrradiancePCWeightedValue - As the name indicates.  Table 2, 5.4.1.3.a
 %   ISO2007MPEComputeType1ContinuousRetIrradianceTHWeightedValue - As the name indicates.  Table 2, 5.4.1.6.a
 %   ISO2007MPEGetWeigthtings - Get the spectral weighting functions needed by the standard.
+%   ISO2007MPEPrintAnalysis - Formatted print of output returned by ISO2007MPECheckType1ContinuousRadiance.
 %
 %   ISO2007MPETableA1.txt    - Table A1 of the standard as tab delimited text.
 %   ISO2007MPETableA2.txt    - Table A2 of the standard as tab delimited text.

@@ -8,6 +8,13 @@
 %
 % Test code for our implementation of the ISO 2007 broadband MPE standard.
 %
+% We don't have any known test cases to check, particularly since we can
+% only measure light in the visible.  Here we verify that a bright sunlight
+% measured in Philly is below the MPE, but not by all that much.  This is
+% broadly consistent with what we find when we compare the same light to the ANSI
+% standard for laser light (with a few assumptions to apply that standard to
+% broadband light.)
+%
 % 6/26/13  dhb  Wrote it.
 
 %% Clear and close
@@ -25,7 +32,8 @@ T_xyz = SplineCmf(S_xyz1931,683*T_xyz1931,S);
 
 %% Load in a test spectrum
 %
-% This is a bright sunlight measured through a window in Philly.
+% This is a bright sunlight measured through a window and off
+% of a white piece of paper in Philly.
 % We only have measurements between 380 and 780 nm.  In this
 % example, we zero extend when we spline to the whole range.
 load spd_phillybright
@@ -77,39 +85,7 @@ xlim([200 1500]);
 %% Do the computations
 fprintf('\nRunning tests for a sunlight measured in Philadelphia\n\n');
 [IsOverLimit,ISO2007MPEStruct] = ISO2007MPECheckType1ContinuousRadiance(S,spd_phillybright,stimulusDurationSecs,stimulusAreaDegrees2,eyeLengthMm);
-if (IsOverLimit == 1)
-    fprintf('  * Light is OVER ISO 2007 MPE Type 1 continuous limits\n');
-else
-    fprintf('  * Light is UNDER ISO 2007 MPE Type 1 continuous limits\n');
-end
-    
-%% Corenal irradiance weighted UV limit
-fprintf('  * Type 1 continuous corneal irradiance UV weighted (5.4.1.1)\n');
-fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',ISO2007MPEStruct.cornealUVWeightedVal_UWattsPerCm2,ISO2007MPEStruct.cornealUVWeightedLimit_UWattsPerCm2);
-
-%% Corenal irradiance uweighted UV limit
-fprintf('  * Type 1 continuous corneal irradiance UV unweighted (5.4.1.2)\n');
-fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',ISO2007MPEStruct.cornealUVUnweightedVal_UWattsPerCm2,ISO2007MPEStruct.cornealUVUnweightedLimit_UWattsPerCm2);
-
-%% Retinal irradiance weighted aphakic limit
-fprintf('  * Type 1 continuous aphakic retinal illumiance weighted (5.4.1.3.a)\n');
-fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',ISO2007MPEStruct.retIrradiancePCWeightedVal_UWattsPerCm2,ISO2007MPEStruct.retIrradiancePCWeightedLimit_UWattsPerCm2);
-
-%% Radiance weighted aphakic limit
-fprintf('  * Type 1 continuous aphakic radiance weighted (5.4.1.3.b)\n');
-fprintf('    * Value: %0.3f, limit %0.3f (uWatts/[sr-cm2])\n',ISO2007MPEStruct.radiancePCWeightedVal_UWattsPerSrCm2,ISO2007MPEStruct.radiancePCWeightedLimit_UWattsPerSrCm2);
-
-%% Corneal irradiance unweighted IR limit
-fprintf('  * Type 1 continuous corneal irradiance IR unweighted (5.4.1.3.b)\n');
-fprintf('    * Value: %0.3f, limit %0.3f (uWatts/[sr-cm2])\n',ISO2007MPEStruct.cornealIRUnweightedVal_UWattsPerCm2,ISO2007MPEStruct.cornealIRUnweightedLimit_UWattsPerCm2);
-
-%% Retinal irradiance weighted thermal limit
-fprintf('  * Type 1 continuous thermal retinal illumiance weighted (5.4.1.3.a)\n');
-fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',ISO2007MPEStruct.retIrradianceTHWeightedVal_UWattsPerCm2,ISO2007MPEStruct.retIrradianceTHWeightedLimit_UWattsPerCm2);
-
-%% Radiance weighted thermal limit
-fprintf('  * Type 1 continuous thermal radiance weighted (5.4.1.3.b)\n');
-fprintf('    * Value: %0.3f, limit %0.3f (uWatts/[sr-cm2])\n',ISO2007MPEStruct.radianceTHWeightedVal_UWattsPerSrCm2,ISO2007MPEStruct.radianceTHWeightedLimit_UWattsPerSrCm2);
+ISO2007MPEPrintAnalysis(IsOverLimit,ISO2007MPEStruct)
 
 %% Anterior segment limit for convergent beams
 % This just makes sure the routine properly throws an error.
