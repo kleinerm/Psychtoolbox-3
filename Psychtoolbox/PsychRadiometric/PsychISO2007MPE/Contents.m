@@ -24,7 +24,23 @@
 %   knows more or has a different view, please let me (DHB, brainard@psych.upenn.edu)
 %   know.
 %
-%   d)
+%   d) There is a limit (Table 2, 5.4.1.5) for convergent beams, which I think is what
+%   a Maxwellian view produces.  I wrote a placeholder routine for this limit, but since
+%   I am not currently using such a rig I don't have any application for it and have
+%   not tested it.
+%
+%   e) The standard uses cm^2 based units for radiance, irradiance, etc.  It switches
+%   between uWatts, mWatts, and Watts depending on which limit is being considered.
+%   For uniformity, these routines return all quantities and limits in uWatts, cm^2
+%   based units.
+%
+%   For input, we typically measure radiance in Watts/[sr-m^22] and all the routines take
+%   radiance as input and convert as necessary (with the help of passed ancilliary arguments).
+%   To match the measurement instrumentation we use, the radiance units are kept in
+%   units of Watts/[sr-m^22], and the routines do the appropriate converstions.  
+%   these are the input units expected. The one exception on the input is the convergent beam limit,
+%   where the input is irradiance and should be passed in uWatts/cm^2.   The help text is pretty
+%   clear about what is desired for each routine.
 %
 % REFERENCES.
 %   Ansi ISO 15004-2, Ophthalmic instruments - Fundamental requirements and test methods -
@@ -32,6 +48,7 @@
 %   this document.
 %
 %   ISO2007MPEBasicTest  - Test the suite of routines.  Generates many figures that should match those in the standard.
+%   ISO2007MPEComputeType1ContinuousAntConvrgUnweightedValue - Placeholder (not tested) for convergent beam limit.  Table 2, 5.4.1.5.
 %   ISO2007MPEComputeType1ContinuousCornealIRUnweightedValue - As the name indicates.  Table 2, 5.4.1.4.
 %   ISO2007MPEComputeType1ContinuousCornealUVUnweightedValue - As the name indicates.  Table 2, 5.4.1.2.
 %   ISO2007MPEComputeType1ContinuousCornealUVWeightedValue - As the name indicates.  Table 2, 5.4.1.1.

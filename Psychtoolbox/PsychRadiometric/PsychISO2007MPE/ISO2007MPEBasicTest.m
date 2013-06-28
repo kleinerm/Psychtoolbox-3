@@ -67,6 +67,9 @@ ylabel('S_lambda')
 title('UV Radiation Hazard Function');
 xlim([200 1500]);
 
+%% Print out what we're doing
+fprintf('\nRunning tests for a sunlight measured in Philadelphia\n\n');
+
 %% Corenal irradiance weighted UV limit
 [val1_UWattsPerCm2,limit1_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousCornealUVWeightedValue(...
     S,spd_phillybright,weightingS,stimulusDurationSecs,stimulusAreaDegrees2);
@@ -108,3 +111,11 @@ fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',val6_UWattsPerCm2,limit
     S,spd_phillybright,weightingR,stimulusDurationSecs);
 fprintf('  * Type 1 continuous thermal radiance weighted (5.4.1.3.b)\n');
 fprintf('    * Value: %0.3f, limit %0.3f (uWatts/[sr-cm2])\n',val7_UWattsPerSrCm2,limit7_UWattsPerSrCm2);
+
+%% Anterior segment limit for convergent beams
+% This just makes sure the routine properly throws an error.
+try
+    fprintf('\n\nTesting error catch for anterior segment limit for convergent beams\n');
+    [val8_UWattsPerCm2,limit8_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousAntConvrgUnweightedValue(S,NaN,stimulusDurationSecs);   
+catch
+end

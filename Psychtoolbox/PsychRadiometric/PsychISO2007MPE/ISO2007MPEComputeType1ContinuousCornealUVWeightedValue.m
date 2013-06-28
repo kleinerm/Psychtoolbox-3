@@ -42,7 +42,7 @@ cornealIrradiance_UWattsPerCm2 = (10^-4)*cornealIrradiance_UWattsPerM2;
 % wavelength limits in the standard.  We do perform a sanity check
 % that something got passed in the wavelength region of interest.
 wls = SToWls(S);
-index = find(wls >= 250 & wls <= 400);
+index = find(wls >= 250 & wls <= 400, 1);
 if (isempty(index))
     error('Should not call this routine with no spectral sampling between 250 and 400');
 end

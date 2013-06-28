@@ -3,7 +3,7 @@ function [val_UWattsPerSrCm2,limit_UWattsPerSrCm2] = ISO2007MPEComputeType1Conti
 %[val_UWattsPerSrCm2,limit_UWattsPerSrCm2] = ISO2007MPEComputeType1ContinuousRadianceTHWeightedValue(...
 %    S,radiance_WattsPerSrM2,weightingR,stimulusDurationSecs)
 %
-% Compute the weighted thermal radiance for Type 1 instruments as given on page 8, Table 2, 
+% Compute the weighted thermal radiance for Type 1 instruments as given on page 9, Table 2, 
 % 5.4.1.6.b.
 %
 % Input spectrum is radiance in units of Watts/[sr-m2-wlinterval].
@@ -56,7 +56,7 @@ radiance_UWattsPerSrCm2 = (10^-4)*radiance_UWattsPerSrM2;
 % wavelength limits in the standard.  We do perform a sanity check
 % that something got passed in the wavelength region of interest.
 wls = SToWls(S);
-index = find(wls >= 380 & wls <= 1400);
+index = find(wls >= 380 & wls <= 1400, 1);
 if (isempty(index))
     error('Should not call this routine with no spectral sampling between 380 and 1400');
 end

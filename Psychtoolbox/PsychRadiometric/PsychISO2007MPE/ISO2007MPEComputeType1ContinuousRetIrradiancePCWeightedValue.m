@@ -66,7 +66,7 @@ retIrradiance_UWattsPerCm2 = (10^-4)*retIrradiance_UWattsPerM2;
 % wavelength limits in the standard.  We do perform a sanity check
 % that something got passed in the wavelength region of interest.
 wls = SToWls(S);
-index = find(wls >= 305 & wls <= 700);
+index = find(wls >= 305 & wls <= 700, 1);
 if (isempty(index))
     error('Should not call this routine with no spectral sampling between 305 and 700');
 end
