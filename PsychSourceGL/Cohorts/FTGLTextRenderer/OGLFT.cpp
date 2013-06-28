@@ -3825,14 +3825,17 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
         // as we expect. We need to convert it into 8bpp bitmaps without (aka 1 Byte) alignment:
         FT_Bitmap bitmap;
         
-        // Convert into temporary 'bitmap':
-        FT_Bitmap_Convert( face->glyph->library, &(face->glyph->bitmap), &bitmap, 1 );
+        // Initialize target temporary bitmap:
+        FT_Bitmap_New( &bitmap );
+        
+        // Convert into temporary 8 bpp 'bitmap', with a 1 Byte alignment, ie. no alignment:
+        if (0 != FT_Bitmap_Convert( OGLFT::Library::instance(), &(face->glyph->bitmap), &bitmap, 1 )) return;
         
         // Pass it to our inverter:
         inverted_pixmap = invertPixmap( bitmap, &width, &height );
         
         // Release temporary bitmap:
-        FT_Bitmap_Done(face->glyph->library, &bitmap);
+        FT_Bitmap_Done( OGLFT::Library::instance(), &bitmap );
     }
     else {
         // Input bitmap is 8bpp = 1 Byte per pixel anti-aliased grayscale image.
