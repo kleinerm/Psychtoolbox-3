@@ -31,19 +31,26 @@ T_xyz = SplineCmf(S_xyz1931,683*T_xyz1931,S);
 load spd_phillybright
 spd_phillybright = SplineSpd(S_phillybright,spd_phillybright,S,0);
 photopicLuminancePhillyBrightCdM2 = T_xyz(2,:)*spd_phillybright;
-figure; 
-plot(SToWls(S),spd_phillybright,'r','LineWidth',2);
-xlabel('Wavelength (nm)');
-ylabel('Radiance (Watts/[sr-m2-wlinterval]');
+PLOT_SPECTRUM = 0;
+if (PLOT_SPECTRUM)
+    figure;
+    plot(SToWls(S),spd_phillybright,'r','LineWidth',2);
+    xlabel('Wavelength (nm)');
+    ylabel('Radiance (Watts/[sr-m2-wlinterval]');
+end
 
 %% Specify stimulus parameters
 stimulusDiameterDegrees = 10;
 stimulusAreaDegrees2 = pi*((stimulusDiameterDegrees/2)^2);
 stimulusDurationSecs = 60*60;
 
-%% Read in and plot the spectral functions used by the standard
-[wls,weightingR,weightingA,weightingS,wls_R,rawWeightingR,wls_A,rawWeightingA,wls_S,rawWeightingS] = ISO2007MPEGetWeighings(S);
+%% Eye length, for conversion from radiance to retinal irradiance
+%
+% This will default to 17 if you don't pass it to the compute routine.
+eyeLengthMm = 17;
 
+%% Plot of weighting functions
+[wls,weightingR,weightingA,weightingS,wls_R,rawWeightingR,wls_A,rawWeightingA,wls_S,rawWeightingS] = ISO2007MPEGetWeighings(S);
 figure; clf; set(gcf,'Position',[400 500 1400 550]);
 subplot(1,3,1); hold on
 plot(wls_R,rawWeightingR,'r','LineWidth',3);
@@ -67,55 +74,47 @@ ylabel('S_lambda')
 title('UV Radiation Hazard Function');
 xlim([200 1500]);
 
-%% Print out what we're doing
+%% Do the computations
 fprintf('\nRunning tests for a sunlight measured in Philadelphia\n\n');
-
+[IsOverLimit,ISO2007MPEStruct] = ISO2007MPECheckType1ContinuousRadiance(S,spd_phillybright,stimulusDurationSecs,stimulusAreaDegrees2,eyeLengthMm);
+if (IsOverLimit == 1)
+    fprintf('  * Light is OVER ISO 2007 MPE Type 1 continuous limits\n');
+else
+    fprintf('  * Light is UNDER ISO 2007 MPE Type 1 continuous limits\n');
+end
+    
 %% Corenal irradiance weighted UV limit
-[val1_UWattsPerCm2,limit1_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousCornealUVWeightedValue(...
-    S,spd_phillybright,weightingS,stimulusDurationSecs,stimulusAreaDegrees2);
 fprintf('  * Type 1 continuous corneal irradiance UV weighted (5.4.1.1)\n');
-fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',val1_UWattsPerCm2,limit1_UWattsPerCm2);
+fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',ISO2007MPEStruct.cornealUVWeightedVal_UWattsPerCm2,ISO2007MPEStruct.cornealUVWeightedLimit_UWattsPerCm2);
 
 %% Corenal irradiance uweighted UV limit
-[val2_UWattsPerCm2,limit2_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousCornealUVUnweightedValue(...
-S,spd_phillybright,stimulusDurationSecs,stimulusAreaDegrees2);
 fprintf('  * Type 1 continuous corneal irradiance UV unweighted (5.4.1.2)\n');
-fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',val2_UWattsPerCm2,limit2_UWattsPerCm2);
+fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',ISO2007MPEStruct.cornealUVUnweightedVal_UWattsPerCm2,ISO2007MPEStruct.cornealUVUnweightedLimit_UWattsPerCm2);
 
 %% Retinal irradiance weighted aphakic limit
-[val3_UWattsPerCm2,limit3_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousRetIrradiancePCWeightedValue(...
-    S,spd_phillybright,weightingA,stimulusDurationSecs);
 fprintf('  * Type 1 continuous aphakic retinal illumiance weighted (5.4.1.3.a)\n');
-fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',val3_UWattsPerCm2,limit3_UWattsPerCm2);
+fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',ISO2007MPEStruct.retIrradiancePCWeightedVal_UWattsPerCm2,ISO2007MPEStruct.retIrradiancePCWeightedLimit_UWattsPerCm2);
 
 %% Radiance weighted aphakic limit
-[val4_UWattsPerSrCm2,limit4_UWattsPerSrCm2] = ISO2007MPEComputeType1ContinuousRadiancePCWeightedValue(...
-    S,spd_phillybright,weightingA,stimulusDurationSecs);
 fprintf('  * Type 1 continuous aphakic radiance weighted (5.4.1.3.b)\n');
-fprintf('    * Value: %0.3f, limit %0.3f (uWatts/[sr-cm2])\n',val4_UWattsPerSrCm2,limit4_UWattsPerSrCm2);
+fprintf('    * Value: %0.3f, limit %0.3f (uWatts/[sr-cm2])\n',ISO2007MPEStruct.radiancePCWeightedVal_UWattsPerSrCm2,ISO2007MPEStruct.radiancePCWeightedLimit_UWattsPerSrCm2);
 
 %% Corneal irradiance unweighted IR limit
-[val5_UWattsPerCm2,limit5_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousCornealIRUnweightedValue(...
-    S,spd_phillybright,stimulusDurationSecs,stimulusAreaDegrees2);
 fprintf('  * Type 1 continuous corneal irradiance IR unweighted (5.4.1.3.b)\n');
-fprintf('    * Value: %0.3f, limit %0.3f (uWatts/[sr-cm2])\n',val5_UWattsPerCm2,limit5_UWattsPerCm2);
+fprintf('    * Value: %0.3f, limit %0.3f (uWatts/[sr-cm2])\n',ISO2007MPEStruct.cornealIRUnweightedVal_UWattsPerCm2,ISO2007MPEStruct.cornealIRUnweightedLimit_UWattsPerCm2);
 
 %% Retinal irradiance weighted thermal limit
-[val6_UWattsPerCm2,limit6_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousRetIrradianceTHWeightedValue(...
-    S,spd_phillybright,weightingR,stimulusDurationSecs);
 fprintf('  * Type 1 continuous thermal retinal illumiance weighted (5.4.1.3.a)\n');
-fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',val6_UWattsPerCm2,limit6_UWattsPerCm2);
+fprintf('    * Value: %0.3f, limit %0.3f (uWatts/cm2)\n',ISO2007MPEStruct.retIrradianceTHWeightedVal_UWattsPerCm2,ISO2007MPEStruct.retIrradianceTHWeightedLimit_UWattsPerCm2);
 
 %% Radiance weighted thermal limit
-[val7_UWattsPerSrCm2,limit7_UWattsPerSrCm2] = ISO2007MPEComputeType1ContinuousRadianceTHWeightedValue(...
-    S,spd_phillybright,weightingR,stimulusDurationSecs);
 fprintf('  * Type 1 continuous thermal radiance weighted (5.4.1.3.b)\n');
-fprintf('    * Value: %0.3f, limit %0.3f (uWatts/[sr-cm2])\n',val7_UWattsPerSrCm2,limit7_UWattsPerSrCm2);
+fprintf('    * Value: %0.3f, limit %0.3f (uWatts/[sr-cm2])\n',ISO2007MPEStruct.radianceTHWeightedVal_UWattsPerSrCm2,ISO2007MPEStruct.radianceTHWeightedLimit_UWattsPerSrCm2);
 
 %% Anterior segment limit for convergent beams
 % This just makes sure the routine properly throws an error.
 try
     fprintf('\n\nTesting error catch for anterior segment limit for convergent beams\n');
-    [val8_UWattsPerCm2,limit8_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousAntConvrgUnweightedValue(S,NaN,stimulusDurationSecs);   
+    [ISO2007MPEStruct.val8_UWattsPerCm2,limit8_UWattsPerCm2] = ISO2007MPEComputeType1ContinuousAntConvrgUnweightedValue(S,NaN,stimulusDurationSecs);   
 catch
 end
