@@ -4,7 +4,9 @@ function [val_UWattsPerSrCm2,limit_UWattsPerSrCm2] = ISO2007MPEComputeType1Conti
 %    S,radiance_WattsPerSrM2,weightingR,stimulusDurationSecs)
 %
 % Compute the weighted thermal radiance for Type 1 instruments as given on page 9, Table 2, 
-% 5.4.1.6.b.
+% 5.4.1.6.b.  Note.  The limit specified there is 6 W/[sr-cm2].  I reduced to 5.88 because
+% this is the worst-case Type 2 limit (largest retinal diameter spot, see Table 4, 5.5.1.5b),
+% and it seemed more conservative to do so.
 %
 % Input spectrum is radiance in units of Watts/[sr-m2-wlinterval].
 %
@@ -39,12 +41,13 @@ function [val_UWattsPerSrCm2,limit_UWattsPerSrCm2] = ISO2007MPEComputeType1Conti
 %
 % 6/26/13  dhb  Wrote it.
 
-%% Specify the limit (from table)
+%% Specify the limit (from table, see note above about why
+% 5.88 rather than 6.)
 exposureDurationHours = stimulusDurationSecs/3600;
 if (exposureDurationHours <= 2)
-    limit_UWattsPerSrCm2 = 6*(10^6);
+    limit_UWattsPerSrCm2 = 5.88*(10^6);
 else
-    limit_UWattsPerSrCm2 = 6*(10^6)/(exposureDurationHours/2);
+    limit_UWattsPerSrCm2 = 5.88*(10^6)/(exposureDurationHours/2);
 end
 
 %% Unit conversion

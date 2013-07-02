@@ -4,32 +4,47 @@
 % maximum permissable exposure to broadband lights.
 %
 % *****************************************************************
-% IMPORTANT:
-%   a) Individuals using these routines must accept full responsibility 
+%
+% IMPORTANT
+%
+%   Individuals using these routines must accept full responsibility 
 %   for light exposures they implement. We recommend that values computed
 %   with these routines be carefully checked against independent calculations.
 %   We have done our best to follow the standard, but it is very complex and
 %   there may be errors.
 %
-%   b) As of June, 2013, these routines are still very much a work
-%   in progress and should thus be treated with special caution.  See
-%   ISO2007MPEBasicTest.
+% *****************************************************************
 %
-%   c) Only the Type 1 limits are computed.  My impression is that these are
+% NOTES:
+%
+%   a) As of June, 2013, these routines are still very much a work
+%   in progress and should thus be treated with special caution.  See
+%   ISO2007MPEBasicTest.  If someone has some worked out test cases
+%   it would be great to check those against the computations done
+%   by this suite of routines.  Please contact me (brainard@psych.upenn.edu)
+%   if you can help.
+%
+%   b) Only the Type 1 limits are computed.  My impression is that these are
 %   more conservative, and that if you stay below them you good wrt the
-%   standard content.  I believe that technically, a Type 1 instruement is
+%   standard content.  I believe that technically, a Type 1 instrument is
 %   one that *cannot* produce more light than the Type 1 limits, but it seems
 %   to me that for research purposes the main point is to stay below those limits
-%   independent of what the instrument could in principle produce.  If someone
-%   knows more or has a different view, please let me (DHB, brainard@psych.upenn.edu)
-%   know.
+%   independent of what the instrument could in principle produce.
 %
-%   d) There is a limit (Table 2, 5.4.1.5) for convergent beams, which I think is what
+%   In addition, for exposure durations of less than 2 hours (7200) seconds, the
+%   Type 2 limits are more lenient than the Type 1 limits, except for 5.5.1.5b versus
+%   5.4.1.6b, where the worst case Type 2 limit is a little lower (5.88 W/[sr-cm2]
+%   than the Type 1 limit (6 W/[sr-cm2]).  To be conservative, I used the 5.88 value
+%   in the relevant routine.
+%
+%   If someone knows more or has a different view, please let me (DHB, brainard@psych.upenn.edu) know.
+%
+%   c) There is a limit (Table 2, 5.4.1.5) for convergent beams, which I think is what
 %   a Maxwellian view produces.  I wrote a placeholder routine for this limit, but since
 %   I am not currently using such a rig I don't have any application for it and have
 %   not tested it.
 %
-%   e) The standard uses cm^2 based units for radiance, irradiance, etc.  It switches
+%   d) The standard uses cm^2 based units for radiance, irradiance, etc.  It switches
 %   between uWatts, mWatts, and Watts depending on which limit is being considered.
 %   For uniformity, these routines return all quantities and limits in uWatts, cm^2
 %   based units.
@@ -42,10 +57,18 @@
 %   where the input is irradiance and should be passed in uWatts/cm^2.   The help text is pretty
 %   clear about what is desired for each routine.
 %
+%   e) For computations of retinal illumiance, these routines used a default eye length of 17 mm.
+%   This does not seem to be specified in the standard, but is the number given in the Landry et.
+%   al (2011) paper.
+%
 % REFERENCES.
-%   Ansi ISO 15004-2, Ophthalmic instruments - Fundamental requirements and test methods -
-%   Part 2: Light hazard protection.  The standard document.  Tables listed below are in
-%   this document.
+%   Ansi ISO 15004-2 (2007). Ophthalmic instruments - Fundamental requirements and test methods -
+%   Part 2: Light hazard protection.   [The standard document.  Tables listed below are in
+%   this document.]
+%
+%   Landry, R. J. et al. (2011).  Retinal phototoxicity: A review of standard methodology for evaluating retinal optical
+%   radiation hazards.  Health Physics, 100(4), pp. 417-434. [This review paper unpacks the standard
+%   a bit and is a helpful source.]
 %
 %   ISO2007MPEBasicTest      - Test the suite of routines.  Generates many figures that should match those in the standard.
 %   ISO2007MPECheckType1ContinuousRadiance - Wrapper function for comparing a measured radiance to MPE limits.
