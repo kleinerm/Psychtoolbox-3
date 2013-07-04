@@ -169,29 +169,34 @@ int PsychGSGetMovieCount(void) {
 	return(numMovieRecords);
 }
 
-/* Perform one context loop iteration (for bus message handling) if doWait == false,
- * or two seconds worth of iterations if doWait == true. This drives the message-bus
- * callback, so needs to be performed to get any error reporting etc.
+/* Perform context loop iterations (for bus message handling) if doWait == false,
+ * as long as there is work to do, or at least two seconds worth of iterations
+ * if doWait == true. This drives the message-bus callback, so needs to be
+ * performed to get any error reporting etc.
  */
 int PsychGSProcessMovieContext(GMainLoop *loop, psych_bool doWait)
 {
-	double tdeadline, tnow;
-	PsychGetAdjustedPrecisionTimerSeconds(&tdeadline);
+    psych_bool workdone;
+    double tdeadline, tnow;
+    PsychGetAdjustedPrecisionTimerSeconds(&tdeadline);
     tnow = tdeadline;
-	tdeadline+=2.0;
-
-	if (NULL == loop) return(0);
-
-	while (doWait && (tnow < tdeadline)) {
-		// Perform non-blocking work iteration:
-		if (!g_main_context_iteration(g_main_loop_get_context(loop), false)) PsychYieldIntervalSeconds(0.010);
-
-		// Update time:
-		PsychGetAdjustedPrecisionTimerSeconds(&tnow);
-	}
-
-	// Perform one more work iteration of the event context, but don't block:
-	return(g_main_context_iteration(g_main_loop_get_context(loop), false));
+    tdeadline+=2.0;
+    
+    if (NULL == loop) return(0);
+    
+    // If doWait, try to perform iterations until 2 seconds elapsed or at least one event handled:
+    while (doWait && (tnow < tdeadline)) {
+        // Perform non-blocking work iteration:
+        if (!g_main_context_iteration(g_main_loop_get_context(loop), false)) PsychYieldIntervalSeconds(0.010);
+        
+        // Update time:
+        PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+    }
+    
+    // Perform work iterations of the event context as long as events are available, but don't block:
+    while ((workdone = g_main_context_iteration(g_main_loop_get_context(loop), false)) == TRUE);
+    
+    return(workdone);
 }
 
 /* Initiate pipeline state changes: Startup, Preroll, Playback, Pause, Standby, Shutdown. */
@@ -233,6 +238,33 @@ static psych_bool PsychMoviePipelineSetState(GstElement* theMovie, GstState stat
     return(TRUE);
 }
 
+psych_bool PsychIsMovieSeekable(PsychMovieRecordType* movie)
+{
+    GstQuery *query;
+    gint64 start, end;
+    gboolean seekable = FALSE;
+    
+    query = gst_query_new_seeking(GST_FORMAT_TIME);
+    if (gst_element_query(movie->theMovie, query)) {
+        gst_query_parse_seeking(query, NULL, &seekable, &start, &end);
+        if (seekable) {
+            if (PsychPrefStateGet_Verbosity() > 4) {
+                printf("PTB-DEBUG: Seeking is enabled from %" GST_TIME_FORMAT " to %" GST_TIME_FORMAT "\n",
+                        GST_TIME_ARGS (start), GST_TIME_ARGS (end));
+            }
+        }
+        else {
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Seeking is disabled for this movie stream.\n");
+        }
+    }
+    else {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Seeking query failed!\n");
+    }
+    gst_query_unref(query);
+    
+    return((psych_bool) seekable);
+}
+
 /* Receive messages from the playback pipeline message bus and handle them: */
 gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr)
 {
@@ -242,14 +274,13 @@ gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr)
     case GST_MESSAGE_SEGMENT_DONE:
       // We usually receive segment done message instead of eos if looped playback is active and
       // the end of the stream is approaching, so we fallthrough to message eos for rewinding...
-      if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Message SEGMENT_DONE received.\n");
-
+      if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: PsychMovieBusCallback: Message SEGMENT_DONE received.\n");
     case GST_MESSAGE_EOS: {
       // Rewind at end of movie if looped playback enabled:
-      if ((GST_MESSAGE_TYPE (msg) == GST_MESSAGE_EOS) && (PsychPrefStateGet_Verbosity() > 5)) printf("PTB-DEBUG: Message EOS received.\n");
+      if ((GST_MESSAGE_TYPE (msg) == GST_MESSAGE_EOS) && (PsychPrefStateGet_Verbosity() > 4)) printf("PTB-DEBUG: PsychMovieBusCallback: Message EOS received.\n");
 
       if ((movie->loopflag & 0x1) && (movie->rate != 0)) {
-        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: End of iteration in active looped playback reached: Rewinding...\n");
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: PsychMovieBusCallback: End of iteration in active looped playback reached: Rewinding...\n");
 
         // Seek: We don't GST_SEEK_FLAG_FLUSH here, so the rewinding is smooth because we don't throw away buffers queued in the pipeline.
         if (movie->rate > 0) {
@@ -1462,6 +1493,9 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 		((0 == rate) && !movieRecordBANK[moviehandle].preRollAvail)) {
 		// No new frame available. Perform a blocking wait with timeout of 0.5 seconds:
 		PsychTimedWaitCondition(&movieRecordBANK[moviehandle].condition, &movieRecordBANK[moviehandle].mutex, 0.5);
+
+        // Allow context task to do its internal bookkeeping and cleanup work:
+        PsychGSProcessMovieContext(movieRecordBANK[moviehandle].MovieContext, FALSE);
 		
 		// Recheck:
 		if (((0 != rate) && !movieRecordBANK[moviehandle].frameAvail) ||
