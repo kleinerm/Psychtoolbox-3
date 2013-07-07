@@ -268,6 +268,7 @@ psych_bool PsychIsMovieSeekable(PsychMovieRecordType* movie)
 /* Receive messages from the playback pipeline message bus and handle them: */
 gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr)
 {
+  GstSeekFlags rewindFlags = 0;
   PsychMovieRecordType* movie = (PsychMovieRecordType*) dataptr;
 
   switch (GST_MESSAGE_TYPE (msg)) {
@@ -275,27 +276,38 @@ gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr)
       // We usually receive segment done message instead of eos if looped playback is active and
       // the end of the stream is approaching, so we fallthrough to message eos for rewinding...
       if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: PsychMovieBusCallback: Message SEGMENT_DONE received.\n");
+
     case GST_MESSAGE_EOS: {
       // Rewind at end of movie if looped playback enabled:
       if ((GST_MESSAGE_TYPE (msg) == GST_MESSAGE_EOS) && (PsychPrefStateGet_Verbosity() > 4)) printf("PTB-DEBUG: PsychMovieBusCallback: Message EOS received.\n");
 
+      // Looping via seek requested (method 0x1) and playback active?
       if ((movie->loopflag & 0x1) && (movie->rate != 0)) {
+        // Perform loop via rewind via seek:
         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: PsychMovieBusCallback: End of iteration in active looped playback reached: Rewinding...\n");
 
-        // Seek: We don't GST_SEEK_FLAG_FLUSH here, so the rewinding is smooth because we don't throw away buffers queued in the pipeline.
+        // Seek: We normally don't GST_SEEK_FLAG_FLUSH here, so the rewinding is smooth because we don't throw away buffers queued in the pipeline,
+        // unless we are at the end of the stream (EOS), so there ain't anything queued in the pipeline, or code requests an explicit pipeline flush via flag 0x8.
+        // This seems to make no sense (why flush an already EOS - empty pipeline?) but is neccessary for some movies with sound on some systems:
+        if ((GST_MESSAGE_TYPE(msg) == GST_MESSAGE_EOS) || (movie->loopflag & 0x8)) rewindFlags |= GST_SEEK_FLAG_FLUSH;
+
+        // On some movies and configurations, we need a segment seek as indicated by flag 0x4:
+        if (movie->loopflag & 0x4) rewindFlags |= GST_SEEK_FLAG_SEGMENT;
+
+        // Seek method depends on playback direction:
         if (movie->rate > 0) {
-          if (!gst_element_seek(movie->theMovie, movie->rate, GST_FORMAT_TIME, GST_SEEK_FLAG_ACCURATE | GST_SEEK_FLAG_SEGMENT, GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE)) {
-            printf("PTB-DEBUG: Rewinding video in forward playback failed!\n");
+          if (!gst_element_seek(movie->theMovie, movie->rate, GST_FORMAT_TIME, GST_SEEK_FLAG_ACCURATE | rewindFlags, GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE)) {
+            if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Rewinding video in forward playback failed!\n");
           }
         }
         else {
-          if (!gst_element_seek(movie->theMovie, movie->rate, GST_FORMAT_TIME, GST_SEEK_FLAG_ACCURATE | GST_SEEK_FLAG_SEGMENT, GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE, GST_SEEK_TYPE_END, 0)) {
-            printf("PTB-DEBUG: Rewinding video in reverse playback failed!\n");
+          if (!gst_element_seek(movie->theMovie, movie->rate, GST_FORMAT_TIME, GST_SEEK_FLAG_ACCURATE | rewindFlags, GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE, GST_SEEK_TYPE_END, 0)) {
+            if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Rewinding video in reverse playback failed!\n");
           }
         }
 
         // Block until seek completed, failed, or timeout of 10 seconds reached:
-        gst_element_get_state(movie->theMovie, NULL, NULL, (GstClockTime) (10 * 1e9));
+        // MK: Actually don't! This can cause deadlocks with some movies, e.g., our DualDiscs.mov with sound: gst_element_get_state(movie->theMovie, NULL, NULL, (GstClockTime) (10 * 1e9));
       }
 
       break;
@@ -468,8 +480,8 @@ static void PsychDestroyNotifyCallback(gpointer user_data)
 }
 
 /* This callback is called when the pipeline is about to finish playback
- * of the current movie stream. If looped playback is enabled, this needs
- * to trigger a repetition by rescheduling the movie URI for playback.
+ * of the current movie stream. If looped playback via method 0x2 is enabled,
+ * this needs to trigger a repetition by rescheduling the movie URI for playback.
  *
  * Allows gapless playback, but doesn't work reliable on all media types.
  *
@@ -477,9 +489,10 @@ static void PsychDestroyNotifyCallback(gpointer user_data)
 static void PsychMovieAboutToFinishCB(GstElement *theMovie, gpointer user_data)
 {
 	PsychMovieRecordType* movie = (PsychMovieRecordType*) user_data;
+    // Loop method 0x2 active? 
 	if ((movie->loopflag & 0x2) && (movie->rate != 0)) {
 		g_object_set(G_OBJECT(theMovie), "uri", movie->movieLocation, NULL);
-		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: About-to-finish received: Rewinding...\n");
+		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: About-to-finish received: Rewinding via uri method.\n");
 	}
 
 	return;
@@ -1923,6 +1936,7 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
     int	dropped = 0;
     GstElement *theMovie = NULL;
     double timeindex;
+    GstSeekFlags seekFlags = 0;
     
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
@@ -1957,13 +1971,39 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
         // Set playback rate: An explicit seek to the position we are already (supposed to be)
         // is needed to avoid jumps in movies with bad encoding or keyframe placement:
         timeindex = PsychGSGetMovieTimeIndex(moviehandle);
+
+        // Which loop setting?
+        if (loop <= 0) {
+            // Looped playback disabled. Set to well defined off value zero:
+            loop = 0;
+        }
+        else {
+            // Looped playback requested. With default settings (==1)?
+            // Otherwise we'll just pass on any special != 1 setting as a
+            // user-override:
+            if (loop == 1) {
+                // Playback with defaults. Apply default setup + specialFlags1 quirks:
+                
+                // specialFlags & 32? Use 'uri' injection method for looped playback, instead of seek method:
+                if (movieRecordBANK[moviehandle].specialFlags1 &  32) loop = 2;
+                
+                // specialFlags & 64? Use segment seeks.
+                if (movieRecordBANK[moviehandle].specialFlags1 &  64) loop |= 4;
+
+                // specialFlags & 128? Use pipeline flushing seeks
+                if (movieRecordBANK[moviehandle].specialFlags1 & 128) loop |= 8;
+            }
+        }
+
+        // On some movies and configurations, we need a segment seek as indicated by flag 0x4:
+        if (loop & 0x4) seekFlags |= GST_SEEK_FLAG_SEGMENT;
         
         if (playbackrate > 0) {
-            gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE | ((loop & 0x1) ? GST_SEEK_FLAG_SEGMENT : 0), GST_SEEK_TYPE_SET,
+            gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE | ((loop & 0x1) ? seekFlags : 0), GST_SEEK_TYPE_SET,
                              (gint64) (timeindex * (double) 1e9), GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
         }
         else {
-            gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE | ((loop & 0x1) ? GST_SEEK_FLAG_SEGMENT : 0), GST_SEEK_TYPE_SET,
+            gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE | ((loop & 0x1) ? seekFlags : 0), GST_SEEK_TYPE_SET,
                              0, GST_SEEK_TYPE_SET, (gint64) (timeindex * (double) 1e9));
         }
         
@@ -2080,9 +2120,11 @@ double PsychGSSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool in
     // NOTE: We could use GST_SEEK_FLAG_SKIP to allow framedropping on fast forward/reverse playback...
     flags = GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE;
 
-    // Need segment seek flag for seek during active looped playback:
-    flags|= ((movieRecordBANK[moviehandle].rate != 0) && (movieRecordBANK[moviehandle].loopflag & 0x1)) ? GST_SEEK_FLAG_SEGMENT : 0;
-
+    // Need segment seek flag for seek during active looped playback if also flag 0x4 is set:
+    if ((movieRecordBANK[moviehandle].rate != 0) && (movieRecordBANK[moviehandle].loopflag & 0x1) && (movieRecordBANK[moviehandle].loopflag & 0x4)) {
+        flags |= GST_SEEK_FLAG_SEGMENT;
+    }
+    
     // Index based or target time based seeking?
     if (indexIsFrames) {
 	// Index based seeking:		
