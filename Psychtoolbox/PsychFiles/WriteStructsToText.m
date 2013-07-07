@@ -58,6 +58,6 @@ for j = 1:nStructs
 end
 
 % Close the file.
-if (isstr(filename)
+if (isstr(filename))
     fclose(fid);
 end
