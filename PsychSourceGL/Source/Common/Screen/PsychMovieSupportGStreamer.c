@@ -1870,10 +1870,15 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         movieRecordBANK[moviehandle].endOfFetch = 0;
         preT = PsychGSGetMovieTimeIndex(moviehandle);
         event = gst_event_new_step(GST_FORMAT_BUFFERS, 1, 1.0, TRUE, FALSE);
-        if (!gst_element_send_event(theMovie, event)) printf("PTB-DEBUG: In single-step seek I - Failed.\n");
+        // Send the seek event *only* to the videosink. This follows recommendations from GStreamer SDK tutorial 13 (Playback speed) to
+        // not send to high level playbin2 itself, as that would propagate to all sinks and trigger multiple seeks. While this was not
+        // ever a problem in the past on Linux or with upstream GStreamer, it caused deadlocks, timeouts and seek failures when done
+        // with the GStreamer SDK on some movie files that have audio tracks, e.g., our standard demo movie! Sending only to videosink
+        // fixes this problem:
+        if (!gst_element_send_event(movieRecordBANK[moviehandle].videosink, event)) printf("PTB-DEBUG: In single-step seek I - Failed.\n");
 
-        // Block until seek completed, failed, or timeout of 30 seconds reached:
-        if (GST_STATE_CHANGE_FAILURE == gst_element_get_state(theMovie, NULL, NULL, (GstClockTime) (30 * 1e9))) printf("PTB-DEBUG: In single-step seek I - Failed.\n");
+        // Block until seek completed, failed, or timeout of 10 seconds reached:
+        if (GST_STATE_CHANGE_SUCCESS != gst_element_get_state(theMovie, NULL, NULL, (GstClockTime) (10 * 1e9))) printf("PTB-DEBUG: In single-step seek II - Failed.\n");
         postT = PsychGSGetMovieTimeIndex(moviehandle);
 
         if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-DEBUG: Movie fetch advance: preT %f   postT %f  DELTA %lf %s\n", preT, postT, postT - preT, (postT - preT < 0.001) ? "SAME" : "DIFF");
