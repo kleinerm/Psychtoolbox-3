@@ -30,6 +30,8 @@ RestoreCluts;
 
 % Call Java cleanup routine to avoid java.lang.outOfMemory exceptions due
 % to the bugs and resource leaks in Matlab's Java based GUI:
-PsychJavaSwingCleanup;
+if ~IsOctave && exist('PsychJavaSwingCleanup', 'file')
+    PsychJavaSwingCleanup;
+end
 
 return;

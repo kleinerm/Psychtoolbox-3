@@ -1575,8 +1575,8 @@ if strcmp(cmd, 'OpenWindow')
         Screen('OpenWindow', slavescreenid, [255 0 0], slavewinrect, [], [], [], [], kPsychNeedDualWindowOutput);
     end
     
-    % Matlab?
-    if ~IsOctave
+    % Matlab? Does the Java swing cleanup function exist?
+    if ~IsOctave && exist('PsychJavaSwingCleanup', 'file')
         % Attach a window close callback for cleanup of Java's memory
         % management mess at window close time when Matlab with Java based
         % GUI is in use:
