@@ -317,7 +317,6 @@ PsychError SCREENFinalizeMovie(void)
 	
 	// Finalize the movie:
 	if (!PsychFinalizeNewMovieFile(moviehandle)) {
-		printf("See http://developer.apple.com/documentation/QuickTime/APIREF/ErrorCodes.htm#//apple_ref/doc/constant_group/Error_Codes.\n\n");
 		PsychErrorExitMsg(PsychError_user, "FinalizeMovie failed for reason mentioned above.");
 	}
 
