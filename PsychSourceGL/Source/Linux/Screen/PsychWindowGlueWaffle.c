@@ -940,21 +940,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     if (windowLevel != -1) waffle_window_show(window);
 
     if (useX11) {
-        // Spin-Wait for it to be really mapped:
-        while (windowLevel != -1) {
-            XEvent ev;
-            XNextEvent(dpy, &ev);
-            if (ev.type == MapNotify) break;
-            PsychYieldIntervalSeconds(0.001);
-        }
-    
         XSync(dpy, False);
 
         // If windowLevel is zero, lower it to the bottom of the stack of windows:
         if (windowLevel <= 0) XLowerWindow(dpy, win);
 
         // Setup window transparency for user input (keyboard and mouse events):
-        if (windowLevel < 1500) {
+        if ((windowLevel < 1500) && (windowLevel != -1)) {
             // Need to try to be transparent for keyboard events and mouse clicks:
             XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
         }
