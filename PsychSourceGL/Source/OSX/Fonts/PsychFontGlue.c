@@ -196,7 +196,7 @@ void PsychInitFontList(void)
             printf("PTB-HINT: trouble, do a 'clear all' and rerun your script with Screen()'s verbosity level set to at least 4 for more diagnostic output.\n");
 #ifndef __LP64__
             printf("PTB-HINT: On 32-Bit Matlab under OSX it is quite normal that a few fonts can't be enumerated and used properly and there is no known\n");
-            printf("PTB-HINT: way to fix this, so the following tips will not help you to resolve this issues, but upgrading to 64-Bit Psychtoolbox helps.");
+            printf("PTB-HINT: way to fix this, so the following tips will not help you to resolve this issues, but upgrading to 64-Bit Psychtoolbox helps.\n");
 #endif
             printf("PTB-HINT: The following tips may help you to resolve font issues:\n");
             printf("PTB-HINT: Go to the Application folder and open the 'Font Book' application. It allows you to check and repair your font database.\n");
