@@ -10,6 +10,7 @@ function svnInfo = GetSVNInfo(directoryOrFile)
 %
 % Output:
 % svnInfo (struct) - Structure containing the following information:
+%   Path
 %	URL
 %	RepositoryRoot
 %	RepositoryUUID
