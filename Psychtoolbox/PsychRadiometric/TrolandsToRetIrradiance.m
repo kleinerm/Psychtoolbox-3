@@ -17,8 +17,8 @@ function [irradianceWatts, irradianceS] =...
 %                  species - what species determins eye length: 'Human' (Default), 'Monkey'.
 %                  source - source for eye length estimate, passed directly to EyeLength and inherits its default.
 %
-%	07/18/03  dhb					Wrote it.
-% 1/26/04   ly, dhb 		Fix JuddVos path through switch. 
+% 07/18/03  dhb         Wrote it.
+% 1/26/04   ly, dhb     Fix JuddVos path through switch. 
 
 % Fill in default values
 if (nargin < 4 || isempty(photopic))

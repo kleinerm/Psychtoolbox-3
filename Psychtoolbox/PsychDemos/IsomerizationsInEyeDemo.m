@@ -37,6 +37,7 @@ clear all; close all;
 % structure after the first call, and then after the second.
 whatCalc = 'LivingHumanFovea';
 photoreceptors = DefaultPhotoreceptors(whatCalc);
+photoreceptors.eyeLengthMM.source = '17';
 photoreceptors = FillInPhotoreceptors(photoreceptors);
 
 %% Define common wavelength sampling for this script.
@@ -45,15 +46,21 @@ photoreceptors = FillInPhotoreceptors(photoreceptors);
 % This is standard PTB convention.
 S = photoreceptors.nomogram.S;
 
+%% Other parameters
+pupilDiamMm = 2;
+pupilAreaMm2 = pi*(pupilDiamMm/2)^2;
+eyeLengthMm = photoreceptors.eyeLengthMM.value;
+
+        
 %% Get light spectrum.  You can choose various illustrative examples.
 %
 % See cases of switch statement below for the options available.
-whichLight = 'fromMonitorRadiance';
+whichLight = 'fromTrolandsMonochromaticLight';
 switch (whichLight)
 	% Convert from a specification of trolands and relative spectral power distribution.
 	% Computation to retinal irradiance is done two ways just for fun.
     % Here we'll start with a xenon arc lamp relative spectrum
-	case 'fromTrolands',
+	case 'fromTrolandsXenonArc',
 		trolands = 100;
         trolandType = 'Photopic';
 		load spd_xenonArc;
@@ -62,19 +69,51 @@ switch (whichLight)
         irradianceTrolandsCheck = RetIrradianceToTrolands(irradianceWatts,S_xenonArc,trolandType, ...
             photoreceptors.species,photoreceptors.eyeLengthMM.value);
         trolandsCheck = sum(irradianceTrolandsCheck);
-        fprintf('\nInput trolands is %0.1f, checked value is %0.1f\n\n',trolands,trolandsCheck);
+        fprintf('\nInput trolands is %0.1f, checked value is %0.1f\n',trolands,trolandsCheck);
 		irradianceWatts = SplineSpd(S_xenonArc,irradianceWatts,S);
 	
 		% Another way to do this calculation.  Pupil size should cancel out.  Should get
 	    % same answer as above.
-		pupilSizeMM = 2;
-		pupilAreaMM = pi*(pupilSizeMM/2)^2;
-		luminance = TrolandsToLum(trolands,pupilAreaMM);
-		radianceWatts = LumToRadiance(spd_xenonArc,S_xenonArc,luminance,trolandType);
-		irradianceWattsCheck = RadianceToRetIrradiance(radianceWatts,S_xenonArc,pupilAreaMM,photoreceptors.eyeLengthMM.value);
+		luminanceCdM2 = TrolandsToLum(trolands,pupilAreaMm2);
+		radianceWatts = LumToRadiance(spd_xenonArc,S_xenonArc,luminanceCdM2,trolandType);
+		irradianceWattsCheck = RadianceToRetIrradiance(radianceWatts,S_xenonArc,pupilAreaMm2,photoreceptors.eyeLengthMM.value);
 		figure(1); clf; hold on
 		set(plot(SToWls(S),irradianceWatts,'r'),'LineWidth',2);
 		set(plot(SToWls(S_xenonArc),irradianceWattsCheck,'k'),'LineWidth',2);
+		set(title('Check of trolands to irradiance calculation'),'FontSize',14);
+		set(xlabel('Wavelength (mm)'),'FontSize',14);
+		set(ylabel('Irradiance'),'FontSize',14);
+
+    case 'fromTrolandsMonochromaticLight',
+		trolands = 1;
+        wavelengthNm = 510;
+        trolandType = 'Photopic';
+        
+        % Create monochromatic spectrum
+        wls = SToWls(S);
+        index = find(wls == wavelengthNm);
+        if (isempty(index))
+            error('No sample wavelength matches desired wavelength');
+        end
+        spd_monochromatic = zeros(size(wls));
+        spd_monochromatic(index) = 1;
+        
+		irradianceWatts = TrolandsToRetIrradiance(spd_monochromatic,S,trolands, ...
+			trolandType,photoreceptors.species,photoreceptors.eyeLengthMM.value);
+        irradianceTrolandsCheck = RetIrradianceToTrolands(irradianceWatts,S,trolandType, ...
+            photoreceptors.species,photoreceptors.eyeLengthMM.value);
+        trolandsCheck = sum(irradianceTrolandsCheck);
+        fprintf('\nInput trolands is %0.1f, checked value is %0.1f\n',trolands,trolandsCheck);
+		irradianceWatts = SplineSpd(S,irradianceWatts,S);
+	
+		% Another way to do this calculation.  Pupil size should cancel out.  Should get
+	    % same answer as above.
+        luminanceCdM2 = TrolandsToLum(trolands,pupilAreaMm2);
+		radianceWatts = LumToRadiance(spd_monochromatic,S,luminanceCdM2,trolandType);
+		irradianceWattsCheck = RadianceToRetIrradiance(radianceWatts,S,pupilAreaMm2,photoreceptors.eyeLengthMM.value);
+		figure(1); clf; hold on
+		set(plot(SToWls(S),irradianceWatts,'r'),'LineWidth',2);
+		set(plot(SToWls(S),irradianceWattsCheck,'k'),'LineWidth',2);
 		set(title('Check of trolands to irradiance calculation'),'FontSize',14);
 		set(xlabel('Wavelength (mm)'),'FontSize',14);
 		set(ylabel('Irradiance'),'FontSize',14);
@@ -93,11 +132,11 @@ switch (whichLight)
 		load T_xyz1931
 		T_xyz = SplineCmf(S_xyz1931,683*T_xyz1931,S);
 		theXYZ = T_xyz*radianceWatts; theLuminance = theXYZ(2);
-		[nil,pupilAreaMM] = PupilDiameterFromLum(theLuminance,photoreceptors.pupilDiameter.source);
+		[nil,pupilAreaMm2] = PupilDiameterFromLum(theLuminance,photoreceptors.pupilDiameter.source);
 		
 		% Convert radiance of source to retinal irradiance and convert to quantal units.
 		irradianceWatts = RadianceToRetIrradiance(radianceWatts,S, ...
-			pupilAreaMM,photoreceptors.eyeLengthMM.value);
+			pupilAreaMm2,photoreceptors.eyeLengthMM.value);
 
 	% This light as well as some parameter tweaking are here to match a parameterization the Brian Wandell supplied
 	% to match what his code to do these computations produces.  Note also
@@ -140,12 +179,37 @@ switch (whichLight)
 		% Set pupil diameter for 1mm2 pupil area, photoreceptor diameter for 4mm2 collecting
 		% area.  Set eye length to 17 mm.
 		photoreceptors.pupilDiameter.value = 2*sqrt(1/pi);
-		pupilAreaMM = pi*(photoreceptors.pupilDiameter.value/2)^2;
+		pupilAreaMm2 = pi*(photoreceptors.pupilDiameter.value/2)^2;
 		photoreceptors.ISdiameter.value = [2*sqrt(4/pi) 2*sqrt(4/pi) 2*sqrt(4/pi)]';
 		photoreceptors.eyeLengthMM.value = 17;
-		irradianceWatts = RadianceToRetIrradiance(radianceWatts,S,pupilAreaMM,photoreceptors.eyeLengthMM.value );
+		irradianceWatts = RadianceToRetIrradiance(radianceWatts,S,pupilAreaMm2,photoreceptors.eyeLengthMM.value );
 end
 
+%% Print out a whole bunch of quantities that are equivalent to the radiance, given
+% other eye parameters.
+radianceWattsPerM2Sr = radianceWatts;
+luminanceCdM2 = TrolandsToLum(trolands,pupilAreaMm2);
+radianceWattsPerCm2Sr = (10.^-4)*radianceWattsPerM2Sr;
+radianceQuantaPerCm2SrSec = EnergyToQuanta(S,radianceWattsPerCm2Sr);
+degPerMm = RetinalMMToDegrees(1,eyeLengthMm);
+irradianceWattsPerUm2 = RadianceToRetIrradiance(radianceWattsPerM2Sr,S,pupilAreaMm2,eyeLengthMm);
+irradianceScotTrolands = RetIrradianceToTrolands(irradianceWattsPerUm2, S, 'Scotopic', [], num2str(eyeLengthMm));
+irradiancePhotTrolands = RetIrradianceToTrolands(irradianceWattsPerUm2, S, 'Photopic', [], num2str(eyeLengthMm));
+irradianceQuantaPerUm2Sec = EnergyToQuanta(S,irradianceWattsPerUm2);
+irradianceWattsPerCm2 = (10.^8)*irradianceWattsPerUm2;
+irradianceQuantaPerCm2Sec = (10.^8)*irradianceQuantaPerUm2Sec;
+irradianceQuantaPerMm2Sec = (10.^-2)*irradianceQuantaPerCm2Sec;
+irradianceQuantaPerUm2Sec = (10.^-6)*irradianceQuantaPerMm2Sec;
+irradianceQuantaPerDeg2Sec = (degPerMm^2)*irradianceQuantaPerMm2Sec;
+fprintf('Working with pupil diameters %g mm, eye length %g mm\n',pupilDiamMm,eyeLengthMm);
+fprintf('Luminance %0.3f cd/m2\n',luminanceCdM2);
+fprintf('Stimulus retinal irradiance %g (%0.1f log10) watts/cm2\n',sum(irradianceWattsPerCm2),log10(sum(irradianceWattsPerCm2)));
+fprintf('Stimulus retinal irradiance %g (%0.1f log10) quanta/[cm2-sec]\n',sum(irradianceQuantaPerCm2Sec),log10(sum(irradianceQuantaPerCm2Sec)));
+fprintf('Stimulus retinal irradiance %g (%0.1f log10) quanta/[mm2-sec]\n',sum(irradianceQuantaPerMm2Sec),log10(sum(irradianceQuantaPerMm2Sec)));
+fprintf('Stimulus retinal irradiance %g (%0.1f log10) quanta/[um2-sec]\n',sum(irradianceQuantaPerUm2Sec),log10(sum(irradianceQuantaPerUm2Sec)));
+fprintf('Stimulus retinal irradiance %g (%0.1f log10) quanta/[deg2-sec]\n',sum(irradianceQuantaPerDeg2Sec),log10(sum(irradianceQuantaPerDeg2Sec)));
+fprintf('\n');
+        
 %% Get retinal irradiance in quanta/[sec-um^2-wlinterval]
 irradianceQuanta = EnergyToQuanta(S,irradianceWatts);
 figure(2); clf; set(gcf,'Position',[100 400 700 300]);
