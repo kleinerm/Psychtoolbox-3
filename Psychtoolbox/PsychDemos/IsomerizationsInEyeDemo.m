@@ -87,7 +87,7 @@ switch (whichInputType)
         spectrumType = 'Monochromatic';
         switch (spectrumType)
             case 'Monochromatic'
-                monoWavelengthNm = 555;  
+                monoWavelengthNm = 550;  
                 wls = SToWls(S);
                 monoWavelengthIndex = find(wls == monoWavelengthNm);
                 if (isempty(monoWavelengthIndex))
@@ -144,7 +144,12 @@ switch (whichInputType)
         % 5.44 quanta/[um2-sec] for 1 scotopic troland, and 14.65 quanta/[um2-sec]
         % for 1 photopic troland, with the calulations specified for 510 nm.
         % The calculations here, done in several different ways, yield
-        % 5.442 (scotopic, agrees) and 26.85 (photopic, does not agree).
+        % 5.442 (scotopic, agrees) and 26.85 (photopic, does not agree).  But at 
+        % 550 nm, the code here yields 14.64 quanta/[um2-sec], which seems close
+        % enough to the provided 14.65 to make me think that Makous' value is
+        % actually for a wavelength close to 550 nm.  That would be a more typical
+        % wavelength at which to do photopic calculations, despite what the text
+        % in the paper says.
         if (strcmp(spectrumType,'Monochromatic'))
             switch (trolandType)
                 case 'Photopic'
