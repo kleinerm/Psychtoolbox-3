@@ -6,6 +6,27 @@
 % in watts/sr-m^2-wlinterval, or with a relative spectrum
 % and a photopic troland value.
 %
+% NOTE, DHB, 7/19/13. This demo routine and its associated data routines 
+% (DefaultPhotoreceptors, FillInPhotoreceptors, PrintPhotoreceptors)
+% should be better integrated with the more recent code that
+% implements the CIE physiological cone fundamentals, and the
+% whole set of stuff should be better documented.  See also
+%    IsomerizationsInDishDemo
+%    CIEConeFundamentalsTest
+%    ComputeCIEConeFundamentals
+%    ComputeRawConeFundamentals
+%    DefaultPhotoreceptors
+%    FillInPhotoreceptors
+%    PrintPhotoreceptors
+%    RetIrradianceToIsoRecSec
+% In particular, there should be some default for the 
+% photoreceptors structure that gives one the CIE cone
+% fundamentals in all their parametric glory, plus additional
+% parameters that yield real energy/quantal sensitivites so
+% that the resulting coordinates are isomerization rates in
+% real units.  I think that we're close to having that, but
+% better documentation and tidying is needed.
+%
 % 07/08/03 dhb  Wrote starting from IsomerizationsInDishDemo.
 % 07/11/03 dhb  Grab data through subroutines.  Get rid of integration time.
 % 07/15/03 dhb  Take eye size from function.
@@ -14,6 +35,8 @@
 % 03/20/12 dhb  Update cal file for PTB 3.
 % 04/09/12 dhb  Add test of irradiance to troland conversion.
 % 04/27/13 dhb  More extensive comments.
+% 7/19/13  dhb  Print out photoreceptors structure using PrintPhotoreceptors.
+%          dhb  Add monochromatic light option to the section that starts with trolands.
 
 %% Clear
 clear all; close all;
@@ -46,14 +69,18 @@ photoreceptors = FillInPhotoreceptors(photoreceptors);
 % This is standard PTB convention.
 S = photoreceptors.nomogram.S;
 
-%% Other parameters
-pupilDiamMm = 2;
-pupilAreaMm2 = pi*(pupilDiamMm/2)^2;
+%% XYZ color matching functions
+load T_xyz1931
+T_xyz = SplineCmf(S_xyz1931,683*T_xyz1931,S);
+T_Y = T_xyz(2,:);
         
 %% Get light spectrum.  You can choose various illustrative examples.
 %
-% See cases of switch statement below for the options available.
-whichInputType = 'fromTrolands';
+% Available options:
+%  'fromTrolands'
+%  'fromMonitorRadiance'
+%  'fromUniformQuantalSpd'
+whichInputType = 'fromMonitorRadiance';
 switch (whichInputType)
     
     % Start with troland value and a relative spectrum
@@ -74,6 +101,23 @@ switch (whichInputType)
             otherwise
                 fprintf('Unknown troland type specified');
         end
+        
+        %% Pupil.
+        %
+        % We do these computations for a fixed pupil size, ignoring the
+        % pupilDiamter field of the photoreceptors structure.  That field
+        % is set up to specify a source formula that estimates pupil diameter
+        % from luminance.
+        %
+        % Since we are starting in trolands, the pupil size shouldn't actually
+        % effect the calculations, except for finding the radiance that is
+        % equivalent to the specified troland value.  
+        % 
+        % We remove the pupilDiameter.source field to make sure we aren't sending
+        % mixed messages about how we want to handle pupil diameter.
+        photoreceptors.pupilDiameter.value = 2;
+        photoreceptors.pupilDiameter = rmfield(photoreceptors.pupilDiameter,'source');
+        pupilAreaMm2 = pi*(photoreceptors.pupilDiameter.value/2)^2;
         
         % Specify relative spectrum to be used in
         % conversion to a full spectrum.
@@ -118,8 +162,9 @@ switch (whichInputType)
 		% Another way to do this calculation.  Pupil size should cancel out.  Should get
 	    % same answer as above.  This has as a byproduct computing a stimulus radiance,
         % which is useful for some of the common printout below.
-        luminanceCdM2 = TrolandsToLum(trolands,pupilAreaMm2);
-		radianceWattsPerM2Sr = LumToRadiance(spd_fromTrolands,S,luminanceCdM2,trolandType);
+        luminanceCdM2FromTrolands = TrolandsToLum(trolands,pupilAreaMm2);
+		radianceWattsPerM2Sr = LumToRadiance(spd_fromTrolands,S,luminanceCdM2FromTrolands,trolandType); 
+        photopicLuminanceCdM2 = T_Y*radianceWattsPerM2Sr;
 		irradianceWattsCheck = RadianceToRetIrradiance(radianceWattsPerM2Sr,S,pupilAreaMm2,photoreceptors.eyeLengthMM.value);
 		figure(1); clf; hold on
 		set(plot(SToWls(S),irradianceWattsPerUm2,'r'),'LineWidth',2);
@@ -144,7 +189,14 @@ switch (whichInputType)
         % 5.44 quanta/[um2-sec] for 1 scotopic troland, and 14.65 quanta/[um2-sec]
         % for 1 photopic troland, with the calulations specified for 510 nm.
         % The calculations here, done in several different ways, yield
-        % 5.442 (scotopic, agrees) and 26.85 (photopic, does not agree).
+        % 5.442 (scotopic, agrees) and 26.85 (photopic, does not agree). 
+        %
+        % Note that there are also errors in Tables 3 and 4 of the Makous
+        % paper, and that corrected values appear in Tables 3 and 2 of
+        % Makous (2004), Scotopic vision, In The Visual Neurosciences,
+        % Werner and Chalupa (eds).  What does not seem to be specified
+        % in either place is the wavelengths used in the calculations of
+        % the two tables.
         if (strcmp(spectrumType,'Monochromatic'))
             switch (trolandType)
                 case 'Photopic'
@@ -169,8 +221,7 @@ switch (whichInputType)
                     fprintf('\t%0.4g Watts/mm2\n\t%0.4g quanta/[mm2-sec]\n',sum(irradianceDirectWattsPerMm2Check),sum(irradianceDirectQuantaPerMm2SecCheck));
             end
         end
-
-
+        
 	% Start with radiance measurements, which we just
 	% pull out of the Toolbox's default calibration file.
 	case 'fromMonitorRadiance'
@@ -182,10 +233,9 @@ switch (whichInputType)
 		% Find pupil area, needed to get retinal irradiance.  We compute
 		% pupil area based on the luminance of stimulus according to the
         % algorithm specified in the photoreceptors structure.
-		load T_xyz1931
-		T_xyz = SplineCmf(S_xyz1931,683*T_xyz1931,S);
 		theXYZ = T_xyz*radianceWattsPerM2Sr; theLuminance = theXYZ(2);
 		[nil,pupilAreaMm2] = PupilDiameterFromLum(theLuminance,photoreceptors.pupilDiameter.source);
+        photopicLuminanceCdM2 = T_Y*radianceWattsPerM2Sr;
 		
 		% Convert radiance of source to retinal irradiance and convert to quantal units.
 		irradianceWattsPerUm2 = RadianceToRetIrradiance(radianceWattsPerM2Sr,S, ...
@@ -194,7 +244,8 @@ switch (whichInputType)
 	% This light as well as some parameter tweaking are here to match a parameterization the Brian Wandell supplied
 	% to match what his code to do these computations produces.  Note also
 	% the mucking with the photoreceptors structure.  Wandell estimates
-	% L, M, S isomerizations/cone-sec of 16.5, 12.68, 2.27.
+	% L, M, S isomerizations/cone-sec of 16.5, 12.68, 2.27.  These are very close to the numbers
+    % we get here.
 	case 'fromUniformQuantalSpd',
 		% Load corneal cone sensitivities in energy units, convert to quantal sensitivities
 		% and set specified peak absorbtance.
@@ -208,6 +259,7 @@ switch (whichInputType)
 		% load T_cones_ss10; T_cones = T_cones_ss10; S_cones = S_cones_ss10;
 		% load T_cones_smj; T_cones = T_cones_smj; S_cones = S_cones_smj;
 		% load T_cones_sp; T_cones = T_cones_sp; S_cones = S_cones_sp;
+        
 		peakIsomerizationEfficiency = [0.27 0.23 0.07]';
 		T_cones = SplineCmf(S_cones,QuantaToEnergy(S_cones,T_cones')',S);
 		T_cones(1,:) = T_cones(1,:)/max(T_cones(1,:));
@@ -216,11 +268,6 @@ switch (whichInputType)
 		T_cones = diag(peakIsomerizationEfficiency)*T_cones;
 		photoreceptors.isomerizationAbsorbtance = T_cones;
 
-		% Get spectral luminous efficiency function
-		load T_xyz1931; T_xyz = T_xyz1931; S_xyz = S_xyz1931;
-		% load T_xyzJuddVos; T_xyz = T_xyzJuddVos; S_xyz = S_xyzJuddVos;
-		T_Y = 683*SplineCmf(S_xyz,T_xyz(2,:),S);
-
 		% Create a spectrally uniform spd (in quantal units), and convert
 		% to energy units.
 		uniformSpd = QuantaToEnergy(S,ones(S(3),1));
@@ -228,6 +275,7 @@ switch (whichInputType)
 		% Normalize to radiance corresponding to 1 cd/m2.
 		normConst = T_Y*uniformSpd;
 		radianceWattsPerM2Sr = uniformSpd/normConst;
+        photopicLuminanceCdM2 = T_Y*radianceWattsPerM2Sr;
 
 		% Set pupil diameter for 1mm2 pupil area, photoreceptor diameter for 4mm2 collecting
 		% area.  Set eye length to 17 mm.
@@ -240,7 +288,6 @@ end
 
 %% Print out a whole bunch of quantities that are equivalent to the radiance, given
 % other eye parameters.
-luminanceCdM2 = TrolandsToLum(trolands,pupilAreaMm2);
 radianceWattsPerCm2Sr = (10.^-4)*radianceWattsPerM2Sr;
 radianceQuantaPerCm2SrSec = EnergyToQuanta(S,radianceWattsPerCm2Sr);
 degPerMm = RetinalMMToDegrees(1,photoreceptors.eyeLengthMM.value);
@@ -257,8 +304,13 @@ irradianceQuantaPerMm2Sec = (10.^-2)*irradianceQuantaPerCm2Sec;
 irradianceQuantaPerUm2Sec = (10.^-6)*irradianceQuantaPerMm2Sec;
 irradianceQuantaPerDeg2Sec = (degPerMm^2)*irradianceQuantaPerMm2Sec;
 
-fprintf('\nWorking with pupil diameters %g mm, eye length %g mm\n',pupilDiamMm,photoreceptors.eyeLengthMM.value);
-fprintf('Luminance %0.3f cd/m2\n',luminanceCdM2);
+% Print out photoreceptor stucture information
+fprintf('\n');
+PrintPhotoreceptors(photoreceptors);
+fprintf('\n');
+
+% Radiometric iformation
+fprintf('Luminance %0.3f cd/m2\n',photopicLuminanceCdM2);
 fprintf('Stimulus retinal irradiance %0.4g (%0.1f log10) watts/cm2\n',sum(irradianceWattsPerCm2),log10(sum(irradianceWattsPerCm2)));
 fprintf('Stimulus retinal irradiance %0.4g (%0.1f log10) watts/mm2\n',1e-2*sum(irradianceWattsPerCm2),log10(sum(irradianceWattsPerCm2)));
 fprintf('Stimulus retinal irradiance %0.4g (%0.1f log10) quanta/[cm2-sec]\n',sum(irradianceQuantaPerCm2Sec),log10(sum(irradianceQuantaPerCm2Sec)));
@@ -294,16 +346,6 @@ axis([300 800 0 1]);
 % Print out a table summarizing the calculation.
 fprintf('***********************************************\n');
 fprintf('Isomerization calculations for living human retina\n');
-fprintf('\n');
-fprintf('Calculations done using:\n');
-fprintf('\t%s estimates for photoreceptor IS diameter\n',photoreceptors.ISdiameter.source);
-fprintf('\t%s estimates for photoreceptor OS length\n',photoreceptors.OSlength.source);
-fprintf('\t%s estimates for receptor specific density\n',photoreceptors.specificDensity.source);
-fprintf('\t%s photopigment nomogram\n',photoreceptors.nomogram.source);
-fprintf('\t%s estimates for lens density\n',photoreceptors.lensDensity.source);
-fprintf('\t%s estimates for macular pigment density\n',photoreceptors.macularPigmentDensity.source);
-fprintf('\t%s method for pupil diameter calculation\n',photoreceptors.pupilDiameter.source);
-fprintf('\t%s estimate (%g mm) for axial length of eye\n',photoreceptors.eyeLengthMM.source,photoreceptors.eyeLengthMM.value);
 fprintf('\n');
 fprintf('Photoreceptor Type             |\t       L\t       M\t     S\n');
 fprintf('______________________________________________________________________________________\n');
