@@ -80,7 +80,7 @@ T_Y = T_xyz(2,:);
 %  'fromTrolands'
 %  'fromMonitorRadiance'
 %  'fromUniformQuantalSpd'
-whichInputType = 'fromMonitorRadiance';
+whichInputType = 'fromTrolands';
 switch (whichInputType)
     
     % Start with troland value and a relative spectrum
@@ -189,8 +189,12 @@ switch (whichInputType)
         % 5.44 quanta/[um2-sec] for 1 scotopic troland, and 14.65 quanta/[um2-sec]
         % for 1 photopic troland, with the calulations specified for 510 nm.
         % The calculations here, done in several different ways, yield
-<<<<<<< HEAD
-        % 5.442 (scotopic, agrees) and 26.85 (photopic, does not agree). 
+        % 5.442 (scotopic, agrees) and 26.85 (photopic, does not agree).  But at 
+        % 550 nm, the code here yields 14.64 quanta/[um2-sec], which seems close
+        % enough to the provided 14.65 to make me think that Makous' value is
+        % actually for a wavelength close to 550 nm.  That would be a more typical
+        % wavelength at which to do photopic calculations, despite what the text
+        % in the paper says.
         %
         % Note that there are also errors in Tables 3 and 4 of the Makous
         % paper, and that corrected values appear in Tables 3 and 2 of
@@ -198,14 +202,6 @@ switch (whichInputType)
         % Werner and Chalupa (eds).  What does not seem to be specified
         % in either place is the wavelengths used in the calculations of
         % the two tables.
-=======
-        % 5.442 (scotopic, agrees) and 26.85 (photopic, does not agree).  But at 
-        % 550 nm, the code here yields 14.64 quanta/[um2-sec], which seems close
-        % enough to the provided 14.65 to make me think that Makous' value is
-        % actually for a wavelength close to 550 nm.  That would be a more typical
-        % wavelength at which to do photopic calculations, despite what the text
-        % in the paper says.
->>>>>>> cc9027e5d6a2682e273388bb881d4e3848ab2a27
         if (strcmp(spectrumType,'Monochromatic'))
             switch (trolandType)
                 case 'Photopic'
