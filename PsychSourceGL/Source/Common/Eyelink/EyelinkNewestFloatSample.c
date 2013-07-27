@@ -125,7 +125,7 @@ static char synopsisStringRaw[] =
 	"\t   pupil_cr            calculated pupil-cr from the raw_pupil and raw_cr fields\n"
 	"\t   cr_area2            raw area of 2nd corneal reflection candidate\n"
 	"\t   raw_cr2             raw x, y sensor position of 2nd corneal reflection candidate\n"
-	"CAUTION: Not supported on Linux. It may or may not work on your setup with your tracker. Currently it doesn't work on Linux at least.\n\n";
+	"CAUTION: Not yet supported on 64-Bit Linux. It may or may not work on your setup with your tracker.\n\n";
 
 //forgive the repeated code here, feel free to write a helper
 PsychError EyelinkNewestFloatSampleRaw(void)
@@ -157,7 +157,7 @@ PsychError EyelinkNewestFloatSampleRaw(void)
 	mxOutArg[0] = PsychGetOutArgMxPtr(1);
 	mxOutArg[1] = PsychGetOutArgMxPtr(2);
 	
-#if PSYCH_SYSTEM != PSYCH_LINUX
+#if (PSYCH_SYSTEM != PSYCH_LINUX) || !defined (__x86_64__)
 	// Grab the sample
 	iSampleType=eyelink_newest_float_sample(&structFloatSample);
 	
@@ -192,6 +192,6 @@ PsychError EyelinkNewestFloatSampleRaw(void)
 	
 	return(PsychError_none);
 #else
-	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is not supported on Linux.");
+	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is not yet supported on 64-Bit Linux.");
 #endif
 }
