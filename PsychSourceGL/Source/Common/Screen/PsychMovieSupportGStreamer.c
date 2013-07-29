@@ -123,8 +123,8 @@ void PsychGSMovieInit(void)
     // likely succeed. If the following LoadLibrary() call fails and returns NULL,
     // then we know we would end up crashing. Therefore we'll output some helpful
     // error-message instead:
-    if (((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll"))) &&
-        ((NULL == LoadLibrary("libgstreamer-0.10-0.dll")) || (NULL == LoadLibrary("libgstapp-0.10-0.dll")))) {
+    if (((NULL == LoadLibrary("libgstreamer-0.10-0.dll")) || (NULL == LoadLibrary("libgstapp-0.10-0.dll"))) &&
+        ((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll")))) {
         // Failed: GLib and its threading support isn't installed. This means that
         // GStreamer won't work as the relevant .dll's are missing on the system.
         // We silently return, skpipping the GLib init, as it is completely valid

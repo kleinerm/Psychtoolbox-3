@@ -216,8 +216,8 @@ void PsychGSCheckInit(const char* engineName)
             // OSX linker sets the symbol to NULL if dynamic weak linking during runtime failed.
             // On failure we'll output some helpful error-message instead:
             #if PSYCH_SYSTEM == PSYCH_WINDOWS
-                if (((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll"))) &&
-                    ((NULL == LoadLibrary("libgstreamer-0.10-0.dll")) || (NULL == LoadLibrary("libgstapp-0.10-0.dll")))) {
+                if (((NULL == LoadLibrary("libgstreamer-0.10-0.dll")) || (NULL == LoadLibrary("libgstapp-0.10-0.dll"))) &&
+                    ((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll")))) {
             #endif
             #if PSYCH_SYSTEM == PSYCH_OSX
                 if (NULL == gst_init_check) {
