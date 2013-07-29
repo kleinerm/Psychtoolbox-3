@@ -90,7 +90,8 @@
 // default to camerabin1 capture+recording and old style setup on Linux and safe ourselves
 // a bit of hassle. Once we support a GStreamer V1.0 multi-media backend, we can implement
 // this unconditionally without any pain or compatibility issues.
-#if (PSYCH_SYSTEM == PSYCH_OSX) || ((PSYCH_SYSTEM == PSYCH_WINDOWS) && (defined(__LP64__) || defined(_M_IA64) || defined(_WIN64)))
+// #if (PSYCH_SYSTEM == PSYCH_OSX) || ((PSYCH_SYSTEM == PSYCH_WINDOWS) && (defined(__LP64__) || defined(_M_IA64) || defined(_WIN64)))
+#if (PSYCH_SYSTEM == PSYCH_OSX) || (PSYCH_SYSTEM == PSYCH_WINDOWS)
 #define PTB_USE_GSTENCODINGPROFILES 1
 #endif
 
