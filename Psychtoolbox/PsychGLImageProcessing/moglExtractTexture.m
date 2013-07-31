@@ -169,7 +169,7 @@ if strcmpi(cmd, 'CreateContext')
         % rendertarget size:
         ctx.parentWin = varargin{1};
 
-        if ~isscalar(ctx.parentWin) | ~ismember(ctx.parentWin, Screen('Windows')) %#ok<OR2>
+        if ~isscalar(ctx.parentWin) || ~ismember(ctx.parentWin, Screen('Windows'))
             disp(ctx.parentWin);
             error('Invalid "window" argument provided to "CreateContext" - No such window (see above)!');
         end
@@ -205,7 +205,7 @@ if strcmpi(cmd, 'CreateContext')
     
     % Get all other arguments and perform parameter type and range checks:
     ctx.rect = varargin{2};
-    if ~isnumeric(ctx.rect) | length(ctx.rect)~=4 %#ok<OR2>
+    if ~isnumeric(ctx.rect) || length(ctx.rect)~=4
         disp(ctx.rect);
         error('Invalid "rect" argument provided to "CreateContext" - Must be a 4 component vector that describes the size and shape of the input video rectangle [left top right bottom]');        
     end
@@ -217,19 +217,19 @@ if strcmpi(cmd, 'CreateContext')
     end
     
     ctx.texCoordMin = varargin{3};
-    if ~isnumeric(ctx.texCoordMin) | length(ctx.texCoordMin)~=2 %#ok<OR2>
+    if ~isnumeric(ctx.texCoordMin) || length(ctx.texCoordMin)~=2
         disp(ctx.texCoordMin);
         error('Invalid "texCoordMin" argument provided to "CreateContext" - Must be a 2 component vector of minimal texture coordinates in x- and y- direction!');
     end
     
     ctx.texCoordMax = varargin{4};
-    if ~isnumeric(ctx.texCoordMax) | length(ctx.texCoordMax)~=2 %#ok<OR2>
+    if ~isnumeric(ctx.texCoordMax) || length(ctx.texCoordMax)~=2
         disp(ctx.texCoordMax);
         error('Invalid "texCoordMax" argument provided to "CreateContext" - Must be a 2 component vector of maximal texture coordinates in x- and y- direction!');
     end
     
     ctx.texResolution = varargin{5};
-    if ~isnumeric(ctx.texResolution) | length(ctx.texResolution)~=2 %#ok<OR2>
+    if ~isnumeric(ctx.texResolution) || length(ctx.texResolution)~=2
         disp(ctx.texResolution);
         error('Invalid "texResolution" argument provided to "CreateContext" - Must be a 2 component vector of integral numbers with processing resolution in x- and y- direction!');
     end
@@ -285,7 +285,7 @@ if strcmpi(cmd, 'CreateContext')
             error('In "CreateContext": The PTB imaging pipeline is not active for provided parent window - this will not work! Need at least support for fast offscreen windows.');
         end
 
-        if winfo.GLSupportsFBOUpToBpc < 32 | winfo.GLSupportsTexturesUpToBpc < 32 %#ok<OR2>
+        if winfo.GLSupportsFBOUpToBpc < 32 || winfo.GLSupportsTexturesUpToBpc < 32
             error('In "CreateContext": Your gfx-hardware is not capable of handling textures and buffers with the required precision - this function will not work on your hardware!');
         end
 
@@ -319,7 +319,7 @@ if strcmpi(cmd, 'CreateContext')
     % channel encodes t-coord of 2D texture coordinate, blue encodes a
     % foreground/background flag, alpha encodes z-buffer depths.
     [ctx.silhouetteWidth, ctx.silhouetteHeight] = RectSize(ctx.rect);
-    ctx.silhouetteBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], [0, 0, ctx.silhouetteWidth, ctx.silhouetteHeight], 128);
+    ctx.silhouetteBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], [0, 0, ctx.silhouetteWidth, ctx.silhouetteHeight], 128, 32);
 
     % Retrieve OpenGL texture handle for the sihouetteBuffer:
     ctx.silhouetteTexture = Screen('GetOpenGLTexture', ctx.parentWin, ctx.silhouetteBuffer);
@@ -339,12 +339,12 @@ if strcmpi(cmd, 'CreateContext')
     % Again a 32bpc float offscreen window FBO, but the resolution is
     % chosen per user spec to be fine enough in texture coordinate space to
     % match the size of the extracted texture map:
-    ctx.trackingBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], [0, 0, ctx.texResolution(1), ctx.texResolution(2)], 128);
+    ctx.trackingBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], [0, 0, ctx.texResolution(1), ctx.texResolution(2)], 128, 32);
 
     % Final buffer with extraced texture image. This one will get filled
     % by the texture extraction shader. A RGBA8 texture format is
     % sufficient, therefore we allocate a standard 32 bit surface:
-    ctx.OutTextureBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], [0, 0, ctx.texResolution(1), ctx.texResolution(2)], 32);
+    ctx.OutTextureBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], [0, 0, ctx.texResolution(1), ctx.texResolution(2)], 32, 32);
     
     % Load all our shaders - Need to do this only on original context
     % creation, as shaders are recycled across context reinits. However, we

@@ -50,6 +50,11 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 09/14/2012 Cancel support for Octave on MS-Windows. (MK)
 % 09/14/2012 Cancel support for 32-Bit Octave on OSX. (MK)
 % 11/11/2012 More cleanup. E.g., don't warn about Octave > 3.2 anymore. (MK)
+% 04/16/2013 Use javaclasspath.txt instead of classpath.txt on R2013a and later. (MK)
+% 05/13/2013 Factor out Java classpath setup to call to PsychJaveTrouble(1). (MK)
+% 07/02/2013 Drop support for 32-Bit Matlab on OSX, and thereby for 32-Bit OSX. (MK)
+% 07/02/2013 Drop support for OSX versions older than 10.6 "Snow Leopard". (MK)
+%
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -141,9 +146,14 @@ if IsWin && IsOctave
     error('Use of GNU/Octave on MS-Windows with Psychtoolbox 3.0.10 is no longer supported. Aborted.');
 end
 
-% 32-Bit Octave on OSX? This is unsupported as of Version 3.0.10.
-if IsOctave && IsOSX && ~IsOSX(1)
-    error('Use of 32-Bit GNU/Octave on OSX with Psychtoolbox 3.0.10 is no longer supported (but 64-Bit Octave would work). Aborted.');
+% 32-Bit Octave or 32-Bit Matlab on OSX? This is unsupported as of Version 3.0.11.
+if IsOSX && ~Is64Bit
+    fprintf('Psychtoolbox 3.0.11 and later do no longer work with 32-Bit versions of Octave or Matlab on OSX.\n');
+    fprintf('You need to upgrade to a 64-Bit version of Octave or Matlab on OSX, which is fully supported.\n');
+    fprintf('You can also use the alternate download function DownloadLegacyPsychtoolbox() to download\n');
+    fprintf('an old legacy copy of Psychtoolbox-3.0.9, which did support 32-Bit Octave 3.2 on OSX, or use\n');
+    fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.10'', which does support 32-Bit Matlab on OSX.\n');
+    error('Tried to setup on 32-Bit Octave, which is no longer supported on OSX.');
 end
 
 % Check if our own startup function is part of the startup file and add it,
@@ -181,112 +191,35 @@ if IsWin(1)
     PsychStartup;
 end
 
-% Check for operating system minor version on Mac OS/X when running under
-% Matlab:
+% Check for operating system minor version on Mac OS/X.
 if IsOSX
-    if ~IsOctave && ~IsOSX(1)
-        % Running on 32-Bit Matlab + OS/X. Find the operating system minor version,
-        % i.e., the 'y' in the x.y.z number, e.g., y=3 for 10.3.7:
-
-        % Get 32-digit binary encoded minor version from Gestalt() MEX file:
-        binminor = Gestalt('sys2');
-
-        % Decode into decimal digit:
-        minorver = 0;
-        for i=1:32
-            minorver = minorver + binminor(i) * 2^(32-i);
-        end
+    % Query kernel version via system() call:
+    [s, did]=system('uname -r');
+    if s == 0
+        % Parse string for kernel major number, then translate to OS
+        % minor version by subtracting 4:
+        minorver = sscanf(did, '%i') - 4;
     else
-        % Running on Octave + OS/X: Query kernel version via system() call:
-        [s, did]=system('uname -r');
-        if s == 0
-            % Parse string for kernel major number, then translate to OS
-            % minor version by subtracting 4:
-            minorver = sscanf(did, '%i') - 4;
-        else
-            % Failed to query: Assume we're good for now...
-            minorver = inf;
-        end
+        % Failed to query: Assume we're good for now...
+        minorver = inf;
     end
     
-    % Is the operating system minor version 'minorver' < 4?
-    if minorver < 4
-        % Yes. This is MacOS/X 10.3 or earlier, i.e., older than 10.4
-        % Tiger. In all likelihood, this current PTB release won't work on
-        % such a system anymore, because some of the binary MEX files are
-        % linked against incompatible runtimes and frameworks. Output a
-        % clear warning message about this, with tips on how to resolve the
-        % problem:
+    % Is the operating system minor version 'minorver' < 6?
+    if minorver < 6
+        % Yes. This is MacOSX 10.5 or earlier, i.e., older than 10.6
+        % Snow Leopard. PTB will not work on such an old system:
         fprintf('\n\n\n\n\n\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n');
         fprintf('Your operating system is Mac OS/X version 10.%i.\n\n', minorver);
-        fprintf('This release of Psychtoolbox-3 is likely no longer compatible\n');
-        fprintf('to OS/X versions older than 10.4 "Tiger".\n\n');
-        fprintf('That means that some or many crucial functions will fail.\n');
-        fprintf('You may encounter errors or failures during the remainder of\n');
-        fprintf('this installation procedure, or later on during use of the toolkit.\n\n');
-        fprintf('You can fix this problem by switching to the last Psychtoolbox version\n');
-        fprintf('that was known to (mostly) work on your old operating system:\n\n');
-        fprintf('1. Type clear all on the Matlab command prompt.\n\n');
-        fprintf('2. Run the downloader script DownloadPsychtoolbox again,\n');
-        fprintf('   (see help DownloadPsychtoolbox for usage information),\n');
-        fprintf('   but specify the optional "flavor" argument as:\n\n');
-        fprintf('   ''Psychtoolbox-3.0.8-PreTiger''\n\n');
-        fprintf('   Example for a standard installation in standard location:\n\n');
-        fprintf('   DownloadPsychtoolbox([],[],[],''Psychtoolbox-3.0.8-PreTiger'');\n\n\n');
-        fprintf('This will delete your current copy of Psychtoolbox-3 and replace it\n');
-        fprintf('by the last known good version for your system.\n\n');
-        fprintf('Please note that we will no longer provide support, bug fixes or enhancements\n');
-        fprintf('for this old release on your old and obsolete operating system - You are on your own.\n\n');
-        fprintf('We strongly recommend that you upgrade your system to a more recent OS/X version soon.\n\n');
-        fprintf('Thanks for your attention and good luck!');
+        fprintf('This release of Psychtoolbox-3 is not compatible\n');
+        fprintf('to OSX versions older than 10.6 "Snow Leopard".\n');
+        fprintf('That means that almost all functionality will not work!\n\n');
+        fprintf('You can either download an older version of Psychtoolbox\n');
+        fprintf('onto your system to get better results. See our Wiki for help.\n');
+        fprintf('Better though, update your operating system to at least version\n');
+        fprintf('10.6.8 "Snow Leopard" or later.\n');
         fprintf('\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n\n');
-        fprintf('Press any key on keyboard to continue with setup...\n');
-        pause;
-    end
-    
-    % Is the operating system minor version 'minorver' < 5 on 64-Bit OSX?
-    if (minorver < 5) && IsOSX(1)
-        % Yes. This is MacOS/X 10.4 or earlier, i.e., older than 10.5
-        % Leopard. In all likelihood, this current PTB release won't work on
-        % such a system anymore, because the binary 64-Bit MEX files are
-        % linked against incompatible runtimes and frameworks. Output a
-        % clear warning message about this, with tips on how to resolve the
-        % problem:
-        fprintf('\n\n\n\n\n\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n');
-        fprintf('Your operating system is Mac OS/X version 10.%i.\n\n', minorver);
-        fprintf('This 64-Bit release of Psychtoolbox-3 is not compatible\n');
-        fprintf('to OS/X versions older than 10.5 "Leopard".\n\n');
-        fprintf('That means that some or many crucial functions will fail.\n');
-        fprintf('You may encounter errors or failures during the remainder of\n');
-        fprintf('this installation procedure, or later during use of the toolkit.\n\n');
-        fprintf('You can either use a version of 32-Bit Matlab to use the 32-Bit Psychtoolbox\n');
-        fprintf('on your system, or a 32-Bit version of GNU/Octave. Alternatively update your\n');
-        fprintf('operating system to at least version 10.5, but better 10.6 Snow Leopard or later.\n');
-        fprintf('\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n\n');
-        fprintf('Press any key on keyboard to continue with setup...\n');
-        pause;
-    end
-
-    % Is the operating system minor version 'minorver' < 6 on 64-Bit OSX?
-    if (minorver < 6) && IsOSX(1)
-        % Yes. This is MacOS/X 10.5 or earlier, i.e., older than 10.6
-        % Snow Leopard. 64-Bit PTB will only provide limited functionality:
-        fprintf('\n\n\n\n\n\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n');
-        fprintf('Your operating system is Mac OS/X version 10.%i.\n\n', minorver);
-        fprintf('This 64-Bit release of Psychtoolbox-3 is not fully compatible\n');
-        fprintf('to OS/X versions older than 10.6 "Snow Leopard".\n\n');
-        fprintf('That means that some functionality will be limited or missing.\n');
-        fprintf('E.g., video capture, video recording, movie playback and movie writing\n');
-        fprintf('will be disabled, unless you manage to find a version of GStreamer compatible\n');
-        fprintf('with OSX 10.5. High precision framebuffer display modes and some parts of\n');
-        fprintf('OpenGL 3D graphics support will be disabled or limited in performance and functionality.\n');
-        fprintf('General graphics performance may be lower and resource consumption may be higher.\n');
-        fprintf('Windowed display mode on multi-display setups may behave slightly odd.\n\n');
-        fprintf('You can either live with these restrictions, or use a version of 32-Bit Matlab or Octave\n');
-        fprintf('together with the 32-Bit OSX Psychtoolbox on your system to get better results.\n');
-        fprintf('Alternatively, update your operating system to at least version 10.6 "Snow Leopard" or later.\n');
-        fprintf('\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n\n');
-        fprintf('Press any key on keyboard to continue with setup...\n');
+        fprintf('Press any key on keyboard to try to continue with setup, although\n');
+        fprintf('this will likely fail soon and leave you with a dysfunctional toolbox.\n\n');
         pause;
     end
 end
@@ -330,6 +263,10 @@ if IsOctave
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFiles64']);
         end
         
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFilesARM'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFilesARM']);
+        end
+        
         if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles'], 'dir')
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles']);
         end
@@ -362,6 +299,11 @@ if IsOctave
             rdir = [rdir 'WindowsFiles'];
         end
         
+        if IsARM
+            % ARM processor architecture:
+            rdir = [rdir 'ARM'];
+        end
+
         if Is64Bit
             % 64 bit Octave. Select 64 bit mex file folder:
             rdir = [rdir '64'];
@@ -397,7 +339,6 @@ if IsOctave
             % On other OS'es we only care about >= 3.6 atm:
             fprintf('WARNING: using the latest stable version of the Octave 3.6.x series or later for use with Psychtoolbox.\n');
         end
-        fprintf('WARNING: using the latest stable version of the Octave 3.2.x series for use with Psychtoolbox.\n');
         fprintf('WARNING: Stuff may not work at all or only suboptimal with earlier versions and we\n');
         fprintf('WARNING: don''t provide any support for such old versions.\n');
         fprintf('\nPress any key to continue with setup.\n');
@@ -416,7 +357,7 @@ if IsOctave
     end
     
     try
-        % Try if Screen MEX file works...
+        % Try if WaitSecs MEX file works...
         WaitSecs(0.1);
     catch
         % Failed! Either screwed setup of path or missing runtime
@@ -519,109 +460,9 @@ end
 % If we're using Matlab then add the PsychJava stuff to the static
 % Java classpath.
 if ~IsOctave
-    try
-       % Figure out the PsychJava path we need to add to the static Java
-        % classpath.
-        path_PsychJava = [PsychtoolboxRoot, 'PsychJava'];
-
-        % Open up the classpath.txt file and find any PsychJava entries.  If
-        % they exist, remove them, and put the current one in the file.  This
-        % only allows on PsychJava to be on the path.
-        classpathFile = which('classpath.txt');
-        bakclasspathFile = [classpathFile '.bak'];
-        
-        if ~verLessThan('matlab', '7.14')
-            % New style method: (textread() is deprecated as of at least R2012a)
-            fid = fopen(classpathFile);
-            fileContentsWrapped = textscan(fid, '%s');
-            fclose(fid);
-            fileContents = fileContentsWrapped{1};
-        else
-            fileContents = textread(classpathFile, '%s'); %#ok<REMFF1>
-        end
-        j = 1;
-        newFileContents = {};
-        pathInserted = 0;
-        for i = 1:length(fileContents)
-            % Look for the first instance of PsychJava in the classpath and
-            % replace it with the new one.  All other instances will be
-            % ignored.
-            if isempty(strfind(fileContents{i}, 'PsychJava'))
-                newFileContents{j, 1} = fileContents{i}; %#ok<AGROW>
-                j = j + 1;
-            elseif ~isempty(strfind(fileContents{i}, 'PsychJava')) && ~pathInserted
-                newFileContents{j, 1} = path_PsychJava; %#ok<AGROW>
-                pathInserted = 1;
-                j = j + 1;
-            end
-        end
-
-        % If the PsychJava path wasn't inserted, then this must be a new
-        % installation, so we append it to the classpath.
-        if ~pathInserted
-            newFileContents{end + 1, 1} = path_PsychJava;
-        end
-
-        % Now compare to see if the new and old classpath are the same.  If
-        % they are, then there's no need to do anything.
-        updateClasspath = 1;
-        if length(fileContents) == length(newFileContents)
-            if strcmp(fileContents, newFileContents)
-                updateClasspath = 0;
-            end
-        end
-
-        if updateClasspath
-            % Make a backup of the old classpath.
-            clear madeBackup;
-
-            [s, w] = copyfile(classpathFile, bakclasspathFile, 'f');
-
-            if s==0
-                error(['Could not make a backup copy of Matlab''s JAVA path definition file ''classpath.txt''. ' ...
-                    'The system reports: ', w]);
-            end
-            madeBackup = 1; %#ok<NASGU>
-
-            % Write out the new contents.
-            FID = fopen(classpathFile, 'w');
-            if FID == -1
-                error('Could not open Matlab''s JAVA path definition file ''classpath.txt'' for write access.');
-            end
-            for i = 1:length(newFileContents)
-                fprintf(FID, '%s\n', newFileContents{i});
-            end
-            fclose(FID);
-
-            fprintf('\n\n');
-            disp('*** Matlab''s Static Java classpath definition file modified. You will have to restart Matlab to enable use of the new Java components. ***');
-            fprintf('\nPress RETURN or ENTER to confirm you read and understood the above message.\n');
-            pause;
-        end
-    catch
-        lerr = psychlasterror;
-        fprintf('Could not update the Matlab JAVA classpath.txt file due to the following error:\n');
-        fprintf('%s\n\n', lerr.message);
-        fprintf('Probably you do not have sufficient access permissions for the Matlab application folder\n');
-        fprintf('or the file itself to change the file %s .\n\n', classpathFile);
-        fprintf('Please ask the system administrator to enable write-access to that file and its\n');        
-        fprintf('containing folder and then repeat the update procedure.\n');
-        fprintf('Alternatively, ask the administrator to add the following line:\n\n');
-        fprintf('%s\n\n', path_PsychJava);
-        fprintf('to the file: %s\n\n', classpathFile);        
-        fprintf('If you skip this step, Psychtoolbox will still be mostly functional, \n');
-        fprintf('but the Java-based commands ListenChar, CharAvail, GetChar and FlushEvents\n');
-        fprintf('on Linux, MacOS-X and MS-Windows in Java mode will not work well - or at all.\n');
-        fprintf('For more info see ''help PsychJavaTrouble''.\n\n');
-        fprintf('\nPress RETURN or ENTER to confirm you read and understood the above message.\n');
-        pause;
-
-        % Restore the old classpath file if necessary.
-        if exist('madeBackup', 'var')
-            [s, w] = copyfile(bakclasspathFile, classpathFile, 'f'); %#ok<*ASGLU,NASGU>
-        end
-    end
-end % if ~IsOctave
+    % Try to setup Matlab static Java class path:
+    PsychJavaTrouble(1);
+end
 
 % Check if Screen is functional:
 try
@@ -659,6 +500,24 @@ try
         fprintf('If you receive an installation failure soon, then please read the output of\n');
         fprintf('"help GStreamer" first and follow the installation instructions for GStreamer\n');
         fprintf('on Linux. Psychtoolbox''s Screen() command will not work without GStreamer!\n\n');
+
+        % Additional setup instructions for embedded/mobile devices with ARM cpu required?
+        if IsARM
+            fprintf('Additionally, as this is a device with ARM processor, the helper library\n');
+            fprintf('libwaffle-1.so needs to be installed in a system library folder for Screen\n');
+            fprintf('to work. You can find a copy of the library in the PsychContributed/ArmArch/\n');
+            fprintf('subfolder of your Psychtoolbox main folder. Rename it to libwaffle-1.so.0 during\n');
+            fprintf('the copy.\n');
+            fprintf('Another requirement, at least as of April 2013 and Ubuntu 13.04 for the Nexus-7,\n');
+            fprintf('is that you must start octave from the command line, or via some script, like this:\n');
+            fprintf('LD_PRELOAD=/usr/lib/libGLESv1_CM.so octave\n');
+            fprintf('This is a workaround for a small bug in octave for Nexus-7, which would cause Screen()\n');
+            fprintf('to crash shortly after opening an onscreen window.\n\n');
+            fprintf('\n');
+            fprintf('If you run PTB on the Nexus7 make sure you do not use the "Unity" desktop since\n');
+            fprintf('this might lead to unforeseen problems. Use a desktop without 3D desktop compositor instead.\n');
+            fprintf('E.g. install and use XFCE (sudo apt-get install xfce4).\n');            
+        end
     end
 
     % Check Screen:

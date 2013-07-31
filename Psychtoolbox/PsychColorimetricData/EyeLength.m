@@ -35,14 +35,8 @@ function eyeLengthMM = EyeLength(species,source)
 % 2/27/13  dhb  Added 17 mm option
 % 3/1/13   dhb  Changed '17' to 'Gulstrand'
 %          dhb  Added option of passing a number as a string.
-
-% Check if a direct value was passed as a string.  If so,
-% ignore everything else and return it.
-directVal = str2num(source);
-if (~isempty(directVal))
-    eyeLengthMM = directVal;
-    return;
-end
+% 4/12/13  dhb  Fix bug introduced in previous update, which may have
+%               been Matlab version dependent.
 
 % Fill in defaults
 if (nargin < 1 || isempty(species))
@@ -52,9 +46,21 @@ if (nargin < 2 || isempty(source))
 	source = 'LeGrand';
 end
 
-% Handle case where a number is passed.
-if (~ischar(source))
-	eyeLengthMM = source;
+% Check if a direct numerical value was passed as a string.  If so,
+% ignore everything else and return it.
+if (ischar(source))
+    directVal = str2num(source);
+    % If directVal is empty, don't do anything here and
+    % go on to process the string.
+    if (~isempty(directVal))
+        eyeLengthMM = directVal;
+        return;
+    end
+else
+    % The source was passed as something not a string.  We assume
+    % that it is the numerical values of the eye length in mm, and
+    % return it.
+    eyeLengthMM = source;
 	return;
 end
 

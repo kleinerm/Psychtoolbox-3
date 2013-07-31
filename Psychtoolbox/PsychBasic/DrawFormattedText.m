@@ -1,25 +1,26 @@
-function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft)
-% [nx, ny, textbounds] = DrawFormattedText(win, tstring [, sx][, sy][, color][, wrapat][, flipHorizontal][, flipVertical][, vSpacing][, righttoleft])
+function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft, winRect)
+% [nx, ny, textbounds] = DrawFormattedText(win, tstring [, sx][, sy][, color][, wrapat][, flipHorizontal][, flipVertical][, vSpacing][, righttoleft][, winRect])
 %
 % Draws a string of text 'tstring' into Psychtoolbox window 'win'. Allows
 % some basic formatting. The text string 'tstring' may contain newline
 % characters '\n'. Whenever a newline character '\n' is encountered, a
 % linefeed and carriage return is performed, breaking the text string into
-% lines. 'sx' defines the left border of the text: If it is
-% left out, text starts at x-position zero, otherwise it starts at the
-% specified position 'sx'. If sx=='center', then each line of text is
-% horizontally centered in the window. 'sy' defines the top border of the
-% text. If left out, it starts at the top of the window, otherwise it
-% starts at the specified vertical pixel position. If sy=='center', then
-% the whole text is vertically centered in the window. 'color' is the color
-% value of the text (color index or [r g b] triplet or [r g b a]
-% quadruple). If color is left out, the current text color from previous
-% text drawing commands is used. 'wrapat', if provided, will automatically
-% break text strings longer than 'wrapat' characters into newline separated
-% strings of roughly 'wrapat' characters. This is done by calling the
-% WrapString function (See 'help WrapString'). 'wrapat' mode may not work
-% reliably with non-ASCII text strings, e.g., UTF-8 encoded uint8 strings
-% on all systems.
+% lines. 'sx' defines the left border of the text: If it is left out, text
+% starts at x-position zero, otherwise it starts at the specified position
+% 'sx'. If sx=='center', then each line of text is horizontally centered in
+% the window. If sx=='right', then each line of text is right justified to
+% the right border of the target window, or of 'winRect' if provided. 'sy'
+% defines the top border of the text. If left out, it starts at the top of
+% the window, otherwise it starts at the specified vertical pixel position.
+% If sy=='center', then the whole text is vertically centered in the
+% window. 'color' is the color value of the text (color index or [r g b]
+% triplet or [r g b a] quadruple). If color is left out, the current text
+% color from previous text drawing commands is used. 'wrapat', if provided,
+% will automatically break text strings longer than 'wrapat' characters
+% into newline separated strings of roughly 'wrapat' characters. This is
+% done by calling the WrapString function (See 'help WrapString'). 'wrapat'
+% mode may not work reliably with non-ASCII text strings, e.g., UTF-8
+% encoded uint8 strings on all systems.
 %
 % The optional flag 'flipHorizontal' if set to 1 will mirror the text
 % horizontally, whereas the optional flag 'flipVertical' if set to 1 will
@@ -32,12 +33,16 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % text string in right-to-left reading direction, e.g., for scripts which
 % read right to left
 %
-% The function employs window clipping by default. Text lines that are
-% detected as lying completely outside the 'win'dow will not be drawn, but
-% clipped away. This allows to draw multi-page text (multiple screen
-% heights) without too much loss of drawing speed. If you find the clipping
-% to interfere with text layout of exotic texts/fonts at exotic sizes and
-% formatting, you can define the global variable...
+% The optional argument 'winRect' allows to specify a [left top right bottom]
+% rectange, in which the text should be centered/placed etc. By default,
+% the rectangle of the whole 'win'dow is used.
+%
+% The function employs clipping by default. Text lines that are detected as
+% lying completely outside the 'win'dow or optional 'winRect' will not be
+% drawn, but clipped away. This allows to draw multi-page text (multiple
+% screen heights) without too much loss of drawing speed. If you find the
+% clipping to interfere with text layout of exotic texts/fonts at exotic
+% sizes and formatting, you can define the global variable...
 %
 % global ptb_drawformattedtext_disableClipping;
 % ... and set it like this ...
@@ -75,6 +80,7 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 %           string fed into Screen() is of the same datatype as the
 %           original input string, e.g., to prevent losing a double()
 %           unicode encoding during string processing/formatting. (MK)
+% 06/17/13  Add sx == 'right' option for right-alignment of text. (MK)
 
 % Set ptb_drawformattedtext_disableClipping to 1 if text clipping should be disabled:
 global ptb_drawformattedtext_disableClipping;
@@ -101,11 +107,19 @@ if nargin < 3 || isempty(sx)
     sx=0;
 end
 
-if ischar(sx) && strcmpi(sx, 'center')
-    xcenter=1;
+xcenter = 0;
+rjustify = 0;
+if ischar(sx)
+    if strcmpi(sx, 'center')
+        xcenter = 1;
+    end
+    
+    if strcmpi(sx, 'right')
+        rjustify = 1;
+    end
+    
+    % Set sx to neutral setting:
     sx=0;
-else
-    xcenter=0;
 end
 
 % No text wrapping by default:
@@ -172,7 +186,12 @@ if nargin < 4 || isempty(sy)
     sy=0;
 end
 
-winRect = Screen('Rect', win);
+% Default rectangle for centering/formatting text is the client rectangle
+% of the 'win'dow, but usercode can specify arbitrary override as 11'th arg:
+if nargin < 11 || isempty(winRect)
+    winRect = Screen('Rect', win);
+end
+
 winHeight = RectHeight(winRect);
 
 if ischar(sy) && strcmpi(sy, 'center')
@@ -182,7 +201,7 @@ if ischar(sy) && strcmpi(sy, 'center')
     numlines = length(strfind(char(tstring), char(10))) + 1;
     bbox = SetRect(0,0,1,numlines * theight);
     % Center box in window:
-    [rect,dh,dv] = CenterRect(bbox, winRect);
+    [rect,dh,dv] = CenterRect(bbox, winRect); %#ok<ASGLU>
 
     % Initialize vertical start position sy with vertical offset of
     % centered text box:
@@ -282,7 +301,7 @@ while ~isempty(tstring)
         curstring = cast(curstring, stringclass);
         
         % Need bounding box?
-        if xcenter || flipHorizontal || flipVertical
+        if xcenter || flipHorizontal || flipVertical || rjustify
             % Compute text bounding box for this substring:
             bbox=Screen('TextBounds', win, curstring, [], [], [], righttoleft);
         end
@@ -290,11 +309,16 @@ while ~isempty(tstring)
         % Horizontally centered output required?
         if xcenter
             % Yes. Compute dh, dv position offsets to center it in the center of window.
-            [rect,dh] = CenterRect(bbox, winRect);
+            [rect,dh] = CenterRect(bbox, winRect); %#ok<ASGLU>
             % Set drawing cursor to horizontal x offset:
             xp = dh;
         end
-            
+        
+        % Right justified (aligned) output required?
+        if rjustify
+            xp = winRect(RectRight) - RectWidth(bbox);
+        end
+        
         if flipHorizontal || flipVertical
             textbox = OffsetRect(bbox, xp, yp);
             [xc, yc] = RectCenter(textbox);
@@ -339,7 +363,7 @@ while ~isempty(tstring)
     % Linefeed to do?
     if dolinefeed
         % Update text drawing cursor to perform carriage return:
-        if xcenter==0
+        if ~xcenter && ~rjustify
             xp = sx;
         end
         yp = ny + theight;

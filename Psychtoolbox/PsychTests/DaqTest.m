@@ -101,7 +101,7 @@ switch length(daq)
         end
       end
       numTries = numTries+1;
-      if numTries > 1 & ~TheLEDBlinked
+      if numTries > 1 && ~TheLEDBlinked
         ConfirmInfo('It should have blinked.  Since it didn''t and there were no obvious errors I will bail and let you work on it.');
         return;
       end
@@ -167,7 +167,7 @@ switch length(daq)
         end
       end
       numTries = numTries+1;
-      if numTries > 1 & ~TheLEDBlinked
+      if numTries > 1 && ~TheLEDBlinked
         ConfirmInfo('I don''t know why this didn''t work.  I hope you do because I am bailing!');
         return;
       end
@@ -231,7 +231,7 @@ end
 % fprintf(['\n** NOT RESPONDING? If your %s is not responding, try quitting and\n'...
 %     '** restarting MATLAB. Denis found that this reliably restored normal\n'...
 %     '** communication for his device.\n'],devices(daq(1)).product);
-if strcmp(devices(daq(1)).product,'USB-1208FS') | strcmp(devices(daq(1)).product,'PMD-1208FS') | strcmp(devices(daq(1)).product,'USB-1408FS')  
+if strcmp(devices(daq(1)).product,'USB-1208FS') || strcmp(devices(daq(1)).product,'PMD-1208FS') || strcmp(devices(daq(1)).product,'USB-1408FS')  
   fprintf(['\n'...
       '** WIRING THE PINS OF THE USB-1208FS (and presumably -1408FS)\n'...
       '**    For the analog i/o test, please connect both channels of analog\n'...
@@ -302,86 +302,92 @@ if debugging
     TestClearMex(daq);
 end
 
-% Denis originally did not test the memory read and write functions because he
-% was afraid of messing up his firmware.  However, since this was one of the
-% first sets of functions from which I got interpretable test results, I added
-% some safeguards to DaqMemWrite and added tests of the functions here. -- mpr
-fprintf('\nTesting my ability to read and write your daq device''s EEPROM...');
+% Disable EEPROM read/write tests by default. Having this on by default is
+% just bat-shit crazy!!!
+if 0
+  % Denis originally did not test the memory read and write functions because he
+  % was afraid of messing up his firmware.  However, since this was one of the
+  % first sets of functions from which I got interpretable test results, I added
+  % some safeguards to DaqMemWrite and added tests of the functions here. -- mpr
+  fprintf('\nTesting my ability to read and write your daq device''s EEPROM...');
 
-[TheOriginalData,TheErrors] = DaqMemRead(daq(1),512,59);
-MemoryReadError = 0;
-for k=1:length(TheErrors)
-  if TheErrors(k).n
-    MemoryReadError = 1;
-    TheErrors(k)
+  [TheOriginalData,TheErrors] = DaqMemRead(daq(1),512,59);
+  MemoryReadError = 0;
+  for k=1:length(TheErrors)
+    if TheErrors(k).n
+      MemoryReadError = 1;
+      TheErrors(k)
+    end
   end
-end
 
-if MemoryReadError
-  fprintf(['\nYou should have just been told of at least one error that occurred when I\n' ...
-           'tried to read the EEPROM of your daq device.  Since it failed this test, I\n' ...
-           'am aborting.  Sorry things didn''t work out...\n\n']);
-  return;
-end
-
-MemWriteTestData = 1:59;
-
-fprintf('\nMemory was apparently read successfully...');
-err=DaqMemWrite(daq(1),512,MemWriteTestData);
-if err.n
-  fprintf(['\nUh oh... an error occurred when I tried to write to the EEPROM of your daq\n' ...
-           'device.  Since that test failed, I am aborting.  I hope that I have not screwed\n' ...
-           'up the memory of your device...  In any case, I am bailing out now.  Good\n' ...
-           'luck fixing things!  What I was told was:\n\n']);
-  err
-  return;
-end
-
-fprintf('\nMemory was apparently written successfully...');
-
-[TheWrittenData,TheErrors] = DaqMemRead(daq(1),512,59);
-MemoryReadError = 0;
-for k=1:length(TheErrors)
-  if TheErrors(k).n
-    MemoryReadError = 1;
-    TheErrors(k)
+  if MemoryReadError
+    fprintf(['\nYou should have just been told of at least one error that occurred when I\n' ...
+             'tried to read the EEPROM of your daq device.  Since it failed this test, I\n' ...
+             'am aborting.  Sorry things didn''t work out...\n\n']);
+    return;
   end
+
+  MemWriteTestData = 1:59;
+
+  fprintf('\nMemory was apparently read successfully...');
+  err=DaqMemWrite(daq(1),512,MemWriteTestData);
+  if err.n
+    fprintf(['\nUh oh... an error occurred when I tried to write to the EEPROM of your daq\n' ...
+             'device.  Since that test failed, I am aborting.  I hope that I have not screwed\n' ...
+             'up the memory of your device...  In any case, I am bailing out now.  Good\n' ...
+             'luck fixing things!  What I was told was:\n\n']);
+    err
+    return;
+  end
+
+  fprintf('\nMemory was apparently written successfully...');
+
+  [TheWrittenData,TheErrors] = DaqMemRead(daq(1),512,59);
+  MemoryReadError = 0;
+  for k=1:length(TheErrors)
+    if TheErrors(k).n
+      MemoryReadError = 1;
+      TheErrors(k)
+    end
+  end
+
+  if MemoryReadError
+    fprintf(['\nUh oh... I spoke too soon.  As you should just have been told, there was at\n' ...
+             'least one error when I tried to read from your daq device a second time.  Odd that\n' ...
+             'the device passed such a test once and then failed...  but that''s how things look\n' ...
+             'to me.\n']);
+    return;
+  end
+
+  if ~all(TheWrittenData(2:end) == MemWriteTestData)  
+    fprintf(['\nUh oh...  I spoke too soon.  The data that I just read from the EEPROM of your\n' ...
+             'daq device does not match the data that I think I just wrote to it.  I do not know\n' ...
+             'why that might be.  Did you unplug it (sorry for such a lame question...).\n\n']);
+    return;
+  end
+
+  fprintf('\nI just read what I wrote, and it looks like I wrote what I thought I wrote!');
+
+  err=DaqMemWrite(daq(1),512,TheOriginalData(2:end));
+  if err.n
+    fprintf(['\nHmmmm...  I just tried to write your original data back to the EEPROM of your daq\n' ...
+             'device.  That operation apparently failed.  I hope that I did not do any serious\n' ...
+             'damage here...  It is unlikely that I did, but it is also unlikely that this function\n' ...
+             'would fail here when it worked before.  Sorry things didn''t go more smoothly.  This\n' ...
+             'is all I can tell you about the problem:\n\n']);
+    err
+    fprintf(['If you want to take matters into your own hands, the data I originally read from your\n' ...
+             'daq''s EEPROM was:\n\n']);
+    TheOriginalData(2:end)
+    return;
+  end
+
+  fprintf(['\nEEPROM of your daq device has been restored to what it was before this test began.\n' ...
+           'So far so good!\n\nMoving on to test mode changes...']);
+else
+  fprintf('\n\nMoving on to test mode changes...');
 end
 
-if MemoryReadError
-  fprintf(['\nUh oh... I spoke too soon.  As you should just have been told, there was at\n' ...
-           'least one error when I tried to read from your daq device a second time.  Odd that\n' ...
-           'the device passed such a test once and then failed...  but that''s how things look\n' ...
-           'to me.\n']);
-  return;
-end
-
-if ~all(TheWrittenData(2:end) == MemWriteTestData)  
-  fprintf(['\nUh oh...  I spoke too soon.  The data that I just read from the EEPROM of your\n' ...
-           'daq device does not match the data that I think I just wrote to it.  I do not know\n' ...
-           'why that might be.  Did you unplug it (sorry for such a lame question...).\n\n']);
-  return;
-end
-
-fprintf('\nI just read what I wrote, and it looks like I wrote what I thought I wrote!');
-
-err=DaqMemWrite(daq(1),512,TheOriginalData(2:end));
-if err.n
-  fprintf(['\nHmmmm...  I just tried to write your original data back to the EEPROM of your daq\n' ...
-           'device.  That operation apparently failed.  I hope that I did not do any serious\n' ...
-           'damage here...  It is unlikely that I did, but it is also unlikely that this function\n' ...
-           'would fail here when it worked before.  Sorry things didn''t go more smoothly.  This\n' ...
-           'is all I can tell you about the problem:\n\n']);
-  err
-  fprintf(['If you want to take matters into your own hands, the data I originally read from your\n' ...
-           'daq''s EEPROM was:\n\n']);
-  TheOriginalData(2:end)
-  return;
-end
-
-fprintf(['\nEEPROM of your daq device has been restored to what it was before this test began.\n' ...
-         'So far so good!\n\nMoving on to test mode changes...']);
-       
 TheStatus = DaqGetStatus(daq);
 if isempty(TheStatus)
   fprintf(['\nFailed to receive status report...  Look inside DaqGetStatus and run\n' ...
@@ -538,7 +544,7 @@ else % if Is1608 (DaqDIn test)
   data=DaqDIn(daq(1));
   if ~isempty(data)
     fprintf('DaqDIn: %3d %3d.\n',data);
-    if length(data) ~= 2 | ~all(data == [a b])
+    if length(data) ~= 2 || ~all(data == [a b])
       disp('Mismatch between what I read and what I wrote.  I will stop to let you investigate.');
       return;
     else

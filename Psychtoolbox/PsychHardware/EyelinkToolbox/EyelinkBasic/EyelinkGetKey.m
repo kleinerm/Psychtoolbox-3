@@ -49,7 +49,7 @@ function [key, el]=EyelinkGetKey(el)
 		error( 'USAGE: [key, el]=EyelinkGetKey(el)' );
 	end
 
-	%if exist('el.getkeytime', 'var') & ~isempty( el.getkeytime )
+	%if exist('el.getkeytime', 'var') && ~isempty( el.getkeytime )
 	if GetSecs-el.getkeytime<el.getkeyrepeat  % to prevent too rapid repeats of this function?
 		return;
 	end
@@ -73,13 +73,13 @@ function [key, el]=EyelinkGetKey(el)
 	end
 
 
-	if keyCodes(el.modifierkey) & keyCodes( el.quitkey )
+	if keyCodes(el.modifierkey) && keyCodes( el.quitkey )
 		key=el.TERMINATE_KEY;
 		return;
 	end
 
 	el.getkeytime=secs;
-	if ~isfield( el, 'keysCached') | isempty(el.keysCached) | el.keysCached==0
+	if ~isfield( el, 'keysCached') || isempty(el.keysCached) || el.keysCached==0
 		el;
 		error( 'Please call el=EyelinkInitDefaults before calling EyelinkGetKey' );
 	end
@@ -91,17 +91,17 @@ function [key, el]=EyelinkGetKey(el)
 
 	%     key=find(keyCodes);
 
-	if keyCodes(el.uparrow)==1
+	if any(keyCodes(el.uparrow))==1
 		key=el.CURS_UP;
-	elseif keyCodes(el.downarrow)==1
+	elseif any(keyCodes(el.downarrow))==1
 		key=el.CURS_DOWN;
-	elseif keyCodes(el.leftarrow)==1
+	elseif any(keyCodes(el.leftarrow))==1
 		key=el.CURS_LEFT;
-	elseif keyCodes(el.rightarrow)==1
+	elseif any(keyCodes(el.rightarrow))==1
 		key=el.CURS_RIGHT;
-	elseif keyCodes(el.return)==1
+	elseif any(keyCodes(el.return))==1
 		key=el.ENTER_KEY;
-	elseif keyCodes(el.enter)==1
+	elseif any(keyCodes(el.enter))==1
 		key=el.ENTER_KEY;
 	elseif keyCodes(158)==1 % Return
 		key=el.ENTER_KEY;
@@ -109,62 +109,62 @@ function [key, el]=EyelinkGetKey(el)
 		key=el.ENTER_KEY;
 	elseif keyCodes(187)==1 % KeypadBackspace
 		key=el.ENTER_KEY;
-	elseif keyCodes(el.backspace)==1
+	elseif any(keyCodes(el.backspace))==1
 		key=el.ESC_KEY;
-	elseif keyCodes(el.escape)==1
+	elseif any(keyCodes(el.escape))==1
 		key=el.ESC_KEY;
-	elseif keyCodes(el.pageup)==1
+	elseif any(keyCodes(el.pageup))==1
 		key=el.PAGE_UP;
-	elseif keyCodes(el.pagedown)==1
+	elseif any(keyCodes(el.pagedown))==1
 		key=el.PAGE_DOWN;
-	elseif keyCodes(el.space)==1
+	elseif any(keyCodes(el.space))==1
 		key=el.SPACE_BAR; % returns 32
-	elseif keyCodes(el.f1)
+	elseif any(keyCodes(el.f1))
 		key=el.F1_KEY;
-	elseif keyCodes(el.f2)
+	elseif any(keyCodes(el.f2))
 		key=el.F2_KEY;
-	elseif keyCodes(el.f3)
+	elseif any(keyCodes(el.f3))
 		key=el.F3_KEY;
-	elseif keyCodes(el.f4)
+	elseif any(keyCodes(el.f4))
 		key=el.F4_KEY;
-	elseif keyCodes(el.f5)
+	elseif any(keyCodes(el.f5))
 		key=el.F5_KEY;
-	elseif keyCodes(el.f6)
+	elseif any(keyCodes(el.f6))
 		key=el.F6_KEY;
-	elseif keyCodes(el.f7)
+	elseif any(keyCodes(el.f7))
 		key=el.F7_KEY;
-	elseif keyCodes(el.f8)
+	elseif any(keyCodes(el.f8))
 		key=el.F8_KEY;
-	elseif keyCodes(el.f9)
+	elseif any(keyCodes(el.f9))
 		key=el.F9_KEY;
-	elseif keyCodes(el.f10)
+	elseif any(keyCodes(el.f10))
 		key=el.F10_KEY;
 	end
 
 
 	function modifyKey
-		if keyCodes(el.left_shift) 
+		if any(keyCodes(el.left_shift))
 			key=bitand(key,el.ELKMOD_LSHIFT); 
 		end
-		if keyCodes(el.right_shift) 
+		if any(keyCodes(el.right_shift)) 
 			key=bitand(key,el.ELKMOD_RSHIFT); 
 		end
-		if keyCodes(el.left_control) 
+		if any(keyCodes(el.left_control)) 
 			key=bitand(key,el.ELKMOD_LCTRL); 
 		end
-		if keyCodes(el.right_control) 
+		if any(keyCodes(el.right_control)) 
 			key=bitand(key,el.ELKMOD_RCTRL); 
 		end
-		if keyCodes(el.lalt) 
+		if any(keyCodes(el.lalt))
 			key=bitand(key,el.ELKMOD_LALT); 
 		end
-		if keyCodes(el.ralt) 
+		if any(keyCodes(el.ralt))
 			key=bitand(key,el.ELKMOD_RALT); 
 		end
-		if keyCodes(el.num) 
+		if any(keyCodes(el.num))
 			key=bitand(key,el.ELKMOD_NUM); 
 		end
-		if keyCodes(el.caps) 
+		if any(keyCodes(el.caps)) 
 			key=bitand(key,el.ELKMOD_CAPS); 
 		end
 	end
@@ -182,7 +182,7 @@ function [key, el]=EyelinkGetKey(el)
 	%     key=key(1); % take only first one in case more keys were pressed
 	key=KbName(key(1)); % convert to a character, potential problem: KbName does not translate all keys to actual ascii characters.
 	key=double(key(1)); % some keyNames have two characters (e.g. 8*);
-	if key >=hex2dec('20') & key < hex2dec('7F') % only return  printable chars (0x20..0x7F)
+	if key >=hex2dec('20') && key < hex2dec('7F') % only return  printable chars (0x20..0x7F)
 		modifyKey;
 		return;
 	end

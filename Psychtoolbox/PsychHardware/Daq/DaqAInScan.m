@@ -305,7 +305,7 @@ function [data,params]=DaqAInScan(daq,options)
 % Perform internal caching of list of HID devices to speedup call:
 persistent AllHIDDevices;
 if isempty(AllHIDDevices)
-    AllHIDDevices = PsychHID('Devices');
+    AllHIDDevices = PsychHIDDAQS;
 end
 
 if strcmp(AllHIDDevices(daq).product(5:6),'16')
@@ -362,7 +362,7 @@ end
 if Is1608
     channelRangeOk = 0;
 else
-    channelRangeOk=~isempty(options.channel) & ~isempty(options.range);
+    channelRangeOk=~isempty(options.channel) && ~isempty(options.range);
 end
 if ~isfield(options,'FirstChannel')
     if Is1608
@@ -378,7 +378,7 @@ if ~isfield(options,'LastChannel')
         options.LastChannel=[];
     end
 end
-FirstLastOk=~isempty(options.FirstChannel) & ~isempty(options.LastChannel);
+FirstLastOk=~isempty(options.FirstChannel) && ~isempty(options.LastChannel);
 if FirstLastOk==channelRangeOk
     error('Please specify either options.channel and options.range OR options.FirstChannel and options.LastChannel.');
 end
@@ -856,8 +856,10 @@ if options.end || (isfield(options, 'livedata') && options.livedata)
         SE_Channels = find(channel > 7);
         
         data(:,DiffChannels) = bitshift(data(:,DiffChannels),-4);
-        [NegativeDiffs,DCs] = find(data(:,DiffChannels) > 2048);
-        data(NegativeDiffs,DiffChannels(DCs)) = -bitcmp(data(NegativeDiffs,DiffChannels(DCs)),12)-1;
+        
+		ix = data(:,DiffChannels) > 2048;
+        data(ix) = -bitcmp(data(ix),12)-1;
+		
         SE_Data = data(:,SE_Channels);
         
         OverflowInds = find(SE_Data > 32752);

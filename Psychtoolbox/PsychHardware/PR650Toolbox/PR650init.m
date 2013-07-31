@@ -46,16 +46,16 @@ if ~g_useIOPort
     % whether we are talking to the meter.
     SerialComm('write', g_serialPort, ['b3' char(10)]);
     retval = [];
-    while isempty(retval) & GetSecs-StartTime < 10 %#ok<AND2>
+    while isempty(retval) && GetSecs-StartTime < 10
         retval = PR650serialread;
     end
 end
 
 if g_useIOPort
 	if enableHandshaking
-		handshakeCode = 'FlowControl=Hardware ';
+		handshakeCode = 'Lenient DontFlushOnWrite=1 FlowControl=Hardware ';
 	else
-		handshakeCode = 'FlowControl=None ';
+		handshakeCode = 'Lenient DontFlushOnWrite=1 FlowControl=None ';
 	end
 
 	% Only open if we haven't already.
@@ -77,7 +77,7 @@ if g_useIOPort
 
 	% Make sure the meter responds.
 	retval = [];
-	while isempty(retval) & GetSecs-StartTime < 10 %#ok<AND2>
+	while isempty(retval) && GetSecs-StartTime < 10
 		retval = PR650serialread;
 	end
 end

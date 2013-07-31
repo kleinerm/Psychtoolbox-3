@@ -169,29 +169,34 @@ int PsychGSGetMovieCount(void) {
 	return(numMovieRecords);
 }
 
-/* Perform one context loop iteration (for bus message handling) if doWait == false,
- * or two seconds worth of iterations if doWait == true. This drives the message-bus
- * callback, so needs to be performed to get any error reporting etc.
+/* Perform context loop iterations (for bus message handling) if doWait == false,
+ * as long as there is work to do, or at least two seconds worth of iterations
+ * if doWait == true. This drives the message-bus callback, so needs to be
+ * performed to get any error reporting etc.
  */
 int PsychGSProcessMovieContext(GMainLoop *loop, psych_bool doWait)
 {
-	double tdeadline, tnow;
-	PsychGetAdjustedPrecisionTimerSeconds(&tdeadline);
+    psych_bool workdone;
+    double tdeadline, tnow;
+    PsychGetAdjustedPrecisionTimerSeconds(&tdeadline);
     tnow = tdeadline;
-	tdeadline+=2.0;
-
-	if (NULL == loop) return(0);
-
-	while (doWait && (tnow < tdeadline)) {
-		// Perform non-blocking work iteration:
-		if (!g_main_context_iteration(g_main_loop_get_context(loop), false)) PsychYieldIntervalSeconds(0.010);
-
-		// Update time:
-		PsychGetAdjustedPrecisionTimerSeconds(&tnow);
-	}
-
-	// Perform one more work iteration of the event context, but don't block:
-	return(g_main_context_iteration(g_main_loop_get_context(loop), false));
+    tdeadline+=2.0;
+    
+    if (NULL == loop) return(0);
+    
+    // If doWait, try to perform iterations until 2 seconds elapsed or at least one event handled:
+    while (doWait && (tnow < tdeadline)) {
+        // Perform non-blocking work iteration:
+        if (!g_main_context_iteration(g_main_loop_get_context(loop), false)) PsychYieldIntervalSeconds(0.010);
+        
+        // Update time:
+        PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+    }
+    
+    // Perform work iterations of the event context as long as events are available, but don't block:
+    while ((workdone = g_main_context_iteration(g_main_loop_get_context(loop), false)) == TRUE);
+    
+    return(workdone);
 }
 
 /* Initiate pipeline state changes: Startup, Preroll, Playback, Pause, Standby, Shutdown. */
@@ -233,38 +238,76 @@ static psych_bool PsychMoviePipelineSetState(GstElement* theMovie, GstState stat
     return(TRUE);
 }
 
+psych_bool PsychIsMovieSeekable(PsychMovieRecordType* movie)
+{
+    GstQuery *query;
+    gint64 start, end;
+    gboolean seekable = FALSE;
+    
+    query = gst_query_new_seeking(GST_FORMAT_TIME);
+    if (gst_element_query(movie->theMovie, query)) {
+        gst_query_parse_seeking(query, NULL, &seekable, &start, &end);
+        if (seekable) {
+            if (PsychPrefStateGet_Verbosity() > 4) {
+                printf("PTB-DEBUG: Seeking is enabled from %" GST_TIME_FORMAT " to %" GST_TIME_FORMAT "\n",
+                        GST_TIME_ARGS (start), GST_TIME_ARGS (end));
+            }
+        }
+        else {
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Seeking is disabled for this movie stream.\n");
+        }
+    }
+    else {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Seeking query failed!\n");
+    }
+    gst_query_unref(query);
+    
+    return((psych_bool) seekable);
+}
+
 /* Receive messages from the playback pipeline message bus and handle them: */
 gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr)
 {
+  GstSeekFlags rewindFlags = 0;
   PsychMovieRecordType* movie = (PsychMovieRecordType*) dataptr;
 
   switch (GST_MESSAGE_TYPE (msg)) {
     case GST_MESSAGE_SEGMENT_DONE:
       // We usually receive segment done message instead of eos if looped playback is active and
       // the end of the stream is approaching, so we fallthrough to message eos for rewinding...
-      if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Message SEGMENT_DONE received.\n");
+      if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: PsychMovieBusCallback: Message SEGMENT_DONE received.\n");
 
     case GST_MESSAGE_EOS: {
       // Rewind at end of movie if looped playback enabled:
-      if ((GST_MESSAGE_TYPE (msg) == GST_MESSAGE_EOS) && (PsychPrefStateGet_Verbosity() > 5)) printf("PTB-DEBUG: Message EOS received.\n");
+      if ((GST_MESSAGE_TYPE (msg) == GST_MESSAGE_EOS) && (PsychPrefStateGet_Verbosity() > 4)) printf("PTB-DEBUG: PsychMovieBusCallback: Message EOS received.\n");
 
+      // Looping via seek requested (method 0x1) and playback active?
       if ((movie->loopflag & 0x1) && (movie->rate != 0)) {
-        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: End of iteration in active looped playback reached: Rewinding...\n");
+        // Perform loop via rewind via seek:
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: PsychMovieBusCallback: End of iteration in active looped playback reached: Rewinding...\n");
 
-        // Seek: We don't GST_SEEK_FLAG_FLUSH here, so the rewinding is smooth because we don't throw away buffers queued in the pipeline.
+        // Seek: We normally don't GST_SEEK_FLAG_FLUSH here, so the rewinding is smooth because we don't throw away buffers queued in the pipeline,
+        // unless we are at the end of the stream (EOS), so there ain't anything queued in the pipeline, or code requests an explicit pipeline flush via flag 0x8.
+        // This seems to make no sense (why flush an already EOS - empty pipeline?) but is neccessary for some movies with sound on some systems:
+        if ((GST_MESSAGE_TYPE(msg) == GST_MESSAGE_EOS) || (movie->loopflag & 0x8)) rewindFlags |= GST_SEEK_FLAG_FLUSH;
+
+        // On some movies and configurations, we need a segment seek as indicated by flag 0x4:
+        if (movie->loopflag & 0x4) rewindFlags |= GST_SEEK_FLAG_SEGMENT;
+
+        // Seek method depends on playback direction:
         if (movie->rate > 0) {
-          if (!gst_element_seek(movie->theMovie, movie->rate, GST_FORMAT_TIME, GST_SEEK_FLAG_ACCURATE | GST_SEEK_FLAG_SEGMENT, GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE)) {
-            printf("PTB-DEBUG: Rewinding video in forward playback failed!\n");
+          if (!gst_element_seek(movie->theMovie, movie->rate, GST_FORMAT_TIME, GST_SEEK_FLAG_ACCURATE | rewindFlags, GST_SEEK_TYPE_SET, 0, GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE)) {
+            if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Rewinding video in forward playback failed!\n");
           }
         }
         else {
-          if (!gst_element_seek(movie->theMovie, movie->rate, GST_FORMAT_TIME, GST_SEEK_FLAG_ACCURATE | GST_SEEK_FLAG_SEGMENT, GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE, GST_SEEK_TYPE_END, 0)) {
-            printf("PTB-DEBUG: Rewinding video in reverse playback failed!\n");
+          if (!gst_element_seek(movie->theMovie, movie->rate, GST_FORMAT_TIME, GST_SEEK_FLAG_ACCURATE | rewindFlags, GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE, GST_SEEK_TYPE_END, 0)) {
+            if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Rewinding video in reverse playback failed!\n");
           }
         }
 
         // Block until seek completed, failed, or timeout of 10 seconds reached:
-        gst_element_get_state(movie->theMovie, NULL, NULL, (GstClockTime) (10 * 1e9));
+        // MK: Actually don't! This can cause deadlocks with some movies, e.g., our DualDiscs.mov with sound: gst_element_get_state(movie->theMovie, NULL, NULL, (GstClockTime) (10 * 1e9));
       }
 
       break;
@@ -437,8 +480,8 @@ static void PsychDestroyNotifyCallback(gpointer user_data)
 }
 
 /* This callback is called when the pipeline is about to finish playback
- * of the current movie stream. If looped playback is enabled, this needs
- * to trigger a repetition by rescheduling the movie URI for playback.
+ * of the current movie stream. If looped playback via method 0x2 is enabled,
+ * this needs to trigger a repetition by rescheduling the movie URI for playback.
  *
  * Allows gapless playback, but doesn't work reliable on all media types.
  *
@@ -446,9 +489,10 @@ static void PsychDestroyNotifyCallback(gpointer user_data)
 static void PsychMovieAboutToFinishCB(GstElement *theMovie, gpointer user_data)
 {
 	PsychMovieRecordType* movie = (PsychMovieRecordType*) user_data;
+    // Loop method 0x2 active? 
 	if ((movie->loopflag & 0x2) && (movie->rate != 0)) {
 		g_object_set(G_OBJECT(theMovie), "uri", movie->movieLocation, NULL);
-		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: About-to-finish received: Rewinding...\n");
+		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: About-to-finish received: Rewinding via uri method.\n");
 	}
 
 	return;
@@ -615,6 +659,11 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     if (TRUE) {
 	// Use playbin2:
 	theMovie = gst_element_factory_make ("playbin2", "ptbmovieplaybackpipeline");
+	if (theMovie == NULL) {
+		printf("PTB-ERROR: Failed to create GStreamer playbin2 element! Your GStreamer installation is\n");
+		printf("PTB-ERROR: incomplete or damaged and misses at least the gst-plugins-base set of plugins!\n");
+		PsychErrorExitMsg(PsychError_system, "Opening the movie failed. GStreamer configuration problem.");
+	}
 
 	// Assign name of movie to play:
 	g_object_set(G_OBJECT(theMovie), "uri", movieLocation, NULL);
@@ -737,9 +786,10 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // converting them into PTB OpenGL textures:
     if (!videosink) videosink = gst_element_factory_make ("appsink", "ptbsink0");
     if (!videosink) {
-	printf("PTB-ERROR: Failed to create video-sink appsink ptbsink!\n");
-	PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
-	PsychErrorExitMsg(PsychError_system, "Opening the movie failed. Reason hopefully given above.");
+        printf("PTB-ERROR: Failed to create video-sink appsink ptbsink! Your GStreamer installation is\n");
+        printf("PTB-ERROR: incomplete or damaged and misses at least the gst-plugins-base set of plugins!\n");        
+        PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
+        PsychErrorExitMsg(PsychError_system, "Opening the movie failed. Reason hopefully given above.");
     }
 
     movieRecordBANK[slotid].videosink = videosink;
@@ -1456,6 +1506,9 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 		((0 == rate) && !movieRecordBANK[moviehandle].preRollAvail)) {
 		// No new frame available. Perform a blocking wait with timeout of 0.5 seconds:
 		PsychTimedWaitCondition(&movieRecordBANK[moviehandle].condition, &movieRecordBANK[moviehandle].mutex, 0.5);
+
+        // Allow context task to do its internal bookkeeping and cleanup work:
+        PsychGSProcessMovieContext(movieRecordBANK[moviehandle].MovieContext, FALSE);
 		
 		// Recheck:
 		if (((0 != rate) && !movieRecordBANK[moviehandle].frameAvail) ||
@@ -1817,10 +1870,15 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         movieRecordBANK[moviehandle].endOfFetch = 0;
         preT = PsychGSGetMovieTimeIndex(moviehandle);
         event = gst_event_new_step(GST_FORMAT_BUFFERS, 1, 1.0, TRUE, FALSE);
-        if (!gst_element_send_event(theMovie, event)) printf("PTB-DEBUG: In single-step seek I - Failed.\n");
+        // Send the seek event *only* to the videosink. This follows recommendations from GStreamer SDK tutorial 13 (Playback speed) to
+        // not send to high level playbin2 itself, as that would propagate to all sinks and trigger multiple seeks. While this was not
+        // ever a problem in the past on Linux or with upstream GStreamer, it caused deadlocks, timeouts and seek failures when done
+        // with the GStreamer SDK on some movie files that have audio tracks, e.g., our standard demo movie! Sending only to videosink
+        // fixes this problem:
+        if (!gst_element_send_event(movieRecordBANK[moviehandle].videosink, event)) printf("PTB-DEBUG: In single-step seek I - Failed.\n");
 
-        // Block until seek completed, failed, or timeout of 30 seconds reached:
-        if (GST_STATE_CHANGE_FAILURE == gst_element_get_state(theMovie, NULL, NULL, (GstClockTime) (30 * 1e9))) printf("PTB-DEBUG: In single-step seek I - Failed.\n");
+        // Block until seek completed, failed, or timeout of 10 seconds reached:
+        if (GST_STATE_CHANGE_SUCCESS != gst_element_get_state(theMovie, NULL, NULL, (GstClockTime) (10 * 1e9))) printf("PTB-DEBUG: In single-step seek II - Failed.\n");
         postT = PsychGSGetMovieTimeIndex(moviehandle);
 
         if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-DEBUG: Movie fetch advance: preT %f   postT %f  DELTA %lf %s\n", preT, postT, postT - preT, (postT - preT < 0.001) ? "SAME" : "DIFF");
@@ -1880,76 +1938,116 @@ void PsychGSFreeMovieTexture(PsychWindowRecordType *win)
  */
 int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double soundvolume)
 {
-    int			dropped = 0;
-    GstElement		*theMovie = NULL;
+    int	dropped = 0;
+    GstElement *theMovie = NULL;
     double timeindex;
+    GstSeekFlags seekFlags = 0;
     
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
     }
-        
+    
     // Fetch references to objects we need:
     theMovie = movieRecordBANK[moviehandle].theMovie;    
     if (theMovie == NULL) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. No movie associated with this handle !!!");
     }
+
+    // Try to set movie playback rate to value identical to current value?
+    if (playbackrate == movieRecordBANK[moviehandle].rate) {
+        // Yes: This would be a no-op, except we allow to change the sound output volume
+        // dynamically and on-the-fly with low overhead this way:
+        
+        // Set volume and mute state for audio:
+        g_object_set(G_OBJECT(theMovie), "mute", (soundvolume <= 0) ? TRUE : FALSE, NULL);
+        g_object_set(G_OBJECT(theMovie), "volume", soundvolume, NULL);
+        
+        // Done. Return success status code:
+        return(0);
+    }
     
     if (playbackrate != 0) {
         // Start playback of movie:
+        
+        // Set volume and mute state for audio:
+        g_object_set(G_OBJECT(theMovie), "mute", (soundvolume <= 0) ? TRUE : FALSE, NULL);
+        g_object_set(G_OBJECT(theMovie), "volume", soundvolume, NULL);
+        
+        // Set playback rate: An explicit seek to the position we are already (supposed to be)
+        // is needed to avoid jumps in movies with bad encoding or keyframe placement:
+        timeindex = PsychGSGetMovieTimeIndex(moviehandle);
 
-	// Set volume and mute state for audio:
-	g_object_set(G_OBJECT(theMovie), "mute", (soundvolume <= 0) ? TRUE : FALSE, NULL);
-	g_object_set(G_OBJECT(theMovie), "volume", soundvolume, NULL);
+        // Which loop setting?
+        if (loop <= 0) {
+            // Looped playback disabled. Set to well defined off value zero:
+            loop = 0;
+        }
+        else {
+            // Looped playback requested. With default settings (==1)?
+            // Otherwise we'll just pass on any special != 1 setting as a
+            // user-override:
+            if (loop == 1) {
+                // Playback with defaults. Apply default setup + specialFlags1 quirks:
+                
+                // specialFlags & 32? Use 'uri' injection method for looped playback, instead of seek method:
+                if (movieRecordBANK[moviehandle].specialFlags1 &  32) loop = 2;
+                
+                // specialFlags & 64? Use segment seeks.
+                if (movieRecordBANK[moviehandle].specialFlags1 &  64) loop |= 4;
 
-	// Set playback rate: An explicit seek to the position we are already (supposed to be)
-	// is needed to avoid jumps in movies with bad encoding or keyframe placement:
-	timeindex = PsychGSGetMovieTimeIndex(moviehandle);
+                // specialFlags & 128? Use pipeline flushing seeks
+                if (movieRecordBANK[moviehandle].specialFlags1 & 128) loop |= 8;
+            }
+        }
 
-	if (playbackrate > 0) {
-		gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE | ((loop & 0x1) ? GST_SEEK_FLAG_SEGMENT : 0), GST_SEEK_TYPE_SET,
-				 (gint64) (timeindex * (double) 1e9), GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
-	}
-	else {
-		gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE | ((loop & 0x1) ? GST_SEEK_FLAG_SEGMENT : 0), GST_SEEK_TYPE_SET,
-				 0, GST_SEEK_TYPE_SET, (gint64) (timeindex * (double) 1e9));
-	}
-
+        // On some movies and configurations, we need a segment seek as indicated by flag 0x4:
+        if (loop & 0x4) seekFlags |= GST_SEEK_FLAG_SEGMENT;
+        
+        if (playbackrate > 0) {
+            gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE | ((loop & 0x1) ? seekFlags : 0), GST_SEEK_TYPE_SET,
+                             (gint64) (timeindex * (double) 1e9), GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
+        }
+        else {
+            gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE | ((loop & 0x1) ? seekFlags : 0), GST_SEEK_TYPE_SET,
+                             0, GST_SEEK_TYPE_SET, (gint64) (timeindex * (double) 1e9));
+        }
+        
         movieRecordBANK[moviehandle].loopflag = loop;
         movieRecordBANK[moviehandle].last_pts = -1.0;
         movieRecordBANK[moviehandle].nr_droppedframes = 0;
-	movieRecordBANK[moviehandle].rate = playbackrate;
-	movieRecordBANK[moviehandle].frameAvail = 0;
-	movieRecordBANK[moviehandle].preRollAvail = 0;
-
-	// Is this a movie with actual videotracks and frame-dropping on videosink full enabled?
-	if ((movieRecordBANK[moviehandle].nrVideoTracks > 0) && gst_app_sink_get_drop(GST_APP_SINK(movieRecordBANK[moviehandle].videosink))) {
-	    // Yes: We only schedule deferred start of playback at first Screen('GetMovieImage')
-	    // frame fetch. This to avoid dropped frames due to random delays between
-	    // call to Screen('PlayMovie') and Screen('GetMovieImage'):
-	    movieRecordBANK[moviehandle].startPending = 1;
-	}
-	else {
-	    // Only soundtrack or framedropping disabled with videotracks - Start it immediately:
-	    movieRecordBANK[moviehandle].startPending = 0;
-	    PsychMoviePipelineSetState(theMovie, GST_STATE_PLAYING, 10.0);
-	    PsychGSProcessMovieContext(movieRecordBANK[moviehandle].MovieContext, FALSE);
-	}
+        movieRecordBANK[moviehandle].rate = playbackrate;
+        movieRecordBANK[moviehandle].frameAvail = 0;
+        movieRecordBANK[moviehandle].preRollAvail = 0;
+        
+        // Is this a movie with actual videotracks and frame-dropping on videosink full enabled?
+        if ((movieRecordBANK[moviehandle].nrVideoTracks > 0) && gst_app_sink_get_drop(GST_APP_SINK(movieRecordBANK[moviehandle].videosink))) {
+            // Yes: We only schedule deferred start of playback at first Screen('GetMovieImage')
+            // frame fetch. This to avoid dropped frames due to random delays between
+            // call to Screen('PlayMovie') and Screen('GetMovieImage'):
+            movieRecordBANK[moviehandle].startPending = 1;
+        }
+        else {
+            // Only soundtrack or framedropping disabled with videotracks - Start it immediately:
+            movieRecordBANK[moviehandle].startPending = 0;
+            PsychMoviePipelineSetState(theMovie, GST_STATE_PLAYING, 10.0);
+            PsychGSProcessMovieContext(movieRecordBANK[moviehandle].MovieContext, FALSE);
+        }
     }
     else {
-	// Stop playback of movie:
-	movieRecordBANK[moviehandle].rate = 0;
-	movieRecordBANK[moviehandle].startPending = 0;
-	movieRecordBANK[moviehandle].loopflag = 0;
-	movieRecordBANK[moviehandle].endOfFetch = 0;
-
-	PsychMoviePipelineSetState(theMovie, GST_STATE_PAUSED, 10.0);
-	PsychGSProcessMovieContext(movieRecordBANK[moviehandle].MovieContext, FALSE);
-
+        // Stop playback of movie:
+        movieRecordBANK[moviehandle].rate = 0;
+        movieRecordBANK[moviehandle].startPending = 0;
+        movieRecordBANK[moviehandle].loopflag = 0;
+        movieRecordBANK[moviehandle].endOfFetch = 0;
+        
+        PsychMoviePipelineSetState(theMovie, GST_STATE_PAUSED, 10.0);
+        PsychGSProcessMovieContext(movieRecordBANK[moviehandle].MovieContext, FALSE);
+        
         // Output count of dropped frames:
         if ((dropped=movieRecordBANK[moviehandle].nr_droppedframes) > 0) {
             if (PsychPrefStateGet_Verbosity()>2) {
-		printf("PTB-INFO: Movie playback had to drop %i frames of movie %i to keep playback in sync.\n", movieRecordBANK[moviehandle].nr_droppedframes, moviehandle);
-	    }
+                printf("PTB-INFO: Movie playback had to drop %i frames of movie %i to keep playback in sync.\n", movieRecordBANK[moviehandle].nr_droppedframes, moviehandle);
+            }
         }
     }
 
@@ -2027,9 +2125,11 @@ double PsychGSSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool in
     // NOTE: We could use GST_SEEK_FLAG_SKIP to allow framedropping on fast forward/reverse playback...
     flags = GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE;
 
-    // Need segment seek flag for seek during active looped playback:
-    flags|= ((movieRecordBANK[moviehandle].rate != 0) && (movieRecordBANK[moviehandle].loopflag & 0x1)) ? GST_SEEK_FLAG_SEGMENT : 0;
-
+    // Need segment seek flag for seek during active looped playback if also flag 0x4 is set:
+    if ((movieRecordBANK[moviehandle].rate != 0) && (movieRecordBANK[moviehandle].loopflag & 0x1) && (movieRecordBANK[moviehandle].loopflag & 0x4)) {
+        flags |= GST_SEEK_FLAG_SEGMENT;
+    }
+    
     // Index based or target time based seeking?
     if (indexIsFrames) {
 	// Index based seeking:		

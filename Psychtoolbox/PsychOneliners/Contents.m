@@ -45,6 +45,9 @@
 %   Ind2Str                 - Converts numbers to characters (decimal to base 26 conversion). Useful for character indices.
 %   Interleave              - Interleaves any number of arrays. Can handle different data types.
 %   IsACell                 - Tests (recursively--cells in cells) if a cell satisfies a user-supplied condition.
+%   IsARM                   - Return if running on a processor with ARM architecture, typically a mobile or embedded system.
+%   IsGLES                  - Return if the current rendering api in use is OpenGL-ES, the "OpenGL Embedded Subset".
+%   IsGLES1                 - Return if the current rendering api in use is OpenGL-ES 1.x.
 %   IsGUI                   - Is the Matlab or Octave GUI enabled in this session?
 %   IsLinux                 - Shorthand for testing whether running under Linux.
 %   IsMinimumOSXVersion     - Query if this is a specific OS/X version or higher.
@@ -76,7 +79,8 @@
 %   PsychGPUControl         - Control low-level operating parameters of certain supported GPU's.
 %   PsychNumel              - Drop-in replacement for numel() on old Matlab versions that don't support it.
 %   PsychtoolboxRoot        - Robust way to get path to Psychtoolbox folder, even if renamed.
-%   RemoveSVNPaths          - Removes .svn folders from the path.
+%   RemoveMatchingPaths     - Removes folders that contain a given string from the path.
+%   RemoveSVNPaths          - Removes ".svn" folders from the path.
 %   Replace                 - Perform exact Replace on strings or numeric arrays.
 %   Resolute                - Cuts from and adds to a matrix to make it the specified dimensions.
 %   RestoreCluts            - Restore original CLUT's for all monitors from backups made during LoadIdentityClut().

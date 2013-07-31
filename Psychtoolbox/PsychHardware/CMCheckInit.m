@@ -22,9 +22,14 @@ function CMCheckInit(meterType, PortString)
 % and built-in defaults to try to find the proper port: If there is a file
 % 'CMPreferredPort.txt' in the search path of Matlab/Octave, it will parse
 % that file for a PortString to use. Else it will use a hard-coded default
-% inside this routine. If a calibration file with name 'PR650Ports' for the
-% PR-650 colorimeter or 'PR655Ports' for the PR-655 colorimeter exists
-% inside the PsychCalData folder, it will use the portname from that file.
+% inside this routine.
+%
+% If a calibration file with name 'PRXXXPorts' for the PR-XXX exists,
+% it will override what is in CMPrefferedPort.txt.  There are two
+% possible formats for the structure in this file.
+%   If the structure has a PortString field, this is passed to
+%   routine FindSerialPort to get the actual port.  Otherwise,
+%   if the structure has a .in field, this string is used directly.
 %
 % Other Colorimeters, e.g., CRS ColorCal, have their own specific setup
 % methods and this routine just calls their setup code with default
@@ -54,6 +59,7 @@ function CMCheckInit(meterType, PortString)
 %                   did this in a way that doesn't break anything else.
 % 7/20/12  dhb      Undid 7/16/12 change.  Error was due to a stale IOPort on my path
 % 12/04/12 zlb      Adding PR-705 support.
+% 4/10/13  dhb      More flexible behavior supported via PRXXXPorts calibration file.
 
 global g_serialPort g_useIOPort;
 
@@ -103,9 +109,9 @@ end
 
 switch meterType
     case 1,
-    % PR-650
-    % Look for port information in "calibration" file.  If
-    % no special information present, then use defaults.
+        % PR-650
+        % Look for port information in "calibration" file.  If
+        % no special information present, then use defaults.
         meterports = LoadCalFile('PR650Ports');
         if isempty(meterports)
             if IsWin || IsOSX || IsLinux
@@ -114,7 +120,11 @@ switch meterType
                 error(['Unsupported OS ' computer]);
             end
         else
-            portNameIn = meterports.in;
+            if (isfield(meterports,'PortString'))
+                portNameIn = FindSerialPort(meterports.PortString, g_useIOPort);
+            else
+                portNameIn = meterports.in;
+            end
         end
         
         if IsWin || IsOSX || IsLinux
@@ -126,11 +136,11 @@ switch meterType
             end
             NumTries = 0;
             
-            while (isempty(status) || status == -1) & NumTries < DefaultNumberOfTries %#ok<AND2>
+            while (isempty(status) || status == -1) && NumTries < DefaultNumberOfTries
                 stat = PR650init(portNameIn);
                 status = sscanf(stat,'%f');
                 NumTries = NumTries+1;
-                if (isempty(status) || status == -1) & NumTries >= 3 %#ok<AND2>
+                if (isempty(status) || status == -1) && NumTries >= 3
                     if IsOSX
                         if ~g_useIOPort
                             evalc(['SerialComm(''close'',' int2str(portNameIn) ');']);
@@ -168,9 +178,9 @@ switch meterType
         end
         
     case 4,
-    % PR-655:
-    % Look for port information in "calibration" file.  If
-    % no special information present, then use defaults.
+        % PR-655:
+        % Look for port information in "calibration" file.  If
+        % no special information present, then use defaults.
         meterports = LoadCalFile('PR655Ports');
         if isempty(meterports)
             if IsWin || IsOSX || IsLinux
@@ -179,7 +189,11 @@ switch meterType
                 error(['Unsupported OS ' computer]);
             end
         else
-            portNameIn = meterports.in;
+            if (isfield(meterports,'PortString'))
+                portNameIn = FindSerialPort(meterports.PortString, g_useIOPort);
+            else
+                portNameIn = meterports.in;
+            end
         end
         
         if IsWin || IsOSX || IsLinux
@@ -194,9 +208,9 @@ switch meterType
             error(['Unsupported OS ' computer]);
         end
         
-    % PR-670 - Functionality should be very similar to the PR-655, though
-    %          it looks like there are a few more commands available for
-    %          the 670.
+        % PR-670 - Functionality should be very similar to the PR-655, though
+        %          it looks like there are a few more commands available for
+        %          the 670.
     case 5
         if IsWin || IsOSX || IsLinux
             % Look for port information in "calibration" file.  If
@@ -205,7 +219,11 @@ switch meterType
             if isempty(meterports)
                 portNameIn = FindSerialPort(PortString, g_useIOPort);
             else
-                portNameIn = meterports.in;
+                if (isfield(meterports,'PortString'))
+                    portNameIn = FindSerialPort(meterports.PortString, g_useIOPort);
+                else
+                    portNameIn = meterports.in;
+                end
             end
             
             stat = PR670init(portNameIn);
@@ -219,14 +237,18 @@ switch meterType
         end
         
         
-    % PR-705
+        % PR-705
     case 6,
         if IsWin || IsOSX || IsLinux
             meterports = LoadCalFile('PR705Ports');
             if isempty(meterports)
                 portNameIn = FindSerialPort(PortString, g_useIOPort);
             else
-                portNameIn = meterports.in;
+                if (isfield(meterports,'PortString'))
+                    portNameIn = FindSerialPort(meterports.PortString, g_useIOPort);
+                else
+                    portNameIn = meterports.in;
+                end
             end
             
             stat = PR705init(portNameIn);

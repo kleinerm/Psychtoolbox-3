@@ -43,3 +43,6 @@ ATTR{manufacturer}=="VPixx", MODE="0666"
 # kernel driver inits low-latency mode on its devices by default since kernel 2.6.31
 # from June 2009:
 ACTION=="add", SUBSYSTEM=="usb-serial", DRIVER=="ftdi_sio", ATTR{latency_timer}="1"
+
+# Enable non-root access of libusb to the USB-HID DAQ devices supported by the DAQ toolbox:
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="09db", MODE="0666"
