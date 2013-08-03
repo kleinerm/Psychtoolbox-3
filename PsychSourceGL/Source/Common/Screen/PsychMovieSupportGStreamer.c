@@ -1803,6 +1803,12 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             PsychCreateTexture(out_texture);
         }
 
+        // NULL-out the texture memory pointer after PsychCreateTexture(). This is not strictly
+        // needed, as PsychCreateTexture() did it already, but we add it here as an annotation
+        // to make it obvious during code correctness review that we won't touch or free() the
+        // video memory buffer anymore, which is owned and only memory-managed by GStreamer:
+        out_texture->textureMemory = NULL;
+
         // After PsychCreateTexture() the cached texture object from our cache is used
         // and no longer available for recycling. We mark the cache as empty:
         // It will be filled with a new textureid for recycling if a texture gets

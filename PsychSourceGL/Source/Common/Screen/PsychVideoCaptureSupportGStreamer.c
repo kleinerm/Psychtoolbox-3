@@ -4318,6 +4318,9 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
             PsychCreateTexture(out_texture);
         }
 
+        // This NULL-out is not strictly needed (done already in PsychCreateTexture()), just for simpler code review:
+        out_texture->textureMemory = NULL;
+
         // Immediate conversion of texture into normalized orientation and format requested
         // by usercode?
         if (capdev->recordingflags & 2048) {
