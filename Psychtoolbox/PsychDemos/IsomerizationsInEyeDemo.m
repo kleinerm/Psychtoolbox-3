@@ -246,7 +246,7 @@ switch (whichInputType)
 		irradianceWattsPerUm2 = RadianceToRetIrradiance(radianceWattsPerM2Sr,S, ...
 			pupilAreaMm2,photoreceptors.eyeLengthMM.value);
 
-	% This light as well as some parameter tweaking are here to match a parameterization the Brian Wandell supplied
+	% This light as well as some parameter tweaking are here to match a parameterization that Brian Wandell supplied
 	% to match what his code to do these computations produces.  Note also
 	% the mucking with the photoreceptors structure.  Wandell estimates
 	% L, M, S isomerizations/cone-sec of 16.5, 12.68, 2.27.  These are very close to the numbers
