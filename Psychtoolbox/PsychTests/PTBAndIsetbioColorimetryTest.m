@@ -9,7 +9,8 @@
 % independent sources.
 %
 % Make sure isetbio is on your path to run these comparisons.  The tests should
-% also work if you have isetbio on your path instead.
+% also work if you have the proprietary iset on your path instead.
+% isetbio is available on gitHub as https://github.com/wandell/isetbio.git.
 %
 % The checks are grouped into cells that check one thing at a time.
 %
