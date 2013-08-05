@@ -32,8 +32,8 @@ for ii = 1:length(theFields);
             end
             fprintf('\n');
             
-        case {'quantalEfficiency' 'OSlength' 'ISdiameter' 'ISlength' 'nomogram'}
-            % Have values for each photoreceptor type but no source, print these
+        case {'quantalEfficiency' 'OSlength' 'ISdiameter' 'ISlength' 'nomogram' 'specificDensity'}
+            % Have values for each photoreceptor type and source, print these
             fprintf('  * Photoreceptor field %s\n',theField);
             switch(theField)
                 case 'nomogram'
@@ -67,7 +67,7 @@ for ii = 1:length(theFields);
         case {'ageInYears' 'fieldSizeDegrees'}
             % Just a numeric feild
             eval(['theValue = photoreceptors.' theField ';']);
-            fprintf('  * Photoreceptors field %s: \n',theField,theValue);
+            fprintf('  * Photoreceptors field %s: %g\n',theField,theValue);
             
         otherwise
             % Other theFields are source/value pairs, print generically.
