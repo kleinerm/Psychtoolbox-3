@@ -282,7 +282,7 @@ switch (whichInputType)
 		radianceWattsPerM2Sr = uniformSpd/normConst;
         photopicLuminanceCdM2 = T_Y*radianceWattsPerM2Sr;
 
-		% Set pupil diameter for 1mm2 pupil area, photoreceptor diameter for 4mm2 collecting
+		% Set pupil diameter for 1 mm2 pupil area, photoreceptor diameter for 4 mm2 collecting
 		% area.  Set eye length to 17 mm.
 		photoreceptors.pupilDiameter.value = 2*sqrt(1/pi);
 		pupilAreaMm2 = pi*(photoreceptors.pupilDiameter.value/2)^2;

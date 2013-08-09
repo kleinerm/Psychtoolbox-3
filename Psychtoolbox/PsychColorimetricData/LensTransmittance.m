@@ -32,6 +32,7 @@ function [lensTransmit,lensDensity] = LensTransmittance(S,species,source,ageInYe
 %         dhb  Finish. Add pupil size.
 % 8/13/11 dhb  Linearly extrapolate read functions outside of range.
 % 9/17/12 dhb  Return density for 'None' case as well.
+% 8/9/13  dhb  More consistent returning of density for 'None' case.
 
 % Default
 if (nargin < 2 || isempty(species))
@@ -53,6 +54,7 @@ switch (species)
 		switch (source)
 			case 'None',
 				lensTransmit = ones(S(3),1)';
+                lensDensity = zeros(S(3),1)';
 			case 'WyszeckiStiles',
 				load den_lens_ws;
 				lensDensity = SplineSrf(S_lens_ws,den_lens_ws,S,2);

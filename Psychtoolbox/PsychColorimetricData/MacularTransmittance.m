@@ -37,10 +37,9 @@ function [macTransmit,macDensity] = MacularTransmittance(S,species,source,fieldS
 %              multiplicative rather than additive.  Second, there was
 %              an operator precedence grouping error in the computation
 %              of the correction factor.
-% 5/8/12  dhb  Removed comment that we can't reproduce CIE tabular 10 deg
-%              values.
+% 5/8/12  dhb  Removed comment that we can't reproduce CIE tabular 10 deg values.
 % 9/17/12 dhb  Return density for 'None' case as well.
-
+% 8/9/13  dhb  More consistent returning of density for 'None' case.
 
 % Default
 if (nargin < 2 || isempty(species))
@@ -59,6 +58,7 @@ switch (species)
 		switch (source)
 			case 'None',
 				macTransmit = ones(S(3),1)';
+                macDensity = zeros(S(3),1)';
 			case 'WyszeckiStiles',
 				load den_mac_ws;
 				macDensity = SplineSrf(S_mac_ws,den_mac_ws,S,2);

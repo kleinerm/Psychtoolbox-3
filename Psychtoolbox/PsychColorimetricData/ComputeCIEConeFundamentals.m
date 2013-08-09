@@ -71,20 +71,29 @@ if (nargin < 8 || isempty(DORODS))
     DORODS = 0;
 end
 
-%% Get some basic parameters.  The Stockman-Sharpe data
-% are not provided below 390, and things are cleaner if we
-% start there rather than default 380.
+%% Get some basic parameters.
+%
+%
+% We start with our default human foveal parameters and 
+% then override to match the CIE standard.
 whatCalc = 'LivingHumanFovea';
 photoreceptors = DefaultPhotoreceptors(whatCalc);
 
 %% Override default values so that FillInPhotoreceptors does
-% our work for us.
+% our work for us.  The CIE standard uses age in years
+% to compute other quantities.
 photoreceptors.nomogram.S = S;
-photoreceptors.fieldSizeDegrees = fieldSizeDegrees;
-photoreceptors.ageInYears = ageInYears;
 photoreceptors.pupilDiameter.value = pupilDiameterMM;
 photoreceptors.lensDensity.source = 'CIE';
 photoreceptors.macularPigmentDensity.source = 'CIE';
+photoreceptors.fieldSizeDegrees = fieldSizeDegrees;
+photoreceptors.ageInYears = ageInYears;
+
+% If we provide axial density, we're not allowed to separately
+% specify OSlength and axial density, since that could produce
+% inconsistency.
+photoreceptors.OSlength.source = 'None';
+photoreceptors.specificDensity.source = 'None';
 photoreceptors.axialDensity.source = 'CIE';
 
 % Aborbance.  Use tabulated CIE values unless a nomogram and
@@ -96,7 +105,10 @@ if (nargin > 4 && ~isempty(lambdaMax))
     staticParams.whichNomogram = whichNomogram;
     params.lambdaMax = lambdaMax;
 else
+    % It doesn't make sense to have a directly specified absorbance and also a nomogram,
+    % so set the source in the nomogram field to 'None'.
     load T_log10coneabsorbance_ss
+    photoreceptors.nomogram.source = 'None';
     photoreceptors.absorbance = 10.^SplineCmf(S_log10coneabsorbance_ss,T_log10coneabsorbance_ss,photoreceptors.nomogram.S,2);
     params.absorbance = photoreceptors.absorbance;
 end
@@ -109,6 +121,8 @@ if (DORODS)
     end
     photoreceptors.types = {'Rod'};
     photoreceptors.nomogram.lambdaMax = lambdaMax;
+    photoreceptors.OSlength.source = 'None';
+    photoreceptors.specificDensity.source = 'None';
     photoreceptors.axialDensity.source = 'Alpern';
     params.DORODS = true;
 end
