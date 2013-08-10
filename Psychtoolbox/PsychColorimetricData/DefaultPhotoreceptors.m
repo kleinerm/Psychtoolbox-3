@@ -32,23 +32,63 @@ end
 
 % Fill it in
 switch (kind)
+    case 'CIE2Deg'
+        photoreceptors.species = 'Human';
+        photoreceptors.types = {'FovealLCone' 'FovealMCone' 'FovealSCone'};
+        photoreceptors.nomogram.S = WlsToS((390:5:780)');
+		photoreceptors.OSlength.source = 'None';
+		photoreceptors.ISdiameter.source = 'Rodieck';
+		photoreceptors.specificDensity.source = 'None';
+        photoreceptors.axialDensity.source = 'CIE';
+		photoreceptors.lensDensity.source = 'CIE';
+        photoreceptors.macularPigmentDensity.source = 'CIE';
+        photoreceptors.nomogram.source = 'None';
+        load T_log10coneabsorbance_ss
+        photoreceptors.absorbance = 10.^SplineCmf(S_log10coneabsorbance_ss,T_log10coneabsorbance_ss,photoreceptors.nomogram.S,2);
+        clear T_log10coneabsorbance_ss S_log10coneabsorbance_ss
+        photoreceptors.quantalEfficiency.source = 'Generic';
+        photoreceptors.fieldSizeDegrees = 2;
+        photoreceptors.ageInYears = 32;
+        photoreceptors.pupilDiameter.value = 3;
+		photoreceptors.eyeLengthMM.source = 'Rodieck';
+        
+    case 'CIE10Deg'
+        photoreceptors.species = 'Human';
+        photoreceptors.types = {'LCone' 'MCone' 'SCone'};
+        photoreceptors.nomogram.S = WlsToS((390:5:780)');
+		photoreceptors.OSlength.source = 'None';
+		photoreceptors.ISdiameter.source = 'Webvision';
+		photoreceptors.specificDensity.source = 'None';
+        photoreceptors.axialDensity.source = 'CIE';
+		photoreceptors.lensDensity.source = 'CIE';
+        photoreceptors.macularPigmentDensity.source = 'CIE';
+        photoreceptors.nomogram.source = 'None';
+        load T_log10coneabsorbance_ss
+        photoreceptors.absorbance = 10.^SplineCmf(S_log10coneabsorbance_ss,T_log10coneabsorbance_ss,photoreceptors.nomogram.S,2);
+        clear T_log10coneabsorbance_ss S_log10coneabsorbance_ss
+        photoreceptors.quantalEfficiency.source = 'Generic';
+        photoreceptors.fieldSizeDegrees = 10;
+        photoreceptors.ageInYears = 32;
+        photoreceptors.pupilDiameter.value = 3;
+		photoreceptors.eyeLengthMM.source = 'Rodieck';
+        
 	case 'LivingHumanFovea'
 		photoreceptors.species = 'Human';
+        photoreceptors.types = {'FovealLCone' 'FovealMCone' 'FovealSCone'};
+        photoreceptors.nomogram.S = [380 1 401];
 		photoreceptors.OSlength.source = 'Rodieck';
 		photoreceptors.ISdiameter.source = 'Rodieck';
 		photoreceptors.specificDensity.source = 'Rodieck';
 		photoreceptors.lensDensity.source = 'StockmanSharpe';
 		photoreceptors.macularPigmentDensity.source = 'Bone';
-		photoreceptors.pupilDiameter.source = 'PokornySmith';
-		photoreceptors.eyeLengthMM.source = 'Rodieck';
 		photoreceptors.nomogram.source = 'StockmanSharpe';
-		photoreceptors.nomogram.S = [380 1 401];
 		photoreceptors.nomogram.lambdaMax = [558.9 530.3 420.7]';
-		photoreceptors.types = {'FovealLCone' 'FovealMCone' 'FovealSCone'};
 		photoreceptors.quantalEfficiency.source = 'Generic';
         photoreceptors.fieldSizeDegrees = 2;
         photoreceptors.ageInYears = 32;
-    
+        photoreceptors.pupilDiameter.source = 'PokornySmith';
+		photoreceptors.eyeLengthMM.source = 'Rodieck';
+
     % This creates Tsujiumura's (2010) estimate of the melanopsin gc
     % spectral sensitivity in the human eye. The quantal efficiency
     % is just made up, though, so that the code runs.
@@ -60,39 +100,40 @@ switch (kind)
     % for the 2010 paper, despite what the paper says.
     case 'LivingHumanMelanopsinTsujimura2010'
         photoreceptors.species = 'Human';
+        photoreceptors.types = {'Melanopsin'};
+        photoreceptors.nomogram.S = [380 1 401];
 		photoreceptors.lensDensity.source = 'CIE';
 		photoreceptors.macularPigmentDensity.source = 'CIE';
         photoreceptors.axialDensity.source = 'Tsujimura';
         photoreceptors.axialDensity.value = 0.5;
-		%photoreceptors.nomogram.source = 'Govardovskii';
         photoreceptors.nomogram.source = 'StockmanSharpe';
-		photoreceptors.nomogram.S = [380 1 401];
 		photoreceptors.nomogram.lambdaMax = [482]';
-		photoreceptors.types = {'Melanopsin'};
         photoreceptors.quantalEfficiency.source = 'None';
         photoreceptors.quantalEfficiency.value = 1;
         photoreceptors.fieldSizeDegrees = 10;
         photoreceptors.ageInYears = 32;
 
     case 'LivingDog'
-		photoreceptors.species = 'Dog';
-		photoreceptors.OSlength.source = 'PennDog';
-		photoreceptors.ISdiameter.source = 'PennDog';
+        photoreceptors.species = 'Dog';
+        photoreceptors.types = {'LCone' 'SCone' 'Rod'};
+        photoreceptors.nomogram.S = [380 1 401];
+        photoreceptors.OSlength.source = 'PennDog';
+        photoreceptors.ISdiameter.source = 'PennDog';
 		photoreceptors.specificDensity.source = 'Generic';
 		photoreceptors.lensDensity.source = 'None';
 		photoreceptors.macularPigmentDensity.source = 'None';
 		photoreceptors.pupilDiameter.source = 'PennDog';
 		photoreceptors.eyeLengthMM.source = 'PennDog';
 		photoreceptors.nomogram.source = 'Govardovskii';
-		photoreceptors.nomogram.S = [380 1 401];
 		photoreceptors.nomogram.lambdaMax = [555 429 506]';
-		photoreceptors.types = {'LCone' 'SCone' 'Rod'};
 		photoreceptors.quantalEfficiency.source = 'Generic';
         
 	case 'GuineaPig'
-		photoreceptors.species = 'GuineaPig';
-		photoreceptors.OSlength.source = 'SterlingLab';
-		photoreceptors.OSdiameter.source = 'SterlingLab';
+        photoreceptors.species = 'GuineaPig';
+        photoreceptors.types = {'MCone' 'SCone' 'Rod'};
+        photoreceptors.nomogram.S = [380 1 401];
+        photoreceptors.OSlength.source = 'SterlingLab';
+        photoreceptors.OSdiameter.source = 'SterlingLab';
 		photoreceptors.ISdiameter.source = 'SterlingLab';
 		photoreceptors.specificDensity.source = 'Bowmaker';
 		photoreceptors.lensDensity.source = 'None';
@@ -101,8 +142,6 @@ switch (kind)
 		photoreceptors.eyeLengthMM.source = 'None';
 		photoreceptors.nomogram.source = 'Govardovskii';
 		photoreceptors.nomogram.lambdaMax = [529 430 500]';
-		photoreceptors.nomogram.S = [380 1 401];
-		photoreceptors.types = {'MCone' 'SCone' 'Rod'};
 		photoreceptors.quantalEfficiency.source = 'Generic';
 	otherwise
 		error('Unknown photoreceptor kind specified');

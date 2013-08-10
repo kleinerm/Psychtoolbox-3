@@ -31,9 +31,10 @@ function dimensions = PhotoreceptorDimensions(receptorTypes,whichDimension,speci
 % Supported sources:
 %   Rodeick (Default).
 %  	CVRL (Human Cone OS length)
+%   Webvision (Human Cone IS diameter)
 %   Hendrickson (Human Rod OS length)
 % 	SterlingLab (GuineaPig dimensions).
-%   Generic.
+%   Generic
 %   PennDog (Dog dimensions).
 %   None (returns empty for the corresponding value)
 %
@@ -42,6 +43,7 @@ function dimensions = PhotoreceptorDimensions(receptorTypes,whichDimension,speci
 % 7/11/03  dhb  Wrote it.
 % 12/04/07 dhb  Added dog but with placeholder numbers.
 % 8/9/13   dhb  Comment clean up, allow 'None' to return empty as the value.
+% 8/10/13  dhb  Added Webvision source for IS diameter.
 
 % Fill in defaults
 if (nargin < 3 || isempty(species))
@@ -80,7 +82,27 @@ for i = 1:length(dimensions)
                     dimensions(i) = 2;
                 otherwise
                     error('Unsupported dimension requested');
-            end       
+            end 
+        case {'Webvision'}
+            % http://webvision.med.utah.edu
+            switch (whichDimension)
+                case 'ISdiam'
+                    switch (type)
+                        % http://webvision.med.utah.edu/book/part-ii-anatomy-and-physiology-of-the-retina/photoreceptors/
+                        % Attributed to Helga Kolb
+                        case {'FovealLCone', 'FovealMCone' 'FovealSCone'}
+                            dimensions(i) = 1.5;
+                        case {'LCone', 'MCone' 'SCone'}
+                            dimensions(i) = 6;
+                        case {'Rod'}
+                            dimensions(i) = 2;
+                        otherwise,
+                            error(sprintf('Unsupported receptor type %s/%s for %s estimates in %s',...
+                                type,whichDimension,source,species));
+                    end
+                otherwise
+                    error('Unsupported dimension requested');
+            end
         case ('PennDog')
             % Numbers we use for dog eyes at Penn.  Got these from
             % Gus Aguirre.  See emails sent about 12/5/07.

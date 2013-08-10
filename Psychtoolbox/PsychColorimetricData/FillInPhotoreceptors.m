@@ -86,7 +86,7 @@ elseif (~isfield(photoreceptors.pupilDiameter,'value'))
 end
 
 %% Consistency checks
-if (isfield(photoreceptors,'nomogram'))
+if (isfield(photoreceptors,'nomogram') & isfield(photoreceptors.nomogram,'lambdaMax'))
     if (length(photoreceptors.types) ~= length(photoreceptors.nomogram.lambdaMax))
         error('Mismatch between length of types and lambdaMax fields');
     end
@@ -282,7 +282,7 @@ end
 % sure about rods.
 if (~isfield(photoreceptors,'effectiveAbsorbtance'))
     photoreceptors.effectiveAbsorbtance = photoreceptors.absorbtance .* ...
-        (ones(length(photoreceptors.nomogram.lambdaMax),1)*photoreceptors.preReceptoral.transmittance);
+        (ones(size(photoreceptors.absorbtance,1),1)*photoreceptors.preReceptoral.transmittance);
 else
     fprintf('If you''re passing the effectiveAbsorbtance to this routine, then you are ignoring essentially everything the routine does.\n')  
     fprintf('The only additional step it would take is to multiply by the quantal efficiency to get isomerizations from absorptions, and\n');
