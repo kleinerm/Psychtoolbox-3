@@ -156,11 +156,14 @@ void PsychGSMovieInit(void)
     #endif
     
     // Initialize GLib's threading system early:
-    // Note: This is deprecated and not needed anymore on GLib 2.32.0 and later, as
+
+    // Note: This is deprecated and not needed anymore on GLib 2.31.0 and later, as
     // GLib's threading system auto-initializes on first use since that version. We
     // keep it for now to stay compatible to older systems, e.g., Ubuntu 10.04 LTS,
-    // for the time being...
-    g_thread_init(NULL);
+    // conditionally on the GLib version we build against:
+	#if !GLIB_CHECK_VERSION (2, 31, 0)
+		if (!g_thread_supported()) g_thread_init(NULL);
+	#endif
 
     return;
 }
