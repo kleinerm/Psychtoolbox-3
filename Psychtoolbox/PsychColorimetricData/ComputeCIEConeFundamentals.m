@@ -118,6 +118,7 @@ photoreceptors.ageInYears = ageInYears;
 % Absorbance.  Use tabulated CIE values (which are in the
 % default CIE photoreceptors structure) unless a nomogram and
 % lambdaMax values are passed.
+SET_ABSORBANCE = false;
 if (nargin > 4 && ~isempty(lambdaMax))
     if (nargin < 6 || isempty(whichNomogram))
         whichNomogram = 'StockmanSharpe';
@@ -128,7 +129,11 @@ if (nargin > 4 && ~isempty(lambdaMax))
     params.lambdaMax = lambdaMax;
     staticParams.whichNomogram = whichNomogram;
 else
-    params.absorbance = photoreceptors.absorbance;
+    % Absorbance is going to be specified directly.  We get
+    % it after the call to FillInPhotoreceptors below,
+    % which will convert a file containing the absorbance into
+    % the needed data at the needed wavelength spacing.
+    SET_ABSORBANCE = true;
 end
 
 %% Are we doing the rods?  In that case, a little more
@@ -151,6 +156,9 @@ end
 % can be computed is specified directly in the passed structure is
 % actually specified, the speciefied value overrides what could be computed.
 photoreceptors = FillInPhotoreceptors(photoreceptors);
+if (SET_ABSORBANCE)
+    params.absorbance = photoreceptors.absorbance;
+end
 
 %% Set up for call into the low level routine that computes the CIE fundamentals.
 staticParams.S = photoreceptors.nomogram.S;

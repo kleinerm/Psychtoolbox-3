@@ -32,7 +32,21 @@ for ii = 1:length(theFields);
             end
             fprintf('\n');
             
-        case {'quantalEfficiency' 'OSlength' 'ISdiameter' 'ISlength' 'nomogram' 'specificDensity'}
+        case 'nomogram'
+            % Have to special case this one
+            fprintf('  * Photoreceptor field %s\n',theField);
+            fprintf('    * Wavelength sampling: %d nm start, %d nm step, %d samples\n', ...
+                photoreceptors.nomogram.S(1), photoreceptors.nomogram.S(2), photoreceptors.nomogram.S(3));
+            if (isfield(photoreceptors.nomogram,'source') && ~strcmp(photoreceptors.nomogram.source,'None'))
+                eval(['theNumberTypes = length(photoreceptors.' theField '.lambdaMax);']);
+                eval(['theSource = photoreceptors.' theField '.source;']);
+                fprintf('    * Source: ''%s'', value for each photoreceptor type: ',theSource);
+                for jj = 1:theNumberTypes   
+                    fprintf('%g nm ',eval(['photoreceptors.' theField '.lambdaMax(jj)']));   
+                end
+            end
+            
+        case {'quantalEfficiency' 'OSlength' 'ISdiameter' 'ISlength' 'specificDensity'}
             % Have values for each photoreceptor type and source, print these
             fprintf('  * Photoreceptor field %s\n',theField);
             switch(theField)

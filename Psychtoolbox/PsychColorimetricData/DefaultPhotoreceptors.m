@@ -43,9 +43,7 @@ switch (kind)
 		photoreceptors.lensDensity.source = 'CIE';
         photoreceptors.macularPigmentDensity.source = 'CIE';
         photoreceptors.nomogram.source = 'None';
-        load T_log10coneabsorbance_ss
-        photoreceptors.absorbance = 10.^SplineCmf(S_log10coneabsorbance_ss,T_log10coneabsorbance_ss,photoreceptors.nomogram.S,2);
-        clear T_log10coneabsorbance_ss S_log10coneabsorbance_ss
+        photoreceptors.absorbance = 'log10coneabsorbance_ss';
         photoreceptors.quantalEfficiency.source = 'Generic';
         photoreceptors.fieldSizeDegrees = 2;
         photoreceptors.ageInYears = 32;
@@ -63,9 +61,7 @@ switch (kind)
 		photoreceptors.lensDensity.source = 'CIE';
         photoreceptors.macularPigmentDensity.source = 'CIE';
         photoreceptors.nomogram.source = 'None';
-        load T_log10coneabsorbance_ss
-        photoreceptors.absorbance = 10.^SplineCmf(S_log10coneabsorbance_ss,T_log10coneabsorbance_ss,photoreceptors.nomogram.S,2);
-        clear T_log10coneabsorbance_ss S_log10coneabsorbance_ss
+        photoreceptors.absorbance = 'log10coneabsorbance_ss';
         photoreceptors.quantalEfficiency.source = 'Generic';
         photoreceptors.fieldSizeDegrees = 10;
         photoreceptors.ageInYears = 32;

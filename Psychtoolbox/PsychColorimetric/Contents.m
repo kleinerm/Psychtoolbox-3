@@ -11,6 +11,7 @@
 % help PsychRadiometric          % For list of data .mat files, triple-click me & hit enter.
 %
 %   AbsorbanceToAbsorbtance - Convert absorbance to absorbtance spectrum.
+%   AbsorbtanceToAbsorbance - Convert absorbtance to absorbance spectrum.
 %   CheckWls            - Check consistency of two wavelength descriptions.
 %   ComputeDE           - Compute vector length between matrix columns.
 %   ComputeDKL_M        - Compute transformation matrix for DKL color space.
