@@ -253,6 +253,19 @@ void PsychGSCheckInit(const char* engineName)
             }
         #endif
 
+		// Can't pass environment vars from Matlab to Screen+GStreamer on a MS-Windows
+		// build against MSVCRT.dll, so we need a hack to pass a debug level env var to
+		// GStreamer. Set GST_DEBUG env var from within Screen's DLL boundaries if verbosity > 20,
+		// as this setting should transfer to the GStreamer dll's, which are also linked against msvcrt.dll:
+		#if (PSYCH_SYSTEM == PSYCH_WINDOWS) && defined(__MSVCRT__)
+		if (PsychPrefStateGet_Verbosity() > 20) {
+			char dbglvl[10];
+			sprintf(dbglvl, "%i", PsychPrefStateGet_Verbosity() - 20);
+			_putenv_s("GST_DEBUG", dbglvl);
+			printf("PTB-DEBUG: Set GStreamer GST_DEBUG=%s from within Screen() dll boundaries.\n", dbglvl);
+		}
+		#endif
+
 		// Initialize GStreamer:
 		if(!gst_init_check(NULL, NULL, &error)) {
 			if (error) {
