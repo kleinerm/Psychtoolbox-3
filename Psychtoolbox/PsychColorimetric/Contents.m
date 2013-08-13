@@ -23,6 +23,7 @@
 %   EffectiveTrolandsFromLum - Compute effective trolands from luminance.
 %   EnergyToCones       - Convert monochromatic energy to cone excitations.
 %   ExcitationToContrast - Convert excitation coordinates to contrast.
+%   FindCmfPeaks        - Find the peak wavelength and values of a set of color matching functions.
 %   FindCovLinMod       - Find linear model from covariance matrix.
 %   FindLinMod          - Find linear model for an ensemble of vectors.
 %   FindModelWeights    - Find the weights with respect to a linear model.
