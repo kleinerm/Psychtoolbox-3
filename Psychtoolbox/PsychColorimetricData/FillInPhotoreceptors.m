@@ -382,6 +382,10 @@ else
 end
 
 %% Compute normalized energy sensitivities (aka cone fundamentals in energy units)
+%
+% Note that we really do mean to call EnergyToQuanta here, because the PTB routines 
+% implement the conversion for spectra.  The conversion for sensitivities is the
+% inverse of the conversion for spectra.
 photoreceptors.energyFundamentals = EnergyToQuanta(S,photoreceptors.isomerizationAbsorbtance')';
 mx = max(photoreceptors.energyFundamentals,[],2);
 photoreceptors.energyFundamentals = diag(1./mx)*photoreceptors.energyFundamentals;
