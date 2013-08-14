@@ -44,6 +44,7 @@ function photoreceptors = FillInPhotoreceptors(photoreceptors)
 %               the calling program not to pass inconsistent information (e.g., you can't pass
 %               a nomogram and an absorbance spectrum.)
 % 8/11/13  dhb  More checking.  Add ability to adjust lens/macular density.  Return energy and quantal fundamentals (normalized to unity).
+% 8/12/13  dhb  Fixed buglet resulting from forgetting to update after copy/paste.
 
 %% Check that there is a nomogram field with an S subfield
 %
@@ -78,10 +79,9 @@ if (~isfield(photoreceptors,'ageInYears'))
     photoreceptors.ageInYears = [];
 end
 if (~isfield(photoreceptors,'pupilDiameter'))
-    photoreceptors.pupilDiameter.source = '';
-    photoreceptors.pupilDiameter.value = [];
-elseif (~isfield(photoreceptors.pupilDiameter,'value'))
-    photoreceptors.pupilDiameter.value = [];
+    photoreceptors.pupilDiameter.source = 'None';
+elseif (~isfield(photoreceptors.pupilDiameter,'source') && ~isfield(photoreceptors.pupilDiameter,'value'))
+    photoreceptors.pupilDiameter.source = 'None';
 end
 
 %% Consistency checks
@@ -142,9 +142,12 @@ end
 % Pupil diameter is NOT used here to adjust the returend sensitivities
 % for the manner in which the pupil affects the retinal illuminance.
 if (isfield(photoreceptors,'pupilDiameter'))
-    if (~isfield(photoreceptors.OSlength,'value'))
+    if (~isfield(photoreceptors.pupilDiameter,'value'))
+        if (strcmp(photoreceptors.pupilDiameter.source,'None'))
+            photoreceptors.pupilDiameter.value = [];
+        end
     else
-        photoreceptors.OSlength.source = 'Value provided directly';
+        photoreceptors.pupilDiameter.source = 'Value provided directly';
     end
 end
 

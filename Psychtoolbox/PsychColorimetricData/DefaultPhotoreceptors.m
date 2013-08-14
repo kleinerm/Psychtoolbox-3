@@ -10,7 +10,7 @@ function photoreceptors = DefaultPhotoreceptors(kind)
 %   LivingDog - Canine
 %   GuineaPig - Guinea pig in dish
 %
-% See also:  FillInPhotoreceptors, RetIrradianceToIsoRecSec
+% See also:  FillInPhotoreceptors, PrintPhotoreceptors, RetIrradianceToIsoRecSec
 %  IsomerizationsInEyeDemo, IsomerizationsInDishDemo, ComputeCIEConeFundamentals. 
 %
 % NOTES: Should probably update the parameters for LivingHumanFovea so that
@@ -23,6 +23,7 @@ function photoreceptors = DefaultPhotoreceptors(kind)
 %               These defaults match the CIE standard.
 % 4/20/12  dhb  Add LivingHumanMelanopsin
 % 5/10/12  dhb  Changed name for LivingHumanMelanopsin to postpend Tsujimura2010
+% 8/12/13  dhb  Change field order to make printouts look nicer.
 
 
 % Default
@@ -40,15 +41,15 @@ switch (kind)
 		photoreceptors.ISdiameter.source = 'Rodieck';
 		photoreceptors.specificDensity.source = 'None';
         photoreceptors.axialDensity.source = 'CIE';
-		photoreceptors.lensDensity.source = 'CIE';
-        photoreceptors.macularPigmentDensity.source = 'CIE';
         photoreceptors.nomogram.source = 'None';
-        photoreceptors.absorbance = 'log10coneabsorbance_ss';
         photoreceptors.quantalEfficiency.source = 'Generic';
         photoreceptors.fieldSizeDegrees = 2;
         photoreceptors.ageInYears = 32;
         photoreceptors.pupilDiameter.value = 3;
 		photoreceptors.eyeLengthMM.source = 'Rodieck';
+        photoreceptors.absorbance = 'log10coneabsorbance_ss';
+		photoreceptors.lensDensity.source = 'CIE';
+        photoreceptors.macularPigmentDensity.source = 'CIE';
         
     case 'CIE10Deg'
         photoreceptors.species = 'Human';
@@ -58,15 +59,15 @@ switch (kind)
 		photoreceptors.ISdiameter.source = 'Webvision';
 		photoreceptors.specificDensity.source = 'None';
         photoreceptors.axialDensity.source = 'CIE';
-		photoreceptors.lensDensity.source = 'CIE';
-        photoreceptors.macularPigmentDensity.source = 'CIE';
         photoreceptors.nomogram.source = 'None';
-        photoreceptors.absorbance = 'log10coneabsorbance_ss';
         photoreceptors.quantalEfficiency.source = 'Generic';
         photoreceptors.fieldSizeDegrees = 10;
         photoreceptors.ageInYears = 32;
         photoreceptors.pupilDiameter.value = 3;
 		photoreceptors.eyeLengthMM.source = 'Rodieck';
+        photoreceptors.absorbance = 'log10coneabsorbance_ss';
+		photoreceptors.lensDensity.source = 'CIE';
+        photoreceptors.macularPigmentDensity.source = 'CIE';
         
 	case 'LivingHumanFovea'
 		photoreceptors.species = 'Human';
@@ -75,8 +76,6 @@ switch (kind)
 		photoreceptors.OSlength.source = 'Rodieck';
 		photoreceptors.ISdiameter.source = 'Rodieck';
 		photoreceptors.specificDensity.source = 'Rodieck';
-		photoreceptors.lensDensity.source = 'StockmanSharpe';
-		photoreceptors.macularPigmentDensity.source = 'Bone';
 		photoreceptors.nomogram.source = 'StockmanSharpe';
 		photoreceptors.nomogram.lambdaMax = [558.9 530.3 420.7]';
 		photoreceptors.quantalEfficiency.source = 'Generic';
@@ -84,6 +83,8 @@ switch (kind)
         photoreceptors.ageInYears = 32;
         photoreceptors.pupilDiameter.source = 'PokornySmith';
 		photoreceptors.eyeLengthMM.source = 'Rodieck';
+        photoreceptors.lensDensity.source = 'StockmanSharpe';
+		photoreceptors.macularPigmentDensity.source = 'Bone';
 
     % This creates Tsujiumura's (2010) estimate of the melanopsin gc
     % spectral sensitivity in the human eye. The quantal efficiency
@@ -98,8 +99,6 @@ switch (kind)
         photoreceptors.species = 'Human';
         photoreceptors.types = {'Melanopsin'};
         photoreceptors.nomogram.S = [380 1 401];
-		photoreceptors.lensDensity.source = 'CIE';
-		photoreceptors.macularPigmentDensity.source = 'CIE';
         photoreceptors.axialDensity.source = 'Tsujimura';
         photoreceptors.axialDensity.value = 0.5;
         photoreceptors.nomogram.source = 'StockmanSharpe';
@@ -108,6 +107,8 @@ switch (kind)
         photoreceptors.quantalEfficiency.value = 1;
         photoreceptors.fieldSizeDegrees = 10;
         photoreceptors.ageInYears = 32;
+        photoreceptors.lensDensity.source = 'CIE';
+		photoreceptors.macularPigmentDensity.source = 'CIE';
 
     case 'LivingDog'
         photoreceptors.species = 'Dog';
@@ -116,13 +117,13 @@ switch (kind)
         photoreceptors.OSlength.source = 'PennDog';
         photoreceptors.ISdiameter.source = 'PennDog';
 		photoreceptors.specificDensity.source = 'Generic';
-		photoreceptors.lensDensity.source = 'None';
-		photoreceptors.macularPigmentDensity.source = 'None';
 		photoreceptors.pupilDiameter.source = 'PennDog';
 		photoreceptors.eyeLengthMM.source = 'PennDog';
 		photoreceptors.nomogram.source = 'Govardovskii';
 		photoreceptors.nomogram.lambdaMax = [555 429 506]';
 		photoreceptors.quantalEfficiency.source = 'Generic';
+        photoreceptors.lensDensity.source = 'None';
+		photoreceptors.macularPigmentDensity.source = 'None';
         
 	case 'GuineaPig'
         photoreceptors.species = 'GuineaPig';
@@ -132,13 +133,14 @@ switch (kind)
         photoreceptors.OSdiameter.source = 'SterlingLab';
 		photoreceptors.ISdiameter.source = 'SterlingLab';
 		photoreceptors.specificDensity.source = 'Bowmaker';
-		photoreceptors.lensDensity.source = 'None';
-		photoreceptors.macularPigmentDensity.source = 'None';
 		photoreceptors.pupilDiameter.source = 'None';
 		photoreceptors.eyeLengthMM.source = 'None';
 		photoreceptors.nomogram.source = 'Govardovskii';
 		photoreceptors.nomogram.lambdaMax = [529 430 500]';
 		photoreceptors.quantalEfficiency.source = 'Generic';
+        photoreceptors.lensDensity.source = 'None';
+		photoreceptors.macularPigmentDensity.source = 'None';
+        
 	otherwise
 		error('Unknown photoreceptor kind specified');
 end
