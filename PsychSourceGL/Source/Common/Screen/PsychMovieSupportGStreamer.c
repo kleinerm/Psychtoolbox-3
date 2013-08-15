@@ -1772,6 +1772,9 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             // Check if 1.5x height texture fits within hardware limits of this GPU:
             if (movieRecordBANK[moviehandle].height * 1.5 > win->maxTextureSize) PsychErrorExitMsg(PsychError_user, "Videoframe size too big for this graphics card and pixelFormat! Please retry with a pixelFormat of 4 in 'OpenMovie'.");
             
+            // Byte alignment: Assume no alignment for now:
+            out_texture->textureByteAligned = 1;
+
             // Create planar "I420 inside L8" texture:
             PsychCreateTexture(out_texture);
             
@@ -1792,10 +1795,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             out_texture->nrchannels = 3;
             
             // And 24 bpp depth:
-            out_texture->depth = 24;
-            
-            // Byte alignment: Assume no alignment for now:
-            out_texture->textureByteAligned = 1;
+            out_texture->depth = 24;            
         }
         else {
             // Let PsychCreateTexture() do the rest of the job of creating, setting up and
