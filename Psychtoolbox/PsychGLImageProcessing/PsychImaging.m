@@ -1011,17 +1011,19 @@ end
 rc = [];
 winRect = [];
 
-if strcmp(cmd, 'PrepareConfiguration')
+if strcmpi(cmd, 'PrepareConfiguration')
     % Prepare new configuration:
     if configphase_active
-        fprintf('Tried to prepare a new configuration phase, but you did not finalize the previous phase yet!\n');
+        % Huh? Configuration was already in progress. Warn user about reset of task specs:
+        fprintf('Tried to prepare a new configuration phase via PsychImaging(''PrepareConfiguration''), but you did not finalize the previous phase yet!\n');
         fprintf('You must call the PsychImaging(''OpenWindow'', ...); command at least once to open an onscreen\n');
-        fprintf('window with the provided settings, before you can specify settings for additional onscreen windows.\n\n');
-        fprintf('\n\n');
+        fprintf('window with the provided settings, before you can specify settings for additional onscreen windows.\n');
+        fprintf('\n');
         fprintf('However, the most likely reason you see this error message is because your script aborted with some\n');
-        fprintf('error. In that case you will need to execute a ''clear all'' command at the Matlab/Octave prompt before\n');
+        fprintf('error. In that case you should execute a ''clear all'' command at the Matlab/Octave prompt before\n');
         fprintf('you can restart your script.\n\n');
-        error('Tried to prepare a new configuration phase, but you did not finalize the previous phase yet!');
+        fprintf('I will obey you anyway by restarting configuration now and by forgetting all previously made settings.\n');
+        warning('Tried to prepare a new configuration phase, but you did not finalize the previous phase yet!');
     end
     
     configphase_active = 1;
@@ -1038,7 +1040,7 @@ if strcmp(cmd, 'PrepareConfiguration')
     return;
 end
 
-if strcmp(cmd, 'AddTask')
+if strcmpi(cmd, 'AddTask')
     if nargin < 3 || isempty(varargin{1}) || isempty(varargin{2})
         error('Parameters missing: Need at least "whichChannel" and "whichTask"!');
     end
@@ -1072,7 +1074,7 @@ if strcmp(cmd, 'AddTask')
     return;
 end
 
-if strcmp(cmd, 'FinalizeConfiguration')
+if strcmpi(cmd, 'FinalizeConfiguration')
     if configphase_active ~= 1
         error('You tried to finalize configuration, but no configuration in progress!');
     end
@@ -1092,7 +1094,7 @@ if strcmp(cmd, 'FinalizeConfiguration')
     return;
 end
 
-if strcmp(cmd, 'PostConfiguration')
+if strcmpi(cmd, 'PostConfiguration')
     if configphase_active ~= 2
         error('Tried to call PostConfiguration without calling FinalizeConfiguration before!');
     end
@@ -1113,9 +1115,15 @@ if strcmp(cmd, 'PostConfiguration')
     return;
 end
     
-if strcmp(cmd, 'OpenWindow')
+if strcmpi(cmd, 'OpenWindow')
+
+    % Allow 'OpenWindow' without task specs. Simply open with empty task requirements list:
+    if configphase_active == 0
+        PsychImaging('PrepareConfiguration');
+    end
+    
     if configphase_active ~= 1
-        error('You tried to OpenImagingWindow, but didn''t specify any imaging configuration!');
+        error('You tried to OpenWindow, but didn''t specify any imaging configuration!');
     end
 
     if nargin < 2
@@ -1622,7 +1630,7 @@ if strcmp(cmd, 'OpenWindow')
     return;
 end
 
-if strcmp(cmd, 'RestrictProcessingToROI')
+if strcmpi(cmd, 'RestrictProcessingToROI')
     % Define a ROI in a processing chain/channel to which processing should
     % be restricted by internal use of glScissor() command. This is a
     % runtime function. Each invocation will search the given channel if
@@ -1698,7 +1706,7 @@ if strcmp(cmd, 'RestrictProcessingToROI')
     return;
 end
 
-if strcmp(cmd, 'UnrestrictProcessing')
+if strcmpi(cmd, 'UnrestrictProcessing')
     % Remove a ROI in a processing chain/channel to which processing should
     % be restricted by internal use of glScissor() command. This is a
     % runtime function. Each invocation will search the given channel if
