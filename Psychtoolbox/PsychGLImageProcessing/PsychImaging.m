@@ -324,15 +324,28 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   arbitrary values, e.g., also negative values. All Screen() 2D drawing
 %   commands should operate at maximum color/luminance precision.
 %
-%   This is just a convenience shortcut for Screen('ColorRange', win, 1, 0);
+%   The optional flag 'applyAlsoToMakeTexture' defaults to zero. If set to 1,
+%   then a unit color range of expected input values in the [0; 1] range is
+%   also applied to standard 8-Bit precision textures in Screen('MakeTexture')
+%   if the provided Matlab imageMatrix is of double precision type instead of
+%   uint8 type. This allows to specify standard textures in the same consistent
+%   value range 0-1 as other drawing colors, for cleaner code. Such textures
+%   will still be limited to 0-1 range and only resolved into 256 intensity
+%   levels, unless you also set the optional 'floatprecision' flag in Screen('MakeTexture')
+%   to a value of 1 or 2. We still apply this limitation, as high precision textures consume
+%   more memory and other resources and are incompatible with very old graphics
+%   hardware.
+%
+%   This is just a convenience shortcut for Screen('ColorRange', win, 1, 0, applyAlsoToMakeTexture);
 %   with the added benefit of allowing to specify the background clear
 %   color in normalized 0-1 range as well. This command is implied by use
 %   of any of the high precision display device drivers (for attenuators,
 %   Bits+ box etc.). It is only needed if you want to create the same
 %   visual results on a 8 bit standard framebuffer without needing to
-%   change your code.
+%   change your code, or if you want to set the 'applyAlsoToMakeTexture' flag to a
+%   setting of non-zero, so unit colorrange also applies to Screen('MakeTexture').
 %
-%   Usage: PsychImaging('AddTask', 'General', 'NormalizedHighresColorRange');
+%   Usage: PsychImaging('AddTask', 'General', 'NormalizedHighresColorRange' [, applyAlsoToMakeTexture]);
 %
 %
 % * 'DisplayColorCorrection' Select a method for color correction to apply to
@@ -2314,6 +2327,7 @@ needsIdentityCLUT = 0;
 
 % 0.0 - 1.0 colorrange without color clamping required?
 needsUnitUnclampedColorRange = 0;
+applyAlsoToMakeTexture = [];
 
 % Number of used slots in left- and right processing chain:
 leftcount = 0;
@@ -3313,6 +3327,20 @@ end
 if ~isempty(find(mystrcmp(reqs, 'NormalizedHighresColorRange')))
     % Use unit color range, without clamping, but in high-precision mode:
     needsUnitUnclampedColorRange = 1;
+    
+    % Extract first parameter - This should be the applyAlsoToMakeTexture flag:
+    floc = find(mystrcmp(reqs, 'NormalizedHighresColorRange'));
+    [rows cols] = ind2sub(size(reqs), floc(1));
+    row = rows(1);
+    applyAlsoToMakeTexture = reqs{row, 3};
+    if ~isempty(applyAlsoToMakeTexture)
+        if ~isnumeric(applyAlsoToMakeTexture) || ~ismember(applyAlsoToMakeTexture, [0, 1])
+            Screen('CloseAll');
+            error('In NormalizedHighresColorRange: Invalid applyAlsoToMakeTexture flag specified. Must be 0 or 1.');
+        end
+    else
+        applyAlsoToMakeTexture = [];
+    end
 end
 % --- End of setup for unclamped, high precision 0-1 range colors ---
 
@@ -3779,14 +3807,14 @@ if needsUnitUnclampedColorRange
     % 0-255 values. Try to disable color clamping. This may fail and
     % produce a PTB warning, but if it succeeds then we're better off for
     % the 2D drawing commands...
-    Screen('ColorRange', win, 1, 0);
+    Screen('ColorRange', win, 1, 0, applyAlsoToMakeTexture);
 
     % Set Screen background clear color, in normalized 0.0 - 1.0 range:
     if (max(clearcolor) > 1) && (all(round(clearcolor) == clearcolor))
         % Looks like someone's feeding old style 0-255 integer values as
         % clearcolor. Output a warning to tell about the expected 0.0 - 1.0
         % range of values:
-        fprintf('\n\nPsychImaging-Warning: You specified a ''clearcolor'' argument for the OpenWindow command that looks \nlike an old 0-255 value instead of the wanted value in the 0.0-1.0 range. Please update your code for correct behaviour.');
+        fprintf('\n\nPsychImaging-Warning: You specified a ''clearcolor'' argument for the OpenWindow command that looks \nlike an old 0-255 value instead of the wanted value in the 0.0-1.0 range.\nPlease update your code for correct behaviour.\n\n');
     end
 
     % Set the background clear color via old fullscreen 'FillRect' trick,

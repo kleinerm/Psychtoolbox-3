@@ -58,7 +58,7 @@ char vertexTunnelSrc[] =
 "}\n\0";
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "[oldmaximumvalue oldclampcolors] = Screen('ColorRange', windowPtr [, maximumvalue][, clampcolors]);";
+static char useString[] = "[oldmaximumvalue, oldclampcolors, oldapplyToDoubleInputMakeTexture] = Screen('ColorRange', windowPtr [, maximumvalue][, clampcolors][, applyToDoubleInputMakeTexture]);";
 static char synopsisString[] = 
 	"Set or return the maximum color component value that PTB should allow for provided color "
 	"values when drawing into a window 'windowPtr' or its associated Offscreen windows. "
@@ -94,7 +94,15 @@ static char synopsisString[] =
 	"textures, e.g., from video capture, Quicktime movies or Screen('MakeTexture') are not rescaled, as"
 	"they are (expected) to be in a proper format for the given color depth already. However, the "
 	"Screen('MakeTexture') command has an optional flag 'floatprecision' that allows you to pass image "
-	"matrices unclamped and with either 16 bpc or 32 bpc floating point color precision if you want. ";
+	"matrices unclamped and with either 16 bpc or 32 bpc floating point color precision if you want.\n"
+	"Additionally you can force Screen('MakeTexture') to apply the 'maximumvalue' setting to regular "
+	"textures which are provided as Matlab double type matrices by setting the optional parameter "
+	"'applyToDoubleInputMakeTexture' to 1. This will allow an input range of double values between "
+	"zero and 'maximumvalue' to make your code more consistent, but it will still limit the range of "
+	"valid values to that range and will represent that range only with 8 bit for 256 different levels, "
+	"ie., the description of the 'clampcolors' setting do not apply to such uint8 low-precision textures! "
+	"For full precision unconstrained textures, you'll still need to set the 'floatprecision' flag accordingly, "
+	"as such textures require more memory and processing resources.";
 
 static char seeAlsoString[] = "OpenWindow OpenOffscreenWindow";	 
 
@@ -102,16 +110,17 @@ PsychError SCREENColorRange(void)
 {
 	PsychWindowRecordType *windowRecord;
 	double maxvalue, clampcolors, oldclampcolors;
+	int applyToMakeTexture;
 	GLboolean enabled, enabled1, enabled2, enabled3;
 	GLuint tunnelShader = 0;
-	
+
 	//all subfunctions should have these two lines.  
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 	
-	PsychErrorExit(PsychCapNumInputArgs(3));     //The maximum number of inputs
+	PsychErrorExit(PsychCapNumInputArgs(4));     //The maximum number of inputs
 	PsychErrorExit(PsychRequireNumInputArgs(1)); //The required number of inputs	
-	PsychErrorExit(PsychCapNumOutputArgs(2));	 //The maximum number of outputs
+	PsychErrorExit(PsychCapNumOutputArgs(3));	 //The maximum number of outputs
         
 	//get the window record from the window record argument and get info from the window record
 	PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
@@ -126,10 +135,15 @@ PsychError SCREENColorRange(void)
 	// Copy out optional return value:
 	PsychCopyOutDoubleArg(1, FALSE, maxvalue);
 	PsychCopyOutDoubleArg(2, FALSE, clampcolors);
-	
+	PsychCopyOutDoubleArg(3, FALSE, windowRecord->applyColorRangeToDoubleInputMakeTexture);
+
 	// Get the optional new values:
 	PsychCopyInDoubleArg(2, FALSE, &maxvalue);
 	PsychCopyInDoubleArg(3, FALSE, &clampcolors);
+	if (PsychCopyInIntegerArg(4, FALSE, &applyToMakeTexture)) {
+		if ((applyToMakeTexture < 0) || (applyToMakeTexture > 1)) PsychErrorExitMsg(PsychError_user, "Tried to set invalid applyToDoubleInputMakeTexture flag (valid values are 0 and 1).");
+		windowRecord->applyColorRangeToDoubleInputMakeTexture = applyToMakeTexture;
+	}
 
 	// Encode into one value:
 	if (maxvalue<=0) PsychErrorExitMsg(PsychError_user, "Tried to set invalid color maximumvalue (negative or zero).");
