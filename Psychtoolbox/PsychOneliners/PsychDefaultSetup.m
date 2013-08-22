@@ -32,14 +32,14 @@ function PsychDefaultSetup(featureLevel)
 %
 
 % History:
-% 22-Aug-2013  mk    Written.
+% 22-Aug-2013  mk    Initial version written.
 
 % Default colormode to use: 0 = clamped, 0-255 range. 1 = unclamped 0-1 range.
 global psych_default_colormode;
 psych_default_colormode = 0;
 
 % Define maximum supported featureLevel for this Psychtoolbox installation:
-maxFeatureLevel = 1;
+maxFeatureLevel = 2;
 
 % Sanity check featureLevel argument:
 if nargin < 1 || isempty(featureLevel) || ~isscalar(featureLevel) || ~isnumeric(featureLevel) || featureLevel < 0

@@ -324,6 +324,12 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   arbitrary values, e.g., also negative values. All Screen() 2D drawing
 %   commands should operate at maximum color/luminance precision.
 %
+%   Usage: PsychImaging('AddTask', 'General', 'NormalizedHighresColorRange' [, applyAlsoToMakeTexture]);
+%
+%   The command PsychImaging('AddTask', 'General', 'NormalizedHighresColorRange', 1);
+%   is automatically executed if you used PsychDefaultSetup(featureLevel) with a featureLevel
+%   of >= 2 at the top of your experiment script.
+%
 %   The optional flag 'applyAlsoToMakeTexture' defaults to zero. If set to 1,
 %   then a unit color range of expected input values in the [0; 1] range is
 %   also applied to standard 8-Bit precision textures in Screen('MakeTexture')
@@ -344,8 +350,6 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   visual results on a 8 bit standard framebuffer without needing to
 %   change your code, or if you want to set the 'applyAlsoToMakeTexture' flag to a
 %   setting of non-zero, so unit colorrange also applies to Screen('MakeTexture').
-%
-%   Usage: PsychImaging('AddTask', 'General', 'NormalizedHighresColorRange' [, applyAlsoToMakeTexture]);
 %
 %
 % * 'DisplayColorCorrection' Select a method for color correction to apply to
@@ -1012,6 +1016,9 @@ global psych_gpgpuapi;
 % These flags are global - needed in subfunctions as well (ugly ugly coding):
 global ptb_outputformatter_icmAware;
 
+% Default requested colormode: Set by PsychDefaultSetup(), if at all.
+global psych_default_colormode;
+
 if isempty(configphase_active)
     configphase_active = 0;
     ptb_outputformatter_icmAware = 0;
@@ -1028,18 +1035,23 @@ if strcmpi(cmd, 'PrepareConfiguration')
     % Prepare new configuration:
     if configphase_active
         % Huh? Configuration was already in progress. Warn user about reset of task specs:
-        fprintf('Tried to prepare a new configuration phase via PsychImaging(''PrepareConfiguration''), but you did not finalize the previous phase yet!\n');
+        fprintf('Tried to prepare a new configuration phase via PsychImaging(''PrepareConfiguration''), but did not finalize the previous phase yet.\n');
         fprintf('You must call the PsychImaging(''OpenWindow'', ...); command at least once to open an onscreen\n');
-        fprintf('window with the provided settings, before you can specify settings for additional onscreen windows.\n');
+        fprintf('window according to the provided settings, before you can specify settings for additional onscreen windows.\n');
         fprintf('\n');
-        fprintf('However, the most likely reason you see this error message is because your script aborted with some\n');
-        fprintf('error. In that case you should execute a ''clear all'' command at the Matlab/Octave prompt before\n');
-        fprintf('you can restart your script.\n\n');
-        fprintf('I will obey you anyway by restarting configuration now and by forgetting all previously made settings.\n');
+        fprintf('The most likely reason you see this error message is because your script aborted with some error\n');
+        fprintf('before it managed to open the onscreen window. In that case it is best practice to execute a ''clear all''\n');
+        fprintf('command at the Matlab/Octave prompt before you restart your script.\n');
+        fprintf('\n');
+        fprintf('I will restart configuration now and forget the previously made PsychImaging(''AddTask'', ...); settings.\n');
         warning('Tried to prepare a new configuration phase, but you did not finalize the previous phase yet!');
     end
     
+    % Enter configuration mode, accept 'AddTask' specifications:
     configphase_active = 1;
+    
+    % Reset old settings:
+    
     % MK: This clear reqs causes malfunctions on Octave 3.2.0 for some reason, so don't use it! clear reqs;
     reqs = [];
     ptb_outputformatter_icmAware = 0;
@@ -1049,7 +1061,17 @@ if strcmpi(cmd, 'PrepareConfiguration')
         psych_gpgpuapi = 0;
     end
     
+    % Assign default success return code rc:
     rc = 0;
+    
+    % Is a default colormode specified via psych_default_colormode variable and the level
+    % is at least 1? If so, switch to be created onscreen window to a [0;1] colorrange
+    % without clamping by default, and apply input scaling to Screen('MakeTexture') as
+    % well:
+    if ~isempty(psych_default_colormode) && (psych_default_colormode >= 1)
+        PsychImaging('AddTask', 'General', 'NormalizedHighresColorRange', 1);
+    end
+    
     return;
 end
 
@@ -1131,7 +1153,7 @@ end
 if strcmpi(cmd, 'OpenWindow')
 
     % Allow 'OpenWindow' without task specs. Simply open with empty task requirements list:
-    if configphase_active == 0
+    if ismember(configphase_active, [0, 2])
         PsychImaging('PrepareConfiguration');
     end
     
@@ -3810,7 +3832,7 @@ if needsUnitUnclampedColorRange
     Screen('ColorRange', win, 1, 0, applyAlsoToMakeTexture);
 
     % Set Screen background clear color, in normalized 0.0 - 1.0 range:
-    if (max(clearcolor) > 1) && (all(round(clearcolor) == clearcolor))
+    if ~isempty(clearcolor) && (max(clearcolor) > 1) && (all(round(clearcolor) == clearcolor))
         % Looks like someone's feeding old style 0-255 integer values as
         % clearcolor. Output a warning to tell about the expected 0.0 - 1.0
         % range of values:
