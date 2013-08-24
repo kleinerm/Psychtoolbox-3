@@ -38,6 +38,9 @@ function PsychDefaultSetup(featureLevel)
 global psych_default_colormode;
 psych_default_colormode = 0;
 
+% Reset KbName mappings:
+clear KbName;
+
 % Define maximum supported featureLevel for this Psychtoolbox installation:
 maxFeatureLevel = 2;
 
