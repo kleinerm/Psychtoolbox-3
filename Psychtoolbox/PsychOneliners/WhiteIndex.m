@@ -22,9 +22,25 @@ function white=WhiteIndex(windowPtrOrScreenNumber)
 %               more depth modes.
 % 1/29/05   dgp Cosmetic.
 % 03/1/08   mk  Adapted to the much more flexible scheme of PTB-3.
+% 08/24/13 mk  Select 1.0 as default white index if PsychDefaultSetup(2+) was used.
+
+% Default colormode to use: 0 = clamped, 0-255 range. 1 = unclamped 0-1 range.
+global psych_default_colormode;
 
 if nargin~=1
 	error('Usage: color=WhiteIndex(windowPtrOrScreenNumber)');
+end
+
+% Is a default colormode specified via psych_default_colormode variable and the level
+% is at least 1? If so, future created onscreen windows will have a [0;1] colorrange
+% without clamping by default.
+if ~isempty(psych_default_colormode) && (psych_default_colormode >= 1)
+    % 0-1 normalized range preset. A default white index of 1.0 is a reasonable assumption,
+    % as PsychImaging('Openwindow') would select 1.0 as maximum value:
+    defaultwhite = 1;
+else
+    % No preset: Assume a traditional default of 255:
+    defaultwhite = 255;
 end
 
 % Screen number given?
@@ -34,11 +50,11 @@ if ~isempty(find(Screen('Screens')==windowPtrOrScreenNumber))
     
     if isempty(windows)
         % No open windows associated with this screen. Just return the
-        % default value of "255", our default maximum pixel color component
+        % default value of "defaultwhite", our default maximum pixel color component
         % value, which is valid irrespective of the actual pixel depths of
         % the screen as OpenGL takes care of such things / is invariant to
         % them:
-        white = 255;
+        white = defaultwhite;
         return;
     end
     
@@ -57,8 +73,8 @@ if ~isempty(find(Screen('Screens')==windowPtrOrScreenNumber))
     end
     
     if isempty(win)
-        % No onscreen window on this screen. Return default "255":
-        white = 255;
+        % No onscreen window on this screen. Return default "defaultwhite":
+        white = defaultwhite;
         return;
     end
     
