@@ -327,8 +327,11 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', 'General', 'NormalizedHighresColorRange' [, applyAlsoToMakeTexture]);
 %
 %   The command PsychImaging('AddTask', 'General', 'NormalizedHighresColorRange', 1);
-%   is automatically executed if you used PsychDefaultSetup(featureLevel) with a featureLevel
-%   of >= 2 at the top of your experiment script.
+%   is automatically executed if you used PsychDefaultSetup(featureLevel)
+%   with a featureLevel of >= 2 at the top of your experiment script,
+%   *except* that clamping is *not* disabled by default in this case! To
+%   disable clamping you'd still need to add this task explicitely, as
+%   unclamping may have unintended side effects on old graphics hardware.
 %
 %   The optional flag 'applyAlsoToMakeTexture' defaults to zero. If set to 1,
 %   then a unit color range of expected input values in the [0; 1] range is
@@ -1016,9 +1019,6 @@ global psych_gpgpuapi;
 % These flags are global - needed in subfunctions as well (ugly ugly coding):
 global ptb_outputformatter_icmAware;
 
-% Default requested colormode: Set by PsychDefaultSetup(), if at all.
-global psych_default_colormode;
-
 if isempty(configphase_active)
     configphase_active = 0;
     ptb_outputformatter_icmAware = 0;
@@ -1063,14 +1063,6 @@ if strcmpi(cmd, 'PrepareConfiguration')
     
     % Assign default success return code rc:
     rc = 0;
-    
-    % Is a default colormode specified via psych_default_colormode variable and the level
-    % is at least 1? If so, switch to be created onscreen window to a [0;1] colorrange
-    % without clamping by default, and apply input scaling to Screen('MakeTexture') as
-    % well:
-    if ~isempty(psych_default_colormode) && (psych_default_colormode >= 1)
-        PsychImaging('AddTask', 'General', 'NormalizedHighresColorRange', 1);
-    end
     
     return;
 end
@@ -2337,6 +2329,8 @@ global ptb_outputformatter_icmAware;
 global GL;
 global ptb_geometry_inverseWarpMap;
 global psych_gpgpuapi; %#ok<NUSED>
+% Default requested colormode: Set by PsychDefaultSetup(), if at all.
+global psych_default_colormode;
 
 if isempty(GL)
     % Perform minimal OpenGL init, so we can call OpenGL commands and use
@@ -3820,6 +3814,35 @@ if needsIdentityCLUT
     % Yes. Use our generic routine which is adaptive to the quirks of
     % specific gfx-cards:
     LoadIdentityClut(win);
+end
+
+% Is a default colormode specified via psych_default_colormode variable and
+% the level is at least 1? If so, switch to be created onscreen window to a
+% [0;1] colorrange with clamping by default, and apply input scaling to
+% Screen('MakeTexture') as well. This is like 'NormalizedHighresColorRange'
+% aka needsUnitUnclampedColorRange, except it doesn't unclamp the
+% framebuffer, but keeps it clamped to 0 - 1 range, unless a previous
+% 'ColorRange' call changed this. Why? To accomodate OpenGL hw without
+% clamp extension:
+if ~needsUnitUnclampedColorRange && ~isempty(psych_default_colormode) && (psych_default_colormode >= 1)
+    Screen('ColorRange', win, 1, [], 1);
+    applyAlsoToMakeTexture = 1;
+    
+    % Set Screen background clear color, in normalized 0.0 - 1.0 range:
+    if ~isempty(clearcolor) && (max(clearcolor) > 1) && (all(round(clearcolor) == clearcolor))
+        % Looks like someone's feeding old style 0-255 integer values as
+        % clearcolor. Output a warning to tell about the expected 0.0 - 1.0
+        % range of values:
+        fprintf('\n\nPsychImaging-Warning: You specified a ''clearcolor'' argument for the OpenWindow command that looks \nlike an old 0-255 value instead of the wanted value in the 0.0-1.0 range.\nPlease update your code for correct behaviour.\n\n');
+    end
+
+    % Set the background clear color via old fullscreen 'FillRect' trick,
+    % followed by a flip:
+    Screen('FillRect', win, clearcolor);
+
+    % Double-flip to be on the safe side:
+    Screen('Flip', win);
+    Screen('Flip', win);
 end
 
 % Do we need a normalized [0.0 ; 1.0] color range mapping with unclamped

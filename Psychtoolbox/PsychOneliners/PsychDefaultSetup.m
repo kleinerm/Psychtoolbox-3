@@ -22,13 +22,18 @@ function PsychDefaultSetup(featureLevel)
 % provide a consistent mapping of keyCodes to key names on all operating
 % systems.
 %
-% A 'featureLevel' of 2 will additionally imply the execution of ...
-% PsychImaging('AddTask', 'General', 'NormalizedHighresColorRange', 1);
-% ... whenever PsychImaging('OpenWindow',...) is called, thereby switching
-% the default color range from the classic 0-255 integer number range to
-% the normalized floating point number range 0.0 - 1.0 to unify color specifications
-% across differently capable display output devices, e.g., standard 8 bit displays
-% vs. high precision 16 bit displays.
+% A 'featureLevel' of 2 will additionally imply the execution of
+% Screen('ColorRange', window, 1, [], 1); immediately after and whenever
+% PsychImaging('OpenWindow',...) is called, thereby switching the default
+% color range from the classic 0-255 integer number range to the normalized
+% floating point number range 0.0 - 1.0 to unify color specifications
+% across differently capable display output devices, e.g., standard 8 bit
+% displays vs. high precision 16 bit displays. Please note that clamping of
+% valid color values to the 0 - 1 range is still active and colors will
+% still be represented by 256 discrete levels (8 Bit resolution), unless
+% you also use PsychImaging() commands to request unclamped color
+% processing or floating point precision framebuffers. This function by
+% itself only changes the range, not the precision of color specifications!
 %
 
 % History:
@@ -60,7 +65,7 @@ end
 
 % Level 2+ requested?
 if featureLevel >= 2
-    % Set global environment variable to ask PsychImaging() to enable high precision
+    % Set global environment variable to ask PsychImaging() to enable
     % normalized color range for all drawing commands and Screen('MakeTexture'):
     psych_default_colormode = 1;
 end
