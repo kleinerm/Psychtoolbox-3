@@ -1,17 +1,13 @@
 function white=WhiteIndex(windowPtrOrScreenNumber)
 % color=WhiteIndex(windowPtrOrScreenNumber)
-% Returns the CLUT index to produce white at the current screen depth,
+% Returns the intensity value to produce white at the current screen depth,
 % assuming a standard color lookup table for that depth. E.g.
+%
 % white=WhiteIndex(w);
 % Screen(w,'FillRect',white);
 % 
 % See BlackIndex.
 % 
-% When the screen is 1 to 8 bit mode, the Macintosh OS always makes the
-% first clut element white and the last black. In 16 or 32 bit mode the
-% clut goes from black to white. These CLUT conventions can be overridden
-% by Screen 'SetClut', which makes a direct call to the video driver,
-% bypassing the Mac OS, allowing you to impose any CLUT whatsoever.
 
 % 3/10/98	dgp Wrote it.
 % 3/30/98	dgp Consider only one channel, even for 16 and 32 bit modes.
@@ -22,7 +18,7 @@ function white=WhiteIndex(windowPtrOrScreenNumber)
 %               more depth modes.
 % 1/29/05   dgp Cosmetic.
 % 03/1/08   mk  Adapted to the much more flexible scheme of PTB-3.
-% 08/24/13 mk  Select 1.0 as default white index if PsychDefaultSetup(2+) was used.
+% 08/24/13  mk  Select 1.0 as default white index if PsychDefaultSetup(2+) was used.
 
 % Default colormode to use: 0 = clamped, 0-255 range. 1 = unclamped 0-1 range.
 global psych_default_colormode;
