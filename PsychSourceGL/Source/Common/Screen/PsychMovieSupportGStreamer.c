@@ -616,12 +616,19 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     if (firsttime) {        
         // Initialize GStreamer: The routine is defined in PsychVideoCaptureSupportGStreamer.c
         PsychGSCheckInit("movie playback");
+
         firsttime = FALSE;
     }
 
     if (win && !PsychIsOnscreenWindow(win)) {
         if (printErrors) PsychErrorExitMsg(PsychError_user, "Provided windowPtr is not an onscreen window."); else return;
     }
+
+    // As a side effect of some PsychGSCheckInit() some broken GStreamer runtimes can change
+    // the OpenGL context binding behind our back to some GStreamer internal context.                                                                                                                                                                                              
+    // Make sure our own context is bound after return from PsychGSCheckInit() to protect                                                                                                                                                                                          
+    // against the state bleeding this would cause:                                                                                                                                                                                                                                
+    if (win) PsychSetGLContext(win);
 
     if (NULL == moviename) {
         if (printErrors) PsychErrorExitMsg(PsychError_internal, "NULL-Ptr instead of moviename passed!"); else return;

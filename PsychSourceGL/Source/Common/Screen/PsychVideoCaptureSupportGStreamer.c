@@ -2250,32 +2250,38 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     plugin_name[0] = 0;
     prop_name[0] = 0;
 
-	// Init capturehandle to none:
-	*capturehandle = -1;
-	
-	// Make sure GStreamer is ready:
-	PsychGSCheckInit("videocapture");
-	
-	// Map deviceIndex of requested video source to device name:
-	if (deviceIndex >= 0) {
-		// Get device name for given deviceIndex from video device
-		// enumeration (or NULL if no such device):
-		theDevice = PsychGSEnumerateVideoSources(-1, deviceIndex);
-		if (NULL == theDevice) {
-			printf("PTB-ERROR: There isn't any video capture device available for provided deviceIndex %i.\n", deviceIndex);
-			PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex provided. No such video source. Aborted.");
-		}
-		
-		// Assign name:
-		sprintf(device_name, "%s", theDevice->deviceHandle);
-		sprintf(plugin_name, "%s", theDevice->deviceVideoPlugin);
-		sprintf(prop_name, "%s", theDevice->deviceSelectorProperty);
-		if (theDevice->deviceURI > 0) {
-			sprintf(device_name, "%llu", theDevice->deviceURI);
-		}
+    // Init capturehandle to none:
+    *capturehandle = -1;
+    
+    // Make sure GStreamer is ready:
+    PsychGSCheckInit("videocapture");
 
-		if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Trying to open video capture device with deviceIndex %i [%s].\n", deviceIndex, device_name);
-	}
+    // As a side effect of some PsychGSCheckInit() some broken GStreamer runtimes can change
+    // the OpenGL context binding behind our back to some GStreamer internal context.
+    // Make sure our own context is bound after return from PsychGSCheckInit() to protect
+    // against the state bleeding this would cause:
+    if (win) PsychSetGLContext(win);
+
+    // Map deviceIndex of requested video source to device name:
+    if (deviceIndex >= 0) {
+      // Get device name for given deviceIndex from video device
+      // enumeration (or NULL if no such device):
+      theDevice = PsychGSEnumerateVideoSources(-1, deviceIndex);
+      if (NULL == theDevice) {
+	printf("PTB-ERROR: There isn't any video capture device available for provided deviceIndex %i.\n", deviceIndex);
+	PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex provided. No such video source. Aborted.");
+      }
+      
+      // Assign name:
+      sprintf(device_name, "%s", theDevice->deviceHandle);
+      sprintf(plugin_name, "%s", theDevice->deviceVideoPlugin);
+      sprintf(prop_name, "%s", theDevice->deviceSelectorProperty);
+      if (theDevice->deviceURI > 0) {
+	sprintf(device_name, "%llu", theDevice->deviceURI);
+      }
+      
+      if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Trying to open video capture device with deviceIndex %i [%s].\n", deviceIndex, device_name);
+    }
 
     // Slot 'slotid' will contain the record for our new capture object:
 
