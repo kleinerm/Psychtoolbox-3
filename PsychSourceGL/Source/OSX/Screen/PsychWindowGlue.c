@@ -357,7 +357,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		}
 
 		// Create onscreen Cocoa window of requested position and size:
-        if (PsychCocoaCreateWindow(windowRecord, screenrect, windowLevel, &cocoaWindow)) {
+        if (PsychCocoaCreateWindow(windowRecord, windowLevel, &cocoaWindow)) {
             printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to open Cocoa onscreen window\n\n");
             return(FALSE);
         }

@@ -34,14 +34,17 @@
 #include <ApplicationServices/ApplicationServices.h>
 #include <Cocoa/Cocoa.h>
 
-PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
-                                  PsychRectType      screenRect,
-                                  int                windowLevel,
-                                  void**             outWindow)
+PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windowLevel, void** outWindow)
 {
     char windowTitle[100];
     NSWindow *cocoaWindow;
-
+    PsychRectType screenRect;
+    int screenHeight;
+    
+    // Query height of primary screen for y-coord remapping:
+    PsychGetGlobalScreenRect(0, screenRect);
+    screenHeight = (int) PsychGetHeightFromRect(screenRect);
+    
     // Zero-Init NSOpenGLContext-Pointers for our private Cocoa OpenGL contexts:
     windowRecord->targetSpecific.nsmasterContext = NULL;
     windowRecord->targetSpecific.nsswapContext = NULL;
@@ -118,12 +121,12 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
     // as a hint. It tries to position as requested, but places the window differently if required
     // to make sure the full windowRect content area is displayed. It doesn't allow the window to
     // overlap the menu bar or dock area by default.
-    NSPoint winPosition = NSMakePoint(windowRecord->rect[kPsychLeft], screenRect[kPsychBottom] - windowRecord->rect[kPsychTop]);
+    NSPoint winPosition = NSMakePoint(windowRecord->rect[kPsychLeft], screenHeight - windowRecord->rect[kPsychTop]);
     [cocoaWindow setFrameTopLeftPoint:winPosition];
     
     // Query and translate content rect of final window to a PTB rect:
     NSRect clientRect = [cocoaWindow contentRectForFrameRect:[cocoaWindow frame]];
-    PsychMakeRect(windowRecord->rect, clientRect.origin.x, screenRect[kPsychBottom] - (clientRect.origin.y + clientRect.size.height), clientRect.origin.x + clientRect.size.width, screenRect[kPsychBottom] - clientRect.origin.y);
+    PsychMakeRect(windowRecord->rect, clientRect.origin.x, screenRect[kPsychBottom] - (clientRect.origin.y + clientRect.size.height), clientRect.origin.x + clientRect.size.width,              screenRect[kPsychBottom] - clientRect.origin.y);
 
     // Drain the pool:
     [pool drain];
@@ -137,6 +140,13 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
 
 void PsychCocoaGetWindowBounds(void* window, PsychRectType globalBounds)
 {
+    PsychRectType screenRect;
+    double screenHeight;
+    
+    // Query height of primary screen for y-coord remapping:
+    PsychGetGlobalScreenRect(0, screenRect);
+    screenHeight = PsychGetHeightFromRect(screenRect);
+
     NSWindow* cocoaWindow = (NSWindow*) window;
     
     // Allocate auto release pool:
@@ -144,11 +154,10 @@ void PsychCocoaGetWindowBounds(void* window, PsychRectType globalBounds)
 
     // Query and translate content rect of final window to a PTB rect:
     NSRect clientRect = [cocoaWindow contentRectForFrameRect:[cocoaWindow frame]];
-    NSRect screenRect = [[cocoaWindow screen] frame];
     
     globalBounds[kPsychLeft]   = clientRect.origin.x;
     globalBounds[kPsychRight]  = clientRect.origin.x + clientRect.size.width;
-    globalBounds[kPsychTop]    = screenRect.size.height - (clientRect.origin.y + clientRect.size.height);
+    globalBounds[kPsychTop]    = screenHeight - (clientRect.origin.y + clientRect.size.height);
     globalBounds[kPsychBottom] = globalBounds[kPsychTop] + clientRect.size.height;
 
     // Drain the pool:

@@ -26,11 +26,7 @@
 #define PSYCH_COCOAGLUE_H
 
 // Create windowed onscreen window via Cocoa:
-PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord,
-                                  PsychRectType      screenRect,
-                                  int                windowLevel,
-                                  void**             outWindow);
-
+PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windowLevel, void** outWindow);
 void PsychCocoaDisposeWindow(PsychWindowRecordType *windowRecord);
 void PsychCocoaSetUserFocusWindow(void* window);
 void* PsychCocoaGetUserFocusWindow(void);
