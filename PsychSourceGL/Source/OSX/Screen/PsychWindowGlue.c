@@ -408,12 +408,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // No pixelformat attribs to start with:
     attribcount = 0;
 
-    // Require CGL context fullscreen capable if Cocoa isn't used, or if this is a fullscreen window and
-    // use of Cocoa for it is explicitely requested by usercode override:
-    if (!useCocoa || ((PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLForFullscreenWindows) && (windowRecord->specialflags & kPsychIsFullscreenWindow))) {
-        attribs[attribcount++]=kCGLPFAFullScreen;
-    }
-    
     attribs[attribcount++]=kCGLPFADisplayMask;
     attribs[attribcount++]=displayMask;
     
