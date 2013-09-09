@@ -926,12 +926,12 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 		// When closing stereo display windows, it sometimes leads to a completely
 		// messed up and unusable display.
 		if (PsychIsOnscreenWindow(windowRecord)) {
-			PsychReleaseScreen(windowRecord->screenNumber);
+			// Disable release/capture hack, not needed on 10.6+ anymore: PsychReleaseScreen(windowRecord->screenNumber);
 			// Destroy onscreen window, detach context:
 			CGLClearDrawable(windowRecord->targetSpecific.contextObject);
 			if (windowRecord->targetSpecific.glusercontextObject) CGLClearDrawable(windowRecord->targetSpecific.glusercontextObject);
 			if (windowRecord->targetSpecific.glswapcontextObject) CGLClearDrawable(windowRecord->targetSpecific.glswapcontextObject);
-			PsychCaptureScreen(windowRecord->screenNumber);
+			// Disable release/capture hack, not needed on 10.6+ anymore: PsychCaptureScreen(windowRecord->screenNumber);
 		}
 	}
     
