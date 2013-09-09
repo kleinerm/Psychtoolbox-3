@@ -64,8 +64,8 @@
 // Current ListenChar state:
 static int	listenchar_enabled = 0;
 
-// Include Cocoa glue on OSX 64-Bit for window focus queries:
-#if (PSYCH_SYSTEM == PSYCH_OSX) && defined(__LP64__)
+// Include Cocoa glue on OSX for window focus queries:
+#if PSYCH_SYSTEM == PSYCH_OSX
 #include "PsychCocoaGlue.h"
 #endif
 
