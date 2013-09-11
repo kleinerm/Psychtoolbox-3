@@ -168,6 +168,8 @@ void shutDownWinTab(void)
 	if (ghWintab)
 	  FreeLibrary( ghWintab );
 
+	ghWintab = NULL;
+
 	mexPrintf("WinTabMex shutdown complete.\n");
 	
 	/* Reset state to offline: */
@@ -180,25 +182,25 @@ void shutDownWinTab(void)
 
 /* Load the wintab library and the functions used */
 void loadWinTab(void) {
-  ghWintab = LoadLibrary( "Wintab32.dll" );
-  if ( !ghWintab ) {
-    mexErrMsgTxt("Unable to load Wintab32.dll library. Is it installed on your system?");
-  }
+        ghWintab = LoadLibrary( "Wintab32.dll" );
+	if ( !ghWintab ) {
+	  mexErrMsgTxt("Unable to load Wintab32.dll library. Is it installed on your system?");
+	}
 
-  gpWTEnable = (WTENABLE) GetProcAddress( ghWintab, "WTEnable" );
-  if ( !gpWTEnable ) { mexErrMsgTxt("Error load Wintab library."); }
-  gpWTOpenA = (WTOPENA) GetProcAddress( ghWintab, "WTOpenA" );
-  if ( !gpWTOpenA ) { mexErrMsgTxt("Error load Wintab library."); }
-  gpWTInfoA = (WTINFOA) GetProcAddress( ghWintab, "WTInfoA" );
-  if ( !gpWTInfoA ) { mexErrMsgTxt("Error load Wintab library."); }
-  gpWTClose = (WTCLOSE) GetProcAddress( ghWintab, "WTClose" );
-  if ( !gpWTClose ) { mexErrMsgTxt("Error load Wintab library."); }
-  gpWTPacketsGet = (WTPACKETSGET) GetProcAddress( ghWintab, "WTPacketsGet" );
-  if ( !gpWTPacketsGet ) { mexErrMsgTxt("Error load Wintab library."); }
-  gpWTQueueSizeSet = (WTQUEUESIZESET) GetProcAddress( ghWintab, "WTQueueSizeSet" );
-  if ( !gpWTQueueSizeSet ) { mexErrMsgTxt("Error load Wintab library."); }
-  gpWTQueueSizeGet = (WTQUEUESIZEGET) GetProcAddress( ghWintab, "WTQueueSizeGet" );
-  if ( !gpWTQueueSizeGet ) { mexErrMsgTxt("Error load Wintab library."); }
+	gpWTEnable = (WTENABLE) GetProcAddress( ghWintab, "WTEnable" );
+	if ( !gpWTEnable ) { mexErrMsgTxt("Error load Wintab library."); }
+	gpWTOpenA = (WTOPENA) GetProcAddress( ghWintab, "WTOpenA" );
+	if ( !gpWTOpenA ) { mexErrMsgTxt("Error load Wintab library."); }
+	gpWTInfoA = (WTINFOA) GetProcAddress( ghWintab, "WTInfoA" );
+	if ( !gpWTInfoA ) { mexErrMsgTxt("Error load Wintab library."); }
+	gpWTClose = (WTCLOSE) GetProcAddress( ghWintab, "WTClose" );
+	if ( !gpWTClose ) { mexErrMsgTxt("Error load Wintab library."); }
+	gpWTPacketsGet = (WTPACKETSGET) GetProcAddress( ghWintab, "WTPacketsGet" );
+	if ( !gpWTPacketsGet ) { mexErrMsgTxt("Error load Wintab library."); }
+	gpWTQueueSizeSet = (WTQUEUESIZESET) GetProcAddress( ghWintab, "WTQueueSizeSet" );
+	if ( !gpWTQueueSizeSet ) { mexErrMsgTxt("Error load Wintab library."); }
+	gpWTQueueSizeGet = (WTQUEUESIZEGET) GetProcAddress( ghWintab, "WTQueueSizeGet" );
+	if ( !gpWTQueueSizeGet ) { mexErrMsgTxt("Error load Wintab library."); }
 }
 
 /* This is the main entry point from Matlab: */
@@ -221,7 +223,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
 	const char* me = mexFunctionName();
 
 	if(nrhs<1) {
-		mexPrintf("WinTabMex: A simple Matlab/Octave MEX file for driving touch tablets which are\n");
+		mexPrintf("WinTabMex: A simple MEX file for driving touch tablets which are\n");
 		mexPrintf("compatible with the WinTAB API on Microsoft Windows.\n\n");
 		mexPrintf("(C) 2008-2013 by Mario Kleiner and Jason Friedman -- Licensed to you under MIT license.\n");
 		mexPrintf("This file is part of Psychtoolbox-3 but should also work independently.\n");
@@ -260,10 +262,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
         return;
 	}
 	
-    // Load the library
-    if (!ghWintab)
-        loadWinTab();
-            
+	// Load the library
+	if (!ghWintab) loadWinTab();
+
 	/* First argument must be the command code: */
 	cmd = (int) mxGetScalar(prhs[0]);
 
@@ -329,7 +330,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
 		break;
 		
 		case 3: // Disable scanning.
-            gpWTEnable(hTab, (BOOL) 0);
+		        gpWTEnable(hTab, (BOOL) 0);
 		break;
 		
 		case 4: // Resize queue:
