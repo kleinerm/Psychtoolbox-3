@@ -15,6 +15,7 @@ function PsychStartup
 % History:
 % 14.09.2012  mk  Written.
 % 14.01.2013  mk  Make path detection more robust.
+% 12.09.2013  mk  Also apply GStreamer-SDK setup to 32-Bit Matlab on Windows.
 
 % Try-Catch protect the function, so Matlab startup won't fail due to
 % errors in this function:
