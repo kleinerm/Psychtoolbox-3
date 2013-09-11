@@ -916,16 +916,11 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     
 	if (windowRecord->targetSpecific.windowHandle == NULL) {
 		// Shutdown sequence for CGL, i.e., no NSOpenGL + Cocoa mode:
-		// MK: Hack, needed to work around a "screen corruption on shutdown" bug.
-		// When closing stereo display windows, it sometimes leads to a completely
-		// messed up and unusable display.
 		if (PsychIsOnscreenWindow(windowRecord)) {
-			// Disable release/capture hack, not needed on 10.6+ anymore: PsychReleaseScreen(windowRecord->screenNumber);
 			// Destroy onscreen window, detach context:
 			CGLClearDrawable(windowRecord->targetSpecific.contextObject);
 			if (windowRecord->targetSpecific.glusercontextObject) CGLClearDrawable(windowRecord->targetSpecific.glusercontextObject);
 			if (windowRecord->targetSpecific.glswapcontextObject) CGLClearDrawable(windowRecord->targetSpecific.glswapcontextObject);
-			// Disable release/capture hack, not needed on 10.6+ anymore: PsychCaptureScreen(windowRecord->screenNumber);
 		}
 	}
     

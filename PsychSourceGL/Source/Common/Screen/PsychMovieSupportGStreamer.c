@@ -95,9 +95,12 @@ static PsychMovieRecordType movieRecordBANK[PSYCH_MAX_MOVIES];
 static int numMovieRecords = 0;
 static psych_bool firsttime = TRUE;
 
+#if !GLIB_CHECK_VERSION (2, 31, 0)
 #if PSYCH_SYSTEM == PSYCH_OSX
 // This is the function prototype for compile against GLib 2.32.0 "deprecated":
 extern void g_thread_init(gpointer vtable) __attribute__((weak_import));
+extern gboolean g_thread_supported(void) __attribute__((weak_import));
+#endif
 #endif
 
 /*
@@ -115,6 +118,12 @@ void PsychGSMovieInit(void)
     }    
     numMovieRecords = 0;
 
+    // Note: This is deprecated and not needed anymore on GLib 2.31.0 and later, as
+    // GLib's threading system auto-initializes on first use since that version. We
+    // keep it for now to stay compatible to older systems, e.g., Ubuntu 10.04 LTS,
+    // conditionally on the GLib version we build against:
+#if !GLIB_CHECK_VERSION (2, 31, 0)
+    
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
     // On Windows, we need to delay-load the GLib DLL's. This loading
     // and linking will automatically happen downstream. However, if delay loading
@@ -155,14 +164,9 @@ void PsychGSMovieInit(void)
     #endif
     
     // Initialize GLib's threading system early:
+    if (!g_thread_supported()) g_thread_init(NULL);
 
-    // Note: This is deprecated and not needed anymore on GLib 2.31.0 and later, as
-    // GLib's threading system auto-initializes on first use since that version. We
-    // keep it for now to stay compatible to older systems, e.g., Ubuntu 10.04 LTS,
-    // conditionally on the GLib version we build against:
-	#if !GLIB_CHECK_VERSION (2, 31, 0)
-		if (!g_thread_supported()) g_thread_init(NULL);
-	#endif
+#endif
 
     return;
 }
