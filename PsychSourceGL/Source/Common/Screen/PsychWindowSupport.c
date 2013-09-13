@@ -5186,7 +5186,7 @@ void PsychColdResetDrawingTarget(void)
  * of the new drawingtarget by blitting the texture into the framebuffer. Lots of care
  * has to be taken to always backup/restore from/to the proper backbuffer ie. the proper
  * OpenGL context (if multiple are used), to handle the case of transposed or inverted
- * textures (e.g, quicktime engine, videocapture engine, Screen('MakeTexture')), and
+ * textures (e.g, movie engine, videocapture engine, Screen('MakeTexture')), and
  * to handle the case of TEXTURE_2D textures on old hardware that doesn't support rectangle
  * textures! This is all pretty complex and convoluted.
  *
@@ -5347,7 +5347,7 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 					// PsychNormalizeTextureOrientation takes care of swapping it upright and converting it into a RGB or RGBA format,
 					// if needed. Only if it were an upright non-RGB(A) texture, it would slip through this and trigger an error abort
 					// in the following PsychCreateShadowFBO... call. This however can't happen with textures created by 'OpenOffscreenWindow',
-					// textures from the Quicktime movie engine, the videocapture engine or other internal sources. Textures created via
+					// textures from the movie engine, the videocapture engine or other internal sources. Textures created via
 					// MakeTexture will be auto-converted as well, unless some special flags to MakeTexture are given.
 					// --> The user code needs to do something very unusual and special to trigger an error abort here, and if it triggers
 					// one, it will abort with a helpful error message, telling how to fix the problem very simply.

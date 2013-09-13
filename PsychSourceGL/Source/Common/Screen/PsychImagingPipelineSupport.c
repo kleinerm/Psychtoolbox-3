@@ -2201,17 +2201,14 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
     
 	// The source texture sourceRecord could be in any of PTB's supported
 	// internal texture orientations. It may be upright as an Offscreen window,
-	// or flipped upside down as some textures from the video grabber or Quicktime,
+	// or flipped upside down as some textures from the video grabber,
 	// or transposed, as textures from Matlab/Octave. However, handling all those
 	// cases for image processing would be a debug and maintenance nightmare.
 	// Therefore we check the format of the source texture and require it to be
 	// a normal upright orientation. If this isn't the case, we perform a preprocessing
-	// step to transform the texture into normalized orientation. We also perform a
-	// preprocessing step on any CoreVideo texture from Quicktime. Although such a
-	// texture may be properly oriented, it is of a non-renderable YUV color format, so
-	// we need to recreate it in a RGB renderable format. Non-planar textures would also
+	// step to transform the texture into normalized orientation. Non-planar textures would also
     // wreak havoc if not converted into standard pixel-interleaved format:
-	if (sourceRecord->textureOrientation != 2 || sourceRecord->targetSpecific.QuickTimeGLTexture != NULL || isplanar) {
+	if (sourceRecord->textureOrientation != 2 || isplanar) {
 		if (PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: In PsychNormalizeTextureOrientation(): Performing GPU renderswap or format conversion for source gl-texture %i --> ", sourceRecord->textureNumber);
 		
 		// Soft-reset drawing engine in a safe way:
@@ -2253,7 +2250,7 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 		glGetTexLevelParameteriv(PsychGetTextureTarget(sourceRecord), 0, GL_TEXTURE_INTERNAL_FORMAT, &fboInternalFormat);
 
 		// Need to query real size of underlying texture, not the logical size from sourceRecord->rect, otherwise we'd screw
-		// up for padded textures (from Quicktime movie/vidcap) where the real texture is a bit bigger than its logical size.
+		// up for padded textures where the real texture is a bit bigger than its logical size.
 		if (sourceRecord->textureOrientation > 1) {
 			// Non-transposed textures, width and height are correct:
 			glGetTexLevelParameteriv(PsychGetTextureTarget(sourceRecord), 0, GL_TEXTURE_WIDTH, &width);
@@ -2397,11 +2394,12 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 
 		// At this point the color attachment of the sourceRecords FBO contains the properly oriented texture.
 		// Delete the old texture, attach the FBO texture as new one:
-		if (sourceRecord->targetSpecific.QuickTimeGLTexture != NULL) {
-			// Special case: CoreVideo texture:
-			PsychFreeMovieTexture(sourceRecord);
-		}
-		else {
+        
+        // Make sure movie textures are recycled instead of freed if possible:
+        PsychFreeMovieTexture(sourceRecord);
+        
+        // Really free the texture if needed:
+		if (sourceRecord->textureNumber) {
 			// Standard case:
 			glDeleteTextures(1, &(sourceRecord->textureNumber));
 		}
