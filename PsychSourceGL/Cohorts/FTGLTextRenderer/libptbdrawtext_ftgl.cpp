@@ -132,6 +132,9 @@ void PsychSetTextAntiAliasing(int antiAliasing)
 	return;
 }
 
+// Workaround for typo in function name for external api:
+int PsychRebuiltFont(void) { return(PsychRebuildFont()); }
+
 int PsychRebuildFont(void)
 {
 	// Destroy old font object, if any:
