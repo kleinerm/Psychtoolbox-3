@@ -2071,6 +2071,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 		#endif
 
         #if PSYCH_SYSTEM == PSYCH_LINUX
+        PsychLockDisplay();
         #ifndef PTB_USE_WAFFLE
 		    glXMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.glswapcontextObject);
         #else
@@ -2079,6 +2080,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
                     printf("\nPTB-ERROR: Failed to bind OpenGL context for async flip thread [%s]! This will end badly...\n", waffle_error_to_string(waffle_error_get_code()));
                 }
         #endif
+        PsychUnlockDisplay();
 		#endif
 
 		#if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -2149,12 +2151,14 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
                 // thread doesn't have the surface bound and won't bind it until we're fully
                 // done with the swap:
                 #if PSYCH_SYSTEM == PSYCH_LINUX
+                PsychLockDisplay();
                 #ifdef PTB_USE_WAFFLE
                 if (!waffle_make_current(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.glswapcontextObject) &&
                     (PsychPrefStateGet_Verbosity() > 0)) {
                     printf("\nPTB-ERROR: Failed to rebind OpenGL context for async flip thread [%s]! This will end badly...\n", waffle_error_to_string(waffle_error_get_code()));
                 }
                 #endif
+                PsychUnlockDisplay();
                 #endif
             }
 
@@ -3383,7 +3387,10 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                 // by a framebuffer copy from backbuffer -> compositor buffer -- copy leads to constant buffer_age of 1.
                 unsigned int buffer_age = 2; // Init to 2 to give benefit of doubt in case query below fails.
                 if (windowRecord->gfxcaps & kPsychGfxCapSupportsBufferAge) {
+                    PsychLockDisplay();
                     glXQueryDrawable(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, GLX_BACK_BUFFER_AGE_EXT, &buffer_age);
+                    PsychUnlockDisplay();
+
                     if ((buffer_age > 0) && (buffer_age != 2) && (verbosity > 1)) {
                         printf("PTB-WARNING: OpenGL driver uses %i-buffering instead of the required double-buffering for Screen('Flip')!\n", buffer_age);
                         printf("PTB-WARNING: All returned Screen('Flip') timestamps will be wrong! Please fix this now (read 'help SyncTrouble').\n");
@@ -6124,7 +6131,11 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	#ifdef GLX_OML_sync_control
 	#ifndef PTB_USE_WAFFLE
 	// Running on a XServer prior to version 1.8.2 with broken OpenML implementation? Mark it, if so:
-	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Running on '%s' XServer, Vendor release %i.\n", XServerVendor(windowRecord->targetSpecific.deviceContext), (int) XVendorRelease(windowRecord->targetSpecific.deviceContext));
+	if (PsychPrefStateGet_Verbosity() > 4) {
+        PsychLockDisplay();
+        printf("PTB-Info: Running on '%s' XServer, Vendor release %i.\n", XServerVendor(windowRecord->targetSpecific.deviceContext), (int) XVendorRelease(windowRecord->targetSpecific.deviceContext));
+        PsychUnlockDisplay();
+    }
 
 	if (verbose) {
 		printf("OML_sync_control indicators: glXGetSyncValuesOML=%p , glXWaitForMscOML=%p, glXWaitForSbcOML=%p, glXSwapBuffersMscOML=%p\n",
@@ -6141,7 +6152,9 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		if (verbose) printf("System supports OpenML OML_sync_control extension for high-precision scheduled swaps and timestamping.\n");
 
 		// If prior 1.8.2 and therefore defective, disable use of OpenML for anything, even timestamping:
+        PsychLockDisplay();
 		if (XVendorRelease(windowRecord->targetSpecific.privDpy) < 10802000) {
+            PsychUnlockDisplay();
 			// OpenML timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
 			windowRecord->specialflags |= kPsychOpenMLDefective;
 			
@@ -6153,6 +6166,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 			}
 		}
 		else {
+            PsychUnlockDisplay();
 			// OpenML is currently only supported on GNU/Linux, but should be pretty well working/useable
 			// starting with Linux kernel 2.6.35 and XOrg X-Servers 1.8.2, 1.9.x and later, as shipping
 			// in the Ubuntu 10.10 release in October 2010 and other future distributions.
@@ -6202,11 +6216,13 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	#endif
 
     #if (PSYCH_SYSTEM == PSYCH_LINUX) && !defined(PTB_USE_WAFFLE)
+    PsychLockDisplay();
     if (strstr(glXQueryExtensionsString(windowRecord->targetSpecific.deviceContext, PsychGetXScreenIdForScreen(windowRecord->screenNumber)), "GLX_EXT_buffer_age")) {
         // Age queries for current backbuffer supported:
         if (verbose) printf("System supports backbuffer age queries.\n");
         windowRecord->gfxcaps |= kPsychGfxCapSupportsBufferAge;
     }
+    PsychUnlockDisplay();
     #endif
     
 	if (verbose) printf("PTB-DEBUG: Interrogation done.\n\n");
@@ -6225,8 +6241,8 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 // work around setups will totally broken VSYNC support.
 void PsychExecuteBufferSwapPrefix(PsychWindowRecordType *windowRecord)
 {
-    CGDirectDisplayID	cgDisplayID;
-    long				vbl_startline, scanline, lastline;
+    CGDirectDisplayID cgDisplayID;
+    long vbl_startline, scanline, lastline;
 
 	// Workaround for broken sync-bufferswap-to-VBL support needed?
 	if ((windowRecord->specialflags & kPsychBusyWaitForVBLBeforeBufferSwapRequest) || (PsychPrefStateGet_ConserveVRAM() & kPsychBusyWaitForVBLBeforeBufferSwapRequest)) {
