@@ -3804,7 +3804,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
 			// Consistency check: Swap can't complete before it was scheduled: Have a fudge
 			// value of 1 msec to account for roundoff errors:
-			if (osspecific_asyncflip_scheduled && (tSwapComplete < tprescheduleswap - 0.001)) {
+			if ((osspecific_asyncflip_scheduled && (tSwapComplete < tprescheduleswap - 0.001)) ||
+                (!osspecific_asyncflip_scheduled && (tSwapComplete < time_at_swaprequest - 0.001))) {
 				if (verbosity > -1) {
 					printf("PTB-ERROR: OpenML timestamping reports that flip completed before it was scheduled [Scheduled no earlier than %f secs, completed at %f secs]!\n", tprescheduleswap, tSwapComplete);
 					printf("PTB-ERROR: This could mean that sync of bufferswaps to vertical retrace is broken or some other driver bug! Switching to alternative timestamping method.\n");
