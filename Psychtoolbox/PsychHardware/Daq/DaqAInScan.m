@@ -506,12 +506,6 @@ if options.begin
 
         AllSNs = strvcat(AllHIDDevices.product);
         InterfaceInds = transpose(strmatch(SN,AllSNs));
-        if IsOSX
-            % Just assume daq has always maximum index in InterfaceInds on
-            % OSX:
-            daq = max(InterfaceInds);
-        end
-        
         if length(InterfaceInds) ~= 4
             % Horrible hack for the horrible 64-Bit OSX:
             if ~IsOSX(1)
