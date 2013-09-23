@@ -471,6 +471,15 @@ if options.begin
     
     if Is1608
         SN = AllHIDDevices(daq).product;
+        
+        % Fill empty .product fields with filler, otherwise the
+        % following strvcat deletes them!
+        for kk = 1:length(AllHIDDevices)
+            if isempty(AllHIDDevices(kk).product)
+                AllHIDDevices(kk).product = 'xoxo';
+            end
+        end
+        
         AllSNs = strvcat(AllHIDDevices.product);
         InterfaceInds = strmatch(SN,AllSNs);
         if length(InterfaceInds) ~= 7 || ~all(InterfaceInds' == (daq-6):daq)
@@ -486,6 +495,15 @@ if options.begin
         % Find all other interfaces of device 'daq', by looking for devices
         % with the same serial number:
         SN = AllHIDDevices(daq).product;
+
+        % Fill empty .product fields with filler, otherwise the
+        % following strvcat deletes them!
+        for kk = 1:length(AllHIDDevices)
+            if isempty(AllHIDDevices(kk).product)
+                AllHIDDevices(kk).product = 'xoxo';
+            end
+        end
+
         AllSNs = strvcat(AllHIDDevices.product);
         InterfaceInds = transpose(strmatch(SN,AllSNs));
         if length(InterfaceInds) ~= 4
@@ -498,7 +516,7 @@ if options.begin
         end
         
         % Throw out the primary interface with index 'daq':
-        InterfaceInds = InterfaceInds(find(InterfaceInds ~= daq)); 
+        InterfaceInds = InterfaceInds(find(InterfaceInds ~= daq));
         
         % Convert to indices/range relative to 'daq', as needed later on:
         IndexRange = InterfaceInds - daq;
@@ -509,7 +527,7 @@ if options.begin
           IndexRange = -1:-1:-3;
         end
     end
-    
+
     % Flush any stale reports.
     for d=IndexRange % Interfaces 1,2,3 (1208FS) or 1:6 (1608FS)
         err=PsychHID('ReceiveReports',daq+d);
