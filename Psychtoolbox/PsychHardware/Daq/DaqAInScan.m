@@ -474,7 +474,12 @@ if options.begin
         AllSNs = strvcat(AllHIDDevices.product);
         InterfaceInds = strmatch(SN,AllSNs);
         if length(InterfaceInds) ~= 7 || ~all(InterfaceInds' == (daq-6):daq)
-            error('Not all interfaces found.  Run "help DaqReset" for suggestions.');
+            % Horrible hack for the horrible 64-Bit OSX:
+            if ~IsOSX(1)
+                error('Not all interfaces found.  Run "help DaqReset" for suggestions.');
+            else
+                warning('Not all 7 interfaces found. Will fake most common interface config and hope for the best. Run "help DaqReset" for suggestions.');
+            end
         end
         IndexRange = -1:-1:-6;
     else
@@ -484,7 +489,12 @@ if options.begin
         AllSNs = strvcat(AllHIDDevices.product);
         InterfaceInds = transpose(strmatch(SN,AllSNs));
         if length(InterfaceInds) ~= 4
-            error('Not all interfaces found.  Run "help DaqReset" for suggestions.');
+            % Horrible hack for the horrible 64-Bit OSX:
+            if ~IsOSX(1)
+                error('Not all interfaces found.  Run "help DaqReset" for suggestions.');
+            else
+                warning('Not all 4 interfaces found. Will fake most common interface config and hope for the best. Run "help DaqReset" for suggestions.');
+            end
         end
         
         % Throw out the primary interface with index 'daq':
@@ -492,6 +502,12 @@ if options.begin
         
         % Convert to indices/range relative to 'daq', as needed later on:
         IndexRange = InterfaceInds - daq;
+        
+        % Horrible hack for the horrible 64-Bit OSX:
+        if IsOSX(1)
+          % Hardcode index range, in the hope it helps that brain-dead os:
+          IndexRange = -1:-1:-3;
+        end
     end
     
     % Flush any stale reports.
