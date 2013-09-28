@@ -4704,22 +4704,24 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
                     }
 
                     if (PsychPrefStateGet_Verbosity() > 4) {
-                        printf("PTB-DEBUG: Panel-Fitter %s %sblit: [%i %i %i %i] -> [%i %i %i %i]\n", (blitscalemode == GL_NEAREST) ? "unscaled" : "scaled",
+                        printf("PTB-DEBUG: Panel-Fitter %s %sblit: [%i %i %i %i] -> [%i %i %i %i], Rotation=%i, RotCenter=[%i, %i]\n",
+                               (blitscalemode == GL_NEAREST) ? "unscaled" : "scaled",
                                (windowRecord->multiSample > 0) ? "MultisampleResolveScale" : "Scale",
                                windowRecord->panelFitterParams[0], windowRecord->panelFitterParams[1], windowRecord->panelFitterParams[2], windowRecord->panelFitterParams[3],
-                               windowRecord->panelFitterParams[4], windowRecord->panelFitterParams[5], windowRecord->panelFitterParams[6], windowRecord->panelFitterParams[7]);
+                               windowRecord->panelFitterParams[4], windowRecord->panelFitterParams[5], windowRecord->panelFitterParams[6], windowRecord->panelFitterParams[7],
+                               windowRecord->panelFitterParams[8], windowRecord->panelFitterParams[9], windowRecord->panelFitterParams[10]);
                     }
                     
                     // This is a scaled blit, but all blit parameters are defined in the panelFitterParams array, which
                     // has to be set up by external code via Screen('PanelFitterProperties'):
-                    if (windowRecord->gfxcaps & kPsychGfxCapFBOBlit) {
+                    if ((windowRecord->gfxcaps & kPsychGfxCapFBOBlit) && (windowRecord->panelFitterParams[8] == 0)) {
                         // Framebuffer blitting supported, good!
                         glBlitFramebufferEXT(windowRecord->panelFitterParams[0], windowRecord->panelFitterParams[1], windowRecord->panelFitterParams[2], windowRecord->panelFitterParams[3],
                                              windowRecord->panelFitterParams[4], windowRecord->panelFitterParams[5], windowRecord->panelFitterParams[6], windowRecord->panelFitterParams[7],
                                              GL_COLOR_BUFFER_BIT, blitscalemode);
                     }
                     else {
-                        // Framebuffer blit unsupported. Use our normal texture blitting code as a fallback.
+                        // Framebuffer blit unsupported or rotation requested. Use our normal texture blitting code as a fallback.
                         // This has two downsides: It doesn't allow multisampling resolve, and it only allows
                         // to blit the original drawBufferFBO at its full size into a potentially scaled and
                         // offset inputBufferFBO destination region, ie., the source region is ignored aka
@@ -4728,13 +4730,18 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
                         // upscaled to a higher resolution real framebuffer:
                         if (blitscalemode == GL_NEAREST) {
                             // Unscaled blit, possibly with offset in destination FBO:
-                            sprintf(overridepString1, "Offset:%i:%i", windowRecord->panelFitterParams[4], windowRecord->panelFitterParams[5]);
+                            sprintf(overridepString1, "Offset:%i:%i:Rotation:%f:RotCenter:%f:%f", windowRecord->panelFitterParams[4], windowRecord->panelFitterParams[5],
+                                    (double) windowRecord->panelFitterParams[8],
+                                    (double) windowRecord->panelFitterParams[9], (double) windowRecord->panelFitterParams[10]);
                         }
                         else {
                             // Scaled blit with bilinear filtering:
-                            sprintf(overridepString1, "Bilinear:Offset:%i:%i:OvrSize:%i:%i", windowRecord->panelFitterParams[4], windowRecord->panelFitterParams[5],
+                            sprintf(overridepString1, "Bilinear:Offset:%i:%i:OvrSize:%i:%i:Rotation:%f:RotCenter:%f:%f",
+                                    windowRecord->panelFitterParams[4], windowRecord->panelFitterParams[5],
                                     (windowRecord->panelFitterParams[6] - windowRecord->panelFitterParams[4]),
-                                    (windowRecord->panelFitterParams[7] - windowRecord->panelFitterParams[5]));
+                                    (windowRecord->panelFitterParams[7] - windowRecord->panelFitterParams[5]),
+                                    (double) windowRecord->panelFitterParams[8],
+                                    (double) windowRecord->panelFitterParams[9], (double) windowRecord->panelFitterParams[10]);
                         }
                         PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, overridepString1, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]), NULL,
                                                  &(windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]), NULL);

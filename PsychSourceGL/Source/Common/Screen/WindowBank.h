@@ -427,7 +427,7 @@ typedef struct _PsychWindowRecordType_{
 	GLuint					swapGroup;								// Swap group handle of swap group for this window, zero if none assigned.
 	GLuint					swapBarrier;							// Swap barrier handle of swap barrier for this window, zero if none assigned.
     
-    GLint                   panelFitterParams[8];                   // Parameters used for the glBlitFramebuffer call during panel scaling.
+    GLint                   panelFitterParams[11];                  // Parameters used for panel fitting.
 	
 	// Used only when this structure holds a window:
 	// CAUTION FIXME TODO: Due to some pretty ugly circular include dependencies in the #include chain of

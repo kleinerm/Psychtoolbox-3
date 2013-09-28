@@ -519,7 +519,6 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 				printf("PTB-WARNING: You also requested use of the imaging pipeline. Unfortunately, your combination of operating system, graphics hardware and driver does not\n");
 				printf("PTB-WARNING: support simultaneous use of the imaging pipeline and multisampled anti-aliasing.\n");
 				printf("PTB-WARNING: Will therefore continue without anti-aliasing...\n\n");
-				printf("PTB-WARNING: A driver upgrade may resolve this issue. Users of MacOS-X need at least OS/X 10.5.2 Leopard for support on recent ATI hardware.\n\n");
 			}
 		}    // Panel scaling requested? If so we need support for scaled multisample resolve blits to satisfy needs of multisampling and scaling:
         else if ((imagingmode & kPsychNeedGPUPanelFitter) && !(windowRecord->gfxcaps & kPsychGfxCapFBOScaledResolveBlit)) {
@@ -535,7 +534,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 				printf("PTB-WARNING: You also requested use of the imaging pipeline and of the GPU panel-fitter / rescaler via the 'clientRect' argument.\n");
                 printf("PTB-WARNING: Unfortunately, your combination of operating system, graphics hardware and driver does not support simultaneous\n");
 				printf("PTB-WARNING: use of multisampled anti-aliasing and the panel-fitter. I assume your request for panel fitting is more important.\n");
-				printf("PTB-WARNING: Will therefore continue without anti-aliasing to make the panel-fitter work.\n");
+				printf("PTB-WARNING: I will therefore continue without anti-aliasing to make the panel-fitter work.\n");
                 printf("PTB-WARNING: You would need a graphics card, os or graphics driver that supports the GL_EXT_framebuffer_multisample_blit_scaled\n");
                 printf("PTB-WARNING: extension to avoid this degradation of functionality.\n\n");
 			}
@@ -759,7 +758,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
             clientheight = (int) PsychGetHeightFromRect(windowRecord->clientrect);
             
             if (PsychPrefStateGet_Verbosity() > 2) {
-                printf("PTB-INFO: Enabling panel fitter. Rescaling from %i x %i pixels virtual size to real framebuffer resolution.\n", clientwidth, clientheight);
+                printf("PTB-INFO: Enabling panel fitter. Using virtual framebuffer of %i x %i pixels virtual size.\n", clientwidth, clientheight);
             }
         }
         else {
@@ -3658,7 +3657,7 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
 psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, psych_bool srcIsReadonly, psych_bool allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo)
 {
 	int w, h, x, y, wf, hf;
-	float sx, sy, wt, ht;
+	float sx, sy, wt, ht, angle, cx, cy;
 	char* strp;
 	psych_bool bilinearfiltering;
 
@@ -3735,19 +3734,46 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 		}
 	}
 
-	if (x!=0 || y!=0 || sx!=1.0 || sy!=1.0) {
+	// Check for rotation angle parameter:
+	angle = 0.0;
+	if (strp=strstr(pString1, "Rotation:")) {
+		// Parse and assign rotation angle:
+		if (sscanf(strp, "Rotation:%f", &angle)!=1) {
+			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): Rotation: blit string parameter is invalid! Parse error...\n");
+		}
+	}
+
+    cx = (float) w / 2;
+    cy = (float) h / 2;
+	if (strp=strstr(pString1, "RotCenter:")) {
+		// Parse and assign rotation angle:
+		if (sscanf(strp, "RotCenter:%f:%f", &cx, &cy)!=2) {
+			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): RotCenter: blit string parameter is invalid! Parse error...\n");
+		}
+	}
+    
+	if (x!=0 || y!=0 || sx!=1.0 || sy!=1.0 || angle!=0.0) {
 		glMatrixMode(GL_MODELVIEW);
 		glPushMatrix();
 		
 		// Apply global (x,y) offset:
 		glTranslatef((float) x, (float) y, 0);
 		
+        // Apply rotation around center:
+        if (angle != 0.0) {
+            glTranslatef(cx, cy, 0);        
+            glRotatef(angle, 0.0, 0.0, 1.0);
+            glTranslatef(-cx, -cy, 0);
+        }
+        
 		// Apply scaling:
-		glScalef(sx, sy, 1);
+		glScalef(sx, sy, 1);        
 	}
 	
-	if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: PsychBlitterIdentity: Blitting x=%i y=%i sx=%f sy=%f w=%i h=%i\n", x, y, sx, sy, w, h);
-	
+	if (PsychPrefStateGet_Verbosity()>4) {
+        printf("PTB-DEBUG: PsychBlitterIdentity: Blitting x=%i y=%i sx=%f sy=%f w=%i h=%i angle=%f, rx=%f, ry=%f\n", x, y, sx, sy, w, h, angle, cx, cy);
+	}
+    
     if (PsychIsGLClassic(windowRecord)) {
         // OpenGL-1/2: Do the blit, using a rectangular quad:
         glBegin(GL_QUADS);
@@ -3800,7 +3826,7 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
         glDisableClientState(GL_TEXTURE_COORD_ARRAY);
     }
 
-	if (x!=0 || y!=0 || sx!=1.0 || sy!=1.0) {
+	if (x!=0 || y!=0 || sx!=1.0 || sy!=1.0 || angle!=0.0) {
 		glPopMatrix();
 	}
 
