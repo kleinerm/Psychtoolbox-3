@@ -385,6 +385,16 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			if (dev->vendor_id == PCI_VENDOR_ID_NVIDIA || dev->vendor_id == PCI_VENDOR_ID_ATI || dev->vendor_id == PCI_VENDOR_ID_AMD || dev->vendor_id == PCI_VENDOR_ID_INTEL) {
 				// Yes. This is our baby from NVidia or ATI/AMD or Intel:
 
+                // Skip intel gpu's, unless the PSYCH_ALLOW_DANGEROUS env variable is set:
+                // Intel IGP's have a design defect which can cause machine hard lockup if multiple
+                // regs are accessed simultaneously! As we can't serialize our MMIO reads with the
+                // kms-driver, using our MMIO code on Intel is unsafe. Horrible crashes are reported
+                // against Haswell on the freedesktop bug tracker for this issue.
+                if ((dev->vendor_id == PCI_VENDOR_ID_INTEL) && !getenv("PSYCH_ALLOW_DANGEROUS")) {
+                    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Skipping detected Intel GPU for safety reasons. setenv('PSYCH_ALLOW_DANGEROUS', '1') to override.\n");
+                    continue;
+                }
+                
 				// Select the targetgpuidx'th detected gpu:
 				// TODO: Replace this hack by true multi-gpu support and - far in the future? -
 				// automatic mapping of screens to gpu's:
