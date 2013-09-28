@@ -99,7 +99,7 @@ try
     PsychImaging('AddTask', 'General', 'UseDisplayRotation', 90);
     
     % Open a fullscreen window, with a 50% gray background:
-    w = PsychImaging('OpenWindow', screenId, 0.5);
+    w = PsychImaging('OpenWindow', screenId, 0.5, [], [], [], [], 8);
     
     % Scribble something:
     Screen('FrameRect', w, [0, 1, 0], [], 5);
@@ -216,7 +216,7 @@ try
     PsychImaging('AddTask', 'General', 'UsePanelFitter', fitSize, 'Full');
     
     % Open a fullscreen window, with a 50% gray background:
-    w = PsychImaging('OpenWindow', screenId, 0.5, [], [], [], [], 16);
+    w = PsychImaging('OpenWindow', screenId, 0.5, [], [], [], [], 8);
     
     % Scribble something:
     Screen('FrameRect', w, [0, 1, 0], [], 5);
