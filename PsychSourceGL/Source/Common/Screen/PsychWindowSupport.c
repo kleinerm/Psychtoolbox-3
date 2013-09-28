@@ -4676,9 +4676,10 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
                 }
                 else {
                     // Only fallback possible. This rules out any multisample resolve blits, and thereby means failure on
-                    // multisampled configs:
-                    if ((windowRecord->multiSample > 0) || !(windowRecord->imagingMode & kPsychNeedGPUPanelFitter))
-                        PsychErrorExitMsg(PsychError_internal, "Tried to do multisample resolve or non-panelfitter op in drawbuffer->inputbuffer stage, but this is unsupported on your gpu! Bug?!?");
+                    // multisampled configs, unless multisample textures as colorbuffer attachment are supported and setup:
+                    if (((windowRecord->multiSample > 0) && (windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]->textarget != GL_TEXTURE_2D_MULTISAMPLE)) ||
+                        ((windowRecord->multiSample == 0) && !(windowRecord->imagingMode & kPsychNeedGPUPanelFitter)))
+                        PsychErrorExitMsg(PsychError_internal, "Tried to do multisample resolve, or a non-panelfitter op in drawbuffer->inputbuffer stage, but this is unsupported on your gpu! Bug?!?");
                 }
 
                 // Panelfitter requested?
@@ -4716,14 +4717,24 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
                     // has to be set up by external code via Screen('PanelFitterProperties'):
                     if ((windowRecord->gfxcaps & kPsychGfxCapFBOBlit) && (windowRecord->panelFitterParams[8] == 0)) {
                         // Framebuffer blitting supported, good!
-                        glBlitFramebufferEXT(windowRecord->panelFitterParams[0], windowRecord->panelFitterParams[1], windowRecord->panelFitterParams[2], windowRecord->panelFitterParams[3],
-                                             windowRecord->panelFitterParams[4], windowRecord->panelFitterParams[5], windowRecord->panelFitterParams[6], windowRecord->panelFitterParams[7],
+                        glBlitFramebufferEXT(windowRecord->panelFitterParams[0], windowRecord->panelFitterParams[1], windowRecord->panelFitterParams[2],
+                                             windowRecord->panelFitterParams[3],
+                                             windowRecord->panelFitterParams[4], windowRecord->panelFitterParams[5], windowRecord->panelFitterParams[6],
+                                             windowRecord->panelFitterParams[7],
                                              GL_COLOR_BUFFER_BIT, blitscalemode);
                     }
                     else {
                         // Framebuffer blit unsupported or rotation requested. Use our normal texture blitting code as a fallback.
-                        // This has two downsides: It doesn't allow multisampling resolve, and it only allows
-                        // to blit the original drawBufferFBO at its full size into a potentially scaled and
+                        // This has two downsides: First, it doesn't allow multisampling resolve, unless multisample textures are supported
+                        // and in use for drawBufferFBO's.
+                        if ((windowRecord->multiSample > 0) && (windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]->textarget != GL_TEXTURE_2D_MULTISAMPLE)) {
+                            // Ohoh, need multisampling resolve, but no multisample texture bound. Game over!
+                            printf("PTB-ERROR: The requested panelfitting operation (most likely display rotation?) is not supported on your system if\n");
+                            printf("PTB-ERROR: multisample anti-aliasing is active at the same time. Disable either multisampling, or the panelfitting task.\n");
+                            PsychErrorExitMsg(PsychError_user, "Tried to use panelfitter fallback with multisampling enabled, but multisampling unsupported on your gpu!");
+                        }
+
+                        // Second, it only allows to blit the original drawBufferFBO at its full size into a potentially scaled and
                         // offset inputBufferFBO destination region, ie., the source region is ignored aka
                         // panelFitterParams[0-3] are ignored. Should still work ok with many panelfitter
                         // modes, e.g., whenever a lower resolution virtual framebuffer is centered in, or
@@ -4743,17 +4754,29 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
                                     (double) windowRecord->panelFitterParams[8],
                                     (double) windowRecord->panelFitterParams[9], (double) windowRecord->panelFitterParams[10]);
                         }
-                        PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, overridepString1, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]), NULL,
+                        PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, overridepString1, NULL, TRUE, FALSE,
+                                                 &(windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]), NULL,
                                                  &(windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]), NULL);
                     }
                 }
                 else {
                     // No rescaling by panel-fitter required:
-                    // We use this for multisample-resolve of multisampled drawBufferFBO's.
-                    // A simple glBlitFramebufferEXT() call will do the copy & downsample operation:
-                    glBlitFramebufferEXT(0, 0, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->width, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->height,
-                                         0, 0, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->width, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->height,
-                                         GL_COLOR_BUFFER_BIT, GL_NEAREST);
+                    if (windowRecord->gfxcaps & kPsychGfxCapFBOBlit) {
+                        // We use this for multisample-resolve of multisampled drawBufferFBO's.
+                        // A simple glBlitFramebufferEXT() call will do the copy & downsample operation:
+                        glBlitFramebufferEXT(0, 0, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->width,
+                                             windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->height,
+                                             0, 0, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->width,
+                                             windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->height,
+                                             GL_COLOR_BUFFER_BIT, GL_NEAREST);
+                    }
+                    else {
+                        // No blitting possible. Fallback to imaging pipeline, which has multisample texture bound,
+                        // so that should work as well, albeit less efficient:
+                        PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE,
+                                                 &(windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]), NULL,
+                                                 &(windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]), NULL);
+                    }
                 }
 			}
 		}
