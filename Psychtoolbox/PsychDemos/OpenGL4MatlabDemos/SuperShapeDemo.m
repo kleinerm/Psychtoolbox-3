@@ -33,6 +33,11 @@ function SuperShapeDemo
 % History:
 % 16-Sep-2013   jsl  Written.
 
+if IsARM
+    % Does not work on OpenGL-ES due to unsupported OpenGL display lists:
+    error('Sorry, this demos does not work yet on embedded ARM devices.');
+end
+
 %% Initialization
 
 % Setup unified keynames and normalized 0-1 color space:
