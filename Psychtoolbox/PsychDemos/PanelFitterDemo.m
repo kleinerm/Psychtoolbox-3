@@ -54,7 +54,7 @@ function PanelFitterDemo
 % command to define the size of your framebuffer ('fitSize') and the
 % strategy for placing and scaling the image onto the panel.
 %
-% Again, operating systems allow you select different resolutions and
+% Again, operating systems allow you to select different resolutions and
 % fitting modes in their display GUI controls, but the methods by which
 % non-native resolutions and fittings are implemented by current operating
 % systems and graphics cards can severely interfere with stimulus onset
@@ -65,20 +65,28 @@ function PanelFitterDemo
 %
 % Please note that use of our panelfitter is also not totally free:
 %
-% a) Multisample anti-aliasing often does not work with older graphics
-%    hardware, or with display rotation.
+% a) Currently display rotation and image scaling don't go well together.
+%    One or the other works well, but both combined can exhibit bugs and
+%    artifacts. These are limitations of our current high-level setup code.
+%    You could probably use the Screen('PanelFitter') low-level setup
+%    command directly to get a well working solution for your specific
+%    needs, should you require scaling and rotation at the same time. Or
+%    you could fix and extend our high-level setup code in PsychImaging.m.
 %
-% b) There is a small performance impact on the order of < 1 millisecond
+% b) Multisample anti-aliasing does not work together with display rotation
+%    on older graphics hardware, or with Apple OSX versions up to and
+%    including 10.9 "Mavericks". It will work on modern GPU's under Linux
+%    or Windows if they at least support OpenGL 3.2, but not on the same
+%    GPU's under OSX, as this is a purely political restriction introduced
+%    by Apple, making OSX less useful than it could be.
+%
+% c) There is a small performance impact on the order of < 1 millisecond
 %    per Screen('Flip') with modern graphics cards due to the processing
 %    involved.
 %
-% c) Currently display rotation and image scaling don't go well together.
-%    One or the other works well, but both combined can exhibit bugs and
-%    artifacts.
-%
 
 % History:
-% 27-Sep-2013 mk   Written.
+% 29-Sep-2013 mk   Written.
 
 % Set unified keymappings and normalized color range:
 PsychDefaultSetup(2);
