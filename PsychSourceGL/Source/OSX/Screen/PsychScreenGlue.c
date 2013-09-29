@@ -1522,6 +1522,9 @@ int PsychOSKDGetBeamposition(int screenId)
         return(PsychOSKDGetBeamposition(screenId));
     }
 
+    // Catch still invalid values and map to "unsupported":
+    if (beampos > 16384) return(-1);
+    
 	// Apply corrective offsets if any (i.e., if non-zero):
 	PsychGetBeamposCorrection(screenId, &vblbias, &vbltotal);
 	beampos = beampos - vblbias;
