@@ -66,7 +66,7 @@ function PanelFitterDemo
 % Please note that use of our panelfitter is also not totally free:
 %
 % a) Multisample anti-aliasing often does not work with older graphics
-%    hardware, or not at all with display rotation.
+%    hardware, or with display rotation.
 %
 % b) There is a small performance impact on the order of < 1 millisecond
 %    per Screen('Flip') with modern graphics cards due to the processing
@@ -99,7 +99,7 @@ try
     PsychImaging('AddTask', 'General', 'UseDisplayRotation', 90);
     
     % Open a fullscreen window, with a 50% gray background:
-    w = PsychImaging('OpenWindow', screenId, 0.5, [], [], [], [], 8);
+    w = PsychImaging('OpenWindow', screenId, 0.5);
     
     % Scribble something:
     Screen('FrameRect', w, [0, 1, 0], [], 5);

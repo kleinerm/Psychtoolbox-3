@@ -343,6 +343,22 @@ char passthroughshadersrc[] =
 "    gl_FragColor.a = 1.0;\n"
 "}\n\0";
 
+char multisampletexfetchshadersrc[] =
+" \n"
+"#extension GL_ARB_texture_multisample : enable \n"
+" \n"
+"uniform sampler2DMS Image1; \n"
+"uniform int nrsamples;\n"
+"\n"
+"void main()\n"
+"{\n"
+"    vec4 color = vec4(0.0);\n"
+"    for (int i = 0; i < nrsamples; i++) {\n"
+"      color += texelFetch(Image1, ivec2(gl_TexCoord[0].st), i);\n"
+"    }\n"
+"    gl_FragColor = color / vec4(nrsamples);\n"
+"}\n\0";
+
 // This array maps hook point name strings to indices. The symbolic constants in
 // PsychImagingPipelineSupport.h define symbolic names for the indices for fast
 // lookup by name:
@@ -3186,12 +3202,11 @@ psych_bool PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hoo
 		PsychPipelineSetupRenderFlow(NULL, NULL, NULL, scissor_ignore);
         
         // A bit of a hack: If srcfbo1 has a multisample texture as colorbuffer,
-        // then unbind it and disable multisample texturetarget. We currently only
+        // then unbind it to disable multisample texturetarget. We currently only
         // support multisample colorbuffer textures on srcfbo1 and texture unit zero,
         // hence this special case for efficiency.
         if (mysrcfbo1 && (mysrcfbo1->textarget == GL_TEXTURE_2D_MULTISAMPLE)) {
             glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
-            glDisable(GL_TEXTURE_2D_MULTISAMPLE);
         }
 		
 		// Restore old FBO bindings:
@@ -3478,15 +3493,19 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
 
 		// Set texture application mode to replace:
 		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-		
-		glTexParameteri(srcfbo1->textarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(srcfbo1->textarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(srcfbo1->textarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(srcfbo1->textarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		
-		glDisable(GL_TEXTURE_2D);
-		glDisable(GL_TEXTURE_RECTANGLE_EXT);
-		glEnable(srcfbo1->textarget);
+
+        glDisable(GL_TEXTURE_2D);
+        glDisable(GL_TEXTURE_RECTANGLE_EXT);
+
+        // No sampler state setup or glEnable() for 2D multisample texture targets!
+        // Such textures are only accessible from within shaders via texelFetch().
+        if (srcfbo1->textarget != GL_TEXTURE_2D_MULTISAMPLE) {
+            glTexParameteri(srcfbo1->textarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(srcfbo1->textarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(srcfbo1->textarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(srcfbo1->textarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glEnable(srcfbo1->textarget);
+        }
 	}
 	else {
 		// srcfbo1 doesn't exist: Unbind and deactivate 1st unit:
@@ -3751,11 +3770,11 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 	h = (*srcfbo1)->height;
     
     // Same for texture coordinate space, depending on type of texture in use:
-    wt = ((*srcfbo1)->textarget != GL_TEXTURE_RECTANGLE) ? 1 : (float) w;
-    ht = ((*srcfbo1)->textarget != GL_TEXTURE_RECTANGLE) ? 1 : (float) h;
+    wt = ((*srcfbo1)->textarget == GL_TEXTURE_2D) ? 1 : (float) w;
+    ht = ((*srcfbo1)->textarget == GL_TEXTURE_2D) ? 1 : (float) h;
 
     // This pot-textures remapping mostly applies to OpenGL-ES 1.x hardware:
-    if (((*srcfbo1)->textarget != GL_TEXTURE_RECTANGLE) && !(windowRecord->gfxcaps & kPsychGfxCapNPOTTex)) {
+    if (((*srcfbo1)->textarget == GL_TEXTURE_2D) && !(windowRecord->gfxcaps & kPsychGfxCapNPOTTex)) {
         // Only power-of-two GL_TEXTURE_2D targets supported. Find real width of
         // FBO color buffer backing texture (wf, hf):
         wf = 1;
@@ -3770,6 +3789,23 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
         ht = (float) h / (float) hf;
     }
 
+    // Multisample texture? Needs special shader treatment.
+    if ((*srcfbo1)->textarget == GL_TEXTURE_2D_MULTISAMPLE) {
+        // This is a multisample texture. It needs a special shader to fetch texels from,
+        // as it can't get accessed by the fixed function pipeline in a conventional way.
+        if (windowRecord->multiSampleFetchShader == 0) {
+            // No fetch shader yet for this onscreen window. Create and assign one:
+            windowRecord->multiSampleFetchShader = PsychCreateGLSLProgram(multisampletexfetchshadersrc, NULL, NULL);
+        }
+
+        // Bind fetch shader for texture mapping:
+        if (glUseProgram && windowRecord->multiSampleFetchShader) {
+            glUseProgram(windowRecord->multiSampleFetchShader);
+            // Assign number of samples for this multisample texture, so shader can do proper averaging:
+            glUniform1i(glGetUniformLocation(windowRecord->multiSampleFetchShader, "nrsamples"), (*srcfbo1)->multisample);
+        }
+    }
+
 	// Check for override width x height parameter in the blitterString: An integral (w,h)
 	// size the blit. This allows to blit a target quad with a size different from srcfbo1, without
 	// scaling or filtering it. Mostly useful in conjunction with specific shaders.
@@ -3780,8 +3816,8 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 		}
 	}
 
-	// Bilinear filtering of srcfbo1 texture requested?
-	if (strstr(pString1, "Bilinear")) {
+	// Bilinear filtering of srcfbo1 texture requested? Obey request, unless multisample texture is in use - doesn't support this:
+	if (strstr(pString1, "Bilinear") && ((*srcfbo1)->textarget != GL_TEXTURE_2D_MULTISAMPLE)) {
 		// Yes. Enable it.
 		bilinearfiltering = TRUE;
 		glTexParameteri((*srcfbo1)->textarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -3912,6 +3948,11 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 		glTexParameteri((*srcfbo1)->textarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri((*srcfbo1)->textarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	}
+
+    // Disable special fetch shader if it was used for multisample texture:
+    if (((*srcfbo1)->textarget == GL_TEXTURE_2D_MULTISAMPLE) && glUseProgram) {
+        glUseProgram(0);
+    }
 
 	// Done.
 	return(TRUE);

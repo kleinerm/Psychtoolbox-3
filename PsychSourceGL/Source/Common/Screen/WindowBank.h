@@ -315,6 +315,7 @@ typedef struct _PsychWindowRecordType_{
 		GLint				texturePlanarShader[4]; // Optional GLSL program handles for shaders to apply to planar storage textures - 4 handles for 4 possible channel counts.
         GLint               textureI420PlanarShader; // Optional GLSL program handle for shader to convert a YUV-I420 planar texture into a standard RGBA8 texture.
         GLint               textureI800PlanarShader; // Optional GLSL program handle for shader to convert a Y8-I800 planar texture into a standard RGBA8 texture.
+        GLint               multiSampleFetchShader; // Optional GLSL program handler for shader to fetch from multisample texture.
 
         psych_bool          needsViewportSetup;     // Set on userspace OpenGL contexts of onscreen windows to signal need for glViewport setup and other one-time
                                                     // stuff on first Screen('BeginOpenGL'). Also (ab)used for textures and offscreen windows to track "dirty" state.
