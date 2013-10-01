@@ -208,7 +208,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   Window win;
   GLXContext ctx;
   GLXFBConfig *fbconfig = NULL;
-  GLXWindow glxwindow;
+  GLXWindow glxwindow = (XID) 0;
   XVisualInfo *visinfo = NULL;
   int i, x, y, width, height, nrconfigs, buffdepth;
   GLenum glerr;
@@ -1774,7 +1774,12 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 	// Ok, we have a valid final targetMSC. Schedule a bufferswap for that targetMSC, taking a potential
 	// (divisor, remainder) constraint into account:
 	rc = glXSwapBuffersMscOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, targetMSC, divisor, remainder);
-    PsychUnlockDisplay();
+
+	// Touch the framebuffer by writing a single pixel + glFlush()ing, but don't wait for the write to complete,
+	// if this workaround is needed on XLib for thread-safety on Mesa drivers:
+	if (windowRecord->specialflags & kPsychNeedPostSwapLockedFlush) PsychWaitPixelSyncToken(windowRecord, TRUE);
+
+	PsychUnlockDisplay();
 
 	// Failed? Return -4 error code if so:
 	if (rc == -1) return(-4);
@@ -1803,9 +1808,14 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 	PsychExecuteBufferSwapPrefix(windowRecord);
 	
 	// Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
-    PsychLockDisplay();
+	PsychLockDisplay();
 	glXSwapBuffers(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle);
-    PsychUnlockDisplay();
+
+	// Touch the framebuffer by writing a single pixel + glFlush()ing, but don't wait for the write to complete,
+	// if this workaround is needed on XLib for thread-safety on Mesa drivers:
+	if (windowRecord->specialflags & kPsychNeedPostSwapLockedFlush) PsychWaitPixelSyncToken(windowRecord, TRUE);
+
+	PsychUnlockDisplay();
 	windowRecord->target_sbc = 0;
 }
 

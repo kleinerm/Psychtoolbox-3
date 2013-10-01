@@ -889,7 +889,19 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     // First we query what the OS thinks is our monitor refresh interval:
     if (PsychGetNominalFramerate(screenSettings->screenNumber) > 0) {
         // Valid nominal framerate returned by OS: Calculate nominal IFI from it.
-        ifi_nominal = 1.0 / ((double) PsychGetNominalFramerate(screenSettings->screenNumber));        
+        ifi_nominal = 1.0 / ((double) PsychGetNominalFramerate(screenSettings->screenNumber));
+    }
+
+    // Make sure the lockedflush workaround is applied before we first touch
+    // the framebuffer of this brand new onscreen window for real via the
+    // glClear() call sequence below. The assumption is that the first access
+    // to the drawable will also trigger a X11 roundtrip for fb validation:
+    if ((*windowRecord)->specialflags & kPsychNeedPostSwapLockedFlush) {
+        #if PSYCH_SYSTEM == PSYCH_LINUX
+        PsychLockDisplay();
+        PsychWaitPixelSyncToken(*windowRecord, TRUE);
+        PsychUnlockDisplay();
+        #endif
     }
 
     // This is pure eye-candy: We clear both framebuffers to a background color,
@@ -2338,7 +2350,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 				if (!(useOpenML && (PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &(windowRecord->time_at_last_vbl)) > 0))) {
 					// OpenML swap completion timestamping unsupported, disabled, or failed.
 					// Use our standard trick instead.
-                    PsychWaitPixelSyncToken(windowRecord);
+					PsychWaitPixelSyncToken(windowRecord, FALSE);
 					PsychGetAdjustedPrecisionTimerSeconds(&(windowRecord->time_at_last_vbl));
 				}
 
@@ -3365,7 +3377,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
 				// We draw our single pixel with an alpha-value of zero - so effectively it doesn't
 				// change the color buffer - just the z-buffer if z-writes are enabled...
-                PsychWaitPixelSyncToken(windowRecord);
+				PsychWaitPixelSyncToken(windowRecord, FALSE);
 			}
 			
             #if PSYCH_SYSTEM == PSYCH_LINUX
@@ -4151,7 +4163,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                 // Use our standard trick instead.
 
                 // Wait for it, aka VBL start: See PsychFlipWindowBuffers for explanation...
-                PsychWaitPixelSyncToken(windowRecord);
+                PsychWaitPixelSyncToken(windowRecord, FALSE);
 
                 // At this point, start of VBL has happened and we can continue execution...
                 // We take our timestamp here:
@@ -4425,7 +4437,7 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
         
         // Our old VBL-Sync trick again... We need sync to VBL to visually check if
         // beamposition is locked to VBL:
-        PsychWaitPixelSyncToken(windowRecord);
+        PsychWaitPixelSyncToken(windowRecord, FALSE);
 
         // Query and visualize scanline immediately after VBL onset, aka return of glFinish();
         scanline = (float) PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);    
@@ -5873,27 +5885,67 @@ int PsychSetShader(PsychWindowRecordType *windowRecord, int shader)
  */
 void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 {
-	psych_bool verbose = (PsychPrefStateGet_Verbosity() > 5) ? TRUE : FALSE;
-	
-	psych_bool nvidia = FALSE;
-	psych_bool ati = FALSE;
-	psych_bool intel = FALSE;
+    psych_bool verbose = (PsychPrefStateGet_Verbosity() > 5) ? TRUE : FALSE;
+
+    psych_bool nvidia = FALSE;
+    psych_bool ati = FALSE;
+    psych_bool intel = FALSE;
     psych_bool llvmpipe = FALSE;
-	GLint maxtexsize=0, maxcolattachments=0, maxaluinst=0;
-	GLboolean nativeStereo = FALSE;
+    GLint maxtexsize=0, maxcolattachments=0, maxaluinst=0;
+    GLboolean nativeStereo = FALSE;
 
-	// Init Id string for GPU core to zero. This has at most 8 Bytes, including 0-terminator,
-	// so use at most 7 letters!
-	memset(&(windowRecord->gpuCoreId[0]), 0, 8);
+    // Init Id string for GPU core to zero. This has at most 8 Bytes, including 0-terminator,
+    // so use at most 7 letters!
+    memset(&(windowRecord->gpuCoreId[0]), 0, 8);
 
-	if (strstr((char*) glGetString(GL_VENDOR), "ATI") || strstr((char*) glGetString(GL_VENDOR), "AMD") || strstr((char*) glGetString(GL_RENDERER), "AMD")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
-	if (strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_RENDERER), "nouveau") || strstr((char*) glGetString(GL_VENDOR), "nouveau")) { nvidia = TRUE; sprintf(windowRecord->gpuCoreId, "NV10"); }
-	if (strstr((char*) glGetString(GL_VENDOR), "INTEL") || strstr((char*) glGetString(GL_VENDOR), "Intel") || strstr((char*) glGetString(GL_RENDERER), "Intel")) { intel = TRUE; sprintf(windowRecord->gpuCoreId, "Intel"); }
-	if (strstr((char*) glGetString(GL_VENDOR), "VMware") || strstr((char*) glGetString(GL_RENDERER), "llvmpipe")) { llvmpipe = TRUE; sprintf(windowRecord->gpuCoreId, "gllvm"); }
+    if (strstr((char*) glGetString(GL_VENDOR), "ATI") || strstr((char*) glGetString(GL_VENDOR), "AMD") || strstr((char*) glGetString(GL_RENDERER), "AMD")) {
+        ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100");
+    }
+    
+    if (strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_RENDERER), "nouveau") || strstr((char*) glGetString(GL_VENDOR), "nouveau")) {
+        nvidia = TRUE; sprintf(windowRecord->gpuCoreId, "NV10");
+    }
+    
+    if (strstr((char*) glGetString(GL_VENDOR), "INTEL") || strstr((char*) glGetString(GL_VENDOR), "Intel") || strstr((char*) glGetString(GL_RENDERER), "Intel")) {
+        intel = TRUE; sprintf(windowRecord->gpuCoreId, "Intel");
+    }
+    
+    if (strstr((char*) glGetString(GL_VENDOR), "VMware") || strstr((char*) glGetString(GL_RENDERER), "llvmpipe")) {
+        llvmpipe = TRUE; sprintf(windowRecord->gpuCoreId, "gllvm");
+    }
 
-	// Detection code for Linux DRI driver stack with ATI GPU:
-	if (strstr((char*) glGetString(GL_VENDOR), "Advanced Micro Devices") || strstr((char*) glGetString(GL_RENDERER), "ATI")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
+    // Detection code for Linux DRI driver stack with ATI GPU:
+    if (strstr((char*) glGetString(GL_VENDOR), "Advanced Micro Devices") || strstr((char*) glGetString(GL_RENDERER), "ATI")) {
+        ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100");
+    }
 	
+    // Check if this is an open-source (Mesa/Gallium) graphics driver on Linux with X11
+    // backend in use. If so, we must emit a single pixel write into the backbuffer, followed
+    // by a pipeline glFlush after each scheduled double-buffer swap, all protected by the
+    // display lock. Why? Because each scheduled/pending bufferswap invalidates the drawable
+    // of the associated onscreen window, so the first write or read of the system framebuffer
+    // after a scheduled swap will require a buffer revalidation, which will require a roundtrip
+    // to the X-Server via our shared X11 x-display connection. Any operation on this connection
+    // must be lock protected for thread-safety. We normally wouldn't know when the first access
+    // to the framebuffer happens after swap and we can't lock-protect everything, so we intentionally
+    // do a dummy-write immediately after each swap, under lock protection, so we know this revalidation
+    // roundtrip will happen under proper lock protection. Without this, we'd get crashes on the
+    // FOSS drivers. This hack is probably not needed on other non-X11 display backends. It is definitely
+    // not needed with the NVidia proprietary drivers, as they do their buffer revalidation without
+    // involvement of the X11 protocol. The situation with AMD Catalyst is unknown.
+    //
+    // So the rules are: If this onscreen window is using a X11 display connection for its operation
+    // and the graphics driver is not in a white-list of known multithread-safe drivers (ie., it is
+    // not the NVidia binary blob), we assume locking is required after each scheduled swap:
+    if (windowRecord->specialflags & kPsychIsX11Window) {
+        // X11 display backend in use. Lock-protect unless it is the white-listed NVidia blob:
+        if (!strstr((char*) glGetString(GL_VENDOR), "NVIDIA")) {
+            // Driver requires locked framebuffer dummy-write + flush:
+            windowRecord->specialflags |= kPsychNeedPostSwapLockedFlush;
+            if (verbose) printf("PTB-DEBUG: Linux X11 backend with FOSS drivers - Enabling locked pixeltoken-write + flush workaround for XLib thread-safety.\n");
+        }
+    }
+
 	while (glGetError());
 	glGetIntegerv(GL_MAX_RECTANGLE_TEXTURE_SIZE_EXT, &maxtexsize);
 	glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS_EXT, &maxcolattachments);
