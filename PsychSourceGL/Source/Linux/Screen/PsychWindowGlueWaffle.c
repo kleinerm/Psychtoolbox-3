@@ -1441,13 +1441,7 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
     // Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
     // This must be lock-protected for use with X11/XLib.
     PsychLockDisplay();
-    
     waffle_window_swap_buffers(windowRecord->targetSpecific.windowHandle);
-    
-    // Touch the framebuffer by writing a single pixel + glFlush()ing, but don't wait for the write to complete,
-    // if this workaround is needed on XLib for thread-safety on Mesa drivers:
-    if (windowRecord->specialflags & kPsychNeedPostSwapLockedFlush) PsychWaitPixelSyncToken(windowRecord, TRUE);
-    
     PsychUnlockDisplay();
 
     windowRecord->target_sbc = 0;

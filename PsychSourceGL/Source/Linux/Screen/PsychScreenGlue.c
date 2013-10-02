@@ -703,6 +703,7 @@ void PsychLockDisplay(void)
     
     if (PsychPrefStateGet_Verbosity() > 15) {
         printf("PTB-DEBUG: PsychLockDisplay(): Display locked!\n");
+        fflush(NULL);
         PsychGetAdjustedPrecisionTimerSeconds(&tLockDisplay);
     }
 }
@@ -713,6 +714,7 @@ void PsychUnlockDisplay(void)
         double tUnlockDisplay;
         PsychGetAdjustedPrecisionTimerSeconds(&tUnlockDisplay);
         printf("PTB-DEBUG: PsychUnlockDisplay(): Display unlocked! Lock hold time was %f msecs.\n", 1000 * (tUnlockDisplay - tLockDisplay));
+        fflush(NULL);
     }
 
     PsychUnlockMutex(&displayLock);

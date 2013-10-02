@@ -1353,7 +1353,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 	//
 	// This is the polling loop:
     PsychLockDisplay();
-	while ((windowRecord->vSynced) && !PsychIsLastOnscreenWindow(windowRecord) && (PsychGetNrAsyncFlipsActive() > 0) &&
+    while ((windowRecord->vSynced) && !PsychIsLastOnscreenWindow(windowRecord) && ((PsychGetNrAsyncFlipsActive() > 0) || (PsychGetNrFrameSeqStereoWindowsActive() > 0)) &&
 	       (windowRecord->targetSpecific.privDpy == windowRecord->targetSpecific.deviceContext) &&
 	       glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc) &&
 	       (sbc < windowRecord->target_sbc)) {
@@ -1397,6 +1397,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 		return(-1);
 	}
 	
+	PsychUnlockDisplay();
 
 	// Check for valid return values: A zero ust or msc means failure, except for results from nouveau,
 	// because there it is "expected" to get a constant zero return value for msc, at least when running
@@ -1412,10 +1413,14 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 		return(-2);
 	}
 
-	PsychUnlockDisplay();
+	// If no actual timestamp / msc was requested, then we return here. This is used by the
+	// workaround code for multi-threaded XLib access. It passes NULL to just (ab)use this
+	// function to wait for swap completion, before it touches the framebuffer for real.
+	// See function PsychLockedTouchFramebufferIfNeeded() in PsychWindowSupport.c
+	if (tSwap == NULL) return(msc);
 
 	// Success at least for timestamping. Translate ust into system time in seconds:
-	if (tSwap) *tSwap = PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz());
+	*tSwap = PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz());
 
     // Another consistency check: This one is meant to catch the totally broken glXSwapBuffersMscOML()
     // implementation of the Intel-DDX from June 2011 to December 2012. The bug has been fixed in the
@@ -1775,10 +1780,6 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 	// (divisor, remainder) constraint into account:
 	rc = glXSwapBuffersMscOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, targetMSC, divisor, remainder);
 
-	// Touch the framebuffer by writing a single pixel + glFlush()ing, but don't wait for the write to complete,
-	// if this workaround is needed on XLib for thread-safety on Mesa drivers:
-	if (windowRecord->specialflags & kPsychNeedPostSwapLockedFlush) PsychWaitPixelSyncToken(windowRecord, TRUE);
-
 	PsychUnlockDisplay();
 
 	// Failed? Return -4 error code if so:
@@ -1810,12 +1811,8 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 	// Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
 	PsychLockDisplay();
 	glXSwapBuffers(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle);
-
-	// Touch the framebuffer by writing a single pixel + glFlush()ing, but don't wait for the write to complete,
-	// if this workaround is needed on XLib for thread-safety on Mesa drivers:
-	if (windowRecord->specialflags & kPsychNeedPostSwapLockedFlush) PsychWaitPixelSyncToken(windowRecord, TRUE);
-
 	PsychUnlockDisplay();
+
 	windowRecord->target_sbc = 0;
 }
 
