@@ -1404,6 +1404,8 @@ int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** wi
       numPossibleModes += nrates;
     }
 
+    PsychUnlockDisplay();
+
     // Allocate output arrays: These will get auto-released at exit from Screen():
     *widths  = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
     *heights = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
@@ -1413,17 +1415,17 @@ int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** wi
     // Reiterate and fill all slots:
     numPossibleModes = 0;
     for (i = 0; i < nsizes; i++) {
-      short* rates = XRRRates(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), i, &nrates);
-      for (j = 0; j < nrates; j++) {
-        (*widths)[numPossibleModes]  = (long) scs[i].width;
-	(*heights)[numPossibleModes] = (long) scs[i].height;
-	(*hz)[numPossibleModes]      = (long) rates[j];
-	(*bpp)[numPossibleModes]     = (long) PsychGetScreenDepthValue(screenNumber);
-	numPossibleModes++;
-      }
+        PsychLockDisplay();
+        short* rates = XRRRates(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), i, &nrates);
+        PsychUnlockDisplay();
+        for (j = 0; j < nrates; j++) {
+            (*widths)[numPossibleModes]  = (long) scs[i].width;
+            (*heights)[numPossibleModes] = (long) scs[i].height;
+            (*hz)[numPossibleModes]      = (long) rates[j];
+            (*bpp)[numPossibleModes]     = (long) PsychGetScreenDepthValue(screenNumber);
+            numPossibleModes++;
+        }
     }
-
-    PsychUnlockDisplay();
 
     // Done:
     return(numPossibleModes);
