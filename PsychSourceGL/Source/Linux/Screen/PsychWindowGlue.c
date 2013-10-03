@@ -1353,7 +1353,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 	//
 	// This is the polling loop:
     PsychLockDisplay();
-    while ((windowRecord->vSynced) && !PsychIsLastOnscreenWindow(windowRecord) && ((PsychGetNrAsyncFlipsActive() > 0) || (PsychGetNrFrameSeqStereoWindowsActive() > 0)) &&
+    while ((windowRecord->vSynced) && ((PsychGetNrAsyncFlipsActive() > 0) || (PsychGetNrFrameSeqStereoWindowsActive() > 0)) &&
 	       (windowRecord->targetSpecific.privDpy == windowRecord->targetSpecific.deviceContext) &&
 	       glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc) &&
 	       (sbc < windowRecord->target_sbc)) {
