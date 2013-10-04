@@ -2,6 +2,10 @@ function daq = DaqDeviceIndex(DeviceName, IShouldWarn)
 % daq = DaqDeviceIndex([DeviceName][, ShowInterfaceNumberWarning=1])
 % Returns a list of all your USB -1208FS, -1408FS, or -1608FS daqs.
 %
+% CAUTION: This routine works well on GNU/Linux and MS-Windows, but is very
+% unreliable on Apple OSX, especially with multiple DAQ devices connected.
+% You may be better off guessing a proper daq index.
+%
 % Also implements experimental code for detection of the USB-1024LS.
 % However that code has not been tested yet and may need some small amount
 % of tweaking to make it really work. Search the Psychtoolbox forum for
@@ -61,9 +65,16 @@ function daq = DaqDeviceIndex(DeviceName, IShouldWarn)
 %             each instance of multiple identical DAQ devices to
 %             disambiguate if user connects multiple devices of same model.
 %             Bits of cleanup and refactoring.
-% 5/20/13 mk Verify correct enumeration of devices with a USB-1408FS device
-%              on 10.5 Leopard, 10.7 Lion, Linux, and Windows-7. Remove 1408FS
-%              "untested" warnings. It is tested now.
+% 5/20/13 mk  Verify correct enumeration of devices with a USB-1408FS device
+%             on 10.5 Leopard, 10.7 Lion, Linux, and Windows-7. Remove 1408FS
+%             "untested" warnings. It is tested now.
+%
+% 10/4/13 mk  More futile attempts to fix OSX: Use a heuristic of always
+%             choosing the maximum device index of eligible entries as
+%             returned daq index, assuming that one is interface#0. This
+%             heuristic only used if only 1 DAQ device is detected and only
+%             on OSX, as the regular matching code works well on Linux and
+%             Windows.
 
 if nargin < 2 || isempty(IShouldWarn)
     IShouldWarn=1;
@@ -138,7 +149,7 @@ for k=1:length(devices)
     
     % 1408FS type product ID?
     if devices(k).productID == 161
-        NumOutputs = 69;
+        NumOutputs = 65;
     end
     
     % It is a MCC device.
@@ -222,6 +233,48 @@ if IShouldWarn
                     NumInterfaces(k),daq(k)));
             end
         end
+    end
+end
+
+if (length(daq) == 1) && IsOSX
+    % This is OSX, the most f$%@#$d up system in existence, and exactly 1
+    % DAQ device was detected. This is the common case. We know that the
+    % daq index corresponding to interface #0 seems to be always the one
+    % with the maximal index in the devices list, and the NumOutputs
+    % heuristic is badly broken due to the mostly random and varying number
+    % of outputs reported by OSX across OS versions.
+    % So let's try to fix this up for the common case of exactly 1 device
+    % on OSX with a new heuristic. Simply select the last device in the
+    % list, ie., the one with maximal index:
+    maxidx = -1;
+
+    fprintf('\nOnly one DAQ device detected and this is the horribly broken OSX OS.\n');
+    fprintf('Will return daq device index as the one with the highest index number,\n');
+    fprintf('assuming it to be interface #0, as our interface matching is too\n');
+    fprintf('unreliable on OSX, thanks to Apple''s broken operating systems. Good luck!\n');
+    
+    for k=1:length(devices)
+        % Skip all devices with a vendorId other than 2523 aka 0x09db, ie. all
+        % devices that are not from Measurement Computing:
+        if devices(k).vendorID ~= 2523
+            continue;
+        end
+        
+        % Skip all devices which don't match the proper product name if
+        % name filtering is requested by user:
+        if ~AcceptAlternateNames && ~streq(devices(k).product,DeviceName)
+            continue;
+        end
+        
+        % Ok, index k is a MCC devices which matches. Keep track of the
+        % device with maximum index:
+        maxidx = max(maxidx, k);
+    end
+    
+    if maxidx >= 0
+        % Assign maximum index as proper daq index for interface #0 of only
+        % detected DAQ device on OSX:
+        daq = maxidx;
     end
 end
 
