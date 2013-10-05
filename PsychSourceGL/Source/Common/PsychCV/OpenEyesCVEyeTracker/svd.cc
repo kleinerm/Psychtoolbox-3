@@ -257,6 +257,7 @@ void svd(int m, int n, double **a, double **p, double *d, double **q)
                         if (its == 30)
                         {
                                 //error("svd: No convergence in 30 svd iterations", non_fatal);
+                                free(r);
                                 return;
                         }
                         x = d[l];       /* shift from bottom 2-by-2 minor */
