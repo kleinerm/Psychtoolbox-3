@@ -45,6 +45,7 @@ function photoreceptors = FillInPhotoreceptors(photoreceptors)
 %               a nomogram and an absorbance spectrum.)
 % 8/11/13  dhb  More checking.  Add ability to adjust lens/macular density.  Return energy and quantal fundamentals (normalized to unity).
 % 8/12/13  dhb  Fixed buglet resulting from forgetting to update after copy/paste.
+% 10/16/13  mk  Replace obsolete isstr() by ischar() to future-proof this.
 
 %% Check that there is a nomogram field with an S subfield
 %
@@ -90,7 +91,7 @@ if (isfield(photoreceptors,'nomogram') && isfield(photoreceptors.nomogram,'lambd
         error('Mismatch between length of types and lambdaMax fields');
     end
 elseif (isfield(photoreceptors,'absorbance'))
-    if (~isstr(photoreceptors.absorbance))
+    if (~ischar(photoreceptors.absorbance))
         if (length(photoreceptors.types) ~= size(photoreceptors.absorbance,1))
             error('Mismatch between length of types and absorbance fields');
         end
@@ -257,7 +258,7 @@ else
     else
         % The PTB-style data file containing the absorbance may be specified and loaded.  Otherwise
         % it is assumed that the absorbance field has the right data at the right wavelenght sampling.
-        if (isstr(photoreceptors.absorbance))
+        if (ischar(photoreceptors.absorbance))
             theAbsorbanceStr = photoreceptors.absorbance;
             eval(['load(''T_' theAbsorbanceStr ''');']);
             eval(['photoreceptors.absorbance = 10.^SplineCmf(S_' theAbsorbanceStr ',T_' theAbsorbanceStr ',photoreceptors.nomogram.S,2);']);
@@ -346,7 +347,7 @@ if (~isfield(photoreceptors,'preReceptoral'))
     photoreceptors.preReceptoral.source = 'Computed from lens and macular pigment transmittance';
     photoreceptors.preReceptoral.transmittance = photoreceptors.lensDensity.transmittance .* ...
         photoreceptors.macularPigmentDensity.transmittance;
-elseif (~strcmp(photoreceptors.lensDensity.source,'None') | ~strcmp(photoreceptors.macularPigmentDensity.source,'None'))
+elseif (~strcmp(photoreceptors.lensDensity.source,'None') || ~strcmp(photoreceptors.macularPigmentDensity.source,'None'))
     error('Pre-receptoral filtering specified directly, but non-unity lens or macular pigment transmittance also specified.');
 end
 
