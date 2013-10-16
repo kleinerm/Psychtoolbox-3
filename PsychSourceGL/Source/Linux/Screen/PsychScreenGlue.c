@@ -765,19 +765,19 @@ void InitializePsychDisplayGlue(void)
 	if (firstTime) {
 		firstTime = FALSE;
 		
-		// We must initialize XLib for multi-threaded operations / access on first
-		// call:
-		// TODO FIXME: We can only do this on Octave for now, not on Matlab!
-		// Matlab uses XLib long before we get a chance to get here, but XInitThreads()
-		// must be called as very first XLib function after process startup or bad things
-		// will happen! So, we can't call it...
-		// Because some system configurations can't handle multi-threaded x at all,
-		// we allow users to opt-out of this if they define an environment variable
-		// PSYCHTOOLBOX_SINGLETHREADEDX.
-		#ifdef PTBOCTAVE3MEX
-        // DISABLED: We use our own locking now, not XLib's locking.
-		// if (NULL == getenv("PSYCHTOOLBOX_SINGLETHREADEDX")) XInitThreads();
-		#endif
+        // We must initialize XLib for multithreading-safe operations / access on first
+        // call if usercode explicitely requests this via environment variable PSYCH_XINITTHREADS.
+        //
+        // We can only do this as opt-in, as XInitThreads() must be called as very first
+        // XLib function after process startup or bad things will happen! We don't have control
+        // over this wrt. Matlab or Octave (especially future Octave 3.7+ with its QT based GUI),
+        // so we implemented our own locking in Screen() and don't need it in PsychHID, as PsychHID's
+        // x-connection is exclusively used by PsychHID's Xinput processing thread. However, there
+        // may be some cases when our own locking is insufficient, due to deficiencies in the
+        // DRI2 XOrg FOSS Mesa graphics driver stack, so some users may want to opt-into use
+        // XLib's threading protection as a work-around if they can guarantee Octave or Matlab
+        // hasn't called any XLib calls already during its running session:
+        if (getenv("PSYCH_XINITTHREADS")) XInitThreads();
 	}
 
     //init the list of Core Graphics display IDs.
