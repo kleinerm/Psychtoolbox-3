@@ -53,59 +53,30 @@ try
     win = PsychImaging('OpenWindow', screenid, 0, roi);
 
     imgFormat = [];
-    if IsOSX
-        engineId = 0;
-    end
-    
-    if IsWin
-        engineId = 2;
-    end
-    
-    if IsLinux
-        engineId = 1;
-    end
-    
-    switch engineId
-        case 2,
-            grabber = Screen('OpenVideoCapture', win, 0, [], 4, [], [], [], [], engineId);
-        case 0,
-            devid = PsychGetCamIdForSpec('Eye');
-            grabber = Screen('OpenVideoCapture', win, devid, [0 0 640 480], 4, [], [], [], [], engineId);
-            imgFormat = 4;
-        case 1,
-            grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480], [], [], [], [], [], engineId);
-        otherwise
-            error('Unknown video capture engineId');
-    end
+ 
+    grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480], 3);
     
     % Start capture with requested 30 fps:
     Screen('StartVideoCapture', grabber, 30, 1);
 
     % Get a single texture that we can query for the image format:
     tex = Screen('GetCapturedImage', win, grabber);
-    [w, h] = Screen('WindowSize', tex) %#ok<NOPRT>
-    channels = Screen('PixelSize', tex) / 8 %#ok<NOPRT>
+    [w, h] = Screen('WindowSize', tex)
+    channels = Screen('PixelSize', tex) / 8
     
     % Release texture after query:
     Screen('Close', tex);
-    tex = []; %#ok<NASGU>
-    
+    tex = [];
+
     % Debug level for tracker:
     PsychCV('Verbosity', 3);
     
     % Initialize ARToolkit: Load camera calibration data, assign image size
     % and properties for raw video input images:
     ardata = [ PsychtoolboxRoot 'PsychDemos/ARToolkitDemoData/' ];
-    PsychCV('ARRenderSettings', [], [], 2000)
-    % ON OS/X:
-    %
-    % imgFormat == 4 fuer Quicktime 0,4 channel or ARVideo 0,4 channel.
-    % imgFormat == [] or 7 fuer ARVideo 5 channels (aka 4 channels swizzled).
-    % imgFormat == [] or 1 fuer Quicktime or ARVideo 3 channels.
-    % imgFormat == [] or 6 fuer Quicktime 1,2 channels.
-    % imgFormat == [] fuer Firewire 0,1,2,3,4 channels.
-    [imgbuffer, projectionMatrix, debugimagebuffer] = PsychCV('ARInitialize', [ardata 'camera_para.dat'], w, h, channels, imgFormat); %#ok<NASGU>
+    PsychCV('ARRenderSettings', [], [], 2000);
     
+    [imgbuffer, projectionMatrix, debugimagebuffer] = PsychCV('ARInitialize', [ardata 'camera_para.dat'], w, h, channels, imgFormat);
     [templateMatchingInColor, imageProcessingFullSized, imageProcessingIdeal, trackingWithPCA] = PsychCV('ARTrackerSettings')
 
     % Single markers by default:

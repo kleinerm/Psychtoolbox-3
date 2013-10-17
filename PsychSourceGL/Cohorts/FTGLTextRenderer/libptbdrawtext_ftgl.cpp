@@ -475,7 +475,7 @@ int PsychDrawText(int context, double xStart, double yStart, int textLen, double
 {
 	int i;
 	GLuint ti;
-	QChar* myUniChars = new QChar[textLen];
+	QChar* myUniChars;
 	
 	// On first invocation after init we need to generate a useless texture object.
 	// This is a weird workaround for some weird bug somewhere in FTGL...
@@ -490,6 +490,7 @@ int PsychDrawText(int context, double xStart, double yStart, int textLen, double
 	if (!fi) return(1);
 
 	// Synthesize Unicode QString from double vector:
+	myUniChars = new QChar[textLen];
 	for(i = 0; i < textLen; i++) {
 		myUniChars[i] = QChar((unsigned int) text[i]); 
 	}	
@@ -547,7 +548,7 @@ int PsychDrawText(int context, double xStart, double yStart, int textLen, double
 int PsychMeasureText(int context, int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax)
 {
 	int i;
-	QChar* myUniChars = new QChar[textLen];
+	QChar* myUniChars;
 	
     // Check if rebuild of font face needed due to parameter
     // change. Reload/Rebuild font face if so, check for errors:
@@ -555,6 +556,7 @@ int PsychMeasureText(int context, int textLen, double* text, float* xmin, float*
     if (!fi) return(1);
 
 	// Synthesize Unicode QString from double vector:
+	myUniChars = new QChar[textLen];    
 	for(i = 0; i < textLen; i++) {
 		myUniChars[i] = QChar((unsigned int) text[i]); 
 	}	

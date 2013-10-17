@@ -2475,6 +2475,10 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 		sourceRecord->imagingMode = tmpimagingmode;
 		PsychSetDrawingTarget(NULL);
 
+        // PsychSetDrawingTarget(NULL); doesn't do the full job of unbinding the fbo, so do
+        // it manually:
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
 		// At this point the color attachment of the sourceRecords FBO contains the properly oriented texture.
 		// Delete the old texture, attach the FBO texture as new one:
         

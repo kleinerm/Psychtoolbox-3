@@ -154,6 +154,13 @@ if mode==9
     striplibsfrommexfile([PsychtoolboxRoot target 'moalcore.mex']);
 end;
 
+if mode == 10
+    % Build PsychCV
+    mex -v -g --output PsychCV.mex -DPTBMODULE_PsychCV -DPTBOCTAVE3MEX -ICommon/Base -ICommon/PsychCV -ILinux/Base -I../Cohorts/ARToolkit/include Common/Base/*.cc Common/Base/*.c Linux/Base/*.c Common/PsychCV/*.c -lc -lrt /usr/local/lib/libARMulti.a /usr/local/lib/libARgsub.a /usr/local/lib/libARgsub_lite.a /usr/local/lib/libARgsubUtil.a /usr/local/lib/libAR.a -lglut
+    unix(['mv PsychCV.mex ' PsychtoolboxRoot target]);
+    striplibsfrommexfile([PsychtoolboxRoot target 'PsychCV.mex']);
+end
+
 % Remove stale object files:
 delete('*.o');
 

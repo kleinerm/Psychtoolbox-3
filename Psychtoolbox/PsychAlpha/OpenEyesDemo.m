@@ -25,7 +25,7 @@ try
     win = Screen('OpenWindow', screenid, 0, winRect);
     ShowCursor('CrossHair', screenid);
     
-    oeyes = PsychOpenEyes('OpenTracker', 1, win);
+    oeyes = PsychOpenEyes('OpenTracker', 1, win)
     oldgain = PsychCamSettings('Gain', oeyes)
     gain = PsychCamSettings('Gain', oeyes, 174)
     imgtype = 0;
@@ -260,7 +260,10 @@ try
     return;
 catch
     ListenChar(0);
-    PsychOpenEyes('CloseTracker', oeyes);
+    if exist('oeyes', 'var')
+      PsychOpenEyes('CloseTracker', oeyes);
+    end
+    
     ShowCursor('Arrow', screenid);
     Screen('CloseAll');
     Screen('Preference', 'SkipSyncTests', oldsync);
