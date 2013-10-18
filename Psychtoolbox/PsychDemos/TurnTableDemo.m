@@ -66,8 +66,9 @@ for i=11:11+25
     key(i) = KbName(sprintf('%s', char('a' + i - 11)));
 end
 
-% Keys 0 - 9:
-for i=11+25+1:11+25+1+9
+% Keys 1 - 9:
+for i=11+25+1:11+25+1+8
+i
     key(i) = KbName(sprintf('%s', char('1' + i - 11 - 25 - 1)));
 end
 
