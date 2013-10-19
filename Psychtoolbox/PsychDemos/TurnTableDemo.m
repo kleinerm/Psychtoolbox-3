@@ -21,12 +21,11 @@ function TurnTableDemo(wavfilename, wavfilenames)
 %
 % ESCape = End demo.
 % space  = Mute/Unmute turntable.
-% left shift = Allow manual control of turntable but mute it temporarily.
-% right shift = Mute turntable temporarily.
+% left SHIFT = Allow manual control of turntable but mute it temporarily.
 % 'r' = Switch between rotational and linear scratch control for turntable.
 % Any key = One-shot playback of associated sound sample loop.
 % Any key + left-ALT = Continous looped playback of associated sample loop.
-% Any key + right-ALT = Stop continous looped playback for sample loop.
+% Any key + right SHIFT = Stop continous looped playback for sample loop.
 %
 % Mouse key / touch tablet press with mouse cursor inside turntable, or
 % finger touch on touchscreen inside turntable == manual "scratch" control
@@ -49,10 +48,9 @@ PsychDefaultSetup(2);
 escape = KbName('ESCAPE');
 rotateToggle = KbName('r');
 leftmuteButton = KbName('LeftShift');
-rightmuteButton = KbName('RightShift');
 togglemuteButton = KbName('space');
 repeatOnKey = KbName('LeftAlt');
-repeatOffKey = KbName('RightAlt');
+repeatOffKey = KbName('RightShift');
 
 %% Define key mappings to sound sample loops:
 
@@ -391,7 +389,7 @@ try
         playhead = mod(endfetch, numSamples);
         
         % Turn signal into silence if mute key is held down:
-        if keycode(leftmuteButton) || keycode(rightmuteButton)
+        if keycode(leftmuteButton)
             pushdata = zeros(size(pushdata));
         end
         
@@ -417,7 +415,6 @@ try
         repeatOn  = keycode(repeatOnKey);
         
         keycode(leftmuteButton)  = 0;
-        keycode(rightmuteButton) = 0;
         keycode(repeatOffKey) = 0;
         keycode(repeatOnKey) = 0;
         
@@ -466,7 +463,7 @@ try
                             end
                         end
                         
-                        fprintf('Load: %i of %i active.\n', ac, length(pahandle));
+                        %fprintf('Load: %i of %i active.\n', ac, length(pahandle));
                         
                         if ~isempty(mydev)
                             break;
