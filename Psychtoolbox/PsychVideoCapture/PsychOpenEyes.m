@@ -284,8 +284,8 @@ if strcmp(cmd, 'OpenTracker')
     end
     
     % Open the PTB video capture engine:
-    eyeCam = 30000;
-    captureEngineType = 0;
+    eyeCam = 0;
+    captureEngineType = [];
     captureRateFPS = 30;
     logfilename = [];
     eyeROI = [];

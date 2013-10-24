@@ -297,7 +297,7 @@ PsychKNDevice* PsychGetKinect(int handle, psych_bool dontfail)
 {
 	if (handle < 0 || handle >= MAX_PSYCH_KINECT_DEVS || kinectdevices[handle].dev == NULL) {
 		if (!dontfail) {
-			printf("PTB-ERROR: Invalid Kinect device handle %i passed. No such device open.\n");
+			printf("PTB-ERROR: Invalid Kinect device handle %i passed. No such device open.\n", handle);
 			PsychErrorExitMsg(PsychError_user, "Invalid kinect handle.");
 		}
 		

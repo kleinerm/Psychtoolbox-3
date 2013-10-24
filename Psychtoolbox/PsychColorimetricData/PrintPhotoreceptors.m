@@ -9,8 +9,10 @@ function PrintPhotoreceptors(photoreceptors)
 % 7/19/13  dhb  Wrote it.
 % 8/12/13  dhb  Code more generally and get rid of some special cases.
 %          dhb  For cmf-like spectral functions, print out peak wavelengths and peak values.
+% 10/16/13  mk  fields() -> fieldnames() for Octave compatibility. Other
+%               bug fixes, e.g., wrong use of ii for innermost for-loops.
 
-theFields = fields(photoreceptors);
+theFields = fieldnames(photoreceptors);
 for ii = 1:length(theFields);
     theField = theFields{ii};
     switch (theField)
@@ -45,13 +47,13 @@ for ii = 1:length(theFields);
             [peakWls, peakVals] = FindCmfPeaks(photoreceptors.nomogram.S,theCmf);
             fprintf('  * Photoreceptors field %s\n',theField);
             fprintf('    * Spectral peaks at:');
-            for ii = 1:length(peakVals)
-                fprintf(' %d',peakWls(ii));
+            for jj = 1:length(peakWls)
+                fprintf(' %d',peakWls(jj));
             end
             fprintf('\n');
             fprintf('    * Values at peaks:');
-            for ii = 1:length(peakVals)
-                fprintf(' %0.4f',peakVals(ii));
+            for jj = 1:length(peakVals)
+                fprintf(' %0.4f',peakVals(jj));
             end
             fprintf('\n');
             
@@ -74,13 +76,13 @@ for ii = 1:length(theFields);
                     eval(['theCmf = photoreceptors.' theField '.transmittance;']);
                     [peakWls, peakVals] = FindCmfPeaks(photoreceptors.nomogram.S,theCmf);
                     fprintf('    * Spectral peaks at:');
-                    for ii = 1:length(peakVals)
-                        fprintf(' %d',peakWls(ii));
+                    for jj = 1:length(peakWls)
+                        fprintf(' %d',peakWls(jj));
                     end
                     fprintf('\n');
                     fprintf('    * Values at peaks:');
-                    for ii = 1:length(peakVals)
-                        fprintf(' %0.4f',peakVals(ii));
+                    for jj = 1:length(peakVals)
+                        fprintf(' %0.4f',peakVals(jj));
                     end
                     fprintf('\n');
                 end
@@ -115,7 +117,7 @@ for ii = 1:length(theFields);
             hasValue1 = eval(['isfield(photoreceptors.' theField ',''value'');']);
             if (hasValue1)
                 hasValue2 = eval(['~isempty(photoreceptors.' theField '.value);']);
-                if (hasValue2 & hasValue0)
+                if (hasValue2 && hasValue0)
                     eval(['theValue = photoreceptors.' theField '.value;']);
                     fprintf('    * Value:');
                     valDim = length(theValue);

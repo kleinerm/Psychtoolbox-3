@@ -441,14 +441,14 @@ PsychError SCREENDrawTextures(void)
 		if (numTexs > 1) {
 			// More than one texture handle provided: Need to allocate i'th one in:
 			if(!IsWindowIndex((PsychWindowIndexType) texids[i])) {
-				printf("PTB-ERROR: %i th entry in texture handle vector is not a valid handle!\n");
+				printf("PTB-ERROR: %i th entry in texture handle vector is not a valid handle!\n", i + 1);
 				PsychErrorExitMsg(PsychError_user, "Invalid texture handle provided to Screen('DrawTextures').");
 			}
 
 			// Get it:
 			FindWindowRecord((PsychWindowIndexType) texids[i], &source);
 			if(source->windowType!=kPsychTexture) {
-				printf("PTB-ERROR: %i th entry in texture handle vector is not a valid handle!\n");
+				printf("PTB-ERROR: %i th entry in texture handle vector is not a valid handle!\n", i + 1);
 				PsychErrorExitMsg(PsychError_user, "The second argument supplied was not a texture handle!");
 			}
 
