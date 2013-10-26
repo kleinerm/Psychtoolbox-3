@@ -2205,6 +2205,7 @@ psych_bool PsychGetCodecLaunchLineFromString(char* codecSpec, char* launchString
 psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
 								   int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags)
 {
+    GError          *error;
     GstCaps         *colorcaps;
     GstCaps         *vfcaps, *reccaps;
     GstElement      *camera = NULL;
@@ -2640,11 +2641,39 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             }
         }
 
+        // Videosource provided as a bin which is constructed from a gst-launch line:
+        if (deviceIndex == -9) {
+            // Fetch mandatory targetmoviename parameter as bin spec string:
+            if (targetmoviefilename == NULL) {
+                PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to -9 to request creation of a user-defined video source, but didn't provide the required gst-launch style string in the 'moviename' argument! Aborted.");
+            }
+
+            // Feedback to user:
+            if (PsychPrefStateGet_Verbosity() > 2) {
+                printf("PTB-INFO: Trying to attach generic user provided bin as video source. The gst-launch style pipeline description is:\n");
+                printf("PTB-INFO: %s\n", targetmoviefilename);
+            }
+            
+            // Create a bin from the provided gst-launch style string and assign it as videosource plugin:
+            sprintf(plugin_name, "gstlaunchbinsrc");
+            error = NULL;
+            videosource = gst_parse_bin_from_description((const gchar *) targetmoviefilename, TRUE, &error);
+            
+            if (!videosource) {
+                printf("PTB-ERROR: Failed to create generic bin video source!\n");
+                if (error) {
+                    printf("PTB-ERROR: GStreamer returned the following error: %s\n", (char*) error->message);
+                    g_error_free(error);
+                }
+                PsychErrorExitMsg(PsychError_user, "GStreamer failed to build a suitable video source from your pipeline spec! Game over.");
+            }
+        }
+        
 		// Some plugins need typefind'ing dhowvideosrc for sure, but we also set it for aravissrc to be safe:
 		if (strstr(plugin_name, "dshowvideosrc") || strstr(plugin_name, "aravissrc")) g_object_set(G_OBJECT(videosource), "typefind", 1, NULL);
 		
 		// Enable timestamping by videosource, unless its been done already for a dv1394src:
-		if (!strstr(plugin_name, "dv1394src")) g_object_set(G_OBJECT(videosource), "do-timestamp", 1, NULL);
+		if (!strstr(plugin_name, "dv1394src") && !strstr(plugin_name, "gstlaunchbinsrc")) g_object_set(G_OBJECT(videosource), "do-timestamp", 1, NULL);
 
 		// Assign video source to pipeline:
         if (usecamerabin == 1) {
@@ -2997,7 +3026,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             // we skip validation and trust blindly that the usercode is right if this is one of the non-enumerating
             // video sources:
             if (!strstr(plugin_name, "dshowvideosrc") && !strstr(plugin_name, "autovideosrc") && !strstr(plugin_name, "videotestsrc") &&
-                !strstr(plugin_name, "aravissrc")) {
+                !strstr(plugin_name, "aravissrc") && !strstr(plugin_name, "gstlaunchbinsrc")) {
                 // Query camera if it supports the requested resolution:
                 capdev->fps = -1;
                 if (!PsychGSGetResolutionAndFPSForSpec(capdev, &twidth, &theight, &capdev->fps, reqdepth)) {
@@ -3037,7 +3066,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
             // Auto-Detection doesn't work with various video source plugins. Skip it and hope that later probing code will do the job:
             if (!strstr(plugin_name, "dshowvideosrc") && !strstr(plugin_name, "autovideosrc") && !strstr(plugin_name, "videotestsrc") &&
-                !strstr(plugin_name, "aravissrc")) {
+                !strstr(plugin_name, "aravissrc") && !strstr(plugin_name, "gstlaunchbinsrc")) {
                 // Ask camera to provide auto-detected parameters:
                 if (!PsychGSGetResolutionAndFPSForSpec(capdev, &capdev->width, &capdev->height, &capdev->fps, reqdepth)) {
                     // Unsupported resolution. Game over!
