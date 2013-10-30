@@ -537,7 +537,7 @@ static IOHIDDeviceInterface122** HIDCreateOpenDeviceInterface(pRecDevice pDevice
         plugInResult = (*ppPlugInInterface)->QueryInterface (ppPlugInInterface,
                                                              CFUUIDGetUUIDBytes (kIOHIDDeviceInterfaceID), (void *) &interface);
         if ((S_OK != plugInResult) || (NULL == interface))
-            printf("PTB-ERROR: PsychHID: Couldn’t query HID class device interface from plugInInterface: %x.", plugInResult);
+            printf("PTB-ERROR: PsychHID: Couldn't query HID class device interface from plugInInterface: %x.\n", plugInResult);
 
         // Release ppPlugInInterface in any case - no longer needed:
         IODestroyPlugInInterface(ppPlugInInterface);

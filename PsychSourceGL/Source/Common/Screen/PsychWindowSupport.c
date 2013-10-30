@@ -5753,7 +5753,7 @@ void PsychBackupFramebufferToBackingTexture(PsychWindowRecordType *backupRendert
             
             if (PsychIsGLES(backupRendertarget)) {
                 // OES extension for faster format supported?
-                if (strstr(glGetString(GL_EXTENSIONS), "GL_EXT_texture_format_BGRA8888")) {
+                if (strstr((const char*) glGetString(GL_EXTENSIONS), "GL_EXT_texture_format_BGRA8888")) {
                     // Faster path:
                     glTexImage2D(GL_TEXTURE_2D, 0, GL_BGRA_EXT, twidth, theight, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, NULL);
                 }
@@ -5791,7 +5791,7 @@ void PsychBackupFramebufferToBackingTexture(PsychWindowRecordType *backupRendert
 
                 if (PsychIsGLES(backupRendertarget)) {
                     // OES extension for faster format supported?
-                    if (strstr(glGetString(GL_EXTENSIONS), "GL_EXT_texture_format_BGRA8888")) {
+                    if (strstr((const char*) glGetString(GL_EXTENSIONS), "GL_EXT_texture_format_BGRA8888")) {
                         // Faster path:
                         glTexImage2D(GL_TEXTURE_2D, 0, GL_BGRA_EXT, twidth, theight, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, NULL);
                     }
@@ -6043,7 +6043,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		if (verbose) printf("GPU supports UYVY - YCrCb texture formats for optimized handling of video content.\n");
 	}
 
-    if (glewIsSupported("GL_ARB_texture_non_power_of_two") || strstr(glGetString(GL_EXTENSIONS), "GL_OES_texture_npot")) {
+    if (glewIsSupported("GL_ARB_texture_non_power_of_two") || strstr((const char*) glGetString(GL_EXTENSIONS), "GL_OES_texture_npot")) {
         windowRecord->gfxcaps |= kPsychGfxCapNPOTTex;
 		if (verbose) printf("GPU supports non-power-of-two textures.\n");
     }
@@ -6051,11 +6051,11 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     // OpenGL-ES setup?
     if (PsychIsGLES(windowRecord)) {
         // OES framebuffer objects supported?
-        if (strstr(glGetString(GL_EXTENSIONS), "GL_OES_framebuffer_object") || glewIsSupported("GL_EXT_framebuffer_object") || glewIsSupported("GL_ARB_framebuffer_object")) {
+        if (strstr((const char*) glGetString(GL_EXTENSIONS), "GL_OES_framebuffer_object") || glewIsSupported("GL_EXT_framebuffer_object") || glewIsSupported("GL_ARB_framebuffer_object")) {
             if (verbose) printf("Basic OES framebuffer objects supported --> RGBA rendertargets with blending.\n");
             windowRecord->gfxcaps |= kPsychGfxCapFBO;
 
-            if (strstr(glGetString(GL_EXTENSIONS), "_framebuffer_blit")) {
+            if (strstr((const char*) glGetString(GL_EXTENSIONS), "_framebuffer_blit")) {
                 if (verbose) printf("OES Framebuffer objects support fast blitting between each other.\n");
                 windowRecord->gfxcaps |= kPsychGfxCapFBOBlit;			
             }
@@ -6115,7 +6115,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         
         // Support for framebuffer blits which do a scaling operation and a multisample resolve at once?
         if ((windowRecord->gfxcaps & kPsychGfxCapFBOMultisample) &&
-            (glewIsSupported("GL_EXT_framebuffer_multisample_blit_scaled") || strstr(glGetString(GL_EXTENSIONS), "GL_EXT_framebuffer_multisample_blit_scaled"))) {
+            (glewIsSupported("GL_EXT_framebuffer_multisample_blit_scaled") || strstr((const char*) glGetString(GL_EXTENSIONS), "GL_EXT_framebuffer_multisample_blit_scaled"))) {
 			if (verbose) printf("Framebuffer objects support single-pass multisample resolve blits and image rescaling.\n");
             windowRecord->gfxcaps |= kPsychGfxCapFBOScaledResolveBlit;
         }

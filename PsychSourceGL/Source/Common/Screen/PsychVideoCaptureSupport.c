@@ -128,8 +128,9 @@ psych_bool PsychOpenVideoCaptureDevice(int engineId, PsychWindowRecordType *win,
 	}
 
 	// Search first free slot in mastervidcapRecordBANK:
-	for (i=0; (i < PSYCH_MAX_CAPTUREDEVICES) && (mastervidcapRecordBANK[i].engineId != -1); i++);
-        if (i>=PSYCH_MAX_CAPTUREDEVICES) {
+	for (i=0; (i < PSYCH_MAX_CAPTUREDEVICES) && (mastervidcapRecordBANK[i].engineId != -1); i++) {};
+
+	if (i>=PSYCH_MAX_CAPTUREDEVICES) {
 		PsychErrorExitMsg(PsychError_user, "Allowed maximum number of simultaneously open capture devices exceeded!");
 	}
 

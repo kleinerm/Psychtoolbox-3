@@ -140,7 +140,7 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
     
     if(isDeviceSpecified){  //make sure that the device number provided by the user is really a keyboard or keypad.
         for(i=0;i<numDeviceIndices;i++){
-            if(foundUserSpecifiedDevice=(deviceIndices[i]==deviceIndex))
+            if ((foundUserSpecifiedDevice=(deviceIndices[i]==deviceIndex)))
                 break;
         }
         if(!foundUserSpecifiedDevice)

@@ -29,6 +29,26 @@
 
 #include "Psych.h"
 
+/* From the land of wtf: thread_policy_set/get used to be defined in <mach/thread_policy.h>,
+ * but since10.8 SDK they aren't anymore (there but commented out). Thanks to this advanced
+ * Apple brain-damage we now have to define their prototypes ourselves to avoid compiler
+ * warnings:
+ */
+kern_return_t	thread_policy_set(
+                                  thread_t					thread,
+                                  thread_policy_flavor_t		flavor,
+                                  thread_policy_t				policy_info,
+                                  mach_msg_type_number_t		count);
+
+kern_return_t	thread_policy_get(
+                                  thread_t					thread,
+                                  thread_policy_flavor_t		flavor,
+                                  thread_policy_t				policy_info,
+                                  mach_msg_type_number_t		*count,
+                                  boolean_t					*get_default);
+
+
+
 void PsychWaitUntilSeconds(double whenSecs);
 void PsychWaitIntervalSeconds(double seconds);
 void PsychYieldIntervalSeconds(double seconds);

@@ -49,6 +49,8 @@
 // Include specifications of the GPU registers:
 #include "PsychGraphicsCardRegisterSpecs.h"
 
+#include "PsychCocoaGlue.h"
+
 #define kMyPathToSystemLog			"/var/log/system.log"
 
 // Disable warnings about deprecated API calls on OSX 10.7
@@ -873,13 +875,13 @@ void PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntri
     CGDirectDisplayID	cgDisplayID;
     static float localRed[1024], localGreen[1024], localBlue[1024];
     CGDisplayErr error; 
-    CGTableCount sampleCount; 
+    uint32_t sampleCount;
         
     *redTable=localRed; *greenTable=localGreen; *blueTable=localBlue; 
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
     if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: ReadNormalizedGammatable: screenid %i mapped to CGDisplayId %p.\n", screenNumber, cgDisplayID);
 
-    error=CGGetDisplayTransferByTable(cgDisplayID, (CGTableCount)1024, *redTable, *greenTable, *blueTable, &sampleCount);
+    error=CGGetDisplayTransferByTable(cgDisplayID, 1024, *redTable, *greenTable, *blueTable, &sampleCount);
     *numEntries=(int)sampleCount;
     if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: ReadNormalizedGammatable: numEntries = %i.\n", *numEntries);
 }
@@ -888,7 +890,7 @@ unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int n
 {
     CGDisplayErr 	error; 
     CGDirectDisplayID	cgDisplayID;
-    CGByteValue byteLUT[256];
+    uint8_t byteLUT[256];
 	int i;
 	
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
@@ -899,14 +901,14 @@ unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int n
 		// Yes: This is the regular case. We upload a 0.0 - 1.0 encoded table with numEntries slots. The OS will
 		// interpolate inbetween our slots if the number of required slots in the GPU doesn't match the numEntries
 		// we provided:
-		error=CGSetDisplayTransferByTable(cgDisplayID, (CGTableCount)numEntries, redTable, greenTable, blueTable);
+		error=CGSetDisplayTransferByTable(cgDisplayID, numEntries, redTable, greenTable, blueTable);
 		if (error) PsychErrorExitMsg(PsychError_system, "Failed to update the gamma tables in call to CGSetDisplayTransferByTable() !");
 	}
 	else {
 		if (numEntries <= 0) {
 			// No: Special case 0-Slot table. We shall upload an identity CLUT:
-			for (i = 0; i < 256; i++) byteLUT[i] = (CGByteValue) i;
-			error=CGSetDisplayTransferByByteTable(cgDisplayID, (CGTableCount) 256, &byteLUT[0], &byteLUT[0], &byteLUT[0]);
+			for (i = 0; i < 256; i++) byteLUT[i] = (uint8_t) i;
+			error=CGSetDisplayTransferByByteTable(cgDisplayID, 256, &byteLUT[0], &byteLUT[0], &byteLUT[0]);
 			if (error) PsychErrorExitMsg(PsychError_system, "Failed to upload identity gamma tables in call to CGSetDisplayTransferByByteTable() !");
 		}
 		else {

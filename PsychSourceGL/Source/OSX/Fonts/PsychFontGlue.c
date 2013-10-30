@@ -21,6 +21,12 @@
 */
 #include "PsychFontGlue.h"
 
+/* This function prototype should have been in Fonts.h, but isn't anymore, as
+ * the function is deprecated in 10.6. Thanks Apple! See more comments below
+ * at location where function is used.
+ */
+FMFont FMGetFontFromATSFontRef (ATSFontRef iFont);
+
 #define 	PsychFMIterationScope			kFMLocalIterationScope
 #define 	kPsychMaxFontFileNameChars		1024
 
@@ -208,7 +214,11 @@ void PsychInitFontList(void)
             fontRecord->next=NULL;
 
             //Get  FM and ATS font and font family references from the ATS font reference, which we get from iteration.
-            fontRecord->fontATSRef=tempATSFontRef; 
+            fontRecord->fontATSRef=tempATSFontRef;
+            
+            // FIXME Note: FMGetFontFromATSFontRef() is deprecated since 10.6 and officially not even suppported
+            // on 64-Bit, but contrary to what Apple docs state, it still works on 10.9.0 with 64-Bit PTB. Who
+            // knows how long our luck will last?!?
             fontRecord->fontFMRef=FMGetFontFromATSFontRef(fontRecord->fontATSRef);
 
             // Create CTFont from given ATSFontRef. Available since OSX 10.5

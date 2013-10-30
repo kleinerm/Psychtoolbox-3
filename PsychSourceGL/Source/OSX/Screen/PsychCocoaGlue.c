@@ -214,9 +214,9 @@ pid_t GetHostingWindowsPID(void)
         if (nameOwnerRef) {
             const char* name = CFStringGetCStringPtr(nameOwnerRef, kCFStringEncodingMacRoman);
             if (name && verbose) printf("WindowOwnerName: %s\n", name);
-            if (name && ((strstr(name, "X11") && strstr(winName, "xterm")) || strstr(name, "Terminal") || strstr(name, "MATLAB"))) {
-                // Matched either X11 xterm, or a OSX native Terminal or MATLAB GUI. These are candidates for the
-                // hosting windows of our matlab, matlab -nojvm or octave console session. As windows are returned
+            if (name && ((strstr(name, "X11") && strstr(winName, "xterm")) || strstr(name, "Terminal") || strstr(name, "MATLAB") || strstr(name, "octave"))) {
+                // Matched either X11 xterm, or a OSX native Terminal or MATLAB GUI or Octave GUI. These are candidates for the
+                // hosting windows of our matlab, matlab -nojvm or octave session. As windows are returned
                 // in front-to-back order, the first match here is a candidate window that is on top of
                 // the visible window stack. This is our best candidate for the command window, assuming
                 // it is frontmost as the user just interacted with it. Therefore, aborting the search

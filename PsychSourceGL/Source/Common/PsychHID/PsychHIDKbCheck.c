@@ -106,7 +106,7 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
         }
 
         for(i=0;i<numDeviceIndices;i++){
-            if(foundUserSpecifiedDevice=(deviceIndices[i]==deviceIndex))
+            if ((foundUserSpecifiedDevice=(deviceIndices[i]==deviceIndex)))
                 break;
         }
         if(!foundUserSpecifiedDevice)

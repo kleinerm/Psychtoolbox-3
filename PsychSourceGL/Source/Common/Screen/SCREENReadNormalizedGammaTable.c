@@ -129,8 +129,6 @@ PsychError SCREENReadNormalizedGammaTable(void)
 		// Retrieve display handle for screen:
 		PsychGetCGDisplayIDFromScreenNumber(&displayID, screenNumber);
 		
-		if (PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Screen %i has framebuffer address %p.\n", screenNumber, CGDisplayBaseAddress(displayID));
-
 		// Retrieve low-level IOKit service port for this display:
 		displayService = CGDisplayIOServicePort(displayID);
 				

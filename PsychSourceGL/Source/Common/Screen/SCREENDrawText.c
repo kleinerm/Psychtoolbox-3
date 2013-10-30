@@ -331,7 +331,7 @@ PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
     cgColorSpace=CGColorSpaceCreateDeviceRGB();
 
     // There is another OSX bug here.  the format constant should be ARGB not RBGA to agree with the texture format.           
-    cgContext= CGBitmapContextCreate(textureMemory, textureWidth, textureHeight, 8, memoryRowSizeBytes, cgColorSpace, kCGImageAlphaPremultipliedFirst);
+    cgContext= CGBitmapContextCreate(textureMemory, textureWidth, textureHeight, 8, memoryRowSizeBytes, cgColorSpace, (CGBitmapInfo) kCGImageAlphaPremultipliedFirst);
     if(!cgContext){
         free((void *)textureMemory);
 		printf("PTB-ERROR: In Screen('DrawText'): Failed to allocate CG Bitmap Context for: texWidth=%i, texHeight=%i, memRowSize=%i\n", textureWidth, textureHeight, memoryRowSizeBytes);
@@ -1900,7 +1900,7 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
         PsychPluginSetTextSize(ctx, (double) winRec->textAttributes.textSize);
 
         // Retrieve true text font family name:
-        sprintf(winRec->textAttributes.textFontName, "%s", PsychPluginGetTextFont(ctx));
+        sprintf((char*) &(winRec->textAttributes.textFontName[0]), "%s", PsychPluginGetTextFont(ctx));
 
 		// Assign viewport settings for rendering:
         PsychPluginSetTextViewPort(ctx, winRec->clientrect[kPsychLeft], winRec->clientrect[kPsychTop], PsychGetWidthFromRect(winRec->clientrect), PsychGetHeightFromRect(winRec->clientrect));

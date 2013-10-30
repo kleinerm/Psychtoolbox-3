@@ -141,7 +141,7 @@ static kern_return_t GetMACAddress(io_iterator_t intfIterator, UInt8 *MACAddress
     bzero(MACAddress, kIOEthernetAddressSize);
     
     // IOIteratorNext retains the returned object, so release it when we're done with it.
-    while (intfService = IOIteratorNext(intfIterator))
+    while ((intfService = IOIteratorNext(intfIterator)))
     {
         CFTypeRef  MACAddressAsCFData;        
 
@@ -281,12 +281,7 @@ int GetPrimaryEthernetAddressString(char *addressStr, psych_bool capsFlag, psych
 
 }
 
-
-
 int GetPrimaryEthernetAddressStringLengthBytes(psych_bool colonSeparatedFlag)
 {
 	return(GetPrimaryEthernetAddressString(NULL, TRUE, colonSeparatedFlag));
 }
-
-
-
