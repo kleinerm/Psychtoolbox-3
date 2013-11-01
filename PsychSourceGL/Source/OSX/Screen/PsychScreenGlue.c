@@ -48,15 +48,8 @@
 #include "PsychUserKernelShared.h"
 // Include specifications of the GPU registers:
 #include "PsychGraphicsCardRegisterSpecs.h"
-
+// Include for mouse cursor control via Cocoa:
 #include "PsychCocoaGlue.h"
-
-#define kMyPathToSystemLog			"/var/log/system.log"
-
-// Disable warnings about deprecated API calls on OSX 10.7
-// of which we are aware and that we can't remove as long as
-// we need to stay compatible to 10.4 - 10.6
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 // file local variables:
 unsigned int  activeGPU = 0;
@@ -66,14 +59,14 @@ unsigned int  fPCIDeviceId[kPsychMaxPossibleDisplays];
 unsigned int  fNumDisplayHeads[kPsychMaxPossibleDisplays];
 
 // Maybe use NULLs in the settings arrays to mark entries invalid instead of using psych_bool flags in a different array.   
-static psych_bool				displayLockSettingsFlags[kPsychMaxPossibleDisplays];
-static CFDictionaryRef		displayOriginalCGSettings[kPsychMaxPossibleDisplays];        	//these track the original video state before the Psychtoolbox changed it.  
-static psych_bool				displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
-static CFDictionaryRef		displayOverlayedCGSettings[kPsychMaxPossibleDisplays];        	//these track settings overlayed with 'Resolutions'.  
-static psych_bool				displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
-static CGDisplayCount 		numDisplays, numPhysicalDisplays;
-static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];
-static CGDirectDisplayID 	displayOnlineCGIDs[kPsychMaxPossibleDisplays];
+static psych_bool           displayLockSettingsFlags[kPsychMaxPossibleDisplays];
+static CGDisplayModeRef     displayOriginalCGSettings[kPsychMaxPossibleDisplays];       //these track the original video state before the Psychtoolbox changed it.
+static psych_bool           displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
+static CGDisplayModeRef     displayOverlayedCGSettings[kPsychMaxPossibleDisplays];      //these track settings overlayed with 'Resolutions'.
+static psych_bool           displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
+static CGDisplayCount       numDisplays, numPhysicalDisplays;
+static CGDirectDisplayID    displayCGIDs[kPsychMaxPossibleDisplays];
+static CGDirectDisplayID    displayOnlineCGIDs[kPsychMaxPossibleDisplays];
 
 // List of service connect handles for connecting to the kernel support driver (if any):
 static int					numKernelDrivers = 0;
@@ -85,18 +78,19 @@ void InitCGDisplayIDList(void);
 void PsychLockScreenSettings(int screenNumber);
 void PsychUnlockScreenSettings(int screenNumber);
 psych_bool PsychCheckScreenSettingsLock(int screenNumber);
-psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting);
+psych_bool PsychGetCGModeFromVideoSetting(CGDisplayModeRef *cgMode, PsychScreenSettingsType *setting);
 void InitPsychtoolboxKernelDriverInterface(void);
 kern_return_t PsychOSKDDispatchCommand(io_connect_t connect, const PsychKDCommandStruct* inStruct, PsychKDCommandStruct* outStruct, unsigned int* status);
 io_connect_t PsychOSCheckKDAvailable(int screenId, unsigned int * status);
 int PsychOSKDGetBeamposition(int screenId);
-void PsychLaunchConsoleApp(void);
 void PsychDisplayReconfigurationCallBack (CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo);
 static void PsychOSKDGetGPUInfo(io_connect_t connect, int slot);
 unsigned int PsychOSKDGetRevision(io_connect_t connect);
 
-// Replacement routines for routines missing in 64-Bit OSX:
+// Define missing function prototype of CGDisplayBeamPosition(), a function which was removed from the OSX 10.9 SDK:
+SInt32 CGDisplayBeamPosition(CGDirectDisplayID cgDisplayId);
 
+// Replacement routines for routines missing in 64-Bit OSX:
 #ifdef __LP64__
 // Reimplement deprecated 32-Bit kernel driver interface with new 64-Bit
 // kernel interface for OSX 10.5 and later:
@@ -183,11 +177,21 @@ void InitializePsychDisplayGlue(void)
 
 void PsychCleanupDisplayGlue(void)
 {
+    int i;
+    
     // Shutdown connection to kernel level driver, if any exists:
     PsychOSShutdownPsychtoolboxKernelDriverInterface();
 
     // Unregister our display reconfiguration callback:
-    CGDisplayRemoveReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);    
+    CGDisplayRemoveReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);
+
+    // Release retained display mode objects:
+    for(i = 0; i < kPsychMaxPossibleDisplays; i++){
+        if (displayOriginalCGSettingsValid[i]) CGDisplayModeRelease(displayOriginalCGSettings[i]);
+        if (displayOverlayedCGSettingsValid[i]) CGDisplayModeRelease(displayOverlayedCGSettings[i]);
+        displayOriginalCGSettingsValid[i] = FALSE;
+        displayOverlayedCGSettingsValid[i] = FALSE;
+    }
 }
 
 void PsychDisplayReconfigurationCallBack(CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo)
@@ -307,11 +311,9 @@ void PsychCaptureScreen(int screenNumber)
 {
     CGDisplayErr  error;
     
-    if(screenNumber>=numDisplays)
-        PsychErrorExit(PsychError_invalidScumber);
+    if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
     error=CGDisplayCapture(displayCGIDs[screenNumber]);
-    if(error)
-        PsychErrorExitMsg(PsychError_internal, "Unable to capture display");
+    if(error) PsychErrorExitMsg(PsychError_internal, "Unable to capture display");
     PsychLockScreenSettings(screenNumber);
 
 	// Reenumerate all displays: This is meant to help resolve issues with lots of
@@ -327,30 +329,31 @@ void PsychCaptureScreen(int screenNumber)
 	// and can be considered yet another pretty embarassing operating system bug, brought to
 	// you by Apple.
 	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychCaptureScreen(): After display capture for screen %i (Old CGDisplayId %p). Reenumerating all displays...\n", screenNumber, displayCGIDs[screenNumber]);
+    
 	InitCGDisplayIDList();
+    
 	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychCaptureScreen(): After display capture for screen %i (New CGDisplayId %p). Reenumeration done.\n", screenNumber, displayCGIDs[screenNumber]);
 
 	return;
 }
 
 /*
-    PsychReleaseScreen()
-    
-*/
+ *  PsychReleaseScreen()
+ */
 void PsychReleaseScreen(int screenNumber)
 {	
     CGDisplayErr  error;
     
-    if(screenNumber>=numDisplays)
-        PsychErrorExit(PsychError_invalidScumber);
-    error=CGDisplayRelease(displayCGIDs[screenNumber]);
-    if(error)
-        PsychErrorExitMsg(PsychError_internal, "Unable to release display");
+    if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
+    error = CGDisplayRelease(displayCGIDs[screenNumber]);
+    if(error) PsychErrorExitMsg(PsychError_internal, "Unable to release display");
     PsychUnlockScreenSettings(screenNumber);
 
 	// Reenumerate all displays: See comments in PsychCaptureScreen() for explanation.
 	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychReleaseScreen(): After display release for screen %i (Old CGDisplayId %p). Reenumerating all displays...\n", screenNumber, displayCGIDs[screenNumber]);
+    
 	InitCGDisplayIDList();
+    
 	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychReleaseScreen(): After display release for screen %i (New CGDisplayId %p). Reenumeration done.\n", screenNumber, displayCGIDs[screenNumber]);
 
 	// Try to restore keyboard input focus to whatever window had focus before
@@ -383,44 +386,61 @@ int PsychGetNumPhysicalDisplays(void)
     return((int) numPhysicalDisplays);
 }
 
+static int getDisplayBitsPerPixel(CGDisplayModeRef mode)
+{
+    int bpp = 0;
+    CFStringRef n = CGDisplayModeCopyPixelEncoding(mode);
+    
+    if (CFStringCompare(n, CFSTR(IO32BitDirectPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
+        bpp = 32;
+    }
+    else if (CFStringCompare(n, CFSTR(IO16BitDirectPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
+        bpp = 16;
+    }
+    else if (CFStringCompare(n, CFSTR(IO8BitIndexedPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
+        bpp = 8;
+    }
+    
+    CFRelease(n);
+    
+    return(bpp);
+}
+
 void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
 {
-    CFDictionaryRef currentMode, tempMode;
+    CGDisplayModeRef currentMode, tempMode;
     CFArrayRef modeList;
-    CFNumberRef n;
     int i, numPossibleModes;
-    long currentWidth, currentHeight, tempWidth, tempHeight, currentFrequency, tempFrequency, tempDepth;
+    long currentWidth, currentHeight, tempWidth, tempHeight, tempDepth;
+    double currentFrequency, tempFrequency;
+    
+    if (screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
 
-    if(screenNumber>=numDisplays)
-        PsychErrorExit(PsychError_invalidScumber); //also checked within SCREENPixelSizes
-     
-    //Get the current display mode.  We will want to match against width and hz when looking for available depths. 
-    currentMode = CGDisplayCurrentMode(displayCGIDs[screenNumber]);
-    n=CFDictionaryGetValue(currentMode, kCGDisplayWidth);
-    CFNumberGetValue(n,kCFNumberLongType, &currentWidth);
-    n=CFDictionaryGetValue(currentMode, kCGDisplayHeight);
-    CFNumberGetValue(n,kCFNumberLongType, &currentHeight);
-    n=CFDictionaryGetValue(currentMode, kCGDisplayRefreshRate );
-    CFNumberGetValue(n, kCFNumberLongType, &currentFrequency ) ;
-
+    // Get the current display mode.  We will want to match against width and hz when looking for available depths.
+    currentMode = CGDisplayCopyDisplayMode(displayCGIDs[screenNumber]);
+    currentWidth = (long) CGDisplayModeGetWidth(currentMode);
+    currentHeight = (long) CGDisplayModeGetHeight(currentMode);
+    currentFrequency = CGDisplayModeGetRefreshRate(currentMode);
+    CGDisplayModeRelease(currentMode);
+    
     //get a list of available modes for the specified display
-    modeList = CGDisplayAvailableModes(displayCGIDs[screenNumber]);
-    numPossibleModes= CFArrayGetCount(modeList);
-    for(i=0;i<numPossibleModes;i++){
-        tempMode = CFArrayGetValueAtIndex(modeList,i);
-        n=CFDictionaryGetValue(tempMode, kCGDisplayWidth);
-        CFNumberGetValue(n,kCFNumberLongType, &tempWidth);
-        n=CFDictionaryGetValue(tempMode, kCGDisplayHeight);
-        CFNumberGetValue(n,kCFNumberLongType, &tempHeight);
-        n=CFDictionaryGetValue(tempMode, kCGDisplayRefreshRate);
-        CFNumberGetValue(n, kCFNumberLongType, &tempFrequency) ;
-        if(currentWidth==tempWidth && currentHeight==tempHeight && currentFrequency==tempFrequency){
-            n=CFDictionaryGetValue(tempMode, kCGDisplayBitsPerPixel);
-            CFNumberGetValue(n, kCFNumberLongType, &tempDepth) ;
-            PsychAddValueToDepthStruct((int)tempDepth, depths);
+    modeList = CGDisplayCopyAllDisplayModes(displayCGIDs[screenNumber], NULL);
+    numPossibleModes = CFArrayGetCount(modeList);
+    for (i = 0; i < numPossibleModes; i++) {
+        tempMode = (CGDisplayModeRef) CFArrayGetValueAtIndex(modeList,i);
+        tempWidth = (long) CGDisplayModeGetWidth(tempMode);
+        tempHeight = (long) CGDisplayModeGetHeight(tempMode);
+        tempFrequency = CGDisplayModeGetRefreshRate(tempMode);
+        
+        if (currentWidth == tempWidth && currentHeight == tempHeight && currentFrequency == tempFrequency) {
+            tempDepth = getDisplayBitsPerPixel(tempMode);
+            PsychAddValueToDepthStruct((int) tempDepth, depths);
         }
+        
 		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: PsychGetScreenDepths(): mode %i : w x h = %i x %i, fps = %i, depths = %i\n", i, tempWidth, tempHeight, tempFrequency, tempDepth);
     }
+    
+    CFRelease(modeList);
 
     // At least one match?
     if (PsychGetNumDepthsFromStruct(depths) < 1) {
@@ -444,89 +464,90 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
  */
 int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** widths, long** heights, long** hz, long** bpp)
 {
-    CFDictionaryRef tempMode;
+    CGDisplayModeRef tempMode;
     CFArrayRef modeList;
-    CFNumberRef n;
     int i, numPossibleModes;
-    long tempWidth, tempHeight, currentFrequency, tempFrequency, tempDepth;
+    long tempWidth, tempHeight, tempDepth;
+    double tempFrequency;
+    
+    if (screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
+    
+    // Get a list of available modes for the specified display
+    modeList = CGDisplayCopyAllDisplayModes(displayCGIDs[screenNumber], NULL);
+    numPossibleModes = CFArrayGetCount(modeList);
 
-    if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
-
-    // Get a list of avialable modes for the specified display:
-    modeList = CGDisplayAvailableModes(displayCGIDs[screenNumber]);
-    numPossibleModes= CFArrayGetCount(modeList);
-	
-	// Allocate output arrays: These will get auto-released at exit
-	// from Screen():
+	// Allocate output arrays: These will get auto-released at exit from Screen():
 	*widths = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
 	*heights = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
 	*hz = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
 	*bpp = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
 	
 	// Fetch modes and store into arrays:
-    for(i=0; i<numPossibleModes; i++) {
+    for(i = 0; i < numPossibleModes; i++) {
         tempWidth = tempHeight = tempFrequency = tempDepth = 0;
         
-        tempMode = CFArrayGetValueAtIndex(modeList,i);
-        n=CFDictionaryGetValue(tempMode, kCGDisplayWidth);
-        if (n) CFNumberGetValue(n,kCFNumberLongType, &tempWidth);
+        tempMode = (CGDisplayModeRef) CFArrayGetValueAtIndex(modeList,i);
+        tempWidth = (long) CGDisplayModeGetWidth(tempMode);
+        tempHeight = (long) CGDisplayModeGetHeight(tempMode);
+        tempFrequency = CGDisplayModeGetRefreshRate(tempMode);
+        tempDepth = getDisplayBitsPerPixel(tempMode);
+        
 		(*widths)[i] = tempWidth;
-		
-        n=CFDictionaryGetValue(tempMode, kCGDisplayHeight);
-        if (n) CFNumberGetValue(n,kCFNumberLongType, &tempHeight);
 		(*heights)[i] = tempHeight;
-
-        n=CFDictionaryGetValue(tempMode, kCGDisplayRefreshRate);
-        if (n) CFNumberGetValue(n, kCFNumberLongType, &tempFrequency) ;
-		(*hz)[i] = tempFrequency;
-
-		n=CFDictionaryGetValue(tempMode, kCGDisplayBitsPerPixel);
-		if (n) CFNumberGetValue(n, kCFNumberLongType, &tempDepth) ;
+		(*hz)[i] = (long) (tempFrequency + 0.5);
 		(*bpp)[i] = tempDepth;
     }
+
+    CFRelease(modeList);
 
 	return(numPossibleModes);
 }
 
-/*
-    static PsychGetCGModeFromVideoSettings()
-   
-*/
-psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting)
+/* Only returned a cgMode which needs to be CGDisplayModeRelease()'ed on success, ie., if return true */
+psych_bool PsychGetCGModeFromVideoSetting(CGDisplayModeRef *cgMode, PsychScreenSettingsType *setting)
 {
+    CGDisplayModeRef tempMode;
     CFArrayRef modeList;
-    CFNumberRef n;
     int i, numPossibleModes;
-    long width, height, depth, frameRate, tempWidth, tempHeight, tempDepth,  tempFrameRate;
+    long width, height, depth, tempWidth, tempHeight, tempDepth;
+    double tempFrequency, frameRate;
     
-    if(setting->screenNumber>=numDisplays)
-        PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); //also checked within SCREENPixelSizes
-        
-    //adjust parameter formats
-    width=(long)PsychGetWidthFromRect(setting->rect);
-    height=(long)PsychGetHeightFromRect(setting->rect);
-    depth=(long)PsychGetValueFromDepthStruct(0,&(setting->depth));
-    frameRate=(long)setting->nominalFrameRate;
-
-    //get a list of avialable modes for the specified display and iterate over the list looking for our mode.
-    modeList = CGDisplayAvailableModes(displayCGIDs[setting->screenNumber]);
-    numPossibleModes= CFArrayGetCount(modeList);
-    for(i=0;i<numPossibleModes;i++){
-        *cgMode = CFArrayGetValueAtIndex(modeList,i);			
-        n=CFDictionaryGetValue(*cgMode, kCGDisplayWidth);		//width
-        CFNumberGetValue(n,kCFNumberLongType, &tempWidth);
-        n=CFDictionaryGetValue(*cgMode, kCGDisplayHeight);		//height
-        CFNumberGetValue(n,kCFNumberLongType, &tempHeight);
-        n=CFDictionaryGetValue(*cgMode, kCGDisplayRefreshRate);	//frequency
-        CFNumberGetValue(n, kCFNumberLongType, &tempFrameRate) ;
-        n=CFDictionaryGetValue(*cgMode, kCGDisplayBitsPerPixel);	//depth
-        CFNumberGetValue(n, kCFNumberLongType, &tempDepth) ;
-        if(width==tempWidth && height==tempHeight && frameRate==tempFrameRate && depth==tempDepth)
-            return(TRUE);
+    if(setting->screenNumber>=numDisplays) {
+        PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetCGModeFromVideoSetting() is out of range.");
     }
-    return(FALSE);    
-}
+    
+    width = (long) PsychGetWidthFromRect(setting->rect);
+    height = (long) PsychGetHeightFromRect(setting->rect);
+    depth = (long) PsychGetValueFromDepthStruct(0,&(setting->depth));
+    frameRate = (double) setting->nominalFrameRate;
 
+    // Get a list of available modes for the specified display
+    modeList = CGDisplayCopyAllDisplayModes(displayCGIDs[setting->screenNumber], NULL);
+    numPossibleModes = CFArrayGetCount(modeList);
+    
+	// Fetch modes and store into arrays:
+    for(i = 0; i < numPossibleModes; i++) {
+        *cgMode = (CGDisplayModeRef) CFArrayGetValueAtIndex(modeList,i);
+        
+        tempWidth = (long) CGDisplayModeGetWidth(*cgMode);
+        tempHeight = (long) CGDisplayModeGetHeight(*cgMode);
+        tempFrequency = CGDisplayModeGetRefreshRate(*cgMode);
+        tempDepth = getDisplayBitsPerPixel(*cgMode);
+
+        // Match?
+        if (width == tempWidth && height == tempHeight && frameRate == tempFrequency && depth == tempDepth) {
+            CGDisplayModeRetain(*cgMode);
+            CFRelease(modeList);
+            return(TRUE);
+        }
+    }
+
+    // Failed.
+    CFRelease(modeList);
+    *cgMode = NULL;
+    
+    return(FALSE);
+}
 
 /*
     PsychCheckVideoSettings()
@@ -536,75 +557,65 @@ psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSe
 */
 psych_bool PsychCheckVideoSettings(PsychScreenSettingsType *setting)
 {
-        CFDictionaryRef cgMode;
-        
-        return(PsychGetCGModeFromVideoSetting(&cgMode, setting));
+    CGDisplayModeRef cgMode;
+    if (PsychGetCGModeFromVideoSetting(&cgMode, setting)) {
+        CGDisplayModeRelease(cgMode);
+        return(TRUE);
+    }
+    
+    return(FALSE);
 }
 
-
-
 /*
-    PsychGetScreenDepth()
-    
-    The caller must allocate and initialize the depth struct. 
-*/
+ *  PsychGetScreenDepth()
+ *  The caller must allocate and initialize the depth struct.
+ */
 void PsychGetScreenDepth(int screenNumber, PsychDepthType *depth)
 {
-    
-    if(screenNumber>=numDisplays)
-        PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range"); //also checked within SCREENPixelSizes
-    PsychAddValueToDepthStruct((int)CGDisplayBitsPerPixel(displayCGIDs[screenNumber]),depth);
-
+    if (screenNumber >= numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range");
+    CGDisplayModeRef currentMode = CGDisplayCopyDisplayMode(displayCGIDs[screenNumber]);
+    PsychAddValueToDepthStruct((int) getDisplayBitsPerPixel(currentMode), depth);
+    CGDisplayModeRelease(currentMode);
 }
 
 int PsychGetScreenDepthValue(int screenNumber)
 {
     PsychDepthType	depthStruct;
-    
+
     PsychInitDepthStruct(&depthStruct);
     PsychGetScreenDepth(screenNumber, &depthStruct);
     return(PsychGetValueFromDepthStruct(0,&depthStruct));
 }
 
-
 float PsychGetNominalFramerate(int screenNumber)
 {
-    CFDictionaryRef currentMode;
-    CFNumberRef n;
     double currentFrequency;
-
+    
     if (PsychPrefStateGet_ConserveVRAM() & kPsychIgnoreNominalFramerate) return(0);
     
-    //Get the CG display ID index for the specified display
-    if(screenNumber>=numDisplays)
-        PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range"); 
-    currentMode = CGDisplayCurrentMode(displayCGIDs[screenNumber]);
-    n=CFDictionaryGetValue(currentMode, kCGDisplayRefreshRate);
-    CFNumberGetValue(n, kCFNumberDoubleType, &currentFrequency);
-    return(currentFrequency);
+    if (screenNumber >= numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range");
+
+    CGDisplayModeRef currentMode = CGDisplayCopyDisplayMode(displayCGIDs[screenNumber]);
+    currentFrequency = CGDisplayModeGetRefreshRate(currentMode);
+    CGDisplayModeRelease(currentMode);
+    return((float) currentFrequency);
 }
 
 void PsychGetScreenSize(int screenNumber, long *width, long *height)
 {
-    CFDictionaryRef currentMode;
-    CFNumberRef n;
+    if (screenNumber >= numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range");
     
-    if(screenNumber>=numDisplays)
-        PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); 
-    currentMode = CGDisplayCurrentMode(displayCGIDs[screenNumber]);
-    n=CFDictionaryGetValue(currentMode, kCGDisplayWidth);
-    CFNumberGetValue(n,kCFNumberLongType, width); 
-    n=CFDictionaryGetValue(currentMode, kCGDisplayHeight);
-    CFNumberGetValue(n,kCFNumberLongType, height);
-
+    CGDisplayModeRef currentMode = CGDisplayCopyDisplayMode(displayCGIDs[screenNumber]);
+    *width = (long) CGDisplayModeGetWidth(currentMode);
+    *height = (long) CGDisplayModeGetHeight(currentMode);
+    CGDisplayModeRelease(currentMode);
 }
 
 /* Returns the physical display size as reported by OS-X: */
 void PsychGetDisplaySize(int screenNumber, int *width, int *height)
 {
     CGSize physSize;
-    if(screenNumber>=numDisplays)
-        PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetDisplaySize() is out of range");
+    if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetDisplaySize() is out of range");
     physSize = CGDisplayScreenSize(displayCGIDs[screenNumber]);
     *width = (int) physSize.width;
     *height = (int) physSize.height;
@@ -616,8 +627,8 @@ void PsychGetGlobalScreenRect(int screenNumber, double *rect)
 	CGRect				cgRect;
 	double				rLeft, rRight, rTop, rBottom;
 
-    if(screenNumber>=numDisplays)
-        PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); 
+    if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetGlobalScreenRect() is out of range");
+    
 	displayID=displayCGIDs[screenNumber];
 	cgRect=CGDisplayBounds(displayID);
 	rLeft=cgRect.origin.x;
@@ -625,9 +636,7 @@ void PsychGetGlobalScreenRect(int screenNumber, double *rect)
 	rRight=cgRect.origin.x + cgRect.size.width;
 	rBottom=cgRect.origin.y + cgRect.size.height;
 	PsychMakeRect(rect, rLeft, rTop, rRight, rBottom);
-	
 }
-
 
 void PsychGetScreenRect(int screenNumber, double *rect)
 {
@@ -640,7 +649,6 @@ void PsychGetScreenRect(int screenNumber, double *rect)
     rect[kPsychBottom]=(int)height; 
 } 
 
-
 PsychColorModeType PsychGetScreenMode(int screenNumber)
 {
     PsychDepthType depth;
@@ -649,17 +657,6 @@ PsychColorModeType PsychGetScreenMode(int screenNumber)
     PsychGetScreenDepth(screenNumber, &depth);
     return(PsychGetColorModeFromDepthStruct(&depth));
 }
-
-
-/*
-    Its probably better to read this directly from the CG renderer info than to infer it from the pixel size
-*/	
-int PsychGetNumScreenPlanes(int screenNumber)
-{
-    return((PsychGetScreenDepthValue(screenNumber)>24) ? 4 : 3 );
-}
-
-
 
 /*
 	PsychGetDacBitsFromDisplay()
@@ -681,7 +678,6 @@ int PsychGetDacBitsFromDisplay(int screenNumber)
 
 	// Retrieve low-level IOKit service port for this display:
 	displayService = CGDisplayIOServicePort(displayID);
-	// printf("Display 0x%08X with IOServicePort 0x%08X\n", displayID, displayService);
 	
 	// Obtain the properties from that service
 	kr = IORegistryEntryCreateCFProperties(displayService, &properties, NULL, 0);
@@ -699,15 +695,12 @@ int PsychGetDacBitsFromDisplay(int screenNumber)
 	}
 }
 
-
-
 /*
     PsychGetVideoSettings()
     
     Fills a structure describing the screen settings such as x, y, depth, frequency, etc.
-    
     Consider inverting the calling sequence so that this function is at the bottom of call hierarchy.  
-*/ 
+*/
 void PsychGetScreenSettings(int screenNumber, PsychScreenSettingsType *settings)
 {
     settings->screenNumber=screenNumber;
@@ -738,55 +731,52 @@ void PsychGetScreenSettings(int screenNumber, PsychScreenSettingsType *settings)
     TO DO: for 8-bit palletized mode there is probably more work to do.  
       
 */
-
 psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsType *settings)
 {
-    CFDictionaryRef 		cgMode;
-    psych_bool 			isValid, isCaptured;
-    CGDisplayErr 		error;
+    CGDisplayModeRef    cgMode;
+    psych_bool          isValid, isCaptured;
+    CGDisplayErr        error;
 
-    //get the display IDs.  Maybe we should consolidate this out of these functions and cache the IDs in a file static
-    //variable, since basicially every core graphics function goes through this deal.    
-    if(settings->screenNumber>=numDisplays)
-        PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); //also checked within SCREENPixelSizes
+    if(settings->screenNumber >= numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychSetScreenSettings() is out of range");
 
-    //Check for a lock which means onscreen or offscreen windows tied to this screen are currently open.
-    // MK: Disabled if(PsychCheckScreenSettingsLock(settings->screenNumber)) return(false);  //calling function should issue an error for attempt to change display settings while windows were open.
-    
-    
-    //store the original display mode if this is the first time we have called this function.  The psychtoolbox will disregard changes in 
+    //store the original display mode if this is the first time we have called this function.  The psychtoolbox will disregard changes in
     //the screen state made through the control panel after the Psychtoolbox was launched. That is, OpenWindow will by default continue to 
     //open windows with finder settings which were in place at the first call of OpenWindow.  That's not intuitive, but not much of a problem
     //either. 
     if(!displayOriginalCGSettingsValid[settings->screenNumber]){
-        displayOriginalCGSettings[settings->screenNumber]=CGDisplayCurrentMode(displayCGIDs[settings->screenNumber]);
-        displayOriginalCGSettingsValid[settings->screenNumber]=TRUE;
+        displayOriginalCGSettings[settings->screenNumber] = CGDisplayCopyDisplayMode(displayCGIDs[settings->screenNumber]);
+        displayOriginalCGSettingsValid[settings->screenNumber] = TRUE;
     }
-    
+
     //Find core graphics video settings which correspond to settings as specified withing by an abstracted psychsettings structure.  
-    isValid=PsychGetCGModeFromVideoSetting(&cgMode, settings);
-    if(!isValid){
-        PsychErrorExitMsg(PsychError_internal, "Attempt to set invalid video settings"); 
-        //this is an internal error because the caller is expected to check first. 
-    }
+    isValid = PsychGetCGModeFromVideoSetting(&cgMode, settings);
+    if (!isValid) PsychErrorExitMsg(PsychError_internal, "Attempt to set invalid video settings");
     
     //If the caller passed cache settings (then it is SCREENResolutions) and we should cache the current video mode settings for this display.  These
     //are cached in the form of CoreGraphics settings and not Psychtoolbox video settings.  The only caller which should pass a set cache flag is 
     //SCREENResolutions
-    if(cacheSettings){
-        displayOverlayedCGSettings[settings->screenNumber]=cgMode;
-        displayOverlayedCGSettingsValid[settings->screenNumber]=TRUE;
+    if (cacheSettings) {
+        displayOverlayedCGSettings[settings->screenNumber] = cgMode;
+        displayOverlayedCGSettingsValid[settings->screenNumber] = TRUE;
     }
-    
+    else CGDisplayModeRelease(cgMode);
+
     //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.  
-    isCaptured=CGDisplayIsCaptured(displayCGIDs[settings->screenNumber]);
-    if(!isCaptured)
-        PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
+    isCaptured = CGDisplayIsCaptured(displayCGIDs[settings->screenNumber]);
+    if(!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
         
-    //Change the display mode.   
-    error=CGDisplaySwitchToMode(displayCGIDs[settings->screenNumber], cgMode);
-    
-    return(error == (int) 0);
+    //Change the display mode.
+    CGDisplayConfigRef configRef;
+    error = CGBeginDisplayConfiguration(&configRef);
+    if (kCGErrorSuccess == error) error = CGConfigureDisplayWithDisplayMode(configRef, displayCGIDs[settings->screenNumber], cgMode, NULL);
+    if (kCGErrorSuccess == error) {
+        error = CGCompleteDisplayConfiguration(configRef, kCGConfigureForAppOnly);
+    }
+    else {
+        CGCancelDisplayConfiguration(configRef);
+    }
+
+    return((kCGErrorSuccess == error) ? TRUE : FALSE);
 }
 
 /*
@@ -803,19 +793,25 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
 
     if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychRestoreScreenSettings() is out of range");
 
-    //Check for a lock which means onscreen or offscreen windows tied to this screen are currently open.
-    // MK: Disabled    if(PsychCheckScreenSettingsLock(screenNumber)) return(false);  //calling function will issue error for attempt to change display settings while windows were open.
-    
-    //Check to make sure that the original graphics settings were cached.  If not, it means that the settings were never changed, so we can just
-    //return true. 
+    //Check to make sure that the original graphics settings were cached. If not, it means that the settings were never changed, so we can just
+    //return true.
     if(!displayOriginalCGSettingsValid[screenNumber]) return(true);
     
     //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.  
-    isCaptured=CGDisplayIsCaptured(displayCGIDs[screenNumber]);
+    isCaptured = CGDisplayIsCaptured(displayCGIDs[screenNumber]);
     if(!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
     
-    //Change the display mode.   
-    error=CGDisplaySwitchToMode(displayCGIDs[screenNumber], displayOriginalCGSettings[screenNumber]);
+    // Change the display mode.
+    CGDisplayConfigRef configRef;
+    error = CGBeginDisplayConfiguration(&configRef);
+    if (kCGErrorSuccess == error) error = CGConfigureDisplayWithDisplayMode(configRef, displayCGIDs[screenNumber], displayOriginalCGSettings[screenNumber], NULL);
+    if (kCGErrorSuccess == error) {
+        error = CGCompleteDisplayConfiguration(configRef, kCGConfigureForAppOnly);
+    }
+    else {
+        CGCancelDisplayConfiguration(configRef);
+    }
+    
     if(error) PsychErrorExitMsg(PsychError_internal, "Unable to set switch video modes");
 
     return(true);
@@ -1018,20 +1014,6 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 	return(beampos);
 }
 
-// This will launch the OS/X "Console.app" so users can see the IOLogs from the KEXT.
-void PsychLaunchConsoleApp(void)
-{
-	CFURLRef pathRef;
-
-    pathRef = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, CFSTR(kMyPathToSystemLog), kCFURLPOSIXPathStyle, false);    
-    if (pathRef) {
-        LSOpenCFURLRef(pathRef, NULL);
-        CFRelease(pathRef);
-    }
-
-	return;
-}
-
 // Try to attach to kernel level ptb support driver and setup everything, if it works:
 void InitPsychtoolboxKernelDriverInterface(void)
 {
@@ -1048,9 +1030,6 @@ void InitPsychtoolboxKernelDriverInterface(void)
 	// Select first instance (index 0) as active GPU/KernelDriver by default:
 	activeGPU = 0;
     
-    // This will launch the OS/X "Console.app" so users can see the IOLogs from the KEXT.
-    if (false) PsychLaunchConsoleApp();
-
 	// Setup matching criterion to find our driver in the IORegistry device tree:
 	classToMatch = IOServiceMatching(kMyDriversIOKitClassName);
     if (classToMatch == NULL) {

@@ -1851,16 +1851,6 @@ PsychColorModeType PsychGetScreenMode(int screenNumber)
     return(PsychGetColorModeFromDepthStruct(&depth));
 }
 
-
-/*
-    Its probably better to read this directly from the CG renderer info than to infer it from the pixel size
-*/	
-int PsychGetNumScreenPlanes(int screenNumber)
-{    
-    return((PsychGetScreenDepthValue(screenNumber)>24) ? 4 : 3);
-}
-
-
 /*
 	This is a place holder for a function which uncovers the number of dacbits.  To be filled in at a later date.
 	If you know that your card supports >8 then you can fill that in the PsychtPreferences and the psychtoolbox
