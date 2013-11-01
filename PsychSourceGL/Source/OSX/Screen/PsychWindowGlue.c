@@ -57,11 +57,6 @@
 #include <IOKit/graphics/IOFramebufferShared.h>
 #include <libkern/OSAtomic.h>
 
-// Disable warnings about deprecated API calls on OSX 10.7
-// of which we are aware and that we can't remove as long as
-// we need to stay compatible to 10.4 - 10.6
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-
 #include "PsychCocoaGlue.h"
 
 static struct {

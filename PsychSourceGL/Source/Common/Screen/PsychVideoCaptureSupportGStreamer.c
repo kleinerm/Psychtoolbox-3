@@ -74,6 +74,16 @@
 #include <gst/interfaces/propertyprobe.h>
 #include <gst/interfaces/colorbalance.h>
 
+#if GLIB_CHECK_VERSION (2, 32, 0)
+// Disable warnings about deprecated API calls. This to silence
+// g_value_array_get_nth() and g_value_array_free() deprecation
+// warning on GLib 2.32+. We know that GValueArrays are deprecated
+// and should be replaced by GArray's, but some GStreamer-0.10 functions
+// still use them, so we have to use them as well until we upgrade to
+// GStreamer-1.0 at some point:
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 // Compile-Time enable GStreamer encoding profile support by default on
 // MacOSX and Windows. These are the platforms where we know
 // for sure that the installed GStreamer runtimes support this feature,
