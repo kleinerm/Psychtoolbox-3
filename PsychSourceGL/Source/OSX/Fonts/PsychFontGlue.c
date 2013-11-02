@@ -210,7 +210,7 @@ void PsychInitFontList(void)
         if(halt==noErr){
             //create a new  font  font structure.  Set the next field  to NULL as  soon as we allocate the font so that if 
             //we break with an error then we can find the end when we  walk down the linked list. 
-            fontRecord=(PsychFontStructPtrType) calloc(1, sizeof(PsychFontStructType));
+            fontRecord = (PsychFontStructPtrType) calloc(1, sizeof(PsychFontStructType));
             fontRecord->next=NULL;
 
             //Get  FM and ATS font and font family references from the ATS font reference, which we get from iteration.

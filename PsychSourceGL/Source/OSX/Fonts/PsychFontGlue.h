@@ -90,16 +90,16 @@ typedef struct _PsychFontStructType_{
 // function prototypes//functions for ATSU
 
 //functions for handling psych font lists
-int 			PsychFreeFontList(void);
+int             PsychFreeFontList(void);
 PsychFontStructPtrType	PsychGetFontListHead(void);
-int 			PsychGetFontListLength(void);
-psych_bool			PsychGetFontRecordFromFontNumber(int fontIndex, PsychFontStructType **fontStruct);
-psych_bool			PsychGetFontRecordFromFontFamilyNameAndFontStyle(char *fontName, FMFontStyle fontStyle, PsychFontStructType **fontStruct);
-void 			PsychCopyFontRecordsToNativeStructArray(int numFonts, PsychFontStructType **fontStructs, PsychGenericScriptType **nativeStructArray);  
+int             PsychGetFontListLength(void);
+psych_bool      PsychGetFontRecordFromFontNumber(int fontIndex, PsychFontStructType **fontStruct);
+psych_bool      PsychGetFontRecordFromFontFamilyNameAndFontStyle(char *fontName, FMFontStyle fontStyle, PsychFontStructType **fontStruct);
+void            PsychCopyFontRecordsToNativeStructArray(int numFonts, PsychFontStructType **fontStructs, PsychGenericScriptType **nativeStructArray);
 
 //functions for dealing with Font Manager styles
-int				PsychFindNumFMFontStylesFromStyle(FMFontStyle fmStyleFlag);
-void 			PsychGetFMFontStyleNameFromIndex(int styleIndex, FMFontStyle fontStyle, char *styleName, int styleNameLength);
+int             PsychFindNumFMFontStylesFromStyle(FMFontStyle fmStyleFlag);
+void            PsychGetFMFontStyleNameFromIndex(int styleIndex, FMFontStyle fontStyle, char *styleName, int styleNameLength);
 
 //end include once
 #endif
