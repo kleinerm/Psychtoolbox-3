@@ -33,6 +33,10 @@ int PsychPrefStateGet_Verbosity(void)
     // Shut up all time:
     return(0);
 }
+
+static const psych_bool isScreenModule = FALSE;
+#else
+static const psych_bool isScreenModule = TRUE;
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -147,6 +151,7 @@ void PsychInitFontList(void)
         PsychErrorExitMsg(PsychError_system, "Could not retrieve installed fonts from font collection.");
     }
 
+    // Iterate over all available fonts:
     i = 0;
     for (idx = 0; idx < CFArrayGetCount(fonts); idx++) {
         // Give repair hints early. Experience shows we might crash during enumeration of a
@@ -166,68 +171,79 @@ void PsychInitFontList(void)
             printf("PTB-HINT: =============================================================================================================================\n\n");
         }
 
+        // Get font decriptor:
         CTFontDescriptorRef fontDescriptor = (CTFontDescriptorRef) CFArrayGetValueAtIndex(fonts, idx);
 
-        if(TRUE) {
-            //create a new  font  font structure.  Set the next field  to NULL as  soon as we allocate the font so that if
-            //we break with an error then we can find the end when we  walk down the linked list. 
-            fontRecord = (PsychFontStructPtrType) calloc(1, sizeof(PsychFontStructType));
-            fontRecord->next=NULL;
+        // Create a new ptb font structure.  Set the next field  to NULL as  soon as we allocate the font so that if
+        // we break with an error then we can find the end when we  walk down the linked list.
+        fontRecord = (PsychFontStructPtrType) calloc(1, sizeof(PsychFontStructType));
+        fontRecord->next=NULL;
+        
+        // Screen uses the following mapping for font selection: [fontFMFamilyName, fontFMStyle] -> fontPostScriptName
+        
+        
+        // Get font family name:
+        CFStringRef cfFamilyName = CTFontDescriptorCopyAttribute(fontDescriptor, kCTFontFamilyNameAttribute);
 
+        // Convert to C-String and assign:
+        resultOK = cfFamilyName && CFStringGetCString(cfFamilyName, (char*) fontRecord->fontFMFamilyName, 255, kCFStringEncodingASCII);
+        if (cfFamilyName) CFRelease(cfFamilyName);
+        if(!resultOK){
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: In font initialization: Failed to retrieve font family name for font... Defective font?!? Skipped this entry...\n");
+            trouble = TRUE;
+            continue;
+        }
+        
+        // Get the font postscript name: This is what Screen() actually uses to select a font for CoreText text rendering:
+        cfFontName = CTFontDescriptorCopyAttribute(fontDescriptor, kCTFontNameAttribute);
+        resultOK = cfFontName && CFStringGetCString(cfFontName, (char*) fontRecord->fontPostScriptName, 255, kCFStringEncodingASCII);
+        if(!resultOK){
+            if (cfFontName) CFRelease(cfFontName);
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: In font initialization: Failed to convert fontPostScriptName CF string to char string for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMFamilyName);
+            trouble = TRUE;
+            continue;
+        }
+        CFRelease(cfFontName);
+
+        // Retrieve symbolic traits of font -- the closest equivalent of the fmStyle from the good'ol fontManager:
+        CTFontSymbolicTraits ctTraits;
+        CFDictionaryRef cfFontTraits = CTFontDescriptorCopyAttribute(fontDescriptor, kCTFontTraitsAttribute);
+        CFNumberRef ctfTraits = CFDictionaryGetValue(cfFontTraits, kCTFontSymbolicTrait);
+        CFNumberGetValue(ctfTraits, kCFNumberSInt32Type, &ctTraits);
+        CFRelease(cfFontTraits);
+
+        // Remap new trait constants to old constants for later Screen('TextStyle') matching.
+        fmStyle = 0;
+        if (ctTraits & kCTFontBoldTrait) fmStyle |= 1;
+        if (ctTraits & kCTFontItalicTrait) fmStyle |= 2;
+        if (ctTraits & kCTFontCondensedTrait) fmStyle |= 32;
+        if (ctTraits & kCTFontExpandedTrait) fmStyle |= 64;
+        
+        // Assign 'TextStyle' of font:
+        fontRecord->fontFMStyle = fmStyle;
+        
+        // The following code only executes outside the build for the Screen() function.
+        // It gathers much more detailed information about each font, at a high cost in
+        // execution time. We want to skip gathering all this unneccessary information for
+        // use within Screen(), as it would just increase Screen's startup time:
+        if (!isScreenModule) {
+            
             // Create CTFont from given fontDescriptor. Available since OSX 10.5:
             tempCTFontRef = CTFontCreateWithFontDescriptor(fontDescriptor, 0.0, NULL);
-            if (tempCTFontRef) {
-                // Get font family name from CTFont:
-                CFStringRef cfFamilyName = CTFontCopyFamilyName(tempCTFontRef);
-                
-                // Retrieve symbolic traits of font -- the closest equivalent of the fmStyle from the
-                // good'ol fontManager:
-                CTFontSymbolicTraits ctTraits = CTFontGetSymbolicTraits(tempCTFontRef);
-                
-                // Remap new trait constants to old constants for later Screen('TextStyle') matching.
-                fmStyle = 0;
-                if (ctTraits & kCTFontBoldTrait) fmStyle |= 1;
-                if (ctTraits & kCTFontItalicTrait) fmStyle |= 2;
-                if (ctTraits & kCTFontCondensedTrait) fmStyle |= 32;
-                if (ctTraits & kCTFontExpandedTrait) fmStyle |= 64;
-
-                // Convert to C-String and assign:
-                resultOK = cfFamilyName && CFStringGetCString(cfFamilyName, (char*) fontRecord->fontFMFamilyName, 255, kCFStringEncodingASCII);
-                if(!resultOK){
-                    if (cfFamilyName) CFRelease(cfFamilyName);
-                    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: In font initialization: Failed to retrieve font family name for font... Defective font?!? Skipped this entry...\n");
-                    trouble = TRUE;
-                    CFRelease(tempCTFontRef);
-
-                    continue;
-                }
-                
-                CFRelease(cfFamilyName);
-            }
-            else {
+            
+            // Valid ref? Otherwise we skip this one:
+            if (!tempCTFontRef) {
                 if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: In font initialization: Failed to retrieve CTFontRef for font... Defective font?!? Skipped this entry...\n");
                 trouble = TRUE;
                 continue;
             }
-
+            
             // Get the font name and set the the corresponding field of the struct
             cfFontName = CTFontCopyFullName(tempCTFontRef);
             resultOK = cfFontName && CFStringGetCString(cfFontName, (char*) fontRecord->fontFMName, 255, kCFStringEncodingASCII);
             if(!resultOK){
                 if (cfFontName) CFRelease(cfFontName);
 				if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: In font initialization: Failed to convert fontFMName CF string to char string. Defective font?!? Skipped this entry...\n");
-				trouble = TRUE;
-                CFRelease(tempCTFontRef);
-				continue;
-            }
-            CFRelease(cfFontName);
-
-            // Get the font postscript name: This is what Screen() actually uses to select a font for CoreText text rendering:
-            cfFontName = CTFontCopyPostScriptName(tempCTFontRef);
-            resultOK = cfFontName && CFStringGetCString(cfFontName, (char*) fontRecord->fontPostScriptName, 255, kCFStringEncodingASCII); //kCFStringEncodingASCII matches MATLAB for 0-127
-            if(!resultOK){
-                if (cfFontName) CFRelease(cfFontName);
-				if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: In font initialization: Failed to convert fontPostScriptName CF string to char string for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
 				trouble = TRUE;
                 CFRelease(tempCTFontRef);
 				continue;
@@ -271,10 +287,10 @@ void PsychInitFontList(void)
             // at the level of CoreText API:
             fontRecord->verticalMetrics = fontRecord->horizontalMetrics;
 
-            // Decode and set 'TextStyle' of font:
-            fontRecord->fontFMStyle=fmStyle;
-            fontRecord->fontFMNumStyles=PsychFindNumFMFontStylesFromStyle(fmStyle);
-            fontRecord->fontFMNumStyles= fontRecord->fontFMNumStyles ? fontRecord->fontFMNumStyles : 1; //because the name is "normal" even if there are no styles.  
+            // Find number of 'TextStyle' bits set for this font. This is used to alloc/build the
+            // textual 'TextStyle' descriptions:
+            fontRecord->fontFMNumStyles = PsychFindNumFMFontStylesFromStyle(fmStyle);
+            fontRecord->fontFMNumStyles = (fontRecord->fontFMNumStyles > 0) ? fontRecord->fontFMNumStyles : 1; //because the name is "normal" even if there are no styles.
 
             // Get the locale info which is a property of the font family:
             // No error checking is done here, because many (most?) fonts miss the information,
@@ -288,25 +304,29 @@ void PsychInitFontList(void)
             LocaleRefGetPartString(locale, kLocaleRegionMask, 255, (char*) fontRecord->locale.region);                      fontRecord->locale.region[255]='\0';
             LocaleRefGetPartString(locale, kLocaleRegionVariantMask, 255, (char*) fontRecord->locale.regionVariant);        fontRecord->locale.regionVariant[255]='\0';
             LocaleRefGetPartString(locale, kLocaleAllPartsMask, 255, (char*) fontRecord->locale.fullName);                  fontRecord->locale.fullName[255]='\0';
-
-			// Init for fontRecord (nearly) finished.
-			
-			// Set this fontRecord as head of font-list, or enqueue it in existing list:
-            if(i==0) {
-                PsychFontListHeadKeeper(TRUE, fontRecord); 
-            }
-			else {
-                previousFontRecord->next=fontRecord;
-            }
-			
-			// Set the font number field of the struct
-            fontRecord->fontNumber=i+1;
-
-            // Increment the font index and update the next font pointer
-            ++i;
-            previousFontRecord=fontRecord;
+            
+            // Release CoreText font, we're done with this one:
+            CFRelease(tempCTFontRef);
         }
-		// Next parse iteration in system font database...
+
+        // Init for fontRecord finished.
+        
+        // Set this fontRecord as head of font-list, or enqueue it in existing list:
+        if (i==0) {
+            PsychFontListHeadKeeper(TRUE, fontRecord);
+        }
+        else {
+            previousFontRecord->next=fontRecord;
+        }
+        
+        // Set the font number field of the struct:
+        fontRecord->fontNumber = i + 1;
+        
+        // Increment the font index and update the next font pointer:
+        i++;
+        previousFontRecord=fontRecord;
+        
+		// Process next font entry in system font database...
     }
 
     // Release font collection and font array:

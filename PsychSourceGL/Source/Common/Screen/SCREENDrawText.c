@@ -131,7 +131,7 @@ static char synopsisString[] =
 
 static char seeAlsoString[] = "TextBounds TextSize TextFont TextStyle TextColor TextBackgroundColor Preference";
 
-// OS/X specific default renderer: CoreText framework. Requires OSX 10.5 or later.
+// OS/X specific default renderer: CoreText framework. Requires OSX 10.6 or later.
 #if PSYCH_SYSTEM == PSYCH_OSX
 
 /*

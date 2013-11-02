@@ -36,7 +36,7 @@ static char synopsisString[] =
     "0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend.\n"
     "Normal, bold, and italic styles are supported on all systems and renderers.\n"
     "Underline is supported on OSX and Windows. Outline is supported on Linux.\n"
-    "Condense and Extend are supported on Linux.\n"
+    "Condense and Extend are supported on Linux and OSX.\n"
 	"You can assign a default font style for new windows via a call to "
 	"Screen('Preference', 'DefaultFontStyle'). The initial default font style is "
 	"operating system dependent.\n"

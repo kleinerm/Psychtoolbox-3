@@ -39,15 +39,15 @@ typedef struct _PsychFontLocaleStructType_{
 typedef struct _PsychFontMetricsStructType_{
         double			ascent;
         double			descent;
-        double		        leading;
+        double			leading;
         double			avgAdvanceWidth;
         double			minLeftSideBearing;
         double			minRightSideBearing;
-        double      		stemWidth;
-        double     		stemHeight;
-        double      		capHeight;
-        double        		xHeight;
-        double    		italicAngle;
+        double			stemWidth;
+        double			stemHeight;
+        double			capHeight;
+        double			xHeight;
+        double			italicAngle;
         double			underlinePosition;
         double			underlineThickness;
 } PsychFontMetricsStructType;    
@@ -66,18 +66,12 @@ typedef struct _PsychFontStructType_{
         Str255					fontFamilyQuickDrawName;
         Str255					fontPostScriptName;
         char					fontFile[kPsychMaxFontFileNameChars];  	
-			
-        //depricated font style stuff for compatability with OS 9 scripts
+
+        // Deprecated font style stuff for compatability with OS 9 scripts:
+        // Note: FMFontStyle is nothing else but a SInt16, so could be replaced
+        // by one if FMFontStyle gets ever removed from SDK's.
         FMFontStyle				fontFMStyle;
         int						fontFMNumStyles;
-        
-        //Retain the the Font Manager (FM) and Apple Type Services (ATS) references to the font.
-        //We could use these to tie font families to font names, for example 
-        // FontInfo('GetFontsFromFontFamilyName') or FontInfo('GetFontFamilyFromFont');
-        ATSFontRef					fontATSRef;
-        FMFont						fontFMRef;
-        ATSFontFamilyRef			fontFamilyATSRef;
-        FMFontFamily				fontFamilyFMRef;
         
         //font's language and country
         PsychFontLocaleStructType		locale;			
