@@ -98,16 +98,19 @@ int PsychFreeFontList(void)
     numFreed=0;
     previous=NULL;
     current=PsychFontListHeadKeeper(FALSE, NULL); //get the font list head.
-    while(current){
-        if(previous){		
+    while (current) {
+        if (previous) {
+            CFRelease(previous->fontDescriptor);
             free(previous);
             ++numFreed;
         }
         previous=current;
         current=current->next;
     }
-    if(previous){		
-        free(previous);			
+    
+    if (previous) {
+        CFRelease(previous->fontDescriptor);
+        free(previous);
         ++numFreed;
     }
     PsychFontListHeadKeeper(TRUE, NULL); //set the font list head to null to mark an empty list.
@@ -179,9 +182,9 @@ void PsychInitFontList(void)
         fontRecord = (PsychFontStructPtrType) calloc(1, sizeof(PsychFontStructType));
         fontRecord->next=NULL;
         
-        // Screen uses the following mapping for font selection: [fontFMFamilyName, fontFMStyle] -> fontPostScriptName
-        
-        
+        // Screen uses the following mapping for font selection: [fontFMFamilyName, fontFMStyle] -> CTFontDescriptorRef fontDescriptor
+        // Therefore we store and retain the fontDescriptor at the end of this loop iteration, once everything else succeeded.
+
         // Get font family name:
         CFStringRef cfFamilyName = CTFontDescriptorCopyAttribute(fontDescriptor, kCTFontFamilyNameAttribute);
 
@@ -194,7 +197,7 @@ void PsychInitFontList(void)
             continue;
         }
         
-        // Get the font postscript name: This is what Screen() actually uses to select a font for CoreText text rendering:
+        // Get the font postscript name: Not needed by Screen, but we keep it around for debug purposes, as it is cheap to get.
         cfFontName = CTFontDescriptorCopyAttribute(fontDescriptor, kCTFontNameAttribute);
         resultOK = cfFontName && CFStringGetCString(cfFontName, (char*) fontRecord->fontPostScriptName, 255, kCFStringEncodingASCII);
         if(!resultOK){
@@ -227,7 +230,6 @@ void PsychInitFontList(void)
         // execution time. We want to skip gathering all this unneccessary information for
         // use within Screen(), as it would just increase Screen's startup time:
         if (!isScreenModule) {
-            
             // Create CTFont from given fontDescriptor. Available since OSX 10.5:
             tempCTFontRef = CTFontCreateWithFontDescriptor(fontDescriptor, 0.0, NULL);
             
@@ -267,8 +269,12 @@ void PsychInitFontList(void)
 				continue;
             }
             CFRelease(cfFontName);
-            
-            // Get the font metrics of this font.
+
+            // Get the font metrics of this font: These operations are super-expensive! They require
+            // iterating over all glyphs in the font to compute the properties. The CTFontGetxxx()
+            // functions account for about 96% of the total execution time of this function. Font
+            // enumeration of 880 fonts takes about 15 seconds with these, vs. 0.5 seconds without
+            // these on a 2010 MacBookPro quad-core Core i5 2.66 Ghz!
             fontRecord->horizontalMetrics.ascent=               CTFontGetAscent(tempCTFontRef);
             fontRecord->horizontalMetrics.descent=              CTFontGetDescent(tempCTFontRef);
             fontRecord->horizontalMetrics.leading=              CTFontGetLeading(tempCTFontRef);
@@ -309,6 +315,11 @@ void PsychInitFontList(void)
             CFRelease(tempCTFontRef);
         }
 
+        // Retain and store fontDescriptor in fontRecord, for use in Screen() for
+        // fast font selection during drawing:
+        fontRecord->fontDescriptor = fontDescriptor;
+        CFRetain(fontRecord->fontDescriptor);
+        
         // Init for fontRecord finished.
         
         // Set this fontRecord as head of font-list, or enqueue it in existing list:

@@ -145,20 +145,19 @@ static char seeAlsoString[] = "TextBounds TextSize TextFont TextStyle TextColor 
  */
 CFDictionaryRef PsychGetCTStyleAttributesFromPsychWindowRecord(PsychWindowRecordType *winRec)
 {
-	GLdouble                colorVector[4];
-	PsychFontStructType     *psychFontRecord;
+    GLdouble                colorVector[4];
+    PsychFontStructType     *psychFontRecord;
     
     // Define font name and font size:
-	PsychGetFontRecordFromFontNumber(winRec->textAttributes.textFontNumber, &psychFontRecord);
-	if (psychFontRecord == NULL) PsychErrorExitMsg(PsychError_internal, "Failed to lookup the font from the font number!");
-    CFStringRef fontName = CFStringCreateWithCString(kCFAllocatorDefault, (const char*) &(psychFontRecord->fontPostScriptName[0]), kCFStringEncodingASCII);
-    if (fontName == NULL) PsychErrorExitMsg(PsychError_system, "Font doesn't have an associated PostScript name!");
-    CTFontRef font = CTFontCreateWithName(fontName, winRec->textAttributes.textSize, NULL);
-    CFRelease(fontName);
+    PsychGetFontRecordFromFontNumber(winRec->textAttributes.textFontNumber, &psychFontRecord);
+    if (psychFontRecord == NULL) PsychErrorExitMsg(PsychError_internal, "Failed to lookup the font from the font number!");
+    
+    // Create font from cached fontDescriptor:
+    CTFontRef font = CTFontCreateWithFontDescriptor(psychFontRecord->fontDescriptor, winRec->textAttributes.textSize, NULL);
     
     // Define font foreground color:
-	PsychCoerceColorMode(&(winRec->textAttributes.textColor));
-	PsychConvertColorToDoubleVector(&(winRec->textAttributes.textColor), winRec, colorVector);
+    PsychCoerceColorMode(&(winRec->textAttributes.textColor));
+    PsychConvertColorToDoubleVector(&(winRec->textAttributes.textColor), winRec, colorVector);
     CGColorRef fontColor = CGColorCreateGenericRGB(colorVector[0], colorVector[1], colorVector[2], colorVector[3]);
     
     // Define use of underlining:

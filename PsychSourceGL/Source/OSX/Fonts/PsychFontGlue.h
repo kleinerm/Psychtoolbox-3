@@ -67,6 +67,8 @@ typedef struct _PsychFontStructType_{
         Str255					fontPostScriptName;
         char					fontFile[kPsychMaxFontFileNameChars];  	
 
+        CTFontDescriptorRef     fontDescriptor;
+
         // Deprecated font style stuff for compatability with OS 9 scripts:
         // Note: FMFontStyle is nothing else but a SInt16, so could be replaced
         // by one if FMFontStyle gets ever removed from SDK's.
