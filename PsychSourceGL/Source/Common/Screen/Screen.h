@@ -59,7 +59,6 @@
 // Include specifications of the GPU registers:
 #include "PsychGraphicsCardRegisterSpecs.h"
 
-#include "PsychVideoGlue.h"
 #include "PsychScreenGlue.h"
 #include "PsychWindowTextGlue.h"
 #include "WindowBank.h"

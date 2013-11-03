@@ -2436,7 +2436,6 @@
 		F5CC19F9039356E2017A7028 /* ScreenArguments.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = ScreenArguments.c; path = ../../../Source/Common/Screen/ScreenArguments.c; sourceTree = SOURCE_ROOT; };
 		F5CC19FE0394691F017A7028 /* PsychWindowGlue.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychWindowGlue.c; path = ../../../Source/OSX/Screen/PsychWindowGlue.c; sourceTree = SOURCE_ROOT; };
 		F5CC1A0903947EEF017A7028 /* SCREENScreens.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENScreens.c; path = ../../../Source/Common/Screen/SCREENScreens.c; sourceTree = SOURCE_ROOT; };
-		F5CC1A0B03948070017A7028 /* PsychVideoGlue.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychVideoGlue.h; path = ../../../Source/OSX/Screen/PsychVideoGlue.h; sourceTree = SOURCE_ROOT; };
 		F5CC1B2103949058017A7028 /* ScreenArguments.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = ScreenArguments.h; path = ../../../Source/Common/Screen/ScreenArguments.h; sourceTree = SOURCE_ROOT; };
 		F5CD7AA103B12857017A7028 /* PsychScreenGlue.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychScreenGlue.c; path = ../../../Source/OSX/Screen/PsychScreenGlue.c; sourceTree = SOURCE_ROOT; };
 		F5CDBD3B03DCE6E2017C1EE6 /* GetSecsTick.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = GetSecsTick.h; path = ../../../Source/Common/GetSecsTick/GetSecsTick.h; sourceTree = SOURCE_ROOT; };
@@ -4012,7 +4011,6 @@
 				F5AF1EE403B3C673017A7028 /* PsychScreenGlue.h */,
 				830669BD0D3954B10009C12B /* PsychUserKernelShared.h */,
 				F5AF1EE603B3C6F5017A7028 /* PsychWindowGlue.h */,
-				F5CC1A0B03948070017A7028 /* PsychVideoGlue.h */,
 				2F588F27056AC650007A711C /* PsychWindowTextGlue.h */,
 			);
 			name = Headers;
