@@ -427,7 +427,6 @@
 		2FEBA9A30989ACE400F4165F /* SCREENFillPoly.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE9BDC006B20A2600DB1E5A /* SCREENFillPoly.c */; };
 		2FEBA9A40989ACE400F4165F /* SCREENFillRect.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F252038E2C77017A7028 /* SCREENFillRect.c */; };
 		2FEBA9A50989ACE600F4165F /* SCREENFlip.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F258038E2C77017A7028 /* SCREENFlip.c */; };
-		2FEBA9A60989ACE700F4165F /* ScreenFontGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FC480AE069E457D00EE6B86 /* ScreenFontGlue.c */; };
 		2FEBA9A70989ACE800F4165F /* SCREENFrameOval.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE310E90561D87C007A711C /* SCREENFrameOval.c */; };
 		2FEBA9A80989ACEC00F4165F /* SCREENFramePoly.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE9BE3C06B230AA00DB1E5A /* SCREENFramePoly.c */; };
 		2FEBA9A90989ACED00F4165F /* SCREENFrameRect.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE9BD3306B1C24B00DB1E5A /* SCREENFrameRect.c */; };
@@ -927,7 +926,6 @@
 		F089BCAC0AD42DF500663D86 /* SCREENFillPoly.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE9BDC006B20A2600DB1E5A /* SCREENFillPoly.c */; };
 		F089BCAD0AD42DF500663D86 /* SCREENFillRect.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F252038E2C77017A7028 /* SCREENFillRect.c */; };
 		F089BCAE0AD42DF500663D86 /* SCREENFlip.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F258038E2C77017A7028 /* SCREENFlip.c */; };
-		F089BCAF0AD42DF500663D86 /* ScreenFontGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FC480AE069E457D00EE6B86 /* ScreenFontGlue.c */; };
 		F089BCB00AD42DF500663D86 /* SCREENFrameOval.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE310E90561D87C007A711C /* SCREENFrameOval.c */; };
 		F089BCB10AD42DF500663D86 /* SCREENFramePoly.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE9BE3C06B230AA00DB1E5A /* SCREENFramePoly.c */; };
 		F089BCB20AD42DF500663D86 /* SCREENFrameRect.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE9BD3306B1C24B00DB1E5A /* SCREENFrameRect.c */; };
@@ -2065,8 +2063,6 @@
 		2FBB3CD704393BCA007A7274 /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = RegisterProject.c; path = ../../../Source/Common/Priority/RegisterProject.c; sourceTree = SOURCE_ROOT; };
 		2FBB3CD804393BCA007A7274 /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = RegisterProject.h; path = ../../../Source/Common/Priority/RegisterProject.h; sourceTree = SOURCE_ROOT; };
 		2FC12E5E07433E3100991CF0 /* SCREENGetMouseHelper.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENGetMouseHelper.c; path = ../../../Source/Common/Screen/SCREENGetMouseHelper.c; sourceTree = SOURCE_ROOT; };
-		2FC480AE069E457D00EE6B86 /* ScreenFontGlue.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = ScreenFontGlue.c; path = ../../../Source/OSX/Fonts/ScreenFontGlue.c; sourceTree = SOURCE_ROOT; };
-		2FC480AF069E457D00EE6B86 /* ScreenFontGlue.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = ScreenFontGlue.h; path = ../../../Source/OSX/Fonts/ScreenFontGlue.h; sourceTree = SOURCE_ROOT; };
 		2FC483A9069E5F1E00EE6B86 /* libHIDUtilities.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libHIDUtilities.a; sourceTree = "<group>"; };
 		2FC681B208D9C36C00F554CE /* COCOAEVENTBRIDGECharAvail.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = COCOAEVENTBRIDGECharAvail.c; path = ../../../Source/Common/GetChar/COCOAEVENTBRIDGECharAvail.c; sourceTree = SOURCE_ROOT; };
 		2FC6820A08DA3C9F00F554CE /* COCOAEVENTBRIDGEFlushChars.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = COCOAEVENTBRIDGEFlushChars.c; path = ../../../Source/Common/GetChar/COCOAEVENTBRIDGEFlushChars.c; sourceTree = SOURCE_ROOT; };
@@ -3818,8 +3814,6 @@
 				2F4A2DEF069CBAFA0005EA67 /* FontInfo.h */,
 				2F4A2DF0069CBAFA0005EA67 /* FontInfo.c */,
 				8395A9B60BBF290900FC482E /* FontInfo.cc */,
-				2FC480AF069E457D00EE6B86 /* ScreenFontGlue.h */,
-				2FC480AE069E457D00EE6B86 /* ScreenFontGlue.c */,
 				2F4A2DEA069CBAFA0005EA67 /* PsychFontGlue.h */,
 				2F4A2DEB069CBAFA0005EA67 /* PsychFontGlue.c */,
 				2F4A2DEC069CBAFA0005EA67 /* FONTSSynopsis.c */,
@@ -6982,7 +6976,6 @@
 				2FEBA9A30989ACE400F4165F /* SCREENFillPoly.c in Sources */,
 				2FEBA9A40989ACE400F4165F /* SCREENFillRect.c in Sources */,
 				2FEBA9A50989ACE600F4165F /* SCREENFlip.c in Sources */,
-				2FEBA9A60989ACE700F4165F /* ScreenFontGlue.c in Sources */,
 				2FEBA9A70989ACE800F4165F /* SCREENFrameOval.c in Sources */,
 				2FEBA9A80989ACEC00F4165F /* SCREENFramePoly.c in Sources */,
 				2FEBA9A90989ACED00F4165F /* SCREENFrameRect.c in Sources */,
@@ -7440,7 +7433,6 @@
 				F089BCAC0AD42DF500663D86 /* SCREENFillPoly.c in Sources */,
 				F089BCAD0AD42DF500663D86 /* SCREENFillRect.c in Sources */,
 				F089BCAE0AD42DF500663D86 /* SCREENFlip.c in Sources */,
-				F089BCAF0AD42DF500663D86 /* ScreenFontGlue.c in Sources */,
 				F089BCB00AD42DF500663D86 /* SCREENFrameOval.c in Sources */,
 				F089BCB10AD42DF500663D86 /* SCREENFramePoly.c in Sources */,
 				F089BCB20AD42DF500663D86 /* SCREENFrameRect.c in Sources */,

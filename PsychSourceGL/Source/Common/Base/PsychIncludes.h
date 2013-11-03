@@ -130,6 +130,7 @@ typedef __CHAR16_TYPE__ char16_t;
 
     #if defined(PTBMODULE_Screen) || defined(PTBMODULE_FontInfo)
     #include <OpenGL/OpenGL.h>
+    #include <CoreText/CoreText.h>
     #endif
 #endif 
 

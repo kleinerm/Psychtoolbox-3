@@ -192,6 +192,9 @@ void PsychCleanupDisplayGlue(void)
         displayOriginalCGSettingsValid[i] = FALSE;
         displayOverlayedCGSettingsValid[i] = FALSE;
     }
+    
+    // Release font database:
+    PsychFreeFontList();
 }
 
 void PsychDisplayReconfigurationCallBack(CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo)

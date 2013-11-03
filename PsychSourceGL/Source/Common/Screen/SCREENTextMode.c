@@ -8,7 +8,7 @@
   
 	PLATFORMS:	
   
-		All.
+		All. But only has any effect on OSX with CoreText text renderer!
     
 	HISTORY:
 
@@ -23,15 +23,16 @@
 
 */
 
-
 #include "Screen.h"
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] ="oldCopyMode=Screen('TextMode', windowPtr [,textMode]);";
 //                                            0          1           2
 static char synopsisString[] =	"Set or get the text mode for the specified window. This function currently hasn't "
-								"any effect whatsoever. It is not even clear what kind of effects the different "
-								"text modes should have or if this feature will be ever implemented.";
+								"any effect whatsoever on systems other than OSX with its default textrenderer 1. "
+                                "If you use it, your code will become non-portable and possibly not future proof if "
+                                "we would decide to remove the Apple CoreText renderer from OSX. On unsupported systems "
+                                "any setting made here will be silently ignored.";
 static char seeAlsoString[] = "TextModes";
 
 PsychError SCREENTextMode(void) 
