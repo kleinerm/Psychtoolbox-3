@@ -44,7 +44,7 @@
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
 // On Linux we use the syslog facility for logging, and libraw1394 for low-level access
-// to the firewire bus:
+// to the firewire bus, libraw13943 at least on oldish Linux systems without juju-stack:
 #include <libraw1394/raw1394.h>
 #include <syslog.h>
 #endif
@@ -90,7 +90,37 @@ static dc1394_t *libdc = NULL;		// Master handle to DC1394 library.
 
 // Forward declaration of internal helper function:
 void PsychDCDeleteAllCaptureDevices(void);
+void PsychDCLibInit(void);
 
+void PsychDCLibInit(void)
+{
+    if (firsttime) {
+        // First time invocation:
+        
+        // Check if linker was able to dynamically runtime-link
+        // the library on OSX, where we weak-link the library to
+        // allow operation of Screen() without need to have libdc1394
+        // installed, as long as user doesn't want to use it.
+        #if PSYCH_SYSTEM == PSYCH_OSX
+        if (NULL == dc1394_new) {
+            printf("\n\n");
+            printf("PTB-ERROR: Could not load and link libdc1394 firewire video capture library!\n");
+            printf("PTB-ERROR: Most likely because the library is not (properly) installed on this\n");
+            printf("PTB-ERROR: machine. Please read 'help VideoCaptureDC1394' for installation or\n");
+            printf("PTB-ERROR: troubleshooting instructions. Firewire capture support is disabled\n");
+            printf("PTB-ERROR: until you have resolved the problem.\n\n");
+            PsychErrorExitMsg(PsychError_user, "Failed to load and link libDC1394 V2 Firewire video capture library! Capture engine unavailable.");
+        }
+        #endif
+        
+        // Initialize library:
+        libdc = dc1394_new();
+        if (libdc == NULL) PsychErrorExitMsg(PsychError_user, "Failed to initialize libDC1394 V2 Firewire video capture library! Capture engine unavailable.");
+        firsttime = FALSE;
+    }
+
+    return;
+}
 
 /*    PsychGetVidcapRecord() -- Given a handle, return ptr to video capture record.
  *    --> Internal helper function of PsychVideoCaptureSupport.
@@ -114,7 +144,7 @@ PsychVidcapRecordType* PsychGetVidcapRecord(int deviceIndex)
   return(&vidcapRecordBANK[deviceIndex]);
 }
 
-/* CHECKED
+/*
  *     PsychVideoCaptureInit() -- Initialize video capture subsystem.
  *     This routine is called by Screen's RegisterProject.c PsychModuleInit()
  *     routine at Screen load-time. It clears out the vidcapRecordBANK to
@@ -133,7 +163,7 @@ void PsychDCVideoCaptureInit(void)
   return;
 }
 
-/* CHECKED
+/*
  *  void PsychExitVideoCapture() - Shutdown handler.
  *
  *  This routine is called by Screen('CloseAll') and on clear Screen time to
@@ -154,7 +184,7 @@ void PsychDCExitVideoCapture(void)
   return;
 }
 
-/*  CHECKED
+/*
  *  PsychDeleteAllCaptureDevices() -- Delete all capture objects and release all associated ressources.
  */
 void PsychDCDeleteAllCaptureDevices(void)
@@ -166,7 +196,7 @@ void PsychDCDeleteAllCaptureDevices(void)
   return;
 }
 
-/*  CHECKED
+/*
  *  PsychCloseVideoCaptureDevice() -- Close a capture device and release all associated ressources.
  */
 void PsychDCCloseVideoCaptureDevice(int capturehandle)
@@ -200,7 +230,7 @@ void PsychDCCloseVideoCaptureDevice(int capturehandle)
 extern dc1394_t* dc1394_new(void) __attribute__((weak_import));
 #endif
 
-/* CHECKED
+/*
  *      PsychOpenVideoCaptureDevice() -- Create a video capture object.
  *
  *      This function tries to open and initialize a connection to a IEEE1394
@@ -222,37 +252,15 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     PsychVidcapRecordType *capdev = NULL;
     dc1394camera_list_t   *cameras=NULL;
     unsigned int		  numCameras;
-    int					  err;
+    dc1394error_t         err;
     int					  i;
     char                  msgerr[10000];
 
     *capturehandle = -1;
-    
-    if (firsttime) {
-      // First time invocation:
-        
-      // Check if linker was able to dynamically runtime-link
-      // the library on OSX, where we weak-link the library to
-      // allow operation of Screen() without need to have libdc1394
-      // installed, as long as user doesn't want to use it.
-      #if PSYCH_SYSTEM == PSYCH_OSX
-        if (NULL == dc1394_new) {
-            printf("\n\n");
-            printf("PTB-ERROR: Could not load and link libdc1394 firewire video capture library!\n");
-            printf("PTB-ERROR: Most likely because the library is not (properly) installed on this\n");
-            printf("PTB-ERROR: machine. Please read 'help VideoCaptureDC1394' for installation or\n");
-            printf("PTB-ERROR: troubleshooting instructions. Firewire capture support is disabled\n");
-            printf("PTB-ERROR: until you have resolved the problem.\n\n");
-            PsychErrorExitMsg(PsychError_user, "Failed to load and link libDC1394 V2 Firewire video capture library! Capture engine unavailable.");
-        }
-      #endif
-        
-      // Initialize library:
-	  libdc = dc1394_new();
-	  if (libdc == NULL) PsychErrorExitMsg(PsychError_user, "Failed to initialize libDC1394 V2 Firewire video capture library! Capture engine unavailable.");
-      firsttime = FALSE;
-    }
-    
+
+    // Perform first-time init, if needed:
+    PsychDCLibInit();
+
     // Slot 'slotid' will contain the record for our new capture object:
     
     // Initialize new record:
@@ -266,13 +274,12 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     capdev->scratchbuffer = NULL;        
 
     // Query a list of all available (connected) Firewire cameras:
-    err=dc1394_camera_enumerate(libdc, &cameras);
-    if (err!=DC1394_SUCCESS) {
+    err = dc1394_camera_enumerate(libdc, &cameras);
+    if (err != DC1394_SUCCESS) {
       // Failed to detect any cameras: Invalidate our record.
       capdev->valid = 0;
-      PsychErrorExitMsg(PsychError_user, "Unable to detect Firewire cameras: Please make sure that you have read/write access to\n"
-			"/dev/raw1394 and that the kernel modules `ieee1394',`raw1394' and `ohci1394' are successfully loaded.\n"
-			"Ask your system administrator for assistance or read 'help LinuxFirewire'.");
+      printf("Unable to enumerate firewire cameras: %s\n", dc1394_error_get_string(err));
+      PsychErrorExitMsg(PsychError_user, "Unable to detect Firewire cameras: Read 'help VideoCaptureDC1394' for troubleshooting tips.\n");
     }
 
 	// Get number of detected cameras:
@@ -282,29 +289,29 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     if (numCameras<1) {
       // Failed to find a camera: Invalidate our record.
       capdev->valid = 0;
-      PsychErrorExitMsg(PsychError_user, "Unable to find any Firewire camera: Please make sure that there's actually one connected.\n"
-						"Please note that we only support IIDC compliant machine vision cameras, not standard consumer DV cameras!");
+      PsychErrorExitMsg(PsychError_user, "Unable to find any Firewire camera: Please make sure that there are actually any connected.\n"
+                                         "Please note that this capture engine only supports IIDC compliant machine vision cameras, not standard consumer DV cameras!");
     }
 
     // Specific cam requested?
     if (deviceIndex==-1) {
       // Nope. We just use the first one.
-      capdev->camera = dc1394_camera_new(libdc, cameras->ids[0].guid);
+      capdev->camera = dc1394_camera_new_unit(libdc, cameras->ids[0].guid, cameras->ids[0].unit);
       printf("PTB-INFO: Opening the first Firewire camera on the IEEE1394 bus.\n");
 	  deviceIndex = 0;
     }
     else {
       // Does a camera with requested index exist?
       if (deviceIndex >= (int) numCameras) {
-	// No such cam.
-	capdev->valid = 0;
-	sprintf(msgerr, "You wanted me to open the %i th camera (deviceIndex: %i), but there are only %i cameras available!",
-		deviceIndex + 1, deviceIndex, numCameras);
-	PsychErrorExitMsg(PsychError_user, msgerr);
+        // No such cam.
+        capdev->valid = 0;
+        sprintf(msgerr, "You wanted me to open the %i th camera (deviceIndex: %i), but there are only %i cameras available!",
+                deviceIndex + 1, deviceIndex, numCameras);
+        PsychErrorExitMsg(PsychError_user, msgerr);
       }
 
-      // Ok, valid device index: Assign cam:
-      capdev->camera = dc1394_camera_new(libdc, cameras->ids[deviceIndex].guid);
+      // Ok, valid device index: Open and assign cam:
+      capdev->camera = dc1394_camera_new_unit(libdc, cameras->ids[deviceIndex].guid, cameras->ids[deviceIndex].unit);
       printf("PTB-INFO: Opening the %i. Firewire camera (deviceIndex=%i) out of %i cams on the IEEE1394 bus.\n",
 	     deviceIndex + 1, deviceIndex, numCameras);
     }
@@ -380,7 +387,6 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     return(TRUE);
 }
 
-// CHECKED
 /* Internal function: Find best matching non-Format 7 mode:
  */
 int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
@@ -573,7 +579,6 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
   return(true);
 }
 
-// CHECKED
 /* Internal function: Find best matching Format 7 mode:
  * Returns calculated optimal iso-packet size.
  */
@@ -857,7 +862,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
 }
 
 
-/*  CHECKED
+/*
  *  PsychVideoCaptureRate() - Start- and stop video capture.
  *
  *  capturehandle = Grabber to start-/stop.
@@ -1121,7 +1126,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 }
 
 
-/*  CHECKED
+/*
  *  PsychGetTextureFromCapture() -- Create an OpenGL texturemap from a specific videoframe from given capture object.
  *
  *  win = Window pointer of onscreen window for which a OpenGL texture should be created.
@@ -1367,7 +1372,6 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     return(nrdropped);
 }
 
-// CHECKED
 /* Set capture device specific parameters:
  * Currently, the named parameters are a subset of the parameters supported by the
  * IIDC specification, mapped to more convenient names.
@@ -1566,6 +1570,88 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 
   // Return the old value. Could be DBL_MAX if parameter was unknown or not accepted for some reason.
   return(oldvalue);
+}
+
+/* PsychDCEnumerateVideoSources(int outPos);
+ * 
+ * Enumerates all connected and supported video sources into an internal
+ * array "devices".
+ *
+ * If deviceIndex >= 0 : Returns pointer to PsychVideosourceRecordType struct
+ *                       with info about the detected device with index 'deviceIndex'
+ *                       or NULL if no such device exists. The pointer is valid until
+ *                       the Screen module returns control to the runtime - then it
+ *                       will get deallocated and must not be accessed anymore!
+ *
+ * If deviceIndex < 0 : Returns NULL to caller, returns a struct array to runtime
+ *                      environment return argument position 'outPos' with all info
+ *                      about the detected sources.
+ */
+void PsychDCEnumerateVideoSources(int outPos)
+{
+    PsychGenericScriptType  *devs;
+    const char *FieldNames[]={"DeviceIndex", "ClassIndex", "InputIndex", "ClassName", "InputHandle", "Device", "DevicePath", "DeviceName", "GUID", "DevicePlugin", "DeviceSelectorProperty" };
+
+    dc1394camera_list_t   *cameras = NULL;
+    dc1394camera_t        *camera = NULL;
+    unsigned int          numCameras, i;
+    dc1394error_t         err;
+    char                  guid[100];
+    char                  unit[10];
+    char                  deviceName[1024];
+
+    // Perform first-time init, if needed:
+    PsychDCLibInit();
+
+    // Query a list of all available (connected) Firewire cameras:
+    err = dc1394_camera_enumerate(libdc, &cameras);
+    if (err != DC1394_SUCCESS) {
+        // Failed to detect any cameras:
+        printf("Unable to enumerate firewire cameras: %s\n", dc1394_error_get_string(err));
+        PsychErrorExitMsg(PsychError_user, "Unable to detect Firewire cameras: Read 'help VideoCaptureDC1394' for troubleshooting tips.\n");
+    }
+
+    // Get number of detected cameras:
+    numCameras = cameras->num;
+        
+    // Create output struct array with n output slots:
+    PsychAllocOutStructArray(outPos, TRUE, numCameras, 11, FieldNames, &devs);
+
+    // Iterate all available devices:
+    for(i = 0; i < numCameras; i++) {
+        // Open connection to camera so we can query some more info about it:
+        camera = dc1394_camera_new_unit(libdc, cameras->ids[i].guid, cameras->ids[i].unit);
+        if (camera) {
+            // Open success: Query vendor and model name:
+            sprintf(deviceName, "'%s':'%s'", camera->vendor, camera->model);
+            PsychSetStructArrayStringElement("DeviceName", i, deviceName, devs);
+            // Done with query, release camera:
+            dc1394_camera_free(camera);
+        }
+        else {
+            // Open failed: Assign empty DeviceName:
+            PsychSetStructArrayStringElement("DeviceName", i, "'UNKNOWN':'UNKNOWN'", devs);
+        }
+
+        PsychSetStructArrayDoubleElement("DeviceIndex", i, i, devs);
+        PsychSetStructArrayDoubleElement("ClassIndex", i, 7, devs);
+        PsychSetStructArrayDoubleElement("InputIndex", i, i, devs);
+        PsychSetStructArrayStringElement("ClassName", i, "1394-IIDC", devs);
+        PsychSetStructArrayStringElement("InputHandle", i, "", devs);
+        sprintf(unit, "%i", cameras->ids[i].unit);
+        PsychSetStructArrayStringElement("Device", i, unit, devs);
+        PsychSetStructArrayStringElement("DevicePath", i, "", devs);
+        sprintf(guid, "%" PRIx64, cameras->ids[i].guid);
+        PsychSetStructArrayStringElement("GUID", i, guid, devs);
+        PsychSetStructArrayStringElement("DevicePlugin", i, "libDC1394", devs);
+        PsychSetStructArrayStringElement("DeviceSelectorProperty", i, "GUID + Device(==IIDC-Unit id)", devs);
+    }
+
+    // Free camera list:
+    dc1394_camera_free_list(cameras);
+    cameras=NULL;
+
+    return;
 }
 
 #endif

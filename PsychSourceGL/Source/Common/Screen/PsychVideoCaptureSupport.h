@@ -56,6 +56,7 @@ void PsychDCCloseVideoCaptureDevice(int capturehandle);
 int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer);
 int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime);
 double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, double value);
+void PsychDCEnumerateVideoSources(int outPos);
 void PsychDCExitVideoCapture(void);
 #endif
 

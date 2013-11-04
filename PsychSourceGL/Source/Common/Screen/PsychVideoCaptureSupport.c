@@ -71,7 +71,8 @@ void PsychEnumerateVideoSources(int engineId, int outPos)
 
 	#ifdef PTBVIDEOCAPTURE_LIBDC
 	if (engineId == 1) {
-		PsychErrorExitMsg(PsychError_user, "The DC1394 IIDC firewire videocapture engine does not support enumeration of video devices yet, sorry.");
+        PsychDCEnumerateVideoSources(outPos);
+        dispatched = TRUE;
 	}
 	#endif
 

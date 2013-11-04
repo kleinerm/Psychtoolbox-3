@@ -50,7 +50,12 @@ screenid=max(Screen('Screens'));
 if isempty(deviceIds)
   devs = Screen('VideoCaptureDevices');
   for i=1:length(devs)
-    if devs(i).DeviceIndex ~= 0
+    % Use device if either its deviceIndex is not zero, or all enumerated devices if
+    % the libdc1394 capture engine is in use. On other engines, deviceIndex 0 is special
+    % in that it defines the default capture device. The same device shows up a second
+    % time under a distinct device index, so we have to filter out deviceIndex 0 to avoid
+    % opening the same camera twice:
+    if (devs(i).DeviceIndex ~= 0) || (Screen('Preference', 'DefaultVideocaptureEngine') == 1)
       disp(devs(i));
       deviceIds = [deviceIds, devs(i).DeviceIndex];
     end
