@@ -426,6 +426,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
             if (capdev->reqpixeldepth < 3 && color_code!=DC1394_COLOR_CODING_RAW8 && color_code!=DC1394_COLOR_CODING_MONO8) continue;
             if (capdev->reqpixeldepth > 2 && color_code!=DC1394_COLOR_CODING_RGB8 && color_code!=DC1394_COLOR_CODING_YUV444 &&
                 color_code!=DC1394_COLOR_CODING_YUV422 && color_code!=DC1394_COLOR_CODING_YUV411) continue;
+            if (capdev->reqpixeldepth == 5 && color_code!=DC1394_COLOR_CODING_YUV422 && color_code!=DC1394_COLOR_CODING_YUV411) continue;
         }
         else {
             // No specific pixelsize req. check our minimum requirements:
@@ -519,6 +520,10 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
                     capdev->reqpixeldepth, (capdev->reqpixeldepth==3) ? "RGB - 8 bpc":"RGB+ALPHA - 8 bpc", capdev->pixeldepth/8);
                 }
                 capdev->reqpixeldepth = capdev->pixeldepth;
+                break;
+            case 5:
+                // YUV format requested: This is sort-of a 24 bpp RGB8 equivalent for us, for now:
+                capdev->reqpixeldepth = 24;
                 break;
             default:
                 capdev->reqpixeldepth = 0;
@@ -668,6 +673,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
             // Specific pixelsize requested:
             if (capdev->reqpixeldepth < 3 && color_code!=DC1394_COLOR_CODING_RAW8 && color_code!=DC1394_COLOR_CODING_MONO8) continue;
             if (capdev->reqpixeldepth > 2 && color_code!=DC1394_COLOR_CODING_RGB8) continue;
+            if (capdev->reqpixeldepth == 5 && color_code!=DC1394_COLOR_CODING_YUV422 && color_code!=DC1394_COLOR_CODING_YUV411) continue;
         }
         else {
             // No specific pixelsize req. check our minimum requirements:
@@ -827,6 +833,10 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
                     capdev->reqpixeldepth, (capdev->reqpixeldepth==3) ? "RGB - 8 bpc":"RGB+ALPHA - 8 bpc", capdev->pixeldepth/8);
                 }
                 capdev->reqpixeldepth = capdev->pixeldepth;
+                break;
+            case 5:
+                // YUV format requested: This is sort-of a 24 bpp RGB8 equivalent for us, for now:
+                capdev->reqpixeldepth = 24;
                 break;
             default:
                 capdev->reqpixeldepth = 0;
@@ -1016,7 +1026,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         if (err != DC1394_SUCCESS) {
             // Failed! We clean up and fail:
             // Non-DMA path no longer supported by final libdc V2, so this is the end of the game...
-            PsychErrorExitMsg(PsychError_unimplemented, "Unable to setup and start DMA capture engine - Start of video capture failed!");
+            PsychErrorExitMsg(PsychError_system, "Unable to setup and start DMA capture engine - Start of video capture failed!");
         }
         else {
             // Signal use of DMA engine: Meaningless as of 1st January 2008...
@@ -1202,7 +1212,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
             }
             else {
                 // Blocking wait failed! Somethings seriously wrong:
-                PsychErrorExitMsg(PsychError_internal, "Blocking wait for new frame failed!!!");
+                PsychErrorExitMsg(PsychError_system, "Blocking wait for new frame failed!!!");
             }
         }
         else {
@@ -1214,7 +1224,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
             }
             else {
                 // Polling wait failed for some reason...
-                PsychErrorExitMsg(PsychError_internal, "Polling for new video frame failed!!!");
+                PsychErrorExitMsg(PsychError_system, "Polling for new video frame failed!!!");
             }
         }
 
