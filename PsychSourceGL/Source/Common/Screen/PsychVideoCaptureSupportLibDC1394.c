@@ -1060,7 +1060,15 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         }
         else {
             dc1394_format7_get_frame_interval(capdev->camera, mode, &framerate);
-            if (framerate == 0) framerate = capdev->fps;
+            if (framerate == 0) {
+                framerate = capdev->fps;
+            }
+            else {
+                // FIXME: This is most likely a wrong conversion constant 1e9, but
+                // could not find the proper value in the spec and don't have a
+                // camera which reports a sensible value, so this is pure speculation:
+                framerate = 1e9 / framerate;
+            }
         }
 
         capdev->fps = (double) framerate;
