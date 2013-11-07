@@ -73,6 +73,9 @@ static int					numKernelDrivers = 0;
 static io_connect_t			displayConnectHandles[kPsychMaxPossibleDisplays];
 static int					repeatedZeroBeamcount[kPsychMaxPossibleDisplays];
 
+// Operating system major and minor version:
+static SInt32 osMajor, osMinor;
+
 //file local functions
 void InitCGDisplayIDList(void);
 void PsychLockScreenSettings(int screenNumber);
@@ -157,22 +160,29 @@ void InitializePsychDisplayGlue(void)
         displayLockSettingsFlags[i]=FALSE;
         displayOriginalCGSettingsValid[i]=FALSE;
         displayOverlayedCGSettingsValid[i]=FALSE;
-		displayConnectHandles[i]=0;
-		repeatedZeroBeamcount[i]=0;
+        displayConnectHandles[i]=0;
+        repeatedZeroBeamcount[i]=0;
     }
     
     // Init the list of Core Graphics display IDs.
     InitCGDisplayIDList();
-
-	// Setup screenId -> display head mappings:
-	PsychInitScreenToHeadMappings(PsychGetNumDisplays());
-
-	// Register a display reconfiguration callback:
-	CGDisplayRegisterReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);
-	
-	// Attach to kernel-level Psychtoolbox graphics card interface driver if possible
-	// *and* allowed by settings, setup all relevant mappings:
-	InitPsychtoolboxKernelDriverInterface();
+    
+    // Setup screenId -> display head mappings:
+    PsychInitScreenToHeadMappings(PsychGetNumDisplays());
+    
+    // Register a display reconfiguration callback:
+    CGDisplayRegisterReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);
+    
+    // Attach to kernel-level Psychtoolbox graphics card interface driver if possible
+    // *and* allowed by settings, setup all relevant mappings:
+    InitPsychtoolboxKernelDriverInterface();
+    
+    // Query OS/X version:
+    Gestalt(gestaltSystemVersionMajor, &osMajor);
+    Gestalt(gestaltSystemVersionMinor, &osMinor);
+    
+    // Prevent OSX 10.9+ "AppNap" power saving and timer coalescing etc.:
+    if ((osMajor > 10) || (osMajor == 10 && osMinor >= 9)) PsychCocoaPreventAppNap(TRUE);
 }
 
 void PsychCleanupDisplayGlue(void)
@@ -195,6 +205,9 @@ void PsychCleanupDisplayGlue(void)
     
     // Release font database:
     PsychFreeFontList();
+    
+    // Allow OSX 10.9+ "AppNap" power saving and timer coalescing etc.:
+    if ((osMajor > 10) || (osMajor == 10 && osMinor >= 9)) PsychCocoaPreventAppNap(FALSE);
 }
 
 void PsychDisplayReconfigurationCallBack(CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo)

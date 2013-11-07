@@ -466,3 +466,34 @@ void PsychCocoaSetThemeCursor(int inCursor)
     // Drain the pool:
     [pool drain];
 }
+
+// Variable to hold current reference for App-Nap activities:
+static id activity = nil;
+
+void PsychCocoaPreventAppNap(psych_bool preventAppNap)
+{
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Activity state of AppNap is: %s.\n", (activity == nil) ? "No activities" : "Activities selected by PTB");
+    
+    if ((activity == nil) && preventAppNap) {
+        // Prevent display from sleeping/powering down, prevent system from sleeping, prevent sudden termination for any reason:
+        NSActivityOptions options = NSActivityIdleDisplaySleepDisabled | NSActivityIdleSystemSleepDisabled | NSActivitySuddenTerminationDisabled | NSActivityAutomaticTerminationDisabled;
+        // Mark as user initiated state and request highest i/o and timing precision:
+        options |= NSActivityUserInitiated | NSActivityLatencyCritical;
+
+        activity = [[NSProcessInfo processInfo] beginActivityWithOptions:options reason:@"Psychtoolbox does not want to nap, it has need for speed!"];
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Running on OSX 10.9+ - Enabling protection against AppNap and other evils.\n");
+        return;
+    }
+
+    if (!preventAppNap) {
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Reenabling AppNap et al. ... ");
+        if (activity != nil) {
+            if (PsychPrefStateGet_Verbosity() > 3) printf("Make it so!\n");
+            [[NSProcessInfo processInfo] endActivity:activity];
+        }
+        else {
+            if (PsychPrefStateGet_Verbosity() > 3) printf("but already enabled! Noop.\n");
+        }
+        return;
+    }
+}
