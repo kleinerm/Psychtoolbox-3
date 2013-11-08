@@ -51,6 +51,13 @@
 // This is the master include file for libdc1394. It includes all other public header files:
 #include <dc1394/dc1394.h>
 
+// Sync modes and sync roles for multi-camera synchronization:
+#define kPsychIsSyncMaster  1
+#define kPsychIsSyncSlave   2
+#define kPsychIsSoftSynced  4
+#define kPsychIsBusSynced   8
+#define kPsychIsHwSynced   16
+
 // Record which defines all state for a capture device:
 typedef struct {
     int valid;                        // Is this a valid device record? zero == Invalid.
@@ -58,6 +65,7 @@ typedef struct {
     dc1394video_frame_t *frame;       // Ptr to a structure which contains the most recently captured/dequeued frame.
     int dma_mode;                     // 0 == Non-DMA fallback path. 1 == DMA-Transfers. (Obsolete)
     int allow_nondma_fallback;        // Use of Non-DMA fallback path allowed? (Obsolete)
+    int syncmode;                     // 0 = free-running. 1 = sync-master, 2 = sync-slave, 4 = soft-sync, 8 = bus-sync, 16 = ttl-sync.
     int dropframes;                   // 1 == Always deliver most recent frame in FIFO, even if dropping of frames is neccessary.
     dc1394video_mode_t dc_imageformat;// Encodes image size and pixelformat.
     dc1394framerate_t dc_framerate;   // Encodes framerate.
@@ -268,6 +276,12 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     // Retrieve device record for slotid:
     capdev = PsychGetVidcapRecord(slotid);
 
+    // Clear out the record to have a nice clean start:
+    memset(capdev, 0, sizeof(PsychVidcapRecordType));
+    // Need to set valid flag again after the memset():
+    capdev->valid = 1;
+
+    // Not really needed, but anyhow...
     capdev->camera = NULL;
     capdev->grabber_active = 0;
     capdev->scratchbuffer = NULL;
@@ -574,7 +588,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
     // Return framerate:
     capdev->dc_framerate = dc1394_framerate;
 
-    if(PsychPrefStateGet_Verbosity()>1){
+    if(PsychPrefStateGet_Verbosity() > 4){
         printf("PTB-INFO: Will use non-Format7 mode %i: Width x Height = %i x %i, fps=%f, colormode=%i ...\n",
         (int) mode, mw, mh, framerate, (int) color_code); fflush(NULL);
     }
@@ -643,7 +657,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
             PsychErrorExitMsg(PsychError_user, "Unknown bus speed specification! Start of video capture failed!");
     }
 
-    if(PsychPrefStateGet_Verbosity()>1){
+    if(PsychPrefStateGet_Verbosity() > 4){
         printf("PTB-INFO: IEEE-1394 Firewire bus speed is %i Megabit/second --> Bus period is %f usecs.\n",
         (int) (100 << speed), bus_period * 1000000.0f);
     }
@@ -662,7 +676,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
         // Increment count of available Format-7 modes:
         numF7Available++;
 
-        if(PsychPrefStateGet_Verbosity()>1){
+        if(PsychPrefStateGet_Verbosity() > 4){
             printf("PTB-Info: Probing Format-7 mode %i ...\n", mode);
         }
 
@@ -763,7 +777,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
             minpacket_size = packet_size;
         }
 
-        if(PsychPrefStateGet_Verbosity()>1){
+        if(PsychPrefStateGet_Verbosity() > 4){
             if (capdev->roirect[kPsychLeft]!=0 || capdev->roirect[kPsychTop]!=0 || capdev->roirect[kPsychRight]!=1 || capdev->roirect[kPsychBottom]!=1) {
                 printf("PTB-INFO: Checking Format-7 mode %i: ROI = [l=%f t=%f r=%f b=%f] , FPS = %f\n", mode, (float) capdev->roirect[kPsychLeft], (float) capdev->roirect[kPsychTop],
                 (float) capdev->roirect[kPsychRight], (float) capdev->roirect[kPsychBottom], framerate);
@@ -871,6 +885,27 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
     return(packet_size);
 }
 
+// Helper for start/stop capture with bus-sync:
+static void PsychDCEnableBusBroadcast(PsychVidcapRecordType* capdev, psych_bool enable)
+{
+    dc1394error_t err;
+
+    // Only the sync master ever sends broadcast commands over the bus, so we only need
+    // to en/disable its broadcast behaviour. All cameras always listen to bus broadcast,
+    // broadcast reception can't be disabled, so we can only control the behaviour of a
+    // camera wrt. sending commands. This means that you have to make sure that you only
+    // connect cameras to a bus which should participate in synced capture - it is not
+    // possible for a camera on such a bus to be free-running, as it will automatically
+    // listen in on the broadcast commands from the sync master on the same bus.
+    if (capdev->syncmode & kPsychIsSyncMaster) {
+        if ((err = dc1394_camera_set_broadcast(capdev->camera, (enable) ? DC1394_ON : DC1394_OFF)) != DC1394_SUCCESS) {
+            // Failed! Shutdown DMA capture engine again:
+            dc1394_capture_stop(capdev->camera);
+            printf("PTB-ERROR: Could not %s bus broadcast for bus-synced multi-camera capture operation: %s\n", (enable) ? "enable" : "disable", dc1394_error_get_string(err));
+            PsychErrorExitMsg(PsychError_user, "Unable to control bus broadcast for master camera for bus sync - Operation aborted!");
+        }
+    }
+}
 
 /*
  *  PsychVideoCaptureRate() - Start- and stop video capture.
@@ -1039,20 +1074,67 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 
         // Wait until start deadline reached:
         if (*startattime != 0) PsychWaitUntilSeconds(*startattime);
-
-        // Start DMA driven isochronous data transfer:
-        if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Enabling cameras ISO transmission -- Start of capture...\n"); fflush(NULL);
-        if (dc1394_video_set_transmission(capdev->camera, DC1394_ON) !=DC1394_SUCCESS) {
-            // Failed! Shutdown DMA capture engine again:
-            dc1394_capture_stop(capdev->camera);
-
-            PsychErrorExitMsg(PsychError_user, "Unable to start isochronous data transfer from camera - Start of video capture failed!");
+        
+        // Firewire bus-sync via bus-wide broadcast of iso-on command requested?
+        if (capdev->syncmode & kPsychIsBusSynced) {
+            // Yes. The master should broadcast its start command to all clients on
+            // the bus:
+            PsychDCEnableBusBroadcast(capdev, TRUE);            
         }
 
+        // Only actually send start command for iso-transmission if this isn't a slave cam, or
+        // if this is hardware-synced via external trigger cable, so iso-start doesn't actually
+        // start capture of the slave camera but only engages it for trigger reception:
+        if (!(capdev->syncmode & kPsychIsSyncSlave) || (capdev->syncmode & kPsychIsHwSynced)) {
+            // Start isochronous data transfer:
+            // This will engage the slave camera for trigger reception with hw-sync.
+            // It will start capture and engage trigger signal emission on a master cam with hw-sync.
+            // It will start capture on a free running cam or a soft-synced master camera.
+            // It will start capture of a master camera and broadcast the start signal to all slave
+            // cameras with bus-sync.
+            if(PsychPrefStateGet_Verbosity() > 3) {
+                printf("PTB-DEBUG: Enabling cameras ISO transmission in syncmode %i -- Start of capture...\n", capdev->syncmode);
+                if (capdev->syncmode & kPsychIsBusSynced) printf("PTB-DEBUG: Bus synced operation.\n");
+                if (capdev->syncmode & kPsychIsSoftSynced) printf("PTB-DEBUG: Software synced operation.\n");
+                if (capdev->syncmode & kPsychIsHwSynced) printf("PTB-DEBUG: Hardware synced operation. Start of %s\n", (capdev->syncmode & kPsychIsSyncMaster) ? "master" : "slave");
+            }
+            
+            if (dc1394_video_set_transmission(capdev->camera, DC1394_ON) !=DC1394_SUCCESS) {
+                // Failed! Shutdown DMA capture engine again:
+                dc1394_capture_stop(capdev->camera);
+
+                PsychErrorExitMsg(PsychError_user, "Unable to start isochronous data transfer from camera - Start of video capture failed!");
+            }
+
+            // Is this a soft-synced configuration and the master has just started capturing?
+            if ((capdev->syncmode & kPsychIsSoftSynced) && (capdev->syncmode & kPsychIsSyncMaster)) {
+                // Yes. Quickly start all soft-synced slaves in our setup:
+                // TODO: Would be better to have per-master lists of sync slaves for more flexibility.
+                for (i = 0; i < PSYCH_MAX_CAPTUREDEVICES; i++) {
+                    // Sync slave participating in this soft sync start operation?
+                    if ((vidcapRecordBANK[i].valid) && (i != capturehandle) && (vidcapRecordBANK[i].syncmode & kPsychIsSoftSynced) &&
+                        (vidcapRecordBANK[i].syncmode & kPsychIsSyncSlave)) {
+                        // Yes. Start it:
+                        if (dc1394_video_set_transmission(vidcapRecordBANK[i].camera, DC1394_ON) !=DC1394_SUCCESS) {
+                            // Failed!
+                            PsychErrorExitMsg(PsychError_user, "Unable to start isochronous data transfer of soft-synced slave camera - Start of sync video capture failed!");
+                        }
+                    }
+                }
+            }
+        }
+        
         // Record real start time:
         PsychGetAdjustedPrecisionTimerSeconds(startattime);
 
         if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Capture engine fully running...\n"); fflush(NULL);
+
+        // Firewire bus-sync via bus-wide broadcast of iso-on command requested?
+        if (capdev->syncmode & kPsychIsBusSynced) {
+            // Yes. Capture started, so the master should stop broadcasting all of its other commands to all clients on
+            // the bus:
+            PsychDCEnableBusBroadcast(capdev, FALSE);
+        }
 
         // Map framerate enum to floating point value and assign it:
         if (packetsize == 0) {
@@ -1087,19 +1169,60 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             capdev->scratchbuffer = malloc(capdev->width * capdev->height * 3);
         }
 
-        if(PsychPrefStateGet_Verbosity()>1) {
+        if(PsychPrefStateGet_Verbosity() > 2) {
             printf("PTB-INFO: Capture started on device %i - Width x Height = %i x %i - Framerate: %f fps.\n", capturehandle, capdev->width, capdev->height, capdev->fps);
         }
     }
     else {
         // Stop capture:
         if (capdev->grabber_active) {
-            // Stop isochronous data transfer from camera:
-            if (dc1394_video_set_transmission(capdev->camera, DC1394_OFF) !=DC1394_SUCCESS) {
-                PsychErrorExitMsg(PsychError_user, "Unable to stop video transfer on camera! (dc1394_video_set_transmission(DC_OFF) failed)!");
+            // Firewire bus-sync via bus-wide broadcast of iso-on command requested?
+            if (capdev->syncmode & kPsychIsBusSynced) {
+                // Yes. The master should broadcast its stop command to all clients on the bus:
+                PsychDCEnableBusBroadcast(capdev, TRUE);
+            }
+            
+            // Only actually send stop command for iso-transmission if this isn't a slave cam, or
+            // if this is hardware-synced via external trigger cable, so iso-stop doesn't actually
+            // stop capture of the slave camera but only disable it for trigger reception:
+            if (!(capdev->syncmode & kPsychIsSyncSlave) || (capdev->syncmode & kPsychIsHwSynced)) {
+                // Stop isochronous data transfer:
+                // This will disable the slave camera for trigger reception with hw-sync.
+                // It will stop capture and disable trigger signal emission on a master cam with hw-sync.
+                // It will stop capture on a free running cam or a soft-synced master camera.
+                // It will stop capture of a master camera and broadcast the stop signal to all slave
+                // cameras with bus-sync.
+                if (dc1394_video_set_transmission(capdev->camera, DC1394_OFF) !=DC1394_SUCCESS) {
+                    // Failed! Shutdown DMA capture engine again:
+                    dc1394_capture_stop(capdev->camera);                    
+                    PsychErrorExitMsg(PsychError_user, "Unable to stop isochronous data transfer from camera - Stop of video capture failed!");
+                }
+                
+                // Is this a soft-synced configuration and the master has just stopped capture?
+                if ((capdev->syncmode & kPsychIsSoftSynced) && (capdev->syncmode & kPsychIsSyncMaster)) {
+                    // Yes. Quickly stop all soft-synced slaves in our setup:
+                    // TODO: Would be better to have per-master lists of sync slaves for more flexibility.
+                    for (i = 0; i < PSYCH_MAX_CAPTUREDEVICES; i++) {
+                        // Sync slave participating in this soft sync stop operation?
+                        if ((vidcapRecordBANK[i].valid) && (i != capturehandle) && (vidcapRecordBANK[i].syncmode & kPsychIsSoftSynced) &&
+                            (vidcapRecordBANK[i].syncmode & kPsychIsSyncSlave)) {
+                            // Yes. Stop it:
+                            if (dc1394_video_set_transmission(vidcapRecordBANK[i].camera, DC1394_OFF) !=DC1394_SUCCESS) {
+                                // Failed!
+                                PsychErrorExitMsg(PsychError_user, "Unable to stop isochronous data transfer of soft-synced slave camera - Stop of sync video capture failed!");
+                            }
+                        }
+                    }
+                }
             }
 
-            // Stop capture engine:
+            // Firewire bus-sync via bus-wide broadcast of iso-on command requested?
+            if (capdev->syncmode & kPsychIsBusSynced) {
+                // Yes. Capture stopped, so the master should stop broadcasting all of its other commands to all clients on the bus:
+                PsychDCEnableBusBroadcast(capdev, FALSE);
+            }
+
+            // Stop capture engine of current cam:
             dc1394_capture_stop(capdev->camera);
 
             // Ok, capture is now stopped.
@@ -1116,7 +1239,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             // Need to rethink definition of reqpixeldepth...
             capdev->reqpixeldepth = capdev->reqpixeldepth / 8;
 
-            if(PsychPrefStateGet_Verbosity()>1){
+            if(PsychPrefStateGet_Verbosity() > 2){
                 // Output count of dropped frames:
                 if ((dropped=capdev->nr_droppedframes) > 0) {
                     printf("PTB-INFO: Video capture dropped %i frames on device %i to keep capture running in sync with realtime.\n", dropped, capturehandle);
@@ -1468,6 +1591,39 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
     // Return model name string:
     if (strcmp(pname, "GetModelname")==0) {
         PsychCopyOutCharArg(1, FALSE, capdev->camera->model);
+        return(0);
+    }
+    
+    // Get/Set synchronization mode for multi-camera operation:
+    if (strcmp(pname, "SyncMode")==0) {
+        PsychCopyOutDoubleArg(1, FALSE, capdev->syncmode);
+        if (value != DBL_MAX) {
+            // Sanity check syncmode spec:
+
+            // Free-running? That's always fine.
+            if (intval != 0) {
+                // Not free-running, but somehow synced:
+                if ((intval & kPsychIsSyncMaster) && (intval & kPsychIsSyncSlave)) {
+                    // Master and slave at the same time? That's not possible.
+                    PsychErrorExitMsg(PsychError_user, "Invalid syncmode provided: Camera can't be master and slave at the same time!");
+                }
+
+                if (!(intval & kPsychIsSyncMaster) && !(intval & kPsychIsSyncSlave)) {
+                    // Neither master or slave? That's not possible.
+                    PsychErrorExitMsg(PsychError_user, "Invalid syncmode provided: Camera must be either master or slave. Can't be none of both!");
+                }
+
+                // Must be either soft-, bus-, or hw- synced, but not none or multiple of all:
+                oldintval = intval & (kPsychIsSoftSynced | kPsychIsBusSynced | kPsychIsHwSynced);
+                if ((oldintval != kPsychIsSoftSynced) && (oldintval != kPsychIsBusSynced) && (oldintval != kPsychIsHwSynced)) {
+                    PsychErrorExitMsg(PsychError_user, "Invalid syncmode provided: Missing sync strategy, either soft-, or bus-, or hw-synced!");
+                }
+            }
+            
+            // Assign new syncmode:
+            capdev->syncmode = (int) intval;
+        }
+
         return(0);
     }
 

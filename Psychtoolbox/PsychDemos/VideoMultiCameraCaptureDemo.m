@@ -1,12 +1,16 @@
-function VideoMultiCameraCaptureDemo(deviceIds)
+function VideoMultiCameraCaptureDemo(deviceIds, syncmode)
 % Demonstrate simple use of built-in video capture engine.
 %
-% VideoMultiCameraCaptureDemo([deviceIds=all])
+% VideoMultiCameraCaptureDemo([deviceIds=all][, syncmode=0])
 %
 % VideoMultiCameraCaptureDemo captures simultaneously from all cameras
 % connected to your computer, or a subset of cameras if it is specified
 % in the optional vector 'deviceIds', and then shows their video feeds
 % in individual Psychtoolbox windows.
+%
+% The optional 'syncmode' flag allows to select synchronization strategy
+% for mult-cam capture: 0 = None, all free-running. 4 = Software sync,
+% 8 = Firewire Bus-Sync, 16 = Hardware (TTL) trigger sync.
 %
 % By default, a capture rate of 30 frames per second at a resolution of
 % 640 x 480 pixels is requested, and the timecode and interframe interval
@@ -26,6 +30,14 @@ PsychDefaultSetup(2);
 
 if nargin < 1
     deviceIds=[];
+end
+
+if nargin < 2 || isempty(syncmode)
+    syncmode = 0;
+else
+    if ~ismember(syncmode, [0,4,8,16])
+        error('Invalid syncmode! Must be 0, 4, 8 or 16!');
+    end
 end
 
 roi = [];
@@ -72,6 +84,17 @@ try
 
       % Open i'th camera:
       grabbers(i) = Screen('OpenVideoCapture', win(i), deviceIds(i), roi, depth, 16)
+
+      % Multi-camera sync mode requested?
+      if syncmode > 0
+        if i == 1
+            % First one is sync-master:
+            Screen('SetVideoCaptureParameter', grabbers(i), 'SyncMode', syncmode + 1);
+        else
+            % Others are sync-slaves:
+            Screen('SetVideoCaptureParameter', grabbers(i), 'SyncMode', syncmode + 2);
+        end
+      end
       
       % Configure i'th camera:
       %brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness',383)
@@ -87,8 +110,25 @@ try
     end
 
     % Start capture on all cameras:
-    for grabber=grabbers
-      Screen('StartVideoCapture', grabber, fps, 1);
+    if syncmode == 0
+        % Start one after the other:
+        for grabber=grabbers
+            Screen('StartVideoCapture', grabber, fps, 1);
+        end
+    else
+        % Multicam sync enabled. First start all slaves:
+        oldverb = Screen('Preference','Verbosity', 4);
+        fprintf('Prepare for synced start! Warp 1 ... ');
+        for grabber=grabbers(2:end)
+            Screen('StartVideoCapture', grabber, fps, 1);
+        end
+
+        fprintf('Engage! ... ');
+
+        % Start master:
+        Screen('StartVideoCapture', grabbers(1), fps, 1);
+        fprintf('And we are flying!\n');
+        Screen('Preference','Verbosity', oldverb);
     end
     
     dstRect = [];
@@ -140,8 +180,28 @@ try
     telapsed = GetSecs - t;
     
     % Stop and shutdown all cameras:
+    % Start capture on all cameras:
+    if syncmode == 0
+        % Stop one after the other:
+        for grabber=grabbers
+            Screen('StopVideoCapture', grabber);
+        end
+    else
+        % Multicam sync enabled. Stop master first:
+        fprintf('Drop us out of warp!\n');
+        Screen('StopVideoCapture', grabbers(1));
+
+        % Then stop all slaves:
+        fprintf('Sublight reached ...\n');
+        for grabber=grabbers(2:end)
+            Screen('StopVideoCapture', grabber);
+        end
+
+        fprintf('And quarter impulse ahead.\n');
+    end
+
+    % Close down cameras:
     for grabber=grabbers
-      Screen('StopVideoCapture', grabber);
       Screen('CloseVideoCapture', grabber);
     end
 
