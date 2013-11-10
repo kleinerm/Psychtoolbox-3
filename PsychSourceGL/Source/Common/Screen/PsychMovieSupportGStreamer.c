@@ -95,9 +95,12 @@ static PsychMovieRecordType movieRecordBANK[PSYCH_MAX_MOVIES];
 static int numMovieRecords = 0;
 static psych_bool firsttime = TRUE;
 
+#if !GLIB_CHECK_VERSION (2, 31, 0)
 #if PSYCH_SYSTEM == PSYCH_OSX
 // This is the function prototype for compile against GLib 2.32.0 "deprecated":
 extern void g_thread_init(gpointer vtable) __attribute__((weak_import));
+extern gboolean g_thread_supported(void) __attribute__((weak_import));
+#endif
 #endif
 
 /*
@@ -115,6 +118,12 @@ void PsychGSMovieInit(void)
     }    
     numMovieRecords = 0;
 
+    // Note: This is deprecated and not needed anymore on GLib 2.31.0 and later, as
+    // GLib's threading system auto-initializes on first use since that version. We
+    // keep it for now to stay compatible to older systems, e.g., Ubuntu 10.04 LTS,
+    // conditionally on the GLib version we build against:
+#if !GLIB_CHECK_VERSION (2, 31, 0)
+    
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
     // On Windows, we need to delay-load the GLib DLL's. This loading
     // and linking will automatically happen downstream. However, if delay loading
@@ -123,8 +132,7 @@ void PsychGSMovieInit(void)
     // likely succeed. If the following LoadLibrary() call fails and returns NULL,
     // then we know we would end up crashing. Therefore we'll output some helpful
     // error-message instead:
-    if (((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll"))) &&
-        ((NULL == LoadLibrary("libgstreamer-0.10-0.dll")) || (NULL == LoadLibrary("libgstapp-0.10-0.dll")))) {
+    if ((NULL == LoadLibrary("libgstreamer-0.10-0.dll")) || (NULL == LoadLibrary("libgstapp-0.10-0.dll"))) {
         // Failed: GLib and its threading support isn't installed. This means that
         // GStreamer won't work as the relevant .dll's are missing on the system.
         // We silently return, skpipping the GLib init, as it is completely valid
@@ -156,11 +164,9 @@ void PsychGSMovieInit(void)
     #endif
     
     // Initialize GLib's threading system early:
-    // Note: This is deprecated and not needed anymore on GLib 2.32.0 and later, as
-    // GLib's threading system auto-initializes on first use since that version. We
-    // keep it for now to stay compatible to older systems, e.g., Ubuntu 10.04 LTS,
-    // for the time being...
-    g_thread_init(NULL);
+    if (!g_thread_supported()) g_thread_init(NULL);
+
+#endif
 
     return;
 }
@@ -613,12 +619,19 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     if (firsttime) {        
         // Initialize GStreamer: The routine is defined in PsychVideoCaptureSupportGStreamer.c
         PsychGSCheckInit("movie playback");
+
         firsttime = FALSE;
     }
 
     if (win && !PsychIsOnscreenWindow(win)) {
         if (printErrors) PsychErrorExitMsg(PsychError_user, "Provided windowPtr is not an onscreen window."); else return;
     }
+
+    // As a side effect of some PsychGSCheckInit() some broken GStreamer runtimes can change
+    // the OpenGL context binding behind our back to some GStreamer internal context.                                                                                                                                                                                              
+    // Make sure our own context is bound after return from PsychGSCheckInit() to protect                                                                                                                                                                                          
+    // against the state bleeding this would cause:                                                                                                                                                                                                                                
+    if (win) PsychSetGLContext(win);
 
     if (NULL == moviename) {
         if (printErrors) PsychErrorExitMsg(PsychError_internal, "NULL-Ptr instead of moviename passed!"); else return;
@@ -1655,9 +1668,6 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         // Build a standard PTB texture record:
         PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height);    
 
-        // Set NULL - special texture object as part of the PTB texture record:
-        out_texture->targetSpecific.QuickTimeGLTexture = NULL;
-
         // Set texture orientation as if it were an inverted Offscreen window: Upside-down.
         out_texture->textureOrientation = 3;
 
@@ -1772,6 +1782,9 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             // Check if 1.5x height texture fits within hardware limits of this GPU:
             if (movieRecordBANK[moviehandle].height * 1.5 > win->maxTextureSize) PsychErrorExitMsg(PsychError_user, "Videoframe size too big for this graphics card and pixelFormat! Please retry with a pixelFormat of 4 in 'OpenMovie'.");
             
+            // Byte alignment: Assume no alignment for now:
+            out_texture->textureByteAligned = 1;
+
             // Create planar "I420 inside L8" texture:
             PsychCreateTexture(out_texture);
             
@@ -1792,16 +1805,19 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             out_texture->nrchannels = 3;
             
             // And 24 bpp depth:
-            out_texture->depth = 24;
-            
-            // Byte alignment: Assume no alignment for now:
-            out_texture->textureByteAligned = 1;
+            out_texture->depth = 24;            
         }
         else {
             // Let PsychCreateTexture() do the rest of the job of creating, setting up and
             // filling an OpenGL texture with content:
             PsychCreateTexture(out_texture);
         }
+
+        // NULL-out the texture memory pointer after PsychCreateTexture(). This is not strictly
+        // needed, as PsychCreateTexture() did it already, but we add it here as an annotation
+        // to make it obvious during code correctness review that we won't touch or free() the
+        // video memory buffer anymore, which is owned and only memory-managed by GStreamer:
+        out_texture->textureMemory = NULL;
 
         // After PsychCreateTexture() the cached texture object from our cache is used
         // and no longer available for recycling. We mark the cache as empty:
@@ -1897,11 +1913,10 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 }
 
 /*
- *  PsychGSFreeMovieTexture() - Release texture memory for a Quicktime texture.
+ *  PsychGSFreeMovieTexture() - Release texture memory for a texture.
  *
  *  This routine is called by PsychDeleteTexture() in PsychTextureSupport.c
- *  It performs the special cleanup necessary for Quicktime created textures.
- *  As this ain't Quicktime but GStreamer there ain't nothing to do for us.
+ *  It performs the special cleanup necessary for cached movie textures.
  */
 void PsychGSFreeMovieTexture(PsychWindowRecordType *win)
 {

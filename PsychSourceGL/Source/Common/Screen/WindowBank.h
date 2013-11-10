@@ -143,12 +143,13 @@ TO DO:
 #define kPsychIsEGLWindow              4096 // 'specialflags' setting 4096: This window is living on a EGL backend (X11/Wayland/GBM/Android/...)
 #define kPsychSurfacelessContexts     16384 // 'specialflags' setting 16384: This windows main context and userspace contexts must not attach to windowing system framebuffer surfaces.
 #define kPsychDontDeleteOnClose   (1 << 17) // 'specialflags' setting 2^17: Do not close this texture/offscreen window on a call to Screen('Close'), only if explicitely closed by handle.
+#define kPsychNeedPostSwapLockedFlush (1 << 18) // 'specialflags' setting 2^18: Window needs display lock protected pixelwrite+flush on framebuffer immediately after bufferswap.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536. --> Flags of 2^17 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536, 2^17. --> Flags of 2^18 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536, 2^17, 2^18. --> Flags of 2^19 and higher are available...
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*	PtrPsychHookFunction;
@@ -207,15 +208,14 @@ typedef struct{
         CGLPixelFormatObj	pixelFormatObject;
 		CGLContextObj		glusercontextObject;    // OpenGL context for userspace rendering code, e.g., moglcore...
 		CGLContextObj		glswapcontextObject;    // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
-        CVOpenGLTextureRef  QuickTimeGLTexture;     // Used for textures returned by movie routines in PsychMovieSupport.c
         void*				deviceContext;          // Pointer to an AGLContext object, or a NULL-pointer.
-		WindowRef			windowHandle;			// Handle for Carbon + AGL window when using windowed mode. (NULL in non-windowed mode).
-        #ifdef __LP64__
+        // NSWindow* type stored in void* to avoid "Cocoa/Objective-C pollution" in this header file.
+        void*               windowHandle;			// Handle for Cocoa window when using windowed mode. (NULL in non-windowed mode).
+
         // NSOpenGLContext* type stored in void* to avoid "Cocoa/Objective-C pollution" in this header file.
         void*    nsmasterContext;        // Cocoa OpenGL master context.
         void*    nsswapContext;          // Cocoa OpenGL async swap context.
         void*    nsuserContext;          // Cocoa OpenGL userspace rendering context.
-        #endif
 } PsychTargetSpecificWindowRecordType;
 #endif 
 
@@ -228,8 +228,6 @@ typedef struct{
   PIXELFORMATDESCRIPTOR   pixelFormatObject;  // The context's pixel format object.
   HGLRC					  glusercontextObject;	   // OpenGL context for userspace rendering code, e.g., moglcore...
   HGLRC                   glswapcontextObject;    // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
-  CVOpenGLTextureRef      QuickTimeGLTexture; // Used for textures returned by movie routines in PsychMovieSupport.c
-  // CVOpenGLTextureRef is not ready yet. Its typedefd to a void* to make the compiler happy.
 } PsychTargetSpecificWindowRecordType;
 #endif 
 
@@ -245,8 +243,6 @@ typedef struct {
   Window                    xwindowHandle;       // Associated X-Window if any.
   struct waffle_context*	glusercontextObject; // OpenGL context for userspace rendering code, e.g., moglcore...
   struct waffle_context*	glswapcontextObject; // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
-  CVOpenGLTextureRef        QuickTimeGLTexture;  // Used for textures returned by movie routines in PsychMovieSupport.c
-  // CVOpenGLTextureRef is not ready yet. Its typedefd to a void* to make the compiler happy.
 } PsychTargetSpecificWindowRecordType;
 #else
 // Definition of Linux/X11 specific information:
@@ -259,8 +255,6 @@ typedef struct{
   Window            xwindowHandle;       // Associated X-Window if any.
   GLXContext		glusercontextObject; // OpenGL context for userspace rendering code, e.g., moglcore...
   GLXContext		glswapcontextObject; // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
-  CVOpenGLTextureRef QuickTimeGLTexture; // Used for textures returned by movie routines in PsychMovieSupport.c
-  // CVOpenGLTextureRef is not ready yet. Its typedefd to a void* to make the compiler happy.
 } PsychTargetSpecificWindowRecordType;
 #endif
 #endif 
@@ -322,6 +316,7 @@ typedef struct _PsychWindowRecordType_{
 		GLint				texturePlanarShader[4]; // Optional GLSL program handles for shaders to apply to planar storage textures - 4 handles for 4 possible channel counts.
         GLint               textureI420PlanarShader; // Optional GLSL program handle for shader to convert a YUV-I420 planar texture into a standard RGBA8 texture.
         GLint               textureI800PlanarShader; // Optional GLSL program handle for shader to convert a Y8-I800 planar texture into a standard RGBA8 texture.
+        GLint               multiSampleFetchShader; // Optional GLSL program handler for shader to fetch from multisample texture.
 
         psych_bool          needsViewportSetup;     // Set on userspace OpenGL contexts of onscreen windows to signal need for glViewport setup and other one-time
                                                     // stuff on first Screen('BeginOpenGL'). Also (ab)used for textures and offscreen windows to track "dirty" state.
@@ -378,6 +373,7 @@ typedef struct _PsychWindowRecordType_{
 	int    loadGammaTableOnNextFlip;	// Type of upload operation: 0 = None, 1 = Load on next Flip via OS gamma table routines, then reset flag.
 	
 	// Settings for the image processing and hook callback pipeline: See PsychImagingPipelineSupport.hc for definition and implementation:
+	int						applyColorRangeToDoubleInputMakeTexture; // Should colorRange also affect uint8 textures created from double input in Screen('MakeTexture')?
 	double					colorRange;								// Maximum allowable color component value. See SCREENColorRange.c for explanation.
 	GLuint					unclampedDrawShader;					// Handle of GLSL shader object for drawing of non-texture stims without vertex color clamping. Zero by default.
 	GLuint					defaultDrawShader;						// Default GLSL shader object for drawing of non-texture stims. Zero by default.
@@ -433,7 +429,7 @@ typedef struct _PsychWindowRecordType_{
 	GLuint					swapGroup;								// Swap group handle of swap group for this window, zero if none assigned.
 	GLuint					swapBarrier;							// Swap barrier handle of swap barrier for this window, zero if none assigned.
     
-    GLint                   panelFitterParams[8];                   // Parameters used for the glBlitFramebuffer call during panel scaling.
+    GLint                   panelFitterParams[11];                  // Parameters used for panel fitting.
 	
 	// Used only when this structure holds a window:
 	// CAUTION FIXME TODO: Due to some pretty ugly circular include dependencies in the #include chain of

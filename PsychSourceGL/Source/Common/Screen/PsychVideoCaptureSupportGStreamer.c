@@ -75,13 +75,10 @@
 #include <gst/interfaces/colorbalance.h>
 
 // Compile-Time enable GStreamer encoding profile support by default on
-// MacOSX and on 64-Bit Windows. These are the platforms where we know
+// MacOSX and Windows. These are the platforms where we know
 // for sure that the installed GStreamer runtimes support this feature,
-// because 64-Bit Windows == GStreamer-SDK and OSX == GStreamer-SDK or
+// because Windows == GStreamer-SDK and OSX == GStreamer-SDK or
 // Homebrews GStreamer. Both Homebrew installs and the SDK do support this.
-//
-// 32-Bit Windows requires the OSSBuilds GStreamer which is too old to support this, but
-// there we use camerabin1 + old setup path anyway, so no loss.
 //
 // Linux is mixed: Recent distros support it, old ones don't. I'm simply too lazy atm.
 // to implement dynamic detection of support and dynamic linking on Linux, and use of
@@ -90,7 +87,7 @@
 // default to camerabin1 capture+recording and old style setup on Linux and safe ourselves
 // a bit of hassle. Once we support a GStreamer V1.0 multi-media backend, we can implement
 // this unconditionally without any pain or compatibility issues.
-#if (PSYCH_SYSTEM == PSYCH_OSX) || ((PSYCH_SYSTEM == PSYCH_WINDOWS) && (defined(__LP64__) || defined(_M_IA64) || defined(_WIN64)))
+#if (PSYCH_SYSTEM == PSYCH_OSX) || (PSYCH_SYSTEM == PSYCH_WINDOWS)
 #define PTB_USE_GSTENCODINGPROFILES 1
 #endif
 
@@ -147,8 +144,8 @@ typedef struct {
 	int recording_active;             // Movie file recording requested?
 	unsigned int recordingflags;      // recordingflags, as passed to 'OpenCaptureDevice'.
 	PsychRectType roirect;            // Region of interest rectangle - denotes subarea of full video capture area.
-	double avg_decompresstime;        // Average time spent in Quicktime/Sequence Grabber decompressor.
-	double avg_gfxtime;               // Average time spent in GWorld --> OpenGL texture conversion and statistics.
+	double avg_decompresstime;        // Average time spent in decompressor.
+	double avg_gfxtime;               // Average time spent in buffer --> OpenGL texture conversion and statistics.
 	int nrgfxframes;                  // Count of fetched textures.
 	char* targetmoviefilename;        // Filename of a movie file to record.
 	char* cameraFriendlyName;         // Camera friendly device name.
@@ -216,8 +213,7 @@ void PsychGSCheckInit(const char* engineName)
             // OSX linker sets the symbol to NULL if dynamic weak linking during runtime failed.
             // On failure we'll output some helpful error-message instead:
             #if PSYCH_SYSTEM == PSYCH_WINDOWS
-                if (((NULL == LoadLibrary("libgstreamer-0.10.dll")) || (NULL == LoadLibrary("libgstapp-0.10.dll"))) &&
-                    ((NULL == LoadLibrary("libgstreamer-0.10-0.dll")) || (NULL == LoadLibrary("libgstapp-0.10-0.dll")))) {
+                if ((NULL == LoadLibrary("libgstreamer-0.10-0.dll")) || (NULL == LoadLibrary("libgstapp-0.10-0.dll"))) {
             #endif
             #if PSYCH_SYSTEM == PSYCH_OSX
                 if (NULL == gst_init_check) {
@@ -231,26 +227,34 @@ void PsychGSCheckInit(const char* engineName)
                 printf("PTB-ERROR: Another reason could be that you have GStreamer version 1.0 instead of the required\n");
                 printf("PTB-ERROR: version 0.10 installed. The version 1 series is not yet supported.\n\n");
                 #if PSYCH_SYSTEM == PSYCH_WINDOWS
+                    printf("PTB-ERROR: Please also note that on 32-Bit Matlab for MS-Windows, as of September 2013,\n");
+                    printf("PTB-ERROR: you will need to install the GStreamer-SDK from www.gstreamer.com, not the\n");
+                    printf("PTB-ERROR: older GStreamer runtime from OSSBuilds. The old OSSBuilds GStreamer, which\n");
+                    printf("PTB-ERROR: was required before August 2013, will no longer work with 32-Bit Matlab on\n");
+                    printf("PTB-ERROR: Windows! Please uninstall the old OSSBuilds version and install the SDK version\n");
+                    printf("PTB-ERROR: if GStreamer worked for you before.\n");
                     printf("PTB-ERROR: The system returned error code %d.\n", GetLastError());
                 #endif
                 printf("PTB-ERROR: Please read the help by typing 'help GStreamer' for installation and troubleshooting\n");
                 printf("PTB-ERROR: instructions.\n\n");
                 printf("PTB-ERROR: Due to failed GStreamer initialization, the %s engine is disabled for this session.\n\n", engineName);
 
-                // Quicktime supported on this setup?
-                #if (PSYCH_SYSTEM != PSYCH_LINUX) && defined(PSYCHQTAVAIL)
-                    // Yes. Give user a hint about this alternative, at least for movie playback or video capture,
-                    // but not for movie writing:
-                    if (NULL == strstr(engineName, "movie writing")) {
-                        printf("PTB-TIP: As a stop-gap measure until you've installed or fixed GStreamer on your system,\n");
-                        printf("PTB-TIP: you could try to use the legacy Quicktime based %s engine instead via use of the\n", engineName);
-                        printf("PTB-TIP: override Screen('Preference', ...); switches 'DefaultVideoCaptureEngine' and\n");
-                        printf("PTB-TIP: 'OverrideMultimediaEngine'.\n\n");
-                    }
-                #endif
                 PsychErrorExitMsg(PsychError_user, "GStreamer initialization failed due to library loading problems. Aborted.");
             }
         #endif
+
+		// Can't pass environment vars from Matlab to Screen+GStreamer on a MS-Windows
+		// build against MSVCRT.dll, so we need a hack to pass a debug level env var to
+		// GStreamer. Set GST_DEBUG env var from within Screen's DLL boundaries if verbosity > 20,
+		// as this setting should transfer to the GStreamer dll's, which are also linked against msvcrt.dll:
+		#if (PSYCH_SYSTEM == PSYCH_WINDOWS) && defined(__MSVCRT__)
+		if (PsychPrefStateGet_Verbosity() > 20) {
+			char dbglvl[10];
+			sprintf(dbglvl, "%i", PsychPrefStateGet_Verbosity() - 20);
+			_putenv_s("GST_DEBUG", dbglvl);
+			printf("PTB-DEBUG: Set GStreamer GST_DEBUG=%s from within Screen() dll boundaries.\n", dbglvl);
+		}
+		#endif
 
 		// Initialize GStreamer:
 		if(!gst_init_check(NULL, NULL, &error)) {
@@ -2236,32 +2240,38 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     plugin_name[0] = 0;
     prop_name[0] = 0;
 
-	// Init capturehandle to none:
-	*capturehandle = -1;
-	
-	// Make sure GStreamer is ready:
-	PsychGSCheckInit("videocapture");
-	
-	// Map deviceIndex of requested video source to device name:
-	if (deviceIndex >= 0) {
-		// Get device name for given deviceIndex from video device
-		// enumeration (or NULL if no such device):
-		theDevice = PsychGSEnumerateVideoSources(-1, deviceIndex);
-		if (NULL == theDevice) {
-			printf("PTB-ERROR: There isn't any video capture device available for provided deviceIndex %i.\n", deviceIndex);
-			PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex provided. No such video source. Aborted.");
-		}
-		
-		// Assign name:
-		sprintf(device_name, "%s", theDevice->deviceHandle);
-		sprintf(plugin_name, "%s", theDevice->deviceVideoPlugin);
-		sprintf(prop_name, "%s", theDevice->deviceSelectorProperty);
-		if (theDevice->deviceURI > 0) {
-			sprintf(device_name, "%llu", theDevice->deviceURI);
-		}
+    // Init capturehandle to none:
+    *capturehandle = -1;
+    
+    // Make sure GStreamer is ready:
+    PsychGSCheckInit("videocapture");
 
-		if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Trying to open video capture device with deviceIndex %i [%s].\n", deviceIndex, device_name);
-	}
+    // As a side effect of some PsychGSCheckInit() some broken GStreamer runtimes can change
+    // the OpenGL context binding behind our back to some GStreamer internal context.
+    // Make sure our own context is bound after return from PsychGSCheckInit() to protect
+    // against the state bleeding this would cause:
+    if (win) PsychSetGLContext(win);
+
+    // Map deviceIndex of requested video source to device name:
+    if (deviceIndex >= 0) {
+      // Get device name for given deviceIndex from video device
+      // enumeration (or NULL if no such device):
+      theDevice = PsychGSEnumerateVideoSources(-1, deviceIndex);
+      if (NULL == theDevice) {
+	printf("PTB-ERROR: There isn't any video capture device available for provided deviceIndex %i.\n", deviceIndex);
+	PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex provided. No such video source. Aborted.");
+      }
+      
+      // Assign name:
+      sprintf(device_name, "%s", theDevice->deviceHandle);
+      sprintf(plugin_name, "%s", theDevice->deviceVideoPlugin);
+      sprintf(prop_name, "%s", theDevice->deviceSelectorProperty);
+      if (theDevice->deviceURI > 0) {
+	sprintf(device_name, "%llu", theDevice->deviceURI);
+      }
+      
+      if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Trying to open video capture device with deviceIndex %i [%s].\n", deviceIndex, device_name);
+    }
 
     // Slot 'slotid' will contain the record for our new capture object:
 
@@ -2820,6 +2830,45 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         theight = -1;
     }
 
+    // Should we disable application of colorcaps as filter-caps to video source. A flag of 4096
+    // says so. We would want to disable this if we want maximum acceptance of different color formats
+    // from the video source, e.g., to accomodate exotic video sources, at the expense of some performance
+    // loss due to need of an extra colorspace / color format conversion step down the pipeline:
+    if (recordingflags & 4096) {
+        // Yes:
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: OpenVideoCapture: Disabling use of colorcaps as filter-caps. Lower performance, but higher compatibility.\n");
+        
+        // Disable for camerabin1 happens below...
+        if (usecamerabin == 2) {
+            // Disable on camerabin2: We do this by deleting colorcaps and creating them as empty
+            // caps object, so they don't impose restriction on color encoding if they get
+            // applied downstream, e.g., as viewfinder-caps or capture-caps:
+            gst_caps_unref(colorcaps);
+            
+            // No size/resolution specified?
+            if (twidth == -1 && theight == -1) {
+                // Totally unconstrained format:
+                colorcaps = gst_caps_new_any();
+            }
+            else {
+                // Non-Default resolution requested. Need to set a bit more explicit caps
+                // for this to work -- at least basic color format:
+                if (reqdepth == 3 || reqdepth == 4) {
+                    // RGB8 or RGBA8:
+                    colorcaps = gst_caps_new_simple("video/x-raw-rgb", NULL);
+                }
+                else if (reqdepth == 1 || (reqdepth == 2 && capdev->pixeldepth != 12 && capdev->pixeldepth != 16)) {
+                    // GRAY8:
+                    colorcaps = gst_caps_new_simple("video/x-raw-gray", NULL);
+                }
+                else {
+                    // UYVY or I420:                    
+                    colorcaps = gst_caps_new_simple("video/x-raw-yuv", NULL);
+                }
+            }
+        }
+    }
+
     // Assign our special appsink 'videosink' as video-sink of the pipeline:
     if (!usecamerabin) {
         if (capdev->recording_active) PsychErrorExitMsg(PsychError_user, "Video recording requested, but this isn't supported on this setup, sorry.");
@@ -2838,8 +2887,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		    // Pure video capture, no recording: Optimize pipeline for this case:
 		    g_object_set(G_OBJECT(camera), "flags", (usecamerabin == 1) ? 1+2+4 : 0, NULL);
             
-            // Setup colorcaps for camerabin1, do it later for camerabin2:
-            if (usecamerabin == 1) g_object_set(G_OBJECT(camera), "filter-caps", colorcaps, NULL);
+            // Setup colorcaps for camerabin1, unless prevented by recordingflags 4096, do it later for camerabin2:
+            if ((usecamerabin == 1) && !(recordingflags & 4096)) g_object_set(G_OBJECT(camera), "filter-caps", colorcaps, NULL);
             
 	    } else {
 		    // Video recording (with optional capture). Setup pipeline:
@@ -4215,9 +4264,6 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 	    PsychMakeRect(out_texture->rect, 0, 0, w, h);    
         PsychCopyRect(out_texture->clientrect, out_texture->rect);
 
-	    // Set NULL - special texture object as part of the PTB texture record:
-	    out_texture->targetSpecific.QuickTimeGLTexture = NULL;
-	    
 	    // Set texture orientation as if it were an inverted Offscreen window: Upside-down.
 	    out_texture->textureOrientation = 3;
 	    
@@ -4287,6 +4333,9 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
             // Check if 1.5x height texture fits within hardware limits of this GPU:
             if (h * 1.5 > win->maxTextureSize) PsychErrorExitMsg(PsychError_user, "Videoframe size too big for this graphics card and pixelFormat! Please retry with a pixeldepth of 4 in 'OpenVideoCapture'.");
             
+            // Byte alignment: Assume no alignment for now:
+            out_texture->textureByteAligned = 1;
+            
             // Create planar "I420 inside L8" texture:
             PsychCreateTexture(out_texture);
             
@@ -4308,15 +4357,15 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
             
             // And 24 bpp depth:
             out_texture->depth = 24;
-            
-            // Byte alignment: Assume no alignment for now:
-            out_texture->textureByteAligned = 1;
         }
         else {
             // Let PsychCreateTexture() do the rest of the job of creating, setting up and
             // filling an OpenGL texture with content:
             PsychCreateTexture(out_texture);
         }
+
+        // This NULL-out is not strictly needed (done already in PsychCreateTexture()), just for simpler code review:
+        out_texture->textureMemory = NULL;
 
         // Immediate conversion of texture into normalized orientation and format requested
         // by usercode?

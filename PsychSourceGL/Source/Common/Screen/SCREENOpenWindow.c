@@ -194,8 +194,13 @@ PsychError SCREENOpenWindow(void)
 		PsychGetGlobalScreenRect(screenNumber, screenrect);
 		if (PsychMatchRect(screenrect, rect)) useAGL=FALSE;
 
-		// Override for use on f$%#$Fd OS/X 10.5.3 - 10.5.6 with NVidia GF 8800 GPU's:
-		if (PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLCompositorForFullscreenWindows) useAGL = TRUE;
+		// Override for use with Quartz compositor: Must not capture/release screen, therefore
+        // set useAGL = true to prevent screen capture/release:
+		if ((PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLCompositorForFullscreenWindows) ||
+            (PsychPrefStateGet_WindowShieldingLevel() < 2000) ||
+            (PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLForFullscreenWindows)) {
+            useAGL = TRUE;
+        }
 	}
 	else {
 		// Non OS/X system: Do not use AGL ;-)
@@ -559,6 +564,10 @@ PsychError SCREENOpenWindow(void)
         windowRecord->panelFitterParams[5] = 0; // dstY0
         windowRecord->panelFitterParams[6] = (int) windowRecord->fboTable[windowRecord->inputBufferFBO[0]]->width;  // dstX1
         windowRecord->panelFitterParams[7] = (int) windowRecord->fboTable[windowRecord->inputBufferFBO[0]]->height; // dstY1
+        
+        windowRecord->panelFitterParams[8] = 0; // rotation angle.
+        windowRecord->panelFitterParams[9] = windowRecord->panelFitterParams[6]/2; // rotation center X.
+        windowRecord->panelFitterParams[10]= windowRecord->panelFitterParams[7]/2; // rotation center Y.
     }
 
 	// On OS-X, if we are in quad-buffered frame sequential stereo mode, we automatically generate
@@ -657,10 +666,13 @@ PsychError SCREENPanelFitter(void)
         "user to make sure source and destination framebuffer have already the same aspect ratio.\n"
         "This function allows to define new src and dst rectangles, thereby implicitely defining scaling "
         "and filtering properties. It optionally takes new settings in 'newParams' and returns old settings "
-        "in 'oldParams'. The parameters are 8-element vectors of format\n"
-        "params = [srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1];\n"
+        "in 'oldParams'. The function also allows to define a rotation angle for rotation of the output image. "
+        "The parameters are 11-element vectors of format\n"
+        "params = [srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, angle, rotCX, rotCY];\n"
         "These tuples define top-left and bottom-right (x,y) corners of the source and destination "
-        "rectangles for the (scaled)blit.\n"
+        "rectangles for the (scaled)blit, and the rotation 'angle' if display rotation is requested. "
+        "The angle and rotCX and rotCY parameters are optional and assumed to be zero if omitted, ie., "
+        "no rotation. rotCX and rotCY define the center of rotation if a rotation is requested.\n"
         "You usually won't call this function directly, but leave the job to a higher-level setup "
         "routine, e.g., PsychImaging() and its 'UsePanelFitter' setup code.\n\n";
     static char seeAlsoString1[] = "OpenWindow";
@@ -682,23 +694,23 @@ PsychError SCREENPanelFitter(void)
     PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
     
     // Return optional fitter settings:
-    PsychAllocOutDoubleMatArg(1, FALSE, 1, 8, 1, &outParams);
-    for (i = 0; i < 8; i++) outParams[i] = (double) windowRecord->panelFitterParams[i];
+    PsychAllocOutDoubleMatArg(1, FALSE, 1, 11, 1, &outParams);
+    for (i = 0; i < 11; i++) outParams[i] = (double) windowRecord->panelFitterParams[i];
     
     // Get optional new panelFitter settings:
     if (PsychAllocInIntegerListArg(2, FALSE, &count, &newParams)) {
-        if (count != 8) PsychErrorExitMsg(PsychError_user, "'newParams' must be a vector with 8 integer elements.");
+        if ((count < 8) || (count > 11)) PsychErrorExitMsg(PsychError_user, "'newParams' must be a vector with 8 to 11 integer elements.");
         for (i = 0; i < count; i++) windowRecord->panelFitterParams[i] = newParams[i];
 
-        // Fallback path and problematic new config setting?
-        if (!(windowRecord->gfxcaps & kPsychGfxCapFBOBlit) && (PsychPrefStateGet_Verbosity() > 1) &&
+        // Fallback path needed (due to lack of FBO blit or non-zero rotation angle) and problematic new config setting?
+        if ((!(windowRecord->gfxcaps & kPsychGfxCapFBOBlit) || (windowRecord->panelFitterParams[8] != 0)) && (PsychPrefStateGet_Verbosity() > 2) &&
             (windowRecord->panelFitterParams[0] != 0 || windowRecord->panelFitterParams[1] != 0 ||
              windowRecord->panelFitterParams[2] != (int) PsychGetWidthFromRect(windowRecord->clientrect) ||
              windowRecord->panelFitterParams[3] != (int) PsychGetHeightFromRect(windowRecord->clientrect))) {
             // Fallback path for panelFitter in use and sourceRegion is not == full clientRect. This is an
             // unsupported setting with the fallback, which will cause wrong results. Warn user:
-            printf("PTB-WARNING: Selected a non-default srcRegion in Screen('PanelFitter'). This is not supported when\n");
-            printf("PTB-WARNING: the fallback path for the panel fitter is in use. Expect distorted visual stimuli!\n");
+            printf("PTB-INFO: Non-default 'srcRegion' in call to Screen('PanelFitter') ignored. This is not supported when the\n");
+            printf("PTB-INFO: fallback path or display rotation for the panel fitter is in use.\n");
         }
     }
 

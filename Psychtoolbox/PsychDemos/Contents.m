@@ -78,6 +78,7 @@
 %    NomogramDemo            - Compute photoreceptor nomograms.
 %    OldNewRecogExp          - A full old-new recognition experiment.
 %    OpenGL4MatlabDemos      - Subfolder: Demos on how to use MOGL OpenGL functions.
+%    PanelFitterDemo         - Demonstrate use of the builtin panel fitter.
 %    ProceduralGaborDemo     - Demo for fast drawing of Gabors via procedural textures.
 %    ProceduralGarboriumDemo - Same as GarboriumDemo, just with procedural gabor drawing.
 %    ProceduralNoiseDemo     - Demo for fast drawing of noise patches via procedural texturing.
@@ -85,6 +86,7 @@
 %    ReceivingTriggerFromSerialPortDemo - Template for asynchronous trigger collection and timestamping from serial port.
 %    RenderDemo              - Render CIE xyY as a color patch.
 %    SadowskiDemo            - Shows the "Sadowski" color afterimage effect.
+%    SimpleSoundScheduleDemo - Simple demo for basic use of sound schedules with PsychPortAudio.
 %    SimpleVoiceTriggerDemo  - Demo of a simple voice trigger with PsychPortAudio.
 %    SpriteDemo              - Animates an image that follows the mouse.
 %    StereoDemo              - Drive stereo-displays e.g., CrystalEyes.

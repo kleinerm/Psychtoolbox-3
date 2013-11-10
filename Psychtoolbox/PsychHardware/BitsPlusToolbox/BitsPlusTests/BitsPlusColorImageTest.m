@@ -4,6 +4,11 @@
 %
 % 8/8/04	dhb		Started it.
 % 18/4/05   ejw     Converted it to run with OSX version of Psychtoolbox
+% 10/24/13  dhb     Pass scaling args to packing routine and truncate test image.
+%                   These were needed to make this work with my Bits++ in Color++ mode
+%                   today.  I think the cropping has to do with the spatial res of my
+%                   monitor.  How this ever worked without the scaling args, though,
+%                   is unclear to me.
 
 % Clear
 clear all;
@@ -18,7 +23,8 @@ fprintf('Loading a high dynamic range test image\n');
 load colorPlusTest
 
 fprintf('Converting to color++ format\n');
-packedImage = BitsPlusPackColorImage(theImage,0);
+theImage = theImage(1:512,1:512,:);
+packedImage = BitsPlusPackColorImage(theImage,1,1);
 %packedImage = BitsPlusPackColorImage(temp1,0,0);
 
 % Show the image
