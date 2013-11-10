@@ -1092,11 +1092,31 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             // It will start capture on a free running cam or a soft-synced master camera.
             // It will start capture of a master camera and broadcast the start signal to all slave
             // cameras with bus-sync.
-            if(PsychPrefStateGet_Verbosity() > 3) {
+            if ((capdev->syncmode > 0) && (PsychPrefStateGet_Verbosity() > 3)) {
                 printf("PTB-DEBUG: Enabling cameras ISO transmission in syncmode %i -- Start of capture...\n", capdev->syncmode);
-                if (capdev->syncmode & kPsychIsBusSynced) printf("PTB-DEBUG: Bus synced operation.\n");
-                if (capdev->syncmode & kPsychIsSoftSynced) printf("PTB-DEBUG: Software synced operation.\n");
-                if (capdev->syncmode & kPsychIsHwSynced) printf("PTB-DEBUG: Hardware synced operation. Start of %s\n", (capdev->syncmode & kPsychIsSyncMaster) ? "master" : "slave");
+                if (capdev->syncmode & kPsychIsBusSynced) printf("PTB-DEBUG: Bus synced operation.");
+                if (capdev->syncmode & kPsychIsSoftSynced) printf("PTB-DEBUG: Software synced operation.");
+                if (capdev->syncmode & kPsychIsHwSynced) printf("PTB-DEBUG: Hardware synced operation.");
+                printf(" Start of %s.\n", (capdev->syncmode & kPsychIsSyncMaster) ? "master" : "slave");
+            }
+
+            if (capdev->syncmode & kPsychIsHwSynced) {
+                // Disable use of external trigger signals on both master and slaves to start with:
+                if (dc1394_external_trigger_set_power(capdev->camera, DC1394_OFF)) {
+                    // Failed! Shutdown DMA capture engine again:
+                    dc1394_capture_stop(capdev->camera);                    
+                    PsychErrorExitMsg(PsychError_user, "Unable to disable trigger reception on camera - Phase I - Start of video capture failed!");
+                }
+
+                // If this is a slave, enable use of external trigger signals now:
+                if (capdev->syncmode & kPsychIsSyncSlave) {
+                    // Now enable trigger reception on slave:
+                    if (dc1394_external_trigger_set_power(capdev->camera, DC1394_ON)) {
+                        // Failed! Shutdown DMA capture engine again:
+                        dc1394_capture_stop(capdev->camera);
+                        PsychErrorExitMsg(PsychError_user, "Unable to enable trigger reception on slave camera - Phase II - Start of video capture failed!");
+                    }
+                }
             }
             
             if (dc1394_video_set_transmission(capdev->camera, DC1394_ON) !=DC1394_SUCCESS) {
@@ -1213,6 +1233,11 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                             }
                         }
                     }
+                }
+
+                if (capdev->syncmode & kPsychIsHwSynced) {
+                    // Disable use of external trigger signals:
+                    dc1394_external_trigger_set_power(capdev->camera, DC1394_OFF);
                 }
             }
 
@@ -1527,8 +1552,9 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
     dc1394featureset_t features;
     dc1394feature_t feature;
     dc1394bool_t present;
+    dc1394error_t err;
     unsigned int minval, maxval, intval, oldintval;
-    int triggercount;
+    int triggercount, i;
 
     double oldvalue = DBL_MAX; // Initialize return value to the "unknown/unsupported" default.
     psych_bool assigned = false;
@@ -1594,9 +1620,16 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         return(0);
     }
     
+    // Return current firewire bus bandwidth usage of camera::
+    if (strcmp(pname, "GetBandwidthUsage")==0) {
+        dc1394_video_get_bandwidth_usage(capdev->camera, (uint32_t *) &intval);
+        PsychCopyOutDoubleArg(1, FALSE, intval);
+        return(0);
+    }
+    
     // Get/Set synchronization mode for multi-camera operation:
     if (strcmp(pname, "SyncMode")==0) {
-        PsychCopyOutDoubleArg(1, FALSE, capdev->syncmode);
+        oldvalue = capdev->syncmode;
         if (value != DBL_MAX) {
             // Sanity check syncmode spec:
 
@@ -1613,10 +1646,24 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
                     PsychErrorExitMsg(PsychError_user, "Invalid syncmode provided: Camera must be either master or slave. Can't be none of both!");
                 }
 
-                // Must be either soft-, bus-, or hw- synced, but not none or multiple of all:
+                // Must be either soft-, bus-, or hw- synced, but not none or multiple of all if it is a sync slave.
+                // Must be at least one of soft-, bus- or hw- synced if it is a sync master:
                 oldintval = intval & (kPsychIsSoftSynced | kPsychIsBusSynced | kPsychIsHwSynced);
-                if ((oldintval != kPsychIsSoftSynced) && (oldintval != kPsychIsBusSynced) && (oldintval != kPsychIsHwSynced)) {
+                if (((intval & kPsychIsSyncMaster) && !oldintval) || ((intval & kPsychIsSyncSlave) && (oldintval != kPsychIsSoftSynced) && (oldintval != kPsychIsBusSynced) && (oldintval != kPsychIsHwSynced))) {
                     PsychErrorExitMsg(PsychError_user, "Invalid syncmode provided: Missing sync strategy, either soft-, or bus-, or hw-synced!");
+                }
+
+                // If this is a cam that should take on the role of a hardware synced slave, check if
+                // this cam is actually capable of receiving hardware trigger signals:
+                if ((intval & kPsychIsHwSynced) && (intval & kPsychIsSyncSlave)) {
+                    err = dc1394_feature_is_present(capdev->camera, DC1394_FEATURE_TRIGGER, &present);
+                    if (err || !present) {
+                        // Camera is not hw sync capable: Do not change the SyncMode but no-op. A successive
+                        // query of 'SyncMode' would report the failure to change to hw-synced mode, so the
+                        // calling usercode can search for alternatives:
+                        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: No hardware trigger support on cam %i. Ignored hw-sync setting for slave cam.\n", capturehandle);
+                        return(oldvalue);
+                    }
                 }
             }
             
@@ -1624,9 +1671,126 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
             capdev->syncmode = (int) intval;
         }
 
-        return(0);
+        return(oldvalue);
     }
 
+    // Set trigger mode:
+    // Note: Videolab used DC1394_TRIGGER_MODE_0 aka DC1394_TRIGGER_MODE_MIN aka 'TriggerMode' zero,
+    // so exposure duration is controlled by programmable shutter time, whereas start of exposure
+    // is controlled by trigger signal.
+    if (strcmp(pname, "TriggerMode")==0) {
+        dc1394trigger_mode_t mode;
+
+        // Double-Check the camera supports hw triggers:
+        err = dc1394_feature_is_present(capdev->camera, DC1394_FEATURE_TRIGGER, &present);
+        if (!err && present) {
+            err = dc1394_external_trigger_get_mode(capdev->camera, &mode);
+        }
+        else err = DC1394_FUNCTION_NOT_SUPPORTED;
+        
+        if (err) {
+            if(PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Requested capture device setting %s not available on cam %i. Ignored.\n", pname, capturehandle);
+            return(oldvalue);
+        }
+        else {
+            oldvalue = (unsigned int) mode - (unsigned int) DC1394_TRIGGER_MODE_MIN;
+
+            if (value != DBL_MAX) {
+                mode = DC1394_TRIGGER_MODE_MIN + (dc1394trigger_mode_t) intval;
+                if (mode > DC1394_TRIGGER_MODE_MAX || mode < DC1394_TRIGGER_MODE_MIN) PsychErrorExitMsg(PsychError_user, "Invalid TriggerMode provided: Outside valid range!");
+                err = dc1394_external_trigger_set_mode(capdev->camera, mode);
+                if (err) PsychErrorExitMsg(PsychError_system, "Failed to set current trigger mode!");
+            }
+
+            return(oldvalue);
+        }
+    }
+
+    // Set trigger source:
+    // Note: Videolab used DC1394_TRIGGER_SOURCE_0 aka DC1394_TRIGGER_SOURCE_MIN aka TriggerSource zero.
+    // This source corresponds to port 0 == Pin 5 of the RJ-45 connector on a Basler camera.
+    // Source 1 = Port 1 = Pin 9, Source 2 = Port 2 = Pin 8, Source 3 = Port 3 = Pin 10.
+    if (strcmp(pname, "TriggerSource")==0) {
+        dc1394trigger_source_t source;
+
+        // Double-Check the camera supports hw triggers:
+        err = dc1394_feature_is_present(capdev->camera, DC1394_FEATURE_TRIGGER, &present);
+        if (!err && present) {
+            err = dc1394_external_trigger_get_source(capdev->camera, &source);
+        }
+        else err = DC1394_FUNCTION_NOT_SUPPORTED;
+        
+        if (err) {
+            if(PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Requested capture device setting %s not available on cam %i. Ignored.\n", pname, capturehandle);
+            return(oldvalue);
+        }
+        else {        
+            oldvalue = (unsigned int) source - (unsigned int) DC1394_TRIGGER_SOURCE_MIN;
+
+            if (value != DBL_MAX) {
+                source = DC1394_TRIGGER_SOURCE_MIN + (dc1394trigger_source_t) intval;
+                if (source > DC1394_TRIGGER_SOURCE_MAX || source < DC1394_TRIGGER_SOURCE_MIN) PsychErrorExitMsg(PsychError_user, "Invalid TriggerSource provided: Outside valid range!");
+                err = dc1394_external_trigger_set_source(capdev->camera, source);
+                if (err) PsychErrorExitMsg(PsychError_system, "Failed to set current trigger source!");
+            }
+
+            return(oldvalue);
+        }
+    }
+
+    // Retrieve list of supported trigger sources:
+    if (strcmp(pname, "GetTriggerSources")==0) {
+        dc1394trigger_sources_t sources;
+        double *outsources;
+
+        // Double-Check the camera supports hw triggers:
+        err = dc1394_feature_is_present(capdev->camera, DC1394_FEATURE_TRIGGER, &present);
+        if (!err && present) {
+            err = dc1394_external_trigger_get_supported_sources(capdev->camera, &sources);
+        }
+        else err = DC1394_FUNCTION_NOT_SUPPORTED;
+        
+        if (err) {
+            if(PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Requested capture device setting %s not available on cam %i. Ignored.\n", pname, capturehandle);
+            return(oldvalue);
+        }
+        
+        PsychAllocOutDoubleMatArg(1, FALSE, 1, sources.num, 0, &outsources);
+        for (i = 0; i < (int) sources.num; i++) *(outsources++) = (double) (sources.sources[i] - DC1394_TRIGGER_SOURCE_MIN);
+        
+        return(0);
+    }
+    
+    // Set trigger polarity:
+    // Note: Videolab used TriggerPolarity zero == DC1394_TRIGGER_ACTIVE_LOW == Trigger on falling edge.
+    if (strcmp(pname, "TriggerPolarity")==0) {        
+        dc1394trigger_polarity_t polarity;
+
+        // Double-Check the camera supports hw triggers:
+        err = dc1394_feature_is_present(capdev->camera, DC1394_FEATURE_TRIGGER, &present);
+        if (!err && present) {
+            err = dc1394_external_trigger_has_polarity(capdev->camera, &present);
+        }
+        else err = DC1394_FUNCTION_NOT_SUPPORTED;
+        
+        if (err || !present) {
+            if(PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to query/set TriggerPolarity on camera %i. Unsupported feature. Ignored.\n", capturehandle);
+            return(oldvalue);
+        }
+        else {
+            err = dc1394_external_trigger_get_polarity(capdev->camera, &polarity);
+            if (err) PsychErrorExitMsg(PsychError_system, "Failed to query trigger polarity!");
+            oldvalue = (polarity == DC1394_TRIGGER_ACTIVE_HIGH) ? 1 : 0;
+
+            if (value != DBL_MAX) {
+                err = dc1394_external_trigger_set_polarity(capdev->camera, (intval > 0) ? DC1394_TRIGGER_ACTIVE_HIGH : DC1394_TRIGGER_ACTIVE_LOW);
+                if (err) PsychErrorExitMsg(PsychError_system, "Failed to set trigger polarity!");
+            }
+
+            return(oldvalue);
+        }
+    }
+    
     if (strstr(pname, "Brightness")!=0) {
         assigned = true;
         feature = DC1394_FEATURE_BRIGHTNESS;
@@ -1762,6 +1926,7 @@ void PsychDCEnumerateVideoSources(int outPos)
     char                  guid[100];
     char                  unit[10];
     char                  deviceName[1024];
+    uint32_t              node, generation;
 
     // Perform first-time init, if needed:
     PsychDCLibInit();
@@ -1788,19 +1953,25 @@ void PsychDCEnumerateVideoSources(int outPos)
             // Open success: Query vendor and model name:
             sprintf(deviceName, "'%s':'%s'", camera->vendor, camera->model);
             PsychSetStructArrayStringElement("DeviceName", i, deviceName, devs);
+
+            // Get node to which the camera is attached, and its current generation count:
+            dc1394_camera_get_node(camera, &node, &generation);
+            sprintf(deviceName, "%x:%x", node, generation);
+            PsychSetStructArrayStringElement("InputHandle", i, deviceName, devs);
+
             // Done with query, release camera:
             dc1394_camera_free(camera);
         }
         else {
             // Open failed: Assign empty DeviceName:
             PsychSetStructArrayStringElement("DeviceName", i, "'UNKNOWN':'UNKNOWN'", devs);
+            PsychSetStructArrayStringElement("InputHandle", i, "", devs);
         }
 
         PsychSetStructArrayDoubleElement("DeviceIndex", i, i, devs);
         PsychSetStructArrayDoubleElement("ClassIndex", i, 7, devs);
         PsychSetStructArrayDoubleElement("InputIndex", i, i, devs);
         PsychSetStructArrayStringElement("ClassName", i, "1394-IIDC", devs);
-        PsychSetStructArrayStringElement("InputHandle", i, "", devs);
         sprintf(unit, "%i", cameras->ids[i].unit);
         PsychSetStructArrayStringElement("Device", i, unit, devs);
         PsychSetStructArrayStringElement("DevicePath", i, "", devs);

@@ -42,6 +42,11 @@ static char synopsisString[] =  "Set video capture parameter 'parameterName' on 
                                 "the capture region of interest (ROI), which can deviate from the ROI requested in "
                                 "Screen('OpenVideoCapture'), depending on the capabilities of the capture device. "
                                 "'GetFramerate' Returns the nominal capture rate of the capture device.\n"
+                                "'GetBandwidthUsage' Returns firewire bandwidth used by camera at current settings in "
+                                "so called bandwidth units. "
+                                "The 1394 bus has 4915 bandwidth units available per cycle. Each unit corresponds to "
+                                "the time it takes to send one quadlet at ISO speed S1600. The bandwidth usage at S400 "
+                                "is thus four times the number of quadlets per packet. In other words, it is complicated.\n"
                                 "'SetNewMoviename=xxx' Will change the name of the videofile used for video "
                                 "recording to xxx. This allows you to change target files for video recordings "
                                 "without the need to close and reopen the capture device. You must stop capture "
@@ -75,7 +80,16 @@ static char synopsisString[] =  "Set video capture parameter 'parameterName' on 
                                 "In any case, for synchronized operation you must always first start capture on all participating slave "
                                 "cameras, then finally on the designated master - which will actually truly start capture of the whole "
                                 "pack. For stopping capture you first stop the master, which will actually stop capture of the whole setup, "
-                                "then all slaves to disengage them.\n";
+                                "then all slaves to disengage them.\n"
+                                "The way trigger signals are used if 'SyncMode' is selected as mode 16 aka hardware sync, can be controlled "
+                                "via the following settings:\n"
+                                "'TriggerMode' The way a trigger signal controls camera capture operation: 0 = Start of exposure is triggered "
+                                "by falling edge of trigger signal, duration of exposure is controlled by shutter setting. 1 = Exposure starts "
+                                "with falling edge and stops with rising edge. Modes 2, 3, 4 and 5 are multiple exposure modes. Modes 6 and 7 "
+                                "are vendor specific modes.\n"
+                                "'TriggerPolarity' 0 = Active low / falling edge. 1 = Active high / rising edge = Inverted polarity.\n"
+                                "'TriggerSource' Which source input port to use: Sources 0 to 3 are available, corresponding to ports 0 - 3.\n"
+                                "'GetTriggerSources' Returns a list of supported source ports for given camera.\n";
 
 static char seeAlsoString[] = "OpenVideoCapture CloseVideoCapture StartVideoCapture StopVideoCapture GetCapturedImage";
 	 

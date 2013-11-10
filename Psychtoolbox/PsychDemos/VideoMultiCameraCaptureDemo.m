@@ -28,6 +28,10 @@ end
 % Default init and setup:
 PsychDefaultSetup(2);
 
+escape = KbName('ESCAPE');
+backKey = KbName('LeftArrow');
+forwardKey = KbName('RightArrow');
+
 if nargin < 1
     deviceIds=[];
 end
@@ -42,6 +46,17 @@ end
 
 roi = [];
 depth = [1];
+
+% Set dropframes = 0 if multiple frames shall be recorded for sync timing checks, 1 otherwise:
+dropframes = 0;
+
+% Set noMaster = 1 if all cams are externally hardware triggered slaves, 0 otherwise:
+noMaster = 1;
+
+% Always use a master, ie., noMaster false if not hardware synced.
+if syncmode ~= 16
+    noMaster = 0;
+end
 
 % We limit default framerate to 30 fps instead of auto-detected maximum
 % as supported by a camera in order to limit the consumption of bus bandwidth.
@@ -83,18 +98,44 @@ try
       Screen('TextSize', win(i), 24);
 
       % Open i'th camera:
-      grabbers(i) = Screen('OpenVideoCapture', win(i), deviceIds(i), roi, depth, 16)
+      grabbers(i) = Screen('OpenVideoCapture', win(i), deviceIds(i), roi, depth, 64)
 
       % Multi-camera sync mode requested?
       if syncmode > 0
         if i == 1
-            % First one is sync-master:
-            Screen('SetVideoCaptureParameter', grabbers(i), 'SyncMode', syncmode + 1);
+            % First one is sync-master: Unless noMaster == 1, in which case there are only slaves.
+            Screen('SetVideoCaptureParameter', grabbers(1), 'SyncMode', syncmode + 1 + noMaster);
+            if Screen('SetVideoCaptureParameter', grabbers(1), 'SyncMode') ~= (syncmode + 1 + noMaster)
+                error('Sync master camera does not support requested sync mode %i! Game over!', syncmode);
+            end
         else
             % Others are sync-slaves:
             Screen('SetVideoCaptureParameter', grabbers(i), 'SyncMode', syncmode + 2);
+            if Screen('SetVideoCaptureParameter', grabbers(i), 'SyncMode') ~= syncmode + 2
+                % This slave does not support syncmode! Means the syncmode must be hardware sync,
+                % as that is the only one which can be unsupported. Fall back to bus sync and switch
+                % master into combined hw sync + bus sync mode:
+                fprintf('Sync slave camera %i does not support requested sync mode %i!\n', grabbers(i), syncmode);
+
+                % Hardware sync requested but unsupported by this slave?
+                if (syncmode == 16) && ~noMaster
+                    % Yes, workaround via additional bus-sync and hope for the best:
+                    fprintf('Switching sync slave camera %i to bus sync as fallback! Master will emit bus-sync signals too.\n', grabbers(i));
+                    % Set slave to bus sync:
+                    Screen('SetVideoCaptureParameter', grabbers(i), 'SyncMode', 8 + 2);
+                    % Set master to bus sync in addition to hw sync:
+                    Screen('SetVideoCaptureParameter', grabbers(1), 'SyncMode', 16 + 8 + 1);
+                end
+            end
         end
       end
+
+      % Use TriggerMode 0 "Start of exposure by trigger, duration of exposure by 'Shutter' setting". Trigger exposure on falling edge,
+      % (active low TriggerPolarity), get signal from TriggerSource 0, aka port 0:
+      fprintf('Camera %i : OldTriggerMode = %i\n', grabbers(i), Screen('SetVideoCaptureParameter', grabbers(i), 'TriggerMode', 0));
+      fprintf('Camera %i : OldTriggerPolarity = %i\n', grabbers(i), Screen('SetVideoCaptureParameter', grabbers(i), 'TriggerPolarity', 0));
+      fprintf('Camera %i : OldTriggerSource = %i\n', grabbers(i), Screen('SetVideoCaptureParameter', grabbers(i), 'TriggerSource', 0));
+      fprintf('Camera %i : TriggerSources = ', grabbers(i)); disp(Screen('SetVideoCaptureParameter', grabbers(i), 'GetTriggerSources'));
       
       % Configure i'th camera:
       %brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness',383)
@@ -102,82 +143,105 @@ try
       %gain = Screen('SetVideoCaptureParameter', grabber, 'Gain')
       %gamma = Screen('SetVideoCaptureParameter', grabber, 'Gamma')
       %shutter = Screen('SetVideoCaptureParameter', grabber, 'Shutter', 7)
-      %Screen('SetVideoCaptureParameter', grabber, 'PrintParameters')
       %vendor = Screen('SetVideoCaptureParameter', grabber, 'GetVendorname')
       %model  = Screen('SetVideoCaptureParameter', grabber, 'GetModelname')
       %fps  = Screen('SetVideoCaptureParameter', grabber, 'GetFramerate')
       %roi  = Screen('SetVideoCaptureParameter', grabber, 'GetROI')
+      Screen('SetVideoCaptureParameter', grabbers(i), 'PrintParameters')
     end
 
     % Start capture on all cameras:
     if syncmode == 0
         % Start one after the other:
         for grabber=grabbers
-            Screen('StartVideoCapture', grabber, fps, 1);
+            Screen('StartVideoCapture', grabber, fps, dropframes);
         end
     else
         % Multicam sync enabled. First start all slaves:
         oldverb = Screen('Preference','Verbosity', 4);
-        fprintf('Prepare for synced start! Warp 1 ... ');
+        fprintf('Prepare for synced start! Warp 1 ...\n\n');
         for grabber=grabbers(2:end)
-            Screen('StartVideoCapture', grabber, fps, 1);
+            Screen('StartVideoCapture', grabber, fps, dropframes);
         end
 
-        fprintf('Engage! ... ');
+        % Only wait for keypress if there is a designated master. With
+        % only slaves, that wait would be futile:
+        if ~noMaster
+            KbStrokeWait;
+        end
+        fprintf('Engage! ...\n\n');
 
         % Start master:
-        Screen('StartVideoCapture', grabbers(1), fps, 1);
-        fprintf('And we are flying!\n');
+        Screen('StartVideoCapture', grabbers(1), fps, dropframes);
+        fprintf('And we are flying!\n\n');
         Screen('Preference','Verbosity', oldverb);
     end
     
     dstRect = [];
     count = 0;
     oldpts = zeros(size(grabbers));
+    texcount = zeros(size(grabbers));
+    camtex = zeros(length(grabbers), fps * 10);
+    campts = zeros(size(camtex));
     t=GetSecs;
 
-    % Multicapture and display loop: Runs until timeout of 10 minutes or keypress:
-    while (GetSecs - t) < 600
+    % Multicapture and display loop: Runs until timeout of 10 seconds or until keypress
+    % if there isn't any master cam or if no recording is requested:
+    while dropframes || noMaster || ((GetSecs - t) < 10)
         if KbCheck
             break;
         end
         
         for i=1:length(grabbers)
-	    [tex pts nrdropped] = Screen('GetCapturedImage', win(i), grabbers(i), 0);
-	    % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
-	    
-	    if tex > 0
-		% Perform first-time setup of transformations, if needed:
-		%if fullsize && (count == 0)
-		%    texrect = Screen('Rect', tex);
-		%    winrect = Screen('Rect', win);
-		%    sf = min([RectWidth(winrect) / RectWidth(texrect) , RectHeight(winrect) / RectHeight(texrect)]);
-		%    dstRect = CenterRect(ScaleRect(texrect, sf, sf) , winrect);
-		%end
+            [tex pts nrdropped] = Screen('GetCapturedImage', win(i), grabbers(i), 0);
+            % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
 
-		% Draw new texture from framegrabber.
-		Screen('DrawTexture', win(i), tex, [], dstRect);
+            if tex > 0
+                % Perform first-time setup of transformations, if needed:
+                %if fullsize && (count == 0)
+                %    texrect = Screen('Rect', tex);
+                %    winrect = Screen('Rect', win);
+                %    sf = min([RectWidth(winrect) / RectWidth(texrect) , RectHeight(winrect) / RectHeight(texrect)]);
+                %    dstRect = CenterRect(ScaleRect(texrect, sf, sf) , winrect);
+                %end
 
-		% Print pts:
-		Screen('DrawText', win(i), sprintf('%.4f', pts - t), 0, 0, [1 0 0]);
-		if count > 0
-		    % Compute delta:
-		    delta = (pts - oldpts(i)) * 1000;
-		    Screen('DrawText', win(i), sprintf('%.4f', delta), 0, 20, [1 0 0]);
-		end
-		oldpts(i) = pts;
+                % Draw new texture from framegrabber.
+                Screen('DrawTexture', win(i), tex, [], dstRect);
 
-		% Show it. Don't sync to video refresh at all, as it would cause
-		% performance degradation due to lockstep between window updates.
-		Screen('Flip', win(i), [], [], 2);
-		Screen('Close', tex);
-		tex=0;
-	    end
-	    count = count + 1;
+                % Print pts:
+                Screen('DrawText', win(i), sprintf('%.4f', pts - t), 0, 0, [1 0 0]);
+                if count > 0
+                    % Compute delta:
+                    delta = (pts - oldpts(i)) * 1000;
+                    Screen('DrawText', win(i), sprintf('%.4f', delta), 0, 20, [1 0 0]);
+                end
+                oldpts(i) = pts;
+
+                % Show it. Don't sync to video refresh at all, as it would cause
+                % performance degradation due to lockstep between window updates.
+                Screen('Flip', win(i), [], [], 2);
+                if dropframes
+                    Screen('Close', tex);
+                else
+                    texcount(i) = texcount(i) + 1;
+                    camtex(i, texcount(i)) = tex;
+                    campts(i, texcount(i)) = pts;
+                end
+
+                tex=0;
+            end
+            count = count + 1;
         end
     end
     
     telapsed = GetSecs - t;
+
+    for grabber=grabbers
+        fprintf('Camera %i : Bandwidth = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'GetBandwidthUsage'));
+        fprintf('Camera %i : UsedTriggerMode = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'TriggerMode'));
+        fprintf('Camera %i : UsedTriggerPolarity = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'TriggerPolarity'));
+        fprintf('Camera %i : UsedTriggerSource = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'TriggerSource'));
+    end
     
     % Stop and shutdown all cameras:
     % Start capture on all cameras:
@@ -205,6 +269,35 @@ try
       Screen('CloseVideoCapture', grabber);
     end
 
+    if ~dropframes
+        fi = 1;
+        while 1
+            [secs, keyCode] = KbWait;
+            if keyCode(escape)
+                break;
+            end
+
+            if keyCode(backKey)
+                fi = max(1, fi - 1);
+            end
+
+            if keyCode(forwardKey)
+                fi = min(min(texcount), fi + 1);
+            end
+
+            for i=1:length(grabbers)
+                % Draw new texture from framegrabber.
+                Screen('DrawTexture', win(i), camtex(i, fi), [], dstRect);
+
+                % Print pts:
+                Screen('DrawText', win(i), sprintf('%.4f', campts(i, fi) - t), 0, 0, [1 0 0]);
+
+                % Show it:
+                Screen('Flip', win(i), [], [], 1);
+            end
+        end
+    end
+    
     % Close all windows and release all remaining display resources:
     Screen('CloseAll');
     Screen('Preference', 'SkipSyncTests', oldsynctests);
