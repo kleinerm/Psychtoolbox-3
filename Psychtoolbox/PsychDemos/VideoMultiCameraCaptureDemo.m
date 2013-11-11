@@ -46,6 +46,9 @@ end
 
 roi = [];
 depth = [1];
+convMode = 4; % Mode 4 would be the correct mode for raw sensor -> rgb bayer conversion on Basler cameras.
+bayerPattern = 0; % This would be the correct bayer pattern for Basler color cameras.
+debayerMethod = 0; % Debayer algorithm: 0 = Fastest, ..., 3 = High quality, 4-7 = May or may not work.
 
 % Set dropframes = 0 if multiple frames shall be recorded for sync timing checks, 1 otherwise:
 dropframes = 0;
@@ -148,6 +151,15 @@ try
       %fps  = Screen('SetVideoCaptureParameter', grabber, 'GetFramerate')
       %roi  = Screen('SetVideoCaptureParameter', grabber, 'GetROI')
       Screen('SetVideoCaptureParameter', grabbers(i), 'PrintParameters')
+
+      % Select convMode as conversion mode:
+      Screen('SetVideoCaptureParameter', grabbers(i), 'DataConversionMode', convMode);
+
+      % Set an override bayer pattern to use if it can't get auto-detected:
+      Screen('SetVideoCaptureParameter', grabbers(i), 'OverrideBayerPattern', bayerPattern);
+      
+      % Select debayer algorithm:
+      Screen('SetVideoCaptureParameter', grabbers(i), 'DebayerMethod', debayerMethod);
     end
 
     % Start capture on all cameras:
@@ -185,9 +197,9 @@ try
     campts = zeros(size(camtex));
     t=GetSecs;
 
-    % Multicapture and display loop: Runs until timeout of 10 seconds or until keypress
+    % Multicapture and display loop: Runs until timeout of 120 seconds or until keypress
     % if there isn't any master cam or if no recording is requested:
-    while dropframes || noMaster || ((GetSecs - t) < 10)
+    while dropframes || noMaster || ((GetSecs - t) < 120)
         if KbCheck
             break;
         end
