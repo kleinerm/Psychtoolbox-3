@@ -100,7 +100,7 @@ end
 try
     for i=1:length(deviceIds)
       % Open oncreen window for i'th camera:
-      win(i) = PsychImaging('OpenWindow', screenid, 0, [0, 0, 650, 500], [], [], [], [], [], kPsychGUIWindow); %#ok<AGROW>
+      win(i) = PsychImaging('OpenWindow', screenid, 0, [0, 0, 650, 500], [], [], [], [], [], kPsychGUIWindow + kPsychGUIWindowWMPositioned); %#ok<AGROW>
 
       % Set text size for info text:
       Screen('TextSize', win(i), 24);
