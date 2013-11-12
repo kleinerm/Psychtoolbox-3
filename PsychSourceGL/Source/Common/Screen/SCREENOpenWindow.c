@@ -229,7 +229,7 @@ PsychError SCREENOpenWindow(void)
 	
 	specialflags=0;
     PsychCopyInIntegerArg(9,FALSE,&specialflags);
-    if (specialflags < 0 || (specialflags > 0 && specialflags!=kPsychGUIWindow)) PsychErrorExitMsg(PsychError_user, "Invalid 'specialflags' provided.");
+    if (specialflags < 0 || (specialflags > 0 && !(specialflags & (kPsychGUIWindow | kPsychGUIWindowWMPositioned)))) PsychErrorExitMsg(PsychError_user, "Invalid 'specialflags' provided.");
 
     // Optional clientRect defined? If so, we need to enable our internal panel scaler and
     // the imaging pipeline to actually use the scaler:

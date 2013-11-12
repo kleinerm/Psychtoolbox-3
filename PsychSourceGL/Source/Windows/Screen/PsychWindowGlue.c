@@ -1107,10 +1107,13 @@ dwmdontcare:
       x=winRec.left; y=winRec.top; width=winRec.right - winRec.left; height=winRec.bottom - winRec.top;
     }
 
-	 if (PsychPrefStateGet_Verbosity()>6) {
-		 printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Window class registered - Creating GDI window...\n");
-		 fflush(NULL);
-	 }
+    // If the window should be positioned by the window manager, tell it so by a special x-coordinate:
+    if ((windowRecord->specialflags & kPsychGUIWindowWMPositioned) && (windowRecord->specialflags & kPsychGUIWindow)) x = CW_USEDEFAULT;
+    
+    if (PsychPrefStateGet_Verbosity()>6) {
+        printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Window class registered - Creating GDI window...\n");
+        fflush(NULL);
+    }
 
     // Window class registered: Create a window of this class with some specific properties:
     hWnd = CreateWindowEx(windowExtendedStyle,
@@ -1125,7 +1128,12 @@ dwmdontcare:
     }
 
 	if (PsychPrefStateGet_Verbosity() > 4) {
-		printf("PTB-DEBUG: Created onscreen window has position %i x %i and a size of %i x %i.\n", x, y, width, height);
+		if (x != CW_USEDEFAULT) {
+            printf("PTB-DEBUG: Created onscreen window has position %i x %i and a size of %i x %i.\n", x, y, width, height);
+        }
+        else {
+            printf("PTB-DEBUG: Created onscreen GUI window has a size of %i x %i and a position selected by the windowmanager.\n", width, height);
+        }
 	}
 	
 	// Setup transparency level for eligible non-fullscreen windows:

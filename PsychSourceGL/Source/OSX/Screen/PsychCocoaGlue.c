@@ -116,13 +116,16 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
     // Disable auto-flushing of drawed content to frontbuffer:
     [cocoaWindow disableFlushWindow];
 
-    // Position the window. Origin is bottom-left of screen, as opposed to Carbon / PTB origin
-    // of top-left. Therefore need to invert the vertical position. Cocoa only takes our request
-    // as a hint. It tries to position as requested, but places the window differently if required
-    // to make sure the full windowRect content area is displayed. It doesn't allow the window to
-    // overlap the menu bar or dock area by default.
-    NSPoint winPosition = NSMakePoint(windowRecord->rect[kPsychLeft], screenHeight - windowRecord->rect[kPsychTop]);
-    [cocoaWindow setFrameTopLeftPoint:winPosition];
+    // Position the window unless its position is left to the window manager:
+    if (!(windowRecord->specialflags & kPsychGUIWindowWMPositioned)) {
+        // Position the window. Origin is bottom-left of screen, as opposed to Carbon / PTB origin
+        // of top-left. Therefore need to invert the vertical position. Cocoa only takes our request
+        // as a hint. It tries to position as requested, but places the window differently if required
+        // to make sure the full windowRect content area is displayed. It doesn't allow the window to
+        // overlap the menu bar or dock area by default.
+        NSPoint winPosition = NSMakePoint(windowRecord->rect[kPsychLeft], screenHeight - windowRecord->rect[kPsychTop]);
+        [cocoaWindow setFrameTopLeftPoint:winPosition];
+    }
     
     // Query and translate content rect of final window to a PTB rect:
     NSRect clientRect = [cocoaWindow contentRectForFrameRect:[cocoaWindow frame]];
