@@ -74,8 +74,8 @@ typedef struct {
     dc1394bayer_method_t debayer_method; // Type if debayering method to use.
     dc1394color_filter_t color_filter_override; // Override Bayer pattern to use.
     int dataconversionmode;           // Shall raw sensor data be requested or preprocessed data? Postprocess raw data or not?
-    int reqpixeldepth;                // Requested depth of single pixel in output texture.
-    int pixeldepth;                   // Depth of single pixel from grabber in bits.
+    int reqlayers;                    // Requested number of layers (1=Luminance, 2 = LA, 3 = RGB, 4 = RGBA, 5 = YUV) in output texture.
+    int actuallayers;                 // Actual number of layers (1=Luminance, 2 = LA, 3 = RGB, 4 = RGBA, 5 = YUV) in output texture.
     int num_dmabuffers;               // Number of DMA ringbuffers to use in DMA capture.
     int nrframes;                     // Total count of decompressed images.
     double fps;                       // Acquisition framerate of capture device.
@@ -372,7 +372,7 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     capdev->height = 0;
 
     // Requested output texture pixel depth in layers:
-    capdev->reqpixeldepth = reqdepth;
+    capdev->reqlayers = reqdepth;
 
     // Number of DMA ringbuffers to use in DMA capture mode: If no number provided (==0), set it to 8 buffers...
     capdev->num_dmabuffers = (num_dmabuffers>0) ? num_dmabuffers : 8;
@@ -441,11 +441,11 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
         // Pixeldepth supported? We reject anything except RAW8 or MONO8 for luminance formats
         // and RGB8, YUV444, YUV422, YUV411 for color formats.
         dc1394_get_color_coding_from_video_mode(capdev->camera, mode, &color_code);
-        if (capdev->reqpixeldepth > 0) {
+        if (capdev->reqlayers > 0) {
             // Specific pixelsize requested:
 
             // Luminance only format?
-            if (capdev->reqpixeldepth < 3) {
+            if (capdev->reqlayers < 3) {
                 // mode 1: Only accept raw data, which we will pass on later unprocessed:
                 if (capdev->dataconversionmode == 1 && color_code!=DC1394_COLOR_CODING_RAW8) continue;
 
@@ -465,7 +465,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
             }
 
             // RGB true color format?
-            if (capdev->reqpixeldepth > 2) {
+            if (capdev->reqlayers > 2) {
                 // mode 1: Is not handled for 3 or 4 layer formats, because 3 or 4 layer formats always
                 // require some post-processing of raw data, otherwise it would end up as 1 layer raw!
                 
@@ -482,7 +482,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
                     (dc1394_get_color_coding_data_depth(color_code, &bpc) != DC1394_SUCCESS) || (bpc != 8)) continue;
             }
 
-            if (capdev->reqpixeldepth == 5 && color_code!=DC1394_COLOR_CODING_YUV422 && color_code!=DC1394_COLOR_CODING_YUV411) continue;
+            if (capdev->reqlayers == 5 && color_code!=DC1394_COLOR_CODING_YUV422 && color_code!=DC1394_COLOR_CODING_YUV411) continue;
         }
         else {
             // No specific pixelsize req. check our minimum requirements - Anything of 8 bpc depths:
@@ -504,7 +504,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
             if (capdev->roirect[kPsychLeft]!=0 || capdev->roirect[kPsychTop]!=0 || w != (int) mw || h != (int) mh) continue;
             roi_matched = true;
 
-            // Ok, this is a valid mode wrt. reqpixeldepth and exact image size. Check for matching framerate:
+            // Ok, this is a valid mode wrt. reqlayers and exact image size. Check for matching framerate:
             dc1394_video_get_supported_framerates(capdev->camera, mode, &supported_framerates);
             for (j = 0; j < (int) supported_framerates.num; j++) {
                 dc1394_framerate = supported_framerates.framerates[j];
@@ -517,7 +517,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
             // allows for RGB8 transfer instead of a YUV format. We try to prefer non-YUV
             // modes in selection of final mode, because YUV modes need a computationally
             // expensive conversion YUVxxx --> RGB8, whereas RGB8 doesn't need that.
-            nonyuvbonus = ((capdev->reqpixeldepth == 0) || (capdev->reqpixeldepth > 2)) && (capdev->dataconversionmode == 0) && (color_code == DC1394_COLOR_CODING_RGB8);
+            nonyuvbonus = ((capdev->reqlayers == 0) || (capdev->reqlayers > 2)) && (capdev->dataconversionmode == 0) && (color_code == DC1394_COLOR_CODING_RGB8);
 
             // Compare whatever framerate we've got as closest match against current fastest one:
             if ((framerate > maximgarea) ||
@@ -543,55 +543,55 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
     // Query final color format and therefore pixel-depth:
     dc1394_get_color_coding_from_video_mode(capdev->camera, mode, &color_code);
 
-    // This is the pixeldepth delivered by the capture engine:
-    capdev->pixeldepth = (color_code == DC1394_COLOR_CODING_MONO8 || color_code == DC1394_COLOR_CODING_RAW8) ? 8 : 24;
+    // This is the actuallayers delivered by the capture engine:
+    capdev->actuallayers = (color_code == DC1394_COLOR_CODING_MONO8 || color_code == DC1394_COLOR_CODING_RAW8) ? 1 : 3;
     // Special case: conversion mode 2 or 4 for rgb layers, aka bayer-filter raw8 data as provided in raw8 or mono8 container into rgb8 data:
-    if ((capdev->pixeldepth == 8) && (capdev->reqpixeldepth >= 3) && ((capdev->dataconversionmode == 2) || (capdev->dataconversionmode == 4))) capdev->pixeldepth = 24;
+    if ((capdev->actuallayers == 1) && (capdev->reqlayers >= 3) && ((capdev->dataconversionmode == 2) || (capdev->dataconversionmode == 4))) capdev->actuallayers = 3;
 
-    // Match this against requested pixeldepth:
-    if (capdev->reqpixeldepth == 0) {
+    // Match this against requested actuallayers:
+    if (capdev->reqlayers == 0) {
         // No specific depth requested: Just use native depth of captured image:
-        capdev->reqpixeldepth = capdev->pixeldepth;
+        capdev->reqlayers = capdev->actuallayers;
     }
     else {
         // Specific depth requested: Match it against native format:
-        switch (capdev->reqpixeldepth) {
+        switch (capdev->reqlayers) {
             case 1:
                 // Pure LUMINANCE8 requested:
             case 2:
                 // LUMINANCE8+ALPHA8 requested: This is not yet supported.
-                if (capdev->pixeldepth != 8*capdev->reqpixeldepth && PsychPrefStateGet_Verbosity()>1) {
+                if (capdev->actuallayers != capdev->reqlayers && PsychPrefStateGet_Verbosity()>1) {
                     printf("PTB-WARNING: Wanted a depth of %i layers (%s) for captured images, but capture device delivers\n"
                     "PTB-WARNING: %i layers! Adapted to capture device native format for performance reasons.\n",
-                    capdev->reqpixeldepth, (capdev->reqpixeldepth==1) ? "LUMINANCE - 8 bpc":"LUMINANCE+ALPHA - 8 bpc", capdev->pixeldepth/8);
+                    capdev->reqlayers, (capdev->reqlayers==1) ? "LUMINANCE":"LUMINANCE+ALPHA", capdev->actuallayers);
                 }
-                capdev->reqpixeldepth = capdev->pixeldepth;
+                capdev->reqlayers = capdev->actuallayers;
                 break;
             case 3:
                 // RGB8 requested:
             case 4:
                 // RGBA8 requested: This is not yet supported.
-                if (capdev->pixeldepth != 8*capdev->reqpixeldepth && PsychPrefStateGet_Verbosity()>1) {
+                if (capdev->actuallayers != capdev->reqlayers && PsychPrefStateGet_Verbosity()>1) {
                     printf("PTB-WARNING: Wanted a depth of %i layers (%s) for captured images, but capture device delivers\n"
                     "PTB-WARNING: %i layers! Adapted to capture device native format for performance reasons.\n",
-                    capdev->reqpixeldepth, (capdev->reqpixeldepth==3) ? "RGB - 8 bpc":"RGB+ALPHA - 8 bpc", capdev->pixeldepth/8);
+                    capdev->reqlayers, (capdev->reqlayers==3) ? "RGB":"RGB+ALPHA", capdev->actuallayers);
                 }
-                capdev->reqpixeldepth = capdev->pixeldepth;
+                capdev->reqlayers = capdev->actuallayers;
                 break;
             case 5:
-                // YUV format requested: This is sort-of a 24 bpp RGB8 equivalent for us, for now:
-                capdev->reqpixeldepth = 24;
+                // YUV format requested: This is sort-of a RGB equivalent for us, for now:
+                capdev->reqlayers = 3;
                 break;
             default:
-                capdev->reqpixeldepth = 0;
+                capdev->reqlayers = 0;
                 PsychErrorExitMsg(PsychError_user, "You requested a invalid capture image format (more than 4 layers). Aborted.");
         }
     }
 
-    if (capdev->reqpixeldepth > 8 && color_code != DC1394_COLOR_CODING_RGB8 && PsychPrefStateGet_Verbosity() > 2) {
+    if (capdev->reqlayers > 1 && color_code != DC1394_COLOR_CODING_RGB8 && PsychPrefStateGet_Verbosity() > 2) {
         // Color capture with a non RGB8 mode aka a YUV or RAW8/RAW8 encapsulated in MONO8 mode -- expensive.
-        printf("PTB-INFO: Using a %s input color format instead of a RGB8 color format. This requires expensive color conversion and\n",
-               (color_code == DC1394_COLOR_CODING_RAW8 || color_code == DC1394_COLOR_CODING_MONO8) ? "RAW8" : "YUV");
+        printf("PTB-INFO: Using a %s input color format instead of a RGB color format. This requires expensive color conversion and\n",
+               (color_code == DC1394_COLOR_CODING_RAW8 || color_code == DC1394_COLOR_CODING_MONO8) ? "RAW" : "YUV");
         printf("PTB-INFO: can lead to higher cpu load and longer latencies. You may be able to avoid this with different settings\n");
         printf("PTB-INFO: for ROI, color depth and framerate...\n"); fflush(NULL);
     }
@@ -729,11 +729,11 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
         // Pixeldepth supported? We reject anything except RAW8 or MONO8 for luminance formats
         // and RGB8 for color formats.
         dc1394_format7_get_color_coding(capdev->camera, mode, &color_code);
-        if (capdev->reqpixeldepth > 0) {
+        if (capdev->reqlayers > 0) {
             // Specific pixelsize requested:
             
             // Luminance only format?
-            if (capdev->reqpixeldepth < 3) {
+            if (capdev->reqlayers < 3) {
                 // mode 1: Only accept raw data, which we will pass on later unprocessed:
                 if (capdev->dataconversionmode == 1 && color_code!=DC1394_COLOR_CODING_RAW8) continue;
                 
@@ -753,7 +753,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
             }
             
             // RGB true color format?
-            if (capdev->reqpixeldepth > 2) {
+            if (capdev->reqlayers > 2) {
                 // mode 1: Is not handled for 3 or 4 layer formats, because 3 or 4 layer formats always
                 // require some post-processing of raw data, otherwise it would end up as 1 layer raw!
                 
@@ -770,7 +770,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
                     (dc1394_get_color_coding_data_depth(color_code, &bpc) != DC1394_SUCCESS) || (bpc != 8)) continue;
             }
             
-            if (capdev->reqpixeldepth == 5 && color_code!=DC1394_COLOR_CODING_YUV422 && color_code!=DC1394_COLOR_CODING_YUV411) continue;
+            if (capdev->reqlayers == 5 && color_code!=DC1394_COLOR_CODING_YUV422 && color_code!=DC1394_COLOR_CODING_YUV411) continue;
         }
         else {
             // No specific pixelsize req. check our minimum requirements - Anything of 8 bpc depths:
@@ -898,48 +898,48 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
     // Query final color format and therefore pixel-depth:
     dc1394_get_color_coding_from_video_mode(capdev->camera, mode, &color_code);
 
-    // This is the pixeldepth delivered by the capture engine:
-    capdev->pixeldepth = (color_code == DC1394_COLOR_CODING_MONO8 || color_code == DC1394_COLOR_CODING_RAW8) ? 8 : 24;
+    // This is the actuallayers delivered by the capture engine:
+    capdev->actuallayers = (color_code == DC1394_COLOR_CODING_MONO8 || color_code == DC1394_COLOR_CODING_RAW8) ? 1 : 3;
 
     // Special case: conversion mode 2 or 4 for rgb layers, aka bayer-filter raw8 data as provided in raw8 or mono8 container into rgb8 data:
-    if ((capdev->pixeldepth == 8) && (capdev->reqpixeldepth >= 3) && ((capdev->dataconversionmode == 2) || (capdev->dataconversionmode == 4))) capdev->pixeldepth = 24;
+    if ((capdev->actuallayers == 1) && (capdev->reqlayers >= 3) && ((capdev->dataconversionmode == 2) || (capdev->dataconversionmode == 4))) capdev->actuallayers = 3;
     
-    // Match this against requested pixeldepth:
-    if (capdev->reqpixeldepth == 0) {
+    // Match this against requested actuallayers:
+    if (capdev->reqlayers == 0) {
         // No specific depth requested: Just use native depth of captured image:
-        capdev->reqpixeldepth = capdev->pixeldepth;
+        capdev->reqlayers = capdev->actuallayers;
     }
     else {
         // Specific depth requested: Match it against native format:
-        switch (capdev->reqpixeldepth) {
+        switch (capdev->reqlayers) {
             case 1:
                 // Pure LUMINANCE8 requested:
             case 2:
                 // LUMINANCE8+ALPHA8 requested: This is not yet supported.
-                if (capdev->pixeldepth != 8*capdev->reqpixeldepth && PsychPrefStateGet_Verbosity()>1) {
+                if (capdev->actuallayers != capdev->reqlayers && PsychPrefStateGet_Verbosity()>1) {
                     printf("PTB-WARNING: Wanted a depth of %i layers (%s) for captured images, but capture device delivers\n"
                     "PTB-WARNING: %i layers! Adapted to capture device native format for performance reasons.\n",
-                    capdev->reqpixeldepth, (capdev->reqpixeldepth==1) ? "LUMINANCE - 8 bpc":"LUMINANCE+ALPHA - 8 bpc", capdev->pixeldepth/8);
+                    capdev->reqlayers, (capdev->reqlayers==1) ? "LUMINANCE":"LUMINANCE+ALPHA", capdev->actuallayers);
                 }
-                capdev->reqpixeldepth = capdev->pixeldepth;
+                capdev->reqlayers = capdev->actuallayers;
                 break;
             case 3:
                 // RGB8 requested:
             case 4:
                 // RGBA8 requested: This is not yet supported.
-                if (capdev->pixeldepth != 8*capdev->reqpixeldepth && PsychPrefStateGet_Verbosity()>1) {
+                if (capdev->actuallayers != capdev->reqlayers && PsychPrefStateGet_Verbosity()>1) {
                     printf("PTB-WARNING: Wanted a depth of %i layers (%s) for captured images, but capture device delivers\n"
                     "PTB-WARNING: %i layers! Adapted to capture device native format for performance reasons.\n",
-                    capdev->reqpixeldepth, (capdev->reqpixeldepth==3) ? "RGB - 8 bpc":"RGB+ALPHA - 8 bpc", capdev->pixeldepth/8);
+                    capdev->reqlayers, (capdev->reqlayers==3) ? "RGB":"RGB+ALPHA", capdev->actuallayers);
                 }
-                capdev->reqpixeldepth = capdev->pixeldepth;
+                capdev->reqlayers = capdev->actuallayers;
                 break;
             case 5:
-                // YUV format requested: This is sort-of a 24 bpp RGB8 equivalent for us, for now:
-                capdev->reqpixeldepth = 24;
+                // YUV format requested: This is sort-of a RGB equivalent for us, for now:
+                capdev->reqlayers = 3;
                 break;
             default:
-                capdev->reqpixeldepth = 0;
+                capdev->reqlayers = 0;
                 PsychErrorExitMsg(PsychError_user, "You requested a invalid capture image format (more than 4 layers). Aborted.");
         }
     }
@@ -1269,8 +1269,8 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         capdev->grabber_active = 1;
 
         // Allocate conversion buffer if needed for YUV->RGB or Bayer->RGB conversions.
-        if (capdev->pixeldepth == 24 && color_code!=DC1394_COLOR_CODING_RGB8) {
-            // Software conversion of YUV or RAW8 -> RGB8 needed. Allocate a proper scratch-buffer:
+        if (capdev->actuallayers == 3 && color_code != DC1394_COLOR_CODING_RGB8) {
+            // Software conversion of YUV or RAW -> RGB needed. Allocate a proper scratch-buffer:
             capdev->convframe = (dc1394video_frame_t*) malloc(sizeof(dc1394video_frame_t));
             memset(capdev->convframe, 0, sizeof(dc1394video_frame_t));            
         }
@@ -1347,10 +1347,6 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 capdev->convframe = NULL;
             }
 
-            // MK: FIXME: Need to undo reqpixeldepth = reqpixeldepth * 8 in start capture!
-            // Need to rethink definition of reqpixeldepth...
-            capdev->reqpixeldepth = capdev->reqpixeldepth / 8;
-
             if(PsychPrefStateGet_Verbosity() > 2){
                 // Output count of dropped frames:
                 if ((dropped=capdev->nr_droppedframes) > 0) {
@@ -1422,7 +1418,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     if (outrawbuffer) {
         outrawbuffer->w = w;
         outrawbuffer->h = h;
-        outrawbuffer->depth = ((capdev->pixeldepth == 24) ? 3 : 1);
+        outrawbuffer->depth = ((capdev->actuallayers == 3) ? 3 : 1);
     }
 
     int waitforframe = (checkForImage > 1) ? 1:0; // Blocking wait for new image requested?
@@ -1597,8 +1593,8 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
         // prevents unwanted free() operation in PsychDeleteTexture...
         out_texture->textureMemorySizeBytes = 0;
 
-        // Set texture depth: Could be 8, 16, 24 or 32 bpp.
-        out_texture->depth = capdev->reqpixeldepth;
+        // Set texture depth: Could be 8, 16, 24 or 32 bpp for 1, 2, 3 or 4 layer textures:
+        out_texture->depth = capdev->reqlayers * 8;
 
         // This will retrieve an OpenGL compatible pointer to the pixel data and assign it to our texmemptr:
         out_texture->textureMemory = (GLuint*) input_image;
@@ -1616,9 +1612,9 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     // Sum of pixel intensities requested?
     if(summed_intensity) {
         pixptr = (unsigned char*) input_image;
-        count = (w*h*((capdev->pixeldepth == 24) ? 3 : 1));
+        count = (w*h*((capdev->actuallayers == 3) ? 3 : 1));
         for (i=0; i<count; i++) intensity+=(unsigned int) pixptr[i];
-        *summed_intensity = ((double) intensity) / w / h / ((capdev->pixeldepth == 24) ? 3 : 1);
+        *summed_intensity = ((double) intensity) / w / h / ((capdev->actuallayers == 3) ? 3 : 1);
     }
 
     // Raw data requested?
@@ -1626,7 +1622,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
         // Copy it out:
         outrawbuffer->w = w;
         outrawbuffer->h = h;
-        outrawbuffer->depth = ((capdev->pixeldepth == 24) ? 3 : 1);
+        outrawbuffer->depth = ((capdev->actuallayers == 3) ? 3 : 1);
         count = (w * h * outrawbuffer->depth);
         memcpy(outrawbuffer->data, (const void *) input_image, count);
     }
