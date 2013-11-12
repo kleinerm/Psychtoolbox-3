@@ -87,21 +87,26 @@ if isempty(deviceIds)
     % opening the same camera twice:
     if (devs(i).DeviceIndex ~= 0) || (Screen('Preference', 'DefaultVideocaptureEngine') == 1)
       disp(devs(i));
-      deviceIds = [deviceIds, devs(i).DeviceIndex];
+      deviceIds = [deviceIds, devs(i).DeviceIndex]; %#ok<AGROW>
     end
   end
+end
+
+if isempty(deviceIds)
+    fprintf('Sorry, could not detect any suitable video cameras. Bye.\n');
+    return;
 end
 
 try
     for i=1:length(deviceIds)
       % Open oncreen window for i'th camera:
-      win(i) = PsychImaging('OpenWindow', screenid, 0, [0, 0, 650, 500], [], [], [], [], [], kPsychGUIWindow);
+      win(i) = PsychImaging('OpenWindow', screenid, 0, [0, 0, 650, 500], [], [], [], [], [], kPsychGUIWindow); %#ok<AGROW>
 
       % Set text size for info text:
       Screen('TextSize', win(i), 24);
 
       % Open i'th camera:
-      grabbers(i) = Screen('OpenVideoCapture', win(i), deviceIds(i), roi, depth, 64)
+      grabbers(i) = Screen('OpenVideoCapture', win(i), deviceIds(i), roi, depth, 64); %#ok<AGROW>
 
       % Multi-camera sync mode requested?
       if syncmode > 0
@@ -284,7 +289,7 @@ try
     if ~dropframes
         fi = 1;
         while 1
-            [secs, keyCode] = KbWait;
+            [secs, keyCode] = KbWait; %#ok<ASGLU>
             if keyCode(escape)
                 break;
             end
@@ -313,7 +318,7 @@ try
     % Close all windows and release all remaining display resources:
     Screen('CloseAll');
     Screen('Preference', 'SkipSyncTests', oldsynctests);
-catch
+catch %#ok<*CTCH>
     % Emergency shutdown:
     sca;
     Screen('Preference', 'SkipSyncTests', oldsynctests);

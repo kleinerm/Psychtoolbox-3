@@ -984,7 +984,7 @@ static void PsychDCEnableBusBroadcast(PsychVidcapRecordType* capdev, psych_bool 
     // possible for a camera on such a bus to be free-running, as it will automatically
     // listen in on the broadcast commands from the sync master on the same bus.
     if (capdev->syncmode & kPsychIsSyncMaster) {
-        if ((err = dc1394_camera_set_broadcast(capdev->camera, (enable) ? DC1394_ON : DC1394_OFF)) != DC1394_SUCCESS) {
+        if ((err = dc1394_camera_set_broadcast(capdev->camera, (enable) ? DC1394_TRUE : DC1394_FALSE)) != DC1394_SUCCESS) {
             // Failed! Shutdown DMA capture engine again:
             dc1394_capture_stop(capdev->camera);
             printf("PTB-ERROR: Could not %s bus broadcast for bus-synced multi-camera capture operation: %s\n", (enable) ? "enable" : "disable", dc1394_error_get_string(err));
