@@ -40,7 +40,7 @@ typedef struct rawcapimgdata {
 // other parts of screen. They dispatch into API specific versions, depending on users choice
 // of capture system and support by OS:
 void PsychVideoCaptureInit(void);
-psych_bool PsychOpenVideoCaptureDevice(int engineId, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle, int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags);
+psych_bool PsychOpenVideoCaptureDevice(int engineId, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle, int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags, int bitdepth);
 void PsychCloseVideoCaptureDevice(int capturehandle);
 int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer);
 int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime);
@@ -51,7 +51,7 @@ void PsychExitVideoCapture(void);
 // These are the prototypes for LibDC1394 V2 versions, supported on GNU/Linx, OS/X and in a experimental version on MS-Windows:
 #ifdef PTBVIDEOCAPTURE_LIBDC
 void PsychDCVideoCaptureInit(void);
-psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle, int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags);
+psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle, int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags, int bitdepth);
 void PsychDCCloseVideoCaptureDevice(int capturehandle);
 int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer);
 int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime);
@@ -79,7 +79,7 @@ typedef struct PsychVideosourceRecordType {
 
 void PsychGSCheckInit(const char* engineName);
 void PsychGSVideoCaptureInit(void);
-psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle, int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags);
+psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle, int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags, int bitdepth);
 void PsychGSCloseVideoCaptureDevice(int capturehandle);
 int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer);
 int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime);

@@ -111,9 +111,11 @@ void PsychEnumerateVideoSources(int engineId, int outPos)
  *		// 1 = Record video, stream to memory, then at end of recording to disk (limited duration by RAM size, but faster).
  *		// 2 = Record audio as well.
  *
+ *      bitdepth = Number of bits per color component / channel, aka bpc.
+ *
  */
 psych_bool PsychOpenVideoCaptureDevice(int engineId, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
-				 int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags)
+                                       int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags, int bitdepth)
 {
 	int i, slotid;
 	psych_bool dispatched = FALSE;
@@ -143,7 +145,7 @@ psych_bool PsychOpenVideoCaptureDevice(int engineId, PsychWindowRecordType *win,
 	if (engineId == 1) {
 		// LibDC1394 video capture:
 		if (!PsychDCOpenVideoCaptureDevice(slotid, win, deviceIndex, capturehandle, capturerectangle, reqdepth,
-						   num_dmabuffers, allow_lowperf_fallback, targetmoviefilename, recordingflags)) {
+            num_dmabuffers, allow_lowperf_fallback, targetmoviefilename, recordingflags, bitdepth)) {
 			// Probably won't ever reach this point due to error handling triggered in subfunction... anyway...
 			return(FALSE);
 		}
@@ -155,7 +157,7 @@ psych_bool PsychOpenVideoCaptureDevice(int engineId, PsychWindowRecordType *win,
 	if (engineId == 3) {
 		// GStreamer video capture:
 		if (!PsychGSOpenVideoCaptureDevice(slotid, win, deviceIndex, capturehandle, capturerectangle, reqdepth,
-						   num_dmabuffers, allow_lowperf_fallback, targetmoviefilename, recordingflags)) {
+            num_dmabuffers, allow_lowperf_fallback, targetmoviefilename, recordingflags, bitdepth)) {
 			// Probably won't ever reach this point due to error handling triggered in subfunction... anyway...
 			return(FALSE);
 		}

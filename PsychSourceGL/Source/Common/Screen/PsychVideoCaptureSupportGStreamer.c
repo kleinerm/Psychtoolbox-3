@@ -2211,9 +2211,12 @@ psych_bool PsychGetCodecLaunchLineFromString(char* codecSpec, char* launchString
 *      targetmoviefilename = Filename of movie file to record (if any) if deviceIndex >=0,
 *                            special spec string for a video capture device if deviceIndex < 0.
 *      recordingflags = Special flags to control internal operation (harddisc recording yes/no, live video during recording?, audio recording? workarounds?)
+*
+*      bitdepth = Number of bits per color component / channel, aka bpc. Currently ignored, as we only support 8 bpc capture on GStreamer at the moment.
+*
 */
 psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
-								   int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags)
+                                         int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags, int bitdepth)
 {
     GError          *error;
     GstCaps         *colorcaps;

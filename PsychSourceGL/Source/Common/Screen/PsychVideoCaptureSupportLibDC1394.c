@@ -64,8 +64,6 @@ typedef struct {
     dc1394camera_t *camera;           // Ptr to a DC1394 camera object that holds the internal state for such cams.
     dc1394video_frame_t *frame;       // Ptr to a structure which contains the most recently captured/dequeued frame.
     dc1394video_frame_t *convframe;   // Ptr to a structuve which contains bayer- or YUV- converted frames.
-    int dma_mode;                     // 0 == Non-DMA fallback path. 1 == DMA-Transfers. (Obsolete)
-    int allow_nondma_fallback;        // Use of Non-DMA fallback path allowed? (Obsolete)
     int syncmode;                     // 0 = free-running. 1 = sync-master, 2 = sync-slave, 4 = soft-sync, 8 = bus-sync, 16 = ttl-sync.
     int dropframes;                   // 1 == Always deliver most recent frame in FIFO, even if dropping of frames is neccessary.
     dc1394video_mode_t dc_imageformat;// Encodes image size and pixelformat.
@@ -76,6 +74,7 @@ typedef struct {
     int dataconversionmode;           // Shall raw sensor data be requested or preprocessed data? Postprocess raw data or not?
     int reqlayers;                    // Requested number of layers (1=Luminance, 2 = LA, 3 = RGB, 4 = RGBA, 5 = YUV) in output texture.
     int actuallayers;                 // Actual number of layers (1=Luminance, 2 = LA, 3 = RGB, 4 = RGBA, 5 = YUV) in output texture.
+    int bitdepth;                     // Requested or actual bpc - bits per color/luminance channel.
     int num_dmabuffers;               // Number of DMA ringbuffers to use in DMA capture.
     int nrframes;                     // Total count of decompressed images.
     double fps;                       // Acquisition framerate of capture device.
@@ -255,9 +254,12 @@ extern dc1394_t* dc1394_new(void) __attribute__((weak_import));
  *      num_dmabuffers = Number of buffers in the ringbuffer queue (e.g., DMA buffers) - This is OS specific. Zero = Don't care.
  *      allow_lowperf_fallback = If set to 1 then PTB can use a slower, low-performance fallback path to get nasty devices working.
  *      targetmoviefilename and recordingflags are currently ignored, they would refer to video harddics recording capabilities.
+ *
+ *      bitdepth = Number of bits per color component / channel, aka bpc. Default is 8bpc, but some cams may be up to more.
+ *
  */
 psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
-                                         int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags)
+                                         int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags, int bitdepth)
 {
     PsychVidcapRecordType *capdev = NULL;
     dc1394camera_list_t   *cameras=NULL;
@@ -376,12 +378,6 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
     // Number of DMA ringbuffers to use in DMA capture mode: If no number provided (==0), set it to 8 buffers...
     capdev->num_dmabuffers = (num_dmabuffers>0) ? num_dmabuffers : 8;
-
-    // Use of low-performance non-DMA fallback path allowed in case of trouble with DMA engine?
-    // This flag currently has no meaning, as the final V2 release of libdc doesn't support non-DMA
-    // capture anymore, so we can't support it either. Same goes for the derived capdev->dma_mode
-    // flag, which will always be 1 and is no longer checked or used anywhere...
-    capdev->allow_nondma_fallback = allow_lowperf_fallback;
 
     // Reset framecounter:
     capdev->nrframes = 0;
@@ -1148,10 +1144,6 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             // Failed! We clean up and fail:
             // Non-DMA path no longer supported by final libdc V2, so this is the end of the game...
             PsychErrorExitMsg(PsychError_system, "Unable to setup and start DMA capture engine - Start of video capture failed!");
-        }
-        else {
-            // Signal use of DMA engine: Meaningless as of 1st January 2008...
-            capdev->dma_mode = 1;
         }
 
         if(PsychPrefStateGet_Verbosity()>5) printf(" DMA-Engine started.\n"); fflush(NULL);
