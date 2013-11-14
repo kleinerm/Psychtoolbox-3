@@ -218,7 +218,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "Screen('CloseVideoCapture', capturePtr);";
     synopsis[i++] = "[fps starttime] = Screen('StartVideoCapture', capturePtr [, captureRateFPS] [, dropframes=0] [, startAt]);";
     synopsis[i++] = "droppedframes = Screen('StopVideoCapture', capturePtr [, discardFrames=1]);";
-    synopsis[i++] = "[ texturePtr [capturetimestamp] [droppedcount] [summed_intensityOrRawImageMatrix]]=Screen('GetCapturedImage', windowPtr, capturePtr [, waitForImage=1] [,oldTexture] [,specialmode] [,targetmemptr]);";
+    synopsis[i++] = "[ texturePtr [capturetimestamp] [droppedcount] [average_intensityOrRawImageMatrix]]=Screen('GetCapturedImage', windowPtr, capturePtr [, waitForImage=1] [,oldTexture] [,specialmode] [,targetmemptr]);";
 	synopsis[i++] = "oldvalue = Screen('SetVideoCaptureParameter', capturePtr, 'parameterName' [, value]);"; 
 
 	// Low level OpenGL calls - directly translated to C via very thin wrapper functions:

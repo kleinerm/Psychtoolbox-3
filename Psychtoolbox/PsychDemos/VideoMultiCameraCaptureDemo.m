@@ -45,10 +45,10 @@ else
 end
 
 roi = [];
-depth = [1];
+depth = [3];
 convMode = 4; % Mode 4 would be the correct mode for raw sensor -> rgb bayer conversion on Basler cameras.
 bayerPattern = 0; % This would be the correct bayer pattern for Basler color cameras.
-debayerMethod = 0; % Debayer algorithm: 0 = Fastest, ..., 3 = High quality, 4-7 = May or may not work.
+debayerMethod = 3; % Debayer algorithm: 0 = Fastest, ..., 3 = High quality, 4-7 = May or may not work.
 
 % Set dropframes = 0 if multiple frames shall be recorded for sync timing checks, 1 otherwise:
 dropframes = 0;
@@ -106,7 +106,7 @@ try
       Screen('TextSize', win(i), 24);
 
       % Open i'th camera:
-      grabbers(i) = Screen('OpenVideoCapture', win(i), deviceIds(i), roi, depth, 64, [], [], [], [], 8); %#ok<AGROW>
+      grabbers(i) = Screen('OpenVideoCapture', win(i), deviceIds(i), roi, depth, 64, [], [], [], [], 16); %#ok<AGROW>
 
       % Multi-camera sync mode requested?
       if syncmode > 0

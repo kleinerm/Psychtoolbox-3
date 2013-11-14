@@ -33,6 +33,7 @@ typedef struct rawcapimgdata {
 	int w;
 	int h;
 	int depth;
+    int bitdepth;
 	void* data;
 } rawcapimgdata;
 
