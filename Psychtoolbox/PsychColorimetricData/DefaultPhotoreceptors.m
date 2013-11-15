@@ -12,7 +12,7 @@ function photoreceptors = DefaultPhotoreceptors(kind)
 %
 % See also:  FillInPhotoreceptors, PrintPhotoreceptors, RetIrradianceToIsoRecSec
 %  IsomerizationsInEyeDemo, IsomerizationsInDishDemo, ComputeCIEConeFundamentals,
-%  RodFundamentalTest.
+%  RodFundamentalTest, MelanopsinFundamentalTest.
 %
 % NOTES: Should probably update the parameters for LivingHumanFovea so that
 % they produce the Stockman-Sharpe fundamentals.  This should be pretty
