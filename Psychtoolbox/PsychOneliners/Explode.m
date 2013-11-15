@@ -96,8 +96,9 @@ function varargout = Explode(vect,splitvect,mode)
 %               wildcard for number splitting.
 
 if ~IsOctave
-    mver = ver('matlab');
-    psychassert(str2double(mver.Version(1))>=7 && str2double(mver.Version(3:end))>2,'Need at least MATLAB R2006b');
+    v = ver('matlab');
+    v = v(1).Version; v = sscanf(v, '%i.%i.%i');
+    psychassert((v(1) == 7 && v(2) > 2) || v(1) > 7,'Need at least MATLAB R2006b');
 else
     % we don't have the 'split' option in regexp, at least in version 3.2.4
     % strsplit only splits on single delimiters, so not an option
