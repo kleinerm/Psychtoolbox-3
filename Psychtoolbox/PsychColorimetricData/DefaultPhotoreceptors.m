@@ -11,7 +11,8 @@ function photoreceptors = DefaultPhotoreceptors(kind)
 %   GuineaPig - Guinea pig in dish
 %
 % See also:  FillInPhotoreceptors, PrintPhotoreceptors, RetIrradianceToIsoRecSec
-%  IsomerizationsInEyeDemo, IsomerizationsInDishDemo, ComputeCIEConeFundamentals. 
+%  IsomerizationsInEyeDemo, IsomerizationsInDishDemo, ComputeCIEConeFundamentals,
+%  RodFundamentalTest.
 %
 % NOTES: Should probably update the parameters for LivingHumanFovea so that
 % they produce the Stockman-Sharpe fundamentals.  This should be pretty
@@ -72,13 +73,15 @@ switch (kind)
    % LivingHumanRod
    %
    % The choices of values here were chosen in the Brainard
-   % lab (by Manuel Spitschan) to provide a good fit to the CIE
+   % lab (by Manuel Spitschan) to provide a pretty good fit to the CIE
    % 1924 scotopic sensitivity curve.  Many combinations of lambda max,
    % nomogram, and axial densitiy will provide a good fit.  We chose the ones
    % below because the lambda-max and axial density parameters seem
    % in accord with values in the literature and the fit is quite good.
    % Ref [1] gives lambda max of 491, and the average of the rod axial density values in
    % [2] and [3] is the value 0.334.
+   %
+   % See RodFundamentalTest to obtain a plot of the agreement with the tabulated 1924 function.
    %
    % Depending on what you are using this for, you may want to override the default 3 mm pupil.
    %
