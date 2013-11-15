@@ -143,6 +143,13 @@ while secs < untilTime
     if (isDown == ~forWhat) || (secs >= untilTime)
         return;
     end
+    
+    % A tribute to Windows: A useless call to GetMouse to trigger
+    % Screen()'s Windows application event queue processing to avoid
+    % white-death due to hitting the "Application not responding" timeout:
+    if IsWin
+        GetMouse;
+    end
 
     % Wait for yieldInterval to prevent system overload.
     secs = WaitSecs('YieldSecs', yieldInterval);
