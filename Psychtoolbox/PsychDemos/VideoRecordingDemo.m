@@ -3,7 +3,7 @@ function VideoRecordingDemo(moviename, codec, withsound, showit, windowed)
 %
 % Demonstrates simple video capture and recording to a movie file.
 %
-% Currently uses Quicktime on legacy 32-Bit OS/X and GStreamer on 64-Bit OS/X, Linux and Windows.
+% Supports GStreamer on all systems, and DC1394 engine on Linux and OSX.
 %
 % The demo starts the videocapture engine, recording video from the default
 % video source and (optionally) sound from the default audio source. It
@@ -18,35 +18,21 @@ function VideoRecordingDemo(moviename, codec, withsound, showit, windowed)
 % 'moviename' name of output movie file. The file must not exist at start
 % of recording, otherwise it is overwritten.
 %
-% 'codec' an (optional) number, indicating the type of video codec you want to use.
-% Defaults to "whatever the system default is". Valid settings are between
-% 0 and 10 on OS/X. Some codecs are very fast, i.e., high framerates and low system
-% load, others provide high compression rates, i.e., small video files at
-% good quality. Usually there's a tradeoff between encoding speed, quality
-% and compression ratio, so you'll have to try out different ones to find
-% one suitable for your purpose. Some codecs only work at specific
-% framerates or for specific image sizes. If you set the level of verbosity
-% of PTB on OS/X to at least 4, it will print out a list of supported codecs on
-% your system (Screen('Preference', 'Verbosity', 4)).
-% Without Quicktime-Pro on OS/X, you'll usually only have a very limited set of
-% codecs available - often only the default codec, so purchase of a
-% Quicktime-Pro license key is a good investment if you want to do serious
-% recording work. Or you use the GStreamer video capture engine on Windows or
-% Linux for free access to many codecs.
+% 'codec' Indicate the type of video codec you want to use.
+% Defaults to "whatever the system default is". Some codecs are very fast,
+% i.e., high framerates and low system load, others provide high compression
+% rates, i.e., small video files at good quality. Usually there's a tradeoff
+% between encoding speed, quality and compression ratio, so you'll have to try
+% out different ones to find one suitable for your purpose. Some codecs only
+% work at specific framerates or for specific image sizes.
 %
-% Codecs supported by this demo on OS/X: 0 = Default, 1 = H.264, 2 = Apple Pixlet,
-% 3 = MPEG-4, 4 = Component video, 5 = DV-PAL, 6 = DVCPRO-NTSC, 7 =
-% DVCPRO-PAL, 8 = DVCPRO50-NTSC, 9 = DVCPRO50-PAL, 10 = H.263
+% The supported codecs and settings with GStreamer can be found in the code
+% and are explained in 'help VideoRecording'.
 %
-% The supported codecs and settings for Linux and Windows with GStreamer
-% can be found in the code and are explained in 'help VideoRecording'.
-%
-% Empirically, the MPEG-4 codec (codec=3) seems to provide a good tradeoff
-% between quality, compression, speed and cpu load. It allows to reliably
+% Empirically, the MPEG-4 or H264 codecs seem to provide a good tradeoff
+% between quality, compression, speed and cpu load. They allow to reliably
 % record drop-free sound and video with a resolution of 640x480 pixels at
-% 30 frames per second. Quality is good enough for most purposes, and cpu
-% load on a MacBookPro is only about 33% without preview and 50% with
-% preview.
+% 30 frames per second.
 %
 % H.264 has better quality and higher compression, but is able to nearly
 % saturate a MacBookPro, so reliable recording at 30 fps may be difficult
@@ -70,9 +56,10 @@ function VideoRecordingDemo(moviename, codec, withsound, showit, windowed)
 %
 
 % History:
-% 11.2.2007 Written (MK).
-%  5.6.2011 Updated for GStreamer support on Linux and Windows (MK).
-%  3.9.2012 Updated to handle both legacy Quicktime and modern GStreamer (MK).
+% 11.2.2007   Written (MK).
+%  5.6.2011   Updated for GStreamer support on Linux and Windows (MK).
+%  3.9.2012   Updated to handle both legacy Quicktime and modern GStreamer (MK).
+% 19.11.2013  Drop Quicktime support, add dc1394 support, update help text (MK).
 
 % Test if we're running on PTB-3, abort otherwise:
 AssertOpenGL;
@@ -99,69 +86,31 @@ if nargin < 2
    codec = [];
 end
 
+% If no user specified codec, then choose one of the following:
 if isempty(codec)
-    codec = '';
-else
-    % This list of codec's - as specified by numeric FOURCC codes -
-    % is specific to 32-Bit Matlab on OS/X with the Quicktime video recording engine:
-    if isnumeric(codec) && IsOSX && ~Is64Bit && Screen('Preference', 'DefaultVideocaptureEngine') == 0
-        switch(codec)
-            case 0,
-                codec = '';
-            case 1,
-                codec = ':CodecType=1635148593'; % H.264 codec.
-            case 2,
-                codec = ':CodecType=1886940276'; % Apple Pixlet Video codec.
-            case 3,
-                codec = ':CodecType=1836070006'; % MPEG-4 Video codec.
-            case 4,
-                codec = ':CodecType=2037741106'; % Component Video codec.
-            case 5,
-                codec = ':CodecType=1685480304'; % DV - PAL codec.
-            case 6,
-                codec = ':CodecType=1685480224'; % DVCPRO - NTSC codec.
-            case 7,
-                codec = ':CodecType=1685483632'; % DVCPRO - PAL codec.
-            case 8,
-                codec = ':CodecType=1685468526'; % DVCPRO50 - NTSC codec.
-            case 9,
-                codec = ':CodecType=1685468528'; % DVCPRO50 - PAL codec.
-            case 10,
-                codec = ':CodecType=1748121139'; % H.263 codec.
-            otherwise
-                error('Unknown codec specified, only know types 0 to 9.');
-        end
-    end
-end
+    % These do not work yet:
+    %codec = ':CodecType=huffyuv'  % Huffmann encoded YUV + MPEG-4 audio: FAIL!
+    %codec = ':CodecType=ffenc_h263p'  % H263 video + MPEG-4 audio: FAIL!
+    %codec = ':CodecType=yuvraw' % Raw YUV + MPEG-4 audio: FAIL!
 
-% If no user specified codec, then choose one of the following if the
-% GStreamer based video capture engine is used:
-if Screen('Preference', 'DefaultVideocaptureEngine') > 0
-    if isempty(codec)
-        % These do not work yet:
-        %codec = ':CodecType=huffyuv'  % Huffmann encoded YUV + MPEG-4 audio: FAIL!
-        %codec = ':CodecType=ffenc_h263p'  % H263 video + MPEG-4 audio: FAIL!
-        %codec = ':CodecType=yuvraw' % Raw YUV + MPEG-4 audio: FAIL!
-        
-        % These are so slow, they are basically useless for live recording:
-        %codec = ':CodecType=theoraenc'% Theoravideo + Ogg vorbis audio: Gut @ 320 x 240
-        %codec = ':CodecType=vp8enc_webm'   % VP-8/WebM  + Ogg vorbis audio: Ok @ 320 x 240, miserabel higher.
-        %codec = ':CodecType=vp8enc_matroska'   % VP-8/Matroska  + Ogg vorbis audio: Gut @ 320 x 240
-        
-        % The good ones...
-        %codec = ':CodecType=ffenc_mpeg4' % % MPEG-4 video + audio: Tut ok @ 640 x 480.
-        %codec = ':CodecType=xvidenc'  % MPEG-4 video + audio: Tut sehr gut @ 640 x 480 Very good a-v sync! Works well in all conditions. -> Champion.
-        %codec = ':CodecType=x264enc Keyframe=1 Videobitrate=8192 AudioCodec=alawenc ::: AudioSource=pulsesrc ::: Muxer=qtmux'  % H264 video + MPEG-4 audio: Tut seshr gut @ 640 x 480
-        %codec = ':CodecType=VideoCodec=x264enc speed-preset=1 noise-reduction=100000 ::: AudioCodec=faac ::: Muxer=avimux'
-        %codec = ':CodecSettings=Keyframe=60 Videobitrate=8192 '
-        %codec = ':CodecType=xvidenc Keyframe=60 Videobitrate=8192 '
-        
-        % Assign default auto-selected codec:
-        codec = ':CodecType=DEFAULTencoder';
-    else
-        % Assign specific user-selected codec:
-        codec = [':CodecType=' codec];
-    end
+    % These are so slow, they are basically useless for live recording:
+    %codec = ':CodecType=theoraenc'% Theoravideo + Ogg vorbis audio: Gut @ 320 x 240
+    %codec = ':CodecType=vp8enc_webm'   % VP-8/WebM  + Ogg vorbis audio: Ok @ 320 x 240, miserabel higher.
+    %codec = ':CodecType=vp8enc_matroska'   % VP-8/Matroska  + Ogg vorbis audio: Gut @ 320 x 240
+
+    % The good ones...
+    %codec = ':CodecType=ffenc_mpeg4' % % MPEG-4 video + audio: Tut ok @ 640 x 480.
+    %codec = ':CodecType=xvidenc'  % MPEG-4 video + audio: Tut sehr gut @ 640 x 480 Very good a-v sync! Works well in all conditions. -> Champion.
+    %codec = ':CodecType=x264enc Keyframe=1 Videobitrate=8192 AudioCodec=alawenc ::: AudioSource=pulsesrc ::: Muxer=qtmux'  % H264 video + MPEG-4 audio: Tut seshr gut @ 640 x 480
+    %codec = ':CodecType=VideoCodec=x264enc speed-preset=1 noise-reduction=100000 ::: AudioCodec=faac ::: Muxer=avimux'
+    %codec = ':CodecSettings=Keyframe=60 Videobitrate=8192 '
+    %codec = ':CodecType=xvidenc Keyframe=60 Videobitrate=8192 '
+
+    % Assign default auto-selected codec:
+    codec = ':CodecType=DEFAULTencoder';
+else
+    % Assign specific user-selected codec:
+    codec = [':CodecType=' codec];
 end
 
 fprintf('Using codec: %s\n', codec);
@@ -245,98 +194,90 @@ try
         % Therefore we hard-code the resolution to 640x480, the most common
         % case, to make it work "most of the time(tm)":
         grabber = Screen('OpenVideoCapture', win, [], [0 0 640 480], [], [], [], codec, withsound);
-    else
-        % Is this the legacy Quicktime videocapture engine?
-        if Screen('Preference', 'DefaultVideocaptureEngine') == 0
-            % Yes: Need to store the name of the moviefile in the codec
-            % parameter:
-            codec = [moviename '.mov' codec];
-        end
-        
+    else        
         % No need for Windows-style workarounds:
-        grabber = Screen('OpenVideoCapture', win, [0], [], [], [], [], codec, withsound);
+        grabber = Screen('OpenVideoCapture', win, [], [], [3], [], [], codec, withsound);
     end
 
-for nreps = 1:1
-    % Non-legacy engine? GStreamer allows more convenient spec of moviename:
-    if Screen('Preference', 'DefaultVideocaptureEngine') > 0
+    for nreps = 1:10
+        KbReleaseWait;
+
         % Select a moviename for the recorded movie file:
         mname = sprintf('SetNewMoviename=%s_%i.mov', moviename, nreps);
         Screen('SetVideoCaptureParameter', grabber, mname);
-    end
-    
-    % Start capture, request 30 fps. Capture hardware will fall back to
-    % fastest supported framerate if it is not supported (i think).
-    % Some hardware disregards the framerate parameter. Especially the
-    % built-in iSight camera of the newer Intel Macintosh computers
-    % seems to completely ignore any framerate setting. It chooses the
-    % framerate by itself, based on lighting conditions. With bright scenes
-    % it can run at 30 fps, at lower light conditions it reduces the
-    % framerate to 15 fps, then to 7.5 fps.
-    Screen('StartVideoCapture', grabber, 30, 1)
 
-    oldtex = 0;
-    tex = 0;
-    oldpts = 0;
-    pts = 0;
-    count = 0;
-    t=GetSecs;
+        % Start capture, request 30 fps. Capture hardware will fall back to
+        % fastest supported framerate if it is not supported (i think).
+        % Some hardware disregards the framerate parameter. Especially the
+        % built-in iSight camera of the newer Intel Macintosh computers
+        % seems to completely ignore any framerate setting. It chooses the
+        % framerate by itself, based on lighting conditions. With bright scenes
+        % it can run at 30 fps, at lower light conditions it reduces the
+        % framerate to 15 fps, then to 7.5 fps.
+        Screen('StartVideoCapture', grabber, 30, 1)
 
-    % Run until keypress:
-    while ~KbCheck 
-        % Wait blocking for next image. If waitforimage == 1 then return it
-        % as texture, if waitforimage == 4, do not return it (no preview,
-        % but faster). oldtex contains the handle of previously fetched
-        % textures - recycling is not only good for the environment, but also for speed ;)
-        if waitforimage~=4
-            % Live preview: Wait blocking for new frame, return texture
-            % handle and capture timestamp:
-            [tex pts nrdropped]=Screen('GetCapturedImage', win, grabber, waitforimage, oldtex);
-        
-            % Some output to the console:
-            % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
-        
-            % If a texture is available, draw and show it.
-            if (tex>0)
-	        % Print capture timestamp in seconds since start of capture:
-                Screen('DrawText', win, sprintf('Capture time (secs): %.4f', pts), 0, 0, 255);
-                if count>0
-                    % Compute delta between consecutive frames:
-                    delta = (pts - oldpts) * 1000;
-                    oldpts = pts;
-                    Screen('DrawText', win, sprintf('Interframe delta (msecs): %.4f', delta), 0, 20, 255);
+        oldtex = 0;
+        tex = 0;
+        oldpts = 0;
+        pts = 0;
+        count = 0;
+        t=GetSecs;
+
+        % Run until keypress:
+        while ~KbCheck
+            % Wait blocking for next image. If waitforimage == 1 then return it
+            % as texture, if waitforimage == 4, do not return it (no preview,
+            % but faster). oldtex contains the handle of previously fetched
+            % textures - recycling is not only good for the environment, but also for speed ;)
+            if waitforimage~=4
+                % Live preview: Wait blocking for new frame, return texture
+                % handle and capture timestamp:
+                [tex pts nrdropped]=Screen('GetCapturedImage', win, grabber, waitforimage, oldtex);
+
+                % Some output to the console:
+                % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
+
+                % If a texture is available, draw and show it.
+                if tex > 0
+                    % Print capture timestamp in seconds since start of capture:
+                    Screen('DrawText', win, sprintf('Capture time (secs): %.4f', pts), 0, 0, 255);
+                    if count>0
+                        % Compute delta between consecutive frames:
+                        delta = (pts - oldpts) * 1000;
+                        oldpts = pts;
+                        Screen('DrawText', win, sprintf('Interframe delta (msecs): %.4f', delta), 0, 20, 255);
+                    end
+
+                    % Draw new texture from framegrabber.
+                    Screen('DrawTexture', win, tex);
+
+                    % Recycle this texture - faster:
+                    oldtex = tex;
+
+                    % Show it:
+                    Screen('Flip', win);
+                    count = count + 1;
+                else
+                    WaitSecs('YieldSecs', 0.005);
                 end
-
-                % Draw new texture from framegrabber.
-                Screen('DrawTexture', win, tex);
-
-                % Recycle this texture - faster:
-                oldtex = tex;
-
-		% Show it:
-		Screen('Flip', win);
-		count = count + 1;
             else
-	        WaitSecs('YieldSecs', 0.005);
+                % Recording only: We have nothing to do here, as thread offloading
+                % is enabled above via flag 16 so all processing is done automatically
+                % in the background.
+
+                % Well, we do one thing. We sleep for 0.1 secs to avoid taxing the cpu
+                % for no good reason:
+                WaitSecs('YieldSecs', 0.1);
             end
-        else
-            % Recording only: We have nothing to do here, as thread offloading
-            % is enabled above via flag 16 so all processing is done automatically
-	    % in the background.
-
-            % Well, we do one thing. We sleep for 0.1 secs to avoid taxing the cpu
-            % for no good reason:
-	    WaitSecs('YieldSecs', 0.1);
+            % Ready for next frame:
         end
-        % Ready for next frame:
-    end
 
-    % Done. Shut us down.
-    telapsed = GetSecs - t
-    
-    % Stop capture engine and recording:
-    Screen('StopVideoCapture', grabber);
-end
+        % Done. Shut us down.
+        telapsed = GetSecs - t
+
+        % Stop capture engine and recording:
+        Screen('StopVideoCapture', grabber);
+    end
 
     % Close engine and recorded movie file:
     Screen('CloseVideoCapture', grabber);

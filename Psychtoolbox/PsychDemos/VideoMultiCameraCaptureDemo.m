@@ -106,7 +106,7 @@ try
       Screen('TextSize', win(i), 24);
 
       % Open i'th camera:
-      grabbers(i) = Screen('OpenVideoCapture', win(i), deviceIds(i), roi, depth, 64, [], [], [], [], 16); %#ok<AGROW>
+      grabbers(i) = Screen('OpenVideoCapture', win(i), deviceIds(i), roi, depth, 64, [], [], [], [], 8); %#ok<AGROW>
 
       % Multi-camera sync mode requested?
       if syncmode > 0
