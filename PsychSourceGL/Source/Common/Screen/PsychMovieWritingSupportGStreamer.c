@@ -35,17 +35,19 @@
 
 // Record which defines all state for a capture device:
 typedef struct {
-	volatile psych_bool                             eos;
-	GMainLoop*                                      Context;
-	GstElement*                                     Movie;
-	GstElement*                                     ptbvideoappsrc;
-	GstElement*                                     ptbaudioappsrc;
-	GstBus*                                         bus;
-	GstBuffer*                                      PixMap;
-	guint32                                         CodecType;
-	char                                            File[FILENAME_MAX];
-	int                                             height;
-	int                                             width;
+    volatile psych_bool                             eos;
+    GMainLoop*                                      Context;
+    GstElement*                                     Movie;
+    GstElement*                                     ptbvideoappsrc;
+    GstElement*                                     ptbaudioappsrc;
+    GstBus*                                         bus;
+    GstBuffer*                                      PixMap;
+    guint32                                         CodecType;
+    char                                            File[FILENAME_MAX];
+    int                                             height;
+    int                                             width;
+    unsigned int                                    numChannels;
+    unsigned int                                    bitdepth;
 } PsychMovieWriterRecordType;
 
 static PsychMovieWriterRecordType moviewriterRecordBANK[PSYCH_MAX_MOVIEWRITERDEVICES];
@@ -119,14 +121,14 @@ PsychMovieWriterRecordType* PsychGetMovieWriter(int moviehandle, psych_bool unsa
 	return(&(moviewriterRecordBANK[moviehandle]));
 }
 
-unsigned char*	PsychGetVideoFrameForMoviePtr(int moviehandle, unsigned int* twidth, unsigned int* theight)
+unsigned char* PsychGetVideoFrameForMoviePtr(int moviehandle, unsigned int* twidth, unsigned int* theight, unsigned int* numChannels, unsigned int* bitdepth)
 {
 	PsychMovieWriterRecordType* pwriterRec = PsychGetMovieWriter(moviehandle, FALSE);
 
 	// Buffer already created?
 	if (NULL == pwriterRec->PixMap) {
 		// No. Let's create a suitable one:
-		pwriterRec->PixMap = gst_buffer_try_new_and_alloc(pwriterRec->width * pwriterRec->height * 4 * 1);
+		pwriterRec->PixMap = gst_buffer_try_new_and_alloc(pwriterRec->width * pwriterRec->height * pwriterRec->numChannels * (pwriterRec->bitdepth / 8));
 
 		// Out of memory condition!
 		if (NULL == pwriterRec->PixMap) return(NULL);
@@ -137,6 +139,9 @@ unsigned char*	PsychGetVideoFrameForMoviePtr(int moviehandle, unsigned int* twid
 
 	*twidth  = pwriterRec->width;
 	*theight = pwriterRec->height;
+    *numChannels = pwriterRec->numChannels;
+    *bitdepth = pwriterRec->bitdepth;
+    
 	return((unsigned char*) GST_BUFFER_DATA(pwriterRec->PixMap));
 }
 
@@ -161,20 +166,8 @@ int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_boo
     pixptr   = (unsigned char*) GST_BUFFER_DATA(pwriterRec->PixMap);
     wordptr  = (unsigned int*)  GST_BUFFER_DATA(pwriterRec->PixMap);
 
-	// Draw testpattern: Disabled at compile-time by default:
-	if (FALSE) {
-		for (y = 0; y < pwriterRec->height; y++) {
-			for (x = 0; x < pwriterRec->width; x++) {
-				*(pixptr++) = (unsigned char) 255; // alpha
-				*(pixptr++) = (unsigned char) y; // Red
-				*(pixptr++) = (unsigned char) x; // Green
-				*(pixptr++) = (unsigned char) 0; // Blue
-			}
-		}
-	}
-	
-	// Imagebuffer is upside-down: Need to flip it vertically:
-	if (isUpsideDown) {
+	// Imagebuffer is upside-down: Need to flip it vertically: Currently for RGBA8 only!
+	if (isUpsideDown && (pwriterRec->numChannels == 4) && (pwriterRec->bitdepth == 8)) {
 		h = pwriterRec->height;
 		w = pwriterRec->width;
 		wordptr1 = wordptr;
@@ -188,6 +181,7 @@ int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_boo
 			}
 		}
 	}
+	else if (isUpsideDown) printf("PTB-ERROR: Adding of upsidedown video frame requested, but provided non-RGBA8 format not supported! No-Op.\n");
 
     // Make backup copy of buffer for replication if needed:
     if (frameDurationUnits > 1) {
@@ -417,18 +411,25 @@ static gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
   return TRUE;
 }
 
-int PsychCreateNewMovieFile(char* moviefile, int width, int height, double framerate, char* movieoptions)
+int PsychCreateNewMovieFile(char* moviefile, int width, int height, double framerate, int numChannels, int bitdepth, char* movieoptions)
 {
 	PsychMovieWriterRecordType*             pwriterRec = NULL;
 	int                                     moviehandle = 0;
 	GError                                  *myErr = NULL;
 	char*                                   poption;
 	char                                    codecString[1000];
+    char                                    capsString[1000];
 	char                                    launchString[10000];
 	int                                     dummyInt;
 	float                                   dummyFloat;
 	char                                    myfourcc[5];
 	psych_bool                              doAudio = FALSE;
+
+    // Validate number of color channels: We support 1, 3 or 4:
+    if (numChannels != 1 && numChannels != 3 && numChannels != 4) PsychErrorExitMsg(PsychError_internal, "Invalid number of channels parameter provided. Not 1, 3 or 4!");
+
+    // Validate number of bits per component: We support 8 bpc or 16 bpc:
+    if (bitdepth != 8 && bitdepth != 16) PsychErrorExitMsg(PsychError_internal, "Invalid number of bits per channel bpc parameter provided. Not 8 or 16!");
 
 	// Still capacity left?
 	if (moviewritercount >= PSYCH_MAX_MOVIEWRITERDEVICES) PsychErrorExitMsg(PsychError_user, "Maximum number of movie writers exceeded. Please close some first!");
@@ -445,9 +446,11 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 	// Store movie filename:
 	strcpy(pwriterRec->File, moviefile);
 
-	// Store width, height:
+	// Store width, height, numChannels, bitdepth:
 	pwriterRec->height  = height;
 	pwriterRec->width   = width;
+    pwriterRec->numChannels = (unsigned int) numChannels;
+    pwriterRec->bitdepth = (unsigned int) bitdepth;
 	pwriterRec->eos     = FALSE;
 
 	// If no movieoptions specified, create default string for default
@@ -554,15 +557,44 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
         
 		// With audio track?
 		if (strstr(movieoptions, "AddAudioTrack")) doAudio = TRUE;
+
+        // Define filter-caps aka capsfilter for appsrc, to tell the encoding pipeline what kind of
+        // video format is delivered by the appsrc:
+        if (bitdepth == 8) {
+            // 8 bpc format: We handle Luminance8/Raw8, RGB8 or RGBA8:
+            switch (numChannels) {
+                case 1:
+                    // 8 bpc gray or raw:
+                    sprintf(capsString, "video/x-raw-gray, bpp=(int)8, depth=(int)8");
+                    break;
+                case 3:
+                    // 8 bpc RGB8:
+                    sprintf(capsString, "video/x-raw-rgb, bpp=(int)24, depth=(int)24, endianess=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255");
+                    break;
+                case 4:
+                    // 8 bpc RGBA8:
+                    sprintf(capsString, "video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, alpha_mask=(int)-16777216, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255");
+                    break;
+                default:
+                    printf("PTB-ERROR: Unsupported number of color channels %i for video encoding!\n", numChannels);
+                    goto bail;
+            }
+        }
+        else {
+            // 16 bpc format: We only handle Luminance16/Raw16, aka 16 bit grayscale. This is due to limitations of the
+            // ffmpegcolorspace converter we use.
+            if (numChannels == 1) {
+                // 16 bit gray encoding of luminance16 or raw16 sensor data:
+                sprintf(capsString, "video/x-raw-gray, bpp=(int)16, depth=(int)16, endianness=(int)4321");
+            }
+            else {
+                printf("PTB-ERROR: Unsupported number of color channels %i for 16 bpc video encoding! Only 1-channel encoding of 16 bpc luminance or raw data is supported.\n", numChannels);
+                goto bail;
+            }
+        }
         
 		// Build final launch string:
-		if (doAudio) {
-			// Video and audio:
-			sprintf(launchString, "appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps=\"video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, width=(int)%i, height=(int)%i, framerate=%i/1 \" ! videorate ! ffmpegcolorspace ! %s ! filesink name=ptbfilesink async=0 location=%s ", width, height, ((int) (framerate + 0.5)), codecString, moviefile);
-		} else {
-			// Video only:
-			sprintf(launchString, "appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps=\"video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, width=(int)%i, height=(int)%i, framerate=%i/1 \" ! videorate ! ffmpegcolorspace ! %s ! filesink name=ptbfilesink async=0 location=%s ", width, height, ((int) (framerate + 0.5)), codecString, moviefile);
-		}
+        sprintf(launchString, "appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps=\"%s, width=(int)%i, height=(int)%i, framerate=%i/1 \" ! videorate ! ffmpegcolorspace ! %s ! filesink name=ptbfilesink async=0 location=%s ", capsString, width, height, ((int) (framerate + 0.5)), codecString, moviefile);
 	}
         
 	// Create a movie file for the destination movie:
@@ -736,7 +768,7 @@ int PsychFinalizeNewMovieFile(int movieHandle)
 void PsychMovieWritingInit(void) { return; }
 void PsychExitMovieWriting(void) { return; }
 void PsychDeleteAllMovieWriters(void) { return; }
-int PsychCreateNewMovieFile(char* moviefile, int width, int height, double framerate, char* movieoptions)
+int PsychCreateNewMovieFile(char* moviefile, int width, int height, double framerate, int numChannels, int bitdepth, char* movieoptions)
 {
     PsychErrorExitMsg(PsychError_unimplemented, "Sorry, movie writing not supported on this operating system");
     return(0);
@@ -752,7 +784,7 @@ int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_boo
     return(1);
 }
 
-unsigned char*	PsychGetVideoFrameForMoviePtr(int moviehandle, unsigned int* twidth, unsigned int* theight)
+unsigned char* PsychGetVideoFrameForMoviePtr(int moviehandle, unsigned int* twidth, unsigned int* theight, unsigned int* numChannels, unsigned int* bitdepth)
 {
     PsychErrorExitMsg(PsychError_unimplemented, "Sorry, movie writing not supported on this operating system");
     return(NULL);

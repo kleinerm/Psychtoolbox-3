@@ -1865,6 +1865,47 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 		}
 	}
 
+	// PNG image encoding: This is lossless and can also store 16 bpc content:
+	if (strstr(codecSpec, "ffenc_ljpeg") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
+        // Define recommended (compatible) audioencoder/muxer and their default options:
+        sprintf(audioProfile, "audio/mpeg,mpegversion=4");
+        sprintf(muxerProfile, "video/x-msvideo");
+        sprintf(outCodecName, "image/jpeg");
+        sprintf(audiocodec, "AudioCodec=%s ", aactype); // Need to use faac MPEG-4 audio encoder.
+        sprintf(muxer, "avimux"); // Need to use Quicktime-Multiplexer.
+        
+        // Videoencoder not yet created? If so, we have to do it now:
+        if (!capdev->videoenc) {
+            // Not yet created. Create full codec & option string from high level properties,
+            // if any, then create based on string:
+            sprintf(videocodec, "VideoCodec=ffenc_ljpeg");
+            
+            // Keyframe interval specified?
+            if (keyFrameInterval >= 0) {
+                // Assign maximum distance between key frames:
+                sprintf(codecoption, "gop-size=%i ", keyFrameInterval);
+                strcat(videocodec, codecoption);
+            }
+            
+            // Quality vs. Speed tradeoff specified?
+            if (videoBitrate >= 0) {
+                sprintf(codecoption, "bitrate=%i ", (int) videoBitrate * 1024);
+                strcat(videocodec, codecoption);
+            }
+            
+            // Create videocodec from options string:
+            capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+            if (!capdev->videoenc && use_profiles) capdev->videoenc = (GstElement*) 0x1;
+        }
+        
+        if (!capdev->videoenc) {
+            printf("PTB-WARNING: Failed to create 'ffenc_ljpeg' compressed JPEG lossless video encoder! Does not seem to be installed on your system?\n");
+        }
+        else {
+            if (!use_profiles) sprintf(outCodecName, "ffenc_ljpeg");
+        }
+    }
+    
     // Use of audio encoding for any means requested? If so, perform codec and audio source setup:
     if (use_audio) {
         // Audio encoder from parameter string? Or new-style encoding profiles in use?
@@ -4426,7 +4467,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 	    pixptr = (unsigned char*) input_image;
 	    count  = w * h * bpp;
 	    for (i=0; i<count; i++) intensity+=(unsigned int) pixptr[i];
-	    *summed_intensity = ((double) intensity) / w / h / bpp;
+	    *summed_intensity = ((double) intensity) / w / h / bpp / 255;
     }
     
     // Raw data requested?

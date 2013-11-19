@@ -196,10 +196,10 @@ try
         grabber = Screen('OpenVideoCapture', win, [], [0 0 640 480], [], [], [], codec, withsound);
     else        
         % No need for Windows-style workarounds:
-        grabber = Screen('OpenVideoCapture', win, [], [], [3], [], [], codec, withsound);
+        grabber = Screen('OpenVideoCapture', win, [], [], [1], [], [], codec, withsound, [], 8);
     end
 
-    for nreps = 1:10
+    for nreps = 1:1
         KbReleaseWait;
 
         % Select a moviename for the recorded movie file:

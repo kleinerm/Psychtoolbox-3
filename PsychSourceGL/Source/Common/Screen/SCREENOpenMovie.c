@@ -399,7 +399,7 @@ PsychError SCREENCreateMovie(void)
 	PsychAllocInCharArg(6, kPsychArgOptional, &movieOptions);
 
 	// Create movie of given size and framerate with given options:
-	moviehandle = PsychCreateNewMovieFile(moviefile, width, height, framerate, movieOptions);
+	moviehandle = PsychCreateNewMovieFile(moviefile, width, height, framerate, 4, 8, movieOptions);
 	if (0 > moviehandle) {
 		PsychErrorExitMsg(PsychError_user, "CreateMovie failed for reason mentioned above.");
 	}

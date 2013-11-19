@@ -43,9 +43,14 @@ static char synopsisString[] =
 "allows to request special treatment of textures. Currently, specialmode = 1 will ask PTB to use GL_TEXTURE_2D textures instead of other "
 "formats. This is sometimes less efficient, unless you want to do realtime blurring of images. If you set specialmode = 2, then "
 "the optional return value 'average_intensityOrRawImageMatrix' will not return the summed pixel intensity, but a Matlab uint8 or uint16 matrix with "
-"the captured raw image data for direct use within Matlab, e.g., via the image processing toolbox. If you set 'specialmode = 4 and "
-"provide a double-encoded memory pointer in 'targetmemptr', then PTB will copy the raw image data into that buffer. The buffer is "
-"expected to be of sufficient size, otherwise a crash will occur (Experts only!).\n"
+"the captured raw image data for direct use within Matlab, e.g., via the image processing toolbox. uint8 matrices return intensities in the "
+"range 0 - 255. uint16 matrices for high bitdepth video capture return 16 bit intensity values in which the most significant bit (the 16th bit) "
+"contains the most significant bit of the cameras sensor data. This means that if a camera has a sensor that returns less than 16 bit precision, "
+"then the least significant bits in the uint16 return values will be all-zero, e.g., a 12 bit sensor would return uint16 values with the 4 least "
+"significant bits all zero.\n"
+"If you set 'specialmode' = 4 and provide a double-encoded memory pointer in 'targetmemptr', then PTB will copy the raw image data into that "
+"buffer instead of returning it as a matrix in the fourth return argument. The buffer is expected to be of sufficient size, otherwise a crash "
+"of Matlab or Octave will occur (Experts only!).\n"
 "A 'specialmode' == 8 will require high-precision drawing, see the specialFlag == 2 setting in Screen('MakeTexture') for a "
 "description of its meaning. A 'specialMode' == 16 will prevent automatic mipmap-generation for GL_TEXTURE_2D textures. "
 "A 'specialMode' == 32 will prevent closing of the texture by a call to Screen('Close');\n"
@@ -57,8 +62,10 @@ static char synopsisString[] =
 "number of captured frames that had to be dropped to keep in sync with realtime or due to internal shortage of buffer memory. "
 "If you didn't specify the 'dropFrames' flag in Screen('StartVideoCapture') then it will report the number of pending "
 "buffers which can be fetched, i.e., how many more buffers are queued up for delivery.\n"
-"The (optional) return value 'average_intensityOrRawImageMatrix' contains the average of all pixel intensity values of all channels of the image - some measure of overall brightness. "
-"Only query this value if you really need it, as its computation is time consuming.";
+"The (optional) return value 'average_intensityOrRawImageMatrix' contains the average of all pixel intensity values of all channels "
+"of the image - some measure of overall brightness. The value is normalized to the 0.0 - 1.0 range, where an all-black image would "
+"return 0.0 and an all-white saturated image would return 1.0. Only query this value if you need it, as its computation requires "
+"extra time.";
 
 static char seeAlsoString[] = "CloseVideoCapture StartVideoCapture StopVideoCapture GetCapturedImage";
 

@@ -149,7 +149,7 @@ PsychError SCREENGetImage(void)
 	GLenum			whichBuffer = 0; 
 	int				frameduration = 1;
 	int				moviehandle = 0;
-	unsigned int	twidth, theight;
+	unsigned int	twidth, theight, numChannels, bitdepth;
 	unsigned char*	framepixels;
 	psych_bool      isOES;
 
@@ -560,7 +560,9 @@ PsychError SCREENGetImage(void)
 		PsychCopyInIntegerArg(5, FALSE, &frameduration);
 		if (frameduration < 1) PsychErrorExitMsg(PsychError_user, "Number of requested framedurations 'frameduration' is negative. Must be greater than zero!");
 		
-		framepixels = PsychGetVideoFrameForMoviePtr(moviehandle, &twidth, &theight);
+        framepixels = PsychGetVideoFrameForMoviePtr(moviehandle, &twidth, &theight, &numChannels, &bitdepth);
+        if (numChannels != 4 || bitdepth != 8) PsychErrorExitMsg(PsychError_user, "AddFrameToMovie failed due to wrong number of color channels (!=4) or wrong bpc (!=8)!");
+        
 		if (framepixels) {
 			glPixelStorei(GL_PACK_ALIGNMENT,1);
 			invertedY = (int) (windowRect[kPsychBottom] - sampleRect[kPsychBottom]);

@@ -31,7 +31,6 @@
  *
  *    TODO:
  *        - Implement Query/WaitTrigger support via new Basler smart feature api.
- *        - Implement the new generic frame format conversion routines.
  */
 
 #include "Screen.h"
@@ -90,6 +89,11 @@ typedef struct {
     double avg_decompresstime;        // Average time spent in decompressor.
     double avg_gfxtime;               // Average time spent in buffer --> OpenGL texture conversion and statistics.
     int nrgfxframes;                  // Count of fetched textures.
+    psych_bool recording_active;      // Is video recording active/requested on this camera?
+    char* targetmoviefilename;        // Filename of a movie file to record.
+    char* codecSpec;                  // Codec specification string for video recording.
+    int moviehandle;                  // Handle of movie file to be written during video recording.
+    unsigned int recordingflags;      // Flags used for recording and similar activities.
 } PsychVidcapRecordType;
 
 static PsychVidcapRecordType vidcapRecordBANK[PSYCH_MAX_CAPTUREDEVICES];
@@ -225,6 +229,13 @@ void PsychDCCloseVideoCaptureDevice(int capturehandle)
     dc1394_camera_free(capdev->camera);
     capdev->camera = NULL;
 
+    // Release video recording related data:
+    if (capdev->codecSpec) free(capdev->codecSpec);
+    capdev->codecSpec = NULL;
+
+    if (capdev->targetmoviefilename) free(capdev->targetmoviefilename);
+    capdev->targetmoviefilename = NULL;
+
     // Invalidate device record to free up this slot in the array:
     capdev->valid = 0;
 
@@ -267,6 +278,7 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     dc1394error_t         err;
     int                   i;
     char                  msgerr[10000];
+    char*                 codecSpec = NULL;
 
     *capturehandle = -1;
 
@@ -292,6 +304,58 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     capdev->convframe = NULL;
     capdev->debayer_method = DC1394_BAYER_METHOD_NEAREST;
 
+    // Name of target movie file for video and audio recording specified?
+    if (targetmoviefilename) {
+        // Codec settings or type specified?
+        if ((codecSpec = strstr(targetmoviefilename, ":CodecSettings="))) {
+            // Replace ':' with a zero in targetmoviefilename, so it gets null-terminated
+            // and only points to the actual movie filename:
+            *codecSpec = 0;
+
+            // Move after null-terminator:
+            codecSpec++;
+
+            // Replace the ':CodecSettings=' with the special keyword 'DEFAULTenc', so
+            // so the default video codec is chosen, but the given settings override its
+            // default parameters.
+            strncpy(codecSpec, "DEFAULTenc    ", strlen("DEFAULTenc    "));
+
+            if (strlen(codecSpec) == 0) PsychErrorExitMsg(PsychError_user, "Invalid (empty) :CodecSettings= parameter specified. Aborted.");
+        } else if ((codecSpec = strstr(targetmoviefilename, ":CodecType="))) {
+            // Replace ':' with a zero in targetmoviefilename, so it gets null-terminated
+            // and only points to the actual movie filename:
+            *codecSpec = 0;
+
+            // Advance codecSpec to point to the actual codec spec string:
+            codecSpec+= 11;
+
+            if (strlen(codecSpec) == 0) PsychErrorExitMsg(PsychError_user, "Invalid (empty) :CodecType= parameter specified. Aborted.");
+        } else {
+            // No codec specified: Use our default encoder, the one that's been shown to
+            // produce good results:
+            codecSpec = strdup("DEFAULTenc");
+        }
+
+        // Copy codecSpec for later use in start of video capture and recording:
+        capdev->codecSpec = strdup(codecSpec);
+        if (strcmp(codecSpec, "DEFAULTenc") == 0) free(codecSpec);
+        codecSpec = NULL;
+
+        // Audio recording is so far unsupported, so clear the "with audio" flag:
+        recordingflags &= ~2;
+
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Video%s recording into file [%s] enabled for camera with deviceIndex %i.\n",
+            ((recordingflags & 2) ? " and audio" : ""), targetmoviefilename, deviceIndex);
+
+        capdev->targetmoviefilename = strdup(targetmoviefilename);
+        capdev->recording_active = TRUE;
+    } else {
+        capdev->recording_active = FALSE;
+    }
+
+    // Assign recordingflags:
+    capdev->recordingflags = recordingflags;
+    
     // Query a list of all available (connected) Firewire cameras:
     err = dc1394_camera_enumerate(libdc, &cameras);
     if (err != DC1394_SUCCESS) {
@@ -1294,8 +1358,24 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             memset(capdev->convframe, 0, sizeof(dc1394video_frame_t));            
         }
 
-        if(PsychPrefStateGet_Verbosity() > 2) {
+        if (PsychPrefStateGet_Verbosity() > 2) {
             printf("PTB-INFO: Capture started on device %i - Width x Height = %i x %i - Framerate: %f fps, bpc = %i.\n", capturehandle, capdev->width, capdev->height, capdev->fps, capdev->bitdepth);
+        }
+
+        // Now that capture is successfully started, do we also want to record video to a file?
+        if (capdev->recording_active) {
+            // Yes. Setup movie writing:
+            capdev->moviehandle = PsychCreateNewMovieFile(capdev->targetmoviefilename, capdev->width, capdev->height, (double) framerate, capdev->actuallayers, ((capdev->bitdepth > 8) ? 16 : 8), capdev->codecSpec);
+
+            // Failed?
+            if (capdev->moviehandle == -1) {
+                PsychErrorExitMsg(PsychError_user, "Setup of video recording failed.");
+            }
+            else {
+                if (PsychPrefStateGet_Verbosity() > 2) {
+                    printf("PTB-INFO: Video recording started on device %i into moviefile '%s'.\n", capturehandle, capdev->targetmoviefilename);
+                }
+            }
         }
     }
     else {
@@ -1377,10 +1457,18 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 if (capdev->nrgfxframes>0) capdev->avg_gfxtime/= (double) capdev->nrgfxframes;
                 printf("PTB-INFO: Average time spent in GetCapturedImage (intensity calculation Video->OpenGL texture conversion) was %lf milliseconds.\n", capdev->avg_gfxtime * 1000.0f);
             }
+
+            // Video recording active? Then we should stop it now:
+            if ((capdev->recording_active) && (capdev->moviehandle > -1)) {
+                if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Stopping video recording on device %i and closing moviefile '%s'\n", capturehandle, capdev->targetmoviefilename);
+                if (PsychFinalizeNewMovieFile(capdev->moviehandle) == 0) {
+                    capdev->moviehandle = -1;
+                    PsychErrorExitMsg(PsychError_user, "Stop of video recording failed.");
+                }
+                capdev->moviehandle = -1;
+            }
         }
     }
-
-    fflush(NULL);
 
     // Reset framecounters and statistics:
     capdev->nrframes = 0;
@@ -1561,7 +1649,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 
     // Do we want to do something with the image data and have a
     // scratch buffer for color conversion alloc'ed?
-    if ((capdev->convframe) && ((out_texture) || (summed_intensity) || (outrawbuffer))) {
+    if ((capdev->convframe) && ((out_texture) || (summed_intensity) || (outrawbuffer) || (capdev->recording_active))) {
         // Yes. Perform color-conversion YUV->RGB from cameras DMA buffer
         // into the scratch buffer and set scratch buffer as source for
         // all further operations:
@@ -1690,7 +1778,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
         pixptr = (unsigned char*) input_image;
         count = (w*h*((capdev->actuallayers == 3) ? 3 : 1));
         for (i=0; i<count; i++) intensity+=(psych_uint64) pixptr[i];
-        *summed_intensity = ((double) intensity) / w / h / ((capdev->actuallayers == 3) ? 3 : 1);
+        *summed_intensity = ((double) intensity) / w / h / ((capdev->actuallayers == 3) ? 3 : 1) / 255;
     }
 
     // Sum of pixel intensities requested? 16 bpc?
@@ -1698,7 +1786,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
         pixptrs = (psych_uint16*) input_image;
         count = (w*h*((capdev->actuallayers == 3) ? 3 : 1));
         for (i=0; i<count; i++) intensity+=(psych_uint64) pixptrs[i];
-        *summed_intensity = ((double) intensity) / w / h / ((capdev->actuallayers == 3) ? 3 : 1);
+        *summed_intensity = ((double) intensity) / w / h / ((capdev->actuallayers == 3) ? 3 : 1) / ((1 << (capdev->bitdepth)) - 1);
     }
 
     // Raw data requested?
@@ -1709,7 +1797,78 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
         outrawbuffer->depth = ((capdev->actuallayers == 3) ? 3 : 1);
         outrawbuffer->bitdepth = (capdev->bitdepth > 8) ? 16 : 8;
         count = (w * h * outrawbuffer->depth * (outrawbuffer->bitdepth / 8));
-        memcpy(outrawbuffer->data, (const void *) input_image, count);
+
+        // True bitdepth in the 9 to 15 bpc range?
+        if (capdev->bitdepth > 8 && capdev->bitdepth < 16) {
+            // Yes. Need to bit-shift, so the most significant bit of the video data,
+            // gets placed in the 16th bit of the 16 bit word. This to make sure the
+            // "dead bits" for bpc < 16 are the least significant bits and they are
+            // all zeros. This makes sure that black is always all-zero and white is
+            // at least close to 0xffff - minus the all-zero undefined lsb bits:
+            psych_uint16 *frameinwords = (psych_uint16*) input_image;
+            psych_uint16 *frameoutwords = (psych_uint16*) outrawbuffer->data;
+            
+            count /= 2; // Half as many words as bytes.
+            for (i = 0; i < count; i++) *(frameoutwords++) = *(frameinwords++) << (16 - capdev->bitdepth);
+        }
+        else {
+            // No, either 8 bpc or 16 bpc - A simple memcpy does the job efficiently:
+            memcpy(outrawbuffer->data, (const void*) input_image, count);
+        }
+    }
+
+    // Video recording active?
+    if (capdev->recording_active && (capdev->moviehandle != -1)) {
+        // Yes. Need to add this video frame to the encoding pipeline.
+        unsigned int    twidth, theight, numChannels, bitdepth;
+        unsigned char*  framepixels;
+        
+        // Get memory pointer to target memory buffer:
+        framepixels = PsychGetVideoFrameForMoviePtr(capdev->moviehandle, &twidth, &theight, &numChannels, &bitdepth);
+        // Validate number of color channels and bits per channel values for a match:
+        if (numChannels != (unsigned int) capdev->actuallayers || bitdepth != ((capdev->bitdepth > 8) ? 16 : 8)) {
+            printf("PTB-ERROR: Mismatch between number of color channels %i or bpc %i of captured video frame and number of channels %i or bpc %i of video recording target buffer!\n",
+                   capdev->actuallayers, ((capdev->bitdepth > 8) ? 16 : 8), numChannels, bitdepth);
+            PsychErrorExitMsg(PsychError_system, "Encoding current captured video frame failed. Video format mismatch.");
+        }
+
+        // Dimensions match?
+        if (twidth != (unsigned int) w || theight != (unsigned int) h) {
+            printf("PTB-ERROR: Mismatch between size of captured video frame %i x %i and size of video recording target buffer %i x %i !\n", w, h, twidth, theight);
+            PsychErrorExitMsg(PsychError_system, "Encoding current captured video frame failed. Video frame size mismatch.");
+        }
+
+        // Target buffer available?
+        if (framepixels) {
+            // Copy the pixels:
+            count = (w * h * ((capdev->actuallayers == 3) ? 3 : 1) * ((capdev->bitdepth > 8) ? 2 : 1));
+
+            // True bitdepth in the 9 to 15 bpc range?
+            if (capdev->bitdepth > 8 && capdev->bitdepth < 16) {
+                // Yes. Need to bit-shift, so the most significant bit of the video data,
+                // gets placed in the 16th bit of the 16 bit word. This to make sure the
+                // "dead bits" for bpc < 16 are the least significant bits and they are
+                // all zeros. This makes sure that black is always all-zero and white is
+                // always 0xffff - all ones:
+                psych_uint16 *frameinwords = (psych_uint16*) input_image;
+                psych_uint16 *frameoutwords = (psych_uint16*) framepixels;
+                
+                count /= 2; // Half as many words as bytes.
+                for (i = 0; i < count; i++) *(frameoutwords++) = *(frameinwords++) << (16 - capdev->bitdepth);
+            }
+            else {
+                // No, either 8 bpc or 16 bpc - A simple memcpy does the job efficiently:
+                memcpy(framepixels, (const void*) input_image, count);
+            }
+
+            // Add to GStreamer encoding pipeline: Format is upright, and 1 video frame duration per frame:
+            if (PsychAddVideoFrameToMovie(capdev->moviehandle, 1, FALSE) != 0) {
+                PsychErrorExitMsg(PsychError_system, "Encoding current captured video frame failed. Failed to add frame to pipeline.");
+            }
+        }
+        else {
+            PsychErrorExitMsg(PsychError_system, "Encoding current captured video frame failed. No videobuffer available.");
+        }
     }
 
     // Release the capture buffer. Return it to the DMA ringbuffer pool:
@@ -1780,6 +1939,50 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         // It is a Basler cam. Go ahead:
         // TODO FIXME: IMPLEMENT IT!
         return(-2);
+    }
+
+    // Set a new target movie name for video recordings:
+    if (strstr(pname, "SetNewMoviename=")) {
+        // Find start of movie namestring and assign to pname:
+        pname = strstr(pname, "=");
+        pname++;
+        
+        // Child protection:
+        if (!capdev->recording_active) {
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: Tried to change name of target movie file on device %i, but recording not enabled on that device! Ignored.\n", capturehandle);
+            }
+            return(-2);
+        }
+        
+        // Can't reassign new codec without reopening the device:
+        if (strstr(pname, ":CodecType")) {
+            *(strstr(pname, ":CodecType")) = 0;
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: Tried to change recording codec on device %i, but this isn't possible without reopening the device. Ignored.\n", capturehandle);
+            }
+        }
+
+        // Can't reassign new codec without reopening the device:
+        if (strstr(pname, ":CodecSettings=")) {
+            *(strstr(pname, ":CodecSettings=")) = 0;
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: Tried to change recording codec settings on device %i, but this isn't possible without reopening the device. Ignored.\n", capturehandle);
+            }
+        }
+
+        // Release old movie name:
+        if (capdev->targetmoviefilename) free(capdev->targetmoviefilename);
+        capdev->targetmoviefilename = NULL;
+        
+        // Assign new movie name:
+        capdev->targetmoviefilename = strdup(pname);
+        
+        if (PsychPrefStateGet_Verbosity() > 2) {
+            printf("PTB-INFO: Changed name of movie file for recording on device %i to '%s'.\n", capturehandle, pname);
+        }
+        
+        return(0);
     }
 
     if (strcmp(pname, "PrintParameters")==0) {
