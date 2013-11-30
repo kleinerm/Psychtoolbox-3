@@ -124,8 +124,11 @@ static char synopsisString2[] =
 "\"frameduration\" optionally defines the display duration of the added video frame in "
 "units of movie frame intervals. See the help for 'CreateMovie' for further explanation of "
 "\"frameduration\".\n\n"
-"Movie images are always stored as uint8 images with 8 bits resolution per pixel color component. "
-"Images are always stored as four channel RGBA frames.\n\n"
+"Movie images are stored with 8 bits or 16 bits resolution per pixel color component. "
+"Images are stored as one (RED), three (RGB) or four channel (RGBA) frames. The number "
+"of channels and bitdepth is selected in the Screen('CreateMovie') call and then kept "
+"fixed throughout the movie. OpenGL-ES hardware only supports 8 bit storage in RGB or RGBA. "
+"Not all video codecs allow for lossless encoding or encoding of all color channels.\n\n"
 "See Screen('CreateMovie?') for help on movie creation.\n";
 
 static char seeAlsoString[] = "PutImage CopyWindow CreateMovie FinalizeMovie";
@@ -561,26 +564,48 @@ PsychError SCREENGetImage(void)
 		if (frameduration < 1) PsychErrorExitMsg(PsychError_user, "Number of requested framedurations 'frameduration' is negative. Must be greater than zero!");
 		
         framepixels = PsychGetVideoFrameForMoviePtr(moviehandle, &twidth, &theight, &numChannels, &bitdepth);
-        if (numChannels != 4 || bitdepth != 8) PsychErrorExitMsg(PsychError_user, "AddFrameToMovie failed due to wrong number of color channels (!=4) or wrong bpc (!=8)!");
-        
 		if (framepixels) {
 			glPixelStorei(GL_PACK_ALIGNMENT,1);
 			invertedY = (int) (windowRect[kPsychBottom] - sampleRect[kPsychBottom]);
 			
             if (isOES) {
-                // OES: BGRA supported?
-                if (glewIsSupported("GL_EXT_read_format_bgra")) {
-                    // Yep: Readback in a compatible and acceptably fast format:
-                    glReadPixels((int) sampleRect[kPsychLeft], invertedY, twidth, theight, GL_BGRA, GL_UNSIGNED_BYTE, framepixels);
+                if (bitdepth != 8) PsychErrorExitMsg(PsychError_user, "AddFrameToMovie failed due to wrong bpc value. Only 8 bpc supported on OpenGL-ES.");
+
+                if (numChannels == 4) {
+                    // OES: BGRA supported?
+                    if (glewIsSupported("GL_EXT_read_format_bgra")) {
+                        // Yep: Readback in a compatible and acceptably fast format:
+                        glReadPixels((int) sampleRect[kPsychLeft], invertedY, twidth, theight, GL_BGRA, GL_UNSIGNED_BYTE, framepixels);
+                    }
+                    else {
+                        // Suboptimal readback path. will also cause swapped colors in movie writing:
+                        glReadPixels((int) sampleRect[kPsychLeft], invertedY, twidth, theight, GL_RGBA, GL_UNSIGNED_BYTE, framepixels);
+                    }
                 }
-                else {
-                    // Suboptimal readback path. will also cause swapped colors in movie writing:
-                    glReadPixels((int) sampleRect[kPsychLeft], invertedY, twidth, theight, GL_RGBA, GL_UNSIGNED_BYTE, framepixels);
+                else if (numChannels == 3) {
+                    glReadPixels((int) sampleRect[kPsychLeft], invertedY, twidth, theight, GL_RGB, GL_UNSIGNED_BYTE, framepixels);
                 }
+                else PsychErrorExitMsg(PsychError_user, "AddFrameToMovie failed due to wrong number of channels. Only 3 or 4 channels are supported on OpenGL-ES.");
             }
             else {
-                // Desktop-GL: Use optimal format.
-                glReadPixels((int) sampleRect[kPsychLeft], invertedY, twidth, theight, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8, framepixels);
+                // Desktop-GL: Use optimal format and support 16 bpc bitdepth as well.
+                switch (numChannels) {
+                    case 4:
+                        glReadPixels((int) sampleRect[kPsychLeft], invertedY, twidth, theight, GL_BGRA, (bitdepth <= 8) ? GL_UNSIGNED_INT_8_8_8_8 : GL_UNSIGNED_SHORT, framepixels);
+                        break;
+                        
+                    case 3:
+                        glReadPixels((int) sampleRect[kPsychLeft], invertedY, twidth, theight, GL_RGB, (bitdepth <= 8) ? GL_UNSIGNED_BYTE : GL_UNSIGNED_SHORT, framepixels);
+                        break;
+                        
+                    case 1:
+                        glReadPixels((int) sampleRect[kPsychLeft], invertedY, twidth, theight, GL_RED, (bitdepth <= 8) ? GL_UNSIGNED_BYTE : GL_UNSIGNED_SHORT, framepixels);
+                        break;
+                        
+                    default:
+                        PsychErrorExitMsg(PsychError_user, "AddFrameToMovie failed due to wrong number of channels. Only 1, 3 or 4 channels are supported on OpenGL.");
+                        break;
+                }
             }
 			if (PsychAddVideoFrameToMovie(moviehandle, frameduration, TRUE) != 0) {
 				PsychErrorExitMsg(PsychError_user, "AddFrameToMovie failed with error above!");

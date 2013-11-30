@@ -155,7 +155,9 @@ int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_boo
 	unsigned char*		pixptr;
 	unsigned int*		wordptr;
 	unsigned int		*wordptr2, *wordptr1;
+    unsigned char       *byteptr2, *byteptr1;
 	unsigned int		dummy;
+    unsigned char       dummyb;
     int                 bframeDurationUnits = frameDurationUnits;
     
 	if (NULL == pwriterRec->ptbvideoappsrc) return(0);
@@ -166,23 +168,43 @@ int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_boo
     pixptr   = (unsigned char*) GST_BUFFER_DATA(pwriterRec->PixMap);
     wordptr  = (unsigned int*)  GST_BUFFER_DATA(pwriterRec->PixMap);
 
-	// Imagebuffer is upside-down: Need to flip it vertically: Currently for RGBA8 only!
-	if (isUpsideDown && (pwriterRec->numChannels == 4) && (pwriterRec->bitdepth == 8)) {
-		h = pwriterRec->height;
-		w = pwriterRec->width;
-		wordptr1 = wordptr;
-		for (y = 0; y < h/2; y++) {
-			wordptr2 = wordptr;
-			wordptr2 += ((h - 1 - y) * w);
-			for (x = 0; x < w; x++) {
-				dummy = *wordptr1;
-				*(wordptr1++) = *wordptr2;
-				*(wordptr2++) = dummy;				 
-			}
-		}
-	}
-	else if (isUpsideDown) printf("PTB-ERROR: Adding of upsidedown video frame requested, but provided non-RGBA8 format not supported! No-Op.\n");
-
+	// Is Imagebuffer upside-down? If so, need to flip it vertically:
+    if (isUpsideDown) {
+        // RGBA8 format?
+        if ((pwriterRec->numChannels == 4) && (pwriterRec->bitdepth == 8)) {
+            // Yes. Can use optimized copy of uint32 units:
+            h = pwriterRec->height;
+            w = pwriterRec->width;
+            wordptr1 = wordptr;
+            for (y = 0; y < h/2; y++) {
+                wordptr2 = wordptr;
+                wordptr2 += ((h - 1 - y) * w);
+                for (x = 0; x < w; x++) {
+                    dummy = *wordptr1;
+                    *(wordptr1++) = *wordptr2;
+                    *(wordptr2++) = dummy;
+                }
+            }
+        }
+        else {
+            // No. Could be 1, 2, 3, 6 or 8 bytes per pixel. Just use a
+            // robust but slightly less efficient byte-wise copy:
+            h = pwriterRec->height;
+            w = pwriterRec->width;
+            w = w * pwriterRec->numChannels * pwriterRec->bitdepth / 8;
+            byteptr1 = pixptr;
+            for (y = 0; y < h/2; y++) {
+                byteptr2 = pixptr;
+                byteptr2 += ((h - 1 - y) * w);
+                for (x = 0; x < w; x++) {
+                    dummyb = *byteptr1;
+                    *(byteptr1++) = *byteptr2;
+                    *(byteptr2++) = dummyb;
+                }
+            }
+        }
+    }
+    
     // Make backup copy of buffer for replication if needed:
     if (frameDurationUnits > 1) {
         refBuffer = gst_buffer_copy(pwriterRec->PixMap);
@@ -419,6 +441,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 	char*                                   poption;
 	char                                    codecString[1000];
     char                                    capsString[1000];
+    char                                    capsForCodecString[1000];
 	char                                    launchString[10000];
 	int                                     dummyInt;
 	float                                   dummyFloat;
@@ -547,6 +570,10 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 	}
 	else {
 		// No: Do our own parsing and setup:
+        
+        // No special capsfilter string for Codec by default, just a ffmpecolorspace converter
+        // which will determine proper src/sink caps automagically:
+        sprintf(capsForCodecString, "ffmpegcolorspace ! ");
 
 		// Find the gst-launch style string for codecs and muxers:
 		if (!PsychGetCodecLaunchLineFromString(movieoptions, &(codecString[0]))) {
@@ -566,14 +593,34 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
                 case 1:
                     // 8 bpc gray or raw:
                     sprintf(capsString, "video/x-raw-gray, bpp=(int)8, depth=(int)8");
+                    // Note: For lossless encoding via ffenc_huffyuv this maps to YUV422P encoding, which encodes the Y8 == Gray8
+                    // component lossless, but would encode the UV chroma components lossy, except we don't care about chroma, as
+                    // we only feed achromatic grayscale or raw data here. The net result is lossless 8 bpc gray/raw encoding, but
+                    // a little bit larger file size due to storage of useless neutral/constant chroma components.
                     break;
                 case 3:
                     // 8 bpc RGB8:
                     sprintf(capsString, "video/x-raw-rgb, bpp=(int)24, depth=(int)24, endianess=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255");
+                    
+                    // If the ffenc_huffyuv or ffenc_ljpeg encoder is in use, we need some special caps after the colorspace converter. These make sure that
+                    // the huffyuv encoder actually performs RGB8 24 bpp lossless encoding of the video, instead of YUV422p encoding with lossless
+                    // luminance, but lossy chrominance encoding (spatial subsampling). This is derived from the code of libavcodec's huffyuv
+                    // element aka ffenc_huffyuv and testing on GStreamer command line. We only care about lossless encoding if huffyuv or ffenc_ljpeg is in
+                    // use, because we assume one would only use huffyuv if the intention would be to get lossless encoding:
+                    if (strstr(codecString, "ffenc_huffyuv") || strstr(codecString, "ffenc_ljpeg")) sprintf(capsForCodecString, "ffmpegcolorspace ! capsfilter caps=\"video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, red_mask=(int)65280, green_mask=(int)16711680, blue_mask=(int)-16777216\" ! ");
                     break;
                 case 4:
                     // 8 bpc RGBA8:
                     sprintf(capsString, "video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, alpha_mask=(int)-16777216, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255");
+                    // Note: At least if lossless encoding via ffenc_huffyuv is requested, this will actually cause a lossless encoding
+                    // of the RGB8 color channels, but complete loss of the A8 alpha channel! Why? Because libavcodec's huffyuv encoder
+                    // only supports RGB32 or RGB24, but GStreamer's ffenc_huffyuv plugin maps RGBA8 to RGBA, which is not supported by huffyuv,
+                    // so fallback to RGB24 encoding results. Essentially case 4 reverts to case 3 above, but accepts RGBA8 input at least.
+                    
+                    // ffenc_ljpeg needs manual setup of component swizzling, so it actually encodes RGB8 lossless instead of using I420 encoding.
+                    // Note: The alpha channel is accepted as input, but lost/thrown away during encoding, just as with huffyuv!
+                    if (strstr(codecString, "ffenc_ljpeg")) sprintf(capsForCodecString, "ffmpegcolorspace ! capsfilter caps=\"video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, red_mask=(int)65280, green_mask=(int)16711680, blue_mask=(int)-16777216\" ! ");
+                    
                     break;
                 default:
                     printf("PTB-ERROR: Unsupported number of color channels %i for video encoding!\n", numChannels);
@@ -594,7 +641,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
         }
         
 		// Build final launch string:
-        sprintf(launchString, "appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps=\"%s, width=(int)%i, height=(int)%i, framerate=%i/1 \" ! videorate ! ffmpegcolorspace ! %s ! filesink name=ptbfilesink async=0 location=%s ", capsString, width, height, ((int) (framerate + 0.5)), codecString, moviefile);
+        sprintf(launchString, "appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps=\"%s, width=(int)%i, height=(int)%i, framerate=%i/1 \" ! videorate ! %s%s ! filesink name=ptbfilesink async=0 location=%s ", capsString, width, height, ((int) (framerate + 0.5)), capsForCodecString, codecString, moviefile);
 	}
         
 	// Create a movie file for the destination movie:
@@ -664,8 +711,8 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
     // with GraphViz? This can be controlled via PsychTweak('GStreamerDumpFilterGraph' dirname);
     if (getenv("GST_DEBUG_DUMP_DOT_DIR")) {
         // Dump complete encoding filter graph to a .dot file for later visualization with GraphViz:
-        printf("PTB-DEBUG: Dumping movie encoder graph for movie %s to directory %s.\n", moviefile, getenv("GST_DEBUG_DUMP_DOT_DIR"));
-        GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(pwriterRec->Movie), GST_DEBUG_GRAPH_SHOW_ALL, "PsychMovieWritingGraph");
+        printf("PTB-DEBUG: Dumping movie encoder graph pre-negotiation for movie %s to directory %s.\n", moviefile, getenv("GST_DEBUG_DUMP_DOT_DIR"));
+        GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(pwriterRec->Movie), GST_DEBUG_GRAPH_SHOW_ALL, "PsychMovieWritingGraph-PreNeg");
     }
 
 	// Return new handle:
@@ -724,6 +771,14 @@ int PsychFinalizeNewMovieFile(int movieHandle)
 	}
 
 	PsychGSProcessMovieContext(pwriterRec->Context, FALSE);
+
+    // Should we dump the whole encoding pipeline graph to a file for visualization
+    // with GraphViz? This can be controlled via PsychTweak('GStreamerDumpFilterGraph' dirname);
+    if (getenv("GST_DEBUG_DUMP_DOT_DIR")) {
+        // Dump complete encoding filter graph to a .dot file for later visualization with GraphViz:
+        printf("PTB-DEBUG: Dumping movie encoder graph post-encoding for moviehandle %i to directory %s.\n", movieHandle, getenv("GST_DEBUG_DUMP_DOT_DIR"));
+        GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(pwriterRec->Movie), GST_DEBUG_GRAPH_SHOW_ALL, "PsychMovieWritingGraph-Actual");
+    }
 
 	// Stop the encoding pipeline:
 	if (!PsychMoviePipelineSetState(pwriterRec->Movie, GST_STATE_READY, 10)) {

@@ -325,7 +325,7 @@ PsychError SCREENFinalizeMovie(void)
 
 PsychError SCREENCreateMovie(void)
 {
-	static char useString[] = "moviePtr = Screen('CreateMovie', windowPtr, movieFile [, width][, height][, frameRate=30][, movieOptions]);";
+	static char useString[] = "moviePtr = Screen('CreateMovie', windowPtr, movieFile [, width][, height][, frameRate=30][, movieOptions][, numChannels=4][, bitdepth=8]);";
 	static char synopsisString[] = 
 		"Create a new movie file with filename 'movieFile' and according to given 'movieOptions'.\n"
 		"The function returns a handle 'moviePtr' to the file.\n"
@@ -351,25 +351,42 @@ PsychError SCREENCreateMovie(void)
         "See 'help VideoRecording' for supported options and tips.\n"
 		"Keywords unknown to a certain implementation or codec will be silently ignored:\n"
 		"EncodingQuality=x Set encoding quality to value x, in the range 0.0 for lowest movie quality to "
-		"1.0 for highest quality. Default is 0.5 = normal quality. 1.0 usually provides lossless encoding.\n"
+		"1.0 for highest quality. Default is 0.5 = normal quality. 1.0 often provides near-lossless encoding.\n"
+        "'numChannels' Optional number of image channels to encode: Can be 1, 3 or 4 on OpenGL graphics hardware, "
+        "and 3 or 4 on OpenGL-ES hardware. 1 = Red/Grayscale channel only, 3 = RGB, 4 = RGBA. Please note that not "
+        "all video codecs can encode pure 1 channel data or RGBA data, ie. an alpha channel. If an unsuitable codec "
+        "is selected, movie writing may fail, or unsupported channels (e.g., the alpha channel) may get silently "
+        "discarded. It could also happen that a codec which doesn't support 1 channel storage will replicate "
+        "the Red/Grayscale data into all three RGB channels, leading to no data loss but increased movie file size. "
+        "Default is to request RGBA 4 channel data from the system, encoding to RGBA or RGB, depending on codec.\n"
+        "'bitdepth' Optional color/intensity resolution of each channel: Default is 8 bpc, for 8 bit per component "
+        "storage. OpenGL graphics hardware, but not OpenGL-ES, also supports 16 bpc image readback. However, not all "
+        "codecs can encode with > 8 bpc color/luminance precision, so encoding with 16 bpc may fail or silently reduce "
+        "precision to less bits, possibly 8 bpc or less.\n"
+        "In general, embedded OpenGL-ES graphics hardware is more restricted in the type of image data it can return. "
+        "Most video codecs are lossy codecs. They will intentionally throw away color or spatial precision of encoded "
+        "video to reduce video file size or network bandwidth, often in a way that is not easily perceptible to the "
+        "naked eye. If you require high fidelity, make sure to double-check your results for a given codec + parameter "
+        "setup, e.g., via encoding + decoding the movie and checking the original data against decoded data.\n"
 		"\n";
 
 	static char seeAlsoString[] = "FinalizeMovie AddFrameToMovie CloseMovie PlayMovie GetMovieImage GetMovieTimeIndex SetMovieTimeIndex";
 	
-	PsychWindowRecordType					*windowRecord;
+	PsychWindowRecordType                   *windowRecord;
 	char                                    *moviefile;
-	char									*movieOptions;
+	char                                    *movieOptions;
 	int                                     moviehandle = -1;
 	double                                  framerate = 30.0;
 	int                                     width;
 	int                                     height;
-	char									defaultOptions[2] = "";
+	int                                     numChannels, bitdepth;
+	char                                    defaultOptions[2] = "";
 	
 	// All sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 	
-	PsychErrorExit(PsychCapNumInputArgs(6));            // Max. 6 input args.
+	PsychErrorExit(PsychCapNumInputArgs(8));            // Max. 8 input args.
 	PsychErrorExit(PsychRequireNumInputArgs(2));        // Min. 2 input args required.
 	PsychErrorExit(PsychCapNumOutputArgs(1));           // Max. 1 output args.
 	
@@ -398,8 +415,18 @@ PsychError SCREENCreateMovie(void)
 	movieOptions = defaultOptions;
 	PsychAllocInCharArg(6, kPsychArgOptional, &movieOptions);
 
+	// Get optional number of channels of movie:
+	numChannels = 4;
+	PsychCopyInIntegerArg(7, kPsychArgOptional, &numChannels);
+	if (numChannels != 1 && numChannels != 3 && numChannels != 4) PsychErrorExitMsg(PsychError_user, "Invalid number of channels 'numChannels' provided. Only 1, 3 or 4 channels allowed!");
+
+	// Get optional bitdepth of movie:
+	bitdepth = 8;
+	PsychCopyInIntegerArg(8, kPsychArgOptional, &bitdepth);
+	if (bitdepth != 8 && bitdepth != 16) PsychErrorExitMsg(PsychError_user, "Invalid 'bitdepth' provided. Only 8 bpc or 16 bpc allowed!");
+
 	// Create movie of given size and framerate with given options:
-	moviehandle = PsychCreateNewMovieFile(moviefile, width, height, framerate, 4, 8, movieOptions);
+	moviehandle = PsychCreateNewMovieFile(moviefile, width, height, framerate, numChannels, bitdepth, movieOptions);
 	if (0 > moviehandle) {
 		PsychErrorExitMsg(PsychError_user, "CreateMovie failed for reason mentioned above.");
 	}
