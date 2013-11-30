@@ -1824,7 +1824,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 		}
 	}
 
-	// Raw Huffman encoded YUV: Works with camerabin2.
+	// Raw Huffman encoded YUV: Works with camerabin2, and with libdc1394 video recording and Screen movie writing:
 	if (strstr(codecSpec, "huffyuv") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
 		// Define recommended (compatible) audioencoder/muxer and their default options:
         sprintf(audioProfile, "audio/mpeg,mpegversion=4");
@@ -1865,20 +1865,20 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 		}
 	}
 
-	// PNG image encoding: This is lossless and can also store 16 bpc content:
+	// LJPEG image encoding: This is lossless but can only store 8 bpc content, and there's no decoder in GStreamer-0.10!
 	if (strstr(codecSpec, "ffenc_ljpeg") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
         // Define recommended (compatible) audioencoder/muxer and their default options:
         sprintf(audioProfile, "audio/mpeg,mpegversion=4");
         sprintf(muxerProfile, "video/x-msvideo");
         sprintf(outCodecName, "image/jpeg");
         sprintf(audiocodec, "AudioCodec=%s ", aactype); // Need to use faac MPEG-4 audio encoder.
-        sprintf(muxer, "avimux"); // Need to use Quicktime-Multiplexer.
+        sprintf(muxer, "avimux"); // Use AVI-Multiplexer. Quicktime would also work.
         
         // Videoencoder not yet created? If so, we have to do it now:
         if (!capdev->videoenc) {
             // Not yet created. Create full codec & option string from high level properties,
             // if any, then create based on string:
-            sprintf(videocodec, "VideoCodec=ffenc_ljpeg");
+            sprintf(videocodec, "VideoCodec=ffenc_ljpeg ");
             
             // Keyframe interval specified?
             if (keyFrameInterval >= 0) {
