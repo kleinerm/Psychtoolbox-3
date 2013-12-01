@@ -593,17 +593,16 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
                 case 1:
                     // 8 bpc gray or raw:
                     sprintf(capsString, "video/x-raw-gray, bpp=(int)8, depth=(int)8");
-                    // Note: For lossless encoding via ffenc_huffyuv this maps to YUV422P encoding, which encodes the Y8 == Gray8
-                    // component lossless, but would encode the UV chroma components lossy, except we don't care about chroma, as
-                    // we only feed achromatic grayscale or raw data here. The net result is lossless 8 bpc gray/raw encoding, but
-                    // a little bit larger file size due to storage of useless neutral/constant chroma components.
+                    // If the ffenc_huffyuv or ffenc_ljpeg encoder is in use, we need some special caps after the colorspace converter to get lossless
+                    // encoding of 8 bpc gray/raw images. See case 3 below for explanation.
+                    if (strstr(codecString, "ffenc_huffyuv") || strstr(codecString, "ffenc_ljpeg")) sprintf(capsForCodecString, "ffmpegcolorspace ! capsfilter caps=\"video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, red_mask=(int)65280, green_mask=(int)16711680, blue_mask=(int)-16777216\" ! ");
                     break;
                 case 3:
                     // 8 bpc RGB8:
                     sprintf(capsString, "video/x-raw-rgb, bpp=(int)24, depth=(int)24, endianess=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255");
                     
                     // If the ffenc_huffyuv or ffenc_ljpeg encoder is in use, we need some special caps after the colorspace converter. These make sure that
-                    // the huffyuv encoder actually performs RGB8 24 bpp lossless encoding of the video, instead of YUV422p encoding with lossless
+                    // the huffyuv encoder actually performs RGB8 24 bpp lossless encoding of the video, instead of YUV422p encoding with near-lossless
                     // luminance, but lossy chrominance encoding (spatial subsampling). This is derived from the code of libavcodec's huffyuv
                     // element aka ffenc_huffyuv and testing on GStreamer command line. We only care about lossless encoding if huffyuv or ffenc_ljpeg is in
                     // use, because we assume one would only use huffyuv if the intention would be to get lossless encoding:

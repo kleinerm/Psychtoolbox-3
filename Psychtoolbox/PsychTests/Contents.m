@@ -45,6 +45,7 @@
 %   KeyboardLatencyTest             - Get a feeling for keyboard and mouse latency via some sound-based measurement procedure.
 %   LabLuvTest                      - Test routines that convert to CIELAB and CIELUV.
 %   LoadGenerator                   - Create cpu load by spinning in an infinite loop. Used in conjunction with FlipTimingWithRTBoxPhotoDiodeTest.
+%   LosslessMovieWritingTest        - Test lossless encoding and decoding of video in movie files.
 %   MakeTextureTimingTest           - Time memory allocation by MakeTexture
 %   MakeTextureTimingTest2          - Time texture creation -> upload -> destruction for given texture by MakeTexture et al.
 %   MatlabTimingTest                - Test for MATLAB timing glitch caused by sigsetjmp().
