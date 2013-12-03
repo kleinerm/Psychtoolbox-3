@@ -2963,11 +2963,12 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         theight = -1;
     }
 
-    // Should we disable application of colorcaps as filter-caps to video source. A flag of 4096
-    // says so. We would want to disable this if we want maximum acceptance of different color formats
+    // Should we disable application of colorcaps as filter-caps to video source? By default we disable,
+    // but an optional recordingflag of 4096 would opt-in to use of filter-caps for higher performance.
+    // We want to disable this by default because we want maximum acceptance of different color formats
     // from the video source, e.g., to accomodate exotic video sources, at the expense of some performance
     // loss due to need of an extra colorspace / color format conversion step down the pipeline:
-    if (recordingflags & 4096) {
+    if (!(recordingflags & 4096)) {
         // Yes:
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: OpenVideoCapture: Disabling use of colorcaps as filter-caps. Lower performance, but higher compatibility.\n");
         
@@ -3042,8 +3043,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                 g_object_set(G_OBJECT(camera), "flags", (usecamerabin == 1) ? ((bitdepth > 8) ? 2+4 : 1+2+4) : 0, NULL);
             }
 
-            // Setup colorcaps for camerabin1, unless prevented by recordingflags 4096, do it later for camerabin2:
-            if ((usecamerabin == 1) && !(recordingflags & 4096)) g_object_set(G_OBJECT(camera), "filter-caps", colorcaps, NULL);
+            // Only setup colorcaps for camerabin1 if requested by recordingflags 4096, do it later for camerabin2:
+            if ((usecamerabin == 1) && (recordingflags & 4096)) g_object_set(G_OBJECT(camera), "filter-caps", colorcaps, NULL);
             
 	    } else {
 		    // Video recording (with optional capture). Setup pipeline:

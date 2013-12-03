@@ -89,7 +89,7 @@ try
     % Set text size for info text. 24 pixels is also good for Linux.
     Screen('TextSize', win, 24);
     
-    grabber = Screen('OpenVideoCapture', win, deviceId, roi, depth, [], [], cameraname, 4096, [], 8);
+    grabber = Screen('OpenVideoCapture', win, deviceId, roi, depth, [], [], cameraname, [], [], 8);
     %brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness',383)
     %exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure',130)
     %gain = Screen('SetVideoCaptureParameter', grabber, 'Gain')
