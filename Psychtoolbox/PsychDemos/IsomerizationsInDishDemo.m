@@ -3,7 +3,7 @@
 % Shows how to compute photoreceptor isomerizations using toolbox
 % routines.  These calculations are for a retinal preparation
 % that consists of a retina in a dish and thus do not include
-% any preretinal absorbtion.  Parameters are set up for a
+% any preretinal absorption.  Parameters are set up for a
 % Guinea Pig retina.  The file spd_apparatusrel.mat contains
 % the relative spectrum of the light with respect to which
 % the computation is accomplished.
@@ -99,10 +99,10 @@ set(ylabel('Quanta/sec-um^2-wlinterval'),'FontSize',12);
 %% Make a plot showing the effective photoreceptor sensitivities in quantal
 % units, expressed as probability of absorption.
 subplot(1,2,2); hold on
-set(plot(SToWls(S),photoreceptors.effectiveAbsorbtance(1,:),'g'),'LineWidth',2);
-set(plot(SToWls(S),photoreceptors.effectiveAbsorbtance(2,:),'b'),'LineWidth',2);
-set(plot(SToWls(S),photoreceptors.effectiveAbsorbtance(3,:),'k'),'LineWidth',2);
-set(title('Effective Absorbtance'),'FontSize',14);
+set(plot(SToWls(S),photoreceptors.effectiveAbsorptance(1,:),'g'),'LineWidth',2);
+set(plot(SToWls(S),photoreceptors.effectiveAbsorptance(2,:),'b'),'LineWidth',2);
+set(plot(SToWls(S),photoreceptors.effectiveAbsorptance(3,:),'k'),'LineWidth',2);
+set(title('Effective Absorptance'),'FontSize',14);
 set(xlabel('Wavelength (nm)'),'FontSize',12);
 set(ylabel('Probability'),'FontSize',12);
 axis([300 800 0 1]);
@@ -128,7 +128,7 @@ fprintf('Inner Segment Diameter         |\t%8.1f\t%8.1f\t%8.1f\t um\n',photorece
 fprintf('\n');
 fprintf('Axial Specific Density         |\t%8.3f\t%8.3f\t%8.3f\t /um\n',photoreceptors.specificDensity.value);
 fprintf('Axial Optical Density          |\t%8.3f\t%8.3f\t%8.3f\n',photoreceptors.axialDensity.value);
-fprintf('Peak isomerization prob.       |\t%8.3f\t%8.3f\t%8.3f\n',max(photoreceptors.isomerizationAbsorbtance,[],2));
+fprintf('Peak isomerization prob.       |\t%8.3f\t%8.3f\t%8.3f\n',max(photoreceptors.isomerizationAbsorptance,[],2));
 fprintf('______________________________________________________________________________________\n');
 fprintf('\n');
 fprintf('Absorption Rate                |\t%4.2e\t%4.2e\t%4.2e\t quanta/photoreceptor-sec\n',...

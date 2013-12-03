@@ -18,7 +18,7 @@ function retIrradiance_PowerPerArea = RadianceAndPupilAreaEyeLengthToRetIrradian
 %   than power.  
 %
 % This conversion does not take absorption in the eye into account,
-% as this is more conveniently foldeded into the spectral absorbtance.
+% as this is more conveniently foldeded into the spectral absorptance.
 %
 % See also: PsychRadiometric, RetIrradianceAndPupilAreaEyeLengthToRadiance, PupilAreaFromLum, EyeLength.
 %

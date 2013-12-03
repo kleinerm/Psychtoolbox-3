@@ -30,7 +30,7 @@ function photoreceptors = FillInPhotoreceptors(photoreceptors)
 % diameter might be determined given luminance.
 %
 % There are some useful comments towards the end of this routine about how to compute
-% isomerizations from the absorbtances that this routine produces.
+% isomerizations from the absorptances that this routine produces.
 %
 % See also: DefaultPhotoreceptors, RetIrradianceToIsoRecSec
 %   IsomerizationsInEyeDemo, IsomerizationsInDishDemo, ComputeCIEConeFundamentals,
@@ -50,7 +50,7 @@ function photoreceptors = FillInPhotoreceptors(photoreceptors)
 %% Check that there is a nomogram field with an S subfield
 %
 % Long ago we tucked the wavelength sampling information into the nomogram field,
-% never dreaming that there would come a day when we might pass absorbance or absorbtance
+% never dreaming that there would come a day when we might pass absorbance or absorptance
 % directly.  So, we need to have the nomogram field because we need the wavelength
 % sampling (S) field, and too much will break if we try to change to a more rational
 % organization where the S field is hung directly onto the photoreceptors structure.
@@ -96,9 +96,9 @@ elseif (isfield(photoreceptors,'absorbance'))
             error('Mismatch between length of types and absorbance fields');
         end
     end
-elseif (isfield(photoreceptors,'absorbtance'))
-    if (length(photoreceptors.types) ~= size(photoreceptors.absorbtance,1))
-        error('Mismatch between length of types and absorbtance fields');
+elseif (isfield(photoreceptors,'absorptance'))
+    if (length(photoreceptors.types) ~= size(photoreceptors.absorptance,1))
+        error('Mismatch between length of types and absorptance fields');
     end    
 else
     error('Must specify either a photopigment nomogram or a photopigment absorbance spectrum');
@@ -180,7 +180,7 @@ if (isfield(photoreceptors,'quantalEfficiency'))
     end
 else
     photoreceptors.quantalEfficiency.source = 'None';
-    for i = 1:size(photoreceptors.effectiveAbsorbtance,1)
+    for i = 1:size(photoreceptors.effectiveAbsorptance,1)
         photoreceptors.quantalEfficiency.value(i) = 1;
     end
 end
@@ -267,13 +267,13 @@ else
     end
 end
 
-%% Absorbtance, either computed or supplied.
-if (~isfield(photoreceptors,'absorbtance'))
-    [photoreceptors.absorbtance] = AbsorbanceToAbsorbtance(...
+%% Absorptance, either computed or supplied.
+if (~isfield(photoreceptors,'absorptance'))
+    [photoreceptors.absorptance] = AbsorbanceToAbsorptance(...
         photoreceptors.absorbance,S,photoreceptors.axialDensity.value);
 else
     if (isfield(photoreceptors,'absorbance'));
-        error('There is a directly supplied absorbtance, but also either an absorbance or nomogram field specified.  Something must go away');
+        error('There is a directly supplied absorptance, but also either an absorbance or nomogram field specified.  Something must go away');
     end
 end
 
@@ -351,36 +351,36 @@ elseif (~strcmp(photoreceptors.lensDensity.source,'None') || ~strcmp(photorecept
     error('Pre-receptoral filtering specified directly, but non-unity lens or macular pigment transmittance also specified.');
 end
 
-%% Compute effective absorbtance, which takes pre-receptor transmittance into account.
+%% Compute effective absorptance, which takes pre-receptor transmittance into account.
 % 
 % This is the probability of a quantal absorption as a function of wavelength, referred to light
-% entering the pupil.  That is, it accounts for pre-retinal absorbtions, but not pupil size or 
+% entering the pupil.  That is, it accounts for pre-retinal absorptions, but not pupil size or 
 % eye length.  Typically, you'd compute retinal irradiance in quanta/[time-area], ignoring 
 % pre-retinal absorptions, and then compute absorptions per receptor using this field and
 % by multiplying by the desired integration time and collecting area.  We take the collecting area to be the 
 % inner segment diameter in our computation routines, which is right for cones and I'm not
 % sure about rods.
-if (~isfield(photoreceptors,'effectiveAbsorbtance'))
-    photoreceptors.effectiveAbsorbtance = photoreceptors.absorbtance .* ...
-        (ones(size(photoreceptors.absorbtance,1),1)*photoreceptors.preReceptoral.transmittance);
+if (~isfield(photoreceptors,'effectiveAbsorptance'))
+    photoreceptors.effectiveAbsorptance = photoreceptors.absorptance .* ...
+        (ones(size(photoreceptors.absorptance,1),1)*photoreceptors.preReceptoral.transmittance);
 else
-    fprintf('If you''re passing the effectiveAbsorbtance to this routine, then you are ignoring essentially everything the routine does.\n')  
+    fprintf('If you''re passing the effectiveAbsorptance to this routine, then you are ignoring essentially everything the routine does.\n')  
     fprintf('The only additional step it would take is to multiply by the quantal efficiency to get isomerizations from absorptions, and\n');
     fprintf('to set the eye length.  If you''ve gone so far as to do everything else by hand you should do that step by hand too.\n');
     error('We''re throwing an error to help you mend your ways.');
 end
 
-%% Compute isomerizationAbsorbtance, which takes quantalEfficiency into account
+%% Compute isomerizationAbsorptance, which takes quantalEfficiency into account
 %
 % When you want to compute isomerization rates from retinal irradiance (and who wouldn't), this
 % is what you want.  See note just above about conventions with respect to conventions.
-if (~isfield(photoreceptors,'isomerizationAbsorbtance'))
-    for i = 1:size(photoreceptors.effectiveAbsorbtance,1)
-        photoreceptors.isomerizationAbsorbtance(i,:) = photoreceptors.quantalEfficiency.value(i) * ...
-            photoreceptors.effectiveAbsorbtance(i,:);
+if (~isfield(photoreceptors,'isomerizationAbsorptance'))
+    for i = 1:size(photoreceptors.effectiveAbsorptance,1)
+        photoreceptors.isomerizationAbsorptance(i,:) = photoreceptors.quantalEfficiency.value(i) * ...
+            photoreceptors.effectiveAbsorptance(i,:);
     end
 else
-    fprintf('If you''re passing the isomerizationAbsorbtance to this routine, then you are ignoring essentially everything the routine does.\n')  
+    fprintf('If you''re passing the isomerizationAbsorptance to this routine, then you are ignoring essentially everything the routine does.\n')  
     fprintf('If you''ve gone so far as to do everything by hand you should not be calling this routine.\n');
     error('We''re throwing an error to help you mend your ways.');
 end
@@ -390,12 +390,12 @@ end
 % Note that we really do mean to call EnergyToQuanta here, because the PTB routines 
 % implement the conversion for spectra.  The conversion for sensitivities is the
 % inverse of the conversion for spectra.
-photoreceptors.energyFundamentals = EnergyToQuanta(S,photoreceptors.isomerizationAbsorbtance')';
+photoreceptors.energyFundamentals = EnergyToQuanta(S,photoreceptors.isomerizationAbsorptance')';
 mx = max(photoreceptors.energyFundamentals,[],2);
 photoreceptors.energyFundamentals = diag(1./mx)*photoreceptors.energyFundamentals;
 
 %% Compute normalized quantal sensitivities (aka cone fundamentals in quantal units)
-photoreceptors.quantalFundamentals = photoreceptors.isomerizationAbsorbtance;
+photoreceptors.quantalFundamentals = photoreceptors.isomerizationAbsorptance;
 mx = max(photoreceptors.quantalFundamentals,[],2);
 photoreceptors.quantalFundamentals = diag(1./mx)*photoreceptors.quantalFundamentals;
 

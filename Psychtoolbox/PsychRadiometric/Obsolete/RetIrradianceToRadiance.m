@@ -15,7 +15,7 @@ function radianceWattsPerM2Sr = RetIrradianceToRadiance(irradianceWattsPerUm2,ir
 %   than power.  
 %
 % This conversion does not take absorption in the eye into account,
-% as this is more conveniently foldeded into the spectral absorbtance.
+% as this is more conveniently foldeded into the spectral absorptance.
 %
 % See also: RetIrradianceAndPupilAreaEyeLengthToRadiance
 %

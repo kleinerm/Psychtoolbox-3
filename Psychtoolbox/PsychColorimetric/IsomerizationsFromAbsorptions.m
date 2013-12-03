@@ -1,5 +1,5 @@
-function [isomerizationRate] = IsomerizationsFromAbsorbtions(photonAbsorptionRate,quantalEfficiency)
-% [isomerizationRate] = IsomerizationsFromAbsorbtions(photonAbsorptionRate,[quantalEfficiency])
+function [isomerizationRate] = IsomerizationsFromAbsorptions(photonAbsorptionRate,quantalEfficiency)
+% [isomerizationRate] = IsomerizationsFromAbsorptions(photonAbsorptionRate,[quantalEfficiency])
 % 
 %	Compute isomerization rate, R* per photreceptor per sec, given 
 % photon absorption rate and photopgiment quantal efficiency.

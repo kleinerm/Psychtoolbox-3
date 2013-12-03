@@ -18,7 +18,7 @@ function [T_absorbance] = DawisNomogram(S,lambdaMax)
 % using a multiplicative rather than additive procedure.
 %
 % The result is in quantal units, in the sense that to compute
-% absorbtions you want to incident spectra in quanta.
+% absorptions you want to incident spectra in quanta.
 % To get sensitivity in energy units, apply EnergyToQuanta().
 %
 % Argument lambdaMax may be a column vector of wavelengths.

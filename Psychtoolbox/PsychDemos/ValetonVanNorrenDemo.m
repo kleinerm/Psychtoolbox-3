@@ -33,10 +33,10 @@ S = photoreceptors.nomogram.S;
 % Make a plot showing the effective photoreceptor sensitivities in quantal
 % units, expressed as probability of isomerization.
 figure; hold on
-set(plot(SToWls(S),photoreceptors.isomerizationAbsorbtance(1,:),'r'),'LineWidth',2);
-set(plot(SToWls(S),photoreceptors.isomerizationAbsorbtance(2,:),'g'),'LineWidth',2);
-set(plot(SToWls(S),photoreceptors.isomerizationAbsorbtance(3,:),'b'),'LineWidth',2);
-set(title('Isomerization Absorbtance'),'FontSize',14);
+set(plot(SToWls(S),photoreceptors.isomerizationAbsorptance(1,:),'r'),'LineWidth',2);
+set(plot(SToWls(S),photoreceptors.isomerizationAbsorptance(2,:),'g'),'LineWidth',2);
+set(plot(SToWls(S),photoreceptors.isomerizationAbsorptance(3,:),'b'),'LineWidth',2);
+set(title('Isomerization Absorptance'),'FontSize',14);
 set(xlabel('Wavelength (nm)'),'FontSize',12);
 set(ylabel('Probability'),'FontSize',12);
 axis([300 800 0 1]);
@@ -77,7 +77,7 @@ fprintf('Inner Segment Diameter         |\t%8.1f\t%8.1f\t%8.1f\t um\n',photorece
 fprintf('\n');
 fprintf('Axial Specific Density         |\t%8.3f\t%8.3f\t%8.3f\t /um\n',photoreceptors.specificDensity.value);
 fprintf('Axial Optical Density          |\t%8.3f\t%8.3f\t%8.3f\n',photoreceptors.axialDensity.value);
-fprintf('Peak isomerization prob.       |\t%8.3f\t%8.3f\t%8.3f\n',max(photoreceptors.isomerizationAbsorbtance,[],2));
+fprintf('Peak isomerization prob.       |\t%8.3f\t%8.3f\t%8.3f\n',max(photoreceptors.isomerizationAbsorptance,[],2));
 fprintf('______________________________________________________________________________________\n');
 fprintf('\n');
 fprintf('Valeton-VanNorren parameters   |\n')
