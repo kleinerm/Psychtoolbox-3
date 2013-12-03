@@ -89,7 +89,7 @@ try
     % Set text size for info text. 24 pixels is also good for Linux.
     Screen('TextSize', win, 24);
     
-    grabber = Screen('OpenVideoCapture', win, deviceId, roi, depth, [], [], cameraname);
+    grabber = Screen('OpenVideoCapture', win, deviceId, roi, depth, [], [], cameraname, 4096, [], 8);
     %brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness',383)
     %exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure',130)
     %gain = Screen('SetVideoCaptureParameter', grabber, 'Gain')
@@ -115,7 +115,7 @@ for repcount=1:1
         
         [tex pts nrdropped]=Screen('GetCapturedImage', win, grabber, 1); %#ok<NASGU>
         % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
-        
+
         if (tex>0)
             % Perform first-time setup of transformations, if needed:
             if fullsize && (count == 0)

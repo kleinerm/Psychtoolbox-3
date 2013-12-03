@@ -196,7 +196,7 @@ try
         grabber = Screen('OpenVideoCapture', win, [], [0 0 640 480], [], [], [], codec, withsound);
     else        
         % No need for Windows-style workarounds:
-        grabber = Screen('OpenVideoCapture', win, [], [], [1], [], [], codec, withsound, [], 8);
+        grabber = Screen('OpenVideoCapture', win, [], [], [], [], [], codec, withsound, [], 8);
     end
 
     for nreps = 1:1

@@ -138,9 +138,9 @@ static char synopsisString[] =
 "or 1 Byte resolution per luminance or color channel for classic 256 levels of intensity. Lower values are unsupported "
 "and will get rounded up to 8 bpc. Higher values may be supported by some higher end professional class cameras. If "
 "you ask for an unsupported value, the engine will try to get the lowest supported value that matches or exceeds "
-"what you want. Currently only the firewire engine for pro-class IIDC compliant firewire or USB machine vision cameras "
-"supports bitdepth > 8 bpc on selected cameras, whereas the GStreamer engine silently ignores the bitdepth setting and "
-"always returns 8 bpc data. Please note that requesting > 8 bpc will cause a substantial increase in both video bus "
+"what you want. Currently the firewire engine for pro-class IIDC compliant firewire or USB machine vision cameras "
+"supports bitdepth > 8 bpc on capable cameras. The GStreamer engine always supports 8 bpc and it may support 16 bpc on "
+"capable cameras. Please note that requesting > 8 bpc will cause a substantial increase in both video bus "
 "bandwidth and memory consumption: Twice the bus bandwidth and two to four times the amount of memory per video frame, "
 "so tread carefully.\n";
 
