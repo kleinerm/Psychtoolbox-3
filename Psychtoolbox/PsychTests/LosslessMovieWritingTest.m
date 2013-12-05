@@ -104,11 +104,10 @@ else
     warning('Ref image and reftexture are DIFFERENT!!! GPU or graphics driver malfunction?!?\n'); %#ok<WNTAG>
 end
 
-Screen('TextSize', win, 96);
+Screen('TextSize', win, 48);
 Screen('DrawTexture', win, tex);
 DrawFormattedText(win, 'REFERENCE IMAGE!\nEncoding...', 'center', 'center', 255);
 Screen('Flip', win);
-%KbStrokeWait;
 
 moviefile = [pwd filesep 'Testmovie.avi'];
 
@@ -123,18 +122,30 @@ end
 % Finish and close movie:
 Screen('FinalizeMovie', movie);
 
-% Step 3: Read movie.
-movie = Screen('OpenMovie', win, moviefile, [], [], [], nrchannels);
+% Step 3: Read movie. Use specialFlags1 = 256 to prevent deinterlacing, as
+% that can incur some color-space conversions on 1 channel gray-scale data,
+% which would be lossy and thereby defeat the purpose of this test:
+[movie durationSecs] = Screen('OpenMovie', win, moviefile, [], [], 256, nrchannels);
 
-% This seek is crucially needed if no active playback but passive frame
-% fetching is used:
-Screen('SetMovieTimeIndex', movie, 0);
+% A very huge durationSecs indicates movie duration couldn't get queried.
+% This in turn means some non-standard movie container which is not
+% seekable. Try to handle this:
+if durationSecs < realmax
+    % This seek is crucially needed if no active playback but passive frame
+    % fetching is used:
+    Screen('SetMovieTimeIndex', movie, 0);
+else
+    % This is not a real seekable movie, but some special container like
+    % multipart-mux'ed. Must use active playback to get this working at
+    % all:
+    Screen('PlayMovie', movie, 1, 0, 0);
+end
 
+% Fetch first frame from movie:
 movietex = Screen('GetMovieImage', win, movie);
 Screen('DrawTexture', win, movietex);
 DrawFormattedText(win, 'DECODED MOVIE IMAGE!\nComparing...', 'center', 'center', 255);
 Screen('Flip', win);
-%KbStrokeWait;
 
 % Retrieve decoded image data:
 imgdec = Screen('GetImage', movietex, [], [], [], nrchannels);
@@ -143,9 +154,22 @@ imgdec = Screen('GetImage', movietex, [], [], [], nrchannels);
 % identical:
 if isequal(imgref, imgdec)
     fprintf('\n\nOriginal image and encoded->movie->decoded image are identical! Yay!\n\n');
+    DrawFormattedText(win, 'IDENTICAL - SUCCESS!', 'center', 'center', [0 255 0]);
 else
     fprintf('\n\nOriginal image and encoded->movie->decoded image are DIFFERENT!\n\n');
+    DrawFormattedText(win, 'DIFFERENT - FAILURE!', 'center', 'center', [255 0 0]);
+    imgdec = int32(imgdec(:));
+    imgref = int32(imgref(:));
+    imgdiff = imgdec - imgref;
+    mindelta = min(imgdiff)
+    maxdelta = max(imgdiff)
+    close all;
+    hist(double(imgdiff));
+    title('Error distribution in pixel values:');
 end
+
+Screen('Flip', win);
+KbStrokeWait([], GetSecs + 5);
 
 % Close movie:
 Screen('CloseMovie', movie);

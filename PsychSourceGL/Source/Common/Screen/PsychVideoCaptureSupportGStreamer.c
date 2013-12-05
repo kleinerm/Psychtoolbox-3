@@ -1914,6 +1914,78 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
         }
     }
     
+    // SGI-RLE image encoding: This is lossless and RLE compressed but can only store 8 bpc content, and we'll lose movie info like duration or framerate!
+    // Essentially the sequency of images is simply stored in a container for separate image files. Accessible by GStreamer or ffmpeg, but not a movie per se.
+    // Audio may not work - untested.
+    if (strstr(codecSpec, "ffenc_sgi") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
+        // Define recommended (compatible) audioencoder/muxer and their default options:
+        sprintf(audioProfile, "audio/mpeg,mpegversion=4");
+        sprintf(muxerProfile, "multipart/x-mixed-replace");
+        sprintf(outCodecName, "image/x-sgi");
+        sprintf(audiocodec, "AudioCodec=%s ", aactype); // Need to use faac MPEG-4 audio encoder.
+        sprintf(muxer, "multipartmux"); // Use Multipart-Multiplexer. Will lose fps and movie duration!
+        
+        // Videoencoder not yet created? If so, we have to do it now:
+        if (!capdev->videoenc) {
+            // Not yet created. Create full codec & option string from high level properties,
+            // if any, then create based on string:
+            sprintf(videocodec, "VideoCodec=ffenc_sgi ");
+            
+            // Keyframe interval specified?
+            if (keyFrameInterval >= 0) {
+                // Assign maximum distance between key frames:
+                sprintf(codecoption, "gop-size=%i ", keyFrameInterval);
+                strcat(videocodec, codecoption);
+            }
+            
+            // Quality vs. Speed tradeoff specified?
+            if (videoBitrate >= 0) {
+                sprintf(codecoption, "bitrate=%i ", (int) videoBitrate * 1024);
+                strcat(videocodec, codecoption);
+            }
+            
+            // Create videocodec from options string:
+            capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+            if (!capdev->videoenc && use_profiles) capdev->videoenc = (GstElement*) 0x1;
+        }
+        
+        if (!capdev->videoenc) {
+            printf("PTB-WARNING: Failed to create 'ffenc_sgi' compressed SGI-RLE lossless video encoder! Does not seem to be installed on your system?\n");
+        }
+        else {
+            if (!use_profiles) sprintf(outCodecName, "ffenc_sgi");
+        }
+    }
+
+    // y4menc raw image encoding: This is lossless but can only store 8 bit YUV content.
+    // Audio may not work - untested.
+    if (strstr(codecSpec, "y4menc") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
+        // Define recommended (compatible) audioencoder/muxer and their default options:
+        sprintf(audioProfile, "audio/mpeg,mpegversion=4");
+        sprintf(muxerProfile, "application/x-yuv4mpeg");
+        sprintf(outCodecName, "video/x-raw-yuv");
+        sprintf(audiocodec, "AudioCodec=%s ", aactype); // Need to use faac MPEG-4 audio encoder.
+        sprintf(muxer, "y4menc"); // Use y4menc-Multiplexer. Encodes to MJPEG style YUV.
+        
+        // Videoencoder not yet created? If so, we have to do it now:
+        if (!capdev->videoenc) {
+            // Not yet created. Create full codec & option string from high level properties,
+            // if any, then create based on string:
+            sprintf(videocodec, "VideoCodec=identity ");
+
+            // Create videocodec from options string:
+            capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+            if (!capdev->videoenc && use_profiles) capdev->videoenc = (GstElement*) 0x1;
+        }
+        
+        if (!capdev->videoenc) {
+            printf("PTB-WARNING: Failed to create 'y4menc' YUV4MPEG near-lossless video encoder! Does not seem to be installed on your system?\n");
+        }
+        else {
+            if (!use_profiles) sprintf(outCodecName, "identity");
+        }
+    }
+
     // Use of audio encoding for any means requested? If so, perform codec and audio source setup:
     if (use_audio) {
         // Audio encoder from parameter string? Or new-style encoding profiles in use?

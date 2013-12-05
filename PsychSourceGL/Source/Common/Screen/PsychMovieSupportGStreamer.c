@@ -681,8 +681,11 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 	// Assign name of movie to play:
 	g_object_set(G_OBJECT(theMovie), "uri", movieLocation, NULL);
 
-	// Default flags for playbin: Decode video and deinterlace it if needed:
-	playflags = GST_PLAY_FLAG_VIDEO  | GST_PLAY_FLAG_DEINTERLACE;
+	// Default flags for playbin: Decode video ...
+    playflags = GST_PLAY_FLAG_VIDEO;
+    
+    // ... and deinterlace it if needed, unless prevented by specialFlags setting 256:
+    if (!(specialFlags1 & 256)) playflags|= GST_PLAY_FLAG_DEINTERLACE;
 
 	// Decode and play audio by default, with software audio volume control, unless specialFlags setting 2 enabled:
 	if (!(specialFlags1 & 2)) playflags |= GST_PLAY_FLAG_AUDIO | GST_PLAY_FLAG_SOFT_VOLUME;

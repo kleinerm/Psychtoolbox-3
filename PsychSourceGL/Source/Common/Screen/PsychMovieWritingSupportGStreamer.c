@@ -625,6 +625,10 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
                     printf("PTB-ERROR: Unsupported number of color channels %i for video encoding!\n", numChannels);
                     goto bail;
             }
+            
+            // y4menc as codec/muxer? This is essentially YUV raw encoding. Assume user wants near-lossless operation. This only accepts YUV
+            // input, so try to convert to Y42B format so encoding loses as few information as possible:
+            if (strstr(codecString, "y4menc")) sprintf(capsForCodecString, "ffmpegcolorspace ! capsfilter caps=\"video/x-raw-yuv, format=(fourcc)Y42B\" ! ");
         }
         else {
             // 16 bpc format: We only handle Luminance16/Raw16, aka 16 bit grayscale. This is due to limitations of the
