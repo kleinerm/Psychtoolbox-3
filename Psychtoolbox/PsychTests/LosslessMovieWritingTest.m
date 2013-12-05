@@ -13,7 +13,11 @@ function LosslessMovieWritingTest(codec, nrchannels, bpc)
 % Optional parameters:
 % 'codec' name of video codec to use. Defaults to huffyuv, for use of the
 % lossless FFMpeg Huffman encoder. ffenc_ljpeg would be another option for
-% a lossless codec.
+% a lossless codec, however ffenc_ljpeg can't be decodec by Psychtoolbox's
+% GStreamer movie playback functions. Another lossless codec is
+% 'ffenc_sgi', which allows for lossless encoding and relatively high
+% compression rates, but its movie files can only be read by Psychtoolbox,
+% not other tools.
 %
 % 'nrchannels' How many color channels to test: 1, 3, or 4 are possible
 % values for grayscale, RGB or RGBA encoding. Note that most codecs can't
