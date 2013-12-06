@@ -130,8 +130,10 @@ else
     nsize = 1200;
     
     % Draw msize x msize x 3 samples between 0 and 65535, normalize to
-    % 0.0 - 1.0 range for floating point image textures:
-    imgref = single(randi(2^16 - 1, [nsize, msize, nrchannels]) / (2^16 - 1));
+    % 0.0 - 1.0 range for floating point image textures. Note: We use
+    % rand() instead of randi(), because randi() wasn't available in Octave 3.2,
+    % and we want to continue support for it for now.
+    imgref = single(floor(rand([nsize, msize, nrchannels]) * (2^16 - 1)) / (2^16 - 1));
     
     % Turn into a Luminance 32 bpc float or RGB 32 float texture:
     tex = Screen('MakeTexture', win, double(imgref), [], [], 2);
