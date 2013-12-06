@@ -1833,7 +1833,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
         }
 
         // Dimensions match?
-        if (twidth != (unsigned int) w || theight != (unsigned int) h) {
+        if (twidth != (unsigned int) w || theight > (unsigned int) h) {
             printf("PTB-ERROR: Mismatch between size of captured video frame %i x %i and size of video recording target buffer %i x %i !\n", w, h, twidth, theight);
             PsychErrorExitMsg(PsychError_system, "Encoding current captured video frame failed. Video frame size mismatch.");
         }
@@ -1841,7 +1841,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
         // Target buffer available?
         if (framepixels) {
             // Copy the pixels:
-            count = (w * h * ((capdev->actuallayers == 3) ? 3 : 1) * ((capdev->bitdepth > 8) ? 2 : 1));
+            count = (twidth * theight * ((capdev->actuallayers == 3) ? 3 : 1) * ((capdev->bitdepth > 8) ? 2 : 1));
 
             // True bitdepth in the 9 to 15 bpc range?
             if (capdev->bitdepth > 8 && capdev->bitdepth < 16) {

@@ -447,6 +447,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 	float                                   dummyFloat;
 	char                                    myfourcc[5];
 	psych_bool                              doAudio = FALSE;
+	psych_bool                              useOwn16bpc = FALSE;
 
     // Validate number of color channels: We support 1, 3 or 4:
     if (numChannels != 1 && numChannels != 3 && numChannels != 4) PsychErrorExitMsg(PsychError_internal, "Invalid number of channels parameter provided. Not 1, 3 or 4!");
@@ -585,6 +586,9 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 		// With audio track?
 		if (strstr(movieoptions, "AddAudioTrack")) doAudio = TRUE;
 
+		// With our own pseudo 16 bpc format which squeezes 16 bpc content into 8 bpc encodings?
+		if (strstr(movieoptions, "UsePTB16BPC")) useOwn16bpc = TRUE;
+        
         // Define filter-caps aka capsfilter for appsrc, to tell the encoding pipeline what kind of
         // video format is delivered by the appsrc:
         if (bitdepth == 8) {
@@ -631,15 +635,102 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
             if (strstr(codecString, "y4menc")) sprintf(capsForCodecString, "ffmpegcolorspace ! capsfilter caps=\"video/x-raw-yuv, format=(fourcc)Y42B\" ! ");
         }
         else {
-            // 16 bpc format: We only handle Luminance16/Raw16, aka 16 bit grayscale. This is due to limitations of the
-            // ffmpegcolorspace converter we use.
-            if (numChannels == 1) {
-                // 16 bit gray encoding of luminance16 or raw16 sensor data:
-                sprintf(capsString, "video/x-raw-gray, bpp=(int)16, depth=(int)16, endianness=(int)4321");
+            // 16 bpc format:
+            
+            // Use our own proprietary encoding for squeezing 16 bpc content into 8 bpc codecs?
+            if (useOwn16bpc) {
+                // We always accept pixeldata from our provider - and feed it via appsrc into GStreamer - as RGB 24 bpp, 8 bpc:
+                // For 3 channel RGB this is natural, and the layout is:
+                // [red1,green1,blue1][red2,green2,blue2] == [RH,RL, GH][GL,BH,BL] -- Abuse two neighbour pixels to encode one 16 bpc RGB pixel.
+                // For 1 channel 16 bpp gray, the layout is:
+                // [red1,green1,blue1][red2,green2,blue2] == [GH1, GL1, GH2][GL2, GH3, GL3] == Abuse two neighbour pixels to encode 3 grayscale pixels.
+                sprintf(capsString, "video/x-raw-rgb, bpp=(int)24, depth=(int)24, endianess=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255");
+                
+                // If the ffenc_huffyuv or ffenc_ljpeg encoder is in use, we need some special caps after the colorspace converter. These make sure that
+                // the huffyuv encoder actually performs RGB8 24 bpp lossless encoding of the video, instead of YUV422p encoding with near-lossless
+                // luminance, but lossy chrominance encoding (spatial subsampling). This is derived from the code of libavcodec's huffyuv
+                // element aka ffenc_huffyuv and testing on GStreamer command line. We only care about lossless encoding if huffyuv or ffenc_ljpeg is in
+                // use, because we assume one would only use huffyuv if the intention would be to get lossless encoding:
+                if (strstr(codecString, "ffenc_huffyuv") || strstr(codecString, "ffenc_ljpeg")) sprintf(capsForCodecString, "ffmpegcolorspace ! capsfilter caps=\"video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, red_mask=(int)65280, green_mask=(int)16711680, blue_mask=(int)-16777216\" ! ");
+
+                switch (numChannels) {
+                    case 1:
+                        // 16 bpc gray or raw: 3 grayscale pixels in two rgb pixels. Only 2/3 of RGB8 pixels needed to
+                        // encode these GRAY16 pixels. Image width of typical video encoding formats oesn't end up as
+                        // integer when multiplied by 2/3, but height often does, e.g., for 640x480, 768x576, 1600x1200,
+                        // so do this. As height is an integer, this will truncate to smaller integer if it doesn't fit,
+                        // so worst case we cut off a few scanlines at the bottom or top of the image if usercode selects an
+                        // unlucky resolution. This loop tries different height cutoffs until one satisfies our constraint:
+                        for (height = pwriterRec->height; (height > pwriterRec->height - 3) && (height > 0); height--) {
+                            if (height == (height * 2 / 3) * 3 / 2) break;
+                        }
+                        
+                        // Managed to do without cutting information?
+                        if ((height != pwriterRec->height) && (PsychPrefStateGet_Verbosity() > 1)) {
+                            printf("PTB-WARNING: Can't store complete image in 1 channel 16 bpc 'UsePTB16BPC' proprietary encoding as height %i * 2/3 \n", pwriterRec->height);
+                            printf("PTB-WARNING: doesn't end up as integral value! %i scanlines will be removed from top or bottom of image during movie\n", pwriterRec->height - height);
+                            printf("PTB-WARNING: encoding for resulting final valid height of %i scanlines.\n", height);
+                        }
+
+                        // Define final height of input images:
+                        pwriterRec->height = height;
+                        
+                        // Define height for encoding:
+                        height = height * 2 / 3;
+                        break;
+                        
+                    case 3:
+                        // 16 bpc RGB16: 1 RGB16 pixel in two RGB8 pixels -> double-wide image:
+                        width = width * 2;
+                        if ((width > 4096) && (PsychPrefStateGet_Verbosity() > 1)) {
+                            printf("PTB-WARNING: Video image for 16 bpc RGB encoding is wider than 2048 pixels. This may cause encoding failure with various codecs!\n");
+                        }
+                        break;
+
+                    default:
+                        printf("PTB-ERROR: Unsupported number of color channels %i for 16 bpc video encoding in Psychtoolbox proprietary format! Only 1 and 3 are supported.\n", numChannels);
+                        goto bail;
+                }
+                
+                // None of the known lossless codecs in use? May want to warn user about possible royal screwups:
+                if (!strstr(codecString, "ffenc_huffyuv") && !strstr(codecString, "ffenc_ljpeg") && !strstr(codecString, "ffenc_sgi") &&
+                    (PsychPrefStateGet_Verbosity() > 1)) {
+                    printf("PTB-WARNING: You don't use one of the known good lossless video codecs huffyuv, ffenc_sgi or maybe ffenc_ljpeg? Note that\n");
+                    printf("PTB-WARNING: use of even a slightly lossy codec for 16 bpc UsePTB16BPC format will royally screw up your movie!\n");
+                }
+                
+                if (PsychPrefStateGet_Verbosity() > 2) {
+                    printf("PTB-INFO: 16 bpc %i-channels Psychtoolbox proprietary video encoding via keyword 'UsePTB16BPC' selected.\n", numChannels);
+                    printf("PTB-INFO: You can read such movie files later if you add a 'specialFlags1' setting of 512 in Screen('OpenMovie') and a\n");
+                    printf("PTB-INFO: 'pixelFormat' of %i channels. Other 'pixelFormats' are not supported for this proprietary encoding.\n", numChannels);
+                }
             }
             else {
-                printf("PTB-ERROR: Unsupported number of color channels %i for 16 bpc video encoding! Only 1-channel encoding of 16 bpc luminance or raw data is supported.\n", numChannels);
-                goto bail;
+                // Proper standardized 16 bpc encodings on GStreamer-0.10, which is severely limited in
+                // what it can do:
+                // We only handle Luminance16/Raw16, aka 16 bit grayscale. This is due to limitations of the
+                // ffmpegcolorspace converter we use. In practice, as of end of 2013 and GStreamer-0.10 i don't
+                // know of any feasible way to actually encode content with 16 bpc, so this is quite pointless...
+                if (PsychPrefStateGet_Verbosity() > 1) {
+                    printf("PTB-WARNING: As of GStreamer-0.10 the PTB developers do not know of any codec format which could actually store 16 bpc content!\n");
+                    printf("PTB-WARNING: Most likely your content will be downgraded to 8 bpc with your current settings. To avoid this you can use a special\n");
+                    printf("PTB-WARNING: Psychtoolbox proprietary encoding, which only Psychtoolbox can read. This encoding sqeezes 16 bpc content into 8 bpc\n");
+                    printf("PTB-WARNING: encodings. Specify the keyword UsePTB16BPC in the encoding options / movieoptions when creating a movie file with\n");
+                    printf("PTB-WARNING: Screen('CreateMovie') or opening a video capture device for recording with the libdc1394 pro-class capture engine.\n");
+                    printf("PTB-WARNING: Also select the number of channels during encoding/video recording to be 1 or 3 for grayscale or RGB, other channels are\n");
+                    printf("PTB-WARNING: not supported. You must provide a 'bitdepth' of 16 and you must choose a perfectly lossless codec for encoding.\n");
+                    printf("PTB-WARNING: You can read such movie files if you add a 'specialFlags1' setting of 512 in Screen('OpenMovie') and a\n");
+                    printf("PTB-WARNING: 'pixelFormat' of 1 for grayscale movies or of 3 for RGB color movies. Other 'pixelFormats' are not supported.\n\n");
+                }
+                
+                if (numChannels == 1) {
+                    // 16 bit gray encoding of luminance16 or raw16 sensor data:
+                    sprintf(capsString, "video/x-raw-gray, bpp=(int)16, depth=(int)16, endianness=(int)4321");
+                }
+                else {
+                    printf("PTB-ERROR: Unsupported number of color channels %i for standard compliant 16 bpc video encoding! Only 1-channel encoding of 16 bpc luminance or raw data is supported.\n", numChannels);
+                    goto bail;
+                }
             }
         }
         

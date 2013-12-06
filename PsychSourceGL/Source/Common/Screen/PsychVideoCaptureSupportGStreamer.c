@@ -1833,6 +1833,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 	}
 
 	// Raw Huffman encoded YUV: Works with camerabin2, and with libdc1394 video recording and Screen movie writing:
+	// This is lossless for 1-channel gray and 3-channel RGB, but only encodes 8 bpc content so far.
 	if (strstr(codecSpec, "huffyuv") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
 		// Define recommended (compatible) audioencoder/muxer and their default options:
         sprintf(audioProfile, "audio/mpeg,mpegversion=4");
@@ -1957,7 +1958,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
         }
     }
 
-    // y4menc raw image encoding: This is lossless but can only store 8 bit YUV content.
+    // y4menc raw image encoding: This is near-lossless for luminance only, somewhat lossy for color, but can only store 8 bit YUV content.
     // Audio may not work - untested.
     if (strstr(codecSpec, "y4menc") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
         // Define recommended (compatible) audioencoder/muxer and their default options:

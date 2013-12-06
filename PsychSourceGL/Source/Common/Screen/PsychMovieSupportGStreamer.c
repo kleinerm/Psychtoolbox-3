@@ -82,6 +82,7 @@ typedef struct {
     int                 width;
     int                 height;
     double              aspectRatio;
+    int                 bitdepth;
     double              last_pts;
     int                 nr_droppedframes;
     int                 nrAudioTracks;
@@ -817,6 +818,9 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // Assign initial pixelFormat to use, as requested by usercode:
     movieRecordBANK[slotid].pixelFormat = pixelFormat;
 
+    // Default to 8 bpc bitdepth as a starter:
+    movieRecordBANK[slotid].bitdepth = 8;
+
     // Our OpenGL texture creation routine usually needs GL_BGRA8 data in G_UNSIGNED_8_8_8_8_REV
     // format, but the pipeline usually delivers YUV data in planar format. Therefore
     // need to perform colorspace/colorformat conversion. We build a little videobin
@@ -880,7 +884,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         if (movieRecordBANK[slotid].pixelFormat == 2) movieRecordBANK[slotid].pixelFormat = 1;
 
         // Map 3 == RGB8 to 4 == RGBA8:
-        if (movieRecordBANK[slotid].pixelFormat == 3) movieRecordBANK[slotid].pixelFormat = 4;
+        if ((movieRecordBANK[slotid].pixelFormat == 3) && !(specialFlags1 & 512)) movieRecordBANK[slotid].pixelFormat = 4;
 
         if (movieRecordBANK[slotid].pixelFormat == 4) {
             // Use RGBA8 format:
@@ -899,13 +903,27 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
             if ((PsychPrefStateGet_Verbosity() > 3) && !(pixelFormat < 5)) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures.\n", slotid);
         }
         
-        if (movieRecordBANK[slotid].pixelFormat == 1) {
+        if ((movieRecordBANK[slotid].pixelFormat == 1) && !(specialFlags1 & 512)) {
             // Use LUMINANCE8 format:
             colorcaps = gst_caps_new_simple("video/x-raw-gray",
                                             "bpp", G_TYPE_INT, 8,
                                             "depth", G_TYPE_INT, 8,
                                             NULL);
             if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use L8 luminance textures.\n", slotid);
+        }
+        
+        // Psychtoolbox proprietary 16 bpc pixelformat for 1 or 3 channel data?
+        if ((pixelFormat == 1 || pixelFormat == 3) && (specialFlags1 & 512)) {
+            // Yes. Need to always decode as RGB8 24 bpp: Texture creation will then handle this further.
+            colorcaps = gst_caps_new_simple("video/x-raw-rgb",
+                                            "bpp", G_TYPE_INT, 24,
+                                            "depth", G_TYPE_INT, 24,
+                                            "red_mask", G_TYPE_INT,   0x00FF0000,
+                                            "green_mask", G_TYPE_INT, 0x0000FF00,
+                                            "blue_mask", G_TYPE_INT,  0x000000FF,
+                                            "endianess", G_TYPE_INT,  4321,
+                                            NULL);
+            movieRecordBANK[slotid].pixelFormat = pixelFormat;
         }
     }
 
@@ -1251,6 +1269,29 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     movieRecordBANK[slotid].nrframes = (int)(movieRecordBANK[slotid].fps * movieRecordBANK[slotid].movieduration + 0.5);
     //printf("PTB-DEBUG: Number of frames in movie %i [%s] is %i.\n", slotid, moviename, movieRecordBANK[slotid].nrframes);
 
+    // Is this movie supposed to be encoded in Psychtoolbox special proprietary "16 bpc stuffed into 8 bpc" format?
+    if (specialFlags1 & 512) {
+        // Yes. Invert the hacks applied during encoding/writing of movie:
+        
+        // Only 1 layer and 3 layer are supported:
+        if (pixelFormat != 1 && pixelFormat !=3) {
+            PsychErrorExitMsg(PsychError_user, "You specified 'specialFlags1' setting 512 for Psychtoolbox proprietary 16 bpc decoding, but pixelFormat is not 1 or 3 as required for this decoding method!");
+        }
+        
+        // Set bitdepth of movie to 16 bpc for later texture creation from decoded video frames:
+        movieRecordBANK[slotid].bitdepth = 16;
+        
+        // 1-layer: 1 bpc 16 gray pixel stored in 2/3 RGB8 pixel. This was achieved by multiplying
+        // height by 2/3 in encoding, so invert by multiplying with 3/2:
+        if (pixelFormat == 1) height = height * 3 / 2;
+        
+        // 3-layer: 1 RGB16 pixel stored in two adjacent RGB8 pixels. This was achieved by doubling
+        // width, so undo by dividing width by 2:
+        if (pixelFormat == 3) width = width / 2;
+        
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Playing back movie in Psychtoolbox proprietary 16 bpc %i channel encoding.\n", pixelFormat);
+    }
+
     // Define size of images in movie:
     movieRecordBANK[slotid].width = width;
     movieRecordBANK[slotid].height = height;
@@ -1389,17 +1430,17 @@ void PsychGSDeleteAllMovies(void)
 int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int checkForImage, double timeindex,
 			     PsychWindowRecordType *out_texture, double *presentation_timestamp)
 {
-    GstElement			*theMovie;
-    unsigned int		failcount=0;
-    double			rate;
-    double			targetdelta, realdelta, frames;
-    GstBuffer                   *videoBuffer = NULL;
-    gint64		        bufferIndex;
-    double                      deltaT = 0;
-    GstEvent                    *event;
-    static double               tStart = 0;
-    double                      tNow;
-    double                      preT, postT;
+    GstElement      *theMovie;
+    unsigned int    failcount=0;
+    double          rate;
+    double          targetdelta, realdelta, frames;
+    GstBuffer       *videoBuffer = NULL;
+    gint64          bufferIndex;
+    double          deltaT = 0;
+    GstEvent        *event;
+    static double   tStart = 0;
+    double          tNow;
+    double          preT, postT;
 
     if (!PsychIsOnscreenWindow(win)) {
         PsychErrorExitMsg(PsychError_user, "Need onscreen window ptr!!!");
@@ -1680,8 +1721,8 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         // Assign default number of effective color channels:
         out_texture->nrchannels = movieRecordBANK[moviehandle].pixelFormat;
         
-        // Assign default depth according to number of channels, assuming 8 bpc:
-        out_texture->depth = out_texture->nrchannels * 8;
+        // Assign default depth according to number of channels:
+        out_texture->depth = out_texture->nrchannels * movieRecordBANK[moviehandle].bitdepth;
         
         if (out_texture->nrchannels < 4) {
             // For 1-3 channel textures, play safe, don't assume alignment:
@@ -1809,6 +1850,66 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             
             // And 24 bpp depth:
             out_texture->depth = 24;            
+        }
+        else if (movieRecordBANK[moviehandle].bitdepth > 8) {
+            // Is this a > 8 bpc image format? If not, we ain't nothing more to prepare.
+            // If yes, we need to use a high precision floating point texture to represent
+            // the > 8 bpc image payload without loss of image information:
+            
+            // highbitthreshold: If the net bpc value is greater than this, then use 32bpc floats
+            // instead of 16 bpc half-floats, because 16 bpc would not be sufficient to represent
+            // more than highbitthreshold bits faithfully:
+            const int highbitthreshold = 11;
+            unsigned int w = movieRecordBANK[moviehandle].width;
+            
+            // 9 - 16 bpc color/luminance resolution:
+            out_texture->depth = out_texture->nrchannels * ((movieRecordBANK[moviehandle].bitdepth > highbitthreshold) ? 32 : 16);
+            
+            // Byte alignment: Assume at least 2 Byte alignment due to 16 bit per component aka 2 Byte input:
+            out_texture->textureByteAligned = 2;
+            
+            if (out_texture->nrchannels == 1) {
+                // 1 layer Luminance:
+                out_texture->textureinternalformat = (movieRecordBANK[moviehandle].bitdepth > highbitthreshold) ? GL_LUMINANCE_FLOAT32_APPLE : GL_LUMINANCE_FLOAT16_APPLE;
+                out_texture->textureexternalformat = GL_LUMINANCE;
+                // Override for missing floating point texture support: Try to use 16 bit fixed point signed normalized textures [-1.0 ; 1.0] resolved at 15 bits:
+                if (!(win->gfxcaps & kPsychGfxCapFPTex16)) out_texture->textureinternalformat = GL_LUMINANCE16_SNORM;
+                out_texture->textureByteAligned = (w % 2) ? 2 : ((w % 4) ? 4 : 8);
+            }
+            else if (out_texture->nrchannels == 3) {
+                // 3 layer RGB:
+                out_texture->textureinternalformat = (movieRecordBANK[moviehandle].bitdepth > highbitthreshold) ? GL_RGB_FLOAT32_APPLE : GL_RGB_FLOAT16_APPLE;
+                out_texture->textureexternalformat = GL_RGB;
+                // Override for missing floating point texture support: Try to use 16 bit fixed point signed normalized textures [-1.0 ; 1.0] resolved at 15 bits:
+                if (!(win->gfxcaps & kPsychGfxCapFPTex16)) out_texture->textureinternalformat = GL_RGB16_SNORM;
+                out_texture->textureByteAligned = (w % 2) ? 2 : ((w % 4) ? 4 : 8);
+            }
+            else {
+                // 4 layer RGBA:
+                out_texture->textureinternalformat = (movieRecordBANK[moviehandle].bitdepth > highbitthreshold) ? GL_RGBA_FLOAT32_APPLE : GL_RGBA_FLOAT16_APPLE;
+                out_texture->textureexternalformat = GL_RGBA;
+                // Override for missing floating point texture support: Try to use 16 bit fixed point signed normalized textures [-1.0 ; 1.0] resolved at 15 bits:
+                if (!(win->gfxcaps & kPsychGfxCapFPTex16)) out_texture->textureinternalformat = GL_RGBA16_SNORM;
+                // Always 8 Byte aligned:
+                out_texture->textureByteAligned = 8;
+            }
+            
+            // External datatype is 16 bit unsigned integer, each color component encoded in a 16 bit value:
+            out_texture->textureexternaltype = GL_UNSIGNED_SHORT;
+            
+            // Scale input data, so highest significant bit of payload is in bit 16:
+            glPixelTransferi(GL_RED_SCALE,   1 << (16 - movieRecordBANK[moviehandle].bitdepth));
+            glPixelTransferi(GL_GREEN_SCALE, 1 << (16 - movieRecordBANK[moviehandle].bitdepth));
+            glPixelTransferi(GL_BLUE_SCALE,  1 << (16 - movieRecordBANK[moviehandle].bitdepth));
+            
+            // Let PsychCreateTexture() do the rest of the job of creating, setting up and
+            // filling an OpenGL texture with content:
+            PsychCreateTexture(out_texture);
+            
+            // Undo scaling:
+            glPixelTransferi(GL_RED_SCALE, 1);
+            glPixelTransferi(GL_GREEN_SCALE, 1);
+            glPixelTransferi(GL_BLUE_SCALE, 1);
         }
         else {
             // Let PsychCreateTexture() do the rest of the job of creating, setting up and
