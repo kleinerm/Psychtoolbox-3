@@ -1,7 +1,7 @@
-function VideoCaptureDemo(fullscreen, fullsize, roi, depth, deviceId, cameraname)
+function VideoCaptureDemo(fullscreen, fullsize, roi, depth, deviceId, cameraname, bpc)
 % Demonstrate simple use of built-in video capture engine.
 %
-% VideoCaptureDemo([fullscreen=0][, fullsize=0][, roi=[0 0 640 480]][, depth][,deviceId=0][, cameraname])
+% VideoCaptureDemo([fullscreen=0][, fullsize=0][, roi=[0 0 640 480]][, depth][,deviceId=0][, cameraname][, bpc=8])
 %
 % VideoCaptureDemo initializes the first attached and supported camera on
 % your computer (e.g, the built-in iSight of Apple Macintosh computers),
@@ -35,6 +35,14 @@ function VideoCaptureDemo(fullscreen, fullsize, roi, depth, deviceId, cameraname
 % 'cameraname' Name string for selection of video capture device. This is
 % only honored if 'deviceId' is a negative number, and only for certain
 % video capture plugins. Defaults to none.
+%
+% 'bpc' Optional bit depth in bits per channel. Defaults to classic 8 bpc, but
+% some cameras support up to 16 bpc. Setting 16 bpc will try to coerce those into
+% providing "HDR" data. Usually this works with higher end firewire cameras and
+% the dc1394 capture engine. Your mileage with standard consumer cameras and the
+% default GStreamer capture engine will likely be less great. If at all, it would
+% probably only work on Linux or on OSX with GStreamer built from source, so you
+% have the camerabin1 plugin available.
 %
 
 % History:
@@ -74,6 +82,11 @@ if nargin < 6
     cameraname = [];
 end
 
+if nargin < 7
+    % Default bpc to internal 8 bpc default:
+    bpc = [];
+end
+
 screenid=max(Screen('Screens'));
 
 try
@@ -89,7 +102,7 @@ try
     % Set text size for info text. 24 pixels is also good for Linux.
     Screen('TextSize', win, 24);
     
-    grabber = Screen('OpenVideoCapture', win, deviceId, roi, depth, [], [], cameraname, [], [], 8);
+    grabber = Screen('OpenVideoCapture', win, deviceId, roi, depth, [], [], cameraname, [], [], bpc);
     %brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness',383)
     %exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure',130)
     %gain = Screen('SetVideoCaptureParameter', grabber, 'Gain')
@@ -102,7 +115,7 @@ try
     %roi  = Screen('SetVideoCaptureParameter', grabber, 'GetROI')
 
 for repcount=1:1
-    Screen('StartVideoCapture', grabber, 30, 1);
+    Screen('StartVideoCapture', grabber, 60, 1);
     
     dstRect = [];
     oldpts = 0;
@@ -113,7 +126,7 @@ for repcount=1:1
             break;
         end;
         
-        [tex pts nrdropped]=Screen('GetCapturedImage', win, grabber, 1); %#ok<NASGU>
+        [tex pts nrdropped,intensity]=Screen('GetCapturedImage', win, grabber, 1); %#ok<NASGU>
         % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
 
         if (tex>0)
@@ -124,7 +137,8 @@ for repcount=1:1
                 sf = min([RectWidth(winrect) / RectWidth(texrect) , RectHeight(winrect) / RectHeight(texrect)]);
                 dstRect = CenterRect(ScaleRect(texrect, sf, sf) , winrect);
             end
-
+texinfo = Screen('Getwindowinfo', tex)
+outintens = intensity
             % Setup mirror transformation for horizontal flipping:
             
             % xc, yc is the geometric center of the text.
