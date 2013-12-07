@@ -3115,10 +3115,6 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                 // We leave color conversion on as ffmpegcolorspace can handle 16 bpc grayscale:
                 g_object_set(G_OBJECT(camera), "flags", (usecamerabin == 1) ? ((bitdepth > 8) ? 2+4 : 1+2+4) : 0, NULL);
             }
-
-            // Only setup colorcaps for camerabin1 if requested by recordingflags 4096, do it later for camerabin2:
-            if ((usecamerabin == 1) && (recordingflags & 4096)) g_object_set(G_OBJECT(camera), "filter-caps", colorcaps, NULL);
-            
 	    } else {
 		    // Video recording (with optional capture). Setup pipeline:
             if (usecamerabin == 1) {
@@ -3150,6 +3146,9 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                 }
             }
 	    }
+
+	    // Only setup colorcaps for camerabin1 if requested by recordingflags 4096, do it later for camerabin2:
+	    if ((usecamerabin == 1) && (recordingflags & 4096)) g_object_set(G_OBJECT(camera), "filter-caps", colorcaps, NULL);
 
 	    // Create and use a videorate converter always when video recording is active (because without it
 	    // we can get choppy or truncated video recordings and/or audio-video sync problems), and
