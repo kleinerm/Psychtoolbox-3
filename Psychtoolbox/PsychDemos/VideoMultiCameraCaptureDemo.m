@@ -254,7 +254,7 @@ try
     telapsed = GetSecs - t;
 
     for grabber=grabbers
-        fprintf('Camera %i : Bandwidth = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'GetBandwidthUsage'));
+        fprintf('Camera %i : Bandwidth = %f\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'GetBandwidthUsage'));
         fprintf('Camera %i : UsedTriggerMode = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'TriggerMode'));
         fprintf('Camera %i : UsedTriggerPolarity = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'TriggerPolarity'));
         fprintf('Camera %i : UsedTriggerSource = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'TriggerSource'));

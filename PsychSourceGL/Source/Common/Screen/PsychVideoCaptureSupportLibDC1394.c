@@ -2024,7 +2024,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
     // Return current firewire bus bandwidth usage of camera::
     if (strcmp(pname, "GetBandwidthUsage")==0) {
         dc1394_video_get_bandwidth_usage(capdev->camera, (uint32_t *) &intval);
-        PsychCopyOutDoubleArg(1, FALSE, intval);
+        PsychCopyOutDoubleArg(1, FALSE, ((double) intval) / 4915);
         return(0);
     }
 
