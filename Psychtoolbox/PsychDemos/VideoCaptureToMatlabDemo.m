@@ -38,7 +38,7 @@ try
     win = Screen('OpenWindow', 0, 0, [0 0 10 10]);
     
     % Open videocapture device, requesting 640 x 480 pixels resolution:
-    grabber = Screen('OpenVideoCapture', win, deviceIndex, [0 0 640 480]);
+    grabber = Screen('OpenVideoCapture', win, deviceIndex, [0 0 640 480],[],[],[],[],[],[],8);
     
     % Start low-latency capture with requested 30 fps:
     Screen('StartVideoCapture', grabber, 30, 1);
@@ -57,6 +57,9 @@ try
         % flag disables texture creation, so 'tex' is actually an empty
         % handle. The 'specialMode'=2 flag requests video data as matrix:
         [tex pts nrdropped rawImage]=Screen('GetCapturedImage', win, grabber, 2, [], 2); %#ok<ASGLU>
+
+        % Display class of returned image matrix:
+        matrixClassIs = class(rawImage)
         
         % Bits of accounting and stats to the Matlab window:
         if count > 0
@@ -83,6 +86,10 @@ try
         
         % Show image in a figure window:
         imshow(matImage);
+
+        % Count and print number of unique values in image - An indicator of net bitdepth:
+        uniquevalues = length(unique(matImage(:)))
+        
         drawnow;
         count = count + 1;
     end
