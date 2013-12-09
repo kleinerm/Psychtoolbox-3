@@ -272,7 +272,7 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
  */
 int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime)
 {
-	if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES) {
+    if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES || mastervidcapRecordBANK[capturehandle].engineId == -1) {
 		PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided!");
 	}
         
@@ -294,21 +294,34 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes,
  */
 double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, double value)
 {
-	// Valid handle provided?
-	if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES) {
-		PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided!");
-	}
-	
-	// Call engine specific method:
-	#ifdef PTBVIDEOCAPTURE_LIBDC
-	if (mastervidcapRecordBANK[capturehandle].engineId == 1) return(PsychDCVideoCaptureSetParameter(capturehandle, pname, value)); 
-	#endif
+    // Valid handle provided? -1 is a special "carte blanche" handle.
+    if (capturehandle < -1 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES) {
+        PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided!");
+    }
+    if ((capturehandle != -1) && (mastervidcapRecordBANK[capturehandle].engineId == -1)) {
+        PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided! No such capture device open.");
+    }
+    
+    // Call engine specific method: capturehandle == -1 calls *all* engines:
+    #ifdef PTBVIDEOCAPTURE_LIBDC
+    if ((capturehandle == -1) || (mastervidcapRecordBANK[capturehandle].engineId == 1)) {
+        if (capturehandle != -1) {
+            return(PsychDCVideoCaptureSetParameter(capturehandle, pname, value));
+        }
+        else PsychDCVideoCaptureSetParameter(capturehandle, pname, value);
+    }
+    #endif
 
-	#ifdef PTB_USE_GSTREAMER
-	if (mastervidcapRecordBANK[capturehandle].engineId == 3) return(PsychGSVideoCaptureSetParameter(capturehandle, pname, value));	
-	#endif
+    #ifdef PTB_USE_GSTREAMER
+    if ((capturehandle == -1) || (mastervidcapRecordBANK[capturehandle].engineId == 3)) {
+        if (capturehandle != -1) {
+            return(PsychGSVideoCaptureSetParameter(capturehandle, pname, value));
+        }
+        else PsychGSVideoCaptureSetParameter(capturehandle, pname, value);
+    }
+    #endif
 
-	return(0);
+    return(0);
 }
 
 /*

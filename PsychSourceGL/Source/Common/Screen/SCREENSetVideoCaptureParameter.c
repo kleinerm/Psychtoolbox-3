@@ -25,7 +25,7 @@
 #include <float.h>
 
 static char useString[] = "oldvalue = Screen('SetVideoCaptureParameter', capturePtr, 'parameterName' [, value]);";
-static char synopsisString[] =  "Set video capture parameter 'parameterName' on video capture device 'capturePtr'. "
+static char synopsisString[] =  "Set video capture parameter 'parameterName' on video capture device 'capturePtr'.\n"
                                 "If 'value' is provided, then the parameter is set to 'value' and the parameter is "
                                 "switched to manual control mode. If 'value' is left out, then the current setting "
                                 "of 'parameterName' is queried and returned. If 'parameterName' starts with the word "
@@ -41,6 +41,13 @@ static char synopsisString[] =  "Set video capture parameter 'parameterName' on 
                                 "return the name of the device vendor, resp. the device model name. 'GetROI' returns "
                                 "the capture region of interest (ROI), which can deviate from the ROI requested in "
                                 "Screen('OpenVideoCapture'), depending on the capabilities of the capture device. "
+                                "'SetNextCaptureBinSpec=xxx' Will set the gst-launch line which describes the video "
+                                "capture source to be used during the next call to Screen('OpenVideoCapture', -9, ...); "
+                                "Opening a video capture device with the special deviceIndex -9 means to create a GStreamer "
+                                "bin and use it as video source. The bin is created by parsing the string passed here. "
+                                "Use the special 'capturePtr' value -1 when setting this bin description, as this call "
+                                "may need to be made while a capture device is not yet opened, so no valid 'capturePtr' exists. "
+                                "This setting is only honored on the GStreamer video capture engine.\n"
                                 "'GetFramerate' Returns the nominal capture rate of the capture device.\n"
                                 "'GetBandwidthUsage' Returns firewire bandwidth used by camera at current settings in "
                                 "so called bandwidth units. "
@@ -139,8 +146,8 @@ PsychError SCREENSetVideoCaptureParameter(void)
     
     // Get the device handle:
     PsychCopyInIntegerArg(1, TRUE, &capturehandle);
-    if (capturehandle==-1) {
-        PsychErrorExitMsg(PsychError_user, "SetVideoCaptureParameter called without valid handle to a capture object.");
+    if (capturehandle < -1) {
+        PsychErrorExitMsg(PsychError_user, "SetVideoCaptureParameter called without either the special handle '-1' or a valid handle to a capture object.");
     }
     
     // Copy in parameter name string:

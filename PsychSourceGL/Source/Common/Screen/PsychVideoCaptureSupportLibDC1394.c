@@ -1917,7 +1917,10 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
     psych_bool assigned = false;
 
     // Retrieve device record for handle:
-    PsychVidcapRecordType* capdev = PsychGetVidcapRecord(capturehandle);
+    PsychVidcapRecordType* capdev = (capturehandle != -1) ? PsychGetVidcapRecord(capturehandle) : NULL;
+
+    // A -1 capturehandle is currently not supported on this engine. No-Op return:
+    if (capdev == NULL) return(oldvalue);
 
     oldintval = 0xFFFFFFFF;
 

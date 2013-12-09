@@ -111,6 +111,10 @@ const char video_preset_name[] = "ptb3_videorecording_presets_video";
 const char audio_preset_name[] = "ptb3_videorecording_presets_audio";
 const char muxer_preset_name[] = "ptb3_videorecording_presets_muxer";
 
+// Global gstlaunchbinsrc gst-launch style spec of a videocapture bin for use
+// with deviceIndex -9 in Screen('OpenVideoCapture'):
+char gstlaunchbinsrc[8192] = { 0 };
+
 // 0 = No camerabin, 1 = camerabin, 2 = camerabin2:
 static unsigned int usecamerabin = 1;
 
@@ -183,7 +187,7 @@ PsychVidcapRecordType* PsychGetGSVidcapRecord(int deviceIndex)
 		PsychErrorExitMsg(PsychError_user, "Invalid (negative) deviceIndex for video capture device passed!");
 	}
 	
-	if (numCaptureRecords >= PSYCH_MAX_CAPTUREDEVICES) {
+	if (deviceIndex >= PSYCH_MAX_CAPTUREDEVICES) {
 		PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex for video capture device passed. Index exceeds number of registered devices!");
 	}
 	
@@ -2788,21 +2792,21 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
         // Videosource provided as a bin which is constructed from a gst-launch line:
         if (deviceIndex == -9) {
-            // Fetch mandatory targetmoviename parameter as bin spec string:
-            if (targetmoviefilename == NULL) {
-                PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to -9 to request creation of a user-defined video source, but didn't provide the required gst-launch style string in the 'moviename' argument! Aborted.");
+            // Fetch mandatory gstlaunchbinsrc parameter as bin spec string:
+            if (gstlaunchbinsrc[0] == 0) {
+                PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to -9 to request creation of a user-defined video source, but didn't set the required gst-launch style string beforehand! Aborted.");
             }
 
             // Feedback to user:
             if (PsychPrefStateGet_Verbosity() > 2) {
                 printf("PTB-INFO: Trying to attach generic user provided bin as video source. The gst-launch style pipeline description is:\n");
-                printf("PTB-INFO: %s\n", targetmoviefilename);
+                printf("PTB-INFO: %s\n", gstlaunchbinsrc);
             }
             
             // Create a bin from the provided gst-launch style string and assign it as videosource plugin:
             sprintf(plugin_name, "gstlaunchbinsrc");
             error = NULL;
-            videosource = gst_parse_bin_from_description((const gchar *) targetmoviefilename, TRUE, &error);
+            videosource = gst_parse_bin_from_description((const gchar *) gstlaunchbinsrc, TRUE, &error);
             
             if (!videosource) {
                 printf("PTB-ERROR: Failed to create generic bin video source!\n");
@@ -4747,8 +4751,8 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 	GList* iter = NULL;
 	GstColorBalanceChannel* cc = NULL;
 
-	// Retrieve device record for handle:
-	PsychVidcapRecordType* capdev = PsychGetGSVidcapRecord(capturehandle);
+	// Retrieve device record for handle, or NULL for special "all devices" handle -1:
+    PsychVidcapRecordType* capdev = (capturehandle != -1) ? PsychGetGSVidcapRecord(capturehandle) : NULL;
 
 	// Make sure GStreamer is ready:
 	PsychGSCheckInit("videocapture");
@@ -4757,7 +4761,30 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 	
 	// Round value to integer:
 	intval = (int) (value + 0.5);
-	
+
+    if (strstr(pname, "SetNextCaptureBinSpec=")) {
+        // Assign string with gst-launch style video capture bin description for use
+        // with a deviceIndex of -9 in next Screen('OpenVideoCapture', -9, ...) call.
+        // Instead of connecting to one of the special devices -8 to -1 or an enumerated
+        // video source like the default source zero, or others, we parse the string assigned
+        // here and create a GStreamer bin which acts as video source:
+        // Find start of movie namestring and assign to pname:
+        pname = strstr(pname, "=");
+        pname++;
+
+        // Assign to our gstlaunchbinsrc string:
+        memset(gstlaunchbinsrc, 0, sizeof(gstlaunchbinsrc));
+        snprintf(gstlaunchbinsrc, sizeof(gstlaunchbinsrc), "%s", pname);
+
+        if (PsychPrefStateGet_Verbosity() > 2) {
+            printf("PTB-INFO: Changed gst-launch style videosource bin string for use with deviceIndex -9 to '%s'.\n", gstlaunchbinsrc);
+        }
+        
+        return(0);
+    }
+
+    if (capdev == NULL) PsychErrorExitMsg(PsychError_user, "Tried to set a video capture parameter which requires a valid specific capturePtr, but passed generic -1 handle.");
+    
 	// Set a new target movie name for video recordings:
 	if (strstr(pname, "SetNewMoviename=")) {
 		// Find start of movie namestring and assign to pname:
