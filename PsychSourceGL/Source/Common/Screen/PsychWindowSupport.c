@@ -2590,7 +2590,7 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 			// Create and startup thread:
 			if ((rc=PsychCreateThread(&(flipRequest->flipperThread), NULL, PsychFlipperThreadMain, (void*) windowRecord))) {
 				printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): Could not create flipper  [%s].\n", strerror(rc));
-				PsychErrorExitMsg(PsychError_system, "Insufficient system ressources for mutex creation as part of async flip setup!");
+				PsychErrorExitMsg(PsychError_system, "Insufficient system ressources for thread creation as part of async flip setup!");
 			}
 
 			// Additionally try to schedule flipperThread MMCSS: This will lift it roughly into the
