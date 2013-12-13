@@ -1,4 +1,4 @@
-function fhndl = MinExpEntStair
+function fhndl = MinExpEntStair(mode)
 % Minimum Expected Entropy Staircase
 %
 % Caution: Currently only works with Matlab, not with GNU/Octave!
@@ -192,232 +192,264 @@ first_value = [];           % first value to test instead of random or by prior
 psychofunc  = 'cumGauss';
 
 % subfunction
-fhndl = @MinExpEntStair_internal;
+if nargin<1 || strcmpi(mode,'legacy')
+    fhndl = @MinExpEntStair_internal;
+    external_funs     = {@init, @loadhistory, @loadprior, @toggle_use_resp_subset, @toggle_use_resp_subset_prop, @set_first_value, @set_psychometric_func, @get_psychometric_func, @get_next_probe, @process_resp, @get_history, @get_fit, @get_PSE_DL};
+    external_funs_str = cellfun(@(x) strrep(func2str(x),[mfilename '/'],''),external_funs,'uni',false);
+elseif strcmpi(mode,'v2')
+    % setup function handles
+    fhndl.init                          = @init;
+    fhndl.loadhistory                   = @loadhistory;
+    fhndl.loadprior                     = @loadprior;
+    fhndl.toggle_use_resp_subset        = @toggle_use_resp_subset;
+    fhndl.toggle_use_resp_subset_prop   = @toggle_use_resp_subset_prop;
+    fhndl.set_first_value               = @set_first_value;
+    fhndl.set_psychometric_func         = @set_psychometric_func;
+    fhndl.get_psychometric_func         = @get_psychometric_func;
+    fhndl.get_next_probe                = @get_next_probe;
+    fhndl.process_resp                  = @process_resp;
+    fhndl.get_history                   = @get_history;
+    fhndl.get_fit                       = @get_fit;
+    fhndl.get_PSE_DL                    = @get_PSE_DL;
+    
+end
 
 % public interface
     function [varargout] = MinExpEntStair_internal(mode,varargin)
-        
-        switch mode
-            %%% init
-            case 'init' % [] = stair('init',probeset,meanset,slopeset,lapse_rate,guess_rate);
-                probeset            = varargin{1};
-                aset                = varargin{2};
-                bset                = varargin{3};
-                [agrid,bgrid]       = meshgrid(aset,bset);
-                % init with uniform probability, normalized
-                loglik              = zeros(size(agrid)) - log(numel(agrid));
-                lik                 = ones(size(agrid))./numel(agrid);
-                % lapse rate and guess rate
-                lapse_rate          = varargin{4};
-                % the lapse rate cannot be exactly 0 as the computed
-                % probability must not be exactly 0 so we can work with
-                % log(prob) without trouble, so set it to 1e-10 at least.
-                lapse_rate          = max(lapse_rate,1e-10);
-                % guess rate is optional, if not specified we assume a 2IFC
-                % discrimination experiment where the guess rate is
-                % irrelevant as function goes from always one option at the
-                % one end to always the other option at the other end.
-                if length(varargin)<5
-                    guess_rate = 0;
-                else
-                    guess_rate = varargin{5};
-                end
-                
-                % lapse rate:
-                % 1. for a discrimination setup (guess_rate==0) the
-                % lapserate basically means that instead of ranging from 0
-                % to 1, the psychometric function ranges from lapse_rate/2
-                % to 1-lapse_rate/2
-                % 2. for a detection setup, the lower bound is guess_rate
-                % and the upper bound is 1-lapse_rate
-                
-                % lower bound of pyschometric function
-                % and
-                % range of pyschometric function
-                if guess_rate==0
-                    g0 = lapse_rate/2;
-                    g1 = 1 - lapse_rate;
-                else
-                    g0 = guess_rate;
-                    g1 = 1 - lapse_rate - guess_rate;
-                end
-                g2 = 1 - g0;    % need to flip psychometric function for fitting responses <= 0, get upper bound of this flipped function
-                
-                
-            %%% load bunch of previously run trials (need probes and
-            %%% responses)
-            case 'loadhistory' % [] = stair('loadhistory',probes,responses);
-                phist               = varargin{1};
-                rhist               = varargin{2};
-                
-                % refit likelihood up to this point
-                [loglik,lik]        = fit_all(phist,rhist);
-                
+        % get internal function to run
+        qFun = strcmp(mode,external_funs_str);
+        if any(qFun)
+            % run function
+            [varargout{1:nargout}] = external_funs{qFun}(varargin{:});
+        else
+            error('MinExpEntStair: mode "%s" unknown',mode);
+        end
+    end
+
+    % init
+    function [] = init(probeset_,meanset,slopeset,lapse_rate_,guess_rate_)
+        probeset            = probeset_;
+        aset                = meanset;
+        bset                = slopeset;
+        [agrid,bgrid]       = meshgrid(aset,bset);
+        % init with uniform probability, normalized
+        loglik              = zeros(size(agrid)) - log(numel(agrid));
+        lik                 = ones(size(agrid))./numel(agrid);
+        % lapse rate and guess rate
+        lapse_rate          = lapse_rate_;
+        % the lapse rate cannot be exactly 0 as the computed
+        % probability must not be exactly 0 so we can work with
+        % log(prob) without trouble, so set it to 1e-10 at least.
+        lapse_rate          = max(lapse_rate,1e-10);
+        % guess rate is optional, if not specified we assume a 2IFC
+        % discrimination experiment where the guess rate is
+        % irrelevant as function goes from always one option at the
+        % one end to always the other option at the other end.
+        if nargin<5
+            guess_rate = 0;
+        else
+            guess_rate = guess_rate_;
+        end
+
+        % lapse rate:
+        % 1. for a discrimination setup (guess_rate==0) the
+        % lapserate basically means that instead of ranging from 0
+        % to 1, the psychometric function ranges from lapse_rate/2
+        % to 1-lapse_rate/2
+        % 2. for a detection setup, the lower bound is guess_rate
+        % and the upper bound is 1-lapse_rate
+
+        % lower bound of pyschometric function
+        % and
+        % range of pyschometric function
+        if guess_rate==0
+            g0 = lapse_rate/2;
+            g1 = 1 - lapse_rate;
+        else
+            g0 = guess_rate;
+            g1 = 1 - lapse_rate - guess_rate;
+        end
+        g2 = 1 - g0;    % need to flip psychometric function for fitting responses <= 0, get upper bound of this flipped function
+    end
                 
                 
-            %%% load a prior likelihood, so that first probe is not chosen
-            %%% randomly and you can influence evolution of the fit
-            case 'loadprior' % [] = stair('loadprior',priorlik);
-                assert(all(loglik(:)==-log(numel(agrid))),'Cannot load prior if we have a likelihood already'); % this tests if it is not default inited
-                
-                priorlik = varargin{1};
-                assert(size(priorlik,1)==length(bset),'Number of rows in prior much match length of slope set')
-                assert(size(priorlik,2)==length(aset),'Number of columns in prior much match length of mean set')
-                assert(all(priorlik(:)>=0),'Loaded prior is not expected to be a log likelihood (that is: all your probabilities should be larger than or equal to 0!)');
-                
-                loglik  = normalize_loglik(log(priorlik));
-                lik     = exp(loglik);
+    %%% load bunch of previously run trials (need probes and
+    %%% responses)
+    function [] = loadhistory(probes,responses)
+        phist               = probes;
+        rhist               = responses;
+
+        % refit likelihood up to this point
+        [loglik,lik]        = fit_all(phist,rhist);
+    end
                 
                 
-            %%% use subset of data for computing next probe
-            case 'toggle_use_resp_subset' % [] = stair('toggle_use_resp_subset',20,6);
-                % option: extract a probe and response subset for choosing
-                % the next probe, and fit just those
-                % when lots of trials ran, entropy function often has two
-                % local minima, with their relative values switch back and
-                % forth. This will lead to large oscillations in the probe
-                % value being tested (one trial a probe from the beginning
-                % of set, next trial a probe from the end and the from
-                % beginning of set again).
-                % We want to avoid these oscillations in probe values,
-                % therefore we select a limited subset of data to calculate
-                % the best next probe.
-                quse_subset  = ~quse_subset;
-                assert(~(quse_subset && quse_subset_perc));
-                if ~isempty(varargin) % change defaults
-                    minsetsize = varargin{1};
-                    subsetsize = varargin{2};
-                end
-                varargout{1} = quse_subset;
-                varargout{2} = minsetsize;
-                varargout{3} = subsetsize;
+                
+    %%% load a prior likelihood, so that first probe is not chosen
+    %%% randomly and you can influence evolution of the fit
+    function [] = loadprior(priorlik_)
+        assert(all(loglik(:)==-log(numel(agrid))),'Cannot load prior if we have a likelihood already'); % this tests if it is not default inited
+
+        priorlik = priorlik_;
+        assert(size(priorlik,1)==length(bset),'Number of rows in prior much match length of slope set')
+        assert(size(priorlik,2)==length(aset),'Number of columns in prior much match length of mean set')
+        assert(all(priorlik(:)>=0),'Loaded prior is not expected to be a log likelihood (that is: all your probabilities should be larger than or equal to 0!)');
+
+        loglik  = normalize_loglik(log(priorlik));
+        lik     = exp(loglik);
+    end
+                
+                
+    %%% use subset of data for computing next probe
+    function [varargout] = toggle_use_resp_subset(minsetsize_,subsetsize_)
+        % option: extract a probe and response subset for choosing
+        % the next probe, and fit just those
+        % when lots of trials ran, entropy function often has two
+        % local minima, with their relative values switch back and
+        % forth. This will lead to large oscillations in the probe
+        % value being tested (one trial a probe from the beginning
+        % of set, next trial a probe from the end and the from
+        % beginning of set again).
+        % We want to avoid these oscillations in probe values,
+        % therefore we select a limited subset of data to calculate
+        % the best next probe.
+        quse_subset  = ~quse_subset;
+        assert(~(quse_subset && quse_subset_perc));
+        if nargin>0 % change defaults
+            minsetsize = minsetsize_;
+            subsetsize = subsetsize_;
+        end
+        varargout{1} = quse_subset;
+        varargout{2} = minsetsize;
+        varargout{3} = subsetsize;
+    end
             
                 
-            %%% use subset of data for computing next probe
-            case 'toggle_use_resp_subset_prop' % [] = stair('toggle_use_resp_subset_perc',10,.8);
-                % same as above, but now always use a proportion of the
-                % available data
-                quse_subset_perc  = ~quse_subset_perc;
-                assert(~(quse_subset_perc && quse_subset));
-                if ~isempty(varargin) % change defaults
-                    minsetsize  = varargin{1};
-                    percsetsize = varargin{2};
-                end
-                varargout{1} = quse_subset_perc;
-                varargout{2} = minsetsize;
-                varargout{3} = percsetsize;
+    %%% use subset of data for computing next probe
+    function [varargout] = toggle_use_resp_subset_prop(minsetsize_,percsetsize_)
+        % same as above, but now always use a proportion of the
+        % available data
+        quse_subset_perc  = ~quse_subset_perc;
+        assert(~(quse_subset_perc && quse_subset));
+        if nargin>0 % change defaults
+            minsetsize  = minsetsize_;
+            percsetsize = percsetsize_;
+        end
+        varargout{1} = quse_subset_perc;
+        varargout{2} = minsetsize;
+        varargout{3} = percsetsize;
+    end
                 
                 
-            % set the first value to test. Normally the first is chosen
-            % randomly or by using the prior that you loaded. If you prefer
-            % to start at a fixed value, use this.
-            case 'set_first_value' % [] = stair('set_first_value',first_value);
-                first_value = varargin{1};
-                if ~isempty(phist)
-                    warning('the first trial has already been run. Setting the first value now is pointless and it''ll be ignored');
-                end
+    %%% set the first value to test. Normally the first is chosen
+    %%% randomly or by using the prior that you loaded. If you prefer
+    %%% to start at a fixed value, use this.
+    function [] = set_first_value(first_value_)
+        first_value = first_value_;
+        if ~isempty(phist)
+            warning('the first trial has already been run. Setting the first value now is pointless and it''ll be ignored');
+        end
+    end
                 
                 
-            % set the psychometric function to be used (default cumulative
-            % Gaussian). Can be called at any time (but it will refit all
-            % the data already present and thus remove the effect of any
-            % priors).
-            case 'set_psychometric_func' % [] = stair('set_psychometric_func','funcID');
-                % currently supported:
-                %  'cumGauss' - Cumulative Gaussian
-                %  'logistic' - logistic function
-                psychofunc = varargin{1};
-                % if there's any data already, refit it using the new
-                % psychometric func. This would remove the effect of any
-                % priors!
-                if ~isempty(phist)
-                    ndata = min(length(phist),length(rhist));
-                    [loglik,lik]    = fit_all(phist(1:ndata),rhist(1:ndata));
-                end
+    %%% set the psychometric function to be used (default cumulative
+    %%% Gaussian). Can be called at any time (but it will refit all
+    %%% the data already present and thus remove the effect of any
+    %%% priors).
+    function [] = set_psychometric_func(funcID)
+        % currently supported:
+        %  'cumGauss' - Cumulative Gaussian
+        %  'logistic' - logistic function
+        psychofunc = funcID;
+        % if there's any data already, refit it using the new
+        % psychometric func. This would remove the effect of any
+        % priors!
+        if ~isempty(phist)
+            ndata = min(length(phist),length(rhist));
+            [loglik,lik]    = fit_all(phist(1:ndata),rhist(1:ndata));
+        end
+    end
                 
                 
-            % get the psychometric function that is currently used.
-            case 'get_psychometric_func' % ['funcID'] = stair('get_psychometric_func');
-                % currently possible outputs:
-                %  'cumGauss' - Cumulative Gaussian
-                %  'logistic' - logistic function
-                varargout{1} = psychofunc;
+    %%% get the psychometric function that is currently used.
+    function [varargout] = get_psychometric_func()
+        % currently possible outputs:
+        %  'cumGauss' - Cumulative Gaussian
+        %  'logistic' - logistic function
+        varargout{1} = psychofunc;
+    end
                 
                 
-            %%% given history, get which probe is best to test next
-            case 'get_next_probe' % [probe,entexp,ind]  = stair('get_next_probe');
-                if isempty(phist) && ~isempty(first_value)
-                   % first trial and user requested a specific probe value to be tested
-                   p                = first_value;
-                   [varargout{2:3}] = deal([]);
-                else
-                    [p,entexp,indmin]   = getnextprobe;
-                    if isempty(p) || isscalar(unique(loglik))
-                        % if we couldn't compute expected entropy, or we have a
-                        % uniform likelihood on which calculation was based
-                        % (useless prior info, such as default inited), fall
-                        % back on random probe selection
-                        p                   = probeset(round(RandLim(1,1,length(probeset))));
-                        [varargout{2:3}]    = deal([]);
-                    else
-                        varargout{2}        = entexp;
-                        varargout{3}        = indmin;
-                    end
-                end
-                varargout{1}    = p;
-                phist           = [phist p];
+    %%% given history, get which probe is best to test next
+    function [p,entexp,indmin] = get_next_probe()
+        if isempty(phist) && ~isempty(first_value)
+           % first trial and user requested a specific probe value to be tested
+           p                = first_value;
+           [entexp,indmin]  = deal([]);
+        else
+            [p,entexp,indmin]   = getnextprobe;
+            if isempty(p) || isscalar(unique(loglik))
+                % if we couldn't compute expected entropy, or we have a
+                % uniform likelihood on which calculation was based
+                % (useless prior info, such as default inited), fall
+                % back on random probe selection
+                p                   = probeset(round(RandLim(1,1,length(probeset))));
+                [entexp,indmin]     = deal([]);
+            end
+        end
+        phist           = [phist p];
+    end
             
                 
-            %%% fit likelihoods for new response
-            case 'process_resp' % [] = stair('process_resp',resp); - resp on current trial
-                rhist(end+1)    = varargin{1};
-                [loglik,lik]    = fit_additional_data_point(loglik,phist(end),rhist(end));
+    %%% fit likelihoods for new response
+    function [] = process_resp(resp) % resp on current trial
+        rhist(end+1)    = resp;
+        [loglik,lik]    = fit_additional_data_point(loglik,phist(end),rhist(end));
+    end
                 
                 
-            %%% retrieve probe and response history
-            case 'get_history' % [probes,responses] = stair('get_history');
-                varargout{1}    = phist;
-                varargout{2}    = rhist;
-                
-            
-            %%% get fitted a (PSE) and b (slope) parameters and loglik.
-            %%% This returns the fit of all data, also when subsetting is
-            %%% enabled.
-            case 'get_fit' % [a,b,loglik]    = stair('get_fit');
-                kmin            = find(loglik == max(loglik(:))); % most likely combination(s) of PSE and Slope
-                varargout{1}    = mean(agrid(kmin));
-                varargout{2}    = mean(bgrid(kmin));
-                varargout{3}    = loglik;
+    %%% retrieve probe and response history
+    function [varargout] = get_history()
+        varargout{1}    = phist;
+        varargout{2}    = rhist;
+    end
                 
             
-            %%% get fitted PSE and DL (distance of 75% point from the 50%
-            %%% point) and loglik. This returns the fit of all data, also
-            %%% when subsetting is enabled.
-            %%% This function is meant to be used for discrimination
-            %%% experiments only (hence the terminology), although it will
-            %%% return the inflection point and the distance between the
-            %%% points that are equivalent to the 50% and 75% points after
-            %%% scaling the psychometric function for all setups.
-            case 'get_PSE_DL' % [PSE,DL,loglik]    = stair('get_PSE_DL');
-                [varargout{1:3}] = MinExpEntStair_internal('get_fit');
-                % convert b (dispersion) parameter to DL
-                switch psychofunc
-                    case 'cumGauss'
-                        varargout{2} = varargout{2} * erfinv(.5)*sqrt(2);
-                    case 'logistic'
-                        varargout{2} = varargout{2} * log(3);
-                    otherwise
-                        error('Psychometric function "%s" not supported',psychofunc);
-                end
+    %%% get fitted a (PSE) and b (slope) parameters and loglik.
+    %%% This returns the fit of all data, also when subsetting is
+    %%% enabled.
+    function [varargout] = get_fit()
+        kmin            = find(loglik == max(loglik(:))); % most likely combination(s) of PSE and Slope
+        varargout{1}    = mean(agrid(kmin));
+        varargout{2}    = mean(bgrid(kmin));
+        varargout{3}    = loglik;
+    end
                 
+            
+    %%% get fitted PSE and DL (distance of 75% point from the 50%
+    %%% point) and loglik. This returns the fit of all data, also
+    %%% when subsetting is enabled.
+    %%% This function is meant to be used for discrimination
+    %%% experiments only (hence the terminology), although it will
+    %%% return the inflection point and the distance between the
+    %%% points that are equivalent to the 50% and 75% points after
+    %%% scaling the psychometric function for all setups.
+    function [varargout] = get_PSE_DL()
+        [varargout{1:3}] = get_fit();
+        % convert b (dispersion) parameter to DL
+        switch psychofunc
+            case 'cumGauss'
+                varargout{2} = varargout{2} * erfinv(.5)*sqrt(2);
+            case 'logistic'
+                varargout{2} = varargout{2} * log(3);
             otherwise
-                error('MinExpEntStair: mode "%s" unknown',mode);
+                error('Psychometric function "%s" not supported',psychofunc);
         end
     end
 
 
 % helpers (private functions, can only be called from the public
-% MinExpEntStair_internal())
+% functions above)
     function [p,entexp,indmin] = getnextprobe
         if length(rhist)>minsetsize && (quse_subset || quse_subset_perc)
             % select subset and fit
