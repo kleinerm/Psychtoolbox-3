@@ -177,6 +177,8 @@ lik         = [];
 g0          = [];
 g1          = [];
 g2          = [];
+% likelihood lookup table
+likLookup   = [];
 
 % option: use a subset of all data for choosing the next probe, default values:
 quse_subset = false;        % use limited subset for computing next probe? Limited subset by discarding a fixed number of trials
@@ -269,7 +271,8 @@ end
             g0 = guess_rate;
             g1 = 1 - lapse_rate - guess_rate;
         end
-        g2 = 1 - g0;    % need to flip psychometric function for fitting responses <= 0, get upper bound of this flipped function
+        
+        precomputeLikelihoods();
     end
                 
                 
@@ -361,6 +364,8 @@ end
         %  'cumGauss' - Cumulative Gaussian
         %  'logistic' - logistic function
         psychofunc = funcID;
+        % recompute lookup table
+        precomputeLikelihoods();
         % if there's any data already, refit it using the new
         % psychometric func. This would remove the effect of any
         % priors!
@@ -467,12 +472,9 @@ end
         
         entexp  = zeros(1,length(probeset));
         for ksamp = 1:length(probeset)
-            % probe value to process in this iteration
-            xsamp       = probeset(ksamp);
-            
             % p values for each possible model
             % these are used in multiple steps
-            pvalsamp    = fit_a_point(xsamp,1);
+            pvalsamp    = likLookup(:,:,ksamp);
             
             % expected value is sum, weighted by lik
             pval        = sum(pvalsamp(:).*thelik(:));
@@ -482,7 +484,7 @@ end
             newloglik0  = thellik(:) + log(1 - pvalsamp(:));
             newloglik1  = thellik(:) + log(    pvalsamp(:));
             
-            % important!  need to normalize
+            % important! need to normalize
             newloglik0  = normalize_loglik(newloglik0);
             newloglik1  = normalize_loglik(newloglik1);
             
@@ -533,22 +535,26 @@ end
     end
 
     function pval = fit_a_point(probe,resp)
+        pval = likLookup(:,:,probeset==probe);
+        % if response was wrong flip probs
+        if resp <= 0
+            pval = 1-pval;
+        end
+    end
+        
+    function [] = precomputeLikelihoods()
+        nProbe = length(probeset);
+        likLookup = zeros([size(agrid) nProbe]);
+        for p=1:nProbe
+            likLookup(:,:,p) = evalLikelihood(probeset(p));
+        end
+    end
+
+    function pval = evalLikelihood(probe)
         switch psychofunc
             case 'cumGauss'
-                if resp > 0
-                    pval = g0 + g1*normcdf((probe-agrid)./bgrid);
-                else
-                    pval = g2 - g1*normcdf((probe-agrid)./bgrid);
-                end
+                pval = normcdf((probe-agrid)./bgrid);
                 
-                % this reduces to:
-                % if resp > 0
-                %     pval =       normcdf( (probe-agrid)./bgrid);
-                % else
-                %     pval = 1.0 - normcdf( (probe-agrid)./bgrid);
-                % end
-                % when lapse_rate and guess_rate are 0
-                %
                 %        1  [             x - a      ]
                 %   P = --- [ 1 + erf( ----------- ) ],
                 %        2  [           b*sqrt(2)    ]
@@ -557,20 +563,8 @@ end
                 % http://en.wikipedia.org/wiki/Normal_distribution
                 
             case 'logistic'
-                if resp > 0
-                    pval = g0 + g1./(1+exp(-(probe-agrid)./bgrid));
-                else
-                    pval = g2 - g1./(1+exp(-(probe-agrid)./bgrid));
-                end
+                pval = 1./(1+exp(-(probe-agrid)./bgrid));
                 
-                % this reduces to:
-                % if resp > 0
-                %     pval =       1./(1+exp(-(probe-agrid)./bgrid));
-                % else
-                %     pval = 1.0 - 1./(1+exp(-(probe-agrid)./bgrid));
-                % end
-                % when lapse_rate and guess_rate are 0
-                %
                 %               1
                 % P =   ------------------,
                 %              -(x - a)/b 
@@ -583,6 +577,9 @@ end
             otherwise
                 error('Psychometric function "%s" not supported',psychofunc);
         end
+        
+        % incorporate lapse rate and guess rate
+        pval = g0 + g1*pval;
     end
 
     function loglik  = normalize_loglik(loglik)
