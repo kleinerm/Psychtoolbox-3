@@ -1,7 +1,7 @@
-function VideoMultiCameraCaptureDemo(deviceIds, syncmode)
+function VideoMultiCameraCaptureDemo(deviceIds, syncmode, movieName)
 % Demonstrate simple use of built-in video capture engine.
 %
-% VideoMultiCameraCaptureDemo([deviceIds=all][, syncmode=0])
+% VideoMultiCameraCaptureDemo([deviceIds=all][, syncmode=0][, movieName])
 %
 % VideoMultiCameraCaptureDemo captures simultaneously from all cameras
 % connected to your computer, or a subset of cameras if it is specified
@@ -9,8 +9,12 @@ function VideoMultiCameraCaptureDemo(deviceIds, syncmode)
 % in individual Psychtoolbox windows.
 %
 % The optional 'syncmode' flag allows to select synchronization strategy
-% for mult-cam capture: 0 = None, all free-running. 4 = Software sync,
+% for multi-cam capture: 0 = None, all free-running. 4 = Software sync,
 % 8 = Firewire Bus-Sync, 16 = Hardware (TTL) trigger sync.
+%
+% The optional 'movieName' string, if provided, will enable video recording
+% of each cameras video into a dedicated movie file, which consists of the
+% movieName and a unique camera number.
 %
 % By default, a capture rate of 30 frames per second at a resolution of
 % 640 x 480 pixels is requested, and the timecode and interframe interval
@@ -44,6 +48,12 @@ else
     end
 end
 
+if nargin < 3 || isempty(movieName)
+    doVideoRecording = 0;
+else
+    doVideoRecording = 1;
+end    
+
 roi = [];
 depth = [3];
 convMode = 4; % Mode 4 would be the correct mode for raw sensor -> rgb bayer conversion on Basler cameras.
@@ -52,6 +62,16 @@ debayerMethod = 3; % Debayer algorithm: 0 = Fastest, ..., 3 = High quality, 4-7 
 
 % Set dropframes = 0 if multiple frames shall be recorded for sync timing checks, 1 otherwise:
 dropframes = 0;
+
+% Flags to use for video recording. 16 = Use multi-threaded recording.
+if doVideoRecording
+    captureFlags = 16;
+    codec = ':CodecType=DEFAULTencoder'; % Use default codec.
+    dropframes = 1; % Enable frame dropping for now.
+else
+    captureFlags = 0;
+    codec = [];
+end
 
 % Set noMaster = 1 if all cams are externally hardware triggered slaves, 0 otherwise:
 noMaster = 1;
@@ -106,7 +126,7 @@ try
       Screen('TextSize', win(i), 24);
 
       % Open i'th camera:
-      grabbers(i) = Screen('OpenVideoCapture', win(i), deviceIds(i), roi, depth, 64, [], [], [], [], 8); %#ok<AGROW>
+      grabbers(i) = Screen('OpenVideoCapture', win(i), deviceIds(i), roi, depth, 64, [], codec, captureFlags, [], 8); %#ok<AGROW>
 
       % Multi-camera sync mode requested?
       if syncmode > 0
@@ -128,7 +148,7 @@ try
                 % Hardware sync requested but unsupported by this slave?
                 if (syncmode == 16) && ~noMaster
                     % Yes, workaround via additional bus-sync and hope for the best:
-                    fprintf('Switching sync slave camera %i to bus sync as fallback! Master will emit bus-sync signals too.\n', grabbers(i));
+                    fprintf('Switching sync slave camera %i to bus sync as fallback. Master will emit bus-sync signals too.\n', grabbers(i));
                     % Set slave to bus sync:
                     Screen('SetVideoCaptureParameter', grabbers(i), 'SyncMode', 8 + 2);
                     % Set master to bus sync in addition to hw sync:
@@ -165,6 +185,11 @@ try
       
       % Select debayer algorithm:
       Screen('SetVideoCaptureParameter', grabbers(i), 'DebayerMethod', debayerMethod);
+
+      if doVideoRecording
+            % If video recording is requested, set a unique movie filename per camera:
+            Screen('SetVideoCaptureParameter', grabbers(i), sprintf('SetNewMoviename=%s_Cam%02d.mov', movieName, grabbers(i)));
+      end
     end
 
     % Start capture on all cameras:

@@ -60,9 +60,16 @@
 // Record which defines all state for a capture device:
 typedef struct {
     int valid;                        // Is this a valid device record? zero == Invalid.
+    int capturehandle;                // Userspace visible capture handle.
+    psych_mutex mutex;
+    psych_condition condition;
+    psych_thread recorderThread;      // Thread handle for background video recording thread.
+    int frameAvail;                   // Number of frames in videosink.
     dc1394camera_t *camera;           // Ptr to a DC1394 camera object that holds the internal state for such cams.
     dc1394video_frame_t *frame;       // Ptr to a structure which contains the most recently captured/dequeued frame.
     dc1394video_frame_t *convframe;   // Ptr to a structuve which contains bayer- or YUV- converted frames.
+    unsigned char* current_frame;     // Ptr to target buffer for most recent frame if video recorder thread is active in low-latency mode.
+    unsigned char* pulled_frame;      // Ptr to fetched frame from video recorder thread (if active). This is the "front buffer" equivalent of current_frame.
     int syncmode;                     // 0 = free-running. 1 = sync-master, 2 = sync-slave, 4 = soft-sync, 8 = bus-sync, 16 = ttl-sync.
     int dropframes;                   // 1 == Always deliver most recent frame in FIFO, even if dropping of frames is neccessary.
     dc1394video_mode_t dc_imageformat;// Encodes image size and pixelformat.
@@ -76,12 +83,14 @@ typedef struct {
     int bitdepth;                     // Requested or actual bpc - bits per color/luminance channel.
     int num_dmabuffers;               // Number of DMA ringbuffers to use in DMA capture.
     int nrframes;                     // Total count of decompressed images.
+    int framecounter;                 // Total number of captured frames.
     double fps;                       // Acquisition framerate of capture device.
     int width;                        // Width x height of captured images.
     int height;
-    double last_pts;                  // Capture timestamp of previous frame.
-    double current_pts;               // Capture timestamp of current frame.
+    double current_pts;               // Capture timestamp of current frame fetched from engine.
+    double pulled_pts;                // Capture timestamp of actually pulled frame.
     int current_dropped;              // Dropped count for this fetch cycle...
+    int pulled_dropped;               // -""- by master thread.
     int nr_droppedframes;             // Counter for dropped frames.
     int frame_ready;                  // Signals availability of new frames for conversion into GL-Texture.
     int grabber_active;               // Grabber running?
@@ -145,7 +154,7 @@ PsychVidcapRecordType* PsychGetVidcapRecord(int deviceIndex)
         PsychErrorExitMsg(PsychError_user, "Invalid (negative) deviceIndex for video capture device passed!");
     }
 
-    if (numCaptureRecords >= PSYCH_MAX_CAPTUREDEVICES) {
+    if (deviceIndex >= PSYCH_MAX_CAPTUREDEVICES) {
         PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex for video capture device passed. Index exceeds number of registered devices!");
     }
 
@@ -167,7 +176,7 @@ void PsychDCVideoCaptureInit(void)
 {
     // Initialize vidcapRecordBANK with NULL-entries:
     int i;
-    for (i=0; i < PSYCH_MAX_CAPTUREDEVICES; i++) {
+    for (i = 0; i < PSYCH_MAX_CAPTUREDEVICES; i++) {
         vidcapRecordBANK[i].valid = 0;
     }
     numCaptureRecords = 0;
@@ -236,6 +245,9 @@ void PsychDCCloseVideoCaptureDevice(int capturehandle)
     if (capdev->targetmoviefilename) free(capdev->targetmoviefilename);
     capdev->targetmoviefilename = NULL;
 
+    PsychDestroyMutex(&capdev->mutex);
+    PsychDestroyCondition(&capdev->condition);
+
     // Invalidate device record to free up this slot in the array:
     capdev->valid = 0;
 
@@ -295,6 +307,7 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
     // Clear out the record to have a nice clean start:
     memset(capdev, 0, sizeof(PsychVidcapRecordType));
+    
     // Need to set valid flag again after the memset():
     capdev->valid = 1;
 
@@ -303,6 +316,10 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     capdev->grabber_active = 0;
     capdev->convframe = NULL;
     capdev->debayer_method = DC1394_BAYER_METHOD_NEAREST;
+    capdev->capturehandle = slotid;
+
+    PsychInitMutex(&capdev->mutex);
+    PsychInitCondition(&capdev->condition, NULL);
 
     // Name of target movie file for video and audio recording specified?
     if (targetmoviefilename) {
@@ -459,6 +476,7 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     capdev->num_dmabuffers = (num_dmabuffers>0) ? num_dmabuffers : 8;
 
     // Reset framecounter:
+    capdev->framecounter = 0;
     capdev->nrframes = 0;
     capdev->grabber_active = 0;
 
@@ -1047,6 +1065,290 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
     return(packet_size);
 }
 
+// Helper function: Push captured video frame data buffer into GStreamer video encoding pipeline:
+static psych_bool PsychDCPushFrameToMovie(PsychVidcapRecordType* capdev, psych_uint16* input_image, psych_bool onMasterthread)
+{
+    // Yes. Need to add this video frame to the encoding pipeline.
+    unsigned int twidth, theight, numChannels, bitdepth, i;
+    unsigned int count;
+    unsigned char* framepixels;
+    
+    // Get memory pointer to target memory buffer:
+    framepixels = PsychGetVideoFrameForMoviePtr(capdev->moviehandle, &twidth, &theight, &numChannels, &bitdepth);
+    
+    // Validate number of color channels and bits per channel values for a match:
+    if (numChannels != (unsigned int) capdev->actuallayers || bitdepth != ((capdev->bitdepth > 8) ? 16 : 8)) {
+        printf("PTB-ERROR: Mismatch between number of color channels %i or bpc %i of captured video frame and number of channels %i or bpc %i of video recording target buffer!\n",
+               capdev->actuallayers, ((capdev->bitdepth > 8) ? 16 : 8), numChannels, bitdepth);
+        if (onMasterthread) {
+            PsychErrorExitMsg(PsychError_system, "Encoding current captured video frame failed. Video format mismatch.");
+        }
+        else {
+            printf("PTB-ERROR: Encoding current captured video frame on video recorder thread failed. Video format mismatch!\n");
+        }
+        
+        return(FALSE);
+    }
+    
+    // Dimensions match?
+    if (twidth != (unsigned int) capdev->width || theight > (unsigned int) capdev->height) {
+        printf("PTB-ERROR: Mismatch between size of captured video frame %i x %i and size of video recording target buffer %i x %i !\n", capdev->width, capdev->height, twidth, theight);
+        if (onMasterthread) {
+            PsychErrorExitMsg(PsychError_system, "Encoding current captured video frame failed. Video frame size mismatch.");
+        }
+        else {
+            printf("PTB-ERROR: Encoding current captured video frame failed. Video frame size mismatch!\n");
+        }
+        
+        return(FALSE);
+    }
+    
+    // Target buffer available?
+    if (framepixels) {
+        // Copy the pixels:
+        count = (twidth * theight * ((capdev->actuallayers == 3) ? 3 : 1) * ((capdev->bitdepth > 8) ? 2 : 1));
+        
+        // True bitdepth in the 9 to 15 bpc range?
+        if (capdev->bitdepth > 8 && capdev->bitdepth < 16) {
+            // Yes. Need to bit-shift, so the most significant bit of the video data,
+            // gets placed in the 16th bit of the 16 bit word. This to make sure the
+            // "dead bits" for bpc < 16 are the least significant bits and they are
+            // all zeros. This makes sure that black is always all-zero and white is
+            // always 0xffff - all ones:
+            psych_uint16 *frameinwords = (psych_uint16*) input_image;
+            psych_uint16 *frameoutwords = (psych_uint16*) framepixels;
+            
+            count /= 2; // Half as many words as bytes.
+            for (i = 0; i < count; i++) *(frameoutwords++) = *(frameinwords++) << (16 - capdev->bitdepth);
+        }
+        else {
+            // No, either 8 bpc or 16 bpc - A simple memcpy does the job efficiently:
+            memcpy(framepixels, (const void*) input_image, count);
+        }
+        
+        // Add to GStreamer encoding pipeline: Format is upright, and 1 video frame duration per frame:
+        if (PsychAddVideoFrameToMovie(capdev->moviehandle, 1, FALSE) != 0) {
+            if (onMasterthread) {
+                PsychErrorExitMsg(PsychError_system, "Encoding current captured video frame failed. Failed to add frame to pipeline.");
+            }
+            else {
+                printf("PTB-ERROR: Encoding current captured video frame failed. Failed to add frame to pipeline!\n");
+            }
+            
+            return(FALSE);
+        }
+    }
+    else {
+        if (onMasterthread) {
+            PsychErrorExitMsg(PsychError_system, "Encoding current captured video frame failed. No videobuffer available.");
+        }
+        else {
+            printf("PTB-ERROR: Encoding current captured video frame failed. No videobuffer available!\n");
+        }
+        
+        return(FALSE);
+    }
+    
+    return(TRUE);
+}
+
+// Helper function: Convert image from dc1394 engine into final color format. Apply YUV->RGB colorspace
+// conversion or debayering if neccessary:
+static unsigned char* PsychDCPreprocessFrame(PsychVidcapRecordType* capdev)
+{
+    dc1394error_t error;
+    int capturehandle = capdev->capturehandle;
+    
+    // input_image points to the image buffer in our cam:
+    unsigned char* input_image = (unsigned char*) (capdev->frame->image);
+
+    // Do we want to do something with the image data and have a scratch buffer for color conversion alloc'ed?
+    if (capdev->convframe) {
+        // Yes. Perform color-conversion YUV->RGB from cameras DMA buffer
+        // into the scratch buffer and set scratch buffer as source for
+        // all further operations:
+        if (capdev->colormode == DC1394_COLOR_CODING_RAW8 || capdev->colormode == DC1394_COLOR_CODING_MONO8 ||
+            capdev->colormode == DC1394_COLOR_CODING_RAW16 || capdev->colormode == DC1394_COLOR_CODING_MONO16) {
+            // Non-Format 7 capture modes do not allow to query the camera for the type of its Bayer-pattern.
+            // Therefore, if the bayer color_filter pattern is unknown due to non-Format-7 capture, assign
+            // the pattern manually set by usercode as color_filter_override setting:
+            if (capdev->frame->color_filter < DC1394_COLOR_FILTER_MIN || capdev->frame->color_filter > DC1394_COLOR_FILTER_MAX) {
+                capdev->frame->color_filter = capdev->color_filter_override;
+            }
+
+            // Trigger bayer filtering for debayering via 'method':
+            if (DC1394_SUCCESS != (error = dc1394_debayer_frames(capdev->frame, capdev->convframe, capdev->debayer_method))) {
+                printf("PTB-WARNING: Debayering of raw sensor image data failed! %s\n", dc1394_error_get_string(error));
+                if (error == DC1394_INVALID_COLOR_FILTER) {
+                    printf("PTB-WARNING: Could not find out proper Bayer filter pattern for camera %i. Either select a\n", capturehandle);
+                    printf("PTB-WARNING: Format-7 video capture mode to allow auto-detection, or use Screen('SetVideoCaptureParameter', ..., 'OverrideBayerPattern');\n");
+                    printf("PTB-WARNING: to assign a suitable pattern manually.\n");
+                }
+
+                if (error == DC1394_INVALID_BAYER_METHOD) {
+                    printf("PTB-WARNING: Invalid debayering method selected for camera %i. Select a different method via \n", capturehandle);
+                    printf("PTB-WARNING: Screen('SetVideoCaptureParameter', ..., 'DebayerMethod');\n");
+                }
+
+                // Failure:
+                printf("PTB-ERROR: Bayer filtering of video frame failed.\n");
+                return(NULL);
+            }
+        }
+        else {
+            // Input data is in YUV format. Convert into RGB8:
+            capdev->convframe->color_coding = DC1394_COLOR_CODING_RGB8;
+            if (DC1394_SUCCESS != dc1394_convert_frames(capdev->frame, capdev->convframe)) {
+                // Failure:
+                printf("PTB-ERROR: Colorspace conversion of video frame failed.\n");
+                return(NULL);
+            }
+        }
+        
+        // Success: Point to decoded image buffer:
+        input_image = (unsigned char*) capdev->convframe->image;
+    }
+
+    return(input_image);
+}
+
+// Main function of the asynchronous background video recording thread:
+static void* PsychDCRecorderThreadMain(void* capdevToCast)
+{
+    int rc;
+    double tstart, tend;
+    dc1394error_t error;
+    unsigned char* input_image = NULL;
+
+    // Get a pointer to our associated capture device:
+    PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) capdevToCast;
+
+    // We are running at elevated realtime priority. Enter the while loop
+    // which waits for new video frames from libDC1394 and pushes them into
+    // the GStreamer movie recording pipeline and the receive slots/sinks for
+    // live video capture data:
+    while (TRUE) {
+        PsychLockMutex(&capdev->mutex);
+
+        // Start timestamp of processing cycle:
+        PsychGetAdjustedPrecisionTimerSeconds(&tstart);
+
+        // Abort?
+        if (!capdev->grabber_active) break;
+
+        // Check for new video frame in polling mode:
+        error = dc1394_capture_dequeue(capdev->camera, DC1394_CAPTURE_POLICY_POLL, &(capdev->frame));
+
+        // Success?
+        if (error != DC1394_SUCCESS) {
+            // Error! Abort:
+            printf("PTB-ERROR: In background video recording thread: dc1394_capture_dequeue() failed [%s]! Aborting recording thread.\n", dc1394_error_get_string(error));
+            break;
+        }
+
+        // New frame received?
+        if (capdev->frame) {
+            // Ok, new frame ready and dequeued from DMA ringbuffer:
+            capdev->frame_ready = 1;
+
+            // Store count of currently queued frames (in addition to the one just fetched).
+            // This is an indication of how well the users script is keeping up with the video stream,
+            // technically the number of frames that would need to be dropped to keep in sync with the
+            // stream.
+            capdev->current_dropped = (int) capdev->frame->frames_behind;
+
+            // Increase counter of total number of captured frames by this camera:
+            capdev->framecounter++;
+
+            // Also increase "decompressed frames" counter, which is the same in case of threaded processing:
+            capdev->nrframes++;
+
+            // Query capture timestamp (in microseconds) and convert to seconds. This comes from the capture
+            // engine with (theroretically) microsecond precision and is assumed to be pretty accurate:
+            capdev->current_pts = ((double) capdev->frame->timestamp) / 1000000.0f;
+
+            // On OS/X, current_pts is in gettimeofday() time, just as on Linux, but PTB's GetSecs
+            // clock represents host uptime, not gettimeofday() time. Therefore we need to remap
+            // on OS/X from  gettimeofday() time to regular PTB GetSecs() time, via an instant
+            // clock calibration between both clocks and offset correction:
+            #if PSYCH_SYSTEM == PSYCH_OSX
+            struct timeval tv;
+            gettimeofday(&tv, NULL);
+            capdev->current_pts -= (((double) ((psych_uint64) tv.tv_sec * 1000000 + (psych_uint64) tv.tv_usec)) / 1000000.0f) - tend;
+            #endif
+
+            // Perform potential processing on image, e.g., debayering:
+            input_image = PsychDCPreprocessFrame(capdev);
+            if (NULL == input_image) {
+                printf("PTB-ERROR: Bayer filtering or color space conversion of video frame in video recorder thread failed. Aborting recorder thread.\n");
+                break;
+            }
+            
+            // Push new frame to the GStreamer video encoding pipeline:
+            if (capdev->recording_active && (capdev->moviehandle != -1) && (capdev->recordingflags & 16)) {
+                // Yes. Push data to encoder now. Abort thread on failure to push/encode:
+                if (!PsychDCPushFrameToMovie(capdev, (psych_uint16*) input_image, FALSE)) break;
+            }
+            
+            // Provide new frame to masterthread / usercode, if frame delivery isn't disabled:
+            if (!(capdev->recordingflags & 4)) {
+                // Copy frame to "current frame" buffer if low-latency mode is active:
+                if (capdev->dropframes) {
+                    unsigned int count = (capdev->width * capdev->height * ((capdev->actuallayers == 3) ? 3 : 1) * ((capdev->bitdepth > 8) ? 2 : 1));
+
+                    // Release previous one, if not fetched by now by masterthread:
+                    if (capdev->current_frame) free(capdev->current_frame);
+                    
+                    // Allocate target buffer for most recent captured frame from video recorder thread:
+                    capdev->current_frame = (unsigned char*) malloc(count);
+
+                    // Copy image into it:
+                    memcpy(capdev->current_frame, input_image, count);
+                }
+                
+                // Signal availability of new video frame:
+                capdev->frameAvail++;
+                if ((rc = PsychSignalCondition(&(capdev->condition)))) {
+                    printf("PTB-ERROR: In background video recording thread: PsychSignalCondition() failed [%s]!\n", strerror(rc));
+                }
+            }
+            
+            // Requeue the recently dequeued and no longer needed buffer:
+            if (dc1394_capture_enqueue(capdev->camera, capdev->frame) != DC1394_SUCCESS) {
+                printf("PTB-ERROR: Requeuing of used up video frame buffer in video recorder thread failed! Aborting recorder thread.\n");
+                break;
+            }
+
+            // Update stats for decompression:
+            PsychGetAdjustedPrecisionTimerSeconds(&tend);
+            
+            // Update avg. decompress time:
+            capdev->avg_decompresstime += (tend - tstart);
+
+            // Release mutex, so masterthread can get frame data or control camera/capture:
+            PsychUnlockMutex(&capdev->mutex);
+        }
+        else {
+            // No new frame received in this poll iteration.
+
+            // Release mutex, so masterthread can get frame data or control camera/capture:
+            PsychUnlockMutex(&capdev->mutex);
+            
+            // Sleep a bit, so we won't overload cpu. We are more agressive in low latency mode:
+            PsychYieldIntervalSeconds((capdev->dropframes) ? 0.001 : 0.004);
+        }
+
+        // Next capture loop iteration...
+    }
+
+    // End of capture thread execution. Clean up and unlock mutex:
+    capdev->frame_ready = 0;
+    PsychUnlockMutex(&capdev->mutex);
+    
+    // Ok, we are done: Go and die peacefully...
+    return(NULL);
+}
+
 // Helper for start/stop capture with bus-sync:
 static void PsychDCEnableBusBroadcast(PsychVidcapRecordType* capdev, psych_bool enable)
 {
@@ -1098,6 +1400,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
     int framerate_matched = false;
     int roi_matched = false;
     dc1394error_t err;
+    int rc;
 
     // Retrieve device record for handle:
     PsychVidcapRecordType* capdev = PsychGetVidcapRecord(capturehandle);
@@ -1108,7 +1411,6 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         if (capdev->grabber_active) PsychErrorExitMsg(PsychError_user, "You tried to start video capture, but capture is already started!");
 
         // Reset statistics:
-        capdev->last_pts = -1.0;
         capdev->nr_droppedframes = 0;
         capdev->frame_ready = 0;
 
@@ -1294,10 +1596,13 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                     if ((vidcapRecordBANK[i].valid) && (i != capturehandle) && (vidcapRecordBANK[i].syncmode & kPsychIsSoftSynced) &&
                         (vidcapRecordBANK[i].syncmode & kPsychIsSyncSlave)) {
                         // Yes. Start it:
+                        PsychLockMutex(&vidcapRecordBANK[i].mutex);
                         if (dc1394_video_set_transmission(vidcapRecordBANK[i].camera, DC1394_ON) !=DC1394_SUCCESS) {
                             // Failed!
+                            PsychUnlockMutex(&vidcapRecordBANK[i].mutex);                            
                             PsychErrorExitMsg(PsychError_user, "Unable to start isochronous data transfer of soft-synced slave camera - Start of sync video capture failed!");
                         }
+                        PsychUnlockMutex(&vidcapRecordBANK[i].mutex);
                     }
                 }
             }
@@ -1376,11 +1681,40 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                     printf("PTB-INFO: Video recording started on device %i into moviefile '%s'.\n", capturehandle, capdev->targetmoviefilename);
                 }
             }
+
+            // Async background recording requested?
+            if (capdev->recordingflags & 16) {
+                // Yes. Setup and start recording thread.
+                PsychLockMutex(&capdev->mutex);
+                capdev->frameAvail = 0;
+                PsychUnlockMutex(&capdev->mutex);
+
+                // Create and startup thread:
+                if ((rc = PsychCreateThread(&(capdev->recorderThread), NULL, PsychDCRecorderThreadMain, (void*) capdev))) {
+                    printf("PTB-ERROR: In Screen('StartVideoCapture'): Could not create background video recording thread [%s].\n", strerror(rc));
+                    PsychErrorExitMsg(PsychError_system, "Thread creation for video recording failed!");
+                }
+                
+                // Boost priority of recorderThread by 1 level and switch it to RT scheduling,
+                // unless it is already RT-Scheduled. As the thread inherited our scheduling
+                // priority from PsychCreateThread(), we only need to +1 tweak it from there:
+                PsychSetThreadPriority(&(capdev->recorderThread), 2, 1);
+
+                // Recorder thread is in charge of dequeuing video frames from libdc1394 and pushing it
+                // into the movie recording pipeline and into our own receive slot or videosink.
+                if (PsychPrefStateGet_Verbosity() > 3) {
+                    printf("PTB-INFO: Video recording on device %i is performed on async background thread.\n", capturehandle);
+                }
+            }
         }
     }
     else {
         // Stop capture:
         if (capdev->grabber_active) {
+
+            // recorderThread might be running for this camera, so use locking:
+            PsychLockMutex(&capdev->mutex);
+            
             // Firewire bus-sync via bus-wide broadcast of iso-on command requested?
             if (capdev->syncmode & kPsychIsBusSynced) {
                 // Yes. The master should broadcast its stop command to all clients on the bus:
@@ -1399,7 +1733,8 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 // cameras with bus-sync.
                 if (dc1394_video_set_transmission(capdev->camera, DC1394_OFF) !=DC1394_SUCCESS) {
                     // Failed! Shutdown DMA capture engine again:
-                    dc1394_capture_stop(capdev->camera);                    
+                    dc1394_capture_stop(capdev->camera);
+                    PsychUnlockMutex(&capdev->mutex);
                     PsychErrorExitMsg(PsychError_user, "Unable to stop isochronous data transfer from camera - Stop of video capture failed!");
                 }
                 
@@ -1412,10 +1747,14 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                         if ((vidcapRecordBANK[i].valid) && (i != capturehandle) && (vidcapRecordBANK[i].syncmode & kPsychIsSoftSynced) &&
                             (vidcapRecordBANK[i].syncmode & kPsychIsSyncSlave)) {
                             // Yes. Stop it:
+                            PsychLockMutex(&vidcapRecordBANK[i].mutex);
                             if (dc1394_video_set_transmission(vidcapRecordBANK[i].camera, DC1394_OFF) !=DC1394_SUCCESS) {
                                 // Failed!
+                                PsychUnlockMutex(&vidcapRecordBANK[i].mutex);
+                                PsychUnlockMutex(&capdev->mutex);
                                 PsychErrorExitMsg(PsychError_user, "Unable to stop isochronous data transfer of soft-synced slave camera - Stop of sync video capture failed!");
                             }
+                            PsychUnlockMutex(&vidcapRecordBANK[i].mutex);
                         }
                     }
                 }
@@ -1436,8 +1775,43 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             dc1394_capture_stop(capdev->camera);
 
             // Ok, capture is now stopped.
-            capdev->frame_ready = 0;
             capdev->grabber_active = 0;
+
+            // Done with camera access for now:
+            PsychUnlockMutex(&capdev->mutex);
+
+            // Video recording active? Then we should stop it now:
+            if ((capdev->recording_active) && (capdev->moviehandle > -1)) {
+                if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Stopping video recording on device %i and closing moviefile '%s'\n", capturehandle, capdev->targetmoviefilename);
+
+                // Was async background recording active?
+                if (capdev->recordingflags & 16) {
+                    // Yes. Stop and destroy recording thread.
+                    
+                    // Wait for thread termination, cleanup and release the thread:
+                    PsychDeleteThread(&(capdev->recorderThread));
+                    
+                    // Ok, thread is dead. Mark it as such:
+                    capdev->recorderThread = (psych_thread) NULL;
+
+                    capdev->frameAvail = 0;
+                    
+                    // Recorder thread is in charge of dequeuing video frames from libdc1394 and pushing it
+                    // into the movie recording pipeline and into our own receive slot or videosink.
+                    if (PsychPrefStateGet_Verbosity() > 3) {
+                        printf("PTB-INFO: Async video recording thread on device %i stopped.\n", capturehandle);
+                    }
+                }
+                
+                // Flush and close video encoding pipeline, finalize and close movie file:
+                if (PsychFinalizeNewMovieFile(capdev->moviehandle) == 0) {
+                    capdev->moviehandle = -1;
+                    PsychErrorExitMsg(PsychError_user, "Stop of video recording failed.");
+                }
+
+                // Done with recording:
+                capdev->moviehandle = -1;
+            }
 
             // Release dc1394video_frame_t convframe used for Debayering, if any:
             if (capdev->convframe) {
@@ -1446,26 +1820,24 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 capdev->convframe = NULL;
             }
 
-            if(PsychPrefStateGet_Verbosity() > 2){
+            // Release current frame buffer, if any remaining:
+            if (capdev->current_frame) free(capdev->current_frame);
+            capdev->current_frame = NULL;
+            
+            // No frame ready anymore:
+            capdev->frame_ready = 0;
+
+            if (PsychPrefStateGet_Verbosity() > 2) {
                 // Output count of dropped frames:
-                if ((dropped=capdev->nr_droppedframes) > 0) {
+                if ((dropped = capdev->nr_droppedframes) > 0) {
                     printf("PTB-INFO: Video capture dropped %i frames on device %i to keep capture running in sync with realtime.\n", dropped, capturehandle);
                 }
-
-                if (capdev->nrframes>0) capdev->avg_decompresstime/= (double) capdev->nrframes;
-                printf("PTB-INFO: Average time spent in video decompressor (waiting/polling for new frames) was %lf milliseconds.\n", capdev->avg_decompresstime * 1000.0f);
-                if (capdev->nrgfxframes>0) capdev->avg_gfxtime/= (double) capdev->nrgfxframes;
-                printf("PTB-INFO: Average time spent in GetCapturedImage (intensity calculation Video->OpenGL texture conversion) was %lf milliseconds.\n", capdev->avg_gfxtime * 1000.0f);
-            }
-
-            // Video recording active? Then we should stop it now:
-            if ((capdev->recording_active) && (capdev->moviehandle > -1)) {
-                if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Stopping video recording on device %i and closing moviefile '%s'\n", capturehandle, capdev->targetmoviefilename);
-                if (PsychFinalizeNewMovieFile(capdev->moviehandle) == 0) {
-                    capdev->moviehandle = -1;
-                    PsychErrorExitMsg(PsychError_user, "Stop of video recording failed.");
-                }
-                capdev->moviehandle = -1;
+                
+                printf("PTB-INFO: Total number of captured frames since this camera %i was opened: %i\n", capturehandle, capdev->framecounter);
+                if (capdev->nrframes > 0) capdev->avg_decompresstime/= (double) capdev->nrframes;
+                printf("PTB-INFO: Average time spent %s was %lf milliseconds.\n", ((capdev->recordingflags & 16) ? "in video processing thread" : "waiting/polling for new frames"), capdev->avg_decompresstime * 1000.0f);
+                if (capdev->nrgfxframes > 0) capdev->avg_gfxtime/= (double) capdev->nrgfxframes;
+                printf("PTB-INFO: Average time spent in GetCapturedImage (intensity calculation and Video->OpenGL texture conversion) was %lf milliseconds.\n", capdev->avg_gfxtime * 1000.0f);
             }
         }
     }
@@ -1507,9 +1879,11 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     unsigned char* pixptr;
     psych_uint16* pixptrs;
     psych_bool newframe = FALSE;
+    psych_bool frame_ready;
     double tstart, tend;
     unsigned int pixval, alphacount;
     dc1394error_t error;
+    int rc;
     int nrdropped = 0;
     unsigned char* input_image = NULL;
 
@@ -1540,96 +1914,152 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 
     // Should we just check for new image?
     if (checkForImage) {
-        // Reset current dropped count to zero:
-        capdev->current_dropped = 0;
-
         if (capdev->grabber_active == 0) {
             // Grabber stopped. We'll never get a new image:
             return(-2);
         }
 
-        // Grabber active: Polling mode or wait for new frame mode?
-        if (waitforframe) {
-            // Check for image in blocking mode: We actually try to capture a frame in
-            // blocking mode, so we will wait here until a new frame arrives.
-            error = dc1394_capture_dequeue(capdev->camera, DC1394_CAPTURE_POLICY_WAIT, &(capdev->frame));
+        // Synchronous frame fetch from masterthread?
+        if (!(capdev->recordingflags & 16)) {
+            // Capture handled by masterthread.
 
-            if (error == DC1394_SUCCESS) {
-                // Ok, new frame ready and dequeued from DMA ringbuffer. We'll return it on next non-poll invocation.
-                capdev->frame_ready = 1;
+            // Reset current dropped count to zero:
+            capdev->current_dropped = 0;
+
+            // Grabber active: Polling mode or wait for new frame mode?
+            if (waitforframe) {
+                // Check for image in blocking mode: We actually try to capture a frame in
+                // blocking mode, so we will wait here until a new frame arrives.
+                error = dc1394_capture_dequeue(capdev->camera, DC1394_CAPTURE_POLICY_WAIT, &(capdev->frame));
+
+                if (error == DC1394_SUCCESS) {
+                    // Ok, new frame ready and dequeued from DMA ringbuffer. We'll return it on next non-poll invocation.
+                    capdev->frame_ready = 1;
+                }
+                else {
+                    // Blocking wait failed! Somethings seriously wrong:
+                    PsychErrorExitMsg(PsychError_system, "Blocking wait for new frame failed!!!");
+                }
             }
             else {
-                // Blocking wait failed! Somethings seriously wrong:
-                PsychErrorExitMsg(PsychError_system, "Blocking wait for new frame failed!!!");
+                // Check for image in polling mode: We capture in non-blocking mode:
+                if (dc1394_capture_dequeue(capdev->camera, DC1394_CAPTURE_POLICY_POLL,  &(capdev->frame)) == DC1394_SUCCESS) {
+                    // Ok, call succeeded. If the 'frame' pointer is non-NULL then there's a new frame ready and dequeued from DMA
+                    // ringbuffer. We'll return it on next non-poll invocation. Otherwise no new video data ready yet:
+                    capdev->frame_ready = (capdev->frame != NULL) ? 1 : 0;
+                }
+                else {
+                    // Polling wait failed for some reason...
+                    PsychErrorExitMsg(PsychError_system, "Polling for new video frame failed!!!");
+                }
             }
+
+            if (capdev->frame_ready) {
+                // Store count of currently queued frames (in addition to the one just fetched).
+                // This is an indication of how well the users script is keeping up with the video stream,
+                // technically the number of frames that would need to be dropped to keep in sync with the
+                // stream.
+                capdev->current_dropped = (int) capdev->frame->frames_behind;
+
+                // Ok, at least one new frame ready. If more than one frame has queued up and
+                // we are in 'dropframes' mode, ie. we should always deliver the most recent available
+                // frame, then we quickly fetch & discard all queued frames except the last one.
+                while((capdev->dropframes) && ((int) capdev->frame->frames_behind > 0)) {
+                    // We just poll - fetch the frames. As we know there are some queued frames, it
+                    // doesn't matter if we poll or block, but polling sounds like a bit less overhead
+                    // at the OS level:
+
+                    // First enqueue the recently dequeued buffer...
+                    if (dc1394_capture_enqueue((capdev->camera), (capdev->frame)) != DC1394_SUCCESS) {
+                        PsychErrorExitMsg(PsychError_system, "Requeuing of discarded video frame failed while dropping frames (dropframes=1)!!!");
+                    }
+
+                    // Then fetch the next one:
+                    if (dc1394_capture_dequeue(capdev->camera, DC1394_CAPTURE_POLICY_POLL,  &(capdev->frame)) != DC1394_SUCCESS || capdev->frame == NULL) {
+                        // Polling failed for some reason...
+                        PsychErrorExitMsg(PsychError_system, "Polling for new video frame failed while dropping frames (dropframes=1)!!!");
+                    }
+
+                    // Increase counter of total number of captured frames by this camera:
+                    capdev->framecounter++;
+                }
+
+                // Update stats for decompression:
+                PsychGetAdjustedPrecisionTimerSeconds(&tend);
+
+                // Increase counter of decompressed frames:
+                capdev->nrframes++;
+
+                // Increase counter of total number of captured frames by this camera:
+                capdev->framecounter++;
+                
+                // Update avg. decompress time:
+                capdev->avg_decompresstime+=(tend - tstart);
+
+                // Query capture timestamp (in microseconds) and convert to seconds. This comes from the capture
+                // engine with (theroretically) microsecond precision and is assumed to be pretty accurate:
+                capdev->current_pts = ((double) capdev->frame->timestamp) / 1000000.0f;
+
+                // On OS/X, current_pts is in gettimeofday() time, just as on Linux, but PTB's GetSecs
+                // clock represents host uptime, not gettimeofday() time. Therefore we need to remap
+                // on OS/X from  gettimeofday() time to regular PTB GetSecs() time, via an instant
+                // clock calibration between both clocks and offset correction:
+                #if PSYCH_SYSTEM == PSYCH_OSX
+                struct timeval tv;
+                gettimeofday(&tv, NULL);
+                capdev->current_pts -= (((double) ((psych_uint64) tv.tv_sec * 1000000 + (psych_uint64) tv.tv_usec)) / 1000000.0f) - tend;
+                #endif
+            }
+
+            // Assign final ready state:
+            frame_ready = capdev->frame_ready;
+            capdev->pulled_pts = capdev->current_pts;
+            capdev->pulled_dropped = capdev->current_dropped;
         }
         else {
-            // Check for image in polling mode: We capture in non-blocking mode:
-            if (dc1394_capture_dequeue(capdev->camera, DC1394_CAPTURE_POLICY_POLL,  &(capdev->frame)) == DC1394_SUCCESS) {
-                // Ok, call succeeded. If the 'frame' pointer is non-NULL then there's a new frame ready and dequeued from DMA
-                // ringbuffer. We'll return it on next non-poll invocation. Otherwise no new video data ready yet:
-                capdev->frame_ready = (capdev->frame != NULL) ? 1 : 0;
+            // Capture and recording handled on recorderThread.
+
+            // Low-Latency fetch requested?
+            if (capdev->dropframes) {
+                // Check what the recorderThread has for us:
+                PsychLockMutex(&capdev->mutex);
+
+                // Loop as long as no new frame is ready...
+                while (!capdev->frame_ready) {
+                    // ...unless this is a polling request, in which case we immediately give up:
+                    if (!waitforframe) break;
+
+                    // ... blocking wait. Release mutex and wait for new frame signal from recorderThread:
+                    if ((rc = PsychWaitCondition(&(capdev->condition), &(capdev->mutex)))) {
+                        // Failed:
+                        printf("PTB-ERROR: Waiting on video recorder thread to deliver new video frame failed [%s]. Aborting wait.\n", strerror(rc));
+                        break;
+                    }
+                }
+
+                // Do we finally have a frame?
+                frame_ready = capdev->frame_ready;
+                if (capdev->frame_ready) {
+                    // Yes! Get a hand on the current video image buffer and timestamp:
+                    capdev->pulled_frame = capdev->current_frame;
+                    capdev->current_frame = NULL;
+                    capdev->pulled_pts = capdev->current_pts;
+                    capdev->pulled_dropped = capdev->current_dropped;
+                    capdev->current_dropped = 0;
+                    capdev->frame_ready = 0;
+                }
+
+                PsychUnlockMutex(&capdev->mutex);
             }
             else {
-                // Polling wait failed for some reason...
-                PsychErrorExitMsg(PsychError_system, "Polling for new video frame failed!!!");
+                // Pulling from GStreamer requested:
+                // TODO
+                frame_ready = FALSE;
             }
         }
-
-        if (capdev->frame_ready) {
-            // Store count of currently queued frames (in addition to the one just fetched).
-            // This is an indication of how well the users script is keeping up with the video stream,
-            // technically the number of frames that would need to be dropped to keep in sync with the
-            // stream.
-            capdev->current_dropped = (int) capdev->frame->frames_behind;
-
-            // Ok, at least one new frame ready. If more than one frame has queued up and
-            // we are in 'dropframes' mode, ie. we should always deliver the most recent available
-            // frame, then we quickly fetch & discard all queued frames except the last one.
-            while((capdev->dropframes) && ((int) capdev->frame->frames_behind > 0)) {
-                // We just poll - fetch the frames. As we know there are some queued frames, it
-                // doesn't matter if we poll or block, but polling sounds like a bit less overhead
-                // at the OS level:
-
-                // First enqueue the recently dequeued buffer...
-                if (dc1394_capture_enqueue((capdev->camera), (capdev->frame)) != DC1394_SUCCESS) {
-                    PsychErrorExitMsg(PsychError_system, "Requeuing of discarded video frame failed while dropping frames (dropframes=1)!!!");
-                }
-
-                // Then fetch the next one:
-                if (dc1394_capture_dequeue(capdev->camera, DC1394_CAPTURE_POLICY_POLL,  &(capdev->frame)) != DC1394_SUCCESS || capdev->frame == NULL) {
-                    // Polling failed for some reason...
-                    PsychErrorExitMsg(PsychError_system, "Polling for new video frame failed while dropping frames (dropframes=1)!!!");
-                }
-
-            }
-
-            // Update stats for decompression:
-            PsychGetAdjustedPrecisionTimerSeconds(&tend);
-
-            // Increase counter of decompressed frames:
-            capdev->nrframes++;
-
-            // Update avg. decompress time:
-            capdev->avg_decompresstime+=(tend - tstart);
-
-            // Query capture timestamp (in microseconds) and convert to seconds. This comes from the capture
-            // engine with (theroretically) microsecond precision and is assumed to be pretty accurate:
-            capdev->current_pts = ((double) capdev->frame->timestamp) / 1000000.0f;
-
-            // On OS/X, current_pts is in gettimeofday() time, just as on Linux, but PTB's GetSecs
-            // clock represents host uptime, not gettimeofday() time. Therefore we need to remap
-            // on OS/X from  gettimeofday() time to regular PTB GetSecs() time, via an instant
-            // clock calibration between both clocks and offset correction:
-            #if PSYCH_SYSTEM == PSYCH_OSX
-            struct timeval tv;
-            gettimeofday(&tv, NULL);
-            capdev->current_pts -= (((double) ((psych_uint64) tv.tv_sec * 1000000 + (psych_uint64) tv.tv_usec)) / 1000000.0f) - tend;
-            #endif
-        }
-
+        
         // Return availability status: 0 = new frame ready for retrieval. -1 = No new frame ready yet.
-        return((capdev->frame_ready) ? 0 : -1);
+        return((frame_ready) ? 0 : -1);
     }
 
     // This point is only reached if checkForImage == FALSE, which only happens
@@ -1638,61 +2068,23 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     // Presentation timestamp requested?
     if (presentation_timestamp) {
         // Return it:
-        *presentation_timestamp = capdev->current_pts;
+        *presentation_timestamp = capdev->pulled_pts;
     }
 
     // Synchronous texture fetch: Copy content of capture buffer into a texture:
     // =========================================================================
 
-    // input_image points to the image buffer in our cam:
-    input_image = (unsigned char*) (capdev->frame->image);
-
-    // Do we want to do something with the image data and have a
-    // scratch buffer for color conversion alloc'ed?
-    if ((capdev->convframe) && ((out_texture) || (summed_intensity) || (outrawbuffer) || (capdev->recording_active))) {
-        // Yes. Perform color-conversion YUV->RGB from cameras DMA buffer
-        // into the scratch buffer and set scratch buffer as source for
-        // all further operations:
-        if (capdev->colormode == DC1394_COLOR_CODING_RAW8 || capdev->colormode == DC1394_COLOR_CODING_MONO8 ||
-            capdev->colormode == DC1394_COLOR_CODING_RAW16 || capdev->colormode == DC1394_COLOR_CODING_MONO16) {
-            // Non-Format 7 capture modes do not allow to query the camera for the type of its Bayer-pattern.
-            // Therefore, if the bayer color_filter pattern is unknown due to non-Format-7 capture, assign
-            // the pattern manually set by usercode as color_filter_override setting:
-            if (capdev->frame->color_filter < DC1394_COLOR_FILTER_MIN || capdev->frame->color_filter > DC1394_COLOR_FILTER_MAX) {
-                capdev->frame->color_filter = capdev->color_filter_override;
-            }
-            
-            // Trigger bayer filtering for debayering via 'method':
-            if (DC1394_SUCCESS != (error = dc1394_debayer_frames(capdev->frame, capdev->convframe, capdev->debayer_method))) {
-                printf("PTB-WARNING: Debayering of raw sensor image data failed! %s\n", dc1394_error_get_string(error));
-                if (error == DC1394_INVALID_COLOR_FILTER) {
-                    printf("PTB-WARNING: Could not find out proper Bayer filter pattern for camera %i. Either select a\n", capturehandle);
-                    printf("PTB-WARNING: Format-7 video capture mode to allow auto-detection, or use Screen('SetVideoCaptureParameter', ..., 'OverrideBayerPattern');\n");
-                    printf("PTB-WARNING: to assign a suitable pattern manually.\n");
-                }
-
-                if (error == DC1394_INVALID_BAYER_METHOD) {
-                    printf("PTB-WARNING: Invalid debayering method selected for camera %i. Select a different method via \n", capturehandle);
-                    printf("PTB-WARNING: Screen('SetVideoCaptureParameter', ..., 'DebayerMethod');\n");
-                }
-
-                // Failure:
-                PsychErrorExitMsg(PsychError_system, "Bayer filtering of video frame failed.");
-            }
-        }
-        else {
-            // Input data is in YUV format. Convert into RGB8:
-            capdev->convframe->color_coding = DC1394_COLOR_CODING_RGB8;
-            if (DC1394_SUCCESS != dc1394_convert_frames(capdev->frame, capdev->convframe)) {
-                // Failure:
-                PsychErrorExitMsg(PsychError_system, "Colorspace conversion of video frame failed.");
-            }
-        }
-
-        // Success: Point to decoded image buffer:
-        input_image = (unsigned char*) capdev->convframe->image;
+    // Synchronous frame fetch from masterthread?
+    if (!(capdev->recordingflags & 16)) {
+        // Yes. Do pre-processing of frame:
+        input_image = PsychDCPreprocessFrame(capdev);
+        if (NULL == input_image) PsychErrorExitMsg(PsychError_system, "Bayer filtering or color space conversion of video frame failed.");
     }
-
+    else {
+        // No. Already pre-processed in recorderThread, just assign:
+        input_image = capdev->pulled_frame;
+    }
+    
     // Only setup if really a texture is requested (non-benchmarking mode):
     if (out_texture) {
         // Activate OpenGL context of target window:
@@ -1817,70 +2209,33 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
         }
     }
 
-    // Video recording active?
-    if (capdev->recording_active && (capdev->moviehandle != -1)) {
-        // Yes. Need to add this video frame to the encoding pipeline.
-        unsigned int    twidth, theight, numChannels, bitdepth;
-        unsigned char*  framepixels;
-        
-        // Get memory pointer to target memory buffer:
-        framepixels = PsychGetVideoFrameForMoviePtr(capdev->moviehandle, &twidth, &theight, &numChannels, &bitdepth);
-        // Validate number of color channels and bits per channel values for a match:
-        if (numChannels != (unsigned int) capdev->actuallayers || bitdepth != ((capdev->bitdepth > 8) ? 16 : 8)) {
-            printf("PTB-ERROR: Mismatch between number of color channels %i or bpc %i of captured video frame and number of channels %i or bpc %i of video recording target buffer!\n",
-                   capdev->actuallayers, ((capdev->bitdepth > 8) ? 16 : 8), numChannels, bitdepth);
-            PsychErrorExitMsg(PsychError_system, "Encoding current captured video frame failed. Video format mismatch.");
-        }
-
-        // Dimensions match?
-        if (twidth != (unsigned int) w || theight > (unsigned int) h) {
-            printf("PTB-ERROR: Mismatch between size of captured video frame %i x %i and size of video recording target buffer %i x %i !\n", w, h, twidth, theight);
-            PsychErrorExitMsg(PsychError_system, "Encoding current captured video frame failed. Video frame size mismatch.");
-        }
-
-        // Target buffer available?
-        if (framepixels) {
-            // Copy the pixels:
-            count = (twidth * theight * ((capdev->actuallayers == 3) ? 3 : 1) * ((capdev->bitdepth > 8) ? 2 : 1));
-
-            // True bitdepth in the 9 to 15 bpc range?
-            if (capdev->bitdepth > 8 && capdev->bitdepth < 16) {
-                // Yes. Need to bit-shift, so the most significant bit of the video data,
-                // gets placed in the 16th bit of the 16 bit word. This to make sure the
-                // "dead bits" for bpc < 16 are the least significant bits and they are
-                // all zeros. This makes sure that black is always all-zero and white is
-                // always 0xffff - all ones:
-                psych_uint16 *frameinwords = (psych_uint16*) input_image;
-                psych_uint16 *frameoutwords = (psych_uint16*) framepixels;
-                
-                count /= 2; // Half as many words as bytes.
-                for (i = 0; i < count; i++) *(frameoutwords++) = *(frameinwords++) << (16 - capdev->bitdepth);
-            }
-            else {
-                // No, either 8 bpc or 16 bpc - A simple memcpy does the job efficiently:
-                memcpy(framepixels, (const void*) input_image, count);
-            }
-
-            // Add to GStreamer encoding pipeline: Format is upright, and 1 video frame duration per frame:
-            if (PsychAddVideoFrameToMovie(capdev->moviehandle, 1, FALSE) != 0) {
-                PsychErrorExitMsg(PsychError_system, "Encoding current captured video frame failed. Failed to add frame to pipeline.");
-            }
-        }
-        else {
-            PsychErrorExitMsg(PsychError_system, "Encoding current captured video frame failed. No videobuffer available.");
-        }
+    // Synchronous video recording on masterthread active?
+    if (capdev->recording_active && (capdev->moviehandle != -1) && !(capdev->recordingflags & 16)) {
+        // Yes. Push data to encoder now:
+        PsychDCPushFrameToMovie(capdev, (psych_uint16*) input_image, TRUE);
     }
 
-    // Release the capture buffer. Return it to the DMA ringbuffer pool:
-    if (dc1394_capture_enqueue((capdev->camera), (capdev->frame)) != DC1394_SUCCESS) {
-        PsychErrorExitMsg(PsychError_system, "Re-Enqueuing processed video frame failed.");
+    // Synchronous operation?
+    if (!(capdev->recordingflags & 16)) {
+        // Yes: Release the capture buffer. Return it to the DMA ringbuffer pool:
+        if (dc1394_capture_enqueue((capdev->camera), (capdev->frame)) != DC1394_SUCCESS) {
+            PsychErrorExitMsg(PsychError_system, "Re-Enqueuing processed video frame failed.");
+        }
+
+        // Reset current drop count for this cycle:
+        capdev->current_dropped = 0;        
     }
+
+    // Release cached frame buffer, if any:
+    if (capdev->pulled_frame) free(capdev->pulled_frame);
+    capdev->pulled_frame = NULL;
 
     // Update total count of dropped (or pending) frames:
-    capdev->nr_droppedframes += capdev->current_dropped;
-    nrdropped = capdev->current_dropped;
-    capdev->current_dropped = 0;
-
+    capdev->nr_droppedframes += capdev->pulled_dropped;
+    
+    // Find number of dropped frames at time of return of this frame:
+    nrdropped = capdev->pulled_dropped;
+    
     // Timestamping:
     PsychGetAdjustedPrecisionTimerSeconds(&tend);
 
