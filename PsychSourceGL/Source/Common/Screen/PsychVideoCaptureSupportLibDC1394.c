@@ -83,7 +83,9 @@ typedef struct {
     int bitdepth;                     // Requested or actual bpc - bits per color/luminance channel.
     int num_dmabuffers;               // Number of DMA ringbuffers to use in DMA capture.
     int nrframes;                     // Total count of decompressed images.
-    int framecounter;                 // Total number of captured frames.
+    unsigned int framecounter;        // Total number of captured frames which have been already fetched from the DMA queue.
+    unsigned int nrframes_pending;    // Number of frames still pending in the DMA queue for fetching at last check.
+    unsigned int stopAtFramecount;    // Maximum total number of frames to capture before capture stops - used by recorderThread as stop criterion.
     double fps;                       // Acquisition framerate of capture device.
     int width;                        // Width x height of captured images.
     int height;
@@ -1234,8 +1236,8 @@ static void* PsychDCRecorderThreadMain(void* capdevToCast)
         // Start timestamp of processing cycle:
         PsychGetAdjustedPrecisionTimerSeconds(&tstart);
 
-        // Abort?
-        if (!capdev->grabber_active) break;
+        // Stop if target framecount for end of capture/recording is reached:
+        if (capdev->framecounter >= capdev->stopAtFramecount) break;
 
         // Check for new video frame in polling mode:
         error = dc1394_capture_dequeue(capdev->camera, DC1394_CAPTURE_POLICY_POLL, &(capdev->frame));
@@ -1257,6 +1259,7 @@ static void* PsychDCRecorderThreadMain(void* capdevToCast)
             // technically the number of frames that would need to be dropped to keep in sync with the
             // stream.
             capdev->current_dropped = (int) capdev->frame->frames_behind;
+            capdev->nrframes_pending = (unsigned int) capdev->frame->frames_behind;
 
             // Increase counter of total number of captured frames by this camera:
             capdev->framecounter++;
@@ -1320,6 +1323,8 @@ static void* PsychDCRecorderThreadMain(void* capdevToCast)
                 break;
             }
 
+            capdev->frame = NULL;
+            
             // Update stats for decompression:
             PsychGetAdjustedPrecisionTimerSeconds(&tend);
             
@@ -1332,6 +1337,9 @@ static void* PsychDCRecorderThreadMain(void* capdevToCast)
         else {
             // No new frame received in this poll iteration.
 
+            // This means there aren't any pending in the queue:
+            capdev->nrframes_pending = 0;
+            
             // Release mutex, so masterthread can get frame data or control camera/capture:
             PsychUnlockMutex(&capdev->mutex);
             
@@ -1654,6 +1662,10 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         // Ok, capture is now started:
         capdev->grabber_active = 1;
 
+        // Set target stop framecount to "infinity", ie., 2^32 frames. This is good enough
+        // for over 1.5 months of operation at 1000 fps capture rate:
+        capdev->stopAtFramecount = 0xffffffff;
+
         // Query effective bpc value of video mode: The number of actual bits of information per color/luminance channel:
         if (DC1394_SUCCESS != dc1394_video_get_data_depth(capdev->camera, &depth)) {
             printf("PTB-WARNING: Could not query data depth of video mode for camera %i - Assuming i got the requested %i bpc and hoping for the best.\n", capturehandle, capdev->bitdepth);
@@ -1722,7 +1734,30 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 
             // recorderThread might be running for this camera, so use locking:
             PsychLockMutex(&capdev->mutex);
-            
+
+            // If this is the sync master, then its final framecount determines the target framecount
+            // for itself and all its slaves, e.g., for pushing dequeued frames to video recording:
+            if ((capdev->syncmode & kPsychIsSyncMaster) && (capdev->stopAtFramecount == 0xffffffff)) {
+                // This is the sync-master. Its final framecount after it stopped capture determines
+                // how many frames its own recorderThread and all the slaves recorderThreads should
+                // dequeue and potentially push to the video recording pipeline:
+                capdev->stopAtFramecount = capdev->framecounter + capdev->nrframes_pending;
+                
+                // Set masters stopAtFramecount also for all slaves:
+                for (i = 0; i < PSYCH_MAX_CAPTUREDEVICES; i++) {
+                    // Sync slave participating in this soft sync stop operation?
+                    if ((vidcapRecordBANK[i].valid) && (i != capturehandle) && (vidcapRecordBANK[i].syncmode & kPsychIsSyncSlave)) {
+                        // Yes. Stop it:
+                        PsychLockMutex(&vidcapRecordBANK[i].mutex);
+                        vidcapRecordBANK[i].stopAtFramecount = capdev->stopAtFramecount;
+                        PsychUnlockMutex(&vidcapRecordBANK[i].mutex);
+                    }
+                }
+            } // Sync slave or free-running? Then just make it stop as soon as its DMA queue is empty:
+            else if (capdev->stopAtFramecount == 0xffffffff) {
+                capdev->stopAtFramecount = capdev->framecounter + capdev->nrframes_pending;
+            }
+
             // Firewire bus-sync via bus-wide broadcast of iso-on command requested?
             if (capdev->syncmode & kPsychIsBusSynced) {
                 // Yes. The master should broadcast its stop command to all clients on the bus:
@@ -2000,6 +2035,9 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 
                 // Increase counter of total number of captured frames by this camera:
                 capdev->framecounter++;
+
+                // Update count of frames still pending in DMA queue:
+                capdev->nrframes_pending = (unsigned int) capdev->frame->frames_behind;
                 
                 // Update avg. decompress time:
                 capdev->avg_decompresstime+=(tend - tstart);
@@ -2406,6 +2444,32 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
             }
         }
 
+        return(oldvalue);
+    }
+
+    // Get current framecount of already captured and dequeued frames:
+    if (strcmp(pname, "GetCurrentFramecount")==0) {
+        PsychLockMutex(&capdev->mutex);
+        PsychCopyOutDoubleArg(1, FALSE, (double) capdev->framecounter);
+        PsychUnlockMutex(&capdev->mutex);
+        return(0);
+    }
+
+    // Get possible framecount, including frames pending in DMA queue:
+    if (strcmp(pname, "GetFutureMaxFramecount")==0) {
+        PsychLockMutex(&capdev->mutex);
+        PsychCopyOutDoubleArg(1, FALSE, (double) (capdev->framecounter + capdev->nrframes_pending));
+        PsychUnlockMutex(&capdev->mutex);
+        return(0);
+    }
+
+    // Get/Set target framecount for stop of capture of a camera:
+    if (strcmp(pname, "StopAtFramecount")==0) {
+        oldvalue = (double) capdev->stopAtFramecount;
+        if (value != DBL_MAX) {
+            capdev->stopAtFramecount = (unsigned int) intval;
+        }
+        
         return(oldvalue);
     }
     

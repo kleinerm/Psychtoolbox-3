@@ -299,7 +299,14 @@ try
             Screen('StopVideoCapture', grabber);
         end
     else
-        % Multicam sync enabled. Stop master first:
+        % Multicam sync enabled.
+
+        % First some feedback about sync:
+        for grabber=grabbers
+            fprintf('Camera %i : Possible max framecount = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'GetFutureMaxFramecount'));
+        end
+    
+        % Stop master first:
         fprintf('Drop us out of warp!\n');
         Screen('StopVideoCapture', grabbers(1));
 
@@ -312,8 +319,10 @@ try
         fprintf('And quarter impulse ahead.\n');
     end
 
-    % Close down cameras:
+    % Close down cameras, and some final stats:
     for grabber=grabbers
+      fprintf('Camera %i : Final framecount = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'GetCurrentFramecount'));
+      fprintf('Camera %i : Possible framecount = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'GetFutureMaxFramecount'));
       Screen('CloseVideoCapture', grabber);
     end
 
