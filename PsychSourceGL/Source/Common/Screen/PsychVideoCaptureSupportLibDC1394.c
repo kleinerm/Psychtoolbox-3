@@ -1633,7 +1633,12 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 // FIXME: This is most likely a wrong conversion constant 1e9, but
                 // could not find the proper value in the spec and don't have a
                 // camera which reports a sensible value, so this is pure speculation:
-                framerate = 1e9 / framerate;
+
+                // This does not seem to work at all on the only camera with which i could
+                // test it (all other fw cams just report 0 == not supported),
+                // so disable it for more sane results:
+                // framerate = 1e9 / framerate;
+                framerate = capdev->fps;
             }
         }
 
