@@ -103,6 +103,7 @@ typedef struct {
     char* codecSpec;                  // Codec specification string for video recording.
     int moviehandle;                  // Handle of movie file to be written during video recording.
     unsigned int recordingflags;      // Flags used for recording and similar activities.
+    unsigned int specialFlags;        // Additional flags set via 'SetCaptureParameter' functions.
 } PsychVidcapRecordType;
 
 static PsychVidcapRecordType vidcapRecordBANK[PSYCH_MAX_CAPTUREDEVICES];
@@ -1421,15 +1422,17 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         h = (int) PsychGetHeightFromRect(capdev->roirect);
 
         // Can we (potentially) get along with a non-Format-7 mode?
-        // Check minimum requirements for non-Format-7 mode:
-        if (!((capdev->roirect[kPsychLeft]==0 && capdev->roirect[kPsychTop]==0) &&
+        // Check minimum requirements for non-Format-7 mode and if the "prefer Format-7" specialFlags setting 1
+        // is chosen:
+        if ((capdev->specialFlags & 1) || !((capdev->roirect[kPsychLeft]==0 && capdev->roirect[kPsychTop]==0) &&
             ((capdev->roirect[kPsychRight]==1 && capdev->roirect[kPsychBottom]==1) || (w==640 && h==480) ||
             (w==800 && h==600) || (w==1024 && h==768) || (w==1280 && h==960) || (w==1600 && h==1200) ||
             (w==320 && h==240) || (w==160 && h==120)) &&
             (capturerate==1.875 || capturerate==3.75 || capturerate==7.5 || capturerate==15 || capturerate==30 ||
             capturerate==60 || capturerate==120 || capturerate==240))) {
 
-                // Ok, the requested ROI and/or framerate is not directly supported by non-Format7 capture modes.
+                // Ok, the requested ROI and/or framerate is not directly supported by non-Format7 capture modes,
+                // or usercode explicitely requested preference for Format-7 capture.
                 // Try to find a good format-7 mode, fall back to NF-7 if format 7 doesn't work out:
                 if ((packetsize=PsychVideoFindFormat7Mode(capdev, capturerate))==0) {
                     // Could not find good Format-7 mode! Try NF-7: This function will exit if we don't find
@@ -2391,6 +2394,21 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         return(0);
     }
 
+    // Get/Set option to prefer Format7 modes, even if a non-Format7 mode would do:
+    if (strcmp(pname, "PreferFormat7Modes")==0) {
+        oldvalue = (double) (capdev->specialFlags & 1) ? 1 : 0;
+        if (value != DBL_MAX) {
+            if (value > 0) {
+                capdev->specialFlags |= 1;
+            }
+            else {
+                capdev->specialFlags &= ~1;
+            }
+        }
+
+        return(oldvalue);
+    }
+    
     // Get/Set special treatment mode for raw sensor data:
     if (strcmp(pname, "DataConversionMode")==0) {
         oldvalue = capdev->dataconversionmode;

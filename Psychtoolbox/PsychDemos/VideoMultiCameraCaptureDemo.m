@@ -54,7 +54,7 @@ else
     doVideoRecording = 1;
 end    
 
-roi = [];
+roi = [0 0 640 480];
 depth = [3];
 convMode = 4; % Mode 4 would be the correct mode for raw sensor -> rgb bayer conversion on Basler cameras.
 bayerPattern = 0; % This would be the correct bayer pattern for Basler color cameras.
@@ -84,7 +84,7 @@ end
 % We limit default framerate to 30 fps instead of auto-detected maximum
 % as supported by a camera in order to limit the consumption of bus bandwidth.
 % Otherwise we might run out of bandwidth with multiple connected cameras.
-fps = 30;
+fps = 60;
 
 % For now we only use the DC1394-Firewire capture engine, as setup with
 % the GStreamer engine is not impossible, but more difficult/error-prone
@@ -185,6 +185,12 @@ try
       
       % Select debayer algorithm:
       Screen('SetVideoCaptureParameter', grabbers(i), 'DebayerMethod', debayerMethod);
+
+      % Ask engine to prefer Format-7 video capture modes over bog-standard Non-Format-7 ones.
+      % Normally the engine decides itself what is the best choice. Forcing the engine to
+      % use Format-7 sometimes allows to save a bit of bus-bandwidth and thereby squeeze out
+      % higher framerates, resolutions or use of more cameras on a single bus in multi-cam capture.
+      Screen('SetVideoCaptureParameter', grabbers(i), 'PreferFormat7Modes', 1);
 
       if doVideoRecording
             % If video recording is requested, set a unique movie filename per camera:
