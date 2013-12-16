@@ -71,6 +71,7 @@ typedef struct {
     unsigned char* current_frame;     // Ptr to target buffer for most recent frame if video recorder thread is active in low-latency mode.
     unsigned char* pulled_frame;      // Ptr to fetched frame from video recorder thread (if active). This is the "front buffer" equivalent of current_frame.
     int syncmode;                     // 0 = free-running. 1 = sync-master, 2 = sync-slave, 4 = soft-sync, 8 = bus-sync, 16 = ttl-sync.
+    int syncmasterhandle;             // -1 for "undefined" or the capturehandle of the sync master, if a camera is a sync slave.
     int dropframes;                   // 1 == Always deliver most recent frame in FIFO, even if dropping of frames is neccessary.
     dc1394video_mode_t dc_imageformat;// Encodes image size and pixelformat.
     dc1394framerate_t dc_framerate;   // Encodes framerate.
@@ -1239,6 +1240,23 @@ static void* PsychDCRecorderThreadMain(void* capdevToCast)
         // Stop if target framecount for end of capture/recording is reached:
         if (capdev->framecounter >= capdev->stopAtFramecount) break;
 
+        // If we are a sync slave with an assigned sync master, make sure we don't get ahead of the master in our
+        // capture operations. This simplifies final synchronization at end of capture, so all cameras end with a
+        // identical framecount, regardless of different timing in execution and termination of recorderThreads:
+        if ((capdev->syncmasterhandle >= 0) && (capdev->syncmode & kPsychIsSyncSlave) && vidcapRecordBANK[capdev->syncmasterhandle].valid &&
+            (capdev->framecounter >= vidcapRecordBANK[capdev->syncmasterhandle].framecounter)) {
+            // Sync master is not ahead of us. Let's wait for it to get ahead of us, before
+            // we try to dequeue new frames:
+            if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG Sync slave %i waiting for sync master's framecount getting ahead...\n", capdev->capturehandle, capdev->syncmasterhandle);
+
+            // Wait with a timeout of 1 second for the syncmaster thread to signal arrival of a new frame:
+            PsychTimedWaitCondition(&(vidcapRecordBANK[capdev->syncmasterhandle].condition), &(capdev->mutex), 1.0);
+
+            // Retry comparison between master and slave framecounter:
+            PsychUnlockMutex(&capdev->mutex);
+            continue;
+        }
+
         // Check for new video frame in polling mode:
         error = dc1394_capture_dequeue(capdev->camera, DC1394_CAPTURE_POLICY_POLL, &(capdev->frame));
 
@@ -1308,15 +1326,16 @@ static void* PsychDCRecorderThreadMain(void* capdevToCast)
 
                     // Copy image into it:
                     memcpy(capdev->current_frame, input_image, count);
-                }
-                
-                // Signal availability of new video frame:
-                capdev->frameAvail++;
-                if ((rc = PsychSignalCondition(&(capdev->condition)))) {
-                    printf("PTB-ERROR: In background video recording thread: PsychSignalCondition() failed [%s]!\n", strerror(rc));
-                }
+                }                
             }
-            
+
+            // Signal availability of new video frame: This is not only important for frame fetching on the master thread,
+            // but also for slave cameras recorderThreads if multi-cam synchronization is enabled:
+            capdev->frameAvail++;
+            if ((rc = PsychBroadcastCondition(&(capdev->condition)))) {
+                printf("PTB-ERROR: In background video recording thread: PsychBroadcastCondition() failed [%s]!\n", strerror(rc));
+            }
+
             // Requeue the recently dequeued and no longer needed buffer:
             if (dc1394_capture_enqueue(capdev->camera, capdev->frame) != DC1394_SUCCESS) {
                 printf("PTB-ERROR: Requeuing of used up video frame buffer in video recorder thread failed! Aborting recorder thread.\n");
@@ -1542,8 +1561,26 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 
         if(PsychPrefStateGet_Verbosity()>5) printf(" DMA-Engine started.\n"); fflush(NULL);
 
-        // Ready to go! Now we just need to tell the camera to start its capture cycle:
+        // No sync master by default. Once the sync master gets started, it will set this
+        // field on all slaves to reference himself:
+        capdev->syncmasterhandle = -1;
 
+        // If this is the start of the designated sync master, then assign its handle to all (already started/engaged) sync slaves:
+        if (capdev->syncmode & kPsychIsSyncMaster) {
+            for (i = 0; i < PSYCH_MAX_CAPTUREDEVICES; i++) {
+                // Sync slave?
+                if ((vidcapRecordBANK[i].valid) && (i != capturehandle) && (vidcapRecordBANK[i].syncmode & kPsychIsSyncSlave)) {
+                    // Yes. Assign capturehandle of sync master:
+                    PsychLockMutex(&vidcapRecordBANK[i].mutex);
+                    vidcapRecordBANK[i].syncmasterhandle = capturehandle;
+                    PsychUnlockMutex(&vidcapRecordBANK[i].mutex);
+                    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Sync slave %i recorder thread will lock-step with sync master %i.\n", i, capturehandle);
+                }
+            }
+        }
+        
+        // Ready to go! Now we just need to tell the camera to start its capture cycle:
+        
         // Wait until start deadline reached:
         if (*startattime != 0) PsychWaitUntilSeconds(*startattime);
         
@@ -1665,6 +1702,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         // Set target stop framecount to "infinity", ie., 2^32 frames. This is good enough
         // for over 1.5 months of operation at 1000 fps capture rate:
         capdev->stopAtFramecount = 0xffffffff;
+        capdev->nrframes_pending = 0;
 
         // Query effective bpc value of video mode: The number of actual bits of information per color/luminance channel:
         if (DC1394_SUCCESS != dc1394_video_get_data_depth(capdev->camera, &depth)) {
@@ -1745,9 +1783,9 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 
                 // Set masters stopAtFramecount also for all slaves:
                 for (i = 0; i < PSYCH_MAX_CAPTUREDEVICES; i++) {
-                    // Sync slave participating in this soft sync stop operation?
+                    // Sync slave participating in this synced stop operation?
                     if ((vidcapRecordBANK[i].valid) && (i != capturehandle) && (vidcapRecordBANK[i].syncmode & kPsychIsSyncSlave)) {
-                        // Yes. Stop it:
+                        // Yes. Assign stopAtFramecount:
                         PsychLockMutex(&vidcapRecordBANK[i].mutex);
                         vidcapRecordBANK[i].stopAtFramecount = capdev->stopAtFramecount;
                         PsychUnlockMutex(&vidcapRecordBANK[i].mutex);
@@ -1758,6 +1796,10 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 capdev->stopAtFramecount = capdev->framecounter + capdev->nrframes_pending;
             }
 
+            if (PsychPrefStateGet_Verbosity() > 3) {
+                printf("PTB-INFO: Video recording on device %i will stop at target framecount %i.\n", capturehandle, capdev->stopAtFramecount);
+            }
+            
             // Firewire bus-sync via bus-wide broadcast of iso-on command requested?
             if (capdev->syncmode & kPsychIsBusSynced) {
                 // Yes. The master should broadcast its stop command to all clients on the bus:
@@ -1957,15 +1999,17 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 
     // Should we just check for new image?
     if (checkForImage) {
-        if (capdev->grabber_active == 0) {
-            // Grabber stopped. We'll never get a new image:
-            return(-2);
-        }
-
+        
         // Synchronous frame fetch from masterthread?
         if (!(capdev->recordingflags & 16)) {
             // Capture handled by masterthread.
-
+            
+            // Target framecount for end of capture/recording reached?
+            if (capdev->framecounter >= capdev->stopAtFramecount) {
+                // Yes: We will never get a new frame, so tell usercode:
+                return(-2);
+            }
+            
             // Reset current dropped count to zero:
             capdev->current_dropped = 0;
 
@@ -2072,11 +2116,19 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 
                 // Loop as long as no new frame is ready...
                 while (!capdev->frame_ready) {
+
+                    // Target framecount for end of capture/recording reached?
+                    if (capdev->framecounter >= capdev->stopAtFramecount) {
+                        // Yes: We will never get a new frame, so tell usercode:
+                        PsychUnlockMutex(&capdev->mutex);
+                        return(-2);
+                    }
+                    
                     // ...unless this is a polling request, in which case we immediately give up:
                     if (!waitforframe) break;
 
-                    // ... blocking wait. Release mutex and wait for new frame signal from recorderThread:
-                    if ((rc = PsychWaitCondition(&(capdev->condition), &(capdev->mutex)))) {
+                    // ... blocking wait. Release mutex and wait for new frame signal from recorderThread, with a timeout of 5 secs:
+                    if ((rc = PsychTimedWaitCondition(&(capdev->condition), &(capdev->mutex), 5))) {
                         // Failed:
                         printf("PTB-ERROR: Waiting on video recorder thread to deliver new video frame failed [%s]. Aborting wait.\n", strerror(rc));
                         break;

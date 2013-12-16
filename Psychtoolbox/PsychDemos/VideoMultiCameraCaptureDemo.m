@@ -85,6 +85,7 @@ end
 % as supported by a camera in order to limit the consumption of bus bandwidth.
 % Otherwise we might run out of bandwidth with multiple connected cameras.
 fps = 60;
+maxTargetFrameCount = 600;
 
 % For now we only use the DC1394-Firewire capture engine, as setup with
 % the GStreamer engine is not impossible, but more difficult/error-prone
@@ -223,6 +224,18 @@ try
         Screen('StartVideoCapture', grabbers(1), fps, dropframes);
         fprintf('And we are flying!\n\n');
         Screen('Preference','Verbosity', oldverb);
+    end
+
+    % If a specific maximum framecount is requested for end of capture/recording, set it here:
+    if maxTargetFrameCount > 0
+        % For maximum robustness one should set the count for all slaves first, before the master:
+        for grabber = grabbers(2:end)
+            Screen('SetVideoCaptureParameter', grabber, 'StopAtFramecount', maxTargetFrameCount);
+        end
+
+        % Finally set master / first grabber:
+        Screen('SetVideoCaptureParameter', grabbers(1), 'StopAtFramecount', maxTargetFrameCount);
+        fprintf('Targetting stop of capture at target framecount %i.\n', maxTargetFrameCount);
     end
     
     dstRect = [];
