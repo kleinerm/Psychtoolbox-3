@@ -176,7 +176,6 @@ loglik      = [];
 lik         = [];
 g0          = [];
 g1          = [];
-g2          = [];
 % likelihood lookup table
 likLookup   = [];
 
@@ -191,7 +190,8 @@ percsetsize = .8;           % percentage of data in set used
 first_value = [];           % first value to test instead of random or by prior
 
 % psychometric function that is used (default)
-psychofunc  = 'cumGauss';
+psychofunc     = [];
+psychofuncStr  = 'cumGauss';
 
 % subfunction
 if nargin<1 || strcmpi(mode,'legacy')
@@ -272,6 +272,7 @@ end
             g1 = 1 - lapse_rate - guess_rate;
         end
         
+        set_psychometric_func(psychofuncStr);
         precomputeLikelihoods();
     end
                 
@@ -363,7 +364,33 @@ end
         % currently supported:
         %  'cumGauss' - Cumulative Gaussian
         %  'logistic' - logistic function
-        psychofunc = funcID;
+        switch funcID
+            case 'cumGauss'
+                psychofunc = @(x,a,b) normcdf((x-a)./b);
+                
+                %        1  [             x - a      ]
+                %   P = --- [ 1 + erf( ----------- ) ],
+                %        2  [           b*sqrt(2)    ]
+                % where a and b are known as the mean (mu) and the standard
+                % deviation (sigma)
+                % http://en.wikipedia.org/wiki/Normal_distribution
+                
+            case 'logistic'
+                psychofunc = @(x,a,b) 1./(1+exp(-(x-a)./b));
+                
+                %               1
+                % P =   ------------------,
+                %              -(x - a)/b 
+                %        1 + e^
+                %
+                % where a and b are known as the mean (mu) and b is
+                % proportional to the standard deviation (s)
+                % http://en.wikipedia.org/wiki/Logistic_distribution
+                
+            otherwise
+                error('Psychometric function "%s" not supported',funcID);
+        end
+        psychofuncStr = funcID;
         % recompute lookup table
         precomputeLikelihoods();
         % if there's any data already, refit it using the new
@@ -381,7 +408,7 @@ end
         % currently possible outputs:
         %  'cumGauss' - Cumulative Gaussian
         %  'logistic' - logistic function
-        varargout{1} = psychofunc;
+        varargout{1} = psychofuncStr;
     end
                 
                 
@@ -442,13 +469,13 @@ end
     function [varargout] = get_PSE_DL()
         [varargout{1:3}] = get_fit();
         % convert b (dispersion) parameter to DL
-        switch psychofunc
+        switch psychofuncStr
             case 'cumGauss'
                 varargout{2} = varargout{2} * erfinv(.5)*sqrt(2);
             case 'logistic'
                 varargout{2} = varargout{2} * log(3);
             otherwise
-                error('Psychometric function "%s" not supported',psychofunc);
+                error('Psychometric function "%s" not supported',psychofuncStr);
         end
     end
 
@@ -518,7 +545,7 @@ end
             error('Number of probe values and responses does not match');
         end
         
-        if strcmp(psychofunc,'cumGauss')
+        if strcmp(psychofuncStr,'cumGauss')
             % we have a fast one for this!
             loglik = FitCumGauss_MES(probes,resps,aset,bset,lapse_rate,guess_rate);
         else
@@ -551,35 +578,8 @@ end
     end
 
     function pval = evalLikelihood(probe)
-        switch psychofunc
-            case 'cumGauss'
-                pval = normcdf((probe-agrid)./bgrid);
-                
-                %        1  [             x - a      ]
-                %   P = --- [ 1 + erf( ----------- ) ],
-                %        2  [           b*sqrt(2)    ]
-                % where a and b are known as the mean (mu) and the standard
-                % deviation (sigma)
-                % http://en.wikipedia.org/wiki/Normal_distribution
-                
-            case 'logistic'
-                pval = 1./(1+exp(-(probe-agrid)./bgrid));
-                
-                %               1
-                % P =   ------------------,
-                %              -(x - a)/b 
-                %        1 + e^
-                %
-                % where a and b are known as the mean (mu) and b is
-                % proportional to the standard deviation (s)
-                % http://en.wikipedia.org/wiki/Logistic_distribution
-                
-            otherwise
-                error('Psychometric function "%s" not supported',psychofunc);
-        end
-        
-        % incorporate lapse rate and guess rate
-        pval = g0 + g1*pval;
+        % evaluate psychometric function, incorporate lapse rate and guess rate
+        pval = g0 + g1*psychofunc(probe,agrid,bgrid);
     end
 
     function loglik  = normalize_loglik(loglik)
