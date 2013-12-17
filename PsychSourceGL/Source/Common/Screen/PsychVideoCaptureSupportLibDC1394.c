@@ -87,6 +87,7 @@ typedef struct {
     unsigned int framecounter;        // Total number of captured frames which have been already fetched from the DMA queue.
     unsigned int nrframes_pending;    // Number of frames still pending in the DMA queue for fetching at last check.
     unsigned int stopAtFramecount;    // Maximum total number of frames to capture before capture stops - used by recorderThread as stop criterion.
+    unsigned int stopAtFramecountLatch; // Value to latch into stopAtFramecount at 'StartCapture', as set by 'SetVideoCaptureParameter'.
     double fps;                       // Acquisition framerate of capture device.
     int width;                        // Width x height of captured images.
     int height;
@@ -484,7 +485,9 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     capdev->nrframes = 0;
     capdev->grabber_active = 0;
 
-    fflush(NULL);
+    // Set initial target stop framecount to "infinity", ie., 2^32 frames. This is good enough
+    // for over 1.5 months of operation at 1000 fps capture rate:
+    capdev->stopAtFramecountLatch = 0xffffffff;
 
     // Initiate a power-up cycle in case the camera is in standby mode:
     if (dc1394_camera_set_power(capdev->camera, DC1394_ON)!=DC1394_SUCCESS) {
@@ -1699,9 +1702,8 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         // Ok, capture is now started:
         capdev->grabber_active = 1;
 
-        // Set target stop framecount to "infinity", ie., 2^32 frames. This is good enough
-        // for over 1.5 months of operation at 1000 fps capture rate:
-        capdev->stopAtFramecount = 0xffffffff;
+        // Reset stopAtFramecount from latched value:
+        capdev->stopAtFramecount = capdev->stopAtFramecountLatch;
         capdev->nrframes_pending = 0;
 
         // Query effective bpc value of video mode: The number of actual bits of information per color/luminance channel:
@@ -2517,9 +2519,20 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 
     // Get/Set target framecount for stop of capture of a camera:
     if (strcmp(pname, "StopAtFramecount")==0) {
-        oldvalue = (double) capdev->stopAtFramecount;
+        oldvalue = (double) capdev->stopAtFramecountLatch;
         if (value != DBL_MAX) {
-            capdev->stopAtFramecount = (unsigned int) intval;
+            // Store new value in latch. It will be transferred at 'StartCapture' into
+            // the live stopAtFramecount variable:
+            capdev->stopAtFramecountLatch = (unsigned int) intval;
+
+            // Capture already started?
+            if (capdev->grabber_active) {
+                // Capture already running, so we want to dynamically change the limit.
+                // Latch the value into the live limit variable under lock protection:
+                PsychLockMutex(&capdev->mutex);
+                capdev->stopAtFramecount = capdev->stopAtFramecountLatch;
+                PsychUnlockMutex(&capdev->mutex);
+            }
         }
         
         return(oldvalue);

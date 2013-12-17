@@ -85,7 +85,9 @@ end
 % as supported by a camera in order to limit the consumption of bus bandwidth.
 % Otherwise we might run out of bandwidth with multiple connected cameras.
 fps = 60;
-maxTargetFrameCount = 600;
+
+% Select maximum number of frames to capture and record: Zero for "unlimited"
+maxTargetFrameCount = 300;
 
 % For now we only use the DC1394-Firewire capture engine, as setup with
 % the GStreamer engine is not impossible, but more difficult/error-prone
@@ -197,6 +199,13 @@ try
             % If video recording is requested, set a unique movie filename per camera:
             Screen('SetVideoCaptureParameter', grabbers(i), sprintf('SetNewMoviename=%s_Cam%02d.mov', movieName, grabbers(i)));
       end
+
+      % If a specific maximum framecount is requested for end of capture/recording, set it here
+      % before capture gets started:
+      if maxTargetFrameCount > 0
+            Screen('SetVideoCaptureParameter', grabbers(i), 'StopAtFramecount', maxTargetFrameCount);
+            fprintf('Targetting stop of capture on camera %i at target framecount %i.\n', grabbers(i), maxTargetFrameCount);
+      end
     end
 
     % Start capture on all cameras:
@@ -226,16 +235,17 @@ try
         Screen('Preference','Verbosity', oldverb);
     end
 
-    % If a specific maximum framecount is requested for end of capture/recording, set it here:
-    if maxTargetFrameCount > 0
+    % If a specific maximum framecount is requested for end of capture/recording, set it here dynamically
+    % while capture is already started:
+    if maxTargetFrameCount < 0
         % For maximum robustness one should set the count for all slaves first, before the master:
         for grabber = grabbers(2:end)
-            Screen('SetVideoCaptureParameter', grabber, 'StopAtFramecount', maxTargetFrameCount);
+            Screen('SetVideoCaptureParameter', grabber, 'StopAtFramecount', abs(maxTargetFrameCount));
         end
 
         % Finally set master / first grabber:
-        Screen('SetVideoCaptureParameter', grabbers(1), 'StopAtFramecount', maxTargetFrameCount);
-        fprintf('Targetting stop of capture at target framecount %i.\n', maxTargetFrameCount);
+        Screen('SetVideoCaptureParameter', grabbers(1), 'StopAtFramecount', abs(maxTargetFrameCount));
+        fprintf('Targetting stop of capture at target framecount %i.\n', abs(maxTargetFrameCount));
     end
     
     dstRect = [];
