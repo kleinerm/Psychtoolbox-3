@@ -40,10 +40,16 @@ end
 % You can store these in a cell-array and of course use different settings
 % for each as needed.
 stair = MinExpEntStair('v2');
+% use lookup table to cache pvalues and avoid unnecessary evaluations of
+% psychometric function? Can require lots of memory, especially when
+% stepsize of probeset and meanset is not equal. Call before calling
+% stair.init.
+stair.set_use_lookup_table(true);
+% option: use logistic instead of default cumulative normal. best to call
+% before stair.init
+% stair('set_psychometric_func','logistic');
 % init stair
 stair.init(probeset,meanset,slopeset,lapse,guess);
-% option: use logistic instead of default cumulative normal
-% stair('set_psychometric_func','logistic');
 % option: use a subset of all data for choosing the next probe, use
 % proportion of available data (good idea for robustness - see docs)
 stair.toggle_use_resp_subset_prop(10,.9);

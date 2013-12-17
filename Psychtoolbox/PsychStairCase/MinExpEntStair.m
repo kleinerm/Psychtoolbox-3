@@ -177,7 +177,9 @@ lik         = [];
 g0          = [];
 g1          = [];
 % likelihood lookup table
+qUseLookup  = [];           % can explicitly be set to true or false by user with 
 likLookup   = [];
+qLookupCompressed = false;  % lots of overlap between likelihoods for different probe values, compute and store in a format making use of this overlap
 
 % option: use a subset of all data for choosing the next probe, default values:
 quse_subset = false;        % use limited subset for computing next probe? Limited subset by discarding a fixed number of trials
@@ -196,7 +198,7 @@ psychofuncStr  = 'cumGauss';
 % subfunction
 if nargin<1 || strcmpi(mode,'legacy')
     fhndl = @MinExpEntStair_internal;
-    external_funs     = {@init, @loadhistory, @loadprior, @toggle_use_resp_subset, @toggle_use_resp_subset_prop, @set_first_value, @set_psychometric_func, @get_psychometric_func, @get_next_probe, @process_resp, @get_history, @get_fit, @get_PSE_DL};
+    external_funs     = {@init, @loadhistory, @loadprior, @toggle_use_resp_subset, @toggle_use_resp_subset_prop, @set_first_value, @set_use_lookup_table, @get_use_lookup_table, @set_psychometric_func, @get_psychometric_func, @get_next_probe, @process_resp, @get_history, @get_fit, @get_PSE_DL};
     external_funs_str = cellfun(@(x) strrep(func2str(x),[mfilename '/'],''),external_funs,'uni',false);
 elseif strcmpi(mode,'v2')
     % setup function handles
@@ -206,6 +208,8 @@ elseif strcmpi(mode,'v2')
     fhndl.toggle_use_resp_subset        = @toggle_use_resp_subset;
     fhndl.toggle_use_resp_subset_prop   = @toggle_use_resp_subset_prop;
     fhndl.set_first_value               = @set_first_value;
+    fhndl.set_use_lookup_table          = @set_use_lookup_table;
+    fhndl.get_use_lookup_table          = @get_use_lookup_table;
     fhndl.set_psychometric_func         = @set_psychometric_func;
     fhndl.get_psychometric_func         = @get_psychometric_func;
     fhndl.get_next_probe                = @get_next_probe;
@@ -272,8 +276,7 @@ end
             g1 = 1 - lapse_rate - guess_rate;
         end
         
-        set_psychometric_func(psychofuncStr);
-        precomputeLikelihoods();
+        set_psychometric_func(psychofuncStr);   % calls precomputeLikelihoods()
     end
                 
                 
@@ -354,6 +357,22 @@ end
             warning('the first trial has already been run. Setting the first value now is pointless and it''ll be ignored');
         end
     end
+
+
+    %%% if set to true or false, for (not) using of a precomputed lookup
+    %%% table instead of evaluating the psychometric function all the time.
+    %%% call this before calling init as lookup table computation is
+    %%% triggered at end of init
+    function [] = set_use_lookup_table(qUseLookup_)
+        qUseLookup = qUseLookup_;
+        if qUseLookup && isempty(likLookup)
+            precomputeLikelihoods();
+        end
+    end
+    %%% get if lookup table is currently used.
+    function varargout = get_use_lookup_table()
+        varargout{1} = qUseLookup;
+    end
                 
                 
     %%% set the psychometric function to be used (default cumulative
@@ -401,8 +420,6 @@ end
             [loglik,lik]    = fit_all(phist(1:ndata),rhist(1:ndata));
         end
     end
-                
-                
     %%% get the psychometric function that is currently used.
     function [varargout] = get_psychometric_func()
         % currently possible outputs:
@@ -501,7 +518,7 @@ end
         for ksamp = 1:length(probeset)
             % p values for each possible model
             % these are used in multiple steps
-            pvalsamp    = likLookup(:,:,ksamp);
+            pvalsamp    = fit_a_point(probeset(ksamp),1);
             
             % expected value is sum, weighted by lik
             pval        = sum(pvalsamp(:).*thelik(:));
@@ -562,7 +579,16 @@ end
     end
 
     function pval = fit_a_point(probe,resp)
-        pval = likLookup(:,:,probeset==probe);
+        if qUseLookup
+            qProbe = probeset==probe;
+            if qLookupCompressed
+                pval = likLookup(:,[(end-length(aset)+1):end]-find(qProbe)+1);
+            else
+                pval = likLookup(:,:,qProbe);
+            end
+        else
+            pval = evalLikelihood(probe);
+        end
         % if response was wrong flip probs
         if resp <= 0
             pval = 1-pval;
@@ -570,11 +596,49 @@ end
     end
         
     function [] = precomputeLikelihoods()
-        nProbe = length(probeset);
-        likLookup = zeros([size(agrid) nProbe]);
-        for p=1:nProbe
-            likLookup(:,:,p) = evalLikelihood(probeset(p));
+        if isempty(aset)
+            % called before init, parameter space not known yet, nothing to
+            % do here
+            return;
         end
+        if ~isempty(qUseLookup) && ~qUseLookup
+            % were not using lookup tables by users request, return
+            return;
+        end
+        
+        % determine if we want to precompute
+        % first see if compressed format is possible. It is if same
+        % stepsize for probeset and aset, as there is then significant
+        % overlap between the pvalues for each probe level (could extend
+        % this to one being multiples of the other...)
+        stepP = mean(diff(probeset));
+        stepA = mean(diff(aset));
+        qLookupCompressed = abs(stepP-stepA)<=2*eps;
+        
+        % use lookup if compressed possible, or if table would be small,
+        % or if user asked for it.
+        if  (isempty(qUseLookup) && (...
+                qLookupCompressed || ...                    % same stepsize for probeset and aset
+                numel(agrid)*length(probeset)/128/1024<3)...% small lookup table (by some arbitrary standard of what is small, which in this case is less than 3 mb)
+                ) ||...
+            (~isempty(qUseLookup) && qUseLookup)            % user asked for it
+            
+            qUseLookup = true;
+            
+            nProbe = length(probeset);
+            if qLookupCompressed
+                [tempAGrid,tempBGrid] = meshgrid(linspace(probeset(1)-aset(1,end),probeset(end)-aset(1,1),length(aset)+length(probeset)-1),bset);
+                likLookup = g0 + g1*psychofunc(0,tempAGrid,tempBGrid);
+            else
+                likLookup = zeros([size(agrid) nProbe]);
+                for p=1:nProbe
+                    likLookup(:,:,p) = evalLikelihood(probeset(p));
+                end
+            end
+        else
+            qUseLookup = false;
+        end
+        
     end
 
     function pval = evalLikelihood(probe)
