@@ -45,7 +45,7 @@ void PsychExitMovieWriting(void);
 void PsychDeleteAllMovieWriters(void);
 int PsychCreateNewMovieFile(char* moviefile, int width, int height, double framerate, int numChannels, int bitdepth, char* movieoptions);
 int PsychFinalizeNewMovieFile(int movieHandle);
-int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_bool isUpsideDown);
+int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_bool isUpsideDown, double frameTimestamp);
 unsigned char*	PsychGetVideoFrameForMoviePtr(int moviehandle, unsigned int* twidth, unsigned int* theight, unsigned int* numChannels, unsigned int* bitdepth);
 psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, unsigned int nrSamples, double* buffer);
 

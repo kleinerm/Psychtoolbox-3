@@ -607,7 +607,9 @@ PsychError SCREENGetImage(void)
                         break;
                 }
             }
-			if (PsychAddVideoFrameToMovie(moviehandle, frameduration, TRUE) != 0) {
+
+            // Add frame to movie, mark it as "upside down", with invalid -1 timestamp and a duration of frameduration ticks:
+			if (PsychAddVideoFrameToMovie(moviehandle, frameduration, TRUE, -1) != 0) {
 				PsychErrorExitMsg(PsychError_user, "AddFrameToMovie failed with error above!");
 			}
 		}

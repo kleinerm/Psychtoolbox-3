@@ -66,7 +66,7 @@ dropframes = 0;
 % Flags to use for video recording. 16 = Use multi-threaded recording.
 if doVideoRecording
     captureFlags = 16;
-    codec = ':CodecType=DEFAULTencoder'; % Use default codec.
+    codec = ':CodecType=DEFAULTencoder UseVFR'; % Use default codec. UseVFR for variable framerate recording.
     dropframes = 1; % Enable frame dropping for now.
 else
     captureFlags = 16;
@@ -88,7 +88,7 @@ end
 fps = 60;
 
 % Select maximum number of frames to capture and record: Zero for "unlimited"
-maxTargetFrameCount = 600;
+maxTargetFrameCount = 0;
 
 % For now we only use the DC1394-Firewire capture engine, as setup with
 % the GStreamer engine is not impossible, but more difficult/error-prone

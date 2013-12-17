@@ -1073,7 +1073,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
 }
 
 // Helper function: Push captured video frame data buffer into GStreamer video encoding pipeline:
-static psych_bool PsychDCPushFrameToMovie(PsychVidcapRecordType* capdev, psych_uint16* input_image, psych_bool onMasterthread)
+static psych_bool PsychDCPushFrameToMovie(PsychVidcapRecordType* capdev, psych_uint16* input_image, double frameTimestamp, psych_bool onMasterthread)
 {
     // Yes. Need to add this video frame to the encoding pipeline.
     unsigned int twidth, theight, numChannels, bitdepth, i;
@@ -1133,8 +1133,9 @@ static psych_bool PsychDCPushFrameToMovie(PsychVidcapRecordType* capdev, psych_u
             memcpy(framepixels, (const void*) input_image, count);
         }
         
-        // Add to GStreamer encoding pipeline: Format is upright, and 1 video frame duration per frame:
-        if (PsychAddVideoFrameToMovie(capdev->moviehandle, 1, FALSE) != 0) {
+        // Add to GStreamer encoding pipeline: Format is upright, and 1 video frame duration per frame and a
+        // capture timestamp of frameTimestamp:
+        if (PsychAddVideoFrameToMovie(capdev->moviehandle, 1, FALSE, frameTimestamp) != 0) {
             if (onMasterthread) {
                 PsychErrorExitMsg(PsychError_system, "Encoding current captured video frame failed. Failed to add frame to pipeline.");
             }
@@ -1312,7 +1313,7 @@ static void* PsychDCRecorderThreadMain(void* capdevToCast)
             // Push new frame to the GStreamer video encoding pipeline:
             if (capdev->recording_active && (capdev->moviehandle != -1)) {
                 // Yes. Push data to encoder now. Abort thread on failure to push/encode:
-                if (!PsychDCPushFrameToMovie(capdev, (psych_uint16*) input_image, FALSE)) break;
+                if (!PsychDCPushFrameToMovie(capdev, (psych_uint16*) input_image, capdev->current_pts, FALSE)) break;
             }
             
             // Provide new frame to masterthread / usercode, if frame delivery isn't disabled:
@@ -2312,7 +2313,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     // Synchronous video recording on masterthread active?
     if (capdev->recording_active && (capdev->moviehandle != -1) && !(capdev->recordingflags & 16)) {
         // Yes. Push data to encoder now:
-        PsychDCPushFrameToMovie(capdev, (psych_uint16*) input_image, TRUE);
+        PsychDCPushFrameToMovie(capdev, (psych_uint16*) input_image, capdev->pulled_pts, TRUE);
     }
 
     // Synchronous operation?
