@@ -1310,7 +1310,7 @@ static void* PsychDCRecorderThreadMain(void* capdevToCast)
             }
             
             // Push new frame to the GStreamer video encoding pipeline:
-            if (capdev->recording_active && (capdev->moviehandle != -1) && (capdev->recordingflags & 16)) {
+            if (capdev->recording_active && (capdev->moviehandle != -1)) {
                 // Yes. Push data to encoder now. Abort thread on failure to push/encode:
                 if (!PsychDCPushFrameToMovie(capdev, (psych_uint16*) input_image, FALSE)) break;
             }
@@ -1741,30 +1741,30 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                     printf("PTB-INFO: Video recording started on device %i into moviefile '%s'.\n", capturehandle, capdev->targetmoviefilename);
                 }
             }
+        }
 
-            // Async background recording requested?
-            if (capdev->recordingflags & 16) {
-                // Yes. Setup and start recording thread.
-                PsychLockMutex(&capdev->mutex);
-                capdev->frameAvail = 0;
-                PsychUnlockMutex(&capdev->mutex);
-
-                // Create and startup thread:
-                if ((rc = PsychCreateThread(&(capdev->recorderThread), NULL, PsychDCRecorderThreadMain, (void*) capdev))) {
-                    printf("PTB-ERROR: In Screen('StartVideoCapture'): Could not create background video recording thread [%s].\n", strerror(rc));
-                    PsychErrorExitMsg(PsychError_system, "Thread creation for video recording failed!");
-                }
-                
-                // Boost priority of recorderThread by 1 level and switch it to RT scheduling,
-                // unless it is already RT-Scheduled. As the thread inherited our scheduling
-                // priority from PsychCreateThread(), we only need to +1 tweak it from there:
-                PsychSetThreadPriority(&(capdev->recorderThread), 2, 1);
-
-                // Recorder thread is in charge of dequeuing video frames from libdc1394 and pushing it
-                // into the movie recording pipeline and into our own receive slot or videosink.
-                if (PsychPrefStateGet_Verbosity() > 3) {
-                    printf("PTB-INFO: Video recording on device %i is performed on async background thread.\n", capturehandle);
-                }
+        // Async background recording/processing requested?
+        if (capdev->recordingflags & 16) {
+            // Yes. Setup and start recording thread.
+            PsychLockMutex(&capdev->mutex);
+            capdev->frameAvail = 0;
+            PsychUnlockMutex(&capdev->mutex);
+            
+            // Create and startup thread:
+            if ((rc = PsychCreateThread(&(capdev->recorderThread), NULL, PsychDCRecorderThreadMain, (void*) capdev))) {
+                printf("PTB-ERROR: In Screen('StartVideoCapture'): Could not create background video recording/processing thread [%s].\n", strerror(rc));
+                PsychErrorExitMsg(PsychError_system, "Thread creation for video recording/processing failed!");
+            }
+            
+            // Boost priority of recorderThread by 1 level and switch it to RT scheduling,
+            // unless it is already RT-Scheduled. As the thread inherited our scheduling
+            // priority from PsychCreateThread(), we only need to +1 tweak it from there:
+            PsychSetThreadPriority(&(capdev->recorderThread), 2, 1);
+            
+            // Recorder thread is in charge of dequeuing video frames from libdc1394 and pushing it
+            // into the movie recording pipeline and into our own receive slot or videosink.
+            if (PsychPrefStateGet_Verbosity() > 3) {
+                printf("PTB-INFO: Video %s on device %i is performed on async background thread.\n", (capdev->recording_active) ? "recording" : "capture", capturehandle);
             }
         }
     }
@@ -1867,28 +1867,28 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             // Done with camera access for now:
             PsychUnlockMutex(&capdev->mutex);
 
+            // Was async background recording/processing active?
+            if (capdev->recordingflags & 16) {
+                // Yes. Stop and destroy recording thread.
+                
+                // Wait for thread termination, cleanup and release the thread:
+                PsychDeleteThread(&(capdev->recorderThread));
+                
+                // Ok, thread is dead. Mark it as such:
+                capdev->recorderThread = (psych_thread) NULL;
+                
+                capdev->frameAvail = 0;
+                
+                // Recorder thread is in charge of dequeuing video frames from libdc1394 and pushing it
+                // into the movie recording pipeline and into our own receive slot or videosink.
+                if (PsychPrefStateGet_Verbosity() > 3) {
+                    printf("PTB-INFO: Async video %s thread on device %i stopped.\n", (capdev->recording_active) ? "recording" : "processing", capturehandle);
+                }
+            }
+            
             // Video recording active? Then we should stop it now:
             if ((capdev->recording_active) && (capdev->moviehandle > -1)) {
                 if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Stopping video recording on device %i and closing moviefile '%s'\n", capturehandle, capdev->targetmoviefilename);
-
-                // Was async background recording active?
-                if (capdev->recordingflags & 16) {
-                    // Yes. Stop and destroy recording thread.
-                    
-                    // Wait for thread termination, cleanup and release the thread:
-                    PsychDeleteThread(&(capdev->recorderThread));
-                    
-                    // Ok, thread is dead. Mark it as such:
-                    capdev->recorderThread = (psych_thread) NULL;
-
-                    capdev->frameAvail = 0;
-                    
-                    // Recorder thread is in charge of dequeuing video frames from libdc1394 and pushing it
-                    // into the movie recording pipeline and into our own receive slot or videosink.
-                    if (PsychPrefStateGet_Verbosity() > 3) {
-                        printf("PTB-INFO: Async video recording thread on device %i stopped.\n", capturehandle);
-                    }
-                }
                 
                 // Flush and close video encoding pipeline, finalize and close movie file:
                 if (PsychFinalizeNewMovieFile(capdev->moviehandle) == 0) {

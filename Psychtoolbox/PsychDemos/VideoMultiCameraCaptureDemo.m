@@ -69,8 +69,9 @@ if doVideoRecording
     codec = ':CodecType=DEFAULTencoder'; % Use default codec.
     dropframes = 1; % Enable frame dropping for now.
 else
-    captureFlags = 0;
+    captureFlags = 16;
     codec = [];
+    dropframes = 1; % Enable frame dropping for now.
 end
 
 % Set noMaster = 1 if all cams are externally hardware triggered slaves, 0 otherwise:
@@ -87,7 +88,7 @@ end
 fps = 60;
 
 % Select maximum number of frames to capture and record: Zero for "unlimited"
-maxTargetFrameCount = 300;
+maxTargetFrameCount = 600;
 
 % For now we only use the DC1394-Firewire capture engine, as setup with
 % the GStreamer engine is not impossible, but more difficult/error-prone
