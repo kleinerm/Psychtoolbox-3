@@ -1731,7 +1731,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         // Now that capture is successfully started, do we also want to record video to a file?
         if (capdev->recording_active) {
             // Yes. Setup movie writing:
-            capdev->moviehandle = PsychCreateNewMovieFile(capdev->targetmoviefilename, capdev->width, capdev->height, (double) framerate, capdev->actuallayers, ((capdev->bitdepth > 8) ? 16 : 8), capdev->codecSpec);
+            capdev->moviehandle = PsychCreateNewMovieFile(capdev->targetmoviefilename, capdev->width, capdev->height, (double) framerate, capdev->actuallayers, ((capdev->bitdepth > 8) ? 16 : 8), capdev->codecSpec, NULL);
 
             // Failed?
             if (capdev->moviehandle == -1) {

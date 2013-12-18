@@ -40,6 +40,7 @@ typedef struct {
     GstElement*                                     Movie;
     GstElement*                                     ptbvideoappsrc;
     GstElement*                                     ptbaudioappsrc;
+    GstElement*                                     ptbvideoappsink;
     GstBus*                                         bus;
     GstBuffer*                                      PixMap;
     guint32                                         CodecType;
@@ -439,7 +440,7 @@ static gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
   return TRUE;
 }
 
-int PsychCreateNewMovieFile(char* moviefile, int width, int height, double framerate, int numChannels, int bitdepth, char* movieoptions)
+int PsychCreateNewMovieFile(char* moviefile, int width, int height, double framerate, int numChannels, int bitdepth, char* movieoptions, char* feedbackString)
 {
 	PsychMovieWriterRecordType*             pwriterRec = NULL;
 	int                                     moviehandle = 0;
@@ -754,7 +755,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
         }
         
 		// Build final launch string:
-        sprintf(launchString, "appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps=\"%s, width=(int)%i, height=(int)%i, framerate=%i/10000 \" ! %s%s%s ! filesink name=ptbfilesink async=0 location=%s ", capsString, width, height, ((int) (framerate * 10000 + 0.5)), videorateString, capsForCodecString, codecString, moviefile);
+		sprintf(launchString, "appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps=\"%s, width=(int)%i, height=(int)%i, framerate=%i/10000 \" ! %s%s%s%s ! filesink name=ptbfilesink async=0 location=%s ", capsString, width, height, ((int) (framerate * 10000 + 0.5)), (feedbackString) ? feedbackString : "", videorateString, capsForCodecString, codecString, moviefile);
 	}
         
 	// Create a movie file for the destination movie:
@@ -802,6 +803,15 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 		goto bail;
 	}
 
+    // feedbackString provided? If so, then get handle to its appsink:
+    if (feedbackString) {
+        pwriterRec->ptbvideoappsink = gst_bin_get_by_name(GST_BIN(pwriterRec->Movie), (const gchar *) "ptbvideoappsink");
+        if (NULL == pwriterRec->ptbvideoappsink) {
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: In CreateMovie: Creating movie file with handle %i [%s] failed: Could not find ptbvideoappsink pipeline element.\n", moviehandle, moviefile);
+            goto bail;
+        }
+    }
+
 	pwriterRec->Context = g_main_loop_new (NULL, FALSE);
 	pwriterRec->bus = gst_pipeline_get_bus (GST_PIPELINE(pwriterRec->Movie));
 	gst_bus_add_watch(pwriterRec->bus, (GstBusFunc) PsychMovieBusCallback, pwriterRec);
@@ -832,20 +842,23 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 	return(moviehandle);
 
 bail:
-	if (pwriterRec->ptbvideoappsrc) gst_object_unref(GST_OBJECT(pwriterRec->ptbvideoappsrc));
-	pwriterRec->ptbvideoappsrc = NULL;
+    if (pwriterRec->ptbvideoappsrc) gst_object_unref(GST_OBJECT(pwriterRec->ptbvideoappsrc));
+    pwriterRec->ptbvideoappsrc = NULL;
 
-	if (pwriterRec->ptbaudioappsrc) gst_object_unref(GST_OBJECT(pwriterRec->ptbaudioappsrc));
-	pwriterRec->ptbaudioappsrc = NULL;
+    if (pwriterRec->ptbaudioappsrc) gst_object_unref(GST_OBJECT(pwriterRec->ptbaudioappsrc));
+    pwriterRec->ptbaudioappsrc = NULL;
 
-	if (pwriterRec->Movie) gst_object_unref(GST_OBJECT(pwriterRec->Movie));
-	pwriterRec->Movie = NULL;
+    if (pwriterRec->ptbvideoappsink) gst_object_unref(GST_OBJECT(pwriterRec->ptbvideoappsink));
+    pwriterRec->ptbvideoappsink = NULL;
+    
+    if (pwriterRec->Movie) gst_object_unref(GST_OBJECT(pwriterRec->Movie));
+    pwriterRec->Movie = NULL;
 
-	if (pwriterRec->Context) g_main_loop_unref(pwriterRec->Context);
-	pwriterRec->Context = NULL;
+    if (pwriterRec->Context) g_main_loop_unref(pwriterRec->Context);
+    pwriterRec->Context = NULL;
 
-	// Return failure:
-	return(-1);
+    // Return failure:
+    return(-1);
 }
 
 int PsychFinalizeNewMovieFile(int movieHandle)
@@ -915,6 +928,9 @@ int PsychFinalizeNewMovieFile(int movieHandle)
 
 	if (pwriterRec->ptbaudioappsrc) gst_object_unref(GST_OBJECT(pwriterRec->ptbaudioappsrc));
 	pwriterRec->ptbaudioappsrc = NULL;
+
+    if (pwriterRec->ptbvideoappsink) gst_object_unref(GST_OBJECT(pwriterRec->ptbvideoappsink));
+    pwriterRec->ptbvideoappsink = NULL;
 
 	// Delete video context:
 	if (pwriterRec->Context) g_main_loop_unref(pwriterRec->Context);

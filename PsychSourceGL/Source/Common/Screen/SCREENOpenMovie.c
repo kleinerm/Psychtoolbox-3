@@ -435,7 +435,7 @@ PsychError SCREENCreateMovie(void)
 	if (bitdepth != 8 && bitdepth != 16) PsychErrorExitMsg(PsychError_user, "Invalid 'bitdepth' provided. Only 8 bpc or 16 bpc allowed!");
 
 	// Create movie of given size and framerate with given options:
-	moviehandle = PsychCreateNewMovieFile(moviefile, width, height, framerate, numChannels, bitdepth, movieOptions);
+	moviehandle = PsychCreateNewMovieFile(moviefile, width, height, framerate, numChannels, bitdepth, movieOptions, NULL);
 	if (0 > moviehandle) {
 		PsychErrorExitMsg(PsychError_user, "CreateMovie failed for reason mentioned above.");
 	}
