@@ -322,6 +322,7 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     capdev->convframe = NULL;
     capdev->debayer_method = DC1394_BAYER_METHOD_NEAREST;
     capdev->capturehandle = slotid;
+    capdev->moviehandle = -1;
 
     PsychInitMutex(&capdev->mutex);
     PsychInitCondition(&capdev->condition, NULL);
@@ -1311,7 +1312,7 @@ static void* PsychDCRecorderThreadMain(void* capdevToCast)
             }
             
             // Push new frame to the GStreamer video encoding pipeline:
-            if (capdev->recording_active && (capdev->moviehandle != -1)) {
+            if (capdev->moviehandle != -1) {
                 // Yes. Push data to encoder now. Abort thread on failure to push/encode:
                 if (!PsychDCPushFrameToMovie(capdev, (psych_uint16*) input_image, capdev->current_pts, FALSE)) break;
             }
@@ -1734,7 +1735,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         // Now that capture is successfully started, do we also want to record video to a file?
         if (capdev->recording_active) {
             // Yes. Setup movie writing:
-            if (capdev->recording_active && (capdev->recordingflags & 16) && !dropframes) {
+            if ((capdev->recordingflags & 16) && !dropframes) {
                 // Multi-threaded video recording/processing and due to dropframes = FALSE, video data is enqeued by recorderThread
                 // into GStreamer pipeline and then processed and dequeued from our special appsink via the following snippet of
                 // pipeline:
@@ -1754,6 +1755,24 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             else {
                 if (PsychPrefStateGet_Verbosity() > 2) {
                     printf("PTB-INFO: Video recording started on device %i into moviefile '%s'.\n", capturehandle, capdev->targetmoviefilename);
+                }
+            }
+        }
+        else if ((capdev->recordingflags & 16) && !dropframes) {
+            // Multi-threaded video processing and due to dropframes = FALSE, video data is enqeued by recorderThread
+            // into GStreamer pipeline and then processed and dequeued from our special appsink via the following snippet of
+            // pipeline:
+            char feedbackString[] = "appsink name=ptbvideoappsink sync=false async=false enable-last-buffer=false emit-signals=false";
+            capdev->moviehandle = PsychCreateNewMovieFile("", capdev->width, capdev->height, (double) framerate, capdev->actuallayers, ((capdev->bitdepth > 8) ? 16 : 8),
+                                                          ((capdev->codecSpec) && (strlen(capdev->codecSpec) > 0)) ? capdev->codecSpec : "UseVFR", (char*) &(feedbackString[0]));
+
+            // Failed?
+            if (capdev->moviehandle == -1) {
+                PsychErrorExitMsg(PsychError_user, "Setup of background GStreamer video processing failed.");
+            }
+            else {
+                if (PsychPrefStateGet_Verbosity() > 2) {
+                    printf("PTB-INFO: GStreamer background video processing started on device %i into moviefile '%s'.\n", capturehandle, capdev->targetmoviefilename);
                 }
             }
         }
@@ -1904,7 +1923,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             }
             
             // Video recording active? Then we should stop it now:
-            if ((capdev->recording_active) && (capdev->moviehandle > -1)) {
+            if (capdev->moviehandle > -1) {
                 if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Stopping video recording on device %i and closing moviefile '%s'\n", capturehandle, capdev->targetmoviefilename);
                 
                 // Flush and close video encoding pipeline, finalize and close movie file:
@@ -2172,8 +2191,8 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
             }
             else {
                 // Pulling from GStreamer requested:
-                if ((capdev->moviehandle < 0) || !capdev->recording_active) {
-                    PsychErrorExitMsg(PsychError_internal, "Tried to pull captured video frame from ptbvideosink, but GStreamer based video recording not active?!?");
+                if (capdev->moviehandle < 0) {
+                    PsychErrorExitMsg(PsychError_system, "Tried to pull captured video frame from ptbvideosink, but GStreamer based video recording not active?!?");
                 }
                 
                 // Check what the recorderThread has for us:

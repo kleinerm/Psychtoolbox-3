@@ -520,7 +520,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
 	}
 
 	// Store movie filename:
-	strcpy(pwriterRec->File, moviefile);
+	strcpy(pwriterRec->File, (moviefile) ? moviefile : "");
 
     // Store width, height, numChannels, bitdepth:
     pwriterRec->height  = height;
@@ -641,7 +641,8 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
         sprintf(capsForCodecString, "ffmpegcolorspace ! ");
 
 		// Find the gst-launch style string for codecs and muxers:
-		if (!PsychGetCodecLaunchLineFromString(movieoptions, &(codecString[0]))) {
+        codecString[0] = 0;
+		if (moviefile && (strlen(moviefile) > 0) && !PsychGetCodecLaunchLineFromString(movieoptions, &(codecString[0]))) {
 			// No config for this format possible:
 			if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR:In CreateMovie: Creating movie file with handle %i [%s] failed: Could not find matching codec setup.\n", moviehandle, moviefile);
 			goto bail;
@@ -798,8 +799,16 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
             }
         }
         
-		// Build final launch string:
-		sprintf(launchString, "appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps=\"%s, width=(int)%i, height=(int)%i, framerate=%i/10000 \" ! %s%s%s%s ! filesink name=ptbfilesink async=0 location=%s ", capsString, width, height, ((int) (framerate * 10000 + 0.5)), (feedbackString) ? feedbackString : "", videorateString, capsForCodecString, codecString, moviefile);
+        // Build final launch string:
+        if (moviefile && (strlen(moviefile) > 0)) {
+            // Actual recording into moviefile requested:
+            sprintf(launchString, "appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps=\"%s, width=(int)%i, height=(int)%i, framerate=%i/10000 \" ! %s%s%s%s ! filesink name=ptbfilesink async=0 location=%s ", capsString, width, height, ((int) (framerate * 10000 + 0.5)), (feedbackString) ? feedbackString : "", videorateString, capsForCodecString, codecString, moviefile);
+        }
+        else {
+            // No writing of moviefile, just (ab)use GStreamer "recording" pipeline for image processing on behalf
+            // of, e.g., the libdc1394 video capture engine:
+            sprintf(launchString, "appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps=\"%s, width=(int)%i, height=(int)%i, framerate=%i/10000 \" ! %s ", capsString, width, height, ((int) (framerate * 10000 + 0.5)), (feedbackString) ? feedbackString : "");
+        }
 	}
         
 	// Create a movie file for the destination movie:

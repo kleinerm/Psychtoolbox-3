@@ -86,7 +86,7 @@ end
 fps = 30;
 
 % Select maximum number of frames to capture and record: Zero for "unlimited"
-maxTargetFrameCount = 1200;
+maxTargetFrameCount = 0;
 
 % For now we only use the DC1394-Firewire capture engine, as setup with
 % the GStreamer engine is not impossible, but more difficult/error-prone
