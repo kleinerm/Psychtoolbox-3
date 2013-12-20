@@ -67,11 +67,9 @@ dropframes = 0;
 if doVideoRecording
     captureFlags = 16;
     codec = ':CodecType=DEFAULTencoder UseVFR'; % Use default codec. UseVFR for variable framerate recording.
-    dropframes = 1; % Enable frame dropping for now.
 else
     captureFlags = 16;
     codec = [];
-    dropframes = 1; % Enable frame dropping for now.
 end
 
 % Set noMaster = 1 if all cams are externally hardware triggered slaves, 0 otherwise:
@@ -85,10 +83,10 @@ end
 % We limit default framerate to 30 fps instead of auto-detected maximum
 % as supported by a camera in order to limit the consumption of bus bandwidth.
 % Otherwise we might run out of bandwidth with multiple connected cameras.
-fps = 60;
+fps = 30;
 
 % Select maximum number of frames to capture and record: Zero for "unlimited"
-maxTargetFrameCount = 0;
+maxTargetFrameCount = 1200;
 
 % For now we only use the DC1394-Firewire capture engine, as setup with
 % the GStreamer engine is not impossible, but more difficult/error-prone
@@ -269,19 +267,12 @@ try
             % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
 
             if tex > 0
-                % Perform first-time setup of transformations, if needed:
-                %if fullsize && (count == 0)
-                %    texrect = Screen('Rect', tex);
-                %    winrect = Screen('Rect', win);
-                %    sf = min([RectWidth(winrect) / RectWidth(texrect) , RectHeight(winrect) / RectHeight(texrect)]);
-                %    dstRect = CenterRect(ScaleRect(texrect, sf, sf) , winrect);
-                %end
-
                 % Draw new texture from framegrabber.
                 Screen('DrawTexture', win(i), tex, [], dstRect);
 
                 % Print pts:
-                Screen('DrawText', win(i), sprintf('%.4f', pts - t), 0, 0, [1 0 0]);
+                Screen('DrawText', win(i), sprintf('%.4f    [%i of %i]', pts - t, Screen('SetVideoCaptureParameter', grabbers(i), 'GetFetchedFramecount'), Screen('SetVideoCaptureParameter', grabbers(i), 'GetCurrentFramecount')), ...
+                        0, 0, [1 0 0]);
                 if count > 0
                     % Compute delta:
                     delta = (pts - oldpts(i)) * 1000;
@@ -299,7 +290,6 @@ try
                     camtex(i, texcount(i)) = tex;
                     campts(i, texcount(i)) = pts;
                 end
-
                 tex=0;
             end
             count = count + 1;

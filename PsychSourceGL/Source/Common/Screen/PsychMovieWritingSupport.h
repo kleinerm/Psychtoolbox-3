@@ -48,6 +48,7 @@ int PsychFinalizeNewMovieFile(int movieHandle);
 int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_bool isUpsideDown, double frameTimestamp);
 unsigned char*	PsychGetVideoFrameForMoviePtr(int moviehandle, unsigned int* twidth, unsigned int* theight, unsigned int* numChannels, unsigned int* bitdepth);
 psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, unsigned int nrSamples, double* buffer);
+unsigned char* PsychMovieCopyPulledPipelineBuffer(int moviehandle, unsigned int* twidth, unsigned int* theight, unsigned int* numChannels, unsigned int* bitdepth, double* timestamp);
 
 //end include once
 #endif

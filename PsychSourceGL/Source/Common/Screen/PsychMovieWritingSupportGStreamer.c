@@ -27,6 +27,7 @@
 
 // GStreamer includes:
 #include <gst/gst.h>
+#include <gst/app/gstappsink.h>
 
 // PsychGetCodecLaunchLineFromString() - Helper function for GStreamer based movie writing.
 // Defined in PsychVideoCaptureSupport.h: psych_bool PsychGetCodecLaunchLineFromString(char* codecSpec, char* launchString);
@@ -121,6 +122,50 @@ PsychMovieWriterRecordType* PsychGetMovieWriter(int moviehandle, psych_bool unsa
 	if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIEWRITERDEVICES) PsychErrorExitMsg(PsychError_user, "Invalid handle for moviewriter provided!");
 	if (!unsafe && (NULL == moviewriterRecordBANK[moviehandle].Movie)) PsychErrorExitMsg(PsychError_user, "Invalid handle for moviewriter provided! No such writer open.");
 	return(&(moviewriterRecordBANK[moviehandle]));
+}
+
+// Pulls next GStreamer videobuffer from appsink, if any, and copies its image data into a new malloc'd buffer. Caller has to free() the returned buffer.
+// Used mostly by the libdc1394 video capture engine for retrieval of feedback data:
+unsigned char* PsychMovieCopyPulledPipelineBuffer(int moviehandle, unsigned int* twidth, unsigned int* theight, unsigned int* numChannels, unsigned int* bitdepth, double* timestamp)
+{
+    unsigned char* imgdata;
+    
+    // Retrieve movie record:
+    PsychMovieWriterRecordType* pwriterRec = PsychGetMovieWriter(moviehandle, FALSE);
+
+    // Pull next buffer from appsink, if any:
+    GstBuffer *videoBuffer = NULL;
+
+    // Return NULL if appsink doesn't exist or is end-of-stream already:
+    if ((pwriterRec->ptbvideoappsink == NULL) || !GST_IS_APP_SINK(pwriterRec->ptbvideoappsink) || gst_app_sink_is_eos(GST_APP_SINK(pwriterRec->ptbvideoappsink))) return(NULL);
+
+    // Pull next buffer from appsink:
+    videoBuffer = gst_app_sink_pull_buffer(GST_APP_SINK(pwriterRec->ptbvideoappsink));
+    
+    // Double-check: Buffer valid with data?
+    if ((NULL == videoBuffer) || (NULL == GST_BUFFER_DATA(videoBuffer))) return(NULL);
+
+    // Valid assign properties:
+    *twidth  = pwriterRec->width;
+    *theight = pwriterRec->height;
+    *numChannels = pwriterRec->numChannels;
+    *bitdepth = pwriterRec->bitdepth;
+    *timestamp = (double) GST_BUFFER_TIMESTAMP(videoBuffer) / (double) 1e9;
+
+    // Copy data into new malloc'ed buffer:
+    unsigned int count = (pwriterRec->width * pwriterRec->height * pwriterRec->numChannels * ((pwriterRec->bitdepth > 8) ? 2 : 1));
+    
+    // Allocate target buffer for most recent captured frame from video recorder thread:
+    imgdata = (unsigned char*) malloc(count);
+    
+    // Copy image into it:
+    memcpy(imgdata, GST_BUFFER_DATA(videoBuffer), count);
+
+    // Release GstBuffer to appsink for recycling:
+    gst_buffer_unref(videoBuffer);
+    videoBuffer = NULL;
+
+    return(imgdata);
 }
 
 unsigned char* PsychGetVideoFrameForMoviePtr(int moviehandle, unsigned int* twidth, unsigned int* theight, unsigned int* numChannels, unsigned int* bitdepth)
@@ -337,7 +382,6 @@ psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, 
 	// Return success:
 	return(TRUE);
 }
-
 
 /* Initiate pipeline state changes: Startup, Preroll, Playback, Pause, Standby, Shutdown. */
 static psych_bool PsychMoviePipelineSetState(GstElement* camera, GstState state, double timeoutSecs)
@@ -962,6 +1006,13 @@ int PsychFinalizeNewMovieFile(int movieHandle) {
     PsychErrorExitMsg(PsychError_unimplemented, "Sorry, movie writing not supported on this operating system");
     return FALSE;
 }
+
+unsigned char* PsychMovieCopyPulledPipelineBuffer(int moviehandle, unsigned int* twidth, unsigned int* theight, unsigned int* numChannels, unsigned int* bitdepth, double* timestamp)
+{
+    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, movie writing and recording not supported on this operating system");
+    return(NULL);
+}
+
 int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_bool isUpsideDown)
 {
     PsychErrorExitMsg(PsychError_unimplemented, "Sorry, movie writing not supported on this operating system");

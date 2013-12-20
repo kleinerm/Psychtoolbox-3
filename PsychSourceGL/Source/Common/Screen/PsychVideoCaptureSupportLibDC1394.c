@@ -85,6 +85,7 @@ typedef struct {
     int num_dmabuffers;               // Number of DMA ringbuffers to use in DMA capture.
     int nrframes;                     // Total count of decompressed images.
     unsigned int framecounter;        // Total number of captured frames which have been already fetched from the DMA queue.
+    unsigned int pulled_framecounter; // Total number of captured frames which have been already fetched from the DMA queue. Need extra accounting for GStreamer feedback case.
     unsigned int nrframes_pending;    // Number of frames still pending in the DMA queue for fetching at last check.
     unsigned int stopAtFramecount;    // Maximum total number of frames to capture before capture stops - used by recorderThread as stop criterion.
     unsigned int stopAtFramecountLatch; // Value to latch into stopAtFramecount at 'StartCapture', as set by 'SetVideoCaptureParameter'.
@@ -1446,6 +1447,10 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         capdev->nr_droppedframes = 0;
         capdev->frame_ready = 0;
 
+        // Resync framecounters: Only important for multi-threaded recording with 'dropframes = 0' video buffer
+        // feedback over GStreamer pipeline appsrc -> process -> appsink -> pull.
+        capdev->pulled_framecounter = capdev->framecounter;
+
         // Select best matching mode for requested image size and pixel format:
         // ====================================================================
 
@@ -1731,8 +1736,19 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         // Now that capture is successfully started, do we also want to record video to a file?
         if (capdev->recording_active) {
             // Yes. Setup movie writing:
-            capdev->moviehandle = PsychCreateNewMovieFile(capdev->targetmoviefilename, capdev->width, capdev->height, (double) framerate, capdev->actuallayers, ((capdev->bitdepth > 8) ? 16 : 8), capdev->codecSpec, NULL);
-
+            if (capdev->recording_active && (capdev->recordingflags & 16) && !dropframes) {
+                // Multi-threaded video recording/processing and due to dropframes = FALSE, video data is enqeued by recorderThread
+                // into GStreamer pipeline and then processed and dequeued from our special appsink via the following snippet of
+                // pipeline:
+                char feedbackString[] = "tee name=ptbframediverter ! appsink name=ptbvideoappsink sync=false async=false enable-last-buffer=false emit-signals=false ptbframediverter. ! queue ! ";
+                capdev->moviehandle = PsychCreateNewMovieFile(capdev->targetmoviefilename, capdev->width, capdev->height, (double) framerate, capdev->actuallayers, ((capdev->bitdepth > 8) ? 16 : 8), capdev->codecSpec,
+                                                              (char*) &(feedbackString[0]));
+            }
+            else {
+                // No multi-threaded video recording with dropframes = FALSE, aka feedback of video data via GStreamer:
+                capdev->moviehandle = PsychCreateNewMovieFile(capdev->targetmoviefilename, capdev->width, capdev->height, (double) framerate, capdev->actuallayers, ((capdev->bitdepth > 8) ? 16 : 8), capdev->codecSpec, NULL);
+            }
+            
             // Failed?
             if (capdev->moviehandle == -1) {
                 PsychErrorExitMsg(PsychError_user, "Setup of video recording failed.");
@@ -2108,6 +2124,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
             frame_ready = capdev->frame_ready;
             capdev->pulled_pts = capdev->current_pts;
             capdev->pulled_dropped = capdev->current_dropped;
+            capdev->pulled_framecounter = capdev->framecounter;
         }
         else {
             // Capture and recording handled on recorderThread.
@@ -2148,14 +2165,85 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
                     capdev->pulled_dropped = capdev->current_dropped;
                     capdev->current_dropped = 0;
                     capdev->frame_ready = 0;
+                    capdev->pulled_framecounter = capdev->framecounter;
                 }
 
                 PsychUnlockMutex(&capdev->mutex);
             }
             else {
                 // Pulling from GStreamer requested:
-                // TODO
-                frame_ready = FALSE;
+                if ((capdev->moviehandle < 0) || !capdev->recording_active) {
+                    PsychErrorExitMsg(PsychError_internal, "Tried to pull captured video frame from ptbvideosink, but GStreamer based video recording not active?!?");
+                }
+                
+                // Check what the recorderThread has for us:
+                PsychLockMutex(&capdev->mutex);
+                
+                // Loop as long as no new frame is ready...
+                while (capdev->framecounter <= capdev->pulled_framecounter) {
+                    
+                    // Target framecount for end of capture/recording on our side of the pipeline reached?
+                    if (capdev->pulled_framecounter >= capdev->stopAtFramecount) {
+                        // Yes: We will never get a new frame, so tell usercode:
+                        PsychUnlockMutex(&capdev->mutex);
+                        return(-2);
+                    }
+                    
+                    // ...unless this is a polling request, in which case we immediately give up:
+                    if (!waitforframe) break;
+                    
+                    // ... blocking wait. Release mutex and wait for new frame signal from recorderThread, with a timeout of 5 secs:
+                    if ((rc = PsychTimedWaitCondition(&(capdev->condition), &(capdev->mutex), 5))) {
+                        // Failed:
+                        printf("PTB-ERROR: Waiting on video recorder thread to deliver new video frame in ptbvideosink failed [%s]. Aborting wait.\n", strerror(rc));
+                        break;
+                    }
+                }
+                
+                // Do we finally have a frame?
+                frame_ready = (capdev->framecounter > capdev->pulled_framecounter) ? TRUE : FALSE;
+                if (frame_ready) {
+                    // This is the best approximation we can make: The difference between what the recorderThread
+                    // pushed into the GStreamer pipeline and what we've so far pulled out:
+                    capdev->pulled_dropped = capdev->framecounter - capdev->pulled_framecounter -1;
+                }
+                else {
+                    // Unknown - Set to zero.
+                    capdev->pulled_dropped = 0;
+                }
+                
+                // No need for capdev lock from here on:
+                PsychUnlockMutex(&capdev->mutex);
+                
+                if (frame_ready) {
+                    unsigned int twidth, theight, numChannels, bitdepth;
+                    
+                    // Yes! Get a hand on the current video image buffer and timestamp:
+                    capdev->pulled_frame = PsychMovieCopyPulledPipelineBuffer(capdev->moviehandle, &twidth, &theight, &numChannels, &bitdepth, &(capdev->pulled_pts));
+
+                    // Increase counter of pulled frames: This is the framecounter value corresponding to the retrieved frame:
+                    capdev->pulled_framecounter++;
+
+                    // Sanity checks:
+                    
+                    // Validate number of color channels and bits per channel values for a match:
+                    if (numChannels != (unsigned int) capdev->actuallayers || bitdepth != ((capdev->bitdepth > 8) ? 16 : 8)) {
+                        printf("PTB-ERROR: Mismatch between number of color channels %i or bpc %i of captured video frame and number of channels %i or bpc %i of video capture target buffer!\n",
+                        capdev->actuallayers, ((capdev->bitdepth > 8) ? 16 : 8), numChannels, bitdepth);
+                        free(capdev->pulled_frame);
+                        return(-2);
+                    }
+                    
+                    // Dimensions match?
+                    if (twidth != (unsigned int) capdev->width || theight > (unsigned int) capdev->height) {
+                        printf("PTB-ERROR: Mismatch between size of captured video frame %i x %i and size of video capture target buffer %i x %i !\n", capdev->width, capdev->height, twidth, theight);
+                        free(capdev->pulled_frame);
+                        return(-2);
+                    }
+                    
+                    // Ok, we're done. All pulled_xxx settings updated, our own copy of the video date in pulled_frame,
+                    // pulled_framecounter up to date, frame_ready flag up to date.
+                }
             }
         }
         
@@ -2175,7 +2263,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     // Synchronous texture fetch: Copy content of capture buffer into a texture:
     // =========================================================================
 
-    // Synchronous frame fetch from masterthread?
+    // Synchronous frame fetch on masterthread?
     if (!(capdev->recordingflags & 16)) {
         // Yes. Do pre-processing of frame:
         input_image = PsychDCPreprocessFrame(capdev);
@@ -2507,6 +2595,12 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         PsychLockMutex(&capdev->mutex);
         PsychCopyOutDoubleArg(1, FALSE, (double) capdev->framecounter);
         PsychUnlockMutex(&capdev->mutex);
+        return(0);
+    }
+
+    // Get capture framecount of last video frame which was successfully retrieved via Screen('GetCapturedImage'):
+    if (strcmp(pname, "GetFetchedFramecount")==0) {
+        PsychCopyOutDoubleArg(1, FALSE, (double) capdev->pulled_framecounter);
         return(0);
     }
 
