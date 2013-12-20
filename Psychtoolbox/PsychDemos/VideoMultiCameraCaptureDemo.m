@@ -201,6 +201,8 @@ try
 
       % If a specific maximum framecount is requested for end of capture/recording, set it here
       % before capture gets started:
+      % Setting the count for the slaves it not always neccessary, as the master will distribute
+      % its limit to its slaves in many common scenarios, but then "better safe than sorry".
       if maxTargetFrameCount > 0
             Screen('SetVideoCaptureParameter', grabbers(i), 'StopAtFramecount', maxTargetFrameCount);
             fprintf('Targetting stop of capture on camera %i at target framecount %i.\n', grabbers(i), maxTargetFrameCount);
@@ -238,6 +240,8 @@ try
     % while capture is already started:
     if maxTargetFrameCount < 0
         % For maximum robustness one should set the count for all slaves first, before the master:
+        % Setting the count for the slaves it not always neccessary, as the master will distribute
+        % its limit to its slaves in many common scenarios, but then "better safe than sorry".
         for grabber = grabbers(2:end)
             Screen('SetVideoCaptureParameter', grabber, 'StopAtFramecount', abs(maxTargetFrameCount));
         end
@@ -305,10 +309,9 @@ try
         fprintf('Camera %i : UsedTriggerSource = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'TriggerSource'));
     end
     
-    % Stop and shutdown all cameras:
-    % Start capture on all cameras:
+    % Stop all cameras:
     if syncmode == 0
-        % Stop one after the other:
+        % Unsynchronized operation: Stop one after the other:
         for grabber=grabbers
             Screen('StopVideoCapture', grabber);
         end

@@ -64,7 +64,6 @@ typedef struct {
     psych_mutex mutex;
     psych_condition condition;
     psych_thread recorderThread;      // Thread handle for background video recording thread.
-    int frameAvail;                   // Number of frames in videosink.
     dc1394camera_t *camera;           // Ptr to a DC1394 camera object that holds the internal state for such cams.
     dc1394video_frame_t *frame;       // Ptr to a structure which contains the most recently captured/dequeued frame.
     dc1394video_frame_t *convframe;   // Ptr to a structuve which contains bayer- or YUV- converted frames.
@@ -1336,7 +1335,6 @@ static void* PsychDCRecorderThreadMain(void* capdevToCast)
 
             // Signal availability of new video frame: This is not only important for frame fetching on the master thread,
             // but also for slave cameras recorderThreads if multi-cam synchronization is enabled:
-            capdev->frameAvail++;
             if ((rc = PsychBroadcastCondition(&(capdev->condition)))) {
                 printf("PTB-ERROR: In background video recording thread: PsychBroadcastCondition() failed [%s]!\n", strerror(rc));
             }
@@ -1764,7 +1762,6 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         if (capdev->recordingflags & 16) {
             // Yes. Setup and start recording thread.
             PsychLockMutex(&capdev->mutex);
-            capdev->frameAvail = 0;
             PsychUnlockMutex(&capdev->mutex);
             
             // Create and startup thread:
@@ -1792,27 +1789,32 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             // recorderThread might be running for this camera, so use locking:
             PsychLockMutex(&capdev->mutex);
 
-            // If this is the sync master, then its final framecount determines the target framecount
+            // If the target stopAtFramecount is undefined (== 0xffffffff) or higher than what can
+            // possibly be reached during this session due to imminent stop of capture, then adapt/set
+            // the stopAtFramecount to the maximum attainable value, which is the current framecount +
+            // whatever is left in the capture queue at the moment:
+            if (capdev->stopAtFramecount > (capdev->framecounter + capdev->nrframes_pending)) {
+                capdev->stopAtFramecount = capdev->framecounter + capdev->nrframes_pending;
+            }
+            
+            // If this is the sync master then its final framecount determines the target framecount
             // for itself and all its slaves, e.g., for pushing dequeued frames to video recording:
-            if ((capdev->syncmode & kPsychIsSyncMaster) && (capdev->stopAtFramecount == 0xffffffff)) {
+            if (capdev->syncmode & kPsychIsSyncMaster) {
                 // This is the sync-master. Its final framecount after it stopped capture determines
                 // how many frames its own recorderThread and all the slaves recorderThreads should
-                // dequeue and potentially push to the video recording pipeline:
-                capdev->stopAtFramecount = capdev->framecounter + capdev->nrframes_pending;
-                
-                // Set masters stopAtFramecount also for all slaves:
+                // dequeue and potentially push to the video recording pipeline.
+                //
+                // Set masters stopAtFramecount also for all slaves, unless the slaves already have a
+                // lower limit assigned manually or due to preceeding Screen('StopCapture'):
                 for (i = 0; i < PSYCH_MAX_CAPTUREDEVICES; i++) {
                     // Sync slave participating in this synced stop operation?
                     if ((vidcapRecordBANK[i].valid) && (i != capturehandle) && (vidcapRecordBANK[i].syncmode & kPsychIsSyncSlave)) {
                         // Yes. Assign stopAtFramecount:
                         PsychLockMutex(&vidcapRecordBANK[i].mutex);
-                        vidcapRecordBANK[i].stopAtFramecount = capdev->stopAtFramecount;
+                        if (vidcapRecordBANK[i].stopAtFramecount > capdev->stopAtFramecount) vidcapRecordBANK[i].stopAtFramecount = capdev->stopAtFramecount;
                         PsychUnlockMutex(&vidcapRecordBANK[i].mutex);
                     }
                 }
-            } // Sync slave or free-running? Then just make it stop as soon as its DMA queue is empty:
-            else if (capdev->stopAtFramecount == 0xffffffff) {
-                capdev->stopAtFramecount = capdev->framecounter + capdev->nrframes_pending;
             }
 
             if (PsychPrefStateGet_Verbosity() > 3) {
@@ -1893,9 +1895,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 
                 // Ok, thread is dead. Mark it as such:
                 capdev->recorderThread = (psych_thread) NULL;
-                
-                capdev->frameAvail = 0;
-                
+
                 // Recorder thread is in charge of dequeuing video frames from libdc1394 and pushing it
                 // into the movie recording pipeline and into our own receive slot or videosink.
                 if (PsychPrefStateGet_Verbosity() > 3) {
@@ -2626,7 +2626,33 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
                 // Latch the value into the live limit variable under lock protection:
                 PsychLockMutex(&capdev->mutex);
                 capdev->stopAtFramecount = capdev->stopAtFramecountLatch;
+
+                // If this is the sync master then its stopAtFramecount determines the target framecount
+                // for itself and all its slaves, e.g., for pushing dequeued frames to video recording:
+                if (capdev->syncmode & kPsychIsSyncMaster) {
+                    // This is the sync-master. Its final framecount after it stopped capture determines
+                    // how many frames its own recorderThread and all the slaves recorderThreads should
+                    // dequeue and potentially push to the video recording pipeline.
+                    //
+                    // Set masters stopAtFramecount also for all slaves, unless the slaves already have a
+                    // lower limit assigned manually or due to preceeding Screen('StopCapture'):
+                    for (i = 0; i < PSYCH_MAX_CAPTUREDEVICES; i++) {
+                        // Sync slave participating in this synced stop operation?
+                        if ((vidcapRecordBANK[i].valid) && (i != capturehandle) && (vidcapRecordBANK[i].syncmode & kPsychIsSyncSlave)) {
+                            // Yes. Assign stopAtFramecount:
+                            PsychLockMutex(&vidcapRecordBANK[i].mutex);
+                            if (vidcapRecordBANK[i].grabber_active && (vidcapRecordBANK[i].stopAtFramecount > capdev->stopAtFramecount)) vidcapRecordBANK[i].stopAtFramecount = capdev->stopAtFramecount;
+                            if (!vidcapRecordBANK[i].grabber_active && (vidcapRecordBANK[i].stopAtFramecountLatch > capdev->stopAtFramecount)) vidcapRecordBANK[i].stopAtFramecountLatch = capdev->stopAtFramecount;
+                            PsychUnlockMutex(&vidcapRecordBANK[i].mutex);
+                        }
+                    }
+                }
+                
                 PsychUnlockMutex(&capdev->mutex);
+                
+                if (PsychPrefStateGet_Verbosity() > 3) {
+                    printf("PTB-INFO: Video recording on device %i will stop at target framecount %i.\n", capturehandle, capdev->stopAtFramecount);
+                }
             }
         }
         
