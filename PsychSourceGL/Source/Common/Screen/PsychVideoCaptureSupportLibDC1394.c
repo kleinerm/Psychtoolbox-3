@@ -2439,8 +2439,9 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     if (capdev->pulled_frame) free(capdev->pulled_frame);
     capdev->pulled_frame = NULL;
 
-    // Update total count of dropped (or pending) frames:
-    capdev->nr_droppedframes += capdev->pulled_dropped;
+    // Update total count of dropped frames. Only makes sense if frame dropping for low latency
+    // frame fetch is enabled. Otherwise this would be just confusing:
+    capdev->nr_droppedframes += (capdev->dropframes) ? capdev->pulled_dropped : 0;
     
     // Find number of dropped frames at time of return of this frame:
     nrdropped = capdev->pulled_dropped;
