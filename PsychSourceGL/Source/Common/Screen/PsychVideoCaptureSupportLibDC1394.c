@@ -1086,7 +1086,7 @@ static psych_bool PsychDCPushFrameToMovie(PsychVidcapRecordType* capdev, psych_u
     
     // Validate number of color channels and bits per channel values for a match:
     if (numChannels != (unsigned int) capdev->actuallayers || bitdepth != ((capdev->bitdepth > 8) ? 16 : 8)) {
-        printf("PTB-ERROR: Mismatch between number of color channels %i or bpc %i of captured video frame and number of channels %i or bpc %i of video recording target buffer!\n",
+        printf("PTB-ERROR: Mismatch between number of color channels %i or bpc %i of captured video frame and number of channels %i or bpc %i of video pipeline target buffer!\n",
                capdev->actuallayers, ((capdev->bitdepth > 8) ? 16 : 8), numChannels, bitdepth);
         if (onMasterthread) {
             PsychErrorExitMsg(PsychError_system, "Encoding current captured video frame failed. Video format mismatch.");
@@ -1100,7 +1100,7 @@ static psych_bool PsychDCPushFrameToMovie(PsychVidcapRecordType* capdev, psych_u
     
     // Dimensions match?
     if (twidth != (unsigned int) capdev->width || theight > (unsigned int) capdev->height) {
-        printf("PTB-ERROR: Mismatch between size of captured video frame %i x %i and size of video recording target buffer %i x %i !\n", capdev->width, capdev->height, twidth, theight);
+        printf("PTB-ERROR: Mismatch between size of captured video frame %i x %i and size of video pipeline target buffer %i x %i !\n", capdev->width, capdev->height, twidth, theight);
         if (onMasterthread) {
             PsychErrorExitMsg(PsychError_system, "Encoding current captured video frame failed. Video frame size mismatch.");
         }
@@ -1221,7 +1221,7 @@ static unsigned char* PsychDCPreprocessFrame(PsychVidcapRecordType* capdev)
     return(input_image);
 }
 
-// Main function of the asynchronous background video recording thread:
+// Main function of the asynchronous background video recording/processing thread:
 static void* PsychDCRecorderThreadMain(void* capdevToCast)
 {
     int rc;
@@ -1268,7 +1268,7 @@ static void* PsychDCRecorderThreadMain(void* capdevToCast)
         // Success?
         if (error != DC1394_SUCCESS) {
             // Error! Abort:
-            printf("PTB-ERROR: In background video recording thread: dc1394_capture_dequeue() failed [%s]! Aborting recording thread.\n", dc1394_error_get_string(error));
+            printf("PTB-ERROR: In background video processing thread: dc1394_capture_dequeue() failed [%s]! Aborting processing thread.\n", dc1394_error_get_string(error));
             break;
         }
 
@@ -1337,12 +1337,12 @@ static void* PsychDCRecorderThreadMain(void* capdevToCast)
             // Signal availability of new video frame: This is not only important for frame fetching on the master thread,
             // but also for slave cameras recorderThreads if multi-cam synchronization is enabled:
             if ((rc = PsychBroadcastCondition(&(capdev->condition)))) {
-                printf("PTB-ERROR: In background video recording thread: PsychBroadcastCondition() failed [%s]!\n", strerror(rc));
+                printf("PTB-ERROR: In background video processing thread: PsychBroadcastCondition() failed [%s]!\n", strerror(rc));
             }
 
             // Requeue the recently dequeued and no longer needed buffer:
             if (dc1394_capture_enqueue(capdev->camera, capdev->frame) != DC1394_SUCCESS) {
-                printf("PTB-ERROR: Requeuing of used up video frame buffer in video recorder thread failed! Aborting recorder thread.\n");
+                printf("PTB-ERROR: Requeuing of used up video frame buffer in video recorder/processing thread failed! Aborting recorder thread.\n");
                 break;
             }
 
@@ -1772,7 +1772,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             }
             else {
                 if (PsychPrefStateGet_Verbosity() > 2) {
-                    printf("PTB-INFO: GStreamer background video processing started on device %i into moviefile '%s'.\n", capturehandle, capdev->targetmoviefilename);
+                    printf("PTB-INFO: GStreamer background video processing started on device %i.\n", capturehandle);
                 }
             }
         }
@@ -1837,7 +1837,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             }
 
             if (PsychPrefStateGet_Verbosity() > 3) {
-                printf("PTB-INFO: Video recording on device %i will stop at target framecount %i.\n", capturehandle, capdev->stopAtFramecount);
+                printf("PTB-INFO: Video capture on device %i will stop at target framecount %i.\n", capturehandle, capdev->stopAtFramecount);
             }
             
             // Firewire bus-sync via bus-wide broadcast of iso-on command requested?
@@ -1922,14 +1922,15 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 }
             }
             
-            // Video recording active? Then we should stop it now:
+            // Video recording/GStreamer processing active? Then we should stop it now:
             if (capdev->moviehandle > -1) {
-                if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Stopping video recording on device %i and closing moviefile '%s'\n", capturehandle, capdev->targetmoviefilename);
+                if (capdev->recording_active && (PsychPrefStateGet_Verbosity() > 2)) printf("PTB-INFO: Stopping video recording on device %i and closing moviefile '%s'\n", capturehandle, capdev->targetmoviefilename);
+                if (!capdev->recording_active && (PsychPrefStateGet_Verbosity() > 2)) printf("PTB-INFO: Stopping GStreamer video background processing on device %i.\n", capturehandle);
                 
                 // Flush and close video encoding pipeline, finalize and close movie file:
                 if (PsychFinalizeNewMovieFile(capdev->moviehandle) == 0) {
                     capdev->moviehandle = -1;
-                    PsychErrorExitMsg(PsychError_user, "Stop of video recording failed.");
+                    PsychErrorExitMsg(PsychError_user, "Stop of video recording/processing failed.");
                 }
 
                 // Done with recording:
@@ -2192,7 +2193,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
             else {
                 // Pulling from GStreamer requested:
                 if (capdev->moviehandle < 0) {
-                    PsychErrorExitMsg(PsychError_system, "Tried to pull captured video frame from ptbvideosink, but GStreamer based video recording not active?!?");
+                    PsychErrorExitMsg(PsychError_system, "Tried to pull captured video frame from ptbvideosink, but GStreamer based video processing not active?!?");
                 }
                 
                 // Check what the recorderThread has for us:
@@ -2214,7 +2215,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
                     // ... blocking wait. Release mutex and wait for new frame signal from recorderThread, with a timeout of 5 secs:
                     if ((rc = PsychTimedWaitCondition(&(capdev->condition), &(capdev->mutex), 5))) {
                         // Failed:
-                        printf("PTB-ERROR: Waiting on video recorder thread to deliver new video frame in ptbvideosink failed [%s]. Aborting wait.\n", strerror(rc));
+                        printf("PTB-ERROR: Waiting on video processing thread to deliver new video frame in ptbvideosink failed [%s]. Aborting wait.\n", strerror(rc));
                         break;
                     }
                 }
@@ -2670,7 +2671,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
                 PsychUnlockMutex(&capdev->mutex);
                 
                 if (PsychPrefStateGet_Verbosity() > 3) {
-                    printf("PTB-INFO: Video recording on device %i will stop at target framecount %i.\n", capturehandle, capdev->stopAtFramecount);
+                    printf("PTB-INFO: Video %s on device %i will stop at target framecount %i.\n", (capdev->recording_active) ? "recording" : "capture", capturehandle, capdev->stopAtFramecount);
                 }
             }
         }
