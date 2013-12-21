@@ -72,6 +72,12 @@ else
     codec = [];
 end
 
+% Optional processing string for dropframes = 0 && captureFlags & 16 capture/recording:
+processingString = '';
+
+% Example processingString to apply an image warping effect:
+%processingString = 'ffmpegcolorspace ! warptv ! ffmpegcolorspace ! capsfilter caps="video/x-raw-rgb, bpp=(int)24, depth=(int)24, endianess=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255"';
+
 % Set noMaster = 1 if all cams are externally hardware triggered slaves, 0 otherwise:
 noMaster = 1;
 
@@ -206,6 +212,11 @@ try
       if maxTargetFrameCount > 0
             Screen('SetVideoCaptureParameter', grabbers(i), 'StopAtFramecount', maxTargetFrameCount);
             fprintf('Targetting stop of capture on camera %i at target framecount %i.\n', grabbers(i), maxTargetFrameCount);
+      end
+
+      % Assign GStreamer post processing string, if any:
+      if ~isempty(processingString)
+        Screen('SetVideoCaptureParameter', grabbers(i), sprintf('SetGStreamerProcessingPipeline=%s', processingString));
       end
     end
 
@@ -382,6 +393,9 @@ try
             end
         end
     end
+
+    % Close all textures explicitely to avoid "many open textures" warning:
+    Screen('Close');
     
     % Close all windows and release all remaining display resources:
     Screen('CloseAll');

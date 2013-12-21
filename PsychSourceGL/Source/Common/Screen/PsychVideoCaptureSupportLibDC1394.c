@@ -108,6 +108,7 @@ typedef struct {
     int moviehandle;                  // Handle of movie file to be written during video recording.
     unsigned int recordingflags;      // Flags used for recording and similar activities.
     unsigned int specialFlags;        // Additional flags set via 'SetCaptureParameter' functions.
+    char* processingString;           // Optional GStreamer video processing string, NULL if undefined.
 } PsychVidcapRecordType;
 
 static PsychVidcapRecordType vidcapRecordBANK[PSYCH_MAX_CAPTUREDEVICES];
@@ -250,6 +251,9 @@ void PsychDCCloseVideoCaptureDevice(int capturehandle)
     if (capdev->targetmoviefilename) free(capdev->targetmoviefilename);
     capdev->targetmoviefilename = NULL;
 
+    if (capdev->processingString) free(capdev->processingString);
+    capdev->processingString = NULL;
+    
     PsychDestroyMutex(&capdev->mutex);
     PsychDestroyCondition(&capdev->condition);
 
@@ -1417,6 +1421,8 @@ static void PsychDCEnableBusBroadcast(PsychVidcapRecordType* capdev, psych_bool 
  */
 int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime)
 {
+    char feedbackString[8192];
+    char processingString[8192];
     int dropped = 0;
     float framerate = 0;
     dc1394speed_t speed;
@@ -1732,6 +1738,11 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             printf("PTB-INFO: Capture started on device %i - Width x Height = %i x %i - Framerate: %f fps, bpc = %i.\n", capturehandle, capdev->width, capdev->height, capdev->fps, capdev->bitdepth);
         }
 
+        // Initialize and potentially assign usercode provided GStreamer pipeline processing string:
+        processingString[0] = 0;
+        processingString[sizeof(processingString) - 1] = 0;
+        if (capdev->processingString) strncpy(&(processingString[0]), capdev->processingString, sizeof(processingString) - 1);
+
         // Now that capture is successfully started, do we also want to record video to a file?
         if (capdev->recording_active) {
             // Yes. Setup movie writing:
@@ -1739,7 +1750,8 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 // Multi-threaded video recording/processing and due to dropframes = FALSE, video data is enqeued by recorderThread
                 // into GStreamer pipeline and then processed and dequeued from our special appsink via the following snippet of
                 // pipeline:
-                char feedbackString[] = "tee name=ptbframediverter ! appsink name=ptbvideoappsink sync=false async=false enable-last-buffer=false emit-signals=false ptbframediverter. ! queue ! ";
+                sprintf(feedbackString, "tee name=ptbframediverter ! %s%s appsink name=ptbvideoappsink sync=false async=false enable-last-buffer=false emit-signals=false ptbframediverter. ! queue ! ", processingString,
+                        (strlen(processingString) > 0) ? " !" : "");
                 capdev->moviehandle = PsychCreateNewMovieFile(capdev->targetmoviefilename, capdev->width, capdev->height, (double) framerate, capdev->actuallayers, ((capdev->bitdepth > 8) ? 16 : 8), capdev->codecSpec,
                                                               (char*) &(feedbackString[0]));
             }
@@ -1762,7 +1774,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             // Multi-threaded video processing and due to dropframes = FALSE, video data is enqeued by recorderThread
             // into GStreamer pipeline and then processed and dequeued from our special appsink via the following snippet of
             // pipeline:
-            char feedbackString[] = "appsink name=ptbvideoappsink sync=false async=false enable-last-buffer=false emit-signals=false";
+            sprintf(feedbackString, "%s%s appsink name=ptbvideoappsink sync=false async=false enable-last-buffer=false emit-signals=false", processingString, (strlen(processingString) > 0) ? " !" : "");
             capdev->moviehandle = PsychCreateNewMovieFile("", capdev->width, capdev->height, (double) framerate, capdev->actuallayers, ((capdev->bitdepth > 8) ? 16 : 8),
                                                           ((capdev->codecSpec) && (strlen(capdev->codecSpec) > 0)) ? capdev->codecSpec : "UseVFR", (char*) &(feedbackString[0]));
 
@@ -2553,6 +2565,26 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         return(0);
     }
 
+    // Set an optional GStreamer pipeline processing string:
+    if (strstr(pname, "SetGStreamerProcessingPipeline=")) {
+        // Find start of string and assign to pname:
+        pname = strstr(pname, "=");
+        pname++;
+
+        // Release old string, if any:
+        if (capdev->processingString) free(capdev->processingString);
+        capdev->processingString = NULL;
+        
+        // Assign new string:
+        capdev->processingString = strdup(pname);
+        
+        if (PsychPrefStateGet_Verbosity() > 2) {
+            printf("PTB-INFO: Assigned GStreamer pipeline spec video processing string for device %i as '%s'.\n", capturehandle, pname);
+        }
+        
+        return(0);
+    }
+    
     if (strcmp(pname, "PrintParameters")==0) {
         // Special command: List and print all features...
         printf("PTB-INFO: The camera provides the following information and featureset:\n");
