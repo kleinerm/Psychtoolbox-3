@@ -250,7 +250,8 @@ try
         Screen('SetVideoCaptureParameter', grabbers(1), 'StopAtFramecount', abs(maxTargetFrameCount));
         fprintf('Targetting stop of capture at target framecount %i.\n', abs(maxTargetFrameCount));
     end
-    
+
+    capturestopped = 0;
     dstRect = [];
     count = 0;
     oldpts = zeros(size(grabbers));
@@ -263,7 +264,16 @@ try
     % if there isn't any master cam or if no recording is requested:
     while dropframes || noMaster || ((GetSecs - t) < 120)
         if KbCheck
-            break;
+            if ~capturestopped
+                capturestopped = 1;
+                maxTargetFrameCount = Screen('SetVideoCaptureParameter', grabbers(1), 'GetFutureMaxFramecount');
+                fprintf('Logically stopping capture on master by setting stop frame count to current maximum framecount %i!\n', maxTargetFrameCount);
+                Screen('SetVideoCaptureParameter', grabbers(1), 'StopAtFramecount', maxTargetFrameCount);
+                fprintf('Capture on master scheduled to stop.\n');
+                KbReleaseWait;
+            else
+                break;
+            end
         end
         
         for i=1:length(grabbers)
@@ -298,6 +308,7 @@ try
             end
             count = count + 1;
         end
+        % WaitSecs('YieldSecs', 0.030);
     end
     
     telapsed = GetSecs - t;
