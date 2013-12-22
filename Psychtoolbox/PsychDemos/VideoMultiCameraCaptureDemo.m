@@ -362,6 +362,7 @@ try
     for grabber=grabbers
       fprintf('Camera %i : Final framecount = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'GetCurrentFramecount'));
       fprintf('Camera %i : Possible framecount = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'GetFutureMaxFramecount'));
+      fprintf('Camera %i : Corrupted frames count = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'GetCorruptFramecount'));
       Screen('CloseVideoCapture', grabber);
     end
 

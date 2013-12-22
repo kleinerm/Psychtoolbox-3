@@ -96,6 +96,7 @@ typedef struct {
     int current_dropped;              // Dropped count for this fetch cycle...
     int pulled_dropped;               // -""- by master thread.
     int nr_droppedframes;             // Counter for dropped frames.
+    int corrupt_count;                // Counter for corrupt frames, as detected by libdc1394 or cameras SFF functions.
     int frame_ready;                  // Signals availability of new frames for conversion into GL-Texture.
     int grabber_active;               // Grabber running?
     PsychRectType roirect;            // Region of interest rectangle - denotes subarea of full video capture area.
@@ -1175,6 +1176,12 @@ static unsigned char* PsychDCPreprocessFrame(PsychVidcapRecordType* capdev)
     // input_image points to the image buffer in our cam:
     unsigned char* input_image = (unsigned char*) (capdev->frame->image);
 
+    // Check if frame is corrupt: As of year 2013, supported on USB and MacOSX, no-ops on Linux and Windows.
+    if (dc1394_capture_is_frame_corrupt(capdev->camera, capdev->frame)) {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Corrupt video frame with framecount %i received from capture device %i.\n", capdev->framecounter, capdev->capturehandle);
+        capdev->corrupt_count++;
+    }
+
     // Do we want to do something with the image data and have a scratch buffer for color conversion alloc'ed?
     if (capdev->convframe) {
         // Yes. Perform color-conversion YUV->RGB from cameras DMA buffer
@@ -1968,6 +1975,11 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 if ((dropped = capdev->nr_droppedframes) > 0) {
                     printf("PTB-INFO: Video capture dropped %i frames on device %i to keep capture running in sync with realtime.\n", dropped, capturehandle);
                 }
+
+                // Output count of corrupt frames:
+                if (capdev->corrupt_count > 0) {
+                    printf("PTB-WARNING: Video capture detected %i corrupt frames on device %i since opening the capture device.\n", capdev->corrupt_count, capturehandle);
+                }
                 
                 printf("PTB-INFO: Total number of captured frames since this camera %i was opened: %i\n", capturehandle, capdev->framecounter);
                 if (capdev->nrframes > 0) capdev->avg_decompresstime/= (double) capdev->nrframes;
@@ -2586,12 +2598,22 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
     }
     
     if (strcmp(pname, "PrintParameters")==0) {
+        dc1394featureset_t camfeatures;
+        
         // Special command: List and print all features...
         printf("PTB-INFO: The camera provides the following information and featureset:\n");
         if (dc1394_camera_print_info(capdev->camera, stdout) !=DC1394_SUCCESS) {
             printf("PTB-WARNING: Unable to query general information about camera.\n");
         }
 
+        if (dc1394_feature_get_all(capdev->camera, &camfeatures) != DC1394_SUCCESS) {
+            printf("PTB-WARNING: Unable to query features of camera.\n");
+        }
+        else {
+            printf("\n");
+            dc1394_feature_print_all(&camfeatures, stdout);
+        }
+        
         return(0);
     }
 
@@ -2643,6 +2665,14 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         return(oldvalue);
     }
 
+    // Get current count of corrupted frames:
+    if (strcmp(pname, "GetCorruptFramecount")==0) {
+        PsychLockMutex(&capdev->mutex);
+        PsychCopyOutDoubleArg(1, FALSE, (double) capdev->corrupt_count);
+        PsychUnlockMutex(&capdev->mutex);
+        return(0);
+    }
+    
     // Get current framecount of already captured and dequeued frames:
     if (strcmp(pname, "GetCurrentFramecount")==0) {
         PsychLockMutex(&capdev->mutex);
@@ -2931,6 +2961,11 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         feature = DC1394_FEATURE_SHARPNESS;
     }
 
+    if (strstr(pname, "Hue")!=0) {
+        assigned = true;
+        feature = DC1394_FEATURE_HUE;
+    }
+    
     if (strstr(pname, "Saturation")!=0) {
         assigned = true;
         feature = DC1394_FEATURE_SATURATION;
@@ -2941,6 +2976,56 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         feature = DC1394_FEATURE_GAMMA;
     }
 
+    if (strstr(pname, "Iris")!=0) {
+        assigned = true;
+        feature = DC1394_FEATURE_IRIS;
+    }
+
+    if (strstr(pname, "Focus")!=0) {
+        assigned = true;
+        feature = DC1394_FEATURE_FOCUS;
+    }
+
+    if (strstr(pname, "Zoom")!=0) {
+        assigned = true;
+        feature = DC1394_FEATURE_ZOOM;
+    }
+    
+    if (strstr(pname, "Pan")!=0) {
+        assigned = true;
+        feature = DC1394_FEATURE_PAN;
+    }
+    
+    if (strstr(pname, "Tilt")!=0) {
+        assigned = true;
+        feature = DC1394_FEATURE_TILT;
+    }
+
+    if (strstr(pname, "OpticalFilter")!=0) {
+        assigned = true;
+        feature = DC1394_FEATURE_OPTICAL_FILTER;
+    }
+    
+    if (strstr(pname, "CaptureSize")!=0) {
+        assigned = true;
+        feature = DC1394_FEATURE_CAPTURE_SIZE;
+    }
+    
+    if (strstr(pname, "CaptureQuality")!=0) {
+        assigned = true;
+        feature = DC1394_FEATURE_CAPTURE_QUALITY;
+    }
+
+    if (strstr(pname, "FrameRate")!=0) {
+        assigned = true;
+        feature = DC1394_FEATURE_FRAME_RATE;
+    }
+
+    if (strstr(pname, "TriggerDelay")!=0) {
+        assigned = true;
+        feature = DC1394_FEATURE_TRIGGER_DELAY;
+    }
+    
     // Check if feature is present on this camera:
     if (dc1394_feature_is_present(capdev->camera, feature, &present)!=DC1394_SUCCESS) {
         if(PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to query presence of feature %s on camera %i! Ignored.\n", pname, capturehandle);
