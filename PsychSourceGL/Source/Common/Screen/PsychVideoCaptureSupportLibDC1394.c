@@ -2935,7 +2935,158 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
             return(oldvalue);
         }
     }
+
+    // Get/Set GPIO pins on camera, if any:
+    if (strstr(pname, "PIO")!=0) {
+        unsigned int pio;
+        
+        err = dc1394_pio_get(capdev->camera, &pio);
+        if (err) return(DBL_MAX); // Query failed.
+
+        if (value != DBL_MAX) {
+            err = dc1394_pio_set(capdev->camera, (uint32_t) intval);
+            if (err) PsychErrorExitMsg(PsychError_system, "Failed to set new values on GPIO pins on camera!");
+        }
+
+        // Return old value:
+        return(pio);
+    }
     
+    // Get/Set if 1394B mode aka Firewire-800+ mode is active, or if legacy Firewire-400 mode is active on this camera:
+    if (strstr(pname, "1394BModeActive")!=0) {
+        dc1394operation_mode_t opmode;
+        err = dc1394_video_get_operation_mode(capdev->camera, &opmode);
+        if (err) return(0); // Query failed. Assume legacy mode is active.
+
+        if (value != DBL_MAX) {
+            err = dc1394_video_set_operation_mode(capdev->camera, (intval > 0) ? DC1394_OPERATION_MODE_1394B : DC1394_OPERATION_MODE_LEGACY);
+            if (err) PsychErrorExitMsg(PsychError_system, "Failed to switch between 1394A and 1394B operation mode!");
+        }
+
+        return((opmode == DC1394_OPERATION_MODE_1394B) ? 1 : 0);
+    }
+
+    // Get/Set firewire ISO bus speed:
+    if (strstr(pname, "ISOSpeed")!=0) {
+        dc1394speed_t isospeed;
+        
+        err = dc1394_video_get_iso_speed(capdev->camera, &isospeed);
+        if (err) return(DBL_MAX); // Query failed.
+
+        if (value != DBL_MAX) {
+            err = dc1394_video_set_iso_speed(capdev->camera, ((int) log2((double) (intval / 100))) + DC1394_ISO_SPEED_100);
+            if (err) PsychErrorExitMsg(PsychError_system, "Failed to set new firewire ISO bus speed on camera!");
+        }
+        
+        // Return old value: Offset 0 = 100 MBIT, 1 = 200, 2 = 400, ...
+        return((1 << (isospeed - DC1394_ISO_SPEED_100)) * 100);
+    }
+
+    // Get current count of firewire cycle timer and corresponding system time:
+    if (strstr(pname, "GetCycleTimer")!=0) {
+        unsigned int cycletimer;
+        uint64_t systemtime;
+        
+        err = dc1394_read_cycle_timer(capdev->camera, &cycletimer, &systemtime);
+        if (err && (err != DC1394_FUNCTION_NOT_SUPPORTED)) PsychErrorExitMsg(PsychError_system, "Failed to query cycle timer!");
+        if (err == DC1394_FUNCTION_NOT_SUPPORTED) return(oldvalue);
+        
+        PsychCopyOutDoubleArg(1, FALSE, (double) cycletimer);
+        // System time is CLOCK_REALTIME time in microseconds, so convert to GetSecs() seconds:
+        PsychCopyOutDoubleArg(2, FALSE, ((double) ((psych_uint64) systemtime)) / 1000000.0f);
+        
+        return(0);
+    }
+
+    // Initiate reset of the firewire or USB bus to which a camera is connected:
+    if (strstr(pname, "ResetBus")!=0) {
+        err = dc1394_reset_bus(capdev->camera);
+        if (err) PsychErrorExitMsg(PsychError_system, "Failed to reset bus!");
+        return(0);
+    }
+
+    // Initiate reset of a camera: This is not a power-cycle.
+    if (strstr(pname, "ResetCamera")!=0) {
+        err = dc1394_camera_reset(capdev->camera);
+        if (err) PsychErrorExitMsg(PsychError_system, "Failed to reset camera!");
+        return(0);
+    }
+
+    if (strstr(pname, "Temperature")!=0) {
+        err = dc1394_feature_is_present(capdev->camera, DC1394_FEATURE_TEMPERATURE, &present);
+        if ((err == DC1394_SUCCESS) && present) {
+            // Retrieve and return current settings:
+            unsigned int target_temperature, temperature;
+            err = dc1394_feature_temperature_get_value(capdev->camera, &target_temperature, &temperature);
+            if (err) PsychErrorExitMsg(PsychError_system, "Failed to get target temperature and current temperature!");                                       
+            PsychCopyOutDoubleArg(2, FALSE, temperature);
+
+            // Set new target temperature:
+            if (value != DBL_MAX) {
+                err = dc1394_feature_temperature_set_value(capdev->camera, intval);
+                if (err) PsychErrorExitMsg(PsychError_system, "Failed to set target temperature!");
+            }
+            
+            return((double) target_temperature);
+        }
+        else {
+            // Feature unsupported:
+            return(oldvalue);
+        }
+    }
+
+    if (strstr(pname, "WhiteBalance")!=0) {
+        assigned = true;
+        err = dc1394_feature_is_present(capdev->camera, DC1394_FEATURE_WHITE_BALANCE, &present);
+        if ((err == DC1394_SUCCESS) && present) {
+            // Retrieve and return current settings:
+            unsigned int ub, vr;
+            err = dc1394_feature_whitebalance_get_value(capdev->camera, &ub, &vr);
+            if (err) PsychErrorExitMsg(PsychError_system, "Failed to get white balance U/B and V/R values!");            
+            PsychCopyOutDoubleArg(2, FALSE, vr);
+            
+            // Set new white balance values:
+            if (value != DBL_MAX) {
+                PsychCopyInIntegerArg(4, TRUE, &vr);
+                err = dc1394_feature_whitebalance_set_value(capdev->camera, intval, vr);
+                if (err) PsychErrorExitMsg(PsychError_system, "Failed to set white balance!");
+            }
+
+            return((double) ub);
+        }
+        else {
+            // Feature unsupported:
+            return(oldvalue);
+        }
+    }
+
+    if (strstr(pname, "WhiteShading")!=0) {
+        assigned = true;
+        err = dc1394_feature_is_present(capdev->camera, DC1394_FEATURE_WHITE_SHADING, &present);
+        if ((err == DC1394_SUCCESS) && present) {
+            // Retrieve and return current settings:
+            unsigned int rv, gv, bv;
+            err = dc1394_feature_whiteshading_get_value(capdev->camera, &rv, &gv, &bv);
+            if (err) PsychErrorExitMsg(PsychError_system, "Failed to get white shading R, G, B values!");            
+            PsychCopyOutDoubleArg(2, FALSE, gv);
+            PsychCopyOutDoubleArg(2, FALSE, bv);
+            
+            // Set new white shading values:
+            if (value != DBL_MAX) {
+                PsychCopyInIntegerArg(4, TRUE, &gv);
+                PsychCopyInIntegerArg(5, TRUE, &bv);
+                err = dc1394_feature_whiteshading_set_value(capdev->camera, intval, gv, bv);
+                if (err) PsychErrorExitMsg(PsychError_system, "Failed to set white shading!");
+            }
+
+            return((double) rv);
+        }
+        else {
+            // Feature unsupported:
+            return(oldvalue);
+        }
+    }
+
     if (strstr(pname, "Brightness")!=0) {
         assigned = true;
         feature = DC1394_FEATURE_BRIGHTNESS;

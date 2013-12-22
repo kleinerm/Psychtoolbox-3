@@ -136,6 +136,14 @@ try
       % Open i'th camera:
       grabbers(i) = Screen('OpenVideoCapture', win(i), deviceIds(i), roi, depth, 64, [], codec, captureFlags, [], 8); %#ok<AGROW>
 
+      if i == 1
+        % Reset firewire bus for this camera:
+        % Screen('SetVideoCaptureParameter', grabbers(i), 'ResetBus');
+
+        % Reset this camera:
+        %Screen('SetVideoCaptureParameter', grabbers(i), 'ResetCamera');
+      end
+
       % Multi-camera sync mode requested?
       if syncmode > 0
         if i == 1
@@ -174,15 +182,34 @@ try
       fprintf('Camera %i : TriggerSources = ', grabbers(i)); disp(Screen('SetVideoCaptureParameter', grabbers(i), 'GetTriggerSources'));
       
       % Configure i'th camera:
-      %brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness',383)
-      %exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure',130)
-      %gain = Screen('SetVideoCaptureParameter', grabber, 'Gain')
-      %gamma = Screen('SetVideoCaptureParameter', grabber, 'Gamma')
-      %shutter = Screen('SetVideoCaptureParameter', grabber, 'Shutter', 7)
-      %vendor = Screen('SetVideoCaptureParameter', grabber, 'GetVendorname')
-      %model  = Screen('SetVideoCaptureParameter', grabber, 'GetModelname')
-      %fps  = Screen('SetVideoCaptureParameter', grabber, 'GetFramerate')
-      %roi  = Screen('SetVideoCaptureParameter', grabber, 'GetROI')
+      %brightness = Screen('SetVideoCaptureParameter',  grabbers(i), 'Brightness',383)
+      %exposure = Screen('SetVideoCaptureParameter',  grabbers(i), 'Exposure',130)
+      %gain = Screen('SetVideoCaptureParameter',  grabbers(i), 'Gain')
+      %gamma = Screen('SetVideoCaptureParameter',  grabbers(i), 'Gamma')
+      %shutter = Screen('SetVideoCaptureParameter',  grabbers(i), 'Shutter', 7)
+      %vendor = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetVendorname')
+      %model  = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetModelname')
+      %fps  = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetFramerate')
+      %roi  = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetROI')
+
+      %bmode = Screen('SetVideoCaptureParameter',  grabbers(i), '1394BModeActive', 0)
+      %isospeed = Screen('SetVideoCaptureParameter',  grabbers(i), 'ISOSpeed', 400)
+      
+      %pio = Screen('SetVideoCaptureParameter',  grabbers(i), 'PIO', 1)
+      %pio = Screen('SetVideoCaptureParameter',  grabbers(i), 'PIO')
+      
+      %[targetTemperature, currentTemperature] = Screen('SetVideoCaptureParameter',  grabbers(i), 'Temperature', 123)
+      %[u,v] = Screen('SetVideoCaptureParameter',  grabbers(i), 'WhiteBalance', 161, 116)
+      %[u,v] = Screen('SetVideoCaptureParameter',  grabbers(i), 'WhiteBalance')
+      
+      %[wr, wg, wb] = Screen('SetVideoCaptureParameter',  grabbers(i), 'WhiteShading')
+
+      % Measure firewire bus cycles for fun and profit :-)
+      [cycleCount1, cycleSystemTime1] = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetCycleTimer');
+      WaitSecs(0.1);
+      [cycleCount2, cycleSystemTime2] = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetCycleTimer');
+      fprintf('Camera %i: Bus runs at %f cycles / second.\n', grabbers(i), (cycleCount2 - cycleCount1) / (cycleSystemTime2 - cycleSystemTime1));
+
       Screen('SetVideoCaptureParameter', grabbers(i), 'PrintParameters')
 
       % Select convMode as conversion mode:

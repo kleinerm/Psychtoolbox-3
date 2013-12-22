@@ -36,7 +36,9 @@ static char synopsisString[] =  "Set video capture parameter 'parameterName' on 
                                 "unsupported 'parameterName', your request will be silently ignored, except that the "
                                 "return value is set to DBL_MAX - a very high number. The following settings are "
                                 "currently available on devices that support them: 'Brightness', 'Gain', "
-                                "'Exposure', 'Shutter', 'Sharpness', 'Saturation', 'Gamma'. The special setting "
+                                "'Exposure', 'Shutter', 'Sharpness', 'Hue', 'Saturation', 'Gamma', 'Iris', 'Focus', "
+                                "'Zoom', 'Pan', 'Tilt', 'OpticalFilter', 'CaptureSize', 'CaptureQuality', 'FrameRate', "
+                                "'TriggerDelay'. The special setting "
                                 "'PrintParameters' prints all features to the command window. 'GetVendorname' and 'GetModelname' "
                                 "return the name of the device vendor, resp. the device model name. 'GetROI' returns "
                                 "the capture region of interest (ROI), which can deviate from the ROI requested in "
@@ -156,7 +158,23 @@ static char synopsisString[] =  "Set video capture parameter 'parameterName' on 
                                 "are vendor specific modes.\n"
                                 "'TriggerPolarity' 0 = Active low / falling edge. 1 = Active high / rising edge = Inverted polarity.\n"
                                 "'TriggerSource' Which source input port to use: Sources 0 to 3 are available, corresponding to ports 0 - 3.\n"
-                                "'GetTriggerSources' Returns a list of supported source ports for given camera.\n";
+                                "'GetTriggerSources' Returns a list of supported source ports for given camera.\n"
+                                "'PIO' Set or get general purpose programmable IO pins on camera. Accepts/returns a 32-Bit integer value to control "
+                                "up to 32 pins. The value is provided and expected as a double, ie. a uint32 cast from/to a double.\n"
+                                "'1394BModeActive' Set or get if Firewire-800 mode aka 1394B mode is active: 1 = Activate, 0 = Use default classic mode.\n"
+                                "'ISOSpeed' Get/Set Firewire ISO bus speed: Valid values are 100, 200, 400, 800, 1600, 3200 MBit/s. Default is 400 MBit, "
+                                "higher values require '1394BModeActive' to be set to 1 - and a camera and firewire controller which support 1394B mode "
+                                "and higher speeds than 400 MBit/s.\n"
+                                "'GetCycleTimer' Returns the current 32-Bit firewire bus cycle count in return argument 1 and the GetSecs() time at which "
+                                "that count was queried in the second return argument.\n"
+                                "'ResetBus' Resets the firewire or USB bus to which a camera is attached.\n"
+                                "'ResetCamera' Resets the camera.\n"
+                                "'Temperature' Retrieves and/or sets the target temperature (returned in 1st argument). Returns current temperature in "
+                                "2nd return argument.\n"
+                                "'WhiteBalance' Get/Set white balance settings: 1st argument is U (in YUV mode) or Blue value (in RGB mode). 2nd argument "
+                                "is V (in YUV mode) or Red (in RGB mode). E.g., [u, v] = Screen('...', camera, 'WhiteBalance' [, newU, newV]);\n"
+                                "'WhiteShading' Sets or gets white shading correction point: In/Out values 1, 2 and 3 correspond to Red, Green and Blue, e.g., "
+                                "[r,g,b] = Screen('...', camera, 'WhiteShading' [, newR, newG, newB]);\n";
 
 static char seeAlsoString[] = "OpenVideoCapture CloseVideoCapture StartVideoCapture StopVideoCapture GetCapturedImage";
 	 
@@ -171,9 +189,9 @@ PsychError SCREENSetVideoCaptureParameter(void)
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
-    PsychErrorExit(PsychCapNumInputArgs(3));            // Max. 3 input args.
+    PsychErrorExit(PsychCapNumInputArgs(5));            // Max. 5 input args.
     PsychErrorExit(PsychRequireNumInputArgs(2));        // Min. 2 input args required.
-    PsychErrorExit(PsychCapNumOutputArgs(1));           // One output arg.
+    PsychErrorExit(PsychCapNumOutputArgs(3));           // Up to 3 output args.
     
     // Get the device handle:
     PsychCopyInIntegerArg(1, TRUE, &capturehandle);
