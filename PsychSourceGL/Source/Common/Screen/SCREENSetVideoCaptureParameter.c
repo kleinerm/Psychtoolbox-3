@@ -165,8 +165,10 @@ static char synopsisString[] =  "Set video capture parameter 'parameterName' on 
                                 "'ISOSpeed' Get/Set Firewire ISO bus speed: Valid values are 100, 200, 400, 800, 1600, 3200 MBit/s. Default is 400 MBit, "
                                 "higher values require '1394BModeActive' to be set to 1 - and a camera and firewire controller which support 1394B mode "
                                 "and higher speeds than 400 MBit/s.\n"
-                                "'GetCycleTimer' Returns the current 32-Bit firewire bus cycle count in return argument 1 and the GetSecs() time at which "
-                                "that count was queried in the second return argument.\n"
+                                "'GetCycleTimer' Returns the current decoded 32-Bit firewire bus cycle count in return argument 1 and the GetSecs() time at which "
+                                "that count was queried in the second return argument: [firewireSeconds, GetSecsSeconds, busSeconds, busIsoCycles, busTicks]. "
+                                "A busIsoCycles takes 125 usecs, busTicks are 1/24.576 Mhz on top of that. The combination of busSeconds, busIsoCycles and "
+                                "busTicks is decoded into firewireSeconds for your convenience. Firewire bus time wraps to zero every 128 seconds.\n"
                                 "'ResetBus' Resets the firewire or USB bus to which a camera is attached.\n"
                                 "'ResetCamera' Resets the camera.\n"
                                 "'Temperature' Retrieves and/or sets the target temperature (returned in 1st argument). Returns current temperature in "
@@ -174,7 +176,15 @@ static char synopsisString[] =  "Set video capture parameter 'parameterName' on 
                                 "'WhiteBalance' Get/Set white balance settings: 1st argument is U (in YUV mode) or Blue value (in RGB mode). 2nd argument "
                                 "is V (in YUV mode) or Red (in RGB mode). E.g., [u, v] = Screen('...', camera, 'WhiteBalance' [, newU, newV]);\n"
                                 "'WhiteShading' Sets or gets white shading correction point: In/Out values 1, 2 and 3 correspond to Red, Green and Blue, e.g., "
-                                "[r,g,b] = Screen('...', camera, 'WhiteShading' [, newR, newG, newB]);\n";
+                                "[r,g,b] = Screen('...', camera, 'WhiteShading' [, newR, newG, newB]);\n"
+                                "'BaslerChecksumEnable' Enable extra CRC checksumming on Basler cameras, to detect corrupt video frames. Compute intense!\n"
+                                "'BaslerFrameTimestampEnable' Use Basler cameras builtin timestamping of start of image exposure to compute extra precise "
+                                "capture timestamps. By default, the time of reception of a frame in the host computer is timestamped. Doesn't work on many "
+                                "Basler cameras though.\n"
+                                "'BaslerFrameCounterEnable' Retrieve framecounter values from Basler camera itself instead of using our own software frame "
+                                "counter. Theoretically extra robust. In practice only useful if your Basler camera allows software controlled power-cycling, "
+                                "which some Basler cameras do not allow. If the camera doesn't allow power-cycling then use of this feature will cause a hard "
+                                "hang of Psychtoolbox!\n";
 
 static char seeAlsoString[] = "OpenVideoCapture CloseVideoCapture StartVideoCapture StopVideoCapture GetCapturedImage";
 	 
@@ -191,7 +201,7 @@ PsychError SCREENSetVideoCaptureParameter(void)
 
     PsychErrorExit(PsychCapNumInputArgs(5));            // Max. 5 input args.
     PsychErrorExit(PsychRequireNumInputArgs(2));        // Min. 2 input args required.
-    PsychErrorExit(PsychCapNumOutputArgs(3));           // Up to 3 output args.
+    PsychErrorExit(PsychCapNumOutputArgs(5));           // Up to 5 output args.
     
     // Get the device handle:
     PsychCopyInIntegerArg(1, TRUE, &capturehandle);

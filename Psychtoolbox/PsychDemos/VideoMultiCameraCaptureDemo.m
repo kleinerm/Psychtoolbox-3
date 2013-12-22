@@ -61,7 +61,7 @@ bayerPattern = 0; % This would be the correct bayer pattern for Basler color cam
 debayerMethod = 3; % Debayer algorithm: 0 = Fastest, ..., 3 = High quality, 4-7 = May or may not work.
 
 % Set dropframes = 0 if multiple frames shall be recorded for sync timing checks, 1 otherwise:
-dropframes = 0;
+dropframes = 1;
 
 % Flags to use for video recording. 16 = Use multi-threaded recording.
 if doVideoRecording
@@ -205,11 +205,36 @@ try
       %[wr, wg, wb] = Screen('SetVideoCaptureParameter',  grabbers(i), 'WhiteShading')
 
       % Measure firewire bus cycles for fun and profit :-)
-      [cycleCount1, cycleSystemTime1] = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetCycleTimer');
+      [cycleSecs1, cycleSystemTime1, cycleSec, cycleCount, cycleOffset] = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetCycleTimer');
       WaitSecs(0.1);
-      [cycleCount2, cycleSystemTime2] = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetCycleTimer');
-      fprintf('Camera %i: Bus runs at %f cycles / second.\n', grabbers(i), (cycleCount2 - cycleCount1) / (cycleSystemTime2 - cycleSystemTime1));
+      [cycleSecs2, cycleSystemTime2] = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetCycleTimer');
+      fprintf('Camera %i: Bus runs at %f seconds per second.\n', grabbers(i), (cycleSecs2 - cycleSecs1) / (cycleSystemTime2 - cycleSystemTime1));
+      
+      % Basler camera?
+      if strfind(Screen('SetVideoCaptureParameter', grabbers(i), 'GetVendorname'), 'Basler')
+        % Yes. Enable some Basler specific SFF features:
 
+        % The Basler SFF framecounter is mostly useless to us, as it only resets to zero on a power-cycle,
+        % and the cameras can't get power-cycled in software, only by physical unplug/replug :(.
+        % Update: Some Basler cameras allow power-cycling, so it does work on those, e.g., the A602f works,
+        % but the A312fc doesn't.
+        % baslerFrameCounter = Screen('SetVideoCaptureParameter', grabbers(i), 'BaslerFrameCounterEnable')
+
+        % Basler SFF CRC checksumming can find corrupted video frames due to problems with camera electronics,
+        % bus cables, controllers, OS etc. It is very compute intense though, adds easily 10 msecs per frame,
+        % so one should probably only enable it to diagnose real problems or initially verify a setup:
+        % baslerChecksum = Screen('SetVideoCaptureParameter', grabbers(i), 'BaslerChecksumEnable')
+
+        % Basler SFF timestamping can theoretically provide a capture timestamp corresponding to the exact
+        % time when image exposure on the cameras sensor was started. The camera can tag frames with the
+        % firewire bus time of start of exposure and Screen() can translate that into GetSecs time.
+        %
+        % In practice, all two tested models of Basler cameras didn't work. They returned a constant
+        % bogus value as timestamp, leading to bogus capture timestamps. No bug could be found in our code
+        % or the libdc1394 code when comparing code against the Basler SFF spec documents.
+        % baslerTimestamp = Screen('SetVideoCaptureParameter', grabbers(i), 'BaslerFrameTimestampEnable')
+      end
+      
       Screen('SetVideoCaptureParameter', grabbers(i), 'PrintParameters')
 
       % Select convMode as conversion mode:

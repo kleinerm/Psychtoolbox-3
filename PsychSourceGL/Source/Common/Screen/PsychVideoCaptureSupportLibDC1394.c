@@ -49,6 +49,8 @@
 
 // This is the master include file for libdc1394. It includes all other public header files:
 #include <dc1394/dc1394.h>
+// Basler specific extensions (Baser SFF Smart Feature Framework):
+#include <dc1394/vendor/basler.h>
 
 // Sync modes and sync roles for multi-camera synchronization:
 #define kPsychIsSyncMaster  1
@@ -67,6 +69,7 @@ typedef struct {
     dc1394camera_t *camera;           // Ptr to a DC1394 camera object that holds the internal state for such cams.
     dc1394video_frame_t *frame;       // Ptr to a structure which contains the most recently captured/dequeued frame.
     dc1394video_frame_t *convframe;   // Ptr to a structuve which contains bayer- or YUV- converted frames.
+    uint64_t total_bytes;             // Total bytes per frame in Format-7 mode, as queried from camera. Needed for Basler SFF support.
     unsigned char* current_frame;     // Ptr to target buffer for most recent frame if video recorder thread is active in low-latency mode.
     unsigned char* pulled_frame;      // Ptr to fetched frame from video recorder thread (if active). This is the "front buffer" equivalent of current_frame.
     int syncmode;                     // 0 = free-running. 1 = sync-master, 2 = sync-slave, 4 = soft-sync, 8 = bus-sync, 16 = ttl-sync.
@@ -1177,9 +1180,27 @@ static unsigned char* PsychDCPreprocessFrame(PsychVidcapRecordType* capdev)
     unsigned char* input_image = (unsigned char*) (capdev->frame->image);
 
     // Check if frame is corrupt: As of year 2013, supported on USB and MacOSX, no-ops on Linux and Windows.
+    // The dc1394 method detects if the operating system reports corrupted / failed data transmission, therefore
+    // it can detect the types of corruption that the operating systems firewire stack / drivers can detect.
     if (dc1394_capture_is_frame_corrupt(capdev->camera, capdev->frame)) {
-        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Corrupt video frame with framecount %i received from capture device %i.\n", capdev->framecounter, capdev->capturehandle);
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: OS reports that a corrupt video frame with framecount %i was received from capture device %i.\n", capdev->framecounter, capdev->capturehandle);
         capdev->corrupt_count++;
+    } else if ((capdev->specialFlags & 8) && (capdev->total_bytes > 0)) {
+        // Usercode requested additional CRC checksum checks on frames from camera via SFF and
+        // use of a Format7 mode allows us to do so, so do it.
+        //
+        // SFF checksumming is a feature of Basler cameras with SFF CRC support. The camera computes
+        // a CRC checksum of the video frame at sensor readout time and stores the checksum at the end
+        // of each frame transmitted over the bus. The following routine recomputes the CRC checksum of
+        // the received frame and compares it against the CRC stored in the frame. If both CRC's match
+        // then the frame survived untampered, otherwise the frame was corrupted somewhere on its way from
+        // the sensor to our buffer (Camera transceiver/firmware, firewire bus, firewire controller, operating
+        // system, libdc1394, ...).
+        // Note: This will cause a very significant increase in computational load!
+        if (!dc1394_basler_sff_check_crc((const uint8_t*) input_image, (uint32_t) capdev->total_bytes)) {
+            if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Basler SFF CRC reports that a corrupt video frame with framecount %i was received from capture device %i.\n", capdev->framecounter, capdev->capturehandle);
+            capdev->corrupt_count++;
+        }
     }
 
     // Do we want to do something with the image data and have a scratch buffer for color conversion alloc'ed?
@@ -1230,6 +1251,138 @@ static unsigned char* PsychDCPreprocessFrame(PsychVidcapRecordType* capdev)
     }
 
     return(input_image);
+}
+
+// Helper routine: Updates the capdev->framecounter of a camera. Assumes capdev->frame contains
+// the most recent frame dequeued from libdc1394 - the one the framecounter should correspond to
+// after the update.
+// - By default this will simply increment the capdev->framecounter++
+//
+// - On Basler cameras with SFF framecounter support it can query the framecounter value embedded
+//   into each captured frame, measuring the count of captured frames since camera power-up. This
+//   needs to be explicitely enabled by usercode. The problem which limits the usefulness of this
+//   camera hw counter is that the only way to reset it is a power-cycle, and many (most?) Basler
+//   cams can not be instructed to powerdown/powerup via IIDC commands. As we need a zero count at
+//   camera open time for our accounting logic to work, and as our powerup at device open and powerdown
+//   at device close is ineffective on Basler cameras, this would force the user to physically unplug
+//   replug each camera at start of each session, or power-cycle the whole machine! Not practical :(
+//   Implement it anyway as a off-by-default reference, in case this is of use to someone.
+//
+void PsychDCUpdateCameraFramecounter(PsychVidcapRecordType* capdev)
+{
+    dc1394error_t error;
+    
+    // SFF framecounter enabled and supported?
+    if ((capdev->specialFlags & 2) && (capdev->total_bytes > 0)) {
+        // Basler SFF framecounter enabled: Query it.
+        dc1394basler_sff_frame_counter_t *sff_framecount;
+        error = dc1394_basler_sff_chunk_find(DC1394_BASLER_SFF_FRAME_COUNTER, (void**) &sff_framecount, capdev->frame->image, capdev->total_bytes, (capdev->specialFlags & 8) ? DC1394_TRUE : DC1394_FALSE);
+        if (error) {
+            printf("PTB-ERROR: In PsychDCUpdateCameraFramecounter: dc1394_basler_sff_chunk_find() failed for SFF frame counter query [%s].\n", dc1394_error_get_string(error));
+        }
+        else {
+            // Retrieve value for this frame as tagged by camera itself:
+            capdev->framecounter = sff_framecount->counter;
+            if (PsychPrefStateGet_Verbosity() > 10) printf("PTB-INFO: Basler SFF framecount on device %i is %i\n", capdev->capturehandle, capdev->framecounter);
+        }
+    }
+    else {
+        // Classic: Increase counter of total number of captured frames by this camera:
+        capdev->framecounter++;
+    }
+}
+
+// Helper: Converts 32-Bit raw firewire bus cycle time into seconds. Firewire time wraps to zero
+// every 128 seconds!
+double PsychDCBusCycleTimeToSecs(uint32_t busCycleTime)
+{
+    double cycleTimeSecs;
+    dc1394basler_sff_cycle_time_stamp_t ct;
+    
+    // Copy busCycleTime into struct for parsing into seconds, iso-cycles and ticks:
+    ct.cycle_time_stamp.unstructured.value = busCycleTime;
+    
+    // Convert 32-Bit count to seconds: 0-128 seconds + number of 125 usec iso cycles + offset in units of 1/24.576Mhz:
+    cycleTimeSecs = ((double) ct.cycle_time_stamp.structured.second_count) + ((double) (ct.cycle_time_stamp.structured.cycle_count * 125)) / 1e6 + ((double) ct.cycle_time_stamp.structured.cycle_offset) / ( 24.576e6);
+    
+    return(cycleTimeSecs);
+}
+
+// Helper routine: Updates the capdev->current_pts frame timestamp for the current capdev->frame. Assumes capdev->frame contains
+// the most recent frame dequeued from libdc1394 - the one the timestamp should correspond to after the update.
+//
+// - By default this will simply use the timestamp stored in capdev->frame->timestamp and map it to GetSecs time.
+//   This timestamp corresponds to when the firewire controller received the frame from the camera. It is usually
+//   close to microsecond accurate at least on Firewire bus cameras, but excludes any timing variability during fw
+//   transmission (usually in the sub-millisecond range due to bus iso channel arbitration on multi-cam capture),
+//   and an unknown latency from start of camera sensor exposure to start of sensor readout + data transfer.
+//
+// - On Basler cameras with SFF timestamp feature, it can read the firewire bus cycle count at start of exposure and
+//   remap that into GetSecs time, so a timestamp of actual start of sensor exposure is made available.
+//
+void PsychDCUpdateCameraFrameTimestamp(PsychVidcapRecordType* capdev)
+{
+    dc1394error_t error;
+    dc1394basler_sff_cycle_time_stamp_t ct;
+    uint64_t systemtime;
+    double frameCycleTimeSecs, nowCycleTimeSecs, nowTimeSecs;
+    
+    // SFF timestamping enabled and supported?
+    if ((capdev->specialFlags & 4) && (capdev->total_bytes > 0)) {
+        // Basler SFF timestamp enabled: Query it.
+        dc1394basler_sff_cycle_time_stamp_t *sff_cycletimestamp;
+        error = dc1394_basler_sff_chunk_find(DC1394_BASLER_SFF_CYCLE_TIME_STAMP, (void**) &sff_cycletimestamp, capdev->frame->image, capdev->total_bytes, (capdev->specialFlags & 8) ? DC1394_TRUE : DC1394_FALSE);
+        if (error) {
+            printf("PTB-ERROR: In PsychDCUpdateCameraFrameTimestamp: dc1394_basler_sff_chunk_find() failed for SFF timestamp query [%s].\n", dc1394_error_get_string(error));
+        }
+        else {
+            // Retrieve value for this frame as tagged by camera itself:
+            frameCycleTimeSecs = PsychDCBusCycleTimeToSecs(sff_cycletimestamp->cycle_time_stamp.unstructured.value);
+
+            // Retrieve current bus cycle time:
+            error = dc1394_read_cycle_timer(capdev->camera, &(ct.cycle_time_stamp.unstructured.value), &systemtime);
+            if (error) {
+                printf("PTB-ERROR: In PsychDCUpdateCameraFrameTimestamp: Failed to query bus cycle timer!\n");
+            }
+            
+            // Get current Firewire bus time converted into seconds:
+            nowCycleTimeSecs = PsychDCBusCycleTimeToSecs(ct.cycle_time_stamp.unstructured.value);
+            nowTimeSecs = ((double) ((psych_uint64) systemtime)) / 1000000.0f;
+
+            // Check for wraparound every 128 seconds:
+            if (nowCycleTimeSecs > frameCycleTimeSecs) {
+                // No wraparound - Just compute how far in the past the frame was exposed on the camera before now,
+                // and subtract it from the current system time:
+                capdev->current_pts = nowTimeSecs - (nowCycleTimeSecs - frameCycleTimeSecs);
+            }
+            else {
+                // Wraparound! Same logic, but assume we are one 128 seconds cycle ahead of when the
+                // frame was exposed by the camera: [frameCycleTimeSecs ---> 128.0 aka 0.0 --> nowCycleTimeSecs]
+                capdev->current_pts = nowTimeSecs - (nowCycleTimeSecs + (128 - frameCycleTimeSecs));
+            }
+
+            if (PsychPrefStateGet_Verbosity() > 10) {
+                printf("PTB-INFO: Basler SFF timestamp on device %i is %f secs [raw value %i].\n", capdev->capturehandle, capdev->current_pts, sff_cycletimestamp->cycle_time_stamp.unstructured.value);
+            }
+        }
+    }
+    else {
+        // Classic path:
+        
+        // Query capture timestamp (in microseconds) and convert to seconds. This comes from the capture
+        // engine with (theroretically) microsecond precision and is assumed to be pretty accurate:
+        capdev->current_pts = ((double) capdev->frame->timestamp) / 1000000.0f;
+
+        // On OS/X, current_pts is in gettimeofday() time, just as on Linux, but PTB's GetSecs
+        // clock represents host uptime, not gettimeofday() time. Therefore we need to remap
+        // on OS/X from  gettimeofday() time to regular PTB GetSecs() time, via an instant
+        // clock calibration between both clocks and offset correction:
+        #if PSYCH_SYSTEM == PSYCH_OSX
+        struct timeval tv;
+        gettimeofday(&tv, NULL);
+        capdev->current_pts -= (((double) ((psych_uint64) tv.tv_sec * 1000000 + (psych_uint64) tv.tv_usec)) / 1000000.0f) - tend;
+        #endif
+    }
 }
 
 // Main function of the asynchronous background video recording/processing thread:
@@ -1295,26 +1448,15 @@ static void* PsychDCRecorderThreadMain(void* capdevToCast)
             capdev->current_dropped = (int) capdev->frame->frames_behind;
             capdev->nrframes_pending = (unsigned int) capdev->frame->frames_behind;
 
-            // Increase counter of total number of captured frames by this camera:
-            capdev->framecounter++;
+            // Update the master framecounter for this camera and the new fetched frame:
+            PsychDCUpdateCameraFramecounter(capdev);
 
             // Also increase "decompressed frames" counter, which is the same in case of threaded processing:
             capdev->nrframes++;
 
-            // Query capture timestamp (in microseconds) and convert to seconds. This comes from the capture
-            // engine with (theroretically) microsecond precision and is assumed to be pretty accurate:
-            capdev->current_pts = ((double) capdev->frame->timestamp) / 1000000.0f;
-
-            // On OS/X, current_pts is in gettimeofday() time, just as on Linux, but PTB's GetSecs
-            // clock represents host uptime, not gettimeofday() time. Therefore we need to remap
-            // on OS/X from  gettimeofday() time to regular PTB GetSecs() time, via an instant
-            // clock calibration between both clocks and offset correction:
-            #if PSYCH_SYSTEM == PSYCH_OSX
-            struct timeval tv;
-            gettimeofday(&tv, NULL);
-            capdev->current_pts -= (((double) ((psych_uint64) tv.tv_sec * 1000000 + (psych_uint64) tv.tv_usec)) / 1000000.0f) - tend;
-            #endif
-
+            // Update and assign capture timestamp capdev->current_pts for dequeued frame:
+            PsychDCUpdateCameraFrameTimestamp(capdev);
+            
             // Perform potential processing on image, e.g., debayering:
             input_image = PsychDCPreprocessFrame(capdev);
             if (NULL == input_image) {
@@ -1556,13 +1698,27 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             err = dc1394_format7_set_roi(capdev->camera, mode, color_code, packetsize, (unsigned int) capdev->roirect[kPsychLeft], (unsigned int) capdev->roirect[kPsychTop],
                                             (unsigned int) PsychGetWidthFromRect(capdev->roirect), (unsigned int) PsychGetHeightFromRect(capdev->roirect));
             if (err != DC1394_SUCCESS) {
-                PsychErrorExitMsg(PsychError_user, "Unable to setup and start capture engine: Setting Format7 ROI failed!");
+                PsychErrorExitMsg(PsychError_system, "Unable to setup and start capture engine: Setting Format7 ROI failed!");
             }
             if(PsychPrefStateGet_Verbosity()>5) printf("...done. \n"); fflush(NULL);
+
+            // Query total number of bytes per delivered frame (including SFF chunks and other meta-data):
+            capdev->total_bytes = 0;
+            err = dc1394_format7_get_total_bytes(capdev->camera, capdev->dc_imageformat, &(capdev->total_bytes));
+            if (err != DC1394_SUCCESS) {
+                PsychErrorExitMsg(PsychError_system, "Unable to setup and start capture engine: Query of total bytes per frame for Format7 mode failed!");
+            }
         }
         else {
             // Non-Format-7 capture DMA setup: mode encodes image size, ROI and color format.
-            // Nothing to do for now...
+            
+            // Set total_bytes to zero to signal that SFF features are not available in this capture session:
+            capdev->total_bytes = 0;
+
+            // SFF is a no-go in non-Format7 so warn user if somebody tries:
+            if ((capdev->specialFlags & (2 | 4 | 8)) && (PsychPrefStateGet_Verbosity() > 1)) {
+                printf("PTB-WARNING: Usercode requested use of a Basler-SFF feature on camera %i, but capture is using a non-Format7 mode. SFF is unsupported in this configuration! Using fallbacks.\n");
+            }
         }
 
         // Framedropping is no longer supported by libdc, so we implement it ourselves.
@@ -2119,6 +2275,9 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
                     // doesn't matter if we poll or block, but polling sounds like a bit less overhead
                     // at the OS level:
 
+                    // Update the master framecounter for this camera and the new fetched frame:
+                    PsychDCUpdateCameraFramecounter(capdev);
+                    
                     // First enqueue the recently dequeued buffer...
                     if (dc1394_capture_enqueue((capdev->camera), (capdev->frame)) != DC1394_SUCCESS) {
                         PsychErrorExitMsg(PsychError_system, "Requeuing of discarded video frame failed while dropping frames (dropframes=1)!!!");
@@ -2129,9 +2288,6 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
                         // Polling failed for some reason...
                         PsychErrorExitMsg(PsychError_system, "Polling for new video frame failed while dropping frames (dropframes=1)!!!");
                     }
-
-                    // Increase counter of total number of captured frames by this camera:
-                    capdev->framecounter++;
                 }
 
                 // Update stats for decompression:
@@ -2140,28 +2296,17 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
                 // Increase counter of decompressed frames:
                 capdev->nrframes++;
 
-                // Increase counter of total number of captured frames by this camera:
-                capdev->framecounter++;
-
+                // Update the master framecounter for this camera and the new fetched frame:
+                PsychDCUpdateCameraFramecounter(capdev);
+                
                 // Update count of frames still pending in DMA queue:
                 capdev->nrframes_pending = (unsigned int) capdev->frame->frames_behind;
                 
                 // Update avg. decompress time:
                 capdev->avg_decompresstime+=(tend - tstart);
 
-                // Query capture timestamp (in microseconds) and convert to seconds. This comes from the capture
-                // engine with (theroretically) microsecond precision and is assumed to be pretty accurate:
-                capdev->current_pts = ((double) capdev->frame->timestamp) / 1000000.0f;
-
-                // On OS/X, current_pts is in gettimeofday() time, just as on Linux, but PTB's GetSecs
-                // clock represents host uptime, not gettimeofday() time. Therefore we need to remap
-                // on OS/X from  gettimeofday() time to regular PTB GetSecs() time, via an instant
-                // clock calibration between both clocks and offset correction:
-                #if PSYCH_SYSTEM == PSYCH_OSX
-                struct timeval tv;
-                gettimeofday(&tv, NULL);
-                capdev->current_pts -= (((double) ((psych_uint64) tv.tv_sec * 1000000 + (psych_uint64) tv.tv_usec)) / 1000000.0f) - tend;
-                #endif
+                // Update and assign capture timestamp capdev->current_pts for dequeued frame:
+                PsychDCUpdateCameraFrameTimestamp(capdev);
             }
 
             // Assign final ready state:
@@ -2499,6 +2644,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
     dc1394feature_t feature;
     dc1394bool_t present;
     dc1394error_t err;
+    dc1394basler_sff_feature_t sfffeature_id;
     unsigned int minval, maxval, intval, oldintval;
     int triggercount, i;
 
@@ -2516,23 +2662,123 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
     // Round value to integer:
     intval = (int) (value + 0.5);
 
-    // Check parameter name pname and call the appropriate subroutine:
-    if (strcmp(pname, "TriggerCount")==0 || strcmp(pname, "WaitTriggerCount")==0) {
-        // Query of cameras internal trigger counter or waiting for a specific
-        // value in the counter requested. Trigger counters are special features,
-        // (so called "Smart Features" or "Advanced Features" in the IIDC spec)
-        // which are only available on selected cameras.
-        // We currently only know how to do this on Basler cameras.
-        if (strstr(capdev->camera->vendor, "Basler")==NULL) {
+    // Basler SFF Smart Feature Framework feature requested?
+    if (strstr(pname, "Basler")) {
+        // Basler cam?
+        if (!strstr(capdev->camera->vendor, "Basler")) {
             // Non Basler cam :( We have to give up for now...
-            return(-1);
+            PsychErrorExitMsg(PsychError_user, "Basler SFF feature function called on a non-Basler camera. Unsupported!");
         }
 
-        // It is a Basler cam. Go ahead:
-        // TODO FIXME: IMPLEMENT IT!
-        return(-2);
+        // SFF supported?
+        err = dc1394_basler_sff_is_available(capdev->camera, &present);
+        if (err || !present) PsychErrorExitMsg(PsychError_user, "Basler SFF feature function called, but this Basler camera does not support SFF. Unsupported!");
+
+        // To use any SFF features, we must have the feature enabled:
+        err = dc1394_basler_sff_feature_is_enabled(capdev->camera, DC1394_BASLER_SFF_EXTENDED_DATA_STREAM, &present);
+        if (err) PsychErrorExitMsg(PsychError_system, "Basler SFF feature function called, but could not query status of basic SFF extended data stream feature enable.");
+        if (!present) {
+            err = dc1394_basler_sff_feature_enable(capdev->camera, DC1394_BASLER_SFF_EXTENDED_DATA_STREAM, DC1394_ON);
+            if (err) PsychErrorExitMsg(PsychError_system, "Basler SFF feature function called, but could not enable basic SFF extended data stream feature mode.");
+
+            // SFF features enabled. These only work in Format7 modes, because only Format7 allows augmenting video frames
+            // with the meta-data chunks in which SFF transports its info. Therefore imply preference of Format-7 capture,
+            // with proper warnings to user at runtime if that should fail.
+            capdev->specialFlags |= 1;
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Basler SFF features enabled. Trying to use Format7 video capture modes to make this functional.\n");
+            
+            if (PsychPrefStateGet_Verbosity() > 5) {
+                printf("PTB-INFO: The following SFF Smart-Features are supported by the library (but not neccessarily this camera:\n");
+                dc1394_basler_sff_feature_print_all (capdev->camera, stdout);
+                printf("\n");
+            }
+        }
+    }
+    
+    // Check parameter name pname and call the appropriate subroutine:
+
+    // Basler frame counter: Counts number of captured frames by camera since power-up time:
+    if (strcmp(pname, "BaslerFrameCounterEnable")==0) {
+        // Query of cameras internal trigger counter requested. Trigger counters are special features,
+        // (so called "Smart Features" or "Advanced Features" in the IIDC spec) which are only available
+        // on selected cameras. We currently only know how to do this on Basler cameras.
+        err = dc1394_basler_sff_feature_is_available(capdev->camera, DC1394_BASLER_SFF_FRAME_COUNTER, &present);
+        if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not query presence of SFF frame counter.");
+        if (!present) PsychErrorExitMsg(PsychError_user, "Basler SFF frame counter not supported on this camera. Enable failed.");
+        
+        err = dc1394_basler_sff_feature_is_enabled(capdev->camera, DC1394_BASLER_SFF_FRAME_COUNTER, &present);
+        if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not query status of SFF frame counter enable.");
+        if (!present) {
+            err = dc1394_basler_sff_feature_enable(capdev->camera, DC1394_BASLER_SFF_FRAME_COUNTER, DC1394_ON);
+            if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not enable SFF frame counter.");
+        }
+
+        // Mark SFF framecounter active:
+        capdev->specialFlags |= 2;
+        
+        // Return success:
+        return(1);
     }
 
+    // Basler cycle timestamp: Timestamps each frame at start of exposure with firewire bus cycle count:
+    if (strcmp(pname, "BaslerFrameTimestampEnable")==0) {
+        err = dc1394_basler_sff_feature_is_available(capdev->camera, DC1394_BASLER_SFF_CYCLE_TIME_STAMP, &present);
+        if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not query presence of SFF timestamp.");
+        if (!present) PsychErrorExitMsg(PsychError_user, "Basler SFF timestamp not supported on this camera. Enable failed.");
+        
+        err = dc1394_basler_sff_feature_is_enabled(capdev->camera, DC1394_BASLER_SFF_CYCLE_TIME_STAMP, &present);
+        if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not query status of SFF timestamp enable.");
+        if (!present) {
+            err = dc1394_basler_sff_feature_enable(capdev->camera, DC1394_BASLER_SFF_CYCLE_TIME_STAMP, DC1394_ON);
+            if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not enable SFF timestamp.");
+        }
+
+        // Mark SFF timestamp active:
+        capdev->specialFlags |= 4;
+        
+        // Return success:
+        return(1);
+    }
+    
+    // Basler CRC checksums: The camera compute a CRC and tags the frame. We recompute the CRC on frame reception to find corrupt frames.
+    if (strcmp(pname, "BaslerChecksumEnable")==0) {
+        err = dc1394_basler_sff_feature_is_available(capdev->camera, DC1394_BASLER_SFF_CRC_CHECKSUM, &present);
+        if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not query presence of SFF checksum.");
+        if (!present) PsychErrorExitMsg(PsychError_user, "Basler SFF checksum not supported on this camera. Enable failed.");
+        
+        err = dc1394_basler_sff_feature_is_enabled(capdev->camera, DC1394_BASLER_SFF_CRC_CHECKSUM, &present);
+        if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not query status of SFF checksum enable.");
+        if (!present) {
+            err = dc1394_basler_sff_feature_enable(capdev->camera, DC1394_BASLER_SFF_CRC_CHECKSUM, DC1394_ON);
+            if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not enable SFF checksum.");
+        }
+
+        // Mark SFF CRC active:
+        capdev->specialFlags |= 8;
+
+        // Return success:
+        return(1);
+    }
+    
+    // Basler test image: The camera transmits a synthetic test image to check onboard electronics, bus and reception. Sensor and ADC are off.
+    /* This is not yet supported by libdc1394:
+    if (strcmp(pname, "BaslerTestImageEnable")==0) {
+        err = dc1394_basler_sff_feature_is_available(capdev->camera, DC1394_BASLER_SFF_TEST_IMAGES, &present);
+        if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not query presence of SFF test image.");
+        if (!present) PsychErrorExitMsg(PsychError_user, "Basler SFF test image not supported on this camera. Enable failed.");
+        
+        err = dc1394_basler_sff_feature_is_enabled(capdev->camera, DC1394_BASLER_SFF_TEST_IMAGES, &present);
+        if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not query status of SFF test image enable.");
+        if (!present) {
+            err = dc1394_basler_sff_feature_enable(capdev->camera, DC1394_BASLER_SFF_TEST_IMAGES, DC1394_ON);
+            if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not enable SFF test image.");
+        }
+        
+        // Return success:
+        return(1);
+    }
+    */
+    
     // Set a new target movie name for video recordings:
     if (strstr(pname, "SetNewMoviename=")) {
         // Find start of movie namestring and assign to pname:
@@ -2984,16 +3230,27 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 
     // Get current count of firewire cycle timer and corresponding system time:
     if (strstr(pname, "GetCycleTimer")!=0) {
-        unsigned int cycletimer;
+        dc1394basler_sff_cycle_time_stamp_t ct;
         uint64_t systemtime;
         
-        err = dc1394_read_cycle_timer(capdev->camera, &cycletimer, &systemtime);
+        err = dc1394_read_cycle_timer(capdev->camera, &(ct.cycle_time_stamp.unstructured.value), &systemtime);
         if (err && (err != DC1394_FUNCTION_NOT_SUPPORTED)) PsychErrorExitMsg(PsychError_system, "Failed to query cycle timer!");
         if (err == DC1394_FUNCTION_NOT_SUPPORTED) return(oldvalue);
+
+        // Copy out Firewire bus time converted into seconds:
+        PsychCopyOutDoubleArg(1, FALSE, PsychDCBusCycleTimeToSecs(ct.cycle_time_stamp.unstructured.value));
         
-        PsychCopyOutDoubleArg(1, FALSE, (double) cycletimer);
         // System time is CLOCK_REALTIME time in microseconds, so convert to GetSecs() seconds:
         PsychCopyOutDoubleArg(2, FALSE, ((double) ((psych_uint64) systemtime)) / 1000000.0f);
+
+        // Copy out Firewire bus time in seconds:
+        PsychCopyOutDoubleArg(3, FALSE, (double) ct.cycle_time_stamp.structured.second_count);
+
+        // Copy out Firewire bus time in number of 125 usec iso cycles:
+        PsychCopyOutDoubleArg(4, FALSE, (double) ct.cycle_time_stamp.structured.cycle_count);
+
+        // Copy out Firewire bus time in clock ticks of the 24.576Mhz bus clock on top of seconds and iso cycles:
+        PsychCopyOutDoubleArg(5, FALSE, (double) ct.cycle_time_stamp.structured.cycle_offset);
         
         return(0);
     }
