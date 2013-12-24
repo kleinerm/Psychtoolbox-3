@@ -518,21 +518,33 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 		// Success! Identify GPU:
 		gfx_length = region->size;
 
-		// Lowest allowable MMIO register offset for given GPU:
-		gfx_lowlimit = 0;
-		
-		if (fDeviceType == kPsychGeForce) {
-			fCardType = PsychGetNVidiaGPUType(NULL);
-            
+        // Lowest allowable MMIO register offset for given GPU:
+        gfx_lowlimit = 0;
+
+        if (fDeviceType == kPsychGeForce) {
+            fCardType = PsychGetNVidiaGPUType(NULL);
+
+            // GPU powered down and therefore offline? Signalled by special return code 0xffffffff.
+            if (fCardType == 0xffffffff) {
+                // Yes. This can happen in Optimus setups or other hybrid graphics setups.
+                // Bail out of this GPU and cleanup:
+                PsychScreenUnmapDeviceMemory();
+
+                if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: This NVidia GPU is powered down, probably in a Optimus setup. Skipping its use for beamposition timestamping.\n");
+
+                // We are done.
+                return(FALSE);
+            }
+
             // NV-E0 "Kepler" and later have 4 display heads:
             if ((fCardType == 0x0) || (fCardType >= 0xe0)) fNumDisplayHeads = 4;
-            
-			if (PsychPrefStateGet_Verbosity() > 2) {
-				printf("PTB-INFO: Connected to NVidia %s GPU of NV-%02x family with %i display heads. Beamposition timestamping enabled.\n", pci_device_get_device_name(gpu), fCardType, fNumDisplayHeads);
-				fflush(NULL);
-			}
-		}
-		
+
+            if (PsychPrefStateGet_Verbosity() > 2) {
+                printf("PTB-INFO: Connected to NVidia %s GPU of NV-%02x family with %i display heads. Beamposition timestamping enabled.\n", pci_device_get_device_name(gpu), fCardType, fNumDisplayHeads);
+                fflush(NULL);
+            }
+        }
+
 		if (fDeviceType == kPsychRadeon) {
 			// On Radeons we distinguish between Avivo (10) or DCE-4 style (40) or DCE-5 (50) for now.
 			fCardType = isDCE6(screenId) ? 60 : (isDCE5(screenId) ? 50 : (isDCE4(screenId) ? 40 : 10));
