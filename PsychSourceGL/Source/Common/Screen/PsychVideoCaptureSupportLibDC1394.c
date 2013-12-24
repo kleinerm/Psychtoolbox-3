@@ -1909,7 +1909,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         // Now that capture is successfully started, do we also want to record video to a file?
         if (capdev->recording_active) {
             // Yes. Setup movie writing:
-            if ((capdev->recordingflags & 16) && !dropframes) {
+            if ((capdev->recordingflags & 16) && !dropframes && !(capdev->recordingflags & 4)) {
                 // Multi-threaded video recording/processing and due to dropframes = FALSE, video data is enqeued by recorderThread
                 // into GStreamer pipeline and then processed and dequeued from our special appsink via the following snippet of
                 // pipeline:
@@ -1919,7 +1919,9 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                                                               (char*) &(feedbackString[0]));
             }
             else {
-                // No multi-threaded video recording with dropframes = FALSE, aka feedback of video data via GStreamer:
+                // No multi-threaded video recording with dropframes = FALSE or feedback via Screen('GetCapturedImage') disabled
+                // via recordingflags & 4. No need for feedback of video data via GStreamer, but need for recording, so create
+                // a classic video encoding pipeline with GStreamer:
                 capdev->moviehandle = PsychCreateNewMovieFile(capdev->targetmoviefilename, capdev->width, capdev->height, (double) framerate, capdev->actuallayers, ((capdev->bitdepth > 8) ? 16 : 8), capdev->codecSpec, NULL);
             }
             
@@ -1934,6 +1936,11 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             }
         }
         else if ((capdev->recordingflags & 16) && !dropframes) {
+            // This path only makes sense if Screen('GetCapturedImage') is enabled, ie., not suppressed via recordingflags & 4:
+            if (capdev->recordingflags & 4) {
+                PsychErrorExitMsg(PsychError_user, "You set recordingflags & 4 to suppress live video capture and didn't request video recording?!? This is pointless, you need to do at least one of those!");
+            }
+
             // Multi-threaded video processing and due to dropframes = FALSE, video data is enqeued by recorderThread
             // into GStreamer pipeline and then processed and dequeued from our special appsink via the following snippet of
             // pipeline:
@@ -2318,6 +2325,9 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
         else {
             // Capture and recording handled on recorderThread.
 
+            // No actual return of video data to usercode wanted? If so, skip all further processing and report "no new frames yet":
+            if (capdev->recordingflags & 4) return((checkForImage) ? -1 : FALSE);
+            
             // Low-Latency fetch requested?
             if (capdev->dropframes) {
                 // Check what the recorderThread has for us:
