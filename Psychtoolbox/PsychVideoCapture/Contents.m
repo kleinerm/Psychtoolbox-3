@@ -20,7 +20,7 @@
 % as extensively tested. Some of the functions here are work in progress,
 % useful, but not finished.
 %
-% Screen() supports three separate built-in videocapture engines for
+% Screen() supports two separate built-in videocapture engines for
 % different purposes:
 %
 % PROFESSIONAL CLASS ENGINE FOR DEMANDING APPLICATIONS:
@@ -35,7 +35,7 @@
 % to the IIDC 1.0 machine vision camera specification. These can be
 % connected via IEEE-1394 firewire bus, or for some special examplars also
 % via high-performance USB bus via "Firewire-over-USB" protocol. This
-% high-perf capture engine is selected by default via the following Screen
+% high-perf capture engine is selected as default via the following Screen
 % preference setting:
 %
 % Screen('Preference', 'DefaultVideocaptureEngine', 1);
@@ -67,16 +67,16 @@
 % Supported Cameras:
 %
 % All IIDC compliant cameras should work. For the Basler A602f greyscale
-% high performance camera and the cheap and good Unibrain Fire-i camera,
-% the PsychCamSettings - Tool provides especially convenient access to the
-% camera settings.
+% high performance camera, the Basler A312fc, and the cheap and good
+% Unibrain Fire-i camera, the PsychCamSettings - Tool provides especially
+% convenient access to the camera settings.
 %
 % You can find additional setup instructions for the libdc1394 engine in
 % 'help VideoCaptureDC1394'.
 %
-% CONSUMER LEVEL ENGINES FOR LESS STRINGENT REQUIREMENTS:
+% CONSUMER LEVEL ENGINE FOR LESS STRINGENT REQUIREMENTS:
 %
-% These engines are targeted at standard consumer class video capture and
+% This engine is targeted at standard consumer class video capture and
 % video digitizer equipment, e.g., built-in cameras of Laptop computers,
 % USB or Firewire connected "webcams", DV camcorders, standard video
 % converters and receivers etc. Quality of feature control, efficiency,
@@ -87,40 +87,19 @@
 % the "Sony PlayStation Eye" USB web-camera, no guarantess can be made
 % about the performance or quality of any specific camera.
 %
-% Screen supports different engines on different operating systems for
-% driving such consumer cameras.
+% Screen supports a GStreamer based engine on all operating systems.
 %
-% * Linux, Windows: We use GStreamer's built-in videocapture functionality
+% We use GStreamer's built-in videocapture functionality
 % by default (see "help GStreamer"). This is highly reliable and feature
 % rich on Linux, somewhat less feature rich and reliable but still decent
-% on Windows -- highly dependent on the version of Windows you are using.
+% on Windows and OSX -- highly dependent on the version of Windows you are using.
 % The engine should support most commercially available consumer level
 % cameras for firewire, USB, PCI and other busses, basically any camera for
 % which the operating system provides a device driver.
 %
-% This engine has id 3 and is selected by default on Linux and Windows.
-%
+% This engine has id 3 and is selected by default on all operating systems.
 % You can find additional setup instructions for GStreamer in
 % 'help GStreamer'.
-%
-%
-% * 32-Bit OS-X & 32-Bit Windows: We use the Sequence-Grabber API of Apples
-% Quicktime-7 for video capture on 32-Bit OS-X and (optionally) on 32-Bit
-% Windows. On MS-Windows, you'll need to install a Quicktime compatible
-% video digitizer component, e.g., WinVDIG, which can be freely downloaded
-% from http://www.vdig.com/WinVDIG/. However, use of this engine is only
-% provided for backward compatibility and generally discouraged, as the
-% default GStreamer engine is to our knowledge superior in any aspect.
-%
-% On MacOS-X 32-Bit, video digitizers are already installed.
-%
-% On 32-Bit OS/X this engine is the default, on Windows you could select it
-% via engineID 0.
-%
-% * 64-Bit OS/X: This is not yet supported. We use the GStreamer engine by
-% default, just as on Linux and Windows. However, GStreamer doesn't yet
-% support video capture on 64-Bit OS/X, at least as of May 2012.
-%
 %
 %
 % Contents of this folder:
