@@ -26,20 +26,14 @@
 % The software manager on Linux will keep your system up to date with the
 % latest stable version of the library.
 %
-% On MacOS/X for 32-Bit Matlab & Octave: Screen() is currently statically
-% linked against a version of the library. If you want access to its
-% corresponding source-code, read "help UseTheSource" on how to find the
-% PTB C-Source code. The PsychSourceGL/Cohorts/libDC1394/ subfolder
-% contains the source in libdc1394-2.0.1.tar.gz at the moment of this
-% writing.
-%
 % On MacOS/X for 64-Bit Matlab & Octave: Screen() links dynamically against
 % a system-installed .dylib version of the library, if such a version is
 % installed on your system. A precompiled library can be found in the
 % Psychtoolbox/PsychVideoCapture/ subfolder as libdc1394.22.dylib. Copy it
 % into the /usr/local/lib/ folder via executing this function
 % 'VideoCaptureDC1394' and entering your administrator password on request.
-% The corresponding source code of this library can be found under
+% The corresponding source code of this library can be found in the source
+% code distribution of Psychtoolbox (see "help UseTheSource") under:
 % PsychSourceGL/Cohorts/libDC1394/ as libdc1394-2.2.0.tar at the moment of
 % this writing. However, you can download the most recent copies of the
 % libraries from libDC's sourceforge website anytime and install it instead
@@ -49,6 +43,7 @@
 
 % History:
 % 6.05.2012  mk  Written.
+% 25.12.2013 mk  Updated for 64-Bit OSX and Linux only.
 
 % Perform installation on 64-Bit OS/X:
 if IsOSX(1)
@@ -84,4 +79,8 @@ if IsOSX(1)
     end
     
     return;
+else
+    fprintf('Tried to execute this installation script on something else than 64-Bit Matlab/Octave on OSX.\n');
+    fprintf('32-Bit OSX runtimes are no longer supported, neither is Microsoft Windows. On GNU/Linux, please\n');
+    fprintf('use your distribution''s package manager instead to install libdc1394.\n\n');
 end
