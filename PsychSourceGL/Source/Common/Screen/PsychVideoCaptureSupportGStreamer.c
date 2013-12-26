@@ -4892,7 +4892,7 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 	
 	// Return model name string:
 	if (strcmp(pname, "GetModelname")==0) {
-		PsychCopyOutCharArg(1, FALSE, capdev->cameraFriendlyName);
+        PsychCopyOutCharArg(1, FALSE, (capdev->cameraFriendlyName) ? capdev->cameraFriendlyName : "Unknown Model");
 		return(0);
 	}
 
