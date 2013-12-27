@@ -91,7 +91,6 @@
 %    SpriteDemo              - Animates an image that follows the mouse.
 %    StereoDemo              - Drive stereo-displays e.g., CrystalEyes.
 %    StereoViewer            - A simple viewer for stereo image pairs.
-%    TurnTableDemo           - A simulated turntable to nurture your inner DJ.
 %    ValetonVanNorrenDemo    - Exercise our code that implements the V-VN (1983) cone adaptation model.
 %    VideoCaptureDemo        - Simple demo for video capture functions.
 %    VideoCaptureToMatlabDemo - Demo of returning live captured video to Octave or Matlab as image matrices.
