@@ -1383,8 +1383,10 @@ void PsychDCUpdateCameraFrameTimestamp(PsychVidcapRecordType* capdev)
         // clock calibration between both clocks and offset correction:
         #if PSYCH_SYSTEM == PSYCH_OSX
         struct timeval tv;
+        double tRef;
         gettimeofday(&tv, NULL);
-        capdev->current_pts -= (((double) ((psych_uint64) tv.tv_sec * 1000000 + (psych_uint64) tv.tv_usec)) / 1000000.0f) - tend;
+        PsychGetAdjustedPrecisionTimerSeconds(&tRef);
+        capdev->current_pts -= (((double) ((psych_uint64) tv.tv_sec * 1000000 + (psych_uint64) tv.tv_usec)) / 1000000.0f) - tRef;
         #endif
     }
 }
