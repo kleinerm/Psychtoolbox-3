@@ -2589,12 +2589,12 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                 videosource = gst_element_factory_make(plugin_name, "ptb_videosource");
             }
             
-			if (!videosource) {
-				if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed! We are out of options and will probably fail soon.\n");
-				PsychErrorExitMsg(PsychError_system, "GStreamer failed to find a suitable video source! Game over.");
-			}
+            if (!videosource) {
+                if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed! We are out of options and will probably fail soon.\n");
+                PsychErrorExitMsg(PsychError_system, "GStreamer failed to find a suitable video source! Game over.");
+            }
 
-			// Attach correct video input device to it:
+            // Attach correct video input device to it:
             if (strstr(plugin_name, "dv1394src")) {
                 dvpad = gst_element_get_static_pad(gst_bin_get_by_name(GST_BIN(videosource), "ptbdvsource"), "src");
                 gst_element_add_pad(videosource, gst_ghost_pad_new("src", dvpad));
@@ -2816,15 +2816,23 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                 }
                 PsychErrorExitMsg(PsychError_user, "GStreamer failed to build a suitable video source from your pipeline spec! Game over.");
             }
+
+            // DV video sources need special treatment due to their use of special dvdec decoders and dvdemux'ers:
+            if (strstr(gstlaunchbinsrc, "ptbdvsource")) {
+                dvpad = gst_element_get_static_pad(gst_bin_get_by_name(GST_BIN(videosource), "ptbdvsource"), "src");
+                gst_element_add_pad(videosource, gst_ghost_pad_new("src", dvpad));
+                gst_object_unref(GST_OBJECT(dvpad));
+                dvpad = NULL;
+            }
         }
         
-		// Some plugins need typefind'ing dhowvideosrc for sure, but we also set it for aravissrc to be safe:
-		if (strstr(plugin_name, "dshowvideosrc") || strstr(plugin_name, "aravissrc")) g_object_set(G_OBJECT(videosource), "typefind", 1, NULL);
-		
-		// Enable timestamping by videosource, unless its been done already for a dv1394src:
-		if (!strstr(plugin_name, "dv1394src") && !strstr(plugin_name, "gstlaunchbinsrc")) g_object_set(G_OBJECT(videosource), "do-timestamp", 1, NULL);
+        // Some plugins need typefind'ing dhowvideosrc for sure, but we also set it for aravissrc to be safe:
+        if (strstr(plugin_name, "dshowvideosrc") || strstr(plugin_name, "aravissrc")) g_object_set(G_OBJECT(videosource), "typefind", 1, NULL);
 
-		// Assign video source to pipeline:
+        // Enable timestamping by videosource, unless its been done already for a dv1394src:
+        if (!strstr(plugin_name, "dv1394src") && !strstr(plugin_name, "gstlaunchbinsrc")) g_object_set(G_OBJECT(videosource), "do-timestamp", 1, NULL);
+
+        // Assign video source to pipeline:
         if (usecamerabin == 1) {
             // Attach directly to camerabin aka camerabin1:
             g_object_set(camera, "video-source", videosource, NULL);
@@ -2835,7 +2843,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             g_object_set(videowrappersrc, "video-source", videosource, NULL);
             g_object_set(camera, "camera-source", videowrappersrc, NULL);
         }
-	}
+    }
 
     // Assign message context, message bus and message callback for
     // the pipeline to report events and state changes, errors etc.:    
