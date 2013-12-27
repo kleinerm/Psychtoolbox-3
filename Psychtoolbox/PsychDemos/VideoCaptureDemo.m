@@ -95,10 +95,10 @@ try
     else
         win=Screen('OpenWindow', screenid, 0);
     end;
-
+    
     % Initial flip to a blank screen:
     Screen('Flip',win);
-
+    
     % Set text size for info text. 24 pixels is also good for Linux.
     Screen('TextSize', win, 24);
     
@@ -113,76 +113,61 @@ try
     %model  = Screen('SetVideoCaptureParameter', grabber, 'GetModelname')
     %fps  = Screen('SetVideoCaptureParameter', grabber, 'GetFramerate')
     %roi  = Screen('SetVideoCaptureParameter', grabber, 'GetROI')
-
-for repcount=1:1
-    Screen('StartVideoCapture', grabber, 60, 1);
     
-    dstRect = [];
-    oldpts = 0;
-    count = 0;
-    t=GetSecs;
-    while (GetSecs - t) < 600 
-        if KbCheck
-            break;
-        end;
+    for repcount=1:1
+        Screen('StartVideoCapture', grabber, 60, 1);
         
-        [tex pts nrdropped,intensity]=Screen('GetCapturedImage', win, grabber, 1); %#ok<NASGU>
-        % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
-
-        if (tex>0)
-            % Perform first-time setup of transformations, if needed:
-            if fullsize && (count == 0)
-                texrect = Screen('Rect', tex);
-                winrect = Screen('Rect', win);
-                sf = min([RectWidth(winrect) / RectWidth(texrect) , RectHeight(winrect) / RectHeight(texrect)]);
-                dstRect = CenterRect(ScaleRect(texrect, sf, sf) , winrect);
-            end
-texinfo = Screen('Getwindowinfo', tex)
-outintens = intensity
-            % Setup mirror transformation for horizontal flipping:
-            
-            % xc, yc is the geometric center of the text.
-            %[xc, yc] = RectCenter(Screen('Rect', win));
-            
-            % Make a backup copy of the current transformation matrix for later
-            % use/restoration of default state:
-            %Screen('glPushMatrix', win);
-            % Translate origin into the geometric center of text:
-            %Screen('glTranslate', win, xc, 0, 0);
-            % Apple a scaling transform which flips the direction of x-Axis,
-            % thereby mirroring the drawn text horizontally:
-            %Screen('glScale', win, -1, 1, 1);
-            % We need to undo the translations...
-            %Screen('glTranslate', win, -xc, 0, 0);
-            % The transformation is ready for mirrored drawing:
-
-            % Draw new texture from framegrabber.
-            Screen('DrawTexture', win, tex, [], dstRect);
-
-            %Screen('glPopMatrix', win);
-
-            % Print pts:
-            Screen('DrawText', win, sprintf('%.4f', pts - t), 0, 0, 255);
-            if count>0
-                % Compute delta:
-                delta = (pts - oldpts) * 1000;
-                oldpts = pts;
-                Screen('DrawText', win, sprintf('%.4f', delta), 0, 20, 255);
+        dstRect = [];
+        oldpts = 0;
+        count = 0;
+        t=GetSecs;
+        while (GetSecs - t) < 600
+            if KbCheck
+                break;
             end;
-
-            % Show it.
-            Screen('Flip', win);
-            Screen('Close', tex);
-            tex=0; %#ok<NASGU>
-        end;        
-        count = count + 1;
-    end;
-    telapsed = GetSecs - t %#ok<NOPRT>
-    Screen('StopVideoCapture', grabber);    
-end
+            
+            [tex pts nrdropped,intensity]=Screen('GetCapturedImage', win, grabber, 1); %#ok<ASGLU,NASGU>
+            % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
+            
+            if (tex>0)
+                % Perform first-time setup of transformations, if needed:
+                if fullsize && (count == 0)
+                    texrect = Screen('Rect', tex);
+                    winrect = Screen('Rect', win);
+                    sf = min([RectWidth(winrect) / RectWidth(texrect) , RectHeight(winrect) / RectHeight(texrect)]);
+                    dstRect = CenterRect(ScaleRect(texrect, sf, sf) , winrect);
+                end
+                
+                % texinfo = Screen('Getwindowinfo', tex)
+                % outintens = intensity
+                
+                % Draw new texture from framegrabber.
+                Screen('DrawTexture', win, tex, [], dstRect);
+                
+                %Screen('glPopMatrix', win);
+                
+                % Print pts:
+                Screen('DrawText', win, sprintf('%.4f', pts - t), 0, 0, 255);
+                if count>0
+                    % Compute delta:
+                    delta = (pts - oldpts) * 1000;
+                    oldpts = pts;
+                    Screen('DrawText', win, sprintf('%.4f', delta), 0, 20, 255);
+                end;
+                
+                % Show it.
+                Screen('Flip', win);
+                Screen('Close', tex);
+                tex=0; %#ok<NASGU>
+            end;
+            count = count + 1;
+        end;
+        telapsed = GetSecs - t %#ok<NOPRT>
+        Screen('StopVideoCapture', grabber);
+    end
     Screen('CloseVideoCapture', grabber);
     Screen('CloseAll');
     avgfps = count / telapsed %#ok<NOPRT,NASGU>
-catch
-   Screen('CloseAll');
+catch %#ok<CTCH>
+    Screen('CloseAll');
 end
