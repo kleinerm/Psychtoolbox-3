@@ -115,7 +115,7 @@ try
     %roi  = Screen('SetVideoCaptureParameter', grabber, 'GetROI')
     
     for repcount=1:1
-        Screen('StartVideoCapture', grabber, 60, 1);
+        Screen('StartVideoCapture', grabber, realmax, 1);
         
         dstRect = [];
         oldpts = 0;
