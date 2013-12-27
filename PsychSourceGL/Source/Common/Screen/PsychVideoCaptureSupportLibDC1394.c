@@ -3336,7 +3336,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
             
             // Set new white balance values:
             if (value != DBL_MAX) {
-                PsychCopyInIntegerArg(4, TRUE, &vr);
+                PsychCopyInIntegerArg(4, TRUE, (int*) &vr);
                 err = dc1394_feature_whitebalance_set_value(capdev->camera, intval, vr);
                 if (err) PsychErrorExitMsg(PsychError_system, "Failed to set white balance!");
             }
@@ -3362,8 +3362,8 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
             
             // Set new white shading values:
             if (value != DBL_MAX) {
-                PsychCopyInIntegerArg(4, TRUE, &gv);
-                PsychCopyInIntegerArg(5, TRUE, &bv);
+                PsychCopyInIntegerArg(4, TRUE, (int*) &gv);
+                PsychCopyInIntegerArg(5, TRUE, (int*) &bv);
                 err = dc1394_feature_whiteshading_set_value(capdev->camera, intval, gv, bv);
                 if (err) PsychErrorExitMsg(PsychError_system, "Failed to set white shading!");
             }
