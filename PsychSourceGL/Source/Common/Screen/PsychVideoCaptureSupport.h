@@ -1,18 +1,17 @@
 /*
-	PsychToolbox3/Source/Common/Screen/PsychVideoCaptureSupport.h
-	
-	PLATFORMS:	This is the OS independent version.  
-				
-	AUTHORS:
+    PsychToolbox3/Source/Common/Screen/PsychVideoCaptureSupport.h
+
+    PLATFORMS:	This is the OS independent version.
+
+    AUTHORS:
         Mario Kleiner   mk  mario.kleiner at tuebingen.mpg.de
- 
-	HISTORY:
-	02/07/06		mk		Wrote it. 
-							
-	DESCRIPTION:
-	
-	Psychtoolbox functions for dealing with video capture devices.
-        
+
+    HISTORY:
+    02/07/06		mk		Wrote it.
+
+    DESCRIPTION:
+
+    Psychtoolbox functions for dealing with video capture devices.
 
 */
 
@@ -30,11 +29,11 @@
 #include "Screen.h"
 
 typedef struct rawcapimgdata {
-	int w;
-	int h;
-	int depth;
+    int w;
+    int h;
+    int depth;
     int bitdepth;
-	void* data;
+    void* data;
 } rawcapimgdata;
 
 // These are the generic entry points, to be called by SCREENxxxx videocapture functions and
@@ -59,23 +58,26 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, double value);
 void PsychDCEnumerateVideoSources(int outPos);
 void PsychDCExitVideoCapture(void);
+
+// Helper for GStreamer movie playback: Debayers a raw bayer input image into a RGB output image: Caller has to free() outRGBImage after use!
+unsigned char* PsychDCDebayerFrame(unsigned char* inBayerImage, unsigned int width, unsigned int height, unsigned int bitdepth);
 #endif
 
 // These are the prototypes for the GStreamer capture library, supported on GNU/Linx, OS/X and MS-Windows:
 #ifdef PTB_USE_GSTREAMER
 typedef struct PsychVideosourceRecordType {
-	int deviceIndex;
-	int classIndex;
-	int inputIndex;
-	psych_uint64 deviceURI;
-	unsigned int flags;
-	char deviceClassName[100];
-	char deviceSelectorProperty[100];
-	char deviceVideoPlugin[100];
-	char deviceHandle[1000];
-	char devicePath[1000];
-	char deviceName[1000];
-	char device[1000];
+    int deviceIndex;
+    int classIndex;
+    int inputIndex;
+    psych_uint64 deviceURI;
+    unsigned int flags;
+    char deviceClassName[100];
+    char deviceSelectorProperty[100];
+    char deviceVideoPlugin[100];
+    char deviceHandle[1000];
+    char devicePath[1000];
+    char deviceName[1000];
+    char device[1000];
 } PsychVideosourceRecordType;
 
 void PsychGSCheckInit(const char* engineName);

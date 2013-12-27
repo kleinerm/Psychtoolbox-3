@@ -1293,6 +1293,18 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Playing back movie in Psychtoolbox proprietary 16 bpc %i channel encoding.\n", pixelFormat);
     }
 
+    // Make sure the input format for raw Bayer sensor data is actually 1 layer grayscale, and that PTB for this OS supports debayering:
+    if (specialFlags1 & 1024) {
+        if (movieRecordBANK[slotid].pixelFormat != 1) {
+            PsychErrorExitMsg(PsychError_user, "specialFlags1 & 1024 set to indicate this movie consists of raw Bayer sensor data, but pixelFormat is not == 1, as required!");
+        }
+
+        // Abort early if libdc1394 support is not available on this configuration:
+        #ifndef PTBVIDEOCAPTURE_LIBDC
+        PsychErrorExitMsg(PsychError_user, "Sorry, Bayer filtering of video frames, as requested by specialFlags1 setting & 1024, is not supported on this operating system.");
+        #endif
+    }
+
     // Define size of images in movie:
     movieRecordBANK[slotid].width = width;
     movieRecordBANK[slotid].height = height;
@@ -1442,6 +1454,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     static double   tStart = 0;
     double          tNow;
     double          preT, postT;
+    unsigned char*  releaseMemPtr = NULL;
 
     if (!PsychIsOnscreenWindow(win)) {
         PsychErrorExitMsg(PsychError_user, "Need onscreen window ptr!!!");
@@ -1721,6 +1734,26 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 
         // Assign default number of effective color channels:
         out_texture->nrchannels = movieRecordBANK[moviehandle].pixelFormat;
+
+        // Is this grayscale movie actually a Bayer-encoded RGB movie? specialFlags1 & 1024 would indicate that:
+        if (movieRecordBANK[moviehandle].specialFlags1 & 1024) {
+            // This is Bayer raw sensor data which needs to get decoded into full RGB images.
+            #ifdef PTBVIDEOCAPTURE_LIBDC
+                // Ok, need to convert this grayscale image which actually contains raw Bayer sensor data into
+                // a RGB image. Need to perform software Bayer filtering via libdc1394 Debayering routines.
+                out_texture->textureMemory = (GLuint*) PsychDCDebayerFrame((unsigned char*) (out_texture->textureMemory), movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height, movieRecordBANK[moviehandle].bitdepth);
+
+                // Return failure if Debayering did not work:
+                if (out_texture->textureMemory == NULL) return(FALSE);
+                
+                releaseMemPtr = (unsigned char*) out_texture->textureMemory;
+                out_texture->nrchannels = 3; // Always 3 for RGB.
+            #else
+                // Won't ever reach this, as already Screen('OpenMovie') would have bailed out
+                // if libdc1394 is not supported.
+                return(FALSE);
+            #endif
+        }
         
         // Assign default depth according to number of channels:
         out_texture->depth = out_texture->nrchannels * movieRecordBANK[moviehandle].bitdepth;
@@ -1918,6 +1951,9 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             PsychCreateTexture(out_texture);
         }
 
+        // Release buffer for target RGB debayered image, if any:
+        if ((movieRecordBANK[moviehandle].specialFlags1 & 1024) && releaseMemPtr) free(releaseMemPtr);
+        
         // NULL-out the texture memory pointer after PsychCreateTexture(). This is not strictly
         // needed, as PsychCreateTexture() did it already, but we add it here as an annotation
         // to make it obvious during code correctness review that we won't touch or free() the

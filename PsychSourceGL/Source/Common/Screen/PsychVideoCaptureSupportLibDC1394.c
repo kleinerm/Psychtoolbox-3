@@ -120,6 +120,10 @@ static int numCaptureRecords = 0;
 static psych_bool firsttime = TRUE;
 static dc1394_t *libdc = NULL;		// Master handle to DC1394 library.
 
+// Global Bayer filter settings for helper routine which is used for movie playback:
+static dc1394bayer_method_t global_debayer_method = DC1394_BAYER_METHOD_NEAREST;
+static dc1394color_filter_t global_color_filter = DC1394_COLOR_FILTER_MIN;
+
 // Forward declaration of internal helper function:
 void PsychDCDeleteAllCaptureDevices(void);
 void PsychDCLibInit(void);
@@ -2664,13 +2668,49 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
     // Retrieve device record for handle:
     PsychVidcapRecordType* capdev = (capturehandle != -1) ? PsychGetVidcapRecord(capturehandle) : NULL;
 
-    // A -1 capturehandle is currently not supported on this engine. No-Op return:
-    if (capdev == NULL) return(oldvalue);
-
     oldintval = 0xFFFFFFFF;
-
+    
     // Round value to integer:
     intval = (int) (value + 0.5);
+
+    // Get/Set debayering method for raw sensor data to RGB conversion:
+    if (strcmp(pname, "DebayerMethod")==0) {
+        oldvalue = ((capdev) ? capdev->debayer_method : global_debayer_method) - DC1394_BAYER_METHOD_MIN;
+        if (value != DBL_MAX) {
+            if (capdev) {
+                // For capture device:
+                capdev->debayer_method = intval + DC1394_BAYER_METHOD_MIN;
+            }
+            else {
+                // Globally for movie playback support:
+                global_debayer_method = intval + DC1394_BAYER_METHOD_MIN;
+            }
+        }
+
+        // Note: This only arrives at caller if capturehandle != -1
+        return(oldvalue);
+    }
+    
+    // Get/Set debayering method for raw sensor data to RGB conversion:
+    if (strcmp(pname, "OverrideBayerPattern")==0) {
+        oldvalue = ((capdev) ? capdev->color_filter_override : global_color_filter) - DC1394_COLOR_FILTER_MIN;
+        if (value != DBL_MAX) {
+            if (capdev) {
+                // For capture device:
+                capdev->color_filter_override = intval + DC1394_COLOR_FILTER_MIN;
+            }
+            else {
+                // Globally for movie playback support:
+                global_color_filter = intval + DC1394_COLOR_FILTER_MIN;
+            }
+        }
+        
+        // Note: This only arrives at caller if capturehandle != -1
+        return(oldvalue);
+    }
+
+    // A -1 capturehandle is currently not supported on this engine for any other parameter settings. No-Op return:
+    if (capdev == NULL) return(oldvalue);
 
     // Basler SFF Smart Feature Framework feature requested?
     if (strstr(pname, "Basler")) {
@@ -3008,26 +3048,6 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         return(oldvalue);
     }
 
-    // Get/Set debayering method for raw sensor data to RGB conversion:
-    if (strcmp(pname, "DebayerMethod")==0) {
-        oldvalue = capdev->debayer_method - DC1394_BAYER_METHOD_MIN;
-        if (value != DBL_MAX) {
-            capdev->debayer_method = intval + DC1394_BAYER_METHOD_MIN;
-        }
-        
-        return(oldvalue);
-    }
-
-    // Get/Set debayering method for raw sensor data to RGB conversion:
-    if (strcmp(pname, "OverrideBayerPattern")==0) {
-        oldvalue = capdev->color_filter_override - DC1394_COLOR_FILTER_MIN;
-        if (value != DBL_MAX) {
-            capdev->color_filter_override = intval + DC1394_COLOR_FILTER_MIN;
-        }
-
-        return(oldvalue);
-    }
-    
     // Get/Set synchronization mode for multi-camera operation:
     if (strcmp(pname, "SyncMode")==0) {
         oldvalue = capdev->syncmode;
@@ -3604,6 +3624,56 @@ void PsychDCEnumerateVideoSources(int outPos)
     cameras=NULL;
 
     return;
+}
+
+// Helper for GStreamer movie playback: Debayers a raw bayer input image into a RGB output image: Caller has to free() outRGBImage after use!
+unsigned char* PsychDCDebayerFrame(unsigned char* inBayerImage, unsigned int width, unsigned int height, unsigned int bitdepth)
+{
+    dc1394error_t error;
+    dc1394video_frame_t inFrame, outFrame;
+    unsigned char* outImage;
+    
+    memset(&inFrame, 0, sizeof(dc1394video_frame_t));
+    memset(&outFrame, 0, sizeof(dc1394video_frame_t));
+
+    inFrame.image = inBayerImage;
+    inFrame.size[0] = width;
+    inFrame.size[1] = height;
+    inFrame.color_coding = (bitdepth > 8) ? DC1394_COLOR_CODING_RAW16 : DC1394_COLOR_CODING_RAW8;
+    inFrame.data_depth = bitdepth;
+    inFrame.stride = width * ((bitdepth > 8) ? 2 : 1);
+    inFrame.color_filter = global_color_filter;
+
+    // Trigger bayer filtering for debayering via 'global_debayer_method':
+    if (DC1394_SUCCESS != (error = dc1394_debayer_frames(&inFrame, &outFrame, global_debayer_method))) {
+        printf("PTB-WARNING: Debayering of raw sensor image data failed! %s\n", dc1394_error_get_string(error));
+        if (error == DC1394_INVALID_COLOR_FILTER) {
+            printf("PTB-WARNING: Invalid Bayer filter pattern selected.\n");
+            printf("PTB-WARNING: Use Screen('SetVideoCaptureParameter', -1, 'OverrideBayerPattern', pattern);\n");
+            printf("PTB-WARNING: to assign a suitable 'pattern' manually.\n");
+        }
+        
+        if (error == DC1394_INVALID_BAYER_METHOD) {
+            printf("PTB-WARNING: Invalid debayering method selected. Select a different 'method' via \n");
+            printf("PTB-WARNING: Screen('SetVideoCaptureParameter', -1, 'DebayerMethod', method);\n");
+        }
+        
+        // Failure:
+        printf("PTB-ERROR: Bayer filtering of video frame failed.\n");
+        return(NULL);
+    }
+
+    // Success. Allocate output buffer:
+    outImage = (unsigned char*) malloc(outFrame.allocated_image_bytes);
+
+    // Copy data into it:
+    memcpy(outImage, outFrame.image, outFrame.allocated_image_bytes);
+
+    // Release outFrame's image store:
+    free(outFrame.image);
+
+    // Return pointer to final RGB image:
+    return(outImage);
 }
 
 #endif

@@ -4783,7 +4783,8 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         return(0);
     }
 
-    if (capdev == NULL) PsychErrorExitMsg(PsychError_user, "Tried to set a video capture parameter which requires a valid specific capturePtr, but passed generic -1 handle.");
+    // All other parameters require a valid capturehandle >= 0.
+    if (capdev == NULL) return(DBL_MAX);
     
 	// Set a new target movie name for video recordings:
 	if (strstr(pname, "SetNewMoviename=")) {

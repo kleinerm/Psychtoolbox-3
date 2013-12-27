@@ -21,6 +21,14 @@ function VideoMultiCameraCaptureDemo(deviceIds, syncmode, movieName)
 % of each captured image is displayed in the top-left corner of each window.
 % A press of the ESCape key ends the demo. The demo also ends automatically
 % after a timeout of 10 minutes is reached.
+%
+% This demo has various hard-coded parameters which allow you to tinker with
+% things like Bayer filtering on the camera, versus on the host cpu, versus
+% offline later on during playback of recorded video, to select different
+% tradeoffs between quality, cpu load, speed and bus bandwidth use. It also
+% allows to play with high bit depth (> 8 bpc) color and luminance formats,
+% lossless video recording and other bits and pieces. Change the variables
+% as you see fit and read the source carefully.
 
 % History:
 % 04-Nov-2013	mk  Written.
@@ -55,10 +63,15 @@ else
 end    
 
 roi = [0 0 640 480];
-depth = [3];
-convMode = 4; % Mode 4 would be the correct mode for raw sensor -> rgb bayer conversion on Basler cameras.
+depth = [3]; % Choose a color depth of 1 if you want raw sensor data - or grayscale of course. 3 for RGB.
+% Mode 4 would be the correct mode for raw sensor -> rgb bayer conversion on Basler cameras.
+% Mode 3 would pass raw sensor data instead.
+convMode = 4;
 bayerPattern = 0; % This would be the correct bayer pattern for Basler color cameras.
 debayerMethod = 3; % Debayer algorithm: 0 = Fastest, ..., 3 = High quality, 4-7 = May or may not work.
+
+% Bitdepth to request from camera: 8 bpc is standard. 16 bpc requests anything between 9 bpc and 16 bpc:
+bitdepth = 8;
 
 % Set dropframes = 0 if multiple frames shall be recorded for sync timing checks, 1 otherwise:
 dropframes = 1;
@@ -67,6 +80,22 @@ dropframes = 1;
 if doVideoRecording
     captureFlags = 16;
     codec = ':CodecType=DEFAULTencoder UseVFR'; % Use default codec. UseVFR for variable framerate recording.
+
+    % The huffyuv and ffenc_sgi codecs are lossless codecs. They use lossless compression, so video images
+    % are stored exactly, but the resulting movie files will be comparably large!
+    % These are mostly useful if you want to use the material for sensitive computer vision algorithms,
+    % or if you want to store raw camera sensor data without Bayer filtering and perform the Bayer filtering
+    % for raw sensor -> RGB conversion later on during playback. In that case you will need exact storage of
+    % video and hence one of these codecs.
+    %codec = ':CodecType=huffyuv UseVFR'; % Use HuffYUV Huffman encoded lossless codec. UseVFR for variable framerate recording.
+    %codec = ':CodecType=ffenc_sgi UseVFR'; % Use SGI-RLE lossless codec. UseVFR for variable framerate recording.
+
+    % For > 8 bpc recording, we need to use our own proprietary video encoding:
+    % Note: Only use with lossless video codecs makes sense for 16 bpc mode.
+    % Currently supported are huffyuv and ffenc_sgi.
+    if bitdepth > 8
+        codec = [codec ' UsePTB16BPC'];
+    end
 else
     captureFlags = 16;
     codec = [];
@@ -134,7 +163,7 @@ try
       Screen('TextSize', win(i), 24);
 
       % Open i'th camera:
-      grabbers(i) = Screen('OpenVideoCapture', win(i), deviceIds(i), roi, depth, 64, [], codec, captureFlags, [], 8); %#ok<AGROW>
+      grabbers(i) = Screen('OpenVideoCapture', win(i), deviceIds(i), roi, depth, 64, [], codec, captureFlags, [], bitdepth); %#ok<AGROW>
 
       if i == 1
         % Reset firewire bus for this camera:
