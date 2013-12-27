@@ -76,9 +76,9 @@ if nargin < 1
 end
 fprintf('Recording to movie file %s ...\n', moviename);
 
-if exist(moviename)
+if exist(moviename, 'file')
     delete(moviename);
-    warning('Moviefile %s existed already! Will overwrite it...', moviename);
+    warning('Moviefile %s existed already! Will overwrite it...', moviename); %#ok<WNTAG>
 end
 
 % Assign default codec if none assigned:

@@ -29,6 +29,7 @@ function VideoMultiCameraCaptureDemo(deviceIds, syncmode, movieName)
 % allows to play with high bit depth (> 8 bpc) color and luminance formats,
 % lossless video recording and other bits and pieces. Change the variables
 % as you see fit and read the source carefully.
+%
 
 % History:
 % 04-Nov-2013	mk  Written.
@@ -60,10 +61,10 @@ if nargin < 3 || isempty(movieName)
     doVideoRecording = 0;
 else
     doVideoRecording = 1;
-end    
+end
 
 roi = [0 0 640 480];
-depth = [3]; % Choose a color depth of 1 if you want raw sensor data - or grayscale of course. 3 for RGB.
+depth = 3; % Choose a color depth of 1 if you want raw sensor data - or grayscale of course. 3 for RGB.
 % Mode 4 would be the correct mode for raw sensor -> rgb bayer conversion on Basler cameras.
 % Mode 3 would pass raw sensor data instead.
 convMode = 4;
@@ -80,7 +81,7 @@ dropframes = 1;
 if doVideoRecording
     captureFlags = 16;
     codec = ':CodecType=DEFAULTencoder UseVFR'; % Use default codec. UseVFR for variable framerate recording.
-
+    
     % The huffyuv and ffenc_sgi codecs are lossless codecs. They use lossless compression, so video images
     % are stored exactly, but the resulting movie files will be comparably large!
     % These are mostly useful if you want to use the material for sensitive computer vision algorithms,
@@ -89,7 +90,7 @@ if doVideoRecording
     % video and hence one of these codecs.
     %codec = ':CodecType=huffyuv UseVFR'; % Use HuffYUV Huffman encoded lossless codec. UseVFR for variable framerate recording.
     %codec = ':CodecType=ffenc_sgi UseVFR'; % Use SGI-RLE lossless codec. UseVFR for variable framerate recording.
-
+    
     % For > 8 bpc recording, we need to use our own proprietary video encoding:
     % Note: Only use with lossless video codecs makes sense for 16 bpc mode.
     % Currently supported are huffyuv and ffenc_sgi.
@@ -135,18 +136,18 @@ oldsynctests = Screen('Preference', 'SkipSyncTests', 2);
 screenid=max(Screen('Screens'));
 
 if isempty(deviceIds)
-  devs = Screen('VideoCaptureDevices');
-  for i=1:length(devs)
-    % Use device if either its deviceIndex is not zero, or all enumerated devices if
-    % the libdc1394 capture engine is in use. On other engines, deviceIndex 0 is special
-    % in that it defines the default capture device. The same device shows up a second
-    % time under a distinct device index, so we have to filter out deviceIndex 0 to avoid
-    % opening the same camera twice:
-    if (devs(i).DeviceIndex ~= 0) || (Screen('Preference', 'DefaultVideocaptureEngine') == 1)
-      disp(devs(i));
-      deviceIds = [deviceIds, devs(i).DeviceIndex]; %#ok<AGROW>
+    devs = Screen('VideoCaptureDevices');
+    for i=1:length(devs)
+        % Use device if either its deviceIndex is not zero, or all enumerated devices if
+        % the libdc1394 capture engine is in use. On other engines, deviceIndex 0 is special
+        % in that it defines the default capture device. The same device shows up a second
+        % time under a distinct device index, so we have to filter out deviceIndex 0 to avoid
+        % opening the same camera twice:
+        if (devs(i).DeviceIndex ~= 0) || (Screen('Preference', 'DefaultVideocaptureEngine') == 1)
+            disp(devs(i));
+            deviceIds = [deviceIds, devs(i).DeviceIndex]; %#ok<AGROW>
+        end
     end
-  end
 end
 
 if isempty(deviceIds)
@@ -156,151 +157,152 @@ end
 
 try
     for i=1:length(deviceIds)
-      % Open oncreen window for i'th camera:
-      win(i) = PsychImaging('OpenWindow', screenid, 0, [0, 0, 650, 500], [], [], [], [], [], kPsychGUIWindow + kPsychGUIWindowWMPositioned); %#ok<AGROW>
-
-      % Set text size for info text:
-      Screen('TextSize', win(i), 24);
-
-      % Open i'th camera:
-      grabbers(i) = Screen('OpenVideoCapture', win(i), deviceIds(i), roi, depth, 64, [], codec, captureFlags, [], bitdepth); %#ok<AGROW>
-
-      if i == 1
-        % Reset firewire bus for this camera:
-        % Screen('SetVideoCaptureParameter', grabbers(i), 'ResetBus');
-
-        % Reset this camera:
-        %Screen('SetVideoCaptureParameter', grabbers(i), 'ResetCamera');
-      end
-
-      % Multi-camera sync mode requested?
-      if syncmode > 0
+        % Open oncreen window for i'th camera:
+        win(i) = PsychImaging('OpenWindow', screenid, 0, [0, 0, 650, 500], [], [], [], [], [], kPsychGUIWindow + kPsychGUIWindowWMPositioned); %#ok<AGROW>
+        
+        % Set text size for info text:
+        Screen('TextSize', win(i), 24);
+        
+        % Open i'th camera:
+        grabbers(i) = Screen('OpenVideoCapture', win(i), deviceIds(i), roi, depth, 64, [], codec, captureFlags, [], bitdepth); %#ok<AGROW>
+        
         if i == 1
-            % First one is sync-master: Unless noMaster == 1, in which case there are only slaves.
-            Screen('SetVideoCaptureParameter', grabbers(1), 'SyncMode', syncmode + 1 + noMaster);
-            if Screen('SetVideoCaptureParameter', grabbers(1), 'SyncMode') ~= (syncmode + 1 + noMaster)
-                error('Sync master camera does not support requested sync mode %i! Game over!', syncmode);
-            end
-        else
-            % Others are sync-slaves:
-            Screen('SetVideoCaptureParameter', grabbers(i), 'SyncMode', syncmode + 2);
-            if Screen('SetVideoCaptureParameter', grabbers(i), 'SyncMode') ~= syncmode + 2
-                % This slave does not support syncmode! Means the syncmode must be hardware sync,
-                % as that is the only one which can be unsupported. Fall back to bus sync and switch
-                % master into combined hw sync + bus sync mode:
-                fprintf('Sync slave camera %i does not support requested sync mode %i!\n', grabbers(i), syncmode);
-
-                % Hardware sync requested but unsupported by this slave?
-                if (syncmode == 16) && ~noMaster
-                    % Yes, workaround via additional bus-sync and hope for the best:
-                    fprintf('Switching sync slave camera %i to bus sync as fallback. Master will emit bus-sync signals too.\n', grabbers(i));
-                    % Set slave to bus sync:
-                    Screen('SetVideoCaptureParameter', grabbers(i), 'SyncMode', 8 + 2);
-                    % Set master to bus sync in addition to hw sync:
-                    Screen('SetVideoCaptureParameter', grabbers(1), 'SyncMode', 16 + 8 + 1);
+            % Reset firewire bus for this camera:
+            % Screen('SetVideoCaptureParameter', grabbers(i), 'ResetBus');
+            
+            % Reset this camera:
+            %Screen('SetVideoCaptureParameter', grabbers(i), 'ResetCamera');
+        end
+        
+        % Multi-camera sync mode requested?
+        if syncmode > 0
+            if i == 1
+                % First one is sync-master: Unless noMaster == 1, in which case there are only slaves.
+                Screen('SetVideoCaptureParameter', grabbers(1), 'SyncMode', syncmode + 1 + noMaster);
+                if Screen('SetVideoCaptureParameter', grabbers(1), 'SyncMode') ~= (syncmode + 1 + noMaster)
+                    error('Sync master camera does not support requested sync mode %i! Game over!', syncmode);
+                end
+            else
+                % Others are sync-slaves:
+                Screen('SetVideoCaptureParameter', grabbers(i), 'SyncMode', syncmode + 2);
+                if Screen('SetVideoCaptureParameter', grabbers(i), 'SyncMode') ~= syncmode + 2
+                    % This slave does not support syncmode! Means the syncmode must be hardware sync,
+                    % as that is the only one which can be unsupported. Fall back to bus sync and switch
+                    % master into combined hw sync + bus sync mode:
+                    fprintf('Sync slave camera %i does not support requested sync mode %i!\n', grabbers(i), syncmode);
+                    
+                    % Hardware sync requested but unsupported by this slave?
+                    if (syncmode == 16) && ~noMaster
+                        % Yes, workaround via additional bus-sync and hope for the best:
+                        fprintf('Switching sync slave camera %i to bus sync as fallback. Master will emit bus-sync signals too.\n', grabbers(i));
+                        % Set slave to bus sync:
+                        Screen('SetVideoCaptureParameter', grabbers(i), 'SyncMode', 8 + 2);
+                        % Set master to bus sync in addition to hw sync:
+                        Screen('SetVideoCaptureParameter', grabbers(1), 'SyncMode', 16 + 8 + 1);
+                    end
                 end
             end
         end
-      end
-
-      % Use TriggerMode 0 "Start of exposure by trigger, duration of exposure by 'Shutter' setting". Trigger exposure on falling edge,
-      % (active low TriggerPolarity), get signal from TriggerSource 0, aka port 0:
-      fprintf('Camera %i : OldTriggerMode = %i\n', grabbers(i), Screen('SetVideoCaptureParameter', grabbers(i), 'TriggerMode', 0));
-      fprintf('Camera %i : OldTriggerPolarity = %i\n', grabbers(i), Screen('SetVideoCaptureParameter', grabbers(i), 'TriggerPolarity', 0));
-      fprintf('Camera %i : OldTriggerSource = %i\n', grabbers(i), Screen('SetVideoCaptureParameter', grabbers(i), 'TriggerSource', 0));
-      fprintf('Camera %i : TriggerSources = ', grabbers(i)); disp(Screen('SetVideoCaptureParameter', grabbers(i), 'GetTriggerSources'));
-      
-      % Configure i'th camera:
-      %brightness = Screen('SetVideoCaptureParameter',  grabbers(i), 'Brightness',383)
-      %exposure = Screen('SetVideoCaptureParameter',  grabbers(i), 'Exposure',130)
-      %gain = Screen('SetVideoCaptureParameter',  grabbers(i), 'Gain')
-      %gamma = Screen('SetVideoCaptureParameter',  grabbers(i), 'Gamma')
-      %shutter = Screen('SetVideoCaptureParameter',  grabbers(i), 'Shutter', 7)
-      %vendor = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetVendorname')
-      %model  = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetModelname')
-      %fps  = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetFramerate')
-      %roi  = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetROI')
-
-      %bmode = Screen('SetVideoCaptureParameter',  grabbers(i), '1394BModeActive', 0)
-      %isospeed = Screen('SetVideoCaptureParameter',  grabbers(i), 'ISOSpeed', 400)
-      
-      %pio = Screen('SetVideoCaptureParameter',  grabbers(i), 'PIO', 1)
-      %pio = Screen('SetVideoCaptureParameter',  grabbers(i), 'PIO')
-      
-      %[targetTemperature, currentTemperature] = Screen('SetVideoCaptureParameter',  grabbers(i), 'Temperature', 123)
-      %[u,v] = Screen('SetVideoCaptureParameter',  grabbers(i), 'WhiteBalance', 161, 116)
-      %[u,v] = Screen('SetVideoCaptureParameter',  grabbers(i), 'WhiteBalance')
-      
-      %[wr, wg, wb] = Screen('SetVideoCaptureParameter',  grabbers(i), 'WhiteShading')
-
-      % Measure firewire bus cycles for fun and profit :-)
-      [cycleSecs1, cycleSystemTime1, cycleSec, cycleCount, cycleOffset] = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetCycleTimer');
-      WaitSecs(0.1);
-      [cycleSecs2, cycleSystemTime2] = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetCycleTimer');
-      fprintf('Camera %i: Bus runs at %f seconds per second.\n', grabbers(i), (cycleSecs2 - cycleSecs1) / (cycleSystemTime2 - cycleSystemTime1));
-      
-      % Basler camera?
-      if strfind(Screen('SetVideoCaptureParameter', grabbers(i), 'GetVendorname'), 'Basler')
-        % Yes. Enable some Basler specific SFF features:
-
-        % The Basler SFF framecounter is mostly useless to us, as it only resets to zero on a power-cycle,
-        % and the cameras can't get power-cycled in software, only by physical unplug/replug :(.
-        % Update: Some Basler cameras allow power-cycling, so it does work on those, e.g., the A602f works,
-        % but the A312fc doesn't.
-        % baslerFrameCounter = Screen('SetVideoCaptureParameter', grabbers(i), 'BaslerFrameCounterEnable')
-
-        % Basler SFF CRC checksumming can find corrupted video frames due to problems with camera electronics,
-        % bus cables, controllers, OS etc. It is very compute intense though, adds easily 10 msecs per frame,
-        % so one should probably only enable it to diagnose real problems or initially verify a setup:
-        % baslerChecksum = Screen('SetVideoCaptureParameter', grabbers(i), 'BaslerChecksumEnable')
-
-        % Basler SFF timestamping can theoretically provide a capture timestamp corresponding to the exact
-        % time when image exposure on the cameras sensor was started. The camera can tag frames with the
-        % firewire bus time of start of exposure and Screen() can translate that into GetSecs time.
-        %
-        % In practice, all two tested models of Basler cameras didn't work. They returned a constant
-        % bogus value as timestamp, leading to bogus capture timestamps. No bug could be found in our code
-        % or the libdc1394 code when comparing code against the Basler SFF spec documents.
-        % baslerTimestamp = Screen('SetVideoCaptureParameter', grabbers(i), 'BaslerFrameTimestampEnable')
-      end
-      
-      Screen('SetVideoCaptureParameter', grabbers(i), 'PrintParameters')
-
-      % Select convMode as conversion mode:
-      Screen('SetVideoCaptureParameter', grabbers(i), 'DataConversionMode', convMode);
-
-      % Set an override bayer pattern to use if it can't get auto-detected:
-      Screen('SetVideoCaptureParameter', grabbers(i), 'OverrideBayerPattern', bayerPattern);
-      
-      % Select debayer algorithm:
-      Screen('SetVideoCaptureParameter', grabbers(i), 'DebayerMethod', debayerMethod);
-
-      % Ask engine to prefer Format-7 video capture modes over bog-standard Non-Format-7 ones.
-      % Normally the engine decides itself what is the best choice. Forcing the engine to
-      % use Format-7 sometimes allows to save a bit of bus-bandwidth and thereby squeeze out
-      % higher framerates, resolutions or use of more cameras on a single bus in multi-cam capture.
-      Screen('SetVideoCaptureParameter', grabbers(i), 'PreferFormat7Modes', 1);
-
-      if doVideoRecording
+        
+        % Use TriggerMode 0 "Start of exposure by trigger, duration of exposure by 'Shutter' setting". Trigger exposure on falling edge,
+        % (active low TriggerPolarity), get signal from TriggerSource 0, aka port 0:
+        fprintf('Camera %i : OldTriggerMode = %i\n', grabbers(i), Screen('SetVideoCaptureParameter', grabbers(i), 'TriggerMode', 0));
+        fprintf('Camera %i : OldTriggerPolarity = %i\n', grabbers(i), Screen('SetVideoCaptureParameter', grabbers(i), 'TriggerPolarity', 0));
+        fprintf('Camera %i : OldTriggerSource = %i\n', grabbers(i), Screen('SetVideoCaptureParameter', grabbers(i), 'TriggerSource', 0));
+        fprintf('Camera %i : TriggerSources = ', grabbers(i)); disp(Screen('SetVideoCaptureParameter', grabbers(i), 'GetTriggerSources'));
+        
+        % Configure i'th camera:
+        %brightness = Screen('SetVideoCaptureParameter',  grabbers(i), 'Brightness',383)
+        %exposure = Screen('SetVideoCaptureParameter',  grabbers(i), 'Exposure',130)
+        %gain = Screen('SetVideoCaptureParameter',  grabbers(i), 'Gain')
+        %gamma = Screen('SetVideoCaptureParameter',  grabbers(i), 'Gamma')
+        %shutter = Screen('SetVideoCaptureParameter',  grabbers(i), 'Shutter', 7)
+        %vendor = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetVendorname')
+        %model  = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetModelname')
+        %fps  = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetFramerate')
+        %roi  = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetROI')
+        
+        %bmode = Screen('SetVideoCaptureParameter',  grabbers(i), '1394BModeActive', 0)
+        %isospeed = Screen('SetVideoCaptureParameter',  grabbers(i), 'ISOSpeed', 400)
+        
+        %pio = Screen('SetVideoCaptureParameter',  grabbers(i), 'PIO', 1)
+        %pio = Screen('SetVideoCaptureParameter',  grabbers(i), 'PIO')
+        
+        %[targetTemperature, currentTemperature] = Screen('SetVideoCaptureParameter',  grabbers(i), 'Temperature', 123)
+        %[u,v] = Screen('SetVideoCaptureParameter',  grabbers(i), 'WhiteBalance', 161, 116)
+        %[u,v] = Screen('SetVideoCaptureParameter',  grabbers(i), 'WhiteBalance')
+        
+        %[wr, wg, wb] = Screen('SetVideoCaptureParameter',  grabbers(i), 'WhiteShading')
+        
+        % Measure firewire bus cycles for fun and profit :-)
+        [cycleSecs1, cycleSystemTime1, cycleSec, cycleCount, cycleOffset] = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetCycleTimer');
+        WaitSecs(0.1);
+        [cycleSecs2, cycleSystemTime2] = Screen('SetVideoCaptureParameter',  grabbers(i), 'GetCycleTimer');
+        fprintf('Camera %i: Bus runs at %f seconds per second.\n', grabbers(i), (cycleSecs2 - cycleSecs1) / (cycleSystemTime2 - cycleSystemTime1));
+        fprintf('Camera %i: Initial bus timestamps were cycleSec %i, cycleCount %i, cycleOffset %i.\n', grabbers(i), cycleSec, cycleCount, cycleOffset);
+        
+        % Basler camera?
+        if strfind(Screen('SetVideoCaptureParameter', grabbers(i), 'GetVendorname'), 'Basler')
+            % Yes. Enable some Basler specific SFF features:
+            
+            % The Basler SFF framecounter is mostly useless to us, as it only resets to zero on a power-cycle,
+            % and the cameras can't get power-cycled in software, only by physical unplug/replug :(.
+            % Update: Some Basler cameras allow power-cycling, so it does work on those, e.g., the A602f works,
+            % but the A312fc doesn't.
+            % baslerFrameCounter = Screen('SetVideoCaptureParameter', grabbers(i), 'BaslerFrameCounterEnable')
+            
+            % Basler SFF CRC checksumming can find corrupted video frames due to problems with camera electronics,
+            % bus cables, controllers, OS etc. It is very compute intense though, adds easily 10 msecs per frame,
+            % so one should probably only enable it to diagnose real problems or initially verify a setup:
+            % baslerChecksum = Screen('SetVideoCaptureParameter', grabbers(i), 'BaslerChecksumEnable')
+            
+            % Basler SFF timestamping can theoretically provide a capture timestamp corresponding to the exact
+            % time when image exposure on the cameras sensor was started. The camera can tag frames with the
+            % firewire bus time of start of exposure and Screen() can translate that into GetSecs time.
+            %
+            % In practice, all two tested models of Basler cameras didn't work. They returned a constant
+            % bogus value as timestamp, leading to bogus capture timestamps. No bug could be found in our code
+            % or the libdc1394 code when comparing code against the Basler SFF spec documents.
+            % baslerTimestamp = Screen('SetVideoCaptureParameter', grabbers(i), 'BaslerFrameTimestampEnable')
+        end
+        
+        Screen('SetVideoCaptureParameter', grabbers(i), 'PrintParameters')
+        
+        % Select convMode as conversion mode:
+        Screen('SetVideoCaptureParameter', grabbers(i), 'DataConversionMode', convMode);
+        
+        % Set an override bayer pattern to use if it can't get auto-detected:
+        Screen('SetVideoCaptureParameter', grabbers(i), 'OverrideBayerPattern', bayerPattern);
+        
+        % Select debayer algorithm:
+        Screen('SetVideoCaptureParameter', grabbers(i), 'DebayerMethod', debayerMethod);
+        
+        % Ask engine to prefer Format-7 video capture modes over bog-standard Non-Format-7 ones.
+        % Normally the engine decides itself what is the best choice. Forcing the engine to
+        % use Format-7 sometimes allows to save a bit of bus-bandwidth and thereby squeeze out
+        % higher framerates, resolutions or use of more cameras on a single bus in multi-cam capture.
+        Screen('SetVideoCaptureParameter', grabbers(i), 'PreferFormat7Modes', 1);
+        
+        if doVideoRecording
             % If video recording is requested, set a unique movie filename per camera:
             Screen('SetVideoCaptureParameter', grabbers(i), sprintf('SetNewMoviename=%s_Cam%02d.mov', movieName, grabbers(i)));
-      end
-
-      % If a specific maximum framecount is requested for end of capture/recording, set it here
-      % before capture gets started:
-      % Setting the count for the slaves it not always neccessary, as the master will distribute
-      % its limit to its slaves in many common scenarios, but then "better safe than sorry".
-      if maxTargetFrameCount > 0
+        end
+        
+        % If a specific maximum framecount is requested for end of capture/recording, set it here
+        % before capture gets started:
+        % Setting the count for the slaves it not always neccessary, as the master will distribute
+        % its limit to its slaves in many common scenarios, but then "better safe than sorry".
+        if maxTargetFrameCount > 0
             Screen('SetVideoCaptureParameter', grabbers(i), 'StopAtFramecount', maxTargetFrameCount);
             fprintf('Targetting stop of capture on camera %i at target framecount %i.\n', grabbers(i), maxTargetFrameCount);
-      end
-
-      % Assign GStreamer post processing string, if any:
-      if ~isempty(processingString)
-        Screen('SetVideoCaptureParameter', grabbers(i), sprintf('SetGStreamerProcessingPipeline=%s', processingString));
-      end
+        end
+        
+        % Assign GStreamer post processing string, if any:
+        if ~isempty(processingString)
+            Screen('SetVideoCaptureParameter', grabbers(i), sprintf('SetGStreamerProcessingPipeline=%s', processingString));
+        end
     end
-
+    
     % Start capture on all cameras:
     if syncmode == 0
         % Start one after the other:
@@ -314,20 +316,20 @@ try
         for grabber=grabbers(2:end)
             Screen('StartVideoCapture', grabber, fps, dropframes);
         end
-
+        
         % Only wait for keypress if there is a designated master. With
         % only slaves, that wait would be futile:
         if ~noMaster
             KbStrokeWait;
         end
         fprintf('Engage! ...\n\n');
-
+        
         % Start master:
         Screen('StartVideoCapture', grabbers(1), fps, dropframes);
         fprintf('And we are flying!\n\n');
         Screen('Preference','Verbosity', oldverb);
     end
-
+    
     % If a specific maximum framecount is requested for end of capture/recording, set it here dynamically
     % while capture is already started:
     if maxTargetFrameCount < 0
@@ -337,12 +339,12 @@ try
         for grabber = grabbers(2:end)
             Screen('SetVideoCaptureParameter', grabber, 'StopAtFramecount', abs(maxTargetFrameCount));
         end
-
+        
         % Finally set master / first grabber:
         Screen('SetVideoCaptureParameter', grabbers(1), 'StopAtFramecount', abs(maxTargetFrameCount));
         fprintf('Targetting stop of capture at target framecount %i.\n', abs(maxTargetFrameCount));
     end
-
+    
     capturestopped = 0;
     dstRect = [];
     count = 0;
@@ -351,7 +353,7 @@ try
     camtex = zeros(length(grabbers), fps * 10);
     campts = zeros(size(camtex));
     t=GetSecs;
-
+    
     % Multicapture and display loop: Runs until timeout of 120 seconds or until keypress
     % if there isn't any master cam or if no recording is requested:
     while dropframes || noMaster || ((GetSecs - t) < 120)
@@ -369,34 +371,34 @@ try
         end
         
         for i=1:length(grabbers)
-            [tex pts nrdropped] = Screen('GetCapturedImage', win(i), grabbers(i), 0);
+            [tex pts nrdropped] = Screen('GetCapturedImage', win(i), grabbers(i), 0); %#ok<NASGU>
             % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
-
+            
             if tex > 0
                 % Draw new texture from framegrabber.
                 Screen('DrawTexture', win(i), tex, [], dstRect);
-
+                
                 % Print pts:
                 Screen('DrawText', win(i), sprintf('%.4f    [%i of %i]', pts - t, Screen('SetVideoCaptureParameter', grabbers(i), 'GetFetchedFramecount'), Screen('SetVideoCaptureParameter', grabbers(i), 'GetCurrentFramecount')), ...
-                        0, 0, [1 0 0]);
+                    0, 0, [1 0 0]);
                 if count > 0
                     % Compute delta:
                     delta = (pts - oldpts(i)) * 1000;
                     Screen('DrawText', win(i), sprintf('%.4f', delta), 0, 20, [1 0 0]);
                 end
                 oldpts(i) = pts;
-
+                
                 % Show it. Don't sync to video refresh at all, as it would cause
                 % performance degradation due to lockstep between window updates.
                 Screen('Flip', win(i), [], [], 2);
                 if dropframes
                     Screen('Close', tex);
                 else
-                    texcount(i) = texcount(i) + 1;
+                    texcount(i) = texcount(i) + 1; %#ok<UNRCH>
                     camtex(i, texcount(i)) = tex;
                     campts(i, texcount(i)) = pts;
                 end
-                tex=0;
+                tex = 0; %#ok<NASGU>
             end
             count = count + 1;
         end
@@ -404,7 +406,8 @@ try
     end
     
     telapsed = GetSecs - t;
-
+    fprintf('Elapsed runtime %f seconds.\n', telapsed);
+    
     for grabber=grabbers
         fprintf('Camera %i : Bandwidth = %f\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'GetBandwidthUsage'));
         fprintf('Camera %i : UsedTriggerMode = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'TriggerMode'));
@@ -420,33 +423,33 @@ try
         end
     else
         % Multicam sync enabled.
-
+        
         % First some feedback about sync:
         for grabber=grabbers
             fprintf('Camera %i : Possible max framecount = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'GetFutureMaxFramecount'));
         end
-    
+        
         % Stop master first:
         fprintf('Drop us out of warp!\n');
         Screen('StopVideoCapture', grabbers(1));
-
+        
         % Then stop all slaves:
         fprintf('Sublight reached ...\n');
         for grabber=grabbers(2:end)
             Screen('StopVideoCapture', grabber);
         end
-
+        
         fprintf('And quarter impulse ahead.\n');
     end
-
+    
     % Close down cameras, and some final stats:
     for grabber=grabbers
-      fprintf('Camera %i : Final framecount = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'GetCurrentFramecount'));
-      fprintf('Camera %i : Possible framecount = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'GetFutureMaxFramecount'));
-      fprintf('Camera %i : Corrupted frames count = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'GetCorruptFramecount'));
-      Screen('CloseVideoCapture', grabber);
+        fprintf('Camera %i : Final framecount = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'GetCurrentFramecount'));
+        fprintf('Camera %i : Possible framecount = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'GetFutureMaxFramecount'));
+        fprintf('Camera %i : Corrupted frames count = %i\n', grabber, Screen('SetVideoCaptureParameter', grabber, 'GetCorruptFramecount'));
+        Screen('CloseVideoCapture', grabber);
     end
-
+    
     if ~dropframes
         fi = 1;
         while 1
@@ -454,28 +457,28 @@ try
             if keyCode(escape)
                 break;
             end
-
+            
             if keyCode(backKey)
                 fi = max(1, fi - 1);
             end
-
+            
             if keyCode(forwardKey)
                 fi = min(min(texcount), fi + 1);
             end
-
+            
             for i=1:length(grabbers)
                 % Draw new texture from framegrabber.
                 Screen('DrawTexture', win(i), camtex(i, fi), [], dstRect);
-
+                
                 % Print pts:
                 Screen('DrawText', win(i), sprintf('%.4f', campts(i, fi) - t), 0, 0, [1 0 0]);
-
+                
                 % Show it:
                 Screen('Flip', win(i), [], [], 1);
             end
         end
     end
-
+    
     % Close all textures explicitely to avoid "many open textures" warning:
     Screen('Close');
     
