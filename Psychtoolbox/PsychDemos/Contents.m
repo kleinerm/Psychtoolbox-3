@@ -95,6 +95,7 @@
 %    VideoCaptureDemo        - Simple demo for video capture functions.
 %    VideoCaptureToMatlabDemo - Demo of returning live captured video to Octave or Matlab as image matrices.
 %    VideoDelayLoopMiniDemo  - Delayed visual feedback with controllable delay.
+%    VideoDVCamCaptureDemo   - Demonstrate video capture and recording from DV consumer cameras.
 %    VideoMultiCameraCaptureDemo - Demo of time-synchronized high-perf capture and recording from multiple firewire cameras on Linux and OSX.
 %    VideoOfflineCaptureDemo - Capture video into internal memory, then return it after stop of capture.
 %    VideoRecordingDemo      - Record captured video to movie files, possibly with audio.
