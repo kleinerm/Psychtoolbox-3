@@ -129,7 +129,8 @@ PsychMovieWriterRecordType* PsychGetMovieWriter(int moviehandle, psych_bool unsa
 unsigned char* PsychMovieCopyPulledPipelineBuffer(int moviehandle, unsigned int* twidth, unsigned int* theight, unsigned int* numChannels, unsigned int* bitdepth, double* timestamp)
 {
     unsigned char* imgdata;
-    
+    unsigned int count;
+
     // Retrieve movie record:
     PsychMovieWriterRecordType* pwriterRec = PsychGetMovieWriter(moviehandle, FALSE);
 
@@ -153,7 +154,7 @@ unsigned char* PsychMovieCopyPulledPipelineBuffer(int moviehandle, unsigned int*
     *timestamp = (double) GST_BUFFER_TIMESTAMP(videoBuffer) / (double) 1e9;
 
     // Copy data into new malloc'ed buffer:
-    unsigned int count = (pwriterRec->width * pwriterRec->height * pwriterRec->numChannels * ((pwriterRec->bitdepth > 8) ? 2 : 1));
+    count = (pwriterRec->width * pwriterRec->height * pwriterRec->numChannels * ((pwriterRec->bitdepth > 8) ? 2 : 1));
     
     // Allocate target buffer for most recent captured frame from video recorder thread:
     imgdata = (unsigned char*) malloc(count);
