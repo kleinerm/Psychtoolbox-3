@@ -2806,7 +2806,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             // Create a bin from the provided gst-launch style string and assign it as videosource plugin:
             sprintf(plugin_name, "gstlaunchbinsrc");
             error = NULL;
-            videosource = gst_parse_bin_from_description((const gchar *) gstlaunchbinsrc, TRUE, &error);
+            videosource = gst_parse_bin_from_description((const gchar *) gstlaunchbinsrc, FALSE, &error);
             
             if (!videosource) {
                 printf("PTB-ERROR: Failed to create generic bin video source!\n");
@@ -3513,9 +3513,9 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Pipeline preroll skipped because only harddisc recording (recordingflags & 4).\n");
     }
 
-    if (strstr(plugin_name, "dv1394src")) {
-	    recordingflags |= 8;        
-	    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Pipeline preroll skipped because DV capture via dv1394src or hdv1394src is active.\n");
+    if (strstr(plugin_name, "dv1394src") || strstr(gstlaunchbinsrc, "ptbdvsource")) {
+        recordingflags |= 8;
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Pipeline preroll skipped because DV capture via dv1394src or hdv1394src is active.\n");
     }
 
     // Only preroll if prerolling not disabled by recordingflag 8,
@@ -4038,9 +4038,20 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 // Map special capturerate value DBL_MAX to a fps nominator of zero. This
                 // asks the engine to capture at the maximum supported framerate for given
                 // format and resolution:
-                g_signal_emit_by_name (G_OBJECT(camera),
-                                       "set-video-resolution-fps", capdev->width, capdev->height,
-                                       ((capturerate < DBL_MAX) ? (int)(capturerate + 0.5) : 0), 1);
+                if (capturerate == (double) 30000/1001) {
+                    // Special case NTSC-DV capture rate of exactly 30000/1001. Need to set this
+                    // to prevent potential failure on NTSC-DV cameras:
+                    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: In StartVideoCapture: Setting exact NTSC-DV video capture rate of 30000/1001.\n");
+                    g_signal_emit_by_name(G_OBJECT(camera),
+                                          "set-video-resolution-fps", capdev->width, capdev->height,
+                                          30000, 1001);
+                }
+                else {
+                    // Regular rate or "realmax":
+                    g_signal_emit_by_name(G_OBJECT(camera),
+                                          "set-video-resolution-fps", capdev->width, capdev->height,
+                                          ((capturerate < DBL_MAX) ? (int)(capturerate + 0.5) : 0), 1);
+                }
             }
 		}
 		else {
