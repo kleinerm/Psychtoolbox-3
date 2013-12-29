@@ -86,6 +86,17 @@ if nargin < 2
    codec = [];
 end
 
+if nargin < 3 || isempty(withsound)
+   withsound = 2;
+end
+
+if withsound > 0
+    % A setting of '2' (ie 2nd bit set) means: Enable sound recording.
+    withsound = 2;
+else
+    withsound = 0;
+end
+
 % If no user specified codec, then choose one of the following:
 if isempty(codec)
     % These do not work yet:
@@ -106,29 +117,41 @@ if isempty(codec)
     %codec = ':CodecSettings=Keyframe=60 Videobitrate=8192 '
     %codec = ':CodecType=xvidenc Keyframe=60 Videobitrate=8192 '
 
-    % Assign default auto-selected codec:
-    codec = ':CodecType=DEFAULTencoder';
+    if IsLinux
+        % Linux, where stuff "just works(tm)": Assign default auto-selected codec:
+        codec = ':CodecType=DEFAULTencoder';
+    end
+    
+    if IsOSX
+        % OSX: Without audio, stuff just works. With audio, we must specify
+        % an explicit audio source with very specific parameters (48 kHz sampling rate), as
+        % everything else will just hang, at least on OSX 10.9.1 Mavericks:
+        if withsound
+            codec = ':CodecType=DEFAULTencoder ::: AudioSource=osxaudiosrc ! capsfilter caps=audio/x-raw-float,rate=48000';
+        else
+            codec = ':CodecType=DEFAULTencoder';
+        end
+    end
+    
+    if IsWin
+        % Windows: H264 encoder often doesn't work out of the box without
+        % overloading the machine. Choose theora encoder instead, which
+        % seems to be more well-behaved and fast enough on modern machines.
+        % Also, at least my test machine needs an explicitely defined audio
+        % source, as the autoaudiosrc does not find any sound sources on
+        % the Windows-7 PC :-(
+        if withsound
+            codec = ':CodecType=theoraenc ::: AudioSource=dshowaudiosrc';
+        else
+            codec = ':CodecType=theoraenc';
+        end
+    end
 else
     % Assign specific user-selected codec:
     codec = [':CodecType=' codec];
 end
 
 fprintf('Using codec: %s\n', codec);
-
-if nargin < 3
-   withsound = [];
-end
-
-if isempty(withsound)
-    withsound = 2;
-end
-
-if withsound > 0
-    % A setting of '2' (ie 2nd bit set) means: Enable sound recording.
-    withsound = 2;
-else
-    withsound = 0;
-end
 
 if nargin < 4
     showit = 1;
