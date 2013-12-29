@@ -5,6 +5,10 @@ function VideoRecordingDemo(moviename, codec, withsound, showit, windowed)
 %
 % Supports GStreamer on all systems, and DC1394 engine on Linux and OSX.
 %
+% Please look at the source code of the demo carefully! Both MacOSX and
+% MS-Windows often need special treatment in terms of codec and parameter
+% selection to work reliably (or to be honest: To work at all).
+%
 % The demo starts the videocapture engine, recording video from the default
 % video source and (optionally) sound from the default audio source. It
 % encodes the video+audio data with the selected 'codec' and writes it to the
@@ -12,7 +16,7 @@ function VideoRecordingDemo(moviename, codec, withsound, showit, windowed)
 % video onscreen (often at a much lower framerate to keep system load low
 % enough for reliable recording). Recording ends if any key is pressed on
 % the keyboard.
-% 
+%
 % Arguments and their meaning:
 %
 % 'moviename' name of output movie file. The file must not exist at start
@@ -60,6 +64,7 @@ function VideoRecordingDemo(moviename, codec, withsound, showit, windowed)
 %  5.6.2011   Updated for GStreamer support on Linux and Windows (MK).
 %  3.9.2012   Updated to handle both legacy Quicktime and modern GStreamer (MK).
 % 19.11.2013  Drop Quicktime support, add dc1394 support, update help text (MK).
+% 29.12.2013  Make less broken on OSX and Windows (MK).
 
 % Test if we're running on PTB-3, abort otherwise:
 AssertOpenGL;
@@ -83,11 +88,11 @@ end
 
 % Assign default codec if none assigned:
 if nargin < 2
-   codec = [];
+    codec = [];
 end
 
 if nargin < 3 || isempty(withsound)
-   withsound = 2;
+    withsound = 2;
 end
 
 if withsound > 0
@@ -103,12 +108,12 @@ if isempty(codec)
     %codec = ':CodecType=huffyuv'  % Huffmann encoded YUV + MPEG-4 audio: FAIL!
     %codec = ':CodecType=ffenc_h263p'  % H263 video + MPEG-4 audio: FAIL!
     %codec = ':CodecType=yuvraw' % Raw YUV + MPEG-4 audio: FAIL!
-
+    
     % These are so slow, they are basically useless for live recording:
     %codec = ':CodecType=theoraenc'% Theoravideo + Ogg vorbis audio: Gut @ 320 x 240
     %codec = ':CodecType=vp8enc_webm'   % VP-8/WebM  + Ogg vorbis audio: Ok @ 320 x 240, miserabel higher.
     %codec = ':CodecType=vp8enc_matroska'   % VP-8/Matroska  + Ogg vorbis audio: Gut @ 320 x 240
-
+    
     % The good ones...
     %codec = ':CodecType=ffenc_mpeg4' % % MPEG-4 video + audio: Tut ok @ 640 x 480.
     %codec = ':CodecType=xvidenc'  % MPEG-4 video + audio: Tut sehr gut @ 640 x 480 Very good a-v sync! Works well in all conditions. -> Champion.
@@ -116,7 +121,7 @@ if isempty(codec)
     %codec = ':CodecType=VideoCodec=x264enc speed-preset=1 noise-reduction=100000 ::: AudioCodec=faac ::: Muxer=avimux'
     %codec = ':CodecSettings=Keyframe=60 Videobitrate=8192 '
     %codec = ':CodecType=xvidenc Keyframe=60 Videobitrate=8192 '
-
+    
     if IsLinux
         % Linux, where stuff "just works(tm)": Assign default auto-selected codec:
         codec = ':CodecType=DEFAULTencoder';
@@ -205,7 +210,7 @@ try
     
     % Initial flip to a blank screen:
     Screen('Flip',win);
-
+    
     % Set text size for info text. 24 pixels is also good for Linux.
     Screen('TextSize', win, 24);
     
@@ -217,18 +222,18 @@ try
         % Therefore we hard-code the resolution to 640x480, the most common
         % case, to make it work "most of the time(tm)":
         grabber = Screen('OpenVideoCapture', win, [], [0 0 640 480], [], [], [], codec, withsound);
-    else        
+    else
         % No need for Windows-style workarounds:
         grabber = Screen('OpenVideoCapture', win, [], [], [], [], [], codec, withsound, [], 8);
     end
-
+    
     for nreps = 1:1
         KbReleaseWait;
-
+        
         % Select a moviename for the recorded movie file:
         mname = sprintf('SetNewMoviename=%s_%i.mov', moviename, nreps);
         Screen('SetVideoCaptureParameter', grabber, mname);
-
+        
         % Start capture, request 30 fps. Capture hardware will fall back to
         % fastest supported framerate if it is not supported (i think).
         % Some hardware disregards the framerate parameter. Especially the
@@ -238,14 +243,14 @@ try
         % it can run at 30 fps, at lower light conditions it reduces the
         % framerate to 15 fps, then to 7.5 fps.
         Screen('StartVideoCapture', grabber, 30, 1)
-
+        
         oldtex = 0;
         tex = 0;
         oldpts = 0;
         pts = 0;
         count = 0;
         t=GetSecs;
-
+        
         % Run until keypress:
         while ~KbCheck
             % Wait blocking for next image. If waitforimage == 1 then return it
@@ -256,10 +261,10 @@ try
                 % Live preview: Wait blocking for new frame, return texture
                 % handle and capture timestamp:
                 [tex pts nrdropped]=Screen('GetCapturedImage', win, grabber, waitforimage, oldtex);
-
+                
                 % Some output to the console:
                 % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
-
+                
                 % If a texture is available, draw and show it.
                 if tex > 0
                     % Print capture timestamp in seconds since start of capture:
@@ -270,13 +275,13 @@ try
                         oldpts = pts;
                         Screen('DrawText', win, sprintf('Interframe delta (msecs): %.4f', delta), 0, 20, 255);
                     end
-
+                    
                     % Draw new texture from framegrabber.
                     Screen('DrawTexture', win, tex);
-
+                    
                     % Recycle this texture - faster:
                     oldtex = tex;
-
+                    
                     % Show it:
                     Screen('Flip', win);
                     count = count + 1;
@@ -287,21 +292,21 @@ try
                 % Recording only: We have nothing to do here, as thread offloading
                 % is enabled above via flag 16 so all processing is done automatically
                 % in the background.
-
+                
                 % Well, we do one thing. We sleep for 0.1 secs to avoid taxing the cpu
                 % for no good reason:
                 WaitSecs('YieldSecs', 0.1);
             end
             % Ready for next frame:
         end
-
+        
         % Done. Shut us down.
         telapsed = GetSecs - t
-
+        
         % Stop capture engine and recording:
         Screen('StopVideoCapture', grabber);
     end
-
+    
     % Close engine and recorded movie file:
     Screen('CloseVideoCapture', grabber);
     
