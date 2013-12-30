@@ -596,7 +596,7 @@ PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const cha
 	device->readBuffer = NULL;
 	device->readBufferSize = 0;
 	device->readerThread = (psych_thread) NULL;
-	device->lineTerminator == _POSIX_VDISABLE;
+	device->lineTerminator = _POSIX_VDISABLE;
 
     // Get the current options and save them so we can restore the default settings later.
     if (tcgetattr(fileDescriptor, &(device->OriginalTTYAttrs)) == -1) {

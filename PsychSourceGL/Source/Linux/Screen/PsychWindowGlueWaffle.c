@@ -750,7 +750,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             sizehints.y = y;
             sizehints.width = width;
             sizehints.height = height;
-            sizehints.flags = USSize | USPosition;
+            // Let window manager control window position if kPsychGUIWindowWMPositioned is set:
+            sizehints.flags = USSize | (windowRecord->specialflags & kPsychGUIWindowWMPositioned) ? 0 : USPosition;
             XSetNormalHints(dpy, win, &sizehints);
             XSetStandardProperties(dpy, win, "PTB Onscreen window", "PTB Onscreen window", None, (char **)NULL, 0, &sizehints);
         }
@@ -986,7 +987,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
         // Then we move it to its proper location. This step is needed with Waffle even on
         // GUI windows, as Waffle has no way for us to specify window (x,y) start location:
-        XMoveWindow(dpy, win, x, y);
+        // Unless of course usercode asked to leave the windowmanager in charge of positioning.
+        if (!(windowRecord->specialflags & kPsychGUIWindowWMPositioned)) XMoveWindow(dpy, win, x, y);
         
         // Make sure it reaches its target position:
         XSync(dpy, False);    

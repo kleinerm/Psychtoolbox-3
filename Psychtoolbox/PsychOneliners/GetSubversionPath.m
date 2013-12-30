@@ -21,6 +21,9 @@ function svnpath = GetSubversionPath
 % 03/10/13 Change search path order to match DownloadPsychtoolbox on OS/X (MK)
 % 04/24/13 Move check for /opt/subversion/bin/svn first. Nicolas Cottaris in
 %          my lab says this fixes a problem that arose when he installed SVN 1.7.9. (DHB)
+% 10/28/13 Add IsLinux where we try out various possible UNIX paths.
+%          Maria Olkkonen reports that doing so makes this work properly
+%          on her linux system.  (DHB)
 
 % Check for alternative install location of Subversion:
 if IsWin
@@ -40,8 +43,8 @@ else
 	% install location on OS-X and abort if it isn't there. On M$-Win we
 	% simply have to hope that it is in some system dependent search path.
 
-	% Currently, we only know how to check this for Mac OSX.
-	if IsOSX
+	% Currently, we only know how to check this for Mac OSX and Linux.
+	if (IsOSX || IsLinux)
 		svnpath = '';
 		     
 		if isempty(svnpath) && exist('/opt/subversion/bin/svn', 'file')

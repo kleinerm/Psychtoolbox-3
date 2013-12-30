@@ -56,14 +56,14 @@ typedef struct paMacCoreStreamInfo
     unsigned long flags;        /* flags to modify behaviour */
 } paMacCoreStreamInfo;
 
-#if 0
-/* MK: Disabled here in PsychPortAudio's private version of pa_mac_core.h
+/* MK: Disabled function body here in PsychPortAudio's private version of pa_mac_core.h
  * to avoid conflicting duplicate declaration of this function and symbols in
- * PsychPortAudio.o and the Portaudio library.
+ * PsychPortAudio.o and the Portaudio library. However, we need to keep/define the
+ * function prototype to avoid compiler warnings.
  */
-/* Use this function to initialize a paMacCoreStreamInfo struct
-   using the requested flags. */
-void paSetupMacCoreStreamInfo( paMacCoreStreamInfo *data, unsigned long flags )
+/* Use this function to initialize a paMacCoreStreamInfo struct using the requested flags. */
+void paSetupMacCoreStreamInfo( paMacCoreStreamInfo *data, unsigned long flags );
+/*
 {
    bzero( data, sizeof( paMacCoreStreamInfo ) );
    data->size = sizeof( paMacCoreStreamInfo );
@@ -71,7 +71,7 @@ void paSetupMacCoreStreamInfo( paMacCoreStreamInfo *data, unsigned long flags )
    data->version = 0x01;
    data->flags = flags;
 }
-#endif
+*/
 
 /*
  * The following flags alter the behaviour of PA on the mac platform.

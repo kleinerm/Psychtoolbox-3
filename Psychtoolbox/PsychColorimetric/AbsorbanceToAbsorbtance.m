@@ -23,12 +23,20 @@ function [absorbtanceSpectra, absorbtanceSpectraWls] =...
 % Wavelength information may be in any of the available Psychtoolbox representations,
 % and the returned wavelength information is in the same format as passed.
 %
+% A useful fact about this conversion is the following.  For small axial optical densities
+% the absorbtance spectrum is a scaled version of the absorbance spectrum.  This follows
+% if we take the Taylor expansion of 1 - 10.^(-x) for small values of x.  We find that
+% that is 1 - (10^0 + (-ln(10)*x) = ln(10)*x.  Plugging in OD*absorbanceSpectra for x
+% we get the absorbtanceSpectra = ln(10)*OD*absorbanceSpectra.
+%
+%
 % 04/29/03 lyin 	Wrote wrote with advice from dhb
 % 04/30/03 lyin 	Reorganize the variable
 % 06/12/03 lyin 	Change the way variable being passed
 % 06/23/03 dhb		Check dimensions of spectra and density.
 % 06/30/03 dhb      Change to toolbox convention, put sensitivity like stuff in rows.
 % 08/11/13 dhb      Fix comment to reflect row convention change made in 2003.  Slowly but surely we fix things up.
+% 10/29/13 dhb, ms  Add commment about absorbtance for low OD.
 
 % Check that dimensions match properly
 if (size(absorbanceSpectra,1) ~= length(axialOpticalDensities))

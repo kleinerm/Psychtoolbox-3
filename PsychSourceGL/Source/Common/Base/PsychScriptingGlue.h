@@ -87,6 +87,7 @@ void 	PsychAllocateNativeDoubleMat(psych_int64 m, psych_int64 n, psych_int64 p, 
 
 // for unsigned 16 bit integer:
 psych_bool PsychCopyOutUnsignedInt16MatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, psych_uint16 *fromArray);
+psych_bool PsychAllocOutUnsignedInt16MatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, psych_uint16 **array);
 
 //for psych_bool.  These should be consolidated with the flags below. 
 psych_bool PsychAllocOutBooleanMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, PsychNativeBooleanType **array);

@@ -26,19 +26,7 @@
 		PsychWindowTextClue.
 	
 		In addition to glue functions for windows and screen there are functions which implement shared functionality between between Screen commands,
-		such as ScreenTypes.c and WindowBank.c. 
-			
-	NOTES:
-	
-	TO DO: 
-	
-		� The "glue" files should should be suffixed with a platform name.  The original (bad) plan was to distingish platform-specific files with the same 
-		name by their placement in a directory tree.
-		
-		� All of the functions which accept a screen number should be suffixed with "...FromScreenNumber". 
- 
-		
-     							
+		such as ScreenTypes.c and WindowBank.c.
 */
 
 //include once
@@ -46,7 +34,6 @@
 #define PSYCH_IS_INCLUDED_PsychScreenGlue
 
 #include "Screen.h"
-
 
 //functions from PsychScreenGlue
 void						InitializePsychDisplayGlue(void);
@@ -62,7 +49,6 @@ void						PsychGetScreenDepths(int screenNumber, PsychDepthType *depths);
 psych_bool					PsychCheckVideoSettings(PsychScreenSettingsType *setting);
 void						PsychGetScreenDepth(int screenNumber, PsychDepthType *depth);   //dont' use this and get rid  of it.
 int							PsychGetScreenDepthValue(int screenNumber);
-int							PsychGetNumScreenPlanes(int screenNumber);
 float						PsychGetNominalFramerate(int screenNumber);
 void						PsychGetScreenSize(int screenNumber, long *width, long *height);
 void						PsychGetGlobalScreenRect(int screenNumber, double *rect);

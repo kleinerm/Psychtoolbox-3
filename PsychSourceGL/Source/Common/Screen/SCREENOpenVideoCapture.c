@@ -17,11 +17,11 @@
   DESCRIPTION:
   
   Open a video capture source (framegrabber, webcam, ...), create and initialize a corresponding capture object
-  and return a handle to it to MATLAB space.
+  and return a handle to it.
  
-  On all systems, the preferred video capture engine is GStreamer.
+  On all systems, the preferred and supported video capture engine is GStreamer.
  
-  On Linux and OS/X we support Firewire machine vision cameras that comply to the IIDC-1.x specification,
+  On Linux and OS/X we support Firewire and USB machine vision cameras which comply to the IIDC-1.x specification,
   via use of the open-source free software library libdc1394 V2. The library itself is most powerful and well
   tested/tuned for GNU/Linux systems, but also well working on OS/X. It has experimental limited support for
   MS-Windows as well, but we don't implement it for Windows yet.
@@ -32,7 +32,7 @@
 
 #include "Screen.h"
 
-static char useString[] = "videoPtr = Screen('OpenVideoCapture', windowPtr [, deviceIndex] [,roirectangle] [, pixeldepth] [, numbuffers] [, allowfallback] [, targetmoviename] [, recordingflags] [, captureEngineType]);";
+static char useString[] = "videoPtr = Screen('OpenVideoCapture', windowPtr [, deviceIndex][, roirectangle][, pixeldepth][, numbuffers][, allowfallback][, targetmoviename][, recordingflags][, captureEngineType][, bitdepth=8]);";
 static char synopsisString[] = 
 "Try to open the video source 'deviceIndex' for video capture into onscreen window 'windowPtr' and "
 "return a handle 'videoPtr' on success. If 'deviceIndex' is left out, it defaults to zero - use the "
@@ -69,12 +69,13 @@ static char synopsisString[] =
 "'targetmoviename' If you provide a filename for this argument, PTB will record the captured video to the "
 "specified  movie file on your filesystem. PTB will use a default video codec for encoding the "
 "video stream. If you want to use a specific codec, you can extend the targetmoviename by a string of "
-"format :CodecType=xxx , where xxx is the numeric type id or name of the codec. You can get a list of codecs "
-"supported by your system by running PTB's recording engine at a verbosity level of 4 or higher.\n"
-"However, please read 'help VideoRecording' for many more options for tweaking the video recording "
+"format :CodecType=xxx , where xxx is the numeric type id or name of the codec.\n"
+"Please read 'help VideoRecording' for many more options for tweaking the video recording "
 "process via the 'targetmoviename' parameter.\n"
-"'recordingflags' specify the behaviour of harddisc- "
-"recording: 0 (default) = Only record video. 2 = Record audio track as well. The value 1 (or 1+2) asks "
+"'recordingflags' specify the behaviour of harddisc-recording and some other capture operations. Please "
+"note that not all flags are supported on all capture engines, cameras and operating systems. Unsupported "
+"flags will be silently ignored. Most flags are only supported with GStreamer at the moment: "
+"0 (default) = Only record video. 2 = Record audio track as well. The value 1 (or 1+2) asks "
 "PTB to first record into system memory, and only write the movie file after capture has been stopped. "
 "This allows for higher capture framerates, but is limited in recording time by installed memory. Also, "
 "this mode currently can sometimes cause hangs and crashes of PTB for unknown reasons, so better avoid!\n"
@@ -107,19 +108,19 @@ static char synopsisString[] =
 "A setting of 2048 requests immediate conversion of video textures into a format suitable as offscreen window, "
 "for use with Screen('TransformTexture') or for drawing with custom user provided GLSL shaders. Normally this "
 "happens automatically on first use, asking for it explicitely may have performance or convenience benefits.\n"
-"A setting of 4096 requests to skip some performance optimizations (the setting of filter-caps). This can help "
+"A setting of 4096 requests to apply some performance optimizations (the setting of filter-caps). This can hurt "
 "if a videocapture device refuses to work, with some error message about ''check your filtered caps, if any.''. "
-"This may imply a slightly higher load on your computer or some performance loss.\n"
+"By default, if the flag is omitted, some performance loss will be present, but capture will be more robust "
+"with problematic cameras.\n"
 "\n"
 "'captureEngineType' This optional parameter allows selection of the video capture engine to use for this "
 "video source. Allowable values are currently 1 and 3. "
 "A value of 1 selects Firewire video capture via the free software library libdc1394-V2. "
 "That engine only supports high performance machine vision cameras that are compliant with the "
 "IIDC-1.x standard and are connected via a Firewire (IEEE-1394) bus system. Use of the engine with such "
-"cams allows for much higher flexibility and performance than use of video capture via GStreamer, "
-"however, video recording to harddisk or sound recording isn't yet supported with firewire capture, ie., "
-"the 'targetmoviename' is simply ignored. The firewire capture engine is supported on Linux, MacOS/X and "
-"- maybe at some point in the future, with quite a few limitations and bugs - on Windows.\n\n"
+"cams allows for much higher flexibility and performance than use of video capture via GStreamer, however "
+"one restriction is that sound recording isn't yet supported with firewire capture. "
+"The firewire capture engine is supported on Linux and MacOS/X, but not on MS-Windows.\n\n"
 "A value of 3 selects the GStreamer video capture engine. This engine is supported on all operating systems "
 "and allows for video and sound recording of captured video and audio streams. Type 'help GStreamer' for "
 "installation and setup instructions for the required GStreamer runtime libraries.\n\n"
@@ -127,10 +128,20 @@ static char synopsisString[] =
 "setting from Screen('Preference', 'DefaultVideoCaptureEngine') will be used. If you don't specify that either "
 "then engine selection will default to GStreamer.\n\n"
 "To summarize: \n"
-"GStreamer: Is the engine of choice for all operating systems and most applications.\n"
+"GStreamer: Is the engine of choice for all operating systems and with most standard applications.\n"
 "Firewire engine: Supports only Firewire machine vision cameras, but allows free selection among all connected "
 "cameras, simultaneous operation of many cameras, low latency, high framerates and reliability, precise timestamping "
-"and low level access to many special features of such cameras, e.g., gain-, shutter-, exposure-, trigger controls etc.\n";
+"and low level access to many special features of such cameras, e.g., gain-, shutter-, exposure-, trigger controls etc.\n\n"
+"'bitdepth' Optional parameter to ask for video capture in a certain color or luminance resolution, a certain "
+"number of bits per color or luminance component, also known as bpc. Defaults to 8 bpc if omitted, ie., 8 bits "
+"or 1 Byte resolution per luminance or color channel for classic 256 levels of intensity. Lower values are unsupported "
+"and will get rounded up to 8 bpc. Higher values may be supported by some higher end professional class cameras. If "
+"you ask for an unsupported value, the engine will try to get the lowest supported value that matches or exceeds "
+"what you want. Currently the firewire engine for pro-class IIDC compliant firewire or USB machine vision cameras "
+"supports bitdepth > 8 bpc on capable cameras. The GStreamer engine always supports 8 bpc and it may support 16 bpc on "
+"capable cameras. Please note that requesting > 8 bpc will cause a substantial increase in both video bus "
+"bandwidth and memory consumption: Twice the bus bandwidth and two to four times the amount of memory per video frame, "
+"so tread carefully.\n";
 
 static char seeAlsoString[] = "CloseVideoCapture StartVideoCapture StopVideoCapture GetCapturedImage";
 
@@ -147,12 +158,13 @@ PsychError SCREENOpenVideoCapture(void)
 	char*                                   moviename;
 	int                                     recordingflags;
 	int                                     engineId;
+    int                                     bitdepth = 8;
 	
 	// All sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
-	PsychErrorExit(PsychCapNumInputArgs(9));            // Max. 9 input args.
+	PsychErrorExit(PsychCapNumInputArgs(10));           // Max. 10 input args.
 	PsychErrorExit(PsychRequireNumInputArgs(1));        // Min. 1 input args required.
 	PsychErrorExit(PsychCapNumOutputArgs(1));           // Max. 1 output args.
 	
@@ -216,13 +228,16 @@ PsychError SCREENOpenVideoCapture(void)
 		printf("PTB-INFO: In most cases, the selected replacement should work without need for any further changes to your code.\n\n");
 	}
 
+	// Copy in optional bitdepth, aka bpc setting for capture resolution: Defaults to 8 bpc.
+	PsychCopyInIntegerArg(10, FALSE, &bitdepth);
+	
 	// Try to open the capture device and create & initialize a corresponding capture object.
 	// A MATLAB handle to the video capture object is returned upon successfull operation.
 	if (roiassigned) {
-		PsychOpenVideoCaptureDevice(engineId, windowRecord, deviceIndex, &capturehandle, roirectangle, reqdepth, num_dmabuffers, allow_lowperf_fallback, moviename, recordingflags);
+        PsychOpenVideoCaptureDevice(engineId, windowRecord, deviceIndex, &capturehandle, roirectangle, reqdepth, num_dmabuffers, allow_lowperf_fallback, moviename, recordingflags, bitdepth);
 	}
 	else {
-		PsychOpenVideoCaptureDevice(engineId, windowRecord, deviceIndex, &capturehandle, NULL, reqdepth, num_dmabuffers, allow_lowperf_fallback, moviename, recordingflags);
+        PsychOpenVideoCaptureDevice(engineId, windowRecord, deviceIndex, &capturehandle, NULL, reqdepth, num_dmabuffers, allow_lowperf_fallback, moviename, recordingflags, bitdepth);
 	}
 	
 	// Upon sucessfull completion, we'll have a valid handle in 'capturehandle'. Return it to Matlab-world:

@@ -16,13 +16,8 @@ function [devid, dev] = PsychGetCamIdForSpec(className, inputNameOrPort, instanc
 % Optional criteria:
 %
 % 'className' Index or name of video input device class: Default is to
-% accept any class. Predefined classes on OS/X are 'DV' for DV Video
-% devices like handheld camcorders and other standard or professional video
-% cameras. 'IIDC' for IIDC compliant machine vision cameras connected via
-% the IEEE 1394 Firewire bus. 'USB Video Class Video' for USB cameras which
-% comply to the USB video class video standard (e.g., builtin iSight of
-% Apple machines). Other names are vendor and model specific, e.g., 'Sony
-% HD Eye' for the Sony HD Eye camera for the PlayStation 3.
+% accept any class. This matches against the 'ClassName' property of the
+% list returned by Screen('VideoCaptureDevices').
 %
 % 'inputNameOrPort' selects the i'th input device of a matching class if an
 % index is given (zero-based), or a specific named device, e.g., 'iSight'

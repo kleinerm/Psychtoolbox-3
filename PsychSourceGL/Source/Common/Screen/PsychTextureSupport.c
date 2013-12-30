@@ -350,7 +350,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 					case 32:
                         if (PsychIsGLES(win)) {
                             // GLES is much more restricted:
-                            if (strstr(glGetString(GL_EXTENSIONS), "GL_EXT_texture_format_BGRA8888")) {
+                            if (strstr((const char*) glGetString(GL_EXTENSIONS), "GL_EXT_texture_format_BGRA8888")) {
                                 glinternalFormat = GL_BGRA_EXT;
                                 glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, texmemptr);
                             }
@@ -416,7 +416,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 						win->textureMemory=NULL;
 						win->textureMemorySizeBytes=0;
 					}
-					while(glGetError());
+					while(glGetError()) {};
 
                     if (verbosity > 0) {
                         printf("\n\nPTB-ERROR: Texture creation failed or malfunctioned for a texture of requested size w x h = %i x %i texels\n", twidth, theight);
@@ -571,7 +571,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
             case 32:
                 if (PsychIsGLES(win)) {
                     // GLES is much more restricted:
-                    if (strstr(glGetString(GL_EXTENSIONS), "GL_EXT_texture_format_BGRA8888")) {
+                    if (strstr((const char*) glGetString(GL_EXTENSIONS), "GL_EXT_texture_format_BGRA8888")) {
                         glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_BGRA_EXT, GL_UNSIGNED_BYTE, win->textureMemory);
                     }
                     else {

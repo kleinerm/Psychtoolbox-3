@@ -59,7 +59,6 @@
 // Include specifications of the GPU registers:
 #include "PsychGraphicsCardRegisterSpecs.h"
 
-#include "PsychVideoGlue.h"
 #include "PsychScreenGlue.h"
 #include "PsychWindowTextGlue.h"
 #include "WindowBank.h"
@@ -79,17 +78,12 @@
 #include "RegisterProject.h"
 #include "WindowHelpers.h"
 
-// The windows version is without any font or text drawing support :(
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include "PsychFontGlue.h"
-#include "ScreenFontGlue.h"
 #include "FontInfo.h"
 #endif
 
-
 #include "ScreenPreferenceState.h"
-
-
 
 //functions registered with the Psychtoolbox library 
 PsychError ScreenExitFunction(void); 			//ScreenExit.c

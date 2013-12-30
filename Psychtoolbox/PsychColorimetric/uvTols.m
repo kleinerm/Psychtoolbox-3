@@ -1,5 +1,5 @@
 function ls = uvTols(uv)
-% ls = uvTolsy(uv)
+% ls = uvTols(uv)
 %
 % Convert CIE u'v' chromaticity to cone chromaticity ls, L/(L+M+S), S/(L+M+S).
 %
@@ -32,6 +32,3 @@ for j = 1:nCols
 	ls(1,j) = LMS(1,j)/sum(LMS(:,j));
 	ls(2,j) = LMS(3,j)/sum(LMS(:,j));
 end
-
-
-uvTo

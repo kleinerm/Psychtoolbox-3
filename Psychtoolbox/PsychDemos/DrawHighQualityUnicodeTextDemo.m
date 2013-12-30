@@ -108,7 +108,7 @@ try
     % According to the donor of this text snippet, it says "Thank you in
     % japanese" -- let's hope he didn't lie to me ;-)
     %
-    japanesetext = [26085, 26412, 35486, 12391, 12354, 12426, 12364, 12392, 12358, 12372, 12374, 12356, ...
+    unicodetext = [26085, 26412, 35486, 12391, 12354, 12426, 12364, 12392, 12358, 12372, 12374, 12356, ...
                     12414, 12375, 12383, 12290, 13, 10];
 
     % The text above is hard-coded. The following *disabled* snippet of code
@@ -120,10 +120,10 @@ try
     % the commented code:
     if 0
         fid = fopen([PsychtoolboxRoot 'PsychDemos/japanese_shiftJIS.txt'], 'r', 'n','Shift_JIS');
-        japanesetext = native2unicode(fread(fid),'Shift_JIS'); %#ok<N2UNI>
+        unicodetext = native2unicode(fread(fid),'Shift_JIS'); %#ok<N2UNI>
         fclose(fid);
-        disp(japanesetext);
-        japanesetext = double(transpose(japanesetext));
+        disp(unicodetext);
+        unicodetext = double(transpose(unicodetext));
     end
     
     % On MS-Windows you need to install the special east-asian font
@@ -139,53 +139,30 @@ try
     
     % Under OS/X...
     if IsOSX
-        % ... you must select a font that supports japanese characters...
-        
-        % This is a bit clumsy: Normally we could just select a font by
-        % name. Unfortunately the names of japanese fonts are encoded in
-        % japanese unicode instead of plain ASCII text, and the
-        % Screen('TextFont') command can't handle this :-(
-        %
-        % Solution: We use the FontInfo() command to query the system about
-        % all installed fonts, then use a loop with string matching to find
-        % the numerical 'idx' index of the 'Hiragino Mincho Pro W3' font we
-        % wanna use for japanese text. Then we pass the 'idx' index number
-        % to Screen('TextFont') and everything is fine...
-        allFonts = FontInfo('Fonts');
-        foundfont = 0;
-        for idx = 1:length(allFonts)
-            if strcmpi(allFonts(idx).name, 'Hiragino Mincho Pro W3')
-                foundfont = 1;
-                break;
-            end
-        end
-        
-        if ~foundfont
-            error('Could not find wanted japanese font on OS/X !');
-        end
-        Screen('TextFont', w, allFonts(idx).number);        
+        % ... we must select a font that supports japanese characters...
+        Screen('TextFont', w, 'Hiragino Mincho Pro');
     end
 
     if IsLinux
-	% On Linux, we can also auto-select fonts by their supported languages,
-	% e.g., we simply require a font with...
-	if 1
-		% ... support for the 'ja'panese language, whatever fits best:
-		Screen('TextFont', w, '-:lang=ja');
-	else
-		% ... support for the 'he'brew language, whatever fits best:
-		Screen('TextFont', w, '-:lang=he');
-		% Of course we also need to supply a text string with some
-		% hebrew characters (unicode code points) then:
-		japanesetext = 1488:1514;
-	end
-	% ... this would also work on OS/X if 'TextRenderer', type 2 is selected ...
+        % On Linux, we can auto-select fonts by their supported languages,
+        % e.g., we simply require a font with...
+        if 1
+            % ... support for the 'ja'panese language, whatever fits best:
+            Screen('TextFont', w, '-:lang=ja');
+        else
+            % ... support for the 'he'brew language, whatever fits best:
+            Screen('TextFont', w, '-:lang=he');
+            % Of course we also need to supply a text string with some
+            % hebrew characters (unicode code points) then:
+            unicodetext = 1488:1514;
+        end
+        % ... this would also work on OS/X if 'TextRenderer', type 2 is selected ...
     end
 
     % Let's draw the text once with the low-level Screen command at
     % location (20, 300) in color black (==0) ...
     y = 200;
-    Screen('DrawText', w, japanesetext, 20, y, 0);
+    Screen('DrawText', w, unicodetext, 20, y, 0);
     
     % Draw some green line at the top of the letters and at the baseline of
     % the text, just to show how nicely 'DrawText' now obeys the text size
@@ -195,7 +172,7 @@ try
 
     % ...and once centered with the convenient high level DrawFormattedText
     % command...
-    DrawFormattedText(w, japanesetext, 'center', 'center');
+    DrawFormattedText(w, unicodetext, 'center', 'center');
 
     % Tell user how to exit the demo, this time in the font 'Times' at a
     % size of 86pts, in red color:
