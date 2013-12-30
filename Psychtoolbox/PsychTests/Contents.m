@@ -49,6 +49,7 @@
 %   MakeTextureTimingTest           - Time memory allocation by MakeTexture
 %   MakeTextureTimingTest2          - Time texture creation -> upload -> destruction for given texture by MakeTexture et al.
 %   MatlabTimingTest                - Test for MATLAB timing glitch caused by sigsetjmp().
+%   MelanopsinFundamentalTest       - Test the PTB routines generate a good melanopsin fundamental.
 %   MexTimingLoopTest               - Test for MATLAB timing glitch without return to MATLAB.
 %   MonoImageToSRGBTest             - Test/demo for routine PsychColorimetric/MonoImageToSRGB.
 %   MultiWindowLockStepTest         - Exercise asynchronous flip scheduling and timestamping on multiple onscreen windows in parallel.
@@ -63,6 +64,7 @@
 %   PsychPortAudioTimingTest        - Testsignal generator for test of PsychPortAudios timing with external measurement equipment.
 %   QuestTest                       - Some Quest simulations, more elaborate than QuestDemo.
 %   ResolutionTest                  - Use Screen Resolutions to print table of display resolutions.
+%   RodFundamentalTest              - Test the PTB routines generate a good rod fundamental.
 %   ScreenTest                      - Thorough test of hardware/software performance.
 %   SimpleTimingTest                - 
 %   StandaloneTimingTest            - Test for timing glitch outside of MATLAB process. 

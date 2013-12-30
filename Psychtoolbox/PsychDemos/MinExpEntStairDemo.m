@@ -39,21 +39,27 @@ end
 % otherwise run multiple conditions, create one staircase per condition.
 % You can store these in a cell-array and of course use different settings
 % for each as needed.
-stair = MinExpEntStair;
-% init stair
-stair('init',probeset,meanset,slopeset,lapse,guess);
-% option: use logistic instead of default cumulative normal
+stair = MinExpEntStair('v2');
+% use lookup table to cache pvalues and avoid unnecessary evaluations of
+% psychometric function? Can require lots of memory, especially when
+% stepsize of probeset and meanset is not equal. Call before calling
+% stair.init.
+stair.set_use_lookup_table(true);
+% option: use logistic instead of default cumulative normal. best to call
+% before stair.init
 % stair('set_psychometric_func','logistic');
+% init stair
+stair.init(probeset,meanset,slopeset,lapse,guess);
 % option: use a subset of all data for choosing the next probe, use
 % proportion of available data (good idea for robustness - see docs)
-stair('toggle_use_resp_subset_prop',10,.9);
+stair.toggle_use_resp_subset_prop(10,.9);
 % option: instead of choosing a random value for the first probe,
 % you can set which value is to be tested first.
-stair('set_first_value',3)
+stair.set_first_value(3);
 
 for ktrial = 1:ntrial
     % trial
-    [p,entexp,ind]  = stair('get_next_probe');      % get next probe to test
+    [p,entexp,ind]  = stair.get_next_probe();      % get next probe to test
     fprintf('%d, new sample point: %f\nexpect ent: %f\n', ...
         ktrial,p,entexp(ind));
     
@@ -67,13 +73,13 @@ for ktrial = 1:ntrial
         r = input(sprintf('r(%d): ',ktrial));
         qpause = false;
     end
-    stair('process_resp',r);                        % store response in staircase
+    stair.process_resp(r);                        % store response in staircase
     % end trial
     
     if ktrial == ntrial || qplot
         
-        [m,s,loglik]    = stair('get_fit');
-        [ps,rs]         = stair('get_history');
+        [m,s,loglik]    = stair.get_fit();
+        [ps,rs]         = stair.get_history();
         
         figure(1);
         subplot(1,3,1);
@@ -120,7 +126,7 @@ end % loop over trials
 % get DL from staircase directly, NB: the space of the outputted
 % loglikelihood is the mean/slope space as defined atop this script, its
 % not a PSE/DL space
-[PSEfinal,DLfinal,loglikfinal]  = stair('get_PSE_DL');
+[PSEfinal,DLfinal,loglikfinal]  = stair.get_PSE_DL();
 finalent                        = sum(-exp(loglikfinal(:)).*loglikfinal(:));
 fprintf('final estimates:\nPSE: %f\nDL: %f\nent: %f\n',PSEfinal,DLfinal,finalent);
 % for actual offline fitting of your data, you would probably want to use a
@@ -140,7 +146,7 @@ set(gca,'YTickLabel',slopeset(1:4:end));
 set(gca,'XTick',1:5:length(meanset));
 set(gca,'XTickLabel',meanset(1:5:end));
 xlabel('$\mu$','interpreter','latex')
-switch  stair('get_psychometric_func')
+switch stair.get_psychometric_func()
     case 'cumGauss'
         title('estimated likelihood function - cumulative Gaussian')
         ylabel('$\sigma$','interpreter','latex')
