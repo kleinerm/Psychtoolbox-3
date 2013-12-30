@@ -42,6 +42,10 @@
 #include <X11/cursorfont.h>
 #endif
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+#include "PsychCocoaGlue.h"
+#endif
+
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "Screen('ShowCursorHelper', screenIndex [, cursorshapeid][, mouseIndex]);";
 //													  1			    2

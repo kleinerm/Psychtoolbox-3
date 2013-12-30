@@ -128,8 +128,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     if (firsttime) {
         // Yes. Ready to go...
 		if (debuglevel > 1) {
-			printf("MOAL - OpenAL for Matlab & GNU/Octave initialized. MOAL is (c) 2007-2011 Richard F. Murray & Mario Kleiner, licensed to you under MIT license.\n");
-			printf("Some additional restrictions apply to redistribution of binary MEX files for Matlab due to the terms of the Mathworks Matlab license.\n");
+			printf("MOAL - OpenAL for Matlab & GNU/Octave initialized. MOAL is (c) 2007-2013 Richard F. Murray & Mario Kleiner, licensed to you under MIT license.\n");
 			printf("See file 'License.txt' in the Psychtoolbox root folder for the exact licensing conditions.\n");
 		}
         fflush(NULL);

@@ -116,13 +116,16 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
     // Disable auto-flushing of drawed content to frontbuffer:
     [cocoaWindow disableFlushWindow];
 
-    // Position the window. Origin is bottom-left of screen, as opposed to Carbon / PTB origin
-    // of top-left. Therefore need to invert the vertical position. Cocoa only takes our request
-    // as a hint. It tries to position as requested, but places the window differently if required
-    // to make sure the full windowRect content area is displayed. It doesn't allow the window to
-    // overlap the menu bar or dock area by default.
-    NSPoint winPosition = NSMakePoint(windowRecord->rect[kPsychLeft], screenHeight - windowRecord->rect[kPsychTop]);
-    [cocoaWindow setFrameTopLeftPoint:winPosition];
+    // Position the window unless its position is left to the window manager:
+    if (!(windowRecord->specialflags & kPsychGUIWindowWMPositioned)) {
+        // Position the window. Origin is bottom-left of screen, as opposed to Carbon / PTB origin
+        // of top-left. Therefore need to invert the vertical position. Cocoa only takes our request
+        // as a hint. It tries to position as requested, but places the window differently if required
+        // to make sure the full windowRect content area is displayed. It doesn't allow the window to
+        // overlap the menu bar or dock area by default.
+        NSPoint winPosition = NSMakePoint(windowRecord->rect[kPsychLeft], screenHeight - windowRecord->rect[kPsychTop]);
+        [cocoaWindow setFrameTopLeftPoint:winPosition];
+    }
     
     // Query and translate content rect of final window to a PTB rect:
     NSRect clientRect = [cocoaWindow contentRectForFrameRect:[cocoaWindow frame]];
@@ -214,9 +217,9 @@ pid_t GetHostingWindowsPID(void)
         if (nameOwnerRef) {
             const char* name = CFStringGetCStringPtr(nameOwnerRef, kCFStringEncodingMacRoman);
             if (name && verbose) printf("WindowOwnerName: %s\n", name);
-            if (name && ((strstr(name, "X11") && strstr(winName, "xterm")) || strstr(name, "Terminal") || strstr(name, "MATLAB"))) {
-                // Matched either X11 xterm, or a OSX native Terminal or MATLAB GUI. These are candidates for the
-                // hosting windows of our matlab, matlab -nojvm or octave console session. As windows are returned
+            if (name && ((strstr(name, "X11") && strstr(winName, "xterm")) || strstr(name, "Terminal") || strstr(name, "MATLAB") || strstr(name, "octave"))) {
+                // Matched either X11 xterm, or a OSX native Terminal or MATLAB GUI or Octave GUI. These are candidates for the
+                // hosting windows of our matlab, matlab -nojvm or octave session. As windows are returned
                 // in front-to-back order, the first match here is a candidate window that is on top of
                 // the visible window stack. This is our best candidate for the command window, assuming
                 // it is frontmost as the user just interacted with it. Therefore, aborting the search
@@ -465,4 +468,35 @@ void PsychCocoaSetThemeCursor(int inCursor)
 
     // Drain the pool:
     [pool drain];
+}
+
+// Variable to hold current reference for App-Nap activities:
+static id activity = nil;
+
+void PsychCocoaPreventAppNap(psych_bool preventAppNap)
+{
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Activity state of AppNap is: %s.\n", (activity == nil) ? "No activities" : "Activities selected by PTB");
+    
+    if ((activity == nil) && preventAppNap) {
+        // Prevent display from sleeping/powering down, prevent system from sleeping, prevent sudden termination for any reason:
+        NSActivityOptions options = NSActivityIdleDisplaySleepDisabled | NSActivityIdleSystemSleepDisabled | NSActivitySuddenTerminationDisabled | NSActivityAutomaticTerminationDisabled;
+        // Mark as user initiated state and request highest i/o and timing precision:
+        options |= NSActivityUserInitiated | NSActivityLatencyCritical;
+
+        activity = [[NSProcessInfo processInfo] beginActivityWithOptions:options reason:@"Psychtoolbox does not want to nap, it has need for speed!"];
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Running on OSX 10.9+ - Enabling protection against AppNap and other evils.\n");
+        return;
+    }
+
+    if (!preventAppNap) {
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Reenabling AppNap et al. ... ");
+        if (activity != nil) {
+            if (PsychPrefStateGet_Verbosity() > 3) printf("Make it so!\n");
+            [[NSProcessInfo processInfo] endActivity:activity];
+        }
+        else {
+            if (PsychPrefStateGet_Verbosity() > 3) printf("but already enabled! Noop.\n");
+        }
+        return;
+    }
 }

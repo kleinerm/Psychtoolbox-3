@@ -113,7 +113,7 @@ psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorco
 	}
 	
 	// Attempt to find the correct device.
-	while (usbDevice = IOIteratorNext(iterator)) {
+	while ((usbDevice = IOIteratorNext(iterator))) {
 		// Create an intermediate plug-in
 		kr = IOCreatePlugInInterfaceForService(usbDevice,
 											   kIOUSBDeviceUserClientTypeID, kIOCFPlugInInterfaceID,

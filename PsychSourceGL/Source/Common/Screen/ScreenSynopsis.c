@@ -206,7 +206,7 @@ void InitializeSynopsis()
 	synopsis[i++] =  "[droppedframes] = Screen('PlayMovie', moviePtr, rate, [loop], [soundvolume]);";
  	synopsis[i++] =  "timeindex = Screen('GetMovieTimeIndex', moviePtr);";
  	synopsis[i++] =  "[oldtimeindex] = Screen('SetMovieTimeIndex', moviePtr, timeindex [, indexIsFrames=0]);";
- 	synopsis[i++] =  "moviePtr = Screen('CreateMovie', windowPtr, movieFile [, width][, height][, frameRate=30][, movieOptions]);";
+ 	synopsis[i++] =  "moviePtr = Screen('CreateMovie', windowPtr, movieFile [, width][, height][, frameRate=30][, movieOptions][, numChannels=4][, bitdepth=8]);";
 	synopsis[i++] =  "Screen('FinalizeMovie', moviePtr);";
  	synopsis[i++] =  "Screen('AddFrameToMovie', windowPtr [,rect] [,bufferName] [,moviePtr=0] [,frameduration=1]);";
  	synopsis[i++] =  "Screen('AddAudioBufferToMovie', moviePtr, audioBuffer);";
@@ -214,11 +214,11 @@ void InitializeSynopsis()
 	// Video capture support:
 	synopsis[i++] = "\n% Video capture functions:";
 	synopsis[i++] = "devices = Screen('VideoCaptureDevices' [, engineId]);";
-	synopsis[i++] = "videoPtr =Screen('OpenVideoCapture', windowPtr [, deviceIndex] [,roirectangle] [, pixeldepth] [, numbuffers] [, allowfallback] [, targetmoviename] [, recordingflags] [, captureEngineType]);";
+    synopsis[i++] = "videoPtr =Screen('OpenVideoCapture', windowPtr [, deviceIndex][, roirectangle][, pixeldepth][, numbuffers][, allowfallback][, targetmoviename][, recordingflags][, captureEngineType][, bitdepth=8]);";
 	synopsis[i++] = "Screen('CloseVideoCapture', capturePtr);";
     synopsis[i++] = "[fps starttime] = Screen('StartVideoCapture', capturePtr [, captureRateFPS] [, dropframes=0] [, startAt]);";
     synopsis[i++] = "droppedframes = Screen('StopVideoCapture', capturePtr [, discardFrames=1]);";
-    synopsis[i++] = "[ texturePtr [capturetimestamp] [droppedcount] [summed_intensityOrRawImageMatrix]]=Screen('GetCapturedImage', windowPtr, capturePtr [, waitForImage=1] [,oldTexture] [,specialmode] [,targetmemptr]);";
+    synopsis[i++] = "[ texturePtr [capturetimestamp] [droppedcount] [average_intensityOrRawImageMatrix]]=Screen('GetCapturedImage', windowPtr, capturePtr [, waitForImage=1] [,oldTexture] [,specialmode] [,targetmemptr]);";
 	synopsis[i++] = "oldvalue = Screen('SetVideoCaptureParameter', capturePtr, 'parameterName' [, value]);"; 
 
 	// Low level OpenGL calls - directly translated to C via very thin wrapper functions:

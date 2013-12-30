@@ -121,7 +121,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
                     mexErrMsgTxt("Expected double in third argument.  See help MachSetPriorityMex.");
                 if(! (mxIsDouble(prhs[3]) && mxGetM(prhs[3]) * mxGetN(prhs[3]) == 1)) 
                     mexErrMsgTxt("Expected double in fourth argument.  See help MachGetPriorityMex.");
-                if(!((mxIsDouble(prhs[4]) || mxIsLogical(prhs[4]) && mxGetM(prhs[4]) * mxGetN(prhs[4]) == 1))) 
+                if(!((mxIsDouble(prhs[4]) || mxIsLogical(prhs[4])) && (mxGetM(prhs[4]) * mxGetN(prhs[4]) == 1)))
                     mexErrMsgTxt("Expected double or logical in fifth argument.  See help MachSetPriorityMex.");
                 threadPolicy=(thread_policy_t)malloc(sizeof(thread_time_constraint_policy_data_t));
                 ((thread_time_constraint_policy_t)threadPolicy)->period=(uint32_t)mxGetPr(prhs[1])[0];
@@ -166,10 +166,3 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         mexErrMsgTxt("ERROR: Failed to set requested thread scheduling policy! thread_policy_set() failed!");
     }
 }
-            
-        
-
-
-
-
-

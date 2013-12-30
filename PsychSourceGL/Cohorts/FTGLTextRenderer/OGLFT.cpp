@@ -35,7 +35,6 @@
 #include <qregexp.h>
 #endif
 #endif
-#include <freetype/ftbitmap.h>
 
 namespace OGLFT {
 

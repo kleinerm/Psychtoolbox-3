@@ -55,7 +55,7 @@
 
 	The following problems/limitations exist, which need to be fixed at some point:
 
-        * Some codecs (e.g., huffyuv and h263) don't work yet. Some others show low quality or
+        * Some codecs (e.g., h263) don't work yet. Some others show low quality or
           performance. Need to optimize parameters.
 
  */
@@ -73,6 +73,16 @@
 #include <gst/app/gstappsink.h>
 #include <gst/interfaces/propertyprobe.h>
 #include <gst/interfaces/colorbalance.h>
+
+#if GLIB_CHECK_VERSION (2, 32, 0)
+// Disable warnings about deprecated API calls. This to silence
+// g_value_array_get_nth() and g_value_array_free() deprecation
+// warning on GLib 2.32+. We know that GValueArrays are deprecated
+// and should be replaced by GArray's, but some GStreamer-0.10 functions
+// still use them, so we have to use them as well until we upgrade to
+// GStreamer-1.0 at some point:
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 
 // Compile-Time enable GStreamer encoding profile support by default on
 // MacOSX and Windows. These are the platforms where we know
@@ -101,6 +111,10 @@ const char video_preset_name[] = "ptb3_videorecording_presets_video";
 const char audio_preset_name[] = "ptb3_videorecording_presets_audio";
 const char muxer_preset_name[] = "ptb3_videorecording_presets_muxer";
 
+// Global gstlaunchbinsrc gst-launch style spec of a videocapture bin for use
+// with deviceIndex -9 in Screen('OpenVideoCapture'):
+char gstlaunchbinsrc[8192] = { 0 };
+
 // 0 = No camerabin, 1 = camerabin, 2 = camerabin2:
 static unsigned int usecamerabin = 1;
 
@@ -127,8 +141,9 @@ typedef struct {
 	int nrVideoTracks;
 	int dropframes;                   // 1 == Always deliver most recent frame in FIFO, even if dropping of frames is neccessary.
 	unsigned char* scratchbuffer;     // Scratch buffer for YUV->RGB conversion.
-	int reqpixeldepth;                // Requested depth of single pixel in output texture.
-	int pixeldepth;                   // Depth of single pixel from grabber in bits.
+	int reqpixeldepth;                // Requested number of channels of single pixel in output texture.
+	int pixeldepth;                   // Depth of single pixel from grabber in bits aka bpp.
+	int bitdepth;                     // Requested or actual bpc - bits per color/luminance channel.
 	int num_dmabuffers;               // Number of DMA ringbuffers to use in DMA capture.
 	int nrframes;                     // Total count of decompressed images.
 	double fps;                       // Acquisition framerate of capture device.
@@ -172,7 +187,7 @@ PsychVidcapRecordType* PsychGetGSVidcapRecord(int deviceIndex)
 		PsychErrorExitMsg(PsychError_user, "Invalid (negative) deviceIndex for video capture device passed!");
 	}
 	
-	if (numCaptureRecords >= PSYCH_MAX_CAPTUREDEVICES) {
+	if (deviceIndex >= PSYCH_MAX_CAPTUREDEVICES) {
 		PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex for video capture device passed. Index exceeds number of registered devices!");
 	}
 	
@@ -1012,14 +1027,14 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 	return(mydevice);
 }
 
-psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int* width, int* height, double* fps, int reqdepth)
+psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int* width, int* height, double* fps, int reqdepth, int reqbitdepth)
 {
 	GstCaps         *caps = NULL;
-	GstStructure	*str;
-	gint			qwidth, qheight;
+	GstStructure    *str;
+	gint            qwidth, qheight;
 	gint            qbpp;
-	gint			rate1 = 0, rate2 = 1;
-	gint			twidth = -1, theight = -1;
+	gint            rate1 = 0, rate2 = 1;
+	gint            twidth = -1, theight = -1;
 	gint            maxpixelarea = -1;
 	double          tfps = 0.0;
 	int             i;
@@ -1055,16 +1070,20 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
 			gst_structure_get_int(str, "width", &qwidth);
             qheight = 1;
 			gst_structure_get_int(str, "height", &qheight);
+			qbpp = -1;
 			gst_structure_get_int(str, "bpp", &qbpp);
 			gst_structure_get_fraction(str, "framerate", &rate1, &rate2);
-			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Videosource cap %i: w = %i h = %i\n", i, qwidth, qheight);
+			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Videosource cap %i: w = %i h = %i bpp = %i\n", i, qwidth, qheight, qbpp);
 
 			// Is this detection of default resolution, or validation of a
 			// given resolution?
 			if ((*width == -1) && (*height == -1)) {
 				// Auto-Detection of optimal default resolution.
 				// Need to find the one with highest resolution (== pixel area):
-				if (qwidth * qheight > maxpixelarea) {
+				// An additional constraint is that the bits per pixel bpp value of the video mode should be at least as high as the
+				// requested bpp = reqbitdepth * reqdepth. However, this check is skipped for YUV formats (reqdepth == 2), requested
+				// bit depths reqbitdepth of 8 bpc or lower (consumer class stuff) or if the mode doesn't have a defined bpp, aka qbpp <= 0:
+				if ((qwidth * qheight > maxpixelarea) && ((qbpp <= 0) || (reqbitdepth <= 8) || (reqdepth == 2) || (qbpp >= reqbitdepth * reqdepth))) {
 					// A new favorite with max pixel area:
 					maxpixelarea = qwidth * qheight;
 					twidth = qwidth;
@@ -1075,7 +1094,10 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
 			else {
 				// Validation: Reject/Skip modes which don't support requested resolution.
 				if (((*width != (int) qwidth) && (qwidth > 1)) || ((*height != (int) qheight) && (qheight > 1))) continue;
-                if ((qwidth == 1) && (qheight == 1)) continue;
+				if ((qwidth == 1) && (qheight == 1)) continue;
+
+				// Check for bitdepths bpc requirements and reject unsatisfying ones - See above for logic:
+				if (!((qbpp <= 0) || (reqbitdepth <= 8) || (reqdepth == 2) || (qbpp >= reqbitdepth * reqdepth))) continue;
 
 				// Acceptable mode for requested resolution and framerate. Set it:
 				maxpixelarea = qwidth * qheight;
@@ -1814,7 +1836,8 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 		}
 	}
 
-	// Raw Huffman encoded YUV: Works with camerabin2.
+	// Raw Huffman encoded YUV: Works with camerabin2, and with libdc1394 video recording and Screen movie writing:
+	// This is lossless for 1-channel gray and 3-channel RGB, but only encodes 8 bpc content so far.
 	if (strstr(codecSpec, "huffyuv") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
 		// Define recommended (compatible) audioencoder/muxer and their default options:
         sprintf(audioProfile, "audio/mpeg,mpegversion=4");
@@ -1854,6 +1877,119 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 			if (!use_profiles) sprintf(outCodecName, "ffenc_huffyuv");
 		}
 	}
+
+	// LJPEG image encoding: This is lossless but can only store 8 bpc content, and there's no decoder in GStreamer-0.10!
+	if (strstr(codecSpec, "ffenc_ljpeg") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
+        // Define recommended (compatible) audioencoder/muxer and their default options:
+        sprintf(audioProfile, "audio/mpeg,mpegversion=4");
+        sprintf(muxerProfile, "video/x-msvideo");
+        sprintf(outCodecName, "image/jpeg");
+        sprintf(audiocodec, "AudioCodec=%s ", aactype); // Need to use faac MPEG-4 audio encoder.
+        sprintf(muxer, "avimux"); // Use AVI-Multiplexer. Quicktime would also work.
+        
+        // Videoencoder not yet created? If so, we have to do it now:
+        if (!capdev->videoenc) {
+            // Not yet created. Create full codec & option string from high level properties,
+            // if any, then create based on string:
+            sprintf(videocodec, "VideoCodec=ffenc_ljpeg ");
+            
+            // Keyframe interval specified?
+            if (keyFrameInterval >= 0) {
+                // Assign maximum distance between key frames:
+                sprintf(codecoption, "gop-size=%i ", keyFrameInterval);
+                strcat(videocodec, codecoption);
+            }
+            
+            // Quality vs. Speed tradeoff specified?
+            if (videoBitrate >= 0) {
+                sprintf(codecoption, "bitrate=%i ", (int) videoBitrate * 1024);
+                strcat(videocodec, codecoption);
+            }
+            
+            // Create videocodec from options string:
+            capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+            if (!capdev->videoenc && use_profiles) capdev->videoenc = (GstElement*) 0x1;
+        }
+        
+        if (!capdev->videoenc) {
+            printf("PTB-WARNING: Failed to create 'ffenc_ljpeg' compressed JPEG lossless video encoder! Does not seem to be installed on your system?\n");
+        }
+        else {
+            if (!use_profiles) sprintf(outCodecName, "ffenc_ljpeg");
+        }
+    }
+    
+    // SGI-RLE image encoding: This is lossless and RLE compressed but can only store 8 bpc content, and we'll lose movie info like duration or framerate!
+    // Essentially the sequency of images is simply stored in a container for separate image files. Accessible by GStreamer or ffmpeg, but not a movie per se.
+    // Audio may not work - untested.
+    if (strstr(codecSpec, "ffenc_sgi") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
+        // Define recommended (compatible) audioencoder/muxer and their default options:
+        sprintf(audioProfile, "audio/mpeg,mpegversion=4");
+        sprintf(muxerProfile, "multipart/x-mixed-replace");
+        sprintf(outCodecName, "image/x-sgi");
+        sprintf(audiocodec, "AudioCodec=%s ", aactype); // Need to use faac MPEG-4 audio encoder.
+        sprintf(muxer, "multipartmux"); // Use Multipart-Multiplexer. Will lose fps and movie duration!
+        
+        // Videoencoder not yet created? If so, we have to do it now:
+        if (!capdev->videoenc) {
+            // Not yet created. Create full codec & option string from high level properties,
+            // if any, then create based on string:
+            sprintf(videocodec, "VideoCodec=ffenc_sgi ");
+            
+            // Keyframe interval specified?
+            if (keyFrameInterval >= 0) {
+                // Assign maximum distance between key frames:
+                sprintf(codecoption, "gop-size=%i ", keyFrameInterval);
+                strcat(videocodec, codecoption);
+            }
+            
+            // Quality vs. Speed tradeoff specified?
+            if (videoBitrate >= 0) {
+                sprintf(codecoption, "bitrate=%i ", (int) videoBitrate * 1024);
+                strcat(videocodec, codecoption);
+            }
+            
+            // Create videocodec from options string:
+            capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+            if (!capdev->videoenc && use_profiles) capdev->videoenc = (GstElement*) 0x1;
+        }
+        
+        if (!capdev->videoenc) {
+            printf("PTB-WARNING: Failed to create 'ffenc_sgi' compressed SGI-RLE lossless video encoder! Does not seem to be installed on your system?\n");
+        }
+        else {
+            if (!use_profiles) sprintf(outCodecName, "ffenc_sgi");
+        }
+    }
+
+    // y4menc raw image encoding: This is near-lossless for luminance only, somewhat lossy for color, but can only store 8 bit YUV content.
+    // Audio may not work - untested.
+    if (strstr(codecSpec, "y4menc") || (strstr(codecSpec, "DEFAULTenc") && !capdev->videoenc)) {
+        // Define recommended (compatible) audioencoder/muxer and their default options:
+        sprintf(audioProfile, "audio/mpeg,mpegversion=4");
+        sprintf(muxerProfile, "application/x-yuv4mpeg");
+        sprintf(outCodecName, "video/x-raw-yuv");
+        sprintf(audiocodec, "AudioCodec=%s ", aactype); // Need to use faac MPEG-4 audio encoder.
+        sprintf(muxer, "y4menc"); // Use y4menc-Multiplexer. Encodes to MJPEG style YUV.
+        
+        // Videoencoder not yet created? If so, we have to do it now:
+        if (!capdev->videoenc) {
+            // Not yet created. Create full codec & option string from high level properties,
+            // if any, then create based on string:
+            sprintf(videocodec, "VideoCodec=identity ");
+
+            // Create videocodec from options string:
+            capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+            if (!capdev->videoenc && use_profiles) capdev->videoenc = (GstElement*) 0x1;
+        }
+        
+        if (!capdev->videoenc) {
+            printf("PTB-WARNING: Failed to create 'y4menc' YUV4MPEG near-lossless video encoder! Does not seem to be installed on your system?\n");
+        }
+        else {
+            if (!use_profiles) sprintf(outCodecName, "identity");
+        }
+    }
 
     // Use of audio encoding for any means requested? If so, perform codec and audio source setup:
     if (use_audio) {
@@ -2201,10 +2337,14 @@ psych_bool PsychGetCodecLaunchLineFromString(char* codecSpec, char* launchString
 *      targetmoviefilename = Filename of movie file to record (if any) if deviceIndex >=0,
 *                            special spec string for a video capture device if deviceIndex < 0.
 *      recordingflags = Special flags to control internal operation (harddisc recording yes/no, live video during recording?, audio recording? workarounds?)
+*
+*      bitdepth = Number of bits per color component / channel, aka bpc. We support 8 bpc and 16 bpc capture on GStreamer at the moment.
+*
 */
 psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
-								   int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags)
+                                         int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags, int bitdepth)
 {
+    GError          *error;
     GstCaps         *colorcaps;
     GstCaps         *vfcaps, *reccaps;
     GstElement      *camera = NULL;
@@ -2267,7 +2407,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
       sprintf(plugin_name, "%s", theDevice->deviceVideoPlugin);
       sprintf(prop_name, "%s", theDevice->deviceSelectorProperty);
       if (theDevice->deviceURI > 0) {
-	sprintf(device_name, "%llu", theDevice->deviceURI);
+          sprintf(device_name, "%llu", theDevice->deviceURI);
       }
       
       if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Trying to open video capture device with deviceIndex %i [%s].\n", deviceIndex, device_name);
@@ -2286,42 +2426,50 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	
     capdev->camera = NULL;
     capdev->grabber_active = 0;
-    capdev->scratchbuffer = NULL;        
+    capdev->scratchbuffer = NULL;
+    
+    // Make sure bitdepth is either 8 bpc or 16 bpc, nothing else:
+    bitdepth = (bitdepth > 8) ? 16 : 8;
     
     // Selection of pixel depths:
     if (reqdepth == 4 || reqdepth == 0) {
-	    // Default is RGB 32 bit, aka RGBA8:
+	    // Default is RGB, aka RGBA8 or RGBA16:
 	    reqdepth = 4;
     }
     else {
-        // Only other supported format is RGB24 bit:
         switch (reqdepth) {
             case 2:
-                // A no-go: Instead we use 1 channel luminance8:
+                // A no-go: Instead we use 1 channel luminance:
                 if (PsychPrefStateGet_Verbosity()>1)
                     printf("PTB-WARNING: Video capture engine doesn't support requested Luminance+Alpha format. Will revert to pure luminance instead...\n");
                 reqdepth = 1;
             break;
 
-            case 1: // Accept as is: L8   aka Luminance 8 bit.
-            case 3: // Accept as is: RGB8 aka RGB 24 bit.
+            case 1: // Accept as is: Luminance.
+            case 3: // Accept as is: RGB.
             break;
 
-            case 5: // Accept as YVYU.
-                if (!(win->gfxcaps & kPsychGfxCapUYVYTexture)) {
+            case 5: // Accept as YVYU. This only at bitdepth 8, though.
+                if (!(win->gfxcaps & kPsychGfxCapUYVYTexture) || (bitdepth > 8)) {
                     // Usercode requested type 5 - UYVY textures, but GPU does not support them.
                     // Fallback to type 4 - RGBA8 textures:
+                    if (PsychPrefStateGet_Verbosity() > 1) {
+                        printf("PTB-WARNING: Requested YUYV-422 texture format for video capture unsupported by GPU%s. Falling back to RGBA8 format.\n", (bitdepth > 8) ? " for requested > 8 bpc bitdepth" : "");
+                    }
+                    bitdepth = 8;
                     reqdepth = 4;
-                    if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Requested YUYV-422 texture format for video capture unsupported by GPU. Falling back to RGBA8 format.\n");
                 }
             break;
 
-            case 6: // Accept as YUV-I420
-                if (!(win->gfxcaps & kPsychGfxCapFBO) || !PsychAssignPlanarI420TextureShader(NULL, win)) {
+            case 6: // Accept as YUV-I420. This only at bitdepth 8, though.
+                if ((bitdepth > 8) || !(win->gfxcaps & kPsychGfxCapFBO) || !PsychAssignPlanarI420TextureShader(NULL, win)) {
                     // Usercode requested type 6 - I420 textures, but GPU does not support them.
                     // Fallback to type 4 - RGBA8 textures:
+                    if (PsychPrefStateGet_Verbosity() > 1) {
+                        printf("PTB-WARNING: Requested YUV-I420 texture format for video capture unsupported by GPU%s. Falling back to RGBA8 format.\n", (bitdepth > 8) ? " for requested > 8 bpc bitdepth" : "");
+                    }
+                    bitdepth = 8;
                     reqdepth = 4;
-                    if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Requested YUV-I420 texture format for video capture unsupported by GPU. Falling back to RGBA8 format.\n");
                 }
             break;
 
@@ -2333,7 +2481,9 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
     // Requested output texture pixel depth in layers:
     capdev->reqpixeldepth = reqdepth;
-    capdev->pixeldepth = reqdepth * 8;
+    capdev->pixeldepth = reqdepth * ((bitdepth > 8) ? 16 : 8);
+    capdev->bitdepth = bitdepth;
+    if ((capdev->bitdepth > 8) && (PsychPrefStateGet_Verbosity() > 2)) printf("PTB-INFO: Requesting %i bpc data from camera %i.\n", bitdepth, deviceIndex);
 
     // Assign number of dma buffers to use:
     capdev->num_dmabuffers = num_dmabuffers;
@@ -2439,12 +2589,12 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                 videosource = gst_element_factory_make(plugin_name, "ptb_videosource");
             }
             
-			if (!videosource) {
-				if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed! We are out of options and will probably fail soon.\n");
-				PsychErrorExitMsg(PsychError_system, "GStreamer failed to find a suitable video source! Game over.");
-			}
+            if (!videosource) {
+                if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed! We are out of options and will probably fail soon.\n");
+                PsychErrorExitMsg(PsychError_system, "GStreamer failed to find a suitable video source! Game over.");
+            }
 
-			// Attach correct video input device to it:
+            // Attach correct video input device to it:
             if (strstr(plugin_name, "dv1394src")) {
                 dvpad = gst_element_get_static_pad(gst_bin_get_by_name(GST_BIN(videosource), "ptbdvsource"), "src");
                 gst_element_add_pad(videosource, gst_ghost_pad_new("src", dvpad));
@@ -2640,13 +2790,49 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             }
         }
 
-		// Some plugins need typefind'ing dhowvideosrc for sure, but we also set it for aravissrc to be safe:
-		if (strstr(plugin_name, "dshowvideosrc") || strstr(plugin_name, "aravissrc")) g_object_set(G_OBJECT(videosource), "typefind", 1, NULL);
-		
-		// Enable timestamping by videosource, unless its been done already for a dv1394src:
-		if (!strstr(plugin_name, "dv1394src")) g_object_set(G_OBJECT(videosource), "do-timestamp", 1, NULL);
+        // Videosource provided as a bin which is constructed from a gst-launch line:
+        if (deviceIndex == -9) {
+            // Fetch mandatory gstlaunchbinsrc parameter as bin spec string:
+            if (gstlaunchbinsrc[0] == 0) {
+                PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to -9 to request creation of a user-defined video source, but didn't set the required gst-launch style string beforehand! Aborted.");
+            }
 
-		// Assign video source to pipeline:
+            // Feedback to user:
+            if (PsychPrefStateGet_Verbosity() > 2) {
+                printf("PTB-INFO: Trying to attach generic user provided bin as video source. The gst-launch style pipeline description is:\n");
+                printf("PTB-INFO: %s\n", gstlaunchbinsrc);
+            }
+            
+            // Create a bin from the provided gst-launch style string and assign it as videosource plugin:
+            sprintf(plugin_name, "gstlaunchbinsrc");
+            error = NULL;
+            videosource = gst_parse_bin_from_description((const gchar *) gstlaunchbinsrc, FALSE, &error);
+            
+            if (!videosource) {
+                printf("PTB-ERROR: Failed to create generic bin video source!\n");
+                if (error) {
+                    printf("PTB-ERROR: GStreamer returned the following error: %s\n", (char*) error->message);
+                    g_error_free(error);
+                }
+                PsychErrorExitMsg(PsychError_user, "GStreamer failed to build a suitable video source from your pipeline spec! Game over.");
+            }
+
+            // DV video sources need special treatment due to their use of special dvdec decoders and dvdemux'ers:
+            if (strstr(gstlaunchbinsrc, "ptbdvsource")) {
+                dvpad = gst_element_get_static_pad(gst_bin_get_by_name(GST_BIN(videosource), "ptbdvsource"), "src");
+                gst_element_add_pad(videosource, gst_ghost_pad_new("src", dvpad));
+                gst_object_unref(GST_OBJECT(dvpad));
+                dvpad = NULL;
+            }
+        }
+        
+        // Some plugins need typefind'ing dhowvideosrc for sure, but we also set it for aravissrc to be safe:
+        if (strstr(plugin_name, "dshowvideosrc") || strstr(plugin_name, "aravissrc")) g_object_set(G_OBJECT(videosource), "typefind", 1, NULL);
+
+        // Enable timestamping by videosource, unless its been done already for a dv1394src:
+        if (!strstr(plugin_name, "dv1394src") && !strstr(plugin_name, "gstlaunchbinsrc")) g_object_set(G_OBJECT(videosource), "do-timestamp", 1, NULL);
+
+        // Assign video source to pipeline:
         if (usecamerabin == 1) {
             // Attach directly to camerabin aka camerabin1:
             g_object_set(camera, "video-source", videosource, NULL);
@@ -2657,7 +2843,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             g_object_set(videowrappersrc, "video-source", videosource, NULL);
             g_object_set(camera, "camera-source", videowrappersrc, NULL);
         }
-	}
+    }
 
     // Assign message context, message bus and message callback for
     // the pipeline to report events and state changes, errors etc.:    
@@ -2668,55 +2854,55 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     gst_object_unref(bus);
 
     // Name of target movie file for video and audio recording specified?
-    if ((deviceIndex >= 0) && targetmoviefilename) {
-	    // Assign it to camerabin to perform video recording:
-	    if (!usecamerabin)
-		    PsychErrorExitMsg(PsychError_user, "You requested video recording, but current fallback video engine doesn't support this. Aborted.");
+    if (((deviceIndex >= 0) || (deviceIndex <= -9)) && targetmoviefilename) {
+        // Assign it to camerabin to perform video recording:
+        if (!usecamerabin)
+            PsychErrorExitMsg(PsychError_user, "You requested video recording, but current fallback video engine doesn't support this. Aborted.");
 
-	    // Codec settings or type specified?
-	    if ((codecSpec = strstr(targetmoviefilename, ":CodecSettings="))) {
-		    // Replace ':' with a zero in targetmoviefilename, so it gets null-terminated
-		    // and only points to the actual movie filename:
-		    *codecSpec = 0;
+        // Codec settings or type specified?
+        if ((codecSpec = strstr(targetmoviefilename, ":CodecSettings="))) {
+            // Replace ':' with a zero in targetmoviefilename, so it gets null-terminated
+            // and only points to the actual movie filename:
+            *codecSpec = 0;
 
-		    // Move after null-terminator:
-		    codecSpec++;
+            // Move after null-terminator:
+            codecSpec++;
 
-		    // Replace the ':CodecSettings=' with the special keyword 'DEFAULTenc', so
-		    // so the default video codec is chosen, but the given settings override its
-		    // default parameters.
-		    strncpy(codecSpec, "DEFAULTenc    ", strlen("DEFAULTenc    "));
+            // Replace the ':CodecSettings=' with the special keyword 'DEFAULTenc', so
+            // so the default video codec is chosen, but the given settings override its
+            // default parameters.
+            strncpy(codecSpec, "DEFAULTenc    ", strlen("DEFAULTenc    "));
 
-		    if (strlen(codecSpec) == 0) PsychErrorExitMsg(PsychError_user, "Invalid (empty) :CodecSettings= parameter specified. Aborted.");
-	    } else if ((codecSpec = strstr(targetmoviefilename, ":CodecType="))) {
-		    // Replace ':' with a zero in targetmoviefilename, so it gets null-terminated
-		    // and only points to the actual movie filename:
-		    *codecSpec = 0;
-		    // Advance codecSpec to point to the actual codec spec string:
-		    codecSpec+= 11;
+            if (strlen(codecSpec) == 0) PsychErrorExitMsg(PsychError_user, "Invalid (empty) :CodecSettings= parameter specified. Aborted.");
+        } else if ((codecSpec = strstr(targetmoviefilename, ":CodecType="))) {
+            // Replace ':' with a zero in targetmoviefilename, so it gets null-terminated
+            // and only points to the actual movie filename:
+            *codecSpec = 0;
+            // Advance codecSpec to point to the actual codec spec string:
+            codecSpec+= 11;
 
-		    if (strlen(codecSpec) == 0) PsychErrorExitMsg(PsychError_user, "Invalid (empty) :CodecType= parameter specified. Aborted.");
-	    } else {
-		    // No codec specified: Use our default encoder, the one that's been shown to
-		    // produce good results:
-		    codecSpec = strdup("DEFAULTenc");
-	    }
+            if (strlen(codecSpec) == 0) PsychErrorExitMsg(PsychError_user, "Invalid (empty) :CodecType= parameter specified. Aborted.");
+        } else {
+            // No codec specified: Use our default encoder, the one that's been shown to
+            // produce good results:
+            codecSpec = strdup("DEFAULTenc");
+        }
 
-	    // Create matching video encoder for codecSpec:
-	    if (PsychSetupRecordingPipeFromString(capdev, codecSpec, codecName, FALSE, TRUE, (recordingflags & 2) ? TRUE : FALSE)) {
-		    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Video%s recording into file [%s] enabled for device %i. Codec is [%s].\n",
-								  ((recordingflags & 2) ? " and audio" : ""), targetmoviefilename, deviceIndex, codecName);
-		    if (strcmp(codecSpec, "DEFAULTenc") == 0) free(codecSpec);
-		    codecSpec = NULL;
-	    } else {
-		    if (strcmp(codecSpec, "DEFAULTenc") == 0) free(codecSpec);
-		    PsychErrorExitMsg(PsychError_system, "Setup of video recording failed. Reason hopefully given above.");
-	    }
+        // Create matching video encoder for codecSpec:
+        if (PsychSetupRecordingPipeFromString(capdev, codecSpec, codecName, FALSE, TRUE, (recordingflags & 2) ? TRUE : FALSE)) {
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Video%s recording into file [%s] enabled for device %i. Codec is [%s].\n",
+                                    ((recordingflags & 2) ? " and audio" : ""), targetmoviefilename, deviceIndex, codecName);
+            if (strcmp(codecSpec, "DEFAULTenc") == 0) free(codecSpec);
+            codecSpec = NULL;
+        } else {
+            if (strcmp(codecSpec, "DEFAULTenc") == 0) free(codecSpec);
+            PsychErrorExitMsg(PsychError_system, "Setup of video recording failed. Reason hopefully given above.");
+        }
 
-	    capdev->targetmoviefilename = strdup(targetmoviefilename); 
-	    capdev->recording_active = TRUE;
+        capdev->targetmoviefilename = strdup(targetmoviefilename);
+        capdev->recording_active = TRUE;
     } else {
-	    capdev->recording_active = FALSE;
+        capdev->recording_active = FALSE;
     }
 
     // Create a appsink named "ptbsink0" for attachment as the destination video-sink for
@@ -2739,30 +2925,62 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     // inbetween the video source and our videosink:
     switch (reqdepth) {
         case 4:
-            colorcaps = gst_caps_new_simple("video/x-raw-rgb",
-                                            "bpp", G_TYPE_INT, capdev->pixeldepth,
-                                            "depth", G_TYPE_INT, capdev->pixeldepth,
-                                            "alpha_mask", G_TYPE_INT, 0x000000FF,
-                                            "red_mask", G_TYPE_INT,   0x0000FF00,
-                                            "green_mask", G_TYPE_INT, 0x00FF0000,
-                                            "blue_mask", G_TYPE_INT,  0xFF000000,
-                                            NULL);
+            if (bitdepth <= 8) {
+                // Classic proven 8 bpc path:
+                colorcaps = gst_caps_new_simple("video/x-raw-rgb",
+                                                "bpp", G_TYPE_INT, capdev->pixeldepth,
+                                                "depth", G_TYPE_INT, capdev->pixeldepth,
+                                                "alpha_mask", G_TYPE_INT, 0x000000FF,
+                                                "red_mask", G_TYPE_INT,   0x0000FF00,
+                                                "green_mask", G_TYPE_INT, 0x00FF0000,
+                                                "blue_mask", G_TYPE_INT,  0xFF000000,
+                                                NULL);
+            }
+            else {
+                // 16 bpc high precision path: Component ordering is regular RGBA, not BGRA, as
+                // in the special BGRA8 case for 4 layer 8 bpc:
+                colorcaps = gst_caps_new_simple("video/x-raw-rgb",
+                                                "bpp", G_TYPE_INT, capdev->pixeldepth,
+                                                "depth", G_TYPE_INT, capdev->pixeldepth,
+                                                "blue_mask", G_TYPE_INT64,  0x000000000000FFFF,
+                                                "green_mask", G_TYPE_INT64, 0x00000000FFFF0000,
+                                                "red_mask", G_TYPE_INT64,   0x0000FFFF00000000,
+                                                "alpha_mask", G_TYPE_INT64, 0xFFFF000000000000,
+                                                NULL);
+            }
         break;
 
         case 3:
-            colorcaps = gst_caps_new_simple("video/x-raw-rgb",
-                                            "bpp", G_TYPE_INT, capdev->pixeldepth,
-                                            "depth", G_TYPE_INT, capdev->pixeldepth,
-                                            "red_mask", G_TYPE_INT,   0x00FF0000,
-                                            "green_mask", G_TYPE_INT, 0x0000FF00,
-                                            "blue_mask", G_TYPE_INT,  0x000000FF,
-                                            NULL);
+            if (bitdepth <= 8) {
+                // Classic proven 8 bpc path:
+                colorcaps = gst_caps_new_simple("video/x-raw-rgb",
+                                                "bpp", G_TYPE_INT, capdev->pixeldepth,
+                                                "depth", G_TYPE_INT, capdev->pixeldepth,
+                                                "red_mask", G_TYPE_INT,   0x00FF0000,
+                                                "green_mask", G_TYPE_INT, 0x0000FF00,
+                                                "blue_mask", G_TYPE_INT,  0x000000FF,
+                                                NULL);
+            }
+            else {
+                // 16 bpc high precision path:
+                colorcaps = gst_caps_new_simple("video/x-raw-rgb",
+                                                "bpp", G_TYPE_INT, capdev->pixeldepth,
+                                                "depth", G_TYPE_INT, capdev->pixeldepth,
+                                                "red_mask", G_TYPE_INT64,   0x0000FFFF00000000,
+                                                "green_mask", G_TYPE_INT64, 0x00000000FFFF0000,
+                                                "blue_mask", G_TYPE_INT64,  0x000000000000FFFF,
+                                                NULL);
+            }
         break;
 
         case 2:
         case 1:
+            // This works for both 8 bpc and 16 bpc:
             colorcaps = gst_caps_new_simple("video/x-raw-gray",
                                             "bpp", G_TYPE_INT, capdev->pixeldepth,
+                                            "depth", G_TYPE_INT, capdev->pixeldepth,
+                                            "endianess", G_TYPE_INT, 1234,
+                                            "endianness", G_TYPE_INT, 1234,
                                             NULL);
         break;
 
@@ -2830,11 +3048,12 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         theight = -1;
     }
 
-    // Should we disable application of colorcaps as filter-caps to video source. A flag of 4096
-    // says so. We would want to disable this if we want maximum acceptance of different color formats
+    // Should we disable application of colorcaps as filter-caps to video source? By default we disable,
+    // but an optional recordingflag of 4096 would opt-in to use of filter-caps for higher performance.
+    // We want to disable this by default because we want maximum acceptance of different color formats
     // from the video source, e.g., to accomodate exotic video sources, at the expense of some performance
     // loss due to need of an extra colorspace / color format conversion step down the pipeline:
-    if (recordingflags & 4096) {
+    if (!(recordingflags & 4096)) {
         // Yes:
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: OpenVideoCapture: Disabling use of colorcaps as filter-caps. Lower performance, but higher compatibility.\n");
         
@@ -2885,24 +3104,43 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    // Setup pipeline for video recording or pure capture:
 	    if (!capdev->recording_active) {
 		    // Pure video capture, no recording: Optimize pipeline for this case:
-		    g_object_set(G_OBJECT(camera), "flags", (usecamerabin == 1) ? 1+2+4 : 0, NULL);
-            
-            // Setup colorcaps for camerabin1, unless prevented by recordingflags 4096, do it later for camerabin2:
-            if ((usecamerabin == 1) && !(recordingflags & 4096)) g_object_set(G_OBJECT(camera), "filter-caps", colorcaps, NULL);
-            
+            // In the camerabin2 case, we distinguish 8 bpc mode and > 8 bpc mode. In 8 bpc mode, we leave
+            // all builtin video converters in camerabin2 active, by setting flags to 0, so we can accomodate
+            // the widest possible range of consumer class, off-the-shelf cameras in classic 8 bpc mode.
+            // In > 8 bpc precision mode with RGB or RGBA layers (3 or 4), we must use flags 2+4+8 to disable
+            // video filters (scaling, cropping, extra colorspace conversions) in camerabin2, as they would
+            // not allow passthrough of > 8 bpc x-raw-rgb data, only 8 and 16 bpp x-raw-gray and x-raw-yuv.
+            // Note that the mandatory camerawrapperbinsrc is another limiting factor for bitdepth with camerabin2,
+            // and that contains a videocrop element as of December 2013, which will limit bitdepth to 8 bpc, so as
+            // of 2013, camerabin2 based video capture or recording won't work with bitdepth > 8 bpc :-(
+            // The tweaks here for camerabin2 are more of an investment into a brighter future with a better camerawrapperbinsrc:
+            if ((bitdepth > 8) && (reqdepth == 3 || reqdepth == 4)) {
+                // 16 bpc troublemakers: RGB and RGBA:
+                // On camerabin1 disable all cropping, scaling and color conversion: This is the only way how
+                // we could possibly get 16 bpc rgb(a) data from the videosource to our appsink - assuming the
+                // source can provide compatible data without any need for conversion:
+                g_object_set(G_OBJECT(camera), "flags", (usecamerabin == 1) ? 0 : 2+4+8, NULL);
+            }
+            else {
+                // 8 bpc any or 16 bpc grayscale only:
+                // For camerabin1 we just disable resizing aka scaling + cropping, as cropping won't allow > 8 bpc.
+                // We leave color conversion on as ffmpegcolorspace can handle 16 bpc grayscale:
+                g_object_set(G_OBJECT(camera), "flags", (usecamerabin == 1) ? ((bitdepth > 8) ? 2+4 : 1+2+4) : 0, NULL);
+            }
 	    } else {
 		    // Video recording (with optional capture). Setup pipeline:
             if (usecamerabin == 1) {
                 g_object_set(G_OBJECT(camera),
                                 // Only enable sound encoding if "audio recording" flag 2 is set in
                                 // recordingflags. Otherwise add flags 0x20 to disable audio encoding:
-                                "flags", 0x04 + 0x02 + ((recordingflags & 2) ? 0x10 : 0x20),
+                                // Also handle 16 bpc RGB or RGBA modes by disabling color space conversion, as ffmpegcolorspace can't handle RGB16:
+                                "flags", (((bitdepth > 8) && (reqdepth == 3 || reqdepth == 4)) ? 0 : 4 + 2) + ((recordingflags & 2) ? 0x10 : 0x20),
                                 NULL);
             }
             else {
                 // camerabin2:
                 g_object_set(G_OBJECT(camera),
-                             "flags", 0,
+                             "flags", ((bitdepth > 8) && (reqdepth == 3 || reqdepth == 4)) ? 2+4+8 : 0,
                              NULL);
                 
                 // Audio recording requested?
@@ -2920,6 +3158,9 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                 }
             }
 	    }
+
+	    // Only setup colorcaps for camerabin1 if requested by recordingflags 4096, do it later for camerabin2:
+	    if ((usecamerabin == 1) && (recordingflags & 4096)) g_object_set(G_OBJECT(camera), "filter-caps", colorcaps, NULL);
 
 	    // Create and use a videorate converter always when video recording is active (because without it
 	    // we can get choppy or truncated video recordings and/or audio-video sync problems), and
@@ -2997,10 +3238,10 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             // we skip validation and trust blindly that the usercode is right if this is one of the non-enumerating
             // video sources:
             if (!strstr(plugin_name, "dshowvideosrc") && !strstr(plugin_name, "autovideosrc") && !strstr(plugin_name, "videotestsrc") &&
-                !strstr(plugin_name, "aravissrc")) {
+                !strstr(plugin_name, "aravissrc") && !strstr(plugin_name, "gstlaunchbinsrc")) {
                 // Query camera if it supports the requested resolution:
                 capdev->fps = -1;
-                if (!PsychGSGetResolutionAndFPSForSpec(capdev, &twidth, &theight, &capdev->fps, reqdepth)) {
+                if (!PsychGSGetResolutionAndFPSForSpec(capdev, &twidth, &theight, &capdev->fps, reqdepth, bitdepth)) {
                     // Unsupported resolution. Game over!
                     printf("PTB-ERROR: Video capture device %i doesn't support requested video capture resolution of %i x %i pixels! Aborted.\n", slotid, twidth, theight);
                     PsychErrorExitMsg(PsychError_user, "Failed to open video device at requested video resolution.");
@@ -3037,9 +3278,9 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
             // Auto-Detection doesn't work with various video source plugins. Skip it and hope that later probing code will do the job:
             if (!strstr(plugin_name, "dshowvideosrc") && !strstr(plugin_name, "autovideosrc") && !strstr(plugin_name, "videotestsrc") &&
-                !strstr(plugin_name, "aravissrc")) {
+                !strstr(plugin_name, "aravissrc") && !strstr(plugin_name, "gstlaunchbinsrc")) {
                 // Ask camera to provide auto-detected parameters:
-                if (!PsychGSGetResolutionAndFPSForSpec(capdev, &capdev->width, &capdev->height, &capdev->fps, reqdepth)) {
+                if (!PsychGSGetResolutionAndFPSForSpec(capdev, &capdev->width, &capdev->height, &capdev->fps, reqdepth, bitdepth)) {
                     // Unsupported resolution. Game over!
                     printf("PTB-ERROR: Auto-Detection of optimal video resolution on video capture device %i failed! Aborted.\n", slotid);
                     PsychErrorExitMsg(PsychError_user, "Failed to open video device with auto-detected video resolution.");
@@ -3272,9 +3513,9 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 	    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Pipeline preroll skipped because only harddisc recording (recordingflags & 4).\n");
     }
 
-    if (strstr(plugin_name, "dv1394src")) {
-	    recordingflags |= 8;        
-	    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Pipeline preroll skipped because DV capture via dv1394src or hdv1394src is active.\n");
+    if (strstr(plugin_name, "dv1394src") || strstr(gstlaunchbinsrc, "ptbdvsource")) {
+        recordingflags |= 8;
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Pipeline preroll skipped because DV capture via dv1394src or hdv1394src is active.\n");
     }
 
     // Only preroll if prerolling not disabled by recordingflag 8,
@@ -3285,6 +3526,14 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 		    PsychGSProcessVideoContext(vidcapRecordBANK[slotid].VideoContext, TRUE);
 		    PsychErrorExitMsg(PsychError_user, "In OpenVideoCapture: Opening the video capture device failed during pipeline zero -> ready. Reason given above.");
 	    }
+
+        // Should we dump the whole encoding pipeline graph to a file for visualization
+        // with GraphViz? This can be controlled via PsychTweak('GStreamerDumpFilterGraph' dirname);
+        if (getenv("GST_DEBUG_DUMP_DOT_DIR")) {
+            // Dump complete capture/recording filter graph to a .dot file for later visualization with GraphViz:
+            printf("PTB-DEBUG: Dumping potential pre-preroll video capture/recording graph to directory %s.\n", getenv("GST_DEBUG_DUMP_DOT_DIR"));
+            GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(camera), GST_DEBUG_GRAPH_SHOW_ALL, "PsychVideoCaptureGraphPostReadyPrePlaying");
+        }
 
 	    // Preroll the pipeline:
 	    if (!PsychVideoPipelineSetState(camera, GST_STATE_PLAYING, 30.0)) {
@@ -3789,9 +4038,20 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 // Map special capturerate value DBL_MAX to a fps nominator of zero. This
                 // asks the engine to capture at the maximum supported framerate for given
                 // format and resolution:
-                g_signal_emit_by_name (G_OBJECT(camera),
-                                       "set-video-resolution-fps", capdev->width, capdev->height,
-                                       ((capturerate < DBL_MAX) ? (int)(capturerate + 0.5) : 0), 1);
+                if (capturerate == (double) 30000/1001) {
+                    // Special case NTSC-DV capture rate of exactly 30000/1001. Need to set this
+                    // to prevent potential failure on NTSC-DV cameras:
+                    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: In StartVideoCapture: Setting exact NTSC-DV video capture rate of 30000/1001.\n");
+                    g_signal_emit_by_name(G_OBJECT(camera),
+                                          "set-video-resolution-fps", capdev->width, capdev->height,
+                                          30000, 1001);
+                }
+                else {
+                    // Regular rate or "realmax":
+                    g_signal_emit_by_name(G_OBJECT(camera),
+                                          "set-video-resolution-fps", capdev->width, capdev->height,
+                                          ((capturerate < DBL_MAX) ? (int)(capturerate + 0.5) : 0), 1);
+                }
             }
 		}
 		else {
@@ -3839,8 +4099,8 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         // with GraphViz? This can be controlled via PsychTweak('GStreamerDumpFilterGraph' dirname);
         if (getenv("GST_DEBUG_DUMP_DOT_DIR")) {
             // Dump complete capture/recording filter graph to a .dot file for later visualization with GraphViz:
-            printf("PTB-DEBUG: Dumping video capture/recording graph to directory %s.\n", getenv("GST_DEBUG_DUMP_DOT_DIR"));
-            GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(camera), GST_DEBUG_GRAPH_SHOW_ALL, "PsychVideoCaptureGraph");
+            printf("PTB-DEBUG: Dumping actual video capture/recording graph to directory %s.\n", getenv("GST_DEBUG_DUMP_DOT_DIR"));
+            GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(camera), GST_DEBUG_GRAPH_SHOW_ALL, "PsychVideoCaptureGraphActual");
         }
 
 		// Wait for real start of capture, i.e., arrival of 1st captured
@@ -4000,7 +4260,7 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 *  timeindex = This parameter is currently ignored and reserved for future use.
 *  out_texture = Pointer to the Psychtoolbox texture-record where the new texture should be stored.
 *  presentation_timestamp = A ptr to a double variable, where the presentation timestamp of the returned frame should be stored.
-*  summed_intensity = An optional ptr to a double variable. If non-NULL, then sum of intensities over all channels is calculated and returned.
+*  summed_intensity = An optional ptr to a double variable. If non-NULL, then average of intensities over all channels and pixels is calculated and returned.
 *  outrawbuffer = An optional ptr to a memory buffer of sufficient size. If non-NULL, the buffer will be filled with the captured raw image data, e.g., for use inside Matlab or whatever...
 *  Returns Number of pending or dropped frames after fetch on success (>=0), -1 if no new image available yet, -2 if no new image available and there won't be any in future.
 */
@@ -4015,9 +4275,10 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 
     int waitforframe;
     int w, h;
-    unsigned int intensity = 0;
-    unsigned int count, i, bpp;
+    psych_uint64 intensity = 0;
+    unsigned int count, i;
     unsigned char* pixptr;
+    psych_uint16* pixptrs;
     psych_bool newframe = FALSE;
     double tstart, tend;
     int nrdropped = 0;
@@ -4048,16 +4309,14 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     // so we can return the values for raw data retrieval:
     w = capdev->frame_width;
     h = capdev->frame_height;
-
-    // Size of a single pixel in bytes:
-    bpp = capdev->reqpixeldepth;
 	
     // If a outrawbuffer struct is provided, we fill it with info needed to allocate a
     // sufficient memory buffer for returned raw image data later on:
     if (outrawbuffer) {
-	    outrawbuffer->w = w;
-	    outrawbuffer->h = h;
-	    outrawbuffer->depth = bpp;
+        outrawbuffer->w = w;
+        outrawbuffer->h = h;
+        outrawbuffer->depth = capdev->reqpixeldepth;
+        outrawbuffer->bitdepth = (capdev->bitdepth > 8) ? 16 : 8;
     }
 	
     waitforframe = (checkForImage > 1) ? 1:0; // Blocking wait for new image requested?
@@ -4243,7 +4502,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 		// Yes. Perform color-conversion YUV->RGB from cameras DMA buffer
 		// into the scratch buffer and set scratch buffer as source for
 		// all further operations:
-		memcpy(capdev->scratchbuffer, input_image, w * h * bpp);
+		memcpy(capdev->scratchbuffer, input_image, w * h * capdev->reqpixeldepth);
 		
 		// Ok, at this point we should have a RGB8 texture image ready in scratch_buffer.
 		// Set scratch buffer as our new image source for all further processing:
@@ -4283,7 +4542,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 	    out_texture->textureMemory = (GLuint*) input_image;
 	    
 	    // Special case depths == 2, aka YCBCR texture?
-	    if ((capdev->reqpixeldepth == 2) && (capdev->pixeldepth == 16) && (win->gfxcaps & kPsychGfxCapUYVYTexture)) {
+	    if ((capdev->bitdepth <= 8) && (capdev->reqpixeldepth == 2) && (capdev->pixeldepth == 16) && (win->gfxcaps & kPsychGfxCapUYVYTexture)) {
             // GPU supports UYVY textures and we get data in that YCbCr format. Tell
             // texture creation routine to use this optimized format:
             if (!glewIsSupported("GL_APPLE_ycbcr_422")) {
@@ -4311,7 +4570,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
         }
 
         // YUV I420 planar pixel upload requested?
-	    if ((capdev->reqpixeldepth == 2) && (capdev->pixeldepth == 12)) {
+	    if ((capdev->bitdepth <= 8) && (capdev->reqpixeldepth == 2) && (capdev->pixeldepth == 12)) {
             // We encode I420 planar data inside a 8 bit per pixel luminance texture of
             // 1.5x times the height of the video frame. First the "Y" luminance plane
             // is stored at full 1 sample per pixel resolution with 8 bits. Then a 0.25x
@@ -4358,8 +4617,68 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
             // And 24 bpp depth:
             out_texture->depth = 24;
         }
-        else {
+        else if (capdev->bitdepth > 8) {
+            // Is this a > 8 bpc image format? If not, we ain't nothing more to prepare.
+            // If yes, we need to use a high precision floating point texture to represent
+            // the > 8 bpc image payload without loss of image information:
+            
+            // highbitthreshold: If the net bpc value is greater than this, then use 32bpc floats
+            // instead of 16 bpc half-floats, because 16 bpc would not be sufficient to represent
+            // more than highbitthreshold bits faithfully:
+            const int highbitthreshold = 11;
+            
+            // 9 - 16 bpc color/luminance resolution:
+            out_texture->depth = capdev->reqpixeldepth * ((capdev->bitdepth > highbitthreshold) ? 32 : 16);
+            out_texture->nrchannels = capdev->reqpixeldepth;
+            
+            // Byte alignment: Assume at least 2 Byte alignment due to 16 bit per component aka 2 Byte input:
+            out_texture->textureByteAligned = 2;
+
+            if (capdev->reqpixeldepth == 1) {
+                // 1 layer Luminance:
+                out_texture->textureinternalformat = (capdev->bitdepth > highbitthreshold) ? GL_LUMINANCE_FLOAT32_APPLE : GL_LUMINANCE_FLOAT16_APPLE;
+                out_texture->textureexternalformat = GL_LUMINANCE;
+                // Override for missing floating point texture support: Try to use 16 bit fixed point signed normalized textures [-1.0 ; 1.0] resolved at 15 bits:
+                if (!(win->gfxcaps & kPsychGfxCapFPTex16)) out_texture->textureinternalformat = GL_LUMINANCE16_SNORM;
+                out_texture->textureByteAligned = (w % 2) ? 2 : ((w % 4) ? 4 : 8);
+            }
+            else if (capdev->reqpixeldepth == 3) {
+                // 3 layer RGB:
+                out_texture->textureinternalformat = (capdev->bitdepth > highbitthreshold) ? GL_RGB_FLOAT32_APPLE : GL_RGB_FLOAT16_APPLE;
+                out_texture->textureexternalformat = GL_RGB;
+                // Override for missing floating point texture support: Try to use 16 bit fixed point signed normalized textures [-1.0 ; 1.0] resolved at 15 bits:
+                if (!(win->gfxcaps & kPsychGfxCapFPTex16)) out_texture->textureinternalformat = GL_RGB16_SNORM;
+                out_texture->textureByteAligned = (w % 2) ? 2 : ((w % 4) ? 4 : 8);
+            }
+            else {
+                // 4 layer RGBA:
+                out_texture->textureinternalformat = (capdev->bitdepth > highbitthreshold) ? GL_RGBA_FLOAT32_APPLE : GL_RGBA_FLOAT16_APPLE;
+                out_texture->textureexternalformat = GL_RGBA;
+                // Override for missing floating point texture support: Try to use 16 bit fixed point signed normalized textures [-1.0 ; 1.0] resolved at 15 bits:
+                if (!(win->gfxcaps & kPsychGfxCapFPTex16)) out_texture->textureinternalformat = GL_RGBA16_SNORM;
+                // Always 8 Byte aligned:
+                out_texture->textureByteAligned = 8;
+            }
+            
+            // External datatype is 16 bit unsigned integer, each color component encoded in a 16 bit value:
+            out_texture->textureexternaltype = GL_UNSIGNED_SHORT;
+            
+            // Scale input data, so highest significant bit of payload is in bit 16:
+            glPixelTransferi(GL_RED_SCALE,   1 << (16 - capdev->bitdepth));
+            glPixelTransferi(GL_GREEN_SCALE, 1 << (16 - capdev->bitdepth));
+            glPixelTransferi(GL_BLUE_SCALE,  1 << (16 - capdev->bitdepth));
+            
             // Let PsychCreateTexture() do the rest of the job of creating, setting up and
+            // filling an OpenGL texture with content:
+            PsychCreateTexture(out_texture);
+            
+            // Undo scaling:
+            glPixelTransferi(GL_RED_SCALE, 1);
+            glPixelTransferi(GL_GREEN_SCALE, 1);
+            glPixelTransferi(GL_BLUE_SCALE, 1);
+        }
+        else {
+            // Simple case: Let PsychCreateTexture() do the rest of the job of creating, setting up and
             // filling an OpenGL texture with content:
             PsychCreateTexture(out_texture);
         }
@@ -4379,22 +4698,32 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 	    // Ready to use the texture...
     }
     
-    // Sum of pixel intensities requested?
-    if(summed_intensity) {
-	    pixptr = (unsigned char*) input_image;
-	    count  = w * h * bpp;
-	    for (i=0; i<count; i++) intensity+=(unsigned int) pixptr[i];
-	    *summed_intensity = ((double) intensity) / w / h / bpp;
+    // Sum of pixel intensities requested? 8 bpc?
+    if (summed_intensity && (capdev->bitdepth <= 8)) {
+        pixptr = (unsigned char*) input_image;
+        count  = w * h * capdev->reqpixeldepth;
+        for (i=0; i<count; i++) intensity+=(psych_uint64) pixptr[i];
+        *summed_intensity = ((double) intensity) / w / h / capdev->reqpixeldepth / 255;
+    }
+    
+    // Sum of pixel intensities requested? 16 bpc?
+    if (summed_intensity && (capdev->bitdepth > 8)) {
+        pixptrs = (psych_uint16*) input_image;
+        count = w * h * capdev->reqpixeldepth;
+        for (i=0; i<count; i++) intensity+=(psych_uint64) pixptrs[i];
+        *summed_intensity = ((double) intensity) / w / h / capdev->reqpixeldepth / ((1 << (capdev->bitdepth)) - 1);
     }
     
     // Raw data requested?
     if (outrawbuffer) {
-	    // Copy it out:
-	    outrawbuffer->w = w;
-	    outrawbuffer->h = h;
-	    outrawbuffer->depth = bpp;
-	    count = (w * h * outrawbuffer->depth);
-	    memcpy(outrawbuffer->data, (const void *) input_image, count);
+        // Copy it out:
+        outrawbuffer->w = w;
+        outrawbuffer->h = h;
+        outrawbuffer->depth = capdev->reqpixeldepth;
+        outrawbuffer->bitdepth = (capdev->bitdepth > 8) ? 16 : 8;
+        count = (w * h * outrawbuffer->depth * (outrawbuffer->bitdepth / 8));
+        // Either 8 bpc or 16 bpc data - A simple memcpy does the job efficiently:
+        memcpy(outrawbuffer->data, (const void *) input_image, count);
     }
 	
     // Release the capture buffer. Return it to the DMA ringbuffer pool:
@@ -4441,8 +4770,8 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 	GList* iter = NULL;
 	GstColorBalanceChannel* cc = NULL;
 
-	// Retrieve device record for handle:
-	PsychVidcapRecordType* capdev = PsychGetGSVidcapRecord(capturehandle);
+	// Retrieve device record for handle, or NULL for special "all devices" handle -1:
+    PsychVidcapRecordType* capdev = (capturehandle != -1) ? PsychGetGSVidcapRecord(capturehandle) : NULL;
 
 	// Make sure GStreamer is ready:
 	PsychGSCheckInit("videocapture");
@@ -4451,7 +4780,31 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 	
 	// Round value to integer:
 	intval = (int) (value + 0.5);
-	
+
+    if (strstr(pname, "SetNextCaptureBinSpec=")) {
+        // Assign string with gst-launch style video capture bin description for use
+        // with a deviceIndex of -9 in next Screen('OpenVideoCapture', -9, ...) call.
+        // Instead of connecting to one of the special devices -8 to -1 or an enumerated
+        // video source like the default source zero, or others, we parse the string assigned
+        // here and create a GStreamer bin which acts as video source:
+        // Find start of movie namestring and assign to pname:
+        pname = strstr(pname, "=");
+        pname++;
+
+        // Assign to our gstlaunchbinsrc string:
+        memset(gstlaunchbinsrc, 0, sizeof(gstlaunchbinsrc));
+        snprintf(gstlaunchbinsrc, sizeof(gstlaunchbinsrc), "%s", pname);
+
+        if (PsychPrefStateGet_Verbosity() > 2) {
+            printf("PTB-INFO: Changed gst-launch style videosource bin string for use with deviceIndex -9 to '%s'.\n", gstlaunchbinsrc);
+        }
+        
+        return(0);
+    }
+
+    // All other parameters require a valid capturehandle >= 0.
+    if (capdev == NULL) return(DBL_MAX);
+    
 	// Set a new target movie name for video recordings:
 	if (strstr(pname, "SetNewMoviename=")) {
 		// Find start of movie namestring and assign to pname:
@@ -4559,7 +4912,7 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 	
 	// Return model name string:
 	if (strcmp(pname, "GetModelname")==0) {
-		PsychCopyOutCharArg(1, FALSE, capdev->cameraFriendlyName);
+        PsychCopyOutCharArg(1, FALSE, (capdev->cameraFriendlyName) ? capdev->cameraFriendlyName : "Unknown Model");
 		return(0);
 	}
 

@@ -531,9 +531,9 @@ classToMatch = IOServiceNameMatching("ATIRadeonX1000");
 				PsychCopyOutCharArg(i, FALSE, defaultString);
 
 				break;
-
+            default:
+                break;
 		}
-
 	}
 
 	return(PsychError_none);

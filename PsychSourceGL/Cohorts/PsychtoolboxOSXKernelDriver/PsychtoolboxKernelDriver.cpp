@@ -43,7 +43,7 @@
     Copyrights and license:
 
             This drivers copyright:
-            Copyright © 2008-2012 Mario Kleiner.
+            Copyright © 2008-2014 Mario Kleiner.
 
             This driver contains code for radeon DCE-4 and AVIVO which are derived from the free software radeon kms
             driver for Linux (radeon_display.c, radeon_regs.h). The Radeon kms driver has the following copyright:
@@ -96,7 +96,7 @@ static UInt32 crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET,
 #define super IOService
 OSDefineMetaClassAndStructors(PsychtoolboxKernelDriver, IOService)
 
-/* Mappings up to date for August 2013 (last update e-mail patch / commit 30-Aug-2013). Will need updates for anything after start of September 2013 */
+/* Mappings up to date for year 2013 (last update e-mail patch / commit 8-11-2013). Would need updates for anything after start of December 2013 */
 
 /* Is a given ATI/AMD GPU a DCE8 type ASIC, i.e., with the new display engine? */
 bool PsychtoolboxKernelDriver::isDCE8(void)
@@ -114,6 +114,10 @@ bool PsychtoolboxKernelDriver::isDCE8(void)
     
     // KAVERI in 0x13xx range:
 	if ((fPCIDeviceId & 0xFF00) == 0x1300) isDCE8 = true;
+
+    // HAWAII in 0x67Ax - 0x67Bx range:
+	if ((fPCIDeviceId & 0xFFF0) == 0x67A0) isDCE8 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x67B0) isDCE8 = true;
     
 	return(isDCE8);
 }
@@ -238,6 +242,10 @@ bool PsychtoolboxKernelDriver::isDCE4(void)
 	
 	// All DCE-4.1 engines are also DCE-4, except for lower crtc count:
 	if (isDCE41()) isDCE4 = true;
+    
+	// All DCE-5 engines are also DCE-4:
+	if (isDCE5()) isDCE4 = true;
+    
 	return(isDCE4);
 }
 

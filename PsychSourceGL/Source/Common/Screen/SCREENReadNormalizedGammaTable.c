@@ -21,13 +21,6 @@
 
 #include "Screen.h"
 
-#if PSYCH_SYSTEM == PSYCH_OSX
-// Disable warnings about deprecated API calls on OSX 10.7
-// of which we are aware and that we can't remove as long as
-// we need to stay compatible to 10.4 - 10.6
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "[gammatable, dacbits, reallutsize] = Screen('ReadNormalizedGammaTable', windowPtrOrScreenNumber [, physicalDisplay]);";
 static char synopsisString[] = 
@@ -86,13 +79,13 @@ PsychError SCREENReadNormalizedGammaTable(void)
     }
 
     if ((PSYCH_SYSTEM == PSYCH_LINUX) && (physicalDisplay > -1)) {
-	// Affect one specific display output for given screen:
-	outputId = physicalDisplay;
+        // Affect one specific display output for given screen:
+        outputId = physicalDisplay;
     }
     else {
-	// Other OS'es, and Linux with default setting: Affect all outputs
-	// for a screen.
-	outputId = -1;
+        // Other OS'es, and Linux with default setting: Affect all outputs
+        // for a screen.
+        outputId = -1;
     }
 
     // Retrieve gamma table:
@@ -129,8 +122,6 @@ PsychError SCREENReadNormalizedGammaTable(void)
 		// Retrieve display handle for screen:
 		PsychGetCGDisplayIDFromScreenNumber(&displayID, screenNumber);
 		
-		if (PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Screen %i has framebuffer address %p.\n", screenNumber, CGDisplayBaseAddress(displayID));
-
 		// Retrieve low-level IOKit service port for this display:
 		displayService = CGDisplayIOServicePort(displayID);
 				
@@ -148,12 +139,13 @@ PsychError SCREENReadNormalizedGammaTable(void)
 		}	
 
 		if (PsychPrefStateGet_Verbosity()>9) {			
-			CFDictionaryRef currentMode;
+			CGDisplayModeRef currentMode;
 			CFNumberRef n;
 			int modeId;
-			currentMode = CGDisplayCurrentMode(displayID);
-			n=CFDictionaryGetValue(currentMode, kCGDisplayMode);
-			CFNumberGetValue(n, kCFNumberIntType, &modeId);
+			currentMode = CGDisplayCopyDisplayMode(displayID);
+            modeId = (int) CGDisplayModeGetIODisplayModeID(currentMode);
+            CGDisplayModeRelease(currentMode);
+            
 			printf("Current mode has id %i\n\n", modeId);
 			kr = IORegistryEntryCreateCFProperties(displayService, &properties, NULL, 0);
 			if((kr == kIOReturnSuccess) && ((framebufferTimings0 = (CFMutableArrayRef) CFDictionaryGetValue(properties, CFSTR(kIOFBDetailedTimingsKey) ) )!=NULL))
@@ -173,9 +165,6 @@ PsychError SCREENReadNormalizedGammaTable(void)
 				if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to query STUFF for screen %i --> %p!\n", screenNumber, properties);
 			}	
 		}
-		
-
-
     #endif
 	
     // Copy out optional real LUT size (number of slots):

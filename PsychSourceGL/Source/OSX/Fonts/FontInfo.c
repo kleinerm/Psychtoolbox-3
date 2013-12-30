@@ -1,5 +1,5 @@
 /*
-	PsychToolbox2/Source/OSX/FontInfo/Fonts.c		
+	PsychToolbox3/Source/OSX/FontInfo/Fonts.c
 
 	PROJECTS: 
 
@@ -20,13 +20,10 @@
 		3/7/06		awi		Changed references from "Font" to "FontInfo".  The function had been previously renamed, but not all references updated. 
 
 	DESCRIPTION: 
-
-  
+ 
 */ 
 
 #include "FontInfo.h"
-
-
 
 PsychError FontsExitFunction(void)
 {

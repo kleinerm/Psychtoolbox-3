@@ -90,7 +90,7 @@ PsychError SCREENFillRect(void)
 	if (numRects <= 1) {
 		// Get the rect and draw it
 		isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect);	
-		isScreenRect= !isArgThere || isArgThere && PsychMatchRect(rect, windowRecord->clientrect);
+		isScreenRect= (!isArgThere) || (isArgThere && PsychMatchRect(rect, windowRecord->clientrect));
 		if (isArgThere && IsPsychRectEmpty(rect)) return(PsychError_none);
 	}
 

@@ -135,11 +135,16 @@ PsychError EyelinkInitialize(void)
 	} else {
 		
 		iStatus = (int) open_eyelink_system((UINT16) iBufferSize, NULL);
-		// If link is established, open connection
+        
+		// If library is properly initialized, open connection:
 		if(iStatus != 0) {
 			msec_delay(300);
 			iStatus = eyelink_open();
 		}
+        else {
+            // Failed to open eyelink runtime library:
+            PsychErrorExitMsg(PsychError_system, "Eyelink: Initialize: Failed to initialize eyelink runtime library! open_eyelink_system() failed.");
+        }
 		
 		// Check for errors and report
 		if(iStatus != 0) {

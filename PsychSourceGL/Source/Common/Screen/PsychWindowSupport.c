@@ -1314,12 +1314,15 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		  if (PsychPrefStateGet_EmulateOldPTB()) PsychGetAdjustedPrecisionTimerSeconds(&((*windowRecord)->time_at_last_vbl));
       }
 	  
-	  // End of beamposition measurements and validation.
-	  
-	  // We now perform an initial calibration using VBL-Syncing of OpenGL:
-	  // We use minSamples samples (minSamples monitor refresh intervals) and provide the ifi_nominal
-	  // as a hint to the measurement routine to stabilize it:
-      
+      // End of beamposition measurements and validation.
+
+      // We now perform an initial calibration using VBL-Syncing of OpenGL:
+      // We use minSamples samples (minSamples monitor refresh intervals) and provide the ifi_nominal
+      // as a hint to the measurement routine to stabilize it. If ifi_nominal is unavailable, we use
+      // ifi_beamestimate as alternative ifi hint for stabilization. Having an alternative is especially
+      // important on OSX which reports ifi_nominal == 0 on builtin flat panels and has often noisy timing,
+      // especially since OSX 10.9 Mavericks.
+
       // We try 3 times a maxDuration seconds max., in case something goes wrong...
       while(ifi_estimate==0 && retry_count<3) {
 		  numSamples = minSamples;      // Require at least minSamples *valid* samples...
@@ -1330,7 +1333,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		  // If skipping of sync-test is requested, we limit the calibration to 1 sec.
 		  maxsecs = (skip_synctests) ? 1 : maxDuration;
 		  retry_count++;
-		  ifi_estimate = PsychGetMonitorRefreshInterval(*windowRecord, &numSamples, &maxsecs, &stddev, ifi_nominal);
+		  ifi_estimate = PsychGetMonitorRefreshInterval(*windowRecord, &numSamples, &maxsecs, &stddev, ((ifi_nominal > 0) ? ifi_nominal : ifi_beamestimate));
 		  if((PsychPrefStateGet_Verbosity()>1) && (ifi_estimate==0 && retry_count<3)) {
 			  printf("\nWARNING: VBL Calibration run No. %i failed. Retrying...\n", retry_count);
 		  }
@@ -2587,7 +2590,7 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 			// Create and startup thread:
 			if ((rc=PsychCreateThread(&(flipRequest->flipperThread), NULL, PsychFlipperThreadMain, (void*) windowRecord))) {
 				printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): Could not create flipper  [%s].\n", strerror(rc));
-				PsychErrorExitMsg(PsychError_system, "Insufficient system ressources for mutex creation as part of async flip setup!");
+				PsychErrorExitMsg(PsychError_system, "Insufficient system ressources for thread creation as part of async flip setup!");
 			}
 
 			// Additionally try to schedule flipperThread MMCSS: This will lift it roughly into the
@@ -4259,7 +4262,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                 // values are considered impossible and are therefore rejected...
                 // If we are in OpenGL native stereo display mode, aka temporally interleaved flip-frame stereo,
                 // then we also accept samples that are in a +/-20% rnage around twice the intervalHint. This is,
-                // because in OpenGL stereo mode, ATI hardware doubles the flip-interval: It only flips every 2nd
+                // because in OpenGL stereo mode, some hardware doubles the flip-interval: It only flips every 2nd
                 // video refresh, so a doubled flip interval is a legal valid result.
                 if ((tdur >= 0.004 && tdur <= 0.050) && ((intervalHint<=0) || (intervalHint>0 &&
                     ( ((tdur > 0.8 * intervalHint) && (tdur < 1.2 * intervalHint)) ||
@@ -5753,7 +5756,7 @@ void PsychBackupFramebufferToBackingTexture(PsychWindowRecordType *backupRendert
             
             if (PsychIsGLES(backupRendertarget)) {
                 // OES extension for faster format supported?
-                if (strstr(glGetString(GL_EXTENSIONS), "GL_EXT_texture_format_BGRA8888")) {
+                if (strstr((const char*) glGetString(GL_EXTENSIONS), "GL_EXT_texture_format_BGRA8888")) {
                     // Faster path:
                     glTexImage2D(GL_TEXTURE_2D, 0, GL_BGRA_EXT, twidth, theight, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, NULL);
                 }
@@ -5791,7 +5794,7 @@ void PsychBackupFramebufferToBackingTexture(PsychWindowRecordType *backupRendert
 
                 if (PsychIsGLES(backupRendertarget)) {
                     // OES extension for faster format supported?
-                    if (strstr(glGetString(GL_EXTENSIONS), "GL_EXT_texture_format_BGRA8888")) {
+                    if (strstr((const char*) glGetString(GL_EXTENSIONS), "GL_EXT_texture_format_BGRA8888")) {
                         // Faster path:
                         glTexImage2D(GL_TEXTURE_2D, 0, GL_BGRA_EXT, twidth, theight, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, NULL);
                     }
@@ -6043,7 +6046,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		if (verbose) printf("GPU supports UYVY - YCrCb texture formats for optimized handling of video content.\n");
 	}
 
-    if (glewIsSupported("GL_ARB_texture_non_power_of_two") || strstr(glGetString(GL_EXTENSIONS), "GL_OES_texture_npot")) {
+    if (glewIsSupported("GL_ARB_texture_non_power_of_two") || strstr((const char*) glGetString(GL_EXTENSIONS), "GL_OES_texture_npot")) {
         windowRecord->gfxcaps |= kPsychGfxCapNPOTTex;
 		if (verbose) printf("GPU supports non-power-of-two textures.\n");
     }
@@ -6051,11 +6054,11 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     // OpenGL-ES setup?
     if (PsychIsGLES(windowRecord)) {
         // OES framebuffer objects supported?
-        if (strstr(glGetString(GL_EXTENSIONS), "GL_OES_framebuffer_object") || glewIsSupported("GL_EXT_framebuffer_object") || glewIsSupported("GL_ARB_framebuffer_object")) {
+        if (strstr((const char*) glGetString(GL_EXTENSIONS), "GL_OES_framebuffer_object") || glewIsSupported("GL_EXT_framebuffer_object") || glewIsSupported("GL_ARB_framebuffer_object")) {
             if (verbose) printf("Basic OES framebuffer objects supported --> RGBA rendertargets with blending.\n");
             windowRecord->gfxcaps |= kPsychGfxCapFBO;
 
-            if (strstr(glGetString(GL_EXTENSIONS), "_framebuffer_blit")) {
+            if (strstr((const char*) glGetString(GL_EXTENSIONS), "_framebuffer_blit")) {
                 if (verbose) printf("OES Framebuffer objects support fast blitting between each other.\n");
                 windowRecord->gfxcaps |= kPsychGfxCapFBOBlit;			
             }
@@ -6115,7 +6118,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         
         // Support for framebuffer blits which do a scaling operation and a multisample resolve at once?
         if ((windowRecord->gfxcaps & kPsychGfxCapFBOMultisample) &&
-            (glewIsSupported("GL_EXT_framebuffer_multisample_blit_scaled") || strstr(glGetString(GL_EXTENSIONS), "GL_EXT_framebuffer_multisample_blit_scaled"))) {
+            (glewIsSupported("GL_EXT_framebuffer_multisample_blit_scaled") || strstr((const char*) glGetString(GL_EXTENSIONS), "GL_EXT_framebuffer_multisample_blit_scaled"))) {
 			if (verbose) printf("Framebuffer objects support single-pass multisample resolve blits and image rescaling.\n");
             windowRecord->gfxcaps |= kPsychGfxCapFBOScaledResolveBlit;
         }

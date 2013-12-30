@@ -163,7 +163,9 @@ static void *PsychHIDKbQueueNewThread(void *value){
     
 	// Start the run loop, code execution will block here until run loop is stopped again by PsychHIDKbQueueRelease
 	// Meanwhile, the run loop of this thread will be responsible for executing code below in PsychHIDKbQueueCalbackFunction
-	while ((rc = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, false)) == kCFRunLoopRunTimedOut);
+	while ((rc = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, false)) == kCFRunLoopRunTimedOut) {};
+    
+    return(NULL);
 }
 
 static double convertTime(AbsoluteTime at){
@@ -766,7 +768,7 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 				psych_bool foundUserSpecifiedDevice;
 				//make sure that the device number provided by the user is really a keyboard or keypad.
 				for(i=0;i<numDeviceIndices;i++){
-					if(foundUserSpecifiedDevice=(deviceIndices[i]==deviceIndex))
+					if ((foundUserSpecifiedDevice=(deviceIndices[i]==deviceIndex)))
 						break;
 				}
 				if(!foundUserSpecifiedDevice)

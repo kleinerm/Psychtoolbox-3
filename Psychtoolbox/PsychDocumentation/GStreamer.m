@@ -5,7 +5,8 @@
 %
 % All movie playback, movie creation, video capture and video recording
 % operations are based on GStreamer. These functions won't work without a
-% working GStreamer installation on your system.
+% working GStreamer installation on your system (with the exception of video
+% capture from firewire DCAM/IIDC machine vision cameras on Linux and OSX).
 %
 % You will need at least version 0.10.24 of GStreamer, but we recommend to
 % use the latest available versions of the version 0.10.x series, as not
@@ -75,26 +76,46 @@
 %
 % <http://www.gstreamer.com>
 %
-% When the installer asks you which components it should install, go for a
-% "full installation" or "complete installation", or in case of a "custom
-% install" select all components manually in the checklist if you want
-% support for all video formats and all functionality. Without this, many
-% popular video formats like H264 video will not play at all, or video
-% recording / video capture and similar functions will not work. In fact,
-% even our own demos, e.g., SimpleMovieDemo will fail if you don't have all
-% codecs installed!
-
+% When the installer asks you to select the components it should install,
+% select a "Custom installation" (instead of "Full installation" or "Basic
+% installation" or such). Then, in the displayed check list of packages to
+% install, select *all* components manually, if you want support for all
+% video formats and all functionality. Without this, many popular video
+% formats like H264 video will not play at all, or video recording / video
+% capture and similar functions will not work. In fact, even our own demos,
+% e.g., SimpleMovieDemo *will fail* if you don't have all codecs installed!
+% -> If SimpleMovieDemo doesn't work, then the most likely cause is that
+% you didn't select all GStreamer packages for installation, so restart the
+% installer and repeat installation with the full set of packages.
+%
+%
 % On Apple MacOSX, optionally you can also install GStreamer version 0.10
-% via the Homebrew package manager:
+% via the Homebrew package manager, building the very latest GStreamer from
+% source code. This is more effort and takes more time for download and
+% installation, but provides some extra features for video capture and
+% possibly enhanced performance for video playback of high-resolution,
+% high-framerate movies:
 %
 % Get Homebrew at ...
 %
 % http://mxcl.github.com/homebrew
 %
-% ... then install all components via:
+% then add the Homebrew-Versions repository via typing (in your terminal window):
 %
-% brew install gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad
-% gst-plugins-ugly gst-ffmpeg
+% brew tap homebrew/versions
+%
+% ... then install all components of the GStreamer 0.10 series via:
+%
+% brew install gstreamer010 gst-plugins-base010 gst-plugins-good010
+% gst-plugins-bad010 gst-plugins-ugly010
+%
+% Then install our own FFMPEG GStreamer formula via:
+%
+% brew install gst-ffmpeg010
+%
+% ... or if that doesn't work, try the following alternative:
+%
+% brew install https://raw.github.com/Psychtoolbox-3/homebrew-versions/gst-ffmpeg010/gst-ffmpeg010.rb
 %
 % After a couple minutes of download and compile time, you'll have a fully
 % functional GStreamer compiled from source - assuming everything goes

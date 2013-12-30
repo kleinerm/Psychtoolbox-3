@@ -21,8 +21,6 @@
 	
 		Some of this stuff looks platform neutral so we should consider moving that part of it outside of the the glue layer which is
         only for functions which abstract up platform-specific calls into platform neutral calls invoked by Screen subcommands.
-        
-
 */
 
 //include once
@@ -31,25 +29,24 @@
 
 #include "Screen.h"
 
-//abstract up for platform independance.
+// These Screen('TextMode') constants are identical to CGTextDrawingMode constants on OSX:
 typedef enum {
-   kPsychTextFill=1,
-   kPsychTextStroke,
-   kPsychTextFillStroke,
-   kPsychTextInvisible,
-   kPsychTextFillClip,
-   kPsychTextStrokeClip,
-   kPsychTextFillStrokeClip,
-   kPsychTextClip
+   kPsychTextFill = kCGTextFill,
+   kPsychTextStroke = kCGTextStroke,
+   kPsychTextFillStroke = kCGTextFillStroke,
+   kPsychTextInvisible = kCGTextInvisible,
+   kPsychTextFillClip = kCGTextFillClip,
+   kPsychTextStrokeClip = kCGTextStrokeClip,
+   kPsychTextFillStrokeClip = kCGTextFillStrokeClip,
+   kPsychTextClip = kCGTextClip
 } PsychTextDrawingModeType;
 
-#define					kPsychNumTextDrawingModes		8
-#define 				kPsychNoFont				-1				
-extern const char 			*PsychTextDrawingModeNames[];		//PsychWindowTextGlue.c
+#define kPsychNumTextDrawingModes   8
+#define kPsychNoFont                -1
+extern const char *PsychTextDrawingModeNames[];		//PsychWindowTextGlue.c
 extern const PsychTextDrawingModeType	PsychTextDrawingModes[];
 
-//typedef for parameters specifying text characteristics. Enclosed within window record structure because windows have text properties.
-
+// typedef for parameters specifying text characteristics. Enclosed within window record structure because windows have text properties.
 typedef struct {
         //when adding new fields remember to initialize them to sane values within PsychInitTextRecordSettings() which is called with
         //	each new window.  
@@ -67,17 +64,10 @@ typedef struct {
 
 } PsychTextAttributes;
 
-
 //function prototypes
 void PsychInitTextRecordSettings(PsychTextAttributes *settings);		
 void PsychGetTextDrawingModeNameFromTextDrawingModeConstant(char *modeNameStr, int modeNameStrSize, PsychTextDrawingModeType mode);
 psych_bool PsychGetTextDrawingModeConstantFromTextDrawingModeName(PsychTextDrawingModeType *mode, char *modeNameStr);
-	
-                                
-
 
 //end include once
 #endif
-
-
-

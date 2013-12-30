@@ -868,14 +868,14 @@ void PsychHIDOSKbQueueStop(int deviceIndex)
 	event.x_root = 1;
 	event.y_root = 1;
 	event.same_screen = TRUE;
-	event.type = KeyPress;
+	event.type = KeyRelease;
 	event.keycode = 0;
 	event.state = 0;
 	
 	// printf("DEBUG: Sending termination fake event...\n"); fflush(NULL);
-	XSelectInput(event.display, event.window, KeyPressMask);
+	XSelectInput(event.display, event.window, KeyReleaseMask);
 	XFlush(thread_dpy);
-	XSendEvent(event.display, event.window, TRUE, KeyPressMask, (XEvent *) &event);
+	XSendEvent(event.display, event.window, TRUE, KeyReleaseMask, (XEvent *) &event);
 	XFlush(thread_dpy);
 	// printf("DEBUG: DONE.\n"); fflush(NULL);
 

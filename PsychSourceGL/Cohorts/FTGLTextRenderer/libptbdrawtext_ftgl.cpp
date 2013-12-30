@@ -173,7 +173,7 @@ fontCacheItem* getForContext(int contextId)
                 // Match! We have cached OGLFT font objects for this font on this context. Return them:
                 hitcount++;
 
-                if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: Cache hit for contextId %i at slot %i. Hit ratio is %f%%\n", contextId, i, (double) hitcount / (double) nowtime * 100);
+                if (_verbosity > 10) fprintf(stderr, "libptbdrawtext_ftgl: Cache hit for contextId %i at slot %i. Hit ratio is %f%%\n", contextId, i, (double) hitcount / (double) nowtime * 100);
 
                 // Update last access timestamp for LRU:
                 fi->timestamp = nowtime;
@@ -193,12 +193,12 @@ fontCacheItem* getForContext(int contextId)
     if ((freeslot >= 0) && ((lruslotid == -1) || (freecount > MIN_GUARANTEED_CONTEXTS))) {
         // Yes. Fill it with new font object of matching properties:
         fi = &(cache[freeslot]);
-        if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: Nothing cached for contextId %i. Using new slot %i. %i free slots remaining.\n", contextId, freeslot, freecount);
+        if (_verbosity > 9) fprintf(stderr, "libptbdrawtext_ftgl: Nothing cached for contextId %i. Using new slot %i. %i free slots remaining.\n", contextId, freeslot, freecount);
     }
     else if (lruslotid >= 0) {
         // No. Overwrite least recently used font object for current contextId:
         fi = &(cache[lruslotid]);
-        if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: Nothing cached for contextId %i but cache full. LRU replacing slot %i, age %i. %i free slots remaining.\n", contextId, lruslotid, lruage, freecount);
+        if (_verbosity > 9) fprintf(stderr, "libptbdrawtext_ftgl: Nothing cached for contextId %i but cache full. LRU replacing slot %i, age %i. %i free slots remaining.\n", contextId, lruslotid, lruage, freecount);
     }
     else {
         // Cache full, with no possibility to even LRU replace on this new context (aka window). Game over!
@@ -249,7 +249,7 @@ int PsychRebuildFont(fontCacheItem* fi)
         if (fi->faceM) delete(fi->faceM);
         fi->faceM = NULL;
 
-		if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: Destroying old font face...\n");
+		if (_verbosity > 9) fprintf(stderr, "libptbdrawtext_ftgl: Destroying old font face...\n");
 		
 		// Delete underlying FreeType representation:
         FT_Done_Face(fi->ft_face);
@@ -293,7 +293,7 @@ int PsychRebuildFont(fontCacheItem* fi)
 		}
 		
 		// Have a matching pattern:
-		if (_verbosity > 3) {
+		if (_verbosity > 5) {
 			fprintf(stderr, "libptbdrawtext_ftgl: Trying to find font that closely matches following specification:\n");
 			FcPatternPrint(target);
 		}
@@ -309,7 +309,7 @@ int PsychRebuildFont(fontCacheItem* fi)
 		}
 
 		// Success: Extract relevant information for Freetype-2, the font filename and faceIndex:
-		if (_verbosity > 3) {
+		if (_verbosity > 5) {
 			fprintf(stderr, "libptbdrawtext_ftgl: Best matching font which will be selected for drawing has following specs:\n");
 			FcPatternPrint(matched);
 		}
@@ -367,7 +367,7 @@ int PsychRebuildFont(fontCacheItem* fi)
 		return(1);
 	}
 	else {
-        if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: Freetype loaded face %p with index %i from font file %s.\n", fi->ft_face, faceIndex, fontFileName);
+        if (_verbosity > 5) fprintf(stderr, "libptbdrawtext_ftgl: Freetype loaded face %p with index %i from font file %s.\n", fi->ft_face, faceIndex, fontFileName);
 	}
 
 	// Create FTGL face from Freetype face with given size and a 72 DPI resolution, aka _fontSize == pixelsize:
@@ -613,7 +613,7 @@ int PsychShutdownText(int context)
                 fi->contextId = -1;
 
                 if (fi->faceT || fi->faceM) {
-                    if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: In shutdown for context %i, slot %i:  faceT = %p faceM = %p\n", context, i, fi->faceT, fi->faceM);
+                    if (_verbosity > 5) fprintf(stderr, "libptbdrawtext_ftgl: In shutdown for context %i, slot %i:  faceT = %p faceM = %p\n", context, i, fi->faceT, fi->faceM);
 
                     // Delete OGLFT face objects:
                     if (fi->faceT) delete(fi->faceT);
@@ -633,7 +633,7 @@ int PsychShutdownText(int context)
     }
 
     // Complete shutdown for the plugin:
-    if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: Shutting down. Overall cache hit ratio was %f%%\n", (double) hitcount / (double) nowtime * 100);
+    if (_verbosity > 5) fprintf(stderr, "libptbdrawtext_ftgl: Shutting down. Overall cache hit ratio was %f%%\n", (double) hitcount / (double) nowtime * 100);
     _firstCall = false;
 
 	// Shutdown fontmapper library:

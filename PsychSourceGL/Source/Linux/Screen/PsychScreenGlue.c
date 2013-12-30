@@ -111,7 +111,7 @@ void PsychInitNonX11(void);
 // Offset of crtc blocks of evergreen gpu's for each of the six possible crtc's:
 unsigned int crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET, EVERGREEN_CRTC1_REGISTER_OFFSET, EVERGREEN_CRTC2_REGISTER_OFFSET, EVERGREEN_CRTC3_REGISTER_OFFSET, EVERGREEN_CRTC4_REGISTER_OFFSET, EVERGREEN_CRTC5_REGISTER_OFFSET };
 
-/* Mappings up to date for August 2013 (last update e-mail patch / commit 30-Aug-2013). Will need updates for anything after start of September 2013 */
+/* Mappings up to date for year 2013 (last update e-mail patch / commit 8-11-2013). Would need updates for anything after start of December 2013 */
 
 /* Is a given ATI/AMD GPU a DCE8 type ASIC, i.e., with the new display engine? */
 static psych_bool isDCE8(int screenId)
@@ -129,6 +129,10 @@ static psych_bool isDCE8(int screenId)
     
     // KAVERI in 0x13xx range:
 	if ((fPCIDeviceId & 0xFF00) == 0x1300) isDCE8 = true;
+
+    // HAWAII in 0x67Ax - 0x67Bx range:
+	if ((fPCIDeviceId & 0xFFF0) == 0x67A0) isDCE8 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x67B0) isDCE8 = true;
     
 	return(isDCE8);
 }
@@ -254,6 +258,9 @@ static psych_bool isDCE4(int screenId)
 	// All DCE-4.1 engines are also DCE-4, except for lower crtc count:
 	if (isDCE41(screenId)) isDCE4 = true;
 
+	// All DCE-5 engines are also DCE-4:
+	if (isDCE5(screenId)) isDCE4 = true;
+    
 	return(isDCE4);
 }
 
@@ -518,23 +525,35 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 		// Success! Identify GPU:
 		gfx_length = region->size;
 
-		// Lowest allowable MMIO register offset for given GPU:
-		gfx_lowlimit = 0;
-		
-		if (fDeviceType == kPsychGeForce) {
-			fCardType = PsychGetNVidiaGPUType(NULL);
-            
+        // Lowest allowable MMIO register offset for given GPU:
+        gfx_lowlimit = 0;
+
+        if (fDeviceType == kPsychGeForce) {
+            fCardType = PsychGetNVidiaGPUType(NULL);
+
+            // GPU powered down and therefore offline? Signalled by special return code 0xffffffff.
+            if (fCardType == 0xffffffff) {
+                // Yes. This can happen in Optimus setups or other hybrid graphics setups.
+                // Bail out of this GPU and cleanup:
+                PsychScreenUnmapDeviceMemory();
+
+                if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: This NVidia GPU is powered down, probably in a Optimus setup. Skipping its use for beamposition timestamping.\n");
+
+                // We are done.
+                return(FALSE);
+            }
+
             // NV-E0 "Kepler" and later have 4 display heads:
             if ((fCardType == 0x0) || (fCardType >= 0xe0)) fNumDisplayHeads = 4;
-            
-			if (PsychPrefStateGet_Verbosity() > 2) {
-				printf("PTB-INFO: Connected to NVidia %s GPU of NV-%02x family with %i display heads. Beamposition timestamping enabled.\n", pci_device_get_device_name(gpu), fCardType, fNumDisplayHeads);
-				fflush(NULL);
-			}
-		}
-		
+
+            if (PsychPrefStateGet_Verbosity() > 2) {
+                printf("PTB-INFO: Connected to NVidia %s GPU of NV-%02x family with %i display heads. Beamposition timestamping enabled.\n", pci_device_get_device_name(gpu), fCardType, fNumDisplayHeads);
+                fflush(NULL);
+            }
+        }
+
 		if (fDeviceType == kPsychRadeon) {
-			// On Radeons we distinguish between Avivo (10) or DCE-4 style (40) or DCE-5 (50) for now.
+			// On Radeons we distinguish between Avivo (10) or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60)for now.
 			fCardType = isDCE6(screenId) ? 60 : (isDCE5(screenId) ? 50 : (isDCE4(screenId) ? 40 : 10));
 
 			// On DCE-4 and later GPU's (Evergreen) we limit the minimum MMIO
@@ -1850,16 +1869,6 @@ PsychColorModeType PsychGetScreenMode(int screenNumber)
     PsychGetScreenDepth(screenNumber, &depth);
     return(PsychGetColorModeFromDepthStruct(&depth));
 }
-
-
-/*
-    Its probably better to read this directly from the CG renderer info than to infer it from the pixel size
-*/	
-int PsychGetNumScreenPlanes(int screenNumber)
-{    
-    return((PsychGetScreenDepthValue(screenNumber)>24) ? 4 : 3);
-}
-
 
 /*
 	This is a place holder for a function which uncovers the number of dacbits.  To be filled in at a later date.

@@ -144,12 +144,13 @@ TO DO:
 #define kPsychSurfacelessContexts     16384 // 'specialflags' setting 16384: This windows main context and userspace contexts must not attach to windowing system framebuffer surfaces.
 #define kPsychDontDeleteOnClose   (1 << 17) // 'specialflags' setting 2^17: Do not close this texture/offscreen window on a call to Screen('Close'), only if explicitely closed by handle.
 #define kPsychNeedPostSwapLockedFlush (1 << 18) // 'specialflags' setting 2^18: Window needs display lock protected pixelwrite+flush on framebuffer immediately after bufferswap.
+#define kPsychGUIWindowWMPositioned (1 << 19) // 'specialflags' setting 2^19: GUI window is positioned onscreen by window manager, users position spec is ignored.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536. --> Flags of 2^17 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536, 2^17, 2^18. --> Flags of 2^19 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536, 2^17, 2^18, 2^19. --> Flags of 2^20 and higher are available...
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*	PtrPsychHookFunction;
