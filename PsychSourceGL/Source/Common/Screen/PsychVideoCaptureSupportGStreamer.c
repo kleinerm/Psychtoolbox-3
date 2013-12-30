@@ -2854,55 +2854,55 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     gst_object_unref(bus);
 
     // Name of target movie file for video and audio recording specified?
-    if ((deviceIndex >= 0) && targetmoviefilename) {
-	    // Assign it to camerabin to perform video recording:
-	    if (!usecamerabin)
-		    PsychErrorExitMsg(PsychError_user, "You requested video recording, but current fallback video engine doesn't support this. Aborted.");
+    if (((deviceIndex >= 0) || (deviceIndex <= -9)) && targetmoviefilename) {
+        // Assign it to camerabin to perform video recording:
+        if (!usecamerabin)
+            PsychErrorExitMsg(PsychError_user, "You requested video recording, but current fallback video engine doesn't support this. Aborted.");
 
-	    // Codec settings or type specified?
-	    if ((codecSpec = strstr(targetmoviefilename, ":CodecSettings="))) {
-		    // Replace ':' with a zero in targetmoviefilename, so it gets null-terminated
-		    // and only points to the actual movie filename:
-		    *codecSpec = 0;
+        // Codec settings or type specified?
+        if ((codecSpec = strstr(targetmoviefilename, ":CodecSettings="))) {
+            // Replace ':' with a zero in targetmoviefilename, so it gets null-terminated
+            // and only points to the actual movie filename:
+            *codecSpec = 0;
 
-		    // Move after null-terminator:
-		    codecSpec++;
+            // Move after null-terminator:
+            codecSpec++;
 
-		    // Replace the ':CodecSettings=' with the special keyword 'DEFAULTenc', so
-		    // so the default video codec is chosen, but the given settings override its
-		    // default parameters.
-		    strncpy(codecSpec, "DEFAULTenc    ", strlen("DEFAULTenc    "));
+            // Replace the ':CodecSettings=' with the special keyword 'DEFAULTenc', so
+            // so the default video codec is chosen, but the given settings override its
+            // default parameters.
+            strncpy(codecSpec, "DEFAULTenc    ", strlen("DEFAULTenc    "));
 
-		    if (strlen(codecSpec) == 0) PsychErrorExitMsg(PsychError_user, "Invalid (empty) :CodecSettings= parameter specified. Aborted.");
-	    } else if ((codecSpec = strstr(targetmoviefilename, ":CodecType="))) {
-		    // Replace ':' with a zero in targetmoviefilename, so it gets null-terminated
-		    // and only points to the actual movie filename:
-		    *codecSpec = 0;
-		    // Advance codecSpec to point to the actual codec spec string:
-		    codecSpec+= 11;
+            if (strlen(codecSpec) == 0) PsychErrorExitMsg(PsychError_user, "Invalid (empty) :CodecSettings= parameter specified. Aborted.");
+        } else if ((codecSpec = strstr(targetmoviefilename, ":CodecType="))) {
+            // Replace ':' with a zero in targetmoviefilename, so it gets null-terminated
+            // and only points to the actual movie filename:
+            *codecSpec = 0;
+            // Advance codecSpec to point to the actual codec spec string:
+            codecSpec+= 11;
 
-		    if (strlen(codecSpec) == 0) PsychErrorExitMsg(PsychError_user, "Invalid (empty) :CodecType= parameter specified. Aborted.");
-	    } else {
-		    // No codec specified: Use our default encoder, the one that's been shown to
-		    // produce good results:
-		    codecSpec = strdup("DEFAULTenc");
-	    }
+            if (strlen(codecSpec) == 0) PsychErrorExitMsg(PsychError_user, "Invalid (empty) :CodecType= parameter specified. Aborted.");
+        } else {
+            // No codec specified: Use our default encoder, the one that's been shown to
+            // produce good results:
+            codecSpec = strdup("DEFAULTenc");
+        }
 
-	    // Create matching video encoder for codecSpec:
-	    if (PsychSetupRecordingPipeFromString(capdev, codecSpec, codecName, FALSE, TRUE, (recordingflags & 2) ? TRUE : FALSE)) {
-		    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Video%s recording into file [%s] enabled for device %i. Codec is [%s].\n",
-								  ((recordingflags & 2) ? " and audio" : ""), targetmoviefilename, deviceIndex, codecName);
-		    if (strcmp(codecSpec, "DEFAULTenc") == 0) free(codecSpec);
-		    codecSpec = NULL;
-	    } else {
-		    if (strcmp(codecSpec, "DEFAULTenc") == 0) free(codecSpec);
-		    PsychErrorExitMsg(PsychError_system, "Setup of video recording failed. Reason hopefully given above.");
-	    }
+        // Create matching video encoder for codecSpec:
+        if (PsychSetupRecordingPipeFromString(capdev, codecSpec, codecName, FALSE, TRUE, (recordingflags & 2) ? TRUE : FALSE)) {
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Video%s recording into file [%s] enabled for device %i. Codec is [%s].\n",
+                                    ((recordingflags & 2) ? " and audio" : ""), targetmoviefilename, deviceIndex, codecName);
+            if (strcmp(codecSpec, "DEFAULTenc") == 0) free(codecSpec);
+            codecSpec = NULL;
+        } else {
+            if (strcmp(codecSpec, "DEFAULTenc") == 0) free(codecSpec);
+            PsychErrorExitMsg(PsychError_system, "Setup of video recording failed. Reason hopefully given above.");
+        }
 
-	    capdev->targetmoviefilename = strdup(targetmoviefilename); 
-	    capdev->recording_active = TRUE;
+        capdev->targetmoviefilename = strdup(targetmoviefilename);
+        capdev->recording_active = TRUE;
     } else {
-	    capdev->recording_active = FALSE;
+        capdev->recording_active = FALSE;
     }
 
     // Create a appsink named "ptbsink0" for attachment as the destination video-sink for
