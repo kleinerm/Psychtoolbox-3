@@ -1,4 +1,4 @@
-function varargout = PsychTweak(cmd, varargin) %#ok<STOUT>
+function varargout = PsychTweak(cmd, varargin)
 % PsychTweak() - Apply tweaks to various Psychtoolbox parameters.
 %
 % This function allows to tweak some low-level operating parameters of

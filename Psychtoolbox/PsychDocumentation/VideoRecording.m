@@ -1,11 +1,27 @@
 % VideoRecording - Parameter settings, howtos and tips for Video recording.
 %
-% This file describes how to use the GStreamer video capture engine
-% for video (and audio) recording into movie files. This engine is
-% currently used on GNU/Linux and MS-Windows, but will be used in
-% future versions of Psychtoolbox for Mac OS/X as well.
+% This file describes how to use the GStreamer and DC1394 video capture engines
+% for video (and audio) recording into movie files. The GStreamer engine is
+% available on all operating systems and can record both video and sound.
+% The DC1394 engine is available on Linux and OSX and can currently only
+% record video, but no simultaneous audio.
+%
+% - Check VideoRecordingDemo for regular video recording via GStreamer! On
+%   both MacOSX and MS-Windows, one often needs to pass special settings or
+%   codec types for video recording and especially combined video + audio
+%   recording to work. That demo illustrates at least one set of settings
+%   which were shown to work on OSX and Windows in December 2013.
+%
+% - Check VideoDVCamCaptureDemo for video recording from DV cameras. These
+%   cameras seem to need special treatment on all systems, but especially
+%   on MS-Windows and the demo shows how to do that.
+%
+% - Check VideoMultiCameraCaptureDemo for video capture and recording from
+%   multiple professional class IIDC/DCAM compliant firewire and USB cameras
+%   on Linux and OSX via the DC1394 engine.
 %
 % Codec and parameter selection:
+%
 %
 % If you only want to record a movie with default settings, specify its
 % filename as 'targetmoviename' parameter to Screen('OpenVideocapture', ...);
@@ -16,57 +32,84 @@
 % e.g., to set the movie name to 'foo.avi' you'd use this command:
 % Screen('SetVideoCaptureParameter', grabber, 'SetNewMoviename=foo.avi');
 %
-% If you want to use the default codec(s) with their default settings, simply
-% omit the parameter string. Psychtoolbox has a list of codecs that it tries
-% to use for video and audio encoding, together with reasonable default
-% parameters. It works down the list, starting with the most suitable/efficient
-% codec, until it finds a codec that is supported on your system. Not all codecs
-% may be installed by default on your operating system. Especially proprietary,
-% non-free, or patent-encumbered codecs may not be installed on your system. You
-% may have to select them explicitely in the software center of your distribution.
+% If you want to use the default codec(s) with their default settings,
+% simply omit the parameter string. Psychtoolbox has a list of codecs that
+% it tries to use for video and audio encoding, together with reasonable
+% default parameters. It works its way down the list, starting with the most
+% suitable/efficient codec, until it finds a codec that is supported on
+% your system. Not all codecs may be installed by default on your operating
+% system. Especially proprietary, non-free, or patent-encumbered codecs may
+% not be installed on your system. You may have to select them explicitely
+% in the software center of your distribution (see "help GStreamer").
 %
-% If you only want to specify settings for the automatically chosen default codec,
-% start the parameter string with ':CodecSettings=', followed by parameters.
+% If you only want to specify settings for the automatically chosen default
+% codec, start the parameter string with ':CodecSettings=', followed by
+% parameters.
 %
-% If you want to chose a specific codec and (optionally) its settings, start the
-% parameter string with ':CodecType=', followed by the settings. 
+% If you want to chose a specific codec and (optionally) its settings,
+% start the parameter string with ':CodecType=', followed by the settings.
 %
-% Some video codecs are supported by our automatic setup code. These will automatically
-% select matching audio codecs and audio-video multiplexers and reasonable default
-% settings, so they are convenient for you to use:
+% Some video codecs are supported by our automatic setup code. These will
+% automatically select matching audio codecs and audio-video multiplexers
+% and reasonable default settings, so they are convenient for you to use:
 %
-% x264enc:         A highly optimized H.264 video encoder, automatically combined with the
-%                  faacenc MPEG-4 AAC audio encoder and an AVI file multiplexer.
+% x264enc:         A highly optimized H264 video encoder, automatically combined with the
+%                  faacenc or ffenc_aac MPEG-4 AAC audio encoder and an AVI file
+%                  multiplexer or Quicktime mov file multiplexer.
+%
 % xvidenc:         The XVid MPEG-4 video encoder + AAC audio in a AVI file.
-% ffenc_mpeg4:     Another MPEG-4 video encoder + AAC audio in a AVI file. 
+%
+% ffenc_mpeg4:     Another MPEG-4 video encoder + AAC audio in a AVI file.
+%
 % theoraenc:       The Ogg Theora video encoder with Ogg Vorbis audio encoder and
 %                  Ogg file format multiplexer (.ogv files).
+%
 % vp8enc_webm:     The VP-8 video codec with Ogg Vorbis audio in a WEBM (.webm)
 %                  video container (HTML-5 video).
+%
 % vp8enc_matroska: As above, but in a matroska file container.
+%
 % ffenc_h263p:     H.263 video encoder with AAC audio in a Quicktime container.
+%
 % yuvraw:          Raw, uncompressed YUV video data with AAC audio in a avi container.
-% huffyuv:         Huffman encoded YUV raw video data + AAC audio in a matroska container.
 %
-% Psychtoolbox supports high-level settings, which are relatively easy to use
-% and understand. We describe these first. Psychtoolbox also supports low-level
-% tweaking of codec specific settings, which require significant knowledge about
-% video and audio encoding and lots of tinkering, but provide fine grained control
-% over every tiny aspect of the recording process. 
+% huffyuv:         Huffman encoded YUV raw video data + AAC audio in a
+%                  matroska container. This is a lossless video codec, but
+%                  it creates relatively large files.
 %
-% High level settings are not specific to a movie file format or choice
-% of codec. All settings are accepted for all formats and codecs and mapped
-% to corresponding format and codec specific low level settings, or they
-% are silently ignored if a specific file/codec combination doesn't support
-% a high level setting. These settings are the most frequently choosed settings.
+% ffenc_sgi:       Stores video as a sequence of RLE compressed, lossless
+%                  encoded SGI image files. This format usually can only be
+%                  read and played back by Psychtoolbox itself and some
+%                  specialized tools. It also creates relatively large
+%                  files.
+%
+% The huffyuv and ffenc_sgi encoders are mostly useful if you need
+% bit-exact image storage or storage of raw video sensor data (Bayer color
+% filter format), or of high bit depths video data, ie., with more than 8
+% bpc. For most common use cases you can achieve qualitatively good enough
+% results at much smaller file sizes with the standard lossy codecs.
+%
+% Psychtoolbox supports high-level settings, which are relatively easy to
+% use and understand. We describe these first. Psychtoolbox also supports
+% low-level tweaking of codec specific settings, which require significant
+% knowledge about video and audio encoding and lots of tinkering, but
+% provide fine grained control over every tiny aspect of the recording
+% process.
+%
+% High level settings are not specific to a movie file format or choice of
+% codec. All settings are accepted for all formats and codecs and mapped to
+% corresponding format and codec specific low level settings, or they are
+% silently ignored if a specific file/codec combination doesn't support a
+% high level setting. These settings are the most frequently choosed
+% settings.
 %
 % High level settings are specified as Keyword=value pairs, without a blank
 % between the Keyword= and the value, and the first letter of the Keyword
 % being a capital letter.
 %
-% E.g.: ':CodecSettings= Keyframe=5 Videoquality=0.5' would encode using the
-% default video codec with a video encoding quality of 0.5 aka 50% and a
-% keyframe distance of maximum 5 frames.
+% E.g.: ':CodecSettings= Keyframe=5 Videoquality=0.5' would encode using
+% the default video codec with a video encoding quality of 0.5 aka 50% and
+% a keyframe distance of maximum 5 frames.
 %
 % ':CodecType=xvidenc Keyframe=10 Videobitrate=1000' would choose the
 % "xvidenc" XVid video codec with a keyframe interval of 10 frames and a
@@ -145,16 +188,16 @@
 % line utility. This disables use of the high-level settings and provides
 % full control:
 %
-% A video codec type and settings string is prefixed with:
-% 'VideoCodec=' followed by codec name and settings, postfixed with ':::',
-% e.g., 'VideoCodec=x264enc speed-preset=1 noise-reduction=100000 :::'.
+% A video codec type and settings string is prefixed with: 'VideoCodec='
+% followed by codec name and settings, postfixed with ':::', e.g.,
+% 'VideoCodec=x264enc speed-preset=1 noise-reduction=100000 :::'.
 %
 % A audio codec type and settings follows the same logic, with the
 % 'AudioCodec=' prefix, e.g., 'AudioCodec=faac :::'
 %
-% A multiplexer is chosen via the 'Muxer=' prefix, but no low-level settings
-% can be passed to the multiplexer, only high-level settings as described
-% above.
+% A multiplexer is chosen via the 'Muxer=' prefix, but no low-level
+% settings can be passed to the multiplexer, only high-level settings as
+% described above.
 %
 % A specific (non-auto-selected) audio source and its settings can be
 % chosen via the 'AudioSource=' prefix, e.g., 'AudioSource=pulsesrc :::' to
@@ -177,10 +220,10 @@
 % E.g., to list all available low-level properties of the x264enc codec,
 % you'd type "gst-inspect x264enc" in a terminal window.
 %
-% Please note that if you don't choose a Psychtoolbox supported video
-% codec from the list provided above, then you will need to specify all
-% audio codec and multiplexer settings manually, as Psychtoolbox doesn't
-% know which audio codecs or muxers to use with a video codec unknown to it.
+% Please note that if you don't choose a Psychtoolbox supported video codec
+% from the list provided above, then you will need to specify all audio
+% codec and multiplexer settings manually, as Psychtoolbox doesn't know
+% which audio codecs or muxers to use with a video codec unknown to it.
 %
 
 % History:

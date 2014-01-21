@@ -1552,7 +1552,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
                 if (fboInternalFormat == GL_RGB8) fboInternalFormat = GL_RGB;
 
                 // Non-power-of-two textures supported on OES?
-                if (!strstr(glGetString(GL_EXTENSIONS), "GL_OES_texture_npot")) {
+                if (!strstr((const char*) glGetString(GL_EXTENSIONS), "GL_OES_texture_npot")) {
                     // No: Find size of suitable pot texture (smallest power of two which is
                     // greater than or equal to the image size:
                     twidth=1;
@@ -1765,7 +1765,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 	// Do we need additional buffers for 3D rendering?
 	if (needzbuffer) {
 		// Yes. Try to setup and attach them: We use depth textures if they are supported and no MSAA is needed:
-		if ((multisample <= 0) && (glewIsSupported("GL_ARB_depth_texture") || strstr(glGetString(GL_EXTENSIONS), "GL_OES_depth_texture"))) {
+		if ((multisample <= 0) && (glewIsSupported("GL_ARB_depth_texture") || strstr((const char*) glGetString(GL_EXTENSIONS), "GL_OES_depth_texture"))) {
 			// No multisampling requested on FBO and depth textures are supported. Use those to implement depth + stencil buffers:
 			if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Trying to attach texture depth+stencil attachments to FBO...\n"); 
 			
@@ -1794,7 +1794,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 			
 			// Do we have support for combined 24 bit depth and 8 bit stencil buffer textures?
 			if (glewIsSupported("GL_EXT_packed_depth_stencil") || (glewIsSupported("GL_NV_packed_depth_stencil") && glewIsSupported("GL_SGIX_depth_texture")) ||
-                strstr(glGetString(GL_EXTENSIONS), "GL_OES_packed_depth_stencil")) {
+                strstr((const char*) glGetString(GL_EXTENSIONS), "GL_OES_packed_depth_stencil")) {
 				// Yes! Create combined depth and stencil texture:
 				if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: packed_depth_stencil supported. Attaching combined 24 bit depth + 8 bit stencil texture...\n"); 
 				
@@ -1911,7 +1911,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 
             // Use of depth+stencil requested and packed depth+stencil possible?
             if (!(PsychPrefStateGet_ConserveVRAM() & kPsychDontAttachStencilToFBO) && 
-                (glewIsSupported("GL_EXT_packed_depth_stencil") || strstr(glGetString(GL_EXTENSIONS), "GL_OES_packed_depth_stencil"))) {
+                (glewIsSupported("GL_EXT_packed_depth_stencil") || strstr((const char*) glGetString(GL_EXTENSIONS), "GL_OES_packed_depth_stencil"))) {
                 // Try a packed depth + stencil buffer:
                 if (multisample > 0) {
                     glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, multisample, GL_DEPTH24_STENCIL8_EXT, twidth, theight);
@@ -1930,7 +1930,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
                 else {
                     // OES doesn't guarantee 24 bit depth buffers, only 16 bit, so fallback to them on OES if 24 bits are unsupported:
                     glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT,
-                                             (!PsychIsGLES(NULL) || strstr(glGetString(GL_EXTENSIONS), "GL_OES_depth24")) ? GL_DEPTH_COMPONENT24_ARB : GL_DEPTH_COMPONENT16_ARB,
+                                             (!PsychIsGLES(NULL) || strstr((const char*) glGetString(GL_EXTENSIONS), "GL_OES_depth24")) ? GL_DEPTH_COMPONENT24_ARB : GL_DEPTH_COMPONENT16_ARB,
                                              twidth, theight);
                 }
 
@@ -1987,7 +1987,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
                     // OES does not guarantee 8 bit stencil buffers, only with extension. In fact, it does not even guarantee
                     // stencil buffers at all, so we aim for 8 bit, fallback to 4 bit and leave it to the error handling below to disable
                     // stencil buffers if the implementation doesn't support at least the 4 bit case:
-                    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, (!PsychIsGLES(NULL) || strstr(glGetString(GL_EXTENSIONS), "GL_OES_stencil8")) ? GL_STENCIL_INDEX8_EXT : GL_STENCIL_INDEX4_EXT, twidth, theight);
+                    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, (!PsychIsGLES(NULL) || strstr((const char*) glGetString(GL_EXTENSIONS), "GL_OES_stencil8")) ? GL_STENCIL_INDEX8_EXT : GL_STENCIL_INDEX4_EXT, twidth, theight);
                 }
 
 				if (glGetError()!=GL_NO_ERROR) {
@@ -2082,7 +2082,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 	fborc = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
 	if (fborc!=GL_FRAMEBUFFER_COMPLETE_EXT && fborc!=0) {
 		// Framebuffer incomplete!
-		while(glGetError());
+		while(glGetError()) {};
         
         switch(fborc) {
             case GL_FRAMEBUFFER_UNSUPPORTED_EXT:
@@ -3609,7 +3609,7 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
 	
 	// Setup code for 1D textures:
 	pstrpos = hookfunc->pString1;
-	while (pstrpos=strstr(pstrpos, "TEXTURE1D")) {
+	while ((pstrpos=strstr(pstrpos, "TEXTURE1D"))) {
 		if (2==sscanf(pstrpos, "TEXTURE1D(%i)=%i", &texunit, &texid)) {
 			glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
 			glEnable(GL_TEXTURE_1D);
@@ -3621,7 +3621,7 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
 
 	// Setup code for 2D textures:
 	pstrpos = hookfunc->pString1;
-	while (pstrpos=strstr(pstrpos, "TEXTURE2D")) {
+	while ((pstrpos=strstr(pstrpos, "TEXTURE2D"))) {
 		if (2==sscanf(pstrpos, "TEXTURE2D(%i)=%i", &texunit, &texid)) {
 			glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
 			glEnable(GL_TEXTURE_2D);
@@ -3633,7 +3633,7 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
 
 	// Setup code for 2D rectangle textures:
 	pstrpos = hookfunc->pString1;
-	while (pstrpos=strstr(pstrpos, "TEXTURERECT2D")) {
+	while ((pstrpos=strstr(pstrpos, "TEXTURERECT2D"))) {
 		if (2==sscanf(pstrpos, "TEXTURERECT2D(%i)=%i", &texunit, &texid)) {
 			glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
 			glEnable(GL_TEXTURE_RECTANGLE_EXT);
@@ -3645,7 +3645,7 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
 
 	// Setup code for 3D textures:
 	pstrpos = hookfunc->pString1;
-	while (pstrpos=strstr(pstrpos, "TEXTURE3D")) {
+	while ((pstrpos=strstr(pstrpos, "TEXTURE3D"))) {
 		if (2==sscanf(pstrpos, "TEXTURE3D(%i)=%i", &texunit, &texid)) {
 			glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
 			glEnable(GL_TEXTURE_3D);
@@ -3697,7 +3697,7 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
 
 	// Teardown code for 1D textures:
 	pstrpos = hookfunc->pString1;
-	while (pstrpos=strstr(pstrpos, "TEXTURE1D")) {
+	while ((pstrpos=strstr(pstrpos, "TEXTURE1D"))) {
 		if (2==sscanf(pstrpos, "TEXTURE1D(%i)=%i", &texunit, &texid)) {
 			glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
 			glBindTexture(GL_TEXTURE_1D, 0);
@@ -3708,7 +3708,7 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
 
 	// Teardown code for 2D textures:
 	pstrpos = hookfunc->pString1;
-	while (pstrpos=strstr(pstrpos, "TEXTURE2D")) {
+	while ((pstrpos=strstr(pstrpos, "TEXTURE2D"))) {
 		if (2==sscanf(pstrpos, "TEXTURE2D(%i)=%i", &texunit, &texid)) {
 			glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
 			glBindTexture(GL_TEXTURE_2D, 0);
@@ -3719,7 +3719,7 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
 
 	// Teardown code for 2D rectangle textures:
 	pstrpos = hookfunc->pString1;
-	while (pstrpos=strstr(pstrpos, "TEXTURERECT2D")) {
+	while ((pstrpos=strstr(pstrpos, "TEXTURERECT2D"))) {
 		if (2==sscanf(pstrpos, "TEXTURERECT2D(%i)=%i", &texunit, &texid)) {
 			glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
 			glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
@@ -3730,7 +3730,7 @@ psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, Psyc
 
 	// Teardown code for 3D textures:
 	pstrpos = hookfunc->pString1;
-	while (pstrpos=strstr(pstrpos, "TEXTURE3D")) {
+	while ((pstrpos=strstr(pstrpos, "TEXTURE3D"))) {
 		if (2==sscanf(pstrpos, "TEXTURE3D(%i)=%i", &texunit, &texid)) {
 			glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
 			glBindTexture(GL_TEXTURE_3D, 0);
@@ -3813,7 +3813,7 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 	// Check for override width x height parameter in the blitterString: An integral (w,h)
 	// size the blit. This allows to blit a target quad with a size different from srcfbo1, without
 	// scaling or filtering it. Mostly useful in conjunction with specific shaders.
-	if (strp=strstr(pString1, "OvrSize:")) {
+	if ((strp=strstr(pString1, "OvrSize:"))) {
 		// Parse and assign offset:
 		if (sscanf(strp, "OvrSize:%i:%i", &w, &h)!=2) {
 			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): OvrSize: blit string parameter is invalid! Parse error...\n");
@@ -3835,7 +3835,7 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 	// offset for the destination of the blit. This allows to blit the srcfbo1, without
 	// scaling or filtering it, to a different start location than (0,0):
 	x=y=0;
-	if (strp=strstr(pString1, "Offset:")) {
+	if ((strp=strstr(pString1, "Offset:"))) {
 		// Parse and assign offset:
 		if (sscanf(strp, "Offset:%i:%i", &x, &y)!=2) {
 			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): Offset: blit string parameter is invalid! Parse error...\n");
@@ -3844,7 +3844,7 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 
 	// Check for scaling parameter:
 	sx = sy = 1.0;
-	if (strp=strstr(pString1, "Scaling:")) {
+	if ((strp=strstr(pString1, "Scaling:"))) {
 		// Parse and assign offset:
 		if (sscanf(strp, "Scaling:%f:%f", &sx, &sy)!=2) {
 			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): Scaling: blit string parameter is invalid! Parse error...\n");
@@ -3853,7 +3853,7 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 
 	// Check for rotation angle parameter:
 	angle = 0.0;
-	if (strp=strstr(pString1, "Rotation:")) {
+	if ((strp=strstr(pString1, "Rotation:"))) {
 		// Parse and assign rotation angle:
 		if (sscanf(strp, "Rotation:%f", &angle)!=1) {
 			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): Rotation: blit string parameter is invalid! Parse error...\n");
@@ -3862,7 +3862,7 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 
     cx = (float) w / 2;
     cy = (float) h / 2;
-	if (strp=strstr(pString1, "RotCenter:")) {
+	if ((strp=strstr(pString1, "RotCenter:"))) {
 		// Parse and assign rotation angle:
 		if (sscanf(strp, "RotCenter:%f:%f", &cx, &cy)!=2) {
 			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): RotCenter: blit string parameter is invalid! Parse error...\n");
@@ -3988,7 +3988,7 @@ psych_bool PsychBlitterDisplayList(PsychWindowRecordType *windowRecord, PsychHoo
 	}	
 
 	// Query display list handle:
-	if (strp=strstr(hookfunc->pString1, "Handle:")) {
+	if ((strp=strstr(hookfunc->pString1, "Handle:"))) {
 		// Parse and assign offset:
 		if (sscanf(strp, "Handle:%i", &gllist)!=1) {
 			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterDisplayList(): Handle: Parse error fetching display list handle!\n");
@@ -4016,7 +4016,7 @@ psych_bool PsychBlitterDisplayList(PsychWindowRecordType *windowRecord, PsychHoo
 	// offset for the destination of the blit. This allows to blit the srcfbo1, without
 	// scaling or filtering it, to a different start location than (0,0):
 	x=y=0;
-	if (strp=strstr(hookfunc->pString1, "Offset:")) {
+	if ((strp=strstr(hookfunc->pString1, "Offset:"))) {
 		// Parse and assign offset:
 		if (sscanf(strp, "Offset:%i:%i", &x, &y)!=2) {
 			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterDisplayList(): Offset: blit string parameter is invalid! Parse error...\n");
@@ -4025,7 +4025,7 @@ psych_bool PsychBlitterDisplayList(PsychWindowRecordType *windowRecord, PsychHoo
 
 	// Check for scaling parameter:
 	sx = sy = 1.0;
-	if (strp=strstr(hookfunc->pString1, "Scaling:")) {
+	if ((strp=strstr(hookfunc->pString1, "Scaling:"))) {
 		// Parse and assign offset:
 		if (sscanf(strp, "Scaling:%f:%f", &sx, &sy)!=2) {
 			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterDisplayList(): Scaling: blit string parameter is invalid! Parse error...\n");
@@ -4101,7 +4101,7 @@ psych_bool PsychPipelineBuiltinRenderClutBitsPlusPlus(PsychWindowRecordType *win
 	// Options provided?
 	if (strlen(hookfunc->pString1)>0) {
 		// Check for override vertical position for line. Default is first scanline of display.
-		if (strp=strstr(hookfunc->pString1, "yPosition=")) {
+		if ((strp=strstr(hookfunc->pString1, "yPosition="))) {
 			// Parse and assign offset:
 			if (sscanf(strp, "yPosition=%i", &y)!=1) {
 				PsychErrorExitMsg(PsychError_user, "builtin:RenderClutBitsPlusPlus: yPosition parameter for T-Lock line position is invalid! Parse error...\n");
@@ -4109,7 +4109,7 @@ psych_bool PsychPipelineBuiltinRenderClutBitsPlusPlus(PsychWindowRecordType *win
 		}
 
 		// Check for override horizontal position for line. Default is first pixel of scanline.
-		if (strp=strstr(hookfunc->pString1, "xPosition=")) {
+		if ((strp=strstr(hookfunc->pString1, "xPosition="))) {
 			// Parse and assign offset:
 			if (sscanf(strp, "xPosition=%i", &x)!=1) {
 				PsychErrorExitMsg(PsychError_user, "builtin:RenderClutBitsPlusPlus: xPosition parameter for T-Lock line position is invalid! Parse error...\n");
@@ -4259,7 +4259,7 @@ psych_bool PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windo
 	// Options provided?
 	if (strlen(hookfunc->pString1)>0) {
 		// Check for override vertical position for sync line. Default is last scanline of display.
-		if (strp=strstr(hookfunc->pString1, "yPosition=")) {
+		if ((strp=strstr(hookfunc->pString1, "yPosition="))) {
 			// Parse and assign offset:
 			if (sscanf(strp, "yPosition=%f", &h)!=1) {
 				PsychErrorExitMsg(PsychError_user, "builtin:RenderStereoSyncLine: yPosition parameter for horizontal stereo blue-sync line position is invalid! Parse error...\n");
@@ -4267,7 +4267,7 @@ psych_bool PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windo
 		}
 
 		// Check for override horizontal fraction for sync line. Default is 25% for left eye, 75% for right eye.
-		if (strp=strstr(hookfunc->pString1, "hFraction=")) {
+		if ((strp=strstr(hookfunc->pString1, "hFraction="))) {
 			// Parse and assign offset:
 			if ((sscanf(strp, "hFraction=%f", &fraction)!=1) || (fraction < 0.0) || (fraction > 1.0)) {
 				PsychErrorExitMsg(PsychError_user, "builtin:RenderStereoSyncLine: hFraction parameter for horizontal stereo blue-sync line length is invalid!\n");
@@ -4275,7 +4275,7 @@ psych_bool PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windo
 		}
 		
 		// Check for override color of sync-line. Default is white.
-		if (strp=strstr(hookfunc->pString1, "Color=")) {
+		if ((strp=strstr(hookfunc->pString1, "Color="))) {
 			// Parse and assign offset:
 			if (sscanf(strp, "Color=%f %f %f", &r, &g, &b)!=3) {
 				PsychErrorExitMsg(PsychError_user, "builtin:RenderStereoSyncLine: Color spec for stereo sync-line is invalid!\n");

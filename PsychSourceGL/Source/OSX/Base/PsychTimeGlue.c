@@ -34,6 +34,7 @@
 
 #include <mach/mach_init.h>
 #include <mach/task_policy.h>
+#include <mach/thread_policy.h>
 
 /*
  *		file local state variables
@@ -261,7 +262,7 @@ int PsychUnlockMutex(psych_mutex* mutex)
 int PsychCreateThread(psych_thread* threadhandle, void* threadparams, void *(*start_routine)(void *), void *arg)
 {
 	// threadparams not yet used, this line just to make compiler happy:
-	(void*) threadparams;
+	(void) threadparams;
 	
 	// Return result code of pthread_create - We're a really thin wrapper around this Posix call:
 	return( pthread_create(threadhandle, NULL, start_routine, arg) );
@@ -288,7 +289,7 @@ int PsychAbortThread(psych_thread* threadhandle)
 void PsychTestCancelThread(psych_thread* threadhandle)
 {
 	// threadhandle unused on POSIX: This line just to make compiler happy:
-	(psych_thread*) threadhandle;
+	(void) threadhandle;
 	
 	// Test for cancellation, cancel if so:
 	pthread_testcancel();

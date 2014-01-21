@@ -29,14 +29,17 @@ static char useString[] ="oldStyle=Screen('TextStyle', windowPtr [,style]);";
 //                                         0           1           2
 static char synopsisString[] = 
     "Get/set the font style for future text draws in this window. Useful values for "
-    "style follow; they may be OR'd. See Inside Mac TextFace() for more. On M$-Windows "
-    "and GNU/Linux, only a subset of these settings is honored - All settings are accepted, "
-    "but some of them are silently ignored on Windows and Linux. On Windows the default "
+    "style follow; they may be OR'd. On different operating systems and text renderers "
+    "only a subset of these flags is honored. All settings are accepted on all systems, "
+    "but some of them are silently ignored on some systems. On Windows the default "
 	"text style is bold, because this increases readability on that system.\n"
     "0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend.\n"
+    "Normal, bold, and italic styles are supported on all systems and renderers.\n"
+    "Underline is supported on OSX and Windows. Outline is supported on Linux.\n"
+    "Condense and Extend are supported on Linux and OSX.\n"
 	"You can assign a default font style for new windows via a call to "
-	"Screen('Preference', 'DefaultFontStyle'). The initial default font "
-	"style is operating system dependent.\n"
+	"Screen('Preference', 'DefaultFontStyle'). The initial default font style is "
+	"operating system dependent.\n"
 	"Not all fonts support all style settings. Unsupported settings for the currently "
 	"selected font will be silently ignored.";
 

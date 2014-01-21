@@ -680,7 +680,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     sizehints.y = y;
     sizehints.width  = width;
     sizehints.height = height;
-    sizehints.flags = USSize | USPosition;
+    // Let window manager control window position if kPsychGUIWindowWMPositioned is set:
+    sizehints.flags = USSize | (windowRecord->specialflags & kPsychGUIWindowWMPositioned) ? 0 : USPosition;
     XSetNormalHints(dpy, win, &sizehints);
     XSetStandardProperties(dpy, win, "PTB Onscreen window", "PTB Onscreen window",
 			   None, (char **)NULL, 0, &sizehints);

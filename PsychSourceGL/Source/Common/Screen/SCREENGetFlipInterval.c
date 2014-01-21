@@ -93,9 +93,18 @@ PsychError SCREENGetFlipInterval(void)
  
     // Query framerate / ifi-estimate from operating system:
     ifi_hint = PsychGetNominalFramerate(windowRecord->screenNumber);
-    if (ifi_hint > 0) ifi_hint = 1.0 / (double) ifi_hint;
+    if (ifi_hint > 0) {
+        // Valid nominal framerate reported. Use it as ifi_hint:
+        ifi_hint = 1.0 / (double) ifi_hint;
+    }
+    else {
+        // Invalid os reporting. Use ifi_beamestimate instead, as measured by
+        // beamposition query based video refresh measurement during onscreen
+        // window creation:
+        ifi_hint = windowRecord->ifi_beamestimate;
+    }
 
-    ifi_estimate = PsychGetMonitorRefreshInterval(windowRecord, &nrSamples, &maxsecs, &stddev, ifi_hint);    
+    ifi_estimate = PsychGetMonitorRefreshInterval(windowRecord, &nrSamples, &maxsecs, &stddev, ifi_hint);
     // Child protection:
     if (ifi_estimate==0) {
         PsychErrorExitMsg(PsychError_user, "GetFlipInterval failed to compute good estimate of monitor refresh! Somethings screwed up with VBL syncing!");

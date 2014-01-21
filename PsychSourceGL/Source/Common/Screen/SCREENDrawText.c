@@ -28,22 +28,17 @@
 							-> Allows for unicode support on all platforms.
 							-> Allows for plugin renderer on Linux and OS/X for unicode, anti-aliasing etc.
 							-> Allows for better handling of unicode and multibyte character encodings.
-
+ 
+		11/02/13	mk		Rewrite OSX renderer: Switch from deprecated ATSUI to "new" CoreText as supported on OSX 10.5 and later.
+ 
     DESCRIPTION:
 
 		Unified file with text renderers for all platforms (OS/X, Windows, Linux).
   
     REFERENCES:
 	
-		http://oss.sgi.com/projects/ogl-sample/registry/APPLE/client_storage.txt
-		http://developer.apple.com/samplecode/Sample_Code/Graphics_3D/TextureRange.htm
-		
 		http://www.cl.cam.ac.uk/~mgk25/unicode.html - A good FAQ about Unicode, UTF-8 with a special emphasis on Linux and Posix systems.
 
-    TO DO:
-
-		Platform specific code should be in the platform folders, not here in the Common folder! Sort this out some time.
-							
 */
 
 
@@ -127,7 +122,7 @@ static char synopsisString[] =
 	"Type 0 is the fast OS specific text renderer: No unicode support, no anti-aliasing, low flexibility "
 	"but high speed for fast text drawing. Supported on Windows and Linux as a OpenGL display list renderer.\n"
 	"Type 1 is the OS specific high quality renderer: Slower, but supports unicode, anti-aliasing, and "
-	"many interesting features. On Windows, this is a GDI based renderer, on OS/X it is Apple's ATSU "
+	"many interesting features. On Windows, this is a GDI based renderer, on OS/X it is Apple's CoreText "
 	"text renderer which is also used for Type 0 on OS/X. On Linux it is a renderer based on FTGL.\n"
 	"Type 2 is a renderer based on FTGL, the same as type 1 on Linux, also available on OS/X, not supported "
 	"on Windows.\n"
@@ -136,33 +131,56 @@ static char synopsisString[] =
 
 static char seeAlsoString[] = "TextBounds TextSize TextFont TextStyle TextColor TextBackgroundColor Preference";
 
-// OS/X specific default renderer:
+// OS/X specific default renderer: CoreText framework. Requires OSX 10.6 or later.
 #if PSYCH_SYSTEM == PSYCH_OSX
 
-// Disable warnings about deprecated API calls on OSX 10.7
-// of which we are aware and that we can't remove as long as
-// we need to stay compatible to 10.4 - 10.6
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-
-#define USE_ATSU_TEXT_RENDER	1
-
-//Specify arguments to glTexImage2D when creating a texture to be held in client RAM. The choices are dictated  by our use of Apple's 
-//GL_UNPACK_CLIENT_STORAGE_APPLE constant, an argument to glPixelStorei() which specifies the packing format of pixel the data passed to 
-//glTexImage2D().  
-#define texImage_target			GL_TEXTURE_2D
-#define texImage_level			0
-#define	texImage_internalFormat	GL_RGBA
-#define texImage_sourceFormat	GL_BGRA
-#define texImage_sourceType		GL_UNSIGNED_INT_8_8_8_8_REV
-
-//Specify arguments to CGBitmapContextCreate() when creating a CG context which matches the pixel packing of the texture stored in client memory.
-//The choice of values is dictated by our use arguments to    
-#define cg_RGBA_32_BitsPerPixel		32
-#define cg_RGBA_32_BitsPerComponent	8
+/*
+ PsychGetCTStyleAttributesFromPsychWindowRecord()
+ 
+ Use the Font Manager attributes for the given window, which are stored in the PsychFontStructType
+ struct within the window's record, to set the attributes for text rendering with CoreText.
+ 
+ For now we only set the font, the color, and the size. Boldness, italic, underline, condensed and
+ extended we assume are brought along with the font ID, or handled externally.
+ */
+CFDictionaryRef PsychGetCTStyleAttributesFromPsychWindowRecord(PsychWindowRecordType *winRec)
+{
+    GLdouble                colorVector[4];
+    PsychFontStructType     *psychFontRecord;
+    
+    // Define font name and font size:
+    PsychGetFontRecordFromFontNumber(winRec->textAttributes.textFontNumber, &psychFontRecord);
+    if (psychFontRecord == NULL) PsychErrorExitMsg(PsychError_internal, "Failed to lookup the font from the font number!");
+    
+    // Create font from cached fontDescriptor:
+    CTFontRef font = CTFontCreateWithFontDescriptor(psychFontRecord->fontDescriptor, winRec->textAttributes.textSize, NULL);
+    
+    // Define font foreground color:
+    PsychCoerceColorMode(&(winRec->textAttributes.textColor));
+    PsychConvertColorToDoubleVector(&(winRec->textAttributes.textColor), winRec, colorVector);
+    CGColorRef fontColor = CGColorCreateGenericRGB(colorVector[0], colorVector[1], colorVector[2], colorVector[3]);
+    
+    // Define use of underlining:
+    int doUnderline = (winRec->textAttributes.textStyle & 4) ? kCTUnderlineStyleSingle : kCTUnderlineStyleNone;
+    CFNumberRef underline = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &doUnderline);
+    
+    // Create attributes for an attributed string:
+    CFStringRef keys[] = { kCTFontAttributeName, kCTForegroundColorAttributeName, kCTUnderlineStyleAttributeName };
+    CFTypeRef values[] = { font, fontColor, underline };
+    CFDictionaryRef attr = CFDictionaryCreate(NULL, (const void **)&keys, (const void **)&values,
+                                              sizeof(keys) / sizeof(keys[0]), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    
+    // Release stuff, the attr dictionary retains its own references:
+    CFRelease(font);
+    CGColorRelease(fontColor);
+    CFRelease(underline);
+    
+    // Return attr'ibutes:
+    return(attr);
+}
 
 PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* boundingbox, unsigned int stringLengthChars, double* textUniDoubleString, double* xp, double* yp, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor)
 {
-	char			errmsg[1000];
     CGContextRef	cgContext;
     unsigned int	memoryTotalSizeBytes, memoryRowSizeBytes;
     UInt32			*textureMemory;
@@ -171,11 +189,6 @@ PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
     CGRect			quartzRect;
     GLdouble		backgroundColorVector[4];
     UniChar			*textUniString;
-    OSStatus		callError;
-    ATSUStyle		atsuStyle;
-    ATSUTextLayout	textLayout;
-    Rect			atsuRect;
-    ATSUTextMeasurement mleft, mright, mtop, mbottom;
     double			textBoundsPRect[4], textBoundsPRectOrigin[4], textureRect[4];
     double			textureWidth, textureHeight, textHeight, textWidth, textureTextFractionY, textureTextFractionXLeft,textureTextFractionXRight, textHeightToBaseline;
     double			quadLeft, quadRight, quadTop, quadBottom;
@@ -190,127 +203,74 @@ PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
     rpb = (GLubyte*) &ix;
     bigendian = ( *rpb == 255 ) ? FALSE : TRUE;
     ix = 0; rpb = NULL;
-    
-    // For layout attributes.  (not the same as run style attributes set by PsychSetATSUTStyleAttributes or line attributes which we do not set.) 	
-    ATSUAttributeTag			saTags[] =  {kATSUCGContextTag };
-    ByteCount					saSizes[] = {sizeof(CGContextRef)};
-    ATSUAttributeValuePtr       saValue[] = {&cgContext};
 
 	// Convert input text string from double-vector encoding to OS/X UniChar encoding:
 	textUniString = (UniChar*) PsychMallocTemp(sizeof(UniChar) * stringLengthChars);
 	for (dummy1 = 0; dummy1 < stringLengthChars; dummy1++) textUniString[dummy1] = (UniChar) textUniDoubleString[dummy1];
-	
-	//create the text layout object
-    callError=ATSUCreateTextLayout(&textLayout);
-    //associate our unicode text string with the text layout object
-    callError=ATSUSetTextPointerLocation(textLayout, textUniString, kATSUFromTextBeginning, kATSUToTextEnd, (UniCharCount)stringLengthChars);
-    //create an ATSU style object and tie it to the layout object in a style run.
-    callError=ATSUCreateStyle(&atsuStyle);
-    callError=ATSUClearStyle(atsuStyle);
-    PsychSetATSUStyleAttributesFromPsychWindowRecord(atsuStyle, winRec);
-    callError=ATSUSetRunStyle(textLayout, atsuStyle, (UniCharArrayOffset)0, (UniCharCount)stringLengthChars);
-    /////////////end common to TextBounds and DrawText//////////////////
+
+    // Compute attributes of text string from settings in window record:
+    CFDictionaryRef attributes = PsychGetCTStyleAttributesFromPsychWindowRecord(winRec);
     
-	// Define the meaning of the y position of the specified drawing cursor.
-	if (yPositionIsBaseline) {
-		// Y position of drawing cursor defines distance between top of text and
-		// baseline of text, i.e. the textheight excluding descenders of letters.
+    // Build text string with attributes (which encode text appearance) from 'textUniString' input string and 'attributes':
+    CFStringRef myString = CFStringCreateWithCharactersNoCopy(kCFAllocatorDefault, textUniString, stringLengthChars, kCFAllocatorNull);
+    CFAttributedStringRef attrString = CFAttributedStringCreate(NULL, myString, attributes);
+    CFRelease(myString);
+    CFRelease(attributes);
+    
+    // Build the single text line with the string and its attributes:
+    CTLineRef line = CTLineCreateWithAttributedString(attrString);
+    CFRelease(attrString);
+    
+    // Get typographic bounds: Ascenders, Descenders, Leading space, line width:
+    CGFloat ascent, descent, leading;
+    double lineWidth = CTLineGetTypographicBounds(line, &ascent, &descent, &leading);
 
-		// Need to compute offset via ATSU:
-        callError=ATSUGetUnjustifiedBounds(textLayout, kATSUFromTextBeginning, kATSUToTextEnd, &mleft, &mright, &mbottom, &mtop);
-		if (callError) {
-			PsychErrorExitMsg(PsychError_internal, "Failed to compute unjustified text height to baseline in call to ATSUGetUnjustifiedBounds().\n");    
-		}
-
-		// Only take height including ascenders into account, not the descenders.
-		// MK: Honestly, i have no clue why this is the correct calculation (or if it is
-		// the correct calculation), but visually it seems to provide the correct results
-		// and i'm not a typographic expert and don't intend to become one...
-		textHeightToBaseline = fabs(Fix2X(mbottom));
-	}
-	else {
-		// Y position of drawing cursor defines top of text, therefore no offset (==0) needed:
-		textHeightToBaseline = 0;
-	}
-
-    // Both text renderer 0 and 1 select the OSX ATSU text renderer, but different settings select
-    // a different bounding box computation strategy here: 1 == Classic, 0 = New-Style.
-    if (PsychPrefStateGet_TextRenderer() == 0) {
-        // New-Style method: Use the deprecated function ATSUMeasureTextImage(), which should not even be
-        // available on 64-Bit builds, but mysteriously is, at least when building against 10.6 SDK on 10.7.5
-        // with macosx-min-version=10.5 set (haven't tested any other build settings yet, so this may not be exclusive).
-        // This function is supposed to compute the text bounding box post final layout and also handles unusual fonts,
-        // e.g., "Kuenstler Script LT", much better than the old-style method:
-        callError = ATSUMeasureTextImage(textLayout, kATSUFromTextBeginning, kATSUToTextEnd, 0, 0, &atsuRect);
-        if (callError) PsychErrorExitMsg(PsychError_internal, "Failed to compute text bounding box via ATSUMeasureTextImage()");
-        
-        // Extend bounding box in each direction by one pixel to account for inclusive borders:
-        textBoundsPRect[kPsychLeft]   = atsuRect.left - 1;
-        textBoundsPRect[kPsychRight]  = atsuRect.right + 1;
-        textBoundsPRect[kPsychTop]    = atsuRect.top - 1;
-        textBoundsPRect[kPsychBottom] = atsuRect.bottom + 1;
+    // Define the meaning of the y position of the specified drawing cursor.
+    if (yPositionIsBaseline) {
+        // Y position of drawing cursor defines distance between top of text and
+        // baseline of text, i.e. the textheight excluding descenders of letters.
+        // ascent encodes the height of the text from the top-left corner to the
+        // baseline, so this defines the offset of y coordinates needed to make
+        // the y position the position of the text baseline:
+        textHeightToBaseline = ascent;
     }
     else {
-        // Old-Style method:
-        // Get the bounds for our text and create a texture of sufficient size to contain it. 
-        ATSTrapezoid trapezoid;
-        ItemCount oActualNumberOfBounds = 0;
-        callError=ATSUGetGlyphBounds(textLayout, 0, 0, kATSUFromTextBeginning, kATSUToTextEnd, kATSUseDeviceOrigins, 0, NULL, &oActualNumberOfBounds);
-        if (callError || oActualNumberOfBounds!=1) {
-            PsychErrorExitMsg(PsychError_internal, "Failed to compute bounding box in call 1 to ATSUGetGlyphBounds() (nrbounds!=1)\n");    
-        }
-        
-        callError=ATSUGetGlyphBounds(textLayout, 0, 0, kATSUFromTextBeginning, kATSUToTextEnd, kATSUseDeviceOrigins, 1, &trapezoid, &oActualNumberOfBounds);
-        if (callError || oActualNumberOfBounds!=1) {
-            PsychErrorExitMsg(PsychError_internal, "Failed to retrieve bounding box in call 2 to ATSUGetGlyphBounds() (nrbounds!=1)\n");    
-        }
-        
-        textBoundsPRect[kPsychLeft]=(Fix2X(trapezoid.upperLeft.x) < Fix2X(trapezoid.lowerLeft.x)) ? Fix2X(trapezoid.upperLeft.x) : Fix2X(trapezoid.lowerLeft.x);
-        textBoundsPRect[kPsychRight]=(Fix2X(trapezoid.upperRight.x) > Fix2X(trapezoid.lowerRight.x)) ? Fix2X(trapezoid.upperRight.x) : Fix2X(trapezoid.lowerRight.x);
-        textBoundsPRect[kPsychTop]=(Fix2X(trapezoid.upperLeft.y) < Fix2X(trapezoid.upperRight.y)) ? Fix2X(trapezoid.upperLeft.y) : Fix2X(trapezoid.upperRight.y);
-        textBoundsPRect[kPsychBottom]=(Fix2X(trapezoid.lowerLeft.y) > Fix2X(trapezoid.lowerRight.y)) ? Fix2X(trapezoid.lowerLeft.y) : Fix2X(trapezoid.lowerRight.y);
+        // Y position of drawing cursor defines top of text, therefore no offset (==0) needed:
+        textHeightToBaseline = 0;
     }
 
-    // printf("Top %lf x Bottom %lf :: ",textBoundsPRect[kPsychTop], textBoundsPRect[kPsychBottom]);
+    // Compute generous bounding rectangle based on typographic bounds:
+    textBoundsPRect[kPsychLeft]   = - (double) leading;
+    textBoundsPRect[kPsychRight]  = lineWidth;
+    textBoundsPRect[kPsychTop]    = - (double) ascent;
+    textBoundsPRect[kPsychBottom] = (double) descent;
+    
+    // printf("Leading %f, Linewidth %f, Ascent %f, Descent %f -> textHeightToBaseline = %f\n", leading, lineWidth, ascent, descent, textHeightToBaseline);
+    // printf("R: Top %lf x Bottom %lf :: ",textBoundsPRect[kPsychTop], textBoundsPRect[kPsychBottom]);
+    
+    // Normalize to a bounding rectangle with top-left = 0,0:
     PsychNormalizeRect(textBoundsPRect, textBoundsPRectOrigin);
 
     // printf("N: Top %lf x Bottom %lf :: ",textBoundsPRectOrigin[kPsychTop], textBoundsPRectOrigin[kPsychBottom]);
-	// Denis found an off-by-one bug in the text width. Don't know where it should come from in our code, but
-	// my "solution" is to simply extend the width by one:
-    textWidth  = PsychGetWidthFromRect(textBoundsPRectOrigin) + 1.0;
-    textHeight = PsychGetHeightFromRect(textBoundsPRectOrigin);
-
-    // Adjust for differences in text height for new-style text bounding box and offset computation:
-    if (yPositionIsBaseline && (PsychPrefStateGet_TextRenderer() == 0)) textHeightToBaseline = textHeight - fabs(Fix2X(mtop));
-
-	// Only text boundingbox in absolute coordinates requested?
-	if (boundingbox) {
-		// Yes. Compute and assign it:
-		(*boundingbox)[kPsychLeft]   = textBoundsPRectOrigin[kPsychLeft]   + *xp;
-		(*boundingbox)[kPsychRight]  = textBoundsPRectOrigin[kPsychRight]  + *xp;
-		(*boundingbox)[kPsychTop]    = textBoundsPRectOrigin[kPsychTop]    + *yp - textHeightToBaseline;
-		(*boundingbox)[kPsychBottom] = textBoundsPRectOrigin[kPsychBottom] + *yp - textHeightToBaseline;
-		
-		// Release resources:
-		ATSUDisposeStyle(atsuStyle);
-		ATSUDisposeTextLayout(textLayout);
-
-		// Done.
-		return(PsychError_none);
-	}
-
-	// Clamp maximum size of text bitmap to maximum supported texture size of GPU:
-	if (textWidth > winRec->maxTextureSize) textWidth = winRec->maxTextureSize;
-	if (textHeight > winRec->maxTextureSize) textHeight = winRec->maxTextureSize;
-
-    // printf("N: Width %lf x Height %lf :: ", textWidth, textHeight); 
+    
+    // Compute smallest matching texture rectangle for classic power-of-two textures:
     PsychFindEnclosingTextureRect(textBoundsPRectOrigin, textureRect);
-
-    //Allocate memory the size of the texture.  The CG context is the same size.  It could be smaller, because Core Graphics surfaces don't have the power-of-two
-    //constraint requirement.   
-    textureWidth=PsychGetWidthFromRect(textureRect);
-    textureHeight=PsychGetHeightFromRect(textureRect);
-
+    
+    //Allocate memory the size of the texture. The CG context will be the same size.
+    textureWidth = PsychGetWidthFromRect(textureRect);
+    
+    // Make sure textureWidth is a multiple of 4 pixels, ergo (4 Bytes per pixel) a
+    // single pixel row will be a multiple of 16 Bytes. Why? Because Apple docs promise
+    // potentially higher drawing performance of CoreText for 16-Byte multiples:
+    textureWidth+= 4 - (((int) textureWidth) % 4);
+    
+    // We make the texture canvas twice as high as needed, because some special fonts have a
+    // height bigger than the computed ascenders + descenders, ie., their typographics bounds
+    // are incorrect/inaccurate/too small. We over-allocate here, then recompute precise bounds
+    // below with the "more than big enough" graphics context and adjust properly to only render
+    // and draw the actual text bits:
+    textureHeight = PsychGetHeightFromRect(textureRect) * 2;
+    
 	// Reclamp maximum size of text bitmap to maximum supported texture size of GPU:
 	if (textureWidth > winRec->maxTextureSize) textureWidth = winRec->maxTextureSize;
 	if (textureHeight > winRec->maxTextureSize) textureHeight = winRec->maxTextureSize;
@@ -318,20 +278,20 @@ PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
     memoryRowSizeBytes=sizeof(UInt32) * textureWidth;
     memoryTotalSizeBytes= memoryRowSizeBytes * textureHeight;
     textureMemory=(UInt32 *)valloc(memoryTotalSizeBytes);
-    if(!textureMemory) PsychErrorExitMsg(PsychError_internal, "Failed to allocate surface memory\n");
-
+    if(!textureMemory) PsychErrorExitMsg(PsychError_system, "Failed to allocate texture memory for to be drawn text!");
+    
     // printf("N: TexWidth %lf x TexHeight %lf :: ", textureWidth, textureHeight);
 	
 	// This zero-fill of memory should not be neccessary, but it is, as a workaround for some bug introduced
 	// by Apple into OS/X 10.6.0 -- Apparently fails to initialize memory properly, so pixeltrash gets through...
     memset(textureMemory, 0, memoryTotalSizeBytes);
-
-    // Create the Core Graphics bitmap graphics context.  We can tell CoreGraphics to use the same memory storage format as will our GL texture, and in fact use
-    // the idential memory for both.   
+    
+    // Create the Core Graphics bitmap graphics context. We can tell CoreGraphics to use the same memory storage
+    // format as will our GL texture, and in fact use the idential memory for both.
     cgColorSpace=CGColorSpaceCreateDeviceRGB();
 
-    // There is another OSX bug here.  the format constant should be ARGB not RBGA to agree with the texture format.           
-    cgContext= CGBitmapContextCreate(textureMemory, textureWidth, textureHeight, 8, memoryRowSizeBytes, cgColorSpace, kCGImageAlphaPremultipliedFirst);
+    // There is another OSX bug here. The format constant should be ARGB not RBGA to agree with the texture format.
+    cgContext = CGBitmapContextCreate(textureMemory, textureWidth, textureHeight, 8, memoryRowSizeBytes, cgColorSpace, (CGBitmapInfo) kCGImageAlphaPremultipliedFirst);
     if(!cgContext){
         free((void *)textureMemory);
 		printf("PTB-ERROR: In Screen('DrawText'): Failed to allocate CG Bitmap Context for: texWidth=%i, texHeight=%i, memRowSize=%i\n", textureWidth, textureHeight, memoryRowSizeBytes);
@@ -342,9 +302,103 @@ PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
         goto drawtext_skipped;
     }
 	
-    CGContextSetFillColorSpace (cgContext,cgColorSpace);
+    // Define colorspace:
+    CGContextSetFillColorSpace(cgContext,cgColorSpace);
+    
+    // Define identity transform matrix:
+    CGContextSetTextMatrix(cgContext, CGAffineTransformIdentity);
+    
+    // OSX only so far: Screen('TextMode') support:
+    CGContextSetTextDrawingMode(cgContext, (CGTextDrawingMode) winRec->textAttributes.textMode);
+
+	// Set anti-aliasing mode (on/off): Default is to leave it up to the system to decide when
+	// to anti-alias and when not. But this flag allows to always force anti-aliasing on or off:
+	if (PsychPrefStateGet_TextAntiAliasing() < 0) {
+        // Auto-Select anti-aliasing: At least that's what usercode requested.
+        // We unconditionally enable it, because there isn't any auto-setting
+        // in CoreText:
+        CGContextSetShouldAntialias(cgContext, true);
+        CGContextSetAllowsAntialiasing(cgContext, true);
+        CGContextSetShouldSmoothFonts(cgContext, true);
+        CGContextSetAllowsFontSmoothing(cgContext, true);
+    }
+    
+	if (PsychPrefStateGet_TextAntiAliasing() == 0) {
+        // Disable anti-aliasing:
+        CGContextSetShouldAntialias(cgContext, false);
+        CGContextSetAllowsAntialiasing(cgContext, false);
+        CGContextSetShouldSmoothFonts(cgContext, false);
+        CGContextSetAllowsFontSmoothing(cgContext, false);
+    }
+    
+	if (PsychPrefStateGet_TextAntiAliasing() > 0) {
+        // Enable and force anti-aliasing:
+        CGContextSetShouldAntialias(cgContext, true);
+        CGContextSetAllowsAntialiasing(cgContext, true);
+        CGContextSetShouldSmoothFonts(cgContext, true);
+        CGContextSetAllowsFontSmoothing(cgContext, true);
+    }
+    
+    // Define start position of text drawing cursor within bitmap. Must be shifted upwards by
+    // maximum height of descenders for this font, otherwise descenders would get clipped away:
+    CGContextSetTextPosition(cgContext, 0, descent);
+
+    // Recompute true bounding box, now more accurate by use of cgContext:
+    CGRect boundingRect = CTLineGetImageBounds(line, cgContext);
+    if (PsychPrefStateGet_Verbosity() > 9) printf("CGRect: x %f , y %f, w %f, h %f\n", boundingRect.origin.x, boundingRect.origin.y, boundingRect.size.width, boundingRect.size.height);
+
+    // Adapt bounding box and text baseline if needed for special types of fonts:
+    if (boundingRect.origin.y < 0) {
+        double shifty = floor(boundingRect.origin.y);
+        CGContextSetTextPosition(cgContext, 0, descent - shifty);
+        textBoundsPRectOrigin[kPsychBottom] -= shifty;
+    }
+    
+    if (boundingRect.size.height > PsychGetHeightFromRect(textBoundsPRectOrigin)) {
+        double shifty = boundingRect.size.height - PsychGetHeightFromRect(textBoundsPRectOrigin);
         
-    // Fill in the text background.  It's stored in the Window record in PsychColor format.  We convert it to an OpenGL color vector then into a quartz vector:
+        // Move upper border up to make space for "super-ascenders"
+        textBoundsPRectOrigin[kPsychTop] -= shifty;
+        
+        // Adapt baseline accordingly:
+        if (yPositionIsBaseline) textHeightToBaseline += shifty;
+        
+        // Shift the whole bounding box down to adapt - This to allow return of proper bounding boxes:
+        textBoundsPRectOrigin[kPsychBottom] += shifty;
+        textBoundsPRectOrigin[kPsychTop]    += shifty;
+    }
+
+    // Compute effective text width and height:
+    textWidth  = PsychGetWidthFromRect(textBoundsPRectOrigin);
+    textHeight = PsychGetHeightFromRect(textBoundsPRectOrigin);
+
+	// Only text boundingbox in absolute coordinates requested?
+	if (boundingbox) {
+		// Yes. Compute and assign it:
+		(*boundingbox)[kPsychLeft]   = textBoundsPRectOrigin[kPsychLeft]   + *xp;
+		(*boundingbox)[kPsychRight]  = textBoundsPRectOrigin[kPsychRight]  + *xp;
+		(*boundingbox)[kPsychTop]    = textBoundsPRectOrigin[kPsychTop]    + *yp - textHeightToBaseline;
+		(*boundingbox)[kPsychBottom] = textBoundsPRectOrigin[kPsychBottom] + *yp - textHeightToBaseline;
+		
+		// Release resources:
+        CFRelease(line);
+        CGColorSpaceRelease(cgColorSpace);
+        CGContextRelease(cgContext);
+
+		// Done.
+		return(PsychError_none);
+	}
+    
+    // Also actual text rendering requested. Carry on!
+
+	// Clamp maximum size of text bitmap again to maximum supported texture size of GPU:
+	if (textWidth > winRec->maxTextureSize) textWidth = winRec->maxTextureSize;
+	if (textHeight > winRec->maxTextureSize) textHeight = winRec->maxTextureSize;
+
+    //printf("N2: Width %lf x Height %lf :: ", textWidth, textHeight);
+    
+    // Fill in the text background.  It's stored in the Window record in PsychColor format.
+    // We convert it to an OpenGL color vector then into a quartz vector:
     quartzRect.origin.x=(float)0;
     quartzRect.origin.y=(float)0;
     quartzRect.size.width=(float)textureWidth;
@@ -359,17 +413,13 @@ PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
     CGContextFillRect(cgContext, quartzRect);
     
     // Now draw the text and close up the CoreGraphics shop before we proceed to textures.
-    // associate the core graphics context with text layout object holding our unicode string.
-    callError=ATSUSetLayoutControls (textLayout, 1, saTags, saSizes, saValue);
-    ATSUDrawText(textLayout, kATSUFromTextBeginning, kATSUToTextEnd, Long2Fix((long)0), Long2Fix((long) textBoundsPRect[kPsychBottom]));
+    CTLineDraw(line, cgContext);
+    CFRelease(line);
+
     CGContextFlush(cgContext);
-
-	// Free ATSUI stuff that is no longer needed:
-    ATSUDisposeStyle(atsuStyle);
-	ATSUDisposeTextLayout(textLayout);
-
-    //Remove references from Core Graphics to the texture memory.  CG and OpenGL can share concurrently, but we don't won't need this anymore.
-    CGColorSpaceRelease (cgColorSpace);
+    
+    // Remove references from Core Graphics to the texture memory.  CG and OpenGL can share concurrently, but we don't won't need this anymore.
+    CGColorSpaceRelease(cgColorSpace);
     CGContextRelease(cgContext);	
     
     // From here on: Convert the CG graphics bitmap into a GL texture.  
@@ -428,23 +478,23 @@ PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
     //The texture holding the text is >=  the bounding rect for the text because of the requirement for textures that they have sides 2^(integer)x.  
     //Therefore we texture only from the region of the texture which contains the text, not the entire texture.  Therefore the rect which we texture is the dimensions
     //of the text, not the dimensions of the texture.    
-    textureTextFractionXLeft = 0 / textureWidth;
+    textureTextFractionXLeft  = 0;
     textureTextFractionXRight = textWidth / textureWidth;
-    textureTextFractionY = 1.0 - textHeight / textureHeight;
+    textureTextFractionY      = 1.0 - textHeight / textureHeight;
 
     // Final screen position of the textured text-quad:
-    quadLeft  = *xp;
-    quadRight = *xp + textWidth;
+    quadLeft   = *xp;
+    quadRight  = *xp + textWidth;
 	// quadTop needs to be adjusted by textHeightToBaseline, see above:
-    quadTop = *yp - textHeightToBaseline;
+    quadTop    = *yp - textHeightToBaseline;
     quadBottom = quadTop + textHeight;
     
     // Submit quad to pipeline:
     glBegin(GL_QUADS);
-    glTexCoord2d(textureTextFractionXLeft, textureTextFractionY);		glVertex2d(quadLeft, quadTop);
-    glTexCoord2d(textureTextFractionXRight, textureTextFractionY);		glVertex2d(quadRight, quadTop);
-    glTexCoord2d(textureTextFractionXRight, 1.0);				glVertex2d(quadRight, quadBottom);
-    glTexCoord2d(textureTextFractionXLeft, 1.0);				glVertex2d(quadLeft, quadBottom);
+    glTexCoord2d(textureTextFractionXLeft, textureTextFractionY);   glVertex2d(quadLeft, quadTop);
+    glTexCoord2d(textureTextFractionXRight, textureTextFractionY);  glVertex2d(quadRight, quadTop);
+    glTexCoord2d(textureTextFractionXRight, 1.0);                   glVertex2d(quadRight, quadBottom);
+    glTexCoord2d(textureTextFractionXLeft, 1.0);                    glVertex2d(quadLeft, quadBottom);
     glEnd();
     
     // Done with this texture:
@@ -464,7 +514,7 @@ PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
     
     if(!PsychPrefStateGet_TextAlphaBlending()) PsychStoreAlphaBlendingFactorsForWindow(winRec, normalSourceBlendFactor, normalDestinationBlendFactor);
 
-    // Remove references from gl to the texture memory  & free gl's associated resources
+    // Remove references from gl to the texture memory  & free gl's associated resources:
     glDeleteTextures(1, &myTexture);	 
     
 	glPopAttrib();
@@ -1900,7 +1950,7 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
         PsychPluginSetTextSize(ctx, (double) winRec->textAttributes.textSize);
 
         // Retrieve true text font family name:
-        sprintf(winRec->textAttributes.textFontName, "%s", PsychPluginGetTextFont(ctx));
+        sprintf((char*) &(winRec->textAttributes.textFontName[0]), "%s", PsychPluginGetTextFont(ctx));
 
 		// Assign viewport settings for rendering:
         PsychPluginSetTextViewPort(ctx, winRec->clientrect[kPsychLeft], winRec->clientrect[kPsychTop], PsychGetWidthFromRect(winRec->clientrect), PsychGetHeightFromRect(winRec->clientrect));

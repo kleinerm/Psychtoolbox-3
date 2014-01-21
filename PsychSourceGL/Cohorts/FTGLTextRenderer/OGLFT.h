@@ -85,6 +85,7 @@
 #include FT_GLYPH_H
 #include FT_OUTLINE_H
 #include FT_TRIGONOMETRY_H
+#include FT_BITMAP_H
 
 #ifdef _MSC_VER
 #ifdef OGLFT_BUILD

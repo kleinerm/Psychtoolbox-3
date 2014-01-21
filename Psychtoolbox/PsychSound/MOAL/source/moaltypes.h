@@ -30,7 +30,8 @@
 // Prototypes for ASA extensions for Reverb etc. (used in al_manual.c):
 ALenum  alcASASetSource(const ALuint property, ALuint source, ALvoid *data, ALuint dataSize);
 ALenum  alcASASetListener(const ALuint property, ALvoid *data, ALuint dataSize);
-
+// And for OSX rendering quality selection, now needed since 10.9 - Thanks Apple!
+ALvoid  alcMacOSXRenderingQuality(ALint value);
 #endif
 
 /* Includes specific to GNU/Linux version of moal: */

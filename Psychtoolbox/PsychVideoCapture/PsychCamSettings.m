@@ -1,11 +1,16 @@
 function rc = PsychCamSettings(cmd, grabber, varargin)
-%
 % rc = PsychCamSettings(cmd, grabber [, arg0, arg1, ...])
 %
 % Setup tool for video sources for use with Psychtoolbox
-% video capture functions.
+% video capture functions. This function can mostly only operate
+% on IIDC/DCAM machine vision standard compliant camera connected
+% via IEEE1394-Firewire bus or USB bus + IIDC protocol. In other
+% words, it only operates on cameras controlled via the libdc1394
+% firewire video capture engine on Linux and OSX, not on standard
+% consumer/prosumer class cameras controlled by the GStreamer engine,
+% e.g., webcams, DV cameras etc.
 %
-% PsychCamSettings is used to query or change settings of
+% PsychCamSettings is used to query or change settings of such
 % a video source that is supported by the Screen() subfunctions
 % for video capture. The first parameter, a 'cmd' command string
 % specifies the subfunction to execute. The second parameter
@@ -17,8 +22,8 @@ function rc = PsychCamSettings(cmd, grabber, varargin)
 % Subfunctions of form 'AutoXXX' try to switch parameter XXX into automatic
 % control, if supported by the camera or video source.
 %
-% The type of parameters supported is highly dependent on the specific
-% video source. Unsupported parameters are no operations - silently ignored.
+% The type of parameters supported is highly dependent on the specific video
+% source. Unsupported parameters are usually "no operations" - silently ignored.
 %
 % For known camera models, the tool will try to map physically meaningful
 % values into camera settings and return camera settings as meaningful properties.
@@ -32,8 +37,8 @@ function rc = PsychCamSettings(cmd, grabber, varargin)
 % Parameters and their meaning:
 %
 % curval = PsychCamSettings('ExposureTime', grabber, val)
-% -- Set and/or return current exposure time in milliseconds for supported cams and
-% in raw system units for unknown cams.
+% -- Set and/or return current exposure time in milliseconds for supported cams, and
+% in raw camera specific system units for unknown cameras.
 %
 % curval = PsychCamSettings('Brightness', grabber, val)
 % -- Set/Return brightness setting in arbitrary units. Brightness is the DC offset
@@ -55,6 +60,9 @@ function rc = PsychCamSettings(cmd, grabber, varargin)
 %
 % curval = PsychCamSettings('Saturation', grabber, val)
 % -- Set/Return color saturation setting in arbitrary units. Only meaningful on color cams.
+%
+% Similar to above are queries and (auto-)settings for: Hue, WhiteShading, Iris, Focus, Pan, Tilt,
+% Zoom, CaptureQuality, CaptureSize, Temperature, FrameRate, OpticalFilter and TriggerDelay.
 %
 % curval = PsychCamSettings('BacklightCompensation', grabber, val)
 % -- Set/Return setting for backlight compensation mode. Backlight compensation is active
@@ -101,9 +109,19 @@ function rc = PsychCamSettings(cmd, grabber, varargin)
 %
 % If you subtract this 'latency' value from the 'capturetimestamp'
 % returned by the Screen('GetCapturedImage') function, you should
-% get an estimate of when (in system time) the visual stimulus was
+% get an estimate of when (in system time) the image was
 % actually acquired that corresponds to the captured image.
 %
+% Please note: In theory Basler firewire cameras with "SFF cycle timer support"
+% should be able to report the start time of image exposure directly via
+% the returned capture timestamps if the command ...
+% Screen('SetVideoCaptureParameter', grabber, 'BaslerFrameTimestampEnable');
+% ... was executed before start of capture, therefore making this 'EstimateLatency'
+% dance redundant. In practice though, the two tested Basler cameras which should
+% support this feature didn't work properly, ie., they returned completely bogus
+% capture timestamps when 'BaslerFrameTimestampEnable' was called. Your mileage
+% may therefore vary, but it is at least worth a try if you possess a Basler camera.
+% 
 % Latency is defined as:
 %
 % Duration of sensor-exposure + sensor readout delay + transmission
@@ -117,6 +135,7 @@ function rc = PsychCamSettings(cmd, grabber, varargin)
 
 % History:
 % 20.06.2006 Written (MK).
+% 25.12.2013 Updated for support of Basler A312fc and more parameters.
 
 if nargin < 1 || isempty(cmd)
    error('No subcommand specified!');
@@ -145,6 +164,12 @@ else
    IsA602f = 0;
 end
 
+% Check for Basler A312fc...
+if ~isempty(strfind(vendor, 'Basler')) && ~isempty(strfind(model, 'A312fc'))
+   IsA312fc = 1;
+else
+   IsA312fc = 0;
+end
 
 if strcmp(cmd, 'GetVendor')
      rc = vendor;
@@ -158,7 +183,7 @@ end
 
 if strcmp(cmd, 'IsKnownCamera')
      % Return 1, if this camera is known to the script.
-     rc = IsFirei || IsA602f;
+     rc = IsFirei || IsA602f || IsA312fc;
      return;
 end
 
@@ -193,16 +218,16 @@ if strcmp(cmd, 'EstimateLatency')
 
      if IsFirei
         % We do not know the real transmission delay of Fire-i for sure, but
-	% as the transmission time of Fire-i is at least 33.33 ms at maximum framerate,
-	% and sensor readout time is probably much less, even at maximum ROI, it is
-	% reasonable to assume that we have the standard delay of 125 microseconds.
-	% Therefore, we leave transdelay at its default and just query exposure time.
-	t_exposure = DoFireICamExposureTime(grabber, []) / 1000.0;
+        % as the transmission time of Fire-i is at least 33.33 ms at maximum framerate,
+        % and sensor readout time is probably much less, even at maximum ROI, it is
+        % reasonable to assume that we have the standard delay of 125 microseconds.
+        % Therefore, we leave transdelay at its default and just query exposure time.
+        t_exposure = DoFireICamExposureTime(grabber, []) / 1000.0;
      end
 
      if IsA602f
         % Exposure can be queried.
-	t_exposure = DoA602fCamExposureTime(grabber, []) / 1000.0;
+        t_exposure = DoA602fCamExposureTime(grabber, []) / 1000.0;
 
         % Transmission delay depends on relative duration of transmission time and
         % sensor readout time. It is calculated as (ROIheight+3)*15.28 microseconds.
@@ -210,14 +235,33 @@ if strcmp(cmd, 'EstimateLatency')
         readout_time = readout_time * 0.00001528;
 
         if t_transmission > readout_time
-	   % Transmission delay is 125 microseconds.
-	   t_transdelay = 0.000125;
+            % Transmission delay is 125 microseconds.
+            t_transdelay = 0.000125;
         else
-           % Transmission delay is this.
-           t_transdelay = (readout_time - t_transmission) + 0.000125;
+            % Transmission delay is this.
+            t_transdelay = (readout_time - t_transmission) + 0.000125;
         end
      end
 
+     if IsA312fc
+        % Exposure can be queried.
+        t_exposure = DoA312fcCamExposureTime(grabber, []) / 1000.0;
+
+        % Transmission delay depends on relative duration of transmission time and
+        % sensor readout time. It is calculated as ROIheight * 28.27 microseconds
+        % + 2178 usecs.
+        readout_time = RectHeight(Screen('SetVideoCaptureParameter', grabber, 'GetROI'));
+        readout_time = readout_time * 0.00002827 + 0.002178;
+
+        if t_transmission > readout_time
+            % Transmission start delay is 125 microseconds.
+            t_transdelay = 0.000125;
+        else
+            % Transmission delay is this.
+            t_transdelay = (readout_time - t_transmission) + 0.000125;
+        end
+     end
+     
      % Ok, final result:
      tdelay = t_exposure + t_transdelay + t_transmission;
 
@@ -233,11 +277,24 @@ if strcmp(cmd, 'AutomateAllSettings')
      rc.shutter = Screen('SetVideoCaptureParameter', grabber, 'AutoShutter');
      rc.exposure = Screen('SetVideoCaptureParameter', grabber, 'AutoExposure');
      rc.sharpness = Screen('SetVideoCaptureParameter', grabber, 'AutoSharpness');
-     rc.whitebalance = Screen('SetVideoCaptureParameter', grabber, 'AutoWhiteBalance');
+     [rc.whitebalance1, rc.whitebalance2] = Screen('SetVideoCaptureParameter', grabber, 'AutoWhiteBalance');
+     [rc.whiteshadingR, rc.whiteshadingG, rc.whiteshadingB] = Screen('SetVideoCaptureParameter', grabber, 'AutoWhiteShading');
      rc.saturation = Screen('SetVideoCaptureParameter', grabber, 'AutoSaturation');
      rc.gamma = Screen('SetVideoCaptureParameter', grabber, 'AutoGamma');
      rc.vendor = Screen('SetVideoCaptureParameter', grabber, 'GetVendorname');
      rc.model = Screen('SetVideoCaptureParameter', grabber, 'GetModelname');
+     rc.hue = Screen('SetVideoCaptureParameter', grabber, 'AutoHue');
+     rc.iris = Screen('SetVideoCaptureParameter', grabber, 'AutoIris');
+     rc.Focus = Screen('SetVideoCaptureParameter', grabber, 'AutoFocus');
+     rc.Zoom = Screen('SetVideoCaptureParameter', grabber, 'AutoZoom');
+     rc.Pan = Screen('SetVideoCaptureParameter', grabber, 'AutoPan');
+     rc.Tilt = Screen('SetVideoCaptureParameter', grabber, 'AutoTilt');
+     rc.OpticalFilter = Screen('SetVideoCaptureParameter', grabber, 'AutoOpticalFilter');
+     rc.CaptureSize = Screen('SetVideoCaptureParameter', grabber, 'AutoCaptureSize');
+     rc.CaptureQuality = Screen('SetVideoCaptureParameter', grabber, 'AutoCaptureQuality');
+     rc.FrameRate = Screen('SetVideoCaptureParameter', grabber, 'FrameRate'); % Auto makes no sense.
+     rc.TriggerDelay = Screen('SetVideoCaptureParameter', grabber, 'TriggerDelay'); % Auto makes no sense.
+     rc.Temperature = Screen('SetVideoCaptureParameter', grabber, 'AutoTemperature');
      return;
 end
 
@@ -248,11 +305,24 @@ if strcmp(cmd, 'GetAllSettings')
      rc.shutter = Screen('SetVideoCaptureParameter', grabber, 'Shutter');
      rc.exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure');
      rc.sharpness = Screen('SetVideoCaptureParameter', grabber, 'Sharpness');
-     rc.whitebalance = Screen('SetVideoCaptureParameter', grabber, 'WhiteBalance');
+     [rc.whitebalance1, rc.whitebalance2] = Screen('SetVideoCaptureParameter', grabber, 'WhiteBalance');
+     [rc.whiteshadingR, rc.whiteshadingG, rc.whiteshadingB] = Screen('SetVideoCaptureParameter', grabber, 'WhiteShading');
      rc.saturation = Screen('SetVideoCaptureParameter', grabber, 'Saturation');
      rc.gamma = Screen('SetVideoCaptureParameter', grabber, 'Gamma');
      rc.vendor = Screen('SetVideoCaptureParameter', grabber, 'GetVendorname');
      rc.model = Screen('SetVideoCaptureParameter', grabber, 'GetModelname');
+     rc.hue = Screen('SetVideoCaptureParameter', grabber, 'Hue');
+     rc.iris = Screen('SetVideoCaptureParameter', grabber, 'Iris');
+     rc.Focus = Screen('SetVideoCaptureParameter', grabber, 'Focus');
+     rc.Zoom = Screen('SetVideoCaptureParameter', grabber, 'Zoom');
+     rc.Pan = Screen('SetVideoCaptureParameter', grabber, 'Pan');
+     rc.Tilt = Screen('SetVideoCaptureParameter', grabber, 'Tilt');
+     rc.OpticalFilter = Screen('SetVideoCaptureParameter', grabber, 'OpticalFilter');
+     rc.CaptureSize = Screen('SetVideoCaptureParameter', grabber, 'CaptureSize');
+     rc.CaptureQuality = Screen('SetVideoCaptureParameter', grabber, 'CaptureQuality');
+     rc.FrameRate = Screen('SetVideoCaptureParameter', grabber, 'FrameRate');
+     rc.TriggerDelay = Screen('SetVideoCaptureParameter', grabber, 'TriggerDelay');
+     rc.Temperature = Screen('SetVideoCaptureParameter', grabber, 'Temperature');
      return;
 end
 
@@ -271,12 +341,24 @@ if strcmp(cmd, 'SetAllSettings')
      rc.shutter = Screen('SetVideoCaptureParameter', grabber, 'Shutter', rc.shutter);
      rc.exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure', rc.exposure);
      rc.sharpness = Screen('SetVideoCaptureParameter', grabber, 'Sharpness', rc.sharpness);
-     rc.whitebalance = Screen('SetVideoCaptureParameter', grabber, 'WhiteBalance', rc.whitebalance);
+     [rc.whitebalance1, rc.whitebalance2] = Screen('SetVideoCaptureParameter', grabber, 'WhiteBalance', rc.whitebalance1, rc.whitebalance2);
+     [rc.whiteshadingR, rc.whiteshadingG, rc.whiteshadingB] = Screen('SetVideoCaptureParameter', grabber, 'WhiteShading', rc.whiteshadingR, rc.whiteshadingG, rc.whiteshadingB);
      rc.saturation = Screen('SetVideoCaptureParameter', grabber, 'Saturation', rc.saturation);
      rc.gamma = Screen('SetVideoCaptureParameter', grabber, 'Gamma', rc.gamma);
      rc.vendor = Screen('SetVideoCaptureParameter', grabber, 'GetVendorname');
      rc.model = Screen('SetVideoCaptureParameter', grabber, 'GetModelname');
-
+     rc.hue = Screen('SetVideoCaptureParameter', grabber, 'Hue', rc.hue);
+     rc.iris = Screen('SetVideoCaptureParameter', grabber, 'Iris', rc.iris);
+     rc.Focus = Screen('SetVideoCaptureParameter', grabber, 'Focus', rc.Focus);
+     rc.Zoom = Screen('SetVideoCaptureParameter', grabber, 'Zoom', rc.Zoom);
+     rc.Pan = Screen('SetVideoCaptureParameter', grabber, 'Pan', rc.Pan);
+     rc.Tilt = Screen('SetVideoCaptureParameter', grabber, 'Tilt', rc.Tilt);
+     rc.OpticalFilter = Screen('SetVideoCaptureParameter', grabber, 'OpticalFilter', rc.OpticalFilter);
+     rc.CaptureSize = Screen('SetVideoCaptureParameter', grabber, 'CaptureSize', rc.CaptureSize);
+     rc.CaptureQuality = Screen('SetVideoCaptureParameter', grabber, 'CaptureQuality', rc.CaptureQuality);
+     rc.FrameRate = Screen('SetVideoCaptureParameter', grabber, 'FrameRate', rc.FrameRate);
+     rc.TriggerDelay = Screen('SetVideoCaptureParameter', grabber, 'TriggerDelay', rc.TriggerDelay);
+     rc.Temperature = Screen('SetVideoCaptureParameter', grabber, 'Temperature', rc.Temperature);
      return;
 end
 
@@ -304,24 +386,30 @@ if ~isempty(strfind(cmd, 'ExposureTime'))
         inval = [];
      end
 
-     if IsA602f || IsFirei
+     if IsA602f || IsFirei || IsA312fc
         % Call cam specific routine.
         if IsA602f
            rc = DoA602fCamExposureTime(grabber, inval);
-        else
+        end
+        
+        if IsA312fc
+           rc = DoA312fcCamExposureTime(grabber, inval);
+        end
+
+        if IsFirei
            rc = DoFireICamExposureTime(grabber, inval);
         end
 
         return;
      else
         % Unknown camera. We just fall-through, mapping exposure time to
-	% Exposure setting.
-	cmd = 'Exposure';
+        % Exposure setting.
+        cmd = 'Exposure';
      end
 end
 
-if (IsA602f || IsFirei) && (~isempty(strfind(cmd, 'Exposure')) || ~isempty(strfind(cmd, 'Shutter')))
-     % These settings are ignored on the Unibrain Fire-i and Basler A 602f.
+if (IsA602f || IsA312fc || IsFirei) && (~isempty(strfind(cmd, 'Exposure')) || ~isempty(strfind(cmd, 'Shutter')))
+     % These settings are ignored on the Unibrain Fire-i and Basler A 602f and A312fc.
      % They either control ExposureTime - for which we have a nice function -
      % or they control special settings...     
      rc = Inf;
@@ -362,6 +450,36 @@ function rc = DoA602fCamExposureTime(grabber, inval)
       rc = rawval * 0.000020;
    end
  
+   % Convert return value from seconds to milliseconds.
+   rc = rc * 1000;
+return;
+
+% This routine maps exposure times in secs to register values and vice versa.
+% It works for cameras from the Basler A312fc series. Formulas based on their
+% online specs.
+function rc = DoA312fcCamExposureTime(grabber, inval)
+   if isempty(inval)
+      % Retrieve and map current setting. The A312fc stores the value in Shutter.
+      rawval = Screen('SetVideoCaptureParameter', grabber, 'Shutter');
+      % Exposure time in seconds is just shuttervalue * timebase (fixed at 20 microseconds.)
+      rc = rawval * 0.000020;
+   else
+      % Map and set new setting. Maximum exposuretime is also limited by 1/fps with fps = capture
+      % framerate - 94.9 usecs, for a given target framerate:
+      rawval = min(inval / 1000.0, (1.0 / Screen('SetVideoCaptureParameter', grabber, 'GetFramerate')) - 0.0000949);
+      rawval = round(rawval / 0.000020);
+      
+      % Clamp to valid range of cam: 20 microseconds to 81.9 milliseconds.
+      rawval = min(rawval, 4095);
+      rawval = max(rawval, 1);
+      
+      % Write new settings, return old settings:
+      rawval = Screen('SetVideoCaptureParameter', grabber, 'Shutter', rawval);
+      
+      % Exposure time in seconds is just shuttervalue * timebase (fixed at 20 microseconds.)
+      rc = rawval * 0.000020;
+   end
+
    % Convert return value from seconds to milliseconds.
    rc = rc * 1000;
 return;

@@ -31,8 +31,9 @@
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "textModes = Screen('TextModes');";
-static char synopsisString[] =	"Return a cell array of strings naming allowable text modes.\n"
-								"Please note that none of this modes is supported in the current Psychtoolbox, "
+static char synopsisString[] =	"Return a cell array of strings naming allowable text modes for Screen('TextMode').\n"
+								"Please note that none of these modes are supported in the current Psychtoolbox, "
+                                "except on OSX with its default text renderer 1 aka the Apple CoreText renderer, "
 								"so whatever 'TextMode' you set will be silently ignored and have no effect. ";
 static char seeAlsoString[] = "TextMode";
 

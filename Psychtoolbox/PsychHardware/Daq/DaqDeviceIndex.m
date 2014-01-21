@@ -266,6 +266,10 @@ if (length(daq) == 1) && IsOSX
             continue;
         end
         
+        if devices(k).outputs == 0
+            continue;
+        end
+        
         % Ok, index k is a MCC devices which matches. Keep track of the
         % device with maximum index:
         maxidx = max(maxidx, k);

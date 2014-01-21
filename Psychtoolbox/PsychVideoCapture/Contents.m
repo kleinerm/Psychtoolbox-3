@@ -1,6 +1,6 @@
 % PsychVideoCapture -- Video capture support
 %
-% Psychtoolbox has built-in Screen-Subfunctions that allow you to control
+% Psychtoolbox has built-in Screen subfunctions that allow you to control
 % and use standard and professional video capture equipment to capture live
 % video from a camera or other supported video source in real-time with low
 % latency.
@@ -20,7 +20,7 @@
 % as extensively tested. Some of the functions here are work in progress,
 % useful, but not finished.
 %
-% Screen() supports three separate built-in videocapture engines for
+% Screen() supports two separate built-in videocapture engines for
 % different purposes:
 %
 % PROFESSIONAL CLASS ENGINE FOR DEMANDING APPLICATIONS:
@@ -35,7 +35,7 @@
 % to the IIDC 1.0 machine vision camera specification. These can be
 % connected via IEEE-1394 firewire bus, or for some special examplars also
 % via high-performance USB bus via "Firewire-over-USB" protocol. This
-% high-perf capture engine is selected by default via the following Screen
+% high-perf capture engine is selected as default via the following Screen
 % preference setting:
 %
 % Screen('Preference', 'DefaultVideocaptureEngine', 1);
@@ -44,22 +44,21 @@
 % value 1 as optional 'engineID' parameter for the
 % Screen('OpenVideocapture', ...); command.
 %
-% See <http://damien.douxchamps.net/ieee1394/libdc1394/>
-% for information about the libdc1394 library, forums and links to the
-% IIDC-Spec.
+% See <http://damien.douxchamps.net/ieee1394/libdc1394/> for information
+% about the libdc1394 library, forums and links to the IIDC-Spec.
 %
 % A list of supported firewire pro-cameras can be found here:
 % <http://damien.douxchamps.net/ieee1394/cameras/>
 %
 % The firewire engine is currently supported on Linux, where it was
-% originally developed, tested and used, and on MacOSX, where it received
-% some testing and use. Therefore, the Linux version is the most mature and
-% well-tested one. It allows very convenient and fine-grained control over
-% many aspects and settings of the cameras, it reliably can drive multiple
-% cameras in parallel (tested with two cameras) and it has excellent
-% timing, very low capture latency and highly accurate built-in
-% timestamping code. The reported timestamps are accurate to a few dozen
-% microseconds.
+% originally developed, extensively tested and used, and on MacOSX, where
+% it received some light testing and use. Therefore, the Linux version is
+% the most mature and well-tested one. It allows very convenient and
+% fine-grained control over many aspects and settings of the cameras, it
+% reliably can drive multiple cameras in parallel (tested with two cameras)
+% and it has excellent timing, very low capture latency and highly accurate
+% built-in timestamping code. The reported timestamps are accurate to a few
+% dozen microseconds.
 %
 % You will need Linux kernel 2.4.21 or later or Linux 2.6.16 or later for
 % best performance, but these are part of any recent distribution.
@@ -67,16 +66,18 @@
 % Supported Cameras:
 %
 % All IIDC compliant cameras should work. For the Basler A602f greyscale
-% high performance camera and the cheap and good Unibrain Fire-i camera,
-% the PsychCamSettings - Tool provides especially convenient access to the
-% camera settings.
+% high performance camera, the Basler A312fc, and the cheap and good
+% Unibrain Fire-i camera, the PsychCamSettings - Tool provides especially
+% convenient access to the camera settings.
 %
 % You can find additional setup instructions for the libdc1394 engine in
-% 'help VideoCaptureDC1394'.
+% 'help VideoCaptureDC1394'. Executing VideoCaptureDC1394 on OSX will
+% install the runtime library for you.
 %
-% CONSUMER LEVEL ENGINES FOR LESS STRINGENT REQUIREMENTS:
 %
-% These engines are targeted at standard consumer class video capture and
+% CONSUMER LEVEL ENGINE FOR LESS STRINGENT REQUIREMENTS:
+%
+% This engine is targeted at standard consumer class video capture and
 % video digitizer equipment, e.g., built-in cameras of Laptop computers,
 % USB or Firewire connected "webcams", DV camcorders, standard video
 % converters and receivers etc. Quality of feature control, efficiency,
@@ -87,40 +88,19 @@
 % the "Sony PlayStation Eye" USB web-camera, no guarantess can be made
 % about the performance or quality of any specific camera.
 %
-% Screen supports different engines on different operating systems for
-% driving such consumer cameras.
+% Screen supports a GStreamer based engine on all operating systems.
 %
-% * Linux, Windows: We use GStreamer's built-in videocapture functionality
-% by default (see "help GStreamer"). This is highly reliable and feature
-% rich on Linux, somewhat less feature rich and reliable but still decent
-% on Windows -- highly dependent on the version of Windows you are using.
-% The engine should support most commercially available consumer level
-% cameras for firewire, USB, PCI and other busses, basically any camera for
-% which the operating system provides a device driver.
+% We use GStreamer's built-in videocapture functionality by default (see
+% "help GStreamer"). This is highly reliable and feature rich on Linux,
+% somewhat less feature rich and reliable but still decent on Windows and
+% OSX -- highly dependent on the version of Windows you are using. The
+% engine should support most commercially available consumer level cameras
+% for firewire, USB, PCI and other busses, basically any camera for which
+% the operating system and GStreamer provide a device driver.
 %
-% This engine has id 3 and is selected by default on Linux and Windows.
-%
-% You can find additional setup instructions for GStreamer in
-% 'help GStreamer'.
-%
-%
-% * 32-Bit OS-X & 32-Bit Windows: We use the Sequence-Grabber API of Apples
-% Quicktime-7 for video capture on 32-Bit OS-X and (optionally) on 32-Bit
-% Windows. On MS-Windows, you'll need to install a Quicktime compatible
-% video digitizer component, e.g., WinVDIG, which can be freely downloaded
-% from http://www.vdig.com/WinVDIG/. However, use of this engine is only
-% provided for backward compatibility and generally discouraged, as the
-% default GStreamer engine is to our knowledge superior in any aspect.
-%
-% On MacOS-X 32-Bit, video digitizers are already installed.
-%
-% On 32-Bit OS/X this engine is the default, on Windows you could select it
-% via engineID 0.
-%
-% * 64-Bit OS/X: This is not yet supported. We use the GStreamer engine by
-% default, just as on Linux and Windows. However, GStreamer doesn't yet
-% support video capture on 64-Bit OS/X, at least as of May 2012.
-%
+% This engine has id 3 and is selected by default on all operating systems.
+% You can find additional setup instructions for GStreamer in 'help
+% GStreamer'.
 %
 %
 % Contents of this folder:
@@ -128,17 +108,21 @@
 % libdc1394.22.dylib - The runtime library for the libdc1394 firewire video
 %                      capture engine for 64-Bit MacOS/X. For installation
 %                      into the /usr/local/lib/ system folder of your
-%                      machine.
+%                      machine. Source code for this LGPL-v2+ licensed
+%                      library can be found in the PTB source distribution
+%                      ("help UseTheSource") in the following subfolder:
+%                      PsychSourceGL/Cohorts/libDC1394
 %
 % PsychCamSettings   - Function for programmatically querying and setting
 %                      camera parameters like exposure time, gain, brightness
 %                      color saturation and such. Can also estimate the
 %                      internal latency of the camera for known models,
-%                      currently Basler A602f and Unibrain Fire.i
+%                      currently Basler A602f, A312fc and Unibrain Fire.i
 %
 % PsychGetCamIdForSpec - Return deviceIndex of a specified camera.
 %
-% PsychOpenEyes        - Control interface for PTB's integrated vision based
+% PsychOpenEyes        - INCOMPLETE and therefore DYSFUNCTIONAL! Control
+%                        interface for PTB's integrated vision based
 %                        eyetracker, based on the OpenEyes toolkit.
 %
 % PsychSetupCamera     - Interactive tool for setting up a camera and writing
@@ -147,5 +131,6 @@
 %
 % PsychVideoDelayLoop  - Full, feature rich implementation of a live
 %                        video feedback loop with controllable latency.
-%                        See its help for a list of features.
+%                        See its help for a list of features. See
+%                        VideoDelayLoopMiniDemo for a demo of it.
 %
