@@ -3222,7 +3222,7 @@ int PsychOSKDGetBeamposition(int screenId)
 				// ignore horizontal scanout position for now:
 				beampos = (int) (ReadRegister((headId == 0) ? 0x600868 : 0x600868 + 0x2000) & 0xFFFF);
 			} else {
-				// NV-50 (GeForce-8) and later:
+				// NV-50 (GeForce-8) and later, also 4-CRTC NV-E0 and later:
 				
 				// Lower 16 bits are vertical scanout position (scanline), upper 16 bits are vblank counter.
 				// Offset between crtc's is 0x800, we're only interested in scanline, not vblank counter:

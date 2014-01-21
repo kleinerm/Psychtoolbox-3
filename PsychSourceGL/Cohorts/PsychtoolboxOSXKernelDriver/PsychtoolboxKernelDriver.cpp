@@ -567,10 +567,12 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 				fCardType = 0x50;
 				break;
 			case 0xc0:
+			case 0xd0:
 				// NVC0: GeForce-400/500: "Fermi"
 				fCardType = 0xc0;
 				break;
 			case 0xe0:
+			case 0xf0:
 				// NVE0: GeForce-600: "Kepler"
 				fCardType = 0xe0;
 				break;

@@ -710,11 +710,13 @@ unsigned int PsychGetNVidiaGPUType(PsychWindowRecordType* windowRecord)
             card_type = 0x50;
             break;
         case 0xc0:
+        case 0xd0:
             // Fermi: GeForce G400/500 series:
             card_type = 0xc0;
             break;
         case 0xe0:
-            // Kepler: GeForce G600+ series:
+        case 0xf0:
+            // Kepler: GeForce G600+ series: Up to 4 CRTC's.
             card_type = 0xe0;
             break;
         default:
@@ -959,8 +961,28 @@ void PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal)
 			strstr((char*) glGetString(GL_RENDERER), "NVIDIA") || strstr((char*) glGetString(GL_RENDERER), "nouveau")) &&
 			PsychOSIsKernelDriverAvailable(screenId)) {
 
-			// Need to read different regs for NV-50 and later:
-			if ((PsychGetNVidiaGPUType(NULL) >= 0x50) || (PsychGetNVidiaGPUType(NULL) == 0x0)) {
+			// Need to read different regs, depending on GPU generation:
+			if ((PsychGetNVidiaGPUType(NULL) >= 0xe0) || (PsychGetNVidiaGPUType(NULL) == 0x0)) {
+				// Auto-Detection. Read values directly from NV-E0 "Kepler" class and later hardware:
+				//
+                #if PSYCH_SYSTEM != PSYCH_WINDOWS
+                // VBLANKE end line of vertical blank - smaller than VBLANKS. Subtract VBLANKE + 1 to normalize to "scanline zero is start of active scanout":
+				vblbias = (int) ((PsychOSKDReadRegister(crtcid, 0x64041c + (crtcid * 0x300), NULL) >> 16) & 0xFFFF) + 1;
+                
+				// DISPLAY_TOTAL: Encodes VTOTAL in high-word, HTOTAL in low-word. Get the VTOTAL in high word:
+				vbltotal = (int) ((PsychOSKDReadRegister(crtcid, 0x640414 + (crtcid * 0x300), NULL) >> 16) & 0xFFFF);
+                
+                // Decode VBL_START and VBL_END and VACTIVE for debug purposes:
+                if (PsychPrefStateGet_Verbosity() > 5) {
+                    unsigned int vbl_start, vbl_end, vactive;
+                    vbl_start = (int) ((PsychOSKDReadRegister(crtcid, 0x640420 + (crtcid * 0x540), NULL) >> 16) & 0xFFFF);
+                    vbl_end   = (int) ((PsychOSKDReadRegister(crtcid, 0x64041c + (crtcid * 0x540), NULL) >> 16) & 0xFFFF);
+                    vactive   = (int) ((PsychOSKDReadRegister(crtcid, 0x640414 + (crtcid * 0x540), NULL) >> 16) & 0xFFFF);
+                    printf("PTB-DEBUG: Screen %i [head %i]: vbl_start = %i  vbl_end = %i  vactive = %i.\n", screenId, crtcid, (int) vbl_start, (int) vbl_end, (int) vactive);
+                }
+                #endif
+            }
+            else if (PsychGetNVidiaGPUType(NULL) >= 0x50) {
 				// Auto-Detection. Read values directly from NV-50 class and later hardware:
 				//
 				// SYNC_START_TO_BLANK_END 16 bit high-word in CRTC_VAL block of NV50_PDISPLAY on NV-50 encodes
@@ -974,6 +996,15 @@ void PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal)
 
 				// DISPLAY_TOTAL: Encodes VTOTAL in high-word, HTOTAL in low-word. Get the VTOTAL in high word:
 				vbltotal = (int) ((PsychOSKDReadRegister(crtcid, 0x610000 + 0xa00 + 0xf8 + (crtcid * 0x540), NULL) >> 16) & 0xFFFF);
+                
+                // Decode VBL_START and VBL_END and VACTIVE for debug purposes:
+                if (PsychPrefStateGet_Verbosity() > 5) {
+                    unsigned int vbl_start, vbl_end, vactive;
+                    vbl_start = (int) ((PsychOSKDReadRegister(crtcid, 0x610af4 + (crtcid * 0x540), NULL) >> 16) & 0xFFFF);
+                    vbl_end   = (int) ((PsychOSKDReadRegister(crtcid, 0x610aec + (crtcid * 0x540), NULL) >> 16) & 0xFFFF);
+                    vactive   = (int) ((PsychOSKDReadRegister(crtcid, 0x610afc + (crtcid * 0x540), NULL) >> 16) & 0xFFFF);
+                    printf("PTB-DEBUG: Screen %i [head %i]: vbl_start = %i  vbl_end = %i  vactive = %i.\n", screenId, crtcid, (int) vbl_start, (int) vbl_end, (int) vactive);
+                }
 				#endif
 			} else {
 				// Auto-Detection. Read values directly from pre-NV-50 class hardware:
