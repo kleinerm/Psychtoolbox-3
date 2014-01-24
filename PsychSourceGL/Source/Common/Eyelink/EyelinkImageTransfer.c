@@ -14,6 +14,7 @@ HISTORY:
 
 10/10/10	nj		Created.
 05/24/11    mk      Cleanup.
+12/20/13   lj       fixed crash for EyelinkImageTransfer, due to unallocated memory.
 
 */
 
