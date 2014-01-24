@@ -26,6 +26,8 @@ function [key, el]=EyelinkGetKey(el)
 	%               characters
 	% 270309    edf added function and modifier keys
 
+    % 201213    lj  added parameters for function modifyKey, for octave to get key responses from display side
+
 
 
 	% excerpt from "exptsppt.h"
@@ -142,7 +144,7 @@ function [key, el]=EyelinkGetKey(el)
 	end
 
 
-	function modifyKey
+	function modifyKey(el, keyCodes, key)
 		if any(keyCodes(el.left_shift))
 			key=bitand(key,el.ELKMOD_LSHIFT); 
 		end
@@ -171,7 +173,7 @@ function [key, el]=EyelinkGetKey(el)
 
 	% already found a key response,
 	if key~=0
-		modifyKey;
+		modifyKey(el, keyCodes, key);
 		return;
 	end
 
@@ -183,7 +185,7 @@ function [key, el]=EyelinkGetKey(el)
 	key=KbName(key(1)); % convert to a character, potential problem: KbName does not translate all keys to actual ascii characters.
 	key=double(key(1)); % some keyNames have two characters (e.g. 8*);
 	if key >=hex2dec('20') && key < hex2dec('7F') % only return  printable chars (0x20..0x7F)
-		modifyKey;
+		modifyKey(el, keyCodes, key);
 		return;
 	end
 
