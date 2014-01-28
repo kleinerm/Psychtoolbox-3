@@ -186,7 +186,10 @@ static char synopsisString[] =  "Set video capture parameter 'parameterName' on 
                                 "'BaslerFrameCounterEnable' Retrieve framecounter values from Basler camera itself instead of using our own software frame "
                                 "counter. Theoretically extra robust. In practice only useful if your Basler camera allows software controlled power-cycling, "
                                 "which some Basler cameras do not allow. If the camera doesn't allow power-cycling then use of this feature will cause a hard "
-                                "hang of Psychtoolbox!\n";
+                                "hang of Psychtoolbox!\n"
+                                "'LoadMarkerTrackingPlugin=' Specify the name of a special markertracker plugin to load and use during video capture. The name "
+                                "must be the path and filename of a shared library which implements this plugin. EXPERIMENTAL and subject to change without notice!\n"
+                                "'SendCommandToMarkerTrackingPlugin=' Send an ASCII string containing commands to a loaded markertracker plugin. EXPERIMENTAL!\n";
 
 static char seeAlsoString[] = "OpenVideoCapture CloseVideoCapture StartVideoCapture StopVideoCapture GetCapturedImage";
 	 

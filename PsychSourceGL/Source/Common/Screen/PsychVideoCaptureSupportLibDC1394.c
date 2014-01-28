@@ -52,6 +52,9 @@
 // Basler specific extensions (Baser SFF Smart Feature Framework):
 #include <dc1394/vendor/basler.h>
 
+// Include for dynamic loading of external plugin:
+#include <dlfcn.h>
+
 // Sync modes and sync roles for multi-camera synchronization:
 #define kPsychIsSyncMaster  1
 #define kPsychIsSyncSlave   2
@@ -113,6 +116,7 @@ typedef struct {
     unsigned int recordingflags;      // Flags used for recording and similar activities.
     unsigned int specialFlags;        // Additional flags set via 'SetCaptureParameter' functions.
     char* processingString;           // Optional GStreamer video processing string, NULL if undefined.
+    void* markerTrackerPlugin;        // Opaque pointer to instance handle of a markerTrackerPlugin.
 } PsychVidcapRecordType;
 
 static PsychVidcapRecordType vidcapRecordBANK[PSYCH_MAX_CAPTUREDEVICES];
@@ -123,6 +127,17 @@ static dc1394_t *libdc = NULL;		// Master handle to DC1394 library.
 // Global Bayer filter settings for helper routine which is used for movie playback:
 static dc1394bayer_method_t global_debayer_method = DC1394_BAYER_METHOD_NEAREST;
 static dc1394color_filter_t global_color_filter = DC1394_COLOR_FILTER_MIN;
+
+// Global state and functions related to special markerTrackerPlugin's:
+
+// Global handle to shared library:
+void* markerTrackerPlugin_libraryhandle = NULL;
+
+// Function prototypes of functions we want to use in the plugin library:
+void* (*TrackerPlugin_initialize)(void);
+bool (*TrackerPlugin_shutdown)(void* handle);
+bool (*TrackerPlugin_processFrame)(void* handle, unsigned long* source_ptr, int imgwidth, int imgheight, int xmin, int ymin, unsigned int timeidx, double capturetimestamp, unsigned int absolute_frameindex);
+bool (*TrackerPlugin_processPluginDataBuffer)(void* handle, unsigned long* buffer, int size);
 
 // Forward declaration of internal helper function:
 void PsychDCDeleteAllCaptureDevices(void);
@@ -152,6 +167,8 @@ void PsychDCLibInit(void)
         // Initialize library:
         libdc = dc1394_new();
         if (libdc == NULL) PsychErrorExitMsg(PsychError_user, "Failed to initialize libDC1394 V2 Firewire video capture library! Capture engine unavailable.");
+        markerTrackerPlugin_libraryhandle = NULL;
+
         firsttime = FALSE;
     }
 
@@ -215,6 +232,9 @@ void PsychDCExitVideoCapture(void)
     if (libdc && !firsttime) dc1394_free(libdc);
     libdc = NULL;
 
+    // Reset global library handle for markertracker plugin:
+    markerTrackerPlugin_libraryhandle = NULL;
+
     // Reset firsttime flag to get a cold restart on next invocation of Screen:
     firsttime = TRUE;
     return;
@@ -261,7 +281,23 @@ void PsychDCCloseVideoCaptureDevice(int capturehandle)
 
     if (capdev->processingString) free(capdev->processingString);
     capdev->processingString = NULL;
-    
+
+    // Shutdown and release an assigned markerTrackerPlugin:
+    if (capdev->markerTrackerPlugin) {
+        // Try to shutdown this instance of the plugin:
+        if (!(*TrackerPlugin_shutdown)(capdev->markerTrackerPlugin)) {
+            printf("PTB-WARNING: Failed to shutdown markertracker plugin for device %i.\n", capturehandle);
+        }
+        
+        capdev->markerTrackerPlugin = NULL;
+        
+        // Release one reference to this instance of the plugin:
+        // There may be more instances. If the last reference is released, the plugin
+        // will get truly unloaded by the dynamic linker and the markerTrackerPlugin_libraryhandle
+        // will become invalid / a stale pointer which we will clean up in PsychDCExitVideoCapture():
+        dlclose(markerTrackerPlugin_libraryhandle);
+    }
+
     PsychDestroyMutex(&capdev->mutex);
     PsychDestroyCondition(&capdev->condition);
 
@@ -1204,6 +1240,15 @@ static unsigned char* PsychDCPreprocessFrame(PsychVidcapRecordType* capdev)
         if (!dc1394_basler_sff_check_crc((const uint8_t*) input_image, (uint32_t) capdev->total_bytes)) {
             if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Basler SFF CRC reports that a corrupt video frame with framecount %i was received from capture device %i.\n", capdev->framecounter, capdev->capturehandle);
             capdev->corrupt_count++;
+        }
+    }
+
+    // Is a special markertracker plugin loaded for this camera? If so, execute it on this frame:
+    if (capdev->markerTrackerPlugin) {
+        // Yes! Execute: Plugin reads from (unsigned long*) input_image:
+        if (!(*TrackerPlugin_processFrame)(capdev->markerTrackerPlugin, (unsigned long*) input_image, capdev->width, capdev->height, capdev->roirect[kPsychLeft], capdev->roirect[kPsychTop], capdev->framecounter,
+            capdev->current_pts, capdev->framecounter)) {
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-WARNING: Failed to process video frame with framecount %i by markertracker plugin for capture device %i.\n", capdev->framecounter, capdev->capturehandle);
         }
     }
 
@@ -2894,7 +2939,81 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         
         return(0);
     }
-    
+
+    // Load a 2D marker tracking plugin and initialize it:
+    if (strstr(pname, "LoadMarkerTrackingPlugin=")) {
+        // Find start of string and assign to pname:
+        pname = strstr(pname, "=");
+        pname++;
+
+        // Load shared library which implements the marker tracker plugin from given filename:
+        if ((markerTrackerPlugin_libraryhandle = dlopen(pname, RTLD_NOW | RTLD_LOCAL)) == NULL) {
+            printf("PTB-ERROR: Failed to load markertracker plugin for device %i under name '%s'. OS reports: '%s'\n", capturehandle, pname, dlerror());
+            PsychErrorExitMsg(PsychError_user, "Loading markertracker plugin failed!");
+        }
+
+        // Library loaded and linked. Get function handles for functions we do care about:
+        TrackerPlugin_initialize = (void* (*)()) dlsym(markerTrackerPlugin_libraryhandle, "TrackerPlugin_initialize");
+        
+        TrackerPlugin_shutdown = (bool (*)(void*)) dlsym(markerTrackerPlugin_libraryhandle, "TrackerPlugin_shutdown");
+        
+        TrackerPlugin_processFrame = (bool (*)(void*, unsigned long* source_ptr, int imgwidth, int imgheight, int xmin, int ymin, unsigned int timeidx, double capturetimestamp, unsigned int absolute_frameindex)) dlsym(markerTrackerPlugin_libraryhandle, "TrackerPlugin_processFrame");
+        
+        TrackerPlugin_processPluginDataBuffer = (bool (*)(void*, unsigned long* buffer, int size)) dlsym(markerTrackerPlugin_libraryhandle, "TrackerPlugin_processPluginDataBuffer");
+
+        // Binding successfull?
+        if (!TrackerPlugin_initialize || !TrackerPlugin_shutdown || !TrackerPlugin_processFrame || !TrackerPlugin_processPluginDataBuffer) {
+            dlclose(markerTrackerPlugin_libraryhandle);
+            printf("PTB-ERROR: Failed to link/bind markertracker plugin for device %i under name '%s'. Could not resolve at least one entry point.\n", capturehandle, pname);
+            PsychErrorExitMsg(PsychError_user, "Linking/Binding markertracker plugin failed!");
+        }
+
+        // Call init method. This will return a unique handle for this instance of the plugin for this capture device:
+        if (NULL == (capdev->markerTrackerPlugin = (*TrackerPlugin_initialize)())) {
+            dlclose(markerTrackerPlugin_libraryhandle);
+            printf("PTB-ERROR: Failed to initialize markertracker plugin for device %i under name '%s'.\n", capturehandle, pname);
+            PsychErrorExitMsg(PsychError_user, "Initializing markertracker plugin failed!");
+        }
+        
+        if (PsychPrefStateGet_Verbosity() > 2) {
+            printf("PTB-INFO: Markertracker plugin loaded and initialized for device %i as '%s'.\n", capturehandle, pname);
+        }
+        
+        return(0);
+    }
+
+    // Send command to  a 2D marker tracking plugin:
+    if (strstr(pname, "SendCommandToMarkerTrackingPlugin=")) {
+        unsigned long buffer[1024];
+        
+        // Find start of string and assign to pname:
+        pname = strstr(pname, "=");
+        pname++;
+
+        if (capdev->markerTrackerPlugin) {
+            // Yes! Execute: Plugin reads from (unsigned long*) input_image and could theoretically write
+            // back into (unsigned char*) input_image to modify its content. In practice, it doesn't do that,
+            // so this argument is provided as NULL-Ptr:
+            //
+            // Need funky data wrangling here, as plugin expects buffer of unsigned long's, and a size spec
+            // in units of unsigned long's:
+            if (strlen(pname) + 1 > sizeof(buffer)) PsychErrorExitMsg(PsychError_user, "Tried to send too much data to a markertracker plugin for this capture device!");
+            memcpy(&(buffer[0]), pname, strlen(pname) + 1);
+            
+            if (!(*TrackerPlugin_processPluginDataBuffer)(capdev->markerTrackerPlugin, &(buffer[0]), (strlen(pname) / sizeof(unsigned long)) + 1 )) {
+                printf("PTB-ERROR: SendCommandToMarkerTrackingPlugin: Failed to send command to markertracker plugin for device %i! Command was '%s'.\n", capturehandle, pname);
+                PsychErrorExitMsg(PsychError_user, "Failed to send data to markertracker plugin for this capture device!");
+            }
+        }
+        else {
+            // No plugin loaded?!?
+            printf("PTB-ERROR: SendCommandToMarkerTrackingPlugin: Tried to send command to non-existent markertracker plugin for device %i! Command was '%s'.\n", capturehandle, pname);
+            PsychErrorExitMsg(PsychError_user, "Tried to send data to a markertracker plugin for this capture device, but there isn't any plugin loaded!");
+        }
+
+        return(0);
+    }
+
     if (strcmp(pname, "PrintParameters")==0) {
         dc1394featureset_t camfeatures;
         
