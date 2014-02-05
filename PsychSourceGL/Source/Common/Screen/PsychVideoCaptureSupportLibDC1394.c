@@ -61,6 +61,7 @@
 #define kPsychIsSoftSynced  4
 #define kPsychIsBusSynced   8
 #define kPsychIsHwSynced   16
+#define kPsychNoLockStepSync 32
 
 // Record which defines all state for a capture device:
 typedef struct {
@@ -1797,7 +1798,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         if (capdev->syncmode & kPsychIsSyncMaster) {
             for (i = 0; i < PSYCH_MAX_CAPTUREDEVICES; i++) {
                 // Sync slave?
-                if ((vidcapRecordBANK[i].valid) && (i != capturehandle) && (vidcapRecordBANK[i].syncmode & kPsychIsSyncSlave)) {
+                if ((vidcapRecordBANK[i].valid) && (i != capturehandle) && (vidcapRecordBANK[i].syncmode & kPsychIsSyncSlave) && !(vidcapRecordBANK[i].syncmode & kPsychNoLockStepSync)) {
                     // Yes. Assign capturehandle of sync master:
                     PsychLockMutex(&vidcapRecordBANK[i].mutex);
                     vidcapRecordBANK[i].syncmasterhandle = capturehandle;
@@ -1834,7 +1835,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 if (capdev->syncmode & kPsychIsBusSynced) printf("PTB-DEBUG: Bus synced operation.");
                 if (capdev->syncmode & kPsychIsSoftSynced) printf("PTB-DEBUG: Software synced operation.");
                 if (capdev->syncmode & kPsychIsHwSynced) printf("PTB-DEBUG: Hardware synced operation.");
-                printf(" Start of %s.\n", (capdev->syncmode & kPsychIsSyncMaster) ? "master" : "slave");
+                printf(" Start of %s%s.\n", (capdev->syncmode & kPsychIsSyncMaster) ? "master" : "slave", (capdev->syncmode & kPsychNoLockStepSync) ? " without lockstep sync" : "");
             }
 
             if (capdev->syncmode & kPsychIsHwSynced) {
