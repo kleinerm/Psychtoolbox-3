@@ -69,20 +69,6 @@ if nargin < 6
 end
 
 recordingflags = 0;
-if ~isempty(moviename)
-  % For movie recording, also enable audio recording.
-  % Note: Audio is *not* actually recorded from the DV
-  % camera, but from the systems soundcard, or whatever
-  % was selected via video recording settings.
-  % However, enabling use of audio recording seems to sometimes
-  % avoid hangs of DV recording at least on Linux on repeated
-  % sessions, so this is essentially a hack, even if no audio is
-  % needed:
-  if IsLinux
-    recordingflags = 2;
-  end
- end
- 
 screenid=max(Screen('Screens'));
 
 try
