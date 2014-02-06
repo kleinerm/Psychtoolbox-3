@@ -78,7 +78,9 @@ if ~isempty(moviename)
   % avoid hangs of DV recording at least on Linux on repeated
   % sessions, so this is essentially a hack, even if no audio is
   % needed:
-  recordingflags = 2;
+  if IsLinux
+    recordingflags = 2;
+  end
  end
  
 screenid=max(Screen('Screens'));
@@ -111,8 +113,8 @@ try
         end
         
         if IsWin
-          % This should work on MS-Windows if Matthew Edmundson is right:
-          capturebinspec = 'dshowvideosrc ! video/x-dv ! dvdemux ! dvdec name=ptbdvsource';
+          % This should work on MS-Windows, as tested with a Sony PAL-DV camera:
+          capturebinspec = 'dshowvideosrc ! dvdemux ! ffdec_dvvideo name=ptbdvsource';
         end
         
         if IsOSX
