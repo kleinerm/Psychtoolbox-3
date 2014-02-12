@@ -165,8 +165,8 @@ PsychError EyelinkImageTransfer(void)
         bmp.pixels = pReturn; 
     }
     bmp.format = (EYEPIXELFORMAT* ) PsychMallocTemp(sizeof(EYEPIXELFORMAT));
-	bmp.format->palette = (EYEPALETTE *) PsychMallocTemp(sizeof(EYEPALETTE));
-	bmp.format->palette->colors = (EYECOLOR *) PsychMallocTemp(sizeof(EYECOLOR));
+    memset(bmp.format, 0, sizeof(bmp.format));
+	
 	
 	bmp.format->Rmask = 0x000000ff;
 	bmp.format->Gmask = 0x0000ff00;
@@ -180,9 +180,7 @@ PsychError EyelinkImageTransfer(void)
 		if (BitmapBits) free(BitmapBits);
 	}
     if(bmp.format)
-	{
-		if(bmp.format->palette->colors) PsychFreeTemp(bmp.format->palette->colors);
-		if(bmp.format->palette) PsychFreeTemp(bmp.format->palette);
+	{		
 		if(bmp.format) PsychFreeTemp(bmp.format);
 	}
 
