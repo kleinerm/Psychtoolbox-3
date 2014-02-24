@@ -3740,10 +3740,9 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
         Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
         outputcount = outputcount + 1;
 
-        % ATI framebuffer devices - Does not matter, as internal clut is bypassed anyway,
-        % but this also disables output dithering on digital 10 bit panels, so we do it
-        % anyway:
-        needsIdentityCLUT = 1;
+        % ATI framebuffer devices - Not needed, as internal clut is bypassed anyway,
+        % and output dithering on digital 10 bit panels is disabled by Screen():
+        needsIdentityCLUT = 0;
     else
         % Everything else: Windows OS, or ATI FireGL/FirePro, or NVidia GPU:
 

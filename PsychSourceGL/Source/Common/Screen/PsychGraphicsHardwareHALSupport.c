@@ -363,7 +363,10 @@ psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord
 					printf("PTB-ERROR: Failed to set 10 bit framebuffer mode (LUTReg write failed).\n");
 					return(false);
 				}
-			
+
+				// Try to disable dithering on display:
+				PsychSetOutputDithering(windowRecord, screenId, 0);
+
 				// Only reconfigure framebuffer scanout if this is really our true Native10bpc hack:
 				// This is usually skipped on FireGL/FirePro GPU's as their drivers do it already...
 				if (windowRecord->specialflags & kPsychNative10bpcFBActive) {
