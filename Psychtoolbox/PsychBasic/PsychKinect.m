@@ -1,9 +1,9 @@
 function varargout = PsychKinect(varargin)
-% PsychKinect -- Control and access the Microsoft XBOX360-Kinect.
+% PsychKinect -- Control and access the Microsoft Kinect depth camera.
 %
 % This is a high level driver to allow convenient access to the Microsoft
-% XBOX-360 Kinect box. The Kinect is a depth-sensing "3D camera". The
-% Kinect consists of a standard color camera (like any standard USB webcam)
+% Kinect box. The Kinect is a depth-sensing "3D camera". The Kinect
+% consists of a standard color camera (like any standard USB webcam)
 % to capture a scene at 640x480 pixels resolution in RGB8 color with up to
 % 30 frames per second. In addition it has a depth sensor that measures the
 % distance of each "pixel" from the camera. The Kinect delivers a color
@@ -17,19 +17,17 @@ function varargout = PsychKinect(varargin)
 % PsychKinect internally uses the PsychKinectCore MEX file which actually
 % interfaces with the Kinect.
 %
-% The driver is currently supported on Microsoft Windows under GNU/Octave
-% and Matlab version 7.4 (R2007a) and later. It is also supported on
+% The driver is currently supported on Microsoft Windows under
+% Matlab version 7.4 (R2007a) and later. It is also supported on
 % GNU/Linux with Matlab or Octave and on Intel based Macintosh computers
-% under OS/X with Matlab or Octave. However, while Linux and Windows
-% support has been extensively tested, MacOS/X support is completely
-% untested due to technical difficulties and may or may not work at all.
+% under OS/X with Matlab or Octave. The driver supports all versions of
+% the Microsoft Kinect on Linux and OSX, but currently only the original
+% XBOX-360 Kinect under Microsoft Windows.
 %
 % To use this driver you need:
 % 1. A Microsoft Kinect (price tag about 150$ at December 2010).
 % 2. A interface cable to connect the Kinect to a standard USB port of a
-%    computer - sold separately or included in standalone Kinects. The
-%    Kinect was meant to connect only to the XBOX via a proprietary
-%    connector, therefore the need for a special cable.
+%    computer - sold separately or included in standalone Kinects.
 % 3. The free and open-source libfreenect + libusb libraries and drivers
 %    from the OpenKinect project (Homepage: http://www.openkinect.org )
 %
@@ -38,11 +36,6 @@ function varargout = PsychKinect(varargin)
 %
 % Type "help InstallKinect" for installation instructions and licensing
 % terms.
-%
-% This driver is early beta quality. It may contain significant bugs or
-% missing functionality. The underlying freenect libraries are also very
-% young and may contain significant bugs and limitations, so prepare for an
-% exciting but potentially bumpy ride if you want to try it.
 %
 %
 % Subfunctions:
