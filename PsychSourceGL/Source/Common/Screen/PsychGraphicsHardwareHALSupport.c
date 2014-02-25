@@ -713,10 +713,10 @@ unsigned int PsychGetNVidiaGPUType(PsychWindowRecordType* windowRecord)
             card_type = 0x50;
             break;
         case 0xc0:
-        case 0xd0:
             // Fermi: GeForce G400/500 series:
             card_type = 0xc0;
             break;
+        case 0xd0:
         case 0xe0:
         case 0xf0:
             // Kepler: GeForce G600+ series: Up to 4 CRTC's.
