@@ -491,7 +491,7 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
 
 	int headiter, headid, screenId;
-	unsigned int ctlreg;
+	unsigned int ctlreg, lutreg, val1, val2;
 	int gpuMaintype, gpuMinortype;
 
 	// Fixup needed? Only if 10bpc mode is supposed to be active! Early exit if not:
@@ -524,12 +524,23 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
         
 	  // We're done as soon as we encounter invalid negative headid.
 	  if (headid < 0) break;
-        
+
+	  lutreg = (headid == 0) ? RADEON_D1GRPH_LUT_SEL : RADEON_D2GRPH_LUT_SEL;
 	  ctlreg = (headid == 0) ? RADEON_D1GRPH_CONTROL : RADEON_D2GRPH_CONTROL;
-        
+
+	  // Get current state of registers at high debug levels:
+	  if (PsychPrefStateGet_Verbosity() > 9) {
+	  	  val1 = PsychOSKDReadRegister(screenId, lutreg, NULL);
+	  	  val2 = PsychOSKDReadRegister(screenId, ctlreg, NULL);
+	  	  printf("PTB-DEBUG: PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(): Screen %i, head %i: LUT = %i [%i], GRPHCONT = %i [%i]\n", screenId, headid, val1 & (0x1 << 8), val1, val2 & (0x1 << 8), val2);
+	  }
+
+	  // One-liner read-modify-write op, which simply sets bit 8 of the register - the "10 bit LUT bypass" bit:
+	  PsychOSKDWriteRegister(screenId, lutreg, (0x1 << 8) | PsychOSKDReadRegister(screenId, lutreg, NULL), NULL);
+
 	  // One-liner read-modify-write op, which simply sets bit 8 of the register - the "Enable 2101010 mode" bit:
 	  PsychOSKDWriteRegister(screenId, ctlreg, (0x1 << 8) | PsychOSKDReadRegister(screenId, ctlreg, NULL), NULL);
-        
+
 	  // Debug output, if wanted:
 	  if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(): ARGB2101010 bit set on screen %i, head %i.\n", screenId, headid);
 	}
