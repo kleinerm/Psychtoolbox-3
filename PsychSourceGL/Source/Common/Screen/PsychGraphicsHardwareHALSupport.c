@@ -319,9 +319,9 @@ psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord
 	// Either screenid from windowRecord or our special -1 "all Screens" Id:
 	screenId = (windowRecord) ? windowRecord->screenNumber : -1;
 
-	// We only support Radeon GPU's with AVIVO display engine, aka DCE-1, nothing more recent:
+	// We only support Radeon GPU's with pre DCE-4 display engine, nothing more recent:
 	if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
-	    (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0x10)) {
+	    (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 0x40)) {
 	  return(FALSE);
 	}
 	
@@ -501,10 +501,10 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
 	// more generic, abstracted out for the future, but as a starter this will do:
 	screenId = windowRecord->screenNumber;
 
-	// We only support Radeon GPU's with AVIVO display engine, aka DCE-1, nothing more recent:
+	// We only support Radeon GPU's with pre DCE-4 display engine, nothing more recent:
 	if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
-	    (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0x10)) {
-	  return;
+	    (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 0x40)) {
+        return;
 	}
 
 	// This command must be called with the OpenGL context of the given windowRecord active, so
@@ -569,10 +569,10 @@ void PsychStoreGPUSurfaceAddresses(PsychWindowRecordType* windowRecord)
 	// Just need to check if GPU low-level access is supported:
 	if (!PsychOSIsKernelDriverAvailable(screenId)) return;
 
-	// We only support Radeon GPU's with AVIVO display engine, aka DCE-1, nothing more recent:
+	// We only support Radeon GPU's with pre DCE-4 display engine, nothing more recent:
 	if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
-	    (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0x10)) {
-	  return;
+	    (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 0x40)) {
+        return;
 	}
 	
 	// Driver is online: Read the registers, but only for primary crtc in a multi-crtc config:
@@ -621,10 +621,10 @@ psych_bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* window
 	// Just need to check if GPU low-level access is supported:
 	if (!PsychOSIsKernelDriverAvailable(screenId)) return(FALSE);
 
-	// We only support Radeon GPU's with AVIVO display engine, aka DCE-1, nothing more recent:
+	// We only support Radeon GPU's with pre DCE-4 display engine, nothing more recent:
 	if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
-	    (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0x10)) {
-	  return(FALSE);
+	    (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 0x40)) {
+        return(FALSE);
 	}
 	
 	// Driver is online. Enter polling loop:

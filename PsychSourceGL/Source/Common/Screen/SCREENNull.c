@@ -65,37 +65,24 @@ PsychError SCREENNull(void)
 
     #if PSYCH_SYSTEM != PSYCH_WINDOWS
         // Test GPU low-level dithering control:
-        int screenId, ditherEnable;
+        int screenId, ditherEnable, headid;
+        unsigned int value;
 		PsychCopyInIntegerArg(1, TRUE, &screenId);
 		PsychCopyInIntegerArg(2, TRUE, &ditherEnable);
 
 		if (PsychPrefStateGet_Verbosity() > 2) printf("SetDithering: ScreenId %i : DitherSetting %i.\n", screenId, ditherEnable);
-        PsychSetOutputDithering(NULL, screenId, (unsigned int) ditherEnable);
+        //PsychSetOutputDithering(NULL, screenId, (unsigned int) ditherEnable);
 
+        headid = PsychScreenToCrtcId(screenId, 0);
+        value = PsychOSKDReadRegister(screenId, (headid == 0) ? DCE3_FMT_BIT_DEPTH_CONTROL : DCE3_FMT_BIT_DEPTH_CONTROL + 0x800, NULL);
+        printf("Current value of DCE-3 bit depth control for head %i: %d\n", headid, value);
+        if (ditherEnable == 0) PsychOSKDWriteRegister(screenId, (headid == 0) ? DCE3_FMT_BIT_DEPTH_CONTROL : DCE3_FMT_BIT_DEPTH_CONTROL + 0x800, 0, NULL);
+        value = PsychOSKDReadRegister(screenId, (headid == 0) ? DCE3_FMT_BIT_DEPTH_CONTROL : DCE3_FMT_BIT_DEPTH_CONTROL + 0x800, NULL);
+        printf("New value of DCE-3 bit depth control for head %i: %d\n", headid, value);
 
-        unsigned int crtcoff[6] = { EVERGREEN_CRTC0_REGISTER_OFFSET, EVERGREEN_CRTC1_REGISTER_OFFSET, EVERGREEN_CRTC2_REGISTER_OFFSET, EVERGREEN_CRTC3_REGISTER_OFFSET, EVERGREEN_CRTC4_REGISTER_OFFSET, EVERGREEN_CRTC5_REGISTER_OFFSET };
+        value = PsychOSKDReadRegister(screenId, (headid == 0) ? DCE3_FMT_CLAMP_CONTROL : DCE3_FMT_CLAMP_CONTROL + 0x800, NULL);
+        printf("Current value of DCE-3 bit depth clamp control for head %i: %d\n", headid, value);
 
-//        printf("Pre:  AVIVO_DC_LUTA_BLACK_OFFSET_BLUE = %i\n", PsychOSKDReadRegister(screenId, AVIVO_DC_LUTA_BLACK_OFFSET_BLUE, NULL));
-/*
-        PsychOSKDWriteRegister(screenId, AVIVO_DC_LUTA_BLACK_OFFSET_BLUE + 0x0000, 0, NULL);
-        PsychOSKDWriteRegister(screenId, AVIVO_DC_LUTA_BLACK_OFFSET_GREEN + 0x0000, 0, NULL);
-        PsychOSKDWriteRegister(screenId, AVIVO_DC_LUTA_BLACK_OFFSET_RED + 0x0000, 0, NULL);
-
-        PsychOSKDWriteRegister(screenId, AVIVO_DC_LUTA_WHITE_OFFSET_BLUE + 0x0000, 0xffff, NULL);
-        PsychOSKDWriteRegister(screenId, AVIVO_DC_LUTA_WHITE_OFFSET_GREEN + 0x0000, 0xffff, NULL);
-        PsychOSKDWriteRegister(screenId, AVIVO_DC_LUTA_WHITE_OFFSET_RED + 0x0000, 0xffff, NULL);
-
-        PsychOSKDWriteRegister(screenId, AVIVO_DC_LUT_RW_INDEX, 0, NULL);        
-        for (i=0; i < 256; i++) {
-            m = i << 1;
-            PsychOSKDWriteRegister(screenId, AVIVO_DC_LUT_30_COLOR, (m << 20) | (m << 10) | (m << 0), NULL);
-        }
-*/        
-//        printf("Post: AVIVO_DC_LUTA_BLACK_OFFSET_BLUE = %i\n", PsychOSKDReadRegister(screenId, AVIVO_DC_LUTA_BLACK_OFFSET_BLUE, NULL));
-
-        for (i=0; i < 6; i++) printf("EVERGREEN_DC_LUT_BLACK_OFFSET_BLUE[%i] = %i\n", i, PsychOSKDReadRegister(screenId, EVERGREEN_DC_LUT_BLACK_OFFSET_BLUE + crtcoff[i], NULL));
-
-        
         return(PsychError_none);
     #endif
 

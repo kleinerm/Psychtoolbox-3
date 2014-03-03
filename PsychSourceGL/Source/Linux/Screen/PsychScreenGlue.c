@@ -264,6 +264,34 @@ static psych_bool isDCE4(int screenId)
 	return(isDCE4);
 }
 
+static psych_bool isDCE3(int screenId)
+{
+	psych_bool isDCE3 = false;
+
+	// RV620, RV635, RS780, RS880, RV770, RV710, RV730, RV740,
+	// aka roughly HD4330 - HD5165, HD5xxV, and some HD4000 parts.
+
+	if ((fPCIDeviceId & 0xFFF0) == 0x9440) isDCE3 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x9450) isDCE3 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x9460) isDCE3 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x9470) isDCE3 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x9480) isDCE3 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x9490) isDCE3 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x94A0) isDCE3 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x94B0) isDCE3 = true;
+
+	if ((fPCIDeviceId & 0xFFF0) == 0x9540) isDCE3 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x9550) isDCE3 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x9590) isDCE3 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x95C0) isDCE3 = true;
+
+	if ((fPCIDeviceId & 0xFFF0) == 0x9610) isDCE3 = true;
+
+	if ((fPCIDeviceId & 0xFFF0) == 0x9710) isDCE3 = true;
+    
+    return(isDCE3);
+}
+
 // Helper routine: Read a single 32 bit unsigned int hardware register at
 // offset 'offset' and return its value:
 static unsigned int ReadRegister(unsigned long offset)
@@ -553,8 +581,8 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
         }
 
 		if (fDeviceType == kPsychRadeon) {
-			// On Radeons we distinguish between Avivo (10) or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60)for now.
-			fCardType = isDCE6(screenId) ? 60 : (isDCE5(screenId) ? 50 : (isDCE4(screenId) ? 40 : 10));
+			// On Radeons we distinguish between Avivo (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60)for now.
+			fCardType = isDCE6(screenId) ? 60 : (isDCE5(screenId) ? 50 : (isDCE4(screenId) ? 40 : (isDCE3(screenId) ? 30 : 10)));
 
 			// On DCE-4 and later GPU's (Evergreen) we limit the minimum MMIO
 			// offset to the base address of the 1st CRTC register block for now:
@@ -569,7 +597,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			}
 			
 			if (PsychPrefStateGet_Verbosity() > 2) {
-				printf("PTB-INFO: Connected to %s %s GPU with %s display engine [%i heads]. Beamposition timestamping enabled.\n", pci_device_get_vendor_name(gpu), pci_device_get_device_name(gpu), (fCardType >= 40) ? (fCardType >= 60) ? "DCE-6" : ((fCardType >= 50) ? "DCE-5" : "DCE-4") : "AVIVO", fNumDisplayHeads);
+				printf("PTB-INFO: Connected to %s %s GPU with %s display engine [%i heads]. Beamposition timestamping enabled.\n", pci_device_get_vendor_name(gpu), pci_device_get_device_name(gpu), (fCardType >= 40) ? (fCardType >= 60) ? "DCE-6" : ((fCardType >= 50) ? "DCE-5" : "DCE-4") : ((fCardType >= 30) ? "DCE-3" : "AVIVO"), fNumDisplayHeads);
 				fflush(NULL);
 			}
 		}
@@ -3194,7 +3222,7 @@ int PsychOSKDGetBeamposition(int screenId)
 				if (beampos < 0) beampos = ((int) ReadRegister(EVERGREEN_CRTC_V_TOTAL + crtcoff[headId])) + beampos;
 				
 			} else {
-				// AVIVO display engine (R300 - R600 afaik): At most two display heads for dual-head gpu's.
+				// AVIVO / DCE-2 / DCE-3 display engine (R300 - R700 afaik): At most two display heads for dual-head gpu's.
 				
 				// Read raw beampostion from GPU:
 				beampos = (int) (ReadRegister((headId == 0) ? RADEON_D1CRTC_STATUS_POSITION : RADEON_D2CRTC_STATUS_POSITION) & RADEON_VBEAMPOSITION_BITMASK);
@@ -3290,7 +3318,7 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
             if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Trying to %s digital display dithering on display head %d.\n", (ditherOn) ? "enable" : "disable", headId);
             
             // Map headId to proper hardware control register offset:
-            if (isDCE4(screenId) || isDCE5(screenId)) {
+            if (isDCE4(screenId) || isDCE5(screenId) || isDCE6(screenId) || isDCE8(screenId)) {
                 // DCE-4 display engine (CEDAR and later afaik): Up to six crtc's. Map to proper
                 // register offset for this headId:
                 if (headId > ((int) fNumDisplayHeads - 1)) {
@@ -3301,6 +3329,9 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
                 
                 // Map to dither format control register for head 'headId':
                 reg = EVERGREEN_FMT_BIT_DEPTH_CONTROL + crtcoff[headId];
+            } else if (isDCE3(screenId)) {
+                // DCE-3 display engine for R700: HD4330 - HD5165, HD5xxV, and some R600's:
+                reg = (headId == 0) ? DCE3_FMT_BIT_DEPTH_CONTROL : DCE3_FMT_BIT_DEPTH_CONTROL + 0x800;
             } else {
                 // AVIVO display engine (R300 - R600 afaik): At most two display heads for dual-head gpu's.
                 if (headId > 1) {

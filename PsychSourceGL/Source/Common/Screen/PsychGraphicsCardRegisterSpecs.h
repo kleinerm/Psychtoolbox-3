@@ -223,6 +223,10 @@
 #define AVIVO_DC_LUT_WRITE_EN_MASK              0x649c
 #define AVIVO_DC_LUT_AUTOFILL                   0x64a0
 
+// DCE-3 display engine (R700, roughly HD-4000 series):
+#define DCE3_FMT_BIT_DEPTH_CONTROL              0x6710
+#define DCE3_FMT_CLAMP_CONTROL                  0x672c
+
 // Evergreen class hardware (DCE-4 display engine):
 #define EVERGREEN_DC_LUT_RW_MODE                        0x69e0
 #define EVERGREEN_DC_LUT_RW_INDEX                       0x69e4
