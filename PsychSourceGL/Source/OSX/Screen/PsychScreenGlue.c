@@ -1095,9 +1095,9 @@ void InitPsychtoolboxKernelDriverInterface(void)
             // Query driver revision: We disconnect and don't use the driver if it
             // doesn't provide the required minimum revision number for its API:
             revision = (int) PsychOSKDGetRevision(connect);
-            if (revision < 0) {
+            if (revision < 1) {
                 printf("PTB-ERROR: The currently loaded PsychtoolboxKernelDriver.kext is outdated!\n");
-                printf("PTB-ERROR: Its revision number is %i, but we require a minimum revision of 0.\n", revision);
+                printf("PTB-ERROR: Its revision number is %i, but we require a minimum revision of 1.\n", revision);
                 printf("PTB-ERROR: Please uninstall the current driver and reinstall the latest one delivered\n");
                 printf("PTB-ERROR: with your Psychtoolbox (see 'help PsychtoolboxKernelDriver').\n");
                 printf("PTB-ERROR: Driver support disabled for now, special functions not available.\n");

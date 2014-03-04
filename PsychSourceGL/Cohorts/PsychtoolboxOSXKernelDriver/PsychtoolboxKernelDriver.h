@@ -43,7 +43,7 @@
 #endif
 
 // PTB driver revision:
-#define PTBKDRevision 0
+#define PTBKDRevision 1
 
 struct PsychKDCommandStruct;
 

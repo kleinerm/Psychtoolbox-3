@@ -646,8 +646,8 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 
 	// We should be ready...
 	IOLog("\n");
-	IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.8 (Revision %d) for ATI/AMD/NVidia/Intel GPU's ready for use!\n", getName(), PTBKDRevision);
-	IOLog("%s: This driver is copyright 2008 - 2013 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
+	IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.9 (Revision %d) for ATI/AMD/NVidia/Intel GPU's ready for use!\n", getName(), PTBKDRevision);
+	IOLog("%s: This driver is copyright 2008 - 2014 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
 	IOLog("%s: The driver is licensed to you under the MIT free and open-source software license.\n", getName());
 	IOLog("%s: See the file License.txt in the Psychtoolbox root installation folder for details.\n", getName());
 	IOLog("%s: The driver contains bits of code derived from the free software nouveau and radeon kms drivers on Linux.\n", getName());
@@ -1083,20 +1083,45 @@ void PsychtoolboxKernelDriver::SetDitherMode(UInt32 headId, UInt32 ditherOn)
             // DCE-3 display engine for R700: HD4330 - HD5165, HD5xxV, and some R600's:
             reg = (headId == 0) ? DCE3_FMT_BIT_DEPTH_CONTROL : DCE3_FMT_BIT_DEPTH_CONTROL + 0x800;
         } else {
-            // AVIVO display engine (R300 - R600 afaik): At most two display heads for dual-head gpu's.
-            if (headId > 1) {
-                IOLog("%s: SetDitherMode: INFO! Special headId %d outside valid dualhead range 0-1 provided. Will control LVDS dithering.\n", getName(), headId);
-                headId = 0;
+            // AVIVO / DCE-1 / DCE-2 display engine (R300 - R600 afaik): At most two display heads for dual-head gpu's.
+            
+            // These have a weird wiring of encoders/transmitters to output connectors with no simple 1:1 correspondence
+            // between crtc's and encoders. We need to probe each encoder block if it is enabled and sourcing from our headId,
+            // respective its corresponding crtc to find which encoder block needs to be configured wrt. dithering on this
+            // display headId:
+            reg = 0x0;
+            
+            // TMDSA block enabled, and driven by headId? Then we control its encoder:
+            if ((ReadRegister(0x7880) & 0x1) && ((ReadRegister(0x7884) & 0x1) == headId)) reg = RADEON_TMDSA_BIT_DEPTH_CONTROL;
+            
+            // LVTMA block enabled, and driven by headId? Then we control its encoder:
+            if ((ReadRegister(0x7A80) & 0x1) && ((ReadRegister(0x7A84) & 0x1) == headId)) reg = RADEON_LVTMA_BIT_DEPTH_CONTROL;
+            
+            // DVOA block enabled, and driven by headId? Then we control its encoder:
+            if ((ReadRegister(0x7980) & 0x1) && ((ReadRegister(0x7984) & 0x1) == headId)) reg = RADEON_DVOA_BIT_DEPTH_CONTROL;
+            
+            // If no digital encoder block was assigned, then this likely means we're connected to a
+            // analog VGA monitor driven by the DAC. The DAC doesn't have dithering ever, so we are
+            // done with a simple no-op:
+            if (reg == 0x0) {
+                IOLog("%s: SetDitherMode: Head %i connected to analog VGA DAC. Dithering control skipped.\n", getName(), headId);
+                return;
             }
             else {
-                IOLog("%s: SetDitherMode: INFO! headId %d in valid dualhead range 0-1 provided. Will control TMDS (DVI et al.) dithering.\n", getName(), headId);
-                headId = 1;
+                switch (reg) {
+                    case RADEON_TMDSA_BIT_DEPTH_CONTROL:
+                        IOLog("%s: SetDitherMode: Head %i connected to TMDSA block.\n", getName(), headId);
+                        break;
+                        
+                    case RADEON_LVTMA_BIT_DEPTH_CONTROL:
+                        IOLog("%s: SetDitherMode: Head %i connected to LVTMA block.\n", getName(), headId);
+                        break;
+                        
+                    case RADEON_DVOA_BIT_DEPTH_CONTROL:
+                        IOLog("%s: SetDitherMode: Head %i connected to DVOA block.\n", getName(), headId);
+                        break;
+                }
             }
-            
-            // On AVIVO we can't control dithering per display head. Instead there's one global switch
-            // for LVDS connected displays (LVTMA) aka internal flat panels, e.g., of Laptops, and
-            // on global switch for "all things DVI-D", aka TMDSA:
-            reg = (headId == 0) ? RADEON_LVTMA_BIT_DEPTH_CONTROL : RADEON_TMDSA_BIT_DEPTH_CONTROL;
         }
 
         // Perform actual enable/disable/reconfigure sequence for target encoder/head:
