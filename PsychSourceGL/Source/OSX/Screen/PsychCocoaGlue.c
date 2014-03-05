@@ -75,7 +75,7 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
         windowStyle = NSBorderlessWindowMask;
     }
 
-    cocoaWindow = [[NSWindow alloc] initWithContentRect:windowRect styleMask:windowStyle backing:NSBackingStoreBuffered defer:false];
+    cocoaWindow = [[NSWindow alloc] initWithContentRect:windowRect styleMask:windowStyle backing:NSBackingStoreBuffered defer:YES];
     if (cocoaWindow == nil) {
         printf("PTB-ERROR:PsychCocoaCreateWindow(): Could not create Cocoa-Window!\n");
         // Return failure:

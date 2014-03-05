@@ -94,7 +94,7 @@ PsychError SCREENOpenWindow(void)
     int						screenNumber, numWindowBuffers, stereomode, multiSample, imagingmode, specialflags;
     PsychRectType 			rect, screenrect, clientRect;
     PsychColorType			color;
-    psych_bool				isArgThere, didWindowOpen, useAGL;
+    psych_bool				isArgThere, didWindowOpen, dontCaptureScreen;
     PsychScreenSettingsType	screenSettings;
     PsychWindowRecordType	*windowRecord;
     PsychDepthType			specifiedDepth, possibleDepths, currentDepth, useDepth;
@@ -178,11 +178,10 @@ PsychError SCREENOpenWindow(void)
     if (IsPsychRectEmpty(rect)) PsychErrorExitMsg(PsychError_user, "OpenWindow called with invalid (empty) rect argument.");
 
 	if (PSYCH_SYSTEM == PSYCH_OSX) {
-		// OS/X system: Need to decide if we use a Carbon window + AGL
-		// or a fullscreen context with CGL:
+		// OS/X system: Need to decide if we use desktop composition or not:
 		
-		// Default to AGL, switch to CGL if below constraints are met:
-		useAGL = TRUE;
+		// Default to not capturing the display, capture it if below constraints are met:
+		dontCaptureScreen = TRUE;
 	
 		// Window rect provided which has a different size than screen?
 
@@ -190,21 +189,20 @@ PsychError SCREENOpenWindow(void)
 		// matches the target screens rectangle (and therefore its exact size)
 		// or its screens global rectangle.
 		PsychGetScreenRect(screenNumber, screenrect);
-		if (PsychMatchRect(screenrect, rect)) useAGL=FALSE;
+		if (PsychMatchRect(screenrect, rect)) dontCaptureScreen=FALSE;
 		PsychGetGlobalScreenRect(screenNumber, screenrect);
-		if (PsychMatchRect(screenrect, rect)) useAGL=FALSE;
+		if (PsychMatchRect(screenrect, rect)) dontCaptureScreen=FALSE;
 
-		// Override for use with Quartz compositor: Must not capture/release screen, therefore
-        // set useAGL = true to prevent screen capture/release:
+		// Override for use with Quartz compositor and/or Cocoa: Must not capture/release screen, therefore
+        // set dontCaptureScreen = true to prevent screen capture/release:
 		if ((PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLCompositorForFullscreenWindows) ||
-            (PsychPrefStateGet_WindowShieldingLevel() < 2000) ||
-            (PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLForFullscreenWindows)) {
-            useAGL = TRUE;
+            (PsychPrefStateGet_WindowShieldingLevel() < 2000)) {
+            dontCaptureScreen = TRUE;
         }
 	}
 	else {
-		// Non OS/X system: Do not use AGL ;-)
-		useAGL = FALSE;
+		// Non OS/X system: Always capture display.
+		dontCaptureScreen = FALSE;
 	}
 	
     //find the number of specified buffers. 
@@ -276,7 +274,7 @@ PsychError SCREENOpenWindow(void)
     // Here is where all the work goes on:
 
     // If the screen is not already captured then to that:
-    if(!PsychIsScreenCaptured(screenNumber) && !useAGL) {
+    if(!PsychIsScreenCaptured(screenNumber) && !dontCaptureScreen) {
         PsychCaptureScreen(screenNumber);
     }
 
@@ -320,7 +318,7 @@ PsychError SCREENOpenWindow(void)
 	// within the imaging pipeline with multisampled drawbuffer FBO's...
     didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect, ((imagingmode==0 || imagingmode==kPsychNeedFastOffscreenWindows) ? multiSample : 0), sharedContextWindow, specialflags);
     if (!didWindowOpen) {
-        if (!useAGL) {
+        if (!dontCaptureScreen) {
 			PsychRestoreScreenSettings(screenNumber);
 			PsychReleaseScreen(screenNumber);
 		}

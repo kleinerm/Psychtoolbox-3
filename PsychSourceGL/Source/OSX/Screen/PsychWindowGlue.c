@@ -263,6 +263,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     psych_bool                      useCocoa;
     void*                           cocoaWindow = NULL;
 
+    // Map screen number to physical display handle cgDisplayID:
+    PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenSettings->screenNumber);
+    displayMask = CGDisplayIDToOpenGLDisplayMask(cgDisplayID);
+
     // Query OS/X version:
 	Gestalt(gestaltSystemVersionMajor, &osMajor);
 	Gestalt(gestaltSystemVersionMinor, &osMinor);
@@ -310,7 +314,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         
         if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_Verbosity() > 2)) {
             printf("PTB-INFO: Usercode requests use of Cocoa for this fullscreen window via kPsychUseAGLForFullscreenWindows conserveVRAM setting.\n");
-            printf("PTB-INFO: Presentation timing may suffer, depending on operating system and specific setup.\n");
+            printf("PTB-INFO: Presentation timing accuracy may suffer and timestamps may be unreliable, depending on operating system version and specific setup.\n");
         }
     }
 
@@ -339,7 +343,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		PsychPrefStateSet_VBLTimestampingMode(-1);
 		
 		// Warn user about what's going on:
-		if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Using desktop compositor for composited onscreen window creation: High precision timestamping disabled,\nvisual stimulus onset timing may be very unreliable!!\n");		
+		if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Using desktop compositor for composited onscreen window creation: High precision timestamping disabled,\nvisual stimulus onset timing and timestamping may be very unreliable on all windows!!\n");
 	}
 
 	// Do we need to use Cocoa, possibly in windowed mode?
@@ -376,6 +380,12 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		// A level of -2 would leave this to the system:
 		if (windowLevel > 0 && windowLevel < 1000) PsychCocoaSetWindowLevel(cocoaWindow, windowLevel);
 
+        // Is the target display captured for a fullscreen window?
+        if (PsychIsScreenCaptured(screenSettings->screenNumber)) {
+            // Yes. Make sure our window is above the shielding window level:
+            PsychCocoaSetWindowLevel(cocoaWindow, (int) CGShieldingWindowLevel());
+        }
+
 		// Store window handle in windowRecord:
 		windowRecord->targetSpecific.windowHandle = cocoaWindow;
 		
@@ -386,17 +396,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	}
 	else {
 		// No. Standard CGL setup for fullscreen single display windows:
-		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Using low-level, non-composited CGL for fullscreen onscreen window creation...\n");
+		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Trying to use low-level, non-composited CGL for fullscreen onscreen window creation...\n");
 		
 		// Copy absolute screen location and area of window to 'globalrect',
 		// so functions like Screen('GlobalRect') can still query the real
 		// bounding gox of a window onscreen:
 		PsychGetGlobalScreenRect(screenSettings->screenNumber, windowRecord->globalrect);
 	}
-
-    // Map screen number to physical display handle cgDisplayID:
-    PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenSettings->screenNumber);
-    displayMask = CGDisplayIDToOpenGLDisplayMask(cgDisplayID);
 
     // Define pixelformat attributes for OpenGL contexts:
     
