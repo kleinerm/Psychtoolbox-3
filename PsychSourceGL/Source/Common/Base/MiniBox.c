@@ -154,11 +154,15 @@ psych_int64 maxInt(psych_int64 a, psych_int64 b)
     isIntegerInDouble(double *value)
     
     If the value stored in the specified double does not have a fractional part an the value is within
-    the bounds of the integet type then return TRUE.
+    the bounds of the signed/unsigned integer type then return TRUE.
+    We allow to store 32-Bit unsigned int values inside 32-Bit signed int's for this validation,
+    so uint32's can be passed, e.g., via PsychCopyInIntegerArg(). They would wrap to negative in
+    the returned int32 if they exceed +INT_MAX, but allowing to cast forward and backward between
+    uint32 and int32 has value for access to some hardware api's, e.g., forum message #17256.
 */
 psych_bool PsychIsIntegerInDouble(double *value)
 {
-    return(*value >= INT_MIN && *value <= INT_MAX && floor(*value) == *value); 
+    return((*value >= INT_MIN) && (*value <= (double) 0xffffffff) && (floor(*value) == *value));
 }
 
 /* Check if it is a 64 bit integer (psych_int64) packed into a double:

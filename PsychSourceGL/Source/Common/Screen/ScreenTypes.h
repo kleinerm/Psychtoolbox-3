@@ -201,12 +201,12 @@ typedef struct {
 // queries, regardless if the automatic test detects problems or not:
 #define kPsychUseBeampositionQueryWorkaround 4096
 
-// On OS/X, enforce use of AGL API for GL context setup insted of CGL API, even
+// On OS/X, enforce use of Cocoa/NSOpenGL API for GL context setup insted of CGL API, even
 // if the requested window is a fullscreen window:
 #define kPsychUseAGLForFullscreenWindows 8192
 
-// On OS/X enforce use of regular composited Quartz windows for fullscreen
-// displays via AGL, instead of AGL or CGL fullscreen contexts. On Windows Vista
+// On OS/X enforce use of regular Quartz composited windows for fullscreen
+// displays via Cocoa, instead of Cocoa or CGL fullscreen contexts. On Windows Vista
 // and later it will also enforce use of the DWM. A future version may enforce
 // use of Compiz on Linux as well:
 #define kPsychUseAGLCompositorForFullscreenWindows 16384

@@ -121,22 +121,25 @@ PsychError SCREENLoadNormalizedGammaTable(void)
     if (!PsychAllocInDoubleMatArg(2, FALSE, &inM,  &inN, &inP, &inTable)) {
         // Special case: Allow passing in an empty gamma table argument. This
         // triggers auto-load of identity LUT and setup of GPU for identity passthrough:
-        inM = 0; inN = 3; inP = 1;
+        inM = 0; inN = 0; inP = 0;
     }
-
-    // Sanity check dimensions:
-    if((inN != 3) || (inP != 1)) PsychErrorExitMsg(PsychError_user, "The gamma table must have 3 columns (Red, Green, Blue).");
 	
-    // Identity passthrouh setup requested?
-    if (inM == 0) {
+    // Identity passthrouh setup requested? Empty LUT [] or LUT == -1 loads identity LUT and disables
+    // colorspace conversions et al. Empty LUT [] also disables dithering, whereas LUT == -1 keeps
+    // dithering untouched:
+    if ((inM == 0 && inN == 0 && inP == 0) || (inM == 1 && inN == 1 && inP == 1 && inTable[0] < 0)) {
         // Yes. Try to enable it, return its status code:
         PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
-        i = PsychSetGPUIdentityPassthrough(windowRecord, screenNumber, TRUE);
+        i = PsychSetGPUIdentityPassthrough(windowRecord, screenNumber, TRUE, (inM == 0) ? TRUE : FALSE);
         PsychCopyOutDoubleArg(1, FALSE, (double) i);
         
         // Done.
         return(PsychError_none);
     }
+    else if (inM < 1) PsychErrorExitMsg(PsychError_user, "The gamma table must have at least one row.");
+
+    // Sanity check dimensions:
+    if((inN != 3) || (inP != 1)) PsychErrorExitMsg(PsychError_user, "The gamma table must have 3 columns (Red, Green, Blue).");
 
 	#if PSYCH_SYSTEM != PSYCH_WINDOWS
 		// OS-X and Linux allow tables with other than 256 slots:
@@ -148,7 +151,7 @@ PsychError SCREENLoadNormalizedGammaTable(void)
 		// On Linux we need to interpolate ourselves on non-matching table sizes.
 	#else
 		// Windows requires 256 slots:
-		if((inM != 256) && (inM != 0)) {
+		if(inM != 256) {
 			PsychErrorExitMsg(PsychError_user, "The gamma table must have 256 rows.");
 		}
 	#endif

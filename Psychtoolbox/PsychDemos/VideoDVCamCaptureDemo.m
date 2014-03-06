@@ -69,18 +69,6 @@ if nargin < 6
 end
 
 recordingflags = 0;
-if ~isempty(moviename)
-  % For movie recording, also enable audio recording.
-  % Note: Audio is *not* actually recorded from the DV
-  % camera, but from the systems soundcard, or whatever
-  % was selected via video recording settings.
-  % However, enabling use of audio recording seems to sometimes
-  % avoid hangs of DV recording at least on Linux on repeated
-  % sessions, so this is essentially a hack, even if no audio is
-  % needed:
-  recordingflags = 2;
- end
- 
 screenid=max(Screen('Screens'));
 
 try
@@ -111,8 +99,8 @@ try
         end
         
         if IsWin
-          % This should work on MS-Windows if Matthew Edmundson is right:
-          capturebinspec = 'dshowvideosrc ! video/x-dv ! dvdemux ! dvdec name=ptbdvsource';
+          % This should work on MS-Windows, as tested with a Sony PAL-DV camera:
+          capturebinspec = 'dshowvideosrc ! dvdemux ! ffdec_dvvideo name=ptbdvsource';
         end
         
         if IsOSX

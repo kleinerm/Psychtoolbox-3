@@ -184,9 +184,9 @@
 #define RADEON_D1GRPH_CONTROL	0x6104
 #define RADEON_D2GRPH_CONTROL	0x6904
 
-// These registers control output bit depths over the TDMS (DVI-Digital) and
-// LVDS (internal flat panel drivers) emitters, as well as the method to reduce
-// the bit depths in a visually pleasing way if reduction is enabled.
+// These registers control output bit depths over TMDS, LVTM, DVO emitters,
+// as well as the method to reduce the bit depths in a visually pleasing way
+// if reduction is enabled.
 // Writing all zero (0x0) will disable reduction, ie., output a 24bpp, 8bpc
 // stream. Available methods of reduction are:
 // a) Truncation: Cutting off least significant bits (Enable by setting bit 0),
@@ -196,14 +196,9 @@
 // either 18 bpp (bits cleared) or 24 bpp (bits sets).
 // There are more higher order bits for controlling exact operation of temporal
 // dithering...
-// TODO CHECK: If there is only one control for TDMS, does this mean that the
-// same method of dithering/reduction always applies to both DVI ports on a
-// dual-head card? That would probably mean that the achievable bit depths
-// of a DVI connected device is always the one of the least capable of two
-// connected displays (e.g., A) Bits++, B) Cheap 18bpp panel --> Output 18 bpp
-// screwup for Bits++)???
-#define RADEON_LVTMA_BIT_DEPTH_CONTROL	0x7A94
-#define RADEON_TMDSA_BIT_DEPTH_CONTROL	0x7894
+#define RADEON_LVTMA_BIT_DEPTH_CONTROL  0x7A94
+#define RADEON_TMDSA_BIT_DEPTH_CONTROL  0x7894
+#define RADEON_DVOA_BIT_DEPTH_CONTROL   0x7988
 
 #define AVIVO_DC_LUTA_CONTROL                   0x64C0
 #define AVIVO_DC_LUTA_BLACK_OFFSET_BLUE         0x64c4
@@ -222,6 +217,10 @@
 #define AVIVO_DC_LUT_READ_PIPE_SELECT           0x6498
 #define AVIVO_DC_LUT_WRITE_EN_MASK              0x649c
 #define AVIVO_DC_LUT_AUTOFILL                   0x64a0
+
+// DCE-3 display engine (R700, roughly HD-4000 series):
+#define DCE3_FMT_BIT_DEPTH_CONTROL              0x6710
+#define DCE3_FMT_CLAMP_CONTROL                  0x672c
 
 // Evergreen class hardware (DCE-4 display engine):
 #define EVERGREEN_DC_LUT_RW_MODE                        0x69e0

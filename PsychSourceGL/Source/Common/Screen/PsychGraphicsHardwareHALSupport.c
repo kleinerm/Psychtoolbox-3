@@ -159,6 +159,7 @@ psych_bool  PsychSetOutputDithering(PsychWindowRecordType* windowRecord, int scr
  * 'screenId'       ... is used to determine the screenId for the screen. Otherwise 'screenId' is ignored.
  * 'passthroughEnable' Zero = Disable passthrough: Currently only reenables dithering, otherwise a no-op. 
  *                     1 = Enable passthrough, if possible.
+ * 'changeDithering' FALSE = Don't touch dither control, TRUE = Control dithering enable/disable if possible.
  *
  * Returns:
  *
@@ -169,7 +170,7 @@ psych_bool  PsychSetOutputDithering(PsychWindowRecordType* windowRecord, int scr
  * 2 = On full success, as far as can be determined by software.
  *
  */
-unsigned int PsychSetGPUIdentityPassthrough(PsychWindowRecordType* windowRecord, int screenId, psych_bool passthroughEnable)
+unsigned int PsychSetGPUIdentityPassthrough(PsychWindowRecordType* windowRecord, int screenId, psych_bool passthroughEnable, psych_bool changeDithering)
 {
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
     unsigned int rc, rcret;
@@ -191,7 +192,7 @@ unsigned int PsychSetGPUIdentityPassthrough(PsychWindowRecordType* windowRecord,
     }
     
     // Try to enable or disable dithering on display:
-    PsychSetOutputDithering(windowRecord, screenId, (passthroughEnable) ? 0 : 1);
+    if (changeDithering) PsychSetOutputDithering(windowRecord, screenId, (passthroughEnable) ? 0 : 1);
     
     // We're done if this an actual passthrough disable, as a full disable isn't yet implemented:
     if (!passthroughEnable) return(0);
@@ -319,9 +320,9 @@ psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord
 	// Either screenid from windowRecord or our special -1 "all Screens" Id:
 	screenId = (windowRecord) ? windowRecord->screenNumber : -1;
 
-	// We only support Radeon GPU's with AVIVO display engine, aka DCE-1, nothing more recent:
+	// We only support Radeon GPU's with pre DCE-4 display engine, nothing more recent:
 	if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
-	    (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0x10)) {
+	    (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 0x40)) {
 	  return(FALSE);
 	}
 	
@@ -363,7 +364,7 @@ psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord
 					printf("PTB-ERROR: Failed to set 10 bit framebuffer mode (LUTReg write failed).\n");
 					return(false);
 				}
-			
+
 				// Only reconfigure framebuffer scanout if this is really our true Native10bpc hack:
 				// This is usually skipped on FireGL/FirePro GPU's as their drivers do it already...
 				if (windowRecord->specialflags & kPsychNative10bpcFBActive) {
@@ -488,7 +489,7 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
 
 	int headiter, headid, screenId;
-	unsigned int ctlreg;
+	unsigned int ctlreg, lutreg, val1, val2;
 	int gpuMaintype, gpuMinortype;
 
 	// Fixup needed? Only if 10bpc mode is supposed to be active! Early exit if not:
@@ -498,10 +499,10 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
 	// more generic, abstracted out for the future, but as a starter this will do:
 	screenId = windowRecord->screenNumber;
 
-	// We only support Radeon GPU's with AVIVO display engine, aka DCE-1, nothing more recent:
+	// We only support Radeon GPU's with pre DCE-4 display engine, nothing more recent:
 	if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
-	    (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0x10)) {
-	  return;
+	    (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 0x40)) {
+        return;
 	}
 
 	// This command must be called with the OpenGL context of the given windowRecord active, so
@@ -521,12 +522,23 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
         
 	  // We're done as soon as we encounter invalid negative headid.
 	  if (headid < 0) break;
-        
+
+	  lutreg = (headid == 0) ? RADEON_D1GRPH_LUT_SEL : RADEON_D2GRPH_LUT_SEL;
 	  ctlreg = (headid == 0) ? RADEON_D1GRPH_CONTROL : RADEON_D2GRPH_CONTROL;
-        
+
+	  // Get current state of registers at high debug levels:
+	  if (PsychPrefStateGet_Verbosity() > 9) {
+	  	  val1 = PsychOSKDReadRegister(screenId, lutreg, NULL);
+	  	  val2 = PsychOSKDReadRegister(screenId, ctlreg, NULL);
+	  	  printf("PTB-DEBUG: PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(): Screen %i, head %i: LUT = %i [%i], GRPHCONT = %i [%i]\n", screenId, headid, val1 & (0x1 << 8), val1, val2 & (0x1 << 8), val2);
+	  }
+
+	  // One-liner read-modify-write op, which simply sets bit 8 of the register - the "10 bit LUT bypass" bit:
+	  PsychOSKDWriteRegister(screenId, lutreg, (0x1 << 8) | PsychOSKDReadRegister(screenId, lutreg, NULL), NULL);
+
 	  // One-liner read-modify-write op, which simply sets bit 8 of the register - the "Enable 2101010 mode" bit:
 	  PsychOSKDWriteRegister(screenId, ctlreg, (0x1 << 8) | PsychOSKDReadRegister(screenId, ctlreg, NULL), NULL);
-        
+
 	  // Debug output, if wanted:
 	  if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(): ARGB2101010 bit set on screen %i, head %i.\n", screenId, headid);
 	}
@@ -555,10 +567,10 @@ void PsychStoreGPUSurfaceAddresses(PsychWindowRecordType* windowRecord)
 	// Just need to check if GPU low-level access is supported:
 	if (!PsychOSIsKernelDriverAvailable(screenId)) return;
 
-	// We only support Radeon GPU's with AVIVO display engine, aka DCE-1, nothing more recent:
+	// We only support Radeon GPU's with pre DCE-4 display engine, nothing more recent:
 	if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
-	    (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0x10)) {
-	  return;
+	    (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 0x40)) {
+        return;
 	}
 	
 	// Driver is online: Read the registers, but only for primary crtc in a multi-crtc config:
@@ -607,10 +619,10 @@ psych_bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* window
 	// Just need to check if GPU low-level access is supported:
 	if (!PsychOSIsKernelDriverAvailable(screenId)) return(FALSE);
 
-	// We only support Radeon GPU's with AVIVO display engine, aka DCE-1, nothing more recent:
+	// We only support Radeon GPU's with pre DCE-4 display engine, nothing more recent:
 	if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
-	    (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0x10)) {
-	  return(FALSE);
+	    (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 0x40)) {
+        return(FALSE);
 	}
 	
 	// Driver is online. Enter polling loop:
@@ -713,8 +725,10 @@ unsigned int PsychGetNVidiaGPUType(PsychWindowRecordType* windowRecord)
             // Fermi: GeForce G400/500 series:
             card_type = 0xc0;
             break;
+        case 0xd0:
         case 0xe0:
-            // Kepler: GeForce G600+ series:
+        case 0xf0:
+            // Kepler: GeForce G600+ series: Up to 4 CRTC's.
             card_type = 0xe0;
             break;
         default:
@@ -959,8 +973,28 @@ void PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal)
 			strstr((char*) glGetString(GL_RENDERER), "NVIDIA") || strstr((char*) glGetString(GL_RENDERER), "nouveau")) &&
 			PsychOSIsKernelDriverAvailable(screenId)) {
 
-			// Need to read different regs for NV-50 and later:
-			if ((PsychGetNVidiaGPUType(NULL) >= 0x50) || (PsychGetNVidiaGPUType(NULL) == 0x0)) {
+			// Need to read different regs, depending on GPU generation:
+			if ((PsychGetNVidiaGPUType(NULL) >= 0xe0) || (PsychGetNVidiaGPUType(NULL) == 0x0)) {
+				// Auto-Detection. Read values directly from NV-E0 "Kepler" class and later hardware:
+				//
+                #if PSYCH_SYSTEM != PSYCH_WINDOWS
+                // VBLANKE end line of vertical blank - smaller than VBLANKS. Subtract VBLANKE + 1 to normalize to "scanline zero is start of active scanout":
+				vblbias = (int) ((PsychOSKDReadRegister(crtcid, 0x64041c + (crtcid * 0x300), NULL) >> 16) & 0xFFFF) + 1;
+                
+				// DISPLAY_TOTAL: Encodes VTOTAL in high-word, HTOTAL in low-word. Get the VTOTAL in high word:
+				vbltotal = (int) ((PsychOSKDReadRegister(crtcid, 0x640414 + (crtcid * 0x300), NULL) >> 16) & 0xFFFF);
+                
+                // Decode VBL_START and VBL_END and VACTIVE for debug purposes:
+                if (PsychPrefStateGet_Verbosity() > 5) {
+                    unsigned int vbl_start, vbl_end, vactive;
+                    vbl_start = (int) ((PsychOSKDReadRegister(crtcid, 0x640420 + (crtcid * 0x540), NULL) >> 16) & 0xFFFF);
+                    vbl_end   = (int) ((PsychOSKDReadRegister(crtcid, 0x64041c + (crtcid * 0x540), NULL) >> 16) & 0xFFFF);
+                    vactive   = (int) ((PsychOSKDReadRegister(crtcid, 0x640414 + (crtcid * 0x540), NULL) >> 16) & 0xFFFF);
+                    printf("PTB-DEBUG: Screen %i [head %i]: vbl_start = %i  vbl_end = %i  vactive = %i.\n", screenId, crtcid, (int) vbl_start, (int) vbl_end, (int) vactive);
+                }
+                #endif
+            }
+            else if (PsychGetNVidiaGPUType(NULL) >= 0x50) {
 				// Auto-Detection. Read values directly from NV-50 class and later hardware:
 				//
 				// SYNC_START_TO_BLANK_END 16 bit high-word in CRTC_VAL block of NV50_PDISPLAY on NV-50 encodes
@@ -974,6 +1008,15 @@ void PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal)
 
 				// DISPLAY_TOTAL: Encodes VTOTAL in high-word, HTOTAL in low-word. Get the VTOTAL in high word:
 				vbltotal = (int) ((PsychOSKDReadRegister(crtcid, 0x610000 + 0xa00 + 0xf8 + (crtcid * 0x540), NULL) >> 16) & 0xFFFF);
+                
+                // Decode VBL_START and VBL_END and VACTIVE for debug purposes:
+                if (PsychPrefStateGet_Verbosity() > 5) {
+                    unsigned int vbl_start, vbl_end, vactive;
+                    vbl_start = (int) ((PsychOSKDReadRegister(crtcid, 0x610af4 + (crtcid * 0x540), NULL) >> 16) & 0xFFFF);
+                    vbl_end   = (int) ((PsychOSKDReadRegister(crtcid, 0x610aec + (crtcid * 0x540), NULL) >> 16) & 0xFFFF);
+                    vactive   = (int) ((PsychOSKDReadRegister(crtcid, 0x610afc + (crtcid * 0x540), NULL) >> 16) & 0xFFFF);
+                    printf("PTB-DEBUG: Screen %i [head %i]: vbl_start = %i  vbl_end = %i  vactive = %i.\n", screenId, crtcid, (int) vbl_start, (int) vbl_end, (int) vactive);
+                }
 				#endif
 			} else {
 				// Auto-Detection. Read values directly from pre-NV-50 class hardware:

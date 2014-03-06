@@ -32,7 +32,7 @@ function rc = PsychCamSettings(cmd, grabber, varargin)
 % units.
 %
 % Currently known cameras: Basler A602f grayscale firewire camera. Unibrain Fire-i
-% firewire camera.
+% firewire camera. Basler A312fc, AVT Marlin F033.
 %
 % Parameters and their meaning:
 %
@@ -136,6 +136,7 @@ function rc = PsychCamSettings(cmd, grabber, varargin)
 % History:
 % 20.06.2006 Written (MK).
 % 25.12.2013 Updated for support of Basler A312fc and more parameters.
+% 07.02.2014 Add support for AVT Marlin F033.
 
 if nargin < 1 || isempty(cmd)
    error('No subcommand specified!');
@@ -165,10 +166,17 @@ else
 end
 
 % Check for Basler A312fc...
-if ~isempty(strfind(vendor, 'Basler')) && ~isempty(strfind(model, 'A312fc'))
+if ~isempty(strfind(vendor, 'Basler')) && ~isempty(strfind(model, 'A312f'))
    IsA312fc = 1;
 else
    IsA312fc = 0;
+end
+
+% Check for AVT Marlin F033...
+if ~isempty(strfind(vendor, 'AVT')) && ~isempty(strfind(model, 'Marlin F033'))
+   IsMarlinF033 = 1;
+else
+   IsMarlinF033 = 0;
 end
 
 if strcmp(cmd, 'GetVendor')
@@ -183,7 +191,7 @@ end
 
 if strcmp(cmd, 'IsKnownCamera')
      % Return 1, if this camera is known to the script.
-     rc = IsFirei || IsA602f || IsA312fc;
+     rc = IsFirei || IsA602f || IsA312fc || IsMarlinF033;
      return;
 end
 
@@ -261,7 +269,28 @@ if strcmp(cmd, 'EstimateLatency')
             t_transdelay = (readout_time - t_transmission) + 0.000125;
         end
      end
-     
+
+     if IsMarlinF033
+        % Exposure can be queried.
+        t_exposure = DoMarlinF033CamExposureTime(grabber, []) / 1000.0;
+
+        % Transmission delay depends on relative duration of transmission time and
+        % sensor readout time. It is calculated as ROIheight * 27.1 microseconds
+        % + 98.5 usecs + 3.45 usecs * nonROIheight:
+        aoiheight = RectHeight(Screen('SetVideoCaptureParameter', grabber, 'GetROI'));
+        readout_time = aoiheight * 0.0000271 + 0.0000985;
+        readout_time = readout_time + 0.00000345 * (494 - aoiheight);
+
+        % Transmission start delay is 500 microseconds +/- 62.5 usecs.
+        if t_transmission > readout_time
+            % Transmission start delay is 500 microseconds.
+            t_transdelay = 0.000500;
+        else
+            % Transmission delay is this.
+            t_transdelay = (readout_time - t_transmission) + 0.000500;
+        end
+     end
+
      % Ok, final result:
      tdelay = t_exposure + t_transdelay + t_transmission;
 
@@ -386,7 +415,7 @@ if ~isempty(strfind(cmd, 'ExposureTime'))
         inval = [];
      end
 
-     if IsA602f || IsFirei || IsA312fc
+     if IsA602f || IsFirei || IsA312fc || IsMarlinF033
         % Call cam specific routine.
         if IsA602f
            rc = DoA602fCamExposureTime(grabber, inval);
@@ -400,6 +429,10 @@ if ~isempty(strfind(cmd, 'ExposureTime'))
            rc = DoFireICamExposureTime(grabber, inval);
         end
 
+	if IsMarlinF033
+	   rc = DoMarlinF033CamExposureTime(grabber, inval);
+	end
+
         return;
      else
         % Unknown camera. We just fall-through, mapping exposure time to
@@ -408,8 +441,8 @@ if ~isempty(strfind(cmd, 'ExposureTime'))
      end
 end
 
-if (IsA602f || IsA312fc || IsFirei) && (~isempty(strfind(cmd, 'Exposure')) || ~isempty(strfind(cmd, 'Shutter')))
-     % These settings are ignored on the Unibrain Fire-i and Basler A 602f and A312fc.
+if (IsA602f || IsA312fc || IsFirei || IsMarlinF033) && (~isempty(strfind(cmd, 'Exposure')) || ~isempty(strfind(cmd, 'Shutter')))
+     % These settings are ignored on the Unibrain Fire-i, Marlin F033 and Basler A602f and A312fc.
      % They either control ExposureTime - for which we have a nice function -
      % or they control special settings...     
      rc = Inf;
@@ -543,4 +576,31 @@ function rc = DoFireICamExposureTime(grabber, inval)
 
    % Convert rc from seconds to milliseconds.
    rc = rc * 1000.0;
+return;
+
+function rc = DoMarlinF033CamExposureTime(grabber, inval)
+   if isempty(inval)
+      % Retrieve and map current setting. The Marlin stores the value in Shutter.
+      rawval = Screen('SetVideoCaptureParameter', grabber, 'Shutter');
+      % Exposure time in seconds is just shuttervalue * timebase (fixed at 20 microseconds.) + 12 usecs offset:
+      rc = rawval * 0.000020 + 0.000012;
+   else
+      % Map and set new setting. Maximum exposuretime is also limited by 1/fps with fps = capture
+      % framerate, for a given target framerate:
+      rawval = min(inval / 1000.0, (1.0 / Screen('SetVideoCaptureParameter', grabber, 'GetFramerate')));
+      rawval = round((rawval - 0.000012) / 0.000020);
+      
+      % Clamp to valid range of cam: 32 microseconds to 81.912 milliseconds.
+      rawval = min(rawval, 4095);
+      rawval = max(rawval, 1);
+      
+      % Write new settings, return old settings:
+      rawval = Screen('SetVideoCaptureParameter', grabber, 'Shutter', rawval);
+      
+      % Exposure time in seconds is just shuttervalue * timebase (fixed at 20 microseconds.) + 12 usecs offset:
+      rc = rawval * 0.000020 + 0.000012;
+   end
+
+   % Convert return value from seconds to milliseconds.
+   rc = rc * 1000;
 return;

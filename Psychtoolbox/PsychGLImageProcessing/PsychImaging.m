@@ -129,6 +129,24 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   for potential geometric distortions introduced by this function.%
 %
 %
+% * 'DualWindowStereo' Ask for stereo display in dual-window mode (stereomode 10)
+%
+%   Only use this function under MacOSX. If possible on your setup and OS,
+%   rather use a single window, spanning both stereo display outputs, and use
+%   stereomode 4 or 5 to display dual-display stereo. That is much more
+%   efficient in terms of speed, computational load and memory consumption,
+%   also potentially more robust with respect to visual stimulation timing.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'DualWindowStereo', rightEyeScreen [, rightEyeWindowRect]);
+%
+%   The left-eye image will be displayed on the screen and at a location
+%   specified as usual via PsychImaging('Openwindow', screenid, ..., rect);
+%   The right eye image will be displayed on screen 'rightEyeScreen'. If
+%   the optional 'rightEyeWindowRect' is specified, then the right eye image
+%   is not displayed in a fullscreen window, but in a window with the bounding
+%   rectangle 'rightEyeWindowRect'.
+%
+%
 % * 'UseVirtualFramebuffer' Ask for support of virtual framebuffer, even if
 %   it isn't strictly needed, given the remaining set of requirements. Most
 %   of the tasks require such a framebuffer - it gets enabled anyway. In a
@@ -511,13 +529,38 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   control channel.
 %
 %
-% * 'EnableNative10BitFramebuffer' Enable the high-performance driver and
-%   support for output of stimuli with 10 bit precision per color channel
-%   (10 bpc) on graphics hardware that supports native 10 bpc framebuffers.
-%   Currently, ATI/AMD Radeon hardware of the X1000/HD2000/HD3000 series
-%   and later models should support a native ARGB2101010 framebuffer, ie.,
-%   a system framebuffer with 2 bits for the alpha channel, and 10 bits per
-%   color channel.
+% * 'EnableNative10BitFramebuffer' Enable support for output of stimuli
+%   with 10 bit precision per color channel (10 bpc / 30 bpp / "Deep color")
+%   on graphics hardware that supports native 10 bpc framebuffers.
+%
+%   Many graphics cards of the professional class AMD/ATI Fire series 
+%   (2008 models and later) and all current models of the professional class
+%   NVidia Quadro series (2008 models and later) as well as all current models
+%   of the consumer class NVidia GeForce series under Linux do support 10 bpc
+%   framebuffers under some circumstances. 10 bpc display on classic CRT monitors
+%   which are connected via analog VGA outputs is supported. Support for digital
+%   display devices like LCD/OLED panels or video projectors depends on the specific
+%   type of display output connector used, the specific panels, and their video
+%   settings. Consult manufacturer documentation for details. In general 10 bpc
+%   output may be supported on some graphics cards and displays via DisplayPort
+%   or HDMI video outputs, but usually not via DVI-D outputs.
+%
+%   If such a combination of graphics card and display is present on your system
+%   on Linux or Microsoft Windows, then Psychtoolbox will request native support
+%   from the standard graphics drivers, ie., it won't need to use our own
+%   homegrown, experimental box of tricks to enable this.
+%
+%   Apple OSX, as of version 10.9 "Mavericks", does not support 10 bpc framebuffers,
+%   so 10 bpc output will only work with our own box of tricks - if at all.
+%
+%   Psychtoolbox experimental 10 bpc framebuffer support:
+%
+%   Currently we support ATI/AMD Radeon hardware of the X1000, HD2000, HD3000,
+%   and HD4000 series under Linux and OSX via our own low-level setup mechanisms.
+%   These models support a native ARGB2101010 framebuffer, ie., a system
+%   framebuffer with 2 bits for the alpha channel, and 10 bits per color channel.
+%   Support for later generations of AMD Radeons may get added at some point, e.g.,
+%   for HD5000-HD8000.
 %
 %   As this is supported by the hardware, but not by the standard ATI
 %   graphics drivers, we follow a hybrid approach: We use a special kernel
@@ -527,20 +570,44 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   framebuffer configuration.
 %
 %   You'll need to install and load the special Psychtoolbox kernel driver
-%   and you'll need to have a supported gfx-card for this to work! This
-%   feature is highly experimental and not guaranteed to work reliable on
-%   any system configuration. Read 'help PsychtoolboxKernelDriver' for info
-%   about the driver and installation instructions.
+%   on OSX. On Linux you must have run PsychLinuxConfiguration at least once
+%   on your system at some point. You'll need to have one of the supported AMD
+%   Radeon gfx-card (see above) for this to work! Read 'help PsychtoolboxKernelDriver'
+%   for info about the driver and installation instructions on OSX.
 %
-%   Some models of the ATI Fire series (2008 models and later) and some
-%   models of the NVidia Quadro series (2008 models and later) as well as
-%   some of the very latest NVidia Geforce GPU's may support this as well
-%   with some drivers on some operating systems under some circumstances.
-%   If such a combination is present in your system, then Psychtoolbox will
-%   request native support frm the standard drivers, ie., it won't need to
-%   use our own homegrown box of tricks to enable this.
+%   CAUTION: Support for 10 bpc framebuffers on AMD Radeon graphics cards under
+%   Linux and OSX is highly experimental and not guaranteed to work reliably on
+%   any system configuration. While it has been successfully tested on multiple
+%   versions of Linux and on OSX 10.4, 10.5, 10.6 and 10.8 with some X1000 cards,
+%   some HD2000/3000 cards and HD 4870 cards, this feature could fail on other
+%   systems or even after any operating system upgrade! Use at your own risk and
+%   verify proper operation carefully before production use. 10 bpc output has been
+%   shown to work in the past for analog VGA CRT monitors. The status of native
+%   10 bpc output to digital display devices is unknown. Output of 10 bpc framebuffers
+%   to standard 8 bpc digital panels via digital dithering is known to work, but
+%   that is not the real thing.
 %
-%   Usage: PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer');
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer' [, disableDithering=0]);
+%
+%   This function will setup a 32 bpc floating point resolution framebuffer by
+%   default for Psychtoolbox drawing and stimulus processing. Output will happen
+%   into a 10 bpc framebuffer. The function will also disable the graphics cards
+%   gamma tables, so you'll need to use PsychImaging(...'DisplayColorCorrection'...)
+%   for gamma and color correction if you need this.
+%
+%   The function will *not* disable dithering on digital displays by default,
+%   but leave that decision to the operating system and graphics drivers of
+%   your machine. A well working OS would disable dithering on a 10 bpc or
+%   higher color depth display, if the display reports its capability to the
+%   OS via its EDID info. It would enable dithering on < 10 bpc displays, so
+%   you'd get a "pseudo 10 bpc" framebuffer where 10 bpc color depths is
+%   simulated on a 6 bpc or 8 bpc display via the dithering.
+%
+%   You can disable dithering manually on some graphics cards by providing the
+%   optional 'disableDithering' flag as 1. Currently mostly AMD cards allow this
+%   control. NVidia or Intel cards require manual setup to force dithering off.
+%
 %
 % * 'EnableBrightSideHDROutput' Enable the high-performance driver for
 %   BrightSide Technologies High dynamic range display device for 16 bit
@@ -1051,6 +1118,8 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % 03.07.2013  Call PsychJavaSwingCleanup via onscreen window close hook. (MK)
 %
 % 28.09.2013  Add support for 'UseDisplayRotation' via panelfitter. (MK)
+%
+% 06.03.2014  Add support for 'DualWindowStereo' and fixes to Native10BitFramebuffer mode. (MK)
 
 persistent configphase_active;
 persistent reqs;
@@ -1251,7 +1320,7 @@ if strcmpi(cmd, 'OpenWindow')
 
                 % Give feedback about stereomode override. If the user
                 % didn't provide a stereomode, we just output an info.
-                % Otherweise we output a warning about the conflict and our
+                % Otherwise we output a warning about the conflict and our
                 % override...
                 if nargin < 7 || isempty(varargin{6})
                     fprintf('PsychImaging-Info: Stereomode %i required - Enabling it.\n', stereomode);
@@ -1666,6 +1735,9 @@ if strcmpi(cmd, 'OpenWindow')
         end
     end
     
+    % No secondary slave window by default:
+    slavewin = [];
+    
     % Display mirroring requested?
     if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
         % Yes. Need to open secondary slave window:
@@ -1703,7 +1775,7 @@ if strcmpi(cmd, 'OpenWindow')
         % Open slave window on slave screen: Set the special dual window
         % output flag, so Screen('OpenWindow') initializes the internal blit
         % chain properly:
-        Screen('OpenWindow', slavescreenid, [255 0 0], slavewinrect, [], [], [], [], kPsychNeedDualWindowOutput);
+        slavewin = Screen('OpenWindow', slavescreenid, [255 0 0], slavewinrect, pixelSize, [], [], [], kPsychNeedDualWindowOutput);
     end
 
     % Dualwindow output requested? [Essentially the same as display
@@ -1744,7 +1816,35 @@ if strcmpi(cmd, 'OpenWindow')
         % Open slave window on slave screen: Set the special dual window
         % output flag, so Screen('OpenWindow') initializes the internal blit
         % chain properly:
-        Screen('OpenWindow', slavescreenid, [255 0 0], slavewinrect, [], [], [], [], kPsychNeedDualWindowOutput);
+        slavewin = Screen('OpenWindow', slavescreenid, [255 0 0], slavewinrect, pixelSize, [], [], [], kPsychNeedDualWindowOutput);
+    end
+
+    % DualWindow stereo output requested?
+    if ~isempty(find(mystrcmp(reqs, 'DualWindowStereo')))
+        % Yes. Need to open secondary slave window:
+        floc = find(mystrcmp(reqs, 'DualWindowStereo'));
+        [rows cols]= ind2sub(size(reqs), floc);
+
+        % Extract first parameter - This should be the id of the slave
+        % screen to which the right eye display should get displayed:
+        slavescreenid = reqs{rows, 3};
+
+        if isempty(slavescreenid)
+            Screen('CloseAll');
+            error('In PsychImaging DualWindowStereo: You must provide the index of the secondary screen "slavescreen"!');
+        end
+        
+        if ~any(ismember(Screen('Screens'), slavescreenid))
+            Screen('CloseAll');
+            error('In PsychImaging DualWindowStereo: You must provide the index of a valid secondary screen "slavescreen"!');
+        end
+
+        % Extract optional 2nd parameter - The window rectangle of the slave
+        % window on the slave screen:
+        slavewinrect = reqs{rows, 4};
+        
+        % Open slave window on slave screen:
+        slavewin = Screen('OpenWindow', slavescreenid, [], slavewinrect, pixelSize, [], 10);
     end
     
     % Matlab? Does the Java swing cleanup function exist?
@@ -1754,6 +1854,13 @@ if strcmpi(cmd, 'OpenWindow')
         % GUI is in use:
         Screen('Hookfunction', win, 'AppendMFunction', 'CloseOnscreenWindowPostGLShutdown', 'Shutdown window callback into PsychJavaSwingCleanup().', 'PsychJavaSwingCleanup;');
         Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPostGLShutdown');
+        
+        % Some slave window opened?
+        if ~isempty(slavewin)
+            % Yes: Apply java cleanup there as well:
+            Screen('Hookfunction', slavewin, 'AppendMFunction', 'CloseOnscreenWindowPostGLShutdown', 'Shutdown window callback into PsychJavaSwingCleanup().', 'PsychJavaSwingCleanup;');
+            Screen('HookFunction', slavewin, 'Enable', 'CloseOnscreenWindowPostGLShutdown');
+        end
     end
 
     % Perform double-flip, so both back- and frontbuffer get initialized to
@@ -1762,7 +1869,7 @@ if strcmpi(cmd, 'OpenWindow')
     Screen('Flip', win);
     
     % Window open. Perform imaging pipe postconfiguration:
-    PostConfiguration(reqs, win, clearcolor);
+    PostConfiguration(reqs, win, clearcolor, slavewin);
 
     % Panel fitter in use and setup by us?
     if ~isempty(fitterParams)
@@ -2245,6 +2352,14 @@ if ~isempty(find(mystrcmp(reqs, 'SideBySideCompressedStereo')))
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
 end
 
+% Stereomode 10 for dualwindow stereo needed?
+if ~isempty(find(mystrcmp(reqs, 'DualWindowStereo')))
+    % Yes: Must use stereomode 10.
+    stereoMode = 10;
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+    imagingMode = mor(imagingMode, kPsychNeedDualWindowOutput);
+end
+
 % Display replication needed?
 if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
     % Yes: Must use dual window output mode. This implies
@@ -2370,6 +2485,8 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
     end
 
     % The ATI 10bpc formatter is not yet icm aware - Incapable of internal color correction!
+    % Additionally native 10 bpc framebuffers, e.g., on Fire-Series or NVidia cards also don't
+    % have icm aware output formatting, so a 'false' setting here is mandatory:
     ptb_outputformatter_icmAware = 0;    
 end
 
@@ -2401,7 +2518,10 @@ end
 
 if ~isempty(find(mystrcmp(reqs, 'LeftView'))) || ~isempty(find(mystrcmp(reqs, 'RightView')))
     % Specific eye channel requested: Need a stereo display mode.
-    stereoMode = -2;
+    if stereoMode == -1
+        % None set yet. Just channel the request to the caller:
+        stereoMode = -2;
+    end
 
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
 
@@ -2461,7 +2581,7 @@ return;
 
 % PostConfiguration is called after the onscreen window is open: Performs
 % actual pipeline setup of the hook chains:
-function rc = PostConfiguration(reqs, win, clearcolor)
+function rc = PostConfiguration(reqs, win, clearcolor, slavewin)
 global ptb_outputformatter_icmAware;
 global GL;
 global ptb_geometry_inverseWarpMap;
@@ -2477,6 +2597,10 @@ end
 
 % Identity CLUT in graphics hardware required?
 needsIdentityCLUT = 0;
+
+% Should dithering be disabled if 'needsIdentityCLUT'?
+% By default we disable in such a case:
+disableDithering = 1;
 
 % 0.0 - 1.0 colorrange without color clamping required?
 needsUnitUnclampedColorRange = 0;
@@ -3703,19 +3827,22 @@ end
 
 % --- End of output formatters for VideoSwitcher attenuator device ---
 
-    
+
 % --- Final output formatter for native 10 bpc ARGB2101010 framebuffer requested? ---
-if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
+floc = find(mystrcmp(reqs, 'EnableNative10BitFramebuffer'));
+if ~isempty(floc)
+    [row col]= ind2sub(size(reqs), floc);
+
     % Our special shader-based output formatter is only needed and effective on OS/X or
     % Linux with ATI Radeon hardware, or with FireGL/FirePro with override mode bit set:
-    if  (IsOSX || IsLinux) && ...
-	(bitand(Screen('Preference', 'ConserveVRAM'), 2^21) > 0) || ...
-        (~isempty(strfind(winfo.GLRenderer, 'Radeon')) || ...
+    if  (IsOSX || IsLinux) && ( ...
+        (bitand(Screen('Preference', 'ConserveVRAM'), 2^21) > 0) || ...
+        (~isempty(strfind(winfo.GLRenderer, 'Radeon'))) || ...
         (~isempty(strfind(winfo.GLRenderer, 'Gallium')) && ~isempty(strfind(winfo.GLRenderer, 'ATI'))) || ...
         (~isempty(strfind(winfo.GLRenderer, 'Gallium')) && ~isempty(strfind(winfo.GLRenderer, 'AMD'))) || ...
         (~isempty(strfind(winfo.GLVendor, 'Advanced Micro')) && ~isempty(strfind(winfo.GLRenderer, 'DRI'))) ...
         )
-    
+
         % ATI Radeon on OS/X or Linux: Use our reformatter
         % Load output formatting shader:
         pgshader = LoadGLSLProgramFromFiles('RGBMultiLUTLookupCombine_FormattingShader', 1);
@@ -3740,19 +3867,44 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
         Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
         outputcount = outputcount + 1;
 
-        % ATI framebuffer devices - Does not matter, as internal clut is bypassed anyway:
-        needsIdentityCLUT = 0;
+        % AMD framebuffer devices - Identity CLUT Not needed, as internal clut is bypassed anyway,
+        % but we do it nonetheless, so we can decide about dithering setup and get things like
+        % degamma and other colorspace conversions disabled / bypassed:
+        needsIdentityCLUT = 1;
     else
-        % Everything else: Windows OS, or ATI FireGL/FirePro, or NVidia GPU:
+        % Everything else: Windows OS, or AMD FireGL/FirePro without override, or a
+        % NVidia or Intel GPU.
 
         % We request an identity gamma table to be loaded into the GPU. The
         % RAMDAC's and DisplayPort devices et al. are 10 bit anyway to our
-        % knowledge, so it doesn't matter if we do gamma correction
-        % internally, or if the GPU does it. We do it for consistency
-        % reasons:
+        % knowledge, so it doesn't matter if we do shader-based gamma correction
+        % internally, or if the GPU does it. We do it shader-based for consistency
+        % reasons with the AMD path above.
         needsIdentityCLUT = 1;
     end
     
+    % Extract optional first parameter - This should be the 'disableDithering' flag:
+    disableDithering = reqs{row, 3};
+    
+    if isempty(disableDithering)
+        % Control of output dithering on digital 10 bit panels should be left to
+        % the OS + graphics driver by default. With the OS at the helm, it can configure
+        % the encoders for 10 bpc no-dithering if it detects a truly 10 bpc capable display,
+        % based on EDID information. DisplayPort and HDMI provides infos about >= 10 bpc
+        % capabilities in their EDID info. If the OS detects a <= 8 bpc digital panel, it
+        % can dither so we get pseudo-10bpc, similar to a bit stealing approach or other
+        % perceptual high bit depths tricks:
+        disableDithering = 0;
+    else
+        % User provided disableDithering flag. Valid?
+        if ~ismember(disableDithering, [0, 1])
+            sca;
+            error('Optional disableDithering flag with invalid value provided! Valid is 0 or 1!');
+        end
+        
+        % Yes, use it.
+    end
+
     % Use unit color range, without clamping, but in high-precision mode:
     needsUnitUnclampedColorRange = 1;
 end
@@ -3950,7 +4102,14 @@ end
 if needsIdentityCLUT
     % Yes. Use our generic routine which is adaptive to the quirks of
     % specific gfx-cards:
-    LoadIdentityClut(win);
+    LoadIdentityClut(win, [], [], disableDithering);
+    
+    % Is there a slave window associated for some dual-window output mode,
+    % HDR mode or stereo mode?
+    if ~isempty(slavewin)
+        % Yes: Apply identity LUT setup there as well:
+        LoadIdentityClut(slavewin, [], [], disableDithering);
+    end
 end
 
 % Is a default colormode specified via psych_default_colormode variable and

@@ -1,19 +1,28 @@
-function oldClut = LoadIdentityClut(windowPtr, loadOnNextFlip, lutType)
-% oldClut = LoadIdentityClut(windowPtr [, loadOnNextFlip=0][, lutType=auto])
+function oldClut = LoadIdentityClut(windowPtr, loadOnNextFlip, lutType, disableDithering)
+% oldClut = LoadIdentityClut(windowPtr [, loadOnNextFlip=0][, lutType=auto][, disableDithering=1])
 %
-% Loads the identity clut on the windows specified by windowPtr.  If
+% Loads an identity clut on the window specified by windowPtr. If
 % loadOnNextFlip is set to 1, then the clut will be loaded on the next call
-% to Screen('Flip').  By default, the clut will be loaded immediately or on
-% the next vertical retrace.
+% to Screen('Flip'). By default, the clut will be loaded immediately or on
+% the next vertical retrace, depending on OS and graphics card.
+% By default, also tries to disable digital output dithering on supported
+% hardware, setting the optional flag 'disableDithering' to zero will
+% leave dithering alone.
 %
-% If you use Linux and run Matlab or Octave as root user via the "sudo"
-% command, or if you use OS/X and have the PsychtoolboxKernelDriver loaded
+% If you use Linux and have low level hardware access enabled via a call
+% to PsychLinuxConfiguration during installation or later, or if you
+% use OS/X and have the PsychtoolboxKernelDriver loaded
 % ("help PsychtoolboxKernelDriver") and the graphics card is a GPU of the
 % ATI/AMD Radeon X1000 series or a HD series card (e.g., HD-2000) or a
 % equivalent model of the FireGL or FirePro series, then this routine will
-% try to use special low-level setup code for optimal identity mapping.
-% Otherwise it will just make a best effort to upload a suitable clut, as
-% follows:
+% try to use special low-level setup code for optimal identity mapping. It
+% will also disable digital display dithering if disableDithering == 1.
+% On Windows with AMD cards, digital display dithering will also get disabled
+% automatically. On other graphics cards, digital display dithering will not
+% be affected.
+%
+% On other than AMD cards under Linux or OSX, the function will make
+% a best effort to upload a suitable clut, as follows:
 %
 % This mechanism relies on heuristics to detect the exact type of LUT to
 % upload into your graphics card. These heuristics may go wrong, thanks to
@@ -33,6 +42,11 @@ function oldClut = LoadIdentityClut(windowPtr, loadOnNextFlip, lutType)
 % RestoreCluts, or sca, but only until you call clear all! The original
 % LUT's are backed up in a global variable for this to work.
 %
+% If you use a Cambridge Research systems Bits+ or Bits# box or a VPixx Inc.
+% DataPixx, ViewPixx or ProPixx device, use the script BitsPlusIdentityClutTest
+% for advanced diagnostic and troubleshooting wrt. identity clut's, display
+% dithering and other evils which could spoil your day for high bit depth
+% visual stimulus display.
 
 % History:
 % ??/??/??   mk  Written.
@@ -44,7 +58,8 @@ function oldClut = LoadIdentityClut(windowPtr, loadOnNextFlip, lutType)
 % 05/30/11   mk  Add option to use Screen's built in low-level GPU setup
 %                methods to achieve an identity mapping. Fallback to old
 %                heuristics if that is unsupported, disabled or failed.
-%
+% 03/05/14   mk  Update help texts and some diagnostic output.
+% 03/06/14   mk  Allow control if dithering should be touched or not.
 
 global ptb_original_gfx_cluts;
 
@@ -66,6 +81,10 @@ if nargin < 3
     lutType = [];
 end
 
+if nargin < 4 || isempty(disableDithering)
+    disableDithering = 1;
+end
+
 % Get screen id for this window:
 screenid = Screen('WindowScreenNumber', windowPtr);
 
@@ -78,24 +97,37 @@ winfo = Screen('GetWindowInfo', windowPtr);
 % Get current clut for use as backup copy later on:
 oldClut = Screen('ReadNormalizedGammaTable', windowPtr);
 
-% Try to use PsychGPUControl() method to disable display dithering
-% globally on all connected GPUs and displays. As of March 2013, this
-% function is only supported on Linux and Windows with AMD/ATI GPU's,
-% and only when running the proprietary Catalyst display driver.
-% It will no-op silently on other system configurations.
-%
-% We don't use the success status return code of the function, because
-% we don't know how trustworthy it is. Also this only affects dithering,
-% not gamma table identity setup, so the code-pathes below must run anyway
-% for proper setup, even if their dithering disable effect may be redundant.
-PsychGPUControl('SetDitheringEnabled', 0);
+if disableDithering
+    fprintf('LoadIdentityClut: Info: Trying to disable digital display dithering.\n');
+    % Try to use PsychGPUControl() method to disable display dithering
+    % globally on all connected GPUs and displays. As of March 2014, this
+    % function is only supported on Linux and Windows with AMD/ATI GPU's,
+    % and only when running the proprietary Catalyst display driver.
+    % It will no-op silently on other system configurations.
+    %
+    % We don't use the success status return code of the function, because
+    % we don't know how trustworthy it is. Also this only affects dithering,
+    % not gamma table identity setup, so the code-pathes below must run anyway
+    % for proper setup, even if their dithering disable effect may be redundant.
+    PsychGPUControl('SetDitheringEnabled', 0);
+end
 
 % Ask Screen to use low-level setup code to configure the GPU for
 % untampered framebuffer pixel paththrough. This is only supported on a
 % subset of GPU's under certain conditions if the PsychtoolboxKernelDriver
 % is loaded, but should be the most reliable solution if it works:
 if ~IsWin
-    passthroughrc = Screen('LoadNormalizedGammatable', windowPtr, []);
+    % Low level control possible for some GPU's (e.g., AMD).
+    % [] will enable full passthrough and force dithering off.
+    % -1 will enable passthrough except for dithering, which is left at the OS default.
+    if disableDithering
+        % Also disable dithering:
+        passthroughrc = Screen('LoadNormalizedGammatable', windowPtr, []);
+    else
+        % Only identity LUTs, no color conversion, degamma etc., but leave the
+        % dither settings untouched, so the OS + graphics driver stays in control:
+        passthroughrc = Screen('LoadNormalizedGammatable', windowPtr, -1);        
+    end
 else
     passthroughrc = intmax;
 end
@@ -114,8 +146,12 @@ else
         fprintf('LoadIdentityClut: Warning: GPU low-level setup code for pixel passthrough failed for some reason! Using fallback...\n');
     elseif IsOSX || IsLinux
         fprintf('LoadIdentityClut: Info: Could not use GPU low-level setup for setup of pixel passthrough. Will use fallback method.\n');
-        fprintf('LoadIdentityClut: Info: If you have an AMD/ATI GPU, you may get this working by loading the PsychtoolboxKernelDriver\n');
-        fprintf('LoadIdentityClut: Info: on OS/X or using a Linux system properly setup with PsychLinuxConfiguration.\n');
+        % AMD GPU, aka GPU core of format 'R100', 'R500', ... starting with a 'R'?
+        if winfo.GPUCoreId(1) == 'R'
+            % Some advice for AMD users on Linux and OSX:
+            fprintf('LoadIdentityClut: Info: On your AMD/ATI GPU, you may get this working by loading the PsychtoolboxKernelDriver\n');
+            fprintf('LoadIdentityClut: Info: on OS/X or using a Linux system properly setup with PsychLinuxConfiguration.\n');
+        end
     end
 
     % Carry on with our bag of clut heuristics and other tricks...

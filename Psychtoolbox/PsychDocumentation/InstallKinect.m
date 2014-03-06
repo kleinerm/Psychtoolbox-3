@@ -3,6 +3,10 @@
 % MS-Windows:
 % -----------
 %
+% Psychtoolbox on Windows currently only supports the original XBOX-360 Kinect,
+% not the more recent versions of "Kinect for Windows". Use GNU/Linux if you want
+% to use those.
+%
 % 1. Unzip the file Psychtoolbox/PsychContributed/Kinect-v16-WindowsDrivers.zip
 %    into a temporary folder, e.g., C:\tmp\KinectDrivers.
 %
@@ -58,7 +62,10 @@
 %
 % For non-Debian or non-Ubuntu Linux distributions, you'll need to install
 % a version of libfreenect that is compatible to version 0.1.2 via whatever
-% means your system provides to do this.
+% means your system provides to do this. If you want to also use the Kinect for
+% Windows, instead of only the "original" XBOX-360 kinect, then you will need
+% libfreenect version 0.2 or later. Using version 0.2 or later of libfreenect
+% will also allow you to skip the following setup step 2:
 %
 % 2. Kinect is now useable from within Matlab or Octave. Well almost.
 % Systems with Linux kernel version 3.0 or later can use the video camera
@@ -90,6 +97,10 @@
 % Once Homebrew is installed, one first needs to "brew install automake",
 % and "brew install autoconfig", and potentially cmake before one can
 % "brew install libfreenect".
+%
+% If you want to also use the Kinect for Windows, instead of only the
+% "original" XBOX-360 kinect, then you will need libfreenect version 0.3 or
+% later.
 %     
 % PsychKinectCore links dynamically against those two libraries. We don't
 % distribute them for now, as that would require us to distribute the
@@ -136,6 +147,11 @@
 %
 % web: http://www.libusb.org/
 %
+
+if ~IsLinux
+    fprintf('Executing InstallKinect only makes sense on Linux. Doing nothing.\n');
+    return;
+end
 
 cmd = ['sudo cp ' PsychtoolboxRoot '/PsychContributed/linux_blacklist_kinectvideo /etc/modprobe.d/'];
 fprintf('Will copy the Kinect video driver blacklist file to your system. This will require\n');

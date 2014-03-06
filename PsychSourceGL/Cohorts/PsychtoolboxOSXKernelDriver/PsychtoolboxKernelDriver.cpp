@@ -249,6 +249,34 @@ bool PsychtoolboxKernelDriver::isDCE4(void)
 	return(isDCE4);
 }
 
+bool PsychtoolboxKernelDriver::isDCE3(void)
+{
+	bool isDCE3 = false;
+
+	// RV620, RV635, RS780, RS880, RV770, RV710, RV730, RV740,
+	// aka roughly HD4330 - HD5165, HD5xxV, and some HD4000 parts.
+
+	if ((fPCIDeviceId & 0xFFF0) == 0x9440) isDCE3 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x9450) isDCE3 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x9460) isDCE3 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x9470) isDCE3 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x9480) isDCE3 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x9490) isDCE3 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x94A0) isDCE3 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x94B0) isDCE3 = true;
+    
+	if ((fPCIDeviceId & 0xFFF0) == 0x9540) isDCE3 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x9550) isDCE3 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x9590) isDCE3 = true;
+	if ((fPCIDeviceId & 0xFFF0) == 0x95C0) isDCE3 = true;
+    
+	if ((fPCIDeviceId & 0xFFF0) == 0x9610) isDCE3 = true;
+    
+	if ((fPCIDeviceId & 0xFFF0) == 0x9710) isDCE3 = true;
+    
+    return(isDCE3);
+}
+
 /* The start() method is called at driver load time: It tries to find the MMIO register
  * range of the ATI Radeon X1000/HD2000/HD3000/HDxxx series graphics cards and then
  * memory-maps it into our own virtual address space, so we can read/write registers
@@ -331,7 +359,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 		if (PCI_VENDOR_ID_ATI == fPCIDevice->configRead16(0)) IOLog("%s: Confirmed to have ATI's vendor id.\n", getName());
 		if (PCI_VENDOR_ID_AMD == fPCIDevice->configRead16(0)) IOLog("%s: Confirmed to have AMD's vendor id.\n", getName());
 
-		IOLog("%s: This is a GPU with %s display engine.\n", getName(), isDCE6() ? "DCE-6" : (isDCE5() ? "DCE-5" : (isDCE4() ? "DCE-4" : "AVIVO")));
+		IOLog("%s: This is a GPU with %s display engine.\n", getName(), isDCE6() ? "DCE-6" : (isDCE5() ? "DCE-5" : (isDCE4() ? "DCE-4" : (isDCE3() ? "DCE-3" : "AVIVO"))));
 
 		// On DCE-4 and later GPU's (Evergreen) we limit the minimum MMIO
 		// offset to the base address of the 1st CRTC register block for now:
@@ -570,7 +598,9 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 				// NVC0: GeForce-400/500: "Fermi"
 				fCardType = 0xc0;
 				break;
+			case 0xd0:
 			case 0xe0:
+			case 0xf0:
 				// NVE0: GeForce-600: "Kepler"
 				fCardType = 0xe0;
 				break;
@@ -616,8 +646,8 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 
 	// We should be ready...
 	IOLog("\n");
-	IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.8 (Revision %d) for ATI/AMD/NVidia/Intel GPU's ready for use!\n", getName(), PTBKDRevision);
-	IOLog("%s: This driver is copyright 2008 - 2013 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
+	IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.9 (Revision %d) for ATI/AMD/NVidia/Intel GPU's ready for use!\n", getName(), PTBKDRevision);
+	IOLog("%s: This driver is copyright 2008 - 2014 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
 	IOLog("%s: The driver is licensed to you under the MIT free and open-source software license.\n", getName());
 	IOLog("%s: See the file License.txt in the Psychtoolbox root installation folder for details.\n", getName());
 	IOLog("%s: The driver contains bits of code derived from the free software nouveau and radeon kms drivers on Linux.\n", getName());
@@ -1034,37 +1064,65 @@ void PsychtoolboxKernelDriver::SetDitherMode(UInt32 headId, UInt32 ditherOn)
     UInt32 reg;
     
     // AMD/ATI Radeon, FireGL or FirePro GPU?
-	if (fDeviceType == kPsychRadeon) {
+    if (fDeviceType == kPsychRadeon) {
         IOLog("%s: SetDitherMode: Trying to %s digital display dithering on display head %d.\n", getName(), (ditherOn) ? "enable" : "disable", headId);
-
+        
         // Map headId to proper hardware control register offset:
-		if (isDCE4() || isDCE5()) {
-			// DCE-4 display engine (CEDAR and later afaik): Up to six crtc's. Map to proper
+        if (isDCE4() || isDCE5() || isDCE6() || isDCE8()) {
+            // DCE-4 display engine (CEDAR and later afaik): Up to six crtc's. Map to proper
             // register offset for this headId:
             if (headId > DCE4_MAXHEADID) {
                 // Invalid head - bail:
                 IOLog("%s: SetDitherMode: ERROR! Invalid headId %d provided. Must be between 0 and 5. Aborted.\n", getName(), headId);
                 return;
             }
-
+            
             // Map to dither format control register for head 'headId':
             reg = EVERGREEN_FMT_BIT_DEPTH_CONTROL + crtcoff[headId];
-		} else {
-			// AVIVO display engine (R300 - R600 afaik): At most two display heads for dual-head gpu's.
-            if (headId > 1) {
-                IOLog("%s: SetDitherMode: INFO! Special headId %d outside valid dualhead range 0-1 provided. Will control LVDS dithering.\n", getName(), headId);
-                headId = 0;
+        } else if (isDCE3()) {
+            // DCE-3 display engine for R700: HD4330 - HD5165, HD5xxV, and some R600's:
+            reg = (headId == 0) ? DCE3_FMT_BIT_DEPTH_CONTROL : DCE3_FMT_BIT_DEPTH_CONTROL + 0x800;
+        } else {
+            // AVIVO / DCE-1 / DCE-2 display engine (R300 - R600 afaik): At most two display heads for dual-head gpu's.
+            
+            // These have a weird wiring of encoders/transmitters to output connectors with no simple 1:1 correspondence
+            // between crtc's and encoders. We need to probe each encoder block if it is enabled and sourcing from our headId,
+            // respective its corresponding crtc to find which encoder block needs to be configured wrt. dithering on this
+            // display headId:
+            reg = 0x0;
+            
+            // TMDSA block enabled, and driven by headId? Then we control its encoder:
+            if ((ReadRegister(0x7880) & 0x1) && ((ReadRegister(0x7884) & 0x1) == headId)) reg = RADEON_TMDSA_BIT_DEPTH_CONTROL;
+            
+            // LVTMA block enabled, and driven by headId? Then we control its encoder:
+            if ((ReadRegister(0x7A80) & 0x1) && ((ReadRegister(0x7A84) & 0x1) == headId)) reg = RADEON_LVTMA_BIT_DEPTH_CONTROL;
+            
+            // DVOA block enabled, and driven by headId? Then we control its encoder:
+            if ((ReadRegister(0x7980) & 0x1) && ((ReadRegister(0x7984) & 0x1) == headId)) reg = RADEON_DVOA_BIT_DEPTH_CONTROL;
+            
+            // If no digital encoder block was assigned, then this likely means we're connected to a
+            // analog VGA monitor driven by the DAC. The DAC doesn't have dithering ever, so we are
+            // done with a simple no-op:
+            if (reg == 0x0) {
+                IOLog("%s: SetDitherMode: Head %i connected to analog VGA DAC. Dithering control skipped.\n", getName(), headId);
+                return;
             }
             else {
-                IOLog("%s: SetDitherMode: INFO! headId %d in valid dualhead range 0-1 provided. Will control TMDS (DVI et al.) dithering.\n", getName(), headId);
-                headId = 1;
+                switch (reg) {
+                    case RADEON_TMDSA_BIT_DEPTH_CONTROL:
+                        IOLog("%s: SetDitherMode: Head %i connected to TMDSA block.\n", getName(), headId);
+                        break;
+                        
+                    case RADEON_LVTMA_BIT_DEPTH_CONTROL:
+                        IOLog("%s: SetDitherMode: Head %i connected to LVTMA block.\n", getName(), headId);
+                        break;
+                        
+                    case RADEON_DVOA_BIT_DEPTH_CONTROL:
+                        IOLog("%s: SetDitherMode: Head %i connected to DVOA block.\n", getName(), headId);
+                        break;
+                }
             }
-            
-            // On AVIVO we can't control dithering per display head. Instead there's one global switch
-            // for LVDS connected displays (LVTMA) aka internal flat panels, e.g., of Laptops, and
-            // on global switch for "all things DVI-D", aka TMDSA:
-            reg = (headId == 0) ? RADEON_LVTMA_BIT_DEPTH_CONTROL : RADEON_TMDSA_BIT_DEPTH_CONTROL;
-		}
+        }
 
         // Perform actual enable/disable/reconfigure sequence for target encoder/head:
 
@@ -1141,7 +1199,7 @@ UInt32 PsychtoolboxKernelDriver::GetBeamPosition(UInt32 headId)
 			if (beampos < 0) beampos = ((SInt32) ReadRegister(EVERGREEN_CRTC_V_TOTAL + crtcoff[headId])) + beampos;
 
 		} else {
-			// AVIVO display engine (R300 - R600 afaik): At most two display heads for dual-head gpu's.
+			// AVIVO / DCE-2 / DCE-3 display engine (R300 - R600 afaik): At most two display heads for dual-head gpu's.
 
 			// Read raw beampostion from GPU:
 			beampos = (SInt32) (ReadRegister((headId == 0) ? RADEON_D1CRTC_STATUS_POSITION : RADEON_D2CRTC_STATUS_POSITION) & RADEON_VBEAMPOSITION_BITMASK);
@@ -1373,8 +1431,8 @@ void PsychtoolboxKernelDriver::GetGPUInfo(UInt32 *inOutArgs)
     // Default to "don't know".
     inOutArgs[2] = 0;
 
-    // On Radeons we distinguish between Avivo (10) or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60) for now.
-    if (fDeviceType == kPsychRadeon) inOutArgs[2] = isDCE6() ? 60 : (isDCE5() ? 50 : (isDCE4() ? 40 : 10));
+    // On Radeons we distinguish between Avivo (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60) for now.
+    if (fDeviceType == kPsychRadeon) inOutArgs[2] = isDCE6() ? 60 : (isDCE5() ? 50 : (isDCE4() ? 40 : (isDCE3() ? 30 : 10)));
 
     // On NVidia's we distinguish between chip family, e.g., 0x40 for the NV-40 family.
     if (fDeviceType == kPsychGeForce) inOutArgs[2] = fCardType;

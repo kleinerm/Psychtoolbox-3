@@ -1,15 +1,15 @@
 function osxmakeitoctave3(mode)
-% This is the MacOS/X version of makeit: It is meant for building PTB for
-% 64-Bit Octave on OSX for Intel-Mac, 10.9 Mavericks or later.
+% This is the MacOSX version of makeit: It is meant for building PTB for
+% 64-Bit Octave-3.8+ on OSX for Intel-Mac, on 10.9 Mavericks or later.
 %
 % This build routine also encodes octave runtime library paths for octave
-% versions 3.6.0 to 3.6.9, as installed by HomeBrew or Fink package
+% versions 3.8.0 to 3.8.2, as installed by Octave-Forge, HomeBrew or Fink package
 % managers into all mex files. The point of this is to make sure mex files
-% don't fail to load due to libraries like liboctinterp.1.dylib not being
+% don't fail to load due to libraries like liboctinterp.2.dylib not being
 % found. This is a stop-gap measure: It would be much better to modify
 % octave upstream to encode a -rpath = $OCTAVE_LIBS in the octave
 % executable and libraries themselves, and to add a
-% @rpath/liboctinterp.1.dylib etc. to the mkoctfile build function.
+% @rpath/liboctinterp.2.dylib etc. to the mkoctfile build function.
 %
 
 if ~IsOSX(1) || ~IsOctave
@@ -57,26 +57,25 @@ if mode==0
     % continues to work as long as no GStreamer-dependent functions are
     % used. In that case it will abort with a helpful error message:
     mex -g -v --output ../Projects/MacOSX/build/Screen -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX ...
-        "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgstreamer-0.10.0.dylib ...
-        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgstbase-0.10.dylib ...
-        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgstapp-0.10.dylib ...
-        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgstinterfaces-0.10.dylib ...
-        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgstpbutils-0.10.dylib ...        
-        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgobject-2.0.dylib ...
-        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgmodule-2.0.dylib ...
-        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libxml2.dylib ...
-        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgthread-2.0.dylib ...
-        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libglib-2.0.dylib ...
-        -weak_library /usr/local/lib/libdc1394.dylib ...
-        -framework CoreServices -framework CoreFoundation -framework ApplicationServices -framework CoreAudio -framework OpenGL -framework CoreVideo ...
-        -framework IOKit -framework SystemConfiguration -framework Carbon -framework CoreText ...
+        "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgstreamer-0.10.0.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgstbase-0.10.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgstapp-0.10.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgstinterfaces-0.10.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgstpbutils-0.10.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgobject-2.0.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgmodule-2.0.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libxml2.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgthread-2.0.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libglib-2.0.dylib \
+        -weak_library /usr/local/lib/libdc1394.dylib \
+        -framework CoreServices -framework CoreFoundation -framework ApplicationServices -framework CoreAudio -framework OpenGL -framework CoreVideo \
+        -framework IOKit -framework SystemConfiguration -framework Carbon -framework CoreText \
         -framework Cocoa,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" ...
         -I/usr/include -I/usr/local/include -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/gstreamer-0.10 ...
         -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/libxml2 -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/glib-2.0 ...
         -I/Library/Frameworks/GStreamer.framework/Versions/Current/lib/glib-2.0/include ...
         -ICommon/Base -ICommon/Screen -IOSX/Base -IOSX/Screen -IOSX/Fonts -IOSX/EthernetAddress ...
         "OSX/Screen/*.c" "Common/Screen/*.c" "OSX/Base/*.c" "OSX/Fonts/*FontGlue*.c" "OSX/Fonts/FontInfo.c" "OSX/EthernetAddress/*.c" "Common/Base/*.c" ...
-        "-W, -mmacosx-version-min='10.6'" ...
         -L/usr/lib -L/usr/local/lib ./PsychCocoaGlue.o
     
     movefile('./OSX/Screen/PsychCocoaGlue.m', './OSX/Screen/PsychCocoaGlue.c');
@@ -87,14 +86,14 @@ end
 
 if mode==1
     % Build GetSecs:
-    mex -g -v --output ../Projects/MacOSX/build/GetSecs  -DPTBMODULE_GetSecs -DPTBOCTAVE3MEX "-W, -mmacosx-version-min='10.6'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/GetSecs "OSX/Base/*.c" "Common/Base/*.c" "Common/GetSecs/*.c"
+    mex -g -v --output ../Projects/MacOSX/build/GetSecs  -DPTBMODULE_GetSecs -DPTBOCTAVE3MEX "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/GetSecs "OSX/Base/*.c" "Common/Base/*.c" "Common/GetSecs/*.c"
     osxsetoctaverpath('GetSecs');
     unix(['mv ../Projects/MacOSX/build/GetSecs.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles64/']);
 end
 
 if mode==2
     % Build WaitSecs:
-    mex -g -v --output ../Projects/MacOSX/build/WaitSecs  -DPTBMODULE_WaitSecs -DPTBOCTAVE3MEX "-W, -mmacosx-version-min='10.6'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/WaitSecs  "OSX/Base/*.c" "Common/Base/*.c" "Common/WaitSecs/*.c"
+    mex -g -v --output ../Projects/MacOSX/build/WaitSecs  -DPTBMODULE_WaitSecs -DPTBOCTAVE3MEX "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/WaitSecs  "OSX/Base/*.c" "Common/Base/*.c" "Common/WaitSecs/*.c"
     osxsetoctaverpath('WaitSecs');
     unix(['mv ../Projects/MacOSX/build/WaitSecs.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles64/']);
 end
@@ -102,7 +101,7 @@ end
 if mode==3
     % Depends: PortAudio
     % Build PsychPortAudio:
-    mex -g -v --output ../Projects/MacOSX/build/PsychPortAudio  -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX "-W, -mmacosx-version-min='10.6'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework AudioToolbox -framework AudioUnit,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/PsychPortAudio  "OSX/Base/*.c" "Common/Base/*.c" "Common/PsychPortAudio/*.c" ../Cohorts/PortAudio/libportaudio_osx_64.a
+    mex -g -v --output ../Projects/MacOSX/build/PsychPortAudio  -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework AudioToolbox -framework AudioUnit,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/PsychPortAudio  "OSX/Base/*.c" "Common/Base/*.c" "Common/PsychPortAudio/*.c" ../Cohorts/PortAudio/libportaudio_osx_64.a
     osxsetoctaverpath('PsychPortAudio');
     unix(['mv ../Projects/MacOSX/build/PsychPortAudio.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles64/']);
 end
@@ -110,14 +109,14 @@ end
 if mode==4
     % Depends: eyelink-SDK: eyelink_core.framework
     % Build Eyelink:
-    mex -g -v --output ../Projects/MacOSX/build/Eyelink  -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX "-W, -mmacosx-version-min='10.6'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework eyelink_core,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/Eyelink  "OSX/Base/*.c" "Common/Base/*.c" "Common/Eyelink/*.c"
+    mex -g -v --output ../Projects/MacOSX/build/Eyelink  -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework eyelink_core,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/Eyelink  "OSX/Base/*.c" "Common/Base/*.c" "Common/Eyelink/*.c"
     osxsetoctaverpath('Eyelink');
     unix(['mv ../Projects/MacOSX/build/Eyelink.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles64/']);
 end
 
 if mode==5
     % Build IOPort:
-    mex -g -v --output ../Projects/MacOSX/build/IOPort  -DPTBMODULE_IOPort -DPTBOCTAVE3MEX "-W, -mmacosx-version-min='10.6'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include  -ICommon/Base -IOSX/Base -ICommon/IOPort  "OSX/Base/*.c" "Common/Base/*.c" "Common/IOPort/*.c"
+    mex -g -v --output ../Projects/MacOSX/build/IOPort  -DPTBMODULE_IOPort -DPTBOCTAVE3MEX "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include  -ICommon/Base -IOSX/Base -ICommon/IOPort  "OSX/Base/*.c" "Common/Base/*.c" "Common/IOPort/*.c"
     osxsetoctaverpath('IOPort');
     unix(['mv ../Projects/MacOSX/build/IOPort.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles64/']);
 end
@@ -127,7 +126,7 @@ if mode==6
     curdir = pwd;
     cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
     try
-        mex -g -v --output ./moglcore -DMACOSX -DGLEW_STATIC -DPTBOCTAVE3MEX "-W, -mmacosx-version-min='10.6'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework OpenGL -framework GLUT,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
+        mex -g -v --output ./moglcore -DMACOSX -DGLEW_STATIC -DPTBOCTAVE3MEX "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework OpenGL -framework GLUT,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
     catch %#ok<*CTCH>
     end
     osxsetoctaverpath('moglcore', './');
@@ -138,15 +137,15 @@ end
 if mode==7
     % Depends: libfreenect, libusb-1.0
     % Build PsychKinectCore:
-    mex -g -v --output ../Projects/MacOSX/build/PsychKinectCore  -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX "-W, -mmacosx-version-min='10.6'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -I/usr/local/include/libusb-1.0 -I/usr/local/include/libfreenect -ICommon/Base -IOSX/Base -ICommon/PsychKinect  "OSX/Base/*.c" "Common/Base/*.c" "Common/PsychKinect/*.c" -L/usr/local/lib -lfreenect -lusb-1.0
+    mex -g -v --output ../Projects/MacOSX/build/PsychKinectCore  -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -I/usr/local/include/libusb-1.0 -I/usr/local/include/libfreenect -ICommon/Base -IOSX/Base -ICommon/PsychKinect  "OSX/Base/*.c" "Common/Base/*.c" "Common/PsychKinect/*.c" -L/usr/local/lib -lfreenect -lusb-1.0
     osxsetoctaverpath('PsychKinectCore');
     unix(['mv ../Projects/MacOSX/build/PsychKinectCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles64/']);
 end
 
 if mode==8
     % Build PsychHID:
-    % Dynamic link:   mex -g -v --output ../Projects/MacOSX/build/PsychHID  -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX "-W, -mmacosx-version-min='10.6'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework ApplicationServices -framework Carbon -framework CoreAudio -framework IOKit,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/PsychHID -IOSX/PsychHID -I../Cohorts/HID_Utilities_64Bit/ -I../Cohorts/HID_Utilities_64Bit/IOHIDManager  "Common/PsychHID/*.c" "OSX/PsychHID/*.c" "OSX/Base/*.c" "Common/Base/*.c" -L../Cohorts/HID_Utilities_64Bit/build/Release -lHID_Utilities
-    mex -g -v --output ../Projects/MacOSX/build/PsychHID  -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX "-W, -mmacosx-version-min='10.6'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework ApplicationServices -framework CoreServices -framework CoreFoundation -framework Carbon -framework CoreAudio -framework IOKit,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/PsychHID -IOSX/PsychHID -I../Cohorts/HID_Utilities_64Bit/ -I../Cohorts/HID_Utilities_64Bit/IOHIDManager  "Common/PsychHID/*.c" "OSX/PsychHID/*.c" "OSX/Base/*.c" "Common/Base/*.c" ../Cohorts/HID_Utilities_64Bit/build/Release/libHID_Utilities64.a
+    % Dynamic link:   mex -g -v --output ../Projects/MacOSX/build/PsychHID  -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework ApplicationServices -framework Carbon -framework CoreAudio -framework IOKit,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/PsychHID -IOSX/PsychHID -I../Cohorts/HID_Utilities_64Bit/ -I../Cohorts/HID_Utilities_64Bit/IOHIDManager  "Common/PsychHID/*.c" "OSX/PsychHID/*.c" "OSX/Base/*.c" "Common/Base/*.c" -L../Cohorts/HID_Utilities_64Bit/build/Release -lHID_Utilities
+    mex -g -v --output ../Projects/MacOSX/build/PsychHID  -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework ApplicationServices -framework CoreServices -framework CoreFoundation -framework Carbon -framework CoreAudio -framework IOKit,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/PsychHID -IOSX/PsychHID -I../Cohorts/HID_Utilities_64Bit/ -I../Cohorts/HID_Utilities_64Bit/IOHIDManager  "Common/PsychHID/*.c" "OSX/PsychHID/*.c" "OSX/Base/*.c" "Common/Base/*.c" ../Cohorts/HID_Utilities_64Bit/build/Release/libHID_Utilities64.a
     osxsetoctaverpath('PsychHID');
     unix(['mv ../Projects/MacOSX/build/PsychHID.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles64/']);
 end
@@ -156,7 +155,7 @@ if mode==9
     curdir = pwd;
     cd('../../Psychtoolbox/PsychSound/MOAL/source/')
     try
-        mex -g -v --output ./moalcore  -DMACOSX -DPTBOCTAVE3MEX "-W, -mmacosx-version-min='10.6'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework OpenAL -framework ApplicationServices -framework Carbon,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include moalcore.c al_auto.c al_manual.c alm.c
+        mex -g -v --output ./moalcore  -DMACOSX -DPTBOCTAVE3MEX "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework OpenAL -framework ApplicationServices -framework Carbon,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include moalcore.c al_auto.c al_manual.c alm.c
     catch
     end
     osxsetoctaverpath('moalcore', './');
@@ -167,7 +166,7 @@ end
 
 if mode==10
     % Build FontInfo:
-    mex -g -v --output ../Projects/MacOSX/build/FontInfo  -DPTBMODULE_FontInfo -DPTBOCTAVE3MEX "-W, -mmacosx-version-min='10.6'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework ApplicationServices -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/Base -ICommon/Fonts -IOSX/Base -IOSX/Fonts  "Common/Base/*.c" "OSX/Base/*.c" "OSX/Fonts/*.c"
+    mex -g -v --output ../Projects/MacOSX/build/FontInfo  -DPTBMODULE_FontInfo -DPTBOCTAVE3MEX "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework ApplicationServices -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/Base -ICommon/Fonts -IOSX/Base -IOSX/Fonts  "Common/Base/*.c" "OSX/Base/*.c" "OSX/Fonts/*.c"
     osxsetoctaverpath('FontInfo');
     unix(['mv ../Projects/MacOSX/build/FontInfo.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles64/']);
 end
@@ -178,24 +177,24 @@ if mode==11
     % OSX:
 
     % MachAbsoluteTimeClockFrequency
-    mex -g -v --output ../Projects/MacOSX/build/MachAbsoluteTimeClockFrequency  -DPTBMODULE_MachAbsoluteTimeClockFrequency -DPTBOCTAVE3MEX "-W, -mmacosx-version-min='10.6'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/MachAbsoluteTimeClockFrequency  "OSX/Base/*.c" "Common/Base/*.c" "Common/MachAbsoluteTimeClockFrequency/*.c"
+    mex -g -v --output ../Projects/MacOSX/build/MachAbsoluteTimeClockFrequency  -DPTBMODULE_MachAbsoluteTimeClockFrequency -DPTBOCTAVE3MEX "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/MachAbsoluteTimeClockFrequency  "OSX/Base/*.c" "Common/Base/*.c" "Common/MachAbsoluteTimeClockFrequency/*.c"
     osxsetoctaverpath('MachAbsoluteTimeClockFrequency');
     unix(['mv ../Projects/MacOSX/build/MachAbsoluteTimeClockFrequency.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles64/']);
 
     % MachGetPriorityMex
-    mex -g -v --output ../Projects/MacOSX/build/MachGetPriorityMex -DPTBOCTAVE3MEX "-W, -mmacosx-version-min='10.6'"  "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/MachPriorityMex "Common/MachPriorityMex/MachPriorityCommonMex.c" "Common/MachPriorityMex/MachGetPriorityMex.c"
+    mex -g -v --output ../Projects/MacOSX/build/MachGetPriorityMex -DPTBOCTAVE3MEX  "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/MachPriorityMex "Common/MachPriorityMex/MachPriorityCommonMex.c" "Common/MachPriorityMex/MachGetPriorityMex.c"
     osxsetoctaverpath('MachGetPriorityMex');
     unix(['mv ../Projects/MacOSX/build/MachGetPriorityMex.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles64/']);
 
     % MachSetPriorityMex
-    mex -g -v --output ../Projects/MacOSX/build/MachSetPriorityMex -DPTBOCTAVE3MEX "-W, -mmacosx-version-min='10.6'"  "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/MachPriorityMex "Common/MachPriorityMex/MachPriorityCommonMex.c" "Common/MachPriorityMex/MachSetPriorityMex.c"
+    mex -g -v --output ../Projects/MacOSX/build/MachSetPriorityMex -DPTBOCTAVE3MEX  "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/MachPriorityMex "Common/MachPriorityMex/MachPriorityCommonMex.c" "Common/MachPriorityMex/MachSetPriorityMex.c"
     osxsetoctaverpath('MachSetPriorityMex');
     unix(['mv ../Projects/MacOSX/build/MachSetPriorityMex.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles64/']);
 end
 
 if mode==12
     % Build Gestalt:
-    mex -g -v --output ../Projects/MacOSX/build/Gestalt  -DPTBMODULE_Gestalt -DPTBOCTAVE3MEX "-W, -mmacosx-version-min='10.6'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/Base -IOSX/Base -IOSX/Gestalt -IOSX/OS9ToolboxFragments  "OSX/Base/*.c" "Common/Base/*.c" "OSX/Gestalt/*.c"
+    mex -g -v --output ../Projects/MacOSX/build/Gestalt  -DPTBMODULE_Gestalt -DPTBOCTAVE3MEX "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" -I/usr/include -ICommon/Base -IOSX/Base -IOSX/Gestalt -IOSX/OS9ToolboxFragments  "OSX/Base/*.c" "Common/Base/*.c" "OSX/Gestalt/*.c"
     osxsetoctaverpath('Gestalt');
     unix(['mv ../Projects/MacOSX/build/Gestalt.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles64/']);
 end
@@ -227,44 +226,32 @@ function osxsetoctaverpath(mexfname, mexpath)
     % Build full path to file:
     mexfname = [mexpath mexfname '.' mexext];
     
-    % Replace absolute path to liboctinterp.1.dylib with @rpath:
-    system(['install_name_tool -change ' octave_config_info.octlibdir '/liboctinterp.1.dylib @rpath/liboctinterp.1.dylib ' mexfname]);
+    % Replace absolute path to liboctinterp.2.dylib with @rpath:
+    system(['install_name_tool -change ' octave_config_info.octlibdir '/liboctinterp.2.dylib @rpath/liboctinterp.2.dylib ' mexfname]);
 
-    % Replace absolute path to liboctave.1.dylib with @rpath:
-    system(['install_name_tool -change ' octave_config_info.octlibdir '/liboctave.1.dylib @rpath/liboctave.1.dylib ' mexfname]);
+    % Replace absolute path to liboctave.2.dylib with @rpath:
+    system(['install_name_tool -change ' octave_config_info.octlibdir '/liboctave.2.dylib @rpath/liboctave.2.dylib ' mexfname]);
 
-    % Replace absolute path to libcruft.1.dylib with @rpath:
-    system(['install_name_tool -change ' octave_config_info.octlibdir '/libcruft.1.dylib @rpath/libcruft.1.dylib ' mexfname]);
+    % Replace absolute path to libcruft.2.dylib with @rpath:
+    system(['install_name_tool -change ' octave_config_info.octlibdir '/libcruft.2.dylib @rpath/libcruft.2.dylib ' mexfname]);
     
     % Ok, now all octave library locations are encoded relative to @rpath.
     % Encode a whole bunch of rpath runtime pathes into the mex file, for
     % different versions of octave, installed via different package
     % managers:
     
-    % Start with HomeBrew stuff, followed by Fink stuff:
+    % Start with Octave-Forge stuff, followed by HomeBrew stuff, followed by Fink stuff:
     % This would give current lib path on devel system: octave_config_info.octlibdir
     lpaths = {  ...
-                '/usr/local/Cellar/octave/3.6.0/lib/octave/3.6.0', ...
-                '/usr/local/Cellar/octave/3.6.1/lib/octave/3.6.1', ...
-                '/usr/local/Cellar/octave/3.6.2/lib/octave/3.6.2', ...
-                '/usr/local/Cellar/octave/3.6.3/lib/octave/3.6.3', ...
-                '/usr/local/Cellar/octave/3.6.4/lib/octave/3.6.4', ...
-                '/usr/local/Cellar/octave/3.8.0/lib/octave/3.8.0', ...
-                '/usr/local/Cellar/octave/3.8.1/lib/octave/3.8.1', ...
+                '/usr/local/octave/3.8.2/lib/octave/3.8.2', ...
+                '/usr/local/octave/3.8.1/lib/octave/3.8.1', ...
+                '/usr/local/octave/3.8.0/lib/octave/3.8.0', ...
                 '/usr/local/Cellar/octave/3.8.2/lib/octave/3.8.2', ...
-                '/usr/local/Cellar/octave/4.0.0/lib/octave/4.0.0', ...
-                '/usr/local/Cellar/octave/4.0.1/lib/octave/4.0.1', ...
-                '/sw/lib/octave/3.6.0', ...
-                '/sw/lib/octave/3.6.1', ...
-                '/sw/lib/octave/3.6.2', ...
-                '/sw/lib/octave/3.6.3', ...
-                '/sw/lib/octave/3.6.4', ...
-                '/sw/lib/octave/3.8.0', ...
-                '/sw/lib/octave/3.8.1', ...
+                '/usr/local/Cellar/octave/3.8.1/lib/octave/3.8.1', ...
+                '/usr/local/Cellar/octave/3.8.0/lib/octave/3.8.0', ...
                 '/sw/lib/octave/3.8.2', ...
-                '/sw/lib/octave/4.0.0', ...
-                '/sw/lib/octave/4.0.1', ...
-                '/Applications/Octave.app/Contents/Resources/lib/octave/3.7.7+', ...
+                '/sw/lib/octave/3.8.1', ...
+                '/sw/lib/octave/3.8.0', ...
              };
     
     % Add all paths in lpaths as potential search paths for the octave

@@ -119,18 +119,16 @@ void InitializeSynopsis(void)
 	int i=0;
 	const char **synopsis = synopsisSYNOPSIS;  //abbreviate the long name
 	
-	synopsis[i++] = "PsychKinectCore - A Psychtoolbox driver for the Microsoft XBOX-360 Kinect.\n";
-	synopsis[i++] = "The driver currently only supports the 'XBOX-360 Kinect', *not* 'Kinect for Windows'!\n";
+	synopsis[i++] = "PsychKinectCore - A Psychtoolbox driver for the Microsoft Kinect.\n";
 	synopsis[i++] = "This driver allows to control the box and grab color images and depth";
 	synopsis[i++] = "images from the Kinect depth camera.\n";
 	synopsis[i++] = "It uses and requires the free software drivers and libraries from the OpenKinect";
 	synopsis[i++] = "project (Thanks!): http://openkinect.org\n";
-	synopsis[i++] = "Libfreenect is Copyright (C) 2010 - 2013 individual OpenKinect contributors.";
+	synopsis[i++] = "Libfreenect is Copyright (C) 2010 - 2014 individual OpenKinect contributors.";
 	synopsis[i++] = "Libfreenect requires libusb-1.0, which is licensed under LGPL v2 or later.";
 	synopsis[i++] = "See 'help InstallKinect' for more detailed license information.\n";
-	synopsis[i++] = "The PsychKinectCore driver is licensed to you under the terms of the MIT license,";
-	synopsis[i++] = "with some restrictions imposed when used with Matlab. See 'help License.txt' in";
-	synopsis[i++] = "the Psychtoolbox root folder for more details.\n";
+	synopsis[i++] = "The PsychKinectCore driver is licensed to you under the terms of the MIT license.";
+	synopsis[i++] = "See 'help License.txt' in the Psychtoolbox root folder for more details.\n";
 	synopsis[i++] = "The driver also uses bits of math inspired by Nicolas Burrus Kinect work:";
 	synopsis[i++] = "http://nicolas.burrus.name/index.php/Research/KinectCalibration ";
 	synopsis[i++] = "\n";
@@ -411,8 +409,7 @@ PsychError PSYCHKINECTOpen(void)
     static char useString[] = "kinectPtr = PsychKinect('Open' [, deviceIndex=0][, numbuffers=2][, bayerFilterMode=1]);";
     //
     static char synopsisString[] = 
-		"Open connection to Microsoft XBOX-360 Kinect box, return a 'kinectPtr' handle to it.\n\n"
-        "The driver currently only supports the 'XBOX-360 Kinect', *not* 'Kinect for Windows'!\n"
+		"Open connection to Microsoft Kinect box, return a 'kinectPtr' handle to it.\n\n"
 		"The call tries to open the Kinect box with index 'deviceIndex', or the "
 		"first detected box, if 'deviceIndex' is omitted. It configures the box "
 		"for video and depth capture, using a n-buffered pool for internal storage "
@@ -504,7 +501,7 @@ PsychError PSYCHKINECTOpen(void)
 		printf("PsychKinect: ERROR! Failed to connect to kinect with deviceIndex %i. This could mean that the device\n", deviceIndex);
 		printf("PsychKinect: ERROR: is already in use by another application or driver. On Linux it could mean it is\n");
 		printf("PsychKinect: ERROR: claimed by the Kinect video camera driver. See 'help InstallKinect' for how to resolve this.\n");
-		PsychErrorExitMsg(PsychError_user, "Could not connect to kinect device with given 'deviceIndex'! [libusb_open_device failed]");
+		PsychErrorExitMsg(PsychError_user, "Could not connect to kinect device with given 'deviceIndex'! [freenect_open_device failed]");
 	}
 	
 	kinectdevices[handle].dev = dev;

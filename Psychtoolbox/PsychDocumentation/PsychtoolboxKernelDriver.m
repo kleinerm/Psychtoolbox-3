@@ -15,25 +15,30 @@
 %
 % * Beamposition queries (See help BeampositionQueries) allow for
 % especially robust and accurate stimulus onset timestamping. They are
-% supported by OS-X on all PowerPC systems and on Intel based systems with
-% NVidia graphics cards, but not on Intel systems with AMD/ATI graphics or
-% Intel graphics. The driver restores this functionality.
+% no longer supported by OS-X 10.9 and later and werent supported at all
+% on Intel based Macintosh computers with AMD/ATI or Intel graphics.
+% The driver restores this functionality for NVidia and AMD/ATI gpu's.
+% Support for Intel gpu's is disabled by default, as it can lead to system
+% crash due to some unfixable incompatibility of Intel graphics hardware
+% which is completely out of our control.
 %
 % * Multihead display sync: The driver allows to synchronize the display
 % refresh cycles of the displays connected to a multihead graphics card
 % to allow for high quality tear-free binocular and stereo stimulation of
-% subjects.
+% subjects. This is only supported on AMD/ATI graphics cards.
 %
 % * Use of 10 bit per color component framebuffers: The driver enables two
 % extra bits of color output precision per color channel on your card,
 % allowing for 1 billion shades of different colors instead of the 16.8
-% million colors available without the driver.
+% million colors available without the driver. Only supported on older
+% AMD/ATI graphics cards up to and including Radeon HD 4000 and FireGL
+% equivalent models.
 %
 % * The driver implements workarounds to fix some problems caused by
 % graphics driver and operating system bugs when the graphics card is used
 % with high color/luminance precision display devices like the CRS Bits+ or
 % Bits# boxes, or the VPixx Inc. DataPixx and ViewPixx devices, and similar
-% equipment.
+% equipment. This is only supported on AMD/ATI graphics hardware.
 %
 % The driver only works with one single graphics card at a time. On a
 % single-gpu system it will just work. On a MacBookPro hybrid-graphics
@@ -47,7 +52,7 @@
 % of multiple gpu's is not supported at this time.
 %
 % As this driver accesses the hardware at a very low level, bypassing the
-% whole operating system, its graphics subsystem and the drivers from ATI,
+% whole operating system, its graphics subsystem and the drivers from AMD,
 % there is some potential for things to go wrong. Although our testing so
 % far didn't show any such problems, it may happen on your system. That is
 % why this driver is an *experimental* feature and why you need to have
@@ -66,19 +71,29 @@
 % For 32-Bit OSX kernel:
 % ----------------------
 %
+% This driver is no longer maintained or improved, but should work on old versions
+% of OSX which used to use 32-Bit kernels, and on their supported hardware.
+%
 % You must type this into the terminal:
 %
 % cd /System/Library/Extensions/
-% sudo unzip /PathToPsychtoolbox/Psychtoolbox/PsychHardware/PsychtoolboxKernelDriver32Bit.kext.zip
+% sudo unzip /PathToPsychtoolbox/Psychtoolbox/PsychHardware/PsychtoolboxKernelDriver32BitLegacy.kext.zip
 %
 % "PathToPsychtoolbox" must be replaced with the path to the Psychtoolbox folder, e.g., if your
 % Psychtoolbox is installed under /Users/kleinerm/Psychtoolbox, then the above command would
 % look like this:
 %
-% sudo unzip /Users/kleinerm/Psychtoolbox/PsychHardware/PsychtoolboxKernelDriver32Bit.kext.zip
+% sudo unzip /Users/kleinerm/Psychtoolbox/PsychHardware/PsychtoolboxKernelDriver32BitLegacy.kext.zip
 %
 % For 64-Bit OSX kernel:
 % ----------------------
+%
+% For OSX versions older than 10.9 Mavericks, use the PsychtoolboxKernelDriver64BitLegacy.kext.zip,
+% which is no longer maintained or improved but should work for OSX 10.6 - 10.8 and their supported
+% hardware.
+%
+% For OSX version 10.9 and later, use the PsychtoolboxKernelDriver64Bit.kext.zip, as exemplified
+% here.
 %
 % You must type this into the terminal:
 %
