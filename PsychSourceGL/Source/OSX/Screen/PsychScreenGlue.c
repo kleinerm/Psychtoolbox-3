@@ -1095,9 +1095,9 @@ void InitPsychtoolboxKernelDriverInterface(void)
             // Query driver revision: We disconnect and don't use the driver if it
             // doesn't provide the required minimum revision number for its API:
             revision = (int) PsychOSKDGetRevision(connect);
-            if (revision < 1) {
+            if (revision < 0) {
                 printf("PTB-ERROR: The currently loaded PsychtoolboxKernelDriver.kext is outdated!\n");
-                printf("PTB-ERROR: Its revision number is %i, but we require a minimum revision of 1.\n", revision);
+                printf("PTB-ERROR: Its revision number is %i, but we require a minimum revision of 0, better 1.\n", revision);
                 printf("PTB-ERROR: Please uninstall the current driver and reinstall the latest one delivered\n");
                 printf("PTB-ERROR: with your Psychtoolbox (see 'help PsychtoolboxKernelDriver').\n");
                 printf("PTB-ERROR: Driver support disabled for now, special functions not available.\n");
@@ -1126,7 +1126,7 @@ void InitPsychtoolboxKernelDriverInterface(void)
 			if (PsychPrefStateGet_Verbosity() > 2) {
                 printf("PTB-INFO: Connection to Psychtoolbox kernel support driver instance #%i (Revision %i) established.\n", numKernelDrivers, revision);
             }
-            
+
 			// Store the connect handle for this instance:
             displayConnectHandles[numKernelDrivers] = connect;
 
@@ -1168,6 +1168,14 @@ void InitPsychtoolboxKernelDriverInterface(void)
                 // Closed connection to Intel-instance of the driver. Skip to beginning of
                 // enumeration loop to see if we get some alternative, e.g., discrete GPU:
                 continue;
+            }
+            
+            // A word of warning is due for users of outdated Rev. 0 kernel drivers on AMD/ATI GPU's with pre DCE-4 display engine: They shall upgrade or suffer.
+            if ((fDeviceType[numKernelDrivers] == kPsychRadeon) && (fCardType[numKernelDrivers] < 0x40) && (revision < 1) && (PsychPrefStateGet_Verbosity() > 1)) {
+                printf("PTB-INFO: You use an outdated Psychtoolbox kernel driver of revision %i. Please upgrade to the latest driver of at least revision 1.\n", revision);
+                printf("PTB-INFO: With the outdated driver, robustness of > 8 bits per color displays (10 bit framebuffer, Bits+, Datapixx etc.) will be limited \n");
+                printf("PTB-INFO: on your AMD graphics card due to limitations of this driver. You will need to install the latest 64-Bit driver, which will\n");
+                printf("PTB-INFO: require you to run a 64-Bit kernel on your machine. The 32-Bit driver is no longer updated, so it will stay outdated.\n");
             }
 
             // Perform auto-detection of screen to head mappings:
