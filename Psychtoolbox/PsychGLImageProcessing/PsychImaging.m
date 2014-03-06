@@ -129,6 +129,24 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   for potential geometric distortions introduced by this function.%
 %
 %
+% * 'DualWindowStereo' Ask for stereo display in dual-window mode (stereomode 10)
+%
+%   Only use this function under MacOSX. If possible on your setup and OS,
+%   rather use a single window, spanning both stereo display outputs, and use
+%   stereomode 4 or 5 to display dual-display stereo. That is much more
+%   efficient in terms of speed, computational load and memory consumption,
+%   also potentially more robust with respect to visual stimulation timing.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'DualWindowStereo', rightEyeScreen [, rightEyeWindowRect]);
+%
+%   The left-eye image will be displayed on the screen and at a location
+%   specified as usual via PsychImaging('Openwindow', screenid, ..., rect);
+%   The right eye image will be displayed on screen 'rightEyeScreen'. If
+%   the optional 'rightEyeWindowRect' is specified, then the right eye image
+%   is not displayed in a fullscreen window, but in a window with the bounding
+%   rectangle 'rightEyeWindowRect'.
+%
+%
 % * 'UseVirtualFramebuffer' Ask for support of virtual framebuffer, even if
 %   it isn't strictly needed, given the remaining set of requirements. Most
 %   of the tasks require such a framebuffer - it gets enabled anyway. In a
@@ -1100,6 +1118,8 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % 03.07.2013  Call PsychJavaSwingCleanup via onscreen window close hook. (MK)
 %
 % 28.09.2013  Add support for 'UseDisplayRotation' via panelfitter. (MK)
+%
+% 06.03.2014  Add support for 'DualWindowStereo' and fixes to Native10BitFramebuffer mode. (MK)
 
 persistent configphase_active;
 persistent reqs;
@@ -1300,7 +1320,7 @@ if strcmpi(cmd, 'OpenWindow')
 
                 % Give feedback about stereomode override. If the user
                 % didn't provide a stereomode, we just output an info.
-                % Otherweise we output a warning about the conflict and our
+                % Otherwise we output a warning about the conflict and our
                 % override...
                 if nargin < 7 || isempty(varargin{6})
                     fprintf('PsychImaging-Info: Stereomode %i required - Enabling it.\n', stereomode);
@@ -1715,6 +1735,9 @@ if strcmpi(cmd, 'OpenWindow')
         end
     end
     
+    % No secondary slave window by default:
+    slavewin = [];
+    
     % Display mirroring requested?
     if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
         % Yes. Need to open secondary slave window:
@@ -1752,7 +1775,7 @@ if strcmpi(cmd, 'OpenWindow')
         % Open slave window on slave screen: Set the special dual window
         % output flag, so Screen('OpenWindow') initializes the internal blit
         % chain properly:
-        Screen('OpenWindow', slavescreenid, [255 0 0], slavewinrect, [], [], [], [], kPsychNeedDualWindowOutput);
+        slavewin = Screen('OpenWindow', slavescreenid, [255 0 0], slavewinrect, pixelSize, [], [], [], kPsychNeedDualWindowOutput);
     end
 
     % Dualwindow output requested? [Essentially the same as display
@@ -1793,7 +1816,35 @@ if strcmpi(cmd, 'OpenWindow')
         % Open slave window on slave screen: Set the special dual window
         % output flag, so Screen('OpenWindow') initializes the internal blit
         % chain properly:
-        Screen('OpenWindow', slavescreenid, [255 0 0], slavewinrect, [], [], [], [], kPsychNeedDualWindowOutput);
+        slavewin = Screen('OpenWindow', slavescreenid, [255 0 0], slavewinrect, pixelSize, [], [], [], kPsychNeedDualWindowOutput);
+    end
+
+    % DualWindow stereo output requested?
+    if ~isempty(find(mystrcmp(reqs, 'DualWindowStereo')))
+        % Yes. Need to open secondary slave window:
+        floc = find(mystrcmp(reqs, 'DualWindowStereo'));
+        [rows cols]= ind2sub(size(reqs), floc);
+
+        % Extract first parameter - This should be the id of the slave
+        % screen to which the right eye display should get displayed:
+        slavescreenid = reqs{rows, 3};
+
+        if isempty(slavescreenid)
+            Screen('CloseAll');
+            error('In PsychImaging DualWindowStereo: You must provide the index of the secondary screen "slavescreen"!');
+        end
+        
+        if ~any(ismember(Screen('Screens'), slavescreenid))
+            Screen('CloseAll');
+            error('In PsychImaging DualWindowStereo: You must provide the index of a valid secondary screen "slavescreen"!');
+        end
+
+        % Extract optional 2nd parameter - The window rectangle of the slave
+        % window on the slave screen:
+        slavewinrect = reqs{rows, 4};
+        
+        % Open slave window on slave screen:
+        slavewin = Screen('OpenWindow', slavescreenid, [], slavewinrect, pixelSize, [], 10);
     end
     
     % Matlab? Does the Java swing cleanup function exist?
@@ -1803,6 +1854,13 @@ if strcmpi(cmd, 'OpenWindow')
         % GUI is in use:
         Screen('Hookfunction', win, 'AppendMFunction', 'CloseOnscreenWindowPostGLShutdown', 'Shutdown window callback into PsychJavaSwingCleanup().', 'PsychJavaSwingCleanup;');
         Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPostGLShutdown');
+        
+        % Some slave window opened?
+        if ~isempty(slavewin)
+            % Yes: Apply java cleanup there as well:
+            Screen('Hookfunction', slavewin, 'AppendMFunction', 'CloseOnscreenWindowPostGLShutdown', 'Shutdown window callback into PsychJavaSwingCleanup().', 'PsychJavaSwingCleanup;');
+            Screen('HookFunction', slavewin, 'Enable', 'CloseOnscreenWindowPostGLShutdown');
+        end
     end
 
     % Perform double-flip, so both back- and frontbuffer get initialized to
@@ -1811,7 +1869,7 @@ if strcmpi(cmd, 'OpenWindow')
     Screen('Flip', win);
     
     % Window open. Perform imaging pipe postconfiguration:
-    PostConfiguration(reqs, win, clearcolor);
+    PostConfiguration(reqs, win, clearcolor, slavewin);
 
     % Panel fitter in use and setup by us?
     if ~isempty(fitterParams)
@@ -2294,6 +2352,14 @@ if ~isempty(find(mystrcmp(reqs, 'SideBySideCompressedStereo')))
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
 end
 
+% Stereomode 10 for dualwindow stereo needed?
+if ~isempty(find(mystrcmp(reqs, 'DualWindowStereo')))
+    % Yes: Must use stereomode 10.
+    stereoMode = 10;
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+    imagingMode = mor(imagingMode, kPsychNeedDualWindowOutput);
+end
+
 % Display replication needed?
 if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
     % Yes: Must use dual window output mode. This implies
@@ -2452,7 +2518,10 @@ end
 
 if ~isempty(find(mystrcmp(reqs, 'LeftView'))) || ~isempty(find(mystrcmp(reqs, 'RightView')))
     % Specific eye channel requested: Need a stereo display mode.
-    stereoMode = -2;
+    if stereoMode == -1
+        % None set yet. Just channel the request to the caller:
+        stereoMode = -2;
+    end
 
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
 
@@ -2512,7 +2581,7 @@ return;
 
 % PostConfiguration is called after the onscreen window is open: Performs
 % actual pipeline setup of the hook chains:
-function rc = PostConfiguration(reqs, win, clearcolor)
+function rc = PostConfiguration(reqs, win, clearcolor, slavewin)
 global ptb_outputformatter_icmAware;
 global GL;
 global ptb_geometry_inverseWarpMap;
@@ -4034,6 +4103,13 @@ if needsIdentityCLUT
     % Yes. Use our generic routine which is adaptive to the quirks of
     % specific gfx-cards:
     LoadIdentityClut(win, [], [], disableDithering);
+    
+    % Is there a slave window associated for some dual-window output mode,
+    % HDR mode or stereo mode?
+    if ~isempty(slavewin)
+        % Yes: Apply identity LUT setup there as well:
+        LoadIdentityClut(slavewin, [], [], disableDithering);
+    end
 end
 
 % Is a default colormode specified via psych_default_colormode variable and

@@ -194,30 +194,25 @@ if stereoMode == 102
     PsychImaging('AddTask', 'General', 'SideBySideCompressedStereo');
 end
 
-%fitSize = [RectWidth(Screen('Rect', scrnNum))*2, RectHeight(Screen('Rect', scrnNum))*1];
-%PsychImaging('AddTask', 'General', 'UsePanelFitter', fitSize, 'Aspect');
+if stereoMode == 10
+    % In dual-window, dual-display mode, we open the slave window on
+    % the secondary screen:
+    if IsWin
+        slaveScreen = 2;
+    else
+        slaveScreen = 1;
+    end
+    
+    % Tell PsychImaging that the 2nd window for output of the right-eye view should be
+    % opened on 'slaveScreen':
+    PsychImaging('AddTask', 'General', 'DualWindowStereo', slaveScreen);
+end
 
 % Consolidate the list of requirements (error checking etc.), open a
 % suitable onscreen window and configure the imaging pipeline for that
 % window according to our specs. The syntax is the same as for
 % Screen('OpenWindow'):
 [windowPtr, windowRect] = PsychImaging('OpenWindow', scrnNum, 0, [], [], [], stereoMode);
-
-if stereoMode == 10
-    % In dual-window, dual-display mode, we open the slave window on
-    % the secondary screen. Please note that, after opening this window
-    % with the same parameters as the "master-window", we won't touch
-    % it anymore until the end of the experiment. PTB will take care of
-    % managing this window automatically as appropriate for a stereo
-    % display setup. That is why we are not even interested in the window
-    % handles of this window:
-    if IsWin
-        slaveScreen = 2;
-    else
-        slaveScreen = 1;
-    end
-    Screen('OpenWindow', slaveScreen, BlackIndex(slaveScreen), [], [], [], stereoMode);
-end
 
 if ismember(stereoMode, [4, 5])
     % This uncommented bit of code would allow to exercise the
