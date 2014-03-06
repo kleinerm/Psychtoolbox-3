@@ -75,13 +75,13 @@ PsychError SCREENNull(void)
 
         headid = PsychScreenToCrtcId(screenId, 0);
         value = PsychOSKDReadRegister(screenId, (headid == 0) ? DCE3_FMT_BIT_DEPTH_CONTROL : DCE3_FMT_BIT_DEPTH_CONTROL + 0x800, NULL);
-        printf("Current value of DCE-3 bit depth control for head %i: %d\n", headid, value);
+        printf("Current value of DCE-3 bit depth control for head %i: 0x%x\n", headid, value);
         if (ditherEnable == 0) PsychOSKDWriteRegister(screenId, (headid == 0) ? DCE3_FMT_BIT_DEPTH_CONTROL : DCE3_FMT_BIT_DEPTH_CONTROL + 0x800, 0, NULL);
         value = PsychOSKDReadRegister(screenId, (headid == 0) ? DCE3_FMT_BIT_DEPTH_CONTROL : DCE3_FMT_BIT_DEPTH_CONTROL + 0x800, NULL);
-        printf("New value of DCE-3 bit depth control for head %i: %d\n", headid, value);
+        printf("New value of DCE-3 bit depth control for head %i: 0x%x\n", headid, value);
 
         value = PsychOSKDReadRegister(screenId, (headid == 0) ? DCE3_FMT_CLAMP_CONTROL : DCE3_FMT_CLAMP_CONTROL + 0x800, NULL);
-        printf("Current value of DCE-3 bit depth clamp control for head %i: %d\n", headid, value);
+        printf("Current value of DCE-3 bit depth clamp control for head %i: 0x%x\n", headid, value);
 
         return(PsychError_none);
     #endif
