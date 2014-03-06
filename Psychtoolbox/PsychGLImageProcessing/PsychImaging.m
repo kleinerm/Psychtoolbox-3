@@ -511,13 +511,38 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   control channel.
 %
 %
-% * 'EnableNative10BitFramebuffer' Enable the high-performance driver and
-%   support for output of stimuli with 10 bit precision per color channel
-%   (10 bpc) on graphics hardware that supports native 10 bpc framebuffers.
-%   Currently, ATI/AMD Radeon hardware of the X1000/HD2000/HD3000 series
-%   and later models should support a native ARGB2101010 framebuffer, ie.,
-%   a system framebuffer with 2 bits for the alpha channel, and 10 bits per
-%   color channel.
+% * 'EnableNative10BitFramebuffer' Enable support for output of stimuli
+%   with 10 bit precision per color channel (10 bpc / 30 bpp / "Deep color")
+%   on graphics hardware that supports native 10 bpc framebuffers.
+%
+%   Many graphics cards of the professional class AMD/ATI Fire series 
+%   (2008 models and later) and all current models of the professional class
+%   NVidia Quadro series (2008 models and later) as well as all current models
+%   of the consumer class NVidia GeForce series under Linux do support 10 bpc
+%   framebuffers under some circumstances. 10 bpc display on classic CRT monitors
+%   which are connected via analog VGA outputs is supported. Support for digital
+%   display devices like LCD/OLED panels or video projectors depends on the specific
+%   type of display output connector used, the specific panels, and their video
+%   settings. Consult manufacturer documentation for details. In general 10 bpc
+%   output may be supported on some graphics cards and displays via DisplayPort
+%   or HDMI video outputs, but usually not via DVI-D outputs.
+%
+%   If such a combination of graphics card and display is present on your system
+%   on Linux or Microsoft Windows, then Psychtoolbox will request native support
+%   from the standard graphics drivers, ie., it won't need to use our own
+%   homegrown, experimental box of tricks to enable this.
+%
+%   Apple OSX, as of version 10.9 "Mavericks", does not support 10 bpc framebuffers,
+%   so 10 bpc output will only work with our own box of tricks - if at all.
+%
+%   Psychtoolbox experimental 10 bpc framebuffer support:
+%
+%   Currently we support ATI/AMD Radeon hardware of the X1000, HD2000, HD3000,
+%   and HD4000 series under Linux and OSX via our own low-level setup mechanisms.
+%   These models support a native ARGB2101010 framebuffer, ie., a system
+%   framebuffer with 2 bits for the alpha channel, and 10 bits per color channel.
+%   Support for later generations of AMD Radeons may get added at some point, e.g.,
+%   for HD5000-HD8000.
 %
 %   As this is supported by the hardware, but not by the standard ATI
 %   graphics drivers, we follow a hybrid approach: We use a special kernel
@@ -527,20 +552,44 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   framebuffer configuration.
 %
 %   You'll need to install and load the special Psychtoolbox kernel driver
-%   and you'll need to have a supported gfx-card for this to work! This
-%   feature is highly experimental and not guaranteed to work reliable on
-%   any system configuration. Read 'help PsychtoolboxKernelDriver' for info
-%   about the driver and installation instructions.
+%   on OSX. On Linux you must have run PsychLinuxConfiguration at least once
+%   on your system at some point. You'll need to have one of the supported AMD
+%   Radeon gfx-card (see above) for this to work! Read 'help PsychtoolboxKernelDriver'
+%   for info about the driver and installation instructions on OSX.
 %
-%   Some models of the ATI Fire series (2008 models and later) and some
-%   models of the NVidia Quadro series (2008 models and later) as well as
-%   some of the very latest NVidia Geforce GPU's may support this as well
-%   with some drivers on some operating systems under some circumstances.
-%   If such a combination is present in your system, then Psychtoolbox will
-%   request native support frm the standard drivers, ie., it won't need to
-%   use our own homegrown box of tricks to enable this.
+%   CAUTION: Support for 10 bpc framebuffers on AMD Radeon graphics cards under
+%   Linux and OSX is highly experimental and not guaranteed to work reliably on
+%   any system configuration. While it has been successfully tested on multiple
+%   versions of Linux and on OSX 10.4, 10.5, 10.6 and 10.8 with some X1000 cards,
+%   some HD2000/3000 cards and HD 4870 cards, this feature could fail on other
+%   systems or even after any operating system upgrade! Use at your own risk and
+%   verify proper operation carefully before production use. 10 bpc output has been
+%   shown to work in the past for analog VGA CRT monitors. The status of native
+%   10 bpc output to digital display devices is unknown. Output of 10 bpc framebuffers
+%   to standard 8 bpc digital panels via digital dithering is known to work, but
+%   that is not the real thing.
 %
-%   Usage: PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer');
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer' [, disableDithering=0]);
+%
+%   This function will setup a 32 bpc floating point resolution framebuffer by
+%   default for Psychtoolbox drawing and stimulus processing. Output will happen
+%   into a 10 bpc framebuffer. The function will also disable the graphics cards
+%   gamma tables, so you'll need to use PsychImaging(...'DisplayColorCorrection'...)
+%   for gamma and color correction if you need this.
+%
+%   The function will *not* disable dithering on digital displays by default,
+%   but leave that decision to the operating system and graphics drivers of
+%   your machine. A well working OS would disable dithering on a 10 bpc or
+%   higher color depth display, if the display reports its capability to the
+%   OS via its EDID info. It would enable dithering on < 10 bpc displays, so
+%   you'd get a "pseudo 10 bpc" framebuffer where 10 bpc color depths is
+%   simulated on a 6 bpc or 8 bpc display via the dithering.
+%
+%   You can disable dithering manually on some graphics cards by providing the
+%   optional 'disableDithering' flag as 1. Currently mostly AMD cards allow this
+%   control. NVidia or Intel cards require manual setup to force dithering off.
+%
 %
 % * 'EnableBrightSideHDROutput' Enable the high-performance driver for
 %   BrightSide Technologies High dynamic range display device for 16 bit
@@ -2370,6 +2419,8 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
     end
 
     % The ATI 10bpc formatter is not yet icm aware - Incapable of internal color correction!
+    % Additionally native 10 bpc framebuffers, e.g., on Fire-Series or NVidia cards also don't
+    % have icm aware output formatting, so a 'false' setting here is mandatory:
     ptb_outputformatter_icmAware = 0;    
 end
 
@@ -2477,6 +2528,10 @@ end
 
 % Identity CLUT in graphics hardware required?
 needsIdentityCLUT = 0;
+
+% Should dithering be disabled if 'needsIdentityCLUT'?
+% By default we disable in such a case:
+disableDithering = 1;
 
 % 0.0 - 1.0 colorrange without color clamping required?
 needsUnitUnclampedColorRange = 0;
@@ -3703,9 +3758,12 @@ end
 
 % --- End of output formatters for VideoSwitcher attenuator device ---
 
-    
+
 % --- Final output formatter for native 10 bpc ARGB2101010 framebuffer requested? ---
-if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
+floc = find(mystrcmp(reqs, 'EnableNative10BitFramebuffer'));
+if ~isempty(floc)
+    [row col]= ind2sub(size(reqs), floc);
+
     % Our special shader-based output formatter is only needed and effective on OS/X or
     % Linux with ATI Radeon hardware, or with FireGL/FirePro with override mode bit set:
     if  (IsOSX || IsLinux) && ( ...
@@ -3740,20 +3798,44 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
         Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
         outputcount = outputcount + 1;
 
-        % ATI framebuffer devices - Not needed, as internal clut is bypassed anyway,
-        % and output dithering on digital 10 bit panels is disabled by Screen():
-        needsIdentityCLUT = 0;
+        % AMD framebuffer devices - Identity CLUT Not needed, as internal clut is bypassed anyway,
+        % but we do it nonetheless, so we can decide about dithering setup and get things like
+        % degamma and other colorspace conversions disabled / bypassed:
+        needsIdentityCLUT = 1;
     else
-        % Everything else: Windows OS, or ATI FireGL/FirePro, or NVidia GPU:
+        % Everything else: Windows OS, or AMD FireGL/FirePro without override, or a
+        % NVidia or Intel GPU.
 
         % We request an identity gamma table to be loaded into the GPU. The
         % RAMDAC's and DisplayPort devices et al. are 10 bit anyway to our
-        % knowledge, so it doesn't matter if we do gamma correction
-        % internally, or if the GPU does it. We do it for consistency
-        % reasons:
+        % knowledge, so it doesn't matter if we do shader-based gamma correction
+        % internally, or if the GPU does it. We do it shader-based for consistency
+        % reasons with the AMD path above.
         needsIdentityCLUT = 1;
     end
     
+    % Extract optional first parameter - This should be the 'disableDithering' flag:
+    disableDithering = reqs{row, 3};
+    
+    if isempty(disableDithering)
+        % Control of output dithering on digital 10 bit panels should be left to
+        % the OS + graphics driver by default. With the OS at the helm, it can configure
+        % the encoders for 10 bpc no-dithering if it detects a truly 10 bpc capable display,
+        % based on EDID information. DisplayPort and HDMI provides infos about >= 10 bpc
+        % capabilities in their EDID info. If the OS detects a <= 8 bpc digital panel, it
+        % can dither so we get pseudo-10bpc, similar to a bit stealing approach or other
+        % perceptual high bit depths tricks:
+        disableDithering = 0;
+    else
+        % User provided disableDithering flag. Valid?
+        if ~ismember(disableDithering, [0, 1])
+            sca;
+            error('Optional disableDithering flag with invalid value provided! Valid is 0 or 1!');
+        end
+        
+        % Yes, use it.
+    end
+
     % Use unit color range, without clamping, but in high-precision mode:
     needsUnitUnclampedColorRange = 1;
 end
@@ -3951,7 +4033,7 @@ end
 if needsIdentityCLUT
     % Yes. Use our generic routine which is adaptive to the quirks of
     % specific gfx-cards:
-    LoadIdentityClut(win);
+    LoadIdentityClut(win, [], [], disableDithering);
 end
 
 % Is a default colormode specified via psych_default_colormode variable and

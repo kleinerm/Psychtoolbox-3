@@ -159,6 +159,7 @@ psych_bool  PsychSetOutputDithering(PsychWindowRecordType* windowRecord, int scr
  * 'screenId'       ... is used to determine the screenId for the screen. Otherwise 'screenId' is ignored.
  * 'passthroughEnable' Zero = Disable passthrough: Currently only reenables dithering, otherwise a no-op. 
  *                     1 = Enable passthrough, if possible.
+ * 'changeDithering' FALSE = Don't touch dither control, TRUE = Control dithering enable/disable if possible.
  *
  * Returns:
  *
@@ -169,7 +170,7 @@ psych_bool  PsychSetOutputDithering(PsychWindowRecordType* windowRecord, int scr
  * 2 = On full success, as far as can be determined by software.
  *
  */
-unsigned int PsychSetGPUIdentityPassthrough(PsychWindowRecordType* windowRecord, int screenId, psych_bool passthroughEnable)
+unsigned int PsychSetGPUIdentityPassthrough(PsychWindowRecordType* windowRecord, int screenId, psych_bool passthroughEnable, psych_bool changeDithering)
 {
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
     unsigned int rc, rcret;
@@ -191,7 +192,7 @@ unsigned int PsychSetGPUIdentityPassthrough(PsychWindowRecordType* windowRecord,
     }
     
     // Try to enable or disable dithering on display:
-    PsychSetOutputDithering(windowRecord, screenId, (passthroughEnable) ? 0 : 1);
+    if (changeDithering) PsychSetOutputDithering(windowRecord, screenId, (passthroughEnable) ? 0 : 1);
     
     // We're done if this an actual passthrough disable, as a full disable isn't yet implemented:
     if (!passthroughEnable) return(0);
@@ -363,9 +364,6 @@ psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord
 					printf("PTB-ERROR: Failed to set 10 bit framebuffer mode (LUTReg write failed).\n");
 					return(false);
 				}
-
-				// Try to disable dithering on display:
-				PsychSetOutputDithering(windowRecord, screenId, 0);
 
 				// Only reconfigure framebuffer scanout if this is really our true Native10bpc hack:
 				// This is usually skipped on FireGL/FirePro GPU's as their drivers do it already...
