@@ -71,8 +71,11 @@
 % For 32-Bit OSX kernel:
 % ----------------------
 %
-% This driver is no longer maintained or improved, but should work on old versions
-% of OSX which used to use 32-Bit kernels, and on their supported hardware.
+% This driver can no longer be maintained or improved, but should work on old versions
+% of OSX which used to use 32-Bit kernels, and on their supported hardware. It has
+% known limitations on AMD Radeon HD-4000 graphics cards and earlier cards wrt.
+% control of digital display output dithering. Do not use it on such graphics cards
+% for tasks which potentially need dithering to be disabled.
 %
 % You must type this into the terminal:
 %
@@ -88,11 +91,13 @@
 % For 64-Bit OSX kernel:
 % ----------------------
 %
-% For OSX versions older than 10.9 Mavericks, use the PsychtoolboxKernelDriver64BitLegacy.kext.zip,
-% which is no longer maintained or improved but should work for OSX 10.6 - 10.8 and their supported
-% hardware.
+% For OSX versions older than 10.8 Mountain Lion, use the PsychtoolboxKernelDriver64BitLegacy.kext.zip,
+% which can no longer be maintained or improved but should work for OSX 10.6 - 10.7 and their supported
+% hardware. It has known limitations on AMD Radeon HD-4000 graphics cards and earlier cards wrt.
+% control of digital display output dithering. Do not use it on such graphics cards
+% for tasks which potentially need dithering to be disabled. Upgrade to at least OSX version 10.8.
 %
-% For OSX version 10.9 and later, use the PsychtoolboxKernelDriver64Bit.kext.zip, as exemplified
+% For OSX version 10.8 and later, use the PsychtoolboxKernelDriver64Bit.kext.zip, as exemplified
 % here.
 %
 % You must type this into the terminal:
