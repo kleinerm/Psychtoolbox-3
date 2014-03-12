@@ -64,26 +64,28 @@ PsychError SCREENNull(void)
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
     #if PSYCH_SYSTEM != PSYCH_WINDOWS
-        // Test GPU low-level dithering control:
-        int screenId, ditherEnable, headid;
-        unsigned int value;
-		PsychCopyInIntegerArg(1, TRUE, &screenId);
-		PsychCopyInIntegerArg(2, TRUE, &ditherEnable);
+    {
+                // Test GPU low-level dithering control:
+                int screenId, ditherEnable, headid;
+                unsigned int value;
+                PsychCopyInIntegerArg(1, TRUE, &screenId);
+                PsychCopyInIntegerArg(2, TRUE, &ditherEnable);
 
-		if (PsychPrefStateGet_Verbosity() > 2) printf("SetDithering: ScreenId %i : DitherSetting %i.\n", screenId, ditherEnable);
-        //PsychSetOutputDithering(NULL, screenId, (unsigned int) ditherEnable);
+                if (PsychPrefStateGet_Verbosity() > 2) printf("SetDithering: ScreenId %i : DitherSetting %i.\n", screenId, ditherEnable);
+                //PsychSetOutputDithering(NULL, screenId, (unsigned int) ditherEnable);
 
-        headid = PsychScreenToCrtcId(screenId, 0);
-        value = PsychOSKDReadRegister(screenId, (headid == 0) ? DCE3_FMT_BIT_DEPTH_CONTROL : DCE3_FMT_BIT_DEPTH_CONTROL + 0x800, NULL);
-        printf("Current value of DCE-3 bit depth control for head %i: 0x%x\n", headid, value);
-        if (ditherEnable == 0) PsychOSKDWriteRegister(screenId, (headid == 0) ? DCE3_FMT_BIT_DEPTH_CONTROL : DCE3_FMT_BIT_DEPTH_CONTROL + 0x800, 0, NULL);
-        value = PsychOSKDReadRegister(screenId, (headid == 0) ? DCE3_FMT_BIT_DEPTH_CONTROL : DCE3_FMT_BIT_DEPTH_CONTROL + 0x800, NULL);
-        printf("New value of DCE-3 bit depth control for head %i: 0x%x\n", headid, value);
+                headid = PsychScreenToCrtcId(screenId, 0);
+                value = PsychOSKDReadRegister(screenId, (headid == 0) ? DCE3_FMT_BIT_DEPTH_CONTROL : DCE3_FMT_BIT_DEPTH_CONTROL + 0x800, NULL);
+                printf("Current value of DCE-3 bit depth control for head %i: 0x%x\n", headid, value);
+                if (ditherEnable == 0) PsychOSKDWriteRegister(screenId, (headid == 0) ? DCE3_FMT_BIT_DEPTH_CONTROL : DCE3_FMT_BIT_DEPTH_CONTROL + 0x800, 0, NULL);
+                value = PsychOSKDReadRegister(screenId, (headid == 0) ? DCE3_FMT_BIT_DEPTH_CONTROL : DCE3_FMT_BIT_DEPTH_CONTROL + 0x800, NULL);
+                printf("New value of DCE-3 bit depth control for head %i: 0x%x\n", headid, value);
 
-        value = PsychOSKDReadRegister(screenId, (headid == 0) ? DCE3_FMT_CLAMP_CONTROL : DCE3_FMT_CLAMP_CONTROL + 0x800, NULL);
-        printf("Current value of DCE-3 bit depth clamp control for head %i: 0x%x\n", headid, value);
+                value = PsychOSKDReadRegister(screenId, (headid == 0) ? DCE3_FMT_CLAMP_CONTROL : DCE3_FMT_CLAMP_CONTROL + 0x800, NULL);
+                printf("Current value of DCE-3 bit depth clamp control for head %i: 0x%x\n", headid, value);
 
-        return(PsychError_none);
+                return(PsychError_none);
+    }
     #endif
 
 	#if PSYCH_SYSTEM == PSYCH_LINUX

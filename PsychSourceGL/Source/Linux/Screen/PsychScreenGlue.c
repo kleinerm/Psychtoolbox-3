@@ -3342,13 +3342,13 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
                 reg = 0x0;
 
                 // TMDSA block enabled, and driven by headId? Then we control its encoder:
-                if ((ReadRegister(0x7880) & 0x1) && ((ReadRegister(0x7884) & 0x1) == headId)) reg = RADEON_TMDSA_BIT_DEPTH_CONTROL;
+                if ((ReadRegister(0x7880) & 0x1) && ((ReadRegister(0x7884) & 0x1) == (unsigned int) headId)) reg = RADEON_TMDSA_BIT_DEPTH_CONTROL;
                 
                 // LVTMA block enabled, and driven by headId? Then we control its encoder:
-                if ((ReadRegister(0x7A80) & 0x1) && ((ReadRegister(0x7A84) & 0x1) == headId)) reg = RADEON_LVTMA_BIT_DEPTH_CONTROL;
+                if ((ReadRegister(0x7A80) & 0x1) && ((ReadRegister(0x7A84) & 0x1) == (unsigned int) headId)) reg = RADEON_LVTMA_BIT_DEPTH_CONTROL;
 
                 // DVOA block enabled, and driven by headId? Then we control its encoder:
-                if ((ReadRegister(0x7980) & 0x1) && ((ReadRegister(0x7984) & 0x1) == headId)) reg = RADEON_DVOA_BIT_DEPTH_CONTROL;
+                if ((ReadRegister(0x7980) & 0x1) && ((ReadRegister(0x7984) & 0x1) == (unsigned int) headId)) reg = RADEON_DVOA_BIT_DEPTH_CONTROL;
 
                 // If no digital encoder block was assigned, then this likely means we're connected to a
                 // analog VGA monitor driven by the DAC. The DAC doesn't have dithering ever, so we are
