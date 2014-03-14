@@ -23,6 +23,7 @@
 % 8/14/11  dhb  Clean up a little.
 % 12/16/12 dhb  Added test for rods.
 % 08/10/13 dhb  Better integration with the photoreceptor struct code.
+% 03/14/14 dhb  Add Smith-Pokorny to 2 degree plot, for comparison.
 
 %% Clear
 clear; close all;
@@ -54,6 +55,9 @@ for i = 1:3
 end
 
 %% Compute 2 degree and plot
+%
+% Also add Smith-Pokorny
+load T_cones_sp
 T_predictQuantalCIE2 = ComputeCIEConeFundamentals(S,2,32,3);
 T_predictQuantalCIE2Nomo = ComputeCIEConeFundamentals(S,2,32,3,[558.9 530.3 420.7]');
 figure; clf; hold on
@@ -64,17 +68,19 @@ subplot(1,2,1); hold on
 plot(SToWls(S),T_targetQuantal2','k','LineWidth',3);
 plot(SToWls(S),T_predictQuantalCIE2','r','LineWidth',1);
 plot(SToWls(S),T_predictQuantalCIE2Nomo','g','LineWidth',0.5);
-title('S-S 2-deg fundamentals (blk), table constructed (red), nomo constructed (grn)');
+plot(SToWls(S_cones_sp),T_cones_sp','b:','LineWidth',0.5);
+title('S-S 2-deg fundamentals (blk), table constructed (red), nomo constructed (grn), Smith-Pokorny (blue dash)');
 ylabel('Normalized quantal sensitivity');
 xlabel('Wavelength');
 subplot(1,2,2); hold on
 plot(SToWls(S),log10(T_targetQuantal2'),'k','LineWidth',3);
 plot(SToWls(S),log10(T_predictQuantalCIE2'),'r','LineWidth',1);
 plot(SToWls(S),log10(T_predictQuantalCIE2Nomo'),'g','LineWidth',0.5);
+plot(SToWls(S_cones_sp),log10(T_cones_sp'),'b:','LineWidth',0.5);
 ylim([lowEndLogPlot 0.5]);
 ylabel('Log10 normalized quantal sensitivity');
 xlabel('Wavelength');
-title('S-S 2-deg fundamentals (blk), table constructed (red), nomo constructed (grn)');
+title('S-S 2-deg fundamentals (blk), table constructed (red), nomo constructed (grn), Smith-Pokorny (blue dash)');
 drawnow;
 if (DUMPFIGURES)
     if (exist('savefig','file'))
