@@ -236,12 +236,12 @@ if nargin < 8 || isempty(usedpixx)
 end
 
 try
-	% This script calls Psychtoolbox commands available only in OpenGL-based 
-	% versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
-	% only OpenGL-base Psychtoolbox.)  The Psychtoolbox command AssertPsychOpenGL will issue
-	% an error message if someone tries to execute this script on a computer without
-	% an OpenGL Psychtoolbox
-	AssertOpenGL;
+    % This script calls Psychtoolbox commands available only in OpenGL-based 
+    % versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
+    % only OpenGL-base Psychtoolbox.)  The Psychtoolbox command AssertPsychOpenGL will issue
+    % an error message if someone tries to execute this script on a computer without
+    % an OpenGL Psychtoolbox
+    AssertOpenGL;
     
     if IsWin && 0
         % Enforce use of DWM on Windows-Vista and later: This simulates the
@@ -249,13 +249,13 @@ try
         Screen('Preference','ConserveVRAM', 16384); % Force use of DWM.
     end
     
-	% Get the list of Screens and choose the one with the highest screen number.
-	% Screen 0 is, by definition, the display with the menu bar. Often when 
-	% two monitors are connected the one without the menu bar is used as 
-	% the stimulus display.  Chosing the display with the highest display number is 
-	% a best guess about where you want the stimulus displayed.  
-	screens=Screen('Screens');
-	screenNumber=max(screens);
+    % Get the list of Screens and choose the one with the highest screen number.
+    % Screen 0 is, by definition, the display with the menu bar. Often when 
+    % two monitors are connected the one without the menu bar is used as 
+    % the stimulus display.  Chosing the display with the highest display number is 
+    % a best guess about where you want the stimulus displayed.  
+    screens=Screen('Screens');
+    screenNumber=max(screens);
     screensize=Screen('Rect', screenNumber);
 
     % Query size of screen:
@@ -286,7 +286,7 @@ try
     % Switch to realtime-priority to reduce timing jitter and interruptions
     % caused by other applications and the operating system itself:
     Priority(MaxPriority(w));
-	
+
     % Query nominal framerate as returned by Operating system:
     % If OS returns 0, then we assume that we run on a flat-panel with
     % fixed 60 Hz refresh interval.
@@ -389,11 +389,17 @@ try
         % beampos > screen height means that flip returned during the VBL
         % interval. Small values << screen height are also ok,
         % they just indicate either a slower machine or some types of flat-panels...
-	if usedpixx && IsOctave
-	    % Workaround for Datapixx + Octave bug in January 2013 ptb:
-	    tvbl = Screen('Flip', w, tdeadline, clearmode);
-	    so(i) = tvbl;
-	else
+        if usedpixx && IsOctave
+            % Workaround for Datapixx + Octave bug in January 2013 ptb:
+            tvbl = Screen('Flip', w, tdeadline, clearmode);
+            
+            if 0
+                winfo = Screen('GetWindowInfo', w);
+                tvbl = winfo.LastVBLTime;
+            end
+            
+            so(i) = tvbl;
+        else
             [ tvbl so(i) flipfin(i) missest(i) beampos(i)]=Screen('Flip', w, tdeadline, clearmode);
         end
 
@@ -406,9 +412,9 @@ try
         % mortals!
         tSecondary(i) = 0;
         if IsWin && 0
-			while 1
+            while 1
                 WaitSecs('YieldSecs', 0.001);
-				wdminfo = Screen('GetWindowInfo', w, 2);
+                wdminfo = Screen('GetWindowInfo', w, 2);
 
                 if ~isstruct(wdminfo)
                     break;
@@ -420,7 +426,7 @@ try
                     so(i) = tSecondary(i);
                     break;
                 end
-			end
+            end
         end
         
         % Record timestamp for later use:
@@ -467,7 +473,7 @@ try
             break;
         end;
     end; % Draw next frame...
-	
+
     % Shutdown realtime scheduling:
     Priority(0)
 
@@ -536,14 +542,14 @@ try
         figure;
         plot((tSecondary - so) * 1000);
         title('Time delta in milliseconds between stimulus onset according to DWM and stimulus onset according to Flip:');
-		fprintf('Average discrepancy between DWM and beamposition timestamping is %f msecs, stddev = %f msecs.\n', mean((tSecondary - so) * 1000), std((tSecondary - so) * 1000));
+        fprintf('Average discrepancy between DWM and beamposition timestamping is %f msecs, stddev = %f msecs.\n', mean((tSecondary - so) * 1000), std((tSecondary - so) * 1000));
     end
     
     if usedpixx
         figure;
         plot((so - sodpixx) * 1000);
         title('Time delta in msecs onset according to Flip - onset according to DataPixx:');
-		fprintf('Average discrepancy between Flip timestamping and DataPixx is %f msecs, stddev = %f msecs.\n', mean((so - sodpixx) * 1000), std((so - sodpixx) * 1000));        
+        fprintf('Average discrepancy between Flip timestamping and DataPixx is %f msecs, stddev = %f msecs.\n', mean((so - sodpixx) * 1000), std((so - sodpixx) * 1000));        
     end
     
     % Count and output number of missed flip on VBL deadlines:
