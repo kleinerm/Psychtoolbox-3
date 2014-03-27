@@ -238,6 +238,8 @@
 #define EVERGREEN_DC_LUT_WHITE_OFFSET_BLUE              0x6a10
 #define EVERGREEN_DC_LUT_WHITE_OFFSET_GREEN             0x6a14
 #define EVERGREEN_DC_LUT_WHITE_OFFSET_RED               0x6a18
+#define EVERGREEN_DC_LUT_10BIT_BYPASS                   0x6808
+#define EVERGREEN_GRPH_CONTROL                          0x6804
 
 /* display controller offsets used for crtc/cur/lut/grph/viewport/etc. */
 #define EVERGREEN_CRTC0_REGISTER_OFFSET                 (0x6df0 - 0x6df0)
@@ -263,6 +265,7 @@
 // of other bits is different and there's more control bits to change
 // dithering strategy.
 #define EVERGREEN_FMT_BIT_DEPTH_CONTROL                 0x6fc8
+#define EVERGREEN_FMT_CLAMP_CONTROL                     0x6fe4
 
 /* northern islands - Following DCE5 specs direct excerpts from Linux Radeon KMS ni_reg.h */
 
@@ -323,6 +326,11 @@
 #       define NI_REGAMMA_PROG_B                       4
 #       define NI_OVL_REGAMMA_MODE(x)                  (((x) & 0x7) << 4)
 
+// Only define following crtcoff if not #include'd in OSX kernel driver:
+#ifndef PTBKDRevision
+// Offset of crtc blocks of evergreen gpu's for each of the six possible crtc's:
+static const unsigned int crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET, EVERGREEN_CRTC1_REGISTER_OFFSET, EVERGREEN_CRTC2_REGISTER_OFFSET, EVERGREEN_CRTC3_REGISTER_OFFSET, EVERGREEN_CRTC4_REGISTER_OFFSET, EVERGREEN_CRTC5_REGISTER_OFFSET };
+#endif
 
 // NVIDIA REGISTERS:
 // -----------------

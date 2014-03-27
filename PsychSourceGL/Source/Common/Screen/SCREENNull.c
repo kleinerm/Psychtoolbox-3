@@ -35,7 +35,9 @@
 
 static char useString[] = "[[value1], [value2] ..]=SCREEN('Null',[value1],[value2],...);";
 static char synopsisString[] = 
-	"Special test function for Psychtoolbox testing and developments. Normal users: DO NOT USE!";
+    "Special test function for Psychtoolbox testing and developments. Normal users: DO NOT USE!\n"
+    "On Linux/OSX with AMD DCE-3 or later: FMT_CLAMP_CONTROL REG read/write. Meaningful values:\n"
+    "0 = Read only. 1 = Clamp to 6 bpc, 65537 = Clamp to 8 bpc, 131073 = Clamp to 10 bpc.\n";
 static char seeAlsoString[] = "";
 
 PsychError SCREENNull(void) 
@@ -67,23 +69,42 @@ PsychError SCREENNull(void)
     {
                 // Test GPU low-level dithering control:
                 int screenId, ditherEnable, headid;
-                unsigned int value;
+                int gpuMaintype, gpuMinortype;
+                unsigned int ctlreg, value;
                 PsychCopyInIntegerArg(1, TRUE, &screenId);
+                ditherEnable = 0;
                 PsychCopyInIntegerArg(2, TRUE, &ditherEnable);
 
-                if (PsychPrefStateGet_Verbosity() > 2) printf("SetDithering: ScreenId %i : DitherSetting %i.\n", screenId, ditherEnable);
-                //PsychSetOutputDithering(NULL, screenId, (unsigned int) ditherEnable);
+                // We only support Radeon GPU's with DCE-3 or later:
+                if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
+                    (gpuMaintype != kPsychRadeon) || (gpuMinortype < 0x30)) {
+                    printf("PTB-ERROR: Unsupported GPU for this method. Not a AMD gpu with at least DCE-3 display engine!\n");
+                    return(PsychError_user);
+                }
 
+                if (PsychPrefStateGet_Verbosity() > 2) printf("Set format clamp control: ScreenId %i : Setting %i.\n", screenId, ditherEnable);
                 headid = PsychScreenToCrtcId(screenId, 0);
-                value = PsychOSKDReadRegister(screenId, (headid == 0) ? DCE3_FMT_BIT_DEPTH_CONTROL : DCE3_FMT_BIT_DEPTH_CONTROL + 0x800, NULL);
-                printf("Current value of DCE-3 bit depth control for head %i: 0x%x\n", headid, value);
-                if (ditherEnable == 0) PsychOSKDWriteRegister(screenId, (headid == 0) ? DCE3_FMT_BIT_DEPTH_CONTROL : DCE3_FMT_BIT_DEPTH_CONTROL + 0x800, 0, NULL);
-                value = PsychOSKDReadRegister(screenId, (headid == 0) ? DCE3_FMT_BIT_DEPTH_CONTROL : DCE3_FMT_BIT_DEPTH_CONTROL + 0x800, NULL);
-                printf("New value of DCE-3 bit depth control for head %i: 0x%x\n", headid, value);
 
-                value = PsychOSKDReadRegister(screenId, (headid == 0) ? DCE3_FMT_CLAMP_CONTROL : DCE3_FMT_CLAMP_CONTROL + 0x800, NULL);
-                printf("Current value of DCE-3 bit depth clamp control for head %i: 0x%x\n", headid, value);
+                // Select Radeon HW registers for corresponding heads:
+                if (gpuMinortype < 0x40) {
+                    // DCE-3 and earlier:
+                    ctlreg = (headid == 0) ? DCE3_FMT_CLAMP_CONTROL : DCE3_FMT_CLAMP_CONTROL + 0x800;
+                }
+                else {
+                    // DCE-4 and later:
+                    if (headid > DCE4_MAXHEADID) {
+                        printf("PTB-ERROR: Invalid headId %i (greater than max %i) provided for DCE-4+ display engine!\n", headid, DCE4_MAXHEADID);
+                        return(PsychError_user);
+                    }
 
+                    ctlreg = EVERGREEN_FMT_CLAMP_CONTROL + crtcoff[headid];
+                }
+
+                value = PsychOSKDReadRegister(screenId, ctlreg, NULL);
+                printf("Current value of DCE bit depth clamp control for head %i: 0x%x\n", headid, value);
+                if (ditherEnable > 0) PsychOSKDWriteRegister(screenId, ctlreg, ditherEnable, NULL);
+                value = PsychOSKDReadRegister(screenId, ctlreg, NULL);
+                printf("New value of DCE bit depth clamp control for head %i: 0x%x\n", headid, value);
                 return(PsychError_none);
     }
     #endif
