@@ -876,12 +876,14 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 			isArgText[i] = isArgThere[i] ? mxIsChar(tmparg) : FALSE;
 			if(isArgText[i]){
 				mxGetString(tmparg,argString[i],sizeof(argString[i]));
-				fArg[i]=PsychGetProjectFunction(argString[i]);
+				// Only consider 2nd arg as subfunction if 1st arg isn't already a subfunction:
+				if ((i == 0) || (!isArgFunction[0])) {
+					fArg[i]=PsychGetProjectFunction(argString[i]);
+				}
+				else fArg[i] = NULL; // 1st arg is subfunction, so 2nd arg can't be as well.
 			}
 			isArgFunction[i] = isArgText[i] ? fArg[i] != NULL : FALSE;
 		}
-		 
-
 
 		//figure out which of the two arguments might be the function name and either invoke it or exit with error
 		//if we can't find one.  
