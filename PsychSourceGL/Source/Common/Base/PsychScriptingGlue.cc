@@ -570,8 +570,8 @@ void InitializeSynopsis(char *synopsis[],int maxStrings);
 
 //Static variables local to ScriptingGlue.c.  The convention is to append a abbreviation in all
 //caps of the C file name to the variable name.   
-int nlhsGLUE;  // Number of requested return arguments.
-int nrhsGLUE;  // Number of provided call arguments.
+static int nlhsGLUE;  // Number of requested return arguments.
+static int nrhsGLUE;  // Number of provided call arguments.
 
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
 static mxArray **plhsGLUE;       // A pointer to the plhs array passed to the MexFunction entry point  
