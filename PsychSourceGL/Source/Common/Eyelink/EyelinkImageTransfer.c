@@ -165,7 +165,7 @@ PsychError EyelinkImageTransfer(void)
         bmp.pixels = pReturn; 
     }
     bmp.format = (EYEPIXELFORMAT* ) PsychMallocTemp(sizeof(EYEPIXELFORMAT));
-    memset(bmp.format, 0, sizeof(bmp.format));
+    memset(bmp.format, 0, sizeof(EYEPIXELFORMAT));
 	
 	
 	bmp.format->Rmask = 0x000000ff;

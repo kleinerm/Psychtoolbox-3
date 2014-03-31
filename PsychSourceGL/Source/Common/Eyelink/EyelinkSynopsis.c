@@ -104,7 +104,12 @@ void InitializeSynopsis()
 	synopsis[i++] = "[time =] Eyelink('TrackerTime')";
 	synopsis[i++] = "[offset =] Eyelink('TimeOffset')";
 	synopsis[i++] = "[status] = Eyelink('ImageTransfer', imagePath [, xPosition=0][, yPosition=0][, width=0][, height=0][, trackerXPosition=0][, trackerYPosition=0][, xferoptions=0])";
-
+	
+	synopsis[i++] = "\n% Eyelink Velocity related functions:";
+	synopsis[i++] = "[vel, acc, fsample]= Eyelink('CalculateOverallVelocityAndAcceleration' [, sample_model])";
+	synopsis[i++] = "[vel,fsample] = Eyelink('CalculateVelocity' [,sample_model] )";
+	synopsis[i++] = "[x_vel,y_vel,fsample] = Eyelink('CalculateVelocityXY' [,sample_model] )";
+	
 	// Place Holder
 	synopsis[i++] = "\n\n\n\n% EyelinkToolbox version for the OpenGL PsychToolbox";
 	synopsis[i++] = "% The EyelinkToolbox was developed by:\n";
