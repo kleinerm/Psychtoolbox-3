@@ -5,6 +5,7 @@ EyelinkImageTransfer.c
 AUTHORS:
 
 nuha@sr-research.com nj
+li@sr-research.com   lj
 
 PLATFORMS:
 
@@ -14,6 +15,8 @@ HISTORY:
 
 10/10/10	nj		Created.
 05/24/11    mk      Cleanup.
+12/20/13    lj      fixed EyelinkImageTransfer for crash due to unallocated memory in EYEBITMAP.
+ 
 
 */
 
@@ -161,13 +164,26 @@ PsychError EyelinkImageTransfer(void)
         
         bmp.pixels = pReturn; 
     }
-    
+    bmp.format = (EYEPIXELFORMAT* ) PsychMallocTemp(sizeof(EYEPIXELFORMAT));
+    memset(bmp.format, 0, sizeof(EYEPIXELFORMAT));
+	
+	
+	bmp.format->Rmask = 0x000000ff;
+	bmp.format->Gmask = 0x0000ff00;
+	bmp.format->Bmask = 0x00ff0000;
+	bmp.format->Amask = 0xff000000;
+   
     iStatus = el_bitmap_to_backdrop(&bmp, xs, ys, width, height, xd, yd, xferoptions);
     
 	if (BitmapInfo) {
 		free(BitmapInfo);
 		if (BitmapBits) free(BitmapBits);
 	}
+    if(bmp.format)
+	{		
+		if(bmp.format) PsychFreeTemp(bmp.format);
+	}
+
     
 	PsychCopyOutDoubleArg(1, FALSE, iStatus);
     

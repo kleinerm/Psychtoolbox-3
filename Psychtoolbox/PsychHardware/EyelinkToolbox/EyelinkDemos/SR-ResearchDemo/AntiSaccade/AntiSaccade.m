@@ -19,6 +19,7 @@ function AntiSaccade(placeHolderFlag,gapManipulation)
 % mm/dd/yy
 %
 % 01/28/11  NJ  created
+% 12/20/13  LJ  changed isoctave to IsOctave, case sensitive for the latest matlab
 
 PsychDefaultSetup(1);
 
@@ -70,7 +71,7 @@ instructionText = [' In this experiment, you are going to see a series of events
 PPD_X = 30;
 PPD_Y = 30;
 
-if ~isoctave
+if ~IsOctave
     commandwindow;
 else
     more off;
@@ -88,7 +89,7 @@ try
     % Note: Octave does not support GUIs. replace lines below with
     % %edfFile= 'DEMO.EDF'
     
-    if isoctave
+    if IsOctave
         edfFile = 'DEMO';
     else        
         prompt = {'Enter tracker EDF file name (1 to 8 letters or numbers)'};
