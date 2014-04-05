@@ -13,7 +13,8 @@
 % all Psychtoolbox features are fully supported by version 0.10.24.
 % Especially video capture, video recording and movie creation may be
 % limited in functionality or performance if you don't use a recent version
-% of GStreamer.
+% of GStreamer. Do not install GStreamer version 1.0 or later! We need 0.10
+% and won't work with 1.0 yet.
 %
 % GStreamer is a free software / open-source multimedia framework. The
 % summary on its webpage tells us:
@@ -39,13 +40,11 @@
 % Installation instructions:
 %
 %
-% GNU/Linux Debian or Ubuntu distributions: If you install Psychtoolbox via
-% the package management system of your distribution or via NeuroDebian
-% then you don't need to do anything extra.
-%
-% GNU/Linux other: Any half-way recent Linux distribution will include
-% support for GStreamer in its package management system, so you can easily
-% install it via the software management tool of your system.
+% GNU/Linux: Any half-way recent Linux distribution will include support
+% for GStreamer in its package management system, so you can easily install
+% it via the software management tool of your system. If you install PTB
+% via NeuroDebian then most GStreamer packages will get automatically
+% installed, with exception of some optional packages, so read on.
 %
 % You will need at least the core GStreamer runtime and the gstreamer-base
 % set of plugins, but we recommend to install all available plugins for
@@ -60,17 +59,25 @@
 % patent clauses in place for some territories. You may want to
 % specifically add them to your system depending on your format needs.
 %
-% E.g., on Debian:
+% E.g., on Debian or Ubuntu:
 %
 %     sudo apt-get install gstreamer0.10-plugins-bad-multiverse
 %     gstreamer0.10-plugins-ugly-multiverse
+%
+% Ubuntu 14.04-LTS removed the GStreamer FFMPEG plugins from the standard
+% distribution, so you will need to install those plugins from a 3rd
+% party multi-media PPA. Do so by performing these additional setup steps:
+%
+% sudo apt-add-repository ppa:mc3man/trusty-media
+% sudo apt-get update
+% sudo apt-get install gstreamer0.10-ffmpeg
 %
 %
 % MS-Windows and Apple MacOSX:
 %
 % You must install GStreamer if you want to use multi-media functions! If
 % you don't intend to use multi-media functions then installation of
-% GStreamer is optional.
+% GStreamer is optional on MS-Windows, but possibly not on OSX.
 %
 % Download and install the latest GStreamer runtimes from:
 %
@@ -92,7 +99,7 @@
 % On Apple MacOSX, optionally you can also install GStreamer version 0.10
 % via the Homebrew package manager, building the very latest GStreamer from
 % source code. This is more effort and takes more time for download and
-% installation, but provides some extra features for video capture and
+% installation, but may provide some extra features for video capture and
 % possibly enhanced performance for video playback of high-resolution,
 % high-framerate movies:
 %
