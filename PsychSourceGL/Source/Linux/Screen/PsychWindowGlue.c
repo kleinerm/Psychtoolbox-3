@@ -36,6 +36,9 @@
 #include <sched.h>
 #include <errno.h>
 
+// utsname for uname() so we can find out on which kernel we're running:
+#include <sys/utsname.h>
+
 // Perform OS specific processing of Window events:
 void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 {
@@ -1331,7 +1334,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 	msc = -1;
 
 	#ifdef GLX_OML_sync_control
-	
+
 	// Extension unsupported or known to be defective? Return -1 "unsupported" in that case:
 	if ((NULL == glXWaitForSbcOML) || (windowRecord->specialflags & kPsychOpenMLDefective)) return(-1);
 
@@ -1399,6 +1402,64 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 	}
 	
 	PsychUnlockDisplay();
+
+    // Running on nouveau?
+    if (strstr((char*) glGetString(GL_VENDOR), "nouveau")) {
+        // Yes. Query current kernel version: Is it a Linux 3.13 or 3.14 kernel with broken nouveau-kms pageflip events?
+        struct utsname unameresult;
+        int rc;
+        double tref;
+        int major = 0, minor = 0;
+        uname(&unameresult);
+        sscanf(unameresult.release, "%i.%i", &major, &minor);
+        // We mark all Linux versions from 3.13 up to and including 3.15 broken. Exception are -rc
+        // release candidate kernels, so MK can still use rc's built from git/source for patch testing:
+        if ((major == 3) && ((minor >= 13) && (minor <= 15)) && !strstr(unameresult.release, "-rc")) {
+            // Yes. nouveau-kms on these kernels delivers faulty data inside its kms-pageflip completion events, so although
+            // return from glXWaitForSbcOML() can be trusted to mean swap-completion, the msc and ust timestamp are wrong.
+            if (PsychPrefStateGet_Verbosity() > 11) {
+                printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: glXWaitForSbcOML() success, but running on faulty nouveau-kms in Linux %s! Trying workaround.\n", unameresult.release);
+            }
+
+            // Try to (ab)use glXGetSyncValuesOML() to get nouveau-kms vblank timestamp for the vblank of
+            // swap completion. If this works we can take advantage of nouveau-kms accurate timestamps.
+            // However, due to the nature of the nouveau-kms pageflip bug there is a small chance that
+            // glXWaitForSbcOML() returned after swap completion but *before* the vblank timestamps and
+            // counts could get updated by the kernels vblank irq handler, so the values returned by
+            // glXGetSyncValuesOML() might be outdated and therefore also wrong. We query the current
+            // values and then validate them in a conservative fashion. If they are close enough to
+            // current system time, ie., in the future or less than a video refresh cycle in the
+            // past then we can assume them to be correct and useful to us and we can use them. Otherwise
+            // we assume we got old and stale values and just fallback to standard mmio beamposition
+            // timestamping. This is a conservative approach which rather discards good values than
+            // risking to accept wrong values. This way timestamps should always be correct, even though
+            // we have to pay a price in terms of higher execution time and more timestamp noise in case
+            // of false rejects:
+            PsychLockDisplay();
+            rc = glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc);
+            PsychUnlockDisplay();
+            if (rc && (msc >= windowRecord->lastSwaptarget_msc)) {
+                PsychGetAdjustedPrecisionTimerSeconds(&tref);
+                // Vblank timestamp older than 7 msecs? That's about half a video refresh duration for a 60 Hz display
+                // and 7/8th on a 120 Hz display. We can't use the measured video refresh duration here because this
+                // routine is called as part of calibration to determine that number:
+                if (PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz()) < (tref - 0.007)) {
+                    // Yes. Consider the returned ust invalid/outdated/stale. Return with "unsupported" rc to trigger
+                    // regular mmio beamposition timestamping:
+                    if (PsychPrefStateGet_Verbosity() > 11) {
+                        printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Workaround provided unreliable result - II. Returning rc=-1 to trigger silent fallback.\n");
+                    }
+                    return(-1);
+                }
+            }
+            else {
+                if (PsychPrefStateGet_Verbosity() > 11) {
+                    printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Workaround provided unreliable result - I. Returning rc=-1 to trigger silent fallback.\n");
+                }
+                return(-1);
+            }
+        }
+    }
 
 	// Check for valid return values: A zero ust or msc means failure, except for results from nouveau,
 	// because there it is "expected" to get a constant zero return value for msc, at least when running
