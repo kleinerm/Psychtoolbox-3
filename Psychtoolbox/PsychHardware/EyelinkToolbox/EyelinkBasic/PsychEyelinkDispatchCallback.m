@@ -484,16 +484,19 @@ function EyelinkDrawCalibrationTarget(eyewin, el, calxy)
 size=round(el.calibrationtargetsize/100*width);
 inset=round(el.calibrationtargetwidth/100*width);
 
-%% 
 insetSize = size-2*inset;
 if insetSize < 1
     insetSize = 1;
 end
-Screen('DrawDots', eyewin, calxy, size, el.calibrationtargetcolour, [], 1);
-Screen('DrawDots', eyewin, calxy, insetSize, el.backgroundcolour, [], 1);
-%%
 
-% comment above between the 2 %% and un comment below for larger targets on different resolutions
-%Screen('FillOval', eyewin, el.calibrationtargetcolour, [calxy(1)-size/2 calxy(2)-size/2 calxy(1)+size/2 calxy(2)+size/2], size+2);
-%Screen('FillOval', eyewin, el.backgroundcolour, [calxy(1)-inset/2 calxy(2)-inset/2 calxy(1)+inset/2 calxy(2)+inset/2], inset+2);
-
+% Dotsize small enough to fit into size limit of GPU?
+maxdotsize = 10; % Could do better here, but 10 is conservative default.
+if (size <= maxdotsize) && (insetSize <= maxdotsize)
+    % DrawDots works for these small dots:
+    Screen('DrawDots', eyewin, calxy, size, el.calibrationtargetcolour, [], 1);
+    Screen('DrawDots', eyewin, calxy, insetSize, el.backgroundcolour, [], 1);
+else
+    % Use FillOval for larger dots:
+    Screen('FillOval', eyewin, el.calibrationtargetcolour, [calxy(1)-size/2 calxy(2)-size/2 calxy(1)+size/2 calxy(2)+size/2], size+2);
+    Screen('FillOval', eyewin, el.backgroundcolour, [calxy(1)-inset/2 calxy(2)-inset/2 calxy(1)+inset/2 calxy(2)+inset/2], inset+2);
+end

@@ -320,9 +320,9 @@ psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord
 	// Either screenid from windowRecord or our special -1 "all Screens" Id:
 	screenId = (windowRecord) ? windowRecord->screenNumber : -1;
 
-	// We only support Radeon GPU's with pre DCE-4 display engine, nothing more recent:
+	// We only support Radeon GPU's, nothing else:
 	if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
-	    (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 0x40)) {
+	    (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 0xffff)) {
 	  return(FALSE);
 	}
 	
@@ -340,9 +340,22 @@ psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord
             // We're done as soon as we encounter invalid negative headid.
             if (headid < 0) break;
 
-			// Select Radeon HW registers for corresponding heads:
-			lutreg = (headid == 0) ? RADEON_D1GRPH_LUT_SEL : RADEON_D2GRPH_LUT_SEL;
-			ctlreg = (headid == 0) ? RADEON_D1GRPH_CONTROL : RADEON_D2GRPH_CONTROL;
+            // Select Radeon HW registers for corresponding heads:
+            if (gpuMinortype < 0x40) {
+                // DCE-3 and earlier:
+                lutreg = (headid == 0) ? RADEON_D1GRPH_LUT_SEL : RADEON_D2GRPH_LUT_SEL;
+                ctlreg = (headid == 0) ? RADEON_D1GRPH_CONTROL : RADEON_D2GRPH_CONTROL;
+            }
+            else {
+                // DCE-4 and later:
+                if (headid > DCE4_MAXHEADID) {
+                    printf("PTB-ERROR: Invalid headId %i (greater than max %i) provided for DCE-4+ display engine!\n", headid, DCE4_MAXHEADID);
+                    return(false);
+                }
+
+                lutreg = EVERGREEN_DC_LUT_10BIT_BYPASS + crtcoff[headid];
+                ctlreg = EVERGREEN_GRPH_CONTROL + crtcoff[headid];
+            }
 
 			// Enable or Disable?
 			if (enable) {
@@ -487,65 +500,78 @@ psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord
 void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowRecordType* windowRecord)
 {
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
+    int headiter, headid, screenId;
+    unsigned int ctlreg, lutreg, val1, val2;
+    int gpuMaintype, gpuMinortype;
 
-	int headiter, headid, screenId;
-	unsigned int ctlreg, lutreg, val1, val2;
-	int gpuMaintype, gpuMinortype;
+    // Fixup needed? Only if 10bpc mode is supposed to be active! Early exit if not:
+    if (!(windowRecord->specialflags & kPsychNative10bpcFBActive)) return;
 
-	// Fixup needed? Only if 10bpc mode is supposed to be active! Early exit if not:
-	if (!(windowRecord->specialflags & kPsychNative10bpcFBActive)) return;
+    // Map windows screen to gfx-headid aka register subset. TODO : We'll need something better,
+    // more generic, abstracted out for the future, but as a starter this will do:
+    screenId = windowRecord->screenNumber;
 
-	// Map windows screen to gfx-headid aka register subset. TODO : We'll need something better,
-	// more generic, abstracted out for the future, but as a starter this will do:
-	screenId = windowRecord->screenNumber;
-
-	// We only support Radeon GPU's with pre DCE-4 display engine, nothing more recent:
-	if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
-	    (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 0x40)) {
+    // We only support Radeon GPU's, nothing else:
+    if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
+        (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 0xffff)) {
         return;
-	}
+    }
 
-	// This command must be called with the OpenGL context of the given windowRecord active, so
-	// we can rely on glGetError() waiting for the correct pipeline to settle! Wait via glGetError()
-	// for the end-of-scene marker to finish completely, so our register write happens after
-	// the "wrong" register write of that command. glFinish() doesn't work here for unknown
-	// reasons - probably it waits too long or whatever. Pretty shaky this stuff...
-	glGetError();
-	
-	// Ok, now rewrite the double-buffered (latched) register with our "good" value for keeping
-	// the 10 bpc framebuffer online:
-	
-	// Iterate over range of all assigned heads for this screenId 'i' and reconfigure them:
-	for (headiter = 0; headiter < kPsychMaxPossibleCrtcs; headiter++) {
-	  // Map screenid to headid for headiter'th head:
-	  headid = PsychScreenToCrtcId(screenId, headiter);
-        
-	  // We're done as soon as we encounter invalid negative headid.
-	  if (headid < 0) break;
+    // This command must be called with the OpenGL context of the given windowRecord active, so
+    // we can rely on glGetError() waiting for the correct pipeline to settle! Wait via glGetError()
+    // for the end-of-scene marker to finish completely, so our register write happens after
+    // the "wrong" register write of that command. glFinish() doesn't work here for unknown
+    // reasons - probably it waits too long or whatever. Pretty shaky this stuff...
+    glGetError();
 
-	  lutreg = (headid == 0) ? RADEON_D1GRPH_LUT_SEL : RADEON_D2GRPH_LUT_SEL;
-	  ctlreg = (headid == 0) ? RADEON_D1GRPH_CONTROL : RADEON_D2GRPH_CONTROL;
+    // Ok, now rewrite the double-buffered (latched) register with our "good" value for keeping
+    // the 10 bpc framebuffer online:
 
-	  // Get current state of registers at high debug levels:
-	  if (PsychPrefStateGet_Verbosity() > 9) {
-	  	  val1 = PsychOSKDReadRegister(screenId, lutreg, NULL);
-	  	  val2 = PsychOSKDReadRegister(screenId, ctlreg, NULL);
-	  	  printf("PTB-DEBUG: PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(): Screen %i, head %i: LUT = %i [%i], GRPHCONT = %i [%i]\n", screenId, headid, val1 & (0x1 << 8), val1, val2 & (0x1 << 8), val2);
-	  }
+    // Iterate over range of all assigned heads for this screenId 'i' and reconfigure them:
+    for (headiter = 0; headiter < kPsychMaxPossibleCrtcs; headiter++) {
+        // Map screenid to headid for headiter'th head:
+        headid = PsychScreenToCrtcId(screenId, headiter);
 
-	  // One-liner read-modify-write op, which simply sets bit 8 of the register - the "10 bit LUT bypass" bit:
-	  PsychOSKDWriteRegister(screenId, lutreg, (0x1 << 8) | PsychOSKDReadRegister(screenId, lutreg, NULL), NULL);
+        // We're done as soon as we encounter invalid negative headid.
+        if (headid < 0) break;
 
-	  // One-liner read-modify-write op, which simply sets bit 8 of the register - the "Enable 2101010 mode" bit:
-	  PsychOSKDWriteRegister(screenId, ctlreg, (0x1 << 8) | PsychOSKDReadRegister(screenId, ctlreg, NULL), NULL);
+        // Select Radeon HW registers for corresponding heads:
+        if (gpuMinortype < 0x40) {
+            // DCE-3 and earlier:
+            lutreg = (headid == 0) ? RADEON_D1GRPH_LUT_SEL : RADEON_D2GRPH_LUT_SEL;
+            ctlreg = (headid == 0) ? RADEON_D1GRPH_CONTROL : RADEON_D2GRPH_CONTROL;
+        }
+        else {
+            // DCE-4 and later:
+            if (headid > DCE4_MAXHEADID) {
+                printf("PTB-ERROR: Invalid headId %i (greater than max %i) provided for DCE-4+ display engine!\n", headid, DCE4_MAXHEADID);
+                return;
+            }
 
-	  // Debug output, if wanted:
-	  if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(): ARGB2101010 bit set on screen %i, head %i.\n", screenId, headid);
-	}
+            lutreg = EVERGREEN_DC_LUT_10BIT_BYPASS + crtcoff[headid];
+            ctlreg = EVERGREEN_GRPH_CONTROL + crtcoff[headid];
+        }
+
+        // Get current state of registers at high debug levels:
+        if (PsychPrefStateGet_Verbosity() > 9) {
+            val1 = PsychOSKDReadRegister(screenId, lutreg, NULL);
+            val2 = PsychOSKDReadRegister(screenId, ctlreg, NULL);
+            printf("PTB-DEBUG: PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(): Screen %i, head %i: LUT = %i [%i], GRPHCONT = %i [%i]\n", screenId, headid, val1 & (0x1 << 8), val1, val2 & (0x1 << 8), val2);
+        }
+
+        // One-liner read-modify-write op, which simply sets bit 8 of the register - the "10 bit LUT bypass" bit:
+        PsychOSKDWriteRegister(screenId, lutreg, (0x1 << 8) | PsychOSKDReadRegister(screenId, lutreg, NULL), NULL);
+
+        // One-liner read-modify-write op, which simply sets bit 8 of the register - the "Enable 2101010 mode" bit:
+        PsychOSKDWriteRegister(screenId, ctlreg, (0x1 << 8) | PsychOSKDReadRegister(screenId, ctlreg, NULL), NULL);
+
+        // Debug output, if wanted:
+        if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(): ARGB2101010 bit set on screen %i, head %i.\n", screenId, headid);
+    }
 #endif
 
-	// Done.
-	return;
+    // Done.
+    return;
 }
 
 /* Stores content of GPU's surface address registers of the surfaces that

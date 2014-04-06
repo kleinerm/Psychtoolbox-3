@@ -21,6 +21,9 @@
 #include <IOKit/IOInterruptEventSource.h>
 #include <IOKit/IOFilterInterruptEventSource.h>
 
+// PTB driver revision:
+#define PTBKDRevision 1
+
 // Definitions of GPU registers etc.:
 #include "PsychGraphicsCardRegisterSpecs.h"
 
@@ -41,9 +44,6 @@
 #define VirtAddr_FORMAT     "0x%08x"
 #define ByteCount_FORMAT    UInt32_FORMAT
 #endif
-
-// PTB driver revision:
-#define PTBKDRevision 1
 
 struct PsychKDCommandStruct;
 

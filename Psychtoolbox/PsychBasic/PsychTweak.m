@@ -189,6 +189,23 @@ function varargout = PsychTweak(cmd, varargin)
 % This setting is off by default.
 %
 %
+% OSX only tweaks:
+% ----------------
+%
+% PsychTweak('DisableCVDisplayLink');
+%
+% -- Forbid use of OSX CoreVideo display links by Screen() either for fallback
+% timestamping, or for additional visual stimulus onset correctness checks.
+% Use of display link is enabled by default, although it has very questionable
+% value as timestamping fallback - you should use the PsychtoolboxKernelDriver
+% for much more reliable and accurate timestamps. The display link still has
+% some limited value for detection of certain graphics driver bugs.
+% Unfortunately Apple's display link functions contain bugs which can cause
+% Psychtoolbox to crash at the end of a session when the onscreen windows get
+% closed. There is no known solution for this problem, therefore we provide
+% this tweak if your system is affected by this crash bug. The bug only happens
+% on some setups and only sometimes.
+%
 
 % History:
 % 9.07.2012  mk  Wrote it.
@@ -310,6 +327,11 @@ if strcmpi(cmd, 'UseGPUIndex')
     val = round(val);
 
     setenv('PSYCH_USE_GPUIDX', sprintf('%i', val));
+    return;
+end
+
+if strcmpi(cmd, 'DisableCVDisplayLink')
+    setenv('PSYCH_DONT_USE_CVDISPLAYLINK', '1');
     return;
 end
 

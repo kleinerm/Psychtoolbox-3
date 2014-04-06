@@ -108,46 +108,43 @@ static int    numKernelDrivers = 0;
 // Internal helper function prototype:
 void PsychInitNonX11(void);
 
-// Offset of crtc blocks of evergreen gpu's for each of the six possible crtc's:
-unsigned int crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET, EVERGREEN_CRTC1_REGISTER_OFFSET, EVERGREEN_CRTC2_REGISTER_OFFSET, EVERGREEN_CRTC3_REGISTER_OFFSET, EVERGREEN_CRTC4_REGISTER_OFFSET, EVERGREEN_CRTC5_REGISTER_OFFSET };
-
-/* Mappings up to date for year 2013 (last update e-mail patch / commit 8-11-2013). Would need updates for anything after start of December 2013 */
+/* Mappings up to date for year 2013 (last update e-mail patch / commit 23-12-2013). Would need updates for anything after start of January 2014 */
 
 /* Is a given ATI/AMD GPU a DCE8 type ASIC, i.e., with the new display engine? */
 static psych_bool isDCE8(int screenId)
 {
-	psych_bool isDCE8 = false;
-    
-	// Everything >= BONAIRE is DCE8 -- This is part of the "Sea Islands" GPU family.
-    
+    psych_bool isDCE8 = false;
+
+    // Everything >= BONAIRE is DCE8 -- This is part of the "Sea Islands" GPU family.
+
     // BONAIRE in 0x664x - 0x665x range:
-	if ((fPCIDeviceId & 0xFFF0) == 0x6640) isDCE8 = true;
-	if ((fPCIDeviceId & 0xFFF0) == 0x6650) isDCE8 = true;
-    
+    if ((fPCIDeviceId & 0xFFF0) == 0x6640) isDCE8 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x6650) isDCE8 = true;
+
     // KABINI in 0x983x range:
-	if ((fPCIDeviceId & 0xFFF0) == 0x9830) isDCE8 = true;
-    
+    if ((fPCIDeviceId & 0xFFF0) == 0x9830) isDCE8 = true;
+
     // KAVERI in 0x13xx range:
-	if ((fPCIDeviceId & 0xFF00) == 0x1300) isDCE8 = true;
+    if ((fPCIDeviceId & 0xFF00) == 0x1300) isDCE8 = true;
 
     // HAWAII in 0x67Ax - 0x67Bx range:
-	if ((fPCIDeviceId & 0xFFF0) == 0x67A0) isDCE8 = true;
-	if ((fPCIDeviceId & 0xFFF0) == 0x67B0) isDCE8 = true;
-    
-	return(isDCE8);
+    if ((fPCIDeviceId & 0xFFF0) == 0x67A0) isDCE8 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x67B0) isDCE8 = true;
+
+    return(isDCE8);
 }
 
 /* Is a given ATI/AMD GPU a DCE6.4 type ASIC, i.e., with the new display engine? */
 static psych_bool isDCE64(int screenId)
 {
-	psych_bool isDCE64 = false;
-    
-	// Everything == OLAND is DCE6.4 -- This is part of the "Southern Islands" GPU family.
-    
+    psych_bool isDCE64 = false;
+
+    // Everything == OLAND is DCE6.4 -- This is part of the "Southern Islands" GPU family.
+
     // OLAND in 0x66xx range:
-	if ((fPCIDeviceId & 0xFF00) == 0x6600) isDCE64 = true;
-    
-	return(isDCE64);
+    if ((fPCIDeviceId & 0xFF00) == 0x6600) isDCE64 = true;
+
+    return(isDCE64);
 }
 
 /* Is a given ATI/AMD GPU a DCE6.1 type ASIC, i.e., with the new display engine? */
@@ -161,134 +158,134 @@ static psych_bool isDCE61(int screenId)
     if ((fPCIDeviceId & 0xFF00) == 0x9900) isDCE61 = true;
 
     // KAVERI in 0x13xx range:
-	if ((fPCIDeviceId & 0xFF00) == 0x1300) isDCE61 = true;
-    
+    if ((fPCIDeviceId & 0xFF00) == 0x1300) isDCE61 = true;
+
     return(isDCE61);
 }
 
 /* Is a given ATI/AMD GPU a DCE6 type ASIC, i.e., with the new display engine? */
 static psych_bool isDCE6(int screenId)
 {
-	psych_bool isDCE6 = false;
-    
-	// Everything >= ARUBA is DCE6 -- This is the "Southern Islands" GPU family.
-	// First real DCE-6.0 is TAHITI in 0x678x - 0x679x range:
-	if ((fPCIDeviceId & 0xFFF0) == 0x6780) isDCE6 = true;
-	if ((fPCIDeviceId & 0xFFF0) == 0x6790) isDCE6 = true;
-    
-	// Then PITCAIRN, VERDE in 0x6800 - 0x683x range:
-	if ((fPCIDeviceId & 0xFFF0) == 0x6800) isDCE6 = true;
-	if ((fPCIDeviceId & 0xFFF0) == 0x6810) isDCE6 = true;
-	if ((fPCIDeviceId & 0xFFF0) == 0x6820) isDCE6 = true;
-	if ((fPCIDeviceId & 0xFFF0) == 0x6830) isDCE6 = true;
-    
+    psych_bool isDCE6 = false;
+
+    // Everything >= ARUBA is DCE6 -- This is the "Southern Islands" GPU family.
+    // First real DCE-6.0 is TAHITI in 0x678x - 0x679x range:
+    if ((fPCIDeviceId & 0xFFF0) == 0x6780) isDCE6 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x6790) isDCE6 = true;
+
+    // Then PITCAIRN, VERDE in 0x6800 - 0x683x range:
+    if ((fPCIDeviceId & 0xFFF0) == 0x6800) isDCE6 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x6810) isDCE6 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x6820) isDCE6 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x6830) isDCE6 = true;
+
     // And one outlier PITCAIRN:
-	if ((fPCIDeviceId & 0xFFFF) == 0x684c) isDCE6 = true;
+    if ((fPCIDeviceId & 0xFFFF) == 0x684c) isDCE6 = true;
 
     // Then HAINAN in the 0x666x range:
-	if ((fPCIDeviceId & 0xFFF0) == 0x6660) isDCE6 = true;
-    
-	// All DCE-6.1 engines are also DCE-6:
-	if (isDCE61(screenId)) isDCE6 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x6660) isDCE6 = true;
 
-	// All DCE-6.4 engines are also DCE-6:
-	if (isDCE64(screenId)) isDCE6 = true;
+    // All DCE-6.1 engines are also DCE-6:
+    if (isDCE61(screenId)) isDCE6 = true;
 
-	// All DCE-8 engines are also DCE-6:
-	if (isDCE8(screenId)) isDCE6 = true;
+    // All DCE-6.4 engines are also DCE-6:
+    if (isDCE64(screenId)) isDCE6 = true;
 
-	return(isDCE6);
+    // All DCE-8 engines are also DCE-6:
+    if (isDCE8(screenId)) isDCE6 = true;
+
+    return(isDCE6);
 }
 
 /* Is a given ATI/AMD GPU a DCE5 type ASIC, i.e., with the new display engine? */
 static psych_bool isDCE5(int screenId)
 {
-	psych_bool isDCE5 = false;
+    psych_bool isDCE5 = false;
 
-	// Everything after BARTS is DCE5 -- This is the "Northern Islands" GPU family.
-	// Barts, Turks, Caicos, Cayman, Antilles in 0x67xx range:
-	if ((fPCIDeviceId & 0xFF00) == 0x6700) isDCE5 = true;
+    // Everything after BARTS is DCE5 -- This is the "Northern Islands" GPU family.
+    // Barts, Turks, Caicos, Cayman, Antilles in 0x67xx range:
+    if ((fPCIDeviceId & 0xFF00) == 0x6700) isDCE5 = true;
 
-	// More Turks ids:
-	if ((fPCIDeviceId & 0xFFF0) == 0x6840) isDCE5 = true;
-	if ((fPCIDeviceId & 0xFFF0) == 0x6850) isDCE5 = true;
+    // More Turks ids:
+    if ((fPCIDeviceId & 0xFFF0) == 0x6840) isDCE5 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x6850) isDCE5 = true;
 
-	// All DCE-6 engines are also DCE-5:
-	if (isDCE6(screenId)) isDCE5 = true;
-    
-	return(isDCE5);
+    // All DCE-6 engines are also DCE-5:
+    if (isDCE6(screenId)) isDCE5 = true;
+
+    return(isDCE5);
 }
 
 /* Is a given ATI/AMD GPU a DCE-4.1 type ASIC, i.e., with the new display engine? */
 static psych_bool isDCE41(int screenId)
 {
-	psych_bool isDCE41 = false;
+    psych_bool isDCE41 = false;
 
-	// Everything after PALM which is an IGP is DCE-4.1
-	// Currently these are Palm, Sumo and Sumo2.
-	// DCE-4.1 is a real subset of DCE-4, with all its
-	// functionality, except it only has 2 crtcs instead of 6.
+    // Everything after PALM which is an IGP is DCE-4.1
+    // Currently these are Palm, Sumo and Sumo2.
+    // DCE-4.1 is a real subset of DCE-4, with all its
+    // functionality, except it only has 2 crtcs instead of 6.
 
-	// Palm in 0x980x range:
-	if ((fPCIDeviceId & 0xFFF0) == 0x9800) isDCE41 = true;
+    // Palm in 0x980x range:
+    if ((fPCIDeviceId & 0xFFF0) == 0x9800) isDCE41 = true;
 
-	// Sumo/Sumo2 in 0x964x range:
-	if ((fPCIDeviceId & 0xFFF0) == 0x9640) isDCE41 = true;
-    
-	return(isDCE41);
+    // Sumo/Sumo2 in 0x964x range:
+    if ((fPCIDeviceId & 0xFFF0) == 0x9640) isDCE41 = true;
+
+    return(isDCE41);
 }
 
 /* Is a given ATI/AMD GPU a DCE4 type ASIC, i.e., with the new display engine? */
 static psych_bool isDCE4(int screenId)
 {
-	psych_bool isDCE4 = false;
+    psych_bool isDCE4 = false;
 
-	// Everything after CEDAR is DCE4. The Linux radeon kms driver defines
-	// in radeon_family.h which chips are CEDAR or later, and the mapping to
-	// these chip codes is done by matching against pci device id's in a
-	// mapping table inside linux/include/drm/drm_pciids.h
-	// Mapping of chip codes to DCE-generations is in drm/radeon/radeon.h
-	// Maintaining a copy of that table is impractical for PTB, so we simply
-	// check which range of PCI device id's is covered by the DCE-4 chips and
-	// code up matching rules here. This should do for now...
-	
-	// Caiman, Cedar, Redwood, Juniper, Cypress, Hemlock in 0x6xxx range:
-	if ((fPCIDeviceId & 0xF000) == 0x6000) isDCE4 = true;
-	
-	// All DCE-4.1 engines are also DCE-4, except for lower crtc count:
-	if (isDCE41(screenId)) isDCE4 = true;
+    // Everything after CEDAR is DCE4. The Linux radeon kms driver defines
+    // in radeon_family.h which chips are CEDAR or later, and the mapping to
+    // these chip codes is done by matching against pci device id's in a
+    // mapping table inside linux/include/drm/drm_pciids.h
+    // Mapping of chip codes to DCE-generations is in drm/radeon/radeon.h
+    // Maintaining a copy of that table is impractical for PTB, so we simply
+    // check which range of PCI device id's is covered by the DCE-4 chips and
+    // code up matching rules here. This should do for now...
 
-	// All DCE-5 engines are also DCE-4:
-	if (isDCE5(screenId)) isDCE4 = true;
-    
-	return(isDCE4);
+    // Caiman, Cedar, Redwood, Juniper, Cypress, Hemlock in 0x6xxx range:
+    if ((fPCIDeviceId & 0xF000) == 0x6000) isDCE4 = true;
+
+    // All DCE-4.1 engines are also DCE-4, except for lower crtc count:
+    if (isDCE41(screenId)) isDCE4 = true;
+
+    // All DCE-5 engines are also DCE-4:
+    if (isDCE5(screenId)) isDCE4 = true;
+
+    return(isDCE4);
 }
 
 static psych_bool isDCE3(int screenId)
 {
-	psych_bool isDCE3 = false;
+    psych_bool isDCE3 = false;
 
-	// RV620, RV635, RS780, RS880, RV770, RV710, RV730, RV740,
-	// aka roughly HD4330 - HD5165, HD5xxV, and some HD4000 parts.
+    // RV620, RV635, RS780, RS880, RV770, RV710, RV730, RV740,
+    // aka roughly HD4330 - HD5165, HD5xxV, and some HD4000 parts.
 
-	if ((fPCIDeviceId & 0xFFF0) == 0x9440) isDCE3 = true;
-	if ((fPCIDeviceId & 0xFFF0) == 0x9450) isDCE3 = true;
-	if ((fPCIDeviceId & 0xFFF0) == 0x9460) isDCE3 = true;
-	if ((fPCIDeviceId & 0xFFF0) == 0x9470) isDCE3 = true;
-	if ((fPCIDeviceId & 0xFFF0) == 0x9480) isDCE3 = true;
-	if ((fPCIDeviceId & 0xFFF0) == 0x9490) isDCE3 = true;
-	if ((fPCIDeviceId & 0xFFF0) == 0x94A0) isDCE3 = true;
-	if ((fPCIDeviceId & 0xFFF0) == 0x94B0) isDCE3 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x9440) isDCE3 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x9450) isDCE3 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x9460) isDCE3 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x9470) isDCE3 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x9480) isDCE3 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x9490) isDCE3 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x94A0) isDCE3 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x94B0) isDCE3 = true;
 
-	if ((fPCIDeviceId & 0xFFF0) == 0x9540) isDCE3 = true;
-	if ((fPCIDeviceId & 0xFFF0) == 0x9550) isDCE3 = true;
-	if ((fPCIDeviceId & 0xFFF0) == 0x9590) isDCE3 = true;
-	if ((fPCIDeviceId & 0xFFF0) == 0x95C0) isDCE3 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x9540) isDCE3 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x9550) isDCE3 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x9590) isDCE3 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x95C0) isDCE3 = true;
 
-	if ((fPCIDeviceId & 0xFFF0) == 0x9610) isDCE3 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x9610) isDCE3 = true;
 
-	if ((fPCIDeviceId & 0xFFF0) == 0x9710) isDCE3 = true;
-    
+    if ((fPCIDeviceId & 0xFFF0) == 0x9710) isDCE3 = true;
+
     return(isDCE3);
 }
 
@@ -3275,10 +3272,10 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
 {
     static unsigned int oldDither[(DCE4_MAXHEADID + 1)] = { 0, 0, 0, 0, 0, 0 };
     unsigned int reg;
-	int headId, iter;
-    
+    int headId, iter;
+
     // MMIO registers mapped?
-	if (!gfx_cntl_mem) return;
+    if (!gfx_cntl_mem) return;
 
     // Check if the method is supported for this GPU type:
     // Currently ATI/AMD GPU's only...
@@ -3290,14 +3287,14 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
 
     // Start with headId undefined:
     headId = -1;
-    
+
     for (iter = 0; iter < kPsychMaxPossibleCrtcs; iter++) {
         if (screenId >= 0) {
             // Positive screenId: Apply to all crtc's for this screenId:
-            
+
             // Is there an iter'th crtc assigned to this screen?
             headId = PsychScreenToCrtcId(screenId, iter);
-            
+
             // If end of list of associated crtc's for this screenId reached, then we're done:
             if (headId < 0) break;
         }
@@ -3312,11 +3309,11 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
                 break;
             }
         }
-        
+
         // AMD/ATI Radeon, FireGL or FirePro GPU?
         if (fDeviceType == kPsychRadeon) {
             if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Trying to %s digital display dithering on display head %d.\n", (ditherOn) ? "enable" : "disable", headId);
-            
+
             // Map headId to proper hardware control register offset:
             if (isDCE4(screenId) || isDCE5(screenId) || isDCE6(screenId) || isDCE8(screenId)) {
                 // DCE-4 display engine (CEDAR and later afaik): Up to six crtc's. Map to proper
@@ -3326,7 +3323,7 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
                     if (PsychPrefStateGet_Verbosity() > 0) printf("SetDitherMode: ERROR! Invalid headId %d provided. Must be between 0 and %i. Aborted.\n", headId, (fNumDisplayHeads - 1));
                     continue;
                 }
-                
+
                 // Map to dither format control register for head 'headId':
                 reg = EVERGREEN_FMT_BIT_DEPTH_CONTROL + crtcoff[headId];
             } else if (isDCE3(screenId)) {
@@ -3334,7 +3331,7 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
                 reg = (headId == 0) ? DCE3_FMT_BIT_DEPTH_CONTROL : DCE3_FMT_BIT_DEPTH_CONTROL + 0x800;
             } else {
                 // AVIVO / DCE-1 / DCE-2 display engine (R300 - R600 afaik): At most two display heads for dual-head gpu's.
-                
+
                 // These have a weird wiring of encoders/transmitters to output connectors with no simple 1:1 correspondence
                 // between crtc's and encoders. We need to probe each encoder block if it is enabled and sourcing from our headId,
                 // respective its corresponding crtc to find which encoder block needs to be configured wrt. dithering on this
@@ -3342,13 +3339,13 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
                 reg = 0x0;
 
                 // TMDSA block enabled, and driven by headId? Then we control its encoder:
-                if ((ReadRegister(0x7880) & 0x1) && ((ReadRegister(0x7884) & 0x1) == headId)) reg = RADEON_TMDSA_BIT_DEPTH_CONTROL;
-                
+                if ((ReadRegister(0x7880) & 0x1) && ((ReadRegister(0x7884) & 0x1) == (unsigned int) headId)) reg = RADEON_TMDSA_BIT_DEPTH_CONTROL;
+
                 // LVTMA block enabled, and driven by headId? Then we control its encoder:
-                if ((ReadRegister(0x7A80) & 0x1) && ((ReadRegister(0x7A84) & 0x1) == headId)) reg = RADEON_LVTMA_BIT_DEPTH_CONTROL;
+                if ((ReadRegister(0x7A80) & 0x1) && ((ReadRegister(0x7A84) & 0x1) == (unsigned int) headId)) reg = RADEON_LVTMA_BIT_DEPTH_CONTROL;
 
                 // DVOA block enabled, and driven by headId? Then we control its encoder:
-                if ((ReadRegister(0x7980) & 0x1) && ((ReadRegister(0x7984) & 0x1) == headId)) reg = RADEON_DVOA_BIT_DEPTH_CONTROL;
+                if ((ReadRegister(0x7980) & 0x1) && ((ReadRegister(0x7984) & 0x1) == (unsigned int) headId)) reg = RADEON_DVOA_BIT_DEPTH_CONTROL;
 
                 // If no digital encoder block was assigned, then this likely means we're connected to a
                 // analog VGA monitor driven by the DAC. The DAC doesn't have dithering ever, so we are
@@ -3373,13 +3370,13 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
                     }
                 }
             }
-            
+
             // Perform actual enable/disable/reconfigure sequence for target encoder/head:
-            
+
             // Enable dithering?
             if (ditherOn) {
                 // Reenable dithering with old, previously stored settings, if it is disabled:
-                
+
                 // Dithering currently off (all zeros)?
                 if (ReadRegister(reg) == 0) {
                     // Dithering is currently off. Do we know the old setting from a previous
@@ -3397,7 +3394,15 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
                     }
                 }
                 else {
-                    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering already enabled with current control value %x. Skipped.\n", ReadRegister(reg));
+                    // Dithering currently on.
+
+                    // Specific value for control reg specified?
+                    if (ditherOn > 1) {
+                        // Yes. Use it "as is":
+                        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Setting dithering mode to userspace provided setting %x. Cross your fingers!\n", ditherOn);
+                        WriteRegister(reg, ditherOn);
+                    }
+                    else if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering already enabled with current control value %x. Skipped.\n", ReadRegister(reg));
                 }
             }
             else {
@@ -3411,13 +3416,13 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
                     if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering already disabled. Skipped.\n");
                 }
             }
-            
+
             // End of Radeon et al. support code.
         }
         // Next head for this screenId, if any...
     }
-    
-	return;
+
+    return;
 }
 
 // Query if LUT for given headId is all-zero: 0 = Something else, 1 = Zero-LUT, 2 = It's an identity LUT,

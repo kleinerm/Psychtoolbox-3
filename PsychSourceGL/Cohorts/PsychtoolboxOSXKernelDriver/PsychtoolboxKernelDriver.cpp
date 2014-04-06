@@ -90,13 +90,10 @@
 #include "PsychUserKernelShared.h"
 #include "PsychtoolboxKernelDriver.h"
 
-// Offset of crtc blocks of AMD Evergreen gpu's for each of the six possible crtc's:
-static UInt32 crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET, EVERGREEN_CRTC1_REGISTER_OFFSET, EVERGREEN_CRTC2_REGISTER_OFFSET, EVERGREEN_CRTC3_REGISTER_OFFSET, EVERGREEN_CRTC4_REGISTER_OFFSET, EVERGREEN_CRTC5_REGISTER_OFFSET };
-
 #define super IOService
 OSDefineMetaClassAndStructors(PsychtoolboxKernelDriver, IOService)
 
-/* Mappings up to date for year 2013 (last update e-mail patch / commit 8-11-2013). Would need updates for anything after start of December 2013 */
+/* Mappings up to date for year 2013 (last update e-mail patch / commit 23-12-2013). Would need updates for anything after start of January 2014 */
 
 /* Is a given ATI/AMD GPU a DCE8 type ASIC, i.e., with the new display engine? */
 bool PsychtoolboxKernelDriver::isDCE8(void)
@@ -1129,7 +1126,7 @@ void PsychtoolboxKernelDriver::SetDitherMode(UInt32 headId, UInt32 ditherOn)
         // Enable dithering?
         if (ditherOn) {
             // Reenable dithering with old, previously stored settings, if it is disabled:
-            
+
             // Dithering currently off (all zeros)?
             if (ReadRegister(reg) == 0) {
                 // Dithering is currently off. Do we know the old setting from a previous
@@ -1147,7 +1144,15 @@ void PsychtoolboxKernelDriver::SetDitherMode(UInt32 headId, UInt32 ditherOn)
                 }
             }
             else {
-                IOLog("%s: SetDitherMode: Dithering already enabled with current control value 0x%x. Skipped.\n", getName(), ReadRegister(reg));
+                // Dithering currently on.
+
+                // Specific value for control reg specified?
+                if (ditherOn > 1) {
+                    // Yes. Use it "as is":
+                    IOLog("%s: SetDitherMode: Setting dither mode to userspace provided setting 0x%x. Cross your fingers!\n", getName(), ditherOn);
+                    WriteRegister(reg, ditherOn);
+                }
+                else IOLog("%s: SetDitherMode: Dithering already enabled with current control value 0x%x. Skipped.\n", getName(), ReadRegister(reg));
             }
         }
         else {

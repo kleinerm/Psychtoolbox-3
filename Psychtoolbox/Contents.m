@@ -43,14 +43,17 @@
 %
 % web http://psychtoolbox.org/; % triple-click me & hit enter
 %
+% Peter Scarfe has written a large set of nice and beginner friendly
+% Psychtoolbox tutorial scripts.
+% You can find them at http://peterscarfe.com/ptbtutorials.html
+%
 % If you want to acknowledge use of this software when you publish your
 % research, you might say something like this, "We wrote our experiments in
-% Matlab, using the Psychophysics Toolbox extensions (Brainard, 1997;
-% Pelli, 1997)."
+% Matlab, using the Psychophysics Toolbox extensions (Kleiner et al, 2007)"
 %
-% Brainard, D.H. (1997) The Psychophysics Toolbox, Spatial Vision
-% 10:443-446. Pelli, D.G. (1997) The VideoToolbox software for visual
-% psychophysics: Transforming numbers into movies, Spatial Vision 10:437-442.
+% Kleiner M, Brainard D, Pelli D, 2007, "What's new in Psychtoolbox-3?"
+% Perception 36 ECVP Abstract Supplement.
+%
 %
 % Folders and their contents:
 %

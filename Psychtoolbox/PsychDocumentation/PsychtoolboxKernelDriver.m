@@ -2,9 +2,7 @@
 %
 % The PsychtoolboxKernelDriver (PKD) is a MacOS-X kernel extension (a
 % kext). It currently should fully work with AMD/ATI Radeon graphics cards
-% of the X1000, HD2000, HD3000 and HD4000 series. It works with the most
-% recent HD-5000 series chips and later, although some functionality (10
-% Bit native framebuffer support) is not yet available. On NVidia and Intel
+% of the X1000, and HD2000 to HD8000 series and later. On NVidia and Intel
 % cards, only beamposition queries for high precision timestamping are
 % supported.
 %
@@ -15,7 +13,7 @@
 %
 % * Beamposition queries (See help BeampositionQueries) allow for
 % especially robust and accurate stimulus onset timestamping. They are
-% no longer supported by OS-X 10.9 and later and werent supported at all
+% no longer supported by OS-X 10.9 and later and were not supported at all
 % on Intel based Macintosh computers with AMD/ATI or Intel graphics.
 % The driver restores this functionality for NVidia and AMD/ATI gpu's.
 % Support for Intel gpu's is disabled by default, as it can lead to system
@@ -30,9 +28,8 @@
 % * Use of 10 bit per color component framebuffers: The driver enables two
 % extra bits of color output precision per color channel on your card,
 % allowing for 1 billion shades of different colors instead of the 16.8
-% million colors available without the driver. Only supported on older
-% AMD/ATI graphics cards up to and including Radeon HD 4000 and FireGL
-% equivalent models.
+% million colors available without the driver. Only supported on AMD/ATI
+% graphics cards of X1000 series and later.
 %
 % * The driver implements workarounds to fix some problems caused by
 % graphics driver and operating system bugs when the graphics card is used

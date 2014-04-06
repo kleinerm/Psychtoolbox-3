@@ -195,9 +195,8 @@ const char* PsychEyelinkParseToString(int startIdx)
 	  }
 
 	  // Find end of actual parameter spec:
-	  for(i=0;  (pstrFormat[i] > 0) && ( pstrFormat[i] != '%') ; i++);
-      for (j = i+1; (pstrFormat[j] > 0) && ( pstrFormat[j] != ' ') && (pstrFormat[j]!='%') ; j++);
-        
+	  for (i = 0; (pstrFormat[i] > 0) && (pstrFormat[i] != '%'); i++) {};
+      for (j = i+1; (pstrFormat[j] > 0) && (pstrFormat[j] != ' ') && (pstrFormat[j]!='%'); j++) {};
 
 	  // Copy format substring to fSpec:
 	  memset(fSpec, 0, sizeof(fSpec));

@@ -555,12 +555,10 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %   Psychtoolbox experimental 10 bpc framebuffer support:
 %
-%   Currently we support ATI/AMD Radeon hardware of the X1000, HD2000, HD3000,
-%   and HD4000 series under Linux and OSX via our own low-level setup mechanisms.
+%   Currently we support ATI/AMD Radeon hardware of the X1000, HD2000 - HD8000,
+%   series and later models under Linux and OSX via our own low-level setup mechanisms.
 %   These models support a native ARGB2101010 framebuffer, ie., a system
 %   framebuffer with 2 bits for the alpha channel, and 10 bits per color channel.
-%   Support for later generations of AMD Radeons may get added at some point, e.g.,
-%   for HD5000-HD8000.
 %
 %   As this is supported by the hardware, but not by the standard ATI
 %   graphics drivers, we follow a hybrid approach: We use a special kernel
@@ -585,7 +583,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   shown to work in the past for analog VGA CRT monitors. The status of native
 %   10 bpc output to digital display devices is unknown. Output of 10 bpc framebuffers
 %   to standard 8 bpc digital panels via digital dithering is known to work, but
-%   that is not the real thing.
+%   that is not the real thing, only a simulation of 10 bpc via dithering to 8 bpc.
 %
 %
 %   Usage: PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer' [, disableDithering=0]);
@@ -1771,6 +1769,7 @@ if strcmpi(cmd, 'OpenWindow')
         % Extract optional 2nd parameter - The window rectangle of the slave
         % window on the slave screen to which the display should get mirrored:
         slavewinrect = reqs{rows, 4};
+        if isempty(slavewinrect), slavewinrect = []; end
         
         % Open slave window on slave screen: Set the special dual window
         % output flag, so Screen('OpenWindow') initializes the internal blit
@@ -1812,6 +1811,7 @@ if strcmpi(cmd, 'OpenWindow')
         % Extract optional 2nd parameter - The window rectangle of the slave
         % window on the slave screen to which the pipe 1 display should get outputted:
         slavewinrect = reqs{rows, 4};
+        if isempty(slavewinrect), slavewinrect = []; end
         
         % Open slave window on slave screen: Set the special dual window
         % output flag, so Screen('OpenWindow') initializes the internal blit
@@ -1842,6 +1842,7 @@ if strcmpi(cmd, 'OpenWindow')
         % Extract optional 2nd parameter - The window rectangle of the slave
         % window on the slave screen:
         slavewinrect = reqs{rows, 4};
+        if isempty(slavewinrect), slavewinrect = []; end
         
         % Open slave window on slave screen:
         slavewin = Screen('OpenWindow', slavescreenid, [], slavewinrect, pixelSize, [], 10);
