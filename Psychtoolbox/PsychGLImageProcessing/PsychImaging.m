@@ -1769,6 +1769,7 @@ if strcmpi(cmd, 'OpenWindow')
         % Extract optional 2nd parameter - The window rectangle of the slave
         % window on the slave screen to which the display should get mirrored:
         slavewinrect = reqs{rows, 4};
+        if isempty(slavewinrect), slavewinrect = []; end
         
         % Open slave window on slave screen: Set the special dual window
         % output flag, so Screen('OpenWindow') initializes the internal blit
@@ -1810,6 +1811,7 @@ if strcmpi(cmd, 'OpenWindow')
         % Extract optional 2nd parameter - The window rectangle of the slave
         % window on the slave screen to which the pipe 1 display should get outputted:
         slavewinrect = reqs{rows, 4};
+        if isempty(slavewinrect), slavewinrect = []; end
         
         % Open slave window on slave screen: Set the special dual window
         % output flag, so Screen('OpenWindow') initializes the internal blit
@@ -1840,6 +1842,7 @@ if strcmpi(cmd, 'OpenWindow')
         % Extract optional 2nd parameter - The window rectangle of the slave
         % window on the slave screen:
         slavewinrect = reqs{rows, 4};
+        if isempty(slavewinrect), slavewinrect = []; end
         
         % Open slave window on slave screen:
         slavewin = Screen('OpenWindow', slavescreenid, [], slavewinrect, pixelSize, [], 10);
