@@ -135,7 +135,7 @@ if strcmp(replyFun,'GetChar')
         end;
     end;
 
-    while ~eq(reply(i),10)  % until they hit RETURN
+    while ~eq(reply(i),10)  && ~eq(reply(i),13) % until they hit RETURN
         [newX(i), newY(i)]=Screen(window,'DrawText',char(reply(i)),newX(i-1),newY(i-1),textColor); % put coverted ascii code letter on screen
         Screen('Flip', window, 0, dontClear);   % flip it to the screen
         i=i+1;
@@ -167,7 +167,7 @@ if strcmp(replyFun,'GetChar')
     Screen('FillRect', window, bgColor);
     Screen('Flip', window);
 
-    for d=min(find(reply==8 | reply==10))-1 %#ok<MXFND>
+    for d=min(find(reply==8 | reply==10 | reply==13))-1 %#ok<MXFND>
         reply = reply(1:d);
     end;
     

@@ -17,6 +17,8 @@ function EyelinkFixationWindow
 % mm/dd/yy
 %
 % 01/28/11  NJ  created
+% 12/20/13  LJ  fixed issue with non integer arguments for Eyelink('message' ...)
+%               changed EyeLink to Eyelink , case sensitive for the latest matlab
 
 PsychDefaultSetup(1);
 
@@ -324,7 +326,7 @@ try
             % if spacebar was pressed stop display
             if keyCode(stopkey )
                 sprintf('Space pressed, exiting trial\n');
-                EyeLink('Message', 'Key pressed');
+                Eyelink('Message', 'Key pressed');
                 break;
             end
             
@@ -362,10 +364,11 @@ try
         % to the EDF file.
         % Consider adding a short delay every few messages.
         WaitSecs(0.001);
-        Eyelink('Message', '!V IAREA ELLIPSE %d %d %d %d %d %s', 1, winWidth/2-dotSize, winHeight/2-dotSize, winWidth/2+dotSize, winHeight/2+dotSize,'center');
-        Eyelink('Message', '!V IAREA RECTANGLE %d %d %d %d %d %s', 2, winWidth/2-fixWinSize, winHeight/2-fixWinSize, winWidth/2+fixWinSize, winHeight/2+fixWinSize,'centerWin');
-        
-        
+        Eyelink('Message', '!V IAREA ELLIPSE %d %d %d %d %d %s', 1, floor(winWidth/2-dotSize), floor(winHeight/2-dotSize), floor(winWidth/2+dotSize), floor(winHeight/2+dotSize),'center');
+        Eyelink('Message', '!V IAREA RECTANGLE %d %d %d %d %d %s', 2, floor(winWidth/2-fixWinSize), floor(winHeight/2-fixWinSize), floor(winWidth/2+fixWinSize), floor(winHeight/2+fixWinSize),'centerWin');
+
+
+
         % Send messages to report trial condition information
         % Each message may be a pair of trial condition variable and its
         % corresponding value follwing the '!V TRIAL_VAR' token message

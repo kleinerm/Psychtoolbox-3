@@ -1,4 +1,4 @@
-function fprintfLeak
+function fprintfEmpty
 % Mathworks Case ID: 297266, reported 10/3/99.
 % 
 % FPRINTF terminates when it gets an empty matrix [].

@@ -10,7 +10,8 @@
 		E.Peters@ai.rug.nl				emp
 		f.w.cornelissen@med.rug.nl		fwc
 		mario.kleiner@tuebingen.mpg.de  mk
-  
+        li@sr-research.com              lj
+ 
 	PLATFORMS:	All.
     
 	HISTORY:
@@ -18,7 +19,9 @@
 		11/22/05  cdb		Created.
 		29/06/06  fwc		fixed EyelinkSystemIsConnected to allow dummy mode connections
 		15/03/09  mk		Added experimental support for eye camera image display.
-
+                12/20/13  lj           fixed PsychEyelinkParseToString to allow space between % ;
+                                       modified  getMouseState to limit mouse cursor inside of camera image.
+ 
 	TARGET LOCATION:
 
 		Eyelink.mexmac resides in:
@@ -146,7 +149,7 @@ int Verbosity(void) {
 const char* PsychEyelinkParseToString(int startIdx)
 {
 	static char			strCommand[256];
-	int				i			= 0;
+	int				i			= 0, j=0;
 	int				iNumInArgs		= 0;
 	PsychArgFormatType	        psychArgType	        = PsychArgType_none;
 	int                             iTempValue              = 0;
@@ -192,13 +195,14 @@ const char* PsychEyelinkParseToString(int startIdx)
 	  }
 
 	  // Find end of actual parameter spec:
-	  for (i = 0; (pstrFormat[i] > 0) && (pstrFormat[i] != ' '); i++);
+	  for (i = 0; (pstrFormat[i] > 0) && (pstrFormat[i] != '%'); i++) {};
+      for (j = i+1; (pstrFormat[j] > 0) && (pstrFormat[j] != ' ') && (pstrFormat[j]!='%'); j++) {};
 
 	  // Copy format substring to fSpec:
 	  memset(fSpec, 0, sizeof(fSpec));
-	  strncpy(fSpec, pstrFormat, (i < 256) ? i : 255);
-
-	  // Prepare output substring for writing:
+	  strncpy(fSpec, pstrFormat, ((j-i) < 256) ? (j-i) : 255);
+	  
+      // Prepare output substring for writing:
 	  memset(strFragment, 0, sizeof(strFragment));
 
 	  // Check if input argument type matches parameter spec string
@@ -252,7 +256,7 @@ const char* PsychEyelinkParseToString(int startIdx)
 
 	  // Advance parse positions:
 	  wIdx = strlen(strCommand);
-	  pstrFormat += i;
+	  pstrFormat += j;
 	  argIdx++;
 
 	  // Next parse iteration.
@@ -1152,12 +1156,63 @@ void getMouseState(CrossHairInfo *chi, int *rx, int *ry, int *rstate)
 	x = floor((ar[2] - ((w/2) - ar[4]/2)) * ((float)eyewidth/ar[4]));
 	y = floor((ar[3] - ((h/2) - ar[5]/2)) * ((float)eyeheight/ar[5]));
 
-	if(x>=0 && y >=0 && x <= eyewidth && y <= eyeheight)
+    if(x>0 && y >0 && x <= eyewidth && y <= eyeheight)
 	{
-        *rx = (int)x;
+		*rx = (int)x;
 		*ry = (int)y;
-		*rstate =  (int)ar[6]; 
+		*rstate =  (int)ar[6];
+	}else
+	{
+		if(x<=0 && y<=0)
+		{
+            
+			*rx = 1;
+			*ry = 1;
+		}
+		else if(x<0 && y>eyeheight)
+		{
+            
+			*rx = 1;
+			*ry = eyeheight;
+		}
+		else if(x>eyewidth && y>eyeheight)
+		{
+            
+			*rx = eyewidth;
+			*ry = eyeheight;
+		}
+		else if(x>eyewidth && y<0)
+ 		{
+            
+			*rx = eyewidth;
+			*ry = 1;
+		}
+		else if(x>eyewidth && y>0 && y<eyeheight)
+		{
+            
+			*rx = eyewidth;
+			*ry = y;
+		}
+		else if(x<0 && y>0 && y<=eyeheight)
+		{
+            
+			*rx = 1;
+			*ry = y;
+		}
+		else if(y<0 && x>0 && x<=eyewidth)
+		{
+            
+			*rx = x;
+			*ry = 1;
+		}
+		else if(y>eyeheight && x>0 && x<=eyewidth)
+		{
+            
+			*rx = x;
+			*ry = eyeheight;
+		}
 	}
+
 	return;
 }
 

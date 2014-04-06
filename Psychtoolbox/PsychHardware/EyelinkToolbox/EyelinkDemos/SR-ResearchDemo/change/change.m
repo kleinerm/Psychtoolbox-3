@@ -20,6 +20,10 @@ function change
 % mm/dd/yy
 %
 % 01/28/11  NJ  created
+% 12/20/13  LJ  changed isoctave to IsOctave and EyeLink to Eyelink, case sensitive for the latest matlab
+%                added parameters for function infixationWindow, in order to run with octave
+%                fixed issue with non integer arguments for Eyelink('message' ...)
+%
 
 if ~IsOctave
     commandwindow;
@@ -51,7 +55,7 @@ try
     % Added a dialog box to set your own EDF file name before opening
     % experiment graphics. Make sure the entered EDF file name is 1 to 8
     % characters in length and only numbers or letters are allowed.
-    if isoctave
+    if IsOctave
         edfFile = 'DEMO';
     else 
         prompt = {'Enter tracker EDF file name (1 to 8 letters or numbers)'};
@@ -315,7 +319,7 @@ try
                 % if spacebar was pressed stop display
                 if keyCode(stopkey )
                     sprintf('Space pressed, exiting trial\n');
-                    EyeLink('Message', 'Stop Key pressed');
+                    Eyelink('Message', 'Stop Key pressed');
                     stopKeyPressed = 1;
                     break;
                 end
@@ -355,14 +359,15 @@ try
                                 if evt.eye == eye_used
                                     % send msg with details of fixation
                                     % update event
-                                    Eyelink('message', 'Fixupdate: avg_x %d, y %d, dur %d',evt.gavx, evt.gavy, evt.entime-evt.sttime);
-                                    
+                                    Eyelink('message', 'Fixupdate: avg_x %d, y %d, dur %d',floor(evt.gavx), floor(evt.gavy), floor(evt.entime)-floor(evt.sttime));
+
                                     % determine if gaze values are within
                                     % interest region and if gaze has been
                                     % maintained over 300 ms. This method
                                     % allows for saccades as long as they
                                     % are withing interest area
-                                    if infixationWindow(evt.gavx,evt.gavy)
+                                    if infixationWindow(fixationWindow, evt.gavx,evt.gavy)
+
                                         totalFixTime = totalFixTime + 50;
                                         if totalFixTime >= 300
                                             break;
@@ -383,7 +388,8 @@ try
                     evt.gavx=x;
                     evt.gavy=y;                    
                     
-                    if infixationWindow(evt.gavx,evt.gavy)
+                    if infixationWindow(fixationWindow, evt.gavx,evt.gavy)
+
                         if GetSecs - mouseTimer >= 0.300
                             disp('in fixation window');
                             correct = 1;
@@ -414,7 +420,7 @@ try
             % if spacebar was pressed stop display
             if keyCode(stopkey )
                 sprintf('Space pressed, exiting trial\n');
-                EyeLink('Message', 'Key pressed');
+                Eyelink('Message', 'Key pressed');
                 break;
             end
         end
@@ -513,8 +519,8 @@ end
         Screen('CloseAll');
     end
 
-    function fix = infixationWindow(mx,my)
-        
+        function fix = infixationWindow(fixationWindow, mx,my)
+
         % determine if gx and gy are within fixation window
         fix = mx > fixationWindow(1) &&  mx <  fixationWindow(3) && ...
             my > fixationWindow(2) && my < fixationWindow(4) ;

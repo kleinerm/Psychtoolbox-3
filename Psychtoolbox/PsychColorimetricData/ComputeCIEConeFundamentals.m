@@ -193,15 +193,15 @@ end
 %% A little reality check.
 %
 % The call to FillInPhotoreceptors also computes what here is called
-% T_quantal.  It is in the field effectiveAbsorbtance.  For cases where
+% T_quantal.  It is in the field effectiveAbsorptance.  For cases where
 % we aren't playing games with the parameters after the call to 
 % FillInPhotoreceptors, we can check for agreement.
 if (CHECK_FOR_AGREEMENT)
-    diffs = abs(T_quantalAbsorptions(:)-photoreceptors.effectiveAbsorbtance(:));
+    diffs = abs(T_quantalAbsorptions(:)-photoreceptors.effectiveAbsorptance(:));
     if (max(diffs(:)) > 1e-7)
         error('Two ways of computing absorption quantal efficiency referred to the cornea DO NOT AGREE\n');
     end
-    diffs = abs(T_quantalIsomerizations(:)-photoreceptors.isomerizationAbsorbtance(:));
+    diffs = abs(T_quantalIsomerizations(:)-photoreceptors.isomerizationAbsorptance(:));
     if (max(diffs(:)) > 1e-7)
         error('Two ways of computing isomerization quantal efficiency referred to the cornea DO NOT AGREE\n');
     end

@@ -151,7 +151,10 @@ static char synopsisString[] =  "Set video capture parameter 'parameterName' on 
                                 "In any case, for synchronized operation you must always first start capture on all participating slave "
                                 "cameras, then finally on the designated master - which will actually truly start capture of the whole "
                                 "pack. For stopping capture you first stop the master, which will actually stop capture of the whole setup, "
-                                "then all slaves to disengage them.\n"
+                                "then all slaves to disengage them. If you need cameras to start and perform capture and recording in sync, "
+                                "but you don't need them to stop in exact synchrony, you can add the flag 32 = No lock-step. This allows for "
+                                "some slack and inaccuracy in stopping capture and recording, but may allow for reduced latency for realtime "
+                                "applications of video capture.\n"
                                 "The way trigger signals are used if 'SyncMode' is selected as mode 16 aka hardware sync, can be controlled "
                                 "via the following settings:\n"
                                 "'TriggerMode' The way a trigger signal controls camera capture operation: 0 = Start of exposure is triggered "
@@ -186,7 +189,10 @@ static char synopsisString[] =  "Set video capture parameter 'parameterName' on 
                                 "'BaslerFrameCounterEnable' Retrieve framecounter values from Basler camera itself instead of using our own software frame "
                                 "counter. Theoretically extra robust. In practice only useful if your Basler camera allows software controlled power-cycling, "
                                 "which some Basler cameras do not allow. If the camera doesn't allow power-cycling then use of this feature will cause a hard "
-                                "hang of Psychtoolbox!\n";
+                                "hang of Psychtoolbox!\n"
+                                "'LoadMarkerTrackingPlugin=' Specify the name of a special markertracker plugin to load and use during video capture. The name "
+                                "must be the path and filename of a shared library which implements this plugin. EXPERIMENTAL and subject to change without notice!\n"
+                                "'SendCommandToMarkerTrackingPlugin=' Send an ASCII string containing commands to a loaded markertracker plugin. EXPERIMENTAL!\n";
 
 static char seeAlsoString[] = "OpenVideoCapture CloseVideoCapture StartVideoCapture StopVideoCapture GetCapturedImage";
 	 

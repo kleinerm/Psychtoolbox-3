@@ -54,6 +54,7 @@
 %   MonoImageToSRGBTest             - Test/demo for routine PsychColorimetric/MonoImageToSRGB.
 %   MultiWindowLockStepTest         - Exercise asynchronous flip scheduling and timestamping on multiple onscreen windows in parallel.
 %   OSAUCSTest                      - Test OSA UCS <-> XYZ conversion routines.
+%   OSXCompositorIdiocyTest         - Test for potential OSX compositor brokeness.
 %   OMLBasicTest                    - Very basic correctness test for OpenML flip timestamping.
 %   OSSchedulingAccuracyTest        - Test timing accuracy of operating system scheduler for timed waits.
 %   PBTAndVSETColorimetryTest       - Compare PTB and VSET colorimetric calculations.

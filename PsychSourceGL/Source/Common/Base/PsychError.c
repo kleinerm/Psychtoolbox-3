@@ -1,26 +1,18 @@
 /*
-	PsychToolbox2/Source/Common/PsychError.c		
-  
+	PsychToolbox3/Source/Common/PsychError.c		
+
 	AUTHORS:
 
 		Allen.Ingling@nyu.edu		awi 
   
 	PLATFORMS:
 	
-		Only OS X for now.
-  
+		All.
 
 	HISTORY:
   
 		8/19/02  awi	Wrote it.
 		11/16/04 awi	Added PsychErorr_argumentValueOutOfRange.
-  
-	DESCRIPTION:
-	
-
-	TO DO: 
-  
-
 
 */
 
@@ -31,8 +23,8 @@
 static char *errorStringsERROR[MAX_PSYCH_ERRORS];       
 static char *errorNameStringsERROR[MAX_PSYCH_ERRORS];
 static char *ArgTypeStringsERROR[PsychArgType_NUMTYPES];
-psych_bool usageErrorFlagsERROR[MAX_PSYCH_ERRORS];
-PsychArgDescriptorType specifiedArgERROR, receivedArgERROR;
+static psych_bool usageErrorFlagsERROR[MAX_PSYCH_ERRORS];
+static PsychArgDescriptorType specifiedArgERROR, receivedArgERROR;
  
 
 //file static functions (these don't need the "Psych" prefix because they are file local)

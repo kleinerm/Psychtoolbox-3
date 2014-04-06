@@ -36,6 +36,9 @@
 #include <sched.h>
 #include <errno.h>
 
+// utsname for uname() so we can find out on which kernel we're running:
+#include <sys/utsname.h>
+
 // Perform OS specific processing of Window events:
 void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 {
@@ -1327,101 +1330,163 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
  */
 psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecord, psych_int64 targetSBC, double* tSwap)
 {
-	psych_int64 ust, msc, sbc;
-	msc = -1;
+    psych_int64 ust, msc, sbc;
+    msc = -1;
 
-	#ifdef GLX_OML_sync_control
-	
-	// Extension unsupported or known to be defective? Return -1 "unsupported" in that case:
-	if ((NULL == glXWaitForSbcOML) || (windowRecord->specialflags & kPsychOpenMLDefective)) return(-1);
+    #ifdef GLX_OML_sync_control
 
-	if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Supported. Calling with targetSBC = %lld.\n", targetSBC);
+    // Extension unsupported or known to be defective? Return -1 "unsupported" in that case:
+    if ((NULL == glXWaitForSbcOML) || (windowRecord->specialflags & kPsychOpenMLDefective)) return(-1);
 
-	// If this is a vsync'ed swap which potentially waits until a future point in time before completing, then
-	// glXWaitForSbcOML() may block until that future point in time. Doing so, it will block the used x-display
-	// connection to the X-Server. If we are not the only onscreen window in existence and use of per-window
-	// x-display connections is disabled then we share this connection with all other onscreen windows. If
-	// currently any asynchronous swaps are pending via async background flip threads, then us blocking
-	// the shared x-display connection in glXWaitForSbcOML() would prevent those other threads from
-	// communicating with the X-Server, effectively destroying all parallelism for background swap execution.
-	// As a consequence all scheduled swaps on all onscreen windows would execute and finalize in lock-step,
-	// rendering the requested stimulus onset presentation times for those windows dysfunctional, therefore
-	// massively disrupting the wanted presentation timing!
-	//
-	// To prevent this, we must only call glXWaitForSbcOML() after we can be certain the swap completed. We
-	// do this by waiting via polling. We poll the current sbc value and compare against the target value for
-	// confirmed swap completion. Only then we continue to glXWaitForSbcOML() to collect the swap info non-blocking.
-	//
-	// This is the polling loop:
+    if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Supported. Calling with targetSBC = %lld.\n", targetSBC);
+
+    // If this is a vsync'ed swap which potentially waits until a future point in time before completing, then
+    // glXWaitForSbcOML() may block until that future point in time. Doing so, it will block the used x-display
+    // connection to the X-Server. If we are not the only onscreen window in existence and use of per-window
+    // x-display connections is disabled then we share this connection with all other onscreen windows. If
+    // currently any asynchronous swaps are pending via async background flip threads, then us blocking
+    // the shared x-display connection in glXWaitForSbcOML() would prevent those other threads from
+    // communicating with the X-Server, effectively destroying all parallelism for background swap execution.
+    // As a consequence all scheduled swaps on all onscreen windows would execute and finalize in lock-step,
+    // rendering the requested stimulus onset presentation times for those windows dysfunctional, therefore
+    // massively disrupting the wanted presentation timing!
+    //
+    // To prevent this, we must only call glXWaitForSbcOML() after we can be certain the swap completed. We
+    // do this by waiting via polling. We poll the current sbc value and compare against the target value for
+    // confirmed swap completion. Only then we continue to glXWaitForSbcOML() to collect the swap info non-blocking.
+    //
+    // This is the polling loop:
     PsychLockDisplay();
     while ((windowRecord->vSynced) && ((PsychGetNrAsyncFlipsActive() > 0) || (PsychGetNrFrameSeqStereoWindowsActive() > 0)) &&
-	       (windowRecord->targetSpecific.privDpy == windowRecord->targetSpecific.deviceContext) &&
-	       glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc) &&
-	       (sbc < windowRecord->target_sbc)) {
+            (windowRecord->targetSpecific.privDpy == windowRecord->targetSpecific.deviceContext) &&
+            glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc) &&
+            (sbc < windowRecord->target_sbc)) {
         // Wanted 'sbc' value of target_sbc not yet reached -> The bufferswap isn't confirmed to be completed yet.
-		// Need to wait a bit to release the cpu for other threads and processes, then repoll for swap completion.
+        // Need to wait a bit to release the cpu for other threads and processes, then repoll for swap completion.
         PsychUnlockDisplay();
 
-		// Is the current video refresh cycle count 'msc' already at or past the expected count of swap completion?
-		if (msc < windowRecord->lastSwaptarget_msc) {
-			// No: At time 'ust', the 'msc' was at least one refresh cycle duration away from the earliest possible
-			// count of swap completion. That means the swap won't complete earlier than at least one refresh
-			// duration after 'ust'. Let's go to sleep and wait until almost until that point in time, aka
-			// 'ust' + 1 video refresh duration:
-			PsychWaitUntilSeconds(PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz()) + windowRecord->VideoRefreshInterval - 0.001);
-		} else {
-			// Yes: Swap completion can happen almost any time now. Sleep for a millisecond, then repoll:
-			PsychYieldIntervalSeconds(0.001);
-		}
-		// Repoll for swap completion...
-		PsychLockDisplay();
-	}
+        // Is the current video refresh cycle count 'msc' already at or past the expected count of swap completion?
+        if (msc < windowRecord->lastSwaptarget_msc) {
+            // No: At time 'ust', the 'msc' was at least one refresh cycle duration away from the earliest possible
+            // count of swap completion. That means the swap won't complete earlier than at least one refresh
+            // duration after 'ust'. Let's go to sleep and wait until almost until that point in time, aka
+            // 'ust' + 1 video refresh duration:
+            PsychWaitUntilSeconds(PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz()) + windowRecord->VideoRefreshInterval - 0.001);
+        } else {
+            // Yes: Swap completion can happen almost any time now. Sleep for a millisecond, then repoll:
+            PsychYieldIntervalSeconds(0.001);
+        }
+        // Repoll for swap completion...
+        PsychLockDisplay();
+    }
 
-	// Display lock held here...
+    // Display lock held here...
 
-	// Extension supported: Perform query and error check.
-	if (!glXWaitForSbcOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, targetSBC, &ust, &msc, &sbc)) {
+    // Extension supported: Perform query and error check.
+    if (!glXWaitForSbcOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, targetSBC, &ust, &msc, &sbc)) {
         PsychUnlockDisplay();
 
-		// OpenML supposed to be supported and in good working order according to startup check?
-		if (windowRecord->gfxcaps & kPsychGfxCapSupportsOpenML) {
-			// Yes. Then this is a new failure condition and we report it as such:
-			if (PsychPrefStateGet_Verbosity() > 11) {
-				printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: glXWaitForSbcOML() failed! Failing with rc = -2.\n");
-			}
-			return(-2);
-		}
-		
-		// No. Failing this call is kind'a expected, so we don't make a big fuss on each
-		// failure but return "unsupported" rc, so calling code can try fallback-path without
-		// making much noise:
-		return(-1);
-	}
-	
-	PsychUnlockDisplay();
+        // OpenML supposed to be supported and in good working order according to startup check?
+        if (windowRecord->gfxcaps & kPsychGfxCapSupportsOpenML) {
+            // Yes. Then this is a new failure condition and we report it as such:
+            if (PsychPrefStateGet_Verbosity() > 11) {
+                printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: glXWaitForSbcOML() failed! Failing with rc = -2.\n");
+            }
+            return(-2);
+        }
 
-	// Check for valid return values: A zero ust or msc means failure, except for results from nouveau,
-	// because there it is "expected" to get a constant zero return value for msc, at least when running
-	// on top of a current Linux kernel (not fixed as of Linux 3.8 timeframe):
-	if ((windowRecord->vSynced) && ((ust == 0) || ((msc == 0) && !strstr((char*) glGetString(GL_VENDOR), "nouveau")))) {
-		// Ohoh:
-		if (PsychPrefStateGet_Verbosity() > 1) {
-			printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Invalid return values ust = %lld, msc = %lld from call with success return code (sbc = %lld)! Failing with rc = -2.\n", ust, msc, sbc);
-			printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: This likely means a driver bug or malfunction, or that timestamping support has been disabled by the user in the driver!\n");
-		}
-		
-		// Return with "failure" rc, so calling code can provide more error handling:
-		return(-2);
-	}
+        // No. Failing this call is kind'a expected, so we don't make a big fuss on each
+        // failure but return "unsupported" rc, so calling code can try fallback-path without
+        // making much noise:
+        return(-1);
+    }
 
-	// If no actual timestamp / msc was requested, then we return here. This is used by the
-	// workaround code for multi-threaded XLib access. It passes NULL to just (ab)use this
-	// function to wait for swap completion, before it touches the framebuffer for real.
-	// See function PsychLockedTouchFramebufferIfNeeded() in PsychWindowSupport.c
-	if (tSwap == NULL) return(msc);
+    PsychUnlockDisplay();
 
-	// Success at least for timestamping. Translate ust into system time in seconds:
-	*tSwap = PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz());
+    // Running on nouveau?
+    if (strstr((char*) glGetString(GL_VENDOR), "nouveau")) {
+        // Yes. Query current kernel version: Is it a Linux 3.13 or 3.14 kernel with broken nouveau-kms pageflip events?
+        struct utsname unameresult;
+        int rc;
+        double tref;
+        int major = 0, minor = 0;
+        uname(&unameresult);
+        sscanf(unameresult.release, "%i.%i", &major, &minor);
+        // We mark all Linux versions from 3.13 up to and including 3.15 broken. Exception are -rc
+        // release candidate kernels, so MK can still use rc's built from git/source for patch testing:
+        if ((major == 3) && ((minor >= 13) && (minor <= 15)) && !strstr(unameresult.release, "-rc")) {
+            // Yes. nouveau-kms on these kernels delivers faulty data inside its kms-pageflip completion events, so although
+            // return from glXWaitForSbcOML() can be trusted to mean swap-completion, the msc and ust timestamp are wrong.
+            if (PsychPrefStateGet_Verbosity() > 11) {
+                printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: glXWaitForSbcOML() success, but running on faulty nouveau-kms in Linux %s! Trying workaround.\n", unameresult.release);
+            }
+
+            // Try to (ab)use glXGetSyncValuesOML() to get nouveau-kms vblank timestamp for the vblank of
+            // swap completion. If this works we can take advantage of nouveau-kms accurate timestamps.
+            // However, due to the nature of the nouveau-kms pageflip bug there is a small chance that
+            // glXWaitForSbcOML() returned after swap completion but *before* the vblank timestamps and
+            // counts could get updated by the kernels vblank irq handler, so the values returned by
+            // glXGetSyncValuesOML() might be outdated and therefore also wrong. We query the current
+            // values and then validate them in a conservative fashion. If they are close enough to
+            // current system time, ie., in the future or less than a video refresh cycle in the
+            // past then we can assume them to be correct and useful to us and we can use them. Otherwise
+            // we assume we got old and stale values and just fallback to standard mmio beamposition
+            // timestamping. This is a conservative approach which rather discards good values than
+            // risking to accept wrong values. This way timestamps should always be correct, even though
+            // we have to pay a price in terms of higher execution time and more timestamp noise in case
+            // of false rejects:
+            PsychLockDisplay();
+            rc = glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc);
+            PsychUnlockDisplay();
+            if (rc && (msc >= windowRecord->lastSwaptarget_msc)) {
+                PsychGetAdjustedPrecisionTimerSeconds(&tref);
+                // Vblank timestamp older than 7 msecs? That's about half a video refresh duration for a 60 Hz display
+                // and 7/8th on a 120 Hz display. We can't use the measured video refresh duration here because this
+                // routine is called as part of calibration to determine that number:
+                if (PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz()) < (tref - 0.007)) {
+                    // Yes. Consider the returned ust invalid/outdated/stale. Return with "unsupported" rc to trigger
+                    // regular mmio beamposition timestamping:
+                    if (PsychPrefStateGet_Verbosity() > 11) {
+                        printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Workaround provided unreliable result - II. Returning rc=-1 to trigger silent fallback.\n");
+                    }
+                    return(-1);
+                }
+            }
+            else {
+                if (PsychPrefStateGet_Verbosity() > 11) {
+                    printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Workaround provided unreliable result - I. Returning rc=-1 to trigger silent fallback.\n");
+                }
+                return(-1);
+            }
+        }
+    }
+
+    // Check for valid return values: A zero ust or msc means failure, except for results from nouveau,
+    // because there it is "expected" to get a constant zero return value for msc, at least when running
+    // on top of a Linux kernel older than 3.13, when this shortcoming was fixed:
+    if ((windowRecord->vSynced) && ((ust == 0) || ((msc == 0) && !strstr((char*) glGetString(GL_VENDOR), "nouveau")))) {
+        // If this happens at a sbc of less than 4 then it is a known glitch in the intel-ddx which has no
+        // practical negative effects, so we paper over it and fail silently with an "unsupported" rc. A
+        // pointless warning for a non-issue would just confuse users.
+        if (sbc < 4) return(-1);
+
+        if (PsychPrefStateGet_Verbosity() > 1) {
+            printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Invalid return values ust = %lld, msc = %lld from call with success return code (sbc = %lld)! Failing with rc = -2.\n", ust, msc, sbc);
+            printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: This likely means a driver bug or malfunction, or that timestamping support has been disabled by the user in the driver!\n");
+        }
+
+        // Return with "failure" rc, so calling code can provide more error handling:
+        return(-2);
+    }
+
+    // If no actual timestamp / msc was requested, then we return here. This is used by the
+    // workaround code for multi-threaded XLib access. It passes NULL to just (ab)use this
+    // function to wait for swap completion, before it touches the framebuffer for real.
+    // See function PsychLockedTouchFramebufferIfNeeded() in PsychWindowSupport.c
+    if (tSwap == NULL) return(msc);
+
+    // Success at least for timestamping. Translate ust into system time in seconds:
+    *tSwap = PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz());
 
     // Another consistency check: This one is meant to catch the totally broken glXSwapBuffersMscOML()
     // implementation of the Intel-DDX from June 2011 to December 2012. The bug has been fixed in the
@@ -1441,7 +1506,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
     if ((windowRecord->vSynced) && (msc > 2000) && (windowRecord->lastSwaptarget_msc > 2000) && (msc < windowRecord->lastSwaptarget_msc)) {
         // Utterly broken OML swap scheduling! Disable it, so we can use our old fallback path. Warn user once
         // about broken driver:
-        
+
         // First detected failure? Skip it on successive failures, as the fallback path will have taken
         // care of it -- One would hope at least.
         if (windowRecord->gfxcaps & kPsychGfxCapSupportsOpenML) {
@@ -1465,7 +1530,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
             // msc and ust from previous vblank, because our special workaround and safety code was removed in Oct. 2012.
             // In theory, the driver has been fixed for all current Intel gpu's, but in practice you never know what
             // kind of hardware bugs may show up or hide in future and current gpus. Better safe than sorry...
-            
+
             // Disable OpenML completely, in the hope that our old "classic" path can somehow deal with the problem,
             // or perform further diagnostics at least:
             windowRecord->specialflags |= kPsychOpenMLDefective;
@@ -1479,34 +1544,34 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
         }
     }
 
-	// If we are running on a slightly incomplete nouveau-kms driver which always returns a zero msc,
-	// we need to get good ust,msc,sbc values for later use as reference and as return value via an
-	// extra roundtrip to the kernel. The most important info, the swap completion timestamp, aka ust
-	// as returned from glXWaitForSbcOML() has already been converted into GetSecs() timebase and returned
-	// in tSwap, so it is ok to overwrite ust here:
-	if (msc == 0) {
+    // If we are running on a slightly incomplete nouveau-kms driver which always returns a zero msc,
+    // we need to get good ust,msc,sbc values for later use as reference and as return value via an
+    // extra roundtrip to the kernel. The most important info, the swap completion timestamp, aka ust
+    // as returned from glXWaitForSbcOML() has already been converted into GetSecs() timebase and returned
+    // in tSwap, so it is ok to overwrite ust here:
+    if (msc == 0) {
         PsychLockDisplay();
-		if (!glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc)) {
+        if (!glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc)) {
             PsychUnlockDisplay();
 
-			// Ohoh:
-			if (PsychPrefStateGet_Verbosity() > 11) {
-				printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Invalid return values ust = %lld, msc = %lld from glXGetSyncValuesOML() call with success return code (sbc = %lld)! Failing with rc = -1.\n", ust, msc, sbc);
-			}
-		
-			// Return with "unsupported" rc, so calling code can try fallback-path:
-			return(-1);
-		}
-		PsychUnlockDisplay();
-	}
+            // Ohoh:
+            if (PsychPrefStateGet_Verbosity() > 11) {
+                printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Invalid return values ust = %lld, msc = %lld from glXGetSyncValuesOML() call with success return code (sbc = %lld)! Failing with rc = -1.\n", ust, msc, sbc);
+            }
 
-	// Update cached reference values for future swaps:
-	windowRecord->reference_ust = ust;
-	windowRecord->reference_msc = msc;
-	windowRecord->reference_sbc = sbc;
+            // Return with "unsupported" rc, so calling code can try fallback-path:
+            return(-1);
+        }
+        PsychUnlockDisplay();
+    }
 
-	if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Success! refust = %lld, refmsc = %lld, refsbc = %lld.\n", ust, msc, sbc);
-    
+    // Update cached reference values for future swaps:
+    windowRecord->reference_ust = ust;
+    windowRecord->reference_msc = msc;
+    windowRecord->reference_sbc = sbc;
+
+    if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Success! refust = %lld, refmsc = %lld, refsbc = %lld.\n", ust, msc, sbc);
+
     // Try to get corresponding INTEL_swap_event for cross-checking:
     if (PsychOSSwapCompletionLogging(windowRecord, 4, (int) sbc)) {
         // Got it. We are only interested in one thing: Was this a fullscreen window bufferswap with a non page-flipped swap?
@@ -1524,11 +1589,11 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
             }
         }
     }
-    
-	#endif
-	
-	// Return msc of swap completion:
-	return(msc);
+
+    #endif
+
+    // Return msc of swap completion:
+    return(msc);
 }
 
 /* PsychOSInitializeOpenML() - Linux specific function.

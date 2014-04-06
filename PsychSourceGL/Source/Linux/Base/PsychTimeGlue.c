@@ -262,24 +262,40 @@ double PsychOSGetLinuxMonotonicTime(void)
  */
 double PsychOSMonotonicToRefTime(double monotonicTime)
 {
-	double now, tMonotonic;
-	// Get current reftime:
-	PsychGetAdjustedPrecisionTimerSeconds(&now);
-	// Get current CLOCK_MONOTONIC time:
-	tMonotonic = PsychOSGetLinuxMonotonicTime();
-	// Given input monotonicTime time value closer to tMonotonic than to GetSecs time?
-	if (fabs(monotonicTime - tMonotonic) < fabs(monotonicTime - now)) {
-		// Timestamps are in monotonic time! Need to remap.
-		// tMonotonic shall be the offset between GetSecs and monotonic time,
-		// i.e., the offset that needs to be added to monotonic timestamps to
-		// remap them to GetSecs time:
-		tMonotonic = now - tMonotonic;
-		
-		// Correct timestamp by adding corrective offset:
-		monotonicTime += tMonotonic;
-	}
-
-	return(monotonicTime);
+    double now, now2, tMonotonic;
+    
+    // Get current reftime:
+    PsychGetAdjustedPrecisionTimerSeconds(&now);
+    // Get current CLOCK_MONOTONIC time:
+    tMonotonic = PsychOSGetLinuxMonotonicTime();
+    
+    // Given input monotonicTime time value closer to tMonotonic than to GetSecs time?
+    if (fabs(monotonicTime - tMonotonic) < fabs(monotonicTime - now)) {
+        // Timestamps are in monotonic time! Need to remap.
+        // Requery reference and monotonic time in a retry-loop
+        // to make sure remapping error is tighlty bounded to max. 20 usecs:
+        do {
+            // Get current reftime:
+            PsychGetAdjustedPrecisionTimerSeconds(&now);
+            // Get current CLOCK_MONOTONIC time:
+            tMonotonic = PsychOSGetLinuxMonotonicTime();
+            // Requery to make sure mapping is tight:
+            PsychGetAdjustedPrecisionTimerSeconds(&now2);
+        } while (now2 - now > 0.000020);
+        
+        // Computer average of both timestamps to get best estimate of "now":
+        now = (now + now2) / 2;
+        
+        // tMonotonic shall be the offset between GetSecs and monotonic time,
+        // i.e., the offset that needs to be added to monotonic timestamps to
+        // remap them to GetSecs time:
+        tMonotonic = now - tMonotonic;
+        
+        // Correct timestamp by adding corrective offset:
+        monotonicTime += tMonotonic;
+    }
+    
+    return(monotonicTime);
 }
 
 void PsychGetPrecisionTimerSeconds(double *secs)

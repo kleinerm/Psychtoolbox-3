@@ -21,6 +21,9 @@
 #include <IOKit/IOInterruptEventSource.h>
 #include <IOKit/IOFilterInterruptEventSource.h>
 
+// PTB driver revision:
+#define PTBKDRevision 1
+
 // Definitions of GPU registers etc.:
 #include "PsychGraphicsCardRegisterSpecs.h"
 
@@ -41,9 +44,6 @@
 #define VirtAddr_FORMAT     "0x%08x"
 #define ByteCount_FORMAT    UInt32_FORMAT
 #endif
-
-// PTB driver revision:
-#define PTBKDRevision 0
 
 struct PsychKDCommandStruct;
 
@@ -110,6 +110,9 @@ private:
 
     // Load an identity LUT into display head 'headid':
     UInt32 LoadIdentityLUT(UInt32 headId);
+
+	// Is a given ATI/AMD GPU a DCE3 type ASIC, i.e., a modified AVIVO engine?
+	bool isDCE3(void);
 
 	// Is a given ATI/AMD GPU a DCE4 type ASIC, i.e., with the new display engine?
 	bool isDCE4(void);

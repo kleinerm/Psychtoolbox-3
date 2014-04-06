@@ -54,6 +54,14 @@ PsychError SCREENConfigureDisplay(void)
 					"on the graphics card. Display capture is not supported on all operating systems in all modes of operation. "
 					"If the functions get called on an unsupported configuration, they silently return and simply do nothing."
 					"\n\n"
+                    "'Dithering' Control digital display dithering on supported GPUs. This is currently only supported on AMD "
+                    "graphics cards under Linux and OSX. 'screenNumber' will apply the setting on all video outputs connected "
+                    "to screen 'screenNumber'. The next setting is the 'ditherEnable' flag: A value of zero will disable dithering. "
+                    "A non-zero value will reenable dithering if it was previous disabled by Psychtoolbox. If dithering wasn't "
+                    "disabled, then instead the given value will be written into the dither control register to modify dithering "
+                    "settings. The meaning of specific values is GPU and vendor specific and only useful for experts.\n"
+                    "Example call: Screen('ConfigureDisplay', 'Dithering', screenNumber, ditherEnable); "
+                    "\n\n"
 					"'Scanout': Retrieve or set scanout parameters for a given output 'outputId' of screen 'screenNumber'. "
 					"Returns a struct 'oldSettings' with the current settings for that output. Only supported on Linux.\n"
 					"It returns and accepts the following optional parameters:\n"
@@ -65,7 +73,7 @@ PsychError SCREENConfigureDisplay(void)
 
 	const char *OutputFieldNames[]={"width", "height", "pixelSize", "hz", "xStart", "yStart"};
 	char *settingName = NULL;
-	int screenNumber, outputId;
+	int screenNumber, outputId, ditherEnable;
 
     #if PSYCH_SYSTEM == PSYCH_LINUX
 	PsychGenericScriptType *oldResStructArray;
@@ -282,6 +290,22 @@ PsychError SCREENConfigureDisplay(void)
 		return(PsychError_none);
 	}
 
+	// Usercode wants to manually control dithering on an output?
+	if (PsychMatch(settingName, "Dithering")) {
+		// Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.
+		PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
+		if (screenNumber==-1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number.");
+
+		// Get ditherEnable flag: 0 = Disable dithering. Other values may either trigger reenable, or
+		// dither register setup with given value:
+		PsychCopyInIntegerArg(3, TRUE, &ditherEnable);
+
+		// Enable or disable dithering on all video outputs associated with screen 'screenNumber':
+		PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) PsychSetOutputDithering(NULL, screenNumber, ditherEnable));
+
+		return(PsychError_none);
+	}
+    
 #if PSYCH_SYSTEM != PSYCH_LINUX
 	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is only supported on Linux.");
 #else

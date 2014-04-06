@@ -5033,10 +5033,17 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 				// way both backbuffers will be ready for swap and likelihood of a asymetric miss is much lower.
 				// This may however cost a bit of performance on some setups...
 				glFinish();
-				
+
+				// Fixup possible low-level framebuffer layout changes caused by commands above this point. Needed from native 10bpc FB support to work reliably.
+				// First fixup framebuffer of slave window:
+				PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(windowRecord->slaveWindow);
+
 				// Restore current context and glFinish it as well:
 				PsychSetGLContext(windowRecord);
 				glFinish();
+
+				// Then fixup framebuffer of master window:
+				PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(windowRecord);
 			}
 		}
 		

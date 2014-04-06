@@ -23,10 +23,13 @@ function EyelinkPictureCustomCalibration
 % mm/dd/yy
 %
 % 01/28/11  NJ  created
+% 12/20/13  LJ  changed isoctave to IsOctave, case sensitive for the latest matlab
+                fixed issue with non integer arguments for Eyelink('message' ...)
+
 
 
 clear all;
-if ~isoctave
+if ~IsOctave
     commandwindow;
 else
     more off;
@@ -42,7 +45,7 @@ try
     % Added a dialog box to set your own EDF file name before opening
     % experiment graphics. Make sure the entered EDF file name is 1 to 8
     % characters in length and only numbers or letters are allowed.
-    if isoctave
+    if IsOctave
         edfFile = 'DEMO';
     else  
         prompt = {'Enter tracker EDF file name (1 to 8 letters or numbers)'};
@@ -261,7 +264,7 @@ try
         
         finfo = imfinfo(imgfile);
         finfo.Filename 
-        transferStatus = Eyelink('ImageTransfer', finfo.Filename ,0,0,0,0,round(wW/2 - finfo.Width/2) ,round(wH/2 - finfo.Height/2),4);
+          Status = Eyelink('ImageTransfer', finfo.Filename ,0,0,0,0,round(wW/2 - finfo.Width/2) ,round(wH/2 - finfo.Height/2),4);
         if transferStatus ~= 0
             fprintf('Image to host transfer failed\n');
         end
@@ -346,12 +349,13 @@ try
         % to the EDF file.
         % Consider adding a short delay every few messages.
         WaitSecs(0.001);
-        Eyelink('Message', '!V IAREA ELLIPSE %d %d %d %d %d %s', 1, width/2-50, height/2-50, width/2+50, height/2+50,'center');
-        Eyelink('Message', '!V IAREA RECTANGLE %d %d %d %d %d %s', 2, width/4-50, height/2-50, width/4+50, height/2+50,'left');
-        Eyelink('Message', '!V IAREA RECTANGLE %d %d %d %d %d %s', 3, 3*width/4-50, height/2-50, 3*width/4+50, height/2+50,'right');
-        Eyelink('Message', '!V IAREA RECTANGLE %d %d %d %d %d %s', 4, width/2-50, height/4-50, width/2+50, height/4+50,'up');
-        Eyelink('Message', '!V IAREA RECTANGLE %d %d %d %d %d %s', 5, width/2-50, 3*height/4-50, width/2+50, 3*height/4+50,'down');
+        Eyelink('Message', '!V IAREA ELLIPSE %d %d %d %d %d %s', 1, floor(width/2-50), floor(height/2-50), floor(width/2+50), floor(height/2+50),'center');
+        Eyelink('Message', '!V IAREA RECTANGLE %d %d %d %d %d %s', 2, floor(width/4-50), floor(height/2-50), floor(width/4+50), floor(height/2+50),'left');
+        Eyelink('Message', '!V IAREA RECTANGLE %d %d %d %d %d %s', 3, floor(3*width/4-50), floor(height/2-50), floor(3*width/4+50), floor(height/2+50),'right');
+        Eyelink('Message', '!V IAREA RECTANGLE %d %d %d %d %d %s', 4, floor(width/2-50), floor(height/4-50), floor(width/2+50), floor(height/4+50),'up');
+        Eyelink('Message', '!V IAREA RECTANGLE %d %d %d %d %d %s', 5, floor(width/2-50), floor(3*height/4-50), floor(width/2+50), floor(3*height/4+50),'down');
         
+
         % Send messages to report trial condition information
         % Each message may be a pair of trial condition variable and its
         % corresponding value follwing the '!V TRIAL_VAR' token message

@@ -5,7 +5,10 @@ function white=WhiteIndex(windowPtrOrScreenNumber)
 %
 % white=WhiteIndex(w);
 % Screen(w,'FillRect',white);
-% 
+%
+% windowPtrOrScreenNumber must be a screen number or a handle for
+% an onscreen window. It won't work on offscreen windows or textures.
+%
 % See BlackIndex.
 % 
 
@@ -19,6 +22,7 @@ function white=WhiteIndex(windowPtrOrScreenNumber)
 % 1/29/05   dgp Cosmetic.
 % 03/1/08   mk  Adapted to the much more flexible scheme of PTB-3.
 % 08/24/13  mk  Select 1.0 as default white index if PsychDefaultSetup(2+) was used.
+% 02/18/14  mk  Only allow onscreen window handles.
 
 % Default colormode to use: 0 = clamped, 0-255 range. 1 = unclamped 0-1 range.
 global psych_default_colormode;
@@ -85,6 +89,11 @@ else
 
     % Its a window: Assign it to 'win'
     win = windowPtrOrScreenNumber;
+end
+
+% Must be an onscreen window, otherwise unsupported:
+if Screen('WindowKind', win) ~= 1
+    error('The provided windowPtrOrScreenNumber handle is not an onscreen window, as is required.');
 end
 
 % If we reach this point then we have the window handle of the relevant

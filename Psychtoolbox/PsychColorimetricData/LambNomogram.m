@@ -6,7 +6,7 @@ function T = LambNomogram(S,lambdaMax)
 % Vol. 35, pp. 3083-3091, equation 2'.
 %
 % The result is in quantal units, in the sense that to compute
-% absorbtions you want to incident spectra in quanta.
+% absorptions you want to incident spectra in quanta.
 % To get sensitivity in energy units, apply EnergyToQuanta().
 %
 % Argument lambdaMax may be a column vector of wavelengths.

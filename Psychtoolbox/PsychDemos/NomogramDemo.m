@@ -22,7 +22,7 @@ T_Govardovskii = PhotopigmentNomogram(S,lambdaMax,'Govardovskii');
 T_Lamb = PhotopigmentNomogram(S,lambdaMax,'Lamb');
 T_SS = PhotopigmentNomogram(S,lambdaMax,'StockmanSharpe');
 
-% Plot all nomograms in absorbance and absorbtance
+% Plot all nomograms in absorbance and absorptance
 for i = 1:nSpectra
 	warning('off');
 	figure(i); clf; set(gcf,'Position',[100 400 700 300]);

@@ -56,9 +56,9 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % routine FillInPhotoreceptors.  I (DHB) think that I forgot about
 % what FillInPhotoreceptors could do when I wrote this, which has
 % led to some redundancy. FillInPhotoreceptors returns a field
-% called effectiveAbsorbtance, which are the actual quantal efficiencies
+% called effectiveAbsorptance, which are the actual quantal efficiencies
 % (not normalized) referred to the cornea.  FillInPhotoceptors also
-% computes a field isomerizationAbsorbtance, which takes the quantal
+% computes a field isomerizationAbsorptance, which takes the quantal
 % efficiency of isomerizations (probability of an isomerization given
 % an absorption into acount.  This routine does not do that.
 %
@@ -105,44 +105,44 @@ else
     absorbance = PhotopigmentNomogram(staticParams.S,params.lambdaMax,staticParams.whichNomogram);
 end
 
-% Compute absorbtance
+% Compute absorptance
 %
 % Handle special case where we deal with ser/ala polymorphism for L cone
 if (size(absorbance,1) == 4)
-    absorbtance = AbsorbanceToAbsorbtance(absorbance,staticParams.S,...
+    absorptance = AbsorbanceToAbsorptance(absorbance,staticParams.S,...
         [params.axialDensity(1) ; params.axialDensity(1) ; ...
         params.axialDensity(2) ; params.axialDensity(3)]);
 elseif (size(absorbance,1) == 3)
-    absorbtance = AbsorbanceToAbsorbtance(absorbance,staticParams.S,...
+    absorptance = AbsorbanceToAbsorptance(absorbance,staticParams.S,...
         [params.axialDensity(1) ; params.axialDensity(2) ; ...
         params.axialDensity(3)]);
 elseif (size(absorbance,1) == 1 && params.DORODS)
-    absorbtance = AbsorbanceToAbsorbtance(absorbance,staticParams.S,...
+    absorptance = AbsorbanceToAbsorptance(absorbance,staticParams.S,...
         params.axialDensity(1));
 else
     error('Unexpected number of photopigment lambda max values passed');
 end
 
 %% Put together pre-receptor and receptor parts
-for i = 1:size(absorbtance,1)
-    absorbtance(i,:) = absorbtance(i,:) .* lens .* mac;
+for i = 1:size(absorptance,1)
+    absorptance(i,:) = absorptance(i,:) .* lens .* mac;
 end
 
 %% Put it into the right form
-if (size(absorbtance,1) == 4)
+if (size(absorptance,1) == 4)
     T_quantalAbsorptions = zeros(3,staticParams.S(3));
-    T_quantalAbsorptions(1,:) = staticParams.LserWeight*absorbtance(1,:) + ...
-        (1-staticParams.LserWeight)*absorbtance(2,:);
-    T_quantalAbsorptions(2,:) = absorbtance(3,:);
-    T_quantalAbsorptions(3,:) = absorbtance(4,:);
-elseif (size(absorbtance,1) == 3)
+    T_quantalAbsorptions(1,:) = staticParams.LserWeight*absorptance(1,:) + ...
+        (1-staticParams.LserWeight)*absorptance(2,:);
+    T_quantalAbsorptions(2,:) = absorptance(3,:);
+    T_quantalAbsorptions(3,:) = absorptance(4,:);
+elseif (size(absorptance,1) == 3)
     T_quantalAbsorptions = zeros(3,staticParams.S(3));
-    T_quantalAbsorptions(1,:) = absorbtance(1,:);
-    T_quantalAbsorptions(2,:) = absorbtance(2,:);
-    T_quantalAbsorptions(3,:) = absorbtance(3,:);
-elseif (size(absorbtance,1) == 1 && params.DORODS)
+    T_quantalAbsorptions(1,:) = absorptance(1,:);
+    T_quantalAbsorptions(2,:) = absorptance(2,:);
+    T_quantalAbsorptions(3,:) = absorptance(3,:);
+elseif (size(absorptance,1) == 1 && params.DORODS)
     T_quantalAbsorptions = zeros(1,staticParams.S(3));
-    T_quantalAbsorptions(1,:) = absorbtance(1,:);
+    T_quantalAbsorptions(1,:) = absorptance(1,:);
 else
     error('Unexpected number of photopigment lambda max values passed');
 end

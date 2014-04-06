@@ -11,7 +11,7 @@ function T_absorbance = StockmanSharpeNomogram(S,lambdaMax)
 % S-, M- and L-cones, respectively;
 %
 % The result is in quantal units, in the sense that to compute
-% absorbtions you want to incident spectra in quanta.
+% absorptions you want to incident spectra in quanta.
 % To get sensitivity in energy units, apply EnergyToQuanta()
 % (not QuantaToEnergy, because here you are converting sensitivity
 % rather than spectra.)
