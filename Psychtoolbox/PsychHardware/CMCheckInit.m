@@ -60,6 +60,8 @@ function CMCheckInit(meterType, PortString)
 % 7/20/12  dhb      Undid 7/16/12 change.  Error was due to a stale IOPort on my path
 % 12/04/12 zlb      Adding PR-705 support.
 % 4/10/13  dhb      More flexible behavior supported via PRXXXPorts calibration file.
+% 1/25/13  dhb, ms  More info printed on failure for PR-670 case.  Trying to track down intermittant
+%                   failures to initialize when routine is called multiple times in a long calibration loop.
 
 global g_serialPort g_useIOPort;
 
@@ -230,6 +232,11 @@ switch meterType
             if strcmp(stat, ' REMOTE MODE')
                 disp('Successfully connected to PR-670!');
             else
+                if (isempty(stat))
+                    fprintf('PR-670 returned empty (timeout response)\n');
+                else
+                    fprintf('PR-670 returned %s\n',stat);
+                end
                 disp('Failed to make contact.  If device is connected, try turning it off, type clear all, and then re-trying CMCheckInit.');
             end
         else

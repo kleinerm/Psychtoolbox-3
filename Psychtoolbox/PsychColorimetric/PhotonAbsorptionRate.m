@@ -1,7 +1,7 @@
 function [photonAbsorptionRate] =...
-	PhotonAbsorptionRate (irradianceInQuanta, irradianceS, absorbtanceSpectra, absorbtanceSpectraS, collectingDiameter)
+	PhotonAbsorptionRate (irradianceInQuanta, irradianceS, absorptanceSpectra, absorptanceSpectraS, collectingDiameter)
 % [photonAbsorptionRate] =...
-%		PhotonAbsorptionRate (irradianceInQuanta, irradianceS, absorbtanceSpectra, absorbtanceSpectraS, collectingDiameter)
+%		PhotonAbsorptionRate (irradianceInQuanta, irradianceS, absorptanceSpectra, absorptanceSpectraS, collectingDiameter)
 %
 % Compute photons being absorbed per photoreceptor per sec, given the spectrum incident on the
 % photoreceptor array.  We typically take the collecting area of a photoreceptor to be the inner segement
@@ -12,12 +12,12 @@ function [photonAbsorptionRate] =...
 % that routines EnergyToQuanta and QuantaToEnergy are available for your converting pleasure.
 %
 % Can handle multiple photorceptor types.  Put each absrorbtance spectrum in a row of matrix
-% absorbtanceSpectra, put corresponding collecting diameters in column vector collectingDiameter.
+% absorptanceSpectra, put corresponding collecting diameters in column vector collectingDiameter.
 %
 % Units: 
 %   photonAbsorptionRate: quanta/sec/photorecptor
 %   irradianceInQuanta: quanta/um^2-sec-wlinterval
-%   absorbtanceSpectra: probability an incident quantum will be absorbed.
+%   absorptanceSpectra: probability an incident quantum will be absorbed.
 %   collectingDiameter (um^2)
 %
 % 05/06/03	lyin Wrote it
@@ -28,11 +28,11 @@ function [photonAbsorptionRate] =...
 % 7/09/03   dhb  Take input in quantal units.
 
 % Convert the wavelength representation of irradianceInQuanta into
-% that of the photoreceptor absorbtance spectra
-irradianceInQuanta = SplineSpd(irradianceS, irradianceInQuanta, absorbtanceSpectraS);
+% that of the photoreceptor absorptance spectra
+irradianceInQuanta = SplineSpd(irradianceS, irradianceInQuanta, absorptanceSpectraS);
 
 % Compute absorptions per unit area for each passed photoreceptor (quanta/sec-um^2).
-photonAbsorptionRatePerArea = (absorbtanceSpectra * irradianceInQuanta);
+photonAbsorptionRatePerArea = (absorptanceSpectra * irradianceInQuanta);
 
 % Calculate the photon collecting area of each type of photoreceptors
 collectingArea = pi * (collectingDiameter/2).^2;

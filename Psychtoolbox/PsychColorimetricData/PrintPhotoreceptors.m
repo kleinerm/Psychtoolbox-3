@@ -42,7 +42,7 @@ for ii = 1:length(theFields);
                 fprintf('\n');
             end
             
-        case {'absorbance' 'absorbtance' 'effectiveAbsorbtance' 'isomerizationAbsorbtance' 'energyFundamentals' 'quantalFundamentals'}
+        case {'absorbance' 'absorptance' 'effectiveAbsorptance' 'isomerizationAbsorptance' 'energyFundamentals' 'quantalFundamentals'}
             eval(['theCmf = photoreceptors.' theField ';']);
             [peakWls, peakVals] = FindCmfPeaks(photoreceptors.nomogram.S,theCmf);
             fprintf('  * Photoreceptors field %s\n',theField);

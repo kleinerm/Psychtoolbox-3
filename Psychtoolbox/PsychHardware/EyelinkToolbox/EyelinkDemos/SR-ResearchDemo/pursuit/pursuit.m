@@ -13,6 +13,10 @@ function pursuit
 % mm/dd/yy
 %
 % 01/28/11  NJ  created
+% 12/20/13  LJ  changed isoctave to IsOctave, case sensitive for the latest matlab
+%                fixed issue with non integer arguments for Eyelink('message' ...) and Eyelink('command' ...)
+%
+
 
 
 % trial defaults
@@ -25,7 +29,7 @@ trials = [[0.2;0;270;0] [0.5;0;90;0] [0;0.2;0;0] [0;0.3;0;180] ...
 
 TRIAL_TIMER = 10000;
 
-if ~isoctave
+if ~IsOctave
     commandwindow;
 else
     more off;
@@ -44,7 +48,7 @@ try
     % experiment graphics. Make sure the entered EDF file name is 1 to 8
     % characters in length and only numbers or letters are allowed.
     
-    if isoctave
+    if IsOctave
         edfFile = 'DEMO';
     else    
         prompt = {'Enter tracker EDF file name (1 to 8 letters or numbers)'};
@@ -212,13 +216,13 @@ try
         
         % calculate locations of target peripheries so that we can draw
         % matching lines and boxes on host pc
-        Eyelink('command', 'draw_filled_box %d %d %d %d 2' ,(winWidth/2-amplitudeX)-20, winHeight/2-20, (winWidth/2-amplitudeX)+20, winHeight/2+20);
-        Eyelink('command', 'draw_line %d %d %d %d 2' ,winWidth/2-amplitudeX, winHeight/2, winWidth/2+amplitudeX, winHeight/2);
-        Eyelink('command', 'draw_filled_box %d %d %d %d 2' ,(winWidth/2+amplitudeX)-20, winHeight/2-20, (winWidth/2+amplitudeX)+20, winHeight/2+20);
-        Eyelink('command', 'draw_filled_box %d %d %d %d 2' ,winWidth/2-20, (winHeight/2-amplitudeY)-20, winWidth/2+20, (winHeight/2-amplitudeY)+20);
-        Eyelink('command', 'draw_line %d %d %d %d 2' ,winWidth/2, winHeight/2-amplitudeY, winWidth/2, winHeight/2+amplitudeY);
-        Eyelink('command', 'draw_filled_box %d %d %d %d 2' ,winWidth/2-20, (winHeight/2+amplitudeY)-20, winWidth/2+20, (winHeight/2+amplitudeY)+20);
-                
+        Eyelink('command', 'draw_filled_box %d %d %d %d 2' ,floor(winWidth/2-amplitudeX)-20, floor(winHeight/2-20), floor(winWidth/2-amplitudeX)+20, floor(winHeight/2+20));
+        Eyelink('command', 'draw_line %d %d %d %d 2' ,floor(winWidth/2-amplitudeX), floor(winHeight/2), floor(winWidth/2+amplitudeX), floor(winHeight/2));
+        Eyelink('command', 'draw_filled_box %d %d %d %d 2' ,floor(winWidth/2+amplitudeX)-20, floor(winHeight/2-20), floor(winWidth/2+amplitudeX)+20, floor(winHeight/2+20));
+        Eyelink('command', 'draw_filled_box %d %d %d %d 2' ,floor(winWidth/2-20), floor((winHeight/2-amplitudeY)-20), floor(winWidth/2+20), floor(winHeight/2-amplitudeY)+20);
+        Eyelink('command', 'draw_line %d %d %d %d 2' ,floor(winWidth/2), floor(winHeight/2-amplitudeY), floor(winWidth/2), floor(winHeight/2+amplitudeY));
+        Eyelink('command', 'draw_filled_box %d %d %d %d 2' ,floor(winWidth/2-20), floor(winHeight/2+amplitudeY)-20, floor(winWidth/2+20), floor(winHeight/2+amplitudeY)+20);
+
         phaseX = (trials(3,i)/360 + ( (0)) * trials(1,i));
         phaseY = (trials(4,i)/360 + ( (0)) * trials(2,i));
         x =  sine_plot_x + amplitudeX* sin(phaseX*2*pi);
@@ -268,8 +272,9 @@ try
             % STEP 7.5
             % send the location of the target at each iteration so that
             % target can be displayed in Dataviewer
-            Eyelink('message', '!V TARGET_POS TARG1 (%d, %d) 1 0',x,y); 
-            
+            Eyelink('message', '!V TARGET_POS TARG1 (%d, %d) 1 0',floor(x),floor(y));
+
+
             
             phaseX = (trials(3,i)/360 + ( (GetSecs-sttime)) * trials(1,i));
             phaseY = (trials(4,i)/360 + ( (GetSecs-sttime)) * trials(2,i));

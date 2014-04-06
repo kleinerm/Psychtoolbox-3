@@ -37,7 +37,7 @@ irradianceQuanta = EnergyToQuanta(S,irradianceWatts);
 
 % Compute rate at which photons are absorbed.
 absPerConeSec = PhotonAbsorptionRate(irradianceQuanta,S, ...
-	photoreceptors.effectiveAbsorbtance,S,photoreceptors.ISdiameter.value);
+	photoreceptors.effectiveAbsorptance,S,photoreceptors.ISdiameter.value);
 isoPerConeSec = PhotonAbsorptionRate(irradianceQuanta,S, ...
-	photoreceptors.isomerizationAbsorbtance,S,photoreceptors.ISdiameter.value);
+	photoreceptors.isomerizationAbsorptance,S,photoreceptors.ISdiameter.value);
 

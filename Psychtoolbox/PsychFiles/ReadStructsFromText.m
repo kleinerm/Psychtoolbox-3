@@ -23,6 +23,7 @@ function theStructs = ReadStructsFromText(filename)
 % 4/26/12   dhb         Squeeze '/' out of field names too.
 % 5/31/12   dhb         Squeeze '*' out of field names too.
 % 6/7/13    dhb         Suppress uninteresting warning on str2num.
+% 4/3/14    dhb         Try to handle NaN in text files.  Worked for at least one case.
 
 % Open the file
 fid = fopen(filename);
@@ -99,7 +100,9 @@ if ~IsOctave
 			% first check to see if the value is on the path as a function
 			% because the str2num function calls eval on its input which
 			% will cause it to execute.
-			if isempty(which(values{j})) && isempty(which(strtok(values{j})))
+            if (strcmp(lower(values{j}),'nan'))
+                convertedValue = NaN;
+            elseif isempty(which(values{j})) && isempty(which(strtok(values{j})))
                 oldWarn = warning('off','MATLAB:namelengthmaxexceeded');
 				convertedValue = str2num(values{j}); %#ok<ST2NM>
                 warning(oldWarn.state,'MATLAB:namelengthmaxexceeded');

@@ -66,7 +66,7 @@ photoreceptors = DefaultPhotoreceptors(whatCalc);
 photoreceptors.eyeLengthMM.source = 'LeGrand';
 photoreceptors = FillInPhotoreceptors(photoreceptors);
 
-%% Check AbsorbtancetoAbsorbance
+%% Check AbsorptancetoAbsorbance
 %
 % Simple check that this routine does what we expect, since
 % we never use it anywhere else and this seems like as good
@@ -74,14 +74,14 @@ photoreceptors = FillInPhotoreceptors(photoreceptors);
 %
 % We omit the normalization, because sometimes the wavelength
 % sampling we use leads to a maximimum initial absorbance that
-% is not unity, and letting AbsorbtanceToAbsorbance normalize
+% is not unity, and letting AbsorptanceToAbsorbance normalize
 % causes disagreement.
 testAbsorbance = photoreceptors.absorbance;
-testAbsorbtance = photoreceptors.absorbtance;
-checkAbsorbance = AbsorbtanceToAbsorbance(testAbsorbtance, photoreceptors.nomogram.S, photoreceptors.axialDensity.value,false);
+testAbsorptance = photoreceptors.absorptance;
+checkAbsorbance = AbsorptanceToAbsorbance(testAbsorptance, photoreceptors.nomogram.S, photoreceptors.axialDensity.value,false);
 diffs = testAbsorbance-checkAbsorbance;
 if (max(abs(diffs(:))) > 1e-7)
-    error('Cannot properly invert absorbance/absorbtance computations');
+    error('Cannot properly invert absorbance/absorptance computations');
 end
 
 %% Define common wavelength sampling for this script.
@@ -276,10 +276,10 @@ switch (whichInputType)
     % we get here.
 	case 'fromUniformQuantalSpd',
 		% Load corneal cone sensitivities in energy units, convert to quantal sensitivities
-		% and set specified peak absorbtance.
+		% and set specified peak absorptance.
 		%
-		% Note that overwriting the isomerizationAbsorbtance in the photoreceptors structure
-		% makes the isomerization computation work, but not the absorbtions calculation, which
+		% Note that overwriting the isomerizationAbsorptance in the photoreceptors structure
+		% makes the isomerization computation work, but not the absorptions calculation, which
 		% will be done with what was produced by FillInPhotoreceptors called above.  This is
 		% not a recommended compute path for the toolbox code, but is done here to match Wandell's
 		% parameterization.
@@ -294,7 +294,7 @@ switch (whichInputType)
 		T_cones(2,:) = T_cones(2,:)/max(T_cones(2,:));
 		T_cones(3,:) = T_cones(3,:)/max(T_cones(3,:));
 		T_cones = diag(peakIsomerizationEfficiency)*T_cones;
-		photoreceptors.isomerizationAbsorbtance = T_cones;
+		photoreceptors.isomerizationAbsorptance = T_cones;
 
 		% Create a spectrally uniform spd (in quantal units), and convert
 		% to energy units.
@@ -363,10 +363,10 @@ set(ylabel('Quanta/sec-um^2-wlinterval'),'FontSize',12);
 % Make a plot showing the effective photoreceptor sensitivities in quantal
 % units, expressed as probability of isomerization.
 subplot(1,2,2); hold on
-set(plot(SToWls(S),photoreceptors.isomerizationAbsorbtance(1,:),'r'),'LineWidth',2);
-set(plot(SToWls(S),photoreceptors.isomerizationAbsorbtance(2,:),'g'),'LineWidth',2);
-set(plot(SToWls(S),photoreceptors.isomerizationAbsorbtance(3,:),'b'),'LineWidth',2);
-set(title('Isomerization Absorbtance'),'FontSize',14);
+set(plot(SToWls(S),photoreceptors.isomerizationAbsorptance(1,:),'r'),'LineWidth',2);
+set(plot(SToWls(S),photoreceptors.isomerizationAbsorptance(2,:),'g'),'LineWidth',2);
+set(plot(SToWls(S),photoreceptors.isomerizationAbsorptance(3,:),'b'),'LineWidth',2);
+set(title('Isomerization Absorptance'),'FontSize',14);
 set(xlabel('Wavelength (nm)'),'FontSize',12);
 set(ylabel('Probability'),'FontSize',12);
 axis([300 800 0 1]);
@@ -386,7 +386,7 @@ fprintf('Inner Segment Diameter         |\t%8.1f\t%8.1f\t%8.1f\t um\n',photorece
 fprintf('\n');
 fprintf('Axial Specific Density         |\t%8.3f\t%8.3f\t%8.3f\t /um\n',photoreceptors.specificDensity.value);
 fprintf('Axial Optical Density          |\t%8.3f\t%8.3f\t%8.3f\n',photoreceptors.axialDensity.value);
-fprintf('Peak isomerization prob.       |\t%8.3f\t%8.3f\t%8.3f\n',max(photoreceptors.isomerizationAbsorbtance,[],2));
+fprintf('Peak isomerization prob.       |\t%8.3f\t%8.3f\t%8.3f\n',max(photoreceptors.isomerizationAbsorptance,[],2));
 fprintf('______________________________________________________________________________________\n');
 fprintf('\n');
 fprintf('Absorption Rate                |\t%4.2e\t%4.2e\t%4.2e\t quanta/photoreceptor-sec\n',...
@@ -404,7 +404,7 @@ fprintf('_______________________________________________________________________
 % switch (whatCalc)
 %     % Dog receptors (L, S, rod) in energy units, normalized to max of 1.
 %     case 'LivingDog'
-%         T_dogrec = EnergyToQuanta(S,photoreceptors.isomerizationAbsorbtance')';
+%         T_dogrec = EnergyToQuanta(S,photoreceptors.isomerizationAbsorptance')';
 %         for i = 1:3
 %             T_dogrec(i,:) = T_dogrec(i,:)/max(T_dogrec(i,:));
 %         end
