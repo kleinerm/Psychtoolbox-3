@@ -326,11 +326,8 @@
 #       define NI_REGAMMA_PROG_B                       4
 #       define NI_OVL_REGAMMA_MODE(x)                  (((x) & 0x7) << 4)
 
-// Only define following crtcoff if not #include'd in OSX kernel driver:
-#ifndef PTBKDRevision
 // Offset of crtc blocks of evergreen gpu's for each of the six possible crtc's:
 static const unsigned int crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET, EVERGREEN_CRTC1_REGISTER_OFFSET, EVERGREEN_CRTC2_REGISTER_OFFSET, EVERGREEN_CRTC3_REGISTER_OFFSET, EVERGREEN_CRTC4_REGISTER_OFFSET, EVERGREEN_CRTC5_REGISTER_OFFSET };
-#endif
 
 // NVIDIA REGISTERS:
 // -----------------
