@@ -144,7 +144,9 @@
 % Tell PTB on Mac OS/X to always use the Cocoa/NSOpenGL API for OpenGL
 % system setup, even if the requested onscreen window is a fullscreen
 % window. Normally PTB would use the CGL API for fullscreen windows for
-% higher efficiency.
+% higher efficiency. This setting is automatically implicitely applied if
+% PTB is running on OSX version 10.8 "Mountain Lion" or later, to work
+% around various hilarious graphics driver bugs.
 %
 %
 % 16384 == kPsychUseCompositorForFullscreenWindows

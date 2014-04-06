@@ -304,17 +304,24 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // Non fullscreen windows always use Cocoa + desktop composition. There isn't any alternative on OSX:
         useCocoa = TRUE;
     }
-    
-	// User override to use Cocoa even for fullscreen windows?
-	if (PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLForFullscreenWindows) {
-        // Force use of Cocoa. This may or may not result in use of the desktop
+
+    // User override to use Cocoa even for fullscreen windows? Or OSX 10.8 or later?
+    if ((PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLForFullscreenWindows) ||
+        (osMajor > 10) || ((osMajor == 10) && (osMinor >= 8))) {
+        // Force use of Cocoa. This should not result in use of the desktop
         // compositor on current versions of OSX iff the window is a fullscreen
-        // window:
+        // window, according to Apple documentation. Of course this is the "goto fail"
+        // company, so the real mileage may vary greatly on this toy operating system.
         useCocoa = TRUE;
-        
+
         if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_Verbosity() > 2)) {
-            printf("PTB-INFO: Usercode requests use of Cocoa for this fullscreen window via kPsychUseAGLForFullscreenWindows conserveVRAM setting.\n");
-            printf("PTB-INFO: Presentation timing accuracy may suffer and timestamps may be unreliable, depending on operating system version and specific setup.\n");
+            if (PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLForFullscreenWindows) {
+                printf("PTB-INFO: Usercode requests use of Cocoa for this fullscreen window via kPsychUseAGLForFullscreenWindows conserveVRAM setting.\n");
+            }
+            else {
+                printf("PTB-INFO: Using Cocoa for this fullscreen window to work around various graphics driver bugs in OSX 10.8 and later.\n");
+            }
+            printf("PTB-INFO: Presentation timing accuracy may suffer and timestamps may be unreliable, depending on your specific setup.\n");
         }
     }
 
