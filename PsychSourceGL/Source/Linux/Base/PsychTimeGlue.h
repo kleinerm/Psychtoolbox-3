@@ -65,6 +65,7 @@ int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, doub
 #define PsychIsMSVista() 0
 int PsychIsCurrentThreadEqualToPsychThread(psych_thread threadhandle);
 psych_uint64 PsychAutoLockThreadToCores(psych_uint64* curCpuMask);
+const char* PsychSupportStatus(void);
 
 // Linux specific: CLOCK_MONOTONIC time in seconds -- Usually the system uptime:
 double PsychOSGetLinuxMonotonicTime(void);

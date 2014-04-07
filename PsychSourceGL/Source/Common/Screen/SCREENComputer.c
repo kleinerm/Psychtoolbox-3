@@ -121,11 +121,11 @@ static void ReportSysctlError(int errorValue)
 PsychError SCREENComputer(void) 
 {
     const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "kern", "hw", "processUserLongName", 
-	                                     "processUserShortName", "consoleUserName", "machineName", "localHostName", "location", "MACAddress", "system", "gstreamer" };
+	                                     "processUserShortName", "consoleUserName", "machineName", "localHostName", "location", "MACAddress", "system", "gstreamer", "supported" };
     const char *kernStructFieldNames[]={"ostype", "osrelease", "osrevision", "version","hostname"};
     const char *hwStructFieldNames[]={"machine", "model", "ncpu", "physmem", "usermem", "busfreq", "cpufreq"};
     int numMajorStructDimensions=1, numKernStructDimensions=1, numHwStructDimensions=1;
-    int numMajorStructFieldNames=15, numKernStructFieldNames=5, numHwStructFieldNames=7;
+    int numMajorStructFieldNames=16, numKernStructFieldNames=5, numHwStructFieldNames=7;
     PsychGenericScriptType	*kernStruct, *hwStruct, *majorStruct;
     //char tempStr[CTL_MAXNAME];   //this seems like a bug in Darwin, CTL_MAXNAME is shorter than the longest name.  
     char						tempStr[256], *ethernetMACStr;
@@ -156,6 +156,9 @@ PsychError SCREENComputer(void)
     PsychSetStructArrayDoubleElement("windows", 0, 0, majorStruct);
     PsychSetStructArrayDoubleElement("linux", 0, 0, majorStruct);
     PsychSetStructArrayDoubleElement("osx", 0, 1, majorStruct);
+
+    // Official support status:
+    PsychSetStructArrayStringElement("supported", 0, (char*) PsychSupportStatus(), majorStruct);
 
     // GStreamer availability:
     #if defined(PTB_USE_GSTREAMER)

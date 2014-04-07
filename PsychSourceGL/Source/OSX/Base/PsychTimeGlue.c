@@ -547,3 +547,37 @@ psych_uint64 PsychAutoLockThreadToCores(psych_uint64* curCpuMask)
     // No-op on OSX:
     return(INT64_MAX);
 }
+
+/* Report official support status for this operating system release.
+ * The string "Supported" means supported.
+ * Other strings describe lack of support.
+ */
+const char* PsychSupportStatus(void)
+{
+    // Operating system major and minor version:
+    SInt32 osMajor, osMinor;
+    
+	// Init flag to -1 aka unknown:
+	static int  isSupported = -1;
+    static char statusString[256];
+    
+	if (isSupported == -1) {
+		// First call: Do the query!
+		
+        // Query OS/X version:
+        Gestalt(gestaltSystemVersionMajor, &osMajor);
+        Gestalt(gestaltSystemVersionMinor, &osMinor);
+        
+        // OSX 10.9+ is supported:
+        isSupported = ((osMajor > 10) || (osMajor == 10 && osMinor >= 9)) ? 1 : 0;
+        
+        if (isSupported) {
+            sprintf(statusString, "OSX %i.%i Supported.", (int) osMajor, (int) osMinor);
+        }
+        else {
+            sprintf(statusString, "OSX version %i.%i is not supported.", (int) osMajor, (int) osMinor);
+        }
+	}
+	
+    return(statusString);
+}

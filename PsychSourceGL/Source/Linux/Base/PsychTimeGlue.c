@@ -693,3 +693,13 @@ psych_uint64 PsychAutoLockThreadToCores(psych_uint64* curCpuMask)
     // No op on Linux.
     return(INT64_MAX);
 }
+
+/* Report official support status for this operating system release.
+ * The string "Supported" means supported.
+ * Other strings describe lack of support.
+ */
+const char* PsychSupportStatus(void)
+{
+    static char statusString[] = "Supported.";
+    return(statusString);
+}
