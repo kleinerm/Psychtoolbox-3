@@ -704,10 +704,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
                 if (PsychPrefStateGet_Verbosity() > 2) {
                     printf("PTB-INFO: Deficient Apple OS/X 10.7 or later detected: Would use fragile CoreVideo timestamping as fallback,\n");
                     printf("PTB-INFO: if beamposition timestamping would not work. Will try to use beamposition timestamping if possible.\n");
-                    if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber)) {
+                    // Recommend use of kernel driver if it isn't installed already for all but Intel GPU's:
+                    if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) && !strstr((char*) glGetString(GL_VENDOR), "Intel")) {
                         printf("PTB-INFO: Installation of the PsychtoolboxKernelDriver is strongly recommended if you care about precise visual\n");
                         printf("PTB-INFO: onset timestamping or timing. See 'help PsychtoolboxKernelDriver' for installation instructions.\n");
-                        printf("PTB-INFO: However, if you use a Intel graphics card then don't bother, as the driver is no longer useful on such a card.\n");
                     }
                 }
             } else {
@@ -784,6 +784,16 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
                         }
                     }
                 }
+            }
+        }
+        else {
+            // VBLtimestampingmode 0 or -1 -- No vbl-irq shmem (on OSX 10.6) or CoreVideo (on 10.7+) fallback for timestamping.
+            // This is the new default as of Psychtoolbox 3.0.12 to avoid the buggy, crashy, unreliably CoreVideo fallback.
+
+            // Recommend use of kernel driver if it isn't installed already for all but Intel GPU's:
+            if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) && !strstr((char*) glGetString(GL_VENDOR), "Intel")) {
+                printf("PTB-INFO: Installation of the PsychtoolboxKernelDriver is strongly recommended if you care about precise visual\n");
+                printf("PTB-INFO: onset timestamping or timing. See 'help PsychtoolboxKernelDriver' for installation instructions.\n");
             }
         }
     }

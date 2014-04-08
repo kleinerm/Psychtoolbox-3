@@ -54,22 +54,20 @@
 % which is even more robust and precise than Psychtoolbox beamposition
 % timestamping.
 %
-% On MacOSX, whose timing accuracy is somewhere between Linux and Windows,
-% and luckily closer to Linux quality than to Windows timing, we use
-% beamposition queries to improve accuracy of our timestamps, either on
-% IntelMacs with native support for NVidia graphics, or with the help of
-% the PsychtoolboxKernelDriver (see "help PsychtoolboxKernelDriver") on
-% cards from AMD/ATI and optionally for NVidia. An alternative mechanism,
-% based on vertical blank interrupts, is implemented on OS/X up to v10.6,
-% should the beamposition mechanism malfunction or be unavailable. Another
-% backup mechanism is CoreVideo timestamping, employed on 10.7 "Lion" and
-% later. However this backup solution is not very robust, so we basically
-% always recommend installing the PsychtoolboxKernelDriver for best
-% results. Intel graphics cards on MacOSX are problematic: Our
-% PsychtoolboxkernelDriver can't handle them without the severe danger of
-% causing a hard system crash, and the backup CoreVideo timestamping is
-% extremely fragile and unreliable in our experience, leaving you with
-% rather unreliable or inaccurate visual stimulus onset timestamps.
+% On MacOSX we use beamposition queries to improve accuracy of our timestamps
+% with the help of the PsychtoolboxKernelDriver (see "help PsychtoolboxKernelDriver")
+% on cards from AMD and NVidia. On Intel graphics cards, beamposition time-
+% stamping doesn't work by default. An alternative mechanism, based on vblank
+% timestamps can be enabled by setting Screen('Preference','VBLTimestampingmode', 1);
+% This is implemented at acceptable reliability and precision on OS/X 10.6,
+% and will be used if the beamposition mechanism malfunctions or is unavailable.
+% On 10.7 and later the rather unreliable and sometimes unstable CoreVideo
+% timestamping can be enabled, at the risk of applications crashes andn wrong
+% results on some setups. We always strongly recommend installing the
+% PsychtoolboxKernelDriver for best results. Intel graphics cards on MacOSX
+% are problematic: Our PsychtoolboxkernelDriver can't handle them without the
+% severe danger of causing a hard system crash, so don't use a Intel graphics
+% card if you need high precision visual stimulus onset timestamps or timing.
 %
 % This is how beamposition queries are used:
 %
@@ -94,12 +92,14 @@
 %
 % On Microsoft Windows, only a normal - possibly noisy - timestamp is taken.
 %
-% On MacOS-X, PTB tries to get low-level access to the kernel interrupt
-% handlers for the VBL interrupts for OSX versions prior to 10.7 "Lion", or
+% On MacOSX by default noisy timestamps are taken.
+% On MacOSX, if you set Screen('Preference','VBLTimestampingmode', 1);
+% PTB tries to get low-level access to the kernel interrupt
+% handlers for the VBL interrupts for OSX version 10.6, or
 % CoreVideo CVDisplayLink timestamps on 10.7 and later, and uses their
-% values for timestamping the time of buffer- swap. This method is less
+% values for timestamping the time of buffer- swap. This method is way less
 % accurate and robust than the bemposition method, but should be still
-% suitable for most applications on OSX 10.6 and earlier. The robustness,
+% suitable for most applications on OSX 10.6. The robustness,
 % precision and correctness of CVDisplayLink timestamps is not that great
 % on 10.7 and later, therefore this fallback mechanism may be removed in a
 % future PTB release. If these queries should fail as well, PTB falls back
@@ -127,7 +127,7 @@
 %
 %  0 = Disable kernel-level/CoreVideo fallback method (OSX and Linux), use
 %      either beamposition stamps or noisy stamps if beamposition is
-%      unavailable.
+%      unavailable. This is the effective default setting on OSX and Windows.
 %
 %  1 = Use beamposition. Should it fail, switch to use of kernel-level/CoreVideo
 %      timestamps. If that fails as well or is unavailable, use noisy
@@ -144,9 +144,9 @@
 %      on supported system configuration, fall back on beamposition queries
 %      if the OpenML mechanism is unavailable. OpenML timestamping is
 %      currently a Linux only feature on the free open-source graphics
-%      drivers.
+%      drivers. This is the default on Linux and Windows.
 %
-% The default on OS-X and Windows is "1", and "4" on Linux.
+% The effective default on OS-X and Windows is "0", and "4" on Linux.
 %
 % If the beamposition query test fails, you will see some warning message
 % about "SYNCHRONIZATION TROUBLE" in the Matlab/Octave command window or
@@ -267,4 +267,4 @@
 %  3.01.2013 Some updates and cleanups. (MK)
 %  6.01.2013 Add info about OSX driver bugs with Retina displays. (MK)
 % 29.09.2013 Update info to current state. (MK)
-
+% 08.04.2014 Update info to current state: OSX fallback off by default (MK)
