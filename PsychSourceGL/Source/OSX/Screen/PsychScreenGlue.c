@@ -550,8 +550,8 @@ psych_bool PsychGetCGModeFromVideoSetting(CGDisplayModeRef *cgMode, PsychScreenS
         tempFrequency = CGDisplayModeGetRefreshRate(*cgMode);
         tempDepth = getDisplayBitsPerPixel(*cgMode);
 
-        // Match?
-        if (width == tempWidth && height == tempHeight && frameRate == tempFrequency && depth == tempDepth) {
+        // Match? Be lenient for frameRate, as OSX operates with fractional doubles, but our current api only with integral values.
+        if ((width == tempWidth) && (height == tempHeight) && (fabs(frameRate - tempFrequency) <= 1) && (depth == tempDepth)) {
             CGDisplayModeRetain(*cgMode);
             CFRelease(modeList);
             return(TRUE);
