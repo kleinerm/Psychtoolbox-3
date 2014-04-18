@@ -135,7 +135,7 @@ PsychError SCREENComputer(void)
 	psych_uint64                tempULongInt;
 	char						*tempStrPtr;
 	CFStringRef					tempCFStringRef;
-	psych_bool						stringSuccess;
+	psych_bool					stringSuccess;
 	int							stringLengthChars, ethernetMACStrSizeBytes;
 	long						gestaltResult;
 	OSErr						gestaltError;
@@ -217,27 +217,30 @@ PsychError SCREENComputer(void)
     PsychSetStructArrayDoubleElement("ncpu", 0, (double)tempInt, hwStruct);
 
     mib[1]=HW_MEMSIZE;
-    long long tempLongInt;
-    tempULongIntSize=sizeof(tempLongInt);
-    ReportSysctlError(sysctl(mib, 2, &tempLongInt, &tempULongIntSize, NULL, 0));
-    PsychSetStructArrayDoubleElement("physmem", 0, (double)tempLongInt, hwStruct);
+    tempULongIntSize=sizeof(tempULongInt);
+    tempULongInt = 0;
+    ReportSysctlError(sysctl(mib, 2, &tempULongInt, &tempULongIntSize, NULL, 0));
+    PsychSetStructArrayDoubleElement("physmem", 0, (double)tempULongInt, hwStruct);
 
     mib[1]=HW_USERMEM;
     tempULongIntSize=sizeof(tempULongInt);
-    ReportSysctlError(sysctl(mib, 2, &tempULongInt, &tempULongIntSize, NULL, 0));
+    tempULongInt = 0;
+    ReportSysctlError(sysctlbyname("hw.usermem", &tempULongInt, &tempULongIntSize, NULL, 0));
     PsychSetStructArrayDoubleElement("usermem", 0, (double)tempULongInt, hwStruct);
 
     mib[1]=HW_BUS_FREQ;
     tempULongIntSize=sizeof(tempULongInt);
-    ReportSysctlError(sysctl(mib, 2, &tempULongInt, &tempULongIntSize, NULL, 0));
+    tempULongInt = 0;
+    ReportSysctlError(sysctlbyname("hw.busfrequency", &tempULongInt, &tempULongIntSize, NULL, 0));
     PsychSetStructArrayDoubleElement("busfreq", 0, (double)tempULongInt, hwStruct);
 
     mib[1]=HW_CPU_FREQ;
     tempULongIntSize=sizeof(tempULongInt);
-    ReportSysctlError(sysctl(mib, 2, &tempULongInt, &tempULongIntSize, NULL, 0));
+    tempULongInt = 0;
+    ReportSysctlError(sysctlbyname("hw.cpufrequency", &tempULongInt, &tempULongIntSize, NULL, 0));
     PsychSetStructArrayDoubleElement("cpufreq", 0, (double)tempULongInt, hwStruct);
     PsychSetStructArrayStructElement("hw",0, hwStruct, majorStruct);
-
+	
     //fill in the process user, console user and machine name in the root struct.
 	tempCFStringRef= CSCopyMachineName();
 	if (tempCFStringRef) {
