@@ -375,60 +375,6 @@ PsychError SCREENComputer(void)
 	//embed it in the return struct
 	PsychSetStructArrayStringElement("system", 0, systemVersionStr, majorStruct);
 
-/*
-	OLD DEAD Implementation, left for now as a reference...
-	//Add the system version string:
-	gestaltError=Gestalt(gestaltSystemVersion, &gestaltResult);
-
-	//The result is a four-digit value stored in BCD in the lower 16-bits  of the result.  There are implicit decimal
-	// points between the last three digis.  For example Mac OS 10.3.6 is:
-	//
-	//  0000 0000 0000 0000 0001 0000 0011 0110
-	//                         1    0    3    6
-	//                         1    0.   3.   6
-
-	strIndex=0;
-	//4th digit.
-	bcdDigit=gestaltResult & 15;
-	gestaltResult= gestaltResult>>4;
-	strIndex=strIndex+sprintf(systemVersionStr+strIndex, "%i", bcdDigit);
-
-	//decimal point
-	strIndex=strIndex+sprintf(systemVersionStr+strIndex, "%s", ".");
-
-	//3rd digit
-	bcdDigit=gestaltResult & 15;
-	gestaltResult= gestaltResult>>4;
-	strIndex=strIndex+sprintf(systemVersionStr+strIndex, "%i", bcdDigit);
-
-	//decimal point
-	strIndex=strIndex+sprintf(systemVersionStr+strIndex, "%s", ".");
-
-	//second digit
-	//2nd digit.
-	bcdDigit=gestaltResult & 15;
-	gestaltResult= gestaltResult>>4;
-	strIndex=strIndex+sprintf(systemVersionStr+strIndex, "%i", bcdDigit);
-
-	//1st digit
-	bcdDigit=gestaltResult & 15;
-	gestaltResult= gestaltResult>>4;
-	strIndex=strIndex+sprintf(systemVersionStr+strIndex, "%i", bcdDigit);
-
-	//preface with "Mac OS "  
-	strIndex=strIndex+sprintf(systemVersionStr+strIndex, "%s", " SO caM");
-
-	//reverse to make it forward
-	lengthSystemVersionString=strlen(systemVersionStr);
-	for(i=0;i<lengthSystemVersionString;i++){
-		systemVersionStrForward[lengthSystemVersionString-1-i]=systemVersionStr[i];
-	}
-
-	systemVersionStrForward[lengthSystemVersionString]='\0';
-	//embed it in the return struct
-	PsychSetStructArrayStringElement("system", 0, systemVersionStrForward, majorStruct);
-*/
-
     return(PsychError_none);
 }
 
@@ -441,27 +387,27 @@ PsychError SCREENComputer(void)
 // information. MAC query does not work yet - We do not have the neccessary libraries to compile the code :(
 PsychError SCREENComputer(void)
 {
-	// Info struct for queries to OS:
-	OSVERSIONINFO osvi;
-	char versionString[256];
-	
+    // Info struct for queries to OS:
+    OSVERSIONINFO osvi;
+    char versionString[256];
+
     // const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "kern", "hw", "processUserLongName", 
     //      "processUserShortName", "consoleUserName", "machineName", "localHostName", "location", "MACAddress", "system" };
-    const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "system", "IsVistaClass", "MACAddress"};
+    const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "system", "IsVistaClass", "MACAddress", "gstreamer", "supported"};
 
     const char *kernStructFieldNames[]={"ostype", "osrelease", "osrevision", "version","hostname"};
     const char *hwStructFieldNames[]={"machine", "model", "ncpu", "physmem", "usermem", "busfreq", "cpufreq"};
     int numMajorStructDimensions=1, numKernStructDimensions=1, numHwStructDimensions=1;
-    int numMajorStructFieldNames=6, numKernStructFieldNames=5, numHwStructFieldNames=7;
+    int numMajorStructFieldNames=8, numKernStructFieldNames=5, numHwStructFieldNames=7;
 
     PsychGenericScriptType *majorStruct;
     //all subfunctions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-    
+
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(0));
-    
+
     //fill the major struct 
     PsychAllocOutStructArray(1, FALSE, numMajorStructDimensions, numMajorStructFieldNames, majorStructFieldNames, &majorStruct);
     PsychSetStructArrayDoubleElement("macintosh", 0, 0, majorStruct);
@@ -469,16 +415,26 @@ PsychError SCREENComputer(void)
     PsychSetStructArrayDoubleElement("linux", 0, 0, majorStruct);
     PsychSetStructArrayDoubleElement("osx", 0, 0, majorStruct);
 
-	// Query info about Windows version:
-	versionString[0]=0;
-	memset(&osvi, 0, sizeof(OSVERSIONINFO));
-	osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-	GetVersionEx(&osvi);
+    // Official support status:
+    PsychSetStructArrayStringElement("supported", 0, (char*) PsychSupportStatus(), majorStruct);
 
-	// Convert into string with major.minor.buildnumber - Name of service packs (max 128 chars) etc.:
-	// Versions to products: 6.1 = Windows-7, 6.0  = Vista, 5.2 = Windows Server 2003, 5.1 = WindowsXP, 5.0 = Windows 2000, 4.x = NT
-	sprintf(versionString, "%i.%i.%i - %s", osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber, (char*) osvi.szCSDVersion);
-	PsychSetStructArrayStringElement("system", 0, versionString, majorStruct);
+    // GStreamer availability:
+    #if defined(PTB_USE_GSTREAMER)
+    PsychSetStructArrayDoubleElement("gstreamer", 0, 1, majorStruct);
+    #else
+    PsychSetStructArrayDoubleElement("gstreamer", 0, 0, majorStruct);
+    #endif
+
+    // Query info about Windows version:
+    versionString[0]=0;
+    memset(&osvi, 0, sizeof(OSVERSIONINFO));
+    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+    GetVersionEx(&osvi);
+
+    // Convert into string with major.minor.buildnumber - Name of service packs (max 128 chars) etc.:
+    // Versions to products: 6.1 = Windows-7, 6.0  = Vista, 5.2 = Windows Server 2003, 5.1 = WindowsXP, 5.0 = Windows 2000, 4.x = NT
+    sprintf(versionString, "%i.%i.%i - %s", osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber, (char*) osvi.szCSDVersion);
+    PsychSetStructArrayStringElement("system", 0, versionString, majorStruct);
 
     PsychSetStructArrayDoubleElement("IsVistaClass", 0, (PsychIsMSVista() ? 1 : 0), majorStruct);
 
@@ -505,12 +461,12 @@ PsychError SCREENComputer(void)
 {
     //    const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "kern", "hw", "processUserLongName", 
     //    "processUserShortName", "consoleUserName", "machineName", "localHostName", "location", "MACAddress", "system" };
-    const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "MACAddress"};
+    const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "MACAddress", "gstreamer", "supported"};
 
     const char *kernStructFieldNames[]={"ostype", "osrelease", "osrevision", "version","hostname"};
     const char *hwStructFieldNames[]={"machine", "model", "ncpu", "physmem", "usermem", "busfreq", "cpufreq"};
     int numMajorStructDimensions=1, numKernStructDimensions=1, numHwStructDimensions=1;
-    int numMajorStructFieldNames=5, numKernStructFieldNames=5, numHwStructFieldNames=7;
+    int numMajorStructFieldNames=7, numKernStructFieldNames=5, numHwStructFieldNames=7;
     char ethernetMACStr[20];
     struct ifreq devea;
     int s;
@@ -529,6 +485,16 @@ PsychError SCREENComputer(void)
     PsychSetStructArrayDoubleElement("windows", 0, 0, majorStruct);
     PsychSetStructArrayDoubleElement("linux", 0, 1, majorStruct);
     PsychSetStructArrayDoubleElement("osx", 0, 0, majorStruct);
+
+    // Official support status:
+    PsychSetStructArrayStringElement("supported", 0, (char*) PsychSupportStatus(), majorStruct);
+    
+    // GStreamer availability:
+    #if defined(PTB_USE_GSTREAMER)
+    PsychSetStructArrayDoubleElement("gstreamer", 0, 1, majorStruct);
+    #else
+    PsychSetStructArrayDoubleElement("gstreamer", 0, 0, majorStruct);
+    #endif
 
     // Query hardware MAC address of primary ethernet interface: This is a unique id of the computer,
     // good enough to disambiguate our statistics:
