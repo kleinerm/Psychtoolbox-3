@@ -65,7 +65,7 @@
   
   TO DO: 
     
-    - baseFunctionInvoked and PsychSubfunctionEnabled are redundent, keep only baseFunctionInvoked
+    - baseFunctionInvoked[recLevel] and PsychSubfunctionEnabled are redundent, keep only baseFunctionInvoked[recLevel]
   	
         
     Less Important:
@@ -570,26 +570,41 @@ void InitializeSynopsis(char *synopsis[],int maxStrings);
 
 //Static variables local to ScriptingGlue.c.  The convention is to append a abbreviation in all
 //caps of the C file name to the variable name.   
-static int nlhsGLUE;  // Number of requested return arguments.
-static int nrhsGLUE;  // Number of provided call arguments.
+
+// nameFirstGLUE, baseFunctionInvoked, nlhsGLUE, nrhsGLUE, plhsGLUE, prhsGLUE
+// are state which has to be maintained for each invocation of a mex module.
+// If a modules calls itself recursively, this state has to be maintained for
+// each recursive call level. We implement a little homemade stack for those
+// variables. Maximum stack depth and therefore maximum recursion level for
+// reentrant recursive calls is MAX_RECURSIONLEVEL. The variable recLevel
+// keeps track of the current call recursion level and acts as a "stack pointer".
+// It gets incremented by each entry to mexFunction() and decremented by each
+// regular exit from mexFunction(). On error abort or modules reload it needs
+// to get reset to initial -1 state:
+#define MAX_RECURSIONLEVEL 5
+static int recLevel = -1;
+static psych_bool psych_recursion_debug = FALSE;
+
+static psych_bool nameFirstGLUE[MAX_RECURSIONLEVEL];
+static psych_bool baseFunctionInvoked[MAX_RECURSIONLEVEL];
+
+static int nlhsGLUE[MAX_RECURSIONLEVEL];  // Number of requested return arguments.
+static int nrhsGLUE[MAX_RECURSIONLEVEL];  // Number of provided call arguments.
 
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
-static mxArray **plhsGLUE;       // A pointer to the plhs array passed to the MexFunction entry point  
-static CONSTmxArray **prhsGLUE; // A pointer to the prhs array passed to the MexFunction entry point
+static mxArray **plhsGLUE[MAX_RECURSIONLEVEL];       // A pointer to the plhs array passed to the MexFunction entry point
+static CONSTmxArray **prhsGLUE[MAX_RECURSIONLEVEL]; // A pointer to the prhs array passed to the MexFunction entry point
 #endif
 
 #if PSYCH_LANGUAGE == PSYCH_OCTAVE
 #define MAX_OUTPUT_ARGS 100
 #define MAX_INPUT_ARGS 100
-static mxArray* plhsGLUE[MAX_OUTPUT_ARGS]; // An array of pointers to the octave return arguments.
-static mxArray* prhsGLUE[MAX_INPUT_ARGS];  // An array of pointers to the octave call arguments.
+static mxArray* plhsGLUE[recLevel][MAX_OUTPUT_ARGS]; // An array of pointers to the octave return arguments.
+static mxArray* prhsGLUE[recLevel][MAX_INPUT_ARGS];  // An array of pointers to the octave call arguments.
 extern const char *mexFunctionName; // This gets initialized by Octave wrapper to contain our function name.
 #endif
 
-static psych_bool nameFirstGLUE;
-//static PsychFunctionPtr psychExitFunctionGLUE=NULL; 
 static psych_bool subfunctionsEnabledGLUE=FALSE;
-static psych_bool baseFunctionInvoked=FALSE;
 static void PsychExitGlue(void);
 
 //local function declarations
@@ -619,6 +634,19 @@ extern "C" void ScreenCloseAllWindows(void);
 #else
 void ScreenCloseAllWindows(void);
 #endif
+
+void PsychExitRecursion(void)
+{
+    if (recLevel < 0) {
+        printf("PTB-CRITICAL: Recursion stack underflow in module %s! Brace for impact!\n", PsychGetModuleName());
+        return;
+    }
+    
+    if (psych_recursion_debug) printf("PTB-DEBUG: Module %s leaving recursive call level %i.\n", PsychGetModuleName(), recLevel);
+    
+    // Done with this call recursion level:
+    recLevel--;
+}
 
 /*
 
@@ -654,13 +682,14 @@ EXP void mexFunction(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *prhs[])
 EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 #endif
 {
-	psych_bool errorcondition = FALSE;
 	psych_bool isArgThere[2], isArgEmptyMat[2], isArgText[2], isArgFunction[2];
 	PsychFunctionPtr fArg[2], baseFunction;
 	char argString[2][MAX_CMD_NAME_LENGTH];
 	int i; 
 	const mxArray* tmparg = NULL; // mxArray is mxArray under MATLAB but #defined to octave_value on OCTAVE build.
+    
 	#if PSYCH_LANGUAGE == PSYCH_OCTAVE
+	  psych_bool errorcondition = FALSE;
 	  // plhs is our octave_value_list of return values:
 	  octave_value tmpval;      // Temporary, needed in parser below...
 	  octave_value_list plhs;   // Our list of left-hand-side return values...
@@ -693,7 +722,12 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 
 	// Initialization
 	if (firstTime) {
-		
+		// Reset call recursion level to startup default:
+		recLevel = -1;
+		psych_recursion_debug = FALSE;
+
+		if (getenv("PSYCH_RECURSION_DEBUG")) psych_recursion_debug = TRUE;
+        
 		//call the Psychtoolbox init function, which inits the Psychtoolbox and calls the project init. 
 		PsychInit();
 		
@@ -734,31 +768,43 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 		firstTime = FALSE;
 	}
 	
+    // Increment call recursion level for this invocation of the module:
+    recLevel++;
+    if (recLevel >= MAX_RECURSIONLEVEL) {
+        // Maximum level exceeded!
+        printf("PTB-CRITICAL: Maximum recursion level %i for recursive calls into module '%s' exceeded!\n", recLevel, PsychGetModuleName());
+        printf("PTB-CRITICAL: Aborting call sequence. Check code for recursion bugs!\n");
+        recLevel--;
+        PsychErrorExitMsg(PsychError_internal, "Module call recursion limit exceeded");
+    }
+    
+    if (psych_recursion_debug) printf("PTB-DEBUG: Module %s entering recursive call level %i.\n", PsychGetModuleName(), recLevel);
+    
 	// Store away call arguments for use by language-neutral accessor functions in ScriptingGlue.c
 	#if PSYCH_LANGUAGE == PSYCH_MATLAB
-	nlhsGLUE = nlhs;
-	nrhsGLUE = nrhs;
-	plhsGLUE = plhs;
-	prhsGLUE = prhs;
+	nlhsGLUE[recLevel] = nlhs;
+	nrhsGLUE[recLevel] = nrhs;
+	plhsGLUE[recLevel] = plhs;
+	prhsGLUE[recLevel] = prhs;
 	#endif
 
 	#if PSYCH_LANGUAGE == PSYCH_OCTAVE
 
-	// NULL-init our pointer array of call value pointers prhsGLUE:
-	memset(&prhsGLUE[0], 0, sizeof(prhsGLUE));
+	// NULL-init our pointer array of call value pointers prhsGLUE[recLevel]:
+	memset(&prhsGLUE[recLevel][0], 0, sizeof(prhsGLUE[recLevel]));
 
-	// Setup our prhsGLUE array of call argument pointers:
+	// Setup our prhsGLUE[recLevel] array of call argument pointers:
 	// We make copies of prhs to simplify the rest of PsychScriptingGlue. This copy is not
 	// as expensive as it might look, because Octave objects are all implemented via
 	// "Copy-on-write" --> Only a pointer is copied as long as we don't modify the data.
 	// MK: TODO FIXME -- Should we keep an extra array octave_value dummy[MAX_INPUT_ARGS];
-	// around, assign to that dummy[i]=prhs(i); and set ptrs to it prhsGLUE[i]=&dummy[i];
+	// around, assign to that dummy[i]=prhs(i); and set ptrs to it prhsGLUE[recLevel][i]=&dummy[i];
 	// This would require more memory, but prevent possible heap-fragmentation due to
 	// lots of new()/delete() calls on each invocation of the OCT-Function --> possible
 	// slow-down over time, could be confused with memory leaks???
 	for(int i=0; i<nrhs && i<MAX_INPUT_ARGS; i++) {
 	  // Create and assign our mxArray-Struct:
-	  prhsGLUE[i] = (mxArray*) PsychMallocTemp(sizeof(mxArray));
+	  prhsGLUE[recLevel][i] = (mxArray*) PsychMallocTemp(sizeof(mxArray));
 
 	  // Extract data-pointer to each prhs(i) octave_value and store a type-casted version
 	  // which is optimal for us.
@@ -767,8 +813,8 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 	    if (DEBUG_PTBOCTAVEGLUE) printf("INPUT %i: STRING\n", i); fflush(NULL);
 
 	    // Strings do not have a need for a data-ptr. Just copy the octave_value object...
-	    prhsGLUE[i]->d = NULL;
-	    prhsGLUE[i]->o = (void*) new octave_value(prhs(i));  // Refcont now >= 2
+	    prhsGLUE[recLevel][i]->d = NULL;
+	    prhsGLUE[recLevel][i]->o = (void*) new octave_value(prhs(i));  // Refcont now >= 2
 	    // Done.
 	  } 
 	  else if (prhs(i).is_real_type() && !prhs(i).is_scalar_type()) {
@@ -784,12 +830,12 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 	      const uint8NDArray m(prhs(i).uint8_array_value()); // Refcount now >=2
 
 	      // Get internal dataptr from it:        // This triggers a deep-copy :(
-	      prhsGLUE[i]->d = (void*) m.data();      // Refcount now == 1
+	      prhsGLUE[recLevel][i]->d = (void*) m.data();      // Refcount now == 1
 	      
 	      // Create a shallow backup copy of corresponding octave_value...
 	      octave_value* ovptr = new octave_value();
 	      *ovptr = m;
-	      prhsGLUE[i]->o = (void*) ovptr;  // Refcont now == 2
+	      prhsGLUE[recLevel][i]->o = (void*) ovptr;  // Refcont now == 2
 	      
 	      // As soon as m gets destructed by leaving this if-branch,
 	      // the refcount will drop to == 1...
@@ -806,12 +852,12 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 	      const NDArray m(prhs(i).array_value()); // Refcount now >=2
 
 	      // Get internal dataptr from it:        // This triggers a deep-copy :(
-	      prhsGLUE[i]->d = (void*) m.data();      // Refcount now == 1
+	      prhsGLUE[recLevel][i]->d = (void*) m.data();      // Refcount now == 1
 	      
 	      // Create a shallow backup copy of corresponding octave_value...
 	      octave_value* ovptr = new octave_value();
 	      *ovptr = m;
-	      prhsGLUE[i]->o = (void*) ovptr;  // Refcont now == 2
+	      prhsGLUE[recLevel][i]->o = (void*) ovptr;  // Refcont now == 2
 	      
 	      // As soon as m gets destructed by leaving this if-branch,
 	      // the refcount will drop to == 1...
@@ -822,17 +868,17 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 
 	    // A double or integer scalar value:
 	    if (DEBUG_PTBOCTAVEGLUE) printf("INPUT %i: SCALAR\n", i); fflush(NULL);
-	    prhsGLUE[i]->o = (void*) new octave_value(prhs(i));
+	    prhsGLUE[recLevel][i]->o = (void*) new octave_value(prhs(i));
 	    // Special case: We allocate our own double value and store a
 	    // copy of the value in it.
 	    double* m = (double*) PsychMallocTemp(sizeof(double));
 	    *m = prhs(i).double_value();
-	    prhsGLUE[i]->d = (void*) m;
+	    prhsGLUE[recLevel][i]->d = (void*) m;
 	  }
 	  else {
 	    // Unkown argument type that we can't handle :(
 	    // We abort with a reasonable error message:
-	    prhsGLUE[i]=NULL;
+	    prhsGLUE[recLevel][i]=NULL;
 	    // We do, however, give an extra warning, as this could be Octave related...
 	    printf("PTB-WARNING: One of the values in the argument list was not recognized.\n");
 	    printf("PTB-WARNING: If your script runs well on Matlab then this may be a limitation or\n");
@@ -841,21 +887,21 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 	  }
 	}
 
-	// NULL-out our pointer array of return value pointers plhsGLUE:
-	memset(&plhsGLUE[0], 0, sizeof(plhsGLUE));
+	// NULL-out our pointer array of return value pointers plhsGLUE[recLevel]:
+	memset(&plhsGLUE[recLevel][0], 0, sizeof(plhsGLUE[recLevel]));
 
-	nrhsGLUE = nrhs;
-	nlhsGLUE = nlhs;
+	nrhsGLUE[recLevel] = nrhs;
+	nlhsGLUE[recLevel] = nlhs;
 	#endif
 
-        baseFunctionInvoked=FALSE;
+	baseFunctionInvoked[recLevel]=FALSE;
 
 	//if no subfunctions have been registered by the project then just invoke the project base function
 	//if one of those has been registered.
 	if(!PsychAreSubfunctionsEnabled()){
 		baseFunction = PsychGetProjectFunction(NULL);
 		if(baseFunction != NULL){
-                        baseFunctionInvoked=TRUE;
+                        baseFunctionInvoked[recLevel]=TRUE;
 			(*baseFunction)();  //invoke the unnamed function
 		}else
 			PrintfExit("Project base function invoked but no base function registered");
@@ -863,13 +909,13 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 		//assess the nature of first and second arguments for finding the name of the sub function.  
 		for(i=0;i<2;i++)
 		{
-			isArgThere[i] = (nrhs>i) && (prhsGLUE[i]);
+			isArgThere[i] = (nrhs>i) && (prhsGLUE[recLevel][i]);
 			#if PSYCH_LANGUAGE == PSYCH_MATLAB
 			if (isArgThere[i]) tmparg = prhs[i]; else tmparg = NULL;
 			#endif
 
 			#if PSYCH_LANGUAGE == PSYCH_OCTAVE
-			if (isArgThere[i]) { tmparg = prhsGLUE[i]; } else { tmparg = NULL; }
+			if (isArgThere[i]) { tmparg = prhsGLUE[recLevel][i]; } else { tmparg = NULL; }
 			#endif
 
 			isArgEmptyMat[i] = isArgThere[i] ? mxGetM(tmparg)==0 || mxGetN(tmparg)==0 : FALSE;  
@@ -891,7 +937,7 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 		if(!isArgThere[0] && !isArgThere[1]){ //no arguments passed so execute the base function 	
 			baseFunction = PsychGetProjectFunction(NULL);
 			if(baseFunction != NULL){
-                                baseFunctionInvoked=TRUE;
+                                baseFunctionInvoked[recLevel]=TRUE;
 				(*baseFunction)();
 			}else
 				PrintfExit("Project base function invoked but no base function registered");
@@ -906,7 +952,7 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 			PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state B)");
 		else if(isArgEmptyMat[0] && isArgText[1]){
 			if(isArgFunction[1]){
-				nameFirstGLUE = FALSE;
+				nameFirstGLUE[recLevel] = FALSE;
 				(*(fArg[1]))();
 			}
 			else
@@ -917,7 +963,7 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 			
 		else if(isArgText[0] && !isArgThere[1]){
 			if(isArgFunction[0]){
-				nameFirstGLUE = TRUE;
+				nameFirstGLUE[recLevel] = TRUE;
 				(*(fArg[0]))();
 			}else{ //when we receive a first argument  wich is a string and it is  not recognized as a function name then call the default function 
 			/*
@@ -926,7 +972,7 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
                         */
                             baseFunction = PsychGetProjectFunction(NULL);
                             if(baseFunction != NULL){
-                                baseFunctionInvoked=TRUE;
+                                baseFunctionInvoked[recLevel]=TRUE;
 				(*baseFunction)();
                             }else
 				PrintfExit("Project base function invoked but no base function registered");
@@ -935,7 +981,7 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 		}
 		else if(isArgText[0] && isArgEmptyMat[1]){
 			if(isArgFunction[0]){
-				nameFirstGLUE = TRUE;
+				nameFirstGLUE[recLevel] = TRUE;
 				(*(fArg[0]))();
 			}
 			else
@@ -943,18 +989,18 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 		}
 		else if(isArgText[0] && isArgText[1]){
 			if(isArgFunction[0] && !isArgFunction[1]){ //the first argument is the function name
-				nameFirstGLUE = TRUE;
+				nameFirstGLUE[recLevel] = TRUE;
 				(*(fArg[0]))();
 			}
 			else if(!isArgFunction[0] && isArgFunction[1]){ //the second argument is the function name
-				nameFirstGLUE = FALSE;
+				nameFirstGLUE[recLevel] = FALSE;
 				(*(fArg[1]))();
 			}
 			else if(!isArgFunction[0] && !isArgFunction[1]){ //neither argument is a function name
                             //PrintfExit("Invalid command (error state G)");
                             baseFunction = PsychGetProjectFunction(NULL);
                             if(baseFunction != NULL){
-                                baseFunctionInvoked=TRUE;
+                                baseFunctionInvoked[recLevel]=TRUE;
 				(*baseFunction)();
                             }else
 				PrintfExit("Project base function invoked but no base function registered");
@@ -964,7 +1010,7 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 		}
 		else if(isArgText[0] && !isArgText[1]){
 			if(isArgFunction[0]){
-				nameFirstGLUE = TRUE;
+				nameFirstGLUE[recLevel] = TRUE;
 				(*(fArg[0]))();
 			}
 			else
@@ -975,7 +1021,7 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
                     //PrintfExit("Invalid command (error state H)");
                     baseFunction = PsychGetProjectFunction(NULL);
                     if(baseFunction != NULL){
-                        baseFunctionInvoked=TRUE;
+                        baseFunctionInvoked[recLevel]=TRUE;
                         (*baseFunction)();  //invoke the unnamed function
                     }else
                         PrintfExit("Project base function invoked but no base function registered");
@@ -985,7 +1031,7 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 		else if(!isArgText[0] && isArgText[1])
 		{
 			if(isArgFunction[1]){
-				nameFirstGLUE = FALSE;
+				nameFirstGLUE[recLevel] = FALSE;
 				(*(fArg[1]))();
 			}
 			else
@@ -995,7 +1041,7 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
                     //PrintfExit("Invalid command (error state K)");
                     baseFunction = PsychGetProjectFunction(NULL);
                     if(baseFunction != NULL){
-                        baseFunctionInvoked=TRUE;
+                        baseFunctionInvoked[recLevel]=TRUE;
                         (*baseFunction)();  //invoke the unnamed function
                     }else
                         PrintfExit("Project base function invoked but no base function registered");
@@ -1012,11 +1058,11 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 	// in case of error-abort:
 octFunctionCleanup:
 
-	// Release our own prhsGLUE array...
+	// Release our own prhsGLUE[recLevel] array...
 	// Release memory for scalar types is done by PsychFreeAllTempMemory(); 
-	for(int i=0; i<nrhs && i<MAX_INPUT_ARGS; i++) if(prhsGLUE[i]) {
-	  delete(((octave_value*)(prhsGLUE[i]->o)));
-	  prhsGLUE[i]=NULL;	  
+	for(int i=0; i<nrhs && i<MAX_INPUT_ARGS; i++) if(prhsGLUE[recLevel][i]) {
+	  delete(((octave_value*)(prhsGLUE[recLevel][i]->o)));
+	  prhsGLUE[recLevel][i]=NULL;	  
 	}
 
 	// "Copy" our octave-value's into the output array: If nlhs should be
@@ -1025,23 +1071,23 @@ octFunctionCleanup:
 	// we return that argument and release our own temp-memory. This
 	// provides Matlab-semantic, where unsolicited return arguments are
 	// printed anyway as content of the "ans" variable.
-	for(i=0; (i==0 && plhsGLUE[0]!=NULL) || (i<nlhs && i<MAX_OUTPUT_ARGS); i++) {
-	  if (plhsGLUE[i]) {
-	    plhs(i) = *((octave_value*)(plhsGLUE[i]->o));
+	for(i=0; (i==0 && plhsGLUE[recLevel][0]!=NULL) || (i<nlhs && i<MAX_OUTPUT_ARGS); i++) {
+	  if (plhsGLUE[recLevel][i]) {
+	    plhs(i) = *((octave_value*)(plhsGLUE[recLevel][i]->o));
 	    if (plhs(i).is_scalar_type()) {
 	      // Special case: Scalar. Need to override with our double-ptrs value:
-	      double* svalue = (double*) plhsGLUE[i]->d;
+	      double* svalue = (double*) plhsGLUE[recLevel][i]->d;
 	      plhs(i) = octave_value((double) *svalue);
 	    }
 
 	    // Delete our own octave_value object. All relevant data has been
 	    // copied via "copy-on-write" into plhs(i) already:
- 	    delete(((octave_value*)(plhsGLUE[i]->o)));
+ 	    delete(((octave_value*)(plhsGLUE[recLevel][i]->o)));
 
 	    // We don't need to free() the PsychMallocTemp()'ed object pointed to
 	    // by the d-Ptr, nor do we need to free the mxArray-Struct. This is done
 	    // below in PsychFreeAllTempMemory(). Just NULL-out the array slot:
-	    plhsGLUE[i]=NULL;
+	    plhsGLUE[recLevel][i]=NULL;
 	  }
 	}
 
@@ -1069,9 +1115,13 @@ octFunctionCleanup:
 		}
 	}
 
+	PsychExitRecursion();
+    
 	// Return our octave_value_list of returned values in any case and yield control
 	// back to Octave:
 	return(plhs);
+#else
+	PsychExitRecursion();
 #endif
 }
 
@@ -1158,25 +1208,25 @@ const mxArray *PsychGetInArgMxPtr(int position)
 {	
 
 
-	if(PsychAreSubfunctionsEnabled() && !baseFunctionInvoked){ //when in subfunction mode
-		if(position < nrhsGLUE){ //an argument was passed in the correct position.
+	if(PsychAreSubfunctionsEnabled() && !baseFunctionInvoked[recLevel]){ //when in subfunction mode
+		if(position < nrhsGLUE[recLevel]){ //an argument was passed in the correct position.
 			if(position == 0){ //caller wants the function name argument.
-				if(nameFirstGLUE)
-					return(prhsGLUE[0]);
+				if(nameFirstGLUE[recLevel])
+					return(prhsGLUE[recLevel][0]);
 				else
-					return(prhsGLUE[1]);
+					return(prhsGLUE[recLevel][1]);
 			}else if(position == 1){ //they want the "first" argument.    
-				if(nameFirstGLUE)
-					return(prhsGLUE[1]);
+				if(nameFirstGLUE[recLevel])
+					return(prhsGLUE[recLevel][1]);
 				else
-					return(prhsGLUE[0]);
+					return(prhsGLUE[recLevel][0]);
 			}else
-				return(prhsGLUE[position]);
+				return(prhsGLUE[recLevel][position]);
 		}else
 			return(NULL); 
 	}else{ //when not in subfunction mode and the base function is not invoked.  
-		if(position <= nrhsGLUE)
-			return(prhsGLUE[position-1]);
+		if(position <= nrhsGLUE[recLevel])
+			return(prhsGLUE[recLevel][position-1]);
 		else
 			return(NULL);
 	}
@@ -1185,8 +1235,8 @@ const mxArray *PsychGetInArgMxPtr(int position)
 mxArray **PsychGetOutArgMxPtr(int position)
 {	
 
-	if(position==1 || (position>0 && position<=nlhsGLUE)){ //an ouput argument was supplied at the specified location
-		return(&(plhsGLUE[position-1]));
+	if(position==1 || (position>0 && position<=nlhsGLUE[recLevel])){ //an ouput argument was supplied at the specified location
+		return(&(plhsGLUE[recLevel][position-1]));
 	}else
 		return(NULL);
 }
@@ -1405,8 +1455,10 @@ void PsychErrMsgTxt(char *s)
 			// from Matlab:
 			PsychRuntimeEvaluateString("Screen('CloseAll');");
 		}
+
+		PsychExitRecursion();
 	#endif
-	
+
 	// Call the Matlab- or Octave error printing and error handling facilities:
 	mexErrMsgTxt((s && (strlen(s) > 0)) ? s : "See error message printed above.");
 }
@@ -1855,20 +1907,20 @@ psych_bool PsychIsEmptyMat(CONSTmxArray *mat)
 */
 int PsychGetNumInputArgs(void)
 {
-	if(PsychAreSubfunctionsEnabled() && !baseFunctionInvoked) //this should probably be just baseFunctionInvoked wo PsychSubfunctionEnabled.
-		return(nrhsGLUE-1);
+	if(PsychAreSubfunctionsEnabled() && !baseFunctionInvoked[recLevel]) //this should probably be just baseFunctionInvoked[recLevel] wo PsychSubfunctionEnabled.
+		return(nrhsGLUE[recLevel]-1);
 	else
-		return(nrhsGLUE);
+		return(nrhsGLUE[recLevel]);
 }
 
 int PsychGetNumOutputArgs(void)
 {
-	return(nlhsGLUE==0 ? 1 : nlhsGLUE);
+	return(nlhsGLUE[recLevel]==0 ? 1 : nlhsGLUE[recLevel]);
 }
 
 int PsychGetNumNamedOutputArgs(void)
 {
-	return(nlhsGLUE);
+	return(nlhsGLUE[recLevel]);
 }
 
 PsychError PsychCapNumInputArgs(int maxInputs)
