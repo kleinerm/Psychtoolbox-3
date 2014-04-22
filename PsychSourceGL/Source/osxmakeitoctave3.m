@@ -35,8 +35,6 @@ end
 
 fprintf('Building plugin type %i ...\n\n', mode);
 
-copyfile('./Common/Base/PsychScriptingGlue.cc', './Common/Base/PsychScriptingGlue.c');
-
 if mode==0
     % Build Screen:
     % Depends: GStreamer-0.10, libdc1394-2, libusb-1.0
@@ -212,7 +210,6 @@ if mode==13
     cd(curdir);
 end
 
-delete('./Common/Base/PsychScriptingGlue.c');
 delete('./*.o');
 
 return;

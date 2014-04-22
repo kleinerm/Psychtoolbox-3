@@ -8,8 +8,6 @@ if ~IsWin(1)
     error('%s must be run on MS-Windows within 64-Bit Octave or 64-Bit Matlab!', mfilename);
 end
 
-copyfile('Common\Base\PsychScriptingGlue.cc', 'Common\Base\PsychScriptingGlue.c');
-
 if nargin < 1
     what = 0;
 end
@@ -18,22 +16,34 @@ if nargin < 2
     onoctave = IsOctave;
 end
 
+% Rebuild all request?
+if what == -1
+    % Yes: Call ourselves recursively on all plugins/modes to rebuild
+    % everything:
+    tic;
+    for what = 0:13
+        windowsmakeit64_twisty(what);
+    end
+    elapsedsecs = toc;
+    fprintf('Total rebuild time for all mex files was %f seconds. Bye.\n\n', elapsedsecs);
+    return;
+end
+
 try
     
 % Matlab or Octave build?
 if onoctave == 0
     % Matlab build:
     if what == 0
-        % Build Screen without GStreamer:
-        %mex -v -outdir ..\Projects\Windows\build -output Screen -DPTBMODULE_Screen -DGLEW_STATIC -largeArrayDims -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib
-
         % Default: Build Screen with GStreamer support: Needs the
         % www.gstreamer.com GStreamer SDK for 64-Bit Windows.
         % Use this for verbose linker output: /VERBOSE:LIB 
         % MSVCRT 2010:
         mex -v -outdir ..\Projects\Windows\build -output Screen -DPTBMODULE_Screen -largeArrayDims -DPTB_USE_GSTREAMER -DGLEW_STATIC -LC:\gstreamer-sdk\0.10\x86_64\lib -IC:\gstreamer-sdk\0.10\x86_64\include -IC:\gstreamer-sdk\0.10\x86_64\include\gstreamer-0.10 -IC:\gstreamer-sdk\0.10\x86_64\include\glib-2.0 -IC:\gstreamer-sdk\0.10\x86_64\include\glib-2.0\include -IC:\gstreamer-sdk\0.10\x86_64\lib\glib-2.0\include -IC:\gstreamer-sdk\0.10\x86_64\include\libxml2 -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib -lgobject-2.0 -lgthread-2.0 -lglib-2.0 -lgstreamer-0.10 -lgstapp-0.10 -lgstinterfaces-0.10 -lgstpbutils-0.10 LINKFLAGS="$LINKFLAGS /DELAYLOAD:libgobject-2.0-0.dll /DELAYLOAD:libgthread-2.0-0.dll /DELAYLOAD:libglib-2.0-0.dll /DELAYLOAD:libgstreamer-0.10-0.dll /DELAYLOAD:libgstapp-0.10-0.dll /DELAYLOAD:libgstinterfaces-0.10-0.dll /DELAYLOAD:libgstpbutils-0.10-0.dll"
 
-        % Windows CRT build against MSCRT.dll in the Windows DDK:
+        % Windows CRT build against MSCRT.dll in the Windows DDK: Didn't
+        % help in any way fixing Matlab-64 Bit + Java JVM + GStreamer
+        % crashes on some few machines:
         %         mex -v -outdir ..\Projects\Windows\build -output Screen -DPTBMODULE_Screen -largeArrayDims -DPTB_USE_GSTREAMER -DGLEW_STATIC ...
         %             COMPFLAGS="$COMPFLAGS " ...
         %             -DMBCS=1 -DWHISTLER_DDK=1 -D_DLL=1 -D_MT=1 -D__NO_MINGW_LFS -D__MSVCRT_VERSION__=0x0601 -D__MSVCRT__ -D_CRT_NONSTDC_FORCE_DEPRECATE ...
@@ -178,7 +188,6 @@ catch %#ok<*CTCH>
     % in both success and failure case.
 end
 
-delete('Common\Base\PsychScriptingGlue.c');
 return;
 
 % Special mex wrapper for Octave compile on Windows:
