@@ -178,3 +178,27 @@ end
 delete('*.o');
 
 return;
+end
+
+% Our own override implementation of mex(), shadowing
+% octave's mex.m . This one uses glob() to glob-expand all
+% *.c shell patterns to corresponding lists of source
+% filenames, so Octave 3.8's mkoctfile can "handle" such
+% wildcards. Older mkoctfile implementations did this,
+% but Octave 3.8.1's mkoctfile is reimplemented from scratch
+% as a C++ piece of art, which can't expand wildcards anymore.
+function mex(varargin)
+  inargs = {varargin{:}};
+  outargs = {"--mex"};
+  
+  for i = 1:length(inargs)
+    if ~isempty(strfind(inargs{i}, '*'))
+      outargs = {outargs{:}, glob(inargs{i})};
+    else
+      outargs = {outargs{:}, inargs{i}};
+    end
+  end
+  
+  args = cellstr(char(outargs));
+  mkoctfile (args{:});
+end
