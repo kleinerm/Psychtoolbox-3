@@ -293,6 +293,10 @@ if strcmpi(cmd, 'GStreamerDumpFilterGraph')
         error('Must provide a string as argument!');
     end
     
+    if val(end) == filesep
+        val = val(1:end-1);
+    end
+    
     if ~exist(val, 'dir')
         error('Target directory for GStreamer dumps [%s] does not exist!', val);
     end
