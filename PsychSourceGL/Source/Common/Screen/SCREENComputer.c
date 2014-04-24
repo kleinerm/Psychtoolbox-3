@@ -71,13 +71,18 @@ struct clockinfo {
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[]= "comp=Screen('Computer')";
 static char synopsisString[] =
-        "Get information about the computer.  The result is a struct holding information about your computer. "
-        "Top-level flags in the returned struct are available on all operating systems and identify the operating "
-        "operating system: 'macintosh', 'windows', 'osx'.  All other fields in the returned struct are platform-dependent. \n"
-        "\n"
-        "OS X: results contains a hierarchial struct with major and minor fields names as with BSD's sysctl(3) MIB fields. \n"
-        "\n"
-        "SCREEN 'Computer' not longer supports the  obsolete usage: \n"
+        "Get information about the computer. The result is a struct holding information about your computer. "
+        "Top-level flags in the returned struct are available on all operating systems and identify the "
+        "operating system: 'macintosh', 'windows', 'osx', 'linux'. 'system' contains info about the operating "
+        "system version. 'gstreamer' tells if GStreamer support is compiled into Screen(). 'supported' tells if "
+        "the given operating system was supported by the given Psychtoolbox at the time of the Psychtoolbox "
+        "release, ie., if the given system was tested and shown to work with the given Psychtoolbox, so there "
+        "can be some expectation of Psychtoolbox working with this system. This doesn't mean that you will get "
+        "support in case of problems though, as support for your system may have ended if it isn't a recent "
+        "enough system. 'MACAddress' may contain the MAC address of your ethernet adapter.\n"
+        "All other fields or additional sub-structures are platform-dependent, so their presence can not be "
+        "relied on.\n"
+        "SCREEN 'Computer' not longer supports the  obsolete usage:\n"
         "[model,owner,system,processor,cache,fpu,hz,busHz,vm,pci,emulating]=SCREEN('Computer')\n";
 static char seeAlsoString[] = "";
 
@@ -166,7 +171,7 @@ PsychError SCREENComputer(void)
     #else
     PsychSetStructArrayDoubleElement("gstreamer", 0, 0, majorStruct);
     #endif
-    
+
     //fill the kern struct and implant it within the major struct
     PsychAllocOutStructArray(-1, FALSE, numKernStructDimensions, numKernStructFieldNames, kernStructFieldNames, &kernStruct);
     mib[0]=CTL_KERN;
@@ -456,29 +461,32 @@ PsychError SCREENComputer(void)
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <stdio.h>
+// utsname for uname() so we can find out on which kernel we're running:
+#include <sys/utsname.h>
 
 PsychError SCREENComputer(void)
 {
     //    const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "kern", "hw", "processUserLongName", 
     //    "processUserShortName", "consoleUserName", "machineName", "localHostName", "location", "MACAddress", "system" };
-    const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "MACAddress", "gstreamer", "supported"};
+    const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "kern", "hw", "system", "machineName", "localHostName", "MACAddress", "gstreamer", "supported"};
 
     const char *kernStructFieldNames[]={"ostype", "osrelease", "osrevision", "version","hostname"};
     const char *hwStructFieldNames[]={"machine", "model", "ncpu", "physmem", "usermem", "busfreq", "cpufreq"};
     int numMajorStructDimensions=1, numKernStructDimensions=1, numHwStructDimensions=1;
-    int numMajorStructFieldNames=7, numKernStructFieldNames=5, numHwStructFieldNames=7;
+    int numMajorStructFieldNames=12, numKernStructFieldNames=5, numHwStructFieldNames=7;
     char ethernetMACStr[20];
     struct ifreq devea;
     int s;
     PsychGenericScriptType	*kernStruct, *hwStruct, *majorStruct;
+    struct utsname unameresult;
 
     //all subfunctions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-    
+
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(0));
-    
+
     //fill the major struct 
     PsychAllocOutStructArray(1, FALSE, numMajorStructDimensions, numMajorStructFieldNames, majorStructFieldNames, &majorStruct);
     PsychSetStructArrayDoubleElement("macintosh", 0, 0, majorStruct);
@@ -488,7 +496,7 @@ PsychError SCREENComputer(void)
 
     // Official support status:
     PsychSetStructArrayStringElement("supported", 0, (char*) PsychSupportStatus(), majorStruct);
-    
+
     // GStreamer availability:
     #if defined(PTB_USE_GSTREAMER)
     PsychSetStructArrayDoubleElement("gstreamer", 0, 1, majorStruct);
@@ -504,17 +512,42 @@ PsychError SCREENComputer(void)
     if (s>=0) {
       strcpy(devea.ifr_name, "eth0");
       if (ioctl(s, SIOCGIFHWADDR, &devea) >= 0) {
-		sprintf(ethernetMACStr, "%.2X:%.2X:%.2X:%.2X:%.2X:%.2X",
-		devea.ifr_ifru.ifru_hwaddr.sa_data[0]&0xff, devea.ifr_ifru.ifru_hwaddr.sa_data[1]&0xff,
-		devea.ifr_ifru.ifru_hwaddr.sa_data[2]&0xff, devea.ifr_ifru.ifru_hwaddr.sa_data[3]&0xff,
-		devea.ifr_ifru.ifru_hwaddr.sa_data[4]&0xff, devea.ifr_ifru.ifru_hwaddr.sa_data[5]&0xff);
+        sprintf(ethernetMACStr, "%.2X:%.2X:%.2X:%.2X:%.2X:%.2X",
+        devea.ifr_ifru.ifru_hwaddr.sa_data[0]&0xff, devea.ifr_ifru.ifru_hwaddr.sa_data[1]&0xff,
+        devea.ifr_ifru.ifru_hwaddr.sa_data[2]&0xff, devea.ifr_ifru.ifru_hwaddr.sa_data[3]&0xff,
+        devea.ifr_ifru.ifru_hwaddr.sa_data[4]&0xff, devea.ifr_ifru.ifru_hwaddr.sa_data[5]&0xff);
       }
-
       close(s);
     }
 
     PsychSetStructArrayStringElement("MACAddress", 0, ethernetMACStr, majorStruct);
-    
+
+    uname(&unameresult);
+    PsychSetStructArrayStringElement("system", 0, unameresult.release, majorStruct);
+
+    // Fill the kern struct and implant it within the major struct
+    PsychAllocOutStructArray(-1, FALSE, numKernStructDimensions, numKernStructFieldNames, kernStructFieldNames, &kernStruct);
+    PsychSetStructArrayStringElement("ostype", 0, unameresult.sysname, kernStruct);
+    PsychSetStructArrayStringElement("osrelease", 0, unameresult.release, kernStruct);
+    PsychSetStructArrayDoubleElement("osrevision", 0, 0, kernStruct);
+    PsychSetStructArrayStringElement("version", 0, unameresult.version, kernStruct);
+    PsychSetStructArrayStringElement("hostname", 0, unameresult.nodename, kernStruct);
+    PsychSetStructArrayStructElement("kern",0, kernStruct, majorStruct);
+
+    PsychSetStructArrayStringElement("localHostName", 0, unameresult.nodename, majorStruct);
+    PsychSetStructArrayStringElement("machineName", 0, unameresult.nodename, majorStruct);
+
+    // Fill the hw struct and implant it within the major struct:
+    PsychAllocOutStructArray(-1, FALSE, numHwStructDimensions, numHwStructFieldNames, hwStructFieldNames, &hwStruct);
+    PsychSetStructArrayStringElement("machine", 0, unameresult.machine, hwStruct);
+    PsychSetStructArrayStringElement("model", 0, "", hwStruct);
+    PsychSetStructArrayDoubleElement("ncpu", 0, (double) sysconf(_SC_NPROCESSORS_ONLN), hwStruct);
+    PsychSetStructArrayDoubleElement("physmem", 0, ((double) sysconf(_SC_PHYS_PAGES)) * ((double) sysconf(_SC_PAGESIZE)), hwStruct);
+    PsychSetStructArrayDoubleElement("usermem", 0, ((double) sysconf(_SC_AVPHYS_PAGES)) * ((double) sysconf(_SC_PAGESIZE)), hwStruct);
+    PsychSetStructArrayDoubleElement("busfreq", 0, 0, hwStruct);
+    PsychSetStructArrayDoubleElement("cpufreq", 0, 0, hwStruct);
+    PsychSetStructArrayStructElement("hw",0, hwStruct, majorStruct);
+
     return(PsychError_none);
 }
 
