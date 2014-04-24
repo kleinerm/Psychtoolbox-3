@@ -1412,13 +1412,14 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
         int major = 0, minor = 0;
         uname(&unameresult);
         sscanf(unameresult.release, "%i.%i", &major, &minor);
-        // We mark all Linux versions from 3.13 up to and including 3.15 broken. Exception are -rc
-        // release candidate kernels, so MK can still use rc's built from git/source for patch testing:
-        if ((major == 3) && ((minor >= 13) && (minor <= 15)) && !strstr(unameresult.release, "-rc")) {
+        // We mark all Linux versions from 3.13 up as broken. Linux 3.13 and 3.14 are definitely broken, future
+        // kernels may or may not be broken, but better safe than sorry, until we know for sure that the bug was fixed.
+        // Exceptions are -rc release candidate kernels, so MK can still use rc's built from git/source for patch testing:
+        if (((major > 3) || ((major == 3) && ((minor >= 13) && (minor <= 100)))) && !strstr(unameresult.release, "-rc")) {
             // Yes. nouveau-kms on these kernels delivers faulty data inside its kms-pageflip completion events, so although
             // return from glXWaitForSbcOML() can be trusted to mean swap-completion, the msc and ust timestamp are wrong.
             if (PsychPrefStateGet_Verbosity() > 11) {
-                printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: glXWaitForSbcOML() success, but running on faulty nouveau-kms in Linux %s! Trying workaround.\n", unameresult.release);
+                printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: glXWaitForSbcOML() success, but running on potentially faulty nouveau-kms in Linux %s! Trying workaround.\n", unameresult.release);
             }
 
             // Try to (ab)use glXGetSyncValuesOML() to get nouveau-kms vblank timestamp for the vblank of
@@ -1428,7 +1429,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
             // counts could get updated by the kernels vblank irq handler, so the values returned by
             // glXGetSyncValuesOML() might be outdated and therefore also wrong. We query the current
             // values and then validate them in a conservative fashion. If they are close enough to
-            // current system time, ie., in the future or less than a video refresh cycle in the
+            // current system time, ie., in the future or less than about a video refresh cycle in the
             // past then we can assume them to be correct and useful to us and we can use them. Otherwise
             // we assume we got old and stale values and just fallback to standard mmio beamposition
             // timestamping. This is a conservative approach which rather discards good values than
@@ -1440,10 +1441,14 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
             PsychUnlockDisplay();
             if (rc && (msc >= windowRecord->lastSwaptarget_msc)) {
                 PsychGetAdjustedPrecisionTimerSeconds(&tref);
-                // Vblank timestamp older than 7 msecs? That's about half a video refresh duration for a 60 Hz display
-                // and 7/8th on a 120 Hz display. We can't use the measured video refresh duration here because this
-                // routine is called as part of calibration to determine that number:
-                if (PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz()) < (tref - 0.007)) {
+                // Threshold selection for stale timestamp reject: If VideoRefreshInterval is already available post
+                // calibration, then we choose 80% video refresh duration - Should catch most timing spikes but still
+                // provide enough safety margin against long vblank durations or other jitter. If measurement isn't available,
+                // e.g., during initial calibration, we choose a 7 msecs threshold: That's about half a video refresh duration
+                // for a 60 Hz display and 7/8th on a 120 Hz display - good enough for calibration, where we are tolerant against
+                // outliers anyway.
+                tref -= (windowRecord->VideoRefreshInterval > 0) ? (windowRecord->VideoRefreshInterval * 0.8) : 0.007;
+                if (PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz()) < tref) {
                     // Yes. Consider the returned ust invalid/outdated/stale. Return with "unsupported" rc to trigger
                     // regular mmio beamposition timestamping:
                     if (PsychPrefStateGet_Verbosity() > 11) {
