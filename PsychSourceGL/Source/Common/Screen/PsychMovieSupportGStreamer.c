@@ -551,6 +551,9 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     GstBus          *bus = NULL;
     GstFormat       fmt;
     GstElement      *videosink = NULL;
+    GstElement      *audiosink;
+    GstElement      *actual_audiosink;
+    gchar*          pstring;
     gint64          length_format;
     GstPad          *pad, *peerpad;
     const GstCaps   *caps;
@@ -985,8 +988,37 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         }
     }
 
+    // Print name of audio sink - the output device actually playing the sound, if requested:
+    if (PsychPrefStateGet_Verbosity() > 3) {
+        g_object_get(G_OBJECT(theMovie), "audio-sink", &audiosink, NULL);
+        if (audiosink) {
+            actual_audiosink = gst_child_proxy_get_child_by_index(audiosink, 0);
+            if (actual_audiosink) {
+                if (g_object_class_find_property(G_OBJECT_GET_CLASS(actual_audiosink), "device")) {
+                    g_object_get(G_OBJECT(actual_audiosink), "device", &pstring, NULL);
+                    if (pstring) {
+                        printf("PTB-INFO: Audio output device name for movie playback is '%s'", pstring);
+                        g_free(pstring); pstring = NULL;
+                    }
+                }
+
+                if (g_object_class_find_property(G_OBJECT_GET_CLASS(actual_audiosink), "device-name")) {
+                    g_object_get(G_OBJECT(actual_audiosink), "device-name", &pstring, NULL);
+                    if (pstring) {
+                        printf(" [%s].", pstring);
+                        g_free(pstring); pstring = NULL;
+                    }
+                }
+
+                printf("\n");
+                g_object_unref(actual_audiosink);
+            }
+            g_object_unref(audiosink);
+        }
+    }
+
     // Set video decoder parameters:
-    
+
     // First we try to find the video decoder plugin in the media graph. We iterate over all
     // elements and try to find one whose properties match known properties of video codecs:
     // Note: The typeid/name or classid/name proved useless for finding the video codec, as
