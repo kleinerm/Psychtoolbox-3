@@ -202,7 +202,7 @@ int PsychGSProcessMovieContext(GMainLoop *loop, psych_bool doWait)
     
     // Perform work iterations of the event context as long as events are available, but don't block:
     while ((workdone = g_main_context_iteration(g_main_loop_get_context(loop), false)) == TRUE);
-    
+
     return(workdone);
 }
 
@@ -277,6 +277,7 @@ gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr)
 {
     GstSeekFlags rewindFlags = 0;
     PsychMovieRecordType* movie = (PsychMovieRecordType*) dataptr;
+    // printf("MSG SOURCENAME: %s : %s\n", GST_MESSAGE_SRC_NAME(msg), GST_MESSAGE_TYPE_NAME(msg));
 
     switch (GST_MESSAGE_TYPE (msg)) {
         case GST_MESSAGE_SEGMENT_DONE:
@@ -541,8 +542,10 @@ static GstAppSinkCallbacks videosinkCallbacks = {
  *      asyncFlag = As passed to 'OpenMovie'
  *      specialFlags1 = As passed to 'OpenMovie'
  *      pixelFormat = As passed to 'OpenMovie'
+ *      maxNumberThreads = Maximum number of decode threads to use (0 = auto, 1 = One, ...);
+ *      movieOptions = Options string with additional options for movie playback.
  */
-void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1, int pixelFormat, int maxNumberThreads)
+void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1, int pixelFormat, int maxNumberThreads, char* movieOptions)
 {
     GstCaps         *colorcaps;
     GstElement      *theMovie = NULL;
@@ -967,6 +970,25 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 
     PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, FALSE);
 
+    // Attach custom made audio sink?
+    if ((pstring = strstr(movieOptions, "AudioSink="))) {
+        pstring += strlen("AudioSink=");
+        pstring = strdup(pstring);
+        if (strstr(pstring, ":::") != NULL) *(strstr(pstring, ":::")) = 0;
+        audiosink = gst_parse_bin_from_description((const gchar *) pstring, TRUE, NULL);
+        if (audiosink) {
+            g_object_set(G_OBJECT(theMovie), "audio-sink", audiosink, NULL);
+            audiosink = NULL;
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Attached custom audio sink for playback of movie. Spec: '%s'\n", pstring);
+            free(pstring); pstring = NULL;
+        }
+        else {
+            printf("PTB-ERROR: Could not create requested audio sink for playback of movie! Failing sink spec was: '%s'\n", pstring);
+            free(pstring); pstring = NULL;
+            PsychErrorExitMsg(PsychError_user, "Failed to create custom audio sink for movie playback.");
+        }
+    }
+
     // Should we preroll / preload?
     // MK: Actually, *always* preroll via transition to PAUSED. The other path
     // is seldomly used, therefore not well tested, bound to cause regressions on
@@ -985,35 +1007,6 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         if (!PsychMoviePipelineSetState(theMovie, GST_STATE_READY, 30.0)) {
             PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
             PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed II. Reason given above.");
-        }
-    }
-
-    // Print name of audio sink - the output device actually playing the sound, if requested:
-    if (PsychPrefStateGet_Verbosity() > 3) {
-        g_object_get(G_OBJECT(theMovie), "audio-sink", &audiosink, NULL);
-        if (audiosink) {
-            actual_audiosink = gst_child_proxy_get_child_by_index(audiosink, 0);
-            if (actual_audiosink) {
-                if (g_object_class_find_property(G_OBJECT_GET_CLASS(actual_audiosink), "device")) {
-                    g_object_get(G_OBJECT(actual_audiosink), "device", &pstring, NULL);
-                    if (pstring) {
-                        printf("PTB-INFO: Audio output device name for movie playback is '%s'", pstring);
-                        g_free(pstring); pstring = NULL;
-                    }
-                }
-
-                if (g_object_class_find_property(G_OBJECT_GET_CLASS(actual_audiosink), "device-name")) {
-                    g_object_get(G_OBJECT(actual_audiosink), "device-name", &pstring, NULL);
-                    if (pstring) {
-                        printf(" [%s].", pstring);
-                        g_free(pstring); pstring = NULL;
-                    }
-                }
-
-                printf("\n");
-                g_object_unref(actual_audiosink);
-            }
-            g_object_unref(audiosink);
         }
     }
 
@@ -2126,15 +2119,17 @@ void PsychGSFreeMovieTexture(PsychWindowRecordType *win)
  */
 int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double soundvolume)
 {
+    GstElement *audiosink, *actual_audiosink;
+    gchar* pstring;
     int	dropped = 0;
     GstElement *theMovie = NULL;
     double timeindex;
     GstSeekFlags seekFlags = 0;
-    
+
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
     }
-    
+
     // Fetch references to objects we need:
     theMovie = movieRecordBANK[moviehandle].theMovie;    
     if (theMovie == NULL) {
@@ -2145,22 +2140,22 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
     if (playbackrate == movieRecordBANK[moviehandle].rate) {
         // Yes: This would be a no-op, except we allow to change the sound output volume
         // dynamically and on-the-fly with low overhead this way:
-        
+
         // Set volume and mute state for audio:
         g_object_set(G_OBJECT(theMovie), "mute", (soundvolume <= 0) ? TRUE : FALSE, NULL);
         g_object_set(G_OBJECT(theMovie), "volume", soundvolume, NULL);
-        
+
         // Done. Return success status code:
         return(0);
     }
-    
+
     if (playbackrate != 0) {
         // Start playback of movie:
-        
+
         // Set volume and mute state for audio:
         g_object_set(G_OBJECT(theMovie), "mute", (soundvolume <= 0) ? TRUE : FALSE, NULL);
         g_object_set(G_OBJECT(theMovie), "volume", soundvolume, NULL);
-        
+
         // Set playback rate: An explicit seek to the position we are already (supposed to be)
         // is needed to avoid jumps in movies with bad encoding or keyframe placement:
         timeindex = PsychGSGetMovieTimeIndex(moviehandle);
@@ -2176,10 +2171,10 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
             // user-override:
             if (loop == 1) {
                 // Playback with defaults. Apply default setup + specialFlags1 quirks:
-                
+
                 // specialFlags & 32? Use 'uri' injection method for looped playback, instead of seek method:
                 if (movieRecordBANK[moviehandle].specialFlags1 &  32) loop = 2;
-                
+
                 // specialFlags & 64? Use segment seeks.
                 if (movieRecordBANK[moviehandle].specialFlags1 &  64) loop |= 4;
 
@@ -2190,7 +2185,7 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
 
         // On some movies and configurations, we need a segment seek as indicated by flag 0x4:
         if (loop & 0x4) seekFlags |= GST_SEEK_FLAG_SEGMENT;
-        
+
         if (playbackrate > 0) {
             gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE | ((loop & 0x1) ? seekFlags : 0), GST_SEEK_TYPE_SET,
                              (gint64) (timeindex * (double) 1e9), GST_SEEK_TYPE_NONE, GST_CLOCK_TIME_NONE);
@@ -2199,14 +2194,14 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
             gst_element_seek(theMovie, playbackrate, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE | ((loop & 0x1) ? seekFlags : 0), GST_SEEK_TYPE_SET,
                              0, GST_SEEK_TYPE_SET, (gint64) (timeindex * (double) 1e9));
         }
-        
+
         movieRecordBANK[moviehandle].loopflag = loop;
         movieRecordBANK[moviehandle].last_pts = -1.0;
         movieRecordBANK[moviehandle].nr_droppedframes = 0;
         movieRecordBANK[moviehandle].rate = playbackrate;
         movieRecordBANK[moviehandle].frameAvail = 0;
         movieRecordBANK[moviehandle].preRollAvail = 0;
-        
+
         // Is this a movie with actual videotracks and frame-dropping on videosink full enabled?
         if ((movieRecordBANK[moviehandle].nrVideoTracks > 0) && gst_app_sink_get_drop(GST_APP_SINK(movieRecordBANK[moviehandle].videosink))) {
             // Yes: We only schedule deferred start of playback at first Screen('GetMovieImage')
@@ -2227,10 +2222,41 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
         movieRecordBANK[moviehandle].startPending = 0;
         movieRecordBANK[moviehandle].loopflag = 0;
         movieRecordBANK[moviehandle].endOfFetch = 0;
-        
+
+        // Print name of audio sink - the output device which was actually playing the sound, if requested:
+        if (PsychPrefStateGet_Verbosity() > 3) {
+            audiosink = NULL;
+            g_object_get(G_OBJECT(theMovie), "audio-sink", &audiosink, NULL);
+            if (audiosink) {
+                actual_audiosink = NULL;
+                actual_audiosink = (gst_element_implements_interface(audiosink, GST_TYPE_CHILD_PROXY)) ? ((GstElement*) gst_child_proxy_get_child_by_index(GST_CHILD_PROXY(audiosink), 0)) : audiosink;
+                if (actual_audiosink) {
+                    if (g_object_class_find_property(G_OBJECT_GET_CLASS(actual_audiosink), "device")) {
+                        g_object_get(G_OBJECT(actual_audiosink), "device", &pstring, NULL);
+                        if (pstring) {
+                            printf("PTB-INFO: Audio output device name for movie playback was '%s'", pstring);
+                            g_free(pstring); pstring = NULL;
+                        }
+                    }
+
+                    if (g_object_class_find_property(G_OBJECT_GET_CLASS(actual_audiosink), "device-name")) {
+                        g_object_get(G_OBJECT(actual_audiosink), "device-name", &pstring, NULL);
+                        if (pstring) {
+                            printf(" [%s].", pstring);
+                            g_free(pstring); pstring = NULL;
+                        }
+                    }
+
+                    printf("\n");
+                    if (actual_audiosink != audiosink) gst_object_unref(actual_audiosink);
+                }
+                gst_object_unref(audiosink);
+            }
+        }
+
         PsychMoviePipelineSetState(theMovie, GST_STATE_PAUSED, 10.0);
         PsychGSProcessMovieContext(movieRecordBANK[moviehandle].MovieContext, FALSE);
-        
+
         // Output count of dropped frames:
         if ((dropped=movieRecordBANK[moviehandle].nr_droppedframes) > 0) {
             if (PsychPrefStateGet_Verbosity()>2) {

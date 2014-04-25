@@ -72,8 +72,8 @@ int PsychGetMovieCount(void)
 void* PsychAsyncCreateMovie(void* inmovieinfo)
 {
     int rc;
-	PsychAsyncMovieInfo* movieinfo = (PsychAsyncMovieInfo*) inmovieinfo;
-	
+    PsychAsyncMovieInfo* movieinfo = (PsychAsyncMovieInfo*) inmovieinfo;
+
     // The special value -1000 tells PsychCreateMovie to not output any error-
     // messages as this could easily crash Matlab/Octave.
     int mymoviehandle=-1000;
@@ -83,15 +83,15 @@ void* PsychAsyncCreateMovie(void* inmovieinfo)
     if ((rc=PsychSetThreadPriority(NULL, 0, 0))!=0) {
         printf("PTB-WARNING: In PsychAsyncCreateMovie(): Failed to lower my priority to non-realtime [System errorcode %i]. Expect timing problems for movie playback!", rc);
     }
-    
+
     // Execute our normal OpenMovie function: This does the hard work:
-    PsychCreateMovie(&(movieinfo->windowRecord), movieinfo->moviename, movieinfo->preloadSecs, &mymoviehandle, movieinfo->asyncFlag, movieinfo->specialFlags1, movieinfo->pixelFormat, movieinfo->maxNumberThreads);
-	
+    PsychCreateMovie(&(movieinfo->windowRecord), movieinfo->moviename, movieinfo->preloadSecs, &mymoviehandle, movieinfo->asyncFlag, movieinfo->specialFlags1, movieinfo->pixelFormat, movieinfo->maxNumberThreads, movieinfo->movieOptions);
+
     // Ok, either we have a moviehandle to a valid movie, or we failed, which would
     // be signalled to the calling function via some negative moviehandle:
     movieinfo->moviehandle = mymoviehandle; // Return moviehandle.
     movieinfo->asyncstate = 2; // Set state to "Completed"
-    
+
     // Exit from the routine. This will automatically terminate our Thread.
     return(NULL);
 }
@@ -106,10 +106,10 @@ void* PsychAsyncCreateMovie(void* inmovieinfo)
  *      moviename = char* with the name of the moviefile.
  *      moviehandle = handle to the new movie.
  */
-void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1, int pixelFormat, int maxNumberThreads)
+void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1, int pixelFormat, int maxNumberThreads, char* movieOptions)
 {
     #ifdef PTB_USE_GSTREAMER
-    PsychGSCreateMovie(win, moviename, preloadSecs, moviehandle, asyncFlag, specialFlags1, pixelFormat, maxNumberThreads);
+    PsychGSCreateMovie(win, moviename, preloadSecs, moviehandle, asyncFlag, specialFlags1, pixelFormat, maxNumberThreads, movieOptions);
     return;
     #endif
 
