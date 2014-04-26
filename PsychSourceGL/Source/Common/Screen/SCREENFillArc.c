@@ -119,7 +119,7 @@ void PsychRenderArc(unsigned int mode)
 	double					*startAngle, *arcAngle, *penWidth, *penHeight;
 	PsychWindowRecordType	*windowRecord;
 	double					whiteValue;
-	double                  dotSize;
+	double                  dotSize = 1;
 	psych_bool				isArgThere;
 	GLUquadric              *diskQuadric = NULL;
 	double cx, cy, w, h;
@@ -159,7 +159,7 @@ void PsychRenderArc(unsigned int mode)
 		// Check if penWidth and penHeight spec'd. If so, they
 		// need to be equal:
 		if (penWidth && penHeight && (*penWidth!=*penHeight)) {
-			PsychErrorExitMsg(PsychError_user, "penWidth and penHeight must be equal on OS-X if both are specified!");
+			PsychErrorExitMsg(PsychError_user, "penWidth and penHeight must be equal if both are specified!");
 		}
 		dotSize=1;
 		if (penWidth) dotSize = *penWidth;

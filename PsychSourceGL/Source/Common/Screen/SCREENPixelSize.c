@@ -1,20 +1,18 @@
 /*
-  Psychtoolbox3/Source/Common/SCREENPixelSize.c		
-  
-  AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
-  
-  PLATFORMS:	
-  This file should build on any platform. 
+    Psychtoolbox3/Source/Common/SCREENPixelSize.c
 
-  HISTORY:
-  1/14/03  awi		Created. 
- 
-  DESCRIPTION:
-  
-  Return the current pixel size of a screen or window.
+    AUTHORS:
+    Allen.Ingling@nyu.edu   awi
 
-  TO DO:
+    PLATFORMS:
+    This file should build on any platform.
+
+    HISTORY:
+    1/14/03  awi    Created.
+
+    DESCRIPTION:
+
+    Return the current pixel size of a screen or window.
 
 */
 
@@ -30,9 +28,9 @@ static char seeAlsoString[] = "";
 
 PsychError SCREENPixelSize(void)
 {
-    int 			screenNumber;
-    double 			depth;
-    PsychWindowRecordType	*windowRecord;
+    int     screenNumber;
+    double  depth = 0;
+    PsychWindowRecordType   *windowRecord;
 
     //all sub functions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);

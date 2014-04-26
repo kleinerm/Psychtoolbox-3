@@ -547,7 +547,7 @@ static GstAppSinkCallbacks videosinkCallbacks = {
  */
 void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1, int pixelFormat, int maxNumberThreads, char* movieOptions)
 {
-    GstCaps         *colorcaps;
+    GstCaps         *colorcaps = NULL;
     GstElement      *theMovie = NULL;
     GstElement      *videocodec = NULL;
     GMainLoop       *MovieContext = NULL;

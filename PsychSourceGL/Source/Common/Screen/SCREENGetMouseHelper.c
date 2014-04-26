@@ -578,7 +578,7 @@ PsychError SCREENGetMouseHelper(void)
 	char* keystring;
 	PsychGenericScriptType *kbNames;
 	CGDirectDisplayID dpy;
-	Window rootwin, childwin, mywin;
+	Window rootwin, childwin, mywin = 0;
 	int i, j, mx, my, dx, dy;
 	double mxd, myd, dxd, dyd;
 	unsigned int mask_return;

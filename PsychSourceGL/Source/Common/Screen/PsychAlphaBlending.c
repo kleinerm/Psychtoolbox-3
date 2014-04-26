@@ -69,7 +69,7 @@ GLenum blendingModeConstants[]={
 */
 psych_bool PsychValidateBlendingConstantForSource(GLenum sourceFactor)
 {
-	psych_bool isValid;
+	psych_bool isValid = FALSE;
 
 	switch(sourceFactor)
 	{
@@ -101,7 +101,7 @@ psych_bool PsychValidateBlendingConstantForSource(GLenum sourceFactor)
 */
 psych_bool PsychValidateBlendingConstantForDestination(GLenum destinationFactor)
 {
-	psych_bool isValid;
+	psych_bool isValid = FALSE;
 	
 	switch(destinationFactor)
 	{

@@ -160,7 +160,7 @@ PsychError SCREENFrameOval(void)
 				xScale=1;
 				yScale=rectY/rectX;
 				outerRadius=rectX/2;
-			}else if(rectY > rectX){
+			}else {
 				yScale=1;
 				xScale=rectX/rectY;
 				outerRadius=rectY/2;

@@ -3011,7 +3011,7 @@ psych_bool PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hoo
 	int i=0;
 	int pendingFBOpingpongs = 0;
 	PsychFBO *mysrcfbo1, *mysrcfbo2, *mydstfbo, *mynxtfbo;
-	PsychFBO **bouncefbo2;
+	PsychFBO **bouncefbo2 = NULL;
 	psych_bool gfxprocessing;
 	GLint restorefboid = 0;
 	psych_bool scissor_ignore = FALSE;
@@ -3137,7 +3137,7 @@ psych_bool PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hoo
 		}
 		
 		// Is this a ping-pong command?
-		if (hookfunc->hookfunctype == kPsychBuiltinFunc && strcmp(hookfunc->idString, "Builtin:FlipFBOs")==0) {
+		if ((hookfunc->hookfunctype == kPsychBuiltinFunc) && gfxprocessing && (strcmp(hookfunc->idString, "Builtin:FlipFBOs")==0)) {
 			// Ping pong buffer swap requested:
 			pendingFBOpingpongs--;
 			mysrcfbo1 = mydstfbo;

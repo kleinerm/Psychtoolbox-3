@@ -77,13 +77,13 @@ PsychError SCREENFillOval(void)
 	perfectUpToMaxDiameter = PsychGetWidthFromRect(windowRecord->clientrect);
 	if (PsychGetHeightFromRect(windowRecord->clientrect) < perfectUpToMaxDiameter) perfectUpToMaxDiameter = PsychGetHeightFromRect(windowRecord->clientrect);
 	PsychCopyInDoubleArg(4, kPsychArgOptional, &perfectUpToMaxDiameter);
-	
+
+    // Compute number of subdivisions (slices) to provide a perfect oval, i.e., one subdivision for each
+    // distance unit on the circumference of the oval.
+    numSlices = 3.14159265358979323846 * perfectUpToMaxDiameter;
+
     if ((perfectUpToMaxDiameter != perfectUpToMaxDiameterOld) || (windowRecord->fillOvalDisplayList == 0)) {
         perfectUpToMaxDiameterOld = perfectUpToMaxDiameter;
-
-        // Compute number of subdivisions (slices) to provide a perfect oval, i.e., one subdivision for each
-        // distance unit on the circumference of the oval.
-        numSlices = 3.14159265358979323846 * perfectUpToMaxDiameter;
 
         // Destroy old display list so it gets rebuilt with the new numSlices setting:
         if (isclassic && (windowRecord->fillOvalDisplayList != 0)) {
@@ -150,11 +150,11 @@ PsychError SCREENFillOval(void)
 				xScale=1; 
 				yScale=1;
 				radius=rectX/2;
-			}else if(rectX > rectY){ 
+			} else if(rectX > rectY){
 				xScale=1;
 				yScale=rectY/rectX;
 				radius=rectX/2;
-			}else if(rectY > rectX){
+			} else {
 				yScale=1;
 				xScale=rectX/rectY;
 				radius=rectY/2;

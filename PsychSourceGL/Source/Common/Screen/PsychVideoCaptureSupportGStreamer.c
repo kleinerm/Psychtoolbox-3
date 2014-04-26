@@ -3003,7 +3003,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         break;
 
         default:
-        PsychErrorExitMsg(PsychError_internal, "Unknown reqdepth parameter received!");            
+            colorcaps = NULL;
+            PsychErrorExitMsg(PsychError_internal, "Unknown reqdepth parameter received!");
     }
 
     // Assign 'colorcaps' as caps to our videosink. This marks the videosink so
