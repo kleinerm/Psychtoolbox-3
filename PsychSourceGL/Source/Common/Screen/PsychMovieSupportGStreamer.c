@@ -2224,14 +2224,20 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
         movieRecordBANK[moviehandle].endOfFetch = 0;
 
         // Print name of audio sink - the output device which was actually playing the sound, if requested:
-        if (PsychPrefStateGet_Verbosity() > 3) {
+        // This is a Linux only feature, as GStreamer for MS-Windows doesn't support such queries at all,
+        // and GStreamer for OSX doesn't expose the information in a way that would be in any way meaningful for us.
+        if ((PSYCH_SYSTEM == PSYCH_LINUX) && (PsychPrefStateGet_Verbosity() > 3)) {
             audiosink = NULL;
-            g_object_get(G_OBJECT(theMovie), "audio-sink", &audiosink, NULL);
+            if (g_object_class_find_property(G_OBJECT_GET_CLASS(theMovie), "audio-sink")) {
+                g_object_get(G_OBJECT(theMovie), "audio-sink", &audiosink, NULL);
+            }
+
             if (audiosink) {
                 actual_audiosink = NULL;
                 actual_audiosink = (gst_element_implements_interface(audiosink, GST_TYPE_CHILD_PROXY)) ? ((GstElement*) gst_child_proxy_get_child_by_index(GST_CHILD_PROXY(audiosink), 0)) : audiosink;
                 if (actual_audiosink) {
                     if (g_object_class_find_property(G_OBJECT_GET_CLASS(actual_audiosink), "device")) {
+                        pstring = NULL;
                         g_object_get(G_OBJECT(actual_audiosink), "device", &pstring, NULL);
                         if (pstring) {
                             printf("PTB-INFO: Audio output device name for movie playback was '%s'", pstring);
@@ -2240,6 +2246,7 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
                     }
 
                     if (g_object_class_find_property(G_OBJECT_GET_CLASS(actual_audiosink), "device-name")) {
+                        pstring = NULL;
                         g_object_get(G_OBJECT(actual_audiosink), "device-name", &pstring, NULL);
                         if (pstring) {
                             printf(" [%s].", pstring);
