@@ -126,7 +126,7 @@ void InitPsychAuthorList(void)
 		"",
 		"Kleiner",
 		"mk",
-		"mario.kleiner@tuebingen.mpg.de",
+		"mario.kleiner.de@gmail.com",
 		"http://www.kyb.mpg.de/~kleinerm"
 	);
 	PsychAddAuthor(
