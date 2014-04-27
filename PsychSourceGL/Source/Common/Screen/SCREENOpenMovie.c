@@ -143,6 +143,7 @@ PsychError SCREENOpenMovie(void)
         PsychWindowRecordType                   *windowRecord;
         char                                    *moviefile;
         char                                    *movieOptions;
+        char                                    dummmyOptions[1];
         int                                     moviehandle = -1;
         int                                     framecount;
         double                                  durationsecs;
@@ -202,7 +203,11 @@ PsychError SCREENOpenMovie(void)
         PsychCopyInIntegerArg(7, FALSE, &maxNumberThreads);
         if (maxNumberThreads < -1) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'maxNumberThreads' setting! Only values of -1 or greater are allowed.");
 
-        // Get the (optional) movie options string:
+        // Get the (optional) movie options string: As PsychAllocInCharArg() no-ops if
+        // the optional string isn't provided, we need to point movieOptions to an empty
+        // 0-terminated string by default, so we don't have a dangling pointer:
+        dummmyOptions[0] = 0;
+        movieOptions = &dummmyOptions[0];
         PsychAllocInCharArg(8, FALSE, &movieOptions);
 
         // Queueing of a new movie for seamless playback requested?
