@@ -1573,7 +1573,7 @@ const char* PsychSupportStatus(void)
 		isSupported = ((osvi.dwMajorVersion == 6) && (osvi.dwMinorVersion >= 1)) ? 1 : 0;
 
         if (isSupported) {
-            sprintf(statusString, "Windows version %i.%i %ssupported.", osvi.dwMajorVersion, osvi.dwMinorVersion, (osvi.dwMinorVersion == 1) ? "partially " : "");
+            sprintf(statusString, "Windows version %i.%i %ssupported.", osvi.dwMajorVersion, osvi.dwMinorVersion, (osvi.dwMinorVersion != 1) ? "partially " : "");
         }
         else {
             sprintf(statusString, "Windows version %i.%i is not supported.", osvi.dwMajorVersion, osvi.dwMinorVersion);
