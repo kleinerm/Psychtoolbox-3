@@ -11,7 +11,7 @@
 
     HISTORY:
 
-        06/06/11		mk		Wrote it.
+        06/06/11                mk              Wrote it.
 
     DESCRIPTION:
 
@@ -57,32 +57,72 @@ static PsychMovieWriterRecordType moviewriterRecordBANK[PSYCH_MAX_MOVIEWRITERDEV
 static int moviewritercount = 0;
 static psych_bool firsttime = TRUE;
 
+// Use direct method of checking GStreamer bus, which doesn't interfere with Octave + QT-GUI:
+static const psych_bool useNewBusCheck = TRUE;
+
+// Forward declaration:
+static gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr);
+
 /* Perform context loop iterations (for bus message handling) if doWait == false,
  * as long as there is work to do, or at least two seconds worth of iterations
  * if doWait == true. This drives the message-bus callback, so needs to be
  * performed to get any error reporting etc.
  */
-static int PsychGSProcessMovieContext(GMainLoop *loop, psych_bool doWait)
+static int PsychGSProcessMovieContext(PsychMovieWriterRecordType *movie, psych_bool doWait)
 {
-    psych_bool workdone;    
+    GstBus* bus;
+    GstMessage *msg;
+    psych_bool workdone = FALSE;
     double tdeadline, tnow;
+    GMainLoop *loop;
     PsychGetAdjustedPrecisionTimerSeconds(&tdeadline);
     tnow = tdeadline;
     tdeadline+=2.0;
-    
-    if (NULL == loop) return(0);
-    
-    while (doWait && (tnow < tdeadline)) {
-        // Perform non-blocking work iteration:
-        if (!g_main_context_iteration(g_main_loop_get_context(loop), false)) PsychYieldIntervalSeconds(0.010);
-        
-        // Update time:
-        PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+
+    if (useNewBusCheck) {
+        // New style:
+        bus = gst_pipeline_get_bus(GST_PIPELINE(movie->Movie));
+        msg = NULL;
+
+        // If doWait, try to perform iterations until 2 seconds elapsed or at least one event handled:
+        while (doWait && (tnow < tdeadline) && !gst_bus_have_pending(bus)) {
+            // Update time:
+            PsychYieldIntervalSeconds(0.010);
+            PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+        }
+
+        msg = gst_bus_pop(bus);
+        while (msg) {
+            workdone = TRUE;
+            PsychMovieBusCallback(bus, msg, movie);
+            gst_message_unref(msg);
+            msg = gst_bus_pop(bus);
+        }
+
+        gst_object_unref(bus);
     }
-    
-    // Perform work iterations of the event context as long as events are available, but don't block:
-    while ((workdone = g_main_context_iteration(g_main_loop_get_context(loop), false)) == TRUE);
-    
+    else {
+        // Old style: Doesn't work with Octave 3.8 + GUI on Linux:
+        loop = movie->Context;
+        if (NULL == loop) return(0);
+
+        // If doWait, try to perform iterations until 2 seconds elapsed or at least one event handled:
+        while (doWait && (tnow < tdeadline)) {
+            // Perform non-blocking work iteration:
+            if (g_main_context_iteration(g_main_loop_get_context(loop), false)) {
+                workdone = TRUE;
+                break;
+            }
+
+            // Update time:
+            PsychYieldIntervalSeconds(0.010);
+            PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+        }
+
+        // Perform work iterations of the event context as long as events are available, but don't block:
+        while (g_main_context_iteration(g_main_loop_get_context(loop), false)) { workdone = TRUE; }
+    }
+
     return(workdone);
 }
 
@@ -306,7 +346,7 @@ int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_boo
         return((int) ret);
     }
 
-    PsychGSProcessMovieContext(pwriterRec->Context, FALSE);
+    PsychGSProcessMovieContext(pwriterRec, FALSE);
 
     if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG:In AddFrameToMovie: Added new videoframe with %i units duration and upsidedown = %i to moviehandle %i.\n", bframeDurationUnits, (int) isUpsideDown, moviehandle);
 
@@ -376,7 +416,7 @@ psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, 
     }
 
     // Do a bit of event processing for handling of potential GStreamer messages:
-    PsychGSProcessMovieContext(pwriterRec->Context, FALSE);
+    PsychGSProcessMovieContext(pwriterRec, FALSE);
 
     if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG:In AddAudioBufferToMovie: Added new audio buffer to moviehandle %i.\n", moviehandle);
 
@@ -427,6 +467,7 @@ static psych_bool PsychMoviePipelineSetState(GstElement* camera, GstState state,
 static gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr)
 {
   PsychMovieWriterRecordType* dev = (PsychMovieWriterRecordType*) dataptr;
+  if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG: PsychMovieWriterBusCallback: Msg source name and type: %s : %s\n", GST_MESSAGE_SRC_NAME(msg), GST_MESSAGE_TYPE_NAME(msg));
 
   switch (GST_MESSAGE_TYPE (msg)) {
     case GST_MESSAGE_EOS:
@@ -457,14 +498,14 @@ static gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
       gst_message_parse_error(msg, &error, &debug);
       if (PsychPrefStateGet_Verbosity() > 0) { 
             printf("PTB-ERROR: GStreamer movie writing engine reports this error:\n"
-                "           Error from element %s: %s\n", GST_OBJECT_NAME(msg->src), error->message);
+                   "           Error from element %s: %s\n", GST_OBJECT_NAME(msg->src), error->message);
             printf("           Additional debug info: %s.\n\n", (debug) ? debug : "None");
 
             // Special tips for the challenged:
             if (strstr(error->message, "property") || (debug && strstr(debug, "property"))) {
                 // Bailed due to unsupported x264enc parameter "speed-preset". Can be solved by upgrading
                 // GStreamer or the OS or the VideoCodec= override:
-                printf("PTB-TIP: The reason this failed is because your GStreamer codec installation is too outdated.\n");
+                printf("PTB-TIP: One reason this may have failed is because your GStreamer codec installation is too outdated.\n");
                 printf("PTB-TIP: Either upgrade your GStreamer (plugin) installation to a more recent version,\n");
                 printf("PTB-TIP: or upgrade your operating system (e.g., Ubuntu 10.10 'Maverick Meercat' and later are fine).\n");
                 printf("PTB-TIP: A recent GStreamer installation is required to use all features and get optimal performance.\n");
@@ -799,7 +840,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
                 }
             }
         }
-        
+
         // Build final launch string:
         if (moviefile && (strlen(moviefile) > 0)) {
             // Actual recording into moviefile requested:
@@ -811,7 +852,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
             sprintf(launchString, "appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps=\"%s, width=(int)%i, height=(int)%i, framerate=%i/10000 \" ! %s ", capsString, width, height, ((int) (framerate * 10000 + 0.5)), (feedbackString) ? feedbackString : "");
         }
     }
-        
+
     // Create a movie file for the destination movie:
     if (PsychPrefStateGet_Verbosity() > 3) {
         printf("PTB-INFO: Movie writing / GStreamer processing pipeline gst-launch line (without the -e option required on the command line!) is:\n");
@@ -859,10 +900,12 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
         }
     }
 
-    pwriterRec->Context = g_main_loop_new (NULL, FALSE);
-    pwriterRec->bus = gst_pipeline_get_bus (GST_PIPELINE(pwriterRec->Movie));
-    gst_bus_add_watch(pwriterRec->bus, (GstBusFunc) PsychMovieBusCallback, pwriterRec);
-    gst_object_unref(pwriterRec->bus);
+    if (!useNewBusCheck) {
+        pwriterRec->Context = g_main_loop_new (NULL, FALSE);
+        pwriterRec->bus = gst_pipeline_get_bus (GST_PIPELINE(pwriterRec->Movie));
+        gst_bus_add_watch(pwriterRec->bus, (GstBusFunc) PsychMovieBusCallback, pwriterRec);
+        gst_object_unref(pwriterRec->bus);
+    }
 
     // Start the pipeline:
     if (!PsychMoviePipelineSetState(pwriterRec->Movie, GST_STATE_PLAYING, 10)) {
@@ -870,7 +913,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
         goto bail;
     }
 
-    PsychGSProcessMovieContext(pwriterRec->Context, FALSE);
+    PsychGSProcessMovieContext(pwriterRec, FALSE);
 
     // Increment count of open movie writers:
     moviewritercount++;
@@ -922,7 +965,7 @@ int PsychFinalizeNewMovieFile(int movieHandle)
     if (pwriterRec->PixMap) gst_buffer_unref(pwriterRec->PixMap);
     pwriterRec->PixMap = NULL;
 
-    PsychGSProcessMovieContext(pwriterRec->Context, FALSE);
+    PsychGSProcessMovieContext(pwriterRec, FALSE);
 
     // Send EOS signal downstream:
     g_signal_emit_by_name(pwriterRec->ptbvideoappsrc, "end-of-stream", &ret);
@@ -931,20 +974,20 @@ int PsychFinalizeNewMovieFile(int movieHandle)
     // Wait for eos flag to turn TRUE due to bus callback receiving the
     // downstream EOS event that we just sent out:
     while (!pwriterRec->eos) {
-        PsychGSProcessMovieContext(pwriterRec->Context, FALSE);
+        PsychGSProcessMovieContext(pwriterRec, FALSE);
         PsychYieldIntervalSeconds(0.010);
     }
 
     // Yield another 10 msecs after EOS signalled, just to be safe:
     PsychYieldIntervalSeconds(0.010);
-    PsychGSProcessMovieContext(pwriterRec->Context, FALSE);
+    PsychGSProcessMovieContext(pwriterRec, FALSE);
 
     // Pause the encoding pipeline:
     if (!PsychMoviePipelineSetState(pwriterRec->Movie, GST_STATE_PAUSED, 10)) {
         if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to pause movie encoding pipeline at close time!!\n");
     }
 
-    PsychGSProcessMovieContext(pwriterRec->Context, FALSE);
+    PsychGSProcessMovieContext(pwriterRec, FALSE);
 
     // Should we dump the whole encoding pipeline graph to a file for visualization
     // with GraphViz? This can be controlled via PsychTweak('GStreamerDumpFilterGraph' dirname);
@@ -959,14 +1002,14 @@ int PsychFinalizeNewMovieFile(int movieHandle)
         if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to stop movie encoding pipeline at close time!!\n");
     }
 
-    PsychGSProcessMovieContext(pwriterRec->Context, FALSE);
+    PsychGSProcessMovieContext(pwriterRec, FALSE);
 
     // Shutdown and release encoding pipeline:
     if (!PsychMoviePipelineSetState(pwriterRec->Movie, GST_STATE_NULL, 10)) {
         if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to shutdown movie encoding pipeline at close time!!\n");
     }
 
-    PsychGSProcessMovieContext(pwriterRec->Context, FALSE);
+    PsychGSProcessMovieContext(pwriterRec, FALSE);
 
     gst_object_unref(GST_OBJECT(pwriterRec->Movie));
     pwriterRec->Movie = NULL;

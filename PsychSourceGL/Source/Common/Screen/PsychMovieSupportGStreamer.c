@@ -56,9 +56,10 @@ typedef enum {
 } GstPlayFlags;
 
 static const psych_bool oldstyle = FALSE;
+static const psych_bool useNewBusCheck = TRUE;
 
 #define PSYCH_MAX_MOVIES 100
-    
+
 typedef struct {
     psych_mutex         mutex;
     psych_condition     condition;
@@ -176,32 +177,68 @@ int PsychGSGetMovieCount(void) {
     return(numMovieRecords);
 }
 
+// Forward declaration:
+static gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr);
+
 /* Perform context loop iterations (for bus message handling) if doWait == false,
  * as long as there is work to do, or at least two seconds worth of iterations
  * if doWait == true. This drives the message-bus callback, so needs to be
  * performed to get any error reporting etc.
  */
-int PsychGSProcessMovieContext(GMainLoop *loop, psych_bool doWait)
+int PsychGSProcessMovieContext(PsychMovieRecordType* movie, psych_bool doWait)
 {
-    psych_bool workdone;
+    GstBus* bus;
+    GstMessage *msg;
+    psych_bool workdone = FALSE;
     double tdeadline, tnow;
+    GMainLoop *loop;
     PsychGetAdjustedPrecisionTimerSeconds(&tdeadline);
     tnow = tdeadline;
     tdeadline+=2.0;
-    
-    if (NULL == loop) return(0);
-    
-    // If doWait, try to perform iterations until 2 seconds elapsed or at least one event handled:
-    while (doWait && (tnow < tdeadline)) {
-        // Perform non-blocking work iteration:
-        if (!g_main_context_iteration(g_main_loop_get_context(loop), false)) PsychYieldIntervalSeconds(0.010);
-        
-        // Update time:
-        PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+
+    if (useNewBusCheck) {
+        // New style:
+        bus = gst_pipeline_get_bus(GST_PIPELINE(movie->theMovie));
+        msg = NULL;
+
+        // If doWait, try to perform iterations until 2 seconds elapsed or at least one event handled:
+        while (doWait && (tnow < tdeadline) && !gst_bus_have_pending(bus)) {
+            // Update time:
+            PsychYieldIntervalSeconds(0.010);
+            PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+        }
+
+        msg = gst_bus_pop(bus);
+        while (msg) {
+            workdone = TRUE;
+            PsychMovieBusCallback(bus, msg, movie);
+            gst_message_unref(msg);
+            msg = gst_bus_pop(bus);
+        }
+
+        gst_object_unref(bus);
     }
-    
-    // Perform work iterations of the event context as long as events are available, but don't block:
-    while ((workdone = g_main_context_iteration(g_main_loop_get_context(loop), false)) == TRUE);
+    else {
+        // Old style: Doesn't work with Octave 3.8 + GUI on Linux:
+        loop = movie->MovieContext;
+        if (NULL == loop) return(0);
+
+        // If doWait, try to perform iterations until 2 seconds elapsed or at least one event handled:
+        while (doWait && (tnow < tdeadline)) {
+            // Perform non-blocking work iteration:
+            if (g_main_context_iteration(g_main_loop_get_context(loop), false)) {
+                workdone = TRUE;
+                break;
+            }
+
+            // Update time:
+            PsychYieldIntervalSeconds(0.010);
+            PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+        }
+
+        // Perform work iterations of the event context as long as events are available, but don't block:
+        while (g_main_context_iteration(g_main_loop_get_context(loop), false)) { workdone = TRUE; }
+    }
 
     return(workdone);
 }
@@ -273,11 +310,11 @@ psych_bool PsychIsMovieSeekable(PsychMovieRecordType* movie)
 }
 
 /* Receive messages from the playback pipeline message bus and handle them: */
-gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr)
+static gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr)
 {
     GstSeekFlags rewindFlags = 0;
     PsychMovieRecordType* movie = (PsychMovieRecordType*) dataptr;
-    // printf("MSG SOURCENAME: %s : %s\n", GST_MESSAGE_SRC_NAME(msg), GST_MESSAGE_TYPE_NAME(msg));
+    if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG: PsychMovieBusCallback: Msg source name and type: %s : %s\n", GST_MESSAGE_SRC_NAME(msg), GST_MESSAGE_TYPE_NAME(msg));
 
     switch (GST_MESSAGE_TYPE (msg)) {
         case GST_MESSAGE_SEGMENT_DONE:
@@ -680,6 +717,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     if (TRUE) {
         // Use playbin2:
         theMovie = gst_element_factory_make ("playbin2", "ptbmovieplaybackpipeline");
+        movieRecordBANK[slotid].theMovie = theMovie;
         if (theMovie == NULL) {
             printf("PTB-ERROR: Failed to create GStreamer playbin2 element! Your GStreamer installation is\n");
             printf("PTB-ERROR: incomplete or damaged and misses at least the gst-plugins-base set of plugins!\n");
@@ -691,7 +729,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 
         // Default flags for playbin: Decode video ...
         playflags = GST_PLAY_FLAG_VIDEO;
-    
+
         // ... and deinterlace it if needed, unless prevented by specialFlags setting 256:
         if (!(specialFlags1 & 256)) playflags|= GST_PLAY_FLAG_DEINTERLACE;
 
@@ -791,19 +829,22 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         // in case it will be needed in the future:
         sprintf(movieLocation, "filesrc location='%s' ! qtdemux ! queue ! ffdec_h264 ! ffmpegcolorspace ! appsink name=ptbsink0", moviename);
         theMovie = gst_parse_launch((const gchar*) movieLocation, NULL);
+        movieRecordBANK[slotid].theMovie = theMovie;
         videosink = gst_bin_get_by_name(GST_BIN(theMovie), "ptbsink0");
         printf("LAUNCHLINE[%p]: %s\n", videosink, movieLocation);
     }
 
-    // Assign message context, message bus and message callback for
-    // the pipeline to report events and state changes, errors etc.:    
-    MovieContext = g_main_loop_new (NULL, FALSE);
-    movieRecordBANK[slotid].MovieContext = MovieContext;
-    bus = gst_pipeline_get_bus(GST_PIPELINE(theMovie));
-    // Didn't work: g_signal_connect (G_OBJECT(bus), "message::error", G_CALLBACK(PsychMessageErrorCB), NULL);
-    //              g_signal_connect (G_OBJECT(bus), "message::warning", G_CALLBACK(PsychMessageErrorCB), NULL);
-    gst_bus_add_watch(bus, PsychMovieBusCallback, &(movieRecordBANK[slotid]));
-    gst_object_unref(bus);
+    if (!useNewBusCheck) {
+        // Assign message context, message bus and message callback for
+        // the pipeline to report events and state changes, errors etc.:
+        MovieContext = g_main_loop_new (NULL, FALSE);
+        movieRecordBANK[slotid].MovieContext = MovieContext;
+        bus = gst_pipeline_get_bus(GST_PIPELINE(theMovie));
+        // Didn't work: g_signal_connect (G_OBJECT(bus), "message::error", G_CALLBACK(PsychMessageErrorCB), NULL);
+        //              g_signal_connect (G_OBJECT(bus), "message::warning", G_CALLBACK(PsychMessageErrorCB), NULL);
+        gst_bus_add_watch(bus, PsychMovieBusCallback, &(movieRecordBANK[slotid]));
+        gst_object_unref(bus);
+    }
 
     // Assign a fakesink named "ptbsink0" as destination video-sink for
     // all video content. This allows us to get hold of the video frame buffers for
@@ -812,7 +853,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     if (!videosink) {
         printf("PTB-ERROR: Failed to create video-sink appsink ptbsink! Your GStreamer installation is\n");
         printf("PTB-ERROR: incomplete or damaged and misses at least the gst-plugins-base set of plugins!\n");        
-        PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
+        PsychGSProcessMovieContext(&(movieRecordBANK[slotid]), TRUE);
         PsychErrorExitMsg(PsychError_system, "Opening the movie failed. Reason hopefully given above.");
     }
 
@@ -968,7 +1009,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // Get the pad from the final sink for probing width x height of movie frames and nominal framerate of movie:
     pad = gst_element_get_pad(videosink, "sink");
 
-    PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, FALSE);
+    PsychGSProcessMovieContext(&(movieRecordBANK[slotid]), FALSE);
 
     // Attach custom made audio sink?
     if ((pstring = strstr(movieOptions, "AudioSink="))) {
@@ -999,13 +1040,13 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     if (TRUE || (preloadSecs > 0) || (preloadSecs == -1)) {
         // Preload / Preroll the pipeline:
         if (!PsychMoviePipelineSetState(theMovie, GST_STATE_PAUSED, 30.0)) {
-            PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
+            PsychGSProcessMovieContext(&(movieRecordBANK[slotid]), TRUE);
             PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed I. Reason given above.");
         }
     } else {
         // Ready the pipeline:
         if (!PsychMoviePipelineSetState(theMovie, GST_STATE_READY, 30.0)) {
-            PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
+            PsychGSProcessMovieContext(&(movieRecordBANK[slotid]), TRUE);
             PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed II. Reason given above.");
         }
     }
@@ -1072,7 +1113,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     if (needCodecSetup) {
         // Ready the video codec, so a new max thread count or other parameters can be set:
         if (!PsychMoviePipelineSetState(videocodec, GST_STATE_READY, 30.0)) {
-            PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
+            PsychGSProcessMovieContext(&(movieRecordBANK[slotid]), TRUE);
             PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed III. Reason given above.");
         }    
     }
@@ -1171,7 +1212,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     if (needCodecSetup) {
         // Pause the video codec, so the new max thread count is accepted:
         if (!PsychMoviePipelineSetState(videocodec, GST_STATE_PAUSED, 30.0)) {
-            PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, TRUE);
+            PsychGSProcessMovieContext(&(movieRecordBANK[slotid]), TRUE);
             PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed IV. Reason given above.");
         }
     }
@@ -1191,7 +1232,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         if (printErrors) PsychErrorExitMsg(PsychError_user, "No windowPtr to an onscreen window provided. Must do so for movies with videotrack!"); else return;
     }
  
-    PsychGSProcessMovieContext(movieRecordBANK[slotid].MovieContext, FALSE);
+    PsychGSProcessMovieContext(&(movieRecordBANK[slotid]), FALSE);
 
     PsychInitMutex(&movieRecordBANK[slotid].mutex);
     PsychInitCondition(&movieRecordBANK[slotid].condition, NULL);
@@ -1392,11 +1433,11 @@ void PsychGSDeleteMovie(int moviehandle)
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
     }
-    
+
     if (movieRecordBANK[moviehandle].theMovie == NULL) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. No movie associated with this handle !!!");
     }
-        
+
     // Stop movie playback immediately:
     PsychMoviePipelineSetState(movieRecordBANK[moviehandle].theMovie, GST_STATE_NULL, 20.0);
 
@@ -1422,7 +1463,7 @@ void PsychGSDeleteMovie(int moviehandle)
         movieRecordBANK[moviehandle].cached_texture = 0;
     }
 
-    // Delete all references to us in textures originally originating from us:    
+    // Delete all references to us in textures originally originating from us:
     PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
     for(i = 0; i < numWindows; i++) {
         if ((windowRecordArray[i]->windowType == kPsychTexture) && (windowRecordArray[i]->texturecache_slot == moviehandle)) {
@@ -1431,10 +1472,10 @@ void PsychGSDeleteMovie(int moviehandle)
         }
     }
     PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
-    
+
     // Decrease counter:
     if (numMovieRecords>0) numMovieRecords--;
-        
+
     return;
 }
 
@@ -1518,7 +1559,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     }
 
     // Allow context task to do its internal bookkeeping and cleanup work:
-    PsychGSProcessMovieContext(movieRecordBANK[moviehandle].MovieContext, FALSE);
+    PsychGSProcessMovieContext(&(movieRecordBANK[moviehandle]), FALSE);
 
     // If this is a pure audio "movie" with no video tracks, we always return failed,
     // as those certainly don't have movie frames associated.
@@ -1604,7 +1645,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         PsychTimedWaitCondition(&movieRecordBANK[moviehandle].condition, &movieRecordBANK[moviehandle].mutex, 0.5);
 
         // Allow context task to do its internal bookkeeping and cleanup work:
-        PsychGSProcessMovieContext(movieRecordBANK[moviehandle].MovieContext, FALSE);
+        PsychGSProcessMovieContext(&(movieRecordBANK[moviehandle]), FALSE);
 
         // Recheck:
         if (((0 != rate) && !movieRecordBANK[moviehandle].frameAvail) ||
@@ -2213,7 +2254,7 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
             // Only soundtrack or framedropping disabled with videotracks - Start it immediately:
             movieRecordBANK[moviehandle].startPending = 0;
             PsychMoviePipelineSetState(theMovie, GST_STATE_PLAYING, 10.0);
-            PsychGSProcessMovieContext(movieRecordBANK[moviehandle].MovieContext, FALSE);
+            PsychGSProcessMovieContext(&(movieRecordBANK[moviehandle]), FALSE);
         }
     }
     else {
@@ -2262,7 +2303,7 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
         }
 
         PsychMoviePipelineSetState(theMovie, GST_STATE_PAUSED, 10.0);
-        PsychGSProcessMovieContext(movieRecordBANK[moviehandle].MovieContext, FALSE);
+        PsychGSProcessMovieContext(&(movieRecordBANK[moviehandle]), FALSE);
 
         // Output count of dropped frames:
         if ((dropped=movieRecordBANK[moviehandle].nr_droppedframes) > 0) {
