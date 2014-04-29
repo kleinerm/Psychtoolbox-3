@@ -876,6 +876,9 @@ PsychError SCREENGetMouseHelper(void)
 	    // Return the full keyboard keycode to ASCII character code mapping table...
 	    PsychAllocOutCellVector(1, kPsychArgOptional, 256, &kbNames);
 
+        // Suppress "XKeycodeToKeysym is deprecated" compiler warning:
+        #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 	    for(i=0; i<256; i++) {
 	      // Map keyboard scan code to KeySym:
           PsychLockDisplay();

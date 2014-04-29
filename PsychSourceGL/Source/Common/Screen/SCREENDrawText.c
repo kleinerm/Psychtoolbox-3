@@ -1,43 +1,43 @@
 /*
     SCREENDrawText.c	
-  
+
     AUTHORS:
-    
-		Allen.Ingling@nyu.edu				awi
-		mario.kleiner at tuebingen.mpg.de	mk
-  
+
+        Allen.Ingling@nyu.edu               awi
+        mario.kleiner at tuebingen.mpg.de   mk
+
     PLATFORMS:
-		
-		All. With OS specific #ifdefs...
-    
+
+        All. With OS specific #ifdefs...
+
     HISTORY:
-	
-		11/17/03	awi		Spun off from SCREENTestTexture which also used Quartz and Textures to draw text but did not match the 'DrawText' specifications.
-		10/12/04	awi		In useString: changed "SCREEN" to "Screen", and moved commas to inside [].
-		2/25/05		awi		Added call to PsychUpdateAlphaBlendingFactorLazily().  Drawing now obeys settings by Screen('BlendFunction').
-		5/08/05     mk      Bugfix for "Descenders of letters get cut/eaten away" bug introduced in PTB 1.0.5
-		10/12/05    mk      Fix crash in DrawText caused by removing glFinish() while CLIENT_STORAGE is enabled!
-							-> Disabling CLIENT_STORAGE and removing glFinish() is the proper solution...
-		11/01/05    mk      Finally the real bugfix for "Descenders of letters get cut/eaten away" bug introduced in PTB 1.0.5!
-		11/01/05    mk      Removal of dead code + beautification.
-		11/21/05    mk      Code for updating the "Drawing Cursor" and returning NewX, NewY values added.
-		01/01/06    mk      Code branch for M$-Windoze implementation of DrawText added.
-		11/11/07	mk		New GDI based Windoze text renderer implemented.
-		12/27/09	mk		Massive refactoring of code for all platforms and support for plugin-based textrenderers.
-							-> Cleans up the mess of duplicated code and special cases. We share as much code as possible accross platforms.
-							-> Allows for unicode support on all platforms.
-							-> Allows for plugin renderer on Linux and OS/X for unicode, anti-aliasing etc.
-							-> Allows for better handling of unicode and multibyte character encodings.
- 
-		11/02/13	mk		Rewrite OSX renderer: Switch from deprecated ATSUI to "new" CoreText as supported on OSX 10.5 and later.
- 
+
+        11/17/03    awi     Spun off from SCREENTestTexture which also used Quartz and Textures to draw text but did not match the 'DrawText' specifications.
+        10/12/04    awi     In useString: changed "SCREEN" to "Screen", and moved commas to inside [].
+        2/25/05     awi     Added call to PsychUpdateAlphaBlendingFactorLazily().  Drawing now obeys settings by Screen('BlendFunction').
+        5/08/05     mk      Bugfix for "Descenders of letters get cut/eaten away" bug introduced in PTB 1.0.5
+        10/12/05    mk      Fix crash in DrawText caused by removing glFinish() while CLIENT_STORAGE is enabled!
+                            -> Disabling CLIENT_STORAGE and removing glFinish() is the proper solution...
+        11/01/05    mk      Finally the real bugfix for "Descenders of letters get cut/eaten away" bug introduced in PTB 1.0.5!
+        11/01/05    mk      Removal of dead code + beautification.
+        11/21/05    mk      Code for updating the "Drawing Cursor" and returning NewX, NewY values added.
+        01/01/06    mk      Code branch for M$-Windoze implementation of DrawText added.
+        11/11/07    mk      New GDI based Windoze text renderer implemented.
+        12/27/09    mk      Massive refactoring of code for all platforms and support for plugin-based textrenderers.
+                            -> Cleans up the mess of duplicated code and special cases. We share as much code as possible accross platforms.
+                            -> Allows for unicode support on all platforms.
+                            -> Allows for plugin renderer on Linux and OS/X for unicode, anti-aliasing etc.
+                            -> Allows for better handling of unicode and multibyte character encodings.
+
+        11/02/13    mk      Rewrite OSX renderer: Switch from deprecated ATSUI to "new" CoreText as supported on OSX 10.5 and later.
+
     DESCRIPTION:
 
-		Unified file with text renderers for all platforms (OS/X, Windows, Linux).
-  
+        Unified file with text renderers for all platforms (OS/X, Windows, Linux).
+
     REFERENCES:
-	
-		http://www.cl.cam.ac.uk/~mgk25/unicode.html - A good FAQ about Unicode, UTF-8 with a special emphasis on Linux and Posix systems.
+
+        http://www.cl.cam.ac.uk/~mgk25/unicode.html - A good FAQ about Unicode, UTF-8 with a special emphasis on Linux and Posix systems.
 
 */
 
