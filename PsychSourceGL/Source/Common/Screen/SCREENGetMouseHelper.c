@@ -75,6 +75,10 @@ static int	listenchar_enabled = 0;
 #include <sched.h>
 #include <errno.h>
 #include <sys/mman.h>
+
+// Suppress "XKeycodeToKeysym is deprecated" compiler warning:
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 #endif
 
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
@@ -875,9 +879,6 @@ PsychError SCREENGetMouseHelper(void)
 	    // numButtons == -3 --> KbName mapping mode:
 	    // Return the full keyboard keycode to ASCII character code mapping table...
 	    PsychAllocOutCellVector(1, kPsychArgOptional, 256, &kbNames);
-
-        // Suppress "XKeycodeToKeysym is deprecated" compiler warning:
-        #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 	    for(i=0; i<256; i++) {
 	      // Map keyboard scan code to KeySym:
