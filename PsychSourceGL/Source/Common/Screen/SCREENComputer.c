@@ -450,10 +450,7 @@ PsychError SCREENComputer(void)
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
 
-// GNU/Linux implementation of Screen('Computer'): This is very rudimentary for now.
-// We only report the operating sytem type (="Linux") and the MAC ethernet address of
-// the primary interface, but don't report any more useful information.
-
+// GNU/Linux implementation of Screen('Computer'):
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -479,6 +476,7 @@ PsychError SCREENComputer(void)
     int s;
     PsychGenericScriptType	*kernStruct, *hwStruct, *majorStruct;
     struct utsname unameresult;
+    char tmpString[1024];
 
     //all subfunctions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -523,14 +521,16 @@ PsychError SCREENComputer(void)
     PsychSetStructArrayStringElement("MACAddress", 0, ethernetMACStr, majorStruct);
 
     uname(&unameresult);
-    PsychSetStructArrayStringElement("system", 0, unameresult.release, majorStruct);
+    sprintf(tmpString, "Linux %s", unameresult.release);
+    PsychSetStructArrayStringElement("system", 0, tmpString, majorStruct);
 
     // Fill the kern struct and implant it within the major struct
     PsychAllocOutStructArray(-1, FALSE, numKernStructDimensions, numKernStructFieldNames, kernStructFieldNames, &kernStruct);
     PsychSetStructArrayStringElement("ostype", 0, unameresult.sysname, kernStruct);
     PsychSetStructArrayStringElement("osrelease", 0, unameresult.release, kernStruct);
     PsychSetStructArrayDoubleElement("osrevision", 0, 0, kernStruct);
-    PsychSetStructArrayStringElement("version", 0, unameresult.version, kernStruct);
+    sprintf(tmpString, "%s Kernel Version %s: %s", unameresult.sysname, unameresult.release, unameresult.version);
+    PsychSetStructArrayStringElement("version", 0, tmpString, kernStruct);
     PsychSetStructArrayStringElement("hostname", 0, unameresult.nodename, kernStruct);
     PsychSetStructArrayStructElement("kern",0, kernStruct, majorStruct);
 
