@@ -218,7 +218,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
         // Success. Ready to go...
 		if (debuglevel > 1) {
-			printf("MOGL - OpenGL for Matlab & GNU/Octave initialized. MOGL is (c) 2006-2013 Richard F. Murray & Mario Kleiner, licensed to you under MIT license.\n");
+			printf("MOGL - OpenGL for Matlab & GNU/Octave initialized. MOGL is (c) 2006-2014 Richard F. Murray & Mario Kleiner, licensed to you under MIT license.\n");
             #ifdef WINDOWS
 			printf("On MS-Windows, we make use of the freeglut library, which is Copyright (c) 1999-2000 Pawel W. Olszta, licensed under compatible MIT/X11 license.\n");
             printf("The precompiled Windows binary DLL's have been kindly provided by http://www.transmissionzero.co.uk/software/freeglut-devel/ -- Thanks!\n");
@@ -250,13 +250,44 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
             }
         }
 
-		// Register exit-handler: When flushing the mex-file, we free all allocated buffer memory:
-		mexAtExit(&mexExitFunction);
-		
+        // Register exit-handler: When flushing the mex-file, we free all allocated buffer memory:
+        mexAtExit(&mexExitFunction);
+
         // Done with first time initialization:
         firsttime = 0;
-    }   
-	
+    }
+
+    if (strcmp(cmd, "LockModule") == 0) {
+        // At least as of Mesa 10.1 as shipped in Ubuntu 14.04-LTS, Mesa
+        // will become seriously crashy if our Screen() mex files is flushed
+        // from memory due to a clear all/mex/Screen and afterwards reloaded.
+        // This because Mesa maintains pointers back into our library image,
+        // which will turn into dangling pointers if we get unloaded/reloaded
+        // into a new location. To prevent Mesa crashes on clear Screen -> reload,
+        // prevent the moglcore mex file against clearing from Octave/Matlab address space.
+        //
+        // Logic goes like this:
+        // 1. Screen('OpenWindow', ...) creates, initializes and activates its own OpenGL rendering context.
+        // 2. Screen('OpenWindow', ...) detects it is running on buggy Mesa OpenGL library which needs workaround.
+        // 3. Screen() loads moglcore() after binding its OpenGL context, but before calling its own glewInit().
+        // 4. This moglcore runs its glewInit() init and thereby does lots of glXGetProcAddress() calls to bind
+        //    OpenGL extensions and entry points. This will cause Mesa to establish a lot of function name string
+        //    pointers into the executable image of moglcore.mex! Mesa/libglapi.so now has persistent pointers into
+        //    moglcore.mex image.
+        // 5. moglcore mex locks itself permanently into Octave/Matlab address space until end of session, ie., until
+        //    Matlab or Octave terminate.
+        // 6. moglcore will stay in memory, therefore libglapi.so's string pointers will stay valid and safe to use
+        //    by Mesa, even if Screen.mex gets unloaded/reloaded as is often useful during a Octave/Matlab work session.
+        //
+        // -> An ugly solution which renders "clear moglcore" useless, but the best i can come up with at the moment :(
+        //
+
+        // glewInit() et al. have been done above, so pointer mappings should be set up. Lock ourselves into runtime:
+        mexLock();
+
+        goto moglreturn;
+    }
+
     // If glBeginLevel >  1 then most probably the script was aborted after execution of glBegin() but
     // before execution of glEnd(). In that case, we reset the level to zero.
     if (glBeginLevel > 1) glBeginLevel = 0;
@@ -264,24 +295,24 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     // Reset OpenGL error state so we can be sure that any of our error queries really
     // relate to errors caused by us:
     if (glBeginLevel == 0 && debuglevel > 0 && (strstr(cmd, "glGetError")==NULL)) glGetError();
-        
+
     // look for command in manual command map
     if( (i=binsearch(gl_manual_map,gl_manual_map_count,cmd))>=0 ) {
         gl_manual_map[i].cmdfn(nlhs,plhs,nrhs-1,(const mxArray**) prhs+1);
         if (debuglevel > 0) mogl_checkerrors(cmd, prhs);
         goto moglreturn;
     }
-    
+
     // look for command in auto command map
     if( (i=binsearch(gl_auto_map,gl_auto_map_count,cmd))>=0 ) {
         gl_auto_map[i].cmdfn(nlhs,plhs,nrhs-1,(const mxArray**) prhs+1);
         if (debuglevel > 0) mogl_checkerrors(cmd, prhs);
         goto moglreturn;
     }
-    
+
     // no match
     mogl_usageerr();
-    
+
     // moglreturn: Is the exit path of mogl. All execution ends at this point.
  moglreturn:
     return;
