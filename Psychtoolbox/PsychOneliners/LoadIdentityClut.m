@@ -260,8 +260,8 @@ else
             end
         else
             if ~isempty(strfind(gfxhwtype, 'ATI')) || ~isempty(strfind(gfxhwtype, 'AMD')) || ~isempty(strfind(gfxhwtype, 'Advanced Micro Devices')) || ...
-                    ~isempty(strfind(winfo.GLRenderer, 'DRI R')) || ~isempty(strfind(winfo.GLRenderer, 'on ATI R'))
-                % ATI card:
+                    ~isempty(strfind(winfo.GLRenderer, 'DRI R')) || ~isempty(strfind(winfo.GLRenderer, 'on ATI R')) || ~isempty(strfind(winfo.GLRenderer, 'on AMD'))
+                % AMD/ATI card:
 
                 % A good default at least on OS/X is type 1:
                 gfxhwtype = 1;
@@ -270,13 +270,13 @@ else
                     % At least the Radeon HD 3470 under Windows Vista and Linux needs type 0
                     % LUT's. Let's assume for the moment this is true for all R600
                     % cores, ie., all Radeon HD series cards.
-                    fprintf('LoadIdentityClut: ATI Radeon HD-2000 or later detected. Enabling special type-0 LUT hacks for totally broken drivers.\n');
+                    fprintf('LoadIdentityClut: ATI Radeon HD-2000 or later detected. Using type-0 LUT.\n');
                     gfxhwtype = 0;
-                elseif (IsLinux) && (~isempty(strfind(winfo.GLRenderer, 'DRI R')) || ~isempty(strfind(winfo.GLRenderer, 'on ATI R')))
+                elseif (IsLinux) && (~isempty(strfind(winfo.GLRenderer, 'DRI R')) || ~isempty(strfind(winfo.GLRenderer, 'on ATI R')) || ~isempty(strfind(winfo.GLRenderer, 'on AMD')))
                     % At least the Radeon R3xx/4xx/5xx under Linux with DRI2 Mesa needs type 0
                     % LUT's. Let's assume for the moment this is true for all R600
                     % cores, ie., all Radeon HD series cards.
-                    fprintf('LoadIdentityClut: ATI Radeon R3xx/R4xx/R5xx on Linux DRI2 detected. Using type-0 LUT.\n');
+                    fprintf('LoadIdentityClut: ATI Radeon on Linux DRI2 detected. Using type-0 LUT.\n');
                     gfxhwtype = 0;
                 elseif IsOSX && (~isempty(strfind(winfo.GLRenderer, 'Radeon HD 5')))
                     % At least on OS/X 10.6 with ATI Radeon HD-5000 series,
