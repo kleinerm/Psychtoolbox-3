@@ -453,7 +453,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 			// No native 10 bpc support. Only support our homegrown method with PTB kernel driver on ATI/AMD hardware:
 			if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) ||
 			    !PsychGetGPUSpecs(screenSettings->screenNumber, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
-			    (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0x10)) {
+			    (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0xffff)) {
 				printf("\nPTB-ERROR: Your script requested a 30bpp, 10bpc framebuffer, but the Psychtoolbox kernel driver is not loaded or does not support this on your GPU.\n");
 				printf("PTB-ERROR: The driver currently only supports selected ATI Radeon GPU's (X1000/HD2000/HD3000/HD4000 series and corresponding FireGL/FirePro models).\n");
 				printf("PTB-ERROR: On MacOS/X the driver must be loaded and functional for your graphics card for this to work.\n");
@@ -468,7 +468,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 			// Basic support seems to be there, set the request flag.
 			(*windowRecord)->specialflags|= kPsychNative10bpcFBActive;
 		}
-        
+
 		if (PsychPrefStateGet_ConserveVRAM() & kPsychEnforce10BitFramebufferHack) {
 			printf("PTB-INFO: Override: Will try to enable 10 bpc framebuffer mode regardless if i think it is needed/sensible or not.\n");
 			printf("PTB-INFO: Override: Doing so because you set the kPsychEnforce10BitFramebufferHack flag in Screen('Preference','ConserveVRAM').\n");
