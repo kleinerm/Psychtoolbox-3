@@ -77,7 +77,7 @@ PsychError SCREENNull(void)
 
                 // We only support Radeon GPU's with DCE-3 or later:
                 if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
-                    (gpuMaintype != kPsychRadeon) || (gpuMinortype < 0x30)) {
+                    (gpuMaintype != kPsychRadeon) || (gpuMinortype < 30)) {
                     printf("PTB-ERROR: Unsupported GPU for this method. Not a AMD gpu with at least DCE-3 display engine!\n");
                     return(PsychError_user);
                 }
@@ -86,7 +86,7 @@ PsychError SCREENNull(void)
                 headid = PsychScreenToCrtcId(screenId, 0);
 
                 // Select Radeon HW registers for corresponding heads:
-                if (gpuMinortype < 0x40) {
+                if (gpuMinortype < 40) {
                     // DCE-3 and earlier:
                     ctlreg = (headid == 0) ? DCE3_FMT_CLAMP_CONTROL : DCE3_FMT_CLAMP_CONTROL + 0x800;
                 }

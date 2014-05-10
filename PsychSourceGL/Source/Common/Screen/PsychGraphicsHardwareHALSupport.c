@@ -341,7 +341,7 @@ psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord
             if (headid < 0) break;
 
             // Select Radeon HW registers for corresponding heads:
-            if (gpuMinortype < 0x40) {
+            if (gpuMinortype < 40) {
                 // DCE-3 and earlier:
                 lutreg = (headid == 0) ? RADEON_D1GRPH_LUT_SEL : RADEON_D2GRPH_LUT_SEL;
                 ctlreg = (headid == 0) ? RADEON_D1GRPH_CONTROL : RADEON_D2GRPH_CONTROL;
@@ -536,7 +536,7 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
         if (headid < 0) break;
 
         // Select Radeon HW registers for corresponding heads:
-        if (gpuMinortype < 0x40) {
+        if (gpuMinortype < 40) {
             // DCE-3 and earlier:
             lutreg = (headid == 0) ? RADEON_D1GRPH_LUT_SEL : RADEON_D2GRPH_LUT_SEL;
             ctlreg = (headid == 0) ? RADEON_D1GRPH_CONTROL : RADEON_D2GRPH_CONTROL;
@@ -595,7 +595,7 @@ void PsychStoreGPUSurfaceAddresses(PsychWindowRecordType* windowRecord)
 
 	// We only support Radeon GPU's with pre DCE-4 display engine, nothing more recent:
 	if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
-	    (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 0x40)) {
+	    (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 40)) {
         return;
 	}
 	
@@ -647,7 +647,7 @@ psych_bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* window
 
 	// We only support Radeon GPU's with pre DCE-4 display engine, nothing more recent:
 	if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
-	    (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 0x40)) {
+	    (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 40)) {
         return(FALSE);
 	}
 	

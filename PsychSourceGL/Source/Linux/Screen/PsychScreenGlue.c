@@ -293,55 +293,61 @@ static psych_bool isDCE3(int screenId)
 // offset 'offset' and return its value:
 static unsigned int ReadRegister(unsigned long offset)
 {
-	unsigned int value;
+    unsigned int value;
 
-	// Safety check: Don't allow reads past devices MMIO range:
-	// We don't return error codes and don't log the problem,
-	// because we could be called from primary Interrupt path, so IOLog() is not
-	// an option!
-	if (gfx_cntl_mem == NULL || offset > gfx_length-4 || offset < gfx_lowlimit) return(0);
-	
-	// Read and return value:
-	value = *(unsigned int * volatile)(gfx_cntl_mem + offset);
+    // Safety check: Don't allow reads past devices MMIO range:
+    // We don't return error codes and don't log the problem,
+    // because we could be called from primary Interrupt path, so IOLog() is not
+    // an option!
+    if (gfx_cntl_mem == NULL || offset > gfx_length-4 || offset < gfx_lowlimit) {
+        printf("PTB-ERROR: In GPU ReadRegister(): MMIO not mapped or reg offset %p out of range [%p - %p]! Nop zero return!\n", offset, gfx_lowlimit, gfx_length-4);
+        return(0);
+    }
 
-	// Enforce a full memory barrier: This is a gcc intrinsic:
-	__sync_synchronize();  
+    // Read and return value:
+    value = *(unsigned int * volatile)(gfx_cntl_mem + offset);
 
-	// Radeon: Don't know endianity behaviour: Play save, stick to LE assumption for now:
-	if (fDeviceType == kPsychRadeon) return(le32toh(value));
+    // Enforce a full memory barrier: This is a gcc intrinsic:
+    __sync_synchronize();
 
-	// Read the register in native byte order: At least NVidia GPU's adapt their
-	// endianity to match the host systems endianity, so no need for conversion:
-	if (fDeviceType == kPsychGeForce)  return(value);
-	if (fDeviceType == kPsychIntelIGP) return(value);
+    // Radeon: Don't know endianity behaviour: Play save, stick to LE assumption for now:
+    if (fDeviceType == kPsychRadeon) return(le32toh(value));
 
-	// No-Op return:
-	printf("PTB-ERROR: In GPU ReadRegister(): UNKNOWN fDeviceType of GPU! NO OPERATION!\n");
-	return(0);
+    // Read the register in native byte order: At least NVidia GPU's adapt their
+    // endianity to match the host systems endianity, so no need for conversion:
+    if (fDeviceType == kPsychGeForce)  return(value);
+    if (fDeviceType == kPsychIntelIGP) return(value);
+
+    // No-Op return:
+    printf("PTB-ERROR: In GPU ReadRegister(): UNKNOWN fDeviceType of GPU! NO OPERATION!\n");
+    return(0);
 }
 
 // Helper routine: Write a single 32 bit unsigned int hardware register at
 // offset 'offset':
 static void WriteRegister(unsigned long offset, unsigned int value)
 {
-	// Safety check: Don't allow reads past devices MMIO range:
-	// We don't return error codes and don't log the problem,
-	// because we could be called from primary Interrupt path, so IOLog() is not
-	// an option!
-	if (gfx_cntl_mem == NULL || offset > gfx_length-4 || offset < gfx_lowlimit) return;
+    // Safety check: Don't allow reads past devices MMIO range:
+    // We don't return error codes and don't log the problem,
+    // because we could be called from primary Interrupt path, so IOLog() is not
+    // an option!
+    if (gfx_cntl_mem == NULL || offset > gfx_length-4 || offset < gfx_lowlimit) {
+        printf("PTB-ERROR: In GPU WriteRegister(): MMIO not mapped or reg offset %p out of range [%p - %p]! Nop zero return!\n", offset, gfx_lowlimit, gfx_length-4);
+        return;
+    }
 
-	// Write the register in native byte order: At least NVidia GPU's adapt their
-	// endianity to match the host systems endianity, so no need for conversion:
-	if (fDeviceType == kPsychGeForce)  value = value;
-	if (fDeviceType == kPsychIntelIGP) value = value;
+    // Write the register in native byte order: At least NVidia GPU's adapt their
+    // endianity to match the host systems endianity, so no need for conversion:
+    if (fDeviceType == kPsychGeForce)  value = value;
+    if (fDeviceType == kPsychIntelIGP) value = value;
 
-	// Radeon: Don't know endianity behaviour: Play save, stick to LE assumption for now:
-	if (fDeviceType == kPsychRadeon) value = htole32(value);
+    // Radeon: Don't know endianity behaviour: Play save, stick to LE assumption for now:
+    if (fDeviceType == kPsychRadeon) value = htole32(value);
 
-	*(unsigned int* volatile)(gfx_cntl_mem + offset) = value;
-	
-	// Enforce a full memory barrier: This is a gcc intrinsic:
-	__sync_synchronize();  
+    *(unsigned int* volatile)(gfx_cntl_mem + offset) = value;
+
+    // Enforce a full memory barrier: This is a gcc intrinsic:
+    __sync_synchronize();
 }
 
 void PsychScreenUnmapDeviceMemory(void)
@@ -584,7 +590,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			// On DCE-4 and later GPU's (Evergreen) we limit the minimum MMIO
 			// offset to the base address of the 1st CRTC register block for now:
 			if (isDCE4(screenId) || isDCE5(screenId) || isDCE6(screenId)) {
-				gfx_lowlimit = 0x6df0;
+				gfx_lowlimit = 0;
                 
 				// Also, DCE-4 and DCE-5 and DCE-6, but not DCE-4.1 or DCE-6.4 (which have only 2) or DCE-6.1 (4 heads), supports up to six display heads:
 				if (!isDCE41(screenId) && !isDCE61(screenId) && !isDCE64(screenId)) fNumDisplayHeads = 6;
@@ -2831,35 +2837,35 @@ int PsychOSCheckKDAvailable(int screenId, unsigned int * status)
 
 unsigned int PsychOSKDReadRegister(int screenId, unsigned int offset, unsigned int* status)
 {
-	// Check availability of connection:
-	int connect;
-	if (!(connect = PsychOSCheckKDAvailable(screenId, status))) {
-		return(0xffffffff);
-		if (status) *status = ENODEV;
-	}
-	
-	if (status) *status = 0;
+    // Check availability of connection:
+    int connect;
+    if (!(connect = PsychOSCheckKDAvailable(screenId, status))) {
+        if (status) *status = ENODEV;
+        return(0xffffffff);
+    }
 
-	// Return readback register value:
-	return(ReadRegister(offset));
+    if (status) *status = 0;
+
+    // Return readback register value:
+    return(ReadRegister(offset));
 }
 
 unsigned int PsychOSKDWriteRegister(int screenId, unsigned int offset, unsigned int value, unsigned int* status)
 {
-	// Check availability of connection:
-	int connect;
-	if (!(connect = PsychOSCheckKDAvailable(screenId, status))) {
-		return(0xffffffff);
-		if (status) *status = ENODEV;
-	}
+    // Check availability of connection:
+    int connect;
+    if (!(connect = PsychOSCheckKDAvailable(screenId, status))) {
+        if (status) *status = ENODEV;
+        return(0xffffffff);
+    }
 
-	if (status) *status = 0;
+    if (status) *status = 0;
 
-	// Write the register:
-	WriteRegister(offset, value);
-	
-	// Return success:
-	return(0);
+    // Write the register:
+    WriteRegister(offset, value);
+
+    // Return success:
+    return(0);
 }
 
 // Synchronize display screens video refresh cycle of DCE-4 (and later) GPU's, aka Evergreen. See PsychSynchronizeDisplayScreens() for help and details...

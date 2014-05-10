@@ -1171,7 +1171,7 @@ void InitPsychtoolboxKernelDriverInterface(void)
             }
             
             // A word of warning is due for users of outdated Rev. 0 kernel drivers on AMD/ATI GPU's with pre DCE-4 display engine: They shall upgrade or suffer.
-            if ((fDeviceType[numKernelDrivers] == kPsychRadeon) && (fCardType[numKernelDrivers] < 0x40) && (revision < 1) && (PsychPrefStateGet_Verbosity() > 1)) {
+            if ((fDeviceType[numKernelDrivers] == kPsychRadeon) && (fCardType[numKernelDrivers] < 40) && (revision < 1) && (PsychPrefStateGet_Verbosity() > 1)) {
                 printf("PTB-INFO: You use an outdated Psychtoolbox kernel driver of revision %i. Please upgrade to the latest driver of at least revision 1.\n", revision);
                 printf("PTB-INFO: With the outdated driver, robustness of > 8 bits per color displays (10 bit framebuffer, Bits+, Datapixx etc.) will be limited \n");
                 printf("PTB-INFO: on your AMD graphics card due to limitations of this driver. You will need to install the latest 64-Bit driver, which will\n");

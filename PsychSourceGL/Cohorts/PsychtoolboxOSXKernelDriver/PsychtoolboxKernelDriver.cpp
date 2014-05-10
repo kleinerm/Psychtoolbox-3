@@ -361,7 +361,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 		// On DCE-4 and later GPU's (Evergreen) we limit the minimum MMIO
 		// offset to the base address of the 1st CRTC register block for now:
 		if (isDCE4() || isDCE5() || isDCE6()) {
-            fRadeonLowlimit = 0x6df0;
+            fRadeonLowlimit = 0;
 
             // Also, DCE-4 and DCE-5 and DCE-6, but not DCE-4.1 or DCE-6.4 (which have only 2) or DCE-6.1 (4 heads), supports up to six display heads:
             if (!isDCE41() && !isDCE61() && !isDCE64()) fNumDisplayHeads = 6;

@@ -455,7 +455,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 			    !PsychGetGPUSpecs(screenSettings->screenNumber, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
 			    (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0xffff)) {
 				printf("\nPTB-ERROR: Your script requested a 30bpp, 10bpc framebuffer, but the Psychtoolbox kernel driver is not loaded or does not support this on your GPU.\n");
-				printf("PTB-ERROR: The driver currently only supports selected ATI Radeon GPU's (X1000/HD2000/HD3000/HD4000 series and corresponding FireGL/FirePro models).\n");
+				printf("PTB-ERROR: The driver currently only supports selected AMD/ATI GPU's (Radeon X1000, Radeon HD2000 and later, and corresponding FireGL/FirePro models).\n");
 				printf("PTB-ERROR: On MacOS/X the driver must be loaded and functional for your graphics card for this to work.\n");
 				printf("PTB-ERROR: Read 'help PsychtoolboxKernelDriver' for setup information.\n");
 				printf("PTB-ERROR: On Linux you must either configure your system by executing the script 'PsychLinuxConfiguration' once,\n");
