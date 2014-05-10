@@ -2137,17 +2137,17 @@ function enableEvent(handle, str)
     if rtbox_info(handle).boxScanning
         error('PsychRTBox: enableEvent() called while box is scanning! Driverbug?'); %#ok<WNTAG>
     end
-    
+
     s = rtbox_info(handle).handle;
-    
+
     if isnumeric(str) && isscalar(str)
         % Firmware version >= 4.1 : Encodes enabled events by a single byte.
-        
+
         % First send event setup command code "e", then the given enable
         % byte:
         str = [uint8('e') , uint8(str)];
     end
-    
+
     for ie=1:length(str)
         % Wait until we can be sure that the box is ready to receive new
         % commands. The deadline is computed so that in the worst conceivable
@@ -2161,14 +2161,14 @@ function enableEvent(handle, str)
         % time. After that time, the box should have stopped at the latest:
         rtbox_info(handle).busyUntil = tpost + rtbox_global.maxbusy;
 
-	% On firmware versions < 4.1, we expect an acknowledge byte for each
-        % sent byte. On later versions we only get an acknowledge for the
-        % first 'e' character, but not the actual enable info byte afterwards:
-	if (rtbox_info(handle).version < 4.1) || (ie == 1)
-	    % Store this command code as one of the codes to be waited for
-            % in parseQueue:
+        % On firmware versions < 4.1 we expect an acknowledge byte for each
+        % sent byte. On versions 4.1 to < 5.0 we only get an acknowledge for the
+        % first 'e' character, but not the actual enable info byte afterwards. On
+        % firmware version 5.0 and later we don't get acknowledges at all:
+        if (rtbox_info(handle).version < 4.1) || ((ie == 1) && (rtbox_info(handle).version < 5.0))
+            % Store this command code as one of the codes to be waited for in parseQueue:
             rtbox_info(handle).ackTokens(end+1) = str(ie);
-	end
+        end
     end
 
     % All enable tokens submitted.
