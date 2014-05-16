@@ -65,7 +65,7 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
                               0,0, &x, &y, &rootRet);
         PsychUnlockDisplay();
 
-		PsychMakeRect(windowRecord->globalrect, x, y, x + (int) w - 1, y + (int) h - 1);
+		PsychMakeRect(windowRecord->globalrect, x, y, x + (int) w, y + (int) h);
 		PsychNormalizeRect(windowRecord->globalrect, windowRecord->rect);
 		PsychSetupClientRect(windowRecord);
 		PsychSetupView(windowRecord, FALSE);
