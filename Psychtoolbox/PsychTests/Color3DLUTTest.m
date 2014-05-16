@@ -83,7 +83,7 @@ for k = 8:-1:1
     
     % Run pipeline, readback result:
     Screen('DrawingFinished', w);
-    testImage = Screen('GetImage', w, [], 'backBuffer');
+    testImage = Screen('GetImage', w, [0 0 400 400], 'backBuffer');
     
     % Show it to user:
     Screen('Flip', w);
