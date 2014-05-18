@@ -284,10 +284,21 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % 07/02/13 mk  Drop support for 32-Bit Matlab on OSX, and thereby for 32-Bit OSX.
 % 07/02/13 mk  Reenable write access for all to Psychtoolbox folder.
 % 07/23/13 mk  Do not prevent execution on 32-Bit Matlab on OSX!
+% 05/18/14 mk  No support for 32-Bit Matlab on Linux and Windows anymore for 3.0.12.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
 clear mex
+
+% Check if this is 32-Bit Matlab on Windows or Linux, which we don't support anymore:
+if (strcmp(computer, 'PCWIN') || strcmp(computer, 'GLNX86')) && (nargin < 2 || isempty(strfind(flavor, 'Psychtoolbox-3.0.')))
+    fprintf('Psychtoolbox 3.0.12 and later do no longer work with 32-Bit versions of Matlab.\n');
+    fprintf('You need to upgrade to a supported 64-Bit version of Octave or Matlab. 32-Bit Octave is still\n');
+    fprintf('supported on GNU/Linux.\n');
+    fprintf('If you must use a legacy 32-Bit Matlab environment, you can call this function\n');
+    fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.11'', which does support 32-Bit Matlab on Linux and Windows.\n');
+    error('Tried to setup on 32-Bit Matlab, which is no longer supported.');
+end
 
 % Check if this is 32-Bit Octave on OSX, which we don't support anymore:
 if ~isempty(strfind(computer, 'apple-darwin')) && isempty(strfind(computer, '64'))

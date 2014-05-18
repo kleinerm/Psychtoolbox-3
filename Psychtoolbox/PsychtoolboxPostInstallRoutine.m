@@ -57,6 +57,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 07/02/2013 Drop support for 32-Bit Matlab on OSX, and thereby for 32-Bit OSX. (MK)
 % 07/02/2013 Drop support for OSX versions older than 10.6 "Snow Leopard". (MK)
 % 09/12/2013 Setup PsychStartup.m in startup.m for 32-Bit Windows as well. (MK)
+% 05/18/2014 No support for 32-Bit Matlab on Linux and Windows anymore for 3.0.12. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -156,6 +157,15 @@ if IsOSX && ~Is64Bit
     fprintf('an old legacy copy of Psychtoolbox-3.0.9, which did support 32-Bit Octave 3.2 on OSX, or use\n');
     fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.10'', which does support 32-Bit Matlab on OSX.\n');
     error('Tried to setup on 32-Bit Octave, which is no longer supported on OSX.');
+end
+
+if ~Is64Bit && ~IsOctave
+    fprintf('Psychtoolbox 3.0.12 and later do no longer work with 32-Bit versions of Matlab.\n');
+    fprintf('You need to upgrade to a supported 64-Bit version of Octave or Matlab. 32-Bit Octave is still\n');
+    fprintf('supported on GNU/Linux.\n');
+    fprintf('If you must use a legacy 32-Bit Matlab environment, you can call the function\n');
+    fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.11'', which does support 32-Bit Matlab on Linux and Windows.\n');
+    error('Tried to setup on 32-Bit Matlab, which is no longer supported.');
 end
 
 % Check if our own startup function is part of the startup file and add it,
