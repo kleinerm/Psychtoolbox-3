@@ -247,7 +247,7 @@ if (isfield(photoreceptors,'fractionPigmentBleached'))
     if (length(photoreceptors.fractionPigmentBleached.value) ~= length(photoreceptors.axialDensity.value))
         error('Value field of fractionPigmentBleached field must have same dimensions as value field of axialDensity field');
     end
-    photoreceptors.axialDensity.bleachedValue = photoreceptors.axialDensity.value.*photoreceptors.axialDensity.fractionPigmentBleached;
+    photoreceptors.axialDensity.bleachedValue = photoreceptors.axialDensity.value.*(1-photoreceptors.fractionPigmentBleached.value);
 else
     photoreceptors.axialDensity.bleachedValue = photoreceptors.axialDensity.value;
 end

@@ -1,5 +1,5 @@
-function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations] = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,lambdaMax,whichNomogram,LserWeight,DORODS,rodAxialDensity)
-% [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations] = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,[lambdaMax],[whichNomogram],[LserWeight],[DORODS],[rodAxialDensity])
+function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations] = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,lambdaMax,whichNomogram,LserWeight,DORODS,rodAxialDensity,fractionPigmentBleached)
+% [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations] = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,[lambdaMax],[whichNomogram],[LserWeight],[DORODS],[rodAxialDensity],[fractionPigmentBleached])
 %
 % Function to compute normalized cone quantal sensitivities
 % from underlying pieces, as specified in CIE 170-1:2006.
@@ -86,10 +86,18 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % 12/16/12 dhb, ms  Add rod option.
 % 08/10/13 dhb  Test for consistency between what's returned by FillInPhotoreceptors and
 %               what's returned by ComputeRawConeFundamentals.
+% 05/24/14 dhb  Add fractionPigmentBleached optional arg
 
 %% Are we doing rods rather than cones?
 if (nargin < 8 || isempty(DORODS))
     DORODS = 0;
+end
+
+%% Check whether we'll adjust axial density for bleaching
+if (nargin < 10 || isempty(fractionPigmentBleached))
+    DOBLEACHING = 0;
+else
+    DOBLEACHING = 1;
 end
 
 %% Get some basic parameters.
@@ -150,6 +158,15 @@ if (DORODS)
     params.DORODS = true;
 end
 
+%% Pigment bleaching
+%
+% Hope for the best with respect to dimensionality of what is passed.
+% FillInPhotoreceptors will throw an error if the dimension isn't
+% matched to that of the axialDensity value field.
+if (DOBLEACHING)
+    photoreceptors.fractionPigmentBleached.value = fractionPigmentBleached;
+end
+
 %% Do the work.  Note that to modify this code, you'll want a good
 % understanding of the order of precedence enforced by FillInPhotoreceptors.
 % This is non-trivial, although the concept is that if a quantity that
@@ -178,7 +195,7 @@ if (DORODS && nargin >= 9 && ~isempty(rodAxialDensity))
     params.axialDensity = rodAxialDensity;
     CHECK_FOR_AGREEMENT = false;
 else
-    params.axialDensity = photoreceptors.axialDensity.value;
+    params.axialDensity = photoreceptors.axialDensity.bleachedValue;
 end
 
 if (~isfield(params,'absorbance'))

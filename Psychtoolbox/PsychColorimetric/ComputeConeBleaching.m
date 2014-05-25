@@ -74,7 +74,7 @@ switch (source)
             case 'trolands'
                 Izero = 10^4.3;
             case 'isomerizations'
-                Izero = 1^6.39;
+                Izero = 10^6.39;
             otherwise
                 error('Unkown input units specified');
         end
