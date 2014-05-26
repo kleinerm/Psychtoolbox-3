@@ -4,6 +4,23 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % Function to compute normalized cone quantal sensitivities
 % from underlying pieces, as specified in CIE 170-1:2006.
 %
+% IMPORTANT: This routine returns quantal sensitivities.  You
+% may want energy sensitivities.  In that case, use EnergyToQuanta to convert
+%   T_energy = EnergyToQuanta(S,T_quantal')'
+% and then renormalize.  (You call EnergyToQuanta because you're converting
+% sensitivities, which go the opposite directoin from spectra.)
+% The routine also returns two quantal sensitivity functions.  The first gives
+% the probability that a photon will be absorbed.  The second is the probability
+% that the photon will cause a photopigment isomerization.  It is the latter
+% that is what you want to compute isomerization rates from retinal illuminance.
+% See note at the end of function FillInPhotoreceptors for some information about
+% convention.  In particular, this routine takes pre-retinal absorption into
+% account in its computation of probability of absorptions and isomerizations,
+% so that the relevant retinal illuminant is one computed without accounting for
+% those factors.  This routine does not account for light attenuation due to
+% the pupil, however.  The only use of pupil size here is becuase of its
+% slight effect on lens density as accounted for in the CIE standard.
+%
 % This standard allows customizing the fundamentals for
 % field size, observer age, and pupil size in mm.
 %
@@ -19,24 +36,6 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 %   pupilDiameterMM = 3;
 % and don't pass the rest of the arguments.
 %
-% Note that this routine returns quantal sensitivities.  You
-% may want energy sensitivities.  In that case, use EnergyToQuanta to convert
-%   T_energy = EnergyToQuanta(S,T_quantal')'
-% and then renormalize.  (You call EnergyToQuanta because you're converting
-% sensitivities, which go the opposite directoin from spectra.)
-%
-% The routine also returns two quantal sensitivity functions.  The first gives
-% the probability that a photon will be absorbed.  The second is the probability
-% that the photon will cause a photopigment isomerization.  It is the latter
-% that is what you want to compute isomerization rates from retinal illuminance.
-% See note at the end of function FillInPhotoreceptors for some information about
-% convention.  In particular, this routine takes pre-retinal absorption into
-% account in its computation of probability of absorptions and isomerizations,
-% so that the relevant retinal illuminant is one computed without accounting for
-% those factors.  This routine does not account for light attenuation due to
-% the pupil, however.  The only use of pupil size here is becuase of its
-% slight effect on lens density as accounted for in the CIE standard.
-%
 % Although this routine will compute something over any wavelength
 % range, I'd (DHB) recommend not going lower than 390 or above about 780 without
 % thinking hard about how various pieces were extrapolated out of the range
@@ -45,9 +44,9 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % to go below 400.
 %
 % This routine will compute from tabulated absorbance or absorbance based on a nomogram, where
-% whichNomogram can be any source understood by the routine
-% PhotopigmentNomogram.  To obtain the nomogram behavior, pass a lambdaMax vector.
-% You can then also optionally pass a nomogram source (default: StockmanSharpe).
+% whichNomogram can be any source understood by the routine PhotopigmentNomogram.  To obtain
+% the nomogram behavior, pass a lambdaMax vector. You can then also optionally pass a nomogram
+% source (default: StockmanSharpe).
 %
 % The nominal values of lambdaMax to fit the CIE 2-degree fundamentals with the
 % Stockman-Sharpe nomogram are 558.9, 530.3, and 420.7 nm for the LMS cones respectively.
@@ -68,7 +67,7 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % else I could come up with. If you are interested, see FitConeFundametnalsTest.
 %
 % This function also has an option to compute rod spectral sensitivities, using
-% the pre-retinal values that come from the CIE standard.  Set DORODS = true on
+% the pre-retinal values that come from the CIE standard.  Set DORODS to true on
 % call.  You then need to explicitly pass a single lambdaMax value.  You can
 % also pass an optional rodAxialDensity value.  If you don't pass that, the
 % routine uses the 'Alpern' estimate for 'Human'/'Rod' embodied in routine
@@ -78,15 +77,22 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % good choices for lambdaMax, rodAxialDensity, and the nomogram.  We are
 % working on identifying those values more precisely.
 %
+% Finally, you can adjust the returned spectral sensitivities to account for
+% the possibility that some of the pigment in the cones is bleached.  Pass
+% a column vector with same length as number of spectral sensitivities being
+% computed.  You need to estimate the fraction elsewhere.
+%
 % See also: ComputeRawConeFundamentals, CIEConeFundamentalsTest, 
-% FitConeFundamentalsTest, FitConeFundamentalsWithNomogram, StockmanSharpeNomogram.
+% FitConeFundamentalsTest, FitConeFundamentalsWithNomogram, StockmanSharpeNomogram,
+% ComputePhotopigmentBleaching.
 %
 % 8/13/11  dhb  Wrote it.
 % 8/14/11  dhb  Clean up a little.
 % 12/16/12 dhb, ms  Add rod option.
 % 08/10/13 dhb  Test for consistency between what's returned by FillInPhotoreceptors and
 %               what's returned by ComputeRawConeFundamentals.
-% 05/24/14 dhb  Add fractionPigmentBleached optional arg
+% 05/24/14 dhb  Add fractionPigmentBleached optional arg.
+% 05/26/14 dhb  Comment improvements.
 
 %% Are we doing rods rather than cones?
 if (nargin < 8 || isempty(DORODS))
@@ -205,6 +211,9 @@ if (~isfield(params,'absorbance'))
 end
 
 %% Drop into more general routine to compute
+%
+% See comment in ComputeRawConeFundamentals about the fact that
+% we ought to unify this routine and what FillInPhotoreceptors does.
 [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations] = ComputeRawConeFundamentals(params,staticParams);
 
 %% A little reality check.
