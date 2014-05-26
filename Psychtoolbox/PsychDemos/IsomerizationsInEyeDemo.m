@@ -39,6 +39,7 @@
 %          dhb  Add monochromatic light option to the section that starts with trolands.
 % 8/11/13  dhb  Add test of AborbtanceToAbsorbance.
 %          dhb  Protect against case when absorbance is provided directly.
+% 05/26/14 dhb  Dusted off.
 
 
 %% Clear
@@ -78,7 +79,7 @@ photoreceptors = FillInPhotoreceptors(photoreceptors);
 % causes disagreement.
 testAbsorbance = photoreceptors.absorbance;
 testAbsorptance = photoreceptors.absorptance;
-checkAbsorbance = AbsorptanceToAbsorbance(testAbsorptance, photoreceptors.nomogram.S, photoreceptors.axialDensity.value,false);
+checkAbsorbance = AbsorptanceToAbsorbance(testAbsorptance, photoreceptors.nomogram.S, photoreceptors.axialDensity.bleachedValue,false);
 diffs = testAbsorbance-checkAbsorbance;
 if (max(abs(diffs(:))) > 1e-7)
     error('Cannot properly invert absorbance/absorptance computations');
@@ -381,11 +382,19 @@ fprintf('\n');
 if (isfield(photoreceptors.nomogram,'lambdaMax'))
     fprintf('Lambda max                     |\t%8.1f\t%8.1f\t%8.1f\t nm\n',photoreceptors.nomogram.lambdaMax);
 end
-fprintf('Outer Segment Length           |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.OSlength.value);
+if (isfield(photoreceptors,'OSlength') & ~isempty(photoreceptors.OSlength.value))
+    fprintf('Outer Segment Length           |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.OSlength.value);
+end
+if (isfield(photoreceptors,'OSdiameter') & ~isempty(photoreceptors.OSdiameter.value))
+    fprintf('Outer Segment Diameter         |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.OSdiameter.value);
+end
 fprintf('Inner Segment Diameter         |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.ISdiameter.value);
 fprintf('\n');
-fprintf('Axial Specific Density         |\t%8.3f\t%8.3f\t%8.3f\t /um\n',photoreceptors.specificDensity.value);
+if (isfield(photoreceptors,'specificDensity') & ~isempty(photoreceptors.specificDensity.value))
+    fprintf('Axial Specific Density         |\t%8.3f\t%8.3f\t%8.3f\t /um\n',photoreceptors.specificDensity.value);
+end
 fprintf('Axial Optical Density          |\t%8.3f\t%8.3f\t%8.3f\n',photoreceptors.axialDensity.value);
+fprintf('Bleached Axial Optical Density |\t%8.3f\t%8.3f\t%8.3f\n',photoreceptors.axialDensity.bleachedValue);
 fprintf('Peak isomerization prob.       |\t%8.3f\t%8.3f\t%8.3f\n',max(photoreceptors.isomerizationAbsorptance,[],2));
 fprintf('______________________________________________________________________________________\n');
 fprintf('\n');
