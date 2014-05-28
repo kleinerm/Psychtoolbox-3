@@ -1013,9 +1013,9 @@ void PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal)
                 // Decode VBL_START and VBL_END and VACTIVE for debug purposes:
                 if (PsychPrefStateGet_Verbosity() > 5) {
                     unsigned int vbl_start, vbl_end, vactive;
-                    vbl_start = (int) ((PsychOSKDReadRegister(crtcid, 0x640420 + (crtcid * 0x540), NULL) >> 16) & 0xFFFF);
-                    vbl_end   = (int) ((PsychOSKDReadRegister(crtcid, 0x64041c + (crtcid * 0x540), NULL) >> 16) & 0xFFFF);
-                    vactive   = (int) ((PsychOSKDReadRegister(crtcid, 0x640414 + (crtcid * 0x540), NULL) >> 16) & 0xFFFF);
+                    vbl_start = (int) ((PsychOSKDReadRegister(crtcid, 0x640420 + (crtcid * 0x300), NULL) >> 16) & 0xFFFF);
+                    vbl_end   = (int) ((PsychOSKDReadRegister(crtcid, 0x64041c + (crtcid * 0x300), NULL) >> 16) & 0xFFFF);
+                    vactive   = (int) ((PsychOSKDReadRegister(crtcid, 0x640414 + (crtcid * 0x300), NULL) >> 16) & 0xFFFF);
                     printf("PTB-DEBUG: Screen %i [head %i]: vbl_start = %i  vbl_end = %i  vactive = %i.\n", screenId, crtcid, (int) vbl_start, (int) vbl_end, (int) vactive);
                 }
                 #endif
