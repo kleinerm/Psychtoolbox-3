@@ -3835,16 +3835,13 @@ if ~isempty(floc)
     [row col]= ind2sub(size(reqs), floc);
 
     % Our special shader-based output formatter is only needed and effective on OS/X or
-    % Linux with ATI Radeon hardware, or with FireGL/FirePro with override mode bit set:
-    if  (IsOSX || IsLinux) && ( ...
-        (bitand(Screen('Preference', 'ConserveVRAM'), 2^21) > 0) || ...
-        (~isempty(strfind(winfo.GLRenderer, 'Radeon'))) || ...
-        (~isempty(strfind(winfo.GLRenderer, 'Gallium')) && ~isempty(strfind(winfo.GLRenderer, 'ATI'))) || ...
-        (~isempty(strfind(winfo.GLRenderer, 'Gallium')) && ~isempty(strfind(winfo.GLRenderer, 'AMD'))) || ...
-        (~isempty(strfind(winfo.GLVendor, 'Advanced Micro')) && ~isempty(strfind(winfo.GLRenderer, 'DRI'))) ...
-        )
-
-        % ATI Radeon on OS/X or Linux: Use our reformatter
+    % Linux with ATI Radeon hardware, or with FireGL/FirePro with override mode bit set.
+    % specialFlags setting 1024 signals that our own low-level 10 bit framebuffer
+    % hack on AMD hardware is active, so we also need our own GLSL output formatter.
+    % Otherwise setup was (hopefully) done by the regular graphics drivers and we don't
+    % need this GLSL output formatter, as system OpenGL takes care of it:
+    if bitand(winfo.SpecialFlags, 1024)
+        % AMD/ATI gpu on OS/X or Linux with our 10 bit hack: Use our reformatter
         % Load output formatting shader:
         pgshader = LoadGLSLProgramFromFiles('RGBMultiLUTLookupCombine_FormattingShader', 1);
 
