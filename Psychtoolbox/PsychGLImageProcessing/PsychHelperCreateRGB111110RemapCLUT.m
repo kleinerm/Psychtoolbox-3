@@ -48,45 +48,14 @@ else
     % Startindex for 1st LUT entry:
     j=1;
 
-    % First the 11 bpc, 2048 levels RED LUT: Texrow 1
-    for i=0:2047
-        % Memory order is ARGB:
+    % The order of channels vs. texture rows is backwards for some
+    % reason, but this is the correct way for BGR10-11-11 scanout
+    % with format code 7. Don't question it, bitshifting and swizzling
+    % hurts the brain, just accept it.
 
-        % Nothing in blue:
-        clut(j)= 0;
-        j=j+1;
-        % Nothing in green:
-        clut(j)= 0;
-        j=j+1;
-        % 3 LSB of red into 3 MSB of red:
-        clut(j)= bitshift(bitand(i, bin2dec('111')), 5);
-        j=j+1;
-        % 8 MSB of red into 8 LSB of alpha:
-        clut(j)= bitshift(bitand(i, bin2dec('11111111000')), -3);
-        j=j+1;
-    end
-
-    % Then the 11 bpc, 2048 levels GREEN LUT: Texrow 2
-    for i=0:2047
-        % Memory order is ARGB:
-
-        % Nothing in blue
-        clut(j)= 0;
-        j=j+1;
-        % LSB 6 bits of green into 6 MSB of green:
-        clut(j)= bitshift(bitand(i, bin2dec('111111')), 2);
-        j=j+1;
-        % MSB 5 bits of green into 5 LSB of red:
-        clut(j)= bitshift(bitand(i, bin2dec('11111000000')), -6);
-        j=j+1;
-        % Nothing in alpha:
-        clut(j)= 0;
-        j=j+1;
-    end
-
-    % Finally the 10 bpc, only 1024 levels BLUE LUT: Texrow 3
-    for i=0:1024
-        % Memory order is ARGB:
+    % First the 10 bpc, only 1024 levels BLUE LUT: Texrow 1
+    for i=0:1023
+        % Memory order is probably BGRA:
 
         % We only have 1024 intensity steps 'i', but because this
         % sub-LUT also has 2048 slots, we fill every two consecutive
@@ -106,6 +75,42 @@ else
             clut(j)= 0;
             j=j+1;
         end
+    end
+
+    % Then the 11 bpc, 2048 levels GREEN LUT: Texrow 2
+    for i=0:2047
+        % Memory order is probably BGRA:
+
+        % Nothing in blue
+        clut(j)= 0;
+        j=j+1;
+        % LSB 6 bits of green into 6 MSB of green:
+        clut(j)= bitshift(bitand(i, bin2dec('111111')), 2);
+        j=j+1;
+        % MSB 5 bits of green into 5 LSB of red:
+        clut(j)= bitshift(bitand(i, bin2dec('11111000000')), -6);
+        j=j+1;
+        % Nothing in alpha:
+        clut(j)= 0;
+        j=j+1;
+    end
+
+    % First the 11 bpc, 2048 levels RED LUT: Texrow 3
+    for i=0:2047
+        % Memory order is probably BGRA:
+
+        % Nothing in blue:
+        clut(j)= 0;
+        j=j+1;
+        % Nothing in green:
+        clut(j)= 0;
+        j=j+1;
+        % 3 LSB of red into 3 MSB of red:
+        clut(j)= bitshift(bitand(i, bin2dec('111')), 5);
+        j=j+1;
+        % 8 MSB of red into 8 LSB of alpha:
+        clut(j)= bitshift(bitand(i, bin2dec('11111111000')), -3);
+        j=j+1;
     end
 
     % Cache computed LUT in users config dir:

@@ -3898,8 +3898,9 @@ if ~isempty(floc)
 
         if enableNative11BpcRequested
             % Hack: Low-level register writes to force RGB11-11-10 scanout:
-            gfc = Screen('GetWindowInfo', win, 2, Screen('WindowScreenNumber', win), 26628);
-            Screen('GetWindowInfo', win, 3, Screen('WindowScreenNumber', win), 26628, bitor(gfc, bitshift(6, 8)));
+            gfc = Screen('GetWindowInfo', win, 2, Screen('WindowScreenNumber', win), 26628)
+            foo = bitand(bitshift(gfc, -8), 7)
+            Screen('GetWindowInfo', win, 3, Screen('WindowScreenNumber', win), 26628, bitor(gfc, bitshift(7, 8)));
         end
     else
         % Everything else: Windows OS, or AMD FireGL/FirePro without override, or a
