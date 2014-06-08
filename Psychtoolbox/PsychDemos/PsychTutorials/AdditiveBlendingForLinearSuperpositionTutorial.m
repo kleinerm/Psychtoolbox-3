@@ -428,7 +428,7 @@ try
     % Center mouse on stimulus display, then make mouse cursor invisible:
     [cx, cy] = RectCenter(wRect);
     SetMouse(cx, cy, w);
-    HideCursor;
+    HideCursor(screenNumber);
     framecount = 0;
     
     tstart = GetSecs;
@@ -484,11 +484,11 @@ try
 
             if keycode(space);
                 show2nd = 1-show2nd;
-                while KbCheck; end;
+                KbReleaseWait;
                 if show2nd
-                    HideCursor;
+                    HideCursor(screenNumber);
                 else
-                    ShowCursor;
+                    ShowCursor(screenNumber);
                 end
             end
 
@@ -552,7 +552,7 @@ catch %#ok<*CTCH>
     %above.  Importantly, it closes the onscreen window if its open.
     Screen('CloseAll');
     Screen('Preference','TextAntiAliasing', 1);
-    ShowCursor;
+    ShowCursor(screenNumber);
     psychrethrow(psychlasterror);
 end %try..catch..
 
