@@ -1288,6 +1288,15 @@ if strcmpi(cmd, 'OpenWindow')
         % Request a pixelsize of 30 bpp to enable native 2101010
         % framebuffer support:
         pixelSize = 30;
+    elseif ~isempty(find(mystrcmp(reqs, 'EnableNative11BitFramebuffer')))
+        % Request a pixelsize of 31 bpp to enable native RGB11-11-10
+        % framebuffer support. A value of 32 bpp would be appropriate but
+        % that's already taken by old cruft code, so it's a no-no and we use the
+        % weirdo 31 bpp value.
+        pixelSize = 31;
+        pixelSize = 8 % FIXME TODO: Only 8 bpc override for testing here!!! Remove soon!
+        % TODO FIXME TODO REMOVE THIS HACK Request use of 10 bit hw lut bypass:
+        Screen('Preference','ConserveVRAM', bitor( Screen('Preference','ConserveVRAM'), 2^20));
     else
         % Ignore pixelSize:
         pixelSize = [];
@@ -2472,21 +2481,24 @@ if ~isempty(find(mystrcmp(reqs, 'EnableBits++Color++Output')))
     ptb_outputformatter_icmAware = 0;
 end
 
-% Request for native 10 bit per color component ARGB2101010 framebuffer?
-if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
+% Request for native 10 bit per color component ARGB2101010 framebuffer,
+% or native almost 11 bit per color component RGB111110 framebuffer?
+if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer'))) || ...
+   ~isempty(find(mystrcmp(reqs, 'EnableNative11BitFramebuffer')))
+
     % Enable output formatter chain:
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
 
     % Request 32bpc float FBO unless already a 16 bpc FBO or similar has
     % been explicitely requested: In principle, a 16 bpc FBO would be
-    % sufficient for a native 10bpc framebuffer...
+    % sufficient for a native 10 to 11 bpc framebuffer...
     if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap) && ~bitand(imagingMode, kPsychNeed16BPCFixed)
         imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
     end
 
-    % The ATI 10bpc formatter is not yet icm aware - Incapable of internal color correction!
-    % Additionally native 10 bpc framebuffers, e.g., on Fire-Series or NVidia cards also don't
+    % The ATI 10/11bpc formatter is not yet icm aware - Incapable of internal color correction!
+    % Additionally native 10/11 bpc framebuffers, e.g., on Fire-Series or NVidia cards also don't
     % have icm aware output formatting, so a 'false' setting here is mandatory:
     ptb_outputformatter_icmAware = 0;    
 end
@@ -3829,8 +3841,14 @@ end
 % --- End of output formatters for VideoSwitcher attenuator device ---
 
 
-% --- Final output formatter for native 10 bpc ARGB2101010 framebuffer requested? ---
+% --- Final output formatter for native 10 bpc ARGB2101010 framebuffer requested?
+enableNative11BpcRequested = 0;
 floc = find(mystrcmp(reqs, 'EnableNative10BitFramebuffer'));
+if isempty(floc)
+    enableNative11BpcRequested = 1;
+    floc = find(mystrcmp(reqs, 'EnableNative11BitFramebuffer'));
+end
+
 if ~isempty(floc)
     [row col]= ind2sub(size(reqs), floc);
 
@@ -3840,8 +3858,8 @@ if ~isempty(floc)
     % hack on AMD hardware is active, so we also need our own GLSL output formatter.
     % Otherwise setup was (hopefully) done by the regular graphics drivers and we don't
     % need this GLSL output formatter, as system OpenGL takes care of it:
-    if bitand(winfo.SpecialFlags, 1024)
-        % AMD/ATI gpu on OS/X or Linux with our 10 bit hack: Use our reformatter
+    if bitand(winfo.SpecialFlags, 1024) || enableNative11BpcRequested
+        % AMD/ATI gpu on OS/X or Linux with our 10/11 bit hack: Use our reformatter
         % Load output formatting shader:
         pgshader = LoadGLSLProgramFromFiles('RGBMultiLUTLookupCombine_FormattingShader', 1);
 
@@ -3849,19 +3867,27 @@ if ~isempty(floc)
         glUseProgram(pgshader);
         glUniform1i(glGetUniformLocation(pgshader, 'Image'), 0);
         glUniform1i(glGetUniformLocation(pgshader, 'CLUT'),  1);
-        glUniform1f(glGetUniformLocation(pgshader, 'Prescale'),  1024);
+        glUniform1f(glGetUniformLocation(pgshader, 'Prescale'), bitshift(1024, enableNative11BpcRequested));
         glUseProgram(0);
 
-        % Use helper routine to build a proper RGBA Lookup texture for
-        % conversion of HDR RGBA pixels to ARGB2101010 pixels:
-        pglutid = PsychHelperCreateARGB2101010RemapCLUT;
+        if enableNative11BpcRequested
+              % Use helper routine to build a proper RGBA Lookup texture for
+              % conversion of HDR RGB pixels to ARGB0-11-11-10 pixels:
+              pglutid = PsychHelperCreateRGB111110RemapCLUT;
+              pgshadername = 'Native RGB111110 framebuffer output formatting shader';
+        else
+              % Use helper routine to build a proper RGBA Lookup texture for
+              % conversion of HDR RGBA pixels to ARGB2101010 pixels:
+              pglutid = PsychHelperCreateARGB2101010RemapCLUT;
+              pgshadername = 'Native ARGB2101010 framebuffer output formatting shader';
+        end
 
         if outputcount > 0
             % Need a bufferflip command:
             Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
         end
         pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
-        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'Native ARGB2101010 framebuffer output formatting shader', pgshader, pgconfig);
+        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', pgshadername, pgshader, pgconfig);
         Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
         outputcount = outputcount + 1;
 
@@ -3869,6 +3895,12 @@ if ~isempty(floc)
         % but we do it nonetheless, so we can decide about dithering setup and get things like
         % degamma and other colorspace conversions disabled / bypassed:
         needsIdentityCLUT = 1;
+
+        if enableNative11BpcRequested
+            % Hack: Low-level register writes to force RGB11-11-10 scanout:
+            gfc = Screen('GetWindowInfo', win, 2, Screen('WindowScreenNumber', win), 26628);
+            Screen('GetWindowInfo', win, 3, Screen('WindowScreenNumber', win), 26628, bitor(gfc, bitshift(6, 8)));
+        end
     else
         % Everything else: Windows OS, or AMD FireGL/FirePro without override, or a
         % NVidia or Intel GPU.
@@ -3885,7 +3917,7 @@ if ~isempty(floc)
     disableDithering = reqs{row, 3};
     
     if isempty(disableDithering)
-        % Control of output dithering on digital 10 bit panels should be left to
+        % Control of output dithering on digital >= 10 bit panels should be left to
         % the OS + graphics driver by default. With the OS at the helm, it can configure
         % the encoders for 10 bpc no-dithering if it detects a truly 10 bpc capable display,
         % based on EDID information. DisplayPort and HDMI provides infos about >= 10 bpc
