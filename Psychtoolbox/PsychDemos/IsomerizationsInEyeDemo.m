@@ -40,7 +40,7 @@
 % 8/11/13  dhb  Add test of AborbtanceToAbsorbance.
 %          dhb  Protect against case when absorbance is provided directly.
 % 05/26/14 dhb  Dusted off.
-
+% 6/10/14  npc, dhb  Modifications for accessing calibration data using a @CalStruct object.
 
 %% Clear
 clear; close all;
@@ -257,13 +257,21 @@ switch (whichInputType)
 		% Load light radiance.  We'll use a monitor white.
 		% The original units are watts/sr-m^2-wlinterval.
 		cal = LoadCalFile('PTB3TestCal');
-		radianceWattsPerM2Sr = SplineSpd(cal.S_device,sum(cal.P_device,2),S);
+        [calStructOBJ, inputArgIsACalStructOBJ] = ObjectToHandleCalOrCalStruct(cal); clear 'cal';
+        P_device = calStructOBJ.get('P_device');
+        S_device = calStructOBJ.get('S');
+        radianceWattsPerM2Sr = SplineSpd(S_device,sum(P_device,2),S);
+        clear S_device P_device
 		
 		% Find pupil area, needed to get retinal irradiance.  We compute
 		% pupil area based on the luminance of stimulus according to the
         % algorithm specified in the photoreceptors structure.
 		theXYZ = T_xyz*radianceWattsPerM2Sr; theLuminance = theXYZ(2);
-		[nil,pupilAreaMm2] = PupilDiameterFromLum(theLuminance,photoreceptors.pupilDiameter.source);
+        if (isfield(photoreceptors.pupilDiameter,'value'))
+            pupilAreaMm2 = pi*(photoreceptors.pupilDiameter.value/2).^2;
+        else
+            [nil,pupilAreaMm2] = PupilDiameterFromLum(theLuminance,photoreceptors.pupilDiameter.source);
+        end
         photopicLuminanceCdM2 = T_Y*radianceWattsPerM2Sr;
 		
 		% Convert radiance of source to retinal irradiance and convert to quantal units.

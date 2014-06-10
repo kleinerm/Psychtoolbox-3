@@ -1,5 +1,5 @@
-function settings = GamutToSettings(cal, gamut)
-% settings = GamutToSettings(cal, gamut)
+function settings = GamutToSettings(calOrCalStruct, gamut)
+% settings = GamutToSettings(calOrCalStruct, gamut)
 %
 % Find the best device settings to produce
 % the passed linear device coordinates.
@@ -20,25 +20,44 @@ function settings = GamutToSettings(cal, gamut)
 % 11/16/06   dhb   Adjust for [0,1] world.  Involves changing what's passed
 %                  in and out
 % 5/26/12    dhb   Add gammaMode == 2 case.
+% 5/08/14    npc   Modifications for accessing calibration data using a @CalStruct object.
+%                  The first input argument can be either a @CalStruct object (new style), or a cal structure (old style).
+%                  Passing a @CalStruct object is the preferred way because it results in 
+%                  (a) less overhead (@CalStruct objects are passed by reference, not by value), and
+%                  (b) better control over how the calibration data are accessed.
+
+% Specify @CalStruct object that will handle all access to the calibration data.
+[calStructOBJ, inputArgIsACalStructOBJ] = ObjectToHandleCalOrCalStruct(calOrCalStruct);
+if (~inputArgIsACalStructOBJ)
+     % The input (calOrCalStruct) is a cal struct. Clear it to avoid  confusion.
+    clear 'calOrCalStruct';
+end
+% From this point onward, all access to the calibration data is accomplised via the calStructOBJ.
+
+
+% Retrieve necessary fields from calStruct 
+gammaInput   = calStructOBJ.get('gammaInput');
+gammaTable   = calStructOBJ.get('gammaTable');
+iGammaTable  = calStructOBJ.get('iGammaTable');
+gammaMode    = calStructOBJ.get('gammaMode');
 
 % Error checking
-if isempty(cal.gammaTable)
+if isempty(gammaTable)
 	error('No gamma table present in calibration structure');
 end
-if isempty(cal.gammaMode)
+if isempty(gammaMode)
 	error('SetGammaMethod has not been called on calibration structure');
 end
 
-if cal.gammaMode == 0
-	settings = GamutToSettingsSch(cal.gammaInput, cal.gammaTable, gamut);
-elseif cal.gammaMode == 1
-	%iGammaTable = cal.iGammaTable;
-	if isempty(cal.iGammaTable)
+if gammaMode == 0
+	settings = GamutToSettingsSch(gammaInput, gammaTable, gamut);
+elseif gammaMode == 1
+	if isempty(iGammaTable)
 		error('Inverse gamma table not present for gammaMode == 1');
 	end
-	settings = GamutToSettingsTbl(cal.iGammaTable, gamut);
-elseif cal.gammaMode == 2
-    settings = GamutToSettingsExhaust(cal.gammaInput, cal.gammaTable, gamut);
+	settings = GamutToSettingsTbl(iGammaTable, gamut);
+elseif gammaMode == 2
+    settings = GamutToSettingsExhaust(gammaInput, gammaTable, gamut);
 else
-	error('Requested gamma inversion mode %g is not yet implemented', cal.gammaMode);
+	error('Requested gamma inversion mode %g is not yet implemented', gammaMode);
 end

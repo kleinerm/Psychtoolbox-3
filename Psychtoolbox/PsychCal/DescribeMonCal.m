@@ -1,5 +1,5 @@
-function same = DescribeMonCal(cal,file,whichScreen)
-% same = DescribeMonCal(cal,[file],[whichScreen])
+function same = DescribeMonCal(calOrCalStruct,file,whichScreen)
+% same = DescribeMonCal(calOrCalStruct,[file],[whichScreen])
 % 
 % Print descriptive information about a calibration 
 % to the command window or file.
@@ -24,6 +24,11 @@ function same = DescribeMonCal(cal,file,whichScreen)
 %                    Comparison of computer name skipped, because it seems to vary with login. 
 % 6/24/11  dhb       Dump out gamma fit type and exponents if gamma function was fit with a simple power function.
 % 5/28/13  dhb       Change output printed format to make it easier to paste into Doku wiki.
+% 5/08/14  npc       Modifications for accessing calibration data using a @CalStruct object.
+%                    The first input argument can be either a @CalStruct object (new style), or a cal structure (old style).
+%                    Passing a @CalStruct object is the preferred way because it results in 
+%                    (a) less overhead (@CalStruct objects are passed by reference, not by value), and
+%                    (b) better control over how the calibration data are accessed.
 
 % Default args
 if (nargin < 2 || isempty(file))
@@ -35,57 +40,61 @@ if (nargin < 3 || isempty(whichScreen))
 end
 same = [];
 
-if (~isfield(cal,'describe'))
-	error('Calibration structure has no description');
+% Specify @CalStruct object that will handle all access to the calibration data.
+[calStructOBJ, inputArgIsACalStructOBJ] = ObjectToHandleCalOrCalStruct(calOrCalStruct);
+if (~inputArgIsACalStructOBJ)
+     % The input (calOrCalStruct) is a cal struct. Clear it to avoid  confusion.
+    clear 'calOrCalStruct';
 end
+% From this point onward, all access to the calibration data is accomplised via the calStructOBJ.
 
 fprintf('Calibration:\n');
-fprintf(file,'  * Computer: %s\n',cal.describe.computer);
-fprintf(file,'  * Screen: %d\n',cal.describe.whichScreen);
-fprintf(file,'  * Monitor: %s\n',cal.describe.monitor);
-fprintf(file,'  * Video driver: %s\n',cal.describe.driver);
-fprintf(file,'  * Dac size: %g\n',cal.describe.dacsize);
-fprintf(file,'  * Frame rate: %g hz\n',cal.describe.hz);
-fprintf(file,'  * Calibration performed by %s\n',cal.describe.who);
-fprintf(file,'  * Calibration performed on %s\n',cal.describe.date);
-fprintf(file,'  * Calibration program: %s\n',cal.describe.program);
-fprintf(file,'  * Comment: %s\n',cal.describe.comment);
-fprintf(file,'  * Calibrated device has %g primaries\n',cal.nDevices);
-fprintf(file,'  * Gamma fit type %s\n',cal.describe.gamma.fitType);
-if (strcmp(cal.describe.gamma.fitType,'simplePower'))
+fprintf(file,'  * Computer: %s\n',                      calStructOBJ.get('computer'));         % cal.describe.computer;
+fprintf(file,'  * Screen: %d\n',                        calStructOBJ.get('whichScreen'));      %cal.describe.whichScreen);
+fprintf(file,'  * Monitor: %s\n',                       calStructOBJ.get('monitor'));          %cal.describe.monitor);
+fprintf(file,'  * Video driver: %s\n',                  calStructOBJ.get('driver'));           %cal.describe.driver);
+fprintf(file,'  * Dac size: %g\n',                      calStructOBJ.get('dacsize'));          %cal.describe.dacsize);
+fprintf(file,'  * Frame rate: %g hz\n',                 calStructOBJ.get('hz'));               %cal.describe.hz);
+fprintf(file,'  * Calibration performed by %s\n',       calStructOBJ.get('who'));              %cal.describe.who);
+fprintf(file,'  * Calibration performed on %s\n',       calStructOBJ.get('date'));             %cal.describe.date);
+fprintf(file,'  * Calibration program: %s\n',           calStructOBJ.get('program'));          %cal.describe.program);
+fprintf(file,'  * Comment: %s\n',                       calStructOBJ.get('comment'));          %cal.describe.comment);
+fprintf(file,'  * Calibrated device has %g primaries\n',calStructOBJ.get('nDevices'));         %cal.nDevices);
+fprintf(file,'  * Gamma fit type %s\n',                 calStructOBJ.get('gamma.fitType'));    %cal.describe.gamma.fitType);
+
+
+if (strcmp(calStructOBJ.get('gamma.fitType'),'simplePower'))
+    exponents = calStructOBJ.get('gamma.exponents');
     fprintf(file,'  * Simple power gamma exponents are: %0.2f, %0.2f, %0.2f\n',...
-        cal.describe.gamma.exponents(1),cal.describe.gamma.exponents(2),cal.describe.gamma.exponents(3));
+        exponents(1), exponents(2), exponents(3));
 end
 fprintf(file,'\n');
 
 % Current configuration
-if (~isempty(whichScreen))
-    cal.describe.driver = sprintf('%s %s','unknown_driver','unknown_driver_version');
+if (~isempty(whichScreen))     
     computerInfo = Screen('Computer');
-    computer = sprintf('%s''s %s, %s', computerInfo.consoleUserName, computerInfo.machineName, computerInfo.system);
-    driver = sprintf('%s %s','unknown_driver','unknown_driver_version');
-    dacsize = ScreenDacBits(whichScreen);
-    hz = Screen('NominalFrameRate',whichScreen);
+    computer     = sprintf('%s''s %s, %s', computerInfo.consoleUserName, computerInfo.machineName, computerInfo.system);
+    driver       = sprintf('%s %s','unknown_driver','unknown_driver_version');
+    dacsize      = ScreenDacBits(whichScreen);
+    hz           = Screen('NominalFrameRate',whichScreen);
+    
     same = 1;
     fprintf('Current configuration:\n');
     fprintf(file,'  * Computer: %s\n',computer);
-    if (~streq(computer,cal.describe.computer))
+    if (~streq(computer,calStructOBJ.get('computer')))
         %same = 0;
     end
     fprintf(file,'  * Screen: %d\n',whichScreen);
-    if (whichScreen ~= cal.describe.whichScreen)
+    if (whichScreen ~= calStructOBJ.get('whichScreen'))
         save = 0;
     end
     fprintf(file,'  * Video driver: %s\n',driver);
-    if (~streq(driver,cal.describe.driver))
-        same = 0;
-    end
     fprintf(file,'  * Dac size: %g\n',dacsize);
-    if (dacsize ~= cal.describe.dacsize)
+    if (dacsize ~= calStructOBJ.get('dacsize'))
         same = 0;
     end
     fprintf(file,'  * Frame rate: %g hz\n',hz);
-    if (abs(hz-cal.describe.hz) > 0.5)
+    if (abs(hz - calStructOBJ.get('hz')) > 0.5)
         same = 0;
     end
 end
