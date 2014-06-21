@@ -663,19 +663,31 @@ try
     
     % Count and output number of missed flip on VBL deadlines:
     numbermisses=0;
+    numberearly=0;
+
     for i=2:n
         numifis = conf.waitFramesSched(i);
         if numifis == 0
             numifis = 1;
         end
+
         if (res.vblFlipTime(i) - res.vblFlipTime(i-1) > ifi * ( numifis + 0.5 ))
             numbermisses=numbermisses+1;
-        end;
-    end;
+        end
+
+        if (res.vblFlipTime(i) - res.vblFlipTime(i-1) < ifi * ( numifis - 0.5 ))
+            numberearly=numberearly+1;
+        end
+    end
 
     % Output some summary and say goodbye...
     fprintf('PTB missed %i out of %i stimulus presentation deadlines.\n', numbermisses, n);
     fprintf('One missed deadline is ok and an artifact of the measurement.\n');
+    fprintf('PTB completed %i stimulus presentations before the requested target time.\n', numberearly);
+    if numberearly > 0
+        fprintf('CAUTION: Completing flips too early should *never ever happen*! Your system has\n');
+        fprintf('CAUTION: a serious bug or misconfiguration in its graphics driver!!!\n');
+    end
     fprintf('Have a look at the plots for more details...\n');
     
     % Close the audio device:
