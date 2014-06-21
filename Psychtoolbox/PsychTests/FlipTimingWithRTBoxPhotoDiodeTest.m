@@ -605,7 +605,7 @@ try
         ni = conf.waitFramesSched(2:end);
         ni(conf.waitFramesSched == 0) = 1;
         ni = ni * ifi;
-        plot(ni * 1000, '--');
+        plot(ni * 1000, 'g--');
         title('Delta between successive Flips in milliseconds: (Dashed = expected delta)');
         hold off
 
