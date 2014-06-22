@@ -26,6 +26,7 @@ function photoreceptors = DefaultPhotoreceptors(kind)
 % 5/10/12  dhb  Changed name for LivingHumanMelanopsin to postpend Tsujimura2010
 % 8/12/13  dhb  Change field order to make printouts look nicer.
 % 11/13/13 dhb  Add 'LivingHumanRod' and 'LivingHumanMelanopsin' options.
+% 5/26/14  dhb  Add pupilDimater.value = [] to fix FillInPhotoreceptors.
 
 % Default
 if (nargin < 1 || isempty(kind))
@@ -164,6 +165,7 @@ switch (kind)
         photoreceptors.fieldSizeDegrees = 2;
         photoreceptors.ageInYears = 32;
         photoreceptors.pupilDiameter.source = 'PokornySmith';
+        photoreceptors.pupilDiameter.value = [];
 		photoreceptors.eyeLengthMM.source = 'Rodieck';
         photoreceptors.lensDensity.source = 'StockmanSharpe';
 		photoreceptors.macularPigmentDensity.source = 'Bone';
@@ -205,6 +207,7 @@ switch (kind)
         photoreceptors.ISdiameter.source = 'PennDog';
 		photoreceptors.specificDensity.source = 'Generic';
 		photoreceptors.pupilDiameter.source = 'PennDog';
+        photoreceptors.pupilDiameter.value = [];
 		photoreceptors.eyeLengthMM.source = 'PennDog';
 		photoreceptors.nomogram.source = 'Govardovskii';
 		photoreceptors.nomogram.lambdaMax = [555 429 506]';
@@ -221,6 +224,7 @@ switch (kind)
 		photoreceptors.ISdiameter.source = 'SterlingLab';
 		photoreceptors.specificDensity.source = 'Bowmaker';
 		photoreceptors.pupilDiameter.source = 'None';
+        photoreceptors.pupilDiameter.value = [];
 		photoreceptors.eyeLengthMM.source = 'None';
 		photoreceptors.nomogram.source = 'Govardovskii';
 		photoreceptors.nomogram.lambdaMax = [529 430 500]';

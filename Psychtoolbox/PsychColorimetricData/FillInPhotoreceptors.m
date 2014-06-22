@@ -46,6 +46,9 @@ function photoreceptors = FillInPhotoreceptors(photoreceptors)
 % 8/11/13  dhb  More checking.  Add ability to adjust lens/macular density.  Return energy and quantal fundamentals (normalized to unity).
 % 8/12/13  dhb  Fixed buglet resulting from forgetting to update after copy/paste.
 % 10/16/13  mk  Replace obsolete isstr() by ischar() to future-proof this.
+% 5/24/14  dhb  Compute axialDensity.bleachedValue by fractionPigmentBleached.value field, if the latter exists.
+%               This is set to the axialDensity.value field if no bleaching is provided.  The bleachedValue number is
+%               then passed to AbsorbanceToAbsorptance.
 
 %% Check that there is a nomogram field with an S subfield
 %
@@ -227,6 +230,28 @@ else
     end
 end
 
+%% Correct the axial density for pigment bleaching
+%
+% This is a bit of a conceptual pain.  We want to be
+% able to generate photoreceptor sensitivities that 
+% take into account conditions where some fraction of the
+% pigment may be bleached.  This is a viewing condition
+% dependent effect.  The conceptual pain is that most of
+% the time we don't think of our cone sensitivities as light
+% level dependent quantities.
+%
+% But for cases where we are willing to compute the fraction
+% bleached in each cone type, we take it into account here.
+% If the field is empty, we do nothing for backwards compatibility.
+if (isfield(photoreceptors,'fractionPigmentBleached'))
+    if (length(photoreceptors.fractionPigmentBleached.value) ~= length(photoreceptors.axialDensity.value))
+        error('Value field of fractionPigmentBleached field must have same dimensions as value field of axialDensity field');
+    end
+    photoreceptors.axialDensity.bleachedValue = photoreceptors.axialDensity.value.*(1-photoreceptors.fractionPigmentBleached.value);
+else
+    photoreceptors.axialDensity.bleachedValue = photoreceptors.axialDensity.value;
+end
+
 %% Absorbance spectrum, either supplied or from nomogram
 %
 % The design of the fields here is a little inconsistent, because the source for the absorbance nomoogram is
@@ -270,7 +295,7 @@ end
 %% Absorptance, either computed or supplied.
 if (~isfield(photoreceptors,'absorptance'))
     [photoreceptors.absorptance] = AbsorbanceToAbsorptance(...
-        photoreceptors.absorbance,S,photoreceptors.axialDensity.value);
+        photoreceptors.absorbance,S,photoreceptors.axialDensity.bleachedValue);
 else
     if (isfield(photoreceptors,'absorbance'));
         error('There is a directly supplied absorptance, but also either an absorbance or nomogram field specified.  Something must go away');

@@ -1,5 +1,5 @@
-function [sensor] = PrimaryToSensor(cal,primary)
-% [sensor] = PrimaryToSensor(cal,primary)
+function [sensor] = PrimaryToSensor(calOrCalStruct,primary)
+% [sensor] = PrimaryToSensor(calOrCalStruct,primary)
 %
 % Convert from primary coordinates to sensor color 
 % space coordinates.  The ambient lighting is added to
@@ -15,10 +15,26 @@ function [sensor] = PrimaryToSensor(cal,primary)
 % 8/21/97	 dhb   Convert for structures.
 % 4/5/02     dhb   New naming interface.  Internal naming not changed.
 % 7/25/10    dhb   Use bsxfun to make it a little faster.
+% 5/08/14    npc   Modifications for accessing calibration data using a @CalStruct object.
+%                  The first input argument can be either a @CalStruct object (new style), or a cal structure (old style).
+%                  Passing a @CalStruct object is the preferred way because it results in 
+%                  (a) less overhead (@CalStruct objects are passed by reference, not by value), and
+%                  (b) better control over how the calibration data are accessed.
+
+
+% Specify @CalStruct object that will handle all access to the calibration data.
+[calStructOBJ, inputArgIsACalStructOBJ] = ObjectToHandleCalOrCalStruct(calOrCalStruct);
+if (~inputArgIsACalStructOBJ)
+    % The input (calOrCalStruct) is a cal struct. Clear it to avoid  confusion.
+    clear 'calOrCalStruct';
+end
+% From this point onward, all access to the calibration data is accomplised via the calStructOBJ.
+
 
 % Get necessary calibration data
-M_device_linear = cal.M_device_linear;
-ambient_linear = cal.ambient_linear;
+M_device_linear = calStructOBJ.get('M_device_linear'); 
+ambient_linear  = calStructOBJ.get('ambient_linear'); 
+
 if (isempty(M_device_linear) || isempty(ambient_linear))
 	error('SetSensorColorSpace has not been called on calibration structure');
 end

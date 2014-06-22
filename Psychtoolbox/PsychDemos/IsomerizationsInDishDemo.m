@@ -37,6 +37,7 @@
 % 04/27/13 dhb  Improve comments.
 % 7/19/13  dhb  Print out photoreceptors structure using PrintPhotoreceptors.
 % 8/11/13  dhb  Protect against case when absorbance is provided directly.
+% 05/26/14 dhb  Dusted off.
 
 %% clear
 clear; close all;
@@ -119,15 +120,19 @@ fprintf('\n');
 fprintf('Photoreceptor Type             |\t       M\t       S\t     Rod\n');
 fprintf('______________________________________________________________________________________\n');
 fprintf('\n');
-if (isfield(photoreceptors.nomogram,'lambdaMax'))
-    fprintf('Lambda max                     |\t%8.1f\t%8.1f\t%8.1f\t nm\n',photoreceptors.nomogram.lambdaMax);
+if (isfield(photoreceptors,'OSlength') & ~isempty(photoreceptors.OSlength.value))
+    fprintf('Outer Segment Length           |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.OSlength.value);
 end
-fprintf('Outer Segment Length           |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.OSlength.value);
-fprintf('Outer Segment Diameter         |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.OSdiameter.value);
+if (isfield(photoreceptors,'OSdiameter') & ~isempty(photoreceptors.OSdiameter.value))
+    fprintf('Outer Segment Diameter         |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.OSdiameter.value);
+end
 fprintf('Inner Segment Diameter         |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.ISdiameter.value);
 fprintf('\n');
-fprintf('Axial Specific Density         |\t%8.3f\t%8.3f\t%8.3f\t /um\n',photoreceptors.specificDensity.value);
+if (isfield(photoreceptors,'specificDensity') & ~isempty(photoreceptors.specificDensity.value))
+    fprintf('Axial Specific Density         |\t%8.3f\t%8.3f\t%8.3f\t /um\n',photoreceptors.specificDensity.value);
+end
 fprintf('Axial Optical Density          |\t%8.3f\t%8.3f\t%8.3f\n',photoreceptors.axialDensity.value);
+fprintf('Bleached Axial Optical Density |\t%8.3f\t%8.3f\t%8.3f\n',photoreceptors.axialDensity.bleachedValue);
 fprintf('Peak isomerization prob.       |\t%8.3f\t%8.3f\t%8.3f\n',max(photoreceptors.isomerizationAbsorptance,[],2));
 fprintf('______________________________________________________________________________________\n');
 fprintf('\n');

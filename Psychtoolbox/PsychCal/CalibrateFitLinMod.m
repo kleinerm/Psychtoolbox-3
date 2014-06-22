@@ -1,35 +1,69 @@
-function cal = CalibrateFitLinMod(cal)
-% cal = CalibrateFitLinMod(cal)
+function [varargout] = CalibrateFitLinMod(calOrCalStruct)
+% Usage (new style):
+% CalibrateFitLinMod(calOrCalStruct)
+% where calOrCalStruct is a @CalStruct object.
+%
+% Usage (old style):
+% cal = CalibrateFitLinMod(calOrCalStruct)
+% where cal and calOrCalStruct are both old-style cal structures.
+% 
 %
 % Fit the linear model to spectral calibration data.
 %
-% 3/26/02  dhb  Pulled out of CalibrateMonDrvr.
-% 3/27/02  dhb  Add case of nPrimaryBases == 0.
-% 2/15/10  dhb  Fix so that first basis vector is good approximation to max
+% 3/26/02   dhb  Pulled out of CalibrateMonDrvr.
+% 3/27/02   dhb  Add case of nPrimaryBases == 0.
+% 2/15/10   dhb  Fix so that first basis vector is good approximation to max
 %               input primary spectrum.
-%          dhb  Normalize basis vectors so that their max power matches that 
+%           dhb  Normalize basis vectors so that their max power matches that 
 %               of first component.
-% 4/30/10  dhb  Execute yoked fit if yokedGamma flag is set.
-% 5/25/10  dhb, ar Change yoked field names to match
-% 5/26/10  dhb, ar Still fussing with names.
-% 5/28/10  dhb, ar Pull out yoked fitting from here -- too confusing.
-% 5/27/12  dhb     Handle case where there are more measurements than wavelength samples.
+% 4/30/10   dhb  Execute yoked fit if yokedGamma flag is set.
+% 5/25/10   dhb, ar Change yoked field names to match
+% 5/26/10   dhb, ar Still fussing with names.
+% 5/28/10   dhb, ar Pull out yoked fitting from here -- too confusing.
+% 5/27/12   dhb     Handle case where there are more measurements than wavelength samples.
+% 5/28/14   npc  Modifications for accessing calibration data using a @CalStruct object.
+%                The first input argument can be either a @CalStruct object (new style), or a cal structure (old style).
+%                Passing a @CalStruct object is the preferred way because it results in 
+%                (a) less overhead (@CalStruct objects are passed by reference, not by value), and
+%                (b) better control over how the calibration data are accessed.
 
-Pmon = zeros(cal.describe.S(3),cal.nDevices*cal.nPrimaryBases);
-mGammaRaw = zeros(cal.describe.nMeas,cal.nDevices*cal.nPrimaryBases);
-monSVs = zeros(min([cal.describe.nMeas cal.describe.S(3)]),cal.nDevices);
-for i = 1:cal.nDevices
-    tempMon = reshape(cal.rawdata.mon(:,i),cal.describe.S(3),cal.describe.nMeas);
+
+% Specify @CalStruct object that will handle all access to the calibration data.
+[calStructOBJ, inputArgIsACalStructOBJ] = ObjectToHandleCalOrCalStruct(calOrCalStruct);
+if (inputArgIsACalStructOBJ)
+    % The input (calOrCalStruct) is a @CalStruct object. Make sure that CalibrateFitLinMod is called with no return variables.
+    if (nargout > 0)
+        error('There should be NO return parameters when calling CalibrateFitLinMod with a @CalStruct input. For more info: doc CalibrateFitLinMod.');
+    end
+else
+    % The input (calOrCalStruct) is a cal struct. Clear it to avoid  confusion.
+    clear 'calOrCalStruct';
+end
+% From this point onward, all access to the calibration data is accomplised via the calStructOBJ.
+
+% Extract needed data
+S               = calStructOBJ.get('S');
+nDevices        = calStructOBJ.get('nDevices');
+nPrimaryBases   = calStructOBJ.get('nPrimaryBases');
+nMeas           = calStructOBJ.get('nMeas');
+mon             = calStructOBJ.get('mon');
+
+Pmon = zeros(S(3), nDevices*nPrimaryBases);
+mGammaRaw = zeros( nMeas, nDevices* nPrimaryBases);
+monSVs = zeros(min([ nMeas S(3)]), nDevices);
+
+for i = 1:nDevices
+    tempMon = reshape(mon(:,i), S(3), nMeas);
     monSVs(:,i) = svd(tempMon);
 
     % Build a linear model
-    if (cal.nPrimaryBases ~= 0)
+    if (nPrimaryBases ~= 0)
         % Get full linear model
-        [monB,monW] = FindLinMod(tempMon,cal.nPrimaryBases);
+        [monB,monW] = FindLinMod(tempMon, nPrimaryBases);
 
         % Express max measurement within the full linear model.
         % This is the first basis function.
-        tempB = monB*monW(:,cal.describe.nMeas);
+        tempB = monB*monW(:, nMeas);
         maxPow = max(abs(tempB));
 
         % Get residuals with respect to first component
@@ -42,9 +76,9 @@ for i = 1:cal.nDevices
         % Also normalize each basis vector to max power of first
         % component, and make sure convention is that this max
         % is positive.
-        if (cal.nPrimaryBases > 1)
-            residB = FindLinMod(residMon,cal.nPrimaryBases-1);
-            for j = 1:cal.nPrimaryBases-1
+        if (nPrimaryBases > 1)
+            residB = FindLinMod(residMon, nPrimaryBases-1);
+            for j = 1: nPrimaryBases-1
                 residB(:,j) = maxPow*residB(:,j)/max(abs(residB(:,j)));
                 [nil,index] = max(abs(residB(:,j)));
                 if (residB(index,j) < 0)
@@ -59,22 +93,28 @@ for i = 1:cal.nDevices
         % Zero means build one dimensional linear model just taking max measurement
         % as the spectrum.
     else
-        cal.nPrimaryBases = 1;
-        monB = tempMon(:,cal.describe.nMeas);
+        calStructOBJ.set('nPrimaryBases', 1);
+        monB = tempMon(:, nMeas);
     end
 
     % Find weights with respect to adjusted linear model and
     % store
     monW = FindModelWeights(tempMon,monB);
-    for j = 1:cal.nPrimaryBases
-        mGammaRaw(:,i+(j-1)*cal.nDevices) = (monW(j,:))';
-        Pmon(:,i+(j-1)*cal.nDevices) = monB(:,j);
+    for j = 1:nPrimaryBases
+        mGammaRaw(:,i+(j-1) * nDevices) = (monW(j,:))';
+        Pmon(:,i+(j-1) * nDevices) = monB(:,j);
     end
 end
 
-% Update calibration structure.
-cal.S_device = cal.describe.S;
-cal.P_device = Pmon;
-cal.T_device = WlsToT(cal.describe.S);
-cal.rawdata.rawGammaTable = mGammaRaw;
-cal.rawdata.monSVs = monSVs;
+% Update calibration structure.               
+calStructOBJ.set('P_device', Pmon);              
+calStructOBJ.set('T_device', WlsToT(S));          
+calStructOBJ.set('rawGammaTable', mGammaRaw);     
+calStructOBJ.set('monSVs', monSVs);               
+
+if (~inputArgIsACalStructOBJ)
+    % Old-style functionality. Return modified cal.
+    varargout{1} = calStructOBJ.cal;
+    % calStructOBJ is not needed anymore. So clear it from the memory.
+    clear 'calStructOBJ'
+end

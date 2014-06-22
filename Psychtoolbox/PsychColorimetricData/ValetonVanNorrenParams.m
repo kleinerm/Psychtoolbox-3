@@ -61,8 +61,13 @@ load spd_xenonArc
 % even though they are studying monkey.
 for i = 1:length(logBackgroundTd)
 	trolands = 10^logBackgroundTd(i);
-	irradianceWatts = TrolandsToRetIrradiance(spd_xenonArc,S_xenonArc,trolands, ...
-		trolandType,photoreceptors.species,photoreceptors.eyeLengthMM.source);
+    if (strcmp(photoreceptors.eyeLengthMM.source,'Value provided directly'))
+        irradianceWatts = TrolandsToRetIrradiance(spd_xenonArc,S_xenonArc,trolands, ...
+            trolandType,photoreceptors.species,photoreceptors.eyeLengthMM.value);
+    else
+        irradianceWatts = TrolandsToRetIrradiance(spd_xenonArc,S_xenonArc,trolands, ...
+            trolandType,photoreceptors.species,photoreceptors.eyeLengthMM.source);
+    end
 	irradianceWatts = SplineSpd(S_xenonArc,irradianceWatts,S);
 	[isoPerConeSec] = RetIrradianceToIsoRecSec(irradianceWatts,S,photoreceptors);
 	averageRate = (LMRatio/(LMRatio+1))*isoPerConeSec(1) + (1/(LMRatio+1))*isoPerConeSec(2);

@@ -18,6 +18,7 @@
 %   ComputeDE           - Compute vector length between matrix columns.
 %   ComputeDKL_M        - Compute transformation matrix for DKL color space.
 %   ComputeAxialDensity - Compute axial optical density from specific density and path length.
+%   ComputePhotopigmentBleaching - Compute fraction of photopigment bleached.
 %   ConeIncToDKL        - Convert from cone increments to DKL.
 %   ContrastToExcitation - Convert contrast to excitation coordinate.
 %   ContrastToIncrement - Convert contrast to incremental coordinates.
