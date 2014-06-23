@@ -1,8 +1,10 @@
 function PerceptualVBLSyncTestFlipInfo(screen, stereomode, fullscreen, doublebuffer, maxduration, vblSync, testdualheadsync)
-% PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer, maxduration, vblSync, testdualheadsync)
+% PerceptualVBLSyncTestFlipInfo(screen, stereomode, fullscreen, doublebuffer, maxduration, vblSync, testdualheadsync)
 %
 % Perceptual synchronization test for synchronization of Screen('Flip') and
-% Screen('WaitBlanking') to the vertical retrace.
+% Screen('WaitBlanking') to the vertical retrace. This is like
+% PerceptualVBLSyncTest, but also outputs diagnostic info from the
+% Screen('GetFlipInfo') command, which is only available on Linux.
 %
 % Arguments:
 % 'screen' Either a single screen handle, or none (in which case the
@@ -69,6 +71,10 @@ function PerceptualVBLSyncTestFlipInfo(screen, stereomode, fullscreen, doublebuf
 % History:
 % 01/28/06 mk Written. Replaces the built-in flickertest of Screen('OpenWindow')
 %             on multi-display setups. That test wasn't well received :(
+
+if ~IsLinux
+    error('Sorry, this test only works on Linux.');
+end
 
 % Check for presence of OpenGL PTB.
 AssertOpenGL;
