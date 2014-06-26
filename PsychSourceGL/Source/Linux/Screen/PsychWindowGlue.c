@@ -368,9 +368,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // Select requested depth per color component 'bpc' for each channel:
   bpc = 8; // We default to 8 bpc == RGBA8
   if (windowRecord->depth == 30)  { bpc = 10; printf("PTB-INFO: Trying to enable at least 10 bpc fixed point framebuffer.\n"); }
+  if (windowRecord->depth == 33)  { bpc = 11; printf("PTB-INFO: Trying to enable at least 11 bpc fixed point framebuffer.\n"); }
   if (windowRecord->depth == 64)  { bpc = 16; printf("PTB-INFO: Trying to enable 16 bpc fixed point framebuffer.\n"); }
   if (windowRecord->depth == 128) { bpc = 32; printf("PTB-INFO: Trying to enable 32 bpc fixed point framebuffer.\n"); }
-  
+
   // Setup pixelformat descriptor for selection of GLX visual:
   if (useGLX13) {
     attrib[attribcount++]= GLX_RENDER_TYPE; // Use RGBA true-color visual.
@@ -387,19 +388,25 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   attrib[attribcount++]= (depth > 16) ? bpc : 1;
   attrib[attribcount++]= GLX_ALPHA_SIZE;
   // Alpha channel needs special treatment:
-  if (bpc != 10) {
-	// Non 10 bpc drawable: Request a 'bpc' alpha channel if the underlying framebuffer
-	// is in true-color mode ( >= 24 cpp format). If framebuffer is in 16 bpp mode, we
-	// don't have/request an alpha channel at all:
-	attrib[attribcount++]= (depth > 16) ? bpc : 0; // In 16 bit mode, we don't request an alpha-channel.
+  if ((bpc != 10) && (bpc != 11)) {
+    // Non 10/11 bpc drawable: Request a 'bpc' alpha channel if the underlying framebuffer
+    // is in true-color mode ( >= 24 cpp format). If framebuffer is in 16 bpp mode, we
+    // don't have/request an alpha channel at all:
+    attrib[attribcount++]= (depth > 16) ? bpc : 0; // In 16 bit mode, we don't request an alpha-channel.
+  }
+  else if (bpc == 10) {
+    // 10 bpc drawable: We have a 32 bpp pixel format with R10G10B10 10 bpc per color channel.
+    // There are at most 2 bits left for the alpha channel, so we request an alpha channel with
+    // minimum size 1 bit --> Will likely translate into a 2 bit alpha channel:
+    attrib[attribcount++]= 1;
   }
   else {
-	// 10 bpc drawable: We have a 32 bpp pixel format with R10G10B10 10 bpc per color channel.
-	// There are at most 2 bits left for the alpha channel, so we request an alpha channel with
-	// minimum size 1 bit --> Will likely translate into a 2 bit alpha channel:
-	attrib[attribcount++]= 1;
+    // 11 bpc drawable - or more likely a 32 bpp drawable with R11G11B10, ie., all 32 bpp
+    // used up by RGB color info and no space for alpha bits. Therefore do not request an
+    // alpha channel:
+    attrib[attribcount++]= 0;
   }
-  
+
   // Stereo display support: If stereo display output is requested with OpenGL native stereo,
   // we request a stereo-enabled rendering context.
   if(stereomode==kPsychOpenGLStereo) {
@@ -473,41 +480,41 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   }
 
   if (!visinfo && !fbconfig && (stereoenableattrib > 0)) {
-	// Failed to find matching visual and OpenGL native quad-buffered frame-sequential
-	// stereo requested. Probably the GPU does not support it. Disable it as we have a
-	// fallback implementation for this case.
-	attrib[stereoenableattrib] = False;
+    // Failed to find matching visual and OpenGL native quad-buffered frame-sequential
+    // stereo requested. Probably the GPU does not support it. Disable it as we have a
+    // fallback implementation for this case.
+    attrib[stereoenableattrib] = False;
 
-	// Retry:
-	if (useGLX13) {
-		fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
-	} else {
-		visinfo = glXChooseVisual(dpy, scrnum, attrib );
-	}
+    // Retry:
+    if (useGLX13) {
+        fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
+    } else {
+        visinfo = glXChooseVisual(dpy, scrnum, attrib );
+    }
   }
 
-  if (!visinfo && !fbconfig) {
-	  // Failed to find matching visual: Could it be related to request for unsupported native 10 bpc framebuffer?
-	  if ((windowRecord->depth == 30) && (bpc == 10)) {
-		  // 10 bpc framebuffer requested: Let's see if we can get a visual by lowering our demand to 8 bpc:
-		  for (i=0; i<attribcount && attrib[i]!=GLX_RED_SIZE; i++);
-		  attrib[i+1] = 8;
-		  for (i=0; i<attribcount && attrib[i]!=GLX_GREEN_SIZE; i++);
-		  attrib[i+1] = 8;
-		  for (i=0; i<attribcount && attrib[i]!=GLX_BLUE_SIZE; i++);
-		  attrib[i+1] = 8;
-		  for (i=0; i<attribcount && attrib[i]!=GLX_ALPHA_SIZE; i++);
-		  attrib[i+1] = 1;
-		  
-		  // Retry:
-		  if (useGLX13) {
-			  fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
-		  } else {
-			  visinfo = glXChooseVisual(dpy, scrnum, attrib );
-		  }
-	  }
-  }
-  
+    if (!visinfo && !fbconfig) {
+        // Failed to find matching visual: Could it be related to request for unsupported native 10/11 bpc framebuffer?
+        if (((windowRecord->depth == 30) && (bpc == 10)) || ((windowRecord->depth == 33) && (bpc == 11))) {
+            // 10 bpc framebuffer requested: Let's see if we can get a visual by lowering our demand to 8 bpc:
+            for (i=0; i<attribcount && attrib[i]!=GLX_RED_SIZE; i++);
+            attrib[i+1] = 8;
+            for (i=0; i<attribcount && attrib[i]!=GLX_GREEN_SIZE; i++);
+            attrib[i+1] = 8;
+            for (i=0; i<attribcount && attrib[i]!=GLX_BLUE_SIZE; i++);
+            attrib[i+1] = 8;
+            for (i=0; i<attribcount && attrib[i]!=GLX_ALPHA_SIZE; i++);
+            attrib[i+1] = 1;
+
+            // Retry:
+            if (useGLX13) {
+                fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
+            } else {
+                visinfo = glXChooseVisual(dpy, scrnum, attrib );
+            }
+        }
+    }
+
   if (!visinfo && !fbconfig) {
 	  // Failed to find matching visual: Could it be related to multisampling?
 	  if (windowRecord->multiSample > 0) {

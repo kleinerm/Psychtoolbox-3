@@ -17,8 +17,7 @@ function BitsPlusCSFDemo(screenid, gamma, method, charttype)
 % default, if no method argument is provided.
 %
 % A 'method' of 1 tries to utilize the native 10 bpc framebuffers of recent
-% ATI hardware on OS/X and Linux, if the PsychtoolboxKernelDriver is
-% loaded.
+% AMD/NVidia hardware.
 %
 % A 'method' of 2 uses a method known as "PseudoGray" or "Bitstealing" for
 % output.
@@ -29,6 +28,9 @@ function BitsPlusCSFDemo(screenid, gamma, method, charttype)
 % attenuator device.
 %
 % In 'method' == 5, the M16 display mode of the VPixx - DataPixx box is used.
+%
+% A 'method' of 6 tries to utilize the native ~11 bpc framebuffers of recent
+% AMD hardware.
 %
 % The optional 'gamma' parameter allows to select the initial gamma value
 % of your display to correct for. This can be changed interactively later
@@ -67,6 +69,7 @@ function BitsPlusCSFDemo(screenid, gamma, method, charttype)
 % 01.11.2008 Extended for pseudogray, videoswitcher and ati output, as well
 %            as for display of alternate luminance gradient (MK).
 % 14.12.2009 Extended for DataPixx. (MK)
+% 26.06.2014 Also show off Native11Bits framebuffers on AMD (MK).
 
 global screenShot;
 
@@ -153,6 +156,10 @@ if method == 5
     % Want to use M16 mode: The appendix "WithOverlay" enables the color
     % overlay in M16 mode, so we can display colorful text:
     PsychImaging('AddTask', 'General', 'EnableDataPixxM16OutputWithOverlay');
+end
+
+if method == 6
+    PsychImaging('AddTask', 'General', 'EnableNative11BitFramebuffer');
 end
 
 % Want to have simple power-law gamma correction of stims: We choose the

@@ -418,7 +418,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
     attribs[attribcount++]=kCGLPFADisplayMask;
     attribs[attribcount++]=displayMask;
-    
+
     // 10 bit per component integer framebuffer requested (10-10-10-2)?
     if (windowRecord->depth == 30) {
         // Request a 10 bit per color component framebuffer with 2 bit alpha channel:
@@ -429,7 +429,18 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         attribs[attribcount++]=kCGLPFAAlphaSize;
         attribs[attribcount++]=2;
     }
-    
+
+    // 11 bit per component integer framebuffer requested (11-11-10-0)?
+    if (windowRecord->depth == 33) {
+        // Request a ~ 11 bit per color component framebuffer without alpha channel:
+        printf("PTB-INFO: Trying to enable 11 bpc, 32 bit integer framebuffer...\n");
+        attribs[attribcount++]=kCGLPFANoRecovery;
+        attribs[attribcount++]=kCGLPFAColorSize;
+        attribs[attribcount++]=32;
+        attribs[attribcount++]=kCGLPFAAlphaSize;
+        attribs[attribcount++]=0;
+    }
+
     // 16 bit per component, 64 bit framebuffer requested (16-16-16-16)?
     if (windowRecord->depth == 64) {
         // Request a floating point framebuffer in 16-bit half-float format, i.e., RGBA = 16 bits per component.
@@ -440,7 +451,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         attribs[attribcount++]=kCGLPFAAlphaSize;
         attribs[attribcount++]=16;
     }
-    
+
     // 32 bit per component, 128 bit framebuffer requested (32-32-32-32)?
     if (windowRecord->depth == 128) {
         // Request a floating point framebuffer in 32-bit float format, i.e., RGBA = 32 bits per component.
@@ -451,7 +462,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         attribs[attribcount++]=kCGLPFAAlphaSize;
         attribs[attribcount++]=32;
     }
-    
+
     // Possible to request use of the Apple floating point software renderer:
     if (conserveVRAM & kPsychUseSoftwareRenderer) {
         #ifndef kCGLRendererGenericFloatID
@@ -469,14 +480,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         attribs[attribcount++]=24;
         attribs[attribcount++]=kCGLPFAStencilSize;
         attribs[attribcount++]=8;
-		// Alloc an accumulation buffer as well?
-		if (PsychPrefStateGet_3DGfx() & 2) {
-			// Yes: Alloc accum buffer, request 64 bpp, aka 16 bits integer per color component if possible:
+        // Alloc an accumulation buffer as well?
+        if (PsychPrefStateGet_3DGfx() & 2) {
+            // Yes: Alloc accum buffer, request 64 bpp, aka 16 bits integer per color component if possible:
             attribs[attribcount++]=kCGLPFAAccumSize;
             attribs[attribcount++]=64;
-		}
+        }
     }
-    
+
     if(numBuffers>=2){
         // Enable double-buffering:
         attribs[attribcount++]=kCGLPFADoubleBuffer;
@@ -495,7 +506,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     if(stereomode==kPsychOpenGLStereo) {
         attribs[attribcount++]=kCGLPFAStereo;
     }
-    
+
     // Multisampled Anti-Aliasing requested?
     if (windowRecord->multiSample > 0) {
         // Request a multisample buffer:
@@ -505,10 +516,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         attribs[attribcount++]= kCGLPFASamples;
         attribs[attribcount++]= windowRecord->multiSample;
     }
-    
+
     // Finalize attribute array with NULL.
     attribs[attribcount++]=(CGLPixelFormatAttribute)NULL;
-    
+
     // Init to zero:
     windowRecord->targetSpecific.pixelFormatObject = NULL;
 	windowRecord->targetSpecific.glusercontextObject = NULL;

@@ -524,6 +524,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         bpc = 10;
         if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to enable at least 10 bpc fixed point framebuffer.\n");
     }
+    if (windowRecord->depth == 33) {
+        bpc = 11;
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to enable at least 11 bpc fixed point framebuffer.\n");
+    }
     if (windowRecord->depth == 64) {
         bpc = 16;
         if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to enable 16 bpc fixed point framebuffer.\n");
@@ -541,16 +545,22 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     attrib[attribcount++] = (depth > 16) ? bpc : 1;
     attrib[attribcount++] = WAFFLE_ALPHA_SIZE;
     // Alpha channel needs special treatment:
-    if (bpc != 10) {
-        // Non 10 bpc drawable: Request a 'bpc' alpha channel if the underlying framebuffer
+    if ((bpc != 10) && (bpc != 11)) {
+        // Non 10/11 bpc drawable: Request a 'bpc' alpha channel if the underlying framebuffer
         // is in true-color mode ( >= 24 bpp format). If framebuffer is in 16 bpp mode, we
         // don't have/request an alpha channel at all:
         attrib[attribcount++] = (depth > 16) ? bpc : 0; // In 16 bit mode, we don't request an alpha-channel.
-    } else {
+    } else if (bpc == 10) {
         // 10 bpc drawable: We have a 32 bpp pixel format with R10G10B10 10 bpc per color channel.
         // There are at most 2 bits left for the alpha channel, so we request an alpha channel with
         // minimum size 1 bit --> Will likely translate into a 2 bit alpha channel:
         attrib[attribcount++] = 1;
+    }
+    else {
+        // 11 bpc drawable - or more likely a 32 bpp drawable with R11G11B10, ie., all 32 bpp
+        // used up by RGB color info and no space for alpha bits. Therefore do not request an
+        // alpha channel:
+        attrib[attribcount++] = 0;
     }
 
     // Stereo display support: If stereo display output is requested with OpenGL native stereo,
@@ -600,8 +610,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     config = waffle_config_choose(wdpy, attrib);
    
     if (!config) {
-        // Failed to find matching visual: Could it be related to request for unsupported native 10 bpc framebuffer?
-        if ((windowRecord->depth == 30) && (bpc == 10)) {
+        // Failed to find matching visual: Could it be related to request for unsupported native 10/11 bpc framebuffer?
+        if (((windowRecord->depth == 30) && (bpc == 10)) || ((windowRecord->depth == 33) && (bpc == 11))) {
             // 10 bpc framebuffer requested: Let's see if we can get a visual by lowering our demand to 8 bpc:
             for (i = 0; i < attribcount && attrib[i] != WAFFLE_RED_SIZE; i++);
             attrib[i + 1] = 8;
