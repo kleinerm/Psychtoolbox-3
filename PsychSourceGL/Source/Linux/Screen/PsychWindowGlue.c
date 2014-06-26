@@ -629,10 +629,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     attr.border_pixel = 0;      // Border color as well.
     attr.colormap = XCreateColormap(dpy, root, visinfo->visual, AllocNone);  // Dummy colormap assignment.
     attr.event_mask = KeyPressMask | StructureNotifyMask;                    // We're only interested in keypress events for GetChar() and StructureNotify to wait for Windows to be mapped.
-    
+
     // Mask of everything we define(d):
     mask = CWOverrideRedirect | CWBackPixel | CWBorderPixel | CWColormap | CWEventMask;
-    
+
     // Old style of override_redirect handling requested? This was used until beginning 2013
     // and worked well for us, but it prevents the windowmanager from seeing properties on
     // our windows which allow us to control desktop composition, e.g., on KDE/KWIN and GNOME-3/Mutter,
@@ -640,7 +640,12 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Ok, for now we only use the new-style path if we are running under KDE/KWin and user
     // doesn't explicitely override/forbid that choice. Otherwise we use the old path, as
     // that seems to perform better, at least on tested Unity/compiz, GNOME3-Shell and LXDE/OpenBox.
-    if ((PsychPrefStateGet_ConserveVRAM() & kPsychOldStyleOverrideRedirect) ||
+    //
+    // UPDATE June-2014: Do not even use new-style on KDE, unless forced by setenv("PSYCH_NEW_OVERRIDEREDIRECT", "1")
+    // Turns out the new-style override redirect doesn't play well with KDE multi-display setups. It causes KDE
+    // to cut off all parts of the fullscreen window except for the first video output, making this unworkable on
+    // anything but single display setups. We may rework this code at some later point, but for now just disable:
+    if (!getenv("PSYCH_NEW_OVERRIDEREDIRECT") || (PsychPrefStateGet_ConserveVRAM() & kPsychOldStyleOverrideRedirect) ||
         !getenv("KDE_FULL_SESSION")) {
         // Old style: Always override_redirect to lock out window manager, except when a real "GUI-Window"
         // is requested, which needs to behave and be treated like any other desktop app window:
@@ -649,12 +654,12 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     else {
         // New style: override_redirect by default:
         newstyle_setup = TRUE;
-        
+
         attr.override_redirect = 1;
-        
+
         // Don't override if it is a GUI window, for some reasons as in classic path:
         if (windowRecord->specialflags & kPsychGUIWindow) attr.override_redirect = 0;
-        
+
         // Don't override if it is a fullscreen window. The NETM_FULLSCREEN state should
         // take care of fullscreen windows nicely without need to override. Although we
         // could override for transparent fullscreen windows if we were extra paranoid,
@@ -673,13 +678,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // location, no that the WM can't interfere anymore.
         if (windowRecord->specialflags & kPsychIsFullscreenWindow) attr.override_redirect = 0;
     }
-    
+
     if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Using %s-style override-redirect setup path for onscreen window creation.\n", (newstyle_setup) ? "new" : "old");
-    
+
   // Create our onscreen window:
   win = XCreateWindow( dpy, root, x, y, width, height,
-		       0, visinfo->depth, InputOutput,
-		       visinfo->visual, mask, &attr );
+                        0, visinfo->depth, InputOutput,
+                        visinfo->visual, mask, &attr );
 
   if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: GLX Visual info depths is %i bits\n", visinfo->depth);
 
