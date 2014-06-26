@@ -1452,10 +1452,10 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
         int major = 0, minor = 0;
         uname(&unameresult);
         sscanf(unameresult.release, "%i.%i", &major, &minor);
-        // We mark all Linux versions from 3.13 up as broken. Linux 3.13 and 3.14 are definitely broken, future
-        // kernels may or may not be broken, but better safe than sorry, until we know for sure that the bug was fixed.
+        // We mark Linux versions 3.13, 3.14 and 3.15 as broken. In Linux 3.16 and later these bugs are fixed.
+        // These fixes may get backported to 3.13 - 3.15, but this hasn't happened yet.
         // Exceptions are -rc release candidate kernels, so MK can still use rc's built from git/source for patch testing:
-        if (((major > 3) || ((major == 3) && ((minor >= 13) && (minor <= 100)))) && !strstr(unameresult.release, "-rc")) {
+        if (((major == 3) && ((minor >= 13) && (minor <= 15))) && !strstr(unameresult.release, "-rc")) {
             // Yes. nouveau-kms on these kernels delivers faulty data inside its kms-pageflip completion events, so although
             // return from glXWaitForSbcOML() can be trusted to mean swap-completion, the msc and ust timestamp are wrong.
             if (PsychPrefStateGet_Verbosity() > 11) {
