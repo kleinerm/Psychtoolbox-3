@@ -653,13 +653,12 @@ try
     fprintf('Total of %i samples collected: %i\n', i);
     onsets = res.onsetFlipTime(1:i);
     % vbls: onsets = res.vblFlipTime(1:i);
-    %res.measuredTime = transpose(res.measuredTime(1:i));
-    difference = (res.measuredTime - onsets) * 1000;
+    difference = (onsets - res.measuredTime) * 1000;
     if ~IsOSX
         plot(difference);
-        title('Difference dt = MeasurementBOX - FlipOnset in msecs:');
+        title('Difference dt = FlipOnset - MeasurementBOX in msecs:');
     end
-    fprintf('Avg. diff. between Flip stimulus onset time and external timestamping (external - flip) is %f msecs, stddev = %f msecs, range = %f msecs.\n', mean(difference), std(difference), range(difference));
+    fprintf('Avg. diff. between Flip stimulus onset time and external timestamping (flip - external [ground truth]) is %f msecs, stddev = %f msecs, range = %f msecs.\n', mean(difference), std(difference), range(difference));
     
     % Count and output number of missed flip on VBL deadlines:
     numbermisses=0;
