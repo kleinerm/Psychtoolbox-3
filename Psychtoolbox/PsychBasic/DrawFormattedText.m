@@ -9,9 +9,24 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % starts at x-position zero, otherwise it starts at the specified position
 % 'sx'. If sx=='center', then each line of text is horizontally centered in
 % the window. If sx=='right', then each line of text is right justified to
-% the right border of the target window, or of 'winRect' if provided. 'sy'
-% defines the top border of the text. If left out, it starts at the top of
-% the window, otherwise it starts at the specified vertical pixel position.
+% the right border of the target window, or of 'winRect', if provided.
+% The options sx == 'wrapat' and sx == 'justifytomax' try to align the start
+% of each text line to the left border and the end of each text line to either
+% the specified 'wrapat' number of columns, or to the width of the widest line
+% of text in the text string, causing all lines of text to appear of roughly
+% even width. This is achieved by adjusting the width of blanks between words
+% in each line of text to even out text line length. The sx == 'wrapat' and
+% sx == 'justifytomax' options are considered experimental. They only work for
+% non-flipped, simple text, and even there they may work badly, so don't rely on
+% them doing the right thing without assistance of your code, e.g., breaking
+% text into lines of reasonably similar length. The justification functions
+% will not justify text which deviates by more than ptb_drawformattedtext_padthresh
+% from the target width of the text, with ptb_drawformattedtext_padthresh being
+% a global variable you can set. It defaults to 0.333 ie., doesn't justify text
+% lines if the text lines are more than 33% shorter than the reference line.
+%
+% 'sy' defines the top border of the text. If left out, it starts at the top
+% of the window, otherwise it starts at the specified vertical pixel position.
 % If sy=='center', then the whole text is vertically centered in the
 % window. 'color' is the color value of the text (color index or [r g b]
 % triplet or [r g b a] quadruple). If color is left out, the current text
@@ -81,14 +96,23 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 %           original input string, e.g., to prevent losing a double()
 %           unicode encoding during string processing/formatting. (MK)
 % 06/17/13  Add sx == 'right' option for right-alignment of text. (MK)
+% 07/02/14  Add sx == 'wrapat' and sx == 'justifytomax' options for block adjustment of text.
+%           This is to be considered quite a prototype. (MK)
 
 % Set ptb_drawformattedtext_disableClipping to 1 if text clipping should be disabled:
 global ptb_drawformattedtext_disableClipping;
+global ptb_drawformattedtext_padthresh;
 
 if isempty(ptb_drawformattedtext_disableClipping)
     % Text clipping on by default:
     ptb_drawformattedtext_disableClipping = 0;
 end
+
+if isempty(ptb_drawformattedtext_padthresh)
+    % Threshold for skipping of text justification is 33% by default:
+    ptb_drawformattedtext_padthresh = 0.333;
+end
+padthresh = ptb_drawformattedtext_padthresh;
 
 if nargin < 1 || isempty(win)
     error('DrawFormattedText: Windowhandle missing!');
@@ -109,6 +133,7 @@ end
 
 xcenter = 0;
 rjustify = 0;
+bjustify = 0;
 if ischar(sx)
     if strcmpi(sx, 'center')
         xcenter = 1;
@@ -118,13 +143,25 @@ if ischar(sx)
         rjustify = 1;
     end
     
+    if strcmpi(sx, 'wrapat')
+        bjustify = 1;
+    end
+
+    if strcmpi(sx, 'justifytomax')
+        bjustify = 2;
+    end
+
     % Set sx to neutral setting:
-    sx=0;
+    sx = 0;
 end
 
 % No text wrapping by default:
 if nargin < 6 || isempty(wrapat)
     wrapat = 0;
+end
+
+if (bjustify  == 1) && ~wrapat
+    error('Horizontal justification method ''wrapat'' selected, but required ''wrapat'' parameter missing!');
 end
 
 % No horizontal mirroring by default:
@@ -213,15 +250,6 @@ if nargin < 5 || isempty(color)
     color = [];
 end
 
-% Init cursor position:
-xp = sx;
-yp = sy;
-
-minx = inf;
-miny = inf;
-maxx = 0;
-maxy = 0;
-
 % Is the OpenGL userspace context for this 'windowPtr' active, as required?
 [previouswin, IsOpenGLRendering] = Screen('GetOpenGLDrawMode');
 
@@ -238,6 +266,55 @@ end
 disableClip = (ptb_drawformattedtext_disableClipping ~= -1) && ...
               ((ptb_drawformattedtext_disableClipping > 0) || (nargout >= 3));
 
+if bjustify
+    % Compute width of a single blank ' ' space, in case we need it:
+    blankwidth = RectWidth(Screen('TextBounds', win, ' ', [], [], [], righttoleft));
+    sx = winRect(RectLeft);
+end
+
+% Init cursor position:
+xp = sx;
+yp = sy;
+
+minx = inf;
+miny = inf;
+maxx = 0;
+maxy = 0;
+
+if bjustify == 1
+    % Pad to line width of a line of 'wrapat' X'es:
+    padwidth = RectWidth(Screen('TextBounds', win, char(repmat('X', 1, wrapat)), [], [], [], righttoleft));
+end
+
+if bjustify == 2
+    % Iterate over whole text string and find widest
+    % text line. Use it as reference for padding:
+    backuptext = tstring;
+    
+    % No clipping allowed in this opmode:
+    disableClip = 1;
+    
+    % Iterate:
+    padwidth = 0;
+    while ~isempty(tstring)
+        % Find next substring to process:
+        crpositions = strfind(char(tstring), char(10));
+        if ~isempty(crpositions)
+            curstring = tstring(1:min(crpositions)-1);
+            tstring = tstring(min(crpositions)+1:end);
+        else
+            curstring = tstring;
+            tstring =[];
+        end
+        
+        if ~isempty(curstring)
+            padwidth = max(padwidth, RectWidth(Screen('TextBounds', win, curstring, [], [], [], righttoleft)));
+        end
+    end
+
+    % Restore original string for further processing:
+    tstring = backuptext;
+end
 
 % Parse string, break it into substrings at line-feeds:
 while ~isempty(tstring)
@@ -318,8 +395,12 @@ while ~isempty(tstring)
         if rjustify
             xp = winRect(RectRight) - RectWidth(bbox);
         end
-        
+
         if flipHorizontal || flipVertical
+            if bjustify
+                warning('Text justification to wrapat''th right column border not supported for flipHorizontal or flipVertical text drawing.');
+            end
+            
             textbox = OffsetRect(bbox, xp, yp);
             [xc, yc] = RectCenter(textbox);
 
@@ -345,7 +426,42 @@ while ~isempty(tstring)
             [nx ny] = Screen('DrawText', win, curstring, xp, yp, color, [], [], righttoleft);
             Screen('glPopMatrix', win);
         else
-            [nx ny] = Screen('DrawText', win, curstring, xp, yp, color, [], [], righttoleft);
+            % Block justification (align to left border and a right border at 'wrapat' columns)?
+            if bjustify
+                % Calculate required amount of padding in pixels:
+                strwidth = padwidth - RectWidth(Screen('TextBounds', win, curstring(~isspace(curstring)), [], [], [], righttoleft));
+                padpergapneeded = length(find(isspace(curstring)));
+                % Padding needed and possible?
+                if (padpergapneeded > 0) && (strwidth > 0)
+                    % Required padding less than padthresh fraction of total
+                    % width? If not we skip justification, as it would lead to
+                    % ridiculous looking results:
+                    if strwidth < padwidth * padthresh
+                        % For each isolated blank in the text line, insert
+                        % padpergapneeded pixels of blank space:
+                        padpergapneeded = strwidth / padpergapneeded;
+                    else
+                        padpergapneeded = blankwidth;
+                    end
+                else
+                    padpergapneeded = 0;
+                end
+                
+                % Render text line word by word, adding padpergapneeded pixels of blank space
+                % between consecutive words, to evenly distribute the padding space needed:
+                [wordup, remstring] = strtok(curstring);
+                cxp = xp;
+                while ~isempty(wordup)
+                    [nx ny] = Screen('DrawText', win, wordup, cxp, yp, color, [], [], righttoleft);
+                    if ~isempty(remstring)
+                        nx = nx + padpergapneeded;
+                        cxp = nx;
+                    end
+                    [wordup, remstring] = strtok(remstring);
+                end
+            else
+                [nx ny] = Screen('DrawText', win, curstring, xp, yp, color, [], [], righttoleft);
+            end
         end
     else
         % This is an empty substring (pure linefeed). Just update cursor

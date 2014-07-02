@@ -1,4 +1,3 @@
-
 % DrawFormattedTextDemo
 %
 % Draws lots of formatted text, shows how to center text vertically and/or
@@ -42,7 +41,11 @@ try
     fclose(fd);
     mytext = [mytext char(10)];
     
-    Screen('DrawText', w, 'Top-Left aligned, 40 chars wide: Hit any key to continue.', 0, 0, [255, 0, 0, 255]);
+    % Get rid of '% ' symbols at the start of each line:
+    mytext = strrep(mytext, '% ', '');
+    mytext = strrep(mytext, '%', '');
+
+    Screen('DrawText', w, 'Top-Left aligned, max 40 chars wide: Hit any key to continue.', 0, 0, [255, 0, 0, 255]);
 
     % mytext contains the content of the first 48 lines of the text file.
     % Let's print it: Start at (x,y)=(10,10), break lines after 40
@@ -54,7 +57,28 @@ try
 
     Screen('Flip',w);
     KbStrokeWait;
-    
+
+    Screen('DrawText', w, 'Top-Left aligned, max 60 chars wide, justified: Hit any key to continue.', 0, 0, [255, 0, 0, 255]);
+    [nx, ny, bbox] = DrawFormattedText(w, mytext, 'wrapat', 20, 0, 60);
+    % Show computed text bounding box:
+    Screen('FrameRect', w, 0, bbox);
+
+    Screen('Flip',w);
+    KbStrokeWait;
+
+    % Use Left- and right justified text. Specify the x-start (left border) position as part of
+    % the optional 11'th 'winrect' parameter [50 20 100 100], as we obviously can't specify it
+    % as 'sx' parameter - that one being taken by 'justifytomax'. Only the left border value 50
+    % is taken from the given winrect, the other right/bottom/top parameters are ignored:
+    [nx, ny, bbox] = DrawFormattedText(w, mytext, 'justifytomax', 20, 0, [], [], [], [], [], [50 20 100 100]);
+    % Show computed text bounding box:
+    Screen('FrameRect', w, 0, bbox);
+
+    Screen('DrawText', w, 'Left- and right justified, width unconstrained: Hit any key to continue.', nx, ny, [255, 0, 0, 255]);
+
+    Screen('Flip',w);
+    KbStrokeWait;
+
     % Draw text again, this time with unlimited line length:
     [nx, ny, bbox] = DrawFormattedText(w, mytext, 10, 10, 0);
     
@@ -133,10 +157,12 @@ try
     end
     
     tp = tp(1:sc);
-    fprintf('Average redraw duration for scrolling in msecs: %f\n', 1000 * mean(diff(tp)));
-    close all;
-    plot(1000 * diff(tp));
-    title('Redraw duration per scroll frame [msecs]:');
+    fprintf('\nAverage redraw duration for scrolling in msecs: %f\n', 1000 * mean(diff(tp)));
+    if 0
+        close all;
+        plot(1000 * diff(tp));
+        title('Redraw duration per scroll frame [msecs]:');
+    end
     
     % End of demo, close window:
     Screen('CloseAll');
