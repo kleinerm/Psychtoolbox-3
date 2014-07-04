@@ -463,10 +463,13 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                     printf("PTB-ERROR: this functionality is not supported on your model of graphics card. Only AMD/ATI GPU's of the\n");
                     printf("PTB-ERROR: Radeon X1000 series, and Radeon HD-2000 series and later models, and corresponding FireGL/FirePro\n");
                     printf("PTB-ERROR: cards are supported. This covers basically all AMD graphics cards since about the year 2007.\n");
-                    printf("PTB-ERROR: NVidia graphics cards since the GeForce-8000 series and corresponding Quadro cards can be setup\n");
-                    printf("PTB-ERROR: for 10 bpc framebuffer support by specifying a 'DefaultDepth' setting of 30 bit in the xorg.conf file.\n");
-                    printf("PTB-ERROR: The latest Intel graphics cards may be able to achieve 10 bpc with 'DefaultDepth' 30 setting if your\n");
-                    printf("PTB-ERROR: graphics driver is recent enough, however this hasn't been actively tested on Intel cards so far.\n\n");
+                    if (PSYCH_SYSTEM == PSYCH_LINUX) {
+                        printf("PTB-ERROR: NVidia graphics cards since the GeForce-8000 series and corresponding Quadro cards can be setup\n");
+                        printf("PTB-ERROR: for 10 bpc framebuffer support by specifying a 'DefaultDepth' setting of 30 bit in the xorg.conf file.\n");
+                        printf("PTB-ERROR: The latest Intel graphics cards may be able to achieve 10 bpc with 'DefaultDepth' 30 setting if your\n");
+                        printf("PTB-ERROR: graphics driver is recent enough, however this hasn't been actively tested on Intel cards so far.\n\n");
+                    }
+                    else printf("\n");
                 }
                 else if (PsychGetScreenDepthValue(screenSettings->screenNumber) != 24) {
                     printf("PTB-ERROR: your display is not set to 24 bit 'DefaultDepth' color depth, but to %i bit color depth in xorg.conf.\n\n",
