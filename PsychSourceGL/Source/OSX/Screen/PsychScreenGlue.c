@@ -402,16 +402,20 @@ int PsychGetNumPhysicalDisplays(void)
     return((int) numPhysicalDisplays);
 }
 
+/* Returns actual net color bits per pixel (excluding alpha or padding): */
 static int getDisplayBitsPerPixel(CGDisplayModeRef mode)
 {
     int bpp = 0;
     CFStringRef n = CGDisplayModeCopyPixelEncoding(mode);
-    
-    if (CFStringCompare(n, CFSTR(IO32BitDirectPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
-        bpp = 32;
+
+    if (CFStringCompare(n, CFSTR(kIO30BitDirectPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
+        bpp = 30;
+    }
+    else if (CFStringCompare(n, CFSTR(IO32BitDirectPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
+        bpp = 24;
     }
     else if (CFStringCompare(n, CFSTR(IO16BitDirectPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
-        bpp = 16;
+        bpp = 15;
     }
     else if (CFStringCompare(n, CFSTR(IO8BitIndexedPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
         bpp = 8;
