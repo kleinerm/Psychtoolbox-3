@@ -127,6 +127,8 @@ PsychError SCREENOpenWindow(void)
     //find the PixelSize first because the color specifier depends on the screen depth.  
     PsychInitDepthStruct(&currentDepth);  //get the current depth
     PsychGetScreenDepth(screenNumber, &currentDepth);
+    // Override for Windows: 32 bpp means 24 bit color depth:
+    if ((PSYCH_SYSTEM == PSYCH_WINDOWS) && (currentDepth.depths[0] == 32)) currentDepth.depths[0] = 24;
     PsychInitDepthStruct(&possibleDepths); //get the possible depths
     PsychGetScreenDepths(screenNumber, &possibleDepths);
 
@@ -139,6 +141,9 @@ PsychError SCREENOpenWindow(void)
         // to check if these formats are supported by the hardware. Ugly ugly ugly...
         PsychAddValueToDepthStruct(64, &possibleDepths);
         PsychAddValueToDepthStruct(128, &possibleDepths);
+
+        // Also add 32 bpp for backwards compatibility with old cruft code:
+        PsychAddValueToDepthStruct(32, &possibleDepths);
     #endif
 
     // On MacOS/X and Linux with AMD Radeon X1000 and later hardware and the special
