@@ -697,6 +697,15 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         }
     }
 
+    // Check for output display rotation enabled. Will impair timing/timestamping because
+    // it uses the desktop compositor for a rotated copy blit, instead of via rotated crtc
+    // scanout, as most crtc's don't support this in hardware:
+    if ((((int) CGDisplayRotation(cgDisplayID)) != 0) && (PsychPrefStateGet_Verbosity() > 1)) {
+        printf("PTB-WARNING: Your onscreen windows output display has rotation enabled. It is not displaying in upright orientation.\n");
+        printf("PTB-WARNING: On most graphics cards this will cause unreliable stimulus presentation timing and timestamping.\n");
+        printf("PTB-WARNING: If you want non-upright stimulus presentation, look at 'help PsychImaging' on how to achieve this in\n");
+        printf("PTB-WARNING: a way that doesn't impair timing. The subfunctions 'FlipHorizontal' and 'FlipVertical' are what you probably need.\n");
+    }
 
     // First reference to this screen by a window?
     if (screenRefCount[screenSettings->screenNumber] == 0) {
