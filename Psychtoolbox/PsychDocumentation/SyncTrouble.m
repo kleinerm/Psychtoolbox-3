@@ -385,7 +385,11 @@
 %
 % ... can do this setup step for you. The KDE KWin window manager (and
 % probably the latest version of GNOME-3) will automatically unredirect
-% fullscreen windows and go out of the way. The same will happen on compiz
+% fullscreen windows and go out of the way, if you've enabled this in
+% their settings. On GNOME-3, no setup is required. On KDE, do this:
+% Open "KDE System Settings" -> "Desktop Effects" ->
+% "Advanced" Tab -> "Suspend desktop effects for fullscreen windows"
+% -> Check the checkbox -> "Apply" -> Done. The same will happen on compiz
 % with Ubuntu Linux 12.04.2 LTS or later. If you use a different desktop
 % compositor, and on a few versions of compiz, the command doesn't yet
 % work, so you need to check the manuals/help of your system on how to
