@@ -498,7 +498,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         // Not supported by our own code and kernel driver (we don't have such a driver for Windows), but some recent 2008
         // series AMD FireGL and NVidia Quadro cards at least provide the option to enable this natively - although it didn't
         // work properly in our tests around the year 2009.
-        if (bpc >= (*windowRecord)->depth / 3)) {
+        if (bpc >= ((*windowRecord)->depth / 3)) {
             printf("PTB-INFO: Windows native %i bit per color framebuffer requested, and the OS claims it is working. Good.\n", bpc);
         }
         else {
