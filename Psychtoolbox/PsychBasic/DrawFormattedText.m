@@ -268,8 +268,14 @@ disableClip = (ptb_drawformattedtext_disableClipping ~= -1) && ...
 
 if bjustify
     % Compute width of a single blank ' ' space, in case we need it:
-    blankwidth = RectWidth(Screen('TextBounds', win, ' ', [], [], [], righttoleft));
+    blankbounds = Screen('TextBounds', win, ' ', [], [], 1, righttoleft);
+    blankwidth = RectWidth(blankbounds);
     sx = winRect(RectLeft);
+    
+    % Also need some approximation of the height to baseline:
+    baselineHeight = RectHeight(blankbounds);
+else
+    baselineHeight = 0;
 end
 
 % Init cursor position:
@@ -283,7 +289,7 @@ maxy = 0;
 
 if bjustify == 1
     % Pad to line width of a line of 'wrapat' X'es:
-    padwidth = RectWidth(Screen('TextBounds', win, char(repmat('X', 1, wrapat)), [], [], [], righttoleft));
+    padwidth = RectWidth(Screen('TextBounds', win, char(repmat('X', 1, wrapat)), [], [], 1, righttoleft));
 end
 
 if bjustify == 2
@@ -308,7 +314,7 @@ if bjustify == 2
         end
         
         if ~isempty(curstring)
-            padwidth = max(padwidth, RectWidth(Screen('TextBounds', win, curstring, [], [], [], righttoleft)));
+            padwidth = max(padwidth, RectWidth(Screen('TextBounds', win, curstring, [], [], 1, righttoleft)));
         end
     end
 
@@ -429,7 +435,7 @@ while ~isempty(tstring)
             % Block justification (align to left border and a right border at 'wrapat' columns)?
             if bjustify
                 % Calculate required amount of padding in pixels:
-                strwidth = padwidth - RectWidth(Screen('TextBounds', win, curstring(~isspace(curstring)), [], [], [], righttoleft));
+                strwidth = padwidth - RectWidth(Screen('TextBounds', win, curstring(~isspace(curstring)), [], [], 1, righttoleft));
                 padpergapneeded = length(find(isspace(curstring)));
                 % Padding needed and possible?
                 if (padpergapneeded > 0) && (strwidth > 0)
@@ -452,7 +458,7 @@ while ~isempty(tstring)
                 [wordup, remstring] = strtok(curstring);
                 cxp = xp;
                 while ~isempty(wordup)
-                    [nx ny] = Screen('DrawText', win, wordup, cxp, yp, color, [], [], righttoleft);
+                    [nx ny] = Screen('DrawText', win, wordup, cxp, yp, color, [], 1, righttoleft);
                     if ~isempty(remstring)
                         nx = nx + padpergapneeded;
                         cxp = nx;
@@ -495,7 +501,7 @@ end
 maxy = maxy + theight;
 
 % Create final bounding box:
-textbounds = SetRect(minx, miny, maxx, maxy);
+textbounds = SetRect(minx, miny - baselineHeight, maxx, maxy - baselineHeight);
 
 % Create new cursor position. The cursor is positioned to allow
 % to continue to print text directly after the drawn text.

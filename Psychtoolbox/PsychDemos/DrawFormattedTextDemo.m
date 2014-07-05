@@ -59,7 +59,7 @@ try
     KbStrokeWait;
 
     Screen('DrawText', w, 'Top-Left aligned, max 60 chars wide, justified: Hit any key to continue.', 0, 0, [255, 0, 0, 255]);
-    [nx, ny, bbox] = DrawFormattedText(w, mytext, 'wrapat', 20, 0, 60);
+    [nx, ny, bbox] = DrawFormattedText(w, mytext, 'wrapat', 40, 0, 60);
     % Show computed text bounding box:
     Screen('FrameRect', w, 0, bbox);
 
@@ -67,10 +67,10 @@ try
     KbStrokeWait;
 
     % Use Left- and right justified text. Specify the x-start (left border) position as part of
-    % the optional 11'th 'winrect' parameter [50 20 100 100], as we obviously can't specify it
+    % the optional 11'th 'winrect' parameter [50 40 100 100], as we obviously can't specify it
     % as 'sx' parameter - that one being taken by 'justifytomax'. Only the left border value 50
     % is taken from the given winrect, the other right/bottom/top parameters are ignored:
-    [nx, ny, bbox] = DrawFormattedText(w, mytext, 'justifytomax', 20, 0, [], [], [], [], [], [50 20 100 100]);
+    [nx, ny, bbox] = DrawFormattedText(w, mytext, 'justifytomax', 40, 0, [], [], [], [], [], [50 40 100 100]);
     % Show computed text bounding box:
     Screen('FrameRect', w, 0, bbox);
 
@@ -141,6 +141,7 @@ try
     % This will disable clipping and be very sloooow, so we do it only once
     % to get the bounding box, and later just recycle that box:
     [nx, ny, bbox] = DrawFormattedText(w, longtext, 10, 0, 0);
+    Screen('FillRect', w, WhiteIndex(w));
     textHeight = RectHeight(bbox);
     
     for yp = winHeight:-1:-textHeight
