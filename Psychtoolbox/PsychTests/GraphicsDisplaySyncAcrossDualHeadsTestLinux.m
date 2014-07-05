@@ -28,7 +28,8 @@ function GraphicsDisplaySyncAcrossDualHeadsTestLinux(screenids, nrtrials, syncme
 % 25-Aug-2014 Refined (MK).
 
 if ~IsLinux
-    fprintf('This test is for Linux only. Use GraphicsDisplaySyncAcrossDualHeadsTest on legacy operating systems.');
+    fprintf('\nThis test is for Linux only. Use GraphicsDisplaySyncAcrossDualHeadsTest on legacy operating systems.\n\n');
+    return;
 end
 
 AssertOpenGL;
