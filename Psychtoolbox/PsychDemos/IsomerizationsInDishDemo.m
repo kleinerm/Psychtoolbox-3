@@ -120,15 +120,15 @@ fprintf('\n');
 fprintf('Photoreceptor Type             |\t       M\t       S\t     Rod\n');
 fprintf('______________________________________________________________________________________\n');
 fprintf('\n');
-if (isfield(photoreceptors,'OSlength') & ~isempty(photoreceptors.OSlength.value))
+if (isfield(photoreceptors,'OSlength') && ~isempty(photoreceptors.OSlength.value))
     fprintf('Outer Segment Length           |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.OSlength.value);
 end
-if (isfield(photoreceptors,'OSdiameter') & ~isempty(photoreceptors.OSdiameter.value))
+if (isfield(photoreceptors,'OSdiameter') && ~isempty(photoreceptors.OSdiameter.value))
     fprintf('Outer Segment Diameter         |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.OSdiameter.value);
 end
 fprintf('Inner Segment Diameter         |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.ISdiameter.value);
 fprintf('\n');
-if (isfield(photoreceptors,'specificDensity') & ~isempty(photoreceptors.specificDensity.value))
+if (isfield(photoreceptors,'specificDensity') && ~isempty(photoreceptors.specificDensity.value))
     fprintf('Axial Specific Density         |\t%8.3f\t%8.3f\t%8.3f\t /um\n',photoreceptors.specificDensity.value);
 end
 fprintf('Axial Optical Density          |\t%8.3f\t%8.3f\t%8.3f\n',photoreceptors.axialDensity.value);

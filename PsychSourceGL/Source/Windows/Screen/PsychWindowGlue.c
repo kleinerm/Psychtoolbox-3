@@ -1165,7 +1165,7 @@ dwmdontcare:
     attribs[attribcount++]=0x2007; // WGL_SWAP_METHOD_ARB
     attribs[attribcount++]=0x2028; // WGL_SWAP_EXCHANGE_ARB
     attribs[attribcount++]=0x2013; // WGL_PIXEL_TYPE_ARB
-    
+
     // Select either floating point or fixed point framebuffer:
     if (windowRecord->depth == 64 || windowRecord->depth == 128) {
       // Request a floating point drawable instead of a fixed-point one:
@@ -1174,14 +1174,15 @@ dwmdontcare:
     else {
       // Request standard fixed point drawable:
       attribs[attribcount++]=0x202B; // WGL_TYPE_RGBA_ARB
-	}
-    
+    }
+
     // Select requested depth per color component 'bpc' for each channel:
     bpc = 8; // We default to 8 bpc == RGBA8
     if (windowRecord->depth == 30)  { bpc = 10; printf("PTB-INFO: Trying to enable at least 10 bpc fixed point framebuffer.\n"); }
+    if (windowRecord->depth == 33)  { bpc = 11; printf("PTB-INFO: Trying to enable at least 11 bpc fixed point framebuffer.\n"); }
     if (windowRecord->depth == 64)  { bpc = 16; printf("PTB-INFO: Trying to enable 16 bpc fixed point framebuffer.\n"); }
     if (windowRecord->depth == 128) { bpc = 32; printf("PTB-INFO: Trying to enable 32 bpc fixed point framebuffer.\n"); }
-    
+
     // Set up color depth for each channel:
     attribs[attribcount++]=WGL_RED_BITS_ARB;
     attribs[attribcount++]=bpc;
@@ -1191,9 +1192,9 @@ dwmdontcare:
     attribs[attribcount++]=bpc;
     attribs[attribcount++]=WGL_ALPHA_BITS_ARB;
     // Alpha channel has only 2 bpc in the fixed point bpc=10 case, i.e. RGBA=1010102.
-    attribs[attribcount++]=(bpc == 10) ? 2 : bpc;
-    
-    
+    // No alpha channel possible on bpc=11 case ie., RGB111110 for a total of 32 bpp.
+    attribs[attribcount++]=(bpc == 10) ? 2 : ((bpc == 11) ? 0 : bpc);
+
     // Stereo display support: If stereo display output is requested with OpenGL native stereo,
     // we request a stereo-enabled rendering context.
     if(stereomode==kPsychOpenGLStereo) {

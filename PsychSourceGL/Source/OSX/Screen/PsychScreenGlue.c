@@ -402,16 +402,20 @@ int PsychGetNumPhysicalDisplays(void)
     return((int) numPhysicalDisplays);
 }
 
+/* Returns actual net color bits per pixel (excluding alpha or padding): */
 static int getDisplayBitsPerPixel(CGDisplayModeRef mode)
 {
     int bpp = 0;
     CFStringRef n = CGDisplayModeCopyPixelEncoding(mode);
-    
-    if (CFStringCompare(n, CFSTR(IO32BitDirectPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
-        bpp = 32;
+
+    if (CFStringCompare(n, CFSTR(kIO30BitDirectPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
+        bpp = 30;
+    }
+    else if (CFStringCompare(n, CFSTR(IO32BitDirectPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
+        bpp = 24;
     }
     else if (CFStringCompare(n, CFSTR(IO16BitDirectPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
-        bpp = 16;
+        bpp = 15;
     }
     else if (CFStringCompare(n, CFSTR(IO8BitIndexedPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
         bpp = 8;
@@ -453,7 +457,7 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
             PsychAddValueToDepthStruct((int) tempDepth, depths);
         }
         
-		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: PsychGetScreenDepths(): mode %i : w x h = %i x %i, fps = %i, depths = %i\n", i, tempWidth, tempHeight, tempFrequency, tempDepth);
+		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: PsychGetScreenDepths(): mode %i : w x h = %i x %i, fps = %f, depth = %i\n", i, tempWidth, tempHeight, tempFrequency, tempDepth);
     }
     
     CFRelease(modeList);
@@ -752,6 +756,8 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
     CGDisplayModeRef    cgMode;
     psych_bool          isValid, isCaptured;
     CGDisplayErr        error;
+    float               *redlut, *greenlut, *bluelut;
+    int                 numlutslots;
 
     if(settings->screenNumber >= numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychSetScreenSettings() is out of range");
 
@@ -780,7 +786,10 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
     //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.  
     isCaptured = CGDisplayIsCaptured(displayCGIDs[settings->screenNumber]);
     if(!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
-        
+
+    // Readback a backup copy of the current gamma table:
+    PsychReadNormalizedGammaTable(settings->screenNumber, -1, &numlutslots, &redlut, &greenlut, &bluelut);
+    
     //Change the display mode.
     CGDisplayConfigRef configRef;
     error = CGBeginDisplayConfiguration(&configRef);
@@ -791,6 +800,17 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
     else {
         CGCancelDisplayConfiguration(configRef);
     }
+
+    // And now we rest for 3 seconds after video mode switch to honor all the mentally troubled
+    // people working at Apple. At least OSX 10.9 will restore the graphics cards gamma tables to
+    // the user session default (or whatever) within 2 seconds after a video mode switch,
+    // thereby silently undoing the effect of any of our gamma table setup operations, should they
+    // happen within a 2 seconds interval to a modeset operation. To protect against this, we will
+    // pause execution for 3 seconds.
+    PsychYieldIntervalSeconds(3.0);
+    
+    // Restore pre-modeswitch gamma table to undo the brain-damage of the OSX modeswitch implementation:
+    PsychLoadNormalizedGammaTable(settings->screenNumber, -1, numlutslots, redlut, greenlut, bluelut);
 
     return((kCGErrorSuccess == error) ? TRUE : FALSE);
 }

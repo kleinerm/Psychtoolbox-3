@@ -185,7 +185,17 @@ function HighColorPrecisionDrawingTest(testconfig, maxdepth, testblocks)
 
 global win;
 
-close all; 
+close all;
+
+% Octave's new plotting backend 'fltk' interferes with Screen(),
+% due to internal use of OpenGL. Problem is it changes the
+% bound OpenGL rendering context behind our back and we
+% don't protect ourselves against this yet. Switch plotting backend
+% to good'ol gnuplot to work around this issue until we fix it properly
+% inside Screen():
+if IsOctave && exist('graphics_toolkit')
+    graphics_toolkit ('gnuplot');
+end
 
 if nargin < 1 || isempty(testconfig)
     % Empty 'testconfig' or missing: Do all tests.

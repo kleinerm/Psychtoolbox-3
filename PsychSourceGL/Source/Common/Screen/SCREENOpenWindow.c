@@ -1,27 +1,24 @@
 /*
-	SCREENOpenWindow.c		
+    SCREENOpenWindow.c
 
-	AUTHORS:
+    AUTHORS:
 
-	Allen.Ingling@nyu.edu		awi 
-	mario.kleiner@tuebingen.mpg.de  mk
-  
+    Allen.Ingling@nyu.edu           awi
+    mario.kleiner@tuebingen.mpg.de  mk
 
-	PLATFORMS:	All
+    PLATFORMS:  All
 
-	HISTORY:
+    HISTORY:
 
-		12/18/01	awi		Created.  Copied the Synopsis string from old version of psychtoolbox. 
-		10/18/02	awi		Added defaults to allow for optional arguments.
-		12/05/02	awi		Started over again for OS X without SDL.
-		10/12/04	awi		In useString: changed "SCREEN" to "Screen", and moved commas to inside [].
-		2/15/05		awi		Commented out glEnable(GL_BLEND) and mode settings.  
-		04/03/05	mk		Added support for selecting binocular stereo output via native OpenGL.
- 		11/14/06	mk		New onscreen windows blank to their background color after successfull init.
-							Support for specification of pixelSize's for 10-10-10-2, 16-16-16-16 and
-							32-32-32-32 framebuffers on supported hardware.
-	TO DO:
-
+        12/18/01    awi     Created.  Copied the Synopsis string from old version of psychtoolbox.
+        10/18/02    awi     Added defaults to allow for optional arguments.
+        12/05/02    awi     Started over again for OS X without SDL.
+        10/12/04    awi     In useString: changed "SCREEN" to "Screen", and moved commas to inside [].
+        2/15/05     awi     Commented out glEnable(GL_BLEND) and mode settings.
+        04/03/05    mk      Added support for selecting binocular stereo output via native OpenGL.
+        11/14/06    mk      New onscreen windows blank to their background color after successfull init.
+                            Support for specification of pixelSize's for 10-10-10-2, 16-16-16-16 and
+                            32-32-32-32 framebuffers on supported hardware.
 */
 
 #include "Screen.h"
@@ -125,38 +122,56 @@ PsychError SCREENOpenWindow(void)
       digested all settings and then test the full mode, declarin an invalid
       mode and not an invalid pixel size.  We could notice when the depth alone is specified 
       and in that case issue an invalid depth value.
-     */  
+     */
 
     //find the PixelSize first because the color specifier depends on the screen depth.  
     PsychInitDepthStruct(&currentDepth);  //get the current depth
     PsychGetScreenDepth(screenNumber, &currentDepth);
+    // Override for Windows: 32 bpp means 24 bit color depth:
+    if ((PSYCH_SYSTEM == PSYCH_WINDOWS) && (currentDepth.depths[0] == 32)) currentDepth.depths[0] = 24;
     PsychInitDepthStruct(&possibleDepths); //get the possible depths
     PsychGetScreenDepths(screenNumber, &possibleDepths);
 
     #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_WINDOWS
-       // MK Experimental Hack: Add the special depth values 64 and 128 to the depth struct. This should 
-       // allows for 16 bpc, 32 bpc floating point color buffers on the latest ATI and NVidia hardware.
-	   // "Should" means: It doesn't really work with any current driver, but we leave the testcode in
-	   // in the hope for future OS and driver releases ;-)
-       // Unfortunately at this point of the init sequence, we are not able
-       // to check if these formats are supported by the hardware. Ugly ugly ugly...
-       PsychAddValueToDepthStruct(64, &possibleDepths);
-       PsychAddValueToDepthStruct(128, &possibleDepths);
+        // MK Experimental Hack: Add the special depth values 64 and 128 to the depth struct. This should
+        // allows for 16 bpc, 32 bpc floating point color buffers on the latest ATI and NVidia hardware.
+        // "Should" means: It doesn't really work with any current driver, but we leave the testcode in
+        // in the hope for future OS and driver releases ;-)
+        // Unfortunately at this point of the init sequence, we are not able
+        // to check if these formats are supported by the hardware. Ugly ugly ugly...
+        PsychAddValueToDepthStruct(64, &possibleDepths);
+        PsychAddValueToDepthStruct(128, &possibleDepths);
+
+        // Also add 32 bpp for backwards compatibility with old cruft code:
+        PsychAddValueToDepthStruct(32, &possibleDepths);
     #endif
 
-//    #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
-		// On MacOS/X and Linux with ATI Radeon X1000/HD2000/HD3000 hardware and the special
-		// kernel support driver installed, we should be able to configure the hardwares
-		// framebuffers into ABGR2101010 mode, ie. 2 bits alpha, 10 bpc for red, green, blue.
-		// This needs support from the imaging pipeline, or manually converted stimuli, as
-		// the GPU doesn't format pixel data properly, only the CRTC scans out in that format.
-		// Anyway, allow this setting on OS/X and Linux:
-		
-		// Update: Some FireGL cards (2008 and later) claim to support this on MS-Windows. Enable
-		// this option on Windows as well, so it is at least testable:
-		PsychAddValueToDepthStruct(30, &possibleDepths);
-//    #endif
-
+    // On MacOS/X and Linux with AMD Radeon X1000 and later hardware and the special
+    // kernel support driver installed, we are able to configure the hardware
+    // framebuffer into ABGR2101010 mode, ie. 2 bits alpha, 10 bpc for red, green, blue,
+    // or into BGR101111 mode, ie. 10 bit blue, 11 bit for red and green.
+    // This needs support from the imaging pipeline, or manually converted stimuli, as
+    // the GPU doesn't format pixel data properly, only the CRTC scans out in that format.
+    //
+    // At least 10 bpc modes, and maybe some peculiar 11 bpc modes in the future, are/will be
+    // also supported without Psychtoolbox low-level hacks by the operating systems and
+    // graphics drivers themselves:
+    //
+    // On upcoming Linux distributions (ETA late 2014), with Linux 3.16 and later, we will have
+    // 10 bpc support (and a possibility of 11 bpc support later) on AMD gpu's, possibly also
+    // NVidia and Intel.
+    //
+    // On existing Linux distributions we have 10 bpc support with the NVidia proprietary drivers
+    // on OpenGL-3 capable GeForce and Quadro cards. Ditto for AMD Fire cards with Catalyst.
+    //
+    // On MS-Windows, some AMD Fire cards and some NVidia Quadro cards support 10 bpc.
+    // OSX as of 10.9 does not support any > 8 bpc modes without our special hacks.
+    //
+    // In any case, enable the ability for usercode to request framebuffer depth 30 and 33 for
+    // 10 bpc and 11 bpc and leave it to the window setup code to find out if those depths
+    // are supported on the given setup, or not.
+    PsychAddValueToDepthStruct(30, &possibleDepths);
+    PsychAddValueToDepthStruct(33, &possibleDepths);
 
     PsychInitDepthStruct(&specifiedDepth); //get the requested depth and validate it.  
     isArgThere = PsychCopyInSingleDepthArg(4, FALSE, &specifiedDepth);

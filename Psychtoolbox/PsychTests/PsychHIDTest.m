@@ -4,6 +4,9 @@ function PsychHIDTest
 % PsychHIDTest exercises the PsychHID mex file. We list all the HID
 % devices. We read from the keyboard and mouse. We flicker the keyboard
 % LEDs.
+%
+% On MS-Windows we only list the HID devices, as mouse and keyboard are
+% not really accessible for PsychHID on MS-Windows.
 % 
 % NOT RESPONDING? If PsychHID is not responding, e.g. after unplugging and
 % re-plugging the USB connector, try quitting and restarting MATLAB. We
@@ -21,6 +24,7 @@ function PsychHIDTest
 %             http://groups.yahoo.com/group/psychtoolbox/message/3610
 %             http://groups.yahoo.com/group/psychtoolbox/message/3614
 % 5/14/12  mk Cleanup and improve.
+% 7/01/14  mk Skip all but HID device enumeration on Windows.
 
 fprintf('TestPsychHID\n');
 fprintf('Making a list of all your HID-compliant devices. ...');
@@ -53,6 +57,10 @@ switch length(daq)
         fprintf('You have a USB-1208FS. It appears as four devices in the table above.\n');
     otherwise,
         fprintf('You have %d USB-1208FS boxes. Each appears as four devices in the table above.\n',length(daq));
+end
+
+if IsWin
+    return;
 end
 
 % Keyboard.
