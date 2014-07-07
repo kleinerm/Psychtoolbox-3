@@ -1,5 +1,5 @@
-function isSame = CompareMonCal(calOrCalStruct1,calOrCalStruct2,IGNOREDATE)
-% isSame = CompareMonCal(calOrCalStruct1,calOrCalStruct2,[IGNOREDATE])
+function isSame = CompareMonCal(cal1,cal2,IGNOREDATE)
+% isSame = CompareMonCal(cal1,cal2,[IGNOREDATE])
 %
 % Checks if the two calibrations are the same.  Useful
 % for preventing blunders if you have programs that
@@ -16,77 +16,42 @@ function isSame = CompareMonCal(calOrCalStruct1,calOrCalStruct2,IGNOREDATE)
 % 1/21/98  dhb       Add IGNOREDATE flag.
 % 3/10/98  dhb	     Change name to CompareMonCal.
 % 7/3/98   dhb, pbe  Change for cal.describe format.
-% 5/28/14  npc       Modifications for accessing calibration data using a @CalStruct object.
-%                    The first two input arguments can be either a @CalStruct object (new style), or a cal structure (old style).
-%                    Passing @CalStruct objects is the preferred way because it results in 
-%                    (a) less overhead (@CalStruct objects are passed by reference, not by value), and
-%                    (b) better control over how the calibration data are accessed.
 
 if (nargin < 3 || isempty(IGNOREDATE))
 	IGNOREDATE = 0;
 end
 
-% Specify @CalStruct objects that will handle all access to the calibration data.
-[calStruct1OBJ, inputArg1IsACalStructOBJ] = ObjectToHandleCalOrCalStruct(calOrCalStruct1);
-if (~input1ArgIsACalStructOBJ)
-     % The input (calOrCalStruct) is a cal struct. Clear it to avoid  confusion.
-    clear 'calOrCalStruct1';
-end
-[calStruct2OBJ, inputArg2IsACalStructOBJ] = ObjectToHandleCalOrCalStruct(calOrCalStruct2);
-if (~input2ArgIsACalStructOBJ)
-     % The input (calOrCalStruct) is a cal struct. Clear it to avoid  confusion.
-    clear 'calOrCalStruct2';
-end
-% From this point onward, all access to the calibration data is accomplised via the calStructOBJ.
-
-% Get necessary calibration data
-date1 = calStruct1OBJ.get('date');
-date2 = calStruct2OBJ.get('date');
-
-whichScreen1 = calStruct1OBJ.get('whichScreen');
-whichScreen2 = calStruct2OBJ.get('whichScreen');
-
-computer1 = calStruct1OBJ.get('computer');
-computer2 = calStruct2OBJ.get('computer');
-
-driver1 = calStruct1OBJ.get('driver');
-driver2 = calStruct2OBJ.get('driver');
-
-dacsize1 = calStruct1OBJ.get('dacsize');
-dacsize2 = calStruct2OBJ.get('dacsize');
-
-% Compare
 isSame = 1;
 if (~IGNOREDATE)
-	if (~streq(date1, date2))
+	if (~streq(cal1.describe.date,cal2.describe.date))
 		%fprintf(1,'CompareCal:\n');
-		%fprintf(1,'\tcal1 calibration date: %s',date1);
-		%fprintf(1,'\tcal2 calibration date: %s',date2);
+		%fprintf(1,'\tcal1 calibration date: %s',cal1.describe.date);
+		%fprintf(1,'\tcal2 calibration date: %s',cal2.describe.date);
 		isSame = 0;
 	end
 end
-if (whichScreen1 ~= whichScreen2)
+if (cal1.describe.whichScreen ~= cal2.describe.whichScreen)
 	%fprintf(1,'CompareCal:\n');
-	%fprintf(1,'\tcal1 calibration screen: %g\n',whichScreen1);
-	%fprintf(1,'\tcal2 calibration screen: %g\n',whichScreen2);
+	%fprintf(1,'\tcal1 calibration screen: %g\n',cal1.describe.whichScreen);
+	%fprintf(1,'\tcal2 calibration screen: %g\n',cal2.describe.whichScreen);
 	isSame = 0;
 end	
-if (~streq(computer1,computer2))
+if (~streq(cal1.describe.computer,cal2.describe.computer))
 	%fprintf(1,'CompareCal:\n');
-	%fprintf(1,'\tcal1 computer: %s',computer1);
-	%fprintf(1,'\tcal2 computer: %s',computer2);
+	%fprintf(1,'\tcal1 computer: %s',cal1.describe.computer);
+	%fprintf(1,'\tcal2 computer: %s',cal2.describe.computer);
 	isSame = 0;
 end
-if (~streq(driver1,driver2))
+if (~streq(cal1.describe.driver,cal2.describe.driver))
 	%fprintf(1,'CompareCal:\n');
-	%fprintf(1,'\tcal1 driver: %s\n',driver1);
-	%fprintf(1,'\tcal2 driver: %s\n',driver2);
+	%fprintf(1,'\tcal1 driver: %s\n',cal1.describe.driver);
+	%fprintf(1,'\tcal2 driver: %s\n',cal2.describe.driver);
 	isSame = 0;
 end
-if (dacsize1 ~= dacsize2)
+if (cal1.describe.dacsize ~= cal2.describe.dacsize)
 	%fprintf(1,'CompareCal:\n');
-	%fprintf(1,'\tcal1 DAC size: %g\n',dacsize1);
-	%fprintf(1,'\tcal2 DAC size: %g\n',dacsize2);
+	%fprintf(1,'\tcal1 DAC size: %g\n',cal1.describe.dacsize);
+	%fprintf(1,'\tcal2 DAC size: %g\n',cal2.describe.dacsize);
 	isSame = 0;
 end
 
