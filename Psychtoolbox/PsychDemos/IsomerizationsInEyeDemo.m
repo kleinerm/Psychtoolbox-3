@@ -259,9 +259,9 @@ switch (whichInputType)
 		% The original units are watts/sr-m^2-wlinterval.
 		cal = LoadCalFile('PTB3TestCal');
         
-        % If we're running using BrainardLabToolbox and new calStruct objects, use those.
+        % If we're running using BrainardLabToolbox and support CalStruct objects, use those.
         % But if we don't know about those, use old style direct access of fields in cal
-        % structure.
+        % structure.  The test is the existance of the routine ObjectToHandleCalOrCalStruct().
         if (exist('ObjectToHandleCalOrCalStruct','file'))
             [calStructOBJ, inputArgIsACalStructOBJ] = ObjectToHandleCalOrCalStruct(cal); clear 'cal';
             P_device = calStructOBJ.get('P_device');
