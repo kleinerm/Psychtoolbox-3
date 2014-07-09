@@ -589,7 +589,6 @@
 % PsychSignal/Bandpass.m
 % PsychSignal/Bandpass2.m
 % PsychSignal/BoolFromSNR.m
-% PsychSignal/ComputeRMSE.m
 % PsychSignal/Expand.m
 % PsychSignal/HalfRect.m
 % PsychSignal/MatMax.m

@@ -14,6 +14,7 @@
 % ComputeGammaWeib
 % ComputeRMSE
 % FitDeviceGamma
+% ComputeFSSE
 % FitGamma
 % FitGammaExtP
 % FitGammaExtPFun
