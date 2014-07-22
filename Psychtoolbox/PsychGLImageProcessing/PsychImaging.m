@@ -603,8 +603,12 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   capable displays on Linux, and maybe also on MS-Windows. All AMD graphics cards of model
 %   Radeon HD-5000 or later (and equivalent Fire-Series models) can output to HDMI deep color
 %   capable displays with 10 bpc real precision at least if you use a Linux kernel of version 3.16
-%   or later with the open-source AMD graphics drivers. The status with the proprietary AMD drivers
-%   on Linux or on MS-Windows is unknown.
+%   or later with the open-source AMD graphics drivers. At least on Linux 3.16 you will need to add
+%   the kernel command line option "radeon.deep_color=1" to the kernel boot loader options, e.g.,
+%   by editing /etc/default/grub and running "sudo update-grub2" afterwards. This because deep
+%   color output is disabled by default, to work around various broken hdmi display devices.
+%
+%   The status with the proprietary AMD drivers on Linux or on MS-Windows is unknown.
 %   Apple OSX 10.9 and earlier do not support any high precision video output over any digital
 %   output, neither DVI-D, nor DisplayPort or HDMI. All you'll get at best on OSX is simulated > 8
 %   bpc via dithering.

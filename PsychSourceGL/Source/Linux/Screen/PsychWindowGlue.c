@@ -1443,28 +1443,38 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 
     PsychUnlockDisplay();
 
-    // Running on nouveau?
-    if (strstr((char*) glGetString(GL_VENDOR), "nouveau")) {
-        // Yes. Query current kernel version: Is it a Linux kernel with broken nouveau-kms pageflip events?
+    // This disabled codepath implements a workaround for kms drivers which deliver broken/wrong kms pageflip
+    // events. It would work on any kms driver, but is currently not needed for any of them (as of all kernel
+    // versions up to and including Linux 3.16). We leave the code in place in case a future need arises.
+    //
+    // The workaround implemented here was used in PTB releases between April 2014 and mid-July 2014 to work around
+    // bugs of nouveau-kms present in Linux 3.13 - 3.15. These bugs have been fixed in Linux 3.16 and fixes been
+    // backported to 3.13 - 3.15, so all Linux kernels are now bug-free wrt. this issue and the workaround can be
+    // safely disabled by default.
+    //
+    // We allow to force the workaround on via kPsychForceOpenMLTSWorkaround ConserveVRAM setting in case it
+    // needs to be enabled post-release for whatever reason:
+    if (PsychPrefStateGet_ConserveVRAM() & kPsychForceOpenMLTSWorkaround) {
+        // Yes. Query current kernel version: Is it a Linux kernel with broken kms pageflip completion events?
         struct utsname unameresult;
         int rc;
         double tref;
         int major = 0, minor = 0;
         uname(&unameresult);
         sscanf(unameresult.release, "%i.%i", &major, &minor);
-        // We mark Linux versions 3.13, 3.14 and 3.15 as broken. In Linux 3.16 and later these bugs are fixed.
-        // These fixes may get backported to 3.13 - 3.15, but this hasn't happened yet.
-        // Exceptions are -rc release candidate kernels, so MK can still use rc's built from git/source for patch testing:
-        if (((major == 3) && ((minor >= 13) && (minor <= 15))) && !strstr(unameresult.release, "-rc")) {
-            // Yes. nouveau-kms on these kernels delivers faulty data inside its kms-pageflip completion events, so although
+        // We mark Linux versions 3.x to 3.y as broken. Exceptions are -rc release candidate kernels, so MK can
+        // still use rc's built from git/source for patch testing. We also execute workaround if forced by user:
+        if ((PsychPrefStateGet_ConserveVRAM() & kPsychForceOpenMLTSWorkaround) ||
+            (((major == 3) && ((minor > 0) && (minor < 0))) && !strstr(unameresult.release, "-rc"))) {
+            // Yes. kms driver on these kernels delivers faulty data inside its kms-pageflip completion events, so although
             // return from glXWaitForSbcOML() can be trusted to mean swap-completion, the msc and ust timestamp are wrong.
             if (PsychPrefStateGet_Verbosity() > 11) {
-                printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: glXWaitForSbcOML() success, but running on potentially faulty nouveau-kms in Linux %s! Trying workaround.\n", unameresult.release);
+                printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: glXWaitForSbcOML() success, but running on potentially faulty kms driver in Linux %s! Trying workaround.\n", unameresult.release);
             }
 
-            // Try to (ab)use glXGetSyncValuesOML() to get nouveau-kms vblank timestamp for the vblank of
-            // swap completion. If this works we can take advantage of nouveau-kms accurate timestamps.
-            // However, due to the nature of the nouveau-kms pageflip bug there is a small chance that
+            // Try to (ab)use glXGetSyncValuesOML() to get kms vblank timestamp for the vblank of
+            // swap completion. If this works we can take advantage of kms accurate timestamps.
+            // However, due to the nature of the assumed kms pageflip bug there is a small chance that
             // glXWaitForSbcOML() returned after swap completion but *before* the vblank timestamps and
             // counts could get updated by the kernels vblank irq handler, so the values returned by
             // glXGetSyncValuesOML() might be outdated and therefore also wrong. We query the current
@@ -1508,12 +1518,14 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 
     // Check for valid return values: A zero ust or msc means failure, except for results from nouveau,
     // because there it is "expected" to get a constant zero return value for msc, at least when running
-    // on top of a Linux kernel older than 3.13, when this shortcoming was fixed:
+    // on top of a Linux kernel older than 3.13, when this shortcoming was fixed (except for old pre-nv50
+    // gpu's = GeForce-7000 and earlier, if using VGA analog output, where the old fallback path is triggered
+    // to work around problems with this ancient hardware, and this fallback still returns msc == 0):
     if ((windowRecord->vSynced) && ((ust == 0) || ((msc == 0) && !strstr((char*) glGetString(GL_VENDOR), "nouveau")))) {
-        // If this happens at a sbc of less than 4 then it is a known glitch in the intel-ddx which has no
+        // If this happens at a sbc of less than 20 then it is a known glitch in the intel-ddx which has no
         // practical negative effects, so we paper over it and fail silently with an "unsupported" rc. A
         // pointless warning for a non-issue would just confuse users.
-        if (sbc < 4) return(-1);
+        if (sbc < 20) return(-1);
 
         if (PsychPrefStateGet_Verbosity() > 1) {
             printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Invalid return values ust = %lld, msc = %lld from call with success return code (sbc = %lld)! Failing with rc = -2.\n", ust, msc, sbc);

@@ -298,6 +298,21 @@
 % external digital lcd flat panel!
 %
 %
+% 2^27 == kPsychForceOpenMLTSWorkaround
+% Force use of OpenML swap completion timestamp workaround. This to
+% workaround certain potential timestamping bugs in some graphics drivers.
+% Currently no such bugs exist, so this option is just to future-proof
+% your Psychtoolbox against potential bugs in future operating systems.
+% Bugs were present in Linux versions 3.13 - 3.15 for a short period of
+% time between April and July 2014 which made this workaround neccessary.
+% However, the workaround was automatically enabled on such Linux versions
+% without the need for this conservevram setting. The relevant Linux bugs
+% have been fixed by mid-July 2014, ie., at the time of this writing, in all
+% versions of the Linux kernel (Linux >= 3.13.11.5+, 3.14.12+, 3.15.5+, 3.16+).
+% Nonetheless we leave this manual way to enable the workaround, should the
+% need ever arise again in the future.
+%
+%
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are
 % meant as a last ressort, e.g., if you need to get something going quickly

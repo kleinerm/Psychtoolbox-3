@@ -267,8 +267,12 @@ disableClip = (ptb_drawformattedtext_disableClipping ~= -1) && ...
               ((ptb_drawformattedtext_disableClipping > 0) || (nargout >= 3));
 
 if bjustify
-    % Compute width of a single blank ' ' space, in case we need it:
-    blankbounds = Screen('TextBounds', win, ' ', [], [], 1, righttoleft);
+    % Compute width of a single blank ' ' space, in case we need it. We use
+    % a 'X' instead of ' ', because with some text renderers, ' ' has an
+    % empty bounding box, so this would fail. As justification only works
+    % with monospaced fonts anyway, we can do this substitution with good
+    % results:
+    blankbounds = Screen('TextBounds', win, 'X', [], [], 1, righttoleft);
     blankwidth = RectWidth(blankbounds);
     sx = winRect(RectLeft);
     
