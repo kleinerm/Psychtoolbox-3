@@ -1,6 +1,15 @@
 function icc=IccProfile(command,file)
 % icc=IccProfile(command,file,icc)
+%
+%
 % 
+% UNIMPLEMENTED! This function is not yet available in Psychtoolbox-3.
+% Porting it from the old Psychtoolbox-2 should be doable for somebody
+% with basic C programming skills. If you feel like contributing this
+% function, please do so!
+%
+%
+%
 % IccProfile.mex will read any ICC or ColorSync profile. The
 % International Color Consortium (ICC) published a standard file
 % format for saving color calibration data for imaging devices. This

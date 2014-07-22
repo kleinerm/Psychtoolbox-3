@@ -42,7 +42,7 @@
 %   GamutToSettingsSch  - Subroutine for GamutToSettings.
 %   GamutToSettingsTbl  - Subroutine for GamutToSettings.
 %   GratingNull         - Match two luminances.
-%   IccProfile.mex      - Read ICC profiles for monitor calibration.
+%   IccProfile.mex      - NOT IMPLEMENTED YET: Read ICC profiles for monitor calibration.
 %   ImageToCalFormat    - Stretch out an image to pass to calibration conversion routines.
 %   InvertGammaTable    - Subroutine for GamutToSettings.
 %   LoadCalFile         - Load calibration data.

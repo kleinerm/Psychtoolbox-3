@@ -2132,15 +2132,17 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	PsychAllocInIntegerListArg(5, kPsychArgOptional, &numel, &nrchannels);
 	if (numel == 0) {
 		// No optional channelcount argument provided: Default to two for playback and recording, unless device is
-		// a mono device -- then we default to one:
-		mynrchannels[0] = (outputDevInfo && outputDevInfo->maxOutputChannels < 2) ? outputDevInfo->maxOutputChannels : 2;
-		mynrchannels[1] = (inputDevInfo && inputDevInfo->maxInputChannels < 2) ? inputDevInfo->maxInputChannels : 2;
+		// a mono device -- then we default to one. Note: It is important to never assign zero channels, as some
+        // code makes assumptions about these always being non-zero, and would crash due to divide-by-zero otherwise.
+        // Assigning at least 1 channel, even if the device doesn't have one, is safe by design of the remaining code.
+		mynrchannels[0] = (outputDevInfo && outputDevInfo->maxOutputChannels < 2) ? 1 : 2;
+		mynrchannels[1] = (inputDevInfo && inputDevInfo->maxInputChannels < 2) ? 1 : 2;
 	}
 	else if (numel == 1) {
 		// One argument provided: Set same count for playback and recording:
 		if (*nrchannels < 1 || *nrchannels > MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE) PsychErrorExitMsg(PsychError_user, "Invalid number of channels provided. Valid values are 1 to device maximum.");
 		mynrchannels[0] = *nrchannels;
-		mynrchannels[1] =  *nrchannels;		
+		mynrchannels[1] = *nrchannels;
 	}
 	else if (numel == 2) {
 		// Separate counts for playback and recording provided: Set'em up.
@@ -4518,7 +4520,10 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 		"it measures how much sound has been submitted to the sound system, not how much sound has left the "
 		"speakers, i.e., it doesn't take driver and hardware latency into account.\n"
 		"SchedulePosition: Current position in a running schedule, if any.\n"
-		"XRuns: Number of dropouts due to buffer overrun or underrun conditions.\n"
+		"XRuns: Number of dropouts due to buffer overrun or underrun conditions. This is not perfectly reliable, "
+        "as the algorithm can miss some dropouts. Iow.: A non-zero or increasing value means that audio glitches "
+        "during playback or capture happened, but a zero or constant value doesn't mean everything was glitch-free, "
+        "because some glitches can't get reliably detected on some operating systems or audio hardware.\n"
 		"TotalCalls, TimeFailed and BufferSize are only for debugging of PsychPortAudio itself.\n"
 		"CPULoad: How much load does the playback engine impose on the CPU? Values can range from 0.0 = 0% "
 		"to 1.0 for 100%. Values close to 1.0 indicate that your system can't handle the load and timing glitches "
@@ -4544,7 +4549,7 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 	static char seeAlsoString[] = "Open GetDeviceSettings ";	 
 	PsychGenericScriptType 	*status;
 	double currentTime;
-	psych_int64 playposition, totalplaycount;
+	psych_int64 playposition, totalplaycount, recposition;
 
 	const char *FieldNames[]={	"Active", "State", "RequestedStartTime", "StartTime", "CaptureStartTime", "RequestedStopTime", "EstimatedStopTime", "CurrentStreamTime", "ElapsedOutSamples", "PositionSecs", "RecordedSecs", "ReadSecs", "SchedulePosition",
 								"XRuns", "TotalCalls", "TimeFailed", "BufferSize", "CPULoad", "PredictedLatency", "LatencyBias", "SampleRate",
@@ -4577,6 +4582,7 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 	currentTime = audiodevices[pahandle].currentTime;
 	totalplaycount = audiodevices[pahandle].totalplaycount;
 	playposition = audiodevices[pahandle].playposition;
+    recposition = audiodevices[pahandle].recposition;
 	PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
 	
 	// Atomic snapshot for remaining fields would only be needed for low-level debugging, so who cares?
@@ -4590,7 +4596,7 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 	PsychSetStructArrayDoubleElement("CurrentStreamTime", 0, currentTime, status);	
 	PsychSetStructArrayDoubleElement("ElapsedOutSamples", 0, ((double)(totalplaycount / audiodevices[pahandle].outchannels)), status);
 	PsychSetStructArrayDoubleElement("PositionSecs", 0, ((double)(playposition / audiodevices[pahandle].outchannels)) / (double) audiodevices[pahandle].streaminfo->sampleRate, status);
-	PsychSetStructArrayDoubleElement("RecordedSecs", 0, ((double)(audiodevices[pahandle].recposition / audiodevices[pahandle].inchannels)) / (double) audiodevices[pahandle].streaminfo->sampleRate, status);
+	PsychSetStructArrayDoubleElement("RecordedSecs", 0, ((double)(recposition / audiodevices[pahandle].inchannels)) / (double) audiodevices[pahandle].streaminfo->sampleRate, status);
 	PsychSetStructArrayDoubleElement("ReadSecs", 0, ((double)(audiodevices[pahandle].readposition / audiodevices[pahandle].inchannels)) / (double) audiodevices[pahandle].streaminfo->sampleRate, status);
 	PsychSetStructArrayDoubleElement("SchedulePosition", 0, audiodevices[pahandle].schedule_pos, status);
 	PsychSetStructArrayDoubleElement("XRuns", 0, audiodevices[pahandle].xruns, status);
@@ -4784,6 +4790,7 @@ PsychError PSYCHPORTAUDIOVolume(void)
 
 	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
 	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
+	if ((audiodevices[pahandle].opmode & kPortAudioPlayBack) == 0) PsychErrorExitMsg(PsychError_user, "Audio device has not been opened for audio playback, so this call doesn't make sense.");
 
 	// Return old masterVolume:
 	PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) audiodevices[pahandle].masterVolume);
@@ -5039,6 +5046,7 @@ PsychError PSYCHPORTAUDIOSetLoop(void)
 
 	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
 	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
+	if ((audiodevices[pahandle].opmode & kPortAudioPlayBack) == 0) PsychErrorExitMsg(PsychError_user, "Audio device has not been opened for audio playback, so this call doesn't make sense.");
 
 	unitIsSecs = 0;
 	PsychCopyInIntegerArg(4, kPsychArgOptional, &unitIsSecs);
@@ -5215,6 +5223,7 @@ PsychError PSYCHPORTAUDIOUseSchedule(void)
 
 	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
 	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
+	if ((audiodevices[pahandle].opmode & kPortAudioPlayBack) == 0) PsychErrorExitMsg(PsychError_user, "Audio device has not been opened for audio playback, so this call doesn't make sense.");
 
 	// Make sure the device is fully idle: We can check without mutex held, as a device which is
 	// already idle (state == 0) can't switch by itself out of idle state (state > 0), neither
@@ -5385,6 +5394,7 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 
 	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
 	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
+	if ((audiodevices[pahandle].opmode & kPortAudioPlayBack) == 0) PsychErrorExitMsg(PsychError_user, "Audio device has not been opened for audio playback, so this call doesn't make sense.");
 
 	// Make sure there is a schedule available:
 	if (audiodevices[pahandle].schedule == NULL) PsychErrorExitMsg(PsychError_user, "You tried to AddToSchedule, but use of schedules is disabled! Call 'UseSchedule' first to enable them.");

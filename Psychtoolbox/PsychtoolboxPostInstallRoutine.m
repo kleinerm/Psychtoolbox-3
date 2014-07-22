@@ -347,8 +347,8 @@ if IsOctave
             % On Linux everything >= 3.2 is fine:
             fprintf('WARNING: using the latest stable version of the Octave 3.2.x series or later for use with Psychtoolbox.\n');
         else
-            % On other OS'es we only care about >= 3.6 atm:
-            fprintf('WARNING: using the latest stable version of the Octave 3.6.x series or later for use with Psychtoolbox.\n');
+            % On other OS'es we only care about >= 3.8 atm:
+            fprintf('WARNING: using the latest stable version of the Octave 3.8.x series or later for use with Psychtoolbox.\n');
         end
         fprintf('WARNING: Stuff may not work at all or only suboptimal with earlier versions and we\n');
         fprintf('WARNING: don''t provide any support for such old versions.\n');

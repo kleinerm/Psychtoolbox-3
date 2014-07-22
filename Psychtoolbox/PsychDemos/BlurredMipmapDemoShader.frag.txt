@@ -12,6 +12,8 @@
  *
  */
 
+#extension GL_ARB_shader_texture_lod : enable
+
 /* Image is the mip-mapped texture with the image resolution pyramid: */
 uniform sampler2D Image;
 

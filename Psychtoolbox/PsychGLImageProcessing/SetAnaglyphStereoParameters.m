@@ -137,6 +137,13 @@ function retval = SetAnaglyphStereoParameters(cmd, win, rgb, aux1, aux2)
 % be shown. Wherever its alpha value is greater than zero, the overlays
 % image will be shown.
 %
+% overlaywindow = SetAnaglyphStereoParameters('CreateGreenOverlay', win);
+% ... and ...
+% overlaywindow = SetAnaglyphStereoParameters('CreateBlueOverlay', win);
+% ... will allow to only place the overlay info into the green color channel
+% or blue color channel, ie., the channel not used by Red-Blue or Red-Green
+% color anaglyph stereo.
+%
 % 'GetHandle' - Return GLSL handle to anaglyph shader. Allows to modify the
 % shader itself, e.g., replace it by your own customized shader. Only for
 % OpenGL experts!
@@ -150,6 +157,7 @@ function retval = SetAnaglyphStereoParameters(cmd, win, rgb, aux1, aux2)
 % 14.08.2012 Implement setup code for anaglyph stereo shaders inside per-view
 %            channels, to handle separate display outputs, e.g., as on MPI
 %            Kuka projection setup.
+% 08.07.2014 Implement 'CreateGreenOverlay' and 'CreateBlueOverlay'. (MK)
 
 persistent inverted;
 
@@ -163,12 +171,19 @@ end
         error('Insufficient number of input arguments.');
     end
 
-    if strcmpi(cmd, 'CreateMonoOverlay')
+    if strcmpi(cmd, 'CreateMonoOverlay') || ...
+       strcmpi(cmd, 'CreateGreenOverlay') || ...
+       strcmpi(cmd, 'CreateBlueOverlay')
         winfo = Screen('GetWindowInfo', win);
         if winfo.StereoMode < 4 || winfo.StereoMode > 9
-            error('SetAnaglyphStereoParameters(''CreateMonoOverlay'') is not supported in current stereomode %i!', winfo.StereoMode);
+            error('SetAnaglyphStereoParameters(''%s'') is not supported in current stereomode %i!', cmd, winfo.StereoMode);
         end
 
+        if (strcmpi(cmd, 'CreateGreenOverlay') && ~ismember(winfo.StereoMode, [8, 9])) || ...
+           (strcmpi(cmd, 'CreateBlueOverlay') && ~ismember(winfo.StereoMode, [6, 7]))
+            error('SetAnaglyphStereoParameters(''%s'') is not supported in current stereomode %i!', cmd, winfo.StereoMode);
+        end
+        
         % Create a monoscopic overlay window which is not affected by
         % anaglyph conversion, but just overlaid to the final rendering.
         glUseProgram(0);
@@ -184,19 +199,40 @@ end
         % Retrieve low-level OpenGl texture handle to the window:
         overlaytex = Screen('GetOpenGLTexture', win, overlaywin);
 
-        % Append blitter command for a one-to-one blit of the overlay
-        % texture to the target buffer. We need to disable the 2nd texture
-        % unit and setup proper alpha testing, so a) it works at all and b)
-        % the overly only occludes the main image where the overly has a
-        % non-zero alpha:
-        Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup1 Alphatest for Overlay', 'glAlphaFunc(516, 0.0);');
-        Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup2 Alphatest for Overlay', 'glEnable(3008);');
-        Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup3 Texunit1 off for Overlay', 'glActiveTexture(33985);');
-        Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup4 Texunit1 off for Overlay', 'glDisable(34037);');
-        Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup5 Texunit1 off for Overlay', 'glActiveTexture(33984);');
-        Screen('Hookfunction', win, 'AppendBuiltin',   'StereoCompositingBlit', 'Builtin:IdentityBlit', sprintf('TEXTURERECT2D(0)=%i', overlaytex));
-        Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Teardown Alphatest for Overlay', 'glDisable(3008);');
-        
+        if strcmpi(cmd, 'CreateMonoOverlay')
+            % Append blitter command for a one-to-one blit of the overlay
+            % texture to the target buffer. We need to disable the 2nd texture
+            % unit and setup proper alpha testing, so a) it works at all and b)
+            % the overly only occludes the main image where the overly has a
+            % non-zero alpha:
+            Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup1 Alphatest for Overlay', 'glAlphaFunc(516, 0.0);');
+            Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup2 Alphatest for Overlay', 'glEnable(3008);');
+            Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup3 Texunit1 off for Overlay', 'glActiveTexture(33985);');
+            Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup4 Texunit1 off for Overlay', 'glDisable(34037);');
+            Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup5 Texunit1 off for Overlay', 'glActiveTexture(33984);');
+            Screen('Hookfunction', win, 'AppendBuiltin',   'StereoCompositingBlit', 'Builtin:IdentityBlit', sprintf('TEXTURERECT2D(0)=%i', overlaytex));
+            Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Teardown Alphatest for Overlay', 'glDisable(3008);');
+        end
+
+        if strcmpi(cmd, 'CreateGreenOverlay') || strcmpi(cmd, 'CreateBlueOverlay')
+            % Append blitter command for a one-to-one blit of the overlay
+            % texture to the target buffer. We need to disable the 2nd texture
+            % unit. Then we setup the color write mask to only write to the green
+            % or blue channel. Red and blue or green channel will only be set by
+            % anaglyph code, but the green or blue channel will only be set by the
+            % overlay window:
+            if strcmpi(cmd, 'CreateGreenOverlay')
+                Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup1 Green only mask for Overlay', 'glColorMask(0, 1, 0, 0);');
+            else
+                Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup1 Blue only mask for Overlay',  'glColorMask(0, 0, 1, 0);');
+            end
+            Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup2 Texunit1 off for Overlay', 'glActiveTexture(33985);');
+            Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup3 Texunit1 off for Overlay', 'glDisable(34037);');
+            Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Setup4 Texunit1 off for Overlay', 'glActiveTexture(33984);');
+            Screen('Hookfunction', win, 'AppendBuiltin',   'StereoCompositingBlit', 'Builtin:IdentityBlit', sprintf('TEXTURERECT2D(0)=%i', overlaytex));
+            Screen('Hookfunction', win, 'AppendMFunction', 'StereoCompositingBlit', 'Reset colormask after Overlay blit', 'glColorMask(1, 1, 1, 1);');
+        end
+
         % Return handle to overlay window:
         retval = overlaywin;
         
