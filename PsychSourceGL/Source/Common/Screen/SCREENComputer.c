@@ -473,7 +473,7 @@ PsychError SCREENComputer(void)
     int numMajorStructFieldNames=12, numKernStructFieldNames=5, numHwStructFieldNames=7;
     char ethernetMACStr[20];
     struct ifreq devea;
-    int s;
+    int s, i;
     PsychGenericScriptType	*kernStruct, *hwStruct, *majorStruct;
     struct utsname unameresult;
     char tmpString[1024];
@@ -507,15 +507,20 @@ PsychError SCREENComputer(void)
     sprintf(ethernetMACStr, "00:00:00:00:00:00");
 
     s = socket(PF_INET, SOCK_DGRAM, 0);
-    if (s>=0) {
-      strcpy(devea.ifr_name, "eth0");
-      if (ioctl(s, SIOCGIFHWADDR, &devea) >= 0) {
-        sprintf(ethernetMACStr, "%.2X:%.2X:%.2X:%.2X:%.2X:%.2X",
-        devea.ifr_ifru.ifru_hwaddr.sa_data[0]&0xff, devea.ifr_ifru.ifru_hwaddr.sa_data[1]&0xff,
-        devea.ifr_ifru.ifru_hwaddr.sa_data[2]&0xff, devea.ifr_ifru.ifru_hwaddr.sa_data[3]&0xff,
-        devea.ifr_ifru.ifru_hwaddr.sa_data[4]&0xff, devea.ifr_ifru.ifru_hwaddr.sa_data[5]&0xff);
-      }
-      close(s);
+    if (s >= 0) {
+        // Probe eth0 to eth99 for a valid network interface:
+        for (i = 0; i < 100; i++) {
+            sprintf(devea.ifr_name, "eth%d", i);
+            if (ioctl(s, SIOCGIFHWADDR, &devea) >= 0) {
+                // Success: Use its MAC address and be done:
+                sprintf(ethernetMACStr, "%.2X:%.2X:%.2X:%.2X:%.2X:%.2X",
+                        devea.ifr_ifru.ifru_hwaddr.sa_data[0]&0xff, devea.ifr_ifru.ifru_hwaddr.sa_data[1]&0xff,
+                        devea.ifr_ifru.ifru_hwaddr.sa_data[2]&0xff, devea.ifr_ifru.ifru_hwaddr.sa_data[3]&0xff,
+                        devea.ifr_ifru.ifru_hwaddr.sa_data[4]&0xff, devea.ifr_ifru.ifru_hwaddr.sa_data[5]&0xff);
+                break;
+            }
+        }
+        close(s);
     }
 
     PsychSetStructArrayStringElement("MACAddress", 0, ethernetMACStr, majorStruct);

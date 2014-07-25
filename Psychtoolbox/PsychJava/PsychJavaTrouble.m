@@ -5,7 +5,7 @@ function PsychJavaTrouble(installStatic)
 % of one of the Psychtoolbox Java based functions, e.g., ListenChar,
 % CharAvail, GetChar or FlushEvents.
 %
-% There are four common reasons for failure of Java based Psychtoolbox
+% These are common reasons for failure of Java based Psychtoolbox
 % functions:
 %
 % 1. You run Matlab in nojvm mode, i.e., you started Matlab via 'matlab
@@ -63,6 +63,7 @@ function PsychJavaTrouble(installStatic)
 % 20.09.2006 Written (MK)
 % 13.05.2013 Add Matlab static classpath setup code as helper for routines
 %            like PsychtoolboxPostInstallRoutine.m (MK)
+% 07.07.2014 Help text cosmetic. (MK)
 
 % Only fix class path dynamically by default:
 if nargin < 1 || isempty(installStatic)
@@ -73,7 +74,7 @@ end
 if ~installStatic
     % Yes:
     if IsOctave
-        error('Running on GNU/Octave: Java is not supported on that system. Sorry!');
+        error('Running on GNU/Octave: Our Java functions are not supported or needed on that system.');
     end
     
     if ~exist('javaaddpath') %#ok<EXIST>
@@ -187,8 +188,7 @@ if ~IsOctave
             [s, w] = copyfile(classpathFile, bakclasspathFile, 'f');
             
             if s==0
-                error(['Could not make a backup copy of Matlab''s JAVA path definition file.\n' ...
-                    'The system reports: ', w]);
+                error(['Could not make a backup copy of Matlab''s JAVA path definition file. The system reports: ', w]);
             end
             madeBackup = 1; %#ok<NASGU>
             
@@ -211,9 +211,8 @@ if ~IsOctave
         lerr = psychlasterror;
         fprintf('Could not update the Matlab JAVA classpath file due to the following error:\n');
         fprintf('%s\n\n', lerr.message);
-        fprintf('Either you have a very old Matlab version which does not support JAVA or, most\n');
-        fprintf('likely, you do not have sufficient access permissions for the Matlab application folder\n');
-        fprintf('or file itself to change the file %s .\n', classpathFile);
+        fprintf('You likely do not have sufficient access permissions for the Matlab application\n');
+        fprintf('folder or file itself to change the file %s .\n', classpathFile);
         fprintf('Please ask the system administrator to enable write-access to that file and its\n');
         fprintf('containing folder and then repeat the update procedure.\n');
         fprintf('Alternatively, ask the administrator to add the following line:\n');

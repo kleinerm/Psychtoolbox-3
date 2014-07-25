@@ -263,6 +263,11 @@ typedef struct {
 // implementation, e.g., for testing or comparison purposes.
 #define kPsychForceUseNativeBeamposQuery (1 << 26)
 
+// Force use of OpenML timestamp workaround for overriding kms-pageflip events:
+// Not needed on any shipping OS release atm., but left here in case it is ever
+// needed.
+#define kPsychForceOpenMLTSWorkaround (1 << 27)
+
 //function protoptypes
 
 //Accessors for PsychDepthType 
