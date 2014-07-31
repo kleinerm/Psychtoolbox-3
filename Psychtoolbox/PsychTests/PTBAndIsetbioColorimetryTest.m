@@ -22,6 +22,9 @@
 % x/xx/10 baw  Checked with ISET-4.0 revision 351 (BW)
 % 2/28/13 dhb  Updated to work with vset rather than proprietary iset.
 % 8/5/13  dhb  Updated to work with isetbio, vset's successor.
+% 7/31/14 dhb, ncp Put a cd around call to isetbio xyz2lab to deal with
+%              fact that 2014b has added a routine with this name that
+%              doesn't work quite the same.
 
 %% Clear and close
 clear; close all;
@@ -30,6 +33,11 @@ if (exist('isetbioRootPath','file'))
 else
     error('Need isetbio on your path to run this test');
 end
+
+%% Play the namespace game as necessary.
+% This sets up what we need.
+isetbioPath = fileparts(which('colorTransformMatrix'));
+curDir = pwd;
 
 %% XYZ-related colorimetry
 %
@@ -62,7 +70,7 @@ end
 %% CIE uv chromaticity
 ptbuvYs = XYZTouvY(testXYZs);
 ptbuvs = ptbuvYs(1:2,:);
-[isetus,isetvs] = XYZ2uv(testXYZs');
+[isetus,isetvs] = xyz2uv(testXYZs');
 isetuvs = [isetus' ; isetvs'];
 if (any(abs(ptbuvs-isetuvs) > 1e-10))
     fprintf('PTB-ISET DIFFERENCE for XYZ to uv\n');
@@ -85,7 +93,9 @@ end
 %% CIELAB
 whiteXYZ = [3,4,3]';
 ptbLabs = XYZToLab(testXYZs,whiteXYZ);
+cd(isetbioPath);
 isetLabs = xyz2lab(testXYZs',whiteXYZ')';
+cd(curDir);
 if (any(abs(ptbLabs-isetLabs) > 1e-10))
     fprintf('PTB-ISET DIFFERENCE for XYZ to Lab\n');
 else
