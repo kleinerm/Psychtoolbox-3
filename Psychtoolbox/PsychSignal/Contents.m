@@ -10,7 +10,6 @@
 %   Bandpass             - Filter images, one dimension.
 %   Bandpass2            - Filter images, two dimensions, radial frequency.
 %   BoolFromSNR          - Creates a boolean (selection) vector from an SNR (Signal-to-Noise Ratio)
-%   ComputeRMSE          - Compute root mean squared error.
 %   Expand               - Expand a matrix.
 %   HalfRect             - Half wave rectification.
 %   MatMax               - Maximum in entire matrix.

@@ -6,5 +6,5 @@ function [err,con] = FitGammaExtPFun(x,values,measurements)
 % 9/21/93  DHB  Added positivity constraint.
 
 predict = ComputeGammaExtP(x,values);
-err = ComputeRMSE(measurements,predict);
+err = ComputeFSWSE(measurements,predict);
 con = [-x];

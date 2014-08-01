@@ -1,5 +1,5 @@
-function [finalSettings,badIndex,quantized,perError,settings] = SensorToSettingsAcc(calOrCalStruct,sensor)
-% [finalSettings,badIndex,quantized,perError,settings] = SensorToSettingsAcc(calOrCalStruct,sensor)
+function [finalSettings,badIndex,quantized,perError,settings] = SensorToSettingsAcc(cal,sensor)
+% [finalSettings,badIndex,quantized,perError,settings] = SensorToSettingsAcc(cal,sensor)
 %
 % Convert from sensor color space coordinates to device
 % setting coordinates.  This routine makes use of the
@@ -19,20 +19,6 @@ function [finalSettings,badIndex,quantized,perError,settings] = SensorToSettings
 % 11/22/09   dhb      Check basis dimension and do the simple fast thing if it is 1.
 %                     This will speed things up when there is no point in trying the
 %                     iterative algorithm.
-% 5/28/14    npc      Modifications for accessing calibration data using a @CalStruct object.
-%                     The first input argument can be either a @CalStruct object (new style), or a cal structure (old style).
-%                     Passing a @CalStruct object is the preferred way because it results in 
-%                     (a) less overhead (@CalStruct objects are passed by reference, not by value), and
-%                     (b) better control over how the calibration data are accessed.
-
-% Specify @CalStruct object that will handle all access to the calibration data.
-[calStructOBJ, inputArgIsACalStructOBJ] = ObjectToHandleCalOrCalStruct(calOrCalStruct);
-if (~inputArgIsACalStructOBJ)
-     % The input (calOrCalStruct) is a cal struct. Clear it to avoid  confusion.
-    clear 'calOrCalStruct';
-end
-% From this point onward, all access to the calibration data is accomplised via the calStructOBJ.
-
 
 % Algorithm parameters
 nIterations = 10;
@@ -46,15 +32,14 @@ end
 settings = zeros(nLinear,nIterations);
 quantized = zeros(nLinear,nIterations);
 
-% Get necessary calibration data
-nPrimaryBases = calStructOBJ.get('nPrimaryBases');
-
+% Get basis information
+nPrimaryBases = cal.nPrimaryBases;
 if (isempty(nPrimaryBases))
 	error('No nPrimaryBases field present in calibration structure');
 end
 
 if (nPrimaryBases == 1)
-    [finalSettings,badIndex] = SensorToSettings(calStructOBJ,sensor);
+    [finalSettings,badIndex] = SensorToSettings(cal,sensor);
     quantized = [];
     perError = [];
     settings = [];
@@ -68,10 +53,10 @@ else
     target = sensor;
     aimfor = target;
     for i = 1:nIterations
-        primary = SensorToPrimary(calStructOBJ,aimfor);
-        [gamut,badIndex] = PrimaryToGamut(calStructOBJ,primary);
-        settings(:,i) = GamutToSettings(calStructOBJ,gamut);
-        [tmpQuantized,primaryE] = SettingsToSensorAcc(calStructOBJ,settings(:,i));
+        primary = SensorToPrimary(cal,aimfor);
+        [gamut,badIndex] = PrimaryToGamut(cal,primary);
+        settings(:,i) = GamutToSettings(cal,gamut);
+        [tmpQuantized,primaryE] = SettingsToSensorAcc(cal,settings(:,i));
         quantized(:,i) = tmpQuantized;
         calError(:,i) = quantized(:,i) - aimfor;
         perError(:,i) = quantized(:,i) - target;

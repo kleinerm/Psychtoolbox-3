@@ -41,6 +41,7 @@
 %          dhb  Protect against case when absorbance is provided directly.
 % 05/26/14 dhb  Dusted off.
 % 6/10/14  npc, dhb  Modifications for accessing calibration data using a @CalStruct object.
+% 7/7/14   dhb  Make calStruct object code conditional on the support routines existing on the path.
 
 %% Clear
 clear; close all;
@@ -257,12 +258,22 @@ switch (whichInputType)
 		% Load light radiance.  We'll use a monitor white.
 		% The original units are watts/sr-m^2-wlinterval.
 		cal = LoadCalFile('PTB3TestCal');
-        [calStructOBJ, inputArgIsACalStructOBJ] = ObjectToHandleCalOrCalStruct(cal); clear 'cal';
-        P_device = calStructOBJ.get('P_device');
-        S_device = calStructOBJ.get('S');
+        
+        % If we're running using BrainardLabToolbox and support CalStruct objects, use those.
+        % But if we don't know about those, use old style direct access of fields in cal
+        % structure.  The test is the existance of the routine ObjectToHandleCalOrCalStruct().
+        if (exist('ObjectToHandleCalOrCalStruct','file'))
+            [calStructOBJ, inputArgIsACalStructOBJ] = ObjectToHandleCalOrCalStruct(cal); clear 'cal';
+            P_device = calStructOBJ.get('P_device');
+            S_device = calStructOBJ.get('S');
+            radianceWattsPerM2Sr = SplineSpd(S_device,sum(P_device,2),S);
+        else
+            P_device = cal.P_device;
+            S_device = cal.S_device;
+        end
         radianceWattsPerM2Sr = SplineSpd(S_device,sum(P_device,2),S);
         clear S_device P_device
-		
+
 		% Find pupil area, needed to get retinal irradiance.  We compute
 		% pupil area based on the luminance of stimulus according to the
         % algorithm specified in the photoreceptors structure.

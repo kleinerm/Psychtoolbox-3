@@ -8,36 +8,51 @@
 % 9/27/08   dhb     Prompt for filename.  Clean up plot labels
 %           dhb     Prompt for gamma method.
 % 5/08/14   npc     Modifications for accessing calibration data using a @CalStruct object.
-
+% 7/9/14    dhb     Made this work with PTB original or new object oriented
+%                   calibration code (available in the BrainardLabToolbox on gitHub).
 
 % Clear
 % clear; close all
 
-%% Load
+% Load
 % Load a calibration file. You can make this with CalibrateMonSpd if
 % you have a supported radiometer.
-fprintf('\nThis is the new-style CalDemo.\n');
 defaultFileName = 'PTB3TestCal';
-[cal, ~] = GetCalibrationStructure('Enter calibration filename',defaultFileName,[]);
-fprintf('Hit enter to continue ...\n');
+thePrompt = sprintf('Enter calibration filename [%s]: ',defaultFileName);
+newFileName = input(thePrompt,'s');
+if (isempty(newFileName))
+    newFileName = defaultFileName;
+end
+fprintf(1,'\nLoading from %s.mat\n',newFileName);
+commandwindow;
+cal = LoadCalFile(newFileName);
+fprintf('Calibration file %s read\n\n',newFileName);
     
+%% Pull out what we need to run this in a fashion that is portable
+% across PTB and the way the Brainard Lab does things (see 
+% BrainardLabToolbox on gitHub if you'd like our code).
 % Specify @CalStruct object that will handle all access to the calibration data.
-[calStructOBJ, inputArgIsACalStructOBJ] = ObjectToHandleCalOrCalStruct(cal);
-% Clear cal, so fields are accessed only via get and set methods of calStruct.
-clear 'cal'
-
-%% Plot what is in the calibration file
-% Print a description of the calibration to the command window.
+if (exist('ObjectToHandleCalOrCalStruct','file'))
+    [calStructOBJ, inputArgIsACalStructOBJ] = ObjectToHandleCalOrCalStruct(cal); clear 'cal';
+    S               = calStructOBJ.get('S');
+    P_device        = calStructOBJ.get('P_device');
+    gammaInput      = calStructOBJ.get('gammaInput');
+    rawGammaInput   = calStructOBJ.get('rawGammaInput');
+    gammaTable      = calStructOBJ.get('gammaTable');
+    rawGammaTable   = calStructOBJ.get('rawGammaTable');
+    OBJStyle = true;
+    DescribeMonCal(calStructOBJ);
+else
+    S               = cal.S_device;
+    P_device        = cal.P_device;
+    gammaInput      = cal.gammaInput;
+    rawGammaInput   = cal.rawdata.rawGammaInput;
+    gammaTable      = cal.gammaTable;
+    rawGammaTable   = cal.rawdata.rawGammaTable;
+    OBJStyle = false;
+    calStructOBJ = cal;
+end
 DescribeMonCal(calStructOBJ);
-
-
-% Get necessary calibration data
-S               = calStructOBJ.get('S');
-P_device        = calStructOBJ.get('P_device');
-gammaInput      = calStructOBJ.get('gammaInput');
-rawGammaInput   = calStructOBJ.get('rawGammaInput');
-gammaTable      = calStructOBJ.get('gammaTable');
-rawGammaTable   = calStructOBJ.get('rawGammaTable');
 
 % Plot underlying spectral data of the three device primaries
 wls = SToWls(S);
@@ -82,14 +97,17 @@ title('Device Gamma');
 % Set inversion method.  See SetGammaMethod for information on available
 % methods.
 defaultGammaMethod = 0;
+commandwindow;
 gammaMethod = input(sprintf('Enter gamma method [%d]:',defaultGammaMethod));
 if (isempty(gammaMethod))
     gammaMethod = defaultGammaMethod;
 end
-
-SetGammaMethod(calStructOBJ,gammaMethod);
-        
-        
+if (OBJStyle)
+    SetGammaMethod(calStructOBJ,gammaMethod);
+else
+    calStructOBJ = SetGammaMethod(calStructOBJ,gammaMethod);
+end
+             
 % Make the desired linear output, then convert.
 linearValues = ones(3,1)*linspace(0,1,256);
 clutValues = PrimaryToSettings(calStructOBJ,linearValues);
@@ -144,7 +162,11 @@ title('Gamma Correction');
 % constant so that luminance is in cd/m2.
 load T_xyz1931
 T_xyz = 683*T_xyz1931;
-SetSensorColorSpace(calStructOBJ,T_xyz,S_xyz1931);
+if (OBJStyle)
+   SetSensorColorSpace(calStructOBJ,T_xyz,S_xyz1931);
+else
+    calStructOBJ = SetSensorColorSpace(calStructOBJ,T_xyz,S_xyz1931);
+end
 
 % Dump out min, mid, and max XYZ settings.  In general
 % the calibration structure records the ambient light so
@@ -186,7 +208,11 @@ fprintf('\tActual settings values passed to driver (via clut) should be %0.2g, %
 % Load cone spectral sensitivities
 load T_cones_ss2
 T_cones = T_cones_ss2;
-SetSensorColorSpace(calStructOBJ,T_cones,S_cones_ss2);
+if (OBJStyle)
+    SetSensorColorSpace(calStructOBJ,T_cones,S_cones_ss2);
+else
+    calStructOBJ = SetSensorColorSpace(calStructOBJ,T_cones,S_cones_ss2);
+end
 
 % Choose monitor white point as a background around which to modulate
 bgPrimary = [0.55 0.45 0.5]';

@@ -29,7 +29,7 @@ if (~isempty(index))
   fitInIndex = find(values_in >= zeroThresh);  
   fit_out(fitOutIndex) = ComputeGammaPolyR(x,values_out(fitOutIndex));
   fit_in = ComputeGammaPolyR(x,values_in(fitInIndex));
-  err = ComputeRMSE(fit_in,measurements(fitInIndex));
+  err = ComputeFSSE(fit_in,measurements(fitInIndex));
 else
   x = [];
   err = 0.0;
