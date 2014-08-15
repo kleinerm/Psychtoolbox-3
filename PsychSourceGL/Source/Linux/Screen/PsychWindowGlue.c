@@ -1405,6 +1405,9 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
         // Need to wait a bit to release the cpu for other threads and processes, then repoll for swap completion.
         PsychUnlockDisplay();
 
+        // Make sure msc is always positive and incrementing (needed, because msc is defined as signed integer):
+        msc &= ~(1ULL << 63);
+
         // Is the current video refresh cycle count 'msc' already at or past the expected count of swap completion?
         if (msc < windowRecord->lastSwaptarget_msc) {
             // No: At time 'ust', the 'msc' was at least one refresh cycle duration away from the earliest possible
@@ -1442,6 +1445,9 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
     }
 
     PsychUnlockDisplay();
+
+    // Make sure msc is always positive and incrementing (needed, because msc is defined as signed integer):
+    msc &= ~(1ULL << 63);
 
     // This disabled codepath implements a workaround for kms drivers which deliver broken/wrong kms pageflip
     // events. It would work on any kms driver, but is currently not needed for any of them (as of all kernel
@@ -1489,6 +1495,10 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
             PsychLockDisplay();
             rc = glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc);
             PsychUnlockDisplay();
+
+            // Make sure msc is always positive and incrementing (needed, because msc is defined as signed integer):
+            msc &= ~(1ULL << 63);
+
             if (rc && (msc >= windowRecord->lastSwaptarget_msc)) {
                 PsychGetAdjustedPrecisionTimerSeconds(&tref);
                 // Threshold selection for stale timestamp reject: If VideoRefreshInterval is already available post
@@ -1621,6 +1631,9 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
         }
         PsychUnlockDisplay();
     }
+
+    // Make sure msc is always positive and incrementing (needed, because msc is defined as signed integer):
+    msc &= ~(1ULL << 63);
 
     // Update cached reference values for future swaps:
     windowRecord->reference_ust = ust;
