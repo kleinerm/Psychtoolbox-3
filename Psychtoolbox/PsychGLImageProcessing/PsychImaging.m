@@ -1189,6 +1189,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 % 26.06.2014  Add support for Native11BitFramebuffer mode, update our docs with what
 %                     we learned about this 10/11 bpc business on HDMI so far. (MK)
+% 16.08.2014  Add experimental 'StereoCrosstalkReduction' support. (MK)
 
 persistent configphase_active;
 persistent reqs;
@@ -2435,6 +2436,19 @@ if userstereomode > 0 || stereoMode > 0
             PsychDataPixx('SetVideoHorizontalSplit', 2);
         end
     end
+end
+
+% Want to reduce crosstalk in stereo presentation modes?
+if ~isempty(find(mystrcmp(reqs, 'StereoCrosstalkReduction')))
+    % Yes: For now we only implement this experimentally as a hidden option
+    % and for attachment of crosstalk reduction shaders to the image processing
+    % chains. This will be suboptimal if other image processing ops are active,
+    % but for early prototyping it should be good enough.
+    %
+    % We only request additional access to the other image channel, as setup
+    % code above and below will already have activated the image processing
+    % chains etc.
+    imagingMode = mor(imagingMode, kPsychNeedOtherStreamInput);
 end
 
 % Display replication needed?
@@ -3701,7 +3715,73 @@ if ~isempty(find(mystrcmp(reqs, 'NormalizedHighresColorRange')))
 end
 % --- End of setup for unclamped, high precision 0-1 range colors ---
 
+% --- Setup stereo crosstalk reduction ---
+floc = find(mystrcmp(reqs, 'StereoCrosstalkReduction'));
+if ~isempty(floc)
+    if winfo.StereoMode == 0
+        Screen('CloseAll');
+        error('PsychImaging task ''StereoCrosstalkReduction'' requested, but no suitable stereomode active?! Aborted.');
+    end
 
+    % Which channel?
+    for x=floc
+        [rows cols]= ind2sub(size(reqs), x);
+        for row=rows'
+            % Shared setup code.
+
+            % Parameter 1 at 3, 2 at 4, ...
+            crosstalkReductionParameter1 = reqs{row, 3};
+            if isempty(crosstalkReductionParameter1)
+                crosstalkReductionParameter1 = 0.0;
+            end
+
+            % Load and build shader from files StereoCrosstalkReductionShader.vert.txt and/or
+            % StereoCrosstalkReductionShader.frag.txt in the shader directory:
+            shader = LoadGLSLProgramFromFiles('StereoCrosstalkReductionShader', 1);
+
+            % Init the shader: Assign mapping of images:
+            glUseProgram(shader);
+
+            % Image1 will contain the input image for the currently processed target eye:
+            glUniform1i(glGetUniformLocation(shader, 'Image1'), 0);
+
+            % Image2 will contain the input image for the to-be-suppressed other eye:
+            glUniform1i(glGetUniformLocation(shader, 'Image2'), 1);
+
+            % Just as example. Assign scalar float parameter crosstalkReductionParameter1 to the
+            % shader variable 'uniform float crossTalkParam1' for use as a input constant in shader:
+            glUniform1f(glGetUniformLocation(shader, 'crossTalkParam1'), crosstalkReductionParameter1);
+
+            % Shader setup done:
+            glUseProgram(0);
+
+            % Setup specific to left eye output:
+            if mystrcmp(reqs{row, 1}, 'LeftView') || mystrcmp(reqs{row, 1}, 'AllViews')
+                % Need to attach to left view:
+                if leftcount > 0
+                    % Need a bufferflip command:
+                    Screen('HookFunction', win, 'PrependBuiltin', 'StereoLeftCompositingBlit', 'Builtin:FlipFBOs', '');
+                end
+                Screen('HookFunction', win, 'PrependShader', 'StereoLeftCompositingBlit', 'StereoCrosstalkReductionShader', shader);
+                Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
+                leftcount = leftcount + 1;
+            end
+
+            % Setup specific to right eye output:
+            if mystrcmp(reqs{row, 1}, 'RightView') || mystrcmp(reqs{row, 1}, 'AllViews')
+                % Need to attach to right view:
+                if rightcount > 0
+                    % Need a bufferflip command:
+                    Screen('HookFunction', win, 'PrependBuiltin', 'StereoRightCompositingBlit', 'Builtin:FlipFBOs', '');
+                end
+                Screen('HookFunction', win, 'PrependShader', 'StereoRightCompositingBlit', 'StereoCrosstalkReductionShader', shader);
+                Screen('HookFunction', win, 'Enable', 'StereoRightCompositingBlit');
+                rightcount = rightcount + 1;
+            end
+        end
+    end
+end
+% --- End of setup for stereo crosstalk reduction ---
 
 % --- FROM HERE ON ONLY OUTPUT FORMATTERS, NOTHING ELSE!!! --- %
 
