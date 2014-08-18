@@ -3261,6 +3261,7 @@ int PsychOSKDGetBeamposition(int screenId)
 				// Lower 16 bits are vertical scanout position (scanline), upper 16 bits are vblank counter.
 				// Offset between crtc's is 0x800, we're only interested in scanline, not vblank counter:
 				beampos = (int) (ReadRegister(0x616340 + (0x800 * headId)) & 0xFFFF);
+				if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG: Head %i, HW-Vblankcount: %i\n", headId, (int) ((ReadRegister(0x616340 + (0x800 * headId)) >> 16) & 0xFFFF));
 			}
 		}
 
