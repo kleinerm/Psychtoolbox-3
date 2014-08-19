@@ -37,7 +37,7 @@ fprintf('Building plugin type %i ...\n\n', mode);
 
 if mode==0
     % Build Screen:
-    % Depends: GStreamer-0.10, libdc1394-2, libusb-1.0
+    % Depends: GStreamer-1.4+, libdc1394-2, libusb-1.0
 
     % Need to build the PsychCocoaGlue.c separately as Objective-C code,
     % whereas the mex call below only compiles C-Code and links it with the
@@ -54,12 +54,36 @@ if mode==0
     % will not cause linker failure at Screen() load time -- Screen
     % continues to work as long as no GStreamer-dependent functions are
     % used. In that case it will abort with a helpful error message:
-    mex -g -v --output ../Projects/MacOSX/build/Screen -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX ...
-        "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgstreamer-0.10.0.dylib \
-        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgstbase-0.10.dylib \
-        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgstapp-0.10.dylib \
-        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgstinterfaces-0.10.dylib \
-        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgstpbutils-0.10.dylib \
+    if 0
+    % GStreamer-0.10 legacy:
+    mex -g -v --output ../Projects/MacOSX/build/Screen -DGST_DISABLE_DEPRECATED -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTB_USE_LEGACY_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX ...
+        "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -weak_library /Library/Frameworks/GStreamer.framework/Versions/0.10/lib/libgstreamer-0.10.0.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/0.10/lib/libgstbase-0.10.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/0.10/lib/libgstapp-0.10.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/0.10/lib/libgstinterfaces-0.10.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/0.10/lib/libgstpbutils-0.10.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/0.10/lib/libgobject-2.0.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/0.10/lib/libgmodule-2.0.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/0.10/lib/libxml2.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/0.10/lib/libgthread-2.0.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/0.10/lib/libglib-2.0.dylib \
+        -weak_library /usr/local/lib/libdc1394.dylib \
+        -framework CoreServices -framework CoreFoundation -framework ApplicationServices -framework CoreAudio -framework OpenGL -framework CoreVideo \
+        -framework IOKit -framework SystemConfiguration -framework Carbon -framework CoreText \
+        -framework Cocoa,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" ...
+        -I/usr/include -I/usr/local/include -I/Library/Frameworks/GStreamer.framework/Versions/0.10/include/gstreamer-0.10 ...
+        -I/Library/Frameworks/GStreamer.framework/Versions/0.10/include/libxml2 -I/Library/Frameworks/GStreamer.framework/Versions/0.10/include/glib-2.0 ...
+        -I/Library/Frameworks/GStreamer.framework/Versions/0.10/lib/glib-2.0/include ...
+        -ICommon/Base -ICommon/Screen -IOSX/Base -IOSX/Screen -IOSX/Fonts -IOSX/EthernetAddress ...
+        "OSX/Screen/*.c" "Common/Screen/*.c" "OSX/Base/*.c" "OSX/Fonts/*FontGlue*.c" "OSX/Fonts/FontInfo.c" "OSX/EthernetAddress/*.c" "Common/Base/*.c" ...
+        -L/usr/lib -L/usr/local/lib ./PsychCocoaGlue.o
+    else
+    % GStreamer 1.4.x+:
+        mex -g -v --output ../Projects/MacOSX/build/Screen -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX ...
+        "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgstreamer-1.0.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgstbase-1.0.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgstapp-1.0.dylib \
+        -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgstpbutils-1.0.dylib \
         -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgobject-2.0.dylib \
         -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libgmodule-2.0.dylib \
         -weak_library /Library/Frameworks/GStreamer.framework/Versions/Current/lib/libxml2.dylib \
@@ -69,12 +93,13 @@ if mode==0
         -framework CoreServices -framework CoreFoundation -framework ApplicationServices -framework CoreAudio -framework OpenGL -framework CoreVideo \
         -framework IOKit -framework SystemConfiguration -framework Carbon -framework CoreText \
         -framework Cocoa,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk' -mmacosx-version-min='10.6'" ...
-        -I/usr/include -I/usr/local/include -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/gstreamer-0.10 ...
+        -I/usr/include -I/usr/local/include -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/gstreamer-1.0 ...
         -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/libxml2 -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/glib-2.0 ...
         -I/Library/Frameworks/GStreamer.framework/Versions/Current/lib/glib-2.0/include ...
         -ICommon/Base -ICommon/Screen -IOSX/Base -IOSX/Screen -IOSX/Fonts -IOSX/EthernetAddress ...
         "OSX/Screen/*.c" "Common/Screen/*.c" "OSX/Base/*.c" "OSX/Fonts/*FontGlue*.c" "OSX/Fonts/FontInfo.c" "OSX/EthernetAddress/*.c" "Common/Base/*.c" ...
         -L/usr/lib -L/usr/local/lib ./PsychCocoaGlue.o
+    end
     
     movefile('./OSX/Screen/PsychCocoaGlue.m', './OSX/Screen/PsychCocoaGlue.c');
 

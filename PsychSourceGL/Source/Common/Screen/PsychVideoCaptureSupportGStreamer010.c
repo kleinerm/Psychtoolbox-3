@@ -3521,7 +3521,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     g_object_set(G_OBJECT(videosink), "enable-last-buffer", FALSE, NULL);
 
     // Get the pad from the final sink for probing width x height of video frames and nominal framerate of video source:	
-    pad = gst_element_get_pad(videosink, "sink");
+    pad = gst_element_get_static_pad(videosink, "sink");
 
     // Install callbacks used by the videosink (appsink) to announce various events:
     gst_app_sink_set_callbacks(GST_APP_SINK(videosink), &videosinkCallbacks, &(vidcapRecordBANK[slotid]), PsychDestroyNotifyCallback);
@@ -3746,7 +3746,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             
         // Get the pad from the src pad of the source for probing width x height
         // of video frames and nominal framerate of video source:	
-        pad = gst_element_get_pad(videosource, "src");
+        pad = gst_element_get_static_pad(videosource, "src");
 
         // Videotrack available?
         if (vidcapRecordBANK[slotid].nrVideoTracks > 0) {

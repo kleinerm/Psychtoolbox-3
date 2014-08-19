@@ -1010,7 +1010,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     gst_caps_unref(colorcaps);
 
     // Get the pad from the final sink for probing width x height of movie frames and nominal framerate of movie:
-    pad = gst_element_get_pad(videosink, "sink");
+    pad = gst_element_get_static_pad(videosink, "sink");
 
     PsychGSProcessMovieContext(&(movieRecordBANK[slotid]), FALSE);
 
