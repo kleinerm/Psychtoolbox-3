@@ -1,5 +1,5 @@
 /*
-    Common/Screen/PsychMovieWritingSupportGStreamer.c
+    Common/Screen/PsychMovieWritingSupportGStreamer010.c
 
     PLATFORMS:
 
@@ -15,6 +15,8 @@
 
     DESCRIPTION:
 
+        THIS IS THE LEGACY VERSION OF GStreamer-0.10 -- It's dead Jim!
+
         Psychtoolbox functions for dealing with GStreamer movie editing.
 
     NOTES:
@@ -23,7 +25,7 @@
 
 #include "Screen.h"
 
-#ifndef PTB_USE_LEGACY_GSTREAMER
+#ifdef PTB_USE_LEGACY_GSTREAMER
 #ifdef PTB_USE_GSTREAMER
 
 // GStreamer includes:
@@ -1081,6 +1083,4 @@ psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, 
 
 // End of surrogate routines.
 #endif
-
-// #ifndef PTB_USE_LEGACY_GSTREAMER
 #endif

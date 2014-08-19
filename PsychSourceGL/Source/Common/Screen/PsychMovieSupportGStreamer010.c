@@ -1,7 +1,7 @@
 /*
-    PsychSourceGL/Source/Common/Screen/PsychMovieSupportGStreamer.c
+    PsychSourceGL/Source/Common/Screen/PsychMovieSupportGStreamer010.c
 
-    PLATFORMS:	All with PTB_USE_GSTREAMER defined.
+    PLATFORMS:	All.
 
     AUTHORS:
 
@@ -12,6 +12,8 @@
         28.11.2010    mk      Wrote it.
 
     DESCRIPTION:
+
+    THIS IS THE LEGACY VERSION OF GStreamer-0.10 -- It's dead Jim!
 
     Psychtoolbox functions for dealing with movies. This is the operating system independent
     version which uses the GStreamer media framework.
@@ -32,8 +34,8 @@
 
 */
 
+#ifdef PTB_USE_LEGACY_GSTREAMER
 #ifdef PTB_USE_GSTREAMER
-#ifndef PTB_USE_LEGACY_GSTREAMER
 
 #include "Screen.h"
 #include <glib.h>
@@ -2445,7 +2447,6 @@ double PsychGSSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool in
     return(oldtime);
 }
 
-// #ifndef PTB_USE_LEGACY_GSTREAMER
-#endif
 // #ifdef PTB_USE_GSTREAMER
+#endif
 #endif

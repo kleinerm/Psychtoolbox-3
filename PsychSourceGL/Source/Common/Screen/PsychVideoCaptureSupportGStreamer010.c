@@ -1,5 +1,5 @@
 /*
-    PsychSourceGL/Source/Common/Screen/PsychVideoCaptureSupportGStreamer.c
+    PsychSourceGL/Source/Common/Screen/PsychVideoCaptureSupportGStreamer010.c
 
     PLATFORMS:
 
@@ -17,6 +17,8 @@
                             for initial release on Linux.
 
     DESCRIPTION:
+
+    THIS IS THE LEGACY VERSION OF GStreamer-0.10 -- It's dead Jim!
 
     This is the videocapture engine based on the free software (LGPL'ed)
     GStreamer multimedia framework. It supports video capture, sound capture and
@@ -55,8 +57,8 @@
 
  */
 
+#ifdef PTB_USE_LEGACY_GSTREAMER
 #ifdef PTB_USE_GSTREAMER
-#ifndef PTB_USE_LEGACY_GSTREAMER
 
 #include "Screen.h"
 #include <float.h>

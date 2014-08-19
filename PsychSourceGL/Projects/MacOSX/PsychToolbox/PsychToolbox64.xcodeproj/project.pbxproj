@@ -738,6 +738,9 @@
 		834260BC0DAD9FA300363E05 /* PsychSerialUnixGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 834260BA0DAD9FA300363E05 /* PsychSerialUnixGlue.c */; };
 		83495CDA09F701B8003973EA /* SCREENLoadCLUT.c in Sources */ = {isa = PBXBuildFile; fileRef = 83495CD909F701B8003973EA /* SCREENLoadCLUT.c */; };
 		83495CDE09F701E9003973EA /* SCREENSetVideoCaptureParameter.c in Sources */ = {isa = PBXBuildFile; fileRef = 83495CDD09F701E9003973EA /* SCREENSetVideoCaptureParameter.c */; };
+		834CE35F19A3082F0094D258 /* PsychMovieSupportGStreamer010.c in Sources */ = {isa = PBXBuildFile; fileRef = 834CE35C19A3082F0094D258 /* PsychMovieSupportGStreamer010.c */; };
+		834CE36019A3082F0094D258 /* PsychMovieWritingSupportGStreamer010.c in Sources */ = {isa = PBXBuildFile; fileRef = 834CE35D19A3082F0094D258 /* PsychMovieWritingSupportGStreamer010.c */; };
+		834CE36119A3082F0094D258 /* PsychVideoCaptureSupportGStreamer010.c in Sources */ = {isa = PBXBuildFile; fileRef = 834CE35E19A3082F0094D258 /* PsychVideoCaptureSupportGStreamer010.c */; };
 		8353D224139DA14400528754 /* PsychMovieWritingSupportGStreamer.c in Sources */ = {isa = PBXBuildFile; fileRef = 8353D223139DA14400528754 /* PsychMovieWritingSupportGStreamer.c */; };
 		8353D225139DA14400528754 /* PsychMovieWritingSupportGStreamer.c in Sources */ = {isa = PBXBuildFile; fileRef = 8353D223139DA14400528754 /* PsychMovieWritingSupportGStreamer.c */; };
 		8353D234139DA34C00528754 /* PsychMovieSupportGStreamer.c in Sources */ = {isa = PBXBuildFile; fileRef = 8353D233139DA34C00528754 /* PsychMovieSupportGStreamer.c */; };
@@ -2207,6 +2210,9 @@
 		8342DA600B0A466000E0A2F4 /* ptbstartlogo.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = ptbstartlogo.h; path = ../../../Source/Common/Screen/ptbstartlogo.h; sourceTree = SOURCE_ROOT; };
 		83495CD909F701B8003973EA /* SCREENLoadCLUT.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENLoadCLUT.c; path = ../../../Source/Common/Screen/SCREENLoadCLUT.c; sourceTree = SOURCE_ROOT; };
 		83495CDD09F701E9003973EA /* SCREENSetVideoCaptureParameter.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENSetVideoCaptureParameter.c; path = ../../../Source/Common/Screen/SCREENSetVideoCaptureParameter.c; sourceTree = SOURCE_ROOT; };
+		834CE35C19A3082F0094D258 /* PsychMovieSupportGStreamer010.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychMovieSupportGStreamer010.c; path = ../../../Source/Common/Screen/PsychMovieSupportGStreamer010.c; sourceTree = "<group>"; };
+		834CE35D19A3082F0094D258 /* PsychMovieWritingSupportGStreamer010.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychMovieWritingSupportGStreamer010.c; path = ../../../Source/Common/Screen/PsychMovieWritingSupportGStreamer010.c; sourceTree = "<group>"; };
+		834CE35E19A3082F0094D258 /* PsychVideoCaptureSupportGStreamer010.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychVideoCaptureSupportGStreamer010.c; path = ../../../Source/Common/Screen/PsychVideoCaptureSupportGStreamer010.c; sourceTree = "<group>"; };
 		83530222117BD37400CCB9AF /* PsychMovieWritingSupport.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychMovieWritingSupport.h; path = ../../../Source/Common/Screen/PsychMovieWritingSupport.h; sourceTree = SOURCE_ROOT; };
 		8353D223139DA14400528754 /* PsychMovieWritingSupportGStreamer.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychMovieWritingSupportGStreamer.c; path = ../../../Source/Common/Screen/PsychMovieWritingSupportGStreamer.c; sourceTree = SOURCE_ROOT; };
 		8353D226139DA31100528754 /* PsychMovieSupportGStreamer.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychMovieSupportGStreamer.h; path = ../../../Source/Common/Screen/PsychMovieSupportGStreamer.h; sourceTree = SOURCE_ROOT; };
@@ -3602,10 +3608,13 @@
 				0F45C2A30B264AE6004ED5F0 /* PsychImagingPipelineSupport.c */,
 				831A458412A6EEC500FFF235 /* PsychMovieSupport.c */,
 				8353D233139DA34C00528754 /* PsychMovieSupportGStreamer.c */,
+				834CE35C19A3082F0094D258 /* PsychMovieSupportGStreamer010.c */,
 				8353D223139DA14400528754 /* PsychMovieWritingSupportGStreamer.c */,
+				834CE35D19A3082F0094D258 /* PsychMovieWritingSupportGStreamer010.c */,
 				8370C71E096A014E00BD4C8C /* PsychTextureSupport.c */,
 				8365A79C09992499006FF0F4 /* PsychVideoCaptureSupport.c */,
 				833D8C9612DBDCB500C3B444 /* PsychVideoCaptureSupportGStreamer.c */,
+				834CE35E19A3082F0094D258 /* PsychVideoCaptureSupportGStreamer010.c */,
 				8320C1B80D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c */,
 				8370C6F60969F23000BD4C8C /* PsychWindowSupport.c */,
 			);
@@ -7365,6 +7374,7 @@
 				F089BC950AD42DF500663D86 /* PsychTimeGlue.c in Sources */,
 				F089BC960AD42DF500663D86 /* PsychVersioning.c in Sources */,
 				F089BC970AD42DF500663D86 /* PsychWindowGlue.c in Sources */,
+				834CE36119A3082F0094D258 /* PsychVideoCaptureSupportGStreamer010.c in Sources */,
 				F089BC980AD42DF500663D86 /* PsychWindowSupport.c in Sources */,
 				F089BC990AD42DF500663D86 /* PsychWindowTextGlue.c in Sources */,
 				F089BC9A0AD42DF500663D86 /* RegisterProject.c in Sources */,
@@ -7397,6 +7407,7 @@
 				F089BCB60AD42DF500663D86 /* SCREENGetMovieImage.c in Sources */,
 				F089BCB70AD42DF500663D86 /* SCREENGetMovieTimeIndex.c in Sources */,
 				F089BCB80AD42DF500663D86 /* SCREENGetTimeList.c in Sources */,
+				834CE35F19A3082F0094D258 /* PsychMovieSupportGStreamer010.c in Sources */,
 				F089BCB90AD42DF500663D86 /* SCREENglMatrixFunctionWrappers.c in Sources */,
 				F089BCBA0AD42DF500663D86 /* SCREENGlobalRect.c in Sources */,
 				F089BCBB0AD42DF500663D86 /* SCREENglPoint.c in Sources */,
@@ -7430,6 +7441,7 @@
 				F089BCD70AD42DF500663D86 /* SCREENTextBounds.c in Sources */,
 				F089BCD80AD42DF500663D86 /* SCREENTextColor.c in Sources */,
 				F089BCD90AD42DF500663D86 /* SCREENTextFont.c in Sources */,
+				834CE36019A3082F0094D258 /* PsychMovieWritingSupportGStreamer010.c in Sources */,
 				833910E9190C8CB50096DDE9 /* PsychScriptingGlue.c in Sources */,
 				F089BCDA0AD42DF500663D86 /* SCREENTextMode.c in Sources */,
 				F089BCDB0AD42DF500663D86 /* SCREENTextModes.c in Sources */,
