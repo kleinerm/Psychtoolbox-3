@@ -25,6 +25,11 @@
 #include "Screen.h"
 #include <float.h>
 
+// MK PORTING
+#ifndef PTB_USE_LEGACY_GSTREAMER
+#undef PTB_USE_GSTREAMER
+#endif
+
 // Forward declaration of internal helper function:
 void PsychDeleteAllCaptureDevices(void);
 

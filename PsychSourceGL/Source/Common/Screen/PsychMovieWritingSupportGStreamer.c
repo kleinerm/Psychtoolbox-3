@@ -33,6 +33,12 @@
 // PsychGetCodecLaunchLineFromString() - Helper function for GStreamer based movie writing.
 // Defined in PsychVideoCaptureSupport.h: psych_bool PsychGetCodecLaunchLineFromString(char* codecSpec, char* launchString);
 
+// MK PORTING - surrogate for the moment until video capture is up and running:
+psych_bool PsychGetCodecLaunchLineFromString(char* codecSpec, char* launchString)
+{
+    return FALSE;
+}
+
 // GStreamer implementation of movie writing support:
 
 // Record which defines all state for a capture device:
@@ -45,6 +51,7 @@ typedef struct {
     GstElement*                                     ptbvideoappsink;
     GstBus*                                         bus;
     GstBuffer*                                      PixMap;
+    GstMapInfo                                      mapinfo;
     guint32                                         CodecType;
     char                                            File[FILENAME_MAX];
     int                                             height;
@@ -177,22 +184,26 @@ unsigned char* PsychMovieCopyPulledPipelineBuffer(int moviehandle, unsigned int*
 
     // Pull next buffer from appsink, if any:
     GstBuffer *videoBuffer = NULL;
+    GstSample *videoSample = NULL;
 
     // Return NULL if appsink doesn't exist or is end-of-stream already:
     if ((pwriterRec->ptbvideoappsink == NULL) || !GST_IS_APP_SINK(pwriterRec->ptbvideoappsink) || gst_app_sink_is_eos(GST_APP_SINK(pwriterRec->ptbvideoappsink))) return(NULL);
 
     // Pull next buffer from appsink:
-    videoBuffer = gst_app_sink_pull_buffer(GST_APP_SINK(pwriterRec->ptbvideoappsink));
+    videoSample = gst_app_sink_pull_sample(GST_APP_SINK(pwriterRec->ptbvideoappsink));
     
     // Double-check: Buffer valid with data?
-    if ((NULL == videoBuffer) || (NULL == GST_BUFFER_DATA(videoBuffer))) return(NULL);
+    if (NULL == videoSample) return(NULL);
+    
+    // Get pointer to buffer - no ownership transfer, no unref needed:
+    videoBuffer = gst_sample_get_buffer(videoSample);
 
     // Valid assign properties:
     *twidth  = pwriterRec->width;
     *theight = pwriterRec->height;
     *numChannels = pwriterRec->numChannels;
     *bitdepth = pwriterRec->bitdepth;
-    *timestamp = (double) GST_BUFFER_TIMESTAMP(videoBuffer) / (double) 1e9;
+    *timestamp = (double) GST_BUFFER_PTS(videoBuffer) / (double) 1e9;
 
     // Copy data into new malloc'ed buffer:
     count = (pwriterRec->width * pwriterRec->height * pwriterRec->numChannels * ((pwriterRec->bitdepth > 8) ? 2 : 1));
@@ -201,11 +212,13 @@ unsigned char* PsychMovieCopyPulledPipelineBuffer(int moviehandle, unsigned int*
     imgdata = (unsigned char*) malloc(count);
     
     // Copy image into it:
-    memcpy(imgdata, GST_BUFFER_DATA(videoBuffer), count);
+    if (gst_buffer_extract(videoBuffer, 0, (gpointer) imgdata, count) < count) {
+        free(imgdata);
+        return(NULL);
+    }
 
-    // Release GstBuffer to appsink for recycling:
-    gst_buffer_unref(videoBuffer);
-    videoBuffer = NULL;
+    // Release to appsink for recycling:
+    gst_sample_unref(videoSample);
 
     return(imgdata);
 }
@@ -213,25 +226,36 @@ unsigned char* PsychMovieCopyPulledPipelineBuffer(int moviehandle, unsigned int*
 unsigned char* PsychGetVideoFrameForMoviePtr(int moviehandle, unsigned int* twidth, unsigned int* theight, unsigned int* numChannels, unsigned int* bitdepth)
 {
     PsychMovieWriterRecordType* pwriterRec = PsychGetMovieWriter(moviehandle, FALSE);
+    size_t size = pwriterRec->width * pwriterRec->height * pwriterRec->numChannels * (pwriterRec->bitdepth / 8);
 
     // Buffer already created?
     if (NULL == pwriterRec->PixMap) {
         // No. Let's create a suitable one:
-        pwriterRec->PixMap = gst_buffer_try_new_and_alloc(pwriterRec->width * pwriterRec->height * pwriterRec->numChannels * (pwriterRec->bitdepth / 8));
+        pwriterRec->PixMap = gst_buffer_new_allocate(NULL, size, NULL);
 
         // Out of memory condition!
         if (NULL == pwriterRec->PixMap) return(NULL);
+        
+        // Make buffers memory writable:
+        if (gst_buffer_make_writable(pwriterRec->PixMap) != pwriterRec->PixMap) {
+            printf("PsychGetVideoFrameForMoviePtr: AIIIIIIIIIIII gst_buffer_make_writable() didn't return same buffer!!!\n");
+            return(NULL);
+        }
     }
 
-    // Double-check:
-    if (NULL == GST_BUFFER_DATA(pwriterRec->PixMap)) return(NULL);
-
+    // Map the buffers memory for writing:
+    if (!gst_buffer_map(pwriterRec->PixMap, &(pwriterRec->mapinfo), GST_MAP_WRITE) || (pwriterRec->mapinfo.maxsize < size)) {
+        // MK PORTING memleak if map succeeded!
+        PsychErrorExitMsg(PsychError_outofMemory, "Failed to map buffer memory when trying to add video data to movie!");
+        return(NULL);
+    }
+    
     *twidth  = pwriterRec->width;
     *theight = pwriterRec->height;
     *numChannels = pwriterRec->numChannels;
     *bitdepth = pwriterRec->bitdepth;
 
-    return((unsigned char*) GST_BUFFER_DATA(pwriterRec->PixMap));
+    return((unsigned char*) pwriterRec->mapinfo.data);
 }
 
 int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_bool isUpsideDown, double frameTimestamp)
@@ -257,16 +281,14 @@ int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_boo
     // Assign frameTimestamp (if valid aka greater than zero) as video buffer timestamp, after conversion into nanoseconds:
     // We can only timestamp if variable framerate recording is enabled, ie., the "videorate" converter element isn't used,
     // as that element chokes on many frameTimestamp's.
-    if (pwriterRec->useVariableFramerate && (frameTimestamp >= 0)) GST_BUFFER_TIMESTAMP(pwriterRec->PixMap) = (psych_uint64) (frameTimestamp * 1e9);
+    if (pwriterRec->useVariableFramerate && (frameTimestamp >= 0)) GST_BUFFER_PTS(pwriterRec->PixMap) = (psych_uint64) (frameTimestamp * 1e9);
     
-    pixptr   = (unsigned char*) GST_BUFFER_DATA(pwriterRec->PixMap);
-    wordptr  = (unsigned int*)  GST_BUFFER_DATA(pwriterRec->PixMap);
-
     // Is Imagebuffer upside-down? If so, need to flip it vertically:
     if (isUpsideDown) {
         // RGBA8 format?
         if ((pwriterRec->numChannels == 4) && (pwriterRec->bitdepth == 8)) {
             // Yes. Can use optimized copy of uint32 units:
+            wordptr  = (unsigned int*)  pwriterRec->mapinfo.data;
             h = pwriterRec->height;
             w = pwriterRec->width;
             wordptr1 = wordptr;
@@ -283,6 +305,7 @@ int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_boo
         else {
             // No. Could be 1, 2, 3, 6 or 8 bytes per pixel. Just use a
             // robust but slightly less efficient byte-wise copy:
+            pixptr = (unsigned char*) pwriterRec->mapinfo.data;
             h = pwriterRec->height;
             w = pwriterRec->width;
             w = w * pwriterRec->numChannels * pwriterRec->bitdepth / 8;
@@ -298,6 +321,9 @@ int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_boo
             }
         }
     }
+
+    // Done writing to this buffer:
+    gst_buffer_unmap(pwriterRec->PixMap, &(pwriterRec->mapinfo));
     
     // Make backup copy of buffer for replication if needed:
     if (frameDurationUnits > 1) {
@@ -364,6 +390,7 @@ psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, 
     float               v;
     unsigned int        n, i;
     GstBuffer*          pushBuffer;
+    GstMapInfo          mapinfo;
 
     // Child protection: Audio writing enabled for this movie?
     if (NULL == pwriterRec->ptbaudioappsrc) {
@@ -375,22 +402,29 @@ psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, 
     n = nrChannels * nrSamples;
 
     // Create GstBuffer for audio data:
-    pushBuffer = gst_buffer_try_new_and_alloc(n * sizeof(float));
+    pushBuffer = gst_buffer_new_allocate(NULL, n * sizeof(float), NULL);
 
     // Out of memory condition!
     if (NULL == pushBuffer) {
-        PsychErrorExitMsg(PsychError_outofMemory, "Out of memory when trying to add audio data to movie! (Part I)");
+        PsychErrorExitMsg(PsychError_outofMemory, "Out of memory when trying to add audio data to movie!");
         return(FALSE);
     }
 
-    // Double-check:
-    if (NULL == GST_BUFFER_DATA(pushBuffer)) {
-        PsychErrorExitMsg(PsychError_outofMemory, "Out of memory when trying to add audio data to movie! (Part II)");
+    // Make buffers memory writable:
+    if (gst_buffer_make_writable(pushBuffer) != pushBuffer) {
+        printf("PsychAddAudioBufferToMovie: AIIIIIIIIIIII gst_buffer_make_writable() didn't return same buffer!!!\n");
+        return(FALSE);
+    }
+
+    // Map the buffers memory for writing:
+    if (!gst_buffer_map(pushBuffer, &mapinfo, GST_MAP_WRITE) || (mapinfo.maxsize < n * sizeof(float))) {
+        // MK PORTING memleak if map succeeded!
+        PsychErrorExitMsg(PsychError_outofMemory, "Failed to map buffer memory when trying to add audio data to movie!");
         return(FALSE);
     }
 
     // Convert and copy sample data:
-    fwordptr = (float*) GST_BUFFER_DATA(pushBuffer);
+    fwordptr = (float*) mapinfo.data;
     for (i = 0; i < n; i++) {
         // Fetch and convert from double to float:
         v = (float) *(buffer++);;
@@ -403,6 +437,8 @@ psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, 
         *(fwordptr++) = v;
     }
 
+    gst_buffer_unmap(pushBuffer, &mapinfo);
+    
     // Add encoded buffer to movie:
     g_signal_emit_by_name(pwriterRec->ptbaudioappsrc, "push-buffer", pushBuffer, &ret);
 

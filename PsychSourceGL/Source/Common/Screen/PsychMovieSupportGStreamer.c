@@ -1,20 +1,21 @@
 /*
     PsychSourceGL/Source/Common/Screen/PsychMovieSupportGStreamer.c
 
-    PLATFORMS:	All with PTB_USE_GSTREAMER defined.
+    PLATFORMS:	All
 
     AUTHORS:
 
-    mario.kleiner@tuebingen.mpg.de      mk  Mario Kleiner
+    mario.kleiner.de@gmail.com      mk  Mario Kleiner
 
     HISTORY:
 
         28.11.2010    mk      Wrote it.
+        20.08.2014    mk      Ported to GStreamer-1.4.x and later.
 
     DESCRIPTION:
 
     Psychtoolbox functions for dealing with movies. This is the operating system independent
-    version which uses the GStreamer media framework.
+    version which uses the GStreamer media framework, version 1.4 or later.
 
     These PsychGSxxx functions are called from the dispatcher in
     Common/Screen/PsychMovieSupport.[hc].
@@ -40,8 +41,9 @@
 #include "PsychMovieSupportGStreamer.h"
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
+#include <gst/video/video.h>
 
-// Need to define this for playbin2 as it is not defined
+// Need to define this for playbin as it is not defined
 // in any header file: (Expected behaviour - not a bug)
 typedef enum {
   GST_PLAY_FLAG_VIDEO         = (1 << 0),
@@ -55,9 +57,6 @@ typedef enum {
   GST_PLAY_FLAG_BUFFERING     = (1 << 8),
   GST_PLAY_FLAG_DEINTERLACE   = (1 << 9)
 } GstPlayFlags;
-
-static const psych_bool oldstyle = FALSE;
-static const psych_bool useNewBusCheck = TRUE;
 
 #define PSYCH_MAX_MOVIES 100
 
@@ -98,14 +97,6 @@ static PsychMovieRecordType movieRecordBANK[PSYCH_MAX_MOVIES];
 static int numMovieRecords = 0;
 static psych_bool firsttime = TRUE;
 
-#if !GLIB_CHECK_VERSION (2, 31, 0)
-#if PSYCH_SYSTEM == PSYCH_OSX
-// This is the function prototype for compile against GLib 2.32.0 "deprecated":
-extern void g_thread_init(gpointer vtable) __attribute__((weak_import));
-extern gboolean g_thread_supported(void) __attribute__((weak_import));
-#endif
-#endif
-
 /*
  *     PsychGSMovieInit() -- Initialize movie subsystem.
  *     This routine is called by Screen's RegisterProject.c PsychModuleInit()
@@ -125,51 +116,10 @@ void PsychGSMovieInit(void)
     // GLib's threading system auto-initializes on first use since that version. We
     // keep it for now to stay compatible to older systems, e.g., Ubuntu 10.04 LTS,
     // conditionally on the GLib version we build against:
-#if !GLIB_CHECK_VERSION (2, 31, 0)
-    
-    #if PSYCH_SYSTEM == PSYCH_WINDOWS
-    // On Windows, we need to delay-load the GLib DLL's. This loading
-    // and linking will automatically happen downstream. However, if delay loading
-    // would fail, we would end up with a crash! For that reason, we try here to
-    // load the DLL, just to probe if the real load/link/bind op later on will
-    // likely succeed. If the following LoadLibrary() call fails and returns NULL,
-    // then we know we would end up crashing. Therefore we'll output some helpful
-    // error-message instead:
-    if ((NULL == LoadLibrary("libgstreamer-0.10-0.dll")) || (NULL == LoadLibrary("libgstapp-0.10-0.dll"))) {
-        // Failed: GLib and its threading support isn't installed. This means that
-        // GStreamer won't work as the relevant .dll's are missing on the system.
-        // We silently return, skpipping the GLib init, as it is completely valid
-        // for a Windows installation to not have GStreamer installed at all.
-        return;
-    }
+    #if !GLIB_CHECK_VERSION (2, 31, 0)
+        // Initialize GLib's threading system early:
+        if (!g_thread_supported()) g_thread_init(NULL);
     #endif
-
-    #if PSYCH_SYSTEM == PSYCH_OSX
-    // On OSX we also delay-load GLib and other GStreamer related stuff, a process
-    // called "weak-linking" in Apple terminology. Use of the -weak_library XXX option
-    // in our Makefile marks GLib, GStreamer et al. as weak-linked. The dynamic linker
-    // will link the libraries at first use and resolve all symbols. If a symbol can't
-    // get resolved, because libraries can't get loaded (missing on system, wrong permissions
-    // et.c) or are too old and don't contain the symbol, the linker will define the symbol
-    // as a NULL function pointer.
-    //
-    // Test here if GLib's g_thread_init() symbol is defined and take it as indicator
-    // that GLib could get linked properly.
-    if (g_thread_init == NULL) {
-        // Failed: GLib and its threading support isn't installed. This means that
-        // GStreamer won't work as the relevant libraries are missing on the system.
-        // We silently return, skpipping the GLib init, as it is completely valid
-        // for a OSX installation to not have GStreamer installed at all. On first active
-        // use of a GStreamer dependent function, Screen() will detect lack of GStreamer
-        // and error-out with a helpful error message to the user.
-        return;
-    }
-    #endif
-    
-    // Initialize GLib's threading system early:
-    if (!g_thread_supported()) g_thread_init(NULL);
-
-#endif
 
     return;
 }
@@ -197,49 +147,26 @@ int PsychGSProcessMovieContext(PsychMovieRecordType* movie, psych_bool doWait)
     tnow = tdeadline;
     tdeadline+=2.0;
 
-    if (useNewBusCheck) {
-        // New style:
-        bus = gst_pipeline_get_bus(GST_PIPELINE(movie->theMovie));
-        msg = NULL;
+    // New style:
+    bus = gst_pipeline_get_bus(GST_PIPELINE(movie->theMovie));
+    msg = NULL;
 
-        // If doWait, try to perform iterations until 2 seconds elapsed or at least one event handled:
-        while (doWait && (tnow < tdeadline) && !gst_bus_have_pending(bus)) {
-            // Update time:
-            PsychYieldIntervalSeconds(0.010);
-            PsychGetAdjustedPrecisionTimerSeconds(&tnow);
-        }
+    // If doWait, try to perform iterations until 2 seconds elapsed or at least one event handled:
+    while (doWait && (tnow < tdeadline) && !gst_bus_have_pending(bus)) {
+        // Update time:
+        PsychYieldIntervalSeconds(0.010);
+        PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+    }
 
+    msg = gst_bus_pop(bus);
+    while (msg) {
+        workdone = TRUE;
+        PsychMovieBusCallback(bus, msg, movie);
+        gst_message_unref(msg);
         msg = gst_bus_pop(bus);
-        while (msg) {
-            workdone = TRUE;
-            PsychMovieBusCallback(bus, msg, movie);
-            gst_message_unref(msg);
-            msg = gst_bus_pop(bus);
-        }
-
-        gst_object_unref(bus);
     }
-    else {
-        // Old style: Doesn't work with Octave 3.8 + GUI on Linux:
-        loop = movie->MovieContext;
-        if (NULL == loop) return(0);
 
-        // If doWait, try to perform iterations until 2 seconds elapsed or at least one event handled:
-        while (doWait && (tnow < tdeadline)) {
-            // Perform non-blocking work iteration:
-            if (g_main_context_iteration(g_main_loop_get_context(loop), false)) {
-                workdone = TRUE;
-                break;
-            }
-
-            // Update time:
-            PsychYieldIntervalSeconds(0.010);
-            PsychGetAdjustedPrecisionTimerSeconds(&tnow);
-        }
-
-        // Perform work iterations of the event context as long as events are available, but don't block:
-        while (g_main_context_iteration(g_main_loop_get_context(loop), false)) { workdone = TRUE; }
-    }
+    gst_object_unref(bus);
 
     return(workdone);
 }
@@ -351,9 +278,6 @@ static gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
                         if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Rewinding video in reverse playback failed!\n");
                     }
                 }
-
-                // Block until seek completed, failed, or timeout of 10 seconds reached:
-                // MK: Actually don't! This can cause deadlocks with some movies, e.g., our DualDiscs.mov with sound: gst_element_get_state(movie->theMovie, NULL, NULL, (GstClockTime) (10 * 1e9));
             }
 
             break;
@@ -420,45 +344,6 @@ static gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
     }
 
     return TRUE;
-}
-
-/* Video data arrived callback: Purely for documentation, because only used if oldstyle == true, that is *never*. */
-static gboolean PsychHaveVideoDataCallback(GstPad *pad, GstBuffer *buffer, gpointer dataptr)
-{
-    unsigned int alloc_size;
-    PsychMovieRecordType* movie = (PsychMovieRecordType*) dataptr;
-
-    PsychLockMutex(&movie->mutex);
-
-    if (movie->rate == 0) {
-        PsychUnlockMutex(&movie->mutex);
-        return(TRUE);
-    }
-
-    /* Perform onetime-init for the buffer */
-    if (NULL == movie->imageBuffer) {
-        // Allocate the buffer:
-        alloc_size = buffer->size;
-        if ((int) buffer->size < movie->width * movie->height * 4) {
-            alloc_size = movie->width * movie->height * 4;
-            printf("PTB-DEBUG: Overriding unsafe buffer size of %d bytes with %d bytes.\n", buffer->size, alloc_size);
-        }
-        // printf("PTB-DEBUG: Allocating image buffer of %d bytes.\n", alloc_size);
-        movie->imageBuffer = calloc(1, alloc_size);
-    }
-
-    // Copy new image data to our buffer:
-    memcpy(movie->imageBuffer, buffer->data, buffer->size);
-    movie->frameAvail++;
-    // printf("PTB-DEBUG: New frame %d [size %d] %lf.\n", movie->frameAvail, buffer->size, (double) buffer->timestamp / (double) 1e9);
-
-    // Fetch presentation timestamp and convert to seconds:
-    movie->pts = (double) buffer->timestamp / (double) 1e9;
-
-    PsychSignalCondition(&movie->condition);
-    PsychUnlockMutex(&movie->mutex);
-
-    return(TRUE);
 }
 
 /* Called at each end-of-stream event at end of playback: */
@@ -564,7 +449,7 @@ static GstAppSinkCallbacks videosinkCallbacks = {
     PsychNewPrerollCallback,
     PsychNewBufferCallback,
     PsychNewBufferListCallback,
-    {NULL}
+    NULL
 };
 
 /*
@@ -585,12 +470,12 @@ static GstAppSinkCallbacks videosinkCallbacks = {
  */
 void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle, int asyncFlag, int specialFlags1, int pixelFormat, int maxNumberThreads, char* movieOptions)
 {
+    GValue          item = G_VALUE_INIT;
     GstCaps         *colorcaps = NULL;
     GstElement      *theMovie = NULL;
     GstElement      *videocodec = NULL;
     GMainLoop       *MovieContext = NULL;
     GstBus          *bus = NULL;
-    GstFormat       fmt;
     GstElement      *videosink = NULL;
     GstElement      *audiosink;
     GstElement      *actual_audiosink;
@@ -716,11 +601,11 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 
     // Create movie playback pipeline:
     if (TRUE) {
-        // Use playbin2:
-        theMovie = gst_element_factory_make ("playbin2", "ptbmovieplaybackpipeline");
+        // Use playbin:
+        theMovie = gst_element_factory_make("playbin", "ptbmovieplaybackpipeline");
         movieRecordBANK[slotid].theMovie = theMovie;
         if (theMovie == NULL) {
-            printf("PTB-ERROR: Failed to create GStreamer playbin2 element! Your GStreamer installation is\n");
+            printf("PTB-ERROR: Failed to create GStreamer playbin element! Your GStreamer installation is\n");
             printf("PTB-ERROR: incomplete or damaged and misses at least the gst-plugins-base set of plugins!\n");
             PsychErrorExitMsg(PsychError_system, "Opening the movie failed. GStreamer configuration problem.");
         }
@@ -835,18 +720,6 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         printf("LAUNCHLINE[%p]: %s\n", videosink, movieLocation);
     }
 
-    if (!useNewBusCheck) {
-        // Assign message context, message bus and message callback for
-        // the pipeline to report events and state changes, errors etc.:
-        MovieContext = g_main_loop_new (NULL, FALSE);
-        movieRecordBANK[slotid].MovieContext = MovieContext;
-        bus = gst_pipeline_get_bus(GST_PIPELINE(theMovie));
-        // Didn't work: g_signal_connect (G_OBJECT(bus), "message::error", G_CALLBACK(PsychMessageErrorCB), NULL);
-        //              g_signal_connect (G_OBJECT(bus), "message::warning", G_CALLBACK(PsychMessageErrorCB), NULL);
-        gst_bus_add_watch(bus, PsychMovieBusCallback, &(movieRecordBANK[slotid]));
-        gst_object_unref(bus);
-    }
-
     // Assign a fakesink named "ptbsink0" as destination video-sink for
     // all video content. This allows us to get hold of the video frame buffers for
     // converting them into PTB OpenGL textures:
@@ -887,8 +760,8 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     if (win && (win->gfxcaps & kPsychGfxCapUYVYTexture) && (movieRecordBANK[slotid].pixelFormat == 5)) {
         // GPU supports handling and decoding of UYVY type yuv textures: We use these,
         // as they are more efficient to decode and handle by typical video codecs:
-        colorcaps = gst_caps_new_simple ("video/x-raw-yuv",
-                                         "format", GST_TYPE_FOURCC, GST_MAKE_FOURCC('U', 'Y', 'V', 'Y'),
+        colorcaps = gst_caps_new_simple ("video/x-raw",
+                                         "format", G_TYPE_STRING, "UYVY",
                                          NULL);
 
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use UYVY YCrCb 4:2:2 textures for optimized decode and rendering.\n", slotid);
@@ -898,8 +771,8 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         // Ask for I420 decoded video. This is the native output format of HuffYUV and H264 codecs, so using it
         // allows to skip colorspace conversion in GStreamer. The format is also highly efficient for texture
         // creation and upload to the GPU, but requires a fragment shader for colorspace conversion during drawing:
-        colorcaps = gst_caps_new_simple ("video/x-raw-yuv",
-                                         "format", GST_TYPE_FOURCC, GST_MAKE_FOURCC('I', '4', '2', '0'),
+        colorcaps = gst_caps_new_simple ("video/x-raw",
+                                         "format", G_TYPE_STRING, "I420",
                                          NULL);
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use YUV-I420 planar textures for optimized decode and rendering.\n", slotid);
     }
@@ -915,8 +788,9 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         // throws away the unwanted chroma planes, causing possible extra overhead for discarding this data. We leave
         // the option in anyway, because there may be codecs (possibly in future GStreamer versions) that can take
         // advantage of Y800 format for higher performance.
-        colorcaps = gst_caps_new_simple ("video/x-raw-yuv",
-                                         "format", GST_TYPE_FOURCC, (movieRecordBANK[slotid].pixelFormat == 8) ? GST_MAKE_FOURCC('Y', '8', '0', '0') : GST_MAKE_FOURCC('I', '4', '2', '0'),
+        colorcaps = gst_caps_new_simple ("video/x-raw",
+                                         "format", G_TYPE_STRING,
+                                         (movieRecordBANK[slotid].pixelFormat == 8) ? "Y800" : "I420",
                                          NULL);
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use Y8-I800 planar textures for optimized decode and rendering.\n", slotid);
     }
@@ -937,13 +811,8 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 
         if (movieRecordBANK[slotid].pixelFormat == 4) {
             // Use RGBA8 format:
-            colorcaps = gst_caps_new_simple("video/x-raw-rgb",
-                                            "bpp", G_TYPE_INT, 32,
-                                            "depth", G_TYPE_INT, 32,
-                                            "alpha_mask", G_TYPE_INT, 0x000000FF,
-                                            "red_mask", G_TYPE_INT,   0x0000FF00,
-                                            "green_mask", G_TYPE_INT, 0x00FF0000,
-                                            "blue_mask", G_TYPE_INT,  0xFF000000,
+            colorcaps = gst_caps_new_simple("video/x-raw",
+                                            "format", G_TYPE_STRING, "BGRA",
                                             NULL);
             if ((PsychPrefStateGet_Verbosity() > 3) && (pixelFormat == 5)) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures due to lack of YUV-422 texture support on GPU.\n", slotid);
             if ((PsychPrefStateGet_Verbosity() > 3) && (pixelFormat == 6)) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures due to lack of YUV-I420 support on GPU.\n", slotid);
@@ -954,9 +823,8 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         
         if ((movieRecordBANK[slotid].pixelFormat == 1) && !(specialFlags1 & 512)) {
             // Use LUMINANCE8 format:
-            colorcaps = gst_caps_new_simple("video/x-raw-gray",
-                                            "bpp", G_TYPE_INT, 8,
-                                            "depth", G_TYPE_INT, 8,
+            colorcaps = gst_caps_new_simple("video/x-raw",
+                                            "format", G_TYPE_STRING, "GRAY8",
                                             NULL);
             if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use L8 luminance textures.\n", slotid);
         }
@@ -964,37 +832,12 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         // Psychtoolbox proprietary 16 bpc pixelformat for 1 or 3 channel data?
         if ((pixelFormat == 1 || pixelFormat == 3) && (specialFlags1 & 512)) {
             // Yes. Need to always decode as RGB8 24 bpp: Texture creation will then handle this further.
-            colorcaps = gst_caps_new_simple("video/x-raw-rgb",
-                                            "bpp", G_TYPE_INT, 24,
-                                            "depth", G_TYPE_INT, 24,
-                                            "red_mask", G_TYPE_INT,   0x00FF0000,
-                                            "green_mask", G_TYPE_INT, 0x0000FF00,
-                                            "blue_mask", G_TYPE_INT,  0x000000FF,
-                                            "endianess", G_TYPE_INT,  4321,
+            colorcaps = gst_caps_new_simple("video/x-raw",
+                                            "format", G_TYPE_STRING, "RGB",
                                             NULL);
             movieRecordBANK[slotid].pixelFormat = pixelFormat;
         }
     }
-
-    /*
-    // Old style method: Only left here for documentation to show how one can create
-    // video sub-pipelines via bin's and connect them to each other via ghostpads: 
-
-    GstElement *videobin = gst_bin_new ("video_output_bin");
-    GstElement *videocon = gst_element_factory_make ("ffmpegcolorspace", "color_converter");
-    gst_bin_add_many(GST_BIN(videobin), videocon, videosink, NULL);
-
-    GstPad *ghostpad = gst_ghost_pad_new("Video_Ghostsink", gst_element_get_pad(videocon, "sink"));
-    gst_element_add_pad(videobin, ghostpad);
-
-    gst_element_link_filtered(videocon, videosink, colorcaps);
-
-    // Assign our special videobin as video-sink of the pipeline:
-    g_object_set(G_OBJECT(theMovie), "video-sink", videobin, NULL);
-    */
-
-    // New style method: Leaves the freedom of choice of color converter (if any)
-    // to the auto-plugger.
 
     // Assign 'colorcaps' as caps to our videosink. This marks the videosink so
     // that it can only receive video image data in the format defined by colorcaps,
@@ -1008,7 +851,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     gst_caps_unref(colorcaps);
 
     // Get the pad from the final sink for probing width x height of movie frames and nominal framerate of movie:
-    pad = gst_element_get_pad(videosink, "sink");
+    pad = gst_element_get_static_pad(videosink, "sink");
 
     PsychGSProcessMovieContext(&(movieRecordBANK[slotid]), FALSE);
 
@@ -1031,25 +874,10 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         }
     }
 
-    // Should we preroll / preload?
-    // MK: Actually, *always* preroll via transition to PAUSED. The other path
-    // is seldomly used, therefore not well tested, bound to cause regressions on
-    // future code changes. Also just readying the pipeline causes problems with
-    // movie duration queries and other property queries, so probably not worth
-    // the trouble...
-    // The preloadSecs parameter is used instead above to control buffering behaviour.
-    if (TRUE || (preloadSecs > 0) || (preloadSecs == -1)) {
-        // Preload / Preroll the pipeline:
-        if (!PsychMoviePipelineSetState(theMovie, GST_STATE_PAUSED, 30.0)) {
-            PsychGSProcessMovieContext(&(movieRecordBANK[slotid]), TRUE);
-            PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed I. Reason given above.");
-        }
-    } else {
-        // Ready the pipeline:
-        if (!PsychMoviePipelineSetState(theMovie, GST_STATE_READY, 30.0)) {
-            PsychGSProcessMovieContext(&(movieRecordBANK[slotid]), TRUE);
-            PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed II. Reason given above.");
-        }
+    // Preload / Preroll the pipeline:
+    if (!PsychMoviePipelineSetState(theMovie, GST_STATE_PAUSED, 30.0)) {
+        PsychGSProcessMovieContext(&(movieRecordBANK[slotid]), TRUE);
+        PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed I. Reason given above.");
     }
 
     // Set video decoder parameters:
@@ -1062,10 +890,11 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     it = gst_bin_iterate_recurse(GST_BIN(theMovie));
     done = FALSE;
     videocodec = NULL;
-
+    
     while (!done) {
-        switch (gst_iterator_next(it, (void**) &videocodec)) {
+        switch (gst_iterator_next(it, &item)) {
             case GST_ITERATOR_OK:
+                videocodec = g_value_peek_pointer(&item);
                 if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In pipeline: Child element name: %s\n", (const char*) gst_object_get_name(GST_OBJECT(videocodec)));
                 // Our current match critera for video codecs: Having at least one of the properties "max-threads" or "lowres":
                 if ((g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads")) ||
@@ -1075,8 +904,8 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
                     if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Found video decoder element %s.\n", (const char*) gst_object_get_name(GST_OBJECT(videocodec)));
                     done = TRUE;
                 } else {
-                    gst_object_unref(videocodec);
                     videocodec = NULL;
+                    g_value_reset(&item);
                 }
             break;
 
@@ -1089,11 +918,11 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
             break;
                 
             default:
-                if (videocodec) gst_object_unref(videocodec);
                 videocodec = NULL;
         }
     }
 
+    g_value_unset(&item);
     gst_iterator_free(it);
     it = NULL;
 
@@ -1131,25 +960,6 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Playback for movie %i will skip B-Frames during video decoding for higher speed.\n", slotid);
     }
     
-    // Setup of override decode resolution requested by usercode via specialFlags1 flags?
-    /*
-    // MK: DISABLED: This is broken! A pipeline that uses these flags and lowres settings just
-    // hangs, probably due to some negotiation failure between codec and appsink.
-    // Anyway, the web says that the benefit of the 'lowres' flag is minimal at best, and that it
-    // may get removed or is implemented inefficiently on most codecs, so probably this is not a big loss.
-    // Leave code snippet here for documentation of the approach in case we need it for other codec settings:
-    if (videocodec && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "lowres")) && (specialFlags1 & (0))) {
-        // Yes. Set it:
-        if (specialFlags1 & 0) g_object_set(G_OBJECT(videocodec), "lowres", 1, NULL);
-        if (specialFlags1 & 0) g_object_set(G_OBJECT(videocodec), "lowres", 2, NULL);
-        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i decodes video at %s resolution to reduce load.\n", slotid, (specialFlags1 & 0) ? "quarter" : "half");
-        
-        g_object_get(G_OBJECT(videocodec), "lowres", &tmpint, NULL);
-        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i decodes video at lowres setting %i.\n", slotid, tmpint);
-    }
-    */
-    
-    
     // Multi-threaded codec and usercode requests setup? If so, set its multi-threading behaviour:
     // By default many codecs would only use one single thread on any system, even if they are multi-threading capable.
     if (needCodecSetup && (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "max-threads")) && (maxNumberThreads > -1)) {
@@ -1181,33 +991,8 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
                 printf("PTB-INFO: Movie playback for movie %i uses video decoder with a current auto-detected optimal number of processing threads.\n", slotid);
             }
         }
-        
-        // Explicitely request multi-threaded decoding with both slice-threading and frame-threading.
-        // Most recent GStreamer releases and the SDK disable frame-threading and only use slice-threading
-        // because frame-threading can cause decoding artifacts and higher decode latency on some formats.
-        // However, the former is a risk we're willing to take for much higher decoding performance wrt.
-        // slice threading only - and our users have to opt-in into multi-threading anyway, so they aren't
-        // taken by surprise. The latter is a non-issue for our playback app, as we're not doing some live
-        // video conferencing or similar.
-        // Check if property for threading strategy selection is supported, as we have to implement it first
-        // in upstream GStreamer project as of December 2012, ie., will only be available sometime in 2013:
-        if (g_object_class_find_property(G_OBJECT_GET_CLASS(videocodec), "thread-types")) {
-            // Yes. Set it up. From http://ffmpeg.org/doxygen/trunk/libavcodec_2avcodec_8h.html
-            // FF_THREAD_SLICE == 2, FF_THREAD_FRAME == 1, so select both by setting = 2 + 1
-            if (getenv("PSYCH_GST_THREAD_TYPES")) {
-                // User env override: Whatever it wants:
-                g_object_set(G_OBJECT(videocodec), "thread-types", (int) atoi(getenv("PSYCH_GST_THREAD_TYPES")), NULL);
-                if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Setting video decoder to use threading method %s for parallel decoding.\n", getenv("PSYCH_GST_THREAD_TYPES"));
-            }
-            else {
-                // Default: Enable both slice and frame threading:
-                g_object_set(G_OBJECT(videocodec), "thread-types", 2 + 1, NULL);
-                if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Setting video decoder to use frame-threading and slice-threading for parallel decoding.\n");
-            }
-        }
-        else if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Video decoder does not support selection of parallel decoding mode via 'thread-types' property.\n");
     }
-    
+
     // Bring codec back to paused state, so it is ready to do its job with the
     // new codec parameters set:
     if (needCodecSetup) {
@@ -1218,8 +1003,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         }
     }
 
-    // Release reference to videocodec:
-    if (videocodec) gst_object_unref(videocodec);
+    // NULL out videocodec, we must not unref it, as we didn't aquire or own private ref:
     videocodec = NULL;
 
     // Query number of available video and audio tracks in movie:
@@ -1238,13 +1022,8 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     PsychInitMutex(&movieRecordBANK[slotid].mutex);
     PsychInitCondition(&movieRecordBANK[slotid].condition, NULL);
 
-    if (oldstyle) {
-        // Install the probe callback for reception of video frames from engine at the sink-pad itself:
-        gst_pad_add_buffer_probe(pad, G_CALLBACK(PsychHaveVideoDataCallback), &(movieRecordBANK[slotid]));
-    } else {
-        // Install callbacks used by the videosink (appsink) to announce various events:
-        gst_app_sink_set_callbacks(GST_APP_SINK(videosink), &videosinkCallbacks, &(movieRecordBANK[slotid]), PsychDestroyNotifyCallback);
-    }
+    // Install callbacks used by the videosink (appsink) to announce various events:
+    gst_app_sink_set_callbacks(GST_APP_SINK(videosink), &videosinkCallbacks, &(movieRecordBANK[slotid]), PsychDestroyNotifyCallback);
 
     // Assign harmless initial settings for fps and frame size:
     rate1 = 0;
@@ -1255,7 +1034,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     if (movieRecordBANK[slotid].nrVideoTracks > 0) {
         // Yes: Query size and framerate of movie:
         peerpad = gst_pad_get_peer(pad);
-        caps=gst_pad_get_negotiated_caps(peerpad);
+        caps=gst_pad_get_current_caps(peerpad);
         if (caps) {
             str=gst_caps_get_structure(caps,0);
 
@@ -1302,8 +1081,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // Compute basic movie properties - Duration and fps as well as image size:
     
     // Retrieve duration in seconds:
-    fmt = GST_FORMAT_TIME;
-    if (gst_element_query_duration(theMovie, &fmt, &length_format)) {
+    if (gst_element_query_duration(theMovie, GST_FORMAT_TIME, &length_format)) {
         // This returns nsecs, so convert to seconds:
     	movieRecordBANK[slotid].movieduration = (double) length_format / (double) 1e9;
         //printf("PTB-DEBUG: Duration of movie %i [%s] is %lf seconds.\n", slotid, moviename, movieRecordBANK[slotid].movieduration);
@@ -1326,7 +1104,8 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         // Yes: If a specific preloadSecs and a valid fps playback framerate is available, we
         // set the maximum buffer capacity to the number of frames corresponding to the given 'preloadSecs'.
         // Otherwise we set it to zero, which means "unlimited capacity", ie., until RAM full:
-        gst_app_sink_set_max_buffers(GST_APP_SINK(videosink), ((movieRecordBANK[slotid].fps > 0) && (preloadSecs >= 0)) ? ((int) (movieRecordBANK[slotid].fps * preloadSecs) + 1) : 0);
+        gst_app_sink_set_max_buffers(GST_APP_SINK(videosink),
+                                     ((movieRecordBANK[slotid].fps > 0) && (preloadSecs >= 0)) ? ((int) (movieRecordBANK[slotid].fps * preloadSecs) + 1) : 0);
     }
     else {
         // No: Only allow one queued buffer before dropping, to avoid optimal audio-video sync:
@@ -1515,6 +1294,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     double          rate;
     double          targetdelta, realdelta, frames;
     GstBuffer       *videoBuffer = NULL;
+    GstSample       *videoSample = NULL;
     gint64          bufferIndex;
     double          deltaT = 0;
     GstEvent        *event;
@@ -1522,6 +1302,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     double          tNow;
     double          preT, postT;
     unsigned char*  releaseMemPtr = NULL;
+    GstMapInfo      mapinfo;
 
     if (!PsychIsOnscreenWindow(win)) {
         PsychErrorExitMsg(PsychError_user, "Need onscreen window ptr!!!");
@@ -1605,14 +1386,6 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             return(TRUE);
         }
 
-        // Is this the special case of a movie without video, but only sound? In that case
-        // we always return a 'false' because there ain't no image to return. We check this
-        // indirectly - If the imageBuffer is NULL then the video callback hasn't been called.
-        if (oldstyle && (NULL == movieRecordBANK[moviehandle].imageBuffer)) {
-            PsychUnlockMutex(&movieRecordBANK[moviehandle].mutex);
-            return(FALSE);
-        }
-
         // None available. Any chance there will be one in the future?
         if (((rate != 0) && gst_app_sink_is_eos(GST_APP_SINK(movieRecordBANK[moviehandle].videosink)) && (movieRecordBANK[moviehandle].loopflag == 0)) ||
             ((rate == 0) && (movieRecordBANK[moviehandle].endOfFetch))) {
@@ -1625,7 +1398,6 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         else {
             // No new frame available yet:
             PsychUnlockMutex(&movieRecordBANK[moviehandle].mutex);
-            //printf("PTB-DEBUG: NO NEW FRAME\n");
 
             // In the polling check, we return with statue "no new frame yet" aka false:
             if (checkForImage < 2) return(FALSE);
@@ -1653,7 +1425,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             ((0 == rate) && !movieRecordBANK[moviehandle].preRollAvail)) {
             // Wait timed out after 0.5 secs.
             PsychUnlockMutex(&movieRecordBANK[moviehandle].mutex);
-            if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: No frame received after timed blocking wait of of 0.5 seconds.\n");
+            if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: No frame received after timed blocking wait of 0.5 seconds.\n");
 
             // This is the end of a "up to 0.5 seconds blocking wait" style checkForImage of type 2.
             // Return "no new frame available yet". The calling code will retry the wait until its own
@@ -1680,97 +1452,102 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     movieRecordBANK[moviehandle].preRollAvail = 0;
 
     // Perform texture fetch & creation:
-    if (oldstyle) {
-        // Reset frame available flag:
-        movieRecordBANK[moviehandle].frameAvail = 0;
+    // Active playback mode?
+    if (0 != rate) {
+        // Active playback mode:
+        if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Pulling buffer from videosink, %d buffers decoded and queued.\n", movieRecordBANK[moviehandle].frameAvail);
 
-        // This will retrieve an OpenGL compatible pointer to the pixel data and assign it to our texmemptr:
-        if (out_texture) out_texture->textureMemory = (GLuint*) movieRecordBANK[moviehandle].imageBuffer;
+        // Clamp frameAvail to maximum queue capacity, unless queue capacity is zero == "unlimited" capacity:
+        if (((int) gst_app_sink_get_max_buffers(GST_APP_SINK(movieRecordBANK[moviehandle].videosink)) < movieRecordBANK[moviehandle].frameAvail) &&
+            (gst_app_sink_get_max_buffers(GST_APP_SINK(movieRecordBANK[moviehandle].videosink)) > 0)) {
+            movieRecordBANK[moviehandle].frameAvail = (int) gst_app_sink_get_max_buffers(GST_APP_SINK(movieRecordBANK[moviehandle].videosink));
+        }
+
+        // One less frame available after our fetch:
+        movieRecordBANK[moviehandle].frameAvail--;
+
+        // We can unlock early, thanks to videosink's internal buffering: XXX FIXME: Perfectly race-free to do this before the pull?
+        PsychUnlockMutex(&movieRecordBANK[moviehandle].mutex);
+
+        // This will pull the oldest video buffer from the videosink. It would block if none were available,
+        // but that won't happen as we wouldn't reach this statement if none were available. It would return
+        // NULL if the stream would be EOS or the pipeline off, but that shouldn't ever happen:
+        videoSample = gst_app_sink_pull_sample(GST_APP_SINK(movieRecordBANK[moviehandle].videosink));
     } else {
-        // Active playback mode?
-        if (0 != rate) {
-            // Active playback mode:
-            if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Pulling buffer from videosink, %d buffers decoded and queued.\n", movieRecordBANK[moviehandle].frameAvail);
+        // Passive fetch mode: Use prerolled buffers after seek:
+        // These are available even after eos...
 
-            // Clamp frameAvail to maximum queue capacity, unless queue capacity is zero == "unlimited" capacity:
-            if (((int) gst_app_sink_get_max_buffers(GST_APP_SINK(movieRecordBANK[moviehandle].videosink)) < movieRecordBANK[moviehandle].frameAvail) &&
-                (gst_app_sink_get_max_buffers(GST_APP_SINK(movieRecordBANK[moviehandle].videosink)) > 0)) {
-                movieRecordBANK[moviehandle].frameAvail = (int) gst_app_sink_get_max_buffers(GST_APP_SINK(movieRecordBANK[moviehandle].videosink));
-            }
-
-            // One less frame available after our fetch:
-            movieRecordBANK[moviehandle].frameAvail--;
-
-            // We can unlock early, thanks to videosink's internal buffering: XXX FIXME: Perfectly race-free to do this before the pull?
-            PsychUnlockMutex(&movieRecordBANK[moviehandle].mutex);
-
-            // This will pull the oldest video buffer from the videosink. It would block if none were available,
-            // but that won't happen as we wouldn't reach this statement if none were available. It would return
-            // NULL if the stream would be EOS or the pipeline off, but that shouldn't ever happen:
-            videoBuffer = gst_app_sink_pull_buffer(GST_APP_SINK(movieRecordBANK[moviehandle].videosink));
-        } else {
-            // Passive fetch mode: Use prerolled buffers after seek:
-            // These are available even after eos...
-
-            // We can unlock early, thanks to videosink's internal buffering: XXX FIXME: Perfectly race-free to do this before the pull?
-            PsychUnlockMutex(&movieRecordBANK[moviehandle].mutex);
-
-            videoBuffer = gst_app_sink_pull_preroll(GST_APP_SINK(movieRecordBANK[moviehandle].videosink));
-        }
-
-        if (videoBuffer) {
-            // Assign pts presentation timestamp in pipeline stream time and convert to seconds:
-            movieRecordBANK[moviehandle].pts = (double) GST_BUFFER_TIMESTAMP(videoBuffer) / (double) 1e9;
-
-            // Iff forward playback is active and a target timeindex was specified and this buffer is not at least of
-            // that timeindex and at least one more buffer is queued, then skip this buffer, pull the next one and check
-            // if that one meets the required pts:
-            while ((rate > 0) && (timeindex >= 0) && (movieRecordBANK[moviehandle].pts < timeindex) && (movieRecordBANK[moviehandle].frameAvail > 0)) {
-                // Tell user about reason for rejecting this buffer:
-                if (PsychPrefStateGet_Verbosity() > 5) {
-                    printf("PTB-DEBUG: Fast-Skipped buffer id %i with pts %f secs < targetpts %f secs.\n", (int) GST_BUFFER_OFFSET(videoBuffer), movieRecordBANK[moviehandle].pts, timeindex);
-                }
-
-                // Decrement available frame counter:
-                PsychLockMutex(&movieRecordBANK[moviehandle].mutex);
-                movieRecordBANK[moviehandle].frameAvail--;
-                PsychUnlockMutex(&movieRecordBANK[moviehandle].mutex);
-
-                // Return the unused buffer to queue:
-                gst_buffer_unref(videoBuffer);
-
-                // Pull the next one. As frameAvail was > 0 at check-time, we know there is at least one pending,
-                // so there shouldn't be a danger of hanging here:
-                videoBuffer = gst_app_sink_pull_buffer(GST_APP_SINK(movieRecordBANK[moviehandle].videosink));
-                if (NULL == videoBuffer) {
-                    // This should never happen!
-                    printf("PTB-ERROR: No new video frame received in gst_app_sink_pull_buffer skipper loop! Something's wrong. Aborting fetch.\n");
-                    return(FALSE);
-                }
-
-                // Assign updated pts presentation timestamp of new candidate in pipeline stream time and convert to seconds:
-                movieRecordBANK[moviehandle].pts = (double) GST_BUFFER_TIMESTAMP(videoBuffer) / (double) 1e9;
-
-                // Recheck if this is a better candidate...
-            }
-
-            // Ok, now we really have a suitable videoBuffer -- or the best we could get:
-
-            // Compute timedelta and bufferindex:
-            if (GST_CLOCK_TIME_IS_VALID(GST_BUFFER_DURATION(videoBuffer)))
-                deltaT = (double) GST_BUFFER_DURATION(videoBuffer) / (double) 1e9;
-            bufferIndex = GST_BUFFER_OFFSET(videoBuffer);
-
-            if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: pts %f secs, dT %f secs, bufferId %i.\n", movieRecordBANK[moviehandle].pts, deltaT, (int) bufferIndex);
-
-            // Assign pointer to videoBuffer's data directly: Avoids one full data copy compared to oldstyle method.
-            if (out_texture) out_texture->textureMemory = (GLuint*) GST_BUFFER_DATA(videoBuffer);
-        } else {
-            printf("PTB-ERROR: No new video frame received in gst_app_sink_pull_buffer! Something's wrong. Aborting fetch.\n");
-            return(FALSE);
-        }
-        if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: ...done.\n");
+        // We can unlock early, thanks to videosink's internal buffering: XXX FIXME: Perfectly race-free to do this before the pull?
+        PsychUnlockMutex(&movieRecordBANK[moviehandle].mutex);
+        videoSample = gst_app_sink_pull_preroll(GST_APP_SINK(movieRecordBANK[moviehandle].videosink));
     }
+
+    // Sample received?
+    if (videoSample) {
+        // Get pointer to buffer - no ownership transfer, no unref needed:
+        videoBuffer = gst_sample_get_buffer(videoSample);
+
+        // Assign pts presentation timestamp in pipeline stream time and convert to seconds:
+        movieRecordBANK[moviehandle].pts = (double) GST_BUFFER_PTS(videoBuffer) / (double) 1e9;
+
+        // Iff forward playback is active and a target timeindex was specified and this buffer is not at least of
+        // that timeindex and at least one more buffer is queued, then skip this buffer, pull the next one and check
+        // if that one meets the required pts:
+        while ((rate > 0) && (timeindex >= 0) && (movieRecordBANK[moviehandle].pts < timeindex) && (movieRecordBANK[moviehandle].frameAvail > 0)) {
+            // Tell user about reason for rejecting this buffer:
+            if (PsychPrefStateGet_Verbosity() > 5) {
+                printf("PTB-DEBUG: Fast-Skipped buffer id %i with pts %f secs < targetpts %f secs.\n", (int) GST_BUFFER_OFFSET(videoBuffer), movieRecordBANK[moviehandle].pts, timeindex);
+            }
+
+            // Decrement available frame counter:
+            PsychLockMutex(&movieRecordBANK[moviehandle].mutex);
+            movieRecordBANK[moviehandle].frameAvail--;
+            PsychUnlockMutex(&movieRecordBANK[moviehandle].mutex);
+
+            // Return the unused sample to queue:
+            gst_sample_unref(videoSample);
+
+            // Pull the next one. As frameAvail was > 0 at check-time, we know there is at least one pending,
+            // so there shouldn't be a danger of hanging here:
+            videoSample = gst_app_sink_pull_sample(GST_APP_SINK(movieRecordBANK[moviehandle].videosink));
+            if (NULL == videoSample) {
+                // This should never happen!
+                printf("PTB-ERROR: No new video frame received in gst_app_sink_pull_sample skipper loop! Something's wrong. Aborting fetch.\n");
+                return(FALSE);
+            }
+
+            // Get pointer to buffer - no ownership transfer, no unref needed:
+            videoBuffer = gst_sample_get_buffer(videoSample);
+
+            // Assign updated pts presentation timestamp of new candidate in pipeline stream time and convert to seconds:
+            movieRecordBANK[moviehandle].pts = (double) GST_BUFFER_PTS(videoBuffer) / (double) 1e9;
+
+            // Recheck if this is a better candidate...
+        }
+
+        // Compute timedelta and bufferindex:
+        if (GST_CLOCK_TIME_IS_VALID(GST_BUFFER_DURATION(videoBuffer)))
+            deltaT = (double) GST_BUFFER_DURATION(videoBuffer) / (double) 1e9;
+        bufferIndex = GST_BUFFER_OFFSET(videoBuffer);
+
+        if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: pts %f secs, dT %f secs, bufferId %i.\n", movieRecordBANK[moviehandle].pts, deltaT, (int) bufferIndex);
+
+        // Assign pointer to videoBuffer's data directly:
+        if (out_texture) {
+            // Map the buffers memory for reading:
+            if (!gst_buffer_map(videoBuffer, &mapinfo, GST_MAP_READ)) {
+                printf("PTB-ERROR: Failed to map video data of movie frame! Something's wrong. Aborting fetch.\n");
+                gst_sample_unref(videoSample);
+                videoBuffer = NULL;
+                return(FALSE);
+            }
+            out_texture->textureMemory = (GLuint*) mapinfo.data;
+        }
+    } else {
+        printf("PTB-ERROR: No new video frame received in gst_app_sink_pull_sample! Something's wrong. Aborting fetch.\n");
+        return(FALSE);
+    }
+    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: ...done.\n");
 
     PsychGetAdjustedPrecisionTimerSeconds(&tNow);
     if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Start of frame query to decode completion: %f msecs.\n", (tNow - tStart) * 1000.0);
@@ -1811,8 +1588,13 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
                 out_texture->textureMemory = (GLuint*) PsychDCDebayerFrame((unsigned char*) (out_texture->textureMemory), movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height, movieRecordBANK[moviehandle].bitdepth);
 
                 // Return failure if Debayering did not work:
-                if (out_texture->textureMemory == NULL) return(FALSE);
-                
+                if (out_texture->textureMemory == NULL) {
+                    gst_buffer_unmap(videoBuffer, &mapinfo);
+                    gst_sample_unref(videoSample);
+                    videoBuffer = NULL;
+                    return(FALSE);
+                }
+
                 releaseMemPtr = (unsigned char*) out_texture->textureMemory;
                 out_texture->nrchannels = 3; // Always 3 for RGB.
             #else
@@ -2080,13 +1862,10 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     }
 
     // Unlock.
-    if (oldstyle) {
-        PsychUnlockMutex(&movieRecordBANK[moviehandle].mutex);
-    } else {
-        gst_buffer_unref(videoBuffer);
-        videoBuffer = NULL;
-    }
-    
+    gst_buffer_unmap(videoBuffer, &mapinfo);
+    gst_sample_unref(videoSample);
+    videoBuffer = NULL;
+
     // Manually advance movie time, if in fetch mode:
     if (0 == rate) {
         // We are in manual fetch mode: Need to manually advance movie to next
@@ -2095,7 +1874,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         preT = PsychGSGetMovieTimeIndex(moviehandle);
         event = gst_event_new_step(GST_FORMAT_BUFFERS, 1, 1.0, TRUE, FALSE);
         // Send the seek event *only* to the videosink. This follows recommendations from GStreamer SDK tutorial 13 (Playback speed) to
-        // not send to high level playbin2 itself, as that would propagate to all sinks and trigger multiple seeks. While this was not
+        // not send to high level playbin itself, as that would propagate to all sinks and trigger multiple seeks. While this was not
         // ever a problem in the past on Linux or with upstream GStreamer, it caused deadlocks, timeouts and seek failures when done
         // with the GStreamer SDK on some movie files that have audio tracks, e.g., our standard demo movie! Sending only to videosink
         // fixes this problem:
@@ -2276,7 +2055,7 @@ int PsychGSPlaybackRate(int moviehandle, double playbackrate, int loop, double s
 
             if (audiosink) {
                 actual_audiosink = NULL;
-                actual_audiosink = (gst_element_implements_interface(audiosink, GST_TYPE_CHILD_PROXY)) ? ((GstElement*) gst_child_proxy_get_child_by_index(GST_CHILD_PROXY(audiosink), 0)) : audiosink;
+                actual_audiosink = (GST_IS_CHILD_PROXY(audiosink)) ? ((GstElement*) gst_child_proxy_get_child_by_index(GST_CHILD_PROXY(audiosink), 0)) : audiosink;
                 if (actual_audiosink) {
                     if (g_object_class_find_property(G_OBJECT_GET_CLASS(actual_audiosink), "device")) {
                         pstring = NULL;
@@ -2338,9 +2117,8 @@ void PsychGSExitMovies(void)
  */
 double PsychGSGetMovieTimeIndex(int moviehandle)
 {
-    GstElement		*theMovie = NULL;
-    GstFormat		fmt;
-    gint64		pos_nsecs;
+    GstElement  *theMovie = NULL;
+    gint64      pos_nsecs;
 
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
@@ -2352,8 +2130,7 @@ double PsychGSGetMovieTimeIndex(int moviehandle)
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. No movie associated with this handle !!!");
     }
 
-    fmt = GST_FORMAT_TIME;
-    if (!gst_element_query_position(theMovie, &fmt, &pos_nsecs)) {
+    if (!gst_element_query_position(theMovie, GST_FORMAT_TIME, &pos_nsecs)) {
         if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Could not query position in movie %i in seconds. Returning zero.\n", moviehandle);
         pos_nsecs = 0;
     }
