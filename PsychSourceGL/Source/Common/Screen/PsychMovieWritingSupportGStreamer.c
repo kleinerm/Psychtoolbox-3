@@ -54,6 +54,8 @@ typedef struct {
     unsigned int                                    numChannels;
     unsigned int                                    bitdepth;
     psych_bool                                      useVariableFramerate;
+    double                                          frameTime;
+    double                                          frameTimeDelta;
 } PsychMovieWriterRecordType;
 
 static PsychMovieWriterRecordType moviewriterRecordBANK[PSYCH_MAX_MOVIEWRITERDEVICES];
@@ -241,7 +243,7 @@ unsigned char* PsychGetVideoFrameForMoviePtr(int moviehandle, unsigned int* twid
     // Map the buffers memory for writing:
     memset(&(pwriterRec->mapinfo), 0, sizeof(GstMapInfo));
 
-    if (!gst_buffer_map(pwriterRec->PixMap, &(pwriterRec->mapinfo), GST_MAP_WRITE) || (pwriterRec->mapinfo.maxsize < size)) {
+    if (!gst_buffer_map(pwriterRec->PixMap, &(pwriterRec->mapinfo), GST_MAP_WRITE) || (pwriterRec->mapinfo.maxsize < size) || (pwriterRec->mapinfo.size < size)) {
         // MK PORTING memleak if map succeeded!
         PsychErrorExitMsg(PsychError_outofMemory, "Failed to map buffer memory when trying to add video data to movie!");
         return(NULL);
@@ -279,6 +281,14 @@ int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_boo
     // We can only timestamp if variable framerate recording is enabled, ie., the "videorate" converter element isn't used,
     // as that element chokes on many frameTimestamp's.
     if (pwriterRec->useVariableFramerate && (frameTimestamp >= 0)) GST_BUFFER_PTS(pwriterRec->PixMap) = (psych_uint64) (frameTimestamp * 1e9);
+
+    // Invalid frameTimestamps (e.g., from Screen('AddFrameToMovie')?
+    if (frameTimestamp == -1) {
+        // Yes. Need to create synthetic one, as GStreamer-1.x appsrc doesn't automatically
+        // create meaningful ts anymore:
+        GST_BUFFER_PTS(pwriterRec->PixMap) = (psych_uint64) (pwriterRec->frameTime * 1e9);
+        pwriterRec->frameTime += pwriterRec->frameTimeDelta;
+    }
     
     // Is Imagebuffer upside-down? If so, need to flip it vertically:
     if (isUpsideDown) {
@@ -327,11 +337,8 @@ int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_boo
         refBuffer = gst_buffer_copy(pwriterRec->PixMap);
     }
 
-    // Add encoded buffer to movie:
-    g_signal_emit_by_name(pwriterRec->ptbvideoappsrc, "push-buffer", pwriterRec->PixMap, &ret);
-
-    // Unref it - it is now owned and memory managed by the pipeline:
-    gst_buffer_unref(pwriterRec->PixMap);
+    // Add encoded buffer to movie: The function takes our reference, so we *must not unref the buffer*
+    ret = gst_app_src_push_buffer(GST_APP_SRC(pwriterRec->ptbvideoappsrc), pwriterRec->PixMap);
 
     // Drop our handle to it, so we can allocate a new one on demand:
     pwriterRec->PixMap = NULL;
@@ -349,11 +356,17 @@ int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_boo
             // Create a new copy:
             curBuffer = gst_buffer_copy(refBuffer);
             
+            // Synthesize proper pts if caller doesn't provide a meaningful frameTimestamp:
+            if (frameTimestamp == -1) {
+                // Yes. Need to create synthetic one, as GStreamer-1.x appsrc doesn't automatically
+                // create meaningful ts anymore:
+                GST_BUFFER_PTS(curBuffer) = (psych_uint64) (pwriterRec->frameTime * 1e9);
+                pwriterRec->frameTime += pwriterRec->frameTimeDelta;
+            }
+
             // Add copied buffer to movie:
-            g_signal_emit_by_name(pwriterRec->ptbvideoappsrc, "push-buffer", curBuffer, &ret);
-    
-            // Unref it - it is now owned and memory managed by the pipeline:
-            gst_buffer_unref(curBuffer);
+            // The function takes our reference, so we *must not unref the buffer*
+            ret = gst_app_src_push_buffer(GST_APP_SRC(pwriterRec->ptbvideoappsrc), curBuffer);
             curBuffer = NULL;
 
             // One less...
@@ -387,7 +400,7 @@ psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, 
     float               v;
     unsigned int        n, i;
     GstBuffer*          pushBuffer;
-    GstMapInfo          mapinfo;
+    GstMapInfo          mapinfo = GST_MAP_INFO_INIT;
 
     // Child protection: Audio writing enabled for this movie?
     if (NULL == pwriterRec->ptbaudioappsrc) {
@@ -414,7 +427,7 @@ psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, 
     }
 
     // Map the buffers memory for writing:
-    if (!gst_buffer_map(pushBuffer, &mapinfo, GST_MAP_WRITE) || (mapinfo.maxsize < n * sizeof(float))) {
+    if (!gst_buffer_map(pushBuffer, &mapinfo, GST_MAP_WRITE) || (mapinfo.maxsize < n * sizeof(float)) || (mapinfo.size < n * sizeof(float))) {
         // MK PORTING memleak if map succeeded!
         PsychErrorExitMsg(PsychError_outofMemory, "Failed to map buffer memory when trying to add audio data to movie!");
         return(FALSE);
@@ -436,11 +449,9 @@ psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, 
 
     gst_buffer_unmap(pushBuffer, &mapinfo);
     
-    // Add encoded buffer to movie:
-    g_signal_emit_by_name(pwriterRec->ptbaudioappsrc, "push-buffer", pushBuffer, &ret);
+    // Add encoded buffer to movie: Must not unref it, as app-src takes our ref!
+    ret = gst_app_src_push_buffer(GST_APP_SRC(pwriterRec->ptbaudioappsrc), pushBuffer);
 
-    // Unref it - it is now owned and memory managed by the pipeline:
-    gst_buffer_unref(pushBuffer);
     pushBuffer = NULL;
 
     if (ret != GST_FLOW_OK) {
@@ -605,6 +616,8 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
     pwriterRec->bitdepth = (unsigned int) bitdepth;
     pwriterRec->eos     = FALSE;
     pwriterRec->useVariableFramerate = FALSE;
+    pwriterRec->frameTime = 0.0;
+    pwriterRec->frameTimeDelta = (framerate > 0.0) ? (1.0 / framerate) : 0.0;
 
     // If no movieoptions specified, create default string for default
     // codec selection and configuration:
@@ -737,25 +750,25 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
             switch (numChannels) {
                 case 1:
                     // 8 bpc gray or raw:
-                    sprintf(capsString, "video/x-raw-gray, bpp=(int)8, depth=(int)8");
+                    sprintf(capsString, "video/x-raw, format=GRAY8");
                     // If the ffenc_huffyuv or ffenc_ljpeg encoder is in use, we need some special caps after the colorspace converter to get lossless
                     // encoding of 8 bpc gray/raw images. See case 3 below for explanation.
-                    if (strstr(codecString, "ffenc_huffyuv") || strstr(codecString, "ffenc_ljpeg")) sprintf(capsForCodecString, "ffmpegcolorspace ! capsfilter caps=\"video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, red_mask=(int)65280, green_mask=(int)16711680, blue_mask=(int)-16777216\" ! ");
+                    if (strstr(codecString, "enc_huffyuv") || strstr(codecString, "enc_ljpeg")) sprintf(capsForCodecString, "videoconvert ! capsfilter caps=\"video/x-raw, format=BGRA, bpp=(int)32, depth=(int)32, endianess=(int)4321, red_mask=(int)65280, green_mask=(int)16711680, blue_mask=(int)-16777216\" ! ");
                     break;
                 case 3:
                     // 8 bpc RGB8:
-                    sprintf(capsString, "video/x-raw-rgb, bpp=(int)24, depth=(int)24, endianess=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255");
+                    sprintf(capsString, "video/x-raw, format=RGB, bpp=(int)24, depth=(int)24, endianess=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255");
                     
                     // If the ffenc_huffyuv or ffenc_ljpeg encoder is in use, we need some special caps after the colorspace converter. These make sure that
                     // the huffyuv encoder actually performs RGB8 24 bpp lossless encoding of the video, instead of YUV422p encoding with near-lossless
                     // luminance, but lossy chrominance encoding (spatial subsampling). This is derived from the code of libavcodec's huffyuv
                     // element aka ffenc_huffyuv and testing on GStreamer command line. We only care about lossless encoding if huffyuv or ffenc_ljpeg is in
                     // use, because we assume one would only use huffyuv if the intention would be to get lossless encoding:
-                    if (strstr(codecString, "ffenc_huffyuv") || strstr(codecString, "ffenc_ljpeg")) sprintf(capsForCodecString, "ffmpegcolorspace ! capsfilter caps=\"video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, red_mask=(int)65280, green_mask=(int)16711680, blue_mask=(int)-16777216\" ! ");
+                    if (strstr(codecString, "enc_huffyuv") || strstr(codecString, "enc_ljpeg")) sprintf(capsForCodecString, "videoconvert ! capsfilter caps=\"video/x-raw, format=BGRA, bpp=(int)32, depth=(int)32, endianess=(int)4321, red_mask=(int)65280, green_mask=(int)16711680, blue_mask=(int)-16777216\" ! ");
                     break;
                 case 4:
                     // 8 bpc RGBA8:
-                    sprintf(capsString, "video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, alpha_mask=(int)-16777216, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255");
+                    sprintf(capsString, "video/x-raw, format=ARGB, bpp=(int)32, depth=(int)32, endianess=(int)4321, alpha_mask=(int)-16777216, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255");
                     // Note: At least if lossless encoding via ffenc_huffyuv is requested, this will actually cause a lossless encoding
                     // of the RGB8 color channels, but complete loss of the A8 alpha channel! Why? Because libavcodec's huffyuv encoder
                     // only supports RGB32 or RGB24, but GStreamer's ffenc_huffyuv plugin maps RGBA8 to RGBA, which is not supported by huffyuv,
@@ -763,7 +776,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
                     
                     // ffenc_ljpeg needs manual setup of component swizzling, so it actually encodes RGB8 lossless instead of using I420 encoding.
                     // Note: The alpha channel is accepted as input, but lost/thrown away during encoding, just as with huffyuv!
-                    if (strstr(codecString, "ffenc_ljpeg")) sprintf(capsForCodecString, "ffmpegcolorspace ! capsfilter caps=\"video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, red_mask=(int)65280, green_mask=(int)16711680, blue_mask=(int)-16777216\" ! ");
+                    if (strstr(codecString, "enc_ljpeg")) sprintf(capsForCodecString, "videoconvert ! capsfilter caps=\"video/x-raw, format=BGRA, bpp=(int)32, depth=(int)32, endianess=(int)4321, red_mask=(int)65280, green_mask=(int)16711680, blue_mask=(int)-16777216\" ! ");
                     
                     break;
                 default:
@@ -773,7 +786,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
             
             // y4menc as codec/muxer? This is essentially YUV raw encoding. Assume user wants near-lossless operation. This only accepts YUV
             // input, so try to convert to Y42B format so encoding loses as few information as possible:
-            if (strstr(codecString, "y4menc")) sprintf(capsForCodecString, "ffmpegcolorspace ! capsfilter caps=\"video/x-raw-yuv, format=(fourcc)Y42B\" ! ");
+            if (strstr(codecString, "y4menc")) sprintf(capsForCodecString, "videoconvert ! capsfilter caps=\"video/x-raw, format=Y42B\" ! ");
         }
         else {
             // 16 bpc format:
@@ -785,14 +798,14 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
                 // [red1,green1,blue1][red2,green2,blue2] == [RH,RL, GH][GL,BH,BL] -- Abuse two neighbour pixels to encode one 16 bpc RGB pixel.
                 // For 1 channel 16 bpp gray, the layout is:
                 // [red1,green1,blue1][red2,green2,blue2] == [GH1, GL1, GH2][GL2, GH3, GL3] == Abuse two neighbour pixels to encode 3 grayscale pixels.
-                sprintf(capsString, "video/x-raw-rgb, bpp=(int)24, depth=(int)24, endianess=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255");
+                sprintf(capsString, "video/x-raw, format=RGB, bpp=(int)24, depth=(int)24, endianess=(int)4321, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255");
                 
                 // If the ffenc_huffyuv or ffenc_ljpeg encoder is in use, we need some special caps after the colorspace converter. These make sure that
                 // the huffyuv encoder actually performs RGB8 24 bpp lossless encoding of the video, instead of YUV422p encoding with near-lossless
                 // luminance, but lossy chrominance encoding (spatial subsampling). This is derived from the code of libavcodec's huffyuv
                 // element aka ffenc_huffyuv and testing on GStreamer command line. We only care about lossless encoding if huffyuv or ffenc_ljpeg is in
                 // use, because we assume one would only use huffyuv if the intention would be to get lossless encoding:
-                if (strstr(codecString, "ffenc_huffyuv") || strstr(codecString, "ffenc_ljpeg")) sprintf(capsForCodecString, "ffmpegcolorspace ! capsfilter caps=\"video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, red_mask=(int)65280, green_mask=(int)16711680, blue_mask=(int)-16777216\" ! ");
+                if (strstr(codecString, "enc_huffyuv") || strstr(codecString, "enc_ljpeg")) sprintf(capsForCodecString, "videoconvert ! capsfilter caps=\"video/x-raw, format=BGRA, bpp=(int)32, depth=(int)32, endianess=(int)4321, red_mask=(int)65280, green_mask=(int)16711680, blue_mask=(int)-16777216\" ! ");
 
                 switch (numChannels) {
                     case 1:
@@ -834,7 +847,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
                 }
                 
                 // None of the known lossless codecs in use? May want to warn user about possible royal screwups:
-                if (!strstr(codecString, "ffenc_huffyuv") && !strstr(codecString, "ffenc_ljpeg") && !strstr(codecString, "ffenc_sgi") &&
+                if (!strstr(codecString, "enc_huffyuv") && !strstr(codecString, "enc_ljpeg") && !strstr(codecString, "enc_sgi") &&
                     (PsychPrefStateGet_Verbosity() > 1)) {
                     printf("PTB-WARNING: You don't use one of the known good lossless video codecs huffyuv, ffenc_sgi or maybe ffenc_ljpeg? Note that\n");
                     printf("PTB-WARNING: use of even a slightly lossy codec for 16 bpc UsePTB16BPC format will royally screw up your movie!\n");
@@ -866,7 +879,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
                 
                 if (numChannels == 1) {
                     // 16 bit gray encoding of luminance16 or raw16 sensor data:
-                    sprintf(capsString, "video/x-raw-gray, bpp=(int)16, depth=(int)16, endianness=(int)4321");
+                    sprintf(capsString, "video/x-raw, format=GRAY_16LE, bpp=(int)16, depth=(int)16, endianness=(int)4321");
                 }
                 else {
                     printf("PTB-ERROR: Unsupported number of color channels %i for standard compliant 16 bpc video encoding! Only 1-channel encoding of 16 bpc luminance or raw data is supported.\n", numChannels);
@@ -878,12 +891,12 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
         // Build final launch string:
         if (moviefile && (strlen(moviefile) > 0)) {
             // Actual recording into moviefile requested:
-            sprintf(launchString, "appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps=\"%s, width=(int)%i, height=(int)%i, framerate=%i/10000 \" ! %s%s%s%s ! filesink name=ptbfilesink async=0 location=%s ", capsString, width, height, ((int) (framerate * 10000 + 0.5)), (feedbackString) ? feedbackString : "", videorateString, capsForCodecString, codecString, moviefile);
+            sprintf(launchString, "appsrc name=ptbvideoappsrc format=3 do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 caps=\"%s, width=(int)%i, height=(int)%i, framerate=%i/10000 \" ! %s%s%s%s ! filesink name=ptbfilesink async=0 location=%s ", capsString, width, height, ((int) (framerate * 10000 + 0.5)), (feedbackString) ? feedbackString : "", videorateString, capsForCodecString, codecString, moviefile);
         }
         else {
             // No writing of moviefile, just (ab)use GStreamer "recording" pipeline for image processing on behalf
             // of, e.g., the libdc1394 video capture engine:
-            sprintf(launchString, "appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps=\"%s, width=(int)%i, height=(int)%i, framerate=%i/10000 \" ! %s ", capsString, width, height, ((int) (framerate * 10000 + 0.5)), (feedbackString) ? feedbackString : "");
+            sprintf(launchString, "appsrc name=ptbvideoappsrc format=3 do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 caps=\"%s, width=(int)%i, height=(int)%i, framerate=%i/10000 \" ! %s ", capsString, width, height, ((int) (framerate * 10000 + 0.5)), (feedbackString) ? feedbackString : "");
         }
     }
 
@@ -1002,8 +1015,8 @@ int PsychFinalizeNewMovieFile(int movieHandle)
     PsychGSProcessMovieContext(pwriterRec, FALSE);
 
     // Send EOS signal downstream:
-    g_signal_emit_by_name(pwriterRec->ptbvideoappsrc, "end-of-stream", &ret);
-    if (pwriterRec->ptbaudioappsrc) g_signal_emit_by_name(pwriterRec->ptbaudioappsrc, "end-of-stream", &ret);
+    ret = gst_app_src_end_of_stream(GST_APP_SRC(pwriterRec->ptbvideoappsrc));
+    if (pwriterRec->ptbaudioappsrc) ret = gst_app_src_end_of_stream(GST_APP_SRC(pwriterRec->ptbaudioappsrc));
 
     // Wait for eos flag to turn TRUE due to bus callback receiving the
     // downstream EOS event that we just sent out:

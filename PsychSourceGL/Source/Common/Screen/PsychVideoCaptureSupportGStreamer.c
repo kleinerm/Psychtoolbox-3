@@ -2227,7 +2227,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 
 			// If no "AudioSource=" was provided then configure for appsrc feeding
 			// from Screen('AddAudioBufferToMovie') into movie:
-			if (strlen(audiosrc) == 0) sprintf(audiosrc, "appsrc name=ptbaudioappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 caps=\"audio/x-raw-float, endianness=(int)1234, width=(int)32, channels=(int)%i, rate=(int)%i\" ! audioconvert ! queue", nrAudioChannels, audioFreq);
+			if (strlen(audiosrc) == 0) sprintf(audiosrc, "appsrc name=ptbaudioappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 caps=\"audio/x-raw, format=F32LE, endianness=(int)1234, width=(int)32, channels=(int)%i, rate=(int)%i\" ! audioconvert ! queue", nrAudioChannels, audioFreq);
 
 			// We add bits to feed from 'audiosrc' into 'audiocodec' into the common muxer of video and audio stream:
 			sprintf(outCodecName, " %s ! ptbvideomuxer0. %s ! %s ! ptbvideomuxer0. %s name=ptbvideomuxer0 ", videocodec, audiosrc, audiocodec, muxer);            
@@ -3895,7 +3895,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     double tstart, tend;
     int nrdropped = 0;
     unsigned char* input_image = NULL;
-    GstMapInfo      mapinfo = GST_MAP_INFO_INIT;
+    GstMapInfo mapinfo = GST_MAP_INFO_INIT;
 
     // Make sure GStreamer is ready:
     PsychGSCheckInit("videocapture");
