@@ -29,15 +29,10 @@
 // GStreamer includes:
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
+#include <gst/app/gstappsrc.h>
 
 // PsychGetCodecLaunchLineFromString() - Helper function for GStreamer based movie writing.
 // Defined in PsychVideoCaptureSupport.h: psych_bool PsychGetCodecLaunchLineFromString(char* codecSpec, char* launchString);
-
-// MK PORTING - surrogate for the moment until video capture is up and running:
-psych_bool PsychGetCodecLaunchLineFromString(char* codecSpec, char* launchString)
-{
-    return FALSE;
-}
 
 // GStreamer implementation of movie writing support:
 
@@ -244,12 +239,14 @@ unsigned char* PsychGetVideoFrameForMoviePtr(int moviehandle, unsigned int* twid
     }
 
     // Map the buffers memory for writing:
+    memset(&(pwriterRec->mapinfo), 0, sizeof(GstMapInfo));
+
     if (!gst_buffer_map(pwriterRec->PixMap, &(pwriterRec->mapinfo), GST_MAP_WRITE) || (pwriterRec->mapinfo.maxsize < size)) {
         // MK PORTING memleak if map succeeded!
         PsychErrorExitMsg(PsychError_outofMemory, "Failed to map buffer memory when trying to add video data to movie!");
         return(NULL);
     }
-    
+
     *twidth  = pwriterRec->width;
     *theight = pwriterRec->height;
     *numChannels = pwriterRec->numChannels;
@@ -324,7 +321,7 @@ int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_boo
 
     // Done writing to this buffer:
     gst_buffer_unmap(pwriterRec->PixMap, &(pwriterRec->mapinfo));
-    
+
     // Make backup copy of buffer for replication if needed:
     if (frameDurationUnits > 1) {
         refBuffer = gst_buffer_copy(pwriterRec->PixMap);
@@ -715,9 +712,9 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
     else {
         // No: Do our own parsing and setup:
 
-        // No special capsfilter string for Codec by default, just a ffmpecolorspace converter
+        // No special capsfilter string for Codec by default, just a videoconvert converter
         // which will determine proper src/sink caps automagically:
-        sprintf(capsForCodecString, "ffmpegcolorspace ! ");
+        sprintf(capsForCodecString, "videoconvert ! ");
 
         // Find the gst-launch style string for codecs and muxers:
         codecString[0] = 0;
@@ -853,7 +850,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
                 // Proper standardized 16 bpc encodings on GStreamer-0.10, which is severely limited in
                 // what it can do:
                 // We only handle Luminance16/Raw16, aka 16 bit grayscale. This is due to limitations of the
-                // ffmpegcolorspace converter we use. In practice, as of end of 2013 and GStreamer-0.10 i don't
+                // videoconvert converter we use. In practice, as of end of 2013 and GStreamer-0.10 i don't
                 // know of any feasible way to actually encode content with 16 bpc, so this is quite pointless...
                 if (PsychPrefStateGet_Verbosity() > 1) {
                     printf("PTB-WARNING: As of GStreamer-0.10 the PTB developers do not know of any codec format which could actually store 16 bpc content!\n");
@@ -897,7 +894,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
     }
 
     // Build pipeline from launch string:
-    pwriterRec->Movie = gst_parse_launch((const gchar*) launchString, &myErr);
+    pwriterRec->Movie = gst_parse_launch_full((const gchar*) launchString, NULL, GST_PARSE_FLAG_FATAL_ERRORS, &myErr);
     if ((NULL == pwriterRec->Movie) || myErr) {
         if (PsychPrefStateGet_Verbosity() > 0) {
             if (strlen(moviefile) > 0) {
