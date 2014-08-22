@@ -106,8 +106,9 @@ end
 if isempty(codec)
     % These do not work yet:
     %codec = ':CodecType=huffyuv'  % Huffmann encoded YUV + MPEG-4 audio: FAIL!
-    %codec = ':CodecType=ffenc_h263p'  % H263 video + MPEG-4 audio: FAIL!
+    %codec = ':CodecType=avenc_h263p'  % H263 video + MPEG-4 audio: FAIL!
     %codec = ':CodecType=yuvraw' % Raw YUV + MPEG-4 audio: FAIL!
+    %codec = ':CodecType=xvidenc Keyframe=60 Videobitrate=8192 'Missing!
     
     % These are so slow, they are basically useless for live recording:
     %codec = ':CodecType=theoraenc'% Theoravideo + Ogg vorbis audio: Gut @ 320 x 240
@@ -115,12 +116,10 @@ if isempty(codec)
     %codec = ':CodecType=vp8enc_matroska'   % VP-8/Matroska  + Ogg vorbis audio: Gut @ 320 x 240
     
     % The good ones...
-    %codec = ':CodecType=ffenc_mpeg4' % % MPEG-4 video + audio: Tut ok @ 640 x 480.
-    %codec = ':CodecType=xvidenc'  % MPEG-4 video + audio: Tut sehr gut @ 640 x 480 Very good a-v sync! Works well in all conditions. -> Champion.
+    %codec = ':CodecType=avenc_mpeg4' % % MPEG-4 video + audio: Ok @ 640 x 480.
     %codec = ':CodecType=x264enc Keyframe=1 Videobitrate=8192 AudioCodec=alawenc ::: AudioSource=pulsesrc ::: Muxer=qtmux'  % H264 video + MPEG-4 audio: Tut seshr gut @ 640 x 480
     %codec = ':CodecType=VideoCodec=x264enc speed-preset=1 noise-reduction=100000 ::: AudioCodec=faac ::: Muxer=avimux'
     %codec = ':CodecSettings=Keyframe=60 Videobitrate=8192 '
-    %codec = ':CodecType=xvidenc Keyframe=60 Videobitrate=8192 '
     
     if IsLinux
         % Linux, where stuff "just works(tm)": Assign default auto-selected codec:
@@ -130,9 +129,9 @@ if isempty(codec)
     if IsOSX
         % OSX: Without audio, stuff just works. With audio, we must specify
         % an explicit audio source with very specific parameters (48 kHz sampling rate), as
-        % everything else will just hang, at least on OSX 10.9.1 Mavericks:
+        % everything else will just hang, at least on OSX 10.9 Mavericks with GStreamer 0.10 and 1.x:
         if withsound
-            codec = ':CodecType=DEFAULTencoder ::: AudioSource=osxaudiosrc ! capsfilter caps=audio/x-raw-float,rate=48000';
+            codec = ':CodecType=DEFAULTencoder ::: AudioSource=osxaudiosrc ! capsfilter caps=audio/x-raw,rate=48000';
         else
             codec = ':CodecType=DEFAULTencoder';
         end

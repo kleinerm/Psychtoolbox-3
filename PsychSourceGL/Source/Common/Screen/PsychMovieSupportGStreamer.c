@@ -1302,7 +1302,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     double          tNow;
     double          preT, postT;
     unsigned char*  releaseMemPtr = NULL;
-    GstMapInfo      mapinfo;
+    GstMapInfo      mapinfo = GST_MAP_INFO_INIT;
 
     if (!PsychIsOnscreenWindow(win)) {
         PsychErrorExitMsg(PsychError_user, "Need onscreen window ptr!!!");

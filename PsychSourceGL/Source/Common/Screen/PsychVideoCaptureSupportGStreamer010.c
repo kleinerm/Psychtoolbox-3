@@ -297,7 +297,6 @@ void PsychGSCheckInit(const char* engineName)
         else {
             // Other OS: Zero-Point of GStreamer clock is identical to Zero-Point
             // of our GetSecs() clock, so apply zero-correction:
-            // TODO FIXME: Check if this assumption holds on OSX for the Video capture engine.
             // We can only test this once we have 
             gs_startupTime = 0.0;
         }
