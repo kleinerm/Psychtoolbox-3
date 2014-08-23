@@ -1063,7 +1063,7 @@ unsigned char* PsychMovieCopyPulledPipelineBuffer(int moviehandle, unsigned int*
     return(NULL);
 }
 
-int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_bool isUpsideDown)
+int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_bool isUpsideDown, double frameTimestamp)
 {
     PsychErrorExitMsg(PsychError_unimplemented, "Sorry, movie writing not supported on this operating system");
     return(1);
