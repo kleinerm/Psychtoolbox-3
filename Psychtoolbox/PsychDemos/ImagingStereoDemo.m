@@ -321,7 +321,7 @@ if writeMovie
         
         % Create a sequence of 10 tones, each of 1 second duration, each 100 Hz higher
         % than its predecessor. Each of the two stereo channels gets a slightly different sound:
-        for freq=100:100:1000
+        for freq=200:100:1100
             Screen('AddAudioBufferToMovie', movie, [0.8 * MakeBeep(freq, 1, 48000); 0.8 * MakeBeep(freq*1.2, 1, 48000)]);
         end
         nmax = 300;

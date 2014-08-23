@@ -53,9 +53,11 @@ typedef struct {
     int                                             width;
     unsigned int                                    numChannels;
     unsigned int                                    bitdepth;
+    unsigned int                                    audioSampleRate;
     psych_bool                                      useVariableFramerate;
     double                                          frameTime;
     double                                          frameTimeDelta;
+    GstClockTime                                    audioTime;
 } PsychMovieWriterRecordType;
 
 static PsychMovieWriterRecordType moviewriterRecordBANK[PSYCH_MAX_MOVIEWRITERDEVICES];
@@ -449,6 +451,15 @@ psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, 
 
     gst_buffer_unmap(pushBuffer, &mapinfo);
     
+    // Compute and assign duration of this buffer in nsecs from number of submitted samples and nominal sampling rate:
+    GST_BUFFER_DURATION(pushBuffer) = (GstClockTime) ((double) nrSamples / (double) pwriterRec->audioSampleRate * 1e9);
+    
+    // Assign presentation timestamp:
+    GST_BUFFER_PTS(pushBuffer) = pwriterRec->audioTime;
+    
+    // Increment it by duration of this buffer:
+    pwriterRec->audioTime += GST_BUFFER_DURATION(pushBuffer);
+
     // Add encoded buffer to movie: Must not unref it, as app-src takes our ref!
     ret = gst_app_src_push_buffer(GST_APP_SRC(pwriterRec->ptbaudioappsrc), pushBuffer);
 
@@ -618,6 +629,7 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
     pwriterRec->useVariableFramerate = FALSE;
     pwriterRec->frameTime = 0.0;
     pwriterRec->frameTimeDelta = (framerate > 0.0) ? (1.0 / framerate) : 0.0;
+    pwriterRec->audioTime = 0;
 
     // If no movieoptions specified, create default string for default
     // codec selection and configuration:
@@ -738,7 +750,16 @@ int PsychCreateNewMovieFile(char* moviefile, int width, int height, double frame
         }
 
         // With audio track?
-        if (strstr(movieoptions, "AddAudioTrack")) doAudio = TRUE;
+        if (strstr(movieoptions, "AddAudioTrack")) {
+            // Yes:
+            doAudio = TRUE;
+
+            // Parse sampling frequency out of it:
+            if (sscanf(strstr(movieoptions, "AddAudioTrack") + strlen("AddAudioTrack"), "=%*i@%i", &(pwriterRec->audioSampleRate)) != 1) {
+                // None provided: Assign default 48 kHz frequency.
+                pwriterRec->audioSampleRate = 48000;
+            }
+        }
 
         // With our own pseudo 16 bpc format which squeezes 16 bpc content into 8 bpc encodings?
         if (strstr(movieoptions, "UsePTB16BPC")) useOwn16bpc = TRUE;
@@ -1002,7 +1023,7 @@ bail:
 int PsychFinalizeNewMovieFile(int movieHandle)
 {
     int myErr = 0;
-    GError *ret = NULL;
+    GstFlowReturn ret;
 
     PsychMovieWriterRecordType* pwriterRec = PsychGetMovieWriter(movieHandle, FALSE);
 
@@ -1016,7 +1037,11 @@ int PsychFinalizeNewMovieFile(int movieHandle)
 
     // Send EOS signal downstream:
     ret = gst_app_src_end_of_stream(GST_APP_SRC(pwriterRec->ptbvideoappsrc));
-    if (pwriterRec->ptbaudioappsrc) ret = gst_app_src_end_of_stream(GST_APP_SRC(pwriterRec->ptbaudioappsrc));
+    if (ret != GST_FLOW_OK) myErr = 1;
+    if (pwriterRec->ptbaudioappsrc) {
+        ret = gst_app_src_end_of_stream(GST_APP_SRC(pwriterRec->ptbaudioappsrc));
+        if (ret != GST_FLOW_OK) myErr = 2;
+    }
 
     // Wait for eos flag to turn TRUE due to bus callback receiving the
     // downstream EOS event that we just sent out:
@@ -1031,6 +1056,7 @@ int PsychFinalizeNewMovieFile(int movieHandle)
 
     // Pause the encoding pipeline:
     if (!PsychMoviePipelineSetState(pwriterRec->Movie, GST_STATE_PAUSED, 10)) {
+        myErr = 3;
         if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to pause movie encoding pipeline at close time!!\n");
     }
 
@@ -1047,6 +1073,7 @@ int PsychFinalizeNewMovieFile(int movieHandle)
     // Stop the encoding pipeline:
     if (!PsychMoviePipelineSetState(pwriterRec->Movie, GST_STATE_READY, 10)) {
         if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to stop movie encoding pipeline at close time!!\n");
+        myErr = 4;
     }
 
     PsychGSProcessMovieContext(pwriterRec, FALSE);
@@ -1054,6 +1081,7 @@ int PsychFinalizeNewMovieFile(int movieHandle)
     // Shutdown and release encoding pipeline:
     if (!PsychMoviePipelineSetState(pwriterRec->Movie, GST_STATE_NULL, 10)) {
         if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to shutdown movie encoding pipeline at close time!!\n");
+        myErr = 5;
     }
 
     PsychGSProcessMovieContext(pwriterRec, FALSE);
@@ -1107,7 +1135,7 @@ unsigned char* PsychMovieCopyPulledPipelineBuffer(int moviehandle, unsigned int*
     return(NULL);
 }
 
-int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_bool isUpsideDown)
+int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_bool isUpsideDown, double frameTimestamp)
 {
     PsychErrorExitMsg(PsychError_unimplemented, "Sorry, movie writing not supported on this operating system");
     return(1);
