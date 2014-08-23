@@ -335,11 +335,16 @@ if writeMovie
     % Other examples of valid and more low-level codec settings to allow
     % tighter control over the process:
     %
+    %        % Use Schroedinger codec 'schroenc' with 'qtmux' QuickTime Multiplexer to encode 16 bpc Dirac video stream: (Decoding crashes though on GStreamer-1.4.0):
+    %        movie = Screen('CreateMovie', windowPtr, 'MyTestMovie.mov', 512, 512, 30, ':CodecType=VideoCodec=schroenc gop-structure=1 ::: Muxer=qtmux', 4, 16);
+    %
     %        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=VideoCodec=x264enc speed-preset=5 key-int-max=30 bitrate=20000 profile=3');
     %        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=VideoCodec=x264enc speed-preset=5 bitrate=20000 profile=3');
     %        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=theoraenc');
     %        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=theoraenc AddAudioTrack');
     %        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 320, 240, 30, ':CodecType=VideoCodec=xvidenc profile=244 max-key-interval=10 bitrate=9708400 quant-type=1');
+    
+    %        This may need reevaluation for GStreamer-1.x, only tested on 0.10:
     %        Encode yes, decode no: Lossless JPEG for 8bpc content:
     %        movie = Screen('CreateMovie', windowPtr, ['MyTestMovie.flv'], 512, 512, 30, 'gst-launch appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps="video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, alpha_mask=(int)-16777216, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, width=(int)512, height=(int)512, framerate=30/1" ! videorate ! ffmpegcolorspace ! ffenc_ljpeg ! avimux ! filesink name=ptbfilesink async=0 location="MyTestMovie.mov"');
     %        Works for lossless RGB8 encoding, but loses A8 alpha channel:

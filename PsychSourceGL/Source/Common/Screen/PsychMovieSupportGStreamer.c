@@ -797,18 +797,39 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     else {
         // GPU does not support yuv textures or shader based decoding. Need to go brute-force and convert
         // video into RGBA8 format:
-        
+
         // Force unsupportable formats to RGBA8 aka format 4, except for formats 7/8, which map
-        // to 1 == L8:
-        if ((movieRecordBANK[slotid].pixelFormat == 7) || (movieRecordBANK[slotid].pixelFormat == 8)) movieRecordBANK[slotid].pixelFormat = 1;
-        if (movieRecordBANK[slotid].pixelFormat  > 4) movieRecordBANK[slotid].pixelFormat = 4;
+        // to 1 == L8, and map 2 == LA8 to 1 == L8:
+        switch (movieRecordBANK[slotid].pixelFormat) {
+            case 1: // 1 is fine.
+                break;
+            case 3: // 3 is handled after switch-case.
+                break;
+            case 4: // 4 is fine.
+                break;
+            case 2:
+            case 7:
+            case 8:
+                movieRecordBANK[slotid].pixelFormat = 1;
+                break;
+            case 5:
+            case 6:
+                movieRecordBANK[slotid].pixelFormat = 4;
+                break;
+            case 9:     // 9 and 10 are fine:
+            case 10:
+                break;
+                
+            default:
+                PsychErrorExitMsg(PsychError_user, "Invalid 'pixelFormat' parameter specified!");
+                break;
+        }
 
-        // Map 2 == LA8 to 1 == L8:
-        if (movieRecordBANK[slotid].pixelFormat == 2) movieRecordBANK[slotid].pixelFormat = 1;
-
-        // Map 3 == RGB8 to 4 == RGBA8:
+        // Map 3 == RGB8 to 4 == RGBA8, unless it is our special proprietary 16 bpc encoding:
         if ((movieRecordBANK[slotid].pixelFormat == 3) && !(specialFlags1 & 512)) movieRecordBANK[slotid].pixelFormat = 4;
 
+        // At this point we can have any of these pixelFormats: 1, 3, 4, 9, 10. Handle them:
+        
         if (movieRecordBANK[slotid].pixelFormat == 4) {
             // Use RGBA8 format:
             colorcaps = gst_caps_new_simple("video/x-raw",
@@ -836,6 +857,32 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
                                             "format", G_TYPE_STRING, "RGB",
                                             NULL);
             movieRecordBANK[slotid].pixelFormat = pixelFormat;
+        }
+
+        if (movieRecordBANK[slotid].pixelFormat == 9) {
+            // Use GRAY 16 bpc format for 16 bpc decoding:
+            colorcaps = gst_caps_new_simple("video/x-raw",
+                                            "format", G_TYPE_STRING, "GRAY16_LE",
+                                            NULL);
+            
+            // Switch to 16 bpc bitdepth and single channel pixelFormat:
+            movieRecordBANK[slotid].bitdepth = 16;
+            movieRecordBANK[slotid].pixelFormat = 1;
+            
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use 16 bpc LUMINANCE 16 float textures.\n", slotid);
+        }
+
+        if (movieRecordBANK[slotid].pixelFormat == 10) {
+            // Use ARGB64 16 bpc per color channel format for 16 bpc decoding:
+            colorcaps = gst_caps_new_simple("video/x-raw",
+                                            "format", G_TYPE_STRING, "ARGB64",
+                                            NULL);
+
+            // Switch to 16 bpc bitdepth and 4-channel RGBA pixelFormat:
+            movieRecordBANK[slotid].bitdepth = 16;
+            movieRecordBANK[slotid].pixelFormat = 4;
+
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use 16 bpc RGBA 16 bpc float textures.\n", slotid);
         }
     }
 
