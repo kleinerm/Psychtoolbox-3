@@ -65,6 +65,8 @@ unsigned char* PsychDCDebayerFrame(unsigned char* inBayerImage, unsigned int wid
 
 // These are the prototypes for the GStreamer capture library, supported on GNU/Linx, OS/X and MS-Windows:
 #ifdef PTB_USE_GSTREAMER
+#include <gst/gst.h>
+
 typedef struct PsychVideosourceRecordType {
     int deviceIndex;
     int classIndex;
@@ -78,6 +80,7 @@ typedef struct PsychVideosourceRecordType {
     char devicePath[1000];
     char deviceName[1000];
     char device[1000];
+    void* gstdevice; // GstDevice* for this device as enumerated by GstDeviceProvider/GstDeviceMonitor if using GStreamer 1.4.0+
 } PsychVideosourceRecordType;
 
 void PsychGSCheckInit(const char* engineName);
@@ -87,7 +90,7 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle);
 int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer);
 int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime);
 double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, double value);
-PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceIndex);
+PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceIndex, GstElement **videocaptureplugin);
 void PsychGSExitVideoCapture(void);
 
 // PsychGetCodecLaunchLineFromString() - Helper function for GStreamer based movie writing.

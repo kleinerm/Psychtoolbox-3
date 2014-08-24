@@ -938,8 +938,10 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
  * If deviceIndex < 0 : Returns NULL to caller, returns a struct array to runtime
  *                      environment return argument position 'outPos' with all info
  *                      about the detected sources.
+ *
+ * videocaptureplugin : Unused in this legacy GStreamer 0.10 backend.
  */
-PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceIndex)
+PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceIndex, GstElement **videocaptureplugin)
 {
 	PsychGenericScriptType 	*devs;
 	const char *FieldNames[]={"DeviceIndex", "ClassIndex", "InputIndex", "ClassName", "InputHandle", "Device", "DevicePath", "DeviceName", "GUID", "DevicePlugin", "DeviceSelectorProperty" };
@@ -2436,10 +2438,10 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     if (deviceIndex >= 0) {
       // Get device name for given deviceIndex from video device
       // enumeration (or NULL if no such device):
-      theDevice = PsychGSEnumerateVideoSources(-1, deviceIndex);
+      theDevice = PsychGSEnumerateVideoSources(-1, deviceIndex, NULL);
       if (NULL == theDevice) {
-	printf("PTB-ERROR: There isn't any video capture device available for provided deviceIndex %i.\n", deviceIndex);
-	PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex provided. No such video source. Aborted.");
+        printf("PTB-ERROR: There isn't any video capture device available for provided deviceIndex %i.\n", deviceIndex);
+        PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex provided. No such video source. Aborted.");
       }
       
       // Assign name:
