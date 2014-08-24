@@ -34,13 +34,14 @@
 
 */
 
-#ifdef PTB_USE_LEGACY_GSTREAMER
 #ifdef PTB_USE_GSTREAMER
 
 #include "Screen.h"
 #include <glib.h>
 #include "PsychMovieSupportGStreamer.h"
 #include <gst/gst.h>
+
+#if !GST_CHECK_VERSION(1,0,0)
 #include <gst/app/gstappsink.h>
 
 // Need to define this for playbin2 as it is not defined
@@ -2447,6 +2448,5 @@ double PsychGSSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool in
     return(oldtime);
 }
 
-// #ifdef PTB_USE_GSTREAMER
 #endif
 #endif

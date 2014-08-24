@@ -25,12 +25,13 @@
 
 #include "Screen.h"
 
-#ifdef PTB_USE_LEGACY_GSTREAMER
 #ifdef PTB_USE_GSTREAMER
 
 // GStreamer includes:
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
+
+#if !GST_CHECK_VERSION(1,0,0)
 
 // PsychGetCodecLaunchLineFromString() - Helper function for GStreamer based movie writing.
 // Defined in PsychVideoCaptureSupport.h: psych_bool PsychGetCodecLaunchLineFromString(char* codecSpec, char* launchString);
@@ -1039,48 +1040,7 @@ int PsychFinalizeNewMovieFile(int movieHandle)
     return(myErr == 0);
 }
 
+#endif // #if !GST_CHECK_VERSION(1,0,0)
+
 // End of GStreamer routines.
-#else
-
-// Surrogates to prevent linker failure if built without GStreamer:
-void PsychMovieWritingInit(void) { return; }
-void PsychExitMovieWriting(void) { return; }
-void PsychDeleteAllMovieWriters(void) { return; }
-int PsychCreateNewMovieFile(char* moviefile, int width, int height, double framerate, int numChannels, int bitdepth, char* movieoptions, char* feedbackString)
-{
-    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, movie writing not supported on this operating system");
-    return(-1);
-}
-
-int PsychFinalizeNewMovieFile(int movieHandle) {
-    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, movie writing not supported on this operating system");
-    return FALSE;
-}
-
-unsigned char* PsychMovieCopyPulledPipelineBuffer(int moviehandle, unsigned int* twidth, unsigned int* theight, unsigned int* numChannels, unsigned int* bitdepth, double* timestamp)
-{
-    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, movie writing and recording not supported on this operating system");
-    return(NULL);
-}
-
-int PsychAddVideoFrameToMovie(int moviehandle, int frameDurationUnits, psych_bool isUpsideDown, double frameTimestamp)
-{
-    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, movie writing not supported on this operating system");
-    return(1);
-}
-
-unsigned char* PsychGetVideoFrameForMoviePtr(int moviehandle, unsigned int* twidth, unsigned int* theight, unsigned int* numChannels, unsigned int* bitdepth)
-{
-    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, movie writing not supported on this operating system");
-    return(NULL);
-}
-
-psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, unsigned int nrSamples, double* buffer)
-{
-    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, movie writing not supported on this operating system");
-    return FALSE;
-}
-
-// End of surrogate routines.
-#endif
 #endif

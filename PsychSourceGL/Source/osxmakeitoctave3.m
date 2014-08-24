@@ -56,7 +56,7 @@ if mode==0
     % used. In that case it will abort with a helpful error message:
     if 0
     % GStreamer-0.10 legacy:
-    mex -g -v --output ../Projects/MacOSX/build/Screen -DGST_DISABLE_DEPRECATED -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTB_USE_LEGACY_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX ...
+    mex -g -v --output ../Projects/MacOSX/build/Screen -DGST_DISABLE_DEPRECATED -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX ...
         "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -weak_library /Library/Frameworks/GStreamer.framework/Versions/0.10/lib/libgstreamer-0.10.0.dylib \
         -weak_library /Library/Frameworks/GStreamer.framework/Versions/0.10/lib/libgstbase-0.10.dylib \
         -weak_library /Library/Frameworks/GStreamer.framework/Versions/0.10/lib/libgstapp-0.10.dylib \

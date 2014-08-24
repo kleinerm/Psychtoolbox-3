@@ -21,13 +21,14 @@
 
 #include "Screen.h"
 
-#ifndef PTB_USE_LEGACY_GSTREAMER
 #ifdef PTB_USE_GSTREAMER
 
 // GStreamer includes:
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
 #include <gst/app/gstappsrc.h>
+
+#if GST_CHECK_VERSION(1,0,0)
 
 // PsychGetCodecLaunchLineFromString() - Helper function for GStreamer based movie writing.
 // Defined in PsychVideoCaptureSupport.h: psych_bool PsychGetCodecLaunchLineFromString(char* codecSpec, char* launchString);
@@ -1102,6 +1103,8 @@ int PsychFinalizeNewMovieFile(int movieHandle)
 }
 
 // End of GStreamer routines.
+#endif // #if GST_CHECK_VERSION(1,0,0)
+
 #else
 
 // Surrogates to prevent linker failure if built without GStreamer:
@@ -1144,7 +1147,4 @@ psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, 
 }
 
 // End of surrogate routines.
-#endif
-
-// #ifndef PTB_USE_LEGACY_GSTREAMER
 #endif

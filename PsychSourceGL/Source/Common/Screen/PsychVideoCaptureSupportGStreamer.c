@@ -57,7 +57,6 @@
  */
 
 #ifdef PTB_USE_GSTREAMER
-#ifndef PTB_USE_LEGACY_GSTREAMER
 
 #include "Screen.h"
 #include <float.h>
@@ -67,6 +66,9 @@
 // These are the includes for GStreamer:
 #include <glib.h>
 #include <gst/gst.h>
+
+#if GST_CHECK_VERSION(1,0,0)
+
 #include <gst/app/gstappsink.h>
 #include <gst/video/colorbalance.h>
 #include <gst/pbutils/encoding-profile.h>
