@@ -1,4 +1,4 @@
-function failFlag=AlphaMultipicationTest(screenNumber)
+function failFlag=AlphaMultiplicationTest(screenNumber)
 
 % passedFlag=AlphaMultipicationTest([screenNumber])
 %
