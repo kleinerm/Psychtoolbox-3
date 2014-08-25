@@ -6,11 +6,11 @@
  * optionally applies gamma correction to the red output channel.
  *
  * Standard anaglyph conversion is implemented by the default shader in
- * Screen() and can be parameterized by SetAnaglyphParameters.
+ * Screen() and can be parameterized by SetAnaglyphStereoParameters.
  *
  * This shader is used for more complex/exotic ways of anaglyph conversion.
  *
- * Loaded/initialized and used by SetAnaglyphParameters.m as part of
+ * Loaded/initialized and used by SetAnaglyphStereoParameters.m as part of
  * the PTB imaging pipelines color anaglyph shading support.
  *
  * (C) 2007 Mario Kleiner - Released to you under MIT license.
