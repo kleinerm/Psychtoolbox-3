@@ -65,6 +65,7 @@ function VideoRecordingDemo(moviename, codec, withsound, showit, windowed)
 %  3.9.2012   Updated to handle both legacy Quicktime and modern GStreamer (MK).
 % 19.11.2013  Drop Quicktime support, add dc1394 support, update help text (MK).
 % 29.12.2013  Make less broken on OSX and Windows (MK).
+% 26.08.2014  Adapt to new GStreamer-1 based engine (MK).
 
 % Test if we're running on PTB-3, abort otherwise:
 AssertOpenGL;
@@ -225,6 +226,12 @@ try
         % No need for Windows-style workarounds:
         grabber = Screen('OpenVideoCapture', win, [], [], [], [], [], codec, withsound, [], 8);
     end
+
+    % Wait a bit between 'OpenVideoCapture' and start of capture below.
+    % This gives the engine a bit time to spin up and helps avoid jerky
+    % recording at the first iteration after startup of Octave/Matlab.
+    % Successive recording iterations won't need this anymore:
+    WaitSecs('YieldSecs', 2);
     
     for nreps = 1:1
         KbReleaseWait;
