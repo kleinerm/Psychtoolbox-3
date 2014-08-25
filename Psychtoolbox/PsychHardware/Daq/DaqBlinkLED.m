@@ -10,7 +10,7 @@ function err=DaqBlinkLED(daq)
 % 11/13/07  mpr Tested it on USB-1608FS called by Matlab 2007b from a Mac
 %                   Pro running Leopard.  Worked with no changes! 
 % 1/10/08   mpr worked to get improved internal consistency (changed
-%                   "device" to "daq", fixed "TestDaq" and "TestPsychHid"
+%                   "device" to "daq", fixed "DaqTest" and "PsychHIDTest"
 % 5/22/08   mk  Add (untested!) support for USB-1024LS box. 
 % 5/23/08   mk  Add caching for HID device list. 
 

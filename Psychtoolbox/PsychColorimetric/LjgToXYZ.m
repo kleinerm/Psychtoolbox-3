@@ -3,7 +3,7 @@ function XYZ = LjgToXYZ(Ljg)
 %
 % Convert OSA Ljg to XYZ (10 degree).  Works by using numerical
 % search to invert XYZToLjg.  See XYZToLjg for details on
-% formulae used.  See also TestOSAUCS.
+% formulae used.  See also OSAUCSTest.
 %
 % This can return imaginary values if you pass XYZ values
 % that are outside reasonable physical gamut limits.

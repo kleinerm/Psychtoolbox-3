@@ -2,7 +2,7 @@ function failFlag=AlphaMultipicationTest(screenNumber)
 
 % passedFlag=AlphaMultipicationTest([screenNumber])
 %
-% TestAlphaMultiplication: 
+% AlphaMultiplicationTest: 
 %
 %     Test for perfect alpha multiplication precision for alpha values 0 and
 %     1. OpenGL guarantees precise alpha muliplicaion for only those alpha
@@ -15,7 +15,7 @@ function failFlag=AlphaMultipicationTest(screenNumber)
 % values are normalized between 0-1; OpenGL alpha value 1 is equivalent to
 % Screen alpha value 255.
 %
-% If no return argument is provided, then TestAlphaMultipication issues an error
+% If no return argument is provided, then AlphaMultiplicationTest issues an error
 % when a test fails.  If a return argument is supplied then it signals a
 % failed test only by returning true, without issuing an error.  
 %
