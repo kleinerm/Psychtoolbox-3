@@ -338,7 +338,6 @@ int PsychGSProcessVideoContext(PsychVidcapRecordType* capdev, psych_bool doWait)
     GstMessage *msg;
     psych_bool workdone = FALSE;
     double tdeadline, tnow;
-    GMainLoop *loop;
     PsychGetAdjustedPrecisionTimerSeconds(&tdeadline);
     tnow = tdeadline;
     tdeadline+=2.0;
@@ -689,8 +688,8 @@ static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, GstElement*
 {
     GValue              val;
     GParamSpec          *paramSpec;
+    GstElement          *videosource;
 	char				port_str[64];
-	char				class_str[64];
 	char				*device_name = NULL;
 	gchar               *pstring = NULL;
     gchar               *devString = NULL;
@@ -708,7 +707,7 @@ static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, GstElement*
 
     // Get dedicated instance of the video plugin, configured to use the
     // specific capture device being probed here:
-    GstElement *videosource = gst_device_create_element(device, "ptb_probevideosource");
+    videosource = gst_device_create_element(device, "ptb_probevideosource");
     if (videosource == NULL) {
         if (PsychPrefStateGet_Verbosity() > 0)
             printf("PTB-ERROR: PsychGSProbeGstDevice(): Could not create videosource for probe target device!!!\n");
@@ -833,7 +832,6 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
     GstDevice           *device;
     GList               *devlist = NULL, *devIter;
 	int					i, n, nmaxp, dopoke;
-	char				port_str[64];
 	char				class_str[64];
 	int					inputIndex;
 	GstElement			*videosource = NULL;
@@ -3688,7 +3686,7 @@ int PsychGSDrainBufferQueue(PsychVidcapRecordType* capdev, int numFramesToDrain,
 	GstSample *videoSample = NULL;
 	int drainedCount = 0;
 
-    if (capdev->frameAvail > gst_app_sink_get_max_buffers(GST_APP_SINK(capdev->videosink)))
+    if (capdev->frameAvail > (int) gst_app_sink_get_max_buffers(GST_APP_SINK(capdev->videosink)))
         capdev->frameAvail = gst_app_sink_get_max_buffers(GST_APP_SINK(capdev->videosink));
 
 	// Drain while anything available, but at most numFramesToDrain frames.
