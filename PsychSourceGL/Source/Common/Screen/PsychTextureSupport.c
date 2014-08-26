@@ -1048,9 +1048,9 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 		}
 		
 		glPushMatrix();
-		glTranslatef(+transX, +transY, 0);
-		glRotatef(rotationAngle, 0, 0, 1);
-		glTranslatef(-transX, -transY, 0);
+		glTranslatef((float) +transX, (float) +transY, 0);
+		glRotatef((float) rotationAngle, 0, 0, 1);
+		glTranslatef((float) -transX, (float) -transY, 0);
 		// Rotation transform ready...
 	}
 

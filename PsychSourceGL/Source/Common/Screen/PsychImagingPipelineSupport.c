@@ -3930,10 +3930,10 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
         // global convenience helpers (GLBEGIN, GLEND etc.), as they'd use shared data
         // This glverts array is local on our stack, thereby thread-local. Also our
         // thread has its own OpenGL context, so no danger there either:
-        GLfloat glverts[4*4] = { 0,   0,  0, h,
+        GLfloat glverts[4*4] = { 0,   0,  0, (float) h,
                                  0,  ht,  0, 0,
-                                 wt,  0,  w, h,
-                                 wt, ht, w,  0};
+                                 wt,  0,  (float) w, (float) h,
+                                 wt, ht, (float) w,  0};
 
         glVertexPointer(2, GL_FLOAT, 4 * sizeof(GLfloat), &glverts[2]);
         glTexCoordPointer(2, GL_FLOAT, 4 * sizeof(GLfloat), &glverts[0]);

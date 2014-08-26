@@ -1580,7 +1580,7 @@ unsigned int		drawtext_codepage = 0;
 //         MS-Windows.
 //
 // Returns TRUE on success, FALSE on error.
-psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
+psych_bool	PsychSetUnicodeTextConversionLocale(char* mnewlocale)
 {
 	unsigned int	mycodepage;
 
@@ -1668,7 +1668,7 @@ size_t mbstowcs_l(wchar_t *dest, const char *src, size_t n, locale_t theLocale)
 
 #endif
 
-psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
+psych_bool	PsychSetUnicodeTextConversionLocale(char* mnewlocale)
 {
 	locale_t		myloc = NULL;
 
@@ -1811,7 +1811,7 @@ psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isReq
 				setlocale(LC_CTYPE, drawtext_localestring);
 
 				// Perform text conversion:
-				*textLength = mbstowcs(NULL, textCString, 0);
+				*textLength = (int) mbstowcs(NULL, textCString, 0);
 
 				// Reset process global locale to old setting:
 				setlocale(LC_CTYPE, oldmswinlocale);

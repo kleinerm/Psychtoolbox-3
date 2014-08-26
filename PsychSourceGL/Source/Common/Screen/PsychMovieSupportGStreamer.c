@@ -143,7 +143,6 @@ int PsychGSProcessMovieContext(PsychMovieRecordType* movie, psych_bool doWait)
     GstMessage *msg;
     psych_bool workdone = FALSE;
     double tdeadline, tnow;
-    GMainLoop *loop;
     PsychGetAdjustedPrecisionTimerSeconds(&tdeadline);
     tnow = tdeadline;
     tdeadline+=2.0;
@@ -479,7 +478,6 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     GstBus          *bus = NULL;
     GstElement      *videosink = NULL;
     GstElement      *audiosink;
-    GstElement      *actual_audiosink;
     gchar*          pstring;
     gint64          length_format;
     GstPad          *pad, *peerpad;

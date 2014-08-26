@@ -77,7 +77,6 @@ static int PsychGSProcessMovieContext(PsychMovieWriterRecordType *movie, psych_b
     GstMessage *msg;
     psych_bool workdone = FALSE;
     double tdeadline, tnow;
-    GMainLoop *loop;
     PsychGetAdjustedPrecisionTimerSeconds(&tdeadline);
     tnow = tdeadline;
     tdeadline+=2.0;
