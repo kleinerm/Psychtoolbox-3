@@ -147,9 +147,9 @@ else
         end
 
         if ischar(type)
-            error('Unknown "type" shape specification passed to ShowCursor()!');
+            error('Unknown ''type'' shape specification passed to ShowCursor()!');
         end
-    else
+    elseif ~isnumeric(type)
         error('type argument provided to ShowCursor() was not numeric or text');
     end
 end
