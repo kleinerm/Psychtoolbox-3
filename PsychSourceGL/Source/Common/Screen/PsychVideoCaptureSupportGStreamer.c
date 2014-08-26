@@ -3802,13 +3802,13 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 
                 // framerates can be in the format of a single fraction, a list of fractions, or
                 // an allowable range of fractions:
-                if (GST_VALUE_HOLDS_FRACTION(framerates)) {
+                if (G_VALUE_HOLDS(framerates, gst_fraction_get_type())) {
                     if (gst_structure_get_fraction (capsstruct, "framerate", &fps_n, &fps_d)) {
                         if (fabs((int)(capturerate + 0.5) - ((double) fps_n / (double) fps_d)) < 1.0) fps_matched = TRUE;
                         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Caps %i : FPS %f Hz.\n", idx, (float) fps_n / (float) fps_d);
                     }
                 }
-                else if (GST_VALUE_HOLDS_LIST(framerates)) {
+                else if (G_VALUE_HOLDS(framerates, gst_value_list_get_type())) {
                     for (idx2 = 0; idx2 < (int) gst_value_list_get_size(framerates); idx2++) {
                         const GValue* value = gst_value_list_get_value (framerates, idx2);
                         fps_n = gst_value_get_fraction_numerator(value);
@@ -3817,7 +3817,7 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: %i-%i : FPS %f Hz.\n", idx, idx2, (float) fps_n / (float) fps_d);
                     }
                 }
-                else if (GST_VALUE_HOLDS_FRACTION_RANGE(framerates)) {
+                else if (G_VALUE_HOLDS(framerates, gst_fraction_range_get_type())) {
                     const GValue* frmin = gst_value_get_fraction_range_min(framerates);
                     const GValue* frmax = gst_value_get_fraction_range_max(framerates);
                     fps_n = gst_value_get_fraction_numerator(frmin);
@@ -3838,7 +3838,9 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             // Requested capturerate supported?
             if (fps_matched) {
                 // Yes! Add it to our caps object:
-                gst_caps_set_simple(caps, "framerate", GST_TYPE_FRACTION, (int)(capturerate + 0.5), 1, NULL);
+                // CAUTION: Do use gst_fraction_get_type() and NOT the Macro GST_TYPE_FRACTION, otherwise delay-loading
+                // on MS-Windows won't work!!!
+                gst_caps_set_simple(caps, "framerate", gst_fraction_get_type(), (int)(capturerate + 0.5), 1, NULL);
                 
                 // Set caps object and thereby capture/recording framerate:
                 g_object_set(G_OBJECT(camera), "viewfinder-caps", caps, NULL);
@@ -3856,7 +3858,7 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                     gst_caps_unref(capsi);
 
                     // Assign our validated recording framerate to recording caps:
-                    gst_caps_set_simple(caps, "framerate", GST_TYPE_FRACTION, (int)(capturerate + 0.5), 1, NULL);
+                    gst_caps_set_simple(caps, "framerate", gst_fraction_get_type(), (int)(capturerate + 0.5), 1, NULL);
 
                     // Assign new caps as video recording caps:
                     g_object_set(G_OBJECT(camera), "video-capture-caps", caps, NULL);
