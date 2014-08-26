@@ -1079,29 +1079,35 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
             printf("PTB-INFO: Trying to fake an auto-detected default device and a test video source...\n");
         }
         
-        // Create a fake entry for the autovideosrc:
-        devices[0].deviceIndex = 0;
-        sprintf(devices[0].deviceVideoPlugin, "%s", "autovideosrc");
-        sprintf(devices[0].deviceSelectorProperty, "%s", "");
-        sprintf(devices[0].deviceHandle, "%s", "");
+        ntotal = 0;
         
-        // Create a fake entry for the videotestsrc:
-        devices[1].deviceIndex = 90000;
-        devices[1].classIndex = 9;
-        devices[1].inputIndex = 0;
-        sprintf(devices[1].deviceVideoPlugin, "%s", "videotestsrc");
-        sprintf(devices[1].deviceSelectorProperty, "%s", "");
-        sprintf(devices[1].deviceHandle, "%s", "");
-
-        ntotal= 2;
+        // Create a fake entry for the autovideosrc:
+        devices[ntotal].deviceIndex = 90000;
+        devices[ntotal].classIndex = 9;
+        devices[ntotal].inputIndex = 0;
+        sprintf(devices[ntotal].deviceVideoPlugin, "%s", "autovideosrc");
+        sprintf(devices[ntotal].deviceSelectorProperty, "%s", "");
+        sprintf(devices[ntotal].deviceHandle, "%s", "");
+        ntotal++;
+        
+        // Create fake entries for the videotestsrc:
+        for (i = 0; i <= 22; i++) {
+            devices[ntotal].deviceIndex = 90001 + i;
+            devices[ntotal].classIndex = 9;
+            devices[ntotal].inputIndex = 1 + i;
+            sprintf(devices[ntotal].deviceVideoPlugin, "%s", "videotestsrc");
+            sprintf(devices[ntotal].deviceSelectorProperty, "%s", "");
+            sprintf(devices[ntotal].deviceHandle, "%s", "");
+            ntotal++;
+        }
 	}
     else {
         // Found some real ones. However, in any case, always add a fake entry for videotestsrc,
         // so if everything else fails on a setup we can use the synthetic videotestsrc for easy
         // testing:
-        devices[ntotal].deviceIndex = 90000;
+        devices[ntotal].deviceIndex = 90001;
         devices[ntotal].classIndex = 9;
-        devices[ntotal].inputIndex = 0;
+        devices[ntotal].inputIndex = 1;
         sprintf(devices[ntotal].deviceVideoPlugin, "%s", "videotestsrc");
         sprintf(devices[ntotal].deviceSelectorProperty, "%s", "");
         sprintf(devices[ntotal].deviceHandle, "%s", "");
@@ -2878,6 +2884,15 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
     // Enable timestamping by videosource, unless its been done already for a dv1394src:
     if (!strstr(plugin_name, "dv1394src") && !strstr(plugin_name, "gstlaunchbinsrc")) g_object_set(G_OBJECT(videosource), "do-timestamp", 1, NULL);
+
+    // videotestsrc needs special setup - Must be marked as live-source:
+    if (strstr(plugin_name, "videotestsrc")) {
+        g_object_set(G_OBJECT(videosource), "is-live", 1, NULL);
+        
+        // Also assign different test patterns, depending on deviceIndex (90001 - 90023):
+        g_object_set(G_OBJECT(videosource), "pattern", deviceIndex - 90001, NULL);
+        g_object_set(G_OBJECT(videosource), "kyt", (deviceIndex > 90001) ? 1 : 0, NULL);
+    }
 
     // Assign video source to pipeline: Attach indirectly to camerabin2 via a camerawrappersrc.
     videowrappersrc = gst_element_factory_make ("wrappercamerabinsrc", "ptbwrappervideosrc0");
