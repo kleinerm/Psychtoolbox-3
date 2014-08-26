@@ -29,7 +29,8 @@ function VideoDVCamCaptureDemo(fullscreen, fullsize, roi, depth, deviceId, movie
 %
 
 % History:
-% 27-Dec-1013  mk  Written.
+% 27-Dec-2013  mk  Written.
+% 26-Aug-2014  mk  Adapted to GStreamer-1.4.0+ backend.
 
 PsychDefaultSetup(1);
 
@@ -95,17 +96,21 @@ try
           % Any of these work on Linux:
           capturebinspec = 'dv1394src ! dvdemux ! dvdec name=ptbdvsource';
           %capturebinspec = 'dv1394src ! video/x-dv ! dvdemux ! dvdec name=ptbdvsource';
-          %capturebinspec = 'dv1394src ! dvdemux ! ffdec_dvvideo name=ptbdvsource';
+          %capturebinspec = 'dv1394src ! dvdemux ! avdec_dvvideo name=ptbdvsource';
         end
         
         if IsWin
           % This should work on MS-Windows, as tested with a Sony PAL-DV camera:
           capturebinspec = 'dshowvideosrc ! dvdemux ! ffdec_dvvideo name=ptbdvsource';
+          
+          if Is64Bit
+              warning('To our knowledge (as of August 2014, GStreamer-1.4.0) video capture is not yet\nsupported on MS-Windows, so this will likely fail.\n');
+          end
         end
         
         if IsOSX
           % This should work on OSX, if at all. If this doesn't work then game-over (Untested):
-          capturebinspec = 'qtkitvideosrc name=ptbdvsource';
+          capturebinspec = 'avfvideosrc name=ptbdvsource';
         end
       else
         % Real string: Use it.
