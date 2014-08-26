@@ -146,7 +146,7 @@ if isempty(codec)
         % source, as the autoaudiosrc does not find any sound sources on
         % the Windows-7 PC :-(
         if withsound
-            codec = ':CodecType=theoraenc ::: AudioSource=dshowaudiosrc';
+            codec = ':CodecType=theoraenc ::: AudioSource=directsoundsrc';
         else
             codec = ':CodecType=theoraenc';
         end
