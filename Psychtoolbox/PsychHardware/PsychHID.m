@@ -71,7 +71,7 @@ function varargout = PsychHID(varargin)  %#ok<STOUT>
 %   numberOfDevices=PsychHID('NumDevices')
 %   Return the the number of USB HID devices connected to your computer.
 %  
-% TestPsychHID shows a list of all the HID-compliant devices.
+% PsychHIDTest shows a list of all the HID-compliant devices.
 %  
 % PsychHID on OS/X links against Apples HID Utilities library.  For information on
 % how to program HID devices on OS X in C or Objective C see the HID

@@ -19,7 +19,7 @@ function ImagingStereoMoviePlayer(moviefile, stereoMode, imaging, anaglyphmode, 
 % 3 = Optimized color anaglyphs.
 % 4 = Full color anaglyphs.
 %
-% See "help SetAnaglyphParameters" for further description and references.
+% See "help SetAnaglyphStereoParameters" for further description and references.
 %
 % 'screenid' Screen id of target display screen (on multi-display setups).
 % By default, the screen with maximum id is used.

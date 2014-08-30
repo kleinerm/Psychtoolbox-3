@@ -119,7 +119,7 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 % keystrokes, "when' return argument fields differs between operating systems.
 % GetChar sets fields for which it returns no value to the value 'Nan'.  
 %
-% See also: ListenChar, CharAvail, FlushEvents, TestGetChar, KbCheck,
+% See also: ListenChar, CharAvail, FlushEvents, GetCharTest, KbCheck,
 % KbWait
 
 % 5/7/96  dgp	Wrote this help file.
