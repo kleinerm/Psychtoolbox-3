@@ -409,209 +409,209 @@ PsychError PSYCHKINECTOpen(void)
     static char useString[] = "kinectPtr = PsychKinect('Open' [, deviceIndex=0][, numbuffers=2][, bayerFilterMode=1]);";
     //
     static char synopsisString[] = 
-		"Open connection to Microsoft Kinect box, return a 'kinectPtr' handle to it.\n\n"
-		"The call tries to open the Kinect box with index 'deviceIndex', or the "
-		"first detected box, if 'deviceIndex' is omitted. It configures the box "
-		"for video and depth capture, using a n-buffered pool for internal storage "
-		"of up to 'numbuffers' frames. 'numbuffers' defaults to 2 for double-buffering "
-		"if omitted.\n"
-		"'bayerFilterMode' is optional and selects mode of color reconstruction from "
-		"the visual cameras sensor data: A setting of 1 (default) will use a slow and "
-		"unoptimized bayer filter algorithm built into the libfreenect driver to return "
-		"RGB images via the 'GetImage' function. A setting of 0 will disable filtering and return "
-		"a 2D only image with sensor raw data, which you'll need to post-process and filter yourself.\n"
-		"A setting of 2 will return infrared image data from the depth camera instead of RGB data.\n"
-		"A setting of > 2 would select other filtering methods, but these are not yet implemented. "
-		"You would want to use the default value if you need convenient access to RGB images without "
-		"any effort on your side. Unfiltered raw data has the advantage that cpu load of kinect "
-		"operation is much lower, so you may get higher framerates. Also, raw data only requires "
-		"a third of the storage memory if this is of concern, e.g., for high settings of 'numbuffers'.\n"
-		"The returned handle can be passed to the other subfunctions to operate the device.\n";
-	
-	static char seeAlsoString[] = "";	
-	
-	double R[3][3] = {{  9.9984628826577793e-01, 1.2635359098409581e-03, -1.7487233004436643e-02 },
-			  { -1.4779096108364480e-03, 9.9992385683542895e-01, -1.2251380107679535e-02 },
-			  {  1.7470421412464927e-02, 1.2275341476520762e-02,  9.9977202419716948e-01 }};
+        "Open connection to Microsoft Kinect box, return a 'kinectPtr' handle to it.\n\n"
+        "The call tries to open the Kinect box with index 'deviceIndex', or the "
+        "first detected box, if 'deviceIndex' is omitted. It configures the box "
+        "for video and depth capture, using a n-buffered pool for internal storage "
+        "of up to 'numbuffers' frames. 'numbuffers' defaults to 2 for double-buffering "
+        "if omitted.\n"
+        "'bayerFilterMode' is optional and selects mode of color reconstruction from "
+        "the visual cameras sensor data: A setting of 1 (default) will use a slow and "
+        "unoptimized bayer filter algorithm built into the libfreenect driver to return "
+        "RGB images via the 'GetImage' function. A setting of 0 will disable filtering and return "
+        "a 2D only image with sensor raw data, which you'll need to post-process and filter yourself.\n"
+        "A setting of 2 will return infrared image data from the depth camera instead of RGB data.\n"
+        "A setting of > 2 would select other filtering methods, but these are not yet implemented. "
+        "You would want to use the default value if you need convenient access to RGB images without "
+        "any effort on your side. Unfiltered raw data has the advantage that cpu load of kinect "
+        "operation is much lower, so you may get higher framerates. Also, raw data only requires "
+        "a third of the storage memory if this is of concern, e.g., for high settings of 'numbuffers'.\n"
+        "The returned handle can be passed to the other subfunctions to operate the device.\n";
 
-	double T[3] = { 1.9985242312092553e-02, -7.4423738761617583e-04, -1.0916736334336222e-02 };
-	double depthIntrinsics[5] = { -2.6386489753128833e-01, 9.9966832163729757e-01, -7.6275862143610667e-04, 5.0350940090814270e-03, -1.3053628089976321e+00 };
-	double rgbIntrinsics[5]   = {  2.6451622333009589e-01, -8.3990749424620825e-01, -1.9922302173693159e-03, 1.4371995932897616e-03, 9.1192465078713847e-01 };
-	double depthBaseAndOffset[2] = { 0.0 , 0.0 };
+    static char seeAlsoString[] = "";
 
-	PsychKNDevice* kinect;
-	int i, j;
-	int deviceIndex = 0;
-	int handle = 0;
-	freenect_device *dev = NULL;
-	int numbuffers = 2;
-	int bayerFilterMode = 1;
+    double R[3][3] = {{  9.9984628826577793e-01, 1.2635359098409581e-03, -1.7487233004436643e-02 },
+                { -1.4779096108364480e-03, 9.9992385683542895e-01, -1.2251380107679535e-02 },
+                {  1.7470421412464927e-02, 1.2275341476520762e-02,  9.9977202419716948e-01 }};
 
-	#if PSYCH_SYSTEM != PSYCH_WINDOWS
-	freenect_frame_mode fmode;
-	#endif
-	
-	// All sub functions should have these two lines
-	PsychPushHelp(useString, synopsisString,seeAlsoString);
-	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+    double T[3] = { 1.9985242312092553e-02, -7.4423738761617583e-04, -1.0916736334336222e-02 };
+    double depthIntrinsics[5] = { -2.6386489753128833e-01, 9.9966832163729757e-01, -7.6275862143610667e-04, 5.0350940090814270e-03, -1.3053628089976321e+00 };
+    double rgbIntrinsics[5]   = {  2.6451622333009589e-01, -8.3990749424620825e-01, -1.9922302173693159e-03, 1.4371995932897616e-03, 9.1192465078713847e-01 };
+    double depthBaseAndOffset[2] = { 0.0 , 0.0 };
 
-	//check to see if the user supplied superfluous arguments
-	PsychErrorExit(PsychCapNumOutputArgs(1));
-	PsychErrorExit(PsychCapNumInputArgs(3));
-	
-	if (devicecount >= MAX_PSYCH_KINECT_DEVS) PsychErrorExitMsg(PsychError_user, "Maximum number of simultaneously open kinect devices reached.");
-	
-	// Find a free device slot:
-	for (handle = 0; (handle < MAX_PSYCH_KINECT_DEVS) && kinectdevices[handle].dev; handle++);
-	if ((handle >= MAX_PSYCH_KINECT_DEVS) || kinectdevices[handle].dev) PsychErrorExitMsg(PsychError_internal, "Maximum number of simultaneously open kinect devices reached.");
-	
-	// Get optional kinect device index:
-	PsychCopyInIntegerArg(1, FALSE, &deviceIndex);
-	
-	// Don't support anything than a single "default" kinect yet:
-	if (deviceIndex < 0) PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' provided. Must be greater or equal to zero!");
-	
-	// Get optional numbuffers count:
-	PsychCopyInIntegerArg(2, FALSE, &numbuffers);
-	if (numbuffers < 1) PsychErrorExitMsg(PsychError_user, "Invalid value for 'numbuffers' provided. Must be greater than 1!");
-	
-	// Get optional bayerFilterMode:
-	PsychCopyInIntegerArg(3, FALSE, &bayerFilterMode);
-	if (bayerFilterMode < 0) PsychErrorExitMsg(PsychError_user, "Invalid value for 'bayerFilterMode' provided. Must be >= 0!");
-	
-	// Open and initialize the device:
-	if (!initialized) {
-		// First time init:
-		initialized = TRUE;
-		
-		// Initialize libusb:
-		if (freenect_init(&f_ctx, NULL) < 0) PsychErrorExitMsg(PsychError_system, "Driver initialization of libfreenect failed!");
+    PsychKNDevice* kinect;
+    int i, j;
+    int deviceIndex = 0;
+    int handle = 0;
+    freenect_device *dev = NULL;
+    int numbuffers = 2;
+    int bayerFilterMode = 1;
 
-		// MK FIXME TODO: Adapt to bigger limits for future Kinect devices?
-		zmap = malloc(640 * 480 * 6 * sizeof(double));
-	}
-	
-	// Zero init device structure:
-	memset(&kinectdevices[handle], 0, sizeof(PsychKNDevice));
-	
-	kinect = &kinectdevices[handle];
+    #if PSYCH_SYSTEM != PSYCH_WINDOWS
+    freenect_frame_mode fmode;
+    #endif
 
-	// Connect with it, get usb connection handle:
-	if (freenect_open_device(f_ctx, &dev, deviceIndex) < 0) {
-		printf("PsychKinect: ERROR! Failed to connect to kinect with deviceIndex %i. This could mean that the device\n", deviceIndex);
-		printf("PsychKinect: ERROR: is already in use by another application or driver. On Linux it could mean it is\n");
-		printf("PsychKinect: ERROR: claimed by the Kinect video camera driver. See 'help InstallKinect' for how to resolve this.\n");
-		PsychErrorExitMsg(PsychError_user, "Could not connect to kinect device with given 'deviceIndex'! [freenect_open_device failed]");
-	}
-	
-	kinectdevices[handle].dev = dev;
-	freenect_set_user(kinectdevices[handle].dev, (void*) &kinectdevices[handle]);
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
-	// Attach callbacks:
-	freenect_set_depth_callback(kinect->dev, PsychDepthCB);
-	freenect_set_rgb_callback(kinect->dev, PsychRGBCB);
+    //check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(3));
 
-	// Retrieve frame properties of current mode:
-	#if PSYCH_SYSTEM != PSYCH_WINDOWS
-		// Set video format and resolution:
-		if (bayerFilterMode < 2) {
-			// RGB video feed:
-			fmode = freenect_find_video_mode(FREENECT_RESOLUTION_MEDIUM, ((bayerFilterMode == 1) ? FREENECT_VIDEO_RGB : FREENECT_VIDEO_BAYER));
-		} else {
-			// IR depth cam video feed:
-			fmode = freenect_find_video_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_VIDEO_IR_8BIT);
-		}
-		freenect_set_video_mode(kinect->dev, fmode);
+    if (devicecount >= MAX_PSYCH_KINECT_DEVS) PsychErrorExitMsg(PsychError_user, "Maximum number of simultaneously open kinect devices reached.");
 
-		// Set depth format and resolution:
-		fmode = freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_DEPTH_11BIT);
-		freenect_set_depth_mode(kinect->dev, fmode);
+    // Find a free device slot:
+    for (handle = 0; (handle < MAX_PSYCH_KINECT_DEVS) && kinectdevices[handle].dev; handle++);
+    if ((handle >= MAX_PSYCH_KINECT_DEVS) || kinectdevices[handle].dev) PsychErrorExitMsg(PsychError_internal, "Maximum number of simultaneously open kinect devices reached.");
 
-		// Query mode properties for video & depth:
-		fmode = freenect_get_current_video_mode(kinect->dev);
-		kinect->cwidth = fmode.width;
-		kinect->cheight = fmode.height;
-		kinect->csize = fmode.bytes;
-		fmode = freenect_get_current_depth_mode(kinect->dev);
-		kinect->dwidth = fmode.width;
-		kinect->dheight = fmode.height;
-		kinect->dsize = fmode.bytes;
-	#else
-		if (bayerFilterMode < 2) {
-			// RGB video feed:
-			freenect_set_rgb_format(kinect->dev, ((bayerFilterMode == 1) ? FREENECT_FORMAT_RGB : FREENECT_FORMAT_BAYER));
-		} else {
-			// IR depth cam video feed:
-			freenect_set_rgb_format(kinect->dev, FREENECT_VIDEO_IR_8BIT);
-		}
-		freenect_set_depth_format(kinect->dev, FREENECT_FORMAT_11_BIT);
+    // Get optional kinect device index:
+    PsychCopyInIntegerArg(1, FALSE, &deviceIndex);
 
-		kinect->cwidth = FREENECT_FRAME_W;
-		kinect->cheight = FREENECT_FRAME_H;
-		kinect->csize = (bayerFilterMode == 1) ? FREENECT_RGB_SIZE : FREENECT_BAYER_SIZE;
-		kinect->dwidth = FREENECT_FRAME_W;
-		kinect->dheight = FREENECT_FRAME_H;
-		kinect->dsize = FREENECT_FRAME_W * FREENECT_FRAME_H * 2;
-	#endif
-		
-	// Allocate buffers:
-	kinectdevices[handle].buffers = (PsychKNBuffer*) calloc(numbuffers, sizeof(PsychKNBuffer));
-	if (NULL == kinectdevices[handle].buffers) {
-		printf("PTB-ERROR: Could not create requested %i kinect image buffers. Prepare for trouble!\n", numbuffers);
-		PsychErrorExitMsg(PsychError_outofMemory, "Buffer creation failed!");
-	}
-	
-	for (i = 0; i < numbuffers; i++) {
-		kinectdevices[handle].buffers[i].color = (unsigned char*) calloc(1, kinect->csize);
-		if (NULL == kinectdevices[handle].buffers[i].color) {
-			for (j = 0; j < i; j++) free(kinectdevices[handle].buffers[j].color);
-			free(kinectdevices[handle].buffers);
-			kinectdevices[handle].buffers = NULL;
-			printf("PTB-ERROR: Could not create requested %i kinect image buffers - Out of memory at %i'th buffer. Prepare for trouble!\n", numbuffers, i);
-			PsychErrorExitMsg(PsychError_outofMemory, "Buffer creation failed!");
-		}
-	}
-	
-	kinectdevices[handle].numbuffers = numbuffers;
-	kinectdevices[handle].bayerFilterMode = bayerFilterMode;
-	
-	// Have connection open and ready. Initialize mutexes, condition variables and processing thread:
-	if (PsychInitMutex(&(kinectdevices[handle].mutex))) {
-		printf("PsychKinect: CRITICAL! Failed to initialize Mutex object for handle %i! Prepare for trouble!\n", handle);
-		PsychErrorExitMsg(PsychError_system, "Device mutex creation failed!");
-	}
-	
-	// If we use locking, this will create & init the associated event variable:
-	PsychInitCondition(&(kinectdevices[handle].changeSignal), NULL);
+    // Don't support anything than a single "default" kinect yet:
+    if (deviceIndex < 0) PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' provided. Must be greater or equal to zero!");
 
-	// Preinit kinect camera parameters with ok values:
-	// These are a bit wrong for any Kinect except the one
-	// they were taken from, but at least they produce an
-	// ok initial calibration for testing:
-	kinectdevices[handle].fx_d = 5.9421434211923247e+02;
-	kinectdevices[handle].fy_d = 5.9104053696870778e+02;
-	kinectdevices[handle].cx_d = 3.3930780975300314e+02;
-	kinectdevices[handle].cy_d = 2.4273913761751615e+02;
+    // Get optional numbuffers count:
+    PsychCopyInIntegerArg(2, FALSE, &numbuffers);
+    if (numbuffers < 1) PsychErrorExitMsg(PsychError_user, "Invalid value for 'numbuffers' provided. Must be greater than 1!");
 
-	kinectdevices[handle].fx_rgb = 5.2921508098293293e+02;
-	kinectdevices[handle].fy_rgb = 5.2556393630057437e+02;
-	kinectdevices[handle].cx_rgb = 3.2894272028759258e+02;
-	kinectdevices[handle].cy_rgb = 2.6748068171871557e+02;
+    // Get optional bayerFilterMode:
+    PsychCopyInIntegerArg(3, FALSE, &bayerFilterMode);
+    if (bayerFilterMode < 0) PsychErrorExitMsg(PsychError_user, "Invalid value for 'bayerFilterMode' provided. Must be >= 0!");
 
-	memcpy(&kinectdevices[handle].R, R, sizeof(double) * 3 * 3);
-	memcpy(&kinectdevices[handle].T, T, sizeof(double) * 3 * 1);
+    // Open and initialize the device:
+    if (!initialized) {
+        // First time init:
+        initialized = TRUE;
 
-	memcpy(&kinectdevices[handle].undistort_d, depthIntrinsics, sizeof(double) * 5 * 1);
-	memcpy(&kinectdevices[handle].undistort_rgb, rgbIntrinsics, sizeof(double) * 5 * 1);
-	memcpy(&kinectdevices[handle].depthBaseAndOffset, depthBaseAndOffset, sizeof(double) * 2 *1);
+        // Initialize libusb:
+        if (freenect_init(&f_ctx, NULL) < 0) PsychErrorExitMsg(PsychError_system, "Driver initialization of libfreenect failed!");
+        // TODO: Proper verbosity handling: freenect_set_log_level(f_ctx, FREENECT_LOG_SPEW);
+        // MK FIXME TODO: Adapt to bigger limits for future Kinect devices?
+        zmap = malloc(640 * 480 * 6 * sizeof(double));
+    }
 
-	// Increment count of open devices:
-	devicecount++;
-	
-	// Return device handle:
-	PsychCopyOutDoubleArg(1, FALSE, handle);
+    // Zero init device structure:
+    memset(&kinectdevices[handle], 0, sizeof(PsychKNDevice));
 
-	return(PsychError_none);	
+    kinect = &kinectdevices[handle];
+
+    // Connect with it, get usb connection handle:
+    if (freenect_open_device(f_ctx, &dev, deviceIndex) < 0) {
+        printf("PsychKinect: ERROR! Failed to connect to kinect with deviceIndex %i. This could mean that the device\n", deviceIndex);
+        printf("PsychKinect: ERROR: is already in use by another application or driver. On Linux it could mean it is\n");
+        printf("PsychKinect: ERROR: claimed by the Kinect video camera driver. See 'help InstallKinect' for how to resolve this.\n");
+        PsychErrorExitMsg(PsychError_user, "Could not connect to kinect device with given 'deviceIndex'! [freenect_open_device failed]");
+    }
+
+    kinectdevices[handle].dev = dev;
+    freenect_set_user(kinectdevices[handle].dev, (void*) &kinectdevices[handle]);
+
+    // Attach callbacks:
+    freenect_set_depth_callback(kinect->dev, PsychDepthCB);
+    freenect_set_rgb_callback(kinect->dev, PsychRGBCB);
+
+    // Retrieve frame properties of current mode:
+    #if PSYCH_SYSTEM != PSYCH_WINDOWS
+        // Set video format and resolution:
+        if (bayerFilterMode < 2) {
+            // RGB video feed:
+            fmode = freenect_find_video_mode(FREENECT_RESOLUTION_MEDIUM, ((bayerFilterMode == 1) ? FREENECT_VIDEO_RGB : FREENECT_VIDEO_BAYER));
+        } else {
+            // IR depth cam video feed:
+            fmode = freenect_find_video_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_VIDEO_IR_8BIT);
+        }
+        freenect_set_video_mode(kinect->dev, fmode);
+
+        // Set depth format and resolution:
+        fmode = freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_DEPTH_11BIT);
+        freenect_set_depth_mode(kinect->dev, fmode);
+
+        // Query mode properties for video & depth:
+        fmode = freenect_get_current_video_mode(kinect->dev);
+        kinect->cwidth = fmode.width;
+        kinect->cheight = fmode.height;
+        kinect->csize = fmode.bytes;
+        fmode = freenect_get_current_depth_mode(kinect->dev);
+        kinect->dwidth = fmode.width;
+        kinect->dheight = fmode.height;
+        kinect->dsize = fmode.bytes;
+    #else
+        if (bayerFilterMode < 2) {
+            // RGB video feed:
+            freenect_set_rgb_format(kinect->dev, ((bayerFilterMode == 1) ? FREENECT_FORMAT_RGB : FREENECT_FORMAT_BAYER));
+        } else {
+            // IR depth cam video feed:
+            freenect_set_rgb_format(kinect->dev, FREENECT_VIDEO_IR_8BIT);
+        }
+        freenect_set_depth_format(kinect->dev, FREENECT_FORMAT_11_BIT);
+
+        kinect->cwidth = FREENECT_FRAME_W;
+        kinect->cheight = FREENECT_FRAME_H;
+        kinect->csize = (bayerFilterMode == 1) ? FREENECT_RGB_SIZE : FREENECT_BAYER_SIZE;
+        kinect->dwidth = FREENECT_FRAME_W;
+        kinect->dheight = FREENECT_FRAME_H;
+        kinect->dsize = FREENECT_FRAME_W * FREENECT_FRAME_H * 2;
+    #endif
+
+    // Allocate buffers:
+    kinectdevices[handle].buffers = (PsychKNBuffer*) calloc(numbuffers, sizeof(PsychKNBuffer));
+    if (NULL == kinectdevices[handle].buffers) {
+        printf("PTB-ERROR: Could not create requested %i kinect image buffers. Prepare for trouble!\n", numbuffers);
+        PsychErrorExitMsg(PsychError_outofMemory, "Buffer creation failed!");
+    }
+
+    for (i = 0; i < numbuffers; i++) {
+        kinectdevices[handle].buffers[i].color = (unsigned char*) calloc(1, kinect->csize);
+        if (NULL == kinectdevices[handle].buffers[i].color) {
+            for (j = 0; j < i; j++) free(kinectdevices[handle].buffers[j].color);
+            free(kinectdevices[handle].buffers);
+            kinectdevices[handle].buffers = NULL;
+            printf("PTB-ERROR: Could not create requested %i kinect image buffers - Out of memory at %i'th buffer. Prepare for trouble!\n", numbuffers, i);
+            PsychErrorExitMsg(PsychError_outofMemory, "Buffer creation failed!");
+        }
+    }
+
+    kinectdevices[handle].numbuffers = numbuffers;
+    kinectdevices[handle].bayerFilterMode = bayerFilterMode;
+
+    // Have connection open and ready. Initialize mutexes, condition variables and processing thread:
+    if (PsychInitMutex(&(kinectdevices[handle].mutex))) {
+        printf("PsychKinect: CRITICAL! Failed to initialize Mutex object for handle %i! Prepare for trouble!\n", handle);
+        PsychErrorExitMsg(PsychError_system, "Device mutex creation failed!");
+    }
+
+    // If we use locking, this will create & init the associated event variable:
+    PsychInitCondition(&(kinectdevices[handle].changeSignal), NULL);
+
+    // Preinit kinect camera parameters with ok values:
+    // These are a bit wrong for any Kinect except the one
+    // they were taken from, but at least they produce an
+    // ok initial calibration for testing:
+    kinectdevices[handle].fx_d = 5.9421434211923247e+02;
+    kinectdevices[handle].fy_d = 5.9104053696870778e+02;
+    kinectdevices[handle].cx_d = 3.3930780975300314e+02;
+    kinectdevices[handle].cy_d = 2.4273913761751615e+02;
+
+    kinectdevices[handle].fx_rgb = 5.2921508098293293e+02;
+    kinectdevices[handle].fy_rgb = 5.2556393630057437e+02;
+    kinectdevices[handle].cx_rgb = 3.2894272028759258e+02;
+    kinectdevices[handle].cy_rgb = 2.6748068171871557e+02;
+
+    memcpy(&kinectdevices[handle].R, R, sizeof(double) * 3 * 3);
+    memcpy(&kinectdevices[handle].T, T, sizeof(double) * 3 * 1);
+
+    memcpy(&kinectdevices[handle].undistort_d, depthIntrinsics, sizeof(double) * 5 * 1);
+    memcpy(&kinectdevices[handle].undistort_rgb, rgbIntrinsics, sizeof(double) * 5 * 1);
+    memcpy(&kinectdevices[handle].depthBaseAndOffset, depthBaseAndOffset, sizeof(double) * 2 *1);
+
+    // Increment count of open devices:
+    devicecount++;
+
+    // Return device handle:
+    PsychCopyOutDoubleArg(1, FALSE, handle);
+
+    return(PsychError_none);
 }
 
 PsychError PSYCHKINECTClose(void)
