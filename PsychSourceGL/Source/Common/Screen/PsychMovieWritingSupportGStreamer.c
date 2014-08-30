@@ -373,7 +373,10 @@ psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, 
     float               v;
     unsigned int        n, i;
     GstBuffer*          pushBuffer;
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
     GstMapInfo          mapinfo = GST_MAP_INFO_INIT;
+    #pragma GCC diagnostic pop
 
     // Child protection: Audio writing enabled for this movie?
     if (NULL == pwriterRec->ptbaudioappsrc) {

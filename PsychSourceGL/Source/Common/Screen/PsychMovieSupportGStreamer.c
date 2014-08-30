@@ -1348,7 +1348,10 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     double          tNow;
     double          preT, postT;
     unsigned char*  releaseMemPtr = NULL;
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
     GstMapInfo      mapinfo = GST_MAP_INFO_INIT;
+    #pragma GCC diagnostic pop
 
     if (!PsychIsOnscreenWindow(win)) {
         PsychErrorExitMsg(PsychError_user, "Need onscreen window ptr!!!");
