@@ -380,26 +380,26 @@ static psych_bool PsychVideoPipelineSetState(GstElement* camera, GstState state,
     // Wait for up to timeoutSecs for state change to complete or fail:
     rcstate = gst_element_get_state(camera, &state, &state_pending, (GstClockTime) (timeoutSecs * 1e9));
     switch(rcstate) {
-	case GST_STATE_CHANGE_SUCCESS:
-		//printf("PTB-DEBUG: Statechange completed with GST_STATE_CHANGE_SUCCESS.\n");
-	break;
+        case GST_STATE_CHANGE_SUCCESS:
+            if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Statechange completed with GST_STATE_CHANGE_SUCCESS.\n");
+        break;
 
-	case GST_STATE_CHANGE_ASYNC:
-		printf("PTB-INFO: Statechange in progress with GST_STATE_CHANGE_ASYNC.\n");
-	break;
+        case GST_STATE_CHANGE_ASYNC:
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Statechange in progress with GST_STATE_CHANGE_ASYNC.\n");
+        break;
 
-	case GST_STATE_CHANGE_NO_PREROLL:
-		//printf("PTB-INFO: Statechange completed with GST_STATE_CHANGE_NO_PREROLL.\n");
-	break;
+        case GST_STATE_CHANGE_NO_PREROLL:
+            if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-INFO: Statechange completed with GST_STATE_CHANGE_NO_PREROLL.\n");
+        break;
 
-	case GST_STATE_CHANGE_FAILURE:
-		printf("PTB-ERROR: Statechange failed with GST_STATE_CHANGE_FAILURE!\n");
-		return(FALSE);
-	break;
+        case GST_STATE_CHANGE_FAILURE:
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Statechange failed with GST_STATE_CHANGE_FAILURE!\n");
+            return(FALSE);
+        break;
 
-	default:
-		printf("PTB-ERROR: Unknown state-change result in preroll.\n");
-		return(FALSE);
+        default:
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Unknown state-change result in preroll.\n");
+            return(FALSE);
     }
 
     return(TRUE);
@@ -655,27 +655,27 @@ static void PsychGSEnumerateVideoSourcesViaDeviceMonitor(void)
     caps = gst_caps_new_empty_simple("video/x-raw");
     gst_device_monitor_add_filter(monitor, "Video/Source", caps);
     gst_caps_unref(caps);
-    
+
     if (!gst_device_monitor_start(monitor)) printf("FAILED TO START DEVICE MONITOR!\n");
-    
+
     devlist = gst_device_monitor_get_devices(monitor);
     printf("PROBE %p\n", devlist);
-    
+
     for (devIter = g_list_first(devlist); devIter != NULL; devIter = g_list_next(devIter)) {
         device = (GstDevice*) devIter->data;
         printf("DEVPROBE %p --> %p\n", devIter, device);
-        
+
         if (device == NULL) continue;
-        
+
         devString = gst_device_get_device_class(device);
         printf("DEVICECLASS %s\n", (char*) devString);
         g_free(devString);
-        
+
         devString = gst_device_get_display_name(device);
         printf("DISPLAYNAME %s\n", (char*) devString);
         g_free(devString);
     }
-    
+
     g_list_free(devlist);
     gst_device_monitor_stop(monitor);
     gst_object_unref(GST_OBJECT(monitor));
@@ -689,17 +689,17 @@ static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, GstElement*
     GValue              val;
     GParamSpec          *paramSpec;
     GstElement          *videosource;
-	char				port_str[64];
-	char				*device_name = NULL;
-	gchar               *pstring = NULL;
+    char                port_str[64];
+    char                *device_name = NULL;
+    gchar               *pstring = NULL;
     gchar               *devString = NULL;
-	psych_uint64		deviceURI = 0;
+    psych_uint64        deviceURI = 0;
 
     if (PsychPrefStateGet_Verbosity() > 3) {
         devString = gst_device_get_device_class(device);
         printf("DEVICECLASS %s\n", (char*) devString);
         g_free(devString);
-        
+
         devString = gst_device_get_display_name(device);
         printf("DISPLAYNAME %s\n", (char*) devString);
         g_free(devString);
@@ -707,13 +707,13 @@ static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, GstElement*
 
     // Get dedicated instance of the video plugin, configured to use the
     // specific capture device being probed here:
-    videosource = gst_device_create_element(device, "ptb_probevideosource");
+    videosource = gst_device_create_element(device, "ptb_deviceprovidervideosource");
     if (videosource == NULL) {
         if (PsychPrefStateGet_Verbosity() > 0)
             printf("PTB-ERROR: PsychGSProbeGstDevice(): Could not create videosource for probe target device!!!\n");
         return;
     }
-    
+
     // Store the GstDevice* device as unique and well defined handle for this capture device:
     devices[ntotal].gstdevice = device;
 
@@ -733,14 +733,14 @@ static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, GstElement*
             // Assign as port_str:
             sprintf(port_str, "%s", (const char*) g_value_get_string(&val));
         }
-        
+
         // Numeric GUID property?
         if (G_VALUE_HOLDS_UINT64(&val)) {
             // Assign as numeric string and as numeric deviceURI:
             deviceURI = g_value_get_uint64(&val);
             sprintf(port_str, "%llu", deviceURI);
         }
-        
+
         // Done with val:
         g_value_unset(&val);
     }
@@ -759,13 +759,13 @@ static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, GstElement*
     sprintf(devices[ntotal].deviceHandle, "%s", port_str);
     sprintf(devices[ntotal].deviceSelectorProperty, "%s", devHandlePropName);
     sprintf(devices[ntotal].deviceVideoPlugin, "%s", srcname);
-    
+
     // Query and assign device specific parameters:
     pstring = NULL;
     if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device")) {
         g_object_get(G_OBJECT(videosource), "device", &pstring, NULL);
     }
-    
+
     if (pstring) {
         sprintf(devices[ntotal].device, "%s", pstring);
         g_free(pstring);
@@ -773,12 +773,12 @@ static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, GstElement*
     else {
         sprintf(devices[ntotal].device, "%s", port_str);
     }
-    
+
     pstring = NULL;
     if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device-path")) {
         g_object_get(G_OBJECT(videosource), "device-path", &pstring, NULL);
     }
-    
+
     if (pstring) {
         sprintf(devices[ntotal].devicePath, "%s", pstring);
         g_free(pstring);
@@ -786,12 +786,12 @@ static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, GstElement*
     else {
         sprintf(devices[ntotal].devicePath, "%s", port_str);
     }
-    
+
     pstring = NULL;
     if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device-name")) {
         g_object_get(G_OBJECT(videosource), "device-name", &pstring, NULL);
     }
-    
+
     if (pstring) {
         sprintf(devices[ntotal].deviceName, "%s", pstring);
         g_free(pstring);
@@ -799,7 +799,7 @@ static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, GstElement*
     else {
         sprintf(devices[ntotal].deviceName, "%s", port_str);
     }
-    
+
     pstring = NULL;
     if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "guid")) {
         g_object_get(G_OBJECT(videosource), "guid", &deviceURI, NULL);
@@ -831,25 +831,26 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
 {
     GstDevice           *device;
     GList               *devlist = NULL, *devIter;
-	int					i, n, nmaxp, dopoke;
-	char				class_str[64];
-	int					inputIndex;
-	GstElement			*videosource = NULL;
-	GValueArray			*viddevs = NULL;
-	GValue				*dev = NULL;
-	char				*device_name = NULL;
-	gchar               *pstring = NULL;
-	psych_uint64		deviceURI = 0;
-	
-	// Info to the user:
-	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to probe %s as video source...\n", srcname);
-	
-	// Create video source plugin, define class name:
-	videosource = gst_element_factory_make(srcname, "ptb_videosource");
-	sprintf(class_str, "%s", className);
+    int                 i, n, nmaxp, dopoke;
+    char                class_str[64];
+    int                 inputIndex;
+    GstElement          *videosource = NULL;
+    GValueArray         *viddevs = NULL;
+    GValue              *dev = NULL;
+    char                *device_name = NULL;
+    gchar               *pstring = NULL;
+    psych_uint64        deviceURI = 0;
+    int                 oldverbose;
 
-	// Nothing to do if no such video plugin available:
-	if (!videosource) return;
+    // Info to the user:
+    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to probe %s as video source...\n", srcname);
+
+    // Create video source plugin, define class name:
+    videosource = gst_element_factory_make(srcname, "ptb_probevideosource");
+    sprintf(class_str, "%s", className);
+
+    // Nothing to do if no such video plugin available:
+    if (!videosource) return;
 
     // Does this source support device enumeration of supported capture devices?
     #if GST_CHECK_VERSION(1,4,0)
@@ -883,7 +884,7 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
 
         if ((n == 0) && (PsychPrefStateGet_Verbosity() > 4)) {
             printf("PTB-INFO: Video plugin for class '%s' doesn't provide any video devices to enumerate.\n", class_str);
-		}
+        }
 
         // Free list, but afaik does not unref/free the contained GstDevice* elements.
         // Which is good, because we want to keep them (referenced) in our own device
@@ -898,38 +899,62 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
         return;
     }
     #endif
-    
+
     // If we reach this point, then the videosource plugin doesn't support straightforward enumeration,
     // so we need to be a bit more hacky here. Try enumeration by trying to access different devices,
     // poking then and see if they give signs of life. For some devices this could go wrong, so we don't
     // probe them but just expose a hard-coded number of devices, which may or may not actually be linked
     // to a real physical device:
-    
-    // Try poking/checking a reasonable range of cameras, e.g., 5 to 100 cameras:
     n = 0;
-    
-    // dc1394src - Probe up to 100 Firewire cameras. Others, just do a modest 5:
-    nmaxp = (!strcmp(srcname, "dc1394src")) ? 100 : 5;
 
-    // Only probing/poking dc1394src is safe and fast enough. For others we don't really probe,
-    // but just assume optimistically they are there and let usercode fail if it tries to open
-    // a camera device which doesn't actually exist:
-    dopoke = (!strcmp(srcname, "dc1394src")) ? 1 : 0;
+    // By default, just add 5 sources per class without actual hw-detection:
+    dopoke = 0;
+    nmaxp = 5;
+
+    // dc1394src - Probe up to 100 Firewire cameras, with a NULL->PAUSED->NULL transition, as it is fast:
+    if (!strcmp(srcname, "dc1394src")) {
+        nmaxp = 100;
+        dopoke = 2;
+    }
+
+    // dv1394src or hdv1394src - Probe up to 5 (H)DV cameras with NULL->PAUSED->NULL transition:
+    if (strstr(srcname, "dv1394src"))  {
+        nmaxp = 5;
+        dopoke = 2;
+    }
+
+    // Video4Linux2 source - Probe up to 20 cameras, with a NULL->READY->NULL transition:
+    if (strstr(srcname, "v4l2")) {
+        nmaxp = 20;
+        dopoke = 1;
+    }
 
     // Iterate:
     for (i = 0; i < nmaxp; i++) {
         // Only really probe if dopoke:
         if (dopoke) {
             // Set suspected camera id (select i'th camera on bus):
-            g_object_set(G_OBJECT(videosource), devHandlePropName, i, NULL);
+            if (strstr(srcname, "v4l2")) {
+                // Video4Linux2 specific path spec:
+                sprintf(devices[ntotal].devicePath, "/dev/video%i", i);
+                g_object_set(G_OBJECT(videosource), devHandlePropName, devices[ntotal].devicePath, NULL);
+            }
+            else {
+                // Some selection by numeric index:
+                g_object_set(G_OBJECT(videosource), devHandlePropName, i, NULL);
+            }
 
             // Try to set it to "paused" state, which should fail if no such
             // camera is connected:
-            if (gst_element_set_state(videosource, GST_STATE_PAUSED) == GST_STATE_CHANGE_FAILURE) {
+            oldverbose = PsychPrefStateGet_Verbosity();
+            PsychPrefStateSet_Verbosity(0);
+            if (PsychVideoPipelineSetState(videosource, (dopoke == 2) ? GST_STATE_PAUSED : GST_STATE_READY, 0.1) == GST_STATE_CHANGE_FAILURE) {
                 // No such camera connected. Game over, no need to probe further non-existent cams:
-                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: No camera %i connected to %s video input bus. Probe finished.\n", i, srcname);
+                PsychPrefStateSet_Verbosity(oldverbose);
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: No camera %i connected to %s video source. Probe finished.\n", i, srcname);
                 break;
             }
+            PsychPrefStateSet_Verbosity(oldverbose);
         }
 
         // i'th camera exists. Probe and assign:
@@ -938,21 +963,45 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
         devices[ntotal].classIndex = classIndex;
         devices[ntotal].inputIndex = inputIndex;
         sprintf(devices[ntotal].deviceClassName, "%s", className);
-        sprintf(devices[ntotal].deviceHandle, "%i", inputIndex);
         sprintf(devices[ntotal].deviceSelectorProperty, "%s", devHandlePropName);
         sprintf(devices[ntotal].deviceVideoPlugin, "%s", srcname);
-        sprintf(devices[ntotal].deviceName, "%i", inputIndex);
-        sprintf(devices[ntotal].devicePath, "%i", inputIndex);
-        sprintf(devices[ntotal].device, "%i", inputIndex);
-        devices[ntotal].deviceURI = inputIndex;
+        if (strstr(srcname, "v4l2")) {
+            // Video4Linux2 source: Set the already validated /dev/videoX device path:
+            sprintf(devices[ntotal].deviceHandle, "%s", devices[ntotal].devicePath);
+            sprintf(devices[ntotal].device, "%s", devices[ntotal].devicePath);
+            devices[ntotal].deviceURI = 0;
+            pstring = NULL;
+            if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device-name")) {
+                //printf("PTB-INFO: PASS II\n");
+                g_object_get(G_OBJECT(videosource), "device-name", &pstring, NULL);
+            }
+
+            if (pstring) {
+                //printf("PTB-INFO: PASS III --> %s\n", pstring);
+                sprintf(devices[ntotal].deviceName, "%s", pstring);
+                g_free(pstring);
+            }
+            else {
+                sprintf(devices[ntotal].deviceName, "%s", "NODEV");
+            }
+            pstring = NULL;
+        }
+        else {
+            // Other source: Set numeric handle:
+            sprintf(devices[ntotal].devicePath, "%i", inputIndex);
+            sprintf(devices[ntotal].deviceHandle, "%i", inputIndex);
+            sprintf(devices[ntotal].device, "%i", inputIndex);
+            sprintf(devices[ntotal].deviceName, "%i", inputIndex);
+            devices[ntotal].deviceURI = inputIndex;
+        }
 
         ntotal++;
         n++;
 
         // Reset this cam:
-        if (dopoke) gst_element_set_state(videosource, GST_STATE_READY);
+        if (dopoke) gst_element_set_state(videosource, GST_STATE_NULL);
         if (dopoke && (PsychPrefStateGet_Verbosity() > 4)) printf("PTB-INFO: %i'th %s camera enumerated.\n", inputIndex, srcname);
-        
+
         if (ntotal >= PSYCH_MAX_VIDSRC - 2) {
             if (PsychPrefStateGet_Verbosity() > 1)
                 printf("PTB-WARNING: Maximum number of allowable video sources during enumeration %i reached! Aborting enumeration.\n", PSYCH_MAX_VIDSRC);
@@ -998,89 +1047,89 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
  */
 PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceIndex, GstElement **videocaptureplugin)
 {
-	PsychGenericScriptType 	*devs;
-	const char *FieldNames[]={"DeviceIndex", "ClassIndex", "InputIndex", "ClassName", "InputHandle", "Device", "DevicePath", "DeviceName", "GUID", "DevicePlugin", "DeviceSelectorProperty" };
+    PsychGenericScriptType 	*devs;
+    const char *FieldNames[]={"DeviceIndex", "ClassIndex", "InputIndex", "ClassName", "InputHandle", "Device", "DevicePath", "DeviceName", "GUID", "DevicePlugin", "DeviceSelectorProperty" };
 
-	int					i;
-	GstElement			*videosource = NULL;
-	GValueArray			*viddevs = NULL;
-	GValue				*dev = NULL;
-	char				*device_name = NULL;
-	gchar               *pstring = NULL;
-	PsychVideosourceRecordType *mydevice = NULL;
-	
-	// Make sure GStreamer is ready:
-	PsychGSCheckInit("videocapture");
+    int                 i;
+    GstElement          *videosource = NULL;
+    GValueArray         *viddevs = NULL;
+    GValue              *dev = NULL;
+    char                *device_name = NULL;
+    gchar               *pstring = NULL;
+    PsychVideosourceRecordType *mydevice = NULL;
 
-	// Allocate temporary space for enumerated devices:
-	devices = (PsychVideosourceRecordType*) PsychCallocTemp(PSYCH_MAX_VIDSRC, sizeof(PsychVideosourceRecordType));
-	ntotal  = 0;
+    // Make sure GStreamer is ready:
+    PsychGSCheckInit("videocapture");
 
-	// Linux specific setup path:
-	if (PSYCH_SYSTEM == PSYCH_LINUX) {
-		// Try Video4Linux-II camera source:
-		PsychGSEnumerateVideoSourceType("v4l2camsrc", 1, "Video4Linux2-CameraSource", "device", 0);
+    // Allocate temporary space for enumerated devices:
+    devices = (PsychVideosourceRecordType*) PsychCallocTemp(PSYCH_MAX_VIDSRC, sizeof(PsychVideosourceRecordType));
+    ntotal  = 0;
 
-		// Try standard Video4Linux-II source:
-		PsychGSEnumerateVideoSourceType("v4l2src", 2, "Video4Linux2", "device", 0);
-	}
+    // Linux specific setup path:
+    if (PSYCH_SYSTEM == PSYCH_LINUX) {
+        // Try Video4Linux-II camera source: This is mostly a Maemo (maybe Meego et al.?) thing.
+        PsychGSEnumerateVideoSourceType("v4l2camsrc", 1, "Video4Linux2-CameraSource", "device", 0);
 
-	if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
-		// Try Windows kernel streaming source:
-		PsychGSEnumerateVideoSourceType("ksvideosrc", 1, "Windows WDM kernel streaming", "device-name", 0);
+        // Try standard Video4Linux-II source:
+        PsychGSEnumerateVideoSourceType("v4l2src", 2, "Video4Linux2", "device", 0);
+    }
 
-		// Use DirectShow to probe:
-		PsychGSEnumerateVideoSourceType("dshowvideosrc", 2, "DirectShow", "device-name", 0);
-	}
-	
-	if (PSYCH_SYSTEM == PSYCH_OSX) {
-		// Try OSX Quicktime-7 SequenceGrabber video source: Kind'a pointless as only on 32-Bit and we don't
+    if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
+        // Try Windows kernel streaming source:
+        PsychGSEnumerateVideoSourceType("ksvideosrc", 1, "Windows WDM kernel streaming", "device-name", 0);
+
+        // Use DirectShow to probe:
+        PsychGSEnumerateVideoSourceType("dshowvideosrc", 2, "DirectShow", "device-name", 0);
+    }
+
+    if (PSYCH_SYSTEM == PSYCH_OSX) {
+        // Try OSX Quicktime-7 SequenceGrabber video source: Kind'a pointless as only on 32-Bit and we don't
         // do that anymore. But leave it here for sentimental reasons - fond memories of actually useable
         // videocapture on OSX...
-		PsychGSEnumerateVideoSourceType("osxvideosrc", 1, "OSXQuicktimeSequenceGrabber", "device", 0);
+        PsychGSEnumerateVideoSourceType("osxvideosrc", 1, "OSXQuicktimeSequenceGrabber", "device", 0);
 
-		// Try OSX AVFoundation video source: The <sarcasm>latest and greatest</sarcasm> for OSX 10.8+ or so.
+        // Try OSX AVFoundation video source: The <sarcasm>latest and greatest</sarcasm> for OSX 10.8+ or so.
         // We enumerate this one before qtkitvideosrc, as the latter aka QTKit is deprecated since OSX 10.9.
         // Indeed a first test shows avfvideosrc performing better on OSX 10.9, so i guess Apple does its
         // "break old functionality to shove new api's down the throat of developers" thing again...
-		PsychGSEnumerateVideoSourceType("avfvideosrc", 4, "OSXAVFoundationVideoSource", "device-index", 0);
+        PsychGSEnumerateVideoSourceType("avfvideosrc", 4, "OSXAVFoundationVideoSource", "device-index", 0);
 
-		// Try the crappy OSX QTKit video source for 64-Bit systems with Quicktime-X aka QTKit:
-		PsychGSEnumerateVideoSourceType("qtkitvideosrc", 2, "OSXQuicktimeKitVideoSource", "device-index", 1);
+        // Try the crappy OSX QTKit video source for 64-Bit systems with Quicktime-X aka QTKit:
+        PsychGSEnumerateVideoSourceType("qtkitvideosrc", 2, "OSXQuicktimeKitVideoSource", "device-index", 1);
 
-		// Try OSX MIO video source: Unless we're under Octave, where some weird bug/interaction
-		// would cause a crash in the miovideosrc plugin if we tried, so we don't try on Octave.
+        // Try OSX MIO video source: Unless we're under Octave, where some weird bug/interaction
+        // would cause a crash in the miovideosrc plugin if we tried, so we don't try on Octave.
         // Note that this one is not included as of GStreamer 1.4.0, likely because it uses non-public
         // Apple api's, so is probably unsafe to use long-term...
-		#ifndef PTBOCTAVE3MEX
-		PsychGSEnumerateVideoSourceType("miovideosrc", 3, "OSXMIOVideoSource", "device-name", 0);
-		#endif
-	}
-	
-	// Try DV-Cameras:
-	PsychGSEnumerateVideoSourceType("dv1394src", 5, "DV1394", "guid", 0);
-	
-	// Try HDV-Cameras:
-	PsychGSEnumerateVideoSourceType("hdv1394src", 6, "HDV1394", "guid", 0);
-	
-	// Try IIDC-1394 Cameras:
-	// Does not work, no property probe interface:
-	PsychGSEnumerateVideoSourceType("dc1394src", 7, "1394-IIDC", "camera-number", 1);
+        #ifndef PTBOCTAVE3MEX
+        PsychGSEnumerateVideoSourceType("miovideosrc", 3, "OSXMIOVideoSource", "device-name", 0);
+        #endif
+    }
 
-	// Try GeniCam-Cameras via aravis plugin:
-	PsychGSEnumerateVideoSourceType("aravissrc", 8, "GeniCam-Aravis", "camera-name", 0);
-    
+    // Try DV-Cameras:
+    PsychGSEnumerateVideoSourceType("dv1394src", 5, "DV1394", "guid", 0);
+
+    // Try HDV-Cameras:
+    PsychGSEnumerateVideoSourceType("hdv1394src", 6, "HDV1394", "guid", 0);
+
+    // Try IIDC-1394 Cameras:
+    // Does not work, no property probe interface:
+    PsychGSEnumerateVideoSourceType("dc1394src", 7, "1394-IIDC", "camera-number", 1);
+
+    // Try GeniCam-Cameras via aravis plugin:
+    PsychGSEnumerateVideoSourceType("aravissrc", 8, "GeniCam-Aravis", "camera-name", 0);
+
     // ClassIndex 9 is blocked out for videotestsrc and other weirdo sources.
-    
+
     // Nothing enumerated?
-	if (ntotal <= 0) {
-		if (PsychPrefStateGet_Verbosity() > 4) {
+    if (ntotal <= 0) {
+        if (PsychPrefStateGet_Verbosity() > 4) {
             printf("PTB-INFO: Could not detect any supported video devices on this system.\n");
             printf("PTB-INFO: Trying to fake an auto-detected default device and a test video source...\n");
         }
-        
+
         ntotal = 0;
-        
+
         // Create a fake entry for the autovideosrc:
         devices[ntotal].deviceIndex = 90000;
         devices[ntotal].classIndex = 9;
@@ -1089,7 +1138,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
         sprintf(devices[ntotal].deviceSelectorProperty, "%s", "");
         sprintf(devices[ntotal].deviceHandle, "%s", "");
         ntotal++;
-        
+
         // Create fake entries for the videotestsrc:
         for (i = 0; i <= 22; i++) {
             devices[ntotal].deviceIndex = 90001 + i;
@@ -1100,7 +1149,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
             sprintf(devices[ntotal].deviceHandle, "%s", "");
             ntotal++;
         }
-	}
+    }
     else {
         // Found some real ones. However, in any case, always add a fake entry for videotestsrc,
         // so if everything else fails on a setup we can use the synthetic videotestsrc for easy
@@ -1121,14 +1170,14 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
     if (devices[ntotal].gstdevice) gst_object_ref(GST_ELEMENT((GstDevice*) devices[ntotal].gstdevice));
     ntotal++;
 
-	// Have enumerated devices:
-	if (deviceIndex >= 0) {
-		// Yes: Return device name for that index:
-		for (i=0; i < ntotal; i++) {
-			if (devices[i].deviceIndex == deviceIndex) {
+    // Have enumerated devices:
+    if (deviceIndex >= 0) {
+        // Yes: Return device name for that index:
+        for (i=0; i < ntotal; i++) {
+            if (devices[i].deviceIndex == deviceIndex) {
                 // Got it: Return pointer to device struct:
-				mydevice = &devices[i];
-                
+                mydevice = &devices[i];
+
                 // If this one was enumerated via GstDeviceProvider or GstDeviceMonitor,
                 // then immediately create the corresponding GstElement* video capture
                 // plugin which instantiates the capture device associated with GstDevice*
@@ -1146,40 +1195,40 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
                     }
                     #endif
                 }
-				break;
-			}
-		}
-	}
-	else {
-		// No: Code wants us to return struct array with all enumerated
-		// devices to userspace:
-		
-		// Create output struct array with n output slots:
-		PsychAllocOutStructArray(outPos, TRUE, ntotal, 11, FieldNames, &devs);
-		
-		// Iterate all available devices:
-		for(i = 0; i < ntotal; i++) {
-			PsychSetStructArrayDoubleElement("DeviceIndex", i, devices[i].deviceIndex, devs);
-			PsychSetStructArrayDoubleElement("ClassIndex", i, devices[i].classIndex, devs);
-			PsychSetStructArrayDoubleElement("InputIndex", i, devices[i].inputIndex, devs);
-			PsychSetStructArrayStringElement("ClassName", i, devices[i].deviceClassName , devs);
-			PsychSetStructArrayStringElement("InputHandle", i, devices[i].deviceHandle, devs);
-			PsychSetStructArrayStringElement("Device", i, devices[i].device, devs);
-			PsychSetStructArrayStringElement("DevicePath", i, devices[i].devicePath, devs);
-			PsychSetStructArrayStringElement("DeviceName", i, devices[i].deviceName, devs);
-			PsychSetStructArrayStringElement("GUID", i,  (devices[i].deviceURI > 0) ? devices[i].deviceHandle : "0", devs);
-			PsychSetStructArrayStringElement("DevicePlugin", i, devices[i].deviceVideoPlugin, devs);
-			PsychSetStructArrayStringElement("DeviceSelectorProperty", i, devices[i].deviceSelectorProperty, devs);
-		}
-	}
+                break;
+            }
+        }
+    }
+    else {
+        // No: Code wants us to return struct array with all enumerated
+        // devices to userspace:
+
+        // Create output struct array with n output slots:
+        PsychAllocOutStructArray(outPos, TRUE, ntotal, 11, FieldNames, &devs);
+
+        // Iterate all available devices:
+        for(i = 0; i < ntotal; i++) {
+            PsychSetStructArrayDoubleElement("DeviceIndex", i, devices[i].deviceIndex, devs);
+            PsychSetStructArrayDoubleElement("ClassIndex", i, devices[i].classIndex, devs);
+            PsychSetStructArrayDoubleElement("InputIndex", i, devices[i].inputIndex, devs);
+            PsychSetStructArrayStringElement("ClassName", i, devices[i].deviceClassName , devs);
+            PsychSetStructArrayStringElement("InputHandle", i, devices[i].deviceHandle, devs);
+            PsychSetStructArrayStringElement("Device", i, devices[i].device, devs);
+            PsychSetStructArrayStringElement("DevicePath", i, devices[i].devicePath, devs);
+            PsychSetStructArrayStringElement("DeviceName", i, devices[i].deviceName, devs);
+            PsychSetStructArrayStringElement("GUID", i,  (devices[i].deviceURI > 0) ? devices[i].deviceHandle : "0", devs);
+            PsychSetStructArrayStringElement("DevicePlugin", i, devices[i].deviceVideoPlugin, devs);
+            PsychSetStructArrayStringElement("DeviceSelectorProperty", i, devices[i].deviceSelectorProperty, devs);
+        }
+    }
 
     // Need to unref GstDevice* objects on exit, if they are created by GstDeviceMonitor/Provider:
     for (i = 0; i < ntotal; i++) {
         if (devices[i].gstdevice) gst_object_unref(GST_ELEMENT((GstDevice*) devices[i].gstdevice));
     }
 
-	// Done. Return device struct if assigned:
-	return(mydevice);
+    // Done. Return device struct if assigned:
+    return(mydevice);
 }
 
 psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int* width, int* height, double* fps, int reqdepth, int reqbitdepth)
@@ -4090,7 +4139,7 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 *  Returns Number of pending or dropped frames after fetch on success (>=0), -1 if no new image available yet, -2 if no new image available and there won't be any in future.
 */
 int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex,
-								 PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer)
+                                 PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer)
 {
     PsychVidcapRecordType *capdev;
     GstBuffer *videoBuffer = NULL;
@@ -4109,7 +4158,14 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     double tstart, tend;
     int nrdropped = 0;
     unsigned char* input_image = NULL;
+
+    // Disable warning about missing field initializer in calls
+    // like GstMapInfo mapinfo = = GST_MAP_INFO_INIT;
+    // Not our bug, but GStreamer's, so suppress for now.
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
     GstMapInfo mapinfo = GST_MAP_INFO_INIT;
+    #pragma GCC diagnostic pop
 
     // Make sure GStreamer is ready:
     PsychGSCheckInit("videocapture");
@@ -4141,7 +4197,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     if (outrawbuffer) {
         outrawbuffer->w = w;
         outrawbuffer->h = h;
-        outrawbuffer->depth = capdev->reqpixeldepth;
+        outrawbuffer->depth = (capdev->reqpixeldepth !=2) ? capdev->reqpixeldepth : 1;
         outrawbuffer->bitdepth = (capdev->bitdepth > 8) ? 16 : 8;
     }
 	
@@ -4334,7 +4390,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     // =========================================================================
 	
     // Do we want to do something with the image data and have a
-    // scratch buffer for color conversion alloc'ed?
+    // scratch buffer for color conversion alloc'ed? NOTE: This is currently a no-op, as scratchbuffer always == NULL
     if ((capdev->scratchbuffer) && ((out_texture) || (summed_intensity) || (outrawbuffer))) {
 		// Yes. Perform color-conversion YUV->RGB from cameras DMA buffer
 		// into the scratch buffer and set scratch buffer as source for
@@ -4538,7 +4594,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     // Sum of pixel intensities requested? 8 bpc?
     if (summed_intensity && (capdev->bitdepth <= 8)) {
         pixptr = (unsigned char*) input_image;
-        count  = w * h * capdev->reqpixeldepth;
+        count  = w * h * (capdev->reqpixeldepth !=2) ? capdev->reqpixeldepth : 1;
         for (i=0; i<count; i++) intensity+=(psych_uint64) pixptr[i];
         *summed_intensity = ((double) intensity) / w / h / capdev->reqpixeldepth / 255;
     }
@@ -4546,7 +4602,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     // Sum of pixel intensities requested? 16 bpc?
     if (summed_intensity && (capdev->bitdepth > 8)) {
         pixptrs = (psych_uint16*) input_image;
-        count = w * h * capdev->reqpixeldepth;
+        count = w * h * (capdev->reqpixeldepth !=2) ? capdev->reqpixeldepth : 1;
         for (i=0; i<count; i++) intensity+=(psych_uint64) pixptrs[i];
         *summed_intensity = ((double) intensity) / w / h / capdev->reqpixeldepth / ((1 << (capdev->bitdepth)) - 1);
     }
@@ -4556,7 +4612,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
         // Copy it out:
         outrawbuffer->w = w;
         outrawbuffer->h = h;
-        outrawbuffer->depth = capdev->reqpixeldepth;
+        outrawbuffer->depth = (capdev->reqpixeldepth !=2) ? capdev->reqpixeldepth : 1;
         outrawbuffer->bitdepth = (capdev->bitdepth > 8) ? 16 : 8;
         count = (w * h * outrawbuffer->depth * (outrawbuffer->bitdepth / 8));
         // Either 8 bpc or 16 bpc data - A simple memcpy does the job efficiently:
