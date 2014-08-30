@@ -941,7 +941,12 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
             }
             else {
                 // Some selection by numeric index:
-                g_object_set(G_OBJECT(videosource), devHandlePropName, i, NULL);
+                if (!strcmp(devHandlePropName, "guid")) {
+                    g_object_set(G_OBJECT(videosource), devHandlePropName, (psych_uint64) i, NULL);
+                }
+                else {
+                    g_object_set(G_OBJECT(videosource), devHandlePropName, i, NULL);
+                }
             }
 
             // Try to set it to "paused" state, which should fail if no such
