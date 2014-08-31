@@ -4599,7 +4599,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     // Sum of pixel intensities requested? 8 bpc?
     if (summed_intensity && (capdev->bitdepth <= 8)) {
         pixptr = (unsigned char*) input_image;
-        count  = w * h * (capdev->reqpixeldepth !=2) ? capdev->reqpixeldepth : 1;
+        count  = w * h * ((capdev->reqpixeldepth !=2) ? capdev->reqpixeldepth : 1);
         for (i=0; i<count; i++) intensity+=(psych_uint64) pixptr[i];
         *summed_intensity = ((double) intensity) / w / h / capdev->reqpixeldepth / 255;
     }
@@ -4607,7 +4607,7 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     // Sum of pixel intensities requested? 16 bpc?
     if (summed_intensity && (capdev->bitdepth > 8)) {
         pixptrs = (psych_uint16*) input_image;
-        count = w * h * (capdev->reqpixeldepth !=2) ? capdev->reqpixeldepth : 1;
+        count = w * h * ((capdev->reqpixeldepth !=2) ? capdev->reqpixeldepth : 1);
         for (i=0; i<count; i++) intensity+=(psych_uint64) pixptrs[i];
         *summed_intensity = ((double) intensity) / w / h / capdev->reqpixeldepth / ((1 << (capdev->bitdepth)) - 1);
     }
