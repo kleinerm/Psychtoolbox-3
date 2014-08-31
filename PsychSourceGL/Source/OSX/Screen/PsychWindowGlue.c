@@ -890,62 +890,6 @@ double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint
     }
 }
 
-/*
-    PsychOSOpenOffscreenWindow()
-    
-    Accept specifications for the offscreen window in the platform-neutral structures, convert to native CoreGraphics structures,
-    create the surface, allocate a window record and record the window specifications and memory location there.
-	
-	TO DO:  We need to walk down the screen number and fill in the correct value for the benefit of TexturizeOffscreenWindow
-*/
-psych_bool PsychOSOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord)
-{
-
-    //PsychTargetSpecificWindowRecordType 	cgStuff;
-    CGLPixelFormatAttribute 			attribs[5];
-    //CGLPixelFormatObj					pixelFormatObj;
-    GLint								numVirtualScreens;
-    CGLError							error;
-    int									windowWidth, windowHeight;
-    int									depthBytes;
-
-    //First allocate the window recored to store stuff into.  If we exit with an error PsychErrorExit() should
-    //call PsychPurgeInvalidWindows which will clean up the window record. 
-    PsychCreateWindowRecord(windowRecord);  		//this also fills the window index field.
-    
-    attribs[0]=kCGLPFAOffScreen;
-    attribs[1]=kCGLPFAColorSize;
-    attribs[2]=(CGLPixelFormatAttribute)depth;
-    attribs[3]=(CGLPixelFormatAttribute)NULL;
-    
-    error=CGLChoosePixelFormat(attribs, &((*windowRecord)->targetSpecific.pixelFormatObject), &numVirtualScreens);
-    error=CGLCreateContext((*windowRecord)->targetSpecific.pixelFormatObject, NULL, &((*windowRecord)->targetSpecific.contextObject));
-	CGLSetCurrentContext((*windowRecord)->targetSpecific.contextObject);
-	
-    windowWidth=(int)PsychGetWidthFromRect(rect);
-    windowHeight=(int) PsychGetHeightFromRect(rect);
-	//This section looks wrong because it does not allocate enough memory to insure alignment on word bounaries, which presumably is
-	//dicated by the pixel format.  
-    depthBytes=depth / 8;
-    (*windowRecord)->surfaceSizeBytes= windowWidth * windowHeight * depthBytes;
-    (*windowRecord)->surface=malloc((*windowRecord)->surfaceSizeBytes);
-    CGLSetOffScreen((*windowRecord)->targetSpecific.contextObject, windowWidth, windowHeight, windowWidth * depthBytes, (*windowRecord)->surface); 
-    gluOrtho2D(rect[kPsychLeft], rect[kPsychRight], rect[kPsychBottom], rect[kPsychTop]);
-          
-    //Fill in the window record.
-    (*windowRecord)->windowType=kPsychSystemMemoryOffscreen;
-    (*windowRecord)->screenNumber=kPsychUnaffiliatedWindow;
-    PsychCopyRect((*windowRecord)->rect, rect);
-    (*windowRecord)->depth=depth;
-	
-
-    //mark the contents of the window record as valid.  Between the time it is created (always with PsychCreateWindowRecord) and when it is marked valid 
-    //(with PsychSetWindowRecordValid) it is a potential victim of PsychPurgeInvalidWindows.  
-    PsychSetWindowRecordValid(*windowRecord);
-    return(TRUE);
-}
-
-
 void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 {
     CGDirectDisplayID   cgDisplayID;

@@ -33,10 +33,8 @@
 #include "Screen.h"
 
 psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow, int specialFlags);
-psych_bool PsychOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord);
 void	PsychCloseOnscreenWindow(PsychWindowRecordType *windowRecord);
 void	PsychCloseWindow(PsychWindowRecordType *windowRecord);
-void	PsychCloseOffscreenWindow(PsychWindowRecordType *windowRecord);
 void	PsychFlushGL(PsychWindowRecordType *windowRecord);
 double	PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip, int vbl_synclevel, int dont_clear, double flipwhen, int* beamPosAtFlip, double* miss_estimate, double* time_at_flipend, double* time_at_onset);
 void	PsychSetGLContext(PsychWindowRecordType *windowRecord);

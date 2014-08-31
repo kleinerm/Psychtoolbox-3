@@ -45,10 +45,8 @@
 
 psych_bool PsychRealtimePriority(psych_bool enable_realtime);
 psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType *windowRecord, int numBuffers, int stereomode, int conserveVRAM);
-psych_bool PsychOSOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord);
 void	PsychOSCloseOnscreenWindow(PsychWindowRecordType *windowRecord);
 void	PsychOSCloseWindow(PsychWindowRecordType *windowRecord);
-void	PsychOSCloseOffscreenWindow(PsychWindowRecordType *windowRecord);
 void    PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord);
 void    PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterval);
 void	PsychOSSetGLContext(PsychWindowRecordType *windowRecord);

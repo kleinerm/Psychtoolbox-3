@@ -1736,23 +1736,6 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     return(TRUE);
 }
 
-
-/*
-    PsychOpenOffscreenWindow()
-    
-    Accept specifications for the offscreen window in the platform-neutral structures, convert to native OpenGL structures,
-    create the texture, allocate a window record and record the window specifications and memory location there.
-    TO DO:  We need to walk down the screen number and fill in the correct value for the benefit of TexturizeOffscreenWindow
-*/
-psych_bool PsychOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord)
-{
-    // This is a complete no-op as everything is implemented in SCREENOpenOffscreenWindow at the moment.
-    return(TRUE);
-    
-    //    return(PsychOSOpenOffscreenWindow(rect, depth, windowRecord));
-}
-
-
 void PsychCloseWindow(PsychWindowRecordType *windowRecord)
 {
     PsychWindowRecordType	**windowRecordArray;

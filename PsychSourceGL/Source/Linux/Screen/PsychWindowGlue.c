@@ -1157,21 +1157,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   return(TRUE);
 }
 
-
-/*
-    PsychOSOpenOffscreenWindow()
-    
-    Accept specifications for the offscreen window in the platform-neutral structures, convert to native CoreGraphics structures,
-    create the surface, allocate a window record and record the window specifications and memory location there.
-	
-	TO DO:  We need to walk down the screen number and fill in the correct value for the benefit of TexturizeOffscreenWindow
-*/
-psych_bool PsychOSOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord)
-{
-  // This function is obsolete and does nothing.
-  return(FALSE);
-}
-
 /*
     PsychOSGetPostSwapSBC() -- Internal method for now, used in close window path.
     Caution: Blocks with display lock held! Do not use outside close window path!!!
