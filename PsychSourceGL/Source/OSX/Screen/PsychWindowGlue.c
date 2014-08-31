@@ -60,12 +60,6 @@
 #include "PsychCocoaGlue.h"
 
 static struct {
-    io_connect_t        connect;
-    StdFBShmem_t*       shmem;
-    mach_vm_size_t      shmemSize;    
-} fbsharedmem[kPsychMaxPossibleDisplays];   
-
-static struct {
     psych_mutex         mutex;
     double              vblTimestamp;
     psych_uint64        vblCount;
@@ -709,63 +703,20 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
     // First reference to this screen by a window?
     if (screenRefCount[screenSettings->screenNumber] == 0) {
-        // Yes: Initialize shmem to safe default:
-        fbsharedmem[screenSettings->screenNumber].shmem = NULL;
-
         // High precision timestamping enabled? If so, we need to setup the fallback
         // timestamping methods in case beamposition timestamping doesn't work:
         if (PsychPrefStateGet_VBLTimestampingMode() > 0) {
-            // Which fallback timestamping method to use?
-            //
             // Use of CoreVideo is needed on 10.7 and later due to brokeness of the old method (thanks Apple!):
-            if ((osMajor > 10) || (osMinor >= 7)) {
-                // 10.7+ Use CoreVideo timestamping and vblank counting:
-                useCoreVideoTimestamping = TRUE;
-                if (PsychPrefStateGet_Verbosity() > 2) {
-                    printf("PTB-INFO: Deficient Apple OS/X 10.7 or later detected: Would use fragile CoreVideo timestamping as fallback,\n");
-                    printf("PTB-INFO: if beamposition timestamping would not work. Will try to use beamposition timestamping if possible.\n");
-                    // Recommend use of kernel driver if it isn't installed already for all but Intel GPU's:
-                    if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) && !strstr((char*) glGetString(GL_VENDOR), "Intel")) {
-                        printf("PTB-INFO: Installation of the PsychtoolboxKernelDriver is strongly recommended if you care about precise visual\n");
-                        printf("PTB-INFO: onset timestamping or timing. See 'help PsychtoolboxKernelDriver' for installation instructions.\n");
-                    }
+            if (PsychPrefStateGet_Verbosity() > 2) {
+                printf("PTB-INFO: Will use fragile CoreVideo timestamping as fallback if beamposition timestamping doesn't work.\n");
+                // Recommend use of kernel driver if it isn't installed already for all but Intel GPU's:
+                if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) && !strstr((char*) glGetString(GL_VENDOR), "Intel")) {
+                    printf("PTB-INFO: Installation of the PsychtoolboxKernelDriver is strongly recommended if you care about precise visual\n");
+                    printf("PTB-INFO: onset timestamping or timing. See 'help PsychtoolboxKernelDriver' for installation instructions.\n");
                 }
-            } else {
-                // 10.6 or earlier: Use VBL shmem irq timestamping and vblank counting:
-                useCoreVideoTimestamping = FALSE;
             }
 
-            if (!useCoreVideoTimestamping) {
-                // VBL-IRQ shmem timestamping:
-                //
-                // Initialize a low-level mapping of Framebuffer device data structures into
-                // our address space:
-                // Get access to Mach service port for the physical display device associated
-                // with this onscreen window and open our own connection to the port:
-                if ((kIOReturnSuccess == IOServiceOpen(CGDisplayIOServicePort(cgDisplayID), mach_task_self(), kIOFBSharedConnectType, &(fbsharedmem[screenSettings->screenNumber].connect))) ||
-                    (kIOReturnSuccess == IOServiceOpen(CGDisplayIOServicePort(CGMainDisplayID()), mach_task_self(), kIOFBSharedConnectType, &(fbsharedmem[screenSettings->screenNumber].connect)))) {
-                    // Connection established.
-
-                    // Map the slice of device memory into our VM space:
-                    if (kIOReturnSuccess != IOConnectMapMemory(fbsharedmem[screenSettings->screenNumber].connect, kIOFBCursorMemory, mach_task_self(),
-                                                               (mach_vm_address_t *) &(fbsharedmem[screenSettings->screenNumber].shmem),
-                                                               &(fbsharedmem[screenSettings->screenNumber].shmemSize), kIOMapAnywhere)) {
-                        // Mapping failed!
-                        fbsharedmem[screenSettings->screenNumber].shmem = NULL;
-                        if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOConnectMapMemory()] - Fallback path for time stamping won't be available.\n");
-                    }
-                    else {
-                        if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Connection to kernel-level vbl handler established (shmem = %p).\n",  fbsharedmem[screenSettings->screenNumber].shmem);
-                    }
-                }
-                else {
-                    if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOServiceOpen()] - Fallback path for time stamping won't be available.\n");
-                }
-
-                // If the mapping worked, we have a pointer to the driver memory in .shmem, otherwise we have NULL:
-            }
-
-            if (useCoreVideoTimestamping && (NULL == cvDisplayLink[screenSettings->screenNumber]) && !getenv("PSYCH_DONT_USE_CVDISPLAYLINK")) {
+            if (NULL == cvDisplayLink[screenSettings->screenNumber]) {
                 // CoreVideo timestamping:
                 //
                 // Create and start a CVDisplayLink for this screen.
@@ -807,7 +758,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             }
         }
         else {
-            // VBLtimestampingmode 0 or -1 -- No vbl-irq shmem (on OSX 10.6) or CoreVideo (on 10.7+) fallback for timestamping.
+            // VBLtimestampingmode 0 or -1 -- No CoreVideo fallback for timestamping if beamposition timestamping is unavailable:
             // This is the new default as of Psychtoolbox 3.0.12 to avoid the buggy, crashy, unreliably CoreVideo fallback.
 
             // Recommend use of kernel driver if it isn't installed already for all but Intel GPU's:
@@ -835,56 +786,21 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint64* vblCount)
 {
     unsigned int screenid = windowRecord->screenNumber;
-    psych_uint64 refvblcount;
-    double tnow, t1, t2, cvRefresh, cvTime = 0;
+    double cvTime;
 
     // Should we use CoreVideo display link timestamping?
-    if (useCoreVideoTimestamping && cvDisplayLink[screenid]) {
+    if (cvDisplayLink[screenid]) {
         // Yes: Retrieve data from our shared data structure:
-        PsychGetAdjustedPrecisionTimerSeconds(&tnow);
 
         PsychLockMutex(&(cvDisplayLinkData[screenid].mutex));
         *vblCount = cvDisplayLinkData[screenid].vblCount;
         cvTime = cvDisplayLinkData[screenid].vblTimestamp;
         PsychUnlockMutex(&(cvDisplayLinkData[screenid].mutex));
 
-        // If timestamp debugging is off, we're done:
-        if (PsychPrefStateGet_Verbosity() <= 19) return(cvTime);
-    }
-
-    // Do we have a valid shared mapping?
-    if (fbsharedmem[screenid].shmem) {
-        // We query each value twice and repeat this double-query until both readings of
-        // both variables show the same values. This because our read access to this kernel
-        // data structure is not protected by a lock, so the kernel might modify the values
-        // while we are reading them, causing inconsistent readings between the two values and
-        // within a value. We use memory barriers to prevent compiler optimizations or cache
-        // coherency issues:
-        do {
-            // Retrieve absolute count of vbls since startup:
-            *vblCount = (psych_uint64) fbsharedmem[screenid].shmem->vblCount;
-            OSMemoryBarrier();
-            t1 = ((double) UnsignedWideToUInt64(AbsoluteToNanoseconds(fbsharedmem[screenid].shmem->vblTime))) / 1000000000.0;
-            OSMemoryBarrier();
-            PsychWaitIntervalSeconds(0.000250);
-            refvblcount = (psych_uint64) fbsharedmem[screenid].shmem->vblCount;
-            OSMemoryBarrier();
-            t2 = ((double) UnsignedWideToUInt64(AbsoluteToNanoseconds(fbsharedmem[screenid].shmem->vblTime))) / 1000000000.0;
-            OSMemoryBarrier();
-        } while ((*vblCount != refvblcount) || (t1 != t2));
-
-        // Diagnostic check of CV timestamps against our host timestamps:
-        // See comments in PsychCVDisplayLinkOutputCallback() on what to expect here...
-        if (useCoreVideoTimestamping && (PsychPrefStateGet_Verbosity() > 19)) {
-                t2 = cvTime - t1;
-                printf("PTB-DEBUG: Difference CoreVideoTimestamp - vblTimestamp = %lf msecs.\n", 1000.0 * t2);
-        }
-
-        // Retrieve absolute system time of last retrace, convert into PTB standard time system and return it:
-        return(t1);
+        return(cvTime);
     }
     else {
-        // Unsupported :(
+        // Unsupported:
         *vblCount = 0;
         return(-1);
     }
@@ -918,20 +834,7 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     // Last reference to this screen? In that case we have to shutdown the fallback
     // vbl timestamping and vblank counting facilities for this screen:
     if (screenRefCount[windowRecord->screenNumber] == 1) {
-        // Last one on this screen will be gone in a second. Shutdown this stuff:
-
-        // Disable low-level mapping of framebuffer cursor memory, if active:
-        if (fbsharedmem[windowRecord->screenNumber].shmem) {
-            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Releasing shared memory mapping for screen %i.\n", windowRecord->screenNumber);
-
-            IOConnectUnmapMemory(fbsharedmem[windowRecord->screenNumber].connect, kIOFBCursorMemory, mach_task_self(), (vm_address_t) fbsharedmem[windowRecord->screenNumber].shmem);
-
-            fbsharedmem[windowRecord->screenNumber].shmem = NULL;
-
-            // Close the service port:
-            IOServiceClose(fbsharedmem[windowRecord->screenNumber].connect);            
-        }
-
+        // Last one on this screen will be gone in a second.
         // Shutdown and release CVDisplayLink for this windows screen, if any:
         if (cvDisplayLink[windowRecord->screenNumber]) {
             if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Releasing CVDisplayLink for screen %i.\n", windowRecord->screenNumber);
