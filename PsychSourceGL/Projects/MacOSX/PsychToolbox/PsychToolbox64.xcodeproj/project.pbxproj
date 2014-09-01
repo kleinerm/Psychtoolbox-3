@@ -5279,7 +5279,7 @@
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0430;
+				LastUpgradeCheck = 0510;
 			};
 			buildConfigurationList = 2F57E2DB08CE718C00A5CF85 /* Build configuration list for PBXProject "PsychToolbox64" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -8055,7 +8055,6 @@
 		2F57E2DC08CE718C00A5CF85 /* Development */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
 				DEPLOYMENT_LOCATION = YES;
 				DSTROOT = "$(PSYCHTOOLBOXROOT)/";
 				GCC_ENABLE_SSE3_EXTENSIONS = YES;
@@ -8112,7 +8111,6 @@
 		2F57E2DD08CE718C00A5CF85 /* Deployment */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
 				DEPLOYMENT_LOCATION = YES;
 				GCC_ENABLE_SSE3_EXTENSIONS = YES;
 				GCC_INPUT_FILETYPE = sourcecode.c.c;
@@ -8129,7 +8127,6 @@
 		2F57E2DE08CE718C00A5CF85 /* Default */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
 				DEPLOYMENT_LOCATION = YES;
 				GCC_ENABLE_SSE3_EXTENSIONS = YES;
 				GCC_INPUT_FILETYPE = sourcecode.c.c;
@@ -9612,7 +9609,6 @@
 		2FEBA6D40988630A00F4165F /* Development */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = ppc;
 				COPY_PHASE_STRIP = NO;
 				EXECUTABLE_EXTENSION = mexmac;
 				EXPORTED_SYMBOLS_FILE = "";
@@ -10421,7 +10417,6 @@
 		836DECC40C30A0F900CFE76B /* Development */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(NATIVE_ARCH)";
 				COPY_PHASE_STRIP = NO;
 				EXECUTABLE_EXTENSION = mexmac;
 				GCC_DYNAMIC_NO_PIC = NO;
@@ -12178,6 +12173,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GCC_NO_COMMON_BLOCKS = NO;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				KEEP_PRIVATE_EXTERNS = NO;
 				LIBRARY_SEARCH_PATHS = "";
 				New_Setting = "";
@@ -12200,6 +12196,7 @@
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				INSTALL_PATH = /usr/local/lib;
 				KEEP_PRIVATE_EXTERNS = NO;
 				LIBRARY_SEARCH_PATHS = (
@@ -12387,7 +12384,6 @@
 		83726C9D0FD05B3500ED39A4 /* Development-Octave-3build */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
 				BUNDLE_LOADER = "/Applications/Octave.app/Contents/Resources/bin/octave-3.2.0";
 				DEPLOYMENT_LOCATION = YES;
 				DSTROOT = "$(PSYCHTOOLBOXROOT)/";
@@ -12810,7 +12806,6 @@
 		F089BD050AD42DF500663D86 /* Development */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(NATIVE_ARCH)";
 				COPY_PHASE_STRIP = NO;
 				DEPLOYMENT_LOCATION = YES;
 				EXECUTABLE_EXTENSION = mexmaci;
@@ -13084,7 +13079,6 @@
 		F14A28410AD48DDF00BFB68F /* Development */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = i386;
 				COPY_PHASE_STRIP = NO;
 				EXECUTABLE_EXTENSION = mexmaci;
 				EXPORTED_SYMBOLS_FILE = "";
@@ -14169,6 +14163,7 @@
 				GCC_NO_COMMON_BLOCKS = NO;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				"HEADER_SEARCH_PATHS[arch=i386]" = "";
 				"HEADER_SEARCH_PATHS[arch=x86_64]" = "";
 				INSTALL_PATH = /usr/local/lib;
@@ -14196,6 +14191,7 @@
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_MODEL_TUNING = G5;
 				GCC_NO_COMMON_BLOCKS = NO;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				INSTALL_PATH = /usr/local/lib;
 				KEEP_PRIVATE_EXTERNS = NO;
 				LIBRARY_SEARCH_PATHS = "";
@@ -14212,6 +14208,7 @@
 			buildSettings = {
 				GCC_MODEL_TUNING = G5;
 				GCC_NO_COMMON_BLOCKS = NO;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				INSTALL_PATH = /usr/local/lib;
 				KEEP_PRIVATE_EXTERNS = NO;
 				LIBRARY_SEARCH_PATHS = "";
@@ -14234,6 +14231,7 @@
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				"HEADER_SEARCH_PATHS[arch=x86_64]" = "";
 				INSTALL_PATH = /usr/local/lib;
 				KEEP_PRIVATE_EXTERNS = NO;
@@ -14269,6 +14267,7 @@
 				COPY_PHASE_STRIP = YES;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_MODEL_TUNING = G5;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				INSTALL_PATH = /usr/local/lib;
 				LIBRARY_SEARCH_PATHS = (
 					"$(LIBRARY_SEARCH_PATHS)",
@@ -14283,6 +14282,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GCC_MODEL_TUNING = G5;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				INSTALL_PATH = /usr/local/lib;
 				LIBRARY_SEARCH_PATHS = (
 					"$(LIBRARY_SEARCH_PATHS)",
