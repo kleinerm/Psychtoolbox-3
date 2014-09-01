@@ -810,9 +810,9 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     if (!((*windowRecord)->specialflags & kPsychIsFullscreenWindow) && (skip_synctests < 1)) skip_synctests = 1;
 
 #if PSYCH_SYSTEM == PSYCH_OSX
-    CGLRendererInfoObj				rendererInfo;
-    CGOpenGLDisplayMask 			displayMask;
-    CGLError					error;
+    CGLRendererInfoObj  rendererInfo;
+    CGOpenGLDisplayMask displayMask;
+    CGLError            error;
 
     displayMask=CGDisplayIDToOpenGLDisplayMask(cgDisplayID);
 
@@ -821,8 +821,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         error= CGLQueryRendererInfo(displayMask, &rendererInfo, &numRenderers);
         if(numRenderers>1) numRenderers=1;
         for(i=0;i<numRenderers;i++) {
-            CGLDescribeRenderer(rendererInfo, i, kCGLRPVideoMemory, &VRAMTotal);
-            CGLDescribeRenderer(rendererInfo, i, kCGLRPTextureMemory, &TexmemTotal);
+            CGLDescribeRenderer(rendererInfo, i, kCGLRPVideoMemoryMegabytes, &VRAMTotal);
+            CGLDescribeRenderer(rendererInfo, i, kCGLRPTextureMemoryMegabytes, &TexmemTotal);
         }
         CGLDestroyRendererInfo(rendererInfo);
     }
@@ -1397,7 +1397,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     if(PsychPrefStateGet_Verbosity()>2) printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", (char*) glGetString(GL_VENDOR), (char*) glGetString(GL_RENDERER), (char*) glGetString(GL_VERSION));
 
     if(PsychPrefStateGet_Verbosity()>2) {
-      if (VRAMTotal>0) printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal / 1024 / 1024, TexmemTotal / 1024 / 1024);
+      if (VRAMTotal>0) printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal, TexmemTotal);
       printf("PTB-INFO: VBL startline = %i , VBL Endline = %i\n", (int) vbl_startline, VBL_Endline);
       if (ifi_beamestimate>0) {
           printf("PTB-INFO: Measured monitor refresh interval from beamposition = %f ms [%f Hz].\n", ifi_beamestimate * 1000, 1/ifi_beamestimate);

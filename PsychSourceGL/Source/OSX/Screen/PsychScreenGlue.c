@@ -317,10 +317,12 @@ psych_bool PsychCheckScreenSettingsLock(int screenNumber)
 void PsychCaptureScreen(int screenNumber)
 {
     CGDisplayErr  error;
+
+    if (screenNumber >= numDisplays) PsychErrorExit(PsychError_invalidScumber);
     
-    if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
-    error=CGDisplayCapture(displayCGIDs[screenNumber]);
-    if(error) PsychErrorExitMsg(PsychError_internal, "Unable to capture display");
+    error = CGDisplayCapture(displayCGIDs[screenNumber]);
+    if (error) PsychErrorExitMsg(PsychError_internal, "Unable to capture display");
+    
     PsychLockScreenSettings(screenNumber);
 
 	// Reenumerate all displays: This is meant to help resolve issues with lots of
@@ -351,9 +353,11 @@ void PsychReleaseScreen(int screenNumber)
 {	
     CGDisplayErr  error;
     
-    if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
+    if (screenNumber >= numDisplays) PsychErrorExit(PsychError_invalidScumber);
+
     error = CGDisplayRelease(displayCGIDs[screenNumber]);
-    if(error) PsychErrorExitMsg(PsychError_internal, "Unable to release display");
+    if (error) PsychErrorExitMsg(PsychError_internal, "Unable to release display");
+
     PsychUnlockScreenSettings(screenNumber);
 
 	// Reenumerate all displays: See comments in PsychCaptureScreen() for explanation.
@@ -775,7 +779,7 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
     else CGDisplayModeRelease(cgMode);
 
     //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.  
-    isCaptured = CGDisplayIsCaptured(displayCGIDs[settings->screenNumber]);
+    isCaptured = PsychIsScreenCaptured(settings->screenNumber);
     if(!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
 
     // Readback a backup copy of the current gamma table:
@@ -807,7 +811,7 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
 }
 
 /*
-    PsychRestoreVideoSettings()
+    PsychRestoreScreenSettings()
     
     Restores video settings to the state set by the finder.  Returns TRUE if the settings can be restored or false if they 
     can not be restored because a lock is in effect, which would mean that there are still open windows.    
@@ -825,7 +829,7 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
     if(!displayOriginalCGSettingsValid[screenNumber]) return(true);
     
     //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.  
-    isCaptured = CGDisplayIsCaptured(displayCGIDs[screenNumber]);
+    isCaptured = PsychIsScreenCaptured(screenNumber);
     if(!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
     
     // Change the display mode.
