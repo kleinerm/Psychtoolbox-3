@@ -254,7 +254,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     PsychRectType                   screenrect;
     int                             i;
     int                             windowLevel;
-    psych_bool                      useCocoa;
     void*                           cocoaWindow = NULL;
 
     // Map screen number to physical display handle cgDisplayID:
@@ -289,41 +288,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	PsychGetGlobalScreenRect(screenSettings->screenNumber, screenrect);
 	if (PsychMatchRect(screenrect, windowRecord->rect)) windowRecord->specialflags |= kPsychIsFullscreenWindow;
 
-    if (windowRecord->specialflags & kPsychIsFullscreenWindow) {
-        // Fullscreen windows do not use Cocoa by default, but the lower level CGL direct access. This excludes
-        // use of the desktop compositor which can badly screw with presentation timing and performance:
-        useCocoa = FALSE;
+    if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_Verbosity() > 2)) {
+        printf("PTB-INFO: Always using Cocoa for fullscreen windows, to work around graphics driver bugs in OSX and because Apple forces us to do so.\n");
+        printf("PTB-INFO: Presentation timing and timestamp precision is not yet known for this configuration on most Apple machines, so check your results.\n");
     }
-    else {
-        // Non fullscreen windows always use Cocoa + desktop composition. There isn't any alternative on OSX:
-        useCocoa = TRUE;
-    }
-
-    // User override to use Cocoa even for fullscreen windows? Or OSX 10.8 or later?
-    if ((PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLForFullscreenWindows) ||
-        (osMajor > 10) || ((osMajor == 10) && (osMinor >= 8))) {
-        // Force use of Cocoa. This should not result in use of the desktop
-        // compositor on current versions of OSX iff the window is a fullscreen
-        // window, according to Apple documentation. Of course this is the "goto fail"
-        // company, so the real mileage may vary greatly on this toy operating system.
-        useCocoa = TRUE;
-
-        if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_Verbosity() > 2)) {
-            if (PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLForFullscreenWindows) {
-                printf("PTB-INFO: Usercode requests use of Cocoa for this fullscreen window via kPsychUseAGLForFullscreenWindows conserveVRAM setting.\n");
-            }
-            else {
-                printf("PTB-INFO: Using Cocoa for this fullscreen window to work around various graphics driver bugs in OSX 10.8 and later.\n");
-            }
-            printf("PTB-INFO: Presentation timing accuracy may suffer and timestamps may be unreliable, depending on your specific setup.\n");
-        }
-    }
-
-	// GUI windows always use Cocoa:
-	if (windowRecord->specialflags & kPsychGUIWindow) useCocoa = TRUE;
-    
-    // Window shielding levels below 2000 always use Cocoa:
-    if (windowLevel < 2000) useCocoa = TRUE;
 
 	// Override for use of PsychDebugWindowConfiguration, to allow half transparent
     // windows for more painless single display setup debugging:
@@ -333,10 +301,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	// is horrible, animations are possibly jerky and all our high precision timestamping is
 	// completely broken and pointless: This mode is only useful for slowly updating
 	// mostly static stimuli with no timing requirements, ie., for debugging:
-	if (!useCocoa && (windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLCompositorForFullscreenWindows)) {
-		// Force use of Cocoa for use of Quartz compositor:
-		useCocoa = TRUE;
-		
+	if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLCompositorForFullscreenWindows)) {
 		// Force a window rectangle that matches the global screen rectangle for that windows screen:
 		PsychCopyRect(windowRecord->rect, screenrect);
 		
@@ -347,63 +312,48 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Using desktop compositor for composited onscreen window creation: High precision timestamping disabled,\nvisual stimulus onset timing and timestamping may be very unreliable on all windows!!\n");
 	}
 
-	// Do we need to use Cocoa, possibly in windowed mode?
-	if (useCocoa) {
-		// Yes. Need to create Cocoa window and attach OpenGL to it via NSOpenGL:
-		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Using Cocoa for onscreen window creation...\n");
-		
-		if ((windowRecord->specialflags & kPsychGUIWindow) && (PsychPrefStateGet_Verbosity() > 3)) {
-            printf("PTB-INFO: Onscreen window is configured as regular GUI window.\n");
-		}
+    if ((windowRecord->specialflags & kPsychGUIWindow) && (PsychPrefStateGet_Verbosity() > 3)) {
+        printf("PTB-INFO: Onscreen window is configured as regular GUI window.\n");
+    }
 
-		// Create onscreen Cocoa window of requested position and size:
-        if (PsychCocoaCreateWindow(windowRecord, windowLevel, &cocoaWindow)) {
-            printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to open Cocoa onscreen window\n\n");
-            return(FALSE);
-        }
-        
-        // Transparent window requested?
-        if ((windowLevel >= 1000) && (windowLevel < 2000)) {
-            // Setup of global window alpha value for transparency. This is premultiplied to
-            // the individual per-pixel alpha values if transparency is enabled by Cocoa code.
-            //
-            // Levels 1000 - 1499 and 1500 to 1999 map to a master opacity level of 0.0 - 1.0:
-            PsychCocoaSetWindowAlpha(cocoaWindow, ((float) (windowLevel % 500)) / 499.0);
-        }
+    // Create onscreen Cocoa window of requested position and size:
+    if (PsychCocoaCreateWindow(windowRecord, windowLevel, &cocoaWindow)) {
+        printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to open Cocoa onscreen window\n\n");
+        return(FALSE);
+    }
+    
+    // Transparent window requested?
+    if ((windowLevel >= 1000) && (windowLevel < 2000)) {
+        // Setup of global window alpha value for transparency. This is premultiplied to
+        // the individual per-pixel alpha values if transparency is enabled by Cocoa code.
+        //
+        // Levels 1000 - 1499 and 1500 to 1999 map to a master opacity level of 0.0 - 1.0:
+        PsychCocoaSetWindowAlpha(cocoaWindow, ((float) (windowLevel % 500)) / 499.0);
+    }
 
-		// Show it! Unless a windowLevel of -1 requests hiding the window:
-		if (windowLevel != -1) PsychCocoaShowWindow(cocoaWindow);
+    // Show it! Unless a windowLevel of -1 requests hiding the window:
+    if (windowLevel != -1) PsychCocoaShowWindow(cocoaWindow);
 
-		// Level zero means: Place behind all other windows:
-		if (windowLevel == 0) PsychCocoaSendBehind(cocoaWindow);
+    // Level zero means: Place behind all other windows:
+    if (windowLevel == 0) PsychCocoaSendBehind(cocoaWindow);
 
-		// Levels 1 to 999 define window levels for the group of the window.
-		// A level of -2 would leave this to the system:
-		if (windowLevel > 0 && windowLevel < 1000) PsychCocoaSetWindowLevel(cocoaWindow, windowLevel);
+    // Levels 1 to 999 define window levels for the group of the window.
+    // A level of -2 would leave this to the system:
+    if (windowLevel > 0 && windowLevel < 1000) PsychCocoaSetWindowLevel(cocoaWindow, windowLevel);
 
-        // Is the target display captured for a fullscreen window?
-        if (PsychIsScreenCaptured(screenSettings->screenNumber)) {
-            // Yes. Make sure our window is above the shielding window level:
-            PsychCocoaSetWindowLevel(cocoaWindow, (int) CGShieldingWindowLevel());
-        }
+    // Is the target display captured for a fullscreen window?
+    if (PsychIsScreenCaptured(screenSettings->screenNumber)) {
+        // Yes. Make sure our window is above the shielding window level:
+        PsychCocoaSetWindowLevel(cocoaWindow, (int) CGShieldingWindowLevel());
+    }
 
-		// Store window handle in windowRecord:
-		windowRecord->targetSpecific.windowHandle = cocoaWindow;
-		
-		// Copy absolute screen location and area of window to 'globalrect',
-		// so functions like Screen('GlobalRect') can still query the real
-		// bounding gox of a window onscreen:
-		PsychCopyRect(windowRecord->globalrect, windowRecord->rect);		
-	}
-	else {
-		// No. Standard CGL setup for fullscreen single display windows:
-		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Trying to use low-level, non-composited CGL for fullscreen onscreen window creation...\n");
-		
-		// Copy absolute screen location and area of window to 'globalrect',
-		// so functions like Screen('GlobalRect') can still query the real
-		// bounding gox of a window onscreen:
-		PsychGetGlobalScreenRect(screenSettings->screenNumber, windowRecord->globalrect);
-	}
+    // Store window handle in windowRecord:
+    windowRecord->targetSpecific.windowHandle = cocoaWindow;
+    
+    // Copy absolute screen location and area of window to 'globalrect',
+    // so functions like Screen('GlobalRect') can still query the real
+    // bounding gox of a window onscreen:
+    PsychCopyRect(windowRecord->globalrect, windowRecord->rect);		
 
     // Define pixelformat attributes for OpenGL contexts:
     
@@ -581,19 +531,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         return(FALSE);
     }
     
-    // CGL in use for standard fullscreen onscreen windows?
-    if (!useCocoa) {
-        // Switch to fullscreen display:
-        // This function is deprecated on 10.7+, so i can't wait for the day when we are forced to switch
-        // to the 10.7 SDK, when a whole new world of pain will open up to us.
-        error=CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.contextObject, displayMask);
-        if (error) {
-            printf("\nPTB-ERROR[CGLSetFullScreenOnDisplay failed: %s]: The specified display may not support the current color depth -\nPlease switch to 'Millions of Colors' in Display Settings.\n\n", CGLErrorString(error));
-            CGLSetCurrentContext(NULL);
-            return(FALSE);
-        }
-    }
-    
     // NULL-out the AGL context field, just for safety...
     windowRecord->targetSpecific.deviceContext = NULL;
 
@@ -625,18 +562,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             return(FALSE);
         }
         
-        // CGL setup:
-        if (!useCocoa) {
-            // Attach it to our onscreen drawable:
-            error=CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.glusercontextObject, displayMask);
-            if (error) {
-                printf("\nPTB-ERROR[CGLSetFullScreenOnDisplay for user context failed: %s]: Attaching private OpenGL context for userspace OpenGL failed.\n\n", CGLErrorString(error));
-                CGLSetCurrentContext(NULL);
-                return(FALSE);
-            }
-        }
-        
-        // Copy full state from our main context:
+        // CGL setup: Copy full state from our main context:
         error = CGLCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS);
         if (error) {
             printf("\nPTB-ERROR[CGLCopyContext for user context failed: %s]: Copying state to private OpenGL context for userspace OpenGL failed.\n\n", CGLErrorString(error));
@@ -654,17 +580,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         return(FALSE);
     }
     
-    // Fullscreen CGL mode?
-    if (!useCocoa) {
-        // Attach it to our onscreen drawable:
-        error=CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.glswapcontextObject, displayMask);
-        if (error) {
-            printf("\nPTB-ERROR[CGLSetFullScreenOnDisplay for swapcontext failed: %s]: Attaching OpenGL context for async-bufferswaps failed.\n\n", CGLErrorString(error));
-            CGLSetCurrentContext(NULL);
-            return(FALSE);
-        }
-    }
-    
     // Copy full state from our main context:
     error = CGLCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glswapcontextObject, GL_ALL_ATTRIB_BITS);
     if (error) {
@@ -673,22 +588,15 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         return(FALSE);
     }
     
-	// Ok, if we reached this point and Cocoa is used, we should store its onscreen window handle:
-	if (useCocoa) {
-		windowRecord->targetSpecific.windowHandle = cocoaWindow;
-	}
-	else {
-		windowRecord->targetSpecific.windowHandle = NULL;
-	}
+	// Store Cocoa onscreen window handle:
+	windowRecord->targetSpecific.windowHandle = cocoaWindow;
     
     // Objective-C setup path, using Cocoa + NSOpenGLContext wrapped around already
     // existing and setup CGLContext:
-    if (useCocoa) {
-        if (PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(cocoaWindow, windowRecord)) {
-            printf("\nPTB-ERROR[Cocoa OpenGL setup failed]: Setup failed for unknown reasons.\n\n");
-            PsychCocoaDisposeWindow(windowRecord);
-            return(FALSE);
-        }
+    if (PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(cocoaWindow, windowRecord)) {
+        printf("\nPTB-ERROR[Cocoa OpenGL setup failed]: Setup failed for unknown reasons.\n\n");
+        PsychCocoaDisposeWindow(windowRecord);
+        return(FALSE);
     }
 
     // Check for output display rotation enabled. Will impair timing/timestamping because
