@@ -561,14 +561,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             printf("\nPTB-ERROR[UserContextCreation failed: %s]: Creating a private OpenGL context for userspace OpenGL failed.\n\n", CGLErrorString(error));
             return(FALSE);
         }
-        
-        // CGL setup: Copy full state from our main context:
-        error = CGLCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS);
-        if (error) {
-            printf("\nPTB-ERROR[CGLCopyContext for user context failed: %s]: Copying state to private OpenGL context for userspace OpenGL failed.\n\n", CGLErrorString(error));
-            CGLSetCurrentContext(NULL);
-            return(FALSE);
-        }
 	}
     
     // Create glswapcontextObject - An OpenGL context for exclusive use by parallel background threads,
@@ -579,15 +571,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         CGLSetCurrentContext(NULL);
         return(FALSE);
     }
-    
-    // Copy full state from our main context:
-    error = CGLCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glswapcontextObject, GL_ALL_ATTRIB_BITS);
-    if (error) {
-        printf("\nPTB-ERROR[CGLCopyContext for swapcontext failed: %s]: Copying state to private OpenGL context for async-bufferswaps failed.\n\n", CGLErrorString(error));
-        CGLSetCurrentContext(NULL);
-        return(FALSE);
-    }
-    
+
 	// Store Cocoa onscreen window handle:
 	windowRecord->targetSpecific.windowHandle = cocoaWindow;
     
@@ -878,12 +862,11 @@ void PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, psych_bool cop
 	// Child protection:
 	if (windowRecord->targetSpecific.glusercontextObject == NULL) PsychErrorExitMsg(PsychError_user, "GL Userspace context unavailable! Call InitializeMatlabOpenGL *before* Screen('OpenWindow')!");
 	
-	if (copyfromPTBContext) {
-		// Syncing of external contexts state with PTBs internal state requested. Do it:
-		CGLSetCurrentContext(NULL);
-		CGLCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS);
+	if (copyfromPTBContext && (PsychPrefStateGet_Verbosity() > 1)) {
+        // This was deprecated by the iPhone company as of OSX 10.8 - who are we to question their wisdom? Luckily seldomly needed in practice:
+        printf("PTB-WARNING: Screen('BeginOpenGL', windowPtr, 2) called to synchronize userspace context state with Screen state. This is unsupported on OSX. Code may misbehave!\n");
 	}
-	
+
     // Setup new context if it isn't already setup. -> Avoid redundant context switch.
     if (CGLGetCurrentContext() != windowRecord->targetSpecific.glusercontextObject) {
         CGLSetCurrentContext(windowRecord->targetSpecific.glusercontextObject);
