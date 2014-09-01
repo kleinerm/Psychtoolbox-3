@@ -68,9 +68,6 @@ static struct {
 static CVDisplayLinkRef cvDisplayLink[kPsychMaxPossibleDisplays] = { NULL };
 static int screenRefCount[kPsychMaxPossibleDisplays] = { 0 };
 
-static SInt32 osMajor, osMinor;
-psych_bool useCoreVideoTimestamping = FALSE;
-
 // Display link callback: Needed so we can actually start the display link:
 // Gets apparently called from a separate high-priority thread, close to vblank
 // time. "inNow" is the timestamp of last vblank.
@@ -259,10 +256,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Map screen number to physical display handle cgDisplayID:
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenSettings->screenNumber);
     displayMask = CGDisplayIDToOpenGLDisplayMask(cgDisplayID);
-
-    // Query OS/X version:
-	Gestalt(gestaltSystemVersionMajor, &osMajor);
-	Gestalt(gestaltSystemVersionMinor, &osMinor);
 
 	// NULL-out Cocoa window handle, so this is well-defined in case of error:
 	windowRecord->targetSpecific.windowHandle = NULL;
@@ -630,8 +623,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
                         // Teardown shared data structure and mutex:
                         PsychDestroyMutex(&(cvDisplayLinkData[screenSettings->screenNumber].mutex));
-                        useCoreVideoTimestamping = FALSE;
-
                         if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to start CVDisplayLink for screenId %i. This may impair VBL timestamping.\n", screenSettings->screenNumber);
                     }
                     else {

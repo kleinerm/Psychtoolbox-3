@@ -72,9 +72,6 @@ static CGDirectDisplayID    displayOnlineCGIDs[kPsychMaxPossibleDisplays];
 static int					numKernelDrivers = 0;
 static io_connect_t			displayConnectHandles[kPsychMaxPossibleDisplays];
 
-// Operating system major and minor version:
-static SInt32 osMajor, osMinor;
-
 //file local functions
 void InitCGDisplayIDList(void);
 void PsychLockScreenSettings(int screenNumber);
@@ -175,12 +172,8 @@ void InitializePsychDisplayGlue(void)
     // *and* allowed by settings, setup all relevant mappings:
     InitPsychtoolboxKernelDriverInterface();
     
-    // Query OS/X version:
-    Gestalt(gestaltSystemVersionMajor, &osMajor);
-    Gestalt(gestaltSystemVersionMinor, &osMinor);
-    
     // Prevent OSX 10.9+ "AppNap" power saving and timer coalescing etc.:
-    if ((osMajor > 10) || (osMajor == 10 && osMinor >= 9)) PsychCocoaPreventAppNap(TRUE);
+    PsychCocoaPreventAppNap(TRUE);
 }
 
 void PsychCleanupDisplayGlue(void)
@@ -205,7 +198,7 @@ void PsychCleanupDisplayGlue(void)
     PsychFreeFontList();
     
     // Allow OSX 10.9+ "AppNap" power saving and timer coalescing etc.:
-    if ((osMajor > 10) || (osMajor == 10 && osMinor >= 9)) PsychCocoaPreventAppNap(FALSE);
+    PsychCocoaPreventAppNap(FALSE);
 }
 
 void PsychDisplayReconfigurationCallBack(CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo)
@@ -971,7 +964,7 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
     // on IntelMacs ever, they were severely buggy on OSX 10.8+ for the remaining
     // NVidia cards where they sort of "worked", and the functionality has been
     // effectively removed starting with OSX 10.9, turning into a no-op on all gpus.
-	int beampos = PsychOSKDGetBeamposition(screenNumber);
+	return(PsychOSKDGetBeamposition(screenNumber));
 }
 
 // Try to attach to kernel level ptb support driver and setup everything, if it works:

@@ -475,7 +475,12 @@ static id activity = nil;
 void PsychCocoaPreventAppNap(psych_bool preventAppNap)
 {
     if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Activity state of AppNap is: %s.\n", (activity == nil) ? "No activities" : "Activities selected by PTB");
-    
+
+    // Check if AppNap stuff is supported on this OS, ie., 10.9+. No-Op if unsupported:
+    if (!([[NSProcessInfo processInfo] respondsToSelector:@selector(beginActivityWithOptions:reason:)])) {
+        return;
+    }
+
     if ((activity == nil) && preventAppNap) {
         // Prevent display from sleeping/powering down, prevent system from sleeping, prevent sudden termination for any reason:
         NSActivityOptions options = NSActivityIdleDisplaySleepDisabled | NSActivityIdleSystemSleepDisabled | NSActivitySuddenTerminationDisabled | NSActivityAutomaticTerminationDisabled;
