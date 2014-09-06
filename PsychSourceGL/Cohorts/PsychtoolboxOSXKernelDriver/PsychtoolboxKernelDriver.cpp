@@ -93,7 +93,7 @@
 #define super IOService
 OSDefineMetaClassAndStructors(PsychtoolboxKernelDriver, IOService)
 
-/* Mappings up to date for August 2014 (last update e-mail patch / commit 2014-05-06). Would need updates for anything after start of September 2014 */
+/* Mappings up to date for August 2014 (last update e-mail patch / commit 2014-08-22). Would need updates for anything after start of September 2014 */
 
 /* Is a given ATI/AMD GPU a DCE8 type ASIC, i.e., with the new display engine? */
 bool PsychtoolboxKernelDriver::isDCE8(void)
