@@ -99,7 +99,7 @@ try
         nPointsShown=nPointsShown+1;
         nextPt=0;
         %     After displaying the first point, the software must monitor
-        %     the serial port for further ÒET_CHGÓ commands or  ÒET_BRKÓ,
+        %     the serial port for further "ET_CHG" commands or  "ET_BRK",
         %     which cancels the calibration procedure.
         % we also detect manual acceptance of calibration point
         while nextPt==0
@@ -126,7 +126,7 @@ try
             end
 
             % If you want the subject to manually accept the point with a
-            % key press once they fixate, the ÒET_ACCÓ  command must then
+            % key press once they fixate, the "ET_ACC"  command must then
             % be sent to the serial port.  This instructs iView to change
             % to the next calibration point  rather than having it detect
             % fixations itself.

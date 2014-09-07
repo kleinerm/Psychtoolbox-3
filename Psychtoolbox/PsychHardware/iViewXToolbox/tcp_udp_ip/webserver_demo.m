@@ -33,7 +33,7 @@ try,
                 str=evalc('random_numbers=rand(5)');
                 pnet(con,'printf','<h2>Some random numbers</h2>\n<pre>%s</pre>\n',str);
                 pnet(con,'printf','<a href="./">Reload page with new numbers>></a>');
-                pnet(con,'printf','<hr><I>(C) 2002 Peter Rydesäter, Mitthögskolan, Östersund, SWEDEN</I></body></html>\n');
+                pnet(con,'printf','<hr><I>(C) 2002 Peter Rydesaeter, Mitthoegskolan, Oestersund, SWEDEN</I></body></html>\n');
             end
             pnet(con,'close');
             drawnow;

@@ -1,10 +1,10 @@
 %TCP_UDP_IP  - Network comunication with other applic. & remote matlab control.
 %
 % This is version 2.x of the tcp/udp/ip Toolbox by
-% Peter Rydesäter with support from  Mario Bergeron,  Mike Medeiros
+% Peter Rydesaeter with support from  Mario Bergeron,  Mike Medeiros
 % Se the pnet.c file for more information.
 %
-% (C) 1998-2002 Peter Rydesäter, Mitthögskolan Östersund
+% (C) 1998-2002 Peter Rydesaeter, Mitthoegskolan Oestersund
 %     GNU Public License, Se pnet.c for more license information.
 %
 % Contents.m            This help file.

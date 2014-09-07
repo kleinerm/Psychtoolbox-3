@@ -40,11 +40,11 @@ function versionString=AppleVersion(gestaltString)
 % This selector returns the majorRev field of the NumVersion record as
 % hexadecimal instead of the usual BCD.
 % 
-% #define gestaltGestaltKaputVersion 'G K ' /* Gestalt Kaput */
+% #define gestaltGestaltKaputVersion 'G\0xa0K\0xa0' /* Gestalt Kaput */
 % NOTE: Both the t characters are actually the option-t character
 % (0xA0).
 % 
-% #define gestaltGestaltVersion 'GŠst' /* Gestalt version */
+% #define gestaltGestaltVersion 'G\0x8ast' /* Gestalt version */
 % NOTE: The "a" is actually the option-u/a character (0x8A).
 % #define gestaltUniversalDiskFormatVersion? 'kudf'
 

@@ -15,7 +15,7 @@ function testbutton
 % Typical Results:
 % getsecs overhead 0.02 ms
 % EXGetEyeLink overhead 0.60 ms
-% random error in eyelink time ~ ±0.50 ms, good for a ms clock!
+% random error in eyelink time ~ +-0.50 ms, good for a ms clock!
 
 fprintf('TestButton:  hold down key on keyboard and press button to exit\n');
 if eyelink('initialize') 				% initialize eyelink
