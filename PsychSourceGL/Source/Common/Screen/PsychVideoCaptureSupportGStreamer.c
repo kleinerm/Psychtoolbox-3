@@ -629,64 +629,10 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle)
 // GstDeviceMonitor, GstDeviceProvider and GstDevice require GStreamer-1.4.0 or later.
 #if GST_CHECK_VERSION(1,4,0)
 
-/* Test code so far, just for prototyping/testing.
- * Uses the new GstDeviceMonitor functionality of GStreamer 1.4.0
- * and later to enumerate and handle video sources which PTB is not
- * explicitely aware of, e.g., video plugins / source types whose
- * existence was unknown at the time of the PTB release and therefore
- * don't have explicit query/handling code. Or plugins for which no
- * dedicated query/handling code is needed - so this is a "catch all"
- * for left-overs.
- *
- * At this time (GStreamer 1.4.0, August 2014) the only known video
- * plugin to actually support device monitors or device providers is
- * the v4l2src plugin for Video4Linux-2 on Linux.
- *
- */
-static void PsychGSEnumerateVideoSourcesViaDeviceMonitor(void)
-{
-    GstDeviceMonitor    *monitor;
-    GstDevice           *device;
-    GstCaps             *caps;
-    GList               *devlist = NULL, *devIter;
-    gchar               *devString;
-
-    monitor = gst_device_monitor_new();
-    caps = gst_caps_new_empty_simple("video/x-raw");
-    gst_device_monitor_add_filter(monitor, "Video/Source", caps);
-    gst_caps_unref(caps);
-
-    if (!gst_device_monitor_start(monitor)) printf("FAILED TO START DEVICE MONITOR!\n");
-
-    devlist = gst_device_monitor_get_devices(monitor);
-    printf("PROBE %p\n", devlist);
-
-    for (devIter = g_list_first(devlist); devIter != NULL; devIter = g_list_next(devIter)) {
-        device = (GstDevice*) devIter->data;
-        printf("DEVPROBE %p --> %p\n", devIter, device);
-
-        if (device == NULL) continue;
-
-        devString = gst_device_get_device_class(device);
-        printf("DEVICECLASS %s\n", (char*) devString);
-        g_free(devString);
-
-        devString = gst_device_get_display_name(device);
-        printf("DISPLAYNAME %s\n", (char*) devString);
-        g_free(devString);
-    }
-
-    g_list_free(devlist);
-    gst_device_monitor_stop(monitor);
-    gst_object_unref(GST_OBJECT(monitor));
-
-    return;
-}
-
-static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, GstElement* parentvideosource, const char* srcname,
+static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, const char* srcname,
                                   int classIndex, const char* className, const char* devHandlePropName, unsigned int flags)
 {
-    GValue              val;
+    GValue              val = G_VALUE_INIT;
     GParamSpec          *paramSpec;
     GstElement          *videosource;
     char                port_str[64];
@@ -695,7 +641,7 @@ static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, GstElement*
     gchar               *devString = NULL;
     psych_uint64        deviceURI = 0;
 
-    if (PsychPrefStateGet_Verbosity() > 3) {
+    if (PsychPrefStateGet_Verbosity() > 5) {
         devString = gst_device_get_device_class(device);
         printf("DEVICECLASS %s\n", (char*) devString);
         g_free(devString);
@@ -747,7 +693,7 @@ static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, GstElement*
     else {
         // Our videosource capture device instance doesn't expose the key selection
         // property 'devHandlePropName'. What now? Mark this instance so the device
-        // open code will use the stored GstDevice* for capture device instantion
+        // open code will use the stored GstDevice* for capture device instantiation
         // instead:
         sprintf(port_str, "USEGSTDEVICE* %p", device);
     }
@@ -814,9 +760,78 @@ static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, GstElement*
     return;
 }
 
+/*
+ * Use the new GstDeviceMonitor functionality of GStreamer 1.4.0
+ * and later to enumerate and handle video sources which PTB is not
+ * explicitely aware of, e.g., video plugins / source types whose
+ * existence was unknown at the time of the PTB release and therefore
+ * don't have explicit query/handling code. Or plugins for which no
+ * dedicated query/handling code is needed - so this is a "catch all"
+ * for leftovers.
+ *
+ * At this time (GStreamer 1.4.0, September 2014) the only known video
+ * plugin to actually support device monitors or device providers is
+ * the v4l2src plugin for Video4Linux-2 on Linux.
+ */
+static void PsychGSEnumerateVideoSourcesViaDeviceMonitor(void)
+{
+    GstDeviceMonitor    *monitor;
+    GstDevice           *device;
+    GstCaps             *caps;
+    GList               *devlist = NULL, *devIter;
+    gchar               *devString;
+    int                 n = 1; // Start input index is 1 for class 0.
+
+    monitor = gst_device_monitor_new();
+    caps = gst_caps_new_empty_simple("video/x-raw");
+    // Note: caps are not set at the moment (Passing NULL for "any"). Not sure if it
+    // would make sense to restrict ourselves to video/x-raw, as some sources can also
+    // provide things like video/x-dv or video/x-h264. Be inclusive for the moment...
+    gst_device_monitor_add_filter(monitor, "Video/Source", NULL);
+    gst_caps_unref(caps);
+
+    if (!gst_device_monitor_start(monitor)) {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Failed to start GstDeviceMonitor. May not be able to enumerate all video capture devices!\n");
+    }
+    else {
+        devlist = gst_device_monitor_get_devices(monitor);
+
+        for (devIter = g_list_first(devlist); devIter != NULL; devIter = g_list_next(devIter)) {
+            device = (GstDevice*) devIter->data;
+            if (device == NULL) continue;
+
+            // Probe all device properties and store them in internal global videocapture device array:
+            devString = gst_device_get_device_class(device);
+            PsychGSProbeGstDevice(device, n, "DeviceMonitor", 0, (char*) devString, "", 0);
+            g_free(devString);
+
+            // Increment count of detected devices for this plugin:
+            n++;
+
+            // Increment count of total detected devices for all plugins so far:
+            ntotal++;
+
+            if (ntotal >= PSYCH_MAX_VIDSRC - 2) {
+                if (PsychPrefStateGet_Verbosity() > 1)
+                    printf("PTB-WARNING: Maximum number of allowable video sources during enumeration %i reached! Aborting enumeration.\n", PSYCH_MAX_VIDSRC);
+                break;
+            }
+        }
+
+        g_list_free(devlist);
+        gst_device_monitor_stop(monitor);
+    }
+
+    gst_object_unref(GST_OBJECT(monitor));
+
+    return;
+}
+
 #else
     // Dummy typedef, so we don't need to sprinkle ifdefs everywhere:
     typedef GstElement GstDevice;
+    static void PsychGSEnumerateVideoSourcesViaDeviceMonitor(void) {};
+
 #warning Building against GStreamer version older than 1.4.0 - No device monitor support! Consider upgrading!
 #endif
 
@@ -827,9 +842,10 @@ static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, GstElement*
  * as given by 'flags'. Adds all detected video input devices for that plugin
  * to the global 'devices' array and increases ntotal count accordingly.
  */
-void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const char* className, const char* devHandlePropName, unsigned int flags)
+static void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const char* className, const char* devHandlePropName, const char* providername, unsigned int flags)
 {
     GstDevice           *device;
+    GstDeviceProvider   *provider;
     GList               *devlist = NULL, *devIter;
     int                 i, n, nmaxp, dopoke;
     char                class_str[64];
@@ -843,20 +859,16 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
     int                 oldverbose;
 
     // Info to the user:
-    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to probe %s as video source...\n", srcname);
+    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to probe %s [Providername '%s'] as video source...\n", srcname, providername);
 
-    // Create video source plugin, define class name:
-    videosource = gst_element_factory_make(srcname, "ptb_probevideosource");
+    // Define class name:
     sprintf(class_str, "%s", className);
-
-    // Nothing to do if no such video plugin available:
-    if (!videosource) return;
 
     // Does this source support device enumeration of supported capture devices?
     #if GST_CHECK_VERSION(1,4,0)
-    if (GST_IS_DEVICE_PROVIDER(videosource)) {
-        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Acts as a GStreamer device provider - Good!\n");
-        devlist = gst_device_provider_get_devices(GST_DEVICE_PROVIDER(videosource));
+    if ((provider = gst_device_provider_factory_get_by_name((const gchar*) providername)) && GST_IS_DEVICE_PROVIDER(provider)) {
+        if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Has a GStreamer device provider - Good, using it.\n");
+        devlist = gst_device_provider_get_devices(GST_DEVICE_PROVIDER(provider));
         if (devlist && (PsychPrefStateGet_Verbosity() > 4)) printf("PTB-INFO: Enumerating %i attached video devices...\n", g_list_length(devlist));
 
         n = 0;
@@ -865,7 +877,7 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
             if (device == NULL) continue;
 
             // Probe all device properties and store them in internal global videocapture device array:
-            PsychGSProbeGstDevice(device, n, videosource, srcname, classIndex, className, devHandlePropName, flags);
+            PsychGSProbeGstDevice(device, n, srcname, classIndex, className, devHandlePropName, flags);
 
             // Increment count of detected devices for this plugin:
             n++;
@@ -891,11 +903,9 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
         // list, and free them at Screen() exit time:
         g_list_free(devlist);
 
-        // Done with this plugin - Release videosource:
-        gst_element_set_state(videosource, GST_STATE_NULL);
-        gst_object_unref(GST_OBJECT(videosource));
+        // Done with this plugin - Release provider:
+        gst_object_unref(GST_OBJECT(provider));
 
-        // Done.
         return;
     }
     #endif
@@ -905,6 +915,13 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
     // poking then and see if they give signs of life. For some devices this could go wrong, so we don't
     // probe them but just expose a hard-coded number of devices, which may or may not actually be linked
     // to a real physical device:
+
+    // Create video source plugin:
+    videosource = gst_element_factory_make(srcname, "ptb_probevideosource");
+
+    // Nothing to do if no such video plugin available:
+    if (!videosource) return;
+
     n = 0;
 
     // By default, just add 5 sources per class without actual hw-detection:
@@ -917,10 +934,10 @@ void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex, const 
         dopoke = 2;
     }
 
-    // dv1394src or hdv1394src - Probe up to 5 (H)DV cameras with NULL->PAUSED->NULL transition:
+    // dv1394src or hdv1394src - Define fixed count of 1 (H)DV camera, as active probing doesn't work well:
     if (strstr(srcname, "dv1394src"))  {
-        nmaxp = 5;
-        dopoke = 2;
+        nmaxp = 1;
+        dopoke = 0;
     }
 
     // Video4Linux2 source - Probe up to 20 cameras, with a NULL->READY->NULL transition:
@@ -1070,59 +1087,62 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
     devices = (PsychVideosourceRecordType*) PsychCallocTemp(PSYCH_MAX_VIDSRC, sizeof(PsychVideosourceRecordType));
     ntotal  = 0;
 
+    // First use GstDeviceMonitor enumeration as a catch-all for all video sources we don't know
+    // how to specifically handle:
+    PsychGSEnumerateVideoSourcesViaDeviceMonitor();
+
     // Linux specific setup path:
     if (PSYCH_SYSTEM == PSYCH_LINUX) {
         // Try Video4Linux-II camera source: This is mostly a Maemo (maybe Meego et al.?) thing.
-        PsychGSEnumerateVideoSourceType("v4l2camsrc", 1, "Video4Linux2-CameraSource", "device", 0);
+        PsychGSEnumerateVideoSourceType("v4l2camsrc", 1, "Video4Linux2-CameraSource", "device", "", 0);
 
         // Try standard Video4Linux-II source:
-        PsychGSEnumerateVideoSourceType("v4l2src", 2, "Video4Linux2", "device", 0);
+        PsychGSEnumerateVideoSourceType("v4l2src", 2, "Video4Linux2", "device", "v4l2deviceprovider", 0);
     }
 
     if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
         // Try Windows kernel streaming source:
-        PsychGSEnumerateVideoSourceType("ksvideosrc", 1, "Windows WDM kernel streaming", "device-name", 0);
+        PsychGSEnumerateVideoSourceType("ksvideosrc", 1, "Windows WDM kernel streaming", "device-name", "", 0);
 
         // Use DirectShow to probe:
-        PsychGSEnumerateVideoSourceType("dshowvideosrc", 2, "DirectShow", "device-name", 0);
+        PsychGSEnumerateVideoSourceType("dshowvideosrc", 2, "DirectShow", "device-name", "", 0);
     }
 
     if (PSYCH_SYSTEM == PSYCH_OSX) {
         // Try OSX Quicktime-7 SequenceGrabber video source: Kind'a pointless as only on 32-Bit and we don't
         // do that anymore. But leave it here for sentimental reasons - fond memories of actually useable
         // videocapture on OSX...
-        PsychGSEnumerateVideoSourceType("osxvideosrc", 1, "OSXQuicktimeSequenceGrabber", "device", 0);
+        PsychGSEnumerateVideoSourceType("osxvideosrc", 1, "OSXQuicktimeSequenceGrabber", "device", "", 0);
 
         // Try OSX AVFoundation video source: The <sarcasm>latest and greatest</sarcasm> for OSX 10.8+ or so.
         // We enumerate this one before qtkitvideosrc, as the latter aka QTKit is deprecated since OSX 10.9.
         // Indeed a first test shows avfvideosrc performing better on OSX 10.9, so i guess Apple does its
         // "break old functionality to shove new api's down the throat of developers" thing again...
-        PsychGSEnumerateVideoSourceType("avfvideosrc", 4, "OSXAVFoundationVideoSource", "device-index", 0);
+        PsychGSEnumerateVideoSourceType("avfvideosrc", 4, "OSXAVFoundationVideoSource", "device-index", "", 0);
 
         // Try the crappy OSX QTKit video source for 64-Bit systems with Quicktime-X aka QTKit:
-        PsychGSEnumerateVideoSourceType("qtkitvideosrc", 2, "OSXQuicktimeKitVideoSource", "device-index", 1);
+        PsychGSEnumerateVideoSourceType("qtkitvideosrc", 2, "OSXQuicktimeKitVideoSource", "device-index", "", 1);
 
         // Try OSX MIO video source: Unless we're under Octave, where some weird bug/interaction
         // would cause a crash in the miovideosrc plugin if we tried, so we don't try on Octave.
         // Note that this one is not included as of GStreamer 1.4.0, likely because it uses non-public
         // Apple api's, so is probably unsafe to use long-term...
         #ifndef PTBOCTAVE3MEX
-        PsychGSEnumerateVideoSourceType("miovideosrc", 3, "OSXMIOVideoSource", "device-name", 0);
+        PsychGSEnumerateVideoSourceType("miovideosrc", 3, "OSXMIOVideoSource", "device-name", "", 0);
         #endif
     }
 
-    // Try DV-Cameras:
-    PsychGSEnumerateVideoSourceType("dv1394src", 5, "DV1394", "guid", 0);
-
-    // Try HDV-Cameras:
-    PsychGSEnumerateVideoSourceType("hdv1394src", 6, "HDV1394", "guid", 0);
-
     // Try IIDC-1394 Cameras:
-    // Does not work, no property probe interface:
-    PsychGSEnumerateVideoSourceType("dc1394src", 7, "1394-IIDC", "camera-number", 1);
+    PsychGSEnumerateVideoSourceType("dc1394src", 7, "1394-IIDC", "camera-number", "", 1);
 
     // Try GeniCam-Cameras via aravis plugin:
-    PsychGSEnumerateVideoSourceType("aravissrc", 8, "GeniCam-Aravis", "camera-name", 0);
+    PsychGSEnumerateVideoSourceType("aravissrc", 8, "GeniCam-Aravis", "camera-name", "", 0);
+
+    // Try DV-Cameras:
+    PsychGSEnumerateVideoSourceType("dv1394src", 5, "DV1394", "guid", "", 0);
+
+    // Try HDV-Cameras:
+    PsychGSEnumerateVideoSourceType("hdv1394src", 6, "HDV1394", "guid", "", 0);
 
     // ClassIndex 9 is blocked out for videotestsrc and other weirdo sources.
 
@@ -1172,13 +1192,13 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
     memcpy(&devices[ntotal], &devices[0], sizeof(PsychVideosourceRecordType));
     devices[ntotal].deviceIndex = 0;
     // For deviceIndex 0: Bump refcount on GstDevice* of associated capture device, if any:
-    if (devices[ntotal].gstdevice) gst_object_ref(GST_ELEMENT((GstDevice*) devices[ntotal].gstdevice));
+    if (devices[ntotal].gstdevice) gst_object_ref((GstDevice*) devices[ntotal].gstdevice);
     ntotal++;
 
     // Have enumerated devices:
     if (deviceIndex >= 0) {
         // Yes: Return device name for that index:
-        for (i=0; i < ntotal; i++) {
+        for (i = 0; i < ntotal; i++) {
             if (devices[i].deviceIndex == deviceIndex) {
                 // Got it: Return pointer to device struct:
                 mydevice = &devices[i];
@@ -1229,7 +1249,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 
     // Need to unref GstDevice* objects on exit, if they are created by GstDeviceMonitor/Provider:
     for (i = 0; i < ntotal; i++) {
-        if (devices[i].gstdevice) gst_object_unref(GST_ELEMENT((GstDevice*) devices[i].gstdevice));
+        if (devices[i].gstdevice) gst_object_unref((GstDevice*) devices[i].gstdevice);
     }
 
     // Done. Return device struct if assigned:

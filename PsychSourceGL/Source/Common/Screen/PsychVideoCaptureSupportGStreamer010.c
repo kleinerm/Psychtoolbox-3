@@ -70,6 +70,8 @@
 
 #if !GST_CHECK_VERSION(1,0,0)
 
+#warning Building against unsupported legacy GStreamer-0.10.x series. This backend is unmaintained! Strongly consider upgrading!
+
 #include <gst/app/gstappsink.h>
 #include <gst/interfaces/propertyprobe.h>
 #include <gst/interfaces/colorbalance.h>
