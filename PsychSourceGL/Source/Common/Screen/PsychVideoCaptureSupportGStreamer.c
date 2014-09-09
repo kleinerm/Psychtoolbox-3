@@ -830,6 +830,7 @@ static void PsychGSEnumerateVideoSourcesViaDeviceMonitor(void)
 #else
     // Dummy typedef, so we don't need to sprinkle ifdefs everywhere:
     typedef GstElement GstDevice;
+    typedef GstElement GstDeviceProvider;
     static void PsychGSEnumerateVideoSourcesViaDeviceMonitor(void) {};
 
 #warning Building against GStreamer version older than 1.4.0 - No device monitor support! Consider upgrading!
