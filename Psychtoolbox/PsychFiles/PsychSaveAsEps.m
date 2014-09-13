@@ -1,7 +1,7 @@
 function SaveAsEps(filename,m,pageRect,resolution)
 % SaveAsEps(filename,m,[pageRect],[resolution]);
 % Based on WindowToEps.c of the VideoToolbox.
-% Copyright © 1996-2003 Denis G. Pelli
+% Copyright (c) 1996-2003 Denis G. Pelli
 % 
 % SaveAsEps converts a grayscale image (in a Matlab matrix) to a
 % PostScript file that a LaserWriter or Linotype will accurately render on
@@ -13,9 +13,9 @@ function SaveAsEps(filename,m,pageRect,resolution)
 % "creator" of the eps file is set to Microsoft Word, so double-clicking
 % it will open it as a Word document containg the image.
 % 
-% I suggest you use the $25 shareware Macintosh application EPS¥Factory 
+% I suggest you use the $25 shareware Macintosh application EPS Factory 
 % to add a PICT preview to your file, based on the postscript already 
-% there. You can download EPS¥Factory from 
+% there. You can download EPS Factory from 
 % web http://www.artage.com/pages/products/products.html
 % (The old freeware ps2eps is incompatible with Mac OS 8.6 and 9, alas.)
 % The PICT preview will make the image will look approximately right on 
@@ -157,7 +157,7 @@ function SaveAsEps(filename,m,pageRect,resolution)
 % 9/7/98 dgp	convert image (which might be uint8) to double.
 % 3/17/99 dgp	mention ps2eps.
 % 1/23/00 dgp	ps2eps is incompatible with Mac OS 8.6 and 9; recommend
-% 				EPS¥Factory instead.
+% 				EPS Factory instead.
 
 if nargin<2
 	error('Usage: SaveAsEps(filename,m,[pageRect,resolution])');

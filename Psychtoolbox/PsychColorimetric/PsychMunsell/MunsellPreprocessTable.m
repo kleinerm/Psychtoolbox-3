@@ -1,7 +1,7 @@
 function munsellData = MunsellPreprocessTable
 % munsellData = MunsellPreprocessTable
 % 
-% Load in Munsell renotation table from RIT site and convert it to the form where we will
+% Load in Munsell renotation table from RIT site and convert it to the form where we will
 % actually use it.
 %
 % See http://www.cis.rit.edu/mcsl/online/munsell.php to download the data file.  Our version

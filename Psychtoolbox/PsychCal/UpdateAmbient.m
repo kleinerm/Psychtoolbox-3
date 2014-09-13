@@ -16,7 +16,7 @@ function cal = UpdateAmbient(cal,newP_ambient,ADD)
 % linear color space defined by the call to SetColorSpace.  To
 % do this, use UpdateAmbientLinear.
 %
-%ÊIf flag ADD is true, passed ambient is added to current
+% If flag ADD is true, passed ambient is added to current
 % value.  Otherwise passed value replaces current value.
 % ADD is false if not passed.  Use caution when setting ADD
 % true -- if the ambient is changing during the experiment

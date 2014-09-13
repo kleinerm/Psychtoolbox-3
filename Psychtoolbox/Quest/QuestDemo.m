@@ -166,8 +166,8 @@ beta=3.5;delta=0.01;gamma=0.5;
 q=QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma);
 q.normalizePdf=1; % This adds a few ms per call to QuestUpdate, but otherwise the pdf will underflow after about 1000 trials.
 
-% fprintf('Your initial guess was %g ± %g\n',tGuess,tGuessSd);
-% fprintf('Quest''s initial threshold estimate is %g ± %g\n',QuestMean(q),QuestSd(q));
+% fprintf('Your initial guess was %g +- %g\n',tGuess,tGuessSd);
+% fprintf('Quest''s initial threshold estimate is %g +- %g\n',QuestMean(q),QuestSd(q));
 
 % Simulate a series of trials. 
 % On each trial we ask Quest to recommend an intensity and we call QuestUpdate to save the result in q.
@@ -199,11 +199,11 @@ fprintf('%.0f ms/trial\n',1000*(eval(getSecsFunction)-timeZero)/trialsDesired);
 % Ask Quest for the final estimate of threshold.
 t=QuestMean(q);		% Recommended by Pelli (1989) and King-Smith et al. (1994). Still our favorite.
 sd=QuestSd(q);
-fprintf('Final threshold estimate (mean±sd) is %.2f ± %.2f\n',t,sd);
+fprintf('Final threshold estimate (mean+-sd) is %.2f +- %.2f\n',t,sd);
 % t=QuestMode(q);	% Similar and preferable to the maximum likelihood recommended by Watson & Pelli (1983). 
 % fprintf('Mode threshold estimate is %4.2f\n',t);
 fprintf('\nYou set the true threshold to %.2f.\n',tActual);
-fprintf('Quest knew only your guess: %.2f ± %.2f.\n',tGuess,tGuessSd);
+fprintf('Quest knew only your guess: %.2f +- %.2f.\n',tGuess,tGuessSd);
 
 % Optionally, reanalyze the data with beta as a free parameter.
 fprintf('\nBETA. Many people ask, so here''s how to analyze the data with beta as a free\n');
