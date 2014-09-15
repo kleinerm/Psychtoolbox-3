@@ -16,11 +16,9 @@
  * eye, with reversed roles for Image1 and Image2, to achieve suppression for
  * both eyes.
  *
- * Ghost suppression is achieved either by a summing (or a mixing) of
- * the inverted contrast in the suppressed image (scaled by a contrast
- * gain) and the contrast in the target image (targetOverwrites==0.0) or
- * by overwriting the inverted contrast in the suppressed image by
- * anything in the target image (targetOverwrites==1.0).
+ * Ghost suppression is achieved by a summing (or a mixing) of the
+ * inverted contrast in the suppressed image (scaled by a contrast gain)
+ * and the contrast in the target image (targetOverwrites==0.0).
  *
  * background luminance / color level (set by backGroundClr uniform)
  * should not be zero as then there is no way to invert contrast w.r.t.
@@ -35,7 +33,6 @@ uniform sampler2DRect Image1;
 uniform sampler2DRect Image2;
 uniform vec3  crosstalkGain;
 uniform vec3  backGroundClr;
-uniform float targetOverwrites;
 
 void main()
 {
@@ -51,27 +48,8 @@ void main()
     suppressedimage.rgb -=  backGroundClr;
     suppressedimage.rgb *= -crosstalkGain;
 
-    /* prepare first output option: sum/mix contrast in target image and
-     * suppressed image */
-    outcolor1 = targetimage.rgb + suppressedimage.rgb;
-
-
-
-    /* second output option, where contrast in target image overwrites
-     * anything in suppressed image instead of mixing with it. */
-
-    /* Get contrast in target image */
-    targetimage.rgb -=  backGroundClr;
-
-    /* determine if any contrast in target image */
-    float val  = dot(targetimage.rgb,targetimage.rgb);
-    float which= step(-0.0001, val) * (1.0 - step(0.0001, val));    /* 1 if no contrast in target image (val==0), 0 otherwise */
-
-    /* choose contrast from which image to write to output */
-    outcolor2 = backGroundClr + which*suppressedimage.rgb + (1.0-which)*targetimage.rgb;
-
     /* Write output pixel color corresponding to a de-ghosted Image1,
-     * choosing the requested output option */
-    gl_FragColor.rgb = outcolor2*targetOverwrites + (1.0-targetOverwrites)*outcolor1;
+     * sum/mix contrast in target image and suppressed image */
+    gl_FragColor.rgb = targetimage.rgb + suppressedimage.rgb;
     gl_FragColor.a = targetimage.a;
 }

@@ -3748,11 +3748,6 @@ if ~isempty(floc)
                 % the user's choice.
                 error('in StereoCrosstalkReduction: the color of the background of your image should be provided');
             end
-            crosstalkTargetOverwrites = reqs{row, 5};
-            if isempty(crosstalkTargetOverwrites)
-                % assume black
-                crosstalkTargetOverwrites = 0.0;
-            end
 
             % Load and build shader from files StereoCrosstalkReductionShader.vert.txt and/or
             % StereoCrosstalkReductionShader.frag.txt in the shader directory:
@@ -3771,7 +3766,6 @@ if ~isempty(floc)
             % shader variable 'uniform float crossTalkParam1' for use as a input constant in shader:
             glUniform3fv(glGetUniformLocation(shader, 'crosstalkGain'), 1, crosstalkGain);
             glUniform3fv(glGetUniformLocation(shader, 'backGroundClr'), 1, crosstalkBackGroundClr);
-            glUniform1f(glGetUniformLocation(shader, 'frontOverwrites'), crosstalkTargetOverwrites);
 
             % Shader setup done:
             glUseProgram(0);
