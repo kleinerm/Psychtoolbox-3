@@ -218,8 +218,8 @@ if ~isempty(reduceCrossTalk)
     % itself. Second parameter sets the background luminance level and
     % third sets whether contrast in the target view overwrites any of the
     % ghost suppression contrast from the other view.
-    PsychImaging('AddTask', 'LeftView', 'StereoCrosstalkReduction', reduceCrossTalk, [.5 .5 .5]);
-    PsychImaging('AddTask', 'RightView', 'StereoCrosstalkReduction', reduceCrossTalk, [.5 .5 .5]);
+    PsychImaging('AddTask', 'LeftView', 'StereoCrosstalkReduction', reduceCrossTalk, .5);
+    PsychImaging('AddTask', 'RightView', 'StereoCrosstalkReduction', reduceCrossTalk, .5);
 end
 
 % Consolidate the list of requirements (error checking etc.), open a
