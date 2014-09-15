@@ -1,5 +1,5 @@
-function ImagingStereoDemo(stereoMode, usedatapixx, writeMovie, reduceCrossTalk)
-% ImagingStereoDemo([stereoMode=8][, usedatapixx = 0][, writeMovie = 0][, reduceCrossTalk = 0])
+function ImagingStereoDemo(stereoMode, usedatapixx, writeMovie, reduceCrossTalkGain)
+% ImagingStereoDemo([stereoMode=8][, usedatapixx = 0][, writeMovie = 0][, reduceCrossTalkGain = 0])
 %
 % Demo on how to use OpenGL-Psychtoolbox to present stereoscopic stimuli
 % when the Psychtoolbox imaging pipeline is enabled. Use of the imaging
@@ -77,6 +77,9 @@ function ImagingStereoDemo(stereoMode, usedatapixx, writeMovie, reduceCrossTalk)
 % a setting of 2 will also write an audio track with a sequence of ten
 % successive beep tones of 1 sec duration.
 %
+% 'reduceCrossTalkGain' If provided and set to a non-zero value, will make
+% background middle gray and demo the crosstalk reduction shader.
+%
 % Authors:
 % Finnegan Calabro  - fcalabro@bu.edu
 % Mario Kleiner     - mario.kleiner at tuebingen.mpg.de
@@ -111,7 +114,7 @@ if isempty(writeMovie)
 end
 
 if nargin < 4
-    reduceCrossTalk = [];
+    reduceCrossTalkGain = [];
 end
 
 % This script calls Psychtoolbox commands available only in OpenGL-based
@@ -179,7 +182,7 @@ end
 % display the background color in all remaining areas, thereby saving
 % some computation time for pixel processing: We select the center
 % 512x512 pixel area of the screen:
-if ~ismember(stereoMode, [100, 101, 102]) && isempty(reduceCrossTalk)
+if ~ismember(stereoMode, [100, 101, 102]) && isempty(reduceCrossTalkGain)
     PsychImaging('AddTask', 'AllViews', 'RestrictProcessing', CenterRect([0 0 512 512], Screen('Rect', scrnNum)));
 end
 
@@ -213,20 +216,18 @@ if stereoMode == 10
 end
 
 % Experimental stereo crosstalk reduction requested?
-if ~isempty(reduceCrossTalk)
+if ~isempty(reduceCrossTalkGain)
     % Yes setup reduction for both view channels, using reduceCrossTalk as 1st parameter
-    % itself. Second parameter sets the background luminance level and
-    % third sets whether contrast in the target view overwrites any of the
-    % ghost suppression contrast from the other view.
-    PsychImaging('AddTask', 'LeftView', 'StereoCrosstalkReduction', reduceCrossTalk, .5);
-    PsychImaging('AddTask', 'RightView', 'StereoCrosstalkReduction', reduceCrossTalk, .5);
+    % itself. Second parameter sets the background luminance level.
+    PsychImaging('AddTask', 'LeftView', 'StereoCrosstalkReduction', reduceCrossTalkGain, .5);
+    PsychImaging('AddTask', 'RightView', 'StereoCrosstalkReduction', reduceCrossTalkGain, .5);
 end
 
 % Consolidate the list of requirements (error checking etc.), open a
 % suitable onscreen window and configure the imaging pipeline for that
 % window according to our specs. The syntax is the same as for
 % Screen('OpenWindow'):
-[windowPtr, windowRect] = PsychImaging('OpenWindow', scrnNum, 127, [], [], [], stereoMode);
+[windowPtr, windowRect] = PsychImaging('OpenWindow', scrnNum, 0, [], [], [], stereoMode);
 
 if ismember(stereoMode, [4, 5])
     % This uncommented bit of code would allow to exercise the
@@ -282,7 +283,7 @@ end
 
 % Initially fill left- and right-eye image buffer with black background
 % color:
-if ~isempty(reduceCrossTalk)
+if ~isempty(reduceCrossTalkGain)
     bgColor = GrayIndex(scrnNum);
 else
     bgColor = BlackIndex(scrnNum);

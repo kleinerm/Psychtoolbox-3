@@ -3779,7 +3779,7 @@ if ~isempty(floc)
 
             % Load and build shader from files StereoCrosstalkReductionShader.vert.txt and/or
             % StereoCrosstalkReductionShader.frag.txt in the shader directory:
-            shader = LoadGLSLProgramFromFiles('StereoCrosstalkReductionShader', 2);
+            shader = LoadGLSLProgramFromFiles('StereoCrosstalkReductionShader', 1);
 
             % Init the shader: Assign mapping of images:
             glUseProgram(shader);
