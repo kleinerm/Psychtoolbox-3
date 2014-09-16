@@ -77,12 +77,12 @@ function ImagingStereoDemo(stereoMode, usedatapixx, writeMovie, reduceCrossTalkG
 % a setting of 2 will also write an audio track with a sequence of ten
 % successive beep tones of 1 sec duration.
 %
-% 'reduceCrossTalkGain' If provided and set to a non-zero value, will make
-% background middle gray and demo the crosstalk reduction shader.
+% 'reduceCrossTalkGain' If provided and set to a greater than zero value, will
+% make background 50% gray and demo the crosstalk reduction shader.
 %
 % Authors:
 % Finnegan Calabro  - fcalabro@bu.edu
-% Mario Kleiner     - mario.kleiner at tuebingen.mpg.de
+% Mario Kleiner  - mario.kleiner.de at gmail.com
 %
 
 % We start of with non-inverted display:
@@ -117,16 +117,11 @@ if nargin < 4
     reduceCrossTalkGain = [];
 end
 
-% This script calls Psychtoolbox commands available only in OpenGL-based
-% versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
-% only OpenGL-base Psychtoolbox.)  The Psychtoolbox command AssertPsychOpenGL will issue
-% an error message if someone tries to execute this script on a computer without
-% an OpenGL Psychtoolbox
-AssertOpenGL;
+% Check that Psychtoolbox is properly installed, switch to unified KbName's
+% across operating systems, and switch color range to normalized 0 - 1 range:
+PsychDefaultSetup(2);
 
-% Define response key mappings, unify the names of keys across operating
-% systems:
-KbName('UnifyKeyNames');
+% Define response key mappings:
 space = KbName('space');
 escape = KbName('ESCAPE');
 
@@ -219,15 +214,18 @@ end
 if ~isempty(reduceCrossTalkGain)
     % Yes setup reduction for both view channels, using reduceCrossTalk as 1st parameter
     % itself. Second parameter sets the background luminance level.
-    PsychImaging('AddTask', 'LeftView', 'StereoCrosstalkReduction', reduceCrossTalkGain, .5);
-    PsychImaging('AddTask', 'RightView', 'StereoCrosstalkReduction', reduceCrossTalkGain, .5);
+    PsychImaging('AddTask', 'LeftView', 'StereoCrosstalkReduction', 'SubtractOther', reduceCrossTalkGain);
+    PsychImaging('AddTask', 'RightView', 'StereoCrosstalkReduction', 'SubtractOther', reduceCrossTalkGain);
+    bgColor = GrayIndex(scrnNum);
+else
+    bgColor = BlackIndex(scrnNum);
 end
 
 % Consolidate the list of requirements (error checking etc.), open a
 % suitable onscreen window and configure the imaging pipeline for that
 % window according to our specs. The syntax is the same as for
 % Screen('OpenWindow'):
-[windowPtr, windowRect] = PsychImaging('OpenWindow', scrnNum, 0, [], [], [], stereoMode);
+[windowPtr, windowRect] = PsychImaging('OpenWindow', scrnNum, bgColor, [], [], [], stereoMode);
 
 if ismember(stereoMode, [4, 5])
     % This uncommented bit of code would allow to exercise the
@@ -280,21 +278,6 @@ switch stereoMode
     otherwise
         %error('Unknown stereoMode specified.');
 end
-
-% Initially fill left- and right-eye image buffer with black background
-% color:
-if ~isempty(reduceCrossTalkGain)
-    bgColor = GrayIndex(scrnNum);
-else
-    bgColor = BlackIndex(scrnNum);
-end
-Screen('SelectStereoDrawBuffer', windowPtr, 0);
-Screen('FillRect', windowPtr, bgColor);
-Screen('SelectStereoDrawBuffer', windowPtr, 1);
-Screen('FillRect', windowPtr, bgColor);
-
-% Show cleared start screen:
-Screen('Flip', windowPtr);
 
 % Set up alpha-blending for smooth (anti-aliased) drawing of dots:
 Screen('BlendFunction', windowPtr, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
@@ -403,16 +386,16 @@ while (count < nmax) && ~any(buttons)
     
     % Draw left stim:
     Screen('DrawDots', windowPtr, dots(1:2, :) + [dots(3, :)/2; zeros(1, numDots)], dotSize, col1, windowRect(3:4)/2, 1);
-    Screen('FrameRect', windowPtr, [255 0 0], [], 5);
-    Screen('DrawDots', windowPtr, [x ; y], 8, [255 0 0]);
+    Screen('FrameRect', windowPtr, [1 0 0], [], 5);
+    Screen('DrawDots', windowPtr, [x ; y], 8, [1 0 0]);
     
     % Select right-eye image buffer for drawing:
     Screen('SelectStereoDrawBuffer', windowPtr, 1);
     
     % Draw right stim:
     Screen('DrawDots', windowPtr, dots(1:2, :) - [dots(3, :)/2; zeros(1, numDots)], dotSize, col2, windowRect(3:4)/2, 1);
-    Screen('FrameRect', windowPtr, [0 255 0], [], 5);
-    Screen('DrawDots', windowPtr, [x ; y], 8, [0 255 0]);
+    Screen('FrameRect', windowPtr, [0 1 0], [], 5);
+    Screen('DrawDots', windowPtr, [x ; y], 8, [0 1 0]);
     
     % Tell PTB drawing is finished for this frame:
     Screen('DrawingFinished', windowPtr);

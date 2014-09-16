@@ -419,18 +419,25 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   apply a shader first in the processing chain that for each eye aims to
 %   reduce crosstalk from the other eye.
 %
-%   Usage: PsychImaging('AddTask', 'LeftView',  'StereoCrosstalkReduction', crossTalkGain, backGroundLuminance);
-%          PsychImaging('AddTask', 'RightView', 'StereoCrosstalkReduction', crossTalkGain, backGroundLuminance);
+%   Usage:
+%
+%     PsychImaging('AddTask', 'LeftView', 'StereoCrosstalkReduction', method, crossTalkGain);
+%     PsychImaging('AddTask', 'RightView', 'StereoCrosstalkReduction', method, crossTalkGain);
+%
+%   The 'method' parameter selects the method to use for crosstalk
+%   reduction.
+%
+%   Currently only a method named 'SubtractOther' is implemented, which works as follows:
 %
 %   To reduce crosstalk, the contrast in the image of each eye, i.e., the
-%   difference in luminance from the background level provided in
-%   'backGroundLuminance' is subtracted from the image of the other eye,
+%   difference in color from the background level provided as background
+%   clear color of the window is subtracted from the image of the other eye,
 %   after scaling the contrast by 'crossTalkGain'. 'crossTalkGain' can be a
-%   scalar, or a separate gain for each RGB channel. 'backGroundLuminance'
+%   scalar, or a separate gain for each RGB channel. The background color
 %   can be a scalar in the range 0-1, or a 3-element array to set the
 %   backgroundlevel for each RGB channel separately. The background
-%   luminance level should not be zero, as contrast can then not be
-%   inverted around the background level. In general, the background level
+%   color level should not be zero, as contrast then can't be inverted
+%   around the background level. In general, the background level
 %   should be high enough to allow unclamped inversion of the highest
 %   contrast features of your stimulus at your 'crossTalkGain', or
 %   artifacts will occur.
@@ -1210,7 +1217,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 % 26.06.2014  Add support for Native11BitFramebuffer mode, update our docs with what
 %                     we learned about this 10/11 bpc business on HDMI so far. (MK)
-% 16.08.2014  Add experimental 'StereoCrosstalkReduction' support. (MK)
+% 16.09.2014  Add experimental 'StereoCrosstalkReduction' support. (MK/DCN)
 
 persistent configphase_active;
 persistent reqs;
@@ -2461,10 +2468,10 @@ end
 
 % Want to reduce crosstalk in stereo presentation modes?
 if ~isempty(find(mystrcmp(reqs, 'StereoCrosstalkReduction')))
-    % Yes: For now we only implement this experimentally as a hidden option
-    % and for attachment of crosstalk reduction shaders to the image processing
-    % chains. This will be suboptimal if other image processing ops are active,
-    % but for early prototyping it should be good enough.
+    % Yes: For now we only implement this experimentally and for attachment
+    % of crosstalk reduction shaders to the image processing chains.
+    % This will be suboptimal if other image processing ops are active,
+    % but for a first usefully working prototype it should be good enough.
     %
     % We only request additional access to the other image channel, as setup
     % code above and below will already have activated the image processing
@@ -3748,33 +3755,50 @@ if ~isempty(floc)
     for x=floc
         [rows cols]= ind2sub(size(reqs), x);
         for row=rows'
-            % Shared setup code.
-
-            % Parameter 1 at 3, 2 at 4, ...
-            crosstalkGain = reqs{row, 3};
-            if isempty(crosstalkGain)
-                error('in StereoCrosstalkReduction: the crosstalk reduction gain should be provided');
+            crosstalkMethod = reqs{row, 3};
+            if isempty(crosstalkMethod) || ~strcmpi(crosstalkMethod, 'SubtractOther')
+                sca;
+                error('In StereoCrosstalkReduction: Crosstalk reduction method parameter missing or unsupported method requested.');
             end
+
+            crosstalkGain = reqs{row, 4};
+            if isempty(crosstalkGain)
+                sca;
+                error('In StereoCrosstalkReduction: The crosstalk reduction gain must be provided.');
+            end
+
             if isscalar(crosstalkGain)
-                % same gain for all three color channels
+                % Same gain for all three color channels:
                 crosstalkGain = [crosstalkGain crosstalkGain crosstalkGain];
             else
-                assert(numel(crosstalkGain)==3,'in StereoCrosstalkReduction: provided gain should be a scalar or a 3-element vector');
+                if numel(crosstalkGain)~=3
+                    sca;
+                    error('In StereoCrosstalkReduction: provided gain should be a scalar or a 3-element vector.');
+                end
             end
-            crosstalkBackGroundClr = reqs{row, 4};
-            if isempty(crosstalkBackGroundClr)
-                % i will not check if the background color is all zero
-                % here. The algorithm won't work as I planned as contrast
-                % can't be inverted around a zero background level, but its
-                % the user's choice.
-                error('in StereoCrosstalkReduction: the color of the background of your image should be provided');
+
+            % Background clear color as specified by PsychImaging('Openwindow', ...) call is reference for
+            % zero-contrast:
+            crosstalkBackGroundClr = clearcolor;
+            if isempty(crosstalkBackGroundClr) || ~isnumeric(crosstalkBackGroundClr)
+                sca;
+                error('In StereoCrosstalkReduction: You did not provide the mandatory background clear color for crosstalk reduction in ''OpenWindow''.');
             end
+
             if isscalar(crosstalkBackGroundClr)
-                % same background luminance level for all three color
-                % channels
-                crosstalkBackGroundClr = [crosstalkBackGroundClr crosstalkBackGroundClr crosstalkBackGroundClr];
+                % Same background luminance level for all three color channels:
+                crosstalkBackGroundClr = [crosstalkBackGroundClr, crosstalkBackGroundClr, crosstalkBackGroundClr];
             else
-                assert(numel(crosstalkBackGroundClr)==3,'in StereoCrosstalkReduction: provided background luminance level should be a scalar or a 3-element array');
+                if numel(crosstalkBackGroundClr) < 3
+                    sca;
+                    error('In StereoCrosstalkReduction: Provided background clear color should be a scalar or an at least 3-element RGB(A) vector.');
+                end
+                crosstalkBackGroundClr = crosstalkBackGroundClr(1:3);
+            end
+
+            if min(crosstalkBackGroundClr) <= 0 || max(crosstalkBackGroundClr) >= 1
+                sca;
+                error('In StereoCrosstalkReduction: Provided background clear color is not in the normalized range > 0 and < 1 as required.');
             end
 
             % Load and build shader from files StereoCrosstalkReductionShader.vert.txt and/or
