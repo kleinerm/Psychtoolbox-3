@@ -24,7 +24,7 @@ function constantString=GL_SRC_ALPHA
 % GL_SRC_ALPHA may be used as either a source or a destination factor.
 % 
 %
-% see also: PsychAlphaBlending, AlphaDemo, TestAlphaBlending.
+% see also: PsychAlphaBlending, AlphaDemo, AlphaBlendingTest.
 
 
 constantString='GL_SRC_ALPHA';
