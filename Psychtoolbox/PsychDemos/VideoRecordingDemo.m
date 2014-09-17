@@ -248,7 +248,7 @@ try
         % framerate by itself, based on lighting conditions. With bright scenes
         % it can run at 30 fps, at lower light conditions it reduces the
         % framerate to 15 fps, then to 7.5 fps.
-        Screen('StartVideoCapture', grabber, 30, 1)
+        Screen('StartVideoCapture', grabber, realmax, 1)
         
         oldtex = 0;
         tex = 0;
