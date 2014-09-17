@@ -24,7 +24,7 @@ munsellData = MunsellPreprocessTable;
 
 % Enter in some test values with known answers from other sources.
 % The comparison source is a Munsell conversion program that Inji found on 
-% the web.  The program output was used directly to get the xyY values
+% the web.  The program output was used directly to get the xyY values
 % for the inputs below, except for the first one in the list.
 %
 % For the first one in the list, the conversion program gives the wrong luminance,

@@ -26,7 +26,7 @@ function PsychHIDTest
 % 5/14/12  mk Cleanup and improve.
 % 7/01/14  mk Skip all but HID device enumeration on Windows.
 
-fprintf('TestPsychHID\n');
+fprintf('PsychHIDTest\n');
 fprintf('Making a list of all your HID-compliant devices. ...');
 devices=PsychHID('Devices');
 fprintf('\n\nYou have %d HID-compliant devices:\n',length(devices));

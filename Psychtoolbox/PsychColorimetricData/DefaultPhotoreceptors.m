@@ -134,7 +134,7 @@ switch (kind)
    % The Melanopic Sensitivity Function Accounts for Melanopsin-Driven Responses in Mice under
    % Diverse Lighting Conditions. PLoS One, 8(1), e53583. doi: 10.1371/journal.pone.0053583.
    %
-   % Viénot, F., Brettel, H., Dang, T.V., Le Rohellec, J. (2012). Domain of metamers exciting
+   % Vienot, F., Brettel, H., Dang, T.V., Le Rohellec, J. (2012). Domain of metamers exciting
    % intrinsically photosensitive retinal ganglion cells (ipRGCs) and rods. J Opt Soc Am A Opt
    % Image Sci Vis. 29(2): A366-76. doi: 10.1364/JOSAA.29.00A366.
     case 'LivingHumanMelanopsin'

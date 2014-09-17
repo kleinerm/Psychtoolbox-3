@@ -415,26 +415,26 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	}
 	#endif
 
-    // Decide if 10 or 11 bpc framebuffer should be enabled by our own kernel driver trick, or
+    // Decide if 10 or 11 or 16 bpc framebuffer should be enabled by our own kernel driver trick, or
     // if the OS + graphics drivers has done proper work already:
-    if (((*windowRecord)->depth == 30) || ((*windowRecord)->depth == 33)) {
+    if (((*windowRecord)->depth == 30) || ((*windowRecord)->depth == 33) || ((*windowRecord)->depth == 48)) {
         // Ask the OS what it thinks it has set atm.:
         glGetIntegerv(GL_RED_BITS, &bpc);
 
         // Support for kernel driver available? Only on Linux and OSX:
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
         if ((PSYCH_SYSTEM == PSYCH_OSX) && (bpc >= (*windowRecord)->depth / 3)) {
-            // OSX and the OS claims it runs at at least 10 bpc. Good, take
-            // it at face value. Note: As of June 2014, no shipping OSX version supports this,
+            // OSX and the OS claims it runs at at least requested bpc. Good, take
+            // it at face value. Note: As of September 2014, no shipping OSX version supports this,
             // not even 10.9 Mavericks:
             printf("PTB-INFO: OSX native %i bit per color framebuffer requested, and the OS claims it is working fine. Good.\n", bpc);
         }
         else if ((PSYCH_SYSTEM == PSYCH_LINUX) && (bpc >= (*windowRecord)->depth / 3)) {
-            // Linux and the OS claims it runs at at least 10 bpc. Good, take it at face value.
+            // Linux and the OS claims it runs at at least requested bpc. Good, take it at face value.
             printf("PTB-INFO: Linux native %i bit per color framebuffer requested, and the OS claims it is working fine. Good.\n", bpc);
         }
         else {
-            // No native 10/11 bpc support. Only support our homegrown method with PTB kernel driver on ATI/AMD hardware:
+            // No native requested bpc support. Only support our homegrown method with PTB kernel driver on ATI/AMD hardware:
             printf("PTB-INFO: Native %i bit per color framebuffer requested, but the OS doesn't allow it. It only provides %i bpc.\n", (*windowRecord)->depth / 3, bpc);
             printf("PTB-INFO: Will now try to use our own high bit depth setup code as an alternative approach to fullfill your needs.\n");
             gpuMaintype = kPsychUnknown;
@@ -527,7 +527,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     // Dynamically rebind core extensions: Ugly ugly...
     PsychRebindARBExtensionsToCore();
 
-    if (((((*windowRecord)->depth == 30) || ((*windowRecord)->depth == 33)) && !((*windowRecord)->specialflags & kPsychNative10bpcFBActive)) ||
+    if (((((*windowRecord)->depth == 30) || ((*windowRecord)->depth == 33) || ((*windowRecord)->depth == 48)) && !((*windowRecord)->specialflags & kPsychNative10bpcFBActive)) ||
         ((*windowRecord)->depth == 32) || ((*windowRecord)->depth == 64) || ((*windowRecord)->depth == 128)) {
 
         // Floating point framebuffer active? GL_RGBA_FLOAT_MODE_ARB would be a viable alternative?
@@ -548,7 +548,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         glGetIntegerv(GL_BLUE_BITS, &bpc);
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: System Frame buffer provides %i bits for blue channel.\n", bpc);
         glGetIntegerv(GL_ALPHA_BITS, &bpc);
-        if (((*windowRecord)->depth == 30) || ((*windowRecord)->depth == 33)) {
+        if (((*windowRecord)->depth == 30) || ((*windowRecord)->depth == 33) || ((*windowRecord)->depth == 48)) {
             if (PsychPrefStateGet_Verbosity() > 4) {
                 printf("PTB-INFO: Hardware frame buffer provides %i bits for alpha channel. This is the effective alpha bit depths if the imaging pipeline is off.\n", bpc);
                 printf("PTB-INFO: If the imaging pipeline is enabled, then the effective alpha bit depth depends on imaging pipeline configuration and is likely >= 8 bits.\n");
@@ -596,7 +596,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         (*windowRecord)->depth = bpc * 3;
     }
     else {
-        // Special 10/11 bpc framebuffer activated by our own method:
+        // Special 10/11/16 bpc framebuffer activated by our own method:
         bpc = (*windowRecord)->depth / 3;
         if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Assuming kernel driver provided color resolution of the GPU framebuffer will be %i bits per RGB color component.\n", bpc);
     }
@@ -1666,7 +1666,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
     // Assign our best estimate of the scanline which marks end of vertical blanking interval:
     (*windowRecord)->VBL_Endline = VBL_Endline;
-	// Store estimated video refresh cycle from beamposition method as well:
+    // Store estimated video refresh cycle from beamposition method as well:
     (*windowRecord)->ifi_beamestimate = ifi_beamestimate;
     //mark the contents of the window record as valid.  Between the time it is created (always with PsychCreateWindowRecord) and when it is marked valid 
     //(with PsychSetWindowRecordValid) it is a potential victim of PsychPurgeInvalidWindows.  
@@ -1681,24 +1681,24 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         glDrawBuffer(GL_FRONT);
     }
 
-	// Check if 10 bpc native framebuffer support is requested, or if 10 bit LUT bypass
+    // Check if >= 10 bpc native framebuffer support is requested, or if 10 bit LUT bypass
     // is requested. In both cases we execute PsychEnableNative10BitFramebuffer(), which
     // will internally sort out if it needs to go through all the moves or only enable the
     // 10 bit LUT bypass (possibly on FireGL and FirePro with broken drivers):
-	if ((((*windowRecord)->specialflags & kPsychNative10bpcFBActive) || (PsychPrefStateGet_ConserveVRAM() & kPsychBypassLUTFor10BitFramebuffer))
+    if ((((*windowRecord)->specialflags & kPsychNative10bpcFBActive) || (PsychPrefStateGet_ConserveVRAM() & kPsychBypassLUTFor10BitFramebuffer))
         && PsychOSIsKernelDriverAvailable((*windowRecord)->screenNumber)) {
-		// Try to switch framebuffer to native 10 bpc mode:
-		PsychEnableNative10BitFramebuffer((*windowRecord), TRUE);
-	}
+        // Try to switch framebuffer to native >= 10 bpc mode:
+        PsychEnableNative10BitFramebuffer((*windowRecord), TRUE);
+    }
 
     // Allocate and zero-init the flipInfo struct for this window:
     (*windowRecord)->flipInfo = (PsychFlipInfoStruct*) malloc(sizeof(PsychFlipInfoStruct));
     if (NULL == (*windowRecord)->flipInfo) PsychErrorExitMsg(PsychError_outofMemory, "Out of memory when trying to malloc() flipInfo struct!");
     memset((*windowRecord)->flipInfo, 0, sizeof(PsychFlipInfoStruct));
 
-	// Wait for splashMinDurationSecs, so that the "Welcome" splash screen is
-	// displayed at least that long:
-	PsychYieldIntervalSeconds(splashMinDurationSecs);
+    // Wait for splashMinDurationSecs, so that the "Welcome" splash screen is
+    // displayed at least that long:
+    PsychYieldIntervalSeconds(splashMinDurationSecs);
 
     // Done.
     return(TRUE);

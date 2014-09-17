@@ -1,5 +1,5 @@
-function ImagingStereoDemo(stereoMode, usedatapixx, writeMovie, reduceCrossTalk)
-% ImagingStereoDemo([stereoMode=8][, usedatapixx = 0][, writeMovie = 0][, reduceCrossTalk = 0])
+function ImagingStereoDemo(stereoMode, usedatapixx, writeMovie, reduceCrossTalkGain)
+% ImagingStereoDemo([stereoMode=8][, usedatapixx = 0][, writeMovie = 0][, reduceCrossTalkGain = 0])
 %
 % Demo on how to use OpenGL-Psychtoolbox to present stereoscopic stimuli
 % when the Psychtoolbox imaging pipeline is enabled. Use of the imaging
@@ -77,9 +77,12 @@ function ImagingStereoDemo(stereoMode, usedatapixx, writeMovie, reduceCrossTalk)
 % a setting of 2 will also write an audio track with a sequence of ten
 % successive beep tones of 1 sec duration.
 %
+% 'reduceCrossTalkGain' If provided and set to a greater than zero value, will
+% make background 50% gray and demo the crosstalk reduction shader.
+%
 % Authors:
 % Finnegan Calabro  - fcalabro@bu.edu
-% Mario Kleiner     - mario.kleiner at tuebingen.mpg.de
+% Mario Kleiner  - mario.kleiner.de at gmail.com
 %
 
 % We start of with non-inverted display:
@@ -110,20 +113,15 @@ if isempty(writeMovie)
     writeMovie = 0;
 end
 
-if nargin < 4 || isempty(reduceCrossTalk)
-    reduceCrossTalk = 0;
+if nargin < 4
+    reduceCrossTalkGain = [];
 end
 
-% This script calls Psychtoolbox commands available only in OpenGL-based
-% versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
-% only OpenGL-base Psychtoolbox.)  The Psychtoolbox command AssertPsychOpenGL will issue
-% an error message if someone tries to execute this script on a computer without
-% an OpenGL Psychtoolbox
-AssertOpenGL;
+% Check that Psychtoolbox is properly installed, switch to unified KbName's
+% across operating systems, and switch color range to normalized 0 - 1 range:
+PsychDefaultSetup(2);
 
-% Define response key mappings, unify the names of keys across operating
-% systems:
-KbName('UnifyKeyNames');
+% Define response key mappings:
 space = KbName('space');
 escape = KbName('ESCAPE');
 
@@ -179,7 +177,7 @@ end
 % display the background color in all remaining areas, thereby saving
 % some computation time for pixel processing: We select the center
 % 512x512 pixel area of the screen:
-if ~ismember(stereoMode, [100, 101, 102]) && ~reduceCrossTalk
+if ~ismember(stereoMode, [100, 101, 102]) && isempty(reduceCrossTalkGain)
     PsychImaging('AddTask', 'AllViews', 'RestrictProcessing', CenterRect([0 0 512 512], Screen('Rect', scrnNum)));
 end
 
@@ -213,18 +211,21 @@ if stereoMode == 10
 end
 
 % Experimental stereo crosstalk reduction requested?
-if reduceCrossTalk
+if ~isempty(reduceCrossTalkGain)
     % Yes setup reduction for both view channels, using reduceCrossTalk as 1st parameter
-    % itself:
-    PsychImaging('AddTask', 'LeftView', 'StereoCrosstalkReduction', reduceCrossTalk);
-    PsychImaging('AddTask', 'RightView', 'StereoCrosstalkReduction', reduceCrossTalk);
+    % itself. Second parameter sets the background luminance level.
+    PsychImaging('AddTask', 'LeftView', 'StereoCrosstalkReduction', 'SubtractOther', reduceCrossTalkGain);
+    PsychImaging('AddTask', 'RightView', 'StereoCrosstalkReduction', 'SubtractOther', reduceCrossTalkGain);
+    bgColor = GrayIndex(scrnNum);
+else
+    bgColor = BlackIndex(scrnNum);
 end
 
 % Consolidate the list of requirements (error checking etc.), open a
 % suitable onscreen window and configure the imaging pipeline for that
 % window according to our specs. The syntax is the same as for
 % Screen('OpenWindow'):
-[windowPtr, windowRect] = PsychImaging('OpenWindow', scrnNum, 0, [], [], [], stereoMode);
+[windowPtr, windowRect] = PsychImaging('OpenWindow', scrnNum, bgColor, [], [], [], stereoMode);
 
 if ismember(stereoMode, [4, 5])
     % This uncommented bit of code would allow to exercise the
@@ -277,16 +278,6 @@ switch stereoMode
     otherwise
         %error('Unknown stereoMode specified.');
 end
-
-% Initially fill left- and right-eye image buffer with black background
-% color:
-Screen('SelectStereoDrawBuffer', windowPtr, 0);
-Screen('FillRect', windowPtr, BlackIndex(scrnNum));
-Screen('SelectStereoDrawBuffer', windowPtr, 1);
-Screen('FillRect', windowPtr, BlackIndex(scrnNum));
-
-% Show cleared start screen:
-Screen('Flip', windowPtr);
 
 % Set up alpha-blending for smooth (anti-aliased) drawing of dots:
 Screen('BlendFunction', windowPtr, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
@@ -395,16 +386,16 @@ while (count < nmax) && ~any(buttons)
     
     % Draw left stim:
     Screen('DrawDots', windowPtr, dots(1:2, :) + [dots(3, :)/2; zeros(1, numDots)], dotSize, col1, windowRect(3:4)/2, 1);
-    Screen('FrameRect', windowPtr, [255 0 0], [], 5);
-    Screen('DrawDots', windowPtr, [x ; y], 8, [255 0 0]);
+    Screen('FrameRect', windowPtr, [1 0 0], [], 5);
+    Screen('DrawDots', windowPtr, [x ; y], 8, [1 0 0]);
     
     % Select right-eye image buffer for drawing:
     Screen('SelectStereoDrawBuffer', windowPtr, 1);
     
     % Draw right stim:
     Screen('DrawDots', windowPtr, dots(1:2, :) - [dots(3, :)/2; zeros(1, numDots)], dotSize, col2, windowRect(3:4)/2, 1);
-    Screen('FrameRect', windowPtr, [0 255 0], [], 5);
-    Screen('DrawDots', windowPtr, [x ; y], 8, [0 255 0]);
+    Screen('FrameRect', windowPtr, [0 1 0], [], 5);
+    Screen('DrawDots', windowPtr, [x ; y], 8, [0 1 0]);
     
     % Tell PTB drawing is finished for this frame:
     Screen('DrawingFinished', windowPtr);
@@ -479,7 +470,7 @@ Screen('CloseAll')
 t = t(1:count);
 dt = t(2:end) - t(1:end-1);
 disp(sprintf('N.Dots\tMean (s)\tMax (s)\t%%>20ms\t%%>30ms\n')); %#ok<DSPS>
-disp(sprintf('%d\t%5.3f\t%5.3f\t%5.2f\t%5.2f\n', numDots, mean(dt), max(dt), sum(dt > 0.020)/length(dt), sum(dt > 0.030)/length(dt))); %#ok<DSPS>
+disp(sprintf('%d\t%5.3f\t%5.3f\t%5.0f\t%5.0f\n', numDots, mean(dt), max(dt), sum(dt > 0.020)/length(dt)*100, sum(dt > 0.030)/length(dt)*100)); %#ok<DSPS>
 
 % We're done.
 return;

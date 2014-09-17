@@ -52,6 +52,15 @@ function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, c
 % how to do that). These GPU's do support ~11 bits per color channel when
 % this special mode is used (11 bits red, 11 bits green, 10 bits blue).
 %
+% 'Native16Bit' - Enables the native up to 16 bpc framebuffer support on AMD
+% GPU's when used under Linux . While this activates a 16 bpc framebuffer,
+% the precision of the video output signal depends on the specific gpu, connection
+% and display. As of 2014, the "Sea Islands" AMD gpu family can output at most
+% 12 bpc precision to suitable displays over HDMI or DisplayPort. This mode needs
+% special configuration of your system and use of the Linux open-source graphics
+% drivers. If you can do with 10 bpc or 11 bpc, 'Native10Bit' or 'Native11Bit' are
+% much easier to use and setup and provide higher performance.
+%
 % 'VideoSwitcher' - Enable the Xiangrui Li et al. VideoSwitcher, a special
 % type of video attenuator (see "help PsychVideoSwitcher") in standard
 % "simple" mode.
@@ -140,6 +149,7 @@ function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, c
 % 13.08.2008 Cleaned up, commented, more help text etc... (MK).
 % 18.03.2013 Cleaned up, changed contrast of gratings to sensible 0.25 (MK).
 % 26.06.2014 Also show off Native11Bits framebuffers on AMD (MK).
+% 17.09.2014 Also show off Native16Bits framebuffers on AMD (MK).
 
 KbName('UnifyKeyNames');
 UpArrow = KbName('UpArrow');
@@ -275,6 +285,12 @@ try
             % Enable ATI GPU's ~11 bit framebuffer under certain conditions
             % (see help for this file):
             PsychImaging('AddTask', 'General', 'EnableNative11BitFramebuffer');
+            overlay = 0;
+            
+        case {'Native16Bit'}
+            % Enable AMD GPU's up to 16 bit framebuffer under certain conditions
+            % (see help for this file):
+            PsychImaging('AddTask', 'General', 'EnableNative16BitFramebuffer');
             overlay = 0;
             
         case {'BrightSide'}

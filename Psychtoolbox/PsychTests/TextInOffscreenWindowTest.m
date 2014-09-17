@@ -72,7 +72,7 @@ else
     ampFactor=1;
 end
 
-fprintf('TestTextInOffscreenWindowOSX results:\n\n');
+fprintf('TextInOffscreenWindowTest results:\n\n');
 if doesMatch
     fprintf('     Passed the test; the contents of onscreen and offscreen windows match\n');
 else
@@ -81,7 +81,7 @@ else
     fprintf('     "IMSHOW" command.  To make small errors visible, the difference image has been \n');
     fprintf(['     multiplied by ' num2str(ampFactor) '.\n']);
     fprintf('\n');
-    fprintf('     For further explanation and advice, see help for "TestTextInOffscreenWindowOSX"\n');  
+    fprintf('     For further explanation and advice, see help for "TextInOffscreenWindowTest"\n');  
     imshow(di* ampFactor);
 end
 

@@ -658,7 +658,7 @@ try
         plot(difference);
         title('Difference dt = FlipOnset - MeasurementBOX in msecs:');
     end
-    fprintf('Avg. diff. between Flip stimulus onset time and external timestamping (flip - external [ground truth]) is %f msecs, stddev = %f msecs, range = %f msecs.\n', mean(difference), std(difference), range(difference));
+    fprintf('Avg. diff. between Flip stimulus onset time and external timestamping (flip - external [ground truth]) is %f usecs, stddev = %f usecs, range = %f usecs.\n', mean(difference) * 1000, std(difference) * 1000, range(difference) * 1000);
     
     % Count and output number of missed flip on VBL deadlines:
     numbermisses=0;

@@ -24,7 +24,7 @@ function constantString=GL_ONE
 % GL_ONE may be used as either a source or a destination factor.
 % 
 %
-% see also: PsychAlphaBlending, AlphaDemo, TestAlphaBlending.
+% see also: PsychAlphaBlending, AlphaDemo, AlphaBlendingTest.
 
 constantString='GL_ONE';
 return;

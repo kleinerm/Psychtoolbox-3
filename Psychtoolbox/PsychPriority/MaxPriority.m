@@ -78,11 +78,11 @@ function priorityLevel=MaxPriority(varargin)
 % NOTES
 % 7/17/04 awi
 % The OS X section does not do thorough validation of arguments.  It does do:
-%  ¥If the window pointer or screen number argument is present it checks that it is
+%  * If the window pointer or screen number argument is present it checks that it is
 %  valid.
-%  ¥If a command is included, it checks that it is a valid command
+%  * If a command is included, it checks that it is a valid command
 %  for MacPriority.
-%  ¥It checks that at least one argument was passed.
+%  * It checks that at least one argument was passed.
 %
 % It does not check other requirements, for example some command arguments
 % require the screen number or window pointer.

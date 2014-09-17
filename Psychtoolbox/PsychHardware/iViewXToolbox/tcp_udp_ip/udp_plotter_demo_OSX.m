@@ -8,7 +8,7 @@ function udp_plotter_demo(lport)
 % This script is a demo that listen for a UDP packet (default port 3333) and
 % uses PLOT to dplay the sequence of doubles in the packet.
 %
-% (C) 2002 Peter Rydesäter
+% (C) 2002 Peter Rydesaeter
 
 % Add default argument
 if nargin<1, lport=3333; end

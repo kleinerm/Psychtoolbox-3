@@ -24,7 +24,7 @@ function constantString=GL_SRC_ALPHA_SATURATE
 % GL_SRC_ALPHA_SATURATE may only be used as a source factor, not a
 % destination factor.
 % 
-% see also: PsychAlphaBlending, AlphaDemo, TestAlphaBlending.
+% see also: PsychAlphaBlending, AlphaDemo, AlphaBlendingTest.
 
 
 

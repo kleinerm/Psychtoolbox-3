@@ -51,7 +51,7 @@ h.initialseed = ClockRandSeed;			% set seed w/ clock and put in header
 h.distance = '60 cm';					% distance from eye to ctr of screen
 hres = 832; vres = 624; tres = 75;		% define screen resolution
 h.screenresolution = ...
-	strcat(num2str(hres),' by ',num2str(vres),' pixels at ',num2str(tres),' Hz');
+	strcat(num2str(hres),' by:',num2str(vres),' pixels at:',num2str(tres),' Hz');
 h.screensize = '35 by 25.5 cm';
 h.pixelsperdegree = 25.5;				% based on central 1 degree region
 pausekey = 'space';						% key to pause experiment

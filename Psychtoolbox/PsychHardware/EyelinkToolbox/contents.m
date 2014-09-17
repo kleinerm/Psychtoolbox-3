@@ -1,7 +1,7 @@
 % 	EyelinkToolbox.
 % 
 % 	The EyelinkToolbox can be used to ceate eye-movement experiments and
-%   control the SR-Research Eyelink© gazetrackers
+%   control the SR-Research Eyelink(c) gazetrackers
 %   (http://www.eyelinkinfo.com/) from within Matlab and Octave.
 %   It is incorporated into the PsychToolbox (http://www.psychtoolbox.org/).
 %   It provides an interface to the Eyelink Gazetracker.
