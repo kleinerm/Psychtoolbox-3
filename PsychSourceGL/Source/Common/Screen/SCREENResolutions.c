@@ -384,133 +384,153 @@ PsychError SCREENConfigureDisplay(void)
 
 PsychError SCREENResolution(void) 
 {
-	static char useString[] = "oldResolution=Screen('Resolution', screenNumber [, newwidth][, newheight][, newHz][, newPixelSize][, specialMode]);";
-	static char synopsisString[] =	"Query or change display settings for screen \"screenNumber\".\n"
-					"Returns a struct \"oldResolutions\" with the current settings for screen "
-					"resolution, refresh rate and pixel depth. Optionally sets new settings "
-					"for screen resolution \"newwidth\" x \"newheight\", refresh rate \"newHz\" "
-					"and framebuffer pixel depth \"newPixelSize\". Providing invalid or incompatible "
-					"settings will raise an error. Especially the color depth \"newPixelSize\" should "
-					"usually not be set to anything else than its default of 32 bpp or 24 bpp. "
-					"Other settings can impair alpha-blending on some systems, a setting of 16 bpp "
-					"will disable alpha-blending and create drastically reduced color resolution of "
-					" 5 bits per color channel. "
-					"A setting of 8 bpp is not supported at all on MacOS/X and will create artifacts "
-					"on all other systems. Use a size of 32 bpp even for clut animation. This function "
-					"may not work on all MS-Windows setups, your mileage may vary...\n"
-					"On Linux the function only switches display settings in the conventional sense on "
-					"a single-display setup. On a multi-display setup, this function only changes the "
-					"total size of the framebuffer, ie., 'newwidth' and 'newheight', the other "
-					"parameters are silently ignored. On Linux, the video settings of each individual display, "
-					"e.g., resolution, video refresh rate, panning, are queried and changed via the "
-					"Screen('ConfigureDisplay') function instead. This allows for much more flexibility, "
-					"e.g., you can have a framebuffer bigger than the combined resolution of all displays "
-					"and only show a fraction of it. You can change the relative position of all physical "
-					"displays, configure \"mirror modes\", \"side by side\", or \"on top of each other\" "
-					"display configurations.\n"
-					"Psychtoolbox will automatically restore the systems display resolution to the "
-					"system settings made via the display control panel as soon as either your script "
-					"finishes by closing all its windows, or by some error. Terminating Matlab due to "
-					"quit command will also restore the system preference settings. On a multi-display "
-					"Linux setup, display settings are never automatically restored.\n"
-					"If you call this command without ever opening onscreen windows and closing them "
-					"at some point, Psychtoolbox will not restore display settings automatically.\n"
-					"You can query a list of all supported combinations of display settings via the "
-					"Screen('Resolutions') command. \"specialMode\" is a flag you must not touch, "
-					"unless you really know what you're doing, that's why we don't tell you its purpose.";
+    static char useString[] = "oldResolution=Screen('Resolution', screenNumber [, newwidth][, newheight][, newHz][, newPixelSize][, specialMode]);";
+    static char synopsisString[] =	"Query or change display settings for screen \"screenNumber\".\n"
+                    "Returns a struct \"oldResolutions\" with the current settings for screen "
+                    "resolution, refresh rate and pixel depth. Optionally sets new settings "
+                    "for screen resolution \"newwidth\" x \"newheight\", refresh rate \"newHz\" "
+                    "and framebuffer pixel depth \"newPixelSize\". Providing invalid or incompatible "
+                    "settings will raise an error. Especially the color depth \"newPixelSize\" should "
+                    "usually not be set to anything else than its default of 32 bpp or 24 bpp. "
+                    "Other settings can impair alpha-blending on some systems, a setting of 16 bpp "
+                    "will disable alpha-blending and create drastically reduced color resolution of "
+                    " 5 bits per color channel. "
+                    "A setting of 8 bpp is not supported at all on MacOS/X and will create artifacts "
+                    "on all other systems. Use a size of 32 bpp even for clut animation. This function "
+                    "may not work on all MS-Windows setups, your mileage may vary...\n"
+                    "On Linux the function only switches display settings in the conventional sense on "
+                    "a single-display setup. On a multi-display setup, this function only changes the "
+                    "total size of the framebuffer, ie., 'newwidth' and 'newheight', the other "
+                    "parameters are silently ignored. On Linux, the video settings of each individual display, "
+                    "e.g., resolution, video refresh rate, panning, are queried and changed via the "
+                    "Screen('ConfigureDisplay') function instead. This allows for much more flexibility, "
+                    "e.g., you can have a framebuffer bigger than the combined resolution of all displays "
+                    "and only show a fraction of it. You can change the relative position of all physical "
+                    "displays, configure \"mirror modes\", \"side by side\", or \"on top of each other\" "
+                    "display configurations.\n"
+                    "Psychtoolbox will automatically restore the systems display resolution to the "
+                    "system settings made via the display control panel as soon as either your script "
+                    "finishes by closing all its windows, or by some error. Terminating Matlab due to "
+                    "quit command will also restore the system preference settings. On a multi-display "
+                    "Linux setup, display settings are never automatically restored.\n"
+                    "If you call this command without ever opening onscreen windows and closing them "
+                    "at some point, Psychtoolbox will not restore display settings automatically.\n"
+                    "You can query a list of all supported combinations of display settings via the "
+                    "Screen('Resolutions') command. \"specialMode\" is a flag you must not touch, "
+                    "unless you really know what you're doing, that's why we don't tell you its purpose.";
 
-	static char seeAlsoString[] = "Screen('Resolutions')";
-	
-	PsychGenericScriptType *oldResStructArray;
-	PsychScreenSettingsType screenSettings;
-	PsychDepthType useDepth;
-	int screenNumber, specialMode;
-	int newWidth, newHeight, newHz, newBpp;
-	long pnewWidth, pnewHeight;
-	psych_bool rc;
-	
-	// Purpose of 'specialMode': If bit zero is set, then its possible to switch display settings while
-	// onscreen windows - possibly fullscreen windows and display capture - are open/active. This is mostly
-	// useful for temporarilly changing display framerate, e.g., from a wanted value of x Hz to a intermittent
-	// value of y Hz, then back to x Hz. Such an approach may be useful for "drift-syncing" multiple displays
-	// whose video refresh cycles are not perfectly in sync (not yet clear if this will really work), but that's
-	// about the only useful purpose. Changing other settings - or changing any settings permanently - while
-	// windows are already open will likely subvert display calibration and lead to severe timing problems
-	// and possible worse things - like complete hangs of the graphics subsystem and the need for a hard
-	// machine reset!
-	// Other bits of specialMode will trigger other sync related actions - implementation and semantics may
-	// change without notice!
-	
-	// All sub functions should have these two lines
-	PsychPushHelp(useString, synopsisString, seeAlsoString);
-	if(PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+    static char seeAlsoString[] = "Screen('Resolutions')";
 
-	// Check to see if the user supplied superfluous arguments
-	PsychErrorExit(PsychCapNumOutputArgs(1));
-	PsychErrorExit(PsychCapNumInputArgs(6));
-    
-	// Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
-	PsychCopyInScreenNumberArg(kPsychUseDefaultArgPosition, TRUE, &screenNumber);
-	if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number."); 
+    PsychGenericScriptType *oldResStructArray;
+    PsychScreenSettingsType screenSettings;
+    PsychDepthType useDepth;
+    int screenNumber, specialMode;
+    int newWidth, newHeight, newHz, newBpp;
+    long pnewWidth, pnewHeight;
+    psych_bool rc;
+    int oldhead;
 
-	// Create a structure and populate it.
-	PsychAllocOutStructArray(1, FALSE, 1, 4, FieldNames, &oldResStructArray);
+    // Purpose of 'specialMode': If bit zero is set, then its possible to switch display settings while
+    // onscreen windows - possibly fullscreen windows and display capture - are open/active. This is mostly
+    // useful for temporarilly changing display framerate, e.g., from a wanted value of x Hz to a intermittent
+    // value of y Hz, then back to x Hz. Such an approach may be useful for "drift-syncing" multiple displays
+    // whose video refresh cycles are not perfectly in sync (not yet clear if this will really work), but that's
+    // about the only useful purpose. Changing other settings - or changing any settings permanently - while
+    // windows are already open will likely subvert display calibration and lead to severe timing problems
+    // and possible worse things - like complete hangs of the graphics subsystem and the need for a hard
+    // machine reset!
+    // Other bits of specialMode will trigger other sync related actions - implementation and semantics may
+    // change without notice!
 
-	// Query and return resolution:
-	PsychGetScreenSize(screenNumber, &pnewWidth, &pnewHeight);
-	newWidth = (int) pnewWidth;
-	newHeight = (int) pnewHeight;
-	PsychSetStructArrayDoubleElement("width", 0, newWidth, oldResStructArray);
-	PsychSetStructArrayDoubleElement("height", 0, newHeight, oldResStructArray);
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if(PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
-	// Query and return refresh rate:
-	newHz = (int) (PsychGetNominalFramerate(screenNumber) + 0.5);
-	PsychSetStructArrayDoubleElement("hz", 0, newHz, oldResStructArray);
-	
-	// Query and return current display depth:
-	newBpp = PsychGetScreenDepthValue(screenNumber);
-	PsychSetStructArrayDoubleElement("pixelSize", 0, newBpp, oldResStructArray);
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(6));
 
-	// Any new settings provided? Otherwise we skip this:
-	if(PsychGetNumInputArgs() > 1) {
-		// Get optional specialMode flag, default to zero:
-		specialMode = 0;
-		PsychCopyInIntegerArg(6, FALSE, &specialMode);
+    // Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.
+    PsychCopyInScreenNumberArg(kPsychUseDefaultArgPosition, TRUE, &screenNumber);
+    if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number.");
 
-		// Make sure we're not called while onscreen windows are open. Only allow calling with open onscreen windows if Bit zero of specialMode is set:
-		if (((PsychCountOpenWindows(kPsychSingleBufferOnscreen) + PsychCountOpenWindows(kPsychDoubleBufferOnscreen)) > 0) && !(specialMode & 1)) PsychErrorExitMsg(PsychError_user, "Tried to change video display settings via Screen('Resolutions'); while onscreen windows were open! Not allowed.");
+    // Create a structure and populate it.
+    PsychAllocOutStructArray(1, FALSE, 1, 4, FieldNames, &oldResStructArray);
 
-		// Copy in optional new settings:
-		PsychCopyInIntegerArg(2, FALSE, &newWidth);
-		PsychCopyInIntegerArg(3, FALSE, &newHeight);
-		PsychCopyInIntegerArg(4, FALSE, &newHz);
-		PsychCopyInDepthValueArg(5, FALSE, &newBpp);
-		PsychInitDepthStruct(&useDepth);
-		PsychAddValueToDepthStruct(newBpp, &useDepth);
-		
-		// Switch to new display mode, according to these specs:
-		PsychGetScreenSettings(screenNumber, &screenSettings);
-		screenSettings.rect[kPsychLeft] = 0;
-		screenSettings.rect[kPsychTop] = 0;
-		screenSettings.rect[kPsychRight] = newWidth;
-		screenSettings.rect[kPsychBottom] = newHeight;
-		screenSettings.nominalFrameRate = newHz;
-		PsychInitDepthStruct(&(screenSettings.depth));
-		PsychCopyDepthStruct(&(screenSettings.depth), &useDepth);
+    // Query and return resolution:
+    PsychGetScreenSize(screenNumber, &pnewWidth, &pnewHeight);
+    newWidth = (int) pnewWidth;
+    newHeight = (int) pnewHeight;
+    PsychSetStructArrayDoubleElement("width", 0, newWidth, oldResStructArray);
+    PsychSetStructArrayDoubleElement("height", 0, newHeight, oldResStructArray);
 
-		// Perform sanity check:
-		if ((PSYCH_SYSTEM != PSYCH_LINUX) && !PsychCheckVideoSettings(&screenSettings)) PsychErrorExitMsg(PsychError_user, "Invalid or mutually incompatible video settings requested!\nOne or more of the values are invalid or unsupported by your display device.");
-		
-		// Perform actual switch:
-		if (!(specialMode & 1)) PsychCaptureScreen(screenNumber);
-		rc = PsychSetScreenSettings( TRUE, &screenSettings);
-		if (!(specialMode & 1)) PsychReleaseScreen(screenNumber);
+    // Query and return refresh rate:
+    newHz = (int) (PsychGetNominalFramerate(screenNumber) + 0.5);
+    PsychSetStructArrayDoubleElement("hz", 0, newHz, oldResStructArray);
 
-		// Check if successfull:
-		if (!rc) PsychErrorExitMsg(PsychError_user, "Invalid or mutually incompatible video settings requested!\nOne or more of the values are invalid or unsupported by your display device.");
-	}
+    // Query and return current display depth:
+    newBpp = PsychGetScreenDepthValue(screenNumber);
+    PsychSetStructArrayDoubleElement("pixelSize", 0, newBpp, oldResStructArray);
 
-	return(PsychError_none);	
+    // Any new settings provided? Otherwise we skip this:
+    if(PsychGetNumInputArgs() > 1) {
+        // Get optional specialMode flag, default to zero:
+        specialMode = 0;
+        PsychCopyInIntegerArg(6, FALSE, &specialMode);
+
+        // Make sure we're not called while onscreen windows are open. Only allow calling with open onscreen windows if Bit zero of specialMode is set:
+        if (((PsychCountOpenWindows(kPsychSingleBufferOnscreen) + PsychCountOpenWindows(kPsychDoubleBufferOnscreen)) > 0) && !(specialMode & 1)) PsychErrorExitMsg(PsychError_user, "Tried to change video display settings via Screen('Resolutions'); while onscreen windows were open! Not allowed.");
+
+        // Copy in optional new settings:
+        PsychCopyInIntegerArg(2, FALSE, &newWidth);
+        PsychCopyInIntegerArg(3, FALSE, &newHeight);
+        PsychCopyInIntegerArg(4, FALSE, &newHz);
+        PsychCopyInDepthValueArg(5, FALSE, &newBpp);
+        PsychInitDepthStruct(&useDepth);
+        PsychAddValueToDepthStruct(newBpp, &useDepth);
+
+        // Switch to new display mode, according to these specs:
+        PsychGetScreenSettings(screenNumber, &screenSettings);
+        screenSettings.rect[kPsychLeft] = 0;
+        screenSettings.rect[kPsychTop] = 0;
+        screenSettings.rect[kPsychRight] = newWidth;
+        screenSettings.rect[kPsychBottom] = newHeight;
+        screenSettings.nominalFrameRate = newHz;
+        PsychInitDepthStruct(&(screenSettings.depth));
+        PsychCopyDepthStruct(&(screenSettings.depth), &useDepth);
+
+        // Perform sanity check:
+        if ((PSYCH_SYSTEM != PSYCH_LINUX) && !PsychCheckVideoSettings(&screenSettings)) PsychErrorExitMsg(PsychError_user, "Invalid or mutually incompatible video settings requested!\nOne or more of the values are invalid or unsupported by your display device.");
+
+        // Perform actual switch:
+        if (!(specialMode & 1)) PsychCaptureScreen(screenNumber);
+
+        // So specialMode flag & 2 means on Linux to not change
+        // the actual output resolution of a screen, but only to
+        // resize the screen, ie., its framebuffer, without chaging
+        // scanout resolution / viewport etc. This would happen anyway
+        // on multi-display setups, but to make sure it can also be
+        // enforced on single-display setup, we use specialMode & 2:
+        if ((PSYCH_SYSTEM == PSYCH_LINUX) && (specialMode & 2)) {
+            // We fool the PsychSetScreenSettings() routine into thinking
+            // this is at least a dual-display setup by temporarilly
+            // faking a 2nd head, then doing the screen resize, then
+            // restoring the true multi-display configuration:
+            oldhead = PsychScreenToHead(screenNumber, 1);
+            PsychSetScreenToHead(screenNumber, 0, 1);
+            rc = PsychSetScreenSettings(TRUE, &screenSettings);
+            PsychSetScreenToHead(screenNumber, oldhead, 1);
+        }
+        else {
+            rc = PsychSetScreenSettings(TRUE, &screenSettings);
+        }
+        if (!(specialMode & 1)) PsychReleaseScreen(screenNumber);
+
+        // Check if successfull:
+        if (!rc) PsychErrorExitMsg(PsychError_user, "Invalid or mutually incompatible video settings requested!\nOne or more of the values are invalid or unsupported by your display device.");
+    }
+
+    return(PsychError_none);
 }
 
 PsychError SCREENResolutions(void) 
