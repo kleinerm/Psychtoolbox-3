@@ -1439,15 +1439,15 @@ void PsychtoolboxKernelDriver::GetGPUInfo(UInt32 *inOutArgs)
     // Default to "don't know".
     inOutArgs[2] = 0;
 
-    // On Radeons we distinguish between Avivo (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60) for now.
-    if (fDeviceType == kPsychRadeon) inOutArgs[2] = isDCE6() ? 60 : (isDCE5() ? 50 : (isDCE4() ? 40 : (isDCE3() ? 30 : 10)));
+    // On Radeons we distinguish between Avivo / DCE-2 (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60) or DCE-8 (80) for now.
+    if (fDeviceType == kPsychRadeon) inOutArgs[2] = isDCE8() ? 80 : (isDCE6() ? 60 : (isDCE5() ? 50 : (isDCE4() ? 40 : (isDCE3() ? 30 : 10))));
 
     // On NVidia's we distinguish between chip family, e.g., 0x40 for the NV-40 family.
     if (fDeviceType == kPsychGeForce) inOutArgs[2] = fCardType;
 
     // 4th = Maximum number of crtc's:
     inOutArgs[3] = fNumDisplayHeads;
-    
+
     return;
 }
 

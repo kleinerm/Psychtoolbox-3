@@ -4255,12 +4255,15 @@ if ~isempty(floc)
 
             % Assign maximum bit depth default for given GPU, if no specific depth requested:
             if isempty(encodingBPC)
-                % Ok, for now we don't really implement proper max bpc detection/mapping for
-                % GPU's. Instead simply select the maximum bpc of the most modern AMD gpu's
-                % currently available - which is 12 bpc for the "Sea Islands" family. Lower settings
-                % for older gpu's don't make sense anyway, given that those can use 11 bpc or 10 bpc
-                % framebuffer mode, which is much more efficient:
-                encodingBPC = 12;
+                if winfo.GPUMinorType >= 80
+                    % DCE-8.0 or later display engine of "Sea Islands Family" or later: Does 12 bpc.
+                    encodingBPC = 12;
+                else
+                    % Older engine. Only does 10 bpc, so using this mode is pointless and only good
+                    % for debugging.
+                    encodingBPC = 10;
+                end
+                fprintf('PsychImaging: EnableNative16BitFramebuffer: True framebuffer bpc is %i. Further output specific limitations may apply, check your results!\n', encodingBPC);
             end
 
             % Load algorithmic 9 bpc - 16 bpc shader for packing 9-16 bpc content into a 64 bpp

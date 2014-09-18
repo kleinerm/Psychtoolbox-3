@@ -586,50 +586,50 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
             }
         }
 
-		if (fDeviceType == kPsychRadeon) {
-			// On Radeons we distinguish between Avivo (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60)for now.
-			fCardType = isDCE6(screenId) ? 60 : (isDCE5(screenId) ? 50 : (isDCE4(screenId) ? 40 : (isDCE3(screenId) ? 30 : 10)));
+        if (fDeviceType == kPsychRadeon) {
+            // On Radeons we distinguish between Avivo / DCE-2 (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60) or DCE-8 (80) for now.
+            fCardType = isDCE8(screenId) ? 80 : (isDCE6(screenId) ? 60 : (isDCE5(screenId) ? 50 : (isDCE4(screenId) ? 40 : (isDCE3(screenId) ? 30 : 10))));
 
-			// On DCE-4 and later GPU's (Evergreen) we limit the minimum MMIO
-			// offset to the base address of the 1st CRTC register block for now:
-			if (isDCE4(screenId) || isDCE5(screenId) || isDCE6(screenId)) {
-				gfx_lowlimit = 0;
-                
-				// Also, DCE-4 and DCE-5 and DCE-6, but not DCE-4.1 or DCE-6.4 (which have only 2) or DCE-6.1 (4 heads), supports up to six display heads:
-				if (!isDCE41(screenId) && !isDCE61(screenId) && !isDCE64(screenId)) fNumDisplayHeads = 6;
+            // On DCE-4 and later GPU's (Evergreen) we limit the minimum MMIO
+            // offset to the base address of the 1st CRTC register block for now:
+            if (isDCE4(screenId) || isDCE5(screenId) || isDCE6(screenId)) {
+                gfx_lowlimit = 0;
+
+                // Also, DCE-4 and DCE-5 and DCE-6, but not DCE-4.1 or DCE-6.4 (which have only 2) or DCE-6.1 (4 heads), supports up to six display heads:
+                if (!isDCE41(screenId) && !isDCE61(screenId) && !isDCE64(screenId)) fNumDisplayHeads = 6;
 
                 // DCE-6.1 "Trinity" chip family supports 4 display heads:
-				if (!isDCE41(screenId) && isDCE61(screenId)) fNumDisplayHeads = 4;
-			}
-			
-			if (PsychPrefStateGet_Verbosity() > 2) {
-				printf("PTB-INFO: Connected to %s %s GPU with %s display engine [%i heads]. Beamposition timestamping enabled.\n", pci_device_get_vendor_name(gpu), pci_device_get_device_name(gpu), (fCardType >= 40) ? (fCardType >= 60) ? "DCE-6" : ((fCardType >= 50) ? "DCE-5" : "DCE-4") : ((fCardType >= 30) ? "DCE-3" : "AVIVO"), fNumDisplayHeads);
-				fflush(NULL);
-			}
-		}
-		
-		if (fDeviceType == kPsychIntelIGP) {
-			if (PsychPrefStateGet_Verbosity() > 2) {
-				printf("PTB-INFO: Connected to Intel %s GPU%s. Beamposition timestamping enabled.\n", pci_device_get_device_name(gpu), (fCardType == 2) ? " of GEN-2 type" : "");
-				fflush(NULL);
-			}
-		}
+                if (!isDCE41(screenId) && isDCE61(screenId)) fNumDisplayHeads = 4;
+            }
 
-		// Perform auto-detection of screen to head mappings, unless already done by XRandR:
-		if (!has_xrandr_1_2) PsychAutoDetectScreenToHeadMappings(fNumDisplayHeads);
+            if (PsychPrefStateGet_Verbosity() > 2) {
+                printf("PTB-INFO: Connected to %s %s GPU with %s display engine [%i heads]. Beamposition timestamping enabled.\n", pci_device_get_vendor_name(gpu), pci_device_get_device_name(gpu), (fCardType >= 40) ? (fCardType >= 60) ? "DCE-6" : ((fCardType >= 50) ? "DCE-5" : "DCE-4") : ((fCardType >= 30) ? "DCE-3" : "AVIVO"), fNumDisplayHeads);
+                fflush(NULL);
+            }
+        }
 
-		// Ready to rock!
-	} else {
-		// No candidate.
-		if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: No low-level controllable GPU on screenId %i. Beamposition timestamping and other special functions disabled.\n", screenId);
-		fflush(NULL);
-		
-		// Cleanup:
-		pci_system_cleanup();
-	}
-	
-	// Return final success or failure status:
-	return((gfx_cntl_mem) ? TRUE : FALSE);
+        if (fDeviceType == kPsychIntelIGP) {
+            if (PsychPrefStateGet_Verbosity() > 2) {
+                printf("PTB-INFO: Connected to Intel %s GPU%s. Beamposition timestamping enabled.\n", pci_device_get_device_name(gpu), (fCardType == 2) ? " of GEN-2 type" : "");
+                fflush(NULL);
+            }
+        }
+
+        // Perform auto-detection of screen to head mappings, unless already done by XRandR:
+        if (!has_xrandr_1_2) PsychAutoDetectScreenToHeadMappings(fNumDisplayHeads);
+
+        // Ready to rock!
+    } else {
+        // No candidate.
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: No low-level controllable GPU on screenId %i. Beamposition timestamping and other special functions disabled.\n", screenId);
+        fflush(NULL);
+
+        // Cleanup:
+        pci_system_cleanup();
+    }
+
+    // Return final success or failure status:
+    return((gfx_cntl_mem) ? TRUE : FALSE);
 }
 
 /*
