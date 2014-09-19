@@ -23,20 +23,27 @@
 
 uniform sampler2DRect Image;
 uniform float Prescale;
+uniform float halfFBWidth;
 
 void main()
 {
+    float horizontalOffset;
+
     /* Get default texel read position (x,y): x is column, y is row of image. */
     vec2 readpos = gl_FragCoord.xy;
 
-    /* Skip every 2nd output row, as it is essentially "dead stride" */
+    /* "Even" output rows encode right dual-display output, or nothing. */
     if (mod(gl_FragCoord.y, 2.0) < 0.5) {
-        gl_FragColor = vec4(0.0);
-        return;
+        /* Even row: Sample right half of input image on dual-display, or the void on single-display setup. */
+        horizontalOffset = halfFBWidth;
+    }
+    else {
+        /* Odd row: Sample left half of input image on dual-display, all on single-display. */
+        horizontalOffset = 0.0;
     }
 
     /* Update the s (==column) component to read each pixel column twice, replicating it. */
-    readpos.s = (readpos.s - mod(readpos.s, 2.0)) * 0.5;
+    readpos.s = horizontalOffset + ((readpos.s - mod(readpos.s, 2.0)) * 0.5);
 
     /* Due to skipping of every 2nd output row above, make sure the skip is discarded. */
     readpos.t = (readpos.t - mod(readpos.t, 2.0)) * 0.5;

@@ -4283,6 +4283,9 @@ if ~isempty(floc)
         if enableNative16BpcRequested
             % Scale from 0.0 - 1.0 to 0.0 - (2^n - 1) with n being encoding bit depth: n = encodingBPC
             glUniform1f(glGetUniformLocation(pgshader, 'Prescale'), bitshift(1, encodingBPC) - 1);
+            % Pass true half-width of framebuffer/x-screen/onscreen window to shader for proper handling
+            % of dual-display side-by-side "stereo style" configurations:
+            glUniform1f(glGetUniformLocation(pgshader, 'halfFBWidth'), Screen('WindowSize', win, 1) / 2);
         else
             % CLUT based mapping:
             glUniform1i(glGetUniformLocation(pgshader, 'CLUT'), 1);
