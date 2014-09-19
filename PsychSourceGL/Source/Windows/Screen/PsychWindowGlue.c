@@ -1180,6 +1180,7 @@ dwmdontcare:
     bpc = 8; // We default to 8 bpc == RGBA8
     if (windowRecord->depth == 30)  { bpc = 10; printf("PTB-INFO: Trying to enable at least 10 bpc fixed point framebuffer.\n"); }
     if (windowRecord->depth == 33)  { bpc = 11; printf("PTB-INFO: Trying to enable at least 11 bpc fixed point framebuffer.\n"); }
+    if (windowRecord->depth == 48)  { bpc = 16; printf("PTB-INFO: Trying to enable at least 16 bpc fixed point framebuffer.\n"); }
     if (windowRecord->depth == 64)  { bpc = 16; printf("PTB-INFO: Trying to enable 16 bpc fixed point framebuffer.\n"); }
     if (windowRecord->depth == 128) { bpc = 32; printf("PTB-INFO: Trying to enable 32 bpc fixed point framebuffer.\n"); }
 
@@ -1228,8 +1229,8 @@ dwmdontcare:
     pfd.nVersion     = 1;
     pfd.dwFlags      = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_SWAP_EXCHANGE |flags;  // Want OpenGL capable window with bufferswap via page-flipping...
     pfd.iPixelType   = PFD_TYPE_RGBA; // Want a RGBA pixel format.
-    pfd.cColorBits   = 32;            // 32 bpp at least...
-    pfd.cAlphaBits   = (bpc == 10) ? 2 : 8;	// Want a 8 bit alpha-buffer, unless R10G10B10A2 pixelformat requested for native 10 bpc support.
+    pfd.cColorBits   = (bpc > 11)  ? 48 : 32;
+    pfd.cAlphaBits   = (bpc == 10) ? 2 : ((bpc == 11) ? 0 : 8); // Usually want an at least 8 bit alpha-buffer, unless high color bit depths formats requested.
 
     // Support for OpenGL 3D rendering requested?
     if (PsychPrefStateGet_3DGfx()) {

@@ -28,6 +28,10 @@ function VideoDVCamCaptureDemo(fullscreen, fullsize, roi, depth, deviceId, movie
 % which video should be recorded. Defaults to none,ie., no video recording.
 %
 
+% gst-launch dv1394src ! dvdemux ! dvdec ! v4l2sink device=/dev/video0
+%
+%
+
 % History:
 % 27-Dec-2013  mk  Written.
 % 26-Aug-2014  mk  Adapted to GStreamer-1.4.0+ backend.

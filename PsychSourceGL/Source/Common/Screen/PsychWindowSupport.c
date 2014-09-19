@@ -436,6 +436,16 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         else {
             // No native requested bpc support. Only support our homegrown method with PTB kernel driver on ATI/AMD hardware:
             printf("PTB-INFO: Native %i bit per color framebuffer requested, but the OS doesn't allow it. It only provides %i bpc.\n", (*windowRecord)->depth / 3, bpc);
+
+            // We only support the 48 bit color depth / 16 bpc hack on Linux + X11, not on OSX et al.:
+            if ((PSYCH_SYSTEM != PSYCH_LINUX) && ((*windowRecord)->depth == 48)) {
+                printf("\nPTB-ERROR: Your script requested a %i bpp, %i bpc framebuffer, but i can't provide this for you, because\n", (*windowRecord)->depth, (*windowRecord)->depth / 3);
+                printf("PTB-ERROR: my own 16 bpc setup code only works on Linux with a properly setup X11/GLX display backend.\n");
+                PsychOSCloseWindow(*windowRecord);
+                FreeWindowRecordFromPntr(*windowRecord);
+                return(FALSE);
+            }
+
             printf("PTB-INFO: Will now try to use our own high bit depth setup code as an alternative approach to fullfill your needs.\n");
             gpuMaintype = kPsychUnknown;
             if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) ||

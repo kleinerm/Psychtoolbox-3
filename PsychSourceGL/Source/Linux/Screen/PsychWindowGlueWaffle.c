@@ -528,6 +528,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         bpc = 11;
         if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to enable at least 11 bpc fixed point framebuffer.\n");
     }
+    if (windowRecord->depth == 48) {
+        bpc = 16;
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to enable at least 16 bpc fixed point framebuffer.\n");
+    }
     if (windowRecord->depth == 64) {
         bpc = 16;
         if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to enable 16 bpc fixed point framebuffer.\n");
@@ -610,9 +614,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     config = waffle_config_choose(wdpy, attrib);
    
     if (!config) {
-        // Failed to find matching visual: Could it be related to request for unsupported native 10/11 bpc framebuffer?
-        if (((windowRecord->depth == 30) && (bpc == 10)) || ((windowRecord->depth == 33) && (bpc == 11))) {
-            // 10 bpc framebuffer requested: Let's see if we can get a visual by lowering our demand to 8 bpc:
+        // Failed to find matching visual: Could it be related to request for unsupported native 10/11/16 bpc framebuffer?
+        if (((windowRecord->depth == 30) && (bpc == 10)) || ((windowRecord->depth == 33) && (bpc == 11)) || ((windowRecord->depth == 48) && (bpc == 16))) {
+            // 10/11/16 bpc framebuffer requested: Let's see if we can get a visual by lowering our demand to 8 bpc:
             for (i = 0; i < attribcount && attrib[i] != WAFFLE_RED_SIZE; i++);
             attrib[i + 1] = 8;
             for (i = 0; i < attribcount && attrib[i] != WAFFLE_GREEN_SIZE; i++);

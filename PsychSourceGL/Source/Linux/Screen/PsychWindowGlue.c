@@ -369,6 +369,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   bpc = 8; // We default to 8 bpc == RGBA8
   if (windowRecord->depth == 30)  { bpc = 10; printf("PTB-INFO: Trying to enable at least 10 bpc fixed point framebuffer.\n"); }
   if (windowRecord->depth == 33)  { bpc = 11; printf("PTB-INFO: Trying to enable at least 11 bpc fixed point framebuffer.\n"); }
+  if (windowRecord->depth == 48)  { bpc = 16; printf("PTB-INFO: Trying to enable at least 16 bpc fixed point framebuffer.\n"); }
   if (windowRecord->depth == 64)  { bpc = 16; printf("PTB-INFO: Trying to enable 16 bpc fixed point framebuffer.\n"); }
   if (windowRecord->depth == 128) { bpc = 32; printf("PTB-INFO: Trying to enable 32 bpc fixed point framebuffer.\n"); }
 
@@ -494,9 +495,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   }
 
     if (!visinfo && !fbconfig) {
-        // Failed to find matching visual: Could it be related to request for unsupported native 10/11 bpc framebuffer?
-        if (((windowRecord->depth == 30) && (bpc == 10)) || ((windowRecord->depth == 33) && (bpc == 11))) {
-            // 10 bpc framebuffer requested: Let's see if we can get a visual by lowering our demand to 8 bpc:
+        // Failed to find matching visual: Could it be related to request for unsupported native 10/11/16 bpc framebuffer?
+        if (((windowRecord->depth == 30) && (bpc == 10)) || ((windowRecord->depth == 33) && (bpc == 11)) || ((windowRecord->depth == 48) && (bpc == 16))) {
+            // 10/11/16 bpc framebuffer requested: Let's see if we can get a visual by lowering our demand to 8 bpc:
             for (i=0; i<attribcount && attrib[i]!=GLX_RED_SIZE; i++);
             attrib[i+1] = 8;
             for (i=0; i<attribcount && attrib[i]!=GLX_GREEN_SIZE; i++);
