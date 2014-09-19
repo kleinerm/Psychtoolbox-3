@@ -33,7 +33,7 @@ void main()
     vec2 readpos = gl_FragCoord.xy;
 
     /* "Even" output rows encode right dual-display output, or nothing. */
-    if (mod(gl_FragCoord.y, 2.0) < 0.5) {
+    if (mod(gl_FragCoord.y, 2.0) < 1.0) {
         /* Even row: Sample right half of input image on dual-display, or the void on single-display setup. */
         horizontalOffset = halfFBWidth;
     }
