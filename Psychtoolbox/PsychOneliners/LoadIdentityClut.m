@@ -5,7 +5,7 @@ function oldClut = LoadIdentityClut(windowPtr, loadOnNextFlip, lutType, disableD
 % loadOnNextFlip is set to 1, then the clut will be loaded on the next call
 % to Screen('Flip'). By default, the clut will be loaded immediately or on
 % the next vertical retrace, depending on OS and graphics card.
-% By default, also tries to disable digital output dithering on supported
+% By default, this also tries to disable digital output dithering on supported
 % hardware, setting the optional flag 'disableDithering' to zero will
 % leave dithering alone.
 %
@@ -13,13 +13,13 @@ function oldClut = LoadIdentityClut(windowPtr, loadOnNextFlip, lutType, disableD
 % to PsychLinuxConfiguration during installation or later, or if you
 % use OS/X and have the PsychtoolboxKernelDriver loaded
 % ("help PsychtoolboxKernelDriver") and the graphics card is a GPU of the
-% ATI/AMD Radeon X1000 series or a HD series card (e.g., HD-2000) or a
-% equivalent model of the FireGL or FirePro series, then this routine will
-% try to use special low-level setup code for optimal identity mapping. It
-% will also disable digital display dithering if disableDithering == 1.
+% AMD Radeon X1000 series or later card, or a equivalent model of the FireGL
+% or FirePro series, then this routine will try to use special low-level setup
+% code for optimal identity mapping.
+% It will also disable digital display dithering if disableDithering == 1.
 % On Windows with AMD cards, digital display dithering will also get disabled
 % automatically. On other graphics cards, digital display dithering will not
-% be affected.
+% be affected and needs to be manually controlled by you in some vendor specific way.
 %
 % On other than AMD cards under Linux or OSX, the function will make
 % a best effort to upload a suitable clut, as follows:
@@ -60,6 +60,7 @@ function oldClut = LoadIdentityClut(windowPtr, loadOnNextFlip, lutType, disableD
 %                heuristics if that is unsupported, disabled or failed.
 % 03/05/14   mk  Update help texts and some diagnostic output.
 % 03/06/14   mk  Allow control if dithering should be touched or not.
+% 09/20/14   mk  Silence "unknown gpu" warning for Intel on Linux.
 
 global ptb_original_gfx_cluts;
 
@@ -285,6 +286,10 @@ else
                     fprintf('LoadIdentityClut: ATI Radeon HD-5000 Evergreen on OS/X detected. Using type-2 LUT.\n');
                     gfxhwtype = 2;
                 end
+            elseif ~isempty(strfind(gfxhwtype, 'Intel'))
+                % Intel card: Type 0 LUT is correct at least on Linux:
+                gfxhwtype = 0;
+                fprintf('LoadIdentityClut: Intel integrated graphics chip detected. Using type-0 LUT.\n');
             else
                 % Unknown card: Default to NVidia behaviour:
                 gfxhwtype = 0;
