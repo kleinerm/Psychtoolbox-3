@@ -726,14 +726,26 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Required manual one time setup:
 %
 %   1. You must create a custom made xorg.conf file for your graphics card and X-Server to setup
-%       the display screen for use of a linear, non-tiled framebuffer at a color depth of 24 bit.
+%      the display screen for use of a linear, non-tiled framebuffer at a color depth of 24 bit.
+%      If you only have a single AMD graphics card installed in your Linux machine, the most easy
+%      way to achieve this is to copy our simple template xorg.conf file into the config folder of
+%      your machine:
+%
+%      a) Open a terminal window and use sudo cp to copy our template to the /etc/X11 folder:
+%      sudo cp /path/to/Psychtoolbox/PsychGLImageProcessing/xorg.conf_For_AMD16bpcFramebuffer /etc/X11/xorg.conf
+%
+%      b) Logout and login again, so the display server picks up the changed configuration.
+%
+%      If you need a more customized xorg.conf file for special settings or for more complex display and
+%      gpu setups, use our template file as a reference. The important bit is to add the "ColorTiling..."
+%      lines to the "Device" section for your AMD graphics card.
 %
 %   2. Only three distinct display setups are allowed: Either a single display connected, or if multiple
-%       displays are conected, all displays must mirror (aka clone) each other showing the same image,
-%       or a dual display setup with both displays running at the same video resolution, one display
-%       showing the left half of your onscreen window, the other showing the right half of your onscreen
-%       window, ie., a typical setup for dual-display side-by-side stereo presentation. Pretty much any other
-%       display setup will display undefined results, e.g., corrupted images or random pixel trash.
+%      displays are conected, all displays must mirror (aka clone) each other showing the same image,
+%      or a dual display setup with both displays running at the same video resolution, one display
+%      showing the left half of your onscreen window, the other showing the right half of your onscreen
+%      window, ie., a typical setup for dual-display side-by-side stereo presentation. Pretty much any other
+%      display setup will display undefined results, e.g., corrupted images or random pixel trash.
 %
 %   Usage: PsychImaging('AddTask', 'General', 'EnableNative16BitFramebuffer' [, disableDithering=0][, bpc]);
 %
@@ -1253,7 +1265,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % 26.06.2014  Add support for Native11BitFramebuffer mode, update our docs with what
 %                     we learned about this 10/11 bpc business on HDMI so far. (MK)
 % 16.09.2014  Add experimental 'StereoCrosstalkReduction' support. (MK/DCN)
-% 17.09.2014  Add experimental 'Native16BitFramebuffer' support for Linux + FOSS + AMD. (MK)
+% 17.09.2014  Add 'Native16BitFramebuffer' support for Linux + FOSS + AMD. (MK)
 
 persistent configphase_active;
 persistent reqs;

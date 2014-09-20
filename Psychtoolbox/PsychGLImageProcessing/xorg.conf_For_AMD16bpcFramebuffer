@@ -8,8 +8,8 @@
 #
 
 Section "Device"
-	Identifier  "AMD16bpcFramebuffer"
-	Driver      "radeon"
-	Option	    "ColorTiling"   "off"
-        Option      "ColorTiling2D" "off"
+  Identifier  "AMD16bpcFramebuffer"
+  Driver      "radeon"
+  Option      "ColorTiling"    "off"
+  Option      "ColorTiling2D"  "off"
 EndSection

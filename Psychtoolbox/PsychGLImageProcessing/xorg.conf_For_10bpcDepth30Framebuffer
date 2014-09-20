@@ -9,6 +9,6 @@
 #
 
 Section "Screen"
-	Identifier "Screen0"
-	DefaultDepth 30
+    Identifier      "Screen0"
+    DefaultDepth    30
 EndSection
