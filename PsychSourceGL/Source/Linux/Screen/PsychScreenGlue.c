@@ -355,19 +355,20 @@ static void WriteRegister(unsigned long offset, unsigned int value)
 
 void PsychScreenUnmapDeviceMemory(void)
 {
-	// Any mapped?
-	if (gfx_cntl_mem) {
-		// Unmap:
-		pci_device_unmap_range(gpu, (void*) gfx_cntl_mem, gfx_length);
-		gfx_cntl_mem = NULL;
-		gfx_length = 0;
-		gpu = NULL;
-	}
+    // Any mapped?
+    if (gfx_cntl_mem) {
+        // Unmap:
+        pci_device_unmap_range(gpu, (void*) gfx_cntl_mem, gfx_length);
+        gfx_cntl_mem = NULL;
+        gfx_length = 0;
+        gpu = NULL;
+        numKernelDrivers = 0;
+    }
 
-	// Shutdown PCI access library, release all resources:
-	pci_system_cleanup();
+    // Shutdown PCI access library, release all resources:
+    pci_system_cleanup();
 
-	return;
+    return;
 }
 
 // Helper routine: Check if a supported GPU is installed, and mmap() its MMIO register
@@ -426,6 +427,12 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 			if (dev->vendor_id == PCI_VENDOR_ID_NVIDIA || dev->vendor_id == PCI_VENDOR_ID_ATI || dev->vendor_id == PCI_VENDOR_ID_AMD || dev->vendor_id == PCI_VENDOR_ID_INTEL) {
 				// Yes. This is our baby from NVidia or ATI/AMD or Intel:
 
+                // From the land of bad hacks: Keep track early if we enumerated an Intel GPU, because
+                // some KDE-specific hacks for override_redirect handling in window setup need to know
+                // about running on an Intel IGP, even if we don't actually mmap() the gpu, and the hacks
+                // need to know about this before we have an easy to probe OpenGL context online:
+                if (dev->vendor_id == PCI_VENDOR_ID_INTEL) fDeviceType = kPsychIntelIGP;
+
                 // Skip intel gpu's, unless the PSYCH_ALLOW_DANGEROUS env variable is set:
                 // Intel IGP's have a design defect which can cause machine hard lockup if multiple
                 // regs are accessed simultaneously! As we can't serialize our MMIO reads with the
@@ -435,7 +442,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
                     if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Skipping detected Intel GPU for safety reasons. setenv('PSYCH_ALLOW_DANGEROUS', '1') to override.\n");
                     continue;
                 }
-                
+
 				// Select the targetgpuidx'th detected gpu:
 				// TODO: Replace this hack by true multi-gpu support and - far in the future? -
 				// automatic mapping of screens to gpu's:
@@ -628,6 +635,9 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
         pci_system_cleanup();
     }
 
+    // Keep track if something is mapped:
+    if (gfx_cntl_mem) numKernelDrivers++;
+
     // Return final success or failure status:
     return((gfx_cntl_mem) ? TRUE : FALSE);
 }
@@ -649,9 +659,12 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
  */
 psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortype, int* pciDeviceId, int* numDisplayHeads)
 {
+  // Provide the basic device type, ie., unknown, intel, amd, ...
+  if (gpuMaintype) *gpuMaintype = fDeviceType;
+
+  // Remaining info is only available for mapped gpu's:
   if (!PsychOSIsKernelDriverAvailable(screenNumber)) return(FALSE);
 
-  if (gpuMaintype) *gpuMaintype = fDeviceType;
   if (gpuMinortype) *gpuMinortype = fCardType;
   if (pciDeviceId) *pciDeviceId = fPCIDeviceId;
   if (numDisplayHeads) *numDisplayHeads = fNumDisplayHeads;
@@ -1251,50 +1264,53 @@ void PsychInitNonX11(void)
 
 void PsychCleanupDisplayGlue(void)
 {
-	CGDirectDisplayID dpy, last_dpy;
-	int i;
+    CGDirectDisplayID dpy, last_dpy;
+    int i;
+
+    // Make sure the mmio mapping is shut down:
+    PsychOSShutdownPsychtoolboxKernelDriverInterface();
 
     PsychLockDisplay();
 
-	last_dpy = NULL;
-	// Go trough full screen list:
-	for (i=0; i < PsychGetNumDisplays(); i++) {
-	  // Get display-ptr for this screen:
-	  PsychGetCGDisplayIDFromScreenNumber(&dpy, i);
+    last_dpy = NULL;
+    // Go trough full screen list:
+    for (i=0; i < PsychGetNumDisplays(); i++) {
+        // Get display-ptr for this screen:
+        PsychGetCGDisplayIDFromScreenNumber(&dpy, i);
 
-      // No X11 display associated with this screen? Skip it.
-      if (!dpy) continue;
+        // No X11 display associated with this screen? Skip it.
+        if (!dpy) continue;
 
-	  // Did we close this connection already (dpy==last_dpy)?
-	  if (dpy != last_dpy) {
-	    // Nope. Keep track of it...
-	    last_dpy=dpy;
-	    // ...and close display connection to X-Server:
-	    XCloseDisplay(dpy);
+        // Did we close this connection already (dpy==last_dpy)?
+        if (dpy != last_dpy) {
+        // Nope. Keep track of it...
+        last_dpy=dpy;
+        // ...and close display connection to X-Server:
+        XCloseDisplay(dpy);
 
-	    // Release actual xinput info list for this x11 display connection:
-	    if (xinput_info[i]) {
+        // Release actual xinput info list for this x11 display connection:
+        if (xinput_info[i]) {
             XIFreeDeviceInfo(xinput_info[i]);
-	    }
-	  }
+        }
+        }
 
-	  // NULL-Out xinput extension data:
-	  xinput_info[i] = NULL;
-	  xinput_ndevices[i] = 0;
+        // NULL-Out xinput extension data:
+        xinput_info[i] = NULL;
+        xinput_ndevices[i] = 0;
 
-	  // Release per-screen RandR info structures:
-	  if (displayX11ScreenResources[i]) XRRFreeScreenResources(displayX11ScreenResources[i]);
-	  displayX11ScreenResources[i] = NULL;
-	}
+        // Release per-screen RandR info structures:
+        if (displayX11ScreenResources[i]) XRRFreeScreenResources(displayX11ScreenResources[i]);
+        displayX11ScreenResources[i] = NULL;
+    }
 
-	PsychUnlockDisplay();
+    PsychUnlockDisplay();
 
     // Destroy the display lock mutex, now that we're done with it for this Screen() session instance:
     PsychDestroyMutex(&displayLock);
 
-	// All connections should be closed now. We can't NULL-out the display list, but
-	// Matlab will flush the Screen - Mexfile anyway...
-	return;
+    // All connections should be closed now. We can't NULL-out the display list, but
+    // Matlab will flush the Screen - Mexfile anyway...
+    return;
 }
 
 XIDeviceInfo* PsychGetInputDevicesForScreen(int screenNumber, int* nDevices)
@@ -2787,21 +2803,22 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 // Try to attach to kernel level ptb support driver and setup everything, if it works:
 void InitPsychtoolboxKernelDriverInterface(void)
 {
-	// This is currently a no-op on Linux, as most low-level stuff is done via mmapped() MMIO access...
-	return;
+    // This is currently a no-op on Linux, as most low-level stuff is done via mmapped() MMIO access...
+    return;
 }
 
 // Try to detach to kernel level ptb support driver and tear down everything:
 void PsychOSShutdownPsychtoolboxKernelDriverInterface(void)
 {
-	if (numKernelDrivers > 0) {
-		// Nothing to do yet...
-	}
+    if (numKernelDrivers > 0) {
+        // Make sure we're really detached from any MMIO memory before we shutdown:
+        PsychScreenUnmapDeviceMemory();
+    }
 
-	// Ok, whatever happened, we're detached (for good or bad):
-	numKernelDrivers = 0;
+    // Ok, whatever happened, we're detached (for good or bad):
+    numKernelDrivers = 0;
 
-	return;
+    return;
 }
 
 psych_bool PsychOSIsKernelDriverAvailable(int screenId)
