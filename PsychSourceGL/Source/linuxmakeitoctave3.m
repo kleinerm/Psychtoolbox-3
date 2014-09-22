@@ -170,6 +170,19 @@ if mode == 10
     striplibsfrommexfile([PsychtoolboxRoot target 'PsychCV.mex']);
 end
 
+if mode == 11
+    % Build pnet
+    curdir = pwd;
+    cd('../../Psychtoolbox/PsychHardware/iViewXToolbox/tcp_udp_ip/')
+    try
+        mex -v -g pnet.c
+    catch
+    end
+    unix(['mv pnet.mex ' PsychtoolboxRoot target]);
+    cd(curdir);
+    striplibsfrommexfile([PsychtoolboxRoot target 'pnet.mex']);
+end
+
 % Remove stale object files:
 delete('*.o');
 
