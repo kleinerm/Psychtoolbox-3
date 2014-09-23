@@ -1,7 +1,7 @@
 function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % DownloadPsychtoolbox([targetdirectory][, flavor][, targetRevision])
 %
-% This script downloads the latest GNU/Linux, Mac OSX, or Windows
+% This script downloads the latest GNU/Linux, Mac OSX, or MS-Windows
 % Psychtoolbox-3, version 3.0.10 or later, from our git-server to your
 % disk, creating your working copy, ready to use as a new toolbox in your
 % MATLAB/OCTAVE application. Subject to your permission, any old
@@ -9,12 +9,18 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % program, checking for all required resources and privileges before it
 % starts.
 %
-% Note: If you use a Debian derives Linux distribution, e.g., Debian or
+% Note: If you use a Debian derived Linux distribution, e.g., Debian or
 % Ubuntu, consider installing the package octave-psychtoolbox-3 or
 % matlab-psychtoolbox-3 instead from http://neuro.debian.net - This is more
-% convenient ans will provide you with automatic updates.
+% convenient and will provide you with automatic updates.
 %
-% CAUTION: Psychtoolbox *will not work* with GNU/Octave on MS-Windows, or
+% CAUTION: Psychtoolbox 3.0.12 will not work anymore with 32-Bit Matlab, or
+% with OSX versions earlier than 10.8 "Mountain Lion". Psychtoolbox may
+% work with versions of Microsoft Windows older than Windows-7, but it is
+% not tested or supported on such ancient Windows systems anymore, so use
+% at your own risk.
+%
+% Psychtoolbox 3.0.11 *will not work* with GNU/Octave on MS-Windows, or
 % with 32-Bit Octave on OSX, as support for these setups has been cancelled
 % for the 3.0.10 series. It will also not work with 32-Bit Matlab on OSX,
 % or with OSX versions earlier than 10.6.8 "Snow Leopard", unless you
@@ -285,6 +291,7 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % 07/02/13 mk  Reenable write access for all to Psychtoolbox folder.
 % 07/23/13 mk  Do not prevent execution on 32-Bit Matlab on OSX!
 % 05/18/14 mk  No support for 32-Bit Matlab on Linux and Windows anymore for 3.0.12.
+%              Clarify there's also no support for < OSX 10.8 anymore.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
