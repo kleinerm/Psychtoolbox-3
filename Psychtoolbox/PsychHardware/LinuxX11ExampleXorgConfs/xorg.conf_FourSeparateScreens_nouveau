@@ -1,0 +1,56 @@
+# /etc/X11/xorg.conf
+Section "ServerLayout"
+    Identifier  "Hydra-Nouveau-QuadHeadWith4Screens"
+    Screen  0   "Screen0" 0 0
+    Screen  1   "Screen1" RightOf "Screen0"
+    Screen  2   "Screen2" RightOf "Screen1"
+    Screen  3   "Screen3" RightOf "Screen2"
+EndSection
+
+Section "Device"
+    Identifier  "Card0"
+    Driver      "nouveau"
+    Screen      0
+    Option      "ZaphodHeads"   "DVI-I-1"
+EndSection
+
+Section "Device"
+    Identifier  "Card1"
+    Driver      "nouveau"
+    Screen      1
+    Option      "ZaphodHeads"   "DVI-D-1"
+EndSection
+
+Section "Device"
+    Identifier  "Card2"
+    Driver      "nouveau"
+    Screen      2
+    Option      "ZaphodHeads"   "HDMI-1"
+EndSection
+
+Section "Device"
+    Identifier  "Card3"
+    Driver      "nouveau"
+    Screen      3
+    Option      "ZaphodHeads"   "DP-1"
+EndSection
+
+Section "Screen"
+    Identifier  "Screen0"
+    Device      "Card0"
+EndSection
+
+Section "Screen"
+    Identifier  "Screen1"
+    Device      "Card1"
+EndSection
+
+Section "Screen"
+    Identifier  "Screen2"
+    Device      "Card2"
+EndSection
+
+Section "Screen"
+    Identifier  "Screen3"
+    Device      "Card3"
+EndSection
