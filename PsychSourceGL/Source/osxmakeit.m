@@ -1,6 +1,6 @@
 function osxmakeit(mode)
 % This is the MacOS/X version of makeit: It is meant for building PTB for
-% 64-Bit Matlab on OSX IntelMac, 10.7 Lion or later:
+% 64-Bit Matlab on OSX IntelMac, 10.9 Mavericks:
 
 if ~IsOSX(1) || IsOctave
     error('osxmakeit only works with a 64-Bit version of Matlab for OSX!');
@@ -31,7 +31,7 @@ if mode==0
     % Build Screen:
     % Depends: GStreamer-1.0 (actually 1.4.0+), libdc1394-2, libusb-1.0
 
-    % Build with Weak linking of GStreamer and libdc1394 via -weak_library
+    % Build with weak linking of GStreamer and libdc1394 via -weak_library
     % flag. This means that a missing GStreamer or libdc1394 installation
     % will not cause linker failure at Screen() load time -- Screen
     % continues to work as long as no GStreamer-dependent functions are
