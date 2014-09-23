@@ -504,4 +504,3 @@ void PsychCocoaPreventAppNap(psych_bool preventAppNap)
         return;
     }
 }
-s
