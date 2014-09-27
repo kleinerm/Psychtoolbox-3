@@ -1,0 +1,10 @@
+# This xorg.conf is meant for machines with Intel graphics card.
+# It sets the parameter TripleBuffer to off, to switch from
+# triple-buffering to double-buffering, which is needed for
+# precisely timed visual stimulus onset and onset timestamping.
+
+Section "Device"
+	Identifier "IntelGPU"
+	Driver	   "intel"
+	Option	   "TripleBuffer" "off"
+EndSection
