@@ -2,9 +2,19 @@
 # It sets the parameter TripleBuffer to off, to switch from
 # triple-buffering to double-buffering, which is needed for
 # precisely timed visual stimulus onset and onset timestamping.
+#
+# It also asks to use the old but mature DRI2 on DRI3/Present
+# capable X-Servers, instead of DRI3/Present for swap scheduling,
+# to avoid some bugs in the current DRI3/Present implementations,
+# "toothing problems" if you want. Option "Present" "off" is not
+# really needed on XOrg 1.16, therefore commented out, but option
+# "DRI" "2" is needed on such servers for Psychtoolbox to perform
+# correctly.
 
 Section "Device"
-	Identifier "IntelGPU"
-	Driver	   "intel"
-	Option	   "TripleBuffer" "off"
+   Identifier "IntelGPU"
+   Driver     "intel"
+   Option     "TripleBuffer" "off"
+   Option     "DRI" "2"
+   #Option    "Present" "off"
 EndSection
