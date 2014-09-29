@@ -124,9 +124,9 @@ for j=1:numel(funcp.argin.args),
 				mcast='double';
 			case { 'GLfloat' 'GLclampf' 'ALfloat' 'ALclampf' }
 				mcast='single';
-			case { 'GLint64' }
+			case { 'GLint64' 'GLint64EXT' 'GLsizeiptr' 'GLintptr' }
                 mcast='int64';
-			case { 'GLuint64' }
+			case { 'GLuint64' 'GLuint64EXT' 'GLuintptr' }
                 mcast='uint64';
             case { 'GLint' 'GLsizei' 'ALint' 'ALsizei' }
 				mcast='int32';
@@ -138,7 +138,7 @@ for j=1:numel(funcp.argin.args),
 				mcast='uint16';
 			case { 'GLbyte' 'ALbyte' }
 				mcast='int8';
-			case { 'GLubyte' 'GLchar' 'GLboolean' 'ALubyte' 'ALchar' 'ALboolean' }
+			case { 'GLubyte' 'GLchar' 'GLcharARB' 'GLboolean' 'ALubyte' 'ALchar' 'ALboolean' }
 				mcast='uint8';
 			case { 'GLvoid' 'void' 'ALvoid' }
 				mcast='';
