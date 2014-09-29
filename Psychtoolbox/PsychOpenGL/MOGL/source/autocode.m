@@ -20,7 +20,7 @@ function autocode(overwrite, glheaderpath, openal)
 % 01-Apr-12 -- Adapt to parsing of current glext_edit.h from OpenGL registry. (MK)
 % 28-Sep-14 -- Make sure to not add same function multiple times. (MK)
 % 28-Sep-14 -- Use our own copy of glu.h, as Apple ones is screwed up by now. (MK)
-
+% 29-Sep-14 -- Cross-Check each entry point for glew.h support before adding it. (MK)
 clc;
 
 if nargin < 1 || isempty(overwrite)
@@ -95,6 +95,14 @@ cfid=fopen(cfile,'a');
 cmdmap={};
 knownfuncs = '';
 
+% Read the full content of glew.h into glewfuncs:
+glewfid = fopen('glew.h', 'rt');
+glewfuncs = char(fread(glewfid)); %#ok<FREAD>
+fclose(glewfid);
+
+% Make it digestable by strfind():
+glewfuncs = transpose(squeeze(glewfuncs));
+
 % step through list of OpenGL functions
 while(~feof(listfid)),
 
@@ -124,6 +132,14 @@ while(~feof(listfid)),
         % add function name to autono.txt
         unix(sprintf('cat "%s  %% uses double indirection (added to autono.txt by autocode.m) >> autono.txt',funcp.fname));
         fprintf(1,'Rejected: %s ... [pointer double indirection]\n',funcp.fname);
+        continue;
+    end
+    
+    % Cross-Check with glew.h glxew.h etc. to make sure our current GLEW
+    % version supports this entry point. Exceptions are gluXXX and glutXXX
+    % functions:
+    if isempty(strfind(glewfuncs, [' ' funcp.fname ' '])) && isempty(strfind(funcp.fname, 'glu'))
+        fprintf(1,'Rejected: %s ... [entry point unsupported by GLEW]\n',funcp.fname);
         continue;
     end
 
