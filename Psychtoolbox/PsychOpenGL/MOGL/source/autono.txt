@@ -19,6 +19,7 @@ glMultiDrawElements		- need alternate interface to this function, as it
 glMultiDrawElementsBaseVertex - ditto.
 glCreateShaderProgramv - ditto.
 glCompileShaderInclude - We do not implement this one yet.
+glCompileShaderIncludeARB - We do not implement this one yet.
 glTransformFeedbackVaryings - Arrays of strings - manually implemented.
 glTransformFeedbackVaryingsEXT - Arrays of strings - manually implemented.
 glTransformFeedbackVaryingsNV - Arrays of strings - manually implemented.
