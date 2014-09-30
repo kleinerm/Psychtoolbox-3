@@ -18,6 +18,10 @@ glMultiDrawElements		- need alternate interface to this function, as it
 				          access to pointers to a matrix's data in MATLAB
 glMultiDrawElementsBaseVertex - ditto.
 glCreateShaderProgramv - ditto.
+glCompileShaderInclude - We do not implement this one yet.
+glTransformFeedbackVaryings - Arrays of strings - manually implemented.
+glTransformFeedbackVaryingsEXT - Arrays of strings - manually implemented.
+glTransformFeedbackVaryingsNV - Arrays of strings - manually implemented.
 
 - these use pointers to structs and other impossible to handle stuff
 glCreateSyncFromCLeventARB
