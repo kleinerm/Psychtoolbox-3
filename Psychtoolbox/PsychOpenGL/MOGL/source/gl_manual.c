@@ -60,6 +60,119 @@ void gl_samplepass( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 	mogl_glunsupported("glSamplePass");
 }
 
+static char** getStrings(const mxArray *prhs, GLsizei *outCount, int debugflag)
+{
+    char* sourcestring;
+    char** srcstrings;
+    size_t i, count, savedlength;
+    count = 0;
+
+    // Ok, caller needs a list of one-line strings. We take a single big
+    // string of newline-separated lines and break it up into a list of strings.
+
+    // Retrieve big input string:
+    sourcestring = mxArrayToString(prhs);
+
+    // Count number of lines in string:
+    savedlength = strlen(sourcestring);
+
+    for (i = 0; i < savedlength; i++) if (sourcestring[i]=='\n') count++;
+    count++;
+
+    // Allocate char* array of proper capacity:
+    srcstrings = (char**) malloc(count * sizeof(char*));
+
+    // Initialize array of char-ptrs and setup string:
+    count = 0;
+    srcstrings[0] = (char*) sourcestring;
+    count++;
+
+    for (i = 0; i < savedlength; i++) if (sourcestring[i]=='\n') {
+        // NULL-out the end-of-line terminator to create a null-terminated piece of
+        // substring:
+        sourcestring[i] = 0;
+
+        // Setup a new char* that points behind the sourcestring[i]:
+        i++;
+        srcstrings[count] = (char*) &(sourcestring[i]);
+        count++;
+    }
+
+    // Ok, now srcstrings should be an array of count char*'s to single line,
+    // null-terminated strings:
+    *outCount = count;
+
+    if (debugflag > 0) {
+        printf("\n\n");
+        for (i = 0; i < count; i++) printf("Line %i: %s\n", (int) i, srcstrings[i]);
+        printf("\n\n");
+        fflush(NULL);
+
+        // Free the sourcestring:
+        mxFree(sourcestring);
+
+        // Free our array:
+        free(srcstrings);
+
+        // Abort with error:
+        return (NULL);
+    }
+
+    // Done.
+    return (srcstrings);
+}
+
+void gl_transformfeedbackvaryings( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+    char** srcstrings = NULL;
+    GLsizei outCount = 0;
+
+    if (NULL == glTransformFeedbackVaryings) mogl_glunsupported("glTransformFeedbackVaryings");
+
+    srcstrings = getStrings(prhs[2], &outCount, mxGetScalar(prhs[4]));
+    if (NULL == srcstrings) mogl_printfexit("MOGL-Info: glTransformFeedbackVaryings(): Called with debug flag set, therefore i've dumped the names to the console and will now exit.");
+
+    // Have all we need, do the deed:
+    glTransformFeedbackVaryings((GLuint) mxGetScalar(prhs[0]),
+                                (GLsizei) mxGetScalar(prhs[1]),
+                                (const GLchar**) srcstrings,
+                                (GLenum) mxGetScalar(prhs[3]));
+
+    // Free our array and the master string implicit in element [0]:
+    mxFree(srcstrings[0]);
+    free(srcstrings);
+}
+
+void gl_transformfeedbackvaryingsext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+    char** srcstrings = NULL;
+    GLsizei outCount = 0;
+
+    if (NULL == glTransformFeedbackVaryingsEXT) mogl_glunsupported("glTransformFeedbackVaryingsEXT");
+
+    srcstrings = getStrings(prhs[2], &outCount, mxGetScalar(prhs[4]));
+    if (NULL == srcstrings) mogl_printfexit("MOGL-Info: glTransformFeedbackVaryingsEXT(): Called with debug flag set, therefore i've dumped the names to the console and will now exit.");
+
+    // Have all we need, do the deed:
+    glTransformFeedbackVaryingsEXT((GLuint) mxGetScalar(prhs[0]),
+                                   (GLsizei) mxGetScalar(prhs[1]),
+                                   (const GLchar**) srcstrings,
+                                   (GLenum) mxGetScalar(prhs[3]));
+
+    // Free our array and the master string implicit in element [0]:
+    mxFree(srcstrings[0]);
+    free(srcstrings);
+}
+
+void gl_transformfeedbackvaryingsnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+    if (NULL == glTransformFeedbackVaryingsNV) mogl_glunsupported("glTransformFeedbackVaryingsNV");
+    glTransformFeedbackVaryingsNV((GLuint)mxGetScalar(prhs[0]),
+                                  (GLsizei)mxGetScalar(prhs[1]),
+                                  (const GLint*)mxGetData(prhs[2]),
+                                  (GLenum)mxGetScalar(prhs[3]));
+}
+
 void gl_shadersource( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
     char* sourcestring;
     char** srcstrings;
@@ -856,7 +969,7 @@ void gles_end( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 // *** it's important that this list be kept in alphabetical order, 
 //     and that gl_manual_map_count be updated
 //     for each new entry ***
-int gl_manual_map_count=42;
+int gl_manual_map_count=45;
 cmdhandler gl_manual_map[] = {
 { "ftglBegin",                      gles_begin                          },
 { "ftglColor4f",                    gles_color4f                        },
@@ -880,6 +993,9 @@ cmdhandler gl_manual_map[] = {
 { "glShaderSource",                 gl_shadersource                     },
 { "glTexCoordPointer",              gl_texcoordpointer                  },
 { "glTexImage2D",                   gl_teximage2d                       },
+{ "glTransformFeedbackVaryings",    gl_transformfeedbackvaryings        },
+{ "glTransformFeedbackVaryingsEXT", gl_transformfeedbackvaryingsext     },
+{ "glTransformFeedbackVaryingsNV",  gl_transformfeedbackvaryingsnv      },
 { "glVertexAttribPointer",          gl_vertexattribpointer              },
 { "glVertexPointer",                gl_vertexpointer                    },
 { "gluDeleteTess",                  glu_deletetess                      },
