@@ -9,6 +9,7 @@ function location = glGetTransformFeedbackVaryingNV( program, index )
 % 30-Sep-2014 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
 
 if nargin~=2,
     error('invalid number of arguments');
