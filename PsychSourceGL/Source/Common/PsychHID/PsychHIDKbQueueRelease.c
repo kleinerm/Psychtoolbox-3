@@ -103,52 +103,29 @@ PsychError PSYCHHIDKbQueueRelease(void)
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include "PsychHIDKbQueue.h"
 
-extern AbsoluteTime *psychHIDKbQueueFirstPress;
-extern AbsoluteTime *psychHIDKbQueueFirstRelease;
-extern AbsoluteTime *psychHIDKbQueueLastPress;
-extern AbsoluteTime *psychHIDKbQueueLastRelease;
-extern HIDDataRef hidDataRef;
+extern psych_uint64 *psychHIDKbQueueFirstPress;
+extern psych_uint64 *psychHIDKbQueueFirstRelease;
+extern psych_uint64 *psychHIDKbQueueLastPress;
+extern psych_uint64 *psychHIDKbQueueLastRelease;
+extern IOHIDQueueRef queue;
 extern pthread_mutex_t psychHIDKbQueueMutex;
 extern CFRunLoopRef psychHIDKbQueueCFRunLoopRef;
 extern pthread_t psychHIDKbQueueThread;
 
 void PsychHIDOSKbQueueRelease(int deviceIndex)
 {
-    pthread_mutex_lock(&psychHIDKbQueueMutex);    
-    
-	// Remove the source from the CFRunLoop so queue transitions from empty
-	// to non-empty cannot trigger a new callout on the CFRunLoop thread
-	if(psychHIDKbQueueCFRunLoopRef){
-		if(CFRunLoopContainsSource(psychHIDKbQueueCFRunLoopRef, hidDataRef->eventSource, kCFRunLoopDefaultMode))
-			CFRunLoopRemoveSource(psychHIDKbQueueCFRunLoopRef, hidDataRef->eventSource, kCFRunLoopDefaultMode);
-	}
+    if (!queue) return;
 
-	// Stop, drain, dispose, release the queue
-	if(hidDataRef){
-		IOHIDQueueInterface **queue=(hidDataRef->hidQueueInterface);
-		if(queue){
-			HRESULT result=(*queue)->stop(queue);
-			{
-				IOHIDEventStruct event;
-				AbsoluteTime zeroTime= {0,0};
-				while(  (*hidDataRef->hidQueueInterface)->getNextEvent(hidDataRef->hidQueueInterface, &event, zeroTime, 0) == kIOReturnSuccess){
-					if ((event.longValueSize != 0) && (event.longValue != NULL)) free(event.longValue);
-				}
-			}
-			result = (*queue)->dispose(queue);
-			(*queue)->Release(queue);
-		}
-		if(hidDataRef->hidElementDictionary) CFRelease(hidDataRef->hidElementDictionary);
-		free(hidDataRef);
-		hidDataRef=NULL;
-	}
-
-    pthread_mutex_unlock(&psychHIDKbQueueMutex);    
+    // Stop the KbQueue, unless already stopped:
+    PsychHIDOSKbQueueStop(deviceIndex);
     
+    // Drain/Flush the queue:
+    PsychHIDOSKbQueueFlush(deviceIndex);
+
 	// Stop the CFRunLoop, which will allow its thread to exit
 	// The mutex will be automatically unlocked and destroyed by the CFRunLoop thread
 	// so it isn't even declared in this routine
-	if(psychHIDKbQueueCFRunLoopRef){
+	if (psychHIDKbQueueCFRunLoopRef) {
 		CFRunLoopStop(psychHIDKbQueueCFRunLoopRef);
 
         pthread_join(psychHIDKbQueueThread, NULL);
@@ -159,22 +136,26 @@ void PsychHIDOSKbQueueRelease(int deviceIndex)
 
 		// Destroy the mutex
 		pthread_mutex_destroy(&psychHIDKbQueueMutex);
+        
+        // Release queue object:
+        CFRelease(queue);
+        queue = NULL;
 	}
-	
+
 	// Free and null the memory where presses and releases are stored
-	if(psychHIDKbQueueFirstPress){
+	if( psychHIDKbQueueFirstPress) {
 		free(psychHIDKbQueueFirstPress);
 		psychHIDKbQueueFirstPress=NULL;
 	}
-	if(psychHIDKbQueueFirstRelease){
+	if (psychHIDKbQueueFirstRelease) {
 		free(psychHIDKbQueueFirstRelease);
 		psychHIDKbQueueFirstRelease=NULL;
 	}
-	if(psychHIDKbQueueLastPress){
+	if (psychHIDKbQueueLastPress) {
 		free(psychHIDKbQueueLastPress);
 		psychHIDKbQueueLastPress=NULL;
 	}
-	if(psychHIDKbQueueLastRelease){
+	if (psychHIDKbQueueLastRelease) {
 		free(psychHIDKbQueueLastRelease);
 		psychHIDKbQueueLastRelease=NULL;
 	}

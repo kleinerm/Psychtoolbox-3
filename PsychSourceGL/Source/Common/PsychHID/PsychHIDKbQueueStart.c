@@ -108,49 +108,38 @@ PsychError PSYCHHIDKbQueueStart(void)
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include "PsychHIDKbQueue.h"
 
+
 extern UInt32 modifierKeyState;
-extern AbsoluteTime *psychHIDKbQueueFirstPress;
-extern AbsoluteTime *psychHIDKbQueueFirstRelease;
-extern AbsoluteTime *psychHIDKbQueueLastPress;
-extern AbsoluteTime *psychHIDKbQueueLastRelease;
-extern HIDDataRef hidDataRef;
+extern psych_uint64 *psychHIDKbQueueFirstPress;
+extern psych_uint64 *psychHIDKbQueueFirstRelease;
+extern psych_uint64 *psychHIDKbQueueLastPress;
+extern psych_uint64 *psychHIDKbQueueLastRelease;
+extern IOHIDQueueRef queue;
 extern pthread_mutex_t psychHIDKbQueueMutex;
 
 void PsychHIDOSKbQueueStart(int deviceIndex)
 {
-	if(!hidDataRef || !psychHIDKbQueueFirstPress || !psychHIDKbQueueFirstRelease || !psychHIDKbQueueLastPress || !psychHIDKbQueueLastRelease){
+    int i;
+
+	if (!queue || !psychHIDKbQueueFirstPress || !psychHIDKbQueueFirstRelease || !psychHIDKbQueueLastPress || !psychHIDKbQueueLastRelease) {
 		PsychErrorExitMsg(PsychError_user, "Queue has not been created.");
 	}
-	{
-		IOHIDQueueInterface **queue=(hidDataRef->hidQueueInterface);
-		if(!queue){
-			PsychErrorExitMsg(PsychError_user, "Queue has not been created.");
-		}
-		pthread_mutex_lock(&psychHIDKbQueueMutex);
-		{
-			int i;
-			for(i=0; i<256; i++){
-				psychHIDKbQueueFirstPress[i].hi=0;
-				psychHIDKbQueueFirstPress[i].lo=0;
-				psychHIDKbQueueFirstRelease[i].hi=0;
-				psychHIDKbQueueFirstRelease[i].lo=0;
-				psychHIDKbQueueLastPress[i].hi=0;
-				psychHIDKbQueueLastPress[i].lo=0;
-				psychHIDKbQueueLastRelease[i].hi=0;
-				psychHIDKbQueueLastRelease[i].lo=0;
-			}
 
-            modifierKeyState = 0;
-		}
-		pthread_mutex_unlock(&psychHIDKbQueueMutex);
-		{
-			// Start the queue
-			HRESULT result = (*queue)->start(queue);
-			if (kIOReturnSuccess != result){
-				PsychErrorExitMsg(PsychError_system, "Failed to start event queue.");
-			}
-		}
-	}
+    // Clear key state:
+    pthread_mutex_lock(&psychHIDKbQueueMutex);
+    
+    for (i = 0; i < 256; i++) {
+        psychHIDKbQueueFirstPress[i]   = 0;
+        psychHIDKbQueueFirstRelease[i] = 0;
+        psychHIDKbQueueLastPress[i]    = 0;
+        psychHIDKbQueueLastRelease[i]  = 0;
+    }
+    
+    modifierKeyState = 0;
+    pthread_mutex_unlock(&psychHIDKbQueueMutex);
+
+    // Start event collection in the queue:
+    IOHIDQueueStart(queue);
 }
 
 #endif

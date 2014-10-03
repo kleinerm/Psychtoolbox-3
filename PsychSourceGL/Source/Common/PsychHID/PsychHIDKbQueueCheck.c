@@ -157,21 +157,20 @@ PsychError PSYCHHIDKbQueueGetEvent(void)
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include "PsychHIDKbQueue.h"
 
-extern AbsoluteTime *psychHIDKbQueueFirstPress;
-extern AbsoluteTime *psychHIDKbQueueFirstRelease;
-extern AbsoluteTime *psychHIDKbQueueLastPress;
-extern AbsoluteTime *psychHIDKbQueueLastRelease;
+extern psych_uint64 *psychHIDKbQueueFirstPress;
+extern psych_uint64 *psychHIDKbQueueFirstRelease;
+extern psych_uint64 *psychHIDKbQueueLastPress;
+extern psych_uint64 *psychHIDKbQueueLastRelease;
 extern pthread_mutex_t psychHIDKbQueueMutex;
 
-static double convertTime(AbsoluteTime at){
-	Nanoseconds timeNanoseconds=AbsoluteToNanoseconds(at);
-	UInt64 timeUInt64=UnsignedWideToUInt64(timeNanoseconds);
-	double timeDouble=(double)timeUInt64;
-	return timeDouble / 1000000000;
+static double convertTime(uint64_t timeUInt64) {
+    double timeDouble = (double) timeUInt64;
+    return timeDouble / 1000000000;
 }
 
 void PsychHIDOSKbQueueCheck(int deviceIndex)
 {
+    int i;
 	double *hasKeyBeenDownOutput, *firstPressTimeOutput, *firstReleaseTimeOutput, *lastPressTimeOutput, *lastReleaseTimeOutput;
 	psych_bool isFirstPressSpecified, isFirstReleaseSpecified, isLastPressSpecified, isLastReleaseSpecified;
 
@@ -181,52 +180,48 @@ void PsychHIDOSKbQueueCheck(int deviceIndex)
 	
 	// Allocate output
     PsychAllocOutDoubleArg(1, FALSE, &hasKeyBeenDownOutput);
-	isFirstPressSpecified = PsychAllocOutDoubleMatArg(2, FALSE, 1, 256, 1, &firstPressTimeOutput);
+	isFirstPressSpecified   = PsychAllocOutDoubleMatArg(2, FALSE, 1, 256, 1, &firstPressTimeOutput);
 	isFirstReleaseSpecified = PsychAllocOutDoubleMatArg(3, FALSE, 1, 256, 1, &firstReleaseTimeOutput);
-	isLastPressSpecified = PsychAllocOutDoubleMatArg(4, FALSE, 1, 256, 1, &lastPressTimeOutput);
-	isLastReleaseSpecified = PsychAllocOutDoubleMatArg(5, FALSE, 1, 256, 1, &lastReleaseTimeOutput);
+	isLastPressSpecified    = PsychAllocOutDoubleMatArg(4, FALSE, 1, 256, 1, &lastPressTimeOutput);
+	isLastReleaseSpecified  = PsychAllocOutDoubleMatArg(5, FALSE, 1, 256, 1, &lastReleaseTimeOutput);
 
 	// Initialize output
-	if(isFirstPressSpecified) memset((void*) firstPressTimeOutput, 0, sizeof(double) * 256);
-	if(isFirstReleaseSpecified) memset((void*) firstReleaseTimeOutput, 0, sizeof(double) * 256);
-	if(isLastPressSpecified) memset((void*) lastPressTimeOutput, 0, sizeof(double) * 256);
-	if(isLastReleaseSpecified) memset((void*) lastReleaseTimeOutput, 0, sizeof(double) * 256);
+	if (isFirstPressSpecified) memset((void*) firstPressTimeOutput, 0, sizeof(double) * 256);
+	if (isFirstReleaseSpecified) memset((void*) firstReleaseTimeOutput, 0, sizeof(double) * 256);
+	if (isLastPressSpecified) memset((void*) lastPressTimeOutput, 0, sizeof(double) * 256);
+	if (isLastReleaseSpecified) memset((void*) lastReleaseTimeOutput, 0, sizeof(double) * 256);
 	
 	*hasKeyBeenDownOutput=0;
 	pthread_mutex_lock(&psychHIDKbQueueMutex);
 
-	// Compute output
-	{
-		int i;
-		for(i=0; i<256; i++){
-			AbsoluteTime lastRelease=psychHIDKbQueueLastRelease[i];
-			AbsoluteTime lastPress=psychHIDKbQueueLastPress[i];
-			AbsoluteTime firstRelease=psychHIDKbQueueFirstRelease[i];
-			AbsoluteTime firstPress=psychHIDKbQueueFirstPress[i];
-			
-			if(firstPress.hi!=0 || firstPress.lo!=0){
-				*hasKeyBeenDownOutput=1;
-				if(isFirstPressSpecified) firstPressTimeOutput[i]=convertTime(firstPress);
-				psychHIDKbQueueFirstPress[i].hi=0;
-				psychHIDKbQueueFirstPress[i].lo=0;
-			}
-			if(firstRelease.hi!=0 || firstRelease.lo!=0){
-				if(isFirstReleaseSpecified) firstReleaseTimeOutput[i]=convertTime(firstRelease);
-				psychHIDKbQueueFirstRelease[i].hi=0;
-				psychHIDKbQueueFirstRelease[i].lo=0;
-			}
-			if(lastPress.hi!=0 || lastPress.lo!=0){
-				if(isLastPressSpecified) lastPressTimeOutput[i]=convertTime(lastPress);
-				psychHIDKbQueueLastPress[i].hi=0;
-				psychHIDKbQueueLastPress[i].lo=0;
-			}
-			if(lastRelease.hi!=0 || lastRelease.lo!=0){
-				if(isLastReleaseSpecified) lastReleaseTimeOutput[i]=convertTime(lastRelease);
-				psychHIDKbQueueLastRelease[i].hi=0;
-				psychHIDKbQueueLastRelease[i].lo=0;
-			}
-		}
-	}
+    for(i = 0; i < 256; i++) {
+        psych_uint64 lastRelease  = psychHIDKbQueueLastRelease[i];
+        psych_uint64 lastPress    = psychHIDKbQueueLastPress[i];
+        psych_uint64 firstRelease = psychHIDKbQueueFirstRelease[i];
+        psych_uint64 firstPress   = psychHIDKbQueueFirstPress[i];
+        
+        if (firstPress != 0) {
+            *hasKeyBeenDownOutput=1;
+            if (isFirstPressSpecified) firstPressTimeOutput[i] = convertTime(firstPress);
+            psychHIDKbQueueFirstPress[i] = 0;
+        }
+
+        if (firstRelease != 0) {
+            if (isFirstReleaseSpecified) firstReleaseTimeOutput[i] = convertTime(firstRelease);
+            psychHIDKbQueueFirstRelease[i] = 0;
+        }
+
+        if (lastPress != 0) {
+            if (isLastPressSpecified) lastPressTimeOutput[i] = convertTime(lastPress);
+            psychHIDKbQueueLastPress[i] = 0;
+        }
+
+        if (lastRelease != 0) {
+            if (isLastReleaseSpecified) lastReleaseTimeOutput[i] = convertTime(lastRelease);
+            psychHIDKbQueueLastRelease[i] = 0;
+        }
+    }
+
 	pthread_mutex_unlock(&psychHIDKbQueueMutex);
 }
 

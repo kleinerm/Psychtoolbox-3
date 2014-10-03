@@ -124,55 +124,45 @@ PsychError PSYCHHIDKbQueueCreate(void)
 #define NUMDEVICEUSAGES 7
 
 // Declare globally scoped variables that will be declared extern by other functions in this family
-AbsoluteTime *psychHIDKbQueueFirstPress=NULL;
-AbsoluteTime *psychHIDKbQueueFirstRelease=NULL;
-AbsoluteTime *psychHIDKbQueueLastPress=NULL;
-AbsoluteTime *psychHIDKbQueueLastRelease=NULL;
-HIDDataRef hidDataRef=NULL;
+psych_uint64 *psychHIDKbQueueFirstPress=NULL;
+psych_uint64 *psychHIDKbQueueFirstRelease=NULL;
+psych_uint64 *psychHIDKbQueueLastPress=NULL;
+psych_uint64 *psychHIDKbQueueLastRelease=NULL;
+IOHIDQueueRef queue = NULL;
+CFRunLoopRef psychHIDKbQueueCFRunLoopRef = NULL;
 pthread_mutex_t psychHIDKbQueueMutex;
-CFRunLoopRef psychHIDKbQueueCFRunLoopRef=NULL;
 pthread_t psychHIDKbQueueThread = NULL;
 psych_bool queueIsAKeyboard;
 UInt32 modifierKeyState = 0;
-psych_uint8 thisKeyAssigned[256];
 
-static void *PsychHIDKbQueueNewThread(void *value){
-	// The new thread is started after the global variables are initialized
-	SInt32 rc;
+static void *PsychHIDKbQueueNewThread(void *queue) {
 
-    pthread_mutex_lock(&psychHIDKbQueueMutex);    
-    
-    // Get and retain the run loop associated with this thread. We have to use
-    // CFRunLoopGetCurrent() instead of GetCFRunLoopFromEventLoop(GetCurrentEventLoop()),
-    // so it works reliably with Octave. The old GetCFRunLoopFromEventLoop(GetCurrentEventLoop())
-    // for some weird reason only worked reliably with Matlab. On Octave it was a hit and miss thing,
-    // sometimes working, sometimes not -- a race condition somewhere?!?
-	psychHIDKbQueueCFRunLoopRef=(CFRunLoopRef) CFRunLoopGetCurrent(); // Old: Only reliable on Matlab: GetCFRunLoopFromEventLoop(GetCurrentEventLoop());
-	CFRetain(psychHIDKbQueueCFRunLoopRef);
+    // Switch ourselves (NULL) to RT scheduling: We promise to use / require at most (0+1) == 1 msec every
+    // 10 msecs and allow for wakeup delay/jitter of up to 2 msecs -- perfectly reasonable, given that we
+    // only do minimal << 1 msec processing, only at the timescale of human reaction times, and driven by
+    // input devices with at least 4+/-4 msecs jitter at 8 msec USB polling frequency.
+    PsychSetThreadPriority(NULL, 2, 0);
 
-	// Put the event source into the run loop
-	if(!CFRunLoopContainsSource(psychHIDKbQueueCFRunLoopRef, hidDataRef->eventSource, kCFRunLoopDefaultMode))
-		CFRunLoopAddSource(psychHIDKbQueueCFRunLoopRef, hidDataRef->eventSource, kCFRunLoopDefaultMode);
+    // Keep a global reference to the runloop, as we need it in KbQueueRelease to get this thread to exit:
+    psychHIDKbQueueCFRunLoopRef = (CFRunLoopRef) CFRunLoopGetCurrent();
+    CFRetain(psychHIDKbQueueCFRunLoopRef);
 
-	// Switch ourselves (NULL) to RT scheduling: We promise to use / require at most (0+1) == 1 msec every
-	// 10 msecs and allow for wakeup delay/jitter of up to 2 msecs -- perfectly reasonable, given that we
-	// only do minimal << 1 msec processing, only at the timescale of human reaction times, and driven by
-	// input devices with at least 4+/-4 msecs jitter at 8 msec USB polling frequency.
-	PsychSetThreadPriority(NULL, 2, 0);
+    // Add HID queue to current runloop:
+    IOHIDQueueScheduleWithRunLoop((IOHIDQueueRef) queue, psychHIDKbQueueCFRunLoopRef, kCFRunLoopDefaultMode);
 
-	pthread_mutex_unlock(&psychHIDKbQueueMutex);	
-    
 	// Start the run loop, code execution will block here until run loop is stopped again by PsychHIDKbQueueRelease
 	// Meanwhile, the run loop of this thread will be responsible for executing code below in PsychHIDKbQueueCalbackFunction
-	while ((rc = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, false)) == kCFRunLoopRunTimedOut) {};
+	while (CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, false) == kCFRunLoopRunTimedOut) {};
+
+    // Remove HID queue from current runloop:
+    IOHIDQueueUnscheduleFromRunLoop((IOHIDQueueRef) queue, psychHIDKbQueueCFRunLoopRef, kCFRunLoopDefaultMode);
     
-    return(NULL);
+    // Done. Die peacefully:
+    return (NULL);
 }
 
-static double convertTime(AbsoluteTime at){
-	Nanoseconds timeNanoseconds=AbsoluteToNanoseconds(at);
-	UInt64 timeUInt64=UnsignedWideToUInt64(timeNanoseconds);
-	double timeDouble=(double)timeUInt64;
+static double convertTime(uint64_t timeUInt64) {
+	double timeDouble = (double) timeUInt64;
 	return timeDouble / 1000000000;
 }
 
@@ -554,45 +544,44 @@ static const uint16_t	kHID2VKC[] =
 enum { kHID2VKCSize = sizeof kHID2VKC / sizeof kHID2VKC[0] };
 
 
-static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void *refcon, void *sender)
+static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void *sender)
 {
 	// This routine is executed each time the queue transitions from empty to non-empty
 	// The CFRunLoop of the thread in PsychHIDKbQueueNewThread is the thread that executes here
-	HIDDataRef hidDataRef=(HIDDataRef)refcon;
-	long keysUsage=-1;
-	IOHIDEventStruct event;
-	AbsoluteTime zeroTime= {0,0};
+	IOHIDQueueRef queue = (IOHIDQueueRef) sender;
+    IOHIDValueRef valueRef = NULL;
+    psych_uint64 timestamp;
+    int eventValue;
+	long keysUsage = -1;
 	PsychHIDEventRecord evt;
 	
 	result=kIOReturnError;
-	if(!hidDataRef) return;	// Nothing we can do because we can't access queue, (shouldn't happen)
+	if (!queue) return; // Nothing we can do because we can't access queue, (shouldn't happen)
 	
-	while(1){
+	while (1) {
 		// This function only gets called when queue transitions from empty to non-empty
 		// Therefore, we must process all available events in this while loop before
-		// it will be possible for this function to be notified again
-		{
-			// Get next event from queue
-			result = (*hidDataRef->hidQueueInterface)->getNextEvent(hidDataRef->hidQueueInterface, &event, zeroTime, 0);
-			if(kIOReturnSuccess!=result) return;
-		}
-		if ((event.longValueSize != 0) && (event.longValue != NULL)) free(event.longValue);
-		{
-			// Get element associated with event so we can get its usage page
-			CFMutableDataRef element=NULL;
-			{
-				CFNumberRef number= CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &event.elementCookie);
-				if (!number)  continue;
-				element = (CFMutableDataRef)CFDictionaryGetValue(hidDataRef->hidElementDictionary, number);
-				CFRelease(number);
-			}
-			if (!element) continue;
-			{
-				HIDElementRef tempHIDElement=(HIDElement *)CFDataGetMutableBytePtr(element);
-				if(!tempHIDElement) continue;
-				keysUsage=tempHIDElement->usage;
-			}
-		}
+		// it will be possible for this function to be notified again.
+        if (valueRef) {
+            CFRelease(valueRef);
+            valueRef = NULL;
+        }
+        
+        // Get next event from queue
+        valueRef = IOHIDQueueCopyNextValueWithTimeout(queue, 0.0);
+        
+        // Done? Exit, if so:
+        if (!valueRef) break;
+
+        // Get event value, e.g., the key state of a key or button 1 = pressed, 0 = released:
+        eventValue = IOHIDValueGetIntegerValue(valueRef);
+        
+        // Get usage value, ie., the identity of the key:
+        IOHIDElementRef element = IOHIDValueGetElement(valueRef);
+        keysUsage = IOHIDElementGetUsage(element);
+        
+        // Get uint64 timestamp:
+        timestamp = IOHIDValueGetTimeStamp(valueRef);
 
 		// Don't bother with keysUsage of 0 (meaningless) or 1 (ErrorRollOver) for keyboards:
 		if ((queueIsAKeyboard) && (keysUsage <= 1)) continue;
@@ -617,26 +606,26 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 				uint16_t vcKey = kHID2VKC[keysUsage];
 				
                 // Keep track of SHIFT keys as modifier keys: Bits 0 == Command, 1 == Shift, 2 == CapsLock, 3 == Alt/Option, 4 == CTRL
-                if ((vcKey == kVKC_Shift || vcKey == kVKC_rShift) && (event.value != 0)) modifierKeyState |=  (1 << 1);
-                if ((vcKey == kVKC_Shift || vcKey == kVKC_rShift) && (event.value == 0)) modifierKeyState &= ~(1 << 1);
+                if ((vcKey == kVKC_Shift || vcKey == kVKC_rShift) && (eventValue != 0)) modifierKeyState |=  (1 << 1);
+                if ((vcKey == kVKC_Shift || vcKey == kVKC_rShift) && (eventValue == 0)) modifierKeyState &= ~(1 << 1);
 
                 // Keep track of ALT keys as modifier keys:
-                if ((vcKey == kVKC_Option || vcKey == kVKC_rOption) && (event.value != 0)) modifierKeyState |=  (1 << 3);
-                if ((vcKey == kVKC_Option || vcKey == kVKC_rOption) && (event.value == 0)) modifierKeyState &= ~(1 << 3);
+                if ((vcKey == kVKC_Option || vcKey == kVKC_rOption) && (eventValue != 0)) modifierKeyState |=  (1 << 3);
+                if ((vcKey == kVKC_Option || vcKey == kVKC_rOption) && (eventValue == 0)) modifierKeyState &= ~(1 << 3);
                 
                 // Keep track of CTRL keys as modifier keys:
-                if ((vcKey == kVKC_Control || vcKey == kVKC_rControl) && (event.value != 0)) modifierKeyState |=  (1 << 4);
-                if ((vcKey == kVKC_Control || vcKey == kVKC_rControl) && (event.value == 0)) modifierKeyState &= ~(1 << 4);
+                if ((vcKey == kVKC_Control || vcKey == kVKC_rControl) && (eventValue != 0)) modifierKeyState |=  (1 << 4);
+                if ((vcKey == kVKC_Control || vcKey == kVKC_rControl) && (eventValue == 0)) modifierKeyState &= ~(1 << 4);
 
                 // Was this a CTRL + C interrupt request?
-                if ((event.value != 0) && (vcKey == 0x08) && (modifierKeyState & (1 << 4))) {
+                if ((eventValue != 0) && (vcKey == 0x08) && (modifierKeyState & (1 << 4))) {
                     // Yes: Tell the console input helper about it, so it can send interrupt
                     // signals to the runtime and reenable keyboard input if appropriate:
                     ConsoleInputHelper(-1);                    
                 }
                 
                 // Key press?
-                if (event.value != 0) {
+                if (eventValue != 0) {
                     // Step 2: Translate virtual key code into unicode char:
                     // Ok, this is the usual horrifying complexity of Apple's system. We use code
                     // snippets found on StackOverflow, modified to suit our needs, e.g., we track
@@ -685,114 +674,80 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 		pthread_mutex_lock(&psychHIDKbQueueMutex);
 
 		// Update records of first and latest key presses and releases
-		if(event.value!=0){
+		if (eventValue != 0) {
 			if(psychHIDKbQueueFirstPress){
-				// First key press timestamp
-				if(psychHIDKbQueueFirstPress[keysUsage-1].hi==0 && psychHIDKbQueueFirstPress[keysUsage-1].lo==0){
-					psychHIDKbQueueFirstPress[keysUsage-1]=event.timestamp;
+				// First key press timestamp:
+				if (psychHIDKbQueueFirstPress[keysUsage-1] == 0) {
+					psychHIDKbQueueFirstPress[keysUsage-1] = timestamp;
 				}
 			}
-			if(psychHIDKbQueueLastPress){
-				// Last key press timestamp
-				psychHIDKbQueueLastPress[keysUsage-1]=event.timestamp;
+
+			if (psychHIDKbQueueLastPress) {
+				// Last key press timestamp:
+				psychHIDKbQueueLastPress[keysUsage-1] = timestamp;
 			}
 			evt.status |= (1 << 0);
 		}
-		else{
-			if(psychHIDKbQueueFirstRelease){
-				// First key release timestamp
-				if(psychHIDKbQueueFirstRelease[keysUsage-1].hi==0 && psychHIDKbQueueFirstRelease[keysUsage-1].lo==0) psychHIDKbQueueFirstRelease[keysUsage-1]=event.timestamp;
+		else {
+			if (psychHIDKbQueueFirstRelease) {
+				// First key release timestamp:
+				if (psychHIDKbQueueFirstRelease[keysUsage-1] == 0) psychHIDKbQueueFirstRelease[keysUsage-1] = timestamp;
 			}
-			if(psychHIDKbQueueLastRelease){
-				// Last key release timestamp
-				psychHIDKbQueueLastRelease[keysUsage-1]=event.timestamp;
+
+			if (psychHIDKbQueueLastRelease) {
+				// Last key release timestamp:
+				psychHIDKbQueueLastRelease[keysUsage-1] = timestamp;
 			}
 			evt.status &= ~(1 << 0);
 		}
 		
 		// Update event buffer:
-		evt.timestamp = convertTime(event.timestamp);
+		evt.timestamp = convertTime(timestamp);
 		evt.rawEventCode = keysUsage;
 		PsychHIDAddEventToEventBuffer(0, &evt);
+
 		pthread_mutex_unlock(&psychHIDKbQueueMutex);
+        
+        // Next while loop iteration to dequeue potentially more events:
 	}
 }
 
 // Put element into the dictionary and into the queue:
-PsychError PsychHIDOSKbElementAdd(IOHIDElementRef element, CFMutableDictionaryRef hidElements, HIDDataRef hidDataRef)
+PsychError PsychHIDOSKbElementAdd(IOHIDElementRef element, IOHIDQueueRef queue)
 {
-	IOReturn result;
-    HIDElement newElement;
-    CFNumberRef number;
-
-    memset(&newElement, 0, sizeof(HIDElement));
-    newElement.usagePage = IOHIDElementGetUsagePage(element);
-    newElement.usage     = IOHIDElementGetUsage(element);
-
     // If at least one keyboard style device is detected, mark this queue as keyboard queue:
-    if (newElement.usagePage == kHIDPage_KeyboardOrKeypad) queueIsAKeyboard = TRUE;
+    if (IOHIDElementGetUsagePage(element) == kHIDPage_KeyboardOrKeypad) queueIsAKeyboard = TRUE;
 
     // Avoid redundant assignment to same keycode:
-    if (thisKeyAssigned[newElement.usage - 1]) {
-        if (!getenv("PSYCHHID_SHUTUP")) printf("--> Key %i Already assigned --> Skipping.\n", newElement.usage - 1);
+    if (IOHIDQueueContainsElement(queue, element)) {
+        if (getenv("PSYCHHID_TELLME")) printf("--> Key %i Already assigned --> Skipping.\n", IOHIDElementGetUsage(element) - 1);
         return(PsychError_none);
     }
 
-    // Get cookie for element:
-    newElement.cookie = IOHIDElementGetCookie(element);
-
-    // Put this element into the hidElements dictionary:
-    {
-        CFMutableDataRef newData = CFDataCreateMutable(kCFAllocatorDefault, sizeof(HIDElement));
-        if (!newData) PsychErrorExitMsg(PsychError_outofMemory, "Could not CFDataCreateMutable mutable newData element in keyboard queue setup!");
-        memcpy(CFDataGetMutableBytePtr(newData), &newElement, sizeof(HIDElement));
-
-        number = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &newElement.cookie);
-        if (!number) PsychErrorExitMsg(PsychError_outofMemory, "Could not CFNumberCreate cookie number in keyboard queue setup!");
-
-        CFDictionarySetValue(hidElements, number, newData);
-        CFRelease(number);
-        CFRelease(newData);
-    }
-
-    if (!getenv("PSYCHHID_SHUTUP")) {
-        printf("--> Accepting key %i as new KbQueue element%s. Cookie %i\n", newElement.usage - 1, (queueIsAKeyboard) ? " for a keyboard" : "", newElement.cookie);
+    if (getenv("PSYCHHID_TELLME")) {
+        printf("--> Accepting key %i as new KbQueue element%s.\n", IOHIDElementGetUsage(element) - 1, (queueIsAKeyboard) ? " for a keyboard" : "");
     }
 
     // Put the element cookie into the queue:
-    result = (*hidDataRef->hidQueueInterface)->addElement(hidDataRef->hidQueueInterface, newElement.cookie, 0);
-    if (kIOReturnSuccess != result) {
-        if (!getenv("PSYCHHID_SHUTUP")) {
-            printf("PTB-ERROR: Could not addElement cookie %i to queue for element with key %i! [IOKit error %x]\n", newElement.cookie, newElement.usage - 1, result);
-        }
-    }
-    else {
-        // Success! Mark as assigned:
-        thisKeyAssigned[newElement.usage - 1] = 1;
-    }
+    IOHIDQueueAddElement(queue, element);
 
     return(PsychError_none);
 }
 
-
 PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanList)
 {
-	pRecDevice			deviceRecord;
-	long				KbDeviceUsagePages[NUMDEVICEUSAGES]= {kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop};
-	long				KbDeviceUsages[NUMDEVICEUSAGES]={kHIDUsage_GD_Keyboard, kHIDUsage_GD_Keypad, kHIDUsage_GD_Mouse, kHIDUsage_GD_Pointer, kHIDUsage_GD_Joystick, kHIDUsage_GD_GamePad, kHIDUsage_GD_MultiAxisController};
-	int					numDeviceUsages=NUMDEVICEUSAGES;
-    int                 i;
+	pRecDevice  deviceRecord;
+	long        KbDeviceUsagePages[NUMDEVICEUSAGES] = {kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop};
+	long        KbDeviceUsages[NUMDEVICEUSAGES] = {kHIDUsage_GD_Keyboard, kHIDUsage_GD_Keypad, kHIDUsage_GD_Mouse, kHIDUsage_GD_Pointer, kHIDUsage_GD_Joystick, kHIDUsage_GD_GamePad, kHIDUsage_GD_MultiAxisController};
+	int         numDeviceUsages = NUMDEVICEUSAGES;
+    int         i;
+	HRESULT     result;
 
-	HRESULT result;
-	IOHIDDeviceInterface122** interface=NULL;	// This requires Mac OS X 10.3 or higher
-
-	if(scanList && (numScankeys != 256)) {
-		PsychErrorExitMsg(PsychError_user, "Second argument to KbQueueCreate must be a vector with 256 elements.");
-	}
+	if(scanList && (numScankeys != 256)) PsychErrorExitMsg(PsychError_user, "Second argument to KbQueueCreate must be a vector with 256 elements.");
     
 	PsychHIDVerifyInit();
 	
-	if(psychHIDKbQueueCFRunLoopRef || hidDataRef || psychHIDKbQueueFirstPress || psychHIDKbQueueFirstRelease || psychHIDKbQueueLastPress || psychHIDKbQueueLastRelease){
+	if(psychHIDKbQueueCFRunLoopRef || psychHIDKbQueueFirstPress || psychHIDKbQueueFirstRelease || psychHIDKbQueueLastPress || psychHIDKbQueueLastRelease){
 		// We are reinitializing, so need to release prior initialization
 		PsychHIDOSKbQueueRelease(deviceIndex);
 	}
@@ -800,9 +755,6 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanLi
 	// Mark as a non-keyboard device, to start with:
 	queueIsAKeyboard = FALSE;
     
-    // Clear out array of already assigned keys:
-    memset(&thisKeyAssigned, 0, sizeof(thisKeyAssigned));
-
 	// Find the requested device record
 	{
 		int deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
@@ -841,50 +793,15 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanLi
 	// to the queue and events from that key will not be detected.
 	// Note that psychHIDKbQueueList does not need to be freed because it is allocated
 	// within PsychAllocInIntegerListArg using mxMalloc
-	interface = PsychHIDGetDeviceInterfacePtrFromIndex(deviceIndex);
-	if(!interface)
-		PsychErrorExitMsg(PsychError_system, "Could not get interface to device.");
-		
-	hidDataRef=malloc(sizeof(HIDData));
-	if(!hidDataRef)
-		PsychErrorExitMsg(PsychError_system, "Could not allocate memory for queue.");
-	bzero(hidDataRef, sizeof(HIDData));
-	
-	// Allocate for the queue
-	hidDataRef->hidQueueInterface=(*interface)->allocQueue(interface);
-	if(!hidDataRef->hidQueueInterface){
-		free(hidDataRef);
-		hidDataRef=NULL;
-		PsychErrorExitMsg(PsychError_system, "Failed to allocate event queue for detecting key press.");
-	}
-	hidDataRef->hidDeviceInterface=interface;
-	
-	// Create the queue:
-    // The second number is the number of events can be stored before events are lost.
-    // Empirically, the lost events are the later events, despite my having seen claims to the contrary
-    // Also, empirically, I get 11 events when specifying 8 ???
-	result = (*hidDataRef->hidQueueInterface)->create(hidDataRef->hidQueueInterface, 0, 30);
-	if (kIOReturnSuccess != result){
-		(*hidDataRef->hidQueueInterface)->Release(hidDataRef->hidQueueInterface);
-		free(hidDataRef);
-		hidDataRef=NULL;
-		PsychErrorExitMsg(PsychError_system, "Failed to create event queue for detecting key press.");
-	}
 
+	
+    // Create HIDQueue for device:
+    queue = IOHIDQueueCreate(kCFAllocatorDefault, deviceRecord, 30, 0);
+    if (NULL == queue) PsychErrorExitMsg(PsychError_system, "Failed to create event queue for detecting key press.");
+
+    // Parse HID device to add all detected and selected keys:
 	{
-		// Prepare dictionary then add appropriate device elements to dictionary and queue
-		CFArrayRef elements;
-		CFMutableDictionaryRef hidElements = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-		if(!hidElements){
-			(*hidDataRef->hidQueueInterface)->dispose(hidDataRef->hidQueueInterface);
-			(*hidDataRef->hidQueueInterface)->Release(hidDataRef->hidQueueInterface);
-			free(hidDataRef);
-			hidDataRef=NULL;
-			PsychErrorExitMsg(PsychError_system, "Failed to create Dictionary for queue.");
-		}
-
-        // Add deviceRecord's elements to our dictionary 'hidElements' and also their coockies to the hidqueue
-        // accessible via 'hidDataRef', filtering unwanted keys via 'scanList'.
+        // Add deviceRecord's elements to our queue, filtering unwanted keys via 'scanList'.
         // This code is almost identical to the enumeration code in PsychHIDKbCheck, to make sure we get
         // matching performance and behaviour and hopefully that it works on the latest problematic Apple
         // hardware, e.g., late 2013 MacBookAir and OSX 10.9:
@@ -902,7 +819,7 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanLi
                 
                 usage     = IOHIDElementGetUsage(currentElement);
                 usagePage = IOHIDElementGetUsagePage(currentElement);
-                if (!getenv("PSYCHHID_SHUTUP")) {
+                if (getenv("PSYCHHID_TELLME")) {
                     printf("PTB-DEBUG: [KbQueueCreate]: ce %p page %d usage: %d isArray: %d\n", currentElement, usagePage, usage, IOHIDElementIsArray(currentElement));
                 }
                 
@@ -918,7 +835,7 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanLi
                             usage = IOHIDElementGetUsage(tIOHIDElementRef);
                             if ((usage <= 256) && (usage >= 1) && ( (scanList == NULL) || (scanList[usage - 1] > 0) )) {
                                 // Add it for use in keyboard queue:
-                                PsychHIDOSKbElementAdd(tIOHIDElementRef, hidElements, hidDataRef);
+                                PsychHIDOSKbElementAdd(tIOHIDElementRef, queue);
                             }
                         }
                     }
@@ -932,155 +849,53 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanLi
                 if(((usagePage == kHIDPage_KeyboardOrKeypad) || (usagePage == kHIDPage_Button)) && (usage <= 256) && (usage >= 1) &&
                    ( (scanList == NULL) || (scanList[usage - 1] > 0) ) ) {
                     // Add it for use in keyboard queue:
-                    PsychHIDOSKbElementAdd(currentElement, hidElements, hidDataRef);
+                    PsychHIDOSKbElementAdd(currentElement, queue);
                 }
             }
         }
-
-		// Make sure that the queue and dictionary aren't empty
-		if (CFDictionaryGetCount(hidElements) == 0){
-			CFRelease(hidElements);
-			(*hidDataRef->hidQueueInterface)->dispose(hidDataRef->hidQueueInterface);
-			(*hidDataRef->hidQueueInterface)->Release(hidDataRef->hidQueueInterface);
-			free(hidDataRef);
-			hidDataRef=NULL;
-			PsychErrorExitMsg(PsychError_system, "Failed to get any appropriate elements from the device.");
-		}
-		else{
-			hidDataRef->hidElementDictionary = hidElements;
-		}
-	}
-
-	hidDataRef->eventSource=NULL;
-	result = (*hidDataRef->hidQueueInterface)->createAsyncEventSource(hidDataRef->hidQueueInterface, &(hidDataRef->eventSource));
-	if (kIOReturnSuccess!=result)
-	{
-		CFRelease(hidDataRef->hidElementDictionary);
-		(*hidDataRef->hidQueueInterface)->dispose(hidDataRef->hidQueueInterface);
-		(*hidDataRef->hidQueueInterface)->Release(hidDataRef->hidQueueInterface);
-		free(hidDataRef);
-		hidDataRef=NULL;
-		PsychErrorExitMsg(PsychError_system, "Failed to get event source");
 	}
 
 	// Allocate memory for tracking keypresses
-	psychHIDKbQueueFirstPress=malloc(256*sizeof(AbsoluteTime));
-	psychHIDKbQueueFirstRelease=malloc(256*sizeof(AbsoluteTime));
-	psychHIDKbQueueLastPress=malloc(256*sizeof(AbsoluteTime));
-	psychHIDKbQueueLastRelease=malloc(256*sizeof(AbsoluteTime));
+	psychHIDKbQueueFirstPress   = malloc(256 * sizeof(psych_uint64));
+	psychHIDKbQueueFirstRelease = malloc(256 * sizeof(psych_uint64));
+	psychHIDKbQueueLastPress    = malloc(256 * sizeof(psych_uint64));
+	psychHIDKbQueueLastRelease  = malloc(256 * sizeof(psych_uint64));
 	
-	if(!psychHIDKbQueueFirstPress || !psychHIDKbQueueFirstRelease || !psychHIDKbQueueLastPress || !psychHIDKbQueueLastRelease){
-		CFRelease(hidDataRef->hidElementDictionary);
-		(*hidDataRef->hidQueueInterface)->dispose(hidDataRef->hidQueueInterface);
-		(*hidDataRef->hidQueueInterface)->Release(hidDataRef->hidQueueInterface);
-		free(hidDataRef);
-		hidDataRef=NULL;
+	if (!psychHIDKbQueueFirstPress || !psychHIDKbQueueFirstRelease || !psychHIDKbQueueLastPress || !psychHIDKbQueueLastRelease) {
+        CFRelease(queue);
 		PsychErrorExitMsg(PsychError_system, "Failed to allocate memory for tracking keypresses");
 	}
 	
 	// Zero memory for tracking keypresses
 	{
 		int i;
-		for(i=0;i<256;i++){
-			psychHIDKbQueueFirstPress[i].hi=0;
-			psychHIDKbQueueFirstPress[i].lo=0;
-			
-			psychHIDKbQueueFirstRelease[i].hi=0;
-			psychHIDKbQueueFirstRelease[i].lo=0;
-			
-			psychHIDKbQueueLastPress[i].hi=0;
-			psychHIDKbQueueLastPress[i].lo=0;
-			
-			psychHIDKbQueueLastRelease[i].hi=0;
-			psychHIDKbQueueLastRelease[i].lo=0;
+		for (i = 0; i < 256; i++) {
+			psychHIDKbQueueFirstPress[i]   = 0;
+			psychHIDKbQueueFirstRelease[i] = 0;
+			psychHIDKbQueueLastPress[i]    = 0;
+			psychHIDKbQueueLastRelease[i]  = 0;
 		}
 	}
 
-	{
-		//IOHIDCallbackFunction function=PsychHIDKbQueueCallbackFunction;
-		result= (*hidDataRef->hidQueueInterface)->setEventCallout(hidDataRef->hidQueueInterface, PsychHIDKbQueueCallbackFunction, NULL, hidDataRef);
-		if (kIOReturnSuccess!=result)
-		{
-			free(psychHIDKbQueueFirstPress);
-			free(psychHIDKbQueueFirstRelease);
-			free(psychHIDKbQueueLastPress);
-			free(psychHIDKbQueueLastRelease);
-			CFRelease(hidDataRef->hidElementDictionary);
-			(*hidDataRef->hidQueueInterface)->dispose(hidDataRef->hidQueueInterface);
-			(*hidDataRef->hidQueueInterface)->Release(hidDataRef->hidQueueInterface);
-			free(hidDataRef);
-			hidDataRef=NULL;
-			PsychErrorExitMsg(PsychError_system, "Failed to add callout to queue");
-		}
-	}
-	// Initializing an already initialized mutex has undefined results
-	// Use pthread_mutex_trylock to determine whether initialization is needed
-	{
-		int returnCode;
-		errno=0;
+    // Register "queue empty -> non-empty transition" callback: TODO Replace queue by reference to our keyboard queue struct:
+    IOHIDQueueRegisterValueAvailableCallback(queue, (IOHIDCallback) PsychHIDKbQueueCallbackFunction, (void*) queue);
 
-		pthread_mutex_init(&psychHIDKbQueueMutex, NULL);
-		returnCode=pthread_mutex_trylock(&psychHIDKbQueueMutex);
-		if(returnCode){
-			if(EINVAL==errno){
-				// Mutex is invalid, so initialize it
-				returnCode=pthread_mutex_init(&psychHIDKbQueueMutex, NULL);
-				if(returnCode!=0){
-				
-					free(psychHIDKbQueueFirstPress);
-					free(psychHIDKbQueueFirstRelease);
-					free(psychHIDKbQueueLastPress);
-					free(psychHIDKbQueueLastRelease);
-					CFRelease(hidDataRef->hidElementDictionary);
-					(*hidDataRef->hidQueueInterface)->dispose(hidDataRef->hidQueueInterface);
-					(*hidDataRef->hidQueueInterface)->Release(hidDataRef->hidQueueInterface);
-					free(hidDataRef);
-					hidDataRef=NULL;
-					PsychErrorExitMsg(PsychError_system, "Failed to create mutex");
-				}
-			}
-			else if(EBUSY==errno){
-				// Mutex is already locked--not expected, but perhaps recoverable
-				errno=0;
-				returnCode=pthread_mutex_unlock(&psychHIDKbQueueMutex);
-				if(returnCode!=0){
-					if(EPERM==errno){
-						// Some other thread holds the lock--not recoverable
-						free(psychHIDKbQueueFirstPress);
-						free(psychHIDKbQueueFirstRelease);
-						free(psychHIDKbQueueLastPress);
-						free(psychHIDKbQueueLastRelease);
-						CFRelease(hidDataRef->hidElementDictionary);
-						(*hidDataRef->hidQueueInterface)->dispose(hidDataRef->hidQueueInterface);
-						(*hidDataRef->hidQueueInterface)->Release(hidDataRef->hidQueueInterface);
-						free(hidDataRef);
-						hidDataRef=NULL;
-						PsychErrorExitMsg(PsychError_system, "Another thread holds the lock on the mutex");
-					}
-				}
-			}
-		}
-		else{
-			// Attempt to lock was successful, so unlock
-			pthread_mutex_unlock(&psychHIDKbQueueMutex);
-		}
-	}
+    // Create per queue mutex:
+    pthread_mutex_init(&psychHIDKbQueueMutex, NULL);
 
 	// Create event buffer:
 	PsychHIDCreateEventBuffer(0);
 
+    // Start queue processing thread:
 	{
-		int returnCode=pthread_create(&psychHIDKbQueueThread, NULL, PsychHIDKbQueueNewThread, NULL);
+		int returnCode = pthread_create(&psychHIDKbQueueThread, NULL, PsychHIDKbQueueNewThread, (void*) queue);
 		if(returnCode!=0){
 			free(psychHIDKbQueueFirstPress);
 			free(psychHIDKbQueueFirstRelease);
 			free(psychHIDKbQueueLastPress);
 			free(psychHIDKbQueueLastRelease);
-			CFRelease(hidDataRef->hidElementDictionary);
-			(*hidDataRef->hidQueueInterface)->dispose(hidDataRef->hidQueueInterface);
-			(*hidDataRef->hidQueueInterface)->Release(hidDataRef->hidQueueInterface);
-			free(hidDataRef);
-			hidDataRef=NULL;
+            CFRelease(queue);
+
 			PsychErrorExitMsg(PsychError_system, "Failed to create thread");
 		}
 	}

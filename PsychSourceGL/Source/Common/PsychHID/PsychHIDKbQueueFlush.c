@@ -120,52 +120,30 @@ PsychError PSYCHHIDKbQueueFlush(void)
 #include "PsychHIDKbQueue.h"
 
 extern UInt32 modifierKeyState;
-extern AbsoluteTime *psychHIDKbQueueFirstPress;
-extern AbsoluteTime *psychHIDKbQueueFirstRelease;
-extern AbsoluteTime *psychHIDKbQueueLastPress;
-extern AbsoluteTime *psychHIDKbQueueLastRelease;
-extern HIDDataRef hidDataRef;
-
+extern psych_uint64 *psychHIDKbQueueFirstPress;
+extern psych_uint64 *psychHIDKbQueueFirstRelease;
+extern psych_uint64 *psychHIDKbQueueLastPress;
+extern psych_uint64 *psychHIDKbQueueLastRelease;
 extern pthread_mutex_t psychHIDKbQueueMutex;
-    
+
 void PsychHIDOSKbQueueFlush(int deviceIndex)
 {
-	if(!hidDataRef || !psychHIDKbQueueFirstPress || !psychHIDKbQueueFirstRelease || !psychHIDKbQueueLastPress || !psychHIDKbQueueLastRelease){
+    int i;
+
+	if(!psychHIDKbQueueFirstPress || !psychHIDKbQueueFirstRelease || !psychHIDKbQueueLastPress || !psychHIDKbQueueLastRelease){
 		PsychErrorExitMsg(PsychError_user, "Queue has not been created.");
 	}
-	
-	// Drain the queue of any unprocessed events
-	{
-		IOHIDEventStruct event;
-		AbsoluteTime zeroTime= {0,0};
-		
-		while(  (*hidDataRef->hidQueueInterface)->getNextEvent(hidDataRef->hidQueueInterface, &event, zeroTime, 0) == kIOReturnSuccess){
-			if ((event.longValueSize != 0) && (event.longValue != NULL)) free(event.longValue);
-		}
-	}
-	
+
 	pthread_mutex_lock(&psychHIDKbQueueMutex);
 
-	// Zero out the scored values
-	{
-		int i;
-		for(i=0; i<256; i++){
-			
-			psychHIDKbQueueFirstPress[i].hi=0;
-			psychHIDKbQueueFirstPress[i].lo=0;
+    for (i = 0; i < 256; i++) {
+        psychHIDKbQueueFirstPress[i]   = 0;
+        psychHIDKbQueueFirstRelease[i] = 0;
+        psychHIDKbQueueLastPress[i]    = 0;
+        psychHIDKbQueueLastRelease[i]  = 0;
+    }
 
-			psychHIDKbQueueFirstRelease[i].hi=0;
-			psychHIDKbQueueFirstRelease[i].lo=0;
-
-			psychHIDKbQueueLastPress[i].hi=0;
-			psychHIDKbQueueLastPress[i].lo=0;
-
-			psychHIDKbQueueLastRelease[i].hi=0;
-			psychHIDKbQueueLastRelease[i].lo=0;
-		}
-        
-        modifierKeyState = 0;        
-	}
+    modifierKeyState = 0;        
 	pthread_mutex_unlock(&psychHIDKbQueueMutex);
 }
 

@@ -107,26 +107,16 @@ PsychError PSYCHHIDKbQueueStop(void)
 #if PSYCH_SYSTEM == PSYCH_OSX
 
 #include "PsychHIDKbQueue.h"
-extern HIDDataRef hidDataRef;
+extern IOHIDQueueRef queue;
 
 void PsychHIDOSKbQueueStop(int deviceIndex)
 {
-	if(!hidDataRef){
+	if (!queue) {
 		PsychErrorExitMsg(PsychError_user, "Queue has not been created.");
 	}
-	{
-		IOHIDQueueInterface **queue=(hidDataRef->hidQueueInterface);
-		if(!queue){
-			PsychErrorExitMsg(PsychError_user, "Queue has not been created.");
-		}
-		{
-			// Stop the queue
-			HRESULT result = (*queue)->stop(queue);
-			if (kIOReturnSuccess != result){
-				PsychErrorExitMsg(PsychError_system, "Failed to stop event queues.");
-			}
-		}
-	}
+
+    // Stop event collection in the queue:
+    IOHIDQueueStop(queue);
 }
 
 #endif
