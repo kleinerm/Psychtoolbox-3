@@ -79,7 +79,7 @@ while 1
         % The fprintf statement implicitly assumes that only one key will have
         % been pressed. If this assumption is not correct, an error will result
 
-        fprintf('You pressed key %i which is %s\n', find(firstPress), KbName(firstPress));
+        fprintf('You pressed key %i which is %s\n', min(find(firstPress)), KbName(min(find(firstPress))));
 
         if firstPress(escapeKey)
             break;
@@ -103,11 +103,10 @@ KbQueueStart(deviceIndex);
 
 while 1
     [ pressed, firstPress]=KbQueueCheck(deviceIndex);
-	timeSecs = firstPress(find(firstPress)); %#ok<FNDSB>
-	if pressed
-	
-		% Again, fprintf will give an error if multiple keys have been pressed
-		fprintf('"%s" typed at time %.3f seconds\n', KbName(firstPress), timeSecs - startSecs);
+    timeSecs = firstPress(find(firstPress)); %#ok<FNDSB>
+    if pressed
+        % Again, fprintf will give an error if multiple keys have been pressed
+        fprintf('"%s" typed at time %.3f seconds\n', KbName(min(find(firstPress))), timeSecs - startSecs);
         
         if firstPress(escapeKey)
             break;
@@ -147,7 +146,7 @@ try
     % Removes the blue screen flash and minimize extraneous warnings.
     Screen('Preference', 'VisualDebugLevel', 3);
     Screen('Preference', 'SuppressAllWarnings', 1);
-	
+
     % Find out how many screens and use largest screen number.
     whichScreen = max(Screen('Screens'));
     
@@ -169,9 +168,9 @@ try
     escapeKey = KbName('ESCAPE');
     
     keysOfInterest=zeros(1,256);
-	keysOfInterest(rightKey)=1;
-	keysOfInterest(leftKey)=1;
-	keysOfInterest(escapeKey)=1;
+    keysOfInterest(rightKey)=1;
+    keysOfInterest(leftKey)=1;
+    keysOfInterest(escapeKey)=1;
     
     % Use the parameters.
     spotDiameter = spotRadius * 2;
@@ -210,8 +209,8 @@ try
             % [pressed, firstPress, firstRelease, lastPress, lastRelease]= KbQueueCheck(deviceIndex)
             % and noting whether lastRelease is more recent than lastPress for
             % the keys of interest, tracking the status across loop iterations.
-           	% However,it would be easier to use KbCheck, which reflects the
-           	% current status of the key directly (see KbDemo.m)
+            % However,it would be easier to use KbCheck, which reflects the
+            % current status of the key directly (see KbDemo.m)
             
             [ pressed, firstPress]=KbQueueCheck(deviceIndex);
            
@@ -235,7 +234,7 @@ try
             
     end
     Screen('CloseAll');
-    KbQueueRelease(deviceIndex);	% Note that KbQueueRelease is also in the catch clause
+    KbQueueRelease(deviceIndex);  % Note that KbQueueRelease is also in the catch clause
     fprintf('\n4 of 5.  Done.\n');    
 
 catch
