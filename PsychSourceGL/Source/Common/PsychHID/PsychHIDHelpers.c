@@ -35,7 +35,7 @@ hid_device* source[MAXDEVICEINDEXS];
 
 #endif
 
-#if (PSYCH_SYSTEM == PSYCH_OSX) && defined(__LP64__)
+#if PSYCH_SYSTEM == PSYCH_OSX
 IOHIDDeviceInterface122** deviceInterfaces[MAXDEVICEINDEXS];
 #endif
 
@@ -72,7 +72,7 @@ void PsychInitializePsychHID(void)
 		hidEventBufferWritePos[i] = 0;
 	}
 
-    #if (PSYCH_SYSTEM == PSYCH_OSX) && defined(__LP64__)
+    #if PSYCH_SYSTEM == PSYCH_OSX
     for (i = 0; i < MAXDEVICEINDEXS; i++) deviceInterfaces[i] = NULL;
 
     // Try to load all bundles from Psychtoolbox/PsychHardware/
@@ -183,7 +183,6 @@ PsychError PsychHIDCleanup(void)
 	// Release all other HID device data structures:
 	#if PSYCH_SYSTEM == PSYCH_OSX
         // Via Apple HIDUtils:
-        #if (PSYCH_SYSTEM == PSYCH_OSX) && defined(__LP64__)
         int i;
         for (i = 0; i < MAXDEVICEINDEXS; i++) {
             if (deviceInterfaces[i]) {
@@ -193,7 +192,6 @@ PsychError PsychHIDCleanup(void)
                 deviceInterfaces[i] = NULL;
             }
         }
-        #endif
 
         if(HIDHaveDeviceList()) HIDReleaseDeviceList();
 	#else
@@ -444,7 +442,6 @@ void PsychHIDVerifyInit(void)
     
     // This check can only be made against the 64-Bit HID Utilities, as the older 32-Bit
     // version is even more crappy and can't report meaningful error status:
-    #if defined(__LP64__)
     if (!success) {
         printf("PsychHID-ERROR: Could not enumerate HID devices (HIDBuildDeviceList() failed)! There can be various reasons,\n");
         printf("PsychHID-ERROR: ranging from bugs in Apples HID software to a buggy HID device driver for some connected device,\n");
@@ -452,7 +449,6 @@ void PsychHIDVerifyInit(void)
         printf("PsychHID-ERROR: maybe could help. Check the OSX system log for possible HID related error messages or hints. Aborting...\n");
         PsychErrorExitMsg(PsychError_system, "HID device enumeration failed due to malfunction in the OSX 64 Bit Apple HID Utilities framework.");
     }
-    #endif
     
     // Double-Check to protect against pathetic Apple software:
     if (!HIDHaveDeviceList()) {
@@ -488,8 +484,7 @@ psych_bool PsychHIDWarnInputDisabled(const char* callerName)
 	return(FALSE);
 }
 
-#ifdef __LP64__
-// 64-Bit HID device interface setup & query: 10.5 Leopard and later:
+// Device interface setup & query: 10.5 Leopard and later:
 //
 // ---------------------------------
 // This routines is largely transplanted - with modifications - from HID Utilities v1.0:
@@ -572,16 +567,6 @@ IOHIDDeviceInterface122** PsychHIDGetDeviceInterfacePtrFromIndex(int deviceIndex
 
     return(interface);    
 }
-#else
-// 32-Bit legacy path for >= 10.4 Tiger:
-IOHIDDeviceInterface122** PsychHIDGetDeviceInterfacePtrFromIndex(int deviceIndex)
-{
-    IOHIDDeviceInterface122 **interface = NULL;
-    pRecDevice dev = PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
-    if (dev) interface = (IOHIDDeviceInterface122**) dev->interface;
-    return(interface);
-}
-#endif
 
 /*
     PsychHIDGetDeviceListByUsage()
@@ -596,11 +581,7 @@ void PsychHIDGetDeviceListByUsage(long usagePage, long usage, int *numDeviceIndi
     *numDeviceIndices=0;
     for(currentDevice=HIDGetFirstDevice(); currentDevice != NULL; currentDevice=HIDGetNextDevice(currentDevice)){    
         ++currentDeviceIndex;
-#ifndef __LP64__        
-        if(currentDevice->usagePage==usagePage && currentDevice->usage==usage){
-#else
         if(IOHIDDevice_GetUsagePage(currentDevice) == usagePage && IOHIDDevice_GetUsage(currentDevice) == usage){
-#endif
             deviceRecords[*numDeviceIndices]=currentDevice;
             deviceIndices[*numDeviceIndices]=currentDeviceIndex;  //the array is 0-indexed, devices are 1-indexed.   
             ++(*numDeviceIndices);
@@ -625,11 +606,7 @@ void PsychHIDGetDeviceListByUsages(int numUsages, long *usagePages, long *usages
 		currentDeviceIndex=0;
 		for(currentDevice=HIDGetFirstDevice(); currentDevice != NULL; currentDevice=HIDGetNextDevice(currentDevice)){    
 			++currentDeviceIndex;     
-#ifndef __LP64__        
-			if(currentDevice->usagePage==*usagePage && currentDevice->usage==*usage){
-#else
             if(IOHIDDevice_GetPrimaryUsagePage(currentDevice) == *usagePage && IOHIDDevice_GetPrimaryUsage(currentDevice) == *usage){
-#endif
 				deviceRecords[*numDeviceIndices]=currentDevice;
 				deviceIndices[*numDeviceIndices]=currentDeviceIndex;  //the array is 0-indexed, devices are 1-indexed.   
 				++(*numDeviceIndices);
@@ -794,7 +771,6 @@ int PsychHIDCountCollectionElements(pRecElement collectionRecord, HIDElementType
     CFIndex             i, nmax;
     HIDElementTypeMask	currentElementMaskValue;
 
-    #ifdef __LP64__
     CFArrayRef children = IOHIDElementGetChildren(collectionRecord);
     nmax = CFArrayGetCount(children);
     for (i = 0 ; i < nmax; i++) {
@@ -802,14 +778,6 @@ int PsychHIDCountCollectionElements(pRecElement collectionRecord, HIDElementType
         currentElementMaskValue = HIDConvertElementTypeToMask(IOHIDElementGetType(currentElement));  
         if(currentElementMaskValue & elementTypeMask) ++numElements;
     }
-    #else
-    for(currentElement=collectionRecord->pChild; currentElement != NULL; currentElement= currentElement->pSibling)
-    {
-        currentElementMaskValue=HIDConvertElementTypeToMask(currentElement->type);  
-        if(currentElementMaskValue & elementTypeMask)
-            ++numElements;
-    }
-    #endif
     return(numElements);
 }
 
@@ -830,7 +798,6 @@ int PsychHIDFindCollectionElements(pRecElement collectionRecord, HIDElementTypeM
     CFIndex             i, nmax;
     HIDElementTypeMask	currentElementMaskValue;
     
-    #ifdef __LP64__
     CFArrayRef children = IOHIDElementGetChildren(collectionRecord);
     nmax = CFArrayGetCount(children);
     for (i = 0 ; i < nmax; i++) {
@@ -842,18 +809,7 @@ int PsychHIDFindCollectionElements(pRecElement collectionRecord, HIDElementTypeM
             ++numElements;
         }
     }
-    #else
-    for(currentElement=collectionRecord->pChild; currentElement != NULL; currentElement= currentElement->pSibling)
-    {
-        currentElementMaskValue=HIDConvertElementTypeToMask(currentElement->type);  
-        if(currentElementMaskValue & elementTypeMask){
-            if(numElements == maxListElements)
-                PsychErrorExitMsg(PsychError_internal, "Number of collection elements exceeds allocated storage space." );
-            collectionMembers[numElements]=currentElement;
-            ++numElements;
-        }
-    }
-    #endif
+
     return(numElements);
 }
 	

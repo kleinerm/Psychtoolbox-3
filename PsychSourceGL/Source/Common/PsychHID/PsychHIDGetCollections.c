@@ -20,7 +20,6 @@
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 
-#ifdef __LP64__
 // ---------------------------------
 // convert an element type to a mask
 HIDElementTypeMask HIDConvertElementTypeToMask (const long type)
@@ -50,8 +49,6 @@ HIDElementTypeMask HIDConvertElementTypeToMask (const long type)
     }
     return result;
 }
-
-#endif
 
 static char useString[]= "collections=PsychHID('Collections', deviceNumber)";
 static char synopsisString[] = 
@@ -100,39 +97,26 @@ PsychError PSYCHHIDGetCollections(void)
         currentElement=HIDGetNextDeviceElement(currentElement, kHIDElementTypeCollection)) {
         lastElement = currentElement;
 
-        #ifdef __LP64__
-            // 64-Bit path: HIDUtilities V2.0, available since OSX 10.5:
-            IOHIDElementType type = IOHIDElementGetType(currentElement);
-            typeMask = HIDConvertElementTypeToMask(type);
+        // Needs HIDUtilities V2.0, available since OSX 10.5:
+        IOHIDElementType type = IOHIDElementGetType(currentElement);
+        typeMask = HIDConvertElementTypeToMask(type);
 
-            tmpName[0] = 0;
-            CFStringRef cfString = IOHIDElementGetName(currentElement);
-            if (cfString) {
-                CFStringGetCString(cfString, tmpName, sizeof(tmpName), kCFStringEncodingASCII);
-                CFRelease(cfString);
-            }
-            PsychSetStructArrayStringElement("name",            elementIndex, 	tmpName, elementStruct);
-        
-            PsychSetStructArrayDoubleElement("typeValue", elementIndex, (double) type, elementStruct);
-            HIDGetTypeName(type, elementTypeName);
+        tmpName[0] = 0;
+        CFStringRef cfString = IOHIDElementGetName(currentElement);
+        if (cfString) {
+            CFStringGetCString(cfString, tmpName, sizeof(tmpName), kCFStringEncodingASCII);
+            CFRelease(cfString);
+        }
+        PsychSetStructArrayStringElement("name",            elementIndex, 	tmpName, elementStruct);
+    
+        PsychSetStructArrayDoubleElement("typeValue", elementIndex, (double) type, elementStruct);
+        HIDGetTypeName(type, elementTypeName);
 
-            PsychSetStructArrayDoubleElement("usagePageValue", elementIndex, (double) IOHIDElementGetUsagePage(currentElement), elementStruct);
-            PsychSetStructArrayDoubleElement("usageValue", elementIndex, (double) IOHIDElementGetUsage(currentElement), elementStruct);
+        PsychSetStructArrayDoubleElement("usagePageValue", elementIndex, (double) IOHIDElementGetUsagePage(currentElement), elementStruct);
+        PsychSetStructArrayDoubleElement("usageValue", elementIndex, (double) IOHIDElementGetUsage(currentElement), elementStruct);
 
-            HIDGetUsageName(IOHIDElementGetUsagePage(currentElement), IOHIDElementGetUsage(currentElement), usageName);
-            PsychSetStructArrayStringElement("usageName",		elementIndex, 	usageName,                  elementStruct);
-        #else
-            // 32-Bit path: HIDUtilities V1.0:
-            typeMask = HIDConvertElementTypeToMask(currentElement->type);
-            PsychSetStructArrayStringElement("name",		elementIndex, 	currentElement->name,               elementStruct);
-            PsychSetStructArrayDoubleElement("typeValue",		elementIndex, 	(double)currentElement->type, 	elementStruct);
-            HIDGetTypeName(currentElement->type, elementTypeName);
-
-            PsychSetStructArrayDoubleElement("usagePageValue",	elementIndex, 	(double)currentElement->usagePage, 	elementStruct);
-            PsychSetStructArrayDoubleElement("usageValue",		elementIndex, 	(double)currentElement->usage, 		elementStruct);
-            HIDGetUsageName (currentElement->usagePage, currentElement->usage, usageName);
-            PsychSetStructArrayStringElement("usageName",		elementIndex, 	usageName,	 			elementStruct);
-        #endif
+        HIDGetUsageName(IOHIDElementGetUsagePage(currentElement), IOHIDElementGetUsage(currentElement), usageName);
+        PsychSetStructArrayStringElement("usageName",		elementIndex, 	usageName,                  elementStruct);
         
         PsychHIDGetTypeMaskStringFromTypeMask(typeMask, &typeMaskName);
         PsychSetStructArrayStringElement("typeMaskName",	elementIndex, 	typeMaskName,	 			elementStruct);
