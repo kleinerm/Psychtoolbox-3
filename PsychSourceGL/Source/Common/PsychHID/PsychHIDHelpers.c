@@ -43,12 +43,12 @@ IOHIDDeviceInterface122** deviceInterfaces[MAXDEVICEINDEXS];
 // PsychUSBDeviceRecord is currently defined in PsychHID.h.
 PsychUSBDeviceRecord usbDeviceRecordBank[PSYCH_HID_MAX_GENERIC_USB_DEVICES];
 
-PsychHIDEventRecord* hidEventBuffer[PSYCH_HID_MAX_KEYBOARD_DEVICES];
-unsigned int    hidEventBufferCapacity[PSYCH_HID_MAX_KEYBOARD_DEVICES];
-unsigned int    hidEventBufferReadPos[PSYCH_HID_MAX_KEYBOARD_DEVICES];
-unsigned int    hidEventBufferWritePos[PSYCH_HID_MAX_KEYBOARD_DEVICES];
-psych_mutex     hidEventBufferMutex[PSYCH_HID_MAX_KEYBOARD_DEVICES];
-psych_condition hidEventBufferCondition[PSYCH_HID_MAX_KEYBOARD_DEVICES];
+PsychHIDEventRecord* hidEventBuffer[PSYCH_HID_MAX_DEVICES];
+unsigned int    hidEventBufferCapacity[PSYCH_HID_MAX_DEVICES];
+unsigned int    hidEventBufferReadPos[PSYCH_HID_MAX_DEVICES];
+unsigned int    hidEventBufferWritePos[PSYCH_HID_MAX_DEVICES];
+psych_mutex     hidEventBufferMutex[PSYCH_HID_MAX_DEVICES];
+psych_condition hidEventBufferCondition[PSYCH_HID_MAX_DEVICES];
 
 /* PsychInitializePsychHID()
  *
@@ -65,7 +65,7 @@ void PsychInitializePsychHID(void)
 	}
 
 	// Setup event ringbuffers:
-	for (i = 0; i < PSYCH_HID_MAX_KEYBOARD_DEVICES; i++) {
+	for (i = 0; i < PSYCH_HID_MAX_DEVICES; i++) {
 		hidEventBuffer[i] = NULL;
 		hidEventBufferCapacity[i] = 10000; // Initial capacity of event buffer.
 		hidEventBufferReadPos[i] = 0;
@@ -284,7 +284,7 @@ psych_bool PsychHIDCreateEventBuffer(int deviceIndex)
 
 	// Flush it:
 	PsychHIDFlushEventBuffer(deviceIndex);
-	
+
 	return(TRUE);
 }
 
@@ -429,19 +429,6 @@ int PsychHIDAddEventToEventBuffer(int deviceIndex, PsychHIDEventRecord* evt)
 // ===================================
 
 #if PSYCH_SYSTEM == PSYCH_OSX
-
-void PsychHIDInitializeHIDStandardInterfaces(void)
-{
-    return;
-}
-
-void PsychHIDShutdownHIDStandardInterfaces(void)
-{
-    // Release the one single supported keyboard queue.
-    // The 0 is just a meaningless dummy.
-    PsychHIDOSKbQueueRelease(0);
-    return;
-}
 
 /*
     PSYCHHIDCheckInit() 

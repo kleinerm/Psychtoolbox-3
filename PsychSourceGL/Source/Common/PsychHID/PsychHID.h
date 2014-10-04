@@ -179,7 +179,6 @@ typedef struct PsychUSBDeviceRecord_Struct PsychUSBDeviceRecord;
 #define PSYCH_HID_MAX_DEVICE_ELEMENT_TYPE_NAME_LENGTH 		256
 #define PSYCH_HID_MAX_DEVICE_ELEMENT_USAGE_NAME_LENGTH		256
 #define PSYCH_HID_MAX_DEVICE_ELEMENTS						1024
-#define PSYCH_HID_MAX_KEYBOARD_DEVICES						64
 #define PSYCH_HID_MAX_GENERIC_USB_DEVICES					64
 
 // Function prototypes for module subfunctions.

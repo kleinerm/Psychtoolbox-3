@@ -6,42 +6,17 @@
   PLATFORMS:  All  
   
   AUTHORS:
-  Allen.Ingling@nyu.edu             awi 
-  mario.kleiner@tuebingen.mpg.de    mk
-      
+      Allen.Ingling@nyu.edu         awi
+      mario.kleiner.de@gmail.com    mk
+ 
   HISTORY:
-  4/29/03  awi		Created.
+      4/29/03  awi  Created.
   
   TO DO:
   
 */
 
 #include "PsychHID.h"
-
-#if PSYCH_SYSTEM == PSYCH_OSX
-
-#define NUMDEVICEUSAGES 7
-
-int PsychHIDOSXGetRealDefaultKbQueueDevice(void)
-{
-	long KbDeviceUsagePages[NUMDEVICEUSAGES] = {kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop};
-	long KbDeviceUsages[NUMDEVICEUSAGES] = {kHIDUsage_GD_Keyboard, kHIDUsage_GD_Keypad, kHIDUsage_GD_Mouse, kHIDUsage_GD_Pointer, kHIDUsage_GD_Joystick, kHIDUsage_GD_GamePad, kHIDUsage_GD_MultiAxisController};
-	int	numDeviceUsages = NUMDEVICEUSAGES;
-    
-    int deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
-    pRecDevice deviceRecords[PSYCH_HID_MAX_KEYBOARD_DEVICES];
-    int numDeviceIndices;
-    
-    // Enumerate all possible candidates for default keyboard device:
-    PsychHIDGetDeviceListByUsages(numDeviceUsages, KbDeviceUsagePages, KbDeviceUsages, &numDeviceIndices, deviceIndices, deviceRecords);
-    
-    // Nothing?
-    if (numDeviceIndices == 0) PsychErrorExitMsg(PsychError_user, "No keyboard or keypad devices detected.");
-    
-    // Return the default keyboard or keypad device as the first keyboard device or, if no keyboard, the first keypad:
-    return(deviceIndices[0]);
-}
-#endif
 
 static char useString[]= "devices=PsychHID('Devices' [, deviceClass])";
 static char synopsisString[] =  "Return a struct array describing each connected USB HID device.\n"
@@ -75,26 +50,15 @@ PsychError PSYCHHIDGetDevices(void)
 
     if (PsychCopyInIntegerArg(1, FALSE, &deviceClass)) {
         // Operating system specific enumeration of devices, selected by deviceClass:
-        
-        // Other classes currently unsupported on OSX:
-        #if PSYCH_SYSTEM != PSYCH_OSX
-            if (deviceClass == -1) {
-                PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) PsychHIDGetDefaultKbQueueDevice());
-                return(PsychError_none);
-            }
 
+        if (deviceClass == -1) {
+            PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) PsychHIDGetDefaultKbQueueDevice());
+            return(PsychError_none);
+        }
+
+        // Other classes currently unsupported on OSX, so only handle these on Linux and Windows:
+        #if PSYCH_SYSTEM != PSYCH_OSX
             return(PsychHIDEnumerateHIDInputDevices(deviceClass));
-        #else
-            // Horrible hack: Usercode wants 'deviceIndex' or real default HID keyboard,
-            // but we can't use PsychHIDGetDefaultKbQueueDevice() as on other OS'es, as
-            // that always has to return a hard-coded zero, because much of our code relies
-            // on that function for indexing into keyboard queues, and on OSX there is only
-            // one keyboard queue with index zero, regardless what deviceIndex is attached to
-            // that queue:
-            if (deviceClass == -1) {
-                PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) PsychHIDOSXGetRealDefaultKbQueueDevice());
-                return(PsychError_none);
-            }
         #endif
     }
 

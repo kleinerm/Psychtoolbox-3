@@ -25,10 +25,7 @@
 			2) It uses a queue to check for the trigger rather than simply checking to see if the key is down
 			
 		The use of a queue assures that brief trigger events will not be missed by virtue of being too brief
-		
-		Requires Mac OS X 10.3 or later. The matlab function KbTriggerWait.m screens away Mac OS X 10.2
-		and earlier, and this code does nothing to verify the Mac OS X version
-		
+
 		This routine will only listen to a single device. It would be possible to design an analogous routine
 		that would listen for a particular trigger key (or set of trigger keys) on multiple devices, but 
 		this would involve setting up a queue for each device and then polling each device in turn in the 
@@ -68,7 +65,7 @@ static char synopsisString[] =
         "On MS-Windows XP and later, it is currently not possible to enumerate different keyboards and mice "
         "separately. Therefore the 'deviceNumber' argument is mostly useless for keyboards and mice, usually you can "
         "only check the system keyboard or mouse.\n"
-        "OS/X on 64-Bit runtimes: This function is unsupported. You must use KbTriggerWait() instead.\n";
+        "OSX: This function is unsupported. You must use KbTriggerWait() instead.\n";
 
 static char seeAlsoString[] = "";
  
@@ -97,12 +94,3 @@ PsychError PSYCHHIDKbTriggerWait(void)
 
     return(PsychError_none);
 }
-
-#if PSYCH_SYSTEM == PSYCH_OSX
-
-void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
-{
-    PsychErrorExitMsg(PsychError_unimplemented, "PsychHID('KbTriggerWait') is no longer implemented. Use KbTriggerWait() instead!");
-}
-
-#endif

@@ -81,8 +81,8 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
     int					numDeviceUsages=NUMDEVICEUSAGES;
 	long				KbDeviceUsagePages[NUMDEVICEUSAGES]= {kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop};
 	long				KbDeviceUsages[NUMDEVICEUSAGES]={kHIDUsage_GD_Keyboard, kHIDUsage_GD_Keypad, kHIDUsage_GD_Mouse, kHIDUsage_GD_Pointer, kHIDUsage_GD_Joystick, kHIDUsage_GD_GamePad, kHIDUsage_GD_MultiAxisController};
-    static int			deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
-    static pRecDevice	deviceRecords[PSYCH_HID_MAX_KEYBOARD_DEVICES];
+    static int			deviceIndices[PSYCH_HID_MAX_DEVICES];
+    static pRecDevice	deviceRecords[PSYCH_HID_MAX_DEVICES];
     psych_bool			isDeviceSpecified, foundUserSpecifiedDevice;
     double				*timeValueOutput, *isKeyDownOutput, *keyArrayOutput;
     int					m, n, p, nout;
