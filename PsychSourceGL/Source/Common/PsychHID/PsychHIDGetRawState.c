@@ -57,11 +57,7 @@ PsychError PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, 
     PsychHIDVerifyInit();
     deviceRecord= PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
     elementRecord= PsychHIDGetElementRecordFromDeviceRecordAndElementIndex(deviceRecord, elementIndex);
-#ifndef __LP64__
-    elementValue = (double) HIDGetElementValue(deviceRecord, elementRecord);
-#else
     elementValue = IOHIDElement_GetValue(elementRecord, kIOHIDValueScaleTypePhysical);
-#endif
     if (val) *val = elementValue;
     return(PsychError_none);
 }

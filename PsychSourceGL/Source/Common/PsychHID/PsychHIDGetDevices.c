@@ -6,42 +6,17 @@
   PLATFORMS:  All  
   
   AUTHORS:
-  Allen.Ingling@nyu.edu             awi 
-  mario.kleiner@tuebingen.mpg.de    mk
-      
+      Allen.Ingling@nyu.edu         awi
+      mario.kleiner.de@gmail.com    mk
+ 
   HISTORY:
-  4/29/03  awi		Created.
+      4/29/03  awi  Created.
   
   TO DO:
   
 */
 
 #include "PsychHID.h"
-
-#if PSYCH_SYSTEM == PSYCH_OSX
-
-#define NUMDEVICEUSAGES 7
-
-int PsychHIDOSXGetRealDefaultKbQueueDevice(void)
-{
-	long KbDeviceUsagePages[NUMDEVICEUSAGES] = {kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop};
-	long KbDeviceUsages[NUMDEVICEUSAGES] = {kHIDUsage_GD_Keyboard, kHIDUsage_GD_Keypad, kHIDUsage_GD_Mouse, kHIDUsage_GD_Pointer, kHIDUsage_GD_Joystick, kHIDUsage_GD_GamePad, kHIDUsage_GD_MultiAxisController};
-	int	numDeviceUsages = NUMDEVICEUSAGES;
-    
-    int deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
-    pRecDevice deviceRecords[PSYCH_HID_MAX_KEYBOARD_DEVICES];
-    int numDeviceIndices;
-    
-    // Enumerate all possible candidates for default keyboard device:
-    PsychHIDGetDeviceListByUsages(numDeviceUsages, KbDeviceUsagePages, KbDeviceUsages, &numDeviceIndices, deviceIndices, deviceRecords);
-    
-    // Nothing?
-    if (numDeviceIndices == 0) PsychErrorExitMsg(PsychError_user, "No keyboard or keypad devices detected.");
-    
-    // Return the default keyboard or keypad device as the first keyboard device or, if no keyboard, the first keypad:
-    return(deviceIndices[0]);
-}
-#endif
 
 static char useString[]= "devices=PsychHID('Devices' [, deviceClass])";
 static char synopsisString[] =  "Return a struct array describing each connected USB HID device.\n"
@@ -75,26 +50,15 @@ PsychError PSYCHHIDGetDevices(void)
 
     if (PsychCopyInIntegerArg(1, FALSE, &deviceClass)) {
         // Operating system specific enumeration of devices, selected by deviceClass:
-        
-        // Other classes currently unsupported on OSX:
-        #if PSYCH_SYSTEM != PSYCH_OSX
-            if (deviceClass == -1) {
-                PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) PsychHIDGetDefaultKbQueueDevice());
-                return(PsychError_none);
-            }
 
+        if (deviceClass == -1) {
+            PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) PsychHIDGetDefaultKbQueueDevice());
+            return(PsychError_none);
+        }
+
+        // Other classes currently unsupported on OSX, so only handle these on Linux and Windows:
+        #if PSYCH_SYSTEM != PSYCH_OSX
             return(PsychHIDEnumerateHIDInputDevices(deviceClass));
-        #else
-            // Horrible hack: Usercode wants 'deviceIndex' or real default HID keyboard,
-            // but we can't use PsychHIDGetDefaultKbQueueDevice() as on other OS'es, as
-            // that always has to return a hard-coded zero, because much of our code relies
-            // on that function for indexing into keyboard queues, and on OSX there is only
-            // one keyboard queue with index zero, regardless what deviceIndex is attached to
-            // that queue:
-            if (deviceClass == -1) {
-                PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) PsychHIDOSXGetRealDefaultKbQueueDevice());
-                return(PsychError_none);
-            }
         #endif
     }
 
@@ -104,8 +68,8 @@ PsychError PSYCHHIDGetDevices(void)
     deviceIndex=0;
     for(currentDevice=HIDGetFirstDevice(); currentDevice != NULL; currentDevice=HIDGetNextDevice(currentDevice)){
 
-        // Code path for Linux, Windows and 32-Bit OSX 10.4 and later:
-        #if (PSYCH_SYSTEM != PSYCH_OSX) || !defined(__LP64__)
+        // Code path for Linux and Windows:
+        #if (PSYCH_SYSTEM != PSYCH_OSX)
             PsychSetStructArrayDoubleElement("usagePageValue",	deviceIndex, 	(double)currentDevice->usagePage,	deviceStruct);
             PsychSetStructArrayDoubleElement("usageValue",		deviceIndex, 	(double)currentDevice->usage, 		deviceStruct);
 
@@ -133,134 +97,128 @@ PsychError PSYCHHIDGetDevices(void)
 
         // OSX specific:
         #if PSYCH_SYSTEM == PSYCH_OSX
-            // OSX 64-Bit specific: OSX 10.5 and later:
-            #ifdef __LP64__
-                char tmpString[1024];
-                CFStringRef cfusageName = NULL;
-        
-                PsychSetStructArrayDoubleElement("usagePageValue", deviceIndex, (double) IOHIDDevice_GetPrimaryUsagePage(currentDevice), deviceStruct);
-                PsychSetStructArrayDoubleElement("usageValue", deviceIndex, (double) IOHIDDevice_GetPrimaryUsage(currentDevice), deviceStruct);
-
-                sprintf(usageName, "");
-                // HIDCopyUsageName() is slow: It takes about 22 msecs to map one HID device on a modern machine!
-                // However, the functions below are also rather slow, taking another ~ 8 msecs for a total of ~30 msecs
-                // on a mid-2010 MacBookPro with quad-core cpu.
-                cfusageName = HIDCopyUsageName(IOHIDDevice_GetPrimaryUsagePage(currentDevice), IOHIDDevice_GetPrimaryUsage(currentDevice));
-
-                if (cfusageName && (CFStringGetLength(cfusageName) > 0)) {
-                    CFStringGetCString(cfusageName, usageName, sizeof(usageName), kCFStringEncodingASCII);
-                    CFRelease(cfusageName);
-                } else {
-                    // Use our fallback from HID Utilties v1.0, implemented below this function at the end of the file:
-                    HIDGetUsageName(IOHIDDevice_GetPrimaryUsagePage(currentDevice), IOHIDDevice_GetPrimaryUsage(currentDevice), usageName);
-                }
-
-                PsychSetStructArrayDoubleElement("vendorID", deviceIndex, (double) IOHIDDevice_GetVendorID(currentDevice), deviceStruct);
-                PsychSetStructArrayDoubleElement("productID", deviceIndex, (double)IOHIDDevice_GetProductID(currentDevice), deviceStruct);
-                PsychSetStructArrayDoubleElement("version", deviceIndex, (double) IOHIDDevice_GetVersionNumber(currentDevice), deviceStruct);
-                PsychSetStructArrayDoubleElement("locationID", deviceIndex, (double) IOHIDDevice_GetLocationID(currentDevice), deviceStruct);
-
-                sprintf(tmpString, "");
-                cfusageName = IOHIDDevice_GetManufacturer(currentDevice);
-                if (cfusageName && (CFStringGetLength(cfusageName) > 0)) {
-                    CFStringGetCString(cfusageName, tmpString, sizeof(tmpString), kCFStringEncodingASCII);
-                } else {
-                    HIDGetVendorNameFromVendorID(IOHIDDevice_GetVendorID(currentDevice), tmpString);
-                }
-                PsychSetStructArrayStringElement("manufacturer", deviceIndex, tmpString, deviceStruct);
-
-                sprintf(tmpString, "");
-                cfusageName = IOHIDDevice_GetProduct(currentDevice);
-                if (cfusageName && (CFStringGetLength(cfusageName) > 0)) {
-                    CFStringGetCString(cfusageName, tmpString, sizeof(tmpString), kCFStringEncodingASCII);
-                } else {
-                    HIDGetProductNameFromVendorProductID(IOHIDDevice_GetVendorID(currentDevice), IOHIDDevice_GetProductID(currentDevice), tmpString);
-                }
-                PsychSetStructArrayStringElement("product", deviceIndex, tmpString, deviceStruct);
-        
-                sprintf(tmpString, "");
-                cfusageName = IOHIDDevice_GetTransport(currentDevice);
-                if (cfusageName && (CFStringGetLength(cfusageName) > 0)) {
-                    CFStringGetCString(cfusageName, tmpString, sizeof(tmpString), kCFStringEncodingASCII);
-                }
-                PsychSetStructArrayStringElement("transport", deviceIndex, tmpString, deviceStruct);
-
-                sprintf(tmpString, "");
-                cfusageName = IOHIDDevice_GetSerialNumber(currentDevice);
-                if (cfusageName && (CFStringGetLength(cfusageName) > 0)) {
-                    CFStringGetCString(cfusageName, tmpString, sizeof(tmpString), kCFStringEncodingASCII);
-                }
-                PsychSetStructArrayStringElement("serialNumber", deviceIndex, tmpString, deviceStruct);
-
-                PsychSetStructArrayDoubleElement("collections",     deviceIndex,    HIDCountDeviceElements(currentDevice, kHIDElementTypeCollection), deviceStruct);
-                PsychSetStructArrayDoubleElement("totalElements",   deviceIndex,    HIDCountDeviceElements(currentDevice, kHIDElementTypeIO), deviceStruct);
-                PsychSetStructArrayDoubleElement("features",   deviceIndex,    HIDCountDeviceElements(currentDevice, kHIDElementTypeFeature), deviceStruct);
-                PsychSetStructArrayDoubleElement("inputs",   deviceIndex,    HIDCountDeviceElements(currentDevice, kHIDElementTypeInput), deviceStruct);
-                PsychSetStructArrayDoubleElement("outputs",   deviceIndex,    HIDCountDeviceElements(currentDevice, kHIDElementTypeOutput), deviceStruct);
+            char tmpString[1024];
+            CFStringRef cfusageName = NULL;
     
-                // Iterate over all device input elements and count buttons, sliders, axis, hats etc.:
-                pRecElement currentElement, lastElement = NULL;
-                long usagePage, usage;
-                unsigned int axis = 0, sliders = 0, dials = 0, wheels = 0, hats = 0, buttons = 0;
-                for(currentElement = HIDGetFirstDeviceElement(currentDevice, kHIDElementTypeInput); 
-                    (currentElement != NULL) && (currentElement != lastElement);
-                    currentElement = HIDGetNextDeviceElement(currentElement, kHIDElementTypeInput)) {
-                    lastElement = currentElement;
-                    
-                    usagePage = IOHIDElementGetUsagePage(currentElement);
-                    usage = IOHIDElementGetUsage(currentElement);
-                    
-                    switch (usagePage) {
-                        case kHIDPage_GenericDesktop:
-                            switch (usage) {
-                                case kHIDUsage_GD_X:
-                                case kHIDUsage_GD_Y:
-                                case kHIDUsage_GD_Z:
-                                case kHIDUsage_GD_Rx:
-                                case kHIDUsage_GD_Ry:
-                                case kHIDUsage_GD_Rz:
-                                    axis++;
+            PsychSetStructArrayDoubleElement("usagePageValue", deviceIndex, (double) IOHIDDevice_GetPrimaryUsagePage(currentDevice), deviceStruct);
+            PsychSetStructArrayDoubleElement("usageValue", deviceIndex, (double) IOHIDDevice_GetPrimaryUsage(currentDevice), deviceStruct);
+
+            sprintf(usageName, "");
+            // HIDCopyUsageName() is slow: It takes about 22 msecs to map one HID device on a modern machine!
+            // However, the functions below are also rather slow, taking another ~ 8 msecs for a total of ~30 msecs
+            // on a mid-2010 MacBookPro with quad-core cpu.
+            cfusageName = HIDCopyUsageName(IOHIDDevice_GetPrimaryUsagePage(currentDevice), IOHIDDevice_GetPrimaryUsage(currentDevice));
+
+            if (cfusageName && (CFStringGetLength(cfusageName) > 0)) {
+                CFStringGetCString(cfusageName, usageName, sizeof(usageName), kCFStringEncodingASCII);
+                CFRelease(cfusageName);
+            } else {
+                // Use our fallback from HID Utilties v1.0, implemented below this function at the end of the file:
+                HIDGetUsageName(IOHIDDevice_GetPrimaryUsagePage(currentDevice), IOHIDDevice_GetPrimaryUsage(currentDevice), usageName);
+            }
+
+            PsychSetStructArrayDoubleElement("vendorID", deviceIndex, (double) IOHIDDevice_GetVendorID(currentDevice), deviceStruct);
+            PsychSetStructArrayDoubleElement("productID", deviceIndex, (double)IOHIDDevice_GetProductID(currentDevice), deviceStruct);
+            PsychSetStructArrayDoubleElement("version", deviceIndex, (double) IOHIDDevice_GetVersionNumber(currentDevice), deviceStruct);
+            PsychSetStructArrayDoubleElement("locationID", deviceIndex, (double) IOHIDDevice_GetLocationID(currentDevice), deviceStruct);
+
+            sprintf(tmpString, "");
+            cfusageName = IOHIDDevice_GetManufacturer(currentDevice);
+            if (cfusageName && (CFStringGetLength(cfusageName) > 0)) {
+                CFStringGetCString(cfusageName, tmpString, sizeof(tmpString), kCFStringEncodingASCII);
+            } else {
+                HIDGetVendorNameFromVendorID(IOHIDDevice_GetVendorID(currentDevice), tmpString);
+            }
+            PsychSetStructArrayStringElement("manufacturer", deviceIndex, tmpString, deviceStruct);
+
+            sprintf(tmpString, "");
+            cfusageName = IOHIDDevice_GetProduct(currentDevice);
+            if (cfusageName && (CFStringGetLength(cfusageName) > 0)) {
+                CFStringGetCString(cfusageName, tmpString, sizeof(tmpString), kCFStringEncodingASCII);
+            } else {
+                HIDGetProductNameFromVendorProductID(IOHIDDevice_GetVendorID(currentDevice), IOHIDDevice_GetProductID(currentDevice), tmpString);
+            }
+            PsychSetStructArrayStringElement("product", deviceIndex, tmpString, deviceStruct);
+    
+            sprintf(tmpString, "");
+            cfusageName = IOHIDDevice_GetTransport(currentDevice);
+            if (cfusageName && (CFStringGetLength(cfusageName) > 0)) {
+                CFStringGetCString(cfusageName, tmpString, sizeof(tmpString), kCFStringEncodingASCII);
+            }
+            PsychSetStructArrayStringElement("transport", deviceIndex, tmpString, deviceStruct);
+
+            sprintf(tmpString, "");
+            cfusageName = IOHIDDevice_GetSerialNumber(currentDevice);
+            if (cfusageName && (CFStringGetLength(cfusageName) > 0)) {
+                CFStringGetCString(cfusageName, tmpString, sizeof(tmpString), kCFStringEncodingASCII);
+            }
+            PsychSetStructArrayStringElement("serialNumber", deviceIndex, tmpString, deviceStruct);
+
+            PsychSetStructArrayDoubleElement("collections",     deviceIndex,    HIDCountDeviceElements(currentDevice, kHIDElementTypeCollection), deviceStruct);
+            PsychSetStructArrayDoubleElement("totalElements",   deviceIndex,    HIDCountDeviceElements(currentDevice, kHIDElementTypeIO), deviceStruct);
+            PsychSetStructArrayDoubleElement("features",   deviceIndex,    HIDCountDeviceElements(currentDevice, kHIDElementTypeFeature), deviceStruct);
+            PsychSetStructArrayDoubleElement("inputs",   deviceIndex,    HIDCountDeviceElements(currentDevice, kHIDElementTypeInput), deviceStruct);
+            PsychSetStructArrayDoubleElement("outputs",   deviceIndex,    HIDCountDeviceElements(currentDevice, kHIDElementTypeOutput), deviceStruct);
+
+            // Iterate over all device input elements and count buttons, sliders, axis, hats etc.:
+            pRecElement currentElement, lastElement = NULL;
+            long usagePage, usage;
+            unsigned int axis = 0, sliders = 0, dials = 0, wheels = 0, hats = 0, buttons = 0;
+            for(currentElement = HIDGetFirstDeviceElement(currentDevice, kHIDElementTypeInput); 
+                (currentElement != NULL) && (currentElement != lastElement);
+                currentElement = HIDGetNextDeviceElement(currentElement, kHIDElementTypeInput)) {
+                lastElement = currentElement;
+                
+                usagePage = IOHIDElementGetUsagePage(currentElement);
+                usage = IOHIDElementGetUsage(currentElement);
+                
+                switch (usagePage) {
+                    case kHIDPage_GenericDesktop:
+                        switch (usage) {
+                            case kHIDUsage_GD_X:
+                            case kHIDUsage_GD_Y:
+                            case kHIDUsage_GD_Z:
+                            case kHIDUsage_GD_Rx:
+                            case kHIDUsage_GD_Ry:
+                            case kHIDUsage_GD_Rz:
+                                axis++;
+                            break;
+                                
+                            case kHIDUsage_GD_Slider:
+                                sliders++;
+                            break;
+
+                            case kHIDUsage_GD_Dial:
+                                dials++;
                                 break;
-                                    
-                                case kHIDUsage_GD_Slider:
-                                    sliders++;
+
+                            case kHIDUsage_GD_Wheel:
+                                wheels++;
                                 break;
 
-                                case kHIDUsage_GD_Dial:
-                                    dials++;
-                                    break;
-
-                                case kHIDUsage_GD_Wheel:
-                                    wheels++;
-                                    break;
-
-                                case kHIDUsage_GD_Hatswitch:
-                                    hats++;
-                                    break;
-                                default:
-                                    break;
-                            }
-                        break;
-                            
-                        case kHIDPage_Button:
-                            buttons++;
-                        break;
-                            
-                        default:
-                        break;
-                    }
+                            case kHIDUsage_GD_Hatswitch:
+                                hats++;
+                                break;
+                            default:
+                                break;
+                        }
+                    break;
+                        
+                    case kHIDPage_Button:
+                        buttons++;
+                    break;
+                        
+                    default:
+                    break;
                 }
+            }
 
-                PsychSetStructArrayDoubleElement("axes",            deviceIndex, 	(double) axis, 		deviceStruct);
-                PsychSetStructArrayDoubleElement("buttons",         deviceIndex, 	(double) buttons, 	deviceStruct);
-                PsychSetStructArrayDoubleElement("hats",            deviceIndex, 	(double) hats, 		deviceStruct);
-                PsychSetStructArrayDoubleElement("sliders",         deviceIndex, 	(double) sliders, 	deviceStruct);
-                PsychSetStructArrayDoubleElement("dials",           deviceIndex, 	(double) dials, 		deviceStruct);
-                PsychSetStructArrayDoubleElement("wheels",          deviceIndex, 	(double) wheels, 		deviceStruct);
-            #else
-                // 32-Bit OSX 10.4 and later:
-                HIDGetUsageName(currentDevice->usagePage, currentDevice->usage, usageName);
-            #endif
+            PsychSetStructArrayDoubleElement("axes",            deviceIndex, 	(double) axis, 		deviceStruct);
+            PsychSetStructArrayDoubleElement("buttons",         deviceIndex, 	(double) buttons, 	deviceStruct);
+            PsychSetStructArrayDoubleElement("hats",            deviceIndex, 	(double) hats, 		deviceStruct);
+            PsychSetStructArrayDoubleElement("sliders",         deviceIndex, 	(double) sliders, 	deviceStruct);
+            PsychSetStructArrayDoubleElement("dials",           deviceIndex, 	(double) dials, 		deviceStruct);
+            PsychSetStructArrayDoubleElement("wheels",          deviceIndex, 	(double) wheels, 		deviceStruct);
         
             // Store dummy value -1 to mark interfaceID as invalid/unknown on OSX:
             PsychSetStructArrayDoubleElement("interfaceID",	deviceIndex, (double) -1, deviceStruct);
@@ -288,7 +246,7 @@ PsychError PSYCHHIDGetDevices(void)
     return(PsychError_none);	
 }
 
-#if (PSYCH_SYSTEM == PSYCH_OSX) && defined(__LP64__)
+#if PSYCH_SYSTEM == PSYCH_OSX
 // This routine is a transplanted and modified version from Apple HID Utiltities v1.0, as allowed by
 // its license, which would be BSD-3 style for unmodified distribution of the full package, but has
 // no restrictions or requirements at all if only parts are copied, or code is modified after copy,

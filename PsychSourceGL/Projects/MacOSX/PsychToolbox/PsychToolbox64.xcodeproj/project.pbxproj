@@ -871,6 +871,7 @@
 		83E2C42C0D2FCC1A00FFD350 /* PsychCV.cc in Sources */ = {isa = PBXBuildFile; fileRef = 83E2C42B0D2FCC1A00FFD350 /* PsychCV.cc */; };
 		83E54DEF14B55A0900FDDC46 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83E54DEE14B55A0900FDDC46 /* QuartzCore.framework */; };
 		83E588B9147F56D90073A92F /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83E588B7147F56D80073A92F /* CoreVideo.framework */; };
+		83EBF3BC19E0283800C06309 /* PsychHIDStandardInterfaces.c in Sources */ = {isa = PBXBuildFile; fileRef = 83EBF3BA19E0283800C06309 /* PsychHIDStandardInterfaces.c */; };
 		83FD4C470BA5F0D700ECC9A4 /* VLTracker2D.cc in Sources */ = {isa = PBXBuildFile; fileRef = 83FD4C460BA5F0D700ECC9A4 /* VLTracker2D.cc */; };
 		F07432070AD465B400602397 /* MachPriorityCommonMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F95012904E85245007A7274 /* MachPriorityCommonMex.c */; };
 		F07432080AD465B400602397 /* MachSetPriorityMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F95014604E8A2EB007A7274 /* MachSetPriorityMex.c */; };
@@ -2155,7 +2156,6 @@
 		831C3AE31557388C00F50142 /* PsychCocoaGlue.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychCocoaGlue.c; path = ../../../Source/OSX/Screen/PsychCocoaGlue.c; sourceTree = "<group>"; };
 		831C3AEA15574DAF00F50142 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = ../../../../../../../../../System/Library/Frameworks/Cocoa.framework; sourceTree = "<group>"; };
 		8320C1B80D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychVideoCaptureSupportLibDC1394.c; path = ../../../Source/Common/Screen/PsychVideoCaptureSupportLibDC1394.c; sourceTree = SOURCE_ROOT; };
-		8325CEC10CAF158800B498CD /* PsychHIDKbQueue.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychHIDKbQueue.h; path = ../../../Source/Common/PsychHID/PsychHIDKbQueue.h; sourceTree = SOURCE_ROOT; };
 		8325CEC20CAF15AB00B498CD /* PsychHIDKbQueueCheck.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychHIDKbQueueCheck.c; path = ../../../Source/Common/PsychHID/PsychHIDKbQueueCheck.c; sourceTree = SOURCE_ROOT; };
 		8325CEC50CAF15B700B498CD /* PsychHIDKbQueueCreate.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychHIDKbQueueCreate.c; path = ../../../Source/Common/PsychHID/PsychHIDKbQueueCreate.c; sourceTree = SOURCE_ROOT; };
 		8325CEC80CAF15C100B498CD /* PsychHIDKbQueueFlush.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychHIDKbQueueFlush.c; path = ../../../Source/Common/PsychHID/PsychHIDKbQueueFlush.c; sourceTree = SOURCE_ROOT; };
@@ -2292,6 +2292,8 @@
 		83E2C42B0D2FCC1A00FFD350 /* PsychCV.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = PsychCV.cc; sourceTree = "<group>"; };
 		83E54DEE14B55A0900FDDC46 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = /System/Library/Frameworks/QuartzCore.framework; sourceTree = "<absolute>"; };
 		83E588B7147F56D80073A92F /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = /System/Library/Frameworks/CoreVideo.framework; sourceTree = "<absolute>"; };
+		83EBF3BA19E0283800C06309 /* PsychHIDStandardInterfaces.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychHIDStandardInterfaces.c; path = ../../../Source/OSX/PsychHID/PsychHIDStandardInterfaces.c; sourceTree = "<group>"; };
+		83EBF3BB19E0283800C06309 /* PsychHIDStandardInterfaces.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = PsychHIDStandardInterfaces.h; path = ../../../Source/OSX/PsychHID/PsychHIDStandardInterfaces.h; sourceTree = "<group>"; };
 		83EFE9F00F9A6433002211F0 /* libARvideo-Intel.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = "libARvideo-Intel.a"; sourceTree = SOURCE_ROOT; };
 		83EFE9F20F9A647E002211F0 /* video.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = video.h; path = ../../../Cohorts/ARToolkit/include/AR/video.h; sourceTree = SOURCE_ROOT; };
 		83FD4C450BA5F0CB00ECC9A4 /* VLTracker2D.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = VLTracker2D.h; path = /Users/kleinerm/projects/MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/VLTracker2D.h; sourceTree = "<absolute>"; };
@@ -3549,7 +3551,6 @@
 				CF566E6807F7D2FC00D4957A /* RegisterProject.h */,
 				CF566E6907F7D2FC00D4957A /* RegisterProject.c */,
 				CF566E7307F7D2FC00D4957A /* PsychHID.h */,
-				8325CEC10CAF158800B498CD /* PsychHIDKbQueue.h */,
 				CF566E6607F7D2FC00D4957A /* PsychHIDErrors.c */,
 				CF566E6707F7D2FC00D4957A /* PsychHIDGetCalibratedState.c */,
 				CF566E7807F7D2FC00D4957A /* PsychHIDGetCollections.c */,
@@ -3575,6 +3576,8 @@
 				2F5434E40904C61F0051D6CC /* PsychHIDReceiveReports.c */,
 				2F5434E60904C6A40051D6CC /* PsychHIDReceiveReportsStop.c */,
 				CF566E6B07F7D2FC00D4957A /* PsychHIDSetReport.c */,
+				83EBF3BA19E0283800C06309 /* PsychHIDStandardInterfaces.c */,
+				83EBF3BB19E0283800C06309 /* PsychHIDStandardInterfaces.h */,
 				CF566E6A07F7D2FC00D4957A /* PsychHIDSynopsis.c */,
 			);
 			name = PsychHID;
@@ -7549,6 +7552,7 @@
 				833910EA190C8CB50096DDE9 /* PsychScriptingGlue.c in Sources */,
 				8310AC4B0F87C24C004AAE79 /* PsychHIDUSBControlTransfer.c in Sources */,
 				833A17A113DA1D2900C1911E /* PsychHIDGenericUSBLibSupport.c in Sources */,
+				83EBF3BC19E0283800C06309 /* PsychHIDStandardInterfaces.c in Sources */,
 				830C8DA5163BA879009B354B /* PsychHIDKeyboardHelper.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
