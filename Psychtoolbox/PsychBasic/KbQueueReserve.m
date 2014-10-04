@@ -14,6 +14,8 @@ function isReserved = KbQueueReserve(action, actor, deviceIndex)
 
 % History:
 % 23.10.2012  mk  Written.
+% 05.10.2014  mk  Remove OSX and 32-Bit OSX special cases.
+%                 OSX now behaves like Linux and Windows.
 
 % Store for whom the default queue is reserved:
 persistent reservedFor;
@@ -28,8 +30,7 @@ if isempty(reservedFor)
     defaultKbDevice = PsychHID('Devices', -1);
 end
 
-% Special case handling for Linux and Windows:
-if ~IsOSX && ~isempty(deviceIndex) && (deviceIndex ~= defaultKbDevice)
+if ~isempty(deviceIndex) && (deviceIndex ~= defaultKbDevice)
     % On non-OSX, all non-default-keyboard queues are always reserved for
     % usercode, as only the default keyboard queue (aka empty deviceIndex)
     % matters for GetChar:
@@ -52,14 +53,6 @@ if action == 1
     % If it is already reserved for us, or not reserved to anybody, then we
     % can reserve it for us:
     if (reservedFor == 0) || (reservedFor == actor)
-        
-        if (actor == 1) && IsOSX && ~Is64Bit
-            % Special case: Tried to use KbQueue for GetChar() et al. on
-            % 32-Bit OSX runtime, which is unsupported due to limitations
-            % in PsychHID:
-            error('GetChar/CharAvail/FlushEvents/ListenChar are not supported on 32-Bit Matlab in -nojvm mode on OSX.');
-        end
-        
         reservedFor = actor;
     end
 end

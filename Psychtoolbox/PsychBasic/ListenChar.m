@@ -52,8 +52,8 @@ function ListenChar(listenFlag)
 %
 % 3. If you use Matlab in "matlab -nojvm" mode without its GUI, or if you
 % use GNU/Octave instead of Matlab, the same restrictions as in 2. apply -
-% no parallel use of the default keyboards KbQueue - or any KbQueue on OSX
-% with GetChar et al. The only feature that works in parallel with KbQueues
+% no parallel use of the default keyboards KbQueue.
+% The only feature that works in parallel with KbQueues
 % is the suppression of spilling of keystroke characters into the Matlab or
 % Octave window during ListenChar(2) - at least on Linux and OSX, on
 % Windows this can't be prevented at all in "matlab -nojvm" mode. However,

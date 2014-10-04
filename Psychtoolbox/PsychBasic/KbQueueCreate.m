@@ -22,9 +22,11 @@ function KbQueueCreate(deviceNumber, keyList)
 %        constantly being removed from the queue and processed, so this is
 %        unlikely to be a problem in actual use.
 %
-% Only a single device can be monitored at any given time. The deviceNumber can 
-%  be specified only in the call to KbQueueCreate. The other routines then 
-%  relate to that specified device. If deviceNumber is not specified, the first 
+%  The deviceNumber of a HID input device can be specified as 'deviceNumber'.
+%  Allowable devices are "keyboard like" devices, e.g., Keyboards, Keypads,
+%  Mouse, Joystick, Gamepad, Touchpad, etc. - Stuff that has buttons or keys
+%  to press. This way a mouse or joysticks buttons can be used as response
+%  devices, ignoring mouse movements etc. If deviceNumber is not specified, the first 
 %  device is the default (like KbCheck). If KbQueueCreate has not been called 
 %  first, the other routines will generate an error message. Likewise, if 
 %  KbQueueRelease has been called more recently than KbQueueCreate, the other 
@@ -47,23 +49,23 @@ function KbQueueCreate(deviceNumber, keyList)
 %      treat other HID devices with buttons or keys as if they are
 %      keyboards. E.g., it can also record button state of a mouse, a
 %      joystick or a gamepad.
-%			
+%
 %  KbQueueStart()
 %      Starts delivering keyboard events from the specified device to the 
-%        queue.
-%			
+%      queue.
+%
 %  KbQueueStop()
 %      Stops delivery of new keyboard events from the specified device to 
-%        the queue.
+%      the queue.
 %      Data regarding events already queued is not cleared and can be 
-%        recovered by KbQueueCheck
+%      recovered by KbQueueCheck
 %
 % [pressed, firstPress, firstRelease, lastPress, lastRelease]=
 %   KbQueueCheck()
 %      Obtains data about keypresses on the specified device since the 
-%        most recent call to this routine, KbQueueStart, KbQueuWait
+%      most recent call to this routine, KbQueueStart, KbQueueWait
 %      Clears all scored events, but unscored events that are still being
-%        processsed may remain in the queue
+%      processsed may remain in the queue
 %
 %      pressed: a boolean indicating whether a key has been pressed
 %
@@ -88,52 +90,49 @@ function KbQueueCreate(deviceNumber, keyList)
 %       generate a list of the keys for which the events occurred
 %
 %     For compatibility with KbCheck, any key codes stored in
-%		ptb_kbcheck_disabledKeys (see "help DisableKeysForKbCheck"), will
-%       not caused pressed to return as true and will be zeroed out in the
-%       returned arrays. However, a better alternative is to specify a
-%       keyList arguement to KbQueueCreate. 
+%     ptb_kbcheck_disabledKeys (see "help DisableKeysForKbCheck"), will
+%     not cause pressed to return as true and will be zeroed out in the
+%     returned arrays. However, a better alternative is to specify a
+%     keyList arguement to KbQueueCreate. 
 %
 % secs=KbQueueWait()
-%      Waits for any key to be pressed and returns the time of the press
+%      Waits for any key to be pressed and returns the time of the press.
 %
 %      KbQueueFlush should be called immediately prior to this function
 %      (unless the queue has just been created and started) to clear any 
 %      prior events.
 %
 %      Note that this command will not respond to any keys that were 
-%       inactivated by using the keyList argument to KbQueueCreate.
+%      inactivated by using the keyList argument to KbQueueCreate.
 %
 %      Since KbQueueWait is implemented as a looping call to
-%       KbQueueCheck, it will not respond to any key codes stored in
-%       the global variable ptb_kbcheck_disabledKeys
-%       (see "help DisableKeysForKbCheck")
+%      KbQueueCheck, it will not respond to any key codes stored in
+%      the global variable ptb_kbcheck_disabledKeys
+%      (see "help DisableKeysForKbCheck")
 %
 % KbQueueFlush()
 %      Removes all unprocessed events from the queue and zeros out any
-%       already scored events.
+%      already scored events.
 %
 % KbQueueRelease()
 %      Releases queue-associated resources; once called, KbQueueCreate
-%        must be invoked before using any of the other routines
+%      must be invoked before using any of the other routines
 %
 %      This routine is called automatically at clean-up (e.g., when 
-%        'clear mex' is invoked and can be omitted expense of keeping 
-%        memory allocated and an additional thread running unnecesarily
+%      'clear mex' is invoked and can be omitted expense of keeping 
+%      memory allocated and an additional thread running unnecesarily
 %
 % Note that any keyboard typing used to invoke KbQueue commands will be
-%  recorded. This would include the release of the carriage return used
-%  to execute KbQueueStart and the keys pressed and released to invoke 
-%  KbQueueCheck
+% recorded. This would include the release of the carriage return used
+% to execute KbQueueStart and the keys pressed and released to invoke 
+% KbQueueCheck
 % _________________________________________________________________________
 %
 % See also: KbQueueCreate, KbQueueStart, KbQueueStop, KbQueueCheck,
-%            KbQueueWait, KbQueueFlush, KbQueueRelease
+%           KbQueueWait, KbQueueFlush, KbQueueRelease
 
 % 8/19/07    rpw  Wrote it.
 % 8/23/07    rpw  Modifications to add KbQueueFlush
-
-% Requires Mac OS X 10.3 or later. We sort this out on the first call 
-% and then store the result in macosrecent for subsequent calls
 
 persistent macosxrecent;
 
