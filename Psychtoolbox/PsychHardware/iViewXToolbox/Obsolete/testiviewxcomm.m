@@ -80,7 +80,7 @@ try
             end
         end
         % If you want the subject to manually accept the point with a
-        % key press once they fixate, the ÒET_ACCÓ  command must then
+        % key press once they fixate, the "ET_ACC"  command must then
         % be sent to the serial port.  This instructs iView to change
         % to the next calibration point  rather than having it detect
         % fixations itself.

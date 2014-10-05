@@ -1180,6 +1180,7 @@ dwmdontcare:
     bpc = 8; // We default to 8 bpc == RGBA8
     if (windowRecord->depth == 30)  { bpc = 10; printf("PTB-INFO: Trying to enable at least 10 bpc fixed point framebuffer.\n"); }
     if (windowRecord->depth == 33)  { bpc = 11; printf("PTB-INFO: Trying to enable at least 11 bpc fixed point framebuffer.\n"); }
+    if (windowRecord->depth == 48)  { bpc = 16; printf("PTB-INFO: Trying to enable at least 16 bpc fixed point framebuffer.\n"); }
     if (windowRecord->depth == 64)  { bpc = 16; printf("PTB-INFO: Trying to enable 16 bpc fixed point framebuffer.\n"); }
     if (windowRecord->depth == 128) { bpc = 32; printf("PTB-INFO: Trying to enable 32 bpc fixed point framebuffer.\n"); }
 
@@ -1228,8 +1229,8 @@ dwmdontcare:
     pfd.nVersion     = 1;
     pfd.dwFlags      = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_SWAP_EXCHANGE |flags;  // Want OpenGL capable window with bufferswap via page-flipping...
     pfd.iPixelType   = PFD_TYPE_RGBA; // Want a RGBA pixel format.
-    pfd.cColorBits   = 32;            // 32 bpp at least...
-    pfd.cAlphaBits   = (bpc == 10) ? 2 : 8;	// Want a 8 bit alpha-buffer, unless R10G10B10A2 pixelformat requested for native 10 bpc support.
+    pfd.cColorBits   = (bpc > 11)  ? 48 : 32;
+    pfd.cAlphaBits   = (bpc == 10) ? 2 : ((bpc == 11) ? 0 : 8); // Usually want an at least 8 bit alpha-buffer, unless high color bit depths formats requested.
 
     // Support for OpenGL 3D rendering requested?
     if (PsychPrefStateGet_3DGfx()) {
@@ -1836,68 +1837,6 @@ dwmdontcare:
     // Well Done!
     return(TRUE);
 }
-
-
-/*
-    PsychOSOpenOffscreenWindow()
-    
-    Accept specifications for the offscreen window in the platform-neutral structures, convert to native CoreGraphics structures,
-    create the surface, allocate a window record and record the window specifications and memory location there.
-	
-	TO DO:  We need to walk down the screen number and fill in the correct value for the benefit of TexturizeOffscreenWindow
-*/
-psych_bool PsychOSOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord)
-{
-  /*
-    //PsychTargetSpecificWindowRecordType 	cgStuff;
-    CGLPixelFormatAttribute 			attribs[5];
-    //CGLPixelFormatObj					pixelFormatObj;
-    long								numVirtualScreens;
-    CGLError							error;
-    int									windowWidth, windowHeight;
-    int									depthBytes;
-
-    //First allocate the window recored to store stuff into.  If we exit with an error PsychErrorExit() should
-    //call PsychPurgeInvalidWindows which will clean up the window record. 
-    PsychCreateWindowRecord(windowRecord);  		//this also fills the window index field.
-    
-    attribs[0]=kCGLPFAOffScreen;
-    attribs[1]=kCGLPFAColorSize;
-    attribs[2]=(CGLPixelFormatAttribute)depth;
-    attribs[3]=(CGLPixelFormatAttribute)NULL;
-    
-    error=CGLChoosePixelFormat(attribs, &((*windowRecord)->targetSpecific.pixelFormatObject), &numVirtualScreens);
-    error=CGLCreateContext((*windowRecord)->targetSpecific.pixelFormatObject, NULL, &((*windowRecord)->targetSpecific.contextObject));
-	CGLSetCurrentContext((*windowRecord)->targetSpecific.contextObject);
-	
-    windowWidth=(int)PsychGetWidthFromRect(rect);
-    windowHeight=(int) PsychGetHeightFromRect(rect);
-	//This section looks wrong because it does not allocate enough memory to insure alignment on word bounaries, which presumably is
-	//dicated by the pixel format.  
-    depthBytes=depth / 8;
-    (*windowRecord)->surfaceSizeBytes= windowWidth * windowHeight * depthBytes;
-    (*windowRecord)->surface=malloc((*windowRecord)->surfaceSizeBytes);
-    CGLSetOffScreen((*windowRecord)->targetSpecific.contextObject, windowWidth, windowHeight, windowWidth * depthBytes, (*windowRecord)->surface); 
-    gluOrtho2D(rect[kPsychLeft], rect[kPsychRight], rect[kPsychBottom], rect[kPsychTop]);
-          
-    //Fill in the window record.
-    (*windowRecord)->windowType=kPsychSystemMemoryOffscreen;
-    (*windowRecord)->screenNumber=kPsychUnaffiliatedWindow;
-    PsychCopyRect((*windowRecord)->rect, rect);
-    (*windowRecord)->depth=depth;
-	
-
-    //mark the contents of the window record as valid.  Between the time it is created (always with PsychCreateWindowRecord) and when it is marked valid 
-    //(with PsychSetWindowRecordValid) it is a potential victim of PsychPurgeInvalidWindows.  
-    PsychSetWindowRecordValid(*windowRecord);
-    return(TRUE);
-  */
-
-  // FIXME: Not yet implemented.
-  return(FALSE);
-
-}
-
 
 void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 {

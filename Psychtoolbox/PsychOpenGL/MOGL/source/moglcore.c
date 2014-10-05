@@ -352,7 +352,7 @@ void mogl_usageerr() {
 void mogl_glunsupported(const char* fname)
 {
     char errtxt[1000];
-    sprintf(errtxt, "MOGL-Error: Your Matlab code tried to call the OpenGL function %s(), which is not supported\n"
+    sprintf(errtxt, "MOGL-Error: Your code tried to call the OpenGL function %s(), which is not supported\n"
                     "MOGL-Error: by your combination of graphics hardware + graphics device driver.\n"
                     "MOGL-Error: You'll have to download+install the latest gfx-drivers for your gfx-hardware\n"
                     "MOGL-Error: or upgrade your gfx-hardware with more recent one to use this function. Aborted.\n\n", fname);

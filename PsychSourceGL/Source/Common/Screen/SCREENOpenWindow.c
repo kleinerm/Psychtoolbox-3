@@ -173,6 +173,11 @@ PsychError SCREENOpenWindow(void)
     PsychAddValueToDepthStruct(30, &possibleDepths);
     PsychAddValueToDepthStruct(33, &possibleDepths);
 
+    // Additionally on Linux X11 + Open source radeon-kms driver, we can use special low-level
+    // hacks to get 64 bpp scanout of a framebuffer with up to 16 bpc, so allow requesting
+    // 16 bpc * 3 = 48 bpp as well:
+    PsychAddValueToDepthStruct(48, &possibleDepths);
+
     PsychInitDepthStruct(&specifiedDepth); //get the requested depth and validate it.  
     isArgThere = PsychCopyInSingleDepthArg(4, FALSE, &specifiedDepth);
 

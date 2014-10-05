@@ -189,10 +189,11 @@
 % may have negative side effects on system timing. Use as last resort!
 %
 %
-% 65536 (= 2^16) == kPsychDontUseNativeBeamposQuery
+% 65536 (= 2^16) == kPsychDontUseNativeBeamposQuery [Deprecated]
 % Do not use operating system native beamposition queries, but try to use
-% own mechanism, or none at all. This to work around bugs in OS native
-% beamposition query mechanisms, e.g., Leopard 10.5.7 + ATI GPU's.
+% own mechanism, or none at all. This was used to work around bugs in OS
+% native beamposition query mechanisms, e.g., Leopard 10.5.7 + ATI GPU's.
+% It has no function anymore under OSX as of Psychtoolbox 3.0.12.
 %
 %
 % 131072 (= 2^17) == kPsychDisableAeroDWM 
@@ -282,10 +283,13 @@
 % where the new method doesn't work.
 %
 %
-% 2^26 == kPsychForceUseNativeBeamposQuery
+% 2^26 == kPsychForceUseNativeBeamposQuery [Deprecated]
 % Force use of the OSX builtin beamposition query mechanism, even if the
 % PsychtoolboxKernelDriver is installed and would provide better results.
-% This is mostly for internal testing and benchmarking of Psychtoolbox. As
+%
+% As of Psychtoolbox 3.0.12, this does nothing anymore.
+%
+% This was mostly for internal testing and benchmarking of Psychtoolbox. As
 % of April 2013 and MacOSX 10.8 "Mountain Lion", our own implementation is
 % superior to Apple's broken implementation, so we default to use of our
 % own implementation whenever possible. The OSX native implementation is

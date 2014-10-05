@@ -138,6 +138,11 @@ try
         % Make sure a cache directory for buffering exists.
         PsychHomeDir('.cache');
         
+        % Linus Torvalds DebConf 2014 Q & A:
+        moviefiles(end+1).name = 'http://meetings-archive.debian.net/pub/debian-meetings/2014/debconf14/webm/QA_with_Linus_Torvalds.webm';
+        moviefiles(end).url = 'http://meetings-archive.debian.net/pub/debian-meetings/2014/debconf14/webm/QA_with_Linus_Torvalds.webm';
+        moviefiles(end).credits = 'Q & A at DebConf 2014 with Linus Torvalds';
+
         % MC Hammers Can't touch this - performed by a special ensemble:
         moviefiles(end+1).name = 'http://archive.org/download/juniorx3_dancevideo2/juniorx3_dancevideo2.ogv';
         moviefiles(end).url = 'http://archive.org/details/juniorx3_dancevideo2';

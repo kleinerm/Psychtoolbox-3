@@ -1,68 +1,27 @@
 /*
 
-	Psychtoolbox3/Source/Common/Screen/SCREENComputer.c		
+    Psychtoolbox3/Source/Common/Screen/SCREENComputer.c
 
-	AUTHORS:
+    AUTHORS:
 
-		Allen.Ingling@nyu.edu			awi 
-		mario.kleiner@tuebingen.mpg.de	mk
-  
-	PLATFORMS:	
+        Allen.Ingling@nyu.edu           awi
+        mario.kleiner@tuebingen.mpg.de  mk
 
-		All.
+    PLATFORMS:
 
-	HISTORY:
+        All.
 
-		4/01/03		awi		Created. 
-		10/12/04	awi		Changed "SCREEN" to "Screen" in useString.
-		10/21/04	awi		Added comment showing returned struct on OS X.
-		1/11/04		awi		Fix bug in reporting memory size, reported by David Jones and uncovered in source by Mario Kleiner.
-							Cleaned up ReportSysctlError.
+    HISTORY:
 
-	DESCRIPTION:
+        4/01/03     awi     Created.
+        10/12/04    awi     Changed "SCREEN" to "Screen" in useString.
+        10/21/04    awi     Added comment showing returned struct on OS X.
+        1/11/04     awi     Fix bug in reporting memory size, reported by David Jones and uncovered in source by Mario Kleiner.
+                            Cleaned up ReportSysctlError.
 
-		Returns information about the computer. 
+    DESCRIPTION:
 
-	TO DO:
-
-		Macro out the parts specfic to OS X or abstract them.
-		Add OS X and Linux flags to the OS 9 and Windows version of Screen 'Computer'
-
-		Migrate this out of Screen.  It makes no sense for it to be here. Rename it to 
-		"ComputerInfo".  We already have "FontInfo".  Generally, Psychtoolbox functions
-		which return a struct with a bunch of info should be named *Info.     
-
-*/
-
-/* This is the struct returned by the OS9 version of SCREEN 'Computer'.
-
-	macintosh: 1
-	windows: 0
-	emulating: ''
-	pci: 1
-	vm: ''
-	busHz: 133216625
-	hz: 999999997
-	fpu: ''
-	cache: ''
-	processor: 'G4'
-	system: 'Mac OS 9.2.2'
-	owner: ''
-	model: 'Classic Mac OS Compatibility/999'
-
-*/
-
-/*
-
-from sys/time.h
-
-struct clockinfo {
-	int	hz;		// clock frequency
-	int	tick;		// micro-seconds per hz tick
-	int	tickadj;	// clock skew rate for adjtime() 
-	int	stathz;		// statistics clock frequency 
-	int	profhz;		// profiling clock frequency 
-};
+        Returns information about the computer.
 
 */
 
@@ -102,22 +61,22 @@ static char seeAlsoString[] = "";
 
 static void ReportSysctlError(int errorValue)
 {
-	psych_bool	foundError;
-    int sysctlErrors[]={EFAULT, EINVAL, ENOMEM, ENOTDIR, EISDIR, EOPNOTSUPP, EPERM};
-    int i, errorIndex, numSysctlErrors=7; 
+    psych_bool  foundError;
+    int sysctlErrors[] = {EFAULT, EINVAL, ENOMEM, ENOTDIR, EISDIR, EOPNOTSUPP, EPERM};
+    int i, errorIndex, numSysctlErrors=7;
     char *sysctlErrorStrings[]={"EFAULT", "EINVAL", "ENOMEM", "ENOTDIR", "EISDIR", "EOPNOTSUPP", "EPERM", "UNRECOGNIZED"};
 
     if(errorValue == 0) return;
 
-	foundError=0;
-	errorIndex=7;
-	
+    foundError=0;
+    errorIndex=7;
+
     for(i=0; i<numSysctlErrors; i++){
         if(errno==sysctlErrors[i]){
-			foundError=1;
-			errorIndex=i;
+            foundError=1;
+            errorIndex=i;
             break;
-		}
+        }
     }
 
     PsychErrorExitMsg(PsychError_internal, sysctlErrorStrings[errorIndex]);
@@ -126,28 +85,28 @@ static void ReportSysctlError(int errorValue)
 PsychError SCREENComputer(void) 
 {
     const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "kern", "hw", "processUserLongName", 
-	                                     "processUserShortName", "consoleUserName", "machineName", "localHostName", "location", "MACAddress", "system", "gstreamer", "supported" };
+                                         "processUserShortName", "consoleUserName", "machineName", "localHostName", "location", "MACAddress", "system", "gstreamer", "supported" };
     const char *kernStructFieldNames[]={"ostype", "osrelease", "osrevision", "version","hostname"};
     const char *hwStructFieldNames[]={"machine", "model", "ncpu", "physmem", "usermem", "busfreq", "cpufreq"};
     int numMajorStructDimensions=1, numKernStructDimensions=1, numHwStructDimensions=1;
     int numMajorStructFieldNames=16, numKernStructFieldNames=5, numHwStructFieldNames=7;
     PsychGenericScriptType	*kernStruct, *hwStruct, *majorStruct;
     //char tempStr[CTL_MAXNAME];   //this seems like a bug in Darwin, CTL_MAXNAME is shorter than the longest name.  
-    char						tempStr[256], *ethernetMACStr;
-    size_t						tempIntSize,  tempStrSize, tempULongIntSize; 	
-	int							mib[2];
-	int							tempInt;
-	psych_uint64                tempULongInt;
-	char						*tempStrPtr;
-	CFStringRef					tempCFStringRef;
-	psych_bool					stringSuccess;
-	int							stringLengthChars, ethernetMACStrSizeBytes;
-	long						gestaltResult;
-	OSErr						gestaltError;
-	int							i,strIndex, bcdDigit, lengthSystemVersionString;
-	SInt32						osMajor, osMinor, osBugfix;
-	char						systemVersionStr[256];
-	
+    char            tempStr[256], *ethernetMACStr;
+    size_t          tempIntSize,  tempStrSize, tempULongIntSize;
+    int             mib[2];
+    int             tempInt;
+    psych_uint64    tempULongInt;
+    char            *tempStrPtr;
+    CFStringRef     tempCFStringRef;
+    psych_bool      stringSuccess;
+    int             stringLengthChars, ethernetMACStrSizeBytes;
+    long            gestaltResult;
+    OSErr           gestaltError;
+    int             i,strIndex, bcdDigit, lengthSystemVersionString;
+    SInt32          osMajor, osMinor, osBugfix;
+    char            systemVersionStr[256];
+
     //all subfunctions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -165,11 +124,15 @@ PsychError SCREENComputer(void)
     // Official support status:
     PsychSetStructArrayStringElement("supported", 0, (char*) PsychSupportStatus(), majorStruct);
 
-    // GStreamer availability:
+    // GStreamer availability and rough version:
     #if defined(PTB_USE_GSTREAMER)
-    PsychSetStructArrayDoubleElement("gstreamer", 0, 1, majorStruct);
+        #if GST_CHECK_VERSION(1,0,0)
+        PsychSetStructArrayDoubleElement("gstreamer", 0, 1 * 10000 + 0 * 100 + 0, majorStruct);
+        #else
+        PsychSetStructArrayDoubleElement("gstreamer", 0, 0 * 10000 + 10 * 100 + 0, majorStruct);
+        #endif
     #else
-    PsychSetStructArrayDoubleElement("gstreamer", 0, 0, majorStruct);
+        PsychSetStructArrayDoubleElement("gstreamer", 0, 0, majorStruct);
     #endif
 
     //fill the kern struct and implant it within the major struct
@@ -245,140 +208,140 @@ PsychError SCREENComputer(void)
     ReportSysctlError(sysctlbyname("hw.cpufrequency", &tempULongInt, &tempULongIntSize, NULL, 0));
     PsychSetStructArrayDoubleElement("cpufreq", 0, (double)tempULongInt, hwStruct);
     PsychSetStructArrayStructElement("hw",0, hwStruct, majorStruct);
-	
+
     //fill in the process user, console user and machine name in the root struct.
-	tempCFStringRef= CSCopyMachineName();
-	if (tempCFStringRef) {
-		stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
-		tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
-		stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
-		
-		if(stringSuccess) {
+    tempCFStringRef= CSCopyMachineName();
+    if (tempCFStringRef) {
+        stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
+        tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
+        stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
+
+        if(stringSuccess) {
             PsychSetStructArrayStringElement("machineName", 0, tempStrPtr, majorStruct);
         }
         else {
             PsychSetStructArrayStringElement("machineName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
         }
-        
-		free(tempStrPtr);
-		CFRelease(tempCFStringRef);
-	}
-	else {
-		PsychSetStructArrayStringElement("machineName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
-	}
-	
-	tempCFStringRef= CSCopyUserName(TRUE); //use short name
-	if (tempCFStringRef) {		
-		stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
-		tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
-		stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
-		if(stringSuccess) {
+
+        free(tempStrPtr);
+        CFRelease(tempCFStringRef);
+    }
+    else {
+        PsychSetStructArrayStringElement("machineName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
+    }
+
+    tempCFStringRef= CSCopyUserName(TRUE); //use short name
+    if (tempCFStringRef) {
+        stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
+        tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
+        stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
+        if(stringSuccess) {
             PsychSetStructArrayStringElement("processUserShortName", 0, tempStrPtr, majorStruct);
         }
         else {
             PsychSetStructArrayStringElement("processUserShortName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
         }
-		
-		free(tempStrPtr);
-		CFRelease(tempCFStringRef);
-	}
-	else {
-		PsychSetStructArrayStringElement("processUserShortName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
-	}
 
-	tempCFStringRef= CSCopyUserName(FALSE); //use long name
-	if (tempCFStringRef) {		
-		stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
-		tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
-		stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
-		if(stringSuccess) {
+        free(tempStrPtr);
+        CFRelease(tempCFStringRef);
+    }
+    else {
+        PsychSetStructArrayStringElement("processUserShortName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
+    }
+
+    tempCFStringRef= CSCopyUserName(FALSE); //use long name
+    if (tempCFStringRef) {
+        stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
+        tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
+        stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
+        if(stringSuccess) {
             PsychSetStructArrayStringElement("processUserLongName", 0, tempStrPtr, majorStruct);
         }
         else {
             PsychSetStructArrayStringElement("processUserLongName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
         }
 
-		free(tempStrPtr);
-		CFRelease(tempCFStringRef);
-	}
-	else {
-		PsychSetStructArrayStringElement("processUserLongName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
-	}
-	
-	tempCFStringRef= SCDynamicStoreCopyConsoleUser(NULL, NULL, NULL);
-	if (tempCFStringRef) {
-		stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
-		tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
-		stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
-		
-		if(stringSuccess) {
+        free(tempStrPtr);
+        CFRelease(tempCFStringRef);
+    }
+    else {
+        PsychSetStructArrayStringElement("processUserLongName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
+    }
+
+    tempCFStringRef= SCDynamicStoreCopyConsoleUser(NULL, NULL, NULL);
+    if (tempCFStringRef) {
+        stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
+        tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
+        stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
+
+        if(stringSuccess) {
             PsychSetStructArrayStringElement("consoleUserName", 0, tempStrPtr, majorStruct);
         }
         else {
             PsychSetStructArrayStringElement("consoleUserName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
         }
-        
-		free(tempStrPtr);
-		CFRelease(tempCFStringRef);
-	}
-	else {
-		PsychSetStructArrayStringElement("consoleUserName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
-	}
-	
-	tempCFStringRef= SCDynamicStoreCopyLocalHostName(NULL); 
-	if (tempCFStringRef) {
-		stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
-		tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
-		stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
+
+        free(tempStrPtr);
+        CFRelease(tempCFStringRef);
+    }
+    else {
+        PsychSetStructArrayStringElement("consoleUserName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
+    }
+
+    tempCFStringRef= SCDynamicStoreCopyLocalHostName(NULL);
+    if (tempCFStringRef) {
+        stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
+        tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
+        stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
         if(stringSuccess) {
             PsychSetStructArrayStringElement("localHostName", 0, tempStrPtr, majorStruct);
         }
         else {
             PsychSetStructArrayStringElement("localHostName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
         }
-        
-        free(tempStrPtr);        
-		CFRelease(tempCFStringRef);
-	}
-	else {
-		PsychSetStructArrayStringElement("localHostName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
-	}
-	
-	tempCFStringRef= SCDynamicStoreCopyLocation(NULL);
-	if (tempCFStringRef) {
-		stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
-		tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
-		stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
-		if(stringSuccess) {
+
+        free(tempStrPtr);
+        CFRelease(tempCFStringRef);
+    }
+    else {
+        PsychSetStructArrayStringElement("localHostName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
+    }
+
+    tempCFStringRef= SCDynamicStoreCopyLocation(NULL);
+    if (tempCFStringRef) {
+        stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
+        tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
+        stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
+        if(stringSuccess) {
             PsychSetStructArrayStringElement("location", 0, tempStrPtr, majorStruct);
         }
         else {
             PsychSetStructArrayStringElement("location", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
         }
-		
-		free(tempStrPtr);
-		CFRelease(tempCFStringRef);
-	}
-	else {
-		PsychSetStructArrayStringElement("location", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
-	}
 
-	//Add the ethernet MAC address of the primary ethernet interface to the stuct.  This can serve as a unique identifier for the computer.  
-	ethernetMACStrSizeBytes=GetPrimaryEthernetAddressStringLengthBytes(TRUE)+1;
-	ethernetMACStr=(char*) malloc(sizeof(char) * ethernetMACStrSizeBytes);
-	GetPrimaryEthernetAddressString(ethernetMACStr, TRUE, TRUE);
-	PsychSetStructArrayStringElement("MACAddress", 0, ethernetMACStr, majorStruct);
-	free(ethernetMACStr);
+        free(tempStrPtr);
+        CFRelease(tempCFStringRef);
+    }
+    else {
+        PsychSetStructArrayStringElement("location", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
+    }
 
-	//Add the system version string:
-	Gestalt(gestaltSystemVersionMajor, &osMajor);
-	Gestalt(gestaltSystemVersionMinor, &osMinor);
-	Gestalt(gestaltSystemVersionBugFix, &osBugfix);
-	
-	sprintf(systemVersionStr, "Mac OS %i.%i.%i", osMajor, osMinor, osBugfix);
+    //Add the ethernet MAC address of the primary ethernet interface to the stuct.  This can serve as a unique identifier for the computer.
+    ethernetMACStrSizeBytes=GetPrimaryEthernetAddressStringLengthBytes(TRUE)+1;
+    ethernetMACStr=(char*) malloc(sizeof(char) * ethernetMACStrSizeBytes);
+    GetPrimaryEthernetAddressString(ethernetMACStr, TRUE, TRUE);
+    PsychSetStructArrayStringElement("MACAddress", 0, ethernetMACStr, majorStruct);
+    free(ethernetMACStr);
 
-	//embed it in the return struct
-	PsychSetStructArrayStringElement("system", 0, systemVersionStr, majorStruct);
+    //Add the system version string:
+    Gestalt(gestaltSystemVersionMajor, &osMajor);
+    Gestalt(gestaltSystemVersionMinor, &osMinor);
+    Gestalt(gestaltSystemVersionBugFix, &osBugfix);
+
+    sprintf(systemVersionStr, "Mac OS %i.%i.%i", osMajor, osMinor, osBugfix);
+
+    //embed it in the return struct
+    PsychSetStructArrayStringElement("system", 0, systemVersionStr, majorStruct);
 
     return(PsychError_none);
 }
@@ -423,11 +386,15 @@ PsychError SCREENComputer(void)
     // Official support status:
     PsychSetStructArrayStringElement("supported", 0, (char*) PsychSupportStatus(), majorStruct);
 
-    // GStreamer availability:
+    // GStreamer availability and rough version:
     #if defined(PTB_USE_GSTREAMER)
-    PsychSetStructArrayDoubleElement("gstreamer", 0, 1, majorStruct);
+        #if GST_CHECK_VERSION(1,0,0)
+        PsychSetStructArrayDoubleElement("gstreamer", 0, 1 * 10000 + 0 * 100 + 0, majorStruct);
+        #else
+        PsychSetStructArrayDoubleElement("gstreamer", 0, 0 * 10000 + 10 * 100 + 0, majorStruct);
+        #endif
     #else
-    PsychSetStructArrayDoubleElement("gstreamer", 0, 0, majorStruct);
+        PsychSetStructArrayDoubleElement("gstreamer", 0, 0, majorStruct);
     #endif
 
     // Query info about Windows version:
@@ -495,11 +462,15 @@ PsychError SCREENComputer(void)
     // Official support status:
     PsychSetStructArrayStringElement("supported", 0, (char*) PsychSupportStatus(), majorStruct);
 
-    // GStreamer availability:
+    // GStreamer availability and rough version:
     #if defined(PTB_USE_GSTREAMER)
-    PsychSetStructArrayDoubleElement("gstreamer", 0, 1, majorStruct);
+        #if GST_CHECK_VERSION(1,0,0)
+        PsychSetStructArrayDoubleElement("gstreamer", 0, 1 * 10000 + 0 * 100 + 0, majorStruct);
+        #else
+        PsychSetStructArrayDoubleElement("gstreamer", 0, 0 * 10000 + 10 * 100 + 0, majorStruct);
+        #endif
     #else
-    PsychSetStructArrayDoubleElement("gstreamer", 0, 0, majorStruct);
+        PsychSetStructArrayDoubleElement("gstreamer", 0, 0, majorStruct);
     #endif
 
     // Query hardware MAC address of primary ethernet interface: This is a unique id of the computer,

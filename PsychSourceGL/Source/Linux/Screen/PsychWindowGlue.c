@@ -224,6 +224,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   int xfixes_event_base1, xfixes_event_base2;
   psych_bool xfixes_available = FALSE;
   psych_bool newstyle_setup = FALSE;
+  int gpuMaintype = 0;
+
+  // First opened onscreen window? If so, we try to map GPU MMIO registers
+  // to enable beamposition based timestamping and other special goodies:
+  if (x11_windowcount == 0) PsychScreenMapRadeonCntlMemory();
 
   // Retrieve windowLevel, an indicator of where non-fullscreen windows should
   // be located wrt. to other windows. 0 = Behind everything else, occluded by
@@ -369,6 +374,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   bpc = 8; // We default to 8 bpc == RGBA8
   if (windowRecord->depth == 30)  { bpc = 10; printf("PTB-INFO: Trying to enable at least 10 bpc fixed point framebuffer.\n"); }
   if (windowRecord->depth == 33)  { bpc = 11; printf("PTB-INFO: Trying to enable at least 11 bpc fixed point framebuffer.\n"); }
+  if (windowRecord->depth == 48)  { bpc = 16; printf("PTB-INFO: Trying to enable at least 16 bpc fixed point framebuffer.\n"); }
   if (windowRecord->depth == 64)  { bpc = 16; printf("PTB-INFO: Trying to enable 16 bpc fixed point framebuffer.\n"); }
   if (windowRecord->depth == 128) { bpc = 32; printf("PTB-INFO: Trying to enable 32 bpc fixed point framebuffer.\n"); }
 
@@ -494,9 +500,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   }
 
     if (!visinfo && !fbconfig) {
-        // Failed to find matching visual: Could it be related to request for unsupported native 10/11 bpc framebuffer?
-        if (((windowRecord->depth == 30) && (bpc == 10)) || ((windowRecord->depth == 33) && (bpc == 11))) {
-            // 10 bpc framebuffer requested: Let's see if we can get a visual by lowering our demand to 8 bpc:
+        // Failed to find matching visual: Could it be related to request for unsupported native 10/11/16 bpc framebuffer?
+        if (((windowRecord->depth == 30) && (bpc == 10)) || ((windowRecord->depth == 33) && (bpc == 11)) || ((windowRecord->depth == 48) && (bpc == 16))) {
+            // 10/11/16 bpc framebuffer requested: Let's see if we can get a visual by lowering our demand to 8 bpc:
             for (i=0; i<attribcount && attrib[i]!=GLX_RED_SIZE; i++);
             attrib[i+1] = 8;
             for (i=0; i<attribcount && attrib[i]!=GLX_GREEN_SIZE; i++);
@@ -644,8 +650,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // UPDATE June-2014: Do not even use new-style on KDE, unless forced by setenv("PSYCH_NEW_OVERRIDEREDIRECT", "1")
     // Turns out the new-style override redirect doesn't play well with KDE multi-display setups. It causes KDE
     // to cut off all parts of the fullscreen window except for the first video output, making this unworkable on
-    // anything but single display setups. We may rework this code at some later point, but for now just disable:
-    if (!getenv("PSYCH_NEW_OVERRIDEREDIRECT") || (PsychPrefStateGet_ConserveVRAM() & kPsychOldStyleOverrideRedirect) ||
+    // anything but single display setups. We may rework this code at some later point, but for now just disable.
+    //
+    // UPDATE September-2014: Unless we are using KDE on an Intel gpu, where god-knows-why we need new-style
+    // override redirect handling, because KDE doesn't recognize our fullscreen windows as such and wouldn't
+    // unredirect them without the new override redirect setup and signalling. Strangely other desktop environments
+    // do have no problem detecting our fullscreen windows on an Intel gpu, e.g., Unity, GNOME-3/GNOME-2, ...
+    PsychGetGPUSpecs(screenSettings->screenNumber, &gpuMaintype, NULL, NULL, NULL);
+    if ((!getenv("PSYCH_NEW_OVERRIDEREDIRECT") && (gpuMaintype != kPsychIntelIGP)) || (PsychPrefStateGet_ConserveVRAM() & kPsychOldStyleOverrideRedirect) ||
         !getenv("KDE_FULL_SESSION")) {
         // Old style: Always override_redirect to lock out window manager, except when a real "GUI-Window"
         // is requested, which needs to behave and be treated like any other desktop app window:
@@ -1104,10 +1116,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
     PsychUnlockDisplay();
 
-    // First opened onscreen window? If so, we try to map GPU MMIO registers
-    // to enable beamposition based timestamping and other special goodies:
-    if (x11_windowcount == 1) PsychScreenMapRadeonCntlMemory();
-
     // Ok, we should be ready for OS independent setup...
     fflush(NULL);
 
@@ -1155,21 +1163,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
   // Well Done!
   return(TRUE);
-}
-
-
-/*
-    PsychOSOpenOffscreenWindow()
-    
-    Accept specifications for the offscreen window in the platform-neutral structures, convert to native CoreGraphics structures,
-    create the surface, allocate a window record and record the window specifications and memory location there.
-	
-	TO DO:  We need to walk down the screen number and fill in the correct value for the benefit of TexturizeOffscreenWindow
-*/
-psych_bool PsychOSOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord)
-{
-  // This function is obsolete and does nothing.
-  return(FALSE);
 }
 
 /*
@@ -1274,7 +1267,7 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     // (Re-)enable X-Windows screensavers if they were enabled before opening windows:
     // Set screensaver to previous settings, potentially enabling it:
     XSetScreenSaver(dpy, -1, 0, DefaultBlanking, DefaultExposures);
-    
+
     // Unmap/release possibly mapped device memory: Defined in PsychScreenGlue.c
     PsychScreenUnmapDeviceMemory();
   }

@@ -13,7 +13,7 @@
 % 9/20/02  dhb  Version created from ClutMovieDemo.
 % 10/xx/02 jmh  Fixed it up.
 % 11/4/02  dhb, jmh Comments, etc.
-% 11/6/02  jmh  Modified BitsPlusMovieDemo to test for lost frames
+% 11/6/02  jmh  Modified BitsPlusMovieDemo to test for lost frames
 
 clear all; close all
 

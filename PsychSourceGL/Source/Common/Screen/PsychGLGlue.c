@@ -851,10 +851,10 @@ void PsychDrawDisc(PsychWindowRecordType *windowRecord, float xc, float yc, floa
 	#endif
 
     // Sweep clock-wise over arcAngle degrees, split up into 'numSlices' steps:
-    float step = (arcAngle * 2 * M_PI / 360) / (float) numSlices;
+    float step = (float) ((arcAngle * 2 * M_PI / 360) / (float) numSlices);
 
     // Start at startAngle degrees, where 0 deg. = Upward, 90 deg. = Rightward.
-    startAngle = M_PI/2 - startAngle * 2 * M_PI / 360;
+    startAngle = (float) (M_PI/2 - startAngle * 2 * M_PI / 360);
 
     /* Disable for now, do it slooow ...
        float *vertices = PsychMallocTemp(sizeof(float) * 4 * (numSlices + 1));

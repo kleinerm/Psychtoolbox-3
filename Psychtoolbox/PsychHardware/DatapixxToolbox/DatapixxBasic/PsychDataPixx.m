@@ -917,43 +917,34 @@ if strcmpi(cmd, 'SetVideoVerticalStereo')
     return;
 end
 
-% No-Op the new blue-line-stereo and scanning backlight functions, which
-% are not yet supported by the Datapixx driver on 64-Bit Octave and
-% Matlab on Linux:
-if (IsOctave && Is64Bit) || (IsLinux && ~IsOctave)
-    % Skip the else branch with the new unsupported commands.
-    if strcmpi(cmd, 'EnableVideoStereoBlueline') || strcmpi(cmd, 'DisableVideoStereoBlueline') || ...
-       strcmpi(cmd, 'EnableVideoScanningBacklight') || strcmpi(cmd, 'DisableVideoScanningBacklight')
-        return;
-    end
-else
-    % New Datapixx driver: Expose new functions...
-    
-    % Stereo sync line control:
-    if strcmpi(cmd, 'EnableVideoStereoBlueline')
-        doDatapixx('EnableVideoStereoBlueline');
-        doDatapixx('RegWrRd');
-        return;
-    end
-    
-    if strcmpi(cmd, 'DisableVideoStereoBlueline')
-        doDatapixx('DisableVideoStereoBlueline');
-        doDatapixx('RegWrRd');
-        return;
-    end
-    
-    % Scanning backlight control:
-    if strcmpi(cmd, 'EnableVideoScanningBacklight')
+% Stereo sync line control:
+if strcmpi(cmd, 'EnableVideoStereoBlueline')
+    doDatapixx('EnableVideoStereoBlueline');
+    doDatapixx('RegWrRd');
+    return;
+end
+
+if strcmpi(cmd, 'DisableVideoStereoBlueline')
+    doDatapixx('DisableVideoStereoBlueline');
+    doDatapixx('RegWrRd');
+    return;
+end
+
+% Scanning backlight control:
+if strcmpi(cmd, 'EnableVideoScanningBacklight')
+    if doDatapixx('IsViewpixx')
         doDatapixx('EnableVideoScanningBacklight');
         doDatapixx('RegWrRd');
-        return;
     end
-    
-    if strcmpi(cmd, 'DisableVideoScanningBacklight')
+    return;
+end
+
+if strcmpi(cmd, 'DisableVideoScanningBacklight')
+    if doDatapixx('IsViewpixx')
         doDatapixx('DisableVideoScanningBacklight');
         doDatapixx('RegWrRd');
-        return;
     end
+    return;
 end
 
 if strcmpi(cmd, 'PerformPostWindowOpenSetup')

@@ -1,0 +1,15 @@
+# xorg.conf file for configuring an AMD graphics card
+# to allow for up to 16 bpc, 64 bpp video display.
+# For use on Linux + X11 + Open-Source AMD graphics driver with:
+# PsychImaging('AddTask','General','EnableNative16BitFramebuffer')
+#
+# Copy this file to /etc/X11/xorg.conf and logout-login again
+# to prepare the system for this mode of operation.
+#
+
+Section "Device"
+  Identifier  "AMD16bpcFramebuffer"
+  Driver      "radeon"
+  Option      "ColorTiling"    "off"
+  Option      "ColorTiling2D"  "off"
+EndSection

@@ -97,7 +97,7 @@ while KbCheck; end % Wait until all keys are released.
 
 while 1
     % Check the state of the keyboard.
-	[ keyIsDown, seconds, keyCode ] = KbCheck;
+    [ keyIsDown, seconds, keyCode ] = KbCheck;
 
     % If the user is pressing a key, then display its code number and name.
     if keyIsDown
@@ -113,7 +113,7 @@ while 1
         % If the user holds down a key, KbCheck will report multiple events.
         % To condense multiple 'keyDown' events into a single event, we wait until all
         % keys have been released.
-        while KbCheck; end
+        KbReleaseWait;
     end
 end
 
@@ -129,19 +129,18 @@ escapeKey = KbName('ESCAPE');
 startSecs = GetSecs;
 
 while 1
-	[ keyIsDown, timeSecs, keyCode ] = KbCheck;
-	if keyIsDown
-		fprintf('"%s" typed at time %.3f seconds\n', KbName(keyCode), timeSecs - startSecs);
-        
-		if keyCode(escapeKey)
-			break;
+    [ keyIsDown, timeSecs, keyCode ] = KbCheck;
+    if keyIsDown
+        fprintf('"%s" typed at time %.3f seconds\n', KbName(keyCode), timeSecs - startSecs);
+        if keyCode(escapeKey)
+            break;
         end
-        
+
         % If the user holds down a key, KbCheck will report multiple events.
         % To condense multiple 'keyDown' events into a single event, we wait until all
         % keys have been released.
-        while KbCheck; end
-	end
+        KbReleaseWait;
+    end
 end
 
 return
@@ -169,9 +168,9 @@ initialRotationAngle = 3 * pi / 2; % The initial rotation angle in radians.
 try
 
     % Removes the blue screen flash and minimize extraneous warnings.
-	Screen('Preference', 'VisualDebugLevel', 3);
+    Screen('Preference', 'VisualDebugLevel', 3);
     Screen('Preference', 'SuppressAllWarnings', 1);
-	
+
     % Find out how many screens and use largest screen number.
     whichScreen = max(Screen('Screens'));
     
@@ -208,7 +207,7 @@ try
             numberOfSecondsElapsed = round((now - startTime) * 10 ^ 5);
             numberOfSecondsRemaining = durationInSeconds - numberOfSecondsElapsed;
         
-            Screen('DrawText', window, '4 of 4.  Press the left or right arrow key to move, or the escape key to quit.', 20,  20, black);
+            Screen('DrawText', window, '4 of 4.  Press the left or right arrow key to move, or the escape key to quit.', 20, 20, black);
             Screen('DrawText', window, sprintf('%i seconds remaining...', numberOfSecondsRemaining), 20, 50, black);
             
             xOffset = rotationRadius * cos(rotationAngle);
@@ -217,7 +216,7 @@ try
             Screen('FillOval', window, [0 0 127], offsetCenteredspotRect);
             Screen('Flip', window);
             
-           	[ keyIsDown, seconds, keyCode ] = KbCheck;
+            [ keyIsDown, seconds, keyCode ] = KbCheck;
             
             if keyIsDown
                 if keyCode(rightKey)

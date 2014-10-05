@@ -51,13 +51,7 @@ PsychError PSYCHHIDGetCalibratedState(void)
     PsychHIDVerifyInit();
     deviceRecord= PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
     elementRecord= PsychHIDGetElementRecordFromDeviceRecordAndElementIndex(deviceRecord, elementIndex);
-#ifndef __LP64__
-    elementValue= HIDGetElementValue(deviceRecord, elementRecord);
-    calibratedState= HIDCalibrateValue((SInt32)elementValue, elementRecord);
-    PsychCopyOutDoubleArg(1, FALSE, (double)calibratedState);
-#else
     PsychCopyOutDoubleArg(1, FALSE, IOHIDElement_GetValue(elementRecord, kIOHIDValueScaleTypeCalibrated));
-#endif
     return(PsychError_none);	
 }
 

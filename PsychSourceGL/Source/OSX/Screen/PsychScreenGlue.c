@@ -71,10 +71,6 @@ static CGDirectDisplayID    displayOnlineCGIDs[kPsychMaxPossibleDisplays];
 // List of service connect handles for connecting to the kernel support driver (if any):
 static int					numKernelDrivers = 0;
 static io_connect_t			displayConnectHandles[kPsychMaxPossibleDisplays];
-static int					repeatedZeroBeamcount[kPsychMaxPossibleDisplays];
-
-// Operating system major and minor version:
-static SInt32 osMajor, osMinor;
 
 //file local functions
 void InitCGDisplayIDList(void);
@@ -161,7 +157,6 @@ void InitializePsychDisplayGlue(void)
         displayOriginalCGSettingsValid[i]=FALSE;
         displayOverlayedCGSettingsValid[i]=FALSE;
         displayConnectHandles[i]=0;
-        repeatedZeroBeamcount[i]=0;
     }
     
     // Init the list of Core Graphics display IDs.
@@ -177,12 +172,8 @@ void InitializePsychDisplayGlue(void)
     // *and* allowed by settings, setup all relevant mappings:
     InitPsychtoolboxKernelDriverInterface();
     
-    // Query OS/X version:
-    Gestalt(gestaltSystemVersionMajor, &osMajor);
-    Gestalt(gestaltSystemVersionMinor, &osMinor);
-    
     // Prevent OSX 10.9+ "AppNap" power saving and timer coalescing etc.:
-    if ((osMajor > 10) || (osMajor == 10 && osMinor >= 9)) PsychCocoaPreventAppNap(TRUE);
+    PsychCocoaPreventAppNap(TRUE);
 }
 
 void PsychCleanupDisplayGlue(void)
@@ -207,7 +198,7 @@ void PsychCleanupDisplayGlue(void)
     PsychFreeFontList();
     
     // Allow OSX 10.9+ "AppNap" power saving and timer coalescing etc.:
-    if ((osMajor > 10) || (osMajor == 10 && osMinor >= 9)) PsychCocoaPreventAppNap(FALSE);
+    PsychCocoaPreventAppNap(FALSE);
 }
 
 void PsychDisplayReconfigurationCallBack(CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo)
@@ -326,10 +317,12 @@ psych_bool PsychCheckScreenSettingsLock(int screenNumber)
 void PsychCaptureScreen(int screenNumber)
 {
     CGDisplayErr  error;
+
+    if (screenNumber >= numDisplays) PsychErrorExit(PsychError_invalidScumber);
     
-    if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
-    error=CGDisplayCapture(displayCGIDs[screenNumber]);
-    if(error) PsychErrorExitMsg(PsychError_internal, "Unable to capture display");
+    error = CGDisplayCapture(displayCGIDs[screenNumber]);
+    if (error) PsychErrorExitMsg(PsychError_internal, "Unable to capture display");
+    
     PsychLockScreenSettings(screenNumber);
 
 	// Reenumerate all displays: This is meant to help resolve issues with lots of
@@ -360,9 +353,11 @@ void PsychReleaseScreen(int screenNumber)
 {	
     CGDisplayErr  error;
     
-    if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
+    if (screenNumber >= numDisplays) PsychErrorExit(PsychError_invalidScumber);
+
     error = CGDisplayRelease(displayCGIDs[screenNumber]);
-    if(error) PsychErrorExitMsg(PsychError_internal, "Unable to release display");
+    if (error) PsychErrorExitMsg(PsychError_internal, "Unable to release display");
+
     PsychUnlockScreenSettings(screenNumber);
 
 	// Reenumerate all displays: See comments in PsychCaptureScreen() for explanation.
@@ -784,7 +779,7 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
     else CGDisplayModeRelease(cgMode);
 
     //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.  
-    isCaptured = CGDisplayIsCaptured(displayCGIDs[settings->screenNumber]);
+    isCaptured = PsychIsScreenCaptured(settings->screenNumber);
     if(!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
 
     // Readback a backup copy of the current gamma table:
@@ -816,7 +811,7 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
 }
 
 /*
-    PsychRestoreVideoSettings()
+    PsychRestoreScreenSettings()
     
     Restores video settings to the state set by the finder.  Returns TRUE if the settings can be restored or false if they 
     can not be restored because a lock is in effect, which would mean that there are still open windows.    
@@ -834,7 +829,7 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
     if(!displayOriginalCGSettingsValid[screenNumber]) return(true);
     
     //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.  
-    isCaptured = CGDisplayIsCaptured(displayCGIDs[screenNumber]);
+    isCaptured = PsychIsScreenCaptured(screenNumber);
     if(!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
     
     // Change the display mode.
@@ -964,90 +959,16 @@ int PsychOSIsDWMEnabled(int screenNumber)
 }
 
 // PsychGetDisplayBeamPosition() contains the implementation of display beamposition queries.
-// It requires both, a cgDisplayID handle, and a logical screenNumber and uses one of both for
-// deciding which display pipe to query, whatever of both is more efficient or suitable for the
-// host platform -- This is ugly, but neccessary, because the mapping with only one of these
-// specifiers would be either ambigous (wrong results!) or usage would be inefficient and slow
-// (bad for such a time critical low level call!). On some systems it may even ignore the arguments,
-// because it's not capable of querying different pipes - ie., it will always query a hard-coded pipe.
-//
-// On MacOS/X, this is a simple wrapper around the OSX CoreGraphics call CGDisplayBeamPosition().
-// That call is currently supported by all gfx-chips/drivers on old PowerPC based Macs. It's also
-// supported for NVidia cards on the Intel based Macs, starting with OS/X 10.4.10 and later, 10.5
-// and later. On IntelMacs with ATI or Intel gfx, the call returns 0 or -1 (unsupported).
 int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 {	
-	// First try standard, official Apple OS/X supported method:
-	int beampos = -1;
-
-	// New style: Always use and return beamposition as measured by our own homegrown
-	// PsychtoolboxKernelDriver implementation, unless forcefully disabled via flag
-	// kPsychForceUseNativeBeamposQuery. This is because our own implementation is
-	// much more reliable, robust, precise and low-overhead as of OSX 10.8.
-	if (!(PsychPrefStateGet_ConserveVRAM() & kPsychForceUseNativeBeamposQuery) &&
-		((beampos = PsychOSKDGetBeamposition(screenNumber)) != -1)) {
-		return(beampos);
-	}
-
-	if (PsychPrefStateGet_ConserveVRAM() & kPsychDontUseNativeBeamposQuery) {
-		// OS/X native beamposition queries forcefully disabled!
-		// Try to use our own homegrown fallback solution:
-		return(PsychOSKDGetBeamposition(screenNumber));
-	}
-
-	if (repeatedZeroBeamcount[screenNumber] == -20000) {
-		// OS/X native beamposition queries verified to work: Use 'em:
-		
-		// Beampositionquery workaround requested?
-		if (PsychPrefStateGet_ConserveVRAM() & kPsychUseBeampositionQueryWorkaround) {
-			// Yes: Avoid queries that return zero -- If query result is zero, retry
-			// until it becomes non-zero:
-			// There might be a bug in 10.6.2 on NVidia hardware that needs this to resolve...
-			while (0 == (beampos = (int) CGDisplayBeamPosition(cgDisplayId)));
-		} else {
-			beampos = (int) CGDisplayBeamPosition(cgDisplayId);
-		}
-		
-		return(beampos);
-	}
-
-	if (repeatedZeroBeamcount[screenNumber] == -10000) {
-		// OS/X native beamposition queries verified to *not* work!
-		// Try to use our own homegrown fallback solution:
-		return(PsychOSKDGetBeamposition(screenNumber));
-	}
-
-	// At this point, we don't know yet if native beampos queries work. Use some
-	// detection logic: First we start with assumption "native works"...
-	beampos = CGDisplayBeamPosition(cgDisplayId);
-	
-	// ...then we try to verify that assumption:
-	if (beampos > 0) {
-		// They seem to work! Mark them permanently as operational:
-		repeatedZeroBeamcount[screenNumber] = -20000;
-		return(beampos);
-	}
-
-	// Totally unsupported?
-	if (beampos == -1) {
-		// Mark'em as unsupported and use our fallback:
-		repeatedZeroBeamcount[screenNumber] = -10000;
-		return(PsychOSKDGetBeamposition(screenNumber));
-	}
-	
-	// We got a zero value. Could be by accident or by failure:
-	
-	// Worked? A failure is indicated by either value -1 (officially unsupported),
-	// or a constant value zero. We use a counter array to check if multiple queries
-	// returned a zero value:
-	if ((repeatedZeroBeamcount[screenNumber]++) > 0) {
-		// Second zero result in a row! Native queries don't work, mark them
-		// as unsupported and use fallback:
-		repeatedZeroBeamcount[screenNumber] = -10000;
-		beampos = PsychOSKDGetBeamposition(screenNumber);
-	}
-	
-	return(beampos);
+	// As of PTB 3.0.12, always use and return beamposition as measured by our own
+	// PsychtoolboxKernelDriver implementation. Since at least OSX 10.7, our own
+    // implementation is much more reliable, robust, precise and low-overhead.
+    // Beamposition queries weren't supported by OSX natively for Intel and AMD gpu's
+    // on IntelMacs ever, they were severely buggy on OSX 10.8+ for the remaining
+    // NVidia cards where they sort of "worked", and the functionality has been
+    // effectively removed starting with OSX 10.9, turning into a no-op on all gpus.
+	return(PsychOSKDGetBeamposition(screenNumber));
 }
 
 // Try to attach to kernel level ptb support driver and setup everything, if it works:

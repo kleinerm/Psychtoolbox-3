@@ -40,20 +40,14 @@ end
 if mode==0
     % Build Screen.mex:
     
-    % Setting "if 1" would enable GStreamer-SDK functions, but be backwards
-    % incompatible with older Linux distros we'd like to keep supporting,
-    % e.g., Debian 6.0:
-    if 0
-        % Build against GStreamer-SDK for Linux from www.gstreamer.com and
-        % enable support for camerabin2 recording with selection of video
-        % encoding profiles via -DPTB_USE_GSTENCODINGPROFILES
-        %
-        % This will disable backwards compatibility with old Linux distros,
-        % so only use for testing, not for production releases!
-        mex -v -g "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTB_USE_GSTENCODINGPROFILES -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/X11R6/include -I/opt/gstreamer-sdk/include/gstreamer-0.10 -I/opt/gstreamer-sdk/include/glib-2.0 -I/opt/gstreamer-sdk/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/opt/gstreamer-sdk/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib -L/opt/gstreamer-sdk/lib  Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lgstreamer-0.10 -lgstbase-0.10 -lgstapp-0.10 -lgstinterfaces-0.10 -lgstpbutils-0.10 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes
+    % Setting "if 1" enables GStreamer-1 functions, but is backwards
+    % incompatible with older Linux distros,  e.g., Debian 6.0:
+    if 1
+        % Build against system installed GStreamer-1.0+
+        mex -v -g "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/X11R6/include -I/usr/include/gstreamer-1.0 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lgstreamer-1.0 -lgstbase-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes
     else
-        % Build against system installed GStreamer, backwards compatible to
-        % old Linux distros. This is the default for production builds:
+        % Build against system installed GStreamer-0.10.x, backwards compatible to
+        % old Linux distros:
         mex -v -g "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/X11R6/include -I/usr/include/gstreamer-0.10 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib   Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lgstreamer-0.10 -lgstbase-0.10 -lgstapp-0.10 -lgstinterfaces-0.10 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes
     end
     
@@ -142,7 +136,9 @@ end
 
 if mode==7
     % Build PsychKinectCore.mex:
-    mex -v -g --output ../Projects/Linux/build/PsychKinectCore.mex -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -I/usr/include/libfreenect -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -lfreenect -lusb-1.0
+    % Official build method: mex -v -g --output ../Projects/Linux/build/PsychKinectCore.mex -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -I/usr/include/libfreenect -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -lfreenect -lusb-1.0
+    % Test build against libfreenect-0.5 from GitHub repo:
+    mex -v -g --output ../Projects/Linux/build/PsychKinectCore.mex -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -I/usr/local/include/libfreenect -L/usr/local/lib/ -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -lfreenect -lusb-1.0
     unix(['mv ../Projects/Linux/build/PsychKinectCore.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'PsychKinectCore.mex']);
 end
@@ -172,6 +168,19 @@ if mode == 10
     mex -v -g --output PsychCV.mex -DPTBMODULE_PsychCV -DPTBOCTAVE3MEX -ICommon/Base -ICommon/PsychCV -ILinux/Base -I../Cohorts/ARToolkit/include  Common/Base/*.c Linux/Base/*.c Common/PsychCV/*.c -lc -lrt /usr/local/lib/libARMulti.a /usr/local/lib/libARgsub.a /usr/local/lib/libARgsub_lite.a /usr/local/lib/libARgsubUtil.a /usr/local/lib/libAR.a -lglut
     unix(['mv PsychCV.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'PsychCV.mex']);
+end
+
+if mode == 11
+    % Build pnet
+    curdir = pwd;
+    cd('../../Psychtoolbox/PsychHardware/iViewXToolbox/tcp_udp_ip/')
+    try
+        mex -v -g pnet.c
+    catch
+    end
+    unix(['mv pnet.mex ' PsychtoolboxRoot target]);
+    cd(curdir);
+    striplibsfrommexfile([PsychtoolboxRoot target 'pnet.mex']);
 end
 
 % Remove stale object files:

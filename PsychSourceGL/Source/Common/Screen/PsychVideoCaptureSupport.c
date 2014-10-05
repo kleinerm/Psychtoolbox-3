@@ -79,7 +79,7 @@ void PsychEnumerateVideoSources(int engineId, int outPos)
 	#ifdef PTB_USE_GSTREAMER
 	if (engineId == 3) {
 		// GStreamer device enumeration:
-		PsychGSEnumerateVideoSources(outPos, -1);
+		PsychGSEnumerateVideoSources(outPos, -1, NULL);
 		dispatched = TRUE;
 	}
 	#endif

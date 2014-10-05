@@ -93,7 +93,7 @@
 #define super IOService
 OSDefineMetaClassAndStructors(PsychtoolboxKernelDriver, IOService)
 
-/* Mappings up to date for August 2014 (last update e-mail patch / commit 2014-05-06). Would need updates for anything after start of September 2014 */
+/* Mappings up to date for August 2014 (last update e-mail patch / commit 2014-08-22). Would need updates for anything after start of September 2014 */
 
 /* Is a given ATI/AMD GPU a DCE8 type ASIC, i.e., with the new display engine? */
 bool PsychtoolboxKernelDriver::isDCE8(void)
@@ -1439,15 +1439,15 @@ void PsychtoolboxKernelDriver::GetGPUInfo(UInt32 *inOutArgs)
     // Default to "don't know".
     inOutArgs[2] = 0;
 
-    // On Radeons we distinguish between Avivo (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60) for now.
-    if (fDeviceType == kPsychRadeon) inOutArgs[2] = isDCE6() ? 60 : (isDCE5() ? 50 : (isDCE4() ? 40 : (isDCE3() ? 30 : 10)));
+    // On Radeons we distinguish between Avivo / DCE-2 (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60) or DCE-8 (80) for now.
+    if (fDeviceType == kPsychRadeon) inOutArgs[2] = isDCE8() ? 80 : (isDCE6() ? 60 : (isDCE5() ? 50 : (isDCE4() ? 40 : (isDCE3() ? 30 : 10))));
 
     // On NVidia's we distinguish between chip family, e.g., 0x40 for the NV-40 family.
     if (fDeviceType == kPsychGeForce) inOutArgs[2] = fCardType;
 
     // 4th = Maximum number of crtc's:
     inOutArgs[3] = fNumDisplayHeads;
-    
+
     return;
 }
 

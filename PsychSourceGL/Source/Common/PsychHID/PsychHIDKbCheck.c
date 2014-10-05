@@ -81,8 +81,8 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
     int					numDeviceUsages=NUMDEVICEUSAGES;
 	long				KbDeviceUsagePages[NUMDEVICEUSAGES]= {kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop};
 	long				KbDeviceUsages[NUMDEVICEUSAGES]={kHIDUsage_GD_Keyboard, kHIDUsage_GD_Keypad, kHIDUsage_GD_Mouse, kHIDUsage_GD_Pointer, kHIDUsage_GD_Joystick, kHIDUsage_GD_GamePad, kHIDUsage_GD_MultiAxisController};
-    static int			deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
-    static pRecDevice	deviceRecords[PSYCH_HID_MAX_KEYBOARD_DEVICES];
+    static int			deviceIndices[PSYCH_HID_MAX_DEVICES];
+    static pRecDevice	deviceRecords[PSYCH_HID_MAX_DEVICES];
     psych_bool			isDeviceSpecified, foundUserSpecifiedDevice;
     double				*timeValueOutput, *isKeyDownOutput, *keyArrayOutput;
     int					m, n, p, nout;
@@ -165,10 +165,6 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
         // Keep track of last queried element:
         lastElement = currentElement;
         
-        #ifndef __LP64__
-        usage = currentElement->usage;
-        usagePage = currentElement->usagePage;
-        #else
         usage = IOHIDElementGetUsage(currentElement);
         usagePage = IOHIDElementGetUsagePage(currentElement);
         // printf("PTB-DEBUG: [KbCheck]: ce %p page %d usage: %d isArray: %d\n", currentElement, usagePage, usage, IOHIDElementIsArray(currentElement));
@@ -196,16 +192,11 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
             // Iterate to next currentElement:
             continue;
         }
-        #endif
 
         // Classic path, or 64-Bit path for non-collection elements:
         if(((usagePage == kHIDPage_KeyboardOrKeypad) || (usagePage == kHIDPage_Button)) && (usage <= 256) && (usage >= 1) &&
 			( (scanList == NULL) || (scanList[usage - 1] > 0) ) ) {
-            #ifndef __LP64__
-            value = (int) HIDGetElementValue(deviceRecord, currentElement);
-            #else
             value = (int) IOHIDElement_GetValue(currentElement, kIOHIDValueScaleTypePhysical);
-            #endif
 
             if (debuglevel > 0) printf("PTB-DEBUG: [KbCheck]: usage: %x value: %d \n", usage, value);
             keyArrayOutput[usage - 1]=(value || (int) keyArrayOutput[usage - 1]);

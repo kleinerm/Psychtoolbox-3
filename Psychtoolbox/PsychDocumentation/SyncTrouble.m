@@ -337,6 +337,11 @@
 %
 % MORE WAYS TO TEST:
 %
+% The script OSXCompositorIdiocyTest() is a must run for OSX users, to make
+% sure their system doesn't have the OSX compositor bug, especially on OSX
+% 10.8 and later. If that test fails then visual stimulation timing must be
+% considered not trustworthy.
+%
 % The script VBLSyncTest() allows you to assess the timing of Psychtoolbox
 % on your specific setup in a variety of conditions. It expects many
 % parameters and displays a couple of plots at the end, so there is no way
@@ -346,7 +351,7 @@
 % screen and allows you to assess visually, if synchronization works
 % properly.
 %
-% Both tests are for the really cautious: The built-in test of
+% Both tests are for the cautious: The built-in test of
 % Screen('OpenWindow') should be able to catch about 99% of all conceivable
 % synchronization problems.
 %
@@ -386,24 +391,28 @@
 % ... can do this setup step for you. The KDE KWin window manager (and
 % probably the latest version of GNOME-3) will automatically unredirect
 % fullscreen windows and go out of the way, if you've enabled this in
-% their settings. On GNOME-3, no setup is required. On KDE, do this:
-% Open "KDE System Settings" -> "Desktop Effects" ->
+% their settings:
+%
+% - On GNOME-3, no setup is required.
+% - On KDE, do this: Open "KDE System Settings" -> "Desktop Effects" ->
 % "Advanced" Tab -> "Suspend desktop effects for fullscreen windows"
-% -> Check the checkbox -> "Apply" -> Done. The same will happen on compiz
-% with Ubuntu Linux 12.04.2 LTS or later. If you use a different desktop
-% compositor, and on a few versions of compiz, the command doesn't yet
-% work, so you need to check the manuals/help of your system on how to
-% enable the option "unredirect_fullscreen_windows" manually. E.g., on
-% Ubuntu systems you can install the "CompizConfig settings manager" GUI
-% tool (CCSM), which allows to change many GUI settings manually. After
-% starting that tool, you'd go to the setup panel for the "Composite"
-% plugin, and there check the checkbox named "Unredirect Fullscreen
-% Windows", to make sure that Compiz won't interfere with visual timing on
-% fullscreen windows. If in doubt, just use a desktop session without 3D
-% compositor for running the actual data collection of your studies.
-% Examples of desktops which use a compositor: Ubuntu Unity, GNOME-3,
-% GNOME-2, KWin. Examples which don't use a compositor: GNOME-2 classic,
-% Mate desktop, XFCE at its default setting on Ubuntu.
+% -> Check the checkbox -> "Apply" -> Done.
+% - Ubuntu Unity under Ubuntu Linux 12.04.2 LTS or later requires no setup.
+%
+% If you use a different desktop compositor, and on a few versions of
+% compiz, the command doesn't yet work, so you need to check the
+% manuals/help of your system on how to enable the option
+% "unredirect_fullscreen_windows" manually. E.g., on Ubuntu systems you can
+% install the "CompizConfig settings manager" GUI tool (CCSM), which allows
+% to change many GUI settings manually. After starting that tool, you'd go
+% to the setup panel for the "Composite" plugin, and there check the
+% checkbox named "Unredirect Fullscreen Windows", to make sure that Compiz
+% won't interfere with visual timing on fullscreen windows. If in doubt,
+% just use a desktop session without 3D compositor for running the actual
+% data collection of your studies. Examples of desktops which use a
+% compositor: Ubuntu Unity, GNOME-3, GNOME-2, KWin. Examples which don't
+% use a compositor: GNOME-2 classic, Mate desktop, XFCE at its default
+% setting on Ubuntu.
 %
 % If you use the NVidia or AMD proprietary graphics drivers, frequent
 % synchronization failures, or other sync related warnings, or unsteady,
@@ -426,11 +435,31 @@
 % On Intel graphics drivers, add the options:
 %
 % Option "TripleBuffer"    "off"
-% Option "SwapbuffersWait"  "on"
+% Option "DRI" "2"
 %
 % On the nouveau driver for NVidia cards, add:
 % Option "SwapLimit" "1"
 % Option "GLXVBlank" "on"
+%
+% The Psychtoolbox subfolder "PsychHardware/LinuxX11ExampleXorgConfs/"
+% contains a collection of xorg.conf sample files which show how to
+% configure your graphics driver for optimal timing, for special
+% multi-display configurations, and for high color depth displays. In the
+% most simple case you can simply copy a suitable file for your graphics
+% card into the /etc/X11/ directory of your system, under the name
+% xorg.conf, ie., rename the file to xorg.conf, then copy it into /etc/X11/
+% as root user.
+%
+% Example - To setup a Intel graphics cards for optimal timing for stimulus
+% presentation on a single x-screen (single display or dual-display
+% stereo), you could type the following into a terminal window:
+%
+% sudo cp /path/to/Psychtoolbox/PsychHardware/LinuxX11ExampleXorgConfs/xorg.conf_intel /etc/X11/xorg.conf
+%
+% Then logout and login again for the changes to take effect.
+%
+% For more complex setups you may need to combine snippets of code from
+% multiple of our sample files into a single xorg.conf file.
 %
 % On Linux with the open-source intel, nouveau and radeon graphics drivers,
 % the script OMLBasicTest allows some additional correctness checks.
@@ -440,3 +469,4 @@
 % 17.06.2006 written (MK).
 % 09.10.2012 Add Linux-specific section (MK).
 % 29.09.2013 Update to current state (MK).
+% 05.10.2014 Update to current state (MK).

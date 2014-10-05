@@ -1,0 +1,14 @@
+# xorg.conf for enabling a depth 30 bit, 10 bpc native
+# framebuffer on Linux + X11 on any graphics card and
+# driver which supports 10 bpc display without special
+# Psychtoolbox hacks.
+#
+# Just copy this file to /etc/X11/xorg.conf
+# as sudo root, then logout - login again to make
+# the changes effective.
+#
+
+Section "Screen"
+    Identifier      "Screen0"
+    DefaultDepth    30
+EndSection

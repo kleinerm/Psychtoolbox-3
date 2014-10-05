@@ -1,0 +1,82 @@
+/* AMD16bpc_FormattingShader.frag.txt -- RGBA16 output formatter
+ *
+ * This shader converts a HDR texture into a RGBA8 8bpc framebuffer
+ * image, suitable for scanout by a AMD GPU in 64 bpp / 16 bpc mode.
+ * It expects the RGB image data in the respective channels of
+ * the texture, with values ranging from 0.0 - 1.0, remaps it into
+ * the output data range of the GPU, then encodes the 16 bit values
+ * into the red+green+blue channels of consecutive pixels. Each 16 bit
+ * value is split into 8 Most significant bits and 8 least significant bits,
+ * and these are stored in consecutive color components of pixels. This way,
+ * two color components encode one color channel and one needs two consecutive
+ * horizontal pixels in the framebuffer to encode one 64 bpp color pixel.
+ *
+ * This shader is intended for use as a plugin for the 'FinalOutputFormattingBlit'
+ * chain of the Psychtoolbox-3 imaging pipeline.
+ *
+ * (c) 2014 by Mario Kleiner, part of PTB-3, licensed to you under MIT license.
+ * See file License.txt in the Psychtoolbox root folder for the license.
+ *
+ */
+
+#extension GL_ARB_texture_rectangle : enable
+
+uniform sampler2DRect Image;
+uniform float Prescale;
+uniform float halfFBWidth;
+
+void main()
+{
+    float horizontalOffset;
+
+    /* Get default texel read position (x,y): x is column, y is row of image. */
+    vec2 readpos = gl_FragCoord.xy;
+
+    /* "Even" output rows encode right dual-display output, or nothing. */
+    if (mod(gl_FragCoord.y, 2.0) < 1.0) {
+        /* Even row: Sample right half of input image on dual-display, or the void on single-display setup. */
+        horizontalOffset = halfFBWidth;
+    }
+    else {
+        /* Odd row: Sample left half of input image on dual-display, all on single-display. */
+        horizontalOffset = 0.0;
+    }
+
+    /* Update the s (==column) component to read each pixel column twice, replicating it. */
+    readpos.s = horizontalOffset + ((readpos.s - mod(readpos.s, 2.0)) * 0.5);
+
+    /* Due to skipping of every 2nd output row above, make sure the skip is discarded. */
+    readpos.t = (readpos.t - mod(readpos.t, 2.0)) * 0.5;
+
+    /* Retrieve RGBA HDR input color value for a virtual pixel. */
+    vec4 incolor = texture2DRect(Image, readpos);
+
+    /* Remap all color channels from 0.0 - 1.0 to 0 to 65535: */
+    /* Perform rounding for non-integral numbers and add a small epsilon to take numeric roundoff into account: */
+    vec3 index = floor(incolor.rgb * Prescale + 0.5) + 0.01;
+
+    /* Compute high bytes (8 MSBs) for all color components. */
+    vec3 hibytes = floor(index / 256.0) / 255.0;
+
+    /* Compute low bytes (8 LSBs) for color components. */
+    vec3 lobytes = mod(index, 256.0) / 255.0;
+    
+    gl_FragColor = vec4(0.0);
+
+    /* Distribution of bytes into output pixel components is dependent */
+    /* on our output pixel location. Are we writing an even or odd pixel? */
+    if (mod(gl_FragCoord.x, 2.0) < 1.0) {
+        /* Even output pixel: */
+        gl_FragColor.a = hibytes.g;
+        gl_FragColor.r = lobytes.g;
+        gl_FragColor.g = hibytes.b;
+        gl_FragColor.b = lobytes.b;
+    }
+    else {
+        /* Odd output pixel: */
+        gl_FragColor.a = 0.0;
+        gl_FragColor.r = 0.0;
+        gl_FragColor.g = hibytes.r;
+        gl_FragColor.b = lobytes.r;
+    }
+}

@@ -98,6 +98,7 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % 06/17/13  Add sx == 'right' option for right-alignment of text. (MK)
 % 07/02/14  Add sx == 'wrapat' and sx == 'justifytomax' options for block adjustment of text.
 %           This is to be considered quite a prototype. (MK)
+% 09/21/14  Fix text clipping when used with optional winRect parameter. (MK)
 
 % Set ptb_drawformattedtext_disableClipping to 1 if text clipping should be disabled:
 global ptb_drawformattedtext_disableClipping;
@@ -366,11 +367,10 @@ while ~isempty(tstring)
     % tstring contains the remainder of the input string to process in next
     % iteration, curstring is the string we need to draw now.
 
-    % Perform crude clipping against upper and lower window borders for
-    % this text snippet. If it is clearly outside the window and would get
-    % clipped away by the renderer anyway, we can safe ourselves the
-    % trouble of processing it:
-    if disableClip || ((yp + theight >= 0) && (yp - theight <= winHeight))
+    % Perform crude clipping against upper and lower window borders for this text snippet.
+    % If it is clearly outside the window and would get clipped away by the renderer anyway,
+    % we can safe ourselves the trouble of processing it:
+    if disableClip || ((yp + theight >= winRect(RectTop)) && (yp - theight <= winRect(RectBottom)))
         % Inside crude clipping area. Need to draw.
         noclip = 1;
     else
@@ -379,7 +379,7 @@ while ~isempty(tstring)
         noclip = 0;
         dolinefeed = 1;
     end
-    
+
     % Any string to draw?
     if ~isempty(curstring) && noclip
         % Cast curstring back to the class of the original input string, to

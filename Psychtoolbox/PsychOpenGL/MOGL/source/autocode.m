@@ -18,7 +18,9 @@ function autocode(overwrite, glheaderpath, openal)
 % 06-Feb-07 -- added support for OpenAL (MK)
 % 24-Mar-11 -- Silence mlint warnings. (MK)
 % 01-Apr-12 -- Adapt to parsing of current glext_edit.h from OpenGL registry. (MK)
-
+% 28-Sep-14 -- Make sure to not add same function multiple times. (MK)
+% 28-Sep-14 -- Use our own copy of glu.h, as Apple ones is screwed up by now. (MK)
+% 29-Sep-14 -- Cross-Check each entry point for glew.h support before adding it. (MK)
 clc;
 
 if nargin < 1 || isempty(overwrite)
@@ -75,7 +77,7 @@ if openal
 	end
 else
 	unix(sprintf('grep gl[A-Z]   %s/gl.h        | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >  %s',glheaderpath, tmplistfile));
-	unix(sprintf('grep glu[A-Z]  %s/glu.h       | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >> %s',glheaderpath, tmplistfile));
+	unix(sprintf('grep glu[A-Z]  headers/glu_edit.h | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >> %s',tmplistfile));
 	unix(sprintf('grep glut[A-Z] headers/glut_edit.h | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >> %s',tmplistfile));
 	unix(sprintf('grep gl[A-Z]   headers/glext_edit.h | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*GLAPI[[:space:]]*//''  | sed -E ''s/[[:space:]]*APIENTRY*//'' | sed -E ''s/;[[:space:]]*$//'' >>  %s',tmplistfile));
     
@@ -91,6 +93,15 @@ cfid=fopen(cfile,'a');
 
 % initialize list of entries in command map
 cmdmap={};
+knownfuncs = '';
+
+% Read the full content of glew.h into glewfuncs:
+glewfid = fopen('glew.h', 'rt');
+glewfuncs = char(fread(glewfid)); %#ok<FREAD>
+fclose(glewfid);
+
+% Make it digestable by strfind():
+glewfuncs = transpose(squeeze(glewfuncs));
 
 % step through list of OpenGL functions
 while(~feof(listfid)),
@@ -98,16 +109,38 @@ while(~feof(listfid)),
     % parse the next function declaration
     funcp=cparse(fgetl(listfid), openal);
 
-    % skip functions in autono.txt
-    if isempty(funcp) || filecontains('autono.txt',funcp.fname),
-        continue
+    % skip unsupported/unparseable functions:
+    if isempty(funcp)
+        fprintf(1,'Rejected: [unparseable/unsupported, see line above]\n');
+        continue;
     end
 
+    % skip functions in autono.txt
+    if filecontains('autono.txt',funcp.fname),
+        fprintf(1,'Rejected: %s ... [in autono.txt]\n',funcp.fname);
+        continue;
+    end
+
+    % Skip functions already added in the past:
+    if ~isempty(strfind(knownfuncs, [' ' funcp.fname]))
+        fprintf(1,'Rejected: %s ... [redundant definition]\n',funcp.fname);
+        continue;
+    end
+    
     % skip functions that use double indirection in an input argument
     if doubleindirect(funcp),
         % add function name to autono.txt
         unix(sprintf('cat "%s  %% uses double indirection (added to autono.txt by autocode.m) >> autono.txt',funcp.fname));
-        continue
+        fprintf(1,'Rejected: %s ... [pointer double indirection]\n',funcp.fname);
+        continue;
+    end
+    
+    % Cross-Check with glew.h glxew.h etc. to make sure our current GLEW
+    % version supports this entry point. Exceptions are gluXXX and glutXXX
+    % functions:
+    if isempty(strfind(glewfuncs, [' ' funcp.fname ' '])) && isempty(strfind(funcp.fname, 'glu'))
+        fprintf(1,'Rejected: %s ... [entry point unsupported by GLEW]\n',funcp.fname);
+        continue;
     end
 
     % function meets criteria, so show function name
@@ -119,11 +152,11 @@ while(~feof(listfid)),
 
     if (overwrite > 0) || (exist([ funcp.fname '.m'], 'file')~= 2)
         % (re)create M-file wrapper
-        fprintf(1, 'creating M-File wrapper.\n');
+        fprintf(1, '(re)creating M-File wrapper.\n');
         mwrite(funcp,M,openal);
     else
         fprintf(1, '\n');
-    end;
+    end
     
     % create C interface function
 	cwrite(cfid,funcp,C);
@@ -131,6 +164,8 @@ while(~feof(listfid)),
 	% add line to command map (to be written to C file later)
 	cmdmap{end+1}=sprintf('{ %-35s%-35s }',[ '"' funcp.fname '",' ],C.interfacename); %#ok<AGROW>
 	
+    % add function name to list of already known functions:
+    knownfuncs = [knownfuncs ' ' funcp.fname];  %#ok<AGROW>
 end
 
 % sort and write command map

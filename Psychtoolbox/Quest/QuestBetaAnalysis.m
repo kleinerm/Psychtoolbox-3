@@ -26,7 +26,7 @@ if nargin<2
 end
 fprintf('Now re-analyzing with both threshold and beta as free parameters. ...\n');
 for f=fid
-	fprintf(f,'logC 	 ±sd 	 beta	 ±sd	 gamma\n');
+	fprintf(f,'logC 	 +-sd 	 beta	 +-sd	 gamma\n');
 end
 for i=1:length(q(:))
 	betaEstimate(i)=QuestBetaAnalysis1(q(i),fid);
@@ -77,7 +77,7 @@ betaSd=sqrt(sum(p2.*beta2.^2)/p-(sum(p2.*beta2)/p).^2);
 iBetaMean=sum(p2./beta2)/p;
 iBetaSd=sqrt(sum(p2./beta2.^2)/p-(sum(p2./beta2)/p).^2);
 for f=fid
-	%	fprintf(f,'Threshold %4.2f ± %.2f; Beta mode %.1f mean %.1f ± %.1f imean 1/%.1f ± %.1f; Gamma %.2f\n',t,sd,q2(i).beta,betaMean,betaSd,1/iBetaMean,iBetaSd,q.gamma);
+	%	fprintf(f,'Threshold %4.2f +- %.2f; Beta mode %.1f mean %.1f +- %.1f imean 1/%.1f +- %.1f; Gamma %.2f\n',t,sd,q2(i).beta,betaMean,betaSd,1/iBetaMean,iBetaSd,q.gamma);
 	%	fprintf(f,'%5.2f	%4.1f	%5.2f\n',t,1/iBetaMean,q.gamma);
 	fprintf(f,'%5.2f	%5.2f	%4.1f	%4.1f	%6.3f\n',t,sd,1/iBetaMean,betaSd,q.gamma);
 end

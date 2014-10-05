@@ -30,7 +30,7 @@ p.full=str;
 
 % make list of data types
 ctypes='void|char|unsigned char|signed char|short|unsigned short|signed short|short int|unsigned short int|signed short int|int|unsigned int|signed int|long|unsigned long|signed long|long int|unsigned long int|signed long int|float|double';
-ogltypes='GLenum|GLboolean|GLbitfield|GLbyte|GLshort|GLint64|GLint|GLsizei|GLubyte|GLushort|GLuint64|GLuint|GLfloat|GLclampf|GLdouble|GLclampd|GLvoid|GLintptr|GLsizeiptr|GLchar|GLUnurbs|GLUquadric|GLUtesselator|GLhandleARB|GLsync';
+ogltypes='GLenum|GLboolean|GLbitfield|GLbyte|GLshort|GLint64EXT|GLint64|GLintptr|GLint|GLsizeiptr|GLsizei|GLubyte|GLushort|GLuint64EXT|GLuint64|GLuintptr|GLuint|GLfloat|GLclampf|GLdouble|GLclampd|GLvoid|GLcharARB|GLchar|GLUnurbs|GLUquadric|GLUtesselator|GLhandleARB|GLsync';
 oaltypes='ALenum|ALboolean|ALbitfield|ALbyte|ALshort|ALint|ALsizei|ALubyte|ALushort|ALuint|ALfloat|ALclampf|ALdouble|ALclampd|ALvoid|ALintptr|ALsizeiptr|ALchar';
 types=[ ctypes '|' ogltypes '|' oaltypes];
 

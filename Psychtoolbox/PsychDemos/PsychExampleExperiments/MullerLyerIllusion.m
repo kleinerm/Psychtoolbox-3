@@ -43,7 +43,7 @@ function results = MullerLyerIllusion(subID)
 % Exemplary reference:
 %
 %   Restle F & Decker J (1977) Size of the Mueller-Lyer illusion as a
-%   function of its dimensions: Theory and data. Perception & Psychophysics 21:489–503
+%   function of its dimensions: Theory and data. Perception & Psychophysics 21:489 503
 %
 % History:
 % 3/3/2008  Included in Psychtoolbox (MK).
