@@ -148,6 +148,15 @@
 % web: http://www.libusb.org/
 %
 
+%
+%
+%
+%   537  locate fwfetcher.py
+%   538  python /Library/Caches/Homebrew/libfreenect--git/src/fwfetcher.py
+%   539  ls audios.bin 
+%   540  history 
+%   541  mv audios.bin /usr/local/share/libfreenect/
+
 if ~IsLinux
     fprintf('Executing InstallKinect only makes sense on Linux. Doing nothing.\n');
     return;

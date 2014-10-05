@@ -138,6 +138,11 @@ try
         % Make sure a cache directory for buffering exists.
         PsychHomeDir('.cache');
         
+        % Linus Torvalds DebConf 2014 Q & A:
+        moviefiles(end+1).name = 'http://meetings-archive.debian.net/pub/debian-meetings/2014/debconf14/webm/QA_with_Linus_Torvalds.webm';
+        moviefiles(end).url = 'http://meetings-archive.debian.net/pub/debian-meetings/2014/debconf14/webm/QA_with_Linus_Torvalds.webm';
+        moviefiles(end).credits = 'Q & A at DebConf 2014 with Linus Torvalds';
+
         % MC Hammers Can't touch this - performed by a special ensemble:
         moviefiles(end+1).name = 'http://archive.org/download/juniorx3_dancevideo2/juniorx3_dancevideo2.ogv';
         moviefiles(end).url = 'http://archive.org/details/juniorx3_dancevideo2';
@@ -219,7 +224,7 @@ try
         Screen('Flip', win);
         
         % Open movie file and retrieve basic info about movie:
-        [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, [], preloadsecs, [], pixelFormat, maxThreads);        
+        [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, [], preloadsecs, [], pixelFormat, maxThreads);
         fprintf('Movie: %s  : %f seconds duration, %f fps, w x h = %i x %i...\n', moviename, movieduration, fps, imgw, imgh);
         
         i=0;

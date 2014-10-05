@@ -8,7 +8,7 @@ function AlphaBlendingTest(screenNumber)
 % calcualated in MATLAB.
 %
 % AlphaBlendingTest combines tests implemented separately.  You may perform
-% any of these tests individually, or call TestAlphaBlending to perform
+% any of these tests individually, or call AlphaBlendingTest to perform
 % them all:
 %   
 % AlphaBlendSettingTest - 

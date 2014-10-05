@@ -13,6 +13,7 @@
 %
 %   EnergyToQuanta      - Convert monochromatic energy to quanta.
 %   CornIrradianceAndDegrees2ToRadiance - Convert corneal irradiance to radiance, given stimulus area in degrees^2.
+%   FrequencyTHzToWavelengthNm - Convert wavelength of light (nm) to frequency (THz).
 %   PowerToTrolands     - Convert monochromatic power to photopic trolands.
 %   PsychAnsiZ136MPE    - Ansi 136.1-2007 standard for maximum permissible light exposure.
 %   PsychISO2007MPE     - ISO 2007 standard for maximum permissible light exposure
@@ -32,6 +33,7 @@
 %   TrolandsToQuanta    - Convert monochromatic photopic trolands to quanta.
 %   TrolandsToRetIrradiance - Get retinal irradiance (power units) from spectrum and trolands.
 %   WattsToRetIrradiance - Get absolute retinal irradiance (power units) from rel. spectrum and watts/area.
+%   WavelengthNmToFrequencyTHz - Convert frequency of light (THz) to wavelength (nm).
 %
 % Obsolete
 %   The routines below use specific unit conventions.  I now think it is better not to mix unit conversions

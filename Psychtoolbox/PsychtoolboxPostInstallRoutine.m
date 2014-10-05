@@ -57,6 +57,9 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 07/02/2013 Drop support for 32-Bit Matlab on OSX, and thereby for 32-Bit OSX. (MK)
 % 07/02/2013 Drop support for OSX versions older than 10.6 "Snow Leopard". (MK)
 % 09/12/2013 Setup PsychStartup.m in startup.m for 32-Bit Windows as well. (MK)
+% 05/18/2014 No support for 32-Bit Matlab on Linux and Windows anymore for 3.0.12. (MK)
+% 09/23/2014 No support for OSX 10.7 and earlier anymore. (MK)
+% 10/05/2014 Add some request for donations at the end. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -158,6 +161,15 @@ if IsOSX && ~Is64Bit
     error('Tried to setup on 32-Bit Octave, which is no longer supported on OSX.');
 end
 
+if ~Is64Bit && ~IsOctave
+    fprintf('Psychtoolbox 3.0.12 and later do no longer work with 32-Bit versions of Matlab.\n');
+    fprintf('You need to upgrade to a supported 64-Bit version of Octave or Matlab. 32-Bit Octave is still\n');
+    fprintf('supported on GNU/Linux.\n');
+    fprintf('If you must use a legacy 32-Bit Matlab environment, you can call the function\n');
+    fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.11'', which does support 32-Bit Matlab on Linux and Windows.\n');
+    error('Tried to setup on 32-Bit Matlab, which is no longer supported.');
+end
+
 % Check if our own startup function is part of the startup file and add it,
 % if it isn't already part of it. Currently we only need this for MS-Windows.
 if IsWin
@@ -205,19 +217,19 @@ if IsOSX
         minorver = inf;
     end
     
-    % Is the operating system minor version 'minorver' < 6?
-    if minorver < 6
-        % Yes. This is MacOSX 10.5 or earlier, i.e., older than 10.6
-        % Snow Leopard. PTB will not work on such an old system:
+    % Is the operating system version < 10.8?
+    if minorver < 8
+        % Yes. This is MacOSX 10.7 or earlier, i.e., older than 10.8
+        % Mountain Lion. PTB will not work on such an old system:
         fprintf('\n\n\n\n\n\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n');
         fprintf('Your operating system is Mac OS/X version 10.%i.\n\n', minorver);
         fprintf('This release of Psychtoolbox-3 is not compatible\n');
-        fprintf('to OSX versions older than 10.6 "Snow Leopard".\n');
+        fprintf('to OSX versions older than 10.8 "Mountain Lion".\n');
         fprintf('That means that almost all functionality will not work!\n\n');
-        fprintf('You can either download an older version of Psychtoolbox\n');
+        fprintf('You could download an older version of Psychtoolbox\n');
         fprintf('onto your system to get better results. See our Wiki for help.\n');
         fprintf('Better though, update your operating system to at least version\n');
-        fprintf('10.6.8 "Snow Leopard" or later.\n');
+        fprintf('10.8.5 or later, better the very latest OSX version.\n');
         fprintf('\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n\n');
         fprintf('Press any key on keyboard to try to continue with setup, although\n');
         fprintf('this will likely fail soon and leave you with a dysfunctional toolbox.\n\n');
@@ -337,8 +349,8 @@ if IsOctave
             % On Linux everything >= 3.2 is fine:
             fprintf('WARNING: using the latest stable version of the Octave 3.2.x series or later for use with Psychtoolbox.\n');
         else
-            % On other OS'es we only care about >= 3.6 atm:
-            fprintf('WARNING: using the latest stable version of the Octave 3.6.x series or later for use with Psychtoolbox.\n');
+            % On other OS'es we only care about >= 3.8 atm:
+            fprintf('WARNING: using the latest stable version of the Octave 3.8.x series or later for use with Psychtoolbox.\n');
         end
         fprintf('WARNING: Stuff may not work at all or only suboptimal with earlier versions and we\n');
         fprintf('WARNING: don''t provide any support for such old versions.\n');
@@ -478,7 +490,7 @@ try
         fprintf('\n');
         fprintf('For Screen() and OpenGL support:\n\n');
         fprintf('* The OpenGL utility toolkit GLUT: glut, glut-3 or freeglut are typical provider packages in most Linux distributions.\n');
-        fprintf('* GStreamer multimedia framework: At least version 0.10.24 of the core runtime and the gstreamer-base plugins.\n');
+        fprintf('* GStreamer multimedia framework: At least version 1.0.0 of the core runtime and the gstreamer-base plugins.\n');
         fprintf('  For optimal performance use the latest available versions.\n');
         fprintf('  A simple way to get GStreamer at least on Ubuntu Linux is to install the "rhythmbox" or\n');
         fprintf('  "totem" multimedia-players. You may need to install additional packages to play back all\n');
@@ -489,7 +501,7 @@ try
         fprintf('\n\n');
         fprintf('For PsychKinect() (See "help InstallKinect"):\n\n');
         fprintf('* libusb-1.0 USB low-level access library.\n');
-        fprintf('* libfreenect: Kinect driver library.\n');
+        fprintf('* libfreenect-0.5: Kinect driver library version 0.5 or later.\n');
         fprintf('\n');
         fprintf('For PsychHID() support:\n\n');
         fprintf('* libusb-1.0 USB low-level access library.\n');
@@ -613,6 +625,12 @@ fprintf('\n');
 fprintf('Please also familiarize yourself with the demos contained in the PsychDemos subfolder\n');
 fprintf('and its subfolders. They show best practices for many common tasks and are generally\n');
 fprintf('well documented.\n');
+fprintf('\n\n');
+fprintf('If you find this software useful then please consider donating some money \n');
+fprintf('to support its ongoing maintenance and development. See: \n');
+fprintf('\n');
+fprintf('http://psychtoolbox.org/donations \n');
+fprintf('\n');
 
 fprintf('\nEnjoy!\n\n');
 

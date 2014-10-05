@@ -3,6 +3,7 @@
 % help Psychtoolbox % For an overview, triple-click me & hit enter.
 % 
 %   AddStructs              - Merges input structs into one struct.
+%   AddToMatlabPathDynamically - Add a directory tree to the Matlab path at runtime
 %   AltSize                 - ALTSIZE is an extension of SIZE, it supports querying the size of multiple dimensions of a variable in one call.
 %   AreStructsEqualOnFields - Are two structures the same on the passed list of fields?
 %   Ask                     - Display message, get user's response.

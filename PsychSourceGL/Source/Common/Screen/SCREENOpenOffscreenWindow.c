@@ -163,6 +163,7 @@ PsychError SCREENOpenOffscreenWindow(void)
 		targetScreenNumber = targetWindow->screenNumber;
         PsychGetScreenRect(targetScreenNumber, rect);
     } else {
+        targetScreenNumber = 0; // Make compiler happy.
         PsychErrorExit(PsychError_invalidNumdex);
     }
 

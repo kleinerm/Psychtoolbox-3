@@ -1736,7 +1736,7 @@ if ptb_cedrus_drivertype == 2
     oldverb = IOPort('Verbosity', 0);
 
     % Open link:
-     [dev.link, errmsg] = IOPort('OpenSerialPort', port, sprintf('BaudRate=%i Parity=None DataBits=8 StopBits=1 FlowControl=Hardware ReceiveTimeout=1 ', baudrate));
+    [dev.link, errmsg] = IOPort('OpenSerialPort', port, sprintf('BaudRate=%i Parity=None DataBits=8 StopBits=1 FlowControl=Hardware ReceiveTimeout=1 ReceiveLatency=0.0001 ', baudrate));
 
     IOPort('Verbosity', oldverb);
 

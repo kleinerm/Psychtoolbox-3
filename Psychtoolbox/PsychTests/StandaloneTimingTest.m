@@ -7,7 +7,7 @@ function StandaloneTimingTest(use_sigsetjmp, savemask)
 % call sigsetjmp() within the timing loop.  If sigsetmask is set, then 
 % StandaloneTimingTest passes savemask to sigsetjmp in the second argument.
 %
-% comparing results of TestStandaloneTimingOSX with and without
+% comparing results of StandaloneTimingTest with and without
 % sigsetjmp shows that calling sigsetjmp with the savemask
 % argument set causes OS X to suspend execution of the StandaloneTimingTest
 % application for up to 13 ms.
@@ -19,7 +19,7 @@ function StandaloneTimingTest(use_sigsetjmp, savemask)
 %
 % HISTORY: 
 % 8/26/03   awi     Wrote it.     
-% 9/14/03   awi     Merged in features from TestMATLABTimingOSX.m, mostly
+% 9/14/03   awi     Merged in features from MATLABTimingTest.m, mostly
 %                   to improve plotting features.
 % 9/24/03   awi     Changed the name of the standalone  application to
 %                    "StandaloneTimingApp"

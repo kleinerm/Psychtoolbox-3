@@ -91,30 +91,14 @@ try
     % Query OS-Type:
     if IsOSX
         ostype = 'MacOS-X';
-        osversion = compinfo.system;
-        % Query machine architecture via Unix 'arch' utility.
-        [rc arch] = system('arch'); %#ok<*ASGLU>
-        arch=deblank(arch);
+        osversion = deblank(compinfo.system);
+        arch = deblank(compinfo.hw.machine);
     end
     
     if IsWin
         ostype = 'Windows';
-        if ~IsOctave
-            try
-                osversion = deblank([system_dependent('getos'),' ',system_dependent('getwinsys')]);
-            catch
-                osversion = 'Unknown';
-            end
-        else
-            try
-                [status, osversion] = system('uname -s');
-                osversion = deblank(osversion);
-            catch %#ok<*CTCH>
-                osversion = 'Unknown';
-            end
-        end
-        
-        
+        osversion = deblank(compinfo.system);
+            
         if isempty(osversion)
             osversion = 'Unknown';
         end
@@ -125,11 +109,8 @@ try
     
     if IsLinux
         ostype = 'LinuxOS';
-        [rc osversion] = system('uname -r');
-        osversion=deblank(osversion);
-        % Query machine architecture via Unix 'arch' utility.
-        [rc arch] = system('uname -m');
-        arch=deblank(arch);
+        osversion = deblank(compinfo.system);
+        arch = deblank(compinfo.hw.machine);
     end
     
     % Query runtime environment:

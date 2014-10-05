@@ -26,6 +26,7 @@ function photoreceptors = DefaultPhotoreceptors(kind)
 % 5/10/12  dhb  Changed name for LivingHumanMelanopsin to postpend Tsujimura2010
 % 8/12/13  dhb  Change field order to make printouts look nicer.
 % 11/13/13 dhb  Add 'LivingHumanRod' and 'LivingHumanMelanopsin' options.
+% 5/26/14  dhb  Add pupilDimater.value = [] to fix FillInPhotoreceptors.
 
 % Default
 if (nargin < 1 || isempty(kind))
@@ -133,7 +134,7 @@ switch (kind)
    % The Melanopic Sensitivity Function Accounts for Melanopsin-Driven Responses in Mice under
    % Diverse Lighting Conditions. PLoS One, 8(1), e53583. doi: 10.1371/journal.pone.0053583.
    %
-   % Viénot, F., Brettel, H., Dang, T.V., Le Rohellec, J. (2012). Domain of metamers exciting
+   % Vienot, F., Brettel, H., Dang, T.V., Le Rohellec, J. (2012). Domain of metamers exciting
    % intrinsically photosensitive retinal ganglion cells (ipRGCs) and rods. J Opt Soc Am A Opt
    % Image Sci Vis. 29(2): A366-76. doi: 10.1364/JOSAA.29.00A366.
     case 'LivingHumanMelanopsin'
@@ -164,6 +165,7 @@ switch (kind)
         photoreceptors.fieldSizeDegrees = 2;
         photoreceptors.ageInYears = 32;
         photoreceptors.pupilDiameter.source = 'PokornySmith';
+        photoreceptors.pupilDiameter.value = [];
 		photoreceptors.eyeLengthMM.source = 'Rodieck';
         photoreceptors.lensDensity.source = 'StockmanSharpe';
 		photoreceptors.macularPigmentDensity.source = 'Bone';
@@ -205,6 +207,7 @@ switch (kind)
         photoreceptors.ISdiameter.source = 'PennDog';
 		photoreceptors.specificDensity.source = 'Generic';
 		photoreceptors.pupilDiameter.source = 'PennDog';
+        photoreceptors.pupilDiameter.value = [];
 		photoreceptors.eyeLengthMM.source = 'PennDog';
 		photoreceptors.nomogram.source = 'Govardovskii';
 		photoreceptors.nomogram.lambdaMax = [555 429 506]';
@@ -221,6 +224,7 @@ switch (kind)
 		photoreceptors.ISdiameter.source = 'SterlingLab';
 		photoreceptors.specificDensity.source = 'Bowmaker';
 		photoreceptors.pupilDiameter.source = 'None';
+        photoreceptors.pupilDiameter.value = [];
 		photoreceptors.eyeLengthMM.source = 'None';
 		photoreceptors.nomogram.source = 'Govardovskii';
 		photoreceptors.nomogram.lambdaMax = [529 430 500]';

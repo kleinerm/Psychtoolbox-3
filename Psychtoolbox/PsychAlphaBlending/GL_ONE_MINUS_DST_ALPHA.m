@@ -25,7 +25,7 @@ function constantString=GL_ONE_MINUS_DST_ALPHA
 % factor.
 % 
 %
-% see also: PsychAlphaBlending, AlphaDemo, TestAlphaBlending.
+% see also: PsychAlphaBlending, AlphaDemo, AlphaBlendingTest.
 
 
 constantString='GL_ONE_MINUS_DST_ALPHA';

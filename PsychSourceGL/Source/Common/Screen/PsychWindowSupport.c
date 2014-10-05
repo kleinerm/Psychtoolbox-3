@@ -55,10 +55,6 @@
 #include <errno.h>
 #endif
 
-#if PSYCH_SYSTEM == PSYCH_OSX
-extern psych_bool useCoreVideoTimestamping;
-#endif
-
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
 #include "ptbstartlogo.h"
 #else
@@ -271,6 +267,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	if ((*windowRecord)->windowIndex == PSYCH_FIRST_WINDOW) {
 		if(PsychPrefStateGet_Verbosity()>2) {
 			printf("\n\nPTB-INFO: This is Psychtoolbox-3 for %s, under %s (Version %i.%i.%i - Build date: %s).\n", PSYCHTOOLBOX_OS_NAME, PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME, PsychGetMajorVersionNumber(), PsychGetMinorVersionNumber(), PsychGetPointVersionNumber(), PsychGetBuildDate());
+            printf("PTB-INFO: Support status on this operating system release: %s\n", PsychSupportStatus());
 			printf("PTB-INFO: Type 'PsychtoolboxVersion' for more detailed version information.\n"); 
 			printf("PTB-INFO: Most parts of the Psychtoolbox distribution are licensed to you under terms of the MIT License, with\n");
 			printf("PTB-INFO: some restrictions. See file 'License.txt' in the Psychtoolbox root folder for the exact licensing conditions.\n\n");
@@ -294,7 +291,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
     // Assign the passed windowrect 'rect' to the new window:
     PsychCopyRect((*windowRecord)->rect, rect);
-    
+
     // Assign requested level of multisampling for hardware Anti-Aliasing: 0 means - No hw-AA,
     // n>0 means: use hw-AA and try to get multisample buffers for at least n samples per pixel.
     // Todays hardware (as of mid 2006) typically supports 2x and 4x AA, Radeons support 6x AA.
@@ -306,7 +303,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
     // Assign requested color buffer depth:
     (*windowRecord)->depth = screenSettings->depth.depths[0];
-    
+
 	// Explicit OpenGL context ressource sharing requested?
 	if (sharedContextWindow) {
 		// A pointer to a previously created onscreen window was provided and the OpenGL context of
@@ -418,99 +415,133 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	}
 	#endif
 
-	// Decide if 10 bpc framebuffer should be enabled by our own kernel driver trick, or
+    // Decide if 10 or 11 or 16 bpc framebuffer should be enabled by our own kernel driver trick, or
     // if the OS + graphics drivers has done proper work already:
-	if ((*windowRecord)->depth == 30) {
+    if (((*windowRecord)->depth == 30) || ((*windowRecord)->depth == 33) || ((*windowRecord)->depth == 48)) {
         // Ask the OS what it thinks it has set atm.:
         glGetIntegerv(GL_RED_BITS, &bpc);
-        
-		// Support for kernel driver available? Only on Linux and OSX:
+
+        // Support for kernel driver available? Only on Linux and OSX:
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
-        // Linux with a card that isn't supported by our MMIO/kernel driver tricks?
-		if ((PSYCH_SYSTEM == PSYCH_LINUX) && (strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_VENDOR), "nouveau") ||
-		    strstr((char*) glGetString(GL_VENDOR), "Intel") ||
-		    ((strstr((char*) glGetString(GL_VENDOR), "ATI") || strstr((char*) glGetString(GL_VENDOR), "AMD")) && strstr((char*) glGetString(GL_RENDERER), "Fire")))) {
-			// Yes: NVidia GPU or Intel GPU or ATI Fire-Series GPU: Only native support by driver, if at all...
-            // Give some boilerplate info:
-			printf("\nPTB-INFO: Your script requested a 30bpp, 10bpc framebuffer, but this is only supported on few special graphics cards and drivers on Linux.");
-			printf("\nPTB-INFO: This may or may not work for you - Double check your results! Theoretically, the 2008 series ATI/AMD FireGL/FirePro and NVidia");
-            printf("\nPTB-INFO: cards may support this with some drivers, as well as the latest Intel HD graphics cards on very recent Linux distributions,");
-			printf("\nPTB-INFO: but you must enable it manually somewhere, e.g., in the Catalyst control center or NVidia control center.\n");
-            if (bpc >= 10) printf("PTB-INFO: Linux native 10 bit per color framebuffer requested, and the OS claims it is working.\n");
-		}
-        else if ((PSYCH_SYSTEM == PSYCH_OSX) && (bpc >= 10)) {
-            // OSX and the OS claims it runs at at least 10 bpc. Good, take
-            // it at face value. Note: As of Sept 2013, no shipping OSX version supports this,
-            // presumably not even the upcoming 10.9 Mavericks:
-            printf("PTB-INFO: OSX native 10 bit per color framebuffer requested, and the OS claims it is working.\n");
+        if ((PSYCH_SYSTEM == PSYCH_OSX) && (bpc >= (*windowRecord)->depth / 3)) {
+            // OSX and the OS claims it runs at at least requested bpc. Good, take
+            // it at face value. Note: As of September 2014, no shipping OSX version supports this,
+            // not even 10.9 Mavericks:
+            printf("PTB-INFO: OSX native %i bit per color framebuffer requested, and the OS claims it is working fine. Good.\n", bpc);
         }
-        else if ((PSYCH_SYSTEM == PSYCH_LINUX) && (bpc >= 10)) {
-            // Linux and the OS claims it runs at at least 10 bpc. Good, take it at face value.
-            printf("PTB-INFO: Linux native 10 bit per color framebuffer requested, and the OS claims it is working.\n");
+        else if ((PSYCH_SYSTEM == PSYCH_LINUX) && (bpc >= (*windowRecord)->depth / 3)) {
+            // Linux and the OS claims it runs at at least requested bpc. Good, take it at face value.
+            printf("PTB-INFO: Linux native %i bit per color framebuffer requested, and the OS claims it is working fine. Good.\n", bpc);
         }
-		else {
-			// No native 10 bpc support. Only support our homegrown method with PTB kernel driver on ATI/AMD hardware:
-			if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) ||
-			    !PsychGetGPUSpecs(screenSettings->screenNumber, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
-			    (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0x10)) {
-				printf("\nPTB-ERROR: Your script requested a 30bpp, 10bpc framebuffer, but the Psychtoolbox kernel driver is not loaded or does not support this on your GPU.\n");
-				printf("PTB-ERROR: The driver currently only supports selected ATI Radeon GPU's (X1000/HD2000/HD3000/HD4000 series and corresponding FireGL/FirePro models).\n");
-				printf("PTB-ERROR: On MacOS/X the driver must be loaded and functional for your graphics card for this to work.\n");
-				printf("PTB-ERROR: Read 'help PsychtoolboxKernelDriver' for setup information.\n");
-				printf("PTB-ERROR: On Linux you must either configure your system by executing the script 'PsychLinuxConfiguration' once,\n");
-				printf("PTB-ERROR: or start Octave or Matlab as root, ie. system administrator or via sudo command for this to work.\n\n");
-				PsychOSCloseWindow(*windowRecord);
-				FreeWindowRecordFromPntr(*windowRecord);
-				return(FALSE);
-			}
-			
-			// Basic support seems to be there, set the request flag.
-			(*windowRecord)->specialflags|= kPsychNative10bpcFBActive;
-		}
-        
-		if (PsychPrefStateGet_ConserveVRAM() & kPsychEnforce10BitFramebufferHack) {
-			printf("PTB-INFO: Override: Will try to enable 10 bpc framebuffer mode regardless if i think it is needed/sensible or not.\n");
-			printf("PTB-INFO: Override: Doing so because you set the kPsychEnforce10BitFramebufferHack flag in Screen('Preference','ConserveVRAM').\n");
-			printf("PTB-INFO: Override: Cross your fingers, this may end badly if your GPU is not one of the supported ones...\n");
-			(*windowRecord)->specialflags|= kPsychNative10bpcFBActive;
-		}
+        else {
+            // No native requested bpc support. Only support our homegrown method with PTB kernel driver on ATI/AMD hardware:
+            printf("PTB-INFO: Native %i bit per color framebuffer requested, but the OS doesn't allow it. It only provides %i bpc.\n", (*windowRecord)->depth / 3, bpc);
+
+            // We only support the 48 bit color depth / 16 bpc hack on Linux + X11, not on OSX et al.:
+            if ((PSYCH_SYSTEM != PSYCH_LINUX) && ((*windowRecord)->depth == 48)) {
+                printf("\nPTB-ERROR: Your script requested a %i bpp, %i bpc framebuffer, but i can't provide this for you, because\n", (*windowRecord)->depth, (*windowRecord)->depth / 3);
+                printf("PTB-ERROR: my own 16 bpc setup code only works on Linux with a properly setup X11/GLX display backend.\n");
+                PsychOSCloseWindow(*windowRecord);
+                FreeWindowRecordFromPntr(*windowRecord);
+                return(FALSE);
+            }
+
+            printf("PTB-INFO: Will now try to use our own high bit depth setup code as an alternative approach to fullfill your needs.\n");
+            gpuMaintype = kPsychUnknown;
+            if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) ||
+                !PsychGetGPUSpecs(screenSettings->screenNumber, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
+                (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0xffff) || (PsychGetScreenDepthValue(screenSettings->screenNumber) != 24)) {
+                printf("\nPTB-ERROR: Your script requested a %i bpp, %i bpc framebuffer, but i can't provide this for you, because\n", (*windowRecord)->depth, (*windowRecord)->depth / 3);
+                if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber)) {
+                    if (PSYCH_SYSTEM == PSYCH_OSX) {
+                        printf("PTB-ERROR: the OSX PsychtoolboxKernelDriver isn't loaded or accessible by Psychtoolbox in this session.\n");
+                        printf("PTB-ERROR: On MacOS/X the driver must be loaded and functional on your graphics card for this to work,\n");
+                        printf("PTB-ERROR: and only one Matlab or Octave session can use the driver at any given time on your computer.\n");
+                        printf("PTB_ERROR: Read 'help PsychtoolboxKernelDriver' for setup information.\n\n");
+                    }
+                    if (PSYCH_SYSTEM == PSYCH_LINUX) {
+                        printf("PTB-ERROR: Linux low-level MMIO access by Psychtoolbox is disabled or not permitted on your system in this session.\n");
+                        printf("PTB-ERROR: On Linux you must either configure your system by executing the script 'PsychLinuxConfiguration' once,\n");
+                        printf("PTB-ERROR: or start Octave or Matlab as root, ie. system administrator or via sudo command for this to work.\n\n");
+                    }
+                }
+                else if ((gpuMaintype != kPsychRadeon) || (gpuMinortype > 0xffff)) {
+                    printf("PTB-ERROR: this functionality is not supported on your model of graphics card. Only AMD/ATI GPU's of the\n");
+                    printf("PTB-ERROR: Radeon X1000 series, and Radeon HD-2000 series and later models, and corresponding FireGL/FirePro\n");
+                    printf("PTB-ERROR: cards are supported. This covers basically all AMD graphics cards since about the year 2007.\n");
+                    if (PSYCH_SYSTEM == PSYCH_LINUX) {
+                        printf("PTB-ERROR: NVidia graphics cards since the GeForce-8000 series and corresponding Quadro cards can be setup\n");
+                        printf("PTB-ERROR: for 10 bpc framebuffer support by specifying a 'DefaultDepth' setting of 30 bit in the xorg.conf file.\n");
+                        printf("PTB-ERROR: The latest Intel graphics cards may be able to achieve 10 bpc with 'DefaultDepth' 30 setting if your\n");
+                        printf("PTB-ERROR: graphics driver is recent enough, however this hasn't been actively tested on Intel cards so far.\n\n");
+                    }
+                    else printf("\n");
+                }
+                else if (PsychGetScreenDepthValue(screenSettings->screenNumber) != 24) {
+                    printf("PTB-ERROR: your display is not set to 24 bit 'DefaultDepth' color depth, but to %i bit color depth in xorg.conf.\n\n",
+                           (int) PsychGetScreenDepthValue(screenSettings->screenNumber));
+                }
+                PsychOSCloseWindow(*windowRecord);
+                FreeWindowRecordFromPntr(*windowRecord);
+                return(FALSE);
+            }
+
+            // Basic support seems to be there, set the request flag.
+            (*windowRecord)->specialflags|= kPsychNative10bpcFBActive;
+        }
+
+        if (PsychPrefStateGet_ConserveVRAM() & kPsychEnforce10BitFramebufferHack) {
+            printf("PTB-INFO: Override: Will try to enable %i bpc framebuffer mode regardless if i think it is needed/sensible or not.\n", (*windowRecord)->depth / 3);
+            printf("PTB-INFO: Override: Doing so because you set the kPsychEnforce10BitFramebufferHack flag in Screen('Preference','ConserveVRAM').\n");
+            printf("PTB-INFO: Override: Cross your fingers, this may end badly if your GPU or setup is not one of the supported models and configurations...\n");
+            (*windowRecord)->specialflags|= kPsychNative10bpcFBActive;
+        }
 #else
         // Make compiler happy:
         (void) gpuMaintype;
         (void) gpuMinortype;
-        
-		// Not supported by our own code and kernel driver (we don't have such a driver for Windows), but some recent 2008
-		// series FireGL cards at least provide the option to enable this natively - although it didn't work properly in our tests.
-		printf("\nPTB-INFO: Your script requested a 30bpp, 10bpc framebuffer, but this is only supported on few special graphics cards and drivers on MS-Windows.");
-		printf("\nPTB-INFO: This may or may not work for you - Double check your results! Theoretically, the 2008 series ATI FireGL/FirePro and NVidia Quadro cards may support this with some drivers,");
-		printf("\nPTB-INFO: but you must enable it manually in the Catalyst or Quadro Control center (somewhere under ''Workstation settings'')\n");
-        if (bpc >= 10) printf("PTB-INFO: Windows native 10 bit per color framebuffer requested, and the OS claims it is working.\n");
-#endif
-	}
 
-	if ((sharedContextWindow == NULL) && ((*windowRecord)->slaveWindow)) {
-		// Undo slave window assignment from context sharing:
-		(*windowRecord)->slaveWindow = NULL;
-	}
-	
+        // Not supported by our own code and kernel driver (we don't have such a driver for Windows), but some recent 2008
+        // series AMD FireGL and NVidia Quadro cards at least provide the option to enable this natively - although it didn't
+        // work properly in our tests around the year 2009.
+        if (bpc >= ((*windowRecord)->depth / 3)) {
+            printf("PTB-INFO: Windows native %i bit per color framebuffer requested, and the OS claims it is working. Good.\n", bpc);
+        }
+        else {
+            printf("\nPTB-ERROR: Your script requested a %i bpp, %i bpc framebuffer, but the OS rejected your request and only provides %i bpc.", (*windowRecord)->depth, (*windowRecord)->depth / 3, bpc);
+            printf("\nPTB-ERROR: Some year 2008 and later AMD/ATI FireGL/FirePro and NVidia Quadro cards may support 10 bpc with some drivers,");
+            printf("\nPTB-ERROR: but you must enable it manually in the Catalyst or Quadro Control center (somewhere under ''Workstation settings'').\n");
+            PsychOSCloseWindow(*windowRecord);
+            FreeWindowRecordFromPntr(*windowRecord);
+            return(FALSE);
+        }
+#endif
+    }
+
+    if ((sharedContextWindow == NULL) && ((*windowRecord)->slaveWindow)) {
+        // Undo slave window assignment from context sharing:
+        (*windowRecord)->slaveWindow = NULL;
+    }
+
     // Now we have a valid, visible onscreen (fullscreen) window with valid
     // OpenGL context attached. We mark it immediately as Onscreen window,
     // so in case of an error, the Screen('CloseAll') routine can properly
     // close it and release the Window system and OpenGL ressources.
     if(numBuffers==1) {
       (*windowRecord)->windowType=kPsychSingleBufferOnscreen;
-    } 
+    }
     else {
       (*windowRecord)->windowType=kPsychDoubleBufferOnscreen;
     }
 
     // Dynamically rebind core extensions: Ugly ugly...
     PsychRebindARBExtensionsToCore();
-    
-    if ((((*windowRecord)->depth == 30) && !((*windowRecord)->specialflags & kPsychNative10bpcFBActive)) || (*windowRecord)->depth == 64 || (*windowRecord)->depth == 128) {
+
+    if (((((*windowRecord)->depth == 30) || ((*windowRecord)->depth == 33) || ((*windowRecord)->depth == 48)) && !((*windowRecord)->specialflags & kPsychNative10bpcFBActive)) ||
+        ((*windowRecord)->depth == 32) || ((*windowRecord)->depth == 64) || ((*windowRecord)->depth == 128)) {
 
         // Floating point framebuffer active? GL_RGBA_FLOAT_MODE_ARB would be a viable alternative?
-		isFloatBuffer = FALSE;
+        isFloatBuffer = FALSE;
         glGetBooleanv(GL_COLOR_FLOAT_APPLE, &isFloatBuffer);
         if (isFloatBuffer) {
             if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Floating point precision framebuffer enabled.\n");
@@ -518,7 +549,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         else {
             if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Fixed point precision integer framebuffer enabled.\n");
         }
-        
+
         // Query and show bpc for all channels:
         glGetIntegerv(GL_RED_BITS, &bpc);
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: System Frame buffer provides %i bits for red channel.\n", bpc);
@@ -527,51 +558,61 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         glGetIntegerv(GL_BLUE_BITS, &bpc);
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: System Frame buffer provides %i bits for blue channel.\n", bpc);
         glGetIntegerv(GL_ALPHA_BITS, &bpc);
-        if ((*windowRecord)->depth == 30) {
-			if (PsychPrefStateGet_Verbosity() > 4) {
-				printf("PTB-INFO: Hardware frame buffer provides %i bits for alpha channel. This is the effective alpha bit depths if the imaging pipeline is off.\n", bpc);
-				printf("PTB-INFO: If the imaging pipeline is enabled, then the effective alpha bit depth depends on imaging pipeline configuration and is likely >= 8 bits.\n");
-			}
-		}
-		else {
-			if (PsychPrefStateGet_Verbosity() > 3) {
-				printf("PTB-INFO: System frame buffer provides %i bits for alpha channel, but effective alpha bits depends on imaging pipeline setup, if any.\n", bpc);
-			}
-		}
+        if (((*windowRecord)->depth == 30) || ((*windowRecord)->depth == 33) || ((*windowRecord)->depth == 48)) {
+            if (PsychPrefStateGet_Verbosity() > 4) {
+                printf("PTB-INFO: Hardware frame buffer provides %i bits for alpha channel. This is the effective alpha bit depths if the imaging pipeline is off.\n", bpc);
+                printf("PTB-INFO: If the imaging pipeline is enabled, then the effective alpha bit depth depends on imaging pipeline configuration and is likely >= 8 bits.\n");
+            }
+        }
+        else {
+            if (PsychPrefStateGet_Verbosity() > 3) {
+                printf("PTB-INFO: System frame buffer provides %i bits for alpha channel, but effective alpha bits depends on imaging pipeline setup, if any.\n", bpc);
+            }
+        }
     }
-	
-	// Query if this onscreen window has a backbuffer with alpha channel, i.e.
-	// it has more than zero alpha bits: 
-	glGetIntegerv(GL_ALPHA_BITS, &bpc);
-	
-	// Windows are either RGB or RGBA, so either 3 or 4 channels. Here we
-	// assign the default depths for this window record. This value needs to get
-	// overriden when imaging pipeline is active, because there we use framebuffer
-	// objects as backing store which always have RGBA 4 channel format.
-	(*windowRecord)->nrchannels = (bpc > 0) ? 4 : 3;
 
-	// We need the real color depth (bits per color component) of the framebuffer attached
-	// to this onscreen window. We need it to setup color range correctly:
-	// Assign true bit depth bpc of framebuffer, unless we're using our own
-	// special native 10 bit framebuffer mode on OS/X and Linux via kernel driver.
-	// In that special case, the imaging pipeline will reassign a proper effective
-	// depths of 16 bpc or 32 bpc for the float FBO drawbuffer later on.
-	if (!((*windowRecord)->specialflags & kPsychNative10bpcFBActive)) {
-		// Standard native framebuffer/backbuffer for this onscreen window bound.
-		// Effective bpc is that of the OpenGL context. Query and assign:
-		bpc = 8;
-        glGetIntegerv(GL_RED_BITS, &bpc);		
-		(*windowRecord)->bpc = bpc;
-		if ((PsychPrefStateGet_Verbosity() > 2) && (bpc > 8)) printf("PTB-INFO: Real (native, queried) color resolution of the GPU framebuffer is %i bits per RGB color component.\n", bpc);
-	}
-	else {
-		// Special 10 bpc framebuffer activated by our own method:
-		bpc = 10;
-		if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Real (kernel driver provided) color resolution of the GPU framebuffer is 10 bits per RGB color component.\n");
-	}
+    // Query if this onscreen window has a backbuffer with alpha channel, i.e.
+    // it has more than zero alpha bits:
+    glGetIntegerv(GL_ALPHA_BITS, &bpc);
 
-	// Compute colorRange for bit depths:
-	(*windowRecord)->colorRange = (double) ((1 << bpc) - 1);
+    // Windows are either RGB or RGBA, so either 3 or 4 channels. Here we
+    // assign the default depths for this window record. This value needs to get
+    // overriden when imaging pipeline is active, because there we use framebuffer
+    // objects as backing store which always have RGBA 4 channel format.
+    (*windowRecord)->nrchannels = (bpc > 0) ? 4 : 3;
+
+    // We need the real color depth (bits per color component) of the framebuffer attached
+    // to this onscreen window. We need it to setup color range correctly:
+    // Assign true bit depth bpc of framebuffer, unless we're using our own
+    // special native 10/11 bit framebuffer mode on OS/X and Linux via kernel driver.
+    // In that special case, the imaging pipeline will reassign a proper effective
+    // depths of 16 bpc or 32 bpc for the float FBO drawbuffer later on.
+    if (!((*windowRecord)->specialflags & kPsychNative10bpcFBActive)) {
+        // Standard native framebuffer/backbuffer for this onscreen window bound.
+        // Effective bpc is that of the OpenGL context. Query and assign:
+        bpc = 8;
+        glGetIntegerv(GL_RED_BITS, &bpc);
+        (*windowRecord)->bpc = bpc;
+        if ((PsychPrefStateGet_Verbosity() > 2) && (bpc > 8)) printf("PTB-INFO: Real (OS native, queried) color resolution of the GPU framebuffer is %i bits per RGB color component.\n", bpc);
+
+        // Make sure user usercode got what it wanted: Warn if it didn't get what it wanted. 32 bpp is an exception, as
+        // it is used by old crufty ptb scripts, but not to request a > 8 bpc fb, so omit 32 bpp.
+        if ((bpc * 3 < (*windowRecord)->depth) && ((*windowRecord)->depth != 32) && (PsychPrefStateGet_Verbosity() > 1)) {
+            printf("PTB-WARNING: Real color resolution of the GPU framebuffer of %i bits per RGB component is *lower* than the desired %i bits, at a requested pixelsize of %i bpp!\n",
+                   bpc, (*windowRecord)->depth / 3, (*windowRecord)->depth);
+        }
+
+        // Assign effective color depth as windows 'Pixelsize':
+        (*windowRecord)->depth = bpc * 3;
+    }
+    else {
+        // Special 10/11/16 bpc framebuffer activated by our own method:
+        bpc = (*windowRecord)->depth / 3;
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Assuming kernel driver provided color resolution of the GPU framebuffer will be %i bits per RGB color component.\n", bpc);
+    }
+
+    // Compute colorRange for bit depths:
+    (*windowRecord)->colorRange = (double) ((1 << bpc) - 1);
 
     // Now we start to fill in the remaining windowRecord with settings:
     // -----------------------------------------------------------------
@@ -721,8 +762,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
     // Associated screens id and depth:
     (*windowRecord)->screenNumber=screenSettings->screenNumber;
-    (*windowRecord)->depth=PsychGetScreenDepthValue(screenSettings->screenNumber);
-    
+
     // MK: Assign stereomode: 0 == monoscopic (default) window. >0 Stereo output window, where
     // the number specifies the type of stereo-algorithm used. Currently value 1 is
     // supported, which means: Output via OpenGL built-in stereo facilities. This can drive
@@ -780,9 +820,9 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     if (!((*windowRecord)->specialflags & kPsychIsFullscreenWindow) && (skip_synctests < 1)) skip_synctests = 1;
 
 #if PSYCH_SYSTEM == PSYCH_OSX
-    CGLRendererInfoObj				rendererInfo;
-    CGOpenGLDisplayMask 			displayMask;
-    CGLError					error;
+    CGLRendererInfoObj  rendererInfo;
+    CGOpenGLDisplayMask displayMask;
+    CGLError            error;
 
     displayMask=CGDisplayIDToOpenGLDisplayMask(cgDisplayID);
 
@@ -791,8 +831,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         error= CGLQueryRendererInfo(displayMask, &rendererInfo, &numRenderers);
         if(numRenderers>1) numRenderers=1;
         for(i=0;i<numRenderers;i++) {
-            CGLDescribeRenderer(rendererInfo, i, kCGLRPVideoMemory, &VRAMTotal);
-            CGLDescribeRenderer(rendererInfo, i, kCGLRPTextureMemory, &TexmemTotal);
+            CGLDescribeRenderer(rendererInfo, i, kCGLRPVideoMemoryMegabytes, &VRAMTotal);
+            CGLDescribeRenderer(rendererInfo, i, kCGLRPTextureMemoryMegabytes, &TexmemTotal);
         }
         CGLDestroyRendererInfo(rendererInfo);
     }
@@ -804,34 +844,6 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     CGDisplayCount totaldisplaycount=0;
     CGGetOnlineDisplayList(0, NULL, &totaldisplaycount);
     
-	// More than one display online?
-	if (totaldisplaycount > 1) {
-		// Yes. Is this an ATI GPU?
-		if (strstr((char*) glGetString(GL_VENDOR), "ATI")) {
-			// Is this OS/X 10.5.7 or later?
-			SInt32 osMinor, osBugfix, osArch;
-			Gestalt(gestaltSystemVersionMinor, &osMinor);
-			Gestalt(gestaltSystemVersionBugFix, &osBugfix);
-			Gestalt(gestaltSysArchitecture, &osArch);
-			
-			if (osMinor == 5 && osBugfix >= 7 && osArch == gestaltIntel) {
-				// OS/X 10.5.7 or later on IntelMac with an ATI GPU in dual-display or multi-display mode.
-				// This specific configuration has serious bugs in CGDisplayBeamposition() beamposition
-				// queries on multi-display setups. We mark the native beamposition mechanism as
-				// unreliable, so our fallback kernel driver based solution is used instead - or
-				// no beampos mechanism at all if driver not loaded:
-				PsychPrefStateSet_ConserveVRAM(PsychPrefStateGet_ConserveVRAM() | kPsychDontUseNativeBeamposQuery);
-				
-				if (((*windowRecord)->windowIndex == PSYCH_FIRST_WINDOW) && (PsychPrefStateGet_Verbosity()>1)) {
-					printf("\n\nPTB-INFO: This is Mac OS/X 10.5.%i on an Intel Mac with an ATI GPU in multi-display mode.\n", (int) osBugfix);
-					printf("PTB-INFO: Beamposition queries are broken on this configuration! Will disable them.\n");
-					printf("PTB-INFO: Our own beamposition mechanism will still work though if you have the PsychtoolboxKernelDriver loaded.\n");
-					printf("PTB-INFO: Type 'help PsychtoolboxKernelDriver' at the command prompt for more info about this option.\n\n");
-				}
-			}
-		}
-	}
-	
     if((PsychPrefStateGet_Verbosity() > 2) && ((*windowRecord)->windowIndex == PSYCH_FIRST_WINDOW)) {
 		multidisplay = (totaldisplaycount>1) ? true : false;    
 		if (multidisplay) {
@@ -1395,7 +1407,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     if(PsychPrefStateGet_Verbosity()>2) printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", (char*) glGetString(GL_VENDOR), (char*) glGetString(GL_RENDERER), (char*) glGetString(GL_VERSION));
 
     if(PsychPrefStateGet_Verbosity()>2) {
-      if (VRAMTotal>0) printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal / 1024 / 1024, TexmemTotal / 1024 / 1024);
+      if (VRAMTotal>0) printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal, TexmemTotal);
       printf("PTB-INFO: VBL startline = %i , VBL Endline = %i\n", (int) vbl_startline, VBL_Endline);
       if (ifi_beamestimate>0) {
           printf("PTB-INFO: Measured monitor refresh interval from beamposition = %f ms [%f Hz].\n", ifi_beamestimate * 1000, 1/ifi_beamestimate);
@@ -1664,7 +1676,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
     // Assign our best estimate of the scanline which marks end of vertical blanking interval:
     (*windowRecord)->VBL_Endline = VBL_Endline;
-	// Store estimated video refresh cycle from beamposition method as well:
+    // Store estimated video refresh cycle from beamposition method as well:
     (*windowRecord)->ifi_beamestimate = ifi_beamestimate;
     //mark the contents of the window record as valid.  Between the time it is created (always with PsychCreateWindowRecord) and when it is marked valid 
     //(with PsychSetWindowRecordValid) it is a potential victim of PsychPurgeInvalidWindows.  
@@ -1679,45 +1691,28 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         glDrawBuffer(GL_FRONT);
     }
 
-	// Check if 10 bpc native framebuffer support is requested, or if 10 bit LUT bypass
+    // Check if >= 10 bpc native framebuffer support is requested, or if 10 bit LUT bypass
     // is requested. In both cases we execute PsychEnableNative10BitFramebuffer(), which
     // will internally sort out if it needs to go through all the moves or only enable the
     // 10 bit LUT bypass (possibly on FireGL and FirePro with broken drivers):
-	if ((((*windowRecord)->specialflags & kPsychNative10bpcFBActive) || (PsychPrefStateGet_ConserveVRAM() & kPsychBypassLUTFor10BitFramebuffer))
+    if ((((*windowRecord)->specialflags & kPsychNative10bpcFBActive) || (PsychPrefStateGet_ConserveVRAM() & kPsychBypassLUTFor10BitFramebuffer))
         && PsychOSIsKernelDriverAvailable((*windowRecord)->screenNumber)) {
-		// Try to switch framebuffer to native 10 bpc mode:
-		PsychEnableNative10BitFramebuffer((*windowRecord), TRUE);
-	}
+        // Try to switch framebuffer to native >= 10 bpc mode:
+        PsychEnableNative10BitFramebuffer((*windowRecord), TRUE);
+    }
 
     // Allocate and zero-init the flipInfo struct for this window:
     (*windowRecord)->flipInfo = (PsychFlipInfoStruct*) malloc(sizeof(PsychFlipInfoStruct));
     if (NULL == (*windowRecord)->flipInfo) PsychErrorExitMsg(PsychError_outofMemory, "Out of memory when trying to malloc() flipInfo struct!");
     memset((*windowRecord)->flipInfo, 0, sizeof(PsychFlipInfoStruct));
 
-	// Wait for splashMinDurationSecs, so that the "Welcome" splash screen is
-	// displayed at least that long:
-	PsychYieldIntervalSeconds(splashMinDurationSecs);
+    // Wait for splashMinDurationSecs, so that the "Welcome" splash screen is
+    // displayed at least that long:
+    PsychYieldIntervalSeconds(splashMinDurationSecs);
 
     // Done.
     return(TRUE);
 }
-
-
-/*
-    PsychOpenOffscreenWindow()
-    
-    Accept specifications for the offscreen window in the platform-neutral structures, convert to native OpenGL structures,
-    create the texture, allocate a window record and record the window specifications and memory location there.
-    TO DO:  We need to walk down the screen number and fill in the correct value for the benefit of TexturizeOffscreenWindow
-*/
-psych_bool PsychOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord)
-{
-    // This is a complete no-op as everything is implemented in SCREENOpenOffscreenWindow at the moment.
-    return(TRUE);
-    
-    //    return(PsychOSOpenOffscreenWindow(rect, depth, windowRecord));
-}
-
 
 void PsychCloseWindow(PsychWindowRecordType *windowRecord)
 {
@@ -3543,16 +3538,14 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // correct timestamping, but preempted by our Matlab thread in realtime mode. If we don't succeed
             // in 2 msecs then something's pretty screwed and we should just give up.
             while ((preflip_vbltimestamp > 0) && (preflip_vbltimestamp == postflip_vbltimestamp) && (vbltimestampquery_retrycount < 8) && (time_at_swaprequest - preflip_vbltimestamp > 0.001)) {
-                #if PSYCH_SYSTEM == PSYCH_OSX
-                    // Shoddy OSX 10.7 or later with its deficient Core video display link implementation in use?
-                    // If so we wait another extra bit of time to give it a chance to catch up to reality:
-                    // CoreVideo display link callbacks can be tremendeously delayed wrt. actual VBlank time, so
-                    // querying vblank time and count too close to a vblank can easily provide us with stale
-                    // results. We take longer breaks between query retries to increase the chance of a callback
-                    // delivering updated results to us. Best we can do, after all other approaches turned out to
-                    // be flawed or fragile as well and Apple seems to be utterly disinterested in fixing their mess.
-                    if (useCoreVideoTimestamping) PsychWaitIntervalSeconds(0.00025);
-                #endif
+                // Shoddy OSX with its deficient Core video display link implementation in use?
+                // If so we wait another extra bit of time to give it a chance to catch up to reality:
+                // CoreVideo display link callbacks can be tremendeously delayed wrt. actual VBlank time, so
+                // querying vblank time and count too close to a vblank can easily provide us with stale
+                // results. We take longer breaks between query retries to increase the chance of a callback
+                // delivering updated results to us. Best we can do, after all other approaches turned out to
+                // be flawed or fragile as well and Apple seems to be utterly disinterested in fixing their mess.
+                if (PSYCH_SYSTEM == PSYCH_OSX) PsychWaitIntervalSeconds(0.00025);
                 PsychWaitIntervalSeconds(0.00025);
                 postflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord, &postflip_vblcount);
                 vbltimestampquery_retrycount++;
@@ -4173,15 +4166,15 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
     }
     
     // Calibration run requested?
-    if (*numSamples>0) {
+    if (*numSamples > 0) {
         // Calibration run of 'numSamples' requested. Let's do it.
         
-		if (PsychPrefStateGet_Verbosity()>4) {
-			// Allocate a sample logbuffer for maxsecs duration at 1000 hz refresh:
-			maxlogsamples =  (int) (ceil(*maxsecs) * 1000);
-			samples = calloc(sizeof(double), maxlogsamples);
-		}
-		
+        if (PsychPrefStateGet_Verbosity()>4) {
+            // Allocate a sample logbuffer for maxsecs duration at 1000 hz refresh:
+            maxlogsamples =  (int) (ceil(*maxsecs) * 1000);
+            samples = calloc(sizeof(double), maxlogsamples);
+        }
+
         // Switch to RT scheduling for timing tests:
         PsychRealtimePriority(true);
 
@@ -4190,29 +4183,34 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
         windowRecord->nrIFISamples = 0;
 
         // Enable this windowRecords framebuffer as current drawingtarget: Important to do this, even
-		// if it gets immediately disabled below, as this also sets the OpenGL context and takes care
-		// of all state transitions between onscreen/offscreen windows etc.:
+        // if it gets immediately disabled below, as this also sets the OpenGL context and takes care
+        // of all state transitions between onscreen/offscreen windows etc.:
         PsychSetDrawingTarget(windowRecord);
 
-		// Disable any shaders:
-		PsychSetShader(windowRecord, 0);
-		
-		// ...and immediately disable it in imagingmode, because it won't be the system backbuffer,
-		// but a FBO -- which would break sync of glFinish() with bufferswaps and vertical retrace.
-		if ((windowRecord->imagingMode > 0) && (windowRecord->imagingMode != kPsychNeedFastOffscreenWindows)) PsychSetDrawingTarget(NULL);
-		
+        // Disable any shaders:
+        PsychSetShader(windowRecord, 0);
+        
+        // ...and immediately disable it in imagingmode, because it won't be the system backbuffer,
+        // but a FBO -- which would break sync of glFinish() with bufferswaps and vertical retrace.
+        if ((windowRecord->imagingMode > 0) && (windowRecord->imagingMode != kPsychNeedFastOffscreenWindows)) PsychSetDrawingTarget(NULL);
+        
         glDrawBuffer(GL_BACK_LEFT);
         
         PsychGetAdjustedPrecisionTimerSeconds(&tnew);
         tstart = tnew;
-		told = -1;
-		
-		// Schedule a buffer-swap on next VBL:
-		PsychOSFlipWindowBuffers(windowRecord);
+        told = -1;
+        
+        // Schedule a buffer-swap on next VBL:
+        PsychOSFlipWindowBuffers(windowRecord);
 
         // Protect against multi-threading trouble if needed:
         PsychLockedTouchFramebufferIfNeeded(windowRecord);
 
+        // See call below for explanation:
+        if (strstr((const char*) glGetString(GL_RENDERER), "Intel")) {
+            PsychWaitPixelSyncToken(windowRecord, TRUE);
+        }
+        
         // Take samples during consecutive refresh intervals:
         // We measure until either:
         // - A maximum measurment time of maxsecs seconds has elapsed... (This is the emergency switch to prevent infinite loops).
@@ -4234,6 +4232,16 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                 // At this point, start of VBL has happened and we can continue execution...
                 // We take our timestamp here:
                 PsychGetAdjustedPrecisionTimerSeconds(&tnew);
+            }
+            else if (strstr((const char*) glGetString(GL_RENDERER), "Intel")) {
+                // This "useless" pixel write is a tribute to the latest madness in the
+                // Intel-ddx on Linux, as of September 2014. Apparently some optimization
+                // is at work in the SNA Gen-5 backend (Intel HD graphics / Ironlake), which
+                // skips pageflips and swaps if nothing got rendered during the frame. Is it
+                // a bug? Is it a feature? Who knows? This didn't happen all these years during
+                // testing on Intel GMA-950 / Gen-3, but happened the very first time i touched
+                // the Intel HD Gen-5 gpu in my MacBookPro under Linux. Life sucks...
+                PsychWaitPixelSyncToken(windowRecord, TRUE);
             }
 
             // We skip the first measurement, because we first need to establish an initial base-time 'told'
@@ -4278,48 +4286,48 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                     n=windowRecord->nrIFISamples;
                     tstddev = (n>1) ? sqrt( ( tavgsq - ( tavg * tavg / n ) ) / (n-1) ) : 10000.0f;
 
-					// Update reference timestamp:
-					told = tnew;
-					
-					// Pause for 2 msecs after a valid sample was taken. This to guarantee we're out
-					// of the VBL period of the successfull swap.
-					PsychWaitIntervalSeconds(0.002);
+                    // Update reference timestamp:
+                    told = tnew;
+                    
+                    // Pause for 2 msecs after a valid sample was taken. This to guarantee we're out
+                    // of the VBL period of the successfull swap.
+                    PsychWaitIntervalSeconds(0.002);
                 }
-				else {
-					// Rejected sample: Better invalidate told as well:
-					//told = -1;
-					// MK: Ok, i have no clue why above told = -1 is wrong, but doing it makes OS/X 10.4.10 much
-					// more prone to sync failures, whereas not doing it makes it more reliable. Doesn't make
-					// sense, but we are better off reverting to the old strategy...
-					// Update: I think i know why. Some (buggy!) drivers, e.g., the ATI Radeon X1600 driver on
-					// OS/X 10.4.10, do not limit the number of bufferswaps to 1 per refresh cycle as mandated
-					// by the spec, but they allow as many bufferswaps as you want, as long as all of them happen
-					// inside the VBL period! Basically the swap-trigger seems to be level-triggered instead of
-					// edge-triggered. This leads to a ratio of 2 invalid samples followed by 1 valid sample.
-					// If we'd reset our told at each invalid sample, we would need over 3 times the amount of
-					// samples for a useable calibration --> No go. Now we wait for 2 msecs after each successfull
-					// sample (see above), so the VBL period will be over before we manage to try to swap again.
-					
-					// Reinitialize told to tnew, otherwise errors can accumulate:
-					told = tnew;
+                else {
+                    // Rejected sample: Better invalidate told as well:
+                    //told = -1;
+                    // MK: Ok, i have no clue why above told = -1 is wrong, but doing it makes OS/X 10.4.10 much
+                    // more prone to sync failures, whereas not doing it makes it more reliable. Doesn't make
+                    // sense, but we are better off reverting to the old strategy...
+                    // Update: I think i know why. Some (buggy!) drivers, e.g., the ATI Radeon X1600 driver on
+                    // OS/X 10.4.10, do not limit the number of bufferswaps to 1 per refresh cycle as mandated
+                    // by the spec, but they allow as many bufferswaps as you want, as long as all of them happen
+                    // inside the VBL period! Basically the swap-trigger seems to be level-triggered instead of
+                    // edge-triggered. This leads to a ratio of 2 invalid samples followed by 1 valid sample.
+                    // If we'd reset our told at each invalid sample, we would need over 3 times the amount of
+                    // samples for a useable calibration --> No go. Now we wait for 2 msecs after each successfull
+                    // sample (see above), so the VBL period will be over before we manage to try to swap again.
+                    
+                    // Reinitialize told to tnew, otherwise errors can accumulate:
+                    told = tnew;
 
-					// Pause for 2 msecs after a valid sample was taken. This to guarantee we're out
-					// of the VBL period of the successfull swap.
-					PsychWaitIntervalSeconds(0.002);
-				}
-				
-				// Store current sample in samplebuffer if requested:
-				if (samples && i < maxlogsamples) samples[i] = tdur;
+                    // Pause for 2 msecs after a valid sample was taken. This to guarantee we're out
+                    // of the VBL period of the successfull swap.
+                    PsychWaitIntervalSeconds(0.002);
+                }
+                
+                // Store current sample in samplebuffer if requested:
+                if (samples && i < maxlogsamples) samples[i] = tdur;
             }
-			else {
-				// (Re-)initialize reference timestamp:
-				told = tnew;
+            else {
+                // (Re-)initialize reference timestamp:
+                told = tnew;
 
-				// Pause for 2 msecs after a first sample was taken. This to guarantee we're out
-				// of the VBL period of the successfull swap.
-				PsychWaitIntervalSeconds(0.002);
-			}
-			
+                // Pause for 2 msecs after a first sample was taken. This to guarantee we're out
+                // of the VBL period of the successfull swap.
+                PsychWaitIntervalSeconds(0.002);
+            }
+            
         } // Next measurement loop iteration...
         
         // Switch back to old scheduling after timing tests:
@@ -4348,23 +4356,23 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
         
         *numSamples = (int) n;
         *stddev = tstddev;
-		
-		// Verbose output requested? We dump our whole buffer of samples to the console:
-		if (samples) {
-			printf("\n\nPTB-DEBUG: Output of all acquired samples of calibration run follows:\n");
-			for (j=0; j<i; j++) printf("PTB-DEBUG: Sample %i: %f\n", j, samples[j]);
-			printf("PTB-DEBUG: End of calibration data for this run...\n\n");
-			free(samples);
-			samples = NULL;
-		}
-		
+        
+        // Verbose output requested? We dump our whole buffer of samples to the console:
+        if (samples) {
+            printf("\n\nPTB-DEBUG: Output of all acquired samples of calibration run follows:\n");
+            for (j=0; j<i; j++) printf("PTB-DEBUG: Sample %i: %f\n", j, samples[j]);
+            printf("PTB-DEBUG: End of calibration data for this run...\n\n");
+            free(samples);
+            samples = NULL;
+        }
+        
     } // End of IFI measurement code.
     else {
         // No measurements taken...
         *numSamples = 0;
         *stddev = 0;
     }
-    
+
     // Return the current estimate of flip interval & monitor refresh interval, if any...
     if (windowRecord->nrIFISamples > 0) {
         return(windowRecord->IFIRunningSum / windowRecord->nrIFISamples);
@@ -4883,7 +4891,10 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 					// srcfbos are read-only, swizzling forbidden, 2nd srcfbo doesn't exist (only needed for stereo merge op),
 					// We provide a bounce-buffer... We could bind the 2nd channel in steromode if we wanted. Should we?
 					// TODO: Define special userdata struct, e.g., for C-Callbacks or scripting callbacks?
-					PsychPipelineExecuteHook(windowRecord, hookchainid, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[viewid]]),  (windowRecord->processedDrawBufferFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[2]]) : NULL);
+					PsychPipelineExecuteHook(windowRecord, hookchainid, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]),
+                                             (windowRecord->imagingMode & kPsychNeedOtherStreamInput) ? &(windowRecord->fboTable[windowRecord->inputBufferFBO[1 - viewid]]) : NULL,
+                                             &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[viewid]]),
+                                             (windowRecord->processedDrawBufferFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[2]]) : NULL);
 				}
 				else {
 					// Hook chain disabled by userspace or doesn't contain any instructions.
@@ -4963,11 +4974,18 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 					}
 
 					// Use proper per view output formatting chain:
-					PsychPipelineExecuteHook(windowRecord, ((viewid > 0) ? kPsychFinalOutputFormattingBlit1 : kPsychFinalOutputFormattingBlit0), NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), (windowRecord->preConversionFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->preConversionFBO[2]]) : NULL);
+					PsychPipelineExecuteHook(windowRecord, ((viewid > 0) ? kPsychFinalOutputFormattingBlit1 : kPsychFinalOutputFormattingBlit0), NULL, NULL, TRUE, FALSE,
+                                             &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]),
+                                             ((windowRecord->imagingMode & kPsychNeedOtherStreamInput) && (windowRecord->preConversionFBO[1-viewid]>=0)) ? &(windowRecord->fboTable[windowRecord->preConversionFBO[1 - viewid]]) : NULL,
+                                             &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]),
+                                             (windowRecord->preConversionFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->preConversionFBO[2]]) : NULL);
 				}
 				else {
 					// Single unified formatting chain to be used:
-					PsychPipelineExecuteHook(windowRecord, kPsychFinalOutputFormattingBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), (windowRecord->preConversionFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->preConversionFBO[2]]) : NULL);
+					PsychPipelineExecuteHook(windowRecord, kPsychFinalOutputFormattingBlit, NULL, NULL, TRUE, FALSE,
+                                             &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]),
+                                             ((windowRecord->imagingMode & kPsychNeedOtherStreamInput) && (windowRecord->preConversionFBO[1-viewid]>=0)) ? &(windowRecord->fboTable[windowRecord->preConversionFBO[1 - viewid]]) : NULL,
+                                             &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), (windowRecord->preConversionFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->preConversionFBO[2]]) : NULL);
 				}
 			}
 			else {

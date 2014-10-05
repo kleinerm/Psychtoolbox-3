@@ -1117,27 +1117,28 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		windowRecord->preConversionFBO[1] = windowRecord->preConversionFBO[0];
 	}
 
-	// Setup imaging mode flags:
-	newimagingmode = (needseparatestreams) ? kPsychNeedSeparateStreams : 0;
-	if (!needseparatestreams && (windowRecord->stereomode > 0)) newimagingmode |= kPsychNeedStereoMergeOp;
-	if (needfastbackingstore) newimagingmode |= kPsychNeedFastBackingStore;
-	if (needoutputconversion) newimagingmode |= kPsychNeedOutputConversion;
-	if (needimageprocessing)  newimagingmode |= kPsychNeedImageProcessing;
-	if (imagingmode & kPsychNeed32BPCFloat) {
-		newimagingmode |= kPsychNeed32BPCFloat;
-	}
-	else if (imagingmode & kPsychNeed16BPCFloat) {
-		newimagingmode |= kPsychNeed16BPCFloat;
-	}
-	else if (imagingmode & kPsychNeed16BPCFixed) {
-		newimagingmode |= kPsychNeed16BPCFixed;
-	}
-	if (imagingmode & kPsychNeedDualWindowOutput) newimagingmode |= kPsychNeedDualWindowOutput;
+    // Setup imaging mode flags:
+    newimagingmode = (needseparatestreams) ? kPsychNeedSeparateStreams : 0;
+    if (!needseparatestreams && (windowRecord->stereomode > 0)) newimagingmode |= kPsychNeedStereoMergeOp;
+    if (needfastbackingstore) newimagingmode |= kPsychNeedFastBackingStore;
+    if (needoutputconversion) newimagingmode |= kPsychNeedOutputConversion;
+    if (needimageprocessing)  newimagingmode |= kPsychNeedImageProcessing;
+    if (imagingmode & kPsychNeed32BPCFloat) {
+        newimagingmode |= kPsychNeed32BPCFloat;
+    }
+    else if (imagingmode & kPsychNeed16BPCFloat) {
+        newimagingmode |= kPsychNeed16BPCFloat;
+    }
+    else if (imagingmode & kPsychNeed16BPCFixed) {
+        newimagingmode |= kPsychNeed16BPCFixed;
+    }
+    if (imagingmode & kPsychNeedDualWindowOutput) newimagingmode |= kPsychNeedDualWindowOutput;
     if (imagingmode & kPsychNeedGPUPanelFitter) newimagingmode |= kPsychNeedGPUPanelFitter;
-	
-	// Set new final imaging mode and fbocount:
-	windowRecord->imagingMode = newimagingmode;
-	windowRecord->fboCount = fbocount;
+    if ((imagingmode & kPsychNeedOtherStreamInput) && (windowRecord->stereomode > 0)) newimagingmode |= kPsychNeedOtherStreamInput;
+
+    // Set new final imaging mode and fbocount:
+    windowRecord->imagingMode = newimagingmode;
+    windowRecord->fboCount = fbocount;
 
 	// The pipelines buffers and information flow are configured now...
 	if (PsychPrefStateGet_Verbosity()>4) {
@@ -3011,7 +3012,7 @@ psych_bool PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hoo
 	int i=0;
 	int pendingFBOpingpongs = 0;
 	PsychFBO *mysrcfbo1, *mysrcfbo2, *mydstfbo, *mynxtfbo;
-	PsychFBO **bouncefbo2;
+	PsychFBO **bouncefbo2 = NULL;
 	psych_bool gfxprocessing;
 	GLint restorefboid = 0;
 	psych_bool scissor_ignore = FALSE;
@@ -3137,7 +3138,7 @@ psych_bool PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hoo
 		}
 		
 		// Is this a ping-pong command?
-		if (hookfunc->hookfunctype == kPsychBuiltinFunc && strcmp(hookfunc->idString, "Builtin:FlipFBOs")==0) {
+		if ((hookfunc->hookfunctype == kPsychBuiltinFunc) && gfxprocessing && (strcmp(hookfunc->idString, "Builtin:FlipFBOs")==0)) {
 			// Ping pong buffer swap requested:
 			pendingFBOpingpongs--;
 			mysrcfbo1 = mydstfbo;
@@ -3929,10 +3930,10 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
         // global convenience helpers (GLBEGIN, GLEND etc.), as they'd use shared data
         // This glverts array is local on our stack, thereby thread-local. Also our
         // thread has its own OpenGL context, so no danger there either:
-        GLfloat glverts[4*4] = { 0,   0,  0, h,
+        GLfloat glverts[4*4] = { 0,   0,  0, (float) h,
                                  0,  ht,  0, 0,
-                                 wt,  0,  w, h,
-                                 wt, ht, w,  0};
+                                 wt,  0,  (float) w, (float) h,
+                                 wt, ht, (float) w,  0};
 
         glVertexPointer(2, GL_FLOAT, 4 * sizeof(GLfloat), &glverts[2]);
         glTexCoordPointer(2, GL_FLOAT, 4 * sizeof(GLfloat), &glverts[0]);

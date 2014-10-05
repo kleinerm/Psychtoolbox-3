@@ -23,7 +23,7 @@ function constantString=GL_SRC_COLOR
 %
 % GL_SRC_COLOR may only be used as a destination factor, not a source factor.
 % 
-% see also: PsychAlphaBlending, AlphaDemo, TestAlphaBlending.
+% see also: PsychAlphaBlending, AlphaDemo, AlphaBlendingTest.
 
 
 constantString='GL_SRC_COLOR';

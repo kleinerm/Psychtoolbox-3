@@ -14,6 +14,16 @@
 #define PSYCH_MATLAB 0
 #define PSYCH_LANGUAGE PSYCH_MATLAB
 
+// Need to include uchar.h before mex.h for definition of
+// char16_t, which seems to be missing on recent compilers
+// by default. Otherwise compile failure at least under
+// Matlab R2012a with current Linux or OSX. On Linux this
+// solves it. On OSX 10.9 we instead -Dchar16_t=UINT16_T in mexopts.sh
+// and are fine again.
+#ifdef LINUX
+#include <uchar.h>
+#endif
+
 // Include mex.h with MEX - API definition for Matlab:
 #include "mex.h"
 

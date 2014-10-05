@@ -105,13 +105,21 @@
 
 PsychError PsychModuleInit(void)
 {
-    
     // Initialize all Screen('Preference', ...); settings to startup defaults:
     // This will also set an override level of verbosity if the relevant environment
     // variable has been set for low-level debugging purposes.
-	PrepareScreenPreferences();
+    PrepareScreenPreferences();
 
+    // This little Screen reloading gem disabled, as it is bad, bad, bad!
+    // Wasn't useful for exporting ConsoleInputHelper(), as that approach proved
+    // way too fragile. Additionally it now causes trouble with some workaround for
+    // a Mesa bug: Exporting Screen()'s symbols causes moglcore to link against them
+    // for GLEW stuff, and thereby it prevents 'clear Screen' if moglcore itself is
+    // not cleared itself, as moglcore holds references to symbols in Screen.
+    // Disable this code, so symbols of Screen() stay private to Screen.mex itself
+    // on Linux and this specific problem is hopefully avoided.
     #if PSYCH_SYSTEM != PSYCH_WINDOWS
+    #if 0
         // Try to reopen ourselves, ie. the currently used Screen() MEX file, in "noload" mode,
         // aka RTLD_NOLOAD.
         //
@@ -129,7 +137,7 @@ PsychError PsychModuleInit(void)
         // _GNU_SOURCE flag defined, or on BSD systems like OSX:
         Dl_info screen_info;
         void* screenHandle = NULL;
-    
+
         // Retrieve the full path and filename of the shared library which contains
         // the C-Function "ScreenExitFunction". As Screen() is the only mex file which
         // defines this function, ie., ourselves, this will hopefully retrieve info
@@ -137,7 +145,7 @@ PsychError PsychModuleInit(void)
         if (dladdr((void*) ScreenExitFunction, &screen_info)) {
             // Yes, got the info.
             if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Screen() plugin path as detected by dladdr(): %s\n", screen_info.dli_fname);
-            
+
             // Try to re-open us and get a handle to ourselves. This will not really
             // reload us due to RTLD_NOLOAD, just return the handle, increment our
             // refcount and most importantly, make all our public symbols available
@@ -150,7 +158,7 @@ PsychError PsychModuleInit(void)
                 // Worked! Close us again, so the refcount drops back to the old value
                 // and the runtime isn't prevented from clear'ing us if needed:
                 dlclose(screenHandle);
-                
+
                 if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Reopened Screen() mex plugin with global symbol scope!\n");
             }
             else {
@@ -160,8 +168,9 @@ PsychError PsychModuleInit(void)
         else {
             if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-WARNING: Could not get module info for Screen() from dladd()!\n");
         }
-    
+
         if (!screenHandle && (PsychPrefStateGet_Verbosity() > 4)) printf("PTB-WARNING: Other PTB modules can't cross-call Screen's internal functions.\n");
+    #endif
     #endif
     
 	// Register the project exit function

@@ -166,12 +166,17 @@ PsychError SCREENMakeTexture(void)
     //get the argument and sanity check it.
     isImageMatrixBytes=PsychAllocInUnsignedByteMatArg(2, kPsychArgAnything, &ySize, &xSize, &numMatrixPlanes, &byteMatrix);
     isImageMatrixDoubles=PsychAllocInDoubleMatArg(2, kPsychArgAnything, &ySize, &xSize, &numMatrixPlanes, &doubleMatrix);
-    if(!(isImageMatrixBytes || isImageMatrixDoubles))
+    if (!(isImageMatrixBytes || isImageMatrixDoubles))
         PsychErrorExitMsg(PsychError_user, "Illegal argument type. Image matrices must be uint8 or double data type.");
-    if(numMatrixPlanes > 4)
+    if (numMatrixPlanes < 1 || numMatrixPlanes > 4) {
+        iters = 0; // Make compiler happy.
         PsychErrorExitMsg(PsychError_inputMatrixIllegalDimensionSize, "Specified image matrix exceeds maximum depth of 4 layers");
-    if(ySize<1 || xSize <1)
+    }
+
+    if (ySize<1 || xSize <1) {
+        iters = 0; // Make compiler happy.
         PsychErrorExitMsg(PsychError_inputMatrixIllegalDimensionSize, "Specified image matrix must be at least 1 x 1 pixels in size");
+    }
 
 	// Is this a special image matrix which is already pre-transposed to fit our optimal format?
 	if (assume_texorientation == 2) {
@@ -274,6 +279,9 @@ PsychError SCREENMakeTexture(void)
 		(isImageMatrixBytes && planar_storage)) {
 		// Zero copy path:
 		texturePointer = NULL;
+        // Set usefloatformat = 0 to prevent false compiler warnings about iters
+        // being used uninitialized:
+        usefloatformat = 0;
 	}
 	else {
 		// Allocate memory:

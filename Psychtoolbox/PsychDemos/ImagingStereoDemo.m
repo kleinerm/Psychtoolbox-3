@@ -1,5 +1,5 @@
-function ImagingStereoDemo(stereoMode, usedatapixx, writeMovie)
-% ImagingStereoDemo([stereoMode=8][, usedatapixx = 0][, writeMovie = 0])
+function ImagingStereoDemo(stereoMode, usedatapixx, writeMovie, reduceCrossTalkGain)
+% ImagingStereoDemo([stereoMode=8][, usedatapixx = 0][, writeMovie = 0][, reduceCrossTalkGain = 0])
 %
 % Demo on how to use OpenGL-Psychtoolbox to present stereoscopic stimuli
 % when the Psychtoolbox imaging pipeline is enabled. Use of the imaging
@@ -77,9 +77,12 @@ function ImagingStereoDemo(stereoMode, usedatapixx, writeMovie)
 % a setting of 2 will also write an audio track with a sequence of ten
 % successive beep tones of 1 sec duration.
 %
+% 'reduceCrossTalkGain' If provided and set to a greater than zero value, will
+% make background 50% gray and demo the crosstalk reduction shader.
+%
 % Authors:
 % Finnegan Calabro  - fcalabro@bu.edu
-% Mario Kleiner     - mario.kleiner at tuebingen.mpg.de
+% Mario Kleiner  - mario.kleiner.de at gmail.com
 %
 
 % We start of with non-inverted display:
@@ -110,16 +113,15 @@ if isempty(writeMovie)
     writeMovie = 0;
 end
 
-% This script calls Psychtoolbox commands available only in OpenGL-based
-% versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
-% only OpenGL-base Psychtoolbox.)  The Psychtoolbox command AssertPsychOpenGL will issue
-% an error message if someone tries to execute this script on a computer without
-% an OpenGL Psychtoolbox
-AssertOpenGL;
+if nargin < 4
+    reduceCrossTalkGain = [];
+end
 
-% Define response key mappings, unify the names of keys across operating
-% systems:
-KbName('UnifyKeyNames');
+% Check that Psychtoolbox is properly installed, switch to unified KbName's
+% across operating systems, and switch color range to normalized 0 - 1 range:
+PsychDefaultSetup(2);
+
+% Define response key mappings:
 space = KbName('space');
 escape = KbName('ESCAPE');
 
@@ -175,7 +177,7 @@ end
 % display the background color in all remaining areas, thereby saving
 % some computation time for pixel processing: We select the center
 % 512x512 pixel area of the screen:
-if ~ismember(stereoMode, [100, 101, 102])
+if ~ismember(stereoMode, [100, 101, 102]) && isempty(reduceCrossTalkGain)
     PsychImaging('AddTask', 'AllViews', 'RestrictProcessing', CenterRect([0 0 512 512], Screen('Rect', scrnNum)));
 end
 
@@ -208,11 +210,22 @@ if stereoMode == 10
     PsychImaging('AddTask', 'General', 'DualWindowStereo', slaveScreen);
 end
 
+% Experimental stereo crosstalk reduction requested?
+if ~isempty(reduceCrossTalkGain)
+    % Yes setup reduction for both view channels, using reduceCrossTalk as 1st parameter
+    % itself. Second parameter sets the background luminance level.
+    PsychImaging('AddTask', 'LeftView', 'StereoCrosstalkReduction', 'SubtractOther', reduceCrossTalkGain);
+    PsychImaging('AddTask', 'RightView', 'StereoCrosstalkReduction', 'SubtractOther', reduceCrossTalkGain);
+    bgColor = GrayIndex(scrnNum);
+else
+    bgColor = BlackIndex(scrnNum);
+end
+
 % Consolidate the list of requirements (error checking etc.), open a
 % suitable onscreen window and configure the imaging pipeline for that
 % window according to our specs. The syntax is the same as for
 % Screen('OpenWindow'):
-[windowPtr, windowRect] = PsychImaging('OpenWindow', scrnNum, 0, [], [], [], stereoMode);
+[windowPtr, windowRect] = PsychImaging('OpenWindow', scrnNum, bgColor, [], [], [], stereoMode);
 
 if ismember(stereoMode, [4, 5])
     % This uncommented bit of code would allow to exercise the
@@ -266,16 +279,6 @@ switch stereoMode
         %error('Unknown stereoMode specified.');
 end
 
-% Initially fill left- and right-eye image buffer with black background
-% color:
-Screen('SelectStereoDrawBuffer', windowPtr, 0);
-Screen('FillRect', windowPtr, BlackIndex(scrnNum));
-Screen('SelectStereoDrawBuffer', windowPtr, 1);
-Screen('FillRect', windowPtr, BlackIndex(scrnNum));
-
-% Show cleared start screen:
-Screen('Flip', windowPtr);
-
 % Set up alpha-blending for smooth (anti-aliased) drawing of dots:
 Screen('BlendFunction', windowPtr, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
 
@@ -309,7 +312,7 @@ if writeMovie
         
         % Create a sequence of 10 tones, each of 1 second duration, each 100 Hz higher
         % than its predecessor. Each of the two stereo channels gets a slightly different sound:
-        for freq=100:100:1000
+        for freq=200:100:1100
             Screen('AddAudioBufferToMovie', movie, [0.8 * MakeBeep(freq, 1, 48000); 0.8 * MakeBeep(freq*1.2, 1, 48000)]);
         end
         nmax = 300;
@@ -323,11 +326,16 @@ if writeMovie
     % Other examples of valid and more low-level codec settings to allow
     % tighter control over the process:
     %
+    %        % Use Schroedinger codec 'schroenc' with 'qtmux' QuickTime Multiplexer to encode 16 bpc Dirac video stream: (Decoding crashes though on GStreamer-1.4.0):
+    %        movie = Screen('CreateMovie', windowPtr, 'MyTestMovie.mov', 512, 512, 30, ':CodecType=VideoCodec=schroenc gop-structure=1 ::: Muxer=qtmux', 4, 16);
+    %
     %        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=VideoCodec=x264enc speed-preset=5 key-int-max=30 bitrate=20000 profile=3');
     %        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=VideoCodec=x264enc speed-preset=5 bitrate=20000 profile=3');
     %        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=theoraenc');
     %        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 640, 480, 30, ':CodecType=theoraenc AddAudioTrack');
     %        movie = Screen('CreateMovie', windowPtr, 'WinXPTest.avi', 320, 240, 30, ':CodecType=VideoCodec=xvidenc profile=244 max-key-interval=10 bitrate=9708400 quant-type=1');
+    
+    %        This may need reevaluation for GStreamer-1.x, only tested on 0.10:
     %        Encode yes, decode no: Lossless JPEG for 8bpc content:
     %        movie = Screen('CreateMovie', windowPtr, ['MyTestMovie.flv'], 512, 512, 30, 'gst-launch appsrc name=ptbvideoappsrc do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps="video/x-raw-rgb, bpp=(int)32, depth=(int)32, endianess=(int)4321, alpha_mask=(int)-16777216, red_mask=(int)16711680, green_mask=(int)65280, blue_mask=(int)255, width=(int)512, height=(int)512, framerate=30/1" ! videorate ! ffmpegcolorspace ! ffenc_ljpeg ! avimux ! filesink name=ptbfilesink async=0 location="MyTestMovie.mov"');
     %        Works for lossless RGB8 encoding, but loses A8 alpha channel:
@@ -378,16 +386,16 @@ while (count < nmax) && ~any(buttons)
     
     % Draw left stim:
     Screen('DrawDots', windowPtr, dots(1:2, :) + [dots(3, :)/2; zeros(1, numDots)], dotSize, col1, windowRect(3:4)/2, 1);
-    Screen('FrameRect', windowPtr, [255 0 0], [], 5);
-    Screen('DrawDots', windowPtr, [x ; y], 8, [255 0 0]);
+    Screen('FrameRect', windowPtr, [1 0 0], [], 5);
+    Screen('DrawDots', windowPtr, [x ; y], 8, [1 0 0]);
     
     % Select right-eye image buffer for drawing:
     Screen('SelectStereoDrawBuffer', windowPtr, 1);
     
     % Draw right stim:
     Screen('DrawDots', windowPtr, dots(1:2, :) - [dots(3, :)/2; zeros(1, numDots)], dotSize, col2, windowRect(3:4)/2, 1);
-    Screen('FrameRect', windowPtr, [0 255 0], [], 5);
-    Screen('DrawDots', windowPtr, [x ; y], 8, [0 255 0]);
+    Screen('FrameRect', windowPtr, [0 1 0], [], 5);
+    Screen('DrawDots', windowPtr, [x ; y], 8, [0 1 0]);
     
     % Tell PTB drawing is finished for this frame:
     Screen('DrawingFinished', windowPtr);
@@ -462,7 +470,7 @@ Screen('CloseAll')
 t = t(1:count);
 dt = t(2:end) - t(1:end-1);
 disp(sprintf('N.Dots\tMean (s)\tMax (s)\t%%>20ms\t%%>30ms\n')); %#ok<DSPS>
-disp(sprintf('%d\t%5.3f\t%5.3f\t%5.2f\t%5.2f\n', numDots, mean(dt), max(dt), sum(dt > 0.020)/length(dt), sum(dt > 0.030)/length(dt))); %#ok<DSPS>
+disp(sprintf('%d\t%5.3f\t%5.3f\t%5.0f\t%5.0f\n', numDots, mean(dt), max(dt), sum(dt > 0.020)/length(dt)*100, sum(dt > 0.030)/length(dt)*100)); %#ok<DSPS>
 
 % We're done.
 return;

@@ -219,7 +219,6 @@ typedef struct {
 
 // Don't use native beamposition query mechanism but either our own
 // homegrown solution, or no beampos query at all:
-// Currently used to work around bugs in Leopard 10.5.x + ATI gfx:
 #define kPsychDontUseNativeBeamposQuery 65536
 
 // Disable the Aero DWM desktop composition manager on Windows Vista and later:
@@ -252,16 +251,12 @@ typedef struct {
 
 // Force use of native beamposition query mechanism instead
 // of our own homegrown solution, or no beampos query at all:
-// At least OSX 10.8.x is so broken that our own implementation
-// is always the better choice going forward. On Intel and AMD,
-// OSX native method is unsupported, on all platforms it is
-// deprecated. On NVidia when it "works", it is more noisy,
-// higher overhead and always slightly buggy. On NVidia with
-// at least GeForce-600 series and OSX 10.8, it is utterly
-// broken on anything but analog VGA CRT monitors.
-// This option allows to enforce use of the broken OSX
-// implementation, e.g., for testing or comparison purposes.
 #define kPsychForceUseNativeBeamposQuery (1 << 26)
+
+// Force use of OpenML timestamp workaround for overriding kms-pageflip events:
+// Not needed on any shipping OS release atm., but left here in case it is ever
+// needed.
+#define kPsychForceOpenMLTSWorkaround (1 << 27)
 
 //function protoptypes
 

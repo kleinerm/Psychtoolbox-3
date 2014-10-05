@@ -1,29 +1,28 @@
 /*
-  	PsychToolbox3/Source/OSX/Base/PsychTimeGlue.c
+    PsychToolbox3/Source/OSX/Base/PsychTimeGlue.c
 
-	AUTHORS:
+    AUTHORS:
 
-  	Allen.Ingling@nyu.edu			awi 
-  	mario.kleiner@tuebingen.mpg.de	mk
+    Allen.Ingling@nyu.edu           awi
+    mario.kleiner.de@gmail.com      mk
 
-	PLATFORMS: Mac Only
+    PLATFORMS: OSX Only
 
-  	PROJECTS:
+    PROJECTS:
 
-  	1/20/03	awi		Screen on OS X
+    All
 
-  	HISTORY:
+    HISTORY:
 
-  	1/20/03		awi		Wrote it.  
+    1/20/03     awi     Wrote it.
 
-	5/27/05		mk      Add while-loops around mach_wait_until, so no problems with interruptions...
-						New routine PsychWaitUntilSeconds() for waiting until a specific time.
-						
-	1/03/09		mk		Add generic Mutex locking support as service to ptb modules. Add PsychYieldIntervalSeconds().
+    5/27/05     mk      Add while-loops around mach_wait_until, so no problems with interruptions...
+                        New routine PsychWaitUntilSeconds() for waiting until a specific time.
+    1/03/09     mk      Add generic Mutex locking support as service to ptb modules. Add PsychYieldIntervalSeconds().
 
-  	DESCRIPTION:
+    DESCRIPTION:
 
-	TO DO:
+    TO DO:
 
 */
 
@@ -36,49 +35,41 @@
 #include <mach/task_policy.h>
 #include <mach/thread_policy.h>
 
-/*
- *		file local state variables
- */
-
-static double		precisionTimerAdjustmentFactor=1;
-static double		estimatedGetSecsValueAtTickCountZero;
-static psych_bool	isKernelTimebaseFrequencyHzInitialized=FALSE;
-static long double	kernelTimebaseFrequencyHz;
-
-/*
- *		functions
-*/
+static double       precisionTimerAdjustmentFactor=1;
+static double       estimatedGetSecsValueAtTickCountZero;
+static psych_bool   isKernelTimebaseFrequencyHzInitialized=FALSE;
+static long double  kernelTimebaseFrequencyHz;
 
 void PsychWaitUntilSeconds(double whenSecs)
 {
-    kern_return_t					waitResult;
-    uint64_t						deadlineAbsTics;
+    kern_return_t   waitResult;
+    uint64_t        deadlineAbsTics;
 
     // Initialize our timebase constant if that hasn't been already done:
-    if(!isKernelTimebaseFrequencyHzInitialized) PsychGetKernelTimebaseFrequencyHz();	
+    if(!isKernelTimebaseFrequencyHzInitialized) PsychGetKernelTimebaseFrequencyHz();
 
     // Compute deadline for wakeup in mach absolute time units:
     deadlineAbsTics= (uint64_t) (kernelTimebaseFrequencyHz * ((long double) whenSecs));
 
-	if (!(deadlineAbsTics > 0 && whenSecs > 0)) return;
-	
+    if (!(deadlineAbsTics > 0 && whenSecs > 0)) return;
+
     // Call mach_wait_unit in an endless loop, because it can fail with retcode>0.
     // In that case we just restart...
-    while(mach_wait_until(deadlineAbsTics));   	
+    while(mach_wait_until(deadlineAbsTics));
 }
 
 void PsychWaitIntervalSeconds(double delaySecs)
 {
-    long double						waitPeriodTicks;	
-	kern_return_t					waitResult;
-	uint64_t						startTimeAbsTics, deadlineAbsTics;
+    long double     waitPeriodTicks;
+    kern_return_t   waitResult;
+    uint64_t        startTimeAbsTics, deadlineAbsTics;
 
-	if (delaySecs <= 0) return;
-	startTimeAbsTics = mach_absolute_time();
-	if(!isKernelTimebaseFrequencyHzInitialized) PsychGetKernelTimebaseFrequencyHz();	
-	waitPeriodTicks= kernelTimebaseFrequencyHz * delaySecs;
-	deadlineAbsTics= startTimeAbsTics + (uint64_t) waitPeriodTicks;
-	while(mach_wait_until(deadlineAbsTics));
+    if (delaySecs <= 0) return;
+    startTimeAbsTics = mach_absolute_time();
+    if(!isKernelTimebaseFrequencyHzInitialized) PsychGetKernelTimebaseFrequencyHz();
+    waitPeriodTicks= kernelTimebaseFrequencyHz * delaySecs;
+    deadlineAbsTics= startTimeAbsTics + (uint64_t) waitPeriodTicks;
+    while(mach_wait_until(deadlineAbsTics));
 }
 
 /* PsychYieldIntervalSeconds() - Yield the cpu for given 'delaySecs'
@@ -101,49 +92,49 @@ void PsychWaitIntervalSeconds(double delaySecs)
  */
 void PsychYieldIntervalSeconds(double delaySecs)
 {
-	if (delaySecs <= 0) {
-		// Yield cpu for remainder of this timeslice:
-		sched_yield();
-	}
-	else {
-		// On OS/X we use standard wait ops - they're good for us:
-		PsychWaitIntervalSeconds(delaySecs);
-	}
+    if (delaySecs <= 0) {
+        // Yield cpu for remainder of this timeslice:
+        sched_yield();
+    }
+    else {
+        // On OS/X we use standard wait ops - they're good for us:
+        PsychWaitIntervalSeconds(delaySecs);
+    }
 }
 
 double	PsychGetKernelTimebaseFrequencyHz(void)
 {
-    long double						clockPeriodNSecs;	
-    mach_timebase_info_data_t		tbinfo;
+    long double                 clockPeriodNSecs;
+    mach_timebase_info_data_t   tbinfo;
 
-	if(!isKernelTimebaseFrequencyHzInitialized){
-		// Retrieve the mach absolute time timebase.  The kernel expresses the period in two integers, the ratio of which is the clock period.   
-		mach_timebase_info(&tbinfo);
+    if(!isKernelTimebaseFrequencyHzInitialized){
+        // Retrieve the mach absolute time timebase.  The kernel expresses the period in two integers, the ratio of which is the clock period.
+        mach_timebase_info(&tbinfo);
 
-		// Calculate the mach timebase period from values reported from the mach kernel.   
-		clockPeriodNSecs = ((long double) tbinfo.numer) / ((long double) tbinfo.denom);
+        // Calculate the mach timebase period from values reported from the mach kernel.
+        clockPeriodNSecs = ((long double) tbinfo.numer) / ((long double) tbinfo.denom);
 
-		// Convert the mach timebase period from awkward units into frequency in Hz.
-		// Frequency in Hz is a convenient form because it makes converting from a period in seconds into a period in mach timebase units easy:
-		//  time_interval_in_mach_units= time_interval_in_seconds * clockFrequencyHz;
-		kernelTimebaseFrequencyHz = 1000000000.0 / clockPeriodNSecs;
-		isKernelTimebaseFrequencyHzInitialized=TRUE;
-	}
+        // Convert the mach timebase period from awkward units into frequency in Hz.
+        // Frequency in Hz is a convenient form because it makes converting from a period in seconds into a period in mach timebase units easy:
+        //  time_interval_in_mach_units= time_interval_in_seconds * clockFrequencyHz;
+        kernelTimebaseFrequencyHz = 1000000000.0 / clockPeriodNSecs;
+        isKernelTimebaseFrequencyHzInitialized=TRUE;
+    }
 
-	return((double)kernelTimebaseFrequencyHz);
+    return((double)kernelTimebaseFrequencyHz);
 }
 
 /* Called at Module init time: */
 void PsychInitTimeGlue(void)
 {
-	PsychEstimateGetSecsValueAtTickCountZero();
+    PsychEstimateGetSecsValueAtTickCountZero();
 }
 
 /* Called at module shutdown/jettison time: */
 void PsychExitTimeGlue(void)
 {
-	// Nothing to do on OS/X yet:
-	return;
+    // Nothing to do on OS/X yet:
+    return;
 }
 
 void PsychGetPrecisionTimerTicks(psych_uint64 *ticks)
@@ -163,160 +154,159 @@ void PsychGetPrecisionTimerTicksMinimumDelta(psych_uint32 *delta)
 
 void PsychGetPrecisionTimerSeconds(double *secs)
 {
-	double				timeDouble;
-	AbsoluteTime		timeAbsTime;
-	Nanoseconds			timeNanoseconds;
-	UInt64				timeUInt64;
+    double          timeDouble;
+    AbsoluteTime    timeAbsTime;
+    Nanoseconds     timeNanoseconds;
+    UInt64          timeUInt64;
 
-	//Get the time in an AbsolulteTime structure which expresses time as a ratio.
-	timeAbsTime=UpTime();
+    //Get the time in an AbsolulteTime structure which expresses time as a ratio.
+    timeAbsTime=UpTime();
 
-	//Convert the AbsoluteTime structure to nanoseconds stored in an UnsignedWide.
-	//UnsignedWide is an opaque type.  Depending on the compiler it is 
-	//implemented either as structure holding holding 32-bit high and low parts
-	//or as a native long long.  
-	timeNanoseconds=AbsoluteToNanoseconds(timeAbsTime);
+    //Convert the AbsoluteTime structure to nanoseconds stored in an UnsignedWide.
+    //UnsignedWide is an opaque type.  Depending on the compiler it is
+    //implemented either as structure holding holding 32-bit high and low parts
+    //or as a native long long.
+    timeNanoseconds=AbsoluteToNanoseconds(timeAbsTime);
 
-	//convert the opaque unsigned wide type into a UInt64.  Variant  forms 
-	//of the  UnsignedWide type is  why we need to use the UnsignedWideToUInt64() 
-	//macro instead of a cast.  If GCC then UnsignedWideToUInt64 resolves to a type recast. 
-	timeUInt64=UnsignedWideToUInt64(timeNanoseconds);
+    //convert the opaque unsigned wide type into a UInt64.  Variant  forms
+    //of the  UnsignedWide type is  why we need to use the UnsignedWideToUInt64()
+    //macro instead of a cast.  If GCC then UnsignedWideToUInt64 resolves to a type recast.
+    timeUInt64=UnsignedWideToUInt64(timeNanoseconds);
 
-	//cast nanoseconds in unsigned wide type to a double
-	timeDouble=(double)timeUInt64;
+    //cast nanoseconds in unsigned wide type to a double
+    timeDouble=(double)timeUInt64;
 
-	//divide down to seconds 
-	*secs= timeDouble / 1000000000;  
+    //divide down to seconds
+    *secs= timeDouble / 1000000000;
 }
 
 void PsychGetAdjustedPrecisionTimerSeconds(double *secs)
 {
-	double		rawSecs, factor;
-	
-	PsychGetPrecisionTimerSeconds(&rawSecs);
-	PsychGetPrecisionTimerAdjustmentFactor(&factor);
-	*secs=rawSecs * precisionTimerAdjustmentFactor;
+    double  rawSecs, factor;
+
+    PsychGetPrecisionTimerSeconds(&rawSecs);
+    PsychGetPrecisionTimerAdjustmentFactor(&factor);
+    *secs=rawSecs * precisionTimerAdjustmentFactor;
 }
 
 void PsychGetPrecisionTimerAdjustmentFactor(double *factor)
 {
-	*factor=precisionTimerAdjustmentFactor;
+    *factor=precisionTimerAdjustmentFactor;
 }
 
 void PsychSetPrecisionTimerAdjustmentFactor(double *factor)
 {
-	precisionTimerAdjustmentFactor=*factor;
+    precisionTimerAdjustmentFactor=*factor;
 }
 
 /*
-	PsychEstimateGetSecsValueAtTickCountZero()
-	Note that the tick counter rolls over about every 27 months. Its possible to have machine uptime of that long 
-	but it seems unlikely so we don't worry about roll over when calculating 
+    PsychEstimateGetSecsValueAtTickCountZero()
+    Note that the tick counter rolls over about every 27 months. Its possible to have machine uptime of that long
+    but it seems unlikely so we don't worry about roll over when calculating
 */
 void PsychEstimateGetSecsValueAtTickCountZero(void)
 {
-	double		nowTicks, nowSecs;
-	
-	nowTicks=(double)TickCount();
-	PsychGetAdjustedPrecisionTimerSeconds(&nowSecs);
-	estimatedGetSecsValueAtTickCountZero=nowSecs - nowTicks * (1/60.15); 
+    double  nowTicks, nowSecs;
+
+    nowTicks=(double)TickCount();
+    PsychGetAdjustedPrecisionTimerSeconds(&nowSecs);
+    estimatedGetSecsValueAtTickCountZero=nowSecs - nowTicks * (1/60.15);
 }
 
 double PsychGetEstimatedSecsValueAtTickCountZero(void)
 {
-	return(estimatedGetSecsValueAtTickCountZero);
+    return(estimatedGetSecsValueAtTickCountZero);
 }
-
 
 /* Init a Mutex: */
 int	PsychInitMutex(psych_mutex* mutex)
 {
-	return(pthread_mutex_init(mutex, NULL));
+    return(pthread_mutex_init(mutex, NULL));
 }
 
 /* Deinit and destroy a Mutex: */
 int	PsychDestroyMutex(psych_mutex* mutex)
 {
-	return(pthread_mutex_destroy(mutex));
+    return(pthread_mutex_destroy(mutex));
 }
 
 /* Lock a Mutex, blocking until mutex is available if it isn't available: */
 int PsychLockMutex(psych_mutex* mutex)
 {
-	return(pthread_mutex_lock(mutex));
+    return(pthread_mutex_lock(mutex));
 }
 
 /* Try to lock a Mutex, returning immediately, with a return code that tells if mutex could be locked or not: */
 int PsychTryLockMutex(psych_mutex* mutex)
 {
-	return(pthread_mutex_trylock(mutex));
+    return(pthread_mutex_trylock(mutex));
 }
 
 /* Unlock a Mutex: */
 int PsychUnlockMutex(psych_mutex* mutex)
 {
-	return(pthread_mutex_unlock(mutex));
+    return(pthread_mutex_unlock(mutex));
 }
 
 /* Create a parallel thread of execution, invoke its main routine: */
 int PsychCreateThread(psych_thread* threadhandle, void* threadparams, void *(*start_routine)(void *), void *arg)
 {
-	// threadparams not yet used, this line just to make compiler happy:
-	(void) threadparams;
-	
-	// Return result code of pthread_create - We're a really thin wrapper around this Posix call:
-	return( pthread_create(threadhandle, NULL, start_routine, arg) );
+    // threadparams not yet used, this line just to make compiler happy:
+    (void) threadparams;
+
+    // Return result code of pthread_create - We're a really thin wrapper around this Posix call:
+    return( pthread_create(threadhandle, NULL, start_routine, arg) );
 }
 
 /* Join a parallel thread - Wait for its termination, then return its result code: */
 int PsychDeleteThread(psych_thread* threadhandle)
 {
-	// Join on the thread, wait for termination:
-	int rc = pthread_join(*threadhandle, NULL);
-	// Null out now invalid thread handle of dead thread:
-	*threadhandle = NULL;
-	// Return return code of joined thread:
-	return(rc);
+    // Join on the thread, wait for termination:
+    int rc = pthread_join(*threadhandle, NULL);
+    // Null out now invalid thread handle of dead thread:
+    *threadhandle = NULL;
+    // Return return code of joined thread:
+    return(rc);
 }
 
 /* Send abort request to thread: */
 int PsychAbortThread(psych_thread* threadhandle)
 {
-	return( pthread_cancel(*threadhandle) );
+    return( pthread_cancel(*threadhandle) );
 }
 
 /* Check for abort request to thread: Exit thread gracefully if abort requested: */
 void PsychTestCancelThread(psych_thread* threadhandle)
 {
-	// threadhandle unused on POSIX: This line just to make compiler happy:
-	(void) threadhandle;
-	
-	// Test for cancellation, cancel if so:
-	pthread_testcancel();
+    // threadhandle unused on POSIX: This line just to make compiler happy:
+    (void) threadhandle;
+
+    // Test for cancellation, cancel if so:
+    pthread_testcancel();
 }
 
 /* Return handle of calling thread: */
 psych_threadid PsychGetThreadId(void)
 {
-	return( pthread_self() );
+    return( pthread_self() );
 }
 
 /* Check if two given thread handles do refer to the same thread: */
 int PsychIsThreadEqual(psych_thread threadOne, psych_thread threadTwo)
 {
-	return( pthread_equal(threadOne, threadTwo) );
+    return( pthread_equal(threadOne, threadTwo) );
 }
 
 /* Check if current (invoking) thread has an id equal to given threadid: */
 int PsychIsCurrentThreadEqualToId(psych_threadid threadId)
 {
-	return( pthread_equal(PsychGetThreadId(), threadId) );
+    return( pthread_equal(PsychGetThreadId(), threadId) );
 }
 
 /* Check if current (invoking) thread is equal to given threadhandle: */
 int PsychIsCurrentThreadEqualToPsychThread(psych_thread threadhandle)
 {
-	return( pthread_equal(PsychGetThreadId(), threadhandle) );
+    return( pthread_equal(PsychGetThreadId(), threadhandle) );
 }
 
 // Helper for PsychSetThreadPriority(): Setup of Mach RT scheduling.
@@ -327,15 +317,15 @@ int PsychIsCurrentThreadEqualToPsychThread(psych_thread threadhandle)
 int set_realtime(task_t threadID, int period, int computation, int constraint, psych_bool isPreemptible) {
     struct thread_time_constraint_policy ttcpolicy;
     int ret;
- 
-	// Set realtime scheduling with following parameters:
+
+    // Set realtime scheduling with following parameters:
     ttcpolicy.period = period;
     ttcpolicy.computation = computation;
     ttcpolicy.constraint = (constraint >= computation) ? constraint : computation;
     ttcpolicy.preemptible = (isPreemptible) ? 1 : 0;
- 
+
     ret = thread_policy_set(threadID, THREAD_TIME_CONSTRAINT_POLICY, (thread_policy_t) &ttcpolicy, THREAD_TIME_CONSTRAINT_POLICY_COUNT);
-	return(ret);
+    return(ret);
 }
 
 /* Change priority for thread 'threadhandle', or for the calling thread if 'threadhandle' == NULL.
@@ -348,100 +338,100 @@ int set_realtime(task_t threadID, int period, int computation, int constraint, p
  */
 int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int tweakPriority)
 {
-	int							rc = 0;
-	pthread_t					thread;
-    int							kernError;
-    task_t						threadID;
-    thread_policy_t				threadPolicy;
-    mach_msg_type_number_t		policyCount, policyCountFilled;
-    boolean_t					isDefault;
-	
-	if ((NULL != threadhandle) && ((psych_thread*) 0x1 != threadhandle)) {
-		// Retrieve thread handle of thread to change:
-		thread = *threadhandle;
-	}
-	else {
-		// Retrieve handle of calling thread:
-		thread = pthread_self();
-	}
+    int                         rc = 0;
+    pthread_t                   thread;
+    int                         kernError;
+    task_t                      threadID;
+    thread_policy_t             threadPolicy;
+    mach_msg_type_number_t      policyCount, policyCountFilled;
+    boolean_t                   isDefault;
 
-	// Map Posix thread handle to Mach thread handle:
-	threadID = pthread_mach_thread_np(thread);
+    if ((NULL != threadhandle) && ((psych_thread*) 0x1 != threadhandle)) {
+        // Retrieve thread handle of thread to change:
+        thread = *threadhandle;
+    }
+    else {
+        // Retrieve handle of calling thread:
+        thread = pthread_self();
+    }
 
-	// Get timebase:
-	double ticksPerSec = PsychGetKernelTimebaseFrequencyHz();
-	double baseQuantum = 0.010;
-	
-	// tweakPriority <= 0 -> 10% cpu. Can go up to 90% at level >=8 in 10% increments.
-	if (tweakPriority < 0) tweakPriority = 0;
-	if (tweakPriority > 8) tweakPriority = 8;
-	
-	switch(basePriority) {
-		case 0:	// Normal priority: Drop to standard scheduling.
-			threadPolicy = (thread_policy_t) malloc(sizeof(thread_standard_policy_data_t));
-			policyCount  = THREAD_STANDARD_POLICY_COUNT;
-			policyCountFilled = policyCount;
-			isDefault = TRUE;
-			kernError = thread_policy_get(threadID, THREAD_STANDARD_POLICY, threadPolicy, &policyCountFilled, &isDefault);
-			if (kernError == 0) kernError = thread_policy_set(threadID, THREAD_STANDARD_POLICY, threadPolicy, policyCountFilled);
-			free(threadPolicy);
-			rc = (int) kernError;
-		break;
-		
-		case 1: // High priority: Up to 90% cpu utilization, but preemptible for urgent tasks, with an allowable total time to completion of baseQuantum.
-			// This basically says: "I am more important than bog-standard threads, and i want to have x msecs of 10 msecs very 10 msecs, but i don't care
-			// about startup delay (reaction times) or interruptions, as long as i don't lose more than 10 msecs. Good for high priority compute tasks
-			// with lots of wiggle room wrt. when stuff happens, e.g., some data producer thread or i/o thread which needs to deliver/handle a certain
-			// amount of data processing/shuffling/io within a certain time quantum, because it is feeding some other realtime thread or hw process,
-			// due to things like intermediate fifo buffering, itself can tolerate a certain lag.
-			// This may become useful in the future for i/o functions in IOPort/PsychHID, movie playback/recording helper threads etc...
-			rc = set_realtime(threadID, baseQuantum * ticksPerSec, (((double) tweakPriority + 1) / 10) * baseQuantum * ticksPerSec, baseQuantum * ticksPerSec, TRUE);
-		break;
-		
-		case 2: // Realtime priority: Up to (tweakPriority + 1) msecs out of 10 msecs of *uninterrupted* computation (non-preemptible after start).
-			// However, after the thread becomes runnable, its actual start of uninterrupted execution can be delayed by up to 1 msec, e.g., if more
-			// important (basePriority 10) threads are executing, or a high priority or lower priority thread needs some computation time.
-			// This is our most common use-case: Most of our realtime threads are completely triggered (= reactive to) by external hardware input events.
-			// They wait on the arrival of some external event, e.g., a user key press or mouse click, some trigger signal from some I/O device like
-			// response box, serial port or parallel port, DAQ board etc., or for some timer going off at a certain time. Most often they have to respond
-			// to some trigger event by either executing some action, or by simply timestamping the event, like a button press of a subject, or some TTL
-			// trigger from some equipment. Executing the actual action, or timestamping, or storing the received data in some queue, is usually fast,
-			// the computation finishes quickly. As timestamping or external hardware control can be involved, we don't want to get preempted once running,
-			// to avoid impairing precision of timestamps or clock-sync algorithms or hw control actions. However for typical neuro-science experiments,
-			// we can tolerate a random time delay (or imprecision in acquired timestamps) of 1 msec.
-			// Typical consumers of this setup: IOPort, PsychHID, Movie playback or video capture high-level control.
-			rc = set_realtime(threadID, baseQuantum * ticksPerSec, (((double) tweakPriority + 1) / 10) * baseQuantum * ticksPerSec, (((double) tweakPriority + 1 + 1) / 10) * baseQuantum * ticksPerSec, FALSE);
-		break;
+    // Map Posix thread handle to Mach thread handle:
+    threadID = pthread_mach_thread_np(thread);
 
-		case 10:  // Critical priority: Up to (tweakPriority + 1) msecs out of 10 msecs of *uninterrupted* computation (non-preemptible after start),
-			// must run as soon as possible and then complete without distraction. This is good for timestamping operations that must not be interrupted
-			// in the wrong moment, because that would impair timestamps significantly, and for time-based triggering of execution of operations with
-			// the highest possible timing precision.
-			// Out main client of this is currently the OpenGL flipperThread used by Screen for async flip scheduling and timestamping, and for
-			// frame-sequential stereo fallback. For those apps, uninterrupted low latency is crucial. flipperThread uses tweakPriority == 2, so could
-			// run for up to 3 msecs uninterrupted, something it usually won't do (closer to << 1 msec is expected), but can do in a worst case scenario,
-			// where various workarounds for broken GPU drivers are active and screen resolution/refresh rate settings are especially suboptimal.
-			// The other client is video refresh rate calibration during Screen('GetFlipInterval') active calibration or during Screen('Openwindow')
-			// default calibration.
-			//
-			// Future clients may be found in the IOPort async-task framework for highly timing sensitive i/o operations.
-			rc = set_realtime(threadID, baseQuantum * ticksPerSec, (((double) tweakPriority + 1) / 10) * baseQuantum * ticksPerSec, 0, FALSE);
-		break;
+    // Get timebase:
+    double ticksPerSec = PsychGetKernelTimebaseFrequencyHz();
+    double baseQuantum = 0.010;
 
-		default:
-			printf("PTB-CRITICAL: In call to PsychSetThreadPriority(): Invalid/Unknown basePriority %i provided!\n", basePriority);
-			rc = 2;
-	}
+    // tweakPriority <= 0 -> 10% cpu. Can go up to 90% at level >=8 in 10% increments.
+    if (tweakPriority < 0) tweakPriority = 0;
+    if (tweakPriority > 8) tweakPriority = 8;
 
-	// Try to apply new priority and scheduling method:
-	if (rc != 0) {
-		printf("PTB-WARNING: In call to PsychSetThreadPriority(): Failed to set new basePriority %i, tweakPriority %i, effective %i [%s] for thread %p provided!\n",
-				basePriority, tweakPriority, tweakPriority, (basePriority > 0) ? "REALTIME" : "NORMAL", (void*) threadhandle);
-		printf("PTB-WARNING: This can lead to timing glitches and odd performance behaviour.\n");
-	}
+    switch(basePriority) {
+        case 0:	// Normal priority: Drop to standard scheduling.
+            threadPolicy = (thread_policy_t) malloc(sizeof(thread_standard_policy_data_t));
+            policyCount  = THREAD_STANDARD_POLICY_COUNT;
+            policyCountFilled = policyCount;
+            isDefault = TRUE;
+            kernError = thread_policy_get(threadID, THREAD_STANDARD_POLICY, threadPolicy, &policyCountFilled, &isDefault);
+            if (kernError == 0) kernError = thread_policy_set(threadID, THREAD_STANDARD_POLICY, threadPolicy, policyCountFilled);
+            free(threadPolicy);
+            rc = (int) kernError;
+        break;
 
-	// rc is either zero for success, or 2 for invalid arg, or some other non-zero failure code:
-	return(rc);
+        case 1: // High priority: Up to 90% cpu utilization, but preemptible for urgent tasks, with an allowable total time to completion of baseQuantum.
+            // This basically says: "I am more important than bog-standard threads, and i want to have x msecs of 10 msecs very 10 msecs, but i don't care
+            // about startup delay (reaction times) or interruptions, as long as i don't lose more than 10 msecs. Good for high priority compute tasks
+            // with lots of wiggle room wrt. when stuff happens, e.g., some data producer thread or i/o thread which needs to deliver/handle a certain
+            // amount of data processing/shuffling/io within a certain time quantum, because it is feeding some other realtime thread or hw process,
+            // due to things like intermediate fifo buffering, itself can tolerate a certain lag.
+            // This may become useful in the future for i/o functions in IOPort/PsychHID, movie playback/recording helper threads etc...
+            rc = set_realtime(threadID, baseQuantum * ticksPerSec, (((double) tweakPriority + 1) / 10) * baseQuantum * ticksPerSec, baseQuantum * ticksPerSec, TRUE);
+        break;
+
+        case 2: // Realtime priority: Up to (tweakPriority + 1) msecs out of 10 msecs of *uninterrupted* computation (non-preemptible after start).
+            // However, after the thread becomes runnable, its actual start of uninterrupted execution can be delayed by up to 1 msec, e.g., if more
+            // important (basePriority 10) threads are executing, or a high priority or lower priority thread needs some computation time.
+            // This is our most common use-case: Most of our realtime threads are completely triggered (= reactive to) by external hardware input events.
+            // They wait on the arrival of some external event, e.g., a user key press or mouse click, some trigger signal from some I/O device like
+            // response box, serial port or parallel port, DAQ board etc., or for some timer going off at a certain time. Most often they have to respond
+            // to some trigger event by either executing some action, or by simply timestamping the event, like a button press of a subject, or some TTL
+            // trigger from some equipment. Executing the actual action, or timestamping, or storing the received data in some queue, is usually fast,
+            // the computation finishes quickly. As timestamping or external hardware control can be involved, we don't want to get preempted once running,
+            // to avoid impairing precision of timestamps or clock-sync algorithms or hw control actions. However for typical neuro-science experiments,
+            // we can tolerate a random time delay (or imprecision in acquired timestamps) of 1 msec.
+            // Typical consumers of this setup: IOPort, PsychHID, Movie playback or video capture high-level control.
+            rc = set_realtime(threadID, baseQuantum * ticksPerSec, (((double) tweakPriority + 1) / 10) * baseQuantum * ticksPerSec, (((double) tweakPriority + 1 + 1) / 10) * baseQuantum * ticksPerSec, FALSE);
+        break;
+
+        case 10:  // Critical priority: Up to (tweakPriority + 1) msecs out of 10 msecs of *uninterrupted* computation (non-preemptible after start),
+            // must run as soon as possible and then complete without distraction. This is good for timestamping operations that must not be interrupted
+            // in the wrong moment, because that would impair timestamps significantly, and for time-based triggering of execution of operations with
+            // the highest possible timing precision.
+            // Out main client of this is currently the OpenGL flipperThread used by Screen for async flip scheduling and timestamping, and for
+            // frame-sequential stereo fallback. For those apps, uninterrupted low latency is crucial. flipperThread uses tweakPriority == 2, so could
+            // run for up to 3 msecs uninterrupted, something it usually won't do (closer to << 1 msec is expected), but can do in a worst case scenario,
+            // where various workarounds for broken GPU drivers are active and screen resolution/refresh rate settings are especially suboptimal.
+            // The other client is video refresh rate calibration during Screen('GetFlipInterval') active calibration or during Screen('Openwindow')
+            // default calibration.
+            //
+            // Future clients may be found in the IOPort async-task framework for highly timing sensitive i/o operations.
+            rc = set_realtime(threadID, baseQuantum * ticksPerSec, (((double) tweakPriority + 1) / 10) * baseQuantum * ticksPerSec, 0, FALSE);
+        break;
+
+        default:
+            printf("PTB-CRITICAL: In call to PsychSetThreadPriority(): Invalid/Unknown basePriority %i provided!\n", basePriority);
+            rc = 2;
+    }
+
+    // Try to apply new priority and scheduling method:
+    if (rc != 0) {
+        printf("PTB-WARNING: In call to PsychSetThreadPriority(): Failed to set new basePriority %i, tweakPriority %i, effective %i [%s] for thread %p provided!\n",
+                basePriority, tweakPriority, tweakPriority, (basePriority > 0) ? "REALTIME" : "NORMAL", (void*) threadhandle);
+        printf("PTB-WARNING: This can lead to timing glitches and odd performance behaviour.\n");
+    }
+
+    // rc is either zero for success, or 2 for invalid arg, or some other non-zero failure code:
+    return(rc);
 }
 
 /* Initialize condition variable:
@@ -451,19 +441,19 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
  */
 int PsychInitCondition(psych_condition* condition, const pthread_condattr_t* condition_attribute)
 {
-	return(pthread_cond_init(condition, condition_attribute));
+    return(pthread_cond_init(condition, condition_attribute));
 }
 
 /* Destroy condition variable: */
 int PsychDestroyCondition(psych_condition* condition)
 {
-	return(pthread_cond_destroy(condition));
+    return(pthread_cond_destroy(condition));
 }
 
 /* Signal/wakeup exactly one thread waiting on the given condition variable: */
 int PsychSignalCondition(psych_condition* condition)
 {
-	return(pthread_cond_signal(condition));
+    return(pthread_cond_signal(condition));
 }
 
 /* Signal/Wakeup all threads waiting on the given condition variable:
@@ -472,7 +462,7 @@ int PsychSignalCondition(psych_condition* condition)
  */
 int PsychBroadcastCondition(psych_condition* condition)
 {
-	return(pthread_cond_broadcast(condition));
+    return(pthread_cond_broadcast(condition));
 }
 
 /* Atomically release the 'mutex' lock and go to sleep, waiting for the 'condition' variable
@@ -481,7 +471,7 @@ int PsychBroadcastCondition(psych_condition* condition)
  */
 int PsychWaitCondition(psych_condition* condition, psych_mutex* mutex)
 {
-	return(pthread_cond_wait(condition, mutex));
+    return(pthread_cond_wait(condition, mutex));
 }
 
 /* Atomically release the 'mutex' lock and go to sleep, waiting for the 'condition' variable
@@ -495,28 +485,28 @@ int PsychWaitCondition(psych_condition* condition, psych_mutex* mutex)
  */
 int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, double maxwaittimesecs)
 {
-	struct timespec abstime;
-	struct timeval gtod_time;
-	double tnow;
+    struct timespec abstime;
+    struct timeval gtod_time;
+    double tnow;
 
-	// Convert relative wait time to absolute system time. As pthread_cond_timedwait()
-	// uses gettimeofday() time as reference, we can't query or regular GetSecs clock,
-	// but need to use gettimeofday():
-	gettimeofday(&gtod_time, NULL);
+    // Convert relative wait time to absolute system time. As pthread_cond_timedwait()
+    // uses gettimeofday() time as reference, we can't query or regular GetSecs clock,
+    // but need to use gettimeofday():
+    gettimeofday(&gtod_time, NULL);
 
-	// Convert gtod_time and maxwaittimesecs into timespec format, add it...
-	abstime.tv_sec  = (time_t) maxwaittimesecs + gtod_time.tv_sec;
-	abstime.tv_nsec = (long) (((double) maxwaittimesecs - (double) ((time_t) maxwaittimesecs)) * (double) (1e9));
-	abstime.tv_nsec+= (long) (gtod_time.tv_usec * 1000);
+    // Convert gtod_time and maxwaittimesecs into timespec format, add it...
+    abstime.tv_sec  = (time_t) maxwaittimesecs + gtod_time.tv_sec;
+    abstime.tv_nsec = (long) (((double) maxwaittimesecs - (double) ((time_t) maxwaittimesecs)) * (double) (1e9));
+    abstime.tv_nsec+= (long) (gtod_time.tv_usec * 1000);
 
-	// ... (Re-)split into seconds and nanoseconds:
-	while (abstime.tv_nsec >= 1e9) {
-		abstime.tv_nsec-= 1e9;
-		abstime.tv_sec+= 1;
-	}
-	
-	// Perform wait for signalled condition with a timeout at absolute system time abstime:
-	return(pthread_cond_timedwait(condition, mutex, &abstime));
+    // ... (Re-)split into seconds and nanoseconds:
+    while (abstime.tv_nsec >= 1e9) {
+        abstime.tv_nsec-= 1e9;
+        abstime.tv_sec+= 1;
+    }
+
+    // Perform wait for signalled condition with a timeout at absolute system time abstime:
+    return(pthread_cond_timedwait(condition, mutex, &abstime));
 }
 
 /* Set thread affinity mask of calling thread to the modules global cpuMask:
@@ -546,4 +536,38 @@ psych_uint64 PsychAutoLockThreadToCores(psych_uint64* curCpuMask)
 {
     // No-op on OSX:
     return(INT64_MAX);
+}
+
+/* Report official support status for this operating system release.
+ * The string "Supported" means supported.
+ * Other strings describe lack of support.
+ */
+const char* PsychSupportStatus(void)
+{
+    // Operating system major and minor version:
+    SInt32 osMajor, osMinor;
+
+    // Init flag to -1 aka unknown:
+    static int  isSupported = -1;
+    static char statusString[256];
+
+    if (isSupported == -1) {
+        // First call: Do the query!
+
+        // Query OS/X version:
+        Gestalt(gestaltSystemVersionMajor, &osMajor);
+        Gestalt(gestaltSystemVersionMinor, &osMinor);
+
+        // Only OSX 10.9 is supported at the moment:
+        isSupported = (osMajor == 10 && osMinor == 9) ? 1 : 0;
+
+        if (isSupported) {
+            sprintf(statusString, "OSX %i.%i Supported.", (int) osMajor, (int) osMinor);
+        }
+        else {
+            sprintf(statusString, "OSX version %i.%i is not supported.", (int) osMajor, (int) osMinor);
+        }
+    }
+
+    return(statusString);
 }

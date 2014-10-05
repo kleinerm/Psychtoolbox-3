@@ -25,7 +25,7 @@ function constantString=GL_DST_COLOR
 % destination factor.
 % 
 %
-% see also: PsychAlphaBlending, AlphaDemo, TestAlphaBlending.
+% see also: PsychAlphaBlending, AlphaDemo, AlphaBlendingTest.
 
 
 constantString='GL_DST_COLOR';

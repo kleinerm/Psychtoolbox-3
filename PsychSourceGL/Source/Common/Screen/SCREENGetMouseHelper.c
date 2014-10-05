@@ -75,6 +75,10 @@ static int	listenchar_enabled = 0;
 #include <sched.h>
 #include <errno.h>
 #include <sys/mman.h>
+
+// Suppress "XKeycodeToKeysym is deprecated" compiler warning:
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 #endif
 
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
@@ -578,7 +582,7 @@ PsychError SCREENGetMouseHelper(void)
 	char* keystring;
 	PsychGenericScriptType *kbNames;
 	CGDirectDisplayID dpy;
-	Window rootwin, childwin, mywin;
+	Window rootwin, childwin, mywin = 0;
 	int i, j, mx, my, dx, dy;
 	double mxd, myd, dxd, dyd;
 	unsigned int mask_return;

@@ -25,7 +25,7 @@ function constantString=GL_ONE_MINUS_SRC_ALPHA
 % factor.
 % 
 %
-% see also: PsychAlphaBlending, AlphaDemo, TestAlphaBlending.
+% see also: PsychAlphaBlending, AlphaDemo, AlphaBlendingTest.
 
 
 

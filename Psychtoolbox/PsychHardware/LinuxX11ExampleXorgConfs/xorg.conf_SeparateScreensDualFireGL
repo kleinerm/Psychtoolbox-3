@@ -1,0 +1,35 @@
+Section "ServerLayout"
+	Identifier     "Hydra-2XScreensOn2GPUs"
+        Screen      0  "Screen0" 0 0
+	Screen      1  "Screen1" RightOf "Screen0"
+EndSection
+
+Section "Monitor"
+	Identifier   "Monitor1"
+	Option	     "RightOf" "DVI-2"
+EndSection
+
+Section "Device"
+	Identifier  "Card0"
+	Driver      "radeon"
+	BusID       "PCI:1:0:0"
+EndSection
+
+Section "Device"
+	Identifier  "Card1"
+	Driver      "radeon"
+	BusID       "PCI:2:0:0"
+	Option      "Monitor-DVI-3" "Monitor1"
+EndSection
+
+Section "Screen"
+	Identifier "Screen0"
+	Device     "Card0"
+#        DefaultDepth 24
+EndSection
+
+Section "Screen"
+	Identifier "Screen1"
+	Device     "Card1"
+#	DefaultDepth 30
+EndSection

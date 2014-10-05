@@ -65,7 +65,7 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
                               0,0, &x, &y, &rootRet);
         PsychUnlockDisplay();
 
-		PsychMakeRect(windowRecord->globalrect, x, y, x + (int) w - 1, y + (int) h - 1);
+		PsychMakeRect(windowRecord->globalrect, x, y, x + (int) w, y + (int) h);
 		PsychNormalizeRect(windowRecord->globalrect, windowRecord->rect);
 		PsychSetupClientRect(windowRecord);
 		PsychSetupView(windowRecord, FALSE);
@@ -224,6 +224,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   int xfixes_event_base1, xfixes_event_base2;
   psych_bool xfixes_available = FALSE;
   psych_bool newstyle_setup = FALSE;
+  int gpuMaintype = 0;
+
+  // First opened onscreen window? If so, we try to map GPU MMIO registers
+  // to enable beamposition based timestamping and other special goodies:
+  if (x11_windowcount == 0) PsychScreenMapRadeonCntlMemory();
 
   // Retrieve windowLevel, an indicator of where non-fullscreen windows should
   // be located wrt. to other windows. 0 = Behind everything else, occluded by
@@ -368,9 +373,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // Select requested depth per color component 'bpc' for each channel:
   bpc = 8; // We default to 8 bpc == RGBA8
   if (windowRecord->depth == 30)  { bpc = 10; printf("PTB-INFO: Trying to enable at least 10 bpc fixed point framebuffer.\n"); }
+  if (windowRecord->depth == 33)  { bpc = 11; printf("PTB-INFO: Trying to enable at least 11 bpc fixed point framebuffer.\n"); }
+  if (windowRecord->depth == 48)  { bpc = 16; printf("PTB-INFO: Trying to enable at least 16 bpc fixed point framebuffer.\n"); }
   if (windowRecord->depth == 64)  { bpc = 16; printf("PTB-INFO: Trying to enable 16 bpc fixed point framebuffer.\n"); }
   if (windowRecord->depth == 128) { bpc = 32; printf("PTB-INFO: Trying to enable 32 bpc fixed point framebuffer.\n"); }
-  
+
   // Setup pixelformat descriptor for selection of GLX visual:
   if (useGLX13) {
     attrib[attribcount++]= GLX_RENDER_TYPE; // Use RGBA true-color visual.
@@ -387,19 +394,25 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   attrib[attribcount++]= (depth > 16) ? bpc : 1;
   attrib[attribcount++]= GLX_ALPHA_SIZE;
   // Alpha channel needs special treatment:
-  if (bpc != 10) {
-	// Non 10 bpc drawable: Request a 'bpc' alpha channel if the underlying framebuffer
-	// is in true-color mode ( >= 24 cpp format). If framebuffer is in 16 bpp mode, we
-	// don't have/request an alpha channel at all:
-	attrib[attribcount++]= (depth > 16) ? bpc : 0; // In 16 bit mode, we don't request an alpha-channel.
+  if ((bpc != 10) && (bpc != 11)) {
+    // Non 10/11 bpc drawable: Request a 'bpc' alpha channel if the underlying framebuffer
+    // is in true-color mode ( >= 24 cpp format). If framebuffer is in 16 bpp mode, we
+    // don't have/request an alpha channel at all:
+    attrib[attribcount++]= (depth > 16) ? bpc : 0; // In 16 bit mode, we don't request an alpha-channel.
+  }
+  else if (bpc == 10) {
+    // 10 bpc drawable: We have a 32 bpp pixel format with R10G10B10 10 bpc per color channel.
+    // There are at most 2 bits left for the alpha channel, so we request an alpha channel with
+    // minimum size 1 bit --> Will likely translate into a 2 bit alpha channel:
+    attrib[attribcount++]= 1;
   }
   else {
-	// 10 bpc drawable: We have a 32 bpp pixel format with R10G10B10 10 bpc per color channel.
-	// There are at most 2 bits left for the alpha channel, so we request an alpha channel with
-	// minimum size 1 bit --> Will likely translate into a 2 bit alpha channel:
-	attrib[attribcount++]= 1;
+    // 11 bpc drawable - or more likely a 32 bpp drawable with R11G11B10, ie., all 32 bpp
+    // used up by RGB color info and no space for alpha bits. Therefore do not request an
+    // alpha channel:
+    attrib[attribcount++]= 0;
   }
-  
+
   // Stereo display support: If stereo display output is requested with OpenGL native stereo,
   // we request a stereo-enabled rendering context.
   if(stereomode==kPsychOpenGLStereo) {
@@ -473,41 +486,41 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   }
 
   if (!visinfo && !fbconfig && (stereoenableattrib > 0)) {
-	// Failed to find matching visual and OpenGL native quad-buffered frame-sequential
-	// stereo requested. Probably the GPU does not support it. Disable it as we have a
-	// fallback implementation for this case.
-	attrib[stereoenableattrib] = False;
+    // Failed to find matching visual and OpenGL native quad-buffered frame-sequential
+    // stereo requested. Probably the GPU does not support it. Disable it as we have a
+    // fallback implementation for this case.
+    attrib[stereoenableattrib] = False;
 
-	// Retry:
-	if (useGLX13) {
-		fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
-	} else {
-		visinfo = glXChooseVisual(dpy, scrnum, attrib );
-	}
+    // Retry:
+    if (useGLX13) {
+        fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
+    } else {
+        visinfo = glXChooseVisual(dpy, scrnum, attrib );
+    }
   }
 
-  if (!visinfo && !fbconfig) {
-	  // Failed to find matching visual: Could it be related to request for unsupported native 10 bpc framebuffer?
-	  if ((windowRecord->depth == 30) && (bpc == 10)) {
-		  // 10 bpc framebuffer requested: Let's see if we can get a visual by lowering our demand to 8 bpc:
-		  for (i=0; i<attribcount && attrib[i]!=GLX_RED_SIZE; i++);
-		  attrib[i+1] = 8;
-		  for (i=0; i<attribcount && attrib[i]!=GLX_GREEN_SIZE; i++);
-		  attrib[i+1] = 8;
-		  for (i=0; i<attribcount && attrib[i]!=GLX_BLUE_SIZE; i++);
-		  attrib[i+1] = 8;
-		  for (i=0; i<attribcount && attrib[i]!=GLX_ALPHA_SIZE; i++);
-		  attrib[i+1] = 1;
-		  
-		  // Retry:
-		  if (useGLX13) {
-			  fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
-		  } else {
-			  visinfo = glXChooseVisual(dpy, scrnum, attrib );
-		  }
-	  }
-  }
-  
+    if (!visinfo && !fbconfig) {
+        // Failed to find matching visual: Could it be related to request for unsupported native 10/11/16 bpc framebuffer?
+        if (((windowRecord->depth == 30) && (bpc == 10)) || ((windowRecord->depth == 33) && (bpc == 11)) || ((windowRecord->depth == 48) && (bpc == 16))) {
+            // 10/11/16 bpc framebuffer requested: Let's see if we can get a visual by lowering our demand to 8 bpc:
+            for (i=0; i<attribcount && attrib[i]!=GLX_RED_SIZE; i++);
+            attrib[i+1] = 8;
+            for (i=0; i<attribcount && attrib[i]!=GLX_GREEN_SIZE; i++);
+            attrib[i+1] = 8;
+            for (i=0; i<attribcount && attrib[i]!=GLX_BLUE_SIZE; i++);
+            attrib[i+1] = 8;
+            for (i=0; i<attribcount && attrib[i]!=GLX_ALPHA_SIZE; i++);
+            attrib[i+1] = 1;
+
+            // Retry:
+            if (useGLX13) {
+                fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
+            } else {
+                visinfo = glXChooseVisual(dpy, scrnum, attrib );
+            }
+        }
+    }
+
   if (!visinfo && !fbconfig) {
 	  // Failed to find matching visual: Could it be related to multisampling?
 	  if (windowRecord->multiSample > 0) {
@@ -622,10 +635,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     attr.border_pixel = 0;      // Border color as well.
     attr.colormap = XCreateColormap(dpy, root, visinfo->visual, AllocNone);  // Dummy colormap assignment.
     attr.event_mask = KeyPressMask | StructureNotifyMask;                    // We're only interested in keypress events for GetChar() and StructureNotify to wait for Windows to be mapped.
-    
+
     // Mask of everything we define(d):
     mask = CWOverrideRedirect | CWBackPixel | CWBorderPixel | CWColormap | CWEventMask;
-    
+
     // Old style of override_redirect handling requested? This was used until beginning 2013
     // and worked well for us, but it prevents the windowmanager from seeing properties on
     // our windows which allow us to control desktop composition, e.g., on KDE/KWIN and GNOME-3/Mutter,
@@ -633,7 +646,18 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Ok, for now we only use the new-style path if we are running under KDE/KWin and user
     // doesn't explicitely override/forbid that choice. Otherwise we use the old path, as
     // that seems to perform better, at least on tested Unity/compiz, GNOME3-Shell and LXDE/OpenBox.
-    if ((PsychPrefStateGet_ConserveVRAM() & kPsychOldStyleOverrideRedirect) ||
+    //
+    // UPDATE June-2014: Do not even use new-style on KDE, unless forced by setenv("PSYCH_NEW_OVERRIDEREDIRECT", "1")
+    // Turns out the new-style override redirect doesn't play well with KDE multi-display setups. It causes KDE
+    // to cut off all parts of the fullscreen window except for the first video output, making this unworkable on
+    // anything but single display setups. We may rework this code at some later point, but for now just disable.
+    //
+    // UPDATE September-2014: Unless we are using KDE on an Intel gpu, where god-knows-why we need new-style
+    // override redirect handling, because KDE doesn't recognize our fullscreen windows as such and wouldn't
+    // unredirect them without the new override redirect setup and signalling. Strangely other desktop environments
+    // do have no problem detecting our fullscreen windows on an Intel gpu, e.g., Unity, GNOME-3/GNOME-2, ...
+    PsychGetGPUSpecs(screenSettings->screenNumber, &gpuMaintype, NULL, NULL, NULL);
+    if ((!getenv("PSYCH_NEW_OVERRIDEREDIRECT") && (gpuMaintype != kPsychIntelIGP)) || (PsychPrefStateGet_ConserveVRAM() & kPsychOldStyleOverrideRedirect) ||
         !getenv("KDE_FULL_SESSION")) {
         // Old style: Always override_redirect to lock out window manager, except when a real "GUI-Window"
         // is requested, which needs to behave and be treated like any other desktop app window:
@@ -642,12 +666,12 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     else {
         // New style: override_redirect by default:
         newstyle_setup = TRUE;
-        
+
         attr.override_redirect = 1;
-        
+
         // Don't override if it is a GUI window, for some reasons as in classic path:
         if (windowRecord->specialflags & kPsychGUIWindow) attr.override_redirect = 0;
-        
+
         // Don't override if it is a fullscreen window. The NETM_FULLSCREEN state should
         // take care of fullscreen windows nicely without need to override. Although we
         // could override for transparent fullscreen windows if we were extra paranoid,
@@ -666,13 +690,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // location, no that the WM can't interfere anymore.
         if (windowRecord->specialflags & kPsychIsFullscreenWindow) attr.override_redirect = 0;
     }
-    
+
     if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Using %s-style override-redirect setup path for onscreen window creation.\n", (newstyle_setup) ? "new" : "old");
-    
+
   // Create our onscreen window:
   win = XCreateWindow( dpy, root, x, y, width, height,
-		       0, visinfo->depth, InputOutput,
-		       visinfo->visual, mask, &attr );
+                        0, visinfo->depth, InputOutput,
+                        visinfo->visual, mask, &attr );
 
   if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: GLX Visual info depths is %i bits\n", visinfo->depth);
 
@@ -987,8 +1011,32 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
     PsychLockDisplay();
 
-    // Ok, the OpenGL rendering context is up and running. Auto-detect and bind all
-    // available OpenGL extensions via GLEW:
+    // Ok, the OpenGL rendering context is up and running.
+    // Running on top of a FOSS Mesa graphics driver?
+    if ((x11_windowcount == 0) && strstr((const char*) glGetString(GL_VERSION), "Mesa") && !getenv("PSYCH_DONT_LOCK_MOGLCORE")) {
+        // Yes. At least as of Mesa 10.1 as shipped in Ubuntu 14.04-LTS, Mesa
+        // will become seriously crashy if our Screen() mex files is flushed
+        // from memory due to a clear all/mex/Screen and afterwards reloaded.
+        // This because Mesa maintains pointers back into our library image,
+        // which will turn into dangling pointers if we get unloaded/reloaded
+        // into a new location. To prevent Mesa crashes on clear Screen -> reload,
+        // prevent this mex file against clearing from Octave/Matlab address space.
+        // An ugly solution which renders "clear Screen" useless, but the best i can
+        // come up with at the moment :(
+        if (PsychRuntimeEvaluateString("moglcore('LockModule');") > 0) {
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: Failed to enable moglcore locking workaround for Mesa OpenGL bug. Trying alternative workaround.\n");
+                printf("PTB-WARNING: Calling 'clear all', 'clear mex', 'clear java', 'clear moglcore' is now unsafe and may crash if you try.\n");
+                printf("PTB-WARNING: You may add setenv('PSYCH_DONT_LOCK_MOGLCORE','1'); to your Octave/Matlab startup script to work around this issue in future sessions.\n");
+            }
+            setenv("PSYCH_DONT_LOCK_MOGLCORE", "1", 0);
+        }
+        else {
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Workaround: Disabled ability to 'clear moglcore', as a workaround for a Mesa OpenGL bug. Sorry for the inconvenience.\n");
+        }
+    }
+
+    // Auto-detect and bind all available OpenGL extensions via GLEW:
     glerr = glewInit();
     if (GLEW_OK != glerr) {
         /* Problem: glewInit failed, something is seriously wrong. */
@@ -997,8 +1045,12 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     else {
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Using GLEW version %s for automatic detection of OpenGL extensions...\n", glewGetString(GLEW_VERSION));
     }
-  
-    fflush(NULL);
+
+    if ((x11_windowcount == 0) && strstr((const char*) glGetString(GL_VERSION), "Mesa") && getenv("PSYCH_DONT_LOCK_MOGLCORE") && !getenv("PSYCH_DONT_LOCK_SCREEN")) {
+        // Alternative approach to Mesa bug induced crash: Prevent Screen() from unloading, instead of moglcore:
+        mexLock();
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Workaround: Disabled ability to 'clear Screen', as a workaround for a Mesa OpenGL bug. Sorry for the inconvenience.\n");
+    }
 
     // Increase our own open window counter:
     x11_windowcount++;
@@ -1064,10 +1116,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
     PsychUnlockDisplay();
 
-    // First opened onscreen window? If so, we try to map GPU MMIO registers
-    // to enable beamposition based timestamping and other special goodies:
-    if (x11_windowcount == 1) PsychScreenMapRadeonCntlMemory();
-
     // Ok, we should be ready for OS independent setup...
     fflush(NULL);
 
@@ -1115,21 +1163,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
   // Well Done!
   return(TRUE);
-}
-
-
-/*
-    PsychOSOpenOffscreenWindow()
-    
-    Accept specifications for the offscreen window in the platform-neutral structures, convert to native CoreGraphics structures,
-    create the surface, allocate a window record and record the window specifications and memory location there.
-	
-	TO DO:  We need to walk down the screen number and fill in the correct value for the benefit of TexturizeOffscreenWindow
-*/
-psych_bool PsychOSOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord)
-{
-  // This function is obsolete and does nothing.
-  return(FALSE);
 }
 
 /*
@@ -1234,7 +1267,7 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     // (Re-)enable X-Windows screensavers if they were enabled before opening windows:
     // Set screensaver to previous settings, potentially enabling it:
     XSetScreenSaver(dpy, -1, 0, DefaultBlanking, DefaultExposures);
-    
+
     // Unmap/release possibly mapped device memory: Defined in PsychScreenGlue.c
     PsychScreenUnmapDeviceMemory();
   }
@@ -1365,6 +1398,9 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
         // Need to wait a bit to release the cpu for other threads and processes, then repoll for swap completion.
         PsychUnlockDisplay();
 
+        // Make sure msc is always positive and incrementing (needed, because msc is defined as signed integer):
+        msc &= ~(1ULL << 63);
+
         // Is the current video refresh cycle count 'msc' already at or past the expected count of swap completion?
         if (msc < windowRecord->lastSwaptarget_msc) {
             // No: At time 'ust', the 'msc' was at least one refresh cycle duration away from the earliest possible
@@ -1403,72 +1439,81 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 
     PsychUnlockDisplay();
 
-    // Running on nouveau?
-    if (strstr((char*) glGetString(GL_VENDOR), "nouveau")) {
-        // Yes. Query current kernel version: Is it a Linux 3.13 or 3.14 kernel with broken nouveau-kms pageflip events?
-        struct utsname unameresult;
+    // Make sure msc is always positive and incrementing (needed, because msc is defined as signed integer):
+    msc &= ~(1ULL << 63);
+
+    // This disabled codepath implements a workaround for kms drivers which deliver broken/wrong kms pageflip
+    // events. It would work on any kms driver, but is currently not needed for any of them (as of all kernel
+    // versions starting with Linux 3.16, and all latest stable kernels since 3.13, and all kernels before 3.13).
+    //
+    // The workaround implemented here is used in PTB releases since April 2014 to work around bugs in kms-pageflip
+    // events on nouveau-kms present in the initial releases of Linux 3.13 - 3.15. These bugs have been fixed in
+    // Linux 3.16 and the bug fixes have been backported to 3.13 - 3.15, so all latest stable Linux kernels are now
+    // bug-free wrt. this issue. However, 3.13-3.15 kernels which haven't been updated to the latest stable kernels
+    // will carry the bug and need the workaround, as signalled by specialflags & kPsychNeedOpenMLTSWorkaround.
+    // We also allow to manually force the workaround on, via kPsychForceOpenMLTSWorkaround ConserveVRAM setting,
+    // in case it needs to be enabled post-release for whatever reason:
+    if ((windowRecord->specialflags & kPsychNeedOpenMLTSWorkaround) || (PsychPrefStateGet_ConserveVRAM() & kPsychForceOpenMLTSWorkaround)) {
         int rc;
         double tref;
-        int major = 0, minor = 0;
-        uname(&unameresult);
-        sscanf(unameresult.release, "%i.%i", &major, &minor);
-        // We mark all Linux versions from 3.13 up to and including 3.15 broken. Exception are -rc
-        // release candidate kernels, so MK can still use rc's built from git/source for patch testing:
-        if ((major == 3) && ((minor >= 13) && (minor <= 15)) && !strstr(unameresult.release, "-rc")) {
-            // Yes. nouveau-kms on these kernels delivers faulty data inside its kms-pageflip completion events, so although
-            // return from glXWaitForSbcOML() can be trusted to mean swap-completion, the msc and ust timestamp are wrong.
-            if (PsychPrefStateGet_Verbosity() > 11) {
-                printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: glXWaitForSbcOML() success, but running on faulty nouveau-kms in Linux %s! Trying workaround.\n", unameresult.release);
-            }
 
-            // Try to (ab)use glXGetSyncValuesOML() to get nouveau-kms vblank timestamp for the vblank of
-            // swap completion. If this works we can take advantage of nouveau-kms accurate timestamps.
-            // However, due to the nature of the nouveau-kms pageflip bug there is a small chance that
-            // glXWaitForSbcOML() returned after swap completion but *before* the vblank timestamps and
-            // counts could get updated by the kernels vblank irq handler, so the values returned by
-            // glXGetSyncValuesOML() might be outdated and therefore also wrong. We query the current
-            // values and then validate them in a conservative fashion. If they are close enough to
-            // current system time, ie., in the future or less than a video refresh cycle in the
-            // past then we can assume them to be correct and useful to us and we can use them. Otherwise
-            // we assume we got old and stale values and just fallback to standard mmio beamposition
-            // timestamping. This is a conservative approach which rather discards good values than
-            // risking to accept wrong values. This way timestamps should always be correct, even though
-            // we have to pay a price in terms of higher execution time and more timestamp noise in case
-            // of false rejects:
-            PsychLockDisplay();
-            rc = glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc);
-            PsychUnlockDisplay();
-            if (rc && (msc >= windowRecord->lastSwaptarget_msc)) {
-                PsychGetAdjustedPrecisionTimerSeconds(&tref);
-                // Vblank timestamp older than 7 msecs? That's about half a video refresh duration for a 60 Hz display
-                // and 7/8th on a 120 Hz display. We can't use the measured video refresh duration here because this
-                // routine is called as part of calibration to determine that number:
-                if (PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz()) < (tref - 0.007)) {
-                    // Yes. Consider the returned ust invalid/outdated/stale. Return with "unsupported" rc to trigger
-                    // regular mmio beamposition timestamping:
-                    if (PsychPrefStateGet_Verbosity() > 11) {
-                        printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Workaround provided unreliable result - II. Returning rc=-1 to trigger silent fallback.\n");
-                    }
-                    return(-1);
-                }
-            }
-            else {
+        // Try to (ab)use glXGetSyncValuesOML() to get kms vblank timestamp for the vblank of
+        // swap completion. If this works we can take advantage of kms accurate timestamps.
+        // However, due to the nature of the assumed kms pageflip bug there is a small chance that
+        // glXWaitForSbcOML() returned after swap completion but *before* the vblank timestamps and
+        // counts could get updated by the kernels vblank irq handler, so the values returned by
+        // glXGetSyncValuesOML() might be outdated and therefore also wrong. We query the current
+        // values and then validate them in a conservative fashion. If they are close enough to
+        // current system time, ie., in the future or less than about a video refresh cycle in the
+        // past then we can assume them to be correct and useful to us and we can use them. Otherwise
+        // we assume we got old and stale values and just fallback to standard mmio beamposition
+        // timestamping. This is a conservative approach which rather discards good values than
+        // risking to accept wrong values. This way timestamps should always be correct, even though
+        // we have to pay a price in terms of higher execution time and more timestamp noise in case
+        // of false rejects:
+        PsychLockDisplay();
+        rc = glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc);
+        PsychUnlockDisplay();
+
+        // Make sure msc is always positive and incrementing (needed, because msc is defined as signed integer):
+        msc &= ~(1ULL << 63);
+
+        if (rc && (msc >= windowRecord->lastSwaptarget_msc)) {
+            PsychGetAdjustedPrecisionTimerSeconds(&tref);
+            // Threshold selection for stale timestamp reject: If VideoRefreshInterval is already available post
+            // calibration, then we choose 80% video refresh duration - Should catch most timing spikes but still
+            // provide enough safety margin against long vblank durations or other jitter. If measurement isn't available,
+            // e.g., during initial calibration, we choose a 7 msecs threshold: That's about half a video refresh duration
+            // for a 60 Hz display and 7/8th on a 120 Hz display - good enough for calibration, where we are tolerant against
+            // outliers anyway.
+            tref -= (windowRecord->VideoRefreshInterval > 0) ? (windowRecord->VideoRefreshInterval * 0.8) : 0.007;
+            if (PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz()) < tref) {
+                // Yes. Consider the returned ust invalid/outdated/stale. Return with "unsupported" rc to trigger
+                // regular mmio beamposition timestamping:
                 if (PsychPrefStateGet_Verbosity() > 11) {
-                    printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Workaround provided unreliable result - I. Returning rc=-1 to trigger silent fallback.\n");
+                    printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Workaround provided unreliable result - II. Returning rc=-1 to trigger silent fallback.\n");
                 }
                 return(-1);
             }
+        }
+        else {
+            if (PsychPrefStateGet_Verbosity() > 11) {
+                printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Workaround provided unreliable result - I. Returning rc=-1 to trigger silent fallback.\n");
+            }
+            return(-1);
         }
     }
 
     // Check for valid return values: A zero ust or msc means failure, except for results from nouveau,
     // because there it is "expected" to get a constant zero return value for msc, at least when running
-    // on top of a Linux kernel older than 3.13, when this shortcoming was fixed:
+    // on top of a Linux kernel older than 3.13, when this shortcoming was fixed (except for old pre-nv50
+    // gpu's = GeForce-7000 and earlier, where the old fallback path is triggered to work around problems
+    // with this ancient hardware, and that fallback still returns msc == 0):
     if ((windowRecord->vSynced) && ((ust == 0) || ((msc == 0) && !strstr((char*) glGetString(GL_VENDOR), "nouveau")))) {
-        // If this happens at a sbc of less than 4 then it is a known glitch in the intel-ddx which has no
+        // If this happens at a sbc of less than 20 then it is a known glitch in the intel-ddx which has no
         // practical negative effects, so we paper over it and fail silently with an "unsupported" rc. A
         // pointless warning for a non-issue would just confuse users.
-        if (sbc < 4) return(-1);
+        if (sbc < 20) return(-1);
 
         if (PsychPrefStateGet_Verbosity() > 1) {
             printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Invalid return values ust = %lld, msc = %lld from call with success return code (sbc = %lld)! Failing with rc = -2.\n", ust, msc, sbc);
@@ -1565,6 +1610,9 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
         PsychUnlockDisplay();
     }
 
+    // Make sure msc is always positive and incrementing (needed, because msc is defined as signed integer):
+    msc &= ~(1ULL << 63);
+
     // Update cached reference values for future swaps:
     windowRecord->reference_ust = ust;
     windowRecord->reference_msc = msc;
@@ -1608,92 +1656,161 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
  */
 void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 {
-	#ifdef GLX_OML_sync_control
+    #ifdef GLX_OML_sync_control
 
-	psych_int64 ust, msc, sbc, oldmsc, oldust, finalmsc;
-	psych_bool failed = FALSE;
-	
-	// Enable rendering context of window:
-	PsychSetGLContext(windowRecord);
+    psych_int64 ust, msc, sbc, oldmsc, oldust, finalmsc;
+    psych_bool failed = FALSE;
+    struct utsname unameresult;
+    char extraversionsignature[512];
+    int major = 0, minor = 0, patchlevel = 0, extralevel = 0;
+
+    // Enable rendering context of window:
+    PsychSetGLContext(windowRecord);
+
+    // Check if we are running on a version of Linux 3.13 - 3.15 with broken nouveau-kms pageflip completion events:
+    uname(&unameresult);
+    sscanf(unameresult.release, "%i.%i.%i", &major, &minor, &patchlevel);
+
+    // We check Linux versions 3.13 to 3.15 for broken kms-pageflip events if we are running on nouveau-kms.
+    // Exceptions are -rc release candidate kernels, so MK can still use rc's built from git/source for patch testing.
+    if ((((major == 3) && ((minor >= 13) && (minor <= 15))) && !strstr(unameresult.release, "-rc")) && strstr(glGetString(GL_VENDOR), "nouveau")) {
+        // Potentially faulty nouveau-kms. Check against the known kernel patchlevels when the bug was fixed:
+        // We know Linux stable kernels 3.13.11.5+, 3.14.12+ and 3.15.5+ are fixed.
+        // As far as Ubuntu distribution kernels go, we know the ones based on 3.13.11.5+ are fine,
+        // but we need some special case query code below to detect them, as their regular version
+        // string identifies them as "3.13.0-something":
+        if (((minor == 15) && (patchlevel < 5)) || ((minor == 14) && (patchlevel < 12))) {
+            // Not yet fixed pre 3.14.12+ or pre 3.15.5+ kernel. Force workaround:
+            windowRecord->specialflags |= kPsychNeedOpenMLTSWorkaround;
+        }
+
+        if ((minor == 13) && (patchlevel > 0) && (patchlevel < 11)) {
+            // Not fixed 3.13.1 - 3.13.10 kernel:
+            windowRecord->specialflags |= kPsychNeedOpenMLTSWorkaround;
+        }
+
+        if ((minor == 13) && (patchlevel == 11)) {
+            // 3.13.11.x kernel. What is x? Smaller than 5 means a not fixed < 3.13.11.5 kernel:
+            sscanf(unameresult.release, "%*i.%*i.%*i.%i", &extralevel);
+            if (extralevel < 5) windowRecord->specialflags |= kPsychNeedOpenMLTSWorkaround;
+        }
+
+        // Finally a special case check for Ubuntu distribution kernels:
+        if ((minor == 13) && (patchlevel == 0)) {
+            // Is this a Ubuntu distro kernel?
+            FILE* fd = fopen("/proc/version_signature", "rt");
+            if (fd && fgets(extraversionsignature, sizeof(extraversionsignature), fd)) {
+                // Seems so. Find signature of the stable kernel on which this one is based:
+                if (!strstr(extraversionsignature, "3.13.11.")) {
+                    // Nope. This is a regular 3.13.11 kernel with the bug:
+                    windowRecord->specialflags |= kPsychNeedOpenMLTSWorkaround;
+                }
+                else {
+                    // Definitely an Ubuntu distribution kernel based on the
+                    // Ubuntu maintained 3.13.11.x long term stable kernel series.
+                    // Kernels based on 3.13.11.5+ are good, earlier ones are bad:
+                    sscanf(strstr(extraversionsignature, "3.13.11."), "%*i.%*i.%*i.%i", &extralevel);
+                    if (extralevel < 5) {
+                        windowRecord->specialflags |= kPsychNeedOpenMLTSWorkaround;
+                        if (PsychPrefStateGet_Verbosity() >= 4) printf("PTB-INFO: Ubuntu distribution kernel with nouveau-kms pageflip event bug.\n");
+                    }
+                    else if (PsychPrefStateGet_Verbosity() >= 4) printf("PTB-INFO: Fixed Ubuntu distribution kernel without nouveau-kms pageflip event bug. Good :)\n");
+                }
+            }
+            else {
+                // Nope. This is a regular 3.13.0 kernel with the bug:
+                windowRecord->specialflags |= kPsychNeedOpenMLTSWorkaround;
+            }
+
+            if (fd) fclose(fd);
+        }
+
+        // Yes. kms driver on these kernels delivers faulty data inside its kms-pageflip completion events, so although
+        // return from glXWaitForSbcOML() can be trusted to mean swap-completion, the msc and ust timestamp are wrong.
+        if ((windowRecord->specialflags & kPsychNeedOpenMLTSWorkaround) && (PsychPrefStateGet_Verbosity() >= 3)) {
+            printf("PTB-INFO: Your Linux kernel %s has a slightly faulty nouveau graphics driver. Enabling a workaround.\n", unameresult.release);
+            printf("PTB-INFO: Please upgrade your kernel to the latest stable version as soon as possible to avoid the workaround.\n");
+        }
+    }
 
     PsychLockDisplay();
 
-	// Perform a wait for 3 video refresh cycles to get valid (ust,msc,sbc)
-	// values for initialization of windowRecord's cached values:
-	if (!glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc) || (msc == 0) ||
-		!glXWaitForMscOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, msc + 3, 0, 0, &ust, &msc, &sbc) || (ust == 0)) {
-		PsychUnlockDisplay();
+    // Perform a wait for 3 video refresh cycles to get valid (ust,msc,sbc)
+    // values for initialization of windowRecord's cached values:
+    if (!glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc) || (msc == 0) ||
+        !glXWaitForMscOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, msc + 3, 0, 0, &ust, &msc, &sbc) || (ust == 0)) {
+        PsychUnlockDisplay();
 
-		// Basic OpenML functions failed?!? Not good! Disable OpenML swap scheduling:
-		windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
+        // Basic OpenML functions failed?!? Not good! Disable OpenML swap scheduling:
+        windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
 
-		// OpenML timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
-		windowRecord->specialflags |= kPsychOpenMLDefective;
+        // OpenML timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
+        windowRecord->specialflags |= kPsychOpenMLDefective;
 
-		// Warn user:
-		if (PsychPrefStateGet_Verbosity() > 1) {
-			printf("PTB-WARNING: At least one test call for OpenML OML_sync_control extension failed! Will disable OpenML and revert to fallback implementation.\n");
-		}
+        // Warn user:
+        if (PsychPrefStateGet_Verbosity() > 1) {
+            printf("PTB-WARNING: At least one test call for OpenML OML_sync_control extension failed! Will disable OpenML and revert to fallback implementation.\n");
+        }
 
-		return;
-	}
+        return;
+    }
 
-	// Have a valid (ust, msc) baseline. Store it in windowRecord for future use:
-	windowRecord->reference_ust = ust;
-	windowRecord->reference_msc = msc;
-	windowRecord->reference_sbc = sbc;
+    // Have a valid (ust, msc) baseline. Store it in windowRecord for future use:
+    windowRecord->reference_ust = ust;
+    windowRecord->reference_msc = msc;
+    windowRecord->reference_sbc = sbc;
 
-	// Perform correctness test for glXGetSyncValuesOML() over a time span
-	// of 6 video refresh cycles. This checks for a limitation that is present
-	// in all shipping Linux kernels up to at least version 2.6.36, possibly
-	// also in 2.6.37 depending on MK's progress with this feature:
-	finalmsc = msc + 6;
-	oldmsc = msc;
-	oldust = ust;
-	
-	while ((msc < finalmsc) && !failed) {
-		// Wait a quarter millisecond:
-		PsychWaitIntervalSeconds(0.000250);
-		
-		// Query current (msc, ust):
-		if (!glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc)) {
-			// Query failed!
-			failed = TRUE;
-		}
-		
-		// Has msc changed since last query due to a regular msc increment, i.e., a new video refresh interval?
-		if (msc != oldmsc) {
-			// Yes. Update reference values for test:
-			oldmsc = msc;
-			oldust = ust;
-		}
-		
-		// ust must be equal to oldust at this point, either because a msc increment has updated
-		// the ust for the new vblank interval in lock-step and our code above has updated oldust
-		// accordingly, or because no msc increment has happened, in which case ust should stay
-		// unchanged as well, ie., ust == oldust. If ust and oldust are different then that means
-		// that ust has changed its value in the middle of a refresh interval without an intervening
-		// vblank. This would happen if glXGetSyncValuesOML() is defective and doesn't return ust
-		// timestamps locked to vblank / msc increments, but simply system time values.
-		if (ust != oldust) {
-			// Failure of glXGetSyncValuesOML()! This is a broken implementation which needs
-			// our workaround:
-			failed = TRUE;			
-		}
+    // Perform correctness test for glXGetSyncValuesOML() over a time span
+    // of 6 video refresh cycles. This checks for a limitation that is present
+    // in all shipping Linux kernels up to at least version 2.6.36, possibly
+    // also in 2.6.37 depending on MK's progress with this feature:
+    finalmsc = msc + 6;
+    oldmsc = msc;
+    oldust = ust;
 
-		// Repeat test loop:
-	}
-	
-	// Failed or succeeded?
-	if (failed) {
-		// Failed! Enable workaround and optionally inform user:
-		windowRecord->specialflags |= kPsychNeedOpenMLWorkaround1;
-		
-		if (PsychPrefStateGet_Verbosity() > 1) {
-			printf("PTB-INFO: OpenML OML_sync_control implementation with problematic glXGetSyncValuesOML() function detected. Enabling workaround for ok performance.\n");
-		}
-	}
-    
+    while ((msc < finalmsc) && !failed) {
+        // Wait a quarter millisecond:
+        PsychWaitIntervalSeconds(0.000250);
+
+        // Query current (msc, ust):
+        if (!glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc)) {
+            // Query failed!
+            failed = TRUE;
+        }
+
+        // Has msc changed since last query due to a regular msc increment, i.e., a new video refresh interval?
+        if (msc != oldmsc) {
+            // Yes. Update reference values for test:
+            oldmsc = msc;
+            oldust = ust;
+        }
+
+        // ust must be equal to oldust at this point, either because a msc increment has updated
+        // the ust for the new vblank interval in lock-step and our code above has updated oldust
+        // accordingly, or because no msc increment has happened, in which case ust should stay
+        // unchanged as well, ie., ust == oldust. If ust and oldust are different then that means
+        // that ust has changed its value in the middle of a refresh interval without an intervening
+        // vblank. This would happen if glXGetSyncValuesOML() is defective and doesn't return ust
+        // timestamps locked to vblank / msc increments, but simply system time values.
+        if (ust != oldust) {
+            // Failure of glXGetSyncValuesOML()! This is a broken implementation which needs
+            // our workaround:
+            failed = TRUE;
+        }
+
+        // Repeat test loop:
+    }
+
+    // Failed or succeeded?
+    if (failed) {
+        // Failed! Enable workaround and optionally inform user:
+        windowRecord->specialflags |= kPsychNeedOpenMLWorkaround1;
+
+        if (PsychPrefStateGet_Verbosity() > 1) {
+            printf("PTB-INFO: OpenML OML_sync_control implementation with problematic glXGetSyncValuesOML() function detected. Enabling workaround for ok performance.\n");
+        }
+    }
+
     if (glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc)) {
         // Check swap scheduling for reliable operation. Intel ddx drivers from June 2011 to at least October 2012 are known
         // to be seriously buggy here. Schedule a swap a few vblanks in the future, wait for its completion and timestamp it.
@@ -1702,24 +1819,24 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
         PsychUnlockDisplay();
 
         PsychOSScheduleFlipWindowBuffers(windowRecord, 0.0, msc + 5, 0, 0, 0);
-        
+
         // Just a dummy call to wait for completion and to trigger consistency checks and workarounds if needed:
         PsychOSGetSwapCompletionTimestamp(windowRecord, 0, NULL);
     }
     else {
         PsychUnlockDisplay();
 
-		if (PsychPrefStateGet_Verbosity() > 1) {
-			printf("PTB-WARNING: Spurious failure of glXGetSyncValuesOML(). Could not perform some correctness tests. Something may be broken in your systems timestamping!\n");
-		}
+        if (PsychPrefStateGet_Verbosity() > 1) {
+            printf("PTB-WARNING: Spurious failure of glXGetSyncValuesOML(). Could not perform some correctness tests. Something may be broken in your systems timestamping!\n");
+        }
     }
-    
-	#else
-		// Disable extension:
-		windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;	
-	#endif
 
-	return;
+    #else
+        // Disable extension:
+        windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
+    #endif
+
+    return;
 }
 
 /*

@@ -1,5 +1,5 @@
 % Psychtoolbox.
-% Version 3.0.11      3 July 2013
+% Version 3.0.12      5 October 2014
 %
 % The Psychophysics Toolbox is a collection of Octave and Matlab functions
 % that extend the language to give you exquisite control of your computer
@@ -45,6 +45,7 @@
 %
 % Peter Scarfe has written a large set of nice and beginner friendly
 % Psychtoolbox tutorial scripts.
+%
 % You can find them at http://peterscarfe.com/ptbtutorials.html
 %
 % If you want to acknowledge use of this software when you publish your
@@ -53,6 +54,11 @@
 %
 % Kleiner M, Brainard D, Pelli D, 2007, "What's new in Psychtoolbox-3?"
 % Perception 36 ECVP Abstract Supplement.
+%
+% If you find this software useful then please consider donating some money
+% to support its ongoing maintenance and development. See:
+%
+% http://psychtoolbox.org/donations
 %
 %
 % Folders and their contents:

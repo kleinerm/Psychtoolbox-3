@@ -7,10 +7,11 @@
 % from background isomerization rates.  Still need to implement
 % the adaptation model itself.
 %
-% 07/26/03  dhb  Wrote it
+% 07/26/03  dhb  Wrote it.
+% 05/26/14  dhb  Dusted this off so it runs again.
 
 % Clear
-clear all; close all;
+clear; close all;
 
 % Set some photoreceptor properties.  These should match up
 % with the parameters used in the Valeton Van Norren experiment,
@@ -23,6 +24,8 @@ photoreceptors.lensDensity.source = 'StockmanSharpe';
 photoreceptors.macularPigmentDensity.source = 'None';
 photoreceptors.eyeLengthMM.value = EyeLength('Rhesus','Packer');
 photoreceptors.ISdiameter.value = [2 2 2]';
+photoreceptors = rmfield(photoreceptors,'OSlength');
+photoreceptors = rmfield(photoreceptors,'specificDensity');
 photoreceptors.axialDensity.value = PhotopigmentAxialDensity({'LCone' 'MCone' 'SCone'},'Human','StockmanSharpe');
 photoreceptors = FillInPhotoreceptors(photoreceptors);
 LMRatio = 2;
@@ -60,8 +63,12 @@ fprintf('Computed %0.3g isos/troland for their experimental conditions\n',isosPe
 fprintf('\n');
 fprintf('Calculations of isos/troland done using:\n');
 fprintf('\t%s estimates for photoreceptor IS diameter\n',photoreceptors.ISdiameter.source);
-fprintf('\t%s estimates for photoreceptor OS length\n',photoreceptors.OSlength.source);
-fprintf('\t%s estimates for receptor specific density\n',photoreceptors.specificDensity.source);
+if (isfield(photoreceptors,'OSlength'))
+    fprintf('\t%s estimates for photoreceptor OS length\n',photoreceptors.OSlength.source);
+end
+if (isfield(photoreceptors,'specificDensity'))
+    fprintf('\t%s estimates for receptor specific density\n',photoreceptors.specificDensity.source);
+end
 fprintf('\t%s photopigment nomogram\n',photoreceptors.nomogram.source);
 fprintf('\t%s estimates for lens density\n',photoreceptors.lensDensity.source);
 fprintf('\t%s estimates for macular pigment density\n',photoreceptors.macularPigmentDensity.source);
@@ -72,11 +79,19 @@ fprintf('Photoreceptor Type             |\t       L\t       M\t     S\n');
 fprintf('______________________________________________________________________________________\n');
 fprintf('\n');
 fprintf('Lambda max                     |\t%8.1f\t%8.1f\t%8.1f\t nm\n',photoreceptors.nomogram.lambdaMax);
-fprintf('Outer Segment Length           |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.OSlength.value);
+if (isfield(photoreceptors,'OSlength') && ~isempty(photoreceptors.OSlength.value))
+    fprintf('Outer Segment Length           |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.OSlength.value);
+end
+if (isfield(photoreceptors,'OSdiameter') && ~isempty(photoreceptors.OSdiameter.value))
+    fprintf('Outer Segment Diameter         |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.OSdiameter.value);
+end
 fprintf('Inner Segment Diameter         |\t%8.1f\t%8.1f\t%8.1f\t um\n',photoreceptors.ISdiameter.value);
 fprintf('\n');
-fprintf('Axial Specific Density         |\t%8.3f\t%8.3f\t%8.3f\t /um\n',photoreceptors.specificDensity.value);
+if (isfield(photoreceptors,'specificDensity') && ~isempty(photoreceptors.specificDensity.value))
+    fprintf('Axial Specific Density         |\t%8.3f\t%8.3f\t%8.3f\t /um\n',photoreceptors.specificDensity.value);
+end
 fprintf('Axial Optical Density          |\t%8.3f\t%8.3f\t%8.3f\n',photoreceptors.axialDensity.value);
+fprintf('Bleached Axial Optical Density |\t%8.3f\t%8.3f\t%8.3f\n',photoreceptors.axialDensity.bleachedValue);
 fprintf('Peak isomerization prob.       |\t%8.3f\t%8.3f\t%8.3f\n',max(photoreceptors.isomerizationAbsorptance,[],2));
 fprintf('______________________________________________________________________________________\n');
 fprintf('\n');

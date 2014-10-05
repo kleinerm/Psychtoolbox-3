@@ -4,7 +4,7 @@ function [maximumError, roundTypeStr, independentFlag]=AlphaMultiplicationAccura
 %
 % Test the accuracy of alpha blending multiplication. OpenGL guarantees
 % perfect accuracy of alpha multiplication for values 0 and 1 only.
-% TestAlphaMultiplicationAccuracy measures accuracy of intermediate values.
+% AlphaMultiplicationAccuracyTest measures accuracy of intermediate values.
 %
 % Return argument "maximumError" is the maximum unsigned difference between
 % OpenGL alpha multiplication and  simulated alpha blending in MATLAB using
@@ -23,13 +23,13 @@ function [maximumError, roundTypeStr, independentFlag]=AlphaMultiplicationAccura
 % maximumError >= 1         : Something is wrong.  
 % 
 % 
-% TestAlphaMultiplicationAccuracy tries to determine whether OpenGL alpha
+% AlphaMultiplicationAccuracyTest tries to determine whether OpenGL alpha
 % multiplication rounds to the nearest integer, rounds down or rounds up
 % and returns in "roundTypeStr" a string indicating which, either, "round"
-% "floor", or "ceil".  If TestAlphaMultiplicationAccuracy can not determine
+% "floor", or "ceil".  If AlphaMultiplicationAccuracyTest can not determine
 % the rounding method, then it returns "unknown".
 %
-% TestAlphaMultiplicationAccuracy also tests that multiplication errors are
+% AlphaMultiplicationAccuracyTest also tests that multiplication errors are
 % independent of the choice of blending factor string and the blending
 % surface, setting return argument "independentFlag" accordingly.     
 %
@@ -76,7 +76,7 @@ function [maximumError, roundTypeStr, independentFlag]=AlphaMultiplicationAccura
 % There is possibility that an OpenGL implementation would round
 % multiplication to the nearest integer but have a different policy for
 % which direction to round 0.5 than does MATLAB.  In that case,
-% TestAlphaMultiplicationAccuracy would return a maximumError of 0.5 and
+% AlphaMultiplicationAccuracyTest would return a maximumError of 0.5 and
 % roundTypeStr 'unknown' instead of 'round'.  
 
 
@@ -120,7 +120,7 @@ numDestinationBlendVariableFactors=length(destinationBlendVariableFactors);
 
 % first, check that alpha multiplication gives the same result regardless of
 % the mode. We do not test trivial cases of GL_ZERO and GL_ONE.  Those are tested
-% elsewhere, by TestAlphaMultiplication.  
+% elsewhere, by AlphaMultiplicationTest.  
 
 %for source blending
 for i=1:numSourceBlendVariableFactors

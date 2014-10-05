@@ -18,6 +18,11 @@ glMultiDrawElements		- need alternate interface to this function, as it
 				          access to pointers to a matrix's data in MATLAB
 glMultiDrawElementsBaseVertex - ditto.
 glCreateShaderProgramv - ditto.
+glCompileShaderInclude - We do not implement this one yet.
+glCompileShaderIncludeARB - We do not implement this one yet.
+glTransformFeedbackVaryings - Arrays of strings - manually implemented.
+glTransformFeedbackVaryingsEXT - Arrays of strings - manually implemented.
+glTransformFeedbackVaryingsNV - Arrays of strings - manually implemented.
 
 - these use pointers to structs and other impossible to handle stuff
 glCreateSyncFromCLeventARB
@@ -65,15 +70,8 @@ gluNextContour
 glDebugMessageCallbackARB
 glDebugMessageCallback
 
-- these are not defined yet in the GLEW 1.9.0 library - need to manually implement interface
+- these are not defined yet in the GLEW 1.11.0 library - need to manually implement interface
 glSamplePass        - implemented manually
-glPopDebugGroup                         - omit for now.
-glVertexArrayBindVertexBufferEXT        - omit for now.
-glVertexArrayVertexAttribFormatEXT      - omit for now.
-glVertexArrayVertexAttribIFormatEXT     - omit for now.
-glVertexArrayVertexAttribLFormatEXT     - omit for now.
-glVertexArrayVertexAttribBindingEXT     - omit for now.
-glVertexArrayVertexBindingDivisorEXT    - omit for now.
 
 - these need our special malloc(),calloc(),free() buffer management to work on Matlab & Octave:
 glFeedbackBuffer    - implemented manually

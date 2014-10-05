@@ -5,6 +5,12 @@ function ClutAnimDemo(method)
 % Screen('LoadNormalizedGammaTable') command, or via the PsychImaging()
 % based clut animation support.
 %
+% Clut animation is an ancient technique of achieving animation, only
+% needed or the best choice for very few use cases nowadays. Think twice
+% before using this as your method of choice. It may work, but is inefficient,
+% potentially unreliable in the timing domain (except for method 2) and most
+% often more painful and inflexible to use than a proper modern approach.
+%
 % If 'method' is left out or set to 0, hardware gamma tables are
 % immediately updated. A setting of 1 will update hardware gamma tables in
 % sync with Screen('Flip'), or more accurately, it will try to.
@@ -31,12 +37,8 @@ function ClutAnimDemo(method)
 %
 %  4/4/11     mk    Add support for 'EnableCLUTMapping' method of
 %                   PsychImaging.
-
-% This doesn't work under M$-Windows, as Screen('LoadNormalizedGammaTable') doesn't
-% allow us to set the kind of LUTs needed for this demo to work :(
-
-% Are we running OpenGL PTB?
-AssertOpenGL;
+%  22/07/14   mk    Fixup for gpu's with > 256 gamma table slots, in which this
+%                   didn't work, as it assumed exactly 256 slots.
 
 if nargin < 1 || isempty(method)
     method = 0;
@@ -44,20 +46,16 @@ end
 
 % Is this the M$-Windows version? This demo doesn't work under Windows...
 if (method ~= 2) && IsWin
-    error('CLUTAnimDemoOSX does not work under M$-Windows with method zero. Aborting...');
-end;
+    error('ClutAnimDemo does not work under M$-Windows with any method but 2. Aborting...');
+end
+
+% Check for proper installation of PTB-3, setup default (0 == like AssertOpenGL):
+PsychDefaultSetup(0);
 
 try
     % We disable the sync tests at startup. They are not necessary for this
     % demo...
     Screen('Preference', 'SkipSyncTests', 1);
-
-    % This script calls Psychtoolbox commands available only in OpenGL-based
-    % versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
-    % only OpenGL-base Psychtoolbox.)  The Psychtoolbox command AssertPsychOpenGL will issue
-    % an error message if someone tries to execute this script on a computer without
-    % an OpenGL Psychtoolbox
-    AssertOpenGL;
 
     % Get the list of screens and choose the one with the highest screen number.
     % Screen 0 is, by definition, the display with the menu bar. Often when
@@ -69,6 +67,13 @@ try
 
     % Make a backup copy of original LUT into origLUT.
     origLUT=Screen('ReadNormalizedGammaTable', screenNumber);
+
+    % origLUT must have exactly 256 slots for this demo to work,
+    % so make it so! May look a bit weird on gpu with gamma tables
+    % that have more than 256 slots, but such is life...
+    if size(origLUT, 1) ~= 256
+        origLUT = origLUT(1:256, :);
+    end
 
     % Open a double buffered fullscreen window.
     if method == 2

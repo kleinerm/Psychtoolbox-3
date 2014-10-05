@@ -1546,3 +1546,39 @@ int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, doub
 	// rc will tell the caller what happened: 0 = Signalled, 0x00000102L == WAIT_TIMEOUT for timeout.
 	return(rc);
 }
+
+/* Report official support status for this operating system release.
+ * The string "Supported" means supported.
+ * Other strings describe lack of support.
+ */
+const char* PsychSupportStatus(void)
+{
+	// Info struct for queries to OS:
+	OSVERSIONINFO osvi;
+
+	// Init flag to -1 aka unknown:
+	static int  isSupported = -1;
+    static char statusString[256];
+
+	if (isSupported == -1) {
+		// First call: Do the query!
+
+		// Query info about Windows version:
+		memset(&osvi, 0, sizeof(OSVERSIONINFO));
+		osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+		GetVersionEx(&osvi);
+
+		// It is a Vista or later if major version is equal to 6 or higher:
+		// 6.0  = Vista, 6.1 = Windows-7, 6.2 = Windows-8, 6.3 = Windows-8.1, 5.2 = Windows Server 2003, 5.1 = WindowsXP, 5.0 = Windows 2000, 4.x = NT
+		isSupported = ((osvi.dwMajorVersion == 6) && (osvi.dwMinorVersion >= 1)) ? 1 : 0;
+
+        if (isSupported) {
+            sprintf(statusString, "Windows version %i.%i %ssupported.", osvi.dwMajorVersion, osvi.dwMinorVersion, (osvi.dwMinorVersion != 1) ? "partially " : "");
+        }
+        else {
+            sprintf(statusString, "Windows version %i.%i is not supported.", osvi.dwMajorVersion, osvi.dwMinorVersion);
+        }
+	}
+
+    return(statusString);
+}

@@ -36,6 +36,9 @@ function varargout = PsychGPUTestAndTweakGammaTables(win, xoffset, deviceType, i
 % 11/04/2013  mk  Written. Consolidated from PsychDataPixx driver function
 %                 to share all the common code for VPixx and CRS products.
 %
+% 04/15/2014  mk  Shift test strip 2 rows upward for robustness against
+%                 broken gfx-drivers. Remove try-catch hack for gamma table
+%                 loading on MS-Windows. Doesn't help, but obscure errors.
 
 global GL;
 
@@ -134,8 +137,12 @@ global GL;
     fluctcount = 0;
     retry = 1;
     
-    % Draw test pattern:
-    glRasterPos2i(xoffset, 10);
+    % Draw test pattern: We don't "start" drawing the 10 scanlines high
+    % test strip at y position 10, but already at 8, so technically the
+    % two topmost lines will be outside the screen. This in case some
+    % graphics drivers have off-by-one or off-by-two y position bugs, so
+    % we are robust against that:
+    glRasterPos2i(xoffset, 8);
     glDrawPixels(256, 10, GL.RGB, GL.UNSIGNED_BYTE, repmat(testdata, 1, 10));
 
     % Show it at next retrace:
@@ -273,14 +280,8 @@ global GL;
             curlut(curlut > 1) = 1;
             curlut(curlut < 0) = 0;
             
-            % Upload modified LUT to GPU: We try-catch protect this to
-            % avoid error-abort on MS-Windows if invalid gamma tables are
-            % encountered:
-            try
-                Screen('LoadNormalizedGammaTable', win, curlut);
-            catch %#ok<CTCH>
-                psychlasterror('reset');
-            end
+            % Upload modified LUT to GPU:
+            Screen('LoadNormalizedGammaTable', win, curlut);
             
             % Tried too long, too hard?
             if failcount > 255

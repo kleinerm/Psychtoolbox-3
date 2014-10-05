@@ -389,7 +389,7 @@ PsychError IOPORTOpenSerialPort(void)
 		"on OS/X and Linux, about 6 msecs on Windows.\n\n"
 		"SendTimeout=1.0 -- Interbyte send timeout in seconds. Only used on Windows.\n\n"
 		"ReceiveTimeout=1.0 -- Interbyte receive timeout in seconds.\n\n"
-		"ReceiveLatency=0.000001 -- Latency in seconds for processing of new input bytes. Only used on OS/X and Linux.\n\n"
+		"ReceiveLatency -- Latency in seconds for processing of new input bytes. Only used on OS/X and Linux for some devices.\n\n"
 		"PollLatency=0.0005 (0.001 on Windows) -- Latency between polls in seconds for polling in some 'Read' operations.\n\n"
 		"ProcessingMode=Raw -- Mode of input/output processing: Raw or Cooked. On Windows, only Raw (binary) mode is supported.\n\n"
 		"DontFlushOnWrite=0 -- Do not flush the serial port write buffer at device close time or during blocking writes. "
@@ -417,14 +417,20 @@ PsychError IOPORTOpenSerialPort(void)
 		"\n\n";
 
 	static char seeAlsoString[] = "'CloseAll'";	 
-  	
-	#if PSYCH_SYSTEM == PSYCH_WINDOWS
-	// Difference to Unices: PollLatency defaults to 1 msecs instead of 0.5 msecs due to shoddy windows scheduler:
-	static char defaultConfig[] = "BaudRate=9600 Parity=None DataBits=8 StopBits=1 FlowControl=None PollLatency=0.001 ReceiveLatency=0.000001 SendTimeout=1.0 ReceiveTimeout=1.0 ProcessingMode=Raw BreakBehaviour=Ignore OutputBufferSize=4096 InputBufferSize=4096 DontFlushOnWrite=0"; 
-	#else
-	static char defaultConfig[] = "BaudRate=9600 Parity=None DataBits=8 StopBits=1 FlowControl=None PollLatency=0.0005 ReceiveLatency=0.000001 SendTimeout=1.0 ReceiveTimeout=1.0 ProcessingMode=Raw BreakBehaviour=Ignore OutputBufferSize=4096 InputBufferSize=4096 DontFlushOnWrite=0"; 
-	#endif
-	
+
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+    // Difference to Unices: PollLatency defaults to 1 msecs instead of 0.5 msecs due to shoddy windows scheduler:
+    static char defaultConfig[] = "BaudRate=9600 Parity=None DataBits=8 StopBits=1 FlowControl=None PollLatency=0.001 SendTimeout=1.0 ReceiveTimeout=1.0 ProcessingMode=Raw BreakBehaviour=Ignore OutputBufferSize=4096 InputBufferSize=4096 DontFlushOnWrite=0";
+    #endif
+
+    #if PSYCH_SYSTEM == PSYCH_OSX
+    static char defaultConfig[] = "BaudRate=9600 Parity=None DataBits=8 StopBits=1 FlowControl=None PollLatency=0.0005 SendTimeout=1.0 ReceiveTimeout=1.0 ProcessingMode=Raw BreakBehaviour=Ignore OutputBufferSize=4096 InputBufferSize=4096 DontFlushOnWrite=0";
+    #endif
+
+    #if PSYCH_SYSTEM == PSYCH_LINUX
+    static char defaultConfig[] = "BaudRate=9600 Parity=None DataBits=8 StopBits=1 FlowControl=None PollLatency=0.0005 SendTimeout=1.0 ReceiveTimeout=1.0 ProcessingMode=Raw BreakBehaviour=Ignore OutputBufferSize=4096 InputBufferSize=4096 DontFlushOnWrite=0";
+    #endif
+
 	char		finalConfig[2000];
 	char		errmsg[1024];
 	char*		portSpec = NULL;

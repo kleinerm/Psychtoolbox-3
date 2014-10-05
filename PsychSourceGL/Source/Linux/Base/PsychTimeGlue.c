@@ -32,6 +32,8 @@
 #include <time.h>
 #include <errno.h>
 #include <sched.h>
+// utsname for uname() so we can find out on which kernel we're running:
+#include <sys/utsname.h>
 
 /*
  *		file local state variables
@@ -692,4 +694,18 @@ psych_uint64 PsychAutoLockThreadToCores(psych_uint64* curCpuMask)
 {
     // No op on Linux.
     return(INT64_MAX);
+}
+
+/* Report official support status for this operating system release.
+ * The string "Supported" means supported.
+ * Other strings describe lack of support.
+ */
+const char* PsychSupportStatus(void)
+{
+    static char statusString[256];
+    struct utsname unameresult;
+
+    uname(&unameresult);
+    sprintf(statusString, "Linux %s Supported.", unameresult.release);
+    return(statusString);
 }

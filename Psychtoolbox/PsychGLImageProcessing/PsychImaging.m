@@ -415,6 +415,34 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   setting of non-zero, so unit colorrange also applies to Screen('MakeTexture').
 %
 %
+% * 'StereoCrosstalkReduction' If a stereoMode is active or requested,
+%   apply a shader first in the processing chain that for each eye aims to
+%   reduce crosstalk from the other eye.
+%
+%   Usage:
+%
+%     PsychImaging('AddTask', 'LeftView', 'StereoCrosstalkReduction', method, crossTalkGain);
+%     PsychImaging('AddTask', 'RightView', 'StereoCrosstalkReduction', method, crossTalkGain);
+%
+%   The 'method' parameter selects the method to use for crosstalk
+%   reduction.
+%
+%   Currently only a method named 'SubtractOther' is implemented, which works as follows:
+%
+%   To reduce crosstalk, the contrast in the image of each eye, i.e., the
+%   difference in color from the background level provided as background
+%   clear color of the window is subtracted from the image of the other eye,
+%   after scaling the contrast by 'crossTalkGain'. 'crossTalkGain' can be a
+%   scalar, or a separate gain for each RGB channel. The background color
+%   can be a scalar in the range 0-1, or a 3-element array to set the
+%   backgroundlevel for each RGB channel separately. The background
+%   color level should not be zero, as contrast then can't be inverted
+%   around the background level. In general, the background level
+%   should be high enough to allow unclamped inversion of the highest
+%   contrast features of your stimulus at your 'crossTalkGain', or
+%   artifacts will occur.
+%
+%
 % * 'DisplayColorCorrection' Select a method for color correction to apply to
 %   stimuli before output conversion and display. You have to specify a
 %   color correction method 'methodname' to apply as parameter, see "help
@@ -535,15 +563,15 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %   Many graphics cards of the professional class AMD/ATI Fire series 
 %   (2008 models and later) and all current models of the professional class
-%   NVidia Quadro series (2008 models and later) as well as all current models
-%   of the consumer class NVidia GeForce series under Linux do support 10 bpc
+%   NVidia Quadro series (2008 models and later), as well as all current models
+%   of the consumer class NVidia GeForce series under Linux, do support 10 bpc
 %   framebuffers under some circumstances. 10 bpc display on classic CRT monitors
 %   which are connected via analog VGA outputs is supported. Support for digital
 %   display devices like LCD/OLED panels or video projectors depends on the specific
 %   type of display output connector used, the specific panels, and their video
-%   settings. Consult manufacturer documentation for details. In general 10 bpc
+%   settings. Consult manufacturer documentation for details. In general, 10 bpc
 %   output may be supported on some graphics cards and displays via DisplayPort
-%   or HDMI video outputs, but usually not via DVI-D outputs.
+%   or HDMI video outputs, but to our knowledge not via DVI-D outputs.
 %
 %   If such a combination of graphics card and display is present on your system
 %   on Linux or Microsoft Windows, then Psychtoolbox will request native support
@@ -555,36 +583,63 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %   Psychtoolbox experimental 10 bpc framebuffer support:
 %
-%   Currently we support ATI/AMD Radeon hardware of the X1000, HD2000 - HD8000,
+%   Additionally we support ATI/AMD Radeon hardware of the X1000, HD2000 - HD8000,
 %   series and later models under Linux and OSX via our own low-level setup mechanisms.
 %   These models support a native ARGB2101010 framebuffer, ie., a system
 %   framebuffer with 2 bits for the alpha channel, and 10 bits per color channel.
 %
 %   As this is supported by the hardware, but not by the standard ATI
 %   graphics drivers, we follow a hybrid approach: We use a special kernel
-%   level driver to reconfigure the hardware for 10bpc framebuffer support.
+%   level driver to reconfigure the hardware for 10 bpc framebuffer support.
 %   Then we use a special imaging pipeline formatting plugin to convert
-%   16bpc or 32bpc stimuli into the special data format required by this
+%   16 bpc or 32 bpc stimuli into the special data format required by this
 %   framebuffer configuration.
 %
 %   You'll need to install and load the special Psychtoolbox kernel driver
 %   on OSX. On Linux you must have run PsychLinuxConfiguration at least once
 %   on your system at some point. You'll need to have one of the supported AMD
-%   Radeon gfx-card (see above) for this to work! Read 'help PsychtoolboxKernelDriver'
+%   Radeon gfx-cards (see above) for this to work. Read 'help PsychtoolboxKernelDriver'
 %   for info about the driver and installation instructions on OSX.
 %
-%   CAUTION: Support for 10 bpc framebuffers on AMD Radeon graphics cards under
-%   Linux and OSX is highly experimental and not guaranteed to work reliably on
+%   CAUTION: Support for 10 bpc framebuffers on AMD Radeon graphics cards
+%   under OSX is highly experimental and not guaranteed to work reliably on
 %   any system configuration. While it has been successfully tested on multiple
-%   versions of Linux and on OSX 10.4, 10.5, 10.6 and 10.8 with some X1000 cards,
+%   versions of OSX (10.4, 10.5, 10.6 and 10.8) with some X1000 cards,
 %   some HD2000/3000 cards and HD 4870 cards, this feature could fail on other
 %   systems or even after any operating system upgrade! Use at your own risk and
-%   verify proper operation carefully before production use. 10 bpc output has been
-%   shown to work in the past for analog VGA CRT monitors. The status of native
-%   10 bpc output to digital display devices is unknown. Output of 10 bpc framebuffers
-%   to standard 8 bpc digital panels via digital dithering is known to work, but
-%   that is not the real thing, only a simulation of 10 bpc via dithering to 8 bpc.
+%   verify proper operation carefully before production use. The same experimental
+%   status is true for use on Linux with the proprietary AMD Catalyst graphics drivers.
+%   If you use Linux with the free and open-source AMD graphics drivers, 10 bpc
+%   framebuffer support should work reliably, so use of the open-source drivers on
+%   Linux is recommended for reliable results.
 %
+%   Getting a 10 bpc framebuffer working is only the first half of what you need for
+%   high color precision output. Your graphics card must also be able to transmit the
+%   video signal at high precision to the display device and the display must be able
+%   to faithfully reproduce the high precision image. 10 bpc output has been verified
+%   to work for analog VGA connected CRT monitors and displays on both AMD and
+%   NVidia graphics cards which do support 10 bpc framebuffers, so with a analog VGA
+%   CRT you should be safe. The status of 10 bpc output to digital display devices differs
+%   a lot across devices and OS'es. Output of 10 bpc framebuffers to standard 8 bpc digital panels
+%   via digital dithering is known to work, but that is not the real thing, only a simulation
+%   of 10 bpc via dithering to 8 bpc. This may or may not be good enough for your specific
+%   visual stimulation paradigm. On a DVI-D connected digital display, this dithered output
+%   is the best you will ever get. DisplayPort: Recent NVidia and AMD graphics cards can
+%   output to some suitable DisplayPort displays with 10 bpc or higher precision on Linux,
+%   and maybe also on MS-Windows, but you have to verify this carefully for your specific display.
+%   HDMI: Recent Intel graphics cards can output up to 12 bpc precision to HDMI deep color
+%   capable displays on Linux, and maybe also on MS-Windows. All AMD graphics cards of model
+%   Radeon HD-5000 or later (and equivalent Fire-Series models) can output to HDMI deep color
+%   capable displays with 10 bpc real precision at least if you use a Linux kernel of version 3.16
+%   or later with the open-source AMD graphics drivers. At least on Linux 3.16 you will need to add
+%   the kernel command line option "radeon.deep_color=1" to the kernel boot loader options, e.g.,
+%   by editing /etc/default/grub and running "sudo update-grub2" afterwards. This because deep
+%   color output is disabled by default, to work around various broken hdmi display devices.
+%
+%   The status with the proprietary AMD drivers on Linux or on MS-Windows is unknown.
+%   Apple OSX 10.9 and earlier do not support any high precision video output over any digital
+%   output, neither DVI-D, nor DisplayPort or HDMI. All you'll get at best on OSX is simulated > 8
+%   bpc via dithering.
 %
 %   Usage: PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer' [, disableDithering=0]);
 %
@@ -599,12 +654,100 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   your machine. A well working OS would disable dithering on a 10 bpc or
 %   higher color depth display, if the display reports its capability to the
 %   OS via its EDID info. It would enable dithering on < 10 bpc displays, so
-%   you'd get a "pseudo 10 bpc" framebuffer where 10 bpc color depths is
+%   you'd get a "pseudo 10 bpc" display where 10 bpc color depths is
 %   simulated on a 6 bpc or 8 bpc display via the dithering.
 %
 %   You can disable dithering manually on some graphics cards by providing the
 %   optional 'disableDithering' flag as 1. Currently mostly AMD cards allow this
 %   control. NVidia or Intel cards require manual setup to force dithering off.
+%
+%
+% * 'EnableNative11BitFramebuffer' Enable support for output of stimuli
+%   with almost 11 bit precision per color channel (11 bpc / 32 bpp / "Deep color")
+%   on graphics hardware that supports native 11 bpc framebuffers. This will
+%   request an ~ 11 bpc framebuffer from the operating system. If it can't
+%   get such a framebuffer on Linux or OSX with AMD graphics hardware,
+%   it will use our own homegrown setup code to provide such a framebuffer
+%   anyway on Radeon X1000, HD-2000 and later graphics cards and equivalent
+%   Fire-Series graphics cards.
+%
+%   Read all the explanations in the section above for 'EnableNative10BitFramebuffer'
+%   for capabilities, limitations and possible caveats on different systems.
+%
+%   Please note that this "11 Bit framebuffer" is not quite 11 bpc precision, but
+%   only about ~ 10.6666 bpc precision. Specifically, the framebuffer can only
+%   store at most 32 bits of color information per pixel, so it will store 11 bit
+%   precision for the red channel (2048 distinct red intensity levels), 11 bit
+%   (2048 levels) for the green channel, but only 10 bit (1024 levels) for the blue
+%   channel, for a total number of 11 + 11 + 10 bits = 32 bits of color information
+%   per pixel, or 4 billion different possible colors. A true 11 bpc framebuffer would
+%   need 33 bits per pixel, and current graphics hardware can't handle that.
+%
+%   How many bits of precision of these ~ 11 bpc actually reach your display device?
+%   - Analog VGA only provides for maximum 10 bpc output precision on all shipping
+%     NVidia and AMD graphics cards. Intel graphics cards only allow for 8 bpc.
+%   - DisplayPort or HDMI might allow for transfer of 11 bpc precision, in general they
+%     support up to 12 bpc. However additional hardware restrictions for your graphics
+%     card may limit precision to as low as 10 bpc. To our knowledge, only AMD graphics
+%     cards support ~ 11 bpc framebuffers at all. Radeon HD-7000 and earlier can only
+%     truly process up to 10 bpc, so 'EnableNative11BitFramebuffer' may not gain you any
+%     precision over 'EnableNative10BitFramebuffer' in practice on these cards. AMD cards
+%     of the "Sea Islands" family or later, mostly models from the year 2014, should be able
+%     to process and output up to 12 bpc over HDMI or DisplayPort, so they'd be able to output
+%     true ~11 bpc images. However, this hasn't been verified by us so far due to lack of
+%     suitable hardware.
+%
+%   So obviously: Measure very carefully on your setup what kind of precision you really
+%   get and make sure not to be fooled by dithering.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnableNative11BitFramebuffer' [, disableDithering=0]);
+%
+%
+% * 'EnableNative16BitFramebuffer'  Enable up to 16 bpc, 64 bpp framebuffer on some setups.
+%   This asks to enable a framebuffer with a color depth of up to 16 bpc for up to 65535 levels
+%   of intensity per red, green and blue channel or 48 bits = different 2^48 colors. Currently,
+%   as of September 2014, this mode of operation is only supported on Linux when using the
+%   open-source FOSS radeon graphics drivers on modern AMD graphics cards, and only after
+%   some special configuration of your X-Server and display setup has been performed by you.
+%   This is essentially a low-level hack that works under those specific conditions, but uses a
+%   relatively large amount of graphics memory and compute resources to implement. If you can
+%   do with less than 12 bpc, you're better off with the other high bit depth modes, as they are
+%   easier to set up and more efficient/faster in operation. On suitable setups, this will establish
+%   a 16 bpc framebuffer which packs 3 * 16 bpc = 48 bit color info into 64 bpp pixels and the
+%   gpu's display engine will scan out that framebuffer at 16 bpc. However, effective output
+%   precision is further limited to < 16 bpc by your display, video connection and specific model
+%   of graphics card. As of September 2014, the maximum effective output precision is limited
+%   to 12 bpc (4096 levels of red, green and blue) by the graphics card, and this precision is only
+%   attainable on the latest generation of AMD graphics cards of the so called "Sea Islands" family.
+%   High bit depth output only works over HDMI or DisplayPort, and may be further restricted by
+%   your specific display device, so measure your results carefully! See the sections about 11 bpc and
+%   10 bpc native framebuffers above for further details.
+%
+%   Required manual one time setup:
+%
+%   1. You must create a custom made xorg.conf file for your graphics card and X-Server to setup
+%      the display screen for use of a linear, non-tiled framebuffer at a color depth of 24 bit.
+%      If you only have a single AMD graphics card installed in your Linux machine, the most easy
+%      way to achieve this is to copy our simple template xorg.conf file into the config folder of
+%      your machine:
+%
+%      a) Open a terminal window and use sudo cp to copy our template to the /etc/X11 folder:
+%      sudo cp /path/to/Psychtoolbox/PsychGLImageProcessing/xorg.conf_For_AMD16bpcFramebuffer /etc/X11/xorg.conf
+%
+%      b) Logout and login again, so the display server picks up the changed configuration.
+%
+%      If you need a more customized xorg.conf file for special settings or for more complex display and
+%      gpu setups, use our template file as a reference. The important bit is to add the "ColorTiling..."
+%      lines to the "Device" section for your AMD graphics card.
+%
+%   2. Only three distinct display setups are allowed: Either a single display connected, or if multiple
+%      displays are conected, all displays must mirror (aka clone) each other showing the same image,
+%      or a dual display setup with both displays running at the same video resolution, one display
+%      showing the left half of your onscreen window, the other showing the right half of your onscreen
+%      window, ie., a typical setup for dual-display side-by-side stereo presentation. Pretty much any other
+%      display setup will display undefined results, e.g., corrupted images or random pixel trash.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnableNative16BitFramebuffer' [, disableDithering=0][, bpc]);
 %
 %
 % * 'EnableBrightSideHDROutput' Enable the high-performance driver for
@@ -1118,6 +1261,11 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % 28.09.2013  Add support for 'UseDisplayRotation' via panelfitter. (MK)
 %
 % 06.03.2014  Add support for 'DualWindowStereo' and fixes to Native10BitFramebuffer mode. (MK)
+%
+% 26.06.2014  Add support for Native11BitFramebuffer mode, update our docs with what
+%                     we learned about this 10/11 bpc business on HDMI so far. (MK)
+% 16.09.2014  Add experimental 'StereoCrosstalkReduction' support. (MK/DCN)
+% 17.09.2014  Add 'Native16BitFramebuffer' support for Linux + FOSS + AMD. (MK)
 
 persistent configphase_active;
 persistent reqs;
@@ -1128,6 +1276,7 @@ global psych_gpgpuapi;
 
 % These flags are global - needed in subfunctions as well (ugly ugly coding):
 global ptb_outputformatter_icmAware;
+global isASideBySideConfig;
 
 if isempty(configphase_active)
     configphase_active = 0;
@@ -1288,6 +1437,16 @@ if strcmpi(cmd, 'OpenWindow')
         % Request a pixelsize of 30 bpp to enable native 2101010
         % framebuffer support:
         pixelSize = 30;
+    elseif ~isempty(find(mystrcmp(reqs, 'EnableNative11BitFramebuffer')))
+        % Request a pixelsize of 33 bpp to enable native RGB11-11-10
+        % framebuffer support. A value of 32 bpp would be appropriate but
+        % that's already taken by old cruft code, so it's a no-no and we use the
+        % weirdo 33 bpp value, to retain backwards compatibility.
+        pixelSize = 33;
+    elseif ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer')))
+        % Request a pixelsize of 48 bpp to enable native up to RGB16-16-16
+        % framebuffer support.
+        pixelSize = 48;
     else
         % Ignore pixelSize:
         pixelSize = [];
@@ -1304,7 +1463,7 @@ if strcmpi(cmd, 'OpenWindow')
         
     % Compute correct imagingMode - Settings for current configuration and
     % return it:
-    [imagingMode, needStereoMode, reqs] = FinalizeConfiguration(reqs, stereomode);
+    [imagingMode, needStereoMode, reqs] = FinalizeConfiguration(reqs, stereomode, screenid);
 
     % Override stereomode derived from requirements?
     if needStereoMode ~= -1
@@ -2049,9 +2208,13 @@ return; %#ok<UNRCH>
 % FinalizeConfiguration consolidates the current set of requirements and
 % derives the needed stereoMode settings and imagingMode setting to pass to
 % Screen('OpenWindow') for pipeline preconfiguration.
-function [imagingMode, stereoMode, reqs] = FinalizeConfiguration(reqs, userstereomode)
+function [imagingMode, stereoMode, reqs] = FinalizeConfiguration(reqs, userstereomode, screenid)
 global ptb_outputformatter_icmAware;
 global psych_gpgpuapi;
+global isASideBySideConfig;
+
+% Reset flag to "no":
+isASideBySideConfig = 0;
 
 if nargin < 2
     userstereomode = [];
@@ -2059,6 +2222,10 @@ end
 
 if isempty(userstereomode)
     userstereomode = 0;
+end
+
+if nargin < 3 || isempty(screenid)
+    screenid = max(Screen('Screens'));
 end
 
 % Set imagingMode to minimum: Pipeline disabled. All latter task
@@ -2272,69 +2439,13 @@ if ~isempty(find(mystrcmp(reqs, 'FixedPoint16Bit')))
     imagingMode = mor(imagingMode, kPsychNeed16BPCFixed);
 end
 
-% Does usercode request a stereomode?
-if userstereomode > 0
-    % Enable imaging pipeline based stereo,ie., kPsychNeedFastBackingStore:
-    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
-    
-    % Datapixx - if any - needs special setup:
-    if datapixxmode
-        % Datapixx device active:
-        
-        % Frame sequential style mode via top-down "sync-doubling" mode?
-        if ismember(userstereomode, 2)
-            % Switch Datapixx to sync-doubling stereo mode:
-            PsychDataPixx('SetVideoVerticalStereo', 1);
-            % Reduce height of virtual framebuffer to effective half height:
-            % Nope... imagingMode = mor(imagingMode, kPsychNeedHalfHeightWindow);
-        else
-            % Switch Datapixx to non stereo mode:
-            PsychDataPixx('SetVideoVerticalStereo', 0);
-        end
-        
-        % Frame-Sequential stereo driven by GPU or us, instead of Datapixx?
-        if ismember(userstereomode, [1,11])
-            % Ask Datapixx to interpret the blue-line-sync stereo sync line
-            % generated by either Screen() itself, or the graphics card
-            % stereo device driver. The device will drive its VESA Stereo
-            % Mini-DIN connector accordingly:
-            PsychDataPixx('EnableVideoStereoBlueline');
-        else
-            % Datapixx shall ignore stereo sync lines / treat the bottom
-            % scanline as any other scanline:
-            PsychDataPixx('DisableVideoStereoBlueline');
-        end
-
-        % Any frame-sequential stereo mode active?
-        if ismember(userstereomode, [1,11,2])
-            % Ask ViewPixx to enable its scanning backlight for faster /
-            % ghost-free response:
-            PsychDataPixx('EnableVideoScanningBacklight');
-        else
-            % ViewPixx shall disable scanning backlight by default:
-            PsychDataPixx('DisableVideoScanningBacklight');
-        end
-        
-        % Dual-Display stereo via left-right stereo?
-        if ismember(userstereomode, [4,5])
-            % Switch Datapixx to stereo mode by splitting display
-            % horizontally onto 2 displays:
-            PsychDataPixx('SetVideoHorizontalSplit', 1);
-        else
-            % Switch Datapixx to non stereo mode, aka auto mode:
-            PsychDataPixx('SetVideoHorizontalSplit', 2);
-        end
-                
-    end
-end
-
 % Stereomode 6 for interleaved line stereo needed?
 if ~isempty(find(mystrcmp(reqs, 'InterleavedLineStereo')))
     % Yes: Must use stereomode 6.
     stereoMode = 6;
     % We also request an effective window height that is only half the real
     % height. This affects all drawing and query commands of Screen:
-    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore, kPsychNeedHalfHeightWindow);    
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore, kPsychNeedHalfHeightWindow);
 end
 
 % Stereomode 6 for interleaved column stereo needed?
@@ -2359,6 +2470,74 @@ if ~isempty(find(mystrcmp(reqs, 'DualWindowStereo')))
     stereoMode = 10;
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
     imagingMode = mor(imagingMode, kPsychNeedDualWindowOutput);
+end
+
+% Does usercode or internal code request a stereomode?
+if userstereomode > 0 || stereoMode > 0
+    % Enable imaging pipeline based stereo,ie., kPsychNeedFastBackingStore:
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+    
+    % Datapixx - if any - needs special setup:
+    if datapixxmode
+        % Datapixx device active:
+        
+        % Frame sequential style mode via top-down "sync-doubling" mode?
+        if ismember(userstereomode, 2) || ismember(stereoMode, 2)
+            % Switch Datapixx to sync-doubling stereo mode:
+            PsychDataPixx('SetVideoVerticalStereo', 1);
+            % Reduce height of virtual framebuffer to effective half height:
+            % Nope... imagingMode = mor(imagingMode, kPsychNeedHalfHeightWindow);
+        else
+            % Switch Datapixx to non stereo mode:
+            PsychDataPixx('SetVideoVerticalStereo', 0);
+        end
+        
+        % Frame-Sequential stereo driven by GPU or us, instead of Datapixx?
+        if ismember(userstereomode, [1,11]) || ismember(stereoMode, [1,11])
+            % Ask Datapixx to interpret the blue-line-sync stereo sync line
+            % generated by either Screen() itself, or the graphics card
+            % stereo device driver. The device will drive its VESA Stereo
+            % Mini-DIN connector accordingly:
+            PsychDataPixx('EnableVideoStereoBlueline');
+        else
+            % Datapixx shall ignore stereo sync lines / treat the bottom
+            % scanline as any other scanline:
+            PsychDataPixx('DisableVideoStereoBlueline');
+        end
+
+        % Any frame-sequential stereo mode active?
+        if ismember(userstereomode, [1,11,2]) || ismember(stereoMode, [1,11,2])
+            % Ask ViewPixx to enable its scanning backlight for faster /
+            % ghost-free response:
+            PsychDataPixx('EnableVideoScanningBacklight');
+        else
+            % ViewPixx shall disable scanning backlight by default:
+            PsychDataPixx('DisableVideoScanningBacklight');
+        end
+        
+        % Dual-Display stereo via left-right stereo?
+        if ismember(userstereomode, [4,5]) || ismember(stereoMode, [4,5])
+            % Switch Datapixx to stereo mode by splitting display
+            % horizontally onto 2 displays:
+            PsychDataPixx('SetVideoHorizontalSplit', 1);
+        else
+            % Switch Datapixx to non stereo mode, aka auto mode:
+            PsychDataPixx('SetVideoHorizontalSplit', 2);
+        end
+    end
+end
+
+% Want to reduce crosstalk in stereo presentation modes?
+if ~isempty(find(mystrcmp(reqs, 'StereoCrosstalkReduction')))
+    % Yes: For now we only implement this experimentally and for attachment
+    % of crosstalk reduction shaders to the image processing chains.
+    % This will be suboptimal if other image processing ops are active,
+    % but for a first usefully working prototype it should be good enough.
+    %
+    % We only request additional access to the other image channel, as setup
+    % code above and below will already have activated the image processing
+    % chains etc.
+    imagingMode = mor(imagingMode, kPsychNeedOtherStreamInput);
 end
 
 % Display replication needed?
@@ -2472,26 +2651,144 @@ if ~isempty(find(mystrcmp(reqs, 'EnableBits++Color++Output')))
     ptb_outputformatter_icmAware = 0;
 end
 
-% Request for native 10 bit per color component ARGB2101010 framebuffer?
-if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
+% Request for native 10 bit per color component ARGB2101010 framebuffer,
+% or native almost 11 bit per color component RGB111110 framebuffer?
+if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer'))) || ...
+   ~isempty(find(mystrcmp(reqs, 'EnableNative11BitFramebuffer')))
+
     % Enable output formatter chain:
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
 
     % Request 32bpc float FBO unless already a 16 bpc FBO or similar has
     % been explicitely requested: In principle, a 16 bpc FBO would be
-    % sufficient for a native 10bpc framebuffer...
+    % sufficient for a native 10 to 11 bpc framebuffer...
     if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap) && ~bitand(imagingMode, kPsychNeed16BPCFixed)
         imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
     end
 
-    % The ATI 10bpc formatter is not yet icm aware - Incapable of internal color correction!
-    % Additionally native 10 bpc framebuffers, e.g., on Fire-Series or NVidia cards also don't
+    % The ATI 10/11bpc formatter is not yet icm aware - Incapable of internal color correction!
+    % Additionally native 10/11 bpc framebuffers, e.g., on Fire-Series or NVidia cards also don't
     % have icm aware output formatting, so a 'false' setting here is mandatory:
     ptb_outputformatter_icmAware = 0;    
 end
 
-% Request for native 10 bit per color component ARGB2101010 framebuffer?
+% Request for native 16 bit per color component ARGB16161616 framebuffer?
+if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer')))
+    % Enable output formatter chain:
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+    imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
+
+    % Validate current config to make sure it makes sense for this stunt:
+    if ~IsLinux
+        error('PsychImaging: Native 16 bpc framebuffer requested, but not running on Linux. This is unsupported.');
+    end
+
+    % Get number of attached video outputs (aka scanout engines) and properties
+    % of the first output, which acts as a reference for all other outputs, if any:
+    numOutputs = Screen('ConfigureDisplay', 'NumberOutputs', screenid);
+    refOutput = Screen('ConfigureDisplay', 'Scanout', screenid, 0);
+
+    % First output must have x/y offset 0,0 ie. top-left corner of framebuffer.
+    if (refOutput.xStart ~= 0) || (refOutput.yStart ~= 0)
+        error('PsychImaging: First video output in native 16 bpc framebuffer mode not starting at (x,y)=(0,0)! This is unsupported.');
+    end
+
+    % Screen must have twice the width and height of the viewport of the first output:
+    [swidth, sheight] = Screen('WindowSize', screenid, 1);
+    if (2 * refOutput.width ~= swidth) || (2 * refOutput.height ~= sheight)
+        fprintf('PsychImaging: Screen width and height is not twice the width and height of the first video output in native 16 bpc framebuffer mode. Adapting...\n');
+        oldres = Screen('Resolution', screenid, 2 * refOutput.width, 2 * refOutput.height, [], [], 2);
+    else
+        oldres = [];
+    end
+
+    % More than one output? If so, make sure that all outputs have the same
+    % horizontal and vertical resolution / viewport size as the 1st reference
+    % output and that they either clone the first output, aka x/y start offset is (0,0),
+    % or just right of the first output, so we have a classic dual-display side-by-side
+    % configuration for ultra wide-screen viewing or dual-display stereo:
+    if numOutputs > 1
+        for outputId=1:(numOutputs-1)
+            % Get this outputs settings:
+            testOutput = Screen('ConfigureDisplay', 'Scanout', screenid, outputId);
+
+            if (testOutput.width ~= refOutput.width) || (testOutput.height ~= refOutput.height) || (testOutput.yStart ~= 0)
+                % Mismatch in viewport size or vertical start location:
+                if ~isempty(oldres)
+                    % Restore old screen setting if we changed it:
+                    Screen('Resolution', screenid, oldres.width, oldres.height, [], [], 2);
+                end
+                error('PsychImaging: At least one secondary video output in native 16 bpc framebuffer mode does not have the same viewport size as the first output! This is unsupported.');
+            end
+
+            % Secondary outputs must either clone the 1st output, or be located directly to its right edge:
+            if (testOutput.xStart ~= 0) && (testOutput.xStart ~= refOutput.width)
+                % Mismatch in horizontal start location:
+                if ~isempty(oldres)
+                    % Restore old screen setting if we changed it:
+                    Screen('Resolution', screenid, oldres.width, oldres.height, [], [], 2);
+                end
+                error('PsychImaging: At least one secondary video output in native 16 bpc framebuffer mode is not located right of the first output, or cloning the first output! This is unsupported.');
+            end
+            
+            % At least one output establishing a dual-display side-by-side config?
+            if testOutput.xStart == refOutput.width
+                isASideBySideConfig = 1;
+            end
+        end
+    end
+
+    % If we made it up to here, then the display output configuration and framebuffer size etc.
+    % is at least compatible with 16 bpc 64 bpp scanout.
+
+    % As of September 2014, none of the commercially available gpu's has
+    % a graphics driver which would support 16 bpc / 64 bpp framebuffers.
+    % However, all recent AMD gpu's do support 16 bpc / 64 bpp framebuffers
+    % in their scanout hardware, ie., storing 16 bpc formatted framebuffer
+    % content and scanning it out. The actual display encoders do limit output
+    % precision to way less than 16 bpc though, ie. not the whole display pipeline is
+    % 16 bpc. So what we do on Linux with the FOSS AMD graphics drivers on
+    % X11 + radeon-kms is we reprogram the scanout engine (crtc) to treat a
+    % 32 bpp framebuffer of twice the width and height of the crtc's viewport
+    % as a 64 bpp framebuffer of exactly the width and height of the crtc's
+    % viewport. From the perspective of Linux and its graphics stack, what we
+    % have is an oversized X-Screen twice the width and height of the selected
+    % display resolution. From the perspective of the scanout hw we have an
+    % exactly matching X-Screen with 64 bpp color format for 16 bpc scanout,
+    % and half of all scanlines are dead/ignored. PTB needs to render into the
+    % jumbo-size onscreen window/framebuffer/x-screen as if it is a 64 bpp fb,
+    % using GLSL conversion shaders to convert its floating point framebuffers
+    % content into a 64 bpp encoding. Usercode however should see an onscreen
+    % window with the effective output size/resolution of the display, not the over-
+    % sized resolution of the x-screen/fb. Therefore instruct Screen() to pretend
+    % the onscreen window is only half the width/height of the true system back-
+    % buffer: half the width/height of a twice width/height system fb == cancels
+    % each other out for effective width/height == display width/height, and all
+    % is good:
+    if ~isASideBySideConfig
+        % Only half-width if no secondary video output can cover the "right half"
+        % of the framebuffer for side-by-side (e.g., stereoscopic) display:
+        imagingMode = mor(imagingMode, kPsychNeedHalfWidthWindow);
+    end
+
+    % Always half-height:
+    imagingMode = mor(imagingMode, kPsychNeedHalfHeightWindow);
+
+    % Request 32bpc float FBO unless already a 16 bpc fixed point FBO
+    % has been explicitely requested. 16 bpc fixed point is obviously just
+    % quite sufficient for 16 bpc linear output, 32 bpc float provides 23 bpc
+    % effective linear precision in the meaningful output intensity range, so
+    % leaves some numerical headroom for post processing and roundoff errors:
+    if ~bitand(imagingMode, kPsychUse32BPCFloatAsap) && ~bitand(imagingMode, kPsychNeed16BPCFixed)
+        imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
+    end
+
+    % The AMD 16 bpc formatter is not icm aware - Incapable of internal color correction!
+    ptb_outputformatter_icmAware = 0;    
+end
+
+% Request for dual display pipeline custom HDR system?
 if ~isempty(find(mystrcmp(reqs, 'EnableDualPipeHDROutput')))
     % Enable imaging pipeline ...
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
@@ -2589,6 +2886,9 @@ global ptb_geometry_inverseWarpMap;
 global psych_gpgpuapi; %#ok<NUSED>
 % Default requested colormode: Set by PsychDefaultSetup(), if at all.
 global psych_default_colormode;
+
+% At least two video outputs scanning out in dual-display side-by-side configuration?
+global isASideBySideConfig;
 
 if isempty(GL)
     % Perform minimal OpenGL init, so we can call OpenGL commands and use
@@ -3622,7 +3922,112 @@ if ~isempty(find(mystrcmp(reqs, 'NormalizedHighresColorRange')))
 end
 % --- End of setup for unclamped, high precision 0-1 range colors ---
 
+% --- Setup stereo crosstalk reduction ---
+floc = find(mystrcmp(reqs, 'StereoCrosstalkReduction'));
+if ~isempty(floc)
+    if winfo.StereoMode == 0
+        Screen('CloseAll');
+        error('PsychImaging task ''StereoCrosstalkReduction'' requested, but no suitable stereomode active?! Aborted.');
+    end
 
+    % Which channel?
+    for x=floc
+        [rows cols]= ind2sub(size(reqs), x);
+        for row=rows'
+            crosstalkMethod = reqs{row, 3};
+            if isempty(crosstalkMethod) || ~strcmpi(crosstalkMethod, 'SubtractOther')
+                sca;
+                error('In StereoCrosstalkReduction: Crosstalk reduction method parameter missing or unsupported method requested.');
+            end
+
+            crosstalkGain = reqs{row, 4};
+            if isempty(crosstalkGain)
+                sca;
+                error('In StereoCrosstalkReduction: The crosstalk reduction gain must be provided.');
+            end
+
+            if isscalar(crosstalkGain)
+                % Same gain for all three color channels:
+                crosstalkGain = [crosstalkGain crosstalkGain crosstalkGain];
+            else
+                if numel(crosstalkGain)~=3
+                    sca;
+                    error('In StereoCrosstalkReduction: provided gain should be a scalar or a 3-element vector.');
+                end
+            end
+
+            % Background clear color as specified by PsychImaging('Openwindow', ...) call is reference for
+            % zero-contrast:
+            crosstalkBackGroundClr = clearcolor;
+            if isempty(crosstalkBackGroundClr) || ~isnumeric(crosstalkBackGroundClr)
+                sca;
+                error('In StereoCrosstalkReduction: You did not provide the mandatory background clear color for crosstalk reduction in ''OpenWindow''.');
+            end
+
+            if isscalar(crosstalkBackGroundClr)
+                % Same background luminance level for all three color channels:
+                crosstalkBackGroundClr = [crosstalkBackGroundClr, crosstalkBackGroundClr, crosstalkBackGroundClr];
+            else
+                if numel(crosstalkBackGroundClr) < 3
+                    sca;
+                    error('In StereoCrosstalkReduction: Provided background clear color should be a scalar or an at least 3-element RGB(A) vector.');
+                end
+                crosstalkBackGroundClr = crosstalkBackGroundClr(1:3);
+            end
+
+            if min(crosstalkBackGroundClr) <= 0 || max(crosstalkBackGroundClr) >= 1
+                sca;
+                error('In StereoCrosstalkReduction: Provided background clear color is not in the normalized range > 0 and < 1 as required.');
+            end
+
+            % Load and build shader from files StereoCrosstalkReductionShader.vert.txt and/or
+            % StereoCrosstalkReductionShader.frag.txt in the shader directory:
+            shader = LoadGLSLProgramFromFiles('StereoCrosstalkReductionShader', 1);
+
+            % Init the shader: Assign mapping of images:
+            glUseProgram(shader);
+
+            % Image1 will contain the input image for the currently processed target eye:
+            glUniform1i(glGetUniformLocation(shader, 'Image1'), 0);
+
+            % Image2 will contain the input image for the to-be-suppressed other eye:
+            glUniform1i(glGetUniformLocation(shader, 'Image2'), 1);
+
+            % Just as example. Assign scalar float parameter crosstalkReductionParameter1 to the
+            % shader variable 'uniform float crossTalkParam1' for use as a input constant in shader:
+            glUniform3fv(glGetUniformLocation(shader, 'crosstalkGain'), 1, crosstalkGain);
+            glUniform3fv(glGetUniformLocation(shader, 'backGroundClr'), 1, crosstalkBackGroundClr);
+
+            % Shader setup done:
+            glUseProgram(0);
+
+            % Setup specific to left eye output:
+            if mystrcmp(reqs{row, 1}, 'LeftView') || mystrcmp(reqs{row, 1}, 'AllViews')
+                % Need to attach to left view:
+                if leftcount > 0
+                    % Need a bufferflip command:
+                    Screen('HookFunction', win, 'PrependBuiltin', 'StereoLeftCompositingBlit', 'Builtin:FlipFBOs', '');
+                end
+                Screen('HookFunction', win, 'PrependShader', 'StereoLeftCompositingBlit', 'StereoCrosstalkReductionShader', shader);
+                Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
+                leftcount = leftcount + 1;
+            end
+
+            % Setup specific to right eye output:
+            if mystrcmp(reqs{row, 1}, 'RightView') || mystrcmp(reqs{row, 1}, 'AllViews')
+                % Need to attach to right view:
+                if rightcount > 0
+                    % Need a bufferflip command:
+                    Screen('HookFunction', win, 'PrependBuiltin', 'StereoRightCompositingBlit', 'Builtin:FlipFBOs', '');
+                end
+                Screen('HookFunction', win, 'PrependShader', 'StereoRightCompositingBlit', 'StereoCrosstalkReductionShader', shader);
+                Screen('HookFunction', win, 'Enable', 'StereoRightCompositingBlit');
+                rightcount = rightcount + 1;
+            end
+        end
+    end
+end
+% --- End of setup for stereo crosstalk reduction ---
 
 % --- FROM HERE ON ONLY OUTPUT FORMATTERS, NOTHING ELSE!!! --- %
 
@@ -3829,46 +4234,111 @@ end
 % --- End of output formatters for VideoSwitcher attenuator device ---
 
 
-% --- Final output formatter for native 10 bpc ARGB2101010 framebuffer requested? ---
+% --- Final output formatter for native 10 bpc ARGB2101010 or 11 bpc RGB11-11-10framebuffer requested?
+enableNative11BpcRequested = 0;
+enableNative16BpcRequested = 0;
 floc = find(mystrcmp(reqs, 'EnableNative10BitFramebuffer'));
+if isempty(floc)
+    enableNative11BpcRequested = 1;
+    floc = find(mystrcmp(reqs, 'EnableNative11BitFramebuffer'));
+end
+
+if isempty(floc)
+    enableNative11BpcRequested = 0;
+    enableNative16BpcRequested = 1;
+    floc = find(mystrcmp(reqs, 'EnableNative16BitFramebuffer'));
+end
+
 if ~isempty(floc)
     [row col]= ind2sub(size(reqs), floc);
 
-    % Our special shader-based output formatter is only needed and effective on OS/X or
-    % Linux with ATI Radeon hardware, or with FireGL/FirePro with override mode bit set:
-    if  (IsOSX || IsLinux) && ( ...
-        (bitand(Screen('Preference', 'ConserveVRAM'), 2^21) > 0) || ...
-        (~isempty(strfind(winfo.GLRenderer, 'Radeon'))) || ...
-        (~isempty(strfind(winfo.GLRenderer, 'Gallium')) && ~isempty(strfind(winfo.GLRenderer, 'ATI'))) || ...
-        (~isempty(strfind(winfo.GLRenderer, 'Gallium')) && ~isempty(strfind(winfo.GLRenderer, 'AMD'))) || ...
-        (~isempty(strfind(winfo.GLVendor, 'Advanced Micro')) && ~isempty(strfind(winfo.GLRenderer, 'DRI'))) ...
-        )
+    % Our special shader-based 10 bpc output formatter is only needed and effective on OS/X or
+    % Linux with AMD Radeon hardware, or with FireGL/FirePro with override mode bit set.
+    % Our 11 bpc and 16 bpc shader-based output formatters are only effective on Linux.
+    % specialFlags setting 1024 signals that our own low-level 10/11/16 bit framebuffer
+    % hack on AMD hardware is active, so we also need our own GLSL output formatters.
+    % Otherwise setup was (hopefully) done by the regular graphics drivers and we don't
+    % need this GLSL output formatter, as system OpenGL takes care of it:
+    if bitand(winfo.SpecialFlags, 1024)
+        % AMD/ATI gpu on OS/X or Linux with our 10/11/16 bit hack. Use our reformatters:
+        if enableNative16BpcRequested
+            % Extract optional 2nd parameter - This should be the 'encodingBPC' depth:
+            encodingBPC = reqs{row, 4};
 
-        % ATI Radeon on OS/X or Linux: Use our reformatter
-        % Load output formatting shader:
-        pgshader = LoadGLSLProgramFromFiles('RGBMultiLUTLookupCombine_FormattingShader', 1);
+            % Assign maximum bit depth default for given GPU, if no specific depth requested:
+            if isempty(encodingBPC)
+                if winfo.GPUMinorType >= 80
+                    % DCE-8.0 or later display engine of "Sea Islands Family" or later: Does 12 bpc.
+                    encodingBPC = 12;
+                else
+                    % Older engine. Only does 10 bpc, so using this mode is pointless and only good
+                    % for debugging.
+                    encodingBPC = 10;
+                end
+                fprintf('PsychImaging: EnableNative16BitFramebuffer: True framebuffer bpc is %i. Further output specific limitations may apply, check your results!\n', encodingBPC);
+            end
 
-        % Init the shader: Assign mapping of left- and right image:
+            % Load algorithmic 9 bpc - 16 bpc shader for packing 9-16 bpc content into a 64 bpp
+            % framebuffer:
+            pgshader = LoadGLSLProgramFromFiles('AMD16bpc_FormattingShader', 1);
+        else
+            % Load output formatting shader for multi-LUT based 10 bpc or 11 bpc formatting:
+            pgshader = LoadGLSLProgramFromFiles('RGBMultiLUTLookupCombine_FormattingShader', 1);
+        end
+
+        % Init the shader:
         glUseProgram(pgshader);
+
+        % Assign mapping of input image:
         glUniform1i(glGetUniformLocation(pgshader, 'Image'), 0);
-        glUniform1i(glGetUniformLocation(pgshader, 'CLUT'),  1);
-        glUniform1f(glGetUniformLocation(pgshader, 'Prescale'),  1024);
+
+        if enableNative16BpcRequested
+            % Scale from 0.0 - 1.0 to 0.0 - (2^n - 1) with n being encoding bit depth: n = encodingBPC
+            glUniform1f(glGetUniformLocation(pgshader, 'Prescale'), bitshift(1, encodingBPC) - 1);
+            % Pass true half-width of framebuffer/x-screen/onscreen window to shader for proper handling
+            % of dual-display side-by-side "stereo style" configurations:
+            glUniform1f(glGetUniformLocation(pgshader, 'halfFBWidth'), Screen('WindowSize', win, 1) / 2);
+        else
+            % CLUT based mapping:
+            glUniform1i(glGetUniformLocation(pgshader, 'CLUT'), 1);
+            glUniform1f(glGetUniformLocation(pgshader, 'Prescale'), bitshift(1024, enableNative11BpcRequested));
+        end
         glUseProgram(0);
 
-        % Use helper routine to build a proper RGBA Lookup texture for
-        % conversion of HDR RGBA pixels to ARGB2101010 pixels:
-        pglutid = PsychHelperCreateARGB2101010RemapCLUT;
+        if enableNative16BpcRequested
+              % Setup 16  bpc formatter further:
+              pgshadername = 'Native RGBA16161616 framebuffer output formatting shader';
+              if isASideBySideConfig
+                  % Only scale vertically to cover whole vertical framebuffer height:
+                  pgconfig = 'Scaling:1.0:2.0';
+              else
+                  % Scale horizontally and vertically to cover whole framebuffer width x height:
+                  pgconfig = 'Scaling:2.0:2.0';
+              end
+        elseif enableNative11BpcRequested
+              % Use helper routine to build a proper RGBA Lookup texture for
+              % conversion of HDR RGB pixels to ARGB0-11-11-10 pixels:
+              pglutid = PsychHelperCreateRGB111110RemapCLUT;
+              pgshadername = 'Native RGB111110 framebuffer output formatting shader';
+              pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
+        else
+              % Use helper routine to build a proper RGBA Lookup texture for
+              % conversion of HDR RGBA pixels to ARGB2101010 pixels:
+              pglutid = PsychHelperCreateARGB2101010RemapCLUT;
+              pgshadername = 'Native ARGB2101010 framebuffer output formatting shader';
+              pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
+        end
 
         if outputcount > 0
             % Need a bufferflip command:
             Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
         end
-        pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
-        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'Native ARGB2101010 framebuffer output formatting shader', pgshader, pgconfig);
+
+        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', pgshadername, pgshader, pgconfig);
         Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
         outputcount = outputcount + 1;
 
-        % AMD framebuffer devices - Identity CLUT Not needed, as internal clut is bypassed anyway,
+        % AMD framebuffer devices - Identity CLUT not needed, as internal clut is bypassed anyway,
         % but we do it nonetheless, so we can decide about dithering setup and get things like
         % degamma and other colorspace conversions disabled / bypassed:
         needsIdentityCLUT = 1;
@@ -3880,7 +4350,7 @@ if ~isempty(floc)
         % RAMDAC's and DisplayPort devices et al. are 10 bit anyway to our
         % knowledge, so it doesn't matter if we do shader-based gamma correction
         % internally, or if the GPU does it. We do it shader-based for consistency
-        % reasons with the AMD path above.
+        % with the AMD path above.
         needsIdentityCLUT = 1;
     end
     
@@ -3888,7 +4358,7 @@ if ~isempty(floc)
     disableDithering = reqs{row, 3};
     
     if isempty(disableDithering)
-        % Control of output dithering on digital 10 bit panels should be left to
+        % Control of output dithering on digital >= 10 bit panels should be left to
         % the OS + graphics driver by default. With the OS at the helm, it can configure
         % the encoders for 10 bpc no-dithering if it detects a truly 10 bpc capable display,
         % based on EDID information. DisplayPort and HDMI provides infos about >= 10 bpc

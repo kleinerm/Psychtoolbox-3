@@ -195,9 +195,11 @@ PsychError SCREENPreference(void)
 	if( numInputArgs >= 2 && (PsychIsScreenNumberArg(1) || PsychIsScreenNumberArg(1)) && PsychGetArgType(2)==PsychArgType_char ){
 		PsychAllocInCharArg(2, kPsychArgRequired, &preferenceName);
 		//preferences which require window pointer or screen number argument which we DO NOT support  
-		for(i=0;i<kPsychNumUnsupportedMacVideoPreferences;i++){
-			if(PsychMatch(preferenceName, unsupportedMacVideoPreferenceNames[i]))
+		for(i = 0; i < kPsychNumUnsupportedMacVideoPreferences; i++) {
+			if(PsychMatch(preferenceName, unsupportedMacVideoPreferenceNames[i])) {
 				PsychErrorExit(PsychError_unsupportedOS9Preference);
+                return(PsychError_unsupportedOS9Preference);
+            }
 		}
 		//insert here conditionals  to act on prefernces which accept a window pointer or screen number argument which we DO support.
 		PsychErrorExit(PsychError_unrecognizedPreferenceName);

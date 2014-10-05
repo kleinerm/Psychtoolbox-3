@@ -21,7 +21,7 @@ function Ljg = XYZToLjg(XYZ)
 %
 % The output of this routine was verified against the tabulated
 % values in W+S, Table I(6.6.4).  These are republished from
-% MacAdam (1978, JOSA, 68, 121-130).  See TestOSAUCS.
+% MacAdam (1978, JOSA, 68, 121-130).  See OSAUCSTest.
 %
 % 3/27/01  dhb  Wrote it.
 % 7/14/10  dhb  Added comment that the formulae in my chapter have a typo.

@@ -65,6 +65,7 @@ function VideoRecordingDemo(moviename, codec, withsound, showit, windowed)
 %  3.9.2012   Updated to handle both legacy Quicktime and modern GStreamer (MK).
 % 19.11.2013  Drop Quicktime support, add dc1394 support, update help text (MK).
 % 29.12.2013  Make less broken on OSX and Windows (MK).
+% 26.08.2014  Adapt to new GStreamer-1 based engine (MK).
 
 % Test if we're running on PTB-3, abort otherwise:
 AssertOpenGL;
@@ -106,8 +107,9 @@ end
 if isempty(codec)
     % These do not work yet:
     %codec = ':CodecType=huffyuv'  % Huffmann encoded YUV + MPEG-4 audio: FAIL!
-    %codec = ':CodecType=ffenc_h263p'  % H263 video + MPEG-4 audio: FAIL!
+    %codec = ':CodecType=avenc_h263p'  % H263 video + MPEG-4 audio: FAIL!
     %codec = ':CodecType=yuvraw' % Raw YUV + MPEG-4 audio: FAIL!
+    %codec = ':CodecType=xvidenc Keyframe=60 Videobitrate=8192 'Missing!
     
     % These are so slow, they are basically useless for live recording:
     %codec = ':CodecType=theoraenc'% Theoravideo + Ogg vorbis audio: Gut @ 320 x 240
@@ -115,12 +117,10 @@ if isempty(codec)
     %codec = ':CodecType=vp8enc_matroska'   % VP-8/Matroska  + Ogg vorbis audio: Gut @ 320 x 240
     
     % The good ones...
-    %codec = ':CodecType=ffenc_mpeg4' % % MPEG-4 video + audio: Tut ok @ 640 x 480.
-    %codec = ':CodecType=xvidenc'  % MPEG-4 video + audio: Tut sehr gut @ 640 x 480 Very good a-v sync! Works well in all conditions. -> Champion.
+    %codec = ':CodecType=avenc_mpeg4' % % MPEG-4 video + audio: Ok @ 640 x 480.
     %codec = ':CodecType=x264enc Keyframe=1 Videobitrate=8192 AudioCodec=alawenc ::: AudioSource=pulsesrc ::: Muxer=qtmux'  % H264 video + MPEG-4 audio: Tut seshr gut @ 640 x 480
     %codec = ':CodecType=VideoCodec=x264enc speed-preset=1 noise-reduction=100000 ::: AudioCodec=faac ::: Muxer=avimux'
     %codec = ':CodecSettings=Keyframe=60 Videobitrate=8192 '
-    %codec = ':CodecType=xvidenc Keyframe=60 Videobitrate=8192 '
     
     if IsLinux
         % Linux, where stuff "just works(tm)": Assign default auto-selected codec:
@@ -130,9 +130,9 @@ if isempty(codec)
     if IsOSX
         % OSX: Without audio, stuff just works. With audio, we must specify
         % an explicit audio source with very specific parameters (48 kHz sampling rate), as
-        % everything else will just hang, at least on OSX 10.9.1 Mavericks:
+        % everything else will just hang, at least on OSX 10.9 Mavericks with GStreamer 0.10 and 1.x:
         if withsound
-            codec = ':CodecType=DEFAULTencoder ::: AudioSource=osxaudiosrc ! capsfilter caps=audio/x-raw-float,rate=48000';
+            codec = ':CodecType=DEFAULTencoder ::: AudioSource=osxaudiosrc ! capsfilter caps=audio/x-raw,rate=48000';
         else
             codec = ':CodecType=DEFAULTencoder';
         end
@@ -146,7 +146,7 @@ if isempty(codec)
         % source, as the autoaudiosrc does not find any sound sources on
         % the Windows-7 PC :-(
         if withsound
-            codec = ':CodecType=theoraenc ::: AudioSource=dshowaudiosrc';
+            codec = ':CodecType=theoraenc ::: AudioSource=directsoundsrc';
         else
             codec = ':CodecType=theoraenc';
         end
@@ -226,6 +226,12 @@ try
         % No need for Windows-style workarounds:
         grabber = Screen('OpenVideoCapture', win, [], [], [], [], [], codec, withsound, [], 8);
     end
+
+    % Wait a bit between 'OpenVideoCapture' and start of capture below.
+    % This gives the engine a bit time to spin up and helps avoid jerky
+    % recording at the first iteration after startup of Octave/Matlab.
+    % Successive recording iterations won't need this anymore:
+    WaitSecs('YieldSecs', 2);
     
     for nreps = 1:1
         KbReleaseWait;
@@ -242,7 +248,7 @@ try
         % framerate by itself, based on lighting conditions. With bright scenes
         % it can run at 30 fps, at lower light conditions it reduces the
         % framerate to 15 fps, then to 7.5 fps.
-        Screen('StartVideoCapture', grabber, 30, 1)
+        Screen('StartVideoCapture', grabber, realmax, 1)
         
         oldtex = 0;
         tex = 0;

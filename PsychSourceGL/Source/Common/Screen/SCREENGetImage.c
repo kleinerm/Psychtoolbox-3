@@ -141,7 +141,7 @@ PsychError SCREENGetImage(void)
 	PsychRectType   windowRect, sampleRect;
 	int 			nrchannels, invertedY, stride;
 	size_t			ix, iy, sampleRectWidth, sampleRectHeight, redReturnIndex, greenReturnIndex, blueReturnIndex, alphaReturnIndex, planeSize;
-	int				viewid;
+	int				viewid = 0;
 	psych_uint8 	*returnArrayBase, *redPlane;
 	float 			*dredPlane;
 	double 			*returnArrayBaseDouble;

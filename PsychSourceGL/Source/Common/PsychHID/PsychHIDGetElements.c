@@ -62,7 +62,6 @@ PsychError PSYCHHIDGetElements(void)
         currentElement=HIDGetNextDeviceElement(currentElement, kHIDElementTypeIO)) {
         lastElement = currentElement;
 
-#ifdef __LP64__
         // Skip this entry if it isn't a valid element:
         if (!HIDIsValidElement(currentElement)) continue;
 
@@ -102,36 +101,6 @@ PsychError PSYCHHIDGetElements(void)
         PsychSetStructArrayDoubleElement("calMax",          elementIndex, 	(double)IOHIDElement_GetCalibrationMax(currentElement),	elementStruct);
         PsychSetStructArrayDoubleElement("scalingMin",		elementIndex, 	(double) 0,     elementStruct);
         PsychSetStructArrayDoubleElement("scalingMax",		elementIndex, 	(double) 255,	elementStruct);
-#else
-        typeMask=HIDConvertElementTypeToMask (currentElement->type);
-        PsychHIDGetTypeMaskStringFromTypeMask(typeMask, &typeMaskName);
-        PsychSetStructArrayStringElement("typeMaskName",	elementIndex, 	typeMaskName,	 			elementStruct);
-        PsychSetStructArrayStringElement("name",            elementIndex, 	currentElement->name,	 		elementStruct);
-        PsychSetStructArrayDoubleElement("deviceIndex",		elementIndex, 	(double)deviceIndex, 			elementStruct);
-        PsychSetStructArrayDoubleElement("elementIndex",	elementIndex, 	(double)elementIndex+1, 		elementStruct);
-        PsychSetStructArrayDoubleElement("typeValue",		elementIndex, 	(double)currentElement->type, 		elementStruct);
-        HIDGetTypeName(currentElement->type, elementTypeName);
-        PsychSetStructArrayStringElement("typeName",		elementIndex, 	elementTypeName,	 		elementStruct);
-        PsychSetStructArrayDoubleElement("usagePageValue",	elementIndex, 	(double)currentElement->usagePage, 	elementStruct);
-        PsychSetStructArrayDoubleElement("usageValue",		elementIndex, 	(double)currentElement->usage, 		elementStruct);
-        HIDGetUsageName (currentElement->usagePage, currentElement->usage, usageName);
-        PsychSetStructArrayStringElement("usageName",		elementIndex, 	usageName,	 			elementStruct);
-        PsychSetStructArrayDoubleElement("dataSize",		elementIndex, 	(double)currentElement->size, 		elementStruct);
-        PsychSetStructArrayDoubleElement("rangeMin",		elementIndex, 	(double)currentElement->min, 		elementStruct);
-        PsychSetStructArrayDoubleElement("rangeMax",		elementIndex, 	(double)currentElement->max, 		elementStruct);
-        PsychSetStructArrayDoubleElement("scaledRangeMin",	elementIndex, 	(double)currentElement->scaledMin, 	elementStruct);
-        PsychSetStructArrayDoubleElement("scaledRangeMax",	elementIndex, 	(double)currentElement->scaledMax,	elementStruct);
-        PsychSetStructArrayDoubleElement("relative",		elementIndex, 	(double)currentElement->relative,	elementStruct);	//psych_bool flag
-        PsychSetStructArrayDoubleElement("wrapping",		elementIndex, 	(double)currentElement->wrapping,	elementStruct);	//psych_bool flag	
-        PsychSetStructArrayDoubleElement("nonLinear",		elementIndex, 	(double)currentElement->nonLinear,	elementStruct);	//psych_bool flag
-        PsychSetStructArrayDoubleElement("preferredState",	elementIndex, 	(double)currentElement->preferredState,	elementStruct);	//psych_bool flag
-        PsychSetStructArrayDoubleElement("nullState",		elementIndex, 	(double)currentElement->nullState,	elementStruct);	//psych_bool flag
-
-        PsychSetStructArrayDoubleElement("calMin",		elementIndex, 	(double)currentElement->calMin,		elementStruct);	
-        PsychSetStructArrayDoubleElement("calMax",		elementIndex, 	(double)currentElement->calMax,		elementStruct);	
-        PsychSetStructArrayDoubleElement("scalingMin",		elementIndex, 	(double)currentElement->userMin,	elementStruct);	
-        PsychSetStructArrayDoubleElement("scalingMax",		elementIndex, 	(double)currentElement->userMax,	elementStruct);	
-#endif
         ++elementIndex; 
     }
 

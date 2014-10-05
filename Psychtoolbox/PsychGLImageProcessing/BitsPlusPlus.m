@@ -637,13 +637,9 @@ if strcmpi(cmd, 'OpenBits#')
 
     % Ok. Try to connect:
     try
-        % Open the port. We need to select "Lenient" mode, because the driver will try to change
-        % ReceiveLatency during setup by default. Setting ReceiveLatency is apparently not supported
-        % with the Bits# specific serial port driver, so it triggers an "unsupported operation" error.
-        % The "Lenient" keyword turns that error into a mere warning, instead of failure.
-        % We also reduce level of verbosity during open, to suppress the "unsupported operation" warning:
-        oldverblevel = IOPort('Verbosity', 0);
-        [bitsSharpPort, errmsg] = IOPort('OpenSerialPort', bitsSharpPortname, 'Lenient');
+        % Open the port. We reduce level of verbosity during open, to suppress clutter:
+        oldverblevel = IOPort('Verbosity', 1);
+        [bitsSharpPort, errmsg] = IOPort('OpenSerialPort', bitsSharpPortname);
         IOPort('Verbosity', oldverblevel);
     catch %#ok<*CTCH>
         error('Failed to establish a connection to the Bits# via serial port. The error message was: %s', errmsg);

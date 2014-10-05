@@ -6,7 +6,7 @@ function cal = UpdateAmbientSensor(cal,new_ambient_sensor,ADD)
 % same units as defined by T_sensor in the call to
 % SetColorSpace.
 %
-%ÊIf flag ADD is true, passed ambient is added to current
+% If flag ADD is true, passed ambient is added to current
 % value.  Otherwise passed value replaces current value.
 % ADD is false if not passed.  Use caution when setting ADD
 % true -- if the ambient is changing during the experiment

@@ -10,7 +10,7 @@ function rect = RectOfMatrix(mat)
 % 6/28/04   awi Wrote it.
 % 7/13/04   awi Improved documentation.  
 % 1/29/05   dgp Renamed from RectFromMatrix to RectOfMatrix. 
-% 1/29/05   dgp Timed it. RectOfMatrix is quick, taking about 100 µs, 
+% 1/29/05   dgp Timed it. RectOfMatrix is quick, taking about 100 us, 
 %               independent of matrix size.
 % 11/24/05  mk  Bugfix. Didn't work for multi-layer (3D) matrices.
 

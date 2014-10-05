@@ -58,6 +58,7 @@ $ptb308count = 0;
 $ptb309count = 0;
 $ptb3010count = 0;
 $ptb3011oldgscount = 0;
+$ptb3011count = 0;
 $osxcount = 0;
 $wincount = 0;
 $linuxcount = 0;
@@ -107,6 +108,8 @@ $matv714count = 0;
 $matv80count = 0;
 $matv81count = 0;
 $matv82count = 0;
+$matv83count = 0;
+$matv84count = 0;
 
 $octavelinuxcount = 0;
 $octaveosxcount   = 0;
@@ -224,6 +227,7 @@ foreach($uniqueptbs as $ofl) {
   if (strpos($ofl, '<FLAVOR>Psychtoolbox-3.0.9</FLAVOR>')) { $assigned++ ; $ptb309count++; }
   if (strpos($ofl, '<FLAVOR>Psychtoolbox-3.0.10</FLAVOR>')) { $assigned++ ; $ptb3010count++; }
   if (strpos($ofl, '<FLAVOR>Psychtoolbox-3.0.11-PreWinGStreamerSDK</FLAVOR>')) { $assigned++ ; $ptb3011oldgscount++; }
+  if (strpos($ofl, '<FLAVOR>Psychtoolbox-3.0.11</FLAVOR>')) { $assigned++ ; $ptb3011count++; }
 
   if (strpos($ofl, '<ENVIRONMENT>Matlab')) {
     $ismatlab = 1;
@@ -250,6 +254,8 @@ foreach($uniqueptbs as $ofl) {
     if (strpos($ofl, '<ENVVERSION>8.0')) { $matv80count++; }
     if (strpos($ofl, '<ENVVERSION>8.1')) { $matv81count++; }
     if (strpos($ofl, '<ENVVERSION>8.2')) { $matv82count++; }
+    if (strpos($ofl, '<ENVVERSION>8.3')) { $matv83count++; }
+    if (strpos($ofl, '<ENVVERSION>8.4')) { $matv84count++; }
   }
 
   if (strpos($ofl, '<ENVIRONMENT>Octave')) {
@@ -325,13 +331,9 @@ foreach($uniqueptbs as $ofl) {
       // It is a PowerPC Macintosh:
       $ppccount++;
     }
-    else if (strpos($ofl, '<CPUARCH>i386')){
-      // Intel Macintosh:
-      $intelmaccount++;
-    }
     else {
-      // Unclassified:
-      $somemaccount++;
+      // Intel-Mac:
+      $intelmaccount++;
     }
 
     if (strpos($ofl, '<ENVARCH>MACI64') || strpos($ofl, '<ENVARCH>x86_64-apple-darwin')) {
@@ -379,6 +381,7 @@ print "Psychtoolbox-3.0.8            : $ptb308count<br />";
 print "Psychtoolbox-3.0.9            : $ptb309count<br />";
 print "Psychtoolbox-3.0.10           : $ptb3010count<br />";
 print "Psychtoolbox-3.0.11-PreWinGst : $ptb3011oldgscount<br />";
+print "Psychtoolbox-3.0.11           : $ptb3011count<br />";
 print "Unclassified                  : $unknowncount<br />";
 
 print "<br />Breakdown by host operating system:<br /><br />";
@@ -394,7 +397,6 @@ print "<br />For Macintosh - Breakdown by system architecture:<br /><br />";
 
 printf('PowerMac                     : %4d (%7.3f%% of all Apple systems) <br />', $ppccount, 100 * $ppccount / $osxcount);
 print "IntelMac                     : $intelmaccount<br />";
-print "Unknown                      : $somemaccount<br />";
 
 print "<br />For Macintosh - Breakdown by OS/X version:<br /><br />";
 print "10.3 - Panther               : $panthercount<br />";
@@ -444,6 +446,8 @@ print "Matlab 7.14  (R2012a)        : $matv714count<br />";
 print "Matlab 8.0   (R2012b)        : $matv80count<br />";
 print "Matlab 8.1   (R2013a)        : $matv81count<br />";
 print "Matlab 8.2   (R2013b)        : $matv82count<br />";
+print "Matlab 8.3   (R2014a)        : $matv83count<br />";
+print "Matlab 8.4   (R2014b)        : $matv84count<br />";
 
 print "<br />Number of GNU/Octave V3+ installations by system:<br /><br />";
 printf('Octave on OS/X               : %8d (%7.3f%% of all OS/X installs) <br />', $octaveosxcount, 100 * $octaveosxcount / $osxcount);

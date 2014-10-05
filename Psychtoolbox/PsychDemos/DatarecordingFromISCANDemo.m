@@ -164,7 +164,7 @@ readTimeout = min(readTimeout, 21);
 % reasonable settings: Given special settings, baudrate, inputbuffersize.
 % Also set the special delimiter character code 'lineTerminator' that
 % signals the end of a valid data packet:
-portSettings = sprintf('%s %s BaudRate=%i InputBufferSize=%i Terminator=%i ReceiveTimeout=%f', joker, specialSettings, baudRate, InputBufferSize, lineTerminator, readTimeout );
+portSettings = sprintf('%s %s BaudRate=%i InputBufferSize=%i Terminator=%i ReceiveTimeout=%f ReceiveLatency=0.001', joker, specialSettings, baudRate, InputBufferSize, lineTerminator, readTimeout );
 
 % Open port portSpec with portSettings, return handle:
 myport = IOPort('OpenSerialPort', portSpec, portSettings);

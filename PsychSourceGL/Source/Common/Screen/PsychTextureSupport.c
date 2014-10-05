@@ -149,7 +149,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
     #if PSYCH_SYSTEM == PSYCH_OSX
 	GLenum							textureHint;
     #endif
-	GLenum                          texturetarget, oldtexturetarget;
+	GLenum                          texturetarget, oldtexturetarget = GL_TEXTURE_RECTANGLE_EXT;
 	double							sourceWidth, sourceHeight;
 	GLint                           glinternalFormat = 0, gl_realinternalformat = 0;
 	static GLint                    gl_lastrequestedinternalFormat = 0;
@@ -739,7 +739,7 @@ void PsychFreeTextureForWindowRecord(PsychWindowRecordType *win)
 void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordType *target, double *sourceRect, double *targetRect,
                                double rotationAngle, int filterMode, double globalAlpha)
 {
-        int                     tWidth, tHeight;
+        int                     tWidth = 0, tHeight = 0;
         GLdouble				sourceWidth, sourceHeight;
         GLdouble                sourceX, sourceY, sourceXEnd, sourceYEnd;
 		double                  transX, transY;
@@ -1048,9 +1048,9 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 		}
 		
 		glPushMatrix();
-		glTranslatef(+transX, +transY, 0);
-		glRotatef(rotationAngle, 0, 0, 1);
-		glTranslatef(-transX, -transY, 0);
+		glTranslatef((float) +transX, (float) +transY, 0);
+		glRotatef((float) rotationAngle, 0, 0, 1);
+		glTranslatef((float) -transX, (float) -transY, 0);
 		// Rotation transform ready...
 	}
 

@@ -139,7 +139,7 @@ void		PsychDrawCharText(PsychWindowRecordType* winRec, const char* textString, d
 PsychError	PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* boundingbox, unsigned int stringLengthChars, double* textUniDoubleString, double* xp, double* yp, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor, int swapTextDirection);
 PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* boundingbox, unsigned int stringLengthChars, double* textUniDoubleString, double* xp, double* yp, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor);
 psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isRequired, int *textLength, double **unicodeText);
-psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale);
+psych_bool	PsychSetUnicodeTextConversionLocale(char* mnewlocale);
 const char* PsychGetUnicodeTextConversionLocale(void);
 
 //functions implementing Screen subcommands. 

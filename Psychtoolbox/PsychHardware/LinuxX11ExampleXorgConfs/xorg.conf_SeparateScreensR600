@@ -1,0 +1,45 @@
+# /etc/X11/xorg.conf
+
+Section "ServerLayout"
+	Identifier	"Hydra"
+	Screen	0	"Screen0" 0 0
+	Screen	1	"Screen1" RightOf "Screen0"
+EndSection
+
+Section "Monitor"
+	Identifier   "DVI-1"
+EndSection
+
+Section "Monitor"
+	Identifier   "DVI-0"
+EndSection
+
+Section "Device"
+	Identifier  "Card0"
+        Driver          "ati" # Change this to the driver you want
+        Option          "EnablePageFlip"        "yes"
+        Option          "ColorTiling"           "yes"
+	Screen 0
+	Option		"ZaphodHeads"		"DVI-0"
+EndSection
+
+Section "Device"
+	Identifier  "Card1"
+        Driver          "ati" # Change this to the driver you want
+        Option          "EnablePageFlip"        "yes"
+        Option          "ColorTiling"           "yes"
+	Screen 1
+	Option		"ZaphodHeads"		"DVI-1"
+EndSection
+
+Section "Screen"
+	Identifier "Screen0"
+	Device "Card0"
+	Monitor "DVI-0"
+EndSection
+
+Section "Screen"
+	Identifier "Screen1"
+	Device "Card1"
+	Monitor "DVI-1"
+EndSection
