@@ -45,6 +45,7 @@
 %
 % Peter Scarfe has written a large set of nice and beginner friendly
 % Psychtoolbox tutorial scripts.
+%
 % You can find them at http://peterscarfe.com/ptbtutorials.html
 %
 % If you want to acknowledge use of this software when you publish your
@@ -53,6 +54,11 @@
 %
 % Kleiner M, Brainard D, Pelli D, 2007, "What's new in Psychtoolbox-3?"
 % Perception 36 ECVP Abstract Supplement.
+%
+% If you find this software useful then please consider donating some money
+% to support its ongoing maintenance and development. See:
+%
+% http://psychtoolbox.org/donations
 %
 %
 % Folders and their contents:
