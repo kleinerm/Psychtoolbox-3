@@ -3,17 +3,24 @@ function VideoDVCamCaptureDemo(fullscreen, fullsize, roi, depth, deviceId, movie
 %
 % VideoDVCamCaptureDemo([fullscreen=0][, fullsize=0][, roi][, depth][,deviceId=0][, moviename])
 %
-% NOTE: As of September 2014, DV video camera capture has not been tested at all on
-% MS-Windows or Apple OSX with our new GStreamer-1 video capture engine, so it may
-% or may not work. Testing on Linux showed mixed results. However on Linux there is
-% a slightly hacky way that makes it work somewhat reliably with the new backend, by
-% exposing the camera as a regular video source, so all regular video capture/recording/processing
-% demos can be used for DV capture, without need for special treatment as demonstrated in
-% this demo. Read the section below for further instructions for Linux.
+% NOTE: As of October 2014, DV video camera capture has not been tested at
+% all on MS-Windows, as GStreamer-1 currently doesn't ship with video
+% capture plugins for MS-Windows. On Apple OSX 10.9.5 Mavericks with our
+% new GStreamer-1 video capture engine, video capture from DV did not work,
+% neither with Psychtoolbox, nor with GStreamer command line tools or other
+% independent open source video capture applications. Only Apples Facetime
+% app managed to get a marginally useable video stream from the DV camera.
+% Testing on Linux with this specific demo showed mixed results. However on
+% Linux there is a slightly hacky way that makes it work somewhat reliably
+% with the new backend by exposing the camera as a regular video source, so
+% all regular video capture/recording/processing demos can be used for DV
+% capture, without any need for special treatment like in this demo. Read
+% the section below for further instructions for a reliable DV setup on
+% Linux.
 %
-% VideoDVCamCaptureDemo initializes the first attached and supported DV firewire
-% consumer camera, then shows its video image in a Psychtoolbox window.
-% A press of the ESCape key ends the demo.
+% VideoDVCamCaptureDemo initializes the first attached and supported DV
+% firewire consumer camera, then shows its video image in a Psychtoolbox
+% window. A press of the ESCape key ends the demo.
 %
 % Optional parameters:
 %
@@ -24,64 +31,74 @@ function VideoDVCamCaptureDemo(fullscreen, fullsize, roi, depth, deviceId, movie
 % resolution, ie. so it fills the maximum amount of display area, but
 % preserving the original aspect ratio.
 %
-% 'roi' Set to [0 0 720 576] for a PAL-DV camera and [0 0 720 480] for a NTSC-DV camera.
-% Default is PAL if omitted.
+% 'roi' Set to [0 0 720 576] for a PAL-DV camera and [0 0 720 480] for a
+% NTSC-DV camera. Default is PAL if omitted.
 %
-% 'deviceId' Device index of video capture device. Defaults to system default. You can
-% also specify a gst-launch style string to define a videosource here. Or you can set
-% the special string deviceId = 'X' so builtin spec strings suitable for each operating
-% system will be used.
+% 'deviceId' Device index of video capture device. Defaults to system
+% default. You can also specify a gst-launch style string to define a
+% videosource here. Or you can set the special string deviceId = 'X' so
+% builtin spec strings suitable for each operating system will be used.
 %
-% 'moviename' Name string for selection of filename of a target movie file to
-% which video should be recorded. Defaults to none,ie., no video recording.
+% 'moviename' Name string for selection of filename of a target movie file
+% to which video should be recorded. Defaults to none,ie., no video
+% recording.
 %
 %
 % Loopback setup on Linux for use with new GStreamer-1 video backend:
 %
-% This specific configuration was shown to work at least on Ubuntu 14.04 LTS with
-% a Sony PAL-DV firewire camera. After following the setup steps, demos like our
-% standard VideoCaptureDemo, VideoRecordingDemo, ... worked without any special
-% configuration or treatment of DV cameras.
+% This specific configuration was shown to work at least on Ubuntu 14.04
+% LTS with a Sony PAL-DV firewire camera. After following the setup steps,
+% demos like our standard VideoCaptureDemo, VideoRecordingDemo, ... worked
+% without any special configuration or treatment of DV cameras.
 %
-% Here you need to install a Video4Linux2 loopback kernel module. It will allow
-% to create virtual video sources, from which Psychtoolbox can read/capture/process
-% record live video. Then some external application can feed video into those virtual
-% sources. You then attach an external command line DV capture session as video source.
+% Here you need to install a Video4Linux2 loopback kernel module. It will
+% allow to create virtual video sources, from which Psychtoolbox can
+% read/capture/process record live video. Then some external application
+% can feed video into those virtual sources. You then attach an external
+% command line DV capture session as video source.
 %
 % 1. Install the package "v4l2loopback-dkms" to get the kernel module installed and
-%     loaded. A "sudo apt-get install v4l2loopback-dkms" on Ubuntu 14.04-LTS and later
-%     distributions should do the trick. The package is probably also available on Debian,
-%     other Debian/Ubuntu derived distros etc. Or you get the most recent version to compile
-%     and install from source code from the homepage of the project:
-%     https://github.com/umlaeute/v4l2loopback
+%    loaded. A "sudo apt-get install v4l2loopback-dkms" on Ubuntu 14.04-LTS
+%    and later distributions should do the trick. The package is probably
+%    also available on Debian, other Debian/Ubuntu derived distros etc. Or
+%    you get the most recent version to compile and install from source
+%    code from the homepage of the project:
+%    https://github.com/umlaeute/v4l2loopback
 %
 % 2. You may or may not need to "sudo modprobe v4l2loopback" on first use.
 %
-% 3. Then you use a GStreamer video capture pipeline launched from a terminal window
-%     to connect to your DV camera, capture live video and feed it into the virtual video loopback
-%     device. An example launch line can look like this:
+% 3. Then you use a GStreamer video capture pipeline launched from a terminal
+%    window to connect to your DV camera, capture live video and feed it
+%    into the virtual video loopback device. An example launch line can
+%    look like this:
 %
-%     gst-launch dv1394src ! dvdemux ! dvdec ! v4l2sink device=/dev/video0
+%    gst-launch dv1394src ! dvdemux ! dvdec ! v4l2sink device=/dev/video0
 %
-%     This would make live video from the first connected DV camera available on /dev/video0.
-%     See https://github.com/umlaeute/v4l2loopback/wiki for more detailed instructions.
+%    This would make live video from the first connected DV camera
+%    available on /dev/video0. See
+%    https://github.com/umlaeute/v4l2loopback/wiki for more detailed
+%    instructions.
 %
-%     If this doesn't work for you with GStreamer-1 you may need to install good ol' GStreamer-0.10
-%     and instead use gst-launch-0.10 to select for the old implementation.
+%    If this doesn't work for you with GStreamer-1 you may need to install
+%    good old GStreamer-0.10 in addition to the already installed
+%    GStreamer-1 and instead use the gst-launch-0.10 command instead of the
+%    gst-launch command to select for the old implementation.
 %
-% 4. Psychtoolbox video capture functions should now report and be able to use a new virtual
-%     video capture device with a name like "Dummy video device 0000" or some name defined
-%     by you. Psychtoolbox should be able to video capture or record video from that device aka
-%     your DV video camera.
+% 4. Psychtoolbox video capture functions should now report and be able to
+%    use a new virtual video capture device with a name like "Dummy video
+%    device 0000" or some name defined by you. Psychtoolbox should be able
+%    to video capture or record video from that device aka your DV video
+%    camera.
 %
-%     The Wiki of v4l2loopback describes more elaborate setups, e.g., for capturing from multiple
-%     video DV cameras.
+%    The Wiki of v4l2loopback describes more elaborate setups, e.g., for
+%    capturing from multiple video DV cameras.
 %
 
 % History:
 % 27-Dec-2013  mk  Written.
 % 26-Aug-2014  mk  Adapted to GStreamer-1.4.0+ backend.
 % 19-Sep-2014  mk  Update instructions for GStreamer-1.x, drop dead code for GStreamer-1.
+% 05-Oct-2014  mk  Clarify OSX doesn't work at all. Deuglify help text formatting a bit.
 
 PsychDefaultSetup(1);
 
@@ -161,6 +178,7 @@ try
         
         if IsOSX
           % This should work on OSX, if at all. If this doesn't work then game-over (Untested):
+          warning('To our knowledge (as of October 2014, GStreamer-1.4.0) video capture from DV cameras on OSX does not work correctly, so this will likely fail.\n');
           capturebinspec = 'avfvideosrc name=ptbdvsource';
         end
       else
