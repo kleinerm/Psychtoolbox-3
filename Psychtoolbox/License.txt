@@ -117,7 +117,7 @@
 %
 %
 % The tcp_udp_ip toolbox under Psychtoolbox/PsychHardware/iViewXToolbox/tcp_udp_ip/
-% is Copyright Peter Rydesäter et al., 1998-2003. Licensed under GPL v2 and
+% is Copyright Peter Rydesaeter et al., 1998-2003. Licensed under GPL v2 and
 % later, with special linking exception for linking against non-free
 % software. See its included license.txt file for details. Contains also
 % special low-latency enhancements to the pnet mex file by Mario Kleiner.
@@ -200,6 +200,14 @@
 % The earth surface JPEG-image used in MinimalisticOpenGLDemo.m is taken
 % from the Linux/KDE application kdeworldclock. kdeworldclock and its
 % components are licensed under GPL v2+.
+%
+% The "Heart logo" of Gratipay in the startup splash screen is taken
+% from www.gratipay.com. They permit free use of their materials
+% (See "Terms and Conditions" section, section "Disclaimer of copyright")
+% by attributing their material to the public domain under the
+% "CC0 1.0 Universal Public Domain Dedication"
+% (http://creativecommons.org/publicdomain/zero/1.0/) - Thanks!
+%
 %
 % All other image files and movie files     - MIT license.
 %
