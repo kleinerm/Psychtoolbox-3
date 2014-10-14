@@ -60,14 +60,14 @@ function [versionString, versionStructure]=PsychtoolboxVersion
 %
 % see also: Screen('Version')
 
-%   2/9/01      awi     added fullfile command for platform-independent pathname
-%   6/29/02     dgp     Use new PsychtoolboxRoot function to cope with user-changed folder names.
-%   7/12/04     awi     ****** OS X-specific fork from the OS 9 version *******
+%   2/9/01     awi      added fullfile command for platform-independent pathname
+%   6/29/02    dgp      Use new PsychtoolboxRoot function to cope with user-changed folder names.
+%   7/12/04    awi      ****** OS X-specific fork from the OS 9 version *******
 %                       Noted mex file versioning.
-%   7/26/04     awi     Partitioned help and added OS X section.  Enhanced
+%   7/26/04    awi      Partitioned help and added OS X section.  Enhanced
 %                       OS9+Windows section.
-%   10/4/05	   awi      Note here that dgp changed "IsWindows" to "IsWin" at unknown date prior
-%						between 7/26/04 and 10/4/05.
+%   10/4/05    awi      Note here that dgp changed "IsWindows" to "IsWin" at unknown date prior
+%                       between 7/26/04 and 10/4/05.
 %
 %   5/5/06     mk       Tries to query info from Subversion and displays info about last date
 %                       of change, SVN revision and flavor. This code is pretty experimental and
@@ -88,7 +88,7 @@ if ~isfield(Psychtoolbox,'version')
     Psychtoolbox.version.flavor='';
     Psychtoolbox.version.revision=0;
     Psychtoolbox.version.revstring='';
-    Psychtoolbox.version.websvn='';
+    Psychtoolbox.version.websvn = 'https://github.com/Psychtoolbox-3/Psychtoolbox-3';
 
     file=fullfile(PsychtoolboxRoot,'Contents.m');
     f=fopen(file,'r');
@@ -115,11 +115,11 @@ if ~isfield(Psychtoolbox,'version')
         else
             infourl = 'http://neuro.debian.net/pkgs/matlab-psychtoolbox-3.html';
         end
-        
+
         % Build final version string:
         Psychtoolbox.version.string = sprintf('%d.%d.%d - Flavor: %s - %s\nFor more info visit:\n%s', Psychtoolbox.version.major, Psychtoolbox.version.minor, Psychtoolbox.version.point, ...
             Psychtoolbox.version.flavor, Psychtoolbox.version.revstring, infourl);
-        
+
         % Retrieve the date of the Debian release:
         Psychtoolbox.date = sscanf(result, 'psychtoolbox-3 (%*d.%*d.%*d.%d.%*s');
     else
@@ -203,14 +203,6 @@ if ~isfield(Psychtoolbox,'version')
             ss=s(n:end);
             Psychtoolbox.date=ss(min(find(ss-' ')):end); %#ok<MXFND>
         end
-    end
-    
-    if isempty(Psychtoolbox.version.websvn)
-        % Build final GIT URL: This is the location where one can find detailed info about this working copy:
-        % MK TODO: This doesn't have much value as long as we can't
-        % correlate SVN revisions to GIT SHA-1's or something similar.
-        % Just put in our main GitHub repo URL:
-        Psychtoolbox.version.websvn = 'https://github.com/Psychtoolbox-3/Psychtoolbox-3';
     end
 end
 
