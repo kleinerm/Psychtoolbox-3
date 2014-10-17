@@ -7,56 +7,64 @@ function [status, error] = NetStation(varargin)
 % Code is based on Rick Gilmore's routines, 2005. Thanks!
 % Code adapted to PCs (and Macs with Intel architecture) by Zhao Fan, 2008.
 % This function was modified by Matt Mollison to accommodate sending more
-%   than just int16s to Net Station (logical, int8, int16, int32, single,
-%   double, and char).
+% than just int16s to Net Station (logical, int8, int16, int32, single,
+% double, and char).
 %
 %
 % General syntax
 %
-% 	[status, error] = NetStation('command', ...)
+%   [status, error] = NetStation('command', ...)
 %
-% 	if status == 0, the command has been succesfully executed
-% 	otherwise see string "error" for error message
+%   if status == 0, the command has been succesfully executed
+%   otherwise see string "error" for error message
 %
 % Commands
 %
-% 	NetStation('Connect', host [, port])
+%   NetStation('Connect', host [, port])
 %
 %           Establishes TCP/IP connection to the NetStation host computer.
 %           "host" is the hostname as a string (e.g., 'anything.com' or '187.14.176.12')
 %           "port" is the ethernet port to be used. Default is 55513.
 %
-% 	NetStation('Disconnect')
+%   NetStation('Disconnect')
 %
 %           Disconnects from NetStation host.
 %
-% 	NetStation('Synchronize' [, SynchLimit])
+%   NetStation('Synchronize' [, SynchLimit])
 %
 %           Synchronize to the connected host. "SynchLimit" could specify the maximum allowed difference
 %           IN MILLISECONDS. Default is 2.5 ms.
 %
-% 	NetStation('StartRecording')
+%   NetStation('StartRecording')
 %
 %           Instructs NetStation to start recording.
 %
-% 	NetStation('StopRecording')
+%   NetStation('StopRecording')
 %
 %           Instructs NetStation to stop recording.
 %
-% 	NetStation('Event' [,code] [,starttime] [,duration] [,keycode1] [,keyvalue1] [...])
+%   NetStation('Event' [,code] [,starttime] [,duration] [,keycode1] [,keyvalue1] [...])
+%   NetStation('EventNoAck' [,code] [,starttime] [,duration] [,keycode1] [,keyvalue1] [...])
 %
-%           Send an event to the NetStation host.
+%           Send an event to the NetStation host. The 'EventNoAck' variant doesn't
+%           wait for acknowledgement of reception of the event, whereas the 'Event'
+%           version does wait.
 %
-% 			"code"		The 4-char event code (e.g., 'STIM')
-% 						Default: 'EVEN'
-% 			"starttime"	The time IN SECONDS when the event started. The VBL time
-% 						returned by Screen('Flip') can be passed here as a parameter.
-% 						Default: current time.
-% 			"duration"	The duration of the event IN SECONDS.
-% 						Default: 0.001.
-% 			"keycode"	The 4-char code of a key (e.g., 'tria').
-% 			"keyvalue"	The value of the key (any number or string)
-% 			The keycode-keyvalue pairs can be repeated arbitrary times.
+%     "code"  The 4-char event code (e.g., 'STIM')
+%             Default: 'EVEN'
+%     "starttime" The time IN SECONDS when the event started. The VBL time
+%                 returned by Screen('Flip') can be passed here as a parameter.
+%                 Default: current time.
+%     "duration"  The duration of the event IN SECONDS.
+%                 Default: 0.001.
+%     "keycode"   The 4-char code of a key (e.g., 'tria').
+%     "keyvalue"  The value of the key (any number or string)
+%                 The keycode-keyvalue pairs can be repeated arbitrary times.
+%
+%   NetStation('FlushReadbuffer');
+%
+%            Flushes the read buffer.
+%
 %
 %   Uses a modified version of the TCP/UDP/IP Toolbox 2.0.5, a third party GPL'ed
 %   open source toolbox, which is included in Psychtoolbox,
@@ -68,12 +76,13 @@ function [status, error] = NetStation(varargin)
 %   Created by Gergely Csibra, 2006-2008
 %   Based on Rick Gilmore's routines, 2005
 %   Adapted to PC by Zhao Fan, 2008
+%   Improved by Justin Ales 2014. 'eventnoack' and 'flushreadbuffer' added.
 %
-
 
 persistent NSIDENTIFIER;
 persistent NSSTATUS; %#ok<USENS>
 persistent NSRECORDING;
+persistent SYNCHEPOCH; %This is to fix the bug that large epochs (like unix) overflows the int32 value --JMA
 
 DefaultSynchLimit=2.5;		% The accuracy of synchronization in milliseconds
 
@@ -98,7 +107,9 @@ else
                 end
                 port=55513;
                 if nargin > 2
+                    if ~isempty(varargin{3})
                     port = varargin{3};
+                    end
                 end
                 c = pnet( 'tcpconnect', NetStationHostName, port );
                 if(c < 0)
@@ -149,6 +160,7 @@ else
                 status = 1;
             else
                 NSSynchLimit = DefaultSynchLimit;
+                SYNCHEPOCH = GetSecs();
                 if nargin > 1
                     NSSynchLimit = varargin{2};
                 end
@@ -160,10 +172,10 @@ else
                 while df > NSSynchLimit && n < 100
                     send(NSIDENTIFIER,'A');
                     receive(NSIDENTIFIER,1);
-                    now=GetSecs();
+                    now=GetSecs()-SYNCHEPOCH;
                     send(NSIDENTIFIER,'T',int32(now*1000));
                     receive(NSIDENTIFIER,1);
-                    ack=GetSecs();
+                    ack=GetSecs()-SYNCHEPOCH;
                     df=1000*(ack-now);
                     status=0;
                     n=n+1;
@@ -196,7 +208,7 @@ else
                 end
                 status=0;
             end
-        case 'event'
+        case {'event' 'eventnoack'}
             if isempty(NSIDENTIFIER) || (NSIDENTIFIER < 0)
                 fprintf('%e',NSIDENTIFIER);
                 status = 1;
@@ -207,9 +219,9 @@ else
                     event=[char(varargin{2}) '    '];
                 end
                 if nargin < 3
-                    start=GetSecs();
+                    start=GetSecs()-SYNCHEPOCH;
                 else
-                    start=varargin{3};
+                    start=varargin{3}-SYNCHEPOCH;
                 end
                 if nargin < 4
                     duration=.001;
@@ -219,8 +231,6 @@ else
                 if isnumeric(duration)
                     if duration > 120
                         duration=.001;
-                    %else
-                    %    duration= duration;
                     end
                 end
 
@@ -266,6 +276,13 @@ else
                 end
                 send(NSIDENTIFIER,'D',uint16(15 + nbytes_total),int32(start*1000),uint32(duration*1000),event(1:4),int16(0),uint8(keyn));
                 
+                if strcmpi(varargin{1},'event')
+                    rep=receive(NSIDENTIFIER,1); %#ok<NASGU>
+                    status=0;
+                else
+                    status=0;
+                end
+
                 for k=1:keyn
                     id=[char(varargin{(k-1)*2+5}), '    '];
                     
@@ -298,10 +315,17 @@ else
                     end
                     send(NSIDENTIFIER,id(1:4),dtype,uint16(nbytes),val);
                 end
-
-                rep=receive(NSIDENTIFIER,1); %#ok<NASGU>
-                status=0;
             end
+
+        case 'flushreadbuffer'
+            data='1';
+            bufferCount=0;
+            while ~isempty(data),
+                data=pnet(NSIDENTIFIER,'read',1 ,'char',[],[],'noblock');
+                bufferCount = bufferCount+1;
+            end;
+
+            status = 0;
         otherwise
             status=7;
     end
