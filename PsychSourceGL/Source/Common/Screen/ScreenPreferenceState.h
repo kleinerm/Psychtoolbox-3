@@ -1,27 +1,30 @@
 /*
-	ScreenPreferenceState.h		
-
-	AUTHORS:
-		
-		Allen.Ingling@nyu.edu					awi
-		mario dot kleiner at tuebingen.mpg.de	mk
-
-	PLATFORMS:	
-	
-		All.
-
-	HISTORY:
-	
-		2/28/04  awi		Created.   
-		5/30/05  mk         New preference setting screenSkipSyncTests.
-		5/30/05  mk         New preference setting screenVisualDebugLevel.
-		3/7/06   awi        Added state for new preference flag SuppressAllWarnings. 
-
-	DESCRIPTION:
-	
-		This file holds state for the Screen Preference command
-
-*/
+ *    ScreenPreferenceState.h
+ *
+ *    AUTHORS:
+ *
+ *    Allen.Ingling@nyu.edu           awi
+ *    mario.kleiner.de@gmail.com      mk
+ *
+ *    PLATFORMS:
+ *
+ *        All.
+ *
+ *    HISTORY:
+ *
+ *        2/28/04  awi        Created.
+ *        5/30/05  mk         New preference setting screenSkipSyncTests: If set to TRUE, self-test and calibration will be as
+ *                            short and sloppy as possible and some problematic conditions will not cause an abort.
+ *                            One can trade-off correctness and accuracy of stimulus presentation against level of annoyance
+ *                            during development/debugging of new experiments.
+ *        9/30/05  mk         new setting VisualDebugLevel: Defines how much visual feedback PTB should give about errors and
+ *                            state: 0=none, 1=only errors, 2=also warnings, 3=also infos, 4=also blue bootup screen, 5=also visual test sheets.
+ *        3/7/06   awi        Added state for new preference flag SuppressAllWarnings.
+ *
+ *    DESCRIPTION:
+ *
+ *        This file holds state for the Screen Preference command.
+ */
 
 #include "Screen.h"
 
@@ -98,6 +101,10 @@ void PsychPrefStateSet_VBLTimestampingMode(int level);
 // Override for display endline aka VTOTAL:
 int PsychPrefStateGet_VBLEndlineOverride(void);
 void PsychPrefStateSet_VBLEndlineOverride(int level);
+
+// Override for display endline multiplicator, relative to VACTIVE:
+double PsychPrefStateGet_VBLEndlineMaxFactor(void);
+void PsychPrefStateSet_VBLEndlineMaxFactor(double inputDoubleValue);
 
 // Default for selection of video capture engine:
 int PsychPrefStateGet_VideoCaptureEngine(void);
