@@ -393,10 +393,25 @@
 % fullscreen windows and go out of the way, if you've enabled this in
 % their settings:
 %
-% - On GNOME-3, no setup is required.
+% - On GNOME-3, no special setup is required.
+%
 % - On KDE, do this: Open "KDE System Settings" -> "Desktop Effects" ->
-% "Advanced" Tab -> "Suspend desktop effects for fullscreen windows"
-% -> Check the checkbox -> "Apply" -> Done.
+%   "Advanced" Tab -> "Suspend desktop effects for fullscreen windows"
+%   -> Check the checkbox -> "Apply" -> Done.
+%
+%   If you still get warnings or errors by PTB related to display timing,
+%   or want maximum graphics performance, you can also try to completely
+%   disable desktop composition, either by pressing SHIFT + ALT + F12
+%   before the beginning and after the end of your experiment session, to
+%   completely disable the compositor during the runtime of your experiment
+%   script. Or you disable composition completely: Open "KDE System Settings"
+%   -> "Desktop Effects" -> Uncheck the "Enable desktop effects at startup"
+%   checkbox, so KDE will startup with its non-composited GUI. This GUI is
+%   still very nice looking and ergonomic, but frees up additional
+%   resources for PTB's graphics and timing requirements. This measure may
+%   be especially effective or needed when using an Intel graphics card to
+%   free up some resources.
+%
 % - Ubuntu Unity under Ubuntu Linux 12.04.2 LTS or later requires no setup.
 %
 % If you use a different desktop compositor, and on a few versions of
