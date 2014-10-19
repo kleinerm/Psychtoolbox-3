@@ -2510,6 +2510,16 @@ if userstereomode > 0 || stereoMode > 0
             % Ask ViewPixx to enable its scanning backlight for faster /
             % ghost-free response:
             PsychDataPixx('EnableVideoScanningBacklight');
+            
+            % Tell Screen() to tolerate a VBLANK interval that is up to 50%
+            % the height of VACTIVE, ie. allow a max VTOTAL = 1.5 * VACTIVE.
+            % This is needed because Screen's beamposition query startup
+            % tests may otherwise falsely conclude broken beamposition
+            % query support due to the unusually large VBLANK interval used
+            % by ViewPixx - and possibly other VPixx devices - in frame
+            % sequential stereo mode. Our normal rejection threshold is 25%
+            % or 1.25, now we raise it to 50% or 1.5:
+            Screen('Preference', 'VBLEndlineOverride', [], 1.5);
         else
             % ViewPixx shall disable scanning backlight by default:
             PsychDataPixx('DisableVideoScanningBacklight');

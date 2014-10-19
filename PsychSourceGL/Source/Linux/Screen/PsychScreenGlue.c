@@ -536,8 +536,12 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
                 printf("PTB-DEBUG: Mapping %p bytes...\n", region->size);
                 fflush(NULL);
             }
-            
+
             ret = pci_device_map_range(gpu, region->base_addr, region->size, PCI_DEV_MAP_FLAG_WRITABLE, (void**) &gfx_cntl_mem);
+            // Mapping MMIO for write access is a nono on Intel with latest kernels, so retry a readonly mapping:
+            if ((ret == EAGAIN) && (fDeviceType == kPsychIntelIGP)) {
+                ret = pci_device_map_range(gpu, region->base_addr, region->size, 0, (void**) &gfx_cntl_mem);
+            }
         }
         else {
             // Unsupported GPU type:

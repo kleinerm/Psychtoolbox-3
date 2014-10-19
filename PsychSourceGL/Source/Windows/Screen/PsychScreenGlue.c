@@ -1091,7 +1091,7 @@ void PsychTestDDrawBeampositionQueries(int screenNumber)
 		}
 		
 		// maxvpos is maximum valid scanline:
-		maxvpos = (psych_uint32) (1.25 * ((float) maxvpos));
+		maxvpos = (psych_uint32) (((float) PsychPrefStateGet_VBLEndlineMaxFactor()) * ((float) maxvpos));
 		
 		// We measure for 500 msecs -- That is at least 30 video refresh cycles:
 		vbldetectcount = 0; 

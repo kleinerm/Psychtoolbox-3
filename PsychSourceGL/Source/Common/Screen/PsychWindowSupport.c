@@ -1195,12 +1195,12 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	
 	// Is the VBL endline >= VBL startline - 1, aka screen height?
 	// Or is it outside a reasonable interval around vbl_startline or 2 * vbl_startline?
-	if ((VBL_Endline < (int) vbl_startline - 1) || ((VBL_Endline > vbl_startline * 1.25) && ((VBL_Endline > vbl_startline * 2.25) || (VBL_Endline < vbl_startline * 2.0)))) {
+	if ((VBL_Endline < (int) vbl_startline - 1) || ((VBL_Endline > vbl_startline * PsychPrefStateGet_VBLEndlineMaxFactor()) && ((VBL_Endline > vbl_startline * 2.25) || (VBL_Endline < vbl_startline * 2.0)))) {
 		// Completely bogus VBL_Endline detected! Warn the user and mark VBL_Endline
 		// as invalid so it doesn't get used anywhere:
 		if(!sync_trouble && PsychPrefStateGet_Verbosity()>1) {
 			printf("\nPTB-WARNING: Couldn't determine end-line of vertical blanking interval for your display! Trouble with beamposition queries?!?\n");
-			printf("PTB-WARNING: Detected end-line is %i, which is either lower or more than 25%% higher than vbl startline %i --> Out of sane range!\n", VBL_Endline, vbl_startline);
+            printf("PTB-WARNING: Detected end-line is %i, which is either lower or more than %f times higher than vbl startline %i --> Out of sane range!\n", VBL_Endline, PsychPrefStateGet_VBLEndlineMaxFactor(), vbl_startline);
 		}
 		sync_trouble = true;
 		ifi_beamestimate = 0;

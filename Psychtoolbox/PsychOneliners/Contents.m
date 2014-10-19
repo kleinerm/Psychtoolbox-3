@@ -75,6 +75,7 @@
 %   NameFrequency           - Nicely format clock rate for human readers.
 %   NearestResolution       - Find a screen resolution that most closely matches a requested resolution.
 %   OSName                  - Convential English-language name of your operating system.
+%   overrideBuiltInFunction - Temporarily run a different version of some function other than what is on the path.
 %   PackColorImage          - Pack three color planes into one m by n by three matrix.
 %   ProgressBar             - Displays a progress bar in MATLAB's command window.
 %   PsychDebugWindowConfiguration - Enable special debug window configuration to aid single display debugging.
