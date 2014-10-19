@@ -1,16 +1,17 @@
 /*
   PsychToolbox3/Source/Linux/PsychHID/PsychHIDStandardInterfaces.c
-  
+
   PROJECTS: PsychHID only.
-  
+
   PLATFORMS:  Linux.
-  
+
   AUTHORS:
-  mario.kleiner@tuebingen.mpg.de    mk
+
+  mario.kleiner.de@gmail.com    mk
 
   HISTORY:
   27.07.2011     mk     Created.
-  
+
   TO DO:
 
 */
@@ -693,9 +694,12 @@ int PsychHIDGetDefaultKbQueueDevice(void)
     // a keyboard or the virtual XTEST keyboard:
     for(deviceIndex = 0; deviceIndex < ndevices; deviceIndex++) {
         dev = &info[deviceIndex];
-        if ((dev->use == XISlaveKeyboard) && !strstr(dev->name, "XTEST") && !strstr(dev->name, "Button") && !strstr(dev->name, "Bus")) return(deviceIndex);
+        if ((dev->use == XISlaveKeyboard) && !strstr(dev->name, "XTEST") && !strstr(dev->name, "Button") && !strstr(dev->name, "Bus") &&
+            !strstr(dev->name, "iSight") && !strstr(dev->name, "Receiver")) {
+            return(deviceIndex);
+        }
     }
-    
+
     // Nothing found? If so, abort:
     PsychErrorExitMsg(PsychError_user, "Could not find any useable keyboard device!");
 }

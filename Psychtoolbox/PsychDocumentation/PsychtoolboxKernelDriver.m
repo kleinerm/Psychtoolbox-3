@@ -84,6 +84,21 @@
 % In a terminal type:
 % sudo kextload /System/Library/Extensions/PsychtoolboxKernelDriver.kext
 %
+% If you are running OSX 10.10 "Yosemite" or later and the driver fails to
+% load, then you will need to disable cryptographic kext signature
+% verification globally on your operating system, as that new security
+% mechanism will prevent the kernel driver from loading. This will make the
+% kernel driver load, but reduce resistance of your system against
+% potential hacker/virus/trojan horses attacks against your machine. It is
+% up to you if you want a more secure system, or a system with research
+% grade visual stimulation timing - life is full of tradeoffs...
+%
+% To disable the security mechanism and make the driver load on 10.10:
+%
+% 1. In a terminal type: sudo nvram boot-args="kext-dev-mode=1"
+% 2. Reboot your machine.
+%
+%
 % How to upgrade with a more recent version:
 % ------------------------------------------
 %

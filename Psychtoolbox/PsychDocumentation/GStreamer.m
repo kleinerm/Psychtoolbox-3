@@ -39,9 +39,8 @@
 %
 % You must install GStreamer if you want to use multi-media functions! If
 % you don't intend to use multi-media functions then installation of
-% GStreamer is optional on MS-Windows, but possibly not on OSX. Screen will
-% work normally, but abort with an error message if you try to use any multi-
-% media functions.
+% GStreamer is optional. Screen will work normally, but abort with an error
+% message if you try to use any multi-media functions.
 %
 % Download and install the latest 64-Bit ("x86_64") GStreamer runtimes from:
 %
@@ -49,15 +48,15 @@
 %
 % You should check for and install the latest runtime packages available for your
 % system for best reliability and performance. However, as a convenience, at time
-% of this writing (September 2014) the required downloads would be:
+% of this writing (October 2014) the required downloads would be:
 %
-% For MS-Windows: 64-Bit Intel runtime v1.4.1
+% For MS-Windows: 64-Bit Intel runtime v1.4.3
 %
-% <http://gstreamer.freedesktop.org/data/pkg/windows/1.4.1/gstreamer-1.0-x86_64-1.4.1.msi>
+% <http://gstreamer.freedesktop.org/data/pkg/windows/1.4.3/gstreamer-1.0-x86_64-1.4.3.msi>
 %
-% For Apple OSX: Universal runtime v1.4.1
+% For Apple OSX: Universal runtime v1.4.3
 %
-% <http://gstreamer.freedesktop.org/data/pkg/osx/1.4.1/gstreamer-1.0-1.4.1-universal.pkg>
+% <http://gstreamer.freedesktop.org/data/pkg/osx/1.4.3/gstreamer-1.0-1.4.3-universal.pkg>
 %
 %
 % When the installer asks you to select the components it should install,
