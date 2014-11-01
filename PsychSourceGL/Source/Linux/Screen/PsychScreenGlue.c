@@ -797,8 +797,8 @@ static int x11VidModeErrorHandler(Display* dis, XErrorEvent* err)
   if (x11_errorbase == 0) return(0);
 
   // Setup: Check if its an XVidMode-Error - the only one we do handle.
-  if (err->error_code >=x11_errorbase && err->error_code < x11_errorbase + XF86VidModeNumberErrors ||
-      err->error_code == BadValue) {
+  if (((err->error_code >=x11_errorbase) && (err->error_code < x11_errorbase + XF86VidModeNumberErrors)) ||
+      (err->error_code == BadValue)) {
     // We caused some error. Set error flag:
     x11_errorval = 1;
   }
@@ -2290,7 +2290,7 @@ void PsychHideCursor(int screenNumber, int deviceIdx)
   static Cursor nullCursor = -1;
 
   // Check for valid screenNumber:
-  if(screenNumber >= numDisplays < screenNumber < 0) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychHideCursor() is out of range"); //also checked within SCREENPixelSizes
+  if((screenNumber >= numDisplays) || (screenNumber < 0)) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychHideCursor() is out of range"); //also checked within SCREENPixelSizes
 
   // Not available on non-X11:
   if (!displayCGIDs[screenNumber]) return;
@@ -3107,7 +3107,7 @@ PsychError PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds, int
 		if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: PsychOSSynchronizeDisplayScreens(): About to resynchronize all display heads by use of a 1 second CRTC stop->start cycle:\n");
 		
 		// A little pretest...
-		if (PsychPrefStateGet_Verbosity() > 3) ("Pretest...\n");
+		if (PsychPrefStateGet_Verbosity() > 3) printf("Pretest...\n");
 		for (i = 0; i < 10; i++) { 
 			beampos0 = GetBeamPosition(0);
 			beampos1 = GetBeamPosition(1);
