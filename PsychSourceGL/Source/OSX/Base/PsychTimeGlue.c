@@ -538,14 +538,42 @@ psych_uint64 PsychAutoLockThreadToCores(psych_uint64* curCpuMask)
     return(INT64_MAX);
 }
 
+/* Query / derive / return OSX minor version from Darwin kernel major version.
+ * This is a makeshift replacement for Gestalt(), which was sadly deprecated by
+ * the iPhone company. It only gives us the x in OSX 10.x.y, but that's usually
+ * all we need.
+ */
+int PsychGetOSXMinorVersion(void)
+{
+    int mib[2] = { CTL_KERN, KERN_OSRELEASE };
+    int minorVersion;
+    char tempStr[256];
+    size_t tempStrSize = sizeof(tempStr);
+
+    // Query kernel version string:
+    if (sysctl(mib, 2, tempStr, &tempStrSize, NULL, 0)) {
+        printf("PTB-WARNING: Could not query Darwin kernel version! This will end badly...\n");
+    }
+
+    // Parse out major version: That - 4 == OSX minor version:
+    if (1 != sscanf(tempStr, "%i", &minorVersion)) {
+        printf("PTB-WARNING: Could not parse Darwin kernel major version! This will end badly...\n");
+    }
+
+    minorVersion = minorVersion - 4;
+
+    // Return minorVersion of the OSX version number: 10.minorVersion
+    return(minorVersion);
+}
+
 /* Report official support status for this operating system release.
  * The string "Supported" means supported.
  * Other strings describe lack of support.
  */
 const char* PsychSupportStatus(void)
 {
-    // Operating system major and minor version:
-    SInt32 osMajor, osMinor;
+    // Operating system minor version:
+    int osMinor;
 
     // Init flag to -1 aka unknown:
     static int  isSupported = -1;
@@ -555,17 +583,16 @@ const char* PsychSupportStatus(void)
         // First call: Do the query!
 
         // Query OS/X version:
-        Gestalt(gestaltSystemVersionMajor, &osMajor);
-        Gestalt(gestaltSystemVersionMinor, &osMinor);
+        osMinor = PsychGetOSXMinorVersion();
 
         // Only OSX 10.10 is officially supported:
-        isSupported = (osMajor == 10 && osMinor == 10) ? 1 : 0;
+        isSupported = (osMinor == 10) ? 1 : 0;
 
         if (isSupported) {
-            sprintf(statusString, "OSX %i.%i Supported.", (int) osMajor, (int) osMinor);
+            sprintf(statusString, "OSX 10.%i Supported.", osMinor);
         }
         else {
-            sprintf(statusString, "OSX version %i.%i is not supported or tested anymore.", (int) osMajor, (int) osMinor);
+            sprintf(statusString, "OSX version 10.%i is not supported or tested anymore.", osMinor);
         }
     }
 

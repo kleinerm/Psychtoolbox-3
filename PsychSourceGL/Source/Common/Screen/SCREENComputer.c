@@ -59,6 +59,9 @@ static char seeAlsoString[] = "";
 //for getting the ethernet MAC address
 #include "GetEthernetAddress.h"
 
+// For OSX version query:
+#include "PsychCocoaGlue.h"
+
 static void ReportSysctlError(int errorValue)
 {
     psych_bool  foundError;
@@ -104,7 +107,7 @@ PsychError SCREENComputer(void)
     long            gestaltResult;
     OSErr           gestaltError;
     int             i,strIndex, bcdDigit, lengthSystemVersionString;
-    SInt32          osMajor, osMinor, osBugfix;
+    int             osMajor, osMinor, osBugfix;
     char            systemVersionStr[256];
 
     //all subfunctions should have these two lines
@@ -334,10 +337,7 @@ PsychError SCREENComputer(void)
     free(ethernetMACStr);
 
     //Add the system version string:
-    Gestalt(gestaltSystemVersionMajor, &osMajor);
-    Gestalt(gestaltSystemVersionMinor, &osMinor);
-    Gestalt(gestaltSystemVersionBugFix, &osBugfix);
-
+    PsychCocoaGetOSXVersion(&osMajor, &osMinor, &osBugfix);
     sprintf(systemVersionStr, "Mac OS %i.%i.%i", osMajor, osMinor, osBugfix);
 
     //embed it in the return struct

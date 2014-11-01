@@ -12,7 +12,7 @@
 	AUTHORS:
 	
 		Allen.Ingling@nyu.edu           awi
-        mario.kleiner@tuebingen.mpg.de  mk
+        mario.kleiner.de@gmail.com      mk
 
 	DESCRIPTION:
 	
@@ -42,18 +42,14 @@
 	HISTORY:
 		
 		12/6/04		awi		Created.
-		12/7/04		awi		Reteurn the error code instead of exiting with an error. 
-		
-  
-  
+		12/7/04		awi		Return the error code instead of exiting with an error.
+
 */
 
-
 #include "Gestalt.h"
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
-
-//
-PsychError GESTALTGestalt(void) 
+PsychError GESTALTGestalt(void)
 {
 	char					*selectorCString;
 	OSType					selectorConstant;
@@ -79,16 +75,12 @@ PsychError GESTALTGestalt(void)
 		returnResponse=PsychAllocOutBooleanMatArg(1, kPsychArgOptional, 1, 32, 1, &responseArray);
 		if(returnResponse){
 			for(i=0;i<32;i++){
-				if(1<<i & responseLong) 
+				if(1<<i & responseLong)
 					responseArray[31-i]=TRUE;
 				else
 					responseArray[31-i]=FALSE;
 			}
 		}
 	}
-    return(PsychError_none);	
+    return(PsychError_none);
 }
-
-
-
-

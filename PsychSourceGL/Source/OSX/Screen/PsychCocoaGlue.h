@@ -38,5 +38,5 @@ void PsychCocoaSetWindowLevel(void* window, int inLevel);
 void PsychCocoaSetWindowAlpha(void* window, float inAlpha);
 void PsychCocoaSetThemeCursor(int inCursor);
 void PsychCocoaPreventAppNap(psych_bool preventAppNap);
-
+void PsychCocoaGetOSXVersion(int* major, int* minor, int* patchlevel);
 #endif
