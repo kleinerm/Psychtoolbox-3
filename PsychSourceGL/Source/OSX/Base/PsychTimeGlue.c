@@ -35,18 +35,14 @@
 #include <mach/task_policy.h>
 #include <mach/thread_policy.h>
 
-static double       precisionTimerAdjustmentFactor=1;
-static double       estimatedGetSecsValueAtTickCountZero;
-static psych_bool   isKernelTimebaseFrequencyHzInitialized=FALSE;
+static double       precisionTimerAdjustmentFactor = 1;
+static psych_bool   isKernelTimebaseFrequencyHzInitialized = FALSE;
 static long double  kernelTimebaseFrequencyHz;
 
 void PsychWaitUntilSeconds(double whenSecs)
 {
     kern_return_t   waitResult;
     uint64_t        deadlineAbsTics;
-
-    // Initialize our timebase constant if that hasn't been already done:
-    if(!isKernelTimebaseFrequencyHzInitialized) PsychGetKernelTimebaseFrequencyHz();
 
     // Compute deadline for wakeup in mach absolute time units:
     deadlineAbsTics= (uint64_t) (kernelTimebaseFrequencyHz * ((long double) whenSecs));
@@ -65,8 +61,8 @@ void PsychWaitIntervalSeconds(double delaySecs)
     uint64_t        startTimeAbsTics, deadlineAbsTics;
 
     if (delaySecs <= 0) return;
+
     startTimeAbsTics = mach_absolute_time();
-    if(!isKernelTimebaseFrequencyHzInitialized) PsychGetKernelTimebaseFrequencyHz();
     waitPeriodTicks= kernelTimebaseFrequencyHz * delaySecs;
     deadlineAbsTics= startTimeAbsTics + (uint64_t) waitPeriodTicks;
     while(mach_wait_until(deadlineAbsTics));
@@ -127,7 +123,9 @@ double	PsychGetKernelTimebaseFrequencyHz(void)
 /* Called at Module init time: */
 void PsychInitTimeGlue(void)
 {
-    PsychEstimateGetSecsValueAtTickCountZero();
+    // Force initialization of the kernel timebase frequency:
+    PsychGetKernelTimebaseFrequencyHz();
+    return;
 }
 
 /* Called at module shutdown/jettison time: */
@@ -154,38 +152,14 @@ void PsychGetPrecisionTimerTicksMinimumDelta(psych_uint32 *delta)
 
 void PsychGetPrecisionTimerSeconds(double *secs)
 {
-    double          timeDouble;
-    AbsoluteTime    timeAbsTime;
-    Nanoseconds     timeNanoseconds;
-    UInt64          timeUInt64;
-
-    //Get the time in an AbsolulteTime structure which expresses time as a ratio.
-    timeAbsTime=UpTime();
-
-    //Convert the AbsoluteTime structure to nanoseconds stored in an UnsignedWide.
-    //UnsignedWide is an opaque type.  Depending on the compiler it is
-    //implemented either as structure holding holding 32-bit high and low parts
-    //or as a native long long.
-    timeNanoseconds=AbsoluteToNanoseconds(timeAbsTime);
-
-    //convert the opaque unsigned wide type into a UInt64.  Variant  forms
-    //of the  UnsignedWide type is  why we need to use the UnsignedWideToUInt64()
-    //macro instead of a cast.  If GCC then UnsignedWideToUInt64 resolves to a type recast.
-    timeUInt64=UnsignedWideToUInt64(timeNanoseconds);
-
-    //cast nanoseconds in unsigned wide type to a double
-    timeDouble=(double)timeUInt64;
-
-    //divide down to seconds
-    *secs= timeDouble / 1000000000;
+    *secs= mach_absolute_time() / kernelTimebaseFrequencyHz;
 }
 
 void PsychGetAdjustedPrecisionTimerSeconds(double *secs)
 {
-    double  rawSecs, factor;
+    double  rawSecs;
 
     PsychGetPrecisionTimerSeconds(&rawSecs);
-    PsychGetPrecisionTimerAdjustmentFactor(&factor);
     *secs=rawSecs * precisionTimerAdjustmentFactor;
 }
 
@@ -201,21 +175,17 @@ void PsychSetPrecisionTimerAdjustmentFactor(double *factor)
 
 /*
     PsychEstimateGetSecsValueAtTickCountZero()
-    Note that the tick counter rolls over about every 27 months. Its possible to have machine uptime of that long
-    but it seems unlikely so we don't worry about roll over when calculating
-*/
+ */
 void PsychEstimateGetSecsValueAtTickCountZero(void)
 {
-    double  nowTicks, nowSecs;
-
-    nowTicks=(double)TickCount();
-    PsychGetAdjustedPrecisionTimerSeconds(&nowSecs);
-    estimatedGetSecsValueAtTickCountZero=nowSecs - nowTicks * (1/60.15);
+    // Dead as of PTB 3.0.12, as Apple deprecated TickCount(), and it seems
+    // GetSecs() zero == TickCount zero, so no point here anymore.
+    return;
 }
 
 double PsychGetEstimatedSecsValueAtTickCountZero(void)
 {
-    return(estimatedGetSecsValueAtTickCountZero);
+    return(0.0);
 }
 
 /* Init a Mutex: */
