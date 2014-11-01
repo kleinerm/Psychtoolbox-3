@@ -128,7 +128,7 @@ void PsychRebindARBExtensionsToCore(void)
     // Remap unsupported OpenGL 2.0 core functions for GLSL to supported ARB extension counterparts:
     if (NULL == glCreateProgram) glCreateProgram = glCreateProgramObjectARB;
     if (NULL == glCreateShader) glCreateShader = glCreateShaderObjectARB;
-    if (NULL == glShaderSource) glShaderSource = glShaderSourceARB;
+    if (NULL == glShaderSource) glShaderSource = (PFNGLSHADERSOURCEPROC) glShaderSourceARB;
     if (NULL == glCompileShader) glCompileShader = glCompileShaderARB;
     if (NULL == glAttachShader) glAttachShader = glAttachObjectARB;
     if (NULL == glLinkProgram) glLinkProgram = glLinkProgramARB;

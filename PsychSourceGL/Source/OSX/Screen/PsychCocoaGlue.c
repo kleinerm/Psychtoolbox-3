@@ -535,3 +535,21 @@ void PsychCocoaGetOSXVersion(int* major, int* minor, int* patchlevel)
     // Drain the pool:
     [pool drain];
 }
+
+/* Return a pointer to a static string containing the full name of the logged in user */
+char* PsychCocoaGetFullUsername(void)
+{
+    static char fullUserName[256] = { 0 };
+    
+    // Allocate auto release pool:
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    
+    NSString* nsname = NSFullUserName();
+    const char *srcname = [nsname UTF8String];
+    strncpy(fullUserName, srcname, sizeof(fullUserName) - 1);
+
+    // Drain the pool:
+    [pool drain];
+    
+    return(fullUserName);
+}
