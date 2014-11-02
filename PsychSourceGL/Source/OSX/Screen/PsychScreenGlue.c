@@ -8,7 +8,7 @@
 	AUTHORS:
 	
 		Allen Ingling		awi		Allen.Ingling@nyu.edu
-        Mario Kleiner       mk      mario.kleiner@tuebingen.mpg.de
+        Mario Kleiner       mk      mario.kleiner.de@gmail.com
 
 	HISTORY:
 	
@@ -30,13 +30,7 @@
 		such as ScreenTypes.c and WindowBank.c. 
 			
 	NOTES:
-	
-	TO DO: 
-	
-		� The "glue" files should should be suffixed with a platform name.  The original (bad) plan was to distingish platform-specific files with the same 
-		name by their placement in a directory tree.
-		
-		� All of the functions which accept a screen number should be suffixed with "...FromScreenNumber". 
+
 */
 
 
@@ -86,65 +80,19 @@ void PsychDisplayReconfigurationCallBack (CGDirectDisplayID display, CGDisplayCh
 static void PsychOSKDGetGPUInfo(io_connect_t connect, int slot);
 unsigned int PsychOSKDGetRevision(io_connect_t connect);
 
-// Define missing function prototype of CGDisplayBeamPosition(), a function which was removed from the OSX 10.9 SDK:
-SInt32 CGDisplayBeamPosition(CGDirectDisplayID cgDisplayId);
-
-// Replacement routines for routines missing in 64-Bit OSX:
-#ifdef __LP64__
-// Reimplement deprecated 32-Bit kernel driver interface with new 64-Bit
-// kernel interface for OSX 10.5 and later:
-kern_return_t
-IOConnectMethodStructureIStructureO(
-                                    io_connect_t	connect,
-                                    uint32_t        index,
-                                    IOItemCount     structureInputSize,
-                                    IOByteCount *	structureOutputSize,
-                                    void *          inputStructure,
-                                    void *          ouputStructure )
-{
-    kern_return_t result;
-    size_t outputStructCnt = (size_t) *structureOutputSize;
-
-    // IOConnectCallStructMethod replaces IOConnectMethodStructureIStructureO
-    // in OS/X 10.5 and later, but luckily has almost the same semantic/syntax,
-    // just slightly different types and order of parameters, so we can wrap it:
-    result = IOConnectCallStructMethod((mach_port_t)    connect,
-                                                        index,
-                                       (const void*)    inputStructure,
-                                       (size_t)         structureInputSize,
-                                                        ouputStructure,
-                                                        &outputStructCnt);
-
-    *structureOutputSize = (IOByteCount) outputStructCnt;
-
-    return(result);
-}
-
-kern_return_t
-IOConnectMethodScalarIScalarO( 
-                              io_connect_t	connect,
-                              uint32_t      index,
-                              IOItemCount	scalarInputCount,
-                              IOItemCount	scalarOutputCount,
-                              ... )
+kern_return_t CallKDSimpleMethod(io_connect_t connect, uint32_t index)
 {
     kern_return_t result;
     uint32_t outputCnt = 0;
-
-    if ((scalarInputCount != 0) || (scalarOutputCount != 0))
-        PsychErrorExitMsg(PsychError_internal, "You *must not* call 64-Bit IOConnectMethodScalarIScalarO() shim with anything but 0,0 in/out argument counts! BUG!");
-
+    
     // IOConnectCallScalarMethod replaces IOConnectMethodScalarIScalarO
     // in OS/X 10.5 and later, and it has an incompatible interface in general,
     // but luckily we only use this method in its most simple form with 0 inputs
-    // and outputs. For this special case we have a very simple 1-to-1 mapping,
-    // and we reject any other kind of usage for this interface:
+    // and outputs. For this special case we have a very simple 1-to-1 mapping:
     result = IOConnectCallScalarMethod((mach_port_t) connect, index, NULL, 0, NULL, &outputCnt);
-
+    
     return(result);
 }
-
-#endif
 
 //Initialization functions
 void InitializePsychDisplayGlue(void)
@@ -1017,12 +965,12 @@ void InitPsychtoolboxKernelDriverInterface(void)
 		}
 		else {
 			// This is an example of calling our user client's openUserClient method.
-			kernResult = IOConnectMethodScalarIScalarO(connect, kMyUserClientOpen, 0, 0);
+			kernResult = CallKDSimpleMethod(connect, kMyUserClientOpen);
 			if (kernResult != KERN_SUCCESS) {
 				// Release connection:
 				IOServiceClose(connect);
 				connect = IO_OBJECT_NULL;
-				printf("PTB-DEBUG: IOConnectMethodScalarIScalarO for driver instance %i returned 0x%08x. Kernel driver support disabled.\n", service, kernResult);
+				printf("PTB-DEBUG: CallKDSimpleMethod for driver instance %i returned 0x%08x. Kernel driver support disabled.\n", service, kernResult);
 				if (kernResult == kIOReturnExclusiveAccess) printf("PTB-DEBUG: Please check if other applications (e.g., other open Matlab or Octave instances) use the driver already.\n");
 			}
 		}
@@ -1044,12 +992,12 @@ void InitPsychtoolboxKernelDriverInterface(void)
                 printf("PTB-ERROR: Driver support disabled for now, special functions not available.\n");
 
                 // Call shutdown method:
-                kern_return_t kernResult = IOConnectMethodScalarIScalarO(connect, kMyUserClientClose, 0, 0);
+                kern_return_t kernResult = CallKDSimpleMethod(connect, kMyUserClientClose);
                 if (kernResult == KERN_SUCCESS) {
-                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOConnectMethodScalarIScalarO Closing was successfull.\n");
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: CallKDSimpleMethod Closing was successfull.\n");
                 }
                 else {
-                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOConnectMethodScalarIScalarO Closing failed with kernel return code 0x%08x.\n\n", kernResult);
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: CallKDSimpleMethod Closing failed with kernel return code 0x%08x.\n\n", kernResult);
                 }
                 
                 // Close IOService:
@@ -1087,12 +1035,12 @@ void InitPsychtoolboxKernelDriverInterface(void)
                 displayConnectHandles[numKernelDrivers] = IO_OBJECT_NULL;
 
                 // Call shutdown method:
-                kern_return_t kernResult = IOConnectMethodScalarIScalarO(connect, kMyUserClientClose, 0, 0);
+                kern_return_t kernResult = CallKDSimpleMethod(connect, kMyUserClientClose);
                 if (kernResult == KERN_SUCCESS) {
-                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOConnectMethodScalarIScalarO Closing was successfull.\n");
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: CallKDSimpleMethod Closing was successfull.\n");
                 }
                 else {
-                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOConnectMethodScalarIScalarO Closing failed with kernel return code 0x%08x.\n\n", kernResult);
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: CallKDSimpleMethod Closing failed with kernel return code 0x%08x.\n\n", kernResult);
                 }
                 
                 // Close IOService:
@@ -1262,15 +1210,10 @@ io_connect_t PsychOSCheckKDAvailable(int screenId, unsigned int * status)
 
 kern_return_t PsychOSKDDispatchCommand(io_connect_t connect, const PsychKDCommandStruct* inStruct, PsychKDCommandStruct* outStruct, unsigned int* status)
 {
-    IOByteCount structOSize = sizeof(PsychKDCommandStruct);
-	kern_return_t kernResult =	IOConnectMethodStructureIStructureO(connect,							// an io_connect_t returned from IOServiceOpen().
-																	kPsychKDDispatchCommand,			// an index to the function to be called via the user client.
-																	sizeof(PsychKDCommandStruct),		// the size of the input struct paramter.
-																	&structOSize,						// a pointer to the size of the output struct paramter.
-																	(PsychKDCommandStruct*)inStruct,	// a pointer to the input struct parameter.
-																	outStruct							// a pointer to the output struct parameter.
-																	);
-    
+    size_t outputStructCnt = sizeof(PsychKDCommandStruct);
+
+    kern_return_t kernResult = IOConnectCallStructMethod((mach_port_t) connect, kPsychKDDispatchCommand, (const void*) inStruct, sizeof(PsychKDCommandStruct), outStruct, &outputStructCnt);
+
 	if (status) *status = kernResult;
 	if (kernResult != kIOReturnSuccess) {
 		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Kernel driver command dispatch failure for code %lx (Kernel error code: %lx).\n", inStruct->command, kernResult);
