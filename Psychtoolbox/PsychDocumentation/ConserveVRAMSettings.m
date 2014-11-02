@@ -166,15 +166,8 @@
 % PsychDebugWindowConfiguration() function was used to switch to debug
 % mode.
 %
-% On Mac OS/X this will cause PTB to always use the Cocoa API for OpenGL
-% system setup, and to always use Quartz composited regular windows instead
-% of fullscreen contexts, even if the requested onscreen window is a
-% fullscreen window. Normally PTB would use the CGL API for fullscreen
-% windows, but this was broken for dual-display operations on some systems
-% running OS/X Leopard 10.5 with all modern NVidia cards. Stimulus onset
-% timing, animations and timestamping precision will be horrible in this
-% mode. Only suitable for presentation of mostly static stimuli with no
-% requirements for frame-accurate timing.
+% On Mac OS/X this will cause Screen to avoid capturing the display. This
+% may or may not affect display performance, who knows?
 %
 %
 % 32768 == kPsychBusyWaitForVBLBeforeBufferSwapRequest
