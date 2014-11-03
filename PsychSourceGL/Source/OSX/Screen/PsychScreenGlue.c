@@ -394,12 +394,12 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
         tempWidth = (long) CGDisplayModeGetWidth(tempMode);
         tempHeight = (long) CGDisplayModeGetHeight(tempMode);
         tempFrequency = CGDisplayModeGetRefreshRate(tempMode);
-        
+        tempDepth = getDisplayBitsPerPixel(tempMode);
+
         if (currentWidth == tempWidth && currentHeight == tempHeight && currentFrequency == tempFrequency) {
-            tempDepth = getDisplayBitsPerPixel(tempMode);
             PsychAddValueToDepthStruct((int) tempDepth, depths);
         }
-        
+
 		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: PsychGetScreenDepths(): mode %i : w x h = %i x %i, fps = %f, depth = %i\n", i, tempWidth, tempHeight, tempFrequency, tempDepth);
     }
     
