@@ -385,9 +385,19 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
     currentHeight = (long) CGDisplayModeGetHeight(currentMode);
     currentFrequency = CGDisplayModeGetRefreshRate(currentMode);
     CGDisplayModeRelease(currentMode);
-    
-    //get a list of available modes for the specified display
-    modeList = CGDisplayCopyAllDisplayModes(displayCGIDs[screenNumber], NULL);
+
+    // Build options dictionary to make sure we also get HiDPI / Retina scaled modes:
+    i = 1;
+    CFNumberRef number = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &i);
+    CFStringRef key = kCGDisplayShowDuplicateLowResolutionModes;
+    CFDictionaryRef options = CFDictionaryCreate(kCFAllocatorDefault, (const void**) &key, (const void**) &number, 1, NULL, NULL);
+    CFRelease(number);
+
+    // Get a list of available modes for the specified display, including HiDPI/Retina
+    // modes, as requested by the options dictionary:
+    modeList = CGDisplayCopyAllDisplayModes(displayCGIDs[screenNumber], options);
+    CFRelease(options);
+
     numPossibleModes = CFArrayGetCount(modeList);
     for (i = 0; i < numPossibleModes; i++) {
         tempMode = (CGDisplayModeRef) CFArrayGetValueAtIndex(modeList,i);
@@ -413,7 +423,7 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
         PsychAddValueToDepthStruct(16, depths);
         PsychAddValueToDepthStruct(32, depths);
         if (PsychPrefStateGet_Verbosity() > 1) {
-            printf("PTB-WARNING: Broken MacOS/X detected. It misreports (== omits some) available video modes and thereby empty display depths due to matching failure.\n");
+            printf("PTB-WARNING: Broken MacOS/X detected. It misreports (== omits some) available video modes and thereby returns empty display depths due to matching failure.\n");
             printf("PTB-WARNING: Will try to workaround this by creating a fake list of available display depths of 16 bpp and 32 bpp. Expect potential trouble further on...\n");
         }
     }
@@ -435,8 +445,17 @@ int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** wi
     
     if (screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
     
-    // Get a list of available modes for the specified display
-    modeList = CGDisplayCopyAllDisplayModes(displayCGIDs[screenNumber], NULL);
+    // Build options dictionary to make sure we also get HiDPI / Retina scaled modes:
+    i = 1;
+    CFNumberRef number = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &i);
+    CFStringRef key = kCGDisplayShowDuplicateLowResolutionModes;
+    CFDictionaryRef options = CFDictionaryCreate(kCFAllocatorDefault, (const void**) &key, (const void**) &number, 1, NULL, NULL);
+    CFRelease(number);
+    
+    // Get a list of available modes for the specified display, including HiDPI/Retina
+    // modes, as requested by the options dictionary:
+    modeList = CGDisplayCopyAllDisplayModes(displayCGIDs[screenNumber], options);
+    CFRelease(options);
     numPossibleModes = CFArrayGetCount(modeList);
 
 	// Allocate output arrays: These will get auto-released at exit from Screen():
@@ -484,8 +503,17 @@ psych_bool PsychGetCGModeFromVideoSetting(CGDisplayModeRef *cgMode, PsychScreenS
     depth = (long) PsychGetValueFromDepthStruct(0,&(setting->depth));
     frameRate = (double) setting->nominalFrameRate;
 
-    // Get a list of available modes for the specified display
-    modeList = CGDisplayCopyAllDisplayModes(displayCGIDs[setting->screenNumber], NULL);
+    // Build options dictionary to make sure we also get HiDPI / Retina scaled modes:
+    i = 1;
+    CFNumberRef number = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &i);
+    CFStringRef key = kCGDisplayShowDuplicateLowResolutionModes;
+    CFDictionaryRef options = CFDictionaryCreate(kCFAllocatorDefault, (const void**) &key, (const void**) &number, 1, NULL, NULL);
+    CFRelease(number);
+    
+    // Get a list of available modes for the specified display, including HiDPI/Retina
+    // modes, as requested by the options dictionary:
+    modeList = CGDisplayCopyAllDisplayModes(displayCGIDs[setting->screenNumber], options);
+    CFRelease(options);
     numPossibleModes = CFArrayGetCount(modeList);
     
 	// Fetch modes and store into arrays:
