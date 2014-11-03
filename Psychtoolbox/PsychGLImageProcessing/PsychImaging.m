@@ -1266,6 +1266,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %                     we learned about this 10/11 bpc business on HDMI so far. (MK)
 % 16.09.2014  Add experimental 'StereoCrosstalkReduction' support. (MK/DCN)
 % 17.09.2014  Add 'Native16BitFramebuffer' support for Linux + FOSS + AMD. (MK)
+% 03.11.2014  Make panelfitter compatible with Retina displays. (MK)
 
 persistent configphase_active;
 persistent reqs;
@@ -1540,7 +1541,7 @@ if strcmpi(cmd, 'OpenWindow')
         
         % Get full size of output framebuffer:
         if isempty(winRect)
-            [clientRes(1), clientRes(2)] = Screen('WindowSize', screenid);
+            [clientRes(1), clientRes(2)] = Screen('WindowSize', screenid, 1);
         else
             clientRes = [RectWidth(winRect), RectHeight(winRect)];
         end
@@ -1602,7 +1603,7 @@ if strcmpi(cmd, 'OpenWindow')
 
         % Define full size of output framebuffer:
         if isempty(winRect)
-            dstFit = Screen('Rect', screenid);
+            dstFit = Screen('Rect', screenid, 1);
         else
             dstFit = SetRect(0, 0, RectWidth(winRect), RectHeight(winRect));
         end
