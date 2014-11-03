@@ -30,7 +30,7 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
 void PsychCocoaDisposeWindow(PsychWindowRecordType *windowRecord);
 void PsychCocoaSetUserFocusWindow(void* window);
 void* PsychCocoaGetUserFocusWindow(void);
-void PsychCocoaGetWindowBounds(void* window, PsychRectType globalBounds);
+void PsychCocoaGetWindowBounds(void* window, PsychRectType globalBounds, PsychRectType windowpixelRect);
 void PsychCocoaShowWindow(void* window);
 psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(void* window, PsychWindowRecordType *windowRecord);
 void PsychCocoaSendBehind(void* window);

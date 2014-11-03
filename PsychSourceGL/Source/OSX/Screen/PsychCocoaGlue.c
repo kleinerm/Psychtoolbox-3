@@ -143,7 +143,7 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
     return(PsychError_none);
 }
 
-void PsychCocoaGetWindowBounds(void* window, PsychRectType globalBounds)
+void PsychCocoaGetWindowBounds(void* window, PsychRectType globalBounds, PsychRectType windowpixelRect)
 {
     PsychRectType screenRect;
     double screenHeight;
@@ -164,6 +164,10 @@ void PsychCocoaGetWindowBounds(void* window, PsychRectType globalBounds)
     globalBounds[kPsychRight]  = clientRect.origin.x + clientRect.size.width;
     globalBounds[kPsychTop]    = screenHeight - (clientRect.origin.y + clientRect.size.height);
     globalBounds[kPsychBottom] = globalBounds[kPsychTop] + clientRect.size.height;
+    
+    // Compute true size - now in pixels, not points - of window backbuffer as windows rect:
+    NSSize backSize = [[cocoaWindow contentView] convertSizeToBacking: clientRect.size];
+    PsychMakeRect(windowpixelRect, 0, 0, backSize.width, backSize.height);
 
     // Drain the pool:
     [pool drain];
@@ -394,7 +398,11 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(void* window, P
     windowRecord->targetSpecific.nsmasterContext = (void*) masterContext;
     windowRecord->targetSpecific.nsswapContext = (void*) glswapContext;
     windowRecord->targetSpecific.nsuserContext = (void*) gluserContext;
-
+    
+    // Assign final window globalRect (in units of points in gobal display space)
+    // and final true backbuffer size 'rect' (in units of pixels):
+    PsychCocoaGetWindowBounds(window, windowRecord->globalrect, windowRecord->rect);
+    
     // Drain the pool:
     [pool drain];
 

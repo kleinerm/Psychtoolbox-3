@@ -945,8 +945,7 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 	// GUI windows need to behave GUIyee:
 	if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord)) {
 		// Update windows rect and globalrect, based on current size and location:
-		PsychCocoaGetWindowBounds(windowRecord->targetSpecific.windowHandle, windowRecord->globalrect);
-		PsychNormalizeRect(windowRecord->globalrect, windowRecord->rect);
+		PsychCocoaGetWindowBounds(windowRecord->targetSpecific.windowHandle, windowRecord->globalrect, windowRecord->rect);
 		PsychSetupClientRect(windowRecord);
 		PsychSetupView(windowRecord, FALSE);
 	}
