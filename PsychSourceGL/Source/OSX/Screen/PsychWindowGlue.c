@@ -334,10 +334,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Store window handle in windowRecord:
     windowRecord->targetSpecific.windowHandle = cocoaWindow;
 
-    // Copy absolute screen location and area of window to 'globalrect',
-    // so functions like Screen('GlobalRect') can still query the real
-    // bounding gox of a window onscreen:
-    PsychCopyRect(windowRecord->globalrect, windowRecord->rect);		
 
     // Define pixelformat attributes for OpenGL contexts:
 

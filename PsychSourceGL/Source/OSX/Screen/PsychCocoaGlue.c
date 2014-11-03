@@ -128,9 +128,10 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
         [cocoaWindow setFrameTopLeftPoint:winPosition];
     }
 
-    // Query and translate content rect of final window to a PTB rect:
+    // Query and translate content rect of final window to a PTB rect for use as the windows globalRect
+    // in global screen space coordinates (unit is points, not pixels - important for Retina/HiDPI):
     NSRect clientRect = [cocoaWindow contentRectForFrameRect:[cocoaWindow frame]];
-    PsychMakeRect(windowRecord->rect, clientRect.origin.x, screenRect[kPsychBottom] - (clientRect.origin.y + clientRect.size.height), clientRect.origin.x + clientRect.size.width, screenRect[kPsychBottom] - clientRect.origin.y);
+    PsychMakeRect(windowRecord->globalrect, clientRect.origin.x, screenRect[kPsychBottom] - (clientRect.origin.y + clientRect.size.height), clientRect.origin.x + clientRect.size.width, screenRect[kPsychBottom] - clientRect.origin.y);
 
     // Drain the pool:
     [pool drain];
