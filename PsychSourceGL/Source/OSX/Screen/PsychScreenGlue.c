@@ -564,6 +564,18 @@ float PsychGetNominalFramerate(int screenNumber)
     return((float) currentFrequency);
 }
 
+// Report video mode size in pixels, as opposed to logical units (points) like the
+// cross-platform PsychGetScreenSize(). Need this to handle Apples Retina / HiDPI:
+void PsychGetScreenPixelSize(int screenNumber, long *width, long *height)
+{
+    if (screenNumber >= numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range");
+    
+    CGDisplayModeRef currentMode = CGDisplayCopyDisplayMode(displayCGIDs[screenNumber]);
+    *width = (long) CGDisplayModeGetPixelWidth(currentMode);
+    *height = (long) CGDisplayModeGetPixelHeight(currentMode);
+    CGDisplayModeRelease(currentMode);
+}
+
 void PsychGetScreenSize(int screenNumber, long *width, long *height)
 {
     if (screenNumber >= numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range");
