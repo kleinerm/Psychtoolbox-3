@@ -444,7 +444,6 @@ PsychError SCREENWaitUntilAsyncFlipCertain(void)
 	double vbl_startline, vbl_endline, vbl_lines_elapsed, onset_lines_togo;
 	double vbl_time_elapsed, onset_time_togo, currentrefreshestimate;
 	psych_bool   swappending;
-	long   scw, sch;
 #endif
 
 	// Push usage string and/or give online help:
@@ -515,8 +514,7 @@ PsychError SCREENWaitUntilAsyncFlipCertain(void)
 		PsychCopyOutDoubleArg(3, kPsychArgOptional, timestamp);
 		
 		// Compute timestamps:
-		PsychGetScreenSize(windowRecord->screenNumber, &scw, &sch);
-		vbl_startline = (int) sch;
+		vbl_startline = windowRecord->VBL_Startline;
 		vbl_endline = windowRecord->VBL_Endline;
 		
 		if (swappending) {
