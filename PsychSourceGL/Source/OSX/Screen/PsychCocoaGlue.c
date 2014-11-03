@@ -133,6 +133,9 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
     NSRect clientRect = [cocoaWindow contentRectForFrameRect:[cocoaWindow frame]];
     PsychMakeRect(windowRecord->globalrect, clientRect.origin.x, screenRect[kPsychBottom] - (clientRect.origin.y + clientRect.size.height), clientRect.origin.x + clientRect.size.width, screenRect[kPsychBottom] - clientRect.origin.y);
 
+    // Tell Cocoa/NSOpenGL to render to Retina displays at native resolution:
+    [[cocoaWindow contentView] setWantsBestResolutionOpenGLSurface:YES];
+
     // Drain the pool:
     [pool drain];
 
