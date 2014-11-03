@@ -39,14 +39,6 @@
 
 #include "Screen.h"
 
-// renderswap trades time in MakeTexture vs. time in DrawTexture. Setting it to true will
-// *significantly* increase the duration of each MakeTexture call, but depending on the
-// exact type of gfx-card and the orientation in which textures are drawn, it can also
-// significantly speed up drawing (2-3 times!). In the future, we'll implement a clever scheme
-// so that PTB can decide by itself on a case-by-case bases, if renderswap true or false is
-// the better choice. For the 1.0.6 release we'll just keep it fixed to "false"...
-static psych_bool renderswap = FALSE;
-
 // If set to true, then the apple client storage extensions are used: I doubt that they have any
 // advantage for the current way PTB is used, but it can be useful to conserve VRAM on very
 // low-mem gfx cards if Screen('Preference', 'ConserveVRAM') is set appropriately.
@@ -169,9 +161,6 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	// reduced --> Fast, but potential errors or malfunctions don't get catched and diagnosed in a
 	// useful way, instead silent failure occurs.
 	avoidCPUGPUSync = (PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync) ? TRUE : FALSE;
-
-	// Setup for renderswap, if requested:
-	if (win->textureOrientation==0 && renderswap) win->textureOrientation=1;
 
 	// Enable the proper OpenGL rendering context for the window associated with this texture:
 	PsychSetGLContext(win);
@@ -609,58 +598,6 @@ void PsychCreateTexture(PsychWindowRecordType *win)
                 fflush(NULL);
             }
         }
-	
-        ///////// EXPERIMENTAL SWAPRENDER->COPY-CODE ////////////////
-        if (win->textureOrientation == 1 && renderswap) {
-            // Turn off alpha-blending - We want the texture "as is", overwriting any previous
-            // framebuffer content completely!
-            glDisable(GL_BLEND);
-            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-            glTexParameteri(texturetarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(texturetarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		
-            // Render full texture with swapped texture coords into lower-left corner of framebuffer:
-            glBegin(GL_QUADS);
-            //lower left
-            glTexCoord2f((GLfloat) 0, (GLfloat) 0);			//lower left vertex in texture
-            glVertex2f((GLfloat) 0, (GLfloat)0);			//upper left vertex in window
-		
-            //upper left
-            glTexCoord2f((GLfloat) sourceWidth, (GLfloat) 0);		//upper left vertex in texture
-            glVertex2f((GLfloat) 0, (GLfloat)sourceWidth);		//lower left vertex in window
-		
-            //upper right
-            glTexCoord2f((GLfloat) sourceWidth, (GLfloat) sourceHeight); //upper right vertex in texture
-            glVertex2f((GLfloat) sourceHeight, (GLfloat) sourceWidth );	//lower right  vertex in window
-		
-            //lower right
-            glTexCoord2f((GLfloat) 0, (GLfloat) sourceHeight);		//lower right in texture
-            glVertex2f((GLfloat) sourceHeight, (GLfloat)0);		//upper right in window
-            glEnd();
-		
-            // Assign proper dimensions, now that the texture is "reswapped to normal" :)
-            sourceHeight=PsychGetHeightFromRect(win->rect);
-            sourceWidth=PsychGetWidthFromRect(win->rect);
-		
-            PsychGetScreenSize(win->screenNumber, &screenWidth, &screenHeight);
-		
-            // Texture is now displayed/stored in the top-left corner of the framebuffer
-            // in its proper (upright 0 deg.) orientation. Let's make a screenshot and
-            // store it as a "new" texture into our current texture object - effectively
-            // transposing the texture into normal format:                        
-            glCopyTexImage2D(texturetarget, 0, glinternalFormat, 0, (GLint) (screenHeight - sourceHeight), (GLsizei) sourceWidth, (GLsizei) sourceHeight, 0);
-		
-            // Reenable alpha-blending:
-            glEnable(GL_BLEND);
-		
-            // Flush the command buffers to enforce start of texture swap operation so that it
-            // really runs in parallel to the MakeTexture() C-Code...
-            glFlush();
-        }
-	
-        ///////// END OF EXPERIMENTAL SWAPRENDER->COPY-CODE ////////////////
     }
 	
 	// Free system RAM backing memory buffer, if client storage extensions are not used for this texture:
@@ -768,9 +705,8 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         // This code allows the application of sourceRect, as it is meant to be:
         // CAUTION: This calculation with sourceHeight - xxxx  depends on if GPU texture swapping
         // is on or off!!!!
-        // 0 == Transposed as from Matlab image array aka renderswap off. 1 == Renderswapped
-        // texture (currently not yet enabled). 2 == Offscreen window in normal orientation.
-        if ((source->textureOrientation == 1 && renderswap) || source->textureOrientation == 2) {
+        // 0 == Transposed as from Matlab image array. 2 == Offscreen window in normal orientation.
+        if (source->textureOrientation == 2) {
             sourceHeight=PsychGetHeightFromRect(source->rect);
             sourceWidth=PsychGetWidthFromRect(source->rect);
 
@@ -1144,7 +1080,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         // in some rotated and mirrored order. This is way faster, as the GPU is optimized for such things...
         glBegin(GL_QUADS);
         // Coordinate assignments depend on internal texture orientation...
-        if ((source->textureOrientation == 1 && renderswap) || source->textureOrientation == 2 ||
+        if (source->textureOrientation == 2 ||
             source->textureOrientation == 3 || source->textureOrientation == 4) {
             // Use "normal" coordinate assignments, so that the rotation == 0 deg. case
             // is the fastest case --> Most common orientation has highest performance.
@@ -1194,7 +1130,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 
         GLBEGIN(GL_TRIANGLE_STRIP);
         // Coordinate assignments depend on internal texture orientation...
-        if ((source->textureOrientation == 1 && renderswap) || source->textureOrientation == 2 ||
+        if (source->textureOrientation == 2 ||
             source->textureOrientation == 3 || source->textureOrientation == 4) {
             // Use "normal" coordinate assignments, so that the rotation == 0 deg. case
             // is the fastest case --> Most common orientation has highest performance.
@@ -1329,9 +1265,8 @@ void PsychMapTexCoord(PsychWindowRecordType *tex, double* tx, double* ty)
     texturetarget = PsychGetTextureTarget(tex);
     
     // Basic mapping for rectangular textures:
-    // 0 == Transposed as from Matlab image array aka renderswap off. 1 == Renderswapped
-    // texture (currently not yet enabled). 2 == Offscreen window in normal orientation.
-    if ((tex->textureOrientation == 1 && renderswap) || tex->textureOrientation == 2) {
+    // 0 == Transposed as from Matlab image array. 2 == Offscreen window in normal orientation.
+    if (tex->textureOrientation == 2) {
         sourceHeight=PsychGetHeightFromRect(tex->rect);
         sourceWidth=PsychGetWidthFromRect(tex->rect);
         
@@ -1339,7 +1274,7 @@ void PsychMapTexCoord(PsychWindowRecordType *tex, double* tx, double* ty)
         sourceY=sourceHeight - *ty;
     }
     else {
-        // Transposed, non-renderswapped texture from Matlab:
+        // Transposed texture from Matlab:
         sourceHeight=PsychGetWidthFromRect(tex->rect);
         sourceWidth=PsychGetHeightFromRect(tex->rect);
         sourceX=*tx;
