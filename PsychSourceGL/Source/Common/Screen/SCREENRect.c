@@ -39,16 +39,16 @@ static char seeAlsoString[] = "";
 
 PsychError SCREENRect(void)  
 {
-	
 	PsychWindowRecordType *windowRecord;
 	int screenNumber;
-	PsychRectType rect; 
-    int realFBSize = 0;
-    
+	PsychRectType rect;
+	long fbWidth, fbHeight;
+	int realFBSize = 0;
+
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString,seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-	
+
 	//check for superfluous arguments
 	PsychErrorExit(PsychCapNumInputArgs(2));		//The maximum number of inputs
 	PsychErrorExit(PsychRequireNumInputArgs(1));	//Insist that the argument be present.   
@@ -59,7 +59,15 @@ PsychError SCREENRect(void)
     
 	if(PsychIsScreenNumberArg(1)){
 		PsychCopyInScreenNumberArg(1, TRUE, &screenNumber);
-		PsychGetScreenRect(screenNumber, rect);
+        if (realFBSize) {
+            // Physical size in pixels:
+            PsychGetScreenPixelSize(screenNumber, &fbWidth, &fbHeight);
+            PsychMakeRect(rect, 0, 0, (double) fbWidth, (double) fbHeight);
+        }
+        else {
+            // Logical size in points:
+            PsychGetScreenRect(screenNumber, rect);
+        }
 		PsychCopyOutRectArg(1, FALSE, rect);
 	}else if(PsychIsWindowIndexArg(1)){
         PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
