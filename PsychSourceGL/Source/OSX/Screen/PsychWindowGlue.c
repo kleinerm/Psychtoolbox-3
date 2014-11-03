@@ -283,8 +283,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     if (PsychMatchRect(screenrect, windowRecord->rect)) windowRecord->specialflags |= kPsychIsFullscreenWindow;
 
     if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_Verbosity() > 2)) {
-        printf("PTB-INFO: Always using Cocoa for fullscreen windows, to work around graphics driver bugs in OSX and because Apple forces us to do so.\n");
-        printf("PTB-INFO: Presentation timing and timestamp precision is not yet known for this configuration on most Apple machines, so check your results.\n");
+        printf("PTB-INFO: Always using Cocoa for fullscreen windows to work around graphics driver bugs in OSX.\n");
+        printf("PTB-INFO: Presentation timing precision is not yet known for this configuration on most machines. Check your results.\n");
     }
 
     // Display for fullscreen window not captured? Timing precision is unclear in this mode. In theory the compositor should disable

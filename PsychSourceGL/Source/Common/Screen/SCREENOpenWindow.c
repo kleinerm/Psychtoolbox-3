@@ -554,7 +554,7 @@ PsychError SCREENOpenWindow(void)
         PsychNormalizeRect(clientRect, windowRecord->clientrect);
         PsychCopyRect(clientRect, windowRecord->clientrect);
 
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to enable my builtin panel-fitter on user request.\n");
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Trying to enable my builtin panel-fitter on user request.\n");
     }
     else {
         // No specific clientRect given - the default case.
