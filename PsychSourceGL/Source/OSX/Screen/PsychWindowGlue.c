@@ -251,6 +251,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     PsychRectType                   screenrect;
     int                             i;
     int                             windowLevel;
+    long                            scw, sch;
     void*                           cocoaWindow = NULL;
 
     // Map screen number to physical display handle cgDisplayID:
@@ -334,6 +335,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Store window handle in windowRecord:
     windowRecord->targetSpecific.windowHandle = cocoaWindow;
 
+    // Store vblank startline aka true height of physical display screen in pixels:
+    PsychGetScreenPixelSize(screenSettings->screenNumber, &scw, &sch);
+    windowRecord->VBL_Startline = (int) sch;
 
     // Define pixelformat attributes for OpenGL contexts:
 
