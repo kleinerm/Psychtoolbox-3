@@ -4781,11 +4781,6 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
                 if (windowRecord->imagingMode & kPsychNeedGPUPanelFitter) {
                     // Need to rescale and/or reposition during src->dest blit to implement panel scaling.
                     
-                    // Define potentially missing GLenum value from GL_EXT_framebuffer_multisample_blit_scaled extension:
-                    #ifndef GL_SCALED_RESOLVE_NICEST_EXT
-                    #define GL_SCALED_RESOLVE_NICEST_EXT 0x90BB
-                    #endif
-                    
                     // Simultaneous Multisample-resolve during blit requested and supported? If so, use special blitmode to do both in one go.
                     // Otherwise just use bilinear filtering for nice scaling:
                     blitscalemode = ((windowRecord->multiSample > 0) && (windowRecord->gfxcaps & kPsychGfxCapFBOScaledResolveBlit)) ? GL_SCALED_RESOLVE_NICEST_EXT : GL_LINEAR;
