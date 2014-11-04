@@ -63,6 +63,19 @@ if ~ischar(viewId)
     error('viewId parameter is not a name string, as required!');
 end
 
+% OSX reports mouse position in points, not pixels, but our
+% code expects pixels. Compute backing store scale factor
+% (for Retina / HiDPI displays) and undo its effect on (x,y) position:
+if IsOSX
+    screenNumber = Screen('WindowScreenNumber', win);
+    isf = Screen('WindowSize', screenNumber, 1) / Screen('WindowSize', screenNumber, 0);
+
+    % OSX reports mouse position in points, but we need
+    % it in pixels, so multiply:
+    xm = xm * isf;
+    ym = ym * isf;
+end
+
 if isempty(ptb_geometry_inverseWarpMap) || isempty(ptb_geometry_inverseWarpMap{win})
     % Window does not use geometry correction. Just pass-through our input values:
     xo = xm;
