@@ -46,6 +46,7 @@ function [xo, yo] = RemapMouse(win, viewId, xm, ym)
 % History:
 % 26.12.2011  mk  Written.
 % 12.01.2013  mk  Added panelfitter support.
+% 04.11.2014  mk  Handle Retina modes on OSX and rotation via panelfitter.
 
 % This global array is setup by PsychImaging() when setting up geometric
 % display correction:
@@ -120,6 +121,25 @@ if strcmpi(viewId, 'AllViews') || strcmpi(viewId, 'LeftView') || strcmpi(viewId,
     % Panelfitter active aka p non-zero?
     if any(p)
         % Remap:
+        
+        % Non-Zero rotation angle?
+        if p(9) ~= 0
+            % Yes, need some extra rotation inversion transforms:
+            xoff = p(5); yoff = p(6);
+            cx = p(10); cy = p(11);
+            angle = p(9);
+            
+            xo = xo - (xoff + cx);
+            yo = yo - (yoff + cy);
+            rot = atan2(yo, xo) - (angle * pi / 180);
+            rad = norm([yo, xo]);
+            xo = rad * cos(rot);
+            yo = rad * sin(rot);
+            xo = xo + (xoff + cx);
+            yo = yo + (yoff + cy);
+        end
+        
+        % Invert scaling and offsets:
         xo = ((xo - p(5)) / (p(7) - p(5)) * (p(3) - p(1))) + p(1);
         yo = ((yo - p(6)) / (p(8) - p(6)) * (p(4) - p(2))) + p(2);
     end
