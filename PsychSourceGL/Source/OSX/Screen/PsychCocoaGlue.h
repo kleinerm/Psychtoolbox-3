@@ -40,4 +40,5 @@ void PsychCocoaSetThemeCursor(int inCursor);
 void PsychCocoaPreventAppNap(psych_bool preventAppNap);
 void PsychCocoaGetOSXVersion(int* major, int* minor, int* patchlevel);
 char* PsychCocoaGetFullUsername(void);
+double PsychCocoaGetBackingStoreScaleFactor(void* window);
 #endif

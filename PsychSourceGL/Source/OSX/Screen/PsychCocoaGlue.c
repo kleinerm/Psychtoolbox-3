@@ -565,3 +565,22 @@ char* PsychCocoaGetFullUsername(void)
     
     return(fullUserName);
 }
+
+/* Return backing store scale factor of window. Not equal one == Retina stuff */
+double PsychCocoaGetBackingStoreScaleFactor(void* window)
+{
+    double sf;
+
+    NSWindow* cocoaWindow = (NSWindow*) window;
+
+    // Allocate auto release pool:
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
+    // Set Window transparency:
+    sf = (double) [cocoaWindow backingScaleFactor];
+
+    // Drain the pool:
+    [pool drain];
+
+    return (sf);
+}
