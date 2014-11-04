@@ -64,6 +64,7 @@ function SetMouse(x,y,windowPtrOrScreenNumber, mouseid)
 % 11/18/04  awi     Renamed "PositionCursor" to "PositionCursorHelper".
 % 02/21/06  mk      Added Linux support.
 % 06/17/06  mk      Added Windows support.
+% 11/04/14  mk      round() x,y coords for integral coordinates to avoid error.
 
 % SetMouse.m wraps the Screen('PositionCursor',..) call to emulate the old SetMouse.mex
 
@@ -79,4 +80,4 @@ if nargin < 4
    mouseid = [];
 end
 
-Screen('SetMouseHelper', windowPtrOrScreenNumber, x, y, mouseid);
+Screen('SetMouseHelper', windowPtrOrScreenNumber, round(x), round(y), mouseid);
