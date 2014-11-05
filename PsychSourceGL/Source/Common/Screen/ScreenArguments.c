@@ -473,7 +473,7 @@ psych_bool	PsychCopyInDepthValueArg(int position, psych_bool required, int *dept
     
     if((isThere=PsychCopyInDoubleArg(position,required, &value))){
         *depth=(int)value; 
-        if(!(*depth==8 || *depth==16 || *depth==24 || *depth == 32))
+        if(!(*depth==8 || *depth==16 || *depth==24 || *depth == 32 || *depth == 30))
             PsychErrorExitMsg(PsychError_invalidDepthArg, "Illegal depth value");
     }
     return(isThere);
