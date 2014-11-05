@@ -20,6 +20,7 @@ try
     % Ask pipeline to horizontally flip/mirror the output image, so user
     % doesn't get confused by orientation of its mirror image ;-)
     PsychImaging('AddTask', 'AllViews', 'FlipHorizontal');
+    %PsychImaging('AddTask', 'General', 'UseRetinaResolution');
     %PsychImaging('AddTask', 'AllViews', 'InterleavedColumnStereo', 0);
     %PsychImaging('AddTask', 'AllViews', 'InterleavedLineStereo', 0);
     %PsychImaging('AddTask', 'AllViews', 'FlipVertical');
@@ -53,9 +54,7 @@ try
 
     blurmaptex = Screen('OpenOffscreenWindow', win, 0, [0 0 640 480]);
     cr = CenterRect([0 0 640 480], winRect);
-    xr = cr(RectRight);
-    yt = cr(RectTop);
-    
+
     Screen('StartVideoCapture', grabber, 30, 1);
 
     oldpts = 0;
@@ -79,18 +78,19 @@ try
             Screen('DrawTexture', win, ftex); %, [], Screen('Rect', win));
             Screen('Close', ftex);
 
-            Screen('DrawDots', win, [x ; y], 5, [255 255 0]);
+            Screen('DrawDots', win, [x ; y], 7, [255 255 0]);
             [xo, yo] = RemapMouse(win, 'AllViews', x, y);
             Screen('DrawDots', win, [xo ; yo], 5, [0 255 0]);
 
             % Show it.
             Screen('Flip', win);
-        end;        
-        
+        end
+
         count = count + 1;
         if any(buttons)
-            x = xr - x;
-            y = y - yt;
+            x = xo - cr(RectLeft);
+            y = yo - cr(RectTop);
+
             if buttons(1)
                 blurlevel = 5;
             else

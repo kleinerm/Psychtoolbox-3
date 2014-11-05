@@ -1,6 +1,14 @@
 function versionString=AppleVersion(gestaltString)
 % versionString=AppleVersion(gestaltString)
 %
+% WARNING: This function is deprecated and will likely cease to work
+% in a future Psychtoolbox release. This is due to Apple deprecating
+% their Gestalt() function from their operating system. While Gestalt,
+% and thereby this function, still works on OSX 10.10, no guarantees
+% can be made about future OSX versions.
+%
+% Adapt your code accordingly to do without this function.
+%
 % OS 9 and OS X: __________________________________________________________
 %
 % AppleVersion('qtim') % QuickTime
@@ -56,6 +64,12 @@ function versionString=AppleVersion(gestaltString)
 % 1/29/05   dgp Cosmetic.
 
 
+persistent firstTime
+
+if isempty(firstTime)
+  firstTime = 0;
+  warning('The Psychtoolbox function AppleVersion() is deprecated due to Apple''s fault. The function may cease to work in the future! Adapt your code accordingly.');
+end
 
 b=eval('Gestalt(gestaltString)','[]');
 if isempty(b) || b==-5551

@@ -38,8 +38,8 @@ try
     [theWindow,theRect] = Screen(whichScreen,'OpenWindow',0,[],[],2);
 
     % Move the cursor to the center of the screen
-    theX = theRect(RectRight)/2;
-    theY = theRect(RectBottom)/2;
+    theX = round(theRect(RectRight) / 2);
+    theY = round(theRect(RectBottom) / 2);
     SetMouse(theX,theY);
     ShowCursor(0);
 

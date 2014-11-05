@@ -59,7 +59,7 @@ PsychError SCREENWaitBlanking(void)
     PsychWindowRecordType *windowRecord;
     int waitFrames, framesWaited;
     double tvbl, ifi;
-    long screenwidth, screenheight;
+    long windowwidth, windowheight;
     int vbl_startline, beampos, lastline;
     psych_uint64 vblCount, vblRefCount;
     CGDirectDisplayID	cgDisplayID;
@@ -92,10 +92,11 @@ PsychError SCREENWaitBlanking(void)
     
     // Retrieve display handle for beamposition queries:
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, windowRecord->screenNumber);
-    
-    // Retrieve final vbl_startline, aka physical height of the display in pixels:
-    PsychGetScreenSize(windowRecord->screenNumber, &screenwidth, &screenheight);
-    vbl_startline = (int) screenheight;
+
+    // Get window size and vblank startline:
+    windowwidth = PsychGetWidthFromRect(windowRecord->rect);
+    windowheight = PsychGetHeightFromRect(windowRecord->rect);
+    vbl_startline = windowRecord->VBL_Startline;
     
     // Query duration of a monitor refresh interval: We try to use the measured interval,
 	// but fallback of the nominal value reported by the operating system if necessary:
@@ -164,7 +165,7 @@ PsychError SCREENWaitBlanking(void)
     }
     else if (vblRefCount > 0) {
         // Display beamposition queries unsupported, but vblank count queries seem to work. Try those.
-        // Should work on Linux and OS/X:
+        // Should work on Linux:
         while(waitFrames > 0) {
             vblCount = vblRefCount;
 
@@ -212,9 +213,9 @@ PsychError SCREENWaitBlanking(void)
         glReadBuffer(GL_FRONT);
         glDrawBuffer(GL_BACK);
         
-        // Reset viewport to full-screen default:
-        glViewport(0, 0, screenwidth, screenheight);                
-        glScissor(0, 0, screenwidth, screenheight);                
+        // Reset viewport to full-window default:
+        glViewport(0, 0, windowwidth, windowheight);                
+        glScissor(0, 0, windowwidth, windowheight);                
         
         // Reset color buffer writemask to "All enabled":
         glColorMask(TRUE, TRUE, TRUE, TRUE);
@@ -227,8 +228,8 @@ PsychError SCREENWaitBlanking(void)
         // Swap-Waiting loop for 'waitFrames' frames:
         while(waitFrames > 0) {
             // Copy current content of front buffer into backbuffer:
-            glRasterPos2i(0, screenheight);
-            glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
+            glRasterPos2i(0, windowheight);
+            glCopyPixels(0, 0, windowwidth, windowheight, GL_COLOR);            
             
             // Ok, front- and backbuffer are now identical, so a bufferswap
             // will be a visual no-op.

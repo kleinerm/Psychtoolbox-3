@@ -789,7 +789,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
             clientheight = (int) PsychGetHeightFromRect(windowRecord->clientrect);
             
             if (PsychPrefStateGet_Verbosity() > 2) {
-                printf("PTB-INFO: Enabling panel fitter. Using virtual framebuffer of %i x %i pixels virtual size.\n", clientwidth, clientheight);
+                printf("PTB-INFO: Enabling panel fitter. Providing virtual framebuffer of %i x %i pixels size.\n", clientwidth, clientheight);
             }
         }
         else {

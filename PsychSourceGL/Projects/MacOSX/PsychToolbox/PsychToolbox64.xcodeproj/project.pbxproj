@@ -8068,7 +8068,7 @@
 				GCC_INPUT_FILETYPE = sourcecode.c.c;
 				GCC_MODEL_TUNING = "";
 				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_VERSION = com.apple.compilers.llvmgcc42;
+				GCC_VERSION = "";
 				HEADER_SEARCH_PATHS = "";
 				"HEADER_SEARCH_PATHS[arch=i386]" = (
 					/usr/local/include,
@@ -8090,9 +8090,8 @@
 					"$(LIBRARY_SEARCH_PATHS)",
 				);
 				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(LIBRARY_SEARCH_PATHS)";
-				MACOSX_DEPLOYMENT_TARGET = 10.6;
-				"MACOSX_DEPLOYMENT_TARGET[arch=i386]" = 10.6;
-				"MACOSX_DEPLOYMENT_TARGET[arch=x86_64]" = 10.6;
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
+				"MACOSX_DEPLOYMENT_TARGET[arch=x86_64]" = 10.8;
 				MATLAB_DIR_NAME = MATLAB74;
 				"MATLAB_DIR_NAME[arch=i386]" = MATLAB74;
 				"MATLAB_DIR_NAME[arch=x86_64]" = MATLAB_R2012a.app;
@@ -8102,8 +8101,7 @@
 				"PSYCHTOOLBOXROOT[arch=i386]" = /Users/kleinerm/projects/OpenGLPsychtoolbox/trunk/Psychtoolbox;
 				"PSYCHTOOLBOXROOT[arch=x86_64]" = "/Users/kleinerm/projects/OpenGLPsychtoolbox/Psychtoolbox-3/Psychtoolbox";
 				SDKROOT = macosx;
-				"SDKROOT[arch=i386]" = macosx10.6;
-				"SDKROOT[arch=x86_64]" = macosx10.6;
+				"SDKROOT[arch=x86_64]" = macosx;
 				STRIP_INSTALLED_PRODUCT = NO;
 				USER_HEADER_SEARCH_PATHS = "";
 				"USER_HEADER_SEARCH_PATHS[arch=i386]" = "/usr/local/include $(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/src $(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include $(USER_HEADER_SEARCH_PATHS)";
@@ -8118,8 +8116,8 @@
 				DEPLOYMENT_LOCATION = YES;
 				GCC_ENABLE_SSE3_EXTENSIONS = YES;
 				GCC_INPUT_FILETYPE = sourcecode.c.c;
-				GCC_VERSION = com.apple.compilers.llvmgcc42;
-				MACOSX_DEPLOYMENT_TARGET = 10.6;
+				GCC_VERSION = "";
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				MATLAB_DIR_NAME = MATLAB74;
 				ONLY_ACTIVE_ARCH = YES;
 				PSYCHTOOLBOXROOT = /Users/kleinerm/projects/OpenGLPsychtoolbox/trunk/Psychtoolbox;
@@ -8134,8 +8132,8 @@
 				DEPLOYMENT_LOCATION = YES;
 				GCC_ENABLE_SSE3_EXTENSIONS = YES;
 				GCC_INPUT_FILETYPE = sourcecode.c.c;
-				GCC_VERSION = com.apple.compilers.llvmgcc42;
-				MACOSX_DEPLOYMENT_TARGET = 10.6;
+				GCC_VERSION = "";
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				MATLAB_DIR_NAME = MATLAB74;
 				ONLY_ACTIVE_ARCH = YES;
 				PSYCHTOOLBOXROOT = /Users/kleinerm/projects/OpenGLPsychtoolbox/trunk/Psychtoolbox;
@@ -12402,7 +12400,7 @@
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 3;
 				GCC_PREPROCESSOR_DEFINITIONS = PTBOCTAVE3MEX;
-				GCC_VERSION = com.apple.compilers.llvmgcc42;
+				GCC_VERSION = "";
 				HEADER_SEARCH_PATHS = (
 					"/Applications/Octave.app/Contents/Resources/include/**",
 					"/usr/local/include//**",
@@ -12411,7 +12409,7 @@
 				KEEP_PRIVATE_EXTERNS = NO;
 				LIBRARY_SEARCH_PATHS = "\"/Applications/Octave.app/Contents/Resources/lib\"/**";
 				MACH_O_TYPE = mh_bundle;
-				MACOSX_DEPLOYMENT_TARGET = 10.6;
+				MACOSX_DEPLOYMENT_TARGET = 10.8;
 				MATLAB_DIR_NAME = MATLAB74;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = (
@@ -12441,8 +12439,7 @@
 				"PSYCHTOOLBOXROOT[arch=x86_64]" = "/Users/kleinerm/projects/OpenGLPsychtoolbox/Psychtoolbox-3/Psychtoolbox";
 				PUBLIC_HEADERS_FOLDER_PATH = /usr/local/include;
 				SDKROOT = macosx;
-				"SDKROOT[arch=i386]" = macosx10.6;
-				"SDKROOT[arch=x86_64]" = macosx10.6;
+				"SDKROOT[arch=x86_64]" = macosx;
 				STRIP_INSTALLED_PRODUCT = NO;
 				VALID_ARCHS = "i386 x86_64";
 			};

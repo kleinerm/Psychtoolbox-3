@@ -97,6 +97,7 @@ PsychError SCREENOpenWindow(void)
     PsychDepthType			specifiedDepth, possibleDepths, currentDepth, useDepth;
 	int                     dummy1;
 	double                  dummy2, dummy3, dummy4;
+    long                    nativewidth, nativeheight, frontendwidth, frontendheight;
 
 	psych_bool EmulateOldPTB = PsychPrefStateGet_EmulateOldPTB();
 
@@ -268,8 +269,34 @@ PsychError SCREENOpenWindow(void)
         imagingmode |= kPsychNeedFastBackingStore;
         imagingmode |= kPsychNeedGPUPanelFitter;        
     }
-    
-    
+    else if (!(imagingmode & kPsychNeedRetinaResolution)) {
+        // No explicit enable of panel fitter requested, but use of panel fitter
+        // also not explicitely forbidden by the kPsychNeedRetinaResolution flag.
+        // Check if we are displaying this window on a HiDPI "Retina" display. If
+        // so, we will enable the fitter to provide lower resolution framebuffer
+        // for userspace rendering and then upscale to native display resolution.
+        // This creates compatible behaviour to Apple OSX default behaviour and to
+        // old Psychtoolbox 3.0.11. If we are on a non-Retina standard display, then
+        // we leave the panel fitter disabled by default:
+        PsychGetScreenPixelSize(screenNumber, &nativewidth, &nativeheight);
+        PsychGetScreenSize(screenNumber, &frontendwidth, &frontendheight);
+
+        // Frontend and Backend resolution different?
+        if ((nativewidth > frontendwidth) || (nativeheight > frontendheight)) {
+            // Yes: Native backend resolution in pixels is higher than exposed
+            // frontend resolution in points. --> HiDPI / Retina display in use.
+            // Enable panel fitter by setting a clientRect the size and resolution
+            // of the frontend:
+            PsychGetScreenRect(screenNumber, clientRect);
+
+            // Enable imaging pipeline and panelfitter:
+            imagingmode |= kPsychNeedFastBackingStore;
+            imagingmode |= kPsychNeedGPUPanelFitter;
+
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Retina display. Enabling panel fitter for scaled Retina compatibility mode.\n");
+        }
+    }
+
 	// We require use of the imaging pipeline if stereomode for dualwindow display is requested.
 	// This makes heavy use of FBO's and blit operations, so imaging pipeline is needed.
 	if ((stereomode==kPsychDualWindowStereo) || (imagingmode & kPsychNeedDualWindowOutput)) {
@@ -554,7 +581,7 @@ PsychError SCREENOpenWindow(void)
         PsychNormalizeRect(clientRect, windowRecord->clientrect);
         PsychCopyRect(clientRect, windowRecord->clientrect);
 
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to enable my builtin panel-fitter on user request.\n");
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Trying to enable my builtin panel-fitter on user request.\n");
     }
     else {
         // No specific clientRect given - the default case.

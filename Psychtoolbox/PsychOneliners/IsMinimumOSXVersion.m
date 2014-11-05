@@ -11,14 +11,17 @@ function rc = IsMinimumOSXVersion(major, minor, point)
 % History:
 % 11/26/2007 Written (MK), based on code by Roger Woods (UCLA).
 % 05/28/2012 Fixed this bullshit (MK).
+% 11/01/2014 Convert to do without use of deprecated Gestalt() (MK).
 
 if ~IsOSX
     rc = 0;
     return;
 end
 
-gestaltbits=Gestalt('sys1');
-majorversion=bin2dec(char(49*gestaltbits+48*~gestaltbits));
+c = Screen('Computer');
+sysversion = c.system;
+sysnum = sscanf(sysversion, '%*s %*s %i.%i.%i');
+[majorversion, minorversion, pointversion] = deal(sysnum(1), sysnum(2), sysnum(3));
 
 % Preinit to 'No':
 rc = 0;
@@ -28,17 +31,13 @@ if majorversion >= major
         rc = 1;
         return;
     end
-    
-    gestaltbits=Gestalt('sys2');
-    minorversion=bin2dec(char(49*gestaltbits+48*~gestaltbits));
+
     if minorversion >= minor
         if minorversion > minor
             rc = 1;
             return;
         end
 
-        gestaltbits = Gestalt('sys3');
-        pointversion=bin2dec(char(49*gestaltbits+48*~gestaltbits));
         if pointversion >= point
             rc = 1;
         end

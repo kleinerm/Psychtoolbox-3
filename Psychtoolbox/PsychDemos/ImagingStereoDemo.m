@@ -177,9 +177,14 @@ end
 % display the background color in all remaining areas, thereby saving
 % some computation time for pixel processing: We select the center
 % 512x512 pixel area of the screen:
-if ~ismember(stereoMode, [100, 101, 102]) && isempty(reduceCrossTalkGain)
-    PsychImaging('AddTask', 'AllViews', 'RestrictProcessing', CenterRect([0 0 512 512], Screen('Rect', scrnNum)));
-end
+%
+% Update: Disabled, as it does more harm than good in this demo for
+%         some display configurations. Still useful for your own code
+%         if you have a weak graphics card or a very demanding task.
+%
+%if ~ismember(stereoMode, [100, 101, 102]) && isempty(reduceCrossTalkGain)
+%    PsychImaging('AddTask', 'AllViews', 'RestrictProcessing', CenterRect([0 0 512 512], Screen('Rect', scrnNum)));
+%end
 
 % stereoMode 100 triggers scanline interleaved display:
 if stereoMode == 100

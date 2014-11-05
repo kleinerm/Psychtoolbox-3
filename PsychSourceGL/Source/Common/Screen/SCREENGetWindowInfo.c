@@ -235,8 +235,6 @@ PsychError SCREENGetWindowInfo(void)
     double auxArg1, auxArg2, auxArg3;
     CGDirectDisplayID displayId;
     psych_uint64 postflip_vblcount;
-    double vbl_startline;
-    long scw, sch;
     psych_bool onscreen;
     int queryState;
     unsigned int gpuTimeElapsed;
@@ -503,10 +501,8 @@ PsychError SCREENGetWindowInfo(void)
         PsychSetStructArrayDoubleElement("GuesstimatedMemoryUsageMB", 0, (double) windowRecord->surfaceSizeBytes / 1024 / 1024, s);
         PsychSetStructArrayDoubleElement("BitsPerColorComponent", 0, (double) windowRecord->bpc, s);
 
-        // Query real size of the underlying display in order to define the vbl_startline:
-        PsychGetScreenSize(windowRecord->screenNumber, &scw, &sch);
-        vbl_startline = (double) sch;
-        PsychSetStructArrayDoubleElement("VBLStartline", 0, vbl_startline, s);
+        // Return VBL startline:
+        PsychSetStructArrayDoubleElement("VBLStartline", 0, (double) windowRecord->VBL_Startline, s);
 
         // And VBL endline:
         PsychSetStructArrayDoubleElement("VBLEndline", 0, windowRecord->VBL_Endline, s);

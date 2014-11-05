@@ -33,6 +33,7 @@
 
 #include <ApplicationServices/ApplicationServices.h>
 #include <Cocoa/Cocoa.h>
+#include <objc/message.h>
 
 PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windowLevel, void** outWindow)
 {
@@ -127,9 +128,13 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
         [cocoaWindow setFrameTopLeftPoint:winPosition];
     }
 
-    // Query and translate content rect of final window to a PTB rect:
+    // Query and translate content rect of final window to a PTB rect for use as the windows globalRect
+    // in global screen space coordinates (unit is points, not pixels - important for Retina/HiDPI):
     NSRect clientRect = [cocoaWindow contentRectForFrameRect:[cocoaWindow frame]];
-    PsychMakeRect(windowRecord->rect, clientRect.origin.x, screenRect[kPsychBottom] - (clientRect.origin.y + clientRect.size.height), clientRect.origin.x + clientRect.size.width, screenRect[kPsychBottom] - clientRect.origin.y);
+    PsychMakeRect(windowRecord->globalrect, clientRect.origin.x, screenRect[kPsychBottom] - (clientRect.origin.y + clientRect.size.height), clientRect.origin.x + clientRect.size.width, screenRect[kPsychBottom] - clientRect.origin.y);
+
+    // Tell Cocoa/NSOpenGL to render to Retina displays at native resolution:
+    [[cocoaWindow contentView] setWantsBestResolutionOpenGLSurface:YES];
 
     // Drain the pool:
     [pool drain];
@@ -141,7 +146,7 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
     return(PsychError_none);
 }
 
-void PsychCocoaGetWindowBounds(void* window, PsychRectType globalBounds)
+void PsychCocoaGetWindowBounds(void* window, PsychRectType globalBounds, PsychRectType windowpixelRect)
 {
     PsychRectType screenRect;
     double screenHeight;
@@ -162,6 +167,10 @@ void PsychCocoaGetWindowBounds(void* window, PsychRectType globalBounds)
     globalBounds[kPsychRight]  = clientRect.origin.x + clientRect.size.width;
     globalBounds[kPsychTop]    = screenHeight - (clientRect.origin.y + clientRect.size.height);
     globalBounds[kPsychBottom] = globalBounds[kPsychTop] + clientRect.size.height;
+    
+    // Compute true size - now in pixels, not points - of window backbuffer as windows rect:
+    NSSize backSize = [[cocoaWindow contentView] convertSizeToBacking: clientRect.size];
+    PsychMakeRect(windowpixelRect, 0, 0, backSize.width, backSize.height);
 
     // Drain the pool:
     [pool drain];
@@ -392,7 +401,11 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(void* window, P
     windowRecord->targetSpecific.nsmasterContext = (void*) masterContext;
     windowRecord->targetSpecific.nsswapContext = (void*) glswapContext;
     windowRecord->targetSpecific.nsuserContext = (void*) gluserContext;
-
+    
+    // Assign final window globalRect (in units of points in gobal display space)
+    // and final true backbuffer size 'rect' (in units of pixels):
+    PsychCocoaGetWindowBounds(window, windowRecord->globalrect, windowRecord->rect);
+    
     // Drain the pool:
     [pool drain];
 
@@ -503,4 +516,71 @@ void PsychCocoaPreventAppNap(psych_bool preventAppNap)
         }
         return;
     }
+}
+
+void PsychCocoaGetOSXVersion(int* major, int* minor, int* patchlevel)
+{
+    typedef struct {
+        NSInteger majorVersion;
+        NSInteger minorVersion;
+        NSInteger patchVersion;
+    } MyOperatingSystemVersion;
+
+    // Allocate auto release pool:
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
+    // Version query supported? Only on OSX 10.9 (inofficially, non-public api), 10.10 (public api):
+    if ([[NSProcessInfo processInfo] respondsToSelector:@selector(operatingSystemVersion)]) {
+        MyOperatingSystemVersion version = ((MyOperatingSystemVersion(*)(id, SEL))objc_msgSend_stret)([NSProcessInfo processInfo], @selector(operatingSystemVersion));
+        if (major) *major = version.majorVersion;
+        if (minor) *minor = version.minorVersion;
+        if (patchlevel) *patchlevel = version.patchVersion;
+    }
+    else {
+        // Unsupported. We must be on OSX 10.8.x, as this is the only OSX version
+        // we support which doesn't support the selector. Make shit up:
+        if (major) *major = 10;
+        if (minor) *minor = 8;
+        if (patchlevel) *patchlevel = 5;
+    }
+
+    // Drain the pool:
+    [pool drain];
+}
+
+/* Return a pointer to a static string containing the full name of the logged in user */
+char* PsychCocoaGetFullUsername(void)
+{
+    static char fullUserName[256] = { 0 };
+    
+    // Allocate auto release pool:
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    
+    NSString* nsname = NSFullUserName();
+    const char *srcname = [nsname UTF8String];
+    strncpy(fullUserName, srcname, sizeof(fullUserName) - 1);
+
+    // Drain the pool:
+    [pool drain];
+    
+    return(fullUserName);
+}
+
+/* Return backing store scale factor of window. Not equal one == Retina stuff */
+double PsychCocoaGetBackingStoreScaleFactor(void* window)
+{
+    double sf;
+
+    NSWindow* cocoaWindow = (NSWindow*) window;
+
+    // Allocate auto release pool:
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
+    // Set Window transparency:
+    sf = (double) [cocoaWindow backingScaleFactor];
+
+    // Drain the pool:
+    [pool drain];
+
+    return (sf);
 }

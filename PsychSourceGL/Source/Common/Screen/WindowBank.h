@@ -119,6 +119,7 @@ TO DO:
 											// post-processing to the two outputs. An example is display mirroring or special HDR displays.
 #define kPsychNeedGPUPanelFitter      32768 // This flag is used for imagingMode to signal need/use of the GPU based imaging pipeline panel fitter.
 #define kPsychNeedOtherStreamInput (1 << 17) // This flag signals that the input image for the other view channel of a stereo pipeline should be bound to texture unit 1 as 2nd input.
+#define kPsychNeedRetinaResolution (1 << 18) // Do not auto-enable panelfitter on Retina display, ie., user-framebuffer shall be full native Retina resolution.
 
 // 'specialflags' fields, partially shared with imagingmode flags:
 #define kPsychUseTextureMatrixForRotation 1 // Setting for 'specialflags' field of windowRecords that describe textures. If set, drawtexture routine should implement
@@ -149,7 +150,7 @@ TO DO:
 #define kPsychNeedOpenMLTSWorkaround (1 << 20) // 'specialflags' setting 2^20: KMS pageflip completion events are faulty on a FOSS driver: Use glXGetSyncValuesOML workaround.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17. --> Flags of 2^18 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18. --> Flags of 2^19 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20. --> Flags of 2^21 and higher are available...
