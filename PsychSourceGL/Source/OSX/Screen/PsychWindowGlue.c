@@ -251,6 +251,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     PsychRectType                   screenrect;
     int                             i;
     int                             windowLevel;
+    long                            scw, sch;
     void*                           cocoaWindow = NULL;
 
     // Map screen number to physical display handle cgDisplayID:
@@ -282,27 +283,18 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     if (PsychMatchRect(screenrect, windowRecord->rect)) windowRecord->specialflags |= kPsychIsFullscreenWindow;
 
     if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_Verbosity() > 2)) {
-        printf("PTB-INFO: Always using Cocoa for fullscreen windows, to work around graphics driver bugs in OSX and because Apple forces us to do so.\n");
-        printf("PTB-INFO: Presentation timing and timestamp precision is not yet known for this configuration on most Apple machines, so check your results.\n");
+        printf("PTB-INFO: Always using Cocoa for fullscreen windows to work around graphics driver bugs in OSX.\n");
+        printf("PTB-INFO: Presentation timing precision is not yet known for this configuration on most machines. Check your results.\n");
     }
 
-    // Override for use of PsychDebugWindowConfiguration, to allow half transparent
-    // windows for more painless single display setup debugging:
-    // If requested, always use NSOpenGL API and regular windows via the Quartz
-    // desktop compositor. These are just borderless, decorationless fullscreen windows.
-    // As Quartz is in full control of buffer swaps, the stimulus onset timing
-    // is horrible, animations are possibly jerky and all our high precision timestamping is
-    // completely broken and pointless: This mode is only useful for slowly updating
-    // mostly static stimuli with no timing requirements, ie., for debugging:
+    // Display for fullscreen window not captured? Timing precision is unclear in this mode. In theory the compositor should disable
+    // itself for fullscreen windows on modern OSX versions. If it really does that, who knows?
     if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLCompositorForFullscreenWindows)) {
         // Force a window rectangle that matches the global screen rectangle for that windows screen:
         PsychCopyRect(windowRecord->rect, screenrect);
 
-        // Disable all timestamping:
-        PsychPrefStateSet_VBLTimestampingMode(-1);
-
         // Warn user about what's going on:
-        if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Using desktop compositor for composited onscreen window creation: High precision timestamping disabled,\nvisual stimulus onset timing and timestamping may be very unreliable on all windows!!\n");
+        if (PsychPrefStateGet_Verbosity()>1) printf("PTB-INFO: No display capture / compositor lockout for fullscreen window. Timing precision is unknown.\n");
     }
 
     if ((windowRecord->specialflags & kPsychGUIWindow) && (PsychPrefStateGet_Verbosity() > 3)) {
@@ -343,10 +335,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Store window handle in windowRecord:
     windowRecord->targetSpecific.windowHandle = cocoaWindow;
 
-    // Copy absolute screen location and area of window to 'globalrect',
-    // so functions like Screen('GlobalRect') can still query the real
-    // bounding gox of a window onscreen:
-    PsychCopyRect(windowRecord->globalrect, windowRecord->rect);		
+    // Store vblank startline aka true height of physical display screen in pixels:
+    PsychGetScreenPixelSize(screenSettings->screenNumber, &scw, &sch);
+    windowRecord->VBL_Startline = (int) sch;
 
     // Define pixelformat attributes for OpenGL contexts:
 
@@ -954,8 +945,7 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 	// GUI windows need to behave GUIyee:
 	if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord)) {
 		// Update windows rect and globalrect, based on current size and location:
-		PsychCocoaGetWindowBounds(windowRecord->targetSpecific.windowHandle, windowRecord->globalrect);
-		PsychNormalizeRect(windowRecord->globalrect, windowRecord->rect);
+		PsychCocoaGetWindowBounds(windowRecord->targetSpecific.windowHandle, windowRecord->globalrect, windowRecord->rect);
 		PsychSetupClientRect(windowRecord);
 		PsychSetupView(windowRecord, FALSE);
 	}

@@ -158,6 +158,26 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
 %
 %
+% * 'UseRetinaResolution' Ask to prefer a framebuffer with the full native
+%   resolution of attached HiDPI "Retina" displays, instead of a scaled
+%   down lower resolution framebuffer with typically half the horizontal
+%   and vertical resolution of the Retina display. This setting will be
+%   ignored if the onscreen window is not displayed on a HiDPI "Retina"
+%   display in a scaled display mode, or if the panel fitter is in use by
+%   specifying the 'UsePanelFitter' task. By default, Screen() would use a
+%   downscaled framebuffer on a Retina display and scale that low
+%   resolution buffer up to full display panel resolution, just as Apples
+%   OSX operating system does it by default. This in order to reduce
+%   computational load, improve graphics performance, and avoid problems
+%   with backward compatibility of old code. If you want to make full use
+%   of the resolution of your HiDPI display, specify this task to tell
+%   Screen() to use the full display panel resolution, even if this may
+%   introduce some compatibility issues into your code and causes a decrease
+%   in graphics performance due to the very high graphics rendering load.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'UseRetinaResolution');
+%
+%
 % * 'UseDisplayRotation' Ask to use builtin panel fitter exclusively for
 %   rotating the framebuffer. This is useful if you want to turn your
 %   display device from landscape (= normal upright) orientation into
@@ -1266,6 +1286,8 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %                     we learned about this 10/11 bpc business on HDMI so far. (MK)
 % 16.09.2014  Add experimental 'StereoCrosstalkReduction' support. (MK/DCN)
 % 17.09.2014  Add 'Native16BitFramebuffer' support for Linux + FOSS + AMD. (MK)
+% 03.11.2014  Make panelfitter compatible with Retina displays. (MK)
+% 04.11.2014  Add new task 'UseRetinaResolution' for Retina displays. (MK)
 
 persistent configphase_active;
 persistent reqs;
@@ -1540,7 +1562,7 @@ if strcmpi(cmd, 'OpenWindow')
         
         % Get full size of output framebuffer:
         if isempty(winRect)
-            [clientRes(1), clientRes(2)] = Screen('WindowSize', screenid);
+            [clientRes(1), clientRes(2)] = Screen('WindowSize', screenid, 1);
         else
             clientRes = [RectWidth(winRect), RectHeight(winRect)];
         end
@@ -1602,7 +1624,7 @@ if strcmpi(cmd, 'OpenWindow')
 
         % Define full size of output framebuffer:
         if isempty(winRect)
-            dstFit = Screen('Rect', screenid);
+            dstFit = Screen('Rect', screenid, 1);
         else
             dstFit = SetRect(0, 0, RectWidth(winRect), RectHeight(winRect));
         end
@@ -2426,6 +2448,11 @@ if ~isempty(find(mystrcmp(reqs, 'UseDataPixx')))
         % Mark as online:
         datapixxmode = 1;
     end
+end
+
+% Want native Retina display resolution in a scaled HiDPI display mode?
+if ~isempty(find(mystrcmp(reqs, 'UseRetinaResolution')))
+    imagingMode = mor(imagingMode, kPsychNeedRetinaResolution);
 end
 
 % FBO backed framebuffer needed?

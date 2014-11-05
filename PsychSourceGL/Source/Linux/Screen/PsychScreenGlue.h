@@ -60,6 +60,7 @@ void						PsychGetScreenDepth(int screenNumber, PsychDepthType *depth);   //dont
 int                         PsychGetScreenDepthValue(int screenNumber);
 float						PsychGetNominalFramerate(int screenNumber);
 float                       PsychSetNominalFramerate(int screenNumber, float requestedHz);
+void						PsychGetScreenPixelSize(int screenNumber, long *width, long *height);
 void						PsychGetScreenSize(int screenNumber, long *width, long *height);
 void						PsychGetGlobalScreenRect(int screenNumber, double *rect);
 void						PsychGetScreenRect(int screenNumber, double *rect);

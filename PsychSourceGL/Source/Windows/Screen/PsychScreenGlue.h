@@ -53,6 +53,7 @@ psych_bool					PsychCheckVideoSettings(PsychScreenSettingsType *setting);
 void						PsychGetScreenDepth(int screenNumber, PsychDepthType *depth);   //dont' use this and get rid  of it.
 int                         PsychGetScreenDepthValue(int screenNumber);
 int                         PsychGetNominalFramerate(int screenNumber);
+void						PsychGetScreenPixelSize(int screenNumber, long *width, long *height);
 void						PsychGetScreenSize(int screenNumber, long *width, long *height);
 void						PsychGetGlobalScreenRect(int screenNumber, double *rect);
 void						PsychGetScreenRect(int screenNumber, double *rect);

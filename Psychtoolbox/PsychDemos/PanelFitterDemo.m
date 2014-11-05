@@ -114,11 +114,10 @@ try
     Screen('FillOval', w, [1, 1, 0]);
     Screen('TextSize', w, 48);
     DrawFormattedText(w, '<--- Hello World! --->\nTilt me counter-clockwise.\nPress key to continue.', 'center', 'center', [0,0,1]);
-    Screen('Flip', w);
     
     % Wait for a key press:
-    KbStrokeWait;
-    
+    ShowUntilKey(w);
+
     % Close down:
     sca;
     
@@ -136,10 +135,9 @@ try
     Screen('FillOval', w, [1, 1, 0]);
     Screen('TextSize', w, 48);
     DrawFormattedText(w, '<--- Hello World! --->\nTilt me clockwise.\nPress key to continue.', 'center', 'center', [0,0,1]);
-    Screen('Flip', w);
-    
+
     % Wait for a key press:
-    KbStrokeWait;
+    ShowUntilKey(w);
     
     % Close down:
     sca;
@@ -158,10 +156,9 @@ try
     Screen('FillOval', w, [1, 1, 0]);
     Screen('TextSize', w, 48);
     DrawFormattedText(w, '<--- Hello World! --->\nYou spin me right round baby right round!\nPress key to continue.', 'center', 'center', [0,0,1]);
-    Screen('Flip', w);
-    
+
     % Wait for a key press:
-    KbStrokeWait;
+    ShowUntilKey(w);
     
     % Close down:
     sca;
@@ -184,11 +181,10 @@ try
     Screen('FillOval', w, [1, 1, 0]);
     Screen('TextSize', w, 24);
     DrawFormattedText(w, '<--- Hello World! --->\nI am feeling small but\ncentered today!\nPress key to continue.', 'center', 'center', [0,0,1]);
-    Screen('Flip', w);
-    
+
     % Wait for a key press:
-    KbStrokeWait;
-    
+    ShowUntilKey(w);
+
     % Close down:
     sca;
     
@@ -208,10 +204,9 @@ try
     Screen('FillOval', w, [1, 1, 0]);
     Screen('TextSize', w, 24);
     DrawFormattedText(w, '<--- Hello World! --->\nI am feeling big and blurry.\nA nice new aspect!\nPress key to continue.', 'center', 'center', [0,0,1]);
-    Screen('Flip', w);
-    
+
     % Wait for a key press:
-    KbStrokeWait;
+    ShowUntilKey(w);
     
     % Close down:
     sca;
@@ -231,10 +226,9 @@ try
     Screen('FillOval', w, [1, 1, 0]);
     Screen('TextSize', w, 24);
     DrawFormattedText(w, '<--- Hello World! --->\nI am feeling big and soft.\nThat''s the way i like it!\nPress key to continue.', 'center', 'center', [0,0,1]);
-    Screen('Flip', w);
-    
+
     % Wait for a key press:
-    KbStrokeWait;
+    ShowUntilKey(w);
     
     % Close down:
     sca;
@@ -246,4 +240,18 @@ catch %#ok<*CTCH>
     sca;
     Screen('Preference','SkipSyncTests', oldsynctest);
     psychrethrow(psychlasterror);
+end
+
+% End of function.
+end
+
+function ShowUntilKey(w)
+    KbReleaseWait;
+    
+    while ~KbCheck
+        [x, y] = GetMouse(w);
+        [xm, ym] = RemapMouse(w, 'AllViews', x, y);
+        Screen('DrawDots', w, [xm ; ym], 5, [1, 0, 0], [], 1);
+        Screen('Flip', w, [], 1);
+    end
 end

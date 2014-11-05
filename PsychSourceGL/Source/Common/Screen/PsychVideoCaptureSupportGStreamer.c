@@ -791,7 +791,7 @@ static void PsychGSEnumerateVideoSourcesViaDeviceMonitor(void)
     gst_caps_unref(caps);
 
     if (!gst_device_monitor_start(monitor)) {
-        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Failed to start GstDeviceMonitor. May not be able to enumerate all video capture devices!\n");
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: GstDeviceMonitor unsupported. May not be able to enumerate all video devices.\n");
     }
     else {
         devlist = gst_device_monitor_get_devices(monitor);

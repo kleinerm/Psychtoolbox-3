@@ -679,6 +679,12 @@ void PsychGetDisplaySize(int screenNumber, int *width, int *height)
     *height = (int) GetDeviceCaps(displayCGIDs[screenNumber], VERTSIZE); 
 }
 
+void PsychGetScreenPixelSize(int screenNumber, long *width, long *height)
+{
+    // For now points == pixels, so just a dumb wrapper:
+    PsychGetScreenSize(screenNumber, width, height);
+}
+
 void PsychGetScreenSize(int screenNumber, long *width, long *height)
 {
   if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); 

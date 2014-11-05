@@ -38,6 +38,7 @@ PsychError SCREENWindowSize(void)
 	int screenNumber;
 	PsychRectType rect;
 	double	rectWidth, rectHeight;
+    long fbWidth, fbHeight;
     int realFBSize = 0;
     
 	//all sub functions should have these two lines
@@ -54,11 +55,16 @@ PsychError SCREENWindowSize(void)
 
 	if(PsychIsScreenNumberArg(1)){
 		PsychCopyInScreenNumberArg(1, TRUE, &screenNumber);
-		PsychGetScreenRect(screenNumber, rect);
-		rectWidth=PsychGetWidthFromRect(rect);
-		rectHeight=PsychGetHeightFromRect(rect);
-		PsychCopyOutDoubleArg(1, kPsychArgOptional, rectWidth);
-		PsychCopyOutDoubleArg(2, kPsychArgOptional, rectHeight);
+        if (realFBSize) {
+            // Physical size in pixels:
+            PsychGetScreenPixelSize(screenNumber, &fbWidth, &fbHeight);
+        }
+        else {
+            // Logical size in points:
+            PsychGetScreenSize(screenNumber, &fbWidth, &fbHeight);
+        }
+		PsychCopyOutDoubleArg(1, kPsychArgOptional, fbWidth);
+		PsychCopyOutDoubleArg(2, kPsychArgOptional, fbHeight);
 	}else if(PsychIsWindowIndexArg(1)){
 		PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
 		PsychOSProcessEvents(windowRecord, 0);
