@@ -48,17 +48,17 @@ function DriftDemo6(angle, cyclespersecond, f)
 % HISTORY
 % 3/31/09 mk Written.
 
-if nargin<3
+if nargin < 3 || isempty(f)
     % Grating cycles/pixel
     f=0.05;
 end;
 
-if nargin<2
+if nargin < 2 || isempty(cyclespersecond)
     % Speed of grating in cycles per second:
     cyclespersecond=1;
 end;
 
-if nargin<1
+if nargin < 1 || isempty(angle)
     % Angle of the grating: We default to 30 degrees.
     angle=30;
 end;
@@ -78,12 +78,12 @@ try
 
     % Round gray to integral number, to avoid roundoff artifacts with some
     % graphics cards:
-	gray=round((white+black)/2);
+    gray=round((white+black)/2);
 
     % This makes sure that on floating point framebuffers we still get a
     % well defined gray. It isn't strictly neccessary in this demo:
     if gray == white
-		gray=white / 2;
+      gray=white / 2;
     end
     inc=white-gray;
 
