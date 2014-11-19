@@ -1371,7 +1371,14 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
     // Extension unsupported or known to be defective? Return -1 "unsupported" in that case:
     if ((NULL == glXWaitForSbcOML) || (windowRecord->specialflags & kPsychOpenMLDefective)) return(-1);
 
-    if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Supported. Calling with targetSBC = %lld.\n", targetSBC);
+    // Hack to work around bugs in Mesa 10.3.3's DRI3/Present glXWaitForSBC() implementation. Doesn't work properly
+    // for targetSBC == 0, so feed it the equivalent non-zero targetSBC from the glXSwapBuffersMscOML()
+    // return value to force it into the less broken code path:
+    if (targetSBC == 0) {
+        targetSBC = windowRecord->target_sbc;
+        if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Supported. Calling with overriden targetSBC = %lld.\n", targetSBC);
+    }
+    else if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Supported. Calling with targetSBC = %lld.\n", targetSBC);
 
     // If this is a vsync'ed swap which potentially waits until a future point in time before completing, then
     // glXWaitForSbcOML() may block until that future point in time. Doing so, it will block the used x-display
@@ -1854,7 +1861,7 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 	windowRecord - The window to be swapped.
 	tWhen        - Requested target system time for swap. Swap shall happen at first
 				   VSync >= tWhen.
-	targetMSC	 - If non-zero, specifies target msc count for swap. Overrides tWhen.
+	targetMSC	 - If non-zero, specifies target msc count for swap. Overrides tWhen, unless tWhen == DBL_MAX.
 	divisor, remainder - If set to non-zero, msc at swap must satisfy (msc % divisor) == remainder.
 	specialFlags - Additional options, a bit field consisting of single bits that can be or'ed together:
 				   1 = Constrain swaps to even msc values, 2 = Constrain swaps to odd msc values. (Used for frame-seq. stereo field selection)
@@ -1890,8 +1897,8 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 
 	// Non-Zero targetMSC provided to directy specify the msc on which swap should happen?
 	// If so, then we can skip computation and directly call with that targetMSC:
-	if (targetMSC == 0) {
-		// No: targetMSC shall be computed from given tWhen system target time.
+    if ((targetMSC == 0) && (tWhen != DBL_MAX)) {
+		// No: targetMSC shall be computed from given valid tWhen system target time.
 		// Get current (msc,ust) reference values for computation.
 		
 		// Get current values for (msc, ust, sbc) the textbook way: Return error code -2 on failure:
@@ -1942,8 +1949,11 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 		targetMSC = msc + ((psych_int64)(floor((tWhen - tMsc) / windowRecord->VideoRefreshInterval) + 1));
 	}
 	
-	// Clamp targetMSC to a positive non-zero value:
-	if (targetMSC <= 0) targetMSC = 1;
+	// Clamp targetMSC to a positive non-zero value, unless special case
+	// for glXSwapBuffers() semantic is requested, in which case we pass
+	// the zero targetMSC on. A zero targetMSC, divisor and remainder will
+	// trigger good old glXSwapBuffers() semantics:
+	if ((targetMSC <= 0) && (tWhen != DBL_MAX)) targetMSC = 1;
 
 	// Swap at specific even or odd frame requested? This is useful for frame-sequential stereo
 	// presentation that shall start its presentation at a specific eye-view:
@@ -1988,15 +1998,32 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 */
 void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 {
-	// Execute OS neutral bufferswap code first:
-	PsychExecuteBufferSwapPrefix(windowRecord);
-	
-	// Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
-	PsychLockDisplay();
-	glXSwapBuffers(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle);
-	PsychUnlockDisplay();
+    // Execute OS neutral bufferswap code first:
+    PsychExecuteBufferSwapPrefix(windowRecord);
 
-	windowRecord->target_sbc = 0;
+    // Prefer use of scheduled swap api (glXSwapBuffersMscOML()) on Linux, if supported,
+    // to achieve the same effect as a simple glXSwapBuffers() call would have.
+    // Mesa, as of version 10.3.3, has a bug in its new DRI3/Present implementation of
+    // glXWaitForSbcOML() in that it malfunctions with targetSBC == 0: It doesn't wait forbid
+    // all pending swaps to complete, but falls through and returns stale values from previous
+    // swaps! By using PsychOSScheduleFlipWindowBuffers() we get the proper targetSBC for this
+    // swap request, so a corresponding workaround in PsychOSGetSwapCompletionTimestamp() can
+    // use it to call glXWaitForSbcOML() with a proper non-zero targetSBC -- problem solved.
+    // If the function is unsupported we fall back to good ol' glXSwapBuffers below.
+    // This should not have any negative side effects compared to the old implementation, so
+    // can be safely used on DRI2 and other graphics stacks as well.
+    //
+    // Note another fun-bug (or feature?): A targetMSC of zero causes a hang of the
+    // bufferswap mechanism as of XOrg 1.16.2 + Mesa 10.3.0, so use a targetMSC == 1
+    // instead.
+    if (PsychOSScheduleFlipWindowBuffers(windowRecord, DBL_MAX, 1, 0, 0, 0) >= 0) return;
+
+    // Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
+    PsychLockDisplay();
+    glXSwapBuffers(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle);
+    PsychUnlockDisplay();
+
+    windowRecord->target_sbc = 0;
 }
 
 /* Enable/disable syncing of buffer-swaps to vertical retrace. */
