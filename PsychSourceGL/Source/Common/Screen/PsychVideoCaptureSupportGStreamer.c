@@ -1265,9 +1265,9 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
     gint            qbpp;
     gint            rate1 = 0, rate2 = 1;
     gint            twidth = -1, theight = -1;
-    gint            maxpixelarea = -1;
+    gint            maxpixelarea = 0;
     double          tfps = 0.0;
-    int             i;
+    int             i, nrcandidates = 0;
 
     // Query caps of videosource and extract supported video capture modes:
     g_object_get(G_OBJECT(capdev->camera), "viewfinder-supported-caps", &caps, NULL);
@@ -1280,15 +1280,21 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
         for (i = 0; i < (int) gst_caps_get_size(caps); i++) {
             str = gst_caps_get_structure(caps, i);
 
-            // Set a default of 1 pixel, in case query doesn't return anything:
-            qwidth = 1;
+            // Set a default of 0 pixels, in case query doesn't return anything:
+            qwidth = 0;
             gst_structure_get_int(str, "width", &qwidth);
-            qheight = 1;
+            qheight = 0;
             gst_structure_get_int(str, "height", &qheight);
             qbpp = -1;
             gst_structure_get_int(str, "bpp", &qbpp);
             gst_structure_get_fraction(str, "framerate", &rate1, &rate2);
             if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Videosource cap %i: w = %i h = %i bpp = %i\n", i, qwidth, qheight, qbpp);
+
+            // Anything meaningful enumerated? Skip otherwise.
+            if ((qwidth == 0) && (qheight == 0)) continue;
+
+            // This (qwidth, qheight) pair is a valid candidate for validation/detection:
+            nrcandidates++;
 
             // Is this detection of default resolution, or validation of a
             // given resolution?
@@ -1308,8 +1314,7 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
             }
             else {
                 // Validation: Reject/Skip modes which don't support requested resolution.
-                if (((*width != (int) qwidth) && (qwidth > 1)) || ((*height != (int) qheight) && (qheight > 1))) continue;
-                if ((qwidth == 1) && (qheight == 1)) continue;
+                if (((*width != (int) qwidth) && (qwidth > 0)) || ((*height != (int) qheight) && (qheight > 0))) continue;
 
                 // Check for bitdepths bpc requirements and reject unsatisfying ones - See above for logic:
                 if (!((qbpp <= 0) || (reqbitdepth <= 8) || (reqdepth == 2) || (qbpp >= reqbitdepth * reqdepth))) continue;
@@ -1326,15 +1331,34 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
 
         // Any matching mode found?
         if (twidth == -1) {
-            // No! The requested resolution + fps + pixelformat combo
-            // is not supported:
-            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Could not validate video source resolution %i x %i. Returning failure.\n", *width, *height);
-            return(FALSE);
+            // No. Did we have any valid candidates from enumeration and all failed to match?
+            if (nrcandidates > 0) {
+                // No candidate matched: Requested resolution + fps + pixelformat combo is not supported:
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Could not validate video source resolution %i x %i. Returning failure.\n", *width, *height);
+                return(FALSE);
+            }
+            else {
+                // Could not enumerate any candidates. Was auto-detection requested?
+                if ((*width == -1) && (*height == -1)) {
+                    // Yes. This means we failed to detect anything. Return failure, so caller can try to
+                    // handle this via fallback methods:
+                    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Could not find any valid modes on video source. Triggering fallback.\n");
+                    return(FALSE);
+                }
+                else {
+                    // No. This was supposed to be validation and we couldn't do proper validation.
+                    // Be optimistic, return validation success and just hope for the best:
+                    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Could not find any valid modes on video source for validation. Assuming settings are fine.\n");
+                    twidth = *width;
+                    theight = *height;
+                    tfps = *fps;
+                }
+            }
         }
 
         // Special case DV video source, which has defined horizontal resolution of 720 pixels,
         // but no defined vertical resolution? Two possible values: 576 (PAL) or 480 (NTSC).
-        if ((twidth == 720) && (theight == 1)) {
+        if ((twidth == 720) && (theight == 0)) {
             // If auto-detection requested, then assume PAL is the correct choice,
             // ie., 576 pixels height. If just validation is requested, just pass-through
             // whatever was passed in if it was 480 or 576 pixels:
@@ -1364,8 +1388,14 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
 
         return(TRUE);
     } else {
-        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychGSGetResolutionAndFPSForSpec(): Capability query to video source failed! Returning failure.\n");
-        return(FALSE);
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychGSGetResolutionAndFPSForSpec(): Capability query to video source failed!\n");
+
+        // If this was supposed to be auto-detection, just fail and hope for triggered fallback:
+        if ((*width == -1) && (*height == -1)) return(FALSE);
+
+        // This was meant to be a validation of given parameters. Just be optimistic and return success,
+        // then hope for the best:
+        return(TRUE);
     }
 }
 
@@ -3287,7 +3317,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             }
         }
     }
-    
+
     // We need to READY the pipeline, otherwise the queries and validations below will fail
     // due to lack of available video capture caps:
     if (!PsychVideoPipelineSetState(camera, GST_STATE_READY, 30.0)) {
@@ -3333,16 +3363,10 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         capdev->fps = -1;
 
         // Auto-Detection doesn't work with various video source plugins. Skip it and hope that later probing code will do the job:
-        if (!strstr(plugin_name, "dshowvideosrc") && !strstr(plugin_name, "autovideosrc") && !strstr(plugin_name, "videotestsrc") &&
-            !strstr(plugin_name, "aravissrc") && !strstr(plugin_name, "gstlaunchbinsrc")) {
-            // Ask camera to provide auto-detected parameters:
-            if (!PsychGSGetResolutionAndFPSForSpec(capdev, &capdev->width, &capdev->height, &capdev->fps, reqdepth, bitdepth)) {
-                // Unsupported resolution. Game over!
-                printf("PTB-ERROR: Auto-Detection of optimal video resolution on video capture device %i failed! Aborted.\n", slotid);
-                PsychErrorExitMsg(PsychError_user, "Failed to open video device with auto-detected video resolution.");
-            }
-
-            // Resolution supported. Request it by setting colorcaps for camerabin:
+        if ((!strstr(plugin_name, "dshowvideosrc") && !strstr(plugin_name, "autovideosrc") && !strstr(plugin_name, "videotestsrc") &&
+            !strstr(plugin_name, "aravissrc") && !strstr(plugin_name, "gstlaunchbinsrc")) &&
+            PsychGSGetResolutionAndFPSForSpec(capdev, &capdev->width, &capdev->height, &capdev->fps, reqdepth, bitdepth)) {
+            // Resolution properly auto-detected. Request it by setting colorcaps for camerabin:
             gst_caps_set_simple(colorcaps, "width", G_TYPE_INT, capdev->width, "height", G_TYPE_INT, capdev->height, NULL);
             g_object_set(G_OBJECT(camera), "viewfinder-caps", colorcaps, NULL);
             if (capdev->recording_active) {
