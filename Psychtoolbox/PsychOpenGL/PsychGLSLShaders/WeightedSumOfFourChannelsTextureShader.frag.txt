@@ -1,0 +1,18 @@
+/* Shader for weighted summing of input texture layers into
+ * a scalar output value which is replicated into all four output
+ * components.
+ *
+ * (c) 2014 by Mario Kleiner. Licensed under MIT license.
+ */
+
+#extension GL_ARB_texture_rectangle : enable
+
+uniform sampler2DRect Image;
+varying vec4 mixWeights;
+
+void main()
+{
+    vec4 incolor = texture2DRect(Image, gl_TexCoord[0].st);
+    float sum = dot(incolor, mixWeights);
+    gl_FragColor.rgba = vec4(sum);
+}
