@@ -1,4 +1,4 @@
-function [shader, varargout] = CreateSinglePassImageProcessingShader(windowPtr, shaderType, varargin) %#ok<STOUT>
+function [shader, varargout] = CreateSinglePassImageProcessingShader(windowPtr, shaderType, varargin)
 % Create a single-pass image processing shader for direct use with Screen('DrawTexture')
 %
 % Usage:
@@ -23,10 +23,40 @@ function [shader, varargout] = CreateSinglePassImageProcessingShader(windowPtr, 
 %  considered background color. The default tolerance is 0.001 units, which
 %  for 8 bit colors means a perfect match -- zero tolerance.
 %
-
+% 'WeightedColorComponentSum':
+% ----------------------------
+%
+%  shader = CreateSinglePassImageProcessingShader(windowPtr, 'WeightedColorComponentSum');
+%  - This shader draws a texture by computing a weighted sum of the color values of all
+%  four color components (Red, Green, Blue, Alpha) for each input texel location (x,y),
+%  then outputs the resulting scalar value into all four components (Red, Green, Blue, Alpha)
+%  at location (x,y). The optional 'modulateColor' parameter of Screen('DrawTexture', ...);
+%  is used to define the weights used for the weighted sum:
+%
+%  For location (x,y) and color channels R,G,B,A, and Rin, Gin, Bin, Ain = input color values
+%  from texture, and Rout, Bout, Gout, Aout the drawn output colors:
+%
+%  sum = Rin(x,y) * modulateColor(1) + Gin(x,y) * modulateColor(2) + Bin(x,y) * modulateColor(3) + Ain(x,y) * modulateColor(4);
+%  Rout(x,y) = Gout(x,y) = Bout(x,y) = Aout(x,y) = sum;
+%
+%  One interesting application is computing linear combinations of up to four
+%  "grayscale" images or "alpha masks" by storing the four different grayscale
+%  or alpha images into the four color channels of a texture, then drawing that
+%  texture, using the four components of 'modulateColor' as linear combination
+%  weights to compute a "composite" output image which is mixed from the four
+%  input layers, according to their weights. The optional 'colorMaskNew' parameter
+%  of Screen('Blendfunction') can be used to select which output color channels
+%  should then be actually written to by the result of this linear combination, e.g.,
+%  only RGB channels for a grayscale image, or only Alpha channel for a "morphed"
+%  alpha mask image.
+%  The moglmorpher('morphTexture') function allows more general image morphing with
+%  an arbitrary number of input image textures, but as long as no more than four
+%  "monochromatic" images are required, this shader is especially efficient for this task.
+%
 % History:
 % 17.07.2011  mk    Written.
-%
+% 24.11.2014  mk    Add 'WeightedColorComponentSum' shader support.
+
 
 if nargin < 1 || isempty(windowPtr)
     error('Required "windowPtr" argument missing!');
@@ -70,6 +100,16 @@ if strcmpi(shaderType, 'BackgroundMaskOut')
     glUniform3fv(glGetUniformLocation(shader, 'backgroundColor'), 1, backgroundColor);
     glUseProgram(0);
     
+    return;
+end
+
+if strcmpi(shaderType, 'WeightedColorComponentSum')
+    shader = LoadGLSLProgramFromFiles('WeightedSumOfFourChannelsTextureShader', 1);
+
+    glUseProgram(shader);
+    glUniform1i(glGetUniformLocation(shader, 'Image'), 0);
+    glUseProgram(0);
+
     return;
 end
 

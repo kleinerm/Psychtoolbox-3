@@ -26,22 +26,22 @@ function DriftDemo5(angle, cyclespersecond, f, drawmask)
 % HISTORY
 % 4/1/09 mk Adapted from Allen Ingling's DriftDemo.m
 
-if nargin<4
-    % By default, we mask the grating by a gaussian transparency mask:
+if nargin < 4 || isempty(drawmask)
+    % By default, we mask the grating by a transparency mask:
     drawmask=1;
 end;
 
-if nargin<3
+if nargin < 3 || isempty(f)
     % Grating cycles/pixel
     f=0.05;
 end;
 
-if nargin<2
+if nargin < 2 || isempty(cyclespersecond)
     % Speed of grating in cycles per second:
     cyclespersecond=1;
 end;
 
-if nargin<1
+if nargin < 1 || isempty(angle)
     % Angle of the grating: We default to 30 degrees.
     angle=30;
 end;
@@ -61,12 +61,12 @@ try
 
     % Round gray to integral number, to avoid roundoff artifacts with some
     % graphics cards:
-	gray=round((white+black)/2);
+    gray=round((white+black)/2);
 
     % This makes sure that on floating point framebuffers we still get a
     % well defined gray. It isn't strictly neccessary in this demo:
     if gray == white
-		gray=white / 2;
+      gray=white / 2;
     end
 
     inc=white-gray;
@@ -98,10 +98,10 @@ try
     gratingtex=Screen('MakeTexture', w, grating);
     grating2tex=Screen('MakeTexture', w, grating2);
 
-    % Create a single gaussian transparency mask and store it to a texture:
+    % Create a single  binary transparency mask and store it to a texture:
     mask=ones(2*texsize+1, 2*texsize+1, 2) * gray;
     [x,y]=meshgrid(-1*texsize:1*texsize,-1*texsize:1*texsize);
-    mask(:, :, 2)=white * (1-(x.^2 + y.^2 <= texsize^2));
+    mask(:, :, 2) = white * (1-(x.^2 + y.^2 <= texsize^2));
     masktex=Screen('MakeTexture', w, mask);
 
     % Definition of the drawn rectangle on the screen:
@@ -166,7 +166,7 @@ try
         % Fill circular 'dstRect' region with an alpha value of 255:
         Screen('FillOval', w, [0 0 0 255], dst2Rect);
         
-        % Enable DeSTination alpha blending and reenalbe drawing to all
+        % Enable DeSTination alpha blending and reenable drawing to all
         % color channels. Following drawing commands will only draw there
         % the alpha value in the framebuffer is greater than zero, ie., in
         % our case, inside the circular 'dst2Rect' aperture where alpha has

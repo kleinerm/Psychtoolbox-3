@@ -4210,6 +4210,11 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
         tstart = tnew;
         told = -1;
         
+        // Need to redraw our splash image, as at least under Linux with the FOSS stack
+        // in DRI3/Present mode, OpenGL is n-buffered with n dynamic but n > 2, ie.,
+        // our old double-buffering assumption no longer holds:
+        PsychDrawSplash(windowRecord);
+
         // Schedule a buffer-swap on next VBL:
         PsychOSFlipWindowBuffers(windowRecord);
 
@@ -4226,6 +4231,9 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
         // - A maximum measurment time of maxsecs seconds has elapsed... (This is the emergency switch to prevent infinite loops).
         // - Or at least numSamples valid samples have been taken AND measured standard deviation is below the requested deviation stddev.
         for (i=0; (fallthroughcount<10) && ((tnew - tstart) < *maxsecs) && (n < *numSamples || ((n >= *numSamples) && (tstddev > reqstddev))); i++) {
+            // Draw splash image again, to handle Linux DRI3/Present and similar setups:
+            PsychDrawSplash(windowRecord);
+
             // Schedule a buffer-swap on next VBL:
             PsychOSFlipWindowBuffers(windowRecord);
 

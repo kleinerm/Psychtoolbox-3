@@ -16,6 +16,7 @@ function isReserved = KbQueueReserve(action, actor, deviceIndex)
 % 23.10.2012  mk  Written.
 % 05.10.2014  mk  Remove OSX and 32-Bit OSX special cases.
 %                 OSX now behaves like Linux and Windows.
+% 12.11.2014  mk  Fix bug that deviceIndex < 0 not treated as [].
 
 % Store for whom the default queue is reserved:
 persistent reservedFor;
@@ -30,9 +31,9 @@ if isempty(reservedFor)
     defaultKbDevice = PsychHID('Devices', -1);
 end
 
-if ~isempty(deviceIndex) && (deviceIndex ~= defaultKbDevice)
-    % On non-OSX, all non-default-keyboard queues are always reserved for
-    % usercode, as only the default keyboard queue (aka empty deviceIndex)
+if ~isempty(deviceIndex) && (deviceIndex >= 0) && (deviceIndex ~= defaultKbDevice)
+    % All non-default-keyboard queues are always reserved for usercode,
+    % as only the default keyboard queue (aka empty deviceIndex)
     % matters for GetChar:
     if actor == 2
         isReserved = 1;
@@ -43,10 +44,9 @@ if ~isempty(deviceIndex) && (deviceIndex ~= defaultKbDevice)
     return;
 end
 
-% Either OSX, or MS-Windows/Linux on default keyboard device. There's only
-% one such deviceIndex zero/default on non-OSX, and only one keyboard queue in
-% total on OSX, irrespective of deviceIndex. Therefore a simple variable is enough
-% to keep reservation status for that one queue.
+% On default keyboard device. There's only one such deviceIndex,
+% therefore a simple variable is enough to keep reservation status
+% for that one default queue.
 
 % Reserve request?
 if action == 1
