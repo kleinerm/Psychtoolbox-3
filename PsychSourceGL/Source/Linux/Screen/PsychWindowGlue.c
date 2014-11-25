@@ -655,9 +655,18 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // override redirect handling, because KDE doesn't recognize our fullscreen windows as such and wouldn't
     // unredirect them without the new override redirect setup and signalling. Strangely other desktop environments
     // do have no problem detecting our fullscreen windows on an Intel gpu, e.g., Unity, GNOME-3/GNOME-2, ...
+    //
+    // UPDATE November-2014: KDE doesn't unredirect fullscreen windows by default on Intel gpus deliberately,
+    // to work around bugs in some versions of the Intel-ddx, that's why the Intel trouble. So we must use
+    // new-style for KDE to unredirect fullscreen windows. However, this doesn't work for multi-display
+    // spanning windows due to what i think is a KWin bug. Therefore we enforce old-style setup again if there
+    // are at least two video outputs connected to our target x-screen. This means the user has to manually
+    // disable desktop composition if he needs dual/multi-display stimulation on a Intel gpu under KDE/KWin,
+    // as the manual "user says so" override is the only method that worked. (KWin window rules were proven
+    // ineffective as well):
     PsychGetGPUSpecs(screenSettings->screenNumber, &gpuMaintype, NULL, NULL, NULL);
     if ((!getenv("PSYCH_NEW_OVERRIDEREDIRECT") && (gpuMaintype != kPsychIntelIGP)) || (PsychPrefStateGet_ConserveVRAM() & kPsychOldStyleOverrideRedirect) ||
-        !getenv("KDE_FULL_SESSION")) {
+        !getenv("KDE_FULL_SESSION") || (PsychScreenToHead(screenSettings->screenNumber, 1) >= 0)) {
         // Old style: Always override_redirect to lock out window manager, except when a real "GUI-Window"
         // is requested, which needs to behave and be treated like any other desktop app window:
         attr.override_redirect = (windowRecord->specialflags & kPsychGUIWindow) ? 0 : 1;
