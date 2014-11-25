@@ -1,0 +1,20 @@
+/* Shader for weighted summing of input texture layers into
+ * a scalar output value which is replicated into all four output
+ * components.
+ *
+ * (c) 2014 by Mario Kleiner. Licensed under MIT license.
+ */
+
+/* Attributes passed from Screen(): See the ProceduralShadingAPI.m file for infos: */
+attribute vec4 modulateColor;
+
+/* Information passed to the fragment shader: */
+varying vec4 mixWeights;
+
+void main()
+{
+    /* Apply standard geometric transformations to patch: */
+    gl_Position = ftransform();
+    gl_TexCoord[0] = gl_MultiTexCoord0;
+    mixWeights = modulateColor;
+}

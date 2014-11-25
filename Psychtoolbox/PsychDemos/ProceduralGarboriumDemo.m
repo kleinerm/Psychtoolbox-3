@@ -62,6 +62,7 @@ function ProceduralGarboriumDemo(ngabors)
 % History:
 % 07/08/2007 Written (MK).
 % 05/18/2008 Rewritten, beautified, adapted to current PTB (MK).
+% 11/24/2014 Add support for gaussian blobs (CreateProceduralGaussBlob()) (MK).
 
 % PTB-3 correctly installed and functional? Abort otherwise.
 AssertOpenGL;
@@ -129,13 +130,18 @@ aspectratio = 1.0;
 % Initialize matrix with spec for all 'ngabors' patches to start off
 % identically:
 mypars = repmat([phase+180, freq, sc, contrast, aspectratio, 0, 0, 0]', 1, ngabors);
+myblobpars = repmat([contrast, sc, aspectratio, 0]', 1, ngabors);
 
 % Build a procedural gabor texture for a gabor with a support of tw x th
 % pixels and the 'nonsymetric' flag set to 1 == Gabor shall allow runtime
 % change of aspect-ratio:
 gabortex = CreateProceduralGabor(win, tw, th, 1);
 
-% Draw the gabor once, just to make sure the gfx-hardware is ready for the
+% Ditto for some gaussian blobs, just for variety. Need a bigger mathematical
+% support here to avoid cutoff artifacts (tw * 2, th * 2):
+blobtex = CreateProceduralGaussBlob(win, tw * 2, th * 2);
+
+% Draw the gabor and blob once, just to make sure the gfx-hardware is ready for the
 % benchmark run below and doesn't do one time setup work inside the
 % benchmark loop. The flag 'kPsychDontDoRotation' tells 'DrawTexture' not
 % to apply its built-in texture rotation code for rotation, but just pass
@@ -147,6 +153,7 @@ gabortex = CreateProceduralGabor(win, tw, th, 1);
 % elements, so we pad with three zero elements at the end to get 8
 % elements.
 Screen('DrawTexture', win, gabortex, [], [], [], [], [], [], [], kPsychDontDoRotation, [phase, freq, sc, contrast, aspectratio, 0, 0, 0]);
+Screen('DrawTexture', win, blobtex, [], [], [], [], [], [], [], kPsychDontDoRotation, [contrast, sc, aspectratio, 0]);
 
 % Preallocate array with destination rectangles:
 % This also defines initial gabor patch orientations, scales and location
@@ -158,6 +165,7 @@ dstRects = zeros(4, ngabors);
 for i=1:ngabors
     scale(i) = 1*(0.1 + 0.9 * randn);
     dstRects(:, i) = CenterRectOnPoint(texrect * scale(i), rand * w, rand * h)';
+    dstRects2(:, i) = CenterRectOnPoint(texrect * scale(i), rand * w, rand * h)';
 end
 
 % Preallocate array with rotation angles:
@@ -175,6 +183,9 @@ while ~KbCheck
     % computed during last loop iteration:
     Screen('DrawTextures', win, gabortex, [], dstRects, rotAngles, [], [], [], [], kPsychDontDoRotation, mypars);
     
+    % Ditto for the gaussian blobs:
+    Screen('DrawTextures', win, blobtex, [], dstRects2, rotAngles, [], [], [], [], kPsychDontDoRotation, myblobpars);
+
     % Mark drawing ops as finished, so the GPU can do its drawing job while
     % we can compute updated parameters for next animation frame. This
     % command is not strictly needed, but it may give a slight additional
@@ -200,7 +211,8 @@ while ~KbCheck
     
     % "Pulse" the aspect-ratio of each gabor with a sine-wave timecourse:
     mypars(5,:) = 1.0 + 0.25 * sin(count*0.1);
-    
+    myblobpars(3,:) = 1.0 + 0.25 * sin(count*0.1);
+
     % Compute centers of all patches, then shift them in new direction of
     % motion 'rotAngles', use the mod() operator to make sure they don't
     % leave the window display area. Its important to use RectCenterd and
