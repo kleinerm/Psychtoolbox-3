@@ -2288,11 +2288,16 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
         // delivery for our window, if so:
         // We enable if override env var "PSYCH_FORCE_INTEL_swap_event" is set, or if the extension is
         // in the glXQueryExtensionsString() or it is in both the server- and client-extension string.
+        // Update November 2014: Under DRI3/Present + GLAMOR acceleration, e.g., with nouveau-ddx, it
+        // is possible that the extension is only advertised in the client string, not the server or
+        // unified string, but the extension still works. Therefore we are now more lenient and enable
+        // the extension if it is advertised in any of the query strings. Code will still detect missing
+        // extension support and fallback to the right thing if this doesn't work out, so all should be good.
         scrnum = PsychGetXScreenIdForScreen(windowRecord->screenNumber);
         PsychLockDisplay();
         if (useGLX13 && (strstr(glXQueryExtensionsString(windowRecord->targetSpecific.deviceContext, scrnum), "GLX_INTEL_swap_event") || getenv("PSYCH_FORCE_INTEL_swap_event") ||
-            (strstr(glXGetClientString(windowRecord->targetSpecific.deviceContext, GLX_EXTENSIONS), "GLX_INTEL_swap_event") &&
-            strstr(glXQueryServerString(windowRecord->targetSpecific.deviceContext, scrnum, GLX_EXTENSIONS), "GLX_INTEL_swap_event")))) {
+            strstr(glXGetClientString(windowRecord->targetSpecific.deviceContext, GLX_EXTENSIONS), "GLX_INTEL_swap_event") ||
+            strstr(glXQueryServerString(windowRecord->targetSpecific.deviceContext, scrnum, GLX_EXTENSIONS), "GLX_INTEL_swap_event"))) {
 
             // Always enable the swap event delivery, either to us or to user code:
             glXSelectEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, (unsigned long) GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK);
