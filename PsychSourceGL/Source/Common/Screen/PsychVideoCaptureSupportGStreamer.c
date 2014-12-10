@@ -1257,17 +1257,26 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
     return(mydevice);
 }
 
+static gboolean print_field (GQuark field, const GValue * value, gpointer pfx) {
+    gchar *str = gst_value_serialize (value);
+
+    printf("%s  %15s: %s\n", (gchar *) pfx, g_quark_to_string (field), str);
+    g_free (str);
+    return TRUE;
+}
+
 psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int* width, int* height, double* fps, int reqdepth, int reqbitdepth)
 {
     GstCaps         *caps = NULL;
     GstStructure    *str;
     gint            qwidth, qheight;
     gint            qbpp;
-    gint            rate1 = 0, rate2 = 1;
     gint            twidth = -1, theight = -1;
     gint            maxpixelarea = 0;
     double          tfps = 0.0;
     int             i, nrcandidates = 0;
+    float           fpsmin, fpsmax, curfps;
+    gint            idx2, fps_n, fps_d;
 
     // Query caps of videosource and extract supported video capture modes:
     g_object_get(G_OBJECT(capdev->camera), "viewfinder-supported-caps", &caps, NULL);
@@ -1278,17 +1287,73 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
 
         // Iterate through all supported video capture modes:
         for (i = 0; i < (int) gst_caps_get_size(caps); i++) {
+            curfps = 0;
             str = gst_caps_get_structure(caps, i);
 
-            // Set a default of 0 pixels, in case query doesn't return anything:
+            // Print all properties of i'th cap in human readable form if wanted:
+            if (PsychPrefStateGet_Verbosity() > 5) {
+                printf("PTB-DEBUG: %s\n", gst_structure_get_name(str));
+                gst_structure_foreach (str, print_field, (gpointer) "PTB-DEBUG: ");
+            }
+
+            // Extract maximum supported framerate for given cap. Try if fps is encoded as fraction,
+            // list of fractions or a min-max range of fractions. Choose the highest available fps
+            // for later use:
+            {
+                const GValue* framerates = gst_structure_get_value(str, "framerate");
+
+                // framerates can be in the format of a single fraction, a list of fractions, or
+                // an allowable range of fractions:
+                if (G_VALUE_HOLDS(framerates, gst_fraction_get_type())) {
+                    if (gst_structure_get_fraction(str, "framerate", &fps_n, &fps_d)) {
+                        if (curfps < (float) fps_n / (float) fps_d) curfps = (float) fps_n / (float) fps_d;
+                        if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Caps %i : FPS %f Hz.\n", i, (float) fps_n / (float) fps_d);
+                    }
+                }
+                else if (G_VALUE_HOLDS(framerates, gst_value_list_get_type())) {
+                    for (idx2 = 0; idx2 < (int) gst_value_list_get_size(framerates); idx2++) {
+                        const GValue* value = gst_value_list_get_value (framerates, idx2);
+                        fps_n = gst_value_get_fraction_numerator(value);
+                        fps_d = gst_value_get_fraction_denominator(value);
+                        if (curfps < (float) fps_n / (float) fps_d) curfps = (float) fps_n / (float) fps_d;
+                        if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: %i-%i : FPS %f Hz.\n", i, idx2, (float) fps_n / (float) fps_d);
+                    }
+                }
+                else if (G_VALUE_HOLDS(framerates, gst_fraction_range_get_type())) {
+                    const GValue* frmin = gst_value_get_fraction_range_min(framerates);
+                    const GValue* frmax = gst_value_get_fraction_range_max(framerates);
+                    fps_n = gst_value_get_fraction_numerator(frmin);
+                    fps_d = gst_value_get_fraction_denominator(frmin);
+                    fpsmin = (double) fps_n / (double) fps_d;
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: %i: FPS min %f - ", i, fpsmin);
+
+                    fps_n = gst_value_get_fraction_numerator(frmax);
+                    fps_d = gst_value_get_fraction_denominator(frmax);
+                    fpsmax = (double) fps_n / (double) fps_d;
+
+                    if (curfps < fpsmax) curfps = fpsmax;
+
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("max %f\n", fpsmax);
+                }
+            }
+
+            // Query of width x height: Set a default of 0 pixels, in case query doesn't return anything.
+            // This will fail if width or height are expressed as a valid range of values, but that's fine,
+            // because we wouldn't know how to use a range of valid values anyway. It's not useful for auto-
+            // detection, as in my experience the minimum is too small (1 x 1 pixel anyone?) and the maximum
+            // is too big (defaults to 32k x 32k aka 1 GigaPixels). For pure validation it could have some
+            // value if the limits were reasonably tight around what the hardware supports, but this seems
+            // to be not worth the trouble.
             qwidth = 0;
             gst_structure_get_int(str, "width", &qwidth);
             qheight = 0;
             gst_structure_get_int(str, "height", &qheight);
+
+            // qbpp queried bits per pixel - Usually ends up as -1 "undefined", especially
+            // on GStreamer 1.x, so usually useless:
             qbpp = -1;
             gst_structure_get_int(str, "bpp", &qbpp);
-            gst_structure_get_fraction(str, "framerate", &rate1, &rate2);
-            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Videosource cap %i: w = %i h = %i bpp = %i\n", i, qwidth, qheight, qbpp);
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Videosource cap %i: w = %i h = %i bpp = %i maxfps = %f\n", i, qwidth, qheight, qbpp, curfps);
 
             // Anything meaningful enumerated? Skip otherwise.
             if ((qwidth == 0) && (qheight == 0)) continue;
@@ -1309,7 +1374,7 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
                     maxpixelarea = qwidth * qheight;
                     twidth = qwidth;
                     theight = qheight;
-                    tfps = (double) rate1 / (double) rate2;
+                    tfps = (double) curfps;
                 }
             }
             else {
@@ -1323,7 +1388,7 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
                 maxpixelarea = qwidth * qheight;
                 twidth = qwidth;
                 theight = qheight;
-                tfps = (double) rate1 / (double) rate2;
+                tfps = (double) curfps;
             }
         }
 
@@ -1384,7 +1449,7 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
         *width = twidth;
         *height = theight;
 
-        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Will use auto-detected or validated video source resolution %i x %i.\n", *width, *height);
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Will use auto-detected or validated video source resolution %i x %i. maxfps = %f\n", *width, *height, tfps);
 
         return(TRUE);
     } else {
