@@ -518,6 +518,7 @@ static GstFlowReturn PsychNewPrerollCallback(GstAppSink *sink, gpointer user_dat
     videoSample = gst_app_sink_pull_preroll(GST_APP_SINK(capdev->videosink));
     if (videoSample) {
         PsychProbeSampleProps(videoSample, NULL, NULL, &capdev->fps);
+        gst_sample_unref(videoSample);
     }
 
     if (PsychPrefStateGet_Verbosity() > 5) {
@@ -587,7 +588,10 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle)
 
     if (capdev->camera) {
         // Stop capture immediately if it is still running:
-        PsychGSVideoCaptureRate(capturehandle, 0, 0, NULL);
+        PsychGSVideoCaptureRate(capturehandle, 0, 1, NULL);
+
+        // Drain again, just to be safe:
+        PsychGSDrainBufferQueue(capdev, INT_MAX, 0);
 
         // Close & Shutdown camera, release ressources:
         // Stop video capture immediately:
@@ -605,7 +609,10 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle)
     PsychDestroyMutex(&capdev->mutex);
     PsychDestroyCondition(&capdev->condition);
 
-    capdev->videosink = NULL;
+    if (capdev->videosink) {
+        gst_object_unref(GST_OBJECT(capdev->videosink));
+        capdev->videosink = NULL;
+    }
 
     // This has been auto-destructed (hopefully) by camerabin:
     capdev->videosource = NULL;
@@ -3234,6 +3241,9 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     // color & format conversion plugins to satisfy videosink's needs.
     gst_app_sink_set_caps(GST_APP_SINK(videosink), colorcaps);
 
+    // Install callbacks used by the videosink (appsink) to announce various events:
+    gst_app_sink_set_callbacks(GST_APP_SINK(videosink), &videosinkCallbacks, &(vidcapRecordBANK[slotid]), PsychDestroyNotifyCallback);
+
     // ROI rectangle specified?
     if (capturerectangle) {
         if ((capturerectangle[kPsychLeft] == 0) && (capturerectangle[kPsychTop] == 0)) {
@@ -3564,9 +3574,6 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     // Get the pad from the final sink for probing width x height of video frames and nominal framerate of video source:
     pad = gst_element_get_static_pad(videosink, "sink");
 
-    // Install callbacks used by the videosink (appsink) to announce various events:
-    gst_app_sink_set_callbacks(GST_APP_SINK(videosink), &videosinkCallbacks, &(vidcapRecordBANK[slotid]), PsychDestroyNotifyCallback);
-
     if ((capdev->recording_active) && (recordingflags & 4)) {
         // No live feedback (flags 4). Implement this by setting the limit of
         // queued buffers in appsink to 1. This will only store at most one
@@ -3806,6 +3813,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         capdev->frame_height = capdev->height;
     }
 
+    PsychGSDrainBufferQueue(capdev, INT_MAX, 0);
+
     // If we prerolled before, we need to undo its effects:
     if (!(recordingflags & 8)) {
         // Pause the pipeline again:
@@ -3852,6 +3861,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     }
     PsychUnlockMutex(&capdev->mutex);
 
+    PsychGSDrainBufferQueue(capdev, INT_MAX, 0);
+
     return(TRUE);
 }
 
@@ -3865,13 +3876,14 @@ int PsychGSDrainBufferQueue(PsychVidcapRecordType* capdev, int numFramesToDrain,
     GstSample *videoSample = NULL;
     int drainedCount = 0;
 
-    if (capdev->frameAvail > (int) gst_app_sink_get_max_buffers(GST_APP_SINK(capdev->videosink)))
+    if ((capdev->frameAvail > (int) gst_app_sink_get_max_buffers(GST_APP_SINK(capdev->videosink))) &&
+        (gst_app_sink_get_max_buffers(GST_APP_SINK(capdev->videosink)) > 0))
         capdev->frameAvail = gst_app_sink_get_max_buffers(GST_APP_SINK(capdev->videosink));
 
     // Drain while anything available, but at most numFramesToDrain frames.
     while (GST_IS_APP_SINK(capdev->videosink) && !gst_app_sink_is_eos(GST_APP_SINK(capdev->videosink))
-        && (capdev->frameAvail > 0) && (numFramesToDrain > drainedCount)) {
-        capdev->frameAvail--;
+        && ((capdev->frameAvail > 0) || (flags & 0x1)) && (numFramesToDrain > drainedCount)) {
+        if (capdev->frameAvail > 0) capdev->frameAvail--;
         videoSample = gst_app_sink_pull_sample(GST_APP_SINK(capdev->videosink));
         gst_sample_unref(videoSample);
         videoSample = NULL;
