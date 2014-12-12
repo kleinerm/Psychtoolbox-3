@@ -1283,7 +1283,7 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
     double          tfps = 0.0;
     int             i, nrcandidates = 0;
     float           fpsmin, fpsmax, curfps;
-    gint            idx2, fps_n, fps_d;
+    gint            idx1, fps_n, fps_d, minwidth, minheight;
 
     // Query caps of videosource and extract supported video capture modes:
     g_object_get(G_OBJECT(capdev->camera), "viewfinder-supported-caps", &caps, NULL);
@@ -1318,12 +1318,12 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
                     }
                 }
                 else if (G_VALUE_HOLDS(framerates, gst_value_list_get_type())) {
-                    for (idx2 = 0; idx2 < (int) gst_value_list_get_size(framerates); idx2++) {
-                        const GValue* value = gst_value_list_get_value (framerates, idx2);
+                    for (idx1 = 0; idx1 < (int) gst_value_list_get_size(framerates); idx1++) {
+                        const GValue* value = gst_value_list_get_value (framerates, idx1);
                         fps_n = gst_value_get_fraction_numerator(value);
                         fps_d = gst_value_get_fraction_denominator(value);
                         if (curfps < (float) fps_n / (float) fps_d) curfps = (float) fps_n / (float) fps_d;
-                        if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: %i-%i : FPS %f Hz.\n", i, idx2, (float) fps_n / (float) fps_d);
+                        if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: %i-%i : FPS %f Hz.\n", i, idx1, (float) fps_n / (float) fps_d);
                     }
                 }
                 else if (G_VALUE_HOLDS(framerates, gst_fraction_range_get_type())) {
@@ -1351,10 +1351,40 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
             // is too big (defaults to 32k x 32k aka 1 GigaPixels). For pure validation it could have some
             // value if the limits were reasonably tight around what the hardware supports, but this seems
             // to be not worth the trouble.
-            qwidth = 0;
+            qwidth = minwidth = 0;
             gst_structure_get_int(str, "width", &qwidth);
-            qheight = 0;
+            qheight = minheight = 0;
             gst_structure_get_int(str, "height", &qheight);
+
+            // Valid "scalar' width found? If not, try if width is encoded as a
+            // list of possible values:
+            if (qwidth == 0) {
+                const GValue* value = gst_structure_get_value(str, "width");
+                if (G_VALUE_HOLDS(value, gst_int_range_get_type())) {
+                    qwidth = gst_value_get_int_range_max(value);
+                    minwidth = gst_value_get_int_range_min(value);
+                    if (qwidth >= 32767) { qwidth = minwidth = 0; }
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Caps %i : width [%i - %i].\n", i, minwidth, qwidth);
+                }
+            }
+            else {
+                minwidth = qwidth;
+            }
+
+            // Valid "scalar' width found? If not, try if height is encoded as a
+            // list of possible values:
+            if (qheight == 0) {
+                const GValue* value = gst_structure_get_value(str, "height");
+                if (G_VALUE_HOLDS(value, gst_int_range_get_type())) {
+                    qheight = gst_value_get_int_range_max(value);
+                    minheight = gst_value_get_int_range_min(value);
+                    if (qheight >= 32767) { qheight = minheight = 0; }
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Caps %i : height [%i - %i].\n", i, minheight, qheight);
+                }
+            }
+            else {
+                minheight = qheight;
+            }
 
             // qbpp queried bits per pixel - Usually ends up as -1 "undefined", especially
             // on GStreamer 1.x, so usually useless:
@@ -1385,16 +1415,17 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
                 }
             }
             else {
-                // Validation: Reject/Skip modes which don't support requested resolution.
-                if (((*width != (int) qwidth) && (qwidth > 0)) || ((*height != (int) qheight) && (qheight > 0))) continue;
+                // Validation: Reject/Skip modes which don't support requested range of resolution:
+                if ((((*width < (int) minwidth) || (*width > (int) qwidth)) && (qwidth > 0)) ||
+                    (((*height < (int) minheight) || (*height > (int) qheight)) && (qheight > 0))) continue;
 
                 // Check for bitdepths bpc requirements and reject unsatisfying ones - See above for logic:
                 if (!((qbpp <= 0) || (reqbitdepth <= 8) || (reqdepth == 2) || (qbpp >= reqbitdepth * reqdepth))) continue;
 
                 // Acceptable mode for requested resolution and framerate. Set it:
-                maxpixelarea = qwidth * qheight;
-                twidth = qwidth;
-                theight = qheight;
+                maxpixelarea = (*width) * (*height);
+                twidth = *width;
+                theight = *height;
                 tfps = (double) curfps;
             }
         }
