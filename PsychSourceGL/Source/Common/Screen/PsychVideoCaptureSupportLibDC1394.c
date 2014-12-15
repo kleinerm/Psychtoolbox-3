@@ -345,6 +345,8 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     int                   i;
     char                  msgerr[10000];
     char*                 codecSpec = NULL;
+    uint32_t              rc_dummy1;
+    uint64_t              rc_dummy2;
 
     *capturehandle = -1;
 
@@ -548,6 +550,18 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     if (dc1394_camera_reset(capdev->camera)!=DC1394_SUCCESS) {
         printf("PTB-WARNING: Tried to reset camera %i, but reset cycle failed for some reason!\n", deviceIndex); fflush(NULL);
     }
+
+    // Presence or absence of dc1394_read_cycle_timer() support is an indicator if we are running
+    // on top of USB backend or real firewire backend. Only firewire has support, and only firewire
+    // provides high precision frame timestamping (as of December 2014), so use this as check for
+    // USB vs. Firewire:
+    if (dc1394_read_cycle_timer(capdev->camera, &rc_dummy1, &rc_dummy2) != DC1394_FUNCTION_NOT_SUPPORTED) {
+        // This seems to be a IEEE-1394 Firewire backend which supports
+        // OS/driver level timestamping. Mark it as such for use in timestamping:
+        capdev->specialFlags |= 16;
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Camera %i seems to be a Firewire camera. Capture timestamps should be precise.\n", deviceIndex);
+    }
+    else if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Camera %i seems to be a USB camera. Capture timestamps will be only approximations.\n", deviceIndex);
 
     printf("PTB-INFO: Camera successfully opened...\n"); fflush(NULL);
 
@@ -1416,7 +1430,7 @@ void PsychDCUpdateCameraFrameTimestamp(PsychVidcapRecordType* capdev)
             }
         }
     }
-    else if (capdev->frame->timestamp) {
+    else if (capdev->specialFlags & 16) {
         // Classic path:
 
         // Query capture timestamp (in microseconds) and convert to seconds. This comes from the capture
