@@ -586,7 +586,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
             if ((fCardType == 0x0) || (fCardType >= 0xe0)) fNumDisplayHeads = 4;
 
             if (PsychPrefStateGet_Verbosity() > 2) {
-                printf("PTB-INFO: Connected to NVidia %s GPU of NV-%02x family with %i display heads. Beamposition timestamping enabled.\n", pci_device_get_device_name(gpu), fCardType, fNumDisplayHeads);
+                printf("PTB-INFO: Connected to NVidia %s GPU of NV-%03x family with %i display heads. Beamposition timestamping enabled.\n", pci_device_get_device_name(gpu), fCardType, fNumDisplayHeads);
                 fflush(NULL);
             }
         }
