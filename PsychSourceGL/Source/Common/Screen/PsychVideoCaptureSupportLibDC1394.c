@@ -1984,7 +1984,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 // Multi-threaded video recording/processing and due to dropframes = FALSE, video data is enqeued by recorderThread
                 // into GStreamer pipeline and then processed and dequeued from our special appsink via the following snippet of
                 // pipeline:
-                sprintf(feedbackString, "tee name=ptbframediverter ! %s%s appsink name=ptbvideoappsink sync=false async=false enable-last-buffer=false emit-signals=false ptbframediverter. ! queue ! ", processingString,
+                sprintf(feedbackString, "tee name=ptbframediverter ! %s%s appsink name=ptbvideoappsink sync=false async=false enable-last-sample=false emit-signals=false ptbframediverter. ! queue ! ", processingString,
                         (strlen(processingString) > 0) ? " !" : "");
                 capdev->moviehandle = PsychCreateNewMovieFile(capdev->targetmoviefilename, capdev->width, capdev->height, (double) framerate, capdev->actuallayers, ((capdev->bitdepth > 8) ? 16 : 8), capdev->codecSpec,
                                                               (char*) &(feedbackString[0]));
@@ -2015,7 +2015,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             // Multi-threaded video processing and due to dropframes = FALSE, video data is enqeued by recorderThread
             // into GStreamer pipeline and then processed and dequeued from our special appsink via the following snippet of
             // pipeline:
-            sprintf(feedbackString, "%s%s appsink name=ptbvideoappsink sync=false async=false enable-last-buffer=false emit-signals=false", processingString, (strlen(processingString) > 0) ? " !" : "");
+            sprintf(feedbackString, "%s%s appsink name=ptbvideoappsink sync=false async=false enable-last-sample=false emit-signals=false", processingString, (strlen(processingString) > 0) ? " !" : "");
             capdev->moviehandle = PsychCreateNewMovieFile("", capdev->width, capdev->height, (double) framerate, capdev->actuallayers, ((capdev->bitdepth > 8) ? 16 : 8),
                                                           ((capdev->codecSpec) && (strlen(capdev->codecSpec) > 0)) ? capdev->codecSpec : "UseVFR", (char*) &(feedbackString[0]));
 
