@@ -600,7 +600,11 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
         mode = video_modes.modes[i];
 
         // We first check non-format 7 types: Skip format-7 types...
-        if (mode >= DC1394_VIDEO_MODE_FORMAT7_MIN) continue;
+        if (mode >= DC1394_VIDEO_MODE_FORMAT7_MIN && mode <= DC1394_VIDEO_MODE_FORMAT7_MAX) continue;
+
+        if(PsychPrefStateGet_Verbosity() > 4){
+            printf("PTB-Info: Probing non Format-7 mode %i ...\n", mode);
+        }
 
         // Pixeldepth supported?
         dc1394_get_color_coding_from_video_mode(capdev->camera, mode, &color_code);
@@ -650,8 +654,14 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
         }
         else {
             // No specific pixelsize req. check our minimum requirements - Anything of 8/16 bpc depths:
-            if ((dc1394_get_color_coding_data_depth(color_code, &bpc) != DC1394_SUCCESS) || (bpc != ((capdev->bitdepth <= 8) ? 8 : 16))) continue;
+            bpc = -1;
+            if ((dc1394_get_color_coding_data_depth(color_code, &bpc) != DC1394_SUCCESS) || (bpc != ((capdev->bitdepth <= 8) ? 8 : 16))) {
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Rejected due to wrong bpc %i\n", bpc);
+                continue;
+            }
         }
+
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Passes color coding/depth check...\n");
 
         // ROI specified?
         dc1394_get_image_size_from_video_mode(capdev->camera, mode, &mw, &mh);
@@ -662,17 +672,21 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
             maximgmode = mode;
             mode_found = true;
             roi_matched = true;
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Passes max image size check mw %i x mh %i  --> New favorite.\n", mw, mh);
         }
         else {
             // Yes. Check for exact match, reject everything else:
             if (capdev->roirect[kPsychLeft]!=0 || capdev->roirect[kPsychTop]!=0 || w != (int) mw || h != (int) mh) continue;
             roi_matched = true;
 
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Passes exact ROI size match mw %i x mh %i\n", mw, mh);
+
             // Ok, this is a valid mode wrt. reqlayers and exact image size. Check for matching framerate:
             dc1394_video_get_supported_framerates(capdev->camera, mode, &supported_framerates);
             for (j = 0; j < (int) supported_framerates.num; j++) {
                 dc1394_framerate = supported_framerates.framerates[j];
                 dc1394_framerate_as_float(dc1394_framerate, &framerate);
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Candidate fps %f vs max fps %f.\n", framerate, capturerate);
                 if (framerate >= capturerate) break;
             }
             dc1394_framerate_as_float(dc1394_framerate, &framerate);
@@ -690,6 +704,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
                 maximgarea = (int) framerate;
                 maximgmode = mode;
                 mode_found = true;
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: New max fps %f--> New favorite.\n", framerate);
             }
         }
     }
@@ -774,6 +789,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
     for (i = 0; i < (int) supported_framerates.num; i++) {
         dc1394_framerate = supported_framerates.framerates[i];
         dc1394_framerate_as_float(dc1394_framerate, &framerate);
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Checking for optimal framerate: [%i of %i] fps %f vs. requested %f.\n", i, (int) supported_framerates.num - 1, framerate, capturerate);
         if (framerate >= capturerate) break;
     }
     dc1394_framerate_as_float(dc1394_framerate, &framerate);
@@ -810,7 +826,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
  */
 int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
 {
-    float mindiff = 1000000;
+    float mindiff = FLT_MAX;
     float mindifframerate = 0;
     int minpacket_size = 0;
     dc1394video_mode_t minimgmode, mode;
@@ -886,7 +902,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
         // Increment count of available Format-7 modes:
         numF7Available++;
 
-        if(PsychPrefStateGet_Verbosity() > 4){
+        if (PsychPrefStateGet_Verbosity() > 4) {
             printf("PTB-Info: Probing Format-7 mode %i ...\n", mode);
         }
 
@@ -942,6 +958,8 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
             if ((dc1394_get_color_coding_data_depth(color_code, &bpc) != DC1394_SUCCESS) || (bpc != ((capdev->bitdepth <= 8) ? 8 : 16))) continue;
         }
         
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Passes color validation...\n");
+
         // ROI specified?
         w = (int) PsychGetWidthFromRect(capdev->roirect);
         h = (int) PsychGetHeightFromRect(capdev->roirect);
@@ -978,6 +996,8 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
             roi_matched = true;
         }
 
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Passes size / ROI validation for mw x mh = %i x %i...\n", mw, mh);
+
         // Try to set the requested framerate as well:
         // We need to calculate the ISO packet size depending on wanted framerate, Firewire bus speed,
         // image size and image depth + some IIDC spec. restrictions...
@@ -986,6 +1006,8 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
         if (dc1394_format7_get_packet_parameters(capdev->camera, mode, &pbmin, &pbmax)!=DC1394_SUCCESS) continue;
         // Special case handling:
         if (pbmin==0) pbmin = pbmax;
+
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Packet pbmin = %i, pbmax = %i\n", pbmin, pbmax);
 
         // Compute number of ISO-Packets, assuming a 400 MBit bus (125 usec cycle time):
         num_packets = (int) (1.0/(bus_period * capturerate) + 0.5);
@@ -998,10 +1020,15 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
                 num_packets = 4095;
             }
         }
+
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: num_packets = %i, effective %i.\n", num_packets, num_packets * 8);
+
         num_packets*=8;
         if (dc1394_format7_get_data_depth(capdev->camera, mode, &depth)!=DC1394_SUCCESS) continue;
 
         packet_size = (int)((w * h * depth + num_packets - 1) /  num_packets);
+
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: packet_size preval = %i\n", packet_size);
 
         // Make sure that packet_size is an integral multiple of pbmin (IIDC constraint):
         if (packet_size < (int) pbmin) packet_size = pbmin;
@@ -1012,17 +1039,22 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
         // Make sure that packet size is smaller than pbmax:
         while (packet_size > (int) pbmax) packet_size=packet_size - pbmin;
 
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: packet_size postval = %i\n", packet_size);
+
         // Ok, we should now have the closest valid packet size for the given ROI and framerate:
         // Inverse compute framerate for this packetsize:
         num_packets = (int) ((w * h * depth + (packet_size*8) - 1)/(packet_size*8));
         framerate = 1.0/(bus_period * (float) num_packets);
 
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Effective num_packets = %i, packet_size = %i, fps = %f\n", num_packets, packet_size, framerate);
+
         // Compare whatever framerate we've got as closest match against current fastest one:
-        if (fabs(capturerate - framerate) < mindiff) {
+        if ((fabs(capturerate - framerate) < mindiff) || (capturerate == DBL_MAX)) {
             mindiff = fabs(capturerate - framerate);
             mindifframerate = framerate;
             minimgmode = mode;
             minpacket_size = packet_size;
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: New favorite settings for fps %f vs. target %f\n", framerate, capturerate);
         }
 
         if(PsychPrefStateGet_Verbosity() > 4){
@@ -1056,7 +1088,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
     // minimgmode contains the best matching Format-7 mode for our specs:
     mode = minimgmode;
     capdev->dc_imageformat = mode;
-    capdev->dc_framerate = DC1394_FRAMERATE_MIN;
+    capdev->dc_framerate = DC1394_FRAMERATE_MAX;
     packet_size = minpacket_size;
     framerate = mindifframerate;
 
@@ -1926,6 +1958,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 framerate = capdev->fps;
             }
             else {
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Camera reported frame interval %f\n", framerate);
                 // FIXME: This is most likely a wrong conversion constant 1e9, but
                 // could not find the proper value in the spec and don't have a
                 // camera which reports a sensible value, so this is pure speculation:
