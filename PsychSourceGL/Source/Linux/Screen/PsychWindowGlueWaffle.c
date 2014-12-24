@@ -1,32 +1,32 @@
 /*
   PsychToolbox3/Source/Linux/Screen/PsychWindowGlueWaffle.c
-    
-  PLATFORMS:    
-    
+
+  PLATFORMS:
+
   This is the Linux/Waffle version only.
 
   AUTHORS:
 
-  Mario Kleiner      mk    mario.kleiner at tuebingen.mpg.de
+  Mario Kleiner      mk    mario.kleiner.de@gmail.com
 
   HISTORY:
-    
+
   2/12/13            mk    Created - Derived from Linux/X11-GLX version.
 
   DESCRIPTION:
-    
+
   Functions in this file comprise an abstraction layer for probing and controlling window state, except for window content.  
-        
+
   Each C function which implements a particular Screen subcommand should be platform neutral.  For example, the source to SCREENPixelSizes() 
   should be platform-neutral, despite that the calls in OS X and Linux to detect available pixel sizes are different.  The platform 
   specificity is abstracted out in C files which end it "Glue", for example PsychScreenGlue, PsychWindowGlue, PsychWindowTextClue.
 
   NOTES:
-    
+
   Preformatted via: indent -linux -l240 -i4 PsychWindowGlueWaffle.c
 
   TO DO: 
-     
+
 */
 
 #ifdef PTB_USE_WAFFLE
@@ -69,17 +69,17 @@ GLenum glewContextInit(void);
 
 /*
   PsychOSOpenOnscreenWindow()
-    
+
   Creates the pixel format and the context objects and then instantiates the context onto the screen.
-    
+
   -The pixel format and the context are stored in the target specific field of the window recored.  Close
   should clean up by destroying both the pixel format and the context.
-    
+
   -We mantain the context because it must be be made the current context by drawing functions to draw into 
   the specified window.
-    
+
   -We maintain the pixel format object because there seems to be now way to retrieve that from the context.
-    
+
   -To tell the caller to clean up PsychOSOpenOnscreenWindow returns FALSE if we fail to open the window. It 
   would be better to just issue an PsychErrorExit() and have that clean up everything allocated outside of
   PsychOpenOnscreenWindow().
@@ -962,7 +962,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_STATE", False), XA_ATOM, 32, PropModeAppend, (unsigned char *)&stateAbove, 1);
         }
     }
-            
+
     if (useX11) XSync(dpy, False);
 
     // Show our new window:
@@ -1003,7 +1003,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         // GUI windows, as Waffle has no way for us to specify window (x,y) start location:
         // Unless of course usercode asked to leave the windowmanager in charge of positioning.
         if (!(windowRecord->specialflags & kPsychGUIWindowWMPositioned)) XMoveWindow(dpy, win, x, y);
-        
+
         // Make sure it reaches its target position:
         XSync(dpy, False);    
     }
@@ -1384,8 +1384,8 @@ double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint
  */
 psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecord, psych_int64 targetSBC, double* tSwap)
 {
-	// Return -1 "unsupported":
-	return(-1);
+    // Return -1 "unsupported":
+    return(-1);
 }
 
 /* PsychOSInitializeOpenML() - Linux specific function.
@@ -1413,30 +1413,30 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 
 /*
     PsychOSScheduleFlipWindowBuffers()
-    
+
     Schedules a double buffer swap operation for given window at a given
-	specific target time or target refresh count in a specified way.
-	
-	This uses OS specific API's and algorithms to schedule the asynchronous
-	swap. This function is optional, target platforms are free to not implement
-	it but simply return a "not supported" status code.
-	
-	Arguments:
-	
-	windowRecord - The window to be swapped.
-	tWhen        - Requested target system time for swap. Swap shall happen at first
-				   VSync >= tWhen.
-	targetMSC	 - If non-zero, specifies target msc count for swap. Overrides tWhen.
-	divisor, remainder - If set to non-zero, msc at swap must satisfy (msc % divisor) == remainder.
-	specialFlags - Additional options, a bit field consisting of single bits that can be or'ed together:
-				   1 = Constrain swaps to even msc values, 2 = Constrain swaps to odd msc values. (Used for frame-seq. stereo field selection)
-	
-	Return value:
-	 
-	Value greater than or equal to zero on success: The target msc for which swap is scheduled.
-	Negative value: Error. Function failed. -1 == Function unsupported on current system configuration.
-	-2 ... -x == Error condition.
-	
+    specific target time or target refresh count in a specified way.
+
+    This uses OS specific API's and algorithms to schedule the asynchronous
+    swap. This function is optional, target platforms are free to not implement
+    it but simply return a "not supported" status code.
+
+    Arguments:
+
+    windowRecord - The window to be swapped.
+    tWhen        - Requested target system time for swap. Swap shall happen at first
+                    VSync >= tWhen.
+    targetMSC    - If non-zero, specifies target msc count for swap. Overrides tWhen.
+    divisor, remainder - If set to non-zero, msc at swap must satisfy (msc % divisor) == remainder.
+    specialFlags - Additional options, a bit field consisting of single bits that can be or'ed together:
+                    1 = Constrain swaps to even msc values, 2 = Constrain swaps to odd msc values. (Used for frame-seq. stereo field selection)
+
+    Return value:
+
+    Value greater than or equal to zero on success: The target msc for which swap is scheduled.
+    Negative value: Error. Function failed. -1 == Function unsupported on current system configuration.
+    -2 ... -x == Error condition.
+
 */
 psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord, double tWhen, psych_int64 targetMSC, psych_int64 divisor, psych_int64 remainder, unsigned int specialFlags)
 {
@@ -1446,7 +1446,7 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 
 /*
   PsychOSFlipWindowBuffers()
-    
+
   Performs OS specific double buffer swap call.
 */
 void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
@@ -1519,7 +1519,7 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
 
 /*
   PsychOSSetGLContext()
-    
+
   Set the window to which GL drawing commands are sent.  
 */
 void PsychOSSetGLContext(PsychWindowRecordType * windowRecord)
@@ -1560,7 +1560,7 @@ void PsychOSSetGLContext(PsychWindowRecordType * windowRecord)
 
 /*
   PsychOSUnsetGLContext()
-    
+
   Clear the drawing context.  
 */
 void PsychOSUnsetGLContext(PsychWindowRecordType * windowRecord)
@@ -1646,8 +1646,8 @@ void PsychOSSetUserGLContext(PsychWindowRecordType * windowRecord, psych_bool co
  */
 psych_bool PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindowRecordType *slaveWindow)
 {
-	if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: NV_swap_group and GLX_SGIX_swap_group unsupported.\n");
-	return(FALSE);
+    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: NV_swap_group and GLX_SGIX_swap_group unsupported.\n");
+    return(FALSE);
 }
 
 psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int cmd, int aux1)

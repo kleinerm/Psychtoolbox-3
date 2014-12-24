@@ -1,0 +1,35 @@
+# /etc/X11/xorg.conf
+
+Section "ServerLayout"
+    Identifier  "Hydra"
+    Screen  0   "Screen0" 0 0
+    Screen  1   "Screen1" RightOf "Screen0"
+EndSection
+
+Section "Device"
+    Identifier  "Card0"
+    Driver      "intel"
+    Screen 0
+    #BusID       "PCI:0:2:0"
+    Option      "ZaphodHeads"   "LVDS1"
+    Option      "TripleBuffer"  "off"
+EndSection
+
+Section "Device"
+    Identifier  "Card1"
+    Driver      "intel"
+    Screen 1
+    #BusID       "PCI:0:2:0"
+    Option      "ZaphodHeads"   "DP1"
+    Option      "TripleBuffer"  "off"
+EndSection
+
+Section "Screen"
+    Identifier  "Screen0"
+    Device      "Card0"
+EndSection
+
+Section "Screen"
+    Identifier  "Screen1"
+    Device      "Card1"
+EndSection

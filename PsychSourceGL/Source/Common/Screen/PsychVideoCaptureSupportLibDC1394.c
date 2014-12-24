@@ -3,11 +3,11 @@
  *
  *    PLATFORMS:
  *
- *        GNU/Linux, Apple MacOS/X and (limited and experimental support for) MS-Windows
+ *        GNU/Linux, Apple MacOS/X for now.
  *
  *    AUTHORS:
  *
- *        Mario Kleiner           mk              mario.kleiner@tuebingen.mpg.de
+ *        Mario Kleiner           mk              mario.kleiner.de@gmail.com
  *
  *    HISTORY:
  *
@@ -345,6 +345,8 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     int                   i;
     char                  msgerr[10000];
     char*                 codecSpec = NULL;
+    uint32_t              rc_dummy1;
+    uint64_t              rc_dummy2;
 
     *capturehandle = -1;
 
@@ -549,6 +551,18 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         printf("PTB-WARNING: Tried to reset camera %i, but reset cycle failed for some reason!\n", deviceIndex); fflush(NULL);
     }
 
+    // Presence or absence of dc1394_read_cycle_timer() support is an indicator if we are running
+    // on top of USB backend or real firewire backend. Only firewire has support, and only firewire
+    // provides high precision frame timestamping (as of December 2014), so use this as check for
+    // USB vs. Firewire:
+    if (dc1394_read_cycle_timer(capdev->camera, &rc_dummy1, &rc_dummy2) != DC1394_FUNCTION_NOT_SUPPORTED) {
+        // This seems to be a IEEE-1394 Firewire backend which supports
+        // OS/driver level timestamping. Mark it as such for use in timestamping:
+        capdev->specialFlags |= 16;
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Camera %i seems to be a Firewire camera. Capture timestamps should be precise.\n", deviceIndex);
+    }
+    else if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Camera %i seems to be a USB camera. Capture timestamps will be only approximations.\n", deviceIndex);
+
     printf("PTB-INFO: Camera successfully opened...\n"); fflush(NULL);
 
     return(TRUE);
@@ -586,7 +600,11 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
         mode = video_modes.modes[i];
 
         // We first check non-format 7 types: Skip format-7 types...
-        if (mode >= DC1394_VIDEO_MODE_FORMAT7_MIN) continue;
+        if (mode >= DC1394_VIDEO_MODE_FORMAT7_MIN && mode <= DC1394_VIDEO_MODE_FORMAT7_MAX) continue;
+
+        if(PsychPrefStateGet_Verbosity() > 4){
+            printf("PTB-Info: Probing non Format-7 mode %i ...\n", mode);
+        }
 
         // Pixeldepth supported?
         dc1394_get_color_coding_from_video_mode(capdev->camera, mode, &color_code);
@@ -636,8 +654,14 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
         }
         else {
             // No specific pixelsize req. check our minimum requirements - Anything of 8/16 bpc depths:
-            if ((dc1394_get_color_coding_data_depth(color_code, &bpc) != DC1394_SUCCESS) || (bpc != ((capdev->bitdepth <= 8) ? 8 : 16))) continue;
+            bpc = -1;
+            if ((dc1394_get_color_coding_data_depth(color_code, &bpc) != DC1394_SUCCESS) || (bpc != ((capdev->bitdepth <= 8) ? 8 : 16))) {
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Rejected due to wrong bpc %i\n", bpc);
+                continue;
+            }
         }
+
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Passes color coding/depth check...\n");
 
         // ROI specified?
         dc1394_get_image_size_from_video_mode(capdev->camera, mode, &mw, &mh);
@@ -648,17 +672,21 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
             maximgmode = mode;
             mode_found = true;
             roi_matched = true;
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Passes max image size check mw %i x mh %i  --> New favorite.\n", mw, mh);
         }
         else {
             // Yes. Check for exact match, reject everything else:
             if (capdev->roirect[kPsychLeft]!=0 || capdev->roirect[kPsychTop]!=0 || w != (int) mw || h != (int) mh) continue;
             roi_matched = true;
 
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Passes exact ROI size match mw %i x mh %i\n", mw, mh);
+
             // Ok, this is a valid mode wrt. reqlayers and exact image size. Check for matching framerate:
             dc1394_video_get_supported_framerates(capdev->camera, mode, &supported_framerates);
             for (j = 0; j < (int) supported_framerates.num; j++) {
                 dc1394_framerate = supported_framerates.framerates[j];
                 dc1394_framerate_as_float(dc1394_framerate, &framerate);
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Candidate fps %f vs max fps %f.\n", framerate, capturerate);
                 if (framerate >= capturerate) break;
             }
             dc1394_framerate_as_float(dc1394_framerate, &framerate);
@@ -676,6 +704,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
                 maximgarea = (int) framerate;
                 maximgmode = mode;
                 mode_found = true;
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: New max fps %f--> New favorite.\n", framerate);
             }
         }
     }
@@ -760,6 +789,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
     for (i = 0; i < (int) supported_framerates.num; i++) {
         dc1394_framerate = supported_framerates.framerates[i];
         dc1394_framerate_as_float(dc1394_framerate, &framerate);
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Checking for optimal framerate: [%i of %i] fps %f vs. requested %f.\n", i, (int) supported_framerates.num - 1, framerate, capturerate);
         if (framerate >= capturerate) break;
     }
     dc1394_framerate_as_float(dc1394_framerate, &framerate);
@@ -796,7 +826,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
  */
 int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
 {
-    float mindiff = 1000000;
+    float mindiff = FLT_MAX;
     float mindifframerate = 0;
     int minpacket_size = 0;
     dc1394video_mode_t minimgmode, mode;
@@ -872,7 +902,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
         // Increment count of available Format-7 modes:
         numF7Available++;
 
-        if(PsychPrefStateGet_Verbosity() > 4){
+        if (PsychPrefStateGet_Verbosity() > 4) {
             printf("PTB-Info: Probing Format-7 mode %i ...\n", mode);
         }
 
@@ -928,6 +958,8 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
             if ((dc1394_get_color_coding_data_depth(color_code, &bpc) != DC1394_SUCCESS) || (bpc != ((capdev->bitdepth <= 8) ? 8 : 16))) continue;
         }
         
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Passes color validation...\n");
+
         // ROI specified?
         w = (int) PsychGetWidthFromRect(capdev->roirect);
         h = (int) PsychGetHeightFromRect(capdev->roirect);
@@ -964,6 +996,8 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
             roi_matched = true;
         }
 
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Passes size / ROI validation for mw x mh = %i x %i...\n", mw, mh);
+
         // Try to set the requested framerate as well:
         // We need to calculate the ISO packet size depending on wanted framerate, Firewire bus speed,
         // image size and image depth + some IIDC spec. restrictions...
@@ -972,6 +1006,8 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
         if (dc1394_format7_get_packet_parameters(capdev->camera, mode, &pbmin, &pbmax)!=DC1394_SUCCESS) continue;
         // Special case handling:
         if (pbmin==0) pbmin = pbmax;
+
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Packet pbmin = %i, pbmax = %i\n", pbmin, pbmax);
 
         // Compute number of ISO-Packets, assuming a 400 MBit bus (125 usec cycle time):
         num_packets = (int) (1.0/(bus_period * capturerate) + 0.5);
@@ -984,10 +1020,15 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
                 num_packets = 4095;
             }
         }
+
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: num_packets = %i, effective %i.\n", num_packets, num_packets * 8);
+
         num_packets*=8;
         if (dc1394_format7_get_data_depth(capdev->camera, mode, &depth)!=DC1394_SUCCESS) continue;
 
         packet_size = (int)((w * h * depth + num_packets - 1) /  num_packets);
+
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: packet_size preval = %i\n", packet_size);
 
         // Make sure that packet_size is an integral multiple of pbmin (IIDC constraint):
         if (packet_size < (int) pbmin) packet_size = pbmin;
@@ -998,17 +1039,22 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
         // Make sure that packet size is smaller than pbmax:
         while (packet_size > (int) pbmax) packet_size=packet_size - pbmin;
 
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: packet_size postval = %i\n", packet_size);
+
         // Ok, we should now have the closest valid packet size for the given ROI and framerate:
         // Inverse compute framerate for this packetsize:
         num_packets = (int) ((w * h * depth + (packet_size*8) - 1)/(packet_size*8));
         framerate = 1.0/(bus_period * (float) num_packets);
 
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Effective num_packets = %i, packet_size = %i, fps = %f\n", num_packets, packet_size, framerate);
+
         // Compare whatever framerate we've got as closest match against current fastest one:
-        if (fabs(capturerate - framerate) < mindiff) {
+        if ((fabs(capturerate - framerate) < mindiff) || (capturerate == DBL_MAX)) {
             mindiff = fabs(capturerate - framerate);
             mindifframerate = framerate;
             minimgmode = mode;
             minpacket_size = packet_size;
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: New favorite settings for fps %f vs. target %f\n", framerate, capturerate);
         }
 
         if(PsychPrefStateGet_Verbosity() > 4){
@@ -1042,7 +1088,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
     // minimgmode contains the best matching Format-7 mode for our specs:
     mode = minimgmode;
     capdev->dc_imageformat = mode;
-    capdev->dc_framerate = DC1394_FRAMERATE_MIN;
+    capdev->dc_framerate = DC1394_FRAMERATE_MAX;
     packet_size = minpacket_size;
     framerate = mindifframerate;
 
@@ -1321,7 +1367,7 @@ static unsigned char* PsychDCPreprocessFrame(PsychVidcapRecordType* capdev)
 void PsychDCUpdateCameraFramecounter(PsychVidcapRecordType* capdev)
 {
     dc1394error_t error;
-    
+
     // SFF framecounter enabled and supported?
     if ((capdev->specialFlags & 2) && (capdev->total_bytes > 0)) {
         // Basler SFF framecounter enabled: Query it.
@@ -1376,7 +1422,7 @@ void PsychDCUpdateCameraFrameTimestamp(PsychVidcapRecordType* capdev)
     dc1394basler_sff_cycle_time_stamp_t ct;
     uint64_t systemtime;
     double frameCycleTimeSecs, nowCycleTimeSecs, nowTimeSecs;
-    
+
     // SFF timestamping enabled and supported?
     if ((capdev->specialFlags & 4) && (capdev->total_bytes > 0)) {
         // Basler SFF timestamp enabled: Query it.
@@ -1394,7 +1440,7 @@ void PsychDCUpdateCameraFrameTimestamp(PsychVidcapRecordType* capdev)
             if (error) {
                 printf("PTB-ERROR: In PsychDCUpdateCameraFrameTimestamp: Failed to query bus cycle timer!\n");
             }
-            
+
             // Get current Firewire bus time converted into seconds:
             nowCycleTimeSecs = PsychDCBusCycleTimeToSecs(ct.cycle_time_stamp.unstructured.value);
             nowTimeSecs = ((double) ((psych_uint64) systemtime)) / 1000000.0f;
@@ -1416,9 +1462,9 @@ void PsychDCUpdateCameraFrameTimestamp(PsychVidcapRecordType* capdev)
             }
         }
     }
-    else {
+    else if (capdev->specialFlags & 16) {
         // Classic path:
-        
+
         // Query capture timestamp (in microseconds) and convert to seconds. This comes from the capture
         // engine with (theroretically) microsecond precision and is assumed to be pretty accurate:
         capdev->current_pts = ((double) capdev->frame->timestamp) / 1000000.0f;
@@ -1506,22 +1552,27 @@ static void* PsychDCRecorderThreadMain(void* capdevToCast)
             // Also increase "decompressed frames" counter, which is the same in case of threaded processing:
             capdev->nrframes++;
 
-            // Update and assign capture timestamp capdev->current_pts for dequeued frame:
+            // Update and assign capture timestamp capdev->current_pts for dequeued frame. But first we
+            // assign tstart as a fallback timestamp, in case PsychDCUpdateCameraFrameTimestamp() can't
+            // fetch a timestamp from the video capture device or operating system, e.g., as on USB-3
+            // cameras with libdc1394 versions from December 2014. Using tstart as approximation is as
+            // good as it gets if proper timestamping won't work, but could be multiple msecs off:
+            capdev->current_pts = tstart;
             PsychDCUpdateCameraFrameTimestamp(capdev);
-            
+
             // Perform potential processing on image, e.g., debayering:
             input_image = PsychDCPreprocessFrame(capdev);
             if (NULL == input_image) {
                 printf("PTB-ERROR: Bayer filtering or color space conversion of video frame in video recorder thread failed. Aborting recorder thread.\n");
                 break;
             }
-            
+
             // Push new frame to the GStreamer video encoding pipeline:
             if (capdev->moviehandle != -1) {
                 // Yes. Push data to encoder now. Abort thread on failure to push/encode:
                 if (!PsychDCPushFrameToMovie(capdev, (psych_uint16*) input_image, capdev->current_pts, FALSE)) break;
             }
-            
+
             // Provide new frame to masterthread / usercode, if frame delivery isn't disabled:
             if (!(capdev->recordingflags & 4)) {
                 // Copy frame to "current frame" buffer if low-latency mode is active:
@@ -1530,13 +1581,13 @@ static void* PsychDCRecorderThreadMain(void* capdevToCast)
 
                     // Release previous one, if not fetched by now by masterthread:
                     if (capdev->current_frame) free(capdev->current_frame);
-                    
+
                     // Allocate target buffer for most recent captured frame from video recorder thread:
                     capdev->current_frame = (unsigned char*) malloc(count);
 
                     // Copy image into it:
                     memcpy(capdev->current_frame, input_image, count);
-                }                
+                }
             }
 
             // Signal availability of new video frame: This is not only important for frame fetching on the master thread,
@@ -1552,10 +1603,10 @@ static void* PsychDCRecorderThreadMain(void* capdevToCast)
             }
 
             capdev->frame = NULL;
-            
+
             // Update stats for decompression:
             PsychGetAdjustedPrecisionTimerSeconds(&tend);
-            
+
             // Update avg. decompress time:
             capdev->avg_decompresstime += (tend - tstart);
 
@@ -1567,10 +1618,10 @@ static void* PsychDCRecorderThreadMain(void* capdevToCast)
 
             // This means there aren't any pending in the queue:
             capdev->nrframes_pending = 0;
-            
+
             // Release mutex, so masterthread can get frame data or control camera/capture:
             PsychUnlockMutex(&capdev->mutex);
-            
+
             // Sleep a bit, so we won't overload cpu. We are more agressive in low latency mode:
             PsychYieldIntervalSeconds((capdev->dropframes) ? 0.001 : 0.004);
         }
@@ -1581,7 +1632,7 @@ static void* PsychDCRecorderThreadMain(void* capdevToCast)
     // End of capture thread execution. Clean up and unlock mutex:
     capdev->frame_ready = 0;
     PsychUnlockMutex(&capdev->mutex);
-    
+
     // Ok, we are done: Go and die peacefully...
     return(NULL);
 }
@@ -1907,6 +1958,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 framerate = capdev->fps;
             }
             else {
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Camera reported frame interval %f\n", framerate);
                 // FIXME: This is most likely a wrong conversion constant 1e9, but
                 // could not find the proper value in the spec and don't have a
                 // camera which reports a sensible value, so this is pure speculation:
@@ -1965,7 +2017,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 // Multi-threaded video recording/processing and due to dropframes = FALSE, video data is enqeued by recorderThread
                 // into GStreamer pipeline and then processed and dequeued from our special appsink via the following snippet of
                 // pipeline:
-                sprintf(feedbackString, "tee name=ptbframediverter ! %s%s appsink name=ptbvideoappsink sync=false async=false enable-last-buffer=false emit-signals=false ptbframediverter. ! queue ! ", processingString,
+                sprintf(feedbackString, "tee name=ptbframediverter ! %s%s appsink name=ptbvideoappsink sync=false async=false enable-last-sample=false emit-signals=false ptbframediverter. ! queue ! ", processingString,
                         (strlen(processingString) > 0) ? " !" : "");
                 capdev->moviehandle = PsychCreateNewMovieFile(capdev->targetmoviefilename, capdev->width, capdev->height, (double) framerate, capdev->actuallayers, ((capdev->bitdepth > 8) ? 16 : 8), capdev->codecSpec,
                                                               (char*) &(feedbackString[0]));
@@ -1996,7 +2048,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             // Multi-threaded video processing and due to dropframes = FALSE, video data is enqeued by recorderThread
             // into GStreamer pipeline and then processed and dequeued from our special appsink via the following snippet of
             // pipeline:
-            sprintf(feedbackString, "%s%s appsink name=ptbvideoappsink sync=false async=false enable-last-buffer=false emit-signals=false", processingString, (strlen(processingString) > 0) ? " !" : "");
+            sprintf(feedbackString, "%s%s appsink name=ptbvideoappsink sync=false async=false enable-last-sample=false emit-signals=false", processingString, (strlen(processingString) > 0) ? " !" : "");
             capdev->moviehandle = PsychCreateNewMovieFile("", capdev->width, capdev->height, (double) framerate, capdev->actuallayers, ((capdev->bitdepth > 8) ? 16 : 8),
                                                           ((capdev->codecSpec) && (strlen(capdev->codecSpec) > 0)) ? capdev->codecSpec : "UseVFR", (char*) &(feedbackString[0]));
 
@@ -2277,17 +2329,17 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 
     // Should we just check for new image?
     if (checkForImage) {
-        
+
         // Synchronous frame fetch from masterthread?
         if (!(capdev->recordingflags & 16)) {
             // Capture handled by masterthread.
-            
+
             // Target framecount for end of capture/recording reached?
             if (capdev->framecounter >= capdev->stopAtFramecount) {
                 // Yes: We will never get a new frame, so tell usercode:
                 return(-2);
             }
-            
+
             // Reset current dropped count to zero:
             capdev->current_dropped = 0;
 
@@ -2336,7 +2388,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 
                     // Update the master framecounter for this camera and the new fetched frame:
                     PsychDCUpdateCameraFramecounter(capdev);
-                    
+
                     // First enqueue the recently dequeued buffer...
                     if (dc1394_capture_enqueue((capdev->camera), (capdev->frame)) != DC1394_SUCCESS) {
                         PsychErrorExitMsg(PsychError_system, "Requeuing of discarded video frame failed while dropping frames (dropframes=1)!!!");
@@ -2357,14 +2409,15 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 
                 // Update the master framecounter for this camera and the new fetched frame:
                 PsychDCUpdateCameraFramecounter(capdev);
-                
+
                 // Update count of frames still pending in DMA queue:
                 capdev->nrframes_pending = (unsigned int) capdev->frame->frames_behind;
-                
+
                 // Update avg. decompress time:
                 capdev->avg_decompresstime+=(tend - tstart);
 
                 // Update and assign capture timestamp capdev->current_pts for dequeued frame:
+                capdev->current_pts = 0;
                 PsychDCUpdateCameraFrameTimestamp(capdev);
             }
 
@@ -2379,7 +2432,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 
             // No actual return of video data to usercode wanted? If so, skip all further processing and report "no new frames yet":
             if (capdev->recordingflags & 4) return((checkForImage) ? -1 : FALSE);
-            
+
             // Low-Latency fetch requested?
             if (capdev->dropframes) {
                 // Check what the recorderThread has for us:
@@ -2394,7 +2447,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
                         PsychUnlockMutex(&capdev->mutex);
                         return(-2);
                     }
-                    
+
                     // ...unless this is a polling request, in which case we immediately give up:
                     if (!waitforframe) break;
 
@@ -2426,23 +2479,23 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
                 if (capdev->moviehandle < 0) {
                     PsychErrorExitMsg(PsychError_system, "Tried to pull captured video frame from ptbvideosink, but GStreamer based video processing not active?!?");
                 }
-                
+
                 // Check what the recorderThread has for us:
                 PsychLockMutex(&capdev->mutex);
-                
+
                 // Loop as long as no new frame is ready...
                 while (capdev->framecounter <= capdev->pulled_framecounter) {
-                    
+
                     // Target framecount for end of capture/recording on our side of the pipeline reached?
                     if (capdev->pulled_framecounter >= capdev->stopAtFramecount) {
                         // Yes: We will never get a new frame, so tell usercode:
                         PsychUnlockMutex(&capdev->mutex);
                         return(-2);
                     }
-                    
+
                     // ...unless this is a polling request, in which case we immediately give up:
                     if (!waitforframe) break;
-                    
+
                     // ... blocking wait. Release mutex and wait for new frame signal from recorderThread, with a timeout of 5 secs:
                     if ((rc = PsychTimedWaitCondition(&(capdev->condition), &(capdev->mutex), 5))) {
                         // Failed:
@@ -2450,7 +2503,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
                         break;
                     }
                 }
-                
+
                 // Do we finally have a frame?
                 frame_ready = (capdev->framecounter > capdev->pulled_framecounter) ? TRUE : FALSE;
                 if (frame_ready) {
@@ -2462,13 +2515,13 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
                     // Unknown - Set to zero.
                     capdev->pulled_dropped = 0;
                 }
-                
+
                 // No need for capdev lock from here on:
                 PsychUnlockMutex(&capdev->mutex);
-                
+
                 if (frame_ready) {
                     unsigned int twidth, theight, numChannels, bitdepth;
-                    
+
                     // Yes! Get a hand on the current video image buffer and timestamp:
                     capdev->pulled_frame = PsychMovieCopyPulledPipelineBuffer(capdev->moviehandle, &twidth, &theight, &numChannels, &bitdepth, &(capdev->pulled_pts));
 
@@ -2476,7 +2529,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
                     capdev->pulled_framecounter++;
 
                     // Sanity checks:
-                    
+
                     // Validate number of color channels and bits per channel values for a match:
                     if (numChannels != (unsigned int) capdev->actuallayers || bitdepth != ((capdev->bitdepth > 8) ? 16 : 8)) {
                         printf("PTB-ERROR: Mismatch between number of color channels %i or bpc %i of captured video frame and number of channels %i or bpc %i of video capture target buffer!\n",
@@ -2484,20 +2537,20 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
                         free(capdev->pulled_frame);
                         return(-2);
                     }
-                    
+
                     // Dimensions match?
                     if (twidth != (unsigned int) capdev->width || theight > (unsigned int) capdev->height) {
                         printf("PTB-ERROR: Mismatch between size of captured video frame %i x %i and size of video capture target buffer %i x %i !\n", capdev->width, capdev->height, twidth, theight);
                         free(capdev->pulled_frame);
                         return(-2);
                     }
-                    
+
                     // Ok, we're done. All pulled_xxx settings updated, our own copy of the video date in pulled_frame,
                     // pulled_framecounter up to date, frame_ready flag up to date.
                 }
             }
         }
-        
+
         // Return availability status: 0 = new frame ready for retrieval. -1 = No new frame ready yet.
         return((frame_ready) ? 0 : -1);
     }
@@ -2524,12 +2577,12 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
         // No. Already pre-processed in recorderThread, just assign:
         input_image = capdev->pulled_frame;
     }
-    
+
     // Only setup if really a texture is requested (non-benchmarking mode):
     if (out_texture) {
         // Activate OpenGL context of target window:
         PsychSetGLContext(win);
-        
+
         #if PSYCH_SYSTEM == PSYCH_OSX
         // Explicitely disable Apple's Client storage extensions. For now they are not really useful to us.
         glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
@@ -2558,7 +2611,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
             // instead of 16 bpc half-floats, because 16 bpc would not be sufficient to represent
             // more than highbitthreshold bits faithfully:
             const int highbitthreshold = 11;
-            
+
             // 9 - 16 bpc color/luminance resolution:
             out_texture->depth = capdev->reqlayers * ((capdev->bitdepth > highbitthreshold) ? 32 : 16);
             if (capdev->reqlayers == 1) {
