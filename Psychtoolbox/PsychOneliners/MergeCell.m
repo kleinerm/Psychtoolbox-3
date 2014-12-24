@@ -19,6 +19,14 @@ function c = MergeCell(varargin)
 % % leglbls  = MergeCell(linelbls,{', chi^2_r: '},chi2_rtxt); would be equivalent
 %
 
+% remove empty
+len     = cellfun(@length,varargin);
+varargin(len==0) = [];  % remove empty
+if isempty(varargin)
+    c = {};
+    return;
+end
+
 % input checks
 qVec    = cellfun(@isvector,varargin); % also true for scalars :)
 assert(all(qVec),'At least one input is not a vector');

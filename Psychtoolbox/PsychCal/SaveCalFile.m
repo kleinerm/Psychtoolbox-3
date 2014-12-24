@@ -29,16 +29,21 @@ function SaveCalFile(cal, filespec, dir)
 % 4/2/13   dhb  Updated for subdir searching logic.
 % 4/12/13  dhb  Make this save to cal file folder when file doesn't yet exist.
 % 6/2/13   dhb  More robust about whether passed filespec contains the trailing '.mat'.
+% 11/30/14 dhb  Handle case where .mat isn't in passed filename, and name is less then 5 chars long.
 
 % Set the filename
 if nargin < 2 || isempty(filespec)
 	filespec = 'default';
 	filename = ['default.mat'];
 elseif ischar(filespec)
-	if (~strcmp(filespec(end-3:end),'.mat'))
-        filename = [filespec '.mat'];
+	if (length(filespec) >= 5)
+        if (~strcmp(filespec(end-3:end),'.mat'))
+            filename = [filespec '.mat'];
+        else
+            filename = filespec;
+        end
     else
-        filename = filespec;
+        filename = [filespec '.mat'];
     end
 else
 	filename = [sprintf('screen%d.mat',filespec)];

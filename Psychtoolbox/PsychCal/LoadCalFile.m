@@ -43,6 +43,7 @@ function [cal, cals, fullFilename] = LoadCalFile(filespec, whichCal, dir)
 % 4/2/13   dhb  Updated for subdir searching logic.
 % 6/2/13   dhb  More robust about whether passed filespec contains the trailing '.mat'.
 % 7/3/13   dhb  Fix buglet for check on trailing .mat when length of filename less than 4 chars.
+% 12/11/14 dhb  Use fullfile rather than straight append to build up full path to cal file.
 
 % Get whichCal
 if nargin < 2 || isempty(whichCal)
@@ -62,13 +63,15 @@ else
 	filename = [sprintf('screen%d.mat', filespec)];
 end
 
-% Set the directory
+% Set the directory if first character of passed filename is not 
+% the filesep character.  In the latter case, we assume that the full
+% path to the desired calibration file was passed.
 if nargin < 3 || isempty(dir)
 	useDir = CalDataFolder(0,filename);
 else
 	useDir = CalDataFolder(0,filename,dir);
 end
-fullFilename = [useDir filename];
+fullFilename = fullfile(useDir,filename);
 
 % If the file doesn't exist in the usual location, take a look in the
 % secondary location.
