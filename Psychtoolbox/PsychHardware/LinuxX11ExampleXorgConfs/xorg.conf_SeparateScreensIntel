@@ -10,7 +10,7 @@ Section "Device"
     Identifier  "Card0"
     Driver      "intel"
     Screen 0
-    BusID       "PCI:0:2:0"
+    #BusID       "PCI:0:2:0"
     Option      "ZaphodHeads"   "LVDS1"
     Option      "TripleBuffer"  "off"
 EndSection
@@ -19,7 +19,7 @@ Section "Device"
     Identifier  "Card1"
     Driver      "intel"
     Screen 1
-    BusID       "PCI:0:2:0"
+    #BusID       "PCI:0:2:0"
     Option      "ZaphodHeads"   "DP1"
     Option      "TripleBuffer"  "off"
 EndSection
