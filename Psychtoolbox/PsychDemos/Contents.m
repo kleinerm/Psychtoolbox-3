@@ -86,6 +86,8 @@
 %    ReceivingTriggerFromSerialPortDemo - Template for asynchronous trigger collection and timestamping from serial port.
 %    RenderDemo              - Render CIE xyY as a color patch.
 %    SadowskiDemo            - Shows the "Sadowski" color afterimage effect.
+%    SimpleImageMixingDemo   - Shows how to mix two images via alpha-blending, using an alpha-mask which itself is morphed between two masks.
+%                              See also ImageMixingTutorial for a more complex demonstration of the technique.
 %    SimpleSoundScheduleDemo - Simple demo for basic use of sound schedules with PsychPortAudio.
 %    SimpleVoiceTriggerDemo  - Demo of a simple voice trigger with PsychPortAudio.
 %    SpriteDemo              - Animates an image that follows the mouse.

@@ -3,7 +3,7 @@
 
     AUTHORS:
 
-        mario.kleiner@tuebingen.mpg.de  mk
+        mario.kleiner.de@gmail.com  mk
 
     PLATFORMS:
 
@@ -710,6 +710,9 @@ psych_bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* window
  *
  * Decodes hw register of NVidia GPU into GPU core id / chip family:
  * Returns 0 for unknown card, otherwise xx for NV_xx:
+ *
+ * Reference Linux nouveau-kms driver implementation in:
+ * nouveau/core/engine/device/base.c: nouveau_devobj_ctor()
  */
 unsigned int PsychGetNVidiaGPUType(PsychWindowRecordType* windowRecord)
 {
@@ -725,9 +728,9 @@ unsigned int PsychGetNVidiaGPUType(PsychWindowRecordType* windowRecord)
     if (reg0 == 0xffffffff) return(0xffffffff);
 
     /* We're dealing with >=NV10 */
-    if ((reg0 & 0x0f000000) > 0) {
-        /* Bit 27-20 contain the architecture in hex */
-        chipset = (reg0 & 0xff00000) >> 20;
+    if ((reg0 & 0x1f000000) > 0) {
+        /* Bit 28-20 contain the architecture in hex */
+        chipset = (reg0 & 0x1ff00000) >> 20;
         /* NV04 or NV05 */
     } else if ((reg0 & 0xff00fff0) == 0x20004000) {
         if (reg0 & 0x00f00000)
@@ -737,42 +740,51 @@ unsigned int PsychGetNVidiaGPUType(PsychWindowRecordType* windowRecord)
     } else
         chipset = 0xff;
 
-    switch (chipset & 0xf0) {
-        case 0x00:
+    switch (chipset & 0x1f0) {
+        case 0x000:
             // NV_04/05: RivaTNT , RivaTNT2
             card_type = 0x04;
             break;
-        case 0x10:
-        case 0x20:
-        case 0x30:
+        case 0x010:
+        case 0x020:
+        case 0x030:
             // NV30 or earlier: GeForce-5 / GeForceFX and earlier:
             card_type = chipset & 0xf0;
             break;
-        case 0x40:
-        case 0x60:
+        case 0x040:
+        case 0x060:
             // NV40: GeForce6/7 series:
-            card_type = 0x40;
+            card_type = 0x040;
             break;
-        case 0x50:
-        case 0x80:
-        case 0x90:
-        case 0xa0:
+        case 0x050:
+        case 0x080:
+        case 0x090:
+        case 0x0a0:
             // NV50: GeForce8/9/G100-G300.
-            card_type = 0x50;
+            card_type = 0x050;
             break;
-        case 0xc0:
+        case 0x0c0:
             // Fermi: GeForce G400/500 series:
-            card_type = 0xc0;
+            card_type = 0x0c0;
             break;
-        case 0xd0:
-        case 0xe0:
-        case 0xf0:
-            // Kepler: GeForce G600+ series: Up to 4 CRTC's.
-            card_type = 0xe0;
+        case 0x0d0:
+            // Fermi: But with 3rd gen scanout engine, but still only 2 CRTC's:
+            card_type = 0x0d0;
+            break;
+        case 0x0e0:
+        case 0x0f0:
+        case 0x100:
+            // Kepler: GeForce G600+ series: 3rd gen scanout engine, but now up to 4 CRTC's.
+            card_type = 0x0e0;
+            break;
+        case 0x110:
+        case 0x120:
+            // Maxwell: GeForce 750+ series: 3rd gen scanout engine, up to 4 CRTC's.
+            card_type = 0x110;
             break;
         default:
-            printf("PTB-DEBUG: Unknown NVidia chipset 0x%08x \n", reg0);
-            card_type = 0x00;
+            printf("PTB-DEBUG: Unknown NVidia chipset 0x%08x - Assuming latest generation.\n", reg0);
+            card_type = 0x000;
     }
 
     return(card_type);
@@ -1013,8 +1025,8 @@ void PsychSetBeamposCorrection(int screenId, int vblbias, int vbltotal)
             PsychOSIsKernelDriverAvailable(screenId)) {
 
             // Need to read different regs, depending on GPU generation:
-            if ((PsychGetNVidiaGPUType(NULL) >= 0xe0) || (PsychGetNVidiaGPUType(NULL) == 0x0)) {
-                // Auto-Detection. Read values directly from NV-E0 "Kepler" class and later hardware:
+            if ((PsychGetNVidiaGPUType(NULL) >= 0x0d0) || (PsychGetNVidiaGPUType(NULL) == 0x0)) {
+                // Auto-Detection. Read values directly from NV-D0 / E0-"Kepler" class and later hardware:
                 //
                 #if PSYCH_SYSTEM != PSYCH_WINDOWS
                 // VBLANKE end line of vertical blank - smaller than VBLANKS. Subtract VBLANKE + 1 to normalize to "scanline zero is start of active scanout":
