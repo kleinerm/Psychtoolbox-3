@@ -445,12 +445,15 @@
 % system configuration problems.
 %
 % On such setups, triple-buffering can be disabled with driver specific
-% options in xorg.conf:
+% options in xorg.conf. However, if you are a user of 64-Bit Ubuntu
+% 14.04-LTS or compatible 64-Bit distribution with X-Server 1.15, you
+% may want to read "help LinuxDrivers" instead on how to install customized
+% graphics drivers for your system, which solve this and other problems
+% in a more elegant way. If you use a different distribution, read on.
 %
 % On Intel graphics drivers, add the options:
 %
 % Option "TripleBuffer"    "off"
-% Option "DRI" "2"
 %
 % On the nouveau driver for NVidia cards, add:
 % Option "SwapLimit" "1"
@@ -485,3 +488,4 @@
 % 09.10.2012 Add Linux-specific section (MK).
 % 29.09.2013 Update to current state (MK).
 % 05.10.2014 Update to current state (MK).
+% 24.12.2014 Update to state where we provide our own ddx'en (MK).

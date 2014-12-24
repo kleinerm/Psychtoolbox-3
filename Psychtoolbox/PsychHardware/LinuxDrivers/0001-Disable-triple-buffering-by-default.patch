@@ -1,0 +1,100 @@
+From 546b10b52aeef55988109013a5c94284edaef205 Mon Sep 17 00:00:00 2001
+From: Mario Kleiner <mario.kleiner.de@gmail.com>
+Date: Tue, 23 Dec 2014 07:11:37 +0100
+Subject: [PATCH] Disable triple-buffering by default.
+
+This patch disables triple buffering for both uxa and sna
+by default under the DRI2 backend, as triple-buffering is
+still hazardous to precise swap scheduling and timestamping,
+and therefore inacceptable for use with Psychtoolbox-3 or
+other visual stimulus presentation software.
+
+It does the equivalent to Option "TripleBuffer" "off"
+in xorg.conf.
+
+Make sure to build the driver with DRI2 only (no DRI3/Present)
+when applying this patch. Under DRI3/Present the patch is not
+needed, as triple buffering works flawlessly with precise
+swap scheduling and timestamping under DRI3/Present. However,
+for DRI3/Present to work bug-free and reliable, you'll need
+XOrg 1.16.3 or later with Mesa 10.3.6 or later, Mesa 10.4.1
+or later, or Mesa 10.5 and later. None of this is available
+in common distros as of December 2014, so as a stop-gap instead
+ship a DRI2-only build of Intel 2.99.917+ with this patch applied.
+
+Signed-off-by: Mario Kleiner <mario.kleiner.de@gmail.com>
+---
+ NEWS                   | 29 +++++++++++++++++++++++++++++
+ src/sna/sna_driver.c   |  4 ++--
+ src/uxa/intel_driver.c |  2 +-
+ 3 files changed, 32 insertions(+), 3 deletions(-)
+
+diff --git a/NEWS b/NEWS
+index 604b9cc..ba5d40d 100644
+--- a/NEWS
++++ b/NEWS
+@@ -1,3 +1,32 @@
++2.99.917 + Mario Kleiner's modifications (2014-12-23)
++=====================================================
++
++The following patch is applied on top of 2.99.917 to this
++otherwise unmodified 2.99.917 source tree to accomodate the
++need of Psychtoolbox-3 or other vision science software for
++reliable visual stimulus timing/timestamping:
++
++    Disable triple-buffering by default.
++
++    This patch disables triple buffering for both uxa and sna
++    by default under the DRI2 backend, as triple-buffering is
++    still hazardous to precise swap scheduling and timestamping,
++    and therefore inacceptable for use with Psychtoolbox-3 or
++    other visual stimulus presentation software.
++
++    It does the equivalent to Option "TripleBuffer" "off"
++    in xorg.conf.
++
++    Make sure to build the driver with DRI2 only (no DRI3/Present)
++    when applying this patch. Under DRI3/Present the patch is not
++    needed, as triple buffering works flawlessly with precise
++    swap scheduling and timestamping under DRI3/Present. However,
++    for DRI3/Present to work bug-free and reliable, you'll need
++    XOrg 1.16.3 or later with Mesa 10.3.6 or later, Mesa 10.4.1
++    or later, or Mesa 10.5 and later. None of this is available
++    in common distros as of December 2014, so as a stop-gap instead
++    ship a DRI2-only build of Intel 2.99.917+ with this patch applied.
++
+ Snapshot 2.99.917 (2014-12-21)
+ ==============================
+ 3 months drifted by whilst I looked elsewhere for bugs.. The highlight of
+diff --git a/src/sna/sna_driver.c b/src/sna/sna_driver.c
+index 8a3599c..f95c847 100644
+--- a/src/sna/sna_driver.c
++++ b/src/sna/sna_driver.c
+@@ -679,9 +679,9 @@ static Bool sna_pre_init(ScrnInfoPtr scrn, int probe)
+ 	DBG(("%s: page flips? %s\n", __FUNCTION__, sna->flags & SNA_NO_FLIP ? "disabled" : "enabled"));
+ 
+ 	if ((sna->flags & (SNA_NO_VSYNC | SNA_NO_FLIP | SNA_NO_WAIT)) == 0 &&
+-	    xf86ReturnOptValBool(sna->Options, OPTION_TRIPLE_BUFFER, TRUE))
++	    xf86ReturnOptValBool(sna->Options, OPTION_TRIPLE_BUFFER, FALSE))
+ 		sna->flags |= SNA_TRIPLE_BUFFER;
+-	DBG(("%s: triple buffer? %s\n", __FUNCTION__, sna->flags & SNA_TRIPLE_BUFFER ? "enabled" : "disabled"));
++       xf86DrvMsg(scrn->scrnIndex, X_INFO, "Triple buffer? %s\n", sna->flags & SNA_TRIPLE_BUFFER ? "enabled" : "disabled");
+ 
+ 	if (xf86ReturnOptValBool(sna->Options, OPTION_CRTC_PIXMAPS, FALSE)) {
+ 		xf86DrvMsg(scrn->scrnIndex, X_CONFIG, "Forcing per-crtc-pixmaps.\n");
+diff --git a/src/uxa/intel_driver.c b/src/uxa/intel_driver.c
+index 2793da5..6cb88c1 100644
+--- a/src/uxa/intel_driver.c
++++ b/src/uxa/intel_driver.c
+@@ -568,7 +568,7 @@ static Bool I830PreInit(ScrnInfoPtr scrn, int flags)
+ 	intel->use_triple_buffer =
+ 		xf86ReturnOptValBool(intel->Options,
+ 				     OPTION_TRIPLE_BUFFER,
+-				     TRUE);
++				     FALSE);
+ 	xf86DrvMsg(scrn->scrnIndex, X_CONFIG, "Triple buffering? %s\n",
+ 		   intel->use_triple_buffer ? "enabled" : "disabled");
+ 
+-- 
+1.9.1
+
