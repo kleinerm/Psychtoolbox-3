@@ -446,8 +446,9 @@
 %
 % On such setups, triple-buffering can be disabled with driver specific
 % options in xorg.conf. However, if you are a user of 64-Bit Ubuntu
-% 14.04-LTS or compatible 64-Bit distribution with X-Server 1.15, you
-% may want to read "help LinuxDrivers" instead on how to install customized
+% 14.04-LTS or compatible 64-Bit distribution with X-Server 1.15, or
+% of 64-Bit Ubuntu 14.10 or compatible 64-Bit distribution with X-Server 1.16,
+% you may want to read "help LinuxDrivers" instead on how to install customized
 % graphics drivers for your system, which solve this and other problems
 % in a more elegant way. If you use a different distribution, read on.
 %
