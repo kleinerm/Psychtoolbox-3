@@ -150,8 +150,11 @@ function [x,y,buttons,focus,valuators,valinfo] = GetMouse(windowPtrOrScreenNumbe
 % can skip the *very time-consuming* detection code on successive calls.
 % This gives a tenfold speedup - important for tight realtime-loops.
 persistent numMouseButtons;
-if isempty(numMouseButtons)    
-    if IsOSX        
+persistent doNoOp;
+
+if isempty(numMouseButtons)
+    doNoOp = 0;
+    if IsOSX
         % Try to get the number of mouse buttons from PsychHID
         mousedices = GetMouseIndices;
         numMice = length(mousedices);
@@ -175,6 +178,12 @@ if isempty(numMouseButtons)
         % Windows: Currently only supports three mouse buttons.
         % Linux: A greater than zero value (like 3 here) triggers mouse query.
         numMouseButtons = 3;
+        
+        % Turn into a no-operation on Linux without X11 for now until we
+        % are ready for Wayland and friends:
+        if IsLinux && isempty(getenv('DISPLAY'))
+            doNoOp = 1;
+        end
     end
 end
 
@@ -184,6 +193,12 @@ end
 
 if nargin < 2
     mouseDev = [];
+end
+
+% Shall we no-op?
+if doNoOp
+    [x,y,buttons,focus,valuators,valinfo] = deal(0, 0, [0 0 0], 0, [], []);
+    return;
 end
 
 % Read the mouse position and  buttons:

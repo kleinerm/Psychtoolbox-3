@@ -134,6 +134,7 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber, unusedUnti
 % 12/18/09 rpw Added support for polling keypads on OSX via deviceNumber of -2 or -3
 % 01/07/10 mk Code refactoring: Unified check-code for all deviceIndex
 %             values.
+% 12/29/14 mk Add safeguard against using PsychHID on non-X11 Linux backends.
 
 % ptb_kbcheck_disabledKeys is a vector of keyboard scancodes. It allows
 % to define keys which should never be reported as 'down', i.e. disabled
@@ -155,6 +156,8 @@ persistent macosx;
 % ...and all keyboard indices as well:
 persistent kbs kps;
 persistent keyboardsdetected;
+% ...and if we are allowed to use PsychHID:
+persistent allowPsychHID;
 
 if isempty(macosx)
     % First time invocation: Query and cache type of OS:
@@ -168,13 +171,22 @@ if isempty(macosx)
     if ~exist('ptb_kbcheck_enabledKeys', 'var')
         ptb_kbcheck_enabledKeys = [];
     end
+
+    % Only use PsychHID on Linux if we are running on a classic X11 X-Server,
+    % as current PsychHID on Linux is not yet capable of non-X11 operation:
+    if IsLinux && isempty(getenv('DISPLAY'))
+        % Non-standard display backend, e.g., Wayland. Only use Screen's internal implementation:
+        allowPsychHID = 0;
+    else
+        allowPsychHID = 1;
+    end
 end
 
 if nargin < 1
     deviceNumber = [];
 end
 
-if ~IsWin || (IsWin && ~isempty(deviceNumber))
+if allowPsychHID && (~IsWin || (IsWin && ~isempty(deviceNumber)))
     if ~isempty(deviceNumber)
         % All attached keyboards already detected?
         if isempty(keyboardsdetected)
@@ -216,6 +228,12 @@ if ~IsWin || (IsWin && ~isempty(deviceNumber))
         [keyIsDown, secs, keyCode]= PsychHID('KbCheck', [], ptb_kbcheck_enabledKeys);
     end
 else
+   % No-Op for now on Linux without X11 X-Server:
+   if ~allowPsychHID && IsLinux
+      keyIsDown=0; keyCode=zeros(1,256); secs = 0; deltaSecs = 0;
+      return;
+   end
+
    % We use the built-in KbCheck facility of Screen on MS-Windows
    % for KbChecks if the usercode didn't specify any 'deviceIndex', so
    % the user gets a good "works out of the box" experience for the default

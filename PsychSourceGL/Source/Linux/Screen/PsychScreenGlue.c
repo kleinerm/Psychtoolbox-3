@@ -1217,7 +1217,7 @@ void InitCGDisplayIDList(void)
         numDisplays=i;
     }
 
-    if (numDisplays>1) printf("PTB-Info: A total of %i X-Windows display screens is available for use.\n", numDisplays);
+    if (numDisplays>1) printf("PTB-INFO: A total of %i X-Windows display screens is available for use.\n", numDisplays);
 
     // Initialize screenId -> GPU headId mapping to identity mappings,
     // unless already setup by XRandR setup code:

@@ -105,6 +105,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     int xfixes_event_base1, xfixes_event_base2;
     psych_bool xfixes_available = FALSE;
     psych_bool newstyle_setup = FALSE;
+    int gpuMaintype = 0;
     int32_t opengl_api;
     char backendname[16];
     char backendname2[16];
@@ -145,7 +146,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     if (firstTime) {
         // Initialize waffle for selected display system backend:
         if (PsychPrefStateGet_Verbosity() > 2) {
-            printf("PTB-INFO: Using FOSS Waffle display backend library, written by Chad Versace, Copyright 2012 Intel.\n");
+            printf("PTB-INFO: Using FOSS Waffle display backend library, written by Chad Versace, Copyright 2012 - 2015 Intel.\n");
         }
 
         // Override default windowing system backend selection with requested type, if any requested:
@@ -155,6 +156,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             if (!strcmp(getenv("PSYCH_USE_DISPLAY_BACKEND"), "wayland")) windowRecord->winsysType = (int) WAFFLE_PLATFORM_WAYLAND; 
             if (!strcmp(getenv("PSYCH_USE_DISPLAY_BACKEND"), "gbm")) windowRecord->winsysType = (int) WAFFLE_PLATFORM_GBM; 
             if (!strcmp(getenv("PSYCH_USE_DISPLAY_BACKEND"), "android")) windowRecord->winsysType = (int) WAFFLE_PLATFORM_ANDROID; 
+        }
+        else if (getenv("WAYLAND_DISPLAY")) {
+            // Seems we are running on a Wayland server, so default to the
+            // Wayland display backend in absence of any user specified backend:
+            windowRecord->winsysType = (int) WAFFLE_PLATFORM_WAYLAND;
         }
 
         // If any backend chosen from calling code or by env-variable, assign it as new requested choice,
@@ -704,7 +710,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // Ok, for now we only use the new-style path if we are running under KDE/KWin and user
     // doesn't explicitely override/forbid that choice. Otherwise we use the old path, as
     // that seems to perform better, at least on tested Unity/compiz, GNOME3-Shell and LXDE/OpenBox.
-    if ((PsychPrefStateGet_ConserveVRAM() & kPsychOldStyleOverrideRedirect) || !getenv("KDE_FULL_SESSION")) {
+    PsychGetGPUSpecs(screenSettings->screenNumber, &gpuMaintype, NULL, NULL, NULL);
+    if ((!getenv("PSYCH_NEW_OVERRIDEREDIRECT") && (gpuMaintype != kPsychIntelIGP)) || (PsychPrefStateGet_ConserveVRAM() & kPsychOldStyleOverrideRedirect) ||
+        !getenv("KDE_FULL_SESSION") || (PsychScreenToHead(screenSettings->screenNumber, 1) >= 0)) {
         // Old style: Always override_redirect to lock out window manager, except when a real "GUI-Window"
         // is requested, which needs to behave and be treated like any other desktop app window:
         attr.override_redirect = (windowRecord->specialflags & kPsychGUIWindow) ? 0 : 1;
