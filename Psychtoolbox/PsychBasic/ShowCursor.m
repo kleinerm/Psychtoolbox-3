@@ -154,8 +154,13 @@ else
     end
 end
 
-% Use Screen to emulate ShowCursor.mex
-Screen('ShowCursorHelper', screenid, type, mouseid);
-
 % Return a dummy oldtype, we don't have this info...
 oldType = 0;
+
+% No-Op under Linux if no access to X11 display server, as non-X11 isn't yet supported:
+if IsLinux && isempty(getenv('DISPLAY'))
+    return;
+end
+
+% Use Screen to emulate ShowCursor.mex
+Screen('ShowCursorHelper', screenid, type, mouseid);
