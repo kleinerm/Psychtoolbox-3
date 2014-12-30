@@ -6387,7 +6387,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	}
 	else {
 		// OpenML unsupported:
-		if (verbose) printf("No support for OpenML OML_sync_control extension. Using standard implementation.\n");
+		if (verbose) printf("No support for OpenML OML_sync_control extension.\n");
 
 		// OpenML timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
 		windowRecord->specialflags |= kPsychOpenMLDefective;
@@ -6400,9 +6400,9 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         #if PSYCH_SYSTEM == PSYCH_LINUX
 		#error Build aborted. You *must* compile with the -std=gnu99  gcc compiler switch to enable the required OML_sync_control extension!
         #endif
-        
+
 		// OpenML unsupported:
-		if (verbose) printf("No compiled in support for OpenML OML_sync_control extension. Using standard implementation.\n");
+		if (verbose) printf("No compiled in support for OpenML OML_sync_control extension.\n");
 
 		// OpenML timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
 		windowRecord->specialflags |= kPsychOpenMLDefective;
@@ -6420,10 +6420,19 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     }
     PsychUnlockDisplay();
     #endif
-    
-	if (verbose) printf("PTB-DEBUG: Interrogation done.\n\n");
-	
-	return;
+
+    // If we are on Linux + Waffle backend, we call PsychOSInitializeOpenML()
+    // anyway. It may use any "OpenML equivalent" of a given backend to do
+    // the job of OpenML. On most backends it will no-op, on Wayland it will
+    // try to use its new presentation extension for swap scheduling and
+    // completion timestamping:
+    #if (PSYCH_SYSTEM == PSYCH_LINUX) && defined(PTB_USE_WAFFLE)
+        PsychOSInitializeOpenML(windowRecord);
+    #endif
+
+    if (verbose) printf("PTB-DEBUG: Interrogation done.\n\n");
+
+    return;
 }
 
 // Common (Operating system independent) code to be executed immediately

@@ -365,6 +365,7 @@ typedef struct _PsychWindowRecordType_{
 		psych_int64								reference_sbc;			// SBC reference swapbuffers count from OpenML. (Optional)
 		psych_int64								target_sbc;				// Target SBC value for next glXWaitForSbcOML() call from OpenML. (Optional)
 		psych_int64								lastSwaptarget_msc;		// Target MSC value for which most recent swap was scheduled by DRM/DRI2 from OpenML. (Optional)
+		psych_int64                             submitted_sbc;          // Running count of submitted swaprequests - e.g., used by Wayland. (Optional)
 		int                                     swapevents_enabled;     // State of swap events: 0 = Disabled/Unsupported, 1 = Enabled for use by usercode, 2 = Enabled for use by us.
 		int                                     swapcompletiontype;     // Type of last completed swap: 0 = Unknown, 1 = Pageflip, 2 = Exchange, 3 = Copy.
 		

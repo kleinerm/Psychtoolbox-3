@@ -67,6 +67,293 @@ static struct waffle_context *currentContext = NULL;
 // Forward define prototype for glewContextInit(), which is normally not a public function:
 GLenum glewContextInit(void);
 
+#ifdef PTB_USE_WAYLAND_PRESENT
+#include <wayland-client.h>
+
+// This header file and corresponding implementation file currently included in our
+// source tree, as permitted by license. There's probably a better way to do this?
+#include "presentation_timing-client-protocol.h"
+
+#define ARRAY_LENGTH(a) (sizeof (a) / sizeof (a)[0])
+
+struct wl_display *wayland_display = NULL;
+struct wl_list window_feedback_list;
+static struct presentation *pres = NULL;
+uint32_t wayland_presentation_clock_id;
+
+// Container with feedback about a completed swap - the equivalent of
+// our good old INTEL_swap_event on X11/GLX, here fow Wayland:
+struct feedback {
+    PsychWindowRecordType *windowRecord;
+    psych_uint64 sbc;
+    struct presentation_feedback *feedback;
+    struct timespec commit;
+    struct timespec target;
+    struct wl_list link;
+    struct timespec present;
+};
+
+static void
+presentation_clock_id(void *data, struct presentation *presentation,
+                      uint32_t clk_id)
+{
+    struct wl_display *self = data;
+    wayland_presentation_clock_id = clk_id;
+}
+
+static const struct presentation_listener presentation_listener = {
+    presentation_clock_id
+};
+
+static void
+registry_listener_global(void *data,
+                         struct wl_registry *registry,
+                         uint32_t name,
+                         const char *interface,
+                         uint32_t version)
+{
+    struct wl_display *self = data;
+
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Wayland registry extension candidate: %s\n", interface);
+
+    // Only look for presentation interface v1:
+    if (strcmp(interface, "presentation") || (version != 1)) return;
+
+    // Got it:
+    pres = wl_registry_bind(registry, name, &presentation_interface, 1);
+    if (!pres) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: wl_registry_bind for presentation_interface failed!\n");
+        return;
+    }
+
+    presentation_add_listener(pres, &presentation_listener, self);
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Wayland presentation_interface bound!\n");
+}
+
+static void
+registry_listener_global_remove(void *data,
+                                struct wl_registry *registry,
+                                uint32_t name)
+{
+    return;
+}
+
+static const struct wl_registry_listener registry_listener = {
+    .global = registry_listener_global,
+    .global_remove = registry_listener_global_remove
+};
+
+static struct presentation *
+get_wayland_presentation_extension(PsychWindowRecordType* windowRecord)
+{
+    // Already have a cached presentation_interface? If so, just return it:
+    if (pres) return pres;
+
+    // Nope, get our own wl_registry, do the enumeration and binding:
+    struct wl_registry *wl_registry = wl_display_get_registry(wayland_display);
+    if (!wl_registry) {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: wl_display_get_registry failed\n");
+        return(NULL);
+    }
+
+    if (wl_registry_add_listener(wl_registry, &registry_listener, wayland_display) < 0) {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: wl_registry_add_listener failed\n");
+        return(NULL);
+    }
+
+    // Block until the Wayland server has processed all pending requests and
+    // has sent out pending events on all event queues. This should ensure
+    // that the registry listener has received announcement of the shell and
+    // compositor.
+    if (wl_display_roundtrip(wayland_display) == -1) {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: wl_display_roundtrip failed\n");
+        return(NULL);
+    }
+
+    // Destroy our reference to the registry:
+    wl_registry_destroy(wl_registry);
+
+    return(pres);
+}
+
+static void
+destroy_feedback(struct feedback *feedback)
+{
+    if (feedback->feedback)
+        presentation_feedback_destroy(feedback->feedback);
+
+    wl_list_remove(&feedback->link);
+    free(feedback);
+}
+
+static uint32_t
+timespec_to_ms(const struct timespec *ts)
+{
+    return (uint32_t)ts->tv_sec * 1000 + ts->tv_nsec / 1000000;
+}
+
+static void
+timespec_from_proto(struct timespec *tm, uint32_t tv_sec_hi,
+                    uint32_t tv_sec_lo, uint32_t tv_nsec)
+{
+    tm->tv_sec = ((uint64_t)tv_sec_hi << 32) + tv_sec_lo;
+    tm->tv_nsec = tv_nsec;
+}
+
+static uint64_t
+timespec_to_us(const struct timespec *ts)
+{
+    return (uint64_t) ts->tv_sec * 1000000 + ts->tv_nsec / 1000;
+}
+
+static int
+timespec_diff_to_usec(const struct timespec *a, const struct timespec *b)
+{
+    time_t secs = a->tv_sec - b->tv_sec;
+    long nsec = a->tv_nsec - b->tv_nsec;
+
+    return secs * 1000000 + nsec / 1000;
+}
+
+static char *
+pflags_to_str(uint32_t flags, char *str, unsigned len)
+{
+    static const struct {
+        uint32_t flag;
+        char sym;
+    } desc[] = {
+        { 1, '1' }, /* dummy placeholder */
+    };
+    unsigned i;
+
+    *str = '\0';
+    if (len < ARRAY_LENGTH(desc) + 1)
+        return str;
+
+    for (i = 0; i < ARRAY_LENGTH(desc); i++)
+        str[i] = flags & desc[i].flag ? desc[i].sym : '_';
+    str[ARRAY_LENGTH(desc)] = '\0';
+
+    return str;
+}
+
+static void
+feedback_presented(void *data,
+                   struct presentation_feedback *presentation_feedback,
+                   uint32_t tv_sec_hi,
+                   uint32_t tv_sec_lo,
+                   uint32_t tv_nsec,
+                   uint32_t refresh_nsec,
+                   uint32_t seq_hi,
+                   uint32_t seq_lo,
+                   uint32_t flags)
+{
+    struct feedback *feedback = data;
+    PsychWindowRecordType *windowRecord = feedback->windowRecord;
+    uint64_t msc = ((uint64_t) seq_hi << 32) + seq_lo;
+    static struct timespec lastpresent = { 0 };
+    uint32_t commit, present;
+    uint32_t f2c, c2p, f2p;
+    int p2p, t2p;
+    char flagstr[10];
+
+    // Translate protocol presentation timestamp to a timespec:
+    timespec_from_proto(&feedback->present, tv_sec_hi, tv_sec_lo, tv_nsec);
+
+    commit = timespec_to_ms(&feedback->commit);
+    present = timespec_to_ms(&feedback->present);
+
+    // Time delta in msecs between swap scheduled and completed:
+    c2p = present - commit;
+
+    // Compute delta in usecs between successive swaps:
+    if (feedback->sbc > 1) {
+        p2p = timespec_diff_to_usec(&feedback->present, &lastpresent);
+    }
+    else p2p = 0;
+    lastpresent = feedback->present;
+
+    // Compute delta in usecs between target time and true time of swap:
+    t2p = timespec_diff_to_usec(&feedback->present, &feedback->target);
+
+    if (PsychPrefStateGet_Verbosity() > 4) {
+        printf("PTB-DEBUG: SBC = %6lu: c2p %4u ms, p2p %5d us (refresh %6u us), t2p %6d us, [%s] MSC %" PRIu64 "\n",
+               feedback->sbc, c2p, p2p, refresh_nsec / 1000, t2p, pflags_to_str(flags, flagstr, sizeof(flagstr)), msc);
+    }
+
+    // Record sbc, msc, ust of this completed swap:
+    windowRecord->reference_sbc = feedback->sbc;
+    windowRecord->reference_msc = msc;
+    windowRecord->reference_ust = timespec_to_us(&feedback->present);
+
+    // Delete our own completion feedback container:
+    destroy_feedback(feedback);
+}
+
+static void
+feedback_discarded(void *data,
+                   struct presentation_feedback *presentation_feedback)
+{
+    struct feedback *feedback = data;
+
+    if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Wayland presentation request discarded for SBC = %lu !\n", feedback->sbc);
+    destroy_feedback(feedback);
+}
+
+static void
+feedback_sync_output(void *data,
+                     struct presentation_feedback *presentation_feedback,
+                     struct wl_output *output)
+{
+    /* not interested */
+}
+
+static const struct presentation_feedback_listener feedback_listener = {
+    feedback_sync_output,
+    feedback_presented,
+    feedback_discarded
+};
+
+static void
+wayland_window_create_feedback(PsychWindowRecordType* windowRecord)
+{
+    struct presentation *pres = get_wayland_presentation_extension(windowRecord);
+    struct feedback *feedback;
+    struct wl_surface *wl_surface;
+    struct waffle_wayland_window *wayland_window;
+    struct waffle_window* window = windowRecord->targetSpecific.windowHandle;
+
+    // Retrieve underlying native Wayland window:
+    union waffle_native_window *wafflewin = waffle_window_get_native(window);
+    wayland_window = wafflewin->wayland;
+    wl_surface = wayland_window->wl_surface;
+    free(wafflewin);
+    wafflewin = NULL;
+
+    // Noop if presentation_feedback extension unavailable:
+    if (!pres) return;
+
+    // Create our own feedback container for swap completion events:
+    feedback = calloc(1, sizeof(*feedback));
+    if (!feedback) return;
+
+    feedback->windowRecord = windowRecord;
+    feedback->sbc = ++(windowRecord->submitted_sbc);
+
+    // Create wayland present_feedback object, attach listener callbacks to it:
+    feedback->feedback = presentation_feedback(pres, wl_surface);
+    presentation_feedback_add_listener(feedback->feedback, &feedback_listener, feedback);
+
+    // Record approximate time of swap submission according to the compositor clock:
+    clock_gettime(wayland_presentation_clock_id, &feedback->commit);
+    feedback->target = feedback->commit;
+
+    // Add to our queue of pending swap completion events:
+    wl_list_insert(&window_feedback_list, &feedback->link);
+}
+
+#endif
+
 /*
   PsychOSOpenOnscreenWindow()
 
@@ -300,6 +587,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
             case WAFFLE_PLATFORM_WAYLAND:
                 egl_display = wafflenatdis->wayland->egl_display;
+                #if PTB_USE_WAYLAND_PRESENT
+                wayland_display = wafflenatdis->wayland->wl_display;
+                #endif
                 break;
 
             case WAFFLE_PLATFORM_GBM:
@@ -1293,6 +1583,21 @@ void PsychOSCloseWindow(PsychWindowRecordType * windowRecord)
 
     PsychLockDisplay();
 
+    #if PTB_USE_WAYLAND_PRESENT
+    if ((windowRecord->winsysType == WAFFLE_PLATFORM_WAYLAND) && !(windowRecord->specialflags & kPsychOpenMLDefective)) {
+        while (!wl_list_empty(&window_feedback_list)) {
+            struct feedback *f;
+
+            f = wl_container_of(window_feedback_list.next, f, link);
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Cleaning up Wayland feedback event %llu.\n", f->sbc);
+            destroy_feedback(f);
+        }
+
+        // Reset our binding to presentation_feedback extension:
+        pres = NULL;
+    }
+    #endif
+
     if (useX11) XSync(dpy, False);
 
     // Detach OpenGL rendering context again - just to be safe!
@@ -1392,8 +1697,59 @@ double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint
  */
 psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecord, psych_int64 targetSBC, double* tSwap)
 {
-    // Return -1 "unsupported":
-    return(-1);
+    psych_int64 ust = 0, sbc = 0, msc = -1;
+
+    // Extension unsupported or known to be defective? Return -1 "unsupported" in that case:
+    if (windowRecord->specialflags & kPsychOpenMLDefective) return(-1);
+
+    // Translate targetSBC 0 aka sbc of last submitted swap into proper value:
+    if (targetSBC == 0) {
+        targetSBC = windowRecord->target_sbc;
+        if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Supported. Calling with overriden targetSBC = %lld.\n", targetSBC);
+    }
+    else if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Supported. Calling with targetSBC = %lld.\n", targetSBC);
+
+    #if PTB_USE_WAYLAND_PRESENT
+    if (windowRecord->winsysType == WAFFLE_PLATFORM_WAYLAND) {
+        if (!wayland_display) return(-1);
+
+        // Perform Wayland event dispatch cycles until targetSBC is reached:
+        while (windowRecord->reference_sbc < targetSBC) {
+            wl_display_dispatch(wayland_display);
+        }
+
+        msc = windowRecord->reference_msc;
+        ust = windowRecord->reference_ust;
+        sbc = windowRecord->reference_sbc;
+    }
+    #endif
+
+    // Check for valid return values:
+    if ((windowRecord->vSynced) && (ust == 0)) {
+        if (PsychPrefStateGet_Verbosity() > 1) {
+            printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Invalid return values ust = %lld, msc = %lld from call with success return code (sbc = %lld)! Failing with rc = -2.\n", ust, msc, sbc);
+            printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: This likely means a driver bug or malfunction, or that timestamping support has been disabled by the user in the driver!\n");
+        }
+
+        // Return with "failure" rc, so calling code can provide more error handling:
+        return(-2);
+    }
+
+    // If no actual timestamp / msc was requested, then we return here. This is used by the
+    // workaround code for multi-threaded XLib access. It passes NULL to just (ab)use this
+    // function to wait for swap completion, before it touches the framebuffer for real.
+    // See function PsychLockedTouchFramebufferIfNeeded() in PsychWindowSupport.c
+    if (tSwap == NULL) return(msc);
+
+    // Success at least for timestamping. Translate ust into system time in seconds:
+    *tSwap = PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz());
+
+    if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Success! refust = %lld, refmsc = %lld, refsbc = %lld.\n", ust, msc, sbc);
+
+    // TODO swap completion logging / analysis...
+
+    // Return swap completion msc:
+    return(msc);
 }
 
 /* PsychOSInitializeOpenML() - Linux specific function.
@@ -1402,19 +1758,42 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
  * Performs basic and extended correctness tests and disables extension if it
  * is unreliable, or enables workarounds for partially broken extensions.
  *
- * Called from PsychDetectAndAssignGfxCapabilities() as part of the PsychOpenOffscreenWindow()
+ * Called from PsychDetectAndAssignGfxCapabilities() as part of the PsychOpenOnscreenWindow()
  * procedure for a window with OpenML support.
  *
  */
 void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 {
-    // Unsupported:
-
-    // Disable OpenML swap scheduling:
+    // Disable clever swap scheduling for now:
     windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
 
-    // OpenML timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
+    // Timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
     windowRecord->specialflags |= kPsychOpenMLDefective;
+
+    #if PTB_USE_WAYLAND_PRESENT
+    if ((windowRecord->winsysType == WAFFLE_PLATFORM_WAYLAND)) {
+        // Try to get a handle to the Wayland presentation_interface: non-NULL == Success.
+        if (!get_wayland_presentation_extension(windowRecord)) {
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: No Wayland presentation_feedback extension. Using naive standard implementation.\n");
+
+            // Timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
+            windowRecord->specialflags |= kPsychOpenMLDefective;
+            return;
+        }
+
+        // TODO: window_feedback_list -> windowRecord->window_feedback_list
+        wl_list_init(&window_feedback_list);
+
+        // Enable use of Wayland presentation_feedback extension for swap completion timestamping:
+        windowRecord->specialflags &= ~kPsychOpenMLDefective;
+
+        // Ready to rock on Wayland:
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Enabling Wayland presentation_feedback extension for swap completion timestamping.\n");
+        return;
+    }
+    #endif
+
+    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Using standard swap scheduling and swap completion timestamping on non-Wayland Waffle backend.\n");
 
     return;
 }
@@ -1459,6 +1838,14 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 */
 void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 {
+    #if PTB_USE_WAYLAND_PRESENT
+    // If wayland present_feedback is supposed to be used for swap completion timestamping, then we
+    // need to setup a proper present_feedback event for the upcoming swap:
+    if ((windowRecord->winsysType == WAFFLE_PLATFORM_WAYLAND) && !(windowRecord->specialflags & kPsychOpenMLDefective)) {
+        wayland_window_create_feedback(windowRecord);
+    }
+    #endif
+
     // Execute OS neutral bufferswap code first:
     PsychExecuteBufferSwapPrefix(windowRecord);
 
@@ -1466,9 +1853,8 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
     // This must be lock-protected for use with X11/XLib.
     PsychLockDisplay();
     waffle_window_swap_buffers(windowRecord->targetSpecific.windowHandle);
+    windowRecord->target_sbc = windowRecord->submitted_sbc;
     PsychUnlockDisplay();
-
-    windowRecord->target_sbc = 0;
 
     return;
 }
