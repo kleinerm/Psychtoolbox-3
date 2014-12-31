@@ -223,7 +223,10 @@ wayland_pflags_to_str(uint32_t flags, char *str, unsigned len)
         uint32_t flag;
         char sym;
     } desc[] = {
-        { 1, '1' }, /* dummy placeholder */
+        { PRESENTATION_FEEDBACK_KIND_VSYNC, 's' },
+        { PRESENTATION_FEEDBACK_KIND_HW_CLOCK, 'c' },
+        { PRESENTATION_FEEDBACK_KIND_HW_COMPLETION, 'e' },
+        { PRESENTATION_FEEDBACK_KIND_ZERO_COPY, 'z' },
     };
     unsigned i;
 
@@ -2135,7 +2138,8 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
                         if (sce->ust > 0) {
                             if (PsychPrefStateGet_Verbosity() > 5) {
                                 printf("SWAPEVENT[%i]: ust = %lld, msc = %lld, sbc = %lld, type %s.\n", windowRecord->windowIndex,
-                                       sce->ust, sce->msc, sce->sbc, (sce->present_flags != 0) ? "PAGEFLIP" : "UNDEFINED");
+                                       sce->ust, sce->msc, sce->sbc,
+                                       (sce->present_flags == PRESENTATION_FEEDBACK_KIND_VSYNC | PRESENTATION_FEEDBACK_KIND_HW_COMPLETION | PRESENTATION_FEEDBACK_KIND_HW_CLOCK) ? "PAGEFLIP" : "UNDEFINED");
                             }
 
                             PsychAllocOutStructArray(aux1, FALSE, 1, fieldCount, FieldNames, &s);
@@ -2143,7 +2147,7 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
                             PsychSetStructArrayDoubleElement("OnsetVBLCount", 0, (double) sce->msc, s);
                             PsychSetStructArrayDoubleElement("SwapbuffersCount", 0, (double) sce->sbc, s);
                             switch (sce->present_flags) {
-                                case 1: // ~ GLX_FLIP_COMPLETE_INTEL:
+                                case PRESENTATION_FEEDBACK_KIND_VSYNC | PRESENTATION_FEEDBACK_KIND_HW_COMPLETION | PRESENTATION_FEEDBACK_KIND_HW_CLOCK: // ~ GLX_FLIP_COMPLETE_INTEL:
                                     PsychSetStructArrayStringElement("SwapType", 0, "Pageflip", s);
                                     break;
 
@@ -2185,7 +2189,8 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
                         if (sce->ust > 0) {
                             if (PsychPrefStateGet_Verbosity() > 10) {
                                 printf("SWAPEVENT[%i]: ust = %lld, msc = %lld, sbc = %lld, type %s.\n", windowRecord->windowIndex,
-                                    sce->ust, sce->msc, sce->sbc, (sce->present_flags != 0) ? "PAGEFLIP" : "UNDEFINED");
+                                    sce->ust, sce->msc, sce->sbc,
+                                    (sce->present_flags == PRESENTATION_FEEDBACK_KIND_VSYNC | PRESENTATION_FEEDBACK_KIND_HW_COMPLETION | PRESENTATION_FEEDBACK_KIND_HW_CLOCK) ? "PAGEFLIP" : "UNDEFINED");
                             }
 
                             // Assign the one that matches our last 'sbc' for swap completion on our windowRecord:
@@ -2208,7 +2213,7 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
                     // event_type is either zero if nothing fetched, or the swap type of the most
                     // recent bufferswap:
                     switch (event_type) {
-                        case 1: // ~ GLX_FLIP_COMPLETE_INTEL
+                        case PRESENTATION_FEEDBACK_KIND_VSYNC | PRESENTATION_FEEDBACK_KIND_HW_COMPLETION | PRESENTATION_FEEDBACK_KIND_HW_CLOCK: // ~ GLX_FLIP_COMPLETE_INTEL
                             windowRecord->swapcompletiontype = 1;
                             break;
 

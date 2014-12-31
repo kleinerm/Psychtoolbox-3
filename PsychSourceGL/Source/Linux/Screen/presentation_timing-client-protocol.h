@@ -172,13 +172,44 @@ presentation_feedback(struct presentation *presentation, struct wl_surface *surf
 #define PRESENTATION_FEEDBACK_KIND_ENUM
 /**
  * presentation_feedback_kind - bitmask of flags in presented event
- * @PRESENTATION_FEEDBACK_KIND_DUMMY: (none)
+ * @PRESENTATION_FEEDBACK_KIND_VSYNC: presentation was vsync'd
+ * @PRESENTATION_FEEDBACK_KIND_HW_CLOCK: hardware provided the
+ *	presentation timestamp
+ * @PRESENTATION_FEEDBACK_KIND_HW_COMPLETION: hardware signalled the
+ *	start of the presentation
+ * @PRESENTATION_FEEDBACK_KIND_ZERO_COPY: presentation was done zero-copy
  *
- * Currently no flags are defined. Some flags will be added into
- * presentation_feedback version 1 before it is released.
+ * These flags provide information about how the presentation of the
+ * related content update was done. The intent is to help clients assess
+ * the reliability of the feedback and the visual quality with respect to
+ * possible tearing and timings. The flags are:
+ *
+ * VSYNC: The presentation was synchronized to the "vertical retrace" by
+ * the display hardware such that tearing does not happen. Relying on user
+ * space scheduling is not acceptable for this flag. If presentation is
+ * done by a copy to the active frontbuffer, then it must guarantee that
+ * tearing cannot happen.
+ *
+ * HW_CLOCK: The display hardware provided measurements that the hardware
+ * driver converted into a presentation timestamp. Sampling a clock in user
+ * space is not acceptable for this flag.
+ *
+ * HW_COMPLETION: The display hardware signalled that it started using the
+ * new image content. The opposite of this is e.g. a timer being used to
+ * guess when the display hardware has switched to the new image content.
+ *
+ * ZERO_COPY: The presentation of this update was done zero-copy. This
+ * means the buffer from the client was given to display hardware as is,
+ * without copying it. Compositing with OpenGL counts as copying, even if
+ * textured directly from the client buffer. Possible zero-copy cases
+ * include direct scanout of a fullscreen surface and a surface on a
+ * hardware overlay.
  */
 enum presentation_feedback_kind {
-	PRESENTATION_FEEDBACK_KIND_DUMMY = 0,
+	PRESENTATION_FEEDBACK_KIND_VSYNC = 0x1,
+	PRESENTATION_FEEDBACK_KIND_HW_CLOCK = 0x2,
+	PRESENTATION_FEEDBACK_KIND_HW_COMPLETION = 0x4,
+	PRESENTATION_FEEDBACK_KIND_ZERO_COPY = 0x8,
 };
 #endif /* PRESENTATION_FEEDBACK_KIND_ENUM */
 
