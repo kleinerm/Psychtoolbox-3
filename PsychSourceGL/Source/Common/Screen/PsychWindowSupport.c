@@ -53,6 +53,12 @@
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
 #include <errno.h>
+
+// Define this for non-Waffle builds:
+#ifndef WAFFLE_PLATFORM_WAYLAND
+#define WAFFLE_PLATFORM_WAYLAND 0x0014
+#endif
+
 #endif
 
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
@@ -837,8 +843,14 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	skip_synctests = PsychPrefStateGet_SkipSyncTests();
 
     // If this is a windowed onscreen window, be lenient with synctests. Make sure they never fail,
-    // because miserable timing is expected in windowed mode:
-    if (!((*windowRecord)->specialflags & kPsychIsFullscreenWindow) && (skip_synctests < 1)) skip_synctests = 1;
+    // because miserable timing is expected in windowed mode. However, if we are running under a
+    // Wayland server with properly working presentation_feedback extension, then presentation timing
+    // and timestamping will likely be just as good in windowed mode as in fullscreen mode, at least
+    // for the most common Wayland display backends, so we don't need special lenience in that case:
+    if (!((*windowRecord)->specialflags & kPsychIsFullscreenWindow) && (skip_synctests < 1) &&
+        (((*windowRecord)->winsysType != WAFFLE_PLATFORM_WAYLAND) || ((*windowRecord)->specialflags & kPsychOpenMLDefective))) {
+        skip_synctests = 1;
+    }
 
 #if PSYCH_SYSTEM == PSYCH_OSX
     CGLRendererInfoObj  rendererInfo;
@@ -1369,42 +1381,41 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		  }
       }
 
-      // Compare ifi_estimate from VBL-Sync against beam estimate. If we are in OpenGL native
-      // flip-frame stereo mode, a ifi_estimate approx. 2 times the beamestimate would be valid
-      // and we would correct it down to half ifi_estimate. If multiSampling is enabled, it is also
-      // possible that the gfx-hw is not capable of downsampling fast enough to do it every refresh
-      // interval, so we could get an ifi_estimate which is twice the real refresh, which would be valid.
-      (*windowRecord)->VideoRefreshInterval = ifi_estimate;
-      if ((*windowRecord)->stereomode == kPsychOpenGLStereo || (*windowRecord)->multiSample > 0) {
-        // Flip frame stereo or multiSampling enabled. Check for ifi_estimate = 2 * ifi_beamestimate:
-        if ((ifi_beamestimate>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_beamestimate && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_beamestimate) ||
-	    (ifi_beamestimate==0 && ifi_nominal>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_nominal && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_nominal)
-	    ){
-	  // This seems to be a valid result: Flip-interval is roughly twice the monitor refresh interval.
-	  // We "force" ifi_estimate = 0.5 * ifi_estimate, so ifi_estimate roughly equals to ifi_nominal and
-	  // ifi_beamestimate, in order to simplify all timing checks below. We also store this value as
-	  // video refresh interval...
-	  ifi_estimate = ifi_estimate * 0.5f;
-	  (*windowRecord)->VideoRefreshInterval = ifi_estimate;
-	  if(PsychPrefStateGet_Verbosity()>2){
-	    if ((*windowRecord)->stereomode == kPsychOpenGLStereo) {
-	      printf("\nPTB-INFO: The timing granularity of stimulus onset/offset via Screen('Flip') is twice as long\n");
-	      printf("PTB-INFO: as the refresh interval of your monitor when using OpenGL flip-frame stereo on your setup.\n");
-	      printf("PTB-INFO: Please keep this in mind, otherwise you'll be confused about your timing.\n");
-	    }
-	    if ((*windowRecord)->multiSample > 0) {
-	      printf("\nPTB-INFO: The timing granularity of stimulus onset/offset via Screen('Flip') is twice as long\n");
-	      printf("PTB-INFO: as the refresh interval of your monitor when using Anti-Aliasing at multiSample=%i on your setup.\n",
-		     (*windowRecord)->multiSample);
-	      printf("PTB-INFO: Please keep this in mind, otherwise you'll be confused about your timing.\n");
-	    }
-	  }
+        // Compare ifi_estimate from VBL-Sync against beam estimate. If we are in OpenGL native
+        // flip-frame stereo mode, a ifi_estimate approx. 2 times the beamestimate would be valid
+        // and we would correct it down to half ifi_estimate. If multiSampling is enabled, it is also
+        // possible that the gfx-hw is not capable of downsampling fast enough to do it every refresh
+        // interval, so we could get an ifi_estimate which is twice the real refresh, which would be valid.
+        (*windowRecord)->VideoRefreshInterval = ifi_estimate;
+        if ((*windowRecord)->stereomode == kPsychOpenGLStereo || (*windowRecord)->multiSample > 0) {
+            // Flip frame stereo or multiSampling enabled. Check for ifi_estimate = 2 * ifi_beamestimate:
+            if ((ifi_beamestimate>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_beamestimate && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_beamestimate) ||
+                (ifi_beamestimate==0 && ifi_nominal>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_nominal && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_nominal)) {
+                // This seems to be a valid result: Flip-interval is roughly twice the monitor refresh interval.
+                // We "force" ifi_estimate = 0.5 * ifi_estimate, so ifi_estimate roughly equals to ifi_nominal and
+                // ifi_beamestimate, in order to simplify all timing checks below. We also store this value as
+                // video refresh interval...
+                ifi_estimate = ifi_estimate * 0.5f;
+                (*windowRecord)->VideoRefreshInterval = ifi_estimate;
+                if (PsychPrefStateGet_Verbosity()>2){
+                    if ((*windowRecord)->stereomode == kPsychOpenGLStereo) {
+                        printf("\nPTB-INFO: The timing granularity of stimulus onset/offset via Screen('Flip') is twice as long\n");
+                        printf("PTB-INFO: as the refresh interval of your monitor when using OpenGL flip-frame stereo on your setup.\n");
+                        printf("PTB-INFO: Please keep this in mind, otherwise you'll be confused about your timing.\n");
+                    }
+
+                    if ((*windowRecord)->multiSample > 0) {
+                        printf("\nPTB-INFO: The timing granularity of stimulus onset/offset via Screen('Flip') is twice as long\n");
+                        printf("PTB-INFO: as the refresh interval of your monitor when using Anti-Aliasing at multiSample=%i on your setup.\n", (*windowRecord)->multiSample);
+                        printf("PTB-INFO: Please keep this in mind, otherwise you'll be confused about your timing.\n");
+                    }
+                }
+            }
         }
-      }
     } // End of display calibration part I of synctests.
     else {
-      // Complete skip of calibration and synctests: Mark all calibrations as invalid:
-      ifi_beamestimate = 0;
+        // Complete skip of calibration and synctests: Mark all calibrations as invalid:
+        ifi_beamestimate = 0;
     }
 
     if(PsychPrefStateGet_Verbosity()>2) printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", (char*) glGetString(GL_VENDOR), (char*) glGetString(GL_RENDERER), (char*) glGetString(GL_VERSION));
@@ -2398,7 +2409,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 				}
 
 				// Wait for swap completion, so we get an updated vblank time estimate:
-				if (!(useOpenML && (PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &(windowRecord->time_at_last_vbl)) > 0))) {
+				if (!(useOpenML && (PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &(windowRecord->time_at_last_vbl)) >= 0))) {
 					// OpenML swap completion timestamping unsupported, disabled, or failed.
 					// Use our standard trick instead.
 					PsychWaitPixelSyncToken(windowRecord, FALSE);
@@ -3192,30 +3203,14 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     if (flipwhen > 0) {
         // We shall not swap at next VSYNC, but at the VSYNC immediately following the
         // system time "flipwhen". This is the premium version of the old WaitBlanking... ;-)
-        
+
         // Calculate deadline for a successfull flip: If time_at_vbl is later than that,
         // it means that we missed the proper video refresh cycle:
         tshouldflip = flipwhen;
 
-        // Will the MS-Windows DWM desktop compositor affect our window?
-        if (PsychIsMSVista() && PsychOSIsDWMEnabled(0) && ((PsychGetNumDisplays() == 1) || !(windowRecord->specialflags & kPsychIsFullscreenWindow))) {
-            // Yes. Definitely our window will be subject to desktop composition. This will introduce
-            // an additional swap delay of at least 1 video refresh cycle after submitting the SwapBuffers()
-            // request, because a SwapBuffers() request will be translated into a composition request for
-            // our window. This request will only get picked up and acted upon when the DWM wakes up after the
-            // beginning of the next video refresh cycle, and the recomposited/updated desktop backbuffer will
-            // then get page-flipped onto the actual display at the following vblank -- best case that is, if
-            // not too many other windows need recomposition or the GPU is otherwise too busy to complete
-            // rendering of all windows and the desktop recomposition.
-            //
-            // In any case, we can try to compensate for the 1 frame minimum composition delay by
-            // shifting the usercode provided flipwhen time 1 frame into the past, so we submit the
-            // swap request one frame earlier and counteract the 1 frame delay of the DWM. Of course
-            // this only works for swap deadlines > 1 frame away from now. Otherwise we'll just have
-            // to suffer the delay and deadline miss:
-            flipwhen -= currentflipestimate;
-        }
-        
+        // Adjust target time for potential OS-specific compositor delay:
+        flipwhen = PsychOSAdjustForCompositorDelay(windowRecord, flipwhen);
+
         // Some time left until deadline 'flipwhen'?
         PsychGetAdjustedPrecisionTimerSeconds(&tremaining);
         if ((flipwhen - tremaining) > 0) {
@@ -3491,7 +3486,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // reports composition on, even if the compositor is just hanging around idly in standby mode. We
             // can't afford that many false alerts.
             if ((verbosity > 10) && PsychOSIsDWMEnabled(windowRecord->screenNumber)) printf("PTB-DEBUG:Linux:Screen('Flip'): After swapcomplete compositor reported active.\n");
-            
+
             #endif
 		}
 
@@ -4225,7 +4220,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
         if (strstr((const char*) glGetString(GL_RENDERER), "Intel")) {
             PsychWaitPixelSyncToken(windowRecord, TRUE);
         }
-        
+
         // Take samples during consecutive refresh intervals:
         // We measure until either:
         // - A maximum measurment time of maxsecs seconds has elapsed... (This is the emergency switch to prevent infinite loops).
@@ -4240,7 +4235,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
             // Protect against multi-threading trouble if needed:
             PsychLockedTouchFramebufferIfNeeded(windowRecord);
 
-            if (!(useOpenML && (PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &tnew) > 0))) {
+            if (!(useOpenML && (PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &tnew) >= 0))) {
                 // OpenML swap completion timestamping unsupported, disabled, or failed.
                 // Use our standard trick instead.
 

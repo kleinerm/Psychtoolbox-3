@@ -2418,5 +2418,20 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
     return(FALSE);
 }
 
+/* PsychOSAdjustForCompositorDelay()
+ *
+ * Compute OS and desktop compositor specific delay that needs to be subtracted from the
+ * target time for a OpenGL doublebuffer swap when conventional swap scheduling is used.
+ * Subtract the delay, if any, from the given targetTime and return the corrected targetTime.
+ *
+ */
+double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime)
+{
+    (void) windowRecord;
+
+    // Nothing to do for classic X11/GLX. Just return identity:
+    return(targetTime);
+}
+
 /* End of classic X11/GLX backend: */
 #endif

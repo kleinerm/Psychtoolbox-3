@@ -1,3 +1,5 @@
+#ifdef PTB_USE_WAYLAND_PRESENT
+
 /* 
  * Copyright © 2013-2014 Collabora, Ltd.
  * 
@@ -71,3 +73,4 @@ WL_EXPORT const struct wl_interface presentation_feedback_interface = {
 	3, presentation_feedback_events,
 };
 
+#endif

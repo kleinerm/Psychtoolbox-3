@@ -236,17 +236,25 @@ typedef struct{
 #endif 
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
+
+#ifdef PTB_USE_WAYLAND_PRESENT
+#include <wayland-client.h>
+#endif
+
 #ifdef PTB_USE_WAFFLE
 // Definition of Linux/Waffle specific information:
 typedef struct {
-  struct waffle_context*	contextObject;       // GLX OpenGL rendering context.
-  int             	        pixelFormatObject;   // Just here for compatibility. Its a dummy entry without meaning.
-  struct waffle_display*    deviceContext;       // Pointer to the X11 display connection.
-  Display*                  privDpy;             // Pointer to the private X11 display connection for non-OpenGL ops.
-  struct waffle_window*     windowHandle;        // Handle to the onscreen window.
-  Window                    xwindowHandle;       // Associated X-Window if any.
-  struct waffle_context*	glusercontextObject; // OpenGL context for userspace rendering code, e.g., moglcore...
-  struct waffle_context*	glswapcontextObject; // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
+  struct waffle_context*    contextObject;                  // GLX OpenGL rendering context.
+  int                       pixelFormatObject;              // Just here for compatibility. Its a dummy entry without meaning.
+  struct waffle_display*    deviceContext;                  // Pointer to the X11 display connection.
+  Display*                  privDpy;                        // Pointer to the private X11 display connection for non-OpenGL ops.
+  struct waffle_window*     windowHandle;                   // Handle to the onscreen window.
+  Window                    xwindowHandle;                  // Associated X-Window if any.
+  struct waffle_context*    glusercontextObject;            // OpenGL context for userspace rendering code, e.g., moglcore...
+  struct waffle_context*    glswapcontextObject;            // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
+#ifdef PTB_USE_WAYLAND_PRESENT
+  struct wl_list            presentation_feedback_list;     // Used for Wayland backend presentation_feedback extension to queue feedback events.
+#endif
 } PsychTargetSpecificWindowRecordType;
 #else
 // Definition of Linux/X11 specific information:
