@@ -1307,8 +1307,8 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
 
     #ifdef GLX_OML_sync_control
     // Ok, this will return VBL count and last VBL time via the OML GetSyncValuesOML call
-    // if that extension is supported on this setup. As of mid 2009 i'm not aware of any
-    // affordable graphics card that would support this extension, but who knows??
+    // if that extension is supported on this setup. The Linux FOSS graphics stack (DRI2/DRI3)
+    // supports this on all gpu's since at least the year 2010:
     if ((NULL != glXGetSyncValuesOML) && !(windowRecord->specialflags & kPsychOpenMLDefective) && (glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, (int64_t*) &ust, (int64_t*) &msc, (int64_t*) &sbc))) {
         PsychUnlockDisplay();
         *vblCount = msc;
@@ -2272,8 +2272,8 @@ psych_bool PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindo
 
 psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int cmd, int aux1)
 {
-    const char *FieldNames[]={ "OnsetTime", "OnsetVBLCount", "SwapbuffersCount", "SwapType" };
-    const int  fieldCount = 4;
+    const char *FieldNames[] = { "OnsetTime", "OnsetVBLCount", "SwapbuffersCount", "SwapType", "BackendFeedbackString" };
+    const int  fieldCount = 5;
     PsychGenericScriptType	*s;
     unsigned long glxmask = 0;
     XEvent evt;
@@ -2349,18 +2349,22 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
                         switch (sce->event_type) {
                             case GLX_FLIP_COMPLETE_INTEL:
                                 PsychSetStructArrayStringElement("SwapType", 0, "Pageflip", s);
+                                PsychSetStructArrayStringElement("BackendFeedbackString", 0, "scez", s);
                                 break;
 
                             case GLX_EXCHANGE_COMPLETE_INTEL:
                                 PsychSetStructArrayStringElement("SwapType", 0, "Exchange", s);
+                                PsychSetStructArrayStringElement("BackendFeedbackString", 0, "___z", s);
                                 break;
 
                             case GLX_COPY_COMPLETE_INTEL:
                                 PsychSetStructArrayStringElement("SwapType", 0, "Copy", s);
+                                PsychSetStructArrayStringElement("BackendFeedbackString", 0, "sc__", s);
                                 break;
 
                             default:
                                 PsychSetStructArrayStringElement("SwapType", 0, "Unknown", s);
+                                PsychSetStructArrayStringElement("BackendFeedbackString", 0, "", s);
                         }
 
                         return(TRUE);

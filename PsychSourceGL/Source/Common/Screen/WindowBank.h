@@ -3,39 +3,36 @@ PsychToolbox2/Source/Common/WindowBank.h
 
 AUTHORS:
 
-	Allen.Ingling@nyu.edu               awi
-	mario.kleiner at tuebingen.mpg.de   mk
+    Allen.Ingling@nyu.edu               awi
+    mario.kleiner.de@gmail.com          mk
 
 PLATFORMS: 
 
-	All. Only the PsychTargetSpecificWindowRecordType struct
-	is different for the different operating systems.
+    All. Only the PsychTargetSpecificWindowRecordType struct
+    is different for the different operating systems.
 
 HISTORY:
-	
-	07/18/02  awi			Wrote it.
-	04/22/05  mk            Added new flags to PsychWindowRecordType for stereo mode, skipped frames, IFI estimate and timestamping
-							- These functions are mostly used by Screen('Flip') and Screen('DrawingFinished').
-	07/22/05  mk            Removed constants for max number of windows. We resize dynamically now (see WindowBank.c)
-	10/11/05  mk            Support for special Quicktime movie textures in .targetSpecific part of PsychWindowRecord added.
-	12/27/05  mk            Added new targetSpecific - struct for the Win32 port of PTB.
+
+    07/18/02  awi           Wrote it.
+    04/22/05  mk            Added new flags to PsychWindowRecordType for stereo mode, skipped frames, IFI estimate and timestamping
+                            - These functions are mostly used by Screen('Flip') and Screen('DrawingFinished').
+    07/22/05  mk            Removed constants for max number of windows. We resize dynamically now (see WindowBank.c)
+    10/11/05  mk            Support for special Quicktime movie textures in .targetSpecific part of PsychWindowRecord added.
+    12/27/05  mk            Added new targetSpecific - struct for the Win32 port of PTB.
 
 DESCRIPTION:
 
-	WindowBank contains functions for storing records of open  onscreen and offscreen windows.
+    WindowBank contains functions for storing records of open  onscreen and offscreen windows.
 
-	We don't use real window pointers when we return a window pointer to the scripting 
-	environment.  Instead, we return an index which the PsychToolbox maps to a window
-	pointer. Since the mapping is always from the index passed from the scripting environment,
-	we can implement this with array lookup. 
+    We don't use real window pointers when we return a window pointer to the scripting
+    environment.  Instead, we return an index which the PsychToolbox maps to a window
+    pointer. Since the mapping is always from the index passed from the scripting environment,
+    we can implement this with array lookup.
 
-	The window pointer or screen number is frequently passed as a single number, and by using
-	our own indices we make things easier for ourselves when disambiguating the meaning of a 
-	windowPointerOrScreenNumber value, because the value itself is a direct and unambiguouis 
-	reference.  
-
-
-TO DO: 
+    The window pointer or screen number is frequently passed as a single number, and by using
+    our own indices we make things easier for ourselves when disambiguating the meaning of a
+    windowPointerOrScreenNumber value, because the value itself is a direct and unambiguouis
+    reference.
 
 */
 
@@ -148,12 +145,13 @@ TO DO:
 #define kPsychNeedPostSwapLockedFlush (1 << 18) // 'specialflags' setting 2^18: Window needs display lock protected pixelwrite+flush on framebuffer immediately after bufferswap.
 #define kPsychGUIWindowWMPositioned (1 << 19) // 'specialflags' setting 2^19: GUI window is positioned onscreen by window manager, users position spec is ignored.
 #define kPsychNeedOpenMLTSWorkaround (1 << 20) // 'specialflags' setting 2^20: KMS pageflip completion events are faulty on a FOSS driver: Use glXGetSyncValuesOML workaround.
+#define kPsychClockPrecisionOneTimeWarningDone (1 << 21) // 'specialflags' setting 2^21: Signals that the one-time warning wrt. imprecise visual onset timestamp was issued.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18. --> Flags of 2^19 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20. --> Flags of 2^21 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21. --> Flags of 2^22 and higher are available...
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*	PtrPsychHookFunction;
