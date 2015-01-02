@@ -424,6 +424,7 @@ wayland_window_create_feedback(PsychWindowRecordType* windowRecord)
 */
 psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, PsychWindowRecordType * windowRecord, int numBuffers, int stereomode, int conserveVRAM)
 {
+    char windowTitle[32];
     PsychRectType screenrect;
     CGDirectDisplayID dpy;
     int scrnum;
@@ -450,6 +451,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     int32_t oldBackend;
     struct waffle_config *config;
     struct waffle_window *window;
+    union waffle_native_window *wafflewin;
     struct waffle_context *ctx;
 
     // Define default rendering backend:
@@ -479,6 +481,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // our window, as Waffle does not yet support selection of X-Screen. It always opens
     // windows on the display's default screen. Therefore this is mostly a dead placeholder for now:
     scrnum = PsychGetXScreenIdForScreen(screenSettings->screenNumber);
+
+    // Include onscreen window index in title:
+    sprintf(windowTitle, "PTB Onscreen Window [%i]:", windowRecord->windowIndex);
 
     // First time invocation?
     if (firstTime) {
@@ -654,9 +659,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             default:
                 egl_display = NULL;
         }
-
-        free(wafflenatdis);
-        wafflenatdis = NULL;
     }
     else {
         egl_display = NULL;
@@ -1088,13 +1090,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
     // Create our onscreen window:
     window = waffle_window_create(config, width, height);
+    wafflewin = waffle_window_get_native(window);
 
     if (useX11) XSync(dpy, False);
 
     // Setup X11 window properties:
     if (useX11) {
         // Retrieve underlying native X11 window:
-        union waffle_native_window *wafflewin = waffle_window_get_native(window);
         if (windowRecord->winsysType == WAFFLE_PLATFORM_GLX) {
             struct waffle_glx_window* glx = wafflewin->glx;
             win = (Window) glx->xlib_window;
@@ -1102,9 +1104,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         else {
             win = (Window) ((struct waffle_x11_egl_window*) (wafflewin->x11_egl))->xlib_window;
         }
-
-        free(wafflewin);
-        wafflewin = NULL;
 
         // Set hints and properties:
         {
@@ -1116,7 +1115,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             // Let window manager control window position if kPsychGUIWindowWMPositioned is set:
             sizehints.flags = USSize | (windowRecord->specialflags & kPsychGUIWindowWMPositioned) ? 0 : USPosition;
             XSetNormalHints(dpy, win, &sizehints);
-            XSetStandardProperties(dpy, win, "PTB Onscreen window", "PTB Onscreen window", None, (char **)NULL, 0, &sizehints);
+            XSetStandardProperties(dpy, win, windowTitle, "PTB Onscreen window", None, (char **)NULL, 0, &sizehints);
         }
 
         // Setup window transparency for user input (keyboard and mouse events):
@@ -1315,7 +1314,48 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     if (useX11) XSync(dpy, False);
 
     // Show our new window:
-    if (windowLevel != -1) waffle_window_show(window);
+    if (windowLevel != -1) {
+        if (windowRecord->winsysType == WAFFLE_PLATFORM_WAYLAND) {
+            struct waffle_wayland_window *wayland_window = wafflewin->wayland;
+
+            // Is this window supposed to be opaque / non-transparent?
+            if (windowLevel < 1000 || windowLevel >= 2000) {
+                // Yes. Define an opaque region the full size of the windows area:
+                struct wl_region *region = wl_compositor_create_region(wafflenatdis->wayland->wl_compositor);
+                wl_region_add(region, 0, 0, width, height);
+                wl_surface_set_opaque_region(wayland_window->wl_surface, region);
+                wl_region_destroy(region);
+            }
+
+            // Is this supposed to be a fullscreen window?
+            if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (windowLevel < 1000 || windowLevel >= 2000)) {
+                // Opaque fullscreen onscreen window setup:
+                // WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER - Switch video output to optimal resolution to accomodate the
+                // size of the surface, ie., the mode with the smallest resolution that can contain the surface. Add black
+                // borders for padding if a perfect fit isn't possible.
+                // TODO implement: 0 = Target refresh rate -- Zero == Don't change rate.
+                // TODO implement: NULL = Output to display the surface fullscreen -- NULL == Whatever you like.
+                wl_shell_surface_set_fullscreen(wayland_window->wl_shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER, 0, NULL);
+            }
+            else {
+                // A windowed window aka non-fullscreen, or a transparent fullscreen window.
+                if (windowRecord->specialflags & kPsychGUIWindow) {
+                    // A GUI window. Give it a title and other bling:
+                    wl_shell_surface_set_title(wayland_window->wl_shell_surface, windowTitle);
+                }
+
+                // Show it as toplevel window:
+                wl_shell_surface_set_toplevel(wayland_window->wl_shell_surface);
+            }
+
+            // Make it so!
+            wl_display_roundtrip(wayland_display);
+        }
+        else {
+            // Non-Wayland: For now use waffles generic show window function:
+            waffle_window_show(window);
+        }
+    }
 
     if (useX11) {
         XSync(dpy, False);
@@ -1620,6 +1660,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             }
         } // End of FBO binding.
     } // End of OpenGL-ES binding.
+
+    // Release the waffle_native_window:
+    free(wafflewin);
+    wafflewin = NULL;
+
+    // Release the waffle_native_display:
+    free(wafflenatdis);
+    wafflenatdis = NULL;
 
     return(TRUE);
 }

@@ -201,8 +201,9 @@ typedef struct GLXBufferSwapComplete {
  */
 psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType *windowRecord, int numBuffers, int stereomode, int conserveVRAM)
 {
-    PsychRectType             screenrect;
-    CGDirectDisplayID         dpy;
+    char windowTitle[32];
+    PsychRectType screenrect;
+    CGDirectDisplayID dpy;
     int scrnum;
     XSetWindowAttributes attr;
     unsigned long mask;
@@ -224,6 +225,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     psych_bool xfixes_available = FALSE;
     psych_bool newstyle_setup = FALSE;
     int gpuMaintype = 0;
+
+    // Include onscreen window index in title:
+    sprintf(windowTitle, "PTB Onscreen Window [%i]:", windowRecord->windowIndex);
 
     // First opened onscreen window? If so, we try to map GPU MMIO registers
     // to enable beamposition based timestamping and other special goodies:
@@ -718,7 +722,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // Let window manager control window position if kPsychGUIWindowWMPositioned is set:
         sizehints.flags = USSize | (windowRecord->specialflags & kPsychGUIWindowWMPositioned) ? 0 : USPosition;
         XSetNormalHints(dpy, win, &sizehints);
-        XSetStandardProperties(dpy, win, "PTB Onscreen window", "PTB Onscreen window",
+        XSetStandardProperties(dpy, win, windowTitle, "PTB Onscreen window",
                                 None, (char **)NULL, 0, &sizehints);
     }
 
