@@ -3,7 +3,12 @@
 
     PLATFORMS:
 
-        This is the Linux/X11 version only.
+        This is the Linux version.
+        It contains all code shared across Linux backends and
+        the code for the non-Wayland backend - specifically for
+        the X11 backend and the GBM+DRM/KMS backend, although
+        the GBM backend is just a shim which doesn't do anything
+        but prevent the beast from crashing.
 
     AUTHORS:
 
@@ -43,19 +48,6 @@
 // To use libpciaccess for GPU device detection and mmaping():
 #include "pciaccess.h"
 #define PCI_CLASS_DISPLAY    0x03
-
-// We build with VidModeExtension support unless forcefully disabled at compile time via a -DNO_VIDMODEEXTS
-#ifndef NO_VIDMODEEXTS
-#define USE_VIDMODEEXTS 1
-#endif
-
-#ifdef USE_VIDMODEEXTS
-// Functions for setup and query of hw gamma CLUTS and for monitor refresh rate query:
-#include <X11/extensions/xf86vmode.h>
-
-#else
-#define XF86VidModeNumberErrors 0
-#endif
 
 // Maximum number of slots in a gamma table to set/query: This should be plenty.
 #define MAX_GAMMALUT_SIZE 16384
@@ -670,27 +662,33 @@ psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortyp
   return(TRUE);
 }
 
-// Maybe use NULLs in the settings arrays to mark entries invalid instead of using psych_bool flags in a different array.   
-static psych_bool                   displayLockSettingsFlags[kPsychMaxPossibleDisplays];
-static PsychScreenSettingsType      displayOriginalCGSettings[kPsychMaxPossibleDisplays];            //these track the original video state before the Psychtoolbox changed it.
-static psych_bool                   displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
-static CFDictionaryRef              displayOverlayedCGSettings[kPsychMaxPossibleDisplays];            //these track settings overlayed with 'Resolutions'.
-static psych_bool                   displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
-static psych_bool                   displayBeampositionHealthy[kPsychMaxPossibleDisplays];
-static CGDisplayCount               numDisplays;
+// These are shared with display backend specific code, e.g., PsychScreenGlueWayland:
+PsychScreenSettingsType     displayOriginalCGSettings[kPsychMaxPossibleDisplays];            //these track the original video state before the Psychtoolbox changed it.
+psych_bool                  displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
+psych_bool                  displayCursorHidden[kPsychMaxPossibleDisplays];
+CGDisplayCount              numDisplays;
 
 // displayCGIDs stores the X11 Display* handles to the display connections of each PTB logical screen:
-static CGDirectDisplayID            displayCGIDs[kPsychMaxPossibleDisplays];
+CGDirectDisplayID           displayCGIDs[kPsychMaxPossibleDisplays];
+
+// Only used in this file:
+static psych_bool           displayBeampositionHealthy[kPsychMaxPossibleDisplays];
+static psych_bool           displayLockSettingsFlags[kPsychMaxPossibleDisplays];
 // displayX11Screens stores the mapping of PTB screenNumber's to corresponding X11 screen numbers:
-static int                          displayX11Screens[kPsychMaxPossibleDisplays];
-static psych_bool                   displayCursorHidden[kPsychMaxPossibleDisplays];
-static XRRScreenResources*          displayX11ScreenResources[kPsychMaxPossibleDisplays];
-static Atom                         displayX11ScreenCompositionAtom[kPsychMaxPossibleDisplays];
+static int                  displayX11Screens[kPsychMaxPossibleDisplays];
+static XRRScreenResources*  displayX11ScreenResources[kPsychMaxPossibleDisplays];
+static Atom                 displayX11ScreenCompositionAtom[kPsychMaxPossibleDisplays];
 
 // XInput-2 extension data per display:
-static int                          xi_opcode = 0, xi_event = 0, xi_error = 0;
-static int                          xinput_ndevices[kPsychMaxPossibleDisplays];
-static XIDeviceInfo*                xinput_info[kPsychMaxPossibleDisplays];
+static int                  xi_opcode = 0, xi_event = 0, xi_error = 0;
+static int                  xinput_ndevices[kPsychMaxPossibleDisplays];
+static XIDeviceInfo*        xinput_info[kPsychMaxPossibleDisplays];
+
+// File local functions:
+void PsychLockScreenSettings(int screenNumber);
+void PsychUnlockScreenSettings(int screenNumber);
+psych_bool PsychCheckScreenSettingsLock(int screenNumber);
+void InitPsychtoolboxKernelDriverInterface(void);
 
 // X11 has a different - and much more powerful and flexible - concept of displays than OS-X or Windows:
 // One can have multiple X11 connections to different logical displays. A logical display corresponds
@@ -725,11 +723,7 @@ static int (*x11_olderrorhandler)(Display*, XErrorEvent*);
 
 //file local functions
 void InitCGDisplayIDList(void);
-void PsychLockScreenSettings(int screenNumber);
-void PsychUnlockScreenSettings(int screenNumber);
-psych_bool PsychCheckScreenSettingsLock(int screenNumber);
 psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting);
-void InitPsychtoolboxKernelDriverInterface(void);
 
 /* Lock graphics access
  *
@@ -784,21 +778,75 @@ void PsychUnlockDisplay(void)
     PsychUnlockMutex(&displayLock);
 }
 
-// Error callback handler for X11 errors:
-static int x11VidModeErrorHandler(Display* dis, XErrorEvent* err)
+int PsychGetXScreenIdForScreen(int screenNumber)
 {
-    // If x11_errorbase not yet setup, simply return and ignore this error:
-    if (x11_errorbase == 0) return(0);
+    if ((screenNumber >= numDisplays) || (screenNumber < 0)) PsychErrorExit(PsychError_invalidScumber);
+    return(displayX11Screens[screenNumber]);
+}
 
-    // Setup: Check if its an XVidMode-Error - the only one we do handle.
-    if (((err->error_code >=x11_errorbase) && (err->error_code < x11_errorbase + XF86VidModeNumberErrors)) ||
-        (err->error_code == BadValue)) {
-        // We caused some error. Set error flag:
-        x11_errorval = 1;
-    }
+void PsychGetCGDisplayIDFromScreenNumber(CGDirectDisplayID *displayID, int screenNumber)
+{
+    if ((screenNumber >= numDisplays) || (screenNumber < 0)) PsychErrorExit(PsychError_invalidScumber);
+    *displayID=displayCGIDs[screenNumber];
+}
 
-    // Done.
-    return(0);
+/*  About locking display settings:
+ *
+ *    SCREENOpenWindow and SCREENOpenOffscreenWindow  set the lock when opening  windows and
+ *    SCREENCloseWindow unsets upon the close of the last of a screen's windows. PsychSetVideoSettings checks for a lock
+ *    before changing the settings.  Anything (SCREENOpenWindow or SCREENResolutions) which attemps to change
+ *    the display settings should report that attempts to change a dipslay's settings are not allowed when its windows are open.
+ *
+ *    PsychSetVideoSettings() may be called by either SCREENOpenWindow or by Resolutions().  If called by Resolutions it both sets the video settings
+ *    and caches the video settings so that subsequent calls to OpenWindow can use the cached mode regardless of whether interceding calls to OpenWindow
+ *    have changed the display settings or reverted to the virgin display settings by closing.  SCREENOpenWindow should thus invoke the cached mode
+ *    settings if they have been specified and not current actual display settings.
+ *
+ */
+void PsychLockScreenSettings(int screenNumber)
+{
+    displayLockSettingsFlags[screenNumber]=TRUE;
+}
+
+void PsychUnlockScreenSettings(int screenNumber)
+{
+    displayLockSettingsFlags[screenNumber]=FALSE;
+}
+
+psych_bool PsychCheckScreenSettingsLock(int screenNumber)
+{
+    return(displayLockSettingsFlags[screenNumber]);
+}
+
+/* Because capture and lock will always be used in conjuction, capture calls lock, and SCREENOpenWindow must only call Capture and Release */
+void PsychCaptureScreen(int screenNumber)
+{
+    if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
+    PsychLockScreenSettings(screenNumber);
+}
+
+/*
+ *    PsychReleaseScreen()
+ */
+void PsychReleaseScreen(int screenNumber)
+{
+    if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
+    PsychUnlockScreenSettings(screenNumber);
+}
+
+psych_bool PsychIsScreenCaptured(int screenNumber)
+{
+    return(PsychCheckScreenSettingsLock(screenNumber));
+}
+
+//Read display parameters.
+/*
+ *    PsychGetNumDisplays()
+ *    Get the number of video displays connected to the system.
+ */
+int PsychGetNumDisplays(void)
+{
+    return((int) numDisplays);
 }
 
 //Initialization functions
@@ -811,7 +859,6 @@ void InitializePsychDisplayGlue(void)
     for(i=0;i<kPsychMaxPossibleDisplays;i++){
         displayLockSettingsFlags[i]=FALSE;
         displayOriginalCGSettingsValid[i]=FALSE;
-        displayOverlayedCGSettingsValid[i]=FALSE;
         displayCursorHidden[i]=FALSE;
         displayBeampositionHealthy[i]=TRUE;
         displayX11ScreenResources[i] = NULL;
@@ -851,6 +898,65 @@ void InitializePsychDisplayGlue(void)
     // *and* allowed by settings, setup all relevant mappings:
     InitPsychtoolboxKernelDriverInterface();
 }
+
+int PsychGetScreenDepthValue(int screenNumber)
+{
+    PsychDepthType    depthStruct;
+
+    PsychInitDepthStruct(&depthStruct);
+    PsychGetScreenDepth(screenNumber, &depthStruct);
+    return(PsychGetValueFromDepthStruct(0,&depthStruct));
+}
+
+/*
+ *    PsychGetScreenSettings()
+ *
+ *    Fills a structure describing the screen settings such as x, y, depth, frequency, etc.
+ *
+ *    Consider inverting the calling sequence so that this function is at the bottom of call hierarchy.
+ */
+void PsychGetScreenSettings(int screenNumber, PsychScreenSettingsType *settings)
+{
+    settings->screenNumber=screenNumber;
+    PsychGetScreenRect(screenNumber, settings->rect);
+    PsychInitDepthStruct(&(settings->depth));
+    PsychGetScreenDepth(screenNumber, &(settings->depth));
+    settings->mode=PsychGetColorModeFromDepthStruct(&(settings->depth));
+    settings->nominalFrameRate= (int) (PsychGetNominalFramerate(screenNumber) + 0.5);
+    //settings->dacbits=PsychGetDacBits(screenNumber);
+}
+
+/*
+ *    PsychCheckVideoSettings()
+ *
+ *    Check all available video display modes for the specified screen number and return true if the
+ *    settings are valid and false otherwise.
+ */
+psych_bool PsychCheckVideoSettings(PsychScreenSettingsType *setting)
+{
+    CFDictionaryRef cgMode;
+    return(PsychGetCGModeFromVideoSetting(&cgMode, setting));
+}
+
+PsychColorModeType PsychGetScreenMode(int screenNumber)
+{
+    PsychDepthType depth;
+
+    PsychInitDepthStruct(&depth);
+    PsychGetScreenDepth(screenNumber, &depth);
+    return(PsychGetColorModeFromDepthStruct(&depth));
+}
+
+// TODO: Hack to keep running under Wayland:
+XIDeviceInfo* PsychGetInputDevicesForScreen(int screenNumber, int* nDevices)
+{
+    if(screenNumber >= numDisplays) PsychErrorExit(PsychError_invalidScumber);
+    if (nDevices) *nDevices = xinput_ndevices[screenNumber];
+    return(xinput_info[screenNumber]);
+}
+
+// Wayland native builds do have their own screen glue for the X11 specific bits:
+#ifndef PTB_USE_WAYLAND
 
 // Init XInput extension: Called under display lock protection:
 static void InitXInputExtensionForDisplay(CGDirectDisplayID dpy, int idx)
@@ -1311,85 +1417,6 @@ void PsychCleanupDisplayGlue(void)
     return;
 }
 
-XIDeviceInfo* PsychGetInputDevicesForScreen(int screenNumber, int* nDevices)
-{
-    if(screenNumber >= numDisplays) PsychErrorExit(PsychError_invalidScumber);
-    if (nDevices) *nDevices = xinput_ndevices[screenNumber];
-    return(xinput_info[screenNumber]);
-}
-
-int PsychGetXScreenIdForScreen(int screenNumber)
-{
-    if ((screenNumber >= numDisplays) || (screenNumber < 0)) PsychErrorExit(PsychError_invalidScumber);
-    return(displayX11Screens[screenNumber]);
-}
-
-void PsychGetCGDisplayIDFromScreenNumber(CGDirectDisplayID *displayID, int screenNumber)
-{
-    if ((screenNumber >= numDisplays) || (screenNumber < 0)) PsychErrorExit(PsychError_invalidScumber);
-    *displayID=displayCGIDs[screenNumber];
-}
-
-/*  About locking display settings:
-
-    SCREENOpenWindow and SCREENOpenOffscreenWindow  set the lock when opening  windows and 
-    SCREENCloseWindow unsets upon the close of the last of a screen's windows. PsychSetVideoSettings checks for a lock
-    before changing the settings.  Anything (SCREENOpenWindow or SCREENResolutions) which attemps to change
-    the display settings should report that attempts to change a dipslay's settings are not allowed when its windows are open.
-
-    PsychSetVideoSettings() may be called by either SCREENOpenWindow or by Resolutions().  If called by Resolutions it both sets the video settings
-    and caches the video settings so that subsequent calls to OpenWindow can use the cached mode regardless of whether interceding calls to OpenWindow
-    have changed the display settings or reverted to the virgin display settings by closing.  SCREENOpenWindow should thus invoke the cached mode
-    settings if they have been specified and not current actual display settings.  
-
-*/
-void PsychLockScreenSettings(int screenNumber)
-{
-    displayLockSettingsFlags[screenNumber]=TRUE;
-}
-
-void PsychUnlockScreenSettings(int screenNumber)
-{
-    displayLockSettingsFlags[screenNumber]=FALSE;
-}
-
-psych_bool PsychCheckScreenSettingsLock(int screenNumber)
-{
-    return(displayLockSettingsFlags[screenNumber]);
-}
-
-/* Because capture and lock will always be used in conjuction, capture calls lock, and SCREENOpenWindow must only call Capture and Release */
-void PsychCaptureScreen(int screenNumber)
-{
-    if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
-    PsychLockScreenSettings(screenNumber);
-}
-
-/*
-    PsychReleaseScreen()    
-*/
-void PsychReleaseScreen(int screenNumber)
-{
-    if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
-    PsychUnlockScreenSettings(screenNumber);
-}
-
-psych_bool PsychIsScreenCaptured(int screenNumber)
-{
-    return(PsychCheckScreenSettingsLock(screenNumber));
-}
-
-
-//Read display parameters.
-/*
-    PsychGetNumDisplays()
-    Get the number of video displays connected to the system.
-*/
-int PsychGetNumDisplays(void)
-{
-    return((int) numDisplays);
-}
-
 void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
 {
     int* x11_depths = NULL;
@@ -1612,19 +1639,6 @@ psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSe
     return(TRUE);
 }
 
-
-/*
-    PsychCheckVideoSettings()
-
-    Check all available video display modes for the specified screen number and return true if the 
-    settings are valid and false otherwise.
-*/
-psych_bool PsychCheckVideoSettings(PsychScreenSettingsType *setting)
-{
-    CFDictionaryRef cgMode;
-    return(PsychGetCGModeFromVideoSetting(&cgMode, setting));
-}
-
 /*
     PsychGetScreenDepth()
 
@@ -1648,14 +1662,17 @@ void PsychGetScreenDepth(int screenNumber, PsychDepthType *depth)
     PsychUnlockDisplay();
 }
 
-int PsychGetScreenDepthValue(int screenNumber)
-{
-    PsychDepthType    depthStruct;
+// We build with VidModeExtension support unless forcefully disabled at compile time via a -DNO_VIDMODEEXTS
+#ifndef NO_VIDMODEEXTS
+#define USE_VIDMODEEXTS 1
+#endif
 
-    PsychInitDepthStruct(&depthStruct);
-    PsychGetScreenDepth(screenNumber, &depthStruct);
-    return(PsychGetValueFromDepthStruct(0,&depthStruct));
-}
+#ifdef USE_VIDMODEEXTS
+// Functions for setup and query of hw gamma CLUTS and for monitor refresh rate query:
+#include <X11/extensions/xf86vmode.h>
+#else
+#define XF86VidModeNumberErrors 0
+#endif
 
 float PsychGetNominalFramerate(int screenNumber)
 {
@@ -1752,6 +1769,23 @@ float PsychGetNominalFramerate(int screenNumber)
 #else
     return(0);
 #endif
+}
+
+// Error callback handler for X11 errors:
+static int x11VidModeErrorHandler(Display* dis, XErrorEvent* err)
+{
+    // If x11_errorbase not yet setup, simply return and ignore this error:
+    if (x11_errorbase == 0) return(0);
+
+    // Setup: Check if its an XVidMode-Error - the only one we do handle.
+    if (((err->error_code >=x11_errorbase) && (err->error_code < x11_errorbase + XF86VidModeNumberErrors)) ||
+        (err->error_code == BadValue)) {
+        // We caused some error. Set error flag:
+        x11_errorval = 1;
+    }
+
+    // Done.
+    return(0);
 }
 
 float PsychSetNominalFramerate(int screenNumber, float requestedHz)
@@ -1874,7 +1908,8 @@ void PsychGetDisplaySize(int screenNumber, int *width, int *height)
 
 void PsychGetScreenPixelSize(int screenNumber, long *width, long *height)
 {
-    // For now points == pixels, so just a dumb wrapper:
+    // For now points == pixels, so just a dumb wrapper, as long as we
+    // don't have special "Retina Display" / HiDPI handling in place on X11:
     PsychGetScreenSize(screenNumber, width, height);
 }
 
@@ -1914,16 +1949,6 @@ void PsychGetScreenRect(int screenNumber, double *rect)
     rect[kPsychBottom]=(int)height; 
 } 
 
-
-PsychColorModeType PsychGetScreenMode(int screenNumber)
-{
-    PsychDepthType depth;
-
-    PsychInitDepthStruct(&depth);
-    PsychGetScreenDepth(screenNumber, &depth);
-    return(PsychGetColorModeFromDepthStruct(&depth));
-}
-
 /*
     This is a place holder for a function which uncovers the number of dacbits.  To be filled in at a later date.
     If you know that your card supports >8 then you can fill that in the PsychtPreferences and the psychtoolbox
@@ -1940,26 +1965,6 @@ int PsychGetDacBitsFromDisplay(int screenNumber)
 {
     return(8);
 }
-
-
-/*
-    PsychGetVideoSettings()
-
-    Fills a structure describing the screen settings such as x, y, depth, frequency, etc.
-
-    Consider inverting the calling sequence so that this function is at the bottom of call hierarchy.
-*/
-void PsychGetScreenSettings(int screenNumber, PsychScreenSettingsType *settings)
-{
-    settings->screenNumber=screenNumber;
-    PsychGetScreenRect(screenNumber, settings->rect);
-    PsychInitDepthStruct(&(settings->depth));
-    PsychGetScreenDepth(screenNumber, &(settings->depth));
-    settings->mode=PsychGetColorModeFromDepthStruct(&(settings->depth));
-    settings->nominalFrameRate= (int) (PsychGetNominalFramerate(screenNumber) + 0.5);
-    //settings->dacbits=PsychGetDacBits(screenNumber);
-}
-
 
 //Set display parameters
 
@@ -2718,6 +2723,9 @@ int PsychOSIsDWMEnabled(int screenNumber)
 
     return(rc);
 }
+
+// !PTB_USE_WAYLAND
+#endif
 
 // PsychGetDisplayBeamPosition() contains the implementation of display beamposition queries.
 // It requires both, a cgDisplayID handle, and a logical screenNumber and uses one of both for

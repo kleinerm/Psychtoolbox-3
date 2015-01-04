@@ -235,12 +235,28 @@ typedef struct{
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
 
-#ifdef PTB_USE_WAYLAND_PRESENT
+#if defined(PTB_USE_WAYLAND_PRESENT) || defined(PTB_USE_WAYLAND)
 #include <wayland-client.h>
 #endif
 
 #ifdef PTB_USE_WAFFLE
 // Definition of Linux/Waffle specific information:
+
+#ifdef PTB_USE_WAYLAND
+// For the Linux Waffle + Wayland backend:
+typedef struct {
+    struct waffle_context*    contextObject;                  // Primary OpenGL rendering context.
+    int                       pixelFormatObject;              // Just here for compatibility. Its a dummy entry without meaning.
+    struct waffle_display*    deviceContext;                  // Pointer to the Waffle display connection.
+    void*                     privDpy;                        // Pointer to the private X11 display connection for non-OpenGL ops.
+    struct waffle_window*     windowHandle;                   // Handle to the Waffle onscreen window handle.
+    Window                    xwindowHandle;                  // TODO: Change type - Associated Wayland window if any.
+    struct waffle_context*    glusercontextObject;            // OpenGL context for userspace rendering code, e.g., moglcore...
+    struct waffle_context*    glswapcontextObject;            // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
+    struct wl_list            presentation_feedback_list;     // Used for Wayland backend presentation_feedback extension to queue feedback events.
+} PsychTargetSpecificWindowRecordType;
+#else
+// For the Linux Waffle generic backend:
 typedef struct {
   struct waffle_context*    contextObject;                  // GLX OpenGL rendering context.
   int                       pixelFormatObject;              // Just here for compatibility. Its a dummy entry without meaning.
@@ -254,6 +270,8 @@ typedef struct {
   struct wl_list            presentation_feedback_list;     // Used for Wayland backend presentation_feedback extension to queue feedback events.
 #endif
 } PsychTargetSpecificWindowRecordType;
+#endif
+
 #else
 // Definition of Linux/X11 specific information:
 typedef struct{
@@ -267,6 +285,8 @@ typedef struct{
   GLXContext		glswapcontextObject; // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
 } PsychTargetSpecificWindowRecordType;
 #endif
+
+// End of Linux targetSpecific struct.
 #endif 
 
 #define kPsychUnaffiliatedWindow	-1		// valid value for screenNumber field of a window record meaning that that pixel format

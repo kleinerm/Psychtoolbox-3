@@ -143,7 +143,7 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
 }
 
 /* The following code is only used for implementation of the classic X11/GLX backend: */
-
+#ifndef PTB_USE_WAYLAND
 #ifndef PTB_USE_WAFFLE
 
 /* XAtom support for setup of transparent windows: */
@@ -2442,4 +2442,5 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
 }
 
 /* End of classic X11/GLX backend: */
+#endif
 #endif

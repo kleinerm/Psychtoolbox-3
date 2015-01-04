@@ -30,6 +30,9 @@
 
 */
 
+// Only choose the generic Waffle backend if the Wayland specific backend isn't used...
+#ifndef PTB_USE_WAYLAND
+// ... and use of Waffle is requested:
 #ifdef PTB_USE_WAFFLE
 
 #include "Screen.h"
@@ -2490,4 +2493,6 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
 }
 
 /* End of PTB_USE_WAFFLE */
+#endif
+/* End of !PTB_USE_WAYLAND */
 #endif

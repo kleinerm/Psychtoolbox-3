@@ -1,4 +1,4 @@
-#ifdef PTB_USE_WAYLAND_PRESENT
+#if defined(PTB_USE_WAYLAND_PRESENT) || defined(PTB_USE_WAYLAND)
 
 /* 
  * Copyright © 2013-2014 Collabora, Ltd.
