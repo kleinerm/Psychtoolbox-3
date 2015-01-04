@@ -45,32 +45,10 @@
 #include "Screen.h"
 
 #include <waffle.h>
-//#include <waffle_glx.h>
-//#include <waffle_x11_egl.h>
-//#include <waffle_gbm.h>
 #include <waffle_wayland.h>
-
-// First time init?
-static psych_bool firstTime = TRUE;
-
-// Use X11 / GLX backend?
-static psych_bool useX11 = FALSE;
-static psych_bool useGLX = FALSE;
-
-// Use GLX version 1.3 setup code? Enabled INTEL_SWAP_EVENTS and other goodies...
-static psych_bool useGLX13 = FALSE;
-
-// Event base for GLX extension:
-static int glx_error_base, glx_event_base;
 
 // Number of currently open onscreen windows:
 static int open_windowcount = 0;
-
-// Shared waffle display connection handle for whole session:
-static struct waffle_display *wdpy = NULL;
-
-// Also share native underlying EGL display for EGL based backends (NULL otherwise):
-static EGLDisplay egl_display = NULL;
 
 // Tracking of currently bound OpenGL rendering context for master-thread:
 static struct waffle_context *currentContext = NULL;
@@ -86,9 +64,16 @@ GLenum glewContextInit(void);
 
 #define ARRAY_LENGTH(a) (sizeof (a) / sizeof (a)[0])
 
-struct wl_display *wayland_display = NULL;
-static struct presentation *wayland_pres = NULL;
-uint32_t wayland_presentation_clock_id;
+// These are defined in PsychScreenGlueWayland.c:
+extern struct waffle_display *waffle_display;
+extern struct wl_display* wl_display;
+extern struct wl_compositor* wl_compositor;
+extern EGLDisplay egl_display;
+
+extern uint32_t wayland_presentation_clock_id;
+
+// From PsychScreenGlue.c:
+struct presentation *get_wayland_presentation_extension(PsychWindowRecordType* windowRecord);
 
 // Container with feedback about a completed swap - the equivalent of
 // our good old INTEL_swap_event on X11/GLX, here for Wayland:
@@ -105,88 +90,6 @@ struct wayland_feedback {
     struct wl_list link;
     struct timespec present;
 };
-
-static void
-wayland_set_presentation_clock_id(void *data, struct presentation *presentation,
-                      uint32_t clk_id)
-{
-    struct wl_display *self = data;
-    wayland_presentation_clock_id = clk_id;
-    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Wayland presentation clock set to id %i.\n", (int) clk_id);
-}
-
-static const struct presentation_listener wayland_presentation_listener = {
-    wayland_set_presentation_clock_id
-};
-
-static void
-wayland_registry_listener_global(void *data,
-                         struct wl_registry *registry,
-                         uint32_t name,
-                         const char *interface,
-                         uint32_t version)
-{
-    struct wl_display *self = data;
-
-    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Wayland registry extension candidate: %s\n", interface);
-
-    // Only look for presentation interface v1:
-    if (strcmp(interface, "presentation") || (version != 1)) return;
-
-    // Got it:
-    wayland_pres = wl_registry_bind(registry, name, &presentation_interface, 1);
-    if (!wayland_pres) {
-        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: wl_registry_bind for presentation_interface failed!\n");
-        return;
-    }
-
-    presentation_add_listener(wayland_pres, &wayland_presentation_listener, self);
-    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Wayland presentation_interface bound!\n");
-}
-
-static void
-wayland_registry_listener_global_remove(void *data, struct wl_registry *registry, uint32_t name)
-{
-    return;
-}
-
-static const struct wl_registry_listener wayland_registry_listener = {
-    .global = wayland_registry_listener_global,
-    .global_remove = wayland_registry_listener_global_remove
-};
-
-static struct presentation *
-get_wayland_presentation_extension(PsychWindowRecordType* windowRecord)
-{
-    // Already have a cached presentation_interface? If so, just return it:
-    if (wayland_pres) return wayland_pres;
-
-    // Nope, get our own wl_registry, do the enumeration and binding:
-    struct wl_registry *wl_registry = wl_display_get_registry(wayland_display);
-    if (!wl_registry) {
-        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: wl_display_get_registry failed\n");
-        return(NULL);
-    }
-
-    if (wl_registry_add_listener(wl_registry, &wayland_registry_listener, wayland_display) < 0) {
-        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: wl_registry_add_listener failed\n");
-        return(NULL);
-    }
-
-    // Block until the Wayland server has processed all pending requests and
-    // has sent out pending events on all event queues. This should ensure
-    // that the registry listener has received announcement of the shell and
-    // compositor.
-    if (wl_display_roundtrip(wayland_display) == -1) {
-        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: wl_display_roundtrip failed\n");
-        return(NULL);
-    }
-
-    // Destroy our reference to the registry:
-    wl_registry_destroy(wl_registry);
-
-    return(wayland_pres);
-}
 
 static void
 destroy_wayland_feedback(struct wayland_feedback *wayland_feedback)
@@ -435,11 +338,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     PsychRectType screenrect;
     CGDirectDisplayID dpy;
     int scrnum;
-    XSetWindowAttributes attr;
     unsigned long mask;
     Window win = 0;
-    GLXWindow glxwindow;
-    XVisualInfo *visinfo = NULL;
     int i, x, y, width, height, nrconfigs, buffdepth;
     GLenum glerr;
     int32_t attrib[41];
@@ -447,14 +347,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     int stereoenableattrib = 0;
     int depth, bpc;
     int windowLevel;
-    int xfixes_event_base1, xfixes_event_base2;
-    psych_bool xfixes_available = FALSE;
-    psych_bool newstyle_setup = FALSE;
-    int gpuMaintype = 0;
     int32_t opengl_api;
     char backendname[16];
     char backendname2[16];
-    int32_t oldBackend;
     struct waffle_config *config;
     struct waffle_window *window;
     union waffle_native_window *wafflewin;
@@ -466,13 +361,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     #else
     opengl_api = WAFFLE_CONTEXT_OPENGL;
     #endif
-
-    // Define waffle window system backend to use: Wayland only, obviously.
-    static int32_t init_attrs[3] = {
-        WAFFLE_PLATFORM,
-        WAFFLE_PLATFORM_WAYLAND,
-        0,
-    };
 
     // Map the logical screen number to the corresponding X11 display connection handle
     // for the corresponding X-Server connection.
@@ -486,29 +374,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // Include onscreen window index in title:
     sprintf(windowTitle, "PTB Onscreen Window [%i]:", windowRecord->windowIndex);
 
-    // First time invocation?
-    if (firstTime) {
-        // Initialize waffle for selected display system backend:
-        if (PsychPrefStateGet_Verbosity() > 2) {
-            printf("PTB-INFO: Using FOSS Waffle display backend library, written by Chad Versace, Copyright 2012 - 2015 Intel.\n");
-        }
-
-        if (!waffle_init(init_attrs) && (waffle_error_get_code() != WAFFLE_ERROR_ALREADY_INITIALIZED)) {
-            // Game over:
-            if (PsychPrefStateGet_Verbosity() > 0) {
-                printf("PTB-ERROR: Could not initialize Waffle Wayland/EGL backend - Error: %s.\n", waffle_error_to_string(waffle_error_get_code()));
-                printf("PTB-ERROR: Try to fix the reason for the error, then restart Octave/Matlab and retry.\n");
-            }
-            return(FALSE);
-        }
-
-        // First-Time init done:
-        firstTime = FALSE;
-    }
-
-    // Set windowing system backend type to truly selected type, which is
-    // always Wayland in our Wayland backend:
-    windowRecord->winsysType = (int) init_attrs[1];
+    // Set windowing system backend type for this window to Wayland:
+    windowRecord->winsysType = (int) WAFFLE_PLATFORM_WAYLAND;
 
     // Translate spec to human readable name and spec string:
     sprintf(backendname, "Wayland/EGL");
@@ -521,29 +388,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     if (PsychPrefStateGet_Verbosity() > 2) {
         printf("PTB-INFO: Wayland display backend '%s' initialized [%s].\n", backendname, backendname2);
     }
-
-    // Waffle display connection not yet initialized? Create one if not yet done. Currently
-    // we are limited to one connection per session, until we move waffle init and connection
-    // init to the screen glue and manage those as we do with classic X11 display connections.
-    // Display connection gets closed on last onscreen window close, (re)opened on first window open:
-    if (NULL == wdpy) {
-        // Other backend: Environment variable or NULL aka auto-selected default, if variable is undefined:
-        wdpy = waffle_display_connect(getenv("PSYCH_WAFFLE_DISPLAY"));
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to connect Waffle to display '%s'.\n", getenv("PSYCH_WAFFLE_DISPLAY"));
-    }
-
-    if (!wdpy) {
-        if (PsychPrefStateGet_Verbosity() > 0) {
-            printf("PTB-ERROR: Could not connect Waffle to display: %s.\n", waffle_error_to_string(waffle_error_get_code()));
-            if (!getenv("WAYLAND_DISPLAY")) printf("PTB-ERROR: Seems Screen() is not running on a Wayland display server? That's a no-go for this Wayland-only Screen() mex file!\n");
-        }
-        return(FALSE);
-    }
-
-    // Extract EGL_Display for backends which use EGL:
-    union waffle_native_display* wafflenatdis = waffle_display_get_native(wdpy);
-    egl_display = wafflenatdis->wayland->egl_display;
-    wayland_display = wafflenatdis->wayland->wl_display;
 
     // Allow usercode to override our default backend choice via environment variable:
     if (getenv("PSYCH_USE_GFX_BACKEND")) {
@@ -575,20 +419,20 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     }
 
     // Try the requested backend, try alternate backends on failure:
-    if (!waffle_display_supports_context_api(wdpy, opengl_api)) {
+    if (!waffle_display_supports_context_api(waffle_display, opengl_api)) {
         if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Selected Waffle display backend does not support requested OpenGL rendering API '%s': %s. Trying fallbacks...\n",
                                                       backendname, waffle_error_to_string(waffle_error_get_code()));
         // Try fallbacks: OpenGL > OpenGL-ES1 > OpenGL-ES2 > OpenGL-ES3
-        if (waffle_display_supports_context_api(wdpy, WAFFLE_CONTEXT_OPENGL)) {
+        if (waffle_display_supports_context_api(waffle_display, WAFFLE_CONTEXT_OPENGL)) {
             opengl_api = WAFFLE_CONTEXT_OPENGL;
         }
-        else if (waffle_display_supports_context_api(wdpy, WAFFLE_CONTEXT_OPENGL_ES1)) {
+        else if (waffle_display_supports_context_api(waffle_display, WAFFLE_CONTEXT_OPENGL_ES1)) {
             opengl_api = WAFFLE_CONTEXT_OPENGL_ES1;
         }
-        else if (waffle_display_supports_context_api(wdpy, WAFFLE_CONTEXT_OPENGL_ES2)) {
+        else if (waffle_display_supports_context_api(waffle_display, WAFFLE_CONTEXT_OPENGL_ES2)) {
             opengl_api = WAFFLE_CONTEXT_OPENGL_ES2;
         }
-        else if (waffle_display_supports_context_api(wdpy, WAFFLE_CONTEXT_OPENGL_ES3)) {
+        else if (waffle_display_supports_context_api(waffle_display, WAFFLE_CONTEXT_OPENGL_ES3)) {
             opengl_api = WAFFLE_CONTEXT_OPENGL_ES3;
         }
         else {
@@ -645,11 +489,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         PsychPrefStateSet_ConserveVRAM(PsychPrefStateGet_ConserveVRAM() | kPsychAvoidCPUGPUSync);
         if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Will try to disable/suppress all internal OpenGL error reporting/handling for OpenGL-ES operation.\n");
     }
-
-    // No X11 or GLX backend:
-    useX11 = FALSE;
-    useGLX = FALSE;
-    useGLX13 = FALSE;
 
     // Mark window as EGL controlled:
     windowRecord->specialflags |= kPsychIsEGLWindow;
@@ -805,7 +644,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
     // Choose waffle configuration for attrib's - the equivalent of
     // a pixelformat or framebuffer config in GLX speak:
-    config = waffle_config_choose(wdpy, attrib);
+    config = waffle_config_choose(waffle_display, attrib);
 
     if (!config) {
         // Failed to find matching visual: Could it be related to request for unsupported native 10/11/16 bpc framebuffer?
@@ -821,7 +660,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             attrib[i + 1] = 1;
 
             // Retry:
-            config = waffle_config_choose(wdpy, attrib);
+            config = waffle_config_choose(waffle_display, attrib);
         }
     }
 
@@ -834,7 +673,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             while (!config && windowRecord->multiSample > 0) {
                 attrib[i + 1]--;
                 windowRecord->multiSample--;
-                config = waffle_config_choose(wdpy, attrib);
+                config = waffle_config_choose(waffle_display, attrib);
             }
 
             // Either we have a valid visual at this point or we still fail despite
@@ -844,7 +683,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
                 for (i = 0; i < attribcount && attrib[i] != WAFFLE_SAMPLE_BUFFERS; i++);
                 windowRecord->multiSample = 0;
                 attrib[i + 1] = 0;
-                config = waffle_config_choose(wdpy, attrib);
+                config = waffle_config_choose(waffle_display, attrib);
             }
         }
 
@@ -854,14 +693,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             for (i = 0; i < attribcount && attrib[i] != WAFFLE_DEPTH_SIZE; i++);
             if (attrib[i] == WAFFLE_DEPTH_SIZE && i < attribcount) attrib[i + 1] = 16;
             if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Have to use 16 bit depth buffer instead of 24 bit buffer due to limitations of your gfx-hardware or driver. Accuracy of 3D-Gfx may be limited...\n");
-            config = waffle_config_choose(wdpy, attrib);
+            config = waffle_config_choose(waffle_display, attrib);
 
             if (!config) {
                 // Failed again. Retry with disabled stencil buffer:
                 if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Have to disable stencil buffer due to limitations of your gfx-hardware or driver. Some 3D Gfx algorithms may fail...\n");
                 for (i = 0; i < attribcount && attrib[i] != WAFFLE_STENCIL_SIZE; i++);
                 if (attrib[i] == WAFFLE_STENCIL_SIZE && i < attribcount) attrib[i + 1] = 0;
-                config = waffle_config_choose(wdpy, attrib);
+                config = waffle_config_choose(waffle_display, attrib);
             }
         }
     }
@@ -880,7 +719,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         attrib[attribcount++] = 1;
         attrib[attribcount++] = WAFFLE_ALPHA_SIZE;
         attrib[attribcount++] = WAFFLE_DONT_CARE;
-        config = waffle_config_choose(wdpy, attrib);
+        config = waffle_config_choose(waffle_display, attrib);
     }
 
     // Finally?
@@ -952,7 +791,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     windowRecord->targetSpecific.xwindowHandle = win;
 
     // waffle_display*
-    windowRecord->targetSpecific.deviceContext = wdpy;
+    windowRecord->targetSpecific.deviceContext = waffle_display;
 
     // waffle_context*
     windowRecord->targetSpecific.contextObject = ctx;
@@ -1008,7 +847,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     }
 
     // Sync with server:
-    wl_display_roundtrip(wayland_display);
+    wl_display_roundtrip(wl_display);
 
     // Show our new window:
     if (windowLevel != -1) {
@@ -1017,7 +856,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         // Is this window supposed to be opaque / non-transparent?
         if (windowLevel < 1000 || windowLevel >= 2000) {
             // Yes. Define an opaque region the full size of the windows area:
-            struct wl_region *region = wl_compositor_create_region(wafflenatdis->wayland->wl_compositor);
+            struct wl_region *region = wl_compositor_create_region(wl_compositor);
             wl_region_add(region, 0, 0, width, height);
             wl_surface_set_opaque_region(wayland_window->wl_surface, region);
             wl_region_destroy(region);
@@ -1045,7 +884,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         }
 
         // Make it so!
-        wl_display_roundtrip(wayland_display);
+        wl_display_roundtrip(wl_display);
     }
 
     // If windowLevel is zero, lower it to the bottom of the stack of windows:
@@ -1061,7 +900,31 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // Ok, the onscreen window is ready on the screen. Time for OpenGL setup...
 
     // Activate the associated rendering context:
-    waffle_make_current(wdpy, window, ctx);
+    waffle_make_current(waffle_display, window, ctx);
+
+    // Running on top of a FOSS Mesa graphics driver?
+    if ((open_windowcount == 0) && strstr((const char*) glGetString(GL_VERSION), "Mesa") && !getenv("PSYCH_DONT_LOCK_MOGLCORE")) {
+        // Yes. At least as of Mesa 10.1 as shipped in Ubuntu 14.04-LTS, Mesa
+        // will become seriously crashy if our Screen() mex files is flushed
+        // from memory due to a clear all/mex/Screen and afterwards reloaded.
+        // This because Mesa maintains pointers back into our library image,
+        // which will turn into dangling pointers if we get unloaded/reloaded
+        // into a new location. To prevent Mesa crashes on clear Screen -> reload,
+        // prevent this mex file against clearing from Octave/Matlab address space.
+        // An ugly solution which renders "clear Screen" useless, but the best i can
+        // come up with at the moment :(
+        if (PsychRuntimeEvaluateString("moglcore('LockModule');") > 0) {
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: Failed to enable moglcore locking workaround for Mesa OpenGL bug. Trying alternative workaround.\n");
+                printf("PTB-WARNING: Calling 'clear all', 'clear mex', 'clear java', 'clear moglcore' is now unsafe and may crash if you try.\n");
+                printf("PTB-WARNING: You may add setenv('PSYCH_DONT_LOCK_MOGLCORE','1'); to your Octave/Matlab startup script to work around this issue in future sessions.\n");
+            }
+            setenv("PSYCH_DONT_LOCK_MOGLCORE", "1", 0);
+        }
+        else {
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Workaround: Disabled ability to 'clear moglcore', as a workaround for a Mesa OpenGL bug. Sorry for the inconvenience.\n");
+        }
+    }
 
     // Ok, the OpenGL rendering context is up and running. Auto-detect and bind all
     // available OpenGL extensions via GLEW. Must be careful to only call GLX independent
@@ -1258,10 +1121,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     free(wafflewin);
     wafflewin = NULL;
 
-    // Release the waffle_native_display:
-    free(wafflenatdis);
-    wafflenatdis = NULL;
-
     return(TRUE);
 }
 
@@ -1270,17 +1129,6 @@ void PsychOSCloseWindow(PsychWindowRecordType * windowRecord)
     Display *dpy = windowRecord->targetSpecific.privDpy;
 
     PsychLockDisplay();
-
-    while (!wl_list_empty(&windowRecord->targetSpecific.presentation_feedback_list)) {
-        struct wayland_feedback *f;
-
-        f = wl_container_of(windowRecord->targetSpecific.presentation_feedback_list.next, f, link);
-        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Cleaning up Wayland feedback event %llu.\n", f->sbc);
-        destroy_wayland_feedback(f);
-    }
-
-    // Reset our binding to presentation_feedback extension if this is our last onscreen window to close:
-    if (open_windowcount <= 1) wayland_pres = NULL;
 
     // Detach OpenGL rendering context again - just to be safe!
     waffle_make_current(windowRecord->targetSpecific.deviceContext, NULL, NULL);
@@ -1307,6 +1155,17 @@ void PsychOSCloseWindow(PsychWindowRecordType * windowRecord)
 
     PsychUnlockDisplay();
 
+    // Make it so!
+    wl_display_roundtrip(wl_display);
+
+    while (!wl_list_empty(&windowRecord->targetSpecific.presentation_feedback_list)) {
+        struct wayland_feedback *f;
+
+        f = wl_container_of(windowRecord->targetSpecific.presentation_feedback_list.next, f, link);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Cleaning up Wayland feedback event %llu.\n", f->sbc);
+        destroy_wayland_feedback(f);
+    }
+
     // Decrement global count of open onscreen windows:
     open_windowcount--;
 
@@ -1315,10 +1174,6 @@ void PsychOSCloseWindow(PsychWindowRecordType * windowRecord)
         open_windowcount = 0;
 
         PsychLockDisplay();
-
-        // Release our shared waffle display connection:
-        waffle_display_disconnect(windowRecord->targetSpecific.deviceContext);
-        wdpy = NULL;
 
         // (Re-)enable X-Windows screensavers if they were enabled before opening windows:
         // Set screensaver to previous settings, potentially enabling it:
@@ -1389,11 +1244,11 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
     }
     else if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Supported. Calling with targetSBC = %lld.\n", targetSBC);
 
-    if (!wayland_display) return(-1);
+    if (!wl_display) return(-1);
 
     // Perform Wayland event dispatch cycles until targetSBC is reached:
     while (windowRecord->reference_sbc < targetSBC) {
-        wl_display_dispatch(wayland_display);
+        wl_display_dispatch(wl_display);
     }
 
     sbc = windowRecord->reference_sbc;
@@ -1791,34 +1646,27 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
         if (cmd == 0 || cmd == 1 || cmd == 2) {
             // Check if presentation_feedback extension is supported. Enable/Disable swap completion event delivery for our window, if so:
             PsychLockDisplay();
-            if (wayland_pres) {
-                // Logical enable state: Usercode has precedence. If it enables it goes to it. If it disabled,
-                // it gets directed to us:
-                // UPDATE: Actually no. Disable by usercode means disable for now, until we have an actual
-                // use case for automatic redirection to our code on Wayland. Otherwise we'd just incur extra
-                // overhead for nothing.
-                // Old style with redirect: if (cmd == 0 || cmd == 1) windowRecord->swapevents_enabled = (cmd == 1) ? 1 : 2;
-                // New style: Enable if usercode wants it, disable if usercode doesn't want it:
-                if (cmd == 0 || cmd == 1) windowRecord->swapevents_enabled = cmd;
+            // Logical enable state: Usercode has precedence. If it enables it goes to it. If it disabled,
+            // it gets directed to us:
+            // UPDATE: Actually no. Disable by usercode means disable for now, until we have an actual
+            // use case for automatic redirection to our code on Wayland. Otherwise we'd just incur extra
+            // overhead for nothing.
+            // Old style with redirect: if (cmd == 0 || cmd == 1) windowRecord->swapevents_enabled = (cmd == 1) ? 1 : 2;
+            // New style: Enable if usercode wants it, disable if usercode doesn't want it:
+            if (cmd == 0 || cmd == 1) windowRecord->swapevents_enabled = cmd;
 
-                // If we want the data and usercode doesn't have exclusive access to it already, then redirect to us:
-                if (cmd == 2 && (windowRecord->swapevents_enabled != 1)) windowRecord->swapevents_enabled = 2;
+            // If we want the data and usercode doesn't have exclusive access to it already, then redirect to us:
+            if (cmd == 2 && (windowRecord->swapevents_enabled != 1)) windowRecord->swapevents_enabled = 2;
 
-                PsychUnlockDisplay();
-                return(TRUE);
-            } else {
-                // Failed to enable swap events, possibly because they're unsupported:
-                windowRecord->swapevents_enabled = 0;
-                PsychUnlockDisplay();
-                return(FALSE);
-            }
+            PsychUnlockDisplay();
+            return(TRUE);
         }
 
         if (cmd == 3 || cmd == 4) {
             // Extension enabled? Process events if so:
-            if (wayland_pres && wayland_display) {
+            if (wl_display) {
                 // Perform one dispatch cycle so event list is up to date:
-                wl_display_dispatch_pending(wayland_display);
+                wl_display_dispatch_pending(wl_display);
 
                 // Delivery to user-code?
                 if (cmd == 3 && windowRecord->swapevents_enabled == 1) {

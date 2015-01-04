@@ -36,6 +36,15 @@
 
 #include "Screen.h"
 
+#include <waffle.h>
+#include <waffle_wayland.h>
+
+#include <wayland-client.h>
+
+// This header file and corresponding implementation file currently included in our
+// source tree, as permitted by license. There's probably a better way to do this?
+#include "presentation_timing-client-protocol.h"
+
 /* These are needed for our GPU specific beamposition query implementation: */
 #include <errno.h>
 #include <stdio.h>
@@ -67,6 +76,80 @@ psych_bool PsychCheckScreenSettingsLock(int screenNumber);
 
 // Hack:
 extern psych_bool has_xrandr_1_2;
+
+// Shared waffle display connection handle for whole session:
+struct waffle_display *waffle_display = NULL;
+
+// Shared corresponding wl_display handle for session:
+struct wl_display* wl_display = NULL;
+
+struct wl_compositor* wl_compositor = NULL;
+
+// Also share native underlying EGL display:
+EGLDisplay egl_display = NULL;
+
+// Handle to the presentation extension:
+struct presentation *wayland_pres = NULL;
+
+// And our presentation reference clock:
+uint32_t wayland_presentation_clock_id;
+
+static struct wl_registry *wl_registry = NULL;
+
+static void
+wayland_set_presentation_clock_id(void *data, struct presentation *presentation,
+                                  uint32_t clk_id)
+{
+    struct wl_display *self = data;
+    wayland_presentation_clock_id = clk_id;
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Wayland presentation clock set to id %i.\n", (int) clk_id);
+}
+
+static const struct presentation_listener wayland_presentation_listener = {
+    wayland_set_presentation_clock_id
+};
+
+static void
+wayland_registry_listener_global(void *data,
+                                 struct wl_registry *registry,
+                                 uint32_t name,
+                                 const char *interface,
+                                 uint32_t version)
+{
+    struct wl_display *self = data;
+
+    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-DEBUG: Wayland registry extension candidate: %s\n", interface);
+
+    // Only look for presentation interface v1:
+    if (strcmp(interface, "presentation") || (version != 1)) return;
+
+    // Got it:
+    wayland_pres = wl_registry_bind(registry, name, &presentation_interface, 1);
+    if (!wayland_pres) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: wl_registry_bind for presentation_interface failed!\n");
+        return;
+    }
+
+    presentation_add_listener(wayland_pres, &wayland_presentation_listener, self);
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Wayland presentation_interface bound!\n");
+}
+
+static void
+wayland_registry_listener_global_remove(void *data, struct wl_registry *registry, uint32_t name)
+{
+    return;
+}
+
+static const struct wl_registry_listener wayland_registry_listener = {
+    .global = wayland_registry_listener_global,
+    .global_remove = wayland_registry_listener_global_remove
+};
+
+struct presentation *get_wayland_presentation_extension(PsychWindowRecordType* windowRecord)
+{
+    // Already have a cached presentation_interface? If so, just return it:
+    return(wayland_pres);
+}
 
 // Init XInput extension: Called under display lock protection:
 static void InitXInputExtensionForDisplay(CGDirectDisplayID dpy, int idx)
@@ -314,12 +397,15 @@ XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc)
 
 void InitCGDisplayIDList(void)
 {
-//     int major, minor;
     int rc, i, j, k, count, scrnid;
-//     char* ptbdisplays = NULL;
-//     char displayname[1000];
-//     CGDirectDisplayID x11_dpy = NULL;
-//
+
+    // Define waffle window system backend to use: Wayland only, obviously.
+    static int32_t init_attrs[3] = {
+        WAFFLE_PLATFORM,
+        WAFFLE_PLATFORM_WAYLAND,
+        0,
+    };
+
     // NULL-out array of displays:
     for (i = 0; i < kPsychMaxPossibleDisplays; i++) displayCGIDs[i] = NULL;
 
@@ -332,132 +418,83 @@ void InitCGDisplayIDList(void)
     // Initial minimum allowed crtc id is zero:
     // minimum_crtcid = 0;
 
-    // HACK:
-    numDisplays = 1;
-//
-//     // Multiple X11 display specifier strings provided in the environment variable
-//     // $PSYCHTOOLBOX_DISPLAYS? If so, we connect to all of them and enumerate all
-//     // available screens on them.
-//     ptbdisplays = getenv("PSYCHTOOLBOX_DISPLAYS");
-//     if (ptbdisplays) {
-//         // Displays explicitely specified. Parse the string and connect to all of them:
-//         j=0;
-//         for (i = 0; i <= (int) strlen(ptbdisplays) && j < 1000; i++) {
-//             // Accepted separators are ',', '"', white-space and end of string...
-//             if (ptbdisplays[i]==',' || ptbdisplays[i]=='"' || ptbdisplays[i]==' ' || i == (int) strlen(ptbdisplays)) {
-//                 // Separator or end of string detected. Try to connect to display:
-//                 displayname[j]=0;
-//                 printf("PTB-INFO: Trying to connect to X-Display %s ...", displayname);
-//
-//                 x11_dpy = XOpenDisplay(displayname);
-//                 if (x11_dpy == NULL) {
-//                     // Failed.
-//                     printf(" ...Failed! Skipping this display...\n");
-//                 }
-//                 else {
-//                     // Query number of available screens on this X11 display:
-//                     count=ScreenCount(x11_dpy);
-//                     scrnid=0;
-//
-//                     // Set the screenNumber --> X11 display mappings up:
-//                     for (k=numDisplays; (k<numDisplays + count) && (k<kPsychMaxPossibleDisplays); k++) {
-//                         if (k == numDisplays) {
-//                             // 1st entry for this x-display: Init XInput2 extension for it:
-//                             InitXInputExtensionForDisplay(x11_dpy, numDisplays);
-//                         } else {
-//                             // Successive entry. Copy info from 1st entry:
-//                             xinput_info[k] = xinput_info[numDisplays];
-//                             xinput_ndevices[k] = xinput_ndevices[numDisplays];
-//                         }
-//
-//                         // Mapping of logical screenNumber to X11 Display:
-//                         displayCGIDs[k]= x11_dpy;
-//                         // Mapping of logical screenNumber to X11 screenNumber for X11 Display:
-//                         displayX11Screens[k]=scrnid++;
-//
-//                         // Get all relevant screen config info and cache it internally:
-//                         GetRandRScreenConfig(x11_dpy, k);
-//                     }
-//
-//                     printf(" ...success! Added %i new physical display screens of %s as PTB screens %i to %i.\n",
-//                         scrnid, displayname, numDisplays, k-1);
-//
-//                     // Update total count:
-//                     numDisplays = k;
-//                 }
-//
-//                 // Reset idx:
-//                 j=0;
-//             }
-//             else {
-//                 // Add character to display name:
-//                 displayname[j++]=ptbdisplays[i];
-//             }
-//         }
-//
-//         // At least one screen enumerated?
-//         if (numDisplays < 1) {
-//             // We're screwed :(
-//             PsychErrorExitMsg(PsychError_system, "FATAL ERROR: Couldn't open any X11 display connection to any X-Server!!!");
-//         }
-//     }
-//     else {
-//         // User didn't setup env-variable with any special displays. We just use
-//         // the default $DISPLAY or -display of Matlab:
-//         x11_dpy = XOpenDisplay(NULL);
-//         if (x11_dpy == NULL) {
-//             #ifndef PTB_USE_WAFFLE
-//                 // We're screwed :(
-//                 PsychErrorExitMsg(PsychError_system, "FATAL ERROR: Couldn't open default X11 display connection to X-Server!!!");
-//             #endif
-//
-//             // No X-Display available, but we are configured with waffle support, so
-//             // probably user wants to use a non-X11 based display backend.
-//             printf("PTB-INFO: Could not open any X11/X-Windows system based display connection. Trying other display backends.\n");
-//             PsychInitNonX11();
-//             return;
-//         }
-//
-//         // Query number of available screens on this X11 display:
-//         count=ScreenCount(x11_dpy);
-//
-//         InitXInputExtensionForDisplay(x11_dpy, 0);
-//
-//         // Set the screenNumber --> X11 display mappings up:
-//         for (i=0; i<count && i<kPsychMaxPossibleDisplays; i++) {
-//             displayCGIDs[i]= x11_dpy;
-//             displayX11Screens[i]=i;
-//             xinput_info[i] = xinput_info[0];
-//             xinput_ndevices[i] = xinput_ndevices[0];
-//
-//             // Get all relevant screen config info and cache it internally:
-//             GetRandRScreenConfig(x11_dpy, i);
-//         }
-//         numDisplays=i;
-//     }
-//
-//     if (numDisplays>1) printf("PTB-INFO: A total of %i X-Windows display screens is available for use.\n", numDisplays);
-//
-//     // Initialize screenId -> GPU headId mapping to identity mappings,
-//     // unless already setup by XRandR setup code:
-//     if (!has_xrandr_1_2) PsychInitScreenToHeadMappings(numDisplays);
-//
-//     // Prepare atoms for "Desktop composition active?" queries:
-//     // Each atom corresponds to one X-Screen. It is selection-owned by the
-//     // desktop compositor for that screen, if a compositor is actually active.
-//     // It is not owned by anybody if desktop composition is off or suspended for
-//     // that screen, so checking if such an atom has an owner allows to check if
-//     // the corresponding x-screen is subject to desktop composition atm.
-//     for (i = 0; i < numDisplays; i++) {
-//         CGDirectDisplayID dpy;
-//         char cmatomname[100];
-//
-//         // Retrieve and cache an atom for this screen on this display:
-//         PsychGetCGDisplayIDFromScreenNumber(&dpy, i);
-//         sprintf(cmatomname, "_NET_WM_CM_S%d", PsychGetXScreenIdForScreen(i));
-//         displayX11ScreenCompositionAtom[i] = XInternAtom(dpy, cmatomname, False);
-//     }
-//
+    // Initialize Waffle for Wayland display system backend:
+    if (PsychPrefStateGet_Verbosity() > 2) {
+        printf("PTB-INFO: Using FOSS Waffle display backend library, written by Chad Versace, Copyright 2012 - 2015 Intel.\n");
+    }
+
+    if (!waffle_init(init_attrs) && (waffle_error_get_code() != WAFFLE_ERROR_ALREADY_INITIALIZED)) {
+        // Game over:
+        if (PsychPrefStateGet_Verbosity() > 0) {
+            printf("PTB-ERROR: Could not initialize Waffle Wayland/EGL backend - Error: %s.\n", waffle_error_to_string(waffle_error_get_code()));
+            printf("PTB-ERROR: Try to fix the reason for the error, then restart Octave/Matlab and retry.\n");
+        }
+        PsychErrorExitMsg(PsychError_system, "FATAL ERROR: Couldn't initialize Waffle's Wayland backend! Game over!");
+    }
+
+    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to connect Wayland Waffle to display '%s'.\n", getenv("PSYCH_WAFFLE_DISPLAY"));
+    waffle_display = waffle_display_connect(getenv("PSYCH_WAFFLE_DISPLAY"));
+
+    if (!waffle_display) {
+        if (PsychPrefStateGet_Verbosity() > 0) {
+            printf("PTB-ERROR: Could not connect Waffle to display: %s.\n", waffle_error_to_string(waffle_error_get_code()));
+            if (!getenv("WAYLAND_DISPLAY")) printf("PTB-ERROR: Seems Screen() is not running on a Wayland display server? That's a no-go for this Wayland-only Screen() mex file!\n");
+        }
+        PsychErrorExitMsg(PsychError_system, "FATAL ERROR: Couldn't open display connection to Wayland server! Game over!");
+    }
+
+    // Extract EGL_Display for backends which use EGL:
+    union waffle_native_display* wafflenatdis = waffle_display_get_native(waffle_display);
+    egl_display = wafflenatdis->wayland->egl_display;
+    wl_display = wafflenatdis->wayland->wl_display;
+    wl_compositor = wafflenatdis->wayland->wl_compositor;
+
+    // Release the waffle_native_display:
+    free(wafflenatdis);
+    wafflenatdis = NULL;
+
+    // Get our own wl_registry, do the enumeration and binding:
+    wl_registry = wl_display_get_registry(wl_display);
+    if (!wl_registry) {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: wl_display_get_registry failed\n");
+        PsychErrorExitMsg(PsychError_system, "FATAL ERROR: Initialisation failed! Game over!");
+    }
+
+    if (wl_registry_add_listener(wl_registry, &wayland_registry_listener, wl_display) < 0) {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: wl_registry_add_listener failed\n");
+        PsychErrorExitMsg(PsychError_system, "FATAL ERROR: Initialisation failed! Game over!");
+    }
+
+    // Block until the Wayland server has processed all pending requests and
+    // has sent out pending events on all event queues. This should ensure
+    // that the registry listener has received announcement of the shell and
+    // compositor.
+    if (wl_display_roundtrip(wl_display) == -1) {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: wl_display_roundtrip failed\n");
+        PsychErrorExitMsg(PsychError_system, "FATAL ERROR: Initialisation failed! Game over!");
+    }
+
+    // Query number of available screens on this X11 display:
+    count = 1; // ScreenCount(x11_dpy);
+
+    // Setup the screenNumber --> Wayland display mappings:
+    for (i = 0; i < count && i < kPsychMaxPossibleDisplays; i++) {
+        displayCGIDs[i] = NULL;
+        //displayX11Screens[i] = i;
+        //xinput_info[i] = xinput_info[0];
+        //xinput_ndevices[i] = xinput_ndevices[0];
+
+        // Get all relevant screen config info and cache it internally:
+        // GetRandRScreenConfig(x11_dpy, i);
+    }
+
+    numDisplays = i;
+
+    if (numDisplays > 1) printf("PTB-INFO: A total of %i Wayland display screens is available for use.\n", numDisplays);
+
+    // Initialize screenId -> GPU headId mapping to identity mappings:
+    PsychInitScreenToHeadMappings(numDisplays);
+
     return;
 }
 
@@ -471,36 +508,49 @@ void PsychCleanupDisplayGlue(void)
 
     PsychLockDisplay();
 
-//     last_dpy = NULL;
-//     // Go trough full screen list:
-//     for (i=0; i < PsychGetNumDisplays(); i++) {
-//         // Get display-ptr for this screen:
-//         PsychGetCGDisplayIDFromScreenNumber(&dpy, i);
-//
-//         // No X11 display associated with this screen? Skip it.
-//         if (!dpy) continue;
-//
+    // Go trough full screen list:
+    last_dpy = NULL;
+    for (i = 0; i < PsychGetNumDisplays(); i++) {
+        // Get display-ptr for this screen:
+        PsychGetCGDisplayIDFromScreenNumber(&dpy, i);
+
+        // No Wayland display connection associated with this screen? Skip it.
+        if (!dpy) continue;
+
 //         // Did we close this connection already (dpy==last_dpy)?
 //         if (dpy != last_dpy) {
 //             // Nope. Keep track of it...
-//             last_dpy=dpy;
+//             last_dpy = dpy;
+//
 //             // ...and close display connection to X-Server:
 //             XCloseDisplay(dpy);
 //
-//             // Release actual xinput info list for this x11 display connection:
+//             // Release actual input info list for this display server connection:
 //             if (xinput_info[i]) {
-//                 XIFreeDeviceInfo(xinput_info[i]);
+//                 // TODO: XIFreeDeviceInfo(xinput_info[i]);
 //             }
 //         }
-//
-//         // NULL-Out xinput extension data:
-//         xinput_info[i] = NULL;
-//         xinput_ndevices[i] = 0;
-//
-//         // Release per-screen RandR info structures:
-//         if (displayX11ScreenResources[i]) XRRFreeScreenResources(displayX11ScreenResources[i]);
-//         displayX11ScreenResources[i] = NULL;
-//     }
+
+        // NULL-Out xinput extension data:
+        //xinput_info[i] = NULL;
+        //xinput_ndevices[i] = 0;
+
+        // Release per-screen info structures:
+        // TODO: if (displayX11ScreenResources[i]) XRRFreeScreenResources(displayX11ScreenResources[i]);
+        //displayX11ScreenResources[i] = NULL;
+    }
+
+    // Reset our binding to presentation_feedback extension if this is our last onscreen window to close:
+    presentation_destroy(wayland_pres);
+    wayland_pres = NULL;
+
+    // Destroy our reference to the registry:
+    wl_registry_destroy(wl_registry);
+    wl_registry = NULL;
+
+    // Release our shared waffle display connection:
+    waffle_display_disconnect(waffle_display);
+    waffle_display = NULL;
 
     PsychUnlockDisplay();
 
@@ -508,7 +558,7 @@ void PsychCleanupDisplayGlue(void)
     PsychDestroyMutex(&displayLock);
 
     // All connections should be closed now. We can't NULL-out the display list, but
-    // Matlab will flush the Screen - Mexfile anyway...
+    // our scripting host environment will flush the Screen - Mexfile anyway...
     return;
 }
 
