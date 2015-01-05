@@ -4169,11 +4169,11 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
     if (windowRecord->windowType != kPsychDoubleBufferOnscreen) {
         PsychErrorExitMsg(PsychError_InvalidWindowRecord, "Tried to query/measure monitor refresh interval on a window that's not double-buffered and on-screen.");
     }
-    
+
     // Calibration run requested?
     if (*numSamples > 0) {
         // Calibration run of 'numSamples' requested. Let's do it.
-        
+
         if (PsychPrefStateGet_Verbosity()>4) {
             // Allocate a sample logbuffer for maxsecs duration at 1000 hz refresh:
             maxlogsamples =  (int) (ceil(*maxsecs) * 1000);
@@ -4194,17 +4194,17 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
 
         // Disable any shaders:
         PsychSetShader(windowRecord, 0);
-        
+
         // ...and immediately disable it in imagingmode, because it won't be the system backbuffer,
         // but a FBO -- which would break sync of glFinish() with bufferswaps and vertical retrace.
         if ((windowRecord->imagingMode > 0) && (windowRecord->imagingMode != kPsychNeedFastOffscreenWindows)) PsychSetDrawingTarget(NULL);
-        
+
         glDrawBuffer(GL_BACK_LEFT);
-        
+
         PsychGetAdjustedPrecisionTimerSeconds(&tnew);
         tstart = tnew;
         told = -1;
-        
+
         // Need to redraw our splash image, as at least under Linux with the FOSS stack
         // in DRI3/Present mode, OpenGL is n-buffered with n dynamic but n > 2, ie.,
         // our old double-buffering assumption no longer holds:
@@ -4261,7 +4261,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
             if (told > 0) {
                 // Compute duration of this refresh interval in tnew:
                 tdur = tnew - told;
-                
+
                 // This is a catch for complete sync-failure:
                 // tdur < 0.004 can happen occasionally due to operating system scheduling jitter,
                 // in this case tdur will be >> 1 monitor refresh for next iteration. Both samples
@@ -4276,6 +4276,11 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                 // the "standard-timeslicing quantum" of the MacOS-X scheduler... ...Wonderful world of
                 // operating system design and unintended side-effects for poor psychologists... ;-)
                 fallthroughcount = (tdur < 0.004) ? fallthroughcount+1 : 0;
+
+                // Shorten our measured time sample by the delay introduced by a potentially running
+                // and interfering compositor, so we discount that confound. Needed, e.g., for Windows DWM
+                // and Wayland + Weston, at least as of Weston 1.6.:
+                tdur = PsychOSAdjustForCompositorDelay(windowRecord, tdur);
 
                 // We accept the measurement as valid if either no intervalHint is available as reference or
                 // we are in an interval between +/-20% of the hint.
@@ -4301,7 +4306,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
 
                     // Update reference timestamp:
                     told = tnew;
-                    
+
                     // Pause for 2 msecs after a valid sample was taken. This to guarantee we're out
                     // of the VBL period of the successfull swap.
                     PsychWaitIntervalSeconds(0.002);
@@ -4320,7 +4325,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                     // If we'd reset our told at each invalid sample, we would need over 3 times the amount of
                     // samples for a useable calibration --> No go. Now we wait for 2 msecs after each successfull
                     // sample (see above), so the VBL period will be over before we manage to try to swap again.
-                    
+
                     // Reinitialize told to tnew, otherwise errors can accumulate:
                     told = tnew;
 
@@ -4328,7 +4333,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                     // of the VBL period of the successfull swap.
                     PsychWaitIntervalSeconds(0.002);
                 }
-                
+
                 // Store current sample in samplebuffer if requested:
                 if (samples && i < maxlogsamples) samples[i] = tdur;
             }
@@ -4340,12 +4345,12 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                 // of the VBL period of the successfull swap.
                 PsychWaitIntervalSeconds(0.002);
             }
-            
+
         } // Next measurement loop iteration...
-        
+
         // Switch back to old scheduling after timing tests:
         PsychRealtimePriority(false);
-        
+
         // Ok, now we should have a pretty good estimate of IFI.
         if ((windowRecord->nrIFISamples <= 0) && (PsychPrefStateGet_Verbosity() > 1)) {
             printf("PTB-WARNING: Couldn't even collect one single valid flip interval sample! Sanity range checks failed!\n");
@@ -4366,10 +4371,10 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                 printf("PTB-WARNING: or the mechanism for detection of swap completion is broken. In any case, this is an operating system or gfx-driver bug!\n");
             }
         }
-        
+
         *numSamples = (int) n;
         *stddev = tstddev;
-        
+
         // Verbose output requested? We dump our whole buffer of samples to the console:
         if (samples) {
             printf("\n\nPTB-DEBUG: Output of all acquired samples of calibration run follows:\n");
@@ -4378,7 +4383,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
             free(samples);
             samples = NULL;
         }
-        
+
     } // End of IFI measurement code.
     else {
         // No measurements taken...

@@ -215,18 +215,6 @@ wayland_feedback_presented(void *data,
     windowRecord->reference_ust = wayland_feedback->ust;
     windowRecord->swapcompletiontype = flags;
 
-    // If we got a too large measured video VideoRefreshInterval due to compositor lag during
-    // calibration then just force it to nominal refresh interval for the time being, as we
-    // need this to compensate for compositor lag during runtime:
-    // TODO: Find something better than this hack in the future...
-    if ((windowRecord->VideoRefreshInterval > 0) && (refresh_nsec > 0) &&
-        (windowRecord->VideoRefreshInterval > 1.5 * ((double) refresh_nsec) / 1e9)) {
-        windowRecord->VideoRefreshInterval = (double) refresh_nsec / 1e9;
-
-        windowRecord->nrIFISamples = 1;
-        windowRecord->IFIRunningSum = windowRecord->VideoRefreshInterval;
-    }
-
     // Delete our own completion wayland_feedback container if swap completion logging
     // isn't enabled:
     if (windowRecord->swapevents_enabled == 0) destroy_wayland_feedback(wayland_feedback);
@@ -961,36 +949,39 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // to enable beamposition based timestamping and other special goodies:
     if (open_windowcount == 1) PsychScreenMapRadeonCntlMemory();
 
-    // Wait 250 msecs extra to give desktop compositor a chance to settle:
-    // TODO CHECK likely not needed on Wayland: PsychYieldIntervalSeconds(0.25);
-
     PsychLockDisplay();
 
     // Retrieve modeline of current video mode on primary crtc for the screen to which
     // this onscreen window is assigned. Could also query useful info about crtc, but let's not
     // overdo it in the first iteration...
-//     XRRCrtcInfo *crtc_info = NULL;
-//     XRRModeInfo *mode = PsychOSGetModeLine(screenSettings->screenNumber, 0, &crtc_info);
-//     if (mode) {
-//         // Assign modes display height aka vactive or vdisplay as startline of vblank interval:
-//         windowRecord->VBL_Startline = mode->height;
-//
-//         // Assign vbl endline as vtotal - 1:
-//         windowRecord->VBL_Endline = mode->vTotal - 1;
-//
-//         // Check for output display rotation enabled. Will likely impair timing/timestamping
-//         // because it uses copy-swaps via an intermediate shadow framebuffer to do rotation
-//         // during copy-swap blit, instead of via rotated crtc scanout, as most crtc's don't
-//         // support this in hardware:
-//         if ((crtc_info->rotation != RR_Rotate_0) && (PsychPrefStateGet_Verbosity() > 1)) {
-//             printf("PTB-WARNING: Your primary output display has hardware rotation enabled. It is not displaying in upright orientation.\n");
-//             printf("PTB-WARNING: On many graphics cards, this will cause unreliable stimulus presentation timing and timestamping.\n");
-//             printf("PTB-WARNING: If you want non-upright stimulus presentation, look at 'help PsychImaging' on how to achieve this in\n");
-//             printf("PTB-WARNING: a way that doesn't impair timing. The subfunctions 'FlipHorizontal' and 'FlipVertical' are what you probably need.\n");
-//         }
-//
-//         XRRFreeCrtcInfo(crtc_info);
-//     }
+    XRRCrtcInfo *crtc_info = NULL;
+    XRRModeInfo *mode = PsychOSGetModeLine(screenSettings->screenNumber, 0, &crtc_info);
+    if (mode) {
+        // Assign modes display height aka vactive or vdisplay as startline of vblank interval:
+        windowRecord->VBL_Startline = mode->height;
+
+        // Assign vbl endline as vtotal - 1:
+        // TODO: Don't know how to get this on Wayland, but not critical, as it would
+        // only be needed for the beamposition timestamping fallback, which itself
+        // should usually not be needed due to present_feedback extension:
+        // windowRecord->VBL_Endline = mode->vTotal - 1;
+
+        // Check for output display rotation enabled. Will likely impair timing/timestamping
+        // because it uses copy-swaps via an intermediate shadow framebuffer to do rotation
+        // during copy-swap blit, instead of via rotated crtc scanout, as most crtc's don't
+        // support this in hardware:
+        // TODO: Wayland is more clever here, but need to investigate how this maps to
+        // our standard method of solving such issues via imaging pipeline. Leave warning
+        // of for the moment.
+        //if ((crtc_info->rotation != RR_Rotate_0) && (PsychPrefStateGet_Verbosity() > 1)) {
+        //    printf("PTB-WARNING: Your primary output display has hardware rotation enabled. It is not displaying in upright orientation.\n");
+        //    printf("PTB-WARNING: On many graphics cards, this will cause unreliable stimulus presentation timing and timestamping.\n");
+        //    printf("PTB-WARNING: If you want non-upright stimulus presentation, look at 'help PsychImaging' on how to achieve this in\n");
+        //    printf("PTB-WARNING: a way that doesn't impair timing. The subfunctions 'FlipHorizontal' and 'FlipVertical' are what you probably need.\n");
+        //}
+
+        XRRFreeCrtcInfo(crtc_info);
+    }
 
     PsychUnlockDisplay();
 
@@ -1858,10 +1849,13 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
  */
 double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime)
 {
+    double nominalIFI = PsychGetNominalFramerate(windowRecord->screenNumber);
+    if (nominalIFI > 0) nominalIFI = 1.0 / nominalIFI;
+
     // Need to compensate for Waylands (or only Westons?) 1 frame composition lag:
     if (!(windowRecord->specialflags & kPsychOpenMLDefective)) {
-        targetTime -= windowRecord->VideoRefreshInterval;
-        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Compensating for Wayland/Weston 1 frame composition lag of %f msecs.\n", windowRecord->VideoRefreshInterval * 1000.0);
+        targetTime -= nominalIFI;
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Compensating for Wayland/Weston 1 frame composition lag of %f msecs.\n", nominalIFI * 1000.0);
     }
 
     return(targetTime);
