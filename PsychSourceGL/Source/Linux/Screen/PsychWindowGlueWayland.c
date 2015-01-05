@@ -71,6 +71,8 @@ extern struct wl_compositor* wl_compositor;
 extern EGLDisplay egl_display;
 
 extern uint32_t wayland_presentation_clock_id;
+// wl_output* for all screens, from PsychScreenGlueWayland.c:
+extern struct wl_output* displayWaylandOutputs[kPsychMaxPossibleDisplays];
 
 // From PsychScreenGlue.c:
 struct presentation *get_wayland_presentation_extension(PsychWindowRecordType* windowRecord);
@@ -499,10 +501,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // HACK TODO:
     windowRecord->targetSpecific.privDpy = NULL;
 
-    // Check if this should be a fullscreen window, and if not, what its dimensions
-    // should be:
+    // Check if this should be a fullscreen window:
     PsychGetScreenRect(screenSettings->screenNumber, screenrect);
-    if (PsychMatchRect(screenrect, windowRecord->rect)) {
+    if (PsychMatchRect(screenrect, windowRecord->rect)) windowRecord->specialflags |= kPsychIsFullscreenWindow;
+
+    PsychGetGlobalScreenRect(screenSettings->screenNumber, screenrect);
+    if (PsychMatchRect(screenrect, windowRecord->rect)) windowRecord->specialflags |= kPsychIsFullscreenWindow;
+
+    if (windowRecord->specialflags & kPsychIsFullscreenWindow) {
         // This is supposed to be a fullscreen window with the dimensions of
         // the current display/desktop:
         x = 0;
@@ -749,16 +755,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 //         XFixesDestroyRegion(dpy, region);
     }
 
-    // Make sure a potential slaveWindow of us resides on the same X-Screen == has same screenNumber as us,
-    // otherwise trying to perform OpenGL context resource sharing would end badly:
-    // TODO CHECK: Should not matter anymore on Wayland + EGL:
-    if ((windowRecord->slaveWindow) && (windowRecord->slaveWindow->screenNumber != screenSettings->screenNumber)) {
-        // Ohoh! Let's abort with some more helpful error message than a simple hard application crash:
-        if (PsychPrefStateGet_Verbosity() > 0) printf("\nPTB-ERROR:[waffle_context_create() resource sharing] Our peer window resides on a different screen, which is forbidden. Aborting.\n\n");
-//         PsychUnlockDisplay();
-//         return (FALSE);
-    }
-
     // Create associated OpenGL rendering context: We use ressource
     // sharing of textures, display lists, FBO's and shaders if 'slaveWindow'
     // is assigned for that purpose as master-window.
@@ -857,8 +853,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             // size of the surface, ie., the mode with the smallest resolution that can contain the surface. Add black
             // borders for padding if a perfect fit isn't possible.
             // TODO implement: 0 = Target refresh rate -- Zero == Don't change rate.
-            // TODO implement: NULL = Output to display the surface fullscreen -- NULL == Whatever you like.
-            wl_shell_surface_set_fullscreen(wayland_window->wl_shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER, 0, NULL);
+            printf("OPENING FULLSCREEN on screen %i -- wl_output %p\n", screenSettings->screenNumber, displayWaylandOutputs[screenSettings->screenNumber]);
+            wl_shell_surface_set_fullscreen(wayland_window->wl_shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER, 0, displayWaylandOutputs[screenSettings->screenNumber]);
         }
         else {
             // A windowed window aka non-fullscreen, or a transparent fullscreen window.

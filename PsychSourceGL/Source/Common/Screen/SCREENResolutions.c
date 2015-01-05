@@ -145,7 +145,7 @@ PsychError SCREENConfigureDisplay(void)
 		outputId = 0;
 		PsychCopyInIntegerArg(3, FALSE, &outputId);
         
-		Display *dpy;
+		CGDirectDisplayID dpy;
 		int screen;
 		float brightness;
 		double nbrightness;

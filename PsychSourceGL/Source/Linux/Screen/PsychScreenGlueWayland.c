@@ -159,6 +159,9 @@ struct output_info {
 
 // Array of information about all available Wayland outputs:
 static struct output_info* displayOutputs[kPsychMaxPossibleDisplays];
+// Same as above, but only stores a pointer to the wl_output:
+// Currently shared with PsychWindoeGlueWayland.c:
+struct wl_output* displayWaylandOutputs[kPsychMaxPossibleDisplays];
 
 static void
 print_output_info(void *data)
@@ -531,7 +534,10 @@ void InitCGDisplayIDList(void)
     };
 
     // NULL-out array of displays:
-    for (i = 0; i < kPsychMaxPossibleDisplays; i++) displayCGIDs[i] = NULL;
+    for (i = 0; i < kPsychMaxPossibleDisplays; i++) {
+        displayCGIDs[i] = NULL;
+        displayWaylandOutputs[i] = NULL;
+    }
 
     // Preinit screen to head mappings to identity default:
     PsychInitScreenToHeadMappings(0);
@@ -607,7 +613,10 @@ void InitCGDisplayIDList(void)
 
     // Setup the screenNumber --> Wayland display mappings:
     for (i = 0; i < numDisplays && i < kPsychMaxPossibleDisplays; i++) {
-        displayCGIDs[i] = NULL;
+        // Store the wl_output* handle for retrieval by our client code:
+        displayWaylandOutputs[i] = displayOutputs[i]->output;
+
+        // Detailed info about enumerated output:
         if (PsychPrefStateGet_Verbosity() > 2) print_output_info(displayOutputs[i]);
 
         // Set reference crtc == our output info for primary output to always 0,
@@ -641,6 +650,8 @@ void PsychCleanupDisplayGlue(void)
         if (displayOutputs[i]) {
             destroy_output_info(displayOutputs[i]);
             displayOutputs[i] = NULL;
+            displayWaylandOutputs[i] = NULL;
+            displayCGIDs[i] = NULL;
         }
 
         // NULL-Out xinput extension data:

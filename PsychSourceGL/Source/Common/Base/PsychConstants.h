@@ -85,18 +85,24 @@ typedef unsigned char		psych_bool;
         // We don't have these types for Linux, so we provide a little hack to
         // make the compiler happy:
         typedef int CGDisplayCount;
+
+        #ifdef PTB_USE_WAYLAND
+        // CGDirectDisplayID is typedef'd to a void* connection handle for now:
+        typedef void* CGDirectDisplayID;
+        #else
         // CGDirectDisplayID is typedef'd to a X11 display connection handle:
         typedef Display* CGDirectDisplayID;
+        #endif
         typedef int CGDisplayErr;
         typedef unsigned int CFDictionaryRef;
-		
-		// Datatype for condition variables:
-		typedef pthread_cond_t		psych_condition;		
-		// Datatype for Mutex Locks:
-		typedef pthread_mutex_t		psych_mutex;
-		// Datatype for threads:
-		typedef pthread_t			psych_thread;
-		typedef pthread_t			psych_threadid;		
+
+        // Datatype for condition variables:
+        typedef pthread_cond_t		psych_condition;
+        // Datatype for Mutex Locks:
+        typedef pthread_mutex_t		psych_mutex;
+        // Datatype for threads:
+        typedef pthread_t			psych_thread;
+        typedef pthread_t			psych_threadid;
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
