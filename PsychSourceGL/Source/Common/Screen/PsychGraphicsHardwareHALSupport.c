@@ -887,7 +887,7 @@ void PsychInitScreenToHeadMappings(int numDisplays)
 
         for (j = 1; j < kPsychMaxPossibleCrtcs; j++) {
             displayScreensToPipes[i][j] = -1;
-            displayScreensToCrtcIds[i][j] = -1;   
+            displayScreensToCrtcIds[i][j] = -1;
         }
 
         // We also setup beamposition bias values to "neutral defaults":

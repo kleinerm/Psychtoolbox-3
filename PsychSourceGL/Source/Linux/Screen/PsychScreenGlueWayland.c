@@ -18,6 +18,22 @@
     DESCRIPTION:
 
         Functions in this file comprise an abstraction layer for probing and controlling screen state on Wayland.
+
+    TODO: Implement the following functions:
+
+    PsychGetCGModeFromVideoSetting
+    PsychGetScreenDepth
+    PsychSetNominalFramerate
+    PsychOSSetOutputConfig
+    PsychSetScreenSettings
+    PsychRestoreScreenSettings
+    PsychOSDefineX11Cursor
+    PsychHideCursor
+    PsychShowCursor
+    PsychPositionCursor
+    PsychReadNormalizedGammaTable
+    PsychLoadNormalizedGammaTable
+
 */
 
 #ifdef PTB_USE_WAYLAND
@@ -95,6 +111,228 @@ struct presentation *wayland_pres = NULL;
 uint32_t wayland_presentation_clock_id;
 
 static struct wl_registry *wl_registry = NULL;
+static psych_bool wayland_roundtrip_needed = FALSE;
+
+// Helpers so we can easily use/include/upgrade to Weston client sample code:
+static void *
+xmalloc(size_t s)
+{
+    return(malloc(s));
+}
+
+static void *
+xzalloc(size_t s)
+{
+    return(calloc(1, s));
+}
+
+static char *
+xstrdup(const char *s)
+{
+    return(strdup(s));
+}
+
+struct output_mode {
+    struct wl_list link;
+
+    uint32_t flags;
+    int32_t width, height;
+    int32_t refresh;
+};
+
+struct output_info {
+    // struct global_info global;
+
+    struct wl_output *output;
+
+    struct {
+        int32_t x, y;
+        int32_t physical_width, physical_height;
+        enum wl_output_subpixel subpixel;
+        enum wl_output_transform output_transform;
+        char *make;
+        char *model;
+    } geometry;
+
+    struct wl_list modes;
+};
+
+// Array of information about all available Wayland outputs:
+static struct output_info* displayOutputs[kPsychMaxPossibleDisplays];
+
+static void
+print_output_info(void *data)
+{
+    struct output_info *output = data;
+    struct output_mode *mode;
+    const char *subpixel_orientation;
+    const char *transform;
+
+    //print_global_info(data);
+
+    switch (output->geometry.subpixel) {
+        case WL_OUTPUT_SUBPIXEL_UNKNOWN:
+            subpixel_orientation = "unknown";
+            break;
+        case WL_OUTPUT_SUBPIXEL_NONE:
+            subpixel_orientation = "none";
+            break;
+        case WL_OUTPUT_SUBPIXEL_HORIZONTAL_RGB:
+            subpixel_orientation = "horizontal rgb";
+            break;
+        case WL_OUTPUT_SUBPIXEL_HORIZONTAL_BGR:
+            subpixel_orientation = "horizontal bgr";
+            break;
+        case WL_OUTPUT_SUBPIXEL_VERTICAL_RGB:
+            subpixel_orientation = "vertical rgb";
+            break;
+        case WL_OUTPUT_SUBPIXEL_VERTICAL_BGR:
+            subpixel_orientation = "vertical bgr";
+            break;
+        default:
+            fprintf(stderr, "unknown subpixel orientation %u\n",
+                    output->geometry.subpixel);
+            subpixel_orientation = "unexpected value";
+            break;
+    }
+
+    switch (output->geometry.output_transform) {
+        case WL_OUTPUT_TRANSFORM_NORMAL:
+            transform = "normal";
+            break;
+        case WL_OUTPUT_TRANSFORM_90:
+            transform = "90°";
+            break;
+        case WL_OUTPUT_TRANSFORM_180:
+            transform = "180°";
+            break;
+        case WL_OUTPUT_TRANSFORM_270:
+            transform = "270°";
+            break;
+        case WL_OUTPUT_TRANSFORM_FLIPPED:
+            transform = "flipped";
+            break;
+        case WL_OUTPUT_TRANSFORM_FLIPPED_90:
+            transform = "flipped 90°";
+            break;
+        case WL_OUTPUT_TRANSFORM_FLIPPED_180:
+            transform = "flipped 180°";
+            break;
+        case WL_OUTPUT_TRANSFORM_FLIPPED_270:
+            transform = "flipped 270°";
+            break;
+        default:
+            fprintf(stderr, "unknown output transform %u\n",
+                    output->geometry.output_transform);
+            transform = "unexpected value";
+            break;
+    }
+
+    printf("\tx: %d, y: %d,\n",
+           output->geometry.x, output->geometry.y);
+    printf("\tphysical_width: %d mm, physical_height: %d mm,\n",
+           output->geometry.physical_width,
+           output->geometry.physical_height);
+    printf("\tmake: '%s', model: '%s',\n",
+           output->geometry.make, output->geometry.model);
+    printf("\tsubpixel_orientation: %s, output_transform: %s,\n",
+           subpixel_orientation, transform);
+
+    wl_list_for_each(mode, &output->modes, link) {
+        printf("\tmode:\n");
+
+        printf("\t\twidth: %d px, height: %d px, refresh: %.f Hz,\n",
+               mode->width, mode->height,
+               (float) mode->refresh / 1000);
+
+        printf("\t\tflags:");
+        if (mode->flags & WL_OUTPUT_MODE_CURRENT)
+            printf(" current");
+        if (mode->flags & WL_OUTPUT_MODE_PREFERRED)
+            printf(" preferred");
+        printf("\n");
+    }
+}
+
+static void
+output_handle_geometry(void *data, struct wl_output *wl_output,
+                       int32_t x, int32_t y,
+                       int32_t physical_width, int32_t physical_height,
+                       int32_t subpixel,
+                       const char *make, const char *model,
+                       int32_t output_transform)
+{
+    struct output_info *output = data;
+
+    output->geometry.x = x;
+    output->geometry.y = y;
+    output->geometry.physical_width = physical_width;
+    output->geometry.physical_height = physical_height;
+    output->geometry.subpixel = subpixel;
+    output->geometry.make = xstrdup(make);
+    output->geometry.model = xstrdup(model);
+    output->geometry.output_transform = output_transform;
+}
+
+static void
+output_handle_mode(void *data, struct wl_output *wl_output,
+                   uint32_t flags, int32_t width, int32_t height,
+                   int32_t refresh)
+{
+    struct output_info *output = data;
+    struct output_mode *mode = xmalloc(sizeof *mode);
+
+    mode->flags = flags;
+    mode->width = width;
+    mode->height = height;
+    mode->refresh = refresh;
+
+    wl_list_insert(output->modes.prev, &mode->link);
+}
+
+static const struct wl_output_listener output_listener = {
+    output_handle_geometry,
+    output_handle_mode,
+    0,
+    0
+};
+
+static void
+destroy_output_info(void *data)
+{
+    struct output_info *output = data;
+    struct output_mode *mode, *tmp;
+
+    wl_output_destroy(output->output);
+
+    if (output->geometry.make != NULL)
+        free(output->geometry.make);
+    if (output->geometry.model != NULL)
+        free(output->geometry.model);
+
+    wl_list_for_each_safe(mode, tmp, &output->modes, link) {
+        wl_list_remove(&mode->link);
+        free(mode);
+    }
+}
+
+static void add_output_info(struct output_info** outputSlot, uint32_t id, uint32_t version)
+{
+    struct output_info *output = xzalloc(sizeof *output);
+
+    // init_global_info(info, &output->global, id, "wl_output", version);
+    // output->global.print = print_output_info;
+    // output->global.destroy = destroy_output_info;
+    *outputSlot = output;
+
+    wl_list_init(&output->modes);
+
+    output->output = wl_registry_bind(wl_registry, id,
+                                      &wl_output_interface, 1);
+    wl_output_add_listener(output->output, &output_listener,
+                           output);
+    wayland_roundtrip_needed = TRUE;
+}
 
 static void
 wayland_set_presentation_clock_id(void *data, struct presentation *presentation,
@@ -120,18 +358,30 @@ wayland_registry_listener_global(void *data,
 
     if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-DEBUG: Wayland registry extension candidate: %s\n", interface);
 
-    // Only look for presentation interface v1:
-    if (strcmp(interface, "presentation") || (version != 1)) return;
+    // Look for presentation interface v1+:
+    if (!strcmp(interface, "presentation") && (version >= 1)) {
+        wayland_pres = wl_registry_bind(registry, name, &presentation_interface, 1);
+        if (!wayland_pres) {
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: wl_registry_bind for presentation_interface failed!\n");
+            return;
+        }
 
-    // Got it:
-    wayland_pres = wl_registry_bind(registry, name, &presentation_interface, 1);
-    if (!wayland_pres) {
-        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: wl_registry_bind for presentation_interface failed!\n");
-        return;
+        presentation_add_listener(wayland_pres, &wayland_presentation_listener, self);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Wayland presentation_interface bound!\n");
     }
 
-    presentation_add_listener(wayland_pres, &wayland_presentation_listener, self);
-    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Wayland presentation_interface bound!\n");
+    // Look for Wayland outputs ~ video outputs ~ displays ~ our PTB screens:
+    // Not yet sure if wl_output ~ PTB screen is the optimal abstraction/mapping,
+    // but as a starter...
+    if (!strcmp(interface, "wl_output") && (version >= 1)) {
+        add_output_info(&displayOutputs[numDisplays], name, version);
+        if (PsychPrefStateGet_Verbosity() > 2) {
+            printf("PTB-DEBUG: New output display screen %i enumerated.\n", numDisplays);
+        }
+        numDisplays++;
+    }
+
+    return;
 }
 
 static void
@@ -186,177 +436,35 @@ static void InitXInputExtensionForDisplay(CGDirectDisplayID dpy, int idx)
     return;
 }
 
-// ProcessRandREvents: Must be called called under display lock protection!
-static void ProcessRandREvents(int screenNumber)
+static void ProcessWaylandEvents(int screenNumber)
 {
-//     XEvent evt;
-//
-//     if (!has_xrandr_1_2) return;
-//
-//     // Check for screen config change events and dispatch them:
-//     while (XCheckTypedWindowEvent(displayCGIDs[screenNumber], RootWindow(displayCGIDs[screenNumber], displayX11Screens[screenNumber]), xr_event + RRScreenChangeNotify, &evt)) {
-//         // Screen changed: Dispatch new configuration to X-Lib:
-//         XRRUpdateConfiguration(&evt);
-//     }
+    // Block until the Wayland server has processed all pending requests and
+    // has sent out pending events on all event queues. This should ensure
+    // that the registry listener has received announcement of the shell and
+    // compositor.
+    do {
+        wayland_roundtrip_needed = FALSE;
+        if (wl_display_roundtrip(wl_display) == -1) {
+            if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: ProcessWaylandEvents(): wl_display_roundtrip failed!\n");
+        }
+        // Repeat until everything is enumerated.
+    } while (wayland_roundtrip_needed);
 }
 
-// GetRandRScreenConfig: Must be called called under display lock protection!
-static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
+struct output_mode* PsychWaylandGetCurrentMode(int screenId)
 {
-//     int major, minor;
-//     int o, m, num_crtcs, isPrimary, crtcid, crtccount;
-//     int primaryOutput = -1, primaryCRTC = -1, primaryCRTCIdx = -1;
-//     int crtcs[100];
-//
-//     // Preinit to "undefined":
-//     displayX11ScreenResources[idx] = NULL;
-//
-//     // XRandR extension supported? If so do basic init:
-//     if (!XRRQueryExtension(dpy, &xr_event, &xr_error) ||
-//         !XRRQueryVersion(dpy, &major, &minor)) {
-//         printf("PTB-WARNING: XRandR extension unsupported. Display infos and configuration functions will be very limited!\n");
-//         return;
-//     }
-//
-//     // Detect version of XRandR:
-//     if (major > 1 || (major == 1 && minor >= 2)) has_xrandr_1_2 = TRUE;
-//     if (major > 1 || (major == 1 && minor >= 3)) has_xrandr_1_3 = TRUE;
-//
-//     // Select screen configuration notify events to get delivered to us:
-//     Window root = RootWindow(dpy, displayX11Screens[idx]);
-//     XRRSelectInput(dpy, root, RRScreenChangeNotifyMask);
-//
-//     // Fetch current screen configuration info for this screen and display:
-//     XRRScreenResources* res = XRRGetScreenResourcesCurrent(dpy, root);
-//     displayX11ScreenResources[idx] = res;
-//     if (NULL == res) {
-//         printf("PTB-WARNING: Could not query configuration of x-screen %i on display %s. Display infos and configuration will be very limited.\n",
-//                 displayX11Screens[idx], DisplayString(dpy));
-//         return;
-//     }
-//
-//     if (!has_xrandr_1_2) {
-//         printf("PTB-WARNING: XRandR version 1.2 unsupported! Could not query useful info for x-screen %i on display %s. Infos and configuration will be very limited.\n",
-//                 displayX11Screens[idx], DisplayString(dpy));
-//         return;
-//     }
-//
-//     // Total number of assigned crtc's for this screen:
-//     crtccount = 0;
-//
-//     // Iterate over all outputs for this screen:
-//     for (o = 0; o < res->noutput; o++) {
-//         XRROutputInfo *output_info = XRRGetOutputInfo(dpy, res, res->outputs[o]);
-//         if (!output_info) {
-//             printf("PTB-WARNING: Could not get output info for %i'th output of screen %i [display %s]!\n", o, displayX11Screens[idx], DisplayString(dpy));
-//             continue;
-//         }
-//
-//         // Get info about this output:
-//         if (has_xrandr_1_3 && (XRRGetOutputPrimary(dpy, root) > 0)) {
-//             isPrimary = (XRRGetOutputPrimary(dpy, root) == res->outputs[o]) ? 1 : 0;
-//         }
-//         else {
-//             isPrimary = -1;
-//         }
-//
-//         for (crtcid = 0; crtcid < res->ncrtc; crtcid++) {
-//             if (res->crtcs[crtcid] == output_info->crtc) break;
-//         }
-//         if (crtcid == res->ncrtc) crtcid = -1;
-//
-//         // Store crtc for this output:
-//         crtcs[o] = crtcid;
-//
-//         if (PsychPrefStateGet_Verbosity() > 3) {
-//             printf("PTB-INFO: Display '%s' : X-Screen %i : Output %i [%s]: %s : ", DisplayString(dpy), displayX11Screens[idx], o, (const char*) output_info->name, (isPrimary > -1) ? ((isPrimary == 1) ? "Primary output" : "Secondary output") : "Unknown output priority");
-//             printf("%s : CRTC %i [XID %i]\n", (output_info->connection == RR_Connected) ? "Connected" : "Offline", crtcid, (int) output_info->crtc);
-//         }
-//
-//         if ((isPrimary > 0) && (crtcid >= 0)) {
-//             primaryOutput = o;
-//             primaryCRTC = crtcid;
-//         }
-//
-//         // Is this output - and its crtc - really enabled for this screen?
-//         if (crtcid >=0) {
-//             // Yes: Add its crtcid to the list of crtc's for this screen:
-//             PsychSetScreenToHead(idx, crtcid, crtccount);
-//             PsychSetScreenToCrtcId(idx, minimum_crtcid, crtccount);
-//
-//             // Increment id of next allocated crtc scanout engine on GPU:
-//             // We assume they are allocated in the order of activated outputs,
-//             // e.g., first output of first X-Screen -> crtc 0, 2nd output of first
-//             // X-Screen -> crtc 1, first output of 2nd X-Screen -> crtc 2 etc.
-//             //
-//             // This is as heuristic as previous approach, but it should continue
-//             // work as well or as bad as previous one, except it should fix the
-//             // problem reported in forum message #14200 for AMD Catalyst driver.
-//             // It should work for bog-standard ZaphodHead setups. It will work in
-//             // any case on single-display setups or multi-display setups where a single
-//             // X-Screen spans multiple display outputs aka multiple crtcs.
-//             //
-//             // The working assumption is that the user of a ZaphodHead config assigned the different
-//             // GPU outputs, and thereby their associated physical crtc's, in an ascending order to
-//             // X-Screens. This is a reasonable assumption, but in no way guaranteed by the system.
-//             // Therefore this heuristic can go wrong on non-standard ZaphodHead Multi-X-Screen setups.
-//             // In such cases the user can always use the Screen('Preference', 'ScreenToHead', ...);
-//             // command or the PSYCHTOOLBOX_PIPEMAPPINGS environment variable to override the wrong
-//             // mapping, although it would be a pita for complex setups.
-//             minimum_crtcid++;
-//
-//             // Increment running count of active outputs (displays) attached to
-//             // the currently processed X-Screend idx:
-//             crtccount++;
-//         }
-//
-//         // Release info for this output:
-//         XRRFreeOutputInfo(output_info);
-//     }
-//
-//     // Found a defined primary output?
-//     if (primaryOutput == -1) {
-//         // Could not find primary output -- none defined. Use first connected
-//         // output as primary output:
-//         for (o = 0; o < res->noutput; o++) {
-//             XRROutputInfo *output_info = XRRGetOutputInfo(dpy, res, res->outputs[o]);
-//             if (output_info && (output_info->connection == RR_Connected) && (crtcs[o] >= 0)) {
-//                 primaryOutput = o;
-//                 primaryCRTC = crtcs[o];
-//                 XRRFreeOutputInfo(output_info);
-//                 break;
-//             }
-//
-//             if (output_info) XRRFreeOutputInfo(output_info);
-//         }
-//
-//         // Still undefined? Use first output as primary output:
-//         if (primaryOutput == -1) {
-//             primaryOutput = 0;
-//             primaryCRTC = (crtcs[0] >= 0) ? crtcs[0] : 0;
-//         }
-//     }
-//
-//     // Assign primary crtc of primary output - index 0 - as default display head for this screen:
-//     // We swap the contents of slot 0 - the primary crtc slot - and whatever slot currently
-//     // contains the crtcid of our primaryCRTC. This way we shuffle the primary crtc into the
-//     // 1st slot (zero):
-//     for (o = 0; o < crtccount; o++) {
-//         if (PsychScreenToHead(idx, o) == primaryCRTC) {
-//             PsychSetScreenToHead(idx, PsychScreenToHead(idx, 0), o);
-//             primaryCRTCIdx = PsychScreenToCrtcId(idx, o);
-//             PsychSetScreenToCrtcId(idx, PsychScreenToCrtcId(idx, 0), o);
-//         }
-//     }
-//
-//     PsychSetScreenToHead(idx, primaryCRTC, 0);
-//     PsychSetScreenToCrtcId(idx, primaryCRTCIdx, 0);
-//
-//     if (PsychPrefStateGet_Verbosity() > 2) {
-//         printf("PTB-INFO: Display '%s' : X-Screen %i : Assigning primary output as %i with RandR-CRTC %i and GPU-CRTC %i.\n", DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC, primaryCRTCIdx);
-//     }
-//
-    return;
+    struct output_info* output;
+    struct output_mode* mode;
+
+    if (screenId >= numDisplays || screenId < 0) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range");
+    output = displayOutputs[screenId];
+
+    wl_list_for_each(mode, &output->modes, link) {
+        if (mode->flags & WL_OUTPUT_MODE_CURRENT)
+            return(mode);
+    }
+
+    return(NULL);
 }
 
 // Linux only: Retrieve modeline and crtc_info for a specific output on a specific screen:
@@ -366,38 +474,54 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
 XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc)
 {
     int m;
-    XRRModeInfo *mode = NULL;
-//     XRRCrtcInfo *crtc_info = NULL;
-//
-//     // Query info about video modeline and crtc of output 'outputIdx':
-//     XRRScreenResources *res = displayX11ScreenResources[screenId];
-//     if (has_xrandr_1_2 && (PsychScreenToHead(screenId, outputIdx) >= 0)) {
-//         crtc_info = XRRGetCrtcInfo(displayCGIDs[screenId], res, res->crtcs[PsychScreenToHead(screenId, outputIdx)]);
-//
-//         for (m = 0; (m < res->nmode) && crtc_info; m++) {
-//             if (res->modes[m].id == crtc_info->mode) {
-//                 mode = &res->modes[m];
-//                 break;
-//             }
-//         }
-//     }
-//
-//     // Optionally return crtc_info in *crtc:
-//     if (crtc) {
-//         // Return crtc_info, if any - NULL otherwise:
-//         *crtc = crtc_info;
-//     }
-//     else {
-//         // crtc_info not required by caller. We release it:
-//         if (crtc_info) XRRFreeCrtcInfo(crtc_info);
-//     }
-//
-    return(mode);
+    static XRRModeInfo rrmode; // XRRAllocModeInfo (char *name, int nameLength);
+    struct output_info* output;
+    struct output_mode* mode;
+
+    if (screenId >= numDisplays || screenId < 0) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range");
+    output = displayOutputs[screenId];
+
+    memset(&rrmode, 0, sizeof(rrmode));
+    XRRCrtcInfo *crtc_info = calloc(1, sizeof(XRRCrtcInfo));
+
+    // Query info about video modeline and crtc of output 'outputIdx':
+    if (PsychScreenToHead(screenId, outputIdx) >= 0) {
+        // Get current video mode for output:
+        mode = PsychWaylandGetCurrentMode(screenId);
+
+        // Assign minimal needed info to satisfy our callers:
+        rrmode.width = mode->width;
+        rrmode.height = mode->height;
+
+        // Only fill (x,y) start position in compositor space:
+        crtc_info->x = output->geometry.x;
+        crtc_info->y = output->geometry.y;
+
+        // Not quite true, as this should be viewport size, not
+        // size of video mode:
+        crtc_info->width = mode->width;
+        crtc_info->height = mode->height;
+
+        // Could do rotation if we wanted...
+    }
+
+    // Optionally return crtc_info in *crtc:
+    if (crtc) {
+        // Return crtc_info, if any - NULL otherwise:
+        *crtc = crtc_info;
+    }
+    else {
+        // crtc_info not required by caller. We release it:
+        if (crtc_info) XRRFreeCrtcInfo(crtc_info);
+    }
+
+    // Return a pointer to our static rrmode. Welcome to hackistan!
+    return(&rrmode);
 }
 
 void InitCGDisplayIDList(void)
 {
-    int rc, i, j, k, count, scrnid;
+    int i;
 
     // Define waffle window system backend to use: Wayland only, obviously.
     static int32_t init_attrs[3] = {
@@ -469,17 +593,27 @@ void InitCGDisplayIDList(void)
     // has sent out pending events on all event queues. This should ensure
     // that the registry listener has received announcement of the shell and
     // compositor.
-    if (wl_display_roundtrip(wl_display) == -1) {
-        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: wl_display_roundtrip failed\n");
-        PsychErrorExitMsg(PsychError_system, "FATAL ERROR: Initialisation failed! Game over!");
-    }
+    do {
+        wayland_roundtrip_needed = FALSE;
+        if (wl_display_roundtrip(wl_display) == -1) {
+            if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: wl_display_roundtrip failed\n");
+            PsychErrorExitMsg(PsychError_system, "FATAL ERROR: Initialisation failed! Game over!");
+        }
+        // Repeat until everything is enumerated.
+    } while (wayland_roundtrip_needed);
 
-    // Query number of available screens on this X11 display:
-    count = 1; // ScreenCount(x11_dpy);
+    // Initialize screenId -> GPU headId mapping to identity mappings for numDisplays:
+    PsychInitScreenToHeadMappings(numDisplays);
 
     // Setup the screenNumber --> Wayland display mappings:
-    for (i = 0; i < count && i < kPsychMaxPossibleDisplays; i++) {
+    for (i = 0; i < numDisplays && i < kPsychMaxPossibleDisplays; i++) {
         displayCGIDs[i] = NULL;
+        if (PsychPrefStateGet_Verbosity() > 2) print_output_info(displayOutputs[i]);
+
+        // Set reference crtc == our output info for primary output to always 0,
+        // to create a screen == output mapping:
+        PsychSetScreenToHead(i, 0, 0);
+
         //displayX11Screens[i] = i;
         //xinput_info[i] = xinput_info[0];
         //xinput_ndevices[i] = xinput_ndevices[0];
@@ -488,19 +622,13 @@ void InitCGDisplayIDList(void)
         // GetRandRScreenConfig(x11_dpy, i);
     }
 
-    numDisplays = i;
-
     if (numDisplays > 1) printf("PTB-INFO: A total of %i Wayland display screens is available for use.\n", numDisplays);
-
-    // Initialize screenId -> GPU headId mapping to identity mappings:
-    PsychInitScreenToHeadMappings(numDisplays);
 
     return;
 }
 
 void PsychCleanupDisplayGlue(void)
 {
-    CGDirectDisplayID dpy, last_dpy;
     int i;
 
     // Make sure the mmio mapping is shut down:
@@ -509,27 +637,11 @@ void PsychCleanupDisplayGlue(void)
     PsychLockDisplay();
 
     // Go trough full screen list:
-    last_dpy = NULL;
     for (i = 0; i < PsychGetNumDisplays(); i++) {
-        // Get display-ptr for this screen:
-        PsychGetCGDisplayIDFromScreenNumber(&dpy, i);
-
-        // No Wayland display connection associated with this screen? Skip it.
-        if (!dpy) continue;
-
-//         // Did we close this connection already (dpy==last_dpy)?
-//         if (dpy != last_dpy) {
-//             // Nope. Keep track of it...
-//             last_dpy = dpy;
-//
-//             // ...and close display connection to X-Server:
-//             XCloseDisplay(dpy);
-//
-//             // Release actual input info list for this display server connection:
-//             if (xinput_info[i]) {
-//                 // TODO: XIFreeDeviceInfo(xinput_info[i]);
-//             }
-//         }
+        if (displayOutputs[i]) {
+            destroy_output_info(displayOutputs[i]);
+            displayOutputs[i] = NULL;
+        }
 
         // NULL-Out xinput extension data:
         //xinput_info[i] = NULL;
@@ -574,11 +686,11 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
     int* x11_depths = NULL;
     int  i, count = 0;
 
-    if(screenNumber>=numDisplays || screenNumber < 0) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range"); //also checked within SCREENPixelSizes
+    if (screenNumber >= numDisplays || screenNumber < 0) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range");
 
-    // Update XLib's view of this screens configuration:
+    // Update out view of this screens configuration:
     PsychLockDisplay();
-//      ProcessRandREvents(screenNumber);
+//      ProcessWaylandEvents(screenNumber);
 //
 //     if (displayCGIDs[screenNumber]) {
 //         x11_depths = XListDepths(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), &count);
@@ -602,24 +714,10 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
 
 double PsychOSVRefreshFromMode(XRRModeInfo *mode)
 {
-//    double dot_clock = (double) mode->dotClock / 1000.0;
-    double vrefresh = 0;
-
-//     // Sanity check:
-//     if ((dot_clock <= 0) || (mode->hTotal < 1) || (mode->vTotal < 1)) return(0);
-//
-//     vrefresh = (((dot_clock * 1000.0) / mode->hTotal) * 1000.0) / mode->vTotal;
-//
-//     // Divide vrefresh by 1000 to get real Hz - value:
-//     vrefresh = vrefresh / 1000.0;
-//
-//     // Doublescan mode? If so, divide vrefresh by 2:
-//     if (mode->modeFlags & RR_DoubleScan) vrefresh /= 2.0;
-//
-//     // Interlaced mode? If so, multiply vrefresh by 2:
-//     if (mode->modeFlags & RR_Interlace) vrefresh *= 2.0;
-//
-    return(vrefresh);
+    // This routine is not really needed anymore. Only theoretically called from
+    // SCREENResolutions.c, where it gets skipped anyway. Just define a no-op
+    // implementation to avoid linker failure or ugly workarounds for the moment:
+    return(0);
 }
 
 /*   PsychGetAllSupportedScreenSettings()
@@ -630,101 +728,82 @@ double PsychOSVRefreshFromMode(XRRModeInfo *mode)
  */
 int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** widths, long** heights, long** hz, long** bpp)
 {
-//     int i, j, o, nsizes, nrates, numPossibleModes;
-//     XRRModeInfo *mode = NULL;
-//     XRROutputInfo *output_info = NULL;
+    int i, numPossibleModes;
+    struct output_info* output_info = NULL;
+    struct output_mode* mode = NULL;
 
-    if(screenNumber >= numDisplays || screenNumber < 0) PsychErrorExit(PsychError_invalidScumber);
+    if (screenNumber >= numDisplays || screenNumber < 0) PsychErrorExit(PsychError_invalidScumber);
 
-    // Only supported with RandR 1.2 or later:
-    if (!has_xrandr_1_2) return(0);
+    PsychLockDisplay();
+    ProcessWaylandEvents(screenNumber);
+    PsychUnlockDisplay();
 
-//     if (outputId < 0) {
-//         PsychLockDisplay();
-//
-//         // Iterate over all screen sizes and count number of size x refresh rate combos:
-//         numPossibleModes = 0;
-//         XRRScreenSize *scs = XRRSizes(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), &nsizes);
-//         for (i = 0; i < nsizes; i++) {
-//             XRRRates(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), i, &nrates);
-//             numPossibleModes += nrates;
-//         }
-//
-//         PsychUnlockDisplay();
-//
-//         // Allocate output arrays: These will get auto-released at exit from Screen():
-//         *widths  = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
-//         *heights = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
-//         *hz      = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
-//         *bpp     = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
-//
-//         // Reiterate and fill all slots:
-//         numPossibleModes = 0;
-//         for (i = 0; i < nsizes; i++) {
-//             PsychLockDisplay();
-//             short* rates = XRRRates(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), i, &nrates);
-//             PsychUnlockDisplay();
-//             for (j = 0; j < nrates; j++) {
-//                 (*widths)[numPossibleModes]  = (long) scs[i].width;
-//                 (*heights)[numPossibleModes] = (long) scs[i].height;
-//                 (*hz)[numPossibleModes]      = (long) rates[j];
-//                 (*bpp)[numPossibleModes]     = (long) PsychGetScreenDepthValue(screenNumber);
-//                 numPossibleModes++;
-//             }
-//         }
-//
-//         // Done:
-//         return(numPossibleModes);
-//     }
-//
-//     // Find crtc for given outputid and screen:
-//     XRRScreenResources *res = displayX11ScreenResources[screenNumber];
-//     if (outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid output index provided! No such output for this screen!");
-//
-//     outputId = PsychScreenToHead(screenNumber, outputId);
-//     if (outputId >= res->ncrtc || outputId < 0) PsychErrorExitMsg(PsychError_user, "Invalid output index provided! No such output for this screen!");
-//
-//     RRCrtc crtc = res->crtcs[outputId];
-//
-//     // Find output associated with the crtc for this outputId:
-//     PsychLockDisplay();
-//     for (o = 0; o < res->noutput; o++) {
-//         output_info = XRRGetOutputInfo(displayCGIDs[screenNumber], res, res->outputs[o]);
-//         if (output_info->crtc == crtc) break;
-//         XRRFreeOutputInfo(output_info);
-//     }
-//     PsychUnlockDisplay();
-//
-//     // Got it?
-//     if (o == res->noutput) PsychErrorExitMsg(PsychError_user, "Invalid output index provided! No such output for this screen!");
-//
-//     // Got it: output_info contains a list of all modes (XID's) supported by this
-//     // display output / crtc combo: Iterate over all of them and return them.
-//     numPossibleModes = output_info->nmode;
-//
-//     // Allocate output arrays: These will get auto-released at exit from Screen():
-//     *widths  = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
-//     *heights = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
-//     *hz      = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
-//     *bpp     = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
-//
-//     for (i = 0; i < numPossibleModes; i++) {
-//         // Fetch modeline for i'th mode:
-//         for (j = 0; j < res->nmode; j++) {
-//             if (res->modes[j].id == output_info->modes[i]) break;
-//         }
-//
-//         (*widths)[i] = (long) res->modes[j].width;
-//         (*heights)[i] = (long) res->modes[j].height;
-//         (*hz)[i] = (long) (PsychOSVRefreshFromMode(&res->modes[j]) + 0.5);
-//         (*bpp)[i] = (long) 32;
-//     }
-//
-//     // Free output info:
-//     XRRFreeOutputInfo(output_info);
-//
-//     // Done:
-//     return(numPossibleModes);
+    if (outputId < 0) {
+        // Count number of available modes:
+        numPossibleModes = 0;
+        output_info = displayOutputs[screenNumber];
+        wl_list_for_each(mode, &output_info->modes, link) {
+            numPossibleModes++;
+        }
+
+        // Allocate output arrays: These will get auto-released at exit from Screen():
+        *widths  = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
+        *heights = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
+        *hz      = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
+        *bpp     = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
+
+        // Reiterate and fill all slots:
+        i = 0;
+        wl_list_for_each(mode, &output_info->modes, link) {
+            if (i == numPossibleModes) break;
+
+            (*widths)[i]  = (long) mode->width;
+            (*heights)[i] = (long) mode->height;
+            (*hz)[i]      = (long) ((float) mode->refresh / 1000.0);
+            (*bpp)[i]     = (long) PsychGetScreenDepthValue(screenNumber);
+
+            i++;
+        }
+
+        // Done:
+        return(numPossibleModes);
+    }
+
+    if (outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid output index provided! No such output for this screen!");
+    outputId = PsychScreenToHead(screenNumber, outputId);
+    // A bit dull: We only have one output per screen atm., as we go with the screen == output model for initial Wayland enablement:
+    if (outputId >= 1 || outputId < 0) PsychErrorExitMsg(PsychError_user, "Invalid output index provided! No such output for this screen!");
+
+    // Now have literally the same code as for the outputId < 0 case above,
+    // just replace screenNumber with outputId:
+    // Count number of available modes:
+    numPossibleModes = 0;
+    output_info = displayOutputs[outputId];
+    wl_list_for_each(mode, &output_info->modes, link) {
+        numPossibleModes++;
+    }
+
+    // Allocate output arrays: These will get auto-released at exit from Screen():
+    *widths  = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
+    *heights = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
+    *hz      = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
+    *bpp     = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
+
+    // Reiterate and fill all slots:
+    i = 0;
+    wl_list_for_each(mode, &output_info->modes, link) {
+        if (i == numPossibleModes) break;
+
+        (*widths)[i]  = (long) mode->width;
+        (*heights)[i] = (long) mode->height;
+        (*hz)[i]      = (long) ((float) mode->refresh / 1000.0);
+        (*bpp)[i]     = (long) PsychGetScreenDepthValue(outputId);
+
+        i++;
+    }
+
+    // Done:
+    return(numPossibleModes);
 }
 
 /*
@@ -798,10 +877,10 @@ psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSe
 void PsychGetScreenDepth(int screenNumber, PsychDepthType *depth)
 {
     if (screenNumber>=numDisplays || screenNumber < 0) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range"); //also checked within SCREENPixelSizes
-
+// TODO: Make it work for real.
     // Update XLib's view of this screens configuration:
     PsychLockDisplay();
-//     ProcessRandREvents(screenNumber);
+//     ProcessWaylandEvents(screenNumber);
 //
 //     if (displayCGIDs[screenNumber]) {
 //         PsychAddValueToDepthStruct(DefaultDepth(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), depth);
@@ -815,91 +894,24 @@ void PsychGetScreenDepth(int screenNumber, PsychDepthType *depth)
 
 float PsychGetNominalFramerate(int screenNumber)
 {
-    if (PsychPrefStateGet_ConserveVRAM() & kPsychIgnoreNominalFramerate) return(0);
-
-    if(screenNumber >= numDisplays || screenNumber < 0)
-        PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetNominalFramerate() is out of range");
-
-    // No-Op on non-X11:
-    if (!displayCGIDs[screenNumber]) return(0);
-
-    // TODO No-Op for now:
-    return(0);
-
-#ifdef USE_VIDMODEEXTS
-
-    // Information returned by the XF86VidModeExtension:
-    XF86VidModeModeLine mode_line;  // The mode line of the current video mode.
-    int dot_clock;                  // The RAMDAC / TDMS pixel clock frequency.
-
-    // We start with a default vrefresh of zero, which means "couldn't query refresh from OS":
+    struct output_mode* mode = NULL;
     float vrefresh = 0;
 
-    // First we try to get modeline of primary crtc from RandR:
-    PsychLockDisplay();
-//     XRRModeInfo *mode = PsychOSGetModeLine(screenNumber, 0, NULL);
-    PsychUnlockDisplay();
+    if (PsychPrefStateGet_ConserveVRAM() & kPsychIgnoreNominalFramerate) return(0);
 
-    // Modeline with plausible values returned by RandR?
-    if (mode && (mode->hTotal > mode->width) && (mode->vTotal > mode->height)) {
-        if (PsychPrefStateGet_Verbosity() > 4) {
-            printf ("RandR: %s (0x%x) %6.1fMHz\n",
-                    mode->name, (int)mode->id,
-                    (double)mode->dotClock / 1000000.0);
-            printf ("        h: width  %4d start %4d end %4d total %4d skew %4d\n",
-                    mode->width, mode->hSyncStart, mode->hSyncEnd,
-                    mode->hTotal, mode->hSkew);
-            printf ("        v: height %4d start %4d end %4d total %4d\n",
-                    mode->height, mode->vSyncStart, mode->vSyncEnd, mode->vTotal);
-        }
+    if (screenNumber >= numDisplays || screenNumber < 0)
+        PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetNominalFramerate() is out of range");
 
-        dot_clock = (int) ((double) mode->dotClock / 1000.0);
-        mode_line.htotal = mode->hTotal;
-        mode_line.vtotal = mode->vTotal;
-        mode_line.flags = 0;
-        mode_line.flags |= (mode->modeFlags & RR_DoubleScan) ? 0x0020 : 0x0;
-        mode_line.flags |= (mode->modeFlags & RR_Interlace) ? 0x0010 : 0x0;
-    }
+    // Get current video mode for screenNumber:
+    mode = PsychWaylandGetCurrentMode(screenNumber);
+    if (mode == NULL) return(0);
 
-    // More child-protection: (utterly needed!)
-    if ((dot_clock <= 0) || (mode_line.htotal < 1) || (mode_line.vtotal < 1)) {
-        if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychGetNominalFramerate: Invalid modeline retrieved from RandR/VidModeExt. Giving up!\n");
-        return(0);
-    }
-
-    // Query vertical refresh rate. If it fails we default to the last known good value...
-    // Vertical refresh rate is: RAMDAC pixel clock / width of a scanline in clockcylces /
-    // number of scanlines per videoframe.
-    vrefresh = (((dot_clock * 1000) / mode_line.htotal) * 1000) / mode_line.vtotal;
-
-    // Divide vrefresh by 1000 to get real Hz - value:
-    vrefresh = vrefresh / 1000.0f;
-
-    // Definitions from xserver's hw/xfree86/common/xf86str.h
-    // V_INTERLACE    = 0x0010,
-    // V_DBLSCAN    = 0x0020,
-
-    // Doublescan mode? If so, divide vrefresh by 2:
-    if (mode_line.flags & 0x0020) vrefresh /= 2;
-
-    // Interlaced mode? If so, multiply vrefresh by 2:
-    if (mode_line.flags & 0x0010) vrefresh *= 2;
-
-    // Done.
-    return(vrefresh);
-#else
-    return(0);
-#endif
+    // Convert nominal refresh rate in milliHz to Hz and return it:
+    return((float) mode->refresh / 1000.0);
 }
 
 float PsychSetNominalFramerate(int screenNumber, float requestedHz)
 {
-    // Information returned by/sent to the XF86VidModeExtension:
-//     XF86VidModeModeLine mode_line;  // The mode line of the current video mode.
-    int dot_clock;                  // The RAMDAC / TDMS pixel clock frequency.
-    int rc;
-    int event_base;
-
     // We start with a default vrefresh of zero, which means "couldn't query refresh from OS":
     float vrefresh = 0;
 
@@ -907,160 +919,106 @@ float PsychSetNominalFramerate(int screenNumber, float requestedHz)
         PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range");
 
     // Not available on non-X11:
-    if (!displayCGIDs[screenNumber]) return(0);
+    if (!displayOutputs[screenNumber]) return(0);
 
-//     PsychLockDisplay();
-//
-//     if (!XF86VidModeSetClientVersion(displayCGIDs[screenNumber])) {
-//         // Failed to use VidMode-Extension. We just return a vrefresh of zero.
-//         PsychUnlockDisplay();
-//         return(0);
-//     }
-//
-//     if (!XF86VidModeQueryExtension(displayCGIDs[screenNumber], &event_base, &x11_errorbase)) {
-//         // Failed to use VidMode-Extension. We just return a vrefresh of zero.
-//         PsychUnlockDisplay();
-//         return(0);
-//     }
-//
-//     // Attach our error callback handler and reset error-state:
-//     x11_errorval = 0;
-//     x11_olderrorhandler = XSetErrorHandler(x11VidModeErrorHandler);
-//
-//     // Step 1: Query current dotclock and modeline:
-//     if (!XF86VidModeGetModeLine(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), &dot_clock, &mode_line)) {
-//         // Restore default error handler:
-//         XSetErrorHandler(x11_olderrorhandler);
-//         PsychUnlockDisplay();
-//
-//         PsychErrorExitMsg(PsychError_internal, "Failed to query video dotclock and modeline!");
-//     }
-//
-//     // Step 2: Calculate updated modeline:
-//     if (requestedHz > 10) {
-//         // Step 2-a: Given current dot-clock and modeline and requested vrefresh, compute
-//         // modeline for closest possible match:
-//         requestedHz*=1000.0f;
-//         vrefresh = (((dot_clock * 1000) / mode_line.htotal) * 1000) / requestedHz;
-//
-//         // Assign it to closest modeline setting:
-//         mode_line.vtotal = (int)(vrefresh + 0.5f);
-//     }
-//     else {
-//         // Step 2-b: Delta mode. requestedHz represents a direct integral offset
-//         // to add or subtract from current modeline setting:
-//         mode_line.vtotal+=(int) requestedHz;
-//     }
-//
-//     // Step 3: Try to set new modeline:
-//     if (!XF86VidModeModModeLine(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), &mode_line)) {
-//         // Restore default error handler:
-//         XSetErrorHandler(x11_olderrorhandler);
-//         PsychUnlockDisplay();
-//
-//         // Invalid modeline? Signal this:
-//         return(-1);
-//     }
-//
-//     // We synchronize and wait for X-Request completion. If the modeline was invalid,
-//     // this will trigger an invocation of our errorhandler, which in turn will
-//     // set the x11_errorval to a non-zero value:
-//     XSync(displayCGIDs[screenNumber], FALSE);
-//
-//     // Restore default error handler:
-//     XSetErrorHandler(x11_olderrorhandler);
-//
-//     PsychUnlockDisplay();
-//
-//     // Check for error:
-//     if (x11_errorval) {
-//         // Failed to set new mode! Must be invalid. We return -1 to signal this:
-//         return(-1);
-//     }
-//
-//     // No error...
-
-    // Step 4: Query new settings and return them:
-    vrefresh = PsychGetNominalFramerate(screenNumber);
-
-    // Done.
-    return(vrefresh);
+    // TODO: Could store target rate to set in a "pending new Hz" array,
+    // and try to apply it via wl_shell fullscreen request...
+    return(0);
 }
 
-/* Returns the physical display size as reported by X11: */
+/* Returns the physical display size in mm */
 void PsychGetDisplaySize(int screenNumber, int *width, int *height)
 {
     if (screenNumber >= numDisplays || screenNumber < 0)
         PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetDisplaySize() is out of range");
 
-    // Not available on non-X11:
-    if (TRUE || !displayCGIDs[screenNumber]) { *width = 0; *height = 0; return; }
+    if (!displayOutputs[screenNumber]) { *width = 0; *height = 0; return; }
 
-//     // Update XLib's view of this screens configuration:
-//     PsychLockDisplay();
-//     ProcessRandREvents(screenNumber);
-//
-//     *width = (int) XDisplayWidthMM(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber));
-//     *height = (int) XDisplayHeightMM(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber));
-//
-//     PsychUnlockDisplay();
+    // Update XLib's view of this screens configuration:
+    PsychLockDisplay();
+    ProcessWaylandEvents(screenNumber);
+
+    *width = (int) displayOutputs[screenNumber]->geometry.physical_width;
+    *height = (int) displayOutputs[screenNumber]->geometry.physical_height;
+
+    PsychUnlockDisplay();
 }
 
+// Get size of a video output in pixels - active scanout area in pixels:
 void PsychGetScreenPixelSize(int screenNumber, long *width, long *height)
 {
-    // For now points == pixels, so just a dumb wrapper, as long as we
-    // don't have special "Retina Display" / HiDPI handling in place on X11:
-    PsychGetScreenSize(screenNumber, width, height);
+    struct output_mode* mode = NULL;
+
+    if (screenNumber >= numDisplays || screenNumber < 0) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenPixelSize() is out of range");
+    if (!displayOutputs[screenNumber]) PsychErrorExitMsg(PsychError_system, "Could not query screen size in PsychGetScreenPixelSize() for wanted screen");
+
+    // Update XLib's view of this screens configuration:
+    PsychLockDisplay();
+    ProcessWaylandEvents(screenNumber);
+
+    // Get size from current mode:
+    // TODO: Make sure to take output scaling info provided via wl_output listener callback into account:
+    mode = PsychWaylandGetCurrentMode(screenNumber);
+    if (!mode) PsychErrorExitMsg(PsychError_system, "Could not query screen size in PsychGetScreenPixelSize() for wanted screen");
+
+    *width = (int) mode->width;
+    *height = (int) mode->height;
+
+    PsychUnlockDisplay();
 }
 
+// Width and height of output in compositor space units (points?):
 void PsychGetScreenSize(int screenNumber, long *width, long *height)
 {
-    if(screenNumber >= numDisplays || screenNumber < 0) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range");
+    struct output_mode* mode = NULL;
 
-    // Not available on non-X11: MK TODO FIXME - How to get real values?
-    if (TRUE || !displayCGIDs[screenNumber]) { *width = 1680; *height = 1050; return; }
+    if (screenNumber >= numDisplays || screenNumber < 0) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenSize() is out of range");
+    if (!displayOutputs[screenNumber]) PsychErrorExitMsg(PsychError_system, "Could not query screen size in PsychGetScreenSize() for wanted screen");
 
-//     // Update XLib's view of this screens configuration:
-//     PsychLockDisplay();
-//     ProcessRandREvents(screenNumber);
-//
-//     *width=XDisplayWidth(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber));
-//     *height=XDisplayHeight(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber));
-//
-//     PsychUnlockDisplay();
+    // Update XLib's view of this screens configuration:
+    PsychLockDisplay();
+    ProcessWaylandEvents(screenNumber);
+
+    // Get size from current mode:
+    // TODO: Make sure to take output scaling info provided via wl_output listener callback into account,
+    // so we don't report wrong values on HiDPI / Retina style displays:
+    mode = PsychWaylandGetCurrentMode(screenNumber);
+    if (!mode) PsychErrorExitMsg(PsychError_system, "Could not query screen size in PsychGetScreenSize() for wanted screen");
+
+    *width = mode->width;
+    *height = mode->height;
+
+    PsychUnlockDisplay();
 }
 
+// Global bounding rectangle of output in compositor space coordinates:
 void PsychGetGlobalScreenRect(int screenNumber, double *rect)
 {
-    // Create an empty rect:
-    PsychMakeRect(rect, 0, 0, 1, 1);
-    // Fill it with meaning by PsychGetScreenRect():
     PsychGetScreenRect(screenNumber, rect);
+    rect[kPsychLeft]   += (int) displayOutputs[screenNumber]->geometry.x;
+    rect[kPsychRight]  += (int) displayOutputs[screenNumber]->geometry.x;
+    rect[kPsychTop]    += (int) displayOutputs[screenNumber]->geometry.y;
+    rect[kPsychBottom] += (int) displayOutputs[screenNumber]->geometry.y;;
 }
 
+// Bounding rectangle of output in compositor space units (points?):
 void PsychGetScreenRect(int screenNumber, double *rect)
 {
     long width, height; 
 
     PsychGetScreenSize(screenNumber, &width, &height);
-    rect[kPsychLeft]=0;
-    rect[kPsychTop]=0;
-    rect[kPsychRight]=(int)width;
-    rect[kPsychBottom]=(int)height; 
-} 
+    rect[kPsychLeft] = 0;
+    rect[kPsychTop] = 0;
+    rect[kPsychRight] = (int) width;
+    rect[kPsychBottom] = (int) height;
+}
 
 /*
     This is a place holder for a function which uncovers the number of dacbits.  To be filled in at a later date.
-    If you know that your card supports >8 then you can fill that in the PsychtPreferences and the psychtoolbox
-    will act accordingly.
 
-    There seems to be no way to uncover the dacbits programatically.  According to apple CoreGraphics
-    sends a 16-bit word and the driver throws out whatever it chooses not to use.
-
-    For now we just use 8 to avoid false precision.
-
-    If we can uncover the video card model then  we can implement a table lookup of video card model to number of dacbits.
-*/
+    There seems to be no way to uncover the dacbits programatically.
+    For now we just use pessimistic 8 bits to avoid false precision.
+ */
 int PsychGetDacBitsFromDisplay(int screenNumber)
 {
     return(8);
@@ -1156,7 +1114,7 @@ int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int new
 //         // XUngrabServer(dpy);
 //
 //         // Make sure the screen change gets noticed by XLib:
-//         ProcessRandREvents(screenNumber);
+//         ProcessWaylandEvents(screenNumber);
 //
 //         PsychUnlockDisplay();
 //
@@ -1240,7 +1198,7 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
 //         XRRSetScreenSize(dpy, RootWindow(dpy, PsychGetXScreenIdForScreen(settings->screenNumber)), width, height, widthMM, heightMM);
 //
 //         // Make sure the screen change gets noticed by XLib:
-//         ProcessRandREvents(settings->screenNumber);
+//         ProcessWaylandEvents(settings->screenNumber);
 //
 //         PsychUnlockDisplay();
 //
@@ -1277,7 +1235,7 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
 //     XRRFreeScreenConfigInfo(sc);
 //
 //     // Make sure the screen change gets noticed by XLib:
-//     ProcessRandREvents(settings->screenNumber);
+//     ProcessWaylandEvents(settings->screenNumber);
 //
 //     PsychUnlockDisplay();
 //
@@ -1349,7 +1307,7 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
 //     XRRFreeScreenConfigInfo(sc);
 //
 //     // Make sure the screen change gets noticed by XLib:
-//     ProcessRandREvents(settings->screenNumber);
+//     ProcessWaylandEvents(settings->screenNumber);
 
 //     PsychUnlockDisplay();
 //
@@ -1739,13 +1697,9 @@ int PsychOSIsDWMEnabled(int screenNumber)
     // function actually returns is if a compositor is active which is
     // incompatible with good visual presentation timing and timestamping.
     // Wayland should not have this problem, at least with the presentation
-    // extension available and enabled, so return an optimistic "No":
-    #if PTB_USE_WAYLAND_PRESENT
-    // TODO: Actually check for runtime support for extension.
-    return(0);
-    #else
-    return(1);
-    #endif
+    // extension available and enabled, so return an optimistic "No" if the
+    // extension is available and enabled:
+    return((wayland_pres) ? 0 : 1);
 }
 
 // !PTB_USE_WAYLAND
