@@ -21,12 +21,9 @@
 
     TODO: Implement the following functions:
 
-    PsychGetCGModeFromVideoSetting
     PsychGetScreenDepth
     PsychSetNominalFramerate
     PsychOSSetOutputConfig
-    PsychSetScreenSettings
-    PsychRestoreScreenSettings
     PsychOSDefineX11Cursor
     PsychHideCursor
     PsychShowCursor
@@ -797,7 +794,7 @@ int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** wi
 
             (*widths)[i]  = (long) mode->width;
             (*heights)[i] = (long) mode->height;
-            (*hz)[i]      = (long) ((float) mode->refresh / 1000.0);
+            (*hz)[i]      = (long) ((float) mode->refresh / 1000.0 + 0.5);
             (*bpp)[i]     = (long) PsychGetScreenDepthValue(screenNumber);
 
             i++;
@@ -837,7 +834,7 @@ int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** wi
 
         (*widths)[i]  = (long) mode->width;
         (*heights)[i] = (long) mode->height;
-        (*hz)[i]      = (long) ((float) mode->refresh / 1000.0);
+        (*hz)[i]      = (long) ((float) mode->refresh / 1000.0 + 0.5);
         (*bpp)[i]     = (long) PsychGetScreenDepthValue(outputId);
 
         i++;
@@ -848,29 +845,15 @@ int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** wi
 }
 
 /*
- * PsychGetCGModeFromVideoSettings()
+ * PsychGetCGModeFromVideoSetting()
  */
-psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting)
+static psych_bool PsychGetCGModeFromVideoSetting(struct output_mode **cgMode, PsychScreenSettingsType *setting)
 {
-    int i, j, nsizes = 0, nrates = 0;
-
-    // No op on system without RandR:
-    if (!has_xrandr_1_2) {
-        // Dummy assignment:
-        *cgMode = -1;
-
-        // Also cannot restore display settings at Window / Screen / Runtime close time, so disable it:
-        displayOriginalCGSettingsValid[setting->screenNumber] = FALSE;
-
-        // Some info for the reader:
-        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Getting or setting display video modes unsupported on this graphics driver due to lack of RandR v1.2 support.\n");
-
-        // Return success in good faith that its ok.
-        return(TRUE);
-    }
+    struct output_info* output;
+    struct output_mode *mode, *targetmode = NULL;
 
     // Extract parameters from setting struct:
-    CGDirectDisplayID dpy = displayCGIDs[setting->screenNumber];
+    output = displayOutputs[setting->screenNumber];
     int width  = (int) PsychGetWidthFromRect(setting->rect);
     int height = (int) PsychGetHeightFromRect(setting->rect);
     int fps    = (int) (setting->nominalFrameRate + 0.5);
@@ -878,36 +861,38 @@ psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSe
     if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Trying to validate/find closest video mode for requested spec: width = %i x height = %i, rate %i Hz.\n", width, height, fps);
 
     // Find matching mode:
-    int size_index = -1;
+    wl_list_for_each(mode, &output->modes, link) {
+        if (PsychPrefStateGet_Verbosity() > 3) {
+            printf("PTB-INFO: Testing against mode %p of resolution w x h = %i x %i with refresh rate: %i Hz.  ",
+                   mode, mode->width, mode->height, (int) (((float) mode->refresh / 1000) + 0.5));
+        }
 
-    PsychLockDisplay();
-
-//     XRRScreenSize *scs = XRRSizes(dpy, PsychGetXScreenIdForScreen(setting->screenNumber), &nsizes);
-//     for (i = 0; i < nsizes; i++) {
-//         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Testing against mode of resolution w x h = %i x %i with refresh rates: ", scs[i].width, scs[i].height);
-//         if ((width == scs[i].width) && (height == scs[i].height)) {
-//             short *rates = XRRRates(dpy, PsychGetXScreenIdForScreen(setting->screenNumber), i, &nrates);
-//             for (j = 0; j < nrates; j++) {
-//                 if (PsychPrefStateGet_Verbosity() > 3) printf("%i ", (int) rates[j]);
-//                 if (rates[j] == (short) fps) {
-//                     // Our requested size x fps combo is supported:
-//                     size_index = i;
-//                     if (PsychPrefStateGet_Verbosity() > 3) printf("--> Got it! Mode id %i. ", size_index);
-//                 }
-//             }
-//         }
-//         if (PsychPrefStateGet_Verbosity() > 3) printf("\n");
-//     }
-
-    PsychUnlockDisplay();
-
-    if ((nsizes == 0 || nrates == 0) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Getting or setting display video modes unsupported on this graphics driver despite advertised RandR v1.2 support.\n");
+        if ((width == mode->width) && (height == mode->height) && (fps == (int) (((float) mode->refresh / 1000) + 0.5))) {
+            // Our requested mode is supported:
+            if (PsychPrefStateGet_Verbosity() > 3) printf("--> Got it! Mode id %p. ", mode);
+            targetmode = mode;
+            break;
+        }
+        if (PsychPrefStateGet_Verbosity() > 3) printf("\n");
+    }
 
     // Found valid settings?
-    if (size_index == -1) return(FALSE);
+    if (!targetmode) return(FALSE);
 
-    *cgMode = size_index;
+    *cgMode = targetmode;
     return(TRUE);
+}
+
+/*
+ *    PsychCheckVideoSettings()
+ *
+ *    Check all available video display modes for the specified screen number and return true if the
+ *    settings are valid and false otherwise.
+ */
+psych_bool PsychCheckVideoSettings(PsychScreenSettingsType *setting)
+{
+    struct output_mode *cgMode = NULL;
+    return (PsychGetCGModeFromVideoSetting(&cgMode, setting));
 }
 
 /*
@@ -1172,7 +1157,7 @@ int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int new
 
     If we can not change the display settings because of a lock (set by open window or close window) then return false.
 
-    SCREENOpenWindow should capture the display before it sets the video mode.  If it doesn't, then PsychSetVideoSettings will
+    SCREENOpenWindow should capture the display before it sets the video mode.  If it doesn't, then PsychSetScreenSettings will
     detect that and exit with an error.  SCREENClose should uncapture the display. 
 
     The duties of SCREENOpenWindow are:
@@ -1185,106 +1170,62 @@ int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int new
 
 psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsType *settings)
 {
-    CFDictionaryRef cgMode;
-    psych_bool      isValid, isCaptured;
-    Rotation        rotation;
-    short           rate;
-    Time            cfg_timestamp;
-    CGDirectDisplayID dpy;
+    struct output_info* output;
+    struct output_mode *mode;
+    struct output_mode *cgMode = NULL;
+    psych_bool isValid, isCaptured;
 
     if (settings->screenNumber >= numDisplays || settings->screenNumber < 0) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychSetScreenSettings() is out of range");
-    dpy = displayCGIDs[settings->screenNumber];
 
-    // Not available on non-X11:
-    if (!dpy) return(false);
+    //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.
+    isCaptured = PsychIsScreenCaptured(settings->screenNumber);
+    if (!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
 
-    return(false);
+    // Store the original display mode if this is the first time we have called this function.  The psychtoolbox will disregard changes in
+    // the screen state made through the control panel after the Psychtoolbox was launched. That is, OpenWindow will by default continue to
+    // open windows with finder settings which were in place at the first call of OpenWindow.  That's not intuitive, but not much of a problem
+    // either.
+    if (!displayOriginalCGSettingsValid[settings->screenNumber]) {
+        PsychGetScreenSettings(settings->screenNumber, &displayOriginalCGSettings[settings->screenNumber]);
+        displayOriginalCGSettingsValid[settings->screenNumber] = TRUE;
+    }
 
-//     //Check for a lock which means onscreen or offscreen windows tied to this screen are currently open.
-//     // MK Disabled: if(PsychCheckScreenSettingsLock(settings->screenNumber)) return(false);  //calling function should issue an error for attempt to change display settings while windows were open.
-//
-//     //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.
-//     isCaptured=PsychIsScreenCaptured(settings->screenNumber);
-//     if(!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
-//
-//     // Store the original display mode if this is the first time we have called this function.  The psychtoolbox will disregard changes in
-//     // the screen state made through the control panel after the Psychtoolbox was launched. That is, OpenWindow will by default continue to
-//     // open windows with finder settings which were in place at the first call of OpenWindow.  That's not intuitive, but not much of a problem
-//     // either.
-//     if(!displayOriginalCGSettingsValid[settings->screenNumber]) {
-//         PsychGetScreenSettings(settings->screenNumber, &displayOriginalCGSettings[settings->screenNumber]);
-//         displayOriginalCGSettingsValid[settings->screenNumber] = TRUE;
-//     }
-//
-//     // Multi-Display configuration?
-//     if (PsychScreenToHead(settings->screenNumber, 1) != -1) {
-//         // Yes: At least two display heads attached. We can't use the XRRSetScreenConfigAndRate() method,
-//         // it is only suitable for single-display setups. In this case, we only set the screen size, aka
-//         // framebuffer size. User scripts can use the 'ConfigureDisplay' function to setup the crtc's:
-//
-//         // Also cannot restore display settings at Window / Screen / Runtime close time, so disable it:
-//         displayOriginalCGSettingsValid[settings->screenNumber] = FALSE;
-//
-//         // Resize screen:
-//         int widthMM, heightMM;
-//         PsychGetDisplaySize(settings->screenNumber, &widthMM, &heightMM);
-//         int width  = (int) PsychGetWidthFromRect(settings->rect);
-//         int height = (int) PsychGetHeightFromRect(settings->rect);
-//
-//         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Resizing screen %i to %i x %i pixels.\n", settings->screenNumber, width, height);
-//
-//         PsychLockDisplay();
-//
-//         XRRSetScreenSize(dpy, RootWindow(dpy, PsychGetXScreenIdForScreen(settings->screenNumber)), width, height, widthMM, heightMM);
-//
-//         // Make sure the screen change gets noticed by XLib:
-//         ProcessWaylandEvents(settings->screenNumber);
-//
-//         PsychUnlockDisplay();
-//
-//         // Done.
-//         return(true);
-//     }
-//
-//     // Single display configuration, go ahead:
-//
-//     //Find core graphics video settings which correspond to settings as specified withing by an abstracted psychsettings structure.
-//     isValid = PsychGetCGModeFromVideoSetting(&cgMode, settings);
-//     if (!isValid || (int) cgMode < 0) {
-//         // This is an internal error because the caller is expected to check first.
-//         PsychErrorExitMsg(PsychError_user, "Attempt to set invalid video settings or function unsupported with this graphics-driver.");
-//     }
-//
-//     // Change the display mode.
-//     PsychLockDisplay();
-//     XRRScreenConfiguration *sc = XRRGetScreenInfo(dpy, RootWindow(dpy, PsychGetXScreenIdForScreen(settings->screenNumber)));
-//
-//     // Extract parameters from settings struct:
-//     rate = (short) (settings->nominalFrameRate + 0.5);
-//
-//     // Fetch current rotation, so we can (re)apply it -- We don't support changing rotation yet:
-//     XRRConfigCurrentConfiguration(sc, &rotation);
-//
-//     // Fetch config timestamp so we can prove to the server we're trustworthy:
-//     Time timestamp = XRRConfigTimes(sc, &cfg_timestamp);
-//
-//     // Apply new configuration - combo of old rotation with new size (encoded in cgMode) and refresh rate:
-//     Status rc = XRRSetScreenConfigAndRate(dpy, sc, RootWindow(dpy, PsychGetXScreenIdForScreen(settings->screenNumber)), cgMode, rotation, rate, timestamp);
-//
-//     // Cleanup:
-//     XRRFreeScreenConfigInfo(sc);
-//
-//     // Make sure the screen change gets noticed by XLib:
-//     ProcessWaylandEvents(settings->screenNumber);
-//
-//     PsychUnlockDisplay();
-//
-//     // Done:
-//     return((rc != BadValue) ? true : false);
+    // Find video settings which correspond to settings as specified within by an abstracted psychsettings structure.
+    isValid = PsychGetCGModeFromVideoSetting(&cgMode, settings);
+    if (!isValid || !cgMode) {
+        // This is an internal error because the caller is expected to check first.
+        PsychErrorExitMsg(PsychError_user, "Attempt to set invalid video settings.");
+    }
+
+    // Change the display mode.
+    PsychLockDisplay();
+
+    // Extract parameters from setting struct:
+    output = displayOutputs[settings->screenNumber];
+
+    // Clear current mode flag on all modes:
+    wl_list_for_each(mode, &output->modes, link) {
+        mode->flags &= ~WL_OUTPUT_MODE_CURRENT;
+    }
+
+    // Then set current mode flag on our "new" mode:
+    // This should guarantee that all our video mode reporting functions
+    // will report the properties of our new current mode as current
+    // settings, so our onscreen windows size will initialize to this
+    // modes settings:
+    cgMode->flags |= WL_OUTPUT_MODE_CURRENT;
+
+    // Make sure the screen change gets noticed:
+    ProcessWaylandEvents(settings->screenNumber);
+
+    PsychUnlockDisplay();
+
+    // Done:
+    return(TRUE);
 }
 
 /*
-    PsychRestoreVideoSettings()
+    PsychRestoreScreenSettings()
 
     Restores video settings to the state set by the finder.  Returns TRUE if the settings can be restored or false if they 
     can not be restored because a lock is in effect, which would mean that there are still open windows.    
@@ -1292,67 +1233,68 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
 */
 psych_bool PsychRestoreScreenSettings(int screenNumber)
 {
-    CFDictionaryRef             cgMode;
-    psych_bool                  isValid, isCaptured;
-    Rotation                    rotation;
-    short                       rate;
-    Time                        cfg_timestamp;
-    CGDirectDisplayID           dpy;
-    PsychScreenSettingsType     *settings;
+    struct output_info* output;
+    struct output_mode *mode;
+    struct output_mode *cgMode = NULL;
+    psych_bool isValid, isCaptured;
+    PsychScreenSettingsType *settings;
 
     if (screenNumber >= numDisplays || screenNumber < 0)
-        PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); //also checked within SCREENPixelSizes
+        PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychRestoreScreenSettings() is out of range"); //also checked within SCREENPixelSizes
 
-    //Check to make sure that the original graphics settings were cached.  If not, it means that the settings were never changed, so we can just
-    //return true. 
-    if (!displayOriginalCGSettingsValid[screenNumber]) return(true);
+    //Check to make sure that the original graphics settings were cached. If not,
+    // it means that the settings were never changed, so we can just return true.
+    if (!displayOriginalCGSettingsValid[screenNumber]) return(TRUE);
 
     //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.  
     isCaptured = PsychIsScreenCaptured(screenNumber);
     if (!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
 
-    // Retrieve original screen settings which we should restore for this screen:
-    settings = &displayOriginalCGSettings[screenNumber];
-
     // Invalidate settings - we want a fresh game after restoring the resolution:
     displayOriginalCGSettingsValid[screenNumber] = FALSE;
 
+    // End it here, for now. TODO: Need to first figure out how to do this
+    // properly on Wayland. In principle would need to open a fullscreen
+    // window, then close it again after applying restored settings below,
+    // to force Wayland to restore original mode. But that seems cumbersome
+    // and possibly not worth the extra trouble:
+    return(TRUE);
+
+    // Retrieve original screen settings which we should restore for this screen:
+    settings = &displayOriginalCGSettings[screenNumber];
+
     //Find core graphics video settings which correspond to settings as specified withing by an abstracted psychsettings structure.  
     isValid = PsychGetCGModeFromVideoSetting(&cgMode, settings);
-    if (!isValid || (int) cgMode < 0){
+    if (!isValid || !cgMode) {
         // This is an internal error because the caller is expected to check first. 
-        PsychErrorExitMsg(PsychError_user, "Attempt to restore invalid video settings or function unsupported with this graphics-driver.");
+        PsychErrorExitMsg(PsychError_user, "Attempt to restore invalid video settings.");
     }
 
-    //Change the display mode.
-    dpy = displayCGIDs[settings->screenNumber];
+    // Change the display mode.
+    PsychLockDisplay();
 
-//     PsychLockDisplay();
-//
-//     XRRScreenConfiguration *sc = XRRGetScreenInfo(dpy, RootWindow(dpy, PsychGetXScreenIdForScreen(settings->screenNumber)));
-//
-//     // Extract parameters from settings struct:
-//     rate = (short) (settings->nominalFrameRate + 0.5);
-//
-//     // Fetch current rotation, so we can (re)apply it -- We don't support changing rotation yet:
-//     XRRConfigCurrentConfiguration (sc, &rotation);
-//
-//     // Fetch config timestamp so we can prove to the server we're trustworthy:
-//     Time timestamp = XRRConfigTimes(sc, &cfg_timestamp);
-//
-//     // Apply new configuration - combo of old rotation with new size (encoded in cgMode) and refresh rate:
-//     Status rc = XRRSetScreenConfigAndRate(dpy, sc, RootWindow(dpy, PsychGetXScreenIdForScreen(settings->screenNumber)), cgMode, rotation, rate, timestamp);
-//
-//     // Cleanup:
-//     XRRFreeScreenConfigInfo(sc);
-//
-//     // Make sure the screen change gets noticed by XLib:
-//     ProcessWaylandEvents(settings->screenNumber);
+    // Extract parameters from setting struct:
+    output = displayOutputs[screenNumber];
 
-//     PsychUnlockDisplay();
-//
-//     // Done:
-//     return ((rc != BadValue) ? true : false);
+    // Clear current mode flag on all modes:
+    wl_list_for_each(mode, &output->modes, link) {
+        mode->flags &= ~WL_OUTPUT_MODE_CURRENT;
+    }
+
+    // Then set current mode flag on our "new" mode:
+    // This should guarantee that all our video mode reporting functions
+    // will report the properties of our new current mode as current
+    // settings, so our onscreen windows size will initialize to this
+    // modes settings:
+    cgMode->flags |= WL_OUTPUT_MODE_CURRENT;
+
+    // Make sure the screen change gets noticed:
+    ProcessWaylandEvents(screenNumber);
+
+    PsychUnlockDisplay();
+
+    // Done:
+    return(TRUE);
 }
 
 void PsychOSDefineX11Cursor(int screenNumber, int deviceId, Cursor cursor)

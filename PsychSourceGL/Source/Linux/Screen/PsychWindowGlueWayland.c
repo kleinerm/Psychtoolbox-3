@@ -74,7 +74,10 @@ extern uint32_t wayland_presentation_clock_id;
 // wl_output* for all screens, from PsychScreenGlueWayland.c:
 extern struct wl_output* displayWaylandOutputs[kPsychMaxPossibleDisplays];
 
-// From PsychScreenGlue.c:
+// Read-only access this gem from PsychScreenGlue.c:
+extern psych_bool displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
+
+// From PsychScreenGlueWayland.c:
 struct presentation *get_wayland_presentation_extension(PsychWindowRecordType* windowRecord);
 
 // Container with feedback about a completed swap - the equivalent of
@@ -857,7 +860,20 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
                        screenSettings->screenNumber, displayWaylandOutputs[screenSettings->screenNumber]);
             }
 
-            wl_shell_surface_set_fullscreen(wayland_window->wl_shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER, 0, displayWaylandOutputs[screenSettings->screenNumber]);
+            // Video refresh rate switch requested?
+            if (displayOriginalCGSettingsValid[screenSettings->screenNumber]) {
+                // Video refresh rate switch requested:
+                int milliHz = (int) (PsychGetNominalFramerate(screenSettings->screenNumber) * 1000.0 + 0.5);
+                if (PsychPrefStateGet_Verbosity() > 3) {
+                    printf("PTB-INFO: Requesting video mode switch for fullscreen windw to a target of %i x %i pixels at %i milliHz.\n", width, height, milliHz);
+                }
+
+                wl_shell_surface_set_fullscreen(wayland_window->wl_shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER, milliHz, displayWaylandOutputs[screenSettings->screenNumber]);
+            }
+            else {
+                // No video refresh rate switch requested:
+                wl_shell_surface_set_fullscreen(wayland_window->wl_shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER, 0, displayWaylandOutputs[screenSettings->screenNumber]);
+            }
         }
         else {
             // A windowed window aka non-fullscreen, or a transparent fullscreen window.

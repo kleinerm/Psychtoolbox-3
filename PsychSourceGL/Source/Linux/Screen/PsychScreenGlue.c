@@ -723,7 +723,6 @@ static int (*x11_olderrorhandler)(Display*, XErrorEvent*);
 
 //file local functions
 void InitCGDisplayIDList(void);
-psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting);
 
 /* Lock graphics access
  *
@@ -926,18 +925,6 @@ void PsychGetScreenSettings(int screenNumber, PsychScreenSettingsType *settings)
     //settings->dacbits=PsychGetDacBits(screenNumber);
 }
 
-/*
- *    PsychCheckVideoSettings()
- *
- *    Check all available video display modes for the specified screen number and return true if the
- *    settings are valid and false otherwise.
- */
-psych_bool PsychCheckVideoSettings(PsychScreenSettingsType *setting)
-{
-    CFDictionaryRef cgMode;
-    return(PsychGetCGModeFromVideoSetting(&cgMode, setting));
-}
-
 PsychColorModeType PsychGetScreenMode(int screenNumber)
 {
     PsychDepthType depth;
@@ -957,6 +944,20 @@ XIDeviceInfo* PsychGetInputDevicesForScreen(int screenNumber, int* nDevices)
 
 // Wayland native builds do have their own screen glue for the X11 specific bits:
 #ifndef PTB_USE_WAYLAND
+
+psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting);
+
+/*
+ *    PsychCheckVideoSettings()
+ *
+ *    Check all available video display modes for the specified screen number and return true if the
+ *    settings are valid and false otherwise.
+ */
+psych_bool PsychCheckVideoSettings(PsychScreenSettingsType *setting)
+{
+    CFDictionaryRef cgMode;
+    return(PsychGetCGModeFromVideoSetting(&cgMode, setting));
+}
 
 // Init XInput extension: Called under display lock protection:
 static void InitXInputExtensionForDisplay(CGDirectDisplayID dpy, int idx)
