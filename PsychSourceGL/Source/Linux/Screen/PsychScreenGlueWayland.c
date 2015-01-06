@@ -808,15 +808,18 @@ int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** wi
     }
 
     if (outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid output index provided! No such output for this screen!");
-    outputId = PsychScreenToHead(screenNumber, outputId);
+
     // A bit dull: We only have one output per screen atm., as we go with the screen == output model for initial Wayland enablement:
     if (outputId >= 1 || outputId < 0) PsychErrorExitMsg(PsychError_user, "Invalid output index provided! No such output for this screen!");
+    outputId = PsychScreenToHead(screenNumber, outputId);
 
     // Now have literally the same code as for the outputId < 0 case above,
-    // just replace screenNumber with outputId:
+    // Pretty dumb, but best we can do atm. given the screenid = outputid mapping.
+    // TODO: Needs more thought...
+
     // Count number of available modes:
     numPossibleModes = 0;
-    output_info = displayOutputs[outputId];
+    output_info = displayOutputs[screenNumber];
     wl_list_for_each(mode, &output_info->modes, link) {
         numPossibleModes++;
     }
