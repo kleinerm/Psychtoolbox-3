@@ -740,21 +740,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         sizehints.flags = USSize | (windowRecord->specialflags & kPsychGUIWindowWMPositioned) ? 0 : USPosition;
     }
 
-    // Setup window transparency for user input (keyboard and mouse events):
-    // TODO FIXME Wayland
-    if ((windowLevel >= 1000) && (windowLevel < 1500)) {
-//         // Define region as an empty input region:
-//         XserverRegion region = XFixesCreateRegion(dpy, NULL, 0);
-//
-//         // Assign as region in which window receives input events, thereby
-//         // setting the input region to empty, so the window is transparent
-//         // to any input events like key presses or mouse clicks:
-//         XFixesSetWindowShapeRegion(dpy, win, ShapeInput, 0, 0, region);
-//
-//         // Destroy region after assignment:
-//         XFixesDestroyRegion(dpy, region);
-    }
-
     // Create associated OpenGL rendering context: We use ressource
     // sharing of textures, display lists, FBO's and shaders if 'slaveWindow'
     // is assigned for that purpose as master-window.
@@ -836,15 +821,29 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // Show our new window:
     if (windowLevel != -1) {
         struct waffle_wayland_window *wayland_window = wafflewin->wayland;
+        struct wl_region *region = wl_compositor_create_region(wl_compositor);
+
+        // Is this window supposed to be transparent to user input (mouse, keyboard etc.)?
+        if ((windowLevel >= 1000) && (windowLevel < 1500)) {
+            // Yes. Assign our currently empty 'region' as input region, so
+            // the surface doesn't care about input but input is sent to
+            // surfaces below our onscreen windows surface:
+            wl_surface_set_input_region(wayland_window->wl_surface, region);
+
+            // Note: The default input region is infinite, covering the whole
+            // surface, ie., the whole surface accepts user input. Therefore
+            // nothing to do in the regular case.
+        }
 
         // Is this window supposed to be opaque / non-transparent?
         if (windowLevel < 1000 || windowLevel >= 2000) {
             // Yes. Define an opaque region the full size of the windows area:
-            struct wl_region *region = wl_compositor_create_region(wl_compositor);
             wl_region_add(region, 0, 0, width, height);
             wl_surface_set_opaque_region(wayland_window->wl_surface, region);
-            wl_region_destroy(region);
         }
+
+        // Done with defining input and display regions, so destroy our region:
+        wl_region_destroy(region);
 
         // Is this supposed to be a fullscreen window?
         if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (windowLevel < 1000 || windowLevel >= 2000)) {
