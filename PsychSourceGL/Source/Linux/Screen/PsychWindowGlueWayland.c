@@ -853,19 +853,25 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             // size of the surface, ie., the mode with the smallest resolution that can contain the surface. Add black
             // borders for padding if a perfect fit isn't possible.
             // TODO implement: 0 = Target refresh rate -- Zero == Don't change rate.
-            printf("OPENING FULLSCREEN on screen %i -- wl_output %p\n", screenSettings->screenNumber, displayWaylandOutputs[screenSettings->screenNumber]);
+            if (PsychPrefStateGet_Verbosity() > 3) {
+                printf("PTB-INFO: Opening fullscreen onscreen wl_shell_surface() window on screen %i - wl_output %p\n",
+                       screenSettings->screenNumber, displayWaylandOutputs[screenSettings->screenNumber]);
+            }
+
             wl_shell_surface_set_fullscreen(wayland_window->wl_shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER, 0, displayWaylandOutputs[screenSettings->screenNumber]);
         }
         else {
             // A windowed window aka non-fullscreen, or a transparent fullscreen window.
             if (windowRecord->specialflags & kPsychGUIWindow) {
-                // A GUI window. Give it a title and other bling:
-                wl_shell_surface_set_title(wayland_window->wl_shell_surface, windowTitle);
+                // A GUI window. Nothing to do yet.
             }
 
             // Show it as toplevel window:
             wl_shell_surface_set_toplevel(wayland_window->wl_shell_surface);
         }
+
+        // Give the window a title:
+        wl_shell_surface_set_title(wayland_window->wl_shell_surface, windowTitle);
 
         // Make it so!
         wl_display_roundtrip(wl_display);
