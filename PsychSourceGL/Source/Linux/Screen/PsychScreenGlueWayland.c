@@ -919,7 +919,6 @@ void PsychGetScreenDepth(int screenNumber, PsychDepthType *depth)
 {
     if (screenNumber>=numDisplays || screenNumber < 0) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range"); //also checked within SCREENPixelSizes
 // TODO: Make it work for real.
-    // Update XLib's view of this screens configuration:
     PsychLockDisplay();
 //     ProcessWaylandEvents(screenNumber);
 //
@@ -927,7 +926,7 @@ void PsychGetScreenDepth(int screenNumber, PsychDepthType *depth)
 //         PsychAddValueToDepthStruct(DefaultDepth(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), depth);
 //     }
 //     else {
-        PsychAddValueToDepthStruct(32, depth);
+        PsychAddValueToDepthStruct(24, depth);
 //     }
 
     PsychUnlockDisplay();

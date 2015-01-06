@@ -1,24 +1,25 @@
 /*
-  Psychtoolbox3/Source/Common/Screen/SCREENResolutions.c		
-  
-  AUTHORS:
+    Psychtoolbox3/Source/Common/Screen/SCREENResolutions.c
 
-  mario.kleiner at tuebingen.mpg.de  mk
-  
-  PLATFORMS:	
+    AUTHORS:
 
-  This file should build on any platform. 
+    mario.kleiner.de@gmail.com      mk
 
-  HISTORY:
-  9/23/07  mk		Created. 
- 
-  DESCRIPTION:
-  
-  Contains the subfunctions 'ConfigureDisplay', 'Resolutions' and 'Resolution'.
-  Enumerates and returns all supported display modes - combinations of resolution, refresh rate and color depth.
-  Allows to query and set display mode.
-  
-  TO DO:
+    PLATFORMS:
+
+    This file should build on any platform.
+
+    HISTORY:
+
+    9/23/07  mk Created.
+
+    DESCRIPTION:
+
+    Contains the subfunctions 'ConfigureDisplay', 'Resolutions' and 'Resolution'.
+    Enumerates and returns all supported display modes - combinations of resolution, refresh rate and color depth.
+    Allows to query and set display mode.
+
+    TO DO:
 
 */
 
@@ -33,27 +34,27 @@ const char *FieldNames[]={"width", "height", "pixelSize", "hz"};
 
 PsychError SCREENConfigureDisplay(void)
 {
-	static char useString[] = "oldSettings = Screen('ConfigureDisplay', setting, screenNumber, outputId [, newwidth][, newheight][, newHz][, newX][, newY]);";
-	static char synopsisString[] =	"Query or change 'setting' for display output 'outputId' of screen 'screenNumber'.\n"
-					"This function allows you to configure the different attached display outputs of a virtual screen.\n"
-					"Optionally sets new settings for that output.\n"
-					"Possible values for subfunction parameter 'setting':\n"
-					"'Brightness': Return or set brightness of an attached display device. Many displays and systems don't support this function. "
+    static char useString[] = "oldSettings = Screen('ConfigureDisplay', setting, screenNumber, outputId [, newwidth][, newheight][, newHz][, newX][, newY]);";
+    static char synopsisString[] =	"Query or change 'setting' for display output 'outputId' of screen 'screenNumber'.\n"
+                    "This function allows you to configure the different attached display outputs of a virtual screen.\n"
+                    "Optionally sets new settings for that output.\n"
+                    "Possible values for subfunction parameter 'setting':\n"
+                    "'Brightness': Return or set brightness of an attached display device. Many displays and systems don't support this function. "
                     " brightness values are in the range 0.0 to 1.0 from darkest to brightest. Returns old brightness setting.\n"
-					"'NumberOutputs': Return number of active separate display outputs for given screen 'screenNumber'.\n"
-					"'Capture': Capture output 'outputId' of a screen 'screenNumber' for exclusive use by Psychtoolbox.\n"
-					"'Release': Release output 'outputId' of a screen 'screenNumber' from exclusive use by Psychtoolbox.\n"
-					"Please note that 'Capture' and 'Release' are automatically applied to a display output as appropriate "
-					"whenever a fullscreen onscreen window is opened or closed on a display. You usually don't need to call "
-					"these functions yourself, in fact, you even shouldn't call them yourself usually, as wrong use of the "
-					"functions can cause graphics malfunctions or even a freeze of the display or GUI, forcing you to kill "
-					"Matlab or Octave as a last resort to regain control over your displays. The main purpose of these "
-					"functions is to temporarily block all graphics operations or display updates on displays that are not "
-					"used for visual stimulation, ie., not covered by fullscreen onscreen windows. This prevents other running "
-					"applications from interfering with your experiment script by preventing them to take up valuable resources "
-					"on the graphics card. Display capture is not supported on all operating systems in all modes of operation. "
-					"If the functions get called on an unsupported configuration, they silently return and simply do nothing."
-					"\n\n"
+                    "'NumberOutputs': Return number of active separate display outputs for given screen 'screenNumber'.\n"
+                    "'Capture': Capture output 'outputId' of a screen 'screenNumber' for exclusive use by Psychtoolbox.\n"
+                    "'Release': Release output 'outputId' of a screen 'screenNumber' from exclusive use by Psychtoolbox.\n"
+                    "Please note that 'Capture' and 'Release' are automatically applied to a display output as appropriate "
+                    "whenever a fullscreen onscreen window is opened or closed on a display. You usually don't need to call "
+                    "these functions yourself, in fact, you even shouldn't call them yourself usually, as wrong use of the "
+                    "functions can cause graphics malfunctions or even a freeze of the display or GUI, forcing you to kill "
+                    "Matlab or Octave as a last resort to regain control over your displays. The main purpose of these "
+                    "functions is to temporarily block all graphics operations or display updates on displays that are not "
+                    "used for visual stimulation, ie., not covered by fullscreen onscreen windows. This prevents other running "
+                    "applications from interfering with your experiment script by preventing them to take up valuable resources "
+                    "on the graphics card. Display capture is not supported on all operating systems in all modes of operation. "
+                    "If the functions get called on an unsupported configuration, they silently return and simply do nothing."
+                    "\n\n"
                     "'Dithering' Control digital display dithering on supported GPUs. This is currently only supported on AMD "
                     "graphics cards under Linux and OSX. 'screenNumber' will apply the setting on all video outputs connected "
                     "to screen 'screenNumber'. The next setting is the 'ditherEnable' flag: A value of zero will disable dithering. "
@@ -62,287 +63,287 @@ PsychError SCREENConfigureDisplay(void)
                     "settings. The meaning of specific values is GPU and vendor specific and only useful for experts.\n"
                     "Example call: Screen('ConfigureDisplay', 'Dithering', screenNumber, ditherEnable); "
                     "\n\n"
-					"'Scanout': Retrieve or set scanout parameters for a given output 'outputId' of screen 'screenNumber'. "
-					"Returns a struct 'oldSettings' with the current settings for that output. Only supported on Linux.\n"
-					"It returns and accepts the following optional parameters:\n"
-					"* Display resolution \"newwidth\" x \"newheight\", and nominal refresh rate \"newHz\". "
-					"* Panning ('newX','newY') - The location of the top-left corner of the display in the framebuffer.\n"
-					"Providing invalid or incompatible settings will raise an error.\n";
+                    "'Scanout': Retrieve or set scanout parameters for a given output 'outputId' of screen 'screenNumber'. "
+                    "Returns a struct 'oldSettings' with the current settings for that output. Only supported on Linux.\n"
+                    "It returns and accepts the following optional parameters:\n"
+                    "* Display resolution \"newwidth\" x \"newheight\", and nominal refresh rate \"newHz\". "
+                    "* Panning ('newX','newY') - The location of the top-left corner of the display in the framebuffer.\n"
+                    "Providing invalid or incompatible settings will raise an error.\n";
 
-	static char seeAlsoString[] = "Screen('Resolutions'), Screen('Resolution');";
+    static char seeAlsoString[] = "Screen('Resolutions'), Screen('Resolution');";
 
-	const char *OutputFieldNames[]={"width", "height", "pixelSize", "hz", "xStart", "yStart"};
-	char *settingName = NULL;
-	int screenNumber, outputId, ditherEnable;
+    const char *OutputFieldNames[]={"width", "height", "pixelSize", "hz", "xStart", "yStart"};
+    char *settingName = NULL;
+    int screenNumber, outputId, ditherEnable;
 
     #if PSYCH_SYSTEM == PSYCH_LINUX
-	PsychGenericScriptType *oldResStructArray;
-	int newWidth, newHeight, newHz, newBpp, newX, newY;
-	psych_bool rc;
+    PsychGenericScriptType *oldResStructArray;
+    int newWidth, newHeight, newHz, newBpp, newX, newY;
+    psych_bool rc;
     #endif
 
-	// All sub functions should have these two lines
-	PsychPushHelp(useString, synopsisString, seeAlsoString);
-	if(PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if(PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
-	// Check to see if the user supplied superfluous arguments
-	PsychErrorExit(PsychCapNumOutputArgs(1));
-	PsychErrorExit(PsychCapNumInputArgs(8));
-    
-	// Get name of parameter class:
-	PsychAllocInCharArg(1, kPsychArgRequired, &settingName);
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(8));
 
-	// Usercode wants to change display brightness:
-	if (PsychMatch(settingName, "Brightness")) {
-		// OS/X specific section:
-		#if PSYCH_SYSTEM == PSYCH_OSX
-		outputId = -1;
-        
-		// Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
-		if (PsychCopyInScreenNumberArg(2, FALSE, &screenNumber)) {
-			if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "Invalid screen number."); 
-			outputId = screenNumber;
-		}
-        
-		// Get outputId:
-		PsychCopyInIntegerArg(3, FALSE, &outputId);
-		if (outputId < 0 || outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid video output specified!");
-        
-		CGDirectDisplayID displayID;
-		CGDisplayErr err;
-		float brightness;
-		double nbrightness;
-        
-		PsychGetCGDisplayIDFromScreenNumber(&displayID, outputId);
-		io_service_t service = CGDisplayIOServicePort(displayID);
-        
-		// Return current brightness value:
-		err = IODisplayGetFloatParameter(service, kNilOptions, CFSTR(kIODisplayBrightnessKey), &brightness);
-		if (err != kIOReturnSuccess) PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Unsupported on this system.");
-		PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) brightness);
-        
-		// Optionally set new brightness value:
-		if (PsychCopyInDoubleArg(4, FALSE, &nbrightness)) {
-			// Clamp to valid range:
-			if (nbrightness < 0.0) nbrightness = 0.0;
-			if (nbrightness > 1.0) nbrightness = 1.0;
-            
-			// Set it:
-			err = IODisplaySetFloatParameter(service, kNilOptions, CFSTR(kIODisplayBrightnessKey), (float) nbrightness);
-			if (err != kIOReturnSuccess) PsychErrorExitMsg(PsychError_user, "Failed to set new display brightness. Unsupported on this system?");
-		}        
-		#endif
+    // Get name of parameter class:
+    PsychAllocInCharArg(1, kPsychArgRequired, &settingName);
 
-		#if PSYCH_SYSTEM == PSYCH_LINUX
+    // Usercode wants to change display brightness:
+    if (PsychMatch(settingName, "Brightness")) {
+        // OS/X specific section:
+        #if PSYCH_SYSTEM == PSYCH_OSX
+        outputId = -1;
 
-		static Atom backlight, backlight_new, backlight_legacy;
-        
-		// Get the screen number from the windowPtrOrScreenNumber. This also checks to make sure that the specified screen exists.
-		PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
-		if (screenNumber==-1) PsychErrorExitMsg(PsychError_user, "Invalid screen number."); 
+        // Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.
+        if (PsychCopyInScreenNumberArg(2, FALSE, &screenNumber)) {
+            if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "Invalid screen number.");
+            outputId = screenNumber;
+        }
 
-		// Get outputId:
-		outputId = 0;
-		PsychCopyInIntegerArg(3, FALSE, &outputId);
-        
-		CGDirectDisplayID dpy;
-		int screen;
-		float brightness;
-		double nbrightness;
+        // Get outputId:
+        PsychCopyInIntegerArg(3, FALSE, &outputId);
+        if (outputId < 0 || outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid video output specified!");
 
-		// Map screenNumber and outputIdx to dpy, rootwindow and RandR output:
-		PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
+        CGDirectDisplayID displayID;
+        CGDisplayErr err;
+        float brightness;
+        double nbrightness;
+
+        PsychGetCGDisplayIDFromScreenNumber(&displayID, outputId);
+        io_service_t service = CGDisplayIOServicePort(displayID);
+
+        // Return current brightness value:
+        err = IODisplayGetFloatParameter(service, kNilOptions, CFSTR(kIODisplayBrightnessKey), &brightness);
+        if (err != kIOReturnSuccess) PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Unsupported on this system.");
+        PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) brightness);
+
+        // Optionally set new brightness value:
+        if (PsychCopyInDoubleArg(4, FALSE, &nbrightness)) {
+            // Clamp to valid range:
+            if (nbrightness < 0.0) nbrightness = 0.0;
+            if (nbrightness > 1.0) nbrightness = 1.0;
+
+            // Set it:
+            err = IODisplaySetFloatParameter(service, kNilOptions, CFSTR(kIODisplayBrightnessKey), (float) nbrightness);
+            if (err != kIOReturnSuccess) PsychErrorExitMsg(PsychError_user, "Failed to set new display brightness. Unsupported on this system?");
+        }
+        #endif
+
+        #if PSYCH_SYSTEM == PSYCH_LINUX
+
+        static Atom backlight, backlight_new, backlight_legacy;
+
+        // Get the screen number from the windowPtrOrScreenNumber. This also checks to make sure that the specified screen exists.
+        PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
+        if (screenNumber==-1) PsychErrorExitMsg(PsychError_user, "Invalid screen number.");
+
+        // Get outputId:
+        outputId = 0;
+        PsychCopyInIntegerArg(3, FALSE, &outputId);
+
+        CGDirectDisplayID dpy;
+        int screen;
+        float brightness;
+        double nbrightness;
+
+        // Map screenNumber and outputIdx to dpy, rootwindow and RandR output:
+        PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
 
         PsychLockDisplay();
-		backlight_new    = XInternAtom(dpy, "Backlight", True);
-		backlight_legacy = XInternAtom(dpy, "BACKLIGHT", True);
+        backlight_new    = XInternAtom(dpy, "Backlight", True);
+        backlight_legacy = XInternAtom(dpy, "BACKLIGHT", True);
         PsychUnlockDisplay();
 
-		if (backlight_new == None && backlight_legacy == None) {
-			PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. System does not support brightness query and setting.");
-		}
+        if (backlight_new == None && backlight_legacy == None) {
+            PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. System does not support brightness query and setting.");
+        }
 
-		screen = PsychGetXScreenIdForScreen(screenNumber);
+        screen = PsychGetXScreenIdForScreen(screenNumber);
 
         PsychLockDisplay();
-		Window root = RootWindow(dpy, screen);
-		XRRScreenResources *resources = XRRGetScreenResources(dpy, root);
+        Window root = RootWindow(dpy, screen);
+        XRRScreenResources *resources = XRRGetScreenResources(dpy, root);
         PsychUnlockDisplay();
 
-		if (resources == NULL) PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Feature not supported.");
-		if (outputId < 0 || outputId >= resources->noutput) PsychErrorExitMsg(PsychError_user, "Invalid video output specified!");
-		RROutput output = resources->outputs[outputId];
+        if (resources == NULL) PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Feature not supported.");
+        if (outputId < 0 || outputId >= resources->noutput) PsychErrorExitMsg(PsychError_user, "Invalid video output specified!");
+        RROutput output = resources->outputs[outputId];
 
-		// Query current brightness of output, if possible. Bail otherwise:
-		unsigned long nitems;
-		unsigned long bytes_after;
-		unsigned char *prop;
-		Atom actual_type;
-		int actual_format;
-		long value;
-		XRRPropertyInfo *info;
-		double cur, new;
-		double min, max;
-    
+        // Query current brightness of output, if possible. Bail otherwise:
+        unsigned long nitems;
+        unsigned long bytes_after;
+        unsigned char *prop;
+        Atom actual_type;
+        int actual_format;
+        long value;
+        XRRPropertyInfo *info;
+        double cur, new;
+        double min, max;
+
         PsychLockDisplay();
 
-		backlight = backlight_new;
-		if (!backlight || XRRGetOutputProperty(dpy, output, backlight, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) != Success) {
-			backlight = backlight_legacy;
-			if (!backlight || XRRGetOutputProperty(dpy, output, backlight, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) != Success) {
+        backlight = backlight_new;
+        if (!backlight || XRRGetOutputProperty(dpy, output, backlight, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) != Success) {
+            backlight = backlight_legacy;
+            if (!backlight || XRRGetOutputProperty(dpy, output, backlight, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) != Success) {
                 PsychUnlockDisplay();
-				PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Unsupported feature?");
+                PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Unsupported feature?");
             }
-		}
+        }
 
-		if (actual_type != XA_INTEGER || nitems != 1 || actual_format != 32) {
-			XFree(prop);
+        if (actual_type != XA_INTEGER || nitems != 1 || actual_format != 32) {
+            XFree(prop);
             PsychUnlockDisplay();
-			PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Unsupported feature?");
-		} else {
-			value = *((long *) prop);
-			XFree(prop);
-		}
+            PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Unsupported feature?");
+        } else {
+            value = *((long *) prop);
+            XFree(prop);
+        }
 
-		info = XRRQueryOutputProperty(dpy, output, backlight);
-		if (info && (info->range) && (info->num_values == 2)) {
-			min = info->values[0];
-			max = info->values[1];
-			cur = (double) value;
+        info = XRRQueryOutputProperty(dpy, output, backlight);
+        if (info && (info->range) && (info->num_values == 2)) {
+            min = info->values[0];
+            max = info->values[1];
+            cur = (double) value;
 
-			// Return current value:
-			PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) ((cur - min) / (max - min)));
+            // Return current value:
+            PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) ((cur - min) / (max - min)));
 
-			// Optionally set new brightness value:
-			if (PsychCopyInDoubleArg(4, FALSE, &nbrightness)) {
-				// Clamp to valid range:
-				if (nbrightness < 0.0) nbrightness = 0.0;
-				if (nbrightness > 1.0) nbrightness = 1.0;            
+            // Optionally set new brightness value:
+            if (PsychCopyInDoubleArg(4, FALSE, &nbrightness)) {
+                // Clamp to valid range:
+                if (nbrightness < 0.0) nbrightness = 0.0;
+                if (nbrightness > 1.0) nbrightness = 1.0;
 
-				// Map to raw value:
-				new = (nbrightness * (max - min)) + min;
+                // Map to raw value:
+                new = (nbrightness * (max - min)) + min;
 
-				// Be paranoid, clamp again:
-				if (new > max) new = max;
-				if (new < min) new = min;
+                // Be paranoid, clamp again:
+                if (new > max) new = max;
+                if (new < min) new = min;
 
-				// Set new brightness value:
-				value = (long) new;
-				XRRChangeOutputProperty(dpy, output, backlight, XA_INTEGER, 32, PropModeReplace, (unsigned char *) &value, 1);
+                // Set new brightness value:
+                value = (long) new;
+                XRRChangeOutputProperty(dpy, output, backlight, XA_INTEGER, 32, PropModeReplace, (unsigned char *) &value, 1);
 
-				// Kick the server to do its job quickly:
-				XFlush(dpy);
-			}
-			XFree(info);
-		} else {
-			if (info) XFree(info);
+                // Kick the server to do its job quickly:
+                XFlush(dpy);
+            }
+            XFree(info);
+        } else {
+            if (info) XFree(info);
             PsychUnlockDisplay();
-			PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Unsupported feature?");
-		}
+            PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Unsupported feature?");
+        }
 
-		XRRFreeScreenResources(resources);
+        XRRFreeScreenResources(resources);
 
         PsychUnlockDisplay();
 
-		#endif
+        #endif
 
-		#if PSYCH_SYSTEM == PSYCH_WINDOWS
-		PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is not implemented on MS-Windows.");
-		#endif
+        #if PSYCH_SYSTEM == PSYCH_WINDOWS
+        PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is not implemented on MS-Windows.");
+        #endif
 
-		return(PsychError_none);
-	}
-    
-	// Usercode wants to know number of outputs for a screen?
-	if (PsychMatch(settingName, "NumberOutputs")) {
-		// Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
-		PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
-		if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number."); 
+        return(PsychError_none);
+    }
 
-		// Count and return assigned outputs for screen:
-		for (outputId = 0; (outputId < kPsychMaxPossibleCrtcs) && (PsychScreenToHead(screenNumber, outputId) >= 0); outputId++);
-		PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) outputId);
+    // Usercode wants to know number of outputs for a screen?
+    if (PsychMatch(settingName, "NumberOutputs")) {
+        // Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.
+        PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
+        if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number.");
 
-		return(PsychError_none);
-	}
+        // Count and return assigned outputs for screen:
+        for (outputId = 0; (outputId < kPsychMaxPossibleCrtcs) && (PsychScreenToHead(screenNumber, outputId) >= 0); outputId++);
+        PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) outputId);
 
-	// Usercode wants to capture a display screen?
-	if (PsychMatch(settingName, "Capture")) {
-		// Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
-		PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
-		if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number."); 
+        return(PsychError_none);
+    }
 
-		// This functions is only supported on OSX for the time being, a no-op on other platforms:
-		if ((PSYCH_SYSTEM == PSYCH_OSX) && !PsychIsScreenCaptured(screenNumber)) PsychCaptureScreen(screenNumber);
+    // Usercode wants to capture a display screen?
+    if (PsychMatch(settingName, "Capture")) {
+        // Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.
+        PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
+        if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number.");
 
-		return(PsychError_none);
-	}
+        // This functions is only supported on OSX for the time being, a no-op on other platforms:
+        if ((PSYCH_SYSTEM == PSYCH_OSX) && !PsychIsScreenCaptured(screenNumber)) PsychCaptureScreen(screenNumber);
 
-	// Usercode wants to release a display screen?
-	if (PsychMatch(settingName, "Release")) {
-		// Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
-		PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
-		if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number."); 
+        return(PsychError_none);
+    }
 
-		// This functions is only supported on OSX for the time being, a no-op on other platforms:
-		if ((PSYCH_SYSTEM == PSYCH_OSX) && PsychIsScreenCaptured(screenNumber)) PsychReleaseScreen(screenNumber);
+    // Usercode wants to release a display screen?
+    if (PsychMatch(settingName, "Release")) {
+        // Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.
+        PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
+        if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number.");
 
-		return(PsychError_none);
-	}
+        // This functions is only supported on OSX for the time being, a no-op on other platforms:
+        if ((PSYCH_SYSTEM == PSYCH_OSX) && PsychIsScreenCaptured(screenNumber)) PsychReleaseScreen(screenNumber);
 
-	// Usercode wants to manually control dithering on an output?
-	if (PsychMatch(settingName, "Dithering")) {
-		// Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.
-		PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
-		if (screenNumber==-1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number.");
+        return(PsychError_none);
+    }
 
-		// Get ditherEnable flag: 0 = Disable dithering. Other values may either trigger reenable, or
-		// dither register setup with given value:
-		PsychCopyInIntegerArg(3, TRUE, &ditherEnable);
+    // Usercode wants to manually control dithering on an output?
+    if (PsychMatch(settingName, "Dithering")) {
+        // Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.
+        PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
+        if (screenNumber==-1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number.");
 
-		// Enable or disable dithering on all video outputs associated with screen 'screenNumber':
-		PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) PsychSetOutputDithering(NULL, screenNumber, ditherEnable));
+        // Get ditherEnable flag: 0 = Disable dithering. Other values may either trigger reenable, or
+        // dither register setup with given value:
+        PsychCopyInIntegerArg(3, TRUE, &ditherEnable);
 
-		return(PsychError_none);
-	}
-    
+        // Enable or disable dithering on all video outputs associated with screen 'screenNumber':
+        PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) PsychSetOutputDithering(NULL, screenNumber, ditherEnable));
+
+        return(PsychError_none);
+    }
+
 #if PSYCH_SYSTEM != PSYCH_LINUX
-	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is only supported on Linux.");
+    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is only supported on Linux.");
 #else
 
-	if(!PsychMatch(settingName, "Scanout")) PsychErrorExitMsg(PsychError_user, "Unknown 'setting' name provided. Typo?");
+    if(!PsychMatch(settingName, "Scanout")) PsychErrorExitMsg(PsychError_user, "Unknown 'setting' name provided. Typo?");
 
-	// Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
-	PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
-	if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number."); 
+    // Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.
+    PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
+    if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number.");
 
-	PsychCopyInIntegerArg(3, TRUE, &outputId);
-	if(outputId < 0 || outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid display output index provided."); 
+    PsychCopyInIntegerArg(3, TRUE, &outputId);
+    if(outputId < 0 || outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid display output index provided.");
 
-	// Create a structure and populate it.
-	PsychAllocOutStructArray(1, FALSE, 1, 6, OutputFieldNames, &oldResStructArray);
+    // Create a structure and populate it.
+    PsychAllocOutStructArray(1, FALSE, 1, 6, OutputFieldNames, &oldResStructArray);
 
-	// Query current video mode of this output:
-	XRRCrtcInfo *crtc_info = NULL;
+    // Query current video mode of this output:
+    XRRCrtcInfo *crtc_info = NULL;
 
     PsychLockDisplay();
-	XRRModeInfo *mode = PsychOSGetModeLine(screenNumber, outputId, &crtc_info);
+    XRRModeInfo *mode = PsychOSGetModeLine(screenNumber, outputId, &crtc_info);
     PsychUnlockDisplay();
 
-	if (NULL == mode) PsychErrorExitMsg(PsychError_user, "Could not query video mode for this output. Invalid outputId or unsupported function on this system?");
+    if (NULL == mode) PsychErrorExitMsg(PsychError_user, "Could not query video mode for this output. Invalid outputId or unsupported function on this system?");
 
-	// Get (x,y) top-left corner of crtc's viewport -- panning info:
-	PsychSetStructArrayDoubleElement("xStart", 0, (double) crtc_info->x, oldResStructArray);
-	PsychSetStructArrayDoubleElement("yStart", 0, (double) crtc_info->y, oldResStructArray);
-	XRRFreeCrtcInfo(crtc_info);
+    // Get (x,y) top-left corner of crtc's viewport -- panning info:
+    PsychSetStructArrayDoubleElement("xStart", 0, (double) crtc_info->x, oldResStructArray);
+    PsychSetStructArrayDoubleElement("yStart", 0, (double) crtc_info->y, oldResStructArray);
+    XRRFreeCrtcInfo(crtc_info);
 
-	// Query and return resolution:
-	newWidth = (int) mode->width;
-	newHeight = (int) mode->height;
-	PsychSetStructArrayDoubleElement("width", 0, newWidth, oldResStructArray);
-	PsychSetStructArrayDoubleElement("height", 0, newHeight, oldResStructArray);
+    // Query and return resolution:
+    newWidth = (int) mode->width;
+    newHeight = (int) mode->height;
+    PsychSetStructArrayDoubleElement("width", 0, newWidth, oldResStructArray);
+    PsychSetStructArrayDoubleElement("height", 0, newHeight, oldResStructArray);
 
-	// Query and return refresh rate:
+    // Query and return refresh rate:
 
     // Modeline with plausible values returned by RandR?
     if (mode && (mode->hTotal > mode->width) && (mode->vTotal > mode->height)) {
@@ -354,35 +355,35 @@ PsychError SCREENConfigureDisplay(void)
         newHz = (int) (PsychGetNominalFramerate(screenNumber) + 0.5);
     }
 
-	PsychSetStructArrayDoubleElement("hz", 0, newHz, oldResStructArray);
-	
-	// Query and return current display depth:
-	newBpp = PsychGetScreenDepthValue(screenNumber);
-	PsychSetStructArrayDoubleElement("pixelSize", 0, newBpp, oldResStructArray);
+    PsychSetStructArrayDoubleElement("hz", 0, newHz, oldResStructArray);
 
-	// Any new settings provided? Otherwise we skip this:
-	if(PsychGetNumInputArgs() > 3) {
-		// Make sure we're not called while onscreen windows are open:
-		if ((PsychCountOpenWindows(kPsychSingleBufferOnscreen) + PsychCountOpenWindows(kPsychDoubleBufferOnscreen)) > 0) PsychErrorExitMsg(PsychError_user, "Tried to change video display settings via Screen('ConfigureDisplay'); while onscreen windows were open! Not allowed.");
+    // Query and return current display depth:
+    newBpp = PsychGetScreenDepthValue(screenNumber);
+    PsychSetStructArrayDoubleElement("pixelSize", 0, newBpp, oldResStructArray);
 
-		// Copy in optional new settings:
-		PsychCopyInIntegerArg(4, FALSE, &newWidth);
-		PsychCopyInIntegerArg(5, FALSE, &newHeight);
-		PsychCopyInIntegerArg(6, FALSE, &newHz);
-		newX = newY = -1;
-		PsychCopyInIntegerArg(7, FALSE, &newX);
-		PsychCopyInIntegerArg(8, FALSE, &newY);
+    // Any new settings provided? Otherwise we skip this:
+    if(PsychGetNumInputArgs() > 3) {
+        // Make sure we're not called while onscreen windows are open:
+        if ((PsychCountOpenWindows(kPsychSingleBufferOnscreen) + PsychCountOpenWindows(kPsychDoubleBufferOnscreen)) > 0) PsychErrorExitMsg(PsychError_user, "Tried to change video display settings via Screen('ConfigureDisplay'); while onscreen windows were open! Not allowed.");
 
-		rc = PsychOSSetOutputConfig(screenNumber, outputId, newWidth, newHeight, newHz, newX, newY);
-		// Check if successfull:
-		if (!rc) PsychErrorExitMsg(PsychError_user, "Invalid or mutually incompatible video settings requested!\nOne or more of the values are invalid or unsupported by your display device.");
-	}
+        // Copy in optional new settings:
+        PsychCopyInIntegerArg(4, FALSE, &newWidth);
+        PsychCopyInIntegerArg(5, FALSE, &newHeight);
+        PsychCopyInIntegerArg(6, FALSE, &newHz);
+        newX = newY = -1;
+        PsychCopyInIntegerArg(7, FALSE, &newX);
+        PsychCopyInIntegerArg(8, FALSE, &newY);
+
+        rc = PsychOSSetOutputConfig(screenNumber, outputId, newWidth, newHeight, newHz, newX, newY);
+        // Check if successfull:
+        if (!rc) PsychErrorExitMsg(PsychError_user, "Invalid or mutually incompatible video settings requested!\nOne or more of the values are invalid or unsupported by your display device.");
+    }
 
 #endif
-	return(PsychError_none);	
+    return(PsychError_none);
 }
 
-PsychError SCREENResolution(void) 
+PsychError SCREENResolution(void)
 {
     static char useString[] = "oldResolution=Screen('Resolution', screenNumber [, newwidth][, newheight][, newHz][, newPixelSize][, specialMode]);";
     static char synopsisString[] =	"Query or change display settings for screen \"screenNumber\".\n"
@@ -458,7 +459,7 @@ PsychError SCREENResolution(void)
     PsychAllocOutStructArray(1, FALSE, 1, 4, FieldNames, &oldResStructArray);
 
     // Query and return resolution:
-    PsychGetScreenSize(screenNumber, &pnewWidth, &pnewHeight);
+    PsychGetScreenPixelSize(screenNumber, &pnewWidth, &pnewHeight);
     newWidth = (int) pnewWidth;
     newHeight = (int) pnewHeight;
     PsychSetStructArrayDoubleElement("width", 0, newWidth, oldResStructArray);
@@ -507,7 +508,7 @@ PsychError SCREENResolution(void)
 
         // So specialMode flag & 2 means on Linux to not change
         // the actual output resolution of a screen, but only to
-        // resize the screen, ie., its framebuffer, without chaging
+        // resize the screen, ie., its framebuffer, without changing
         // scanout resolution / viewport etc. This would happen anyway
         // on multi-display setups, but to make sure it can also be
         // enforced on single-display setup, we use specialMode & 2:
@@ -533,65 +534,65 @@ PsychError SCREENResolution(void)
     return(PsychError_none);
 }
 
-PsychError SCREENResolutions(void) 
+PsychError SCREENResolutions(void)
 {
-	static char useString[] = "resolutions = Screen('Resolutions', screenNumber [, outputId]);";
-	static char synopsisString[] =	"Query a list of all supported and valid display settings for screen "
-					"\"screenNumber\" and display output \"outputId\". If the optional "
-					"'outputId' is omitted, the unified settings of the screen are returned. "
-					"Currently 'outputId' is only honored on Linux, ignored on other systems.\n"
-					"You can set your display to one of the supported "
-					"combinations of settings via the Screen('Resolution') command.\n"
-					"Returns an array of structs \"resolutions\", where "
-					"each element in the array is a struct that describes one valid "
-					"combination of resolution, color depth and refresh rate. Fields are "
-					"self explanatory.\n"
-					"Please note that unless you have good reason to do so, especially the "
-					"color depth value \"newPixelSize\" should usually not be changed. "
-					"Usually it is 32 bpp or 24 bpp. "
-					"A setting of 16 bpp will disable alpha-blending and create "
-					"drastically reduced color resolution of 5 bits per color channel. A "
-					"setting of 8 bpp is not supported at all on MacOS/X and will create artifacts "
-					"on all other systems. Use a size of 32 bpp even for clut animation. This function "
-					"may not work on all MS-Windows setups, your mileage may vary.\n"
-					"Please note that there are a couple of helper functions in the PsychOneLiners "
-					"directory of Psychtoolbox which can simplify the task of switching resolutions. "
-					"That functions are probably more convenient to use than the low-level Screen "
-					"functions for display settings... ";
-	static char seeAlsoString[] = "Screen('Resolution')";
-	
-	PsychGenericScriptType *ResStructArray;
-	int screenNumber, outputid, nrmodes, i;
-	long *widths, *heights, *hz, *bpp;
-	
-	// All sub functions should have these two lines
-	PsychPushHelp(useString, synopsisString, seeAlsoString);
-	if(PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+    static char useString[] = "resolutions = Screen('Resolutions', screenNumber [, outputId]);";
+    static char synopsisString[] =	"Query a list of all supported and valid display settings for screen "
+                    "\"screenNumber\" and display output \"outputId\". If the optional "
+                    "'outputId' is omitted, the unified settings of the screen are returned. "
+                    "Currently 'outputId' is only honored on Linux, ignored on other systems.\n"
+                    "You can set your display to one of the supported "
+                    "combinations of settings via the Screen('Resolution') command.\n"
+                    "Returns an array of structs \"resolutions\", where "
+                    "each element in the array is a struct that describes one valid "
+                    "combination of resolution, color depth and refresh rate. Fields are "
+                    "self explanatory.\n"
+                    "Please note that unless you have good reason to do so, especially the "
+                    "color depth value \"newPixelSize\" should usually not be changed. "
+                    "Usually it is 32 bpp or 24 bpp. "
+                    "A setting of 16 bpp will disable alpha-blending and create "
+                    "drastically reduced color resolution of 5 bits per color channel. A "
+                    "setting of 8 bpp is not supported at all on MacOS/X and will create artifacts "
+                    "on all other systems. Use a size of 32 bpp even for clut animation. This function "
+                    "may not work on all MS-Windows setups, your mileage may vary.\n"
+                    "Please note that there are a couple of helper functions in the PsychOneLiners "
+                    "directory of Psychtoolbox which can simplify the task of switching resolutions. "
+                    "That functions are probably more convenient to use than the low-level Screen "
+                    "functions for display settings... ";
+    static char seeAlsoString[] = "Screen('Resolution')";
 
-	// Check to see if the user supplied superfluous arguments
-	PsychErrorExit(PsychCapNumOutputArgs(1));
-	PsychErrorExit(PsychCapNumInputArgs(2));
-    
-	// Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
-	PsychCopyInScreenNumberArg(kPsychUseDefaultArgPosition, TRUE, &screenNumber);
-	if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number."); 
+    PsychGenericScriptType *ResStructArray;
+    int screenNumber, outputid, nrmodes, i;
+    long *widths, *heights, *hz, *bpp;
 
-	outputid = -1;
-	PsychCopyInIntegerArg(2, kPsychArgOptional, &outputid);
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if(PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
-	// Query all supported settings:
-	nrmodes = PsychGetAllSupportedScreenSettings(screenNumber, outputid, &widths, &heights, &hz, &bpp);
-	
-	// Create a structure array and populate it.
-	PsychAllocOutStructArray(1, FALSE, nrmodes, 4, FieldNames, &ResStructArray);
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(2));
 
-	for (i=0; i<nrmodes; i++) {
-		PsychSetStructArrayDoubleElement("width", i, (double) widths[i], ResStructArray);
-		PsychSetStructArrayDoubleElement("height", i, (double) heights[i], ResStructArray);
-		PsychSetStructArrayDoubleElement("hz", i, (double) hz[i], ResStructArray);
-		PsychSetStructArrayDoubleElement("pixelSize", i, (double) bpp[i], ResStructArray);
-	}
-	
-	// Ready.
-	return(PsychError_none);	
+    // Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.
+    PsychCopyInScreenNumberArg(kPsychUseDefaultArgPosition, TRUE, &screenNumber);
+    if(screenNumber==-1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number.");
+
+    outputid = -1;
+    PsychCopyInIntegerArg(2, kPsychArgOptional, &outputid);
+
+    // Query all supported settings:
+    nrmodes = PsychGetAllSupportedScreenSettings(screenNumber, outputid, &widths, &heights, &hz, &bpp);
+
+    // Create a structure array and populate it.
+    PsychAllocOutStructArray(1, FALSE, nrmodes, 4, FieldNames, &ResStructArray);
+
+    for (i=0; i<nrmodes; i++) {
+        PsychSetStructArrayDoubleElement("width", i, (double) widths[i], ResStructArray);
+        PsychSetStructArrayDoubleElement("height", i, (double) heights[i], ResStructArray);
+        PsychSetStructArrayDoubleElement("hz", i, (double) hz[i], ResStructArray);
+        PsychSetStructArrayDoubleElement("pixelSize", i, (double) bpp[i], ResStructArray);
+    }
+
+    // Ready.
+    return(PsychError_none);
 }
