@@ -308,6 +308,38 @@ wayland_window_create_feedback(PsychWindowRecordType* windowRecord)
     wl_list_insert(&windowRecord->targetSpecific.presentation_feedback_list, &wayland_feedback->link);
 }
 
+// Perform OS specific processing of Window events:
+void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
+{
+    int w, h, x, y;
+
+    // Trigger event queue dispatch processing for GUI windows:
+    if (windowRecord == NULL) {
+        // No op, so far...
+        return;
+    }
+
+    // No-Op if we don't have a valid Wayland window:
+    if (!windowRecord->targetSpecific.xwindowHandle) return;
+
+    // TODO: Probably call Wayland display sync and use info from surface configure
+    // event. No-Op for now:
+    return;
+
+    // GUI windows need to behave GUIyee:
+    if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord)) {
+        // Update windows rect and globalrect, based on current size and location:
+        PsychLockDisplay();
+        x = y = w = h = 0;
+        PsychUnlockDisplay();
+
+        PsychMakeRect(windowRecord->globalrect, x, y, x + (int) w, y + (int) h);
+        PsychNormalizeRect(windowRecord->globalrect, windowRecord->rect);
+        PsychSetupClientRect(windowRecord);
+        PsychSetupView(windowRecord, FALSE);
+    }
+}
+
 /*
   PsychOSOpenOnscreenWindow()
 
@@ -332,7 +364,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     CGDirectDisplayID dpy;
     int scrnum;
     unsigned long mask;
-    Window win = 0;
     int i, x, y, width, height, nrconfigs, buffdepth;
     GLenum glerr;
     int32_t attrib[41];
@@ -346,6 +377,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     struct waffle_config *config;
     struct waffle_window *window;
     union waffle_native_window *wafflewin;
+    struct waffle_wayland_window *wayland_window;
     struct waffle_context *ctx;
 
     // Define default rendering backend:
@@ -524,7 +556,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
         // Copy absolute screen location and area of window to 'globalrect',
         // so functions like Screen('GlobalRect') can still query the real
-        // bounding gox of a window onscreen:
+        // bounding box of a window onscreen:
         PsychGetGlobalScreenRect(screenSettings->screenNumber, windowRecord->globalrect);
     } else {
         // Window size different from current screen size:
@@ -730,6 +762,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // Create our onscreen window:
     window = waffle_window_create(config, width, height);
     wafflewin = waffle_window_get_native(window);
+    wayland_window = wafflewin->wayland;
 
     // Set hints for window sizing and positioning:
     // TODO FIXME Wayland...
@@ -758,9 +791,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // windowHandle is a waffle_window*:
     windowRecord->targetSpecific.windowHandle = window;
 
-    // xwindowHandle stores the underlying X-Window:
-    // TODO FIXME wl_surface, or wl_shell_surface?
-    windowRecord->targetSpecific.xwindowHandle = win;
+    // xwindowHandle stores the underlying Wayland "window":
+    windowRecord->targetSpecific.xwindowHandle = wayland_window->wl_surface;
+
+    // Provide a pointer back to windowRecord in the wl_surface:
+    wl_surface_set_user_data(wayland_window->wl_surface, (void *) windowRecord);
 
     // waffle_display*
     windowRecord->targetSpecific.deviceContext = waffle_display;
@@ -823,7 +858,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
     // Show our new window:
     if (windowLevel != -1) {
-        struct waffle_wayland_window *wayland_window = wafflewin->wayland;
         struct wl_region *region = wl_compositor_create_region(wl_compositor);
 
         // Is this window supposed to be transparent to user input (mouse, keyboard etc.)?
@@ -1159,7 +1193,7 @@ void PsychOSCloseWindow(PsychWindowRecordType * windowRecord)
     // Close & Destroy the window:
     waffle_window_destroy(windowRecord->targetSpecific.windowHandle);
     windowRecord->targetSpecific.windowHandle = 0;
-    windowRecord->targetSpecific.xwindowHandle = 0;
+    windowRecord->targetSpecific.xwindowHandle = NULL;
 
     PsychUnlockDisplay();
 

@@ -38,39 +38,6 @@
 // utsname for uname() so we can find out on which kernel we're running:
 #include <sys/utsname.h>
 
-// Perform OS specific processing of Window events:
-void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
-{
-    Window rootRet;
-    unsigned int depth_return, border_width_return, w, h;
-    int x, y;
-
-    // Trigger event queue dispatch processing for GUI windows:
-    if (windowRecord == NULL) {
-        // No op, so far...
-        return;
-    }
-
-    // No-Op if we are not running on a X11 based display backend:
-    if (!windowRecord->targetSpecific.privDpy || !windowRecord->targetSpecific.xwindowHandle) return;
-
-    // GUI windows need to behave GUIyee:
-    if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord)) {
-        // Update windows rect and globalrect, based on current size and location:
-        PsychLockDisplay();
-        XGetGeometry(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.xwindowHandle, &rootRet, &x, &y,
-                     &w, &h, &border_width_return, &depth_return);
-        XTranslateCoordinates(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.xwindowHandle, rootRet,
-                              0,0, &x, &y, &rootRet);
-        PsychUnlockDisplay();
-
-        PsychMakeRect(windowRecord->globalrect, x, y, x + (int) w, y + (int) h);
-        PsychNormalizeRect(windowRecord->globalrect, windowRecord->rect);
-        PsychSetupClientRect(windowRecord);
-        PsychSetupView(windowRecord, FALSE);
-    }
-}
-
 /** PsychRealtimePriority: Temporarily boost priority to highest available priority on Linux.
  *    PsychRealtimePriority(true) enables realtime-scheduling (like Priority(>0) would do in Matlab).
  *    PsychRealtimePriority(false) restores scheduling to the state before last invocation of PsychRealtimePriority(true),
@@ -144,6 +111,40 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
 
 /* The following code is only used for implementation of the classic X11/GLX backend: */
 #ifndef PTB_USE_WAYLAND
+
+// Perform OS specific processing of Window events:
+void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
+{
+    Window rootRet;
+    unsigned int depth_return, border_width_return, w, h;
+    int x, y;
+
+    // Trigger event queue dispatch processing for GUI windows:
+    if (windowRecord == NULL) {
+        // No op, so far...
+        return;
+    }
+
+    // No-Op if we are not running on a X11 based display backend:
+    if (!windowRecord->targetSpecific.privDpy || !windowRecord->targetSpecific.xwindowHandle) return;
+
+    // GUI windows need to behave GUIyee:
+    if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord)) {
+        // Update windows rect and globalrect, based on current size and location:
+        PsychLockDisplay();
+        XGetGeometry(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.xwindowHandle, &rootRet, &x, &y,
+                     &w, &h, &border_width_return, &depth_return);
+        XTranslateCoordinates(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.xwindowHandle, rootRet,
+                              0,0, &x, &y, &rootRet);
+        PsychUnlockDisplay();
+
+        PsychMakeRect(windowRecord->globalrect, x, y, x + (int) w, y + (int) h);
+        PsychNormalizeRect(windowRecord->globalrect, windowRecord->rect);
+        PsychSetupClientRect(windowRecord);
+        PsychSetupView(windowRecord, FALSE);
+    }
+}
+
 #ifndef PTB_USE_WAFFLE
 
 /* XAtom support for setup of transparent windows: */

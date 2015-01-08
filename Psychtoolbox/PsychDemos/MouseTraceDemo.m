@@ -8,11 +8,11 @@
 
 % HISTORY
 % 8/12/97  dhb, wtf  Wrote it.
-% 8/13/97  dhb		 Small modifications.
-% 8/15/97  dgp	     Drag mouse instead of clicking before and after.
+% 8/13/97  dhb       Small modifications.
+% 8/15/97  dgp       Drag mouse instead of clicking before and after.
 % 8/07/01  awi       Added font conditional, changed "button" to "buttons"
 %                    and indexed the mouse button result for Windows.
-% 4/11/01  awi		 Cosmetic editing of comments.
+% 4/11/01  awi       Cosmetic editing of comments.
 % 4/13/02  dgp       Use Arial, no need for conditional.
 % 11/18/04 awi       Modified to make it work on OS X and renamed to MouseTraceDemoOSX.  
 %                    Changed the open command to specify double
@@ -35,7 +35,7 @@
 try
     % Open up a window on the screen and clear it.
     whichScreen = max(Screen('Screens'));
-    [theWindow,theRect] = Screen(whichScreen,'OpenWindow',0,[],[],2);
+    [theWindow,theRect] = Screen('OpenWindow', whichScreen, 0, [400 400 800 800]);
 
     % Move the cursor to the center of the screen
     theX = round(theRect(RectRight) / 2);
@@ -56,7 +56,6 @@ try
         end
     end
     Screen(theWindow,'DrawText','Drag mouse (i.e. hold button down) to draw',50,50,0);
-    %Screen(theWindow,'DrawText','Release button to finish',50,50,255);
 
     % Loop and track the mouse, drawing the contour
     [theX,theY] = GetMouse(whichScreen);
@@ -67,7 +66,7 @@ try
     startTime = GetSecs;
     nextTime = startTime+sampleTime;
     while (1)
-        [x,y,buttons] = GetMouse(whichScreen);	
+        [x,y,buttons] = GetMouse(whichScreen);
         if ~buttons(1)
             break;
         end

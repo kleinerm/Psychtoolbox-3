@@ -4,6 +4,9 @@ function LoadPsychHID
 
 if ~IsWin
     % Nothing to do on non-Windows:
+    if IsLinux && isempty(getenv('DISPLAY'))
+        error('Sorry, PsychHID() is not yet supported on Linux without a running X-Server.');
+    end
     return;
 end
 

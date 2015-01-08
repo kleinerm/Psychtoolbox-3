@@ -250,7 +250,7 @@ typedef struct {
     struct waffle_display*    deviceContext;                  // Pointer to the Waffle display connection.
     void*                     privDpy;                        // Pointer to the private X11 display connection for non-OpenGL ops.
     struct waffle_window*     windowHandle;                   // Handle to the Waffle onscreen window handle.
-    Window                    xwindowHandle;                  // TODO: Change type - Associated Wayland window if any.
+    struct wl_surface*        xwindowHandle;                  // Associated Wayland "window", if any.
     struct waffle_context*    glusercontextObject;            // OpenGL context for userspace rendering code, e.g., moglcore...
     struct waffle_context*    glswapcontextObject;            // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
     struct wl_list            presentation_feedback_list;     // Used for Wayland backend presentation_feedback extension to queue feedback events.

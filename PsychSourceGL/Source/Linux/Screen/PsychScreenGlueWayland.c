@@ -96,6 +96,9 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 
+// EvDev input style definition: Button and key codes.
+#include <linux/input.h>
+
 // Maximum number of slots in a gamma table to set/query: This should be plenty.
 #define MAX_GAMMALUT_SIZE 16384
 
@@ -136,6 +139,9 @@ uint32_t wayland_presentation_clock_id;
 
 static struct wl_registry *wl_registry = NULL;
 static psych_bool wayland_roundtrip_needed = FALSE;
+
+// Helpers:
+static void ProcessWaylandEvents(int screenNumber);
 
 // Helpers so we can easily use/include/upgrade to Weston client sample code:
 static void *
@@ -374,6 +380,367 @@ static const struct presentation_listener wayland_presentation_listener = {
     wayland_set_presentation_clock_id
 };
 
+struct seat_info {
+//    struct global_info global;
+    struct wl_seat *seat;
+//    struct weston_info *info;
+
+    uint32_t capabilities;
+    char *name;
+
+    int32_t repeat_rate;
+    int32_t repeat_delay;
+
+    // Keyboard state:
+    PsychNativeBooleanType keyState[256];
+    uint32_t keyTimestamp;
+
+    // Pointer state:
+    double buttonState[256];
+    double posX;
+    double posY;
+    struct wl_surface *pointerFocusWindow;
+};
+
+#define kPsychMaxWaylandSeats 100
+static struct seat_info* waylandSeats[kPsychMaxWaylandSeats];
+static struct seat_info* waylandInputDevices[kPsychMaxWaylandSeats * 3];
+static int numSeats = 0;
+static int numInputDevices = 0;
+
+static void
+print_seat_info(void *data)
+{
+    struct seat_info *seat = data;
+
+    //print_global_info(data);
+    printf("\tNew Wayland input seat detected:\n");
+    printf("\tname: %s\n", seat->name);
+    printf("\tcapabilities:");
+
+    if (seat->capabilities & WL_SEAT_CAPABILITY_POINTER)
+        printf(" pointer");
+    if (seat->capabilities & WL_SEAT_CAPABILITY_KEYBOARD)
+        printf(" keyboard");
+    if (seat->capabilities & WL_SEAT_CAPABILITY_TOUCH)
+        printf(" touch");
+
+    printf("\n");
+
+    if (seat->repeat_rate > 0)
+        printf("\tkeyboard repeat rate: %d\n", seat->repeat_rate);
+    if (seat->repeat_delay > 0)
+        printf("\tkeyboard repeat delay: %d\n", seat->repeat_delay);
+}
+
+static void
+keyboard_handle_keymap(void *data, struct wl_keyboard *keyboard,
+                       uint32_t format, int fd, uint32_t size)
+{
+    struct seat_info *seat = data;
+    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Keyboard keymap received for keyboard of seat %p.\n", seat);
+}
+
+static void
+keyboard_handle_enter(void *data, struct wl_keyboard *keyboard,
+                      uint32_t serial, struct wl_surface *surface,
+                      struct wl_array *keys)
+{
+    struct seat_info *seat = data;
+    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Keyboard focus entered surface %p on keyboard of seat %p.\n", surface, seat);
+
+    // Reset keyState to "nothing pressed":
+    memset(&seat->keyState, 0, sizeof(seat->keyState));
+    seat->keyTimestamp = 0;
+}
+
+static void
+keyboard_handle_leave(void *data, struct wl_keyboard *keyboard,
+                      uint32_t serial, struct wl_surface *surface)
+{
+    struct seat_info *seat = data;
+    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Keyboard focus lost for surface %p on keyboard of seat %p.\n", surface, seat);
+
+    // Reset keyState to "nothing pressed":
+    memset(&seat->keyState, 0, sizeof(seat->keyState));
+    seat->keyTimestamp = 0;
+}
+
+static void
+keyboard_handle_key(void *data, struct wl_keyboard *keyboard,
+                    uint32_t serial, uint32_t time, uint32_t key,
+                    uint32_t state)
+{
+    struct seat_info *seat = data;
+    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: %i: [%i msecs]: KEY %i -> %i\n", serial, time, key, state);
+
+    // Update keyState for this key:
+    if (key < 256) {
+        seat->keyState[key] = (PsychNativeBooleanType) state;
+        seat->keyTimestamp = time;
+    }
+}
+
+static void
+keyboard_handle_modifiers(void *data, struct wl_keyboard *keyboard,
+                          uint32_t serial, uint32_t mods_depressed,
+                          uint32_t mods_latched, uint32_t mods_locked,
+                          uint32_t group)
+{
+    struct seat_info *seat = data;
+    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Keyboard modifiers updated for keyboard of seat %p.\n", seat);
+}
+
+// Repeat info unused, and unsupported as long as we want protocol v3:
+static void
+keyboard_handle_repeat_info(void *data, struct wl_keyboard *keyboard,
+                            int32_t rate, int32_t delay)
+{
+//     struct seat_info *seat = data;
+//
+//     seat->repeat_rate = rate;
+//     seat->repeat_delay = delay;
+}
+
+static const struct wl_keyboard_listener keyboard_listener = {
+    keyboard_handle_keymap,
+    keyboard_handle_enter,
+    keyboard_handle_leave,
+    keyboard_handle_key,
+    keyboard_handle_modifiers,
+    keyboard_handle_repeat_info,
+};
+
+static void
+pointer_handle_enter(void *data,
+                      struct wl_pointer *wl_pointer,
+                      uint32_t serial,
+                      struct wl_surface *surface,
+                      wl_fixed_t surface_x,
+                      wl_fixed_t surface_y)
+{
+    struct seat_info *seat = data;
+    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Pointer focus entered surface %p for pointer of seat %p.\n", surface, seat);
+
+    seat->posX = wl_fixed_to_double(surface_x);
+    seat->posY = wl_fixed_to_double(surface_y);
+    seat->pointerFocusWindow = surface;
+
+    // Get associated windowRecord for currently focused window / wl_surface for this
+    // seats pointer. We can get the windows globalrect this way to convert the relative
+    // surface x,y position to global x,y position as needed for proper multi-window
+    // operation:
+    if (seat->pointerFocusWindow) {
+        PsychWindowRecordType *windowRecord = (PsychWindowRecordType*) wl_surface_get_user_data(seat->pointerFocusWindow);
+        if (windowRecord) {
+            seat->posX += windowRecord->globalrect[kPsychLeft];
+            seat->posY += windowRecord->globalrect[kPsychTop];
+        }
+    }
+}
+
+static void
+pointer_handle_leave(void *data,
+                      struct wl_pointer *wl_pointer,
+                      uint32_t serial,
+                      struct wl_surface *surface)
+{
+    struct seat_info *seat = data;
+    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Pointer focus lost for surface %p for pointer of seat %p.\n", surface, seat);
+
+    seat->pointerFocusWindow = NULL;
+}
+
+static void
+pointer_handle_motion(void *data,
+                      struct wl_pointer *wl_pointer,
+                      uint32_t time,
+                      wl_fixed_t surface_x,
+                      wl_fixed_t surface_y)
+{
+    struct seat_info *seat = data;
+    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Pointer motion on seat %p: time %i, x = %lf y = %lf\n", seat, time, wl_fixed_to_double(surface_x), wl_fixed_to_double(surface_y));
+    seat->posX = wl_fixed_to_double(surface_x);
+    seat->posY = wl_fixed_to_double(surface_y);
+
+    // Get associated windowRecord for currently focused window / wl_surface for this
+    // seats pointer. We can get the windows globalrect this way to convert the relative
+    // surface x,y position to global x,y position as needed for proper multi-window
+    // operation:
+    if (seat->pointerFocusWindow) {
+        PsychWindowRecordType *windowRecord = (PsychWindowRecordType*) wl_surface_get_user_data(seat->pointerFocusWindow);
+        if (windowRecord) {
+            seat->posX += windowRecord->globalrect[kPsychLeft];
+            seat->posY += windowRecord->globalrect[kPsychTop];
+        }
+    }
+}
+
+static void
+pointer_handle_button(void *data,
+                      struct wl_pointer *wl_pointer,
+                      uint32_t serial,
+                      uint32_t time,
+                      uint32_t button,
+                      uint32_t state)
+{
+    struct seat_info *seat = data;
+    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Pointer button changed on seat %p: time %i, button = %i, state = %i\n", seat, time, button, state);
+
+    // Remap standard mouse buttons of 3-5 Button mice to our standard 0-4:
+    switch (button) {
+        case BTN_LEFT:
+            button = 0;
+        break;
+
+        case BTN_MIDDLE:
+            button = 1;
+        break;
+
+        case BTN_RIGHT:
+            button = 2;
+        break;
+
+        case BTN_SIDE:
+            button = 3;
+        break;
+
+        case BTN_EXTRA:
+            button = 4;
+        break;
+
+        default:
+            button = button - BTN_MISC + 5;
+    }
+
+    // No-Op for buttons higher than 255, as we don't keep stat for more buttons:
+    if (button > 255) return;
+
+    // Update button state:
+    seat->buttonState[button] = (double) state;
+}
+
+static void
+pointer_handle_axis(void *data,
+                    struct wl_pointer *wl_pointer,
+                    uint32_t time,
+                    uint32_t axis,
+                    wl_fixed_t value)
+{
+    struct seat_info *seat = data;
+    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Pointer axis event on seat %p: time %i, axis = %i, value = %lf\n", seat, time, axis, wl_fixed_to_double(value));
+
+    // TODO: No-Op for now, possibly map to our valuators...
+    return;
+}
+
+static const struct wl_pointer_listener pointer_listener = {
+    pointer_handle_enter,
+    pointer_handle_leave,
+    pointer_handle_motion,
+    pointer_handle_button,
+    pointer_handle_axis,
+};
+
+static void
+seat_handle_capabilities(void *data, struct wl_seat *wl_seat,
+                         enum wl_seat_capability caps)
+{
+    struct seat_info *seat = data;
+
+    seat->capabilities = caps;
+
+    /* we want listen for repeat_info from wl_keyboard, but only
+     * do so if the seat info is >= 4 and if we actually have a
+     * keyboard */
+    //if (seat->global.version < 4)
+    //    return;
+
+    if (caps & WL_SEAT_CAPABILITY_KEYBOARD) {
+        struct wl_keyboard *keyboard;
+
+        keyboard = wl_seat_get_keyboard(seat->seat);
+        wl_keyboard_add_listener(keyboard, &keyboard_listener,
+                                 seat);
+
+        //seat->info->roundtrip_needed = true;
+        wayland_roundtrip_needed = TRUE;
+
+        // Add backpointer to our input device array to
+        // this seat, so we can access its keyboard state:
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: New keyboard enumerated under index %i for seat %p.\n", numInputDevices, seat);
+        waylandInputDevices[numInputDevices++] = seat;
+    }
+
+    if (caps & WL_SEAT_CAPABILITY_POINTER) {
+        struct wl_pointer *pointer;
+
+        pointer = wl_seat_get_pointer(seat->seat);
+        wl_pointer_add_listener(pointer, &pointer_listener,
+                                 seat);
+
+        //seat->info->roundtrip_needed = true;
+        wayland_roundtrip_needed = TRUE;
+
+        // Add backpointer to our input device array to
+        // this seat, so we can access its pointer state:
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: New pointer enumerated under index %i for seat %p.\n", numInputDevices, seat);
+        waylandInputDevices[numInputDevices++] = seat;
+    }
+}
+
+static void
+seat_handle_name(void *data, struct wl_seat *wl_seat,
+                 const char *name)
+{
+    struct seat_info *seat = data;
+    seat->name = xstrdup(name);
+}
+
+static const struct wl_seat_listener seat_listener = {
+    seat_handle_capabilities,
+    seat_handle_name,
+};
+
+static void
+destroy_seat_info(void *data)
+{
+    struct seat_info *seat = data;
+
+    wl_seat_destroy(seat->seat);
+
+    if (seat->name != NULL)
+        free(seat->name);
+}
+
+static void
+add_seat_info(struct seat_info **seatSlot, uint32_t id, uint32_t version)
+{
+    struct seat_info *seat = xzalloc(sizeof *seat);
+
+    /* required to set roundtrip_needed to true in capabilities
+     * handler */
+    // seat->info = info;
+
+    //init_global_info(info, &seat->global, id, "wl_seat", version);
+    //seat->global.print = print_seat_info;
+    //seat->global.destroy = destroy_seat_info;
+
+    *seatSlot = seat;
+
+    // Only bind to wl_seat_interface version 3 for now, so we can work
+    // with our old wayland client library:
+    // seat->seat = wl_registry_bind(wl_registry, id, &wl_seat_interface, MIN(version, 4));
+    seat->seat = wl_registry_bind(wl_registry, id, &wl_seat_interface, 3);
+
+    wl_seat_add_listener(seat->seat, &seat_listener, seat);
+
+    seat->repeat_rate = seat->repeat_delay = -1;
+
+    //info->roundtrip_needed = true;
+    wayland_roundtrip_needed = TRUE;
+}
+
 static void
 wayland_registry_listener_global(void *data,
                                  struct wl_registry *registry,
@@ -383,7 +750,7 @@ wayland_registry_listener_global(void *data,
 {
     struct wl_display *self = data;
 
-    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-DEBUG: Wayland registry extension candidate: %s\n", interface);
+    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Wayland registry extension candidate: %s\n", interface);
 
     // Look for presentation interface v1+:
     if (!strcmp(interface, "presentation") && (version >= 1)) {
@@ -402,10 +769,24 @@ wayland_registry_listener_global(void *data,
     // but as a starter...
     if (!strcmp(interface, "wl_output") && (version >= 1)) {
         add_output_info(&displayOutputs[numDisplays], name, version);
-        if (PsychPrefStateGet_Verbosity() > 2) {
+        if (PsychPrefStateGet_Verbosity() > 4) {
             printf("PTB-DEBUG: New output display screen %i enumerated.\n", numDisplays);
         }
         numDisplays++;
+    }
+
+    // Look for Wayland wl_seat ~ collections of input devices:
+    if (!strcmp(interface, "wl_seat") && (version >= 1)) {
+        if (numSeats >= kPsychMaxWaylandSeats) {
+            printf("PTB-WARNING: Could not enumerate all Wayland seats, as maximum number of %i seats reached.\n", (int) kPsychMaxWaylandSeats);
+            return;
+        }
+
+        add_seat_info(&waylandSeats[numSeats], name, version);
+        if (PsychPrefStateGet_Verbosity() > 4) {
+            printf("PTB-DEBUG: New wayland seat %i enumerated.\n", numSeats);
+        }
+        numSeats++;
     }
 
     return;
@@ -428,39 +809,59 @@ struct presentation *get_wayland_presentation_extension(PsychWindowRecordType* w
     return(wayland_pres);
 }
 
-// Init XInput extension: Called under display lock protection:
-static void InitXInputExtensionForDisplay(CGDirectDisplayID dpy, int idx)
+psych_bool PsychWaylandGetKeyboardState(int deviceId, int numKeys, PsychNativeBooleanType *buttonStates, double *timeStamp)
 {
-//     int major, minor;
-//     int rc, i;
-//
-//     // XInputExtension supported? If so do basic init:
-//     if (!XQueryExtension(dpy, "XInputExtension", &xi_opcode, &xi_event, &xi_error)) {
-//         printf("PTB-WARNING: XINPUT1/2 extension unsupported. Will only be able to handle one mouse and mouse cursor.\n");
-//         goto out;
-//     }
-//
-//     // XInput V 2.0 or later supported?
-//     major = 2;
-//     minor = 0;
-//     rc = XIQueryVersion(dpy, &major, &minor);
-//     if (rc == BadRequest) {
-//         printf("PTB-WARNING: No XInput-2 support. Server supports version %d.%d only.\n", major, minor);
-//         printf("PTB-WARNING: XINPUT1/2 extension unsupported. Will only be able to handle one mouse and mouse cursor.\n");
-//         goto out;
-//     } else if (rc != Success) {
-//         printf("PTB-ERROR: Internal error during XInput-2 extension init sequence! This is a bug in Xlib!\n");
-//         printf("PTB-WARNING: XINPUT1/2 extension unsupported. Will only be able to handle one mouse and mouse cursor.\n");
-//         goto out;
-//     }
-//
-//     // printf("PsychHID: INFO: XI2 supported. Server provides version %d.%d.\n", major, minor);
-//
-//     // Enumerate all XI2 input devices for this x-display:
-//     xinput_info[idx] = XIQueryDevice(dpy, XIAllDevices, &xinput_ndevices[idx]);
-//
-//     out:
-    return;
+    ProcessWaylandEvents(0);
+
+    // deviceId -1 means "auto-detected default keyboard". Simply use the first found keyboard device:
+    if (deviceId == -1) {
+        for (deviceId = 0; deviceId < numInputDevices; deviceId++) {
+            if (waylandInputDevices[deviceId] && (waylandInputDevices[deviceId]->capabilities & WL_SEAT_CAPABILITY_KEYBOARD))
+                break;
+        }
+    }
+
+    // Outside valid range for input devices?
+    if (deviceId < 0 || deviceId >= numInputDevices) return(FALSE);
+
+    // No device under that id, or device isn't a keyboard?
+    if (!waylandInputDevices[deviceId] || !(waylandInputDevices[deviceId]->capabilities & WL_SEAT_CAPABILITY_KEYBOARD)) return(FALSE);
+
+    // Copy current keyState to return vector:
+    memcpy(buttonStates, &(waylandInputDevices[deviceId]->keyState[0]), MIN(numKeys, 256) * sizeof(*buttonStates));
+
+    // TODO: Remap timestamp to GetSecs time:
+    *timeStamp = (double) waylandInputDevices[deviceId]->keyTimestamp;
+
+    return(TRUE);
+}
+
+psych_bool PsychWaylandGetMouseState(int deviceId, int *mouseX, int *mouseY, int numButtons, double *buttonArray, void **focusWindow)
+{
+    ProcessWaylandEvents(0);
+
+    // deviceId -1 means "auto-detected default pointer". Simply use the first found pointer device:
+    if (deviceId == -1) {
+        for (deviceId = 0; deviceId < numInputDevices; deviceId++) {
+            if (waylandInputDevices[deviceId] && (waylandInputDevices[deviceId]->capabilities & WL_SEAT_CAPABILITY_POINTER))
+                break;
+        }
+    }
+
+    // Outside valid range for input devices?
+    if (deviceId < 0 || deviceId >= numInputDevices) return(FALSE);
+
+    // No device under that id, or device isn't a keyboard?
+    if (!waylandInputDevices[deviceId] || !(waylandInputDevices[deviceId]->capabilities & WL_SEAT_CAPABILITY_POINTER)) return(FALSE);
+
+    // Copy current keyState to return vector:
+    memcpy(buttonArray, &(waylandInputDevices[deviceId]->buttonState[0]), MIN(numButtons, 256) * sizeof(*buttonArray));
+
+    *mouseX = (int) waylandInputDevices[deviceId]->posX;
+    *mouseY = (int) waylandInputDevices[deviceId]->posY;
+    *focusWindow = (void*) waylandInputDevices[deviceId]->pointerFocusWindow;
+
+    return(TRUE);
 }
 
 static void ProcessWaylandEvents(int screenNumber)
@@ -563,6 +964,10 @@ void InitCGDisplayIDList(void)
         displayWaylandOutputs[i] = NULL;
     }
 
+    // Clear all input devices and seats:
+    for (i = 0; i< kPsychMaxWaylandSeats; i++) waylandSeats[i] = NULL;
+    for (i = 0; i< 3* kPsychMaxWaylandSeats; i++) waylandInputDevices[i] = NULL;
+
     // Preinit screen to head mappings to identity default:
     PsychInitScreenToHeadMappings(0);
 
@@ -586,7 +991,7 @@ void InitCGDisplayIDList(void)
         PsychErrorExitMsg(PsychError_system, "FATAL ERROR: Couldn't initialize Waffle's Wayland backend! Game over!");
     }
 
-    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to connect Wayland Waffle to display '%s'.\n", getenv("PSYCH_WAFFLE_DISPLAY"));
+    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to connect Wayland Waffle to display '%s'.\n", getenv("PSYCH_WAFFLE_DISPLAY"));
     waffle_display = waffle_display_connect(getenv("PSYCH_WAFFLE_DISPLAY"));
 
     if (!waffle_display) {
@@ -632,6 +1037,12 @@ void InitCGDisplayIDList(void)
         // Repeat until everything is enumerated.
     } while (wayland_roundtrip_needed);
 
+    // Print info about all enumerated wl_seats:
+    for (i = 0; i < numSeats; i++) {
+        // Detailed info about enumerated output:
+        if (PsychPrefStateGet_Verbosity() > 3) print_seat_info(waylandSeats[i]);
+    }
+
     // Initialize screenId -> GPU headId mapping to identity mappings for numDisplays:
     PsychInitScreenToHeadMappings(numDisplays);
 
@@ -641,18 +1052,11 @@ void InitCGDisplayIDList(void)
         displayWaylandOutputs[i] = displayOutputs[i]->output;
 
         // Detailed info about enumerated output:
-        if (PsychPrefStateGet_Verbosity() > 2) print_output_info(displayOutputs[i]);
+        if (PsychPrefStateGet_Verbosity() > 3) print_output_info(displayOutputs[i]);
 
         // Set reference crtc == our output info for primary output to always 0,
         // to create a screen == output mapping:
         PsychSetScreenToHead(i, 0, 0);
-
-        //displayX11Screens[i] = i;
-        //xinput_info[i] = xinput_info[0];
-        //xinput_ndevices[i] = xinput_ndevices[0];
-
-        // Get all relevant screen config info and cache it internally:
-        // GetRandRScreenConfig(x11_dpy, i);
     }
 
     if (numDisplays > 1) printf("PTB-INFO: A total of %i Wayland display screens is available for use.\n", numDisplays);
@@ -668,6 +1072,17 @@ void PsychCleanupDisplayGlue(void)
     PsychOSShutdownPsychtoolboxKernelDriverInterface();
 
     PsychLockDisplay();
+
+    // Delete info about all enumerated wl_seats:
+    for (i = 0; i < numSeats; i++) {
+        if (waylandSeats[i]) destroy_seat_info(waylandSeats[i]);
+        waylandSeats[i] = NULL;
+    }
+    numSeats = 0;
+
+    // Clear all input device pointers for the now destroyed seats:
+    for (i = 0; i< 3* kPsychMaxWaylandSeats; i++) waylandInputDevices[i] = NULL;
+    numInputDevices = 0;
 
     // Go trough full screen list:
     for (i = 0; i < PsychGetNumDisplays(); i++) {

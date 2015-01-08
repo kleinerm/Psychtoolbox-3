@@ -39,7 +39,7 @@ function [x,y,buttons,focus,valuators,valinfo] = GetMouse(windowPtrOrScreenNumbe
 % if any(buttons)
 %   fprintf('Someone''s pressing a button.\n');
 % end
-% 
+%
 % % Test if the first mouse button is pressed.
 % if buttons(1)
 %   fprintf('Someone''s pressing the first button!\n');
@@ -55,7 +55,7 @@ function [x,y,buttons,focus,valuators,valinfo] = GetMouse(windowPtrOrScreenNumbe
 % The cursor position (x,y) is "local", i.e. relative to the origin of
 % the window or screen, if supplied. Otherwise it's "global", i.e. relative
 % to the origin of the main screen (the one with the menu bar).
-% 
+%
 % NOTE: If you use GetMouse to wait for clicks, don't forget to wait
 % for the user to release the mouse button, ending the current click, before
 % you begin waiting for the next mouse press.
@@ -67,16 +67,16 @@ function [x,y,buttons,focus,valuators,valinfo] = GetMouse(windowPtrOrScreenNumbe
 % fprintf('Please click the mouse now.\n');
 % [x,y,buttons] = GetMouse;
 % while any(buttons) % if already down, wait for release
-% 	[x,y,buttons] = GetMouse;
+%   [x,y,buttons] = GetMouse;
 % end
 % while ~any(buttons) % wait for press
-% 	[x,y,buttons] = GetMouse;
+%   [x,y,buttons] = GetMouse;
 % end
 % while any(buttons) % wait for release
-% 	[x,y,buttons] = GetMouse;
+%   [x,y,buttons] = GetMouse;
 % end
 % fprintf('You clicked! Thanks.\n');
-% 
+%
 % NOTE: GetMouse no longer supports this obsolete usage:
 % xy = GetMouse([windowPtrOrScreenNumber])
 % where xy is a 1x2 vector containing the x, y coordinates.
@@ -100,7 +100,7 @@ function [x,y,buttons,focus,valuators,valinfo] = GetMouse(windowPtrOrScreenNumbe
 %
 % Limitations:
 %
-% GetMouse will always assume a three button mouse and therefore always 
+% GetMouse will always assume a three button mouse and therefore always
 % return the state of three buttons. GetMouse can't distinguish between
 % multiple mice and will always return the unified state of all mice.
 % _____________________________________________________________________________
@@ -114,17 +114,17 @@ function [x,y,buttons,focus,valuators,valinfo] = GetMouse(windowPtrOrScreenNumbe
 %               query about coordinates.
 % 5/29/96  dhb  Flushing mouse button events added by dgp.
 % 8/23/96  dhb  Added support for windowInfo argument.
-% 2/24/97  dgp	Updated.
-% 2/24/97  dgp	Updated comments about flushing mouse button events.
-% 3/10/97  dgp	windowPtrOrScreenNumber
-% 3/23/97  dgp	deleted obsolete comment about flushing mouse button events.
+% 2/24/97  dgp  Updated.
+% 2/24/97  dgp  Updated comments about flushing mouse button events.
+% 3/10/97  dgp  windowPtrOrScreenNumber
+% 3/23/97  dgp  deleted obsolete comment about flushing mouse button events.
 % 5/9/00   dgp  Added note about waiting for release before waiting for next click.
 % 8/5/01   awi  Added examples and modified to document new size of returned button matrix
-%				on windows.  
+%               on windows.
 % 8/6/01   awi  Added See also line for GetClicks and note about prior Windows version.
 % 4/13/02  dgp  Cosmetic.
-% 5/16/02  awi  Changed Win GetMouse to return variable number of button values and updated 
-%               help accordingly.  
+% 5/16/02  awi  Changed Win GetMouse to return variable number of button values and updated
+%               help accordingly.
 % 5/20/02  dgp  Cosmetic.
 % 5/22/02  dgp  Note that obsolete usage is no longer supported.
 % 6/10/01  awi  Added SetMouse to see also.
@@ -145,6 +145,7 @@ function [x,y,buttons,focus,valuators,valinfo] = GetMouse(windowPtrOrScreenNumbe
 % 07/29/11 mk   Allow specification of 'mouseDev' mouse device index.
 % 08/05/11 mk   Allow query of additional valuators and info about them. Help update.
 % 05/02/12 mk   Add workaround for 64-Bit OS/X to compensate for Apple braindamage.
+% 01/08/15 mk   Add initial Wayland support.
 
 % We Cache the value of numMouseButtons between calls to GetMouse, so we
 % can skip the *very time-consuming* detection code on successive calls.
@@ -179,9 +180,10 @@ if isempty(numMouseButtons)
         % Linux: A greater than zero value (like 3 here) triggers mouse query.
         numMouseButtons = 3;
         
-        % Turn into a no-operation on Linux without X11 for now until we
-        % are ready for Wayland and friends:
-        if IsLinux && isempty(getenv('DISPLAY'))
+        % Turn into a no-operation on Linux without X11 or Wayland for now.
+        % This means we will no-op atm. on the Waffle backend with GBM/EGL,
+        % but we don't use that anyway atm.:
+        if IsLinux && isempty(getenv('DISPLAY')) && isempty(getenv('WAYLAND_DISPLAY'))
             doNoOp = 1;
         end
     end
@@ -213,7 +215,10 @@ end
 
 buttons=logical(rawButtons);
 
-%renormalize to screen coordinates from display space
+% Renormalize to screen coordinates from display space, unless
+% running under Wayland, where globalX, globalY are *always*
+% window local coordinates, so remapping is not only not needed,
+% but actually harmful:
 if ~isempty(windowPtrOrScreenNumber)
     screenRect=Screen('GlobalRect',windowPtrOrScreenNumber);
     x=globalX-screenRect(RectLeft);

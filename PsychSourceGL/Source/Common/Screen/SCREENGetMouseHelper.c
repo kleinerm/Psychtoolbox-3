@@ -594,14 +594,14 @@ PsychError SCREENGetMouseHelper(void)
     int screenNumber;
     int priorityLevel;
     struct sched_param schedulingparam;
-    PsychWindowRecordType *windowRecord;
+    PsychWindowRecordType *windowRecord = NULL;
     int mouseIndex;
     XIButtonState buttons_return;
     XIModifierState modifiers_return;
     XIGroupState group_return;
 
     PsychPushHelp(useString, synopsisString, seeAlsoString);
-    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     PsychCopyInIntegerArg(1, kPsychArgRequired, &numButtons);
 
@@ -622,13 +622,22 @@ PsychError SCREENGetMouseHelper(void)
             }
 
             screenNumber = windowRecord->screenNumber;
+            #ifndef PTB_USE_WAYLAND
             mywin = windowRecord->targetSpecific.xwindowHandle;
-
+            #else
+            // TODO Wayland.
+            mywin = None;
+            #endif
             // Map screenNumber to X11 display handle and screenid:
             PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
         } else {
             PsychLockDisplay();
+            #ifndef PTB_USE_WAYLAND
             mywin = RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber));
+            #else
+            // TODO Wayland.
+            mywin = None;
+            #endif
             PsychUnlockDisplay();
         }
     }
@@ -641,6 +650,32 @@ PsychError SCREENGetMouseHelper(void)
     if (numButtons >= 0) {
         // Mouse pointer query mode:
         numvaluators = 0;
+
+        #ifdef PTB_USE_WAYLAND
+        {
+            void* focusWindow = NULL;
+            // Copy out mouse x and y position:
+            // Alloc out mouse button state:
+            PsychAllocOutDoubleMatArg(3, kPsychArgOptional, (int) 1, (int) numButtons, (int) 1, &buttonArray);
+
+            // Query Wayland backend for mouse state:
+            if (!PsychWaylandGetMouseState(mouseIndex, &mx, &my, numButtons, &(buttonArray[0]), &focusWindow)) {
+                // Failed: Likely invalid mouseIndex.
+                PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such device.");
+            }
+
+            PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) mx);
+            PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) my);
+
+            // Return window focus state: Currently simply 0 for "not focused":
+            PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) (windowRecord && (windowRecord->targetSpecific.xwindowHandle == focusWindow)) ? 1 : 0);
+
+            // Return optional valuator values: Currently empty due to numvaluators == 0:
+            PsychCopyOutDoubleMatArg(5, kPsychArgOptional, (int) 1, (int) numvaluators, (int) 1, &myvaluators[0]);
+
+            return(PsychError_none);
+        }
+        #endif
 
         if (mouseIndex >= 0) {
             // XInput-2 query for handling of multiple mouse pointers:
@@ -823,6 +858,31 @@ PsychError SCREENGetMouseHelper(void)
 
         if (numButtons==-1 || numButtons==-2) {
             // KbCheck()/KbWait() mode:
+
+            #ifdef PTB_USE_WAYLAND
+                // Only implement KbCheck mode. KbWait mode isn't used anymore...
+
+                // Alloc out keyboard state:
+                PsychAllocOutBooleanMatArg(3, kPsychArgOptional, 1, 256, 1, &buttonStates);
+
+                // Query Wayland backend for mouse state:
+                if (!PsychWaylandGetKeyboardState(mouseIndex, 256, &(buttonStates[0]), &timestamp)) {
+                    // Failed: Likely invalid mouseIndex.
+                    PsychErrorExitMsg(PsychError_user, "Invalid 'keyboardIndex' provided. No such device.");
+                }
+
+                // Any key down?
+                keysdown = 0;
+                for (i = 0; i < 256; i++) keysdown += (unsigned int) buttonStates[i];
+
+                // Copy out overall keystate:
+                PsychCopyOutDoubleArg(1, kPsychArgOptional, (keysdown > 0) ? 1 : 0);
+
+                // Copy out timestamp:
+                PsychCopyOutDoubleArg(2, kPsychArgOptional, timestamp);
+
+                return(PsychError_none);
+            #endif
 
             // Switch X-Server into synchronous mode: We need this to get
             // a higher timing precision.

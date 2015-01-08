@@ -104,5 +104,10 @@ void PsychOSDefineX11Cursor(int screenNumber, int deviceId, Cursor cursor);
 // Return identifying information about GPU for a given screen screenNumber:
 psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortype, int* pciDeviceId, int* numDisplayHeads);
 
+
+// Wayland backend specific stuff:
+psych_bool PsychWaylandGetKeyboardState(int deviceId, int numKeys, PsychNativeBooleanType *buttonStates, double *timeStamp);
+psych_bool PsychWaylandGetMouseState(int deviceId, int *mouseX, int *mouseY, int numButtons, double *buttonArray, void** focusWindow);
+
 //end include once
 #endif

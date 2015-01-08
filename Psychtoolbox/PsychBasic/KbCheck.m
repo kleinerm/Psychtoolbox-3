@@ -174,7 +174,7 @@ if isempty(macosx)
 
     % Only use PsychHID on Linux if we are running on a classic X11 X-Server,
     % as current PsychHID on Linux is not yet capable of non-X11 operation:
-    if IsLinux && isempty(getenv('DISPLAY'))
+    if IsLinux % && isempty(getenv('DISPLAY'))
         % Non-standard display backend, e.g., Wayland. Only use Screen's internal implementation:
         allowPsychHID = 0;
     else
@@ -231,7 +231,7 @@ else
    % No-Op for now on Linux without X11 X-Server:
    if ~allowPsychHID && IsLinux
       keyIsDown=0; keyCode=zeros(1,256); secs = 0; deltaSecs = 0;
-      return;
+      %return;
    end
 
    % We use the built-in KbCheck facility of Screen on MS-Windows
@@ -239,7 +239,7 @@ else
    % the user gets a good "works out of the box" experience for the default
    % use case without the need to install the libusb-1.0.dll in the system,
    % which would be required for PsychHID on Windows to work.
-   [keyIsDown,secs, keyCode]= Screen('GetMouseHelper', -1);
+   [keyIsDown,secs, keyCode]= Screen('GetMouseHelper', -1, [], deviceNumber);
 end
 
 % Compute time delta since previous keyboard query, and update internal
