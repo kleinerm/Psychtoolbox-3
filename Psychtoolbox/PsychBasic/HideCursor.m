@@ -1,5 +1,5 @@
 function HideCursor(screenid, mouseid)
-% HideCursor([screenid=0][, mouseid]
+% HideCursor([screenid=0][, mouseid])
 % 
 % HideCursor hides the mouse cursor associated with screen 'screenid'.
 % By default, the cursor of screen zero on Linux, and all screens on
@@ -21,15 +21,7 @@ function HideCursor(screenid, mouseid)
 % 7/12/04  awi Cosmetic and uses IsMac.
 % 11/16/04 awi Renamed "HideCursor" to "HideCursorHelper"
 
-%on OS X the Screen.mexmac hides the cursor, not 
-%HideCursor.mexmac.  HideCursor.m wraps the 
-%Screen call to emulate HideCursor.mex
-
-if nargin < 1
-  screenid = 0;
-end
-
-if isempty(screenid)
+if (nargin < 1) || isempty(screenid)
   screenid = 0;
 end
 

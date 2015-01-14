@@ -7,43 +7,19 @@ function SetMouse(x,y,windowPtrOrScreenNumber, mouseid)
 % window or screen, if supplied. Otherwise it's "global", i.e. relative to
 % the origin of the main screen (the one with the menu bar).
 %
-% On Linux, the optional 'mouseid' parameter allows to select which
+% On Linux with X11, the optional 'mouseid' parameter allows to select which
 % of potentially multiple cursors should be repositioned. On OS/X and
 % Windows this parameter is silently ignored.
-% 
-% OS 9: ___________________________________________________________________
 %
-% After calling SetMouse, there's a short period (until the next tick?)
-% during which GetMouse reports the old position, after which it reports
-% the new position. To be conservative, you can code as follows:
-%  while 1
-%    SetMouse(theX,theY);
-%    [checkX,checkY] = GetMouse;
-%    if (checkX==theX) && (checkY==theY)
-%	   break;
-%    end
-%  end
-%
-% Cursor updating is usually carried out by a System task that runs once
-% per tick, so it's likely that SetMouse doesn't take effect until the
-% next tick. Instead of the elaborate check suggested above, it might
-% be enough, after calling SetMouse, to simply WaitTicks(1) before calling
-% GetMouse to be sure of getting the new position.
-%
-% OS-X, Linux & WINDOWS:___________________________________________________
+% On Linux with the Wayland backend, this function does nothing.
 %
 % Psychtoolbox will accept the optional windowPtrOrScreenNumber
-% argument and check it for validity.  However, supplying the argument will
-% not  influence the position of the mouse cursor.  The cursor is always
-% positioned  in absolute coordinates on the main screen.  It does not
-% matter that the  cursor is always positioned in absolute coordinates,
-% because in Windows  onscreen windows are always the full size of the
-% display, absolute and relative coordinates are always the same.  It would
-% be good if SetMouse could position the mouse cursor on secondary
-% displays, but we dont' support  multiple displays yet in Windows.
+% argument and check it for validity. However, supplying the argument will
+% not influence the position of the mouse cursor. The cursor is always
+% positioned in absolute coordinates on the main screen.
 %
 % The delay between a call to SetMouse and when GetMouse will report the
-% new mouse cursor position is not known.  GetMouse seems to report the new
+% new mouse cursor position is not known. GetMouse seems to report the new
 % position immediately, but we have no guarantee that it always will.
 %
 % _________________________________________________________________________

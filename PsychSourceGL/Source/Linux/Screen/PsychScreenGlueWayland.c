@@ -24,10 +24,6 @@
     PsychGetScreenDepth
     PsychSetNominalFramerate
     PsychOSSetOutputConfig
-    PsychOSDefineX11Cursor
-    PsychHideCursor
-    PsychShowCursor
-    PsychPositionCursor
     PsychReadNormalizedGammaTable
     PsychLoadNormalizedGammaTable
 
@@ -80,6 +76,7 @@
 #include <waffle_wayland.h>
 
 #include <wayland-client.h>
+#include <wayland-cursor.h>
 
 // This header file and corresponding implementation file currently included in our
 // source tree, as permitted by license. There's probably a better way to do this?
@@ -139,6 +136,10 @@ uint32_t wayland_presentation_clock_id;
 
 static struct wl_registry *wl_registry = NULL;
 static psych_bool wayland_roundtrip_needed = FALSE;
+
+// Global shared memory object, used for cursor support:
+static struct wl_shm *wl_shm = NULL;
+static struct wl_cursor_theme *wayland_cursor_theme = NULL;
 
 // Helpers:
 static void ProcessWaylandEvents(int screenNumber);
@@ -396,10 +397,15 @@ struct seat_info {
     uint32_t keyTimestamp;
 
     // Pointer state:
+    uint32_t last_serial;
     double buttonState[256];
     double posX;
     double posY;
     struct wl_surface *pointerFocusWindow;
+    struct wl_surface *cursor_surface;
+    struct wl_cursor *current_cursor;
+    psych_bool cursor_hidden;
+    int hotspot_x, hotspot_y;
 };
 
 #define kPsychMaxWaylandSeats 100
@@ -519,9 +525,13 @@ pointer_handle_enter(void *data,
                       wl_fixed_t surface_x,
                       wl_fixed_t surface_y)
 {
+    struct wl_buffer *buffer;
+    struct wl_cursor_image *image;
     struct seat_info *seat = data;
+
     if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Pointer focus entered surface %p for pointer of seat %p.\n", surface, seat);
 
+    seat->last_serial = serial;
     seat->posX = wl_fixed_to_double(surface_x);
     seat->posY = wl_fixed_to_double(surface_y);
     seat->pointerFocusWindow = surface;
@@ -537,6 +547,25 @@ pointer_handle_enter(void *data,
             seat->posY += windowRecord->globalrect[kPsychTop];
         }
     }
+
+    // Cursor setup for this pointer: Any cursor assigned and visible at the moment?
+    if (seat->cursor_surface && seat->current_cursor) {
+        // Yes, set it. Get first cursor image for current cursor:
+        // There could be multiple, e.g., for animated cursors, but we only
+        // care about one image - We don't do animated cursors:
+        image = seat->current_cursor->images[0];
+
+        // Assign cursor surface to this pointer:
+        wl_pointer_set_cursor(wl_pointer, serial, seat->cursor_surface, image->hotspot_x, image->hotspot_y);
+        seat->hotspot_x = image->hotspot_x;
+        seat->hotspot_y = image->hotspot_y;
+    }
+    else {
+        // No. Hide the cursor by assigning a NULL surface:
+        wl_pointer_set_cursor(wl_pointer, serial, NULL, 0, 0);
+    }
+
+    return;
 }
 
 static void
@@ -676,16 +705,46 @@ seat_handle_capabilities(void *data, struct wl_seat *wl_seat,
         struct wl_pointer *pointer;
 
         pointer = wl_seat_get_pointer(seat->seat);
-        wl_pointer_add_listener(pointer, &pointer_listener,
-                                 seat);
-
-        //seat->info->roundtrip_needed = true;
-        wayland_roundtrip_needed = TRUE;
+        wl_pointer_add_listener(pointer, &pointer_listener, seat);
 
         // Add backpointer to our input device array to
         // this seat, so we can access its pointer state:
         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: New pointer enumerated under index %i for seat %p.\n", numInputDevices, seat);
         waylandInputDevices[numInputDevices++] = seat;
+
+        // Create cursor surface for this pointer:
+        seat->cursor_surface = wl_compositor_create_surface(wl_compositor);
+        if (!seat->cursor_surface) {
+            if (PsychPrefStateGet_Verbosity() > 0) {
+                printf("PTB-ERROR: Creating cursor surface for pointer device %i [seat %p] failed. Cursor support unavailable on this seat!\n", numInputDevices, seat);
+            }
+        }
+
+        // First time load of cursor theme needed?
+        if (!wayland_cursor_theme) {
+            wayland_cursor_theme = wl_cursor_theme_load(NULL, 32, wl_shm);
+            if (!wayland_cursor_theme) {
+                if (PsychPrefStateGet_Verbosity() > 0) {
+                    printf("PTB-ERROR: Loading Wayland cursor theme failed. Cursor support unavailable!\n");
+                }
+            }
+        }
+
+        if (wayland_cursor_theme) {
+            // Assign initial default cursor: The classic left-tilted arrow pointer:
+            seat->current_cursor = wl_cursor_theme_get_cursor(wayland_cursor_theme, "left_ptr");
+            if (!seat->current_cursor) {
+                if (PsychPrefStateGet_Verbosity() > 0) {
+                    printf("PTB-ERROR: Loading Wayland cursor from theme for pointer device %i [seat %p] failed. Cursor support unavailable on this seat!\n", numInputDevices, seat);
+                }
+            }
+        }
+
+        // Cursor hidden by default:
+        seat->cursor_hidden = TRUE;
+
+        //seat->info->roundtrip_needed = true;
+        wayland_roundtrip_needed = TRUE;
     }
 }
 
@@ -711,6 +770,15 @@ destroy_seat_info(void *data)
 
     if (seat->name != NULL)
         free(seat->name);
+
+    // Delete cursor surface with the cursor image for this seat:
+    seat->current_cursor = NULL;
+    seat->cursor_hidden = TRUE;
+
+    if (seat->cursor_surface) {
+        wl_surface_destroy(seat->cursor_surface);
+        seat->cursor_surface = NULL;
+    }
 }
 
 static void
@@ -789,6 +857,11 @@ wayland_registry_listener_global(void *data,
         numSeats++;
     }
 
+    if (!strcmp(interface, "wl_shm")) {
+        wl_shm = wl_registry_bind(registry, name, &wl_shm_interface, 1);
+        // wl_shm_add_listener(shm, &shm_listener, NULL);
+    }
+
     return;
 }
 
@@ -851,7 +924,7 @@ psych_bool PsychWaylandGetMouseState(int deviceId, int *mouseX, int *mouseY, int
     // Outside valid range for input devices?
     if (deviceId < 0 || deviceId >= numInputDevices) return(FALSE);
 
-    // No device under that id, or device isn't a keyboard?
+    // No device under that id, or device isn't a pointer?
     if (!waylandInputDevices[deviceId] || !(waylandInputDevices[deviceId]->capabilities & WL_SEAT_CAPABILITY_POINTER)) return(FALSE);
 
     // Copy current keyState to return vector:
@@ -1084,6 +1157,12 @@ void PsychCleanupDisplayGlue(void)
     for (i = 0; i< 3* kPsychMaxWaylandSeats; i++) waylandInputDevices[i] = NULL;
     numInputDevices = 0;
 
+    // Delete cursor theme, if any:
+    if (wayland_cursor_theme) {
+        wl_cursor_theme_destroy(wayland_cursor_theme);
+        wayland_cursor_theme = NULL;
+    }
+
     // Go trough full screen list:
     for (i = 0; i < PsychGetNumDisplays(); i++) {
         if (displayOutputs[i]) {
@@ -1092,14 +1171,6 @@ void PsychCleanupDisplayGlue(void)
             displayWaylandOutputs[i] = NULL;
             displayCGIDs[i] = NULL;
         }
-
-        // NULL-Out xinput extension data:
-        //xinput_info[i] = NULL;
-        //xinput_ndevices[i] = 0;
-
-        // Release per-screen info structures:
-        // TODO: if (displayX11ScreenResources[i]) XRRFreeScreenResources(displayX11ScreenResources[i]);
-        //displayX11ScreenResources[i] = NULL;
     }
 
     // Reset our binding to presentation_feedback extension if this is our last onscreen window to close:
@@ -1123,13 +1194,6 @@ void PsychCleanupDisplayGlue(void)
     // our scripting host environment will flush the Screen - Mexfile anyway...
     return;
 }
-
-// XIDeviceInfo* PsychGetInputDevicesForScreen(int screenNumber, int* nDevices)
-// {
-//     if(screenNumber >= numDisplays) PsychErrorExit(PsychError_invalidScumber);
-//     if (nDevices) *nDevices = xinput_ndevices[screenNumber];
-//     return(xinput_info[screenNumber]);
-// }
 
 void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
 {
@@ -1712,186 +1776,140 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
     return(TRUE);
 }
 
-void PsychOSDefineX11Cursor(int screenNumber, int deviceId, Cursor cursor)
+void PsychOSDefineWaylandCursor(int screenNumber, int deviceId, const char* cursorName)
 {
-    PsychWindowRecordType **windowRecordArray;
-    int i, numWindows;
+    struct seat_info *seat;
 
-    // Not available on non-X11:
-    if (!displayCGIDs[screenNumber]) return;
+    // Check for valid screenNumber, although it will be ignored on Wayland:
+    if ((screenNumber >= numDisplays) || (screenNumber < 0)) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychOSDefineWaylandCursor() is out of range");
 
-    // Iterate over all open onscreen windows associated with this screenNumber and
-    // apply new X11 cursor definition to each of them:
-    PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
-
-    PsychLockDisplay();
-    for(i = 0; i < numWindows; i++) {
-        if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i]->screenNumber == screenNumber) &&
-            windowRecordArray[i]->targetSpecific.xwindowHandle) {
-            // Candidate.
-            if (deviceId >= 0) {
-                // XInput extension for per-device settings:
-//                 XIDefineCursor(displayCGIDs[screenNumber], deviceId, windowRecordArray[i]->targetSpecific.xwindowHandle, cursor);
-            }
-            else {
-                // Old-School global settings:
-//                 XDefineCursor(displayCGIDs[screenNumber], windowRecordArray[i]->targetSpecific.xwindowHandle, cursor);
-            }
+    // deviceId -1 means "auto-detected default pointer". Simply use the first found pointer device:
+    if (deviceId < 0) {
+        for (deviceId = 0; deviceId < numInputDevices; deviceId++) {
+            if (waylandInputDevices[deviceId] && (waylandInputDevices[deviceId]->capabilities & WL_SEAT_CAPABILITY_POINTER))
+                break;
         }
     }
-    PsychUnlockDisplay();
-    PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
+
+    // Outside valid range for input devices?
+    if (deviceId < 0 || deviceId >= numInputDevices) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such cursor pointer.");
+
+    // No device under that id, or device isn't a pointer?
+    if (!waylandInputDevices[deviceId] || !(waylandInputDevices[deviceId]->capabilities & WL_SEAT_CAPABILITY_POINTER)) {
+        PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such cursor pointer.");
+    }
+
+    seat = waylandInputDevices[deviceId];
+
+    if (wayland_cursor_theme) {
+        // Assign initial default cursor: The classic left-tilted arrow pointer:
+        seat->current_cursor = wl_cursor_theme_get_cursor(wayland_cursor_theme, cursorName);
+        if (!seat->current_cursor) {
+            if (PsychPrefStateGet_Verbosity() > 0) {
+                printf("PTB-ERROR: Loading Wayland cursor from theme for pointer device %i [seat %p] failed. Cursor support unavailable on this seat!\n", deviceId, seat);
+            }
+        }
+
+        // Enforce update of cursor surface image:
+        PsychShowCursor(screenNumber, deviceId);
+    }
 
     return;
 }
 
 void PsychHideCursor(int screenNumber, int deviceIdx)
 {
-    // Static "Cursor" object which defines a completely transparent - and therefore invisible
-    // X11 cursor for the mouse-pointer.
-    static Cursor nullCursor = -1;
+    struct seat_info *seat;
 
-    // Check for valid screenNumber:
-    if ((screenNumber >= numDisplays) || (screenNumber < 0)) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychHideCursor() is out of range"); //also checked within SCREENPixelSizes
+    // Check for valid screenNumber, although it will be ignored on Wayland:
+    if ((screenNumber >= numDisplays) || (screenNumber < 0)) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychHideCursor() is out of range");
 
-    // Not available on non-X11:
-    if (!displayCGIDs[screenNumber]) return;
-
-    // Cursor already hidden on screen? If so, nothing to do:
-    if ((deviceIdx < 0) && displayCursorHidden[screenNumber]) return;
-
-    // nullCursor already ready?
-    if( nullCursor == (Cursor) -1 ) {
-        // Create one:
-//         Pixmap cursormask;
-//         XGCValues xgc;
-//         GC gc;
-//         XColor dummycolour;
-//
-//         PsychLockDisplay();
-//
-//         cursormask = XCreatePixmap(displayCGIDs[screenNumber], RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), 1, 1, 1/*depth*/);
-//         xgc.function = GXclear;
-//         gc = XCreateGC(displayCGIDs[screenNumber], cursormask, GCFunction, &xgc );
-//         XFillRectangle(displayCGIDs[screenNumber], cursormask, gc, 0, 0, 1, 1 );
-//         dummycolour.pixel = 0;
-//         dummycolour.red   = 0;
-//         dummycolour.flags = 04;
-//         nullCursor = XCreatePixmapCursor(displayCGIDs[screenNumber], cursormask, cursormask, &dummycolour, &dummycolour, 0, 0 );
-//         XFreePixmap(displayCGIDs[screenNumber], cursormask );
-//         XFreeGC(displayCGIDs[screenNumber], gc );
-//
-//         PsychUnlockDisplay();
-    }
-
+    // deviceIdx -1 means "auto-detected default pointer". Simply use the first found pointer device:
     if (deviceIdx < 0) {
-        // Attach nullCursor to our onscreen window:
-//         PsychOSDefineX11Cursor(screenNumber, deviceIdx, nullCursor);
-//         PsychLockDisplay();
-//         XFlush(displayCGIDs[screenNumber]);
-//         PsychUnlockDisplay();
-        displayCursorHidden[screenNumber]=TRUE;
-    } else {
-//         // XInput cursor: Master pointers only.
-//         int nDevices;
-//         XIDeviceInfo* indevs = PsychGetInputDevicesForScreen(screenNumber, &nDevices);
-//
-//         // Sanity check:
-//         if (NULL == indevs) PsychErrorExitMsg(PsychError_user, "Sorry, your system does not support individual mouse pointers.");
-//         if (deviceIdx >= nDevices) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such cursor pointer.");
-//         if (indevs[deviceIdx].use != XIMasterPointer) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such master cursor pointer.");
-//
-//         // Attach nullCursor to our onscreen window:
-//         PsychOSDefineX11Cursor(screenNumber, indevs[deviceIdx].deviceid, nullCursor);
-//         PsychLockDisplay();
-//         XFlush(displayCGIDs[screenNumber]);
-//         PsychUnlockDisplay();
+        for (deviceIdx = 0; deviceIdx < numInputDevices; deviceIdx++) {
+            if (waylandInputDevices[deviceIdx] && (waylandInputDevices[deviceIdx]->capabilities & WL_SEAT_CAPABILITY_POINTER))
+                break;
+        }
     }
+
+    // Outside valid range for input devices?
+    if (deviceIdx < 0 || deviceIdx >= numInputDevices) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such cursor pointer.");
+
+    // No device under that id, or device isn't a pointer?
+    if (!waylandInputDevices[deviceIdx] || !(waylandInputDevices[deviceIdx]->capabilities & WL_SEAT_CAPABILITY_POINTER)) {
+        PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such cursor pointer.");
+    }
+
+    seat = waylandInputDevices[deviceIdx];
+    seat->cursor_hidden = TRUE;
+
+    if (seat->cursor_surface) {
+        wl_surface_attach(seat->cursor_surface, NULL, 0, 0);
+        wl_surface_commit(seat->cursor_surface);
+    }
+
+    ProcessWaylandEvents(screenNumber);
 
     return;
 }
 
 void PsychShowCursor(int screenNumber, int deviceIdx)
 {
-    Cursor arrowCursor;
+    struct wl_buffer *buffer;
+    struct wl_cursor_image *image;
+    struct seat_info *seat;
 
-    // Check for valid screenNumber:
-    if (screenNumber >= numDisplays || screenNumber < 0) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychHideCursor() is out of range"); //also checked within SCREENPixelSizes
+    // Check for valid screenNumber, although it will be ignored on Wayland:
+    if ((screenNumber >= numDisplays) || (screenNumber < 0)) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychShowCursor() is out of range");
 
-    // Not available on non-X11:
-    if (!displayCGIDs[screenNumber]) return;
-
+    // deviceIdx -1 means "auto-detected default pointer". Simply use the first found pointer device:
     if (deviceIdx < 0) {
-        // Cursor not hidden on screen? If so, nothing to do:
-        if(!displayCursorHidden[screenNumber]) return;
-
-//         // Reset to standard Arrow-Type cursor, which is a visible one.
-//         PsychLockDisplay();
-//         arrowCursor = XCreateFontCursor(displayCGIDs[screenNumber], 2);
-//         PsychUnlockDisplay();
-//
-//         PsychOSDefineX11Cursor(screenNumber, deviceIdx, arrowCursor);
-//
-//         PsychLockDisplay();
-//         XFlush(displayCGIDs[screenNumber]);
-//         PsychUnlockDisplay();
-
-        displayCursorHidden[screenNumber]=FALSE;
-    } else {
-//         // XInput cursor: Master pointers only.
-//         int nDevices;
-//         XIDeviceInfo* indevs = PsychGetInputDevicesForScreen(screenNumber, &nDevices);
-//
-//         // Sanity check:
-//         if (NULL == indevs) PsychErrorExitMsg(PsychError_user, "Sorry, your system does not support individual mouse pointers.");
-//         if (deviceIdx >= nDevices) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such cursor pointer.");
-//         if (indevs[deviceIdx].use != XIMasterPointer) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such master cursor pointer.");
-//
-//         // Reset to standard Arrow-Type cursor, which is a visible one.
-//         PsychLockDisplay();
-//         arrowCursor = XCreateFontCursor(displayCGIDs[screenNumber], 2);
-//         PsychUnlockDisplay();
-//
-//         PsychOSDefineX11Cursor(screenNumber, indevs[deviceIdx].deviceid, arrowCursor);
-//
-//         PsychLockDisplay();
-//         XFlush(displayCGIDs[screenNumber]);
-//         PsychUnlockDisplay();
+        for (deviceIdx = 0; deviceIdx < numInputDevices; deviceIdx++) {
+            if (waylandInputDevices[deviceIdx] && (waylandInputDevices[deviceIdx]->capabilities & WL_SEAT_CAPABILITY_POINTER))
+                break;
+        }
     }
+
+    // Outside valid range for input devices?
+    if (deviceIdx < 0 || deviceIdx >= numInputDevices) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such cursor pointer.");
+
+    // No device under that id, or device isn't a pointer?
+    if (!waylandInputDevices[deviceIdx] || !(waylandInputDevices[deviceIdx]->capabilities & WL_SEAT_CAPABILITY_POINTER)) {
+        PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such cursor pointer.");
+    }
+
+    seat = waylandInputDevices[deviceIdx];
+    seat->cursor_hidden = FALSE;
+
+    // Make cursor visible for this pointer: Any cursor assigned at the moment?
+    if (seat->current_cursor && seat->cursor_surface) {
+        // Yes, set it. Get first cursor image for current cursor:
+        // There could be multiple, e.g., for animated cursors, but we only
+        // care about one image - We don't do animated cursors:
+        image = seat->current_cursor->images[0];
+
+        // Get wl_buffer with cursor image. This buffer doesn't need to
+        // be released, as it is memory managed by the wayland_cursor_theme:
+        buffer = wl_cursor_image_get_buffer(image);
+
+        // Assign cursor image to the cursor surface:
+        wl_surface_attach(seat->cursor_surface, buffer, seat->hotspot_x - image->hotspot_x, seat->hotspot_y - image->hotspot_y);
+        wl_surface_damage(seat->cursor_surface, 0, 0, image->width, image->height);
+        wl_surface_commit(seat->cursor_surface);
+        seat->hotspot_x = image->hotspot_x;
+        seat->hotspot_y = image->hotspot_y;
+    }
+
+    ProcessWaylandEvents(screenNumber);
+
+    return;
 }
 
 void PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx)
 {
-    // Not available on non-X11:
-    if (!displayCGIDs[screenNumber]) return;
-
-    // Reposition the mouse cursor:
-    if (deviceIdx < 0) {
-        // Core protocol cursor:
-//         PsychLockDisplay();
-//         if (XWarpPointer(displayCGIDs[screenNumber], None, RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), 0, 0, 0, 0, x, y)==BadWindow) {
-//             PsychUnlockDisplay();
-//             PsychErrorExitMsg(PsychError_internal, "Couldn't position the mouse cursor! (XWarpPointer() failed).");
-//         }
-    } else {
-        // XInput cursor: Master pointers only.
-//         int nDevices;
-//         XIDeviceInfo* indevs = PsychGetInputDevicesForScreen(screenNumber, &nDevices);
-//
-//         // Sanity check:
-//         if (NULL == indevs) PsychErrorExitMsg(PsychError_user, "Sorry, your system does not support individual mouse pointers.");
-//         if (deviceIdx >= nDevices) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such cursor pointer.");
-//         if (indevs[deviceIdx].use != XIMasterPointer) PsychErrorExitMsg(PsychError_user, "Invalid 'mouseIndex' provided. No such master cursor pointer.");
-//
-//         PsychLockDisplay();
-//         if (XIWarpPointer(displayCGIDs[screenNumber], indevs[deviceIdx].deviceid, None, RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), 0, 0, 0, 0, x, y)) {
-//             PsychUnlockDisplay();
-//             PsychErrorExitMsg(PsychError_internal, "Couldn't position the mouse cursor! (XIWarpPointer() failed).");
-//         }
-    }
-
-//     XFlush(displayCGIDs[screenNumber]);
-//     PsychUnlockDisplay();
+    // Not available on Wayland, as of version 1.6 - January 2015:
+    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetCursor() request ignored, as this isn't currently supportable on Wayland.\n");
+    return;
 }
 
 /*
