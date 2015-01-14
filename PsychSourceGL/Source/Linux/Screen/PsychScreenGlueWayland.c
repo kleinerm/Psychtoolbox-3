@@ -37,6 +37,14 @@
  *
  * Copyright © 2012 Philipp Brüschweiler
  *
+ * Additionally we use bits and pieces from clients/window.c, with the following
+ * copyright holders:
+ *
+ * Copyright © 2008 Kristian Høgsberg
+ * Copyright © 2012-2013 Collabora, Ltd.
+ *
+ * All files carry the following license:
+ *
  * Permission to use, copy, modify, distribute, and sell this software and
  * its documentation for any purpose is hereby granted without fee, provided
  * that the above copyright notice appear in all copies and that both that
@@ -95,6 +103,8 @@
 
 // EvDev input style definition: Button and key codes.
 #include <linux/input.h>
+// libxkbcommon to map key codes to our KbName style stuff:
+#include <xkbcommon/xkbcommon.h>
 
 // Maximum number of slots in a gamma table to set/query: This should be plenty.
 #define MAX_GAMMALUT_SIZE 16384
@@ -140,6 +150,14 @@ static psych_bool wayland_roundtrip_needed = FALSE;
 // Global shared memory object, used for cursor support:
 static struct wl_shm *wl_shm = NULL;
 static struct wl_cursor_theme *wayland_cursor_theme = NULL;
+
+// Context and state for libxkbcommon - our keyboard keycode -> KbName handling:
+static struct xkb_context *xkb_context = NULL;
+static struct xkb_keymap *xkb_keymap = NULL;
+static struct xkb_state *xkb_state = NULL;
+static xkb_mod_mask_t xkb_control_mask;
+static xkb_mod_mask_t xkb_alt_mask;
+static xkb_mod_mask_t xkb_shift_mask;
 
 // Helpers:
 static void ProcessWaylandEvents(int screenNumber);
@@ -444,7 +462,60 @@ keyboard_handle_keymap(void *data, struct wl_keyboard *keyboard,
                        uint32_t format, int fd, uint32_t size)
 {
     struct seat_info *seat = data;
+    struct xkb_keymap *keymap;
+    struct xkb_state *state;
+    char *map_str;
+
     if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Keyboard keymap received for keyboard of seat %p.\n", seat);
+
+    if (!seat) {
+        close(fd);
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Can't init keymap for seat %p: No seat!\n", seat);
+        return;
+    }
+
+    if (format != WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
+        close(fd);
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Can't init keymap for seat %p: Unsupported keymap format - not XKB-V1!\n", seat);
+        return;
+    }
+
+    map_str = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+    if (map_str == MAP_FAILED) {
+        close(fd);
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Can't init keymap for seat %p: mmap() failed!\n", seat);
+        return;
+    }
+
+    // Parse handed mmap()ed keymap description into a xkb keymap:
+    keymap = xkb_keymap_new_from_string(xkb_context, map_str, XKB_KEYMAP_FORMAT_TEXT_V1, 0);
+    munmap(map_str, size);
+    close(fd);
+
+    if (!keymap) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Can't init keymap for seat %p: Failed to compile keymap!\n", seat);
+        return;
+    }
+
+    // Initialize our own state object for this keymap:
+    state = xkb_state_new(keymap);
+    if (!state) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Can't init keymap for seat %p: Failed to create xkb state!\n", seat);
+        xkb_keymap_unref(keymap);
+        return;
+    }
+
+    // Replace our old keymap and state with these new specimens:
+    xkb_keymap_unref(xkb_keymap);
+    xkb_state_unref(xkb_state);
+    xkb_keymap = keymap;
+    xkb_state = state;
+
+    xkb_control_mask = 1 << xkb_keymap_mod_get_index(xkb_keymap, "Control");
+    xkb_alt_mask = 1 << xkb_keymap_mod_get_index(xkb_keymap, "Mod1");
+    xkb_shift_mask = 1 << xkb_keymap_mod_get_index(xkb_keymap, "Shift");
+
+    return;
 }
 
 static void
@@ -882,6 +953,41 @@ struct presentation *get_wayland_presentation_extension(PsychWindowRecordType* w
     return(wayland_pres);
 }
 
+psych_bool PsychWaylandGetKbNames(PsychGenericScriptType *kbNames)
+{
+    xkb_keycode_t keyCode;
+    xkb_keysym_t keySym;
+    char symName[64];
+
+    // Ready?
+    if (!xkb_state) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychWaylandGetKbNames(): No keymap available for KbName() initialisation!\n");
+        return(FALSE);
+    }
+
+    // Iterate over all keyCodes and convert them to key names and return
+    // them in the kbNames vector which is used by KbName() and friends:
+    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Full keymap dump:\n");
+    for (keyCode = 0; keyCode < 256; keyCode++) {
+        keySym = xkb_state_key_get_one_sym(xkb_state, keyCode + 8);
+        if (0 < xkb_keysym_get_name(keySym, &symName[0], 64)) {
+            // Character found: Return its ASCII name string:
+            PsychSetCellVectorStringElement((int) keyCode, symName, kbNames);
+
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: keyCode %i --> KeySym %i --> %s\n", (int) keyCode, (int) keySym, symName);
+        }
+        else {
+            // No luck: Return empty string:
+            PsychSetCellVectorStringElement((int) keyCode, "", kbNames);
+
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: keyCode %i --> KeySym %i --> No mapping\n", (int) keyCode, (int) keySym);
+        }
+    }
+    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Done.\n\n");
+
+    return(TRUE);
+}
+
 psych_bool PsychWaylandGetKeyboardState(int deviceId, int numKeys, PsychNativeBooleanType *buttonStates, double *timeStamp)
 {
     ProcessWaylandEvents(0);
@@ -1047,8 +1153,8 @@ void InitCGDisplayIDList(void)
     // Initial count of screens is zero:
     numDisplays = 0;
 
-    // Initial minimum allowed crtc id is zero:
-    // minimum_crtcid = 0;
+    // Create libxkbcommon context:
+    xkb_context = xkb_context_new(0);
 
     // Initialize Waffle for Wayland display system backend:
     if (PsychPrefStateGet_Verbosity() > 2) {
@@ -1144,6 +1250,16 @@ void PsychCleanupDisplayGlue(void)
     // Make sure the mmio mapping is shut down:
     PsychOSShutdownPsychtoolboxKernelDriverInterface();
 
+    // Destroy libxkbcommon resources:
+    if (xkb_context) {
+        xkb_state_unref(xkb_state);
+        xkb_keymap_unref(xkb_keymap);
+        xkb_context_unref(xkb_context);
+        xkb_context = NULL;
+        xkb_state = NULL;
+        xkb_keymap = NULL;
+    }
+
     PsychLockDisplay();
 
     // Delete info about all enumerated wl_seats:
@@ -1172,6 +1288,10 @@ void PsychCleanupDisplayGlue(void)
             displayCGIDs[i] = NULL;
         }
     }
+
+    // Release wayland shared memory:
+    if (wl_shm) wl_shm_destroy(wl_shm);
+    wl_shm = NULL;
 
     // Reset our binding to presentation_feedback extension if this is our last onscreen window to close:
     presentation_destroy(wayland_pres);

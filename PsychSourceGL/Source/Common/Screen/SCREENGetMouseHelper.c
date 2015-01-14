@@ -939,21 +939,24 @@ PsychError SCREENGetMouseHelper(void)
             // numButtons == -3 --> KbName mapping mode:
             // Return the full keyboard keycode to ASCII character code mapping table...
             PsychAllocOutCellVector(1, kPsychArgOptional, 256, &kbNames);
-
-            for(i=0; i<256; i++) {
-                // Map keyboard scan code to KeySym:
-                PsychLockDisplay();
-                keystring = XKeysymToString(XKeycodeToKeysym(dpy, i, 0));
-                PsychUnlockDisplay();
-                if (keystring) {
-                    // Character found: Return its ASCII name string:
-                    PsychSetCellVectorStringElement(i, keystring, kbNames);
+            #ifdef PTB_USE_WAYLAND
+                PsychWaylandGetKbNames(kbNames);
+            #else
+                for(i = 0; i < 256; i++) {
+                    // Map keyboard scan code to KeySym:
+                    PsychLockDisplay();
+                    keystring = XKeysymToString(XKeycodeToKeysym(dpy, i, 0));
+                    PsychUnlockDisplay();
+                    if (keystring) {
+                        // Character found: Return its ASCII name string:
+                        PsychSetCellVectorStringElement(i, keystring, kbNames);
+                    }
+                    else {
+                        // No character for this keycode:
+                        PsychSetCellVectorStringElement(i, "", kbNames);
+                    }
                 }
-                else {
-                    // No character for this keycode:
-                    PsychSetCellVectorStringElement(i, "", kbNames);
-                }
-            }
+            #endif
         }
         else if (numButtons == -4) {
             // GetChar() emulation. Dead.

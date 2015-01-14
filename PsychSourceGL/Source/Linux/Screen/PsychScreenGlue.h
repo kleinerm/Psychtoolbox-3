@@ -109,6 +109,7 @@ psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortyp
 // Wayland backend specific stuff:
 psych_bool PsychWaylandGetKeyboardState(int deviceId, int numKeys, PsychNativeBooleanType *buttonStates, double *timeStamp);
 psych_bool PsychWaylandGetMouseState(int deviceId, int *mouseX, int *mouseY, int numButtons, double *buttonArray, void** focusWindow);
+psych_bool PsychWaylandGetKbNames(PsychGenericScriptType *kbNames);
 
 //end include once
 #endif
