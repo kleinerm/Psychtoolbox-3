@@ -4246,16 +4246,6 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                 // We take our timestamp here:
                 PsychGetAdjustedPrecisionTimerSeconds(&tnew);
             }
-            else if (strstr((const char*) glGetString(GL_RENDERER), "Intel")) {
-                // This "useless" pixel write is a tribute to the latest madness in the
-                // Intel-ddx on Linux, as of September 2014. Apparently some optimization
-                // is at work in the SNA Gen-5 backend (Intel HD graphics / Ironlake), which
-                // skips pageflips and swaps if nothing got rendered during the frame. Is it
-                // a bug? Is it a feature? Who knows? This didn't happen all these years during
-                // testing on Intel GMA-950 / Gen-3, but happened the very first time i touched
-                // the Intel HD Gen-5 gpu in my MacBookPro under Linux. Life sucks...
-                PsychWaitPixelSyncToken(windowRecord, TRUE);
-            }
 
             // We skip the first measurement, because we first need to establish an initial base-time 'told'
             if (told > 0) {
