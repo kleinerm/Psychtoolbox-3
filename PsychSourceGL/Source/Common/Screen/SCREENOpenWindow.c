@@ -4,7 +4,7 @@
     AUTHORS:
 
     Allen.Ingling@nyu.edu           awi
-    mario.kleiner@tuebingen.mpg.de  mk
+    mario.kleiner.de@gmail.com      mk
 
     PLATFORMS:  All
 
@@ -82,24 +82,24 @@ static char synopsisString[] =
     "Screen('Preference', 'EmulateOldPTB', 1) at the very top of your script. This will restore "
     "Offscreen windows and WaitBlanking functionality, but at the same time disable most of the new "
     "features of the OpenGL Psychtoolbox. Please do not write new experiment code in the old style! "
-    "Emulation mode is pretty new and may contain significant bugs, so use with great caution!";  
+    "Emulation mode is pretty new and may contain significant bugs, so use with great caution!";
 
 static char seeAlsoString[] = "OpenOffscreenWindow, SelectStereoDrawBuffer, PanelFitter, Close, CloseAll";
 
 PsychError SCREENOpenWindow(void)
 {
-    int						screenNumber, numWindowBuffers, stereomode, multiSample, imagingmode, specialflags;
-    PsychRectType 			rect, screenrect, clientRect;
-    PsychColorType			color;
-    psych_bool				isArgThere, didWindowOpen, dontCaptureScreen;
-    PsychScreenSettingsType	screenSettings;
-    PsychWindowRecordType	*windowRecord;
-    PsychDepthType			specifiedDepth, possibleDepths, currentDepth, useDepth;
-	int                     dummy1;
-	double                  dummy2, dummy3, dummy4;
+    int                     screenNumber, numWindowBuffers, stereomode, multiSample, imagingmode, specialflags;
+    PsychRectType           rect, screenrect, clientRect;
+    PsychColorType          color;
+    psych_bool              isArgThere, didWindowOpen, dontCaptureScreen;
+    PsychScreenSettingsType screenSettings;
+    PsychWindowRecordType   *windowRecord;
+    PsychDepthType          specifiedDepth, possibleDepths, currentDepth, useDepth;
+    int                     dummy1;
+    double                  dummy2, dummy3, dummy4;
     long                    nativewidth, nativeheight, frontendwidth, frontendheight;
 
-	psych_bool EmulateOldPTB = PsychPrefStateGet_EmulateOldPTB();
+    psych_bool EmulateOldPTB = PsychPrefStateGet_EmulateOldPTB();
 
     //all sub functions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -109,23 +109,23 @@ PsychError SCREENOpenWindow(void)
     PsychErrorExit(PsychCapNumInputArgs(10));   //The maximum number of inputs
     PsychErrorExit(PsychCapNumOutputArgs(2));  //The maximum number of outputs
 
-    //get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
+    //get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.
     PsychCopyInScreenNumberArg(kPsychUseDefaultArgPosition, TRUE, &screenNumber);
     if(screenNumber==-1)
-        PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen."); 
+        PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen.");
 
     /*
-      The depth checking is ugly because of this stupid depth structure stuff.  
-      Instead get a descriptor of the current video settings, change the depth field,
-      and pass it to a validate function wich searches a list of valid video modes for the display.
-      There seems to be no point in checking the depths alone because the legality of a particular
-      depth depends on the other settings specified below.  Its probably best to wait until we have
-      digested all settings and then test the full mode, declarin an invalid
-      mode and not an invalid pixel size.  We could notice when the depth alone is specified 
-      and in that case issue an invalid depth value.
-     */
+    The depth checking is ugly because of this stupid depth structure stuff.
+    Instead get a descriptor of the current video settings, change the depth field,
+    and pass it to a validate function wich searches a list of valid video modes for the display.
+    There seems to be no point in checking the depths alone because the legality of a particular
+    depth depends on the other settings specified below.  Its probably best to wait until we have
+    digested all settings and then test the full mode, declarin an invalid
+    mode and not an invalid pixel size.  We could notice when the depth alone is specified
+    and in that case issue an invalid depth value.
+    */
 
-    //find the PixelSize first because the color specifier depends on the screen depth.  
+    //find the PixelSize first because the color specifier depends on the screen depth.
     PsychInitDepthStruct(&currentDepth);  //get the current depth
     PsychGetScreenDepth(screenNumber, &currentDepth);
     // Override for Windows: 32 bpp means 24 bit color depth:
@@ -179,7 +179,7 @@ PsychError SCREENOpenWindow(void)
     // 16 bpc * 3 = 48 bpp as well:
     PsychAddValueToDepthStruct(48, &possibleDepths);
 
-    PsychInitDepthStruct(&specifiedDepth); //get the requested depth and validate it.  
+    PsychInitDepthStruct(&specifiedDepth); //get the requested depth and validate it.
     isArgThere = PsychCopyInSingleDepthArg(4, FALSE, &specifiedDepth);
 
     PsychInitDepthStruct(&useDepth);
@@ -192,61 +192,61 @@ PsychError SCREENOpenWindow(void)
         PsychCopyDepthStruct(&useDepth, &currentDepth);
 
     // Initialize the rect argument to the screen rectangle:
-    PsychGetGlobalScreenRect(screenNumber, rect); 	//get the rect describing the screen bounds.  This is the default Rect.  
+    PsychGetGlobalScreenRect(screenNumber, rect);
 
     // Override it with a user supplied rect, if one was supplied:
     isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect );
     if (IsPsychRectEmpty(rect)) PsychErrorExitMsg(PsychError_user, "OpenWindow called with invalid (empty) rect argument.");
 
-	if (PSYCH_SYSTEM == PSYCH_OSX) {
-		// OS/X system: Need to decide if we use desktop composition or not:
-		
-		// Default to not capturing the display, capture it if below constraints are met:
-		dontCaptureScreen = TRUE;
-	
-		// Window rect provided which has a different size than screen?
+    if (PSYCH_SYSTEM == PSYCH_OSX) {
+        // OS/X system: Need to decide if we use desktop composition or not:
 
-		// We do not use windowed mode if the provided window rectangle either
-		// matches the target screens rectangle (and therefore its exact size)
-		// or its screens global rectangle.
-		PsychGetScreenRect(screenNumber, screenrect);
-		if (PsychMatchRect(screenrect, rect)) dontCaptureScreen=FALSE;
-		PsychGetGlobalScreenRect(screenNumber, screenrect);
-		if (PsychMatchRect(screenrect, rect)) dontCaptureScreen=FALSE;
+        // Default to not capturing the display, capture it if below constraints are met:
+        dontCaptureScreen = TRUE;
 
-		// Override for use with Quartz compositor and/or Cocoa: Must not capture/release screen, therefore
+        // Window rect provided which has a different size than screen?
+
+        // We do not use windowed mode if the provided window rectangle either
+        // matches the target screens rectangle (and therefore its exact size)
+        // or its screens global rectangle.
+        PsychGetScreenRect(screenNumber, screenrect);
+        if (PsychMatchRect(screenrect, rect)) dontCaptureScreen=FALSE;
+        PsychGetGlobalScreenRect(screenNumber, screenrect);
+        if (PsychMatchRect(screenrect, rect)) dontCaptureScreen=FALSE;
+
+        // Override for use with Quartz compositor and/or Cocoa: Must not capture/release screen, therefore
         // set dontCaptureScreen = true to prevent screen capture/release:
-		if ((PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLCompositorForFullscreenWindows) ||
+        if ((PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLCompositorForFullscreenWindows) ||
             (PsychPrefStateGet_WindowShieldingLevel() < 2000)) {
             dontCaptureScreen = TRUE;
         }
-	}
-	else {
-		// Non OS/X system: Always capture display.
-		dontCaptureScreen = FALSE;
-	}
-	
-    //find the number of specified buffers. 
-    numWindowBuffers=2;	
+    }
+    else {
+        // Non OS/X system: Always capture display.
+        dontCaptureScreen = FALSE;
+    }
+
+    //find the number of specified buffers.
+    numWindowBuffers=2;
     PsychCopyInIntegerArg(5,FALSE,&numWindowBuffers);
     if(numWindowBuffers < 1 || numWindowBuffers > kPsychMaxNumberWindowBuffers) PsychErrorExit(PsychError_invalidNumberBuffersArg);
 
     stereomode=0;
     PsychCopyInIntegerArg(6,FALSE,&stereomode);
     if(stereomode < 0 || stereomode > 11) PsychErrorExitMsg(PsychError_user, "Invalid stereomode provided (Valid between 0 and 11).");
-	if (stereomode!=0 && EmulateOldPTB) PsychErrorExitMsg(PsychError_user, "Sorry, stereo display functions are not supported in OS-9 PTB emulation mode.");
+    if (stereomode!=0 && EmulateOldPTB) PsychErrorExitMsg(PsychError_user, "Sorry, stereo display functions are not supported in OS-9 PTB emulation mode.");
 
     multiSample=0;
     PsychCopyInIntegerArg(7,FALSE,&multiSample);
     if(multiSample < 0) PsychErrorExitMsg(PsychError_user, "Invalid multisample value provided (Valid are positive numbers >= 0).");
-	if (multiSample!=0 && EmulateOldPTB) PsychErrorExitMsg(PsychError_user, "Sorry, anti-aliasing functions are not supported in OS-9 PTB emulation mode.");
+    if (multiSample!=0 && EmulateOldPTB) PsychErrorExitMsg(PsychError_user, "Sorry, anti-aliasing functions are not supported in OS-9 PTB emulation mode.");
 
-	imagingmode=0;
+    imagingmode=0;
     PsychCopyInIntegerArg(8,FALSE,&imagingmode);
     if(imagingmode < 0) PsychErrorExitMsg(PsychError_user, "Invalid imaging mode provided (See 'help PsychImagingMode' for usage info).");
-	if (imagingmode!=0 && EmulateOldPTB) PsychErrorExitMsg(PsychError_user, "Sorry, imaging pipeline functions are not supported in OS-9 PTB emulation mode.");
-	
-	specialflags=0;
+    if (imagingmode!=0 && EmulateOldPTB) PsychErrorExitMsg(PsychError_user, "Sorry, imaging pipeline functions are not supported in OS-9 PTB emulation mode.");
+
+    specialflags=0;
     PsychCopyInIntegerArg(9,FALSE,&specialflags);
     if (specialflags < 0 || (specialflags > 0 && !(specialflags & (kPsychGUIWindow | kPsychGUIWindowWMPositioned)))) PsychErrorExitMsg(PsychError_user, "Invalid 'specialflags' provided.");
 
@@ -257,17 +257,17 @@ PsychError SCREENOpenWindow(void)
         // scale all content from the size of the drawBufferFBO (our virtual framebuffer),
         // which is the size of the clientRect, to the true size of the onscreen windows
         // system framebuffer - appropriately tweaked for special display modes of course.
-        
+
         // Validate clientRect:
         if (IsPsychRectEmpty(clientRect)) PsychErrorExitMsg(PsychError_user, "OpenWindow called with invalid (empty) 'clientRect' argument.");
-        
+
         // Set special imagingmode flags to signal need for full imaging pipeline
         // and for the panel scaler. Used in PsychInitializeImagingPipeline() and
         // to make sure PsychOpenOnscreenWindow() gets called with a multisample value
         // of zero, so the system backbuffer isn't multisampled -- crucial for us!
         // This will also turn PsychSetupClientRect() into a no-op:
         imagingmode |= kPsychNeedFastBackingStore;
-        imagingmode |= kPsychNeedGPUPanelFitter;        
+        imagingmode |= kPsychNeedGPUPanelFitter;
     }
     else if (!(imagingmode & kPsychNeedRetinaResolution)) {
         // No explicit enable of panel fitter requested, but use of panel fitter
@@ -297,13 +297,13 @@ PsychError SCREENOpenWindow(void)
         }
     }
 
-	// We require use of the imaging pipeline if stereomode for dualwindow display is requested.
-	// This makes heavy use of FBO's and blit operations, so imaging pipeline is needed.
-	if ((stereomode==kPsychDualWindowStereo) || (imagingmode & kPsychNeedDualWindowOutput)) {
-		// Dual window stereo requested, but imaging pipeline not enabled. Enable it:
-		imagingmode |= kPsychNeedFastBackingStore;
-		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Trying to enable imaging pipeline for dual-window stereo display mode or dual-window output mode...\n");
-	}
+    // We require use of the imaging pipeline if stereomode for dualwindow display is requested.
+    // This makes heavy use of FBO's and blit operations, so imaging pipeline is needed.
+    if ((stereomode==kPsychDualWindowStereo) || (imagingmode & kPsychNeedDualWindowOutput)) {
+        // Dual window stereo requested, but imaging pipeline not enabled. Enable it:
+        imagingmode |= kPsychNeedFastBackingStore;
+        if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Trying to enable imaging pipeline for dual-window stereo display mode or dual-window output mode...\n");
+    }
 
     // We also require imaging pipeline if homegrown frameseq. stereo is requested. Need to do this here,
     // so the call below to PsychOpenOnscreenWindow() knows already about use of imaging pipe and can
@@ -312,9 +312,9 @@ PsychError SCREENOpenWindow(void)
     // otherwise we will get into invalid operating conditions for multisample resolve ops from within
     // imaging pipeline.
     if (stereomode == kPsychFrameSequentialStereo) imagingmode |= kPsychNeedFastBackingStore;
-	
-    //set the video mode to change the pixel size.  TO DO: Set the rect and the default color  
-    PsychGetScreenSettings(screenNumber, &screenSettings);    
+
+    //set the video mode to change the pixel size.  TO DO: Set the rect and the default color
+    PsychGetScreenSettings(screenNumber, &screenSettings);
     PsychInitDepthStruct(&(screenSettings.depth));
     PsychCopyDepthStruct(&(screenSettings.depth), &useDepth);
 
@@ -328,10 +328,10 @@ PsychError SCREENOpenWindow(void)
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
     // On M$-Windows we currently only support - and therefore require >= 30 bpp color depth.
     if (PsychGetScreenDepthValue(screenNumber) < 30) {
-		// Display running at less than 30 bpp. OpenWindow will fail on M$-Windows anyway, so let's abort
-		// now.
+        // Display running at less than 30 bpp. OpenWindow will fail on M$-Windows anyway, so let's abort
+        // now.
 
-		// Output warning text:
+        // Output warning text:
         printf("PTB-ERROR: Your display screen %i is not running at the required color depth of at least 30 bit.\n", screenNumber);
         printf("PTB-ERROR: The current setting is %i bit color depth..\n", PsychGetScreenDepthValue(screenNumber));
         printf("PTB-ERROR: This will not work on Microsoft Windows operating systems.\n");
@@ -340,38 +340,38 @@ PsychError SCREENOpenWindow(void)
         printf("PTB-ERROR: to restart Matlab after applying the change...\n");
         fflush(NULL);
 
-		// Release the captured screen:
-		PsychRestoreScreenSettings(screenNumber);
-		PsychReleaseScreen(screenNumber);
+        // Release the captured screen:
+        PsychRestoreScreenSettings(screenNumber);
+        PsychReleaseScreen(screenNumber);
 
         // Reset master assignment to prepare possible further dual-window config operations:
-		sharedContextWindow = NULL;
+        sharedContextWindow = NULL;
 
-		// Abort with Matlab error:
-		PsychErrorExitMsg(PsychError_user, "Insufficient color depth setting for display device (smaller than 30 bpp).");
+        // Abort with Matlab error:
+        PsychErrorExitMsg(PsychError_user, "Insufficient color depth setting for display device (smaller than 30 bpp).");
     }
 
 #endif
 
     //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering PsychOpenOnscreenWindow\n");
     PsychCopyDepthStruct(&(screenSettings.depth), &useDepth);
-	
-	// Create the onscreen window and perform initialization of everything except
-	// imaging pipeline and a few other special quirks. If sharedContextWindow is non-NULL,
-	// the new window will share its OpenGL context ressources with sharedContextWindow.
-	// This is typically used for dual-window stereo mode. Btw. If imaging pipeline is really
-	// active, we force multiSample to zero: This way the system backbuffer / pixelformat
-	// is enabled without multisampling support, as we do all the multisampling stuff ourselves
-	// within the imaging pipeline with multisampled drawbuffer FBO's...
+
+    // Create the onscreen window and perform initialization of everything except
+    // imaging pipeline and a few other special quirks. If sharedContextWindow is non-NULL,
+    // the new window will share its OpenGL context ressources with sharedContextWindow.
+    // This is typically used for dual-window stereo mode. Btw. If imaging pipeline is really
+    // active, we force multiSample to zero: This way the system backbuffer / pixelformat
+    // is enabled without multisampling support, as we do all the multisampling stuff ourselves
+    // within the imaging pipeline with multisampled drawbuffer FBO's...
     didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect, ((imagingmode==0 || imagingmode==kPsychNeedFastOffscreenWindows) ? multiSample : 0), sharedContextWindow, specialflags);
     if (!didWindowOpen) {
         if (!dontCaptureScreen) {
-			PsychRestoreScreenSettings(screenNumber);
-			PsychReleaseScreen(screenNumber);
-		}
+            PsychRestoreScreenSettings(screenNumber);
+            PsychReleaseScreen(screenNumber);
+        }
 
-		// Reset master assignment to prepare possible further dual-window config operations:
-		sharedContextWindow = NULL;
+        // Reset master assignment to prepare possible further dual-window config operations:
+        sharedContextWindow = NULL;
 
         // We use this dirty hack to exit with an error, but without printing
         // an error message. The specific error message has been printed in
@@ -390,8 +390,8 @@ PsychError SCREENOpenWindow(void)
         printf("PTB-WARNING: our 'Millions of Colors' (MacOS-X) to get rid of this warning and the visual artifacts.\n");
         fflush(NULL);
     }
-    
-	// Define clear color: This depends on the color range of our onscreen window...
+
+    // Define clear color: This depends on the color range of our onscreen window...
     isArgThere=PsychCopyInColorArg(kPsychUseDefaultArgPosition, FALSE, &color); //get from user
     if(!isArgThere) PsychLoadColorStruct(&color, kPsychIndexColor, PsychGetWhiteValueFromWindow(windowRecord)); //or use the default
     PsychCoerceColorMode(&color);
@@ -410,7 +410,7 @@ PsychError SCREENOpenWindow(void)
         // Usercode doesn't disallow automatic use of imaging pipeline or fast offscreen windows,
         // ie. it didn't set the kPsychDontAutoEnableImagingPipeline conserveVRAM flag.
         // Good!
-        
+
         // We will therefore auto-enable use of fast offscreen windows:
         imagingmode |= kPsychNeedFastOffscreenWindows;
 
@@ -420,7 +420,7 @@ PsychError SCREENOpenWindow(void)
                 // Native OpenGL quad-buffered frame-sequential stereo requested, but unsupported by gpu & driver.
                 // Or use of our own method requested. We have FBO and framebuffer blit support, so we can roll our
                 // own framesequential stereo by use of the imaging pipeline.
-                
+
                 // Sanity check: If multisampling is enabled and imaging pipeline isn't yet enabled,
                 // enabling it now will cause trouble: With pipeline enabled, we need a system framebuffer
                 // without multisampling, but the system framebuffer is multisampled, as the setup code
@@ -441,14 +441,14 @@ PsychError SCREENOpenWindow(void)
                         printf("PTB-WARNING: will be automatically resolved, ie., you can have frame-sequential stereo and anti-aliasing!\n\n");
                     }
                 }
-                
+
                 // Enable basic imaging pipeline:
                 imagingmode |= kPsychNeedFastBackingStore;
-                
+
                 // Override stereomode to our own homegrown implementation:
                 stereomode = kPsychFrameSequentialStereo;
                 windowRecord->stereomode = stereomode;
-                
+
                 if (PsychPrefStateGet_Verbosity() > 2) {
                     printf("\n");
                     printf("PTB-INFO: Your script requests use of frame-sequential stereo, but your graphics card\n");
@@ -473,96 +473,96 @@ PsychError SCREENOpenWindow(void)
         }
     }
 
-	// Query if OpenGL stereo is natively supported or if our own emulation mode will work:
-	if ((((stereomode == kPsychOpenGLStereo) && !(windowRecord->gfxcaps & kPsychGfxCapNativeStereo)) || (stereomode == kPsychFrameSequentialStereo)) &&
-	    (!(imagingmode & kPsychNeedFastBackingStore) || (windowRecord->stereomode != kPsychFrameSequentialStereo) || !(windowRecord->gfxcaps & kPsychGfxCapFBO))) {
-		// OpenGL native stereo was requested, but is obviously not supported and we can't roll our own implementation either :-(
-		printf("\nPTB-ERROR: Asked for OpenGL native stereo (frame-sequential mode) but this doesn't seem to be supported by your graphics hardware or driver.\n");
-		printf("PTB-ERROR: Unfortunately using my own implementation via imaging pipeline did not work either, due to lack of hardware support, or because\n");
-		printf("PTB-ERROR: did not allow me to auto-enable the pipeline and use this method. This means game over!\n");
-		if (PSYCH_SYSTEM == PSYCH_OSX) {
-			printf("PTB-ERROR: Frame-sequential stereo should be supported on all recent ATI/AMD and NVidia cards on OS/X, except for the Intel onboard chips,\n");
-			printf("PTB-ERROR: at least in fullscreen mode with OS/X 10.5, and also mostly on OS/X 10.4. If it doesn't work, check for OS updates etc.\n\n");
-		}
-		else {
-			printf("PTB-ERROR: Frame-sequential native stereo on Windows or Linux is usually only supported with the professional line of graphics cards\n");
-			printf("PTB-ERROR: from NVidia and ATI/AMD, e.g., NVidia Quadro series or ATI Fire series. If you happen to have such a card, check\n");
-			printf("PTB-ERROR: your driver settings and/or update your graphics driver.\n\n");
-		}
-		PsychErrMsgTxt("Frame-Sequential stereo display mode requested, but unsupported. Emulation unsupported as well. Game over!");
-	}
+    // Query if OpenGL stereo is natively supported or if our own emulation mode will work:
+    if ((((stereomode == kPsychOpenGLStereo) && !(windowRecord->gfxcaps & kPsychGfxCapNativeStereo)) || (stereomode == kPsychFrameSequentialStereo)) &&
+        (!(imagingmode & kPsychNeedFastBackingStore) || (windowRecord->stereomode != kPsychFrameSequentialStereo) || !(windowRecord->gfxcaps & kPsychGfxCapFBO))) {
+        // OpenGL native stereo was requested, but is obviously not supported and we can't roll our own implementation either :-(
+        printf("\nPTB-ERROR: Asked for OpenGL native stereo (frame-sequential mode) but this doesn't seem to be supported by your graphics hardware or driver.\n");
+        printf("PTB-ERROR: Unfortunately using my own implementation via imaging pipeline did not work either, due to lack of hardware support, or because\n");
+        printf("PTB-ERROR: did not allow me to auto-enable the pipeline and use this method. This means game over!\n");
+        if (PSYCH_SYSTEM == PSYCH_OSX) {
+            printf("PTB-ERROR: Frame-sequential stereo should be supported on all recent ATI/AMD and NVidia cards on OS/X, except for the Intel onboard chips,\n");
+            printf("PTB-ERROR: at least in fullscreen mode with OS/X 10.5, and also mostly on OS/X 10.4. If it doesn't work, check for OS updates etc.\n\n");
+        }
+        else {
+            printf("PTB-ERROR: Frame-sequential native stereo on Windows or Linux is usually only supported with the professional line of graphics cards\n");
+            printf("PTB-ERROR: from NVidia and ATI/AMD, e.g., NVidia Quadro series or ATI Fire series. If you happen to have such a card, check\n");
+            printf("PTB-ERROR: your driver settings and/or update your graphics driver.\n\n");
+        }
+        PsychErrMsgTxt("Frame-Sequential stereo display mode requested, but unsupported. Emulation unsupported as well. Game over!");
+    }
 
-	// Special setup code for dual window stereomode or output mode:
-	if (stereomode == kPsychDualWindowStereo || (imagingmode & kPsychNeedDualWindowOutput)) {
-		if (sharedContextWindow) {
-			// This is creation & setup of the slave onscreen window, ie. the one
-			// representing the right-eye or channel 1 view. This window doesn't do much. It
-			// is not used or referenced in the users experiment script. It receives
-			// its final image content during Screen('Flip') operation of the master
-			// onscreen window, then gets flipped in sync with the master window.
-			
-			// Ok, we already have the slave window open and it shares its OpenGL context
-			// with the master window. Reset its internal reference to the master:
-			windowRecord->slaveWindow = NULL;
-			
-			// Reset imagingmode for this window prior to imaging pipeline setup. This
-			// window is totally passive so it doesn't need the imaging pipeline.
-			imagingmode = 0;
+    // Special setup code for dual window stereomode or output mode:
+    if (stereomode == kPsychDualWindowStereo || (imagingmode & kPsychNeedDualWindowOutput)) {
+        if (sharedContextWindow) {
+            // This is creation & setup of the slave onscreen window, ie. the one
+            // representing the right-eye or channel 1 view. This window doesn't do much. It
+            // is not used or referenced in the users experiment script. It receives
+            // its final image content during Screen('Flip') operation of the master
+            // onscreen window, then gets flipped in sync with the master window.
 
-			// Assign this window to the master window as a slave:
-			sharedContextWindow->slaveWindow = windowRecord;
-			
-			// Try to optionally enable framelock / swaplock extensions for the window-pair
-			// if this is supported by the given system configuration. If supported, this
-			// should guarantee perfect synchronization of bufferswaps across the window-pair:
-			PsychOSSetupFrameLock(sharedContextWindow, windowRecord);
+            // Ok, we already have the slave window open and it shares its OpenGL context
+            // with the master window. Reset its internal reference to the master:
+            windowRecord->slaveWindow = NULL;
 
-			// Reset master assignment to prepare possible further dual-window config operations:
-			sharedContextWindow = NULL;
+            // Reset imagingmode for this window prior to imaging pipeline setup. This
+            // window is totally passive so it doesn't need the imaging pipeline.
+            imagingmode = 0;
 
-			// Activate the IdentitiyBlitChain for the slave window and add a single identity blit
-			// operation to it: This is needed in PsychPreFlipOperations() for final copy of stimulus
-			// image into this slave window:
-			PsychPipelineAddBuiltinFunctionToHook(windowRecord, "IdentityBlitChain", "Builtin:IdentityBlit", INT_MAX, "");
-			PsychPipelineEnableHook(windowRecord, "IdentityBlitChain");
+            // Assign this window to the master window as a slave:
+            sharedContextWindow->slaveWindow = windowRecord;
 
-			if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Created master-slave window relationship for dual-window stereo/output display mode...\n");
+            // Try to optionally enable framelock / swaplock extensions for the window-pair
+            // if this is supported by the given system configuration. If supported, this
+            // should guarantee perfect synchronization of bufferswaps across the window-pair:
+            PsychOSSetupFrameLock(sharedContextWindow, windowRecord);
 
-			// Special config finished. The master-slave combo should work from now on...			
-		}
-		else {
-			// This is initial setup & creation of the master onscreen window, ie. the one
-			// representing the left-eye or channel 0 view and doing all the heavy work, acting as a
-			// proxy for both windows.
-			
-			// Not much to do here. Just store its windowRecord as a reference for creation
-			// of the slave window. We'll need it for that purpose...
-			sharedContextWindow = windowRecord;
-		}
-	}
+            // Reset master assignment to prepare possible further dual-window config operations:
+            sharedContextWindow = NULL;
 
-	// Set special half-width flag for window if we are either in a dual-display/dual-view stereo mode or if
-	// if is requested as part of the imagingMode flag. This will cause PTB 2D drawing routines and window size
-	// query routines etc. to return an effective window width or window rect only half the real width.
-	if (windowRecord->stereomode==kPsychFreeFusionStereo || windowRecord->stereomode==kPsychFreeCrossFusionStereo || (imagingmode & kPsychHalfWidthWindow)) {
-		windowRecord->specialflags = windowRecord->specialflags | kPsychHalfWidthWindow;
-		imagingmode = imagingmode & (~kPsychHalfWidthWindow);
-	}
+            // Activate the IdentitiyBlitChain for the slave window and add a single identity blit
+            // operation to it: This is needed in PsychPreFlipOperations() for final copy of stimulus
+            // image into this slave window:
+            PsychPipelineAddBuiltinFunctionToHook(windowRecord, "IdentityBlitChain", "Builtin:IdentityBlit", INT_MAX, "");
+            PsychPipelineEnableHook(windowRecord, "IdentityBlitChain");
+
+            if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Created master-slave window relationship for dual-window stereo/output display mode...\n");
+
+            // Special config finished. The master-slave combo should work from now on...
+        }
+        else {
+            // This is initial setup & creation of the master onscreen window, ie. the one
+            // representing the left-eye or channel 0 view and doing all the heavy work, acting as a
+            // proxy for both windows.
+
+            // Not much to do here. Just store its windowRecord as a reference for creation
+            // of the slave window. We'll need it for that purpose...
+            sharedContextWindow = windowRecord;
+        }
+    }
+
+    // Set special half-width flag for window if we are either in a dual-display/dual-view stereo mode or if
+    // if is requested as part of the imagingMode flag. This will cause PTB 2D drawing routines and window size
+    // query routines etc. to return an effective window width or window rect only half the real width.
+    if (windowRecord->stereomode==kPsychFreeFusionStereo || windowRecord->stereomode==kPsychFreeCrossFusionStereo || (imagingmode & kPsychHalfWidthWindow)) {
+        windowRecord->specialflags = windowRecord->specialflags | kPsychHalfWidthWindow;
+        imagingmode = imagingmode & (~kPsychHalfWidthWindow);
+    }
 
     // Similar handling for twice-width windows: Used for certain packed-pixels (2 stimulus pixels in one fb pixel) formats:
-	if (imagingmode & kPsychTwiceWidthWindow) {
-		windowRecord->specialflags = windowRecord->specialflags | kPsychTwiceWidthWindow;
-		imagingmode = imagingmode & (~kPsychTwiceWidthWindow);
-	}
+    if (imagingmode & kPsychTwiceWidthWindow) {
+        windowRecord->specialflags = windowRecord->specialflags | kPsychTwiceWidthWindow;
+        imagingmode = imagingmode & (~kPsychTwiceWidthWindow);
+    }
 
-	// Similar handling for windows of half the real height, except that none of our built-in stereo modes requires these,
-	// so this is only done on request from external code via the imagingmode flag kPsychHalfHeightWindow.
-	// One use of this is when using interleaved line stereo mode (PsychImaging(...'InterleavedLineStereo')) where windows
-	// only have a useable net height of half their physical height:
-	if (imagingmode & kPsychHalfHeightWindow) {
-		windowRecord->specialflags = windowRecord->specialflags | kPsychHalfHeightWindow;
-		imagingmode = imagingmode & (~kPsychHalfHeightWindow);
-	}
+    // Similar handling for windows of half the real height, except that none of our built-in stereo modes requires these,
+    // so this is only done on request from external code via the imagingmode flag kPsychHalfHeightWindow.
+    // One use of this is when using interleaved line stereo mode (PsychImaging(...'InterleavedLineStereo')) where windows
+    // only have a useable net height of half their physical height:
+    if (imagingmode & kPsychHalfHeightWindow) {
+        windowRecord->specialflags = windowRecord->specialflags | kPsychHalfHeightWindow;
+        imagingmode = imagingmode & (~kPsychHalfHeightWindow);
+    }
 
     // Optional clientRect defined? If so, we need to enable our internal panel scaler and
     // the imaging pipeline to actually use the scaler:
@@ -574,7 +574,7 @@ PsychError SCREENOpenWindow(void)
         // scale all content from the size of the drawBufferFBO (our virtual framebuffer),
         // which is the size of the clientRect, to the true size of the onscreen windows
         // system framebuffer - appropriately tweaked for special display modes of course.
-        
+
         // Set it as "official" window client rectangle, whose size is reported
         // by default by functions like Screen('Rect'), Screen('WindowSize') or the
         // returned winRect of Screen('OpenWindow'):
@@ -585,18 +585,18 @@ PsychError SCREENOpenWindow(void)
     }
     else {
         // No specific clientRect given - the default case.
-        
+
         // Define windows clientrect. It is a copy of windows rect, but stretched or compressed
         // to twice or half the width or height of the windows rect, depending on the special size
         // flags. clientrect is used as reference for all size query functions Screen('Rect'), Screen('WindowSize')
         // and for all Screen 2D drawing functions:
         PsychSetupClientRect(windowRecord);
     }
-    
-	// Initialize internal image processing pipeline if requested:
-	if (numWindowBuffers > 1) PsychInitializeImagingPipeline(windowRecord, imagingmode, multiSample);
 
-	if (imagingmode & kPsychNeedGPUPanelFitter) {
+    // Initialize internal image processing pipeline if requested:
+    if (numWindowBuffers > 1) PsychInitializeImagingPipeline(windowRecord, imagingmode, multiSample);
+
+    if (imagingmode & kPsychNeedGPUPanelFitter) {
         // Setup default panelfitter parameters: This is a scaled blit, which does not
         // preserve the aspect-ratio of the virtual framebuffer, unless by pure chance
         // the aspect ratios of source and target are already identical:
@@ -604,34 +604,34 @@ PsychError SCREENOpenWindow(void)
         windowRecord->panelFitterParams[1] = 0; // srcY0
         windowRecord->panelFitterParams[2] = (int) PsychGetWidthFromRect(clientRect);  // srcX1
         windowRecord->panelFitterParams[3] = (int) PsychGetHeightFromRect(clientRect); // srcY1
-        
+
         windowRecord->panelFitterParams[4] = 0; // dstX0
         windowRecord->panelFitterParams[5] = 0; // dstY0
         windowRecord->panelFitterParams[6] = (int) windowRecord->fboTable[windowRecord->inputBufferFBO[0]]->width;  // dstX1
         windowRecord->panelFitterParams[7] = (int) windowRecord->fboTable[windowRecord->inputBufferFBO[0]]->height; // dstY1
-        
+
         windowRecord->panelFitterParams[8] = 0; // rotation angle.
         windowRecord->panelFitterParams[9] = windowRecord->panelFitterParams[6]/2; // rotation center X.
         windowRecord->panelFitterParams[10]= windowRecord->panelFitterParams[7]/2; // rotation center Y.
     }
 
-	// On OS-X, if we are in quad-buffered frame sequential stereo mode, we automatically generate
-	// blue-line-sync style sync lines for use with stereo shutter glasses. We don't do this
-	// by default on Windows or Linux: These systems either don't have stereo capable hardware,
-	// or they have some and its drivers already take care of sync signal generation.
-	if (((PSYCH_SYSTEM == PSYCH_OSX) && (windowRecord->stereomode == kPsychOpenGLStereo)) || (windowRecord->stereomode == kPsychFrameSequentialStereo)) {
-		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Enabling internal blue line sync renderer for quad-buffered stereo...\n");
-		PsychPipelineAddBuiltinFunctionToHook(windowRecord, "LeftFinalizerBlitChain", "Builtin:RenderStereoSyncLine", INT_MAX, "");
-		PsychPipelineEnableHook(windowRecord, "LeftFinalizerBlitChain");		
-		PsychPipelineAddBuiltinFunctionToHook(windowRecord, "RightFinalizerBlitChain", "Builtin:RenderStereoSyncLine", INT_MAX, "");
-		PsychPipelineEnableHook(windowRecord, "RightFinalizerBlitChain");		
-	}
+    // On OS-X, if we are in quad-buffered frame sequential stereo mode, we automatically generate
+    // blue-line-sync style sync lines for use with stereo shutter glasses. We don't do this
+    // by default on Windows or Linux: These systems either don't have stereo capable hardware,
+    // or they have some and its drivers already take care of sync signal generation.
+    if (((PSYCH_SYSTEM == PSYCH_OSX) && (windowRecord->stereomode == kPsychOpenGLStereo)) || (windowRecord->stereomode == kPsychFrameSequentialStereo)) {
+        if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Enabling internal blue line sync renderer for quad-buffered stereo...\n");
+        PsychPipelineAddBuiltinFunctionToHook(windowRecord, "LeftFinalizerBlitChain", "Builtin:RenderStereoSyncLine", INT_MAX, "");
+        PsychPipelineEnableHook(windowRecord, "LeftFinalizerBlitChain");
+        PsychPipelineAddBuiltinFunctionToHook(windowRecord, "RightFinalizerBlitChain", "Builtin:RenderStereoSyncLine", INT_MAX, "");
+        PsychPipelineEnableHook(windowRecord, "RightFinalizerBlitChain");
+    }
 
-	// Activate new onscreen window for userspace drawing: If imaging pipeline is active, this
-	// will bind the correct rendertargets for the first time. We soft-reset first to get
-	// into a defined state:
-	PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
-	PsychSetDrawingTarget(windowRecord);
+    // Activate new onscreen window for userspace drawing: If imaging pipeline is active, this
+    // will bind the correct rendertargets for the first time. We soft-reset first to get
+    // into a defined state:
+    PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
+    PsychSetDrawingTarget(windowRecord);
 
     // Set the clear color and perform a backbuffer-clear:
     PsychConvertColorToDoubleVector(&color, windowRecord, windowRecord->clearColor);
@@ -648,14 +648,14 @@ PsychError SCREENOpenWindow(void)
     // the user selected background color instead of staying at the blue screen or
     // logo display until the Matlab script first calls 'Flip'.
     if (((PsychPrefStateGet_VisualDebugLevel()>=4) || (windowRecord->stereomode > 0)) && numWindowBuffers>=2) {
-      // Do three immediate bufferswaps by an internal call to Screen('Flip'). This will also
-      // take care of clearing the backbuffer in preparation of first userspace drawing
-      // commands and such. We need up-to 3 calls to clear triple-buffered setups from framebuffer junk.
-      PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
-      PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
-      PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
-      // Display now shows background color, so user knows that PTB's 'OpenWindow'
-      // procedure is successfully finished.
+    // Do three immediate bufferswaps by an internal call to Screen('Flip'). This will also
+    // take care of clearing the backbuffer in preparation of first userspace drawing
+    // commands and such. We need up-to 3 calls to clear triple-buffered setups from framebuffer junk.
+    PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
+    PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
+    PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
+    // Display now shows background color, so user knows that PTB's 'OpenWindow'
+    // procedure is successfully finished.
     }
 
     PsychTestForGLErrors();
@@ -689,14 +689,14 @@ PsychError SCREENOpenWindow(void)
     // Reset flipcounter and missed flip deadline counter to zero:
     windowRecord->flipCount = 0;
     windowRecord->nr_missed_deadlines = 0;
-	
+
     //Return the window index and the rect argument.
     PsychCopyOutDoubleArg(1, FALSE, windowRecord->windowIndex);
 
     // Optionally return the windows clientrect:
     PsychCopyOutRectArg(2, FALSE, windowRecord->clientrect);
 
-    return(PsychError_none);   
+    return(PsychError_none);
 }
 
 PsychError SCREENPanelFitter(void)
@@ -726,7 +726,7 @@ PsychError SCREENPanelFitter(void)
     double* outParams;
     int*    newParams;
     int     count, i;
-    
+
     // All sub functions should have these two lines
     PsychPushHelp(useString1, synopsisString1, seeAlsoString1);
     if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
@@ -737,11 +737,11 @@ PsychError SCREENPanelFitter(void)
 
     // Get window record:
     PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
-    
+
     // Return optional fitter settings:
     PsychAllocOutDoubleMatArg(1, FALSE, 1, 11, 1, &outParams);
     for (i = 0; i < 11; i++) outParams[i] = (double) windowRecord->panelFitterParams[i];
-    
+
     // Get optional new panelFitter settings:
     if (PsychAllocInIntegerListArg(2, FALSE, &count, &newParams)) {
         if ((count < 8) || (count > 11)) PsychErrorExitMsg(PsychError_user, "'newParams' must be a vector with 8 to 11 integer elements.");
@@ -750,8 +750,8 @@ PsychError SCREENPanelFitter(void)
         // Fallback path needed (due to lack of FBO blit or non-zero rotation angle) and problematic new config setting?
         if ((!(windowRecord->gfxcaps & kPsychGfxCapFBOBlit) || (windowRecord->panelFitterParams[8] != 0)) && (PsychPrefStateGet_Verbosity() > 2) &&
             (windowRecord->panelFitterParams[0] != 0 || windowRecord->panelFitterParams[1] != 0 ||
-             windowRecord->panelFitterParams[2] != (int) PsychGetWidthFromRect(windowRecord->clientrect) ||
-             windowRecord->panelFitterParams[3] != (int) PsychGetHeightFromRect(windowRecord->clientrect))) {
+            windowRecord->panelFitterParams[2] != (int) PsychGetWidthFromRect(windowRecord->clientrect) ||
+            windowRecord->panelFitterParams[3] != (int) PsychGetHeightFromRect(windowRecord->clientrect))) {
             // Fallback path for panelFitter in use and sourceRegion is not == full clientRect. This is an
             // unsupported setting with the fallback, which will cause wrong results. Warn user:
             printf("PTB-INFO: Non-default 'srcRegion' in call to Screen('PanelFitter') ignored. This is not supported when the\n");
