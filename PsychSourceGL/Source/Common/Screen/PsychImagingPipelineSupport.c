@@ -3429,6 +3429,16 @@ psych_bool PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int
                 dispatched=TRUE;
             }
 
+            if (strcmp(hookfunc->idString, "Builtin:AlphaPostMultiply")==0) {
+                // Draw a fullscreen quad with constant alpha, essentially post-multiplying all alpha
+                // values in the framebuffer with the specified alpha. Needed, e.g., for Wayland transparency.
+                if (!PsychPipelineBuiltinRenderAlphaPostMultiply(windowRecord, hookfunc)) {
+                    // Operation failed!
+                    return(FALSE);
+                }
+                dispatched=TRUE;
+            }
+
         break;
 
         default:
@@ -4056,6 +4066,31 @@ psych_bool PsychBlitterDisplayList(PsychWindowRecordType *windowRecord, PsychHoo
     }
 
     // Done.
+    return(TRUE);
+}
+
+psych_bool PsychPipelineBuiltinRenderAlphaPostMultiply(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc)
+{
+    float globalAlpha;
+    psych_bool blendingOn = glIsEnabled(GL_BLEND);
+
+    if (1 != sscanf(hookfunc->pString1, "%f", &globalAlpha)) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychPipelineBuiltinRenderAlphaPostMultiply() failed due to lack of or invalid global alpha. Skipped!\n");
+        return(FALSE);
+    }
+
+    // Setup alpha blending for alpha-postmultiply of framebuffer pixels with globalAlpha:
+    glEnable(GL_BLEND);
+    glBlendFuncSeparate(GL_ZERO, GL_ONE, GL_ZERO, GL_CONSTANT_ALPHA);
+    glBlendColor(1.0, 1.0, 1.0, (GLfloat) globalAlpha);
+
+    // Blit a fullscreen quad, just to drive the alpha-postmultiply:
+    PsychGLRect(windowRecord->rect);
+
+    // Restore a well defined blending state:
+    glBlendFuncSeparate(GL_ZERO, GL_ONE, GL_ZERO, GL_ONE);
+    if (!blendingOn) glDisable(GL_BLEND);
+
     return(TRUE);
 }
 

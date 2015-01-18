@@ -259,7 +259,7 @@ wayland_feedback_sync_output(void *data, struct presentation_feedback *presentat
     struct wayland_feedback *wayland_feedback = data;
     PsychWindowRecordType *windowRecord = wayland_feedback->windowRecord;
 
-    if (PsychPrefStateGet_Verbosity() > 3) {
+    if (PsychPrefStateGet_Verbosity() > 5) {
         printf("PTB-INFO: Window %i uses Wayland output %p with following properties as reference:\n", windowRecord->windowIndex, output);
     }
 }

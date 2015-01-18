@@ -627,6 +627,39 @@ PsychError SCREENOpenWindow(void)
         PsychPipelineEnableHook(windowRecord, "RightFinalizerBlitChain");
     }
 
+    // Running on native Wayland backend? Then set up transparent window via
+    // finalizer chain alpha blending tricks - essentially alpha-postmultiply:
+    #ifdef PTB_USE_WAYLAND
+    {
+        char configAlphaString[8] = { 0 };
+        int windowShieldingLevel = PsychPrefStateGet_WindowShieldingLevel();
+        if ((windowShieldingLevel >= 1000) && (windowShieldingLevel < 2000)) {
+            // Transparency needed. Wayland as of protocol version 1.6 doesn't
+            // allow to assign a global alpha transparency value, it does make
+            // good use of per-pixel alpha though. So in Wayland what we need
+            // to do is apply our own global alpha to the per-pixel alpha values
+            // of our backbuffer. We use the finalizer processing stage of our imaging
+            // pipeline to post-multiply a global alpha value to all the pixel alpha
+            // values in our final framebuffer:
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Enabling global transparency for Wayland debug window mode.\n");
+
+            // Convert windowShieldingLevel 1000 - 1499 and 1500 - 1999 to alpha range 0.0 - 1.0 and
+            // assign it as parameter string for our builtin post-multiply function:
+            snprintf(configAlphaString, sizeof(configAlphaString), "%f", (((float) (windowShieldingLevel % 500)) / 499.0));
+
+            // Add call to our builtin post-multiply function to the end of the finalizer blit chain for left-eye/mono buffer:
+            PsychPipelineAddBuiltinFunctionToHook(windowRecord, "LeftFinalizerBlitChain", "Builtin:AlphaPostMultiply", INT_MAX, configAlphaString);
+            PsychPipelineEnableHook(windowRecord, "LeftFinalizerBlitChain");
+
+            // Ditto for right eye framebuffer in a dual-buffer config:
+            if ((windowRecord->stereomode == kPsychOpenGLStereo) || (windowRecord->stereomode == kPsychFrameSequentialStereo)) {
+                PsychPipelineAddBuiltinFunctionToHook(windowRecord, "RightFinalizerBlitChain", "Builtin:AlphaPostMultiply", INT_MAX, configAlphaString);
+                PsychPipelineEnableHook(windowRecord, "RightFinalizerBlitChain");
+            }
+        }
+    }
+    #endif
+
     // Activate new onscreen window for userspace drawing: If imaging pipeline is active, this
     // will bind the correct rendertargets for the first time. We soft-reset first to get
     // into a defined state:
@@ -648,14 +681,14 @@ PsychError SCREENOpenWindow(void)
     // the user selected background color instead of staying at the blue screen or
     // logo display until the Matlab script first calls 'Flip'.
     if (((PsychPrefStateGet_VisualDebugLevel()>=4) || (windowRecord->stereomode > 0)) && numWindowBuffers>=2) {
-    // Do three immediate bufferswaps by an internal call to Screen('Flip'). This will also
-    // take care of clearing the backbuffer in preparation of first userspace drawing
-    // commands and such. We need up-to 3 calls to clear triple-buffered setups from framebuffer junk.
-    PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
-    PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
-    PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
-    // Display now shows background color, so user knows that PTB's 'OpenWindow'
-    // procedure is successfully finished.
+        // Do three immediate bufferswaps by an internal call to Screen('Flip'). This will also
+        // take care of clearing the backbuffer in preparation of first userspace drawing
+        // commands and such. We need up-to 3 calls to clear triple-buffered setups from framebuffer junk.
+        PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
+        PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
+        PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
+        // Display now shows background color, so user knows that PTB's 'OpenWindow'
+        // procedure is successfully finished.
     }
 
     PsychTestForGLErrors();
