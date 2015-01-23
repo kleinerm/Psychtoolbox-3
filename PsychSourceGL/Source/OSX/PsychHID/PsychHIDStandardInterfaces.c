@@ -893,14 +893,8 @@ void PsychHIDOSKbQueueRelease(int deviceIndex)
     // The mutex will be automatically unlocked and destroyed by the CFRunLoop thread
     // so it isn't even declared in this routine
     if (psychHIDKbQueueCFRunLoopRef[deviceIndex]) {
-        // Shutdown the processing thread for this queue:
-        PsychLockMutex(&KbQueueMutex);
-
         // Stop the CFRunLoop, which will allow its associated thread to exit:
         CFRunLoopStop(psychHIDKbQueueCFRunLoopRef[deviceIndex]);
-
-        // Done.
-        PsychUnlockMutex(&KbQueueMutex);
 
         // Shutdown the thread, wait for its termination:
         PsychDeleteThread(&KbQueueThread[deviceIndex]);
@@ -946,11 +940,11 @@ void PsychHIDOSKbQueueStop(int deviceIndex)
 	// Keyboard queue already stopped?
 	if (!psychHIDKbQueueActive[deviceIndex]) return;
 
-	// Queue is active. Stop it:
-	PsychLockMutex(&KbQueueMutex);
-
     // Stop event collection in the queue:
     IOHIDQueueStop(queue[deviceIndex]);
+    
+    // Queue is active. Stop it:
+    PsychLockMutex(&KbQueueMutex);
     
 	// Mark queue logically stopped:
 	psychHIDKbQueueActive[deviceIndex] = FALSE;
