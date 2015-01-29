@@ -173,8 +173,8 @@ if isempty(macosx)
     end
 
     % Only use PsychHID on Linux if we are running on a classic X11 X-Server,
-    % as current PsychHID on Linux is not yet capable of non-X11 operation:
-    if IsLinux % && isempty(getenv('DISPLAY'))
+    % as current PsychHID on Linux is not yet capable of Wayland operation:
+    if IsLinux && IsWayland
         % Non-standard display backend, e.g., Wayland. Only use Screen's internal implementation:
         allowPsychHID = 0;
     else

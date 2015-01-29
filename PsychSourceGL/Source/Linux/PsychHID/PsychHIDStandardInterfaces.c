@@ -689,12 +689,21 @@ int PsychHIDGetDefaultKbQueueDevice(void)
         if ((dev->use == XISlaveKeyboard) && strstr(dev->name, "Mouseemu")) return(deviceIndex);
     }
 
-    // Blacklist scan: Use whatever comes first and isn't a button in disguise of
-    // a keyboard or the virtual XTEST keyboard:
+    // Whitelist scan: Use first "*eyboard", if any. This is not foolproof, e.g., the
+    // "Razer" gaming keyboard doesn't have the term "keyboard" in its name. But many
+    // keyboards do:
     for(deviceIndex = 0; deviceIndex < ndevices; deviceIndex++) {
         dev = &info[deviceIndex];
-        if ((dev->use == XISlaveKeyboard) && !strstr(dev->name, "XTEST") && !strstr(dev->name, "Button") && !strstr(dev->name, "Bus") &&
-            !strstr(dev->name, "iSight") && !strstr(dev->name, "Receiver")) {
+        if ((dev->use == XISlaveKeyboard) && strstr(dev->name, "eyboard") && !strstr(dev->name, "XTEST")) return(deviceIndex);
+    }
+
+    // Blacklist scan: Use whatever comes first and isn't a button in disguise of
+    // a keyboard or the virtual XTEST keyboard etc.:
+    for(deviceIndex = 0; deviceIndex < ndevices; deviceIndex++) {
+        dev = &info[deviceIndex];
+
+        if ((dev->use == XISlaveKeyboard) && !strstr(dev->name, "XTEST") && !strstr(dev->name, "utton") && !strstr(dev->name, "Bus") &&
+            !strstr(dev->name, "iSight") && !strstr(dev->name, "eceiver") && !strstr(dev->name, "amera")) {
             return(deviceIndex);
         }
     }
@@ -726,13 +735,6 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
     if ((dev->use == XIMasterKeyboard) || (dev->use == XIMasterPointer)) {
         PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. Master keyboards or master pointers cannot be handled by this function.");
     }
-
-    /* This would detect the number of keys on the keyboard:
-    numKeys = 0;
-    for (j = 0; j < dev->num_classes; j++) {
-        if (dev->classes[j]->type == XIKeyClass) numKeys += (int) (((XIKeyClassInfo*) dev->classes[j])->num_keycodes);
-    }
-    */
 
     // Keyboard queue for this deviceIndex already created?
     if (psychHIDKbQueueFirstPress[deviceIndex]) {
