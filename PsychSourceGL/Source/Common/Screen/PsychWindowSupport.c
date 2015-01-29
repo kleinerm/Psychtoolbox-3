@@ -403,39 +403,58 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         return(FALSE);
     }
 
-    #if PSYCH_SYSTEM == PSYCH_WINDOWS
-    if (PsychPrefStateGet_Verbosity()>1) {
-        if (strstr((char*) glGetString(GL_RENDERER), "GDI")) {
-            printf("\n\n\n\nPTB-WARNING: Seems that Microsofts OpenGL software renderer is active! This will likely cause miserable\n");
-            printf("PTB-WARNING: performance, lack of functionality and severe timing and synchronization problems.\n");
-            printf("PTB-WARNING: Most likely you do not have native OpenGL vendor supplied drivers (ICD's) for your graphics hardware\n");
-            printf("PTB-WARNING: installed on your system.Many Windows machines (and especially Windows Vista) come without these preinstalled.\n");
-            printf("PTB-WARNING: Go to the webpage of your computer vendor or directly to the webpage of NVidia/AMD/ATI/3DLabs/Intel\n");
-            printf("PTB-WARNING: and make sure that you've download and install their latest driver for your graphics card.\n");
-            printf("PTB-WARNING: Other causes, after you've ruled out the above:\n");
-            printf("PTB-WARNING: Maybe you run at a too high display resolution, or the system is running out of ressources for some other reason.\n");
-            printf("PTB-WARNING: Another reason could be that you disabled hardware acceleration in the display settings panel: Make sure that\n");
-            printf("PTB-WARNING: in Display settings panel -> Settings -> Advanced -> Troubleshoot -> The hardware acceleration slider is\n");
-            printf("PTB-WARNING: set to 'Full' (rightmost position).\n\n");
+    if (PsychPrefStateGet_Verbosity() > 1) {
+        psych_bool softwareOpenGL = FALSE;
 
-            // Only allow to continue if kPsychUseSoftwareRenderer flag is set. Otherwise abort here:
-            if ((PsychPrefStateGet_ConserveVRAM() & kPsychUseSoftwareRenderer) == 0) {
-                printf("PTB-WARNING: Actually..., it is pointless to continue with the software renderer, that will cause more trouble than good.\n");
-                printf("PTB-WARNING: I will abort now. Read the troubleshooting tips above to fix the problem. You can override this if you add the following\n");
-                printf("PTB-WARNING: command: Screen('Preference', 'ConserveVRAM', 64); to get a functional, but close to useless window up and running.\n\n\n");
+        if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
+            if (strstr((char*) glGetString(GL_RENDERER), "GDI")) {
+                softwareOpenGL = TRUE;
 
-                // We abort! Close the onscreen window:
-                PsychOSCloseWindow(*windowRecord);
-
-                // Free the windowRecord:
-                FreeWindowRecordFromPntr(*windowRecord);
-
-                // Done. Return failure:
-                return(FALSE);
+                printf("\n\n\n\nPTB-WARNING: Seems that Microsofts OpenGL software renderer is active! This will likely cause miserable\n");
+                printf("PTB-WARNING: performance, lack of functionality and severe timing and synchronization problems.\n");
+                printf("PTB-WARNING: Most likely you do not have native OpenGL vendor supplied drivers (ICD's) for your graphics hardware\n");
+                printf("PTB-WARNING: installed on your system.Many Windows machines (and especially Windows Vista) come without these preinstalled.\n");
+                printf("PTB-WARNING: Go to the webpage of your computer vendor or directly to the webpage of NVidia/AMD/ATI/3DLabs/Intel\n");
+                printf("PTB-WARNING: and make sure that you've download and install their latest driver for your graphics card.\n");
+                printf("PTB-WARNING: Other causes, after you've ruled out the above:\n");
+                printf("PTB-WARNING: Maybe you run at a too high display resolution, or the system is running out of ressources for some other reason.\n");
+                printf("PTB-WARNING: Another reason could be that you disabled hardware acceleration in the display settings panel: Make sure that\n");
+                printf("PTB-WARNING: in Display settings panel -> Settings -> Advanced -> Troubleshoot -> The hardware acceleration slider is\n");
+                printf("PTB-WARNING: set to 'Full' (rightmost position).\n\n");
             }
         }
+
+        if (PSYCH_SYSTEM == PSYCH_LINUX) {
+            if (strstr((char*) glGetString(GL_RENDERER), "Mesa X11") && strstr((char*) glGetString(GL_VENDOR), "Brian Paul")) {
+                softwareOpenGL = TRUE;
+
+                printf("\n\n\n\n");
+                printf("PTB-WARNING: Seems that a Mesa OpenGL software renderer is active! This will likely cause miserable\n");
+                printf("PTB-WARNING: performance, lack of functionality and severe timing and synchronization problems.\n");
+                printf("PTB-WARNING: Most likely you are running Psychtoolbox on a Matlab version 8.4 (R2014b) or later and\n");
+                printf("PTB-WARNING: Matlab is causing this problem by overriding your operating systems OpenGL library with\n");
+                printf("PTB-WARNING: its own outdated software library. Please run the setup script PsychLinuxConfiguration()\n");
+                printf("PTB-WARNING: now from your Matlab command window and then quit and restart Matlab to fix this problem.\n");
+                printf("\n\n");
+            }
+        }
+
+        // On a software OpenGL implementation, only allow to continue if kPsychUseSoftwareRenderer flag is set:
+        if (softwareOpenGL && ((PsychPrefStateGet_ConserveVRAM() & kPsychUseSoftwareRenderer) == 0)) {
+            printf("PTB-WARNING: Actually, it is pointless to continue with the software renderer, as that will cause more trouble than good.\n");
+            printf("PTB-WARNING: I will abort now. Read the troubleshooting tips above to fix the problem. You can override this if you add the following\n");
+            printf("PTB-WARNING: command: Screen('Preference', 'ConserveVRAM', 64); to get a functional, but close to useless window up and running.\n\n\n");
+
+            // We abort! Close the onscreen window:
+            PsychOSCloseWindow(*windowRecord);
+
+            // Free the windowRecord:
+            FreeWindowRecordFromPntr(*windowRecord);
+
+            // Done. Return failure:
+            return(FALSE);
+        }
     }
-    #endif
 
     // Decide if 10 or 11 or 16 bpc framebuffer should be enabled by our own kernel driver trick, or
     // if the OS + graphics drivers has done proper work already:
