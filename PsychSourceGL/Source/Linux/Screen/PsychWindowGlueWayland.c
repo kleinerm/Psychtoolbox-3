@@ -1904,7 +1904,8 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
     if (nominalIFI > 0) nominalIFI = 1.0 / nominalIFI;
 
     // Need to compensate for Waylands (or only Westons?) 1 frame composition lag:
-    if (!(windowRecord->specialflags & kPsychOpenMLDefective)) {
+    // Update: Not needed with Pekka's lag reduction patch on top of Weston-1.7
+    if (FALSE && !(windowRecord->specialflags & kPsychOpenMLDefective)) {
         targetTime -= nominalIFI;
         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Compensating for Wayland/Weston 1 frame composition lag of %f msecs.\n", nominalIFI * 1000.0);
     }
