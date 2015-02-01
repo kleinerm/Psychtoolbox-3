@@ -618,7 +618,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
         // Ready to rock!
     } else {
         // No candidate.
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: No low-level controllable GPU on screenId %i. Beamposition timestamping and other special functions disabled.\n", screenId);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: No low-level controllable GPU on screenId %i. Beamposition timestamping and other special functions disabled.\n", screenId);
         fflush(NULL);
 
         // Cleanup:

@@ -259,8 +259,8 @@ wayland_feedback_sync_output(void *data, struct presentation_feedback *presentat
     struct wayland_feedback *wayland_feedback = data;
     PsychWindowRecordType *windowRecord = wayland_feedback->windowRecord;
 
-    if (PsychPrefStateGet_Verbosity() > 5) {
-        printf("PTB-INFO: Window %i uses Wayland output %p with following properties as reference:\n", windowRecord->windowIndex, output);
+    if (PsychPrefStateGet_Verbosity() > 10) {
+        printf("PTB-INFO: Window %i uses Wayland output %p.\n", windowRecord->windowIndex, output);
     }
 }
 
@@ -410,7 +410,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // to, e.g., moglcore, so it can adapt its context/gl setup:
     setenv("PSYCH_USE_DISPLAY_BACKEND", backendname2, 1);
 
-    if (PsychPrefStateGet_Verbosity() > 2) {
+    if (PsychPrefStateGet_Verbosity() > 3) {
         printf("PTB-INFO: Wayland display backend '%s' initialized [%s].\n", backendname, backendname2);
     }
 
@@ -504,10 +504,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // Tell environment about our final rendering backend choice:
     setenv("PSYCH_USE_GFX_BACKEND", backendname2, 1);
 
-    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Waffle display backend connected to OpenGL rendering API '%s' [%s].\n", backendname, backendname2);
-
     // OpenGL embedded subset api in use?
     if (windowRecord->glApiType > 0) {
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Waffle display backend connected to OpenGL rendering API '%s' [%s].\n", backendname, backendname2);
+
         // Yes: Try to disable all OpenGL error checking for now during initial OpenGL-ES support bringup.
         // We know there will be many errors due to incompatibilities but just try to keep going and rely
         // on external trace and debug tools to find and fix errors at this point:
@@ -961,7 +961,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             setenv("PSYCH_DONT_LOCK_MOGLCORE", "1", 0);
         }
         else {
-            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Workaround: Disabled ability to 'clear moglcore', as a workaround for a Mesa OpenGL bug. Sorry for the inconvenience.\n");
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Workaround: Disabled ability to 'clear moglcore', as a workaround for a Mesa OpenGL bug. Sorry for the inconvenience.\n");
         }
     }
 
@@ -1461,7 +1461,7 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
     windowRecord->specialflags &= ~kPsychOpenMLDefective;
 
     // Ready to rock on Wayland:
-    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Enabling Wayland presentation_feedback extension for swap completion timestamping.\n");
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Enabling Wayland presentation_feedback extension for swap completion timestamping.\n");
 
     return;
 }
