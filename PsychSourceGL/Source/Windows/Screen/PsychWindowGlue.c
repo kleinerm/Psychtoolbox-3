@@ -1801,7 +1801,7 @@ dwmdontcare:
     win32_windowcount++;
 
     // Some info for the user regarding non-fullscreen windows:
-    if (!fullscreen) {
+    if (!fullscreen && (PsychPrefStateGet_Verbosity() > 2)) {
       printf("PTB-INFO: Most graphics cards will not support proper syncing to vertical retrace when\n");
       printf("PTB-INFO: running in windowed mode (non-fullscreen). If PTB aborts with 'Synchronization failure'\n");
       printf("PTB-INFO: you can disable the sync test via call to Screen('Preference', 'SkipSyncTests', 2); .\n");
