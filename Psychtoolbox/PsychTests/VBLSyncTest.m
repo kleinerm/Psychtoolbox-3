@@ -269,7 +269,13 @@ try
         % tests.
         PsychImaging('AddTask', 'General', 'UseDataPixx');
     end
-    w=PsychImaging('OpenWindow',screenNumber, 0,[],[],[], stereo);
+
+    if 0
+        w=PsychImaging('OpenWindow',screenNumber, 0,[0 0 1430 900],[],[], stereo);
+        Screen('GetFlipInfo', w, 1);
+    else
+        w=PsychImaging('OpenWindow',screenNumber, 0,[],[],[], stereo);
+    end
     
     % Query effective stereo mode, as Screen() could have changed it behind our
     % back, e.g., if we asked for mode 1 but Screen() had to fallback to
@@ -324,6 +330,7 @@ try
     beampos=ts;
     missest=ts;
     flipfin=ts;
+    dpixxdelay=ts;
     td=ts;
     so=ts;
     tSecondary = ts;
@@ -394,6 +401,7 @@ try
         if usedpixx
             % Ask for a Datapixx onset timestamp from last 'Flip':
             [boxTime, sodpixx(i)] = PsychDataPixx('GetLastOnsetTimestamp'); %#ok<ASGLU>
+            dpixxdelay(i) = GetSecs;
         end
         
         % Special code for DWM debugging: Disabled by default - Not for pure
@@ -537,7 +545,11 @@ try
         figure;
         plot((so - sodpixx) * 1000);
         title('Time delta in msecs onset according to Flip - onset according to DataPixx:');
-        fprintf('Average discrepancy between Flip timestamping and DataPixx is %f msecs, stddev = %f msecs.\n', mean((so - sodpixx) * 1000), std((so - sodpixx) * 1000));        
+        fprintf('Average discrepancy between Flip timestamping and DataPixx is %f msecs, stddev = %f msecs.\n', mean((so - sodpixx) * 1000), std((so - sodpixx) * 1000));
+
+        figure;
+        plot((dpixxdelay - so) * 1000);
+        title('Time delta between stimulus onset and return of Datapixx timestamping in milliseconds:');
     end
     
     % Count and output number of missed flip on VBL deadlines:
