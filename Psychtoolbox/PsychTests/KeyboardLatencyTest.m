@@ -322,7 +322,7 @@ for trial = 1:10
         
         % Compute maximum signal amplitude in this chunk of data:
         if ~isempty(audiodata)
-            level = max(abs(audiodata(1,:)));
+            level = max(max(abs(audiodata)));
         else
             level = 0;
         end
@@ -336,8 +336,8 @@ for trial = 1:10
 
     % Ok, last fetched chunk was above threshold!
     % Find exact location of first above threshold sample.
-    idx = min(find(abs(audiodata(1,:)) >= triggerlevel)); %#ok<MXFND>
-        
+    idx = min(find(max(abs(audiodata)) >= triggerlevel)); %#ok<MXFND>
+
     % Compute absolute event time:
     tOnset = tCaptureStart + ((offset + idx - 1) / freq);
     
