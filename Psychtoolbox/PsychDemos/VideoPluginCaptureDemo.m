@@ -1,9 +1,11 @@
 function VideoPluginCaptureDemo(deviceIds, syncmode, movieName)
-% Demonstrate simple use of built-in video capture engine.
+% Demonstrate simple use of built-in video marker tracking engine.
 %
-% VideoMultiCameraCaptureDemo([deviceIds=all][, syncmode=0][, movieName])
+% EXPERIMENTAL CODE - NOT USEFUL FOR REGULAR PSYCHTOOLBOX USERS.
 %
-% VideoMultiCameraCaptureDemo captures simultaneously from all cameras
+% VideoPluginCaptureDemo([deviceIds=all][, syncmode=0][, movieName])
+%
+% VideoPluginCaptureDemo captures simultaneously from all cameras
 % connected to your computer, or a subset of cameras if it is specified
 % in the optional vector 'deviceIds', and then shows their video feeds
 % in individual Psychtoolbox windows.
