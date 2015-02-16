@@ -978,8 +978,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         PsychUnlockDisplay();
         if (ev.type == MapNotify)
             break;
-
-        PsychYieldIntervalSeconds(0.001);
     }
 
     PsychLockDisplay();
