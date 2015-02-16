@@ -1494,6 +1494,9 @@ static void* PsychDCRecorderThreadMain(void* capdevToCast)
     // Get a pointer to our associated capture device:
     PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) capdevToCast;
 
+    // Assign a name to ourselves, for debugging:
+    PsychSetThreadName("ScreenDC1394Rec");
+
     // We are running at elevated realtime priority. Enter the while loop
     // which waits for new video frames from libDC1394 and pushes them into
     // the GStreamer movie recording pipeline and the receive slots/sinks for

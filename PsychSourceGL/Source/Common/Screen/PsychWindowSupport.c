@@ -2149,6 +2149,9 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
     PsychFlipInfoStruct*    flipRequest     = windowRecord->flipInfo;
     psych_bool useOpenML = (windowRecord->specialflags & kPsychOpenMLDefective) ? FALSE : TRUE;
 
+    // Assign a name to ourselves, for debugging:
+    PsychSetThreadName("ScreenFlipper");
+
     // Try to lock, block until available if not available:
     if ((rc=PsychLockMutex(&(flipRequest->performFlipLock)))) {
         // This could potentially kill Matlab, as we're printing from outside the main interpreter thread.

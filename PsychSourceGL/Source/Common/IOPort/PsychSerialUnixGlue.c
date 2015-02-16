@@ -230,6 +230,9 @@ void* PsychSerialUnixGlueReaderThreadMain( void* deviceToCast)
 	// Get a handle to our device struct: These pointers must not be NULL!!!
     PsychSerialDeviceRecord* device = (PsychSerialDeviceRecord*) deviceToCast;
 
+    // Assign a name to ourselves, for debugging:
+    PsychSetThreadName("IOPortSerialRd");
+
 	// Try to raise our priority: We ask to switch ourselves (NULL) to priority class 2 aka
 	// realtime scheduling, with a tweakPriority of +1, ie., raise the relative
 	// priority level by +1 wrt. to the current level:

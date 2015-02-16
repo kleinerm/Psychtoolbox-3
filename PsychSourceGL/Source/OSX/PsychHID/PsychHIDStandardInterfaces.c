@@ -685,7 +685,7 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 
         // Next while loop iteration to dequeue potentially more events:
     }
-    
+
     // Done for this queue transition. Return to runloop.
 }
 
@@ -693,6 +693,9 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 static void *KbQueueWorkerThreadMain(void *inarg) {
     int deviceIndex = (int) inarg;
     int rc;
+
+    // Assign a name to ourselves, for debugging:
+    PsychSetThreadName("PsychHIDKbQueue");
 
     // Switch ourselves (NULL) to RT scheduling: We promise to use / require at most (0+1) == 1 msec every
     // 10 msecs and allow for wakeup delay/jitter of up to 2 msecs -- perfectly reasonable, given that we

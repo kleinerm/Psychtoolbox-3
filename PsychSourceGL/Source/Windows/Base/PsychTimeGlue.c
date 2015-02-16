@@ -1405,6 +1405,14 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 	return(rc);
 }
 
+/* Assign a name to a thread, for debugging: */
+void PsychSetThreadName(const char *name)
+{
+    // No-op for now.
+    (void) name;
+    return;
+}
+
 /* Initialize condition variable:
  * CAUTION: Use of condition_attribute is not supported! Code using it may or may not work properly
  * on MS-Windows! Pass NULL for this argument for portable operation!

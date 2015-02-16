@@ -648,6 +648,9 @@ void* KbQueueWorkerThreadMain(void* dummy)
 {
     int rc;
 
+    // Assign a name to ourselves, for debugging:
+    PsychSetThreadName("PsychHIDKbQueue");
+
     // Try to raise our priority: We ask to switch ourselves (NULL) to priority class 2 aka
     // rt_fifo realtime scheduling, with a tweakPriority of +1, ie., raise the relative
     // priority level by +1 wrt. to the current level:
