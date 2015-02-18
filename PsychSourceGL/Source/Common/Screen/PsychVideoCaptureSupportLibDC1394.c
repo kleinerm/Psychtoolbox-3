@@ -1290,15 +1290,6 @@ static unsigned char* PsychDCPreprocessFrame(PsychVidcapRecordType* capdev)
         }
     }
 
-    // Is a special markertracker plugin loaded for this camera? If so, execute it on this frame:
-    if (capdev->markerTrackerPlugin) {
-        // Yes! Execute: Plugin reads from (unsigned long*) input_image:
-        if (!(*TrackerPlugin_processFrame)(capdev->markerTrackerPlugin, (unsigned long*) input_image, capdev->width, capdev->height, capdev->roirect[kPsychLeft], capdev->roirect[kPsychTop], capdev->framecounter,
-            capdev->current_pts, capdev->framecounter)) {
-            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-WARNING: Failed to process video frame with framecount %i by markertracker plugin for capture device %i.\n", capdev->framecounter, capdev->capturehandle);
-        }
-    }
-
     // Do we want to do something with the image data and have a scratch buffer for color conversion alloc'ed?
     if (capdev->convframe) {
         // Yes. Perform color-conversion YUV->RGB from cameras DMA buffer
@@ -1344,6 +1335,15 @@ static unsigned char* PsychDCPreprocessFrame(PsychVidcapRecordType* capdev)
 
         // Success: Point to decoded image buffer:
         input_image = (unsigned char*) capdev->convframe->image;
+    }
+
+    // Is a special markertracker plugin loaded for this camera? If so, execute it on this frame:
+    if (capdev->markerTrackerPlugin) {
+        // Yes! Execute: Plugin reads from (unsigned long*) input_image:
+        if (!(*TrackerPlugin_processFrame)(capdev->markerTrackerPlugin, (unsigned long*) input_image, capdev->width, capdev->height, capdev->roirect[kPsychLeft], capdev->roirect[kPsychTop], capdev->framecounter,
+            capdev->current_pts, capdev->framecounter)) {
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-WARNING: Failed to process video frame with framecount %i by markertracker plugin for capture device %i.\n", capdev->framecounter, capdev->capturehandle);
+            }
     }
 
     return(input_image);
