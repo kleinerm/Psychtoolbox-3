@@ -4124,6 +4124,19 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         if (!PsychVideoPipelineSetState(camera, GST_STATE_PLAYING, 10.0)) {
             // Failed!
             PsychGSProcessVideoContext(capdev, FALSE);
+
+            // Some hint for a trick that worked in the past: Skipping the Ready -> Paused -> Playing -> Ready
+            // sequence for probing that is done by default in 'OpenVideoCapture'. From the fact that we reached
+            // this point in execution, we know that 'OpenVideoCapture' succeeded, so that sequence worked at
+            // least once, but the similar sequence here failed. Maybe we have only one shot at this, so better
+            // use it here, where it really matters, by skipping the sequence at the beginning, ergo recordingflags = 8
+            // is a good idea:
+            if (!(capdev->recordingflags & 8)) {
+                printf("PTB-HINT: When this error happened in past similar situations, sometimes it helped to set the\n");
+                printf("PTB-HINT: optional 'recordingflags' parameter of the Screen('OpenVideoCapture', ..) command to\n");
+                printf("PTB-HINT: a value of 8, so i'd suggest trying that.\n\n");
+            }
+
             PsychErrorExitMsg(PsychError_user, "Failure in pipeline transition paused -> playing - Start of video capture failed!");
         }
 
