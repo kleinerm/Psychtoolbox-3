@@ -132,13 +132,13 @@ static dc1394color_filter_t global_color_filter = DC1394_COLOR_FILTER_MIN;
 // Global state and functions related to special markerTrackerPlugin's:
 
 // Global handle to shared library:
-void* markerTrackerPlugin_libraryhandle = NULL;
+static void* markerTrackerPlugin_libraryhandle = NULL;
 
 // Function prototypes of functions we want to use in the plugin library:
-void* (*TrackerPlugin_initialize)(void);
-bool (*TrackerPlugin_shutdown)(void* handle);
-bool (*TrackerPlugin_processFrame)(void* handle, unsigned long* source_ptr, int imgwidth, int imgheight, int xmin, int ymin, unsigned int timeidx, double capturetimestamp, unsigned int absolute_frameindex);
-bool (*TrackerPlugin_processPluginDataBuffer)(void* handle, unsigned long* buffer, int size);
+static void* (*TrackerPlugin_initialize)(void);
+static bool (*TrackerPlugin_shutdown)(void* handle);
+static bool (*TrackerPlugin_processFrame)(void* handle, unsigned long* source_ptr, int imgwidth, int imgheight, int xmin, int ymin, unsigned int timeidx, double capturetimestamp, unsigned int absolute_frameindex);
+static bool (*TrackerPlugin_processPluginDataBuffer)(void* handle, unsigned long* buffer, int size);
 
 // Forward declaration of internal helper function:
 void PsychDCDeleteAllCaptureDevices(void);

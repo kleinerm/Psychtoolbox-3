@@ -63,6 +63,9 @@
 #include <locale.h>
 #include "PsychVideoCaptureSupport.h"
 
+// Include for dynamic loading of external plugin:
+#include <dlfcn.h>
+
 // These are the includes for GStreamer:
 #include <glib.h>
 #include <gst/gst.h>
@@ -91,6 +94,7 @@ typedef struct {
     int valid;                        // Is this a valid device record? zero == Invalid.
     psych_mutex mutex;
     psych_condition condition;
+    int capturehandle;
     int frameAvail;                   // Number of frames in videosink.
     int preRollAvail;
     GstElement *camera;               // Ptr to a GStreamer camera object that holds the internal state for such cams.
@@ -129,12 +133,24 @@ typedef struct {
     char* targetmoviefilename;        // Filename of a movie file to record.
     char* cameraFriendlyName;         // Camera friendly device name.
     char videosourcename[100];        // Plugin name of the videosource plugin.
+    void* markerTrackerPlugin;        // Opaque pointer to instance handle of a markerTrackerPlugin.
 } PsychVidcapRecordType;
 
 static PsychVidcapRecordType vidcapRecordBANK[PSYCH_MAX_CAPTUREDEVICES];
 static int numCaptureRecords = 0;
 static psych_bool gs_firsttime = TRUE;
 double gs_startupTime = 0.0;
+
+// Global state and functions related to special markerTrackerPlugin's:
+
+// Global handle to shared library:
+static void* markerTrackerPlugin_libraryhandle = NULL;
+
+// Function prototypes of functions we want to use in the plugin library:
+static void* (*TrackerPlugin_initialize)(void);
+static bool (*TrackerPlugin_shutdown)(void* handle);
+static bool (*TrackerPlugin_processFrame)(void* handle, unsigned long* source_ptr, int imgwidth, int imgheight, int xmin, int ymin, unsigned int timeidx, double capturetimestamp, unsigned int absolute_frameindex);
+static bool (*TrackerPlugin_processPluginDataBuffer)(void* handle, unsigned long* buffer, int size);
 
 // Forward declaration of internal helper function:
 void PsychGSDeleteAllCaptureDevices(void);
@@ -267,6 +283,8 @@ void PsychGSCheckInit(const char* engineName)
         }
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Using GStreamer version '%s'.\n", (char*) gst_version_string());
 
+        markerTrackerPlugin_libraryhandle = NULL;
+
         // Reset firsttime flag:
         gs_firsttime = FALSE;
     }
@@ -301,6 +319,9 @@ void PsychGSExitVideoCapture(void)
 {
     // Release all capture devices
     PsychGSDeleteAllCaptureDevices();
+
+    // Reset global library handle for markertracker plugin:
+    markerTrackerPlugin_libraryhandle = NULL;
 
     // Shutdown GStreamer framework, release all resources.
     // This is usually not needed/used. For memory leak
@@ -622,6 +643,22 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle)
 
     if (capdev->cameraFriendlyName) free(capdev->cameraFriendlyName);
     capdev->cameraFriendlyName = NULL;
+
+    // Shutdown and release an assigned markerTrackerPlugin:
+    if (capdev->markerTrackerPlugin) {
+        // Try to shutdown this instance of the plugin:
+        if (!(*TrackerPlugin_shutdown)(capdev->markerTrackerPlugin)) {
+            printf("PTB-WARNING: Failed to shutdown markertracker plugin for device %i.\n", capturehandle);
+        }
+
+        capdev->markerTrackerPlugin = NULL;
+
+        // Release one reference to this instance of the plugin:
+        // There may be more instances. If the last reference is released, the plugin
+        // will get truly unloaded by the dynamic linker and the markerTrackerPlugin_libraryhandle
+        // will become invalid / a stale pointer which we will clean up in PsychGSExitVideoCapture():
+        dlclose(markerTrackerPlugin_libraryhandle);
+    }
 
     // Invalidate device record to free up this slot in the array:
     capdev->valid = 0;
@@ -2667,6 +2704,50 @@ psych_bool PsychGetCodecLaunchLineFromString(char* codecSpec, char* launchString
     return(PsychSetupRecordingPipeFromString(&dummydev, codecSpec, launchString, TRUE, FALSE, FALSE));
 }
 
+/* PsychHaveVideoDataCallback: This is used if an external C plugin, e.g., video LoadMarkerTrackingPlugin
+ * is loaded to execute that plugin on the most recently arrived video input buffer. The callback is attached
+ * to the sink-pad of our videosink appsink, so the callback gets executed for each incoming buffer on the
+ * relevant streaming thread. This makes sure it automatically works even if we are not actively fetching
+ * video data, e.g, our appsink just drops all frames, as we piggyback our custom processing on one of the
+ * existing GStreamer threads - no need for our own thread and plumbing as for the dc1394 engine.
+ */
+static GstPadProbeReturn PsychHaveVideoDataCallback(GstPad *pad, GstPadProbeInfo *info, gpointer dataptr)
+{
+    unsigned char *input_image;
+    PsychVidcapRecordType *capdev = (PsychVidcapRecordType *) dataptr;
+    GstBuffer *videoBuffer = info->data;
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+    GstMapInfo mapinfo = GST_MAP_INFO_INIT;
+    #pragma GCC diagnostic pop
+
+    // Is a special markertracker plugin loaded for this camera? If so, execute it on this frame:
+    if (capdev->markerTrackerPlugin) {
+        // Map the buffers memory for read+write. Tracking only needs read-access, but if visualization
+        // of tracking is enabled, the plugin will also write color info overlay data into the buffer:
+        if (!gst_buffer_map(videoBuffer, &mapinfo, GST_MAP_READ | GST_MAP_WRITE)) {
+            printf("PTB-ERROR: Failed to map video data of captured video frame! Something's wrong. Skipping tracking for this frame.\n");
+            return(GST_PAD_PROBE_OK);
+        }
+
+        input_image = (unsigned char*) (GLuint*) mapinfo.data;
+
+        // Yes! Execute: Plugin reads from (unsigned long*) input_image:
+        if (!(*TrackerPlugin_processFrame) (capdev->markerTrackerPlugin, (unsigned long*) input_image, capdev->width, capdev->height,
+                                            capdev->roirect[kPsychLeft], capdev->roirect[kPsychTop], GST_BUFFER_OFFSET(videoBuffer),
+                                            (double) GST_BUFFER_PTS(videoBuffer) / 1e9, GST_BUFFER_OFFSET(videoBuffer))) {
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: Failed to process video frame with framecount %i by markertracker plugin for capture device %i.\n",
+                       GST_BUFFER_OFFSET(videoBuffer), capdev->capturehandle);
+            }
+        }
+
+        gst_buffer_unmap(videoBuffer, &mapinfo);
+    }
+
+    return(GST_PAD_PROBE_OK);
+}
+
 /*
  *      PsychGSOpenVideoCaptureDevice() -- Create a video capture object.
  *
@@ -3700,6 +3781,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
     // Our camera should be ready: Assign final handle.
     *capturehandle = slotid;
+    capdev->capturehandle = slotid;
 
     // Increase counter of open capture devices:
     numCaptureRecords++;
@@ -4914,6 +4996,89 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         // which are only available on selected cameras. They are not currently
         // available on GStreamer.
         return(-2);
+    }
+
+    // Load a 2D marker tracking plugin and initialize it:
+    if (strstr(pname, "LoadMarkerTrackingPlugin=")) {
+        // Find start of string and assign to pname:
+        pname = strstr(pname, "=");
+        pname++;
+
+        // Load shared library which implements the marker tracker plugin from given filename:
+        if ((markerTrackerPlugin_libraryhandle = dlopen(pname, RTLD_NOW | RTLD_LOCAL)) == NULL) {
+            printf("PTB-ERROR: Failed to load markertracker plugin for device %i under name '%s'. OS reports: '%s'\n", capturehandle, pname, dlerror());
+            PsychErrorExitMsg(PsychError_user, "Loading markertracker plugin failed!");
+        }
+
+        // Library loaded and linked. Get function handles for functions we do care about:
+        TrackerPlugin_initialize = (void* (*)()) dlsym(markerTrackerPlugin_libraryhandle, "TrackerPlugin_initialize");
+
+        TrackerPlugin_shutdown = (bool (*)(void*)) dlsym(markerTrackerPlugin_libraryhandle, "TrackerPlugin_shutdown");
+
+        TrackerPlugin_processFrame = (bool (*)(void*, unsigned long* source_ptr, int imgwidth, int imgheight, int xmin, int ymin, unsigned int timeidx, double capturetimestamp, unsigned int absolute_frameindex)) dlsym(markerTrackerPlugin_libraryhandle, "TrackerPlugin_processFrame");
+
+        TrackerPlugin_processPluginDataBuffer = (bool (*)(void*, unsigned long* buffer, int size)) dlsym(markerTrackerPlugin_libraryhandle, "TrackerPlugin_processPluginDataBuffer");
+
+        // Binding successfull?
+        if (!TrackerPlugin_initialize || !TrackerPlugin_shutdown || !TrackerPlugin_processFrame || !TrackerPlugin_processPluginDataBuffer) {
+            dlclose(markerTrackerPlugin_libraryhandle);
+            printf("PTB-ERROR: Failed to link/bind markertracker plugin for device %i under name '%s'. Could not resolve at least one entry point.\n", capturehandle, pname);
+            PsychErrorExitMsg(PsychError_user, "Linking/Binding markertracker plugin failed!");
+        }
+
+        // Call init method. This will return a unique handle for this instance of the plugin for this capture device:
+        if (NULL == (capdev->markerTrackerPlugin = (*TrackerPlugin_initialize)())) {
+            dlclose(markerTrackerPlugin_libraryhandle);
+            printf("PTB-ERROR: Failed to initialize markertracker plugin for device %i under name '%s'.\n", capturehandle, pname);
+            PsychErrorExitMsg(PsychError_user, "Initializing markertracker plugin failed!");
+        }
+
+        // Get the sink pad from the videosink, where our to-be-processed video frames arrive on the streaming thread:
+        GstPad *pad = gst_element_get_static_pad(capdev->videosink, "sink");
+
+        // Add a pad probe callback PsychHaveVideoDataCallback(). This gets called on each received buffer
+        // from the streaming thread. If a markertracker/data processing plugin is loaded, the PsychHaveVideoDataCallback()
+        // will map the received video buffer and execute the plugin on it, otherwise the callback no-ops:
+        gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, PsychHaveVideoDataCallback, capdev, NULL);
+        gst_object_unref(pad);
+
+        if (PsychPrefStateGet_Verbosity() > 2) {
+            printf("PTB-INFO: Markertracker plugin loaded and initialized for device %i as '%s'.\n", capturehandle, pname);
+        }
+
+        return(0);
+    }
+
+    // Send command to  a 2D marker tracking plugin:
+    if (strstr(pname, "SendCommandToMarkerTrackingPlugin=")) {
+        unsigned long buffer[1024];
+
+        // Find start of string and assign to pname:
+        pname = strstr(pname, "=");
+        pname++;
+
+        if (capdev->markerTrackerPlugin) {
+            // Yes! Execute: Plugin reads from (unsigned long*) input_image and could theoretically write
+            // back into (unsigned char*) input_image to modify its content. In practice, it doesn't do that,
+            // so this argument is provided as NULL-Ptr:
+            //
+            // Need funky data wrangling here, as plugin expects buffer of unsigned long's, and a size spec
+            // in units of unsigned long's:
+            if (strlen(pname) + 1 > sizeof(buffer)) PsychErrorExitMsg(PsychError_user, "Tried to send too much data to a markertracker plugin for this capture device!");
+            memcpy(&(buffer[0]), pname, strlen(pname) + 1);
+
+            if (!(*TrackerPlugin_processPluginDataBuffer)(capdev->markerTrackerPlugin, &(buffer[0]), (strlen(pname) / sizeof(unsigned long)) + 1 )) {
+                printf("PTB-ERROR: SendCommandToMarkerTrackingPlugin: Failed to send command to markertracker plugin for device %i! Command was '%s'.\n", capturehandle, pname);
+                PsychErrorExitMsg(PsychError_user, "Failed to send data to markertracker plugin for this capture device!");
+            }
+        }
+        else {
+            // No plugin loaded?!?
+            printf("PTB-ERROR: SendCommandToMarkerTrackingPlugin: Tried to send command to non-existent markertracker plugin for device %i! Command was '%s'.\n", capturehandle, pname);
+            PsychErrorExitMsg(PsychError_user, "Tried to send data to a markertracker plugin for this capture device, but there isn't any plugin loaded!");
+        }
+
+        return(0);
     }
 
     // Check if GstColorBalanceInterface is supported and assign it for use downstream. Probe
