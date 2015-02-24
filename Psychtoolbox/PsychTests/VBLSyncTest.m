@@ -1,4 +1,4 @@
-function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synchronous, usedpixx)
+function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synchronous, usedpixx, screenNumber)
 % VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synchronous, usedpixx)
 %
 % Tests syncing of PTB-OSX to the vertical retrace (VBL) and demonstrates
@@ -108,6 +108,11 @@ function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synch
 % usedpixx = 1 Use a DataPixx/ViewPixx/ProPixx device for external
 % timestamping of stimulus onset, as a correctness test for Screen('Flip')
 % timestamping. Disabled (0) by default.
+% usedpixx = 2 Additionally correct for the clock skew between the computer
+% and DataPixx device.
+%
+%
+% screenNumber =  Use a screen other than the default (max) for testing .
 %
 %
 % EXAMPLES:
@@ -235,6 +240,10 @@ if nargin < 8 || isempty(usedpixx)
     usedpixx = 0;
 end
 
+if nargin < 8
+    screenNumber = [];
+end
+
 try
     % This script calls Psychtoolbox commands available only in OpenGL-based 
     % versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
@@ -255,7 +264,9 @@ try
     % the stimulus display.  Chosing the display with the highest display number is 
     % a best guess about where you want the stimulus displayed.  
     screens=Screen('Screens');
-    screenNumber=max(screens);
+    if isempty(screenNumber)
+        screenNumber=max(screens);
+    end
     screensize=Screen('Rect', screenNumber);
 
     % Query size of screen:
@@ -322,7 +333,7 @@ try
     % secs. If this level of accuracy can't be reached, we time out after
     % 20 seconds...
     %[ ifi nvalid stddev ]= Screen('GetFlipInterval', w, 100, 0.0001, 5);
-    [ ifi nvalid stddev ]= Screen('GetFlipInterval', w);
+    [ ifi, nvalid, stddev ]= Screen('GetFlipInterval', w);
     fprintf('Measured refresh interval, as reported by "GetFlipInterval" is %2.5f ms. (nsamples = %i, stddev = %2.5f ms)\n', ifi*1000, nvalid, stddev*1000);
     
     % Init data-collection arrays for collection of n samples:
@@ -335,6 +346,7 @@ try
     so=ts;
     tSecondary = ts;
     sodpixx = ts;
+    boxTime = ts;
     
     % Compute random load distribution for provided loadjitter value:
     wt=rand(1,n)*(loadjitter*ifi);
@@ -396,11 +408,12 @@ try
         % beampos > screen height means that flip returned during the VBL
         % interval. Small values << screen height are also ok,
         % they just indicate either a slower machine or some types of flat-panels...
-        [ tvbl so(i) flipfin(i) missest(i) beampos(i)]=Screen('Flip', w, tdeadline, clearmode);
+
+        [ tvbl, so(i), flipfin(i), missest(i), beampos(i)]=Screen('Flip', w, tdeadline, clearmode);
 
         if usedpixx
             % Ask for a Datapixx onset timestamp from last 'Flip':
-            [boxTime, sodpixx(i)] = PsychDataPixx('GetLastOnsetTimestamp'); %#ok<ASGLU>
+            [boxTime(i), sodpixx(i)] = PsychDataPixx('GetLastOnsetTimestamp'); %#ok<ASGLU>
             dpixxdelay(i) = GetSecs;
         end
         
@@ -469,6 +482,11 @@ try
             break;
         end;
     end; % Draw next frame...
+
+    % calculate clock skew corrected Datapixx onset timestamps
+    if usedpixx>1
+        sodpixx = PsychDataPixx('BoxsecsToGetsecs', boxTime);
+    end
 
     % Shutdown realtime scheduling:
     Priority(0)
