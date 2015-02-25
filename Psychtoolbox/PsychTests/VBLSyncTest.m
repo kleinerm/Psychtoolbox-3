@@ -240,7 +240,7 @@ if nargin < 8 || isempty(usedpixx)
     usedpixx = 0;
 end
 
-if nargin < 8
+if nargin < 9
     screenNumber = [];
 end
 
