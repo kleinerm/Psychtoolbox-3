@@ -464,7 +464,7 @@ static gboolean PsychVideoBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
                     printf("           Additional debug info: %s.\n\n", (debug) ? debug : "None");
 
                     if ((error->domain == GST_RESOURCE_ERROR) && (error->code != GST_RESOURCE_ERROR_NOT_FOUND)) {
-                        printf("           This means that there was some problem with opening the video device (permissions etc.).\n\n");
+                        printf("           This could mean that there was some problem with opening the video device (permissions etc.).\n\n");
                     }
 
                     if ((error->domain == GST_RESOURCE_ERROR) && (error->code == GST_RESOURCE_ERROR_NOT_FOUND)) {
@@ -501,9 +501,9 @@ static void PsychEOSCallback(GstAppSink *sink, gpointer user_data)
 
 static void PsychProbeSampleProps(GstSample *videoSample, int *w, int *h, double *fps)
 {
-    GstCaps                *caps;
-    GstStructure	       *str;
-    gint		       rate1, rate2;
+    GstCaps             *caps;
+    GstStructure        *str;
+    gint                rate1, rate2;
     rate1 = rate2 = 0;
     str = NULL;
 
@@ -532,19 +532,27 @@ static void PsychProbeSampleProps(GstSample *videoSample, int *w, int *h, double
 static GstFlowReturn PsychNewPrerollCallback(GstAppSink *sink, gpointer user_data)
 {
     GstSample *videoSample;
+    int w = 0, h = 0;
 
     PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) user_data;
 
     PsychLockMutex(&capdev->mutex);
     videoSample = gst_app_sink_pull_preroll(GST_APP_SINK(capdev->videosink));
     if (videoSample) {
-        PsychProbeSampleProps(videoSample, NULL, NULL, &capdev->fps);
+        PsychProbeSampleProps(videoSample, &w, &h, &capdev->fps);
         gst_sample_unref(videoSample);
+
+        // If we still don't know the size of video input images, e.g., because
+        // preroll was skipped during 'OpenVideoCapture' or probing failed for
+        // some other reason, then assign values now:
+        if (capdev->width == 0) capdev->width = w;
+        if (capdev->height == 0) capdev->height = h;
+        if (capdev->frame_width == 0) capdev->frame_width = w;
+        if (capdev->frame_height == 0) capdev->frame_height = h;
     }
 
     if (PsychPrefStateGet_Verbosity() > 5) {
-        printf("PTB-DEBUG: New PrerollBuffer received. fps = %f\n", capdev->fps);
-        fflush(NULL);
+        printf("PTB-DEBUG: New PrerollBuffer received. fps = %f [w x h = %i x %i]\n", capdev->fps, w, h);
     }
 
     capdev->preRollAvail++;
