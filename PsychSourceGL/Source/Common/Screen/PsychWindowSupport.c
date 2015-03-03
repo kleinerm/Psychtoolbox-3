@@ -3525,6 +3525,23 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                 // can't afford that many false alerts.
                 if ((verbosity > 10) && PsychOSIsDWMEnabled(windowRecord->screenNumber)) printf("PTB-DEBUG:Linux:Screen('Flip'): After swapcomplete compositor reported active.\n");
             #endif
+
+            // Check if we can get a second opinion about use of pageflipping from the GPU itself:
+            if (PSYCH_SYSTEM == PSYCH_LINUX || PSYCH_SYSTEM == PSYCH_OSX) {
+                int pflip_status = PsychIsGPUPageflipUsed(windowRecord);
+                if (verbosity > 10) printf("PTB-DEBUG: PsychFlipWindowBuffers(): After swapcomplete PsychIsGPUPageflipUsed() = %i.\n", pflip_status);
+
+                // Only really relevant for fullscreen windows if pageflipping is used and under our control:
+                if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_SkipSyncTests() < 2)) {
+                    // -1 = Don't know / non-diagnostic. 2 = Pageflip completed - Good. Everything else
+                    // means trouble - either copyswap or desktop compositing:
+                    if ((pflip_status != -1) && (pflip_status != 2) && (verbosity > 1)) {
+                        printf("PTB-WARNING: GPU reports that pageflipping isn't used - or under our control - for Screen('Flip')! [pflip_status = %i]\n", pflip_status);
+                        printf("PTB-WARNING: Returned Screen('Flip') timestamps might be wrong! Please fix this now (read 'help SyncTrouble').\n");
+                        if (pflip_status == 1) printf("PTB-WARNING: The most likely cause for this is that some kind of desktop compositor is active and interfering.\n");
+                    }
+                }
+            }
         }
 
         // At this point, start of VBL on masterdisplay has happened, the bufferswap has completed and we can continue execution...
@@ -4206,6 +4223,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
     double* samples = NULL;
     int maxlogsamples = 0;
     psych_bool useOpenML = ((PsychPrefStateGet_VBLTimestampingMode() == 4) && !(windowRecord->specialflags & kPsychOpenMLDefective));
+    int pflip_count = 0;
 
     // Child protection: We only work on double-buffered onscreen-windows...
     if (windowRecord->windowType != kPsychDoubleBufferOnscreen) {
@@ -4287,6 +4305,9 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                 // At this point, start of VBL has happened and we can continue execution...
                 // We take our timestamp here:
                 PsychGetAdjustedPrecisionTimerSeconds(&tnew);
+
+                // Ask GPU if a Pageflip was used and under our control:
+                if (2 == PsychIsGPUPageflipUsed(windowRecord)) pflip_count++;
             }
 
             // We skip the first measurement, because we first need to establish an initial base-time 'told'
@@ -4311,7 +4332,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
 
                 // Shorten our measured time sample by the delay introduced by a potentially running
                 // and interfering compositor, so we discount that confound. Needed, e.g., for Windows DWM
-                // and Wayland + Weston, at least as of Weston 1.6.:
+                // and Wayland + Weston, at least as of Weston 1.7.:
                 tdur = PsychOSAdjustForCompositorDelay(windowRecord, tdur);
 
                 // We accept the measurement as valid if either no intervalHint is available as reference or
@@ -4411,9 +4432,15 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
         if (samples) {
             printf("\n\nPTB-DEBUG: Output of all acquired samples of calibration run follows:\n");
             for (j=0; j<i; j++) printf("PTB-DEBUG: Sample %i: %f\n", j, samples[j]);
-            printf("PTB-DEBUG: End of calibration data for this run...\n\n");
             free(samples);
             samples = NULL;
+
+            if (PsychIsGPUPageflipUsed(windowRecord) >= 0) {
+                printf("PTB-DEBUG: %i out of %i samples confirm use of GPU pageflipping for the swap.\n", pflip_count, i);
+                if (pflip_count == i) printf("PTB-DEBUG: --> Good, one neccessary condition for defined visual timing is satisfied.\n");
+            }
+
+            printf("PTB-DEBUG: End of calibration data for this run...\n\n");
         }
 
     } // End of IFI measurement code.
@@ -6480,6 +6507,9 @@ void PsychExecuteBufferSwapPrefix(PsychWindowRecordType *windowRecord)
 {
     CGDirectDisplayID cgDisplayID;
     long vbl_startline, scanline, lastline;
+
+    // Store current preflip GPU graphics surface addresses, if supported:
+    PsychStoreGPUSurfaceAddresses(windowRecord);
 
     // Workaround for broken sync-bufferswap-to-VBL support needed?
     if ((windowRecord->specialflags & kPsychBusyWaitForVBLBeforeBufferSwapRequest) || (PsychPrefStateGet_ConserveVRAM() & kPsychBusyWaitForVBLBeforeBufferSwapRequest)) {
