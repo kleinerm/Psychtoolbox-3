@@ -635,10 +635,10 @@ psych_bool PsychGetCurrentGPUSurfaceAddresses(PsychWindowRecordType* windowRecor
             }
 
             // DCE 4 and later has 64-Bit addresses split in high/low 32-bit regs:
-            *primarySurface =   (psych_uint64) PsychOSKDReadRegister(screenId, EVERGREEN_GRPH_PRIMARY_SURFACE_ADDRESS_HIGH + crtcoff[headid], NULL) << 32 +
-                                (psych_uint64) PsychOSKDReadRegister(screenId, EVERGREEN_GRPH_PRIMARY_SURFACE_ADDRESS + crtcoff[headid], NULL);
-            *secondarySurface = (psych_uint64) PsychOSKDReadRegister(screenId, EVERGREEN_GRPH_SECONDARY_SURFACE_ADDRESS_HIGH + crtcoff[headid], NULL) << 32 +
-                                (psych_uint64) PsychOSKDReadRegister(screenId, EVERGREEN_GRPH_SECONDARY_SURFACE_ADDRESS + crtcoff[headid], NULL);
+            *primarySurface =   ((psych_uint64) PsychOSKDReadRegister(screenId, EVERGREEN_GRPH_PRIMARY_SURFACE_ADDRESS_HIGH + crtcoff[headid], NULL) << 32) +
+                                ((psych_uint64) PsychOSKDReadRegister(screenId, EVERGREEN_GRPH_PRIMARY_SURFACE_ADDRESS + crtcoff[headid], NULL));
+            *secondarySurface = ((psych_uint64) PsychOSKDReadRegister(screenId, EVERGREEN_GRPH_SECONDARY_SURFACE_ADDRESS_HIGH + crtcoff[headid], NULL) << 32) +
+                                ((psych_uint64) PsychOSKDReadRegister(screenId, EVERGREEN_GRPH_SECONDARY_SURFACE_ADDRESS + crtcoff[headid], NULL));
             updateStatus =      PsychOSKDReadRegister(screenId, EVERGREEN_GRPH_UPDATE + crtcoff[headid], NULL);
 
             *updatePending = (updateStatus & EVERGREEN_GRPH_SURFACE_UPDATE_PENDING) ? TRUE : FALSE;

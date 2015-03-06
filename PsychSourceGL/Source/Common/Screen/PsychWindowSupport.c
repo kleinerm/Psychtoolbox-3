@@ -45,14 +45,13 @@
 
 #include "Screen.h"
 
-#if PSYCH_SYSTEM == PSYCH_LINUX
-#include <errno.h>
-
 // Define this for non-Waffle builds:
 #ifndef WAFFLE_PLATFORM_WAYLAND
 #define WAFFLE_PLATFORM_WAYLAND 0x0014
 #endif
 
+#if PSYCH_SYSTEM == PSYCH_LINUX
+#include <errno.h>
 #endif
 
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
@@ -876,7 +875,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
     displayMask=CGDisplayIDToOpenGLDisplayMask(cgDisplayID);
 
-    GLint numRenderers, i;
+    GLint numRenderers;
     error= CGLQueryRendererInfo(displayMask, &rendererInfo, &numRenderers);
     if(numRenderers>1) numRenderers=1;
     for(i=0;i<numRenderers;i++) {
