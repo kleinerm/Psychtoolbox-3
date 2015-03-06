@@ -3526,8 +3526,11 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                 if ((verbosity > 10) && PsychOSIsDWMEnabled(windowRecord->screenNumber)) printf("PTB-DEBUG:Linux:Screen('Flip'): After swapcomplete compositor reported active.\n");
             #endif
 
-            // Check if we can get a second opinion about use of pageflipping from the GPU itself:
-            if (PSYCH_SYSTEM == PSYCH_LINUX || PSYCH_SYSTEM == PSYCH_OSX) {
+            // Check if we can get a second opinion about use of pageflipping from the GPU itself, assuming standard
+            // swap scheduling was used and beampos timestamping works - ergo other GPU low level features like this,
+            // as otherwise the results would be misleading:
+            if (!osspecific_asyncflip_scheduled && (PSYCH_SYSTEM == PSYCH_LINUX || PSYCH_SYSTEM == PSYCH_OSX) &&
+                (windowRecord->VBL_Endline != -1)) {
                 int pflip_status = PsychIsGPUPageflipUsed(windowRecord);
                 if (verbosity > 10) printf("PTB-DEBUG: PsychFlipWindowBuffers(): After swapcomplete PsychIsGPUPageflipUsed() = %i.\n", pflip_status);
 
@@ -4435,7 +4438,8 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
             free(samples);
             samples = NULL;
 
-            if (PsychIsGPUPageflipUsed(windowRecord) >= 0) {
+            // Summary of pageflip only makes sense if !useOpenML, so actual accounting was done:
+            if (!useOpenML && (PsychIsGPUPageflipUsed(windowRecord) >= 0)) {
                 printf("PTB-DEBUG: %i out of %i samples confirm use of GPU pageflipping for the swap.\n", pflip_count, i);
                 if (pflip_count == i) printf("PTB-DEBUG: --> Good, one neccessary condition for defined visual timing is satisfied.\n");
             }
