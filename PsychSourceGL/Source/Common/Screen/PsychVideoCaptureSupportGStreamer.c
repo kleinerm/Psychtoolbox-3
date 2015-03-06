@@ -63,8 +63,10 @@
 #include <locale.h>
 #include "PsychVideoCaptureSupport.h"
 
-// Include for dynamic loading of external plugin:
+// Include for dynamic loading of external plugin, for now only on Unix:
+#if PSYCH_SYSTEM != PSYCH_WINDOWS
 #include <dlfcn.h>
+#endif
 
 // These are the includes for GStreamer:
 #include <glib.h>
@@ -652,6 +654,8 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle)
     if (capdev->cameraFriendlyName) free(capdev->cameraFriendlyName);
     capdev->cameraFriendlyName = NULL;
 
+#if PSYCH_SYSTEM != PSYCH_WINDOWS
+
     // Shutdown and release an assigned markerTrackerPlugin:
     if (capdev->markerTrackerPlugin) {
         // Try to shutdown this instance of the plugin:
@@ -667,6 +671,8 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle)
         // will become invalid / a stale pointer which we will clean up in PsychGSExitVideoCapture():
         dlclose(markerTrackerPlugin_libraryhandle);
     }
+
+#endif
 
     // Invalidate device record to free up this slot in the array:
     capdev->valid = 0;
@@ -1155,7 +1161,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 
     if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
         // Try Windows kernel streaming source:
-        PsychGSEnumerateVideoSourceType("ksvideosrc", 1, "Windows WDM kernel streaming", "device-name", "", 0);
+        PsychGSEnumerateVideoSourceType("ksvideosrc", 1, "Windows WDM kernel streaming", "device-index", "", 0);
 
         // Use DirectShow to probe:
         PsychGSEnumerateVideoSourceType("dshowvideosrc", 2, "DirectShow", "device-name", "", 0);
@@ -1376,12 +1382,12 @@ psych_bool PsychGSGetResolutionAndFPSForSpec(PsychVidcapRecordType *capdev, int*
                     const GValue* frmax = gst_value_get_fraction_range_max(framerates);
                     fps_n = gst_value_get_fraction_numerator(frmin);
                     fps_d = gst_value_get_fraction_denominator(frmin);
-                    fpsmin = (double) fps_n / (double) fps_d;
+                    fpsmin = (float) fps_n / (float) fps_d;
                     if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: %i: FPS min %f - ", i, fpsmin);
 
                     fps_n = gst_value_get_fraction_numerator(frmax);
                     fps_d = gst_value_get_fraction_denominator(frmax);
-                    fpsmax = (double) fps_n / (double) fps_d;
+                    fpsmax = (float) fps_n / (float) fps_d;
 
                     if (curfps < fpsmax) curfps = fpsmax;
 
@@ -2742,8 +2748,9 @@ static GstPadProbeReturn PsychHaveVideoDataCallback(GstPad *pad, GstPadProbeInfo
 
         // Yes! Execute: Plugin reads from (unsigned long*) input_image:
         if (!(*TrackerPlugin_processFrame) (capdev->markerTrackerPlugin, (unsigned long*) input_image, capdev->width, capdev->height,
-                                            capdev->roirect[kPsychLeft], capdev->roirect[kPsychTop], GST_BUFFER_OFFSET(videoBuffer),
-                                            (double) GST_BUFFER_PTS(videoBuffer) / 1e9, GST_BUFFER_OFFSET(videoBuffer))) {
+                                            (int) capdev->roirect[kPsychLeft], (int) capdev->roirect[kPsychTop],
+                                            (unsigned int) GST_BUFFER_OFFSET(videoBuffer),
+                                            (double) GST_BUFFER_PTS(videoBuffer) / 1e9, (unsigned int) GST_BUFFER_OFFSET(videoBuffer))) {
             if (PsychPrefStateGet_Verbosity() > 1) {
                 printf("PTB-WARNING: Failed to process video frame with framecount %i by markertracker plugin for capture device %i.\n",
                        GST_BUFFER_OFFSET(videoBuffer), capdev->capturehandle);
@@ -5006,6 +5013,8 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         return(-2);
     }
 
+#if PSYCH_SYSTEM != PSYCH_WINDOWS
+
     // Load a 2D marker tracking plugin and initialize it:
     if (strstr(pname, "LoadMarkerTrackingPlugin=")) {
         // Find start of string and assign to pname:
@@ -5057,6 +5066,8 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         return(0);
     }
 
+#endif
+
     // Send command to  a 2D marker tracking plugin:
     if (strstr(pname, "SendCommandToMarkerTrackingPlugin=")) {
         unsigned long buffer[1024];
@@ -5075,7 +5086,7 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
             if (strlen(pname) + 1 > sizeof(buffer)) PsychErrorExitMsg(PsychError_user, "Tried to send too much data to a markertracker plugin for this capture device!");
             memcpy(&(buffer[0]), pname, strlen(pname) + 1);
 
-            if (!(*TrackerPlugin_processPluginDataBuffer)(capdev->markerTrackerPlugin, &(buffer[0]), (strlen(pname) / sizeof(unsigned long)) + 1 )) {
+            if (!(*TrackerPlugin_processPluginDataBuffer)(capdev->markerTrackerPlugin, &(buffer[0]), (int) (strlen(pname) / sizeof(unsigned long)) + 1 )) {
                 printf("PTB-ERROR: SendCommandToMarkerTrackingPlugin: Failed to send command to markertracker plugin for device %i! Command was '%s'.\n", capturehandle, pname);
                 PsychErrorExitMsg(PsychError_user, "Failed to send data to markertracker plugin for this capture device!");
             }

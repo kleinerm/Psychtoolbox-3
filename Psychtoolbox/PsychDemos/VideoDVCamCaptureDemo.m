@@ -165,7 +165,7 @@ if nargin < 6
     moviename = [];
 end
 
-recordingflags = 0;
+recordingflags = 4096 + 8;
 screenid=max(Screen('Screens'));
 
 try
