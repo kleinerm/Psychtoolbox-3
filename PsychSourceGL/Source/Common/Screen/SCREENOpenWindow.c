@@ -286,8 +286,8 @@ PsychError SCREENOpenWindow(void)
             // Yes: Native backend resolution in pixels is higher than exposed
             // frontend resolution in points. --> HiDPI / Retina display in use.
             // Enable panel fitter by setting a clientRect the size and resolution
-            // of the frontend:
-            PsychGetScreenRect(screenNumber, clientRect);
+            // of the 'rect' - user supplied or frontend resolution:
+            PsychNormalizeRect(rect, clientRect);
 
             // Enable imaging pipeline and panelfitter:
             imagingmode |= kPsychNeedFastBackingStore;
