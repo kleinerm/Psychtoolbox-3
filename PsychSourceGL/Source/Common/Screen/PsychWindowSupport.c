@@ -250,8 +250,9 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     GLint VRAMTotal=0;
     GLint TexmemTotal=0;
     psych_bool multidisplay = FALSE;
-    psych_bool sync_trouble = false;
-    psych_bool sync_disaster = false;
+    psych_bool sync_trouble = FALSE;
+    psych_bool sync_disaster = FALSE;
+    psych_bool did_pageflip = FALSE;
     int skip_synctests;
     int visual_debuglevel = PsychPrefStateGet_VisualDebugLevel();
     int conserveVRAM = PsychPrefStateGet_ConserveVRAM();
@@ -1376,7 +1377,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             // If skipping of sync-test is requested, we limit the calibration to 1 sec.
             maxsecs = (skip_synctests) ? 1 : maxDuration;
             retry_count++;
-            ifi_estimate = PsychGetMonitorRefreshInterval(*windowRecord, &numSamples, &maxsecs, &stddev, ((ifi_nominal > 0) ? ifi_nominal : ifi_beamestimate));
+            ifi_estimate = PsychGetMonitorRefreshInterval(*windowRecord, &numSamples, &maxsecs, &stddev, ((ifi_nominal > 0) ? ifi_nominal : ifi_beamestimate), &did_pageflip);
 
             if((PsychPrefStateGet_Verbosity()>1) && (ifi_estimate==0 && retry_count<3)) {
                 printf("\nWARNING: VBL Calibration run No. %i failed. Retrying...\n", retry_count);
@@ -1612,8 +1613,13 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     }
 
     if (skip_synctests < 2) {
-        // Reliable estimate? These are our minimum requirements...
-        if (numSamples< minSamples || stddev> maxStddev) {
+        // Reliable estimate? These are our minimum requirements:
+        // At least minSamples valid samples collected.
+        // stddev (== noise) not greater than maxStddev, unless we are sure pageflipping under our full control was used during
+        // refresh calibration and sync tests, in which case we tolerate up to 3 times maxStddev. Why? Because pageflipping under
+        // our control rules out interference of a desktop compositor or other sources of triple buffering, so if timing noise is
+        // the only unusual symptom it is likely to be just noise, not a symptom of a compositor at work.
+        if ((numSamples < minSamples) || (!did_pageflip && (stddev > maxStddev)) || (did_pageflip && (stddev > 3 * maxStddev))) {
             sync_disaster = true;
             if (PsychPrefStateGet_Verbosity() > 1) printf("\nWARNING: Couldn't compute a reliable estimate of monitor refresh interval! Trouble with VBL syncing?!?\n");
         }
@@ -4212,9 +4218,9 @@ void PsychUnsetGLContext(void)
     taking at least 50 samples and can be triggered by Matlab by calling the
     SCREENGetFlipInterval routine, if an experimenter needs a more accurate estimate...
  */
-double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* numSamples, double* maxsecs, double* stddev, double intervalHint)
+double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* numSamples, double* maxsecs, double* stddev, double intervalHint, psych_bool* did_pageflip)
 {
-    int i, j;
+    int i = 0, j;
     double told, tnew, tdur, tstart;
     double tstddev=10000.0f;
     double tavg=0;
@@ -4226,6 +4232,8 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
     int maxlogsamples = 0;
     psych_bool useOpenML = ((PsychPrefStateGet_VBLTimestampingMode() == 4) && !(windowRecord->specialflags & kPsychOpenMLDefective));
     int pflip_count = 0;
+
+    if (did_pageflip) *did_pageflip = FALSE;
 
     // Child protection: We only work on double-buffered onscreen-windows...
     if (windowRecord->windowType != kPsychDoubleBufferOnscreen) {
@@ -4440,7 +4448,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
             // Summary of pageflip only makes sense if !useOpenML, so actual accounting was done:
             if (!useOpenML && (PsychIsGPUPageflipUsed(windowRecord) >= 0)) {
                 printf("PTB-DEBUG: %i out of %i samples confirm use of GPU pageflipping for the swap.\n", pflip_count, i);
-                if (pflip_count == i) printf("PTB-DEBUG: --> Good, one neccessary condition for defined visual timing is satisfied.\n");
+                if (pflip_count >= i - 1) printf("PTB-DEBUG: --> Good, one neccessary condition for defined visual timing is satisfied.\n");
             }
 
             printf("PTB-DEBUG: End of calibration data for this run...\n\n");
@@ -4451,6 +4459,11 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
         // No measurements taken...
         *numSamples = 0;
         *stddev = 0;
+    }
+
+    if ((i > 0) && (pflip_count > 0) && (pflip_count >= i - 1)) {
+        // Pageflip was used consistently during measurement - a good sign:
+        if (did_pageflip) *did_pageflip = TRUE;
     }
 
     // Return the current estimate of flip interval & monitor refresh interval, if any...
