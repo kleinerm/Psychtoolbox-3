@@ -899,34 +899,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             printf("PTB-INFO: Please read 'help MultiDisplaySetups' for specific information on the Do's, Dont's,\n");
             printf("PTB-INFO: and possible causes of trouble and how to diagnose and resolve them.");
         }
-
-        if (multidisplay && (!CGDisplayIsInMirrorSet(cgDisplayID) || PsychGetNumDisplays()>1)) {
-            // This is a multi-display setup with separate (non-mirrored) displays: Bad for presentation timing :-(
-            // Output some warning message to user, but continue. After all its the users
-            // decision... ...and for some experiments were you need to show two different stims on two connected
-            // monitors (haploscope, some stereo or binocular rivalry stuff) it is necessary. Let's hope they bought
-            // a really fast gfx-card with plenty of VRAM :-)
-            printf("\n\nPTB-INFO: According to the operating system, some of your connected displays do not seem to \n");
-            printf("PTB-INFO: be switched into mirror mode. For a discussion of mirror mode vs. non-mirror mode,\n");
-            printf("PTB-INFO: please read 'help MirrorMode'.\n");
-        }
-
-        if (CGDisplayIsInMirrorSet(cgDisplayID) && !CGDisplayIsInHWMirrorSet(cgDisplayID)) {
-            // This is a multi-display setup with software-mirrored displays instead of hardware-mirrored ones: Not so good :-(
-            // Output some warning message to user, but continue. After all its the users
-            // decision...
-            printf("\n\nPTB-WARNING: Seems that not all connected displays are switched into HARDWARE-mirror mode!\n");
-            printf("PTB-WARNING: This could cause reduced drawing performance and inaccurate/wrong stimulus\n");
-            printf("PTB-WARNING: presentation timing or skipped frames when showing moving/movie stimuli.\n");
-            printf("PTB-WARNING: Seems that only SOFTWARE-mirroring is available for your current setup. You could\n");
-            printf("PTB-WARNING: try to promote hardware-mirroring by trying different display settings...\n");
-            printf("PTB-WARNING: If you still get this warning after putting your displays into mirror-mode, then\n");
-            printf("PTB-WARNING: your system is unable to use hardware-mirroring and we recommend switching to a\n");
-            printf("PTB-WARNING: single display setup if you encounter timing problems...\n\n");
-            // Flash our visual warning bell:
-            if (ringTheBell<1) ringTheBell=1;
-        }
-}
+    }
 #endif
 
     // If we are in stereo mode 4 or 5 (free-fusion, cross-fusion, desktop-spanning stereo),
