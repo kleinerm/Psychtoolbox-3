@@ -6099,8 +6099,8 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     // and the graphics driver is not in a white-list of known multithread-safe drivers (ie., it is
     // not the NVidia binary blob), we assume locking is required after each scheduled swap:
     if (windowRecord->specialflags & kPsychIsX11Window) {
-        // X11 display backend in use. Lock-protect unless it is the white-listed NVidia blob:
-        if (!strstr((char*) glGetString(GL_VENDOR), "NVIDIA")) {
+        // X11 display backend in use. Lock-protect unless it is the white-listed NVidia blob or AMD Catalyst:
+        if (!strstr((char*) glGetString(GL_VENDOR), "NVIDIA") && !strstr((char*) glGetString(GL_VENDOR), "ATI Technologies")) {
             // Driver requires locked framebuffer dummy-write + flush:
             windowRecord->specialflags |= kPsychNeedPostSwapLockedFlush;
             if (verbose) printf("PTB-DEBUG: Linux X11 backend with FOSS drivers - Enabling locked pixeltoken-write + flush workaround for XLib thread-safety.\n");
