@@ -891,7 +891,7 @@ static void PsychGSEnumerateVideoSourcesViaDeviceMonitor(void)
     typedef GstElement GstDeviceProvider;
     static void PsychGSEnumerateVideoSourcesViaDeviceMonitor(void) {};
 
-#warning Building against GStreamer version older than 1.4.0 - No device monitor support! Consider upgrading!
+//#warning Building against GStreamer version older than 1.4.0 - No device monitor support! Consider upgrading!
 #endif
 
 /* Helper routine for PsychGSEnumerateVideoSources()
