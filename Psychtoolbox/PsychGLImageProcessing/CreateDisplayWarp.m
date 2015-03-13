@@ -466,13 +466,13 @@ function [xyzcalibpos, xytexcoords] = BVLComputeWarpMesh(windowWidth, windowHeig
 %
 
 % Check resolution against the calibration file resolutions:
-if (windowWidth ~= scal.rect(3)) || (windowHeight ~= scal.rect(4))
+if (windowWidth ~= RectWidth(scal.rect)) || (windowHeight ~= RectHeight(scal.rect))
     fprintf('\n\nCALIBRATION WARNING!\n');
     fprintf('Onscreen window resolution (%d, %d) does not match ', ...
         windowWidth, windowHeight);
     fprintf('the resolution used in the calibration file (%d, %d)!\n', ...
-        scal.rect(3), scal.rect(4));
-    fprintf('Using the window resolution to draw the stimuli.\n');
+        RectWidth(scal.rect), RectHeight(scal.rect));
+    fprintf('Using the window resolution to draw the stimuli, scaling down proportionally.\n');
     fprintf('\n\n');
 end
 
@@ -492,8 +492,14 @@ if isempty(yLoomSize)
     yLoomSize   = 53; %length(YVALUES)
 end
 
-xStep       = windowWidth / (xLoomSize-1);
-yStep       = windowHeight / (yLoomSize-1);
+% Compute sampling positions for the calibration data:
+xStep       = RectWidth(scal.rect) / (xLoomSize-1);
+yStep       = RectHeight(scal.rect) / (yLoomSize-1);
+
+% Compute scale factor in case the output window size doesn't
+% match the size used for generating the scal calibration data:
+scaleX = windowWidth / RectWidth(scal.rect);
+scaleY = windowHeight / RectHeight(scal.rect);
 
 numVerts    = xLoomSize * yLoomSize;
 % vertexCoords = Nx2 array, N rows of [x y] pairs.
@@ -545,6 +551,13 @@ else
     vertexCoordsFit(:,1)= griddata(scal.XCALIBDOTS, scal.YCALIBDOTS, scal.SELECTXCALIBDOTS, vertexCoords(:,1), vertexCoords(:,2));
     vertexCoordsFit(:,2)= griddata(scal.XCALIBDOTS, scal.YCALIBDOTS, scal.SELECTYCALIBDOTS, vertexCoords(:,1), vertexCoords(:,2));
 end
+
+% Rescale input/output positions to fit output window:
+vertexCoords(:,1) = vertexCoords(:,1) * scaleX;
+vertexCoordsFit(:,1) = vertexCoordsFit(:,1) * scaleX;
+
+vertexCoords(:,2) = vertexCoords(:,2) * scaleY;
+vertexCoordsFit(:,2) = vertexCoordsFit(:,2) * scaleY;
 
 % Some debug plots, if requested:
 if showCalibOutput
