@@ -1,10 +1,24 @@
-function PropixxImageUndistortionThrowaway(calibfilename, imagefilename)
-% PropixxImageUndistortionThrowaway(calibfilename [, imagefilename])
+function PropixxImageUndistortionThrowaway(calibfilename, flipmethod, corrmethod, imagefilename)
+% PropixxImageUndistortionThrowaway(calibfilename [, flipmethod=0][, corrmethod=0][, imagefilename])
 %
-% Very sketchy demo.
+% flipmethod = 0 -> Sync flips.
+% flipmethod = 1 -> Async flips for some sort of triplebuffering.
+%
+% corrmethod = -1 -> No correction.
+% corrmethod = 0  -> Global correction for whole image.
+% corrmethod = 1  -> Separate correction for each quadrant.
+%
 
 % History:
 % 14-Mar-2015  mk  Initial incomplete prototype for testing.
+
+if nargin < 2 || isempty(flipmethod)
+    flipmethod = 0;
+end
+
+if nargin < 3 || isempty(corrmethod)
+    corrmethod = 0;
+end
 
 % Initialize for unified KbName's and normalized 0 - 1 color range:
 PsychDefaultSetup(2);
@@ -13,10 +27,20 @@ PsychDefaultSetup(2);
 screenid=max(Screen('Screens'));
 
 PsychImaging('PrepareConfiguration');
-PsychImaging('AddTask', 'AllViews', 'GeometryCorrection', calibfilename, 0, 73, 73, [2, 2]);
+
+if flipmethod == 1
+    % For drawing during async flip - aka effective triplebuffering -
+    % to work, we need a virtual framebuffer:
+    PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
+end
+
+if corrmethod == 0
+    PsychImaging('AddTask', 'AllViews', 'GeometryCorrection', calibfilename, 0, 73, 73, [2, 2]);
+end
+
 [w, srcSize] =PsychImaging('OpenWindow', screenid, 0);
 
-if nargin < 2
+if nargin < 4
     imagefilename = [];
 end
 
@@ -30,7 +54,12 @@ mytex=Screen('MakeTexture', w, img);
 
 rate = 12
 
-PsychProPixx('SetupFastDisplayMode', w, rate) %, calibfilename);
+if corrmethod <= 0
+    % For global correction (method 0) clear calibfilename, so local
+    % correction gets disabled:
+    calibfilename = [];
+end
+PsychProPixx('SetupFastDisplayMode', w, rate, flipmethod, calibfilename, 1);
 myimg = PsychProPixx('GetImageBuffer');
 Screen('TextSize', myimg, 128);
 
@@ -80,5 +109,6 @@ KbStrokeWait;
 Screen('CloseAll');
 
 avgtime = 1000 * (tend - tstart) / (count / rate)
+PsychProPixx('DisableFastDisplayMode');
 
 return;

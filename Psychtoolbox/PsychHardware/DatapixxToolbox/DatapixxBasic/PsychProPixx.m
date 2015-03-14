@@ -14,7 +14,12 @@ persistent dstColorMask
 persistent processedImage
 persistent processedRect
 persistent gloperator
-persistent useglobalcorrection
+persistent sampleCount
+persistent tvbl
+persistent flipmethod
+persistent gpumeasure
+persistent dogpumeasure
+global gpudur
 
 if nargin < 1
   % TODO: Use @PsychProPixx function to create global calibration?
@@ -33,6 +38,12 @@ if strcmpi(cmd, 'QueueImage')
 
   if ~isequal(Screen('Rect', sourceImage), processedRect)
     error('QueueImage: Provided sourceImage does not have expected size!');
+  end
+
+  if length(varargin) >= 2
+    tWhen = varargin{2};
+  else
+    tWhen = [];
   end
 
   % Needs processing, e.g., geometry correction or grayscale conversion?
@@ -65,9 +76,45 @@ if strcmpi(cmd, 'QueueImage')
     % Yes. Do the output thing:
     phaseid = 0;
 
+    sampleCount = mod(sampleCount + 1, 1200);
+
     % Schedule a flip, do not clear the window after flip:
-    %Screen('AsyncFlipBegin', win, [], 2);
-    Screen('Flip', win, [], 2, 1);
+    if flipmethod == 0
+      tvbl(sampleCount + 1) = Screen('Flip', win, tWhen, 2);
+    end
+
+    if flipmethod == 1
+      tvbl(sampleCount + 1) = Screen('AsyncFlipBegin', win, tWhen, 2);
+    end
+
+    if dogpumeasure
+        % Result of GPU time measurement expected?
+        if gpumeasure
+            % Retrieve results from GPU load measurement:
+            % Need to poll, as this is asynchronous and non-blocking,
+            % so may return a zero time value at first invocation(s),
+            % depending on how deep the rendering pipeline is:
+            while 1
+                winfo = Screen('GetWindowInfo', win);
+                if winfo.GPULastFrameRenderTime > 0
+                    break;
+                end
+            end
+
+            % Store it:
+            gpudur(sampleCount + 1) = winfo.GPULastFrameRenderTime;
+            gpumeasure = 0;
+        end
+
+        % Start GPU timer: gpumeasure will be true if this
+        % is actually supported and will return valid results:
+        gpumeasure = Screen('GetWindowInfo', win, 5);
+    end
+
+    % Signal flip either needed or already scheduled:
+    varargout{1} = 1;
+  else
+    varargout{1} = 0;
   end
 
   return;
@@ -114,17 +161,25 @@ if strcmpi(cmd, 'SetupFastDisplayMode')
   dstColorMask(12,:) = [0 0 1 0];
 
   phaseid = 0;
+  sampleCount = 0;
+  gpumeasure = 0;
 
   if rate == 4
     Screen('Blendfunction', win, [], [], [1 1 1 1]);
   end
 
-  if length(varargin) >= 3
+  if (length(varargin) >= 3) && ~isempty(varargin{3})
+    flipmethod = varargin{3};
+  else
+    flipmethod = 0;
+  end
+
+  if (length(varargin) >= 4) && ~isempty(varargin{4})
     % Build offscreen window as target for the input image after geometry correction
     % and potential grayscale conversion:
     processedImage = Screen('OpenOffscreenWindow', win, 0, processedRect);
 
-    calib = varargin{3};
+    calib = varargin{4};
     
     % calib can be a calibration structure, calibration file name, or gloperator.
     % If it isn't a ready made gloperator yet, assume it is calibration info and
@@ -138,6 +193,20 @@ if strcmpi(cmd, 'SetupFastDisplayMode')
     end
   end
 
+  if (length(varargin) >= 5) && ~isempty(varargin{5})
+    dogpumeasure = varargin{5};
+  else
+    dogpumeasure = 0;
+  end
+
+  return;
+end
+
+if strcmpi(cmd, 'DisableFastDisplayMode')
+  tvbl = diff(tvbl);
+  tvbl = tvbl(find(tvbl >= 0 & tvbl < 1));
+  plot(1000 * tvbl);
+  clear win processedImage gloperator tvbl
   return;
 end
 
