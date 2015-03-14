@@ -87,7 +87,7 @@ count = 0;
 KbReleaseWait;
 tstart = Screen('Flip', w, [], 2);
 
-while ~KbCheck
+while 1
   % Draw bunnies into exampleImage, scale 'em up to offscreen window size:
   if 0
     Screen('DrawTexture', myimg, mytex);
@@ -99,7 +99,9 @@ while ~KbCheck
   Screen('DrawText', myimg, sprintf('%i', count), 200, 80, 1);
   count = count + 1;
 
-  PsychProPixx('QueueImage', myimg);
+  if PsychProPixx('QueueImage', myimg) && KbCheck
+    break;
+  end
 end
 
 tend = Screen('Flip', w);
