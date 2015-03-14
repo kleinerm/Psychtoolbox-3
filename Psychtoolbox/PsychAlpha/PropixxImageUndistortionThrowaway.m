@@ -59,7 +59,7 @@ if corrmethod <= 0
     % correction gets disabled:
     calibfilename = [];
 end
-PsychProPixx('SetupFastDisplayMode', w, rate, flipmethod, calibfilename, 1);
+PsychProPixx('SetupFastDisplayMode', w, rate, flipmethod, calibfilename, 0);
 myimg = PsychProPixx('GetImageBuffer');
 Screen('TextSize', myimg, 128);
 
@@ -104,6 +104,8 @@ end
 
 tend = Screen('Flip', w);
 KbStrokeWait;
+
+PsychProPixx('GetTimingSamples');
 
 % Close all windows and ressources:
 Screen('CloseAll');

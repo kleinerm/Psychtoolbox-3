@@ -87,6 +87,13 @@ if strcmpi(cmd, 'QueueImage')
       tvbl(sampleCount + 1) = Screen('AsyncFlipBegin', win, tWhen, 2);
     end
 
+    if flipmethod == 2
+      % A sync flip, but non-blocking, without timestamping.
+      % Instead we use swap completion logging to collect all
+      % timestamps at the end of the session. Linux only feature...
+      Screen('Flip', win, tWhen, 2, 1);
+    end
+
     if dogpumeasure
         % Result of GPU time measurement expected?
         if gpumeasure
@@ -174,6 +181,10 @@ if strcmpi(cmd, 'SetupFastDisplayMode')
     flipmethod = 0;
   end
 
+  if flipmethod == 2
+     Screen('GetFlipInfo', win, 1);
+  end
+
   if (length(varargin) >= 4) && ~isempty(varargin{4})
     % Build offscreen window as target for the input image after geometry correction
     % and potential grayscale conversion:
@@ -197,6 +208,26 @@ if strcmpi(cmd, 'SetupFastDisplayMode')
     dogpumeasure = varargin{5};
   else
     dogpumeasure = 0;
+  end
+
+  return;
+end
+
+if strcmpi(cmd, 'GetTimingSamples')
+  if flipmethod == 2
+    tvbl = [];
+
+    while 1
+      flipinfo = Screen('GetFlipInfo', win, 3);
+      if isempty(flipinfo)
+        break;
+      end
+
+      tvbl(end+1) = flipinfo.OnsetTime;
+      if ~strcmp(flipinfo.SwapType, 'Pageflip')
+        disp(flipinfo);
+      end
+    end
   end
 
   return;
