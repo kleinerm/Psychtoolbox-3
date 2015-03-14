@@ -40,6 +40,17 @@ function [warpstruct, filterMode] = CreateDisplayWarp(window, calibfilename, sho
 % surface. This is the recommended calibration procedure for most cases -
 % Proven in real-world use on many different display types.
 %
+% When used with DisplayUndistortionBVL, the GeometryCorrection takes
+% up to three optional parameters:
+%
+% PsychImaging('AddTask', 'LeftView', 'GeometryCorrection', 'mycalib.mat' [, debug=0][, xsampling=73][,ysampling=53][, replicate=[1,1]]);
+% xsampling and ysampling specify the horizontal and vertical number of subdivisions
+% for the warpmesh that is used for undistortion - higher numbers give more
+% close approximations but increase drawing time. replicate is a vector which
+% describes how often the mesh should be replicated into horizontal and vertical
+% direction. Values other than the default [1,1] only make sense for special display
+% devices like ProPixx.
+%
 % DisplayUndistortionBezier.m -- Undistortion based on a NURBS surface (Non
 % uniform rational bezier spline surface). A simple procedure.
 %
@@ -67,6 +78,7 @@ function [warpstruct, filterMode] = CreateDisplayWarp(window, calibfilename, sho
 % 25.8.2011 Adapt code for sphere projection undistortion to new convention
 %           of Ingmar Schneider's shader code. (MK).
 % 27.7.2012 Add support for DisplayUndistortionCSV() aka "NVidia Warp-API" format (MK).
+% 14.3.2015 Add support for Propixx and similar devices via mesh replication to the BVL method (MK).
 %
 
 % Global GL handle for access to OpenGL constants needed in setup:
@@ -347,11 +359,40 @@ switch(calib.warptype)
                 yLoomSize = varargin{2};
             end
         end
-        
+
+        if (length(varargin) >= 3) && ~isempty(varargin{3})
+            % Subdivision/Replication [xdiv, ydiv] given. We shall
+            % generate a calibration display list which only has
+            % 1/xdiv the window widht, 1/ydiv the window height,
+            % but is replicated xdiv x ydiv times. E.g., a [2,2]
+            % subdivision will split the window into 4 quadrants and
+            % apply the undistortion independently to each quadrants.
+            % This is, e.g., useful for special display modes of special
+            % display devices like the ProPrixx.
+            subdiv = varargin{3};
+            if ~length(subdiv) == 2 || ~isnumeric(subdiv)
+                error('CreateDisplayWarp: Provided optional subdiv parameter is not a [xrep, yrep] vector as required.');
+            end
+
+            xrep = subdiv(1);
+            yrep = subdiv(2);
+
+            if xrep ~=round(xrep) || yrep ~= round(yrep)
+                error('CreateDisplayWarp: Provided subdiv parameter [xrep, yrep] does not contain integral values as required.');
+            end
+
+            % Adapt width and height of target area for calibration:
+            winWidth = winWidth / xrep;
+            winHeight = winHeight / yrep;
+        else
+            xrep = 1;
+            yrep = 1;
+        end
+
         % Compute vertex- and texcoord-arrays that define the mesh
         % of quadrilaterals which should be rendered (with the stimulus
         % texture applied) to create the undistortion warp:
-        [xyzcalibpos, xytexcoords] = BVLComputeWarpMesh(winWidth, winHeight, calib.scal, showCalibOutput, xLoomSize, yLoomSize);
+        [xyzcalibpos, xytexcoords] = BVLComputeWarpMesh(winWidth, winHeight, calib.scal, showCalibOutput, xLoomSize, yLoomSize, xrep, yrep);
 
         % Build the unwarp mesh display list within the OpenGL context of
         % Psychtoolbox:
@@ -448,8 +489,8 @@ return;
 
 % --- Helper routines for setup of the calibration method 'BVLDisplayList' ---
 
-function [xyzcalibpos, xytexcoords] = BVLComputeWarpMesh(windowWidth, windowHeight, scal, showCalibOutput, xLoomSize, yLoomSize)
-% [xyzcalibpos, xytexcoords] = BVLComputeWarpMesh(windowWidth, windowHeight, scal, showCalibOutput, xLoomSize, yLoomSize)
+function [xyzcalibpos, xytexcoords] = BVLComputeWarpMesh(windowWidth, windowHeight, scal, showCalibOutput, xLoomSize, yLoomSize, xrep, yrep)
+% [xyzcalibpos, xytexcoords] = BVLComputeWarpMesh(windowWidth, windowHeight, scal, showCalibOutput, xLoomSize, yLoomSize, xrep, yrep)
 %
 % Internal helper routine: Called by CreateDisplayWarp.m, which is in turn
 % called by PsychImaging.m. Implements the geometric display calibration
@@ -466,7 +507,7 @@ function [xyzcalibpos, xytexcoords] = BVLComputeWarpMesh(windowWidth, windowHeig
 %
 
 % Check resolution against the calibration file resolutions:
-if (windowWidth ~= RectWidth(scal.rect)) || (windowHeight ~= RectHeight(scal.rect))
+if ((windowWidth * xrep) ~= RectWidth(scal.rect)) || ((windowHeight * yrep) ~= RectHeight(scal.rect))
     fprintf('\n\nCALIBRATION WARNING!\n');
     fprintf('Onscreen window resolution (%d, %d) does not match ', ...
         windowWidth, windowHeight);
@@ -582,13 +623,25 @@ end
 % as our internal vertex/texcoord assignment is upside down wrt. original
 % Banks lab calibration:
 vertexCoords(:,2) = windowHeight - vertexCoords(:,2);
-[xyzcalibpos, xytexcoords] = BVLGeneratetextcoord(yLoomSize, xLoomSize, vertexCoords, vertexCoordsFit, showCalibOutput);
+
+xyzcalibpos = [];
+xytexcoords = [];
+for x = 0:xrep-1
+    for y = 0:yrep-1
+        xoffset = x * windowWidth;
+        yoffset = y * windowHeight;
+        [newxyzcalibpos, newxytexcoords] = BVLGeneratetextcoord(yLoomSize, xLoomSize, vertexCoords, vertexCoordsFit, showCalibOutput, xoffset, yoffset);
+
+        xyzcalibpos = [xyzcalibpos, newxyzcalibpos];
+        xytexcoords = [xytexcoords, newxytexcoords];
+    end
+end
 
 % Done. Return results:
 return;
 
 
-function [xyzcalibpos, xytexcoords]=BVLGeneratetextcoord(yLoomSize, xLoomSize, vertexCoords, vertexCoordsFit, showCalibOutput)
+function [xyzcalibpos, xytexcoords]=BVLGeneratetextcoord(yLoomSize, xLoomSize, vertexCoords, vertexCoordsFit, showCalibOutput, xoffset, yoffset)
 % Internal helper routine: Called by BVLComputeWarpMesh.m.
 % Implements the geometric display calibration and undistortion procedure
 % developed by the Banks Vision Lab at UC Berkeley.
@@ -656,10 +709,10 @@ for y=1:(yLoomSize-1)
     end
 end
 
-xyzcalibpos(1:2:end) = xverts;
-xyzcalibpos(2:2:end) = yverts;
-xytexcoords(1:2:end) = xtemp;
-xytexcoords(2:2:end) = ytemp;
+xyzcalibpos(1:2:end) = xverts + xoffset;
+xyzcalibpos(2:2:end) = yverts + yoffset;
+xytexcoords(1:2:end) = xtemp + xoffset;
+xytexcoords(2:2:end) = ytemp + yoffset;
 
 return;
 
