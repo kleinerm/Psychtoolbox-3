@@ -32,13 +32,14 @@ end
 if strcmpi(cmd, 'QueueImage')
   sourceImage = varargin{1};
 
-  if ~isscalar(sourceImage) || ~isnumeric(sourceImage) || Screen('WindowKind', sourceImage) ~= -1
+  if (1 ~= numel(sourceImage)) || ~isnumeric(sourceImage) || Screen('WindowKind', sourceImage) ~= -1
     error('QueueImage: Provided sourceImage is not an open offscreen window or texture!');
   end
 
-  if ~isequal(Screen('Rect', sourceImage), processedRect)
-    error('QueueImage: Provided sourceImage does not have expected size!');
-  end
+  % This sucks away performance on Octave, as isequal is awfully slow:
+  %if ~isequal(Screen('Rect', sourceImage), processedRect)
+  %  error('QueueImage: Provided sourceImage does not have expected size!');
+  %end
 
   if length(varargin) >= 2
     tWhen = varargin{2};
