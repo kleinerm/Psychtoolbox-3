@@ -2376,12 +2376,14 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
         if (sourceRecord->nrchannels < 3 && fboInternalFormat != GL_RGBA8) {
             // Unsupported format for FBO rendertargets. Need to upgrade to something suitable...
             if (sourceRecord->textureexternalformat == GL_LUMINANCE) {
-                // Upgrade luminance to RGB of matching precision:
-                // printf("UPGRADING TO RGBFloat %i\n", (sourceRecord->textureinternalformat == GL_LUMINANCE_FLOAT16_APPLE) ? 0:1);
+                // Upgrade luminance to RGBA of matching precision: Why RGBA instead of RGB?
+                // Because Intel HD gpu's do not support RGB float as render target, so we are
+                // rather compatible and a bit slower...
+                // printf("UPGRADING TO RGBFAloat %i\n", (sourceRecord->textureinternalformat == GL_LUMINANCE_FLOAT16_APPLE) ? 0:1);
                 if (sourceRecord->textureinternalformat == GL_LUMINANCE16_SNORM) {
-                    fboInternalFormat = GL_RGB16_SNORM;
+                    fboInternalFormat = GL_RGBA16_SNORM;
                 } else {
-                    fboInternalFormat = (sourceRecord->textureinternalformat == GL_LUMINANCE_FLOAT16_APPLE) ? GL_RGB_FLOAT16_APPLE : GL_RGB_FLOAT32_APPLE;
+                    fboInternalFormat = (sourceRecord->textureinternalformat == GL_LUMINANCE_FLOAT16_APPLE) ? GL_RGBA_FLOAT16_APPLE : GL_RGBA_FLOAT32_APPLE;
                 }
             }
             else {
@@ -2408,6 +2410,13 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
                 fboInternalFormat = (sourceRecord->textureinternalformat == GL_LUMINANCE_FLOAT16_APPLE) ? GL_RGBA_FLOAT16_APPLE : GL_RGBA_FLOAT32_APPLE;
             }
         }
+
+        // If we end up with a RGB floating point format, just upgrade to matching RGBA floating point format.
+        // None of the existing Intel GPU's as of beginning 2015 can deal with RGB16F, RGB32F or RGB16_SNORM,
+        // so in the interest of portability to Intel HD gpu's, just sacrifice a bit of memory efficiency here:
+        if (fboInternalFormat == GL_RGB16_SNORM) fboInternalFormat = GL_RGBA16_SNORM;
+        if (fboInternalFormat == GL_RGB_FLOAT16_APPLE) fboInternalFormat = GL_RGBA_FLOAT16_APPLE;
+        if (fboInternalFormat == GL_RGB_FLOAT32_APPLE) fboInternalFormat = GL_RGBA_FLOAT32_APPLE;
 
         // Now create proper FBO:
         if (!PsychCreateFBO(&(sourceRecord->fboTable[0]), (GLenum) fboInternalFormat, needzbuffer, width, height, 0, (PsychGetTextureTarget(sourceRecord) == GL_TEXTURE_2D) ? 1 : 0)) {
