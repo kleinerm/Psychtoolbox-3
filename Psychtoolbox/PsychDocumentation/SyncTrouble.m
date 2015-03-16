@@ -362,9 +362,9 @@
 % LINUX specific tips:
 %
 % 1. Just as on all other operating systems, timed visual stimulus onset
-% and stimulus onset timestamping is not reliable on regular (non
-% fullscreen) windows, windows that don't cover the complete desktop of a
-% Psychtoolbox screen (also known as X-Screen) or transparent windows,
+% and stimulus onset timestamping is not reliable for regular (non
+% fullscreen) windows, windows which don't cover the complete desktop of a
+% Psychtoolbox screen (also known as X-Screen) or for transparent windows,
 % e.g., when the PsychDebugWindowConfiguration() command was used. Use of
 % rotated display output (90, 180, 270 degrees etc.) will also prevent
 % proper timing, just as on the other systems.
@@ -399,7 +399,7 @@
 %   "Advanced" Tab -> "Suspend desktop effects for fullscreen windows"
 %   -> Check the checkbox -> "Apply" -> Done.
 %
-%   If you still get warnings or errors by PTB related to display timing,
+%   If on KDE you still get warnings or errors by PTB related to display timing,
 %   or want maximum graphics performance, you can also try to completely
 %   disable desktop composition, either by pressing SHIFT + ALT + F12
 %   before the beginning and after the end of your experiment session, to
@@ -414,7 +414,7 @@
 %
 % - Ubuntu Unity under Ubuntu Linux 12.04.2 LTS or later requires no setup.
 %
-% If you use a different desktop compositor, and on a few versions of
+% If you use a different desktop compositor, and on a few older versions of
 % compiz, the command doesn't yet work, so you need to check the
 % manuals/help of your system on how to enable the option
 % "unredirect_fullscreen_windows" manually. E.g., on Ubuntu systems you can
@@ -446,17 +446,17 @@
 %
 % On such setups, triple-buffering can be disabled with driver specific
 % options in xorg.conf. However, if you are a user of 64-Bit Ubuntu
-% 14.04-LTS or compatible 64-Bit distribution with X-Server 1.15, or
-% of 64-Bit Ubuntu 14.10 or compatible 64-Bit distribution with X-Server 1.16,
-% you may want to read "help LinuxDrivers" instead on how to install customized
-% graphics drivers for your system, which solve this and other problems
-% in a more elegant way. If you use a different distribution, read on.
+% 14.04.2-LTS, Ubuntu 14.10, or another compatible 64-Bit distribution
+% with X-Server 1.16, you may want to read "help LinuxDrivers" instead
+% on how to install customized graphics drivers for your system which
+% solve this and other problems in a more elegant way. If you use a
+% different distribution, read on.
 %
 % On Intel graphics drivers, add the options:
 %
 % Option "TripleBuffer"    "off"
 %
-% On the nouveau driver for NVidia cards, add:
+% On the nouveau open-source graphics driver for NVidia cards, add:
 % Option "SwapLimit" "1"
 % Option "GLXVBlank" "on"
 %
@@ -490,3 +490,4 @@
 % 29.09.2013 Update to current state (MK).
 % 05.10.2014 Update to current state (MK).
 % 24.12.2014 Update to state where we provide our own ddx'en (MK).
+% 12.03.2015 Update to the state where we only provide intel-ddx for XOrg 1.16 (MK).

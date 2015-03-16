@@ -12,7 +12,10 @@ function sca
 % 7/03/13 Add PsychJavaSwingCleanup call (MK).
 
 % Unhide the cursor if it was hidden:
-ShowCursor;
+% Don't do this on Wayland for now...
+if ~IsWayland
+  ShowCursor;
+end
 
 for win = Screen('Windows')
     if Screen('WindowKind', win) == 1

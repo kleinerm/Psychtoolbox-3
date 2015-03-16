@@ -76,6 +76,10 @@
 % ie., to not abort if that renderer is detected. Normally Screen() would
 % abort when detecting the GDI renderer.
 %
+% On GNU/Linux this allows to use the Mesa X11 software renderer, ie.,
+% to not abort if that renderer is detected. Normally Screen() would
+% abort when detecting that renderer.
+%
 %
 % 128 == kPsychEnforceForegroundWindow: Request application of the Windows
 % GDI calls SetForegroundWindow() and SetFocus() on each created onscreen

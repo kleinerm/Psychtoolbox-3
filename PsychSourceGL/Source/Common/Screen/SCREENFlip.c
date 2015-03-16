@@ -330,9 +330,6 @@ PsychError SCREENFlip(void)
 		flipRequest->vbl_timestamp = -1;
 		
 		// Ok, the struct is filled with spec for a synchronous or asynchronous flip...
-		
-		// Store current preflip GPU graphics surface addresses, if supported:
-		PsychStoreGPUSurfaceAddresses(windowRecord);
 	}
 	else {
 		// opmode == 2 or 3 - 'AsyncFlipEnd' or 'AsyncFlipCheckEnd':

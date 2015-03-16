@@ -685,7 +685,7 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 
         // Next while loop iteration to dequeue potentially more events:
     }
-    
+
     // Done for this queue transition. Return to runloop.
 }
 
@@ -693,6 +693,9 @@ static void PsychHIDKbQueueCallbackFunction(void *target, IOReturn result, void 
 static void *KbQueueWorkerThreadMain(void *inarg) {
     int deviceIndex = (int) inarg;
     int rc;
+
+    // Assign a name to ourselves, for debugging:
+    PsychSetThreadName("PsychHIDKbQueue");
 
     // Switch ourselves (NULL) to RT scheduling: We promise to use / require at most (0+1) == 1 msec every
     // 10 msecs and allow for wakeup delay/jitter of up to 2 msecs -- perfectly reasonable, given that we
@@ -893,14 +896,8 @@ void PsychHIDOSKbQueueRelease(int deviceIndex)
     // The mutex will be automatically unlocked and destroyed by the CFRunLoop thread
     // so it isn't even declared in this routine
     if (psychHIDKbQueueCFRunLoopRef[deviceIndex]) {
-        // Shutdown the processing thread for this queue:
-        PsychLockMutex(&KbQueueMutex);
-
         // Stop the CFRunLoop, which will allow its associated thread to exit:
         CFRunLoopStop(psychHIDKbQueueCFRunLoopRef[deviceIndex]);
-
-        // Done.
-        PsychUnlockMutex(&KbQueueMutex);
 
         // Shutdown the thread, wait for its termination:
         PsychDeleteThread(&KbQueueThread[deviceIndex]);
@@ -946,11 +943,11 @@ void PsychHIDOSKbQueueStop(int deviceIndex)
 	// Keyboard queue already stopped?
 	if (!psychHIDKbQueueActive[deviceIndex]) return;
 
-	// Queue is active. Stop it:
-	PsychLockMutex(&KbQueueMutex);
-
     // Stop event collection in the queue:
     IOHIDQueueStop(queue[deviceIndex]);
+    
+    // Queue is active. Stop it:
+    PsychLockMutex(&KbQueueMutex);
     
 	// Mark queue logically stopped:
 	psychHIDKbQueueActive[deviceIndex] = FALSE;
