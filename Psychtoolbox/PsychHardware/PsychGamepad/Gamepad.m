@@ -132,27 +132,27 @@ if isempty(deviceStructs)
       % Query additional per-device configuration info and parameters:
       for i=1:length(gamepadIndices)
         [x,y,b,f,v,vi] = GetMouse([], gamepadIndices(i));
-	deviceStructs(gamepadIndices(i)).buttonIndices = 1:(length(b) - 32);
-	deviceStructs(gamepadIndices(i)).axisIndices = 1:length(v);
-	deviceStructs(gamepadIndices(i)).hatIndices = [];
-	deviceStructs(gamepadIndices(i)).product = char(gamepadNames(i));
-	deviceStructs(gamepadIndices(i)).buttons = length(b) - 32;
-	deviceStructs(gamepadIndices(i)).axes = length(v);
-	deviceStructs(gamepadIndices(i)).balls = 0;
-	deviceStructs(gamepadIndices(i)).hats = 0;
+        deviceStructs(gamepadIndices(i)).buttonIndices = 1:(length(b) - 32);
+        deviceStructs(gamepadIndices(i)).axisIndices = 1:length(v);
+        deviceStructs(gamepadIndices(i)).hatIndices = [];
+        deviceStructs(gamepadIndices(i)).product = char(gamepadNames(i));
+        deviceStructs(gamepadIndices(i)).buttons = length(b) - 32;
+        deviceStructs(gamepadIndices(i)).axes = length(v);
+        deviceStructs(gamepadIndices(i)).balls = 0;
+        deviceStructs(gamepadIndices(i)).hats = 0;
 
-	% Populate element properties:
+        % Populate element properties:
         elements = [];
-	for j = 1:length(vi)
-	  el.rangeMin = vi(j).min;
-	  el.rangeMax = vi(j).max;
-	  el.label = vi(j).label;
-	  if isempty(elements)
-	    elements = el;
-	  else
-	    elements(end+1) = el;
-	  end
-	end
+        for j = 1:length(vi)
+          el.rangeMin = vi(j).min;
+          el.rangeMax = vi(j).max;
+          el.label = vi(j).label;
+          if isempty(elements)
+            elements = el;
+          else
+            elements(end+1) = el;
+          end
+        end
         deviceStructs(gamepadIndices(i)).elements = elements;
       end
     end
@@ -286,12 +286,12 @@ switch subCommand
         try
             gi = gamepadIndices(argVal1);
             ei = deviceStructs(gi).buttonIndices(argVal2);
-	    if IsLinux
-		[d1,d2,b] = GetMouse([], gi);
-		result = b(ei);
+            if IsLinux
+                [d1,d2,b] = GetMouse([], gi);
+                result = b(ei);
             else
-	        result = PsychHID('RawState', gi, ei);
-	    end
+                result = PsychHID('RawState', gi, ei);
+            end
         catch
             if nargin ~= 3
                 error('incorrect number of arguments supplied');
@@ -313,9 +313,9 @@ switch subCommand
         try
             gi = gamepadIndices(argVal1);
             ei = deviceStructs(gi).axisIndices(argVal2);
-	    if IsLinux
-		[d1,d2,d3,d4,v] = GetMouse([], gi);
-		rawState = v(ei);
+            if IsLinux
+                [d1,d2,d3,d4,v] = GetMouse([], gi);
+                rawState = v(ei);
             else
                 rawState = PsychHID('RawState', gi, ei);
             end
@@ -342,11 +342,11 @@ switch subCommand
         try
             gi = gamepadIndices(argVal1);
             ei = deviceStructs(gi).hatIndices(argVal2);
-	    if IsLinux
-		error('Sorry, GetHat function unsupported on Linux.');
+            if IsLinux
+                error('Sorry, GetHat function unsupported on Linux.');
             else
                 result = PsychHID('RawState', gi, ei);
-	    end
+            end
         catch
             if nargin ~= 3
                 error('incorrect number of arguments supplied');
@@ -476,15 +476,15 @@ switch subCommand
         return
 
     case {'UNPLUG'}
-	if IsOctave
-	   warning('Tried to call Gamepad(''Unplug''); which is unsupported under Octave. Ignored.');
-	   return;
-	end
+        if IsOctave
+           warning('Tried to call Gamepad(''Unplug''); which is unsupported under Octave. Ignored.');
+           return;
+        end
 
-	if IsLinux
-	   warning('Called Gamepad(''Unplug''); - On Linx this implies a ''clear Screen'' aka closing all windows.');
-	   clear Screen;
-	end
+        if IsLinux
+           warning('Called Gamepad(''Unplug''); - On Linx this implies a ''clear Screen'' aka closing all windows.');
+           clear Screen;
+        end
 
         clear PsychHID;
         clear GamePad;

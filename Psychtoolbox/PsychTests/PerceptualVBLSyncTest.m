@@ -159,8 +159,8 @@ try
    fprintf('Press ENTER key to start the test. The test will stop after 10 seconds\n');
    fprintf('or any keypress...\n');
 
-   KbStrokeWait;
-   
+   %KbStrokeWait;
+
    if stereomode~=10
        % Standard case:
        [win , winRect]=Screen('OpenWindow', screen(1), 0, rect1, [], doublebuffer, stereomode);

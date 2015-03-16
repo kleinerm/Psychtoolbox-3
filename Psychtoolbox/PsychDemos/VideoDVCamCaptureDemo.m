@@ -43,6 +43,33 @@ function VideoDVCamCaptureDemo(fullscreen, fullsize, roi, depth, deviceId, movie
 % to which video should be recorded. Defaults to none,ie., no video
 % recording.
 %
+% VideoDVCamCaptureDemo also allows you to test out video capture from
+% special video sources other than Consumer-DV cameras, ie. sources which
+% require use of a custom built GStreamer video source bin. You test such
+% setups by specifying the bin spec-string and other parameters as parameters
+% for the demo. As an example, the following call would try to capture a video
+% stream that is encoded as H264 video and that is transmitted over the network
+% via TCP-IP protocol, ie., a H264 video stream encapsulated in TCP:
+%
+% VideoDVCamCaptureDemo([], [], [0 0 320 240], 6, 'tcpclientsrc port=8554 host=localhost ! h264parse ! avdec_h264 name=ptbdvsource');
+%
+% This would receive the TCP stream from port 8554 on the machine with
+% the name 'localhost' (the local machine). The stream would decode from
+% H264 to color format 6 - YUV-I420 - with video frames of 320 x 240 pixels
+% size. For testing purpose you could enter the following GStreamer command
+% line into a terminal window to generate a test video stream and send it from
+% the local machine 'localhost' on port 8554, as H264 encoded TCP-IP stream,
+% then receive it via VideoDVCamCaptureDemo as shown above:
+%
+% gst-launch-1.0 videotestsrc horizontal-speed=5 ! x264enc tune="zerolatency" threads=1 ! video/x-h264,stream-format=byte-stream ! tcpserversink port=8554
+%
+% One application of such a custom setup can be seen in the discussion thread
+% containing message #18807 on the Psychtoolbox forum. There the video source
+% is an IP camera attached to a robot, streaming H264 video over the network for
+% consumption by a machine running Psychtoolbox.
+%
+%
+%
 %
 % Loopback setup on Linux for use with new GStreamer-1 video backend:
 %
@@ -99,6 +126,7 @@ function VideoDVCamCaptureDemo(fullscreen, fullsize, roi, depth, deviceId, movie
 % 26-Aug-2014  mk  Adapted to GStreamer-1.4.0+ backend.
 % 19-Sep-2014  mk  Update instructions for GStreamer-1.x, drop dead code for GStreamer-1.
 % 05-Oct-2014  mk  Clarify OSX doesn't work at all. Deuglify help text formatting a bit.
+% 02-Mar-2015  mk  Add example use case "video streaming over TCP network" to help text.
 
 PsychDefaultSetup(1);
 

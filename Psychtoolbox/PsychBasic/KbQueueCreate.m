@@ -1,5 +1,5 @@
 function KbQueueCreate(deviceNumber, keyList)
-% KbQueueCreate([deviceNumber, keyList])
+% KbQueueCreate([deviceNumber][, keyList])
 %
 % The routines KbQueueCreate, KbQueueStart, KbQueueStop, KbQueueCheck
 %  KbQueueWait, KbQueueFlush and KbQueueRelease provide replacments for
@@ -15,10 +15,10 @@ function KbQueueCreate(deviceNumber, keyList)
 %     1) If a key is pressed multiple times before KbQueueCheck is called,
 %        only the times of the first and last presses and releases of that
 %        key can be recovered (this has no effect on other keys)
-%     2) If many keys are pressed very quickly in succession, it is at least
-%        theoretically possible for the queue to fill more quickly than
-%        it can be emptied, losing key events temporarily while filled to 
-%        capacity. The queue holds up to thirty events, and events are
+%     2) If many keys are pressed very quickly in succession on OSX, it is
+%        at least theoretically possible for the queue to fill more quickly
+%        than it can be emptied, losing key events temporarily while filled
+%        to capacity. The queue holds up to thirty events, and events are
 %        constantly being removed from the queue and processed, so this is
 %        unlikely to be a problem in actual use.
 %
@@ -50,18 +50,18 @@ function KbQueueCreate(deviceNumber, keyList)
 %      keyboards. E.g., it can also record button state of a mouse, a
 %      joystick or a gamepad.
 %
-%  KbQueueStart()
+%  KbQueueStart([deviceNumber])
 %      Starts delivering keyboard events from the specified device to the 
 %      queue.
 %
-%  KbQueueStop()
+%  KbQueueStop([deviceNumber])
 %      Stops delivery of new keyboard events from the specified device to 
 %      the queue.
 %      Data regarding events already queued is not cleared and can be 
 %      recovered by KbQueueCheck
 %
 % [pressed, firstPress, firstRelease, lastPress, lastRelease]=
-%   KbQueueCheck()
+%   KbQueueCheck([deviceNumber])
 %      Obtains data about keypresses on the specified device since the 
 %      most recent call to this routine, KbQueueStart, KbQueueWait
 %      Clears all scored events, but unscored events that are still being
@@ -95,7 +95,7 @@ function KbQueueCreate(deviceNumber, keyList)
 %     returned arrays. However, a better alternative is to specify a
 %     keyList arguement to KbQueueCreate. 
 %
-% secs=KbQueueWait()
+% secs=KbQueueWait([deviceNumber])
 %      Waits for any key to be pressed and returns the time of the press.
 %
 %      KbQueueFlush should be called immediately prior to this function
@@ -110,11 +110,11 @@ function KbQueueCreate(deviceNumber, keyList)
 %      the global variable ptb_kbcheck_disabledKeys
 %      (see "help DisableKeysForKbCheck")
 %
-% KbQueueFlush()
+% KbQueueFlush([deviceNumber])
 %      Removes all unprocessed events from the queue and zeros out any
 %      already scored events.
 %
-% KbQueueRelease()
+% KbQueueRelease([deviceNumber])
 %      Releases queue-associated resources; once called, KbQueueCreate
 %      must be invoked before using any of the other routines
 %
@@ -137,17 +137,17 @@ function KbQueueCreate(deviceNumber, keyList)
 persistent macosxrecent;
 
 if nargin < 1
-    deviceNumber = [];
+  deviceNumber = [];
 end
 
 % Try to reserve keyboard queue for 'deviceNumber' for our exclusive use:
 if ~KbQueueReserve(1, 2, deviceNumber)
-    error('Keyboard queue for device %i already in use by GetChar() et al. Use of GetChar and keyboard queues is mutually exclusive!', deviceNumber);
+  error('Keyboard queue for device %i already in use by GetChar() et al. Use of GetChar and keyboard queues is mutually exclusive!', deviceNumber);
 end
 
 if isempty(macosxrecent)
-    macosxrecent = IsOSX;
-    LoadPsychHID;
+  macosxrecent = IsOSX;
+  LoadPsychHID;
 end
 
 if nargin == 2

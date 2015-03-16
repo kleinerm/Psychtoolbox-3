@@ -123,7 +123,7 @@ typedef struct {
 static PsychVidcapRecordType vidcapRecordBANK[PSYCH_MAX_CAPTUREDEVICES];
 static int numCaptureRecords = 0;
 static psych_bool firsttime = TRUE;
-static dc1394_t *libdc = NULL;		// Master handle to DC1394 library.
+static dc1394_t *libdc = NULL; // Master handle to DC1394 library.
 
 // Global Bayer filter settings for helper routine which is used for movie playback:
 static dc1394bayer_method_t global_debayer_method = DC1394_BAYER_METHOD_NEAREST;
@@ -132,13 +132,13 @@ static dc1394color_filter_t global_color_filter = DC1394_COLOR_FILTER_MIN;
 // Global state and functions related to special markerTrackerPlugin's:
 
 // Global handle to shared library:
-void* markerTrackerPlugin_libraryhandle = NULL;
+static void* markerTrackerPlugin_libraryhandle = NULL;
 
 // Function prototypes of functions we want to use in the plugin library:
-void* (*TrackerPlugin_initialize)(void);
-bool (*TrackerPlugin_shutdown)(void* handle);
-bool (*TrackerPlugin_processFrame)(void* handle, unsigned long* source_ptr, int imgwidth, int imgheight, int xmin, int ymin, unsigned int timeidx, double capturetimestamp, unsigned int absolute_frameindex);
-bool (*TrackerPlugin_processPluginDataBuffer)(void* handle, unsigned long* buffer, int size);
+static void* (*TrackerPlugin_initialize)(void);
+static bool (*TrackerPlugin_shutdown)(void* handle);
+static bool (*TrackerPlugin_processFrame)(void* handle, unsigned long* source_ptr, int imgwidth, int imgheight, int xmin, int ymin, unsigned int timeidx, double capturetimestamp, unsigned int absolute_frameindex);
+static bool (*TrackerPlugin_processPluginDataBuffer)(void* handle, unsigned long* buffer, int size);
 
 // Forward declaration of internal helper function:
 void PsychDCDeleteAllCaptureDevices(void);
@@ -289,9 +289,9 @@ void PsychDCCloseVideoCaptureDevice(int capturehandle)
         if (!(*TrackerPlugin_shutdown)(capdev->markerTrackerPlugin)) {
             printf("PTB-WARNING: Failed to shutdown markertracker plugin for device %i.\n", capturehandle);
         }
-        
+
         capdev->markerTrackerPlugin = NULL;
-        
+
         // Release one reference to this instance of the plugin:
         // There may be more instances. If the last reference is released, the plugin
         // will get truly unloaded by the dynamic linker and the markerTrackerPlugin_libraryhandle
@@ -363,7 +363,7 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
     // Clear out the record to have a nice clean start:
     memset(capdev, 0, sizeof(PsychVidcapRecordType));
-    
+
     // Need to set valid flag again after the memset():
     capdev->valid = 1;
 
@@ -429,7 +429,7 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
     // Assign recordingflags:
     capdev->recordingflags = recordingflags;
-    
+
     // Query a list of all available (connected) Firewire cameras:
     err = dc1394_camera_enumerate(libdc, &cameras);
     if (err != DC1394_SUCCESS) {
@@ -626,7 +626,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
                 // This is a workaround for broken cams which deliver sensor raw data as MONO instead of RAW, e.g.,
                 // apparently some Bayer cams:
                 if (capdev->dataconversionmode == 4 && (color_code != ((capdev->bitdepth <= 8) ? DC1394_COLOR_CODING_MONO8 : DC1394_COLOR_CODING_MONO16))) continue;
-                
+
                 // If we end here, then mode is 0 aka don't care. We take raw or luminance data:
                 if ((capdev->bitdepth <= 8 && color_code!=DC1394_COLOR_CODING_RAW8 && color_code!=DC1394_COLOR_CODING_MONO8) ||
                     (capdev->bitdepth  > 8 && color_code!=DC1394_COLOR_CODING_RAW16 && color_code!=DC1394_COLOR_CODING_MONO16)) continue;
@@ -636,15 +636,15 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
             if (capdev->reqlayers > 2) {
                 // mode 1: Is not handled for 3 or 4 layer formats, because 3 or 4 layer formats always
                 // require some post-processing of raw data, otherwise it would end up as 1 layer raw!
-                
+
                 // mode 2: Only accept raw data, which we will post-process later on:
                 if (capdev->dataconversionmode == 2 && (color_code != ((capdev->bitdepth <= 8) ? DC1394_COLOR_CODING_RAW8 : DC1394_COLOR_CODING_RAW16))) continue;
-                
+
                 // mode 4: Only accept MONO data, but treat it as if it were RAW data and post-process it accordingly.
                 // This is a workaround for broken cams which deliver sensor raw data as MONO instead of RAW, e.g.,
                 // apparently some Bayer cams:
                 if (capdev->dataconversionmode == 4 && (color_code != ((capdev->bitdepth <= 8) ? DC1394_COLOR_CODING_MONO8 : DC1394_COLOR_CODING_MONO16))) continue;
-                
+
                 // If we end here, then mode is 0 aka don't care or 3 aka only accept color data. We take any color data of 8/16 bpc depth:
                 if ((dc1394_is_color(color_code, &iscolor) != DC1394_SUCCESS) || (!iscolor && (capdev->dataconversionmode != 2) && (capdev->dataconversionmode != 4)) ||
                     (dc1394_get_color_coding_data_depth(color_code, &bpc) != DC1394_SUCCESS) || (bpc != ((capdev->bitdepth <= 8) ? 8 : 16))) continue;
@@ -911,41 +911,41 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
         dc1394_format7_get_color_coding(capdev->camera, mode, &color_code);
         if (capdev->reqlayers > 0) {
             // Specific pixelsize requested:
-            
+
             // Luminance only format?
             if (capdev->reqlayers < 3) {
                 // mode 1: Only accept raw data, which we will pass on later unprocessed:
                 if (capdev->dataconversionmode == 1 && (color_code != ((capdev->bitdepth <= 8) ? DC1394_COLOR_CODING_RAW8 : DC1394_COLOR_CODING_RAW16))) continue;
-                
+
                 // mode 2: Only accept raw data, which we will post-process later on:
                 if (capdev->dataconversionmode == 2 && (color_code != ((capdev->bitdepth <= 8) ? DC1394_COLOR_CODING_RAW8 : DC1394_COLOR_CODING_RAW16))) continue;
-                
+
                 // mode 3: Only accept filtered post-processed data:
                 if (capdev->dataconversionmode == 3 && (color_code != ((capdev->bitdepth <= 8) ? DC1394_COLOR_CODING_MONO8 : DC1394_COLOR_CODING_MONO16))) continue;
-                
+
                 // mode 4: Only accept MONO data, but treat it as if it were RAW data and post-process it accordingly.
                 // This is a workaround for broken cams which deliver sensor raw data as MONO instead of RAW, e.g.,
                 // apparently some Bayer cams:
                 if (capdev->dataconversionmode == 4 && (color_code != ((capdev->bitdepth <= 8) ? DC1394_COLOR_CODING_MONO8 : DC1394_COLOR_CODING_MONO16))) continue;
-                
+
                 // If we end here, then mode is 0 aka don't care. We take raw or luminance data:
                 if ((capdev->bitdepth <= 8 && color_code!=DC1394_COLOR_CODING_RAW8 && color_code!=DC1394_COLOR_CODING_MONO8) ||
                     (capdev->bitdepth  > 8 && color_code!=DC1394_COLOR_CODING_RAW16 && color_code!=DC1394_COLOR_CODING_MONO16)) continue;
             }
-            
+
             // RGB true color format?
             if (capdev->reqlayers > 2) {
                 // mode 1: Is not handled for 3 or 4 layer formats, because 3 or 4 layer formats always
                 // require some post-processing of raw data, otherwise it would end up as 1 layer raw!
-                
+
                 // mode 2: Only accept raw data, which we will post-process later on:
                 if (capdev->dataconversionmode == 2 && (color_code != ((capdev->bitdepth <= 8) ? DC1394_COLOR_CODING_RAW8 : DC1394_COLOR_CODING_RAW16))) continue;
-                
+
                 // mode 4: Only accept MONO data, but treat it as if it were RAW data and post-process it accordingly.
                 // This is a workaround for broken cams which deliver sensor raw data as MONO instead of RAW, e.g.,
                 // apparently some Bayer cams:
                 if (capdev->dataconversionmode == 4 && (color_code != ((capdev->bitdepth <= 8) ? DC1394_COLOR_CODING_MONO8 : DC1394_COLOR_CODING_MONO16))) continue;
-                
+
                 // If we end here, then mode is 0 aka don't care or 3 aka only accept color data. We take any color data of 8/16 bpc depth:
                 if ((dc1394_is_color(color_code, &iscolor) != DC1394_SUCCESS) || (!iscolor && (capdev->dataconversionmode != 2) && (capdev->dataconversionmode != 4)) ||
                     (dc1394_get_color_coding_data_depth(color_code, &bpc) != DC1394_SUCCESS) || (bpc != ((capdev->bitdepth <= 8) ? 8 : 16))) continue;
@@ -957,7 +957,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
             // No specific pixelsize req. check our minimum requirements - Anything of 8/16 bpc depths:
             if ((dc1394_get_color_coding_data_depth(color_code, &bpc) != DC1394_SUCCESS) || (bpc != ((capdev->bitdepth <= 8) ? 8 : 16))) continue;
         }
-        
+
         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Passes color validation...\n");
 
         // ROI specified?
@@ -1100,7 +1100,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
 
     // Special case: conversion mode 2 or 4 for rgb layers, aka bayer-filter raw data as provided in raw or mono container into rgb data:
     if ((capdev->actuallayers == 1) && (capdev->reqlayers >= 3) && ((capdev->dataconversionmode == 2) || (capdev->dataconversionmode == 4))) capdev->actuallayers = 3;
-    
+
     // Match this against requested actuallayers:
     if (capdev->reqlayers == 0) {
         // No specific depth requested: Just use native depth of captured image:
@@ -1175,10 +1175,10 @@ static psych_bool PsychDCPushFrameToMovie(PsychVidcapRecordType* capdev, psych_u
     unsigned int twidth, theight, numChannels, bitdepth, i;
     unsigned int count;
     unsigned char* framepixels;
-    
+
     // Get memory pointer to target memory buffer:
     framepixels = PsychGetVideoFrameForMoviePtr(capdev->moviehandle, &twidth, &theight, &numChannels, &bitdepth);
-    
+
     // Validate number of color channels and bits per channel values for a match:
     if (numChannels != (unsigned int) capdev->actuallayers || bitdepth != ((capdev->bitdepth > 8) ? 16 : 8)) {
         printf("PTB-ERROR: Mismatch between number of color channels %i or bpc %i of captured video frame and number of channels %i or bpc %i of video pipeline target buffer!\n",
@@ -1189,10 +1189,10 @@ static psych_bool PsychDCPushFrameToMovie(PsychVidcapRecordType* capdev, psych_u
         else {
             printf("PTB-ERROR: Encoding current captured video frame on video recorder thread failed. Video format mismatch!\n");
         }
-        
+
         return(FALSE);
     }
-    
+
     // Dimensions match?
     if (twidth != (unsigned int) capdev->width || theight > (unsigned int) capdev->height) {
         printf("PTB-ERROR: Mismatch between size of captured video frame %i x %i and size of video pipeline target buffer %i x %i !\n", capdev->width, capdev->height, twidth, theight);
@@ -1202,15 +1202,15 @@ static psych_bool PsychDCPushFrameToMovie(PsychVidcapRecordType* capdev, psych_u
         else {
             printf("PTB-ERROR: Encoding current captured video frame failed. Video frame size mismatch!\n");
         }
-        
+
         return(FALSE);
     }
-    
+
     // Target buffer available?
     if (framepixels) {
         // Copy the pixels:
         count = (twidth * theight * ((capdev->actuallayers == 3) ? 3 : 1) * ((capdev->bitdepth > 8) ? 2 : 1));
-        
+
         // True bitdepth in the 9 to 15 bpc range?
         if (capdev->bitdepth > 8 && capdev->bitdepth < 16) {
             // Yes. Need to bit-shift, so the most significant bit of the video data,
@@ -1220,7 +1220,7 @@ static psych_bool PsychDCPushFrameToMovie(PsychVidcapRecordType* capdev, psych_u
             // always 0xffff - all ones:
             psych_uint16 *frameinwords = (psych_uint16*) input_image;
             psych_uint16 *frameoutwords = (psych_uint16*) framepixels;
-            
+
             count /= 2; // Half as many words as bytes.
             for (i = 0; i < count; i++) *(frameoutwords++) = *(frameinwords++) << (16 - capdev->bitdepth);
         }
@@ -1228,7 +1228,7 @@ static psych_bool PsychDCPushFrameToMovie(PsychVidcapRecordType* capdev, psych_u
             // No, either 8 bpc or 16 bpc - A simple memcpy does the job efficiently:
             memcpy(framepixels, (const void*) input_image, count);
         }
-        
+
         // Add to GStreamer encoding pipeline: Format is upright, and 1 video frame duration per frame and a
         // capture timestamp of frameTimestamp:
         if (PsychAddVideoFrameToMovie(capdev->moviehandle, 1, FALSE, frameTimestamp) != 0) {
@@ -1238,7 +1238,7 @@ static psych_bool PsychDCPushFrameToMovie(PsychVidcapRecordType* capdev, psych_u
             else {
                 printf("PTB-ERROR: Encoding current captured video frame failed. Failed to add frame to pipeline!\n");
             }
-            
+
             return(FALSE);
         }
     }
@@ -1249,10 +1249,10 @@ static psych_bool PsychDCPushFrameToMovie(PsychVidcapRecordType* capdev, psych_u
         else {
             printf("PTB-ERROR: Encoding current captured video frame failed. No videobuffer available!\n");
         }
-        
+
         return(FALSE);
     }
-    
+
     return(TRUE);
 }
 
@@ -1262,7 +1262,7 @@ static unsigned char* PsychDCPreprocessFrame(PsychVidcapRecordType* capdev)
 {
     dc1394error_t error;
     int capturehandle = capdev->capturehandle;
-    
+
     // input_image points to the image buffer in our cam:
     unsigned char* input_image = (unsigned char*) (capdev->frame->image);
 
@@ -1287,15 +1287,6 @@ static unsigned char* PsychDCPreprocessFrame(PsychVidcapRecordType* capdev)
         if (!dc1394_basler_sff_check_crc((const uint8_t*) input_image, (uint32_t) capdev->total_bytes)) {
             if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Basler SFF CRC reports that a corrupt video frame with framecount %i was received from capture device %i.\n", capdev->framecounter, capdev->capturehandle);
             capdev->corrupt_count++;
-        }
-    }
-
-    // Is a special markertracker plugin loaded for this camera? If so, execute it on this frame:
-    if (capdev->markerTrackerPlugin) {
-        // Yes! Execute: Plugin reads from (unsigned long*) input_image:
-        if (!(*TrackerPlugin_processFrame)(capdev->markerTrackerPlugin, (unsigned long*) input_image, capdev->width, capdev->height, capdev->roirect[kPsychLeft], capdev->roirect[kPsychTop], capdev->framecounter,
-            capdev->current_pts, capdev->framecounter)) {
-            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-WARNING: Failed to process video frame with framecount %i by markertracker plugin for capture device %i.\n", capdev->framecounter, capdev->capturehandle);
         }
     }
 
@@ -1341,9 +1332,18 @@ static unsigned char* PsychDCPreprocessFrame(PsychVidcapRecordType* capdev)
                 return(NULL);
             }
         }
-        
+
         // Success: Point to decoded image buffer:
         input_image = (unsigned char*) capdev->convframe->image;
+    }
+
+    // Is a special markertracker plugin loaded for this camera? If so, execute it on this frame:
+    if (capdev->markerTrackerPlugin) {
+        // Yes! Execute: Plugin reads from (unsigned long*) input_image:
+        if (!(*TrackerPlugin_processFrame)(capdev->markerTrackerPlugin, (unsigned long*) input_image, capdev->width, capdev->height, capdev->roirect[kPsychLeft], capdev->roirect[kPsychTop], capdev->framecounter,
+            capdev->current_pts, capdev->framecounter)) {
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-WARNING: Failed to process video frame with framecount %i by markertracker plugin for capture device %i.\n", capdev->framecounter, capdev->capturehandle);
+            }
     }
 
     return(input_image);
@@ -1394,13 +1394,13 @@ double PsychDCBusCycleTimeToSecs(uint32_t busCycleTime)
 {
     double cycleTimeSecs;
     dc1394basler_sff_cycle_time_stamp_t ct;
-    
+
     // Copy busCycleTime into struct for parsing into seconds, iso-cycles and ticks:
     ct.cycle_time_stamp.unstructured.value = busCycleTime;
-    
+
     // Convert 32-Bit count to seconds: 0-128 seconds + number of 125 usec iso cycles + offset in units of 1/24.576Mhz:
     cycleTimeSecs = ((double) ct.cycle_time_stamp.structured.second_count) + ((double) (ct.cycle_time_stamp.structured.cycle_count * 125)) / 1e6 + ((double) ct.cycle_time_stamp.structured.cycle_offset) / ( 24.576e6);
-    
+
     return(cycleTimeSecs);
 }
 
@@ -1493,6 +1493,9 @@ static void* PsychDCRecorderThreadMain(void* capdevToCast)
 
     // Get a pointer to our associated capture device:
     PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) capdevToCast;
+
+    // Assign a name to ourselves, for debugging:
+    PsychSetThreadName("ScreenDC1394Rec");
 
     // We are running at elevated realtime priority. Enter the while loop
     // which waits for new video frames from libDC1394 and pushes them into
@@ -1814,7 +1817,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         }
         else {
             // Non-Format-7 capture DMA setup: mode encodes image size, ROI and color format.
-            
+
             // Set total_bytes to zero to signal that SFF features are not available in this capture session:
             capdev->total_bytes = 0;
 
@@ -1858,17 +1861,17 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 }
             }
         }
-        
+
         // Ready to go! Now we just need to tell the camera to start its capture cycle:
-        
+
         // Wait until start deadline reached:
         if (*startattime != 0) PsychWaitUntilSeconds(*startattime);
-        
+
         // Firewire bus-sync via bus-wide broadcast of iso-on command requested?
         if (capdev->syncmode & kPsychIsBusSynced) {
             // Yes. The master should broadcast its start command to all clients on
             // the bus:
-            PsychDCEnableBusBroadcast(capdev, TRUE);            
+            PsychDCEnableBusBroadcast(capdev, TRUE);
         }
 
         // Only actually send start command for iso-transmission if this isn't a slave cam, or
@@ -1893,7 +1896,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 // Disable use of external trigger signals on both master and slaves to start with:
                 if (dc1394_external_trigger_set_power(capdev->camera, DC1394_OFF)) {
                     // Failed! Shutdown DMA capture engine again:
-                    dc1394_capture_stop(capdev->camera);                    
+                    dc1394_capture_stop(capdev->camera);
                     PsychErrorExitMsg(PsychError_user, "Unable to disable trigger reception on camera - Phase I - Start of video capture failed!");
                 }
 
@@ -1907,7 +1910,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                     }
                 }
             }
-            
+
             if (dc1394_video_set_transmission(capdev->camera, DC1394_ON) !=DC1394_SUCCESS) {
                 // Failed! Shutdown DMA capture engine again:
                 dc1394_capture_stop(capdev->camera);
@@ -1927,7 +1930,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                         PsychLockMutex(&vidcapRecordBANK[i].mutex);
                         if (dc1394_video_set_transmission(vidcapRecordBANK[i].camera, DC1394_ON) !=DC1394_SUCCESS) {
                             // Failed!
-                            PsychUnlockMutex(&vidcapRecordBANK[i].mutex);                            
+                            PsychUnlockMutex(&vidcapRecordBANK[i].mutex);
                             PsychErrorExitMsg(PsychError_user, "Unable to start isochronous data transfer of soft-synced slave camera - Start of sync video capture failed!");
                         }
                         PsychUnlockMutex(&vidcapRecordBANK[i].mutex);
@@ -1935,7 +1938,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 }
             }
         }
-        
+
         // Record real start time:
         PsychGetAdjustedPrecisionTimerSeconds(startattime);
 
@@ -1993,12 +1996,12 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             // it could be anywhere between 9 bpc and 16 bpc, depending on true sensor bit depth of camera:
             capdev->bitdepth = depth;
         }
-        
+
         // Allocate conversion buffer if needed for YUV->RGB or Bayer->RGB conversions.
         if (capdev->actuallayers == 3 && color_code != DC1394_COLOR_CODING_RGB8 && color_code != DC1394_COLOR_CODING_RGB16) {
             // Software conversion of YUV or RAW -> RGB needed. Allocate a proper scratch-buffer:
             capdev->convframe = (dc1394video_frame_t*) malloc(sizeof(dc1394video_frame_t));
-            memset(capdev->convframe, 0, sizeof(dc1394video_frame_t));            
+            memset(capdev->convframe, 0, sizeof(dc1394video_frame_t));
         }
 
         if (PsychPrefStateGet_Verbosity() > 2) {
@@ -2028,7 +2031,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 // a classic video encoding pipeline with GStreamer:
                 capdev->moviehandle = PsychCreateNewMovieFile(capdev->targetmoviefilename, capdev->width, capdev->height, (double) framerate, capdev->actuallayers, ((capdev->bitdepth > 8) ? 16 : 8), capdev->codecSpec, NULL);
             }
-            
+
             // Failed?
             if (capdev->moviehandle == -1) {
                 PsychErrorExitMsg(PsychError_user, "Setup of video recording failed.");
@@ -2068,18 +2071,18 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             // Yes. Setup and start recording thread.
             PsychLockMutex(&capdev->mutex);
             PsychUnlockMutex(&capdev->mutex);
-            
+
             // Create and startup thread:
             if ((rc = PsychCreateThread(&(capdev->recorderThread), NULL, PsychDCRecorderThreadMain, (void*) capdev))) {
                 printf("PTB-ERROR: In Screen('StartVideoCapture'): Could not create background video recording/processing thread [%s].\n", strerror(rc));
                 PsychErrorExitMsg(PsychError_system, "Thread creation for video recording/processing failed!");
             }
-            
+
             // Boost priority of recorderThread by 1 level and switch it to RT scheduling,
             // unless it is already RT-Scheduled. As the thread inherited our scheduling
             // priority from PsychCreateThread(), we only need to +1 tweak it from there:
             PsychSetThreadPriority(&(capdev->recorderThread), 2, 1);
-            
+
             // Recorder thread is in charge of dequeuing video frames from libdc1394 and pushing it
             // into the movie recording pipeline and into our own receive slot or videosink.
             if (PsychPrefStateGet_Verbosity() > 3) {
@@ -2101,7 +2104,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             if (capdev->stopAtFramecount > (capdev->framecounter + capdev->nrframes_pending)) {
                 capdev->stopAtFramecount = capdev->framecounter + capdev->nrframes_pending;
             }
-            
+
             // If this is the sync master then its final framecount determines the target framecount
             // for itself and all its slaves, e.g., for pushing dequeued frames to video recording:
             if (capdev->syncmode & kPsychIsSyncMaster) {
@@ -2125,13 +2128,13 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             if (PsychPrefStateGet_Verbosity() > 3) {
                 printf("PTB-INFO: Video capture on device %i will stop at target framecount %i.\n", capturehandle, capdev->stopAtFramecount);
             }
-            
+
             // Firewire bus-sync via bus-wide broadcast of iso-on command requested?
             if (capdev->syncmode & kPsychIsBusSynced) {
                 // Yes. The master should broadcast its stop command to all clients on the bus:
                 PsychDCEnableBusBroadcast(capdev, TRUE);
             }
-            
+
             // Only actually send stop command for iso-transmission if this isn't a slave cam, or
             // if this is hardware-synced via external trigger cable, so iso-stop doesn't actually
             // stop capture of the slave camera but only disable it for trigger reception:
@@ -2148,7 +2151,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                     PsychUnlockMutex(&capdev->mutex);
                     PsychErrorExitMsg(PsychError_user, "Unable to stop isochronous data transfer from camera - Stop of video capture failed!");
                 }
-                
+
                 // Is this a soft-synced configuration and the master has just stopped capture?
                 if ((capdev->syncmode & kPsychIsSoftSynced) && (capdev->syncmode & kPsychIsSyncMaster)) {
                     // Yes. Quickly stop all soft-synced slaves in our setup:
@@ -2194,10 +2197,10 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             // Was async background recording/processing active?
             if (capdev->recordingflags & 16) {
                 // Yes. Stop and destroy recording thread.
-                
+
                 // Wait for thread termination, cleanup and release the thread:
                 PsychDeleteThread(&(capdev->recorderThread));
-                
+
                 // Ok, thread is dead. Mark it as such:
                 capdev->recorderThread = (psych_thread) NULL;
 
@@ -2207,12 +2210,12 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                     printf("PTB-INFO: Async video %s thread on device %i stopped.\n", (capdev->recording_active) ? "recording" : "processing", capturehandle);
                 }
             }
-            
+
             // Video recording/GStreamer processing active? Then we should stop it now:
             if (capdev->moviehandle > -1) {
                 if (capdev->recording_active && (PsychPrefStateGet_Verbosity() > 2)) printf("PTB-INFO: Stopping video recording on device %i and closing moviefile '%s'\n", capturehandle, capdev->targetmoviefilename);
                 if (!capdev->recording_active && (PsychPrefStateGet_Verbosity() > 2)) printf("PTB-INFO: Stopping GStreamer video background processing on device %i.\n", capturehandle);
-                
+
                 // Flush and close video encoding pipeline, finalize and close movie file:
                 if (PsychFinalizeNewMovieFile(capdev->moviehandle) == 0) {
                     capdev->moviehandle = -1;
@@ -2233,7 +2236,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
             // Release current frame buffer, if any remaining:
             if (capdev->current_frame) free(capdev->current_frame);
             capdev->current_frame = NULL;
-            
+
             // No frame ready anymore:
             capdev->frame_ready = 0;
 
@@ -2247,7 +2250,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
                 if (capdev->corrupt_count > 0) {
                     printf("PTB-WARNING: Video capture detected %i corrupt frames on device %i since opening the capture device.\n", capdev->corrupt_count, capturehandle);
                 }
-                
+
                 printf("PTB-INFO: Total number of captured frames since this camera %i was opened: %i\n", capturehandle, capdev->framecounter);
                 if (capdev->nrframes > 0) capdev->avg_decompresstime/= (double) capdev->nrframes;
                 printf("PTB-INFO: Average time spent %s was %lf milliseconds.\n", ((capdev->recordingflags & 16) ? "in video processing thread" : "waiting/polling for new frames"), capdev->avg_decompresstime * 1000.0f);
@@ -2692,7 +2695,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
             // at least close to 0xffff - minus the all-zero undefined lsb bits:
             psych_uint16 *frameinwords = (psych_uint16*) input_image;
             psych_uint16 *frameoutwords = (psych_uint16*) outrawbuffer->data;
-            
+
             count /= 2; // Half as many words as bytes.
             for (i = 0; i < count; i++) *(frameoutwords++) = *(frameinwords++) << (16 - capdev->bitdepth);
         }
@@ -2716,7 +2719,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
         }
 
         // Reset current drop count for this cycle:
-        capdev->current_dropped = 0;        
+        capdev->current_dropped = 0;
     }
 
     // Release cached frame buffer, if any:
@@ -2726,10 +2729,10 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     // Update total count of dropped frames. Only makes sense if frame dropping for low latency
     // frame fetch is enabled. Otherwise this would be just confusing:
     capdev->nr_droppedframes += (capdev->dropframes) ? capdev->pulled_dropped : 0;
-    
+
     // Find number of dropped frames at time of return of this frame:
     nrdropped = capdev->pulled_dropped;
-    
+
     // Timestamping:
     PsychGetAdjustedPrecisionTimerSeconds(&tend);
 
@@ -2770,7 +2773,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
     PsychVidcapRecordType* capdev = (capturehandle != -1) ? PsychGetVidcapRecord(capturehandle) : NULL;
 
     oldintval = 0xFFFFFFFF;
-    
+
     // Round value to integer:
     intval = (int) (value + 0.5);
 
@@ -2791,7 +2794,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         // Note: This only arrives at caller if capturehandle != -1
         return(oldvalue);
     }
-    
+
     // Get/Set debayering method for raw sensor data to RGB conversion:
     if (strcmp(pname, "OverrideBayerPattern")==0) {
         oldvalue = ((capdev) ? capdev->color_filter_override : global_color_filter) - DC1394_COLOR_FILTER_MIN;
@@ -2805,7 +2808,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
                 global_color_filter = intval + DC1394_COLOR_FILTER_MIN;
             }
         }
-        
+
         // Note: This only arrives at caller if capturehandle != -1
         return(oldvalue);
     }
@@ -2837,7 +2840,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
             // with proper warnings to user at runtime if that should fail.
             capdev->specialFlags |= 1;
             if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Basler SFF features enabled. Trying to use Format7 video capture modes to make this functional.\n");
-            
+
             if (PsychPrefStateGet_Verbosity() > 5) {
                 printf("PTB-INFO: The following SFF Smart-Features are supported by the library (but not neccessarily this camera:\n");
                 dc1394_basler_sff_feature_print_all (capdev->camera, stdout);
@@ -2845,7 +2848,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
             }
         }
     }
-    
+
     // Check parameter name pname and call the appropriate subroutine:
 
     // Basler frame counter: Counts number of captured frames by camera since power-up time:
@@ -2856,7 +2859,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         err = dc1394_basler_sff_feature_is_available(capdev->camera, DC1394_BASLER_SFF_FRAME_COUNTER, &present);
         if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not query presence of SFF frame counter.");
         if (!present) PsychErrorExitMsg(PsychError_user, "Basler SFF frame counter not supported on this camera. Enable failed.");
-        
+
         err = dc1394_basler_sff_feature_is_enabled(capdev->camera, DC1394_BASLER_SFF_FRAME_COUNTER, &present);
         if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not query status of SFF frame counter enable.");
         if (!present) {
@@ -2866,7 +2869,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 
         // Mark SFF framecounter active:
         capdev->specialFlags |= 2;
-        
+
         // Return success:
         return(1);
     }
@@ -2876,7 +2879,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         err = dc1394_basler_sff_feature_is_available(capdev->camera, DC1394_BASLER_SFF_CYCLE_TIME_STAMP, &present);
         if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not query presence of SFF timestamp.");
         if (!present) PsychErrorExitMsg(PsychError_user, "Basler SFF timestamp not supported on this camera. Enable failed.");
-        
+
         err = dc1394_basler_sff_feature_is_enabled(capdev->camera, DC1394_BASLER_SFF_CYCLE_TIME_STAMP, &present);
         if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not query status of SFF timestamp enable.");
         if (!present) {
@@ -2886,17 +2889,17 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 
         // Mark SFF timestamp active:
         capdev->specialFlags |= 4;
-        
+
         // Return success:
         return(1);
     }
-    
+
     // Basler CRC checksums: The camera compute a CRC and tags the frame. We recompute the CRC on frame reception to find corrupt frames.
     if (strcmp(pname, "BaslerChecksumEnable")==0) {
         err = dc1394_basler_sff_feature_is_available(capdev->camera, DC1394_BASLER_SFF_CRC_CHECKSUM, &present);
         if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not query presence of SFF checksum.");
         if (!present) PsychErrorExitMsg(PsychError_user, "Basler SFF checksum not supported on this camera. Enable failed.");
-        
+
         err = dc1394_basler_sff_feature_is_enabled(capdev->camera, DC1394_BASLER_SFF_CRC_CHECKSUM, &present);
         if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not query status of SFF checksum enable.");
         if (!present) {
@@ -2910,32 +2913,32 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         // Return success:
         return(1);
     }
-    
+
     // Basler test image: The camera transmits a synthetic test image to check onboard electronics, bus and reception. Sensor and ADC are off.
     /* This is not yet supported by libdc1394:
     if (strcmp(pname, "BaslerTestImageEnable")==0) {
         err = dc1394_basler_sff_feature_is_available(capdev->camera, DC1394_BASLER_SFF_TEST_IMAGES, &present);
         if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not query presence of SFF test image.");
         if (!present) PsychErrorExitMsg(PsychError_user, "Basler SFF test image not supported on this camera. Enable failed.");
-        
+
         err = dc1394_basler_sff_feature_is_enabled(capdev->camera, DC1394_BASLER_SFF_TEST_IMAGES, &present);
         if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not query status of SFF test image enable.");
         if (!present) {
             err = dc1394_basler_sff_feature_enable(capdev->camera, DC1394_BASLER_SFF_TEST_IMAGES, DC1394_ON);
             if (err) PsychErrorExitMsg(PsychError_system, "Basler: Could not enable SFF test image.");
         }
-        
+
         // Return success:
         return(1);
     }
     */
-    
+
     // Set a new target movie name for video recordings:
     if (strstr(pname, "SetNewMoviename=")) {
         // Find start of movie namestring and assign to pname:
         pname = strstr(pname, "=");
         pname++;
-        
+
         // Child protection:
         if (!capdev->recording_active) {
             if (PsychPrefStateGet_Verbosity() > 1) {
@@ -2943,7 +2946,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
             }
             return(-2);
         }
-        
+
         // Can't reassign new codec without reopening the device:
         if (strstr(pname, ":CodecType")) {
             *(strstr(pname, ":CodecType")) = 0;
@@ -2963,14 +2966,14 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         // Release old movie name:
         if (capdev->targetmoviefilename) free(capdev->targetmoviefilename);
         capdev->targetmoviefilename = NULL;
-        
+
         // Assign new movie name:
         capdev->targetmoviefilename = strdup(pname);
-        
+
         if (PsychPrefStateGet_Verbosity() > 2) {
             printf("PTB-INFO: Changed name of movie file for recording on device %i to '%s'.\n", capturehandle, pname);
         }
-        
+
         return(0);
     }
 
@@ -2983,14 +2986,14 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         // Release old string, if any:
         if (capdev->processingString) free(capdev->processingString);
         capdev->processingString = NULL;
-        
+
         // Assign new string:
         capdev->processingString = strdup(pname);
-        
+
         if (PsychPrefStateGet_Verbosity() > 2) {
             printf("PTB-INFO: Assigned GStreamer pipeline spec video processing string for device %i as '%s'.\n", capturehandle, pname);
         }
-        
+
         return(0);
     }
 
@@ -3008,11 +3011,11 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 
         // Library loaded and linked. Get function handles for functions we do care about:
         TrackerPlugin_initialize = (void* (*)()) dlsym(markerTrackerPlugin_libraryhandle, "TrackerPlugin_initialize");
-        
+
         TrackerPlugin_shutdown = (bool (*)(void*)) dlsym(markerTrackerPlugin_libraryhandle, "TrackerPlugin_shutdown");
-        
+
         TrackerPlugin_processFrame = (bool (*)(void*, unsigned long* source_ptr, int imgwidth, int imgheight, int xmin, int ymin, unsigned int timeidx, double capturetimestamp, unsigned int absolute_frameindex)) dlsym(markerTrackerPlugin_libraryhandle, "TrackerPlugin_processFrame");
-        
+
         TrackerPlugin_processPluginDataBuffer = (bool (*)(void*, unsigned long* buffer, int size)) dlsym(markerTrackerPlugin_libraryhandle, "TrackerPlugin_processPluginDataBuffer");
 
         // Binding successfull?
@@ -3028,18 +3031,18 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
             printf("PTB-ERROR: Failed to initialize markertracker plugin for device %i under name '%s'.\n", capturehandle, pname);
             PsychErrorExitMsg(PsychError_user, "Initializing markertracker plugin failed!");
         }
-        
+
         if (PsychPrefStateGet_Verbosity() > 2) {
             printf("PTB-INFO: Markertracker plugin loaded and initialized for device %i as '%s'.\n", capturehandle, pname);
         }
-        
+
         return(0);
     }
 
     // Send command to  a 2D marker tracking plugin:
     if (strstr(pname, "SendCommandToMarkerTrackingPlugin=")) {
         unsigned long buffer[1024];
-        
+
         // Find start of string and assign to pname:
         pname = strstr(pname, "=");
         pname++;
@@ -3053,7 +3056,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
             // in units of unsigned long's:
             if (strlen(pname) + 1 > sizeof(buffer)) PsychErrorExitMsg(PsychError_user, "Tried to send too much data to a markertracker plugin for this capture device!");
             memcpy(&(buffer[0]), pname, strlen(pname) + 1);
-            
+
             if (!(*TrackerPlugin_processPluginDataBuffer)(capdev->markerTrackerPlugin, &(buffer[0]), (strlen(pname) / sizeof(unsigned long)) + 1 )) {
                 printf("PTB-ERROR: SendCommandToMarkerTrackingPlugin: Failed to send command to markertracker plugin for device %i! Command was '%s'.\n", capturehandle, pname);
                 PsychErrorExitMsg(PsychError_user, "Failed to send data to markertracker plugin for this capture device!");
@@ -3070,7 +3073,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 
     if (strcmp(pname, "PrintParameters")==0) {
         dc1394featureset_t camfeatures;
-        
+
         // Special command: List and print all features...
         printf("PTB-INFO: The camera provides the following information and featureset:\n");
         if (dc1394_camera_print_info(capdev->camera, stdout) !=DC1394_SUCCESS) {
@@ -3084,7 +3087,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
             printf("\n");
             dc1394_feature_print_all(&camfeatures, stdout);
         }
-        
+
         return(0);
     }
 
@@ -3113,7 +3116,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         PsychCopyOutCharArg(1, FALSE, capdev->camera->model);
         return(0);
     }
-    
+
     // Return current firewire bus bandwidth usage of camera::
     if (strcmp(pname, "GetBandwidthUsage")==0) {
         dc1394_video_get_bandwidth_usage(capdev->camera, (uint32_t *) &intval);
@@ -3143,7 +3146,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         PsychUnlockMutex(&capdev->mutex);
         return(0);
     }
-    
+
     // Get current framecount of already captured and dequeued frames:
     if (strcmp(pname, "GetCurrentFramecount")==0) {
         PsychLockMutex(&capdev->mutex);
@@ -3201,18 +3204,18 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
                         }
                     }
                 }
-                
+
                 PsychUnlockMutex(&capdev->mutex);
-                
+
                 if (PsychPrefStateGet_Verbosity() > 3) {
                     printf("PTB-INFO: Video %s on device %i will stop at target framecount %i.\n", (capdev->recording_active) ? "recording" : "capture", capturehandle, capdev->stopAtFramecount);
                 }
             }
         }
-        
+
         return(oldvalue);
     }
-    
+
     // Get/Set special treatment mode for raw sensor data:
     if (strcmp(pname, "DataConversionMode")==0) {
         oldvalue = capdev->dataconversionmode;
@@ -3262,7 +3265,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
                     }
                 }
             }
-            
+
             // Assign new syncmode:
             capdev->syncmode = (int) intval;
         }
@@ -3283,7 +3286,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
             err = dc1394_external_trigger_get_mode(capdev->camera, &mode);
         }
         else err = DC1394_FUNCTION_NOT_SUPPORTED;
-        
+
         if (err) {
             if(PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Requested capture device setting %s not available on cam %i. Ignored.\n", pname, capturehandle);
             return(oldvalue);
@@ -3315,12 +3318,12 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
             err = dc1394_external_trigger_get_source(capdev->camera, &source);
         }
         else err = DC1394_FUNCTION_NOT_SUPPORTED;
-        
+
         if (err) {
             if(PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Requested capture device setting %s not available on cam %i. Ignored.\n", pname, capturehandle);
             return(oldvalue);
         }
-        else {        
+        else {
             oldvalue = (unsigned int) source - (unsigned int) DC1394_TRIGGER_SOURCE_MIN;
 
             if (value != DBL_MAX) {
@@ -3345,21 +3348,21 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
             err = dc1394_external_trigger_get_supported_sources(capdev->camera, &sources);
         }
         else err = DC1394_FUNCTION_NOT_SUPPORTED;
-        
+
         if (err) {
             if(PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Requested capture device setting %s not available on cam %i. Ignored.\n", pname, capturehandle);
             return(oldvalue);
         }
-        
+
         PsychAllocOutDoubleMatArg(1, FALSE, 1, sources.num, 0, &outsources);
         for (i = 0; i < (int) sources.num; i++) *(outsources++) = (double) (sources.sources[i] - DC1394_TRIGGER_SOURCE_MIN);
-        
+
         return(0);
     }
-    
+
     // Set trigger polarity:
     // Note: Videolab used TriggerPolarity zero == DC1394_TRIGGER_ACTIVE_LOW == Trigger on falling edge.
-    if (strcmp(pname, "TriggerPolarity")==0) {        
+    if (strcmp(pname, "TriggerPolarity")==0) {
         dc1394trigger_polarity_t polarity;
 
         // Double-Check the camera supports hw triggers:
@@ -3368,7 +3371,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
             err = dc1394_external_trigger_has_polarity(capdev->camera, &present);
         }
         else err = DC1394_FUNCTION_NOT_SUPPORTED;
-        
+
         if (err || !present) {
             if(PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to query/set TriggerPolarity on camera %i. Unsupported feature. Ignored.\n", capturehandle);
             return(oldvalue);
@@ -3390,7 +3393,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
     // Get/Set GPIO pins on camera, if any:
     if (strstr(pname, "PIO")!=0) {
         unsigned int pio;
-        
+
         err = dc1394_pio_get(capdev->camera, &pio);
         if (err) return(DBL_MAX); // Query failed.
 
@@ -3402,7 +3405,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         // Return old value:
         return(pio);
     }
-    
+
     // Get/Set if 1394B mode aka Firewire-800+ mode is active, or if legacy Firewire-400 mode is active on this camera:
     if (strstr(pname, "1394BModeActive")!=0) {
         dc1394operation_mode_t opmode;
@@ -3420,7 +3423,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
     // Get/Set firewire ISO bus speed:
     if (strstr(pname, "ISOSpeed")!=0) {
         dc1394speed_t isospeed;
-        
+
         err = dc1394_video_get_iso_speed(capdev->camera, &isospeed);
         if (err) return(DBL_MAX); // Query failed.
 
@@ -3428,7 +3431,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
             err = dc1394_video_set_iso_speed(capdev->camera, ((int) log2((double) (intval / 100))) + DC1394_ISO_SPEED_100);
             if (err) PsychErrorExitMsg(PsychError_system, "Failed to set new firewire ISO bus speed on camera!");
         }
-        
+
         // Return old value: Offset 0 = 100 MBIT, 1 = 200, 2 = 400, ...
         return((1 << (isospeed - DC1394_ISO_SPEED_100)) * 100);
     }
@@ -3437,14 +3440,14 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
     if (strstr(pname, "GetCycleTimer")!=0) {
         dc1394basler_sff_cycle_time_stamp_t ct;
         uint64_t systemtime;
-        
+
         err = dc1394_read_cycle_timer(capdev->camera, &(ct.cycle_time_stamp.unstructured.value), &systemtime);
         if (err && (err != DC1394_FUNCTION_NOT_SUPPORTED)) PsychErrorExitMsg(PsychError_system, "Failed to query cycle timer!");
         if (err == DC1394_FUNCTION_NOT_SUPPORTED) return(oldvalue);
 
         // Copy out Firewire bus time converted into seconds:
         PsychCopyOutDoubleArg(1, FALSE, PsychDCBusCycleTimeToSecs(ct.cycle_time_stamp.unstructured.value));
-        
+
         // System time is CLOCK_REALTIME time in microseconds, so convert to GetSecs() seconds:
         PsychCopyOutDoubleArg(2, FALSE, ((double) ((psych_uint64) systemtime)) / 1000000.0f);
 
@@ -3456,7 +3459,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 
         // Copy out Firewire bus time in clock ticks of the 24.576Mhz bus clock on top of seconds and iso cycles:
         PsychCopyOutDoubleArg(5, FALSE, (double) ct.cycle_time_stamp.structured.cycle_offset);
-        
+
         return(0);
     }
 
@@ -3480,7 +3483,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
             // Retrieve and return current settings:
             unsigned int target_temperature, temperature;
             err = dc1394_feature_temperature_get_value(capdev->camera, &target_temperature, &temperature);
-            if (err) PsychErrorExitMsg(PsychError_system, "Failed to get target temperature and current temperature!");                                       
+            if (err) PsychErrorExitMsg(PsychError_system, "Failed to get target temperature and current temperature!");
             PsychCopyOutDoubleArg(2, FALSE, temperature);
 
             // Set new target temperature:
@@ -3488,7 +3491,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
                 err = dc1394_feature_temperature_set_value(capdev->camera, intval);
                 if (err) PsychErrorExitMsg(PsychError_system, "Failed to set target temperature!");
             }
-            
+
             return((double) target_temperature);
         }
         else {
@@ -3504,9 +3507,9 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
             // Retrieve and return current settings:
             unsigned int ub, vr;
             err = dc1394_feature_whitebalance_get_value(capdev->camera, &ub, &vr);
-            if (err) PsychErrorExitMsg(PsychError_system, "Failed to get white balance U/B and V/R values!");            
+            if (err) PsychErrorExitMsg(PsychError_system, "Failed to get white balance U/B and V/R values!");
             PsychCopyOutDoubleArg(2, FALSE, vr);
-            
+
             // Set new white balance values:
             if (value != DBL_MAX) {
                 PsychCopyInIntegerArg(4, TRUE, (int*) &vr);
@@ -3529,10 +3532,10 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
             // Retrieve and return current settings:
             unsigned int rv, gv, bv;
             err = dc1394_feature_whiteshading_get_value(capdev->camera, &rv, &gv, &bv);
-            if (err) PsychErrorExitMsg(PsychError_system, "Failed to get white shading R, G, B values!");            
+            if (err) PsychErrorExitMsg(PsychError_system, "Failed to get white shading R, G, B values!");
             PsychCopyOutDoubleArg(2, FALSE, gv);
             PsychCopyOutDoubleArg(2, FALSE, bv);
-            
+
             // Set new white shading values:
             if (value != DBL_MAX) {
                 PsychCopyInIntegerArg(4, TRUE, (int*) &gv);
@@ -3578,7 +3581,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         assigned = true;
         feature = DC1394_FEATURE_HUE;
     }
-    
+
     if (strstr(pname, "Saturation")!=0) {
         assigned = true;
         feature = DC1394_FEATURE_SATURATION;
@@ -3603,12 +3606,12 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         assigned = true;
         feature = DC1394_FEATURE_ZOOM;
     }
-    
+
     if (strstr(pname, "Pan")!=0) {
         assigned = true;
         feature = DC1394_FEATURE_PAN;
     }
-    
+
     if (strstr(pname, "Tilt")!=0) {
         assigned = true;
         feature = DC1394_FEATURE_TILT;
@@ -3618,12 +3621,12 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         assigned = true;
         feature = DC1394_FEATURE_OPTICAL_FILTER;
     }
-    
+
     if (strstr(pname, "CaptureSize")!=0) {
         assigned = true;
         feature = DC1394_FEATURE_CAPTURE_SIZE;
     }
-    
+
     if (strstr(pname, "CaptureQuality")!=0) {
         assigned = true;
         feature = DC1394_FEATURE_CAPTURE_QUALITY;
@@ -3638,7 +3641,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         assigned = true;
         feature = DC1394_FEATURE_TRIGGER_DELAY;
     }
-    
+
     // Check if feature is present on this camera:
     if (dc1394_feature_is_present(capdev->camera, feature, &present)!=DC1394_SUCCESS) {
         if(PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to query presence of feature %s on camera %i! Ignored.\n", pname, capturehandle);
@@ -3807,7 +3810,7 @@ unsigned char* PsychDCDebayerFrame(unsigned char* inBayerImage, unsigned int wid
     dc1394error_t error;
     dc1394video_frame_t inFrame, outFrame;
     unsigned char* outImage;
-    
+
     memset(&inFrame, 0, sizeof(dc1394video_frame_t));
     memset(&outFrame, 0, sizeof(dc1394video_frame_t));
 
@@ -3827,12 +3830,12 @@ unsigned char* PsychDCDebayerFrame(unsigned char* inBayerImage, unsigned int wid
             printf("PTB-WARNING: Use Screen('SetVideoCaptureParameter', -1, 'OverrideBayerPattern', pattern);\n");
             printf("PTB-WARNING: to assign a suitable 'pattern' manually.\n");
         }
-        
+
         if (error == DC1394_INVALID_BAYER_METHOD) {
             printf("PTB-WARNING: Invalid debayering method selected. Select a different 'method' via \n");
             printf("PTB-WARNING: Screen('SetVideoCaptureParameter', -1, 'DebayerMethod', method);\n");
         }
-        
+
         // Failure:
         printf("PTB-ERROR: Bayer filtering of video frame failed.\n");
         return(NULL);

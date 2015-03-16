@@ -46,3 +46,9 @@ ACTION=="add", SUBSYSTEM=="usb-serial", DRIVER=="ftdi_sio", ATTR{latency_timer}=
 
 # Enable non-root access of libusb to the USB-HID DAQ devices supported by the DAQ toolbox:
 ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="09db", MODE="0666"
+
+# Enable non-root access of libusb to the USB-3 PointGrey IIDC cameras:
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="1e10", MODE="0666"
+
+# Enable non-root access of libusb to the USB-HID interface of the Occulus Rift DK2 HMD:
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="2833", MODE="0666"

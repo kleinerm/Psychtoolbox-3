@@ -104,16 +104,16 @@ catch %#ok<*CTCH>
    fprintf('a system without Psychtoolbox-3 properly installed - or not installed at all.\n\n');
 
    if IsWin && IsOctave
-		le = psychlasterror;
-		if ~isempty(strfind(le.message, 'library or dependents')) && ~isempty(strfind(le.message, 'Screen.mex'))
-			% Likely the required GStreamer runtimes aren't installed yet!
-			fprintf('The most likely cause, based on the fact you are running on Octave under Windows\n');
-			fprintf('and given this error message: %s\n', le.message);
-			fprintf('is that the required GStreamer runtime libraries are not yet installed on your system.\n\n');
-			fprintf('Please type ''help GStreamer'' and read the installation instructions carefully.\n');
-			fprintf('After this one-time setup, the Screen command should work properly.\n\n');
-			fprintf('If this has been ruled out as a reason for failure, the following could be the case:\n\n');
-		end
+      le = psychlasterror;
+      if ~isempty(strfind(le.message, 'library or dependents')) && ~isempty(strfind(le.message, 'Screen.mex'))
+         % Likely the required GStreamer runtimes aren't installed yet!
+         fprintf('The most likely cause, based on the fact you are running on Octave under Windows\n');
+         fprintf('and given this error message: %s\n', le.message);
+         fprintf('is that the required GStreamer runtime libraries are not yet installed on your system.\n\n');
+         fprintf('Please type ''help GStreamer'' and read the installation instructions carefully.\n');
+         fprintf('After this one-time setup, the Screen command should work properly.\n\n');
+         fprintf('If this has been ruled out as a reason for failure, the following could be the case:\n\n');
+      end
    end
    
    if IsLinux
