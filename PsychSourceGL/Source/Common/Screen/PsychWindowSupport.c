@@ -964,6 +964,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     }
 
     if (PsychIsGLClassic(*windowRecord)) {
+        double tDummy;
+
         // Classic OpenGL-1/2 splash image drawing code:
         glDrawBuffer(GL_BACK_LEFT);
 
@@ -971,15 +973,22 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         PsychDrawSplash(*windowRecord);
         PsychOSFlipWindowBuffers(*windowRecord);
 
+        // PsychOSGetSwapCompletionTimestamp can help the Intel ddx under DRI2+SNA to
+        // misbehave less if triple-buffering is enabled. It becomes almost useful
+        // if we accomodate its current quirks:
+        PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
+
         // Protect against multi-threading trouble if needed:
         PsychLockedTouchFramebufferIfNeeded(*windowRecord);
 
         PsychDrawSplash(*windowRecord);
         PsychOSFlipWindowBuffers(*windowRecord);
+        PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
         PsychLockedTouchFramebufferIfNeeded(*windowRecord);
 
         PsychDrawSplash(*windowRecord);
         PsychOSFlipWindowBuffers(*windowRecord);
+        PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
         PsychLockedTouchFramebufferIfNeeded(*windowRecord);
 
         // We do it again for right backbuffer to clear possible stereo-contexts as well...
@@ -4255,6 +4264,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
 
         // Schedule a buffer-swap on next VBL:
         PsychOSFlipWindowBuffers(windowRecord);
+        PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &tnew);
 
         // Protect against multi-threading trouble if needed:
         PsychLockedTouchFramebufferIfNeeded(windowRecord);

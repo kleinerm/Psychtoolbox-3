@@ -1219,6 +1219,11 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
         glXMakeCurrent(dpy, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.contextObject);
         PsychUnlockDisplay();
 
+        // A glClear to touch the framebuffer before flip. Why? To accomodate some quirks of
+        // the Intel ddx as of 2.99.917 with DRI2+SNA and triple-buffering enabled. Makes
+        // triple-buffered mode at least marginally useful for some restricted use cases:
+        glClear(GL_COLOR_BUFFER_BIT);
+
         PsychOSFlipWindowBuffers(windowRecord);
         PsychOSGetPostSwapSBC(windowRecord);
     }
@@ -1839,6 +1844,12 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
         // if it detects problems of the driver with sticking to the schedule:
         PsychUnlockDisplay();
 
+        // A glClear to touch the framebuffer before flip. Why? To accomodate some quirks of
+        // the Intel ddx as of 2.99.917 with DRI2+SNA and triple-buffering enabled. Makes
+        // triple-buffered mode at least marginally useful for some restricted use cases.
+        // Without rendering something to the framebuffer, swap scheduling totally falls over
+        // if triple-buffering is enabled under DRI2...
+        glClear(GL_COLOR_BUFFER_BIT);
         PsychOSScheduleFlipWindowBuffers(windowRecord, 0.0, msc + 5, 0, 0, 0);
 
         // Just a dummy call to wait for completion and to trigger consistency checks and workarounds if needed:
