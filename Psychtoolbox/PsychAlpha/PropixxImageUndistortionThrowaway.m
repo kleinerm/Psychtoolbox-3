@@ -26,9 +26,42 @@ function PropixxImageUndistortionThrowaway(calibfilename, flipmethod, corrmethod
 % corrmethod = 1  -> Separate correction for each quadrant.
 %
 % 'imagefilename' optional name of image file to display - see code.
+%
+% Performance/Stability tips:
+%
+% On Linux with the open-source graphics drivers, flipmethod 2 will
+% increase stability due to the ability to do non-blocking but still
+% vsynced flips without the overhead of AsyncFlipBegin et al. If you
+% can enable triplebuffering in the graphics driver (intel or nouveau)
+% that will give another boost on Linux. If you can use DRI3/Present,
+% even better (Requires XOrg 1.16.3 or later, Mesa 10.3.4 or later, iow.
+% a Ubuntu 15.04 distro or later for ease of setup).
+%
+% On Linux with the proprietary graphics drivers, or on OSX or Windows,
+% 'AsyncFlipBegin' flips should get you a bit of extra stability if you
+% are lucky, albeit not as good as with Linux + FOSS drivers.
+%
+% On Linux with proprietary drivers or on Windows you may be able to get
+% a bit more stability if your graphics driver supports triplebuffering.
+% However, time stamping and other correctness tests wouldn't work anymore,
+% so you'd need some other means to verify timing.
+%
+% Another method to get reliability and proper timestamping on any
+% operating system without much tweaking or configuration is of course
+% to simply buy the fastest graphics card money can buy and then make
+% your stimuli simple enough so it can cope with them.
+%
+% In general your graphics card must be able to do all processing within
+% much less than 8.33 msecs for Propixx fast modes to work, so reasonable
+% stimulus design and a fast graphics card is important. Above special
+% flipmethod's or the use of properly setup Linux can buy you a few msecs
+% of extra safety margin to compensate for occassional timing glitches, ie.,
+% if the graphics card occassionally overshoots its 8.3 msecs budget, but is
+% capable of meeting it on average - in such cases those tricks help.
 
 % History:
 % 14-Mar-2015  mk  Initial incomplete prototype for testing.
+% 17-Mar-2015  mk  Bits of tweaking, some performance tips in help.
 
 if nargin < 2 || isempty(flipmethod)
     % flipmethod 0 is the most safe, but also the least
@@ -54,9 +87,14 @@ screenid = max(Screen('Screens'));
 
 PsychImaging('PrepareConfiguration');
 
-if flipmethod == 1
+if flipmethod >= 1
     % For drawing during async flip - aka effective triplebuffering -
-    % to work, we need a virtual framebuffer:
+    % to work, we need a virtual framebuffer. This also helps for
+    % flipmethod == 2 on Linux with double-buffering, because it
+    % decouples swap completion aka availability of the backbuffer
+    % from stimulus rendering and composition for 4 quadrant 3 RGB
+    % channels, so those steps can run while a bufferswap is still
+    % pending.
     PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
 end
 
