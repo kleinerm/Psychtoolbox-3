@@ -1,13 +1,22 @@
 function varargout = CMUBox(cmd, handle, varargin)
 % CMUBox - Access CMU response button box or PST serial response button box as well as fORP and Bitwhacker devices.
 % 
-%
 % This allows to query button response boxes of type CMU (Carnegie Mellon
 % University box) and PST (E-Prime response box). It also allows to use a
 % UBW32/Bitwhacker device to be used as a response box if the device is
 % loaded with the StickOS firmware from http://cpustick.com. It also allows
 % to use the Curdes fORP devices if connected via serial port. And it offers
 % a simple way to access the RTBox in E-Prime mode.
+%
+% Note to MS-Windows users: You may need to setup the COM port of your machine
+% properly and then reboot once to get correct timing. In the device manager
+% for the COM ports, there is some "Advanced settings" tab or button somewhere.
+% If you find a section called "FIFO size" or similar, set the FIFO size to
+% a setting of 1 Byte, or disable FIFO's completely. Otherwise you may get
+% inaccurate timestamps or many timestamp warnings from CMUBox('GetEvent').
+% As far as USB-serial converters go, only converters from FTDI have been tested
+% to be well behaved.
+%
 %
 % Commands and their syntax:
 % --------------------------
@@ -173,6 +182,7 @@ function varargout = CMUBox(cmd, handle, varargin)
 %                as the Curdes fORP devices when connected via serial port.
 % 13.02.2012 mk  Update with support for Cedrus Lumina, based on
 %                information provided by some user named "Nick".
+% 19.03.2015 mk  Add some setup tips for MS-Windows + serial ports.
 
 % Cell array of structs for our boxes: One cell for each open box.
 persistent boxes;
