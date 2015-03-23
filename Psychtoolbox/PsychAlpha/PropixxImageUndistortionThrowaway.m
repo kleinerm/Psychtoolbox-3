@@ -198,10 +198,6 @@ while 1
   end
 end
 
-% Some magic to keep some weird driver happy on some OS:
-WaitSecs(0.1);
-Screen('FillRect', w, 0);
-
 % Final flip for time measurement:
 tend = Screen('Flip', w);
 
