@@ -713,8 +713,9 @@ static void *KbQueueWorkerThreadMain(void *inarg) {
     IOHIDQueueScheduleWithRunLoop(queue[deviceIndex], psychHIDKbQueueCFRunLoopRef[deviceIndex], kCFRunLoopDefaultMode);
 
     // Start the run loop, code execution will block here until run loop is stopped again by PsychHIDKbQueueRelease
-    // Meanwhile, the run loop of this thread will be responsible for executing code below in PsychHIDKbQueueCalbackFunction
-    while (CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.1, false) == kCFRunLoopRunTimedOut) {};
+    // The run loop will be responsible for executing the code in PsychHIDKbQueueCallbackFunction() whenever input
+    // is available:
+    CFRunLoopRun();
 
     // Remove HID queue from current runloop:
     IOHIDQueueUnscheduleFromRunLoop(queue[deviceIndex], psychHIDKbQueueCFRunLoopRef[deviceIndex], kCFRunLoopDefaultMode);
