@@ -852,28 +852,17 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
         }
     }
 
-    // Register "queue empty -> non-empty transition" callback: TODO Replace queue by reference to our keyboard queue struct:
+    // Register "queue empty -> non-empty transition" callback:
     IOHIDQueueRegisterValueAvailableCallback(queue[deviceIndex], (IOHIDCallback) PsychHIDKbQueueCallbackFunction, (void*) (long) deviceIndex);
 
     // Create event buffer:
     PsychHIDCreateEventBuffer(deviceIndex);
 
     // Start the processing thread for this queue:
-    PsychLockMutex(&KbQueueMutex);
-
     if (PsychCreateThread(&KbQueueThread[deviceIndex], NULL, KbQueueWorkerThreadMain, (void*) (long) deviceIndex)) {
-        // We are so screwed:
-
-        // Cleanup the mess:
-        psychHIDKbQueueActive[deviceIndex] = FALSE;
-        PsychUnlockMutex(&KbQueueMutex);
-
-        // Whine a little bit:
         printf("PsychHID-ERROR: Start of keyboard queue processing for deviceIndex %i failed!\n", deviceIndex);
         PsychErrorExitMsg(PsychError_system, "Creation of keyboard queue background processing thread failed!");
     }
-
-    PsychUnlockMutex(&KbQueueMutex);
 
     // Ready to use this keybord queue.
     return(PsychError_none);
@@ -928,9 +917,6 @@ void PsychHIDOSKbQueueRelease(int deviceIndex)
 
 void PsychHIDOSKbQueueStop(int deviceIndex)
 {
-    psych_bool queueActive;
-    int i;
-
     // Get true keyboardqueue index assigned to deviceIndex from original user provided deviceIndex:
     deviceIndex = PsychHIDOSGetKbQueueDevice(deviceIndex, NULL);
 
@@ -946,28 +932,14 @@ void PsychHIDOSKbQueueStop(int deviceIndex)
     // Stop event collection in the queue:
     IOHIDQueueStop(queue[deviceIndex]);
 
-    // Queue is active. Stop it:
-    PsychLockMutex(&KbQueueMutex);
-
     // Mark queue logically stopped:
     psychHIDKbQueueActive[deviceIndex] = FALSE;
-
-    PsychUnlockMutex(&KbQueueMutex);
-
-    // Was this the last active queue?
-    queueActive = FALSE;
-    for (i = 0; i < PSYCH_HID_MAX_DEVICES; i++) {
-        queueActive |= psychHIDKbQueueActive[i];
-    }
 
     return;
 }
 
 void PsychHIDOSKbQueueStart(int deviceIndex)
 {
-    psych_bool queueActive;
-    int i;
-
     // Get true keyboardqueue index assigned to deviceIndex from original user provided deviceIndex:
     deviceIndex = PsychHIDOSGetKbQueueDevice(deviceIndex, NULL);
 
@@ -981,31 +953,14 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
     // Keyboard queue already stopped? Then we ain't nothing to do:
     if (psychHIDKbQueueActive[deviceIndex]) return;
 
-    // Queue is inactive. Start it:
-
-    // Will this be the first active queue, ie., aren't there any queues running so far?
-    queueActive = FALSE;
-    for (i = 0; i < PSYCH_HID_MAX_DEVICES; i++) {
-        queueActive |= psychHIDKbQueueActive[i];
-    }
-
-    PsychLockMutex(&KbQueueMutex);
-
-    // Clear out current state for this queue:
-    memset(psychHIDKbQueueFirstPress[deviceIndex]   , 0, (256 * sizeof(double)));
-    memset(psychHIDKbQueueFirstRelease[deviceIndex] , 0, (256 * sizeof(double)));
-    memset(psychHIDKbQueueLastPress[deviceIndex]    , 0, (256 * sizeof(double)));
-    memset(psychHIDKbQueueLastRelease[deviceIndex]  , 0, (256 * sizeof(double)));
-    modifierKeyState[deviceIndex] = 0;
+    // Clear old content:
+    PsychHIDOSKbQueueFlush(deviceIndex);
 
     // Start event collection in the queue:
     IOHIDQueueStart(queue[deviceIndex]);
 
     // Mark this queue as logically started:
     psychHIDKbQueueActive[deviceIndex] = TRUE;
-
-    // Queue started.
-    PsychUnlockMutex(&KbQueueMutex);
 
     return;
 }
