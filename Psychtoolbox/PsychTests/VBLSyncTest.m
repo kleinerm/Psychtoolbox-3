@@ -495,7 +495,45 @@ try
     % Flip, Psychtoolbox will automatically display some warning message on the Matlab
     % console:
     sca;
-    
+
+    % Count and output number of missed flip on VBL deadlines:
+    numbermisses=0;
+    numberearly=0;
+
+    if numifis > 0
+        if (stereo == 11) && (numifis == 1)
+            % Special case: Stereomode 11 can't do better than one swap
+            % every two refresh cycles, so take this into account:
+            ifi = ifi * 2;
+        end
+
+        for i=2:n
+            if (ts(i)-ts(i-1) > ifi*(numifis+0.5))
+                numbermisses=numbermisses+1;
+            end
+
+            if (ts(i)-ts(i-1) < ifi*(numifis-0.5))
+                numberearly=numberearly+1;
+            end
+        end
+    else
+        if stereo == 11
+            % Special case: Stereomode 11 can't do better than one swap
+            % every two refresh cycles at best, so take this into account:
+            ifi = ifi * 2;
+        end
+
+        for i=2:n
+            if (ts(i)-ts(i-1) > ifi*1.5)
+                numbermisses=numbermisses+1;
+            end
+
+            if (ts(i)-ts(i-1) < ifi*(numifis-0.5))
+                numberearly=numberearly+1;
+            end
+        end
+    end
+
     % Plot all our measurement results:
 
     % Figure 1 shows time deltas between successive flips in milliseconds:
@@ -519,30 +557,58 @@ try
     hold off
     
     % Figure 2 shows the recorded beam positions:
-    figure
-    plot(beampos);
-    title('Rasterbeam position when timestamp was taken (in scanlines):');
+    if winfo.VBLEndline > -1
+        hasbeampos = 1;
+    else
+        hasbeampos = 0;
+    end
 
-    % Figure 3 shows estimated size of presentation deadline-miss in
-    % milliseconds:
-    figure
-    hold on
-    plot(missest*1000);
-    plot(zeros(1,n));
-    title('Estimate of missed deadlines in milliseconds (negative == no miss):');
-    hold off
-    
-    % Figure 4 shows difference in ms between finish of Flip and estimated
-    % start of VBL time:
-    figure
-    plot((flipfin - ts)*1000);
-    title('Time delta between start of VBL and return of Flip in milliseconds:');
-    
-    % Figure 5 shows difference in ms between finish of Flip and estimated
-    % stimulus-onset:
-    figure
-    plot((flipfin - so)*1000);
-    title('Time delta between stimulus onset and return of Flip in milliseconds:');
+    if hasbeampos
+        figure
+        plot(beampos);
+        title('Rasterbeam position when timestamp was taken (in scanlines):');
+    end
+
+    if (numbermisses > 1) || (numberearly > 0)
+        % Figure 3 shows estimated size of presentation deadline-miss in
+        % milliseconds:
+        figure
+        hold on
+        plot(missest*1000);
+        plot(zeros(1,n));
+        title('Estimate of missed deadlines in milliseconds (negative == no miss):');
+        hold off
+    end
+
+    if isequal(ts, so)
+        % Same info in vbltime and stimulus onset time. Only
+        % do one plot and label it in a less confusing manner:
+        figure
+        plot((flipfin - so)*1000);
+
+        if IsLinux && (Screen('Preference', 'VBLTimestampingmode') == 4)
+            % Linux mode 4: OpenML or Wayland presentation feedback, so is stimulus onset:
+            title('Time delta between stimulus onset and return of Flip in milliseconds:');
+        elseif (IsLinux || IsOSX) && ismember(Screen('Preference', 'VBLTimestampingmode'), [1, 3]) && (winfo.VBLCount > 0)
+            % Linux or OSX, vbl timestamping requested and apparently working. so is vblank time:
+            title('Time delta between start of VBL and return of Flip in milliseconds:');
+        else
+            % Windows or other os'es without working high precision timestamping: so is raw timestamp:
+            title('Time delta between return from swap completion and return of Flip in milliseconds:');
+        end
+    else
+        % Figure 4 shows difference in ms between finish of Flip and estimated
+        % start of VBL time:
+        figure
+        plot((flipfin - ts)*1000);
+        title('Time delta between start of VBL and return of Flip in milliseconds:');
+
+        % Figure 5 shows difference in ms between finish of Flip and estimated
+        % stimulus-onset:
+        figure
+        plot((flipfin - so)*1000);
+        title('Time delta between stimulus onset and return of Flip in milliseconds:');
+    end
 
     % Figure 6 shows duration of drawing commands when calling
     % "DrawingFinished" in synchronous mode.
@@ -568,44 +634,6 @@ try
         figure;
         plot((dpixxdelay - so) * 1000);
         title('Time delta between stimulus onset and return of Datapixx timestamping in milliseconds:');
-    end
-    
-    % Count and output number of missed flip on VBL deadlines:
-    numbermisses=0;
-    numberearly=0;
-    
-    if numifis > 0
-        if (stereo == 11) && (numifis == 1)
-            % Special case: Stereomode 11 can't do better than one swap
-            % every two refresh cycles, so take this into account:
-            ifi = ifi * 2;
-        end
-
-        for i=2:n
-            if (ts(i)-ts(i-1) > ifi*(numifis+0.5))
-                numbermisses=numbermisses+1;
-            end
-            
-            if (ts(i)-ts(i-1) < ifi*(numifis-0.5))
-                numberearly=numberearly+1;
-            end
-        end
-    else
-        if stereo == 11
-            % Special case: Stereomode 11 can't do better than one swap
-            % every two refresh cycles at best, so take this into account:
-            ifi = ifi * 2;
-        end
-        
-        for i=2:n
-            if (ts(i)-ts(i-1) > ifi*1.5)
-                numbermisses=numbermisses+1;
-            end
-                        
-            if (ts(i)-ts(i-1) < ifi*(numifis-0.5))
-                numberearly=numberearly+1;
-            end
-        end
     end
 
     % Output some summary and say goodbye...
