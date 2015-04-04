@@ -61,6 +61,9 @@ function oldClut = LoadIdentityClut(windowPtr, loadOnNextFlip, lutType, disableD
 % 03/05/14   mk  Update help texts and some diagnostic output.
 % 03/06/14   mk  Allow control if dithering should be touched or not.
 % 09/20/14   mk  Silence "unknown gpu" warning for Intel on Linux.
+% 04/04/15   mk  Only use PsychGPUControl() dither disable on Windows by
+%                default. Only use on Linux + AMD as fallback if low-level
+%                dither disable fails.
 
 global ptb_original_gfx_cluts;
 
@@ -98,12 +101,11 @@ winfo = Screen('GetWindowInfo', windowPtr);
 % Get current clut for use as backup copy later on:
 oldClut = Screen('ReadNormalizedGammaTable', windowPtr);
 
-if disableDithering
+if disableDithering && IsWin
     fprintf('LoadIdentityClut: Info: Trying to disable digital display dithering.\n');
     % Try to use PsychGPUControl() method to disable display dithering
-    % globally on all connected GPUs and displays. As of March 2014, this
-    % function is only supported on Linux and Windows with AMD/ATI GPU's,
-    % and only when running the proprietary Catalyst display driver.
+    % globally on all connected GPUs and displays. We only use this
+    % on MS-Windows and it only works with AMD/ATI GPU's,
     % It will no-op silently on other system configurations.
     %
     % We don't use the success status return code of the function, because
@@ -152,6 +154,13 @@ else
             % Some advice for AMD users on Linux and OSX:
             fprintf('LoadIdentityClut: Info: On your AMD/ATI GPU, you may get this working by loading the PsychtoolboxKernelDriver\n');
             fprintf('LoadIdentityClut: Info: on OS/X or using a Linux system properly setup with PsychLinuxConfiguration.\n');
+
+            % On AMD try to use PsychGPUControl to force dithering off. This
+            % will only work on Catalyst, and has the side effect of disabling
+            % dithering on all displays:
+            if disableDithering
+                PsychGPUControl('SetDitheringEnabled', 0);
+            end
         end
     end
 
