@@ -353,6 +353,9 @@ function varargout = PsychDataPixx(cmd, varargin)
 %
 % 11.09.2012  mk  Add support for stereo sync line handling, and for
 %                 scanning backlight control of the ViewPixx.
+%
+% 04.04.2015  mk  Only perform DataPixx lut updates if lut actually changed,
+%                 to avoid redundant call every frame.
 
 % Need GL constant for low-level OpenGL calls. Already initialized by
 % PsychImaging() at first time of invocation of the driver:
@@ -362,7 +365,7 @@ global GL;
 global dpx;
 
 % Cold init at full restart:
-if isempty(dpx)    
+if isempty(dpx)
     dpx.verbosity = 1;
     dpx.refcount = 0;
     dpx.needpsync = 0;
@@ -375,6 +378,7 @@ if isempty(dpx)
     dpx.timestampLogCount = 0;
     dpx.onsetTimestampLog = [];
     dpx.timeout = [];
+    dpx.oldlut = [];
 
     % Allocate 2 hours worth of timestamps at 200 Hz flip rate:
     dpx.timestampLogPreallocSize = 2 * 3600 * 200;
@@ -500,17 +504,24 @@ end
 if cmd == 1
     % Fast callback from within Screen's imaging pipeline for setting a new
     % hardware clut in device at next doublebufferswap:
+    newlut = varargin{1};
     
-    % Upload clut to device:
-    doDatapixx('SetVideoClut', varargin{1});
-    
-    % Request PSYNC'ed application at next stimulus onset:
-    dpx.needpsync = 1;
+    % Only do update if LUT actually changed since last call:
+    if ~isequal(newlut, dpx.oldlut)
+        % Keep track:
+        dpx.oldlut = newlut;
 
-    if dpx.verbosity > 5
-        fprintf('CLUT UPDATE!\n\n');
-        disp(varargin{1});
-        fprintf('------------\n\n');
+        % Upload clut to device:
+        doDatapixx('SetVideoClut', newlut);
+
+        % Request PSYNC'ed application at next stimulus onset:
+        dpx.needpsync = 1;
+
+        if dpx.verbosity > 5
+            fprintf('CLUT UPDATE!\n\n');
+            disp(varargin{1});
+            fprintf('------------\n\n');
+        end
     end
 
     % Return control to Screen():
@@ -575,27 +586,28 @@ if strcmpi(cmd, 'ResetOnWindowClose')
     if dpx.verbosity > 3
         fprintf('PsychDataPixx: Closing device connection for this onscreen window...\n');
     end
-    
+
     % Immediately load a standard identity CLUT into the device:
-    linear_lut =  repmat(linspace(0, 1, 256)', 1, 3);
+    linear_lut = repmat(linspace(0, 1, 256)', 1, 3);
     doDatapixx('SetVideoClut', linear_lut);
-    
+    dpx.oldlut = [];
+
     % Reset videomode to pass-through:
     doDatapixx('SetVideoMode', 0);
-    
+
     % Set stereomode to "auto" and horizontal split to "auto":
     doDatapixx('SetVideoHorizontalSplit', 2);
     doDatapixx('SetVideoVerticalStereo', 2);
-    
+
     % Disable Pixelsyncline:
     doDatapixx('SetVideoPixelSyncLine', 0, 0, 0);
-    
+
     % Apply all changes immediately:
     doDatapixx('RegWrRd');
 
     % Delete windowhandle:
     dpx.window = [];
-    
+
     % Perform standard close op if needed:
     cmd = 'Close';
 end
