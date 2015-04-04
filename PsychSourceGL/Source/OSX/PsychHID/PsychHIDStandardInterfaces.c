@@ -712,6 +712,10 @@ static void *KbQueueWorkerThreadMain(void *inarg) {
     // Add HID queue to current runloop:
     IOHIDQueueScheduleWithRunLoop(queue[deviceIndex], psychHIDKbQueueCFRunLoopRef[deviceIndex], kCFRunLoopDefaultMode);
 
+    // Poor man's memory barrier:
+    PsychLockMutex(&KbQueueMutex);
+    PsychUnlockMutex(&KbQueueMutex);
+
     // Start the run loop, code execution will block here until run loop is stopped again by PsychHIDKbQueueRelease
     // The run loop will be responsible for executing the code in PsychHIDKbQueueCallbackFunction() whenever input
     // is available:
@@ -792,7 +796,10 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 
     // Create HIDQueue for device:
     queue[deviceIndex] = IOHIDQueueCreate(kCFAllocatorDefault, deviceRecord, 30, 0);
-    if (NULL == queue[deviceIndex]) PsychErrorExitMsg(PsychError_system, "Failed to create event queue for detecting key press.");
+    if (NULL == queue[deviceIndex]) {
+        PsychHIDOSKbQueueRelease(deviceIndex);
+        PsychErrorExitMsg(PsychError_system, "Failed to create event queue for detecting key press.");
+    }
 
     // Mark as a non-keyboard device, to start with:
     queueIsAKeyboard[deviceIndex] = FALSE;
@@ -857,12 +864,31 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
     IOHIDQueueRegisterValueAvailableCallback(queue[deviceIndex], (IOHIDCallback) PsychHIDKbQueueCallbackFunction, (void*) (long) deviceIndex);
 
     // Create event buffer:
-    PsychHIDCreateEventBuffer(deviceIndex);
+    if (!PsychHIDCreateEventBuffer(deviceIndex)) {
+        PsychHIDOSKbQueueRelease(deviceIndex);
+        PsychErrorExitMsg(PsychError_system, "Failed to create keyboard queue for detecting key press.");
+    }
 
     // Start the processing thread for this queue:
     if (PsychCreateThread(&KbQueueThread[deviceIndex], NULL, KbQueueWorkerThreadMain, (void*) (long) deviceIndex)) {
-        printf("PsychHID-ERROR: Start of keyboard queue processing for deviceIndex %i failed!\n", deviceIndex);
+        KbQueueThread[deviceIndex] = NULL;
+        PsychHIDOSKbQueueRelease(deviceIndex);
+
+        printf("PsychHID-ERROR: Creation of keyboard queue thread for deviceIndex %i failed!\n", deviceIndex);
         PsychErrorExitMsg(PsychError_system, "Creation of keyboard queue background processing thread failed!");
+    }
+
+    // Thread successfully created. Wait for it to init psychHIDKbQueueCFRunLoopRef[] and then to actually
+    // enter the runloop. This to avoid races if KbQueueCreate -> KbQueueRelease is called back-to-back.
+    // This is not exactly textbook style optimal way to sync the threads, but efficiency doesn't matter
+    // here, whereas not adding extra complexity for the "proper way" of interacting with Apples nightmare does:
+    while ((!psychHIDKbQueueCFRunLoopRef[deviceIndex]) || (!CFRunLoopIsWaiting(psychHIDKbQueueCFRunLoopRef[deviceIndex]))) {
+        // Poor man's memory barrier:
+        PsychLockMutex(&KbQueueMutex);
+        PsychUnlockMutex(&KbQueueMutex);
+
+        // Wait a msec, thread should be there any moment:
+        PsychYieldIntervalSeconds(0.001);
     }
 
     // Ready to use this keybord queue.
@@ -883,9 +909,18 @@ void PsychHIDOSKbQueueRelease(int deviceIndex)
     // Ok, we have a keyboard queue. Stop any operation on it first:
     PsychHIDOSKbQueueStop(deviceIndex);
 
-    // The mutex will be automatically unlocked and destroyed by the CFRunLoop thread
-    // so it isn't even declared in this routine
-    if (psychHIDKbQueueCFRunLoopRef[deviceIndex]) {
+    if (KbQueueThread[deviceIndex]) {
+        // Not quite needed if things go to plan, but be extra cautious and make absolutely sure there actually is
+        // a running CFRunLoop() which can respond to the CFRunLoopStop call below:
+        while ((!psychHIDKbQueueCFRunLoopRef[deviceIndex]) || (!CFRunLoopIsWaiting(psychHIDKbQueueCFRunLoopRef[deviceIndex]))) {
+            // Poor man's memory barrier:
+            PsychLockMutex(&KbQueueMutex);
+            PsychUnlockMutex(&KbQueueMutex);
+
+            // Wait a msec, thread should be there any moment:
+            PsychYieldIntervalSeconds(0.001);
+        }
+
         // Stop the CFRunLoop, which will allow its associated thread to exit:
         CFRunLoopStop(psychHIDKbQueueCFRunLoopRef[deviceIndex]);
 
@@ -896,11 +931,11 @@ void PsychHIDOSKbQueueRelease(int deviceIndex)
         // Release the CFRunLoop for this queue:
         CFRelease(psychHIDKbQueueCFRunLoopRef[deviceIndex]);
         psychHIDKbQueueCFRunLoopRef[deviceIndex] = NULL;
-
-        // Release queue object:
-        CFRelease(queue[deviceIndex]);
-        queue[deviceIndex] = NULL;
     }
+
+    // Release queue object:
+    if (queue[deviceIndex]) CFRelease(queue[deviceIndex]);
+    queue[deviceIndex] = NULL;
 
     // Release its data structures:
     free(psychHIDKbQueueFirstPress[deviceIndex]); psychHIDKbQueueFirstPress[deviceIndex] = NULL;
