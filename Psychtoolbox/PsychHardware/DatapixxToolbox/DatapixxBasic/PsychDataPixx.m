@@ -1138,6 +1138,13 @@ function rc = doDatapixx(varargin)
             rc = [];
             Datapixx(varargin{:});
         end
+
+        % Check and clear error status:
+        err = Datapixx('GetError');
+        if err ~= 0
+            fprintf('PsychDataPixx: Warning: DataPixx command %s returned error code %i\n', varargin{1}, err);
+            Datapixx('ClearError');
+        end
     end
 end
 
