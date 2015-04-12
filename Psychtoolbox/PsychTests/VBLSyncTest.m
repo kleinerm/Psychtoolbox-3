@@ -1,4 +1,4 @@
-function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synchronous, usedpixx)
+function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synchronous, usedpixx, screenNumber)
 % VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synchronous, usedpixx)
 %
 % Tests syncing of PTB-OSX to the vertical retrace (VBL) and demonstrates
@@ -108,6 +108,11 @@ function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synch
 % usedpixx = 1 Use a DataPixx/ViewPixx/ProPixx device for external
 % timestamping of stimulus onset, as a correctness test for Screen('Flip')
 % timestamping. Disabled (0) by default.
+% usedpixx = 2 Additionally correct for the clock skew between the computer
+% and DataPixx device.
+%
+%
+% screenNumber =  Use a screen other than the default (max) for testing .
 %
 %
 % EXAMPLES:
@@ -235,6 +240,10 @@ if nargin < 8 || isempty(usedpixx)
     usedpixx = 0;
 end
 
+if nargin < 9
+    screenNumber = [];
+end
+
 try
     % This script calls Psychtoolbox commands available only in OpenGL-based 
     % versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
@@ -255,7 +264,9 @@ try
     % the stimulus display.  Chosing the display with the highest display number is 
     % a best guess about where you want the stimulus displayed.  
     screens=Screen('Screens');
-    screenNumber=max(screens);
+    if isempty(screenNumber)
+        screenNumber=max(screens);
+    end
     screensize=Screen('Rect', screenNumber);
 
     % Query size of screen:
@@ -269,7 +280,13 @@ try
         % tests.
         PsychImaging('AddTask', 'General', 'UseDataPixx');
     end
-    w=PsychImaging('OpenWindow',screenNumber, 0,[],[],[], stereo);
+
+    if 0
+        w=PsychImaging('OpenWindow',screenNumber, 0,[0 0 1430 900],[],[], stereo);
+        Screen('GetFlipInfo', w, 1);
+    else
+        w=PsychImaging('OpenWindow',screenNumber, 0,[],[],[], stereo);
+    end
     
     % Query effective stereo mode, as Screen() could have changed it behind our
     % back, e.g., if we asked for mode 1 but Screen() had to fallback to
@@ -316,7 +333,7 @@ try
     % secs. If this level of accuracy can't be reached, we time out after
     % 20 seconds...
     %[ ifi nvalid stddev ]= Screen('GetFlipInterval', w, 100, 0.0001, 5);
-    [ ifi nvalid stddev ]= Screen('GetFlipInterval', w);
+    [ ifi, nvalid, stddev ]= Screen('GetFlipInterval', w);
     fprintf('Measured refresh interval, as reported by "GetFlipInterval" is %2.5f ms. (nsamples = %i, stddev = %2.5f ms)\n', ifi*1000, nvalid, stddev*1000);
     
     % Init data-collection arrays for collection of n samples:
@@ -324,10 +341,12 @@ try
     beampos=ts;
     missest=ts;
     flipfin=ts;
+    dpixxdelay=ts;
     td=ts;
     so=ts;
     tSecondary = ts;
     sodpixx = ts;
+    boxTime = ts;
     
     % Compute random load distribution for provided loadjitter value:
     wt=rand(1,n)*(loadjitter*ifi);
@@ -389,11 +408,13 @@ try
         % beampos > screen height means that flip returned during the VBL
         % interval. Small values << screen height are also ok,
         % they just indicate either a slower machine or some types of flat-panels...
-        [ tvbl so(i) flipfin(i) missest(i) beampos(i)]=Screen('Flip', w, tdeadline, clearmode);
+
+        [ tvbl, so(i), flipfin(i), missest(i), beampos(i)]=Screen('Flip', w, tdeadline, clearmode);
 
         if usedpixx
             % Ask for a Datapixx onset timestamp from last 'Flip':
-            [boxTime, sodpixx(i)] = PsychDataPixx('GetLastOnsetTimestamp'); %#ok<ASGLU>
+            [boxTime(i), sodpixx(i)] = PsychDataPixx('GetLastOnsetTimestamp'); %#ok<ASGLU>
+            dpixxdelay(i) = GetSecs;
         end
         
         % Special code for DWM debugging: Disabled by default - Not for pure
@@ -461,6 +482,11 @@ try
             break;
         end;
     end; % Draw next frame...
+
+    % calculate clock skew corrected Datapixx onset timestamps
+    if usedpixx>1
+        sodpixx = PsychDataPixx('BoxsecsToGetsecs', boxTime);
+    end
 
     % Shutdown realtime scheduling:
     Priority(0)
@@ -537,7 +563,11 @@ try
         figure;
         plot((so - sodpixx) * 1000);
         title('Time delta in msecs onset according to Flip - onset according to DataPixx:');
-        fprintf('Average discrepancy between Flip timestamping and DataPixx is %f msecs, stddev = %f msecs.\n', mean((so - sodpixx) * 1000), std((so - sodpixx) * 1000));        
+        fprintf('Average discrepancy between Flip timestamping and DataPixx is %f msecs, stddev = %f msecs.\n', mean((so - sodpixx) * 1000), std((so - sodpixx) * 1000));
+
+        figure;
+        plot((dpixxdelay - so) * 1000);
+        title('Time delta between stimulus onset and return of Datapixx timestamping in milliseconds:');
     end
     
     % Count and output number of missed flip on VBL deadlines:

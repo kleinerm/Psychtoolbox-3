@@ -11,7 +11,8 @@
 
   HISTORY:
 
-  2/12/13            mk    Created - Derived from Linux/X11-GLX version.
+  12-Feb-2013        mk    Created - Derived from Linux/X11-GLX version.
+  30-Dec-2014        mk    Add initial basic support for Wayland presentation extension.
 
   DESCRIPTION:
 
@@ -29,6 +30,9 @@
 
 */
 
+// Only choose the generic Waffle backend if the Wayland specific backend isn't used...
+#ifndef PTB_USE_WAYLAND
+// ... and use of Waffle is requested:
 #ifdef PTB_USE_WAFFLE
 
 #include "Screen.h"
@@ -67,6 +71,343 @@ static struct waffle_context *currentContext = NULL;
 // Forward define prototype for glewContextInit(), which is normally not a public function:
 GLenum glewContextInit(void);
 
+#ifdef PTB_USE_WAYLAND_PRESENT
+#include <wayland-client.h>
+
+// This header file and corresponding implementation file currently included in our
+// source tree, as permitted by license. There's probably a better way to do this?
+#include "presentation_timing-client-protocol.h"
+
+#define ARRAY_LENGTH(a) (sizeof (a) / sizeof (a)[0])
+
+struct wl_display *wayland_display = NULL;
+static struct presentation *wayland_pres = NULL;
+uint32_t wayland_presentation_clock_id;
+
+// Container with feedback about a completed swap - the equivalent of
+// our good old INTEL_swap_event on X11/GLX, here for Wayland:
+struct wayland_feedback {
+    PsychWindowRecordType *windowRecord;
+    unsigned int present_status; // 0 == Pending, 1 = Completed, 2 = Skipped.
+    psych_uint64 sbc;
+    psych_uint64 msc;
+    psych_uint64 ust;
+    uint32_t present_flags;
+    struct presentation_feedback *feedback;
+    struct timespec commit;
+    struct timespec target;
+    struct wl_list link;
+    struct timespec present;
+};
+
+static void
+wayland_set_presentation_clock_id(void *data, struct presentation *presentation,
+                      uint32_t clk_id)
+{
+    struct wl_display *self = data;
+    wayland_presentation_clock_id = clk_id;
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Wayland presentation clock set to id %i.\n", (int) clk_id);
+}
+
+static const struct presentation_listener wayland_presentation_listener = {
+    wayland_set_presentation_clock_id
+};
+
+static void
+wayland_registry_listener_global(void *data,
+                         struct wl_registry *registry,
+                         uint32_t name,
+                         const char *interface,
+                         uint32_t version)
+{
+    struct wl_display *self = data;
+
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Wayland registry extension candidate: %s\n", interface);
+
+    // Only look for presentation interface v1:
+    if (strcmp(interface, "presentation") || (version != 1)) return;
+
+    // Got it:
+    wayland_pres = wl_registry_bind(registry, name, &presentation_interface, 1);
+    if (!wayland_pres) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: wl_registry_bind for presentation_interface failed!\n");
+        return;
+    }
+
+    presentation_add_listener(wayland_pres, &wayland_presentation_listener, self);
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Wayland presentation_interface bound!\n");
+}
+
+static void
+wayland_registry_listener_global_remove(void *data, struct wl_registry *registry, uint32_t name)
+{
+    return;
+}
+
+static const struct wl_registry_listener wayland_registry_listener = {
+    .global = wayland_registry_listener_global,
+    .global_remove = wayland_registry_listener_global_remove
+};
+
+static struct presentation *
+get_wayland_presentation_extension(PsychWindowRecordType* windowRecord)
+{
+    // Already have a cached presentation_interface? If so, just return it:
+    if (wayland_pres) return wayland_pres;
+
+    // Nope, get our own wl_registry, do the enumeration and binding:
+    struct wl_registry *wl_registry = wl_display_get_registry(wayland_display);
+    if (!wl_registry) {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: wl_display_get_registry failed\n");
+        return(NULL);
+    }
+
+    if (wl_registry_add_listener(wl_registry, &wayland_registry_listener, wayland_display) < 0) {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: wl_registry_add_listener failed\n");
+        return(NULL);
+    }
+
+    // Block until the Wayland server has processed all pending requests and
+    // has sent out pending events on all event queues. This should ensure
+    // that the registry listener has received announcement of the shell and
+    // compositor.
+    if (wl_display_roundtrip(wayland_display) == -1) {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: wl_display_roundtrip failed\n");
+        return(NULL);
+    }
+
+    // Destroy our reference to the registry:
+    wl_registry_destroy(wl_registry);
+
+    return(wayland_pres);
+}
+
+static void
+destroy_wayland_feedback(struct wayland_feedback *wayland_feedback)
+{
+    if (wayland_feedback->feedback)
+        presentation_feedback_destroy(wayland_feedback->feedback);
+
+    wl_list_remove(&wayland_feedback->link);
+    free(wayland_feedback);
+}
+
+static uint32_t
+timespec_to_ms(const struct timespec *ts)
+{
+    return (uint32_t)ts->tv_sec * 1000 + ts->tv_nsec / 1000000;
+}
+
+static void
+timespec_from_proto(struct timespec *tm, uint32_t tv_sec_hi,
+                    uint32_t tv_sec_lo, uint32_t tv_nsec)
+{
+    tm->tv_sec = ((uint64_t)tv_sec_hi << 32) + tv_sec_lo;
+    tm->tv_nsec = tv_nsec;
+}
+
+static uint64_t
+timespec_to_us(const struct timespec *ts)
+{
+    return (uint64_t) ts->tv_sec * 1000000 + ts->tv_nsec / 1000;
+}
+
+static int
+timespec_diff_to_usec(const struct timespec *a, const struct timespec *b)
+{
+    time_t secs = a->tv_sec - b->tv_sec;
+    long nsec = a->tv_nsec - b->tv_nsec;
+
+    return secs * 1000000 + nsec / 1000;
+}
+
+static char *
+wayland_pflags_to_str(uint32_t flags, char *str, unsigned len)
+{
+    static const struct {
+        uint32_t flag;
+        char sym;
+    } desc[] = {
+        { PRESENTATION_FEEDBACK_KIND_VSYNC, 's' },
+        { PRESENTATION_FEEDBACK_KIND_HW_CLOCK, 'c' },
+        { PRESENTATION_FEEDBACK_KIND_HW_COMPLETION, 'e' },
+        { PRESENTATION_FEEDBACK_KIND_ZERO_COPY, 'z' },
+    };
+    unsigned i;
+
+    *str = '\0';
+    if (len < ARRAY_LENGTH(desc) + 1)
+        return str;
+
+    for (i = 0; i < ARRAY_LENGTH(desc); i++)
+        str[i] = flags & desc[i].flag ? desc[i].sym : '_';
+    str[ARRAY_LENGTH(desc)] = '\0';
+
+    return str;
+}
+
+static void
+wayland_feedback_presented(void *data,
+                            struct presentation_feedback *presentation_feedback,
+                            uint32_t tv_sec_hi,
+                            uint32_t tv_sec_lo,
+                            uint32_t tv_nsec,
+                            uint32_t refresh_nsec,
+                            uint32_t seq_hi,
+                            uint32_t seq_lo,
+                            uint32_t flags)
+{
+    struct wayland_feedback *wayland_feedback = data;
+    PsychWindowRecordType *windowRecord = wayland_feedback->windowRecord;
+    uint64_t msc = ((uint64_t) seq_hi << 32) + seq_lo;
+    uint32_t commit, present;
+    uint32_t f2c, c2p, f2p;
+    int p2p, t2p;
+    char flagstr[10];
+
+    // Translate protocol presentation timestamp to a timespec:
+    timespec_from_proto(&wayland_feedback->present, tv_sec_hi, tv_sec_lo, tv_nsec);
+
+    commit = timespec_to_ms(&wayland_feedback->commit);
+    present = timespec_to_ms(&wayland_feedback->present);
+
+    // Time delta in msecs between swap scheduled and completed:
+    c2p = present - commit;
+
+    // Compute delta in usecs between successive swaps:
+    if (wayland_feedback->sbc > 1) {
+        p2p = timespec_to_us(&wayland_feedback->present) - windowRecord->reference_ust;
+
+        // Compute delta in usecs between target time and true time of swap:
+        t2p = timespec_diff_to_usec(&wayland_feedback->present, &wayland_feedback->target);
+    }
+    else {
+        p2p = 0;
+        t2p = 0;
+    }
+
+    if (PsychPrefStateGet_Verbosity() > 4) {
+        printf("PTB-DEBUG: SBC = %6lu: c2p %4u ms, p2p %5d us (refresh %6u us), t2p %6d us, [%s] MSC %" PRIu64 "\n",
+               wayland_feedback->sbc, c2p, p2p, refresh_nsec / 1000, t2p, wayland_pflags_to_str(flags, flagstr, sizeof(flagstr)), msc);
+    }
+
+    // Record sbc, msc, ust, present flags of this completed swap:
+
+    // Once for the feedback events used by our Screen('GetFlipInfo') logging functions:
+    wayland_feedback->present_status = 1; // "Presented".
+    wayland_feedback->present_flags = flags;
+    wayland_feedback->msc = msc;
+    wayland_feedback->ust = timespec_to_us(&wayland_feedback->present);
+
+    // Once for the windowRecord for internal use by PsychOSGetSwapCompletionTimestamp() internal
+    // timestamping and swap reliability asessment:
+    windowRecord->reference_sbc = wayland_feedback->sbc;
+    windowRecord->reference_msc = msc;
+    windowRecord->reference_ust = wayland_feedback->ust;
+    windowRecord->swapcompletiontype = flags;
+
+    // If we got a too large measured video VideoRefreshInterval due to compositor lag during
+    // calibration then just force it to nominal refresh interval for the time being, as we
+    // need this to compensate for compositor lag during runtime:
+    // TODO: Find something better than this hack in the future...
+    if ((windowRecord->VideoRefreshInterval > 0) && (refresh_nsec > 0) &&
+        (windowRecord->VideoRefreshInterval > 1.5 * ((double) refresh_nsec) / 1e9)) {
+        windowRecord->VideoRefreshInterval = (double) refresh_nsec / 1e9;
+
+        windowRecord->nrIFISamples = 1;
+        windowRecord->IFIRunningSum = windowRecord->VideoRefreshInterval;
+    }
+
+    // Delete our own completion wayland_feedback container if swap completion logging
+    // isn't enabled:
+    if (windowRecord->swapevents_enabled == 0) destroy_wayland_feedback(wayland_feedback);
+
+    return;
+}
+
+static void
+wayland_feedback_discarded(void *data, struct presentation_feedback *presentation_feedback)
+{
+    struct wayland_feedback *wayland_feedback = data;
+    PsychWindowRecordType *windowRecord = wayland_feedback->windowRecord;
+
+    if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Wayland presentation request discarded for SBC = %lu !\n", wayland_feedback->sbc);
+
+    // Once for the feedback events used by our Screen('GetFlipInfo') logging functions:
+    wayland_feedback->present_status = 2; // "Discarded/Skipped".
+    wayland_feedback->present_flags = 0;
+    wayland_feedback->msc = 0;
+    wayland_feedback->ust = 0;
+
+    // Once for the windowRecord for internal use by PsychOSGetSwapCompletionTimestamp() internal
+    // timestamping and swap reliability asessment:
+    windowRecord->reference_sbc = wayland_feedback->sbc;
+    windowRecord->reference_msc = 0;
+    windowRecord->reference_ust = 0;
+    windowRecord->swapcompletiontype = -1; // "Presentation discarded/Skipped"
+
+    // Delete our own completion wayland_feedback container if swap completion logging
+    // isn't enabled:
+    if (windowRecord->swapevents_enabled == 0) destroy_wayland_feedback(wayland_feedback);
+}
+
+static void
+wayland_feedback_sync_output(void *data, struct presentation_feedback *presentation_feedback, struct wl_output *output)
+{
+    struct wayland_feedback *wayland_feedback = data;
+    PsychWindowRecordType *windowRecord = wayland_feedback->windowRecord;
+
+    if (PsychPrefStateGet_Verbosity() > 3) {
+        printf("PTB-INFO: Window %i uses Wayland output %p with following properties as reference:\n", windowRecord->windowIndex, output);
+    }
+}
+
+static const struct presentation_feedback_listener wayland_feedback_listener = {
+    wayland_feedback_sync_output,
+    wayland_feedback_presented,
+    wayland_feedback_discarded
+};
+
+static void
+wayland_window_create_feedback(PsychWindowRecordType* windowRecord)
+{
+    struct presentation *wayland_pres = get_wayland_presentation_extension(windowRecord);
+    struct wayland_feedback *wayland_feedback;
+    struct wl_surface *wl_surface;
+    struct waffle_wayland_window *wayland_window;
+    struct waffle_window* window = windowRecord->targetSpecific.windowHandle;
+
+    // Retrieve underlying native Wayland window:
+    union waffle_native_window *wafflewin = waffle_window_get_native(window);
+    wayland_window = wafflewin->wayland;
+    wl_surface = wayland_window->wl_surface;
+    free(wafflewin);
+    wafflewin = NULL;
+
+    // Noop if presentation_feedback extension unavailable:
+    if (!wayland_pres) return;
+
+    // Create our own wayland_feedback container for swap completion events:
+    wayland_feedback = calloc(1, sizeof(*wayland_feedback));
+    if (!wayland_feedback) return;
+
+    wayland_feedback->windowRecord = windowRecord;
+    wayland_feedback->sbc = ++(windowRecord->submitted_sbc);
+
+    // Create wayland present_feedback object, attach listener callbacks to it:
+    wayland_feedback->feedback = presentation_feedback(wayland_pres, wl_surface);
+    presentation_feedback_add_listener(wayland_feedback->feedback, &wayland_feedback_listener, wayland_feedback);
+
+    // Record approximate time of swap submission according to the compositor clock:
+    clock_gettime(wayland_presentation_clock_id, &wayland_feedback->commit);
+    wayland_feedback->target = wayland_feedback->commit;
+
+    // Add to our queue of pending swap completion events:
+    wl_list_insert(&windowRecord->targetSpecific.presentation_feedback_list, &wayland_feedback->link);
+}
+
+#endif
+
 /*
   PsychOSOpenOnscreenWindow()
 
@@ -86,6 +427,7 @@ GLenum glewContextInit(void);
 */
 psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, PsychWindowRecordType * windowRecord, int numBuffers, int stereomode, int conserveVRAM)
 {
+    char windowTitle[32];
     PsychRectType screenrect;
     CGDirectDisplayID dpy;
     int scrnum;
@@ -105,12 +447,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     int xfixes_event_base1, xfixes_event_base2;
     psych_bool xfixes_available = FALSE;
     psych_bool newstyle_setup = FALSE;
+    int gpuMaintype = 0;
     int32_t opengl_api;
     char backendname[16];
     char backendname2[16];
     int32_t oldBackend;
     struct waffle_config *config;
     struct waffle_window *window;
+    union waffle_native_window *wafflewin;
     struct waffle_context *ctx;
 
     // Define default rendering backend:
@@ -141,11 +485,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // windows on the display's default screen. Therefore this is mostly a dead placeholder for now:
     scrnum = PsychGetXScreenIdForScreen(screenSettings->screenNumber);
 
+    // Include onscreen window index in title:
+    sprintf(windowTitle, "PTB Onscreen Window [%i]:", windowRecord->windowIndex);
+
     // First time invocation?
     if (firstTime) {
         // Initialize waffle for selected display system backend:
         if (PsychPrefStateGet_Verbosity() > 2) {
-            printf("PTB-INFO: Using FOSS Waffle display backend library, written by Chad Versace, Copyright 2012 Intel.\n");
+            printf("PTB-INFO: Using FOSS Waffle display backend library, written by Chad Versace, Copyright 2012 - 2015 Intel.\n");
         }
 
         // Override default windowing system backend selection with requested type, if any requested:
@@ -155,6 +502,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             if (!strcmp(getenv("PSYCH_USE_DISPLAY_BACKEND"), "wayland")) windowRecord->winsysType = (int) WAFFLE_PLATFORM_WAYLAND; 
             if (!strcmp(getenv("PSYCH_USE_DISPLAY_BACKEND"), "gbm")) windowRecord->winsysType = (int) WAFFLE_PLATFORM_GBM; 
             if (!strcmp(getenv("PSYCH_USE_DISPLAY_BACKEND"), "android")) windowRecord->winsysType = (int) WAFFLE_PLATFORM_ANDROID; 
+        }
+        else if (getenv("WAYLAND_DISPLAY")) {
+            // Seems we are running on a Wayland server, so default to the
+            // Wayland display backend in absence of any user specified backend:
+            windowRecord->winsysType = (int) WAFFLE_PLATFORM_WAYLAND;
         }
 
         // If any backend chosen from calling code or by env-variable, assign it as new requested choice,
@@ -294,6 +646,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
             case WAFFLE_PLATFORM_WAYLAND:
                 egl_display = wafflenatdis->wayland->egl_display;
+                #if PTB_USE_WAYLAND_PRESENT
+                wayland_display = wafflenatdis->wayland->wl_display;
+                #endif
                 break;
 
             case WAFFLE_PLATFORM_GBM:
@@ -307,9 +662,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             default:
                 egl_display = NULL;
         }
-
-        free(wafflenatdis);
-        wafflenatdis = NULL;
     }
     else {
         egl_display = NULL;
@@ -704,7 +1056,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // Ok, for now we only use the new-style path if we are running under KDE/KWin and user
     // doesn't explicitely override/forbid that choice. Otherwise we use the old path, as
     // that seems to perform better, at least on tested Unity/compiz, GNOME3-Shell and LXDE/OpenBox.
-    if ((PsychPrefStateGet_ConserveVRAM() & kPsychOldStyleOverrideRedirect) || !getenv("KDE_FULL_SESSION")) {
+    PsychGetGPUSpecs(screenSettings->screenNumber, &gpuMaintype, NULL, NULL, NULL);
+    if ((!getenv("PSYCH_NEW_OVERRIDEREDIRECT") && (gpuMaintype != kPsychIntelIGP)) || (PsychPrefStateGet_ConserveVRAM() & kPsychOldStyleOverrideRedirect) ||
+        !getenv("KDE_FULL_SESSION") || (PsychScreenToHead(screenSettings->screenNumber, 1) >= 0)) {
         // Old style: Always override_redirect to lock out window manager, except when a real "GUI-Window"
         // is requested, which needs to behave and be treated like any other desktop app window:
         attr.override_redirect = (windowRecord->specialflags & kPsychGUIWindow) ? 0 : 1;
@@ -739,13 +1093,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
 
     // Create our onscreen window:
     window = waffle_window_create(config, width, height);
+    wafflewin = waffle_window_get_native(window);
 
     if (useX11) XSync(dpy, False);
 
     // Setup X11 window properties:
     if (useX11) {
         // Retrieve underlying native X11 window:
-        union waffle_native_window *wafflewin = waffle_window_get_native(window);
         if (windowRecord->winsysType == WAFFLE_PLATFORM_GLX) {
             struct waffle_glx_window* glx = wafflewin->glx;
             win = (Window) glx->xlib_window;
@@ -753,9 +1107,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         else {
             win = (Window) ((struct waffle_x11_egl_window*) (wafflewin->x11_egl))->xlib_window;
         }
-
-        free(wafflewin);
-        wafflewin = NULL;
 
         // Set hints and properties:
         {
@@ -767,7 +1118,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             // Let window manager control window position if kPsychGUIWindowWMPositioned is set:
             sizehints.flags = USSize | (windowRecord->specialflags & kPsychGUIWindowWMPositioned) ? 0 : USPosition;
             XSetNormalHints(dpy, win, &sizehints);
-            XSetStandardProperties(dpy, win, "PTB Onscreen window", "PTB Onscreen window", None, (char **)NULL, 0, &sizehints);
+            XSetStandardProperties(dpy, win, windowTitle, "PTB Onscreen window", None, (char **)NULL, 0, &sizehints);
         }
 
         // Setup window transparency for user input (keyboard and mouse events):
@@ -966,7 +1317,48 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     if (useX11) XSync(dpy, False);
 
     // Show our new window:
-    if (windowLevel != -1) waffle_window_show(window);
+    if (windowLevel != -1) {
+        if (windowRecord->winsysType == WAFFLE_PLATFORM_WAYLAND) {
+            struct waffle_wayland_window *wayland_window = wafflewin->wayland;
+
+            // Is this window supposed to be opaque / non-transparent?
+            if (windowLevel < 1000 || windowLevel >= 2000) {
+                // Yes. Define an opaque region the full size of the windows area:
+                struct wl_region *region = wl_compositor_create_region(wafflenatdis->wayland->wl_compositor);
+                wl_region_add(region, 0, 0, width, height);
+                wl_surface_set_opaque_region(wayland_window->wl_surface, region);
+                wl_region_destroy(region);
+            }
+
+            // Is this supposed to be a fullscreen window?
+            if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (windowLevel < 1000 || windowLevel >= 2000)) {
+                // Opaque fullscreen onscreen window setup:
+                // WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER - Switch video output to optimal resolution to accomodate the
+                // size of the surface, ie., the mode with the smallest resolution that can contain the surface. Add black
+                // borders for padding if a perfect fit isn't possible.
+                // TODO implement: 0 = Target refresh rate -- Zero == Don't change rate.
+                // TODO implement: NULL = Output to display the surface fullscreen -- NULL == Whatever you like.
+                wl_shell_surface_set_fullscreen(wayland_window->wl_shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER, 0, NULL);
+            }
+            else {
+                // A windowed window aka non-fullscreen, or a transparent fullscreen window.
+                if (windowRecord->specialflags & kPsychGUIWindow) {
+                    // A GUI window. Give it a title and other bling:
+                    wl_shell_surface_set_title(wayland_window->wl_shell_surface, windowTitle);
+                }
+
+                // Show it as toplevel window:
+                wl_shell_surface_set_toplevel(wayland_window->wl_shell_surface);
+            }
+
+            // Make it so!
+            wl_display_roundtrip(wayland_display);
+        }
+        else {
+            // Non-Wayland: For now use waffles generic show window function:
+            waffle_window_show(window);
+        }
+    }
 
     if (useX11) {
         XSync(dpy, False);
@@ -1013,6 +1405,30 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // Activate the associated rendering context:
     waffle_make_current(wdpy, window, ctx);
 
+    // Running on top of a FOSS Mesa graphics driver?
+    if ((open_windowcount == 0) && strstr((const char*) glGetString(GL_VERSION), "Mesa") && !getenv("PSYCH_DONT_LOCK_MOGLCORE")) {
+        // Yes. At least as of Mesa 10.1 as shipped in Ubuntu 14.04-LTS, Mesa
+        // will become seriously crashy if our Screen() mex files is flushed
+        // from memory due to a clear all/mex/Screen and afterwards reloaded.
+        // This because Mesa maintains pointers back into our library image,
+        // which will turn into dangling pointers if we get unloaded/reloaded
+        // into a new location. To prevent Mesa crashes on clear Screen -> reload,
+        // prevent this mex file against clearing from Octave/Matlab address space.
+        // An ugly solution which renders "clear Screen" useless, but the best i can
+        // come up with at the moment :(
+        if (PsychRuntimeEvaluateString("moglcore('LockModule');") > 0) {
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: Failed to enable moglcore locking workaround for Mesa OpenGL bug. Trying alternative workaround.\n");
+                printf("PTB-WARNING: Calling 'clear all', 'clear mex', 'clear java', 'clear moglcore' is now unsafe and may crash if you try.\n");
+                printf("PTB-WARNING: You may add setenv('PSYCH_DONT_LOCK_MOGLCORE','1'); to your Octave/Matlab startup script to work around this issue in future sessions.\n");
+            }
+            setenv("PSYCH_DONT_LOCK_MOGLCORE", "1", 0);
+        }
+        else {
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Workaround: Disabled ability to 'clear moglcore', as a workaround for a Mesa OpenGL bug. Sorry for the inconvenience.\n");
+        }
+    }
+
     // Ok, the OpenGL rendering context is up and running. Auto-detect and bind all
     // available OpenGL extensions via GLEW. Must be careful to only call GLX independent
     // init code if we are not using the X11/GLX backend:
@@ -1042,8 +1458,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         XSync(dpy, False);
     }
 
-    // Some info for the user regarding non-fullscreen mode and sync problems:
-    if (!(windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_Verbosity() > 2)) {
+    // Some info for the user regarding non-fullscreen mode and sync problems on non-Wayland backends:
+    if (!(windowRecord->specialflags & kPsychIsFullscreenWindow) && (windowRecord->winsysType != WAFFLE_PLATFORM_WAYLAND) &&
+        (PsychPrefStateGet_Verbosity() > 2)) {
         printf("PTB-INFO: Many graphics cards do not support proper timing and timestamping of visual stimulus onset\n");
         printf("PTB-INFO: when running in windowed mode (non-fullscreen). If PTB aborts with 'Synchronization failure'\n");
         printf("PTB-INFO: you can disable the sync test via call to Screen('Preference', 'SkipSyncTests', 2); .\n");
@@ -1141,11 +1558,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     if (useX11) XSync(dpy, False);
 
     PsychUnlockDisplay();
-
-    // Try to enable swap event delivery to us:
-    if (PsychOSSwapCompletionLogging(windowRecord, 2, 0) && (PsychPrefStateGet_Verbosity() > 3)) {
-        printf("PTB-INFO: INTEL_swap_event support for additional swap completion correctness checks enabled.\n");
-    }
 
     if (useX11) {
         PsychLockDisplay();
@@ -1276,6 +1688,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         } // End of FBO binding.
     } // End of OpenGL-ES binding.
 
+    // Release the waffle_native_window:
+    free(wafflewin);
+    wafflewin = NULL;
+
+    // Release the waffle_native_display:
+    free(wafflenatdis);
+    wafflenatdis = NULL;
+
     return(TRUE);
 }
 
@@ -1284,6 +1704,21 @@ void PsychOSCloseWindow(PsychWindowRecordType * windowRecord)
     Display *dpy = windowRecord->targetSpecific.privDpy;
 
     PsychLockDisplay();
+
+    #if PTB_USE_WAYLAND_PRESENT
+    if (windowRecord->winsysType == WAFFLE_PLATFORM_WAYLAND) {
+        while (!wl_list_empty(&windowRecord->targetSpecific.presentation_feedback_list)) {
+            struct wayland_feedback *f;
+
+            f = wl_container_of(windowRecord->targetSpecific.presentation_feedback_list.next, f, link);
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Cleaning up Wayland feedback event %llu.\n", f->sbc);
+            destroy_wayland_feedback(f);
+        }
+
+        // Reset our binding to presentation_feedback extension if this is our last onscreen window to close:
+        if (open_windowcount <= 1) wayland_pres = NULL;
+    }
+    #endif
 
     if (useX11) XSync(dpy, False);
 
@@ -1384,8 +1819,165 @@ double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint
  */
 psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecord, psych_int64 targetSBC, double* tSwap)
 {
-    // Return -1 "unsupported":
-    return(-1);
+    psych_int64 ust = 0, sbc = 0, msc = -1;
+
+    // Extension unsupported or known to be defective? Return -1 "unsupported" in that case:
+    if (windowRecord->specialflags & kPsychOpenMLDefective) return(-1);
+
+    // Translate targetSBC 0 aka sbc of last submitted swap into proper value:
+    if (targetSBC == 0) {
+        targetSBC = windowRecord->target_sbc;
+        if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Supported. Calling with overriden targetSBC = %lld.\n", targetSBC);
+    }
+    else if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Supported. Calling with targetSBC = %lld.\n", targetSBC);
+
+    #if PTB_USE_WAYLAND_PRESENT
+    if (windowRecord->winsysType == WAFFLE_PLATFORM_WAYLAND) {
+        if (!wayland_display) return(-1);
+
+        // Perform Wayland event dispatch cycles until targetSBC is reached:
+        while (windowRecord->reference_sbc < targetSBC) {
+            wl_display_dispatch(wayland_display);
+        }
+
+        sbc = windowRecord->reference_sbc;
+
+        // Was this a discarded swap?
+        if (windowRecord->swapcompletiontype == -1) {
+            // Yes! Can't do anything meaningful with this one atm. We can output a warning if this happened
+            // on a vsynced window, and make up some values and fallback to standard code and hope for the
+            // best:
+            if ((windowRecord->vSynced) && (PsychPrefStateGet_Verbosity() > 1)) {
+                // This should probably not happen
+                printf("PTB-WARNING:PsychOSGetSwapCompletionTimestamp: Swaprequest with sbc = %lld was discarded by compositor for vsynced flip!\n", sbc);
+            }
+            else if (PsychPrefStateGet_Verbosity() > 4) {
+                // How peculiar. This may happen, so just output some note at debug verbosity:
+                printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Swaprequest with sbc = %lld was discarded by compositor for non-vsynced flip.\n", sbc);
+            }
+
+            return(-1);
+        }
+
+        msc = windowRecord->reference_msc;
+        ust = windowRecord->reference_ust;
+    }
+    #endif
+
+    // Check for valid return values:
+    if ((windowRecord->vSynced) && (ust == 0)) {
+        if (PsychPrefStateGet_Verbosity() > 1) {
+            printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Invalid return values ust = %lld, msc = %lld from call with success return code (sbc = %lld)! Failing with rc = -2.\n", ust, msc, sbc);
+            printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: This likely means a driver bug or malfunction, or that timestamping support has been disabled by the user in the driver!\n");
+        }
+
+        // Return with "failure" rc, so calling code can provide more error handling:
+        return(-2);
+    }
+
+    // If no actual timestamp / msc was requested, then we return here. This was needed by the
+    // workaround code for multi-threaded XLib access. It passes NULL to just (ab)use this
+    // function to wait for swap completion, before it touches the framebuffer for real.
+    // See function PsychLockedTouchFramebufferIfNeeded() in PsychWindowSupport.c
+    if (tSwap == NULL) return(msc);
+
+    // Success at least for timestamping. Translate ust into system time in seconds:
+    *tSwap = PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz());
+
+    if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Success! refust = %lld, refmsc = %lld, refsbc = %lld.\n", ust, msc, sbc);
+
+    // This would drive internal swap completion logging if it would be enabled for internal use.
+    // Atm. we don't enable swap completion logging for internal use, as there isn't any need due
+    // to the different completion handling of Wayland as compared to X11/GLX. We leave this code
+    // as reference for potential future use:
+    if (PsychOSSwapCompletionLogging(windowRecord, 4, (int) sbc)) {
+        // Internal logging worked and processed an event. Nothing to do atm.
+    }
+
+    #if PTB_USE_WAYLAND_PRESENT
+    // Perform validation of the quality, trustworthiness and precision of stimulus onset if
+    // sync tests are not completely disabled and vsynced stimulus onset with precise timing
+    // is requested, iow. if the usercode signals it cares about visual and timing correctness:
+    if ((PsychPrefStateGet_SkipSyncTests() < 2) && (windowRecord->vSynced)) {
+        // If usercode wants vsynced tear-free swap, we better got one, otherwise we consider this a warning condition:
+        if (!(windowRecord->swapcompletiontype & PRESENTATION_FEEDBACK_KIND_VSYNC) && (PsychPrefStateGet_Verbosity() > 0)) {
+            printf("PTB-ERROR: Flip for window %i was not vblank synchronized/tear-free as requested. Stimulus is likely visually corrupted and visual presentation timing is likely wrong!\n",
+                   windowRecord->windowIndex);
+        }
+
+        // If we don't get trustworthy presentation completion events from kernel/hardware, then our timestamps, and ergo also
+        // our presentation timing based on those timestamps as a baseline, will be untrustworthy and meaningless guesses - unuseable
+        // for research grade timed visual stimulation:
+        if (!(windowRecord->swapcompletiontype & PRESENTATION_FEEDBACK_KIND_HW_COMPLETION) && (PsychPrefStateGet_Verbosity() > 0)) {
+            printf("PTB-ERROR: Flip for window %i didn't use reliable stimulus onset timestamping. Visual presentation timing and timestamps are likely wrong!\n",
+                   windowRecord->windowIndex);
+        }
+
+        // If we got a vsynced presentation with hw completion, iow. reliable and robust, was then a high
+        // precision/accuracy kernel/display driver/hardware clock used for stimulus onset timestamping?
+        if (!(windowRecord->swapcompletiontype & PRESENTATION_FEEDBACK_KIND_HW_CLOCK) &&
+            (windowRecord->swapcompletiontype & PRESENTATION_FEEDBACK_KIND_HW_COMPLETION) &&
+            (windowRecord->swapcompletiontype & PRESENTATION_FEEDBACK_KIND_VSYNC)) {
+            // No. Timestamps will be noisy. What to do about this? On most backends we can't do anything but
+            // inform the user about the lower quality of timestamps. On some backends we can fallback to our
+            // own homemade high precision beamposition timestamping, given that should work whenever at least vsync and
+            // hardware completion events work. On such backends we can just trigger the fallback here, now that we are
+            // certain the present completed:
+            if (windowRecord->VBL_Endline > 0) {
+                // Have beamposition timestamping fallback for this setup. Use it:
+                if (PsychPrefStateGet_Verbosity() > 5)
+                    printf("PTB-INFO: Display backend doesn't support precise stimulus onset timestamps. Falling back to our own high precision beamposition timestamping.\n");
+
+                // Trigger silent fallback in calling code by returning the -1 = "unsupported" status code:
+                return(-1);
+            }
+            else {
+                // No higher precision fallback available than what we already got from Wayland. The returned timestamps
+                // are not actually wrong or untrustworthy, they are just less accurate than what we would wish for demanding
+                // neuroscience research paradigms, so this is not really a error or warning condition, but just something
+                // the user should be made aware of, in case high precision is needed. Let's output a one-time notice at
+                // normal levels of verbosity, and then ongoing notice at high debug levels for diagnostic purpose:
+                if (!(windowRecord->specialflags & kPsychClockPrecisionOneTimeWarningDone) &&
+                    (PsychPrefStateGet_Verbosity() > 1)) {
+                    windowRecord->specialflags |= kPsychClockPrecisionOneTimeWarningDone;
+                    printf("PTB-WARNING: This display backend doesn't support precise visual stimulus onset timestamps. Timestamps will be correct, but somewhat noisy and inaccurate!\n");
+                }
+                else if (PsychPrefStateGet_Verbosity() > 5) {
+                    printf("PTB-DEBUG: The display backend doesn't support precise stimulus onset timestamps and no fallback available. Timestamps will be correct, but noisy.\n");
+                }
+            }
+        }
+
+        // Give additional warning and setup tips if our minimum requirement of vsync and hw completion isn't
+        // fullfilled. Everything else is not catastrophic failure.
+        if (!(windowRecord->swapcompletiontype & PRESENTATION_FEEDBACK_KIND_VSYNC) ||
+            !(windowRecord->swapcompletiontype & PRESENTATION_FEEDBACK_KIND_HW_COMPLETION)) {
+            if (PsychPrefStateGet_Verbosity() > 2) {
+                printf("PTB-WARNING: Something is misconfigured or suboptimal on your system, otherwise Wayland would have provided tear-free and precise\n");
+                printf("PTB-WARNING: visual stimulus onset timing and timestamping! Read 'help WaylandSetup' for troubleshooting tips for this problem.\n");
+            }
+        }
+    }
+
+    // If this is supposed to be a decorationless, unoccluded, fully opaque, topmost fullscreen window, then it should
+    // be presented zero-copy without any interference by compositing. Important for stimuli which need pixel-perfect
+    // display wrt. location, intensity and color for evey single pixel, and for driving special high precision neuroscience
+    // display hardware. Make sure we get zero copy in this case, as everything else almost certainly means trouble.
+    // Having zero-copy doesn't mean no trouble though, as we could end up in a hardware overlay with other hardware
+    // overlay or primary plane visual content partially occluding us or at least partially occupying the display. Or
+    // we could end up in a hardware overlay to the same effect with the primary plane or other overlays partially showing
+    // or occluding us. TODO: Find a way to control for those things.
+    if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_WindowShieldingLevel() >= 2000) &&
+        !(windowRecord->swapcompletiontype & PRESENTATION_FEEDBACK_KIND_ZERO_COPY) && (PsychPrefStateGet_Verbosity() > 1)) {
+        printf("PTB-WARNING: Flip for window %i didn't use zero copy pageflips. Stimulus may not display onscreen pixel-perfect and exactly as specified by you!\n",
+               windowRecord->windowIndex);
+    }
+
+    // End of Wayland specific code.
+    #endif
+
+    // Return swap completion msc:
+    return(msc);
 }
 
 /* PsychOSInitializeOpenML() - Linux specific function.
@@ -1394,19 +1986,43 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
  * Performs basic and extended correctness tests and disables extension if it
  * is unreliable, or enables workarounds for partially broken extensions.
  *
- * Called from PsychDetectAndAssignGfxCapabilities() as part of the PsychOpenOffscreenWindow()
+ * Called from PsychDetectAndAssignGfxCapabilities() as part of the PsychOpenOnscreenWindow()
  * procedure for a window with OpenML support.
  *
  */
 void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 {
-    // Unsupported:
-
-    // Disable OpenML swap scheduling:
+    // Disable clever swap scheduling for now:
     windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
 
-    // OpenML timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
+    // Timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
     windowRecord->specialflags |= kPsychOpenMLDefective;
+
+    #if PTB_USE_WAYLAND_PRESENT
+    if ((windowRecord->winsysType == WAFFLE_PLATFORM_WAYLAND)) {
+        // Always init the list for wayland present events:
+        wl_list_init(&windowRecord->targetSpecific.presentation_feedback_list);
+
+        // Try to get a handle to the Wayland presentation_interface: non-NULL == Success.
+        if (!get_wayland_presentation_extension(windowRecord)) {
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: No Wayland presentation_feedback extension. Using naive standard implementation.\n");
+
+            // Timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
+            windowRecord->specialflags |= kPsychOpenMLDefective;
+            return;
+        }
+
+        // Enable use of Wayland presentation_feedback extension for swap completion timestamping:
+        windowRecord->specialflags &= ~kPsychOpenMLDefective;
+
+        // Ready to rock on Wayland:
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Enabling Wayland presentation_feedback extension for swap completion timestamping.\n");
+
+        return;
+    }
+    #endif
+
+    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Using standard swap scheduling and swap completion timestamping on non-Wayland Waffle backend.\n");
 
     return;
 }
@@ -1451,6 +2067,14 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 */
 void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 {
+    #if PTB_USE_WAYLAND_PRESENT
+    // If wayland present_feedback is supposed to be used for swap completion timestamping, then we
+    // need to setup a proper present_feedback event for the upcoming swap:
+    if ((windowRecord->winsysType == WAFFLE_PLATFORM_WAYLAND) && !(windowRecord->specialflags & kPsychOpenMLDefective)) {
+        wayland_window_create_feedback(windowRecord);
+    }
+    #endif
+
     // Execute OS neutral bufferswap code first:
     PsychExecuteBufferSwapPrefix(windowRecord);
 
@@ -1458,9 +2082,8 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
     // This must be lock-protected for use with X11/XLib.
     PsychLockDisplay();
     waffle_window_swap_buffers(windowRecord->targetSpecific.windowHandle);
+    windowRecord->target_sbc = windowRecord->submitted_sbc;
     PsychUnlockDisplay();
-
-    windowRecord->target_sbc = 0;
 
     return;
 }
@@ -1652,10 +2275,248 @@ psych_bool PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindo
 
 psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int cmd, int aux1)
 {
-    // Failed to enable swap events, because they're unsupported:
-    windowRecord->swapevents_enabled = 0;
+    const char *FieldNames[] = { "OnsetTime", "OnsetVBLCount", "SwapbuffersCount", "SwapType", "BackendFeedbackString" };
+    const int  fieldCount = 5;
+    PsychGenericScriptType  *s;
+    char flagstr[10];
+    int event_type;
+
+    // Currently only have meaningful handling for Wayland with presentation_feedback extension:
+    #if PTB_USE_WAYLAND_PRESENT
+    if ((windowRecord->winsysType == WAFFLE_PLATFORM_WAYLAND) && !(windowRecord->specialflags & kPsychOpenMLDefective)) {
+        if (cmd == 0 || cmd == 1 || cmd == 2) {
+            // Check if presentation_feedback extension is supported. Enable/Disable swap completion event delivery for our window, if so:
+            PsychLockDisplay();
+            if (wayland_pres) {
+                // Logical enable state: Usercode has precedence. If it enables it goes to it. If it disabled,
+                // it gets directed to us:
+                // UPDATE: Actually no. Disable by usercode means disable for now, until we have an actual
+                // use case for automatic redirection to our code on Wayland. Otherwise we'd just incur extra
+                // overhead for nothing.
+                // Old style with redirect: if (cmd == 0 || cmd == 1) windowRecord->swapevents_enabled = (cmd == 1) ? 1 : 2;
+                // New style: Enable if usercode wants it, disable if usercode doesn't want it:
+                if (cmd == 0 || cmd == 1) windowRecord->swapevents_enabled = cmd;
+
+                // If we want the data and usercode doesn't have exclusive access to it already, then redirect to us:
+                if (cmd == 2 && (windowRecord->swapevents_enabled != 1)) windowRecord->swapevents_enabled = 2;
+
+                PsychUnlockDisplay();
+                return(TRUE);
+            } else {
+                // Failed to enable swap events, possibly because they're unsupported:
+                windowRecord->swapevents_enabled = 0;
+                PsychUnlockDisplay();
+                return(FALSE);
+            }
+        }
+
+        if (cmd == 3 || cmd == 4) {
+            // Extension enabled? Process events if so:
+            if (wayland_pres && wayland_display) {
+                // Perform one dispatch cycle so event list is up to date:
+                wl_display_dispatch_pending(wayland_display);
+
+                // Delivery to user-code?
+                if (cmd == 3 && windowRecord->swapevents_enabled == 1) {
+                    // Try to fetch oldest pending one for this window:
+                    PsychLockDisplay();
+                    struct wayland_feedback *sce, *tmp;
+                    wl_list_for_each_reverse_safe(sce, tmp, &windowRecord->targetSpecific.presentation_feedback_list, link) {
+                        // Completed or Discarded swap? That would be our one oldest completed candidate for procesing:
+                        if (sce->present_status > 0) {
+                            // Convert presentation status flags to something human readable:
+                            wayland_pflags_to_str(sce->present_flags, flagstr, sizeof(flagstr));
+
+                            if (PsychPrefStateGet_Verbosity() > 5) {
+                                if (sce->present_status == 1) {
+                                    printf("SWAPEVENT[%i]: ust = %lld, msc = %lld, sbc = %lld, flags [%s].\n", windowRecord->windowIndex,
+                                           sce->ust, sce->msc, sce->sbc, flagstr);
+                                }
+                                else {
+                                    printf("SWAPEVENT[%i]: sbc = %lld Skipped/Discarded.\n", windowRecord->windowIndex, sce->sbc);
+                                }
+                            }
+
+                            PsychAllocOutStructArray(aux1, FALSE, 1, fieldCount, FieldNames, &s);
+
+                            // Discarded / Skipped present?
+                            if (sce->present_status == 2) {
+                                // Yes. Not much todo - Assign dummy values and Discarded status:
+                                PsychSetStructArrayDoubleElement("OnsetTime", 0, 0, s);
+                                PsychSetStructArrayDoubleElement("OnsetVBLCount", 0, 0, s);
+                                PsychSetStructArrayDoubleElement("SwapbuffersCount", 0, (double) sce->sbc, s);
+                                PsychSetStructArrayStringElement("BackendFeedbackString", 0, "", s);
+                                PsychSetStructArrayStringElement("SwapType", 0, "Discarded", s);
+
+                                // Delete event:
+                                destroy_wayland_feedback(sce);
+
+                                PsychUnlockDisplay();
+                                return(TRUE);
+                            }
+
+                            // Successfully presented onscreen, go ahead...
+                            PsychSetStructArrayDoubleElement("OnsetTime", 0, PsychOSMonotonicToRefTime(((double) sce->ust) / PsychGetKernelTimebaseFrequencyHz()), s);
+                            PsychSetStructArrayDoubleElement("OnsetVBLCount", 0, (double) sce->msc, s);
+                            PsychSetStructArrayDoubleElement("SwapbuffersCount", 0, (double) sce->sbc, s);
+                            PsychSetStructArrayStringElement("BackendFeedbackString", 0, flagstr, s);
+
+                            if (sce->present_flags == (PRESENTATION_FEEDBACK_KIND_VSYNC | PRESENTATION_FEEDBACK_KIND_HW_COMPLETION |
+                                                        PRESENTATION_FEEDBACK_KIND_HW_CLOCK | PRESENTATION_FEEDBACK_KIND_ZERO_COPY)) {
+                                // ~ GLX_FLIP_COMPLETE_INTEL: A zero-copy pageflip of our buffer directly
+                                // to the scanout, thereby pixel-perfect identity display, as required by
+                                // special high precision neuro-science display hardware, precisely controlled
+                                // "pixel-perfect" stimuli etc. Stimulus onset is perfectly tear-free and
+                                // timestamped with robust and precise onset timestamps. For a non-fullscreen
+                                // window, this could also have happened by atomic flipping into a hardware
+                                // overlay instead of the primary scanout plane. This doesn't exclude the
+                                // possible display of other content on the screen - via other active hardware
+                                // overlays, or on the primary plane if our content went into a hw overlay, so
+                                // this is not a guarantee that our stimulus was the only thing showing on the
+                                // display:
+                                PsychSetStructArrayStringElement("SwapType", 0, "IdentityPageflip", s);
+                            }
+                            else if (sce->present_flags == (PRESENTATION_FEEDBACK_KIND_VSYNC | PRESENTATION_FEEDBACK_KIND_HW_COMPLETION |
+                                                            PRESENTATION_FEEDBACK_KIND_HW_CLOCK)) {
+                                // ~ GLX_FLIP_COMPLETE_INTEL, likely implemented via pageflip, with precise
+                                // and robust onset timestamps - same timing guarantees as a pageflip, but
+                                // our image buffer was composited into a shared framebuffer before presentation.
+                                // This is like a Copyswap on X11, but with reliable timing and timestamping.
+                                // While executed with precise timing, pixel color and position mapping could
+                                // be a non-identity due to compositor interference, so this might be
+                                // problematic for high-precision stims and special neuro-science display
+                                // equipment.
+                                PsychSetStructArrayStringElement("SwapType", 0, "CompositedPageflip", s);
+                            }
+
+                            else if (sce->present_flags & (PRESENTATION_FEEDBACK_KIND_VSYNC | PRESENTATION_FEEDBACK_KIND_HW_COMPLETION) ==
+                                        (PRESENTATION_FEEDBACK_KIND_VSYNC | PRESENTATION_FEEDBACK_KIND_HW_COMPLETION)) {
+                                // A tear-free presentation due to reliable vsync (pageflipped or vblank synced copy) and hardware
+                                // completion event, but no hw clock timestamp. This has well defined stimulus onset,
+                                // and also defined stimulus onset timestamping, but the timestamps can be rather noisy:
+                                if (sce->present_flags & PRESENTATION_FEEDBACK_KIND_ZERO_COPY) {
+                                    // Map it to a "ImprecisePageflip" - not neccessary true, but the behaviour should come
+                                    // close. This is the equivalent of what we get on proprietary X11/GLX drivers like the
+                                    // NVidia binary blob or AMD Catalyst, or on Apple-OSX or MS-Windows in the best case
+                                    // scenario - essentially a pageflip with noisy timestamps.
+                                    PsychSetStructArrayStringElement("SwapType", 0, "ImprecisePageflip", s);
+                                }
+                                else {
+                                    // This is a bit better than a CopySwap on X11, OSX or Windows (with/without compositing),
+                                    // in that at least presentation completion gets reliably signalled, although with noisy
+                                    // timestamps.
+                                    PsychSetStructArrayStringElement("SwapType", 0, "ImpreciseCopy", s);
+                                }
+                            }
+
+                            else if (sce->present_flags > 0) {
+                                // Could be a pageflip or a copy, or any combination, but has undefined onset timing
+                                // or undefined/tearing/non-vsynced onset, so this is close to unuseable for most of
+                                // our purposes. It is what we'd get from X11, OSX, or Windows for any CopySwap or
+                                // composited presentation, so just treat it as a regular shoddy CopySwap for now:
+                                PsychSetStructArrayStringElement("SwapType", 0, "Copy", s);
+                            } else {
+                                // No info available from compositor at all:
+                                PsychSetStructArrayStringElement("SwapType", 0, "Unknown", s);
+                            }
+
+                            // Delete event:
+                            destroy_wayland_feedback(sce);
+
+                            PsychUnlockDisplay();
+                            return(TRUE);
+                        }
+                    }
+
+                    PsychUnlockDisplay();
+                    return(FALSE);
+                }
+
+                // Delivery to internal code "us"?
+                // Note: This isn't used at the moment, just left here in case we need it in the future.
+                // As opposed to the old X11/GLX backend which used the INTEL_swap_event extension, the
+                // present flags are directly evaluated by the PsychOSGetSwapCompletionTimestamp()
+                // function for asessment if the swap happened in a reliable/trustworthy way, and to
+                // trigger warnings and error-handling if something bad happened. Therefore no need for
+                // internal logging here. We may use this function in the future for other logging
+                // purposes though, so leave the implementation, but don't enable its use by default:
+                if (cmd == 4 && windowRecord->swapevents_enabled == 2) {
+                    // Get the most recent event in the queue, old ones are not interesting to us atm.:
+                    event_type = 0; // Init to "undefined"
+
+                    // Fetch until exhausted:
+                    PsychLockDisplay();
+                    struct wayland_feedback *sce, *tmp;
+                    wl_list_for_each_reverse_safe(sce, tmp, &windowRecord->targetSpecific.presentation_feedback_list, link) {
+                        // Completed swap? That would be a candidate for procesing:
+                        if (sce->present_status > 0) {
+                            if (PsychPrefStateGet_Verbosity() > 10) {
+                                // Convert presentation status flags to something human readable:
+                                wayland_pflags_to_str(sce->present_flags, flagstr, sizeof(flagstr));
+                                if (sce->present_status == 1) {
+                                    printf("SWAPEVENT[%i]: ust = %lld, msc = %lld, sbc = %lld, flags [%s].\n", windowRecord->windowIndex,
+                                            sce->ust, sce->msc, sce->sbc, flagstr);
+                                }
+                                else {
+                                    printf("SWAPEVENT[%i]: sbc = %lld Skipped/Discarded.\n", windowRecord->windowIndex, sce->sbc);
+                                }
+                            }
+
+                            // Assign the one that matches our last 'sbc' for swap completion on our windowRecord:
+                            if ((int) sce->sbc == aux1) {
+                                // Target event: Assign its flags, delete it, end our fetch:
+                                event_type = (sce->present_status == 1) ? (int) sce->present_flags : -1;
+
+                                // Delete event:
+                                destroy_wayland_feedback(sce);
+
+                                break;
+                            }
+
+                            // Delete non-target event:
+                            destroy_wayland_feedback(sce);
+                        }
+                    }
+                    PsychUnlockDisplay();
+
+                    // TODO Doesn't make much sense atm., as this is done anyway by the
+                    // present_feedback handler...
+                    windowRecord->swapcompletiontype = event_type;
+
+                    return(TRUE);
+                }
+            }
+        }
+    } else
+    #endif
+    {
+        // Failed to enable swap events, because they're unsupported on non-Wayland:
+        windowRecord->swapevents_enabled = 0;
+    }
+
+    // Invalid cmd or failed cmd:
     return(FALSE);
 }
 
+/* PsychOSAdjustForCompositorDelay()
+ *
+ * Compute OS and desktop compositor specific delay that needs to be subtracted from the
+ * target time for a OpenGL doublebuffer swap when conventional swap scheduling is used.
+ * Subtract the delay, if any, from the given targetTime and return the corrected targetTime.
+ *
+ */
+double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime)
+{
+    // Need to compensate for Waylands (or only Westons?) 1 frame composition lag:
+    if ((windowRecord->winsysType == WAFFLE_PLATFORM_WAYLAND) && !(windowRecord->specialflags & kPsychOpenMLDefective)) {
+        targetTime -= windowRecord->VideoRefreshInterval;
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Compensating for Wayland/Weston 1 frame composition lag of %f msecs.\n", windowRecord->VideoRefreshInterval * 1000.0);
+    }
+
+    return(targetTime);
+}
+
 /* End of PTB_USE_WAFFLE */
+#endif
+/* End of !PTB_USE_WAYLAND */
 #endif

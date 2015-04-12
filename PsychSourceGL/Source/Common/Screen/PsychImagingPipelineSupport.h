@@ -112,6 +112,8 @@ psych_bool PsychPipelineBuiltinRenderClutBitsPlusPlus(PsychWindowRecordType *win
 psych_bool PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windowRecord, int hookId, PsychHookFunction* hookfunc);
 // PsychPipelineBuiltinRenderClutViaRuntime - Encode CLUT via callback to runtime environment.
 psych_bool PsychPipelineBuiltinRenderClutViaRuntime(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc);
+// Do a alpha post-multiply pass on full window backbuffer:
+psych_bool PsychPipelineBuiltinRenderAlphaPostMultiply(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc);
 
 // Blitter functions: Assignable to a function pointer of type PsychBlitterFunc:
 // =============================================================================

@@ -587,38 +587,147 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
     return;
 }
 
+/* PsychGetCurrentGPUSurfaceAddresses() - Get current scanout surface addresses
+ *
+ * Tries to get current addresses of primary and secondary scanout buffers and
+ * the pending status of pending pageflips if any.
+ *
+ * primarySurface - Pointer to 64-Bit target for frontBuffers address.
+ * secondarySurface - Pointer to a potential secondary buffer, e.g., for frame-sequential stereo.
+ * updatePending - TRUE if a flip has been queued and is still pending. FALSE otherwise or "don't know"
+ *
+ * Returns TRUE on success, FALSE if given GPU isn't supported for such queries.
+ *
+ */
+psych_bool PsychGetCurrentGPUSurfaceAddresses(PsychWindowRecordType* windowRecord, psych_uint64* primarySurface, psych_uint64* secondarySurface, psych_bool* updatePending)
+{
+    #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
+        int gpuMaintype, gpuMinortype;
+        unsigned int updateStatus;
+
+        // If we are called, we know that 'windowRecord' is an onscreen window.
+        int screenId = windowRecord->screenNumber;
+        int headid = PsychScreenToCrtcId(screenId, 0);
+
+        // Just need to check if GPU low-level access is supported:
+        if (!PsychOSIsKernelDriverAvailable(screenId)) return(FALSE);
+
+        // We only support AMD Radeon/Fire GPU's, nothing else:
+        if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) || (gpuMaintype != kPsychRadeon)) {
+            return(FALSE);
+        }
+
+        // Driver is online: Read the registers, but only for primary crtc in a multi-crtc config:
+        if  (gpuMinortype < 40) {
+            // Pre DCE-4: AVIVO class display hardware:
+            *primarySurface = (psych_uint64) PsychOSKDReadRegister(screenId, (PsychScreenToCrtcId(screenId, 0) < 1) ? RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS : RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS, NULL);
+            *secondarySurface = (psych_uint64) PsychOSKDReadRegister(screenId, (PsychScreenToCrtcId(screenId, 0) < 1) ? RADEON_D1GRPH_SECONDARY_SURFACE_ADDRESS : RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS, NULL);
+            updateStatus = PsychOSKDReadRegister(screenId, (PsychScreenToCrtcId(screenId, 0) < 1) ? RADEON_D1GRPH_UPDATE : RADEON_D2GRPH_UPDATE, NULL);
+
+            *updatePending = (updateStatus & RADEON_SURFACE_UPDATE_PENDING) ? TRUE : FALSE;
+        }
+
+        if  (gpuMinortype >= 40) {
+            // DCE-4 or later display hardware:
+            if (headid < 0 || headid > DCE4_MAXHEADID) {
+                if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: PsychGetCurrentGPUSurfaceAddresses(): Invalid headId %i (greater than max %i) provided for DCE-4+ display engine!\n", headid, DCE4_MAXHEADID);
+                return(FALSE);
+            }
+
+            // DCE 4 and later has 64-Bit addresses split in high/low 32-bit regs:
+            *primarySurface =   ((psych_uint64) PsychOSKDReadRegister(screenId, EVERGREEN_GRPH_PRIMARY_SURFACE_ADDRESS_HIGH + crtcoff[headid], NULL) << 32) +
+                                ((psych_uint64) PsychOSKDReadRegister(screenId, EVERGREEN_GRPH_PRIMARY_SURFACE_ADDRESS + crtcoff[headid], NULL));
+            *secondarySurface = ((psych_uint64) PsychOSKDReadRegister(screenId, EVERGREEN_GRPH_SECONDARY_SURFACE_ADDRESS_HIGH + crtcoff[headid], NULL) << 32) +
+                                ((psych_uint64) PsychOSKDReadRegister(screenId, EVERGREEN_GRPH_SECONDARY_SURFACE_ADDRESS + crtcoff[headid], NULL));
+            updateStatus =      PsychOSKDReadRegister(screenId, EVERGREEN_GRPH_UPDATE + crtcoff[headid], NULL);
+
+            *updatePending = (updateStatus & EVERGREEN_GRPH_SURFACE_UPDATE_PENDING) ? TRUE : FALSE;
+        }
+
+        if (PsychPrefStateGet_Verbosity() > 14) {
+            printf("PTB-DEBUG: Screen %i: Head %i: primarySurface=%p : secondarySurface=%p : updateStatus=%i\n", screenId, PsychScreenToCrtcId(screenId, 0), *primarySurface, *secondarySurface, updateStatus);
+        }
+
+        // Success:
+        return(TRUE);
+    #else
+        // Not supported:
+        return(FALSE);
+    #endif
+}
+
 /* Stores content of GPU's surface address registers of the surfaces that
  * correspond to the windowRecords frontBuffers. Only called inside
- * PsychFlipWindowBuffers() immediately before triggering a double-buffer
+ * PsychExecuteBufferSwapPrefix() immediately before triggering a double-buffer
  * swap. The values are used as reference values: If another readout of
  * these registers shows values different from the ones stored preflip,
- * then that is a certain indicator that bufferswap has happened.
+ * then that is a certain indicator that bufferswap via pageflip has happened
+ * or will happen.
  */
 void PsychStoreGPUSurfaceAddresses(PsychWindowRecordType* windowRecord)
 {
+    psych_bool updatePending;
+    PsychGetCurrentGPUSurfaceAddresses(windowRecord, &(windowRecord->gpu_preflip_Surfaces[0]), &(windowRecord->gpu_preflip_Surfaces[1]), &updatePending);
+    return;
+}
 
-#if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
-    int gpuMaintype, gpuMinortype;
+/* PsychIsGPUPageflipUsed() - Is a pageflip used on the GPU for buffer swaps at this moment?
+ *
+ * This routine compares preflip scanout addresses, as gathered via a previous PsychStoreGPUSurfaceAddresses()
+ * call prior to scheduling a swap, with the current addresses and update status. It should only be called
+ * after we detected bufferswap completion to check if the swap happened via pageflip and therefore our
+ * completion detection and timestamping is trustworthy, or if the swap happened by some other means like
+ * compositor or copyswap and therefore our results wrt. completion or timestamping are not trustworthy -
+ * at least not for conventional timestamping as used on OSX, or Linux without special OS support.
+ *
+ * The interesting scenario is if - after detection of swap completion by our conventional standard method
+ * for use with proprietary graphics drivers - the surface scanout addresses have changed and the flip is
+ * confirmed finished. In this case we can be somewhat certain that we triggered the pageflip and it completed,
+ * ie. the results for timestamping are trustworthy. This is indicated by return value 2. If a flip is used
+ * but still pending (value 1) although our code assumes swap has completed then a pageflip was likely queued
+ * by the desktop compositor and is still pending -> Timestamping not trustworthy. A value of 0 could indicate
+ * copyswap or a compositor to which we sent our updated composition source surface and posted damage, but which
+ * hasn't yet picked up on it or at least hasn't performed the full composition pass + queueing a pageflip.
+ *
+ * Ergo: For checking the trustworthiness of swap completion timestamping, the only "good" result is a
+ * return value of 2, a value of 0 or 1 is considered bad for timing, a value of -1 is non-diagnostic.
+ *
+ * As of beginning of March 2015, this routine can only be used with some confidence on Linux for conventional
+ * timestamping with the proprietary drivers and X11, as we know how X11 compositors work on Linux and what
+ * to expect. Use with FOSS graphics stack or on Wayland is not needed as we have much better facilities there.
+ * Additionally the PsychGetCurrentGPUSurfaceAddresses() support code is limited to AMD gpu's, so the only
+ * interesting/valid use cases are Linux/X11 + proprietary AMD Catalyst driver for some clever handling, and
+ * OSX + PsychtoolboxKernelDriver + AMD gpu for purely diagnostic use for manual diagnostic, not automatic
+ * problem solving!
+ *
+ * Return values:
+ * -1  == Unknown / Query unsupported.
+ *  0  == No.
+ *  1  == Yes, and the flip has been queued but is still pending, not finished.
+ *  2  == Yes, and the flip is finished.
+ *
+ */
+int PsychIsGPUPageflipUsed(PsychWindowRecordType* windowRecord)
+{
+    psych_uint64 primarySurface, secondarySurface;
+    psych_bool updatePending;
 
-    // If we are called, we know that 'windowRecord' is an onscreen window.
-    int screenId = windowRecord->screenNumber;
-
-    // Just need to check if GPU low-level access is supported:
-    if (!PsychOSIsKernelDriverAvailable(screenId)) return;
-
-    // We only support Radeon GPU's with pre DCE-4 display engine, nothing more recent:
-    if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
-        (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 40)) {
-        return;
+    if (!PsychGetCurrentGPUSurfaceAddresses(windowRecord, &primarySurface, &secondarySurface, &updatePending)) {
+        // Query not possible/supported: Return "I don't know" value -1:
+        return(-1);
     }
 
-    // Driver is online: Read the registers, but only for primary crtc in a multi-crtc config:
-    windowRecord->gpu_preflip_Surfaces[0] = PsychOSKDReadRegister(screenId, (PsychScreenToCrtcId(screenId, 0) < 1) ? RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS : RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS, NULL);
-    windowRecord->gpu_preflip_Surfaces[1] = PsychOSKDReadRegister(screenId, (PsychScreenToCrtcId(screenId, 0) < 1) ? RADEON_D1GRPH_SECONDARY_SURFACE_ADDRESS : RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS, NULL);
+    // Scanout addresses changed since last PsychStoreGPUSurfaceAddresses() call?
+    // That would mean a pageflip was either queued or already executed, in any
+    // case, pageflip is used for bufferswap:
+    if (primarySurface != windowRecord->gpu_preflip_Surfaces[0] || secondarySurface != windowRecord->gpu_preflip_Surfaces[1]) {
+        // Pageflip in use. Still pending (queued but not completed) or already completed?
+        if (updatePending) return(1);
+        return(2);
+    }
 
-#endif
-
-    return;
+    // Nope, scanout hasn't changed: Assume copyswap/blit etc.
+    return(0);
 }
 
 /*  PsychWaitForBufferswapPendingOrFinished()
@@ -638,50 +747,32 @@ psych_bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* window
 {
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
     int gpuMaintype, gpuMinortype;
-
     CGDirectDisplayID displayID;
-    unsigned int primarySurface, secondarySurface;
-    unsigned int updateStatus;
     double deadline = *timestamp;
 
     // If we are called, we know that 'windowRecord' is an onscreen window.
     int screenId = windowRecord->screenNumber;
+    int headid = PsychScreenToCrtcId(screenId, 0);
 
     // Retrieve display id and screen size spec that is needed later...
     PsychGetCGDisplayIDFromScreenNumber(&displayID, screenId);
 
-#define RADEON_D1GRPH_UPDATE	0x6144
-#define RADEON_D2GRPH_UPDATE	0x6944
-#define RADEON_SURFACE_UPDATE_PENDING 4
-#define RADEON_SURFACE_UPDATE_TAKEN   8
-
     // Just need to check if GPU low-level access is supported:
     if (!PsychOSIsKernelDriverAvailable(screenId)) return(FALSE);
 
-    // We only support Radeon GPU's with pre DCE-4 display engine, nothing more recent:
-    if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
-        (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 40)) {
+    // We only support AMD GPU's:
+    if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) || (gpuMaintype != kPsychRadeon)) {
         return(FALSE);
     }
 
     // Driver is online. Enter polling loop:
     while (TRUE) {
-        // Read surface address registers:
-        primarySurface   = PsychOSKDReadRegister(screenId, (PsychScreenToCrtcId(screenId, 0) < 1) ? RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS : RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS, NULL);
-        secondarySurface = PsychOSKDReadRegister(screenId, (PsychScreenToCrtcId(screenId, 0) < 1) ? RADEON_D1GRPH_SECONDARY_SURFACE_ADDRESS : RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS, NULL);
-
-        // Read update status registers:
-        updateStatus     = PsychOSKDReadRegister(screenId, (PsychScreenToCrtcId(screenId, 0) < 1) ? RADEON_D1GRPH_UPDATE : RADEON_D2GRPH_UPDATE, NULL);
 
         PsychGetAdjustedPrecisionTimerSeconds(timestamp);
 
-        if (primarySurface!=windowRecord->gpu_preflip_Surfaces[0] || secondarySurface!=windowRecord->gpu_preflip_Surfaces[1] || (updateStatus & (RADEON_SURFACE_UPDATE_PENDING | RADEON_SURFACE_UPDATE_TAKEN)) || (*timestamp > deadline)) {
+        if ((PsychIsGPUPageflipUsed(windowRecord) > 0) || (*timestamp > deadline)) {
             // Abort condition: Exit loop.
             break;
-        }
-
-        if (PsychPrefStateGet_Verbosity() > 9) {
-            printf("PTB-DEBUG: Head %i: primarySurface=%p : secondarySurface=%p : updateStatus=%i\n", PsychScreenToCrtcId(screenId, 0), primarySurface, secondarySurface, updateStatus);
         }
 
         // Sleep slacky at least 200 microseconds, then retry:
@@ -699,7 +790,7 @@ psych_bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* window
     }
 
     // Return FALSE if bufferswap happened already, TRUE if swap is still pending:
-    return((updateStatus & RADEON_SURFACE_UPDATE_PENDING) ? TRUE : FALSE);
+    return((PsychIsGPUPageflipUsed(windowRecord) == 1) ? TRUE : FALSE);
 #else
     // On Windows, we always return "swap happened":
     return(FALSE);
@@ -887,7 +978,7 @@ void PsychInitScreenToHeadMappings(int numDisplays)
 
         for (j = 1; j < kPsychMaxPossibleCrtcs; j++) {
             displayScreensToPipes[i][j] = -1;
-            displayScreensToCrtcIds[i][j] = -1;   
+            displayScreensToCrtcIds[i][j] = -1;
         }
 
         // We also setup beamposition bias values to "neutral defaults":

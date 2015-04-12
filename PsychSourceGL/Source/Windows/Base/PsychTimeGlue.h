@@ -60,6 +60,7 @@ psych_threadid PsychGetThreadId(void);
 int PsychIsThreadEqual(psych_thread threadOne, psych_thread threadTwo);
 int PsychIsCurrentThreadEqualToId(psych_threadid threadId);
 int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int tweakPriority);
+void PsychSetThreadName(const char *name);
 int PsychInitCondition(psych_condition* condition, const void* condition_attribute);
 int PsychDestroyCondition(psych_condition* condition);
 int PsychSignalCondition(psych_condition* condition);

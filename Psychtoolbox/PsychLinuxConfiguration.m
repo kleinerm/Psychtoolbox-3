@@ -38,10 +38,14 @@ function PsychLinuxConfiguration
 % system files etc. "sudo" will prompt the user for his admin
 % password to complete the tasks.
 %
-
+% The script also checks if any special configuration is required
+% to work around Linux specific OpenGL quirks of Matlab R2014b or
+% later.
+%
 % History:
 %  6.01.2012   mk  Written.
 % 16.04.2013   mk  Add info about 'dialout' group for serial port access.
+% 25.01.2015   mk  Add Matlab R2014b OpenGL reconfiguration.
 
 if ~IsLinux
   return;
@@ -228,5 +232,28 @@ fprintf('become effective after a reboot.\n\n\n');
 fprintf('Press any key to continue.\n');
 pause;
 fprintf('\n\n\n');
+
+% Matlab version 8.4 (R2014b) or later?
+if ~IsOctave && exist('verLessThan') && ~verLessThan('matlab', '8.4.0')
+  % Yes: If R2014b detects a Mesa OpenGL renderer as default system OpenGL
+  % library, it will blacklist it and switch to its own utterly outdated
+  % Mesa X11 software renderer (Version 7.2 !!). This is utterly inadequate
+  % for our purpose, therefore lets reconfigure Matlab to force it to use the
+  % system provided hardware accelerated Mesa OpenGL library after the next
+  % Matlab restart.
+  d = opengl('data');
+  if (ischar(d.Software) && ~isempty(strfind(d.Software, 'true'))) || (isscalar(d.Software) && d.Software)
+    % Software renderer. Let's change this for future Matlab sessions:
+    opengl('save','hardware');
+
+    fprintf('Your version of Matlab R2014b or later was setup to use its own software OpenGL renderer.\n');
+    fprintf('As this is completely unsuitable for Psychtoolbox, i have changed the setting to use the\n');
+    fprintf('system provided hardware accelerated OpenGL library. You need to quit and restart Matlab\n');
+    fprintf('for these changes to take effect, otherwise visual stimulation will be broken.\n\n');
+    fprintf('Press any key to continue to confirm you read and understood this.\n');
+    pause;
+    fprintf('\n\n');
+  end
+end
 
 return;

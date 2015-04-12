@@ -48,15 +48,15 @@
 %
 % You should check for and install the latest runtime packages available for your
 % system for best reliability and performance. However, as a convenience, at time
-% of this writing (October 2014) the required downloads would be:
+% of this writing (February 2015) the required downloads would be:
 %
-% For MS-Windows: 64-Bit Intel runtime v1.4.3
+% For MS-Windows: 64-Bit Intel runtime v1.4.5
 %
-% <http://gstreamer.freedesktop.org/data/pkg/windows/1.4.3/gstreamer-1.0-x86_64-1.4.3.msi>
+% <http://gstreamer.freedesktop.org/data/pkg/windows/1.4.5/gstreamer-1.0-x86_64-1.4.5.msi>
 %
-% For Apple OSX: Universal runtime v1.4.3
+% For Apple OSX: Universal runtime v1.4.5
 %
-% <http://gstreamer.freedesktop.org/data/pkg/osx/1.4.3/gstreamer-1.0-1.4.3-universal.pkg>
+% <http://gstreamer.freedesktop.org/data/pkg/osx/1.4.5/gstreamer-1.0-1.4.5-universal.pkg>
 %
 %
 % When the installer asks you to select the components it should install,

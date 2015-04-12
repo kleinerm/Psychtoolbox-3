@@ -38,39 +38,6 @@
 // utsname for uname() so we can find out on which kernel we're running:
 #include <sys/utsname.h>
 
-// Perform OS specific processing of Window events:
-void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
-{
-    Window rootRet;
-    unsigned int depth_return, border_width_return, w, h;
-    int x, y;
-
-    // Trigger event queue dispatch processing for GUI windows:
-    if (windowRecord == NULL) {
-        // No op, so far...
-        return;
-    }
-
-    // No-Op if we are not running on a X11 based display backend:
-    if (!windowRecord->targetSpecific.privDpy || !windowRecord->targetSpecific.xwindowHandle) return;
-
-    // GUI windows need to behave GUIyee:
-    if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord)) {
-        // Update windows rect and globalrect, based on current size and location:
-        PsychLockDisplay();
-        XGetGeometry(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.xwindowHandle, &rootRet, &x, &y,
-                     &w, &h, &border_width_return, &depth_return);
-        XTranslateCoordinates(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.xwindowHandle, rootRet,
-                              0,0, &x, &y, &rootRet);
-        PsychUnlockDisplay();
-
-        PsychMakeRect(windowRecord->globalrect, x, y, x + (int) w, y + (int) h);
-        PsychNormalizeRect(windowRecord->globalrect, windowRecord->rect);
-        PsychSetupClientRect(windowRecord);
-        PsychSetupView(windowRecord, FALSE);
-    }
-}
-
 /** PsychRealtimePriority: Temporarily boost priority to highest available priority on Linux.
  *    PsychRealtimePriority(true) enables realtime-scheduling (like Priority(>0) would do in Matlab).
  *    PsychRealtimePriority(false) restores scheduling to the state before last invocation of PsychRealtimePriority(true),
@@ -143,6 +110,40 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
 }
 
 /* The following code is only used for implementation of the classic X11/GLX backend: */
+#ifndef PTB_USE_WAYLAND
+
+// Perform OS specific processing of Window events:
+void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
+{
+    Window rootRet;
+    unsigned int depth_return, border_width_return, w, h;
+    int x, y;
+
+    // Trigger event queue dispatch processing for GUI windows:
+    if (windowRecord == NULL) {
+        // No op, so far...
+        return;
+    }
+
+    // No-Op if we are not running on a X11 based display backend:
+    if (!windowRecord->targetSpecific.privDpy || !windowRecord->targetSpecific.xwindowHandle) return;
+
+    // GUI windows need to behave GUIyee:
+    if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord)) {
+        // Update windows rect and globalrect, based on current size and location:
+        PsychLockDisplay();
+        XGetGeometry(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.xwindowHandle, &rootRet, &x, &y,
+                     &w, &h, &border_width_return, &depth_return);
+        XTranslateCoordinates(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.xwindowHandle, rootRet,
+                              0,0, &x, &y, &rootRet);
+        PsychUnlockDisplay();
+
+        PsychMakeRect(windowRecord->globalrect, x, y, x + (int) w, y + (int) h);
+        PsychNormalizeRect(windowRecord->globalrect, windowRecord->rect);
+        PsychSetupClientRect(windowRecord);
+        PsychSetupView(windowRecord, FALSE);
+    }
+}
 
 #ifndef PTB_USE_WAFFLE
 
@@ -201,8 +202,9 @@ typedef struct GLXBufferSwapComplete {
  */
 psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType *windowRecord, int numBuffers, int stereomode, int conserveVRAM)
 {
-    PsychRectType             screenrect;
-    CGDirectDisplayID         dpy;
+    char windowTitle[32];
+    PsychRectType screenrect;
+    CGDirectDisplayID dpy;
     int scrnum;
     XSetWindowAttributes attr;
     unsigned long mask;
@@ -224,6 +226,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     psych_bool xfixes_available = FALSE;
     psych_bool newstyle_setup = FALSE;
     int gpuMaintype = 0;
+
+    // Include onscreen window index in title:
+    sprintf(windowTitle, "PTB Onscreen Window [%i]:", windowRecord->windowIndex);
 
     // First opened onscreen window? If so, we try to map GPU MMIO registers
     // to enable beamposition based timestamping and other special goodies:
@@ -718,7 +723,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // Let window manager control window position if kPsychGUIWindowWMPositioned is set:
         sizehints.flags = USSize | (windowRecord->specialflags & kPsychGUIWindowWMPositioned) ? 0 : USPosition;
         XSetNormalHints(dpy, win, &sizehints);
-        XSetStandardProperties(dpy, win, "PTB Onscreen window", "PTB Onscreen window",
+        XSetStandardProperties(dpy, win, windowTitle, "PTB Onscreen window",
                                 None, (char **)NULL, 0, &sizehints);
     }
 
@@ -973,8 +978,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         PsychUnlockDisplay();
         if (ev.type == MapNotify)
             break;
-
-        PsychYieldIntervalSeconds(0.001);
     }
 
     PsychLockDisplay();
@@ -1039,7 +1042,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             setenv("PSYCH_DONT_LOCK_MOGLCORE", "1", 0);
         }
         else {
-            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Workaround: Disabled ability to 'clear moglcore', as a workaround for a Mesa OpenGL bug. Sorry for the inconvenience.\n");
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Workaround: Disabled ability to 'clear moglcore', as a workaround for a Mesa OpenGL bug. Sorry for the inconvenience.\n");
         }
     }
 
@@ -1307,8 +1310,8 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
 
     #ifdef GLX_OML_sync_control
     // Ok, this will return VBL count and last VBL time via the OML GetSyncValuesOML call
-    // if that extension is supported on this setup. As of mid 2009 i'm not aware of any
-    // affordable graphics card that would support this extension, but who knows??
+    // if that extension is supported on this setup. The Linux FOSS graphics stack (DRI2/DRI3)
+    // supports this on all gpu's since at least the year 2010:
     if ((NULL != glXGetSyncValuesOML) && !(windowRecord->specialflags & kPsychOpenMLDefective) && (glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, (int64_t*) &ust, (int64_t*) &msc, (int64_t*) &sbc))) {
         PsychUnlockDisplay();
         *vblCount = msc;
@@ -2272,8 +2275,8 @@ psych_bool PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindo
 
 psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int cmd, int aux1)
 {
-    const char *FieldNames[]={ "OnsetTime", "OnsetVBLCount", "SwapbuffersCount", "SwapType" };
-    const int  fieldCount = 4;
+    const char *FieldNames[] = { "OnsetTime", "OnsetVBLCount", "SwapbuffersCount", "SwapType", "BackendFeedbackString" };
+    const int  fieldCount = 5;
     PsychGenericScriptType	*s;
     unsigned long glxmask = 0;
     XEvent evt;
@@ -2339,7 +2342,7 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
                         GLXBufferSwapComplete *sce = (GLXBufferSwapComplete*) &evt;
                         if (PsychPrefStateGet_Verbosity() > 5) {
                             printf("SWAPEVENT: OurWin=%i ust = %lld, msc = %lld, sbc = %lld, type %s.\n", (int) (sce->drawable == windowRecord->targetSpecific.xwindowHandle),
-                                   sce->ust, sce->msc, sce->sbc, (sce->event_type == GLX_FLIP_COMPLETE_INTEL) ? "PAGEFLIP" : "BLIT/EXCHANGE");
+                                   sce->ust, sce->msc, sce->sbc, (sce->event_type == GLX_FLIP_COMPLETE_INTEL) ? "PAGEFLIP" : (sce->event_type == GLX_COPY_COMPLETE_INTEL) ? "BLIT" : "EXCHANGE");
                         }
 
                         PsychAllocOutStructArray(aux1, FALSE, 1, fieldCount, FieldNames, &s);
@@ -2349,18 +2352,22 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
                         switch (sce->event_type) {
                             case GLX_FLIP_COMPLETE_INTEL:
                                 PsychSetStructArrayStringElement("SwapType", 0, "Pageflip", s);
+                                PsychSetStructArrayStringElement("BackendFeedbackString", 0, "scez", s);
                                 break;
 
                             case GLX_EXCHANGE_COMPLETE_INTEL:
                                 PsychSetStructArrayStringElement("SwapType", 0, "Exchange", s);
+                                PsychSetStructArrayStringElement("BackendFeedbackString", 0, "___z", s);
                                 break;
 
                             case GLX_COPY_COMPLETE_INTEL:
                                 PsychSetStructArrayStringElement("SwapType", 0, "Copy", s);
+                                PsychSetStructArrayStringElement("BackendFeedbackString", 0, "sc__", s);
                                 break;
 
                             default:
                                 PsychSetStructArrayStringElement("SwapType", 0, "Unknown", s);
+                                PsychSetStructArrayStringElement("BackendFeedbackString", 0, "", s);
                         }
 
                         return(TRUE);
@@ -2380,7 +2387,7 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
                         GLXBufferSwapComplete *sce = (GLXBufferSwapComplete*) &evt;
                         if (PsychPrefStateGet_Verbosity() > 10) {
                             printf("SWAPEVENT: OurWin=%i ust = %lld, msc = %lld, sbc = %lld, type %s.\n", (int) (sce->drawable == windowRecord->targetSpecific.xwindowHandle),
-                                   sce->ust, sce->msc, sce->sbc, (sce->event_type == GLX_FLIP_COMPLETE_INTEL) ? "PAGEFLIP" : "BLIT/EXCHANGE");
+                                   sce->ust, sce->msc, sce->sbc, (sce->event_type == GLX_FLIP_COMPLETE_INTEL) ? "PAGEFLIP" : (sce->event_type == GLX_COPY_COMPLETE_INTEL) ? "BLIT" : "EXCHANGE");
                         }
 
                         // Assign the one that matches our last 'sbc' for swap completion on our windowRecord:
@@ -2418,5 +2425,21 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
     return(FALSE);
 }
 
+/* PsychOSAdjustForCompositorDelay()
+ *
+ * Compute OS and desktop compositor specific delay that needs to be subtracted from the
+ * target time for a OpenGL doublebuffer swap when conventional swap scheduling is used.
+ * Subtract the delay, if any, from the given targetTime and return the corrected targetTime.
+ *
+ */
+double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime)
+{
+    (void) windowRecord;
+
+    // Nothing to do for classic X11/GLX. Just return identity:
+    return(targetTime);
+}
+
 /* End of classic X11/GLX backend: */
+#endif
 #endif
