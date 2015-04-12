@@ -2391,7 +2391,7 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
                         switch (sce->event_type) {
                             case GLX_FLIP_COMPLETE_INTEL:
                                 PsychSetStructArrayStringElement("SwapType", 0, "Pageflip", s);
-                                PsychSetStructArrayStringElement("BackendFeedbackString", 0, "scez", s);
+                                PsychSetStructArrayStringElement("BackendFeedbackString", 0, "?cez", s);
                                 break;
 
                             case GLX_EXCHANGE_COMPLETE_INTEL:
@@ -2401,7 +2401,7 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
 
                             case GLX_COPY_COMPLETE_INTEL:
                                 PsychSetStructArrayStringElement("SwapType", 0, "Copy", s);
-                                PsychSetStructArrayStringElement("BackendFeedbackString", 0, "sc__", s);
+                                PsychSetStructArrayStringElement("BackendFeedbackString", 0, "?c__", s);
                                 break;
 
                             default:
