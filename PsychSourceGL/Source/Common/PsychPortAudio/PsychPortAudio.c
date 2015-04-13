@@ -2091,6 +2091,55 @@ PsychError PSYCHPORTAUDIOOpen(void)
             outputParameters.device = Pa_GetHostApiInfo(paHostAPI)->defaultOutputDevice;
             inputParameters.device  = Pa_GetHostApiInfo(paHostAPI)->defaultInputDevice;
         }
+
+        // Make sure we don't choose a default audio output device which is likely to
+        // send its output to nirvana. If this is the case, try to find a better alternative.
+        // Currently black listed are HDMI and DisplayPort video outputs of graphics cards
+        // with sound output over video. Is this a good idea? I don't know, time will tell...
+        if ((mode & kPortAudioPlayBack) || (mode & kPortAudioMonitoring)) {
+            outputDevInfo = Pa_GetDeviceInfo(outputParameters.device);
+            if (outputDevInfo && (Pa_GetDeviceCount() > 1) &&
+                (strstr(outputDevInfo->name, "HDMI") || strstr(outputDevInfo->name, "hdmi") ||
+                 strstr(outputDevInfo->name, "isplay"))) {
+                // Selected output default device seems to be a HDMI or DisplayPort output
+                // of a graphics card. Try to find a better default choice.
+                paHostAPI = outputDevInfo->hostApi;
+                for (deviceid = 0; deviceid < (int) Pa_GetDeviceCount(); deviceid++) {
+                    referenceDevInfo = Pa_GetDeviceInfo(deviceid);
+                    if (!referenceDevInfo || (referenceDevInfo->hostApi != paHostAPI) ||
+                        (referenceDevInfo->maxOutputChannels < 1) ||
+                        (strstr(referenceDevInfo->name, "HDMI") || strstr(referenceDevInfo->name, "hdmi") ||
+                        strstr(referenceDevInfo->name, "isplay"))) {
+                        // Unsuitable.
+                        continue;
+                    }
+
+                    // Found it:
+                    break;
+                }
+
+                // Found something better? Otherwise we stick to the original choice.
+                if (deviceid < Pa_GetDeviceCount()) {
+                    // Yes.
+                    if (verbosity > 2) printf("PTB-INFO: Choosing deviceIndex %i [%s] as default audio device.\n", deviceid, referenceDevInfo->name);
+                    outputParameters.device = (PaDeviceIndex) deviceid;
+                }
+                else {
+                    // No, warn user about possible silence:
+                    if (verbosity > 2) {
+                        printf("PTB-INFO: Chosen default audio device with deviceIndex %i seems to be a HDMI or DisplayPort\n", (int) outputParameters.device);
+                        printf("PTB-INFO: video output of your graphics card [Name = %s].\n", outputDevInfo->name);
+                        printf("PTB-INFO: Tried to find an alternative default output device but couldn't find a suitable one.\n");
+                        printf("PTB-INFO: If you don't hear any sound, then that is likely the reason - sound playing out to a\n");
+                        printf("PTB-INFO: connected display device without any speakers. See 'PsychPortAudio GetDevices?' for available devices.\n");
+                    }
+                }
+
+                // Reset our temporaries:
+                referenceDevInfo = NULL;
+                deviceid = -1;
+            }
+        }
     }
     else {
         // Specific device requested: In valid range?
@@ -4855,8 +4904,8 @@ PsychError PSYCHPORTAUDIOGetDevices(void)
 
     static char seeAlsoString[] = "Open GetDeviceSettings ";
     PsychGenericScriptType     *devices;
-    const char *FieldNames[]={    "DeviceIndex", "HostAudioAPIId", "HostAudioAPIName", "DeviceName", "NrInputChannels", "NrOutputChannels",
-        "LowInputLatency", "HighInputLatency", "LowOutputLatency", "HighOutputLatency",  "DefaultSampleRate", "xxx" };
+    const char *FieldNames[]= { "DeviceIndex", "HostAudioAPIId", "HostAudioAPIName", "DeviceName", "NrInputChannels", "NrOutputChannels",
+                                "LowInputLatency", "HighInputLatency", "LowOutputLatency", "HighOutputLatency",  "DefaultSampleRate", "xxx" };
     int devicetype = -1;
     int deviceindex = -1;
     int count = 0;
