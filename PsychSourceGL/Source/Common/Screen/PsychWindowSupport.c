@@ -3924,8 +3924,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // value of 1 msec to account for roundoff errors:
             if ((osspecific_asyncflip_scheduled && (tSwapComplete < tprescheduleswap - 0.001)) ||
                 (!osspecific_asyncflip_scheduled && (tSwapComplete < time_at_swaprequest - 0.001))) {
-                if (verbosity > -1) {
-                    printf("PTB-ERROR: OpenML timestamping reports that flip completed before it was scheduled [Scheduled no earlier than %f secs, completed at %f secs]!\n", tprescheduleswap, tSwapComplete);
+                if (verbosity > 0) {
+                    printf("PTB-ERROR: OpenML timestamping reports that flip completed before it was scheduled [Scheduled no earlier than %f secs, completed at %f secs]!\n",
+                           (osspecific_asyncflip_scheduled) ? tprescheduleswap : time_at_swaprequest, tSwapComplete);
                     printf("PTB-ERROR: This could mean that sync of bufferswaps to vertical retrace is broken or some other driver bug! Switching to alternative timestamping method.\n");
                     printf("PTB-ERROR: Check your system setup!\n");
                 }
@@ -3940,6 +3941,21 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                 // Looks good. Assign / Override:
                 time_at_vbl = tSwapComplete;
                 *time_at_onset = tSwapComplete;
+
+                // Also check for flips that completed before their target time, which
+                // would indicate a failure in swap scheduling:
+                if ((targetWhen > 0) && (tSwapComplete < targetWhen)) {
+                    if (verbosity > 0) {
+                        printf("PTB-ERROR: OpenML timestamping reports that flip completed before its requested target time [Target no earlier than %f secs, completed at %f secs]!\n",
+                               targetWhen, tSwapComplete);
+                        printf("PTB-ERROR: Something is wrong with swap scheduling, a misconfiguration or potential graphics driver bug! Check your system setup!\n");
+                        if (windowRecord->gfxcaps & kPsychGfxCapSupportsOpenML) printf("PTB-ERROR: Switching to alternative fallback scheduling method.\n");
+                    }
+
+                    // Disable OS native swap scheduling. We will use the classic wait + glXSwapBuffers path,
+                    // but still keep OS native timestamping functional:
+                    windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
+                }
             }
         }
 
