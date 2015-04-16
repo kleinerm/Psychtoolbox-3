@@ -3230,6 +3230,7 @@ int PsychOSKDGetBeamposition(int screenId)
 {
     int beampos = -1;
     int headId  = PsychScreenToCrtcId(screenId, 0);
+    static psych_bool firstTime = TRUE;
 
     if (headId < 0 || headId > ((int) fNumDisplayHeads - 1)) {
         printf("PTB-ERROR: PsychOSKDGetBeamposition: Invalid headId %i provided! Must be between 0 and %i. Aborted.\n", headId, (fNumDisplayHeads - 1));
@@ -3287,6 +3288,19 @@ int PsychOSKDGetBeamposition(int screenId)
                 // Offset between crtc's is 0x800, we're only interested in scanline, not vblank counter:
                 beampos = (int) (ReadRegister(0x616340 + (0x800 * headId)) & 0xFFFF);
                 if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG: Head %i, HW-Vblankcount: %i\n", headId, (int) ((ReadRegister(0x616340 + (0x800 * headId)) >> 16) & 0xFFFF));
+
+                if (FALSE && firstTime) {
+                    firstTime = FALSE;
+                    int newcount = -1;
+                    int oldcount = (int) ((ReadRegister(0x616340 + (0x800 * headId)) >> 16) & 0xFFFF);
+                    unsigned int foo;
+                    while (newcount <= oldcount) {
+                        foo = ReadRegister(0x616340 + (0x800 * headId));
+                        newcount = (int) ((foo >> 16) & 0xFFFF);
+                        beampos = (int) (foo & 0xFFFF);
+                    }
+                    printf("VBLIncrement %i -> %i at scanline %i\n", oldcount, newcount, beampos);
+                }
             }
         }
 

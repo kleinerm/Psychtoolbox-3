@@ -1396,7 +1396,9 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 
     // Hack to work around bugs in Mesa 10.3.3's DRI3/Present glXWaitForSBC() implementation. Doesn't work properly
     // for targetSBC == 0, so feed it the equivalent non-zero targetSBC from the glXSwapBuffersMscOML()
-    // return value to force it into the less broken code path:
+    // return value to force it into the less broken code path. This bug is fixed in 10.3.4+, 10.4.1+, 10.5+ and later,
+    // so mostly of historic value, as distros which enable DRI3 also ship sufficiently modern Mesa versions. Iow.,
+    // this workaround is a good candidate for removal in a future cleanup:
     if (targetSBC == 0) {
         targetSBC = windowRecord->target_sbc;
         if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Supported. Calling with overriden targetSBC = %lld.\n", targetSBC);
