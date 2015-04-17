@@ -903,8 +903,17 @@ void PsychShowCursor(int screenNumber, int deviceIdx)
 
 void PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx)
 {
-    // Reposition the mouse cursor: We ignore the screenNumber as Windows
-    // doesn't allow to set the cursor per screen anyway.
+    double rect[4];
+
+    if (screenNumber >= numDisplays)
+        PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychPositionCursor() is out of range");
+
+    // Apply global offset of given screen manually:
+    PsychGetGlobalScreenRect(screenNumber, &rect[0]);
+    x += (int) rect[kPsychLeft];
+    y += (int) rect[kPsychTop];
+
+    // Reposition the mouse cursor:
     if (SetCursorPos(x,y) == 0) PsychErrorExitMsg(PsychError_internal, "Couldn't position the mouse cursor! (SetCursorPos() failed).");
 }
 
