@@ -1142,7 +1142,10 @@ function rc = doDatapixx(varargin)
         % Check and clear error status:
         err = Datapixx('GetError');
         if err ~= 0
-            fprintf('PsychDataPixx: Warning: DataPixx command %s returned error code %i\n', varargin{1}, err);
+            % Print error unless from 'GetVideoStatus' which is known to us and benign:
+            if ~strcmp(varargin{1}, 'GetVideoStatus')
+                fprintf('PsychDataPixx: Warning: DataPixx command %s returned error code %i\n', varargin{1}, err);
+            end
             Datapixx('ClearError');
         end
     end
