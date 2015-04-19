@@ -1,28 +1,28 @@
 /*
-	PsychToolbox3/Source/Common/PsychPortAudio/PsychPortAudio.h
-	
-	PLATFORMS:	All
-			
-	
-	AUTHORS:
-	Mario Kleiner   mk      mario.kleiner at tuebingen.mpg.de
-	
-	HISTORY:
-	21.03.07		mk		wrote it.  
-	
-	NOTES:
-	
-	This needs the portaudio.h header file, which should be located in /usr/include/portaudio.h
-	after a standard ./configure; make; make install installation on Linux & OS/X.
+        PsychToolbox3/Source/Common/PsychPortAudio/PsychPortAudio.h
 
+        PLATFORMS:    All
+
+        AUTHORS:
+
+        Mario Kleiner   mk      mario.kleiner.de@gmail.com
+
+        HISTORY:
+
+        21.03.07        mk      wrote it.
+
+        NOTES:
+
+        This needs the portaudio.h header file, which should be located in /usr/include/portaudio.h
+        after a standard ./configure; make; make install installation on Linux & OS/X.
 */
 
-//begin include once 
+//begin include once
 #ifndef PSYCH_IS_INCLUDED_PsychPortAudio
 #define PSYCH_IS_INCLUDED_PsychPortAudio
 
 //project includes
-#include "Psych.h" 
+#include "Psych.h"
 #include "PsychTimeGlue.h"
 #include "portaudio.h"
 
@@ -41,7 +41,7 @@ void InitializeSynopsis(void);
 //function prototypes:
 
 // Version:
-PsychError MODULEVersion(void); 
+PsychError MODULEVersion(void);
 // Level of verbosity:
 PsychError PSYCHPORTAUDIOVerbosity(void);
 
@@ -72,7 +72,7 @@ PsychError PSYCHPORTAUDIOGetAudioData(void);
 // Select general run mode for audio device:
 PsychError PSYCHPORTAUDIORunMode(void);
 // Select sample loop for audio device:
-PsychError PSYCHPORTAUDIOSetLoop(void); 
+PsychError PSYCHPORTAUDIOSetLoop(void);
 // Set tuneable low-level engine parameters:
 PsychError PSYCHPORTAUDIOEngineTunables(void);
 // Get count of open audio devices:
@@ -82,9 +82,9 @@ PsychError PSYCHPORTAUDIOUseSchedule(void);
 // Add sot to playback schedule:
 PsychError PSYCHPORTAUDIOAddToSchedule(void);
 // Create and fill dynamic audio buffer:
-PsychError PSYCHPORTAUDIOCreateBuffer(void); 
+PsychError PSYCHPORTAUDIOCreateBuffer(void);
 // Delete dynamic audio buffer:
-PsychError PSYCHPORTAUDIODeleteBuffer(void); 
+PsychError PSYCHPORTAUDIODeleteBuffer(void);
 // Change device opMode at runtime:
 PsychError PSYCHPORTAUDIOSetOpMode(void);
 // Enable/Disable or reconfigure direct input monitoring:

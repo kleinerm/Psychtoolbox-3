@@ -189,7 +189,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         // auto-detect and dynamically link/bind all core OpenGL functionality
         // as well as all possible OpenGL extensions on OS-X, Linux and Windows.
         err = GLEW_OK;
-        #ifdef PTB_USE_WAFFLE
+        #if defined(PTB_USE_WAFFLE) || defined(PTB_USE_WAYLAND)
         // Linux is special: If we use the Waffle backend for display system binding, then our display backend
         // may be something else than GLX (e.g., X11/EGL, Wayland/EGL, GBM/EGL, ANDROID/EGL etc.), in which case
         // glewInit() would not work and would crash hard. Detect if we're on classic Linux or Linux with X11/GLX.
@@ -218,7 +218,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 
         // Success. Ready to go...
 		if (debuglevel > 1) {
-			printf("MOGL - OpenGL for Matlab & GNU/Octave initialized. MOGL is (c) 2006-2014 Richard F. Murray & Mario Kleiner, licensed to you under MIT license.\n");
+			printf("MOGL - OpenGL for Matlab & GNU/Octave initialized. MOGL is (c) 2006-2015 Richard F. Murray & Mario Kleiner, licensed to you under MIT license.\n");
             #ifdef WINDOWS
 			printf("On MS-Windows, we make use of the freeglut library, which is Copyright (c) 1999-2000 Pawel W. Olszta, licensed under compatible MIT/X11 license.\n");
             printf("The precompiled Windows binary DLL's have been kindly provided by http://www.transmissionzero.co.uk/software/freeglut-devel/ -- Thanks!\n");
@@ -226,15 +226,20 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 			printf("See file 'License.txt' in the Psychtoolbox root folder for the exact licensing conditions.\n");
 		}
         fflush(NULL);
-        
+
         // Perform dynamic rebinding of ARB extensions to core functions, if necessary:
         mogl_rebindARBExtensionsToCore();
-        
+
 		#ifdef FREEGLUT
 		// FreeGlut must be initialized, otherwise it will emergency abort the whole application.
 		// However, we skip init if we're on a setup without GLX display backend, as this would
-		// abort us due to lack of GLX. On non-GLX we simply can't use FreeGlut at all.
-		if (!getenv("PSYCH_USE_DISPLAY_BACKEND") || strstr(getenv("PSYCH_USE_DISPLAY_BACKEND"), "glx")) {
+		// abort us due to lack of GLX. On non-GLX we simply can't use FreeGlut at all. Now on
+                // Wayland we'd really like to use FreeGlut and with a XOrg 1.16 server or later we luckily
+                // have XWayland available as a X11/GLX emulation, so we can glutInit() on such a setup if
+                // the DISPLAY variable is defined and signals availability of basic X11/GLX. The fact we don't
+                // use it doesn't matter, as our use of GLUT is restricted to rendering of teapots and other primitives
+                // anyway, and those don't require any Windowing system dependencies in the first place.
+		if (!getenv("PSYCH_USE_DISPLAY_BACKEND") || strstr(getenv("PSYCH_USE_DISPLAY_BACKEND"), "glx") || getenv("DISPLAY")) {
 			// GLX display backend - Init and use FreeGlut:
 			glutInit( &noargs, &dummyargp);
 		}

@@ -1,12 +1,10 @@
 function BasicSoundFeedbackDemo(reqlatency, duplex)
 % BasicSoundFeedbackDemo([reqlatency=7.5 ms] [,duplex=0])
 %
-% THIS IS EARLY ALPHA CODE! IT MAY OR MAY NOT WORK RELIABLY ON YOUR SETUP!
-% TEST IT WITH MEASUREMENT EQUIPMENT IF YOU DEPEND ON ACCURATE FEEDBACK
-% TIMING!!!
-%
 % Demonstrates very basic usage of the new Psychtoolbox sound driver
-% PsychPortAudio() for audio feedback.
+% PsychPortAudio() for audio feedback. For a more complex solution
+% which provides much more precise audio feedback timing for control
+% of audio feedback delay, look at DelayedSoundFeedbackDemo instead.
 %
 % Sound is captured from the default recording device and then - with a
 % selectable delay - played back via the default output device.

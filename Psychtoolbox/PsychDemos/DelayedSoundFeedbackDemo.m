@@ -1,9 +1,8 @@
 function DelayedSoundFeedbackDemo(reqlatency, duplex, freq, minLatency)
 % DelayedSoundFeedbackDemo([reqlatency=150 ms][, duplex=0][, freq = 48000][, minLatency= 10 ms])
 %
-% THIS IS EARLY ALPHA CODE! IT MAY OR MAY NOT WORK RELIABLY ON YOUR SETUP!
-% TEST IT WITH MEASUREMENT EQUIPMENT IF YOU DEPEND ON ACCURATE FEEDBACK
-% TIMING!!!
+% CAUTION: TEST TIMING OF THIS SCRIPT WITH MEASUREMENT EQUIPMENT IF YOU
+% DEPEND ON ACCURATE FEEDBACK TIMING!!!
 %
 % Demonstrates usage of the new Psychtoolbox sound driver PsychPortAudio()
 % for audio feedback with a controlled delay.

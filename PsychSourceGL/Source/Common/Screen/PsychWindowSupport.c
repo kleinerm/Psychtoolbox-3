@@ -964,6 +964,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     }
 
     if (PsychIsGLClassic(*windowRecord)) {
+        double tDummy;
+
         // Classic OpenGL-1/2 splash image drawing code:
         glDrawBuffer(GL_BACK_LEFT);
 
@@ -971,15 +973,22 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         PsychDrawSplash(*windowRecord);
         PsychOSFlipWindowBuffers(*windowRecord);
 
+        // PsychOSGetSwapCompletionTimestamp can help the Intel ddx under DRI2+SNA to
+        // misbehave less if triple-buffering is enabled. It becomes almost useful
+        // if we accomodate its current quirks:
+        PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
+
         // Protect against multi-threading trouble if needed:
         PsychLockedTouchFramebufferIfNeeded(*windowRecord);
 
         PsychDrawSplash(*windowRecord);
         PsychOSFlipWindowBuffers(*windowRecord);
+        PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
         PsychLockedTouchFramebufferIfNeeded(*windowRecord);
 
         PsychDrawSplash(*windowRecord);
         PsychOSFlipWindowBuffers(*windowRecord);
+        PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
         PsychLockedTouchFramebufferIfNeeded(*windowRecord);
 
         // We do it again for right backbuffer to clear possible stereo-contexts as well...
@@ -3915,8 +3924,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // value of 1 msec to account for roundoff errors:
             if ((osspecific_asyncflip_scheduled && (tSwapComplete < tprescheduleswap - 0.001)) ||
                 (!osspecific_asyncflip_scheduled && (tSwapComplete < time_at_swaprequest - 0.001))) {
-                if (verbosity > -1) {
-                    printf("PTB-ERROR: OpenML timestamping reports that flip completed before it was scheduled [Scheduled no earlier than %f secs, completed at %f secs]!\n", tprescheduleswap, tSwapComplete);
+                if (verbosity > 0) {
+                    printf("PTB-ERROR: OpenML timestamping reports that flip completed before it was scheduled [Scheduled no earlier than %f secs, completed at %f secs]!\n",
+                           (osspecific_asyncflip_scheduled) ? tprescheduleswap : time_at_swaprequest, tSwapComplete);
                     printf("PTB-ERROR: This could mean that sync of bufferswaps to vertical retrace is broken or some other driver bug! Switching to alternative timestamping method.\n");
                     printf("PTB-ERROR: Check your system setup!\n");
                 }
@@ -3931,6 +3941,21 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                 // Looks good. Assign / Override:
                 time_at_vbl = tSwapComplete;
                 *time_at_onset = tSwapComplete;
+
+                // Also check for flips that completed before their target time, which
+                // would indicate a failure in swap scheduling:
+                if ((targetWhen > 0) && (tSwapComplete < targetWhen)) {
+                    if (verbosity > 0) {
+                        printf("PTB-ERROR: OpenML timestamping reports that flip completed before its requested target time [Target no earlier than %f secs, completed at %f secs]!\n",
+                               targetWhen, tSwapComplete);
+                        printf("PTB-ERROR: Something is wrong with swap scheduling, a misconfiguration or potential graphics driver bug! Check your system setup!\n");
+                        if (windowRecord->gfxcaps & kPsychGfxCapSupportsOpenML) printf("PTB-ERROR: Switching to alternative fallback scheduling method.\n");
+                    }
+
+                    // Disable OS native swap scheduling. We will use the classic wait + glXSwapBuffers path,
+                    // but still keep OS native timestamping functional:
+                    windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
+                }
             }
         }
 
@@ -4255,6 +4280,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
 
         // Schedule a buffer-swap on next VBL:
         PsychOSFlipWindowBuffers(windowRecord);
+        PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &tnew);
 
         // Protect against multi-threading trouble if needed:
         PsychLockedTouchFramebufferIfNeeded(windowRecord);

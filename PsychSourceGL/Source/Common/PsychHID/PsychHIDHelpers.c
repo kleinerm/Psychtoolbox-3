@@ -264,26 +264,29 @@ pRecDevice PsychHIDGetDeviceRecordPtrFromIndex(int deviceIndex)
 
 psych_bool PsychHIDCreateEventBuffer(int deviceIndex)
 {
-	unsigned int bufferSize;
+    unsigned int bufferSize;
 
-	if (deviceIndex < 0) deviceIndex = PsychHIDGetDefaultKbQueueDevice();
+    if (deviceIndex < 0) deviceIndex = PsychHIDGetDefaultKbQueueDevice();
 
-	bufferSize = hidEventBufferCapacity[deviceIndex];
+    bufferSize = hidEventBufferCapacity[deviceIndex];
 
-	// Already created? If so, nothing to do:
-	if (hidEventBuffer[deviceIndex] || (bufferSize < 1)) return(FALSE);
-	
-	hidEventBuffer[deviceIndex] = (PsychHIDEventRecord*) calloc(sizeof(PsychHIDEventRecord), bufferSize);
-	if (NULL == hidEventBuffer[deviceIndex]) PsychErrorExitMsg(PsychError_outofMemory, "Insufficient memory to create KbQueue event buffer!");
-	
-	// Prepare mutex for buffer:
-	PsychInitMutex(&hidEventBufferMutex[deviceIndex]);
-	PsychInitCondition(&hidEventBufferCondition[deviceIndex], NULL);
+    // Already created? If so, nothing to do:
+    if (hidEventBuffer[deviceIndex] || (bufferSize < 1)) return(FALSE);
 
-	// Flush it:
-	PsychHIDFlushEventBuffer(deviceIndex);
+    hidEventBuffer[deviceIndex] = (PsychHIDEventRecord*) calloc(sizeof(PsychHIDEventRecord), bufferSize);
+    if (NULL == hidEventBuffer[deviceIndex]) {
+        printf("PTB-ERROR: PsychHIDCreateEventBuffer(): Insufficient memory to create KbQueue event buffer!");
+        return(FALSE);
+    }
 
-	return(TRUE);
+    // Prepare mutex for buffer:
+    PsychInitMutex(&hidEventBufferMutex[deviceIndex]);
+    PsychInitCondition(&hidEventBufferCondition[deviceIndex], NULL);
+
+    // Flush it:
+    PsychHIDFlushEventBuffer(deviceIndex);
+
+    return(TRUE);
 }
 
 psych_bool PsychHIDDeleteEventBuffer(int deviceIndex)

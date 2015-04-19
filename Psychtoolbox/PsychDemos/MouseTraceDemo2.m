@@ -23,7 +23,7 @@ try
     % Move the cursor to the center of the screen
     theX = round(theRect(RectRight) / 2);
     theY = round(theRect(RectBottom) / 2);
-    SetMouse(theX,theY);
+    SetMouse(theX,theY,whichScreen);
 
     % Wait for a click and hide the cursor
     Screen(theWindow,'FillRect',0);
