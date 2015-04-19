@@ -2074,9 +2074,12 @@ if strcmpi(cmd, 'OpenWindow')
         Screen('Flip', win);
         Screen('Flip', win);
     end
-    
+
+    % One extra Flip to put the full imaging pipeline into initial state:
+    Screen('Flip', win);
+
     rc = win;
-    
+
     % Done.
     configphase_active = 0;
 

@@ -6,6 +6,7 @@
 %     AlignRect           - Align one rect over another.
 %     ArrangeRects        - Arrange array of rects in a pleasing way.
 %     CenterRect          - Center the first rect in the second.
+%     CenterRectArrayOnPoint - Centers a group of rectangles 'rects' on a given point.
 %     CenterRectOnPoint   - Center rect around an x,y coordinate, round to
 %                           integral positions. Vectorized.
 %     CenterRectOnPointd  - Center rect around an x,y coordinate. Vectorized.

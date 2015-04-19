@@ -1,9 +1,8 @@
 function varargout = PsychPortAudio(varargin)
 % PsychPortAudio - High precision sound driver for Psychtoolbox-3.
 %
-% PsychPortAudio is a new sounddriver for PTB-3. It is meant to become a
-% replacement for all other Matlab based sound drivers and PTB's old SND()
-% function.
+% PsychPortAudio is a special sounddriver for PTB-3. It is a replacement
+% for all other Matlab based sound drivers and PTB's old SND() function.
 %
 % PsychPortAudio provides the following features:
 %

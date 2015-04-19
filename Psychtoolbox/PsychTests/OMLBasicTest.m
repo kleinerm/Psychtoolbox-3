@@ -1,5 +1,5 @@
-function OMLBasicTest(screenid)
-% OMLBasicTest([screenid=max]) - Test basic correctness of OpenML timestamping.
+function OMLBasicTest(screenid, querystresstest)
+% OMLBasicTest([screenid=max][, querystresstest = 0]) - Test basic correctness of OpenML timestamping.
 %
 % Performs a sequence of 300 flips, acquires timestamps of
 % Flip completion according to OML_sync_control timestamping,
@@ -12,6 +12,11 @@ function OMLBasicTest(screenid)
 %
 % If the timestamps (minus a few outliers) disagree, then
 % something is likely broken in OpenML flip timestamping.
+%
+% if the optional parameter 'querystresstest' is set to a
+% value > 0 then a stress test of vblank count and timestamp
+% queries is run for 'querystresstest' seconds and potential
+% trouble is reported.
 %
 
 global t;
@@ -26,6 +31,10 @@ if nargin < 1 || isempty(screenid)
     screenid=max(Screen('Screens'));
 end
 
+if nargin < 2 || isempty(querystresstest)
+    querystresstest = 0;
+end
+
 win = Screen('OpenWindow', screenid);
 ifi = Screen('GetFlipInterval', win);
 
@@ -33,14 +42,27 @@ GetSecs;
 WaitSecs(0);
 Priority(MaxPriority(win));
 
+if querystresstest > 0
+    oldLastVBLTime = nan;
+    tEnd = GetSecs + querystresstest;
+    while GetSecs < tEnd
+        winfo = Screen('GetWindowInfo', win);
+        if winfo.LastVBLTime < oldLastVBLTime - 0.000050
+            fprintf('QueryStressTest: New ts %f < old ts %f --> delta %f msecs!!\n', winfo.LastVBLTime, oldLastVBLTime, 1000 * (winfo.LastVBLTime - oldLastVBLTime));
+        end
+
+        oldLastVBLTime = winfo.LastVBLTime;
+    end
+end
+
 n=300;
 t=zeros(3,n);
 
 for i=1:n
-	t(1,i) = Screen('Flip', win);
-	t(3,i) = GetSecs;
-	winfo = Screen('GetWindowInfo', win);
-	t(2,i) = winfo.LastVBLTime;
+    t(1,i) = Screen('Flip', win);
+    t(3,i) = GetSecs;
+    winfo = Screen('GetWindowInfo', win);
+    t(2,i) = winfo.LastVBLTime;
 end
 
 Priority(0);

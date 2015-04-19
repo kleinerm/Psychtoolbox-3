@@ -762,7 +762,10 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
     }
 
     // Create event buffer:
-    PsychHIDCreateEventBuffer(deviceIndex);
+    if (!PsychHIDCreateEventBuffer(deviceIndex)) {
+        PsychHIDOSKbQueueRelease(deviceIndex);
+        PsychErrorExitMsg(PsychError_system, "Failed to create keyboard queue due to out of memory condition.");
+    }
 
     // Ready to use this keybord queue.
     return(PsychError_none);

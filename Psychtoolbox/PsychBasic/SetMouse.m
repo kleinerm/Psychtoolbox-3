@@ -3,20 +3,17 @@ function SetMouse(x,y,windowPtrOrScreenNumber, mouseid)
 % 
 % Position the mouse cursor on the screen.
 %
-% The cursor position (x,y) is "local", i.e. relative to the origin of the
-% window or screen, if supplied. Otherwise it's "global", i.e. relative to
-% the origin of the main screen (the one with the menu bar).
+% The cursor position (x,y) is "local" to the screen, i.e. relative to the
+% origin of the screen if a screen number is supplied, or relative to the
+% origin of a screen on which a supplied onscreen window is displayed.
+% Otherwise it's "global", i.e. relative to the origin of the main screen
+% (Screen 0).
 %
-% On Linux with X11, the optional 'mouseid' parameter allows to select which
-% of potentially multiple cursors should be repositioned. On OS/X and
+% On Linux with X11, the optional 'mouseid' parameter allows to select
+% which of potentially multiple cursors should be repositioned. On OS/X and
 % Windows this parameter is silently ignored.
 %
 % On Linux with the Wayland backend, this function does nothing.
-%
-% Psychtoolbox will accept the optional windowPtrOrScreenNumber
-% argument and check it for validity. However, supplying the argument will
-% not influence the position of the mouse cursor. The cursor is always
-% positioned in absolute coordinates on the main screen.
 %
 % The delay between a call to SetMouse and when GetMouse will report the
 % new mouse cursor position is not known. GetMouse seems to report the new
@@ -41,6 +38,8 @@ function SetMouse(x,y,windowPtrOrScreenNumber, mouseid)
 % 02/21/06  mk      Added Linux support.
 % 06/17/06  mk      Added Windows support.
 % 11/04/14  mk      round() x,y coords for integral coordinates to avoid error.
+% 04/18/15  mk      Update help text - local coordinates now should also
+%                   work on MS-Windows, not only Linux and OSX.
 
 % SetMouse.m wraps the Screen('PositionCursor',..) call to emulate the old SetMouse.mex
 
@@ -48,7 +47,7 @@ if nargin < 2
    error('SetMouse requires x and y positions');
 end
 
-if nargin < 3
+if nargin < 3 || isempty(windowPtrOrScreenNumber)
    windowPtrOrScreenNumber = 0;
 end
 

@@ -122,7 +122,7 @@ if mode==6
     curdir = pwd;
     cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
     try
-       mex -v -g --output moglcore.mex -DLINUX -DGLEW_STATIC -DPTBOCTAVE3MEX -I/usr/X11R6/include -L/usr/X11R6/lib -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
+       mex -v -g --output moglcore.mex -DPTB_USE_WAYLAND -DLINUX -DGLEW_STATIC -DPTBOCTAVE3MEX -I/usr/X11R6/include -L/usr/X11R6/lib -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
     catch %#ok<*CTCH>
     end
     unix(['mv moglcore.mex ' PsychtoolboxRoot target]);

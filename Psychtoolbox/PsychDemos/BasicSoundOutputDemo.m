@@ -1,30 +1,19 @@
 function BasicSoundOutputDemo(repetitions, wavfilename)
 % BasicSoundOutputDemo([repetitions=0][, wavfilename])
 %
-% Demonstrates very basic usage of the new Psychtoolbox sound output driver
-% PsychPortAudio(). PsychPortAudio is a completely new sound output driver
-% for Psychtoolbox, meant as a better, more reliable, more accurate
+% Demonstrates very basic use of the Psychtoolbox sound output driver
+% PsychPortAudio(). PsychPortAudio is a better, more reliable, more accurate
 % replacement for the old Psychtoolbox SND() function and other means of
 % sound output in Matlab like sound(), soundsc(), wavplay(), audioplayer()
 % etc.
-%
-% PsychPortAudio is currently only available for OS/X on Intel based
-% Macintosh computers and for Microsoft Windows. OS/X PowerPC and Linux
-% will follow in the foreseeable future. The driver is in early beta stage,
-% fine-tuning, testing and validation will take some time. If you need
-% sound output, give it a try but don't be disappointed if it doesn't work
-% perfect, instead report issues to the forum. We don't expect any trouble
-% on OS/X, but given the huge variability on the Windows platform (and the
-% low quality of many sound drivers on Windows), that may need some tweaking,
-% so please provide feedback!
 %
 % This demo only demonstrates normal operation, not the low-latency mode,
 % extra demos and tests for low-latency and high precision timing output will
 % follow soon. If you need low-latency, make sure to read "help
 % InitializePsychSound" carefully or contact the forum.
-% Our preliminary testing for low-latency mode showed that sub-millisecond
-% accurate sound onset and << 10 msecs latency are possible on OS/X and on
-% some specially configured M$-Windows setups.
+% Testing for low-latency mode showed that sub-millisecond accurate sound
+% onset and < 10 msecs latency are possible on Linux, OSX and on some specially
+% configured MS-Windows ASIO sound card setups.
 %
 %
 % Optional arguments:
@@ -151,4 +140,3 @@ PsychPortAudio('Close', pahandle);
 
 % Done.
 fprintf('Demo finished, bye!\n');
-
