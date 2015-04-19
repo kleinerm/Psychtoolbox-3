@@ -337,7 +337,7 @@
 %
 % MORE WAYS TO TEST:
 %
-% The script OSXCompositorIdiocyTest() is a must run for OSX users, to make
+% The script OSXCompositorIdiocyTest() is a "must run" for OSX users, to make
 % sure their system doesn't have the OSX compositor bug, especially on OSX
 % 10.8 and later. If that test fails then visual stimulation timing must be
 % considered not trustworthy.
@@ -355,25 +355,26 @@
 % Screen('OpenWindow') should be able to catch about 99% of all conceivable
 % synchronization problems.
 %
-% MORE READING: See the help for 'help MirrorMode' and 'help
-% BeampositionQueries' for more info about display issues.
+% MORE READING: See 'help BeampositionQueries' for more info about timing issues.
 %
 %
 % LINUX specific tips:
 %
 % 1. Just as on all other operating systems, timed visual stimulus onset
 % and stimulus onset timestamping is not reliable for regular (non
-% fullscreen) windows, windows which don't cover the complete desktop of a
-% Psychtoolbox screen (also known as X-Screen) or for transparent windows,
+% fullscreen) windows, ie. windows which don't cover the complete desktop of
+% a Psychtoolbox screen (also known as X-Screen), or for transparent windows,
 % e.g., when the PsychDebugWindowConfiguration() command was used. Use of
 % rotated display output (90, 180, 270 degrees etc.) will also prevent
-% proper timing, just as on the other systems.
+% proper timing, just as on the other systems. Psychtoolbox PsychImaging
+% command and Panelfitter (cfe. PanelFitterDemo) provide means to rotate
+% or scale display output with correctly working timing.
 %
 % Your windows must be non-transparent, decoration/borderless, fullscreen
 % and cover a complete X-Window system screen. On a multi-display setup
 % that means that either your window must cover all connected displays, or
 % you need to setup separate X-Screens in the graphics driver control panel
-% GUI or the /etc/X11/xorg.conf file for different displays, so that all
+% GUI or via the /etc/X11/xorg.conf file for different displays, so that all
 % stimulus displays are grouped in one (or multiple) X-Screen which are
 % fully covered by your PTB onscreen window, and other displays, e.g.,
 % operator GUI displays, are grouped into a different X-Screen.
@@ -381,21 +382,26 @@
 % 2. A major source of timing trouble can be 3D desktop compositors. Either
 % use a user interface that doesn't employ a desktop compositor, e.g., the
 % GNOME-2 classic 2D desktop, LXDE or XFCE desktop, or configure your
-% desktop compositor of choice to
-% "unredirect_fullscreen_windows", which will disable the compositor for
-% Psychtoolbox fullscreen windows. With most versions of the Compiz
-% compositor, the command ...
+% desktop compositor of choice to "unredirect_fullscreen_windows", which
+% will disable the compositor for Psychtoolbox fullscreen windows.
 %
-% PsychGPUControl('FullScreenWindowDisablesCompositor', 1);
+% How to configure your desktop compositor to do this? On modern Linux
+% distributions, usually no manual steps are required for typical use:
 %
-% ... can do this setup step for you. The KDE KWin window manager (and
-% probably the latest version of GNOME-3) will automatically unredirect
-% fullscreen windows and go out of the way, if you've enabled this in
-% their settings:
+% - Ubuntus Unity GUI under Ubuntu Linux 12.04.2 LTS or later doesn't
+%   require any setup.
+%
+% - On other GUI's with the Compiz compositor, the command ...
+%   PsychGPUControl('FullScreenWindowDisablesCompositor', 1);
+%   ... can do this setup step for you. It is executed automatically during
+%   installation of Psychtoolbox, so you usually don't need this command.
 %
 % - On GNOME-3, no special setup is required.
 %
-% - On KDE, do this: Open "KDE System Settings" -> "Desktop Effects" ->
+% - On KDE with single display setup, usually no special setup is required.
+%
+% - KDE multi-display setups sometimes require some manual configuration:
+%   Do this: Open "KDE System Settings" -> "Desktop Effects" ->
 %   "Advanced" Tab -> "Suspend desktop effects for fullscreen windows"
 %   -> Check the checkbox -> "Apply" -> Done.
 %
@@ -407,20 +413,16 @@
 %   script. Or you disable composition completely: Open "KDE System Settings"
 %   -> "Desktop Effects" -> Uncheck the "Enable desktop effects at startup"
 %   checkbox, so KDE will startup with its non-composited GUI. This GUI is
-%   still very nice looking and ergonomic, but frees up additional
+%   still very nice looking and ergonomic but frees up additional
 %   resources for PTB's graphics and timing requirements. This measure may
-%   be especially effective or needed when using an Intel graphics card to
-%   free up some resources.
+%   be especially effective or needed when using an Intel graphics card.
 %
-% - Ubuntu Unity under Ubuntu Linux 12.04.2 LTS or later requires no setup.
-%
-% If you use a different desktop compositor, and on a few older versions of
-% compiz, the command doesn't yet work, so you need to check the
-% manuals/help of your system on how to enable the option
-% "unredirect_fullscreen_windows" manually. E.g., on Ubuntu systems you can
-% install the "CompizConfig settings manager" GUI tool (CCSM), which allows
-% to change many GUI settings manually. After starting that tool, you'd go
-% to the setup panel for the "Composite" plugin, and there check the
+% If you'd use a different desktop compositor, or very old versions of
+% compiz, you'd need to check the manuals/help of your system on how to enable
+% the option "unredirect_fullscreen_windows" manually. E.g., on old Ubuntu
+% systems you can install the "CompizConfig settings manager" GUI tool (CCSM),
+% which allows to change many GUI settings manually. After starting that tool,
+% you go to the setup panel for the "Composite" plugin, and there check the
 % checkbox named "Unredirect Fullscreen Windows", to make sure that Compiz
 % won't interfere with visual timing on fullscreen windows. If in doubt,
 % just use a desktop session without 3D compositor for running the actual
@@ -444,13 +446,26 @@
 % in use, about some error in "PsychOSGetSwapCompletionTimestamp" and some
 % system configuration problems.
 %
-% On such setups, triple-buffering can be disabled with driver specific
-% options in xorg.conf. However, if you are a user of 64-Bit Ubuntu
-% 14.04.2-LTS, Ubuntu 14.10, or another compatible 64-Bit distribution
-% with X-Server 1.16, you may want to read "help LinuxDrivers" instead
-% on how to install customized graphics drivers for your system which
-% solve this and other problems in a more elegant way. If you use a
-% different distribution, read on.
+% The latest version of Psychtoolbox from April 2015 can deal with the
+% triple-buffering of both the nouveau graphics driver for NVidia cards,
+% and the Intel graphics driver for Intel graphics chips automatically,
+% at least for the drivers shipping with Ubuntu 14.04.2 LTS and later,
+% so no special setup is required for regular experiment scripts. Precise
+% visual stimulus onset timing and timestamping is fully compatible with
+% the triple-buffering of those open source graphics drivers.
+%
+% If you happen to have a unusual setup whose triple-buffering still proves
+% troublesome for Psychtoolbox visual presentation timing, read on for how
+% to disable triple-buffering in the graphics drivers.
+%
+% Triple-buffering can be disabled with driver specific options in xorg.conf.
+% However, if you are a user of 64-Bit Ubuntu 14.04.2-LTS, Ubuntu 14.10, or
+% another compatible 64-Bit distribution with X-Server 1.16, you may want to
+% read "help LinuxDrivers" instead on how to install customized graphics drivers
+% for your system which solve this and other problems in a more elegant way.
+%
+% If you use a different Linux distribution, read on for how to manually
+% configure the driver.
 %
 % On Intel graphics drivers, add the options:
 %
@@ -491,3 +506,5 @@
 % 05.10.2014 Update to current state (MK).
 % 24.12.2014 Update to state where we provide our own ddx'en (MK).
 % 12.03.2015 Update to the state where we only provide intel-ddx for XOrg 1.16 (MK).
+% 19.04.2015 Update: Intel ddx 2.99.914 and 2.99.917's triple-buffering is
+%            now compatible with PTB, no need for Option TripleBuffer off anymore. (MK).
