@@ -1,7 +1,13 @@
 function EyelinkQueuedDataDemo
-% demos use of Eyelink('GetQueuedData')
-% records for a while, then plots samples, events, and execution times of GetQueuedData and some non-preallocated storage including data-conversion to take less space
-	
+% Demos use of Eyelink('GetQueuedData')
+% records for a while, then plots samples, events, and execution
+% times of GetQueuedData and some non-preallocated storage including
+% data-conversion to take less space
+
+% History:
+% ??/??/??   Written by Erik Flister.
+% 20/04/15   Removed intwarning() - no longer suppored by Matlab (MK).
+
 format long g
 clear all
 clear classes
@@ -122,15 +128,13 @@ try
                 if lost
                     fprintf('got %d losts!\n',lost)
                 end
-                
-                oldIntWarning=intwarning('on');
+
                 start=GetSecs;
                 smalls{1,end+1}=samplesIn(2,:)==el.LOSTDATAEVENT;
                 smalls{2,end}=uint16(samplesIn(20,:));
                 smalls{3,end}=uint32(samplesIn([36:43 46],:));
                 convertTimes(end+1)=GetSecs-start;
 
-                oldIntWarning=intwarning('off');
                 start=GetSecs;
                 smalls{1,end+1}=samplesIn(2,:)==el.LOSTDATAEVENT;
                 smalls{2,end}=uint16(samplesIn(20,:));
@@ -193,7 +197,7 @@ catch
     cleanup;
 end
 
-    function cleanup
+function cleanup
         chk=Eyelink('checkrecording');
         if chk~=0
             disp('problem: wasn''t recording but should have been')
