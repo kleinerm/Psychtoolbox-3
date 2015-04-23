@@ -35,10 +35,13 @@ function result = Gamepad(arg1, arg2, arg3)
 % mouse/pointing device with multiple extra axes and buttons. If your
 % GamePad is not recognized, you may need to install the joystick driver,
 % e.g., via "sudo apt-get install xserver-xorg-input-joystick" on a Debian/
-% Ubuntu system or xf86-input-joystick on systems still using xf86. You may also 
-% wish to install a custom joystick configuration file to customize the mapping 
-% and behaviour of buttons and axis, and if the Joystick also operates as a 
-% mouse or not. An example configuration file with installation instructions is 
+% Ubuntu system, "sudo apt-get install xserver-xorg-input-joystick-lts-utopic"
+% on some Ubuntu 14.04.2 LTS variants, or xf86-input-joystick on systems still
+% using xf86. You may also wish to install a custom joystick configuration file
+% to customize the mapping  and behaviour of buttons and axis, and if the
+% Joystick also operates as a mouse or not.
+%
+% An example configuration file with installation instructions is 
 % available in the Psychtoolbox/PsychContributed folder under the name 
 % "52-MyLinuxJoystick.conf".
 %
