@@ -53,42 +53,42 @@ function OSXCompositorIdiocyTest(testScreen, distractorScreen)
 % Screen('Preference','ConserveVRAM', x); setting with x = 16384 or
 % x = 8192. Results look promising but are not 100% certain.
 %
-% So far we also know that at least OSX 10.9.0 - 10.9.2 with NVidia
+% So far we also know that at least OSX 10.9 - 10.10 with NVidia
 % graphics hardware do not work properly at all in any configuration!
 %
 
   % Default startup check and setup:
   PsychDefaultSetup(0);
-  
+
   if nargin < 1 || isempty(testScreen)
     testScreen = max(Screen('Screens'));
   end
-  
-  win = Screen('Openwindow', testScreen, 0);
-  
+
+  win = Screen('Openwindow', testScreen, 0, [], [], [], [], [], kPsychNeedRetinaResolution);
+
   % Get black image on screen:
   Screen('Flip', win);
-  
+
   % Get white image on screen. Don't do anything after flip:
   Screen('FillRect', win, 255);
   DrawFormattedText(win, 'PASS I - This display should flicker!', 'center', 'center', 0);
   Screen('Flip', win, [], 2);
-  
+
   % Frontbuffer contains white, backbuffer contains black.
-  
+
   % If page-flipping is used for double-buffer swaps, then
   % display should flicker black-white-black... if dontclear = 2:
   for i=1:300
     Screen('Flip', win, GetSecs + 0.020, 2);
   end
-  
+
   % Distractor window to be used?
   if nargin > 1
     % Distractor window opens fullscreen on 2nd display,
     % should use page flipping for swaps:
     Screen('Openwindow', distractorScreen, 0);
   end
-  
+
   % What happens to the test window after opening the
   % fullscreen page flipped distractorwindow?
   %
@@ -99,7 +99,7 @@ function OSXCompositorIdiocyTest(testScreen, distractorScreen)
   % we are so screwed it's not even funny...
   % Get black image on screen:
   Screen('Flip', win);
-  
+
   % Get white image on screen. Don't do anything after flip:
   Screen('FillRect', win, 255);
   DrawFormattedText(win, 'PASS II - This display should flicker!', 'center', 'center', 0);
@@ -108,7 +108,7 @@ function OSXCompositorIdiocyTest(testScreen, distractorScreen)
   for i=1:300
     Screen('Flip', win, GetSecs + 0.020, 2);
   end
-  
+
   % Close windows, cleanup:
   sca;
 
