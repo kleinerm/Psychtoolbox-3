@@ -74,6 +74,7 @@ $snowleopardcount = 0;
 $lioncount = 0;
 $mountainlioncount = 0;
 $maverickscount = 0;
+$yosemitecount = 0;
 
 $winunknowncount = 0;
 $win2kcount = 0;
@@ -110,6 +111,7 @@ $matv81count = 0;
 $matv82count = 0;
 $matv83count = 0;
 $matv84count = 0;
+$matv85count = 0;
 
 $octavelinuxcount = 0;
 $octaveosxcount   = 0;
@@ -256,6 +258,7 @@ foreach($uniqueptbs as $ofl) {
     if (strpos($ofl, '<ENVVERSION>8.2')) { $matv82count++; }
     if (strpos($ofl, '<ENVVERSION>8.3')) { $matv83count++; }
     if (strpos($ofl, '<ENVVERSION>8.4')) { $matv84count++; }
+    if (strpos($ofl, '<ENVVERSION>8.5')) { $matv85count++; }
   }
 
   if (strpos($ofl, '<ENVIRONMENT>Octave')) {
@@ -326,6 +329,7 @@ foreach($uniqueptbs as $ofl) {
     if (strpos($ofl, '10.7.')) { $lioncount++; }
     if (strpos($ofl, '10.8.')) { $mountainlioncount++; }
     if (strpos($ofl, '10.9.')) { $maverickscount++; }
+    if (strpos($ofl, '10.10.')) { $yosemitecount++; }
 
     if (strpos($ofl, '<CPUARCH>ppc')) {
       // It is a PowerPC Macintosh:
@@ -399,13 +403,14 @@ printf('PowerMac                     : %4d (%7.3f%% of all Apple systems) <br />
 print "IntelMac                     : $intelmaccount<br />";
 
 print "<br />For Macintosh - Breakdown by OS/X version:<br /><br />";
-print "10.3 - Panther               : $panthercount<br />";
-print "10.4 - Tiger                 : $tigercount<br />";
-print "10.5 - Leopard               : $leopardcount<br />";
-print "10.6 - Snow Leopard          : $snowleopardcount<br />";
-print "10.7 - Lion                  : $lioncount<br />";
-print "10.8 - Mountain Lion         : $mountainlioncount<br />";
-print "10.9 - Mavericks             : $maverickscount<br />";
+print "10.3  - Panther               : $panthercount<br />";
+print "10.4  - Tiger                 : $tigercount<br />";
+print "10.5  - Leopard               : $leopardcount<br />";
+print "10.6  - Snow Leopard          : $snowleopardcount<br />";
+print "10.7  - Lion                  : $lioncount<br />";
+print "10.8  - Mountain Lion         : $mountainlioncount<br />";
+print "10.9  - Mavericks             : $maverickscount<br />";
+print "10.10 - Yosemite              : $yosemitecount<br />";
 
 print "<br />For MS-Windows - Breakdown by Windows version:<br /><br />";
 print "Windows additional preVistas : $winunknowncount<br />";
@@ -448,6 +453,7 @@ print "Matlab 8.1   (R2013a)        : $matv81count<br />";
 print "Matlab 8.2   (R2013b)        : $matv82count<br />";
 print "Matlab 8.3   (R2014a)        : $matv83count<br />";
 print "Matlab 8.4   (R2014b)        : $matv84count<br />";
+print "Matlab 8.5   (R2015a)        : $matv85count<br />";
 
 print "<br />Number of GNU/Octave V3+ installations by system:<br /><br />";
 printf('Octave on OS/X               : %8d (%7.3f%% of all OS/X installs) <br />', $octaveosxcount, 100 * $octaveosxcount / $osxcount);
