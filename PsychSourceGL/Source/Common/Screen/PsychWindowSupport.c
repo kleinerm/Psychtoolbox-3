@@ -3233,7 +3233,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         tshouldflip = flipwhen;
 
         // Adjust target time for potential OS-specific compositor delay:
-        flipwhen = PsychOSAdjustForCompositorDelay(windowRecord, flipwhen);
+        flipwhen = PsychOSAdjustForCompositorDelay(windowRecord, flipwhen, FALSE);
 
         // Some time left until deadline 'flipwhen'?
         PsychGetAdjustedPrecisionTimerSeconds(&tremaining);
@@ -4341,8 +4341,8 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
 
                 // Shorten our measured time sample by the delay introduced by a potentially running
                 // and interfering compositor, so we discount that confound. Needed, e.g., for Windows DWM
-                // and Wayland + Weston, at least as of Weston 1.7.:
-                tdur = PsychOSAdjustForCompositorDelay(windowRecord, tdur);
+                // and Wayland + Weston, at least before Weston 1.8.:
+                tdur = PsychOSAdjustForCompositorDelay(windowRecord, tdur, TRUE);
 
                 // We accept the measurement as valid if either no intervalHint is available as reference or
                 // we are in an interval between +/-20% of the hint.

@@ -2157,8 +2157,10 @@ int PsychOSIsDWMEnabled(int screenNumber)
  * Subtract the delay, if any, from the given targetTime and return the corrected targetTime.
  *
  */
-double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime)
+double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime, psych_bool onlyForCalibration)
 {
+    (void) onlyForCalibration;
+
     // Will the MS-Windows DWM desktop compositor affect our window? If so, compensate, otherwise just return unaltered targetTime:
     if (PsychIsMSVista() && PsychOSIsDWMEnabled(0) && ((PsychGetNumDisplays() == 1) || !(windowRecord->specialflags & kPsychIsFullscreenWindow))) {
         // Yes. Definitely our window will be subject to desktop composition. This will introduce

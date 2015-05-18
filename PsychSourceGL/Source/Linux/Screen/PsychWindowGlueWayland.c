@@ -50,6 +50,9 @@
 // Number of currently open onscreen windows:
 static int open_windowcount = 0;
 
+// Delay to add to targetTime when manual swap scheduling is used:
+static double delayFromFrameStart = 0;
+
 // Tracking of currently bound OpenGL rendering context for master-thread:
 static struct waffle_context *currentContext = NULL;
 
@@ -1447,6 +1450,12 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
  */
 void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 {
+    // Initialize fudge factor needed by PsychOSAdjustForCompositorDelay().
+    // Default to 0.2 msecs, allow user override for testing and benchmarking via
+    // environment variable:
+    delayFromFrameStart = 0.0002;
+    if (getenv("PSYCH_WAYLAND_SWAPDELAY")) delayFromFrameStart = atof(getenv("PSYCH_WAYLAND_SWAPDELAY"));
+
     // Disable clever swap scheduling for now:
     windowRecord->gfxcaps &= ~kPsychGfxCapSupportsOpenML;
 
@@ -1906,16 +1915,83 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
  * Subtract the delay, if any, from the given targetTime and return the corrected targetTime.
  *
  */
-double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime)
+double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime, psych_bool onlyForCalibration)
 {
     double nominalIFI = PsychGetNominalFramerate(windowRecord->screenNumber);
     if (nominalIFI > 0) nominalIFI = 1.0 / nominalIFI;
 
-    // Need to compensate for Waylands (or only Westons?) 1 frame composition lag:
-    // Update: Not needed with Pekka's lag reduction patch on top of Weston-1.7
-    if (FALSE && !(windowRecord->specialflags & kPsychOpenMLDefective)) {
-        targetTime -= nominalIFI;
-        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Compensating for Wayland/Weston 1 frame composition lag of %f msecs.\n", nominalIFI * 1000.0);
+    if (!(windowRecord->specialflags & kPsychOpenMLDefective)) {
+        // This was needed to compensate for Westons 1 frame composition lag, but is
+        // no longer needed as of Weston 1.8+ due to Pekka's lag reduction patch.
+        if (FALSE) {
+            targetTime -= nominalIFI;
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Compensating for Wayland/Weston 1 frame composition lag of %f msecs.\n", nominalIFI * 1000.0);
+        }
+
+        // Robustness improvement for swap scheduling on at least Weston 1.8, likely
+        // won't hurt on other Wayland implementations - not for use in refresh rate
+        // calibration.
+        if (!onlyForCalibration) {
+            // Weston 1.8+ or other compositors, called for swap scheduling, not for
+            // sync tests/calibration.
+            //
+            // Try to target the earliest point in time inside the video refresh cycle
+            // directly before the target stimulus onset frame, so the compositor will
+            // lock onto the start vblank of the following target frame. For this we
+            // need to find out from given targetTime in which frame the targetTime
+            // is located, then find the start time of active scanout of that frame
+            // and return that as corrected targetTime.
+            //
+            // Background reasoning:
+            //
+            // Some (most?) Wayland compositors will define some composition deadline
+            // within their current frame. Presentation requests from clients arriving
+            // after that deadline will not be processed for the current frame, but delayed
+            // to the next frame, in order to leave sufficient headroom in the current
+            // frame for the time consuming rendering needed for desktop composition of
+            // new content for the upcoming frame, so they won't skip that frames vblank
+            // deadline and cause skipped frames. At least Weston as of 1.8 has such a
+            // deadline defined as 'repaint-window' msecs before end of current frame, with
+            // a default value of 7 msecs, ie., requests arriving < 7 msecs before end of
+            // a frame will be delayed by a full frame. Weston may get a dynamic deadline
+            // if my experimental patches get accepted, to provide a shorter cutoff if
+            // possible, or the strategy may change to something like "unredirect fullscreen
+            // windows" like on X11, or the future presentation_queue extension may deal with
+            // this elegantly, but atm. for Weston 1.8 this problem will exist. The strategy
+            // of other Wayland compositors (KDE, GNOME etc.) is not yet known.
+            //
+            // In any case, targetting the earliest possible swap submission time for given
+            // targetTime makes us as robust as possible against different compositors strategies.
+
+            // Need valid onset timestamp of most recent completed flip, and valid measured
+            // video refresh duration:
+            if ((windowRecord->time_at_last_vbl > 0) && (windowRecord->VideoRefreshInterval > 0)) {
+                // Translate targetTime into how many frames the frame containing 'targetTime' is
+                // ahead of the last known frame start time 'time_at_last_vbl':
+                targetTime = floor((targetTime - windowRecord->time_at_last_vbl) / windowRecord->VideoRefreshInterval);
+
+                // Use 'time_at_last_vbl' to calculate the start timestamp of the frame in which
+                // we need to swap - targetTime frames ahead - in order to hit the correct composition
+                // cycle for our content to get on the screen at the target frame.
+                // Resulting 'targetTime' will be the earliest possible point in time we can swap:
+                targetTime = windowRecord->time_at_last_vbl + (targetTime * windowRecord->VideoRefreshInterval);
+
+                // Add some small security margin to this to account for measurement and roundoff errors,
+                // as swapping a tiny bit later than a frame boundary is not hurtful, but swapping earlier is.
+                targetTime += delayFromFrameStart;
+
+                if (PsychPrefStateGet_Verbosity() > 4) {
+                    printf("PTB-DEBUG: Setting swap targetTime to %f secs [fudge %f secs] for Wayland composition compensation.\n",
+                           targetTime, delayFromFrameStart);
+                }
+            }
+            else {
+                if (PsychPrefStateGet_Verbosity() > 4) {
+                    printf("PTB-DEBUG: PsychOSAdjustForCompositorDelay(): No-Op due to lack of baseline data tvbl=%f, videorefresh=%f\n",
+                           windowRecord->time_at_last_vbl, windowRecord->VideoRefreshInterval);
+                }
+            }
+        }
     }
 
     return(targetTime);
