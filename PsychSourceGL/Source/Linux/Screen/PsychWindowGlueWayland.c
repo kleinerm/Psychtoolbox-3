@@ -1349,6 +1349,14 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
     // sync tests are not completely disabled and vsynced stimulus onset with precise timing
     // is requested, iow. if the usercode signals it cares about visual and timing correctness:
     if ((PsychPrefStateGet_SkipSyncTests() < 2) && (windowRecord->vSynced)) {
+        // HACK TODO FIXME REMOVE IN PRODUCTION: Windowed opaque windows can end in a hardware overlay on Wayland/Weston,
+        // but the current implementation as of at least Weston 1.8 can't provide proper sync, ergo always reports lack
+        // of vsync. To allow us to test Weston, we suppress our regular warning/error handling for such windows by
+        // enforcing the vsync flag. This hack must be removed as soon as Weston gains proper atomic planes support.
+        if (!(windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_WindowShieldingLevel() >= 2000)) {
+            windowRecord->swapcompletiontype |= PRESENTATION_FEEDBACK_KIND_VSYNC;
+        }
+
         // If usercode wants vsynced tear-free swap, we better got one, otherwise we consider this a warning condition:
         if (!(windowRecord->swapcompletiontype & PRESENTATION_FEEDBACK_KIND_VSYNC) && (PsychPrefStateGet_Verbosity() > 0)) {
             printf("PTB-ERROR: Flip for window %i was not vblank synchronized/tear-free as requested. Stimulus is likely visually corrupted and visual presentation timing is likely wrong!\n",
