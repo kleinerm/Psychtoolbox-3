@@ -24,7 +24,7 @@ function oldType = ShowCursor(type, screenid, mouseid)
 % Apart from that names, you can pass integral numbers for type to select
 % further shapes. The mapping of numbers to shapes is operating system
 % dependent, therefore not portable across different platforms. On
-% MS-Windows, you can select between number 0 to 7. On Linux/X11 you can
+% MS-Windows, you can select between number 0 to 8. On Linux/X11 you can
 % select from a wide range of numbers from 0 up to (at least) 152, maybe
 % more, depending on your setup. See the C header file "X11/cursorfont.h"
 % for a mapping of numbers to shapes. Passing invalid numbers can create
