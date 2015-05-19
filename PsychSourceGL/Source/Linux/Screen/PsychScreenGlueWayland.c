@@ -988,6 +988,61 @@ psych_bool PsychWaylandGetKbNames(PsychGenericScriptType *kbNames)
     return(TRUE);
 }
 
+/* PsychWaylandEventTimeToRefTime - Convert from waylaned 32-Bit input
+ * event timestamp in CLOCK_MONOTONIC time to PTB reference time.
+ *
+ * Unfortunately libinput as used by Wayland only provides millisecond
+ * resolution timestamps.
+ */
+double PsychWaylandEventTimeToRefTime(uint32_t event_lo)
+{
+    struct timespec tp;
+    psych_uint64 now, eventTimeMsecs;
+    uint32_t now_lo, now_hi;
+    double eventSecs;
+
+    // Get current CLOCK_MONOTONIC time as baseline. Wayland uses libinput
+    // to get input event timestamps in kernel reported CLOCK_MONOTONIC
+    // time. Unfortunately libinput converts those timestamps from nanosecond
+    // resolution to millisecond resolution and then only keeps the low 32-Bits.
+    // We need to invert the process, recovering full 64-Bit milliseconds.
+
+    // Get current time, convert to milliseconds, split in high and low 32-Bits:
+    clock_gettime(CLOCK_MONOTONIC, &tp);
+    now = tp.tv_sec * 1000 + tp.tv_nsec / 1000000;
+    now_lo = now & 0xffffffff;
+    now_hi = (now >> 32) & 0xffffffff;
+
+    // As the event can't be far in the past, our upper 32-Bits of current time
+    // are likely identical with the thrown away upper 32-Bits of the libinput
+    // event, whereas the our lower 32-Bits of current time should be higher as
+    // the input event was created in the past. Check this assumption. If this
+    // isn't the case then system time must just recently have crossed a 32-Bit
+    // time segment boundary, iow. the upper 32-Bits have incremented by 1, whereas
+    // the lower 32-Bits have wrapped around to a zero or low value, therefore our
+    // low timestamp appears to be smaller than that of a event from the past.
+    // Correct for this by reducing now_hi by 1, so now_hi represents the 32-Bit
+    // time segment corresponding to the input event. The only way this could fail
+    // is if the input event was more than 2^32 milliseconds in the past, iow. over
+    // 49 days have passed since the last user input -- very unlikely for a running
+    // experiment.
+    if (event_lo > now_lo) {
+        now_hi--;
+    }
+
+    // Reconstruct 64-Bit msecs event time from our now_hi upper 32-Bits and
+    // the events reported lower 32-Bits:
+    eventTimeMsecs = ((psych_uint64) now_hi << 32) | event_lo;
+
+    // Convert from integer milliseconds to double seconds in CLOCK_MONOTONIC time:
+    eventSecs = ((double) eventTimeMsecs) / 1000.0;
+
+    // Convert from monotonic time to Psychtoolbox "GetSecs" time, if needed:
+    eventSecs = PsychOSMonotonicToRefTime(eventSecs);
+
+    return(eventSecs);
+}
+
 psych_bool PsychWaylandGetKeyboardState(int deviceId, int numKeys, PsychNativeBooleanType *buttonStates, double *timeStamp)
 {
     ProcessWaylandEvents(0);
@@ -1009,8 +1064,8 @@ psych_bool PsychWaylandGetKeyboardState(int deviceId, int numKeys, PsychNativeBo
     // Copy current keyState to return vector:
     memcpy(buttonStates, &(waylandInputDevices[deviceId]->keyState[0]), MIN(numKeys, 256) * sizeof(*buttonStates));
 
-    // TODO: Remap timestamp to GetSecs time:
-    *timeStamp = (double) waylandInputDevices[deviceId]->keyTimestamp;
+    // Remap 32-Bit millisecond timestamp to GetSecs time:
+    *timeStamp = PsychWaylandEventTimeToRefTime(waylandInputDevices[deviceId]->keyTimestamp);
 
     return(TRUE);
 }
