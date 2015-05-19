@@ -206,7 +206,7 @@ PsychError SCREENShowCursorHelper(void)
                 break;
 
             case 8:
-                // No cursor:
+                // IBeam/text cursor:
                 lpCursorName = IDC_IBEAM;
                 break;
 
