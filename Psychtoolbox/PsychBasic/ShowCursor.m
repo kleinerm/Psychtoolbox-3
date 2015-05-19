@@ -20,6 +20,7 @@ function oldType = ShowCursor(type, screenid, mouseid)
 % 'CrossHair' = A cross-hair cursor.
 % 'Hand' = A hand symbol.
 % 'SandClock' = Some sort of sand clock/hour-glass (not available on OSX).
+% 'TextCursor' = A text selection/caret placement cursor (AKA I Beam).
 %
 % Apart from that names, you can pass integral numbers for type to select
 % further shapes. The mapping of numbers to shapes is operating system
@@ -58,6 +59,7 @@ function oldType = ShowCursor(type, screenid, mouseid)
 % 09/21/07 mk  Added code for selecting 'type' - the shape of a cursor - on supported systems.
 % 08/14/14 dcn Fixed typo and simplified
 % 01/13/15 mk  Update help text to match reality better, esp. OSX.
+% 05/19/15 dcn Adding 'TextCursor' as now supported on all platforms.
 
 % We default to setup of display screen zero, if no
 % screenid provided. This argument is ignored on
@@ -126,6 +128,19 @@ else
 
             if IsLinux
                 type = 26;
+            end
+        end
+
+        if strcmpi(type, 'TextCursor');
+            % True for Windows:
+            type = 8;
+            
+            if IsOSX
+                type = 4;
+            end
+
+            if IsLinux
+                type = 1;
             end
         end
 
