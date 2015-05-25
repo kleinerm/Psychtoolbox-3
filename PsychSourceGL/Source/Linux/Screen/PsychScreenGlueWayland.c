@@ -1426,51 +1426,57 @@ void InitCGDisplayIDList(void)
     free(wafflenatdis);
     wafflenatdis = NULL;
 
-    // Initialize connection to colord - the color management daemon:
-    colord_client = cd_client_new();
+    if (!getenv("PSYCH_DISABLE_COLORD")) {
+        // Initialize connection to colord - the color management daemon:
+        colord_client = cd_client_new();
 
-    // Awful hack: If libcolord gets unloaded due to an unload of the Screen mex file,
-    // then on a reload of Screen the cd_client_new() function above would try to reregister
-    // some internal GType it forgot it already had registered. This would fail, would then
-    // cause a failure of cd_client_new() and then a crash for ourselves. Yay!
-    //
-    // To prevent this we dlopen() libcolord again, for the sole purpose of getting
-    // its reference count bumped by one, so a Screen() unload will not cause the
-    // library to unload during the complete livetime of our hosting process, and
-    // thereby prevent it from forgetting it already has registered that GType.
-    if (colord_client && dladdr((void*) cd_client_new, &libcolord_info)) {
-        // Yes, got the info.
-        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: libcolord.so path as detected by dladdr(): %s\n", libcolord_info.dli_fname);
+        // Awful hack: If libcolord gets unloaded due to an unload of the Screen mex file,
+        // then on a reload of Screen the cd_client_new() function above would try to reregister
+        // some internal GType it forgot it already had registered. This would fail, would then
+        // cause a failure of cd_client_new() and then a crash for ourselves. Yay!
+        //
+        // To prevent this we dlopen() libcolord again, for the sole purpose of getting
+        // its reference count bumped by one, so a Screen() unload will not cause the
+        // library to unload during the complete livetime of our hosting process, and
+        // thereby prevent it from forgetting it already has registered that GType.
+        if (colord_client && dladdr((void*) cd_client_new, &libcolord_info)) {
+            // Yes, got the info.
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: libcolord.so path as detected by dladdr(): %s\n", libcolord_info.dli_fname);
 
-        // Try to re-open libcolord.so. This will not really
-        // reload it due to RTLD_NOLOAD, just increment its
-        // refcount to prevent it from unloading when Screen
-        // gets unloaded due to a "clear Screen" etc.:
-        dlerror();
-        if (dlopen(libcolord_info.dli_fname, RTLD_NOW | RTLD_NOLOAD | RTLD_GLOBAL)) {
-            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Locked libcolord into memory.\n");
+            // Try to re-open libcolord.so. This will not really
+            // reload it due to RTLD_NOLOAD, just increment its
+            // refcount to prevent it from unloading when Screen
+            // gets unloaded due to a "clear Screen" etc.:
+            dlerror();
+            if (dlopen(libcolord_info.dli_fname, RTLD_NOW | RTLD_NOLOAD | RTLD_GLOBAL)) {
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Locked libcolord into memory.\n");
+            }
+            else {
+                if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to lock libcolord into memory [%s]! Expect color management failure after reloading Screen()!!\n", dlerror());
+            }
+            dlerror();
         }
         else {
-            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to lock libcolord into memory [%s]! Expect color management failure after reloading Screen()!!\n", dlerror());
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to lock libcolord into memory! Expect color management failure when reloading Screen()!!\n");
         }
-        dlerror();
-    }
-    else {
-        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to lock libcolord into memory! Expect color management failure when reloading Screen()!!\n");
-    }
 
-    error = NULL;
-    if (!colord_client || !cd_client_connect_sync(colord_client, NULL, &error)) {
-        if (colord_client) g_object_unref(colord_client);
-        colord_client = NULL;
-        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-INFO: Couldn't connect to color daemon [%s]! Gamma table functions will be disabled.\n", error->message);
-        if (error) g_error_free(error);
+        error = NULL;
+        if (!colord_client || !cd_client_connect_sync(colord_client, NULL, &error)) {
+            if (colord_client) g_object_unref(colord_client);
+            colord_client = NULL;
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-INFO: Couldn't connect to color daemon [%s]! Gamma table functions will be disabled.\n", error->message);
+            if (error) g_error_free(error);
+        }
+        else {
+            // Load Plug & Play device id database for proper matching of
+            // wl_output's to colord managed display devices:
+            load_pnp_ids();
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Connected to colord.\n");
+        }
     }
     else {
-        // Load Plug & Play device id database for proper matching of
-        // wl_output's to colord managed display devices:
-        load_pnp_ids();
-        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Connected to colord.\n");
+        colord_client = NULL;
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Disabled colord support via users setenv('PSYCH_DISABLE_COLORD', '1'). Gamma table functions disabled.\n");
     }
 
     // Get our own wl_registry, do the enumeration and binding:
