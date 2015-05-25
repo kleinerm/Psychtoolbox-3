@@ -185,6 +185,17 @@ unsigned int PsychSetGPUIdentityPassthrough(PsychWindowRecordType* windowRecord,
     // Either screenid from windowRecord or as passed in:
     if (windowRecord) screenId = windowRecord->screenNumber;
 
+    #ifdef PTB_USE_WAYLAND
+    // Wayland/colord specific identity setup requested?
+    if (getenv("PSYCH_USE_COLORD_IDENTITYLUT")) {
+        // Try to use experimental code for profiling inhibition on Wayland + colord setups.
+        // Call conventional code below on failure:
+        if (PsychWaylandProfilingInhibit(screenId, passthroughEnable)) {
+            return(2);
+        }
+    }
+    #endif
+
     // Check if kernel driver is enabled, otherwise this won't work:
     if (!PsychOSIsKernelDriverAvailable(screenId)) {
         if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: GPU framebuffer passthrough setup requested, but this is not supported without kernel driver.\n");

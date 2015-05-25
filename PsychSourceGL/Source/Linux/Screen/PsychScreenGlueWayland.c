@@ -150,6 +150,9 @@ extern CGDisplayCount              numDisplays;
 extern CGDirectDisplayID           displayCGIDs[kPsychMaxPossibleDisplays];
 extern psych_mutex displayLock;
 
+// colord profiling inhibition state for each screen:
+static psych_bool displayProfilingInhibit[kPsychMaxPossibleDisplays];
+
 // Functions defined in PsychScreenGlue.c:
 void PsychLockScreenSettings(int screenNumber);
 void PsychUnlockScreenSettings(int screenNumber);
@@ -1376,6 +1379,7 @@ void InitCGDisplayIDList(void)
     for (i = 0; i < kPsychMaxPossibleDisplays; i++) {
         displayCGIDs[i] = NULL;
         displayWaylandOutputs[i] = NULL;
+        displayProfilingInhibit[i] = FALSE;
     }
 
     // Clear all input devices and seats:
@@ -1570,6 +1574,10 @@ void PsychCleanupDisplayGlue(void)
     // Go trough full screen list:
     for (i = 0; i < PsychGetNumDisplays(); i++) {
         if (displayOutputs[i]) {
+            // Release all profiling inhibitions on colord managed displays:
+            if (displayProfilingInhibit[i]) {
+                PsychWaylandProfilingInhibit(i, FALSE);
+            }
             destroy_output_info(displayOutputs[i]);
             displayOutputs[i] = NULL;
             displayWaylandOutputs[i] = NULL;
@@ -2603,6 +2611,51 @@ cleanup_profile:
 
     // Return final status:
     return(rc);
+}
+
+/*
+ * Enable or disable profiling inhibition for a screen on colord. Enabling this
+ * will load an identity gamma table and prevent any further gamma table changes.
+ * This is meant to make display calibration foolproof, but is also useful for us
+ * to automatically enable pixel-perfect framebuffer passthrough for devices like
+ * Bits+ or Datapixx etc. - Assuming it works, of course, and we don't run into the
+ * problem of "non-identity" identity gamma tables. This needs to be verified on a
+ * per driver + per GPU basis.
+ */
+psych_bool PsychWaylandProfilingInhibit(int screenNumber, psych_bool enableInhibit)
+{
+    GError *error = NULL;
+
+    // Color management supported on this screen?
+    if (!colord_client || !displayOutputs[screenNumber]->colord_device) {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: PsychProfilingInhibit: No colord support on screen %i.\n", screenNumber);
+        return(FALSE);
+    }
+
+    // Requested state already set? No op, if so:
+    if (enableInhibit == displayProfilingInhibit[screenNumber])
+        return(TRUE);
+
+    if (enableInhibit) {
+        if (!cd_device_profiling_inhibit_sync(displayOutputs[screenNumber]->colord_device, NULL, &error)) {
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to enable profiling inhibition for screen %i: %s\n", screenNumber, error->message);
+            g_error_free(error);
+            return(FALSE);
+        }
+    }
+    else {
+        if (!cd_device_profiling_uninhibit_sync(displayOutputs[screenNumber]->colord_device, NULL, &error)) {
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to disable profiling inhibition for screen %i: %s\n", screenNumber, error->message);
+            g_error_free(error);
+            return(FALSE);
+        }
+    }
+
+    // Done.
+    displayProfilingInhibit[screenNumber] = enableInhibit;
+    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: %s profiling inhibition (= identity pixel passthrough) for screen %i.\n", enableInhibit ? "Enabled" : "Disabled", screenNumber);
+
+    return(TRUE);
 }
 
 // Return true (non-zero) if a desktop compositor is likely active on screen 'screenNumber':
