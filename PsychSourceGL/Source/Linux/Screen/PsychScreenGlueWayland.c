@@ -24,8 +24,6 @@
     PsychGetScreenDepth
     PsychSetNominalFramerate
     PsychOSSetOutputConfig
-    PsychReadNormalizedGammaTable
-    PsychLoadNormalizedGammaTable
 
 */
 
@@ -44,6 +42,34 @@
  * Copyright © 2012-2013 Collabora, Ltd.
  *
  * All files carry the following license:
+ *
+ * Permission to use, copy, modify, distribute, and sell this software and
+ * its documentation for any purpose is hereby granted without fee, provided
+ * that the above copyright notice appear in all copies and that both that
+ * copyright notice and this permission notice appear in supporting
+ * documentation, and that the name of the copyright holders not be used in
+ * advertising or publicity pertaining to distribution of the software
+ * without specific, written prior permission.  The copyright holders make
+ * no representations about the suitability of this software for any
+ * purpose.  It is provided "as is" without express or implied warranty.
+ *
+ * THE COPYRIGHT HOLDERS DISCLAIM ALL WARRANTIES WITH REGARD TO THIS
+ * SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS, IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER
+ * RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF
+ * CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+/*
+ * Some helper code for converting wl_output display identity info into
+ * display info that is compatible with the colord color management daemon
+ * is copied and adapted from Wayland/Westons cms-colord.c colord plugin.
+ * This code has the following copyright compatible with our MIT/BSD-3 style
+ * license:
+ *
+ * Copyright © 2013 Richard Hughes
  *
  * Permission to use, copy, modify, distribute, and sell this software and
  * its documentation for any purpose is hereby granted without fee, provided
@@ -166,6 +192,105 @@ static xkb_mod_mask_t xkb_shift_mask;
 
 // colord color daemon client connection object:
 CdClient *colord_client = NULL;
+
+/* Mapping of EDID style display manufacturer name to color style
+ * names. This code is copied under a xxx license from Wayland/Westons
+ * cms-colord.c implementation to make sure we use exactly the same
+ * mapping a colord and can associate wl_output display ids with
+ * colord display names. It is a modified version, adapted to our
+ * execution environment.
+ */
+static GHashTable *pnp_ids = NULL; /* key = pnp-id, value = vendor */
+static gchar *pnp_ids_data = NULL;
+
+static bool edid_value_valid(const char *str)
+{
+    if (str == NULL)
+        return false;
+    if (str[0] == '\0')
+        return false;
+    if (strcmp(str, "unknown") == 0)
+        return false;
+    return true;
+}
+
+static gchar* get_output_id(const char* make, const char* model, const char* serial_number, int id)
+{
+    const gchar *tmp;
+    GString *device_id;
+
+    /* see https://github.com/hughsie/colord/blob/master/doc/device-and-profile-naming-spec.txt
+     * for format and allowed values */
+    device_id = g_string_new("xrandr");
+    if (edid_value_valid(make)) {
+        tmp = g_hash_table_lookup(pnp_ids, make);
+        if (tmp == NULL)
+            tmp = make;
+        g_string_append_printf(device_id, "-%s", tmp);
+    }
+    if (edid_value_valid(model))
+        g_string_append_printf(device_id, "-%s", model);
+    if (edid_value_valid(serial_number))
+        g_string_append_printf(device_id, "-%s", serial_number);
+
+    /* no EDID data, so use fallback */
+    if (strcmp(device_id->str, "xrandr") == 0)
+        g_string_append_printf(device_id, "-drm-%i", id);
+
+    return g_string_free(device_id, FALSE);
+}
+
+static void load_pnp_ids(void)
+{
+    gboolean ret = FALSE;
+    gchar *tmp;
+    GError *error = NULL;
+    guint i;
+    const gchar *pnp_ids_fn[] = { "/usr/share/hwdata/pnp.ids",
+                                  "/usr/share/misc/pnp.ids",
+                                  NULL };
+
+    pnp_ids = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
+
+    /* find and load file */
+    for (i = 0; pnp_ids_fn[i] != NULL; i++) {
+        if (!g_file_test(pnp_ids_fn[i], G_FILE_TEST_EXISTS))
+            continue;
+        ret = g_file_get_contents(pnp_ids_fn[i],
+                                    &pnp_ids_data,
+                                    NULL,
+                                    &error);
+        if (!ret) {
+            printf("PTB-INFO: Failed to load PnP ids database %s: %s\n", pnp_ids_fn[i], error->message);
+            g_error_free(error);
+            return;
+        }
+        break;
+    }
+    if (!ret) {
+        printf("PTB-INFO: No pnp.ids found!\n");
+        return;
+    }
+
+    /* parse fixed offsets into lines */
+    tmp = pnp_ids_data;
+    for (i = 0; pnp_ids_data[i] != '\0'; i++) {
+        if (pnp_ids_data[i] != '\n')
+            continue;
+        pnp_ids_data[i] = '\0';
+        if (tmp[0] && tmp[1] && tmp[2] && tmp[3] == '\t' && tmp[4]) {
+            tmp[3] = '\0';
+            g_hash_table_insert(pnp_ids, tmp, tmp+4);
+            tmp = &pnp_ids_data[i+1];
+        }
+    }
+}
+
+static void delete_pnp_ids(void)
+{
+    g_free(pnp_ids_data);
+    g_hash_table_unref(pnp_ids);
+}
 
 // Helpers:
 static void ProcessWaylandEvents(int screenNumber);
@@ -327,6 +452,7 @@ output_handle_geometry(void *data, struct wl_output *wl_output,
 {
     struct output_info *output = data;
     GError *error = NULL;
+    gchar *device_id = NULL;
 
     output->geometry.x = x;
     output->geometry.y = y;
@@ -340,25 +466,29 @@ output_handle_geometry(void *data, struct wl_output *wl_output,
     // Try to get a connection to the corresponding colord
     // device for color management of this output:
     if (colord_client) {
-        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-INFO: Could match output via '%s' and '%s'\n", make, model);
-        output->colord_device = cd_client_find_device_by_property_sync(colord_client, CD_DEVICE_PROPERTY_MODEL, model, NULL, &error);
+        // Map display manufacturer "make", display "model", (currently unknown) display serial number ""
+        // and currently unknown output id "0" to a colord device_id:
+        device_id = get_output_id(make, model, "", 0);
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Matched output via '%s' and '%s' to device_id '%s'\n", make, model, device_id);
+        output->colord_device = cd_client_find_device_sync(colord_client, device_id, NULL, &error);
         if (!output->colord_device) {
             if (PsychPrefStateGet_Verbosity() > 0)
-                printf("PTB-ERROR: Failed to find display device for model '%s': %s. Gamma table control disabled for this output.\n", model, error->message);
+                printf("PTB-ERROR: Failed to find display device for device_id '%s': %s. Gamma table control disabled for this output.\n", device_id, error->message);
             g_error_free(error);
         }
         else {
             if (!cd_device_connect_sync(output->colord_device, NULL, &error)) {
                 if (PsychPrefStateGet_Verbosity() > 0)
-                    printf("PTB-ERROR: Failed to connect to display device for model '%s': %s. Gamma table control disabled for this output.\n",
-                           model, error->message);
+                    printf("PTB-ERROR: Failed to connect to display device for device_id '%s': %s. Gamma table control disabled for this output.\n",
+                           device_id, error->message);
                 g_error_free(error);
                 g_object_unref(output->colord_device);
                 output->colord_device = NULL;
             }
 
-            if (PsychPrefStateGet_Verbosity() > 0)
-                printf("PTB-INFO: Found colord display '%s-%s-%s' for output.\n",
+            if (PsychPrefStateGet_Verbosity() > 2)
+                printf("PTB-INFO: Found colord display '%s' - Vendor: '%s' Model: '%s' SerialNo: '%s' for output.\n",
+                       device_id,
                        cd_device_get_vendor(output->colord_device),
                        cd_device_get_model(output->colord_device),
                        cd_device_get_serial(output->colord_device));
@@ -367,6 +497,8 @@ output_handle_geometry(void *data, struct wl_output *wl_output,
     else {
         output->colord_device = NULL;
     }
+
+    if (device_id) g_free(device_id);
 }
 
 static void
@@ -1335,7 +1467,9 @@ void InitCGDisplayIDList(void)
         if (error) g_error_free(error);
     }
     else {
-        // Enumerate devices:
+        // Load Plug & Play device id database for proper matching of
+        // wl_output's to colord managed display devices:
+        load_pnp_ids();
         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Connected to colord.\n");
     }
 
@@ -1457,6 +1591,7 @@ void PsychCleanupDisplayGlue(void)
     if (colord_client) {
         g_object_unref(colord_client);
         colord_client = NULL;
+        delete_pnp_ids();
     }
 
     PsychUnlockDisplay();
