@@ -2350,6 +2350,7 @@ void PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntri
 {
     static float localRed[MAX_GAMMALUT_SIZE], localGreen[MAX_GAMMALUT_SIZE], localBlue[MAX_GAMMALUT_SIZE];
     int i, n;
+    double maxval = 0.0;
 
     (void) outputId;
 
@@ -2397,9 +2398,23 @@ void PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntri
         localRed[i]   = (float) rgb->R;
         localGreen[i] = (float) rgb->G;
         localBlue[i]  = (float) rgb->B;
+        maxval = (maxval > localRed[i]) ? maxval : localRed[i];
+        maxval = (maxval > localGreen[i]) ? maxval : localGreen[i];
+        maxval = (maxval > localBlue[i]) ? maxval : localBlue[i];
     }
 
     g_ptr_array_free(clut, TRUE);
+
+    if (!cd_profile_get_has_vcgt(profile) && (maxval > 0.0)) {
+        // Synthesized pseudo gamma curves from cd_icc_get_response()
+        // can have values > 1.0, so renormalize them to make their
+        // maximum value map to 1.0:
+        for (i = 0; i < n; i++) {
+            localRed[i] /= maxval;
+            localGreen[i] /= maxval;
+            localBlue[i] /= maxval;
+        }
+    }
 
 out_icc:
     g_object_unref(icc);
