@@ -472,11 +472,19 @@ output_handle_geometry(void *data, struct wl_output *wl_output,
         // Map display manufacturer "make", display "model", (currently unknown) display serial number ""
         // and currently unknown output id "0" to a colord device_id:
         device_id = get_output_id(make, model, "", 0);
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Matched output via '%s' and '%s' to device_id '%s'\n", make, model, device_id);
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Mapping output via '%s' and '%s' to device_id '%s'\n", make, model, device_id);
         output->colord_device = cd_client_find_device_sync(colord_client, device_id, NULL, &error);
         if (!output->colord_device) {
+            if (PsychPrefStateGet_Verbosity() > 1)
+                printf("PTB-WARNING: Failed to find display device by device_id: %s. Retrying with modelname only.\n", error->message);
+            g_error_free(error);
+            error = NULL;
+            // Failed. Retry with matching for model only - Better than nothing, but will end badly if multiple identical displays are connected:
+            output->colord_device = cd_client_find_device_by_property_sync(colord_client, CD_DEVICE_PROPERTY_MODEL, model, NULL, &error);
+        }
+        if (!output->colord_device) {
             if (PsychPrefStateGet_Verbosity() > 0)
-                printf("PTB-ERROR: Failed to find display device for device_id '%s': %s. Gamma table control disabled for this output.\n", device_id, error->message);
+                printf("PTB-ERROR: On retry, failed to find display device for modelname '%s': %s. Gamma table control disabled for this output.\n", model, error->message);
             g_error_free(error);
         }
         else {
