@@ -110,6 +110,7 @@ psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortyp
 psych_bool PsychWaylandGetKeyboardState(int deviceId, int numKeys, PsychNativeBooleanType *buttonStates, double *timeStamp);
 psych_bool PsychWaylandGetMouseState(int deviceId, int *mouseX, int *mouseY, int numButtons, double *buttonArray, void** focusWindow);
 psych_bool PsychWaylandGetKbNames(PsychGenericScriptType *kbNames);
+psych_bool PsychWaylandProfilingInhibit(int screenNumber, psych_bool enableInhibit);
 
 //end include once
 #endif
