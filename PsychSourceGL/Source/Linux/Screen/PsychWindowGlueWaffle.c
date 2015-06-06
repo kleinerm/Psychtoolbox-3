@@ -2505,10 +2505,13 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
  * Subtract the delay, if any, from the given targetTime and return the corrected targetTime.
  *
  */
-double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime)
+double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime, psych_bool onlyForCalibration)
 {
-    // Need to compensate for Waylands (or only Westons?) 1 frame composition lag:
-    if ((windowRecord->winsysType == WAFFLE_PLATFORM_WAYLAND) && !(windowRecord->specialflags & kPsychOpenMLDefective)) {
+    (void) onlyForCalibration;
+
+    // Need to compensate for Weston <= 1.7 1 frame composition lag:
+    // Update: No longer needed as of Weston 1.8+
+    if (FALSE && (windowRecord->winsysType == WAFFLE_PLATFORM_WAYLAND) && !(windowRecord->specialflags & kPsychOpenMLDefective)) {
         targetTime -= windowRecord->VideoRefreshInterval;
         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Compensating for Wayland/Weston 1 frame composition lag of %f msecs.\n", windowRecord->VideoRefreshInterval * 1000.0);
     }

@@ -205,6 +205,11 @@ PsychError SCREENShowCursorHelper(void)
                 lpCursorName = IDC_NO;
                 break;
 
+            case 8:
+                // IBeam/text cursor:
+                lpCursorName = IDC_IBEAM;
+                break;
+
             default:
                 // Default for unknown id is the standard arrow cursor:
                 lpCursorName = IDC_ARROW;

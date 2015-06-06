@@ -2480,9 +2480,10 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
  * Subtract the delay, if any, from the given targetTime and return the corrected targetTime.
  *
  */
-double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime)
+double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime, psych_bool onlyForCalibration)
 {
     (void) windowRecord;
+    (void) onlyForCalibration;
 
     // Nothing to do for classic X11/GLX. Just return identity:
     return(targetTime);

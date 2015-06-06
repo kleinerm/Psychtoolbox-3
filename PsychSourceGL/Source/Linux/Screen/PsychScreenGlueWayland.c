@@ -24,8 +24,6 @@
     PsychGetScreenDepth
     PsychSetNominalFramerate
     PsychOSSetOutputConfig
-    PsychReadNormalizedGammaTable
-    PsychLoadNormalizedGammaTable
 
 */
 
@@ -44,6 +42,34 @@
  * Copyright © 2012-2013 Collabora, Ltd.
  *
  * All files carry the following license:
+ *
+ * Permission to use, copy, modify, distribute, and sell this software and
+ * its documentation for any purpose is hereby granted without fee, provided
+ * that the above copyright notice appear in all copies and that both that
+ * copyright notice and this permission notice appear in supporting
+ * documentation, and that the name of the copyright holders not be used in
+ * advertising or publicity pertaining to distribution of the software
+ * without specific, written prior permission.  The copyright holders make
+ * no representations about the suitability of this software for any
+ * purpose.  It is provided "as is" without express or implied warranty.
+ *
+ * THE COPYRIGHT HOLDERS DISCLAIM ALL WARRANTIES WITH REGARD TO THIS
+ * SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS, IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER
+ * RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF
+ * CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+/*
+ * Some helper code for converting wl_output display identity info into
+ * display info that is compatible with the colord color management daemon
+ * is copied and adapted from Wayland/Westons cms-colord.c colord plugin.
+ * This code has the following copyright compatible with our MIT/BSD-3 style
+ * license:
+ *
+ * Copyright © 2013 Richard Hughes
  *
  * Permission to use, copy, modify, distribute, and sell this software and
  * its documentation for any purpose is hereby granted without fee, provided
@@ -106,6 +132,11 @@
 // libxkbcommon to map key codes to our KbName style stuff:
 #include <xkbcommon/xkbcommon.h>
 
+// colord client library for gamma table handling/color management:
+#include <dlfcn.h>
+#include <colord-1/colord.h>
+#include <lcms2.h>
+
 // Maximum number of slots in a gamma table to set/query: This should be plenty.
 #define MAX_GAMMALUT_SIZE 16384
 
@@ -118,6 +149,9 @@ extern CGDisplayCount              numDisplays;
 // displayCGIDs stores the wl_display handles to the display connections of each PTB logical screen.
 extern CGDirectDisplayID           displayCGIDs[kPsychMaxPossibleDisplays];
 extern psych_mutex displayLock;
+
+// colord profiling inhibition state for each screen:
+static psych_bool displayProfilingInhibit[kPsychMaxPossibleDisplays];
 
 // Functions defined in PsychScreenGlue.c:
 void PsychLockScreenSettings(int screenNumber);
@@ -158,6 +192,108 @@ static struct xkb_state *xkb_state = NULL;
 static xkb_mod_mask_t xkb_control_mask;
 static xkb_mod_mask_t xkb_alt_mask;
 static xkb_mod_mask_t xkb_shift_mask;
+
+// colord color daemon client connection object:
+CdClient *colord_client = NULL;
+
+/* Mapping of EDID style display manufacturer name to color style
+ * names. This code is copied under a xxx license from Wayland/Westons
+ * cms-colord.c implementation to make sure we use exactly the same
+ * mapping a colord and can associate wl_output display ids with
+ * colord display names. It is a modified version, adapted to our
+ * execution environment.
+ */
+static GHashTable *pnp_ids = NULL; /* key = pnp-id, value = vendor */
+static gchar *pnp_ids_data = NULL;
+
+static bool edid_value_valid(const char *str)
+{
+    if (str == NULL)
+        return false;
+    if (str[0] == '\0')
+        return false;
+    if (strcmp(str, "unknown") == 0)
+        return false;
+    return true;
+}
+
+static gchar* get_output_id(const char* make, const char* model, const char* serial_number, int id)
+{
+    const gchar *tmp;
+    GString *device_id;
+
+    /* see https://github.com/hughsie/colord/blob/master/doc/device-and-profile-naming-spec.txt
+     * for format and allowed values */
+    device_id = g_string_new("xrandr");
+    if (edid_value_valid(make)) {
+        tmp = g_hash_table_lookup(pnp_ids, make);
+        if (tmp == NULL)
+            tmp = make;
+        g_string_append_printf(device_id, "-%s", tmp);
+    }
+    if (edid_value_valid(model))
+        g_string_append_printf(device_id, "-%s", model);
+    if (edid_value_valid(serial_number))
+        g_string_append_printf(device_id, "-%s", serial_number);
+
+    /* no EDID data, so use fallback */
+    if (strcmp(device_id->str, "xrandr") == 0)
+        g_string_append_printf(device_id, "-drm-%i", id);
+
+    return g_string_free(device_id, FALSE);
+}
+
+static void load_pnp_ids(void)
+{
+    gboolean ret = FALSE;
+    gchar *tmp;
+    GError *error = NULL;
+    guint i;
+    const gchar *pnp_ids_fn[] = { "/usr/share/hwdata/pnp.ids",
+                                  "/usr/share/misc/pnp.ids",
+                                  NULL };
+
+    pnp_ids = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
+
+    /* find and load file */
+    for (i = 0; pnp_ids_fn[i] != NULL; i++) {
+        if (!g_file_test(pnp_ids_fn[i], G_FILE_TEST_EXISTS))
+            continue;
+        ret = g_file_get_contents(pnp_ids_fn[i],
+                                    &pnp_ids_data,
+                                    NULL,
+                                    &error);
+        if (!ret) {
+            printf("PTB-INFO: Failed to load PnP ids database %s: %s\n", pnp_ids_fn[i], error->message);
+            g_error_free(error);
+            return;
+        }
+        break;
+    }
+    if (!ret) {
+        printf("PTB-INFO: No pnp.ids found!\n");
+        return;
+    }
+
+    /* parse fixed offsets into lines */
+    tmp = pnp_ids_data;
+    for (i = 0; pnp_ids_data[i] != '\0'; i++) {
+        if (pnp_ids_data[i] != '\n')
+            continue;
+        pnp_ids_data[i] = '\0';
+        if (tmp[0] && tmp[1] && tmp[2] && tmp[3] == '\t' && tmp[4]) {
+            tmp[3] = '\0';
+            g_hash_table_insert(pnp_ids, tmp, tmp+4);
+            tmp = &pnp_ids_data[i+1];
+        }
+    }
+}
+
+static void delete_pnp_ids(void)
+{
+    g_free(pnp_ids_data);
+    g_hash_table_unref(pnp_ids);
+}
 
 // Helpers:
 static void ProcessWaylandEvents(int screenNumber);
@@ -204,6 +340,9 @@ struct output_info {
     } geometry;
 
     struct wl_list modes;
+
+    // Associated colord display device:
+    CdDevice* colord_device;
 };
 
 // Array of information about all available Wayland outputs:
@@ -315,6 +454,8 @@ output_handle_geometry(void *data, struct wl_output *wl_output,
                        int32_t output_transform)
 {
     struct output_info *output = data;
+    GError *error = NULL;
+    gchar *device_id = NULL;
 
     output->geometry.x = x;
     output->geometry.y = y;
@@ -324,6 +465,51 @@ output_handle_geometry(void *data, struct wl_output *wl_output,
     output->geometry.make = xstrdup(make);
     output->geometry.model = xstrdup(model);
     output->geometry.output_transform = output_transform;
+
+    // Try to get a connection to the corresponding colord
+    // device for color management of this output:
+    if (colord_client) {
+        // Map display manufacturer "make", display "model", (currently unknown) display serial number ""
+        // and currently unknown output id "0" to a colord device_id:
+        device_id = get_output_id(make, model, "", 0);
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Mapping output via '%s' and '%s' to device_id '%s'\n", make, model, device_id);
+        output->colord_device = cd_client_find_device_sync(colord_client, device_id, NULL, &error);
+        if (!output->colord_device) {
+            if (PsychPrefStateGet_Verbosity() > 1)
+                printf("PTB-WARNING: Failed to find display device by device_id: %s. Retrying with modelname only.\n", error->message);
+            g_error_free(error);
+            error = NULL;
+            // Failed. Retry with matching for model only - Better than nothing, but will end badly if multiple identical displays are connected:
+            output->colord_device = cd_client_find_device_by_property_sync(colord_client, CD_DEVICE_PROPERTY_MODEL, model, NULL, &error);
+        }
+        if (!output->colord_device) {
+            if (PsychPrefStateGet_Verbosity() > 0)
+                printf("PTB-ERROR: On retry, failed to find display device for modelname '%s': %s. Gamma table control disabled for this output.\n", model, error->message);
+            g_error_free(error);
+        }
+        else {
+            if (!cd_device_connect_sync(output->colord_device, NULL, &error)) {
+                if (PsychPrefStateGet_Verbosity() > 0)
+                    printf("PTB-ERROR: Failed to connect to display device for device_id '%s': %s. Gamma table control disabled for this output.\n",
+                           device_id, error->message);
+                g_error_free(error);
+                g_object_unref(output->colord_device);
+                output->colord_device = NULL;
+            }
+
+            if (PsychPrefStateGet_Verbosity() > 2)
+                printf("PTB-INFO: Found colord display '%s' - Vendor: '%s' Model: '%s' SerialNo: '%s' for output.\n",
+                       device_id,
+                       cd_device_get_vendor(output->colord_device),
+                       cd_device_get_model(output->colord_device),
+                       cd_device_get_serial(output->colord_device));
+        }
+    }
+    else {
+        output->colord_device = NULL;
+    }
+
+    if (device_id) g_free(device_id);
 }
 
 static void
@@ -366,6 +552,9 @@ destroy_output_info(void *data)
         wl_list_remove(&mode->link);
         free(mode);
     }
+
+    if (output->colord_device) g_object_unref(output->colord_device);
+    output->colord_device = NULL;
 }
 
 static void add_output_info(struct output_info** outputSlot, uint32_t id, uint32_t version)
@@ -988,6 +1177,61 @@ psych_bool PsychWaylandGetKbNames(PsychGenericScriptType *kbNames)
     return(TRUE);
 }
 
+/* PsychWaylandEventTimeToRefTime - Convert from waylaned 32-Bit input
+ * event timestamp in CLOCK_MONOTONIC time to PTB reference time.
+ *
+ * Unfortunately libinput as used by Wayland only provides millisecond
+ * resolution timestamps.
+ */
+double PsychWaylandEventTimeToRefTime(uint32_t event_lo)
+{
+    struct timespec tp;
+    psych_uint64 now, eventTimeMsecs;
+    uint32_t now_lo, now_hi;
+    double eventSecs;
+
+    // Get current CLOCK_MONOTONIC time as baseline. Wayland uses libinput
+    // to get input event timestamps in kernel reported CLOCK_MONOTONIC
+    // time. Unfortunately libinput converts those timestamps from nanosecond
+    // resolution to millisecond resolution and then only keeps the low 32-Bits.
+    // We need to invert the process, recovering full 64-Bit milliseconds.
+
+    // Get current time, convert to milliseconds, split in high and low 32-Bits:
+    clock_gettime(CLOCK_MONOTONIC, &tp);
+    now = tp.tv_sec * 1000 + tp.tv_nsec / 1000000;
+    now_lo = now & 0xffffffff;
+    now_hi = (now >> 32) & 0xffffffff;
+
+    // As the event can't be far in the past, our upper 32-Bits of current time
+    // are likely identical with the thrown away upper 32-Bits of the libinput
+    // event, whereas the our lower 32-Bits of current time should be higher as
+    // the input event was created in the past. Check this assumption. If this
+    // isn't the case then system time must just recently have crossed a 32-Bit
+    // time segment boundary, iow. the upper 32-Bits have incremented by 1, whereas
+    // the lower 32-Bits have wrapped around to a zero or low value, therefore our
+    // low timestamp appears to be smaller than that of a event from the past.
+    // Correct for this by reducing now_hi by 1, so now_hi represents the 32-Bit
+    // time segment corresponding to the input event. The only way this could fail
+    // is if the input event was more than 2^32 milliseconds in the past, iow. over
+    // 49 days have passed since the last user input -- very unlikely for a running
+    // experiment.
+    if (event_lo > now_lo) {
+        now_hi--;
+    }
+
+    // Reconstruct 64-Bit msecs event time from our now_hi upper 32-Bits and
+    // the events reported lower 32-Bits:
+    eventTimeMsecs = ((psych_uint64) now_hi << 32) | event_lo;
+
+    // Convert from integer milliseconds to double seconds in CLOCK_MONOTONIC time:
+    eventSecs = ((double) eventTimeMsecs) / 1000.0;
+
+    // Convert from monotonic time to Psychtoolbox "GetSecs" time, if needed:
+    eventSecs = PsychOSMonotonicToRefTime(eventSecs);
+
+    return(eventSecs);
+}
+
 psych_bool PsychWaylandGetKeyboardState(int deviceId, int numKeys, PsychNativeBooleanType *buttonStates, double *timeStamp)
 {
     ProcessWaylandEvents(0);
@@ -1009,8 +1253,8 @@ psych_bool PsychWaylandGetKeyboardState(int deviceId, int numKeys, PsychNativeBo
     // Copy current keyState to return vector:
     memcpy(buttonStates, &(waylandInputDevices[deviceId]->keyState[0]), MIN(numKeys, 256) * sizeof(*buttonStates));
 
-    // TODO: Remap timestamp to GetSecs time:
-    *timeStamp = (double) waylandInputDevices[deviceId]->keyTimestamp;
+    // Remap 32-Bit millisecond timestamp to GetSecs time:
+    *timeStamp = PsychWaylandEventTimeToRefTime(waylandInputDevices[deviceId]->keyTimestamp);
 
     return(TRUE);
 }
@@ -1128,6 +1372,8 @@ XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc)
 
 void InitCGDisplayIDList(void)
 {
+    Dl_info libcolord_info;
+    GError *error;
     int i;
 
     // Define waffle window system backend to use: Wayland only, obviously.
@@ -1141,6 +1387,7 @@ void InitCGDisplayIDList(void)
     for (i = 0; i < kPsychMaxPossibleDisplays; i++) {
         displayCGIDs[i] = NULL;
         displayWaylandOutputs[i] = NULL;
+        displayProfilingInhibit[i] = FALSE;
     }
 
     // Clear all input devices and seats:
@@ -1190,6 +1437,59 @@ void InitCGDisplayIDList(void)
     // Release the waffle_native_display:
     free(wafflenatdis);
     wafflenatdis = NULL;
+
+    if (!getenv("PSYCH_DISABLE_COLORD")) {
+        // Initialize connection to colord - the color management daemon:
+        colord_client = cd_client_new();
+
+        // Awful hack: If libcolord gets unloaded due to an unload of the Screen mex file,
+        // then on a reload of Screen the cd_client_new() function above would try to reregister
+        // some internal GType it forgot it already had registered. This would fail, would then
+        // cause a failure of cd_client_new() and then a crash for ourselves. Yay!
+        //
+        // To prevent this we dlopen() libcolord again, for the sole purpose of getting
+        // its reference count bumped by one, so a Screen() unload will not cause the
+        // library to unload during the complete livetime of our hosting process, and
+        // thereby prevent it from forgetting it already has registered that GType.
+        if (colord_client && dladdr((void*) cd_client_new, &libcolord_info)) {
+            // Yes, got the info.
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: libcolord.so path as detected by dladdr(): %s\n", libcolord_info.dli_fname);
+
+            // Try to re-open libcolord.so. This will not really
+            // reload it due to RTLD_NOLOAD, just increment its
+            // refcount to prevent it from unloading when Screen
+            // gets unloaded due to a "clear Screen" etc.:
+            dlerror();
+            if (dlopen(libcolord_info.dli_fname, RTLD_NOW | RTLD_NOLOAD | RTLD_GLOBAL)) {
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Locked libcolord into memory.\n");
+            }
+            else {
+                if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to lock libcolord into memory [%s]! Expect color management failure after reloading Screen()!!\n", dlerror());
+            }
+            dlerror();
+        }
+        else {
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to lock libcolord into memory! Expect color management failure when reloading Screen()!!\n");
+        }
+
+        error = NULL;
+        if (!colord_client || !cd_client_connect_sync(colord_client, NULL, &error)) {
+            if (colord_client) g_object_unref(colord_client);
+            colord_client = NULL;
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-INFO: Couldn't connect to color daemon [%s]! Gamma table functions will be disabled.\n", error->message);
+            if (error) g_error_free(error);
+        }
+        else {
+            // Load Plug & Play device id database for proper matching of
+            // wl_output's to colord managed display devices:
+            load_pnp_ids();
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Connected to colord.\n");
+        }
+    }
+    else {
+        colord_client = NULL;
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Disabled colord support via users setenv('PSYCH_DISABLE_COLORD', '1'). Gamma table functions disabled.\n");
+    }
 
     // Get our own wl_registry, do the enumeration and binding:
     wl_registry = wl_display_get_registry(wl_display);
@@ -1282,6 +1582,10 @@ void PsychCleanupDisplayGlue(void)
     // Go trough full screen list:
     for (i = 0; i < PsychGetNumDisplays(); i++) {
         if (displayOutputs[i]) {
+            // Release all profiling inhibitions on colord managed displays:
+            if (displayProfilingInhibit[i]) {
+                PsychWaylandProfilingInhibit(i, FALSE);
+            }
             destroy_output_info(displayOutputs[i]);
             displayOutputs[i] = NULL;
             displayWaylandOutputs[i] = NULL;
@@ -1304,6 +1608,13 @@ void PsychCleanupDisplayGlue(void)
     // Release our shared waffle display connection:
     waffle_display_disconnect(waffle_display);
     waffle_display = NULL;
+
+    // Close colord connection, delete device.
+    if (colord_client) {
+        g_object_unref(colord_client);
+        colord_client = NULL;
+        delete_pnp_ids();
+    }
 
     PsychUnlockDisplay();
 
@@ -2037,59 +2348,79 @@ void PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx)
 */
 void PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntries, float **redTable, float **greenTable, float **blueTable)
 {
-    CGDirectDisplayID cgDisplayID;
     static float localRed[MAX_GAMMALUT_SIZE], localGreen[MAX_GAMMALUT_SIZE], localBlue[MAX_GAMMALUT_SIZE];
-
-    // The X-Windows hardware LUT has 3 tables for R,G,B.
-    // Each entry is a 16-bit word with the n most significant bits used for an n-bit DAC or display encoder:
-    psych_uint16    RTable[MAX_GAMMALUT_SIZE];
-    psych_uint16    GTable[MAX_GAMMALUT_SIZE];
-    psych_uint16    BTable[MAX_GAMMALUT_SIZE];
     int i, n;
+    double maxval = 0.0;
+
+    (void) outputId;
 
     // Initial assumption: Failed.
+    *numEntries = 0;
     n = 0;
 
-    // Not available on non-X11:
-    if (!displayCGIDs[screenNumber]) { *numEntries = 0; return; }
-
-    // Query OS for gamma table:
-    PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
-
-    if (has_xrandr_1_2) {
-//         // Use RandR V 1.2 for per-crtc query:
-//         XRRScreenResources *res = displayX11ScreenResources[screenNumber];
-//
-//         if (outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid output index provided! No such output for this screen!");
-//         outputId = PsychScreenToHead(screenNumber, ((outputId < 0) ? 0 : outputId));
-//         if (outputId >= res->ncrtc || outputId < 0) PsychErrorExitMsg(PsychError_user, "Invalid output index provided! No such output for this screen!");
-//
-//         RRCrtc crtc = res->crtcs[outputId];
-//         PsychLockDisplay();
-//         XRRCrtcGamma *lut = XRRGetCrtcGamma(cgDisplayID, crtc);
-//         PsychUnlockDisplay();
-//
-//         n = (lut) ? lut->size : 0;
-//
-//         if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychReadNormalizedGammaTable: Provided RandR HW-LUT size is n=%i.\n", n);
-//
-//         // Gamma lut query successfull?
-//         if (n > 0) {
-//             if ((n > MAX_GAMMALUT_SIZE) && (PsychPrefStateGet_Verbosity() > 1)) {
-//                 printf("PTB-WARNING: ReadNormalizedGammatable: Hardware gamma table size of %i slots exceeds our maximum of %i slots. Clamping returned size to %i slots. Returned LUT's may be wrong!\n", n, MAX_GAMMALUT_SIZE, MAX_GAMMALUT_SIZE);
-//             }
-//
-//             // Clamp for safety:
-//             n = (n <= MAX_GAMMALUT_SIZE) ? n : MAX_GAMMALUT_SIZE;
-//
-//             // Convert tables: Map 16-bit values into 0-1 normalized floats:
-//             for (i = 0; i < n; i++) localRed[i]   = ((float) lut->red[i]) / 65535.0f;
-//             for (i = 0; i < n; i++) localGreen[i] = ((float) lut->green[i]) / 65535.0f;
-//             for (i = 0; i < n; i++) localBlue[i]  = ((float) lut->blue[i]) / 65535.0f;
-//         }
-//
-//         if (lut) XRRFreeGamma(lut);
+    if (!colord_client || !displayOutputs[screenNumber]->colord_device) {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: ReadNormalizedGammatable: No color management for screen %i.\n", screenNumber);
+        return;
     }
+
+    CdDevice *device = displayOutputs[screenNumber]->colord_device;
+    CdProfile *profile = cd_device_get_default_profile (device);
+    if (!profile) {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: ReadNormalizedGammatable: No color profile assigned for screen %i.\n", screenNumber);
+        return;
+    }
+
+    if (!cd_profile_connect_sync(profile, NULL, NULL)) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: ReadNormalizedGammatable: Could not connect to color profile assigned for screen %i.\n", screenNumber);
+        goto out_profile;
+    }
+
+    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: ReadNormalizedGammatable: Profile for screen %i is '%s'.\n", screenNumber, cd_profile_get_title(profile));
+    if (!cd_profile_get_has_vcgt(profile)) {
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: ReadNormalizedGammatable: Profile for screen %i does not have a gamma table. Synthesizing one...\n", screenNumber);
+    }
+
+    CdIcc *icc = cd_profile_load_icc(profile, CD_ICC_LOAD_FLAGS_ALL, NULL, NULL);
+    if (!icc) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: ReadNormalizedGammatable: Could not load icc for screen %i.\n", screenNumber);
+        goto out_profile;
+    }
+
+    GPtrArray *clut = cd_profile_get_has_vcgt(profile) ? cd_icc_get_vcgt(icc, 256, NULL) : cd_icc_get_response(icc, 256, NULL);
+    if (!clut) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: ReadNormalizedGammatable: Could not get clut for screen %i.\n", screenNumber);
+        goto out_icc;
+    }
+
+    n = 256;
+    for (i = 0; i < n; i++) {
+        CdColorRGB *rgb = g_ptr_array_index(clut, i);
+        localRed[i]   = (float) rgb->R;
+        localGreen[i] = (float) rgb->G;
+        localBlue[i]  = (float) rgb->B;
+        maxval = (maxval > localRed[i]) ? maxval : localRed[i];
+        maxval = (maxval > localGreen[i]) ? maxval : localGreen[i];
+        maxval = (maxval > localBlue[i]) ? maxval : localBlue[i];
+    }
+
+    g_ptr_array_free(clut, TRUE);
+
+    if (!cd_profile_get_has_vcgt(profile) && (maxval > 0.0)) {
+        // Synthesized pseudo gamma curves from cd_icc_get_response()
+        // can have values > 1.0, so renormalize them to make their
+        // maximum value map to 1.0:
+        for (i = 0; i < n; i++) {
+            localRed[i] /= maxval;
+            localGreen[i] /= maxval;
+            localBlue[i] /= maxval;
+        }
+    }
+
+out_icc:
+    g_object_unref(icc);
+
+out_profile:
+    g_object_unref(profile);
 
     // Assign output lut's:
     *redTable=localRed; *greenTable=localGreen; *blueTable=localBlue;
@@ -2100,129 +2431,254 @@ void PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntri
     return;
 }
 
-/* Copy provided input LUT into target output LUT. If input is smaller than target LUT, but
- * fits nicely because output size is an integral multiple of input, then oversample input
- * to create proper output. If size doesn't match or output is smaller than input, abort
- * with error.
- *
- * Rationale: LUT's of standard GPUs are 256 slots, LUT's of high-end GPU's can be bigger
- *            powers-of-two sizes, e.g., 512, 1024, 2048, 4096 for some NVidia QuadroFX
- *            parts. For reasons of backwards compatibility we always want to be able to
- *            accept a good'ol 256 slots input LUT, even if the GPU expects something bigger.
- *            -> This simple oversampling via replication allows us to do that without obvious
- *               bad consequences for precision.
- *
- */
-static void ConvertLUTToHwLUT(int nOut, psych_uint16* Rout, psych_uint16* Gout, psych_uint16* Bout, int nIn, float *redTable, float *greenTable, float *blueTable)
-{
-    int i, s;
-
-    // Can't handle too big input tables for GPU:
-    if (nOut < nIn) {
-        printf("PTB-ERROR: Provided gamma table has %i slots, but graphics card accepts at most %i slots!\n", nIn, nOut);
-        PsychErrorExitMsg(PsychError_user, "Provided gamma table has too many slots!");
-    }
-
-    // Can't handle tables which don't fit:
-    if ((nOut % nIn) != 0) {
-        printf("PTB-ERROR: Provided gamma table has %i slots, but graphics card expects %i slots.\n", nIn, nOut);
-        printf("PTB-ERROR: Unfortunately, graphics card LUT size is not a integral multiple of provided gamma table size.\n");
-        printf("PTB-ERROR: I can not handle this case, as it could cause ugly distortions in the displayed color range.\n");
-        PsychErrorExitMsg(PsychError_user, "Provided gamma table has wrong number of slots!");
-    }
-
-    // Compute oversampling factor:
-    s = nOut / nIn;
-    if (PsychPrefStateGet_Verbosity() > 5) {
-        printf("PTB-DEBUG: PsychLoadNormalizedGammaTable: LUT size nIn %i <= nOut %i --> Oversample %i times.\n", nIn, nOut, s);
-    }
-
-    // Copy and oversample: Each slot in red/green/blueTable is replicated
-    // into s consecutive slots of R/G/Bout:
-    for (i = 0; i < nOut; i++) {
-        Rout[i] = (psych_uint16) (redTable[i/s]   * 65535.0f + 0.5f);
-        Gout[i] = (psych_uint16) (greenTable[i/s] * 65535.0f + 0.5f);
-        Bout[i] = (psych_uint16) (blueTable[i/s]  * 65535.0f + 0.5f);
-    }
-}
-
 unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int numEntries, float *redTable, float *greenTable, float *blueTable)
 {
-    CGDirectDisplayID cgDisplayID;
-    int i, j, n;
-    RRCrtc crtc;
-
-    static psych_uint16    RTable[MAX_GAMMALUT_SIZE];
-    static psych_uint16    GTable[MAX_GAMMALUT_SIZE];
-    static psych_uint16    BTable[MAX_GAMMALUT_SIZE];
-
-    // The X-Windows hardware LUT has 3 tables for R,G,B.
-    // Each entry is a 16-bit word with the n most significant bits used for an n-bit DAC or display encoder.
-
-    // Set new gammaTable:
-    PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
+    int i, j, rc;
+    CdColorRGB *rgb;
+    GPtrArray *clut;
+    CdIcc *icc;
+    CdProfile *profile = NULL;
+    CdProfile *oldprofile1 = NULL;
+    CdProfile *oldprofile2 = NULL;
+    GError *error = NULL;
+    cmsContext context;
+    cmsHPROFILE hProfile;
+    char screenName[32];
+    gchar *filename = NULL;
+    GFile *file = NULL;
+    int targetindex = 1;
 
     // Initial assumption: Failure.
-    n = 0;
+    rc = 0;
 
-    // Not available on non-X11:
-    if (!displayCGIDs[screenNumber]) return(0);
+    if (numEntries != 256)
+        PsychErrorExitMsg(PsychError_user, "Provided gamma table has wrong number of slots!");
 
-    if (has_xrandr_1_2) {
-//         // Use RandR V 1.2 for per-crtc setup:
-//
-//         // Setup of all crtc's with this gamma table requested?
-//         if (outputId < 0) {
-//             // Yes: Iterate over all outputs, set via recursive call:
-//             j = 1;
-//             for (i = 0; (j > 0) && (i < kPsychMaxPossibleCrtcs) && (PsychScreenToHead(screenNumber, i) > -1); i++) {
-//                 j = PsychLoadNormalizedGammaTable(screenNumber, i, numEntries, redTable, greenTable, blueTable);
-//             }
-//
-//             // Done trying to set all crtc's. Return status:
-//             return((unsigned int) j);
-//         }
-//
-//         // No, or recursive self-call: Load a specific crtc for output 'outputId':
-//         XRRScreenResources *res = displayX11ScreenResources[screenNumber];
-//
-//         if (outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid output index provided! No such output for this screen!");
-//         outputId = PsychScreenToHead(screenNumber, outputId);
-//         if (outputId >= res->ncrtc || outputId < 0) PsychErrorExitMsg(PsychError_user, "Invalid output index provided! No such output for this screen!");
-//
-//         crtc = res->crtcs[outputId];
-//
-//         // Get required size of gamma table:
-//         PsychLockDisplay();
-//         n = XRRGetCrtcGammaSize(cgDisplayID, crtc);
-//         PsychUnlockDisplay();
-//         if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychLoadNormalizedGammaTable: Required RandR HW-LUT size is n=%i.\n", n);
+    // Setup of all crtc's with this gamma table requested?
+    if (outputId < 0) {
+        // Yes: Iterate over all outputs, set via recursive call:
+        j = 1;
+        for (i = 0; (j > 0) && (i < kPsychMaxPossibleCrtcs) && (PsychScreenToHead(screenNumber, i) > -1); i++) {
+            j = PsychLoadNormalizedGammaTable(screenNumber, i, numEntries, redTable, greenTable, blueTable);
+        }
+
+        // Done trying to set all crtc's. Return status:
+        return((unsigned int) j);
     }
 
-    // RandR 1.2 supported and has ability to set LUT's?
-    if (has_xrandr_1_2 && (n > 0)) {
-//         // Allocate table of appropriate size:
-//         XRRCrtcGamma *lut = XRRAllocGamma(n);
-//         n = lut->size;
-//
-//         // Convert tables: Map 16-bit values into 0-1 normalized floats:
-//         ConvertLUTToHwLUT(n, lut->red, lut->green, lut->blue, numEntries, redTable, greenTable, blueTable);
-//
-//         // Assign to crtc:
-//         PsychLockDisplay();
-//         XRRSetCrtcGamma(cgDisplayID, crtc, lut);
-//         PsychUnlockDisplay();
-//
-//         // Release lut:
-//         XRRFreeGamma(lut);
+    // Color management supported on this screen?
+    if (!colord_client || !displayOutputs[screenNumber]->colord_device) {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: PsychLoadNormalizedGammaTable: No gamma table support on screen %i.\n", screenNumber);
+        return(0);
     }
 
-//     PsychLockDisplay();
-//     XFlush(cgDisplayID);
-//     PsychUnlockDisplay();
+    // Does a profile with that name already exist? If so, remove it:
+    sprintf(screenName, "icc-PTBScreen %i 1", screenNumber);
+    oldprofile1 = cd_client_find_profile_by_property_sync(colord_client, "PTBName", screenName, NULL, NULL);
+    if (oldprofile1 && !cd_profile_connect_sync(oldprofile1, NULL, NULL)) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychLoadNormalizedGammaTable: Could not connect to old color profile1 assigned for screen %i.\n", screenNumber);
+        goto cleanup_profile;
+    }
 
-    // Return "success":
-    return(1);
+    sprintf(screenName, "icc-PTBScreen %i 2", screenNumber);
+    oldprofile2 = cd_client_find_profile_by_property_sync(colord_client, "PTBName", screenName, NULL, NULL);
+    if (oldprofile2 && !cd_profile_connect_sync(oldprofile2, NULL, NULL)) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychLoadNormalizedGammaTable: Could not connect to old color profile2 assigned for screen %i.\n", screenNumber);
+        goto cleanup_profile;
+    }
+
+    profile = cd_device_get_default_profile(displayOutputs[screenNumber]->colord_device);
+    if (profile && !cd_profile_connect_sync(profile, NULL, NULL)) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychLoadNormalizedGammaTable: Could not connect to current profile assigned for screen %i.\n", screenNumber);
+        goto cleanup_profile;
+    }
+
+    // Current profile == oldprofile2?
+    if (!profile || !oldprofile2 || !cd_profile_equal(profile, oldprofile2)) {
+        // Yes. That means oldprofile2, if any, is unused and can be deleted now,
+        // then recycled as next profile:
+        targetindex = 2;
+        sprintf(screenName, "icc-PTBScreen %i %i", screenNumber, targetindex);
+
+        if (oldprofile2 && !cd_client_delete_profile_sync(colord_client, oldprofile2, NULL, &error)) {
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychLoadNormalizedGammaTable: Failed to remove old PTB profile 2 for screen %i: %s\n", screenNumber, error->message);
+            g_error_free(error);
+            goto cleanup_profile;
+        }
+
+        // Release our test profile:
+        if (oldprofile2) g_object_unref(oldprofile2);
+        oldprofile2 = NULL;
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: PsychLoadNormalizedGammaTable: Old PTB profile 2 for screen %i removed.\n", screenNumber);
+    }
+
+    // Current profile == oldprofile1?
+    if (!profile || !oldprofile1 || !cd_profile_equal(profile, oldprofile1)) {
+        // Yes. That means oldprofile1, if any, is unused and can be deleted now,
+        // then recycled as next profile:
+        targetindex = 1;
+        sprintf(screenName, "icc-PTBScreen %i %i", screenNumber, targetindex);
+
+        if (oldprofile1 && !cd_client_delete_profile_sync(colord_client, oldprofile1, NULL, &error)) {
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychLoadNormalizedGammaTable: Failed to remove old PTB profile 1 for screen %i: %s\n", screenNumber, error->message);
+            g_error_free(error);
+            goto cleanup_profile;
+        }
+
+        // Release our test profile:
+        if (oldprofile1) g_object_unref(oldprofile1);
+        oldprofile1 = NULL;
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: PsychLoadNormalizedGammaTable: Old PTB profile 1 for screen %i removed.\n", screenNumber);
+    }
+
+    g_object_unref(profile);
+    profile = NULL;
+
+    // Build clut from input arrays:
+    clut = g_ptr_array_new_with_free_func((GDestroyNotify) cd_color_rgb_free);
+    for (i = 0; i < numEntries; i++) {
+        rgb = cd_color_rgb_new();
+        cd_color_rgb_set(rgb, redTable[i], greenTable[i], blueTable[i]);
+        g_ptr_array_add(clut, rgb);
+    }
+
+    // Create a new icc object with clut:
+    icc = cd_icc_new();
+
+    // Associate Little-CMS 2 color management system with it and create a sRGB profile
+    // as a starting point:
+    context = NULL; // In later versions of lcms2: cmsCreateContext(NULL, NULL);
+    hProfile = cmsCreate_sRGBProfile();
+    if (!hProfile || !cd_icc_load_handle(icc, hProfile, CD_ICC_LOAD_FLAGS_ALL,  &error)) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychLoadNormalizedGammaTable: Failed loading handle into icc object for screen %i. [hProfile=%p]: %s\n", screenNumber, hProfile, error->message);
+        g_error_free(error);
+        goto cleanup_iccset;
+    }
+
+    // Assign our clut as gamma table:
+    if (!cd_icc_set_vcgt(icc, clut, &error)) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychLoadNormalizedGammaTable: Failed setting gamma table in icc object for screen %i: %s\n", screenNumber, error->message);
+        g_error_free(error);
+        goto cleanup_iccset;
+    }
+
+    // Add metainfo:
+    cd_icc_set_colorspace(icc, CD_COLORSPACE_RGB);
+    cd_icc_set_kind(icc, CD_PROFILE_KIND_DISPLAY_DEVICE);
+    cd_icc_set_description(icc, NULL, screenName);
+    cd_icc_add_metadata(icc, "PTBName", screenName);
+    cd_icc_set_manufacturer(icc, NULL, displayOutputs[screenNumber]->geometry.make);
+    cd_icc_set_model(icc, NULL, displayOutputs[screenNumber]->geometry.model);
+    cd_icc_set_copyright(icc, NULL, "This profile is free of copyright, use as you wish.");
+
+    // Save it to a ICC file:
+    sprintf(screenName, "icc-PTBScreen_%i_%i.icc", screenNumber, targetindex);
+    filename = g_build_filename(PsychRuntimeGetPsychtoolboxRoot(TRUE), screenName, NULL);
+    file = g_file_new_for_path(filename);
+    if (!cd_icc_save_file(icc, file, CD_ICC_SAVE_FLAGS_NONE, NULL,  &error)) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychLoadNormalizedGammaTable: Failed saving icc profile %i for screen %i to file '%s': %s\n", targetindex, screenNumber, filename, error->message);
+        g_error_free(error);
+        goto cleanup_file;
+    }
+    else {
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: PsychLoadNormalizedGammaTable: Saved icc profile %i for screen %i to file '%s'\n", targetindex, screenNumber, filename);
+    }
+
+    PsychYieldIntervalSeconds(0.1);
+
+    // Import it into colord's database and the standard user ICC folder, get
+    // a profile handle back:
+    profile = cd_client_import_profile_sync(colord_client, file, NULL, &error);
+    if (!profile) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychLoadNormalizedGammaTable: Failed import of icc profile %i for screen %i from file '%s': %s\n", targetindex, screenNumber, filename, error->message);
+        g_error_free(error);
+        goto cleanup_file;
+    }
+
+    // Now we need to add and set our profile as default profile for the device:
+    PsychYieldIntervalSeconds(0.1);
+
+    // First add the new instance of the profile to our target device:
+    if (!cd_device_add_profile_sync(displayOutputs[screenNumber]->colord_device, CD_DEVICE_RELATION_HARD, profile, NULL, &error)) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychLoadNormalizedGammaTable: Failed to add icc profile %i to color device for screen %i: %s\n", targetindex, screenNumber, error->message);
+        g_error_free(error);
+        goto cleanup_file;
+    }
+
+    PsychYieldIntervalSeconds(0.1);
+
+    if (!cd_device_make_profile_default_sync(displayOutputs[screenNumber]->colord_device, profile, NULL, &error)) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychLoadNormalizedGammaTable: Failed to activate icc profile %i on color device for screen %i: %s\n", targetindex, screenNumber, error->message);
+        g_error_free(error);
+        goto cleanup_file;
+    }
+
+    PsychYieldIntervalSeconds(0.1);
+
+    // Successfully done:
+    if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: PsychLoadNormalizedGammaTable: Gamma table updated via profile %i update for screen %i.\n", targetindex, screenNumber);
+    rc = 1;
+
+cleanup_file:
+    g_object_unref(file);
+    g_free(filename);
+
+cleanup_iccset:
+    g_object_unref(icc);
+    g_ptr_array_free(clut, TRUE);
+
+cleanup_profile:
+    if (profile) g_object_unref(profile);
+    if (oldprofile1) g_object_unref(oldprofile1);
+    if (oldprofile2) g_object_unref(oldprofile2);
+
+    // Return final status:
+    return(rc);
+}
+
+/*
+ * Enable or disable profiling inhibition for a screen on colord. Enabling this
+ * will load an identity gamma table and prevent any further gamma table changes.
+ * This is meant to make display calibration foolproof, but is also useful for us
+ * to automatically enable pixel-perfect framebuffer passthrough for devices like
+ * Bits+ or Datapixx etc. - Assuming it works, of course, and we don't run into the
+ * problem of "non-identity" identity gamma tables. This needs to be verified on a
+ * per driver + per GPU basis.
+ */
+psych_bool PsychWaylandProfilingInhibit(int screenNumber, psych_bool enableInhibit)
+{
+    GError *error = NULL;
+
+    // Color management supported on this screen?
+    if (!colord_client || !displayOutputs[screenNumber]->colord_device) {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: PsychProfilingInhibit: No colord support on screen %i.\n", screenNumber);
+        return(FALSE);
+    }
+
+    // Requested state already set? No op, if so:
+    if (enableInhibit == displayProfilingInhibit[screenNumber])
+        return(TRUE);
+
+    if (enableInhibit) {
+        if (!cd_device_profiling_inhibit_sync(displayOutputs[screenNumber]->colord_device, NULL, &error)) {
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to enable profiling inhibition for screen %i: %s\n", screenNumber, error->message);
+            g_error_free(error);
+            return(FALSE);
+        }
+    }
+    else {
+        if (!cd_device_profiling_uninhibit_sync(displayOutputs[screenNumber]->colord_device, NULL, &error)) {
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Failed to disable profiling inhibition for screen %i: %s\n", screenNumber, error->message);
+            g_error_free(error);
+            return(FALSE);
+        }
+    }
+
+    // Done.
+    displayProfilingInhibit[screenNumber] = enableInhibit;
+    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: %s profiling inhibition (= identity pixel passthrough) for screen %i.\n", enableInhibit ? "Enabled" : "Disabled", screenNumber);
+
+    return(TRUE);
 }
 
 // Return true (non-zero) if a desktop compositor is likely active on screen 'screenNumber':
