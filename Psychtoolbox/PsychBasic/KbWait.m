@@ -94,12 +94,13 @@ function [secs, keyCode, deltaSecs] = KbWait(deviceNumber, forWhat, untilTime)
 %                where KbReleaseWait(-1) didn't wait for all keys on all
 %                keyboards to be released.
 % 12/18/09  rpw  Added documentation about keypad devices on OS/X.
+% 06/06/15  mk   Fix treatment of empty forWhat argument. Suggested by Taylor Hanayik.
 
 % Time (in seconds) to wait between "failed" checks, in order to not
 % overload the system in realtime mode. 5 msecs seems to be an ok value...
 yieldInterval = 0.005;
 
-if nargin < 2
+if nargin < 2 || isempty(forWhat)
     forWhat = 0;
 end
 
