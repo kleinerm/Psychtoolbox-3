@@ -150,6 +150,10 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 /* XAtom support for setup of transparent windows: */
 #include <X11/Xatom.h>
 
+// For detection of DRI3/Present support:
+#include <X11/Xlib-xcb.h>
+#include <xcb/xcb.h>
+#include <xcb/dri3.h>
 
 // For DPMS control:
 #include <X11/extensions/dpms.h>
@@ -186,6 +190,73 @@ typedef struct GLXBufferSwapComplete {
     int64_t sbc;
 } GLXBufferSwapComplete;
 
+/* Detect DRI3/Present support. Must be called under PsychLockDisplay() protection. */
+static psych_bool IsDRI3Supported(PsychWindowRecordType *windowRecord)
+{
+    const xcb_query_extension_reply_t *dri3extension;
+    xcb_dri3_query_version_cookie_t cookie;
+    xcb_dri3_query_version_reply_t *reply;
+    xcb_dri3_open_cookie_t open_cookie;
+    xcb_dri3_open_reply_t *open_reply;
+    xcb_generic_error_t *error;
+    int major, minor;
+    Display *dpy = windowRecord->targetSpecific.deviceContext;
+
+    // Try to connect to DRI3 extension:
+    dri3extension = xcb_get_extension_data(XGetXCBConnection(dpy), &xcb_dri3_id);
+    if ((dri3extension == NULL) || !dri3extension->present) {
+        return(FALSE);
+    }
+
+    cookie = xcb_dri3_query_version(XGetXCBConnection(dpy), XCB_DRI3_MAJOR_VERSION, XCB_DRI3_MINOR_VERSION);
+    reply = xcb_dri3_query_version_reply(XGetXCBConnection(dpy), cookie, &error);
+    free(error);
+    if (reply == NULL) return(FALSE);
+
+    major = reply->major_version;
+    minor = reply->minor_version;
+    free(reply);
+    if (major < 0) return(FALSE);
+
+    open_cookie = xcb_dri3_open(XGetXCBConnection(dpy), RootWindow(dpy, DefaultScreen(dpy)), None);
+    open_reply = xcb_dri3_open_reply(XGetXCBConnection(dpy), open_cookie, NULL);
+
+    if (!open_reply) return(FALSE);
+    if (open_reply->nfd != 1) return(FALSE);
+    close(xcb_dri3_open_reply_fds(XGetXCBConnection(dpy), open_reply)[0]);
+    free(open_reply);
+
+    // Seems we are running on a DRI3 capable driver. A modern Mesa
+    // version would use DRI3/Present on such a driver. Is DRI3/Present
+    // disabled by env variable?
+    if (getenv("LIBGL_DRI3_DISABLE")) return(FALSE);
+
+    // No. Check if we are on Mesa version 10.0.0 or later, as earlier Mesa versions
+    // don't support DRI3/Present at all:
+    const char* verstring = strstr((const char*) glGetString(GL_VERSION), "Mesa");
+    if (!verstring || (sscanf(verstring, "Mesa %i.%i", &major, &minor) != 2) || (major < 10)) return(FALSE);
+
+    // Ok, this is a DRI3 enabled driver, and we are on a DRI3/Present capable Mesa,
+    // so in all likelyhood DRI3/Present will be used for rendering and presentation.
+    // Is the X-Server recent enough? Servers older than 1.16.3 are seriously buggy
+    // wrt. DRI3/Present, so a word of warning would be due:
+    if (XVendorRelease(windowRecord->targetSpecific.deviceContext) < 11603000) {
+        if (PsychPrefStateGet_Verbosity() > 1) {
+            printf("\nPTB-WARNING: XServer version older than 1.16.3 with defective DRI3/Present implementation detected!\n");
+            printf("PTB-WARNING: Stimulus presentation will not work correctly. Either upgrade your XServer, or disable\n");
+            printf("PTB-WARNING: DRI3/Present. One way to disable DRI3 is to set the environment variable LIBGL_DRI3_DISABLE\n");
+            printf("PTB-WARNING: to a non-zero value, then restart Octave or Matlab. Another way to disable DRI3 is via\n");
+            printf("PTB-WARNING: some xorg.conf settings. Cfe. the man pages of your display driver via 'man intel',\n");
+            printf("PTB-WARNING: 'man radeon' or 'man nouveau', depending on the graphics card you use.\n");
+            printf("PTB-WARNING: Will continue, but expect hangs, sync failure or visually corrupted stimuli until this is fixed.\n\n");
+        }
+    }
+
+    // DRI3/Present enabled and in use:
+    windowRecord->specialflags |= kPsychIsDRI3Window;
+
+    return(TRUE);
+}
 
 /*
  *    PsychOSOpenOnscreenWindow()
@@ -1072,6 +1143,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         mexLock();
         if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Workaround: Disabled ability to 'clear Screen', as a workaround for a Mesa OpenGL bug. Sorry for the inconvenience.\n");
     }
+
+    // Check for DRI3/Present operation and assign proper special flag to windowRecord if so:
+    if (IsDRI3Supported(windowRecord) && (PsychPrefStateGet_Verbosity() > 3)) printf("PTB-INFO: Window uses DRI3/Present for visual stimulus presentation.\n");
 
     // Increase our own open window counter:
     x11_windowcount++;
