@@ -150,6 +150,10 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 /* XAtom support for setup of transparent windows: */
 #include <X11/Xatom.h>
 
+
+// For DPMS control:
+#include <X11/extensions/dpms.h>
+
 // Use dedicated x-display handles for each onscreen window?
 static psych_bool usePerWindowXConnections = FALSE;
 
@@ -1074,10 +1078,15 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
     // Disable X-Windows screensavers:
     if (x11_windowcount==1) {
+        int dummy;
+
         // First window. Disable future use of screensaver:
         XSetScreenSaver(dpy, 0, 0, DefaultBlanking, DefaultExposures);
         // If the screensaver is currently running, forcefully shut it down:
         XForceScreenSaver(dpy, ScreenSaverReset);
+
+        // And just for safety, do it via DPMS disable as well:
+        if (DPMSQueryExtension(dpy, &dummy, &dummy)) DPMSDisable(dpy);
     }
 
     // Some info for the user regarding non-fullscreen mode and sync problems:
@@ -1285,11 +1294,16 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 
     // Was this the last window?
     if (x11_windowcount<=0) {
+        int dummy;
+
         x11_windowcount=0;
 
         // (Re-)enable X-Windows screensavers if they were enabled before opening windows:
         // Set screensaver to previous settings, potentially enabling it:
         XSetScreenSaver(dpy, -1, 0, DefaultBlanking, DefaultExposures);
+
+        // And just for safety, do it via DPMS enable as well:
+        if (DPMSQueryExtension(dpy, &dummy, &dummy)) DPMSEnable(dpy);
 
         // Unmap/release possibly mapped device memory: Defined in PsychScreenGlue.c
         PsychScreenUnmapDeviceMemory();
