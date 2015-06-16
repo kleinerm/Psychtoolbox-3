@@ -143,11 +143,12 @@ static char seeAlsoString[] = "TextBounds TextSize TextFont TextStyle TextColor 
  For now we only set the font, the color, and the size. Boldness, italic, underline, condensed and
  extended we assume are brought along with the font ID, or handled externally.
  */
-CFDictionaryRef PsychGetCTStyleAttributesFromPsychWindowRecord(PsychWindowRecordType *winRec)
+static CFDictionaryRef PsychGetCTStyleAttributesFromPsychWindowRecord(PsychWindowRecordType *winRec, CGColorSpaceRef cgColorSpace)
 {
     GLdouble                colorVector[4];
+    CGFloat                 components[4];
     PsychFontStructType     *psychFontRecord;
-    
+
     // Define font name and font size:
     PsychGetFontRecordFromFontNumber(winRec->textAttributes.textFontNumber, &psychFontRecord);
     if (psychFontRecord == NULL) PsychErrorExitMsg(PsychError_internal, "Failed to lookup the font from the font number!");
@@ -158,8 +159,9 @@ CFDictionaryRef PsychGetCTStyleAttributesFromPsychWindowRecord(PsychWindowRecord
     // Define font foreground color:
     PsychCoerceColorMode(&(winRec->textAttributes.textColor));
     PsychConvertColorToDoubleVector(&(winRec->textAttributes.textColor), winRec, colorVector);
-    CGColorRef fontColor = CGColorCreateGenericRGB(colorVector[0], colorVector[1], colorVector[2], colorVector[3]);
-    
+    components[0] = colorVector[0]; components[1] = colorVector[1]; components[2] = colorVector[2]; components[3] = colorVector[3];
+    CGColorRef fontColor = CGColorCreate(cgColorSpace, components);
+
     // Define use of underlining:
     int doUnderline = (winRec->textAttributes.textStyle & 4) ? kCTUnderlineStyleSingle : kCTUnderlineStyleNone;
     CFNumberRef underline = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &doUnderline);
@@ -208,8 +210,19 @@ PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
 	textUniString = (UniChar*) PsychMallocTemp(sizeof(UniChar) * stringLengthChars);
 	for (dummy1 = 0; dummy1 < stringLengthChars; dummy1++) textUniString[dummy1] = (UniChar) textUniDoubleString[dummy1];
 
+    // Define color space to use: Since June 2015 we use kCGColorSpaceGenericRGBLinear instead of
+    // CGColorSpaceCreateDeviceRGB(). We also make sure to feed the same cgColorSpace to
+    // PsychGetCTStyleAttributesFromPsychWindowRecord() for definition of text color, as a mismatch
+    // triggers gamma corrections which screw up our color definitions. Inaccurate Apple docs made
+    // us believe we always used a consistent color space for the CGBitmapContext and for CoreText
+    // colors, but this wasn't the case! Yay for great documentation.
+    //
+    // Anyway, so our previous text rendered on OSX with the CoreText renderer was always off in color,
+    // sort of gamma mapped through a roughly 1/1.2 gamma function.
+    cgColorSpace = CGColorSpaceCreateWithName(kCGColorSpaceGenericRGBLinear);
+
     // Compute attributes of text string from settings in window record:
-    CFDictionaryRef attributes = PsychGetCTStyleAttributesFromPsychWindowRecord(winRec);
+    CFDictionaryRef attributes = PsychGetCTStyleAttributesFromPsychWindowRecord(winRec, cgColorSpace);
     
     // Build text string with attributes (which encode text appearance) from 'textUniString' input string and 'attributes':
     CFStringRef myString = CFStringCreateWithCharactersNoCopy(kCFAllocatorDefault, textUniString, stringLengthChars, kCFAllocatorNull);
@@ -278,8 +291,11 @@ PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
     memoryRowSizeBytes=sizeof(UInt32) * textureWidth;
     memoryTotalSizeBytes= memoryRowSizeBytes * textureHeight;
     textureMemory=(UInt32 *)valloc(memoryTotalSizeBytes);
-    if(!textureMemory) PsychErrorExitMsg(PsychError_system, "Failed to allocate texture memory for to be drawn text!");
-    
+    if(!textureMemory) {
+        CGColorSpaceRelease(cgColorSpace);
+        PsychErrorExitMsg(PsychError_system, "Failed to allocate texture memory for to be drawn text!");
+    }
+
     // printf("N: TexWidth %lf x TexHeight %lf :: ", textureWidth, textureHeight);
 	
 	// This zero-fill of memory should not be neccessary, but it is, as a workaround for some bug introduced
@@ -288,7 +304,6 @@ PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
     
     // Create the Core Graphics bitmap graphics context. We can tell CoreGraphics to use the same memory storage
     // format as will our GL texture, and in fact use the idential memory for both.
-    cgColorSpace=CGColorSpaceCreateDeviceRGB();
 
     // There is another OSX bug here. The format constant should be ARGB not RBGA to agree with the texture format.
     cgContext = CGBitmapContextCreate(textureMemory, textureWidth, textureHeight, 8, memoryRowSizeBytes, cgColorSpace, (CGBitmapInfo) kCGImageAlphaPremultipliedFirst);
@@ -298,7 +313,8 @@ PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
 		printf("PTB-ERROR: In Screen('DrawText'): xPos=%lf yPos=%lf StringLength=%i\nDecoded Unicode-String:\n", *xp, *yp, stringLengthChars);
 		for (ix=0; ix < stringLengthChars; ix++) printf("%i, ", (int) textUniString[ix]);
 		printf("\nPTB-ERROR: In Screen('DrawText'): Text corrupt?!?\n");
-		
+
+		CGColorSpaceRelease(cgColorSpace);
         goto drawtext_skipped;
     }
 	
@@ -409,7 +425,7 @@ PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
 	// Override alpha-blending settings if needed:
     if(!PsychPrefStateGet_TextAlphaBlending()) backgroundColorVector[3]=0;
     
-    CGContextSetRGBFillColor(cgContext, (float)(backgroundColorVector[0]), (float)(backgroundColorVector[1]), (float)(backgroundColorVector[2]), (float)(backgroundColorVector[3])); 
+    CGContextSetRGBFillColor(cgContext, (float)(backgroundColorVector[0]), (float)(backgroundColorVector[1]), (float)(backgroundColorVector[2]), (float)(backgroundColorVector[3]));
     CGContextFillRect(cgContext, quartzRect);
     
     // Now draw the text and close up the CoreGraphics shop before we proceed to textures.
