@@ -43,7 +43,7 @@ crossTextCols2 = [];
 
 %Drawing fixation cross as lines then as text
 for grey = greys
-    Screen('DrawLines', window, crosslines, 10, grey, [centerX, centerY]);
+    Screen('DrawLines', window, crosslines, 5, grey, [centerX, centerY]);
     Screen('Flip', window);
     crossLine = Screen('GetImage', window, [], [], [], 1);
 
@@ -65,7 +65,7 @@ if 0
     greys(1) = 1;
 
     for grey = greys
-        Screen('DrawLines', window, crosslines, 10, grey, [centerX, centerY]);
+        Screen('DrawLines', window, crosslines, 5, grey, [centerX, centerY]);
         Screen('Flip', window);
         crossLine2 = Screen('GetImage', window, [], [], [], 1);
         DrawFormattedText(window, fixcross, 'center', 'center', grey);
