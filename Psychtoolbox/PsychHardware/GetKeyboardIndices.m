@@ -25,11 +25,6 @@ function [keyboardIndices, productNames, allInfos]= GetKeyboardIndices(product, 
 %                reboots of the machine, but may not be persistent across
 %                operating system upgrades - or may not be persistent at
 %                all in case of os bugs. Your mileage may vary...
-%
-% WINDOWS, LINUX: _________________________________________________________
-% 
-% GetKeyboardIndices does not yet exist in Windows and Linux.
-% 
 % _________________________________________________________________________
 %
 % see also: GetGamepadIndices
