@@ -124,7 +124,7 @@ if Is1608
     fprintf('DaqALoadQueue error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
   else
     DaqVars.OldGains = range;
-    save([DaqPrefsDir filesep 'DaqPrefs'],'-Struct','DaqVars');
+    save([DaqPrefsDir filesep 'DaqPrefs'],'-struct','DaqVars');
   end
 else % if Is1608
   % ignore range inputs for single-ended channels
