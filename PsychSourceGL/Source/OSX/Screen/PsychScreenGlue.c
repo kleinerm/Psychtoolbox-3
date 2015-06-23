@@ -114,7 +114,7 @@ void InitializePsychDisplayGlue(void)
     PsychInitScreenToHeadMappings(PsychGetNumDisplays());
     
     // Register a display reconfiguration callback:
-    CGDisplayRegisterReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);
+    // CGDisplayRegisterReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);
     
     // Attach to kernel-level Psychtoolbox graphics card interface driver if possible
     // *and* allowed by settings, setup all relevant mappings:
@@ -132,7 +132,7 @@ void PsychCleanupDisplayGlue(void)
     PsychOSShutdownPsychtoolboxKernelDriverInterface();
 
     // Unregister our display reconfiguration callback:
-    CGDisplayRemoveReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);
+    // CGDisplayRemoveReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);
 
     // Release retained display mode objects:
     for(i = 0; i < kPsychMaxPossibleDisplays; i++){
@@ -149,6 +149,11 @@ void PsychCleanupDisplayGlue(void)
     PsychCocoaPreventAppNap(FALSE);
 }
 
+// PsychDisplayReconfigurationCallBack() respond to display reconfiguration events. This function is
+// currently unused and not hooked up - Just left here for reference. It might have been involved in
+// problems on OSX 10.9 and 10.10 in that releasing a display left the system hanging with a black
+// screen for long periods of time. This possibly due to some broken OSX event handling interacting
+// with this callback...
 void PsychDisplayReconfigurationCallBack(CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo)
 {
 	(void) userInfo;
@@ -273,24 +278,6 @@ void PsychCaptureScreen(int screenNumber)
     
     PsychLockScreenSettings(screenNumber);
 
-	// Reenumerate all displays: This is meant to help resolve issues with lots of
-	// warning messages printed by the OS to stderr on the 2010 MacBookPro's with hybrid
-	// graphics and automatic GPU switching between IntelHD IGP and NVidia Geforce GPU.
-	//
-	// Those systems presumably switch to the discrete GPU after a CGDisplayCapture() call
-	// and back to the IGP after a corresponding CGDisplayRelease() call. The change of
-	// GPU supposedly invalidates the currently cached CGDisplayID handles, so we need to
-	// reenumerate to avoid operating with invalid handles. That's the theory: Don't know if
-	// this is really the cause of the warning messages and if this will actually help resolve
-	// them. In any case this system behaviour breaks backwards compatibility to applications
-	// and can be considered yet another pretty embarassing operating system bug, brought to
-	// you by Apple.
-	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychCaptureScreen(): After display capture for screen %i (Old CGDisplayId %p). Reenumerating all displays...\n", screenNumber, displayCGIDs[screenNumber]);
-    
-	InitCGDisplayIDList();
-    
-	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychCaptureScreen(): After display capture for screen %i (New CGDisplayId %p). Reenumeration done.\n", screenNumber, displayCGIDs[screenNumber]);
-
 	return;
 }
 
@@ -307,13 +294,6 @@ void PsychReleaseScreen(int screenNumber)
     if (error) PsychErrorExitMsg(PsychError_internal, "Unable to release display");
 
     PsychUnlockScreenSettings(screenNumber);
-
-	// Reenumerate all displays: See comments in PsychCaptureScreen() for explanation.
-	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychReleaseScreen(): After display release for screen %i (Old CGDisplayId %p). Reenumerating all displays...\n", screenNumber, displayCGIDs[screenNumber]);
-    
-	InitCGDisplayIDList();
-    
-	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychReleaseScreen(): After display release for screen %i (New CGDisplayId %p). Reenumeration done.\n", screenNumber, displayCGIDs[screenNumber]);
 
 	// Try to restore keyboard input focus to whatever window had focus before
 	// the CGDisplayCapture()/CGDisplayRelease(). Turns out to be a bit unreliable,
