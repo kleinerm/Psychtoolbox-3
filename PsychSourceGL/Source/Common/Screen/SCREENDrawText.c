@@ -1380,13 +1380,12 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
     // The functions in the plugin will be linked immediately and if successfull, made available
     // directly for use within the code, with no need to dlsym() manually bind'em:
     if (NULL == drawtext_plugin) {
-        while ((NULL == drawtext_plugin) && (retrycount < ((PSYCH_SYSTEM == PSYCH_LINUX) ? 3 : 2))) {
+        while ((NULL == drawtext_plugin) && (retrycount < ((PSYCH_SYSTEM == PSYCH_LINUX) ? 2 : 1))) {
             // Assign name to search for:
             // Assign name of plugin shared library based on target OS:
             #if PSYCH_SYSTEM == PSYCH_OSX
-                // OS/X:
-                if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl.dylib");
-                if (retrycount == 1) sprintf(pluginName, "libptbdrawtext_ftgl64.dylib");
+                // OS/X: Only 64-Bit OpenGL plugin.
+                if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl64.dylib");
             #else
                 // Linux: More machine architectures, also support for OpenGL-ES et al.:
 
@@ -1403,8 +1402,12 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
                 if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl%s_arm64.so.1", (PsychIsGLES(windowRecord)) ? "es" : "");
                 #endif
 
-                if (retrycount == 1) sprintf(pluginName, "libptbdrawtext_ftgl%s.so.1", (PsychIsGLES(windowRecord)) ? "es" : "");
-                if (retrycount == 2) sprintf(pluginName, "libptbdrawtext_ftgl%s64.so.1", (PsychIsGLES(windowRecord)) ? "es" : "");
+                // Retry on Intel with 64-Bit or 32-Bit specific plugin:
+                #if defined(__LP64__)
+                    if (retrycount == 1) sprintf(pluginName, "libptbdrawtext_ftgl%s64.so.1", (PsychIsGLES(windowRecord)) ? "es" : "");
+                #else
+                    if (retrycount == 1) sprintf(pluginName, "libptbdrawtext_ftgl%s.so.1", (PsychIsGLES(windowRecord)) ? "es" : "");
+                #endif
             #endif
 
             // Try to auto-detect install location of plugin inside the Psychtoolbox/PsychBasic folder.
