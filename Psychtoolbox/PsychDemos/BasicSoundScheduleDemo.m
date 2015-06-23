@@ -14,8 +14,6 @@ function BasicSoundScheduleDemo(wavfilenames)
 % memory usage. This is similar to the concept of textures or offscreen
 % windows in the domain of Screen() for the visuals.
 %
-% 
-%
 % Optional arguments:
 %
 % wavfilenames = Name of a .wav sound file to load and play back, or a cell

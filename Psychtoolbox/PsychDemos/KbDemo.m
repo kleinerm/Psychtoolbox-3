@@ -31,41 +31,47 @@ function KbDemo
 % David Brainard, January, 1997
 % Allen Ingling, February, 1998
 
-% 01/22/97	dhb Wrote demos 2 & 3, as KeyTimingDemo.
-% 03/06/97	dhb	Change from TIMER to modern routines.
-% 03/08/97	dgp	Polished the instructions.
-% 08/02/97	dgp	Call FlushEvents('keyDown') after getting each
-%       key press, to start fresh each time.
-%       Explain difference between key presses and characters.
-% 01/28/98	dgp	Explain effect of CapsLock key.
-% 02/28/98	dgp	Mention new capability of KbCheck.
-% 02/18/98	awi	Wrote demos 1 & 4.
-% 02/19/98	dgp	Folded in awi's KbExplore.
-% 02/28/98	dgp	Folded in dhb's KeyTimingDemo.
-% 03/02/98	dgp	Cosmetic.
-% 03/09/98	dhb Change case of screen to Screen.
-%       Force 8-bit depth. DefaultClut.
-% 03/10/98	dgp	Allow all depths. Use new WhiteIndex and BlackIndex.
-% 03/12/98	dgp	Make sure Backgrounding is off.
-% 03/19/99	dgp	Use KbName. We no longer use GetChar, so Backgrounding no longer matters.
-% 06/06/00	dgp	Use arrow and escape keys instead of a, s and q to allow use with
-%		the Keyspan Digital Media Remote, which has no letter keys.
-%		http://www.keyspan.com/products/usb/remote/
+% 01/22/97  dhb Wrote demos 2 & 3, as KeyTimingDemo.
+% 03/06/97  dhb Change from TIMER to modern routines.
+% 03/08/97  dgp Polished the instructions.
+% 08/02/97  dgp Call FlushEvents('keyDown') after getting each
+%               key press, to start fresh each time.
+%               Explain difference between key presses and characters.
+% 01/28/98  dgp Explain effect of CapsLock key.
+% 02/28/98  dgp Mention new capability of KbCheck.
+% 02/18/98  awi Wrote demos 1 & 4.
+% 02/19/98  dgp Folded in awi's KbExplore.
+% 02/28/98  dgp Folded in dhb's KeyTimingDemo.
+% 03/02/98  dgp Cosmetic.
+% 03/09/98  dhb Change case of screen to Screen.
+%               Force 8-bit depth. DefaultClut.
+% 03/10/98  dgp Allow all depths. Use new WhiteIndex and BlackIndex.
+% 03/12/98  dgp Make sure Backgrounding is off.
+% 03/19/99  dgp Use KbName. We no longer use GetChar, so Backgrounding no longer matters.
+% 06/06/00  dgp Use arrow and escape keys instead of a, s and q to allow use with
+%               the Keyspan Digital Media Remote, which has no letter keys.
+%               http://www.keyspan.com/products/usb/remote/
 % 02/11/01  awi Added platform conditionals for font names.
-%       Conditionally call flushevents only on OS9. 
+%               Conditionally call flushevents only on OS9. 
 % 04/03/02  awi Restored flushevents under Windows
 % 04/13/02  dgp Use Arial, eliminate conditionals.
 % 09/23/06  rhh Ported part four of the demo to Mac OS X.
-% 10/11/06  dhb  Imported subfunctions into single file, use cell syntax.
+% 10/11/06  dhb Imported subfunctions into single file, use cell syntax.
 % 10/11/06  dhb Added comment comparing to GetChar/CharAvail.
 % 10/16/06  mk  Add call 'UnifyKeyNames' -> Same keynames on all systems.
 % 10/17/06  mk  Remove calls to FlushEvents. They are meaningless for KbWait and KbCheck,
 %               would only affect CharAvail and GetChar.
 
-
 % Enable unified mode of KbName, so KbName accepts identical key names on
 % all operating systems:
 KbName('UnifyKeyNames');
+
+if IsWayland
+    % We need a onscreen window to collect key input on Wayland:
+    w = Screen('OpenWindow', 0, [255 255 0], [0 0 300 300]);
+    DrawFormattedText(w, 'Type in this window', 'center', 'center', [0 0 255]);
+    Screen('Flip', w);
+end
 
 %% Runs 4 demos in sequence
 % Report keyboard key number for any pressed keys, including
@@ -109,7 +115,7 @@ while 1
         if keyCode(escapeKey)
             break;
         end
-        
+
         % If the user holds down a key, KbCheck will report multiple events.
         % To condense multiple 'keyDown' events into a single event, we wait until all
         % keys have been released.
@@ -166,17 +172,16 @@ rotationRadius = 200; % The radius of the rotation.
 initialRotationAngle = 3 * pi / 2; % The initial rotation angle in radians.
 
 try
-
     % Removes the blue screen flash and minimize extraneous warnings.
     Screen('Preference', 'VisualDebugLevel', 3);
     Screen('Preference', 'SuppressAllWarnings', 1);
 
     % Find out how many screens and use largest screen number.
     whichScreen = max(Screen('Screens'));
-    
+
     % Open a new window.
     [ window, windowRect ] = Screen('OpenWindow', whichScreen);
-    
+
     % Set text display options. We skip on Linux.
     if ~IsLinux
         Screen('TextFont', window, 'Arial');
@@ -185,59 +190,58 @@ try
 
     % Set colors.
     black = BlackIndex(window);
-    
+
     % Set keys.
     rightKey = KbName('RightArrow');
     leftKey = KbName('LeftArrow');
     escapeKey = KbName('ESCAPE');
-    
+
     % Use the parameters.
     spotDiameter = spotRadius * 2;
     spotRect = [0 0 spotDiameter spotDiameter];
     centeredspotRect = CenterRect(spotRect, windowRect); % Center the spot.
     rotationAngle = initialRotationAngle;
-    
+
     % Set up the timer.
     startTime = now;
     durationInSeconds = 60 * 2;
     numberOfSecondsRemaining = durationInSeconds;
-    
+
     % Loop while there is time.
     while numberOfSecondsRemaining > 0
-            numberOfSecondsElapsed = round((now - startTime) * 10 ^ 5);
-            numberOfSecondsRemaining = durationInSeconds - numberOfSecondsElapsed;
-        
-            Screen('DrawText', window, '4 of 4.  Press the left or right arrow key to move, or the escape key to quit.', 20, 20, black);
-            Screen('DrawText', window, sprintf('%i seconds remaining...', numberOfSecondsRemaining), 20, 50, black);
-            
-            xOffset = rotationRadius * cos(rotationAngle);
-            yOffset = rotationRadius * sin(rotationAngle);
-            offsetCenteredspotRect = OffsetRect(centeredspotRect, xOffset, yOffset);
-            Screen('FillOval', window, [0 0 127], offsetCenteredspotRect);
-            Screen('Flip', window);
-            
-            [ keyIsDown, seconds, keyCode ] = KbCheck;
-            
-            if keyIsDown
-                if keyCode(rightKey)
-                    if rotationAngle < 2 * pi
-                        rotationAngle = rotationAngle + 0.1;
-                    else
-                        rotationAngle = 0;
-                    end
-                elseif keyCode(leftKey)
-                    if rotationAngle > 0
-                        rotationAngle = rotationAngle - 0.1;
-                    else
-                        rotationAngle = 2 * pi;
-                    end
-                elseif keyCode(escapeKey)
-                    break;
+        numberOfSecondsElapsed = round((now - startTime) * 10 ^ 5);
+        numberOfSecondsRemaining = durationInSeconds - numberOfSecondsElapsed;
+
+        Screen('DrawText', window, '4 of 4.  Press the left or right arrow key to move, or the escape key to quit.', 20, 20, black);
+        Screen('DrawText', window, sprintf('%i seconds remaining...', numberOfSecondsRemaining), 20, 50, black);
+
+        xOffset = rotationRadius * cos(rotationAngle);
+        yOffset = rotationRadius * sin(rotationAngle);
+        offsetCenteredspotRect = OffsetRect(centeredspotRect, xOffset, yOffset);
+        Screen('FillOval', window, [0 0 127], offsetCenteredspotRect);
+        Screen('Flip', window);
+
+        [ keyIsDown, seconds, keyCode ] = KbCheck;
+
+        if keyIsDown
+            if keyCode(rightKey)
+                if rotationAngle < 2 * pi
+                    rotationAngle = rotationAngle + 0.1;
+                else
+                    rotationAngle = 0;
                 end
+            elseif keyCode(leftKey)
+                if rotationAngle > 0
+                    rotationAngle = rotationAngle - 0.1;
+                else
+                    rotationAngle = 2 * pi;
+                end
+            elseif keyCode(escapeKey)
+                break;
             end
-            
+        end
     end
-    
+
     Screen('CloseAll');
 
     fprintf('\n4 of 4.  Done.\n');

@@ -43,10 +43,14 @@
 #endif
 #if PSYCH_SYSTEM == PSYCH_LINUX
 //Placeholder for the GNU/Linux version at build time.
+#ifdef PTB_USE_WAYLAND
+#define PSYCHTOOLBOX_OS_NAME                                    "GNU/Linux WAYLAND"
+#else
 #ifdef PTB_USE_WAFFLE
 #define PSYCHTOOLBOX_OS_NAME                                    "GNU/Linux WAFFLE"
 #else
 #define PSYCHTOOLBOX_OS_NAME                                    "GNU/Linux X11"
+#endif
 #endif
 #endif
 

@@ -785,54 +785,54 @@ void* KbQueueWorkerThreadMain(void* dummy)
 
 PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys)
 {
-	dinfo* dev = NULL;
-    
-	// Valid number of keys?
-	if (scanKeys && (numScankeys != 256)) {
-		PsychErrorExitMsg(PsychError_user, "Second argument to KbQueueCreate must be a vector with 256 elements.");
-	}
-    
-	if (deviceIndex < 0) {
-		deviceIndex = PsychHIDGetDefaultKbQueueDevice();
-		// Ok, deviceIndex now contains our default keyboard to use - The first suitable keyboard.
-	} else if (deviceIndex >= ndevices) {
-		// Out of range index:
-		PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. No such device!");
-	} 
-    
-	// Do we finally have a valid keyboard?
-	dev = &info[deviceIndex];
-	if ((dev->dwDevType & 0xff) != DI8DEVTYPE_KEYBOARD) {
-		//		PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. Not a keyboard device!");
-	}
-    
-	// Keyboard queue for this deviceIndex already created?
-	if (psychHIDKbQueueFirstPress[deviceIndex]) {
-		// Yep. Release it, so we can start from scratch:
-		PsychHIDOSKbQueueRelease(deviceIndex);
-	}
-    
-	// Allocate and zero-init memory for tracking key presses and key releases:
-	psychHIDKbQueueFirstPress[deviceIndex]   = (double*) calloc(256, sizeof(double));
-	psychHIDKbQueueFirstRelease[deviceIndex] = (double*) calloc(256, sizeof(double));
-	psychHIDKbQueueLastPress[deviceIndex]    = (double*) calloc(256, sizeof(double));
-	psychHIDKbQueueLastRelease[deviceIndex]  = (double*) calloc(256, sizeof(double));
-	psychHIDKbQueueScanKeys[deviceIndex]     = (int*) calloc(256, sizeof(int));
-    
-	// Assign scanKeys vector, if any:
-	if (scanKeys) {
-		// Copy it:
-		memcpy(psychHIDKbQueueScanKeys[deviceIndex], scanKeys, 256 * sizeof(int));
-	} else {
-		// None provided. Enable all keys by default:
-		memset(psychHIDKbQueueScanKeys[deviceIndex], 1, 256 * sizeof(int));        
-	}
+    dinfo* dev = NULL;
 
-	// Create event buffer:
-	PsychHIDCreateEventBuffer(deviceIndex);
-    
-	// Ready to use this keybord queue.
-	return(PsychError_none);
+    // Valid number of keys?
+    if (scanKeys && (numScankeys != 256)) {
+        PsychErrorExitMsg(PsychError_user, "Second argument to KbQueueCreate must be a vector with 256 elements.");
+    }
+
+    if (deviceIndex < 0) {
+        deviceIndex = PsychHIDGetDefaultKbQueueDevice();
+        // Ok, deviceIndex now contains our default keyboard to use - The first suitable keyboard.
+    } else if (deviceIndex >= ndevices) {
+        // Out of range index:
+        PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. No such device!");
+    }
+
+    // Do we finally have a valid keyboard?
+    dev = &info[deviceIndex];
+
+    // Keyboard queue for this deviceIndex already created?
+    if (psychHIDKbQueueFirstPress[deviceIndex]) {
+        // Yep. Release it, so we can start from scratch:
+        PsychHIDOSKbQueueRelease(deviceIndex);
+    }
+
+    // Allocate and zero-init memory for tracking key presses and key releases:
+    psychHIDKbQueueFirstPress[deviceIndex]   = (double*) calloc(256, sizeof(double));
+    psychHIDKbQueueFirstRelease[deviceIndex] = (double*) calloc(256, sizeof(double));
+    psychHIDKbQueueLastPress[deviceIndex]    = (double*) calloc(256, sizeof(double));
+    psychHIDKbQueueLastRelease[deviceIndex]  = (double*) calloc(256, sizeof(double));
+    psychHIDKbQueueScanKeys[deviceIndex]     = (int*) calloc(256, sizeof(int));
+
+    // Assign scanKeys vector, if any:
+    if (scanKeys) {
+        // Copy it:
+        memcpy(psychHIDKbQueueScanKeys[deviceIndex], scanKeys, 256 * sizeof(int));
+    } else {
+        // None provided. Enable all keys by default:
+        memset(psychHIDKbQueueScanKeys[deviceIndex], 1, 256 * sizeof(int));
+    }
+
+    // Create event buffer:
+    if (!PsychHIDCreateEventBuffer(deviceIndex)) {
+        PsychHIDOSKbQueueRelease(deviceIndex);
+        PsychErrorExitMsg(PsychError_system, "Failed to create keyboard queue due to out of memory condition.");
+    }
+
+    // Ready to use this keybord queue.
+    return(PsychError_none);
 }
 
 void PsychHIDOSKbQueueRelease(int deviceIndex)

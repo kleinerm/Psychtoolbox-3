@@ -1,9 +1,11 @@
 function VideoPluginCaptureDemo(deviceIds, syncmode, movieName)
-% Demonstrate simple use of built-in video capture engine.
+% Demonstrate simple use of built-in video marker tracking engine.
 %
-% VideoMultiCameraCaptureDemo([deviceIds=all][, syncmode=0][, movieName])
+% EXPERIMENTAL CODE - NOT USEFUL FOR REGULAR PSYCHTOOLBOX USERS.
 %
-% VideoMultiCameraCaptureDemo captures simultaneously from all cameras
+% VideoPluginCaptureDemo([deviceIds=all][, syncmode=0][, movieName])
+%
+% VideoPluginCaptureDemo captures simultaneously from all cameras
 % connected to your computer, or a subset of cameras if it is specified
 % in the optional vector 'deviceIds', and then shows their video feeds
 % in individual Psychtoolbox windows.
@@ -50,7 +52,7 @@ if nargin < 1
 end
 
 if nargin < 2 || isempty(syncmode)
-    syncmode = 8;
+    syncmode = 0;
 else
     if ~ismember(syncmode, [0,4,8,16])
         error('Invalid syncmode! Must be 0, 4, 8 or 16!');
@@ -63,8 +65,8 @@ else
     doVideoRecording = 1;
 end
 
-roi = [0 0 768 576];
-depth = 3; % Choose a color depth of 1 if you want raw sensor data - or grayscale of course. 3 for RGB.
+roi = [0 0 1280 960];
+depth = []; % Choose a color depth of 1 if you want raw sensor data - or grayscale of course. 3 for RGB.
 % Mode 4 would be the correct mode for raw sensor -> rgb bayer conversion on Basler cameras.
 % Mode 3 would pass raw sensor data instead.
 convMode = 4;
@@ -158,7 +160,7 @@ end
 try
     for i=1:length(deviceIds)
         % Open oncreen window for i'th camera:
-        win(i) = PsychImaging('OpenWindow', screenid, 0, [0, 0, 650, 500], [], [], [], [], [], kPsychGUIWindow + kPsychGUIWindowWMPositioned); %#ok<AGROW>
+        win(i) = PsychImaging('OpenWindow', screenid, 0, [0, 0, 1290, 1000], [], [], [], [], [], kPsychGUIWindow + kPsychGUIWindowWMPositioned); %#ok<AGROW>
         
         % Set text size for info text:
         Screen('TextSize', win(i), 24);
@@ -281,7 +283,7 @@ try
         % Normally the engine decides itself what is the best choice. Forcing the engine to
         % use Format-7 sometimes allows to save a bit of bus-bandwidth and thereby squeeze out
         % higher framerates, resolutions or use of more cameras on a single bus in multi-cam capture.
-        Screen('SetVideoCaptureParameter', grabbers(i), 'PreferFormat7Modes', 1);
+        %Screen('SetVideoCaptureParameter', grabbers(i), 'PreferFormat7Modes', 1);
         
         if doVideoRecording
             % If video recording is requested, set a unique movie filename per camera:
@@ -307,6 +309,22 @@ try
         Screen('SetVideoCaptureParameter', grabbers(i), sprintf('LoadMarkerTrackingPlugin=%s', pluginPath));
         Screen('SetVideoCaptureParameter', grabbers(i), sprintf('SendCommandToMarkerTrackingPlugin=CMD_TRACKERCAMID %i', 0));
         Screen('SetVideoCaptureParameter', grabbers(i), 'SendCommandToMarkerTrackingPlugin=CMD_UDPSTREAMTO localhost');
+        Screen('SetVideoCaptureParameter', grabbers(i), 'SendCommandToMarkerTrackingPlugin=CMD_SETDRAWMODE 15');
+
+        Screen('SetVideoCaptureParameter', grabbers(i), 'SendCommandToMarkerTrackingPlugin=CMD_SETDEBUGLEVEL 1');
+        Screen('SetVideoCaptureParameter', grabbers(i), 'SendCommandToMarkerTrackingPlugin=CMD_SETMINAREATHRESHOLD 10');
+        Screen('SetVideoCaptureParameter', grabbers(i), 'SendCommandToMarkerTrackingPlugin=CMD_SETMAXAREATHRESHOLD 1000');
+        Screen('SetVideoCaptureParameter', grabbers(i), 'SendCommandToMarkerTrackingPlugin=CMD_SETMININTENSITYTHRESHOLD 100');
+        Screen('SetVideoCaptureParameter', grabbers(i), 'SendCommandToMarkerTrackingPlugin=CMD_SETMAXINTENSITYTHRESHOLD 255');
+        Screen('SetVideoCaptureParameter', grabbers(i), 'SendCommandToMarkerTrackingPlugin=CMD_SETREDGREENMARKERGAIN 0.5');
+        Screen('SetVideoCaptureParameter', grabbers(i), 'SendCommandToMarkerTrackingPlugin=CMD_SETMATCHMETHOD 1');
+        Screen('SetVideoCaptureParameter', grabbers(i), 'SendCommandToMarkerTrackingPlugin=CMD_GLOBALMATCHINGSIGMA 1');
+        Screen('SetVideoCaptureParameter', grabbers(i), 'SendCommandToMarkerTrackingPlugin=CMD_SETMINELLIPSEASPECTTHRESHOLD 0.5');
+        Screen('SetVideoCaptureParameter', grabbers(i), 'SendCommandToMarkerTrackingPlugin=CMD_SETMAXELLIPSEAREATHRESHOLD 1000');
+        Screen('SetVideoCaptureParameter', grabbers(i), 'SendCommandToMarkerTrackingPlugin=CMD_SETMARKERFEEDBACKCRITERION 0');
+        %Screen('SetVideoCaptureParameter', grabbers(i), 'SendCommandToMarkerTrackingPlugin=');
+        %Screen('SetVideoCaptureParameter', grabbers(i), 'SendCommandToMarkerTrackingPlugin=');
+        
     end
     
     % Start capture on all cameras:

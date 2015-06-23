@@ -14,10 +14,6 @@ function BasicSoundInputDemo(wavfilename, voicetrigger, maxsecs)
 % extra demos and tests for low-latency and high precision timing output will
 % follow soon. If you need low-latency, make sure to read "help
 % InitializePsychSound" carefully or contact the forum.
-% Our preliminary testing for low-latency mode showed that sub-millisecond
-% accurate sound onset and << 10 msecs latency are possible on OS/X and on
-% some specially configured M$-Windows setups.
-%
 %
 % Optional arguments:
 %

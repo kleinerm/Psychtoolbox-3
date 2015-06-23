@@ -2129,7 +2129,7 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
  *
  * Return current Desktop Window Manager (DWM) status. Zero for disabled, Non-Zero for enabled.
  */
-int	PsychOSIsDWMEnabled(int screenNumber)
+int PsychOSIsDWMEnabled(int screenNumber)
 {
     DWM_TIMING_INFO	dwmtiming;
     BOOL compositorEnabled;
@@ -2137,7 +2137,7 @@ int	PsychOSIsDWMEnabled(int screenNumber)
 
     // screenNumber unused on MS-Windows:
     (void) screenNumber;
-    
+
     // Need to init dwmtiming for our dummy-call to get composition timing info:
     dwmtiming.cbSize = sizeof(dwmtiming);
 
@@ -2148,6 +2148,39 @@ int	PsychOSIsDWMEnabled(int screenNumber)
     // succeed if the DWM is really active, but fail if the DWM is on standby.
     IsDWMEnabled = (dwmSupported && (0 == PsychDwmIsCompositionEnabled(&compositorEnabled)) && compositorEnabled && (0 == PsychDwmGetCompositionTimingInfo(NULL, &dwmtiming)));
     return(IsDWMEnabled);
+}
+
+/* PsychOSAdjustForCompositorDelay()
+ *
+ * Compute OS and desktop compositor specific delay that needs to be subtracted from the
+ * target time for a OpenGL doublebuffer swap when conventional swap scheduling is used.
+ * Subtract the delay, if any, from the given targetTime and return the corrected targetTime.
+ *
+ */
+double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime, psych_bool onlyForCalibration)
+{
+    (void) onlyForCalibration;
+
+    // Will the MS-Windows DWM desktop compositor affect our window? If so, compensate, otherwise just return unaltered targetTime:
+    if (PsychIsMSVista() && PsychOSIsDWMEnabled(0) && ((PsychGetNumDisplays() == 1) || !(windowRecord->specialflags & kPsychIsFullscreenWindow))) {
+        // Yes. Definitely our window will be subject to desktop composition. This will introduce
+        // an additional swap delay of at least 1 video refresh cycle after submitting the SwapBuffers()
+        // request, because a SwapBuffers() request will be translated into a composition request for
+        // our window. This request will only get picked up and acted upon when the DWM wakes up after the
+        // beginning of the next video refresh cycle, and the recomposited/updated desktop backbuffer will
+        // then get page-flipped onto the actual display at the following vblank -- best case that is, if
+        // not too many other windows need recomposition or the GPU is otherwise too busy to complete
+        // rendering of all windows and the desktop recomposition.
+        //
+        // In any case, we can try to compensate for the 1 frame minimum composition delay by
+        // shifting the usercode provided flipwhen time 1 frame into the past, so we submit the
+        // swap request one frame earlier and counteract the 1 frame delay of the DWM. Of course
+        // this only works for swap deadlines > 1 frame away from now. Otherwise we'll just have
+        // to suffer the delay and deadline miss:
+        targetTime -= windowRecord->VideoRefreshInterval;
+    }
+
+    return(targetTime);
 }
 
 /* PsychOSSetPresentParameters()

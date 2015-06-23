@@ -176,6 +176,13 @@ else
     end
 end
 
+if IsWayland
+    % We need a onscreen window to collect key input on Wayland:
+    w = Screen('OpenWindow', 0, [255 255 0], [0 0 300 300]);
+    DrawFormattedText(w, 'Type in this window', 'center', 'center', [0 0 255]);
+    Screen('Flip', w);
+end
+
 fprintf('hard enough so the microphone can pick up the noise.\n');
 fprintf('This measurement will be repeated 10 times and obvious wrong\n');
 fprintf('measurements discarded. At the end the mean input device latency\n');
@@ -228,8 +235,13 @@ for trial = 1:10
             KbReleaseWait(portString);
 
             % Wait for keypress in a tight loop:
-            while ~KbCheck(portString); end;
-            tKeypress = GetSecs;
+            while 1
+                [pressed, tKeypress] = KbCheck(portString);
+                if pressed
+                    fprintf('--> dM = %f msecs ', 1000 * (GetSecs - tKeypress));
+                    break;
+                end
+            end
         case 1
             [x y b] = GetMouse([], portString);
             while any(b)
@@ -322,7 +334,7 @@ for trial = 1:10
         
         % Compute maximum signal amplitude in this chunk of data:
         if ~isempty(audiodata)
-            level = max(abs(audiodata(1,:)));
+            level = max(max(abs(audiodata)));
         else
             level = 0;
         end
@@ -336,8 +348,8 @@ for trial = 1:10
 
     % Ok, last fetched chunk was above threshold!
     % Find exact location of first above threshold sample.
-    idx = min(find(abs(audiodata(1,:)) >= triggerlevel)); %#ok<MXFND>
-        
+    idx = min(find(max(abs(audiodata)) >= triggerlevel)); %#ok<MXFND>
+
     % Compute absolute event time:
     tOnset = tCaptureStart + ((offset + idx - 1) / freq);
     
@@ -372,6 +384,9 @@ end
 
 % Close the audio device:
 PsychPortAudio('Close', pahandle);
+
+% Close Screen in case of Wayland:
+sca;
 
 % Done.
 fprintf('\nTest finished. Average delay across valid trials: %f msecs (stddev = %f msecs).\n\n', mean(tdelay), std(tdelay));

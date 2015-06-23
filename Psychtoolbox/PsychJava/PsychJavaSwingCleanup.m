@@ -20,16 +20,17 @@ function PsychJavaSwingCleanup
 
 % History:
 % 3-July-2013  mk  Adapted from PTB forum solution.
+% 5-March-2015  mk  Use size 1x1 instead of 0x0 for RM reset.
 
 % Running on Matlab with Java based desktop GUI enabled? Otherwise we no-op.
 if psychusejava('desktop')
     % Yes: Need to do the cleanup cycle:
     
-    % Set backing store size of Java Swing Repaint manager to zero (0,0), then
+    % Set backing store size of Java Swing Repaint manager to almost zero (1,1), then
     % back to its original value to enforce a reinit of the Repaint manager.
     rm = javax.swing.RepaintManager.currentManager([]);
     dim = rm.getDoubleBufferMaximumSize();
-    rm.setDoubleBufferMaximumSize(java.awt.Dimension(0,0));
+    rm.setDoubleBufferMaximumSize(java.awt.Dimension(1,1));
     rm.setDoubleBufferMaximumSize(dim);
     
     % Enforce a Java garbage collection now:

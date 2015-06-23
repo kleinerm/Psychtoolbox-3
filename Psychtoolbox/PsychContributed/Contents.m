@@ -34,6 +34,14 @@
 %                              Kleiner, so contact him if you have further questions about
 %                              the tools.
 %
+% AutoBrightness               Helper function AutoBrightness allows to control the
+%                              setting of the "Automatically adjust brightness" control
+%                              on Apple OSX, ie., it allows to control if display brightness
+%                              should be automatically adjusted based on ambient light, or not.
+%                              This uses AppleScript for its job. It may not work reliably on
+%                              future OSX versions and will not work on other operating
+%                              systems. Tested on OSX 10.10. Contributed by Denis Pelli.
+%
 % Kinect-v16-WindowsDrivers.zip Zip file containing the Microsoft Windows
 %                               drivers and installer that are needed to
 %                               use the Microsoft XBOX Kinect under
@@ -41,8 +49,8 @@
 %                               infos. The PsychSourceGL/Cohorts/Kinect-v16-withsource.zip
 %                               file contains corresponding source code.
 %
-% libusb-1.0.dll               This is the 32 bit Windows experimental version of
-%                              libusb-1.0 from ...
+% x64/libusb-1.0.dll           This is the 64-Bit windows version of libusb-1.0 for
+%                              64-Bit Matlab from ...
 %                              http://libusb.org/wiki/windows_backend
 %                              The dll is used by PsychHID on MS-Windows.
 %                              It is licensed under LGPL v2+. You can get a
@@ -53,10 +61,6 @@
 %                              in the PsychSourceGL/Cohorts/libusb1-win32/
 %                              subfolder after you have downloaded the full
 %                              ptb source (help UseTheSource).
-%
-% x64/libusb-1.0.dll           This is the 64-Bit windows version for
-%                              64-Bit Matlab.
-%
 %
 % simplepsychtoolboxsetup.sh   Configure OS X priority.  Call from Unix shell, not MATLAB.
 %
@@ -79,12 +83,6 @@
 %                              See help read_rle_rgbe for copyright & authorship info. This is
 %                              a helper routine for ReadHDR - the recommended function for user
 %                              scripts.
-%
-% vcredist_x86.exe             Microsoft Visual C++ 2010 runtime 32-Bit
-%                              redistributable installer. You must use this
-%                              to install the Visual C runtime if you want
-%                              to use the Psychtoolbox for 32-Bit Matlab on
-%                              Microsoft Windows.
 %
 % vcredist_x64.exe             Microsoft Visual C++ 2010 runtime 64-Bit
 %                              redistributable installer. You must use this

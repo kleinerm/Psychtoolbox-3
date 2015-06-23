@@ -100,9 +100,17 @@ int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int new
 
 // Calls XDefineCursor() or XIDefineCursor(..., deviceId, ...), setting cursor of all onscreen windows to 'cursor':
 void PsychOSDefineX11Cursor(int screenNumber, int deviceId, Cursor cursor);
+void PsychOSDefineWaylandCursor(int screenNumber, int deviceId, const char* cursorName);
 
 // Return identifying information about GPU for a given screen screenNumber:
 psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortype, int* pciDeviceId, int* numDisplayHeads);
+
+
+// Wayland backend specific stuff:
+psych_bool PsychWaylandGetKeyboardState(int deviceId, int numKeys, PsychNativeBooleanType *buttonStates, double *timeStamp);
+psych_bool PsychWaylandGetMouseState(int deviceId, int *mouseX, int *mouseY, int numButtons, double *buttonArray, void** focusWindow);
+psych_bool PsychWaylandGetKbNames(PsychGenericScriptType *kbNames);
+psych_bool PsychWaylandProfilingInhibit(int screenNumber, psych_bool enableInhibit);
 
 //end include once
 #endif

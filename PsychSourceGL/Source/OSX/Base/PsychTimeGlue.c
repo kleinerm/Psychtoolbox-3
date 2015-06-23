@@ -404,6 +404,13 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
     return(rc);
 }
 
+/* Assign a name to a thread, for debugging: */
+void PsychSetThreadName(const char *name)
+{
+    // OSX interface only allows assigning name to current thread, different to Linux:
+    pthread_setname_np(name);
+}
+
 /* Initialize condition variable:
  * CAUTION: Use of condition_attribute is non-portable! Code using it will not work properly
  * on MS-Windows as this attribute is unsupported there! Pass NULL for this argument for

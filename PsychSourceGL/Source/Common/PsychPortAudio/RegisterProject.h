@@ -1,25 +1,17 @@
 /*
-	PsychToolbox3/Source/Common/PsychPortAudio/RegisterProject.h		
-  
-	PROJECTS: PsychPortAudio only.
-  
-	AUTHORS:
-	Mario Kleiner	mk		mario.kleiner at tuebingen.mpg.de
-	
-	PLATFORMS:	This file should compile on all platforms.  
-    
-	HISTORY:
+    PsychToolbox3/Source/Common/PsychPortAudio/RegisterProject.h
 
-	21.3.2007	mk		Created.
-	
-	TARGET LOCATION:
+    PROJECTS: PsychPortAudio only.
 
-		DoNothing.mexmac resides in:
-			PsychToolbox/PsychBasic/
-		
-		To change the target location modify the script:
-			Psychtoolbox/Tools/Scripts/CopyOutMexFiles/DoNothing_CopyOut.sh
+    AUTHORS:
 
+    Mario Kleiner       mk      mario.kleiner.de@gmail.com
+
+    PLATFORMS:          All.
+
+    HISTORY:
+
+    21.3.2007           mk      Created.
 */
 
 //begin include once 
@@ -33,7 +25,3 @@ PsychError PsychModuleInit(void);
 
 //end include once
 #endif
-
-
-
-

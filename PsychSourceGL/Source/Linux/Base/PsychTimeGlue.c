@@ -597,6 +597,17 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 	return(rc);
 }
 
+/* Assign a name to a thread, for debugging: */
+void PsychSetThreadName(const char *name)
+{
+    #  if defined(__GNU_LIBRARY__) && defined(__GLIBC__) && defined(__GLIBC_MINOR__) && \
+    (__GLIBC__ >= 3 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 12))
+    pthread_setname_np(pthread_self(), name);
+    #  endif
+
+    (void)name;
+}
+
 /* Initialize condition variable:
  * CAUTION: Use of condition_attribute is non-portable! Code using it will not work properly
  * on MS-Windows as this attribute is unsupported there! Pass NULL for this argument for

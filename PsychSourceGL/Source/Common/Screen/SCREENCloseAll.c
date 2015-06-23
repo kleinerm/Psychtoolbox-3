@@ -1,23 +1,23 @@
 /*
-	SCREENCloseAll.c		
+    SCREENCloseAll.c
 
-	AUTHORS:
+    AUTHORS:
 
-		Allen.Ingling@nyu.edu				awi 
-		mario.kleiner at tuebingen.mpg.de	mk
+        Allen.Ingling@nyu.edu               awi
+        mario.kleiner.de@gmail.com          mk
 
-	PLATFORMS:	
+    PLATFORMS:
 
-		All.  
+        All.
 
-	HISTORY:
+    HISTORY:
 
-		01/23/02	awi		Wrote It.
-		10/12/04	awi		Changed "SCREEN" to "Screen" and "Close" to "CloseAll" in useString .
-		1/25/04		awi		Merged in a fix provide by mk.  Splits off parts of SCREENCloseAll into ScreenCloseAllWindows()  
-							 to be called from ScreenExit(). 
+        01/23/02    awi     Wrote It.
+        10/12/04    awi     Changed "SCREEN" to "Screen" and "Close" to "CloseAll" in useString .
+        1/25/04     awi     Merged in a fix provide by mk.  Splits off parts of SCREENCloseAll into ScreenCloseAllWindows()
+                            to be called from ScreenExit().
 
-	T0 DO:
+    TO DO:
 
 */
 
@@ -26,14 +26,14 @@
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "Screen('CloseAll');";
 static char synopsisString[] = 
-	"Close all open onscreen and offscreen windows and textures, movies and video sources. Release nearly all ressources.";  
-static char seeAlsoString[] = "OpenWindow, OpenOffscreenWindow";	 
+    "Close all open onscreen and offscreen windows and textures, movies and video sources. Release nearly all ressources.";
+static char seeAlsoString[] = "OpenWindow, OpenOffscreenWindow";
 
 PsychError SCREENCloseAll(void)
-{	
-    //all subfunctions should have these two lines.  
+{
+    //all subfunctions should have these two lines.
     PsychPushHelp(useString, synopsisString, seeAlsoString);
-    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     PsychErrorExit(PsychCapNumInputArgs(0));   //The maximum number of inputs
     PsychErrorExit(PsychCapNumOutputArgs(0));  //The maximum number of outputs
@@ -41,7 +41,7 @@ PsychError SCREENCloseAll(void)
     // Close all windows:
     ScreenCloseAllWindows();
 
-    return(PsychError_none);	
+    return(PsychError_none);
 }
 
 // Implement closing of all onscreen- and offscreen windows, release of all captured displays,
@@ -51,10 +51,10 @@ PsychError SCREENCloseAll(void)
 // and diverse error-handlers for cleanup.
 void ScreenCloseAllWindows(void)
 {
-    PsychWindowRecordType	**windowRecordArray;
-    int						i, numWindows, numScreens;
+    PsychWindowRecordType   **windowRecordArray;
+    int                     i, numWindows, numScreens;
     static unsigned int     recursionLevel = 0;
-    
+
     // Recursive self-call?
     if (recursionLevel > 0) {
         // Ohoh: We are recursively calling ourselves, probably due to some
@@ -67,21 +67,21 @@ void ScreenCloseAllWindows(void)
         // Skip to the release screen routine and hope for the best:
         goto critical_abort;
     }
-    
+
     recursionLevel++;
-    
+
     // Cold-Reset the drawing target:
     PsychColdResetDrawingTarget();
 
-	// Reset the "userspaceGL" flag which tells PTB that userspace GL rendering was active
-	// due to Screen('BeginOpenGL') command.
-	PsychSetUserspaceGLFlag(FALSE);
-	
-	// Check for stale texture ressources:
-	PsychRessourceCheckAndReminder(TRUE);	
-	
+    // Reset the "userspaceGL" flag which tells PTB that userspace GL rendering was active
+    // due to Screen('BeginOpenGL') command.
+    PsychSetUserspaceGLFlag(FALSE);
+
+    // Check for stale texture ressources:
+    PsychRessourceCheckAndReminder(TRUE);
+
     // Shutdown multi-media subsystems if active:
-	PsychExitMovieWriting();
+    PsychExitMovieWriting();
     PsychExitMovies();
     PsychExitVideoCapture();
 
@@ -91,25 +91,27 @@ void ScreenCloseAllWindows(void)
     // higher they get exposed this way, which long-term is a good thing(TM).
     PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
     for(i = numWindows - 1; i >= 0; i--) {
-		if (PsychPrefStateGet_Verbosity()>5) { printf("PTB-DEBUG: In ScreenCloseAllWindows(): Destroying window %i\n", i); fflush(NULL); }
-		PsychCloseWindow(windowRecordArray[i]);
-	}
+        if (PsychPrefStateGet_Verbosity()>5) { printf("PTB-DEBUG: In ScreenCloseAllWindows(): Destroying window %i\n", i); fflush(NULL); }
+        PsychCloseWindow(windowRecordArray[i]);
+    }
     PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
 
 critical_abort:
 
     // Release all captured displays, unhide the cursor on each of them:
     numScreens=PsychGetNumDisplays();
-    for(i=0;i<numScreens;i++){
+    for (i = 0; i < numScreens; i++) {
         if(PsychIsScreenCaptured(i)) {
-			PsychRestoreScreenSettings(i);
-			PsychReleaseScreen(i);
-		}
-		 
-		PsychShowCursor(i, -1);
+            PsychRestoreScreenSettings(i);
+            PsychReleaseScreen(i);
+        }
+
+        #ifndef PTB_USE_WAYLAND
+        PsychShowCursor(i, -1);
+        #endif
     }
 
     recursionLevel--;
-    
+
     return;
 }

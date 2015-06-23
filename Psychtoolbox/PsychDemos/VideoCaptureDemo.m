@@ -1,7 +1,7 @@
-function VideoCaptureDemo(fullscreen, fullsize, roi, depth, deviceId, cameraname, bpc)
+function VideoCaptureDemo(fullscreen, fullsize, roi, depth, fps, deviceId, cameraname, bpc)
 % Demonstrate simple use of built-in video capture engine.
 %
-% VideoCaptureDemo([fullscreen=0][, fullsize=0][, roi=[0 0 640 480]][, depth][,deviceId=0][, cameraname][, bpc=8])
+% VideoCaptureDemo([fullscreen=0][, fullsize=0][, roi=[0 0 640 480]][, depth][, fps=realmax][,deviceId=0][, cameraname][, bpc=8])
 %
 % VideoCaptureDemo initializes the first attached and supported camera on
 % your computer (e.g, the built-in iSight of Apple Macintosh computers),
@@ -29,6 +29,11 @@ function VideoCaptureDemo(fullscreen, fullsize, roi, depth, deviceId, cameraname
 % camera with 640 x 480 pixels resolution. This parameter may need tweaking
 % for some cameras, as some drivers have bugs and don't work well with all
 % settings.
+%
+% 'depth' Number of color channels 1 = grayscale, 3 = rgb, 4 = rgba etc.
+%
+% 'fps' Target capture framerate. Maximum for given resolution and color depth
+% if omitted.
 %
 % 'deviceId' Device index of video capture device. Defaults to system default.
 %
@@ -75,14 +80,18 @@ if nargin < 4
 end
 
 if nargin < 5
-    deviceId = [];
+    fps = realmax;
 end
 
 if nargin < 6
-    cameraname = [];
+    deviceId = [];
 end
 
 if nargin < 7
+    cameraname = [];
+end
+
+if nargin < 8
     % Default bpc to internal 8 bpc default:
     bpc = [];
 end
@@ -115,7 +124,7 @@ try
     %roi  = Screen('SetVideoCaptureParameter', grabber, 'GetROI')
     
     for repcount=1:1
-        Screen('StartVideoCapture', grabber, realmax, 1);
+        Screen('StartVideoCapture', grabber, fps, 1);
         
         dstRect = [];
         oldpts = 0;
