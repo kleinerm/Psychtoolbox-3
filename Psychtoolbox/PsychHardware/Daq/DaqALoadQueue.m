@@ -75,6 +75,7 @@ function err=DaqALoadQueue(daq,channel,range)
 %
 % 4/15/05 dgp Wrote it.
 % 1/8/08  mpr created behavior appropriate for 1608
+% 6/23/15 mk  Make compatible with Octave, fix 1608-FS pref file caching.
 
 devices = PsychHIDDAQS;
 
@@ -124,7 +125,7 @@ if Is1608
     fprintf('DaqALoadQueue error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
   else
     DaqVars.OldGains = range;
-    save([DaqPrefsDir filesep 'DaqPrefs'],'-struct','DaqVars');
+    save([DaqPrefsDir filesep 'DaqPrefs.mat'],'-v7','-struct','DaqVars');
   end
 else % if Is1608
   % ignore range inputs for single-ended channels
