@@ -750,10 +750,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // other desktop environments we don't need it. This is like before, just we also use this on KDE +
     // non-Intel gpu's, to save the user the extra setup step for "unredirect_fullscreen_windows" in the KDE
     // GUI, as this is a bit more convenient.
+    //
+    // UPDATE June-2015: Use old style setup also on KDE with multiple X-Screens, not only multiple outputs
+    // on one X-Screen. Otherwise at least the future KDE 5.3 Plasma desktop will do stupid things.
     PsychGetGPUSpecs(screenSettings->screenNumber, &gpuMaintype, NULL, NULL, NULL);
     if (!getenv("PSYCH_NEW_OVERRIDEREDIRECT") &&
         ((PsychPrefStateGet_ConserveVRAM() & kPsychOldStyleOverrideRedirect) ||
-        !getenv("KDE_FULL_SESSION") || (PsychScreenToHead(screenSettings->screenNumber, 1) >= 0))) {
+        !getenv("KDE_FULL_SESSION") || (PsychScreenToHead(screenSettings->screenNumber, 1) >= 0) ||
+        (PsychGetNumDisplays() > 1))) {
         // Old style: Always override_redirect to lock out window manager, except when a real "GUI-Window"
         // is requested, which needs to behave and be treated like any other desktop app window:
         attr.override_redirect = (windowRecord->specialflags & kPsychGUIWindow) ? 0 : 1;
