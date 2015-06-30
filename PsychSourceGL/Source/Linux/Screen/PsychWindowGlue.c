@@ -308,6 +308,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     psych_bool newstyle_setup = FALSE;
     int gpuMaintype = 0;
     unsigned char* mesaver = NULL;
+    psych_bool mesamapi_strdupbug = FALSE;
 
     // Include onscreen window index in title:
     sprintf(windowTitle, "PTB Onscreen Window [%i]:", windowRecord->windowIndex);
@@ -1124,9 +1125,18 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Not running on Mesa graphics library.\n");
     }
 
+    if (mesaversion[0] > 0) {
+        // Running on top of Mesa. Does it have the Mesa mapi bug?
+        // Versions older than 10.5.2 have this bug, later versions have a proper bug fix:
+        if ((mesaversion[0] < 10) || ((mesaversion[0] == 10) && ((mesaversion[1] < 5) || ((mesaversion[1] == 5) && (mesaversion[2] < 2))))) {
+            mesamapi_strdupbug = TRUE;
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Mesa version < 10.5.2 does not have the mapi strdup() bug fix. Needs the mex file locking workaround.\n");
+        }
+    }
+
     // Ok, the OpenGL rendering context is up and running.
     // Running on top of a FOSS Mesa graphics driver?
-    if ((x11_windowcount == 0) && strstr((const char*) glGetString(GL_VERSION), "Mesa") && !getenv("PSYCH_DONT_LOCK_MOGLCORE")) {
+    if ((x11_windowcount == 0) && mesamapi_strdupbug && !getenv("PSYCH_DONT_LOCK_MOGLCORE")) {
         // Yes. At least as of Mesa 10.1 as shipped in Ubuntu 14.04-LTS, Mesa
         // will become seriously crashy if our Screen() mex files is flushed
         // from memory due to a clear all/mex/Screen and afterwards reloaded.
@@ -1159,7 +1169,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Using GLEW version %s for automatic detection of OpenGL extensions...\n", glewGetString(GLEW_VERSION));
     }
 
-    if ((x11_windowcount == 0) && strstr((const char*) glGetString(GL_VERSION), "Mesa") && getenv("PSYCH_DONT_LOCK_MOGLCORE") && !getenv("PSYCH_DONT_LOCK_SCREEN")) {
+    if ((x11_windowcount == 0) && mesamapi_strdupbug && getenv("PSYCH_DONT_LOCK_MOGLCORE") && !getenv("PSYCH_DONT_LOCK_SCREEN")) {
         // Alternative approach to Mesa bug induced crash: Prevent Screen() from unloading, instead of moglcore:
         mexLock();
         if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Workaround: Disabled ability to 'clear Screen', as a workaround for a Mesa OpenGL bug. Sorry for the inconvenience.\n");
