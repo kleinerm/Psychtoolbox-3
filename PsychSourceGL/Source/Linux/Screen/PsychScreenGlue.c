@@ -52,6 +52,10 @@
 // Maximum number of slots in a gamma table to set/query: This should be plenty.
 #define MAX_GAMMALUT_SIZE 16384
 
+// If non-zero entries, then we are or have been running on Mesa
+// and mesaversion encodes major.minor.patchlevel:
+extern int mesaversion[3];
+
 // Event and error base for XRandR extension:
 int xr_event, xr_error;
 psych_bool has_xrandr_1_2 = FALSE;
@@ -869,6 +873,9 @@ void InitializePsychDisplayGlue(void)
     has_xrandr_1_2 = FALSE;
     has_xrandr_1_3 = FALSE;
 
+    // Set Mesa version to undefined:
+    mesaversion[0] = mesaversion[1] = mesaversion[2] = 0;
+
     // Initialize our mutex for locking of display function access, e.g., XLib/GLX calls:
     PsychInitMutex(&displayLock);
 
@@ -1391,7 +1398,39 @@ void PsychCleanupDisplayGlue(void)
             // Nope. Keep track of it...
             last_dpy=dpy;
             // ...and close display connection to X-Server:
-            XCloseDisplay(dpy);
+            if ((PsychGetNumDisplays() > 1) && (mesaversion[0] > 0)) {
+                // This is a multi-x-screen (probably ZaphodHead style) setup, we are using the
+                // OSS Mesa OpenGL library, and Mesa has been already initialized by us for the
+                // session which is just about to end. Current Mesa versions have a bug in both
+                // the nouveau and radeon winsys drivers which would cause a crash if we'd close
+                // the X connection here and later Screen() gets reloaded again within the same
+                // Octave/Matlab session. By avoiding to close the connection here we can avoid
+                // this crash bug, at the minor expense of leaking a bit of memory and X resources.
+                //
+                // The bug has been already fixed by myself upstream for nouveau, with patches
+                // for the AMD side of things reviewed and pending inclusion, so we just use this
+                // workaround on Mesa versions known to contain the bug. Currently these would be
+                // stable Mesa 10.6.x and earlier stable versions, but backports of these fixes
+                // are expected within the next weeks at least for Mesa 10.6 and probably 10.5.
+                if ((mesaversion[0] > 10) ||
+                    ((mesaversion[0] == 10) && (mesaversion[1] >= 7)) ||
+                    ((mesaversion[0] == 10) && (mesaversion[1] == 6) && (mesaversion[2] >= 100)) ||
+                    ((mesaversion[0] == 10) && (mesaversion[1] == 5) && (mesaversion[2] >= 100))) {
+                    // This Mesa version is safe to close the connection:
+                    XCloseDisplay(dpy);
+                }
+                else {
+                    if (PsychPrefStateGet_Verbosity() > 3)
+                        printf("PTB-INFO: Skipping XCloseDisplay(screen %i) on multi-x-screen setup, as workaround for buggy Mesa version %i.%i.%i.\n",
+                               i, mesaversion[0], mesaversion[1], mesaversion[2]);
+                }
+            }
+            else {
+                // Always close display connection on single x-screen setups, or if we aren't
+                // running under Mesa OpenGL, or if we haven't initialized our Mesa instance
+                // yet, as closing the connection is then safe in any case:
+                XCloseDisplay(dpy);
+            }
 
             // Release actual xinput info list for this x11 display connection:
             if (xinput_info[i]) {

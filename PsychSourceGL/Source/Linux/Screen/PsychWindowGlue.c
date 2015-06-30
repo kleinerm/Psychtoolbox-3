@@ -29,6 +29,12 @@
 
 #include "Screen.h"
 
+// If non-zero entries, then we are or have been running on Mesa
+// and mesaversion encodes major.minor.patchlevel. Gets zero-initialized
+// in X11 screen glue at Screen() load time, then assigned proper values
+// during PsychOSOpenOnscreenWindow() if running under Mesa:
+int mesaversion[3];
+
 /* Following code is shared between the classic X11/GLX backend and the new Waffle backend: */
 
 /* These are needed for realtime scheduling control: */
@@ -301,6 +307,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     psych_bool xfixes_available = FALSE;
     psych_bool newstyle_setup = FALSE;
     int gpuMaintype = 0;
+    unsigned char* mesaver = NULL;
 
     // Include onscreen window index in title:
     sprintf(windowTitle, "PTB Onscreen Window [%i]:", windowRecord->windowIndex);
@@ -1106,6 +1113,16 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     PsychOSSetGLContext(windowRecord);
 
     PsychLockDisplay();
+
+    // Try to detect if we are running on top of Mesa OpenGL, and which version:
+    mesaver = strstr((const char*) glGetString(GL_VERSION), "Mesa");
+    if (mesaver && (3 == sscanf(mesaver, "Mesa %i.%i.%i", &mesaversion[0], &mesaversion[1], &mesaversion[2]))) {
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Running on Mesa version %i.%i.%i\n", mesaversion[0], mesaversion[1], mesaversion[2]);
+    }
+    else {
+        mesaversion[0] = mesaversion[1] = mesaversion[2] = 0;
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Not running on Mesa graphics library.\n");
+    }
 
     // Ok, the OpenGL rendering context is up and running.
     // Running on top of a FOSS Mesa graphics driver?
