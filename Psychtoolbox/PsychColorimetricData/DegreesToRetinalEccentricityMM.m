@@ -102,13 +102,11 @@ switch (method)
         degreeThreshold = 0.2;
         index = find(eccDegrees < degreeThreshold);
         if (~isempty(index))
-            factor = DegreesToRetinalMM(1,eyeLengthMm,'false');
-            eccMM(index) = factor*eccDegrees(index);
+            eccMM(index) = DegreesToRetinalMM(eccDegrees(index),eyeLengthMm,false);
         end
 
     case 'Linear'
-        factor = DegreesToRetinalMM(1,eyeLengthMm,'false');
-        eccMm = factor*eccDegrees;
+        eccMm = DegreesToRetinalMM(eccDegrees,eyeLengthMm,false);
         
     otherwise
         error('Unknown method passed')

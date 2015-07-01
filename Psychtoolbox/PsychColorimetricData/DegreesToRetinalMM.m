@@ -3,13 +3,16 @@ function mm = DegreesToRetinalMM(degs,eyeLengthMM,fulltrig)
 %
 % Convert foveal extent in degrees to mm of retina in the fovea.
 %
-% This is implemented by default as a simple linear scaling based on the appropriate
-% conversion for small angles.  It does not take the non-linearity of the
-% tangent for larger angles into account, nor the actual shape and optics
-% of the eye.
+% This is implemented by default as a simple linear scaling based on the
+% appropriate conversion for small angles.  It does not take the
+% non-linearity of the tangent for larger angles into account, nor the
+% actual shape and optics of the eye.  Interestingly, although the trig
+% calculation would be exactly correct for pinhole camera and a planar
+% retina oriented orthogonal to the optical axis, it deviates more from
+% what the real eye does than the linear approximation.
 %
-% In addition, this routine and RetinalMMToDegrees are implemented as the exact inverses 
-% of each other in this default mode.
+% In addition, this routine and RetinalMMToDegrees are implemented as the
+% exact inverses of each other in this default mode.
 %
 % If optional argument fulltrig is passed as true (it is false by default),
 % then it uses the inverse tangent on the actuall passed mm.  This was the
