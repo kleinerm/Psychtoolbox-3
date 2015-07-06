@@ -1407,15 +1407,15 @@ void PsychCleanupDisplayGlue(void)
                 // Octave/Matlab session. By avoiding to close the connection here we can avoid
                 // this crash bug, at the minor expense of leaking a bit of memory and X resources.
                 //
-                // The bug has been already fixed by myself upstream for nouveau, with patches
-                // for the AMD side of things reviewed and pending inclusion, so we just use this
-                // workaround on Mesa versions known to contain the bug. Currently these would be
-                // stable Mesa 10.6.x and earlier stable versions, but backports of these fixes
-                // are expected within the next weeks at least for Mesa 10.6 and probably 10.5.
+                // The bug has been already fixed by myself upstream for nouveau and radeon,
+                // so we just use this workaround on Mesa versions known to contain the bug.
+                // These would be current stable Mesa 10.6.1 and earlier stable versions, but
+                // backports of these fixes are already available in Mesa 10.5.9 and expected
+                // for Mesa 10.6.2+.
                 if ((mesaversion[0] > 10) ||
                     ((mesaversion[0] == 10) && (mesaversion[1] >= 7)) ||
-                    ((mesaversion[0] == 10) && (mesaversion[1] == 6) && (mesaversion[2] >= 100)) ||
-                    ((mesaversion[0] == 10) && (mesaversion[1] == 5) && (mesaversion[2] >= 100))) {
+                    ((mesaversion[0] == 10) && (mesaversion[1] == 6) && (mesaversion[2] >= 2)) ||
+                    ((mesaversion[0] == 10) && (mesaversion[1] == 5) && (mesaversion[2] >= 9))) {
                     // This Mesa version is safe to close the connection:
                     XCloseDisplay(dpy);
                 }
