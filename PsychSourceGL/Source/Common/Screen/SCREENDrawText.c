@@ -90,14 +90,10 @@ static char synopsisString[] =
     "Unicode text drawing is supported on all operating systems if you select the default "
     "high quality text renderer. Of course you also have to select a text font which contains "
     "the unicode character sets you want to draw - not all fonts contain all unicode characters.\n"
-    "With the optionally selectable fast, low quality renderer, neither anti-aliasing nor Unicode "
-    "are supported and text positioning may be less accurate, but it is a good choice if "
-    "you are in need for speed over everything else. Select it via the command:\n"
-    "Screen('Preference', 'TextRenderer', 0); inserted at the top of your script.\n"
     "The following optional parameters allow to control location and color of the drawn text:\n"
-    "\"x\" \"y\" defines the text pen startlocation. Default is the location of the pen from "
+    "\"x\" \"y\" defines the text pen start location. Default is the location of the pen from "
     "previous draw text commands, or (0,0) at startup. \"color\" is the CLUT index (scalar or [r "
-    "g b] triplet or [r g b a] quadruple) for drawing the text; default produces black.\n"
+    "g b] triplet or [r g b a] quadruple) for drawing the text; startup default produces black.\n"
     "\"backgroundColor\" is the color of the background area behind the text. By default, "
     "text is drawn transparent in front of whatever image content is stored in the window. "
     "You need to set an explicit backgroundColor and possibly enable user defined alpha-blending "
@@ -118,13 +114,19 @@ static char synopsisString[] =
     "settings that affect text drawing, e.g., setting alpha blending and anti-aliasing modes.\n"
     "Selectable text renderers: The Screen('Preference', 'TextRenderer', Type); command allows "
     "to select among different text rendering engines with different properties:\n"
-    "Type 0 is the fast OS specific text renderer: No unicode support, no anti-aliasing, low flexibility "
-    "but high speed for fast text drawing. Supported on Windows and Linux as a OpenGL display list renderer.\n"
-    "Type 1 is the OS specific high quality renderer: Slower, but supports unicode, anti-aliasing, and "
-    "many interesting features. On Windows, this is a GDI based renderer, on OS/X it is Apple's CoreText "
-    "text renderer which is also used for Type 0 on OS/X. On Linux it is a renderer based on FTGL.\n"
-    "Type 2 is a renderer based on FTGL, the same as type 1 on Linux, also available on OS/X, not supported "
-    "on Windows.\n"
+    "Type 0 is the legacy OS specific text renderer: On MS-Windows and Linux this is implemented as "
+    "a fast, but low quality, OpenGL display list renderer without any support for unicode or text "
+    "anti-aliasing. On OSX this currently selects Apples CoreText text renderer, which is slow but "
+    "does support anti-aliasing, unicode and other features. Normally you really don't want to use "
+    "the type 0 legacy renderer. It is provided for backwards compatibility to old experiment scripts "
+    "and may need to get removed completely in future versions of Psychtoolbox due to circumstances "
+    "out of our control.\n"
+    "Type 1 is the OS specific high quality renderer: It supports unicode, anti-aliasing, and many "
+    "other interesting features. On MS-Windows, this is currently a GDI based renderer, on OSX and Linux "
+    "this is a renderer loaded from an external plugin, and based on FTGL for fast high quality text "
+    "drawing with OpenGL.\n"
+    "Type 2 is a renderer based on FTGL, the same as type 1 on Linux and OS/X, currently not supported "
+    "on MS-Windows.\n"
     "This function doesn't provide support for text layout. Use the higher level DrawFormattedText() function "
     "if you need basic support for text layout, e.g, centered text output, line wrapping etc.\n";
 
@@ -1450,12 +1452,12 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
     if (NULL == drawtext_plugin) {
         // Failed! Revert to standard text rendering code below:
         if (PsychPrefStateGet_Verbosity() > 1) {
-            printf("PTB-WARNING: DrawText: Failed to load external drawtext plugin [%s]. Reverting to standard text renderer.\n", (const char*) dlerror());
+            printf("PTB-WARNING: DrawText: Failed to load external drawtext plugin [%s]. Reverting to legacy text renderer.\n", (const char*) dlerror());
             printf("PTB-WARNING: DrawText: Functionality of Screen('DrawText') and Screen('TextBounds') may be limited and text quality may be impaired.\n");
             printf("PTB-WARNING: DrawText: Type 'help DrawTextPlugin' at the command prompt to receive instructions for troubleshooting.\n\n");
         }
 
-        // Switch to renderer zero, which is the fast fallback renderer on all operating systems:
+        // Switch to renderer zero, which is the legacy fallback renderer on all operating systems:
         PsychPrefStateSet_TextRenderer(0);
 
         // Return failure code:
@@ -1943,7 +1945,7 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
 
     // Does usercode want us to use a text rendering plugin instead of our standard OS specific renderer?
     // If so, load it if not already loaded:
-    if (((PsychPrefStateGet_TextRenderer() == 2) || ((PsychPrefStateGet_TextRenderer() == 1) && (PSYCH_SYSTEM == PSYCH_LINUX))) &&
+    if (((PsychPrefStateGet_TextRenderer() == 2) || ((PsychPrefStateGet_TextRenderer() == 1) && (PSYCH_SYSTEM != PSYCH_WINDOWS))) &&
         PsychLoadTextRendererPlugin(winRec)) {
 
         // Use external dynamically loaded plugin:

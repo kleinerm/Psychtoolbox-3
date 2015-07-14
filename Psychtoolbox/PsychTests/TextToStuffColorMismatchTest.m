@@ -9,12 +9,16 @@ function TextToStuffColorMismatchTest
 % History:
 %
 % 16-Jun-2015  mk  Derived from code provided by user shandelman116.
+% 14-Jul-2015  mk  Adapt to new situation that renderer 0 == CoreText on OSX.
 
 %Setup
 Screen('Preference', 'DefaultTextYPositionIsBaseline', 0);
 Screen('Preference', 'TextAlphaBlending', 0);
 Screen('Preference', 'TextAntiAliasing', 0);
-Screen('Preference','TextRenderer', 1);
+if IsOSX
+    % Renderer 0 = CoreText on OSX.
+    Screen('Preference','TextRenderer', 0);
+end
 
 [window, wsize] = Screen('OpenWindow', 0, 0);
 
@@ -58,7 +62,7 @@ for grey = greys
 end
 
 if 0
-    %Now testing TextRenderer = 2
+    % Now testing TextRenderer = 2 - FTGL plugin
     Screen('Preference','TextRenderer', 2);
 
     % Need to remove black for this part to work
@@ -81,7 +85,7 @@ end
 ShowCursor('Arrow');
 sca;
 
-% Restore to standard text renderer:
+% Restore to standard HQ OS specific text renderer 1:
 Screen('Preference','TextRenderer', 1);
 
 % Checking for TextRenderer 1
@@ -89,7 +93,7 @@ figure
 plot(crossLineCols, crossTextCols, '*-');
 
 if ~isequal(crossLineCols, crossTextCols)
-    fprintf('\n\n\nDANGER WILL ROBINSON! Mismatch between requested and rendered text colors on text renderer 1!!!\n');
+    fprintf('\n\n\nDANGER WILL ROBINSON! Mismatch between requested and rendered text colors on text renderer!!!\n');
     hold on;
     plot([1/255:0.01:1] * 255, 255 * ([1/255:0.01:1].^(1/1.2)))
     hold off;
