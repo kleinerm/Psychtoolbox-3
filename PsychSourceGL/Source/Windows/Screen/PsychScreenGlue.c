@@ -954,36 +954,37 @@ void PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntri
 
 unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int numEntries, float *redTable, float *greenTable, float *blueTable)
 {
-    psych_bool 	ok;
-    CGDirectDisplayID	cgDisplayID;
-    int     i;
+    psych_bool ok;
+    CGDirectDisplayID cgDisplayID;
+    int i;
+
     // Windows hardware LUT has 3 tables for R,G,B, 256 slots each, concatenated to one table.
     // Each entry is a 16-bit word with the n most significant bits used for an n-bit DAC.
-    psych_uint16	gammaTable[256 * 3];
-    
+    psych_uint16 gammaTable[256 * 3];
+
     // Special case empty 0-slot table provided? That means to load an identity
     // gamma table and setup the GPU for identity pass-through from framebuffer to
     // encoders. This is unsupported on Windows, so return the 0xffffffff "unsupported" code.
     if (numEntries == 0) return(0xffffffff);
-    
+
     // Table must have 256 slots!
     if (numEntries!=256) PsychErrorExitMsg(PsychError_user, "Loadable hardware gamma tables must have 256 slots!");
-    
+
     // Convert input table to Windows specific gammaTable:
     for (i=0; i<256; i++) gammaTable[i]     = (int)(redTable[i]   * 65535.0f + 0.5f);
     for (i=0; i<256; i++) gammaTable[i+256] = (int)(greenTable[i] * 65535.0f + 0.5f);
     for (i=0; i<256; i++) gammaTable[i+512] = (int)(blueTable[i]  * 65535.0f + 0.5f);
-    
+
     // Set new gammaTable: On M$-Windows, we retry up to 10 times before giving up, because some
     // buggy Windows graphics drivers seem to fail on first invocation of SetDeviceGammaRamp(), just
     // to succeed on a 2nd invocation!
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
-    ok=FALSE;
-    for (i=0; i<10 && !ok; i++) ok=SetDeviceGammaRamp(cgDisplayID, &gammaTable);
-    if (!ok) PsychErrorExitMsg(PsychError_user, "Failed to upload the hardware gamma table into graphics adapter! Read the help for explanation...");
-    
-    // Return "success":
-    return(1);
+    ok = FALSE;
+    for (i = 0; i < 10 && !ok; i++) ok = SetDeviceGammaRamp(cgDisplayID, &gammaTable);
+    if (!ok && (PsychPrefStateGet_Verbosity() > 0)) printf("PTB-ERROR: Failed to upload the hardware gamma table for screen %i into graphics adapter! Read the help for explanation.\n", screenNumber);
+
+    // Return success status:
+    return((ok) ? 1 : 0);
 }
 
 // Beamposition queries on Windows are implemented via the DirectDraw-7 interface. It provides

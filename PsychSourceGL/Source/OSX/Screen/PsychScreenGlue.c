@@ -883,38 +883,38 @@ void PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntri
 
 unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int numEntries, float *redTable, float *greenTable, float *blueTable)
 {
-    CGDisplayErr 	error; 
-    CGDirectDisplayID	cgDisplayID;
+    CGDisplayErr error = 0;
+    CGDirectDisplayID cgDisplayID;
     uint8_t byteLUT[256];
-	int i;
-	
+    int i;
+
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
-    if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: LoadNormalizedGammatable: screenid %i mapped to CGDisplayId %p.\n", screenNumber, cgDisplayID);
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: LoadNormalizedGammatable: screenid %i mapped to CGDisplayId %p.\n", screenNumber, cgDisplayID);
 
-	// More than one row in table?
-	if (numEntries > 1) {
-		// Yes: This is the regular case. We upload a 0.0 - 1.0 encoded table with numEntries slots. The OS will
-		// interpolate inbetween our slots if the number of required slots in the GPU doesn't match the numEntries
-		// we provided:
-		error=CGSetDisplayTransferByTable(cgDisplayID, numEntries, redTable, greenTable, blueTable);
-		if (error) PsychErrorExitMsg(PsychError_system, "Failed to update the gamma tables in call to CGSetDisplayTransferByTable() !");
-	}
-	else {
-		if (numEntries <= 0) {
-			// No: Special case 0-Slot table. We shall upload an identity CLUT:
-			for (i = 0; i < 256; i++) byteLUT[i] = (uint8_t) i;
-			error=CGSetDisplayTransferByByteTable(cgDisplayID, 256, &byteLUT[0], &byteLUT[0], &byteLUT[0]);
-			if (error) PsychErrorExitMsg(PsychError_system, "Failed to upload identity gamma tables in call to CGSetDisplayTransferByByteTable() !");
-		}
-		else {
-			// No: Special case 1-slot table: Interpret red, green and blue value of single slot as min, max and gamma value for CGSetDisplayTransferByFormula()
-			error=CGSetDisplayTransferByFormula(cgDisplayID, redTable[0], greenTable[0], blueTable[0], redTable[0], greenTable[0], blueTable[0], redTable[0], greenTable[0], blueTable[0]);
-			if (error) PsychErrorExitMsg(PsychError_system, "Failed to upload computed gamma tables in call to CGSetDisplayTransferByFormula() !");
-		}
-	}
+    // More than one row in table?
+    if (numEntries > 1) {
+        // Yes: This is the regular case. We upload a 0.0 - 1.0 encoded table with numEntries slots. The OS will
+        // interpolate inbetween our slots if the number of required slots in the GPU doesn't match the numEntries
+        // we provided:
+        error = CGSetDisplayTransferByTable(cgDisplayID, numEntries, redTable, greenTable, blueTable);
+        if (error && (PsychPrefStateGet_Verbosity() > 0)) printf("PTB-ERROR: Failed to update the gamma tables for screen %i in call to CGSetDisplayTransferByTable()!\n", screenNumber);
+    }
+    else {
+        if (numEntries <= 0) {
+            // No: Special case 0-Slot table. We shall upload an identity CLUT:
+            for (i = 0; i < 256; i++) byteLUT[i] = (uint8_t) i;
+            error = CGSetDisplayTransferByByteTable(cgDisplayID, 256, &byteLUT[0], &byteLUT[0], &byteLUT[0]);
+            if (error && (PsychPrefStateGet_Verbosity() > 0)) printf("PTB-ERROR: Failed to upload identity gamma tables for screen %i in call to CGSetDisplayTransferByByteTable()!\n", screenNumber);
+        }
+        else {
+            // No: Special case 1-slot table: Interpret red, green and blue value of single slot as min, max and gamma value for CGSetDisplayTransferByFormula()
+            error = CGSetDisplayTransferByFormula(cgDisplayID, redTable[0], greenTable[0], blueTable[0], redTable[0], greenTable[0], blueTable[0], redTable[0], greenTable[0], blueTable[0]);
+            if (error && (PsychPrefStateGet_Verbosity() > 0)) printf("PTB-ERROR: Failed to upload computed gamma tables for screen %i in call to CGSetDisplayTransferByFormula()!\n", screenNumber);
+        }
+    }
 
-    // Return "success":
-	return(1);
+    // Return success status:
+    return((error == 0) ? 1 : 0);
 }
 
 // Return true (non-zero) if a desktop compositor is likely active on screen 'screenNumber':
@@ -928,15 +928,15 @@ int PsychOSIsDWMEnabled(int screenNumber)
 
 // PsychGetDisplayBeamPosition() contains the implementation of display beamposition queries.
 int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
-{	
-	// As of PTB 3.0.12, always use and return beamposition as measured by our own
-	// PsychtoolboxKernelDriver implementation. Since at least OSX 10.7, our own
+{
+    // As of PTB 3.0.12, always use and return beamposition as measured by our own
+    // PsychtoolboxKernelDriver implementation. Since at least OSX 10.7, our own
     // implementation is much more reliable, robust, precise and low-overhead.
     // Beamposition queries weren't supported by OSX natively for Intel and AMD gpu's
     // on IntelMacs ever, they were severely buggy on OSX 10.8+ for the remaining
     // NVidia cards where they sort of "worked", and the functionality has been
     // effectively removed starting with OSX 10.9, turning into a no-op on all gpus.
-	return(PsychOSKDGetBeamposition(screenNumber));
+    return(PsychOSKDGetBeamposition(screenNumber));
 }
 
 // Try to attach to kernel level ptb support driver and setup everything, if it works:
