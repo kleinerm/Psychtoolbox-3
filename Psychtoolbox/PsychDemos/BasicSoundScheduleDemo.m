@@ -31,6 +31,8 @@ function BasicSoundScheduleDemo(wavfilenames)
 
 % History:
 % 04/09/2009  mk Written.
+% 18-Jul-2015 mk Remove switch of 'RunMode' to 1, as 1 is the default since
+%                quite a while.
 
 % Running on PTB-3? Abort otherwise.
 AssertOpenGL;
@@ -143,15 +145,6 @@ nfiles = length(buffer);
 % a playback frequency of 'freq' and 'nrchannels' sound output channels.
 % This returns a handle 'pahandle' to the audio device:
 pahandle = PsychPortAudio('Open', [], [], 1, freq, nrchannels);
-
-% For the fun of demoing this as well, we switch PsychPortAudio to runMode
-% 1, instead of the default runMode 0. This will slightly increase the cpu
-% load and general system load, but provide better timing and even lower
-% sound onset latencies under certain conditions. It is not really needed
-% in this demo, just here to grab your attention for this feature. Type
-% PsychPortAudio RunMode? for more details...
-runMode = 1;
-PsychPortAudio('RunMode', pahandle, runMode);
 
 % Enable use of sound schedules: We create a schedule of default size,
 % currently 128 slots by default. From now on, the driver will not play
