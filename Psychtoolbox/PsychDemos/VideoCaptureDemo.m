@@ -1,7 +1,7 @@
 function VideoCaptureDemo(fullscreen, fullsize, roi, depth, fps, deviceId, cameraname, bpc)
 % Demonstrate simple use of built-in video capture engine.
 %
-% VideoCaptureDemo([fullscreen=0][, fullsize=0][, roi=[0 0 640 480]][, depth][, fps=realmax][,deviceId=0][, cameraname][, bpc=8])
+% VideoCaptureDemo([fullscreen=0][, fullsize=0][, roi][, depth][, fps=realmax][,deviceId=0][, cameraname][, bpc=8])
 %
 % VideoCaptureDemo initializes the first attached and supported camera on
 % your computer (e.g, the built-in iSight of Apple Macintosh computers),
@@ -25,10 +25,9 @@ function VideoCaptureDemo(fullscreen, fullsize, roi, depth, fps, deviceId, camer
 % preserving the original aspect ratio.
 %
 % 'roi' Selects a rectangular subregion of the camera for display. By
-% default, it selects a [0 0 640 480] rectangle, ie. the full area of a
-% camera with 640 x 480 pixels resolution. This parameter may need tweaking
-% for some cameras, as some drivers have bugs and don't work well with all
-% settings.
+% default, it selects the full area of the camera, if possible. This
+% parameter may need tweaking for some cameras, as some drivers have
+% bugs and don't work well with all settings.
 %
 % 'depth' Number of color channels 1 = grayscale, 3 = rgb, 4 = rgba etc.
 %
