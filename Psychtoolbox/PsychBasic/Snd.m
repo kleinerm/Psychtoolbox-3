@@ -112,19 +112,19 @@ function err = Snd(command,signal,rate,sampleSize)
 %
 % See also PsychPortAudio, Beeper, AUDIOPLAYER, PLAY, MakeBeep, READSND, and WRITESND.
 
-% 6/6/96	dgp Wrote SndPlay.
-% 6/1/97	dgp Polished help text.
-% 12/10/97	dhb Updated help.
-% 2/4/98	dgp Wrote Snd, based on major update of VideoToolbox SndPlay1.c.
+% 6/6/96    dgp Wrote SndPlay.
+% 6/1/97    dgp Polished help text.
+% 12/10/97  dhb Updated help.
+% 2/4/98    dgp Wrote Snd, based on major update of VideoToolbox SndPlay1.c.
 % 3/8/00    emw Added PC notes and code.
 % 7/23/00   dgp Added notes about controlling volume of named snd, and updated
 %               broken link to ResEdit.
 % 4/13/02   dgp Warn that the two platforms have different default sampling rate,
 %               and suggest that everyone routinely specify sampling rate to
 %               make their programs platform-independent.
-% 4/13/02	dgp Enhanced both OS9 and WIN versions so that 'DefaultRate'
+% 4/13/02   dgp Enhanced both OS9 and WIN versions so that 'DefaultRate'
 %               returns the default sampling rate in Hz.
-% 4/13/02	dgp Changed WIN code, so that sampling rate is now same on both platforms.
+% 4/13/02   dgp Changed WIN code, so that sampling rate is now same on both platforms.
 % 4/15/02   awi fixed WIN code.
 % 5/30/02   awi Added sampleSize argument and documented.
 %               SndTest would crash Matlab but the problem mysteriously vanished while editing
@@ -138,6 +138,9 @@ function err = Snd(command,signal,rate,sampleSize)
 % 9/03/12    mk Add new implementation via PsychPortAudio(), which is used
 %               by default unless user opts out. Cleanup online help by
 %               removal of obsolete and outdated information.
+% 7/20/15    mk Make commands case insensitive, white-space cleanup, try to
+%               make Snd('Open'); Snd('Close'); sequences work to avoid problems
+%               like in PTB forum message #19284 on Linux or Windows.
 
 persistent ptb_snd_oldstyle;
 persistent pahandle;
@@ -146,6 +149,9 @@ persistent endTime;
 if isempty(endTime)
     endTime = 0;
 end
+
+% Default return value:
+err = 0;
 
 % Already defined if we shall use the new-style or old-style
 % implementation?
@@ -156,37 +162,36 @@ if isempty(ptb_snd_oldstyle)
         % Matlab/Octave sound() function:
         ptb_snd_oldstyle = 1;
 
-        fprintf('Snd(): Using Matlab/Octave sound() function for sound output.\n');    
+        fprintf('Snd(): Using Matlab/Octave sound() function for sound output.\n');
     else
         % User wants new-style PsychPortAudio variant:
         ptb_snd_oldstyle = 0;
-        
+
         fprintf('Snd(): Initializing PsychPortAudio driver for sound output.\n');
 
         % Low-Latency preinit. Not that we'd need it, but doesn't hurt:
-        InitializePsychSound(1);        
+        InitializePsychSound(1);
     end
 end
-
-% Don't use PsychPortAudio backend if already a PPA device open on Linux or
-% Windows, as that device will often have exclusive access, so we would
-% fail here:
-if isempty(pahandle) && ~ptb_snd_oldstyle && ~IsOSX && (PsychPortAudio('GetOpenDeviceCount') > 0)
-    fprintf('Snd(): PsychPortAudio already in use. Using old sound() fallback instead...\n');
-    ptb_snd_oldstyle = 1;
-end
-
-err=0;
 
 if nargin == 0
     error('Wrong number of arguments: see Snd.');
 end
 
-if streq(command,'Play')
+% Don't use PsychPortAudio backend if already a PPA device open on Linux or
+% Windows, as that device will often have exclusive access, so we would
+% fail here:
+if ~(strcmpi(command,'Open') || strcmpi(command,'Quiet') || strcmpi(command,'Close')) && ...
+    isempty(pahandle) && ~ptb_snd_oldstyle && ~IsOSX && (PsychPortAudio('GetOpenDeviceCount') > 0)
+    fprintf('Snd(): PsychPortAudio already in use. Using old sound() fallback instead...\n');
+    ptb_snd_oldstyle = 1;
+end
+
+if strcmpi(command,'Play')
     if nargin > 4
         error('Wrong number of arguments: see Snd.');
     end
-    
+
     if nargin == 4
         if isempty(sampleSize)
             sampleSize = 16;
@@ -196,19 +201,19 @@ if streq(command,'Play')
     else
         sampleSize = 16;
     end
-    
+
     if nargin < 3
         rate = [];
     end
-    
+
     if nargin < 2
         error('Wrong number of arguments: see Snd.');
     end
-    
+
     if size(signal,1) > size(signal,2)
         error('signal must be a 2 rows by n column matrix for stereo sounds.');
     end
-    
+
     if isempty(rate)
         if ptb_snd_oldstyle
             % Old MacOS-9 style default:
@@ -218,12 +223,12 @@ if streq(command,'Play')
             rate = [];
         end
     end
-    
+
     if ptb_snd_oldstyle
         % Old-Style implementation via sound() function:
 
         WaitSecs(endTime-GetSecs); % Wait until any ongoing sound is done.
-    
+
         % Octave special-case:
         if IsOctave
             if exist('sound') %#ok<EXIST>
@@ -235,7 +240,7 @@ if streq(command,'Play')
                     pkg('load','audio');
                 catch %#ok<CTCH>
                 end
-                
+
                 % Retry...
                 if exist('sound') %#ok<EXIST>
                     sound(signal',rate);
@@ -246,17 +251,17 @@ if streq(command,'Play')
         else
             sound(signal',rate,sampleSize);
         end
-        
+
         % Estimate 'endTime' for playback:
         endTime=GetSecs+length(signal)/rate;
     else
         % New-Style via PsychPortAudio:
         if ~isempty(pahandle)
             % PPA playback device already open.
-            
+
             % Wait blocking until end of its playback:
             PsychPortAudio('Stop', pahandle, 1, 1);
-            
+
             % Correct sampling rate set?
             props = PsychPortAudio('GetStatus', pahandle);
             if ~isempty(rate) && (abs(props.SampleRate - rate) > 1.0)
@@ -267,20 +272,20 @@ if streq(command,'Play')
                 pahandle = [];
             end
         end
-        
+
         if isempty(pahandle)
             % Be silent during driver/device init:
             oldverbosity = PsychPortAudio('Verbosity', 2);
-            
+
             % Open our own 'pahandle' sound device: Auto-Selected output
             % device [], playback only (1),
             % high-latency/low-timing-precision mode (0), at given
             % samplerate (rate), in stereo (2):
             pahandle = PsychPortAudio('Open', [], 1, 0, rate, 2);
-            
+
             % Restore standard level of verbosity:
             PsychPortAudio('Verbosity', oldverbosity);
-            
+
             if ~IsOSX
                 fprintf('Snd(): PsychPortAudio will be blocked for use by your own code until you call Snd(''Close'');\n');
                 fprintf('Snd(): If you want to use PsychPortAudio and Snd in the same session, make sure to open your\n');
@@ -295,18 +300,17 @@ if streq(command,'Play')
         else
             sndbuff = signal;
         end
-        
+
         % Play it:
         PsychPortAudio('FillBuffer', pahandle, sndbuff);
         PsychPortAudio('Start', pahandle, 1, 0, 1);
-        
     end
-    
-elseif streq(command,'Wait')
+
+elseif strcmpi(command,'Wait')
     if nargin>1
         error('Wrong number of arguments: see Snd.');
     end
-    
+
     if ~isempty(pahandle)
         % Wait blocking until end of playback:
         PsychPortAudio('Stop', pahandle, 1, 1);
@@ -314,12 +318,12 @@ elseif streq(command,'Wait')
         WaitSecs(endTime-GetSecs); % Wait until any ongoing sound is done.
     end
     err=0;
-    
-elseif streq(command,'IsPlaying')
+
+elseif strcmpi(command,'IsPlaying')
     if nargin>1
         error('Wrong number of arguments: see Snd.');
     end
-    
+
     if ~isempty(pahandle)
         props = PsychPortAudio('GetStatus', pahandle);
         err = props.Active;
@@ -330,18 +334,18 @@ elseif streq(command,'IsPlaying')
             err=0;
         end
     end
-    
-elseif streq(command,'Quiet') || streq(command,'Close')
+
+elseif strcmpi(command,'Quiet') || strcmpi(command,'Close')
     if nargin>1
         error('Wrong number of arguments: see Snd.');
     end
-    
+
     if ~isempty(pahandle)
         % Stop playback asap, wait for stop:
         PsychPortAudio('Stop', pahandle, 2, 1);
-        
+
         % Close command?
-        if streq(command,'Close')
+        if strcmpi(command,'Close')
             % Close it:
             PsychPortAudio('Close', pahandle);
             pahandle = [];
@@ -353,12 +357,12 @@ elseif streq(command,'Quiet') || streq(command,'Close')
     end
     endTime=0;
     err=0;
-    
-elseif streq(command,'DefaultRate')
+
+elseif strcmpi(command,'DefaultRate')
     if nargin>1
         error('Wrong number of arguments: see Snd.');
     end
-    
+
     if ptb_snd_oldstyle
         % Old style - old hard-coded default:
         err = 22254.5454545454; % default sampling rate in Hz.
@@ -374,10 +378,12 @@ elseif streq(command,'DefaultRate')
             err = di.DefaultSampleRate;
         end
     end
-    
-elseif streq(command,'Open')
+
+elseif strcmpi(command,'Open')
     endTime=0;
 else
+    PsychPortAudio('Close');
+    pahandle = [];
     error(['unknown command "' command '"']);
 end
 
