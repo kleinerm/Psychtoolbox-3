@@ -473,11 +473,11 @@ psych_bool PsychGetCGModeFromVideoSetting(CGDisplayModeRef *cgMode, PsychScreenS
     int i, numPossibleModes;
     long width, height, depth, tempWidth, tempHeight, tempDepth;
     double tempFrequency, frameRate;
-    
+
     if(setting->screenNumber>=numDisplays) {
         PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetCGModeFromVideoSetting() is out of range.");
     }
-    
+
     width = (long) PsychGetWidthFromRect(setting->rect);
     height = (long) PsychGetHeightFromRect(setting->rect);
     depth = (long) PsychGetValueFromDepthStruct(0,&(setting->depth));
@@ -489,19 +489,19 @@ psych_bool PsychGetCGModeFromVideoSetting(CGDisplayModeRef *cgMode, PsychScreenS
     CFStringRef key = kCGDisplayShowDuplicateLowResolutionModes;
     CFDictionaryRef options = CFDictionaryCreate(kCFAllocatorDefault, (const void**) &key, (const void**) &number, 1, NULL, NULL);
     CFRelease(number);
-    
+
     // Get a list of available modes for the specified display, including HiDPI/Retina
     // modes, as requested by the options dictionary:
     modeList = CGDisplayCopyAllDisplayModes(displayCGIDs[setting->screenNumber], options);
     CFRelease(options);
     numPossibleModes = CFArrayGetCount(modeList);
-    
-	// Fetch modes and store into arrays:
+
+    // Fetch modes and store into arrays:
     for(i = 0; i < numPossibleModes; i++) {
         *cgMode = (CGDisplayModeRef) CFArrayGetValueAtIndex(modeList,i);
-        
-        tempWidth = (long) CGDisplayModeGetWidth(*cgMode);
-        tempHeight = (long) CGDisplayModeGetHeight(*cgMode);
+
+        tempWidth = (long) CGDisplayModeGetPixelWidth(*cgMode);
+        tempHeight = (long) CGDisplayModeGetPixelHeight(*cgMode);
         tempFrequency = CGDisplayModeGetRefreshRate(*cgMode);
         tempDepth = getDisplayBitsPerPixel(*cgMode);
 
@@ -516,7 +516,7 @@ psych_bool PsychGetCGModeFromVideoSetting(CGDisplayModeRef *cgMode, PsychScreenS
     // Failed.
     CFRelease(modeList);
     *cgMode = NULL;
-    
+
     return(FALSE);
 }
 
@@ -561,9 +561,9 @@ int PsychGetScreenDepthValue(int screenNumber)
 float PsychGetNominalFramerate(int screenNumber)
 {
     double currentFrequency;
-    
+
     if (PsychPrefStateGet_ConserveVRAM() & kPsychIgnoreNominalFramerate) return(0);
-    
+
     if (screenNumber >= numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range");
 
     CGDisplayModeRef currentMode = CGDisplayCopyDisplayMode(displayCGIDs[screenNumber]);
@@ -577,7 +577,7 @@ float PsychGetNominalFramerate(int screenNumber)
 void PsychGetScreenPixelSize(int screenNumber, long *width, long *height)
 {
     if (screenNumber >= numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range");
-    
+
     CGDisplayModeRef currentMode = CGDisplayCopyDisplayMode(displayCGIDs[screenNumber]);
     *width = (long) CGDisplayModeGetPixelWidth(currentMode);
     *height = (long) CGDisplayModeGetPixelHeight(currentMode);
