@@ -189,7 +189,7 @@ void InitializeSynopsis()
     synopsis[i++] ="[x, y, buttonVector, hasKbFocus, valuators]= Screen('GetMouseHelper', numButtons [, screenNumber][, mouseIndex]);";
     synopsis[i++] = "Screen('HideCursorHelper', windowPntr [, mouseIndex]);";
     synopsis[i++] = "Screen('ShowCursorHelper', windowPntr [, cursorshapeid][, mouseIndex]);";
-    synopsis[i++] = "Screen('SetMouseHelper', windowPntrOrScreenNumber, x, y [, mouseIndex]);";
+    synopsis[i++] = "Screen('SetMouseHelper', windowPntrOrScreenNumber, x, y [, mouseIndex][, detachFromMouse]);";
 
     // Internal testing of Screen
     synopsis[i++] = "\n% Internal testing of Screen";

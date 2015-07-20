@@ -111,6 +111,11 @@ critical_abort:
         #endif
     }
 
+    #if PSYCH_SYSTEM == PSYCH_OSX
+        // Make sure the cursor obeys the mouse:
+        CGAssociateMouseAndMouseCursorPosition(true);
+    #endif
+
     recursionLevel--;
 
     return;
