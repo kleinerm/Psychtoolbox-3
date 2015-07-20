@@ -832,15 +832,30 @@ void PsychShowCursor(int screenNumber, int deviceIdx)
 
 void PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx)
 {
-    CGDisplayErr        error;
     CGDirectDisplayID   cgDisplayID;
     CGPoint             point;
 
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
     point.x=(float)x;
     point.y=(float)y;
-    error=CGDisplayMoveCursorToPoint(cgDisplayID, point);
-    if(error)
+
+    // Move cursor. These functions return non-zero error status on failure.
+    //
+    // Note: This "utterly senseless" call to CGAssociateMouseAndMouseCursorPosition(true) is here to
+    // avoid suppression of delivery of mouse input events from connected mice to the system
+    // for a suppression interval of 250 msecs after CGDisplayMoveCursorToPoint(), aka posting
+    // some mouse positioning Quartz event. Of course this is in direct contradiction to Apple docs
+    // which state that "CGDisplayMoveCursorToPoint() works "without generating or posting an event"",
+    // but hey, Apple logic!
+    //
+    // The solution implemented here was found in this StackExchange posting:
+    // http://stackoverflow.com/questions/10196603/using-cgeventsourcesetlocaleventssuppressioninterval-instead-of-the-deprecated
+    //
+    // A fine read to see the sad state of Apple docs - the stupid, it hurts!
+    //
+    // Without this hack, the mouse cursor would not respond to actual mouse movement by the user for
+    // a time interval of 250 msecs after executing SetMouse()! Fixes PTB forum bug from message #19365.
+    if (CGDisplayMoveCursorToPoint(cgDisplayID, point) || CGAssociateMouseAndMouseCursorPosition(true))
         PsychErrorExit(PsychError_internal);
 }
 
