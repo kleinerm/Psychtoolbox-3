@@ -1,25 +1,25 @@
 /*
-	PsychToolbox3/Source/Common/Screen/SCREENCopyWindow.c		
+    PsychToolbox3/Source/Common/Screen/SCREENCopyWindow.c
 
-	AUTHORS:
-	
-	Allen.Ingling@nyu.edu				awi 
-	Mario.Kleiner@tuebingen.mpg.de		mk
+    AUTHORS:
 
-	PLATFORMS:	
-		
-	All.  
-    
-	HISTORY:
-	
-	02/19/03	awi		Created.
-	03/11/04	awi		Modified for textures
-	1/11/05		awi		Cosmetic
-	1/14/05		awi		added glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE) at mk's suggestion;
-	1/25/05		awi		Relocated glTexEnvf below glBindTexture.  Fix provided by mk.  
-	1/22/05		 mk		Completely rewritten for the new OffscreenWindow implementation.
- 
-	TO DO:
+    Allen.Ingling@nyu.edu       awi
+    mario.kleiner.de@gmail.com  mk
+
+    PLATFORMS:
+
+    All.
+
+    HISTORY:
+
+    02/19/03    awi     Created.
+    03/11/04    awi     Modified for textures
+    1/11/05     awi     Cosmetic
+    1/14/05     awi     added glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE) at mk's suggestion;
+    1/25/05     awi     Relocated glTexEnvf below glBindTexture.  Fix provided by mk.
+    1/22/05     mk      Completely rewritten for the new OffscreenWindow implementation.
+
+    TO DO:
 
 */
 
@@ -30,12 +30,12 @@ static char synopsisString[] =  "Copy images, quickly, between two windows (on- 
                                 "srcRect and dstRect are set to the size of windows srcWindowPtr and dstWindowPtr "
                                 "by default. [copyMode] is accepted as input but currently ignored. "
                                 "CopyWindow is mostly here for compatibility to PTB-2. If you want to "
-                                "copy images really quickly, use the 'MakeTexture' and 'DrawTexture' commands."
-                                " They also allow for rotated drawing and advanced blending operations. "
-								"The current CopyWindow implementation has a couple of restrictions: "
-								"One can't copy from an offscreen window into the -same- offscreen window. "
-								"One can't copy from an onscreen window into a -different- onscreen window. "
-								"Sizes of sourceRect and targetRect need to match for Onscreen->Offscreen copy. ";
+                                "copy images really quickly, use the 'MakeTexture' and 'DrawTexture' commands. "
+                                "They also allow for rotated drawing and advanced blending operations. "
+                                "The current CopyWindow implementation has a couple of restrictions: "
+                                "One can't copy from an offscreen window into the -same- offscreen window. "
+                                "One can't copy from an onscreen window into a -different- onscreen window. "
+                                "Sizes of sourceRect and targetRect need to match for Onscreen->Offscreen copy. ";
 
 static char seeAlsoString[] = "PutImage, GetImage, OpenOffscreenWindow, MakeTexture, DrawTexture";
 
@@ -77,15 +77,15 @@ PsychError SCREENCopyWindow(void)
 	}
 
 	// Validate rectangles:
-	if (!ValidatePsychRect(sourceRect) || sourceRect[kPsychLeft]<sourceWin->rect[kPsychLeft] ||
-		sourceRect[kPsychTop]<sourceWin->rect[kPsychTop] || sourceRect[kPsychRight]>sourceWin->rect[kPsychRight] ||
-		sourceRect[kPsychBottom]>sourceWin->rect[kPsychBottom]) {
+	if (!ValidatePsychRect(sourceRect) || sourceRect[kPsychLeft]<sourceWin->clientrect[kPsychLeft] ||
+		sourceRect[kPsychTop]<sourceWin->clientrect[kPsychTop] || sourceRect[kPsychRight]>sourceWin->clientrect[kPsychRight] ||
+		sourceRect[kPsychBottom]>sourceWin->clientrect[kPsychBottom]) {
 		PsychErrorExitMsg(PsychError_user, "Invalid source rectangle specified - (Partially) outside of source window.");
 	}
 	
-	if (!ValidatePsychRect(targetRect) || targetRect[kPsychLeft]<targetWin->rect[kPsychLeft] ||
-		targetRect[kPsychTop]<targetWin->rect[kPsychTop] || targetRect[kPsychRight]>targetWin->rect[kPsychRight] ||
-		targetRect[kPsychBottom]>targetWin->rect[kPsychBottom]) {
+	if (!ValidatePsychRect(targetRect) || targetRect[kPsychLeft]<targetWin->clientrect[kPsychLeft] ||
+		targetRect[kPsychTop]<targetWin->clientrect[kPsychTop] || targetRect[kPsychRight]>targetWin->clientrect[kPsychRight] ||
+		targetRect[kPsychBottom]>targetWin->clientrect[kPsychBottom]) {
 		PsychErrorExitMsg(PsychError_user, "Invalid target rectangle specified - (Partially) outside of target window.");
 	}
 	
@@ -148,13 +148,13 @@ PsychError SCREENCopyWindow(void)
 
 		// Perform blit-operation: If blitting from a multisampled FBO into a non-multisampled one, this will also perform the
 		// multisample resolve operation:
-		glBlitFramebufferEXT((GLint) sourceRect[kPsychLeft], (GLint) (PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom]), (GLint) sourceRect[kPsychRight], (GLint) (PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychTop]),
-							 (GLint) targetRect[kPsychLeft], (GLint) (PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychBottom]), (GLint) targetRect[kPsychRight], (GLint) (PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychTop]),
+		glBlitFramebufferEXT((GLint) sourceRect[kPsychLeft], (GLint) (PsychGetHeightFromRect(sourceWin->clientrect) - sourceRect[kPsychBottom]), (GLint) sourceRect[kPsychRight], (GLint) (PsychGetHeightFromRect(sourceWin->clientrect) - sourceRect[kPsychTop]),
+							 (GLint) targetRect[kPsychLeft], (GLint) (PsychGetHeightFromRect(targetWin->clientrect) - targetRect[kPsychBottom]), (GLint) targetRect[kPsychRight], (GLint) (PsychGetHeightFromRect(targetWin->clientrect) - targetRect[kPsychTop]),
 							 GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
 		if (PsychPrefStateGet_Verbosity() > 5) {
-			printf("FBB-SRC: X0 = %f Y0 = %f X1 = %f Y1 = %f \n", sourceRect[kPsychLeft], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom], sourceRect[kPsychRight], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychTop]);
-			printf("FBB-DST: X0 = %f Y0 = %f X1 = %f Y1 = %f \n", targetRect[kPsychLeft], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychBottom], targetRect[kPsychRight], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychTop]);
+			printf("FBB-SRC: X0 = %f Y0 = %f X1 = %f Y1 = %f \n", sourceRect[kPsychLeft], PsychGetHeightFromRect(sourceWin->clientrect) - sourceRect[kPsychBottom], sourceRect[kPsychRight], PsychGetHeightFromRect(sourceWin->clientrect) - sourceRect[kPsychTop]);
+			printf("FBB-DST: X0 = %f Y0 = %f X1 = %f Y1 = %f \n", targetRect[kPsychLeft], PsychGetHeightFromRect(targetWin->clientrect) - targetRect[kPsychBottom], targetRect[kPsychRight], PsychGetHeightFromRect(targetWin->clientrect) - targetRect[kPsychTop]);
 		}
 		
 		if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync)) {
@@ -224,7 +224,7 @@ PsychError SCREENCopyWindow(void)
 			glPixelZoom((float) (PsychGetWidthFromRect(targetRect) / PsychGetWidthFromRect(sourceRect)), (float) (PsychGetHeightFromRect(targetRect) / PsychGetHeightFromRect(sourceRect)));
 			
 			// Perform pixel copy operation:
-			glCopyPixels((int) sourceRect[kPsychLeft], (int) (PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom]), (int) PsychGetWidthFromRect(sourceRect), (int) PsychGetHeightFromRect(sourceRect), GL_COLOR);
+			glCopyPixels((int) sourceRect[kPsychLeft], (int) (PsychGetHeightFromRect(sourceWin->clientrect) - sourceRect[kPsychBottom]), (int) PsychGetWidthFromRect(sourceRect), (int) PsychGetHeightFromRect(sourceRect), GL_COLOR);
 			
 			// That's it.
 			glPixelZoom(1,1);
@@ -278,7 +278,7 @@ PsychError SCREENCopyWindow(void)
 		glBindTexture(PsychGetTextureTarget(targetWin), targetWin->textureNumber);
 		
 		// Copy into texture:
-		glCopyTexSubImage2D(PsychGetTextureTarget(targetWin), 0, (int) targetRect[kPsychLeft], (int) (PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychBottom]), (int) sourceRect[kPsychLeft], (int) (PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom]),
+		glCopyTexSubImage2D(PsychGetTextureTarget(targetWin), 0, (int) targetRect[kPsychLeft], (int) (PsychGetHeightFromRect(targetWin->clientrect) - targetRect[kPsychBottom]), (int) sourceRect[kPsychLeft], (int) (PsychGetHeightFromRect(sourceWin->clientrect) - sourceRect[kPsychBottom]),
 							(int) PsychGetWidthFromRect(sourceRect), (int) PsychGetHeightFromRect(sourceRect));
 		
 		// Unbind texture object:
@@ -310,7 +310,7 @@ PsychError SCREENCopyWindow(void)
 		glPixelZoom((float) (PsychGetWidthFromRect(targetRect) / PsychGetWidthFromRect(sourceRect)), (float) (PsychGetHeightFromRect(targetRect) / PsychGetHeightFromRect(sourceRect)));
 		
 		// Perform pixel copy operation:
-		glCopyPixels((int) sourceRect[kPsychLeft], (int) (PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom]), (int) PsychGetWidthFromRect(sourceRect), (int) PsychGetHeightFromRect(sourceRect), GL_COLOR);
+		glCopyPixels((int) sourceRect[kPsychLeft], (int) (PsychGetHeightFromRect(sourceWin->clientrect) - sourceRect[kPsychBottom]), (int) PsychGetWidthFromRect(sourceRect), (int) PsychGetHeightFromRect(sourceRect), GL_COLOR);
 		
 		// That's it.
 		glPixelZoom(1,1);
