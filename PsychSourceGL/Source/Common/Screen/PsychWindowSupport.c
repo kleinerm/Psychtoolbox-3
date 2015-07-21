@@ -3481,19 +3481,30 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                         // One example of such an optimization are first time use of AUX buffers on a NVidia gpu with NVidia proprietary driver. Some funny lazy allocation going on...
                         // The value of 1 is observed when a desktop compositor (3d OpenGL, or 2d X-RENDER based) is active and redirecting our window to a composition surface
                         // by a framebuffer copy from backbuffer -> compositor buffer -- copy leads to constant buffer_age of 1.
+                        //
+                        // There also seem to be some false positive reports by some versions of the NVidia proprietary graphics driver on some gpus and setups.
+                        // To avoid flooding the screen with meaningless warnings we turn this into a one-time warning, so the amount of chatter is tolerable on
+                        // setups with a misreporting driver. We also tone down the text of the warning message a bit, as this is more an indicator that something
+                        // could be wrong than a clear proof that something is wrong.
+                        //
                         unsigned int buffer_age = 2; // Init to 2 to give benefit of doubt in case query below fails.
                         if (windowRecord->gfxcaps & kPsychGfxCapSupportsBufferAge) {
                             PsychLockDisplay();
                             glXQueryDrawable(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, GLX_BACK_BUFFER_AGE_EXT, &buffer_age);
                             PsychUnlockDisplay();
 
-                            if ((buffer_age > 0) && (buffer_age != 2) && (verbosity > 1)) {
-                                printf("PTB-WARNING: OpenGL driver uses %i-buffering instead of the required double-buffering for Screen('Flip')!\n", buffer_age);
-                                printf("PTB-WARNING: All returned Screen('Flip') timestamps will be wrong! Please fix this now (read 'help SyncTrouble').\n");
-                                if (buffer_age == 1) printf("PTB-WARNING: The most likely cause for this is that some kind of desktop compositor is active and interfering.\n");
-                                if (buffer_age == 3) printf("PTB-WARNING: The most likely cause for this is that TripleBuffering is enabled somewhere in the driver or xorg.conf settings.\n");
-                                if (buffer_age > 3) printf("PTB-WARNING: The most likely cause for this is that %i-Buffering is enabled somewhere in the driver or xorg.conf settings.\n", buffer_age);
-                                printf("PTB-WARNING: Read the Linux specific section of 'help SyncTrouble' for some common causes and fixes for this problem.\n");
+                            if ((buffer_age > 0) && (buffer_age != 2) && (verbosity > 1) && !(windowRecord->specialflags & kPsychBufferAgeWarningDone)) {
+                                // One time warning only:
+                                windowRecord->specialflags |= kPsychBufferAgeWarningDone;
+
+                                printf("PTB-WARNING: OpenGL driver seems to use %i-buffering instead of the required double-buffering for Screen('Flip').\n", buffer_age);
+                                printf("PTB-WARNING: This could be a false positive in which case there is no reason to worry, but it could also indicate some problem\n");
+                                printf("PTB-WARNING: with visual stimulus onset timing on your setup, which would impair visual timing and timestamps of Screen('Flip').\n");
+                                printf("PTB-WARNING: If timing matters, I'd recommend performing further diagnosis and potential troubleshooting (read 'help SyncTrouble').\n");
+                                if (buffer_age == 1) printf("PTB-WARNING: One potential cause for this is that some kind of desktop compositor is active and interfering.\n");
+                                if (buffer_age == 3) printf("PTB-WARNING: One potential cause for this is that TripleBuffering is enabled somewhere in the driver or xorg.conf settings.\n");
+                                if (buffer_age > 3) printf("PTB-WARNING: One potential cause for this is that %i-Buffering is enabled somewhere in the driver or xorg.conf settings.\n", buffer_age);
+                                printf("PTB-WARNING: This is a one-time warning which will not repeat, even if the problem persists during this session.\n\n");
                             }
 
                             if (verbosity > 9) printf("PTB-DEBUG: GLX_BACK_BUFFER_AGE_EXT == %i after swap completion.\n", buffer_age);
