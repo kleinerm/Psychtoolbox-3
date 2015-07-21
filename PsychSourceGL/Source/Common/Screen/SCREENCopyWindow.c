@@ -32,10 +32,11 @@ static char synopsisString[] =  "Copy images, quickly, between two windows (on- 
                                 "CopyWindow is mostly here for compatibility to PTB-2. If you want to "
                                 "copy images really quickly, use the 'MakeTexture' and 'DrawTexture' commands. "
                                 "They also allow for rotated drawing and advanced blending operations. "
-                                "The current CopyWindow implementation has a couple of restrictions: "
+                                "The current CopyWindow implementation has a couple of restrictions on old "
+                                "graphics cards, which may not apply anymore on modern cards:\n"
                                 "One can't copy from an offscreen window into the -same- offscreen window. "
                                 "One can't copy from an onscreen window into a -different- onscreen window. "
-                                "Sizes of sourceRect and targetRect need to match for Onscreen->Offscreen copy. ";
+                                "Sizes of sourceRect and targetRect need to match for Onscreen->Offscreen copy.\n";
 
 static char seeAlsoString[] = "PutImage, GetImage, OpenOffscreenWindow, MakeTexture, DrawTexture";
 
