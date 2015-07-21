@@ -102,6 +102,7 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % 06/20/15  Improve text centering for single line text, and bounding box
 %           calculations. This is "whack a mole". Making it better for one OS
 %           can make it worse for another OS, there is no winning. (MK)
+% 07/21/15  Remove forced line breaks at 250 chars on OSX. No longer needed. (MK)
 
 % Set ptb_drawformattedtext_disableClipping to 1 if text clipping should be disabled:
 global ptb_drawformattedtext_disableClipping;
@@ -352,17 +353,6 @@ while ~isempty(tstring)
         dolinefeed = 0;
     end
 
-    if IsOSX
-        % On OS/X, we enforce a line-break if the unwrapped/unbroken text
-        % would exceed 250 characters. The ATSU text renderer of OS/X can't
-        % handle more than 250 characters.
-        if size(curstring, 2) > 250
-            tstring = [curstring(251:end) tstring]; %#ok<AGROW>
-            curstring = curstring(1:250);
-            dolinefeed = 1;
-        end
-    end
-    
     if IsWin
         % On Windows, a single ampersand & is translated into a control
         % character to enable underlined text. To avoid this and actually
